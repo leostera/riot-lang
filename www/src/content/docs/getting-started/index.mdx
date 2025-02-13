@@ -1,0 +1,53 @@
+---
+title: Getting Started
+description: Building your first Riot app
+---
+
+import { Code } from "@astrojs/starlight/components";
+
+## Installing Riot
+
+We can install Riot from Github or from the OPAM repository.
+
+```bash frame="code" title="Install with opam"
+$ opam pin riot.dev
+$ opam install riot
+```
+
+```lisp title="Install with dune"
+(package
+  (name your_package)
+  (depends riot))
+
+; if you want to use the latest version from Github
+; you can set package pins with the following snippets:
+(pin (package (name riot)) (url "git+https://github.com/riot-ml/riot"))
+(pin (package (name rio)) (url "git+https://github.com/riot-ml/rio"))
+(pin (package (name gluon)) (url "git+https://github.com/riot-ml/gluon"))
+(pin (package (name bytestring)) (url "git+https://github.com/riot-ml/bytestring"))
+```
+
+## Your First Riot App
+
+```ocaml title="main.ml"
+let () = Riot.run @@ fun () -> print_endline "Hello, Joe!"
+```
+
+```lisp title="dune"
+(executable
+  (public_name main)
+  (libraries riot))
+```
+
+```lisp title="dune-project"
+(using dune 3.17)
+(package
+  (name main)
+  (depends riot))
+```
+
+```bash title="Running your first app"
+$ dune lock
+$ dune run
+"Hello, Joe!"
+```
