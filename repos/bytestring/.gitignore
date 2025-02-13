@@ -1,0 +1,7 @@
+_build
+# nix ignores
+.direnv
+result
+.envrc
+dune.lock
+dev-tools.locks
