@@ -1,7 +1,6 @@
 (include_subdirs qualified)
 
-(library
- (package stack)
+(library (package stack)
  (name riot_runtime)
  (libraries
   bytestring

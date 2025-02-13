@@ -1,3 +1,4 @@
+module C = Config
 open Riot
 open Tty
 
@@ -109,9 +110,9 @@ let cap fps = Int.max 1 (Int.min fps max_fps) |> Int.to_float
 let fps_to_float fps = 1. /. cap fps *. 1_000. |> Int64.of_float
 
 let run ~config ~runner =
-  let Config.{ render_mode; fps } = config in
+  let C.{ render_mode; fps } = config in
   let ticker =
-    Riot.Timer.send_interval ~every:(fps_to_float fps) (self ()) Tick
+    Riot.Timer.send_interval ~every:(fps_to_float config.fps) (self ()) Tick
     |> Result.get_ok
   in
   loop

@@ -725,6 +725,6 @@ let serialize :
  fun fmt ctx ser value -> ser value (Ctx (ser, fmt, ctx))
 
 let deserialize :
-    type value state output.
+    type value state .
     state Deserializer.t -> state -> value De.t -> (value, error) result =
  fun fmt ctx de -> de (Ctx (fmt, ctx))

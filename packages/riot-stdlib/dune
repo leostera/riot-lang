@@ -1,6 +1,5 @@
 (include_subdirs qualified)
 
-(library
- (package stack)
+(library (package stack)
  (name riot_stdlib)
  (libraries riot_runtime))

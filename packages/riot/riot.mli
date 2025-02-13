@@ -304,7 +304,7 @@ val receive_any : ?after:int64 -> ?ref:unit Ref.t -> unit -> Message.t
 val shutdown : ?status:int -> unit -> unit
 (** Gracefully shuts down the runtime. Any non-yielding process will block this. *)
 
-module Config : sig
+module RuntimeConfig : sig
   type t = {
     rnd : Random.State.t;
     max_workers : int;
@@ -324,13 +324,13 @@ module Config : sig
     t
 end
 
-val run : ?config:Config.t -> (unit -> unit) -> unit
+val run : ?config:RuntimeConfig.t -> (unit -> unit) -> unit
 (** Start the Riot runtime using function [main] to boot the system *)
 
 val on_error : [ `Msg of string ] -> int
 
 val run_with_status :
-  ?config:Config.t ->
+  ?config:RuntimeConfig.t ->
   on_error:('error -> int) ->
   (unit -> (int, 'error) result) ->
   unit
@@ -342,7 +342,7 @@ val run_with_status :
 *)
 
 val start :
-  ?config:Config.t -> apps:(module Application.Intf) list -> unit -> unit
+  ?config:RuntimeConfig.t -> apps:(module Application.Intf) list -> unit -> unit
 (** Start the Riot runtime with a series of applications.
 
     Each application will be started in the same order as specified, and

@@ -1,5 +1,4 @@
-(library
- (package stack)
+(library (package stack)
  (name port_finder)
  (modules port_finder)
  (libraries riot))

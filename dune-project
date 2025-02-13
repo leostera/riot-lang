@@ -15,12 +15,12 @@
  (depends
    (alcotest (and :with-test (>= "1.7.0")))
    (bitstring (>= "4.1.0"))
+   castore
    (crunch (>= "3.3.1"))
    (decompress (>= "1.5.3"))
    (digestif (>= "1.1.4"))
    (http (>= "6.0.0~beta2"))
    (httpaf (>= "0.7.1"))
-   (magic-mime (>= "1.3.1"))
    (magic-mime (>= "1.3.1"))
    (mdx (and :with-test (>= "2.3.1")))
    (mirage-crypto (>= "0.11.2"))

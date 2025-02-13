@@ -1,17 +1,16 @@
-(library
+(library (package stack)
  (name bytestring)
  (modules bytestring)
  (libraries uutf rio))
 
-(library
- (package stack)
+(library (package stack)
  (name bytepattern)
  (modules bytepattern)
  (preprocess
   (pps sedlex.ppx ppxlib.metaquot))
  (libraries compiler-libs ppxlib sedlex bytestring spices))
 
-(library
+(library (package stack)
  (name bytestring_ppx)
  (modules ppx_bytestring)
  (kind ppx_rewriter)
@@ -19,8 +18,7 @@
  (preprocess
   (pps ppxlib.metaquot)))
 
-(library
- (package stack)
+(library (package stack)
  (name naughty_strings)
  (modules naughty_strings))
 

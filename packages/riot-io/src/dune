@@ -1,4 +1,0 @@
-(library
- (name rio)
- (modes :standard)
- (libraries unix))

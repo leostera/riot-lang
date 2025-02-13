@@ -1,3 +1,4 @@
+module C = Config
 open Riot
 open Atacama.Handler
 include Atacama.Handler.Default
@@ -45,7 +46,7 @@ module Parser = struct
     let captured = Bitstring.subbitstring data 0 len in
     (captured, rest)
 
-  let rec parse ~(config : Config.t) data =
+  let rec parse ~(config : C.t) data =
     let str = Bytestring.to_string data in
     let bit = str |> Bitstring.bitstring_of_string in
     match do_parse ~config bit with
@@ -151,7 +152,7 @@ type state = {
   is_keep_alive : bool;
   handler : Handler.t;
   are_we_tls : bool;
-  config : Config.t;
+  config : C.t;
   max_requests : int;
   requests_processed : int;
 }

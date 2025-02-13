@@ -1,5 +1,5 @@
 (executables
  (names spawn_many http_server)
  (preprocess
-  (pps config.ppx bytestring.ppx))
+  (pps config_ppx bytestring_ppx))
  (libraries riot))

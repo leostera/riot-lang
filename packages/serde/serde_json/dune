@@ -1,4 +1,4 @@
-(library
+(library (package stack)
  (name serde_json)
  (modules serde_json)
  (libraries serde rio yojson))

@@ -1,7 +1,7 @@
-(library
+(library (package stack)
  (name nomad)
  (preprocess
-  (pps ppx_bitstring bytestring.ppx))
+  (pps ppx_bitstring bytestring_ppx))
  (libraries
   trail
   atacama

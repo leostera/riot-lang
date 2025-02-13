@@ -11,7 +11,7 @@ open struct
   module Time = Time
 end
 
-module Config = Config
+module RuntimeConfig = Config
 
 open Logger.Make (struct
   let namespace = [ "riot" ]

@@ -1,4 +1,4 @@
-(library
+(library (package stack)
  (name serde)
  (modules serde)
  (libraries rio))

@@ -1,4 +1,4 @@
-(library
+(library (package stack)
  (name serde_derive)
  (kind ppx_rewriter)
  (libraries compiler-libs ppxlib serde)

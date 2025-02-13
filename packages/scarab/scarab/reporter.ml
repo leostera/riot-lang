@@ -27,7 +27,7 @@ let make (R ((module B), state)) =
     type 'a state = { inner : 'a; handlers : Pid.t list }
 
     let rec loop state =
-      match receive () with
+      match receive_any () with
       | Register_handler pid ->
           Logger.error (fun f -> f "registering handler for %a" Pid.pp pid);
           loop { state with handlers = pid :: state.handlers }
@@ -130,7 +130,7 @@ module Minttea_reporter = struct
     match event with
     | Event.Frame now ->
         ({ model with spinner = Sprite.update ~now model.spinner }, Command.Noop)
-    | Event.KeyDown (Key "q") ->
+    | Event.KeyDown (Key "q", _) ->
         ( { model with finished = true },
           Command.Seq [ Show_cursor; Exit_alt_screen; Quit ] )
     | Event.Custom Shutdown ->

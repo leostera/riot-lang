@@ -1,5 +1,4 @@
-(library
- (package stack)
+(library (package stack)
  (name cfg)
  (modules cfg)
  (foreign_stubs
@@ -8,8 +7,7 @@
   (flags
    (:standard -O2))))
 
-(library
- (package stack)
+(library (package stack)
  (name cfg_lang)
  (modules cfg_lang)
  (preprocess
@@ -24,8 +22,8 @@
   (pps ppxlib.metaquot))
  (libraries cfg_lang cfg))
 
-(library
- (name cfg_ppx)
+(library (package stack)
+ (name config_ppx)
  (modules cfg_ppx)
  (kind ppx_rewriter)
  (libraries ppxlib cfg cfg_lang)

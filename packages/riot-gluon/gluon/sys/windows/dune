@@ -1,5 +1,4 @@
-(library
- (package stack)
+(library (package stack)
  (name gluon_sys_windows)
  (wrapped false)
  (enabled_if

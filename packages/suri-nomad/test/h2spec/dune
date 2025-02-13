@@ -1,5 +1,5 @@
 (executable
  (name server)
  (preprocess
-  (pps bytestring.ppx))
+  (pps bytestring_ppx))
  (libraries nomad))
