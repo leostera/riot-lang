@@ -1,0 +1,10 @@
+(library
+ (name serde)
+ (modules serde)
+ (libraries rio))
+
+(test
+ (package stack)
+ (name serde_test)
+ (modules serde_test)
+ (libraries serde qcheck spices))

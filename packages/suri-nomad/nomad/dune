@@ -1,0 +1,16 @@
+(library
+ (name nomad)
+ (preprocess
+  (pps ppx_bitstring bytestring.ppx))
+ (libraries
+  trail
+  atacama
+  riot
+  telemetry
+  bitstring
+  httpaf
+  http
+  digestif
+  uutf
+  decompress.gz
+  decompress.zl))

@@ -1,0 +1,4 @@
+(library
+ (name libc)
+ (preprocess
+  (pps config.ppx)))

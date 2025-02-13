@@ -1,0 +1,6 @@
+(library
+ (package stack)
+ (name gluon_sys_windows)
+ (wrapped false)
+ (enabled_if
+  (= %{os_type} "Win32")))
