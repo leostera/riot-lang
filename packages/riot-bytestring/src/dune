@@ -49,4 +49,4 @@
  (libraries bytepattern))
 
 (cram
- (package stack))
+  (deps (package stack)))

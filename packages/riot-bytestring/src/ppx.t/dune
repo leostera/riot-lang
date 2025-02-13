@@ -1,4 +1,4 @@
-(library (package stack)
+(library
   (name test)
-  (preprocess (pps bytestring.ppx))
-  (libraries bytestring))
+  (preprocess (pps stack.bytestring_ppx))
+  (libraries stack.bytestring))

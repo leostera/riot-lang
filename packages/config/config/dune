@@ -31,4 +31,5 @@
   (pps ppxlib.metaquot)))
 
 (cram
-  (package stack))
+  (package stack)
+  (deps (package stack)))
