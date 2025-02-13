@@ -6,7 +6,6 @@
 
 (cram enable)
 
-
 (authors "Leandro Ostera <leandro@abstractmachines.dev>")
 
 (maintainers "Leandro Ostera <leandro@abstractmachines.dev>")
@@ -43,4 +42,5 @@
    (x509 (>= "0.16.5"))
    (yojson (>= "2.1.0"))
    melange
+   uuseg
    ))

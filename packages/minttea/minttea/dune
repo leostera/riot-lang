@@ -1,4 +1,3 @@
 (library
- (public_name minttea)
  (name minttea)
  (libraries riot tty))
