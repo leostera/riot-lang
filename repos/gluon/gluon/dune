@@ -1,0 +1,5 @@
+(library
+ (public_name gluon)
+ (preprocess
+  (pps bytestring.ppx))
+ (libraries bytestring rio uri gluon_common gluon_sys libc))

@@ -1,0 +1,12 @@
+*.install
+*.bin
+_build
+*.beam
+*.trace
+test/generated/*
+_opam
+
+# nix ignores
+.direnv
+result
+.envrc
