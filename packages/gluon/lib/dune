@@ -1,0 +1,9 @@
+(library
+ (name gluon)
+ (public_name gluon)
+ (libraries unix)
+ (foreign_stubs
+  (language c)
+  (names gluon_kqueue)
+  (include_dirs ../c_src))
+ (synopsis "Minimal kqueue-based I/O event notification for macOS"))
