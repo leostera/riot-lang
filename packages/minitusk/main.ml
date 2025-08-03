@@ -506,15 +506,9 @@ module Minitusk = struct
                     let compile_cmd = Printf.sprintf "cd %s && %s -a -o %s.cma %s" 
                       sandbox_dir ocamlc package.Package.name (String.concat " " sorted_basenames) in
                     execute_command compile_cmd
-            | Unix.WEXITED _ ->
+            | _ ->
                 Sys.remove temp_file;
-                Error ("Failed to sort files with ocamldep")
-            | Unix.WSIGNALED _ ->
-                Sys.remove temp_file;
-                Error ("ocamldep killed by signal")
-            | Unix.WSTOPPED _ ->
-                Sys.remove temp_file;
-                Error ("ocamldep stopped")
+                Error "Failed to sort files with ocamldep"
           ) else (
             Ok ()
           )
