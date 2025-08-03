@@ -1,0 +1,201 @@
+module Pid_table = Hashtbl.Make(struct
+  type t = Pid.t
+  let equal = Pid.equal
+  let hash = Hashtbl.hash
+end)
+
+type t = {
+  mutable stop : bool;
+  mutable status : int;
+  run_queue : Process.t Queue.t;
+  processes : Process.t Pid_table.t;
+  mutable current_process : Process.t option;
+}
+
+let create () = {
+  stop = false;
+  status = 0;
+  run_queue = Queue.create ();
+  processes = Pid_table.create 128;
+  current_process = None;
+}
+
+let current_scheduler = ref None
+let has_run = ref false
+
+let get_scheduler () = 
+  match !current_scheduler with
+  | None -> failwith "No scheduler running"
+  | Some s -> s
+
+let add_to_run_queue t proc =
+  Trace.trace "Adding process %s to run queue" (Pid.to_string (Process.pid proc));
+  Queue.push proc t.run_queue
+
+let spawn t fn =
+  let proc = Process.make fn in
+  let pid = Process.pid proc in
+  Trace.trace "Spawning process %s" (Pid.to_string pid);
+  Pid_table.add t.processes pid proc;
+  add_to_run_queue t proc;
+  pid
+
+let self () =
+  let t = get_scheduler () in
+  match t.current_process with
+  | None -> failwith "No process running"
+  | Some proc -> Process.pid proc
+
+let send pid msg =
+  let t = get_scheduler () in
+  Trace.trace "Sending message to %s" (Pid.to_string pid);
+  match Pid_table.find_opt t.processes pid with
+  | None -> 
+      Trace.trace "Process %s not found!" (Pid.to_string pid)
+  | Some proc -> 
+      let was_waiting = Process.is_waiting proc in
+      Process.send_message proc msg;
+      if was_waiting then (
+        Trace.trace "Process %s was waiting, now runnable" (Pid.to_string pid);
+        add_to_run_queue t proc)
+
+let shutdown t status =
+  t.stop <- true;
+  t.status <- status
+
+let handle_receive k _t proc ~selector =
+  let open Proc_state in
+  
+  let pid_str = Pid.to_string (Process.pid proc) in
+  Trace.trace "Process %s receiving (mailbox empty? %b)" 
+    pid_str (Process.has_empty_mailbox proc);
+  
+  if Process.has_empty_mailbox proc then (
+    Trace.trace "Process %s has empty mailbox, suspending" pid_str;
+    Process.mark_as_awaiting_message proc;
+    k Suspend)
+  else
+    let fuel = Process.message_count proc in
+    Trace.trace "Process %s has %d messages" pid_str fuel;
+    let rec go fuel =
+      if fuel = 0 then (
+        Trace.trace "Process %s out of fuel, delaying" pid_str;
+        k Delay)
+      else
+        match Process.next_message proc with
+        | None ->
+            Trace.trace "Process %s no more messages, switching to save queue" pid_str;
+            Process.read_save_queue proc;
+            k Delay
+        | Some msg -> (
+            Trace.trace "Process %s got message" pid_str;
+            match selector Message.(msg.msg) with
+            | `select msg -> 
+                Trace.trace "Process %s selected message" pid_str;
+                k (Continue msg)
+            | `skip ->
+                Trace.trace "Process %s skipped message" pid_str;
+                Process.add_to_save_queue proc msg;
+                go (fuel - 1))
+    in
+    go fuel
+
+let perform t proc =
+  let open Proc_state in
+  let open Proc_effect in
+  let perform : type a b. (a, b) step_callback =
+   fun k eff ->
+    match eff with
+    | Receive { selector } ->
+        handle_receive k t proc ~selector
+    | Yield ->
+        k Yield
+    | _ ->
+        k Suspend
+  in
+  { perform }
+
+let handle_exit_proc t proc reason =
+  if Process.is_main proc then
+    let status = if reason = Process.Normal then 0 else 1 in
+    shutdown t status;
+  
+  Pid_table.remove t.processes (Process.pid proc);
+  Process.mark_as_finalized proc
+
+let handle_wait_proc t proc =
+  if Process.has_messages proc then (
+    Process.mark_as_runnable proc;
+    add_to_run_queue t proc)
+
+let handle_run_proc t proc =
+  let pid_str = Pid.to_string (Process.pid proc) in
+  Trace.trace "Running process %s" pid_str;
+  Process.mark_as_running proc;
+  t.current_process <- Some proc;
+  let perform = perform t proc in
+  let cont = 
+    Proc_state.run ~reductions:100 ~perform (Process.cont proc)
+    |> Option.get
+  in
+  Process.set_cont proc cont;
+  match cont with
+  | Proc_state.Finished (Ok reason) ->
+      Trace.trace "Process %s finished with reason" pid_str;
+      Process.mark_as_exited proc reason;
+      add_to_run_queue t proc
+  | Proc_state.Finished (Error exn) ->
+      Trace.trace "Process %s finished with exception: %s" 
+        pid_str (Printexc.to_string exn);
+      Process.mark_as_exited proc (Exception exn);
+      add_to_run_queue t proc
+  | _ when Process.is_waiting proc ->
+      Trace.trace "Process %s is waiting" pid_str
+  | Proc_state.Suspended _ ->
+      Trace.trace "Process %s suspended, re-queueing" pid_str;
+      add_to_run_queue t proc
+  | Proc_state.Unhandled _ ->
+      Trace.trace "Process %s unhandled, re-queueing" pid_str;
+      add_to_run_queue t proc
+
+let handle_init_proc t proc =
+  Process.init proc;
+  handle_run_proc t proc
+
+let step_process t proc =
+  match Process.state proc with
+  | Uninitialized -> handle_init_proc t proc
+  | Finalized -> failwith "finalized processes should never be stepped on"
+  | Waiting_message -> handle_wait_proc t proc
+  | Exited reason -> handle_exit_proc t proc reason
+  | Running | Runnable -> handle_run_proc t proc
+
+let run_loop t =
+  Trace.trace "Run loop starting";
+  while not (Queue.is_empty t.run_queue) && not t.stop do
+    let proc = Queue.pop t.run_queue in
+    Trace.trace "Stepping process %s" (Pid.to_string (Process.pid proc));
+    step_process t proc
+  done;
+  Trace.trace "Run loop done"
+
+let run ~main =
+  if !has_run then
+    failwith "Miniriot.run can only be called once per process. Each test should be in a separate executable.";
+  has_run := true;
+  
+  let t = create () in
+  current_scheduler := Some t;
+  
+  (* Spawn main process with PID 0 *)
+  let _ = spawn t main in
+  
+  (* Run until completion *)
+  while not t.stop do
+    run_loop t;
+    (* If no processes are running, we're done *)
+    if Queue.is_empty t.run_queue && Pid_table.length t.processes = 0 then
+      t.stop <- true
+  done;
+  
+  t.status
