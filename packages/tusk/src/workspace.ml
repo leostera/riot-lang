@@ -3,11 +3,13 @@
 type package = {
   name : string;
   path : string;
+  relative_path : string;  (* Path relative to workspace root *)
   dependencies : string list;
 }
 
 type workspace = {
   root : string;
+  target_dir_root : string;
   packages : package list;
 }
 
@@ -68,7 +70,7 @@ let scan ~root =
   match find_tusk_toml root with
   | None -> 
       Printf.eprintf "Error: No tusk.toml found in %s\n" root;
-      { root; packages = [] }
+      { root; target_dir_root = Filename.concat root "target"; packages = [] }
   | Some workspace_toml ->
       Printf.printf "Found workspace at: %s\n" workspace_toml;
       
@@ -86,7 +88,7 @@ let scan ~root =
         | Some package_toml ->
             let (name, deps) = parse_package_toml package_toml in
             Printf.printf "  Package %s: deps=[%s]\n" name (String.concat ", " deps);
-            Some { name; path = member_path; dependencies = deps }
+            Some { name; path = member_path; relative_path = member; dependencies = deps }
       ) members in
       
-      { root; packages }
+      { root; target_dir_root = Filename.concat root "target"; packages }

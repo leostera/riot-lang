@@ -1,10 +1,8 @@
 (** Build graph module - handles dependency graph construction and topological sorting *)
 
-type node = {
-  package : Workspace.package;
-  mutable dependencies : node list;
-  mutable dependents : node list;
-}
+open Build_node
+
+type node = Build_node.t
 
 type t = {
   nodes : (string, node) Hashtbl.t;

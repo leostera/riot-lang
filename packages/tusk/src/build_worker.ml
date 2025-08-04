@@ -2,41 +2,90 @@
 open Miniriot
 open Build_messages
 
+(** Build a package using the Sandbox approach *)
+let build_package_with_sandbox build_task =
+  let { node; workspace } = build_task in
+  let pkg_name = node.Build_node.package.name in
+  let pkg_path = node.Build_node.package.path in
+  
+  Printf.printf "[Worker] Building package %s at %s\n" pkg_name pkg_path;
+  flush stdout;
+  
+  try
+    (* Create sandbox for this build *)
+    let sandbox = Sandbox.create ~node ~workspace in
+    
+    (* Generate build actions *)
+    let deps = List.map (fun dep -> 
+      Actions.{ name = dep.Build_node.package.name; 
+                relative_path = dep.Build_node.package.relative_path;
+                dependencies = dep.Build_node.package.dependencies }
+    ) node.Build_node.dependencies in
+    
+    (* Convert all packages to dep_info for transitive dependency resolution *)
+    let all_packages = List.map (fun pkg -> 
+      Actions.{ name = pkg.Workspace.name; 
+                relative_path = pkg.Workspace.relative_path;
+                dependencies = pkg.Workspace.dependencies }
+    ) workspace.packages in
+    
+    let blueprint = Actions.generate_blueprint workspace.root pkg_name pkg_path node.Build_node.package.relative_path deps all_packages in
+    
+    (* Print the actions *)
+    Actions.print_blueprint blueprint;
+    
+    (* Run actions in sandbox *)
+    let result = Sandbox.run_actions ~sandbox ~blueprint in
+    
+    (* Clean up sandbox *)
+    Sandbox.cleanup sandbox;
+    
+    result
+  with
+  | exn ->
+      let error_msg = Printf.sprintf "Sandbox build failed: %s" (Printexc.to_string exn) in
+      Printf.printf "[Worker] %s\n" error_msg;
+      flush stdout;
+      (false, error_msg)
+
 (** Worker loop that processes build tasks *)
-let worker_loop server_pid worker_id =
-  let rec loop () =
-    (* Request next task from the server *)
-    send server_pid (NextTask (self ()));
-    
+let rec worker_loop server_pid worker_id =
+  (* Request next task from the server *)
+  send server_pid (NextTask (self ()));
+
+  (* Suspend and wait for Task or Shutdown message *)
+  let rec wait_for_work () =
     match receive () with
-    | Task pkg_name ->
-        (* Build the package *)
-        Printf.printf "[Worker %d] Would build package: %s\n" worker_id pkg_name;
-        flush stdout;
-        
-        (* Simulate some build time *)
-        sleep 0.1;
-        
-        (* Send result back to server *)
-        send server_pid (TaskComplete (pkg_name, true));
-        
-        (* Continue working *)
-        loop ()
-    
+    | Task build_task -> Some build_task
     | NoTask ->
-        (* No tasks available, wait a bit and try again *)
-        sleep 0.5;
-        loop ()
-        
+        (* No tasks available, suspend and wait for server to send us work *)
+        wait_for_work ()
     | Shutdown ->
         Printf.printf "[Worker %d] Shutting down\n" worker_id;
-        Process.Normal
-        
+        None
     | _ ->
-        (* Ignore other messages *)
-        loop ()
+        (* Ignore other messages and keep waiting *)
+        wait_for_work ()
   in
-  loop ()
+  match wait_for_work () with
+  | None -> Process.Normal  (* Shutdown *)
+  | Some build_task ->
+      let pkg_name = build_task.node.Build_node.package.name in
+      let pkg_path = build_task.node.Build_node.package.path in
+      
+      if not (Sys.file_exists pkg_path) then begin
+        Printf.printf "[Worker %d] Package directory not found: %s\n" worker_id pkg_path;
+        flush stdout;
+        send server_pid (TaskComplete (pkg_name, false));
+      end else begin
+        let (success, msg) = build_package_with_sandbox build_task in
+        Printf.printf "[Worker %d] Build %s for %s: %s\n" 
+          worker_id (if success then "succeeded" else "failed") pkg_name msg;
+        flush stdout;
+        send server_pid (TaskComplete (pkg_name, success));
+      end;
+        
+      worker_loop server_pid worker_id
 
 (** Main entry point for worker process *)
 let main server_pid worker_id () =

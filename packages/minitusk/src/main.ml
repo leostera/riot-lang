@@ -296,8 +296,8 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
   let commands_hash = sha512_string "ocamlc" in (* Simplified for now *)
   let build_hash = sha512_string (String.concat "" (all_hashes @ [commands_hash])) in
   
-  let sandbox_dir = Printf.sprintf "./target/debug/sandbox/%s" build_hash in
-  let out_dir = "./target/debug/out" in
+  let sandbox_dir = Printf.sprintf "./target/bootstrap/sandbox/%s" build_hash in
+  let out_dir = "./target/bootstrap/out" in
   
   (* Create directories *)
   let rec mkdir_p dir =
@@ -592,7 +592,6 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
     List.iter (fun pkg ->
       let dep_name = pkg.name in
       let cma_path = Printf.sprintf "%s.cma" dep_name in
-      let cmo_path = Printf.sprintf "%s.cmo" dep_name in
       
       if Sys.file_exists (Filename.concat sandbox_dir cma_path) then (
         (* All packages now produce .cma files *)
@@ -640,8 +639,8 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
       exit 1
     );
     
-    (* Also copy to ./target/<package-name> *)
-    let target_exe = Printf.sprintf "./target/%s" pkg.name in
+    (* Also copy to ./target/bootstrap/<package-name> *)
+    let target_exe = Printf.sprintf "./target/bootstrap/%s" pkg.name in
     let cmd = Printf.sprintf "cp %s %s" exe_path target_exe in
     Printf.printf "  $ %s\n%!" cmd;
     let ret = Unix.system cmd in
