@@ -1,6 +1,7 @@
 (** CLI module - handles command-line interface *)
 
 open Miniriot
+open Build_messages
 
 let usage_msg = "tusk - OCaml build system
 
@@ -19,24 +20,25 @@ let build_command () =
   let server_pid = Server.start () in
   
   (* Send ScanWorkspace message *)
-  send server_pid Server.ScanWorkspace;
+  send server_pid ScanWorkspace;
   
   (* Give server time to scan and print *)
-  sleep 100.0;
+  sleep 0.5;
   
-  (* Send BuildAll message *)
-  send server_pid Server.BuildAll;
+  (* Send BuildAll message with our PID *)
+  send server_pid (BuildAll (self ()));
   
-  (* Give server time to process *)
-  sleep 100.0;
-  
-  (* Shutdown server *)
-  send server_pid Server.Shutdown;
-  
-  (* Wait a bit for shutdown *)
-  sleep 50.0;
-  
-  Process.Normal
+  (* Wait for BuildFinished message *)
+  let rec wait_for_completion () =
+    match receive () with
+    | BuildFinished ->
+        Printf.printf "✅ Build completed!\n";
+        Process.Normal
+    | _ ->
+        (* Ignore other messages *)
+        wait_for_completion ()
+  in
+  wait_for_completion ()
 
 (** Execute the clean command *)
 let clean_command () =
