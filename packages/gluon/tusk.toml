@@ -1,0 +1,6 @@
+[package]
+name = "gluon"
+version = "0.0.1"
+
+[dependencies]
+# No dependencies - base I/O package

@@ -1,0 +1,6 @@
+[package]
+name = "miniriot"
+version = "0.0.1"
+
+[dependencies]
+gluon = { path = "../gluon" }
