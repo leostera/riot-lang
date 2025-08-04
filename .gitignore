@@ -14,5 +14,5 @@ dune.lock
 dev-tools.locks
 
 target
-minitusk
-tusk
+./minitusk
+./tusk
