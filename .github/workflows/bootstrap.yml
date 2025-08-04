@@ -17,6 +17,14 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
+    - name: Cache Tusk toolchains and downloads
+      uses: actions/cache@v4
+      with:
+        path: ~/.tusk
+        key: ${{ runner.os }}-tusk-${{ hashFiles('ocaml-toolchain.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-tusk-
+    
     - name: Install System OCaml
       run: |
         if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
