@@ -1,0 +1,6 @@
+[package]
+name = "minitusk"
+version = "0.0.1"
+
+[dependencies]
+# Only needs standard library
