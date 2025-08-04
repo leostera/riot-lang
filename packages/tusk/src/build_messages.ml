@@ -13,7 +13,7 @@ type Message.t +=
   (* CLI -> Server messages *)
   | ScanWorkspace
   | BuildAll of Pid.t  (* includes CLI pid for BuildFinished notification *)
-  | BuildPackage of string
+  | BuildPackage of string * Pid.t  (* package name, CLI pid *)
   
   (* Worker -> Server messages *)
   | NextTask of Pid.t  (* worker requests next task from server *)

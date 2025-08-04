@@ -5,16 +5,36 @@ open Build_messages
 
 let usage_msg = "tusk - OCaml build system
 
-Usage: tusk [COMMAND]
+Usage: tusk [COMMAND] [OPTIONS]
 
 Commands:
-  build    Build all packages
+  build    Build packages
   clean    Clean build artifacts
-  help     Show this help message"
+  help     Show this help message
+
+Options:
+  -p <package>    Build only the specified package"
+
+(** Parse command line arguments for build command *)
+let parse_build_args args start_idx =
+  let rec parse idx package =
+    if idx >= Array.length args then
+      package
+    else
+      match args.(idx) with
+      | "-p" when idx + 1 < Array.length args ->
+          parse (idx + 2) (Some args.(idx + 1))
+      | _ ->
+          Printf.eprintf "Warning: Unknown argument '%s'\n" args.(idx);
+          parse (idx + 1) package
+  in
+  parse start_idx None
 
 (** Execute the build command *)
-let build_command () =
-  Printf.printf "🔨 Starting build...\n";
+let build_command package_opt =
+  (match package_opt with
+  | Some pkg -> Printf.printf "🔨 Building package %s...\n" pkg
+  | None -> Printf.printf "🔨 Starting build...\n");
   
   (* Start the build server *)
   let server_pid = Server.start () in
@@ -25,8 +45,12 @@ let build_command () =
   (* Give server time to scan and print *)
   sleep 0.5;
   
-  (* Send BuildAll message with our PID *)
-  send server_pid (BuildAll (self ()));
+  (* Send appropriate build message *)
+  (match package_opt with
+  | Some package ->
+      send server_pid (BuildPackage (package, self ()))
+  | None ->
+      send server_pid (BuildAll (self ())));
   
   (* Wait for BuildFinished message *)
   let rec wait_for_completion () =
@@ -67,7 +91,9 @@ let main () =
   end else
     let command = args.(1) in
     match command with
-    | "build" -> build_command ()
+    | "build" -> 
+        let package_opt = parse_build_args args 2 in
+        build_command package_opt
     | "clean" -> clean_command ()
     | "help" | "--help" | "-h" -> help_command ()
     | _ ->
