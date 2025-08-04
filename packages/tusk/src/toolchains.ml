@@ -178,7 +178,10 @@ let install_toolchain version =
     (* Build *)
     Printf.printf "Building OCaml %s (this may take a while)...\n" version;
     flush stdout;
-    let make_cmd = Printf.sprintf "cd %s && make -j" src_dir in
+    let num_cores = System.cpu_count () in
+    Printf.printf "Using %d cores for compilation\n" num_cores;
+    flush stdout;
+    let make_cmd = Printf.sprintf "cd %s && make -j%d" src_dir num_cores in
     let (success, output) = System.run_command make_cmd in
     if not success then
       failwith (Printf.sprintf "Failed to build OCaml: %s" output);

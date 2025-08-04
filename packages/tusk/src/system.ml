@@ -122,3 +122,29 @@ let run_process_lines cmd =
   with End_of_file -> ());
   ignore (Unix.close_process_in ic);
   List.rev !lines
+
+(** Get number of CPU cores *)
+let cpu_count () =
+  match Sys.os_type with
+  | "Unix" -> 
+      (* Try different methods to get CPU count *)
+      let try_command cmd =
+        try
+          let ic = Unix.open_process_in cmd in
+          let result = input_line ic in
+          ignore (Unix.close_process_in ic);
+          int_of_string (String.trim result)
+        with _ -> 0
+      in
+      let cores = 
+        (* macOS *)
+        let macos_cores = try_command "sysctl -n hw.ncpu" in
+        if macos_cores > 0 then macos_cores
+        else
+          (* Linux *)
+          let linux_cores = try_command "nproc" in
+          if linux_cores > 0 then linux_cores
+          else 4  (* Default fallback *)
+      in
+      cores
+  | _ -> 4  (* Default for other systems *)
