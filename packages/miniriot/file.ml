@@ -1,0 +1,103 @@
+type error = [ 
+  | `File_not_found 
+  | `Permission_denied 
+  | `Is_a_directory
+  | `Not_a_directory
+  | `Already_exists
+  | `No_space
+  | `Unknown of string
+]
+
+let error_of_unix_error = function
+  | Unix.ENOENT -> `File_not_found
+  | Unix.EACCES | Unix.EPERM -> `Permission_denied
+  | Unix.EISDIR -> `Is_a_directory
+  | Unix.ENOTDIR -> `Not_a_directory
+  | Unix.EEXIST -> `Already_exists
+  | Unix.ENOSPC -> `No_space
+  | e -> `Unknown (Unix.error_message e)
+
+let exists path =
+  match Unix.stat path with
+  | exception Unix.Unix_error (Unix.ENOENT, _, _) -> false
+  | _ -> true
+
+let remove path =
+  try
+    Unix.unlink path;
+    Ok ()
+  with Unix.Unix_error (e, _, _) -> Error (error_of_unix_error e)
+
+let read path =
+  let open_flags = [Unix.O_RDONLY] in
+  try
+    let fd = Unix.openfile path open_flags 0o640 in
+    let gluon_fd = fd in
+    let source = Gluon.File.to_source gluon_fd in
+    
+    (* Get file size *)
+    let stats = Unix.fstat fd in
+    let size = stats.Unix.st_size in
+    let buffer = Bytes.create size in
+    
+    let rec read_loop pos remaining =
+      if remaining = 0 then Ok (Bytes.to_string buffer)
+      else
+        match Gluon.File.read gluon_fd buffer ~pos ~len:remaining with
+        | Ok bytes_read ->
+            if bytes_read = 0 then 
+              Ok (Bytes.sub_string buffer 0 pos)
+            else
+              read_loop (pos + bytes_read) (remaining - bytes_read)
+        | Error `Would_block ->
+            Effects.syscall "File.read" Gluon.Interest.readable source
+              (fun () -> read_loop pos remaining)
+        | Error e ->
+            Unix.close fd;
+            Error (`Unknown (Printf.sprintf "Read error: %s" 
+              (match e with
+               | `Closed -> "closed"
+               | `Invalid_argument -> "invalid argument"
+               | `Would_block -> "would block"
+               | _ -> "unknown")))
+    in
+    
+    let result = read_loop 0 size in
+    Unix.close fd;
+    result
+    
+  with Unix.Unix_error (e, _, _) -> Error (error_of_unix_error e)
+
+let write path content =
+  let open_flags = [Unix.O_WRONLY; Unix.O_CREAT; Unix.O_TRUNC] in
+  try
+    let fd = Unix.openfile path open_flags 0o640 in
+    let gluon_fd = fd in
+    let source = Gluon.File.to_source gluon_fd in
+    let buffer = Bytes.of_string content in
+    let len = Bytes.length buffer in
+    
+    let rec write_loop pos remaining =
+      if remaining = 0 then Ok ()
+      else
+        match Gluon.File.write gluon_fd buffer ~pos ~len:remaining with
+        | Ok bytes_written ->
+            write_loop (pos + bytes_written) (remaining - bytes_written)
+        | Error `Would_block ->
+            Effects.syscall "File.write" Gluon.Interest.writable source
+              (fun () -> write_loop pos remaining)
+        | Error e ->
+            Unix.close fd;
+            Error (`Unknown (Printf.sprintf "Write error: %s"
+              (match e with
+               | `Closed -> "closed"
+               | `Invalid_argument -> "invalid argument"
+               | `Would_block -> "would block"
+               | _ -> "unknown")))
+    in
+    
+    let result = write_loop 0 len in
+    Unix.close fd;
+    result
+    
+  with Unix.Unix_error (e, _, _) -> Error (error_of_unix_error e)

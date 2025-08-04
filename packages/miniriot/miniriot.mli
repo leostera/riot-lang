@@ -52,3 +52,28 @@ val enable_trace : unit -> unit
 
 (** Disable debug tracing *)
 val disable_trace : unit -> unit
+
+(** File I/O operations *)
+module File : sig
+  type error = [ 
+    | `File_not_found 
+    | `Permission_denied 
+    | `Is_a_directory
+    | `Not_a_directory
+    | `Already_exists
+    | `No_space
+    | `Unknown of string
+  ]
+  
+  (** Read the entire contents of a file *)
+  val read : string -> (string, error) result
+  
+  (** Write a string to a file *)
+  val write : string -> string -> (unit, error) result
+  
+  (** Check if a file exists *)
+  val exists : string -> bool
+  
+  (** Remove a file *)
+  val remove : string -> (unit, error) result
+end

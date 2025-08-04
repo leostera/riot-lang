@@ -1,0 +1,11 @@
+[package]
+name = "tusk"
+version = "0.1.0"
+
+[[bin]]
+name = "tusk"
+path = "main.ml"
+
+[dependencies]
+miniriot = { path = "../miniriot" }
+toml = { path = "../toml" }

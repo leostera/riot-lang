@@ -1,3 +1,4 @@
 (library
  (public_name miniriot)
- (name miniriot))
+ (name miniriot)
+ (libraries gluon))

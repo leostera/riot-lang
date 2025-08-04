@@ -6,6 +6,7 @@ type state =
   | Uninitialized
   | Runnable
   | Waiting_message
+  | Waiting_io of { name : string; token : Gluon.Token.t; source : Gluon.Source.t }
   | Running
   | Exited of exit_reason
   | Finalized
@@ -18,6 +19,7 @@ type t = {
   mailbox : Mailbox.t;
   save_queue : Mailbox.t;
   mutable read_save_queue : bool;
+  mutable ready_tokens : (Gluon.Token.t * Gluon.Source.t) list;
 }
 
 let make fn =
@@ -30,6 +32,7 @@ let make fn =
     mailbox = Mailbox.create ();
     save_queue = Mailbox.create ();
     read_save_queue = false;
+    ready_tokens = [];
   }
 
 let init t =
@@ -53,6 +56,11 @@ let is_exited t =
 let is_waiting t =
   match t.state with
   | Waiting_message -> true
+  | _ -> false
+
+let is_waiting_io t =
+  match t.state with
+  | Waiting_io _ -> true
   | _ -> false
 
 let is_runnable t = t.state = Runnable
@@ -98,6 +106,26 @@ let send_message t msg =
     Mailbox.queue t.mailbox envelope;
     if is_waiting t then mark_as_runnable t)
 
+(* I/O operations *)
+let mark_as_awaiting_io t name token source =
+  if is_alive t then t.state <- Waiting_io { name; token; source }
+
+let add_ready_token t token source =
+  t.ready_tokens <- (token, source) :: t.ready_tokens
+
+let get_ready_token t =
+  match t.ready_tokens with
+  | [] -> None
+  | token :: rest ->
+      t.ready_tokens <- rest;
+      Some token
+
+let consume_ready_tokens t f =
+  List.iter f t.ready_tokens;
+  t.ready_tokens <- []
+
+
+
 let pp ppf t =
   Format.fprintf ppf "Process %a { state = %s; messages = %d }" 
     Pid.pp t.pid
@@ -105,6 +133,7 @@ let pp ppf t =
      | Uninitialized -> "Uninitialized"
      | Runnable -> "Runnable" 
      | Waiting_message -> "Waiting_message"
+     | Waiting_io { name; _ } -> Printf.sprintf "Waiting_io(%s)" name
      | Running -> "Running"
      | Exited _ -> "Exited"
      | Finalized -> "Finalized")

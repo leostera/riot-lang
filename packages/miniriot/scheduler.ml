@@ -10,6 +10,7 @@ type t = {
   run_queue : Process.t Queue.t;
   processes : Process.t Pid_table.t;
   mutable current_process : Process.t option;
+  io_poll : Gluon.t;
 }
 
 let create () = {
@@ -18,6 +19,7 @@ let create () = {
   run_queue = Queue.create ();
   processes = Pid_table.create 128;
   current_process = None;
+  io_poll = Gluon.create () |> Result.get_ok;
 }
 
 let current_scheduler = ref None
@@ -100,6 +102,23 @@ let handle_receive k _t proc ~selector =
     in
     go fuel
 
+let handle_syscall k t proc name interest source _timeout =
+  let open Proc_state in
+  
+  let pid_str = Pid.to_string (Process.pid proc) in
+  Trace.trace "Process %s performing syscall %s" pid_str name;
+  
+  match Process.get_ready_token proc with
+  | Some (_token, _source) ->
+      Trace.trace "Process %s syscall %s ready" pid_str name;
+      k (Continue ())
+  | None ->
+      let token = Gluon.Token.make proc in
+      Trace.trace "Process %s registering for I/O" pid_str;
+      Process.mark_as_awaiting_io proc name token source;
+      Gluon.register t.io_poll ~fd:(Gluon.Source.fd source) ~token ~interests:interest |> Result.get_ok;
+      k Suspend
+
 let perform t proc =
   let open Proc_state in
   let open Proc_effect in
@@ -110,6 +129,8 @@ let perform t proc =
         handle_receive k t proc ~selector
     | Yield ->
         k Yield
+    | Syscall { name; interest; source; timeout } ->
+        handle_syscall k t proc name interest source timeout
     | _ ->
         k Suspend
   in
@@ -119,6 +140,10 @@ let handle_exit_proc t proc reason =
   if Process.is_main proc then
     let status = if reason = Process.Normal then 0 else 1 in
     shutdown t status;
+  
+  (* Clean up any I/O registrations *)
+  Process.consume_ready_tokens proc (fun (_token, source) ->
+    Gluon.deregister t.io_poll ~fd:(Gluon.Source.fd source) |> Result.get_ok);
   
   Pid_table.remove t.processes (Process.pid proc);
   Process.mark_as_finalized proc
@@ -162,13 +187,36 @@ let handle_init_proc t proc =
   Process.init proc;
   handle_run_proc t proc
 
+let handle_wait_io_proc _t _proc =
+  (* Process will be woken up by I/O polling *)
+  ()
+
 let step_process t proc =
   match Process.state proc with
   | Uninitialized -> handle_init_proc t proc
   | Finalized -> failwith "finalized processes should never be stepped on"
   | Waiting_message -> handle_wait_proc t proc
+  | Waiting_io _ -> handle_wait_io_proc t proc
   | Exited reason -> handle_exit_proc t proc reason
   | Running | Runnable -> handle_run_proc t proc
+
+let poll_io t =
+  Trace.trace "Polling for I/O events";
+  let events = Gluon.poll t.io_poll |> Result.get_ok in
+  Array.iter 
+    (fun event ->
+      let token = Gluon.Event.token event in
+      let proc : Process.t = Gluon.Token.unsafe_to_value token in
+      Trace.trace "I/O ready for process %s" (Pid.to_string (Process.pid proc));
+      match Process.state proc with
+      | Waiting_io { source; _ } ->
+          Gluon.deregister t.io_poll ~fd:(Gluon.Source.fd source) |> Result.get_ok;
+          if Process.is_alive proc then (
+            Process.add_ready_token proc token source;
+            Process.mark_as_runnable proc;
+            add_to_run_queue t proc)
+      | _ -> ())
+    events
 
 let run_loop t =
   Trace.trace "Run loop starting";
@@ -177,6 +225,10 @@ let run_loop t =
     Trace.trace "Stepping process %s" (Pid.to_string (Process.pid proc));
     step_process t proc
   done;
+  
+  (* Poll for I/O events when run queue is empty *)
+  if not t.stop then poll_io t;
+  
   Trace.trace "Run loop done"
 
 let run ~main =
@@ -193,9 +245,15 @@ let run ~main =
   (* Run until completion *)
   while not t.stop do
     run_loop t;
-    (* If no processes are running, we're done *)
+    (* If no processes are running and none are waiting for I/O, we're done *)
     if Queue.is_empty t.run_queue && Pid_table.length t.processes = 0 then
       t.stop <- true
+    else if Queue.is_empty t.run_queue then
+      (* Still have processes, they might be waiting for I/O *)
+      let has_waiting_io = Pid_table.fold (fun _ proc acc ->
+        acc || Process.is_waiting_io proc) t.processes false in
+      if not has_waiting_io then
+        t.stop <- true
   done;
   
   t.status

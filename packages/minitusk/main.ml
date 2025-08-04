@@ -155,6 +155,7 @@ module Minitusk = struct
       name: string;
       path: string;
       sources: string list;
+      c_sources: string list;
       executables: string list;
       dependencies: string list;
     }
@@ -164,6 +165,7 @@ module Minitusk = struct
         name = "gluon";
         path = Filename.concat root_dir "packages/gluon";
         sources = []; (* Will be populated dynamically when needed *)
+        c_sources = []; (* Will be populated dynamically when needed *)
         executables = [];
         dependencies = [];
       };
@@ -171,13 +173,15 @@ module Minitusk = struct
         name = "miniriot";
         path = Filename.concat root_dir "packages/miniriot";
         sources = []; (* Will be populated dynamically when needed *)
+        c_sources = [];
         executables = [];
-        dependencies = [];
+        dependencies = ["gluon"];
       };
       {
         name = "minitusk";
         path = Filename.concat root_dir "packages/minitusk";
         sources = []; (* Will be populated dynamically when needed *)
+        c_sources = [];
         executables = [Filename.concat root_dir "packages/minitusk/main.ml"];
         dependencies = [];
       };
@@ -185,8 +189,9 @@ module Minitusk = struct
         name = "tusk";
         path = Filename.concat root_dir "packages/tusk";
         sources = []; (* Will be populated dynamically when needed *)
+        c_sources = [];
         executables = [Filename.concat root_dir "packages/tusk/main.ml"];
-        dependencies = [];
+        dependencies = ["miniriot"];
       };
     ]
     
@@ -202,10 +207,20 @@ module Minitusk = struct
       with _ -> []
     
     let populate_sources package =
-      let ml_files = find_files package.path ".ml" in
-      let mli_files = find_files package.path ".mli" in
-      let sources = List.sort_uniq String.compare (ml_files @ mli_files) in
-      { package with sources }
+      (* Check both root and lib subdirectory *)
+      let root_ml = find_files package.path ".ml" in
+      let root_mli = find_files package.path ".mli" in
+      let root_c = find_files package.path ".c" in
+      let lib_path = Filename.concat package.path "lib" in
+      let lib_ml = if Sys.file_exists lib_path && Sys.is_directory lib_path then
+        find_files lib_path ".ml" else [] in
+      let lib_mli = if Sys.file_exists lib_path && Sys.is_directory lib_path then
+        find_files lib_path ".mli" else [] in
+      let lib_c = if Sys.file_exists lib_path && Sys.is_directory lib_path then
+        find_files lib_path ".c" else [] in
+      let sources = List.sort_uniq String.compare (root_ml @ root_mli @ lib_ml @ lib_mli) in
+      let c_sources = List.sort_uniq String.compare (root_c @ lib_c) in
+      { package with sources; c_sources }
     
     let get_packages root_dir =
       List.map populate_sources (hardcoded_packages root_dir)
@@ -440,6 +455,13 @@ module Minitusk = struct
           Printf.printf "  Analyzing dependencies with ocamldep...\n%!";
           let all_needed_files = ref (List.sort_uniq String.compare all_lib_sources) in
           
+          (* Copy dependency CMI files to sandbox so modules can be found *)
+          List.iter (fun dep ->
+            let dep_cmi_pattern = Printf.sprintf "./target/%s*.cmi" dep in
+            let copy_dep_cmd = Printf.sprintf "cp %s %s/ 2>/dev/null || true" dep_cmi_pattern sandbox_dir in
+            ignore (Unix.system copy_dep_cmd)
+          ) package.Package.dependencies;
+          
           (* Use ocamldep to find additional dependencies *)
           List.iter (fun ml_file ->
             let deps = get_file_dependencies ocamldep ml_file in
@@ -452,7 +474,9 @@ module Minitusk = struct
             ) deps
           ) non_main_sources;
           
-          let final_files = List.sort_uniq String.compare !all_needed_files in
+          (* Add C files to the list of files to copy *)
+          let all_files_with_c = !all_needed_files @ package.Package.c_sources in
+          let final_files = List.sort_uniq String.compare all_files_with_c in
           Printf.printf "  Copying files: %s\n%!" (String.concat " " (List.map Filename.basename final_files));
           
           (* Copy all files to sandbox *)
@@ -502,10 +526,43 @@ module Minitusk = struct
                 match mli_result with
                 | Error _ as err -> err
                 | Ok () ->
-                    (* Then compile all .ml files *)
-                    let compile_cmd = Printf.sprintf "cd %s && %s -a -o %s.cma %s" 
-                      sandbox_dir ocamlc package.Package.name (String.concat " " sorted_basenames) in
-                    execute_command compile_cmd
+                    (* Compile C files if any *)
+                    let c_files_in_sandbox = List.filter (fun f -> String.ends_with ~suffix:".c" f) 
+                      (List.map (fun f -> Filename.concat sandbox_dir (Filename.basename f)) final_files) in
+                    let c_basenames = List.map Filename.basename c_files_in_sandbox in
+                    
+                    let c_result = if c_basenames = [] then Ok () else (
+                      Printf.printf "  Compiling C stubs: %s\n%!" (String.concat " " c_basenames);
+                      let c_compile_cmd = Printf.sprintf "cd %s && %s -c %s" 
+                        sandbox_dir ocamlc (String.concat " " c_basenames) in
+                      execute_command c_compile_cmd
+                    ) in
+                    
+                    match c_result with
+                    | Error _ as err -> err
+                    | Ok () ->
+                        (* Then compile all .ml files *)
+                        (* Include .o files from C compilation in the archive *)
+                        let o_files = if c_basenames = [] then "" else
+                          String.concat " " (List.map (fun c -> 
+                            Filename.chop_extension c ^ ".o") c_basenames) in
+                        (* Use -custom flag if there are C stubs *)
+                        let custom_flag = if o_files = "" then "" else "-custom" in
+                        let compile_cmd = Printf.sprintf "cd %s && %s %s -a -o %s.cma %s %s" 
+                          sandbox_dir ocamlc custom_flag package.Package.name (String.concat " " sorted_basenames) o_files in
+                        match execute_command compile_cmd with
+                        | Error _ as err -> err
+                        | Ok () ->
+                            (* Copy library outputs to target directory *)
+                            let copy_cma = Printf.sprintf "cp %s/%s.cma ./target/" sandbox_dir package.Package.name in
+                            let copy_cmi = Printf.sprintf "cp %s/*.cmi ./target/ 2>/dev/null || true" sandbox_dir in
+                            let copy_mli = Printf.sprintf "cp %s/*.mli ./target/ 2>/dev/null || true" sandbox_dir in
+                            let copy_o = Printf.sprintf "cp %s/*.o ./target/ 2>/dev/null || true" sandbox_dir in
+                            ignore (Unix.system copy_cma);
+                            ignore (Unix.system copy_cmi);
+                            ignore (Unix.system copy_mli);
+                            ignore (Unix.system copy_o);
+                            Ok ()
             | _ ->
                 Sys.remove temp_file;
                 Error "Failed to sort files with ocamldep"
@@ -537,9 +594,68 @@ module Minitusk = struct
               let copy_cmd = Printf.sprintf "cp %s %s" main_file dest in
               ignore (Unix.system copy_cmd);
               
-              (* Compile executable *)
-              let compile_cmd = Printf.sprintf "cd %s && %s -I +unix unix.cma -o %s %s" 
-                sandbox_dir ocamlc package.Package.name basename in
+              (* Copy dependency libraries to sandbox - including transitive dependencies *)
+              (* First, we need to recursively collect all dependencies *)
+              let rec collect_transitive_deps visited deps =
+                List.fold_left (fun (visited_acc, all_deps) dep ->
+                  if List.mem dep visited_acc then (visited_acc, all_deps)
+                  else
+                    (* Look for this dependency in hardcoded packages to get its dependencies *)
+                    let dep_pkg_opt = List.find_opt (fun p -> p.Package.name = dep) (Package.hardcoded_packages (Filename.dirname (Filename.dirname package.Package.path))) in
+                    match dep_pkg_opt with
+                    | None -> (dep :: visited_acc, dep :: all_deps)
+                    | Some dep_pkg ->
+                        let visited' = dep :: visited_acc in
+                        let (final_visited, sub_deps) = collect_transitive_deps visited' dep_pkg.Package.dependencies in
+                        (final_visited, dep :: sub_deps @ all_deps)
+                ) (visited, []) deps
+              in
+              let (_, all_deps) = collect_transitive_deps [] package.Package.dependencies in
+              let unique_deps = List.sort_uniq String.compare all_deps in
+              
+              Printf.printf "  Copying transitive dependencies: %s\n%!" (String.concat ", " unique_deps);
+              
+              List.iter (fun dep ->
+                let dep_cma = Printf.sprintf "./target/%s.cma" dep in
+                if Sys.file_exists dep_cma then (
+                  let copy_dep_cmd = Printf.sprintf "cp %s %s/" dep_cma sandbox_dir in
+                  ignore (Unix.system copy_dep_cmd)
+                );
+                (* Also copy CMI files for the dependency *)
+                let dep_cmi_pattern = Printf.sprintf "./target/%s*.cmi" dep in
+                let copy_cmi_cmd = Printf.sprintf "cp %s %s/ 2>/dev/null || true" dep_cmi_pattern sandbox_dir in
+                ignore (Unix.system copy_cmi_cmd);
+                (* Don't copy .o files - they're already in the .cma when built with -custom *)
+              ) unique_deps;
+              
+              (* Copy own library if it exists *)
+              let own_cma = Printf.sprintf "./target/%s.cma" package.Package.name in
+              if Sys.file_exists own_cma then (
+                let copy_own_cmd = Printf.sprintf "cp %s %s/" own_cma sandbox_dir in
+                ignore (Unix.system copy_own_cmd);
+                (* Also copy CMI files for modules in this package *)
+                List.iter (fun src_file ->
+                  if String.ends_with ~suffix:".ml" src_file || String.ends_with ~suffix:".mli" src_file then
+                    let basename = Filename.basename src_file in
+                    let modname = String.capitalize_ascii (Filename.chop_extension basename) in
+                    let cmi_file = Printf.sprintf "./target/%s.cmi" (String.lowercase_ascii modname) in
+                    if Sys.file_exists cmi_file then (
+                      let copy_cmi_cmd = Printf.sprintf "cp %s %s/" cmi_file sandbox_dir in
+                      ignore (Unix.system copy_cmi_cmd)
+                    )
+                ) package.Package.sources
+              );
+              
+              (* Compile executable with dependencies *)
+              let dep_libs = List.map (fun dep -> dep ^ ".cma") unique_deps in
+              let own_lib = if Sys.file_exists own_cma then [package.Package.name ^ ".cma"] else [] in
+              let all_libs = dep_libs @ own_lib in
+              let libs_str = String.concat " " ("unix.cma" :: all_libs) in
+              
+              (* When using -custom in library building, .o files are already in .cma *)
+              (* So we don't need to include them again *)
+              let compile_cmd = Printf.sprintf "cd %s && %s -I +unix %s -o %s %s" 
+                sandbox_dir ocamlc libs_str package.Package.name basename in
               match execute_command compile_cmd with
               | Error _ as err -> err
               | Ok () ->
