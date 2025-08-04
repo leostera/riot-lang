@@ -1,0 +1,59 @@
+name: Bootstrap Tusk Build System
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  bootstrap:
+    name: Bootstrap and Test Tusk
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install System OCaml
+      run: |
+        if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
+          sudo apt-get update
+          sudo apt-get install -y ocaml
+        elif [ "${{ matrix.os }}" = "macos-latest" ]; then
+          brew install ocaml
+        fi
+        
+    - name: Display OCaml version
+      run: ocamlc -version
+        
+    - name: Bootstrap with Python
+      run: ./bootstrap.py
+      
+    - name: Build with Minitusk
+      run: ./minitusk
+      
+    - name: Build with Bootstrap Tusk
+      run: ./target/bootstrap/tusk build
+      
+    - name: Copy Tusk to root
+      run: cp ./target/debug/tusk tusk
+      
+    - name: Clean target directory
+      run: rm -rf ./target
+      
+    - name: Build with Self-hosted Tusk
+      run: ./tusk build
+      
+    - name: Test Tusk Help
+      run: ./target/debug/tusk --help
+      
+    - name: Verify Build Artifacts
+      run: |
+        echo "=== Checking build artifacts ==="
+        ls -la ./target/debug/
+        echo "=== Checking tusk executable ==="
+        file ./target/debug/tusk
+        ./target/debug/tusk --version || echo "No version flag yet"
