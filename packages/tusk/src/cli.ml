@@ -39,8 +39,8 @@ let build_command package_opt =
   (* Start the build server *)
   let server_pid = Server.start () in
   
-  (* Send ScanWorkspace message *)
-  send server_pid ScanWorkspace;
+  (* Send ScanWorkspace message with target package *)
+  send server_pid (ScanWorkspace package_opt);
   
   (* Give server time to scan and print *)
   sleep 0.5;

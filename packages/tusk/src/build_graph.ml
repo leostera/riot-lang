@@ -113,3 +113,43 @@ let print graph =
   List.iter (fun node ->
     print_tree "" node []
   ) graph.root_nodes
+
+(** Create a filtered build graph containing only a package and its dependencies *)
+let filter_for_package graph target_pkg_name =
+  match Hashtbl.find_opt graph.nodes target_pkg_name with
+  | None -> 
+      failwith (Printf.sprintf "Package '%s' not found in workspace" target_pkg_name)
+  | Some target_node ->
+      (* Collect target and all its transitive dependencies *)
+      let rec collect_deps node visited =
+        if List.mem node.package.name visited then
+          visited
+        else
+          let visited = node.package.name :: visited in
+          List.fold_left (fun acc dep ->
+            collect_deps dep acc
+          ) visited node.dependencies
+      in
+      
+      let needed_packages = collect_deps target_node [] in
+      
+      (* Create new filtered graph *)
+      let filtered_nodes = Hashtbl.create 16 in
+      
+      (* Add only needed nodes *)
+      List.iter (fun pkg_name ->
+        match Hashtbl.find_opt graph.nodes pkg_name with
+        | Some node -> Hashtbl.add filtered_nodes pkg_name node
+        | None -> ()
+      ) needed_packages;
+      
+      (* Find root nodes in the filtered set *)
+      let root_nodes = Hashtbl.fold (fun _ node acc ->
+        (* A node is a root in our filtered graph if none of its dependencies are in the filtered set *)
+        let has_deps_in_filtered = List.exists (fun dep ->
+          List.mem dep.package.name needed_packages
+        ) node.dependencies in
+        if not has_deps_in_filtered then node :: acc else acc
+      ) filtered_nodes [] in
+      
+      { nodes = filtered_nodes; root_nodes }

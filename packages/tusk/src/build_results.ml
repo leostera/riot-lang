@@ -15,6 +15,10 @@ let create () = {
   results = Hashtbl.create 64;
 }
 
+(** Clear all build results *)
+let clear t =
+  Hashtbl.clear t.results
+
 (** Initialize all packages as not started *)
 let init_packages t packages =
   List.iter (fun pkg ->

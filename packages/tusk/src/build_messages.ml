@@ -11,7 +11,7 @@ type build_task = {
 (** Extend Miniriot's message type with our custom messages *)
 type Message.t += 
   (* CLI -> Server messages *)
-  | ScanWorkspace
+  | ScanWorkspace of string option  (* optional target package to filter for *)
   | BuildAll of Pid.t  (* includes CLI pid for BuildFinished notification *)
   | BuildPackage of string * Pid.t  (* package name, CLI pid *)
   
