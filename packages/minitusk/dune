@@ -1,6 +1,0 @@
-(executable
- (public_name minitusk)
- (name main)
- (package minitusk)
- (libraries miniriot unix)
- (flags (:standard -w -21-32-34-37-69-8-11)))

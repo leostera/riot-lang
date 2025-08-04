@@ -14,6 +14,7 @@ type state = {
   current_queue : string Queue.t;
   later_queue : string Queue.t;
   cli_pid : Pid.t option;  (* PID of CLI process to notify when done *)
+  toolchain : Toolchains.toolchain;  (* Current toolchain *)
 }
 
 (** Get number of CPU cores *)
@@ -56,7 +57,7 @@ let rec get_next_buildable_task state =
         if can_build_package state pkg_name then
           (* Find the node for this package *)
           (match List.find_opt (fun n -> n.Build_node.package.name = pkg_name) nodes with
-          | Some node -> Some { node; workspace }
+          | Some node -> Some { node; workspace; toolchain_version = state.toolchain.version }
           | None -> None)
         else begin
           (* Put it in later queue and try again *)
@@ -69,7 +70,7 @@ let rec get_next_buildable_task state =
         if can_build_package state pkg_name then
           (* Find the node for this package *)
           (match List.find_opt (fun n -> n.Build_node.package.name = pkg_name) nodes with
-          | Some node -> Some { node; workspace }
+          | Some node -> Some { node; workspace; toolchain_version = state.toolchain.version }
           | None -> None)
         else begin
           (* Put it back and try next one *)
@@ -279,6 +280,10 @@ let rec server_loop state =
 
 (** Start the build server *)
 let start () =
+  (* Ready toolchain at startup *)
+  let root = Sys.getcwd () in
+  let toolchain = Toolchains.ready_toolchains root in
+  
   let initial_state = { 
     workspace = None; 
     build_graph = None;
@@ -288,6 +293,7 @@ let start () =
     current_queue = Queue.create ();
     later_queue = Queue.create ();
     cli_pid = None;
+    toolchain;
   } in
   spawn (fun () -> 
     Printf.printf "[Server] Build server started (pid: %s)\n" 

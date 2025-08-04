@@ -1,5 +1,0 @@
-(executables
- (public_names hello_build simple)
- (package miniriot)
- (names hello_build simple)
- (libraries miniriot))

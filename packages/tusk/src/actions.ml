@@ -32,6 +32,7 @@ type blueprint = {
   package_path : string;
   dependencies : dep_info list;
   actions : action list;
+  toolchain_version : string;
 }
 
 (** Pretty print an action *)
@@ -67,7 +68,7 @@ let print_blueprint blueprint =
   Printf.printf "\n"
 
 (** Generate build blueprint for a package *)
-let generate_blueprint root pkg_name pkg_path pkg_relative_path dependencies all_packages =
+let generate_blueprint root pkg_name pkg_path pkg_relative_path dependencies all_packages toolchain_version =
   (* Get dependency include paths *)
   let dep_includes = List.fold_left (fun acc dep ->
     (* Look in target/debug/out/<dep_relative_path> where outputs are placed *)
@@ -118,8 +119,7 @@ let generate_blueprint root pkg_name pkg_path pkg_relative_path dependencies all
       
       (* Run ocamldep -sort *)
       let files_str = String.concat " " all_source_files in
-      (* TODO: Get toolchain version from workspace/project config *)
-      let ocamldep = Toolchains.ocamldep_path "5.3.0" in
+      let ocamldep = Toolchains.ocamldep_path toolchain_version in
       let cmd = Printf.sprintf "%s -I +unix %s -sort %s 2>/dev/null" 
         ocamldep include_flags files_str in
       
@@ -279,10 +279,10 @@ let generate_blueprint root pkg_name pkg_path pkg_relative_path dependencies all
   
   let actions = List.rev !actions in
   
-  { package_name = pkg_name; package_path = pkg_path; dependencies; actions }
+  { package_name = pkg_name; package_path = pkg_path; dependencies; actions; toolchain_version }
 
 (** Execute an action in the sandbox *)
-let execute_action action =
+let execute_action action toolchain_version =
   let run_command cmd =
     let (success, output) = System.run_command cmd in
     if success then (Success, output)
@@ -292,26 +292,25 @@ let execute_action action =
   match action with      
   | CompileInterface (src, dst, includes) ->
       let include_flags = String.concat " " (List.map (fun p -> "-I " ^ p) includes) in
-      (* TODO: Get toolchain version from workspace/project config *)
-      let ocamlc = Toolchains.ocamlc_path "5.3.0" in
+      let ocamlc = Toolchains.ocamlc_path toolchain_version in
       let cmd = Printf.sprintf "%s -I +unix %s -c -o %s %s" ocamlc include_flags dst src in
       run_command cmd
       
   | CompileImplementation (src, dst, includes) ->
       let include_flags = String.concat " " (List.map (fun p -> "-I " ^ p) includes) in
-      let ocamlc = Toolchains.ocamlc_path "5.3.0" in
+      let ocamlc = Toolchains.ocamlc_path toolchain_version in
       let cmd = Printf.sprintf "%s -I +unix %s -I . -c -o %s %s" ocamlc include_flags dst src in
       run_command cmd
       
   | CompileC (src, dst) ->
-      let ocamlc = Toolchains.ocamlc_path "5.3.0" in
+      let ocamlc = Toolchains.ocamlc_path toolchain_version in
       let cmd = Printf.sprintf "%s -I +unix -c -o %s %s" ocamlc dst src in
       run_command cmd
       
   | CreateLibrary (lib, object_files, includes) ->
       let include_flags = String.concat " " (List.map (fun p -> "-I " ^ p) includes) in
       let files_str = String.concat " " object_files in
-      let ocamlc = Toolchains.ocamlc_path "5.3.0" in
+      let ocamlc = Toolchains.ocamlc_path toolchain_version in
       let cmd = Printf.sprintf "%s -I +unix %s -a -o %s %s" ocamlc include_flags lib files_str in
       run_command cmd
       
@@ -319,7 +318,7 @@ let execute_action action =
       let include_flags = String.concat " " (List.map (fun p -> "-I " ^ p) includes) in
       let files_str = String.concat " " object_files in
       let libs_str = String.concat " " libs in
-      let ocamlc = Toolchains.ocamlc_path "5.3.0" in
+      let ocamlc = Toolchains.ocamlc_path toolchain_version in
       (* Include current directory to find C objects from dependencies *)
       (* Link with unix.cma for Unix module support *)
       (* Use -custom to include C stubs in the executable *)
@@ -351,7 +350,7 @@ let execute_blueprint root blueprint =
     Printf.printf "[Actions] Step %d: %s\n" (i + 1) (string_of_action action);
     flush stdout;
     
-    let (result, output) = execute_action action in
+    let (result, output) = execute_action action blueprint.toolchain_version in
     match result with
     | Success ->
         if output <> "" then (

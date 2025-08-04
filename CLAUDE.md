@@ -6,6 +6,7 @@
 - Recognize that the lack of comprehensive testing in critical infrastructure is a significant risk that must be addressed systematically
 - Develop a test-driven development (TDD) approach that builds test coverage incrementally, starting with the most critical components
 - Build test suites that validate not just correctness, but also performance, concurrent behavior, and cross-platform compatibility
+- Prefer MyModule.{ record... } over { MyModule.field = ... } 
 
 ## OCaml Build System Best Practices
 

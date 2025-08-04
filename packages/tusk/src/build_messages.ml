@@ -5,6 +5,7 @@ open Miniriot
 type build_task = {
   node : Build_node.t;
   workspace : Workspace.workspace;
+  toolchain_version : string;  (* OCaml toolchain version to use *)
 }
 
 (** Extend Miniriot's message type with our custom messages *)

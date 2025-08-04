@@ -1,7 +1,2 @@
-(env
- (dev
-  (flags
-   (:standard -g -warn-error -A+8)))
- (release
-  (ocamlopt_flags
-   (:standard -O3))))
+; This file helps dune discover all packages in the workspace
+(dirs packages)

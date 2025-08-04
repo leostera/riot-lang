@@ -130,7 +130,7 @@ let run_actions ~sandbox ~blueprint =
             declared_outputs := outputs
         | _ -> ());
         
-        let (result, output) = Actions.execute_action action in
+        let (result, output) = Actions.execute_action action blueprint.Actions.toolchain_version in
         match result with
         | Actions.Success ->
             if output <> "" then (

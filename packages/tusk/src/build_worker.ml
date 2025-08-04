@@ -29,7 +29,7 @@ let build_package_with_sandbox build_task =
                 dependencies = pkg.Workspace.dependencies }
     ) workspace.packages in
     
-    let blueprint = Actions.generate_blueprint workspace.root pkg_name pkg_path node.Build_node.package.relative_path deps all_packages in
+    let blueprint = Actions.generate_blueprint workspace.root pkg_name pkg_path node.Build_node.package.relative_path deps all_packages build_task.toolchain_version in
     
     (* Print the actions *)
     Actions.print_blueprint blueprint;
