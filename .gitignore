@@ -15,4 +15,4 @@ dev-tools.locks
 
 target
 ./minitusk
-./tusk
+/tusk
