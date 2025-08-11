@@ -3,6 +3,9 @@ name: Bootstrap Tusk Build System
 on:
   push:
     branches: [ main ]
+    tags:
+      - 'v*'
+      - 'tusk-v*'
   pull_request:
     branches: [ main ]
 
@@ -53,3 +56,62 @@ jobs:
         echo "=== Checking tusk executable ==="
         file ./target/debug/tusk
         ./target/debug/tusk --version || echo "No version flag yet"
+    
+    - name: Upload Tusk Binary
+      uses: actions/upload-artifact@v4
+      with:
+        name: tusk-${{ runner.os }}-${{ runner.arch }}
+        path: ./target/debug/tusk
+        retention-days: 7
+
+  release:
+    name: Create Release
+    needs: bootstrap
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+    
+    - name: Prepare release binaries
+      run: |
+        mkdir -p release
+        for dir in artifacts/tusk-*; do
+          os_arch=$(basename "$dir" | sed 's/tusk-//')
+          cp "$dir/tusk" "release/tusk-$os_arch"
+          chmod +x "release/tusk-$os_arch"
+        done
+        ls -la release/
+    
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: release/*
+        draft: false
+        prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-beta') || contains(github.ref, '-alpha') }}
+        generate_release_notes: true
+        body: |
+          ## Tusk Build System
+          
+          This release includes pre-built binaries for the Tusk build system.
+          
+          ### Installation
+          
+          Download the appropriate binary for your platform and make it executable:
+          
+          ```bash
+          # macOS (Intel/Apple Silicon)
+          curl -L https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/tusk-macOS-X64 -o tusk
+          chmod +x tusk
+          
+          # Linux
+          curl -L https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/tusk-Linux-X64 -o tusk
+          chmod +x tusk
+          ```
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

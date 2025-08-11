@@ -23,7 +23,15 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       with:
-        submodules: true
+        submodules: recursive
+    
+    - name: Verify submodules
+      run: |
+        echo "=== Checking submodules ==="
+        ls -la ocaml/
+        test -d ocaml/ocaml-lsp-server || (echo "Error: ocaml-lsp-server submodule missing" && exit 1)
+        test -d ocaml/odoc || (echo "Error: odoc submodule missing" && exit 1)
+        test -d ocaml/ocamlformat || (echo "Error: ocamlformat submodule missing" && exit 1)
     
     - name: Setup OCaml ${{ matrix.ocaml_version }}
       uses: ocaml/setup-ocaml@v3

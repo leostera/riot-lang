@@ -11,7 +11,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <string.h>
-#include <sys/event.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -20,6 +19,9 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <stdio.h>
+
+#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
+#include <sys/event.h>
 
 /* Type definitions for OCaml allocation functions */
 typedef value (*ocaml_alloc_first_arg_fn) (char const *);
@@ -311,3 +313,133 @@ CAMLprim value gluon_sendfile(value v_out_fd, value v_in_fd, value v_offset, val
     unix_error(ENOSYS, "sendfile", Nothing);
 #endif
 }
+
+#else /* Not BSD/macOS - provide stub implementations */
+
+/* Stub implementations for non-kqueue platforms */
+CAMLprim value gluon_kqueue(value unit) {
+    unix_error(ENOSYS, "kqueue", Nothing);
+}
+
+CAMLprim value gluon_kevent(value v_kq, value v_changelist, value v_nchanges, 
+                           value v_eventlist, value v_nevents, value v_timeout_ns) {
+    unix_error(ENOSYS, "kevent", Nothing);
+}
+
+CAMLprim value gluon_set_nonblocking(value v_fd) {
+    CAMLparam1(v_fd);
+    int fd = Int_val(v_fd);
+    int flags = fcntl(fd, F_GETFL, 0);
+    
+    if (flags == -1) {
+        uerror("fcntl(F_GETFL)", Nothing);
+    }
+    
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+        uerror("fcntl(F_SETFL)", Nothing);
+    }
+    
+    CAMLreturn(Val_unit);
+}
+
+CAMLprim value gluon_read(value v_fd, value v_buf, value v_ofs, value v_len) {
+    CAMLparam4(v_fd, v_buf, v_ofs, v_len);
+    int fd = Int_val(v_fd);
+    int ofs = Int_val(v_ofs);
+    int len = Int_val(v_len);
+    ssize_t result;
+    
+    caml_release_runtime_system();
+    result = read(fd, &Byte(v_buf, ofs), len);
+    caml_acquire_runtime_system();
+    
+    if (result == -1) {
+        uerror("read", Nothing);
+    }
+    
+    CAMLreturn(Val_int(result));
+}
+
+CAMLprim value gluon_write(value v_fd, value v_buf, value v_ofs, value v_len) {
+    CAMLparam4(v_fd, v_buf, v_ofs, v_len);
+    int fd = Int_val(v_fd);
+    int ofs = Int_val(v_ofs);
+    int len = Int_val(v_len);
+    ssize_t result;
+    
+    caml_release_runtime_system();
+    result = write(fd, &Byte(v_buf, ofs), len);
+    caml_acquire_runtime_system();
+    
+    if (result == -1) {
+        uerror("write", Nothing);
+    }
+    
+    CAMLreturn(Val_int(result));
+}
+
+static void fill_iov(struct iovec *iov, value v_bufs) {
+    int n_bufs = Wosize_val(v_bufs);
+    for (int i = 0; i < n_bufs; i++) {
+        value v_iov = Field(v_bufs, i);
+        value v_buf = Field(v_iov, 0);
+        value v_off = Field(v_iov, 1);
+        value v_len = Field(v_iov, 2);
+        iov[i].iov_base = Bytes_val(v_buf) + Long_val(v_off);
+        iov[i].iov_len = Long_val(v_len);
+    }
+}
+
+CAMLprim value gluon_readv(value v_fd, value v_iovecs) {
+    CAMLparam2(v_fd, v_iovecs);
+    int fd = Int_val(v_fd);
+    int nvecs = Wosize_val(v_iovecs);
+    struct iovec iov[nvecs];
+    ssize_t result;
+    
+    fill_iov(iov, v_iovecs);
+    
+    caml_release_runtime_system();
+    result = readv(fd, iov, nvecs);
+    caml_acquire_runtime_system();
+    
+    if (result == -1) {
+        uerror("readv", Nothing);
+    }
+    
+    CAMLreturn(Val_int(result));
+}
+
+CAMLprim value gluon_writev(value v_fd, value v_iovecs) {
+    CAMLparam2(v_fd, v_iovecs);
+    int fd = Int_val(v_fd);
+    int nvecs = Wosize_val(v_iovecs);
+    struct iovec iov[nvecs];
+    ssize_t result;
+    
+    fill_iov(iov, v_iovecs);
+    
+    caml_release_runtime_system();
+    result = writev(fd, iov, nvecs);
+    caml_acquire_runtime_system();
+    
+    if (result == -1) {
+        uerror("writev", Nothing);
+    }
+    
+    CAMLreturn(Val_int(result));
+}
+
+CAMLprim value gluon_connect(value v_fd, value v_addr) {
+    unix_error(ENOTSUP, "gluon_connect", Nothing);
+}
+
+CAMLprim value gluon_accept(value v_fd) {
+    unix_error(ENOTSUP, "gluon_accept", Nothing);
+}
+
+CAMLprim value gluon_sendfile(value v_out_fd, value v_in_fd, value v_offset, value v_count) {
+    unix_error(ENOSYS, "sendfile", Nothing);
+}
+
+#endif /* BSD/macOS check */
