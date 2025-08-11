@@ -138,11 +138,15 @@ jobs:
     
     - name: Update release notes
       run: |
-        cat > release-notes.md << 'EOF'
+        SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+        DATE=$(date +'%Y%m%d')
+        BUILD_TIME=$(date +'%Y-%m-%d %H:%M:%S UTC')
+        
+        cat > release-notes.md << EOF
         ## Tusk Build System - Nightly Build
         
         **Latest Commit:** ${{ github.sha }}
-        **Build Date:** $(date +'%Y-%m-%d %H:%M:%S UTC')
+        **Build Date:** ${BUILD_TIME}
         
         This is an automated nightly build of the Tusk build system.
         
@@ -150,11 +154,11 @@ jobs:
         
         Download the appropriate binary for your platform:
         
-        ```bash
+        \`\`\`bash
         # macOS Intel/Apple Silicon
-        curl -L https://github.com/${{ github.repository }}/releases/download/nightly/tusk-x86_64-apple-darwin-$(echo ${{ github.sha }} | cut -c1-7)-$(date +'%Y%m%d') -o tusk
+        curl -L https://github.com/${{ github.repository }}/releases/download/nightly/tusk-x86_64-apple-darwin-${SHORT_SHA}-${DATE} -o tusk
         chmod +x tusk
-        ```
+        \`\`\`
         
         **Note:** Linux builds are temporarily disabled while we work on cross-platform support.
         
