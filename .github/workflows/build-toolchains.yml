@@ -39,18 +39,18 @@ jobs:
     - name: Build OCaml tools using script
       run: |
         cd ocaml
-        OCAML_VERSION=${{ matrix.ocaml_version }} CREATE_DIST=1 ./build-tools.sh
+        ./build-tools.sh
     
     - name: Copy artifacts to root
       run: |
-        cp ocaml/_build/*.tar.gz . || echo "No tarball found"
+        cp ocaml/ocaml-platform-*.tar.gz .
         ls -la *.tar.gz
     
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: ocaml-tools-${{ matrix.ocaml_version }}-${{ runner.os }}-${{ runner.arch }}
-        path: ocaml-tools-*.tar.gz
+        name: ocaml-platform-${{ matrix.ocaml_version }}-${{ runner.os }}-${{ runner.arch }}
+        path: ocaml-platform-*.tar.gz
     
   release:
     needs: build-tools
@@ -67,7 +67,7 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         files: |
-          ocaml-tools-*/*.tar.gz
+          ocaml-platform-*/*.tar.gz
         body: |
           Pre-built OCaml development tools for Tusk.
           
@@ -80,6 +80,6 @@ jobs:
           
           Extract the tarball to get the tools:
           ```bash
-          tar xzf ocaml-tools-*.tar.gz
+          tar xzf ocaml-platform-*.tar.gz
           export PATH="$PWD/bin:$PATH"
           ```
