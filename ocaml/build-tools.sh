@@ -46,6 +46,7 @@ pushd ocamlformat
   opam install --switch=${OCAML_VERSION} -y ./ocamlformat.opam
   opam exec --switch=${OCAML_VERSION} -- dune build --release @install
   cp _build/install/default/bin/ocamlformat ${BIN_DIR}
+  cp _build/install/default/bin/ocamlformat-rpc ${BIN_DIR}
 popd
 
 # Build odoc  
@@ -54,6 +55,9 @@ pushd odoc
   opam install --switch=${OCAML_VERSION} -y ./odoc-md.opam ./sherlodoc.opam ./odoc-parser.opam ./odoc.opam ./odoc-driver.opam
   opam exec --switch=${OCAML_VERSION} -- dune build --release @install
   cp _build/install/default/bin/odoc ${BIN_DIR}
+  cp _build/install/default/bin/odoc_driver ${BIN_DIR}
+  cp _build/install/default/bin/odoc-md ${BIN_DIR}
+  cp _build/install/default/bin/sherlodoc ${BIN_DIR}
 popd
 
 # Build ocaml-lsp-server
