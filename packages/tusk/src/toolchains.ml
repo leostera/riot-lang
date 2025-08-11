@@ -40,7 +40,7 @@ type toolchain = {
 }
 
 let toolchain_base_dir = 
-  Filename.concat (Sys.getenv "HOME") ".tusk/toolchains"
+  Filename.concat (System.get_home ()) ".tusk/toolchains"
 
 let get_toolchain_path version =
   Filename.concat toolchain_base_dir version
@@ -94,7 +94,7 @@ let get_cache_path url =
   in
   
   (* Create cache path: ~/.tusk/cache/domain/path/file *)
-  let cache_base = Filename.concat (Sys.getenv "HOME") ".tusk/cache" in
+  let cache_base = Filename.concat (System.get_home ()) ".tusk/cache" in
   Filename.concat cache_base url_without_protocol
 
 (** Download and extract OCaml source *)
@@ -128,7 +128,7 @@ let download_ocaml_source version =
   end;
   
   (* Extract to temporary directory *)
-  let extract_dir = Filename.concat "/tmp" (Printf.sprintf "ocaml-build-%s-%d" version (Unix.getpid ())) in
+  let extract_dir = Filename.concat "/tmp" (Printf.sprintf "ocaml-build-%s-%d" version (System.getpid ())) in
   System.mkdirp extract_dir;
   
   Printf.printf "Extracting OCaml source...\n%!";
@@ -164,7 +164,7 @@ let install_dev_tools version =
     
     (* Determine host triplet *)
     let host_triplet = 
-      if Sys.os_type = "Unix" then
+      if System.os_type () = "Unix" then
         let uname_s = 
           let (success, output) = System.run_command "uname -s" in
           if success then String.trim output else failwith "Could not determine OS"

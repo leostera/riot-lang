@@ -17,7 +17,7 @@ let create ~node ~(workspace : Workspace.workspace) =
   let target_dir = Filename.concat out_dir node.Build_node.package.relative_path in
   
   (* Create a unique sandbox directory for this build *)
-  let sandbox_id = Printf.sprintf "%08x" (Hashtbl.hash (node.Build_node.package.name ^ string_of_float (Unix.time ()))) in
+  let sandbox_id = Printf.sprintf "%08x" (Hashtbl.hash (node.Build_node.package.name ^ string_of_float (System.time ()))) in
   let sandbox_dir = Filename.concat (Filename.concat debug_dir "sandbox") sandbox_id in
   
   (* Create directories *)

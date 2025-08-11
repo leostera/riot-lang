@@ -73,7 +73,7 @@ let rec worker_loop server_pid worker_id =
       let pkg_name = build_task.node.Build_node.package.name in
       let pkg_path = build_task.node.Build_node.package.path in
       
-      if not (Sys.file_exists pkg_path) then begin
+      if not (System.file_exists pkg_path) then begin
         Printf.printf "[Worker %d] Package directory not found: %s\n" worker_id pkg_path;
         flush stdout;
         send server_pid (TaskComplete (pkg_name, false));
