@@ -70,23 +70,40 @@ jobs:
     - name: Download all artifacts
       uses: actions/download-artifact@v4
     
-    - name: Create Release
+    - name: Update or create ocaml-platform tag
+      run: |
+        # Delete the tag if it exists (locally and remotely)
+        git tag -d ocaml-platform 2>/dev/null || true
+        git push origin :refs/tags/ocaml-platform 2>/dev/null || true
+        
+        # Create new tag at current commit
+        git tag ocaml-platform
+        git push origin ocaml-platform
+    
+    - name: Create or Update Release
       uses: softprops/action-gh-release@v1
       with:
+        tag_name: ocaml-platform
+        name: OCaml Platform Tools
+        prerelease: true
         files: |
           ocaml-platform-*/*.tar.gz
         body: |
-          Pre-built OCaml development tools for Tusk.
+          ## OCaml Platform Tools for Tusk
           
-          Includes:
-          - ocamllsp (OCaml Language Server)
-          - odoc (Documentation generator)
-          - ocamlformat (Code formatter)
+          **OCaml Version:** 5.3.0
+          **Latest Build:** ${{ github.sha }}
           
-          ## Usage
+          ### Included Tools
+          - **ocamlformat** - Code formatter
+          - **odoc** - Documentation generator
+          - **ocamllsp** - Language Server Protocol implementation
           
-          Extract the tarball to get the tools:
+          ### Installation
+          
+          Download the appropriate tarball for your platform and extract:
+          
           ```bash
-          tar xzf ocaml-platform-*.tar.gz
+          tar xzf ocaml-platform-5.3.0-*.tar.gz
           export PATH="$PWD/bin:$PATH"
           ```
