@@ -37,6 +37,7 @@ jobs:
         ocaml-compiler: ${{ matrix.ocaml_version }}
         dune-cache: true
         opam-disable-sandboxing: true
+        opam-depext: false
     
     - name: Install dependencies
       run: |
