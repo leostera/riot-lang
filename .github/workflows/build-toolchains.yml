@@ -25,11 +25,18 @@ jobs:
       with:
         submodules: true
     
+    - name: Install system dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y bubblewrap
+    
     - name: Setup OCaml ${{ matrix.ocaml_version }}
       uses: ocaml/setup-ocaml@v2
       with:
         ocaml-compiler: ${{ matrix.ocaml_version }}
         dune-cache: true
+        opam-disable-sandboxing: true
     
     - name: Install dependencies
       run: |
