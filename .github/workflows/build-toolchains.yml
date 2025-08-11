@@ -29,7 +29,7 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update
-        sudo apt-get install -y bubblewrap
+        sudo apt-get install -y bubblewrap g++-multilib gcc-multilib mercurial musl-tools rsync
     
     - name: Setup OCaml ${{ matrix.ocaml_version }}
       uses: ocaml/setup-ocaml@v2
