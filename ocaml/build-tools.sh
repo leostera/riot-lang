@@ -5,7 +5,6 @@ set -euo pipefail
 # This script builds ocamlformat, odoc, and ocaml-lsp-server from source
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "$SCRIPT_DIR"
 
 # Configuration
 OCAML_VERSION="${OCAML_VERSION:-5.3.0}"
@@ -87,12 +86,17 @@ build_tool() {
     
     log_info "Building $tool_name..."
     
-    if [ ! -d "$tool_dir" ]; then
-        log_error "Directory $tool_dir not found!"
+    local full_tool_dir="$SCRIPT_DIR/$tool_dir"
+    
+    if [ ! -d "$full_tool_dir" ]; then
+        log_error "Directory $full_tool_dir not found!"
         return 1
     fi
     
-    cd "$tool_dir"
+    # Save current directory
+    local original_dir=$(pwd)
+    
+    cd "$full_tool_dir"
     
     # Clean previous builds
     rm -rf _build
@@ -108,7 +112,8 @@ build_tool() {
         cp -r _build/install/default/* "$PREFIX/" || true
     fi
     
-    cd "$SCRIPT_DIR"
+    # Return to original directory
+    cd "$original_dir"
     
     log_info "$tool_name built successfully"
 }
@@ -133,9 +138,17 @@ create_dist() {
     
     log_info "Creating distribution package: $dist_file"
     
+    if [ ! -d "$PREFIX" ]; then
+        log_error "Install directory $PREFIX does not exist!"
+        return 1
+    fi
+    
+    # Save current directory
+    local original_dir=$(pwd)
+    
     cd "$PREFIX"
     tar czf "$dist_file" .
-    cd "$SCRIPT_DIR"
+    cd "$original_dir"
     
     log_info "Distribution package created: $dist_file"
     echo "$dist_file"
