@@ -6,55 +6,43 @@
 - Recognize that the lack of comprehensive testing in critical infrastructure is a significant risk that must be addressed systematically
 - Develop a test-driven development (TDD) approach that builds test coverage incrementally, starting with the most critical components
 - Build test suites that validate not just correctness, but also performance, concurrent behavior, and cross-platform compatibility
+
+## OCaml Best Practices
+
+- Avoid shadowing top-level bindings locally
+- Prefer verbose names
+- Prefer `next_state` or `new_state` over `state'` 
 - Prefer MyModule.{ record... } over { MyModule.field = ... } 
 
-## OCaml Build System Best Practices
+## Tusk Build System Architecture
 
-### Dune Commands
-- **Use `-p <package>` to limit builds to specific packages**: `dune build -p gluon` avoids building unrelated packages
-- **Build specific targets**: `dune build gluon.install` builds just the install file
-- **Run tests for specific package**: `dune test -p gluon`
-- **Check build in package directory**: `cd packages/gluon && dune build`
-- **Do NOT use `-p <pkg>` when not needed**: This can cause unexpected build limitations
+### Persistent Server Architecture
+Tusk uses a persistent background server that manages all build operations, providing consistent state and intelligent caching across multiple client interfaces.
 
-### Common Build Issues and Solutions
+```
+                    ┌→ ocamllsp ←→ tusk ocaml-merlin ←┐
+                    │                                  │
+Editor/AI → MCP → tusk mcp ←━━━━━━━━━━━━━━━━━━━━━━━━━┥ tusk server (persistent)
+                    │                                  │
+                    └→ tusk cli ←━━━━━━━━━━━━━━━━━━━━━┘
+```
 
-1. **Type Mismatches with Interfaces**
-   - When an .mli file defines types, the .ml implementation must match exactly
-   - Error types in particular must be consistent (e.g., `Error `Noop` vs `Error (`System_error _)`)
-   - Solution: Either update the interface or map all errors to the expected type
+**Key Components:**
+- **tusk server**: Persistent process managing build graph, compilation, and workspace state
+- **tusk cli**: Human-friendly command interface (`tusk build`, `tusk run`, etc.)
+- **tusk ocaml-merlin**: Bridge providing Merlin protocol for ocaml-lsp-server integration
+- **tusk mcp**: Model Context Protocol server for AI agent integration (Claude, etc.)
 
-2. **Pattern Matching Exhaustiveness**
-   - OCaml requires exhaustive pattern matching
-   - When changing error types, update ALL match expressions
-   - Use `| Error _ ->` as a catch-all when you don't care about specific error types
+**Benefits:**
+- **Live Build Integration**: Auto-build on demand when LSP needs type information
+- **Unified State**: Single source of truth for build configuration across all clients
+- **Intelligent Caching**: Persistent server maintains build artifacts and dependency graph
+- **AI-Friendly**: Direct structured access to build system for AI agents via MCP
 
-3. **Printf vs Format.printf**
-   - For formatter functions (`pp`), use `Format.fprintf` not `Printf.printf`
-   - `Format.printf` is for stdout, `Format.fprintf` is for formatters
-
-4. **Unused Variables and Fields**
-   - Prefix with underscore: `let _unused = ...`
-   - For record fields: `field_name [@warning "-unused-field"]`
-   - For mutable fields that appear unused: same attribute
-
-5. **C FFI Compilation**
-   - Include necessary headers: `#include <caml/mlvalues.h>`, etc.
-   - Use `CAMLprim` for C functions exposed to OCaml
-   - Handle GC roots properly with `CAMLparam` and `CAMLlocal`
-   - Platform-specific code needs proper guards (e.g., `#ifdef __APPLE__`)
-
-6. **Syntax Errors in Tests**
-   - Deep nesting with multiple match expressions can be error-prone
-   - Consider flattening logic or using helper functions
-   - Each `begin` needs a matching `end`
-   - Match expressions need proper closing
-
-### Package Organization
-- Each package should have its own dune-project file at the monorepo root
-- Tests go in `test/` subdirectory with their own dune file
-- Use `(package <name>)` in dune stanzas when ambiguous
-- Library modules are automatically namespaced by package name
+**Implementation Notes:**
+- The server auto-builds modules on demand when referenced by LSP
+- No .merlin files needed - configuration served dynamically via ocaml-merlin protocol
+- MCP interface provides richer operations than LSP (bulk refactors, project generation, etc.)
 
 ## Tusk Build System Development Roadmap
 
