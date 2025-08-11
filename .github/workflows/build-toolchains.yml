@@ -25,44 +25,31 @@ jobs:
       with:
         submodules: true
     
-    - name: Install system dependencies (Ubuntu)
-      if: runner.os == 'Linux'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y bubblewrap g++-multilib gcc-multilib mercurial musl-tools rsync
-    
     - name: Setup OCaml ${{ matrix.ocaml_version }}
-      uses: ocaml/setup-ocaml@v2
+      uses: ocaml/setup-ocaml@v3
       with:
         ocaml-compiler: ${{ matrix.ocaml_version }}
-        dune-cache: true
-        opam-disable-sandboxing: true
-        opam-depext: false
-    
-    - name: Install dependencies
-      run: |
-        opam install -y dune menhir csexp
     
     - name: Build ocaml-lsp-server
       run: |
         cd ocaml/ocaml-lsp-server
-        opam install -y . --deps-only
-        dune build @install
-        dune install --prefix=../../_install
+        opam install . --deps-only -y
+        opam exec -- dune build @install
+        opam exec -- dune install --prefix=../../_install
     
     - name: Build odoc
       run: |
         cd ocaml/odoc
-        opam install -y . --deps-only
-        dune build @install
-        dune install --prefix=../../_install
+        opam install . --deps-only -y
+        opam exec -- dune build @install
+        opam exec -- dune install --prefix=../../_install
     
     - name: Build ocamlformat
       run: |
         cd ocaml/ocamlformat
-        opam install -y . --deps-only
-        dune build @install
-        dune install --prefix=../../_install
+        opam install . --deps-only -y
+        opam exec -- dune build @install
+        opam exec -- dune install --prefix=../../_install
     
     - name: Package binaries
       run: |
