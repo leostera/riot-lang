@@ -18,7 +18,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [macos-latest]
         
     steps:
     - uses: actions/checkout@v4
@@ -146,18 +146,12 @@ jobs:
         Download the appropriate binary for your platform:
         
         ```bash
-        # macOS Intel
+        # macOS Intel/Apple Silicon
         curl -L https://github.com/${{ github.repository }}/releases/download/nightly/tusk-x86_64-apple-darwin-$(echo ${{ github.sha }} | cut -c1-7)-$(date +'%Y%m%d') -o tusk
         chmod +x tusk
-        
-        # macOS Apple Silicon  
-        curl -L https://github.com/${{ github.repository }}/releases/download/nightly/tusk-aarch64-apple-darwin-$(echo ${{ github.sha }} | cut -c1-7)-$(date +'%Y%m%d') -o tusk
-        chmod +x tusk
-        
-        # Linux x86_64
-        curl -L https://github.com/${{ github.repository }}/releases/download/nightly/tusk-x86_64-unknown-linux-gnu-$(echo ${{ github.sha }} | cut -c1-7)-$(date +'%Y%m%d') -o tusk
-        chmod +x tusk
         ```
+        
+        **Note:** Linux builds are temporarily disabled while we work on cross-platform support.
         
         ### Recent Changes
         
