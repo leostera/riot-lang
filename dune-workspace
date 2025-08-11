@@ -1,6 +1,0 @@
-(lang dune 3.17)
-
-(context default)
-
-; This workspace includes all packages in the monorepo
-; Dune will automatically discover packages in subdirectories

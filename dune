@@ -1,2 +1,0 @@
-; This file helps dune discover all packages in the workspace
-(dirs packages)
