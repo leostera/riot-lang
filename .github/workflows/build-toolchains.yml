@@ -6,6 +6,9 @@ on:
       - 'toolchain-v*'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-tools:
     name: Build dev tools for ${{ matrix.os }}
@@ -33,37 +36,21 @@ jobs:
       with:
         ocaml-compiler: ${{ matrix.ocaml_version }}
     
-    - name: Build ocaml-lsp-server
+    - name: Build OCaml tools using script
       run: |
-        cd ocaml/ocaml-lsp-server
-        opam install . --deps-only -y
-        opam exec -- dune build @install
-        opam exec -- dune install --prefix=../../_install
+        cd ocaml
+        OCAML_VERSION=${{ matrix.ocaml_version }} CREATE_DIST=1 ./build-tools.sh
     
-    - name: Build odoc
+    - name: Copy artifacts to root
       run: |
-        cd ocaml/odoc
-        opam install . --deps-only -y
-        opam exec -- dune build @install
-        opam exec -- dune install --prefix=../../_install
-    
-    - name: Build ocamlformat
-      run: |
-        cd ocaml/ocamlformat
-        opam install . --deps-only -y
-        opam exec -- dune build @install
-        opam exec -- dune install --prefix=../../_install
-    
-    - name: Package binaries
-      run: |
-        cd _install
-        tar czf ../tusk-tools-${{ matrix.ocaml_version }}-${{ runner.os }}-${{ runner.arch }}.tar.gz bin/
+        cp ocaml/_build/*.tar.gz . || echo "No tarball found"
+        ls -la *.tar.gz
     
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: tusk-tools-${{ matrix.ocaml_version }}-${{ runner.os }}-${{ runner.arch }}
-        path: tusk-tools-*.tar.gz
+        name: ocaml-tools-${{ matrix.ocaml_version }}-${{ runner.os }}-${{ runner.arch }}
+        path: ocaml-tools-*.tar.gz
     
   release:
     needs: build-tools
@@ -80,11 +67,19 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         files: |
-          tusk-tools-*/tusk-tools-*.tar.gz
+          ocaml-tools-*/*.tar.gz
         body: |
-          Pre-built development tools for tusk toolchains.
+          Pre-built OCaml development tools for Tusk.
           
           Includes:
           - ocamllsp (OCaml Language Server)
           - odoc (Documentation generator)
           - ocamlformat (Code formatter)
+          
+          ## Usage
+          
+          Extract the tarball to get the tools:
+          ```bash
+          tar xzf ocaml-tools-*.tar.gz
+          export PATH="$PWD/bin:$PATH"
+          ```
