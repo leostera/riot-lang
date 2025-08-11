@@ -19,33 +19,32 @@ mkdir -p dist/bin
 log_info "Setting up OCaml ${OCAML_VERSION} switch..."
 opam switch ${OCAML_VERSION} 2>/dev/null \
   || opam switch create ${OCAML_VERSION} ocaml-base-compiler.${OCAML_VERSION}
-eval $(opam env --switch=${OCAML_VERSION})
 
 # Install base dependencies
 log_info "Installing base dependencies..."
-opam install -y dune ocamlfind
+opam install --switch=${OCAML_VERSION} -y dune ocamlfind
 
 # Build ocamlformat
 log_info "Building ocamlformat..."
 pushd ocamlformat
-  opam install -y ./ocamlformat.opam
-  dune build --release @install
+  opam install --switch=${OCAML_VERSION} -y ./ocamlformat.opam
+  opam exec --switch=${OCAML_VERSION} -- dune build --release @install
   cp _build/install/default/bin/ocamlformat ${BIN_DIR}
 popd
 
 # Build odoc  
 log_info "Building odoc..."
 pushd odoc
-  opam install -y ./odoc-md.opam ./sherlodoc.opam ./odoc-parser.opam ./odoc.opam ./odoc-driver.opam
-  dune build --release @install
+  opam install --switch=${OCAML_VERSION} -y ./odoc-md.opam ./sherlodoc.opam ./odoc-parser.opam ./odoc.opam ./odoc-driver.opam
+  opam exec --switch=${OCAML_VERSION} -- dune build --release @install
   cp _build/install/default/bin/odoc ${BIN_DIR}
 popd
 
 # Build ocaml-lsp-server
 log_info "Building ocaml-lsp-server..."
 pushd ocaml-lsp-server
-  opam install -y ./ocaml-lsp-server.opam
-  dune build --release @install
+  opam install --switch=${OCAML_VERSION} -y ./ocaml-lsp-server.opam
+  opam exec --switch=${OCAML_VERSION} -- dune build --release @install
   cp _build/install/default/bin/ocamllsp ${BIN_DIR}
 popd
 
