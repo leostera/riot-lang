@@ -10,6 +10,7 @@ Usage: tusk [COMMAND] [OPTIONS]
 Commands:
   build    Build packages
   run      Run a binary
+  lsp      Run OCaml LSP server
   clean    Clean build artifacts
   help     Show this help message
 
@@ -103,9 +104,14 @@ let build_command package_opt =
   (* Wait for BuildFinished message *)
   let rec wait_for_completion () =
     match receive () with
-    | BuildFinished ->
-        Printf.printf "✅ Build completed!\n";
-        Process.Normal
+    | BuildFinished { successful; failed } ->
+        if failed > 0 then (
+          Printf.printf "❌ Build completed with %d failures!\n" failed;
+          Process.Exception (Failure (Printf.sprintf "Build failed: %d packages failed" failed))
+        ) else (
+          Printf.printf "✅ Build completed! %d packages built successfully.\n" successful;
+          Process.Normal
+        )
     | _ ->
         (* Ignore other messages *)
         wait_for_completion ()
@@ -142,7 +148,7 @@ let build_package package_name =
   (* Wait for BuildFinished message *)
   let rec wait_for_completion () =
     match receive () with
-    | BuildFinished -> true
+    | BuildFinished { successful; failed } -> failed = 0
     | _ -> wait_for_completion ()
   in
   wait_for_completion ()
@@ -245,6 +251,80 @@ let run_command binary_opt =
           Printf.eprintf "Available binaries: %s\n" (String.concat ", " available_binaries);
           Process.Exception (Failure "Multiple binaries found"))
 
+(** Read OCaml toolchain version from ocaml-toolchain.toml *)
+let read_toolchain_version () =
+  let toml_path = "ocaml-toolchain.toml" in
+  if not (Sys.file_exists toml_path) then
+    failwith "ocaml-toolchain.toml not found in current directory"
+  else
+    let ic = open_in toml_path in
+    let rec find_version () =
+      try
+        let line = input_line ic in
+        if String.contains line '=' then
+          let trimmed_line = String.trim line in
+          if String.length trimmed_line >= 7 && String.sub trimmed_line 0 7 = "version" then
+            let parts = String.split_on_char '=' line in
+            if List.length parts >= 2 then
+              let version_part = List.nth parts 1 in
+              let trimmed = String.trim version_part in
+              (* Remove quotes *)
+              let unquoted = 
+                if String.length trimmed >= 2 && trimmed.[0] = '"' && trimmed.[String.length trimmed - 1] = '"' then
+                  String.sub trimmed 1 (String.length trimmed - 2)
+                else
+                  trimmed
+              in
+              close_in ic;
+              unquoted
+            else
+              find_version ()
+          else
+            find_version ()
+        else
+          find_version ()
+      with
+      | End_of_file ->
+          close_in ic;
+          failwith "version not found in ocaml-toolchain.toml"
+    in
+    find_version ()
+
+(** Get path to LSP binary in toolchain *)
+let get_lsp_binary_path () =
+  let version = read_toolchain_version () in
+  let home = Sys.getenv "HOME" in
+  let lsp_path = Printf.sprintf "%s/.tusk/toolchains/%s/bin/ocamllsp" home version in
+  if Sys.file_exists lsp_path then
+    lsp_path
+  else
+    failwith (Printf.sprintf "OCaml LSP server not found at %s\nRun 'tusk toolchain install' to install development tools" lsp_path)
+
+(** Execute the LSP command *)
+let lsp_command () =
+  try
+    let lsp_path = get_lsp_binary_path () in
+    Printf.printf "🔍 Starting OCaml LSP server: %s\n" lsp_path;
+    
+    (* Execute the LSP server, passing through all arguments *)
+    let result = Unix.system lsp_path in
+    match result with
+    | Unix.WEXITED code -> 
+        if code = 0 then Process.Normal
+        else Process.Exception (Failure (Printf.sprintf "LSP server exited with code %d" code))
+    | Unix.WSIGNALED signal ->
+        Process.Exception (Failure (Printf.sprintf "LSP server killed by signal %d" signal))
+    | Unix.WSTOPPED signal ->
+        Process.Exception (Failure (Printf.sprintf "LSP server stopped by signal %d" signal))
+  with
+  | Failure msg ->
+      Printf.eprintf "Error: %s\n" msg;
+      Process.Exception (Failure msg)
+  | exn ->
+      let error_msg = Printf.sprintf "LSP command failed: %s" (Printexc.to_string exn) in
+      Printf.eprintf "Error: %s\n" error_msg;
+      Process.Exception (Failure error_msg)
+
 (** Show help message *)
 let help_command () =
   Printf.printf "%s\n" usage_msg;
@@ -267,6 +347,7 @@ let main () =
     | "run" ->
         let binary_opt = parse_run_args args 2 in
         run_command binary_opt
+    | "lsp" -> lsp_command ()
     | "clean" -> clean_command ()
     | "help" | "--help" | "-h" -> help_command ()
     | _ ->

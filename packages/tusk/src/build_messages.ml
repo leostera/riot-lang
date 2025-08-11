@@ -25,4 +25,4 @@ type Message.t +=
   | Shutdown
   
   (* Server -> CLI messages *)
-  | BuildFinished  (* all builds complete *)
+  | BuildFinished of { successful : int; failed : int }

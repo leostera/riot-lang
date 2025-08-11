@@ -247,7 +247,7 @@ let rec server_loop state =
       (match state.build_graph with
       | None -> 
           Printf.printf "[Server] No build graph available. Run ScanWorkspace first.\n";
-          send cli_pid BuildFinished;
+          send cli_pid (BuildFinished { successful = 0; failed = 1 });
           server_loop state
       | Some graph ->
           Printf.printf "[Server] Building package %s and its dependencies...\n" pkg_name;
@@ -303,7 +303,7 @@ let rec server_loop state =
         
         (* Notify CLI that we're done *)
         (match state.cli_pid with
-        | Some pid -> send pid BuildFinished
+        | Some pid -> send pid (BuildFinished { successful = built; failed = failed })
         | None -> ());
         
         (* Shutdown workers *)
