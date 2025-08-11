@@ -41,7 +41,11 @@ check_opam() {
 check_ocaml() {
     if ! opam switch list 2>/dev/null | grep -q "$OCAML_VERSION"; then
         log_warn "OCaml $OCAML_VERSION switch not found. Creating it..."
-        opam switch create "$OCAML_VERSION" "ocaml-base-compiler.$OCAML_VERSION" -y
+        opam switch create "$OCAML_VERSION" "ocaml-base-compiler.$OCAML_VERSION" -y || {
+            log_info "Switch $OCAML_VERSION already exists or creation failed, continuing..."
+        }
+    else
+        log_info "Using existing OCaml $OCAML_VERSION switch"
     fi
 }
 
@@ -61,21 +65,21 @@ init_submodules() {
 install_deps() {
     log_info "Installing build dependencies..."
     
-    opam install -y \
-        dune \
-        cmdliner \
-        re \
-        uutf \
-        fix \
-        menhir \
-        ocp-indent \
-        odoc-parser \
-        ppxlib \
-        csexp \
-        result \
-        yojson \
-        ppx_yojson_conv_lib \
-        || true
+    # Install dependencies for each tool by parsing their opam files
+    log_info "Installing ocamlformat dependencies..."
+    if [ -f "$SCRIPT_DIR/ocamlformat/ocamlformat.opam" ]; then
+        (cd "$SCRIPT_DIR/ocamlformat" && opam install . --deps-only -y) || true
+    fi
+    
+    log_info "Installing odoc dependencies..."
+    if [ -f "$SCRIPT_DIR/odoc/odoc.opam" ]; then
+        (cd "$SCRIPT_DIR/odoc" && opam install . --deps-only -y) || true
+    fi
+    
+    log_info "Installing ocaml-lsp-server dependencies..."
+    if [ -f "$SCRIPT_DIR/ocaml-lsp-server/ocaml-lsp-server.opam" ]; then
+        (cd "$SCRIPT_DIR/ocaml-lsp-server" && opam install . --deps-only -y) || true
+    fi
 }
 
 # Build a tool
@@ -101,9 +105,9 @@ build_tool() {
     # Clean previous builds
     rm -rf _build
     
-    # Build
+    # Build - use --root to specify this is the project root
     eval $(opam env --switch="$OCAML_VERSION")
-    dune build $install_target
+    dune build --root . $install_target
     
     # Install to prefix
     if [ -d "_build/install/default" ]; then
