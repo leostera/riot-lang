@@ -116,8 +116,7 @@ let download_ocaml_source version =
   
   (* Check if already cached *)
   if not (System.file_exists cache_path) then begin
-    Printf.printf "Downloading OCaml %s from %s...\n" version url;
-    flush stdout;
+    Printf.printf "Downloading OCaml %s from %s...\n%!" version url;
     
     (* Download to cache *)
     let download_cmd = Printf.sprintf "curl -L -o %s %s" cache_path url in
@@ -125,16 +124,14 @@ let download_ocaml_source version =
     if not success then
       failwith (Printf.sprintf "Failed to download OCaml: %s" output);
   end else begin
-    Printf.printf "Using cached OCaml %s from %s\n" version cache_path;
-    flush stdout;
+    Printf.printf "Using cached OCaml %s from %s\n%!" version cache_path;
   end;
   
   (* Extract to temporary directory *)
   let extract_dir = Filename.concat "/tmp" (Printf.sprintf "ocaml-build-%s-%d" version (Unix.getpid ())) in
   System.mkdirp extract_dir;
   
-  Printf.printf "Extracting OCaml source...\n";
-  flush stdout;
+  Printf.printf "Extracting OCaml source...\n%!";
   let extract_cmd = Printf.sprintf "tar -xzf %s -C %s" cache_path extract_dir in
   let (success, output) = System.run_command extract_cmd in
   if not success then
@@ -161,11 +158,9 @@ let install_dev_tools version =
   let ocamlformat = Filename.concat bin_dir "ocamlformat" in
   
   if System.file_exists ocamllsp && System.file_exists odoc && System.file_exists ocamlformat then (
-    Printf.printf "Development tools already installed for toolchain %s\n" version;
-    flush stdout
+    Printf.printf "Development tools already installed for toolchain %s\n%!" version
   ) else (
-    Printf.printf "Installing development tools for toolchain %s...\n" version;
-    flush stdout;
+    Printf.printf "Installing development tools for toolchain %s...\n%!" version;
     
     (* Determine host triplet *)
     let host_triplet = 
@@ -196,23 +191,22 @@ let install_dev_tools version =
         failwith "Windows not yet supported"
     in
     
-    (* Download from the ocaml-platform release *)
+    (* Download from the S3 CDN *)
     let tools_url = Printf.sprintf 
-      "https://github.com/leostera/riot/releases/download/ocaml-platform/ocaml-platform-%s-%s.tar.gz"
+      "https://hel1.your-objectstorage.com/ml-riot-cdn/ocaml-platform/ocaml-platform-%s-%s.tar.gz"
       version host_triplet in
     
     let tools_archive = Filename.concat "/tmp" (Printf.sprintf "ocaml-platform-%s.tar.gz" version) in
     
-    Printf.printf "Downloading pre-built tools from %s...\n" tools_url;
-    flush stdout;
+    Printf.printf "Downloading pre-built tools from %s...\n%!" tools_url;
     
-    let download_cmd = Printf.sprintf "curl -L -o %s %s" tools_archive tools_url in
+    (* Use -S to show errors, -f to fail on HTTP errors *)
+    let download_cmd = Printf.sprintf "curl -fSL -o %s %s 2>&1" tools_archive tools_url in
     let (success, output) = System.run_command download_cmd in
     
     if success then (
       (* Extract to toolchain directory *)
-      Printf.printf "Extracting development tools...\n";
-      flush stdout;
+      Printf.printf "Extracting development tools...\n%!";
       
       let extract_cmd = Printf.sprintf "cd %s && tar xzf %s" toolchain_path tools_archive in
       let (success, output) = System.run_command extract_cmd in
@@ -220,25 +214,19 @@ let install_dev_tools version =
       if success then (
         (* Clean up *)
         ignore (System.run_command (Printf.sprintf "rm -f %s" tools_archive));
-        Printf.printf "Successfully installed development tools\n";
-        flush stdout
+        Printf.printf "Successfully installed development tools\n%!"
       ) else
-        Printf.printf "Warning: Failed to extract tools: %s\n" output
-    ) else (
-      Printf.printf "Warning: Could not download pre-built tools (they may not be available yet)\n";
-      Printf.printf "Development tools will need to be installed manually\n";
-      flush stdout
-    )
+        failwith (Printf.sprintf "Failed to extract tools: %s" output)
+    ) else
+      failwith (Printf.sprintf "Failed to download pre-built tools from %s: %s" tools_url output)
   )
 
 (** Install a toolchain version *)
 let install_toolchain version =
   if is_toolchain_installed version then (
-    Printf.printf "Toolchain %s is already installed\n" version;
-    flush stdout
+    Printf.printf "Toolchain %s is already installed\n%!" version
   ) else (
-    Printf.printf "Installing OCaml toolchain %s...\n" version;
-    flush stdout;
+    Printf.printf "Installing OCaml toolchain %s...\n%!" version;
     
     (* Create toolchain directory *)
     let toolchain_path = get_toolchain_path version in
@@ -248,8 +236,7 @@ let install_toolchain version =
     let src_dir = download_ocaml_source version in
     
     (* Configure *)
-    Printf.printf "Configuring OCaml %s...\n" version;
-    flush stdout;
+    Printf.printf "Configuring OCaml %s...\n%!" version;
     let configure_cmd = Printf.sprintf 
       "cd %s && ./configure --prefix=%s --disable-ocamldoc" 
       src_dir toolchain_path in
@@ -258,19 +245,16 @@ let install_toolchain version =
       failwith (Printf.sprintf "Failed to configure OCaml: %s" output);
     
     (* Build *)
-    Printf.printf "Building OCaml %s (this may take a while)...\n" version;
-    flush stdout;
+    Printf.printf "Building OCaml %s (this may take a while)...\n%!" version;
     let num_cores = System.cpu_count () in
-    Printf.printf "Using %d cores for compilation\n" num_cores;
-    flush stdout;
+    Printf.printf "Using %d cores for compilation\n%!" num_cores;
     let make_cmd = Printf.sprintf "cd %s && make -j%d" src_dir num_cores in
     let (success, output) = System.run_command make_cmd in
     if not success then
       failwith (Printf.sprintf "Failed to build OCaml: %s" output);
     
     (* Install *)
-    Printf.printf "Installing OCaml %s...\n" version;
-    flush stdout;
+    Printf.printf "Installing OCaml %s...\n%!" version;
     let install_cmd = Printf.sprintf "cd %s && make install" src_dir in
     let (success, output) = System.run_command install_cmd in
     if not success then
@@ -281,8 +265,7 @@ let install_toolchain version =
     let cleanup_cmd = Printf.sprintf "rm -rf %s" extract_parent in
     ignore (System.run_command cleanup_cmd);
     
-    Printf.printf "Successfully installed OCaml %s\n" version;
-    flush stdout;
+    Printf.printf "Successfully installed OCaml %s\n%!" version;
     
     (* Download pre-built dev tools *)
     install_dev_tools version
@@ -299,14 +282,24 @@ let ready_toolchains workspace_root =
       { version = "5.3.0" }  (* Default version *)
   in
   
-  Printf.printf "Using OCaml toolchain: %s\n" toolchain.version;
-  flush stdout;
+  Printf.printf "Using OCaml toolchain: %s\n%!" toolchain.version;
   
   (* Ensure toolchain is installed *)
   if not (is_toolchain_installed toolchain.version) then (
-    Printf.printf "Toolchain %s not found. Installing...\n" toolchain.version;
-    flush stdout;
+    Printf.printf "Toolchain %s not found. Installing...\n%!" toolchain.version;
     install_toolchain toolchain.version
+  ) else (
+    (* Check if dev tools are installed even if compiler exists *)
+    let toolchain_path = get_toolchain_path toolchain.version in
+    let bin_dir = Filename.concat toolchain_path "bin" in
+    let ocamllsp = Filename.concat bin_dir "ocamllsp" in
+    let odoc = Filename.concat bin_dir "odoc" in
+    let ocamlformat = Filename.concat bin_dir "ocamlformat" in
+    
+    if not (System.file_exists ocamllsp && System.file_exists odoc && System.file_exists ocamlformat) then (
+      Printf.printf "Development tools missing. Installing...\n%!";
+      install_dev_tools toolchain.version
+    )
   );
   
   (* Return the toolchain *)
