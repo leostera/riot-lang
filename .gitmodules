@@ -1,0 +1,9 @@
+[submodule "ocaml/ocaml-lsp-server"]
+	path = ocaml/ocaml-lsp-server
+	url = https://github.com/ocaml/ocaml-lsp.git
+[submodule "ocaml/odoc"]
+	path = ocaml/odoc
+	url = https://github.com/ocaml/odoc.git
+[submodule "ocaml/ocamlformat"]
+	path = ocaml/ocamlformat
+	url = https://github.com/ocaml-ppx/ocamlformat.git

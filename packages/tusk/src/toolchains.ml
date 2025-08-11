@@ -150,6 +150,84 @@ let download_ocaml_source version =
   | Some dir -> dir
   | None -> failwith "Could not find extracted OCaml source directory"
 
+(** Download and install pre-built dev tools *)
+let install_dev_tools version =
+  let toolchain_path = get_toolchain_path version in
+  let bin_dir = Filename.concat toolchain_path "bin" in
+  
+  (* Check if tools already exist *)
+  let ocamllsp = Filename.concat bin_dir "ocamllsp" in
+  let odoc = Filename.concat bin_dir "odoc" in
+  let ocamlformat = Filename.concat bin_dir "ocamlformat" in
+  
+  if System.file_exists ocamllsp && System.file_exists odoc && System.file_exists ocamlformat then (
+    Printf.printf "Development tools already installed for toolchain %s\n" version;
+    flush stdout
+  ) else (
+    Printf.printf "Installing development tools for toolchain %s...\n" version;
+    flush stdout;
+    
+    (* Determine platform *)
+    let os = 
+      if Sys.os_type = "Unix" then
+        let uname = 
+          let (success, output) = System.run_command "uname -s" in
+          if success then String.trim output else ""
+        in
+        match uname with
+        | "Darwin" -> "macOS"
+        | "Linux" -> "Linux"
+        | _ -> failwith "Unsupported platform"
+      else
+        failwith "Windows not yet supported"
+    in
+    
+    let arch = 
+      let (success, output) = System.run_command "uname -m" in
+      if success then
+        match String.trim output with
+        | "arm64" | "aarch64" -> "ARM64"
+        | "x86_64" -> "X64"
+        | arch -> failwith (Printf.sprintf "Unsupported architecture: %s" arch)
+      else
+        failwith "Could not determine architecture"
+    in
+    
+    (* Download URL - will be GitHub releases once we have them *)
+    let tools_url = Printf.sprintf 
+      "https://github.com/riot-ml/riot/releases/download/toolchain-v%s/tusk-tools-%s-%s-%s.tar.gz"
+      version version os arch in
+    
+    let tools_archive = Filename.concat "/tmp" (Printf.sprintf "tusk-tools-%s.tar.gz" version) in
+    
+    Printf.printf "Downloading pre-built tools from %s...\n" tools_url;
+    flush stdout;
+    
+    let download_cmd = Printf.sprintf "curl -L -o %s %s" tools_archive tools_url in
+    let (success, output) = System.run_command download_cmd in
+    
+    if success then (
+      (* Extract to toolchain directory *)
+      Printf.printf "Extracting development tools...\n";
+      flush stdout;
+      
+      let extract_cmd = Printf.sprintf "cd %s && tar xzf %s" toolchain_path tools_archive in
+      let (success, output) = System.run_command extract_cmd in
+      
+      if success then (
+        (* Clean up *)
+        ignore (System.run_command (Printf.sprintf "rm -f %s" tools_archive));
+        Printf.printf "Successfully installed development tools\n";
+        flush stdout
+      ) else
+        Printf.printf "Warning: Failed to extract tools: %s\n" output
+    ) else (
+      Printf.printf "Warning: Could not download pre-built tools (they may not be available yet)\n";
+      Printf.printf "Development tools will need to be installed manually\n";
+      flush stdout
+    )
+  )
+
 (** Install a toolchain version *)
 let install_toolchain version =
   if is_toolchain_installed version then (
@@ -201,7 +279,10 @@ let install_toolchain version =
     ignore (System.run_command cleanup_cmd);
     
     Printf.printf "Successfully installed OCaml %s\n" version;
-    flush stdout
+    flush stdout;
+    
+    (* Download pre-built dev tools *)
+    install_dev_tools version
   )
 
 (** Ready toolchains for a workspace *)
