@@ -167,38 +167,41 @@ let install_dev_tools version =
     Printf.printf "Installing development tools for toolchain %s...\n" version;
     flush stdout;
     
-    (* Determine platform *)
-    let os = 
+    (* Determine host triplet *)
+    let host_triplet = 
       if Sys.os_type = "Unix" then
-        let uname = 
+        let uname_s = 
           let (success, output) = System.run_command "uname -s" in
-          if success then String.trim output else ""
+          if success then String.trim output else failwith "Could not determine OS"
         in
-        match uname with
-        | "Darwin" -> "macOS"
-        | "Linux" -> "Linux"
-        | _ -> failwith "Unsupported platform"
+        let uname_m = 
+          let (success, output) = System.run_command "uname -m" in
+          if success then String.trim output else failwith "Could not determine architecture"
+        in
+        
+        let host_os = match String.lowercase_ascii uname_s with
+          | "darwin" -> "apple-darwin"
+          | "linux" -> "unknown-linux-gnu"
+          | os -> failwith (Printf.sprintf "Unsupported OS: %s" os)
+        in
+        
+        let host_arch = match uname_m with
+          | "arm64" | "aarch64" -> "aarch64"
+          | "x86_64" -> "x86_64"
+          | arch -> failwith (Printf.sprintf "Unsupported architecture: %s" arch)
+        in
+        
+        Printf.sprintf "%s-%s" host_arch host_os
       else
         failwith "Windows not yet supported"
     in
     
-    let arch = 
-      let (success, output) = System.run_command "uname -m" in
-      if success then
-        match String.trim output with
-        | "arm64" | "aarch64" -> "ARM64"
-        | "x86_64" -> "X64"
-        | arch -> failwith (Printf.sprintf "Unsupported architecture: %s" arch)
-      else
-        failwith "Could not determine architecture"
-    in
-    
-    (* Download URL - will be GitHub releases once we have them *)
+    (* Download from the ocaml-platform release *)
     let tools_url = Printf.sprintf 
-      "https://github.com/riot-ml/riot/releases/download/toolchain-v%s/tusk-tools-%s-%s-%s.tar.gz"
-      version version os arch in
+      "https://github.com/leostera/riot/releases/download/ocaml-platform/ocaml-platform-%s-%s.tar.gz"
+      version host_triplet in
     
-    let tools_archive = Filename.concat "/tmp" (Printf.sprintf "tusk-tools-%s.tar.gz" version) in
+    let tools_archive = Filename.concat "/tmp" (Printf.sprintf "ocaml-platform-%s.tar.gz" version) in
     
     Printf.printf "Downloading pre-built tools from %s...\n" tools_url;
     flush stdout;

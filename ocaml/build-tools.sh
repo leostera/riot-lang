@@ -2,7 +2,23 @@
 set -euo pipefail
 
 OCAML_VERSION="5.3.0"
-TARBALL="ocaml-platform-${OCAML_VERSION}.tar.gz"
+
+# Determine host triplet
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m)
+case "${OS}" in
+  darwin) HOST_OS="apple-darwin" ;;
+  linux) HOST_OS="unknown-linux-gnu" ;;
+  *) HOST_OS="${OS}" ;;
+esac
+case "${ARCH}" in
+  arm64|aarch64) HOST_ARCH="aarch64" ;;
+  x86_64) HOST_ARCH="x86_64" ;;
+  *) HOST_ARCH="${ARCH}" ;;
+esac
+HOST_TRIPLET="${HOST_ARCH}-${HOST_OS}"
+
+TARBALL="ocaml-platform-${OCAML_VERSION}-${HOST_TRIPLET}.tar.gz"
 DIST_DIR="dist"
 BIN_DIR="../${DIST_DIR}/bin"
 
