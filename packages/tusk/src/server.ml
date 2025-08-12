@@ -14,8 +14,7 @@ type state = {
   build_results : Build_results.t;
   workers : Pid.t list;
   idle_workers : Pid.t Queue.t; (* Workers waiting for tasks *)
-  current_queue : string Queue.t;
-  later_queue : string Queue.t;
+  build_queue : Build_queue.t; (* Two-queue system for dependency ordering *)
   cli_pid : Pid.t option; (* PID of CLI process to notify when done *)
   rpc_client_pid : Pid.t option; (* PID of RPC client to respond to *)
   toolchain : Toolchains.toolchain; (* Current toolchain *)
@@ -56,7 +55,7 @@ let get_package_deps state pkg_name =
       | Some pkg -> pkg.dependencies)
 
 (** Queue a package for building if not already tracked as building or built *)
-let queue_package_if_needed state node queue =
+let queue_package_if_needed state node is_ready =
   let pkg_name = node.Build_node.package.name in
   (* Don't re-queue if already building or failed *)
   match Build_results.get_status state.build_results pkg_name with
@@ -70,7 +69,10 @@ let queue_package_if_needed state node queue =
   | Some Build_results.NotStarted | None ->
       (* Not started - queue it *)
       Printf.printf "[Server] Queueing package: %s\n" pkg_name;
-      Queue.add pkg_name queue
+      if is_ready then
+        Build_queue.add_ready state.build_queue pkg_name
+      else
+        Build_queue.add_waiting state.build_queue pkg_name
 
 (** Try to get next buildable task *)
 let rec get_next_buildable_task state =
@@ -90,21 +92,18 @@ let rec get_next_buildable_task state =
           | _ -> true  (* If we can't compute hash, try to build anyway *)
       in
 
-      (* First try current queue *)
-      if not (Queue.is_empty state.current_queue) then
-        let pkg_name = Queue.take state.current_queue in
-        match
-          List.find_opt (fun n -> n.Build_node.package.name = pkg_name) nodes
-        with
-        | Some node when should_build_package pkg_name node ->
-            Some
-              { node; workspace; toolchain_version = state.toolchain.version }
-        | _ ->
-            (* Either not buildable yet or already built - try next *)
-            if not (can_build_package state pkg_name) then
-              Queue.add pkg_name state.later_queue;
-            get_next_buildable_task state
-      else None  (* No work available in either queue *)
+      (* Try to get a ready package from the queue *)
+      (match Build_queue.take_ready state.build_queue with
+      | Some pkg_name ->
+          (match List.find_opt (fun n -> n.Build_node.package.name = pkg_name) nodes with
+          | Some node when should_build_package pkg_name node ->
+              Some { node; workspace; toolchain_version = state.toolchain.version }
+          | _ ->
+              (* Either not buildable yet or already built - try next *)
+              if not (can_build_package state pkg_name) then
+                Build_queue.add_waiting state.build_queue pkg_name;
+              get_next_buildable_task state)
+      | None -> None)  (* No work available *)
   | _, _ -> None
 
 (** Check if a package can be built (all deps ready) *)
@@ -125,20 +124,9 @@ and can_build_package state pkg_name =
 
 (** Check later queue and move ready packages to current queue *)
 let check_later_queue state =
-  if not (Queue.is_empty state.later_queue) then (
-    let later_items = ref [] in
-    while not (Queue.is_empty state.later_queue) do
-      later_items := Queue.take state.later_queue :: !later_items
-    done;
-    
-    List.iter (fun pkg_name ->
-      if can_build_package state pkg_name then (
-        Printf.printf "[Server] Package %s is now ready, moving to current queue\n" pkg_name;
-        Queue.add pkg_name state.current_queue
-      ) else
-        Queue.add pkg_name state.later_queue
-    ) !later_items
-  )
+  let moved = Build_queue.promote_ready state.build_queue (can_build_package state) in
+  if moved > 0 then
+    Printf.printf "[Server] Promoted %d packages from waiting to ready queue\n" moved
 
 (** Try to assign work to idle workers *)
 let try_assign_work state =
@@ -146,10 +134,7 @@ let try_assign_work state =
   check_later_queue state;
   
   let rec assign_loop () =
-    if
-      (not (Queue.is_empty state.idle_workers))
-      && not (Queue.is_empty state.current_queue)
-    then
+    if (not (Queue.is_empty state.idle_workers)) && Build_queue.has_ready_work state.build_queue then
       match get_next_buildable_task state with
       | Some build_task ->
           let worker_pid = Queue.take state.idle_workers in
@@ -187,32 +172,12 @@ let handle_task_complete state pkg_name success hash =
     Build_results.mark_built_with_hash state.build_results pkg_name hash;
 
     (* Check if this unblocks any packages in the later queue *)
-    (* Move them to current queue if their deps are now ready *)
-    let later_items = ref [] in
-    while not (Queue.is_empty state.later_queue) do
-      later_items := Queue.take state.later_queue :: !later_items
-    done;
-    Printf.printf "[Server]   Later queue had %d items\n" (List.length !later_items);
+    (* Promote any packages that are now ready *)
+    let moved = Build_queue.promote_ready state.build_queue (can_build_package state) in
+    if moved > 0 then
+      Printf.printf "[Server] Promoted %d packages from waiting to ready queue after %s completed\n" moved pkg_name;
 
-    (* Get nodes for later_items to check their hashes *)
-    match state.current_build_graph with
-    | Some graph ->
-        let nodes = Build_graph.topological_sort graph in
-        List.iter
-          (fun pkg_name ->
-            match List.find_opt (fun n -> n.Build_node.package.name = pkg_name) nodes with
-            | Some node ->
-                if can_build_package state pkg_name then
-                  queue_package_if_needed state node state.current_queue
-                else
-                  Queue.add pkg_name state.later_queue
-            | None -> ())
-          !later_items
-    | None ->
-        (* No graph, put items back *)
-        List.iter (fun item -> Queue.add item state.later_queue) !later_items;
-
-    (* Also queue any packages that were waiting only on this one *)
+    (* Also check if any other packages are now unblocked *)
     match state.current_build_graph with
     | Some graph ->
         let nodes = Build_graph.topological_sort graph in
@@ -224,7 +189,7 @@ let handle_task_complete state pkg_name success hash =
             let can_build = can_build_package state pkg in
             Printf.printf "[Server]   Package %s: is_building=%b, can_build=%b\n" pkg is_building can_build;
             if (not is_building) && can_build then
-              queue_package_if_needed state node state.current_queue)
+              queue_package_if_needed state node true)  (* true = ready to build *)
           nodes
     | None ->
         ();
@@ -559,15 +524,14 @@ let rec server_loop state =
           List.iter
             (fun node ->
               let pkg_name = node.Build_node.package.name in
-              if can_build_package state pkg_name then
-                queue_package_if_needed state node state.current_queue
-              else (
+              let is_ready = can_build_package state pkg_name in
+              if not is_ready then
                 Printf.printf "[Server] Package %s has unmet dependencies, adding to later queue\n" pkg_name;
-                Queue.add pkg_name state.later_queue))
+              queue_package_if_needed state node is_ready)
             sorted;
 
-          Printf.printf "[Server] Current queue size: %d\n"
-            (Queue.length state.current_queue);
+          let (ready_count, waiting_count) = Build_queue.stats state.build_queue in
+          Printf.printf "[Server] Queue stats - ready: %d, waiting: %d\n" ready_count waiting_count;
 
           (* Spawn workers if not already spawned *)
           let workers =
@@ -618,15 +582,14 @@ let rec server_loop state =
           List.iter
             (fun node ->
               let pkg_name = node.Build_node.package.name in
-              if can_build_package state pkg_name then
-                queue_package_if_needed state node state.current_queue
-              else (
+              let is_ready = can_build_package state pkg_name in
+              if not is_ready then
                 Printf.printf "[Server] Package %s has unmet dependencies, adding to later queue\n" pkg_name;
-                Queue.add pkg_name state.later_queue))
+              queue_package_if_needed state node is_ready)
             sorted;
 
-          Printf.printf "[Server] Current queue size: %d\n"
-            (Queue.length state.current_queue);
+          let (ready_count, waiting_count) = Build_queue.stats state.build_queue in
+          Printf.printf "[Server] Queue stats - ready: %d, waiting: %d\n" ready_count waiting_count;
 
           (* Spawn workers if not already spawned *)
           let workers =
@@ -717,12 +680,12 @@ let rec server_loop state =
       
       (* Queue the missing dependencies in the current queue *)
       List.iter (fun dep_node ->
-        queue_package_if_needed state dep_node state.current_queue
+        queue_package_if_needed state dep_node true  (* deps should be ready *)
       ) missing_deps;
       
       (* Put the original task in the later queue *)
       Printf.printf "[Server] Moving %s to later queue\n" pkg_name;
-      Queue.add pkg_name state.later_queue;
+      Build_queue.add_waiting state.build_queue pkg_name;
       
       (* Try to assign work to idle workers *)
       try_assign_work state;
@@ -768,8 +731,7 @@ let start () =
       build_results = Build_results.create ();
       workers = [];
       idle_workers = Queue.create ();
-      current_queue = Queue.create ();
-      later_queue = Queue.create ();
+      build_queue = Build_queue.create ();
       cli_pid = None;
       rpc_client_pid = None;
       toolchain;
@@ -806,8 +768,7 @@ let start_with_listener () =
       build_results = Build_results.create ();
       workers = [];
       idle_workers = Queue.create ();
-      current_queue = Queue.create ();
-      later_queue = Queue.create ();
+      build_queue = Build_queue.create ();
       cli_pid = None;
       rpc_client_pid = None;
       toolchain;
