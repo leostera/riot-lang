@@ -2,10 +2,18 @@
 
 ## Lessons Learned
 
+- ALWAYS BE ON THE PROJECT ROOT
 - Document critical code insights and development strategies in this file to avoid repeating mistakes and capture institutional knowledge
 - Recognize that the lack of comprehensive testing in critical infrastructure is a significant risk that must be addressed systematically
 - Develop a test-driven development (TDD) approach that builds test coverage incrementally, starting with the most critical components
 - Build test suites that validate not just correctness, but also performance, concurrent behavior, and cross-platform compatibility
+
+### Miniriot and Gluon Integration
+- **Miniriot uses Gluon internally** for its kqueue-based I/O polling
+- **Miniriot currently only exposes File I/O APIs**, not networking
+- **DO NOT mix Gluon.create() with Miniriot processes** - the scheduler already has its own kqueue poll
+- When adding networking to Miniriot processes, use non-blocking operations with sleep/yield until proper networking APIs are added to Miniriot
+- The tusk server's TCP listener currently uses Gluon directly with exponential backoff - this should be refactored once Miniriot adds networking support
 
 ## OCaml Best Practices
 
