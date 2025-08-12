@@ -55,6 +55,27 @@ let get_package_deps state pkg_name =
       | Some pkg -> pkg.dependencies)
 
 (** Queue a package for building if not already tracked as building or built *)
+(* Internal version - uses cached hashes, for use during build *)
+let queue_package_if_needed_internal state node is_ready =
+  let pkg_name = node.Build_node.package.name in
+  (* Don't re-queue if already building, failed, or built *)
+  match Build_results.get_status state.build_results pkg_name with
+  | Some Build_results.Building ->
+      Printf.printf "[Server] Skipping %s - already building\n" pkg_name
+  | Some (Build_results.Failed _) ->
+      Printf.printf "[Server] Skipping %s - already failed\n" pkg_name
+  | Some (Build_results.Built _) ->
+      (* Already built in this session - don't recheck *)
+      Printf.printf "[Server] Skipping %s - already built in this session\n" pkg_name
+  | Some Build_results.NotStarted | None ->
+      (* Not started - queue it *)
+      Printf.printf "[Server] Queueing package: %s\n" pkg_name;
+      if is_ready then
+        Build_queue.add_ready state.build_queue pkg_name
+      else
+        Build_queue.add_waiting state.build_queue pkg_name
+
+(** Queue a package at entry point - checks for hash changes *)
 let queue_package_if_needed state node is_ready =
   let pkg_name = node.Build_node.package.name in
   (* Don't re-queue if already building or failed *)
@@ -63,9 +84,34 @@ let queue_package_if_needed state node is_ready =
       Printf.printf "[Server] Skipping %s - already building\n" pkg_name
   | Some (Build_results.Failed _) ->
       Printf.printf "[Server] Skipping %s - already failed\n" pkg_name
-  | Some (Build_results.Built _) ->
-      (* Already built in this session - skip it *)
-      Printf.printf "[Server] Skipping %s - already built\n" pkg_name
+  | Some (Build_results.Built stored_hash) ->
+      (* Check if the current hash matches the stored hash *)
+      (match state.workspace with
+      | Some workspace ->
+          (* Force recomputation of hash to detect changes *)
+          (match Build_graph.recompute_node_hash state.toolchain.version node with
+          | Build_graph.Ok current_hash ->
+              if Hasher.equal stored_hash current_hash then
+                Printf.printf "[Server] Skipping %s - already built with same hash\n" pkg_name
+              else (
+                Printf.printf "[Server] Package %s hash changed (was: %s, now: %s), queueing for rebuild\n" 
+                  pkg_name (Hasher.to_string stored_hash) (Hasher.to_string current_hash);
+                (* Reset the build status since hash changed *)
+                Build_results.init_package state.build_results pkg_name;
+                if is_ready then
+                  Build_queue.add_ready state.build_queue pkg_name
+                else
+                  Build_queue.add_waiting state.build_queue pkg_name)
+          | _ ->
+              (* Can't compute hash, queue it to be safe *)
+              Printf.printf "[Server] Queueing package: %s (couldn't compute hash)\n" pkg_name;
+              if is_ready then
+                Build_queue.add_ready state.build_queue pkg_name
+              else
+                Build_queue.add_waiting state.build_queue pkg_name)
+      | None ->
+          (* No workspace, skip it *)
+          Printf.printf "[Server] Skipping %s - no workspace\n" pkg_name)
   | Some Build_results.NotStarted | None ->
       (* Not started - queue it *)
       Printf.printf "[Server] Queueing package: %s\n" pkg_name;
@@ -189,7 +235,7 @@ let handle_task_complete state pkg_name success hash =
             let can_build = can_build_package state pkg in
             Printf.printf "[Server]   Package %s: is_building=%b, can_build=%b\n" pkg is_building can_build;
             if (not is_building) && can_build then
-              queue_package_if_needed state node true)  (* true = ready to build *)
+              queue_package_if_needed_internal state node true)  (* true = ready to build *)
           nodes
     | None ->
         ();
@@ -533,22 +579,40 @@ let rec server_loop state =
           let (ready_count, waiting_count) = Build_queue.stats state.build_queue in
           Printf.printf "[Server] Queue stats - ready: %d, waiting: %d\n" ready_count waiting_count;
 
-          (* Spawn workers if not already spawned *)
-          let workers =
-            if state.workers = [] then (
-              let num_cores = get_num_cores () in
-              Printf.printf "[Server] Spawning %d workers\n" num_cores;
-              let workers = spawn_workers (self ()) num_cores in
-              (* Give workers a moment to start *)
-              sleep 0.1;
-              workers)
-            else state.workers
-          in
+          (* Check if there's actually any work to do *)
+          if ready_count = 0 && waiting_count = 0 then (
+            (* All packages already built - return success immediately *)
+            Printf.printf "[Server] All packages already built!\n";
+            let built_count = List.length sorted in
+            (* Check if this is an RPC client or internal CLI *)
+            (match state.rpc_client_pid with
+            | Some rpc_pid ->
+                (* RPC client - send RPC response *)
+                send rpc_pid (ServerResponse (Rpc.BuildComplete { successful = built_count; failed = 0 }));
+                (* Reset RPC client state *)
+                let new_state = { state with rpc_client_pid = None; current_build_graph = None } in
+                server_loop new_state
+            | None ->
+                (* Internal CLI - send RPC response since CLI now uses RPC protocol *)
+                send cli_pid (ServerResponse (Rpc.BuildComplete { successful = built_count; failed = 0 }));
+                server_loop state)
+          ) else (
+            (* Spawn workers if not already spawned *)
+            let workers =
+              if state.workers = [] then (
+                let num_cores = get_num_cores () in
+                Printf.printf "[Server] Spawning %d workers\n" num_cores;
+                let workers = spawn_workers (self ()) num_cores in
+                (* Give workers a moment to start *)
+                sleep 0.1;
+                workers)
+              else state.workers
+            in
 
-          let new_state = { state with workers; cli_pid = Some cli_pid } in
-          (* Try to assign initial work to workers *)
-          try_assign_work new_state;
-          server_loop new_state)
+            let new_state = { state with workers; cli_pid = Some cli_pid } in
+            (* Try to assign initial work to workers *)
+            try_assign_work new_state;
+            server_loop new_state))
   | BuildPackage (pkg_name, cli_pid) -> (
       Printf.printf "[Server] BuildPackage %s command received\n" pkg_name;
       (* current_build_graph should already be set to the filtered graph *)
@@ -556,8 +620,15 @@ let rec server_loop state =
       | None ->
           Printf.printf
             "[Server] No build graph available. Run ScanWorkspace first.\n";
-          send cli_pid (BuildFinished { successful = 0; failed = 1 });
-          server_loop state
+          (* Send appropriate response based on client type *)
+          (match state.rpc_client_pid with
+          | Some rpc_pid ->
+              send rpc_pid (ServerResponse (Rpc.Error { message = "No build graph available" }));
+              let new_state = { state with rpc_client_pid = None } in
+              server_loop new_state
+          | None ->
+              send cli_pid (ServerResponse (Rpc.Error { message = "No build graph available" }));
+              server_loop state)
       | Some graph ->
           Printf.printf "[Server] Building package %s and its dependencies...\n"
             pkg_name;
@@ -591,22 +662,40 @@ let rec server_loop state =
           let (ready_count, waiting_count) = Build_queue.stats state.build_queue in
           Printf.printf "[Server] Queue stats - ready: %d, waiting: %d\n" ready_count waiting_count;
 
-          (* Spawn workers if not already spawned *)
-          let workers =
-            if state.workers = [] then (
-              let num_cores = get_num_cores () in
-              Printf.printf "[Server] Spawning %d workers\n" num_cores;
-              let workers = spawn_workers (self ()) num_cores in
-              (* Give workers a moment to start *)
-              sleep 0.1;
-              workers)
-            else state.workers
-          in
+          (* Check if there's actually any work to do *)
+          if ready_count = 0 && waiting_count = 0 then (
+            (* All packages already built - return success immediately *)
+            Printf.printf "[Server] All packages already built!\n";
+            let built_count = List.length sorted in
+            (* Check if this is an RPC client or internal CLI *)
+            (match state.rpc_client_pid with
+            | Some rpc_pid ->
+                (* RPC client - send RPC response *)
+                send rpc_pid (ServerResponse (Rpc.BuildComplete { successful = built_count; failed = 0 }));
+                (* Reset RPC client state *)
+                let new_state = { state with rpc_client_pid = None; current_build_graph = None } in
+                server_loop new_state
+            | None ->
+                (* Internal CLI - send RPC response since CLI now uses RPC protocol *)
+                send cli_pid (ServerResponse (Rpc.BuildComplete { successful = built_count; failed = 0 }));
+                server_loop state)
+          ) else (
+            (* Spawn workers if not already spawned *)
+            let workers =
+              if state.workers = [] then (
+                let num_cores = get_num_cores () in
+                Printf.printf "[Server] Spawning %d workers\n" num_cores;
+                let workers = spawn_workers (self ()) num_cores in
+                (* Give workers a moment to start *)
+                sleep 0.1;
+                workers)
+              else state.workers
+            in
 
-          let new_state = { state with workers; cli_pid = Some cli_pid } in
-          (* Try to assign initial work to workers *)
-          try_assign_work new_state;
-          server_loop new_state)
+            let new_state = { state with workers; cli_pid = Some cli_pid } in
+            (* Try to assign initial work to workers *)
+            try_assign_work new_state;
+            server_loop new_state))
   | NextTask worker_pid ->
       Printf.printf "[Server] Worker %s requesting task\n"
         (Pid.to_string worker_pid);
@@ -645,8 +734,13 @@ let rec server_loop state =
             sleep 0.1;  (* Shorter sleep for RPC *)
             
             (* Reset state for next build but keep build results *)
+            (* Create fresh queues to avoid stale worker references *)
+            let fresh_idle_workers = Queue.create () in
+            let fresh_build_queue = Build_queue.create () in
             let new_state = { state with 
               workers = [];
+              idle_workers = fresh_idle_workers;  (* Fresh queue, no stale PIDs *)
+              build_queue = fresh_build_queue;    (* Fresh build queue *)
               cli_pid = None;
               rpc_client_pid = None;
               current_build_graph = None;  (* Clear current build graph *)
@@ -654,8 +748,8 @@ let rec server_loop state =
             } in
             server_loop new_state
         | None, Some cli_pid ->
-            (* CLI client - send response and exit *)
-            send cli_pid (BuildFinished { successful = built; failed });
+            (* Internal CLI - send RPC response since CLI now uses RPC protocol *)
+            send cli_pid (ServerResponse (Rpc.BuildComplete { successful = built; failed }));
             
             (* Shutdown workers *)
             List.iter (fun w -> send w Shutdown) state.workers;
@@ -680,7 +774,7 @@ let rec server_loop state =
       
       (* Queue the missing dependencies in the current queue *)
       List.iter (fun dep_node ->
-        queue_package_if_needed state dep_node true  (* deps should be ready *)
+        queue_package_if_needed_internal state dep_node true  (* deps should be ready *)
       ) missing_deps;
       
       (* Put the original task in the later queue *)
