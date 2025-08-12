@@ -5,10 +5,8 @@
 
 open Miniriot
 
-(** Extend Message.t with our custom messages *)
-type Message.t += 
-  | ClientRequest of Pid.t * Rpc.request
-  | ServerResponse of Rpc.response
+(** Import shared RPC message types *)
+open Rpc_messages
 
 (** Default port for tusk server *)
 let default_port = 9876
@@ -18,11 +16,12 @@ let find_available_port () =
   (* Simply return the default port - if binding fails, we'll handle it gracefully *)
   default_port
 
-(** Write port file for clients to discover the server *)
+(** Write port and PID files for clients to discover the server *)
 let write_port_file port =
   let home = Sys.getenv "HOME" in
   let tusk_dir = Filename.concat home ".tusk" in
   let port_file = Filename.concat tusk_dir "server.port" in
+  let pid_file = Filename.concat tusk_dir "server.pid" in
 
   (* Ensure .tusk directory exists *)
   (try Unix.mkdir tusk_dir 0o755
@@ -32,7 +31,14 @@ let write_port_file port =
   let oc = open_out port_file in
   output_string oc (string_of_int port);
   close_out oc;
-  Printf.printf "[Listener] Server port written to %s\n%!" port_file
+  Printf.printf "[Listener] Server port written to %s\n%!" port_file;
+  
+  (* Write PID *)
+  let pid = Unix.getpid () in
+  let oc = open_out pid_file in
+  output_string oc (string_of_int pid);
+  close_out oc;
+  Printf.printf "[Listener] Server PID written to %s\n%!" pid_file
 
 (** Read port file to connect to existing server *)
 let read_port_file () =
@@ -45,11 +51,13 @@ let read_port_file () =
     Some port)
   else None
 
-(** Remove port file on shutdown *)
+(** Remove port and PID files on shutdown *)
 let remove_port_file () =
   let home = Sys.getenv "HOME" in
   let port_file = Filename.concat home ".tusk/server.port" in
-  try Sys.remove port_file with _ -> ()
+  let pid_file = Filename.concat home ".tusk/server.pid" in
+  (try Sys.remove port_file with _ -> ());
+  (try Sys.remove pid_file with _ -> ())
 
 (** Handle a client connection in a separate process *)
 let handle_client server_pid stream =
@@ -62,7 +70,6 @@ let handle_client server_pid stream =
         | Ok bytes_read when bytes_read > 0 -> (
             let line = Bytes.sub_string buffer 0 bytes_read in
             let line = String.trim line in
-            Printf.printf "[Listener] Received: %s\n%!" line;
 
             (* Parse request *)
             match Rpc.request_of_string line with
@@ -76,7 +83,7 @@ let handle_client server_pid stream =
                     let response_str = Rpc.response_to_string response in
                     let response_bytes = Bytes.of_string (response_str ^ "\n") in
                     match
-                      Net.TcpStream.write stream response_bytes ()
+                      Net.TcpStream.write stream response_bytes ~pos:0 ~len:(Bytes.length response_bytes) ()
                     with
                     | Ok _ -> (
                         (* Continue or shutdown *)
@@ -85,21 +92,27 @@ let handle_client server_pid stream =
                             Printf.printf
                               "[Listener] Client requested shutdown\n%!";
                             ()
+                        | Rpc.Restart ->
+                            Printf.printf
+                              "[Listener] Client requested restart\n%!";
+                            client_loop ()
                         | _ -> client_loop ())
                     | Error _ ->
                         Printf.printf "[Listener] Write error\n%!")
                 | _ ->
                     let error_bytes = Bytes.of_string "Error:Timeout\n" in
-                    ignore (Net.TcpStream.write stream error_bytes ());
+                    ignore (Net.TcpStream.write stream error_bytes ~pos:0 ~len:(Bytes.length error_bytes) ());
                     client_loop ())
             | None ->
                 let error_bytes = Bytes.of_string "Error:Invalid request\n" in
-                ignore (Net.TcpStream.write stream error_bytes ());
+                ignore (Net.TcpStream.write stream error_bytes ~pos:0 ~len:(Bytes.length error_bytes) ());
                 client_loop ())
         | Ok 0 -> Printf.printf "[Listener] Client disconnected\n%!"
         | Ok _ -> Printf.printf "[Listener] Partial read\n%!"; client_loop ()
+        | Error `Closed ->
+            Printf.printf "[Listener] Client disconnected\n%!"
         | Error _ ->
-            Printf.printf "[Listener] Read error\n%!"
+            Printf.printf "[Listener] Connection closed\n%!"
   in
 
   client_loop ();
