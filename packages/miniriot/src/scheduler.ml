@@ -123,12 +123,17 @@ let handle_syscall k t proc name interest source _timeout =
       let token = Gluon.Token.make proc in
       Trace.trace "Process %s registering for I/O" pid_str;
       Process.mark_as_awaiting_io proc name token source;
-      (match Gluon.register t.io_poll ~fd:(Gluon.Source.fd source) ~token ~interests:interest with
+      (let fd = Gluon.Source.fd source in
+      let fd_int : int = Obj.magic fd in
+      Printf.printf "[Scheduler] DEBUG: Registering FD %d for process %s, syscall=%s\n%!" 
+        fd_int pid_str name;
+      match Gluon.register t.io_poll ~fd ~token ~interests:interest with
       | Ok () ->
           Trace.trace "Process %s registered for I/O successfully" pid_str;
           k Suspend
       | Error err ->
-          Printf.printf "[Scheduler] ERROR: Failed to register I/O for process %s: %s\n%!" pid_str
+          Printf.printf "[Scheduler] ERROR: Failed to register I/O for process %s (FD=%d): %s\n%!" 
+            pid_str fd_int
             (match err with `System_error s -> s | `Noop -> "Unknown error");
           Process.mark_as_runnable proc;
           k (Continue ()))
