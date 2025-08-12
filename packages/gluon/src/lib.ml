@@ -1,545 +1,558 @@
-(** Implementation of the Gluon kqueue-based I/O notification library *)
-
 let ( let* ) = Result.bind
+let log = Format.printf
 
-(** {1 Core Types} *)
+type io_error =
+  [ `Connection_closed
+  | `Exn of exn
+  | `No_info
+  | `Unix_error of Unix.error [@config not (target_arch = "js")]
+  | `Noop
+  | `Eof
+  | `Closed
+  | `Process_down
+  | `Timeout
+  | `Would_block ]
 
-type ('a, 'e) io_result = ('a, ([> `Noop ] as 'e)) result
+type ('ok, 'err) io_result = ('ok, ([> io_error ] as 'err)) Stdlib.result
 
-module Fd = struct
-  type t = Unix.file_descr
-  
-  let to_int fd = Obj.magic fd
-  let pp fmt fd = Format.fprintf fmt "Fd(%d)" (to_int fd)
+let pp_err fmt = function
+  | `Noop -> Format.fprintf fmt "Noop"
+  | `Eof -> Format.fprintf fmt "End of file"
+  | `Timeout -> Format.fprintf fmt "Timeout"
+  | `Process_down -> Format.fprintf fmt "Process_down"
+  | `System_limit -> Format.fprintf fmt "System_limit"
+  | `Closed -> Format.fprintf fmt "Closed"
+  | `Connection_closed -> Format.fprintf fmt "Connection closed"
+  | `Exn exn ->
+      Format.fprintf fmt "Unexpected exceptoin: %s" (Printexc.to_string exn)
+  | `No_info -> Format.fprintf fmt "No info"
+  | `Would_block -> Format.fprintf fmt "Would block"
+  | `Unix_error err ->
+      Format.fprintf fmt "Unix_error(%s)" (Unix.error_message err)
+
+module Libc = struct
+  let enoent = 2
+  let epipe = 32
+  let ev_add = 0x1
+  let ev_clear = 0x20
+  let ev_delete = 0x2
+  let ev_eof =  0x8000
+  let ev_error = 0x4000
+  let ev_receipt = 0x40
+  let evfilt_read = -1
+  let evfilt_write = -2
+  let f_dupfd_cloexec = 67
+  let f_setfd = 2
+end
+
+module Iovec = struct
+  type iov = { ba : bytes; off : int; len : int }
+  type t = iov array
+
+  (** creates an iovector array with [size] equally distributed in [count]s *)
+  let create ?(count = 1) ~size () =
+    assert (count > 0);
+    assert (size > 0);
+    let size = size / count in
+    Array.init count (fun _id ->
+        { ba = Bytes.create size; off = 0; len = size })
+
+  let with_capacity size = create ~size ()
+
+  let sub ?(pos = 0) ~len t =
+    let curr = ref 0 in
+    t |> Array.to_list
+    |> List.filter_map (fun iov ->
+           if !curr + iov.len < pos then (
+             curr := !curr + iov.len;
+             None)
+           else
+             let next_curr = iov.len + !curr in
+             let diff = len - !curr in
+             if next_curr < len then (
+               curr := next_curr;
+               Some iov)
+             else if diff > 0 then (
+               curr := len;
+               Some { iov with len = diff })
+             else None)
+    |> Array.of_list
+
+  let length t = Array.fold_left (fun acc iov -> acc + (iov.len - iov.off)) 0 t
+  let iter (t : t) fn = Array.iter fn t
+  let of_bytes ba = [| { ba; off = 0; len = Bytes.length ba } |]
+
+  let from_string str = of_bytes (Bytes.of_string str)
+  let from_buffer buf = of_bytes (Buffer.to_bytes buf)
+
+  let into_string t =
+    let buf = Buffer.create (length t) in
+    iter t (fun iov -> Buffer.add_bytes buf (Bytes.sub iov.ba iov.off iov.len));
+    Buffer.contents buf
 end
 
 module Token = struct
-  type t = Obj.t
-  
-  let make x = Obj.repr x
-  let unsafe_to_value t = Obj.obj t
-  
+  type t
+
+  let unsafe_to_value (x: t) = Obj.magic x
+  let unsafe_to_int (t: t) : int = unsafe_to_value t
+  let hash t = Int.hash (unsafe_to_int t)
+
   let equal ?eq a b =
     match eq with
     | Some f -> f (unsafe_to_value a) (unsafe_to_value b)
-    | None -> a == b
-    
-  let pp fmt t = 
-    Format.fprintf fmt "Token(%d)" (Obj.magic t : int)
+    | None -> Int.equal (unsafe_to_int a) (unsafe_to_int b)
+
+  let pp fmt t = Format.fprintf fmt "Token(%d)" (unsafe_to_int t)
+  let make (x : 'whatever) : t = Obj.magic x
 end
-
-module Interest = struct
-  type t = int
-  
-  let readable = 0b01
-  let writable = 0b10
-  
-  let ( + ) a b = a lor b
-  let ( - ) a b = 
-    let result = a land (lnot b) in
-    if result = 0 then None else Some result
-    
-  let is_readable t = (t land readable) <> 0
-  let is_writable t = (t land writable) <> 0
-  
-  let pp fmt t =
-    let parts = [] in
-    let parts = if is_readable t then "readable" :: parts else parts in
-    let parts = if is_writable t then "writable" :: parts else parts in
-    Format.fprintf fmt "Interest(%s)" (String.concat "|" parts)
-end
-
-(** {1 Kqueue Constants} *)
-
-module Kqueue_const = struct
-  (* Event filters *)
-  let evfilt_read   = -1
-  let evfilt_write  = -2
-  
-  (* Event flags *)
-  let ev_add     = 0x0001
-  let ev_enable  = 0x0004
-  let _ev_disable = 0x0008
-  let ev_delete  = 0x0002
-  let _ev_oneshot = 0x0010
-  let _ev_clear   = 0x0020
-  let ev_eof     = 0x8000
-  let ev_error   = 0x4000
-end
-
-(** {1 Event Type} *)
-
-type kevent = {
-  ident: int;    (* identifier for this event (fd) *)
-  filter: int;   (* filter for event *)
-  flags: int;    (* action flags for kqueue *)
-  fflags: int [@warning "-unused-field"];   (* filter flag value *)
-  data: int [@warning "-unused-field"];     (* filter data value *)
-  udata: Token.t; (* user data *)
-}
-
-module Event = struct
-  type t = kevent
-  
-  let token t = t.udata
-  let is_readable t = t.filter = Kqueue_const.evfilt_read
-  let is_writable t = t.filter = Kqueue_const.evfilt_write
-  let is_error t = (t.flags land Kqueue_const.ev_error) <> 0
-  let is_eof t = (t.flags land Kqueue_const.ev_eof) <> 0
-  
-  let pp fmt t =
-    let filter_str = 
-      if t.filter = Kqueue_const.evfilt_read then "READ"
-      else if t.filter = Kqueue_const.evfilt_write then "WRITE"
-      else Printf.sprintf "FILTER(%d)" t.filter
-    in
-    let flags = [] in
-    let flags = if is_error t then "ERROR" :: flags else flags in
-    let flags = if is_eof t then "EOF" :: flags else flags in
-    let flags_str = if flags = [] then "" else " " ^ String.concat "|" flags in
-    Format.fprintf fmt "Event(fd=%d, %s%s)" t.ident filter_str flags_str
-end
-
-(** {1 Source abstraction} *)
-
-module Source = struct
-  type t = Fd.t
-  let fd t = t
-end
-
-(** {1 I/O Vectors} *)
-
-module Iovec = struct
-  type t = bytes * int * int
-  
-  let create bytes ~pos ~len = (bytes, pos, len)
-  let create_array arr = arr
-end
-
-(** {1 FFI External Functions} *)
-
-external gluon_kqueue : unit -> Unix.file_descr = "gluon_kqueue"
-external gluon_kevent : 
-  Unix.file_descr -> kevent array -> int -> kevent array -> int -> int64 -> int = 
-  "gluon_kevent"
-let gluon_set_nonblocking fd = Unix.set_nonblock fd
-external gluon_read : Unix.file_descr -> bytes -> int -> int -> int = "gluon_read"
-external gluon_write : Unix.file_descr -> bytes -> int -> int -> int = "gluon_write"
-external gluon_readv : Unix.file_descr -> Iovec.t array -> int = "gluon_readv"
-external gluon_writev : Unix.file_descr -> Iovec.t array -> int = "gluon_writev"
-external gluon_sendfile : Unix.file_descr -> Unix.file_descr -> int -> int -> int = "gluon_sendfile"
-
-(** {1 Syscall wrapper} *)
 
 let rec syscall fn =
-  try Ok (fn ())
-  with
-  | Unix.Unix_error (Unix.EINTR, _, _) -> 
-      (* Retry on EINTR *)
-      syscall fn
-  | Unix.Unix_error ((Unix.EAGAIN | Unix.EWOULDBLOCK), _, _) ->
+  match fn () with
+  | ok -> ok
+  | exception Unix.(Unix_error (EINTR, _, _)) -> syscall fn
+  | exception Unix.(Unix_error ((EAGAIN | EWOULDBLOCK), _, _)) ->
+      (* log "syscall is try again\n"; *)
       Error `Would_block
-  | Unix.Unix_error (Unix.EINPROGRESS, _, _) ->
-      Error `In_progress
-  | Unix.Unix_error (error, _, _) ->
-      Error (`System_error (Unix.error_message error))
-  | exn ->
-      Error (`System_error (Printexc.to_string exn))
+  | exception Unix.(Unix_error (reason, _, _)) -> Error (`Unix_error reason)
 
-(** {1 File I/O} *)
+module Fd = struct
+  type t = Unix.file_descr
 
-module File = struct
-  type t = Fd.t
-  
-  let pp = Fd.pp
-  
-  let close fd = 
-    try Unix.close fd
-    with Unix.Unix_error _ -> ()
-  
-  let read fd ?(pos = 0) ?len bytes =
-    let len = match len with
-      | None -> Bytes.length bytes - pos
-      | Some l -> l
-    in
-    match syscall (fun () -> gluon_read fd bytes pos len) with
-    | Ok n -> Ok n
-    | Error _ -> Error `Noop
-  
-  let write fd ?(pos = 0) ?len bytes =
-    let len = match len with
-      | None -> Bytes.length bytes - pos
-      | Some l -> l
-    in
-    match syscall (fun () -> gluon_write fd bytes pos len) with
-    | Ok n -> Ok n
-    | Error _ -> Error `Noop
-  
-  let read_vectored fd iovec =
-    match syscall (fun () -> gluon_readv fd [|iovec|]) with
-    | Ok n -> Ok n
-    | Error _ -> Error `Noop
-  
-  let write_vectored fd iovec =
-    match syscall (fun () -> gluon_writev fd [|iovec|]) with
-    | Ok n -> Ok n
-    | Error _ -> Error `Noop
-  
-  let to_source fd = fd
-  
-  let open_read path =
-    match syscall (fun () ->
-      Unix.openfile path [Unix.O_RDONLY; Unix.O_NONBLOCK; Unix.O_CLOEXEC] 0o644
-    ) with
-    | Ok fd -> Ok fd
-    | Error _ -> Error `Noop
-  
-  let open_write ?(create = true) ?(truncate = false) path =
-    let flags = [Unix.O_WRONLY; Unix.O_NONBLOCK; Unix.O_CLOEXEC] in
-    let flags = if create then Unix.O_CREAT :: flags else flags in
-    let flags = if truncate then Unix.O_TRUNC :: flags else flags in
-    match syscall (fun () -> Unix.openfile path flags 0o644) with
-    | Ok fd -> Ok fd
-    | Error _ -> Error `Noop
+  let to_int fd = Obj.magic fd
+  let make fd = fd
+  let pp fmt t = Format.fprintf fmt "Fd(%d)" (Obj.magic t)
+  let close t = Unix.close t
+  let seek = Unix.lseek
+  let equal a b = Int.equal (to_int a) (to_int b)
 end
 
-(** {1 Network I/O} *)
+module Non_zero_int = struct
+  type t = int
+
+  let make a = if a > 0 then Some a else None
+end
+
+module Interest : sig
+  type t
+
+  val readable : t
+  val writable : t
+  val add : t -> t -> t
+  val remove : t -> t -> t option
+  val is_readable : t -> bool
+  val is_writable : t -> bool
+end = struct
+  type t = Non_zero_int.t
+
+  let readable = 0b0001
+  let writable = 0b0010
+  let add a b = a lor b
+  let remove a b = Non_zero_int.make (a land lnot b)
+  let is_readable t = t land readable != 0
+  let is_writable t = t land writable != 0
+end
+
+module Event = struct
+  module type Intf = sig
+    type t
+
+    val is_error : t -> bool
+    val is_priority : t -> bool
+    val is_read_closed : t -> bool
+    val is_readable : t -> bool
+    val is_writable : t -> bool
+    val is_write_closed : t -> bool
+    val token : t -> Token.t
+  end
+
+  type t = E : (module Intf with type t = 'state) * 'state -> t
+
+  let make m e = E (m, e)
+  let token (E ((module Ev), state)) = Ev.token state
+  let is_readable (E ((module Ev), state)) = Ev.is_readable state
+  let is_writable (E ((module Ev), state)) = Ev.is_writable state
+  let is_error (E ((module Ev), state)) = Ev.is_error state
+  let is_read_closed (E ((module Ev), state)) = Ev.is_read_closed state
+  let is_write_closed (E ((module Ev), state)) = Ev.is_write_closed state
+  let is_priority (E ((module Ev), state)) = Ev.is_priority state
+end
+
+module Adapter = struct
+  type kevent
+  type kqueue = Fd.t
+  type event = { fd : Fd.t; filter : int; flags : int; token : int }
+
+  module FFI = struct
+    external gluon_unix_kevent :
+      max_events:int -> timeout:int64 -> kqueue -> event array
+      = "gluon_unix_kevent"
+
+    let kevent ~max_events ~timeout kq =
+      syscall @@ fun () -> Ok (gluon_unix_kevent ~max_events ~timeout kq)
+
+    external gluon_unix_kqueue : unit -> kqueue = "gluon_unix_kqueue"
+
+    let kqueue () = syscall @@ fun () -> Ok (gluon_unix_kqueue ())
+
+    external gluon_unix_fcntl : Fd.t -> cmd:int -> arg:int -> int
+      = "gluon_unix_fcntl"
+
+    let fcntl fd cmd arg = syscall @@ fun () -> Ok (gluon_unix_fcntl fd ~cmd ~arg)
+
+    external gluon_unix_kevent_register :
+      kqueue -> event array -> int array -> unit = "gluon_unix_kevent_register"
+
+    let kevent_register fd changes ignored_errors =
+      syscall @@ fun () ->
+      Ok (gluon_unix_kevent_register fd changes ignored_errors)
+  end
+
+  module Kevent = struct
+    type t = event
+
+    let make fd ~filter ~flags ~token = { fd; filter; flags; token }
+    let filter t = t.filter
+    let flags t = t.flags
+    let token t = Token.make t.token
+    let is_readable t = filter t = Libc.evfilt_read
+    let is_writable t = filter t = Libc.evfilt_write
+    let is_error t = flags t land Libc.ev_error != 0
+    let is_read_closed t = is_readable t && flags t land Libc.ev_eof != 0
+    let is_write_closed t = is_writable t && flags t land Libc.ev_eof != 0
+    let is_priority _t = false
+  end
+
+  module Selector = struct
+    let name = "kqueue"
+
+    type t = { kq : kqueue }
+
+    let make () =
+      let* kq = FFI.kqueue () in
+      let* _ = FFI.(fcntl kq Libc.f_setfd Libc.f_dupfd_cloexec) in
+      Ok { kq }
+
+    let select ?(timeout = 500_000_000L) ?(max_events = 1_000) t =
+      let* events = FFI.kevent ~timeout ~max_events t.kq in
+      let events = Array.to_list events in
+      let events = List.map (Event.make (module Kevent)) events in
+      Ok events
+
+    let register t ~fd ~token ~interest =
+      let token = Token.unsafe_to_int token in
+      let flags = Libc.(ev_clear lor ev_receipt lor ev_add) in
+      let changes = ref [] in
+
+      (if Interest.is_writable interest then
+        (* log "%a registering writeable interest for %a\r\n%!" Token.pp tok Fd.pp fd; *)
+        let kevent = Kevent.make fd ~filter:Libc.evfilt_write ~flags ~token in
+        changes := kevent :: !changes);
+
+      (if Interest.is_readable interest then
+        (* log "%a registering readable interest for %a\r\n%!" Token.pp tok Fd.pp fd; *)
+        let kevent = Kevent.make fd ~filter:Libc.evfilt_read ~flags ~token in
+        changes := kevent :: !changes);
+
+      let changes = Array.of_list !changes in
+      (* log "%a registering %a\r\n%!" Token.pp tok Fd.pp fd; *)
+      FFI.kevent_register t.kq changes [| Libc.epipe |]
+
+    let reregister t ~fd ~token ~interest =
+      let token = Token.unsafe_to_int token in
+      let flags = Libc.(ev_clear lor ev_receipt) in
+
+      let write_flags =
+        if Interest.is_writable interest then Libc.(flags lor ev_add)
+        else Libc.(flags lor ev_delete)
+      in
+
+      let read_flags =
+        if Interest.is_readable interest then Libc.(flags lor ev_add)
+        else Libc.(flags lor ev_delete)
+      in
+
+      let changes =
+        [|
+        Kevent.make fd ~filter:Libc.evfilt_write ~flags:write_flags ~token;
+        Kevent.make fd ~filter:Libc.evfilt_read ~flags:read_flags ~token;
+        |]
+      in
+
+      (* log "reregistering %a\r\n%!" Fd.pp fd; *)
+      FFI.kevent_register t.kq changes Libc.[| epipe; enoent |]
+
+    let deregister t ~fd =
+      let flags = Libc.(ev_delete lor ev_receipt) in
+      let changes =
+        [|
+        Kevent.make fd ~filter:Libc.evfilt_write ~flags ~token:0;
+        Kevent.make fd ~filter:Libc.evfilt_read ~flags ~token:0;
+        |]
+      in
+      (* log "deregistering %a\r\n%!" Fd.pp fd; *)
+      FFI.kevent_register t.kq changes Libc.[| enoent |]
+  end
+
+  module Event = Kevent
+end
+
+module Source = struct
+
+module type Intf = sig
+  type t
+
+  val deregister : t -> Adapter.Selector.t -> (unit, [> `Noop ]) io_result
+
+  val register :
+    t -> Adapter.Selector.t -> Token.t -> Interest.t -> (unit, [> `Noop ]) io_result
+
+  val reregister :
+    t -> Adapter.Selector.t -> Token.t -> Interest.t -> (unit, [> `Noop ]) io_result
+end
+
+type t = S : ((module Intf with type t = 'state) * 'state) -> t
+
+let make src state = S (src, state)
+let register (S ((module Src), state)) = Src.register state
+let reregister (S ((module Src), state)) = Src.reregister state
+let deregister (S ((module Src), state)) = Src.deregister state
+end
+
+
+module File = struct
+
+type t = Fd.t
+
+let pp = Fd.pp
+let close = Fd.close
+
+let read fd ?(pos = 0) ?len buf =
+  let len = Option.value len ~default:(Bytes.length buf - 1) in
+  syscall @@ fun () -> Ok (UnixLabels.read fd ~buf ~pos ~len)
+
+let write fd ?(pos = 0) ?len buf =
+  let len = Option.value len ~default:(Bytes.length buf - 1) in
+  syscall @@ fun () -> Ok (UnixLabels.write fd ~buf ~pos ~len)
+
+external gluon_readv : Unix.file_descr -> Iovec.t -> int = "gluon_unix_readv"
+
+let read_vectored fd iov = syscall @@ fun () -> Ok (gluon_readv fd iov)
+
+external gluon_writev : Unix.file_descr -> Iovec.t -> int = "gluon_unix_writev"
+
+let write_vectored fd iov = syscall @@ fun () -> Ok (gluon_writev fd iov)
+
+external gluon_sendfile :
+  Unix.file_descr -> Unix.file_descr -> int -> int -> int
+  = "gluon_unix_sendfile"
+
+let sendfile fd ~file ~off ~len =
+  syscall @@ fun () -> Ok (gluon_sendfile file fd off len)
+
+let to_source t =
+  let module Src = struct
+    type nonrec t = t
+
+    let register t selector token interest =
+      Adapter.Selector.register selector ~fd:t ~token ~interest
+
+    let reregister t selector token interest =
+      Adapter.Selector.reregister selector ~fd:t ~token ~interest
+
+    let deregister t selector = Adapter.Selector.deregister selector ~fd:t
+  end in
+  Source.make (module Src) t
+end
 
 module Net = struct
+
   module Addr = struct
     type 't raw_addr = string
     type tcp_addr = [ `v4 | `v6 ] raw_addr
-    
-    type stream_addr = {
-      family: Unix.socket_domain;
-      addr: Unix.inet_addr;
-      port: int;
-    }
-    
-    let loopback : tcp_addr = Unix.inet_addr_loopback |> Unix.string_of_inet_addr
-    
-    let to_string : tcp_addr -> string = fun addr -> addr
-    
-    let tcp (addr : tcp_addr) port =
-      let inet_addr = Unix.inet_addr_of_string (addr :> string) in
-      let family = 
-        if String.contains (addr :> string) ':' then Unix.PF_INET6 
-        else Unix.PF_INET 
-      in
-      { family; addr = inet_addr; port }
-    
-    let ip t = Unix.string_of_inet_addr t.addr
-    let port t = t.port
-    
-    let pp fmt t =
-      Format.fprintf fmt "%s:%d" (ip t) (port t)
-    
-    let to_domain t = t.family
-    
-    let to_unix t =
-      Unix.SOCK_STREAM, Unix.ADDR_INET (t.addr, t.port)
-    
-    let of_unix = function
-      | Unix.ADDR_INET (addr, port) ->
-          let family = 
-            if String.contains (Unix.string_of_inet_addr addr) ':' 
-            then Unix.PF_INET6 else Unix.PF_INET 
-          in
-          { family; addr; port }
-      | _ -> failwith "Unsupported address type"
-    
-    let of_addr_info info =
-      match info.Unix.ai_addr with
-      | Unix.ADDR_INET (addr, port) ->
-          Some { family = info.ai_family; addr; port }
+    type stream_addr = [ `Tcp of tcp_addr * int ]
+
+    module Ipaddr = struct
+      let to_unix : tcp_addr -> Unix.inet_addr = Unix.inet_addr_of_string
+      let of_unix : Unix.inet_addr -> tcp_addr = Unix.string_of_inet_addr
+    end
+
+    let loopback : tcp_addr = "0.0.0.0"
+
+    let tcp host port =
+      assert (String.length host > 0);
+      `Tcp (host, port)
+
+    let to_unix addr =
+      match addr with
+      | `Tcp (host, port) ->
+        (Unix.SOCK_STREAM, Unix.ADDR_INET (Ipaddr.to_unix host, port))
+
+    let to_domain addr = match addr with `Tcp (_host, _) -> Unix.PF_INET
+
+    let of_unix sockaddr =
+      match sockaddr with
+      | Unix.ADDR_INET (host, port) -> tcp (Ipaddr.of_unix host) port
+      | Unix.ADDR_UNIX addr -> failwith ("unsupported unix addresses: " ^ addr)
+
+    let pp ppf (addr : stream_addr) =
+      match addr with `Tcp (host, port) -> Format.fprintf ppf "%s:%d" host port
+
+    let to_string t = t
+
+    let of_addr_info Unix.{ ai_family; ai_addr; ai_socktype; ai_protocol; _ } =
+      match (ai_family, ai_socktype, ai_addr) with
+      | ( (Unix.PF_INET | Unix.PF_INET6),
+        (Unix.SOCK_DGRAM | Unix.SOCK_STREAM),
+        Unix.ADDR_INET (addr, port) ) -> (
+          match ai_protocol with
+          | 6 -> Some (tcp (Unix.string_of_inet_addr addr) port)
+          | _ -> None)
       | _ -> None
-    
-    let parse str =
-      try
-        match String.rindex_opt str ':' with
-        | None -> Error `Noop
-        | Some idx ->
-            let host = String.sub str 0 idx in
-            let port_str = String.sub str (idx + 1) (String.length str - idx - 1) in
-            let port = int_of_string port_str in
-            let addr = Unix.inet_addr_of_string host in
-            let family = if String.contains host ':' then Unix.PF_INET6 else Unix.PF_INET in
-            Ok { family; addr; port }
-      with _ -> Error `Noop
-    
-    
-    let get_info addr =
-      try
-        let _sock_type, _sock_addr = to_unix addr in
-        let host = ip addr in
-        let service = string_of_int (port addr) in
-        let info_list = Unix.getaddrinfo host service [] in
-        let addrs = List.filter_map of_addr_info info_list in
-        Ok addrs
-      with _ -> Error `Noop
+
+    let get_info host service =
+      syscall @@ fun () ->
+      let info = Unix.getaddrinfo host service [] in
+      Ok (List.filter_map of_addr_info info)
+
+    let of_host_and_port ~host ~port = 
+      match get_info host (Int.to_string port) with
+      | Ok (ip :: _) -> Ok ip
+      | Ok [] -> Error `No_info
+      | Error err -> Error err
+
+    let get_info (`Tcp (host, port)) = get_info host (Int.to_string port)
+    let ip (`Tcp (ip, _)) = ip
+    let port (`Tcp (_, port)) = port
   end
-  
+
   module Socket = struct
     type 'kind socket = Fd.t
     type listen_socket = [ `listen ] socket
     type stream_socket = [ `stream ] socket
-    
-    let pp = Fd.pp
-    let close fd = try Unix.close fd with _ -> ()
+
+    let pp fmt t = Fd.pp fmt t
+    let close t = Unix.close t
+
+    let make sock_domain sock_type =
+      let fd = Unix.socket ~cloexec:true sock_domain sock_type 0 in
+      Unix.set_nonblock fd;
+      Fd.make fd
   end
-  
-  module TcpStream = struct
-    type t = Socket.stream_socket
-    
-    let pp = Socket.pp
-    let close = Socket.close
-    
-    let connect addr =
-      let sock_type, sock_addr = Addr.to_unix addr in
-      match syscall (fun () ->
-        let sock = Unix.socket (Addr.to_domain addr) sock_type 0 in
-        gluon_set_nonblocking sock;
-        sock
-      ) with
-      | Error _ -> Error `Noop
-      | Ok sock ->
-          match syscall (fun () ->
-            Unix.connect sock sock_addr;
-            0
-          ) with
-          | Ok _ -> Ok (`Connected sock)
-          | Error `In_progress -> Ok (`In_progress sock)
-          | Error _ -> 
-              Unix.close sock;
-              Error `Noop
-    
-    let read t ?pos ?len bytes = File.read t ?pos ?len bytes
-    let write t ?pos ?len bytes = File.write t ?pos ?len bytes
-    let read_vectored t iovec = File.read_vectored t iovec
-    let write_vectored t iovec = File.write_vectored t iovec
-    
-    let sendfile t ~file ~off ~len =
-      match syscall (fun () -> gluon_sendfile t file off len) with
-      | Ok n -> Ok n
-      | Error _ -> Error `Noop
-    
-    let to_source t = t
-  end
-  
+
   module TcpListener = struct
     type t = Socket.listen_socket
-    
+
     let pp = Socket.pp
     let close = Socket.close
-    
-    let bind ?(reuse_addr = true) ?(reuse_port = false) ?(backlog = 128) addr =
+
+    let bind ?(reuse_addr = true) ?(reuse_port = true) ?(backlog = 128) addr =
+      syscall @@ fun () ->
+      let sock_domain = Addr.to_domain addr in
       let sock_type, sock_addr = Addr.to_unix addr in
-      match syscall (fun () ->
-        let sock = Unix.socket (Addr.to_domain addr) sock_type 0 in
-        gluon_set_nonblocking sock;
-        sock
-      ) with
-      | Error _ -> Error `Noop
-      | Ok sock ->
-          (* Set socket options *)
-          (try
-            if reuse_addr then
-              Unix.setsockopt sock Unix.SO_REUSEADDR true;
-            if reuse_port then
-              Unix.setsockopt sock Unix.SO_REUSEPORT true
-          with _ -> ());
-          
-          (* Bind and listen *)
-          match syscall (fun () ->
-            Unix.bind sock sock_addr;
-            Unix.listen sock backlog
-          ) with
-          | Ok () -> Ok sock
-          | Error _ ->
-              Unix.close sock;
-              Error `Noop
-    
-    let accept t =
-      match syscall (fun () -> Unix.accept t) with
-      | Ok (client_sock, client_addr) ->
-          let _ = syscall (fun () -> gluon_set_nonblocking client_sock) in
-          Ok (client_sock, Addr.of_unix client_addr)
-      | Error _ -> Error `Noop
-    
-    let to_source t = t
+      let fd = Socket.make sock_domain sock_type in
+      Unix.setsockopt fd Unix.SO_REUSEADDR reuse_addr;
+      Unix.setsockopt fd Unix.SO_REUSEPORT reuse_port;
+      Unix.bind fd sock_addr;
+      Unix.listen fd backlog;
+      Ok fd
+
+    let accept fd =
+      syscall @@ fun () ->
+      let raw_fd, client_addr = Unix.accept ~cloexec:true fd in
+      Unix.set_nonblock raw_fd;
+      let addr = Addr.of_unix client_addr in
+      let fd = Fd.make raw_fd in
+      Ok (fd, addr)
+
+    let to_source t =
+      let module Src = struct
+        type nonrec t = t
+
+        let register t selector token interest =
+          Adapter.Selector.register selector ~fd:t ~token ~interest
+
+        let reregister t selector token interest =
+          Adapter.Selector.reregister selector ~fd:t ~token ~interest
+
+        let deregister t selector = Adapter.Selector.deregister selector ~fd:t
+      end in
+      Source.make (module Src) t
+  end
+
+  module TcpStream = struct
+
+    type t = Socket.stream_socket
+
+    let pp = Socket.pp
+    let close = Socket.close
+
+    let connect addr =
+      let sock_domain = Addr.to_domain addr in
+      let sock_type, sock_addr = Addr.to_unix addr in
+      let fd = Socket.make sock_domain sock_type in
+      syscall @@ fun () ->
+      try
+        Unix.connect fd sock_addr;
+        Ok (`Connected fd)
+      with Unix.(Unix_error (EINPROGRESS, _, _)) -> Ok (`In_progress fd)
+
+    let read fd ?(pos = 0) ?len buf =
+      let len = Option.value len ~default:(Bytes.length buf - 1) in
+      syscall @@ fun () -> Ok (UnixLabels.read fd ~buf ~pos ~len)
+
+    let write fd ?(pos = 0) ?len buf =
+      let len = Option.value len ~default:(Bytes.length buf - 1) in
+      syscall @@ fun () -> Ok (UnixLabels.write fd ~buf ~pos ~len)
+
+    external gluon_readv : Unix.file_descr -> Iovec.t -> int = "gluon_unix_readv"
+
+    let read_vectored fd iov = syscall @@ fun () -> Ok (gluon_readv fd iov)
+
+    external gluon_writev : Unix.file_descr -> Iovec.t -> int
+      = "gluon_unix_writev"
+
+    let write_vectored fd iov = syscall @@ fun () -> Ok (gluon_writev fd iov)
+
+    external gluon_sendfile :
+      Unix.file_descr -> Unix.file_descr -> int -> int -> int
+      = "gluon_unix_sendfile"
+
+    let sendfile fd ~file ~off ~len =
+      syscall @@ fun () -> Ok (gluon_sendfile file fd off len)
+
+    let to_source t =
+      let module Src = struct
+        type nonrec t = t
+
+        let register t selector token interest =
+          Adapter.Selector.register selector ~fd:t ~token ~interest
+
+        let reregister t selector token interest =
+          Adapter.Selector.reregister selector ~fd:t ~token ~interest
+
+        let deregister t selector = Adapter.Selector.deregister selector ~fd:t
+      end in
+      Source.make (module Src) t
   end
 end
 
-(** {1 Poll Type and Operations} *)
+module Poll = struct
 
-type t = {
-  kq: Unix.file_descr;
-  mutable registered_fds: (int, Token.t * Interest.t) Hashtbl.t [@warning "-unused-field"];
-}
+  type t = { selector : Adapter.Selector.t }
 
-let create () =
-  match syscall (fun () ->
-    let kq = gluon_kqueue () in
-    { kq; registered_fds = Hashtbl.create 128 }
-  ) with
-  | Ok t -> Ok t
-  | Error (`System_error msg) -> Error (`System_error msg)
-  | Error _ -> Error (`System_error "Failed to create kqueue")
+  let make () =
+    let* selector = Adapter.Selector.make () in
+    Ok { selector }
 
-let make_changelist fd token interests =
-  let changes = ref [] in
-  
-  (* Add read event if readable interest *)
-  if Interest.is_readable interests then
-    changes := {
-      ident = Fd.to_int fd;
-      filter = Kqueue_const.evfilt_read;
-      flags = Kqueue_const.(ev_add lor ev_enable);
-      fflags = 0;
-      data = 0;
-      udata = token;
-    } :: !changes;
-  
-  (* Add write event if writable interest *)
-  if Interest.is_writable interests then
-    changes := {
-      ident = Fd.to_int fd;
-      filter = Kqueue_const.evfilt_write;
-      flags = Kqueue_const.(ev_add lor ev_enable);
-      fflags = 0;
-      data = 0;
-      udata = token;
-    } :: !changes;
-  
-  Array.of_list !changes
+  let poll ?max_events ?timeout t =
+    Adapter.Selector.select ?timeout ?max_events t.selector
 
-let make_delete_changelist fd interests =
-  let changes = ref [] in
-  
-  (* Only delete events that were registered *)
-  if Interest.is_readable interests then
-    changes := {
-      ident = Fd.to_int fd;
-      filter = Kqueue_const.evfilt_read;
-      flags = Kqueue_const.ev_delete;
-      fflags = 0;
-      data = 0;
-      udata = Obj.magic 0;  (* NULL for delete operations *)
-    } :: !changes;
-  
-  if Interest.is_writable interests then
-    changes := {
-      ident = Fd.to_int fd;
-      filter = Kqueue_const.evfilt_write;
-      flags = Kqueue_const.ev_delete;
-      fflags = 0;
-      data = 0;
-      udata = Obj.magic 0;  (* NULL for delete operations *)
-    } :: !changes;
-  
-  Array.of_list !changes
+  let register (t : t) token interests source =
+    Source.register source t.selector token interests
 
-let poll ?timeout ?(max_events = 1024) t =
-  let timeout_ns = 
-    match timeout with
-    | None -> -1L  (* Block indefinitely *)
-    | Some ms -> Int64.(mul (of_int ms) 1_000_000L)  (* Convert ms to ns *)
-  in
-  
-  match syscall (fun () ->
-    let events = Array.make max_events (Obj.magic 0 : kevent) in
-    let n = gluon_kevent t.kq [||] 0 events max_events timeout_ns in
-    if n = 0 then [||]
-    else Array.sub events 0 n
-  ) with
-  | Ok events -> Ok events
-  | Error (`System_error msg) -> Error (`System_error msg)
-  | Error _ -> Error (`System_error "Poll failed")
+  let reregister (t : t) token interests source =
+    Source.reregister source t.selector token interests
 
-let register t ~fd ~token ~interests =
-  let fd_int = Fd.to_int fd in
-  
-  (* Check if already registered *)
-  if Hashtbl.mem t.registered_fds fd_int then
-    Error (`System_error "File descriptor already registered")
-  else
-    let changelist = make_changelist fd token interests in
-    match syscall (fun () ->
-      let _ = gluon_kevent t.kq changelist (Array.length changelist) [||] 0 0L in
-      Hashtbl.add t.registered_fds fd_int (token, interests)
-    ) with
-    | Ok () -> Ok ()
-    | Error (`System_error msg) -> Error (`System_error msg)
-    | Error _ -> Error (`System_error "Failed to register file descriptor")
-
-let reregister t ~fd ~token ~interests =
-  let fd_int = Fd.to_int fd in
-  
-  (* Must be already registered *)
-  match Hashtbl.find_opt t.registered_fds fd_int with
-  | None -> Error (`System_error "File descriptor not registered")
-  | Some (_old_token, old_interests) ->
-      (* First remove old events *)
-      let delete_list = make_delete_changelist fd old_interests in
-      let* () = match syscall (fun () ->
-        let _ = gluon_kevent t.kq delete_list (Array.length delete_list) [||] 0 0L in
-        ()
-      ) with
-      | Ok () -> Ok ()
-      | Error (`System_error msg) -> Error (`System_error msg)
-      | Error _ -> Error (`System_error "Failed to delete old events")
-      in
-      
-      (* Then add new events *)
-      let changelist = make_changelist fd token interests in
-      match syscall (fun () ->
-        let _ = gluon_kevent t.kq changelist (Array.length changelist) [||] 0 0L in
-        Hashtbl.replace t.registered_fds fd_int (token, interests)
-      ) with
-      | Ok () -> Ok ()
-      | Error (`System_error msg) -> Error (`System_error msg)
-      | Error _ -> Error (`System_error "Failed to add new events")
-
-let deregister t ~fd =
-  let fd_int = Fd.to_int fd in
-  
-  match Hashtbl.find_opt t.registered_fds fd_int with
-  | None -> Error (`System_error "File descriptor not registered")
-  | Some (_token, interests) ->
-      let changelist = make_delete_changelist fd interests in
-      match syscall (fun () ->
-        let _ = gluon_kevent t.kq changelist (Array.length changelist) [||] 0 0L in
-        Hashtbl.remove t.registered_fds fd_int
-      ) with
-      | Ok () -> Ok ()
-      | Error (`System_error msg) -> Error (`System_error msg)
-      | Error _ -> Error (`System_error "Failed to deregister")
-
-let set_nonblocking fd =
-  match syscall (fun () -> gluon_set_nonblocking fd) with
-  | Ok () -> Ok ()
-  | Error (`System_error msg) -> Error (`System_error msg)
-  | Error _ -> Error (`System_error "Failed to set non-blocking")
-
-let pipe () =
-  match syscall (fun () -> Unix.pipe ()) with
-  | Error (`System_error msg) -> Error (`System_error msg) 
-  | Error _ -> Error (`System_error "Failed to create pipe")
-  | Ok (read_fd, write_fd) ->
-      match set_nonblocking read_fd with
-      | Error e -> 
-          Unix.close read_fd;
-          Unix.close write_fd;
-          Error e
-      | Ok () ->
-          match set_nonblocking write_fd with
-          | Error e ->
-              Unix.close read_fd;
-              Unix.close write_fd;
-              Error e
-          | Ok () -> Ok (read_fd, write_fd)
-
-let pp fmt t =
-  Format.fprintf fmt "Gluon.Poll(kqueue=%a, registered=%d)" 
-    Fd.pp t.kq 
-    (Hashtbl.length t.registered_fds)
+  let deregister (t : t) source = Source.deregister source t.selector
+end 

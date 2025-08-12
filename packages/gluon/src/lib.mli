@@ -1,83 +1,167 @@
-(** Gluon - Minimal kqueue-based I/O event notification for macOS
-    
-    This library provides a clean, minimal interface for I/O event notification
-    using kqueue on macOS. It focuses on simplicity and performance. *)
+type io_error =
+  [ `Connection_closed
+  | `Exn of exn
+  | `No_info
+  | `Unix_error of Unix.error [@config not (target_arch = "js")]
+  | `Noop
+  | `Eof
+  | `Closed
+  | `Process_down
+  | `Timeout
+  | `Would_block ]
 
-(** {1 Core Types} *)
+type ('ok, 'err) io_result = ('ok, ([> io_error ] as 'err)) Stdlib.result
 
-(** File descriptor type - just the descriptor, no operations *)
-module Fd : sig
-  type t = Unix.file_descr
-  
-  val to_int : t -> int
-  val pp : Format.formatter -> t -> unit
-end
-
-(** I/O result type *)
-type ('a, 'e) io_result = ('a, ([> `Noop ] as 'e)) result
-
-(** Token for identifying events. Can be any value. *)
-module Token : sig
-  type t
-  
-  val make : 'a -> t
-  val unsafe_to_value : t -> 'a
-  val equal : ?eq:('a -> 'a -> bool) -> t -> t -> bool
-  val pp : Format.formatter -> t -> unit
-end
-
-(** I/O interests that can be registered *)
-module Interest : sig
-  type t
-  
-  val readable : t
-  val writable : t
-  
-  val ( + ) : t -> t -> t
-  (** [a + b] combines interests [a] and [b] *)
-  
-  val ( - ) : t -> t -> t option
-  (** [a - b] removes interest [b] from [a], returns [None] if result is empty *)
-  
-  val is_readable : t -> bool
-  val is_writable : t -> bool
-  val pp : Format.formatter -> t -> unit
-end
-
-(** Events returned by polling *)
-module Event : sig
-  type t
-  
-  val token : t -> Token.t
-  val is_readable : t -> bool
-  val is_writable : t -> bool
-  val is_error : t -> bool
-  val is_eof : t -> bool
-  val pp : Format.formatter -> t -> unit
-end
-
-(** {1 I/O Sources} *)
-
-(** Source abstraction for registerable I/O objects *)
-module Source : sig
-  type t
-  
-  val fd : t -> Fd.t
-end
-
-(** {1 I/O Vectors} *)
+val pp_err : Format.formatter -> [< io_error ] -> unit
 
 module Iovec : sig
-  type t
-  
-  val create : bytes -> pos:int -> len:int -> t
-  val create_array : (bytes * int * int) array -> t array
+  type iov = { ba : bytes; off : int; len : int }
+  type t = iov array
+
+  val with_capacity : int -> t
+  val create : ?count:int -> size:int -> unit -> t
+  val sub : ?pos:int -> len:int -> t -> t
+  val length : t -> int
+  val iter : t -> (iov -> unit) -> unit
+  val of_bytes : bytes -> t
+  val from_string : string -> t
+  val from_buffer : Buffer.t -> t
+  val into_string : t -> string
 end
 
-(** {1 File I/O} *)
+module Fd : sig
+  type t = Unix.file_descr
+
+  val close : t -> unit
+  val equal : t -> t -> bool
+  val make : Unix.file_descr -> t
+  val pp : Format.formatter -> t -> unit
+  val seek : t -> int -> Unix.seek_command -> int
+  val to_int : t -> int
+end
+
+module Non_zero_int : sig
+  type t = int
+
+  val make : int -> int option
+end
+
+module Token : sig
+  type t
+
+  val hash : t -> int
+  val equal : ?eq:('a -> 'a -> bool) -> t -> t -> bool
+  val make : 'value -> t
+  val pp : Format.formatter -> t -> unit
+  val unsafe_to_value : t -> 'value
+end
+
+module Interest : sig
+  type t
+
+  val add : t -> t -> t
+  val is_readable : t -> bool
+  val is_writable : t -> bool
+  val readable : t
+  val remove : t -> t -> t option
+  val writable : t
+end
+
+module Event : sig
+  module type Intf = sig
+    type t
+
+    val is_error : t -> bool
+    val is_priority : t -> bool
+    val is_read_closed : t -> bool
+    val is_readable : t -> bool
+    val is_writable : t -> bool
+    val is_write_closed : t -> bool
+    val token : t -> Token.t
+  end
+
+  type t
+
+  val is_error : t -> bool
+  val is_priority : t -> bool
+  val is_read_closed : t -> bool
+  val is_readable : t -> bool
+  val is_writable : t -> bool
+  val is_write_closed : t -> bool
+  val make : (module Intf with type t = 'state) -> 'state -> t
+  val token : t -> Token.t
+end
+
+module Adapter : sig
+  module Selector : sig
+    type t
+
+    val name : string
+    val make : unit -> (t, [> `Noop ]) io_result
+
+    val select :
+      ?timeout:int64 ->
+      ?max_events:int ->
+      t ->
+      (Event.t list, [> `Noop ]) io_result
+
+    val register :
+      t ->
+      fd:Fd.t ->
+      token:Token.t ->
+      interest:Interest.t ->
+      (unit, [> `Noop ]) io_result
+
+    val reregister :
+      t ->
+      fd:Fd.t ->
+      token:Token.t ->
+      interest:Interest.t ->
+      (unit, [> `Noop ]) io_result
+
+    val deregister : t -> fd:Fd.t -> (unit, [> `Noop ]) io_result
+  end
+
+  module Event : sig
+    type t
+  end
+end
+
+module Source : sig
+  module type Intf = sig
+    type t
+
+    val deregister : t -> Adapter.Selector.t -> (unit, [> `Noop ]) io_result
+
+    val register :
+      t ->
+      Adapter.Selector.t ->
+      Token.t ->
+      Interest.t ->
+      (unit, [> `Noop ]) io_result
+
+    val reregister :
+      t ->
+      Adapter.Selector.t ->
+      Token.t ->
+      Interest.t ->
+      (unit, [> `Noop ]) io_result
+  end
+
+  type t = S : ((module Intf with type t = 'state) * 'state) -> t
+
+  val deregister : t -> Adapter.Selector.t -> (unit, [> `Noop ]) io_result
+  val make : (module Intf with type t = 'a) -> 'a -> t
+
+  val register :
+    t -> Adapter.Selector.t -> Token.t -> Interest.t -> (unit, [> `Noop ]) io_result
+
+  val reregister :
+    t -> Adapter.Selector.t -> Token.t -> Interest.t -> (unit, [> `Noop ]) io_result
+end
 
 module File : sig
-  type t = Fd.t
+  type t = Unix.file_descr
 
   val pp : Format.formatter -> t -> unit
   val close : t -> unit
@@ -86,15 +170,7 @@ module File : sig
   val read_vectored : t -> Iovec.t -> (int, [> `Noop ]) io_result
   val write_vectored : t -> Iovec.t -> (int, [> `Noop ]) io_result
   val to_source : t -> Source.t
-  
-  (** Open a file for reading *)
-  val open_read : string -> (t, [> `Noop ]) io_result
-  
-  (** Open a file for writing *)
-  val open_write : ?create:bool -> ?truncate:bool -> string -> (t, [> `Noop ]) io_result
 end
-
-(** {1 Network I/O} *)
 
 module Net : sig
   module Addr : sig
@@ -107,7 +183,7 @@ module Net : sig
     val loopback : tcp_addr
     val of_addr_info : Unix.addr_info -> stream_addr option
     val of_unix : Unix.sockaddr -> stream_addr
-    val parse : string -> (stream_addr, [> `Noop ]) io_result
+    val of_host_and_port : host:string -> port:int -> (stream_addr, [> `Noop ]) io_result
     val port : stream_addr -> int
     val pp : Format.formatter -> stream_addr -> unit
     val tcp : tcp_addr -> int -> stream_addr
@@ -166,60 +242,21 @@ module Net : sig
   end
 end
 
-(** {1 Kqueue Polling} *)
+module Poll : sig
+  type t
 
-(** Poll instance (wraps a kqueue) *)
-type t
+  val deregister : t -> Source.t -> (unit, [> `Noop ]) io_result
+  val make : unit -> (t, [> `Noop ]) io_result
 
-(** Create a new kqueue instance *)
-val create : unit -> (t, [> `System_error of string ]) result
+  val poll :
+    ?max_events:int ->
+    ?timeout:int64 ->
+    t ->
+    (Event.t list, [> `Noop ]) io_result
 
-(** Poll for events
-    
-    @param timeout Timeout in milliseconds. None means block indefinitely, Some 0 means non-blocking
-    @param max_events Maximum number of events to return (default: 1024)
-    @return Array of events or error *)
-val poll : 
-  ?timeout:int -> 
-  ?max_events:int -> 
-  t -> 
-  (Event.t array, [> `System_error of string ]) result
+  val register :
+    t -> Token.t -> Interest.t -> Source.t -> (unit, [> `Noop ]) io_result
 
-(** {1 Registration} *)
-
-(** Register a file descriptor with interests
-    
-    @param fd File descriptor to monitor
-    @param token Token to identify events from this fd
-    @param interests I/O interests to monitor *)
-val register : 
-  t -> 
-  fd:Fd.t -> 
-  token:Token.t -> 
-  interests:Interest.t -> 
-  (unit, [> `System_error of string ]) result
-
-(** Re-register a file descriptor with new interests *)
-val reregister : 
-  t -> 
-  fd:Fd.t -> 
-  token:Token.t -> 
-  interests:Interest.t -> 
-  (unit, [> `System_error of string ]) result
-
-(** Deregister a file descriptor *)
-val deregister : 
-  t -> 
-  fd:Fd.t -> 
-  (unit, [> `System_error of string ]) result
-
-(** {1 Utilities} *)
-
-(** Create a pipe with both ends set to non-blocking mode *)
-val pipe : unit -> (Fd.t * Fd.t, [> `System_error of string ]) result
-
-(** Set a file descriptor to non-blocking mode *)
-val set_nonblocking : Fd.t -> (unit, [> `System_error of string ]) result
-
-(** Pretty-print poll instance info *)
-val pp : Format.formatter -> t -> unit
+  val reregister :
+    t -> Token.t -> Interest.t -> Source.t -> (unit, [> `Noop ]) io_result
+end
