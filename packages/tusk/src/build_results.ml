@@ -1,6 +1,6 @@
 (** Build results - tracks which packages have been built *)
 
-type status = NotStarted | Building | Built | Failed of string
+type status = NotStarted | Building | Built of Hasher.hash | Failed of string (* Built now stores the content hash *)
 type t = { mutable results : (string, status) Hashtbl.t }
 
 (** Create a new build results tracker *)
@@ -21,12 +21,16 @@ let init_package t pkg =
 let is_tracked t pkg =
   Hashtbl.mem t.results pkg
 
+(** Get the status of a package *)
+let get_status t pkg =
+  Hashtbl.find_opt t.results pkg
+
 (** Check if all dependencies are built *)
 let dependencies_ready t deps =
   List.for_all
     (fun dep ->
       match Hashtbl.find_opt t.results dep with
-      | Some Built -> true
+      | Some (Built _) -> true
       | _ -> false)
     deps
 
@@ -35,15 +39,20 @@ let get_unbuilt_deps t deps =
   List.filter
     (fun dep ->
       match Hashtbl.find_opt t.results dep with
-      | Some Built -> false
+      | Some (Built _) -> false
       | _ -> true)
     deps
 
 (** Mark a package as building *)
 let mark_building t pkg = Hashtbl.replace t.results pkg Building
 
-(** Mark a package as built *)
-let mark_built t pkg = Hashtbl.replace t.results pkg Built
+(** Mark a package as built with its content hash *)
+let mark_built_with_hash t pkg hash = Hashtbl.replace t.results pkg (Built hash)
+
+(** Mark a package as built (legacy function for backwards compatibility) *)
+let mark_built t pkg = 
+  let unknown_hash = Hasher.of_string "unknown" in
+  Hashtbl.replace t.results pkg (Built unknown_hash)
 
 (** Mark a package as failed *)
 let mark_failed t pkg error = Hashtbl.replace t.results pkg (Failed error)
@@ -88,14 +97,17 @@ let build_outputs_exist workspace pkg_name =
   (* Check if key build outputs exist *)
   Sys.file_exists cma_file && Sys.file_exists cmi_file
 
-(** Check if a package is built *)
-let is_built t pkg =
-  match Hashtbl.find_opt t.results pkg with Some Built -> true | _ -> false
 
-(** Check if a package is built and outputs are still valid *)
+(** Check if a package is built with the current content hash *)
+let is_built_with_current_hash t pkg current_hash =
+  match Hashtbl.find_opt t.results pkg with
+  | Some (Built stored_hash) -> Hasher.equal stored_hash current_hash
+  | _ -> false
+
+(** Check if a package is built and outputs are still valid (legacy timestamp-based) *)
 let is_built_with_outputs_check t pkg workspace =
   match Hashtbl.find_opt t.results pkg with 
-  | Some Built -> 
+  | Some (Built _) -> 
       build_outputs_exist workspace pkg && 
       not (sources_newer_than_outputs workspace pkg)
   | _ -> false
@@ -108,7 +120,7 @@ let is_building t pkg =
 let all_done t =
   Hashtbl.fold
     (fun _pkg status acc ->
-      acc && match status with Built | Failed _ -> true | _ -> false)
+      acc && match status with Built _ | Failed _ -> true | _ -> false)
     t.results true
 
 (** Get build statistics *)
@@ -120,7 +132,7 @@ let get_stats t =
   Hashtbl.iter
     (fun _pkg status ->
       match status with
-      | Built -> incr built
+      | Built _ -> incr built
       | Failed _ -> incr failed
       | Building -> incr building
       | NotStarted -> incr not_started)
