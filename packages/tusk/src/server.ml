@@ -266,7 +266,8 @@ let handle_scan_workspace state target_package =
   (* Print the build graph if we have one *)
   (match build_graph with
   | None -> Printf.printf "[Server] No packages found in workspace\n"
-  | Some graph -> Build_graph.print graph);
+  | Some graph -> 
+      Build_graph.print graph);
 
   { state with workspace = Some workspace; build_graph; current_build_graph = build_graph }
 
@@ -648,8 +649,17 @@ let rec server_loop state =
   | NextTask worker_pid ->
       Printf.printf "[Server] Worker %s requesting task\n"
         (Pid.to_string worker_pid);
-      handle_next_task state worker_pid;
-      server_loop state
+      (* Check if this worker is still in our active workers list *)
+      if List.mem worker_pid state.workers then (
+        handle_next_task state worker_pid;
+        server_loop state
+      ) else (
+        (* Worker was already shut down, tell it to shutdown again *)
+        Printf.printf "[Server] Ignoring request from shut down worker %s\n"
+          (Pid.to_string worker_pid);
+        send worker_pid Shutdown;
+        server_loop state
+      )
   | TaskComplete (pkg_name, success) ->
       handle_task_complete state pkg_name success;
 
@@ -661,22 +671,18 @@ let rec server_loop state =
         Printf.printf "[Server] All builds complete! Built: %d, Failed: %d\n"
           built failed;
 
-        (* Notify CLI that we're done *)
-        (match state.cli_pid with
-        | Some pid -> 
-            (* Send BuildFinished for CLI client *)
-            send pid (BuildFinished { successful = built; failed })
-        | None -> ());
-
-        (* Shutdown workers *)
-        List.iter (fun w -> send w Shutdown) state.workers;
-
-        (* Give workers time to shutdown *)
-        sleep 0.5;
-        
-        (* If this was an RPC client build, continue server loop. Otherwise exit. *)
-        match state.rpc_client_pid with
-        | Some _ ->
+        (* Handle RPC vs CLI clients differently *)
+        match state.rpc_client_pid, state.cli_pid with
+        | Some rpc_pid, _ ->
+            (* RPC client - send response first, then clean up *)
+            send rpc_pid (ServerResponse (Rpc.BuildComplete { successful = built; failed }));
+            
+            (* Shutdown workers after sending response *)
+            List.iter (fun w -> send w Shutdown) state.workers;
+            
+            (* Give workers time to shutdown *)
+            sleep 0.1;  (* Shorter sleep for RPC *)
+            
             (* Reset state for next build but keep build results *)
             let new_state = { state with 
               workers = [];
@@ -686,10 +692,24 @@ let rec server_loop state =
               (* Keep build_results to track what's already built *)
             } in
             server_loop new_state
-        | None ->
+        | None, Some cli_pid ->
+            (* CLI client - send response and exit *)
+            send cli_pid (BuildFinished { successful = built; failed });
+            
+            (* Shutdown workers *)
+            List.iter (fun w -> send w Shutdown) state.workers;
+            
+            (* Give workers time to shutdown *)
+            sleep 0.5;
+            
             (* CLI build - exit normally *)
-            Process.Normal)
-      else server_loop state
+            Process.Normal
+        | None, None ->
+            (* No client? Just clean up and exit *)
+            List.iter (fun w -> send w Shutdown) state.workers;
+            sleep 0.1;
+            Process.Normal
+      ) else server_loop state
   | Shutdown ->
       Printf.printf "[Server] Shutting down...\n";
       List.iter (fun w -> send w Shutdown) state.workers;

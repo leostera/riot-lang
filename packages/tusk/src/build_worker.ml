@@ -45,10 +45,17 @@ let build_package_with_sandbox build_task =
         workspace.packages
     in
 
+    (* Get the hash from the build node, computing it lazily if needed *)
+    let node_hash = 
+      let hash = Build_graph.get_node_hash build_task.toolchain_version node in
+      Printf.printf "[Worker] Computed/retrieved hash %s for %s\n" hash pkg_name;
+      Some hash
+    in
+
     let blueprint =
       Actions.generate_blueprint workspace.root pkg_name pkg_path
         node.Build_node.package.relative_path deps all_packages
-        build_task.toolchain_version
+        build_task.toolchain_version ?hash:node_hash ()
     in
 
     (* Print the actions *)
