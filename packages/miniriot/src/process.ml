@@ -1,12 +1,14 @@
-type exit_reason =
-  | Normal
-  | Exception of exn
+type exit_reason = Normal | Exception of exn
 
 type state =
   | Uninitialized
   | Runnable
   | Waiting_message
-  | Waiting_io of { name : string; token : Gluon.Token.t; source : Gluon.Source.t }
+  | Waiting_io of {
+      name : string;
+      token : Gluon.Token.t;
+      source : Gluon.Source.t;
+    }
   | Running
   | Exited of exit_reason
   | Finalized
@@ -43,26 +45,10 @@ let init t =
 
 let pid t = t.pid
 let state t = t.state
-let is_alive t = 
-  match t.state with
-  | Finalized | Exited _ -> false
-  | _ -> true
-
-let is_exited t =
-  match t.state with 
-  | Finalized | Exited _ -> true 
-  | _ -> false
-
-let is_waiting t =
-  match t.state with
-  | Waiting_message -> true
-  | _ -> false
-
-let is_waiting_io t =
-  match t.state with
-  | Waiting_io _ -> true
-  | _ -> false
-
+let is_alive t = match t.state with Finalized | Exited _ -> false | _ -> true
+let is_exited t = match t.state with Finalized | Exited _ -> true | _ -> false
+let is_waiting t = match t.state with Waiting_message -> true | _ -> false
+let is_waiting_io t = match t.state with Waiting_io _ -> true | _ -> false
 let is_runnable t = t.state = Runnable
 let is_running t = t.state = Running
 let is_main t = Pid.equal t.pid Pid.main
@@ -72,30 +58,22 @@ let has_empty_mailbox t =
 
 let has_messages t = not (has_empty_mailbox t)
 let message_count t = Mailbox.size t.mailbox + Mailbox.size t.save_queue
-
 let mark_as_running t = t.state <- Running
-let mark_as_runnable t = 
-  if is_alive t then t.state <- Runnable
-let mark_as_awaiting_message t = 
-  if is_alive t then t.state <- Waiting_message
-let mark_as_exited t reason = 
-  if not (is_exited t) then t.state <- Exited reason
+let mark_as_runnable t = if is_alive t then t.state <- Runnable
+let mark_as_awaiting_message t = if is_alive t then t.state <- Waiting_message
+let mark_as_exited t reason = if not (is_exited t) then t.state <- Exited reason
 let mark_as_finalized t = t.state <- Finalized
-
 let cont t = Option.get t.cont
 let set_cont t c = t.cont <- Some c
 
 let next_message t =
-  if t.read_save_queue then
+  if t.read_save_queue then (
     match Mailbox.next t.save_queue with
     | Some m -> Some m
     | None ->
         t.read_save_queue <- false;
-        None
-  else
-    match Mailbox.next t.mailbox with
-    | Some m -> Some m
-    | None -> None
+        None)
+  else match Mailbox.next t.mailbox with Some m -> Some m | None -> None
 
 let add_to_save_queue t msg = Mailbox.queue t.save_queue msg
 let read_save_queue t = t.read_save_queue <- true
@@ -124,17 +102,14 @@ let consume_ready_tokens t f =
   List.iter f t.ready_tokens;
   t.ready_tokens <- []
 
-
-
 let pp ppf t =
-  Format.fprintf ppf "Process %a { state = %s; messages = %d }" 
-    Pid.pp t.pid
+  Format.fprintf ppf "Process %a { state = %s; messages = %d }" Pid.pp t.pid
     (match t.state with
-     | Uninitialized -> "Uninitialized"
-     | Runnable -> "Runnable" 
-     | Waiting_message -> "Waiting_message"
-     | Waiting_io { name; _ } -> Printf.sprintf "Waiting_io(%s)" name
-     | Running -> "Running"
-     | Exited _ -> "Exited"
-     | Finalized -> "Finalized")
+    | Uninitialized -> "Uninitialized"
+    | Runnable -> "Runnable"
+    | Waiting_message -> "Waiting_message"
+    | Waiting_io { name; _ } -> Printf.sprintf "Waiting_io(%s)" name
+    | Running -> "Running"
+    | Exited _ -> "Exited"
+    | Finalized -> "Finalized")
     (message_count t)
