@@ -151,10 +151,10 @@ let handle_next_task state worker_pid =
       send worker_pid NoTask
 
 (** Handle task completion *)
-let handle_task_complete state pkg_name success =
+let handle_task_complete state pkg_name success hash =
   if success then (
     Printf.printf "[Server] Build complete: %s\n" pkg_name;
-    Build_results.mark_built state.build_results pkg_name;
+    Build_results.mark_built_with_hash state.build_results pkg_name hash;
 
     (* Check if this unblocks any packages in the later queue *)
     (* Move them to current queue if their deps are now ready *)
@@ -177,8 +177,7 @@ let handle_task_complete state pkg_name success =
           (fun node ->
             let pkg = node.Build_node.package.name in
             if
-              (not (Build_results.is_built state.build_results pkg))
-              && (not (Build_results.is_building state.build_results pkg))
+              (not (Build_results.is_building state.build_results pkg))
               && can_build_package state pkg
             then Queue.add pkg state.current_queue)
           nodes
@@ -413,12 +412,7 @@ let handle_client_request state client_pid request =
           let sorted = Build_graph.topological_sort graph in
           Printf.printf "[Server] Package %s requires: %s\n" package
             (String.concat ", " (List.map (fun n -> n.Build_node.package.name) sorted));
-          let needs_build = List.filter (fun node ->
-            let pkg_name = node.Build_node.package.name in
-            match new_state.workspace with
-            | Some workspace -> not (Build_results.is_built_with_outputs_check new_state.build_results pkg_name workspace)
-            | None -> not (Build_results.is_built new_state.build_results pkg_name)
-          ) sorted in
+          let needs_build = sorted in  (* Simplified: queue all packages for now *)
           
           if needs_build = [] then (
             (* Everything already built, return success immediately *)
@@ -453,12 +447,7 @@ let handle_client_request state client_pid request =
       (match new_state.build_graph with
       | Some graph ->
           let sorted = Build_graph.topological_sort graph in
-          let needs_build = List.filter (fun node ->
-            let pkg_name = node.Build_node.package.name in
-            match new_state.workspace with
-            | Some workspace -> not (Build_results.is_built_with_outputs_check new_state.build_results pkg_name workspace)
-            | None -> not (Build_results.is_built new_state.build_results pkg_name)
-          ) sorted in
+          let needs_build = sorted in  (* Simplified: queue all packages for now *)
           
           if needs_build = [] then (
             (* Everything already built, return success immediately *)
@@ -505,66 +494,50 @@ let rec server_loop state =
       | Some graph ->
           Printf.printf "[Server] Building all packages...\n";
 
-          (* Don't clear build results - keep track of what's already built *)
+          (* Get all packages in topological order *)
           let sorted = Build_graph.topological_sort graph in
           
-          (* Check what actually needs to be built *)
-          let needs_build = List.filter (fun node ->
-            let pkg_name = node.Build_node.package.name in
-            not (Build_results.is_built state.build_results pkg_name)
-          ) sorted in
-          
-          Printf.printf "[Server] Packages to build: ";
+          Printf.printf "[Server] All packages in dependency order: ";
           List.iter (fun node ->
             Printf.printf "%s " node.Build_node.package.name
-          ) needs_build;
+          ) sorted;
           Printf.printf "\n";
           
-          (* If nothing needs to be built, immediately return success *)
-          if needs_build = [] then (
-            Printf.printf "[Server] All packages already built! Returning success immediately.\n";
-            (* Get the count of already built packages *)
-            let built_count = List.length sorted in
-            (* Send BuildFinished for CLI client *)
-            send cli_pid (BuildFinished { successful = built_count; failed = 0 });
-            server_loop state
-          ) else (
-            (* Initialize only the packages we need to build *)
-            List.iter (fun node ->
+          (* Initialize build results for all packages *)
+          List.iter (fun node ->
+            let pkg_name = node.Build_node.package.name in
+            if not (Build_results.is_tracked state.build_results pkg_name) then
+              Build_results.init_package state.build_results pkg_name
+          ) sorted;
+
+          (* Queue packages that can be built (dependencies ready) *)
+          List.iter
+            (fun node ->
               let pkg_name = node.Build_node.package.name in
-              if not (Build_results.is_tracked state.build_results pkg_name) then
-                Build_results.init_package state.build_results pkg_name
-            ) needs_build;
+              if can_build_package state pkg_name then (
+                Printf.printf "[Server] Queueing package: %s\n" pkg_name;
+                Queue.add pkg_name state.current_queue))
+            sorted;
 
-            (* Queue packages with no dependencies or whose deps are built *)
-            List.iter
-              (fun node ->
-                let pkg_name = node.Build_node.package.name in
-                if not (Build_results.is_built new_state.build_results pkg_name) &&
-                   can_build_package new_state pkg_name then (
-                  Printf.printf "[Server] Queueing package: %s\n" pkg_name;
-                  Queue.add pkg_name new_state.current_queue))
-              sorted;
+          Printf.printf "[Server] Current queue size: %d\n"
+            (Queue.length state.current_queue);
 
-            Printf.printf "[Server] Current queue size: %d\n"
-              (Queue.length new_state.current_queue);
+          (* Spawn workers if not already spawned *)
+          let workers =
+            if state.workers = [] then (
+              let num_cores = get_num_cores () in
+              Printf.printf "[Server] Spawning %d workers\n" num_cores;
+              let workers = spawn_workers (self ()) num_cores in
+              (* Give workers a moment to start *)
+              sleep 0.1;
+              workers)
+            else state.workers
+          in
 
-            (* Spawn workers if not already spawned *)
-            let workers =
-              if state.workers = [] then (
-                let num_cores = get_num_cores () in
-                Printf.printf "[Server] Spawning %d workers\n" num_cores;
-                let workers = spawn_workers (self ()) num_cores in
-                (* Give workers a moment to start *)
-                sleep 0.1;
-                workers)
-              else state.workers
-            in
-
-            let new_state = { new_state with workers; cli_pid = Some cli_pid } in
-            (* Try to assign initial work to workers *)
-            try_assign_work new_state;
-            server_loop new_state))
+          let new_state = { state with workers; cli_pid = Some cli_pid } in
+          (* Try to assign initial work to workers *)
+          try_assign_work new_state;
+          server_loop new_state)
   | BuildPackage (pkg_name, cli_pid) -> (
       Printf.printf "[Server] BuildPackage %s command received\n" pkg_name;
       (* current_build_graph should already be set to the filtered graph *)
@@ -578,74 +551,50 @@ let rec server_loop state =
           Printf.printf "[Server] Building package %s and its dependencies...\n"
             pkg_name;
 
-          (* Don't clear build results - keep track of what's already built *)
+          (* Get all packages in topological order *)
           let sorted = Build_graph.topological_sort graph in
           
-          (* Check what actually needs to be built *)
-          let needs_build = List.filter (fun node ->
-            let pkg_name = node.Build_node.package.name in
-            not (Build_results.is_built state.build_results pkg_name)
-          ) sorted in
-          
-          Printf.printf "[Server] Packages already built: ";
+          Printf.printf "[Server] All packages in dependency order: ";
           List.iter (fun node ->
-            let pkg_name = node.Build_node.package.name in
-            if Build_results.is_built state.build_results pkg_name then
-              Printf.printf "%s " pkg_name
+            Printf.printf "%s " node.Build_node.package.name
           ) sorted;
           Printf.printf "\n";
           
-          Printf.printf "[Server] Packages to build: ";
+          (* Initialize build results for all packages *)
           List.iter (fun node ->
-            Printf.printf "%s " node.Build_node.package.name
-          ) needs_build;
-          Printf.printf "\n";
-          
-          (* If nothing needs to be built, immediately return success *)
-          if needs_build = [] then (
-            Printf.printf "[Server] All packages already built! Returning success immediately.\n";
-            (* Get the count of already built packages *)
-            let built_count = List.length sorted in
-            (* Send BuildFinished for CLI client *)
-            send cli_pid (BuildFinished { successful = built_count; failed = 0 });
-            server_loop state
-          ) else (
-            (* Initialize only the packages we need to build *)
-            List.iter (fun node ->
+            let pkg_name = node.Build_node.package.name in
+            if not (Build_results.is_tracked state.build_results pkg_name) then
+              Build_results.init_package state.build_results pkg_name
+          ) sorted;
+
+          (* Queue packages that can be built (dependencies ready) *)
+          List.iter
+            (fun node ->
               let pkg_name = node.Build_node.package.name in
-              if not (Build_results.is_tracked state.build_results pkg_name) then
-                Build_results.init_package state.build_results pkg_name
-            ) needs_build;
+              if can_build_package state pkg_name then (
+                Printf.printf "[Server] Queueing package: %s\n" pkg_name;
+                Queue.add pkg_name state.current_queue))
+            sorted;
 
-            (* Queue packages with no dependencies or whose deps are built *)
-            List.iter
-              (fun node ->
-                let pkg_name = node.Build_node.package.name in
-                if not (Build_results.is_built state.build_results pkg_name) &&
-                   can_build_package state pkg_name then (
-                  Printf.printf "[Server] Queueing package: %s\n" pkg_name;
-                  Queue.add pkg_name state.current_queue))
-              sorted;
+          Printf.printf "[Server] Current queue size: %d\n"
+            (Queue.length state.current_queue);
 
-            Printf.printf "[Server] Current queue size: %d\n"
-              (Queue.length state.current_queue);
+          (* Spawn workers if not already spawned *)
+          let workers =
+            if state.workers = [] then (
+              let num_cores = get_num_cores () in
+              Printf.printf "[Server] Spawning %d workers\n" num_cores;
+              let workers = spawn_workers (self ()) num_cores in
+              (* Give workers a moment to start *)
+              sleep 0.1;
+              workers)
+            else state.workers
+          in
 
-            (* Spawn workers if not already spawned *)
-            let workers =
-              if state.workers = [] then (
-                let num_cores = get_num_cores () in
-                Printf.printf "[Server] Spawning %d workers\n" num_cores;
-                let workers = spawn_workers (self ()) num_cores in
-                (* Give workers a moment to start *)
-                sleep 0.1;
-                workers)
-              else state.workers
-            in
-
-            let new_state = { state with workers; cli_pid = Some cli_pid } in
-            (* Try to assign initial work to workers *)
-            try_assign_work new_state;
-            server_loop new_state))
+          let new_state = { state with workers; cli_pid = Some cli_pid } in
+          (* Try to assign initial work to workers *)
+          try_assign_work new_state;
+          server_loop new_state)
   | NextTask worker_pid ->
       Printf.printf "[Server] Worker %s requesting task\n"
         (Pid.to_string worker_pid);
@@ -660,8 +609,8 @@ let rec server_loop state =
         send worker_pid Shutdown;
         server_loop state
       )
-  | TaskComplete (pkg_name, success) ->
-      handle_task_complete state pkg_name success;
+  | TaskComplete (pkg_name, success, hash) ->
+      handle_task_complete state pkg_name success hash;
 
       (* Check if all done *)
       if Build_results.all_done state.build_results then (
@@ -710,6 +659,27 @@ let rec server_loop state =
             sleep 0.1;
             Process.Normal
       ) else server_loop state
+  | RequeueWithDependencies (task, missing_deps) ->
+      let pkg_name = task.node.Build_node.package.name in
+      let missing_names = List.map (fun dep -> dep.Build_node.package.name) missing_deps in
+      Printf.printf "[Server] Requeuing %s, missing dependencies: %s\n" 
+        pkg_name (String.concat ", " missing_names);
+      flush stdout;
+      
+      (* Queue the missing dependencies in the current queue *)
+      List.iter (fun dep_node ->
+        let dep_name = dep_node.Build_node.package.name in
+        Printf.printf "[Server] Queueing missing dependency: %s\n" dep_name;
+        Queue.add dep_name state.current_queue
+      ) missing_deps;
+      
+      (* Put the original task in the later queue *)
+      Printf.printf "[Server] Moving %s to later queue\n" pkg_name;
+      Queue.add pkg_name state.later_queue;
+      
+      (* Try to assign work to idle workers *)
+      try_assign_work state;
+      server_loop state
   | Shutdown ->
       Printf.printf "[Server] Shutting down...\n";
       List.iter (fun w -> send w Shutdown) state.workers;
