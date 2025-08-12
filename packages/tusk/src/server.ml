@@ -110,46 +110,33 @@ let rec get_next_buildable_task state =
 (** Check if a package can be built (all deps ready) *)
 and can_build_package state pkg_name =
   match state.current_build_graph with
-  | None -> 
-      Printf.printf "[Server] can_build_package(%s): no current_build_graph\n" pkg_name;
-      false
+  | None -> false
   | Some graph -> (
       let nodes = Build_graph.topological_sort graph in
       match
         List.find_opt (fun n -> n.Build_node.package.name = pkg_name) nodes
       with
-      | None -> 
-          Printf.printf "[Server] can_build_package(%s): not in graph\n" pkg_name;
-          false
+      | None -> false
       | Some node ->
           let deps =
             List.map (fun dep -> dep.Build_node.package.name) node.dependencies
           in
-          let ready = Build_results.dependencies_ready state.build_results deps in
-          Printf.printf "[Server] can_build_package(%s): deps=[%s], ready=%b\n" 
-            pkg_name (String.concat ", " deps) ready;
-          ready)
+          Build_results.dependencies_ready state.build_results deps)
 
 (** Check later queue and move ready packages to current queue *)
 let check_later_queue state =
   if not (Queue.is_empty state.later_queue) then (
-    Printf.printf "[Server] Checking later queue for ready packages...\n";
     let later_items = ref [] in
     while not (Queue.is_empty state.later_queue) do
       later_items := Queue.take state.later_queue :: !later_items
     done;
     
-    Printf.printf "[Server] Later queue has %d items: %s\n" 
-      (List.length !later_items) (String.concat ", " !later_items);
-    
     List.iter (fun pkg_name ->
       if can_build_package state pkg_name then (
         Printf.printf "[Server] Package %s is now ready, moving to current queue\n" pkg_name;
         Queue.add pkg_name state.current_queue
-      ) else (
-        Printf.printf "[Server] Package %s is NOT ready yet, keeping in later queue\n" pkg_name;
+      ) else
         Queue.add pkg_name state.later_queue
-      )
     ) !later_items
   )
 
