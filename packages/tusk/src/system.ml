@@ -75,48 +75,43 @@ let time () = Unix.time ()
 
 (** Check if a file is a regular file *)
 let is_regular_file path =
-  try
-    (stat path).st_kind = Unix.S_REG
-  with _ -> false
+  try (stat path).st_kind = Unix.S_REG with _ -> false
 
 (** Create a directory if it doesn't exist, ignoring EEXIST errors *)
 let mkdir_safe path perm =
-  try mkdir path perm 
-  with Unix.Unix_error (Unix.EEXIST, _, _) -> ()
+  try mkdir path perm with Unix.Unix_error (Unix.EEXIST, _, _) -> ()
 
 (** Create a directory and all parent directories *)
 let rec mkdirp path =
-  if not (file_exists path) then begin
+  if not (file_exists path) then (
     mkdirp (Filename.dirname path);
-    mkdir_safe path 0o755
-  end
+    mkdir_safe path 0o755)
 
 (** Copy a file from source to destination *)
 let copy_file src dst =
   let ic = open_in_bin src in
   let oc = open_out_bin dst in
   (try
-    while true do
-      output_char oc (input_char ic)
-    done
-  with End_of_file -> ());
+     while true do
+       output_char oc (input_char ic)
+     done
+   with End_of_file -> ());
   close_in ic;
   close_out oc
 
 (** List files in a directory with a filter function *)
 let list_dir dir filter =
   let files = ref [] in
-  if file_exists dir then begin
+  if file_exists dir then (
     let handle = opendir dir in
     (try
-      while true do
-        let file = readdir handle in
-        if file <> "." && file <> ".." && filter file then
-          files := file :: !files
-      done
-    with End_of_file -> ());
-    closedir handle
-  end;
+       while true do
+         let file = readdir handle in
+         if file <> "." && file <> ".." && filter file then
+           files := file :: !files
+       done
+     with End_of_file -> ());
+    closedir handle);
   List.rev !files
 
 (** List all files in a directory *)
@@ -127,17 +122,13 @@ let rec remove_dir dir =
   try
     let handle = opendir dir in
     (try
-      while true do
-        let file = readdir handle in
-        if file <> "." && file <> ".." then begin
-          let path = Filename.concat dir file in
-          if is_directory path then
-            remove_dir path
-          else
-            remove_file path
-        end
-      done
-    with End_of_file -> ());
+       while true do
+         let file = readdir handle in
+         if file <> "." && file <> ".." then
+           let path = Filename.concat dir file in
+           if is_directory path then remove_dir path else remove_file path
+       done
+     with End_of_file -> ());
     closedir handle;
     rmdir dir
   with _ -> () (* Ignore cleanup errors *)
@@ -149,10 +140,10 @@ let run_command cmd =
   let ic = open_process_in (cmd ^ " 2>&1") in
   let output = ref [] in
   (try
-    while true do
-      output := input_line ic :: !output
-    done
-  with End_of_file -> ());
+     while true do
+       output := input_line ic :: !output
+     done
+   with End_of_file -> ());
   let result = close_process_in ic in
   let output_str = String.concat "\n" (List.rev !output) in
   match result with
@@ -177,17 +168,17 @@ let run_process_lines cmd =
   let ic = open_process_in cmd in
   let lines = ref [] in
   (try
-    while true do
-      lines := input_line ic :: !lines
-    done
-  with End_of_file -> ());
+     while true do
+       lines := input_line ic :: !lines
+     done
+   with End_of_file -> ());
   ignore (close_process_in ic);
   List.rev !lines
 
 (** Get number of CPU cores *)
 let cpu_count () =
   match os_type () with
-  | "Unix" -> 
+  | "Unix" ->
       (* Try different methods to get CPU count *)
       let try_command cmd =
         try
@@ -197,15 +188,14 @@ let cpu_count () =
           int_of_string (String.trim result)
         with _ -> 0
       in
-      let cores = 
+      let cores =
         (* macOS *)
         let macos_cores = try_command "sysctl -n hw.ncpu" in
         if macos_cores > 0 then macos_cores
         else
           (* Linux *)
           let linux_cores = try_command "nproc" in
-          if linux_cores > 0 then linux_cores
-          else 4  (* Default fallback *)
+          if linux_cores > 0 then linux_cores else 4 (* Default fallback *)
       in
       cores
-  | _ -> 4  (* Default for other systems *)
+  | _ -> 4 (* Default for other systems *)
