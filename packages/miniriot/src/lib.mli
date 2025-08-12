@@ -2,6 +2,7 @@
 
 module Pid : sig
   type t
+
   val equal : t -> t -> bool
   val compare : t -> t -> int
   val pp : Format.formatter -> t -> unit
@@ -19,61 +20,133 @@ end
 (** Example message type *)
 type Message.t += Exit
 
-(** Run the main function as the initial process.
-    Can only be called once per process - subsequent calls will raise Failure. *)
 val run : main:(unit -> Process.exit_reason) -> int
+(** Run the main function as the initial process. Can only be called once per
+    process - subsequent calls will raise Failure. *)
 
-(** Spawn a new process *)
+val shutdown : status:int -> unit
+(** Gracefully shutdown the scheduler with the given exit status. 
+    This will stop all processes and exit the run loop. *)
+
 val spawn : (unit -> Process.exit_reason) -> Pid.t
+(** Spawn a new process *)
 
-(** Get the current process PID *)
 val self : unit -> Pid.t
+(** Get the current process PID *)
 
-(** Send a message to a process *)
 val send : Pid.t -> Message.t -> unit
+(** Send a message to a process *)
 
-(** Yield control to the scheduler *)
 val yield : unit -> unit
+(** Yield control to the scheduler *)
 
-(** Receive any message *)
 val receive : unit -> Message.t
+(** Receive any message *)
 
+val selective_receive : (Message.t -> [ `select of 'msg | `skip ]) -> 'msg
 (** Selective receive with a selector function *)
-val selective_receive : (Message.t -> [`select of 'msg | `skip]) -> 'msg
 
-(** Exit normally *)
 val exit : unit -> Process.exit_reason
+(** Exit normally *)
 
-(** Sleep (currently just yields) *)
 val sleep : float -> unit
+(** Sleep (currently just yields) *)
 
-(** Enable debug tracing *)
 val enable_trace : unit -> unit
+(** Enable debug tracing *)
 
-(** Disable debug tracing *)
 val disable_trace : unit -> unit
+(** Disable debug tracing *)
 
 (** File I/O operations *)
 module File : sig
-  type error = [ 
-    | `File_not_found 
-    | `Permission_denied 
+  type error =
+    [ `File_not_found
+    | `Permission_denied
     | `Is_a_directory
     | `Not_a_directory
     | `Already_exists
     | `No_space
-    | `Unknown of string
-  ]
-  
-  (** Read the entire contents of a file *)
+    | `Unknown of string ]
+
   val read : string -> (string, error) result
-  
-  (** Write a string to a file *)
+  (** Read the entire contents of a file *)
+
   val write : string -> string -> (unit, error) result
-  
-  (** Check if a file exists *)
+  (** Write a string to a file *)
+
   val exists : string -> bool
-  
-  (** Remove a file *)
+  (** Check if a file exists *)
+
   val remove : string -> (unit, error) result
+  (** Remove a file *)
+end
+
+(** Network I/O operations *)
+module Net : sig
+  (** Network I/O operations for Miniriot 
+      
+      This module provides actor-friendly networking operations that integrate
+      with Miniriot's scheduler and I/O polling. All blocking operations will
+      properly suspend the calling process until I/O is ready. *)
+
+  type error = [ `Connection_refused | `Closed | `System_error of string ]
+
+  module Addr : sig
+    (** Network addresses *)
+    
+    type 't raw_addr = 't Gluon.Net.Addr.raw_addr
+    type tcp_addr = Gluon.Net.Addr.tcp_addr
+    type stream_addr = Gluon.Net.Addr.stream_addr
+    
+    val loopback : tcp_addr
+    val tcp : tcp_addr -> int -> stream_addr
+    val of_host_and_port : host:string -> port:int -> (stream_addr, error) result
+    val parse : string -> (stream_addr, error) result
+    val ip : stream_addr -> string
+    val port : stream_addr -> int
+  end
+
+  module TcpStream : sig
+    (** TCP stream for connected sockets *)
+    
+    type t
+    
+    val connect : Addr.stream_addr -> (t, error) result
+    (** Connect to a TCP endpoint. This will suspend the process until the
+        connection is established. *)
+    
+    val read : t -> bytes -> ?pos:int -> ?len:int -> unit -> (int, error) result
+    (** Read data from the stream. This will suspend the process until data
+        is available. Returns the number of bytes read. *)
+    
+    val write : t -> bytes -> ?pos:int -> ?len:int -> unit -> (int, error) result
+    (** Write data to the stream. This will suspend the process until the
+        socket is ready for writing. Returns the number of bytes written. *)
+    
+    val close : t -> unit
+    (** Close the stream *)
+  end
+
+  module TcpListener : sig
+    (** TCP listener for accepting connections *)
+    
+    type t
+    
+    val bind :
+      ?reuse_addr:bool ->
+      ?reuse_port:bool ->
+      ?backlog:int ->
+      Addr.stream_addr ->
+      (t, error) result
+    (** Create and bind a TCP listener. 
+        The socket is automatically set to non-blocking mode. *)
+    
+    val accept : t -> (TcpStream.t * Addr.stream_addr, error) result
+    (** Accept a connection. This will suspend the process until a connection
+        is available. *)
+    
+    val close : t -> unit
+    (** Close the listener *)
+  end
 end

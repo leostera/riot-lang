@@ -11,11 +11,11 @@ type t = {
   run_queue : Process.t Queue.t;
   processes : Process.t Pid_table.t;
   mutable current_process : Process.t option;
-  io_poll : Gluon.t;
+  io_poll : Gluon.Poll.t;
 }
 
 let create () =
-  match Gluon.create () with
+  match Gluon.Poll.make () with
   | Ok io_poll ->
       {
         stop = false;
@@ -26,7 +26,7 @@ let create () =
         io_poll;
       }
   | Error err ->
-      Printf.printf "[Scheduler] ERROR: Failed to create kqueue: %s\n%!" 
+      Printf.printf "[Scheduler] ERROR: Failed to create Gluon.Poll: %s\n%!" 
         (match err with `System_error s -> s | `Noop -> "Unknown error");
       failwith "Failed to create I/O polling system"
 
@@ -123,20 +123,19 @@ let handle_syscall k t proc name interest source _timeout =
       let token = Gluon.Token.make proc in
       Trace.trace "Process %s registering for I/O" pid_str;
       Process.mark_as_awaiting_io proc name token source;
-      (let fd = Gluon.Source.fd source in
-      let fd_int : int = Obj.magic fd in
-      Printf.printf "[Scheduler] DEBUG: Registering FD %d for process %s, syscall=%s\n%!" 
-        fd_int pid_str name;
-      match Gluon.register t.io_poll ~fd ~token ~interests:interest with
+      (match Gluon.Poll.register t.io_poll token interest source with
       | Ok () ->
           Trace.trace "Process %s registered for I/O successfully" pid_str;
           k Suspend
       | Error err ->
-          Printf.printf "[Scheduler] ERROR: Failed to register I/O for process %s (FD=%d): %s\n%!" 
-            pid_str fd_int
-            (match err with `System_error s -> s | `Noop -> "Unknown error");
-          Process.mark_as_runnable proc;
-          k (Continue ()))
+          Printf.printf "[Scheduler] ERROR: Failed to register I/O for process %s: %s\n%!" 
+            pid_str 
+            (match err with 
+            | `Unix_error e -> Unix.error_message e
+            | `Noop -> "Unknown error"
+            | _ -> "Other error");
+          (* Don't continue - the I/O operation failed to register *)
+          k (Discontinue (Failure "Failed to register I/O")))
 
 let perform t proc =
   let open Proc_state in
@@ -159,11 +158,14 @@ let handle_exit_proc t proc reason =
 
     (* Clean up any I/O registrations *)
     Process.consume_ready_tokens proc (fun (_token, source) ->
-        match Gluon.deregister t.io_poll ~fd:(Gluon.Source.fd source) with
+        match Gluon.Poll.deregister t.io_poll source with
         | Ok () -> ()
         | Error err ->
             Printf.printf "[Scheduler] WARN: Failed to deregister I/O: %s\n%!"
-              (match err with `System_error s -> s | `Noop -> "Unknown error"));
+              (match err with 
+              | `Unix_error e -> Unix.error_message e
+              | `Noop -> "Unknown error"
+              | _ -> "Other error"));
 
     Pid_table.remove t.processes (Process.pid proc);
     Process.mark_as_finalized proc)
@@ -231,26 +233,32 @@ let step_process t proc =
 
 let poll_io t =
   Trace.trace "Polling for I/O events";
-  let events = match Gluon.poll t.io_poll with
+  let events = match Gluon.Poll.poll t.io_poll with
     | Ok events -> events
     | Error err ->
         Printf.printf "[Scheduler] ERROR: Failed to poll I/O: %s\n%!"
-          (match err with `System_error s -> s | `Noop -> "Unknown error");
-        [||]
+          (match err with 
+          | `Unix_error e -> Unix.error_message e
+          | `Noop -> "Unknown error"
+          | _ -> "Other error");
+        []
   in
-  Array.iter
+  List.iter
     (fun event ->
       let token = Gluon.Event.token event in
       let proc : Process.t = Gluon.Token.unsafe_to_value token in
       Trace.trace "I/O ready for process %s" (Pid.to_string (Process.pid proc));
       match Process.state proc with
       | Waiting_io { source; _ } ->
-          (match Gluon.deregister t.io_poll ~fd:(Gluon.Source.fd source) with
+          (match Gluon.Poll.deregister t.io_poll source with
           | Ok () -> ()
           | Error err ->
               Printf.printf "[Scheduler] WARN: Failed to deregister I/O for process %s: %s\n%!"
                 (Pid.to_string (Process.pid proc))
-                (match err with `System_error s -> s | `Noop -> "Unknown error"));
+                (match err with 
+                | `Unix_error e -> Unix.error_message e
+                | `Noop -> "Unknown error"
+                | _ -> "Other error"));
           if Process.is_alive proc then (
             Process.add_ready_token proc token source;
             Process.mark_as_runnable proc;
@@ -270,6 +278,19 @@ let run_loop t =
   if not t.stop then poll_io t;
 
   Trace.trace "Run loop done"
+
+let shutdown ~status =
+  match !current_scheduler with
+  | None -> () (* No scheduler running, nothing to shutdown *)
+  | Some t ->
+      Trace.trace "Shutting down scheduler with status %d" status;
+      (* Mark scheduler to stop *)
+      t.stop <- true;
+      t.status <- status;
+      (* Clear the run queue *)
+      Queue.clear t.run_queue;
+      (* Clear all processes *)
+      Pid_table.clear t.processes
 
 let run ~main =
   if !has_run then
