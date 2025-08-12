@@ -10,13 +10,12 @@ open Rpc_messages
 type state = {
   workspace : Workspace.workspace option;
   build_graph : Build_graph.t option; (* Full workspace build graph *)
-  current_build_graph : Build_graph.t option; (* Filtered graph for current build *)
+  active_build_graph : Build_graph.t option; (* Graph for current build (full or filtered) *)
   build_results : Build_results.t;
   workers : Pid.t list;
   idle_workers : Pid.t Queue.t; (* Workers waiting for tasks *)
   build_queue : Build_queue.t; (* Two-queue system for dependency ordering *)
-  cli_pid : Pid.t option; (* PID of CLI process to notify when done *)
-  rpc_client_pid : Pid.t option; (* PID of RPC client to respond to *)
+  client_pid : Pid.t option; (* PID of client (CLI or RPC) to respond to *)
   toolchain : Toolchains.toolchain; (* Current toolchain *)
 }
 (** Server state *)
@@ -120,9 +119,25 @@ let queue_package_if_needed state node is_ready =
       else
         Build_queue.add_waiting state.build_queue pkg_name
 
+(** Check if a package can be built (all deps ready) *)
+let can_build_package state pkg_name =
+  match state.active_build_graph with
+  | None -> false
+  | Some graph -> (
+      let nodes = Build_graph.topological_sort graph in
+      match
+        List.find_opt (fun n -> n.Build_node.package.name = pkg_name) nodes
+      with
+      | None -> false
+      | Some node ->
+          let deps =
+            List.map (fun dep -> dep.Build_node.package.name) node.dependencies
+          in
+          Build_results.dependencies_ready state.build_results deps)
+
 (** Try to get next buildable task *)
 let rec get_next_buildable_task state =
-  match (state.current_build_graph, state.workspace) with
+  match (state.active_build_graph, state.workspace) with
   | Some graph, Some workspace ->
       let nodes = Build_graph.topological_sort graph in
       
@@ -153,20 +168,6 @@ let rec get_next_buildable_task state =
   | _, _ -> None
 
 (** Check if a package can be built (all deps ready) *)
-and can_build_package state pkg_name =
-  match state.current_build_graph with
-  | None -> false
-  | Some graph -> (
-      let nodes = Build_graph.topological_sort graph in
-      match
-        List.find_opt (fun n -> n.Build_node.package.name = pkg_name) nodes
-      with
-      | None -> false
-      | Some node ->
-          let deps =
-            List.map (fun dep -> dep.Build_node.package.name) node.dependencies
-          in
-          Build_results.dependencies_ready state.build_results deps)
 
 (** Check later queue and move ready packages to current queue *)
 let check_later_queue state =
@@ -196,6 +197,73 @@ let try_assign_work state =
   in
   assign_loop ()
 
+(** Unified build execution handler *)
+let execute_build state client_pid build_graph =
+  Printf.printf "[Server] Starting build execution...\n";
+  
+  (* Get all packages in topological order *)
+  let sorted = Build_graph.topological_sort build_graph in
+  
+  Printf.printf "[Server] All packages in dependency order: ";
+  List.iter (fun node ->
+    Printf.printf "%s " node.Build_node.package.name
+  ) sorted;
+  Printf.printf "\n";
+  
+  (* Initialize build results for all packages *)
+  List.iter (fun node ->
+    let pkg_name = node.Build_node.package.name in
+    if not (Build_results.is_tracked state.build_results pkg_name) then
+      Build_results.init_package state.build_results pkg_name
+  ) sorted;
+
+  (* Queue all packages - current if ready, later if waiting on deps *)
+  List.iter
+    (fun node ->
+      let pkg_name = node.Build_node.package.name in
+      let is_ready = can_build_package state pkg_name in
+      if not is_ready then
+        Printf.printf "[Server] Package %s has unmet dependencies, adding to later queue\n" pkg_name;
+      queue_package_if_needed state node is_ready)
+    sorted;
+
+  let (ready_count, waiting_count) = Build_queue.stats state.build_queue in
+  Printf.printf "[Server] Queue stats - ready: %d, waiting: %d\n" ready_count waiting_count;
+
+  (* Check if there's actually any work to do *)
+  if ready_count = 0 && waiting_count = 0 then (
+    (* All packages already built - return success immediately *)
+    Printf.printf "[Server] All packages already built!\n";
+    let built_count = List.length sorted in
+    send client_pid (ServerResponse (Rpc.BuildComplete { successful = built_count; failed = 0 }));
+    (* Reset state for next build *)
+    let fresh_idle_workers = Queue.create () in
+    let fresh_build_queue = Build_queue.create () in
+    { state with 
+      client_pid = None;
+      active_build_graph = None;
+      idle_workers = fresh_idle_workers;
+      build_queue = fresh_build_queue;
+    }
+  ) else (
+    (* Spawn workers if not already spawned *)
+    let workers =
+      if state.workers = [] then (
+        let num_cores = get_num_cores () in
+        Printf.printf "[Server] Spawning %d workers\n" num_cores;
+        let workers = spawn_workers (self ()) num_cores in
+        (* Give workers a moment to start *)
+        sleep 0.1;
+        workers)
+      else state.workers
+    in
+
+    let new_state = { state with workers; client_pid = Some client_pid } in
+    (* Try to assign initial work to workers *)
+    try_assign_work new_state;
+    new_state
+  )
+
 (** Handle worker requesting next task *)
 let handle_next_task state worker_pid =
   match get_next_buildable_task state with
@@ -224,7 +292,7 @@ let handle_task_complete state pkg_name success hash =
       Printf.printf "[Server] Promoted %d packages from waiting to ready queue after %s completed\n" moved pkg_name;
 
     (* Also check if any other packages are now unblocked *)
-    match state.current_build_graph with
+    match state.active_build_graph with
     | Some graph ->
         let nodes = Build_graph.topological_sort graph in
         Printf.printf "[Server] Checking for newly unblocked packages after %s completed...\n" pkg_name;
@@ -324,7 +392,7 @@ let handle_scan_workspace state target_package =
   | Some graph -> 
       Build_graph.print graph);
 
-  { state with workspace = Some workspace; build_graph; current_build_graph = build_graph }
+  { state with workspace = Some workspace; build_graph; active_build_graph = build_graph }
 
 (** Handle RPC client request *)
 let handle_client_request state client_pid request =
@@ -479,8 +547,8 @@ let handle_client_request state client_pid request =
           ) else (
             (* Mark this as an RPC client build and set current_build_graph *)
             let build_state = { new_state with 
-              rpc_client_pid = Some client_pid;
-              current_build_graph = filtered_graph  (* Use filtered graph for build *)
+              client_pid = Some client_pid;
+              active_build_graph = filtered_graph  (* Use filtered graph for build *)
             } in
             (* Send the BuildPackage message to self to handle the actual build *)
             send (self ()) (BuildPackage (package, client_pid));
@@ -489,7 +557,7 @@ let handle_client_request state client_pid request =
           )
       | None ->
           (* No build graph, need to build *)
-          let new_state = { new_state with rpc_client_pid = Some client_pid } in
+          let new_state = { new_state with client_pid = Some client_pid } in
           send (self ()) (BuildPackage (package, client_pid));
           new_state)
   | Rpc.BuildAll { watch = _ } ->
@@ -513,7 +581,7 @@ let handle_client_request state client_pid request =
             new_state
           ) else (
             (* Mark this as an RPC client build *)
-            let new_state = { new_state with rpc_client_pid = Some client_pid } in
+            let new_state = { new_state with client_pid = Some client_pid } in
             (* Send the BuildAll message to self to handle the actual build *)
             send (self ()) (BuildAll client_pid);
             (* Return the updated state *)
@@ -521,7 +589,7 @@ let handle_client_request state client_pid request =
           )
       | None ->
           (* No build graph, need to build *)
-          let new_state = { new_state with rpc_client_pid = Some client_pid } in
+          let new_state = { new_state with client_pid = Some client_pid } in
           send (self ()) (BuildAll client_pid);
           new_state)
   | _ ->
@@ -540,162 +608,28 @@ let rec server_loop state =
       server_loop new_state
   | BuildAll cli_pid -> (
       Printf.printf "[Server] BuildAll command received\n";
-      (* For BuildAll, use the full build graph *)
-      let new_state = { state with current_build_graph = state.build_graph } in
-      match new_state.current_build_graph with
+      match state.build_graph with
       | None ->
-          Printf.printf
-            "[Server] No build graph available. Run ScanWorkspace first.\n";
+          Printf.printf "[Server] No build graph available. Run ScanWorkspace first.\n";
+          send cli_pid (ServerResponse (Rpc.Error { message = "No build graph available" }));
           server_loop state
       | Some graph ->
           Printf.printf "[Server] Building all packages...\n";
-
-          (* Get all packages in topological order *)
-          let sorted = Build_graph.topological_sort graph in
-          
-          Printf.printf "[Server] All packages in dependency order: ";
-          List.iter (fun node ->
-            Printf.printf "%s " node.Build_node.package.name
-          ) sorted;
-          Printf.printf "\n";
-          
-          (* Initialize build results for all packages *)
-          List.iter (fun node ->
-            let pkg_name = node.Build_node.package.name in
-            if not (Build_results.is_tracked state.build_results pkg_name) then
-              Build_results.init_package state.build_results pkg_name
-          ) sorted;
-
-          (* Queue all packages - current if ready, later if waiting on deps *)
-          List.iter
-            (fun node ->
-              let pkg_name = node.Build_node.package.name in
-              let is_ready = can_build_package state pkg_name in
-              if not is_ready then
-                Printf.printf "[Server] Package %s has unmet dependencies, adding to later queue\n" pkg_name;
-              queue_package_if_needed state node is_ready)
-            sorted;
-
-          let (ready_count, waiting_count) = Build_queue.stats state.build_queue in
-          Printf.printf "[Server] Queue stats - ready: %d, waiting: %d\n" ready_count waiting_count;
-
-          (* Check if there's actually any work to do *)
-          if ready_count = 0 && waiting_count = 0 then (
-            (* All packages already built - return success immediately *)
-            Printf.printf "[Server] All packages already built!\n";
-            let built_count = List.length sorted in
-            (* Check if this is an RPC client or internal CLI *)
-            (match state.rpc_client_pid with
-            | Some rpc_pid ->
-                (* RPC client - send RPC response *)
-                send rpc_pid (ServerResponse (Rpc.BuildComplete { successful = built_count; failed = 0 }));
-                (* Reset RPC client state *)
-                let new_state = { state with rpc_client_pid = None; current_build_graph = None } in
-                server_loop new_state
-            | None ->
-                (* Internal CLI - send RPC response since CLI now uses RPC protocol *)
-                send cli_pid (ServerResponse (Rpc.BuildComplete { successful = built_count; failed = 0 }));
-                server_loop state)
-          ) else (
-            (* Spawn workers if not already spawned *)
-            let workers =
-              if state.workers = [] then (
-                let num_cores = get_num_cores () in
-                Printf.printf "[Server] Spawning %d workers\n" num_cores;
-                let workers = spawn_workers (self ()) num_cores in
-                (* Give workers a moment to start *)
-                sleep 0.1;
-                workers)
-              else state.workers
-            in
-
-            let new_state = { state with workers; cli_pid = Some cli_pid } in
-            (* Try to assign initial work to workers *)
-            try_assign_work new_state;
-            server_loop new_state))
+          let new_state = { state with active_build_graph = Some graph } in
+          let updated_state = execute_build new_state cli_pid graph in
+          server_loop updated_state)
   | BuildPackage (pkg_name, cli_pid) -> (
       Printf.printf "[Server] BuildPackage %s command received\n" pkg_name;
-      (* current_build_graph should already be set to the filtered graph *)
-      match state.current_build_graph with
+      (* active_build_graph should already be set to the filtered graph *)
+      match state.active_build_graph with
       | None ->
-          Printf.printf
-            "[Server] No build graph available. Run ScanWorkspace first.\n";
-          (* Send appropriate response based on client type *)
-          (match state.rpc_client_pid with
-          | Some rpc_pid ->
-              send rpc_pid (ServerResponse (Rpc.Error { message = "No build graph available" }));
-              let new_state = { state with rpc_client_pid = None } in
-              server_loop new_state
-          | None ->
-              send cli_pid (ServerResponse (Rpc.Error { message = "No build graph available" }));
-              server_loop state)
+          Printf.printf "[Server] No build graph available for package %s.\n" pkg_name;
+          send cli_pid (ServerResponse (Rpc.Error { message = "No build graph available" }));
+          server_loop state
       | Some graph ->
-          Printf.printf "[Server] Building package %s and its dependencies...\n"
-            pkg_name;
-
-          (* Get all packages in topological order *)
-          let sorted = Build_graph.topological_sort graph in
-          
-          Printf.printf "[Server] All packages in dependency order: ";
-          List.iter (fun node ->
-            Printf.printf "%s " node.Build_node.package.name
-          ) sorted;
-          Printf.printf "\n";
-          
-          (* Initialize build results for all packages *)
-          List.iter (fun node ->
-            let pkg_name = node.Build_node.package.name in
-            if not (Build_results.is_tracked state.build_results pkg_name) then
-              Build_results.init_package state.build_results pkg_name
-          ) sorted;
-
-          (* Queue all packages - current if ready, later if waiting on deps *)
-          List.iter
-            (fun node ->
-              let pkg_name = node.Build_node.package.name in
-              let is_ready = can_build_package state pkg_name in
-              if not is_ready then
-                Printf.printf "[Server] Package %s has unmet dependencies, adding to later queue\n" pkg_name;
-              queue_package_if_needed state node is_ready)
-            sorted;
-
-          let (ready_count, waiting_count) = Build_queue.stats state.build_queue in
-          Printf.printf "[Server] Queue stats - ready: %d, waiting: %d\n" ready_count waiting_count;
-
-          (* Check if there's actually any work to do *)
-          if ready_count = 0 && waiting_count = 0 then (
-            (* All packages already built - return success immediately *)
-            Printf.printf "[Server] All packages already built!\n";
-            let built_count = List.length sorted in
-            (* Check if this is an RPC client or internal CLI *)
-            (match state.rpc_client_pid with
-            | Some rpc_pid ->
-                (* RPC client - send RPC response *)
-                send rpc_pid (ServerResponse (Rpc.BuildComplete { successful = built_count; failed = 0 }));
-                (* Reset RPC client state *)
-                let new_state = { state with rpc_client_pid = None; current_build_graph = None } in
-                server_loop new_state
-            | None ->
-                (* Internal CLI - send RPC response since CLI now uses RPC protocol *)
-                send cli_pid (ServerResponse (Rpc.BuildComplete { successful = built_count; failed = 0 }));
-                server_loop state)
-          ) else (
-            (* Spawn workers if not already spawned *)
-            let workers =
-              if state.workers = [] then (
-                let num_cores = get_num_cores () in
-                Printf.printf "[Server] Spawning %d workers\n" num_cores;
-                let workers = spawn_workers (self ()) num_cores in
-                (* Give workers a moment to start *)
-                sleep 0.1;
-                workers)
-              else state.workers
-            in
-
-            let new_state = { state with workers; cli_pid = Some cli_pid } in
-            (* Try to assign initial work to workers *)
-            try_assign_work new_state;
-            server_loop new_state))
+          Printf.printf "[Server] Building package %s and its dependencies...\n" pkg_name;
+          let updated_state = execute_build state cli_pid graph in
+          server_loop updated_state)
   | NextTask worker_pid ->
       Printf.printf "[Server] Worker %s requesting task\n"
         (Pid.to_string worker_pid);
@@ -721,17 +655,16 @@ let rec server_loop state =
         Printf.printf "[Server] All builds complete! Built: %d, Failed: %d\n"
           built failed;
 
-        (* Handle RPC vs CLI clients differently *)
-        match state.rpc_client_pid, state.cli_pid with
-        | Some rpc_pid, _ ->
-            (* RPC client - send response first, then clean up *)
-            send rpc_pid (ServerResponse (Rpc.BuildComplete { successful = built; failed }));
+        (* Send completion response to client *)
+        match state.client_pid with
+        | Some client_pid ->
+            send client_pid (ServerResponse (Rpc.BuildComplete { successful = built; failed }));
             
             (* Shutdown workers after sending response *)
             List.iter (fun w -> send w Shutdown) state.workers;
             
             (* Give workers time to shutdown *)
-            sleep 0.1;  (* Shorter sleep for RPC *)
+            sleep 0.1;
             
             (* Reset state for next build but keep build results *)
             (* Create fresh queues to avoid stale worker references *)
@@ -741,25 +674,12 @@ let rec server_loop state =
               workers = [];
               idle_workers = fresh_idle_workers;  (* Fresh queue, no stale PIDs *)
               build_queue = fresh_build_queue;    (* Fresh build queue *)
-              cli_pid = None;
-              rpc_client_pid = None;
-              current_build_graph = None;  (* Clear current build graph *)
+              client_pid = None;
+              active_build_graph = None;  (* Clear active build graph *)
               (* Keep build_results to track what's already built *)
             } in
             server_loop new_state
-        | None, Some cli_pid ->
-            (* Internal CLI - send RPC response since CLI now uses RPC protocol *)
-            send cli_pid (ServerResponse (Rpc.BuildComplete { successful = built; failed }));
-            
-            (* Shutdown workers *)
-            List.iter (fun w -> send w Shutdown) state.workers;
-            
-            (* Give workers time to shutdown *)
-            sleep 0.5;
-            
-            (* CLI build - exit normally *)
-            Process.Normal
-        | None, None ->
+        | None ->
             (* No client? Just clean up and exit *)
             List.iter (fun w -> send w Shutdown) state.workers;
             sleep 0.1;
@@ -821,13 +741,12 @@ let start () =
     {
       workspace = None;
       build_graph = None;
-      current_build_graph = None;
+      active_build_graph = None;
       build_results = Build_results.create ();
       workers = [];
       idle_workers = Queue.create ();
       build_queue = Build_queue.create ();
-      cli_pid = None;
-      rpc_client_pid = None;
+      client_pid = None;
       toolchain;
     }
   in
@@ -858,13 +777,12 @@ let start_with_listener () =
     {
       workspace = Some workspace;
       build_graph;
-      current_build_graph = build_graph;  (* Initially same as full graph *)
+      active_build_graph = build_graph;  (* Initially same as full graph *)
       build_results = Build_results.create ();
       workers = [];
       idle_workers = Queue.create ();
       build_queue = Build_queue.create ();
-      cli_pid = None;
-      rpc_client_pid = None;
+      client_pid = None;
       toolchain;
     }
   in
