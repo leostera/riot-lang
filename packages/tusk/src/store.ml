@@ -13,7 +13,7 @@ let create ~root_dir =
 
 (** Get the path for a given hash in the store *)
 let get_hash_dir store hash =
-  Filename.concat store.root_dir hash
+  Filename.concat store.root_dir (Hasher.to_string hash)
 
 (** Check if artifacts for a given hash exist in the store *)
 let exists store hash =
@@ -33,7 +33,7 @@ let list_artifacts store hash =
 let promote_from_store store hash target_dir =
   let hash_dir = get_hash_dir store hash in
   if System.file_exists hash_dir then (
-    Printf.printf "[Store] Promoting artifacts from cache: %s\n" hash;
+    Printf.printf "[Store] Promoting artifacts from cache: %s\n" (Hasher.to_string hash);
     flush stdout;
     
     (* Ensure target directory exists *)
@@ -62,7 +62,7 @@ let store_artifacts store hash sandbox_dir declared_outputs =
   (* Create hash directory (including parent directories) *)
   System.mkdirp hash_dir;
   
-  Printf.printf "[Store] Storing artifacts with hash: %s\n" hash;
+  Printf.printf "[Store] Storing artifacts with hash: %s\n" (Hasher.to_string hash);
   flush stdout;
   
   (* Copy declared outputs to store *)

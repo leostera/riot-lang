@@ -41,27 +41,10 @@ type blueprint = {
   dependencies : dep_info list;
   actions : action list;
   toolchain_version : string;
-  hash : string option; (* Content-based hash of all inputs *)
+  hash : Hasher.hash option; (* Content-based hash of all inputs *)
 }
 
-(** Compute SHA256 hash of a string *)
-let sha256_string s =
-  let cmd = Printf.sprintf "echo -n '%s' | shasum -a 256 | cut -d' ' -f1" s in
-  let output = System.run_process_lines cmd in
-  match output with
-  | [hash] -> String.trim hash
-  | _ -> failwith "Failed to compute SHA256"
-
-(** Compute SHA256 hash of a file's content *)
-let sha256_file filepath =
-  if System.file_exists filepath then
-    let cmd = Printf.sprintf "shasum -a 256 '%s' | cut -d' ' -f1" filepath in
-    let output = System.run_process_lines cmd in
-    match output with
-    | [hash] -> String.trim hash
-    | _ -> filepath ^ ":missing"
-  else
-    filepath ^ ":missing"
+(* Use Hasher module for all hash operations *)
 
 (** Convert action to canonical string for hashing *)
 let action_to_string action =
@@ -113,8 +96,8 @@ let compute_blueprint_hash blueprint =
     let sorted_files = List.sort String.compare source_files in
     List.iter (fun file ->
       let full_path = Filename.concat src_dir file in
-      let file_hash = sha256_file full_path in
-      components := (file ^ ":" ^ file_hash) :: !components;
+      let file_hash = Hasher.hash_file full_path in
+      components := (file ^ ":" ^ Hasher.to_string file_hash) :: !components;
     ) sorted_files;
   );
   
@@ -125,9 +108,9 @@ let compute_blueprint_hash blueprint =
   
   (* 5. Combine all components and hash *)
   let combined = String.concat "|" (List.rev !components) in
-  let final_hash = sha256_string combined in
+  let final_hash = Hasher.hash_string combined in
   
-  Printf.printf "[Blueprint] Computed hash %s for %s\n" final_hash blueprint.package_name;
+  Printf.printf "[Blueprint] Computed hash %s for %s\n" (Hasher.to_string final_hash) blueprint.package_name;
   flush stdout;
   
   final_hash
@@ -177,7 +160,7 @@ let print_blueprint blueprint =
 
 (** Generate build blueprint for a package *)
 let generate_blueprint root pkg_name pkg_path pkg_relative_path dependencies
-    all_packages toolchain_version =
+    all_packages toolchain_version ~hash () =
   (* Get dependency include paths *)
   let dep_includes =
     List.fold_left
@@ -449,10 +432,8 @@ let generate_blueprint root pkg_name pkg_path pkg_relative_path dependencies
     hash = None; (* Will be computed after blueprint creation *)
   } in
   
-  (* Compute the content-based hash *)
-  let final_hash = compute_blueprint_hash blueprint in
-  
-  { blueprint with hash = Some final_hash }
+  (* Use the provided hash *)
+  { blueprint with hash = Some hash }
 
 (** Execute an action in the sandbox *)
 let execute_action action toolchain_version =
