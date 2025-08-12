@@ -130,7 +130,7 @@ let rec run_actions ~sandbox ~blueprint ~store =
   match blueprint.Actions.hash with
   | Some hash ->
       if Store.exists store hash then (
-        Printf.printf "[Sandbox] Cache hit for %s (hash: %s)\n" pkg_name hash;
+        Printf.printf "[Sandbox] Cache hit for %s (hash: %s)\n" pkg_name (Hasher.to_string hash);
         flush stdout;
         
         (* Promote artifacts from store directly to target *)
@@ -139,21 +139,24 @@ let rec run_actions ~sandbox ~blueprint ~store =
         else
           (false, "Failed to promote from cache")
       ) else (
-        Printf.printf "[Sandbox] Cache miss for %s (hash: %s), building...\n" pkg_name hash;
+        Printf.printf "[Sandbox] Cache miss for %s (hash: %s), building...\n" pkg_name (Hasher.to_string hash);
         flush stdout;
         
         (* Proceed with normal build *)
-        build_in_sandbox ~sandbox ~blueprint ~store ~hash
+        build_in_sandbox ~sandbox ~blueprint ~store ~hash:(Some hash)
       )
   | None ->
       Printf.printf "[Sandbox] No hash computed for %s, building without caching...\n" pkg_name;
       flush stdout;
       
       (* Proceed with normal build (no caching) *)
-      build_in_sandbox ~sandbox ~blueprint ~store ~hash:""
+      build_in_sandbox ~sandbox ~blueprint ~store ~hash:None
 
 (** Internal function to actually build in sandbox *)
 and build_in_sandbox ~sandbox ~blueprint ~store ~hash =
+  (* Print the blueprint since we're about to execute it *)
+  Actions.print_blueprint blueprint;
+  
   Printf.printf "[Sandbox] Running %d actions for %s in %s\n"
     (List.length blueprint.Actions.actions)
     sandbox.node.Build_node.package.name sandbox.sandbox_dir;
@@ -301,7 +304,8 @@ and build_in_sandbox ~sandbox ~blueprint ~store ~hash =
      copy_artifacts ();
      
      (* After successful build, store artifacts in content-addressable cache *)
-     if fst result && hash <> "" then (
+     (match hash with
+     | Some h when fst result -> (
        (* Get declared outputs from the blueprint *)
        let declared_outputs = ref [] in
        List.iter (fun action ->
@@ -313,8 +317,9 @@ and build_in_sandbox ~sandbox ~blueprint ~store ~hash =
        if !declared_outputs <> [] then (
          Printf.printf "[Sandbox] Storing build artifacts in cache\n";
          flush stdout;
-         Store.store_artifacts store hash sandbox.sandbox_dir !declared_outputs
+         Store.store_artifacts store h sandbox.sandbox_dir !declared_outputs
        )
+     ) | _ -> () (* No hash or build failed, skip caching *)
      )
   );
 
