@@ -1,5 +1,6 @@
-module Pid_table = Hashtbl.Make(struct
+module Pid_table = Hashtbl.Make (struct
   type t = Pid.t
+
   let equal = Pid.equal
   let hash = Hashtbl.hash
 end)
@@ -13,25 +14,33 @@ type t = {
   io_poll : Gluon.t;
 }
 
-let create () = {
-  stop = false;
-  status = 0;
-  run_queue = Queue.create ();
-  processes = Pid_table.create 128;
-  current_process = None;
-  io_poll = Gluon.create () |> Result.get_ok;
-}
+let create () =
+  match Gluon.create () with
+  | Ok io_poll ->
+      {
+        stop = false;
+        status = 0;
+        run_queue = Queue.create ();
+        processes = Pid_table.create 128;
+        current_process = None;
+        io_poll;
+      }
+  | Error err ->
+      Printf.printf "[Scheduler] ERROR: Failed to create kqueue: %s\n%!" 
+        (match err with `System_error s -> s | `Noop -> "Unknown error");
+      failwith "Failed to create I/O polling system"
 
 let current_scheduler = ref None
 let has_run = ref false
 
-let get_scheduler () = 
+let get_scheduler () =
   match !current_scheduler with
   | None -> failwith "No scheduler running"
   | Some s -> s
 
 let add_to_run_queue t proc =
-  Trace.trace "Adding process %s to run queue" (Pid.to_string (Process.pid proc));
+  Trace.trace "Adding process %s to run queue"
+    (Pid.to_string (Process.pid proc));
   Queue.push proc t.run_queue
 
 let spawn t fn =
@@ -52,9 +61,8 @@ let send pid msg =
   let t = get_scheduler () in
   Trace.trace "Sending message to %s" (Pid.to_string pid);
   match Pid_table.find_opt t.processes pid with
-  | None -> 
-      Trace.trace "Process %s not found!" (Pid.to_string pid)
-  | Some proc -> 
+  | None -> Trace.trace "Process %s not found!" (Pid.to_string pid)
+  | Some proc ->
       let was_waiting = Process.is_waiting proc in
       Process.send_message proc msg;
       if was_waiting then (
@@ -67,11 +75,10 @@ let shutdown t status =
 
 let handle_receive k _t proc ~selector =
   let open Proc_state in
-  
   let pid_str = Pid.to_string (Process.pid proc) in
-  Trace.trace "Process %s receiving (mailbox empty? %b)" 
-    pid_str (Process.has_empty_mailbox proc);
-  
+  Trace.trace "Process %s receiving (mailbox empty? %b)" pid_str
+    (Process.has_empty_mailbox proc);
+
   if Process.has_empty_mailbox proc then (
     Trace.trace "Process %s has empty mailbox, suspending" pid_str;
     Process.mark_as_awaiting_message proc;
@@ -86,13 +93,14 @@ let handle_receive k _t proc ~selector =
       else
         match Process.next_message proc with
         | None ->
-            Trace.trace "Process %s no more messages, switching to save queue" pid_str;
+            Trace.trace "Process %s no more messages, switching to save queue"
+              pid_str;
             Process.read_save_queue proc;
             k Delay
         | Some msg -> (
             Trace.trace "Process %s got message" pid_str;
             match selector Message.(msg.msg) with
-            | `select msg -> 
+            | `select msg ->
                 Trace.trace "Process %s selected message" pid_str;
                 k (Continue msg)
             | `skip ->
@@ -104,10 +112,9 @@ let handle_receive k _t proc ~selector =
 
 let handle_syscall k t proc name interest source _timeout =
   let open Proc_state in
-  
   let pid_str = Pid.to_string (Process.pid proc) in
   Trace.trace "Process %s performing syscall %s" pid_str name;
-  
+
   match Process.get_ready_token proc with
   | Some (_token, _source) ->
       Trace.trace "Process %s syscall %s ready" pid_str name;
@@ -116,8 +123,15 @@ let handle_syscall k t proc name interest source _timeout =
       let token = Gluon.Token.make proc in
       Trace.trace "Process %s registering for I/O" pid_str;
       Process.mark_as_awaiting_io proc name token source;
-      Gluon.register t.io_poll ~fd:(Gluon.Source.fd source) ~token ~interests:interest |> Result.get_ok;
-      k Suspend
+      (match Gluon.register t.io_poll ~fd:(Gluon.Source.fd source) ~token ~interests:interest with
+      | Ok () ->
+          Trace.trace "Process %s registered for I/O successfully" pid_str;
+          k Suspend
+      | Error err ->
+          Printf.printf "[Scheduler] ERROR: Failed to register I/O for process %s: %s\n%!" pid_str
+            (match err with `System_error s -> s | `Noop -> "Unknown error");
+          Process.mark_as_runnable proc;
+          k (Continue ()))
 
 let perform t proc =
   let open Proc_state in
@@ -125,28 +139,29 @@ let perform t proc =
   let perform : type a b. (a, b) step_callback =
    fun k eff ->
     match eff with
-    | Receive { selector } ->
-        handle_receive k t proc ~selector
-    | Yield ->
-        k Yield
+    | Receive { selector } -> handle_receive k t proc ~selector
+    | Yield -> k Yield
     | Syscall { name; interest; source; timeout } ->
         handle_syscall k t proc name interest source timeout
-    | _ ->
-        k Suspend
+    | _ -> k Suspend
   in
   { perform }
 
 let handle_exit_proc t proc reason =
-  if Process.is_main proc then
+  if Process.is_main proc then (
     let status = if reason = Process.Normal then 0 else 1 in
     shutdown t status;
-  
-  (* Clean up any I/O registrations *)
-  Process.consume_ready_tokens proc (fun (_token, source) ->
-    Gluon.deregister t.io_poll ~fd:(Gluon.Source.fd source) |> Result.get_ok);
-  
-  Pid_table.remove t.processes (Process.pid proc);
-  Process.mark_as_finalized proc
+
+    (* Clean up any I/O registrations *)
+    Process.consume_ready_tokens proc (fun (_token, source) ->
+        match Gluon.deregister t.io_poll ~fd:(Gluon.Source.fd source) with
+        | Ok () -> ()
+        | Error err ->
+            Printf.printf "[Scheduler] WARN: Failed to deregister I/O: %s\n%!"
+              (match err with `System_error s -> s | `Noop -> "Unknown error"));
+
+    Pid_table.remove t.processes (Process.pid proc);
+    Process.mark_as_finalized proc)
 
 let handle_wait_proc t proc =
   if Process.has_messages proc then (
@@ -159,9 +174,13 @@ let handle_run_proc t proc =
   Process.mark_as_running proc;
   t.current_process <- Some proc;
   let perform = perform t proc in
-  let cont = 
-    Proc_state.run ~reductions:100 ~perform (Process.cont proc)
-    |> Option.get
+  let cont =
+    match Proc_state.run ~reductions:100 ~perform (Process.cont proc) with
+    | Some cont -> cont
+    | None -> 
+        Printf.printf "[Scheduler] ERROR: Proc_state.run returned None for process %s\n%!" pid_str;
+        Printf.printf "[Scheduler] This should never happen - investigating...\n%!";
+        failwith "Proc_state.run returned None"
   in
   Process.set_cont proc cont;
   match cont with
@@ -170,8 +189,13 @@ let handle_run_proc t proc =
       Process.mark_as_exited proc reason;
       add_to_run_queue t proc
   | Proc_state.Finished (Error exn) ->
-      Trace.trace "Process %s finished with exception: %s" 
-        pid_str (Printexc.to_string exn);
+      (* Always print exception details, not just when tracing is enabled *)
+      Printf.printf "[Scheduler] Process %s finished with exception: %s\n%!" pid_str
+        (Printexc.to_string exn);
+      Printf.printf "[Scheduler] Backtrace:\n%s\n%!" 
+        (Printexc.raw_backtrace_to_string (Printexc.get_raw_backtrace ()));
+      Trace.trace "Process %s finished with exception: %s" pid_str
+        (Printexc.to_string exn);
       Process.mark_as_exited proc (Exception exn);
       add_to_run_queue t proc
   | _ when Process.is_waiting proc ->
@@ -202,15 +226,26 @@ let step_process t proc =
 
 let poll_io t =
   Trace.trace "Polling for I/O events";
-  let events = Gluon.poll t.io_poll |> Result.get_ok in
-  Array.iter 
+  let events = match Gluon.poll t.io_poll with
+    | Ok events -> events
+    | Error err ->
+        Printf.printf "[Scheduler] ERROR: Failed to poll I/O: %s\n%!"
+          (match err with `System_error s -> s | `Noop -> "Unknown error");
+        [||]
+  in
+  Array.iter
     (fun event ->
       let token = Gluon.Event.token event in
       let proc : Process.t = Gluon.Token.unsafe_to_value token in
       Trace.trace "I/O ready for process %s" (Pid.to_string (Process.pid proc));
       match Process.state proc with
       | Waiting_io { source; _ } ->
-          Gluon.deregister t.io_poll ~fd:(Gluon.Source.fd source) |> Result.get_ok;
+          (match Gluon.deregister t.io_poll ~fd:(Gluon.Source.fd source) with
+          | Ok () -> ()
+          | Error err ->
+              Printf.printf "[Scheduler] WARN: Failed to deregister I/O for process %s: %s\n%!"
+                (Pid.to_string (Process.pid proc))
+                (match err with `System_error s -> s | `Noop -> "Unknown error"));
           if Process.is_alive proc then (
             Process.add_ready_token proc token source;
             Process.mark_as_runnable proc;
@@ -220,28 +255,30 @@ let poll_io t =
 
 let run_loop t =
   Trace.trace "Run loop starting";
-  while not (Queue.is_empty t.run_queue) && not t.stop do
+  while (not (Queue.is_empty t.run_queue)) && not t.stop do
     let proc = Queue.pop t.run_queue in
     Trace.trace "Stepping process %s" (Pid.to_string (Process.pid proc));
     step_process t proc
   done;
-  
+
   (* Poll for I/O events when run queue is empty *)
   if not t.stop then poll_io t;
-  
+
   Trace.trace "Run loop done"
 
 let run ~main =
   if !has_run then
-    failwith "Miniriot.run can only be called once per process. Each test should be in a separate executable.";
+    failwith
+      "Miniriot.run can only be called once per process. Each test should be \
+       in a separate executable.";
   has_run := true;
-  
+
   let t = create () in
   current_scheduler := Some t;
-  
+
   (* Spawn main process with PID 0 *)
   let _ = spawn t main in
-  
+
   (* Run until completion *)
   while not t.stop do
     run_loop t;
@@ -250,10 +287,12 @@ let run ~main =
       t.stop <- true
     else if Queue.is_empty t.run_queue then
       (* Still have processes, they might be waiting for I/O *)
-      let has_waiting_io = Pid_table.fold (fun _ proc acc ->
-        acc || Process.is_waiting_io proc) t.processes false in
-      if not has_waiting_io then
-        t.stop <- true
+      let has_waiting_io =
+        Pid_table.fold
+          (fun _ proc acc -> acc || Process.is_waiting_io proc)
+          t.processes false
+      in
+      if not has_waiting_io then t.stop <- true
   done;
-  
+
   t.status
