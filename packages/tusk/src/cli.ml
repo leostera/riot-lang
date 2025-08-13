@@ -594,10 +594,39 @@ let version_command () =
   Process.Normal
 
 (** Execute the server command *)
-let server_command () =
-  Printf.printf "🚀 Starting tusk server...\n";
-  Printf.printf "   Press Ctrl+C to stop\n\n";
-  Server.start_with_listener ()
+let server_command args =
+  (* Parse subcommand if provided *)
+  let subcommand = if Array.length args > 2 then args.(2) else "" in
+  match subcommand with
+  | "start" ->
+      (* Start server in background *)
+      if Server_manager.start_background () then
+        Process.Normal
+      else
+        Process.Exception (Failure "Failed to start server")
+  | "stop" ->
+      (* Stop background server *)
+      if Server_manager.stop_background () then
+        Process.Normal
+      else
+        Process.Exception (Failure "Failed to stop server")
+  | "status" ->
+      (* Check server status *)
+      Server_manager.status ();
+      Process.Normal
+  | "" | "foreground" ->
+      (* Default: Run server in foreground *)
+      Printf.printf "🚀 Starting tusk server...\n";
+      Printf.printf "   Press Ctrl+C to stop\n\n";
+      Server.start_with_listener ()
+  | _ ->
+      Printf.eprintf "Unknown server subcommand: %s\n" subcommand;
+      Printf.eprintf "Available subcommands:\n";
+      Printf.eprintf "  tusk server            - Start server in foreground\n";
+      Printf.eprintf "  tusk server start      - Start server in background\n";
+      Printf.eprintf "  tusk server stop       - Stop background server\n";
+      Printf.eprintf "  tusk server status     - Check server status\n";
+      Process.Exception (Failure "Invalid server subcommand")
 
 (** Execute the rpc command *)
 let rpc_command args =
@@ -709,7 +738,7 @@ let main () =
     | "run" ->
         let binary_opt = parse_run_args args 2 in
         run_command binary_opt
-    | "server" -> server_command ()
+    | "server" -> server_command args
     | "rpc" -> rpc_command args
     | "lsp" -> lsp_command ()
     | "fmt" | "format" -> fmt_command ()
