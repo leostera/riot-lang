@@ -4,12 +4,14 @@
 type t = {
   current_queue : string Queue.t;  (* Packages ready to build *)
   later_queue : string Queue.t;     (* Packages waiting on dependencies *)
+  build_results : Build_results.t; (* Reference to build results for automatic filtering *)
 }
 
 (** Create a new build queue *)
-let create () = {
+let create build_results = {
   current_queue = Queue.create ();
   later_queue = Queue.create ();
+  build_results;
 }
 
 (** Add a package to the current (ready) queue *)
@@ -28,18 +30,10 @@ let is_empty t =
 let has_ready_work t =
   not (Queue.is_empty t.current_queue)
 
-(** Get the next package from the current queue *)
-let take_ready t =
-  if Queue.is_empty t.current_queue then
-    None
-  else
-    Some (Queue.take t.current_queue)
-
-(** Move packages from later queue to current queue based on a predicate 
-    Returns the number of packages moved *)
-let promote_ready t is_ready =
+(** Helper to promote packages from later queue when dependencies are ready *)
+let rec promote_from_later t =
   if Queue.is_empty t.later_queue then
-    0
+    ()
   else
     let later_items = ref [] in
     (* Take all items from later queue *)
@@ -47,16 +41,32 @@ let promote_ready t is_ready =
       later_items := Queue.take t.later_queue :: !later_items
     done;
     
-    (* Partition into ready and still-waiting *)
-    let moved = ref 0 in
+    (* Check each package and either promote or keep waiting *)
     List.iter (fun pkg_name ->
-      if is_ready pkg_name then (
-        Queue.add pkg_name t.current_queue;
-        incr moved
-      ) else
-        Queue.add pkg_name t.later_queue
-    ) !later_items;
-    !moved
+      (* Get dependencies for this package - we need the build graph context *)
+      (* For now, we'll use a simple check based on build results *)
+      (* In a real implementation, we'd need the dependency information *)
+      match Build_results.get_status t.build_results pkg_name with
+      | Some (Built _) -> () (* Already built, skip *)
+      | _ -> 
+          (* For now, add back to later queue - this needs dependency checking *)
+          Queue.add pkg_name t.later_queue
+    ) !later_items
+
+(** Get the next package from the current queue *)
+let rec take_ready t =
+  (* First try to promote packages from later queue *)
+  promote_from_later t;
+  
+  if Queue.is_empty t.current_queue then
+    None
+  else
+    let pkg = Queue.take t.current_queue in
+    (* Check if already built *)
+    match Build_results.get_status t.build_results pkg with
+    | Some (Built _) -> take_ready t (* Skip and try next *)
+    | _ -> Some pkg
+
 
 (** Get statistics about the queue *)
 let stats t =
@@ -80,3 +90,24 @@ let peek_ready t =
   let items = ref [] in
   Queue.iter (fun item -> items := item :: !items) t.current_queue;
   List.rev !items
+
+(** Check if a package is in the waiting queue *)
+let is_waiting t pkg_name =
+  let waiting_items = peek_waiting t in
+  List.mem pkg_name waiting_items
+
+(** Move a package from waiting to ready queue *)
+let move_to_ready t pkg_name =
+  (* Take all items from later queue *)
+  let later_items = ref [] in
+  while not (Queue.is_empty t.later_queue) do
+    later_items := Queue.take t.later_queue :: !later_items
+  done;
+  
+  (* Put back items except the one we're moving *)
+  List.iter (fun item ->
+    if item = pkg_name then
+      Queue.add item t.current_queue (* Move to ready queue *)
+    else
+      Queue.add item t.later_queue   (* Keep in waiting queue *)
+  ) (List.rev !later_items)
