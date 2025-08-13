@@ -127,6 +127,23 @@ let build_command package_opt =
   in
   wait_for_completion ()
 
+(** Execute a binary and handle its exit status *)
+let execute_binary binary_name binary_path =
+  Printf.printf "🚀 Running %s...\n" binary_name;
+  let result = System.system binary_path in
+  match result with
+  | Unix.WEXITED code ->
+      if code = 0 then Process.Normal
+      else
+        Process.Exception
+          (Failure (Printf.sprintf "Binary exited with code %d" code))
+  | Unix.WSIGNALED signal ->
+      Process.Exception
+        (Failure (Printf.sprintf "Binary killed by signal %d" signal))
+  | Unix.WSTOPPED signal ->
+      Process.Exception
+        (Failure (Printf.sprintf "Binary stopped by signal %d" signal))
+
 (** Execute the clean command *)
 let clean_command () =
   Printf.printf "🧹 Cleaning build artifacts...\n";
@@ -173,23 +190,9 @@ let run_command binary_opt =
       if List.mem binary_name available_binaries then (
         (* Check if binary exists, if not build it first *)
         match get_binary_path binary_name with
-        | Some binary_path -> (
+        | Some binary_path ->
             (* Binary exists, run it directly *)
-            Printf.printf "🚀 Running %s...\n" binary_name;
-            let result = System.system binary_path in
-            match result with
-            | Unix.WEXITED code ->
-                if code = 0 then Process.Normal
-                else
-                  Process.Exception
-                    (Failure (Printf.sprintf "Binary exited with code %d" code))
-            | Unix.WSIGNALED signal ->
-                Process.Exception
-                  (Failure (Printf.sprintf "Binary killed by signal %d" signal))
-            | Unix.WSTOPPED signal ->
-                Process.Exception
-                  (Failure (Printf.sprintf "Binary stopped by signal %d" signal))
-            )
+            execute_binary binary_name binary_path
         | None ->
             (* Binary doesn't exist, build it first *)
             Printf.printf "📦 Binary '%s' not found, building first...\n"
@@ -197,25 +200,8 @@ let run_command binary_opt =
             if build_package binary_name then (
               (* Build succeeded, try to run again *)
               match get_binary_path binary_name with
-              | Some binary_path -> (
-                  Printf.printf "🚀 Running %s...\n" binary_name;
-                  let result = System.system binary_path in
-                  match result with
-                  | Unix.WEXITED code ->
-                      if code = 0 then Process.Normal
-                      else
-                        Process.Exception
-                          (Failure
-                             (Printf.sprintf "Binary exited with code %d" code))
-                  | Unix.WSIGNALED signal ->
-                      Process.Exception
-                        (Failure
-                           (Printf.sprintf "Binary killed by signal %d" signal))
-                  | Unix.WSTOPPED signal ->
-                      Process.Exception
-                        (Failure
-                           (Printf.sprintf "Binary stopped by signal %d" signal))
-                  )
+              | Some binary_path ->
+                  execute_binary binary_name binary_path
               | None ->
                   Printf.eprintf
                     "Error: Binary '%s' still not found after building.\n"
@@ -245,24 +231,8 @@ let run_command binary_opt =
       | [ single_binary ] -> (
           (* Only one binary available, run it *)
           match get_binary_path single_binary with
-          | Some binary_path -> (
-              Printf.printf "🚀 Running %s...\n" single_binary;
-              let result = System.system binary_path in
-              match result with
-              | Unix.WEXITED code ->
-                  if code = 0 then Process.Normal
-                  else
-                    Process.Exception
-                      (Failure
-                         (Printf.sprintf "Binary exited with code %d" code))
-              | Unix.WSIGNALED signal ->
-                  Process.Exception
-                    (Failure
-                       (Printf.sprintf "Binary killed by signal %d" signal))
-              | Unix.WSTOPPED signal ->
-                  Process.Exception
-                    (Failure
-                       (Printf.sprintf "Binary stopped by signal %d" signal)))
+          | Some binary_path ->
+              execute_binary single_binary binary_path
           | None ->
               (* Binary doesn't exist, build it first *)
               Printf.printf "📦 Binary '%s' not found, building first...\n"

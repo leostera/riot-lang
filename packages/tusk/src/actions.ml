@@ -441,55 +441,44 @@ let execute_action action toolchain_version =
     let success, output = System.run_command cmd in
     if success then (Success, output) else (Failed output, output)
   in
+  
+  let ocamlc = Toolchains.ocamlc_path toolchain_version in
+  let make_include_flags includes =
+    String.concat " " (List.map (fun p -> "-I " ^ p) includes)
+  in
 
   match action with
   | CompileInterface (src, dst, includes) ->
-      let include_flags =
-        String.concat " " (List.map (fun p -> "-I " ^ p) includes)
-      in
-      let ocamlc = Toolchains.ocamlc_path toolchain_version in
       let cmd =
-        Printf.sprintf "%s -I +unix %s -c -o %s %s" ocamlc include_flags dst src
+        Printf.sprintf "%s -I +unix %s -c -o %s %s" 
+          ocamlc (make_include_flags includes) dst src
       in
       run_command cmd
   | CompileImplementation (src, dst, includes) ->
-      let include_flags =
-        String.concat " " (List.map (fun p -> "-I " ^ p) includes)
-      in
-      let ocamlc = Toolchains.ocamlc_path toolchain_version in
       let cmd =
-        Printf.sprintf "%s -I +unix %s -I . -c -o %s %s" ocamlc include_flags
-          dst src
+        Printf.sprintf "%s -I +unix %s -I . -c -o %s %s" 
+          ocamlc (make_include_flags includes) dst src
       in
       run_command cmd
   | CompileC (src, dst) ->
-      let ocamlc = Toolchains.ocamlc_path toolchain_version in
       let cmd = Printf.sprintf "%s -I +unix -c -o %s %s" ocamlc dst src in
       run_command cmd
   | CreateLibrary (lib, object_files, includes) ->
-      let include_flags =
-        String.concat " " (List.map (fun p -> "-I " ^ p) includes)
-      in
       let files_str = String.concat " " object_files in
-      let ocamlc = Toolchains.ocamlc_path toolchain_version in
       let cmd =
-        Printf.sprintf "%s -I +unix %s -a -o %s %s" ocamlc include_flags lib
-          files_str
+        Printf.sprintf "%s -I +unix %s -a -o %s %s" 
+          ocamlc (make_include_flags includes) lib files_str
       in
       run_command cmd
   | CreateExecutable (exe, object_files, libs, includes) ->
-      let include_flags =
-        String.concat " " (List.map (fun p -> "-I " ^ p) includes)
-      in
       let files_str = String.concat " " object_files in
       let libs_str = String.concat " " libs in
-      let ocamlc = Toolchains.ocamlc_path toolchain_version in
       (* Include current directory to find C objects from dependencies *)
       (* Link with unix.cma for Unix module support *)
       (* Use -custom to include C stubs in the executable *)
       let cmd =
-        Printf.sprintf "%s -custom -I +unix %s -I . -o %s unix.cma %s %s" ocamlc
-          include_flags exe libs_str files_str
+        Printf.sprintf "%s -custom -I +unix %s -I . -o %s unix.cma %s %s" 
+          ocamlc (make_include_flags includes) exe libs_str files_str
       in
       run_command cmd
   | CopyFile (src, dst) -> (
