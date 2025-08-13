@@ -1,56 +1,7 @@
 (** Merlin bridge - Bridge between ocaml-lsp-server and tusk build system 
     
     This implements the ocaml-merlin protocol that ocaml-lsp-server uses
-    to get build configuration. It uses S-expressions (csexp) for communication. *)
-
-(** Parse an S-expression string *)
-let parse_sexp str =
-  try
-    (* Simple S-expression parser for the merlin protocol *)
-    let rec parse_list acc i =
-      if i >= String.length str then
-        List.rev acc, i
-      else
-        match str.[i] with
-        | ' ' | '\t' | '\n' | '\r' -> parse_list acc (i + 1)
-        | ')' -> List.rev acc, i + 1
-        | '(' ->
-            let elem, next_i = parse_sexp_from i in
-            parse_list (elem :: acc) next_i
-        | _ ->
-            let elem, next_i = parse_atom i in
-            parse_list (elem :: acc) next_i
-    and parse_atom start =
-      let rec find_end i =
-        if i >= String.length str then i
-        else
-          match str.[i] with
-          | ' ' | '\t' | '\n' | '\r' | '(' | ')' -> i
-          | _ -> find_end (i + 1)
-      in
-      let end_pos = find_end start in
-      let atom = String.sub str start (end_pos - start) in
-      `Atom atom, end_pos
-    and parse_sexp_from i =
-      if i >= String.length str then
-        `Atom "", i
-      else
-        match str.[i] with
-        | ' ' | '\t' | '\n' | '\r' -> parse_sexp_from (i + 1)
-        | '(' ->
-            let elems, next_i = parse_list [] (i + 1) in
-            `List elems, next_i
-        | _ -> parse_atom i
-    in
-    let sexp, _ = parse_sexp_from 0 in
-    Some sexp
-  with _ -> None
-
-(** Convert S-expression to string *)
-let rec sexp_to_string = function
-  | `Atom s -> s
-  | `List elems ->
-      "(" ^ String.concat " " (List.map sexp_to_string elems) ^ ")"
+    to get build configuration. It uses S-expressions for communication. *)
 
 (** Get build configuration from tusk server *)
 let get_build_config file_path =
@@ -79,6 +30,7 @@ let get_build_config file_path =
       let build_paths = [
         Printf.sprintf "target/debug/out/packages/%s" pkg_name;
         "target/debug/out/packages/miniriot";
+        "target/debug/out/packages/sexp";
         "target/debug/out/packages/toml";
         "target/debug/out/packages/gluon"
       ] in
@@ -100,34 +52,34 @@ let config_to_directives file_path =
       
       (* Add source paths *)
       List.iter (fun path ->
-        directives := `List [`Atom "S"; `Atom path] :: !directives
+        directives := Sexp.(list [atom "S"; atom path]) :: !directives
       ) source_paths;
       
       (* Add build paths *)
       List.iter (fun path ->
-        directives := `List [`Atom "B"; `Atom path] :: !directives
+        directives := Sexp.(list [atom "B"; atom path]) :: !directives
       ) build_paths;
       
       (* Add stdlib *)
-      directives := `List [`Atom "B"; `Atom stdlib_path] :: !directives;
-      directives := `List [`Atom "B"; `Atom (stdlib_path ^ "/unix")] :: !directives;
+      directives := Sexp.(list [atom "B"; atom stdlib_path]) :: !directives;
+      directives := Sexp.(list [atom "B"; atom (stdlib_path ^ "/unix")]) :: !directives;
       
       (* Add flags *)
       List.iter (fun flag ->
-        directives := `List [`Atom "FLG"; `Atom flag] :: !directives
+        directives := Sexp.(list [atom "FLG"; atom flag]) :: !directives
       ) flags;
       
       List.rev !directives
 
 (** Handle a merlin protocol request *)
 let handle_request request =
-  match parse_sexp request with
-  | Some (`List [`Atom "CONFIG"; `Atom file_path]) ->
+  match Sexp.of_string request with
+  | Ok (Sexp.List [Sexp.Atom "CONFIG"; Sexp.Atom file_path]) ->
       (* Return configuration for the file *)
       let directives = config_to_directives file_path in
-      let response = `List directives in
-      sexp_to_string response
-  | Some (`List [`Atom "HALT"]) ->
+      let response = Sexp.List directives in
+      Sexp.to_string response
+  | Ok (Sexp.List [Sexp.Atom "HALT"]) ->
       (* Shutdown request *)
       "HALT"
   | _ ->
@@ -169,10 +121,12 @@ let rec main_loop () =
   | Some request ->
       let response = handle_request request in
       if response = "HALT" then (
-        Printf.printf "()%!";
+        print_string "()";
+        flush stdout;
         ()
       ) else (
-        Printf.printf "%s\n%!" response;
+        print_endline response;
+        flush stdout;
         main_loop ()
       )
 

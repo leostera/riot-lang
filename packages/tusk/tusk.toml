@@ -8,5 +8,6 @@ path = "main.ml"
 
 [dependencies]
 miniriot = { path = "../miniriot" }
+sexp = { path = "../sexp" }
 toml = { path = "../toml" }
 unix = "*"
