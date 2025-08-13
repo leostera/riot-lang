@@ -149,9 +149,13 @@ let read_package_config path =
 
 (* Build dependency graph *)
 let build_dependency_graph workspace =
-  List.filter_map
+  let real_packages = List.filter_map
     (fun pkg_path -> read_package_config pkg_path)
-    workspace.packages
+    workspace.packages in
+  
+  (* Inject fake "unix" package so dependency resolution works *)
+  let unix_package = { name = "unix"; path = ""; dependencies = [] } in
+  unix_package :: real_packages
 
 (* Print dependency graph *)
 let print_dependency_graph packages =
@@ -782,6 +786,11 @@ let () =
 
   List.iter
     (fun pkg ->
+      (* Skip fake unix package *)
+      if pkg.name = "unix" then
+        Printf.printf "\nSkipping external package: %s\n%!" pkg.name
+      else (
+      Printf.printf "\n";
       (* Collect sources *)
       let sources, c_sources = collect_sources pkg.path in
 
@@ -808,5 +817,5 @@ let () =
       let output_hashes =
         build_package packages pkg sources c_sources outputs transitive_deps
       in
-      Hashtbl.replace built_outputs pkg.name output_hashes)
+      Hashtbl.replace built_outputs pkg.name output_hashes))
     build_order
