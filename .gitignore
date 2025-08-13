@@ -17,3 +17,6 @@ target
 /minitusk
 /tusk
 .merlin
+*.cmi
+*.cmo
+*.cma
