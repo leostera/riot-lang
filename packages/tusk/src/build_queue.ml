@@ -27,13 +27,9 @@ let add_ready t task =
       let queued_pkg = queued_task.Build_messages.node.Build_node.package.name in
       if queued_pkg = pkg_name then already_queued := true
     ) t.ready_queue;
-    if not !already_queued then (
-      Printf.printf "[BuildQueue] Adding %s to ready queue\n" pkg_name;
+    if not !already_queued then
       Queue.add task t.ready_queue
-    ) else
-      Printf.printf "[BuildQueue] Skipping %s - already in ready queue\n" pkg_name
-  ) else
-    Printf.printf "[BuildQueue] Skipping %s - already busy\n" pkg_name
+  )
 
 (** Add a task to the waiting queue *)
 let add_waiting t task =
@@ -93,7 +89,6 @@ let rec take_ready t =
           take_ready t (* Skip and try next *)
       | _ -> 
           (* Mark as busy *)
-          Printf.printf "[BuildQueue] Taking %s from ready queue\n" pkg_name;
           Hashtbl.replace t.busy_tasks pkg_name task;
           Some task
 
