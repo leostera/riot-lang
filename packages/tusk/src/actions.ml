@@ -435,12 +435,15 @@ let generate_blueprint workspace node dependencies all_packages toolchain ~hash 
          [] all_deps
      in
 
-     (* Get external dependencies from tusk.toml *)
-     let pkg_dependencies = node.Build_node.package.dependencies in
-     let external_libs, external_includes = get_dependency_libs_and_includes toolchain pkg_dependencies in
+     (* Get external dependencies from tusk.toml (already computed earlier) *)
+     let external_libs, _external_includes_again = get_dependency_libs_and_includes toolchain pkg_dependencies in
+     Printf.printf "[Blueprint] Package %s has dependencies: %s\n" pkg_name (String.concat ", " pkg_dependencies);
+     Printf.printf "[Blueprint] External libs resolved: %s\n" (String.concat ", " external_libs);
+     Printf.printf "[Blueprint] Local dep libs: %s\n" (String.concat ", " local_dep_libs);
      
      (* Combine all libraries *)
      let all_libs = external_libs @ local_dep_libs in
+     Printf.printf "[Blueprint] All libs for linking: %s\n" (String.concat ", " all_libs);
      
      (* Combine all include paths *)
      let all_includes = external_includes @ dep_includes in
