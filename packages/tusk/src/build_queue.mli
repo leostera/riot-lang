@@ -1,8 +1,8 @@
-(** Build queue management - Two-queue system for dependency ordering
+(** Build queue management - Three-state system for dependency ordering
     
-    This module implements a two-queue system for managing package build order.
-    Packages that are ready to build are in the current queue, while packages
-    waiting on dependencies are in the later queue. *)
+    This module implements a three-state system for managing package build order.
+    Packages can be ready to build, waiting on dependencies, or currently being built (busy).
+    The queue automatically prevents duplicate task assignments and tracks busy state. *)
 
 (** Abstract type representing a build queue *)
 type t
@@ -14,48 +14,52 @@ type t
     and promote packages when their dependencies are ready. *)
 val create : Build_results.t -> t
 
-(** Clear both queues *)
+(** Clear all queues *)
 val clear : t -> unit
 
-(** {1 Adding Packages} *)
+(** {1 Adding Tasks} *)
 
-(** Add a package to the current (ready to build) queue *)
-val add_ready : t -> string -> unit
+(** Add a task to the ready (ready to build) queue *)
+val add_ready : t -> Build_messages.build_task -> unit
 
-(** Add a package to the later (waiting on dependencies) queue *)
-val add_waiting : t -> string -> unit
+(** Add a task to the waiting (waiting on dependencies) queue *)
+val add_waiting : t -> Build_messages.build_task -> unit
 
 (** {1 Queue Status} *)
 
 (** Check if there's any work available in either queue *)
 val is_empty : t -> bool
 
-(** Check if the current queue has packages ready to build *)
+(** Check if the ready queue has tasks ready to build *)
 val has_ready_work : t -> bool
 
-(** Get queue statistics as (current_size, later_size) *)
-val stats : t -> int * int
+(** Get queue statistics as (ready_size, waiting_size, busy_size) *)
+val stats : t -> int * int * int
 
-(** {1 Package Retrieval} *)
+(** Check if a task is currently busy *)
+val is_busy : t -> string -> bool
 
-(** Get the next package from the current queue.
-    Automatically skips packages that are already built and
-    promotes packages from the waiting queue when their dependencies are ready.
-    Returns [None] if no packages are available to build. *)
-val take_ready : t -> string option
+(** {1 Task Retrieval} *)
 
-(** Peek at packages in the current queue without removing them *)
+(** Get the next task from the ready queue and mark it as busy.
+    Automatically skips tasks that are already built and
+    promotes tasks from the waiting queue when their dependencies are ready.
+    Returns [None] if no tasks are available to build. *)
+val take_ready : t -> Build_messages.build_task option
+
+(** Peek at package names in the ready queue without removing them *)
 val peek_ready : t -> string list
 
-(** Peek at packages in the later queue without removing them *)
+(** Peek at package names in the waiting queue without removing them *)
 val peek_waiting : t -> string list
 
-(** {1 Queue Management} *)
+(** {1 Task Management} *)
 
 (** Check if a package is in the waiting queue *)
 val is_waiting : t -> string -> bool
 
-(** Move a package from waiting to ready queue *)
+(** Move a task from waiting to ready queue *)
 val move_to_ready : t -> string -> unit
 
-
+(** Mark a task as completed and remove from busy queue *)
+val mark_completed : t -> string -> unit

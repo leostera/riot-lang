@@ -35,67 +35,78 @@ let get_package_deps state pkg_name =
 (* Internal version - uses cached hashes, for use during build *)
 let queue_package_if_needed_internal state node is_ready =
   let pkg_name = node.Build_node.package.name in
-  (* Don't re-queue if already building, failed, or built *)
-  match Build_results.get_status state.build_results pkg_name with
-  | Some Build_results.Building ->
-      Printf.printf "[Server] Skipping %s - already building\n" pkg_name
-  | Some (Build_results.Failed _) ->
-      Printf.printf "[Server] Skipping %s - already failed\n" pkg_name
-  | Some (Build_results.Built _) ->
-      (* Already built in this session - don't recheck *)
-      Printf.printf "[Server] Skipping %s - already built in this session\n" pkg_name
-  | Some Build_results.NotStarted | None ->
-      (* Not started - queue it *)
-      Printf.printf "[Server] Queueing package: %s\n" pkg_name;
-      if is_ready then
-        Build_queue.add_ready state.build_queue pkg_name
-      else
-        Build_queue.add_waiting state.build_queue pkg_name
+  (* Don't re-queue if already building, failed, built, or busy *)
+  if Build_queue.is_busy state.build_queue pkg_name then
+    Printf.printf "[Server] Skipping %s - already busy\n" pkg_name
+  else
+    match Build_results.get_status state.build_results pkg_name with
+    | Some Build_results.Building ->
+        Printf.printf "[Server] Skipping %s - already building\n" pkg_name
+    | Some (Build_results.Failed _) ->
+        Printf.printf "[Server] Skipping %s - already failed\n" pkg_name
+    | Some (Build_results.Built _) ->
+        (* Already built in this session - don't recheck *)
+        Printf.printf "[Server] Skipping %s - already built in this session\n" pkg_name
+    | Some Build_results.NotStarted | None ->
+        (* Not started - queue it *)
+        Printf.printf "[Server] Queueing package: %s\n" pkg_name;
+        let task = { Build_messages.node; workspace = Option.get state.workspace } in
+        if is_ready then
+          Build_queue.add_ready state.build_queue task
+        else
+          Build_queue.add_waiting state.build_queue task
 
 (** Queue a package at entry point - checks for hash changes *)
 let queue_package_if_needed state node is_ready =
   let pkg_name = node.Build_node.package.name in
-  (* Don't re-queue if already building or failed *)
-  match Build_results.get_status state.build_results pkg_name with
-  | Some Build_results.Building ->
-      Printf.printf "[Server] Skipping %s - already building\n" pkg_name
-  | Some (Build_results.Failed _) ->
-      Printf.printf "[Server] Skipping %s - already failed\n" pkg_name
-  | Some (Build_results.Built stored_hash) ->
-      (* Check if the current hash matches the stored hash *)
-      (match state.workspace with
-      | Some workspace ->
-          (* Force recomputation of hash to detect changes *)
-          (match Build_graph.recompute_node_hash state.toolchain node with
-          | Build_graph.Ok current_hash ->
-              if Hasher.equal stored_hash current_hash then
-                Printf.printf "[Server] Skipping %s - already built with same hash\n" pkg_name
-              else (
-                Printf.printf "[Server] Package %s hash changed (was: %s, now: %s), queueing for rebuild\n" 
-                  pkg_name (Hasher.to_string stored_hash) (Hasher.to_string current_hash);
-                (* Reset the build status since hash changed *)
-                Build_results.init_package state.build_results pkg_name;
+  (* Don't re-queue if already busy *)
+  if Build_queue.is_busy state.build_queue pkg_name then
+    Printf.printf "[Server] Skipping %s - already busy\n" pkg_name
+  else
+    (* Don't re-queue if already building or failed *)
+    match Build_results.get_status state.build_results pkg_name with
+    | Some Build_results.Building ->
+        Printf.printf "[Server] Skipping %s - already building\n" pkg_name
+    | Some (Build_results.Failed _) ->
+        Printf.printf "[Server] Skipping %s - already failed\n" pkg_name
+    | Some (Build_results.Built stored_hash) ->
+        (* Check if the current hash matches the stored hash *)
+        (match state.workspace with
+        | Some workspace ->
+            (* Force recomputation of hash to detect changes *)
+            (match Build_graph.recompute_node_hash state.toolchain node with
+            | Build_graph.Ok current_hash ->
+                if Hasher.equal stored_hash current_hash then
+                  Printf.printf "[Server] Skipping %s - already built with same hash\n" pkg_name
+                else (
+                  Printf.printf "[Server] Package %s hash changed (was: %s, now: %s), queueing for rebuild\n" 
+                    pkg_name (Hasher.to_string stored_hash) (Hasher.to_string current_hash);
+                  (* Reset the build status since hash changed *)
+                  Build_results.init_package state.build_results pkg_name;
+                  let task = { Build_messages.node; workspace } in
+                  if is_ready then
+                    Build_queue.add_ready state.build_queue task
+                  else
+                    Build_queue.add_waiting state.build_queue task)
+            | _ ->
+                (* Can't compute hash, queue it to be safe *)
+                Printf.printf "[Server] Queueing package: %s (couldn't compute hash)\n" pkg_name;
+                let task = { Build_messages.node; workspace } in
                 if is_ready then
-                  Build_queue.add_ready state.build_queue pkg_name
+                  Build_queue.add_ready state.build_queue task
                 else
-                  Build_queue.add_waiting state.build_queue pkg_name)
-          | _ ->
-              (* Can't compute hash, queue it to be safe *)
-              Printf.printf "[Server] Queueing package: %s (couldn't compute hash)\n" pkg_name;
-              if is_ready then
-                Build_queue.add_ready state.build_queue pkg_name
-              else
-                Build_queue.add_waiting state.build_queue pkg_name)
-      | None ->
-          (* No workspace, skip it *)
-          Printf.printf "[Server] Skipping %s - no workspace\n" pkg_name)
-  | Some Build_results.NotStarted | None ->
-      (* Not started - queue it *)
-      Printf.printf "[Server] Queueing package: %s\n" pkg_name;
-      if is_ready then
-        Build_queue.add_ready state.build_queue pkg_name
-      else
-        Build_queue.add_waiting state.build_queue pkg_name
+                  Build_queue.add_waiting state.build_queue task)
+        | None ->
+            (* No workspace, skip it *)
+            Printf.printf "[Server] Skipping %s - no workspace\n" pkg_name)
+    | Some Build_results.NotStarted | None ->
+        (* Not started - queue it *)
+        Printf.printf "[Server] Queueing package: %s\n" pkg_name;
+        let task = { Build_messages.node; workspace = Option.get state.workspace } in
+        if is_ready then
+          Build_queue.add_ready state.build_queue task
+        else
+          Build_queue.add_waiting state.build_queue task
 
 (** Check if a package can be built (all deps ready) *)
 let can_build_package state pkg_name =
@@ -131,17 +142,20 @@ let rec get_next_buildable_task state =
           | _ -> true  (* If we can't compute hash, try to build anyway *)
       in
 
-      (* Try to get a ready package from the queue *)
+      (* Try to get a ready task from the queue *)
       (match Build_queue.take_ready state.build_queue with
-      | Some pkg_name ->
-          (match List.find_opt (fun n -> n.Build_node.package.name = pkg_name) nodes with
-          | Some node when should_build_package pkg_name node ->
-              Some { node; workspace }
-          | _ ->
-              (* Either not buildable yet or already built - try next *)
-              if not (can_build_package state pkg_name) then
-                Build_queue.add_waiting state.build_queue pkg_name;
-              get_next_buildable_task state)
+      | Some task ->
+          let pkg_name = task.Build_messages.node.Build_node.package.name in
+          let node = task.Build_messages.node in
+          if should_build_package pkg_name node then
+            Some task
+          else (
+            (* Either not buildable yet or already built - try next *)
+            if not (can_build_package state pkg_name) then
+              Build_queue.add_waiting state.build_queue task;
+            (* Also mark as not busy since we're not processing it *)
+            Build_queue.mark_completed state.build_queue pkg_name;
+            get_next_buildable_task state)
       | None -> None)  (* No work available *)
   | _, _ -> None
 
@@ -213,8 +227,8 @@ let execute_build state client_pid build_graph =
       queue_package_if_needed state node is_ready)
     sorted;
 
-  let (ready_count, waiting_count) = Build_queue.stats state.build_queue in
-  Printf.printf "[Server] Queue stats - ready: %d, waiting: %d\n" ready_count waiting_count;
+  let (ready_count, waiting_count, busy_count) = Build_queue.stats state.build_queue in
+  Printf.printf "[Server] Queue stats - ready: %d, waiting: %d, busy: %d\n" ready_count waiting_count busy_count;
 
   (* Check if there's actually any work to do *)
   if ready_count = 0 && waiting_count = 0 then (
@@ -247,6 +261,9 @@ let execute_build state client_pid build_graph =
 
 (** Handle task completion *)
 let handle_task_complete state pkg_name success hash =
+  (* Mark task as no longer busy *)
+  Build_queue.mark_completed state.build_queue pkg_name;
+  
   if success then (
     Printf.printf "[Server] Build complete: %s (handling completion...)\n" pkg_name;
     Build_results.mark_built_with_hash state.build_results pkg_name hash;
@@ -645,8 +662,8 @@ let rec server_loop state =
         queue_package_if_needed_internal state dep_node true
       ) missing_deps;
       
-      Printf.printf "[Server] Moving %s to later queue\n" pkg_name;
-      Build_queue.add_waiting state.build_queue pkg_name;
+      Printf.printf "[Server] Moving %s to waiting queue\n" pkg_name;
+      Build_queue.add_waiting state.build_queue task;
       try_assign_work state;
       server_loop state
   | Shutdown ->
