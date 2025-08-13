@@ -132,9 +132,6 @@ let rec main_loop () =
 
 (** Start the merlin bridge *)
 let start () =
-  (* Ensure server is running *)
-  if not (Server_manager.is_server_running ()) then
-    ignore (Server_manager.start_background ());
-  
-  (* Process requests - runs in current process *)
+  (* Don't try to start server - ocaml-lsp will be calling us repeatedly *)
+  (* Just process requests *)
   main_loop ()

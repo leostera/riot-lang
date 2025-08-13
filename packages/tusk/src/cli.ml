@@ -344,7 +344,26 @@ let get_lsp_binary_path () =
          lsp_path)
 
 (** Execute the LSP command *)
-let lsp_command () =
+let rec lsp_command args =
+  (* Parse subcommand if provided *)
+  let subcommand = if Array.length args > 2 then args.(2) else "" in
+  match subcommand with
+  | "ocaml-merlin" ->
+      (* Start the merlin bridge for ocaml-lsp-server integration *)
+      Merlin_bridge.start ();
+      Process.Normal
+  | "" | "start" ->
+      (* Default: Start OCaml LSP server *)
+      lsp_start_server ()
+  | _ ->
+      Printf.eprintf "Unknown lsp subcommand: %s\n" subcommand;
+      Printf.eprintf "Available subcommands:\n";
+      Printf.eprintf "  tusk lsp              - Start OCaml LSP server\n";
+      Printf.eprintf "  tusk lsp ocaml-merlin - Run merlin protocol bridge\n";
+      Process.Exception (Failure "Invalid lsp subcommand")
+
+(** Start the LSP server *)
+and lsp_start_server () =
   try
     (* First ensure the tusk server is running in the background *)
     if not (Server_manager.ensure_running ()) then (
@@ -747,11 +766,7 @@ let main () =
         run_command binary_opt
     | "server" -> server_command args
     | "rpc" -> rpc_command args
-    | "lsp" -> lsp_command ()
-    | "ocaml-merlin" -> 
-        (* Start the merlin bridge for ocaml-lsp-server integration *)
-        Merlin_bridge.start ();
-        Process.Normal
+    | "lsp" -> lsp_command args
     | "fmt" | "format" -> fmt_command ()
     | "doc" -> doc_command ()
     | "clean" -> clean_command ()
