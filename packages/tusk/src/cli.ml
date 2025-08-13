@@ -385,8 +385,7 @@ let lsp_command () =
     let full_args = Array.append [| lsp_path |] args in
 
     (* Execute the LSP server *)
-    System.exec lsp_path full_args;
-
+    let _ = System.exec lsp_path full_args in
     (* This should never be reached if execv succeeds *)
     Process.Exception (Failure "Failed to execute LSP server")
   with

@@ -27,7 +27,18 @@ let create () =
       }
   | Error err ->
       Printf.printf "[Scheduler] ERROR: Failed to create Gluon.Poll: %s\n%!" 
-        (match err with `System_error s -> s | `Noop -> "Unknown error");
+        (match err with 
+        | `System_error s -> s 
+        | `Noop -> "Unknown error"
+        | `Unix_error e -> Unix.error_message e
+        | `Closed -> "Closed"
+        | `Connection_closed -> "Connection closed"
+        | `Eof -> "End of file"
+        | `Exn e -> Printexc.to_string e
+        | `No_info -> "No info"
+        | `Process_down -> "Process down"
+        | `Timeout -> "Timeout"
+        | `Would_block -> "Would block");
       failwith "Failed to create I/O polling system"
 
 let current_scheduler = ref None

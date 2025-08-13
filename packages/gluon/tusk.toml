@@ -3,4 +3,5 @@ name = "gluon"
 version = "0.0.1"
 
 [dependencies]
+unix = "*"
 # No dependencies - base I/O package

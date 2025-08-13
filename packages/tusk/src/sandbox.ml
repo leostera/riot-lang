@@ -189,7 +189,7 @@ and build_in_sandbox ~sandbox ~blueprint ~store ~hash =
           | _ -> ());
 
           let result, output =
-            Actions.execute_action action blueprint.Actions.toolchain_version
+            Actions.execute_action action blueprint.Actions.toolchain
           in
           match result with
           | Actions.Success ->
@@ -317,7 +317,9 @@ and build_in_sandbox ~sandbox ~blueprint ~store ~hash =
        if !declared_outputs <> [] then (
          Printf.printf "[Sandbox] Storing build artifacts in cache\n";
          flush stdout;
-         Store.store_artifacts store h sandbox.sandbox_dir !declared_outputs
+         let _artifact = Store.store_artifacts store h sandbox.sandbox_dir !declared_outputs in
+         (* TODO: Use artifact witness to update build results *)
+         ()
        )
      ) | _ -> () (* No hash or build failed, skip caching *)
      )

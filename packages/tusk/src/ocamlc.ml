@@ -16,12 +16,12 @@ type result =
 let make_include_flags dirs =
   dirs |> List.map (fun dir -> "-I " ^ dir) |> String.concat " "
 
-(** Generate the base ocamlc command with common flags *)
-let base_command toolchain_version =
-  Toolchains.ocamlc_path toolchain_version
+(** Generate the base ocamlc command from toolchain *)
+let base_command toolchain =
+  Toolchains.ocamlc_path toolchain
 
 (** Build and run an ocamlc command *)
-let run ?(toolchain_version = "5.3.0") 
+let run ~toolchain
         ?(includes = []) 
         ?(libs = [])
         ?(output = None)
@@ -29,11 +29,10 @@ let run ?(toolchain_version = "5.3.0")
         ?(verbose = false)
         sources =
   
-  let ocamlc = base_command toolchain_version in
+  let ocamlc = base_command toolchain in
   
-  (* Always include Unix module path *)
-  let all_includes = "+unix" :: includes in
-  let include_flags = make_include_flags all_includes in
+  (* Generate include flags from provided directories *)
+  let include_flags = make_include_flags includes in
   
   (* Mode-specific flags *)
   let mode_flag = match mode with
@@ -75,58 +74,57 @@ let run ?(toolchain_version = "5.3.0")
   if success then Success output else Failed output
 
 (** Compile an interface file (.mli -> .cmi) *)
-let compile_interface ~toolchain_version ~includes ~output source =
-  run ~toolchain_version 
+let compile_interface ~toolchain ~includes ~output source =
+  run ~toolchain 
       ~includes 
       ~output:(Some output)
       ~mode:Compile
       [source]
 
 (** Compile an implementation file (.ml -> .cmo) *)
-let compile_impl ~toolchain_version ~includes ~output source =
-  (* Always include current directory for .cmi files *)
+let compile_impl ~toolchain ~includes ~output source =
+  (* Include current directory for .cmi files *)
   let includes_with_dot = "." :: includes in
-  run ~toolchain_version 
+  run ~toolchain 
       ~includes:includes_with_dot
       ~output:(Some output)
       ~mode:Compile
       [source]
 
 (** Compile a C file *)
-let compile_c ~toolchain_version ~output source =
-  run ~toolchain_version 
+let compile_c ~toolchain ~includes ~output source =
+  run ~toolchain 
+      ~includes
       ~output:(Some output)
       ~mode:Compile
       [source]
 
 (** Create a library (.cma) from object files *)
-let create_library ~toolchain_version ~includes ~output objects =
-  run ~toolchain_version 
+let create_library ~toolchain ~includes ~output objects =
+  run ~toolchain 
       ~includes
       ~output:(Some output)
       ~mode:Library
       objects
 
 (** Create an executable from object files and libraries *)
-let create_executable ~toolchain_version ~includes ~output ~libs objects =
-  (* Always include current directory and unix.cma *)
+let create_executable ~toolchain ~includes ~output ~libs objects =
+  (* Include current directory *)
   let includes_with_dot = "." :: includes in
-  let all_libs = "unix.cma" :: libs in
-  run ~toolchain_version 
+  run ~toolchain 
       ~includes:includes_with_dot
-      ~libs:all_libs
+      ~libs
       ~output:(Some output)
       ~mode:Executable
       objects
 
 (** Create a custom executable (with C stubs) *)
-let create_custom_executable ~toolchain_version ~includes ~output ~libs objects =
-  (* Always include current directory and unix.cma *)
+let create_custom_executable ~toolchain ~includes ~output ~libs objects =
+  (* Include current directory *)
   let includes_with_dot = "." :: includes in
-  let all_libs = "unix.cma" :: libs in
-  run ~toolchain_version 
+  run ~toolchain 
       ~includes:includes_with_dot
-      ~libs:all_libs
+      ~libs
       ~output:(Some output)
       ~mode:CustomExe
       objects

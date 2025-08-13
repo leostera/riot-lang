@@ -49,7 +49,7 @@ let mark_building t pkg = Hashtbl.replace t.results pkg Building
 (** Mark a package as built with its content hash *)
 let mark_built_with_hash t pkg hash = Hashtbl.replace t.results pkg (Built hash)
 
-(** Mark a package as built (legacy function for backwards compatibility) *)
+(** Mark a package as built (legacy - uses placeholder hash) *)
 let mark_built t pkg = 
   let unknown_hash = Hasher.of_string "unknown" in
   Hashtbl.replace t.results pkg (Built unknown_hash)

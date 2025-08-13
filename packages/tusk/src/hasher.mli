@@ -1,6 +1,6 @@
 (** Content-based hashing module for build artifacts *)
 
-(** Opaque hash type - internally a string but hidden from users *)
+(** Opaque hash type *)
 type hash
 
 (** Hash a string content *)

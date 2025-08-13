@@ -7,13 +7,13 @@ type node = Build_node.t
 type t = { nodes : (string, node) Hashtbl.t; root_nodes : node list }
 
 (** Create a build graph from a workspace *)
-let create workspace =
+let create workspace toolchain =
   let nodes = Hashtbl.create 16 in
 
   (* First pass: create all nodes *)
   List.iter
     (fun package ->
-      let node = { package; dependencies = []; dependents = []; hash = None } in
+      let node = { package; toolchain; dependencies = []; dependents = []; hash = None } in
       Hashtbl.add nodes package.Workspace.name node)
     workspace.Workspace.packages;
 
@@ -164,14 +164,14 @@ let filter_for_package graph target_pkg_name =
 (* Use Hasher module for all hash operations *)
 
 (** Compute content-based hash for a build node *)
-let compute_node_hash toolchain_version node =
+let compute_node_hash toolchain node =
   Printf.printf "[BuildGraph] Computing hash for %s...\n" node.package.name;
   let components = ref [] in
   
   (* 1. Package metadata *)
   components := node.package.name :: !components;
-  components := toolchain_version :: !components;
-  Printf.printf "  - Package: %s, Toolchain: %s\n" node.package.name toolchain_version;
+  components := Toolchains.get_version toolchain :: !components;
+  Printf.printf "  - Package: %s, Toolchain: %s\n" node.package.name (Toolchains.get_version toolchain);
   
   (* 2. Dependency hashes (sorted by name for deterministic hash) *)
   let sorted_deps = List.sort (fun a b -> String.compare a.package.name b.package.name) node.dependencies in
@@ -236,21 +236,21 @@ type hash_result =
   | Error of string
 
 (** Force recomputation of hash for a node (ignoring cached value) *)
-let recompute_node_hash toolchain_version node =
+let recompute_node_hash toolchain node =
   (* Compute fresh hash, ignoring any cached value *)
-  let hash = compute_node_hash toolchain_version node in
+  let hash = compute_node_hash toolchain node in
   (* Don't update the node's cached hash here - let the caller decide *)
   Ok hash
 
 (** Get hash for a node, checking if dependencies are available, computing hash if necessary using bottom-up traversal *)
-let rec get_node_hash toolchain_version node store =
+let rec get_node_hash toolchain node store =
   match node.hash with
   | Some hash -> Ok hash  (* Already computed *)
   | None ->
       (* First check if dependency artifacts are available *)
       let missing_deps = ref [] in
       let deps_available = List.for_all (fun dep ->
-        match get_node_hash toolchain_version dep store with
+        match get_node_hash toolchain dep store with
         | Ok dep_hash -> 
             (* Check if this dependency's artifacts are available in store *)
             if Store.exists store dep_hash then
@@ -271,17 +271,17 @@ let rec get_node_hash toolchain_version node store =
         MissingDependencies (List.rev !missing_deps)
       else (
         (* All dependencies available, compute our hash *)
-        let hash = compute_node_hash toolchain_version node in
+        let hash = compute_node_hash toolchain node in
         node.hash <- Some hash;
         Ok hash
       )
 
 (** Compute hashes for all nodes in the graph *)
-let compute_all_hashes toolchain_version graph store =
+let compute_all_hashes toolchain graph store =
   (* Use topological sort to ensure dependencies are processed first *)
   let sorted = topological_sort graph in
   List.iter (fun node ->
-    match get_node_hash toolchain_version node store with
+    match get_node_hash toolchain node store with
     | Ok _ -> ()
     | MissingDependencies _ -> () (* Dependencies not ready, skip for now *)
     | Error msg -> Printf.printf "[BuildGraph] Error computing hash for %s: %s\n" node.package.name msg

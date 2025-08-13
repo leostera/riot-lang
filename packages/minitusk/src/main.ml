@@ -447,23 +447,28 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
         exit 1))
     c_sources;
 
-  (* Use ocamldep to sort ML files *)
+  (* Use ocamldep to sort ML and MLI files together *)
   let ml_files = List.filter (fun f -> Filename.check_suffix f ".ml") sources in
-  let sorted_ml_files =
-    if ml_files = [] then []
+  let mli_files = List.filter (fun f -> Filename.check_suffix f ".mli") sources in
+  let all_ml_files = mli_files @ ml_files in  (* Process .mli files before .ml files *)
+  
+  let sorted_all_files =
+    if all_ml_files = [] then []
     else
-      (* Separate lib.ml from other files - it should always be compiled last *)
-      let has_lib_ml = List.exists (fun f -> Filename.basename f = "lib.ml") ml_files in
-      let ml_files_for_sort = List.filter (fun f -> Filename.basename f <> "lib.ml") ml_files in
+      (* Separate lib.ml/lib.mli from other files - they should always be compiled last *)
+      let files_for_sort = List.filter (fun f -> 
+        let basename = Filename.basename f in
+        basename <> "lib.ml" && basename <> "lib.mli"
+      ) all_ml_files in
       
-      if ml_files_for_sort = [] then
-        (* Only lib.ml exists *)
-        ml_files
+      if files_for_sort = [] then
+        (* Only lib.ml/lib.mli exist *)
+        all_ml_files
       else
-        (* Run ocamldep to get dependencies, excluding lib.ml *)
+        (* Run ocamldep to get dependencies, excluding lib.ml/lib.mli *)
         let files_str =
           String.concat " "
-            (List.map (fun f -> Filename.basename f) ml_files_for_sort)
+            (List.map (fun f -> Filename.basename f) files_for_sort)
         in
         let ocamldep =
           Printf.sprintf "%s/.tusk/toolchains/5.3.0/bin/ocamldep" home
@@ -478,32 +483,41 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
 
         (* Parse the sorted output and map back to original filenames *)
         let sorted =
-          if sorted_str = "" then ml_files_for_sort
+          if sorted_str = "" then files_for_sort
           else
             let sorted_basenames = String.split_on_char ' ' sorted_str in
             List.filter_map
               (fun basename ->
-                List.find_opt (fun f -> Filename.basename f = basename) ml_files_for_sort)
+                List.find_opt (fun f -> Filename.basename f = basename) files_for_sort)
               sorted_basenames
         in
         
-        (* Add lib.ml at the end if it exists *)
-        if has_lib_ml then
-          let lib_ml = List.find (fun f -> Filename.basename f = "lib.ml") ml_files in
-          sorted @ [lib_ml]
-        else
-          sorted
+        (* Add lib.mli and lib.ml at the end if they exist *)
+        let lib_files = List.filter (fun f ->
+          let basename = Filename.basename f in
+          basename = "lib.ml" || basename = "lib.mli"
+        ) all_ml_files in
+        (* Sort lib_files to ensure lib.mli comes before lib.ml *)
+        let lib_files_sorted = List.sort (fun a b ->
+          let a_mli = Filename.check_suffix a ".mli" in
+          let b_mli = Filename.check_suffix b ".mli" in
+          if a_mli && not b_mli then -1
+          else if b_mli && not a_mli then 1
+          else 0
+        ) lib_files in
+        sorted @ lib_files_sorted
   in
+  
+  (* Split back into mli and ml files in sorted order *)
+  let sorted_mli_files = List.filter (fun f -> Filename.check_suffix f ".mli") sorted_all_files in
+  let sorted_ml_files = List.filter (fun f -> Filename.check_suffix f ".ml") sorted_all_files in
 
   (* Debug: show sorted order *)
-  if sorted_ml_files <> [] then
+  if sorted_all_files <> [] then
     Printf.printf "  Sorted build order: %s\n%!"
-      (String.concat ", " (List.map Filename.basename sorted_ml_files));
+      (String.concat ", " (List.map Filename.basename sorted_all_files));
 
-  (* Compile ML interfaces first with namespacing *)
-  let mli_files =
-    List.filter (fun f -> Filename.check_suffix f ".mli") sources
-  in
+  (* Compile ML interfaces in sorted order with namespacing *)
   List.iter
     (fun mli_src ->
       let basename = Filename.basename mli_src in
@@ -524,7 +538,7 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
           | Unix.WSIGNALED n -> Printf.sprintf "signal %d" n
           | Unix.WSTOPPED n -> Printf.sprintf "stopped %d" n);
         exit 1))
-    mli_files;
+    sorted_mli_files;
 
   (* Compile ML implementations in sorted order *)
   List.iter

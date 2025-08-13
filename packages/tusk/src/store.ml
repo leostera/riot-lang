@@ -1,5 +1,10 @@
 (** Store - Content-addressable storage for build artifacts **)
 
+type artifact = {
+  hash : Hasher.hash;
+  files : string list;
+}
+
 type t = {
   root_dir : string; (* Root directory for the store *)
 }
@@ -65,19 +70,24 @@ let store_artifacts store hash sandbox_dir declared_outputs =
   Printf.printf "[Store] Storing artifacts with hash: %s\n" (Hasher.to_string hash);
   flush stdout;
   
-  (* Copy declared outputs to store *)
-  List.iter (fun output_file ->
+  (* Copy declared outputs to store and track what was actually stored *)
+  let stored_files = List.fold_left (fun acc output_file ->
     let src = Filename.concat sandbox_dir output_file in
     if System.file_exists src then (
       let dst = Filename.concat hash_dir output_file in
       System.copy_file src dst;
       Printf.printf "[Store]   -> Stored %s\n" output_file;
-      flush stdout
+      flush stdout;
+      output_file :: acc
     ) else (
       Printf.printf "[Store]   -> Warning: Output %s not found in sandbox\n" output_file;
-      flush stdout
+      flush stdout;
+      acc
     )
-  ) declared_outputs
+  ) [] declared_outputs in
+  
+  (* Return artifact witness *)
+  { hash; files = List.rev stored_files }
 
 (** Clean up old artifacts (for future use) *)
 let gc_store store ~keep_recent_days =
