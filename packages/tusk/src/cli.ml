@@ -748,6 +748,10 @@ let main () =
     | "server" -> server_command args
     | "rpc" -> rpc_command args
     | "lsp" -> lsp_command ()
+    | "ocaml-merlin" -> 
+        (* Start the merlin bridge for ocaml-lsp-server integration *)
+        Merlin_bridge.start ();
+        Process.Normal
     | "fmt" | "format" -> fmt_command ()
     | "doc" -> doc_command ()
     | "clean" -> clean_command ()
