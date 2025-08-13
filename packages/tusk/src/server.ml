@@ -236,7 +236,7 @@ let execute_build state client_pid build_graph =
   Printf.printf "[Server] Queue stats - ready: %d, waiting: %d, busy: %d\n" ready_count waiting_count busy_count;
 
   (* Check if there's actually any work to do *)
-  if ready_count = 0 && waiting_count = 0 then (
+  if ready_count = 0 && waiting_count = 0 && busy_count = 0 then (
     (* All packages already built - return success immediately *)
     Printf.printf "[Server] All packages already built!\n";
     let built_count = List.length sorted in
@@ -637,24 +637,19 @@ let rec server_loop state =
         | Some client_pid ->
             send client_pid (ServerResponse (Rpc.BuildComplete { successful = built; failed }));
             
-            (match state.worker_pool with
-            | Some pool -> 
-                Worker_pool.shutdown pool;
-                sleep 0.1
-            | None -> ());
+            (* Keep worker pool alive for future builds *)
             let fresh_build_queue = Build_queue.create state.build_results in
             let new_state = { state with 
               build_queue = fresh_build_queue;
               client_pid = None;
               active_build_graph = None;
+              (* Keep worker_pool in state for reuse *)
             } in
             server_loop new_state
         | None ->
-            (match state.worker_pool with
-            | Some pool -> Worker_pool.shutdown pool
-            | None -> ());
+            (* This case shouldn't happen for RPC server, but keep pool alive anyway *)
             sleep 0.1;
-            Process.Normal
+            server_loop state
       ) else server_loop state
   | RequeueWithDependencies (task, missing_deps) ->
       let pkg_name = task.node.Build_node.package.name in
