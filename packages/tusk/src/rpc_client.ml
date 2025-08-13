@@ -2,18 +2,31 @@
 
 open Miniriot
 
+(** Get project ID based on current working directory *)
+let get_project_id () =
+  let cwd = System.getcwd () in
+  (* Hash the path to get a stable project ID *)
+  let hash = Hasher.hash_string cwd in
+  Hasher.to_string hash
+
+(** Get daemon directory for this project *)
+let daemon_dir () =
+  let home = System.get_home () in
+  let project_id = get_project_id () in
+  Printf.sprintf "%s/.tusk/daemons/%s" home project_id
+
 (** Connect to the tusk server *)
 let connect () =
-  (* Read server port *)
-  let home = System.get_home () in
-  let port_file = Printf.sprintf "%s/.tusk/server.port" home in
+  (* Read server port for this project *)
+  let daemon_path = daemon_dir () in
+  let port_file = Printf.sprintf "%s/server.port" daemon_path in
   
   (* Check if port file exists *)
   if not (Sys.file_exists port_file) then
-    Error "Server is not running"
+    Error "Server is not running for this project"
   else
     (* Also check PID file to see if server process is still alive *)
-    let pid_file = Printf.sprintf "%s/.tusk/server.pid" home in
+    let pid_file = Printf.sprintf "%s/server.pid" daemon_path in
     let server_alive = 
       if Sys.file_exists pid_file then
         try
@@ -37,7 +50,7 @@ let connect () =
       (* Clean up stale port file *)
       (try Sys.remove port_file with _ -> ());
       (try Sys.remove pid_file with _ -> ());
-      Error "Server is not running"
+      Error "Server is not running for this project"
     ) else
       let port = 
         try

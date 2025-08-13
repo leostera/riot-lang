@@ -8,24 +8,51 @@ open Miniriot
 (** Import shared RPC message types *)
 open Rpc_messages
 
-(** Default port for tusk server *)
-let default_port = 9876
+(** Default port range for tusk servers *)
+let port_range_start = 9876
+let port_range_end = 9976
 
 (** Find an available port starting from the default *)
 let find_available_port () =
-  (* Simply return the default port - if binding fails, we'll handle it gracefully *)
-  default_port
+  (* Try to find an available port in the range *)
+  let rec try_port port =
+    if port > port_range_end then
+      port_range_start  (* Fallback to start of range *)
+    else
+      (* Try to bind to check if port is available *)
+      try
+        let sock = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
+        Unix.setsockopt sock Unix.SO_REUSEADDR true;
+        Unix.bind sock (Unix.ADDR_INET (Unix.inet_addr_loopback, port));
+        Unix.close sock;
+        port  (* Port is available *)
+      with _ ->
+        (* Port is in use, try next one *)
+        try_port (port + 1)
+  in
+  try_port port_range_start
+
+(** Get project ID based on current working directory *)
+let get_project_id () =
+  let cwd = Sys.getcwd () in
+  (* Hash the path to get a stable project ID *)
+  let hash = Hasher.hash_string cwd in
+  Hasher.to_string hash
+
+(** Get daemon directory for this project *)
+let daemon_dir () =
+  let home = Sys.getenv "HOME" in
+  let project_id = get_project_id () in
+  Printf.sprintf "%s/.tusk/daemons/%s" home project_id
 
 (** Write port and PID files for clients to discover the server *)
 let write_port_file port =
-  let home = Sys.getenv "HOME" in
-  let tusk_dir = Filename.concat home ".tusk" in
-  let port_file = Filename.concat tusk_dir "server.port" in
-  let pid_file = Filename.concat tusk_dir "server.pid" in
+  let daemon_path = daemon_dir () in
+  let port_file = Filename.concat daemon_path "server.port" in
+  let pid_file = Filename.concat daemon_path "server.pid" in
 
-  (* Ensure .tusk directory exists *)
-  (try Unix.mkdir tusk_dir 0o755
-   with Unix.Unix_error (Unix.EEXIST, _, _) -> ());
+  (* Ensure daemon directory exists *)
+  System.mkdirp daemon_path;
 
   (* Write port number *)
   let oc = open_out port_file in
@@ -42,8 +69,7 @@ let write_port_file port =
 
 (** Read port file to connect to existing server *)
 let read_port_file () =
-  let home = Sys.getenv "HOME" in
-  let port_file = Filename.concat home ".tusk/server.port" in
+  let port_file = Filename.concat (daemon_dir ()) "server.port" in
   if Sys.file_exists port_file then (
     let ic = open_in port_file in
     let port = int_of_string (input_line ic) in
@@ -53,9 +79,9 @@ let read_port_file () =
 
 (** Remove port and PID files on shutdown *)
 let remove_port_file () =
-  let home = Sys.getenv "HOME" in
-  let port_file = Filename.concat home ".tusk/server.port" in
-  let pid_file = Filename.concat home ".tusk/server.pid" in
+  let daemon_path = daemon_dir () in
+  let port_file = Filename.concat daemon_path "server.port" in
+  let pid_file = Filename.concat daemon_path "server.pid" in
   (try Sys.remove port_file with _ -> ());
   (try Sys.remove pid_file with _ -> ())
 
