@@ -195,7 +195,10 @@ let generate_blueprint workspace node dependencies all_packages toolchain ~hash 
   
   (* Get external dependencies from tusk.toml *)
   let pkg_dependencies = node.Build_node.package.dependencies in
-  let _external_libs, external_includes = get_dependency_libs_and_includes toolchain pkg_dependencies in
+  Printf.printf "[Blueprint] Package %s dependencies from tusk.toml: %s\n" pkg_name (String.concat ", " pkg_dependencies);
+  let external_libs, external_includes = get_dependency_libs_and_includes toolchain pkg_dependencies in
+  Printf.printf "[Blueprint] Resolved external libs: %s\n" (String.concat ", " external_libs);
+  Printf.printf "[Blueprint] Resolved external includes: %s\n" (String.concat ", " external_includes);
   
   (* Get dependency include paths from local packages *)
   let local_dep_includes =
@@ -459,6 +462,9 @@ let generate_blueprint workspace node dependencies all_packages toolchain ~hash 
      outputs := exe_path :: !outputs)
    else
      (* Create library for any package without main *)
+     Printf.printf "[Blueprint] Creating library for %s with external deps: %s\n" pkg_name (String.concat ", " pkg_dependencies);
+     let external_libs, _external_includes_for_lib = get_dependency_libs_and_includes toolchain pkg_dependencies in
+     Printf.printf "[Blueprint] External libs for library %s: %s\n" pkg_name (String.concat ", " external_libs);
      let cma_path = pkg_name ^ ".cma" in
      let all_objects = cmo_files @ o_files in
      actions := CreateLibrary (cma_path, all_objects, dep_includes) :: !actions;
