@@ -19,8 +19,21 @@ let create build_results = {
 (** Add a task to the ready queue *)
 let add_ready t task =
   let pkg_name = task.Build_messages.node.Build_node.package.name in
-  if not (Hashtbl.mem t.busy_tasks pkg_name) then
-    Queue.add task t.ready_queue
+  (* Don't add if already busy or already in ready queue *)
+  if not (Hashtbl.mem t.busy_tasks pkg_name) then (
+    (* Check if already in ready queue *)
+    let already_queued = ref false in
+    Queue.iter (fun queued_task ->
+      let queued_pkg = queued_task.Build_messages.node.Build_node.package.name in
+      if queued_pkg = pkg_name then already_queued := true
+    ) t.ready_queue;
+    if not !already_queued then (
+      Printf.printf "[BuildQueue] Adding %s to ready queue\n" pkg_name;
+      Queue.add task t.ready_queue
+    ) else
+      Printf.printf "[BuildQueue] Skipping %s - already in ready queue\n" pkg_name
+  ) else
+    Printf.printf "[BuildQueue] Skipping %s - already busy\n" pkg_name
 
 (** Add a task to the waiting queue *)
 let add_waiting t task =
@@ -80,6 +93,7 @@ let rec take_ready t =
           take_ready t (* Skip and try next *)
       | _ -> 
           (* Mark as busy *)
+          Printf.printf "[BuildQueue] Taking %s from ready queue\n" pkg_name;
           Hashtbl.replace t.busy_tasks pkg_name task;
           Some task
 

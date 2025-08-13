@@ -191,14 +191,16 @@ let try_assign_work state =
       
       (* Then send one batch of ready tasks *)
       let rec send_ready_tasks () =
+        Printf.printf "[Server] Looking for next buildable task...\n";
         match get_next_buildable_task state with
         | Some build_task ->
             let pkg_name = build_task.node.Build_node.package.name in
-            Printf.printf "[Server] Sending package %s to worker pool\n" pkg_name;
+            Printf.printf "[Server] Found task: %s, sending to worker pool\n" pkg_name;
             Build_results.mark_building state.build_results pkg_name;
             Worker_pool.send_task pool build_task;
             send_ready_tasks ()
-        | None -> ()
+        | None -> 
+            Printf.printf "[Server] No more buildable tasks found\n"
       in
       send_ready_tasks ()
 
