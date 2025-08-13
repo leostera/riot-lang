@@ -106,8 +106,13 @@ let build_command package_opt =
 
   (* Wait for RPC response *)
   let rec wait_for_completion () =
-    match receive () with
-    | ServerResponse (Rpc.BuildComplete { successful; failed }) ->
+    let selector = function
+      | ServerResponse (Rpc.BuildComplete { successful; failed }) -> `select (`build_complete (successful, failed))
+      | ServerResponse (Rpc.Error { message }) -> `select (`error message)
+      | _ -> `skip
+    in
+    match receive ~selector () with
+    | `build_complete (successful, failed) ->
         if failed > 0 then (
           Printf.printf "❌ Build completed with %d failures!\n" failed;
           (* Exit with status 1 to indicate build failure *)
@@ -117,13 +122,10 @@ let build_command package_opt =
           Printf.printf "✅ Build completed! %d packages built successfully.\n"
             successful;
           Process.Normal)
-    | ServerResponse (Rpc.Error { message }) ->
+    | `error message ->
         Printf.printf "❌ Build error: %s\n" message;
         Miniriot.shutdown ~status:1;
         Process.Normal
-    | _ ->
-        (* Ignore other messages *)
-        wait_for_completion ()
   in
   wait_for_completion ()
 
@@ -173,10 +175,14 @@ let build_package package_name =
 
   (* Wait for RPC response *)
   let rec wait_for_completion () =
-    match receive () with
-    | ServerResponse (Rpc.BuildComplete { successful = _; failed }) -> failed = 0
-    | ServerResponse (Rpc.Error _) -> false
-    | _ -> wait_for_completion ()
+    let selector = function
+      | ServerResponse (Rpc.BuildComplete { successful = _; failed }) -> `select (`build_complete failed)
+      | ServerResponse (Rpc.Error _) -> `select `error
+      | _ -> `skip
+    in
+    match receive ~selector () with
+    | `build_complete failed -> failed = 0
+    | `error -> false
   in
   wait_for_completion ()
 

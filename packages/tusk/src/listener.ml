@@ -78,8 +78,12 @@ let handle_client server_pid stream =
                 send server_pid (ClientRequest (self (), request));
 
                 (* Wait for response - TODO: add timeout *)
-                match receive () with
-                | ServerResponse response -> (
+                let selector = function
+                  | ServerResponse response -> `select (`server_response response)
+                  | _ -> `skip
+                in
+                match receive ~selector () with
+                | `server_response response -> (
                     let response_str = Rpc.response_to_string response in
                     let response_bytes = Bytes.of_string (response_str ^ "\n") in
                     match
@@ -98,11 +102,7 @@ let handle_client server_pid stream =
                             client_loop ()
                         | _ -> client_loop ())
                     | Error _ ->
-                        Printf.printf "[Listener] Write error\n%!")
-                | _ ->
-                    let error_bytes = Bytes.of_string "Error:Timeout\n" in
-                    ignore (Net.TcpStream.write stream error_bytes ~pos:0 ~len:(Bytes.length error_bytes) ());
-                    client_loop ())
+                        Printf.printf "[Listener] Write error\n%!"))
             | None ->
                 let error_bytes = Bytes.of_string "Error:Invalid request\n" in
                 ignore (Net.TcpStream.write stream error_bytes ~pos:0 ~len:(Bytes.length error_bytes) ());

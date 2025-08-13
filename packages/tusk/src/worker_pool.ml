@@ -42,8 +42,16 @@ let shutdown_all_workers workers =
 
 (** Worker pool message loop *)
 let rec pool_loop state =
-  match receive () with
-  | SendTask task ->
+  let selector = function
+    | SendTask task -> `select (`send_task task)
+    | Build_messages.NextTask worker_pid -> `select (`next_task worker_pid)
+    | Build_messages.TaskComplete (pkg_name, success, hash) -> `select (`task_complete (pkg_name, success, hash))
+    | Build_messages.RequeueWithDependencies (task, missing_deps) -> `select (`requeue (task, missing_deps))
+    | Shutdown -> `select `shutdown
+    | _ -> `skip
+  in
+  match receive ~selector () with
+  | `send_task task ->
       (* Try to assign task to an idle worker *)
       if Queue.is_empty state.idle_workers then (
         (* No workers available *)
@@ -59,7 +67,7 @@ let rec pool_loop state =
         pool_loop state
       )
       
-  | Build_messages.NextTask worker_pid ->
+  | `next_task worker_pid ->
       (* Worker is requesting work - mark it as idle *)
       (match Hashtbl.find_opt state.busy_workers worker_pid with
       | Some _pkg -> 
@@ -70,24 +78,20 @@ let rec pool_loop state =
       send worker_pid Build_messages.NoTask;
       pool_loop state
       
-  | Build_messages.TaskComplete (pkg_name, success, hash) ->
+  | `task_complete (pkg_name, success, hash) ->
       (* Forward completion to listener *)
       send state.listener (TaskCompleted (pkg_name, success, hash));
       pool_loop state
       
-  | Build_messages.RequeueWithDependencies (task, missing_deps) ->
+  | `requeue (task, missing_deps) ->
       (* Forward requeue message to listener *)
       send state.listener (Build_messages.RequeueWithDependencies (task, missing_deps));
       pool_loop state
       
-  | Shutdown ->
+  | `shutdown ->
       (* Shutdown all workers and exit *)
       shutdown_all_workers state.all_workers;
       Process.Normal
-      
-  | _ ->
-      (* Ignore unknown messages *)
-      pool_loop state
 
 (** Start a worker pool process *)
 let start ?(workers = System.cpu_count ()) ~listener () =

@@ -579,14 +579,28 @@ let handle_client_request state client_pid request =
 
 (** Main server loop *)
 let rec server_loop state =
-  match receive () with
-  | ClientRequest (client_pid, request) ->
+  let selector = function
+    | ClientRequest (client_pid, request) -> `select (`client_request (client_pid, request))
+    | ScanWorkspace target_package -> `select (`scan_workspace target_package)
+    | BuildAll cli_pid -> `select (`build_all cli_pid)
+    | BuildPackage (pkg_name, cli_pid) -> `select (`build_package (pkg_name, cli_pid))
+    | Worker_pool.TaskAssigned task -> `select (`task_assigned task)
+    | Worker_pool.NoWorkersAvailable task -> `select (`no_workers task)
+    | Worker_pool.TaskCompleted (pkg_name, success, hash) -> `select (`task_completed (pkg_name, success, hash))
+    | RequeueWithDependencies (task, missing_deps) -> `select (`requeue (task, missing_deps))
+    | Shutdown -> `select `shutdown
+    | RestartServer -> `select `restart_server
+    | ShutdownServer -> `select `shutdown_server
+    | _ -> `skip
+  in
+  match receive ~selector () with
+  | `client_request (client_pid, request) ->
       let new_state = handle_client_request state client_pid request in
       server_loop new_state
-  | ScanWorkspace target_package ->
+  | `scan_workspace target_package ->
       let new_state = handle_scan_workspace state target_package in
       server_loop new_state
-  | BuildAll cli_pid -> (
+  | `build_all cli_pid -> (
       Printf.printf "[Server] BuildAll command received\n";
       match state.build_graph with
       | None ->
@@ -598,7 +612,7 @@ let rec server_loop state =
           let new_state = { state with active_build_graph = Some graph } in
           let updated_state = execute_build new_state cli_pid graph in
           server_loop updated_state)
-  | BuildPackage (pkg_name, cli_pid) -> (
+  | `build_package (pkg_name, cli_pid) -> (
       Printf.printf "[Server] BuildPackage %s command received\n" pkg_name;
       (* active_build_graph should already be set to the filtered graph *)
       match state.active_build_graph with
@@ -610,18 +624,18 @@ let rec server_loop state =
           Printf.printf "[Server] Building package %s and its dependencies...\n" pkg_name;
           let updated_state = execute_build state cli_pid graph in
           server_loop updated_state)
-  | Worker_pool.TaskAssigned task ->
+  | `task_assigned task ->
       (* Worker pool assigned a task - just log it *)
       let pkg_name = task.Build_messages.node.Build_node.package.name in
       Printf.printf "[Server] Worker pool assigned task for %s\n" pkg_name;
       server_loop state
-  | Worker_pool.NoWorkersAvailable task ->
+  | `no_workers task ->
       (* No workers available - we'll retry later *)
       let pkg_name = task.Build_messages.node.Build_node.package.name in
       Printf.printf "[Server] No workers available for %s, will retry\n" pkg_name;
       (* The task is still in build_results as Building, it will be retried *)
       server_loop state
-  | Worker_pool.TaskCompleted (pkg_name, success, hash) ->
+  | `task_completed (pkg_name, success, hash) ->
       handle_task_complete state pkg_name success hash;
 
       (* Check if all done *)
@@ -651,7 +665,7 @@ let rec server_loop state =
             sleep 0.1;
             server_loop state
       ) else server_loop state
-  | RequeueWithDependencies (task, missing_deps) ->
+  | `requeue (task, missing_deps) ->
       let pkg_name = task.node.Build_node.package.name in
       let missing_names = List.map (fun dep -> dep.Build_node.package.name) missing_deps in
       Printf.printf "[Server] Requeuing %s, missing dependencies: %s\n" 
@@ -666,7 +680,7 @@ let rec server_loop state =
       Build_queue.add_waiting state.build_queue task;
       try_assign_work state;
       server_loop state
-  | Shutdown ->
+  | `shutdown ->
       Printf.printf "[Server] Shutting down...\n";
       (match state.worker_pool with
       | Some pool -> Worker_pool.shutdown pool
@@ -674,7 +688,7 @@ let rec server_loop state =
       sleep 0.5;
       Miniriot.shutdown ~status:0;
       Process.Normal
-  | RestartServer ->
+  | `restart_server ->
       Printf.printf "[Server] Restarting...\n";
       (* Shutdown worker pool if it exists *)
       (match state.worker_pool with
@@ -686,7 +700,7 @@ let rec server_loop state =
       let new_state = handle_scan_workspace { state with worker_pool = None } None in
       Printf.printf "[Server] Restarted successfully\n";
       server_loop new_state
-  | ShutdownServer ->
+  | `shutdown_server ->
       Printf.printf "[Server] Shutting down via RPC...\n";
       (* Shutdown worker pool if it exists *)
       (match state.worker_pool with
@@ -698,9 +712,6 @@ let rec server_loop state =
       (* Gracefully shutdown the scheduler *)
       Miniriot.shutdown ~status:0;
       Process.Normal
-  | _ ->
-      (* Ignore unknown messages *)
-      server_loop state
 
 (** Start the build server *)
 let start () =

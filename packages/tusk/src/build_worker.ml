@@ -113,19 +113,22 @@ let build_package_with_sandbox server_pid build_task =
 let rec worker_loop server_pid worker_id =
   (* Workers are pre-added to idle queue, so just wait for work *)
   let rec wait_for_work () =
-    match receive () with
-    | Task build_task -> Some build_task
-    | NoTask ->
+    let selector = function
+      | Task build_task -> `select (`task build_task)
+      | NoTask -> `select `no_task
+      | Shutdown -> `select `shutdown
+      | _ -> `skip
+    in
+    match receive ~selector () with
+    | `task build_task -> Some build_task
+    | `no_task ->
         (* No tasks available, request again after a short delay *)
         sleep 0.1;
         send server_pid (NextTask (self ()));
         wait_for_work ()
-    | Shutdown ->
+    | `shutdown ->
         Printf.printf "[Worker %d] Shutting down\n" worker_id;
         None
-    | _ ->
-        (* Ignore other messages and keep waiting *)
-        wait_for_work ()
   in
   match wait_for_work () with
   | None -> Process.Normal (* Shutdown *)

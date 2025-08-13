@@ -40,11 +40,36 @@ val send : Pid.t -> Message.t -> unit
 val yield : unit -> unit
 (** Yield control to the scheduler *)
 
-val receive : unit -> Message.t
-(** Receive any message *)
+val receive_any : unit -> Message.t
+(** Receive any message from the mailbox without filtering.
+    
+    This function will block until a message is available and return
+    the first message in the mailbox. *)
 
-val selective_receive : (Message.t -> [ `select of 'msg | `skip ]) -> 'msg
-(** Selective receive with a selector function *)
+val receive : selector:(Message.t -> [ `select of 'msg | `skip ]) -> unit -> 'msg
+(** Receive a message using a selector function for pattern matching.
+    
+    The selector function examines each message and returns:
+    - [`select msg] to select and return the processed message
+    - [`skip] to skip this message and continue searching
+    
+    This enables exhaustive pattern matching without catch-all cases:
+    
+    {[
+      let selector = function
+        | MyMessage data -> `select (`my_message data)
+        | OtherMessage -> `select `other_message  
+        | _ -> `skip
+      in
+      match receive ~selector () with
+      | `my_message data -> handle_my_message data
+      | `other_message -> handle_other ()
+      (* No catch-all needed - the match is exhaustive *)
+    ]}
+    
+    The advantage of this pattern is that the selector narrows the return
+    type, making the pattern match exhaustive and eliminating the need
+    for a wildcard case that could hide bugs. *)
 
 val exit : unit -> Process.exit_reason
 (** Exit normally *)

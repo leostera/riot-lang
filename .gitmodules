@@ -7,3 +7,6 @@
 [submodule "ocaml/ocamlformat"]
 	path = ocaml/ocamlformat
 	url = https://github.com/ocaml-ppx/ocamlformat.git
+[submodule "ocaml/compiler"]
+	path = ocaml/compiler
+	url = https://github.com/ocaml/ocaml.git

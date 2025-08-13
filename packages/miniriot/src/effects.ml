@@ -1,9 +1,9 @@
 let yield () = Effect.perform Proc_effect.Yield
 
-let receive () =
+let receive_any () =
   Effect.perform (Proc_effect.Receive { selector = (fun msg -> `select msg) })
 
-let selective_receive selector =
+let receive ~selector () =
   Effect.perform (Proc_effect.Receive { selector })
 
 let exit () = Process.Normal
