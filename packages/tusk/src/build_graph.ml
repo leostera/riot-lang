@@ -165,11 +165,13 @@ let filter_for_package graph target_pkg_name =
 
 (** Compute content-based hash for a build node *)
 let compute_node_hash toolchain_version node =
+  Printf.printf "[BuildGraph] Computing hash for %s...\n" node.package.name;
   let components = ref [] in
   
   (* 1. Package metadata *)
   components := node.package.name :: !components;
   components := toolchain_version :: !components;
+  Printf.printf "  - Package: %s, Toolchain: %s\n" node.package.name toolchain_version;
   
   (* 2. Dependency hashes (sorted by name for deterministic hash) *)
   let sorted_deps = List.sort (fun a b -> String.compare a.package.name b.package.name) node.dependencies in
@@ -179,8 +181,13 @@ let compute_node_hash toolchain_version node =
     
     (* Include dependency hash if already computed *)
     (match dep.hash with
-    | Some dep_hash -> components := ("dep_hash:" ^ Hasher.to_string dep_hash) :: !components
-    | None -> components := "dep_hash:pending" :: !components);
+    | Some dep_hash -> 
+        let hash_str = Hasher.to_string dep_hash in
+        components := ("dep_hash:" ^ hash_str) :: !components;
+        Printf.printf "  - Dependency %s hash: %s\n" dep.package.name hash_str
+    | None -> 
+        components := "dep_hash:pending" :: !components;
+        Printf.printf "  - Dependency %s hash: pending\n" dep.package.name);
   ) sorted_deps;
   
   (* 3. Source file content hashes *)
@@ -190,6 +197,7 @@ let compute_node_hash toolchain_version node =
     else node.package.path
   in
   
+  Printf.printf "  - Source directory: %s\n" src_dir;
   if System.file_exists src_dir then (
     let all_files = System.list_dir_all src_dir in
     let source_files = List.filter (fun f -> 
@@ -198,12 +206,16 @@ let compute_node_hash toolchain_version node =
       String.ends_with ~suffix:".c" f
     ) all_files in
     let sorted_files = List.sort String.compare source_files in
+    Printf.printf "  - Found %d source files\n" (List.length sorted_files);
     List.iter (fun file ->
       let full_path = Filename.concat src_dir file in
       let file_hash = Hasher.hash_file full_path in
-      components := (file ^ ":" ^ Hasher.to_string file_hash) :: !components;
+      let hash_str = Hasher.to_string file_hash in
+      components := (file ^ ":" ^ hash_str) :: !components;
+      Printf.printf "    - %s: %s\n" file hash_str;
     ) sorted_files;
-  );
+  ) else
+    Printf.printf "  - Source directory does not exist!\n";
   
   (* 4. Actions placeholder - TODO: generate actions here if needed *)
   components := "actions:placeholder" :: !components;
@@ -212,7 +224,7 @@ let compute_node_hash toolchain_version node =
   let combined = String.concat "|" (List.rev !components) in
   let final_hash = Hasher.hash_string combined in
   
-  Printf.printf "[BuildGraph] Computed hash %s for %s\n" (Hasher.to_string final_hash) node.package.name;
+  Printf.printf "  - Final hash for %s: %s\n" node.package.name (Hasher.to_string final_hash);
   flush stdout;
   
   final_hash
@@ -222,6 +234,13 @@ type hash_result =
   | Ok of Hasher.hash
   | MissingDependencies of Build_node.t list
   | Error of string
+
+(** Force recomputation of hash for a node (ignoring cached value) *)
+let recompute_node_hash toolchain_version node =
+  (* Compute fresh hash, ignoring any cached value *)
+  let hash = compute_node_hash toolchain_version node in
+  (* Don't update the node's cached hash here - let the caller decide *)
+  Ok hash
 
 (** Get hash for a node, checking if dependencies are available, computing hash if necessary using bottom-up traversal *)
 let rec get_node_hash toolchain_version node store =

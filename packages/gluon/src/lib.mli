@@ -4,8 +4,6 @@
     using kqueue on macOS. It's designed for building high-performance network applications
     and concurrent I/O systems.
 
-    asdf
-
     {1 Core Concepts}
 
     - {b Non-blocking I/O}: All operations return immediately, using [`Would_block] to signal retry

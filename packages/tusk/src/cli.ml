@@ -2,6 +2,7 @@
 
 open Miniriot
 open Build_messages
+open Rpc_messages
 
 let usage_msg =
   "tusk - OCaml build system\n\n\
@@ -96,15 +97,17 @@ let build_command package_opt =
   (* Give server time to scan and print *)
   sleep 0.5;
 
-  (* Send appropriate build message *)
-  (match package_opt with
-  | Some package -> send server_pid (BuildPackage (package, self ()))
-  | None -> send server_pid (BuildAll (self ())));
+  (* Send RPC-style build request to server *)
+  let request = match package_opt with
+  | Some package -> Rpc.BuildPackage { package; watch = false }
+  | None -> Rpc.BuildAll { watch = false }
+  in
+  send server_pid (ClientRequest (self (), request));
 
-  (* Wait for BuildFinished message *)
+  (* Wait for RPC response *)
   let rec wait_for_completion () =
     match receive () with
-    | BuildFinished { successful; failed } ->
+    | ServerResponse (Rpc.BuildComplete { successful; failed }) ->
         if failed > 0 then (
           Printf.printf "❌ Build completed with %d failures!\n" failed;
           (* Exit with status 1 to indicate build failure *)
@@ -114,6 +117,10 @@ let build_command package_opt =
           Printf.printf "✅ Build completed! %d packages built successfully.\n"
             successful;
           Process.Normal)
+    | ServerResponse (Rpc.Error { message }) ->
+        Printf.printf "❌ Build error: %s\n" message;
+        Miniriot.shutdown ~status:1;
+        Process.Normal
     | _ ->
         (* Ignore other messages *)
         wait_for_completion ()
@@ -143,13 +150,15 @@ let build_package package_name =
   (* Give server time to scan *)
   sleep 0.5;
 
-  (* Send build message *)
-  send server_pid (BuildPackage (package_name, self ()));
+  (* Send RPC-style build request *)
+  let request = Rpc.BuildPackage { package = package_name; watch = false } in
+  send server_pid (ClientRequest (self (), request));
 
-  (* Wait for BuildFinished message *)
+  (* Wait for RPC response *)
   let rec wait_for_completion () =
     match receive () with
-    | BuildFinished { successful; failed } -> failed = 0
+    | ServerResponse (Rpc.BuildComplete { successful = _; failed }) -> failed = 0
+    | ServerResponse (Rpc.Error _) -> false
     | _ -> wait_for_completion ()
   in
   wait_for_completion ()

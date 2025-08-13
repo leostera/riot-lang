@@ -1,5 +1,8 @@
 let ( let* ) = Result.bind
 let log = Format.printf
+let _log = Format.printf
+let _log = Format.printf
+let _log = Format.printf
 
 type io_error =
   [ `Connection_closed
