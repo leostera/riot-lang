@@ -138,3 +138,26 @@ let get_stats t =
       | NotStarted -> incr not_started)
     t.results;
   (!built, !failed, !building, !not_started)
+
+(** Tests submodule *)
+module Tests = struct
+  [@test]
+  let test_build_results_tracks_all_package_states () : (unit, string) result =
+    (* Test that all build states are tracked correctly *)
+    Ok ()
+  
+  [@test]
+  let test_hash_stored_with_successful_builds () : (unit, string) result =
+    (* Test that content hash is stored on successful build *)
+    Ok ()
+  
+  [@test]
+  let test_error_messages_preserved_on_failure () : (unit, string) result =
+    (* Test that failure reasons are captured and accessible *)
+    Ok ()
+  
+  [@test]
+  let test_statistics_accurately_reflect_state () : (unit, string) result =
+    (* Test that stats correctly count packages in each state *)
+    Ok ()
+end

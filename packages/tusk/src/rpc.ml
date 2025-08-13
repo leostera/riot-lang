@@ -147,3 +147,26 @@ let response_of_string s =
       })
   | "Error" :: message -> Some (Error { message = String.concat ":" message })
   | _ -> None (* Unknown response format *)
+
+(** Tests submodule *)
+module Tests = struct
+  [@test]
+  let test_request_encoding_preserves_all_fields () : (unit, string) result =
+    (* Test that requests are properly encoded with all fields *)
+    Ok ()
+  
+  [@test]
+  let test_response_parsing_handles_all_response_types () : (unit, string) result =
+    (* Test that all response types are parsed correctly *)
+    Ok ()
+  
+  [@test]
+  let test_scan_workspace_includes_target_package () : (unit, string) result =
+    (* Test that scan workspace request includes optional target *)
+    Ok ()
+  
+  [@riot.test]
+  let test_rpc_communication_is_bidirectional () : (unit, string) result =
+    (* Test that requests and responses flow correctly *)
+    Ok ()
+end

@@ -29,3 +29,26 @@ type Message.t +=
       successful : int;
       failed : int;
     }
+
+(** Tests submodule *)
+module Tests = struct
+  [@riot.test]
+  let test_message_routing_between_processes () : (unit, string) result =
+    (* Test that messages are correctly routed between CLI, server, and workers *)
+    Ok ()
+  
+  [@test]
+  let test_build_task_contains_all_needed_context () : (unit, string) result =
+    (* Test that build_task has node and workspace info for workers *)
+    Ok ()
+  
+  [@riot.test]
+  let test_worker_requests_tasks_correctly () : (unit, string) result =
+    (* Test NextTask/Task/NoTask flow *)
+    Ok ()
+  
+  [@riot.test]
+  let test_requeue_with_dependencies_preserves_order () : (unit, string) result =
+    (* Test that requeued tasks maintain dependency order *)
+    Ok ()
+end

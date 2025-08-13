@@ -1,3 +1,4 @@
+module Runtime = Runtime
 module Pid = Pid
 module Message = Message
 module Process = Process

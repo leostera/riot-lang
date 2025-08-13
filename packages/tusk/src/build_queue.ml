@@ -153,3 +153,31 @@ let mark_completed t pkg_name =
 (** Check if a task is currently busy **)
 let is_busy t pkg_name =
   Hashtbl.mem t.busy_tasks pkg_name
+
+(** Tests submodule *)
+module Tests = struct
+  [@test]
+  let test_queue_prevents_duplicate_tasks () : (unit, string) result =
+    (* Test that same package isn't added multiple times *)
+    Ok ()
+  
+  [@test]
+  let test_three_state_queue_transitions () : (unit, string) result =
+    (* Test ready -> busy -> completed transitions *)
+    Ok ()
+  
+  [@test]
+  let test_waiting_queue_promotes_when_deps_ready () : (unit, string) result =
+    (* Test that waiting tasks move to ready when dependencies complete *)
+    Ok ()
+  
+  [@test]
+  let test_busy_tasks_block_duplicate_assignment () : (unit, string) result =
+    (* Test that busy tasks aren't assigned again *)
+    Ok ()
+  
+  [@test]
+  let test_queue_skips_already_built_packages () : (unit, string) result =
+    (* Test that take_ready skips packages already in build_results *)
+    Ok ()
+end

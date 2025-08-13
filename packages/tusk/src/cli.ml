@@ -346,54 +346,61 @@ let get_lsp_binary_path () =
 (** Execute the LSP command *)
 let lsp_command () =
   try
-    let lsp_path = get_lsp_binary_path () in
-    let version = read_toolchain_version () in
-    let home = System.get_home () in
-    let toolchain_path = Printf.sprintf "%s/.tusk/toolchains/%s" home version in
-    let stdlib_path = Printf.sprintf "%s/lib/ocaml" toolchain_path in
+    (* First ensure the tusk server is running in the background *)
+    if not (Server_manager.ensure_running ()) then (
+      Printf.eprintf "❌ Failed to start tusk server\n";
+      Process.Exception (Failure "Failed to start tusk server")
+    ) else (
+      let lsp_path = get_lsp_binary_path () in
+      let version = read_toolchain_version () in
+      let home = System.get_home () in
+      let toolchain_path = Printf.sprintf "%s/.tusk/toolchains/%s" home version in
+      let stdlib_path = Printf.sprintf "%s/lib/ocaml" toolchain_path in
 
-    (* Check if .merlin file exists *)
-    let merlin_exists = System.file_exists ".merlin" in
-    if not merlin_exists then
-      Printf.printf
-        "⚠️  No .merlin file found. Run 'tusk build' to generate it.\n%!";
+      (* Check if .merlin file exists *)
+      let merlin_exists = System.file_exists ".merlin" in
+      if not merlin_exists then
+        Printf.printf
+          "⚠️  No .merlin file found. Run 'tusk build' to generate it.\n%!";
 
-    Printf.printf "🔍 Starting OCaml LSP server...\n%!";
-    Printf.printf "   Toolchain: %s\n%!" version;
-    Printf.printf "   Stdlib: %s\n%!" stdlib_path;
-    Printf.printf "   LSP binary: %s\n%!" lsp_path;
-    if merlin_exists then
-      Printf.printf "   Using .merlin file for configuration\n%!"
-    else
-      Printf.printf
-        "   Warning: No .merlin file, LSP may have limited functionality\n%!";
-    Printf.printf
-      "\n💡 Connect your editor to the LSP server (usually automatic)\n%!";
-    Printf.printf "   For VSCode: Install OCaml Platform extension\n%!";
-    Printf.printf "   For Neovim: Configure nvim-lspconfig with ocamllsp\n%!";
-    Printf.printf "   For Emacs: Use lsp-mode or eglot\n\n%!";
-
-    (* Set up environment *)
-    System.putenv "OCAMLPATH" stdlib_path;
-    System.putenv "OCAMLLIB" stdlib_path;
-
-    (* Execute the LSP server with stdio by default *)
-    let args =
-      if Array.length (System.argv ()) > 2 then
-        (* Pass through any additional arguments *)
-        Array.sub (System.argv ()) 2 (Array.length (System.argv ()) - 2)
+      Printf.printf "🔍 Starting OCaml LSP server...\n%!";
+      Printf.printf "   Toolchain: %s\n%!" version;
+      Printf.printf "   Stdlib: %s\n%!" stdlib_path;
+      Printf.printf "   LSP binary: %s\n%!" lsp_path;
+      Printf.printf "   Tusk server: running in background\n%!";
+      if merlin_exists then
+        Printf.printf "   Using .merlin file for configuration\n%!"
       else
-        (* Default to stdio mode *)
-        [| "--stdio" |]
-    in
+        Printf.printf
+          "   Warning: No .merlin file, LSP may have limited functionality\n%!";
+      Printf.printf
+        "\n💡 Connect your editor to the LSP server (usually automatic)\n%!";
+      Printf.printf "   For VSCode: Install OCaml Platform extension\n%!";
+      Printf.printf "   For Neovim: Configure nvim-lspconfig with ocamllsp\n%!";
+      Printf.printf "   For Emacs: Use lsp-mode or eglot\n\n%!";
 
-    (* Build the full command *)
-    let full_args = Array.append [| lsp_path |] args in
+      (* Set up environment *)
+      System.putenv "OCAMLPATH" stdlib_path;
+      System.putenv "OCAMLLIB" stdlib_path;
 
-    (* Execute the LSP server *)
-    let _ = System.exec lsp_path full_args in
-    (* This should never be reached if execv succeeds *)
-    Process.Exception (Failure "Failed to execute LSP server")
+      (* Execute the LSP server with stdio by default *)
+      let args =
+        if Array.length (System.argv ()) > 2 then
+          (* Pass through any additional arguments *)
+          Array.sub (System.argv ()) 2 (Array.length (System.argv ()) - 2)
+        else
+          (* Default to stdio mode *)
+          [| "--stdio" |]
+      in
+
+      (* Build the full command *)
+      let full_args = Array.append [| lsp_path |] args in
+
+      (* Execute the LSP server *)
+      let _ = System.exec lsp_path full_args in
+      (* This should never be reached if execv succeeds *)
+      Process.Exception (Failure "Failed to execute LSP server")
+    )
   with
   | Failure msg ->
       Printf.eprintf "Error: %s\n" msg;

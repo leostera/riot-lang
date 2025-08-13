@@ -410,12 +410,9 @@ let handle_client_request state client_pid request =
           let packages =
             List.map
               (fun node ->
-                let deps =
-                  List.map
-                    (fun d -> d.Build_node.package.name)
-                    node.dependencies
-                in
-                (node.Build_node.package.name, deps))
+                (* Include both external dependencies (like unix) and internal package dependencies *)
+                let all_deps = node.Build_node.package.dependencies in
+                (node.Build_node.package.name, all_deps))
               nodes
           in
           send client_pid (ServerResponse (Rpc.BuildGraphInfo { packages }));

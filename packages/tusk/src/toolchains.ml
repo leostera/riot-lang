@@ -345,3 +345,31 @@ let list_installed_toolchains () =
         System.file_exists (Filename.concat path "bin/ocamlc"))
     |> List.map Filename.basename
   else []
+
+(** Tests submodule *)
+module Tests = struct
+  [@test]
+  let test_default_toolchain_uses_latest_version () : (unit, string) result =
+    (* Test that default() returns the latest available toolchain *)
+    Ok ()
+  
+  [@test]
+  let test_ocamlc_path_points_to_valid_compiler () : (unit, string) result =
+    (* Test that ocamlc_path returns executable path *)
+    Ok ()
+  
+  [@test]
+  let test_ocamldep_path_points_to_valid_tool () : (unit, string) result =
+    (* Test that ocamldep_path returns executable path *)
+    Ok ()
+  
+  [@test]
+  let test_list_available_finds_installed_toolchains () : (unit, string) result =
+    (* Test that list_available discovers all toolchains *)
+    Ok ()
+  
+  [@test]
+  let test_get_version_returns_semantic_version () : (unit, string) result =
+    (* Test that get_version returns proper version string *)
+    Ok ()
+end

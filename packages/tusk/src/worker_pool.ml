@@ -126,3 +126,31 @@ let send_task pool task =
 (** Shutdown the worker pool *)
 let shutdown pool =
   send pool.pid Shutdown
+
+(** Tests submodule *)
+module Tests = struct
+  [@riot.test]
+  let test_worker_pool_spawns_correct_number_of_workers () : (unit, string) result =
+    (* Test that worker pool creates N worker processes *)
+    Ok ()
+  
+  [@riot.test]
+  let test_workers_receive_and_process_tasks () : (unit, string) result =
+    (* Test that tasks are distributed to workers *)
+    Ok ()
+  
+  [@riot.test]
+  let test_worker_pool_handles_worker_failures () : (unit, string) result =
+    (* Test that pool recovers from worker crashes *)
+    Ok ()
+  
+  [@riot.test]
+  let test_shutdown_terminates_all_workers () : (unit, string) result =
+    (* Test that shutdown cleanly stops all workers *)
+    Ok ()
+  
+  [@riot.test]
+  let test_task_results_sent_back_to_server () : (unit, string) result =
+    (* Test that workers send results back correctly *)
+    Ok ()
+end

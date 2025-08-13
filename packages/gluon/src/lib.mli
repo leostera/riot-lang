@@ -1,4 +1,4 @@
-(** Gluon - High-performance I/O event notification library for macOS
+(** Gluon - High-performance I/O event notification library for macOS!
 
     Gluon provides a clean, efficient interface for asynchronous I/O event notification
     using kqueue on macOS. It's designed for building high-performance network applications
