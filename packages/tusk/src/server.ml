@@ -269,7 +269,7 @@ let handle_task_complete state pkg_name success hash =
     Build_results.mark_built_with_hash state.build_results pkg_name hash;
 
     (* Also check if any other packages are now unblocked *)
-    match state.active_build_graph with
+    (match state.active_build_graph with
     | Some graph ->
         let nodes = Build_graph.topological_sort graph in
         Printf.printf "[Server] Checking for newly unblocked packages after %s completed...\n" pkg_name;
@@ -281,10 +281,10 @@ let handle_task_complete state pkg_name success hash =
             Printf.printf "[Server]   Package %s: is_building=%b, can_build=%b\n" pkg is_building can_build;
             if (not is_building) && can_build then
               queue_package_if_needed_internal state node true)
-          nodes;
-        try_assign_work state
+          nodes
     | None ->
-        try_assign_work state
+        ());
+    try_assign_work state
   ) else (
     Printf.printf "[Server] Build failed: %s\n" pkg_name;
     Build_results.mark_failed state.build_results pkg_name "Build failed")
