@@ -11,6 +11,10 @@ val start_background : unit -> bool
     Returns true if the server was stopped successfully. *)
 val stop_background : unit -> bool
 
+(** Kill the background server forcefully (kill -9).
+    Returns true if the server was killed successfully. *)
+val kill_background : unit -> bool
+
 (** Ensure the server is running, starting it if necessary.
     Returns true if the server is running after this call. *)
 val ensure_running : unit -> bool

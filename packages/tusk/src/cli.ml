@@ -610,6 +610,12 @@ let server_command args =
         Process.Normal
       else
         Process.Exception (Failure "Failed to stop server")
+  | "kill" ->
+      (* Kill background server forcefully *)
+      if Server_manager.kill_background () then
+        Process.Normal
+      else
+        Process.Exception (Failure "Failed to kill server")
   | "status" ->
       (* Check server status *)
       Server_manager.status ();
@@ -625,6 +631,7 @@ let server_command args =
       Printf.eprintf "  tusk server            - Start server in foreground\n";
       Printf.eprintf "  tusk server start      - Start server in background\n";
       Printf.eprintf "  tusk server stop       - Stop background server\n";
+      Printf.eprintf "  tusk server kill       - Kill background server (force)\n";
       Printf.eprintf "  tusk server status     - Check server status\n";
       Process.Exception (Failure "Invalid server subcommand")
 

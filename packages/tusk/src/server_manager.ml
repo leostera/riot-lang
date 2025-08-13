@@ -139,3 +139,32 @@ let status () =
       port (get_project_id ())
   ) else
     Printf.printf "❌ Server is not running for this project\n"
+
+(** Kill the background server forcefully *)
+let kill_background () =
+  let pid_path = pid_file () in
+  let port_path = port_file () in
+  
+  (* Check if PID file exists *)
+  if System.file_exists pid_path then (
+    try
+      let pid = int_of_string (String.trim (System.read_file pid_path)) in
+      (* Kill the process with SIGKILL (kill -9) *)
+      (try Unix.kill pid Sys.sigkill with Unix.Unix_error(Unix.ESRCH, _, _) -> ());
+      Printf.printf "Killed server process (pid: %d)\n" pid;
+      (* Clean up daemon files *)
+      (try System.remove_file pid_path with _ -> ());
+      (try System.remove_file port_path with _ -> ());
+      true
+    with _ ->
+      Printf.printf "Failed to read PID file\n";
+      (* Clean up stale files anyway *)
+      (try System.remove_file pid_path with _ -> ());
+      (try System.remove_file port_path with _ -> ());
+      false
+  ) else (
+    Printf.printf "Server is not running\n";
+    (* Clean up any stale port file *)
+    (try System.remove_file port_path with _ -> ());
+    false
+  )

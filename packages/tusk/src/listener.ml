@@ -121,6 +121,8 @@ let handle_client server_pid stream =
                         | Rpc.Shutdown ->
                             Printf.printf
                               "[Listener] Client requested shutdown\n%!";
+                            (* Give time for response to be sent *)
+                            sleep 0.1;
                             ()
                         | Rpc.Restart ->
                             Printf.printf
