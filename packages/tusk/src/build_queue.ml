@@ -70,13 +70,18 @@ let rec take_ready t =
   else
     let task = Queue.take t.ready_queue in
     let pkg_name = task.Build_messages.node.Build_node.package.name in
-    (* Check if already built *)
-    match Build_results.get_status t.build_results pkg_name with
-    | Some (Built _) -> take_ready t (* Skip and try next *)
-    | _ -> 
-        (* Mark as busy *)
-        Hashtbl.replace t.busy_tasks pkg_name task;
-        Some task
+    (* Check if already busy *)
+    if Hashtbl.mem t.busy_tasks pkg_name then (
+      take_ready t (* Skip and try next *)
+    ) else
+      (* Check if already built *)
+      match Build_results.get_status t.build_results pkg_name with
+      | Some (Built _) -> 
+          take_ready t (* Skip and try next *)
+      | _ -> 
+          (* Mark as busy *)
+          Hashtbl.replace t.busy_tasks pkg_name task;
+          Some task
 
 
 (** Get statistics about the queue *)

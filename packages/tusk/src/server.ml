@@ -151,10 +151,14 @@ let rec get_next_buildable_task state =
             Some task
           else (
             (* Either not buildable yet or already built - try next *)
-            if not (can_build_package state pkg_name) then
+            if not (can_build_package state pkg_name) then (
+              (* Move back to waiting queue and mark as not busy *)
               Build_queue.add_waiting state.build_queue task;
-            (* Also mark as not busy since we're not processing it *)
-            Build_queue.mark_completed state.build_queue pkg_name;
+              Build_queue.mark_completed state.build_queue pkg_name;
+            ) else (
+              (* Already built - just mark as not busy *)
+              Build_queue.mark_completed state.build_queue pkg_name;
+            );
             get_next_buildable_task state)
       | None -> None)  (* No work available *)
   | _, _ -> None
@@ -179,12 +183,13 @@ let check_later_queue state =
 
 (** Try to assign work to workers *)
 let try_assign_work state =
-  check_later_queue state;
-  
   match state.worker_pool with
   | None -> ()
   | Some pool ->
-      (* Send all ready tasks to the worker pool *)
+      (* First check for tasks that can be promoted from waiting to ready *)
+      check_later_queue state;
+      
+      (* Then send one batch of ready tasks *)
       let rec send_ready_tasks () =
         match get_next_buildable_task state with
         | Some build_task ->
