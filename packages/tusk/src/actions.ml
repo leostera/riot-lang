@@ -35,12 +35,17 @@ type dep_info = {
   dependencies : string list; (* Names of this dependency's dependencies *)
 }
 
+type resolved_dep = {
+  lib_file : string;
+  include_path : string;
+}
+
 type blueprint = {
   package_name : string;
   package_path : string;
   dependencies : dep_info list;
   actions : action list;
-  toolchain_version : string;
+  toolchain : Toolchains.toolchain;
   hash : Hasher.hash option; (* Content-based hash of all inputs *)
 }
 
@@ -70,7 +75,7 @@ let compute_blueprint_hash blueprint =
   
   (* 1. Package metadata *)
   components := blueprint.package_name :: !components;
-  components := blueprint.toolchain_version :: !components;
+  components := Toolchains.get_version blueprint.toolchain :: !components;
   
   (* 2. Dependencies (sorted by name for deterministic hash) *)
   let sorted_deps = List.sort (fun a b -> String.compare a.name b.name) blueprint.dependencies in
@@ -158,11 +163,42 @@ let print_blueprint blueprint =
     blueprint.actions;
   Printf.printf "\n"
 
+(** Resolve package dependencies to library files and include paths *)
+let resolve_dependency toolchain dep_name =
+  match dep_name with
+  | "unix" ->
+      (* Unix is a well-known OCaml library *)
+      Some { lib_file = "unix.cma"; include_path = "+unix" }
+  | _ ->
+      (* For now, we only handle well-known libraries *)
+      (* TODO: Add support for external package dependencies *)
+      None
+
+(** Get libraries and include paths from package dependencies *)
+let get_dependency_libs_and_includes toolchain pkg_dependencies =
+  let libs = ref [] in
+  let includes = ref [] in
+  List.iter (fun dep_name ->
+    match resolve_dependency toolchain dep_name with
+    | Some resolved ->
+        libs := resolved.lib_file :: !libs;
+        includes := resolved.include_path :: !includes
+    | None -> ()
+  ) pkg_dependencies;
+  (List.rev !libs, List.rev !includes)
+
 (** Generate build blueprint for a package *)
-let generate_blueprint root pkg_name pkg_path pkg_relative_path dependencies
-    all_packages toolchain_version ~hash () =
-  (* Get dependency include paths *)
-  let dep_includes =
+let generate_blueprint workspace node dependencies all_packages toolchain ~hash () =
+  let root = workspace.Workspace.root in
+  let pkg_name = node.Build_node.package.name in
+  let pkg_path = node.Build_node.package.path in
+  
+  (* Get external dependencies from tusk.toml *)
+  let pkg_dependencies = node.Build_node.package.dependencies in
+  let _external_libs, external_includes = get_dependency_libs_and_includes toolchain pkg_dependencies in
+  
+  (* Get dependency include paths from local packages *)
+  let local_dep_includes =
     List.fold_left
       (fun acc dep ->
         (* Look in target/debug/out/<dep_relative_path> where outputs are placed *)
@@ -176,6 +212,9 @@ let generate_blueprint root pkg_name pkg_path pkg_relative_path dependencies
         if System.file_exists dep_target then dep_target :: acc else acc)
       [] dependencies
   in
+  
+  (* Combine all include paths for compilation *)
+  let dep_includes = external_includes @ local_dep_includes in
 
   (* Find source files *)
   let src_dir =
@@ -226,11 +265,11 @@ let generate_blueprint root pkg_name pkg_path pkg_relative_path dependencies
 
       (* Run ocamldep -sort *)
       let files_str = String.concat " " all_source_files in
-      let ocamldep = Toolchains.ocamldep_path toolchain_version in
+      let ocamldep = Toolchains.ocamldep_path toolchain in
       let cmd =
         if files_str = "" then ""
         else
-          Printf.sprintf "%s -I +unix %s -sort %s 2>/dev/null" ocamldep
+          Printf.sprintf "%s %s -sort %s 2>/dev/null" ocamldep
             include_flags files_str
       in
 
@@ -379,8 +418,8 @@ let generate_blueprint root pkg_name pkg_path pkg_relative_path dependencies
 
      let all_deps = get_transitive_deps [] dependencies [] in
 
-     (* Get dependency libraries - in topological order (dependencies first) *)
-     let dep_libs =
+     (* Get dependency libraries from local packages - in topological order (dependencies first) *)
+     let local_dep_libs =
        List.fold_left
          (fun acc dep ->
            let dep_dir =
@@ -396,11 +435,21 @@ let generate_blueprint root pkg_name pkg_path pkg_relative_path dependencies
          [] all_deps
      in
 
+     (* Get external dependencies from tusk.toml *)
+     let pkg_dependencies = node.Build_node.package.dependencies in
+     let external_libs, external_includes = get_dependency_libs_and_includes toolchain pkg_dependencies in
+     
+     (* Combine all libraries *)
+     let all_libs = external_libs @ local_dep_libs in
+     
+     (* Combine all include paths *)
+     let all_includes = external_includes @ dep_includes in
+
      let all_objects = cmo_files @ o_files in
 
-     (* For executable, link with dependency .cma files *)
+     (* For executable, link with all dependency .cma files *)
      actions :=
-       CreateExecutable (exe_path, all_objects, dep_libs, dep_includes)
+       CreateExecutable (exe_path, all_objects, all_libs, all_includes)
        :: !actions;
 
      (* Declare executable as output *)
@@ -428,7 +477,7 @@ let generate_blueprint root pkg_name pkg_path pkg_relative_path dependencies
     package_path = pkg_path;
     dependencies;
     actions;
-    toolchain_version;
+    toolchain;
     hash = None; (* Will be computed after blueprint creation *)
   } in
   
@@ -436,7 +485,7 @@ let generate_blueprint root pkg_name pkg_path pkg_relative_path dependencies
   { blueprint with hash = Some hash }
 
 (** Execute an action in the sandbox *)
-let execute_action action toolchain_version =
+let execute_action action toolchain =
   (* Helper to convert Ocamlc.result to our action_result *)
   let convert_result = function
     | Ocamlc.Success output -> (Success, output)
@@ -445,24 +494,24 @@ let execute_action action toolchain_version =
   
   match action with
   | CompileInterface (src, dst, includes) ->
-      Ocamlc.compile_interface ~toolchain_version ~includes ~output:dst src
+      Ocamlc.compile_interface ~toolchain ~includes ~output:dst src
       |> convert_result
       
   | CompileImplementation (src, dst, includes) ->
-      Ocamlc.compile_impl ~toolchain_version ~includes ~output:dst src
+      Ocamlc.compile_impl ~toolchain ~includes ~output:dst src
       |> convert_result
       
   | CompileC (src, dst) ->
-      Ocamlc.compile_c ~toolchain_version ~output:dst src
+      Ocamlc.compile_c ~toolchain ~includes:[] ~output:dst src
       |> convert_result
       
   | CreateLibrary (lib, object_files, includes) ->
-      Ocamlc.create_library ~toolchain_version ~includes ~output:lib object_files
+      Ocamlc.create_library ~toolchain ~includes ~output:lib object_files
       |> convert_result
       
   | CreateExecutable (exe, object_files, libs, includes) ->
       (* Use custom executable for C stubs *)
-      Ocamlc.create_custom_executable ~toolchain_version ~includes ~output:exe ~libs object_files
+      Ocamlc.create_custom_executable ~toolchain ~includes ~output:exe ~libs object_files
       |> convert_result
   | CopyFile (src, dst) -> (
       try
@@ -479,7 +528,7 @@ let execute_action action toolchain_version =
           "" )
 
 (** Execute a blueprint *)
-let execute_blueprint root blueprint =
+let execute_blueprint workspace blueprint =
   Printf.printf "[Actions] Executing blueprint for %s\n" blueprint.package_name;
   flush stdout;
   let success = ref true in
@@ -490,7 +539,7 @@ let execute_blueprint root blueprint =
       Printf.printf "[Actions] Step %d: %s\n" (i + 1) (string_of_action action);
       flush stdout;
 
-      let result, output = execute_action action blueprint.toolchain_version in
+      let result, output = execute_action action blueprint.toolchain in
       match result with
       | Success ->
           if output <> "" then (
