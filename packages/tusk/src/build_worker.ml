@@ -111,10 +111,7 @@ let build_package_with_sandbox server_pid build_task =
 
 (** Worker loop that processes build tasks *)
 let rec worker_loop server_pid worker_id =
-  (* Request next task from the server *)
-  send server_pid (NextTask (self ()));
-
-  (* Suspend and wait for Task or Shutdown message *)
+  (* Workers are pre-added to idle queue, so just wait for work *)
   let rec wait_for_work () =
     match receive () with
     | Task build_task -> Some build_task
