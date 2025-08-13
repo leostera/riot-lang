@@ -50,7 +50,7 @@ let build_package_with_sandbox server_pid build_task =
     let store = Store.create ~root_dir:workspace.root in
     
     (* Compute hash for this task (recursively through dependencies) *)
-    match Build_graph.get_node_hash build_task.toolchain_version node store with
+    match Build_graph.get_node_hash Build_node.(node.toolchain) node store with
     | Build_graph.MissingDependencies missing_deps ->
         let missing_names = List.map (fun dep -> dep.Build_node.package.name) missing_deps in
         Printf.printf "[Worker] Missing dependencies for %s: %s\n" pkg_name (String.concat ", " missing_names);
@@ -89,9 +89,8 @@ let build_package_with_sandbox server_pid build_task =
           let sandbox = Sandbox.create ~node ~workspace in
 
           let blueprint =
-            Actions.generate_blueprint workspace.root pkg_name pkg_path
-              node.Build_node.package.relative_path deps all_packages
-              build_task.toolchain_version ~hash:node_hash ()
+            Actions.generate_blueprint workspace node deps all_packages
+              Build_node.(node.toolchain) ~hash:node_hash ()
           in
 
           (* Run actions in sandbox with store *)
@@ -120,7 +119,9 @@ let rec worker_loop server_pid worker_id =
     match receive () with
     | Task build_task -> Some build_task
     | NoTask ->
-        (* No tasks available, suspend and wait for server to send us work *)
+        (* No tasks available, request again after a short delay *)
+        sleep 0.1;
+        send server_pid (NextTask (self ()));
         wait_for_work ()
     | Shutdown ->
         Printf.printf "[Worker %d] Shutting down\n" worker_id;
@@ -141,7 +142,7 @@ let rec worker_loop server_pid worker_id =
          flush stdout;
          (* Even for failures, we need to compute the hash *)
          let store = Store.create ~root_dir:build_task.workspace.root in
-         match Build_graph.get_node_hash build_task.toolchain_version build_task.node store with
+         match Build_graph.get_node_hash Build_node.(build_task.node.toolchain) build_task.node store with
          | Build_graph.Ok current_hash -> send server_pid (TaskComplete (pkg_name, false, current_hash))
          | Build_graph.MissingDependencies deps -> send server_pid (RequeueWithDependencies (build_task, deps))
          | Build_graph.Error _ -> send server_pid (TaskComplete (pkg_name, false, Hasher.of_string "error")))
@@ -154,7 +155,7 @@ let rec worker_loop server_pid worker_id =
              flush stdout;
              (* Compute hash and send TaskComplete *)
              let store = Store.create ~root_dir:build_task.workspace.root in
-             (match Build_graph.get_node_hash build_task.toolchain_version build_task.node store with
+             (match Build_graph.get_node_hash Build_node.(build_task.node.toolchain) build_task.node store with
              | Build_graph.Ok current_hash -> send server_pid (TaskComplete (pkg_name, true, current_hash))
              | Build_graph.MissingDependencies deps -> send server_pid (RequeueWithDependencies (build_task, deps))
              | Build_graph.Error _ -> send server_pid (TaskComplete (pkg_name, false, Hasher.of_string "error")))
@@ -163,7 +164,7 @@ let rec worker_loop server_pid worker_id =
              flush stdout;
              (* Compute hash and send TaskComplete *)
              let store = Store.create ~root_dir:build_task.workspace.root in
-             (match Build_graph.get_node_hash build_task.toolchain_version build_task.node store with
+             (match Build_graph.get_node_hash Build_node.(build_task.node.toolchain) build_task.node store with
              | Build_graph.Ok current_hash -> send server_pid (TaskComplete (pkg_name, false, current_hash))
              | Build_graph.MissingDependencies deps -> send server_pid (RequeueWithDependencies (build_task, deps))
              | Build_graph.Error _ -> send server_pid (TaskComplete (pkg_name, false, Hasher.of_string "error")))
@@ -172,7 +173,7 @@ let rec worker_loop server_pid worker_id =
              flush stdout;
              (* Compute hash and send TaskComplete *)
              let store = Store.create ~root_dir:build_task.workspace.root in
-             (match Build_graph.get_node_hash build_task.toolchain_version build_task.node store with
+             (match Build_graph.get_node_hash Build_node.(build_task.node.toolchain) build_task.node store with
              | Build_graph.Ok current_hash -> send server_pid (TaskComplete (pkg_name, true, current_hash))
              | Build_graph.MissingDependencies deps -> send server_pid (RequeueWithDependencies (build_task, deps))
              | Build_graph.Error _ -> send server_pid (TaskComplete (pkg_name, false, Hasher.of_string "error")))
