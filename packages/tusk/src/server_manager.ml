@@ -25,46 +25,41 @@ let start_background () =
     Printf.printf "Server is already running on port %d\n" default_port;
     true
   ) else (
-    (* Fork the process *)
-    match fork () with
-    | 0 ->
-        (* Child process *)
-        (* Create a new session to detach from terminal *)
-        ignore (setsid ());
-        
-        (* Close standard file descriptors *)
-        close stdin;
-        close stdout;
-        close stderr;
-        
-        (* Redirect to /dev/null *)
-        let devnull = openfile "/dev/null" [O_RDWR] 0o666 in
-        dup2 devnull stdin;
-        dup2 devnull stdout;
-        dup2 devnull stderr;
-        close devnull;
-        
-        (* Save PID *)
-        let pid_path = pid_file () in
-        System.mkdirp (Filename.dirname pid_path);
-        System.write_file pid_path (string_of_int (getpid ()));
-        
-        (* Start the server *)
-        ignore (Server.start_with_listener ());
-        exit 0
-    | pid ->
-        (* Parent process *)
-        (* Wait a moment for server to start *)
-        Unix.sleep 1;
-        
-        (* Check if server started successfully *)
-        if is_server_running () then (
-          Printf.printf "✅ Server started in background (pid: %d) on port %d\n" pid default_port;
-          true
-        ) else (
-          Printf.eprintf "❌ Failed to start server\n";
-          false
-        )
+    (* Get the path to the tusk executable *)
+    let tusk_exe = Sys.argv.(0) in
+    
+    (* Prepare to launch server as separate process *)
+    let pid_path = pid_file () in
+    System.mkdirp (Filename.dirname pid_path);
+    
+    (* Create pipes for stdout/stderr *)
+    let devnull = Unix.openfile "/dev/null" [O_RDWR] 0o666 in
+    
+    (* Launch the server as a separate process *)
+    let pid = Unix.create_process 
+      tusk_exe 
+      [| tusk_exe; "server"; "foreground" |]
+      devnull devnull devnull
+    in
+    
+    Unix.close devnull;
+    
+    (* Save PID *)
+    System.write_file pid_path (string_of_int pid);
+    
+    (* Wait a moment for server to start *)
+    Unix.sleep 2;
+    
+    (* Check if server started successfully *)
+    if is_server_running () then (
+      Printf.printf "✅ Server started in background (pid: %d) on port %d\n" pid default_port;
+      true
+    ) else (
+      Printf.eprintf "❌ Failed to start server\n";
+      (* Clean up PID file *)
+      (try System.remove_file pid_path with _ -> ());
+      false
+    )
   )
 
 (** Stop the background server *)
