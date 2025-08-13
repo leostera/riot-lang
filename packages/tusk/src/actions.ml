@@ -437,50 +437,33 @@ let generate_blueprint root pkg_name pkg_path pkg_relative_path dependencies
 
 (** Execute an action in the sandbox *)
 let execute_action action toolchain_version =
-  let run_command cmd =
-    let success, output = System.run_command cmd in
-    if success then (Success, output) else (Failed output, output)
+  (* Helper to convert Ocamlc.result to our action_result *)
+  let convert_result = function
+    | Ocamlc.Success output -> (Success, output)
+    | Ocamlc.Failed output -> (Failed output, output)
   in
   
-  let ocamlc = Toolchains.ocamlc_path toolchain_version in
-  let make_include_flags includes =
-    String.concat " " (List.map (fun p -> "-I " ^ p) includes)
-  in
-
   match action with
   | CompileInterface (src, dst, includes) ->
-      let cmd =
-        Printf.sprintf "%s -I +unix %s -c -o %s %s" 
-          ocamlc (make_include_flags includes) dst src
-      in
-      run_command cmd
+      Ocamlc.compile_interface ~toolchain_version ~includes ~output:dst src
+      |> convert_result
+      
   | CompileImplementation (src, dst, includes) ->
-      let cmd =
-        Printf.sprintf "%s -I +unix %s -I . -c -o %s %s" 
-          ocamlc (make_include_flags includes) dst src
-      in
-      run_command cmd
+      Ocamlc.compile_impl ~toolchain_version ~includes ~output:dst src
+      |> convert_result
+      
   | CompileC (src, dst) ->
-      let cmd = Printf.sprintf "%s -I +unix -c -o %s %s" ocamlc dst src in
-      run_command cmd
+      Ocamlc.compile_c ~toolchain_version ~output:dst src
+      |> convert_result
+      
   | CreateLibrary (lib, object_files, includes) ->
-      let files_str = String.concat " " object_files in
-      let cmd =
-        Printf.sprintf "%s -I +unix %s -a -o %s %s" 
-          ocamlc (make_include_flags includes) lib files_str
-      in
-      run_command cmd
+      Ocamlc.create_library ~toolchain_version ~includes ~output:lib object_files
+      |> convert_result
+      
   | CreateExecutable (exe, object_files, libs, includes) ->
-      let files_str = String.concat " " object_files in
-      let libs_str = String.concat " " libs in
-      (* Include current directory to find C objects from dependencies *)
-      (* Link with unix.cma for Unix module support *)
-      (* Use -custom to include C stubs in the executable *)
-      let cmd =
-        Printf.sprintf "%s -custom -I +unix %s -I . -o %s unix.cma %s %s" 
-          ocamlc (make_include_flags includes) exe libs_str files_str
-      in
-      run_command cmd
+      (* Use custom executable for C stubs *)
+      Ocamlc.create_custom_executable ~toolchain_version ~includes ~output:exe ~libs object_files
+      |> convert_result
   | CopyFile (src, dst) -> (
       try
         System.copy_file src dst;
