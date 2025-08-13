@@ -81,6 +81,8 @@ let queue_package_if_needed state node is_ready =
                 else (
                   Printf.printf "[Server] Package %s hash changed (was: %s, now: %s), queueing for rebuild\n" 
                     pkg_name (Hasher.to_string stored_hash) (Hasher.to_string current_hash);
+                  (* Update the node's hash to the new computed hash *)
+                  node.hash <- Some current_hash;
                   (* Reset the build status since hash changed *)
                   Build_results.init_package state.build_results pkg_name;
                   let task = { Build_messages.node; workspace } in
