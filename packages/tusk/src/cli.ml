@@ -369,7 +369,7 @@ let rec lsp_command args =
           ocamlformat_rpc;
         Printf.eprintf "Please run: cd ocaml && ./local-install.sh\n";
         Process.Exception (Failure "ocamlformat-rpc not found"))
-  | "" | "start" ->
+  | "" ->
       (* Default: Start OCaml LSP server *)
       lsp_start_server ()
   | _ ->
@@ -429,9 +429,9 @@ and lsp_start_server () =
 
       (* Execute the LSP server with stdio by default *)
       let args =
-        if Array.length (System.argv ()) > 3 then
-          (* Pass through any additional arguments after "lsp start" *)
-          Array.sub (System.argv ()) 3 (Array.length (System.argv ()) - 3)
+        if Array.length (System.argv ()) > 2 then
+          (* Pass through any additional arguments after "lsp" *)
+          Array.sub (System.argv ()) 2 (Array.length (System.argv ()) - 2)
         else
           (* Default to stdio mode *)
           [| "--stdio" |]
