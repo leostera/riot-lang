@@ -429,9 +429,9 @@ and lsp_start_server () =
 
       (* Execute the LSP server with stdio by default *)
       let args =
-        if Array.length (System.argv ()) > 2 then
-          (* Pass through any additional arguments *)
-          Array.sub (System.argv ()) 2 (Array.length (System.argv ()) - 2)
+        if Array.length (System.argv ()) > 3 then
+          (* Pass through any additional arguments after "lsp start" *)
+          Array.sub (System.argv ()) 3 (Array.length (System.argv ()) - 3)
         else
           (* Default to stdio mode *)
           [| "--stdio" |]
