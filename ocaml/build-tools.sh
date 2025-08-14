@@ -1,128 +1,77 @@
-#!/bin/bash
-# Build OCaml platform tools with patches for tusk integration
+#!/usr/bin/env bash
+set -euo pipefail
 
-set -e
+OCAML_VERSION="5.3.0"
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PATCHES_DIR="$SCRIPT_DIR/patches"
+# Determine host triplet
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m)
+case "${OS}" in
+  darwin) HOST_OS="apple-darwin" ;;
+  linux) HOST_OS="unknown-linux-gnu" ;;
+  *) HOST_OS="${OS}" ;;
+esac
+case "${ARCH}" in
+  arm64|aarch64) HOST_ARCH="aarch64" ;;
+  x86_64) HOST_ARCH="x86_64" ;;
+  *) HOST_ARCH="${ARCH}" ;;
+esac
+HOST_TRIPLET="${HOST_ARCH}-${HOST_OS}"
 
-echo "=== Building OCaml Platform Tools with Tusk Patches ==="
-echo ""
+TARBALL="ocaml-platform-${OCAML_VERSION}-${HOST_TRIPLET}.tar.gz"
+DIST_DIR="dist"
+BIN_DIR="../${DIST_DIR}/bin"
 
-# Function to apply patches
-apply_patches() {
-    local submodule=$1
-    local patch_pattern=$2
-    
-    echo "Checking for patches in $PATCHES_DIR matching $patch_pattern..."
-    
-    for patch in $PATCHES_DIR/$patch_pattern*.patch; do
-        if [ -f "$patch" ]; then
-            echo "Applying patch: $(basename $patch)"
-            cd "$SCRIPT_DIR/$submodule"
-            
-            # Check if patch is already applied
-            if git apply --check "$patch" 2>/dev/null; then
-                git apply "$patch"
-                echo "  ✓ Patch applied successfully"
-            else
-                echo "  ⚠ Patch already applied or doesn't apply cleanly"
-            fi
-            
-            cd "$SCRIPT_DIR"
-        fi
-    done
+log_info() {
+    echo "[INFO] $1"
 }
 
-# Apply patches to ocaml-lsp-server
-echo "1. Applying patches to ocaml-lsp-server..."
-apply_patches "ocaml-lsp-server" "ocaml-lsp-server"
-echo ""
+# Clean and create dist directory
+log_info "Cleaning and creating dist directory..."
+rm -rf dist
+mkdir -p dist/bin
 
-# Setup PATH to include tusk toolchain
-TOOLCHAIN_DIR="$HOME/.tusk/toolchains/5.3.0"
-if [ -d "$TOOLCHAIN_DIR/bin" ]; then
-    export PATH="$TOOLCHAIN_DIR/bin:$PATH"
-    echo "Using tusk toolchain at $TOOLCHAIN_DIR"
-    echo ""
-fi
+# Setup OCaml 0 switch
+log_info "Setting up OCaml ${OCAML_VERSION} switch..."
+opam switch ${OCAML_VERSION} 2>/dev/null \
+  || opam switch create ${OCAML_VERSION} ocaml-base-compiler.${OCAML_VERSION}
+
+# Install base dependencies
+log_info "Installing base dependencies..."
+opam install --switch=${OCAML_VERSION} -y dune ocamlfind
+
+# Build ocamlformat
+log_info "Building ocamlformat..."
+pushd ocamlformat
+  opam install --switch=${OCAML_VERSION} -y ./ocamlformat.opam
+  opam exec --switch=${OCAML_VERSION} -- dune build --release @install
+  cp _build/install/default/bin/ocamlformat ${BIN_DIR}
+  cp _build/install/default/bin/ocamlformat-rpc ${BIN_DIR}
+popd
+
+# Build odoc  
+log_info "Building odoc..."
+pushd odoc
+  opam install --switch=${OCAML_VERSION} -y ./odoc-md.opam ./sherlodoc.opam ./odoc-parser.opam ./odoc.opam ./odoc-driver.opam
+  opam exec --switch=${OCAML_VERSION} -- dune build --release @install
+  cp _build/install/default/bin/odoc ${BIN_DIR}
+  cp _build/install/default/bin/odoc_driver ${BIN_DIR}
+  cp _build/install/default/bin/odoc-md ${BIN_DIR}
+  cp _build/install/default/bin/sherlodoc ${BIN_DIR}
+popd
 
 # Build ocaml-lsp-server
-echo "2. Building ocaml-lsp-server..."
-cd "$SCRIPT_DIR/ocaml-lsp-server"
+log_info "Building ocaml-lsp-server..."
+pushd ocaml-lsp-server
+  # Apply tusk patch
+  git apply ../patches/ocaml-lsp-server-tusk.patch 2>/dev/null || true
+  opam install --switch=${OCAML_VERSION} -y ./ocaml-lsp-server.opam
+  opam exec --switch=${OCAML_VERSION} -- dune build --release @install
+  cp _build/install/default/bin/ocamllsp ${BIN_DIR}
+popd
 
-# Check if dune is available
-if command -v dune >/dev/null 2>&1; then
-    echo "  Using dune to build ocaml-lsp-server..."
-    echo "  OCaml compiler: $(which ocamlc || echo 'not found')"
-    
-    # Check if ocamlc is available
-    if ! command -v ocamlc >/dev/null 2>&1; then
-        echo "  ⚠ ocamlc not found. Please ensure OCaml is installed"
-        echo "    Install with: ./bootstrap.py (to install tusk toolchain)"
-        exit 1
-    fi
-    
-    echo "  Note: ocaml-lsp-server requires many dependencies (yojson, stdune, merlin-lib, etc.)"
-    echo "        If build fails, install dependencies with: opam install ocaml-lsp-server --deps-only"
-    echo "        Or use a pre-built binary from opam"
-    echo ""
-    
-    # Try to build, but don't fail if dependencies are missing
-    if dune build @install 2>/dev/null; then
-        echo "  ✓ Build complete"
-    else
-        echo "  ⚠ Build failed - likely missing dependencies"
-        echo "    The patch has been applied. To complete the build:"
-        echo "    1. Install dependencies: opam install yojson stdune merlin-lib dune-rpc fiber"
-        echo "    2. Re-run this script"
-        echo "    Or use pre-built: opam install ocaml-lsp-server"
-    fi
-else
-    echo "  ⚠ dune not found. Please install dune to build ocaml-lsp-server"
-    echo "    You can install it with: opam install dune"
-fi
-echo ""
+# Create tarball
+log_info "Creating tarball..."
+tar czf ${TARBALL} -C ${DIST_DIR} .
 
-# Build ocamlformat if needed
-if [ -d "$SCRIPT_DIR/ocamlformat" ]; then
-    echo "3. Building ocamlformat..."
-    cd "$SCRIPT_DIR/ocamlformat"
-    
-    # Apply any ocamlformat patches
-    apply_patches "ocamlformat" "ocamlformat"
-    
-    if command -v dune >/dev/null 2>&1; then
-        echo "  Using dune to build ocamlformat..."
-        dune build @install
-        echo "  ✓ Build complete"
-    else
-        echo "  ⚠ Skipping ocamlformat (dune not found)"
-    fi
-    echo ""
-fi
-
-# Build odoc if needed
-if [ -d "$SCRIPT_DIR/odoc" ]; then
-    echo "4. Building odoc..."
-    cd "$SCRIPT_DIR/odoc"
-    
-    # Apply any odoc patches
-    apply_patches "odoc" "odoc"
-    
-    if command -v dune >/dev/null 2>&1; then
-        echo "  Using dune to build odoc..."
-        dune build @install
-        echo "  ✓ Build complete"
-    else
-        echo "  ⚠ Skipping odoc (dune not found)"
-    fi
-    echo ""
-fi
-
-cd "$SCRIPT_DIR"
-echo "=== Build Complete ==="
-echo ""
-echo "Built tools are in their respective _build directories."
-echo "Run ./local-install.sh to install them to ~/.tusk/toolchains/"
-echo ""
+log_info "Build complete! Tarball created: ${TARBALL}"
