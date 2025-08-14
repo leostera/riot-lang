@@ -22,51 +22,28 @@ let find_workspace_root () =
 
 (** Get build configuration from tusk server *)
 let get_build_config file_path =
-  (* For now, use static configuration based on workspace layout *)
-  (* TODO: Connect to tusk server once we figure out how to use Miniriot networking here *)
   let home = System.get_home () in
   let stdlib_path = Printf.sprintf "%s/.tusk/toolchains/5.3.0/lib/ocaml" home in
 
   (* Find workspace root first *)
   let workspace_root = find_workspace_root () in
   
-  (* Make file_path absolute if it's relative *)
-  let abs_file_path = 
-    if Filename.is_relative file_path then
-      match workspace_root with
-      | Some root -> 
-          (* If we're in a subdirectory of workspace, adjust the path *)
-          let cwd = Sys.getcwd () in
-          if String.starts_with ~prefix:root cwd then
-            if cwd = root then
-              (* We're at the root, just use the file path *)
-              file_path
-            else
-              (* We're in a subdirectory *)
-              let rel_from_root = String.sub cwd (String.length root + 1) 
-                (String.length cwd - String.length root - 1) in
-              Filename.concat rel_from_root file_path
-          else
-            file_path
-      | None -> file_path
-    else
-      file_path
+  (* Connect to the tusk server and get workspace info *)
+  let get_workspace_packages () =
+    try
+      (* Connect to the tusk server *)
+      let client = Rpc_client.connect () in
+      
+      (* Get workspace info *)
+      let response = Rpc_client.send_command client Rpc_messages.GetWorkspace in
+      Rpc_client.close client;
+      
+      match response with
+      | Rpc_messages.WorkspaceInfo packages -> Some packages
+      | _ -> None
+    with _ -> None
   in
-
-  (* Determine which package this file belongs to *)
-  let rec find_package_name path =
-    if String.contains path '/' then
-      let parts = String.split_on_char '/' path in
-      (* Look for packages/ directory pattern *)
-      let rec find_in_parts = function
-        | "packages" :: pkg_name :: _ -> Some pkg_name
-        | _ :: rest -> find_in_parts rest
-        | [] -> None
-      in
-      find_in_parts parts
-    else None
-  in
-
+  
   (* Adjust paths based on whether we're at workspace root or not *)
   let make_path path =
     match workspace_root with
@@ -87,24 +64,36 @@ let get_build_config file_path =
     | _ -> path
   in
 
-  match find_package_name abs_file_path with
-  | Some pkg_name ->
-      let source_paths = [ make_path (Printf.sprintf "packages/%s/src" pkg_name) ] in
-      let build_paths =
-        [
-          make_path (Printf.sprintf "target/debug/out/packages/%s" pkg_name);
-          make_path "target/debug/out/packages/miniriot";
-          make_path "target/debug/out/packages/sexp";
-          make_path "target/debug/out/packages/toml";
-          make_path "target/debug/out/packages/gluon";
-        ]
+  (* Get packages from server or fall back to defaults *)
+  match get_workspace_packages () with
+  | Some packages ->
+      (* Use actual packages from the build graph *)
+      let source_paths = 
+        List.map (fun pkg -> make_path (Printf.sprintf "packages/%s/src" pkg)) packages
+      in
+      let build_paths = 
+        List.map (fun pkg -> make_path (Printf.sprintf "target/debug/out/packages/%s" pkg)) packages
       in
       let flags = [ "-w"; "-a" ] in
       Some (source_paths, build_paths, flags, stdlib_path)
   | None ->
-      (* Default configuration *)
-      let source_paths = [ make_path "packages/*/src" ] in
-      let build_paths = [ make_path "target/debug/out/packages/*" ] in
+      (* Fallback to hardcoded if server is not available *)
+      let source_paths = [
+        make_path "packages/miniriot/src";
+        make_path "packages/sexp/src";
+        make_path "packages/toml/src";
+        make_path "packages/gluon/src";
+        make_path "packages/tusk/src";
+        make_path "packages/minitusk/src";
+      ] in
+      let build_paths = [
+        make_path "target/debug/out/packages/miniriot";
+        make_path "target/debug/out/packages/sexp";
+        make_path "target/debug/out/packages/toml";
+        make_path "target/debug/out/packages/gluon";
+        make_path "target/debug/out/packages/tusk";
+        make_path "target/debug/out/packages/minitusk";
+      ] in
       let flags = [ "-w"; "-a" ] in
       Some (source_paths, build_paths, flags, stdlib_path)
 
@@ -154,30 +143,89 @@ let rec main_loop () =
   flush oc;
   close_out oc;
   
-  try
-    (* Read a line from stdin and parse as Csexp *)
-    let line = System.read_line stdin in
-    (* Trim any trailing whitespace that might have snuck in *)
-    let line = String.trim line in
+  (* Read a Csexp from stdin by first reading the length, then the content *)
+  let read_csexp_from_stdin () =
+    (* Read a number until we hit ':' *)
+    let rec read_number acc =
+      match input_char stdin with
+      | '0'..'9' as c -> read_number (acc ^ String.make 1 c)
+      | ':' -> int_of_string acc
+      | '(' -> 
+          (* This is a list, not an atom - we need to parse it differently *)
+          raise (Failure "list")
+      | c -> 
+          raise (Failure (Printf.sprintf "Unexpected character '%c' expecting number or '('" c))
+    in
     
-    (* Log the raw line *)
-    let oc = open_out_gen [Open_creat; Open_append; Open_text] 0o644 log_file in
-    Printf.fprintf oc "[%s] Read line: '%s'\n" 
-      (Unix.gettimeofday () |> string_of_float) line;
-    close_out oc;
+    (* Read exactly n bytes *)
+    let read_bytes n =
+      let bytes = Bytes.create n in
+      really_input stdin bytes 0 n;
+      Bytes.to_string bytes
+    in
     
-    (* Parse the line as a Csexp *)
-    match Sexp.Csexp.of_string line with
+    (* Parse a complete Csexp *)
+    let rec parse_csexp () =
+      match input_char stdin with
+      | '(' ->
+          (* Parse a list *)
+          let rec parse_list acc =
+            match input_char stdin with
+            | ')' -> Sexp.List (List.rev acc)
+            | c ->
+                (* Put the char back by parsing it as start of next element *)
+                let elem = 
+                  if c >= '0' && c <= '9' then
+                    (* Parse atom *)
+                    let len = read_number (String.make 1 c) in
+                    Sexp.Atom (read_bytes len)
+                  else if c = '(' then
+                    (* Nested list - recursively parse *)
+                    let rec nested acc =
+                      match input_char stdin with
+                      | ')' -> Sexp.List (List.rev acc)
+                      | c2 ->
+                          if c2 >= '0' && c2 <= '9' then
+                            let len = read_number (String.make 1 c2) in
+                            nested (Sexp.Atom (read_bytes len) :: acc)
+                          else if c2 = '(' then
+                            failwith "Nested lists not fully supported"
+                          else
+                            failwith (Printf.sprintf "Unexpected char in nested list: %c" c2)
+                    in
+                    nested []
+                  else
+                    raise (Failure (Printf.sprintf "Unexpected character in list: '%c'" c))
+                in
+                parse_list (elem :: acc)
+          in
+          parse_list []
+      | '0'..'9' as c ->
+          (* Parse an atom *)
+          let len = read_number (String.make 1 c) in
+          Sexp.Atom (read_bytes len)
+      | c ->
+          raise (Failure (Printf.sprintf "Unexpected character '%c' at start" c))
+    in
+    
+    try Ok (parse_csexp ())
+    with
+    | End_of_file -> Error "EOF"
+    | Failure msg -> Error msg
+    | e -> Error (Printexc.to_string e)
+  in
+  
+  let sexp_result = read_csexp_from_stdin () in
+  
+  match sexp_result with
+  | Error "EOF" -> ()
   | Error msg ->
-      (* Log the error *)
       let oc = open_out_gen [Open_creat; Open_append; Open_text] 0o644 log_file in
-      Printf.fprintf oc "[%s] Error parsing Csexp: %s\n" 
+      Printf.fprintf oc "[%s] Error reading Csexp: %s\n" 
         (Unix.gettimeofday () |> string_of_float) msg;
       close_out oc;
-      (* Error reading - return error and continue *)
-      let error_resp = Sexp.List [ Sexp.List [ Sexp.Atom "ERROR"; Sexp.Atom msg ] ] in
-      Sexp.Csexp.to_channel stdout error_resp;
-      flush stdout;
+      (* Return empty response for errors *)
+      Printf.printf "%s%!" (Sexp.Csexp.to_string (Sexp.List []));
       main_loop ()
   | Ok sexp ->
       (* Log what we parsed *)
@@ -204,8 +252,7 @@ let rec main_loop () =
           close_out oc;
           
           let response = Sexp.List directives in
-          Sexp.Csexp.to_channel stdout response;
-          flush stdout;
+          Printf.printf "%s%!" (Sexp.Csexp.to_string response);
           main_loop ()
       | Sexp.List [ Sexp.Atom "Halt" ] ->
           let oc = open_out_gen [Open_creat; Open_append; Open_text] 0o644 log_file in
@@ -220,16 +267,8 @@ let rec main_loop () =
           close_out oc;
           
           (* Return empty response for unknown commands *)
-          Sexp.Csexp.to_channel stdout (Sexp.List []);
-          flush stdout;
+          Printf.printf "%s%!" (Sexp.Csexp.to_string (Sexp.List []));
           main_loop ())
-  with End_of_file -> 
-    (* EOF - log and exit *)
-    let oc = open_out_gen [Open_creat; Open_append; Open_text] 0o644 log_file in
-    Printf.fprintf oc "[%s] EOF received, exiting\n" 
-      (Unix.gettimeofday () |> string_of_float);
-    close_out oc;
-    ()
 
 (** Start the merlin bridge *)
 let start () =

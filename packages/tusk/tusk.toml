@@ -10,4 +10,5 @@ path = "main.ml"
 miniriot = { path = "../miniriot" }
 sexp = { path = "../sexp" }
 toml = { path = "../toml" }
+json = { path = "../json" }
 unix = "*"
