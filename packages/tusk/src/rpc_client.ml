@@ -129,15 +129,14 @@ let shutdown () = call Rpc.Shutdown
 let send_raw stream msg =
   let buffer = Bytes.of_string (msg ^ "\n") in
   match
-    Miniriot.Net.TcpStream.write stream buffer ~pos:0
-      ~len:(Bytes.length buffer) ()
+    Miniriot.Net.TcpStream.write stream buffer ~pos:0 ~len:(Bytes.length buffer)
+      ()
   with
   | Ok _ -> (
       (* Read response *)
       let response_buffer = Bytes.create 4096 in
       match
-        Miniriot.Net.TcpStream.read stream response_buffer ~pos:0
-          ~len:4096 ()
+        Miniriot.Net.TcpStream.read stream response_buffer ~pos:0 ~len:4096 ()
       with
       | Ok bytes_read ->
           let response_str = Bytes.sub_string response_buffer 0 bytes_read in

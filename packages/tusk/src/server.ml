@@ -413,7 +413,7 @@ let handle_json_client_request state client_pid json_str =
       let error_response = Rpc_json.(response_to_json (Error e)) in
       send client_pid (JsonServerResponse (Json.to_string error_response));
       state
-  | Ok json ->
+  | Ok json -> (
       match Rpc_json.request_of_json json with
       | Error e ->
           let error_response = Rpc_json.(response_to_json (Error e)) in
@@ -421,56 +421,65 @@ let handle_json_client_request state client_pid json_str =
           state
       | Ok request ->
           (* Handle the JSON-RPC request *)
-          let response = match request with
+          let response =
+            match request with
             | Rpc_json.Ping -> Rpc_json.Pong
             | Rpc_json.GetWorkspaceConfig -> (
                 match state.workspace with
                 | Some ws ->
-                    let packages = List.map (fun p -> p.Workspace.name) ws.packages in
-                    Rpc_json.WorkspaceConfig {
-                      workspace_root = ws.root;
-                      toolchain = "5.3.0";  (* TODO: get from actual config *)
-                      packages;
-                    }
-                | None ->
-                    Rpc_json.Error "No workspace loaded")
+                    let packages =
+                      List.map (fun p -> p.Workspace.name) ws.packages
+                    in
+                    Rpc_json.WorkspaceConfig
+                      {
+                        workspace_root = ws.root;
+                        toolchain = "5.3.0";
+                        (* TODO: get from actual config *)
+                        packages;
+                      }
+                | None -> Rpc_json.Error "No workspace loaded")
             | Rpc_json.GetBuildGraph -> (
                 match state.build_graph with
                 | Some graph ->
                     let nodes_data = Build_graph.topological_sort graph in
-                    let nodes = List.map (fun node ->
-                      let pkg = node.Build_node.package in
-                      {
-                        Rpc_json.package_name = pkg.name;
-                        src_dir = pkg.path;
-                        out_dir = Printf.sprintf "target/debug/out/packages/%s" pkg.name;
-                        status = "ready";  (* TODO: get actual status *)
-                        deps = pkg.dependencies;
-                      }
-                    ) nodes_data in
+                    let nodes =
+                      List.map
+                        (fun node ->
+                          let pkg = node.Build_node.package in
+                          {
+                            Rpc_json.package_name = pkg.name;
+                            src_dir = pkg.path;
+                            out_dir =
+                              Printf.sprintf "target/debug/out/packages/%s"
+                                pkg.name;
+                            status = "ready";
+                            (* TODO: get actual status *)
+                            deps = pkg.dependencies;
+                          })
+                        nodes_data
+                    in
                     Rpc_json.BuildGraph { nodes }
-                | None ->
-                    Rpc_json.Error "No build graph available")
-            | Rpc_json.BuildPackage pkg ->
+                | None -> Rpc_json.Error "No build graph available")
+            | Rpc_json.BuildPackage pkg -> (
                 (* Initiate build and return success - actual build happens async *)
-                let filtered_graph = match state.build_graph with
-                | Some graph -> Some (Build_graph.filter_for_package graph pkg)
-                | None -> None
+                let filtered_graph =
+                  match state.build_graph with
+                  | Some graph ->
+                      Some (Build_graph.filter_for_package graph pkg)
+                  | None -> None
                 in
-                (match filtered_graph with
+                match filtered_graph with
                 | Some graph ->
                     send (self ()) (BuildPackage (pkg, client_pid));
-                    Rpc_json.Success  (* Build initiated *)
-                | None ->
-                    Rpc_json.Error "No build graph available")
-            | Rpc_json.BuildAll ->
+                    Rpc_json.Success (* Build initiated *)
+                | None -> Rpc_json.Error "No build graph available")
+            | Rpc_json.BuildAll -> (
                 (* Initiate full build *)
-                (match state.build_graph with
+                match state.build_graph with
                 | Some graph ->
                     send (self ()) (BuildAll client_pid);
-                    Rpc_json.Success  (* Build initiated *)
-                | None ->
-                    Rpc_json.Error "No build graph available")
+                    Rpc_json.Success (* Build initiated *)
+                | None -> Rpc_json.Error "No build graph available")
             | Rpc_json.Restart ->
                 (* Send restart message to self to handle after responding *)
                 send (self ()) RestartServer;
@@ -482,7 +491,7 @@ let handle_json_client_request state client_pid json_str =
           in
           let response_json = Rpc_json.response_to_json response in
           send client_pid (JsonServerResponse (Json.to_string response_json));
-          state
+          state)
 
 (** Handle RPC client request *)
 let handle_client_request state client_pid request =

@@ -397,108 +397,104 @@ let generate_blueprint workspace node dependencies all_packages toolchain ~hash
   let outputs = ref [] in
 
   (* First, always create a library if we have any modules (excluding main.ml) *)
-  let library_cmo_files = 
-    if has_main then
-      List.filter (fun f -> f <> "main.cmo") cmo_files
-    else
-      cmo_files
+  let library_cmo_files =
+    if has_main then List.filter (fun f -> f <> "main.cmo") cmo_files
+    else cmo_files
   in
-  
+
   if library_cmo_files <> [] || o_files <> [] then (
     let cma_path = pkg_name ^ ".cma" in
     let lib_objects = library_cmo_files @ o_files in
     actions := CreateLibrary (cma_path, lib_objects, dep_includes) :: !actions;
     outputs := cma_path :: !outputs;
-    
+
     (* Only add package.cmi if we have a package.ml or package.mli file *)
-    if List.mem (pkg_name ^ ".ml") ml_files || List.mem (pkg_name ^ ".mli") mli_files then
-      outputs := (pkg_name ^ ".cmi") :: !outputs
-  );
+    if
+      List.mem (pkg_name ^ ".ml") ml_files
+      || List.mem (pkg_name ^ ".mli") mli_files
+    then outputs := (pkg_name ^ ".cmi") :: !outputs);
 
   (* Then, if we have main.ml, create the executable *)
-  (if has_main then (
-     let exe_path = pkg_name in
+  if has_main then (
+    let exe_path = pkg_name in
 
-     (* Get all transitive dependencies in topological order *)
-     let rec get_transitive_deps visited deps_to_process acc =
-       match deps_to_process with
-       | [] -> List.rev acc (* Reverse to get dependencies in correct order *)
-       | dep :: rest ->
-           if List.mem dep.name visited then
-             get_transitive_deps visited rest acc
-           else
-             let visited = dep.name :: visited in
-             (* Get this dep's dependencies from all_packages *)
-             let child_deps =
-               List.filter_map
-                 (fun dep_name ->
-                   List.find_opt (fun d -> d.name = dep_name) all_packages)
-                 dep.dependencies
-             in
-             (* Process children first (depth-first), then this dep *)
-             get_transitive_deps visited (child_deps @ rest) (dep :: acc)
-     in
+    (* Get all transitive dependencies in topological order *)
+    let rec get_transitive_deps visited deps_to_process acc =
+      match deps_to_process with
+      | [] -> List.rev acc (* Reverse to get dependencies in correct order *)
+      | dep :: rest ->
+          if List.mem dep.name visited then get_transitive_deps visited rest acc
+          else
+            let visited = dep.name :: visited in
+            (* Get this dep's dependencies from all_packages *)
+            let child_deps =
+              List.filter_map
+                (fun dep_name ->
+                  List.find_opt (fun d -> d.name = dep_name) all_packages)
+                dep.dependencies
+            in
+            (* Process children first (depth-first), then this dep *)
+            get_transitive_deps visited (child_deps @ rest) (dep :: acc)
+    in
 
-     let all_deps = get_transitive_deps [] dependencies [] in
+    let all_deps = get_transitive_deps [] dependencies [] in
 
-     (* Get dependency libraries from local packages - in topological order (dependencies first) *)
-     let local_dep_libs =
-       List.fold_left
-         (fun acc dep ->
-           let dep_dir =
-             Filename.concat
-               (Filename.concat
-                  (Filename.concat (Filename.concat root "target") "debug")
-                  "out")
-               dep.relative_path
-           in
-           (* Add the .cma file if it exists *)
-           let cma_file = Filename.concat dep_dir (dep.name ^ ".cma") in
-           if System.file_exists cma_file then cma_file :: acc else acc)
-         [] all_deps
-     in
+    (* Get dependency libraries from local packages - in topological order (dependencies first) *)
+    let local_dep_libs =
+      List.fold_left
+        (fun acc dep ->
+          let dep_dir =
+            Filename.concat
+              (Filename.concat
+                 (Filename.concat (Filename.concat root "target") "debug")
+                 "out")
+              dep.relative_path
+          in
+          (* Add the .cma file if it exists *)
+          let cma_file = Filename.concat dep_dir (dep.name ^ ".cma") in
+          if System.file_exists cma_file then cma_file :: acc else acc)
+        [] all_deps
+    in
 
-     (* Get external dependencies from tusk.toml (already computed earlier) *)
-     let external_libs, _external_includes_again =
-       get_dependency_libs_and_includes toolchain pkg_dependencies
-     in
+    (* Get external dependencies from tusk.toml (already computed earlier) *)
+    let external_libs, _external_includes_again =
+      get_dependency_libs_and_includes toolchain pkg_dependencies
+    in
 
-     (* Combine all libraries *)
-     let all_libs = external_libs @ local_dep_libs in
+    (* Combine all libraries *)
+    let all_libs = external_libs @ local_dep_libs in
 
-     (* Combine all include paths *)
-     let all_includes = external_includes @ dep_includes in
+    (* Combine all include paths *)
+    let all_includes = external_includes @ dep_includes in
 
-     (* Link only main.cmo with all libraries (including our own .cma) *)
-     let exe_objects = ["main.cmo"] @ o_files in
-     
-     (* Add our own library to the libs if we created one *)
-     let all_libs_with_self = 
-       if library_cmo_files <> [] then
-         all_libs @ [pkg_name ^ ".cma"]
-       else
-         all_libs
-     in
+    (* Link only main.cmo with all libraries (including our own .cma) *)
+    let exe_objects = [ "main.cmo" ] @ o_files in
 
-     (* For executable, link main.cmo with all libraries *)
-     actions :=
-       CreateExecutable (exe_path, exe_objects, all_libs_with_self, all_includes)
-       :: !actions;
+    (* Add our own library to the libs if we created one *)
+    let all_libs_with_self =
+      if library_cmo_files <> [] then all_libs @ [ pkg_name ^ ".cma" ]
+      else all_libs
+    in
 
-     (* Declare executable as output *)
-     outputs := exe_path :: !outputs));
+    (* For executable, link main.cmo with all libraries *)
+    actions :=
+      CreateExecutable (exe_path, exe_objects, all_libs_with_self, all_includes)
+      :: !actions;
+
+    (* Declare executable as output *)
+    outputs := exe_path :: !outputs);
 
   (* Add C object files to outputs if any *)
   List.iter (fun o -> outputs := o :: !outputs) o_files;
 
   (* Add all .cmi files to outputs *)
-  List.iter 
+  List.iter
     (fun mli_file ->
       let basename = Filename.chop_suffix mli_file ".mli" in
       let cmi_file = basename ^ ".cmi" in
       outputs := cmi_file :: !outputs)
     mli_files;
-  
+
   (* Also add .cmi files for .ml files without .mli *)
   List.iter
     (fun ml_file ->

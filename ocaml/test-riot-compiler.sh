@@ -17,16 +17,16 @@ fi
 
 # Compile test program
 echo "📦 Compiling test program..."
-"$TOOLCHAIN_DIR/bin/ocamlc" -o test-instrumentation "$SCRIPT_DIR/test-instrumentation.ml"
+"$TOOLCHAIN_DIR/bin/ocamlc" -o test_compiler "$SCRIPT_DIR/test_compiler.ml"
 
 # Run test program
 echo "🏃 Running test program..."
 echo ""
-./test-instrumentation
+./test_compiler
 
 # Clean up
-rm -f test-instrumentation test-instrumentation.cmi test-instrumentation.cmo
+rm -f test_compiler test_compiler.cmi test_compiler.cmo
 
 echo ""
 echo "💡 To inspect the generated code with instrumentation:"
-echo "   $TOOLCHAIN_DIR/bin/ocamlc -dparsetree test-instrumentation.ml"
+echo "   $TOOLCHAIN_DIR/bin/ocamlc -dparsetree test_compiler.ml"

@@ -103,20 +103,23 @@ let handle_client server_pid stream =
           (* JSON-RPC request *)
           let json_str = String.sub line 5 (String.length line - 5) in
           send server_pid (JsonClientRequest (self (), json_str));
-          
+
           (* Wait for JSON response *)
           let selector = function
             | JsonServerResponse response -> `select (`json_response response)
             | _ -> `skip
           in
           match receive ~selector () with
-          | `json_response response_str ->
+          | `json_response response_str -> (
               let response_bytes = Bytes.of_string (response_str ^ "\n") in
-              (match Net.TcpStream.write stream response_bytes ~pos:0
-                       ~len:(Bytes.length response_bytes) () with
+              match
+                Net.TcpStream.write stream response_bytes ~pos:0
+                  ~len:(Bytes.length response_bytes)
+                  ()
+              with
               | Ok _ -> client_loop ()
-              | Error _ -> Printf.printf "[Listener] Write error\n%!")
-        ) else (
+              | Error _ -> Printf.printf "[Listener] Write error\n%!"))
+        else
           (* Legacy RPC request *)
           match Rpc.request_of_string line with
           | Some request -> (
@@ -132,30 +135,32 @@ let handle_client server_pid stream =
               | `server_response response -> (
                   let response_str = Rpc.response_to_string response in
                   let response_bytes = Bytes.of_string (response_str ^ "\n") in
-                match
-                  Net.TcpStream.write stream response_bytes ~pos:0
-                    ~len:(Bytes.length response_bytes)
-                    ()
-                with
-                | Ok _ -> (
-                    (* Continue or shutdown *)
-                    match request with
-                    | Rpc.Shutdown ->
-                        Printf.printf "[Listener] Client requested shutdown\n%!";
-                        (* Give time for response to be sent *)
-                        sleep 0.1;
-                        ()
-                    | Rpc.Restart ->
-                        Printf.printf "[Listener] Client requested restart\n%!";
-                        client_loop ()
-                    | _ -> client_loop ())
-                | Error _ -> Printf.printf "[Listener] Write error\n%!"))
+                  match
+                    Net.TcpStream.write stream response_bytes ~pos:0
+                      ~len:(Bytes.length response_bytes)
+                      ()
+                  with
+                  | Ok _ -> (
+                      (* Continue or shutdown *)
+                      match request with
+                      | Rpc.Shutdown ->
+                          Printf.printf
+                            "[Listener] Client requested shutdown\n%!";
+                          (* Give time for response to be sent *)
+                          sleep 0.1;
+                          ()
+                      | Rpc.Restart ->
+                          Printf.printf
+                            "[Listener] Client requested restart\n%!";
+                          client_loop ()
+                      | _ -> client_loop ())
+                  | Error _ -> Printf.printf "[Listener] Write error\n%!"))
           | None ->
               let error_bytes = Bytes.of_string "Error:Invalid request\n" in
               ignore
                 (Net.TcpStream.write stream error_bytes ~pos:0
                    ~len:(Bytes.length error_bytes) ());
-              client_loop ()))
+              client_loop ())
     | Ok 0 -> Printf.printf "[Listener] Client disconnected\n%!"
     | Ok _ ->
         Printf.printf "[Listener] Partial read\n%!";

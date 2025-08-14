@@ -10,14 +10,15 @@ type t =
   | Array of t list
   | Object of (string * t) list
 
-(** Serialization *)
 val to_string : t -> string
+(** Serialization *)
 
-(** Deserialization *)
 val of_string : string -> (t, string) result
+(** Deserialization *)
 
-(** Helper functions for building JSON *)
 val null : t
+(** Helper functions for building JSON *)
+
 val bool : bool -> t
 val int : int -> t
 val float : float -> t
@@ -25,8 +26,9 @@ val string : string -> t
 val array : t list -> t
 val obj : (string * t) list -> t
 
-(** Helper functions for extracting values *)
 val get_field : string -> t -> t option
+(** Helper functions for extracting values *)
+
 val get_string : t -> string option
 val get_int : t -> int option
 val get_bool : t -> bool option

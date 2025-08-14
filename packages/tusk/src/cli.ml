@@ -384,72 +384,70 @@ let rec lsp_command args =
 and lsp_start_server () =
   try
     (* Try to ensure the tusk server is running, but don't fail if there's an issue *)
-    let _ = 
-      try 
+    let _ =
+      try
         ignore (Server_manager.ensure_running ());
         ()
-      with _ -> 
+      with _ ->
         (* Server might already be running or there might be an issue - continue anyway *)
         ()
     in
-    
+
     let lsp_path = get_lsp_binary_path () in
     let version = read_toolchain_version () in
     let home = System.get_home () in
-    let toolchain_path =
-      Printf.sprintf "%s/.tusk/toolchains/%s" home version
-    in
+    let toolchain_path = Printf.sprintf "%s/.tusk/toolchains/%s" home version in
     let stdlib_path = Printf.sprintf "%s/lib/ocaml" toolchain_path in
 
-      (* Check if .merlin file exists *)
-      let merlin_exists = System.file_exists ".merlin" in
-      if not merlin_exists then
-        Printf.printf
-          "⚠️  No .merlin file found. Run 'tusk build' to generate it.\n%!";
-
-      Printf.printf "🔍 Starting OCaml LSP server...\n%!";
-      Printf.printf "   Toolchain: %s\n%!" version;
-      Printf.printf "   Stdlib: %s\n%!" stdlib_path;
-      Printf.printf "   LSP binary: %s\n%!" lsp_path;
-      Printf.printf "   Tusk server: running in background\n%!";
-      if merlin_exists then
-        Printf.printf "   Using .merlin file for configuration\n%!"
-      else
-        Printf.printf
-          "   Warning: No .merlin file, LSP may have limited functionality\n%!";
+    (* Check if .merlin file exists *)
+    let merlin_exists = System.file_exists ".merlin" in
+    if not merlin_exists then
       Printf.printf
-        "\n💡 Connect your editor to the LSP server (usually automatic)\n%!";
-      Printf.printf "   For VSCode: Install OCaml Platform extension\n%!";
-      Printf.printf "   For Neovim: Configure nvim-lspconfig with ocamllsp\n%!";
-      Printf.printf "   For Emacs: Use lsp-mode or eglot\n\n%!";
+        "⚠️  No .merlin file found. Run 'tusk build' to generate it.\n%!";
 
-      (* Set up environment *)
-      System.putenv "OCAMLPATH" stdlib_path;
-      System.putenv "OCAMLLIB" stdlib_path;
-      
-      (* Add target/debug to PATH so ocamllsp can find tusk *)
-      let current_path = try Sys.getenv "PATH" with Not_found -> "" in
-      let target_debug_path = Filename.concat (Sys.getcwd ()) "target/debug" in
-      let new_path = Printf.sprintf "%s:%s" target_debug_path current_path in
-      System.putenv "PATH" new_path;
+    Printf.printf "🔍 Starting OCaml LSP server...\n%!";
+    Printf.printf "   Toolchain: %s\n%!" version;
+    Printf.printf "   Stdlib: %s\n%!" stdlib_path;
+    Printf.printf "   LSP binary: %s\n%!" lsp_path;
+    Printf.printf "   Tusk server: running in background\n%!";
+    if merlin_exists then
+      Printf.printf "   Using .merlin file for configuration\n%!"
+    else
+      Printf.printf
+        "   Warning: No .merlin file, LSP may have limited functionality\n%!";
+    Printf.printf
+      "\n💡 Connect your editor to the LSP server (usually automatic)\n%!";
+    Printf.printf "   For VSCode: Install OCaml Platform extension\n%!";
+    Printf.printf "   For Neovim: Configure nvim-lspconfig with ocamllsp\n%!";
+    Printf.printf "   For Emacs: Use lsp-mode or eglot\n\n%!";
 
-      (* Execute the LSP server with stdio by default *)
-      let args =
-        if Array.length (System.argv ()) > 2 then
-          (* Pass through any additional arguments after "lsp" *)
-          Array.sub (System.argv ()) 2 (Array.length (System.argv ()) - 2)
-        else
-          (* Default to stdio mode *)
-          [| "--stdio" |]
-      in
+    (* Set up environment *)
+    System.putenv "OCAMLPATH" stdlib_path;
+    System.putenv "OCAMLLIB" stdlib_path;
 
-      (* Build the full command *)
-      let full_args = Array.append [| lsp_path |] args in
+    (* Add target/debug to PATH so ocamllsp can find tusk *)
+    let current_path = try Sys.getenv "PATH" with Not_found -> "" in
+    let target_debug_path = Filename.concat (Sys.getcwd ()) "target/debug" in
+    let new_path = Printf.sprintf "%s:%s" target_debug_path current_path in
+    System.putenv "PATH" new_path;
 
-      (* Execute the LSP server *)
-      let _ = System.exec lsp_path full_args in
-      (* This should never be reached if execv succeeds *)
-      Process.Exception (Failure "Failed to execute LSP server")
+    (* Execute the LSP server with stdio by default *)
+    let args =
+      if Array.length (System.argv ()) > 2 then
+        (* Pass through any additional arguments after "lsp" *)
+        Array.sub (System.argv ()) 2 (Array.length (System.argv ()) - 2)
+      else
+        (* Default to stdio mode *)
+        [| "--stdio" |]
+    in
+
+    (* Build the full command *)
+    let full_args = Array.append [| lsp_path |] args in
+
+    (* Execute the LSP server *)
+    let _ = System.exec lsp_path full_args in
+    (* This should never be reached if execv succeeds *)
+    Process.Exception (Failure "Failed to execute LSP server")
   with
   | Failure msg ->
       Printf.eprintf "Error: %s\n" msg;
@@ -690,14 +688,14 @@ let rpc_command args =
     Printf.printf "  tusk rpc ping              - Test server connectivity\n";
     Printf.printf "  tusk rpc workspace         - Get workspace information\n";
     Printf.printf "  tusk rpc graph             - Get build graph\n";
-    Printf.printf "  tusk rpc build [package]   - Build all or specific package\n";
+    Printf.printf
+      "  tusk rpc build [package]   - Build all or specific package\n";
     Printf.printf "  tusk rpc restart           - Restart the server\n";
     Printf.printf "  tusk rpc shutdown          - Shutdown the server\n";
-    Process.Normal)
-  (* Handle all commands via JSON-RPC *)
+    Process.Normal (* Handle all commands via JSON-RPC *))
   else if cmd = "ping" then (
     match Rpc_json_client.call Rpc_json.Ping with
-    | Ok response -> 
+    | Ok response ->
         let json = Rpc_json.response_to_json response in
         Printf.printf "%s\n" (Json.to_string json);
         Process.Normal
@@ -725,9 +723,10 @@ let rpc_command args =
   else if cmd = "build" then (
     (* Parse optional package name *)
     let package = if Array.length args > 3 then Some args.(3) else None in
-    let request = match package with
-    | Some pkg -> Rpc_json.BuildPackage pkg
-    | None -> Rpc_json.BuildAll
+    let request =
+      match package with
+      | Some pkg -> Rpc_json.BuildPackage pkg
+      | None -> Rpc_json.BuildAll
     in
     match Rpc_json_client.call request with
     | Ok response ->
@@ -758,7 +757,8 @@ let rpc_command args =
   else (
     Printf.eprintf "Error: Unknown RPC command '%s'\n" cmd;
     Printf.eprintf
-      "Available commands: ping, workspace, graph, build [package], restart, shutdown\n";
+      "Available commands: ping, workspace, graph, build [package], restart, \
+       shutdown\n";
     Process.Exception (Failure (Printf.sprintf "Unknown RPC command: %s" cmd)))
 
 (** Execute the install command *)

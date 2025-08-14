@@ -19,5 +19,5 @@ val shutdown : t -> status:int -> unit
 (** Shutdown the scheduler with given exit status *)
 
 val run : main:(unit -> Process.exit_reason) -> int
-(** Run the scheduler with the given main function. Returns exit status.
-    Can only be called once per process. *)
+(** Run the scheduler with the given main function. Returns exit status. Can
+    only be called once per process. *)

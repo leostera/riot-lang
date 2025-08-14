@@ -3,7 +3,7 @@
 val enable : unit -> unit
 (** Enable trace logging *)
 
-val disable : unit -> unit  
+val disable : unit -> unit
 (** Disable trace logging *)
 
 val trace : ('a, unit, string, unit) format4 -> 'a

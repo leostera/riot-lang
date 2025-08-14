@@ -6,29 +6,28 @@ open Miniriot
 let call request =
   match Rpc_client.connect () with
   | Error msg -> Error msg
-  | Ok client ->
+  | Ok client -> (
       try
         (* Convert request to JSON string *)
         let json_request = Rpc_json.request_to_json request in
         let request_str = Json.to_string json_request in
-        
+
         (* Send as a raw RPC command with JSON prefix *)
         match Rpc_client.send_raw client ("JSON:" ^ request_str) with
-        | Error e -> 
+        | Error e ->
             Miniriot.Net.TcpStream.close client;
             Error e
-        | Ok response ->
+        | Ok response -> (
             Miniriot.Net.TcpStream.close client;
-            
+
             (* Parse response as JSON *)
             match Json.of_string response with
-            | Error e -> Error (Printf.sprintf "Failed to parse JSON response: %s" e)
-            | Ok json ->
-                Rpc_json.response_of_json json
-      with
-      | e -> 
-          Miniriot.Net.TcpStream.close client;
-          Error (Printf.sprintf "RPC call failed: %s" (Printexc.to_string e))
+            | Error e ->
+                Error (Printf.sprintf "Failed to parse JSON response: %s" e)
+            | Ok json -> Rpc_json.response_of_json json)
+      with e ->
+        Miniriot.Net.TcpStream.close client;
+        Error (Printf.sprintf "RPC call failed: %s" (Printexc.to_string e)))
 
 (** Ping the server *)
 let ping () =

@@ -238,56 +238,50 @@ module Csexp = struct
   let of_string str =
     let len = String.length str in
     let pos = ref 0 in
-    
-    let peek () = 
-      if !pos < len then Some str.[!pos] else None
-    in
-    
+
+    let peek () = if !pos < len then Some str.[!pos] else None in
+
     let advance () = incr pos in
-    
+
     let parse_number () =
       let buffer = Buffer.create 4 in
       let rec loop () =
         match peek () with
-        | Some ('0'..'9' as c) ->
+        | Some ('0' .. '9' as c) ->
             Buffer.add_char buffer c;
             advance ();
             loop ()
-        | _ -> 
+        | _ ->
             let s = Buffer.contents buffer in
-            if s = "" then 
-              raise (Parse_error "Expected number")
-            else 
-              int_of_string s
+            if s = "" then raise (Parse_error "Expected number")
+            else int_of_string s
       in
       loop ()
     in
-    
+
     let parse_atom_content n =
-      if !pos + n > len then
-        raise (Parse_error "Atom extends beyond input")
+      if !pos + n > len then raise (Parse_error "Atom extends beyond input")
       else
         let content = String.sub str !pos n in
         pos := !pos + n;
         content
     in
-    
+
     let rec parse_sexp () =
       match peek () with
       | None -> raise (Parse_error "Unexpected end of input")
       | Some '(' ->
           advance ();
           parse_list ()
-      | Some ('0'..'9') ->
+      | Some '0' .. '9' -> (
           let n = parse_number () in
-          (match peek () with
-           | Some ':' -> 
-               advance ();
-               Atom (parse_atom_content n)
-           | _ -> raise (Parse_error "Expected ':' after atom length"))
-      | Some c -> 
+          match peek () with
+          | Some ':' ->
+              advance ();
+              Atom (parse_atom_content n)
+          | _ -> raise (Parse_error "Expected ':' after atom length"))
+      | Some c ->
           raise (Parse_error (Printf.sprintf "Unexpected character '%c'" c))
-    
     and parse_list () =
       let rec loop acc =
         match peek () with
@@ -295,22 +289,22 @@ module Csexp = struct
         | Some ')' ->
             advance ();
             List (List.rev acc)
-        | Some ('0'..'9' | '(') ->
+        | Some ('0' .. '9' | '(') ->
             (* Parse an atom or nested list *)
             let elem = parse_sexp () in
             loop (elem :: acc)
-        | Some c -> 
-            raise (Parse_error (Printf.sprintf "Unexpected character '%c' in list at pos %d" c !pos))
+        | Some c ->
+            raise
+              (Parse_error
+                 (Printf.sprintf "Unexpected character '%c' in list at pos %d" c
+                    !pos))
       in
       loop []
     in
-    
+
     try
       let result = parse_sexp () in
-      if !pos < len then
-        Error "Extra input after S-expression"
-      else
-        Ok result
+      if !pos < len then Error "Extra input after S-expression" else Ok result
     with
     | Parse_error msg -> Error msg
     | _ -> Error "Parse error"
@@ -318,33 +312,27 @@ module Csexp = struct
   (** Read canonical S-expression from input channel *)
   let input ic =
     let pos = ref 0 in
-    
-    let read_char () =
-      try Some (input_char ic)
-      with End_of_file -> None
-    in
-    
+
+    let read_char () = try Some (input_char ic) with End_of_file -> None in
+
     let parse_number () =
       let buffer = Buffer.create 4 in
       let rec loop () =
         match read_char () with
-        | Some ('0'..'9' as c) ->
+        | Some ('0' .. '9' as c) ->
             Buffer.add_char buffer c;
             loop ()
         | Some c ->
             (* Put back the character we read *)
             Scanf.sscanf (String.make 1 c ^ "") "%c" (fun _ -> ());
             let s = Buffer.contents buffer in
-            if s = "" then 
-              raise (Parse_error "Expected number")
-            else 
-              int_of_string s
-        | None -> 
-            raise (Parse_error "Unexpected EOF while reading number")
+            if s = "" then raise (Parse_error "Expected number")
+            else int_of_string s
+        | None -> raise (Parse_error "Unexpected EOF while reading number")
       in
       loop ()
     in
-    
+
     let read_atom_content n =
       let buffer = Buffer.create n in
       for i = 1 to n do
@@ -354,19 +342,19 @@ module Csexp = struct
       done;
       Buffer.contents buffer
     in
-    
+
     let rec parse_sexp () =
       match read_char () with
       | None -> raise (Parse_error "Unexpected EOF")
       | Some '(' -> parse_list ()
-      | Some ('0'..'9' as c) ->
+      | Some ('0' .. '9' as c) ->
           (* Put back the digit and parse number *)
           let first_digit = String.make 1 c in
-          let rest = 
+          let rest =
             let buf = Buffer.create 4 in
             let rec loop () =
               match read_char () with
-              | Some ('0'..'9' as c) ->
+              | Some ('0' .. '9' as c) ->
                   Buffer.add_char buf c;
                   loop ()
               | Some ':' -> Buffer.contents buf
@@ -376,9 +364,8 @@ module Csexp = struct
           in
           let n = int_of_string (first_digit ^ rest) in
           Atom (read_atom_content n)
-      | Some c -> 
+      | Some c ->
           raise (Parse_error (Printf.sprintf "Unexpected character '%c'" c))
-    
     and parse_list () =
       let rec loop acc =
         match read_char () with
@@ -387,13 +374,13 @@ module Csexp = struct
         | Some c ->
             (* We need to "unread" this character for parse_sexp *)
             (* For now, we'll use a simpler approach with look-ahead *)
-            raise (Parse_error "Cannot look ahead in stream - use of_string instead")
+            raise
+              (Parse_error "Cannot look ahead in stream - use of_string instead")
       in
       loop []
     in
-    
-    try Ok (parse_sexp ())
-    with
+
+    try Ok (parse_sexp ()) with
     | Parse_error msg -> Error msg
     | End_of_file -> Error "Unexpected end of file"
     | _ -> Error "Parse error"
@@ -409,10 +396,9 @@ module Csexp = struct
       with End_of_file -> ()
     in
     read_all ();
-    
+
     let content = Buffer.contents buffer in
-    if content = "" then
-      Ok None  (* Empty input means EOF *)
+    if content = "" then Ok None (* Empty input means EOF *)
     else
       match of_string content with
       | Ok sexp -> Ok (Some sexp)

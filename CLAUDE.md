@@ -118,7 +118,6 @@ Editor/AI → MCP → tusk mcp ←━━━━━━━━━━━━━━━�
 **Automatic OCaml Improvements**
 - **Folder-based namespacing**: `pkg/src/a/b/c.ml` → `Pkg__A__B__C.ml`
 - **Auto CamelCase conversion**: `hello_world.ml` → `HelloWorld` module
-- **Smart dependency inference**: Analyze imports to suggest missing dependencies
 
 **Additional Commands**
 - `tusk publish` - Publish packages to registry

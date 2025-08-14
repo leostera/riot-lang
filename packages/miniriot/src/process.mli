@@ -1,11 +1,12 @@
 (** Process management and lifecycle *)
 
-type exit_reason = Normal | Exception of exn
-(** Reasons why a process might exit *)
+type exit_reason =
+  | Normal
+  | Exception of exn  (** Reasons why a process might exit *)
 
 type state = private
   | Uninitialized
-  | Runnable 
+  | Runnable
   | Waiting_message
   | Waiting_io of {
       name : string;
@@ -14,8 +15,7 @@ type state = private
     }
   | Running
   | Exited of exit_reason
-  | Finalized
-(** Process state - tracks current status in scheduler *)
+  | Finalized  (** Process state - tracks current status in scheduler *)
 
 type t
 (** Opaque process type *)
@@ -29,7 +29,7 @@ val init : t -> unit
 val pid : t -> Pid.t
 (** Get the process ID *)
 
-val state : t -> state  
+val state : t -> state
 (** Get the current process state *)
 
 val is_alive : t -> bool
@@ -95,7 +95,8 @@ val read_save_queue : t -> unit
 val send_message : t -> Message.t -> unit
 (** Send a message to the process *)
 
-val mark_as_awaiting_io : t -> name:string -> Gluon.Token.t -> Gluon.Source.t -> unit
+val mark_as_awaiting_io :
+  t -> name:string -> Gluon.Token.t -> Gluon.Source.t -> unit
 (** Mark process as waiting for I/O operation *)
 
 val add_ready_token : t -> Gluon.Token.t -> Gluon.Source.t -> unit
