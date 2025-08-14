@@ -187,7 +187,7 @@ and build_in_sandbox ~sandbox ~blueprint ~store ~hash =
 
           (* Track declared outputs *)
           (match action with
-          | Actions.DeclareOutputs outputs -> declared_outputs := outputs
+          | Actions.DeclareOutputs { outputs } -> declared_outputs := outputs
           | _ -> ());
 
           let result, output =
@@ -313,7 +313,7 @@ and build_in_sandbox ~sandbox ~blueprint ~store ~hash =
         List.iter
           (fun action ->
             match action with
-            | Actions.DeclareOutputs outputs -> declared_outputs := outputs
+            | Actions.DeclareOutputs { outputs } -> declared_outputs := outputs
             | _ -> ())
           blueprint.Actions.actions;
 

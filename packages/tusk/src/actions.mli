@@ -5,17 +5,53 @@
 
 (** Build action types *)
 type action =
-  | CompileInterface of string * string * string list
-      (** Compile .mli file: (source, output, include_paths) *)
-  | CompileImplementation of string * string * string list
-      (** Compile .ml file: (source, output, include_paths) *)
-  | CompileC of string * string  (** Compile C file: (source, output) *)
-  | CreateLibrary of string * string list * string list
-      (** Create .cma library: (output, object_files, include_paths) *)
-  | CreateExecutable of string * string list * string list * string list
-      (** Create executable: (output, object_files, libraries, include_paths) *)
-  | CopyFile of string * string  (** Copy file: (source, destination) *)
-  | DeclareOutputs of string list
+  (* File compilation actions *)
+  | CompileInterface of {
+      source : string;
+      output : string;
+      includes : string list;
+    }
+      (** Compile .mli file *)
+  | CompileImplementation of {
+      source : string;
+      output : string;
+      includes : string list;
+    }
+      (** Compile .ml file *)
+  | CompileC of {
+      source : string;
+      output : string;
+    }
+      (** Compile C file *)
+  (* Linking actions *)
+  | CreateLibrary of {
+      output : string;
+      objects : string list;
+      includes : string list;
+    }
+      (** Create .cma library *)
+  | CreateExecutable of {
+      output : string;
+      objects : string list;
+      libraries : string list;
+      includes : string list;
+    }
+      (** Create executable *)
+  (* File operations *)
+  | CopyFile of {
+      source : string;
+      destination : string;
+    }
+      (** Copy file *)
+  | WriteFile of {
+      destination : string;
+      content : string;
+    }
+      (** Write content to file *)
+  (* Output declaration *)
+  | DeclareOutputs of {
+      outputs : string list;
+    }
       (** Declare output files that should be copied to target *)
 
 (** Result of executing an action *)
