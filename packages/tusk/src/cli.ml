@@ -352,14 +352,28 @@ let rec lsp_command args =
       (* Start the merlin bridge for ocaml-lsp-server integration *)
       Merlin_bridge.start ();
       Process.Normal
+  | "ocamlformat-rpc" ->
+      (* Bridge to ocamlformat-rpc from toolchain *)
+      let toolchain_dir = Filename.concat (Sys.getenv "HOME") ".tusk/toolchains/5.3.0/bin" in
+      let ocamlformat_rpc = Filename.concat toolchain_dir "ocamlformat-rpc" in
+      if Sys.file_exists ocamlformat_rpc then (
+        (* Pass through to ocamlformat-rpc with all remaining args *)
+        let argv = Array.sub args 3 (Array.length args - 3) in
+        Unix.execv ocamlformat_rpc (Array.append [| "ocamlformat-rpc" |] argv)
+      ) else (
+        Printf.eprintf "Error: ocamlformat-rpc not found at %s\n" ocamlformat_rpc;
+        Printf.eprintf "Please run: cd ocaml && ./local-install.sh\n";
+        exit 1
+      )
   | "" | "start" ->
       (* Default: Start OCaml LSP server *)
       lsp_start_server ()
   | _ ->
       Printf.eprintf "Unknown lsp subcommand: %s\n" subcommand;
       Printf.eprintf "Available subcommands:\n";
-      Printf.eprintf "  tusk lsp              - Start OCaml LSP server\n";
-      Printf.eprintf "  tusk lsp ocaml-merlin - Run merlin protocol bridge\n";
+      Printf.eprintf "  tusk lsp                 - Start OCaml LSP server\n";
+      Printf.eprintf "  tusk lsp ocaml-merlin    - Run merlin protocol bridge\n";
+      Printf.eprintf "  tusk lsp ocamlformat-rpc - Run ocamlformat RPC server\n";
       Process.Exception (Failure "Invalid lsp subcommand")
 
 (** Start the LSP server *)
