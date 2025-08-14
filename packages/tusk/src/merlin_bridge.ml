@@ -30,18 +30,23 @@ let get_build_config file_path =
   
   (* Connect to the tusk server and get workspace info *)
   let get_workspace_packages () =
-    try
-      (* Connect to the tusk server *)
-      let client = Rpc_client.connect () in
-      
-      (* Get workspace info *)
-      let response = Rpc_client.send_command client Rpc_messages.GetWorkspace in
-      Rpc_client.close client;
-      
-      match response with
-      | Rpc_messages.WorkspaceInfo packages -> Some packages
-      | _ -> None
-    with _ -> None
+    let home = System.get_home () in
+    let log_file = Printf.sprintf "%s/.tusk/logs/ocaml-merlin.log" home in
+    match Rpc_json_client.get_workspace_config () with
+    | Ok config -> 
+        let oc = open_out_gen [Open_creat; Open_append; Open_text] 0o644 log_file in
+        Printf.fprintf oc "[%s] Successfully got workspace config with %d packages: %s\n" 
+          (Unix.gettimeofday () |> string_of_float) 
+          (List.length config.Rpc_json.packages)
+          (String.concat ", " config.Rpc_json.packages);
+        close_out oc;
+        Some config.Rpc_json.packages
+    | Error e -> 
+        let oc = open_out_gen [Open_creat; Open_append; Open_text] 0o644 log_file in
+        Printf.fprintf oc "[%s] Failed to get workspace config: %s\n" 
+          (Unix.gettimeofday () |> string_of_float) e;
+        close_out oc;
+        None
   in
   
   (* Adjust paths based on whether we're at workspace root or not *)
@@ -64,7 +69,7 @@ let get_build_config file_path =
     | _ -> path
   in
 
-  (* Get packages from server or fall back to defaults *)
+  (* Get packages from server - no fallback *)
   match get_workspace_packages () with
   | Some packages ->
       (* Use actual packages from the build graph *)
@@ -77,25 +82,8 @@ let get_build_config file_path =
       let flags = [ "-w"; "-a" ] in
       Some (source_paths, build_paths, flags, stdlib_path)
   | None ->
-      (* Fallback to hardcoded if server is not available *)
-      let source_paths = [
-        make_path "packages/miniriot/src";
-        make_path "packages/sexp/src";
-        make_path "packages/toml/src";
-        make_path "packages/gluon/src";
-        make_path "packages/tusk/src";
-        make_path "packages/minitusk/src";
-      ] in
-      let build_paths = [
-        make_path "target/debug/out/packages/miniriot";
-        make_path "target/debug/out/packages/sexp";
-        make_path "target/debug/out/packages/toml";
-        make_path "target/debug/out/packages/gluon";
-        make_path "target/debug/out/packages/tusk";
-        make_path "target/debug/out/packages/minitusk";
-      ] in
-      let flags = [ "-w"; "-a" ] in
-      Some (source_paths, build_paths, flags, stdlib_path)
+      (* No fallback - if we can't get the build graph, we have nothing to say *)
+      None
 
 (** Convert tusk configuration to merlin directives *)
 let config_to_directives file_path =

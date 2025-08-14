@@ -690,99 +690,76 @@ let rpc_command args =
     Printf.printf "  tusk rpc ping              - Test server connectivity\n";
     Printf.printf "  tusk rpc workspace         - Get workspace information\n";
     Printf.printf "  tusk rpc graph             - Get build graph\n";
-    Printf.printf "  tusk rpc scan-workspace    - Scan workspace for packages\n";
-    Printf.printf
-      "  tusk rpc build [package]   - Build all or specific package\n";
+    Printf.printf "  tusk rpc build [package]   - Build all or specific package\n";
     Printf.printf "  tusk rpc restart           - Restart the server\n";
     Printf.printf "  tusk rpc shutdown          - Shutdown the server\n";
     Process.Normal)
-  else
-    try
-      (* Map command to request *)
-      let request =
-        match cmd with
-        | "ping" -> Rpc.Ping
-        | "workspace" -> Rpc.GetWorkspace
-        | "graph" -> Rpc.GetBuildGraph
-        | "scan-workspace" ->
-            (* Simply request a workspace scan - it will return current workspace info *)
-            Rpc.GetWorkspace
-        | "build" -> (
-            (* Parse optional package name *)
-            let package =
-              if Array.length args > 3 then Some args.(3) else None
-            in
-            match package with
-            | Some pkg -> Rpc.BuildPackage { package = pkg; watch = false }
-            | None -> Rpc.BuildAll { watch = false })
-        | "restart" -> Rpc.Restart
-        | "shutdown" -> Rpc.Shutdown
-        | _ ->
-            Printf.eprintf "Error: Unknown RPC command '%s'\n" cmd;
-            Printf.eprintf
-              "Available commands: ping, workspace, graph, scan-workspace, \
-               build [package], restart, shutdown\n";
-            failwith (Printf.sprintf "Unknown RPC command: %s" cmd)
-      in
-
-      (* Make RPC call *)
-      match Rpc_client.call request with
-      | Ok response -> (
-          match response with
-          | Rpc.Pong ->
-              Printf.printf "pong\n";
-              Process.Normal
-          | Rpc.Ok ->
-              Printf.printf "ok\n";
-              Process.Normal
-          | Rpc.WorkspaceInfo { packages; root } ->
-              Printf.printf "Workspace at %s:\n" root;
-              List.iter (fun pkg -> Printf.printf "  - %s\n" pkg) packages;
-              Process.Normal
-          | Rpc.BuildGraphInfo { packages } ->
-              Printf.printf "Build graph:\n";
-              List.iter
-                (fun (pkg, deps) ->
-                  Printf.printf "  %s -> %s\n" pkg
-                    (if deps = [] then "[]"
-                     else "[" ^ String.concat ", " deps ^ "]"))
-                packages;
-              Process.Normal
-          | Rpc.BuildComplete { successful; failed } ->
-              if failed > 0 then
-                Printf.printf
-                  "Build completed with %d successes and %d failures\n"
-                  successful failed
-              else
-                Printf.printf
-                  "Build completed successfully! %d packages built\n" successful;
-              Process.Normal
-          | Rpc.Error { message } ->
-              Printf.eprintf "Error: %s\n" message;
-              Process.Exception (Failure message)
-          | _ ->
-              Printf.printf "%s\n" (Rpc.response_to_string response);
-              Process.Normal)
-      | Error msg ->
-          if msg = "Server is not running" then
-            Printf.eprintf
-              "Server is not running, start server with `tusk server`\n"
-          else Printf.eprintf "Error: %s\n" msg;
-          Process.Exception (Failure msg)
-    with
-    | Failure msg ->
-        if String.contains msg 's' && String.contains msg 'e' then
-          (* Check for "server" *)
-          Printf.eprintf
-            "Server is not running, start server with `tusk server`\n"
-        else Printf.eprintf "Error: %s\n" msg;
-        Process.Exception (Failure msg)
-    | exn ->
-        let error_msg =
-          Printf.sprintf "RPC command failed: %s" (Printexc.to_string exn)
-        in
-        Printf.eprintf "Error: %s\n" error_msg;
-        Process.Exception (Failure error_msg)
+  (* Handle all commands via JSON-RPC *)
+  else if cmd = "ping" then (
+    match Rpc_json_client.call Rpc_json.Ping with
+    | Ok response -> 
+        let json = Rpc_json.response_to_json response in
+        Printf.printf "%s\n" (Json.to_string json);
+        Process.Normal
+    | Error e ->
+        Printf.eprintf "Error: %s\n" e;
+        Process.Exception (Failure e))
+  else if cmd = "workspace" then (
+    match Rpc_json_client.call Rpc_json.GetWorkspaceConfig with
+    | Ok response ->
+        let json = Rpc_json.response_to_json response in
+        Printf.printf "%s\n" (Json.to_string json);
+        Process.Normal
+    | Error e ->
+        Printf.eprintf "Error: %s\n" e;
+        Process.Exception (Failure e))
+  else if cmd = "graph" then (
+    match Rpc_json_client.call Rpc_json.GetBuildGraph with
+    | Ok response ->
+        let json = Rpc_json.response_to_json response in
+        Printf.printf "%s\n" (Json.to_string json);
+        Process.Normal
+    | Error e ->
+        Printf.eprintf "Error: %s\n" e;
+        Process.Exception (Failure e))
+  else if cmd = "build" then (
+    (* Parse optional package name *)
+    let package = if Array.length args > 3 then Some args.(3) else None in
+    let request = match package with
+    | Some pkg -> Rpc_json.BuildPackage pkg
+    | None -> Rpc_json.BuildAll
+    in
+    match Rpc_json_client.call request with
+    | Ok response ->
+        let json = Rpc_json.response_to_json response in
+        Printf.printf "%s\n" (Json.to_string json);
+        Process.Normal
+    | Error e ->
+        Printf.eprintf "Error: %s\n" e;
+        Process.Exception (Failure e))
+  else if cmd = "restart" then (
+    match Rpc_json_client.call Rpc_json.Restart with
+    | Ok response ->
+        let json = Rpc_json.response_to_json response in
+        Printf.printf "%s\n" (Json.to_string json);
+        Process.Normal
+    | Error e ->
+        Printf.eprintf "Error: %s\n" e;
+        Process.Exception (Failure e))
+  else if cmd = "shutdown" then (
+    match Rpc_json_client.call Rpc_json.Shutdown with
+    | Ok response ->
+        let json = Rpc_json.response_to_json response in
+        Printf.printf "%s\n" (Json.to_string json);
+        Process.Normal
+    | Error e ->
+        Printf.eprintf "Error: %s\n" e;
+        Process.Exception (Failure e))
+  else (
+    Printf.eprintf "Error: Unknown RPC command '%s'\n" cmd;
+    Printf.eprintf
+      "Available commands: ping, workspace, graph, build [package], restart, shutdown\n";
+    Process.Exception (Failure (Printf.sprintf "Unknown RPC command: %s" cmd)))
 
 (** Execute the install command *)
 let install_command args =
