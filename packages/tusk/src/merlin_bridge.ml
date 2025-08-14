@@ -32,7 +32,19 @@ let get_build_config file_path =
   let get_workspace_packages () =
     let home = System.get_home () in
     let log_file = Printf.sprintf "%s/.tusk/logs/ocaml-merlin.log" home in
-    match Rpc_json_client.get_workspace_config () with
+    (* Change to workspace root to connect to the server *)
+    let original_cwd = Sys.getcwd () in
+    let result = 
+      match workspace_root with
+      | Some root ->
+          Sys.chdir root;
+          let res = Rpc_json_client.get_workspace_config () in
+          Sys.chdir original_cwd;
+          res
+      | None ->
+          Rpc_json_client.get_workspace_config ()
+    in
+    match result with
     | Ok config -> 
         let oc = open_out_gen [Open_creat; Open_append; Open_text] 0o644 log_file in
         Printf.fprintf oc "[%s] Successfully got workspace config with %d packages: %s\n" 
@@ -72,12 +84,24 @@ let get_build_config file_path =
   (* Get packages from server - no fallback *)
   match get_workspace_packages () with
   | Some packages ->
-      (* Use actual packages from the build graph *)
+      (* Use actual packages from the build graph - use absolute paths *)
       let source_paths = 
-        List.map (fun pkg -> make_path (Printf.sprintf "packages/%s/src" pkg)) packages
+        match workspace_root with
+        | Some root ->
+            List.map (fun pkg -> 
+              Filename.concat root (Printf.sprintf "packages/%s/src" pkg)
+            ) packages
+        | None ->
+            List.map (fun pkg -> make_path (Printf.sprintf "packages/%s/src" pkg)) packages
       in
       let build_paths = 
-        List.map (fun pkg -> make_path (Printf.sprintf "target/debug/out/packages/%s" pkg)) packages
+        match workspace_root with
+        | Some root ->
+            List.map (fun pkg -> 
+              Filename.concat root (Printf.sprintf "target/debug/out/packages/%s" pkg)
+            ) packages
+        | None ->
+            List.map (fun pkg -> make_path (Printf.sprintf "target/debug/out/packages/%s" pkg)) packages
       in
       let flags = [ "-w"; "-a" ] in
       Some (source_paths, build_paths, flags, stdlib_path)

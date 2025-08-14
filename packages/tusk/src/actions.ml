@@ -354,39 +354,24 @@ let generate_blueprint workspace node dependencies all_packages toolchain ~hash
       c_files
   in
 
-  (* 2. Copy source files to sandbox, renaming lib files if needed *)
+  (* 2. Copy source files to sandbox - no renaming needed *)
   let mli_files =
     List.map
       (fun mli_file ->
-        if mli_file = "lib.mli" then (
-          let src_path = Filename.concat src_dir mli_file in
-          let dst_file = pkg_name ^ ".mli" in
-          actions := CopyFile (src_path, dst_file) :: !actions;
-          dst_file)
-        else
-          let src_path = Filename.concat src_dir mli_file in
-          actions := CopyFile (src_path, mli_file) :: !actions;
-          mli_file)
+        let src_path = Filename.concat src_dir mli_file in
+        actions := CopyFile (src_path, mli_file) :: !actions;
+        mli_file)
       mli_files
   in
 
   let ml_files =
     List.map
       (fun ml_file ->
-        if ml_file = "lib.ml" then (
-          let src_path = Filename.concat src_dir ml_file in
-          let dst_file = pkg_name ^ ".ml" in
-          actions := CopyFile (src_path, dst_file) :: !actions;
-          dst_file)
-        else
-          let src_path = Filename.concat src_dir ml_file in
-          actions := CopyFile (src_path, ml_file) :: !actions;
-          ml_file)
+        let src_path = Filename.concat src_dir ml_file in
+        actions := CopyFile (src_path, ml_file) :: !actions;
+        ml_file)
       ml_files
   in
-
-  (* Note: mli_files and ml_files are already transformed at this point,
-     so lib.mli -> pkg_name.mli and needs no additional copying *)
 
   (* 4. Compile interfaces *)
   List.iter
@@ -408,11 +393,30 @@ let generate_blueprint workspace node dependencies all_packages toolchain ~hash
       ml_files
   in
 
-  (* 4. Create library or executable *)
+  (* 4. Create library and/or executable *)
   let outputs = ref [] in
 
+  (* First, always create a library if we have any modules (excluding main.ml) *)
+  let library_cmo_files = 
+    if has_main then
+      List.filter (fun f -> f <> "main.cmo") cmo_files
+    else
+      cmo_files
+  in
+  
+  if library_cmo_files <> [] || o_files <> [] then (
+    let cma_path = pkg_name ^ ".cma" in
+    let lib_objects = library_cmo_files @ o_files in
+    actions := CreateLibrary (cma_path, lib_objects, dep_includes) :: !actions;
+    outputs := cma_path :: !outputs;
+    
+    (* Only add package.cmi if we have a package.ml or package.mli file *)
+    if List.mem (pkg_name ^ ".ml") ml_files || List.mem (pkg_name ^ ".mli") mli_files then
+      outputs := (pkg_name ^ ".cmi") :: !outputs
+  );
+
+  (* Then, if we have main.ml, create the executable *)
   (if has_main then (
-     (* Create executable *)
      let exe_path = pkg_name in
 
      (* Get all transitive dependencies in topological order *)
@@ -465,27 +469,45 @@ let generate_blueprint workspace node dependencies all_packages toolchain ~hash
      (* Combine all include paths *)
      let all_includes = external_includes @ dep_includes in
 
-     let all_objects = cmo_files @ o_files in
+     (* Link only main.cmo with all libraries (including our own .cma) *)
+     let exe_objects = ["main.cmo"] @ o_files in
+     
+     (* Add our own library to the libs if we created one *)
+     let all_libs_with_self = 
+       if library_cmo_files <> [] then
+         all_libs @ [pkg_name ^ ".cma"]
+       else
+         all_libs
+     in
 
-     (* For executable, link with all dependency .cma files *)
+     (* For executable, link main.cmo with all libraries *)
      actions :=
-       CreateExecutable (exe_path, all_objects, all_libs, all_includes)
+       CreateExecutable (exe_path, exe_objects, all_libs_with_self, all_includes)
        :: !actions;
 
      (* Declare executable as output *)
-     outputs := exe_path :: !outputs)
-   else
-     (* Create library for any package without main *)
-     let cma_path = pkg_name ^ ".cma" in
-     let all_objects = cmo_files @ o_files in
-     actions := CreateLibrary (cma_path, all_objects, dep_includes) :: !actions;
-
-     (* Declare library outputs *)
-     outputs := cma_path :: !outputs;
-     outputs := (pkg_name ^ ".cmi") :: !outputs);
+     outputs := exe_path :: !outputs));
 
   (* Add C object files to outputs if any *)
   List.iter (fun o -> outputs := o :: !outputs) o_files;
+
+  (* Add all .cmi files to outputs *)
+  List.iter 
+    (fun mli_file ->
+      let basename = Filename.chop_suffix mli_file ".mli" in
+      let cmi_file = basename ^ ".cmi" in
+      outputs := cmi_file :: !outputs)
+    mli_files;
+  
+  (* Also add .cmi files for .ml files without .mli *)
+  List.iter
+    (fun ml_file ->
+      let basename = Filename.chop_suffix ml_file ".ml" in
+      let has_mli = List.mem (basename ^ ".mli") mli_files in
+      if not has_mli then
+        let cmi_file = basename ^ ".cmi" in
+        outputs := cmi_file :: !outputs)
+    ml_files;
 
   (* Add DeclareOutputs action *)
   if !outputs <> [] then actions := DeclareOutputs !outputs :: !actions;
