@@ -19,11 +19,16 @@ type workspace_config = {
 }
 
 type request =
+  | Ping
   | GetBuildGraph
   | GetWorkspaceConfig
   | BuildPackage of string
+  | BuildAll
+  | Restart
+  | Shutdown
 
 type response =
+  | Pong
   | BuildGraph of build_graph_response
   | WorkspaceConfig of workspace_config
   | Error of string
@@ -42,7 +47,7 @@ let build_node_to_json node =
 (** Convert JSON to build node *)
 let build_node_of_json json =
   match Json.get_object json with
-  | None -> Error "Expected object for build_node"
+  | None -> Result.Error "Expected object for build_node"
   | Some obj ->
       let json_obj = Json.Object obj in
       match
@@ -64,21 +69,23 @@ let build_node_of_json json =
               let deps_result = 
                 List.fold_left (fun acc dep ->
                   match acc with
-                  | Error e -> Error e
-                  | Ok deps_list ->
+                  | Result.Error e -> Result.Error e
+                  | Result.Ok deps_list ->
                       match Json.get_string dep with
-                      | Some s -> Ok (s :: deps_list)
-                      | None -> Error "Invalid dependency in deps array"
-                ) (Ok []) deps_array
+                      | Some s -> Result.Ok (s :: deps_list)
+                      | None -> Result.Error "Invalid dependency in deps array"
+                ) (Result.Ok []) deps_array
               in
               (match deps_result with
-              | Ok deps -> Ok { package_name; src_dir; out_dir; status; deps = List.rev deps }
-              | Error e -> Error e)
-          | _ -> Error "Invalid field types in build_node")
-      | _ -> Error "Missing required fields in build_node"
+              | Result.Ok deps -> Result.Ok { package_name; src_dir; out_dir; status; deps = List.rev deps }
+              | Result.Error e -> Result.Error e)
+          | _ -> Result.Error "Invalid field types in build_node")
+      | _ -> Result.Error "Missing required fields in build_node"
 
 (** Serialize request to JSON *)
 let request_to_json = function
+  | Ping ->
+      Json.obj [("type", Json.string "Ping")]
   | GetBuildGraph ->
       Json.obj [("type", Json.string "GetBuildGraph")]
   | GetWorkspaceConfig ->
@@ -88,9 +95,17 @@ let request_to_json = function
         ("type", Json.string "BuildPackage");
         ("package", Json.string pkg)
       ]
+  | BuildAll ->
+      Json.obj [("type", Json.string "BuildAll")]
+  | Restart ->
+      Json.obj [("type", Json.string "Restart")]
+  | Shutdown ->
+      Json.obj [("type", Json.string "Shutdown")]
 
 (** Serialize response to JSON *)
 let response_to_json = function
+  | Pong ->
+      Json.obj [("type", Json.string "Pong")]
   | BuildGraph graph ->
       Json.obj [
         ("type", Json.string "BuildGraph");
@@ -116,6 +131,7 @@ let request_of_json json =
   match Json.get_field "type" json with
   | Some type_field ->
       (match Json.get_string type_field with
+      | Some "Ping" -> Ok Ping
       | Some "GetBuildGraph" -> Ok GetBuildGraph
       | Some "GetWorkspaceConfig" -> Ok GetWorkspaceConfig
       | Some "BuildPackage" ->
@@ -125,6 +141,9 @@ let request_of_json json =
               | Some pkg -> Ok (BuildPackage pkg)
               | None -> Error "Invalid package field")
           | None -> Error "Missing package field for BuildPackage")
+      | Some "BuildAll" -> Ok BuildAll
+      | Some "Restart" -> Ok Restart
+      | Some "Shutdown" -> Ok Shutdown
       | Some t -> Error (Printf.sprintf "Unknown request type: %s" t)
       | None -> Error "Type field is not a string")
   | None -> Error "Missing type field in request"
@@ -134,6 +153,7 @@ let response_of_json json =
   match Json.get_field "type" json with
   | Some type_field ->
       (match Json.get_string type_field with
+      | Some "Pong" -> Ok Pong
       | Some "BuildGraph" ->
           (match Json.get_field "nodes" json with
           | Some nodes_field ->
@@ -142,16 +162,16 @@ let response_of_json json =
                   let nodes_result = 
                     List.fold_left (fun acc node ->
                       match acc with
-                      | Error e -> Error e
-                      | Ok nodes_list ->
+                      | Result.Error e -> Result.Error e
+                      | Result.Ok nodes_list ->
                           match build_node_of_json node with
-                          | Ok n -> Ok (n :: nodes_list)
-                          | Error e -> Error e
-                    ) (Ok []) nodes_array
+                          | Result.Ok n -> Result.Ok (n :: nodes_list)
+                          | Result.Error e -> Result.Error e
+                    ) (Result.Ok []) nodes_array
                   in
                   (match nodes_result with
-                  | Ok nodes -> Ok (BuildGraph { nodes = List.rev nodes })
-                  | Error e -> Error e)
+                  | Result.Ok nodes -> Result.Ok (BuildGraph { nodes = List.rev nodes })
+                  | Result.Error e -> Result.Error e)
               | None -> Error "nodes field is not an array")
           | None -> Error "Missing nodes field for BuildGraph")
       | Some "WorkspaceConfig" ->
@@ -170,16 +190,16 @@ let response_of_json json =
                   let packages_result = 
                     List.fold_left (fun acc pkg ->
                       match acc with
-                      | Error e -> Error e
-                      | Ok pkgs_list ->
+                      | Result.Error e -> Result.Error e
+                      | Result.Ok pkgs_list ->
                           match Json.get_string pkg with
-                          | Some s -> Ok (s :: pkgs_list)
-                          | None -> Error "Invalid package in packages array"
-                    ) (Ok []) packages_array
+                          | Some s -> Result.Ok (s :: pkgs_list)
+                          | None -> Result.Error "Invalid package in packages array"
+                    ) (Result.Ok []) packages_array
                   in
                   (match packages_result with
-                  | Ok packages -> Ok (WorkspaceConfig { workspace_root; toolchain; packages = List.rev packages })
-                  | Error e -> Error e)
+                  | Result.Ok packages -> Result.Ok (WorkspaceConfig { workspace_root; toolchain; packages = List.rev packages })
+                  | Result.Error e -> Result.Error e)
               | _ -> Error "Invalid field types in WorkspaceConfig")
           | _ -> Error "Missing required fields in WorkspaceConfig")
       | Some "Error" ->

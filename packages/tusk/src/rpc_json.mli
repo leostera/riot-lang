@@ -23,12 +23,17 @@ type workspace_config = {
 
 (** RPC request types *)
 type request =
+  | Ping
   | GetBuildGraph
   | GetWorkspaceConfig
   | BuildPackage of string
+  | BuildAll
+  | Restart
+  | Shutdown
 
 (** RPC response types *)
 type response =
+  | Pong
   | BuildGraph of build_graph_response
   | WorkspaceConfig of workspace_config
   | Error of string

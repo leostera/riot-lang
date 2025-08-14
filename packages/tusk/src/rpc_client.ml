@@ -124,3 +124,34 @@ let get_build_graph () = call Rpc.GetBuildGraph
 
 (** Convenience function for shutting down server *)
 let shutdown () = call Rpc.Shutdown
+
+(** Send a raw command to the server and get response *)
+let send_raw stream msg =
+  let buffer = Bytes.of_string (msg ^ "\n") in
+  match
+    Miniriot.Net.TcpStream.write stream buffer ~pos:0
+      ~len:(Bytes.length buffer) ()
+  with
+  | Ok _ -> (
+      (* Read response *)
+      let response_buffer = Bytes.create 4096 in
+      match
+        Miniriot.Net.TcpStream.read stream response_buffer ~pos:0
+          ~len:4096 ()
+      with
+      | Ok bytes_read ->
+          let response_str = Bytes.sub_string response_buffer 0 bytes_read in
+          let response_str = String.trim response_str in
+          Ok response_str
+      | Error _ -> Error "Failed to read response")
+  | Error _ -> Error "Failed to send request"
+
+(** Send a command and get a typed response - for compatibility *)
+let send_command stream request =
+  let request_str = Rpc.request_to_string request in
+  match send_raw stream request_str with
+  | Ok response_str -> (
+      match Rpc.response_of_string response_str with
+      | Some response -> response
+      | None -> Rpc.Error { message = "Unknown response: " ^ response_str })
+  | Error msg -> Rpc.Error { message = msg }
