@@ -1,62 +1,60 @@
 (** S-expression parsing and printing library *)
 
 (** S-expression type *)
-type t =
-  | Atom of string
-  | List of t list
+type t = Atom of string | List of t list
 
-(** Parse error exception *)
 exception Parse_error of string
+(** Parse error exception *)
 
 (** {1 Parsing} *)
 
-(** Parse a string into an S-expression *)
 val of_string : string -> (t, string) result
+(** Parse a string into an S-expression *)
 
-(** Parse a string, raising exception on error *)
 val parse_exn : string -> t
+(** Parse a string, raising exception on error *)
 
-(** Parse multiple S-expressions from a string *)
 val parse_many : string -> (t list, string) result
+(** Parse multiple S-expressions from a string *)
 
-(** Read S-expressions from a file *)
 val parse_file : string -> (t list, string) result
+(** Read S-expressions from a file *)
 
 (** {1 Printing} *)
 
-(** Convert S-expression to string *)
 val to_string : t -> string
+(** Convert S-expression to string *)
 
-(** Pretty print S-expression with indentation *)
 val pretty_print : t -> string
+(** Pretty print S-expression with indentation *)
 
-(** Write S-expression to a file *)
 val to_file : string -> t -> (unit, string) result
+(** Write S-expression to a file *)
 
 (** {1 Constructors} *)
 
-(** Create an atom *)
 val atom : string -> t
+(** Create an atom *)
 
-(** Create a list *)
 val list : t list -> t
+(** Create a list *)
 
 (** {1 Accessors} *)
 
-(** Check if S-expression is an atom *)
 val is_atom : t -> bool
+(** Check if S-expression is an atom *)
 
-(** Check if S-expression is a list *)
 val is_list : t -> bool
+(** Check if S-expression is a list *)
 
-(** Extract atom value if it's an atom *)
 val to_atom : t -> string option
+(** Extract atom value if it's an atom *)
 
-(** Extract list if it's a list *)
 val to_list : t -> t list option
+(** Extract list if it's a list *)
 
-(** Find an atom by name in a nested structure *)
 val find_atom : string -> t list -> t option
+(** Find an atom by name in a nested structure *)
 
-(** Association list lookup - find value for a key in list of lists *)
 val assoc : string -> t list -> t option
+(** Association list lookup - find value for a key in list of lists *)

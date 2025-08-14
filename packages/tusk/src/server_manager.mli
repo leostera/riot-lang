@@ -1,23 +1,24 @@
-(** Server manager - Handles starting and managing the tusk server in the background *)
+(** Server manager - Handles starting and managing the tusk server in the
+    background *)
 
-(** Check if the server is currently running *)
 val is_server_running : unit -> bool
+(** Check if the server is currently running *)
 
-(** Start the server in the background.
-    Returns true if the server was started successfully or was already running. *)
 val start_background : unit -> bool
+(** Start the server in the background. Returns true if the server was started
+    successfully or was already running. *)
 
-(** Stop the background server.
-    Returns true if the server was stopped successfully. *)
 val stop_background : unit -> bool
+(** Stop the background server. Returns true if the server was stopped
+    successfully. *)
 
-(** Kill the background server forcefully (kill -9).
-    Returns true if the server was killed successfully. *)
 val kill_background : unit -> bool
+(** Kill the background server forcefully (kill -9). Returns true if the server
+    was killed successfully. *)
 
-(** Ensure the server is running, starting it if necessary.
-    Returns true if the server is running after this call. *)
 val ensure_running : unit -> bool
+(** Ensure the server is running, starting it if necessary. Returns true if the
+    server is running after this call. *)
 
-(** Print the current server status *)
 val status : unit -> unit
+(** Print the current server status *)

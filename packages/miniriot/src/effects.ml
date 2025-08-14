@@ -3,9 +3,7 @@ let yield () = Effect.perform Proc_effect.Yield
 let receive_any () =
   Effect.perform (Proc_effect.Receive { selector = (fun msg -> `select msg) })
 
-let receive ~selector () =
-  Effect.perform (Proc_effect.Receive { selector })
-
+let receive ~selector () = Effect.perform (Proc_effect.Receive { selector })
 let exit () = Process.Normal
 
 let sleep _seconds =

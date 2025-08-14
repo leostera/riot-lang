@@ -118,55 +118,65 @@ let response_of_string s =
   | [ "Pong" ] -> Some Pong
   | [ "Ok" ] -> Some Ok
   | "WorkspaceInfo" :: packages_str :: root :: _ ->
-      let packages = 
-        if packages_str = "" then []
-        else String.split_on_char ',' packages_str
+      let packages =
+        if packages_str = "" then [] else String.split_on_char ',' packages_str
       in
-      Some (WorkspaceInfo { packages; root = String.concat ":" (root :: List.tl (List.tl parts)) })
+      Some
+        (WorkspaceInfo
+           {
+             packages;
+             root = String.concat ":" (root :: List.tl (List.tl parts));
+           })
   | "BuildGraphInfo" :: rest ->
       let graph_str = String.concat ":" rest in
       let pkg_strings = String.split_on_char ';' graph_str in
-      let packages = 
-        List.map (fun pkg_str ->
-          match String.split_on_char '[' pkg_str with
-          | [name; deps_with_bracket] ->
-              let deps_str = String.sub deps_with_bracket 0 (String.length deps_with_bracket - 1) in
-              let deps = 
-                if deps_str = "" then []
-                else String.split_on_char ',' deps_str
-              in
-              (name, deps)
-          | _ -> (pkg_str, [])
-        ) pkg_strings
+      let packages =
+        List.map
+          (fun pkg_str ->
+            match String.split_on_char '[' pkg_str with
+            | [ name; deps_with_bracket ] ->
+                let deps_str =
+                  String.sub deps_with_bracket 0
+                    (String.length deps_with_bracket - 1)
+                in
+                let deps =
+                  if deps_str = "" then []
+                  else String.split_on_char ',' deps_str
+                in
+                (name, deps)
+            | _ -> (pkg_str, []))
+          pkg_strings
       in
       Some (BuildGraphInfo { packages })
   | "BuildComplete" :: successful :: failed :: _ ->
-      Some (BuildComplete { 
-        successful = int_of_string successful; 
-        failed = int_of_string failed 
-      })
+      Some
+        (BuildComplete
+           {
+             successful = int_of_string successful;
+             failed = int_of_string failed;
+           })
   | "Error" :: message -> Some (Error { message = String.concat ":" message })
   | _ -> None (* Unknown response format *)
 
 (** Tests submodule *)
 module Tests = struct
-  [@test]
   let test_request_encoding_preserves_all_fields () : (unit, string) result =
     (* Test that requests are properly encoded with all fields *)
     Ok ()
-  
-  [@test]
-  let test_response_parsing_handles_all_response_types () : (unit, string) result =
+    [@test]
+
+  let test_response_parsing_handles_all_response_types () :
+      (unit, string) result =
     (* Test that all response types are parsed correctly *)
     Ok ()
-  
-  [@test]
+    [@test]
+
   let test_scan_workspace_includes_target_package () : (unit, string) result =
     (* Test that scan workspace request includes optional target *)
     Ok ()
-  
-  [@riot.test]
+    [@riot.test]
+
   let test_rpc_communication_is_bidirectional () : (unit, string) result =
     (* Test that requests and responses flow correctly *)
     Ok ()
-end
+end [@test]

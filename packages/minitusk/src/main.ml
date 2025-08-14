@@ -149,10 +149,12 @@ let read_package_config path =
 
 (* Build dependency graph *)
 let build_dependency_graph workspace =
-  let real_packages = List.filter_map
-    (fun pkg_path -> read_package_config pkg_path)
-    workspace.packages in
-  
+  let real_packages =
+    List.filter_map
+      (fun pkg_path -> read_package_config pkg_path)
+      workspace.packages
+  in
+
   (* Inject fake "unix" package so dependency resolution works *)
   let unix_package = { name = "unix"; path = ""; dependencies = [] } in
   unix_package :: real_packages
@@ -331,10 +333,10 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
       let cmd = Printf.sprintf "cp %s %s" src dest in
       ignore (Unix.system cmd))
     (sources @ c_sources);
-  
+
   (* Also copy header files from the source directory *)
   let src_dir = Filename.concat pkg.path "src" in
-  let header_files = 
+  let header_files =
     try
       Array.to_list (Sys.readdir src_dir)
       |> List.filter (fun f -> Filename.check_suffix f ".h")
@@ -453,18 +455,24 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
 
   (* Use ocamldep to sort ML and MLI files together *)
   let ml_files = List.filter (fun f -> Filename.check_suffix f ".ml") sources in
-  let mli_files = List.filter (fun f -> Filename.check_suffix f ".mli") sources in
-  let all_ml_files = mli_files @ ml_files in  (* Process .mli files before .ml files *)
-  
+  let mli_files =
+    List.filter (fun f -> Filename.check_suffix f ".mli") sources
+  in
+  let all_ml_files = mli_files @ ml_files in
+  (* Process .mli files before .ml files *)
+
   let sorted_all_files =
     if all_ml_files = [] then []
     else
       (* Separate lib.ml/lib.mli from other files - they should always be compiled last *)
-      let files_for_sort = List.filter (fun f -> 
-        let basename = Filename.basename f in
-        basename <> "lib.ml" && basename <> "lib.mli"
-      ) all_ml_files in
-      
+      let files_for_sort =
+        List.filter
+          (fun f ->
+            let basename = Filename.basename f in
+            basename <> "lib.ml" && basename <> "lib.mli")
+          all_ml_files
+      in
+
       if files_for_sort = [] then
         (* Only lib.ml/lib.mli exist *)
         all_ml_files
@@ -492,29 +500,41 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
             let sorted_basenames = String.split_on_char ' ' sorted_str in
             List.filter_map
               (fun basename ->
-                List.find_opt (fun f -> Filename.basename f = basename) files_for_sort)
+                List.find_opt
+                  (fun f -> Filename.basename f = basename)
+                  files_for_sort)
               sorted_basenames
         in
-        
+
         (* Add lib.mli and lib.ml at the end if they exist *)
-        let lib_files = List.filter (fun f ->
-          let basename = Filename.basename f in
-          basename = "lib.ml" || basename = "lib.mli"
-        ) all_ml_files in
+        let lib_files =
+          List.filter
+            (fun f ->
+              let basename = Filename.basename f in
+              basename = "lib.ml" || basename = "lib.mli")
+            all_ml_files
+        in
         (* Sort lib_files to ensure lib.mli comes before lib.ml *)
-        let lib_files_sorted = List.sort (fun a b ->
-          let a_mli = Filename.check_suffix a ".mli" in
-          let b_mli = Filename.check_suffix b ".mli" in
-          if a_mli && not b_mli then -1
-          else if b_mli && not a_mli then 1
-          else 0
-        ) lib_files in
+        let lib_files_sorted =
+          List.sort
+            (fun a b ->
+              let a_mli = Filename.check_suffix a ".mli" in
+              let b_mli = Filename.check_suffix b ".mli" in
+              if a_mli && not b_mli then -1
+              else if b_mli && not a_mli then 1
+              else 0)
+            lib_files
+        in
         sorted @ lib_files_sorted
   in
-  
+
   (* Split back into mli and ml files in sorted order *)
-  let sorted_mli_files = List.filter (fun f -> Filename.check_suffix f ".mli") sorted_all_files in
-  let sorted_ml_files = List.filter (fun f -> Filename.check_suffix f ".ml") sorted_all_files in
+  let sorted_mli_files =
+    List.filter (fun f -> Filename.check_suffix f ".mli") sorted_all_files
+  in
+  let sorted_ml_files =
+    List.filter (fun f -> Filename.check_suffix f ".ml") sorted_all_files
+  in
 
   (* Debug: show sorted order *)
   if sorted_all_files <> [] then
@@ -790,32 +810,32 @@ let () =
       if pkg.name = "unix" then
         Printf.printf "\nSkipping external package: %s\n%!" pkg.name
       else (
-      Printf.printf "\n";
-      (* Collect sources *)
-      let sources, c_sources = collect_sources pkg.path in
+        Printf.printf "\n";
+        (* Collect sources *)
+        let sources, c_sources = collect_sources pkg.path in
 
-      (* Determine outputs *)
-      let outputs = expected_outputs pkg sources c_sources in
+        (* Determine outputs *)
+        let outputs = expected_outputs pkg sources c_sources in
 
-      (* Collect transitive dependencies *)
-      let transitive_deps =
-        let rec collect pkg_name acc =
-          match List.find_opt (fun p -> p.name = pkg_name) packages with
-          | None -> acc
-          | Some p ->
-              let dep_outputs =
-                try Hashtbl.find built_outputs p.name with Not_found -> []
-              in
-              List.fold_left
-                (fun acc dep -> collect dep (dep_outputs @ acc))
-                (dep_outputs @ acc) p.dependencies
+        (* Collect transitive dependencies *)
+        let transitive_deps =
+          let rec collect pkg_name acc =
+            match List.find_opt (fun p -> p.name = pkg_name) packages with
+            | None -> acc
+            | Some p ->
+                let dep_outputs =
+                  try Hashtbl.find built_outputs p.name with Not_found -> []
+                in
+                List.fold_left
+                  (fun acc dep -> collect dep (dep_outputs @ acc))
+                  (dep_outputs @ acc) p.dependencies
+          in
+          List.fold_left (fun acc dep -> collect dep acc) [] pkg.dependencies
         in
-        List.fold_left (fun acc dep -> collect dep acc) [] pkg.dependencies
-      in
 
-      (* Build *)
-      let output_hashes =
-        build_package packages pkg sources c_sources outputs transitive_deps
-      in
-      Hashtbl.replace built_outputs pkg.name output_hashes))
+        (* Build *)
+        let output_hashes =
+          build_package packages pkg sources c_sources outputs transitive_deps
+        in
+        Hashtbl.replace built_outputs pkg.name output_hashes))
     build_order

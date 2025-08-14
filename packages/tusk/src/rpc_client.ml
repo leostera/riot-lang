@@ -20,14 +20,14 @@ let connect () =
   (* Read server port for this project *)
   let daemon_path = daemon_dir () in
   let port_file = Printf.sprintf "%s/server.port" daemon_path in
-  
+
   (* Check if port file exists *)
   if not (Sys.file_exists port_file) then
     Error "Server is not running for this project"
   else
     (* Also check PID file to see if server process is still alive *)
     let pid_file = Printf.sprintf "%s/server.pid" daemon_path in
-    let server_alive = 
+    let server_alive =
       if Sys.file_exists pid_file then
         try
           let ic = open_in pid_file in
@@ -38,40 +38,37 @@ let connect () =
           try
             Unix.kill pid 0;
             true
-          with Unix.Unix_error(Unix.ESRCH, _, _) ->
+          with Unix.Unix_error (Unix.ESRCH, _, _) ->
             (* Process doesn't exist *)
             false
         with _ -> false
-      else
-        false
+      else false
     in
-    
+
     if not server_alive then (
       (* Clean up stale port file *)
       (try Sys.remove port_file with _ -> ());
       (try Sys.remove pid_file with _ -> ());
-      Error "Server is not running for this project"
-    ) else
-      let port = 
+      Error "Server is not running for this project")
+    else
+      let port =
         try
           let ic = open_in port_file in
           let port_str = input_line ic in
           close_in ic;
           int_of_string port_str
-        with _ ->
-          0  (* Invalid port *)
+        with _ -> 0 (* Invalid port *)
       in
-      
-      if port = 0 then
-        Error "Server is not running"
+
+      if port = 0 then Error "Server is not running"
       else
         (* Try to connect to server *)
-        let addr = 
+        let addr =
           match Miniriot.Net.Addr.of_host_and_port ~host:"127.0.0.1" ~port with
           | Ok addr -> addr
           | Error _ -> failwith "Failed to create address"
         in
-        
+
         match Miniriot.Net.TcpStream.connect addr with
         | Ok stream -> Ok stream
         | Error _ -> Error "Server is not running"
@@ -85,26 +82,32 @@ let call request =
       let request_str = Rpc.request_to_string request in
       let msg = request_str ^ "\n" in
       let buffer = Bytes.of_string msg in
-      
-      let result = 
-        match Miniriot.Net.TcpStream.write stream buffer ~pos:0 ~len:(Bytes.length buffer) () with
-        | Ok _ ->
+
+      let result =
+        match
+          Miniriot.Net.TcpStream.write stream buffer ~pos:0
+            ~len:(Bytes.length buffer) ()
+        with
+        | Ok _ -> (
             (* Read response *)
             let response_buffer = Bytes.create 4096 in
-            (match Miniriot.Net.TcpStream.read stream response_buffer ~pos:0 ~len:4096 () with
-            | Ok bytes_read ->
-                let response_str = Bytes.sub_string response_buffer 0 bytes_read in
+            match
+              Miniriot.Net.TcpStream.read stream response_buffer ~pos:0
+                ~len:4096 ()
+            with
+            | Ok bytes_read -> (
+                let response_str =
+                  Bytes.sub_string response_buffer 0 bytes_read
+                in
                 let response_str = String.trim response_str in
-                
-                (match Rpc.response_of_string response_str with
+
+                match Rpc.response_of_string response_str with
                 | Some response -> Ok response
-                | None -> 
+                | None ->
                     (* Try to return the raw string if we can't parse it *)
                     Error (Printf.sprintf "Unknown response: %s" response_str))
-            | Error _ ->
-                Error "Failed to read response")
-        | Error _ ->
-            Error "Failed to send request"
+            | Error _ -> Error "Failed to read response")
+        | Error _ -> Error "Failed to send request"
       in
       (* Close the connection *)
       Miniriot.Net.TcpStream.close stream;

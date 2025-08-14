@@ -10,6 +10,7 @@ let usage_msg =
    Commands:\n\
   \  build    Build packages\n\
   \  run      Run a binary\n\
+  \  install  Install a package binary to ~/.tusk/bin/\n\
   \  server   Start the tusk server (for debugging)\n\
   \  rpc      Send RPC command to server\n\
   \  lsp      Start OCaml LSP server\n\
@@ -98,16 +99,18 @@ let build_command package_opt =
   sleep 0.5;
 
   (* Send RPC-style build request to server *)
-  let request = match package_opt with
-  | Some package -> Rpc.BuildPackage { package; watch = false }
-  | None -> Rpc.BuildAll { watch = false }
+  let request =
+    match package_opt with
+    | Some package -> Rpc.BuildPackage { package; watch = false }
+    | None -> Rpc.BuildAll { watch = false }
   in
   send server_pid (ClientRequest (self (), request));
 
   (* Wait for RPC response *)
   let rec wait_for_completion () =
     let selector = function
-      | ServerResponse (Rpc.BuildComplete { successful; failed }) -> `select (`build_complete (successful, failed))
+      | ServerResponse (Rpc.BuildComplete { successful; failed }) ->
+          `select (`build_complete (successful, failed))
       | ServerResponse (Rpc.Error { message }) -> `select (`error message)
       | _ -> `skip
     in
@@ -176,7 +179,8 @@ let build_package package_name =
   (* Wait for RPC response *)
   let rec wait_for_completion () =
     let selector = function
-      | ServerResponse (Rpc.BuildComplete { successful = _; failed }) -> `select (`build_complete failed)
+      | ServerResponse (Rpc.BuildComplete { successful = _; failed }) ->
+          `select (`build_complete failed)
       | ServerResponse (Rpc.Error _) -> `select `error
       | _ -> `skip
     in
@@ -206,8 +210,7 @@ let run_command binary_opt =
             if build_package binary_name then (
               (* Build succeeded, try to run again *)
               match get_binary_path binary_name with
-              | Some binary_path ->
-                  execute_binary binary_name binary_path
+              | Some binary_path -> execute_binary binary_name binary_path
               | None ->
                   Printf.eprintf
                     "Error: Binary '%s' still not found after building.\n"
@@ -237,8 +240,7 @@ let run_command binary_opt =
       | [ single_binary ] -> (
           (* Only one binary available, run it *)
           match get_binary_path single_binary with
-          | Some binary_path ->
-              execute_binary single_binary binary_path
+          | Some binary_path -> execute_binary single_binary binary_path
           | None ->
               (* Binary doesn't exist, build it first *)
               Printf.printf "📦 Binary '%s' not found, building first...\n"
@@ -354,17 +356,19 @@ let rec lsp_command args =
       Process.Normal
   | "ocamlformat-rpc" ->
       (* Bridge to ocamlformat-rpc from toolchain *)
-      let toolchain_dir = Filename.concat (Sys.getenv "HOME") ".tusk/toolchains/5.3.0/bin" in
+      let toolchain_dir =
+        Filename.concat (Sys.getenv "HOME") ".tusk/toolchains/5.3.0/bin"
+      in
       let ocamlformat_rpc = Filename.concat toolchain_dir "ocamlformat-rpc" in
-      if Sys.file_exists ocamlformat_rpc then (
+      if Sys.file_exists ocamlformat_rpc then
         (* Pass through to ocamlformat-rpc with all remaining args *)
         let argv = Array.sub args 3 (Array.length args - 3) in
         Unix.execv ocamlformat_rpc (Array.append [| "ocamlformat-rpc" |] argv)
-      ) else (
-        Printf.eprintf "Error: ocamlformat-rpc not found at %s\n" ocamlformat_rpc;
+      else (
+        Printf.eprintf "Error: ocamlformat-rpc not found at %s\n"
+          ocamlformat_rpc;
         Printf.eprintf "Please run: cd ocaml && ./local-install.sh\n";
-        Process.Exception (Failure "ocamlformat-rpc not found")
-      )
+        Process.Exception (Failure "ocamlformat-rpc not found"))
   | "" | "start" ->
       (* Default: Start OCaml LSP server *)
       lsp_start_server ()
@@ -382,12 +386,14 @@ and lsp_start_server () =
     (* First ensure the tusk server is running in the background *)
     if not (Server_manager.ensure_running ()) then (
       Printf.eprintf "❌ Failed to start tusk server\n";
-      Process.Exception (Failure "Failed to start tusk server")
-    ) else (
+      Process.Exception (Failure "Failed to start tusk server"))
+    else
       let lsp_path = get_lsp_binary_path () in
       let version = read_toolchain_version () in
       let home = System.get_home () in
-      let toolchain_path = Printf.sprintf "%s/.tusk/toolchains/%s" home version in
+      let toolchain_path =
+        Printf.sprintf "%s/.tusk/toolchains/%s" home version
+      in
       let stdlib_path = Printf.sprintf "%s/lib/ocaml" toolchain_path in
 
       (* Check if .merlin file exists *)
@@ -433,7 +439,6 @@ and lsp_start_server () =
       let _ = System.exec lsp_path full_args in
       (* This should never be reached if execv succeeds *)
       Process.Exception (Failure "Failed to execute LSP server")
-    )
   with
   | Failure msg ->
       Printf.eprintf "Error: %s\n" msg;
@@ -623,7 +628,7 @@ let help_command () =
 
 (** Show version *)
 let version_command () =
-  Printf.printf "tusk %s\n" Version.version;
+  Printf.printf "%s\n" Version.version;
   Process.Normal
 
 (** Execute the server command *)
@@ -633,22 +638,16 @@ let server_command args =
   match subcommand with
   | "start" ->
       (* Start server in background *)
-      if Server_manager.start_background () then
-        Process.Normal
-      else
-        Process.Exception (Failure "Failed to start server")
+      if Server_manager.start_background () then Process.Normal
+      else Process.Exception (Failure "Failed to start server")
   | "stop" ->
       (* Stop background server *)
-      if Server_manager.stop_background () then
-        Process.Normal
-      else
-        Process.Exception (Failure "Failed to stop server")
+      if Server_manager.stop_background () then Process.Normal
+      else Process.Exception (Failure "Failed to stop server")
   | "kill" ->
       (* Kill background server forcefully *)
-      if Server_manager.kill_background () then
-        Process.Normal
-      else
-        Process.Exception (Failure "Failed to kill server")
+      if Server_manager.kill_background () then Process.Normal
+      else Process.Exception (Failure "Failed to kill server")
   | "status" ->
       (* Check server status *)
       Server_manager.status ();
@@ -664,7 +663,8 @@ let server_command args =
       Printf.eprintf "  tusk server            - Start server in foreground\n";
       Printf.eprintf "  tusk server start      - Start server in background\n";
       Printf.eprintf "  tusk server stop       - Stop background server\n";
-      Printf.eprintf "  tusk server kill       - Kill background server (force)\n";
+      Printf.eprintf
+        "  tusk server kill       - Kill background server (force)\n";
       Printf.eprintf "  tusk server status     - Check server status\n";
       Process.Exception (Failure "Invalid server subcommand")
 
@@ -672,7 +672,7 @@ let server_command args =
 let rpc_command args =
   (* Parse subcommand *)
   let cmd = if Array.length args > 2 then args.(2) else "" in
-  
+
   (* Show help if no subcommand provided *)
   if cmd = "" then (
     Printf.printf "Available RPC commands:\n";
@@ -680,86 +680,170 @@ let rpc_command args =
     Printf.printf "  tusk rpc workspace         - Get workspace information\n";
     Printf.printf "  tusk rpc graph             - Get build graph\n";
     Printf.printf "  tusk rpc scan-workspace    - Scan workspace for packages\n";
-    Printf.printf "  tusk rpc build [package]   - Build all or specific package\n";
+    Printf.printf
+      "  tusk rpc build [package]   - Build all or specific package\n";
     Printf.printf "  tusk rpc restart           - Restart the server\n";
     Printf.printf "  tusk rpc shutdown          - Shutdown the server\n";
-    Process.Normal
-  ) else
-  
-  try
-    (* Map command to request *)
-    let request = 
-      match cmd with
-      | "ping" -> Rpc.Ping
-      | "workspace" -> Rpc.GetWorkspace
-      | "graph" -> Rpc.GetBuildGraph
-      | "scan-workspace" -> 
-          (* Simply request a workspace scan - it will return current workspace info *)
-          Rpc.GetWorkspace
-      | "build" ->
-          (* Parse optional package name *)
-          let package = if Array.length args > 3 then Some args.(3) else None in
-          (match package with
-          | Some pkg -> Rpc.BuildPackage { package = pkg; watch = false }
-          | None -> Rpc.BuildAll { watch = false })
-      | "restart" -> Rpc.Restart
-      | "shutdown" -> Rpc.Shutdown
-      | _ ->
-          Printf.eprintf "Error: Unknown RPC command '%s'\n" cmd;
-          Printf.eprintf "Available commands: ping, workspace, graph, scan-workspace, build [package], restart, shutdown\n";
-          failwith (Printf.sprintf "Unknown RPC command: %s" cmd)
-    in
-    
-    (* Make RPC call *)
-    match Rpc_client.call request with
-    | Ok response ->
-        (match response with
-        | Rpc.Pong ->
-            Printf.printf "pong\n";
-            Process.Normal
-        | Rpc.Ok ->
-            Printf.printf "ok\n";
-            Process.Normal
-        | Rpc.WorkspaceInfo { packages; root } ->
-            Printf.printf "Workspace at %s:\n" root;
-            List.iter (fun pkg -> Printf.printf "  - %s\n" pkg) packages;
-            Process.Normal
-        | Rpc.BuildGraphInfo { packages } ->
-            Printf.printf "Build graph:\n";
-            List.iter (fun (pkg, deps) ->
-              Printf.printf "  %s -> %s\n" pkg
-                (if deps = [] then "[]" else "[" ^ String.concat ", " deps ^ "]"))
-              packages;
-            Process.Normal
-        | Rpc.BuildComplete { successful; failed } ->
-            if failed > 0 then
-              Printf.printf "Build completed with %d successes and %d failures\n" successful failed
-            else
-              Printf.printf "Build completed successfully! %d packages built\n" successful;
-            Process.Normal
-        | Rpc.Error { message } ->
-            Printf.eprintf "Error: %s\n" message;
-            Process.Exception (Failure message)
+    Process.Normal)
+  else
+    try
+      (* Map command to request *)
+      let request =
+        match cmd with
+        | "ping" -> Rpc.Ping
+        | "workspace" -> Rpc.GetWorkspace
+        | "graph" -> Rpc.GetBuildGraph
+        | "scan-workspace" ->
+            (* Simply request a workspace scan - it will return current workspace info *)
+            Rpc.GetWorkspace
+        | "build" -> (
+            (* Parse optional package name *)
+            let package =
+              if Array.length args > 3 then Some args.(3) else None
+            in
+            match package with
+            | Some pkg -> Rpc.BuildPackage { package = pkg; watch = false }
+            | None -> Rpc.BuildAll { watch = false })
+        | "restart" -> Rpc.Restart
+        | "shutdown" -> Rpc.Shutdown
         | _ ->
-            Printf.printf "%s\n" (Rpc.response_to_string response);
-            Process.Normal)
-    | Error msg ->
-        if msg = "Server is not running" then
-          Printf.eprintf "Server is not running, start server with `tusk server`\n"
-        else
-          Printf.eprintf "Error: %s\n" msg;
+            Printf.eprintf "Error: Unknown RPC command '%s'\n" cmd;
+            Printf.eprintf
+              "Available commands: ping, workspace, graph, scan-workspace, \
+               build [package], restart, shutdown\n";
+            failwith (Printf.sprintf "Unknown RPC command: %s" cmd)
+      in
+
+      (* Make RPC call *)
+      match Rpc_client.call request with
+      | Ok response -> (
+          match response with
+          | Rpc.Pong ->
+              Printf.printf "pong\n";
+              Process.Normal
+          | Rpc.Ok ->
+              Printf.printf "ok\n";
+              Process.Normal
+          | Rpc.WorkspaceInfo { packages; root } ->
+              Printf.printf "Workspace at %s:\n" root;
+              List.iter (fun pkg -> Printf.printf "  - %s\n" pkg) packages;
+              Process.Normal
+          | Rpc.BuildGraphInfo { packages } ->
+              Printf.printf "Build graph:\n";
+              List.iter
+                (fun (pkg, deps) ->
+                  Printf.printf "  %s -> %s\n" pkg
+                    (if deps = [] then "[]"
+                     else "[" ^ String.concat ", " deps ^ "]"))
+                packages;
+              Process.Normal
+          | Rpc.BuildComplete { successful; failed } ->
+              if failed > 0 then
+                Printf.printf
+                  "Build completed with %d successes and %d failures\n"
+                  successful failed
+              else
+                Printf.printf
+                  "Build completed successfully! %d packages built\n" successful;
+              Process.Normal
+          | Rpc.Error { message } ->
+              Printf.eprintf "Error: %s\n" message;
+              Process.Exception (Failure message)
+          | _ ->
+              Printf.printf "%s\n" (Rpc.response_to_string response);
+              Process.Normal)
+      | Error msg ->
+          if msg = "Server is not running" then
+            Printf.eprintf
+              "Server is not running, start server with `tusk server`\n"
+          else Printf.eprintf "Error: %s\n" msg;
+          Process.Exception (Failure msg)
+    with
+    | Failure msg ->
+        if String.contains msg 's' && String.contains msg 'e' then
+          (* Check for "server" *)
+          Printf.eprintf
+            "Server is not running, start server with `tusk server`\n"
+        else Printf.eprintf "Error: %s\n" msg;
         Process.Exception (Failure msg)
-  with
-  | Failure msg ->
-      if String.contains msg 's' && String.contains msg 'e' then  (* Check for "server" *)
-        Printf.eprintf "Server is not running, start server with `tusk server`\n"
-      else
-        Printf.eprintf "Error: %s\n" msg;
-      Process.Exception (Failure msg)
-  | exn ->
-      let error_msg = Printf.sprintf "RPC command failed: %s" (Printexc.to_string exn) in
-      Printf.eprintf "Error: %s\n" error_msg;
-      Process.Exception (Failure error_msg)
+    | exn ->
+        let error_msg =
+          Printf.sprintf "RPC command failed: %s" (Printexc.to_string exn)
+        in
+        Printf.eprintf "Error: %s\n" error_msg;
+        Process.Exception (Failure error_msg)
+
+(** Execute the install command *)
+let install_command args =
+  if Array.length args < 3 then (
+    Printf.eprintf "Error: Package name required\n";
+    Printf.eprintf "Usage: tusk install <package>\n";
+    Process.Exception (Failure "Package name required"))
+  else
+    let package_name = args.(2) in
+    Printf.printf "📦 Installing %s...\n" package_name;
+
+    (* First, build the package *)
+    Printf.printf "Building %s...\n" package_name;
+    if not (build_package package_name) then (
+      Printf.eprintf "❌ Failed to build %s\n" package_name;
+      Process.Exception
+        (Failure (Printf.sprintf "Failed to build %s" package_name)))
+    else
+      (* Look for the binary in various locations *)
+      let root = System.getcwd () in
+      let possible_binary_paths =
+        [
+          (* Bootstrap location *)
+          Filename.concat (Filename.concat root "target/bootstrap") package_name;
+          Filename.concat
+            (Filename.concat root "target/bootstrap/out")
+            (package_name ^ "/" ^ package_name);
+          (* Debug location *)
+          Filename.concat (Filename.concat root "target/debug") package_name;
+          Filename.concat
+            (Filename.concat root "target/debug/out")
+            (package_name ^ "/" ^ package_name);
+          Filename.concat
+            (Filename.concat root "target/debug/out")
+            ("packages/" ^ package_name ^ "/" ^ package_name);
+        ]
+      in
+
+      match List.find_opt System.file_exists possible_binary_paths with
+      | None ->
+          Printf.eprintf "❌ Binary for %s not found after build\n" package_name;
+          Printf.eprintf
+            "Note: Only packages with main.ml produce installable binaries\n";
+          Process.Exception
+            (Failure (Printf.sprintf "Binary not found for %s" package_name))
+      | Some binary_path -> (
+          (* Create ~/.tusk/bin if it doesn't exist *)
+          let home = System.get_home () in
+          let tusk_bin_dir = Filename.concat home ".tusk/bin" in
+          let mkdir_cmd = Printf.sprintf "mkdir -p %s" tusk_bin_dir in
+          ignore (System.system mkdir_cmd);
+
+          (* Copy the binary to ~/.tusk/bin *)
+          let dest_path = Filename.concat tusk_bin_dir package_name in
+          let cp_cmd = Printf.sprintf "cp %s %s" binary_path dest_path in
+          match System.system cp_cmd with
+          | Unix.WEXITED 0 ->
+              (* Make it executable *)
+              let chmod_cmd = Printf.sprintf "chmod +x %s" dest_path in
+              ignore (System.system chmod_cmd);
+
+              Printf.printf "✅ Installed %s to %s\n" package_name dest_path;
+              Printf.printf "\n";
+              Printf.printf
+                "To use %s from anywhere, add ~/.tusk/bin to your PATH:\n"
+                package_name;
+              Printf.printf "  export PATH=\"$HOME/.tusk/bin:$PATH\"\n";
+              Process.Normal
+          | _ ->
+              Printf.eprintf "❌ Failed to install %s\n" package_name;
+              Process.Exception
+                (Failure (Printf.sprintf "Failed to install %s" package_name)))
 
 (** Main entry point - runs as a Miniriot process *)
 let main () =
@@ -778,6 +862,7 @@ let main () =
     | "run" ->
         let binary_opt = parse_run_args args 2 in
         run_command binary_opt
+    | "install" -> install_command args
     | "server" -> server_command args
     | "rpc" -> rpc_command args
     | "lsp" -> lsp_command args

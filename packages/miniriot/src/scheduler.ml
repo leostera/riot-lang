@@ -26,9 +26,9 @@ let create () =
         io_poll;
       }
   | Error err ->
-      Printf.printf "[Scheduler] ERROR: Failed to create Gluon.Poll: %s\n%!" 
-        (match err with 
-        | `System_error s -> s 
+      Printf.printf "[Scheduler] ERROR: Failed to create Gluon.Poll: %s\n%!"
+        (match err with
+        | `System_error s -> s
         | `Noop -> "Unknown error"
         | `Unix_error e -> Unix.error_message e
         | `Closed -> "Closed"
@@ -130,18 +130,19 @@ let handle_syscall k t proc name interest source _timeout =
   | Some (_token, _source) ->
       Trace.trace "Process %s syscall %s ready" pid_str name;
       k (Continue ())
-  | None ->
+  | None -> (
       let token = Gluon.Token.make proc in
       Trace.trace "Process %s registering for I/O" pid_str;
       Process.mark_as_awaiting_io proc name token source;
-      (match Gluon.Poll.register t.io_poll token interest source with
+      match Gluon.Poll.register t.io_poll token interest source with
       | Ok () ->
           Trace.trace "Process %s registered for I/O successfully" pid_str;
           k Suspend
       | Error err ->
-          Printf.printf "[Scheduler] ERROR: Failed to register I/O for process %s: %s\n%!" 
-            pid_str 
-            (match err with 
+          Printf.printf
+            "[Scheduler] ERROR: Failed to register I/O for process %s: %s\n%!"
+            pid_str
+            (match err with
             | `Unix_error e -> Unix.error_message e
             | `Noop -> "Unknown error"
             | _ -> "Other error");
@@ -173,7 +174,7 @@ let handle_exit_proc t proc reason =
         | Ok () -> ()
         | Error err ->
             Printf.printf "[Scheduler] WARN: Failed to deregister I/O: %s\n%!"
-              (match err with 
+              (match err with
               | `Unix_error e -> Unix.error_message e
               | `Noop -> "Unknown error"
               | _ -> "Other error"));
@@ -195,9 +196,12 @@ let handle_run_proc t proc =
   let cont =
     match Proc_state.run ~reductions:100 ~perform (Process.cont proc) with
     | Some cont -> cont
-    | None -> 
-        Printf.printf "[Scheduler] ERROR: Proc_state.run returned None for process %s\n%!" pid_str;
-        Printf.printf "[Scheduler] This should never happen - investigating...\n%!";
+    | None ->
+        Printf.printf
+          "[Scheduler] ERROR: Proc_state.run returned None for process %s\n%!"
+          pid_str;
+        Printf.printf
+          "[Scheduler] This should never happen - investigating...\n%!";
         failwith "Proc_state.run returned None"
   in
   Process.set_cont proc cont;
@@ -208,9 +212,9 @@ let handle_run_proc t proc =
       add_to_run_queue t proc
   | Proc_state.Finished (Error exn) ->
       (* Always print exception details, not just when tracing is enabled *)
-      Printf.printf "[Scheduler] Process %s finished with exception: %s\n%!" pid_str
-        (Printexc.to_string exn);
-      Printf.printf "[Scheduler] Backtrace:\n%s\n%!" 
+      Printf.printf "[Scheduler] Process %s finished with exception: %s\n%!"
+        pid_str (Printexc.to_string exn);
+      Printf.printf "[Scheduler] Backtrace:\n%s\n%!"
         (Printexc.raw_backtrace_to_string (Printexc.get_raw_backtrace ()));
       Trace.trace "Process %s finished with exception: %s" pid_str
         (Printexc.to_string exn);
@@ -244,11 +248,12 @@ let step_process t proc =
 
 let poll_io t =
   Trace.trace "Polling for I/O events";
-  let events = match Gluon.Poll.poll t.io_poll with
+  let events =
+    match Gluon.Poll.poll t.io_poll with
     | Ok events -> events
     | Error err ->
         Printf.printf "[Scheduler] ERROR: Failed to poll I/O: %s\n%!"
-          (match err with 
+          (match err with
           | `Unix_error e -> Unix.error_message e
           | `Noop -> "Unknown error"
           | _ -> "Other error");
@@ -264,9 +269,11 @@ let poll_io t =
           (match Gluon.Poll.deregister t.io_poll source with
           | Ok () -> ()
           | Error err ->
-              Printf.printf "[Scheduler] WARN: Failed to deregister I/O for process %s: %s\n%!"
+              Printf.printf
+                "[Scheduler] WARN: Failed to deregister I/O for process %s: %s\n\
+                 %!"
                 (Pid.to_string (Process.pid proc))
-                (match err with 
+                (match err with
                 | `Unix_error e -> Unix.error_message e
                 | `Noop -> "Unknown error"
                 | _ -> "Other error"));

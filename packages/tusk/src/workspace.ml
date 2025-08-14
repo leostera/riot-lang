@@ -104,28 +104,28 @@ let scan ~root =
 
 (** Tests submodule *)
 module Tests = struct
-  [@test]
   let test_scan_finds_workspace_toml () : (unit, string) result =
     (* Test that scan correctly locates workspace.toml *)
     Ok ()
-  
-  [@test]
+    [@test]
+
   let test_workspace_parses_member_packages () : (unit, string) result =
     (* Test that all members are discovered and parsed *)
     Ok ()
-  
-  [@test]
+    [@test]
+
   let test_package_dependencies_parsed_correctly () : (unit, string) result =
     (* Test that package dependencies are extracted from tusk.toml *)
     Ok ()
-  
-  [@test]
+    [@test]
+
   let test_relative_paths_computed_correctly () : (unit, string) result =
     (* Test that package relative paths are correct *)
     Ok ()
-  
-  [@test]
-  let test_single_package_mode_without_workspace_toml () : (unit, string) result =
+    [@test]
+
+  let test_single_package_mode_without_workspace_toml () : (unit, string) result
+      =
     (* Test that single tusk.toml without workspace.toml works *)
     Ok ()
-end
+end [@test]

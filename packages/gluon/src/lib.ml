@@ -36,7 +36,7 @@ module Libc = struct
   let ev_add = 0x1
   let ev_clear = 0x20
   let ev_delete = 0x2
-  let ev_eof =  0x8000
+  let ev_eof = 0x8000
   let ev_error = 0x4000
   let ev_receipt = 0x40
   let evfilt_read = -1
@@ -63,25 +63,24 @@ module Iovec = struct
     let curr = ref 0 in
     t |> Array.to_list
     |> List.filter_map (fun iov ->
-           if !curr + iov.len < pos then (
-             curr := !curr + iov.len;
-             None)
-           else
-             let next_curr = iov.len + !curr in
-             let diff = len - !curr in
-             if next_curr < len then (
-               curr := next_curr;
-               Some iov)
-             else if diff > 0 then (
-               curr := len;
-               Some { iov with len = diff })
-             else None)
+        if !curr + iov.len < pos then (
+          curr := !curr + iov.len;
+          None)
+        else
+          let next_curr = iov.len + !curr in
+          let diff = len - !curr in
+          if next_curr < len then (
+            curr := next_curr;
+            Some iov)
+          else if diff > 0 then (
+            curr := len;
+            Some { iov with len = diff })
+          else None)
     |> Array.of_list
 
   let length t = Array.fold_left (fun acc iov -> acc + (iov.len - iov.off)) 0 t
   let iter (t : t) fn = Array.iter fn t
   let of_bytes ba = [| { ba; off = 0; len = Bytes.length ba } |]
-
   let from_string str = of_bytes (Bytes.of_string str)
   let from_buffer buf = of_bytes (Buffer.to_bytes buf)
 
@@ -94,8 +93,8 @@ end
 module Token = struct
   type t
 
-  let unsafe_to_value (x: t) = Obj.magic x
-  let unsafe_to_int (t: t) : int = unsafe_to_value t
+  let unsafe_to_value (x : t) = Obj.magic x
+  let unsafe_to_int (t : t) : int = unsafe_to_value t
   let hash t = Int.hash (unsafe_to_int t)
 
   let equal ?eq a b =
@@ -198,7 +197,8 @@ module Adapter = struct
     external gluon_unix_fcntl : Fd.t -> cmd:int -> arg:int -> int
       = "gluon_unix_fcntl"
 
-    let fcntl fd cmd arg = syscall @@ fun () -> Ok (gluon_unix_fcntl fd ~cmd ~arg)
+    let fcntl fd cmd arg =
+      syscall @@ fun () -> Ok (gluon_unix_fcntl fd ~cmd ~arg)
 
     external gluon_unix_kevent_register :
       kqueue -> event array -> int array -> unit = "gluon_unix_kevent_register"
@@ -245,14 +245,14 @@ module Adapter = struct
       let changes = ref [] in
 
       (if Interest.is_writable interest then
-        (* log "%a registering writeable interest for %a\r\n%!" Token.pp tok Fd.pp fd; *)
-        let kevent = Kevent.make fd ~filter:Libc.evfilt_write ~flags ~token in
-        changes := kevent :: !changes);
+         (* log "%a registering writeable interest for %a\r\n%!" Token.pp tok Fd.pp fd; *)
+         let kevent = Kevent.make fd ~filter:Libc.evfilt_write ~flags ~token in
+         changes := kevent :: !changes);
 
       (if Interest.is_readable interest then
-        (* log "%a registering readable interest for %a\r\n%!" Token.pp tok Fd.pp fd; *)
-        let kevent = Kevent.make fd ~filter:Libc.evfilt_read ~flags ~token in
-        changes := kevent :: !changes);
+         (* log "%a registering readable interest for %a\r\n%!" Token.pp tok Fd.pp fd; *)
+         let kevent = Kevent.make fd ~filter:Libc.evfilt_read ~flags ~token in
+         changes := kevent :: !changes);
 
       let changes = Array.of_list !changes in
       (* log "%a registering %a\r\n%!" Token.pp tok Fd.pp fd; *)
@@ -274,8 +274,8 @@ module Adapter = struct
 
       let changes =
         [|
-        Kevent.make fd ~filter:Libc.evfilt_write ~flags:write_flags ~token;
-        Kevent.make fd ~filter:Libc.evfilt_read ~flags:read_flags ~token;
+          Kevent.make fd ~filter:Libc.evfilt_write ~flags:write_flags ~token;
+          Kevent.make fd ~filter:Libc.evfilt_read ~flags:read_flags ~token;
         |]
       in
 
@@ -286,8 +286,8 @@ module Adapter = struct
       let flags = Libc.(ev_delete lor ev_receipt) in
       let changes =
         [|
-        Kevent.make fd ~filter:Libc.evfilt_write ~flags ~token:0;
-        Kevent.make fd ~filter:Libc.evfilt_read ~flags ~token:0;
+          Kevent.make fd ~filter:Libc.evfilt_write ~flags ~token:0;
+          Kevent.make fd ~filter:Libc.evfilt_read ~flags ~token:0;
         |]
       in
       (* log "deregistering %a\r\n%!" Fd.pp fd; *)
@@ -298,75 +298,80 @@ module Adapter = struct
 end
 
 module Source = struct
+  module type Intf = sig
+    type t
 
-module type Intf = sig
-  type t
+    val deregister : t -> Adapter.Selector.t -> (unit, [> `Noop ]) io_result
 
-  val deregister : t -> Adapter.Selector.t -> (unit, [> `Noop ]) io_result
+    val register :
+      t ->
+      Adapter.Selector.t ->
+      Token.t ->
+      Interest.t ->
+      (unit, [> `Noop ]) io_result
 
-  val register :
-    t -> Adapter.Selector.t -> Token.t -> Interest.t -> (unit, [> `Noop ]) io_result
+    val reregister :
+      t ->
+      Adapter.Selector.t ->
+      Token.t ->
+      Interest.t ->
+      (unit, [> `Noop ]) io_result
+  end
 
-  val reregister :
-    t -> Adapter.Selector.t -> Token.t -> Interest.t -> (unit, [> `Noop ]) io_result
+  type t = S : ((module Intf with type t = 'state) * 'state) -> t
+
+  let make src state = S (src, state)
+  let register (S ((module Src), state)) = Src.register state
+  let reregister (S ((module Src), state)) = Src.reregister state
+  let deregister (S ((module Src), state)) = Src.deregister state
 end
-
-type t = S : ((module Intf with type t = 'state) * 'state) -> t
-
-let make src state = S (src, state)
-let register (S ((module Src), state)) = Src.register state
-let reregister (S ((module Src), state)) = Src.reregister state
-let deregister (S ((module Src), state)) = Src.deregister state
-end
-
 
 module File = struct
+  type t = Fd.t
 
-type t = Fd.t
+  let pp = Fd.pp
+  let close = Fd.close
 
-let pp = Fd.pp
-let close = Fd.close
+  let read fd ?(pos = 0) ?len buf =
+    let len = Option.value len ~default:(Bytes.length buf - 1) in
+    syscall @@ fun () -> Ok (UnixLabels.read fd ~buf ~pos ~len)
 
-let read fd ?(pos = 0) ?len buf =
-  let len = Option.value len ~default:(Bytes.length buf - 1) in
-  syscall @@ fun () -> Ok (UnixLabels.read fd ~buf ~pos ~len)
+  let write fd ?(pos = 0) ?len buf =
+    let len = Option.value len ~default:(Bytes.length buf - 1) in
+    syscall @@ fun () -> Ok (UnixLabels.write fd ~buf ~pos ~len)
 
-let write fd ?(pos = 0) ?len buf =
-  let len = Option.value len ~default:(Bytes.length buf - 1) in
-  syscall @@ fun () -> Ok (UnixLabels.write fd ~buf ~pos ~len)
+  external gluon_readv : Unix.file_descr -> Iovec.t -> int = "gluon_unix_readv"
 
-external gluon_readv : Unix.file_descr -> Iovec.t -> int = "gluon_unix_readv"
+  let read_vectored fd iov = syscall @@ fun () -> Ok (gluon_readv fd iov)
 
-let read_vectored fd iov = syscall @@ fun () -> Ok (gluon_readv fd iov)
+  external gluon_writev : Unix.file_descr -> Iovec.t -> int
+    = "gluon_unix_writev"
 
-external gluon_writev : Unix.file_descr -> Iovec.t -> int = "gluon_unix_writev"
+  let write_vectored fd iov = syscall @@ fun () -> Ok (gluon_writev fd iov)
 
-let write_vectored fd iov = syscall @@ fun () -> Ok (gluon_writev fd iov)
+  external gluon_sendfile :
+    Unix.file_descr -> Unix.file_descr -> int -> int -> int
+    = "gluon_unix_sendfile"
 
-external gluon_sendfile :
-  Unix.file_descr -> Unix.file_descr -> int -> int -> int
-  = "gluon_unix_sendfile"
+  let sendfile fd ~file ~off ~len =
+    syscall @@ fun () -> Ok (gluon_sendfile file fd off len)
 
-let sendfile fd ~file ~off ~len =
-  syscall @@ fun () -> Ok (gluon_sendfile file fd off len)
+  let to_source t =
+    let module Src = struct
+      type nonrec t = t
 
-let to_source t =
-  let module Src = struct
-    type nonrec t = t
+      let register t selector token interest =
+        Adapter.Selector.register selector ~fd:t ~token ~interest
 
-    let register t selector token interest =
-      Adapter.Selector.register selector ~fd:t ~token ~interest
+      let reregister t selector token interest =
+        Adapter.Selector.reregister selector ~fd:t ~token ~interest
 
-    let reregister t selector token interest =
-      Adapter.Selector.reregister selector ~fd:t ~token ~interest
-
-    let deregister t selector = Adapter.Selector.deregister selector ~fd:t
-  end in
-  Source.make (module Src) t
+      let deregister t selector = Adapter.Selector.deregister selector ~fd:t
+    end in
+    Source.make (module Src) t
 end
 
 module Net = struct
-
   module Addr = struct
     type 't raw_addr = string
     type tcp_addr = [ `v4 | `v6 ] raw_addr
@@ -386,7 +391,7 @@ module Net = struct
     let to_unix addr =
       match addr with
       | `Tcp (host, port) ->
-        (Unix.SOCK_STREAM, Unix.ADDR_INET (Ipaddr.to_unix host, port))
+          (Unix.SOCK_STREAM, Unix.ADDR_INET (Ipaddr.to_unix host, port))
 
     let to_domain addr = match addr with `Tcp (_host, _) -> Unix.PF_INET
 
@@ -396,15 +401,16 @@ module Net = struct
       | Unix.ADDR_UNIX addr -> failwith ("unsupported unix addresses: " ^ addr)
 
     let pp ppf (addr : stream_addr) =
-      match addr with `Tcp (host, port) -> Format.fprintf ppf "%s:%d" host port
+      match addr with
+      | `Tcp (host, port) -> Format.fprintf ppf "%s:%d" host port
 
     let to_string t = t
 
     let of_addr_info Unix.{ ai_family; ai_addr; ai_socktype; ai_protocol; _ } =
       match (ai_family, ai_socktype, ai_addr) with
       | ( (Unix.PF_INET | Unix.PF_INET6),
-        (Unix.SOCK_DGRAM | Unix.SOCK_STREAM),
-        Unix.ADDR_INET (addr, port) ) -> (
+          (Unix.SOCK_DGRAM | Unix.SOCK_STREAM),
+          Unix.ADDR_INET (addr, port) ) -> (
           match ai_protocol with
           | 6 -> Some (tcp (Unix.string_of_inet_addr addr) port)
           | _ -> None)
@@ -415,7 +421,7 @@ module Net = struct
       let info = Unix.getaddrinfo host service [] in
       Ok (List.filter_map of_addr_info info)
 
-    let of_host_and_port ~host ~port = 
+    let of_host_and_port ~host ~port =
       match get_info host (Int.to_string port) with
       | Ok (ip :: _) -> Ok ip
       | Ok [] -> Error `No_info
@@ -481,7 +487,6 @@ module Net = struct
   end
 
   module TcpStream = struct
-
     type t = Socket.stream_socket
 
     let pp = Socket.pp
@@ -505,7 +510,8 @@ module Net = struct
       let len = Option.value len ~default:(Bytes.length buf - 1) in
       syscall @@ fun () -> Ok (UnixLabels.write fd ~buf ~pos ~len)
 
-    external gluon_readv : Unix.file_descr -> Iovec.t -> int = "gluon_unix_readv"
+    external gluon_readv : Unix.file_descr -> Iovec.t -> int
+      = "gluon_unix_readv"
 
     let read_vectored fd iov = syscall @@ fun () -> Ok (gluon_readv fd iov)
 
@@ -538,7 +544,6 @@ module Net = struct
 end
 
 module Poll = struct
-
   type t = { selector : Adapter.Selector.t }
 
   let make () =
@@ -555,5 +560,5 @@ module Poll = struct
     Source.reregister source t.selector token interests
 
   let deregister (t : t) source = Source.deregister source t.selector
-end 
+end
 (* Test change *)

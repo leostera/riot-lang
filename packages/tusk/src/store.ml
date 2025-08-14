@@ -1,17 +1,13 @@
 (** Store - Content-addressable storage for build artifacts **)
 
-type artifact = {
-  hash : Hasher.hash;
-  files : string list;
-}
-
-type t = {
-  root_dir : string; (* Root directory for the store *)
-}
+type artifact = { hash : Hasher.hash; files : string list }
+type t = { root_dir : string (* Root directory for the store *) }
 
 (** Create a new store at the given root directory *)
-let create ~root_dir = 
-  let store_dir = Filename.concat (Filename.concat root_dir "target/debug") "cache" in
+let create ~root_dir =
+  let store_dir =
+    Filename.concat (Filename.concat root_dir "target/debug") "cache"
+  in
   (* Create store directory if it doesn't exist *)
   System.mkdirp store_dir;
   { root_dir = store_dir }
@@ -29,69 +25,74 @@ let exists store hash =
 let list_artifacts store hash =
   let hash_dir = get_hash_dir store hash in
   if System.file_exists hash_dir then
-    try
-      Array.to_list (Sys.readdir hash_dir)
-    with _ -> []
+    try Array.to_list (Sys.readdir hash_dir) with _ -> []
   else []
 
 (** Promote artifacts from store to target directory *)
 let promote_from_store store hash target_dir =
   let hash_dir = get_hash_dir store hash in
   if System.file_exists hash_dir then (
-    Printf.printf "[Store] Promoting artifacts from cache: %s\n" (Hasher.to_string hash);
+    Printf.printf "[Store] Promoting artifacts from cache: %s\n"
+      (Hasher.to_string hash);
     flush stdout;
-    
+
     (* Ensure target directory exists *)
     System.mkdirp target_dir;
-    
+
     (* Copy all files from hash directory to target *)
     let files = Array.to_list (Sys.readdir hash_dir) in
-    List.iter (fun file ->
-      let src = Filename.concat hash_dir file in
-      let dst = Filename.concat target_dir file in
-      
-      (* Only copy if it's a file, not directory *)
-      if not (Sys.is_directory src) then (
-        System.copy_file src dst;
-        Printf.printf "[Store]   -> Promoted %s\n" file;
-        flush stdout
-      )
-    ) files;
-    true
-  ) else false
+    List.iter
+      (fun file ->
+        let src = Filename.concat hash_dir file in
+        let dst = Filename.concat target_dir file in
+
+        (* Only copy if it's a file, not directory *)
+        if not (Sys.is_directory src) then (
+          System.copy_file src dst;
+          Printf.printf "[Store]   -> Promoted %s\n" file;
+          flush stdout))
+      files;
+    true)
+  else false
 
 (** Store artifacts from sandbox to content-addressable store *)
 let store_artifacts store hash sandbox_dir declared_outputs =
   let hash_dir = get_hash_dir store hash in
-  
+
   (* Create hash directory (including parent directories) *)
   System.mkdirp hash_dir;
-  
-  Printf.printf "[Store] Storing artifacts with hash: %s\n" (Hasher.to_string hash);
+
+  Printf.printf "[Store] Storing artifacts with hash: %s\n"
+    (Hasher.to_string hash);
   flush stdout;
-  
+
   (* Copy declared outputs to store and track what was actually stored *)
-  let stored_files = List.fold_left (fun acc output_file ->
-    let src = Filename.concat sandbox_dir output_file in
-    if System.file_exists src then (
-      let dst = Filename.concat hash_dir output_file in
-      System.copy_file src dst;
-      Printf.printf "[Store]   -> Stored %s\n" output_file;
-      flush stdout;
-      output_file :: acc
-    ) else (
-      Printf.printf "[Store]   -> Warning: Output %s not found in sandbox\n" output_file;
-      flush stdout;
-      acc
-    )
-  ) [] declared_outputs in
-  
+  let stored_files =
+    List.fold_left
+      (fun acc output_file ->
+        let src = Filename.concat sandbox_dir output_file in
+        if System.file_exists src then (
+          let dst = Filename.concat hash_dir output_file in
+          System.copy_file src dst;
+          Printf.printf "[Store]   -> Stored %s\n" output_file;
+          flush stdout;
+          output_file :: acc)
+        else (
+          Printf.printf "[Store]   -> Warning: Output %s not found in sandbox\n"
+            output_file;
+          flush stdout;
+          acc))
+      [] declared_outputs
+  in
+
   (* Return artifact witness *)
   { hash; files = List.rev stored_files }
 
 (** Clean up old artifacts (for future use) *)
 let gc_store store ~keep_recent_days =
-  Printf.printf "[Store] TODO: Implement garbage collection (keep recent %d days)\n" keep_recent_days;
+  Printf.printf
+    "[Store] TODO: Implement garbage collection (keep recent %d days)\n"
+    keep_recent_days;
   flush stdout
 
 (** Get store statistics *)
@@ -100,45 +101,48 @@ let get_stats store =
     if System.file_exists dir then
       try
         let subdirs = Array.to_list (Sys.readdir dir) in
-        List.fold_left (fun acc subdir ->
-          let subdir_path = Filename.concat dir subdir in
-          if Sys.is_directory subdir_path then
-            acc + Array.length (Sys.readdir subdir_path)
-          else acc
-        ) 0 subdirs
+        List.fold_left
+          (fun acc subdir ->
+            let subdir_path = Filename.concat dir subdir in
+            if Sys.is_directory subdir_path then
+              acc + Array.length (Sys.readdir subdir_path)
+            else acc)
+          0 subdirs
       with _ -> 0
     else 0
   in
-  
+
   let total_artifacts = count_files store.root_dir in
-  Printf.printf "[Store] Store statistics: %d cached artifacts\n" total_artifacts;
+  Printf.printf "[Store] Store statistics: %d cached artifacts\n"
+    total_artifacts;
   flush stdout;
   total_artifacts
 
 (** Tests submodule *)
 module Tests = struct
-  [@test]
   let test_store_saves_and_retrieves_artifacts () : (unit, string) result =
     (* Test that artifacts can be saved and retrieved by hash *)
     Ok ()
-  
-  [@test]
+    [@test]
+
   let test_store_handles_concurrent_access () : (unit, string) result =
     (* Test that multiple processes can safely access store *)
     Ok ()
-  
-  [@test]
-  let test_exists_correctly_checks_artifact_presence () : (unit, string) result =
+    [@test]
+
+  let test_exists_correctly_checks_artifact_presence () : (unit, string) result
+      =
     (* Test that exists returns true only for saved artifacts *)
     Ok ()
-  
-  [@test]
+    [@test]
+
   let test_store_preserves_file_permissions () : (unit, string) result =
     (* Test that saved artifacts maintain correct permissions *)
     Ok ()
-  
-  [@test]
-  let test_store_creates_hash_based_directory_structure () : (unit, string) result =
+    [@test]
+
+  let test_store_creates_hash_based_directory_structure () :
+      (unit, string) result =
     (* Test that artifacts are organized by hash prefix *)
     Ok ()
-end
+end [@test]

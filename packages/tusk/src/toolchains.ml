@@ -1,6 +1,7 @@
 (** Toolchain management for tusk build system *)
 
 type toolchain = { version : string (* TODO: Add more fields as needed *) }
+
 let default_ocaml_version = "5.3.0"
 let default_toolchain = { version = default_ocaml_version }
 
@@ -38,9 +39,10 @@ let default_toolchain = { version = default_ocaml_version }
    - Support cross-compilation toolchains
 *)
 
-
 let toolchain_base_dir = Filename.concat (System.get_home ()) ".tusk/toolchains"
-let get_toolchain_path toolchain = Filename.concat toolchain_base_dir toolchain.version
+
+let get_toolchain_path toolchain =
+  Filename.concat toolchain_base_dir toolchain.version
 
 let ocamlc_path toolchain =
   Filename.concat (get_toolchain_path toolchain) "bin/ocamlc"
@@ -68,7 +70,6 @@ let parse_toolchain_file path =
   with _ ->
     (* Default to stable version if file doesn't exist or can't be parsed *)
     default_toolchain
-    
 
 (** Check if a toolchain is installed *)
 let is_toolchain_installed toolchain =
@@ -165,7 +166,8 @@ let install_dev_tools version =
     Printf.printf "Development tools already installed for toolchain %s\n%!"
       version.version
   else (
-    Printf.printf "Installing development tools for toolchain %s...\n%!" version.version;
+    Printf.printf "Installing development tools for toolchain %s...\n%!"
+      version.version;
 
     (* Determine host triplet *)
     let host_triplet =
@@ -208,7 +210,8 @@ let install_dev_tools version =
     in
 
     let tools_archive =
-      Filename.concat "/tmp" (Printf.sprintf "ocaml-platform-%s.tar.gz" version.version)
+      Filename.concat "/tmp"
+        (Printf.sprintf "ocaml-platform-%s.tar.gz" version.version)
     in
 
     Printf.printf "Downloading pre-built tools from %s...\n%!" tools_url;
@@ -292,7 +295,9 @@ let install_toolchain version =
 (** Ready toolchains for a workspace *)
 let ready_toolchains workspace =
   (* Look for ocaml-toolchain.toml in workspace root *)
-  let toolchain_file = Filename.concat workspace.Workspace.root "ocaml-toolchain.toml" in
+  let toolchain_file =
+    Filename.concat workspace.Workspace.root "ocaml-toolchain.toml"
+  in
   let toolchain =
     if System.file_exists toolchain_file then
       parse_toolchain_file toolchain_file
@@ -348,28 +353,28 @@ let list_installed_toolchains () =
 
 (** Tests submodule *)
 module Tests = struct
-  [@test]
   let test_default_toolchain_uses_latest_version () : (unit, string) result =
     (* Test that default() returns the latest available toolchain *)
     Ok ()
-  
-  [@test]
+    [@test]
+
   let test_ocamlc_path_points_to_valid_compiler () : (unit, string) result =
     (* Test that ocamlc_path returns executable path *)
     Ok ()
-  
-  [@test]
+    [@test]
+
   let test_ocamldep_path_points_to_valid_tool () : (unit, string) result =
     (* Test that ocamldep_path returns executable path *)
     Ok ()
-  
-  [@test]
-  let test_list_available_finds_installed_toolchains () : (unit, string) result =
+    [@test]
+
+  let test_list_available_finds_installed_toolchains () : (unit, string) result
+      =
     (* Test that list_available discovers all toolchains *)
     Ok ()
-  
-  [@test]
+    [@test]
+
   let test_get_version_returns_semantic_version () : (unit, string) result =
     (* Test that get_version returns proper version string *)
     Ok ()
-end
+end [@test]

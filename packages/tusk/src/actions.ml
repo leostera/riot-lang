@@ -35,10 +35,7 @@ type dep_info = {
   dependencies : string list; (* Names of this dependency's dependencies *)
 }
 
-type resolved_dep = {
-  lib_file : string;
-  include_path : string;
-}
+type resolved_dep = { lib_file : string; include_path : string }
 
 type blueprint = {
   package_name : string;
@@ -55,69 +52,81 @@ type blueprint = {
 let action_to_string action =
   match action with
   | CompileInterface (src, dst, includes) ->
-      Printf.sprintf "compile_interface(%s,%s,[%s])" src dst (String.concat "," includes)
+      Printf.sprintf "compile_interface(%s,%s,[%s])" src dst
+        (String.concat "," includes)
   | CompileImplementation (src, dst, includes) ->
-      Printf.sprintf "compile_impl(%s,%s,[%s])" src dst (String.concat "," includes)  
-  | CompileC (src, dst) ->
-      Printf.sprintf "compile_c(%s,%s)" src dst
+      Printf.sprintf "compile_impl(%s,%s,[%s])" src dst
+        (String.concat "," includes)
+  | CompileC (src, dst) -> Printf.sprintf "compile_c(%s,%s)" src dst
   | CreateLibrary (lib, files, includes) ->
-      Printf.sprintf "create_library(%s,[%s],[%s])" lib (String.concat "," files) (String.concat "," includes)
+      Printf.sprintf "create_library(%s,[%s],[%s])" lib
+        (String.concat "," files)
+        (String.concat "," includes)
   | CreateExecutable (exe, files, libs, includes) ->
-      Printf.sprintf "create_exe(%s,[%s],[%s],[%s])" exe (String.concat "," files) (String.concat "," libs) (String.concat "," includes)
-  | CopyFile (src, dst) ->
-      Printf.sprintf "copy(%s,%s)" src dst
+      Printf.sprintf "create_exe(%s,[%s],[%s],[%s])" exe
+        (String.concat "," files) (String.concat "," libs)
+        (String.concat "," includes)
+  | CopyFile (src, dst) -> Printf.sprintf "copy(%s,%s)" src dst
   | DeclareOutputs outputs ->
       Printf.sprintf "declare_outputs([%s])" (String.concat "," outputs)
 
 (** Compute content-based hash for a blueprint *)
 let compute_blueprint_hash blueprint =
   let components = ref [] in
-  
+
   (* 1. Package metadata *)
   components := blueprint.package_name :: !components;
   components := Toolchains.get_version blueprint.toolchain :: !components;
-  
+
   (* 2. Dependencies (sorted by name for deterministic hash) *)
-  let sorted_deps = List.sort (fun a b -> String.compare a.name b.name) blueprint.dependencies in
-  List.iter (fun dep ->
-    components := (dep.name ^ ":" ^ dep.relative_path) :: !components;
-    components := String.concat "," dep.dependencies :: !components;
-  ) sorted_deps;
-  
+  let sorted_deps =
+    List.sort (fun a b -> String.compare a.name b.name) blueprint.dependencies
+  in
+  List.iter
+    (fun dep ->
+      components := (dep.name ^ ":" ^ dep.relative_path) :: !components;
+      components := String.concat "," dep.dependencies :: !components)
+    sorted_deps;
+
   (* 3. Source file content hashes *)
-  let src_dir = 
+  let src_dir =
     if System.file_exists (Filename.concat blueprint.package_path "src") then
       Filename.concat blueprint.package_path "src"
     else blueprint.package_path
   in
-  
-  if System.file_exists src_dir then (
-    let all_files = System.list_dir_all src_dir in
-    let source_files = List.filter (fun f -> 
-      String.ends_with ~suffix:".ml" f || 
-      String.ends_with ~suffix:".mli" f ||
-      String.ends_with ~suffix:".c" f
-    ) all_files in
-    let sorted_files = List.sort String.compare source_files in
-    List.iter (fun file ->
-      let full_path = Filename.concat src_dir file in
-      let file_hash = Hasher.hash_file full_path in
-      components := (file ^ ":" ^ Hasher.to_string file_hash) :: !components;
-    ) sorted_files;
-  );
-  
+
+  (if System.file_exists src_dir then
+     let all_files = System.list_dir_all src_dir in
+     let source_files =
+       List.filter
+         (fun f ->
+           String.ends_with ~suffix:".ml" f
+           || String.ends_with ~suffix:".mli" f
+           || String.ends_with ~suffix:".c" f)
+         all_files
+     in
+     let sorted_files = List.sort String.compare source_files in
+     List.iter
+       (fun file ->
+         let full_path = Filename.concat src_dir file in
+         let file_hash = Hasher.hash_file full_path in
+         components := (file ^ ":" ^ Hasher.to_string file_hash) :: !components)
+       sorted_files);
+
   (* 4. Actions (in order) *)
-  List.iter (fun action ->
-    components := action_to_string action :: !components;
-  ) blueprint.actions;
-  
+  List.iter
+    (fun action -> components := action_to_string action :: !components)
+    blueprint.actions;
+
   (* 5. Combine all components and hash *)
   let combined = String.concat "|" (List.rev !components) in
   let final_hash = Hasher.hash_string combined in
-  
-  Printf.printf "[Blueprint] Computed hash %s for %s\n" (Hasher.to_string final_hash) blueprint.package_name;
+
+  Printf.printf "[Blueprint] Computed hash %s for %s\n"
+    (Hasher.to_string final_hash)
+    blueprint.package_name;
   flush stdout;
-  
+
   final_hash
 
 (** Pretty print an action *)
@@ -178,25 +187,29 @@ let resolve_dependency toolchain dep_name =
 let get_dependency_libs_and_includes toolchain pkg_dependencies =
   let libs = ref [] in
   let includes = ref [] in
-  List.iter (fun dep_name ->
-    match resolve_dependency toolchain dep_name with
-    | Some resolved ->
-        libs := resolved.lib_file :: !libs;
-        includes := resolved.include_path :: !includes
-    | None -> ()
-  ) pkg_dependencies;
+  List.iter
+    (fun dep_name ->
+      match resolve_dependency toolchain dep_name with
+      | Some resolved ->
+          libs := resolved.lib_file :: !libs;
+          includes := resolved.include_path :: !includes
+      | None -> ())
+    pkg_dependencies;
   (List.rev !libs, List.rev !includes)
 
 (** Generate build blueprint for a package *)
-let generate_blueprint workspace node dependencies all_packages toolchain ~hash () =
+let generate_blueprint workspace node dependencies all_packages toolchain ~hash
+    () =
   let root = workspace.Workspace.root in
   let pkg_name = node.Build_node.package.name in
   let pkg_path = node.Build_node.package.path in
-  
+
   (* Get external dependencies from tusk.toml *)
   let pkg_dependencies = node.Build_node.package.dependencies in
-  let external_libs, external_includes = get_dependency_libs_and_includes toolchain pkg_dependencies in
-  
+  let external_libs, external_includes =
+    get_dependency_libs_and_includes toolchain pkg_dependencies
+  in
+
   (* Get dependency include paths from local packages *)
   let local_dep_includes =
     List.fold_left
@@ -212,7 +225,7 @@ let generate_blueprint workspace node dependencies all_packages toolchain ~hash 
         if System.file_exists dep_target then dep_target :: acc else acc)
       [] dependencies
   in
-  
+
   (* Combine all include paths for compilation *)
   let dep_includes = external_includes @ local_dep_includes in
 
@@ -248,10 +261,12 @@ let generate_blueprint workspace node dependencies all_packages toolchain ~hash 
       (* Separate lib.ml/lib.mli from other files - they should always be compiled last *)
       let has_lib_ml = List.mem "lib.ml" ml_files in
       let has_lib_mli = List.mem "lib.mli" mli_files in
-      
+
       let ml_files_for_sort = List.filter (fun f -> f <> "lib.ml") ml_files in
-      let mli_files_for_sort = List.filter (fun f -> f <> "lib.mli") mli_files in
-      
+      let mli_files_for_sort =
+        List.filter (fun f -> f <> "lib.mli") mli_files
+      in
+
       (* Create temp file with all source files except lib.ml/lib.mli *)
       let all_source_files =
         List.map (fun f -> Filename.concat src_dir f) ml_files_for_sort
@@ -269,8 +284,8 @@ let generate_blueprint workspace node dependencies all_packages toolchain ~hash 
       let cmd =
         if files_str = "" then ""
         else
-          Printf.sprintf "%s %s -sort %s 2>/dev/null" ocamldep
-            include_flags files_str
+          Printf.sprintf "%s %s -sort %s 2>/dev/null" ocamldep include_flags
+            files_str
       in
 
       let sorted_paths =
@@ -300,8 +315,12 @@ let generate_blueprint workspace node dependencies all_packages toolchain ~hash 
       in
 
       (* Add lib.ml and lib.mli back at the end *)
-      let final_mli = if has_lib_mli then sorted_mli @ ["lib.mli"] else sorted_mli in
-      let final_ml = if has_lib_ml then sorted_ml @ ["lib.ml"] else sorted_ml in
+      let final_mli =
+        if has_lib_mli then sorted_mli @ [ "lib.mli" ] else sorted_mli
+      in
+      let final_ml =
+        if has_lib_ml then sorted_ml @ [ "lib.ml" ] else sorted_ml
+      in
 
       Printf.printf "[Blueprint] After sorting=%s\n"
         (String.concat ", " final_ml);
@@ -436,11 +455,13 @@ let generate_blueprint workspace node dependencies all_packages toolchain ~hash 
      in
 
      (* Get external dependencies from tusk.toml (already computed earlier) *)
-     let external_libs, _external_includes_again = get_dependency_libs_and_includes toolchain pkg_dependencies in
-     
+     let external_libs, _external_includes_again =
+       get_dependency_libs_and_includes toolchain pkg_dependencies
+     in
+
      (* Combine all libraries *)
      let all_libs = external_libs @ local_dep_libs in
-     
+
      (* Combine all include paths *)
      let all_includes = external_includes @ dep_includes in
 
@@ -471,15 +492,18 @@ let generate_blueprint workspace node dependencies all_packages toolchain ~hash 
 
   let actions = List.rev !actions in
 
-  let blueprint = {
-    package_name = pkg_name;
-    package_path = pkg_path;
-    dependencies;
-    actions;
-    toolchain;
-    hash = None; (* Will be computed after blueprint creation *)
-  } in
-  
+  let blueprint =
+    {
+      package_name = pkg_name;
+      package_path = pkg_path;
+      dependencies;
+      actions;
+      toolchain;
+      hash = None;
+      (* Will be computed after blueprint creation *)
+    }
+  in
+
   (* Use the provided hash *)
   { blueprint with hash = Some hash }
 
@@ -490,27 +514,22 @@ let execute_action action toolchain =
     | Ocamlc.Success output -> (Success, output)
     | Ocamlc.Failed output -> (Failed output, output)
   in
-  
+
   match action with
   | CompileInterface (src, dst, includes) ->
       Ocamlc.compile_interface ~toolchain ~includes ~output:dst src
       |> convert_result
-      
   | CompileImplementation (src, dst, includes) ->
-      Ocamlc.compile_impl ~toolchain ~includes ~output:dst src
-      |> convert_result
-      
+      Ocamlc.compile_impl ~toolchain ~includes ~output:dst src |> convert_result
   | CompileC (src, dst) ->
-      Ocamlc.compile_c ~toolchain ~includes:[] ~output:dst src
-      |> convert_result
-      
+      Ocamlc.compile_c ~toolchain ~includes:[] ~output:dst src |> convert_result
   | CreateLibrary (lib, object_files, includes) ->
       Ocamlc.create_library ~toolchain ~includes ~output:lib object_files
       |> convert_result
-      
   | CreateExecutable (exe, object_files, libs, includes) ->
       (* Use custom executable for C stubs *)
-      Ocamlc.create_custom_executable ~toolchain ~includes ~output:exe ~libs object_files
+      Ocamlc.create_custom_executable ~toolchain ~includes ~output:exe ~libs
+        object_files
       |> convert_result
   | CopyFile (src, dst) -> (
       try
@@ -559,48 +578,47 @@ let execute_blueprint workspace blueprint =
 
 (** Tests submodule *)
 module Tests = struct
-  [@test]
-  let test_generate_blueprint_creates_correct_compilation_order () = 
+  let test_generate_blueprint_creates_correct_compilation_order () =
     (* Test that ocamldep integration produces correct build order *)
     Ok ()
-  
-  [@test]
+    [@test]
+
   let test_generate_blueprint_handles_lib_ml_renaming () =
     (* Test that lib.ml gets renamed to package_name.ml *)
     Ok ()
-  
-  [@test]
+    [@test]
+
   let test_generate_blueprint_creates_library_for_non_main_packages () =
     (* Test that packages without main.ml create .cma libraries *)
     Ok ()
-  
-  [@test]
+    [@test]
+
   let test_generate_blueprint_creates_executable_for_main_packages () =
     (* Test that packages with main.ml create executables *)
     Ok ()
-  
-  [@test]
+    [@test]
+
   let test_compute_blueprint_hash_is_deterministic () =
     (* Test that same inputs always produce same hash *)
     Ok ()
-  
-  [@test]
+    [@test]
+
   let test_compute_blueprint_hash_changes_with_source_changes () =
     (* Test that hash changes when source files change *)
     Ok ()
-  
-  [@test]
+    [@test]
+
   let test_execute_blueprint_runs_actions_in_order () =
     (* Test that actions execute in the correct sequence *)
     Ok ()
-  
-  [@test]
+    [@test]
+
   let test_execute_blueprint_stops_on_first_failure () =
     (* Test that execution halts when an action fails *)
     Ok ()
-  
-  [@test]
+    [@test]
+
   let test_resolve_transitive_dependencies () =
     (* Test that all transitive dependencies are collected in correct order *)
     Ok ()
-end
+end [@test]

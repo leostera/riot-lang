@@ -13,7 +13,9 @@ let create workspace toolchain =
   (* First pass: create all nodes *)
   List.iter
     (fun package ->
-      let node = { package; toolchain; dependencies = []; dependents = []; hash = None } in
+      let node =
+        { package; toolchain; dependencies = []; dependents = []; hash = None }
+      in
       Hashtbl.add nodes package.Workspace.name node)
     workspace.Workspace.packages;
 
@@ -167,70 +169,81 @@ let filter_for_package graph target_pkg_name =
 let compute_node_hash toolchain node =
   Printf.printf "[BuildGraph] Computing hash for %s...\n" node.package.name;
   let components = ref [] in
-  
+
   (* 1. Package metadata *)
   components := node.package.name :: !components;
   components := Toolchains.get_version toolchain :: !components;
-  Printf.printf "  - Package: %s, Toolchain: %s\n" node.package.name (Toolchains.get_version toolchain);
-  
+  Printf.printf "  - Package: %s, Toolchain: %s\n" node.package.name
+    (Toolchains.get_version toolchain);
+
   (* 2. Dependency hashes (sorted by name for deterministic hash) *)
-  let sorted_deps = List.sort (fun a b -> String.compare a.package.name b.package.name) node.dependencies in
-  List.iter (fun dep ->
-    components := (dep.package.name ^ ":" ^ dep.package.relative_path) :: !components;
-    components := String.concat "," dep.package.dependencies :: !components;
-    
-    (* Include dependency hash if already computed *)
-    (match dep.hash with
-    | Some dep_hash -> 
-        let hash_str = Hasher.to_string dep_hash in
-        components := ("dep_hash:" ^ hash_str) :: !components;
-        Printf.printf "  - Dependency %s hash: %s\n" dep.package.name hash_str
-    | None -> 
-        components := "dep_hash:pending" :: !components;
-        Printf.printf "  - Dependency %s hash: pending\n" dep.package.name);
-  ) sorted_deps;
-  
+  let sorted_deps =
+    List.sort
+      (fun a b -> String.compare a.package.name b.package.name)
+      node.dependencies
+  in
+  List.iter
+    (fun dep ->
+      components :=
+        (dep.package.name ^ ":" ^ dep.package.relative_path) :: !components;
+      components := String.concat "," dep.package.dependencies :: !components;
+
+      (* Include dependency hash if already computed *)
+      match dep.hash with
+      | Some dep_hash ->
+          let hash_str = Hasher.to_string dep_hash in
+          components := ("dep_hash:" ^ hash_str) :: !components;
+          Printf.printf "  - Dependency %s hash: %s\n" dep.package.name hash_str
+      | None ->
+          components := "dep_hash:pending" :: !components;
+          Printf.printf "  - Dependency %s hash: pending\n" dep.package.name)
+    sorted_deps;
+
   (* 3. Source file content hashes *)
-  let src_dir = 
+  let src_dir =
     if System.file_exists (Filename.concat node.package.path "src") then
       Filename.concat node.package.path "src"
     else node.package.path
   in
-  
+
   Printf.printf "  - Source directory: %s\n" src_dir;
   if System.file_exists src_dir then (
     let all_files = System.list_dir_all src_dir in
-    let source_files = List.filter (fun f -> 
-      String.ends_with ~suffix:".ml" f || 
-      String.ends_with ~suffix:".mli" f ||
-      String.ends_with ~suffix:".c" f
-    ) all_files in
+    let source_files =
+      List.filter
+        (fun f ->
+          String.ends_with ~suffix:".ml" f
+          || String.ends_with ~suffix:".mli" f
+          || String.ends_with ~suffix:".c" f)
+        all_files
+    in
     let sorted_files = List.sort String.compare source_files in
     Printf.printf "  - Found %d source files\n" (List.length sorted_files);
-    List.iter (fun file ->
-      let full_path = Filename.concat src_dir file in
-      let file_hash = Hasher.hash_file full_path in
-      let hash_str = Hasher.to_string file_hash in
-      components := (file ^ ":" ^ hash_str) :: !components;
-      Printf.printf "    - %s: %s\n" file hash_str;
-    ) sorted_files;
-  ) else
-    Printf.printf "  - Source directory does not exist!\n";
-  
+    List.iter
+      (fun file ->
+        let full_path = Filename.concat src_dir file in
+        let file_hash = Hasher.hash_file full_path in
+        let hash_str = Hasher.to_string file_hash in
+        components := (file ^ ":" ^ hash_str) :: !components;
+        Printf.printf "    - %s: %s\n" file hash_str)
+      sorted_files)
+  else Printf.printf "  - Source directory does not exist!\n";
+
   (* 4. Actions placeholder - TODO: generate actions here if needed *)
   components := "actions:placeholder" :: !components;
-  
+
   (* 5. Combine all components and hash *)
   let combined = String.concat "|" (List.rev !components) in
   let final_hash = Hasher.hash_string combined in
-  
-  Printf.printf "  - Final hash for %s: %s\n" node.package.name (Hasher.to_string final_hash);
+
+  Printf.printf "  - Final hash for %s: %s\n" node.package.name
+    (Hasher.to_string final_hash);
   flush stdout;
-  
+
   final_hash
 
 (** Result type for hash computation *)
-type hash_result = 
+type hash_result =
   | Ok of Hasher.hash
   | MissingDependencies of Build_node.t list
   | Error of string
@@ -242,50 +255,53 @@ let recompute_node_hash toolchain node =
   (* Don't update the node's cached hash here - let the caller decide *)
   Ok hash
 
-(** Get hash for a node, checking if dependencies are available, computing hash if necessary using bottom-up traversal *)
+(** Get hash for a node, checking if dependencies are available, computing hash
+    if necessary using bottom-up traversal *)
 let rec get_node_hash toolchain node store =
   match node.hash with
-  | Some hash -> Ok hash  (* Already computed *)
+  | Some hash -> Ok hash (* Already computed *)
   | None ->
       (* First check if dependency artifacts are available *)
       let missing_deps = ref [] in
-      let deps_available = List.for_all (fun dep ->
-        match get_node_hash toolchain dep store with
-        | Ok dep_hash -> 
-            (* Check if this dependency's artifacts are available in store *)
-            if Store.exists store dep_hash then
-              true
-            else (
-              missing_deps := dep :: !missing_deps;
-              false
-            )
-        | MissingDependencies deps -> 
-            missing_deps := deps @ !missing_deps;
-            false
-        | Error _ -> 
-            missing_deps := dep :: !missing_deps;
-            false
-      ) node.dependencies in
-      
-      if not deps_available then
-        MissingDependencies (List.rev !missing_deps)
-      else (
+      let deps_available =
+        List.for_all
+          (fun dep ->
+            match get_node_hash toolchain dep store with
+            | Ok dep_hash ->
+                (* Check if this dependency's artifacts are available in store *)
+                if Store.exists store dep_hash then true
+                else (
+                  missing_deps := dep :: !missing_deps;
+                  false)
+            | MissingDependencies deps ->
+                missing_deps := deps @ !missing_deps;
+                false
+            | Error _ ->
+                missing_deps := dep :: !missing_deps;
+                false)
+          node.dependencies
+      in
+
+      if not deps_available then MissingDependencies (List.rev !missing_deps)
+      else
         (* All dependencies available, compute our hash *)
         let hash = compute_node_hash toolchain node in
         node.hash <- Some hash;
         Ok hash
-      )
 
 (** Compute hashes for all nodes in the graph *)
 let compute_all_hashes toolchain graph store =
   (* Use topological sort to ensure dependencies are processed first *)
   let sorted = topological_sort graph in
-  List.iter (fun node ->
-    match get_node_hash toolchain node store with
-    | Ok _ -> ()
-    | MissingDependencies _ -> () (* Dependencies not ready, skip for now *)
-    | Error msg -> Printf.printf "[BuildGraph] Error computing hash for %s: %s\n" node.package.name msg
-  ) sorted
+  List.iter
+    (fun node ->
+      match get_node_hash toolchain node store with
+      | Ok _ -> ()
+      | MissingDependencies _ -> () (* Dependencies not ready, skip for now *)
+      | Error msg ->
+          Printf.printf "[BuildGraph] Error computing hash for %s: %s\n"
+            node.package.name msg)
+    sorted
 
 (** Clear all cached hashes (useful for testing or when source files change) *)
 let clear_hashes graph =
@@ -293,43 +309,48 @@ let clear_hashes graph =
 
 (** Tests submodule *)
 module Tests = struct
-  [@test]
-  let test_topological_sort_produces_valid_build_order () : (unit, string) result =
+  let test_topological_sort_produces_valid_build_order () :
+      (unit, string) result =
     (* Test that dependencies always come before dependents *)
     Ok ()
-  
-  [@test]
+    [@test]
+
   let test_topological_sort_detects_cycles () : (unit, string) result =
     (* Test that circular dependencies are detected and reported *)
     Ok ()
-  
-  [@test]
-  let test_filter_for_package_includes_all_transitive_deps () : (unit, string) result =
+    [@test]
+
+  let test_filter_for_package_includes_all_transitive_deps () :
+      (unit, string) result =
     (* Test that filtering includes all transitive dependencies *)
     Ok ()
-  
-  [@test]
-  let test_filter_for_package_excludes_unrelated_packages () : (unit, string) result =
+    [@test]
+
+  let test_filter_for_package_excludes_unrelated_packages () :
+      (unit, string) result =
     (* Test that filtering excludes packages not in dependency chain *)
     Ok ()
-  
-  [@test]
-  let test_compute_node_hash_includes_all_source_files () : (unit, string) result =
+    [@test]
+
+  let test_compute_node_hash_includes_all_source_files () :
+      (unit, string) result =
     (* Test that hash computation includes all .ml, .mli, .c files *)
     Ok ()
-  
-  [@test]
+    [@test]
+
   let test_compute_node_hash_is_deterministic () : (unit, string) result =
     (* Test that same inputs produce same hash *)
     Ok ()
-  
-  [@test]
-  let test_get_node_hash_waits_for_dependency_hashes () : (unit, string) result =
+    [@test]
+
+  let test_get_node_hash_waits_for_dependency_hashes () : (unit, string) result
+      =
     (* Test that node hash computation waits for all dependency hashes *)
     Ok ()
-  
-  [@test]
-  let test_compute_all_hashes_follows_topological_order () : (unit, string) result =
+    [@test]
+
+  let test_compute_all_hashes_follows_topological_order () :
+      (unit, string) result =
     (* Test that hashes are computed in dependency order *)
     Ok ()
-end
+end [@test]

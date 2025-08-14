@@ -1,19 +1,19 @@
 (** Content-based hashing module for build artifacts *)
 
-(** Opaque hash type *)
 type hash
+(** Opaque hash type *)
 
-(** Hash a string content *)
 val hash_string : string -> hash
+(** Hash a string content *)
 
-(** Hash a file's content *)
 val hash_file : string -> hash
+(** Hash a file's content *)
 
-(** Convert hash to string for storage/display *)
 val to_string : hash -> string
+(** Convert hash to string for storage/display *)
 
-(** Create hash from string (for loading from storage) *)
 val of_string : string -> hash
+(** Create hash from string (for loading from storage) *)
 
-(** Compare two hashes for equality *)
 val equal : hash -> hash -> bool
+(** Compare two hashes for equality *)

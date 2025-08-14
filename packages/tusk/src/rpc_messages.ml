@@ -2,7 +2,7 @@
 
 open Miniriot
 
-type Message.t += 
+type Message.t +=
   | ClientRequest of Pid.t * Rpc.request
   | ServerResponse of Rpc.response
   | RestartServer

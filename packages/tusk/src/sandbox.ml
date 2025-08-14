@@ -125,30 +125,32 @@ let copy_dependency_artifacts sandbox =
 (** Run a list of actions in the sandbox *)
 let rec run_actions ~sandbox ~blueprint ~store =
   let pkg_name = sandbox.node.Build_node.package.name in
-  
+
   (* Check if we have a blueprint hash and if artifacts are already cached *)
   match blueprint.Actions.hash with
   | Some hash ->
       if Store.exists store hash then (
-        Printf.printf "[Sandbox] Cache hit for %s (hash: %s)\n" pkg_name (Hasher.to_string hash);
+        Printf.printf "[Sandbox] Cache hit for %s (hash: %s)\n" pkg_name
+          (Hasher.to_string hash);
         flush stdout;
-        
+
         (* Promote artifacts from store directly to target *)
         if Store.promote_from_store store hash sandbox.target_dir then
           (true, "Retrieved from cache")
-        else
-          (false, "Failed to promote from cache")
-      ) else (
-        Printf.printf "[Sandbox] Cache miss for %s (hash: %s), building...\n" pkg_name (Hasher.to_string hash);
+        else (false, "Failed to promote from cache"))
+      else (
+        Printf.printf "[Sandbox] Cache miss for %s (hash: %s), building...\n"
+          pkg_name (Hasher.to_string hash);
         flush stdout;
-        
+
         (* Proceed with normal build *)
-        build_in_sandbox ~sandbox ~blueprint ~store ~hash:(Some hash)
-      )
+        build_in_sandbox ~sandbox ~blueprint ~store ~hash:(Some hash))
   | None ->
-      Printf.printf "[Sandbox] No hash computed for %s, building without caching...\n" pkg_name;
+      Printf.printf
+        "[Sandbox] No hash computed for %s, building without caching...\n"
+        pkg_name;
       flush stdout;
-      
+
       (* Proceed with normal build (no caching) *)
       build_in_sandbox ~sandbox ~blueprint ~store ~hash:None
 
@@ -156,7 +158,7 @@ let rec run_actions ~sandbox ~blueprint ~store =
 and build_in_sandbox ~sandbox ~blueprint ~store ~hash =
   (* Print the blueprint since we're about to execute it *)
   Actions.print_blueprint blueprint;
-  
+
   Printf.printf "[Sandbox] Running %d actions for %s in %s\n"
     (List.length blueprint.Actions.actions)
     sandbox.node.Build_node.package.name sandbox.sandbox_dir;
@@ -219,111 +221,111 @@ and build_in_sandbox ~sandbox ~blueprint ~store ~hash =
   System.chdir original_cwd;
 
   (* Copy artifacts to target directory *)
-  (if fst result then
-     let copy_artifacts () =
-       try
-         (* Copy only declared outputs *)
-         if !declared_outputs <> [] then (
-           Printf.printf "[Sandbox] Copying declared outputs...\n";
-           flush stdout;
-           List.iter
-             (fun output_file ->
-               let src = Filename.concat sandbox.sandbox_dir output_file in
-               if System.file_exists src then (
-                 let dst = Filename.concat sandbox.target_dir output_file in
-                 System.copy_file src dst;
-                 (* Make executable files executable *)
-                 if not (String.contains output_file '.') then (
-                   System.chmod dst 0o755;
-                   (* Also promote executable to target/<profile>/<name> *)
-                   let profile_dir =
-                     Filename.concat
-                       (Filename.concat sandbox.root "target")
-                       "debug"
-                   in
-                   let promoted_dst = Filename.concat profile_dir output_file in
-                   System.copy_file src promoted_dst;
-                   System.chmod promoted_dst 0o755;
-                   Printf.printf "[Sandbox] Promoted executable %s to %s\n"
-                     output_file promoted_dst;
-                   flush stdout);
-                 Printf.printf "[Sandbox] Copied %s to target\n" output_file;
-                 flush stdout)
-               else (
-                 Printf.printf
-                   "[Sandbox] Warning: Declared output %s not found in sandbox\n"
-                   output_file;
-                 flush stdout))
-             !declared_outputs)
-         else (
-           (* Fallback: if no outputs declared, use heuristics *)
-           Printf.printf
-             "[Sandbox] Warning: No outputs declared, using fallback heuristics\n";
-           flush stdout;
-           let pkg_name = sandbox.node.Build_node.package.name in
-           let files =
-             System.list_dir sandbox.sandbox_dir (fun file ->
-                 (* Main library archive *)
-                 file = pkg_name ^ ".cma"
-                 (* Main module interface *)
-                 || file = pkg_name ^ ".cmi"
-                 (* C object files *)
-                 || Filename.check_suffix file ".o"
-                 ||
-                 (* Executable (no extension and matches package name) *)
-                 ((not (String.contains file '.')) && file = pkg_name))
-           in
-           List.iter
-             (fun file ->
-               let src = Filename.concat sandbox.sandbox_dir file in
-               let dst = Filename.concat sandbox.target_dir file in
-               System.copy_file src dst;
-               (* Make executable files executable *)
-               if not (String.contains file '.') then (
-                 System.chmod dst 0o755;
-                 (* Also promote executable to target/<profile>/<name> *)
-                 let profile_dir =
-                   Filename.concat
-                     (Filename.concat sandbox.root "target")
-                     "debug"
-                 in
-                 let promoted_dst = Filename.concat profile_dir file in
-                 System.copy_file src promoted_dst;
-                 System.chmod promoted_dst 0o755;
-                 Printf.printf "[Sandbox] Promoted executable %s to %s\n" file
-                   promoted_dst;
-                 flush stdout);
-               Printf.printf "[Sandbox] Copied %s to target\n" file;
-               flush stdout)
-             files)
-       with exn ->
-         Printf.printf "[Sandbox] Warning: Failed to copy artifacts: %s\n"
-           (Printexc.to_string exn);
-         flush stdout
-     in
-     copy_artifacts ();
-     
-     (* After successful build, store artifacts in content-addressable cache *)
-     (match hash with
-     | Some h when fst result -> (
-       (* Get declared outputs from the blueprint *)
-       let declared_outputs = ref [] in
-       List.iter (fun action ->
-         match action with
-         | Actions.DeclareOutputs outputs -> declared_outputs := outputs
-         | _ -> ()
-       ) blueprint.Actions.actions;
-       
-       if !declared_outputs <> [] then (
-         Printf.printf "[Sandbox] Storing build artifacts in cache\n";
-         flush stdout;
-         let _artifact = Store.store_artifacts store h sandbox.sandbox_dir !declared_outputs in
-         (* TODO: Use artifact witness to update build results *)
-         ()
-       )
-     ) | _ -> () (* No hash or build failed, skip caching *)
-     )
-  );
+  if fst result then (
+    let copy_artifacts () =
+      try
+        (* Copy only declared outputs *)
+        if !declared_outputs <> [] then (
+          Printf.printf "[Sandbox] Copying declared outputs...\n";
+          flush stdout;
+          List.iter
+            (fun output_file ->
+              let src = Filename.concat sandbox.sandbox_dir output_file in
+              if System.file_exists src then (
+                let dst = Filename.concat sandbox.target_dir output_file in
+                System.copy_file src dst;
+                (* Make executable files executable *)
+                if not (String.contains output_file '.') then (
+                  System.chmod dst 0o755;
+                  (* Also promote executable to target/<profile>/<name> *)
+                  let profile_dir =
+                    Filename.concat
+                      (Filename.concat sandbox.root "target")
+                      "debug"
+                  in
+                  let promoted_dst = Filename.concat profile_dir output_file in
+                  System.copy_file src promoted_dst;
+                  System.chmod promoted_dst 0o755;
+                  Printf.printf "[Sandbox] Promoted executable %s to %s\n"
+                    output_file promoted_dst;
+                  flush stdout);
+                Printf.printf "[Sandbox] Copied %s to target\n" output_file;
+                flush stdout)
+              else (
+                Printf.printf
+                  "[Sandbox] Warning: Declared output %s not found in sandbox\n"
+                  output_file;
+                flush stdout))
+            !declared_outputs)
+        else (
+          (* Fallback: if no outputs declared, use heuristics *)
+          Printf.printf
+            "[Sandbox] Warning: No outputs declared, using fallback heuristics\n";
+          flush stdout;
+          let pkg_name = sandbox.node.Build_node.package.name in
+          let files =
+            System.list_dir sandbox.sandbox_dir (fun file ->
+                (* Main library archive *)
+                file = pkg_name ^ ".cma"
+                (* Main module interface *)
+                || file = pkg_name ^ ".cmi"
+                (* C object files *)
+                || Filename.check_suffix file ".o"
+                ||
+                (* Executable (no extension and matches package name) *)
+                ((not (String.contains file '.')) && file = pkg_name))
+          in
+          List.iter
+            (fun file ->
+              let src = Filename.concat sandbox.sandbox_dir file in
+              let dst = Filename.concat sandbox.target_dir file in
+              System.copy_file src dst;
+              (* Make executable files executable *)
+              if not (String.contains file '.') then (
+                System.chmod dst 0o755;
+                (* Also promote executable to target/<profile>/<name> *)
+                let profile_dir =
+                  Filename.concat
+                    (Filename.concat sandbox.root "target")
+                    "debug"
+                in
+                let promoted_dst = Filename.concat profile_dir file in
+                System.copy_file src promoted_dst;
+                System.chmod promoted_dst 0o755;
+                Printf.printf "[Sandbox] Promoted executable %s to %s\n" file
+                  promoted_dst;
+                flush stdout);
+              Printf.printf "[Sandbox] Copied %s to target\n" file;
+              flush stdout)
+            files)
+      with exn ->
+        Printf.printf "[Sandbox] Warning: Failed to copy artifacts: %s\n"
+          (Printexc.to_string exn);
+        flush stdout
+    in
+    copy_artifacts ();
+
+    (* After successful build, store artifacts in content-addressable cache *)
+    match hash with
+    | Some h when fst result ->
+        (* Get declared outputs from the blueprint *)
+        let declared_outputs = ref [] in
+        List.iter
+          (fun action ->
+            match action with
+            | Actions.DeclareOutputs outputs -> declared_outputs := outputs
+            | _ -> ())
+          blueprint.Actions.actions;
+
+        if !declared_outputs <> [] then (
+          Printf.printf "[Sandbox] Storing build artifacts in cache\n";
+          flush stdout;
+          let _artifact =
+            Store.store_artifacts store h sandbox.sandbox_dir !declared_outputs
+          in
+          (* TODO: Use artifact witness to update build results *)
+          ())
+    | _ -> () (* No hash or build failed, skip caching *));
 
   result
 

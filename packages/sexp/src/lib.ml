@@ -1,33 +1,31 @@
 (** S-expression parsing and printing library *)
 
 (** S-expression type *)
-type t =
-  | Atom of string
-  | List of t list
+type t = Atom of string | List of t list
 
-(** Parse error *)
 exception Parse_error of string
+(** Parse error *)
 
 (** Convert S-expression to string *)
 let rec to_string = function
-  | Atom s -> 
+  | Atom s ->
       (* Quote atoms that contain special characters *)
-      if String.contains s ' ' || String.contains s '(' || String.contains s ')' 
-         || String.contains s '"' || String.contains s '\n' || String.contains s '\t'
+      if
+        String.contains s ' ' || String.contains s '(' || String.contains s ')'
+        || String.contains s '"' || String.contains s '\n'
+        || String.contains s '\t'
       then Printf.sprintf "\"%s\"" (String.escaped s)
       else s
-  | List elems ->
-      "(" ^ String.concat " " (List.map to_string elems) ^ ")"
+  | List elems -> "(" ^ String.concat " " (List.map to_string elems) ^ ")"
 
 (** Pretty print S-expression *)
 let rec pp_sexp indent = function
   | Atom s -> Printf.sprintf "%s%s" indent (to_string (Atom s))
   | List [] -> Printf.sprintf "%s()" indent
-  | List [single] -> Printf.sprintf "%s(%s)" indent (to_string single)
+  | List [ single ] -> Printf.sprintf "%s(%s)" indent (to_string single)
   | List elems ->
       let indent_next = indent ^ "  " in
-      Printf.sprintf "%s(\n%s\n%s)" 
-        indent
+      Printf.sprintf "%s(\n%s\n%s)" indent
         (String.concat "\n" (List.map (pp_sexp indent_next) elems))
         indent
 
@@ -35,26 +33,14 @@ let pretty_print sexp = pp_sexp "" sexp
 
 (** Parser implementation *)
 module Parser = struct
-  type state = {
-    input : string;
-    mutable pos : int;
-    len : int;
-  }
+  type state = { input : string; mutable pos : int; len : int }
 
-  let create input = {
-    input;
-    pos = 0;
-    len = String.length input;
-  }
+  let create input = { input; pos = 0; len = String.length input }
 
   let peek state =
-    if state.pos < state.len then
-      Some state.input.[state.pos]
-    else
-      None
+    if state.pos < state.len then Some state.input.[state.pos] else None
 
-  let advance state =
-    state.pos <- state.pos + 1
+  let advance state = state.pos <- state.pos + 1
 
   let skip_whitespace state =
     let rec loop () =
@@ -68,7 +54,8 @@ module Parser = struct
 
   let parse_string state =
     (* Assumes we're at the opening quote *)
-    advance state; (* Skip opening quote *)
+    advance state;
+    (* Skip opening quote *)
     let buffer = Buffer.create 16 in
     let rec loop () =
       match peek state with
@@ -76,16 +63,35 @@ module Parser = struct
       | Some '"' ->
           advance state;
           Buffer.contents buffer
-      | Some '\\' ->
+      | Some '\\' -> (
           advance state;
-          (match peek state with
-          | None -> raise (Parse_error "Unexpected end of input in escape sequence")
-          | Some 'n' -> Buffer.add_char buffer '\n'; advance state; loop ()
-          | Some 't' -> Buffer.add_char buffer '\t'; advance state; loop ()
-          | Some 'r' -> Buffer.add_char buffer '\r'; advance state; loop ()
-          | Some '\\' -> Buffer.add_char buffer '\\'; advance state; loop ()
-          | Some '"' -> Buffer.add_char buffer '"'; advance state; loop ()
-          | Some c -> Buffer.add_char buffer c; advance state; loop ())
+          match peek state with
+          | None ->
+              raise (Parse_error "Unexpected end of input in escape sequence")
+          | Some 'n' ->
+              Buffer.add_char buffer '\n';
+              advance state;
+              loop ()
+          | Some 't' ->
+              Buffer.add_char buffer '\t';
+              advance state;
+              loop ()
+          | Some 'r' ->
+              Buffer.add_char buffer '\r';
+              advance state;
+              loop ()
+          | Some '\\' ->
+              Buffer.add_char buffer '\\';
+              advance state;
+              loop ()
+          | Some '"' ->
+              Buffer.add_char buffer '"';
+              advance state;
+              loop ()
+          | Some c ->
+              Buffer.add_char buffer c;
+              advance state;
+              loop ())
       | Some c ->
           Buffer.add_char buffer c;
           advance state;
@@ -99,10 +105,7 @@ module Parser = struct
       match peek state with
       | Some (' ' | '\t' | '\n' | '\r' | '(' | ')') | None ->
           let atom = Buffer.contents buffer in
-          if atom = "" then
-            raise (Parse_error "Empty atom")
-          else
-            atom
+          if atom = "" then raise (Parse_error "Empty atom") else atom
       | Some c ->
           Buffer.add_char buffer c;
           advance state;
@@ -117,12 +120,9 @@ module Parser = struct
     | Some '(' ->
         advance state;
         parse_list state
-    | Some '"' ->
-        Atom (parse_string state)
-    | Some ')' ->
-        raise (Parse_error "Unexpected closing parenthesis")
-    | Some _ ->
-        Atom (parse_atom state)
+    | Some '"' -> Atom (parse_string state)
+    | Some ')' -> raise (Parse_error "Unexpected closing parenthesis")
+    | Some _ -> Atom (parse_atom state)
 
   and parse_list state =
     let rec loop acc =
@@ -147,8 +147,7 @@ let of_string str =
     Parser.skip_whitespace state;
     if state.pos < state.len then
       raise (Parse_error "Extra input after S-expression")
-    else
-      Ok result
+    else Ok result
   with
   | Parse_error msg -> Error msg
   | _ -> Error "Unknown parse error"
@@ -164,8 +163,7 @@ let parse_many str =
   let state = Parser.create str in
   let rec loop acc =
     Parser.skip_whitespace state;
-    if state.pos >= state.len then
-      Ok (List.rev acc)
+    if state.pos >= state.len then Ok (List.rev acc)
     else
       try
         let sexp = Parser.parse_sexp state in
@@ -180,23 +178,16 @@ let parse_many str =
 
 let atom s = Atom s
 let list l = List l
-
 let is_atom = function Atom _ -> true | _ -> false
 let is_list = function List _ -> true | _ -> false
-
-let to_atom = function
-  | Atom s -> Some s
-  | _ -> None
-
-let to_list = function
-  | List l -> Some l
-  | _ -> None
+let to_atom = function Atom s -> Some s | _ -> None
+let to_list = function List l -> Some l | _ -> None
 
 let rec find_atom name = function
   | [] -> None
   | Atom s :: _ when s = name -> Some (Atom s)
-  | List l :: rest ->
-      (match find_atom name l with
+  | List l :: rest -> (
+      match find_atom name l with
       | Some v -> Some v
       | None -> find_atom name rest)
   | _ :: rest -> find_atom name rest
@@ -214,8 +205,7 @@ let parse_file filename =
     let content = really_input_string ic len in
     close_in ic;
     parse_many content
-  with
-  | Sys_error msg -> Error msg
+  with Sys_error msg -> Error msg
 
 (** Write S-expression to a file *)
 let to_file filename sexp =
@@ -225,5 +215,4 @@ let to_file filename sexp =
     output_char oc '\n';
     close_out oc;
     Ok ()
-  with
-  | Sys_error msg -> Error msg
+  with Sys_error msg -> Error msg
