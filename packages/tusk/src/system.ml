@@ -32,6 +32,9 @@ let exec prog args = Unix.execv prog args
 (** Get process ID *)
 let getpid () = Unix.getpid ()
 
+(** Read a line from an input channel *)
+let read_line ic = input_line ic
+
 (** Create a symbolic link *)
 let symlink src dst = Unix.symlink src dst
 

@@ -90,6 +90,9 @@ val open_process_in : string -> in_channel
 val close_process_in : in_channel -> Unix.process_status
 (** Close a process opened for reading *)
 
+val read_line : in_channel -> string
+(** Read a line from an input channel *)
+
 (** {1 System Information} *)
 
 val os_type : unit -> string
