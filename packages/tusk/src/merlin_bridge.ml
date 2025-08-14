@@ -79,55 +79,76 @@ let config_to_directives file_path =
 
 (** Handle a merlin protocol request *)
 let handle_request request =
-  match Sexp.of_string request with
-  | Ok (Sexp.List [ Sexp.Atom "CONFIG"; Sexp.Atom file_path ]) ->
-      (* Return configuration for the file *)
-      let directives = config_to_directives file_path in
-      let response = Sexp.List directives in
-      Sexp.to_string response
-  | Ok (Sexp.List [ Sexp.Atom "HALT" ]) ->
-      (* Shutdown request *)
-      "HALT"
-  | _ ->
-      (* Unknown request *)
-      "()"
-
-(** Read a complete S-expression from input *)
-let read_sexp_from_channel ic =
-  let rec read_until_complete acc depth =
-    let line = input_line ic in
-    let new_acc = acc ^ line ^ "\n" in
-
-    (* Count parentheses to determine if S-expression is complete *)
-    let rec count_parens i open_count close_count =
-      if i >= String.length line then (open_count, close_count)
-      else
-        match line.[i] with
-        | '(' -> count_parens (i + 1) (open_count + 1) close_count
-        | ')' -> count_parens (i + 1) open_count (close_count + 1)
-        | _ -> count_parens (i + 1) open_count close_count
-    in
-    let opens, closes = count_parens 0 0 0 in
-    let new_depth = depth + opens - closes in
-
-    if new_depth <= 0 then new_acc else read_until_complete new_acc new_depth
+  (* Log the raw request to a file for debugging *)
+  let log_file = "/tmp/tusk_merlin_requests.log" in
+  let oc = open_out_gen [Open_creat; Open_append; Open_text] 0o644 log_file in
+  Printf.fprintf oc "Raw request: %S\n" request;
+  
+  let result = match Sexp.Csexp.of_string request with
+  | Ok sexp ->
+      Printf.fprintf oc "Parsed as: %s\n" (Sexp.to_string sexp);
+      (match sexp with
+      | Sexp.List [ Sexp.Atom "File"; Sexp.Atom file_path ] ->
+          Printf.fprintf oc "File command for: %s\n" file_path;
+          let directives = config_to_directives file_path in
+          let response = Sexp.List directives in
+          Sexp.Csexp.to_string response
+      | Sexp.List [ Sexp.Atom "Halt" ] ->
+          Printf.fprintf oc "Halt command received\n";
+          Sexp.Csexp.to_string (Sexp.List [])
+      | _ ->
+          Printf.fprintf oc "Unknown command: %s\n" (Sexp.to_string sexp);
+          Sexp.Csexp.to_string (Sexp.List []))
+  | Error msg ->
+      Printf.fprintf oc "Error parsing request: %s\n" msg;
+      Printf.eprintf "Error parsing request: %s\n" msg;
+      Sexp.Csexp.to_string (Sexp.List [])
   in
-  try Some (read_until_complete "" 0) with End_of_file -> None
+  Printf.fprintf oc "Response: %S\n\n" result;
+  close_out oc;
+  result
 
 (** Main loop for the merlin bridge *)
 let rec main_loop () =
-  match read_sexp_from_channel stdin with
-  | None -> ()
-  | Some request ->
-      let response = handle_request request in
-      if response = "HALT" then (
-        print_string "()";
-        flush stdout;
-        ())
-      else (
-        print_endline response;
-        flush stdout;
-        main_loop ())
+  match Sexp.Csexp.input_opt stdin with
+  | Error msg ->
+      (* Error reading - return error and exit *)
+      let error_resp = Sexp.List [ Sexp.List [ Sexp.Atom "ERROR"; Sexp.Atom msg ] ] in
+      Sexp.Csexp.to_channel stdout error_resp;
+      ()
+  | Ok None -> 
+      (* EOF - exit silently *)
+      ()
+  | Ok (Some sexp) ->
+      (* Check if this is a list of commands or a single command *)
+      (match sexp with
+      | Sexp.List commands when List.length commands > 0 && 
+          List.for_all (function Sexp.List _ -> true | _ -> false) commands ->
+          (* It's a list of commands - process each one *)
+          let rec process_commands = function
+            | [] -> ()
+            | cmd :: rest ->
+                let request_str = Sexp.Csexp.to_string cmd in
+                let response = handle_request request_str in
+                print_string response;
+                flush stdout;
+                (* Check if it was a Halt command *)
+                match cmd with
+                | Sexp.List [ Sexp.Atom "Halt" ] -> ()
+                | _ -> process_commands rest
+          in
+          process_commands commands
+      | _ ->
+          (* Single command *)
+          let request_str = Sexp.Csexp.to_string sexp in
+          let response = handle_request request_str in
+          (* Response is already in Csexp format from handle_request *)
+          print_string response;
+          flush stdout;
+          (* Check if it was a Halt command *)
+          match sexp with
+          | Sexp.List [ Sexp.Atom "Halt" ] -> ()
+          | _ -> main_loop ())
 
 (** Start the merlin bridge *)
 let start () =

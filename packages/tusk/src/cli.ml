@@ -9,16 +9,16 @@ let usage_msg =
    Usage: tusk [COMMAND] [OPTIONS]\n\n\
    Commands:\n\
   \  build    Build packages\n\
-  \  run      Run a binary\n\
-  \  install  Install a package binary to ~/.tusk/bin/\n\
-  \  server   Start the tusk server (for debugging)\n\
-  \  rpc      Send RPC command to server\n\
-  \  lsp      Start OCaml LSP server\n\
-  \  fmt      Format OCaml code\n\
-  \  doc      Generate documentation\n\
   \  clean    Clean build artifacts\n\
-  \  version  Show tusk version\n\
+  \  doc      Generate documentation\n\
+  \  fmt      Format OCaml code\n\
   \  help     Show this help message\n\n\
+  \  install  Install a package binary to ~/.tusk/bin/\n\
+  \  lsp      Start OCaml LSP server\n\
+  \  rpc      Send RPC command to server\n\
+  \  run      Run a binary\n\
+  \  server   Start the tusk server (for debugging)\n\
+  \  version  Show tusk version\n\
    Options:\n\
   \  -p <package>    Build only the specified package\n\
   \  -b <binary>     Run the specified binary"
@@ -426,6 +426,12 @@ and lsp_start_server () =
       (* Set up environment *)
       System.putenv "OCAMLPATH" stdlib_path;
       System.putenv "OCAMLLIB" stdlib_path;
+      
+      (* Add target/debug to PATH so ocamllsp can find tusk *)
+      let current_path = try Sys.getenv "PATH" with Not_found -> "" in
+      let target_debug_path = Filename.concat (Sys.getcwd ()) "target/debug" in
+      let new_path = Printf.sprintf "%s:%s" target_debug_path current_path in
+      System.putenv "PATH" new_path;
 
       (* Execute the LSP server with stdio by default *)
       let args =
