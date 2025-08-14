@@ -383,18 +383,23 @@ let rec lsp_command args =
 (** Start the LSP server *)
 and lsp_start_server () =
   try
-    (* First ensure the tusk server is running in the background *)
-    if not (Server_manager.ensure_running ()) then (
-      Printf.eprintf "❌ Failed to start tusk server\n";
-      Process.Exception (Failure "Failed to start tusk server"))
-    else
-      let lsp_path = get_lsp_binary_path () in
-      let version = read_toolchain_version () in
-      let home = System.get_home () in
-      let toolchain_path =
-        Printf.sprintf "%s/.tusk/toolchains/%s" home version
-      in
-      let stdlib_path = Printf.sprintf "%s/lib/ocaml" toolchain_path in
+    (* Try to ensure the tusk server is running, but don't fail if there's an issue *)
+    let _ = 
+      try 
+        ignore (Server_manager.ensure_running ());
+        ()
+      with _ -> 
+        (* Server might already be running or there might be an issue - continue anyway *)
+        ()
+    in
+    
+    let lsp_path = get_lsp_binary_path () in
+    let version = read_toolchain_version () in
+    let home = System.get_home () in
+    let toolchain_path =
+      Printf.sprintf "%s/.tusk/toolchains/%s" home version
+    in
+    let stdlib_path = Printf.sprintf "%s/lib/ocaml" toolchain_path in
 
       (* Check if .merlin file exists *)
       let merlin_exists = System.file_exists ".merlin" in
