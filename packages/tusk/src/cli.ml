@@ -363,7 +363,7 @@ let rec lsp_command args =
       ) else (
         Printf.eprintf "Error: ocamlformat-rpc not found at %s\n" ocamlformat_rpc;
         Printf.eprintf "Please run: cd ocaml && ./local-install.sh\n";
-        exit 1
+        Process.Exception (Failure "ocamlformat-rpc not found")
       )
   | "" | "start" ->
       (* Default: Start OCaml LSP server *)
