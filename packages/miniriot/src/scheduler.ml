@@ -80,7 +80,7 @@ let send pid msg =
         Trace.trace "Process %s was waiting, now runnable" (Pid.to_string pid);
         add_to_run_queue t proc)
 
-let shutdown t status =
+let shutdown t ~status =
   t.stop <- true;
   t.status <- status
 
@@ -133,7 +133,7 @@ let handle_syscall k t proc name interest source _timeout =
   | None -> (
       let token = Gluon.Token.make proc in
       Trace.trace "Process %s registering for I/O" pid_str;
-      Process.mark_as_awaiting_io proc name token source;
+      Process.mark_as_awaiting_io proc ~name token source;
       match Gluon.Poll.register t.io_poll token interest source with
       | Ok () ->
           Trace.trace "Process %s registered for I/O successfully" pid_str;
@@ -166,7 +166,7 @@ let perform t proc =
 let handle_exit_proc t proc reason =
   if Process.is_main proc then (
     let status = if reason = Process.Normal then 0 else 1 in
-    shutdown t status;
+    shutdown t ~status;
 
     (* Clean up any I/O registrations *)
     Process.consume_ready_tokens proc (fun (_token, source) ->
@@ -297,18 +297,15 @@ let run_loop t =
 
   Trace.trace "Run loop done"
 
-let shutdown ~status =
-  match !current_scheduler with
-  | None -> () (* No scheduler running, nothing to shutdown *)
-  | Some t ->
-      Trace.trace "Shutting down scheduler with status %d" status;
-      (* Mark scheduler to stop *)
-      t.stop <- true;
-      t.status <- status;
-      (* Clear the run queue *)
-      Queue.clear t.run_queue;
-      (* Clear all processes *)
-      Pid_table.clear t.processes
+let shutdown t ~status =
+  Trace.trace "Shutting down scheduler with status %d" status;
+  (* Mark scheduler to stop *)
+  t.stop <- true;
+  t.status <- status;
+  (* Clear the run queue *)
+  Queue.clear t.run_queue;
+  (* Clear all processes *)
+  Pid_table.clear t.processes
 
 let run ~main =
   if !has_run then

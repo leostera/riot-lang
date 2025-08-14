@@ -10,7 +10,7 @@ let sleep _seconds =
   (* For now, just yield - no timer support yet *)
   yield ()
 
-let syscall ?timeout name interest source cb =
+let syscall ?timeout ~name ~interest ~source cb =
   let timeout =
     match timeout with None -> `infinity | Some after -> `after after
   in

@@ -52,7 +52,7 @@ module TcpListener = struct
       | Ok (stream, addr) -> Ok (stream, addr)
       | Error `Would_block ->
           (* Would block, register interest and wait - this suspends the process *)
-          Effects.syscall "TcpListener.accept" Interest.readable source
+          Effects.syscall ~name:"TcpListener.accept" ~interest:Interest.readable ~source
             (fun () -> accept_loop ())
       | Error
           ( `Noop | `Closed | `Connection_closed | `Eof | `Exn _ | `No_info
@@ -75,7 +75,7 @@ module TcpStream = struct
       | Ok (`In_progress stream) ->
           (* Connection in progress, wait for writable - this suspends the process *)
           let source = Gluon.Net.TcpStream.to_source stream in
-          Effects.syscall "TcpStream.connect" Interest.writable source
+          Effects.syscall ~name:"TcpStream.connect" ~interest:Interest.writable ~source
             (fun () -> Ok stream)
       | Error
           ( `Noop | `Closed | `Connection_closed | `Eof | `Exn _ | `No_info
@@ -96,7 +96,7 @@ module TcpStream = struct
       | Ok bytes_read -> Ok bytes_read
       | Error `Would_block ->
           (* Would block, register interest and wait - this suspends the process *)
-          Effects.syscall "TcpStream.read" Interest.readable source (fun () ->
+          Effects.syscall ~name:"TcpStream.read" ~interest:Interest.readable ~source (fun () ->
               read_loop ())
       | Error
           ( `Noop | `Closed | `Connection_closed | `Eof | `Exn _ | `No_info
@@ -116,7 +116,7 @@ module TcpStream = struct
       | Ok bytes_written -> Ok bytes_written
       | Error `Would_block ->
           (* Would block, register interest and wait - this suspends the process *)
-          Effects.syscall "TcpStream.write" Interest.writable source (fun () ->
+          Effects.syscall ~name:"TcpStream.write" ~interest:Interest.writable ~source (fun () ->
               write_loop ())
       | Error
           ( `Noop | `Closed | `Connection_closed | `Eof | `Exn _ | `No_info

@@ -16,18 +16,18 @@ let error_of_unix_error = function
   | Unix.ENOSPC -> `No_space
   | e -> `Unknown (Unix.error_message e)
 
-let exists path =
+let exists ~path =
   match Unix.stat path with
   | exception Unix.Unix_error (Unix.ENOENT, _, _) -> false
   | _ -> true
 
-let remove path =
+let remove ~path =
   try
     Unix.unlink path;
     Ok ()
   with Unix.Unix_error (e, _, _) -> Error (error_of_unix_error e)
 
-let read path =
+let read ~path =
   let open_flags = [ Unix.O_RDONLY ] in
   try
     let fd = Unix.openfile path open_flags 0o640 in
@@ -47,7 +47,7 @@ let read path =
             if bytes_read = 0 then Ok (Bytes.sub_string buffer 0 pos)
             else read_loop (pos + bytes_read) (remaining - bytes_read)
         | Error `Would_block ->
-            Effects.syscall "File.read" Gluon.Interest.readable source
+            Effects.syscall ~name:"File.read" ~interest:Gluon.Interest.readable ~source
               (fun () -> read_loop pos remaining)
         | Error e ->
             Unix.close fd;
@@ -66,7 +66,7 @@ let read path =
     result
   with Unix.Unix_error (e, _, _) -> Error (error_of_unix_error e)
 
-let write path content =
+let write ~path ~content =
   let open_flags = [ Unix.O_WRONLY; Unix.O_CREAT; Unix.O_TRUNC ] in
   try
     let fd = Unix.openfile path open_flags 0o640 in
@@ -82,7 +82,7 @@ let write path content =
         | Ok bytes_written ->
             write_loop (pos + bytes_written) (remaining - bytes_written)
         | Error `Would_block ->
-            Effects.syscall "File.write" Gluon.Interest.writable source
+            Effects.syscall ~name:"File.write" ~interest:Gluon.Interest.writable ~source
               (fun () -> write_loop pos remaining)
         | Error e ->
             Unix.close fd;

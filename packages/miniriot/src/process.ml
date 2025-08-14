@@ -85,7 +85,7 @@ let send_message t msg =
     if is_waiting t then mark_as_runnable t)
 
 (* I/O operations *)
-let mark_as_awaiting_io t name token source =
+let mark_as_awaiting_io t ~name token source =
   if is_alive t then t.state <- Waiting_io { name; token; source }
 
 let add_ready_token t token source =

@@ -107,16 +107,16 @@ module File : sig
     | `No_space
     | `Unknown of string ]
 
-  val read : string -> (string, error) result
+  val read : path:string -> (string, error) result
   (** Read the entire contents of a file *)
 
-  val write : string -> string -> (unit, error) result
+  val write : path:string -> content:string -> (unit, error) result
   (** Write a string to a file *)
 
-  val exists : string -> bool
+  val exists : path:string -> bool
   (** Check if a file exists *)
 
-  val remove : string -> (unit, error) result
+  val remove : path:string -> (unit, error) result
   (** Remove a file *)
 end
 
