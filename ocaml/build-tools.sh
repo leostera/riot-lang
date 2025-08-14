@@ -63,8 +63,9 @@ popd
 # Build ocaml-lsp-server
 log_info "Building ocaml-lsp-server..."
 pushd ocaml-lsp-server
-  # Apply tusk patch
+  # Apply tusk patches
   git apply ../patches/ocaml-lsp-server-tusk.patch 2>/dev/null || true
+  git apply ../patches/ocaml-lsp-server-ocamlformat-rpc.patch 2>/dev/null || true
   opam install --switch=${OCAML_VERSION} -y ./ocaml-lsp-server.opam
   opam exec --switch=${OCAML_VERSION} -- dune build --release @install
   cp _build/install/default/bin/ocamllsp ${BIN_DIR}
