@@ -403,6 +403,9 @@ let generate_blueprint workspace node dependencies all_packages toolchain ~hash
       mli_files
   in
 
+  (* Save original ml_files before transformation *)
+  let original_ml_files = ml_files in
+  
   let ml_files =
     List.map
       (fun ml_file ->
@@ -423,8 +426,13 @@ let generate_blueprint workspace node dependencies all_packages toolchain ~hash
     basename <> "main.ml" && basename <> (pkg_name ^ ".ml")
   ) !module_mappings in
   
+  (* Check if package.ml already exists in the original source files *)
+  let has_package_ml = List.exists (fun f -> 
+    Filename.basename f = pkg_name ^ ".ml"
+  ) original_ml_files in
+  
   let ml_files = 
-    if non_main_modules <> [] && not has_main then (
+    if non_main_modules <> [] && not has_main && not has_package_ml then (
       (* Generate a package.ml file that re-exports all modules *)
       let package_module_content = 
         Namespacing.generate_package_module ~package_name:pkg_name ~modules:non_main_modules in

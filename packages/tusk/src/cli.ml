@@ -15,6 +15,7 @@ let usage_msg =
   \  help     Show this help message\n\n\
   \  install  Install a package binary to ~/.tusk/bin/\n\
   \  lsp      Start OCaml LSP server\n\
+  \  mcp      Start Model Context Protocol server\n\
   \  rpc      Send RPC command to server\n\
   \  run      Run a binary\n\
   \  server   Start the tusk server (for debugging)\n\
@@ -854,6 +855,10 @@ let main () =
     | "server" -> server_command args
     | "rpc" -> rpc_command args
     | "lsp" -> lsp_command args
+    | "mcp" -> 
+        (* Start MCP server *)
+        Mcp_server.start ();
+        Process.Normal
     | "fmt" | "format" -> fmt_command ()
     | "doc" -> doc_command ()
     | "clean" -> clean_command ()
