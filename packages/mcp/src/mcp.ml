@@ -317,12 +317,12 @@ let capabilities_to_json (caps : server_capabilities) =
   Json.Object [
     ("tools", if caps.tools = None then Json.Null else Json.Object []);
     ("resources", match caps.resources with
-      | None -> Json.Null
+      | None -> Json.Object []  (* Return empty object instead of null *)
       | Some rc -> Json.Object [
-          ("subscribe", option_to_json (fun b -> Json.Bool b) rc.subscribe);
-          ("list_changed", option_to_json (fun b -> Json.Bool b) rc.list_changed);
+          ("subscribe", match rc.subscribe with None -> Json.Bool false | Some b -> Json.Bool b);
+          ("list_changed", match rc.list_changed with None -> Json.Bool false | Some b -> Json.Bool b);
         ]);
-    ("prompts", if caps.prompts = None then Json.Null else Json.Object []);
+    ("prompts", Json.Object []);  (* Always return an object, even if empty *)
   ]
 
 let client_capabilities_to_json (caps : client_capabilities) =
@@ -449,29 +449,45 @@ let response_result_to_json = function
   | InitializedResult -> Json.Object []
   | ShutdownResult -> Json.Object []
   | ListToolsResult { tools; next_cursor } ->
-      Json.Object [
+      let fields = [
         ("tools", Json.Array (List.map tool_to_json tools));
-        ("nextCursor", option_to_json (fun s -> Json.String s) next_cursor);
-      ]
+      ] in
+      let fields = match next_cursor with
+        | None -> fields
+        | Some cursor -> fields @ [("nextCursor", Json.String cursor)]
+      in
+      Json.Object fields
   | CallToolResult { content; is_error } ->
-      Json.Object [
+      let fields = [
         ("content", Json.Array (List.map message_content_to_json content));
-        ("isError", option_to_json (fun b -> Json.Bool b) is_error);
-      ]
+      ] in
+      let fields = match is_error with
+        | None -> fields
+        | Some err -> fields @ [("isError", Json.Bool err)]
+      in
+      Json.Object fields
   | ListResourcesResult { resources; next_cursor } ->
-      Json.Object [
+      let fields = [
         ("resources", Json.Array (List.map resource_to_json resources));
-        ("nextCursor", option_to_json (fun s -> Json.String s) next_cursor);
-      ]
+      ] in
+      let fields = match next_cursor with
+        | None -> fields
+        | Some cursor -> fields @ [("nextCursor", Json.String cursor)]
+      in
+      Json.Object fields
   | ReadResourceResult { contents } ->
       Json.Object [
         ("contents", Json.Array (List.map resource_contents_to_json contents));
       ]
   | ListPromptsResult { prompts; next_cursor } ->
-      Json.Object [
+      let fields = [
         ("prompts", Json.Array (List.map prompt_to_json prompts));
-        ("nextCursor", option_to_json (fun s -> Json.String s) next_cursor);
-      ]
+      ] in
+      let fields = match next_cursor with
+        | None -> fields
+        | Some cursor -> fields @ [("nextCursor", Json.String cursor)]
+      in
+      Json.Object fields
   | GetPromptResult { description; messages } ->
       Json.Object [
         ("description", option_to_json (fun s -> Json.String s) description);

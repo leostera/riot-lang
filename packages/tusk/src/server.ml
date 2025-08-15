@@ -863,6 +863,9 @@ let rec server_loop state =
 
 (** Start the build server *)
 let start () =
+  (* Initialize logger process first *)
+  let _logger_pid = Log.init () in
+  
   (* Scan workspace first *)
   let root = System.getcwd () in
   let workspace = Workspace.scan ~root in
@@ -883,6 +886,7 @@ let start () =
     }
   in
   spawn (fun () ->
+      Log.info "[Server] Build server started";
       Printf.printf "[Server] Build server started (pid: %s)\n"
         (Pid.to_string (self ()));
       server_loop initial_state)

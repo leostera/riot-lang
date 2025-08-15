@@ -2,6 +2,55 @@
 
 open Miniriot
 
+(** Logging *)
+let log_file = ref None
+
+let ensure_log_dir () =
+  let home = Sys.getenv "HOME" in
+  let log_dir = Filename.concat home ".tusk/logs" in
+  (* Create .tusk directory if it doesn't exist *)
+  let tusk_dir = Filename.concat home ".tusk" in
+  if not (Sys.file_exists tusk_dir) then
+    Unix.mkdir tusk_dir 0o755;
+  (* Create logs directory if it doesn't exist *)
+  if not (Sys.file_exists log_dir) then
+    Unix.mkdir log_dir 0o755;
+  log_dir
+
+let init_logging () =
+  let log_dir = ensure_log_dir () in
+  let log_path = Filename.concat log_dir "mcp.log" in
+  let oc = open_out_gen [Open_creat; Open_append; Open_text] 0o644 log_path in
+  log_file := Some oc;
+  (* Write startup message *)
+  let timestamp = Unix.gettimeofday () in
+  let tm = Unix.localtime timestamp in
+  Printf.fprintf oc "\n===== MCP Server Started: %04d-%02d-%02d %02d:%02d:%02d =====\n"
+    (tm.tm_year + 1900) (tm.tm_mon + 1) tm.tm_mday
+    tm.tm_hour tm.tm_min tm.tm_sec;
+  flush oc
+
+let log msg =
+  match !log_file with
+  | Some oc ->
+      let timestamp = Unix.gettimeofday () in
+      let tm = Unix.localtime timestamp in
+      Printf.fprintf oc "[%02d:%02d:%02d] %s\n"
+        tm.tm_hour tm.tm_min tm.tm_sec msg;
+      flush oc
+  | None -> ()
+
+let log_json label json =
+  log (Printf.sprintf "%s: %s" label (Json.to_string json))
+
+let close_logging () =
+  match !log_file with
+  | Some oc ->
+      log "MCP Server shutting down";
+      close_out oc;
+      log_file := None
+  | None -> ()
+
 (** Available tools *)
 let tools = [
   {
@@ -205,8 +254,17 @@ let read_resource uri =
 
 (** Handle a request *)
 let handle_request (req : Mcp.request) =
+  log (Printf.sprintf "Handling request: method=%s, id=%s" 
+    req.method_name 
+    (match req.id with 
+     | Mcp.String s -> s 
+     | Mcp.Number n -> string_of_int n));
   match req.params with
   | Some (Mcp.InitializeParams params) ->
+      log (Printf.sprintf "Initialize request from: %s v%s (protocol: %s)"
+        params.client_info.name 
+        params.client_info.version
+        params.protocol_version);
       Printf.printf "[MCP] Client: %s v%s\n" 
         params.client_info.name 
         params.client_info.version;
@@ -227,16 +285,22 @@ let handle_request (req : Mcp.request) =
       })
   
   | Some Mcp.InitializedParams ->
+      log "Client sent initialized notification";
       Printf.printf "[MCP] Client initialized\n";
       Mcp.make_success req.id Mcp.InitializedResult
   
   | Some Mcp.ListToolsParams ->
+      log "Listing tools";
       Mcp.make_success req.id (Mcp.ListToolsResult {
         tools = tools;
         next_cursor = None;
       })
   
   | Some (Mcp.CallToolParams { name; arguments }) ->
+      log (Printf.sprintf "Calling tool: %s" name);
+      (match arguments with
+       | Some args -> log_json "  Arguments" args
+       | None -> log "  No arguments");
       let content = execute_tool name arguments in
       Mcp.make_success req.id (Mcp.CallToolResult {
         content = content;
@@ -244,25 +308,30 @@ let handle_request (req : Mcp.request) =
       })
   
   | Some Mcp.ListResourcesParams ->
+      log "Listing resources";
       Mcp.make_success req.id (Mcp.ListResourcesResult {
         resources = resources;
         next_cursor = None;
       })
   
   | Some (Mcp.ReadResourceParams { uri }) ->
+      log (Printf.sprintf "Reading resource: %s" uri);
       let contents = read_resource uri in
       Mcp.make_success req.id (Mcp.ReadResourceResult {
         contents = contents;
       })
   
   | Some Mcp.PingParams ->
+      log "Ping request";
       Mcp.make_success req.id Mcp.PingResult
   
   | Some Mcp.ShutdownParams ->
+      log "Shutdown request received";
       Printf.printf "[MCP] Shutting down\n";
       Mcp.make_success req.id Mcp.ShutdownResult
   
   | _ ->
+      log (Printf.sprintf "Unknown method: %s" req.method_name);
       Mcp.make_error req.id Mcp.method_not_found "Method not found"
 
 (** MCP server main loop *)
@@ -270,6 +339,7 @@ let rec server_loop () =
   (* Read from stdin *)
   try
     let line = input_line stdin in
+    log (Printf.sprintf "Received: %s" line);
     (* Parse JSON-RPC request *)
     match Json.of_string line with
     | Ok json -> (
@@ -310,7 +380,7 @@ let rec server_loop () =
                               | Some (Json.String s) -> s
                               | _ -> "0.0.0"
                             in
-                            { Mcp.name; version }
+                            ({ Mcp.name; version } : Mcp.client_info)
                         | _ -> { Mcp.name = "unknown"; version = "0.0.0" }
                       in
                       Some (Mcp.InitializeParams {
@@ -321,10 +391,7 @@ let rec server_loop () =
                           prompts = None;
                           sampling = None;
                         };
-                        client_info = {
-                          name = "unknown";
-                          version = "0.0.0";
-                        };
+                        client_info;
                       })
                   | _ -> None
                 )
@@ -366,7 +433,9 @@ let rec server_loop () =
             
             let response = handle_request request in
             let response_json = Mcp.response_to_json response in
-            Printf.printf "%s\n%!" (Json.to_string response_json);
+            let response_str = Json.to_string response_json in
+            log (Printf.sprintf "Sending response: %s" response_str);
+            Printf.printf "%s\n%!" response_str;
             
             (* Continue unless shutdown *)
             if method_str <> "shutdown" then
@@ -375,31 +444,46 @@ let rec server_loop () =
               ()
           )
         | _ ->
+            log "Invalid JSON-RPC request (not an object)";
             Printf.eprintf "[MCP] Invalid JSON-RPC request\n";
             server_loop ()
       )
     | Error e ->
+        log (Printf.sprintf "JSON parse error: %s" e);
         Printf.eprintf "[MCP] JSON parse error: %s\n" e;
         server_loop ()
   with
   | End_of_file ->
+      log "Connection closed (EOF)";
+      close_logging ();
       Printf.eprintf "[MCP] Connection closed\n"
   | exn ->
-      Printf.eprintf "[MCP] Error: %s\n" (Printexc.to_string exn);
+      let error_msg = Printexc.to_string exn in
+      log (Printf.sprintf "Error in server loop: %s" error_msg);
+      Printf.eprintf "[MCP] Error: %s\n" error_msg;
       server_loop ()
 
 (** Start the MCP server *)
 let start () =
+  (* Initialize logging first *)
+  init_logging ();
+  log "Starting MCP server";
+  
   Printf.eprintf "[MCP] Tusk MCP Server starting...\n";
   Printf.eprintf "[MCP] Listening on stdin/stdout for JSON-RPC messages\n";
+  Printf.eprintf "[MCP] Logging to ~/.tusk/logs/mcp.log\n";
   
   (* Ensure tusk server is running *)
   let _ = 
     try
+      log "Checking if tusk server is running...";
       ignore (Server_manager.ensure_running ());
+      log "Tusk server is running";
       ()
-    with _ ->
-      Printf.eprintf "[MCP] Warning: Could not ensure tusk server is running\n"
+    with exn ->
+      let msg = Printf.sprintf "Could not ensure tusk server is running: %s" (Printexc.to_string exn) in
+      log msg;
+      Printf.eprintf "[MCP] Warning: %s\n" msg
   in
   
   (* Start the MCP server loop *)
