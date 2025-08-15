@@ -343,7 +343,10 @@ let rec logger_loop state =
             match Hashtbl.find state.handlers session_id with
             | Rpc { client; format; _ } ->
                 let formatted = format_event format event in
-                send client (LogOutput formatted)
+                (* Send as JSON-RPC response for JSON clients *)
+                let response = Rpc.LogOutput { session_id; message = formatted } in
+                let json = Rpc.response_to_json response in
+                send client (Rpc_messages.JsonServerResponse (Json.to_string json))
             | _ -> ()
           with Not_found -> ())
       | None -> ());
@@ -392,8 +395,7 @@ let init () =
           memory_logs = Hashtbl.create 16;
           stdout_handler = Some Human;  (* Default to human-readable stdout *)
         } in
-        logger_loop initial_state;
-        Process.Normal
+        logger_loop initial_state
       ) in
       logger_pid := Some pid;
       pid
@@ -442,6 +444,10 @@ let cache_miss ?sid ~package ~hash =
 let cache_stored ?sid ~package ~hash ~artifacts =
   log ?sid (CacheStored { package; hash; artifacts })
 
+(** Hash computation logging *)
+let hash_computed ?sid ~package ~hash =
+  log ?sid (HashComputed { package; hash })
+
 (** Worker event logging *)
 let worker_pool_started ?sid ~workers =
   log ?sid (WorkerPoolStarted { workers })
@@ -474,6 +480,13 @@ let queue_package ?sid ~package ~queue_type =
 
 let queue_stats ?sid ~ready ~waiting ~busy =
   log ?sid (QueueStats { ready; waiting; busy })
+
+(** Dependency event logging *)
+let dependency_missing ?sid ~package ~missing =
+  log ?sid (DependencyMissing { package; missing })
+
+let dependency_satisfied ?sid ~package =
+  log ?sid (DependencySatisfied { package })
 
 (** Compilation event logging *)
 let compiling_interface ?sid ~package ~file =

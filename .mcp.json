@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "tusk": {
+      "command": "/Users/ostera/Developer/github.com/riot-ml/riot/target/debug/tusk",
+      "args": ["mcp"],
+      "env": {}
+    }
+  }
+}

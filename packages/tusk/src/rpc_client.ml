@@ -145,6 +145,18 @@ let send_raw stream msg =
       | Error _ -> Error "Failed to read response")
   | Error _ -> Error "Failed to send request"
 
+(** Receive a raw response from the server (for streaming) *)
+let receive_raw stream =
+  let response_buffer = Bytes.create 4096 in
+  match
+    Miniriot.Net.TcpStream.read stream response_buffer ~pos:0 ~len:4096 ()
+  with
+  | Ok bytes_read ->
+      let response_str = Bytes.sub_string response_buffer 0 bytes_read in
+      let response_str = String.trim response_str in
+      Ok response_str
+  | Error _ -> Error "Failed to read response"
+
 (** Send a command and get a typed response - for compatibility *)
 let send_command stream request =
   let request_str = Rpc.request_to_string request in

@@ -1,182 +1,257 @@
-(** RPC protocol definitions for tusk server communication *)
+(** JSON-RPC protocol for tusk server *)
 
-open Miniriot
+type build_node = {
+  package_name : string;
+  src_dir : string;
+  out_dir : string;
+  status : string;
+  deps : string list;
+}
 
-(** Request messages that clients can send to the server *)
+type build_graph_response = { nodes : build_node list }
+
+type workspace_config = {
+  workspace_root : string;
+  toolchain : string;
+  packages : string list;
+}
+
 type request =
   | Ping
-  | GetWorkspace
   | GetBuildGraph
-  | BuildPackage of { package : string; watch : bool }
-  | BuildAll of { watch : bool }
-  | GetPackageForFile of { file_path : string }
-  | GetConfigForFile of { file_path : string }
-  | GetBuildStatus
-  | Clean
+  | GetWorkspaceConfig
+  | BuildPackage of string
+  | BuildAll
   | Restart
   | Shutdown
 
-(** Response messages from the server *)
 type response =
   | Pong
-  | WorkspaceInfo of { packages : string list; root : string }
-  | BuildGraphInfo of {
-      packages : (string * string list) list; (* package name * dependencies *)
-    }
-  | BuildStarted of { id : string }
-  | BuildProgress of {
-      package : string;
-      status : [ `Building | `Success | `Failed of string ];
-    }
-  | BuildComplete of { successful : int; failed : int }
-  | PackageInfo of { name : string; path : string; dependencies : string list }
-  | FileConfig of {
-      source_paths : string list;
-      build_paths : string list;
-      flags : string list;
-      stdlib_path : string;
-    }
-  | Error of { message : string }
-  | Ok
+  | BuildGraph of build_graph_response
+  | WorkspaceConfig of workspace_config
+  | BuildStarted of { session_id : string }
+  | LogOutput of { session_id : string; message : string }
+  | Error of string
+  | Success
 
-(** Serialize a request to JSON-like string (temporary - will use proper JSON
-    later) *)
-let request_to_string = function
-  | Ping -> "Ping"
-  | GetWorkspace -> "GetWorkspace"
-  | GetBuildGraph -> "GetBuildGraph"
-  | BuildPackage { package; watch } ->
-      Printf.sprintf "BuildPackage:%s:%b" package watch
-  | BuildAll { watch } -> Printf.sprintf "BuildAll:%b" watch
-  | GetPackageForFile { file_path } ->
-      Printf.sprintf "GetPackageForFile:%s" file_path
-  | GetConfigForFile { file_path } ->
-      Printf.sprintf "GetConfigForFile:%s" file_path
-  | GetBuildStatus -> "GetBuildStatus"
-  | Clean -> "Clean"
-  | Restart -> "Restart"
-  | Shutdown -> "Shutdown"
+(** Convert build node to JSON *)
+let build_node_to_json node =
+  Json.obj
+    [
+      ("package_name", Json.string node.package_name);
+      ("src_dir", Json.string node.src_dir);
+      ("out_dir", Json.string node.out_dir);
+      ("status", Json.string node.status);
+      ("deps", Json.array (List.map Json.string node.deps));
+    ]
 
-(** Parse a request from string (temporary - will use proper JSON later) *)
-let request_of_string s =
-  let parts = String.split_on_char ':' s in
-  match parts with
-  | [ "Ping" ] -> Some Ping
-  | [ "GetWorkspace" ] -> Some GetWorkspace
-  | [ "GetBuildGraph" ] -> Some GetBuildGraph
-  | [ "BuildPackage"; package; watch ] ->
-      Some (BuildPackage { package; watch = bool_of_string watch })
-  | [ "BuildAll"; watch ] -> Some (BuildAll { watch = bool_of_string watch })
-  | [ "GetPackageForFile"; file_path ] -> Some (GetPackageForFile { file_path })
-  | [ "GetConfigForFile"; file_path ] -> Some (GetConfigForFile { file_path })
-  | [ "GetBuildStatus" ] -> Some GetBuildStatus
-  | [ "Clean" ] -> Some Clean
-  | [ "Restart" ] -> Some Restart
-  | [ "Shutdown" ] -> Some Shutdown
-  | _ -> None
+(** Convert JSON to build node *)
+let build_node_of_json json =
+  match Json.get_object json with
+  | None -> Result.Error "Expected object for build_node"
+  | Some obj -> (
+      let json_obj = Json.Object obj in
+      match
+        ( Json.get_field "package_name" json_obj,
+          Json.get_field "src_dir" json_obj,
+          Json.get_field "out_dir" json_obj,
+          Json.get_field "status" json_obj,
+          Json.get_field "deps" json_obj )
+      with
+      | Some pn, Some sd, Some od, Some st, Some deps -> (
+          match
+            ( Json.get_string pn,
+              Json.get_string sd,
+              Json.get_string od,
+              Json.get_string st,
+              Json.get_array deps )
+          with
+          | ( Some package_name,
+              Some src_dir,
+              Some out_dir,
+              Some status,
+              Some deps_array ) -> (
+              let deps_result =
+                List.fold_left
+                  (fun acc dep ->
+                    match acc with
+                    | Result.Error e -> Result.Error e
+                    | Result.Ok deps_list -> (
+                        match Json.get_string dep with
+                        | Some s -> Result.Ok (s :: deps_list)
+                        | None ->
+                            Result.Error "Invalid dependency in deps array"))
+                  (Result.Ok []) deps_array
+              in
+              match deps_result with
+              | Result.Ok deps ->
+                  Result.Ok
+                    {
+                      package_name;
+                      src_dir;
+                      out_dir;
+                      status;
+                      deps = List.rev deps;
+                    }
+              | Result.Error e -> Result.Error e)
+          | _ -> Result.Error "Invalid field types in build_node")
+      | _ -> Result.Error "Missing required fields in build_node")
 
-(** Serialize a response to JSON-like string (temporary - will use proper JSON
-    later) *)
-let response_to_string = function
-  | Pong -> "Pong"
-  | WorkspaceInfo { packages; root } ->
-      Printf.sprintf "WorkspaceInfo:%s:%s" (String.concat "," packages) root
-  | BuildGraphInfo { packages } ->
-      let pkg_strings =
-        List.map
-          (fun (name, deps) ->
-            Printf.sprintf "%s[%s]" name (String.concat "," deps))
-          packages
-      in
-      Printf.sprintf "BuildGraphInfo:%s" (String.concat ";" pkg_strings)
-  | BuildStarted { id } -> Printf.sprintf "BuildStarted:%s" id
-  | BuildProgress { package; status } ->
-      let status_str =
-        match status with
-        | `Building -> "Building"
-        | `Success -> "Success"
-        | `Failed msg -> Printf.sprintf "Failed:%s" msg
-      in
-      Printf.sprintf "BuildProgress:%s:%s" package status_str
-  | BuildComplete { successful; failed } ->
-      Printf.sprintf "BuildComplete:%d:%d" successful failed
-  | PackageInfo { name; path; dependencies } ->
-      Printf.sprintf "PackageInfo:%s:%s:%s" name path
-        (String.concat "," dependencies)
-  | FileConfig { source_paths; build_paths; flags; stdlib_path } ->
-      Printf.sprintf "FileConfig:%s:%s:%s:%s"
-        (String.concat "," source_paths)
-        (String.concat "," build_paths)
-        (String.concat "," flags) stdlib_path
-  | Error { message } -> Printf.sprintf "Error:%s" message
-  | Ok -> "Ok"
+(** Serialize request to JSON *)
+let request_to_json = function
+  | Ping -> Json.obj [ ("type", Json.string "Ping") ]
+  | GetBuildGraph -> Json.obj [ ("type", Json.string "GetBuildGraph") ]
+  | GetWorkspaceConfig ->
+      Json.obj [ ("type", Json.string "GetWorkspaceConfig") ]
+  | BuildPackage pkg ->
+      Json.obj
+        [ ("type", Json.string "BuildPackage"); ("package", Json.string pkg) ]
+  | BuildAll -> Json.obj [ ("type", Json.string "BuildAll") ]
+  | Restart -> Json.obj [ ("type", Json.string "Restart") ]
+  | Shutdown -> Json.obj [ ("type", Json.string "Shutdown") ]
 
-(** Parse a response from string (temporary - will use proper JSON later) *)
-let response_of_string s =
-  let parts = String.split_on_char ':' s in
-  match parts with
-  | [ "Pong" ] -> Some Pong
-  | [ "Ok" ] -> Some Ok
-  | "WorkspaceInfo" :: packages_str :: root :: _ ->
-      let packages =
-        if packages_str = "" then [] else String.split_on_char ',' packages_str
-      in
-      Some
-        (WorkspaceInfo
-           {
-             packages;
-             root = String.concat ":" (root :: List.tl (List.tl parts));
-           })
-  | "BuildGraphInfo" :: rest ->
-      let graph_str = String.concat ":" rest in
-      let pkg_strings = String.split_on_char ';' graph_str in
-      let packages =
-        List.map
-          (fun pkg_str ->
-            match String.split_on_char '[' pkg_str with
-            | [ name; deps_with_bracket ] ->
-                let deps_str =
-                  String.sub deps_with_bracket 0
-                    (String.length deps_with_bracket - 1)
-                in
-                let deps =
-                  if deps_str = "" then []
-                  else String.split_on_char ',' deps_str
-                in
-                (name, deps)
-            | _ -> (pkg_str, []))
-          pkg_strings
-      in
-      Some (BuildGraphInfo { packages })
-  | "BuildComplete" :: successful :: failed :: _ ->
-      Some
-        (BuildComplete
-           {
-             successful = int_of_string successful;
-             failed = int_of_string failed;
-           })
-  | "Error" :: message -> Some (Error { message = String.concat ":" message })
-  | _ -> None (* Unknown response format *)
+(** Serialize response to JSON *)
+let response_to_json = function
+  | Pong -> Json.obj [ ("type", Json.string "Pong") ]
+  | BuildGraph graph ->
+      Json.obj
+        [
+          ("type", Json.string "BuildGraph");
+          ("nodes", Json.array (List.map build_node_to_json graph.nodes));
+        ]
+  | WorkspaceConfig config ->
+      Json.obj
+        [
+          ("type", Json.string "WorkspaceConfig");
+          ("workspace_root", Json.string config.workspace_root);
+          ("toolchain", Json.string config.toolchain);
+          ("packages", Json.array (List.map Json.string config.packages));
+        ]
+  | BuildStarted { session_id } ->
+      Json.obj
+        [
+          ("type", Json.string "BuildStarted");
+          ("session_id", Json.string session_id);
+        ]
+  | LogOutput { session_id; message } ->
+      Json.obj
+        [
+          ("type", Json.string "LogOutput");
+          ("session_id", Json.string session_id);
+          ("message", Json.string message);
+        ]
+  | Error msg ->
+      Json.obj [ ("type", Json.string "Error"); ("message", Json.string msg) ]
+  | Success -> Json.obj [ ("type", Json.string "Success") ]
 
-(** Tests submodule *)
-module Tests = struct
-  let test_request_encoding_preserves_all_fields () : (unit, string) result =
-    (* Test that requests are properly encoded with all fields *)
-    Ok ()
-    [@test]
+(** Deserialize request from JSON *)
+let request_of_json json =
+  match Json.get_field "type" json with
+  | Some type_field -> (
+      match Json.get_string type_field with
+      | Some "Ping" -> Ok Ping
+      | Some "GetBuildGraph" -> Ok GetBuildGraph
+      | Some "GetWorkspaceConfig" -> Ok GetWorkspaceConfig
+      | Some "BuildPackage" -> (
+          match Json.get_field "package" json with
+          | Some pkg_field -> (
+              match Json.get_string pkg_field with
+              | Some pkg -> Ok (BuildPackage pkg)
+              | None -> Error "Invalid package field")
+          | None -> Error "Missing package field for BuildPackage")
+      | Some "BuildAll" -> Ok BuildAll
+      | Some "Restart" -> Ok Restart
+      | Some "Shutdown" -> Ok Shutdown
+      | Some t -> Error (Printf.sprintf "Unknown request type: %s" t)
+      | None -> Error "Type field is not a string")
+  | None -> Error "Missing type field in request"
 
-  let test_response_parsing_handles_all_response_types () :
-      (unit, string) result =
-    (* Test that all response types are parsed correctly *)
-    Ok ()
-    [@test]
-
-  let test_scan_workspace_includes_target_package () : (unit, string) result =
-    (* Test that scan workspace request includes optional target *)
-    Ok ()
-    [@riot.test]
-
-  let test_rpc_communication_is_bidirectional () : (unit, string) result =
-    (* Test that requests and responses flow correctly *)
-    Ok ()
-end [@test]
+(** Deserialize response from JSON *)
+let response_of_json json =
+  match Json.get_field "type" json with
+  | Some type_field -> (
+      match Json.get_string type_field with
+      | Some "Pong" -> Ok Pong
+      | Some "BuildGraph" -> (
+          match Json.get_field "nodes" json with
+          | Some nodes_field -> (
+              match Json.get_array nodes_field with
+              | Some nodes_array -> (
+                  let nodes_result =
+                    List.fold_left
+                      (fun acc node ->
+                        match acc with
+                        | Result.Error e -> Result.Error e
+                        | Result.Ok nodes_list -> (
+                            match build_node_of_json node with
+                            | Result.Ok n -> Result.Ok (n :: nodes_list)
+                            | Result.Error e -> Result.Error e))
+                      (Result.Ok []) nodes_array
+                  in
+                  match nodes_result with
+                  | Result.Ok nodes ->
+                      Result.Ok (BuildGraph { nodes = List.rev nodes })
+                  | Result.Error e -> Result.Error e)
+              | None -> Error "nodes field is not an array")
+          | None -> Error "Missing nodes field for BuildGraph")
+      | Some "WorkspaceConfig" -> (
+          match
+            ( Json.get_field "workspace_root" json,
+              Json.get_field "toolchain" json,
+              Json.get_field "packages" json )
+          with
+          | Some wr, Some tc, Some pkgs -> (
+              match
+                (Json.get_string wr, Json.get_string tc, Json.get_array pkgs)
+              with
+              | Some workspace_root, Some toolchain, Some packages_array -> (
+                  let packages_result =
+                    List.fold_left
+                      (fun acc pkg ->
+                        match acc with
+                        | Result.Error e -> Result.Error e
+                        | Result.Ok pkgs_list -> (
+                            match Json.get_string pkg with
+                            | Some s -> Result.Ok (s :: pkgs_list)
+                            | None ->
+                                Result.Error "Invalid package in packages array"
+                            ))
+                      (Result.Ok []) packages_array
+                  in
+                  match packages_result with
+                  | Result.Ok packages ->
+                      Result.Ok
+                        (WorkspaceConfig
+                           {
+                             workspace_root;
+                             toolchain;
+                             packages = List.rev packages;
+                           })
+                  | Result.Error e -> Result.Error e)
+              | _ -> Error "Invalid field types in WorkspaceConfig")
+          | _ -> Error "Missing required fields in WorkspaceConfig")
+      | Some "BuildStarted" -> (
+          match Json.get_field "session_id" json with
+          | Some sid_field -> (
+              match Json.get_string sid_field with
+              | Some session_id -> Ok (BuildStarted { session_id })
+              | None -> Error "session_id field is not a string")
+          | None -> Error "Missing session_id field for BuildStarted")
+      | Some "LogOutput" -> (
+          match Json.get_field "session_id" json, Json.get_field "message" json with
+          | Some sid_field, Some msg_field -> (
+              match Json.get_string sid_field, Json.get_string msg_field with
+              | Some session_id, Some message -> Ok (LogOutput { session_id; message })
+              | _ -> Error "Invalid field types in LogOutput")
+          | _ -> Error "Missing required fields in LogOutput")
+      | Some "Error" -> (
+          match Json.get_field "message" json with
+          | Some msg_field -> (
+              match Json.get_string msg_field with
+              | Some msg -> Ok (Error msg)
+              | None -> Error "message field is not a string")
+          | None -> Error "Missing message field for Error")
+      | Some "Success" -> Ok Success
+      | Some t -> Error (Printf.sprintf "Unknown response type: %s" t)
+      | None -> Error "Type field is not a string")
+  | None -> Error "Missing type field in response"

@@ -52,10 +52,10 @@ let get_build_config file_path =
         Printf.fprintf oc
           "[%s] Successfully got workspace config with %d packages: %s\n"
           (Unix.gettimeofday () |> string_of_float)
-          (List.length config.Rpc_json.packages)
-          (String.concat ", " config.Rpc_json.packages);
+          (List.length config.Rpc.packages)
+          (String.concat ", " config.Rpc.packages);
         close_out oc;
-        Some config.Rpc_json.packages
+        Some config.Rpc.packages
     | Error e ->
         let oc =
           open_out_gen [ Open_creat; Open_append; Open_text ] 0o644 log_file

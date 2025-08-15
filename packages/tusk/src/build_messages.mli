@@ -15,10 +15,10 @@ type build_task = {
 type Message.t +=
   | ScanWorkspace of string option
         (** Scan workspace, optionally filtering for a target package *)
-  | BuildAll of Pid.t
-        (** Build all packages, includes CLI pid for completion notification *)
-  | BuildPackage of string * Pid.t
-        (** Build specific package: (package_name, cli_pid) *)
+  | BuildAll of Pid.t * bool
+        (** Build all packages: (client_pid, is_json_rpc) *)
+  | BuildPackage of string * Pid.t * bool
+        (** Build specific package: (package_name, client_pid, is_json_rpc) *)
   | NextTask of Pid.t  (** Worker requests next task from server *)
   | TaskComplete of string * bool * Hasher.hash
         (** Worker reports task completion: (package_name, success, hash) *)

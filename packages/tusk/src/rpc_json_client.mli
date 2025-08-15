@@ -1,10 +1,14 @@
 (** JSON-RPC client for tusk server *)
 
-val call : Rpc_json.request -> (Rpc_json.response, string) result
+val call : Rpc.request -> (Rpc.response, string) result
 (** Connect to the server and send a JSON-RPC request *)
+
+val call_build : Rpc.request -> (string * string list * (Rpc.response, string) result, string) result
+(** Connect to the server and send a build request, collecting log messages.
+    Returns (session_id, log_messages, final_response) *)
 
 val ping : unit -> (unit, string) result
 (** Convenience functions *)
 
-val get_build_graph : unit -> (Rpc_json.build_graph_response, string) result
-val get_workspace_config : unit -> (Rpc_json.workspace_config, string) result
+val get_build_graph : unit -> (Rpc.build_graph_response, string) result
+val get_workspace_config : unit -> (Rpc.workspace_config, string) result

@@ -1,65 +1,50 @@
-(** RPC protocol definitions for Tusk server communication
+(** JSON-RPC protocol for tusk server *)
 
-    This module defines the request/response protocol for communication between
-    the Tusk server and various clients (CLI, LSP, MCP). *)
+type build_node = {
+  package_name : string;
+  src_dir : string;
+  out_dir : string;
+  status : string; (* "pending" | "building" | "built" | "failed" *)
+  deps : string list;
+}
+(** Build node information *)
 
-(** Request messages that clients can send to the server *)
+type build_graph_response = { nodes : build_node list }
+(** Build graph response *)
+
+type workspace_config = {
+  workspace_root : string;
+  toolchain : string;
+  packages : string list;
+}
+(** Workspace configuration *)
+
+(** RPC request types *)
 type request =
-  | Ping  (** Health check request *)
-  | GetWorkspace  (** Request workspace information *)
-  | GetBuildGraph  (** Request build graph structure *)
-  | BuildPackage of { package : string; watch : bool }
-      (** Build a specific package, optionally with file watching *)
-  | BuildAll of { watch : bool }
-      (** Build all packages, optionally with file watching *)
-  | GetPackageForFile of { file_path : string }
-      (** Find which package contains a given file *)
-  | GetConfigForFile of { file_path : string }
-      (** Get compilation configuration for a file (for LSP) *)
-  | GetBuildStatus  (** Request current build status *)
-  | Clean  (** Clean build artifacts *)
-  | Restart  (** Restart the server *)
-  | Shutdown  (** Shutdown the server *)
+  | Ping
+  | GetBuildGraph
+  | GetWorkspaceConfig
+  | BuildPackage of string
+  | BuildAll
+  | Restart
+  | Shutdown
 
-(** Response messages from the server *)
+(** RPC response types *)
 type response =
-  | Pong  (** Health check response *)
-  | WorkspaceInfo of { packages : string list; root : string }
-      (** Workspace information *)
-  | BuildGraphInfo of {
-      packages : (string * string list) list;
-          (** List of (package_name, dependencies) *)
-    }  (** Build graph structure *)
-  | BuildStarted of { id : string }  (** Build has started with given ID *)
-  | BuildProgress of {
-      package : string;
-      status : [ `Building | `Success | `Failed of string ];
-    }  (** Progress update for a package build *)
-  | BuildComplete of { successful : int; failed : int }
-      (** Build completed with statistics *)
-  | PackageInfo of { name : string; path : string; dependencies : string list }
-      (** Information about a specific package *)
-  | FileConfig of {
-      source_paths : string list;
-      build_paths : string list;
-      flags : string list;
-      stdlib_path : string;
-    }  (** Compilation configuration for a file *)
-  | Error of { message : string }  (** Error response *)
-  | Ok  (** Generic success response *)
+  | Pong
+  | BuildGraph of build_graph_response
+  | WorkspaceConfig of workspace_config
+  | BuildStarted of { session_id : string }
+  | LogOutput of { session_id : string; message : string }
+  | Error of string
+  | Success
 
-(** {1 Serialization} *)
+val request_to_json : request -> Json.t
+(** Serialization *)
 
-val request_to_string : request -> string
-(** Serialize a request to a string. (Temporary implementation - will use proper
-    JSON later) *)
+val response_to_json : response -> Json.t
 
-val request_of_string : string -> request option
-(** Parse a request from a string. Returns [None] if parsing fails. *)
+val request_of_json : Json.t -> (request, string) result
+(** Deserialization *)
 
-val response_to_string : response -> string
-(** Serialize a response to a string. (Temporary implementation - will use
-    proper JSON later) *)
-
-val response_of_string : string -> response option
-(** Parse a response from a string. Returns [None] if parsing fails. *)
+val response_of_json : Json.t -> (response, string) result

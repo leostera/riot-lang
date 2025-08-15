@@ -139,18 +139,40 @@ let execute_tool name arguments =
           )
         | _ -> None
       in
-      (* Call tusk build via RPC *)
+      (* Call tusk build via RPC and collect logs *)
       let request = match package with
-        | Some pkg -> Rpc_json.BuildPackage pkg
-        | None -> Rpc_json.BuildAll
+        | Some pkg -> Rpc.BuildPackage pkg
+        | None -> Rpc.BuildAll
       in
-      match Rpc_json_client.call request with
-      | Ok (Rpc_json.Success) ->
-          [Mcp.Text "Build started successfully"]
-      | Ok response ->
-          let json = Rpc_json.response_to_json response in
-          [Mcp.Text (Json.to_string json)]
+      log (Printf.sprintf "Calling call_build with request: %s" 
+        (match request with 
+         | Rpc.BuildAll -> "BuildAll"
+         | Rpc.BuildPackage pkg -> Printf.sprintf "BuildPackage(%s)" pkg
+         | _ -> "other"));
+      match Rpc_json_client.call_build request with
+      | Ok (session_id, logs, Ok Rpc.Success) ->
+          (* Build succeeded - return logs *)
+          log (Printf.sprintf "Build succeeded - session: %s, log count: %d" session_id (List.length logs));
+          let log_text = String.concat "\n" logs in
+          if log_text = "" then
+            [Mcp.Text (Printf.sprintf "Build completed successfully (session: %s)" session_id)]
+          else
+            [Mcp.Text (Printf.sprintf "Build completed (session: %s):\n%s" session_id log_text)]
+      | Ok (session_id, logs, Ok (Rpc.Error msg)) ->
+          (* Build failed - return logs and error *)
+          log (Printf.sprintf "Build failed - session: %s, error: %s, log count: %d" session_id msg (List.length logs));
+          let log_text = String.concat "\n" logs in
+          [Mcp.Text (Printf.sprintf "Build failed (session: %s): %s\n%s" session_id msg log_text)]
+      | Ok (_, _, Ok response) ->
+          (* Unexpected response *)
+          let json = Rpc.response_to_json response in
+          log (Printf.sprintf "Unexpected response: %s" (Json.to_string json));
+          [Mcp.Text (Printf.sprintf "Unexpected response: %s" (Json.to_string json))]
+      | Ok (_, _, Error e) ->
+          log (Printf.sprintf "Error parsing response: %s" e);
+          [Mcp.Text (Printf.sprintf "Error parsing response: %s" e)]
       | Error e ->
+          log (Printf.sprintf "Build error: %s" e);
           [Mcp.Text (Printf.sprintf "Build failed: %s" e)]
     )
   | "clean" -> (
@@ -163,8 +185,8 @@ let execute_tool name arguments =
           [Mcp.Text "Failed to clean build artifacts"]
     )
   | "workspace_info" -> (
-      match Rpc_json_client.call Rpc_json.GetWorkspaceConfig with
-      | Ok (Rpc_json.WorkspaceConfig config) ->
+      match Rpc_json_client.call Rpc.GetWorkspaceConfig with
+      | Ok (Rpc.WorkspaceConfig config) ->
           let json = Json.Object [
             ("workspace_root", Json.String config.workspace_root);
             ("toolchain", Json.String config.toolchain);
@@ -172,17 +194,17 @@ let execute_tool name arguments =
           ] in
           [Mcp.Text (Json.to_string json)]
       | Ok response ->
-          let json = Rpc_json.response_to_json response in
+          let json = Rpc.response_to_json response in
           [Mcp.Text (Json.to_string json)]
       | Error e ->
           [Mcp.Text (Printf.sprintf "Failed to get workspace info: %s" e)]
     )
   | "build_graph" -> (
-      match Rpc_json_client.call Rpc_json.GetBuildGraph with
-      | Ok (Rpc_json.BuildGraph graph) ->
+      match Rpc_json_client.call Rpc.GetBuildGraph with
+      | Ok (Rpc.BuildGraph graph) ->
           let nodes_json = List.map (fun node ->
             Json.Object [
-              ("package", Json.String node.Rpc_json.package_name);
+              ("package", Json.String node.Rpc.package_name);
               ("src_dir", Json.String node.src_dir);
               ("out_dir", Json.String node.out_dir);
               ("status", Json.String node.status);
@@ -194,7 +216,7 @@ let execute_tool name arguments =
           ] in
           [Mcp.Text (Json.to_string json)]
       | Ok response ->
-          let json = Rpc_json.response_to_json response in
+          let json = Rpc.response_to_json response in
           [Mcp.Text (Json.to_string json)]
       | Error e ->
           [Mcp.Text (Printf.sprintf "Failed to get build graph: %s" e)]
@@ -222,8 +244,8 @@ let execute_tool name arguments =
 let read_resource uri =
   match uri with
   | "workspace://info" -> (
-      match Rpc_json_client.call Rpc_json.GetWorkspaceConfig with
-      | Ok (Rpc_json.WorkspaceConfig config) ->
+      match Rpc_json_client.call Rpc.GetWorkspaceConfig with
+      | Ok (Rpc.WorkspaceConfig config) ->
           let json = Json.Object [
             ("workspace_root", Json.String config.workspace_root);
             ("toolchain", Json.String config.toolchain);
@@ -234,11 +256,11 @@ let read_resource uri =
           [Mcp.TextContent { text = "Failed to get workspace info"; mime_type = None }]
     )
   | "build://graph" -> (
-      match Rpc_json_client.call Rpc_json.GetBuildGraph with
-      | Ok (Rpc_json.BuildGraph graph) ->
+      match Rpc_json_client.call Rpc.GetBuildGraph with
+      | Ok (Rpc.BuildGraph graph) ->
           let nodes_json = List.map (fun node ->
             Json.Object [
-              ("package", Json.String node.Rpc_json.package_name);
+              ("package", Json.String node.Rpc.package_name);
               ("deps", Json.Array (List.map (fun d -> Json.String d) node.deps));
             ]
           ) graph.nodes in

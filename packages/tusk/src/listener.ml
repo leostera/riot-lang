@@ -120,43 +120,8 @@ let handle_client server_pid stream =
               | Ok _ -> client_loop ()
               | Error _ -> Printf.printf "[Listener] Write error\n%!"))
         else
-          (* Legacy RPC request *)
-          match Rpc.request_of_string line with
-          | Some request -> (
-              (* Forward to server *)
-              send server_pid (ClientRequest (self (), request));
-
-              (* Wait for response - TODO: add timeout *)
-              let selector = function
-                | ServerResponse response -> `select (`server_response response)
-                | _ -> `skip
-              in
-              match receive ~selector () with
-              | `server_response response -> (
-                  let response_str = Rpc.response_to_string response in
-                  let response_bytes = Bytes.of_string (response_str ^ "\n") in
-                  match
-                    Net.TcpStream.write stream response_bytes ~pos:0
-                      ~len:(Bytes.length response_bytes)
-                      ()
-                  with
-                  | Ok _ -> (
-                      (* Continue or shutdown *)
-                      match request with
-                      | Rpc.Shutdown ->
-                          Printf.printf
-                            "[Listener] Client requested shutdown\n%!";
-                          (* Give time for response to be sent *)
-                          sleep 0.1;
-                          ()
-                      | Rpc.Restart ->
-                          Printf.printf
-                            "[Listener] Client requested restart\n%!";
-                          client_loop ()
-                      | _ -> client_loop ())
-                  | Error _ -> Printf.printf "[Listener] Write error\n%!"))
-          | None ->
-              let error_bytes = Bytes.of_string "Error:Invalid request\n" in
+          (* No legacy RPC - only JSON-RPC is supported *)
+          let error_bytes = Bytes.of_string "{\"error\":\"Invalid request - only JSON-RPC is supported\"}\n" in
               ignore
                 (Net.TcpStream.write stream error_bytes ~pos:0
                    ~len:(Bytes.length error_bytes) ());
@@ -220,26 +185,3 @@ let connect () =
           Error `Connection_refused)
   | None -> Error `Connection_refused
 
-(** Send a request to the server and get response *)
-let send_request request =
-  match connect () with
-  | Ok stream -> (
-      let request_str = Rpc.request_to_string request in
-      let request_bytes = Bytes.of_string (request_str ^ "\n") in
-      match Net.TcpStream.write stream request_bytes () with
-      | Ok _ -> (
-          let buffer = Bytes.create 1024 in
-          match Net.TcpStream.read stream buffer () with
-          | Ok bytes_read when bytes_read > 0 ->
-              let response_line = Bytes.sub_string buffer 0 bytes_read in
-              Net.TcpStream.close stream;
-              Rpc.response_of_string (String.trim response_line)
-          | _ ->
-              Net.TcpStream.close stream;
-              Some (Rpc.Error { message = "Failed to read response" }))
-      | Error _ ->
-          Printf.printf "[Listener] Failed to send request\n%!";
-          Net.TcpStream.close stream;
-          Some (Rpc.Error { message = "Failed to send request" }))
-  | Error `Connection_refused ->
-      Some (Rpc.Error { message = "Could not connect to server" })

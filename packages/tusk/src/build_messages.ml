@@ -9,8 +9,8 @@ type Message.t +=
   | (* CLI -> Server messages *)
       ScanWorkspace of
       string option (* optional target package to filter for *)
-  | BuildAll of Pid.t (* includes CLI pid for BuildFinished notification *)
-  | BuildPackage of string * Pid.t (* package name, CLI pid *)
+  | BuildAll of Pid.t * bool (* client pid, is_json_rpc *)
+  | BuildPackage of string * Pid.t * bool (* package name, client pid, is_json_rpc *)
   | (* Worker -> Server messages *)
       NextTask of
       Pid.t (* worker requests next task from server *)

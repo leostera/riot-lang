@@ -7,7 +7,7 @@ import os
 import subprocess
 import sys
 
-OCAML_VERSION = os.getenv("OCAML_VERSION", "5.3.0")
+OCAML_VERSION = os.getenv("OCAML_VERSION", "5.3.0+riot")
 
 def run(cmd):
     """Execute a command and exit on failure"""
@@ -31,7 +31,7 @@ def ensure_toolchain(version):
     os.makedirs(toolchain_dir, exist_ok=True)
     
     # Download and build OCaml
-    run(f"curl -L https://github.com/ocaml/ocaml/archive/{version}.tar.gz -o /tmp/ocaml-{version}.tar.gz")
+    run(f"curl -L https://github.com/leostera/riot-ocaml/archive/{version}.tar.gz -o /tmp/ocaml-{version}.tar.gz")
     run(f"cd /tmp && tar xzf ocaml-{version}.tar.gz")
     run(f"cd /tmp/ocaml-{version} && ./configure --prefix={toolchain_dir}")
     run(f"cd /tmp/ocaml-{version} && make -j")

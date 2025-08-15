@@ -203,6 +203,9 @@ val cache_hit : ?sid:session_id -> package:string -> hash:string -> unit
 val cache_miss : ?sid:session_id -> package:string -> hash:string -> unit
 val cache_stored : ?sid:session_id -> package:string -> hash:string -> artifacts:string list -> unit
 
+(** Log hash computation events *)
+val hash_computed : ?sid:session_id -> package:string -> hash:string -> unit
+
 (** Log worker events *)
 val worker_pool_started : ?sid:session_id -> workers:int -> unit
 val worker_started : ?sid:session_id -> worker_id:int -> unit
@@ -218,6 +221,10 @@ val server_shutdown : ?sid:session_id -> unit -> unit
 (** Log queue events *)
 val queue_package : ?sid:session_id -> package:string -> queue_type:[`Ready | `Waiting] -> unit
 val queue_stats : ?sid:session_id -> ready:int -> waiting:int -> busy:int -> unit
+
+(** Log dependency events *)
+val dependency_missing : ?sid:session_id -> package:string -> missing:string list -> unit
+val dependency_satisfied : ?sid:session_id -> package:string -> unit
 
 (** Log compilation events *)
 val compiling_interface : ?sid:session_id -> package:string -> file:string -> unit
