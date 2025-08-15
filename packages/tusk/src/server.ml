@@ -526,12 +526,12 @@ let handle_client_request state client_pid request =
       send client_pid (ServerResponse Rpc.Pong);
       state
   | Rpc.Restart ->
-      send client_pid (ServerResponse Rpc.Ok);
+      send client_pid (ServerResponse Rpc.Success);
       (* Send restart message to self to handle after responding *)
       send (self ()) RestartServer;
       state
   | Rpc.Shutdown ->
-      send client_pid (ServerResponse Rpc.Ok);
+      send client_pid (ServerResponse Rpc.Success);
       (* Send shutdown message to self to handle after responding *)
       send (self ()) ShutdownServer;
       state
@@ -540,7 +540,11 @@ let handle_client_request state client_pid request =
       | Some ws ->
           let packages = List.map (fun p -> p.Workspace.name) ws.packages in
           send client_pid
-            (ServerResponse (Rpc.WorkspaceInfo { packages; root = ws.root }));
+            (ServerResponse (Rpc.WorkspaceConfig { 
+              workspace_root = ws.root;
+              toolchain = Toolchains.get_version state.toolchain;
+              packages
+            }));
           state
       | None ->
           send client_pid
@@ -550,21 +554,30 @@ let handle_client_request state client_pid request =
       match state.build_graph with
       | Some graph ->
           let nodes = Build_graph.topological_sort graph in
-          let packages =
+          let build_nodes =
             List.map
               (fun node ->
-                (* Include both external dependencies (like unix) and internal package dependencies *)
-                let all_deps = node.Build_node.package.dependencies in
-                (node.Build_node.package.name, all_deps))
+                let pkg = node.Build_node.package in
+                {
+                  Rpc.package_name = pkg.name;
+                  src_dir = pkg.path;
+                  out_dir = Printf.sprintf "target/debug/out/packages/%s" pkg.name;
+                  status = (match Build_results.get_status state.build_results pkg.name with
+                    | Some (Build_results.Built _) -> "built"
+                    | Some Building -> "building"
+                    | Some (Failed _) -> "failed"
+                    | _ -> "pending");
+                  deps = pkg.dependencies;
+                })
               nodes
           in
-          send client_pid (ServerResponse (Rpc.BuildGraphInfo { packages }));
+          send client_pid (ServerResponse (Rpc.BuildGraph { nodes = build_nodes }));
           state
       | None ->
           send client_pid
             (ServerResponse (Rpc.Error "No build graph available"));
           state)
-  | Rpc.GetPackageForFile { file_path } -> (
+  (* | Rpc.GetPackageForFile { file_path } -> (
       match state.workspace with
       | Some ws -> (
           (* Find which package contains this file *)
@@ -635,7 +648,7 @@ let handle_client_request state client_pid request =
       | None ->
           send client_pid
             (ServerResponse (Rpc.Error "No workspace loaded"));
-          state)
+          state) *)
   | Rpc.BuildPackage package -> (
       (* For RPC build, we need to scan workspace first if not done *)
       let new_state =
