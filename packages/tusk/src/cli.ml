@@ -101,7 +101,7 @@ let build_command package_opt =
       | Some pkg -> Rpc.BuildPackage pkg
       | None -> Rpc.BuildAll
     in
-    match Rpc_json_client.call_build request with
+    match Rpc_client.call_build request with
     | Ok (session_id, logs, Ok Rpc.Success) ->
         (* Print collected logs *)
         List.iter (fun log -> Printf.printf "%s\n" log) logs;
@@ -157,7 +157,7 @@ let build_package package_name =
   if not (Server_manager.ensure_running ()) then false
   else
     (* Use JSON-RPC client to send build request *)
-    match Rpc_json_client.call_build (Rpc.BuildPackage package_name) with
+    match Rpc_client.call_build (Rpc.BuildPackage package_name) with
     | Ok (_, _, Ok Rpc.Success) -> true
     | _ -> false
 
@@ -665,7 +665,7 @@ let rpc_command args =
     Printf.printf "  tusk rpc shutdown          - Shutdown the server\n";
     Process.Normal (* Handle all commands via JSON-RPC *))
   else if cmd = "ping" then (
-    match Rpc_json_client.call Rpc.Ping with
+    match Rpc_client.call Rpc.Ping with
     | Ok response ->
         let json = Rpc.response_to_json response in
         Printf.printf "%s\n" (Json.to_string json);
@@ -674,7 +674,7 @@ let rpc_command args =
         Printf.eprintf "Error: %s\n" e;
         Process.Exception (Failure e))
   else if cmd = "workspace" then (
-    match Rpc_json_client.call Rpc.GetWorkspaceConfig with
+    match Rpc_client.call Rpc.GetWorkspaceConfig with
     | Ok response ->
         let json = Rpc.response_to_json response in
         Printf.printf "%s\n" (Json.to_string json);
@@ -683,7 +683,7 @@ let rpc_command args =
         Printf.eprintf "Error: %s\n" e;
         Process.Exception (Failure e))
   else if cmd = "graph" then (
-    match Rpc_json_client.call Rpc.GetBuildGraph with
+    match Rpc_client.call Rpc.GetBuildGraph with
     | Ok response ->
         let json = Rpc.response_to_json response in
         Printf.printf "%s\n" (Json.to_string json);
@@ -699,39 +699,38 @@ let rpc_command args =
       | Some pkg -> Rpc.BuildPackage pkg
       | None -> Rpc.BuildAll
     in
-    (* Use call_build to get streaming logs *)
-    match Rpc_json_client.call_build request with
-    | Ok (session_id, logs, Ok Rpc.Success) ->
-        (* Build succeeded - return JSON response *)
-        let response = Json.Object [
-          ("type", Json.String "Success");
-          ("session_id", Json.String session_id);
-          ("logs", Json.Array (List.map (fun log -> Json.String log) logs));
-        ] in
-        Printf.printf "%s\n" (Json.to_string response);
+    (* Use streaming build to output logs in real-time *)
+    let session_id = ref "" in
+    let callback = function
+      | Rpc.BuildStarted { session_id = sid } ->
+          session_id := sid;
+          (* Output streaming response as JSON *)
+          let json = Rpc.response_to_json (Rpc.BuildStarted { session_id = sid }) in
+          Printf.printf "%s\n" (Json.to_string json);
+          flush stdout
+      | Rpc.LogOutput { session_id = _; message } ->
+          (* Output log message as JSON *)
+          let json = Rpc.response_to_json (Rpc.LogOutput { session_id = !session_id; message }) in
+          Printf.printf "%s\n" (Json.to_string json);
+          flush stdout
+      | _ -> ()
+    in
+    match Rpc_client.call_build_streaming request callback with
+    | Ok Rpc.Success ->
+        (* Build succeeded - output final response *)
+        let json = Rpc.response_to_json Rpc.Success in
+        Printf.printf "%s\n" (Json.to_string json);
         Process.Normal
-    | Ok (session_id, logs, Ok (Rpc.Error msg)) ->
-        (* Build failed - return JSON error *)
-        let response = Json.Object [
-          ("type", Json.String "Error");
-          ("session_id", Json.String session_id);
-          ("message", Json.String msg);
-          ("logs", Json.Array (List.map (fun log -> Json.String log) logs));
-        ] in
-        Printf.printf "%s\n" (Json.to_string response);
+    | Ok (Rpc.Error msg) ->
+        (* Build failed - output error *)
+        let json = Rpc.response_to_json (Rpc.Error msg) in
+        Printf.printf "%s\n" (Json.to_string json);
         Process.Exception (Failure msg)
-    | Ok (_, _, Ok response) ->
+    | Ok response ->
         (* Unexpected response *)
         let json = Rpc.response_to_json response in
         Printf.printf "%s\n" (Json.to_string json);
         Process.Exception (Failure "Unexpected response")
-    | Ok (_, _, Error e) ->
-        let response = Json.Object [
-          ("type", Json.String "Error");
-          ("message", Json.String (Printf.sprintf "Error parsing response: %s" e));
-        ] in
-        Printf.printf "%s\n" (Json.to_string response);
-        Process.Exception (Failure e)
     | Error e ->
         let response = Json.Object [
           ("type", Json.String "Error");
@@ -740,7 +739,7 @@ let rpc_command args =
         Printf.printf "%s\n" (Json.to_string response);
         Process.Exception (Failure e))
   else if cmd = "restart" then (
-    match Rpc_json_client.call Rpc.Restart with
+    match Rpc_client.call Rpc.Restart with
     | Ok response ->
         let json = Rpc.response_to_json response in
         Printf.printf "%s\n" (Json.to_string json);
@@ -749,7 +748,7 @@ let rpc_command args =
         Printf.eprintf "Error: %s\n" e;
         Process.Exception (Failure e))
   else if cmd = "shutdown" then (
-    match Rpc_json_client.call Rpc.Shutdown with
+    match Rpc_client.call Rpc.Shutdown with
     | Ok response ->
         let json = Rpc.response_to_json response in
         Printf.printf "%s\n" (Json.to_string json);

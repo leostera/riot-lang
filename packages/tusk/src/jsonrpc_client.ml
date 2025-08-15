@@ -13,14 +13,10 @@ module type Protocol = sig
   type request
   type response
   
-  val serialize_request : request -> string
-  val serialize_response : response -> string
-  val deserialize_response : string -> (response, string) result
-  val deserialize_request : string -> (request, string) result
-  
-  (* Helpers for streaming protocols *)
-  val is_streaming_response : response -> bool
-  val is_final_response : response -> bool
+  val serialize_request : request -> Json.t
+  val serialize_response : response -> Json.t
+  val deserialize_response : Json.t -> (response, string) result
+  val deserialize_request : Json.t -> (request, string) result
 end
 
 (** Client type parametrized by request and response types *)
@@ -42,50 +38,38 @@ let create (type transport req res)
     protocol = protocol;
   }
 
-(** Send a request and get a response *)
-let call (type req res) (client : (req, res) t) (request : req) : (res, string) result =
+(** Send a request *)
+let send (type req res) (client : (req, res) t) (request : req) : (unit, string) result =
   let Client { transport_mod; transport; protocol } = client in
   let module P = (val protocol : Protocol with type request = req and type response = res) in
   let module T = (val transport_mod : Transport with type t = _) in
   
   (* Serialize and send request *)
-  let request_str = P.serialize_request request ^ "\n" in
+  let request_json = P.serialize_request request in
+  let request_str = Json.to_string request_json ^ "\n" in
   match T.send transport request_str with
   | Error e -> Error (Printf.sprintf "Failed to send: %s" e)
-  | Ok () ->
-      (* Receive and deserialize response *)
-      match T.receive transport with
-      | Error e -> Error (Printf.sprintf "Failed to receive: %s" e)
-      | Ok response_str -> P.deserialize_response response_str
+  | Ok () -> Ok ()
 
-(** Call with streaming support *)
-let call_streaming (type req res) (client : (req, res) t) (request : req) : (res * res list, string) result =
+(** Receive a response *)
+let receive (type req res) (client : (req, res) t) : (res, string) result =
   let Client { transport_mod; transport; protocol } = client in
   let module P = (val protocol : Protocol with type request = req and type response = res) in
   let module T = (val transport_mod : Transport with type t = _) in
   
-  (* Send initial request and get first response *)
-  match call client request with
+  (* Receive and deserialize response *)
+  match T.receive transport with
+  | Error e -> Error (Printf.sprintf "Failed to receive: %s" e)
+  | Ok response_str -> 
+      match Json.of_string response_str with
+      | Error e -> Error (Printf.sprintf "JSON parse error: %s" e)
+      | Ok json -> P.deserialize_response json
+
+(** Send a request and get a single response *)
+let call (type req res) (client : (req, res) t) (request : req) : (res, string) result =
+  match send client request with
   | Error e -> Error e
-  | Ok first_response ->
-      if not (P.is_streaming_response first_response) then
-        (* Not streaming, return single response *)
-        Ok (first_response, [])
-      else
-        (* Collect streaming responses *)
-        let rec collect acc =
-          match T.receive transport with
-          | Error e -> Error (Printf.sprintf "Stream error: %s" e)
-          | Ok response_str ->
-              match P.deserialize_response response_str with
-              | Error e -> Error e
-              | Ok response ->
-                  if P.is_final_response response then
-                    Ok (response, List.rev (first_response :: acc))
-                  else
-                    collect (response :: acc)
-        in
-        collect []
+  | Ok () -> receive client
 
 (** Close the client connection *)
 let close (type req res) (client : (req, res) t) =

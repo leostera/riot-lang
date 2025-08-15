@@ -13,13 +13,10 @@ module type Protocol = sig
   type request
   type response
   
-  val serialize_request : request -> string
-  val serialize_response : response -> string
-  val deserialize_response : string -> (response, string) result
-  val deserialize_request : string -> (request, string) result
-  
-  val is_streaming_response : response -> bool
-  val is_final_response : response -> bool
+  val serialize_request : request -> Json.t
+  val serialize_response : response -> Json.t
+  val deserialize_response : Json.t -> (response, string) result
+  val deserialize_request : Json.t -> (request, string) result
 end
 
 (** Client type parametrized by request and response types *)
@@ -44,12 +41,14 @@ val create :
         tcp_conn
     ]} *)
 
-val call : ('req, 'res) t -> 'req -> ('res, string) result
-(** Send a request and get a response. Type-safe based on the protocol. *)
+val send : ('req, 'res) t -> 'req -> (unit, string) result
+(** Send a request to the server *)
 
-val call_streaming : ('req, 'res) t -> 'req -> ('res * 'res list, string) result
-(** Send a request and collect streaming responses.
-    Returns (final_response, all_streaming_responses) *)
+val receive : ('req, 'res) t -> ('res, string) result
+(** Receive a response from the server *)
+
+val call : ('req, 'res) t -> 'req -> ('res, string) result
+(** Send a request and get a single response. Convenience function that combines send and receive. *)
 
 val close : ('req, 'res) t -> unit
 (** Close the client connection *)

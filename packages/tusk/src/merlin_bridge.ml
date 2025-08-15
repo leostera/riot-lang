@@ -39,10 +39,10 @@ let get_build_config file_path =
       match workspace_root with
       | Some root ->
           Sys.chdir root;
-          let res = Rpc_json_client.get_workspace_config () in
+          let res = Rpc_client.get_workspace_config () in
           Sys.chdir original_cwd;
           res
-      | None -> Rpc_json_client.get_workspace_config ()
+      | None -> Rpc_client.get_workspace_config ()
     in
     match result with
     | Ok config ->

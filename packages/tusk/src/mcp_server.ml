@@ -149,7 +149,7 @@ let execute_tool name arguments =
          | Rpc.BuildAll -> "BuildAll"
          | Rpc.BuildPackage pkg -> Printf.sprintf "BuildPackage(%s)" pkg
          | _ -> "other"));
-      match Rpc_json_client.call_build request with
+      match Rpc_client.call_build request with
       | Ok (session_id, logs, Ok Rpc.Success) ->
           (* Build succeeded - return logs *)
           log (Printf.sprintf "Build succeeded - session: %s, log count: %d" session_id (List.length logs));
@@ -185,7 +185,7 @@ let execute_tool name arguments =
           [Mcp.Text "Failed to clean build artifacts"]
     )
   | "workspace_info" -> (
-      match Rpc_json_client.call Rpc.GetWorkspaceConfig with
+      match Rpc_client.call Rpc.GetWorkspaceConfig with
       | Ok (Rpc.WorkspaceConfig config) ->
           let json = Json.Object [
             ("workspace_root", Json.String config.workspace_root);
@@ -200,7 +200,7 @@ let execute_tool name arguments =
           [Mcp.Text (Printf.sprintf "Failed to get workspace info: %s" e)]
     )
   | "build_graph" -> (
-      match Rpc_json_client.call Rpc.GetBuildGraph with
+      match Rpc_client.call Rpc.GetBuildGraph with
       | Ok (Rpc.BuildGraph graph) ->
           let nodes_json = List.map (fun node ->
             Json.Object [
@@ -244,7 +244,7 @@ let execute_tool name arguments =
 let read_resource uri =
   match uri with
   | "workspace://info" -> (
-      match Rpc_json_client.call Rpc.GetWorkspaceConfig with
+      match Rpc_client.call Rpc.GetWorkspaceConfig with
       | Ok (Rpc.WorkspaceConfig config) ->
           let json = Json.Object [
             ("workspace_root", Json.String config.workspace_root);
@@ -256,7 +256,7 @@ let read_resource uri =
           [Mcp.TextContent { text = "Failed to get workspace info"; mime_type = None }]
     )
   | "build://graph" -> (
-      match Rpc_json_client.call Rpc.GetBuildGraph with
+      match Rpc_client.call Rpc.GetBuildGraph with
       | Ok (Rpc.BuildGraph graph) ->
           let nodes_json = List.map (fun node ->
             Json.Object [

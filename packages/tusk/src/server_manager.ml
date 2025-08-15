@@ -24,7 +24,7 @@ let port_file () = Printf.sprintf "%s/server.port" (daemon_dir ())
 
 (** Check if the server is running by trying to connect *)
 let is_server_running () =
-  try match Rpc_json_client.ping () with Ok () -> true | Error _ -> false
+  try match Rpc_client.ping () with Ok () -> true | Error _ -> false
   with _ -> false
 
 (** Start the server process in the background *)
@@ -94,7 +94,7 @@ let start_background () =
 let stop_background () =
   try
     (* Try to send shutdown command via RPC *)
-    match Rpc_json_client.call Rpc.Shutdown with
+    match Rpc_client.call Rpc.Shutdown with
     | Ok _ ->
         Printf.printf "Server shutdown requested\n";
         (* Clean up PID file *)
