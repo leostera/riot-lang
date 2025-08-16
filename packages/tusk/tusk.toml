@@ -11,5 +11,6 @@ miniriot = { path = "../miniriot" }
 sexp = { path = "../sexp" }
 toml = { path = "../toml" }
 json = { path = "../json" }
+jsonrpc = { path = "../jsonrpc" }
 mcp = { path = "../mcp" }
 unix = "*"
