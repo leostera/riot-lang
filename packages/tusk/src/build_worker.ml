@@ -12,12 +12,11 @@ type build_result =
 
 (** Build a package using the Sandbox approach *)
 let build_package_with_sandbox server_pid build_task =
-  let { node; workspace } = build_task in
+  let { node; workspace; session_id } = build_task in
   let pkg_name = node.Build_node.package.name in
   let pkg_path = node.Build_node.package.path in
 
-  Printf.printf "[Worker] Building package %s at %s\n" pkg_name pkg_path;
-  flush stdout;
+  Log.package_started ?sid:session_id ~package:pkg_name;
 
   try
     (* Generate build actions *)
@@ -55,27 +54,24 @@ let build_package_with_sandbox server_pid build_task =
         let missing_names =
           List.map (fun dep -> dep.Build_node.package.name) missing_deps
         in
-        Printf.printf "[Worker] Missing dependencies for %s: %s\n" pkg_name
-          (String.concat ", " missing_names);
-        flush stdout;
+        Log.dependency_missing ?sid:session_id ~package:pkg_name
+          ~missing:missing_names;
         (* Send requeue message back to server *)
         send server_pid
           (RequeueWithDependencies { task = build_task; missing_deps });
         MissingDependencies missing_deps
     | Build_graph.Error msg ->
-        Printf.printf "[Worker] Error computing hash for %s: %s\n" pkg_name msg;
-        flush stdout;
+        Log.error ?sid:session_id
+          (Printf.sprintf "Error computing hash for %s: %s" pkg_name msg);
         Failed msg
     | Build_graph.Ok node_hash ->
-        Printf.printf "[Worker] Computed hash %s for %s\n"
-          (Hasher.to_string node_hash)
-          pkg_name;
+        Log.hash_computed ?sid:session_id ~package:pkg_name
+          ~hash:(Hasher.to_string node_hash);
 
         (* Check if we have cached artifacts for this hash *)
         if Store.exists store node_hash then (
-          Printf.printf "[Worker] Cache hit for %s (hash: %s)\n" pkg_name
-            (Hasher.to_string node_hash);
-          flush stdout;
+          Log.cache_hit ?sid:session_id ~package:pkg_name
+            ~hash:(Hasher.to_string node_hash);
 
           (* Create sandbox for this build to get target directory *)
           let sandbox = Sandbox.create ~node ~workspace in
@@ -88,10 +84,8 @@ let build_package_with_sandbox server_pid build_task =
             Sandbox.cleanup sandbox;
             Failed "Failed to promote from cache"))
         else (
-          Printf.printf "[Worker] Cache miss for %s (hash: %s), building...\n"
-            pkg_name
-            (Hasher.to_string node_hash);
-          flush stdout;
+          Log.cache_miss ?sid:session_id ~package:pkg_name
+            ~hash:(Hasher.to_string node_hash);
 
           (* Create sandbox for this build *)
           let sandbox = Sandbox.create ~node ~workspace in
@@ -103,7 +97,9 @@ let build_package_with_sandbox server_pid build_task =
           in
 
           (* Run actions in sandbox with store *)
-          let success, msg = Sandbox.run_actions ~sandbox ~blueprint ~store in
+          let success, msg =
+            Sandbox.run_actions ~sandbox ~blueprint ~store ~session_id
+          in
 
           (* Clean up sandbox *)
           Sandbox.cleanup sandbox;
@@ -135,7 +131,7 @@ let rec worker_loop server_pid worker_id =
         send server_pid (NextTask { worker_pid = self () });
         wait_for_work ()
     | `shutdown ->
-        Printf.printf "[Worker %d] Shutting down\n" worker_id;
+        Printf.printf "[Worker %s] Shutting down\n" (Worker_id.to_string worker_id);
         None
   in
   match wait_for_work () with
@@ -145,7 +141,7 @@ let rec worker_loop server_pid worker_id =
       let pkg_path = build_task.node.Build_node.package.path in
 
       (if not (System.file_exists pkg_path) then (
-         Printf.printf "[Worker %d] Package directory not found: %s\n" worker_id
+         Printf.printf "[Worker %s] Package directory not found: %s\n" (Worker_id.to_string worker_id)
            pkg_path;
          flush stdout;
          (* Even for failures, we need to compute the hash *)
@@ -180,7 +176,7 @@ let rec worker_loop server_pid worker_id =
          let result = build_package_with_sandbox server_pid build_task in
          match result with
          | Success msg -> (
-             Printf.printf "[Worker %d] Build succeeded for %s: %s\n" worker_id
+             Printf.printf "[Worker %s] Build succeeded for %s: %s\n" (Worker_id.to_string worker_id)
                pkg_name msg;
              flush stdout;
              (* Compute hash and send TaskComplete *)
@@ -211,8 +207,18 @@ let rec worker_loop server_pid worker_id =
                         hash = Hasher.of_string "error";
                       }))
          | Failed msg -> (
-             Printf.printf "[Worker %d] Build failed for %s: %s\n" worker_id
+             Printf.printf "[Worker %s] Build failed for %s: %s\n" (Worker_id.to_string worker_id)
                pkg_name msg;
+             (* Log detailed error information for streaming *)
+             (* TODO: Parse compiler output and create individual CompileError events *)
+             Log.compile_error ?sid:build_task.session_id {
+               package = pkg_name;
+               file = "_compilation_summary";
+               line = 0;
+               column = None;
+               message = msg;
+               hint = Some "Check individual compilation errors above";
+             };
              flush stdout;
              (* Compute hash and send TaskComplete *)
              let store = Store.create ~root_dir:build_task.workspace.root in
@@ -242,7 +248,7 @@ let rec worker_loop server_pid worker_id =
                         hash = Hasher.of_string "error";
                       }))
          | Cached msg -> (
-             Printf.printf "[Worker %d] Build cached for %s: %s\n" worker_id
+             Printf.printf "[Worker %s] Build cached for %s: %s\n" (Worker_id.to_string worker_id)
                pkg_name msg;
              flush stdout;
              (* Compute hash and send TaskComplete *)
@@ -276,8 +282,8 @@ let rec worker_loop server_pid worker_id =
              let dep_names =
                List.map (fun dep -> dep.Build_node.package.name) deps
              in
-             Printf.printf "[Worker %d] Missing dependencies for %s: %s\n"
-               worker_id pkg_name
+             Printf.printf "[Worker %s] Missing dependencies for %s: %s\n"
+               (Worker_id.to_string worker_id) pkg_name
                (String.concat ", " dep_names);
              flush stdout
          (* Don't send TaskComplete - RequeueWithDependencies already sent *));
@@ -286,7 +292,7 @@ let rec worker_loop server_pid worker_id =
 
 (** Main entry point for worker process *)
 let main server_pid worker_id () =
-  Printf.printf "[Worker %d] Started (pid: %s)\n" worker_id
+  Printf.printf "[Worker %s] Started (pid: %s)\n" (Worker_id.to_string worker_id)
     (Pid.to_string (self ()));
   flush stdout;
   worker_loop server_pid worker_id
