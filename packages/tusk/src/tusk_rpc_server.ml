@@ -26,15 +26,28 @@ let handle_build ctx reply params =
   in
   match receive ~selector () with
   | Rpc.BuildStarted { session_id } ->
-      (* Send BuildStarted response with session_id *)
-      let response =
-        Jsonrpc.make_response
-          ~result:(Json.Object [ 
-            ("session_id", Json.String (Session_id.to_string session_id)) 
-          ])
-          ~id:Jsonrpc.Null ()
-      in
-      reply response
+      (* Build started, now wait for completion *)
+      (match receive ~selector () with
+      | Rpc.Success ->
+          let response =
+            Jsonrpc.make_response
+              ~result:(Json.Object [ ("status", Json.String "success") ])
+              ~id:Jsonrpc.Null ()
+          in
+          reply response
+      | Rpc.Error msg ->
+          let error =
+            Jsonrpc.{ code = InternalError; message = msg; data = None }
+          in
+          let response = Jsonrpc.make_response ~error ~id:Jsonrpc.Null () in
+          reply response
+      | _ ->
+          let error =
+            Jsonrpc.
+              { code = InternalError; message = "Unexpected response after BuildStarted"; data = None }
+          in
+          let response = Jsonrpc.make_response ~error ~id:Jsonrpc.Null () in
+          reply response)
   | Rpc.Success ->
       let response =
         Jsonrpc.make_response

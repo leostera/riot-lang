@@ -274,8 +274,8 @@ let execute_build state client_pid build_graph =
     (* All packages already built - return success immediately *)
     Log.info "All packages already built!";
     let built_count = List.length sorted in
-    (* For CLI clients, we don't send Success/Error since they're not using JSON-RPC *)
-    ();
+    (* Send success response to client *)
+    send client_pid (ServerResponse Rpc.Success);
     (* Reset state for next build *)
     let fresh_build_queue = Build_queue.create state.build_results in
     {
@@ -836,4 +836,8 @@ let start_with_listener () =
   (* Start server process *)
   let my_pid = self () in
   Log.server_started ?sid:None ~pid:(Pid.to_string my_pid);
+  
+  (* Start the TCP listener in a separate process *)
+  let _ = spawn (fun () -> Listener.start my_pid) in
+  
   server_loop initial_state

@@ -34,8 +34,8 @@ let create () =
 
 (** Close the client *)
 let close t = 
-  Jsonrpc.Client.close t.client;
-  Net.TcpClient.close t.transport
+  (* Jsonrpc.Client.close already closes the transport *)
+  Jsonrpc.Client.close t.client
 
 (** Ping the server *)
 let ping t =
@@ -131,7 +131,8 @@ let build_streaming t request callback =
               (* This is a BuildStarted response *)
               let session_id = Session_id.of_string session_id_str in
               callback (BuildStarted session_id);
-              (* For now, assume builds complete immediately and return success *)
+              (* Now we need to wait for the build to complete - poll for events *)
+              (* For now, just return success since we don't have streaming yet *)
               Ok (BuildFinished (Ok ()))
           | None ->
               (* Check if this is a Success/Error response *)
