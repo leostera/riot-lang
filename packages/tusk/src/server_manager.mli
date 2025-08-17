@@ -22,3 +22,18 @@ val ensure_running : unit -> bool
 
 val status : unit -> unit
 (** Print the current server status *)
+
+type daemon = {
+  dir: string;
+  os_pid: int;
+  port: int;
+}
+
+val daemon : Workspace.workspace -> daemon option
+(** Reads the daemon for a workspace with its dir, pid, and port, if available. *)
+
+val write_daemon : Workspace.workspace -> port:int -> unit
+(** Write daemon files (port and pid) for the given workspace and port *)
+
+val remove_daemon : Workspace.workspace -> unit
+(** Remove daemon files for the given workspace *)

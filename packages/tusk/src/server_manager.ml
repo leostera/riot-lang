@@ -3,29 +3,102 @@
 
 open Unix
 
-(** Get project ID based on current working directory *)
-let get_project_id () =
-  let cwd = System.getcwd () in
-  (* Hash the path to get a stable project ID *)
-  let hash = Hasher.hash_string cwd in
+(** Get project ID for a workspace *)
+let get_project_id (workspace : Workspace.workspace) =
+  (* Hash the workspace root to get a stable project ID *)
+  let hash = Hasher.hash_string workspace.root in
   Hasher.to_string hash
 
-(** Get daemon directory for this project *)
-let daemon_dir () =
+(** Get daemon directory for a workspace *)
+let daemon_dir_for_workspace (workspace : Workspace.workspace) =
   let home = System.get_home () in
-  let project_id = get_project_id () in
+  let project_id = get_project_id workspace in
   Printf.sprintf "%s/.tusk/daemons/%s" home project_id
 
-(** PID file location for this project *)
-let pid_file () = Printf.sprintf "%s/server.pid" (daemon_dir ())
+(** PID file location for a workspace *)
+let pid_file_for_workspace workspace = 
+  Printf.sprintf "%s/server.pid" (daemon_dir_for_workspace workspace)
 
-(** Port file location for this project *)
-let port_file () = Printf.sprintf "%s/server.port" (daemon_dir ())
+(** Port file location for a workspace *)
+let port_file_for_workspace workspace = 
+  Printf.sprintf "%s/server.port" (daemon_dir_for_workspace workspace)
+
+(** Get current workspace *)
+let current_workspace () =
+  Workspace.scan ~root:(System.getcwd ())
+
+(** Legacy functions that work with current directory *)
+let daemon_dir () = daemon_dir_for_workspace (current_workspace ())
+let pid_file () = pid_file_for_workspace (current_workspace ())
+let port_file () = port_file_for_workspace (current_workspace ())
+
+type daemon = {
+  dir: string;
+  os_pid: int;
+  port: int;
+}
+
+(** Read daemon information for a workspace *)
+let daemon (workspace : Workspace.workspace) =
+  let dir = daemon_dir_for_workspace workspace in
+  let pid_path = pid_file_for_workspace workspace in
+  let port_path = port_file_for_workspace workspace in
+  
+  if Sys.file_exists pid_path && Sys.file_exists port_path then
+    try
+      let ic = open_in pid_path in
+      let os_pid = int_of_string (input_line ic) in
+      close_in ic;
+      
+      let ic = open_in port_path in
+      let port = int_of_string (input_line ic) in
+      close_in ic;
+      
+      Some { dir; os_pid; port }
+    with _ -> None
+  else None
+
+(** Write daemon files for a workspace *)
+let write_daemon (workspace : Workspace.workspace) ~port =
+  let dir = daemon_dir_for_workspace workspace in
+  let pid_path = pid_file_for_workspace workspace in
+  let port_path = port_file_for_workspace workspace in
+  
+  (* Create directory if needed *)
+  System.mkdirp dir;
+  
+  (* Write port file *)
+  let oc = open_out port_path in
+  output_string oc (string_of_int port);
+  close_out oc;
+  
+  (* Write PID file *)
+  let pid = Unix.getpid () in
+  let oc = open_out pid_path in
+  output_string oc (string_of_int pid);
+  close_out oc
+
+(** Remove daemon files for a workspace *)
+let remove_daemon (workspace : Workspace.workspace) =
+  let pid_path = pid_file_for_workspace workspace in
+  let port_path = port_file_for_workspace workspace in
+  (try Sys.remove port_path with _ -> ());
+  (try Sys.remove pid_path with _ -> ())
 
 (** Check if the server is running by trying to connect *)
 let is_server_running () =
-  try match Rpc_client.ping () with Ok () -> true | Error _ -> false
-  with _ -> false
+  try
+    let client = Tusk_rpc_client.create () in
+    let result = Tusk_rpc_client.ping client in
+    Tusk_rpc_client.close client;
+    match result with
+    | Ok () -> true
+    | Error e ->
+        Printf.eprintf "[DEBUG] Ping failed: %s\n" e;
+        false
+  with e ->
+    Printf.eprintf "[DEBUG] Ping exception: %s\n" (Printexc.to_string e);
+    false
 
 (** Start the server process in the background *)
 let start_background () =
@@ -53,17 +126,22 @@ let start_background () =
     let cwd = System.getcwd () in
     System.write_file project_info_path cwd;
 
-    (* Create pipes for stdout/stderr *)
-    let devnull = Unix.openfile "/dev/null" [ O_RDWR ] 0o666 in
+    (* Create log file for debugging *)
+    let log_path = Printf.sprintf "%s/server.log" daemon_path in
+    let log_fd = Unix.openfile log_path [ O_WRONLY; O_CREAT; O_TRUNC ] 0o644 in
+
+    (* Use /dev/null for stdin, log file for stdout/stderr *)
+    let devnull = Unix.openfile "/dev/null" [ O_RDONLY ] 0o666 in
 
     (* Launch the server as a separate process *)
     let pid =
       Unix.create_process tusk_exe
         [| tusk_exe; "server"; "foreground" |]
-        devnull devnull devnull
+        devnull log_fd log_fd
     in
 
     Unix.close devnull;
+    Unix.close log_fd;
 
     (* Save PID *)
     let pid_path = pid_file () in
@@ -82,7 +160,7 @@ let start_background () =
       in
       Printf.printf
         "✅ Server started in background (pid: %d) on port %d for project %s\n"
-        pid port (get_project_id ());
+        pid port (get_project_id (current_workspace ()));
       true)
     else (
       Printf.eprintf "❌ Failed to start server\n";
@@ -94,7 +172,10 @@ let start_background () =
 let stop_background () =
   try
     (* Try to send shutdown command via RPC *)
-    match Rpc_client.call Rpc.Shutdown with
+    let client = Tusk_rpc_client.create () in
+    let result = Tusk_rpc_client.shutdown client in
+    Tusk_rpc_client.close client;
+    match result with
     | Ok _ ->
         Printf.printf "Server shutdown requested\n";
         (* Clean up PID file *)
@@ -121,7 +202,7 @@ let status () =
       with _ -> 0
     in
     Printf.printf "✅ Server is running on port %d for project %s\n" port
-      (get_project_id ())
+      (get_project_id (current_workspace ()))
   else Printf.printf "❌ Server is not running for this project\n"
 
 (** Kill the background server forcefully *)
@@ -152,3 +233,4 @@ let kill_background () =
     (* Clean up any stale port file *)
     (try System.remove_file port_path with _ -> ());
     false)
+

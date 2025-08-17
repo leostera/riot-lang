@@ -9,15 +9,21 @@ type Message.t +=
   | (* CLI -> Server messages *)
       ScanWorkspace of
       string option (* optional target package to filter for *)
-  | BuildAll of Pid.t * bool (* client pid, is_json_rpc *)
-  | BuildPackage of string * Pid.t * bool (* package name, client pid, is_json_rpc *)
+  | BuildAll of { client_pid : Pid.t }
+  | BuildPackage of { package_name : string; client_pid : Pid.t }
   | (* Worker -> Server messages *)
-      NextTask of
-      Pid.t (* worker requests next task from server *)
-  | TaskComplete of
-      string * bool * Hasher.hash (* package name, success, hash *)
-  | RequeueWithDependencies of
-      build_task * Build_node.t list (* task, missing dependency nodes *)
+      NextTask of {
+      worker_pid : Pid.t;
+    }
+  | TaskComplete of {
+      package_name : string;
+      success : bool;
+      hash : Hasher.hash;
+    }
+  | RequeueWithDependencies of {
+      task : build_task;
+      missing_deps : Build_node.t list;
+    }
   | (* Server -> Worker messages *)
       Task of
       build_task (* task with node and workspace context *)

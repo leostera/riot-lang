@@ -34,17 +34,16 @@ type response =
   | Pong
   | BuildGraph of build_graph_response
   | WorkspaceConfig of workspace_config
-  | BuildStarted of { session_id : string }
-  | LogOutput of { session_id : string; message : string }
+  | BuildStarted of { session_id : Session_id.t }
+  | BuildEvent of { session_id : Session_id.t; message : string }
   | Error of string
   | Success
 
-val request_to_json : request -> Json.t
-(** Serialization *)
+open Miniriot
+(** Actor system message wrappers *)
 
-val response_to_json : response -> Json.t
-
-val request_of_json : Json.t -> (request, string) result
-(** Deserialization *)
-
-val response_of_json : Json.t -> (response, string) result
+type Message.t +=
+  | ClientRequest of Pid.t * request
+  | ServerResponse of response
+  | RestartServer
+  | ShutdownServer

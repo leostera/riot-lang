@@ -12,10 +12,7 @@ type action =
       output : string;
       includes : string list;
     }
-  | CompileC of {
-      source : string;
-      output : string;
-    }
+  | CompileC of { source : string; output : string }
   (* Linking actions *)
   | CreateLibrary of {
       output : string;
@@ -29,18 +26,10 @@ type action =
       includes : string list;
     }
   (* File operations *)
-  | CopyFile of {
-      source : string;
-      destination : string;
-    }
-  | WriteFile of {
-      destination : string;
-      content : string;
-    }
+  | CopyFile of { source : string; destination : string }
+  | WriteFile of { destination : string; content : string }
   (* Output declaration *)
-  | DeclareOutputs of {
-      outputs : string list;
-    }
+  | DeclareOutputs of { outputs : string list }
 
 type action_result = Success | Failed of string | Skipped of string
 
@@ -72,7 +61,7 @@ let action_to_string action =
   | CompileImplementation { source; output; includes } ->
       Printf.sprintf "compile_impl(%s,%s,[%s])" source output
         (String.concat "," includes)
-  | CompileC { source; output } -> 
+  | CompileC { source; output } ->
       Printf.sprintf "compile_c(%s,%s)" source output
   | CreateLibrary { output; objects; includes } ->
       Printf.sprintf "create_library(%s,[%s],[%s])" output
@@ -80,11 +69,12 @@ let action_to_string action =
         (String.concat "," includes)
   | CreateExecutable { output; objects; libraries; includes } ->
       Printf.sprintf "create_exe(%s,[%s],[%s],[%s])" output
-        (String.concat "," objects) (String.concat "," libraries)
+        (String.concat "," objects)
+        (String.concat "," libraries)
         (String.concat "," includes)
-  | CopyFile { source; destination } -> 
+  | CopyFile { source; destination } ->
       Printf.sprintf "copy(%s,%s)" source destination
-  | WriteFile { destination; content } -> 
+  | WriteFile { destination; content } ->
       Printf.sprintf "write(%s,%d bytes)" destination (String.length content)
   | DeclareOutputs { outputs } ->
       Printf.sprintf "declare_outputs([%s])" (String.concat "," outputs)
@@ -159,8 +149,7 @@ let string_of_action = function
         (Filename.basename source) (Filename.basename output)
         (String.concat "; " includes)
   | CompileC { source; output } ->
-      Printf.sprintf "compile_c(%s -> %s)" 
-        (Filename.basename source)
+      Printf.sprintf "compile_c(%s -> %s)" (Filename.basename source)
         (Filename.basename output)
   | CreateLibrary { output; objects; includes } ->
       Printf.sprintf "create_library(%s from [%s]) [includes: %s]"
@@ -174,8 +163,7 @@ let string_of_action = function
         (String.concat "; " libraries)
         (String.concat "; " includes)
   | CopyFile { source; destination } ->
-      Printf.sprintf "copy(%s -> %s)" 
-        (Filename.basename source)
+      Printf.sprintf "copy(%s -> %s)" (Filename.basename source)
         (Filename.basename destination)
   | WriteFile { destination; content } ->
       Printf.sprintf "write(%s, %d bytes)" destination (String.length content)
@@ -262,32 +250,39 @@ let generate_blueprint workspace node dependencies all_packages toolchain ~hash
   (* Scan for source files recursively *)
   let rec scan_directory dir relative_path =
     let files = ref [] in
-    if System.file_exists dir then (
-      let entries = System.list_dir_all dir in
-      List.iter (fun entry ->
-        let full_path = Filename.concat dir entry in
-        let rel_path = 
-          if relative_path = "" then entry 
-          else Filename.concat relative_path entry 
-        in
-        if System.is_directory full_path then
-          (* Recursively scan subdirectories *)
-          files := (scan_directory full_path rel_path) @ !files
-        else if Filename.check_suffix entry ".ml" 
+    (if System.file_exists dir then
+       let entries = System.list_dir_all dir in
+       List.iter
+         (fun entry ->
+           let full_path = Filename.concat dir entry in
+           let rel_path =
+             if relative_path = "" then entry
+             else Filename.concat relative_path entry
+           in
+           if System.is_directory full_path then
+             (* Recursively scan subdirectories *)
+             files := scan_directory full_path rel_path @ !files
+           else if
+             Filename.check_suffix entry ".ml"
              || Filename.check_suffix entry ".mli"
-             || Filename.check_suffix entry ".c" then
-          files := rel_path :: !files
-      ) entries
-    );
+             || Filename.check_suffix entry ".c"
+           then files := rel_path :: !files)
+         entries);
     !files
   in
-  
+
   let all_source_files = scan_directory src_dir "" in
-  
+
   (* Separate files by type *)
-  let ml_files = List.filter (fun f -> Filename.check_suffix f ".ml") all_source_files in
-  let mli_files = List.filter (fun f -> Filename.check_suffix f ".mli") all_source_files in
-  let c_files = List.filter (fun f -> Filename.check_suffix f ".c") all_source_files in
+  let ml_files =
+    List.filter (fun f -> Filename.check_suffix f ".ml") all_source_files
+  in
+  let mli_files =
+    List.filter (fun f -> Filename.check_suffix f ".mli") all_source_files
+  in
+  let c_files =
+    List.filter (fun f -> Filename.check_suffix f ".c") all_source_files
+  in
 
   (* Use ocamldep to determine compilation order *)
   let sorted_ml_files =
@@ -390,57 +385,76 @@ let generate_blueprint workspace node dependencies all_packages toolchain ~hash
 
   (* 2. Copy source files to sandbox with namespaced names *)
   let module_mappings = ref [] in
-  
+
   let mli_files =
     List.map
       (fun mli_file ->
         let src_path = Filename.concat src_dir mli_file in
-        let flat_name = Namespacing.get_flat_filename ~package_name:pkg_name mli_file in
-        let module_name = Namespacing.get_module_name ~package_name:pkg_name mli_file in
+        let flat_name =
+          Namespacing.get_flat_filename ~package_name:pkg_name mli_file
+        in
+        let module_name =
+          Namespacing.get_module_name ~package_name:pkg_name mli_file
+        in
         module_mappings := (mli_file, module_name) :: !module_mappings;
-        actions := CopyFile { source = src_path; destination = flat_name } :: !actions;
+        actions :=
+          CopyFile { source = src_path; destination = flat_name } :: !actions;
         flat_name)
       mli_files
   in
 
   (* Save original ml_files before transformation *)
   let original_ml_files = ml_files in
-  
+
   let ml_files =
     List.map
       (fun ml_file ->
         let src_path = Filename.concat src_dir ml_file in
-        let flat_name = Namespacing.get_flat_filename ~package_name:pkg_name ml_file in
-        let module_name = Namespacing.get_module_name ~package_name:pkg_name ml_file in
+        let flat_name =
+          Namespacing.get_flat_filename ~package_name:pkg_name ml_file
+        in
+        let module_name =
+          Namespacing.get_module_name ~package_name:pkg_name ml_file
+        in
         (* Only add to mappings if not already there from .mli *)
         if not (List.mem_assoc ml_file !module_mappings) then
           module_mappings := (ml_file, module_name) :: !module_mappings;
-        actions := CopyFile { source = src_path; destination = flat_name } :: !actions;
+        actions :=
+          CopyFile { source = src_path; destination = flat_name } :: !actions;
         flat_name)
       ml_files
   in
-  
+
   (* Generate package module file if we have modules other than main.ml *)
-  let non_main_modules = List.filter (fun (f, _) -> 
-    let basename = Filename.basename f in
-    basename <> "main.ml" && basename <> (pkg_name ^ ".ml")
-  ) !module_mappings in
-  
+  let non_main_modules =
+    List.filter
+      (fun (f, _) ->
+        let basename = Filename.basename f in
+        basename <> "main.ml" && basename <> pkg_name ^ ".ml")
+      !module_mappings
+  in
+
   (* Check if package.ml already exists in the original source files *)
-  let has_package_ml = List.exists (fun f -> 
-    Filename.basename f = pkg_name ^ ".ml"
-  ) original_ml_files in
-  
-  let ml_files = 
-    if non_main_modules <> [] && not has_main && not has_package_ml then (
+  let has_package_ml =
+    List.exists
+      (fun f -> Filename.basename f = pkg_name ^ ".ml")
+      original_ml_files
+  in
+
+  let ml_files =
+    if non_main_modules <> [] && (not has_main) && not has_package_ml then (
       (* Generate a package.ml file that re-exports all modules *)
-      let package_module_content = 
-        Namespacing.generate_package_module ~package_name:pkg_name ~modules:non_main_modules in
+      let package_module_content =
+        Namespacing.generate_package_module ~package_name:pkg_name
+          ~modules:non_main_modules
+      in
       let package_ml = pkg_name ^ ".ml" in
-      actions := WriteFile { destination = package_ml; content = package_module_content } :: !actions;
+      actions :=
+        WriteFile { destination = package_ml; content = package_module_content }
+        :: !actions;
       (* Add to ml_files so it gets compiled *)
-      ml_files @ [package_ml]
-    ) else ml_files
+      ml_files @ [ package_ml ])
+    else ml_files
   in
 
   (* 4. Compile interfaces *)
@@ -448,7 +462,10 @@ let generate_blueprint workspace node dependencies all_packages toolchain ~hash
     (fun mli_file ->
       let basename = Filename.chop_suffix mli_file ".mli" in
       let cmi_path = basename ^ ".cmi" in
-      actions := CompileInterface { source = mli_file; output = cmi_path; includes = dep_includes } :: !actions)
+      actions :=
+        CompileInterface
+          { source = mli_file; output = cmi_path; includes = dep_includes }
+        :: !actions)
     mli_files;
 
   (* 5. Compile implementations *)
@@ -458,7 +475,9 @@ let generate_blueprint workspace node dependencies all_packages toolchain ~hash
         let basename = Filename.chop_suffix ml_file ".ml" in
         let cmo_path = basename ^ ".cmo" in
         actions :=
-          CompileImplementation { source = ml_file; output = cmo_path; includes = dep_includes } :: !actions;
+          CompileImplementation
+            { source = ml_file; output = cmo_path; includes = dep_includes }
+          :: !actions;
         cmo_path)
       ml_files
   in
@@ -475,7 +494,10 @@ let generate_blueprint workspace node dependencies all_packages toolchain ~hash
   if library_cmo_files <> [] || o_files <> [] then (
     let cma_path = pkg_name ^ ".cma" in
     let lib_objects = library_cmo_files @ o_files in
-    actions := CreateLibrary { output = cma_path; objects = lib_objects; includes = dep_includes } :: !actions;
+    actions :=
+      CreateLibrary
+        { output = cma_path; objects = lib_objects; includes = dep_includes }
+      :: !actions;
     outputs := cma_path :: !outputs;
 
     (* Only add package.cmi if we have a package.ml or package.mli file *)
@@ -509,7 +531,44 @@ let generate_blueprint workspace node dependencies all_packages toolchain ~hash
 
     let all_deps = get_transitive_deps [] dependencies [] in
 
+    (* Debug: log the dependency order *)
+    Printf.eprintf "[DEBUG] Dependencies for %s in order:\n" pkg_name;
+    List.iter
+      (fun dep ->
+        Printf.eprintf "  - %s (deps: %s)\n" dep.name
+          (String.concat ", " dep.dependencies))
+      all_deps;
+    flush stderr;
+
     (* Get dependency libraries from local packages - in topological order (dependencies first) *)
+    (* HACK: Sort the dependencies to ensure json comes before jsonrpc and mcp *)
+    let sorted_deps =
+      List.sort
+        (fun (a : dep_info) (b : dep_info) ->
+          (* Put packages with no dependencies first *)
+          let a_has_deps = a.dependencies <> [] in
+          let b_has_deps = b.dependencies <> [] in
+          match (a_has_deps, b_has_deps) with
+          | false, true -> -1 (* a has no deps, b has deps -> a first *)
+          | true, false -> 1 (* a has deps, b has no deps -> b first *)
+          | _ ->
+              (* Both have deps or both don't - check if one depends on the other *)
+              if List.mem b.name a.dependencies then 1
+                (* a depends on b -> b first *)
+              else if List.mem a.name b.dependencies then -1
+                (* b depends on a -> a first *)
+              else String.compare a.name b.name (* Otherwise alphabetical *))
+        all_deps
+    in
+
+    (* Debug: print sorted order *)
+    Printf.eprintf "[DEBUG] Sorted dependencies:\n";
+    List.iter
+      (fun dep ->
+        Printf.eprintf "  - %s (deps: %s)\n" dep.name
+          (String.concat ", " dep.dependencies))
+      sorted_deps;
+    flush stderr;
     let local_dep_libs =
       List.fold_left
         (fun acc dep ->
@@ -522,8 +581,8 @@ let generate_blueprint workspace node dependencies all_packages toolchain ~hash
           in
           (* Add the .cma file if it exists *)
           let cma_file = Filename.concat dep_dir (dep.name ^ ".cma") in
-          if System.file_exists cma_file then cma_file :: acc else acc)
-        [] all_deps
+          if System.file_exists cma_file then acc @ [ cma_file ] else acc)
+        [] sorted_deps
     in
 
     (* Get external dependencies from tusk.toml (already computed earlier) *)
@@ -548,7 +607,13 @@ let generate_blueprint workspace node dependencies all_packages toolchain ~hash
 
     (* For executable, link main.cmo with all libraries *)
     actions :=
-      CreateExecutable { output = exe_path; objects = exe_objects; libraries = all_libs_with_self; includes = all_includes }
+      CreateExecutable
+        {
+          output = exe_path;
+          objects = exe_objects;
+          libraries = all_libs_with_self;
+          includes = all_includes;
+        }
       :: !actions;
 
     (* Declare executable as output *)
@@ -576,7 +641,8 @@ let generate_blueprint workspace node dependencies all_packages toolchain ~hash
     ml_files;
 
   (* Add DeclareOutputs action *)
-  if !outputs <> [] then actions := DeclareOutputs { outputs = !outputs } :: !actions;
+  if !outputs <> [] then
+    actions := DeclareOutputs { outputs = !outputs } :: !actions;
 
   let actions = List.rev !actions in
 
@@ -616,8 +682,8 @@ let execute_action action toolchain =
       |> convert_result
   | CreateExecutable { output; objects; libraries; includes } ->
       (* Use custom executable for C stubs *)
-      Ocamlc.create_custom_executable ~toolchain ~includes ~output ~libs:libraries
-        objects
+      Ocamlc.create_custom_executable ~toolchain ~includes ~output
+        ~libs:libraries objects
       |> convert_result
   | CopyFile { source; destination } -> (
       try

@@ -4,13 +4,17 @@ version = "0.0.1"
 
 [[bin]]
 name = "tusk"
-path = "main.ml"
+path = "src/main.ml"
 
 [dependencies]
-miniriot = { path = "../miniriot" }
+# Base dependencies first
 sexp = { path = "../sexp" }
 toml = { path = "../toml" }
 json = { path = "../json" }
+# Dependencies that depend on json
 jsonrpc = { path = "../jsonrpc" }
 mcp = { path = "../mcp" }
+# Dependencies that depend on gluon
+miniriot = { path = "../miniriot" }
+# External dependencies
 unix = "*"

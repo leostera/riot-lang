@@ -3,9 +3,7 @@
 open Miniriot
 open Build_messages
 open Build_node
-
-open Rpc_messages
-(** Import shared RPC message types *)
+open Rpc
 
 type state = {
   workspace : Workspace.workspace option;
@@ -15,10 +13,9 @@ type state = {
   build_results : Build_results.t;
   worker_pool : Worker_pool.t option; (* Handle to the worker pool *)
   build_queue : Build_queue.t; (* Two-queue system for dependency ordering *)
-  client_pid : Pid.t option; (* PID of client (CLI or RPC) to respond to *)
+  client_pid : Pid.t option; (* PID of client to respond to *)
   session_id : Log.session_id option; (* Session ID for current build *)
   toolchain : Toolchains.toolchain; (* Current toolchain *)
-  is_json_rpc_client : bool; (* Whether current client is JSON-RPC (MCP, etc) *)
 }
 (** Server state *)
 
@@ -49,10 +46,12 @@ let queue_package_if_needed_internal state node is_ready =
         Log.debug (Printf.sprintf "Skipping %s - already failed" pkg_name)
     | Some (Build_results.Built _) ->
         (* Already built in this session - don't recheck *)
-        Log.debug (Printf.sprintf "Skipping %s - already built in this session" pkg_name)
+        Log.debug
+          (Printf.sprintf "Skipping %s - already built in this session" pkg_name)
     | Some Build_results.NotStarted | None ->
         (* Not started - queue it *)
-        Log.queue_package ?sid:state.session_id ~package:pkg_name ~queue_type:(if is_ready then `Ready else `Waiting);
+        Log.queue_package ?sid:state.session_id ~package:pkg_name
+          ~queue_type:(if is_ready then `Ready else `Waiting);
         let task =
           { Build_messages.node; workspace = Option.get state.workspace }
         in
@@ -80,10 +79,13 @@ let queue_package_if_needed state node is_ready =
             match Build_graph.recompute_node_hash state.toolchain node with
             | Build_graph.Ok current_hash ->
                 if Hasher.equal stored_hash current_hash then
-                  Log.cache_hit ?sid:state.session_id ~package:pkg_name ~hash:(Hasher.to_string current_hash)
+                  Log.cache_hit ?sid:state.session_id ~package:pkg_name
+                    ~hash:(Hasher.to_string current_hash)
                 else (
-                  Log.hash_computed ?sid:state.session_id ~package:pkg_name ~hash:(Hasher.to_string current_hash);
-                  Log.queue_package ?sid:state.session_id ~package:pkg_name ~queue_type:(if is_ready then `Ready else `Waiting);
+                  Log.hash_computed ?sid:state.session_id ~package:pkg_name
+                    ~hash:(Hasher.to_string current_hash);
+                  Log.queue_package ?sid:state.session_id ~package:pkg_name
+                    ~queue_type:(if is_ready then `Ready else `Waiting);
                   (* Update the node's hash to the new computed hash *)
                   node.hash <- Some current_hash;
                   (* Reset the build status since hash changed *)
@@ -93,17 +95,22 @@ let queue_package_if_needed state node is_ready =
                   else Build_queue.add_waiting state.build_queue task)
             | _ ->
                 (* Can't compute hash, queue it to be safe *)
-                Log.warn (Printf.sprintf "Couldn't compute hash for %s, queueing anyway" pkg_name);
-                Log.queue_package ?sid:state.session_id ~package:pkg_name ~queue_type:(if is_ready then `Ready else `Waiting);
+                Log.warn
+                  (Printf.sprintf
+                     "Couldn't compute hash for %s, queueing anyway" pkg_name);
+                Log.queue_package ?sid:state.session_id ~package:pkg_name
+                  ~queue_type:(if is_ready then `Ready else `Waiting);
                 let task = { Build_messages.node; workspace } in
                 if is_ready then Build_queue.add_ready state.build_queue task
                 else Build_queue.add_waiting state.build_queue task)
         | None ->
             (* No workspace, skip it *)
-            Log.warn (Printf.sprintf "Skipping %s - no workspace available" pkg_name))
+            Log.warn
+              (Printf.sprintf "Skipping %s - no workspace available" pkg_name))
     | Some Build_results.NotStarted | None ->
         (* Not started - queue it *)
-        Log.queue_package ?sid:state.session_id ~package:pkg_name ~queue_type:(if is_ready then `Ready else `Waiting);
+        Log.queue_package ?sid:state.session_id ~package:pkg_name
+          ~queue_type:(if is_ready then `Ready else `Waiting);
         let task =
           { Build_messages.node; workspace = Option.get state.workspace }
         in
@@ -179,7 +186,8 @@ let check_later_queue state =
           let pkg_name = node.Build_node.package.name in
           if Build_queue.is_waiting state.build_queue pkg_name then
             if can_build_package state pkg_name then (
-              Log.debug (Printf.sprintf "Moving %s from waiting to ready queue" pkg_name);
+              Log.debug
+                (Printf.sprintf "Moving %s from waiting to ready queue" pkg_name);
               Build_queue.move_to_ready state.build_queue pkg_name))
         nodes
 
@@ -196,7 +204,8 @@ let try_assign_work state =
         match get_next_buildable_task state with
         | Some build_task ->
             let pkg_name = build_task.node.Build_node.package.name in
-            Log.debug (Printf.sprintf "Sending package %s to worker pool" pkg_name);
+            Log.debug
+              (Printf.sprintf "Sending package %s to worker pool" pkg_name);
             Build_results.mark_building state.build_results pkg_name;
             Worker_pool.send_task pool build_task;
             send_ready_tasks ()
@@ -205,20 +214,19 @@ let try_assign_work state =
       send_ready_tasks ()
 
 (** Unified build execution handler *)
-let execute_build state client_pid build_graph ~is_json_rpc =
+let execute_build state client_pid build_graph =
   (* Create session ID for this build *)
-  let sid = Log.create_session () in
-  
-  (* Enable RPC log streaming only for JSON-RPC clients (not CLI) *)
-  if is_json_rpc then (
-    (* This is a JSON-RPC client (like MCP) - add handler to stream logs *)
-    Log.add_rpc_handler ~sid ~client:client_pid ~format:Json;
-    (* Send BuildStarted response with session ID as JSON *)
-    let response = Rpc.BuildStarted { session_id = sid } in
-    let json = Rpc.response_to_json response in
-    send client_pid (JsonServerResponse (Json.to_string json))
-  );
-  
+  let sid = Session_id.make () in
+  Printf.eprintf "[SERVER DEBUG] execute_build: session_id=%s\n" (Session_id.to_string sid);
+  flush stderr;
+
+  (* Send BuildStarted response with session ID *)
+  Printf.eprintf "[SERVER DEBUG] Sending BuildStarted response to client\n";
+  flush stderr;
+  send client_pid (ServerResponse (Rpc.BuildStarted { session_id = sid }));
+
+  Printf.eprintf "[SERVER DEBUG] Logging build start...\n";
+  flush stderr;
   Log.info ~sid "Starting build execution...";
 
   (* Get all packages in topological order *)
@@ -226,7 +234,8 @@ let execute_build state client_pid build_graph ~is_json_rpc =
 
   (* Log the build plan *)
   let packages = List.map (fun node -> node.Build_node.package.name) sorted in
-  let total_modules = List.length sorted in (* Just count packages for now *)
+  let total_modules = List.length sorted in
+  (* Just count packages for now *)
   Log.build_started ~sid ~packages ~total_modules ~workers:10;
 
   (* Initialize build results for all packages *)
@@ -243,18 +252,22 @@ let execute_build state client_pid build_graph ~is_json_rpc =
       let pkg_name = node.Build_node.package.name in
       let is_ready = can_build_package state pkg_name in
       if not is_ready then
-        Log.dependency_missing ?sid:state.session_id ~package:pkg_name 
-          ~missing:(List.filter_map (fun dep_node ->
-            let dep_name = dep_node.Build_node.package.name in
-            if not (can_build_package state dep_name) then Some dep_name else None
-          ) node.Build_node.dependencies);
+        Log.dependency_missing ?sid:state.session_id ~package:pkg_name
+          ~missing:
+            (List.filter_map
+               (fun dep_node ->
+                 let dep_name = dep_node.Build_node.package.name in
+                 if not (can_build_package state dep_name) then Some dep_name
+                 else None)
+               node.Build_node.dependencies);
       queue_package_if_needed state node is_ready)
     sorted;
 
   let ready_count, waiting_count, busy_count =
     Build_queue.stats state.build_queue
   in
-  Log.queue_stats ?sid:state.session_id ~ready:ready_count ~waiting:waiting_count ~busy:busy_count;
+  Log.queue_stats ?sid:state.session_id ~ready:ready_count
+    ~waiting:waiting_count ~busy:busy_count;
 
   (* Check if there's actually any work to do *)
   if ready_count = 0 && waiting_count = 0 && busy_count = 0 then (
@@ -283,11 +296,12 @@ let execute_build state client_pid build_graph ~is_json_rpc =
           pool
     in
     let new_state =
-      { state with 
-        client_pid = Some client_pid; 
-        session_id = Some sid; 
+      {
+        state with
+        client_pid = Some client_pid;
+        session_id = Some sid;
         worker_pool = Some pool;
-        is_json_rpc_client = is_json_rpc }
+      }
     in
     (* Try to assign initial work to workers *)
     try_assign_work new_state;
@@ -306,7 +320,10 @@ let handle_task_complete state pkg_name success hash =
     (match state.active_build_graph with
     | Some graph ->
         let nodes = Build_graph.topological_sort graph in
-        Log.debug (Printf.sprintf "Checking for newly unblocked packages after %s completed..." pkg_name);
+        Log.debug
+          (Printf.sprintf
+             "Checking for newly unblocked packages after %s completed..."
+             pkg_name);
         List.iter
           (fun node ->
             let pkg = node.Build_node.package.name in
@@ -314,8 +331,9 @@ let handle_task_complete state pkg_name success hash =
               Build_results.is_building state.build_results pkg
             in
             let can_build = can_build_package state pkg in
-            Log.debug (Printf.sprintf "  Package %s: is_building=%b, can_build=%b" 
-              pkg is_building can_build);
+            Log.debug
+              (Printf.sprintf "  Package %s: is_building=%b, can_build=%b" pkg
+                 is_building can_build);
             if (not is_building) && can_build then
               queue_package_if_needed_internal state node true)
           nodes
@@ -325,57 +343,7 @@ let handle_task_complete state pkg_name success hash =
     Log.error (Printf.sprintf "Build failed: %s" pkg_name);
     Build_results.mark_failed state.build_results pkg_name "Build failed")
 
-(** Generate .merlin file for LSP configuration *)
-let generate_merlin_file workspace toolchain =
-  let root = System.getcwd () in
-  let profile = "debug" in
-  (* TODO: make this configurable *)
-  let target_dir = Filename.concat root (Printf.sprintf "target/%s" profile) in
-  let merlin_path = Filename.concat target_dir ".merlin" in
-  let home = System.get_home () in
-  let stdlib_path =
-    Printf.sprintf "%s/.tusk/toolchains/%s/lib/ocaml" home
-      (Toolchains.get_version toolchain)
-  in
-
-  (* Ensure target directories exist *)
-  let target_root = Filename.concat root "target" in
-  (try System.mkdir target_root 0o755
-   with Unix.Unix_error (Unix.EEXIST, _, _) -> ());
-  (try System.mkdir target_dir 0o755
-   with Unix.Unix_error (Unix.EEXIST, _, _) -> ());
-
-  (* Generate .merlin content with proper paths *)
-  let merlin_content =
-    Printf.sprintf
-      "# Generated by tusk build\n\
-       # Source directories\n\
-       S ../../packages/*/src\n\
-       S ../../packages/*/src/**\n\n\
-       # Build directories\n\
-       B out/packages/*\n\
-       B sandbox/**\n\n\
-       # Standard library\n\
-       B %s\n\
-       B %s/unix\n\n\
-       # Packages\n\
-       PKG unix\n\n\
-       # Flags\n\
-       FLG -w -a\n"
-      stdlib_path stdlib_path
-  in
-
-  (* Write .merlin file *)
-  let oc = open_out merlin_path in
-  output_string oc merlin_content;
-  close_out oc;
-
-  (* Create symlink in root directory for LSP to find *)
-  let root_merlin = Filename.concat root ".merlin" in
-  (try System.remove_file root_merlin with _ -> ());
-  System.symlink merlin_path root_merlin;
-  Log.info (Printf.sprintf "Generated .merlin file at %s (symlinked from %s)" 
-    merlin_path root_merlin)
+(* Removed: .merlin file generation - tusk provides dynamic Merlin protocol support *)
 
 (** Handle scanning the workspace *)
 let handle_scan_workspace state target_package =
@@ -390,12 +358,12 @@ let handle_scan_workspace state target_package =
       match target_package with
       | None -> Some full_graph
       | Some pkg_name ->
-          Log.debug (Printf.sprintf "Filtering build graph for package: %s" pkg_name);
+          Log.debug
+            (Printf.sprintf "Filtering build graph for package: %s" pkg_name);
           Some (Build_graph.filter_for_package full_graph pkg_name)
   in
 
-  (* Generate .merlin file for the workspace *)
-  generate_merlin_file workspace state.toolchain;
+  (* No longer generating .merlin files - using dynamic Merlin protocol support *)
 
   (* Print the build graph if we have one *)
   (match build_graph with
@@ -408,116 +376,6 @@ let handle_scan_workspace state target_package =
     build_graph;
     active_build_graph = build_graph;
   }
-
-(** Handle JSON-RPC client request *)
-let handle_json_client_request state client_pid json_str =
-  (* Parse the JSON request *)
-  match Json.of_string json_str with
-  | Error e ->
-      let error_response = Rpc.(response_to_json (Error e)) in
-      send client_pid (JsonServerResponse (Json.to_string error_response));
-      state
-  | Ok json -> (
-      match Rpc.request_of_json json with
-      | Error e ->
-          let error_response = Rpc.(response_to_json (Error e)) in
-          send client_pid (JsonServerResponse (Json.to_string error_response));
-          state
-      | Ok request ->
-          (* Handle the JSON-RPC request *)
-          let response =
-            match request with
-            | Rpc.Ping -> Rpc.Pong
-            | Rpc.GetWorkspaceConfig -> (
-                match state.workspace with
-                | Some ws ->
-                    let packages =
-                      List.map (fun p -> p.Workspace.name) ws.packages
-                    in
-                    Rpc.WorkspaceConfig
-                      {
-                        workspace_root = ws.root;
-                        toolchain = "5.3.0";
-                        (* TODO: get from actual config *)
-                        packages;
-                      }
-                | None -> Rpc.Error "No workspace loaded")
-            | Rpc.GetBuildGraph -> (
-                match state.build_graph with
-                | Some graph ->
-                    let nodes_data = Build_graph.topological_sort graph in
-                    let nodes =
-                      List.map
-                        (fun node ->
-                          let pkg = node.Build_node.package in
-                          {
-                            Rpc.package_name = pkg.name;
-                            src_dir = pkg.path;
-                            out_dir =
-                              Printf.sprintf "target/debug/out/packages/%s"
-                                pkg.name;
-                            status = "ready";
-                            (* TODO: get actual status *)
-                            deps = pkg.dependencies;
-                          })
-                        nodes_data
-                    in
-                    Rpc.BuildGraph { nodes }
-                | None -> Rpc.Error "No build graph available")
-            | Rpc.BuildPackage pkg -> (
-                (* Initiate build - don't send any response here, execute_build will handle it *)
-                let filtered_graph =
-                  match state.build_graph with
-                  | Some graph ->
-                      Some (Build_graph.filter_for_package graph pkg)
-                  | None -> None
-                in
-                match filtered_graph with
-                | Some graph ->
-                    (* Update active_build_graph before sending build message *)
-                    let new_state = { state with active_build_graph = Some graph } in
-                    send (self ()) (BuildPackage (pkg, client_pid, true)); (* true = JSON-RPC *)
-                    (* Return special value to indicate no response should be sent *)
-                    Rpc.Success (* This will be ignored - see below *)
-                | None -> Rpc.Error "No build graph available")
-            | Rpc.BuildAll -> (
-                (* Initiate full build - don't send any response here, execute_build will handle it *)
-                match state.build_graph with
-                | Some graph ->
-                    send (self ()) (BuildAll (client_pid, true)); (* true = JSON-RPC *)
-                    (* Return special value to indicate no response should be sent *)
-                    Rpc.Success (* This will be ignored - see below *)
-                | None -> Rpc.Error "No build graph available")
-            | Rpc.Restart ->
-                (* Send restart message to self to handle after responding *)
-                send (self ()) RestartServer;
-                Rpc.Success
-            | Rpc.Shutdown ->
-                (* Send shutdown message to self to handle after responding *)
-                send (self ()) ShutdownServer;
-                Rpc.Success
-          in
-          (* Only send response if it's not a build request (build requests handle their own responses) *)
-          let should_send_response = match request with
-            | Rpc.BuildPackage _ | Rpc.BuildAll -> 
-                (* Only send if it's an error response *)
-                (match response with Rpc.Error _ -> true | _ -> false)
-            | _ -> true
-          in
-          if should_send_response then (
-            let response_json = Rpc.response_to_json response in
-            send client_pid (JsonServerResponse (Json.to_string response_json))
-          );
-          (* For BuildPackage, we need to return the updated state with active_build_graph *)
-          match request with
-          | Rpc.BuildPackage pkg when response = Rpc.Success ->
-              (* State was already updated with active_build_graph *)
-              (match state.build_graph with
-              | Some graph ->
-                  let filtered_graph = Build_graph.filter_for_package graph pkg in
-                  { state with active_build_graph = Some filtered_graph }
-              | None -> state)
-          | _ -> state)
 
 (** Handle RPC client request *)
 let handle_client_request state client_pid request =
@@ -540,15 +398,16 @@ let handle_client_request state client_pid request =
       | Some ws ->
           let packages = List.map (fun p -> p.Workspace.name) ws.packages in
           send client_pid
-            (ServerResponse (Rpc.WorkspaceConfig { 
-              workspace_root = ws.root;
-              toolchain = Toolchains.get_version state.toolchain;
-              packages
-            }));
+            (ServerResponse
+               (Rpc.WorkspaceConfig
+                  {
+                    workspace_root = ws.root;
+                    toolchain = Toolchains.get_version state.toolchain;
+                    packages;
+                  }));
           state
       | None ->
-          send client_pid
-            (ServerResponse (Rpc.Error "No workspace loaded"));
+          send client_pid (ServerResponse (Rpc.Error "No workspace loaded"));
           state)
   | Rpc.GetBuildGraph -> (
       match state.build_graph with
@@ -561,8 +420,12 @@ let handle_client_request state client_pid request =
                 {
                   Rpc.package_name = pkg.name;
                   src_dir = pkg.path;
-                  out_dir = Printf.sprintf "target/debug/out/packages/%s" pkg.name;
-                  status = (match Build_results.get_status state.build_results pkg.name with
+                  out_dir =
+                    Printf.sprintf "target/debug/out/packages/%s" pkg.name;
+                  status =
+                    (match
+                       Build_results.get_status state.build_results pkg.name
+                     with
                     | Some (Build_results.Built _) -> "built"
                     | Some Building -> "building"
                     | Some (Failed _) -> "failed"
@@ -571,7 +434,8 @@ let handle_client_request state client_pid request =
                 })
               nodes
           in
-          send client_pid (ServerResponse (Rpc.BuildGraph { nodes = build_nodes }));
+          send client_pid
+            (ServerResponse (Rpc.BuildGraph { nodes = build_nodes }));
           state
       | None ->
           send client_pid
@@ -660,7 +524,8 @@ let handle_client_request state client_pid request =
       let filtered_graph =
         match new_state.build_graph with
         | Some graph ->
-            Log.debug (Printf.sprintf "Filtering build graph for package: %s" package);
+            Log.debug
+              (Printf.sprintf "Filtering build graph for package: %s" package);
             Some (Build_graph.filter_for_package graph package)
         | None -> None
       in
@@ -668,15 +533,18 @@ let handle_client_request state client_pid request =
       match filtered_graph with
       | Some graph ->
           let sorted = Build_graph.topological_sort graph in
-          Log.info (Printf.sprintf "Package %s requires: %s" package
-            (String.concat ", "
-               (List.map (fun n -> n.Build_node.package.name) sorted)));
+          Log.info
+            (Printf.sprintf "Package %s requires: %s" package
+               (String.concat ", "
+                  (List.map (fun n -> n.Build_node.package.name) sorted)));
           let needs_build = sorted in
           (* Simplified: queue all packages for now *)
 
           if needs_build = [] then (
             (* Everything already built, return success immediately *)
-            Log.info (Printf.sprintf "Package %s and dependencies already built!" package);
+            Log.info
+              (Printf.sprintf "Package %s and dependencies already built!"
+                 package);
             let built_count = List.length sorted in
             send client_pid (ServerResponse Rpc.Success);
             new_state)
@@ -691,13 +559,13 @@ let handle_client_request state client_pid request =
               }
             in
             (* Send the BuildPackage message to self to handle the actual build *)
-            send (self ()) (BuildPackage (package, client_pid, false)); (* false = CLI *)
+            send (self ()) (BuildPackage { package_name = package; client_pid });
             (* Return the state with the filtered graph for this build *)
             build_state
       | None ->
           (* No build graph, need to build *)
           let new_state = { new_state with client_pid = Some client_pid } in
-          send (self ()) (BuildPackage (package, client_pid, false)); (* false = CLI *)
+          send (self ()) (BuildPackage { package_name = package; client_pid });
           new_state)
   | Rpc.BuildAll -> (
       (* For RPC build, we need to scan workspace first if not done *)
@@ -722,17 +590,16 @@ let handle_client_request state client_pid request =
             (* Mark this as an RPC client build *)
             let new_state = { new_state with client_pid = Some client_pid } in
             (* Send the BuildAll message to self to handle the actual build *)
-            send (self ()) (BuildAll (client_pid, false)); (* false = CLI *)
+            send (self ()) (BuildAll { client_pid });
             (* Return the updated state *)
             new_state
       | None ->
           (* No build graph, need to build *)
           let new_state = { new_state with client_pid = Some client_pid } in
-          send (self ()) (BuildAll (client_pid, false)); (* false = CLI *)
+          send (self ()) (BuildAll { client_pid });
           new_state)
   | _ ->
-      send client_pid
-        (ServerResponse (Rpc.Error "Not implemented"));
+      send client_pid (ServerResponse (Rpc.Error "Not implemented"));
       state
 
 (** Main server loop *)
@@ -740,17 +607,15 @@ let rec server_loop state =
   let selector = function
     | ClientRequest (client_pid, request) ->
         `select (`client_request (client_pid, request))
-    | JsonClientRequest (client_pid, json_str) ->
-        `select (`json_client_request (client_pid, json_str))
     | ScanWorkspace target_package -> `select (`scan_workspace target_package)
-    | BuildAll (cli_pid, is_json_rpc) -> `select (`build_all (cli_pid, is_json_rpc))
-    | BuildPackage (pkg_name, cli_pid, is_json_rpc) ->
-        `select (`build_package (pkg_name, cli_pid, is_json_rpc))
+    | BuildAll { client_pid = cli_pid } -> `select (`build_all cli_pid)
+    | BuildPackage { package_name = pkg_name; client_pid = cli_pid } ->
+        `select (`build_package (pkg_name, cli_pid))
     | Worker_pool.TaskAssigned task -> `select (`task_assigned task)
     | Worker_pool.NoWorkersAvailable task -> `select (`no_workers task)
     | Worker_pool.TaskCompleted (pkg_name, success, hash) ->
         `select (`task_completed (pkg_name, success, hash))
-    | RequeueWithDependencies (task, missing_deps) ->
+    | RequeueWithDependencies { task; missing_deps } ->
         `select (`requeue (task, missing_deps))
     | Shutdown -> `select `shutdown
     | RestartServer -> `select `restart_server
@@ -761,37 +626,46 @@ let rec server_loop state =
   | `client_request (client_pid, request) ->
       let new_state = handle_client_request state client_pid request in
       server_loop new_state
-  | `json_client_request (client_pid, json_str) ->
-      let new_state = handle_json_client_request state client_pid json_str in
-      server_loop new_state
   | `scan_workspace target_package ->
       let new_state = handle_scan_workspace state target_package in
       server_loop new_state
-  | `build_all (cli_pid, is_json_rpc) -> (
+  | `build_all cli_pid -> (
+      Printf.eprintf "[SERVER DEBUG] BuildAll command received\n";
+      flush stderr;
       Log.debug "BuildAll command received";
       match state.build_graph with
       | None ->
           Log.error "No build graph available. Run ScanWorkspace first.";
-          send cli_pid
-            (ServerResponse (Rpc.Error "No build graph available"));
+          send cli_pid (ServerResponse (Rpc.Error "No build graph available"));
           server_loop state
       | Some graph ->
+          Printf.eprintf "[SERVER DEBUG] Building all packages with graph...\n";
+          flush stderr;
           Log.info "Building all packages...";
           let new_state = { state with active_build_graph = Some graph } in
-          let updated_state = execute_build new_state cli_pid graph ~is_json_rpc in
+          let updated_state = execute_build new_state cli_pid graph in
           server_loop updated_state)
-  | `build_package (pkg_name, cli_pid, is_json_rpc) -> (
+  | `build_package (pkg_name, cli_pid) -> (
+      Printf.eprintf "[SERVER DEBUG] BuildPackage command received: pkg=%s\n"
+        pkg_name;
+      flush stderr;
       Log.package_started ?sid:state.session_id ~package:pkg_name;
       (* active_build_graph should already be set to the filtered graph *)
       match state.active_build_graph with
       | None ->
-          Log.error (Printf.sprintf "No build graph available for package %s" pkg_name);
-          send cli_pid
-            (ServerResponse (Rpc.Error "No build graph available"));
+          Log.error
+            (Printf.sprintf "No build graph available for package %s" pkg_name);
+          send cli_pid (ServerResponse (Rpc.Error "No build graph available"));
           server_loop state
       | Some graph ->
-          Log.info (Printf.sprintf "Building package %s and its dependencies..." pkg_name);
-          let updated_state = execute_build state cli_pid graph ~is_json_rpc in
+          Printf.eprintf
+            "[SERVER DEBUG] Building package %s with filtered graph...\n"
+            pkg_name;
+          flush stderr;
+          Log.info
+            (Printf.sprintf "Building package %s and its dependencies..."
+               pkg_name);
+          let updated_state = execute_build state cli_pid graph in
           server_loop updated_state)
   | `task_assigned task ->
       (* Worker pool assigned a task - just log it *)
@@ -801,7 +675,8 @@ let rec server_loop state =
   | `no_workers task ->
       (* No workers available - we'll retry later *)
       let pkg_name = task.Build_messages.node.Build_node.package.name in
-      Log.debug (Printf.sprintf "No workers available for %s, will retry" pkg_name);
+      Log.debug
+        (Printf.sprintf "No workers available for %s, will retry" pkg_name);
       (* The task is still in build_results as Building, it will be retried *)
       server_loop state
   | `task_completed (pkg_name, success, hash) ->
@@ -812,22 +687,20 @@ let rec server_loop state =
         let built, failed, _building, _not_started =
           Build_results.get_stats state.build_results
         in
-        Log.info (Printf.sprintf "All builds complete! Built: %d, Failed: %d" built failed);
+        Log.info
+          (Printf.sprintf "All builds complete! Built: %d, Failed: %d" built
+             failed);
 
         (* Send completion response to client *)
         match state.client_pid with
         | Some client_pid ->
-            (* Send appropriate response based on client type *)
-            if state.is_json_rpc_client then (
-              (* JSON-RPC client: send Success or Error response *)
-              let response = if failed = 0 then
-                Rpc.Success
+            let response =
+              if failed = 0 then Rpc.Success
               else
-                Rpc.Error (Printf.sprintf "Build failed: %d packages failed" failed)
-              in
-              let json = Rpc.response_to_json response in
-              send client_pid (JsonServerResponse (Json.to_string json))
-            );
+                Rpc.Error
+                  (Printf.sprintf "Build failed: %d packages failed" failed)
+            in
+            send client_pid (ServerResponse response);
 
             (* Keep worker pool alive for future builds *)
             let fresh_build_queue = Build_queue.create state.build_results in
@@ -838,7 +711,6 @@ let rec server_loop state =
                 client_pid = None;
                 session_id = None;
                 active_build_graph = None;
-                is_json_rpc_client = false;
                 (* Keep worker_pool in state for reuse *)
               }
             in
@@ -903,7 +775,7 @@ let rec server_loop state =
 let start () =
   (* Initialize logger process first *)
   let _logger_pid = Log.init () in
-  
+
   (* Scan workspace first *)
   let root = System.getcwd () in
   let workspace = Workspace.scan ~root in
@@ -922,15 +794,18 @@ let start () =
       client_pid = None;
       session_id = None;
       toolchain;
-      is_json_rpc_client = false;
     }
   in
   spawn (fun () ->
       Log.server_started ?sid:None ~pid:(Pid.to_string (self ()));
       server_loop initial_state)
 
-(** Start the server with TCP listener for RPC *)
+(** Start the server with TCP listener for RPC. This function makes the current
+    process _become_ the Tusk server *)
 let start_with_listener () =
+  (* Initialize logger process first *)
+  let _logger_pid = Log.init () in
+
   (* Scan workspace first *)
   let root = Sys.getcwd () in
   let workspace = Workspace.scan ~root in
@@ -941,11 +816,7 @@ let start_with_listener () =
     else Some (Build_graph.create workspace toolchain)
   in
 
-  (* Generate .merlin file *)
-  (match workspace with
-  | ws when ws.packages <> [] -> generate_merlin_file ws toolchain
-  | _ -> ());
-
+  (* No longer generating .merlin files - using dynamic Merlin protocol support *)
   let build_results = Build_results.create () in
   let initial_state =
     {
@@ -959,17 +830,10 @@ let start_with_listener () =
       client_pid = None;
       session_id = None;
       toolchain;
-      is_json_rpc_client = false;
     }
   in
 
   (* Start server process *)
-  let server_pid =
-    spawn (fun () ->
-        let my_pid = self () in
-        Log.server_started ?sid:None ~pid:(Pid.to_string my_pid);
-        server_loop initial_state)
-  in
-
-  (* Start TCP listener *)
-  Listener.start server_pid
+  let my_pid = self () in
+  Log.server_started ?sid:None ~pid:(Pid.to_string my_pid);
+  server_loop initial_state

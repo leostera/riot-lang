@@ -59,7 +59,8 @@ let build_package_with_sandbox server_pid build_task =
           (String.concat ", " missing_names);
         flush stdout;
         (* Send requeue message back to server *)
-        send server_pid (RequeueWithDependencies (build_task, missing_deps));
+        send server_pid
+          (RequeueWithDependencies { task = build_task; missing_deps });
         MissingDependencies missing_deps
     | Build_graph.Error msg ->
         Printf.printf "[Worker] Error computing hash for %s: %s\n" pkg_name msg;
@@ -131,7 +132,7 @@ let rec worker_loop server_pid worker_id =
     | `no_task ->
         (* No tasks available, request again after a short delay *)
         sleep 0.1;
-        send server_pid (NextTask (self ()));
+        send server_pid (NextTask { worker_pid = self () });
         wait_for_work ()
     | `shutdown ->
         Printf.printf "[Worker %d] Shutting down\n" worker_id;
@@ -155,12 +156,25 @@ let rec worker_loop server_pid worker_id =
              build_task.node store
          with
          | Build_graph.Ok current_hash ->
-             send server_pid (TaskComplete (pkg_name, false, current_hash))
+             send server_pid
+               (TaskComplete
+                  {
+                    package_name = pkg_name;
+                    success = false;
+                    hash = current_hash;
+                  })
          | Build_graph.MissingDependencies deps ->
-             send server_pid (RequeueWithDependencies (build_task, deps))
+             send server_pid
+               (RequeueWithDependencies
+                  { task = build_task; missing_deps = deps })
          | Build_graph.Error _ ->
              send server_pid
-               (TaskComplete (pkg_name, false, Hasher.of_string "error")))
+               (TaskComplete
+                  {
+                    package_name = pkg_name;
+                    success = false;
+                    hash = Hasher.of_string "error";
+                  }))
        else
          (* The build_package_with_sandbox function now computes hash internally *)
          let result = build_package_with_sandbox server_pid build_task in
@@ -177,12 +191,25 @@ let rec worker_loop server_pid worker_id =
                  build_task.node store
              with
              | Build_graph.Ok current_hash ->
-                 send server_pid (TaskComplete (pkg_name, true, current_hash))
+                 send server_pid
+                   (TaskComplete
+                      {
+                        package_name = pkg_name;
+                        success = true;
+                        hash = current_hash;
+                      })
              | Build_graph.MissingDependencies deps ->
-                 send server_pid (RequeueWithDependencies (build_task, deps))
+                 send server_pid
+                   (RequeueWithDependencies
+                      { task = build_task; missing_deps = deps })
              | Build_graph.Error _ ->
                  send server_pid
-                   (TaskComplete (pkg_name, false, Hasher.of_string "error")))
+                   (TaskComplete
+                      {
+                        package_name = pkg_name;
+                        success = false;
+                        hash = Hasher.of_string "error";
+                      }))
          | Failed msg -> (
              Printf.printf "[Worker %d] Build failed for %s: %s\n" worker_id
                pkg_name msg;
@@ -195,12 +222,25 @@ let rec worker_loop server_pid worker_id =
                  build_task.node store
              with
              | Build_graph.Ok current_hash ->
-                 send server_pid (TaskComplete (pkg_name, false, current_hash))
+                 send server_pid
+                   (TaskComplete
+                      {
+                        package_name = pkg_name;
+                        success = false;
+                        hash = current_hash;
+                      })
              | Build_graph.MissingDependencies deps ->
-                 send server_pid (RequeueWithDependencies (build_task, deps))
+                 send server_pid
+                   (RequeueWithDependencies
+                      { task = build_task; missing_deps = deps })
              | Build_graph.Error _ ->
                  send server_pid
-                   (TaskComplete (pkg_name, false, Hasher.of_string "error")))
+                   (TaskComplete
+                      {
+                        package_name = pkg_name;
+                        success = false;
+                        hash = Hasher.of_string "error";
+                      }))
          | Cached msg -> (
              Printf.printf "[Worker %d] Build cached for %s: %s\n" worker_id
                pkg_name msg;
@@ -213,12 +253,25 @@ let rec worker_loop server_pid worker_id =
                  build_task.node store
              with
              | Build_graph.Ok current_hash ->
-                 send server_pid (TaskComplete (pkg_name, true, current_hash))
+                 send server_pid
+                   (TaskComplete
+                      {
+                        package_name = pkg_name;
+                        success = true;
+                        hash = current_hash;
+                      })
              | Build_graph.MissingDependencies deps ->
-                 send server_pid (RequeueWithDependencies (build_task, deps))
+                 send server_pid
+                   (RequeueWithDependencies
+                      { task = build_task; missing_deps = deps })
              | Build_graph.Error _ ->
                  send server_pid
-                   (TaskComplete (pkg_name, false, Hasher.of_string "error")))
+                   (TaskComplete
+                      {
+                        package_name = pkg_name;
+                        success = false;
+                        hash = Hasher.of_string "error";
+                      }))
          | MissingDependencies deps ->
              let dep_names =
                List.map (fun dep -> dep.Build_node.package.name) deps

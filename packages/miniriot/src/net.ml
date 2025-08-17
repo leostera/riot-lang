@@ -129,10 +129,79 @@ module TcpStream = struct
   let close = Gluon.Net.TcpStream.close
 end
 
+module TcpServer = struct
+  (** TCP server that manages the listener and provides accept functionality *)
+
+  type handler = req:string -> TcpStream.t -> unit
+  (** Handler receives request string and stream for responses *)
+
+  type t = {
+    listener : TcpListener.t;
+    mutable accepting : bool;
+    handler : handler;
+  }
+
+  let create ?(reuse_addr = true) ?(reuse_port = false) ?(backlog = 128) addr
+      ~handler =
+    match TcpListener.bind ~reuse_addr ~reuse_port ~backlog addr with
+    | Error e -> Error e
+    | Ok listener -> Ok { listener; accepting = true; handler }
+
+  let read_line stream =
+    let buffer = Bytes.create 4096 in
+    let rec loop acc =
+      match TcpStream.read stream buffer () with
+      | Error _ -> Error "Failed to read from stream"
+      | Ok 0 -> Error "Connection closed"
+      | Ok n -> (
+          let data = Bytes.sub_string buffer 0 n in
+          let combined = acc ^ data in
+          (* Look for newline *)
+          match String.index_opt combined '\n' with
+          | Some idx ->
+              let line = String.sub combined 0 idx in
+              Ok line
+          | None -> loop combined)
+    in
+    loop ""
+
+  let rec listen t =
+    match TcpListener.accept t.listener with
+    | Error e -> Error e
+    | Ok (stream, _client_addr) ->
+        let _connection_pid =
+          Scheduler.spawn (Scheduler.get_scheduler ()) (fun () ->
+              (* Read lines in a loop using the read_line helper *)
+              let rec connection_loop () =
+                match read_line stream with
+                | Ok req ->
+                    (* Call handler with request string and stream *)
+                    t.handler ~req stream;
+                    connection_loop ()
+                | Error _ ->
+                    (* Connection closed, clean up *)
+                    TcpStream.close stream;
+                    Process.Normal
+              in
+              connection_loop ())
+        in
+        listen t
+
+  let send stream data =
+    let bytes = Bytes.of_string data in
+    match TcpStream.write stream bytes () with
+    | Ok _ -> Ok ()
+    | Error _ -> Error "Failed to send data"
+
+  let stop t =
+    t.accepting <- false;
+    TcpListener.close t.listener
+end
+
 module TcpClient = struct
   type t = {
     stream : TcpStream.t;
-    mutable leftover : string;  (* Buffer for data read past newline *)
+    mutable leftover : string; (* Buffer for data read past newline *)
   }
 
   let connect ~host ~port =
@@ -151,10 +220,12 @@ module TcpClient = struct
       else
         match TcpStream.write t.stream buffer ~pos ~len:(len - pos) () with
         | Ok bytes_written -> send_all (pos + bytes_written)
-        | Error e -> Error (Printf.sprintf "Send failed: %s" 
-            (match e with
-             | `Closed -> "connection closed"
-             | `System_error s -> s))
+        | Error e ->
+            Error
+              (Printf.sprintf "Send failed: %s"
+                 (match e with
+                 | `Closed -> "connection closed"
+                 | `System_error s -> s))
     in
     send_all 0
 
@@ -166,43 +237,46 @@ module TcpClient = struct
         let line = String.sub t.leftover 0 idx in
         let remainder_start = idx + 1 in
         let remainder_len = String.length t.leftover - remainder_start in
-        t.leftover <- if remainder_len > 0 then
-          String.sub t.leftover remainder_start remainder_len
-        else "";
+        t.leftover <-
+          (if remainder_len > 0 then
+             String.sub t.leftover remainder_start remainder_len
+           else "");
         Ok line
     | None ->
         (* No complete line in leftover, need to read more *)
         let buffer = Bytes.create 4096 in
         let buffer_size = Bytes.length buffer in
-        
+
         (* Read until we get a newline *)
         let rec read_line acc =
           match TcpStream.read t.stream buffer ~pos:0 ~len:buffer_size () with
-          | Ok bytes_read ->
+          | Ok bytes_read -> (
               let data = Bytes.sub_string buffer 0 bytes_read in
               let full_data = acc ^ data in
               (* Check if we have a complete line *)
-              (match String.index_opt full_data '\n' with
-               | Some idx ->
-                   (* Found newline, save remainder and return line *)
-                   let line = String.sub full_data 0 idx in
-                   let remainder_start = idx + 1 in
-                   let remainder_len = String.length full_data - remainder_start in
-                   t.leftover <- if remainder_len > 0 then
-                     String.sub full_data remainder_start remainder_len
-                   else "";
-                   Ok line
-               | None ->
-                   (* No newline yet, keep reading *)
-                   read_line full_data)
-          | Error `Closed -> 
+              match String.index_opt full_data '\n' with
+              | Some idx ->
+                  (* Found newline, save remainder and return line *)
+                  let line = String.sub full_data 0 idx in
+                  let remainder_start = idx + 1 in
+                  let remainder_len =
+                    String.length full_data - remainder_start
+                  in
+                  t.leftover <-
+                    (if remainder_len > 0 then
+                       String.sub full_data remainder_start remainder_len
+                     else "");
+                  Ok line
+              | None ->
+                  (* No newline yet, keep reading *)
+                  read_line full_data)
+          | Error `Closed ->
               if acc = "" && t.leftover = "" then Error "Connection closed"
-              else begin
+              else
                 (* Return what we have, clear leftover *)
                 let result = t.leftover ^ acc in
                 t.leftover <- "";
                 Ok result
-              end
           | Error (`System_error s) -> Error s
         in
         read_line t.leftover

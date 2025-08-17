@@ -464,68 +464,40 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
   let sorted_all_files =
     if all_ml_files = [] then []
     else
-      (* Separate lib.ml/lib.mli from other files - they should always be compiled last *)
-      let files_for_sort =
-        List.filter
-          (fun f ->
-            let basename = Filename.basename f in
-            basename <> "lib.ml" && basename <> "lib.mli")
-          all_ml_files
+      (* Run ocamldep to get dependencies on all files *)
+      let files_str =
+        String.concat " "
+          (List.map (fun f -> Filename.basename f) all_ml_files)
       in
+      let ocamldep =
+        Printf.sprintf "%s/.tusk/toolchains/5.3.0/bin/ocamldep" home
+      in
+      let cmd =
+        Printf.sprintf "cd %s && %s -sort %s 2>/dev/null" sandbox_dir ocamldep
+          files_str
+      in
+      let ic = Unix.open_process_in cmd in
+      let sorted_str = try input_line ic with End_of_file -> "" in
+      ignore (Unix.close_process_in ic);
 
-      if files_for_sort = [] then
-        (* Only lib.ml/lib.mli exist *)
-        all_ml_files
+      (* Parse the sorted output and map back to original filenames *)
+      if sorted_str = "" then all_ml_files
       else
-        (* Run ocamldep to get dependencies, excluding lib.ml/lib.mli *)
-        let files_str =
-          String.concat " "
-            (List.map (fun f -> Filename.basename f) files_for_sort)
+        let sorted_basenames = String.split_on_char ' ' sorted_str in
+        (* ocamldep -sort might not include all files, so we need to handle that *)
+        let sorted_files = List.filter_map
+          (fun basename ->
+            List.find_opt
+              (fun f -> Filename.basename f = basename)
+              all_ml_files)
+          sorted_basenames
         in
-        let ocamldep =
-          Printf.sprintf "%s/.tusk/toolchains/5.3.0/bin/ocamldep" home
+        (* Add any files that weren't in the sorted output at the end *)
+        let missing_files = List.filter
+          (fun f -> not (List.mem f sorted_files))
+          all_ml_files
         in
-        let cmd =
-          Printf.sprintf "cd %s && %s -sort %s 2>/dev/null" sandbox_dir ocamldep
-            files_str
-        in
-        let ic = Unix.open_process_in cmd in
-        let sorted_str = try input_line ic with End_of_file -> "" in
-        ignore (Unix.close_process_in ic);
-
-        (* Parse the sorted output and map back to original filenames *)
-        let sorted =
-          if sorted_str = "" then files_for_sort
-          else
-            let sorted_basenames = String.split_on_char ' ' sorted_str in
-            List.filter_map
-              (fun basename ->
-                List.find_opt
-                  (fun f -> Filename.basename f = basename)
-                  files_for_sort)
-              sorted_basenames
-        in
-
-        (* Add lib.mli and lib.ml at the end if they exist *)
-        let lib_files =
-          List.filter
-            (fun f ->
-              let basename = Filename.basename f in
-              basename = "lib.ml" || basename = "lib.mli")
-            all_ml_files
-        in
-        (* Sort lib_files to ensure lib.mli comes before lib.ml *)
-        let lib_files_sorted =
-          List.sort
-            (fun a b ->
-              let a_mli = Filename.check_suffix a ".mli" in
-              let b_mli = Filename.check_suffix b ".mli" in
-              if a_mli && not b_mli then -1
-              else if b_mli && not a_mli then 1
-              else 0)
-            lib_files
-        in
-        sorted @ lib_files_sorted
+        sorted_files @ missing_files
   in
 
   (* Split back into mli and ml files in sorted order *)
@@ -729,6 +701,7 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
            sorted_deps
     in
     let custom_flag = if has_c_stubs then "-custom" else "" in
+    (* C objects are already embedded in .cma files, no need to link them separately *)
     let cmd =
       Printf.sprintf "cd %s && %s %s -I +unix -I . %s -o %s unix.cma %s %s"
         sandbox_dir ocamlc custom_flag dep_includes pkg.name link_deps link_objs

@@ -2,7 +2,6 @@
 
 open Miniriot
 open Build_messages
-open Rpc_messages
 
 let usage_msg =
   "tusk - OCaml build system\n\n\
@@ -98,29 +97,42 @@ let build_command package_opt =
     (* Use JSON-RPC client to send build request *)
     let request =
       match package_opt with
-      | Some pkg -> Rpc.BuildPackage pkg
-      | None -> Rpc.BuildAll
+      | Some pkg -> Tusk_rpc_client.BuildPackage pkg
+      | None -> Tusk_rpc_client.BuildAll
     in
-    match Rpc_client.call_build request with
-    | Ok (session_id, logs, Ok Rpc.Success) ->
+    let client = Tusk_rpc_client.create () in
+    let logs = ref [] in
+    let callback = function
+      | Tusk_rpc_client.BuildEvent event ->
+          (match event with
+           | Json.Object fields ->
+               (match List.assoc_opt "message" fields with
+                | Some (Json.String msg) -> logs := msg :: !logs
+                | _ -> ())
+           | _ -> ())
+      | _ -> ()
+    in
+    let result = Tusk_rpc_client.build_streaming client request callback in
+    Tusk_rpc_client.close client;
+    match result with
+    | Ok (Tusk_rpc_client.BuildFinished (Ok ())) ->
         (* Print collected logs *)
-        List.iter (fun log -> Printf.printf "%s\n" log) logs;
-        Printf.printf "✅ Build completed successfully (session: %s)\n" session_id;
+        List.iter (fun log -> Printf.printf "%s\n" log) (List.rev !logs);
+        Printf.printf "✅ Build completed successfully\n";
         Process.Normal
-    | Ok (session_id, logs, Ok (Rpc.Error msg)) ->
+    | Ok (Tusk_rpc_client.BuildFinished (Error msg)) ->
         (* Print collected logs *)
-        List.iter (fun log -> Printf.printf "%s\n" log) logs;
-        Printf.printf "❌ Build failed: %s (session: %s)\n" msg session_id;
+        List.iter (fun log -> Printf.printf "%s\n" log) (List.rev !logs);
+        Printf.printf "❌ Build failed: %s\n" msg;
         Miniriot.shutdown ~status:1;
         Process.Normal
-    | Ok (_, logs, Ok _) ->
-        List.iter (fun log -> Printf.printf "%s\n" log) logs;
-        Printf.printf "❌ Unexpected response from server\n";
-        Process.Exception (Failure "Unexpected response")
-    | Ok (_, _, Error e) | Error e ->
+    | Error e ->
         Printf.printf "❌ Build error: %s\n" e;
         Miniriot.shutdown ~status:1;
         Process.Normal
+    | _ ->
+        Printf.printf "❌ Unexpected response from server\n";
+        Process.Exception (Failure "Unexpected response")
 
 (** Execute a binary and handle its exit status *)
 let execute_binary binary_name binary_path =
@@ -157,8 +169,11 @@ let build_package package_name =
   if not (Server_manager.ensure_running ()) then false
   else
     (* Use JSON-RPC client to send build request *)
-    match Rpc_client.call_build (Rpc.BuildPackage package_name) with
-    | Ok (_, _, Ok Rpc.Success) -> true
+    let client = Tusk_rpc_client.create () in
+    let result = Tusk_rpc_client.build_streaming client (Tusk_rpc_client.BuildPackage package_name) (fun _ -> ()) in
+    Tusk_rpc_client.close client;
+    match result with
+    | Ok (Tusk_rpc_client.BuildFinished (Ok ())) -> true
     | _ -> false
 
 (** Execute the run command *)
@@ -636,7 +651,7 @@ let server_command args =
       (* Default: Run server in foreground *)
       Printf.printf "🚀 Starting tusk server...\n";
       Printf.printf "   Press Ctrl+C to stop\n\n";
-      Server.start_with_listener ()
+      Tusk_server.start_with_listener ()
   | _ ->
       Printf.eprintf "Unknown server subcommand: %s\n" subcommand;
       Printf.eprintf "Available subcommands:\n";
@@ -650,9 +665,8 @@ let server_command args =
 
 (** Execute the rpc command *)
 let rpc_command args =
-  (* Parse subcommand *)
   let cmd = if Array.length args > 2 then args.(2) else "" in
-
+  
   (* Show help if no subcommand provided *)
   if cmd = "" then (
     Printf.printf "Available RPC commands:\n";
@@ -663,29 +677,52 @@ let rpc_command args =
       "  tusk rpc build [package]   - Build all or specific package\n";
     Printf.printf "  tusk rpc restart           - Restart the server\n";
     Printf.printf "  tusk rpc shutdown          - Shutdown the server\n";
-    Process.Normal (* Handle all commands via JSON-RPC *))
+    Process.Normal)
   else if cmd = "ping" then (
-    match Rpc_client.call Rpc.Ping with
-    | Ok response ->
-        let json = Rpc.response_to_json response in
+    let client = Tusk_rpc_client.create () in
+    let result = Tusk_rpc_client.ping client in
+    Tusk_rpc_client.close client;
+    match result with
+    | Ok () ->
+        let json = Json.Object [("type", Json.String "pong")] in
         Printf.printf "%s\n" (Json.to_string json);
         Process.Normal
     | Error e ->
         Printf.eprintf "Error: %s\n" e;
         Process.Exception (Failure e))
   else if cmd = "workspace" then (
-    match Rpc_client.call Rpc.GetWorkspaceConfig with
-    | Ok response ->
-        let json = Rpc.response_to_json response in
+    let client = Tusk_rpc_client.create () in
+    let result = Tusk_rpc_client.get_workspace_config client in
+    Tusk_rpc_client.close client;
+    match result with
+    | Ok config ->
+        let json = Json.Object [
+          ("type", Json.String "workspace_config");
+          ("root", Json.String config.Rpc.workspace_root);
+          ("toolchain", Json.String config.Rpc.toolchain);
+        ] in
         Printf.printf "%s\n" (Json.to_string json);
         Process.Normal
     | Error e ->
         Printf.eprintf "Error: %s\n" e;
         Process.Exception (Failure e))
   else if cmd = "graph" then (
-    match Rpc_client.call Rpc.GetBuildGraph with
+    let client = Tusk_rpc_client.create () in
+    let result = Tusk_rpc_client.get_build_graph client in
+    Tusk_rpc_client.close client;
+    match result with
     | Ok response ->
-        let json = Rpc.response_to_json response in
+        let nodes_json = List.map (fun node ->
+          Json.Object [
+            ("name", Json.String node.Rpc.package_name);
+            ("status", Json.String node.Rpc.status);
+            ("dependencies", Json.Array (List.map (fun d -> Json.String d) node.Rpc.deps));
+          ]
+        ) response.Rpc.nodes in
+        let json = Json.Object [
+          ("type", Json.String "build_graph");
+          ("nodes", Json.Array nodes_json);
+        ] in
         Printf.printf "%s\n" (Json.to_string json);
         Process.Normal
     | Error e ->
@@ -696,41 +733,39 @@ let rpc_command args =
     let package = if Array.length args > 3 then Some args.(3) else None in
     let request =
       match package with
-      | Some pkg -> Rpc.BuildPackage pkg
-      | None -> Rpc.BuildAll
+      | Some pkg -> Tusk_rpc_client.BuildPackage pkg
+      | None -> Tusk_rpc_client.BuildAll
     in
-    (* Use streaming build to output logs in real-time *)
-    let session_id = ref "" in
+    let client = Tusk_rpc_client.create () in
+    let session_id = ref None in
     let callback = function
-      | Rpc.BuildStarted { session_id = sid } ->
-          session_id := sid;
-          (* Output streaming response as JSON *)
-          let json = Rpc.response_to_json (Rpc.BuildStarted { session_id = sid }) in
+      | Tusk_rpc_client.BuildStarted sid ->
+          session_id := Some sid;
+          let json = Json.Object [
+            ("type", Json.String "build_started");
+            ("session_id", Json.String (Session_id.to_string sid));
+          ] in
           Printf.printf "%s\n" (Json.to_string json);
           flush stdout
-      | Rpc.LogOutput { session_id = _; message } ->
-          (* Output log message as JSON *)
-          let json = Rpc.response_to_json (Rpc.LogOutput { session_id = !session_id; message }) in
+      | Tusk_rpc_client.BuildEvent event ->
+          (* Pass through the JSON event *)
+          Printf.printf "%s\n" (Json.to_string event);
+          flush stdout
+      | Tusk_rpc_client.BuildFinished result ->
+          let json = match result with
+          | Ok () -> Json.Object [("type", Json.String "success")]
+          | Error msg -> Json.Object [
+              ("type", Json.String "error");
+              ("message", Json.String msg);
+            ]
+          in
           Printf.printf "%s\n" (Json.to_string json);
           flush stdout
-      | _ -> ()
     in
-    match Rpc_client.call_build_streaming request callback with
-    | Ok Rpc.Success ->
-        (* Build succeeded - output final response *)
-        let json = Rpc.response_to_json Rpc.Success in
-        Printf.printf "%s\n" (Json.to_string json);
-        Process.Normal
-    | Ok (Rpc.Error msg) ->
-        (* Build failed - output error *)
-        let json = Rpc.response_to_json (Rpc.Error msg) in
-        Printf.printf "%s\n" (Json.to_string json);
-        Process.Exception (Failure msg)
-    | Ok response ->
-        (* Unexpected response *)
-        let json = Rpc.response_to_json response in
-        Printf.printf "%s\n" (Json.to_string json);
-        Process.Exception (Failure "Unexpected response")
+    let result = Tusk_rpc_client.build_streaming client request callback in
+    Tusk_rpc_client.close client;
+    match result with
+    | Ok _ -> Process.Normal
     | Error e ->
         let response = Json.Object [
           ("type", Json.String "Error");
@@ -739,18 +774,24 @@ let rpc_command args =
         Printf.printf "%s\n" (Json.to_string response);
         Process.Exception (Failure e))
   else if cmd = "restart" then (
-    match Rpc_client.call Rpc.Restart with
-    | Ok response ->
-        let json = Rpc.response_to_json response in
+    let client = Tusk_rpc_client.create () in
+    let result = Tusk_rpc_client.restart client in
+    Tusk_rpc_client.close client;
+    match result with
+    | Ok () ->
+        let json = Json.Object [("type", Json.String "restarted")] in
         Printf.printf "%s\n" (Json.to_string json);
         Process.Normal
     | Error e ->
         Printf.eprintf "Error: %s\n" e;
         Process.Exception (Failure e))
   else if cmd = "shutdown" then (
-    match Rpc_client.call Rpc.Shutdown with
-    | Ok response ->
-        let json = Rpc.response_to_json response in
+    let client = Tusk_rpc_client.create () in
+    let result = Tusk_rpc_client.shutdown client in
+    Tusk_rpc_client.close client;
+    match result with
+    | Ok () ->
+        let json = Json.Object [("type", Json.String "shutdown")] in
         Printf.printf "%s\n" (Json.to_string json);
         Process.Normal
     | Error e ->

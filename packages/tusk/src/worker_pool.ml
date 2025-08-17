@@ -38,10 +38,10 @@ let shutdown_all_workers workers =
 let rec pool_loop state =
   let selector = function
     | SendTask task -> `select (`send_task task)
-    | Build_messages.NextTask worker_pid -> `select (`next_task worker_pid)
-    | Build_messages.TaskComplete (pkg_name, success, hash) ->
+    | Build_messages.NextTask { worker_pid } -> `select (`next_task worker_pid)
+    | Build_messages.TaskComplete { package_name = pkg_name; success; hash } ->
         `select (`task_complete (pkg_name, success, hash))
-    | Build_messages.RequeueWithDependencies (task, missing_deps) ->
+    | Build_messages.RequeueWithDependencies { task; missing_deps } ->
         `select (`requeue (task, missing_deps))
     | Shutdown -> `select `shutdown
     | _ -> `skip
@@ -78,7 +78,7 @@ let rec pool_loop state =
   | `requeue (task, missing_deps) ->
       (* Forward requeue message to listener *)
       send state.listener
-        (Build_messages.RequeueWithDependencies (task, missing_deps));
+        (Build_messages.RequeueWithDependencies { task; missing_deps });
       pool_loop state
   | `shutdown ->
       (* Shutdown all workers and exit *)

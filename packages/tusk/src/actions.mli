@@ -10,48 +10,31 @@ type action =
       source : string;
       output : string;
       includes : string list;
-    }
-      (** Compile .mli file *)
+    }  (** Compile .mli file *)
   | CompileImplementation of {
       source : string;
       output : string;
       includes : string list;
-    }
-      (** Compile .ml file *)
-  | CompileC of {
-      source : string;
-      output : string;
-    }
-      (** Compile C file *)
+    }  (** Compile .ml file *)
+  | CompileC of { source : string; output : string }  (** Compile C file *)
   (* Linking actions *)
   | CreateLibrary of {
       output : string;
       objects : string list;
       includes : string list;
-    }
-      (** Create .cma library *)
+    }  (** Create .cma library *)
   | CreateExecutable of {
       output : string;
       objects : string list;
       libraries : string list;
       includes : string list;
-    }
-      (** Create executable *)
+    }  (** Create executable *)
   (* File operations *)
-  | CopyFile of {
-      source : string;
-      destination : string;
-    }
-      (** Copy file *)
-  | WriteFile of {
-      destination : string;
-      content : string;
-    }
+  | CopyFile of { source : string; destination : string }  (** Copy file *)
+  | WriteFile of { destination : string; content : string }
       (** Write content to file *)
   (* Output declaration *)
-  | DeclareOutputs of {
-      outputs : string list;
-    }
+  | DeclareOutputs of { outputs : string list }
       (** Declare output files that should be copied to target *)
 
 (** Result of executing an action *)

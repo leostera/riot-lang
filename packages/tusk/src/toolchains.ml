@@ -1,20 +1,20 @@
 (** Toolchain management for tusk build system *)
 
-type source = 
-  | Version of string         (* e.g., "5.3.0" *)
-  | Path of string            (* e.g., "./ocaml/compiler" *)
-  | Url of string             (* e.g., "https://github.com/user/ocaml/archive/branch.tar.gz" *)
+type source =
+  | Version of string (* e.g., "5.3.0" *)
+  | Path of string (* e.g., "./ocaml/compiler" *)
+  | Url of
+      string (* e.g., "https://github.com/user/ocaml/archive/branch.tar.gz" *)
 
-type toolchain = { 
-  version : string;           (* version string for directory name *)
-  source : source;            (* where to get the compiler from *)
+type toolchain = {
+  version : string; (* version string for directory name *)
+  source : source; (* where to get the compiler from *)
 }
 
 let default_ocaml_version = "5.3.0"
-let default_toolchain = { 
-  version = default_ocaml_version;
-  source = Version default_ocaml_version;
-}
+
+let default_toolchain =
+  { version = default_ocaml_version; source = Version default_ocaml_version }
 
 (* TODO: Implement toolchain management system
    
@@ -77,9 +77,9 @@ let parse_toolchain_file path =
         | Toml.Table items -> (
             (* Look for path field *)
             match List.assoc_opt "path" items with
-            | Some (Toml.String path_str) -> 
+            | Some (Toml.String path_str) ->
                 (* For path sources, create a version name from the path *)
-                let version_name = 
+                let version_name =
                   (* Use basename + "-local" to make it unique *)
                   Printf.sprintf "%s-local" (Filename.basename path_str)
                 in
@@ -89,7 +89,7 @@ let parse_toolchain_file path =
                 match List.assoc_opt "url" items with
                 | Some (Toml.String url_str) ->
                     (* For URL sources, extract version from URL or use hash *)
-                    let version_name = 
+                    let version_name =
                       (* Try to extract version from URL *)
                       if String.contains url_str '/' then
                         let parts = String.split_on_char '/' url_str in
@@ -101,7 +101,7 @@ let parse_toolchain_file path =
                     in
                     { version = version_name; source = Url url_str }
                 | _ -> default_toolchain))
-        | Toml.String v -> 
+        | Toml.String v ->
             (* It's a string version *)
             { version = v; source = Version v }
         | _ -> default_toolchain)
@@ -136,11 +136,11 @@ let get_cache_path url =
 (** Build OCaml from local source directory *)
 let build_from_local_source ~source_path ~toolchain_path =
   Printf.printf "Building OCaml from local source: %s...\n%!" source_path;
-  
+
   (* Verify source directory exists *)
   if not (System.file_exists source_path) then
     failwith (Printf.sprintf "Source directory does not exist: %s" source_path);
-  
+
   (* Configure *)
   Printf.printf "Configuring OCaml...\n%!";
   let configure_cmd =
@@ -166,45 +166,44 @@ let build_from_local_source ~source_path ~toolchain_path =
   let success, output = System.run_command install_cmd in
   if not success then
     failwith (Printf.sprintf "Failed to install OCaml: %s" output);
-    
+
   Printf.printf "Successfully built and installed OCaml from %s\n%!" source_path
 
 (** Download OCaml source from URL *)
 let download_source_from_url url =
   let cache_path = get_cache_path url in
   let cache_dir = Filename.dirname cache_path in
-  
+
   (* Create cache directory if needed *)
   System.mkdirp cache_dir;
-  
+
   (* Check if already cached *)
   if not (System.file_exists cache_path) then (
     Printf.printf "Downloading OCaml from %s...\n%!" url;
-    
+
     (* Download to cache *)
     let download_cmd = Printf.sprintf "curl -L -o %s %s" cache_path url in
     let success, output = System.run_command download_cmd in
     if not success then
       failwith (Printf.sprintf "Failed to download OCaml: %s" output))
   else Printf.printf "Using cached OCaml from %s\n%!" cache_path;
-  
+
   (* Extract to temporary directory *)
   let extract_dir =
-    Filename.concat "/tmp"
-      (Printf.sprintf "ocaml-build-%d" (System.getpid ()))
+    Filename.concat "/tmp" (Printf.sprintf "ocaml-build-%d" (System.getpid ()))
   in
   System.mkdirp extract_dir;
-  
+
   Printf.printf "Extracting OCaml source...\n%!";
   let extract_cmd = Printf.sprintf "tar -xzf %s -C %s" cache_path extract_dir in
   let success, output = System.run_command extract_cmd in
   if not success then
     failwith (Printf.sprintf "Failed to extract OCaml: %s" output);
-  
+
   (* Find the extracted directory (should be the only subdirectory) *)
   let dirs = System.list_dir_all extract_dir in
   match dirs with
-  | [dir] -> Filename.concat extract_dir dir
+  | [ dir ] -> Filename.concat extract_dir dir
   | [] -> failwith "No directory found after extraction"
   | _ -> failwith "Multiple directories found after extraction"
 
@@ -376,18 +375,16 @@ let install_toolchain toolchain =
         let extract_parent = Filename.dirname src_dir in
         let cleanup_cmd = Printf.sprintf "rm -rf %s" extract_parent in
         ignore (System.run_command cleanup_cmd)
-        
     | Path path ->
         (* Build from local source directory *)
         (* Resolve path relative to workspace root if needed *)
-        let source_path = 
+        let source_path =
           if Filename.is_relative path then
             (* Assume relative paths are relative to current working directory *)
             Filename.concat (Sys.getcwd ()) path
           else path
         in
         build_from_local_source ~source_path ~toolchain_path
-        
     | Url url ->
         (* Download and build from URL *)
         let src_dir = download_source_from_url url in
@@ -400,10 +397,11 @@ let install_toolchain toolchain =
     Printf.printf "Successfully installed OCaml %s\n%!" toolchain.version;
 
     (* Download pre-built dev tools - only for Version sources *)
-    (match toolchain.source with
+    match toolchain.source with
     | Version _ -> install_dev_tools toolchain
-    | Path _ | Url _ -> 
-        Printf.printf "Note: Development tools not installed for custom toolchain\n%!"))
+    | Path _ | Url _ ->
+        Printf.printf
+          "Note: Development tools not installed for custom toolchain\n%!")
 
 (** Ready toolchains for a workspace *)
 let ready_toolchains workspace =
@@ -417,10 +415,10 @@ let ready_toolchains workspace =
     else default_toolchain
   in
 
-  Printf.printf "Using OCaml toolchain: %s\n%!" 
+  Printf.printf "Using OCaml toolchain: %s\n%!"
     (match toolchain.source with
     | Version v -> v
-    | Path p -> Printf.sprintf "path:%s" p  
+    | Path p -> Printf.sprintf "path:%s" p
     | Url u -> Printf.sprintf "url:%s" u);
 
   (* Ensure toolchain is installed *)

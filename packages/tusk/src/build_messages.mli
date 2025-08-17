@@ -15,14 +15,21 @@ type build_task = {
 type Message.t +=
   | ScanWorkspace of string option
         (** Scan workspace, optionally filtering for a target package *)
-  | BuildAll of Pid.t * bool
-        (** Build all packages: (client_pid, is_json_rpc) *)
-  | BuildPackage of string * Pid.t * bool
-        (** Build specific package: (package_name, client_pid, is_json_rpc) *)
-  | NextTask of Pid.t  (** Worker requests next task from server *)
-  | TaskComplete of string * bool * Hasher.hash
-        (** Worker reports task completion: (package_name, success, hash) *)
-  | RequeueWithDependencies of build_task * Build_node.t list
+  | BuildAll of { client_pid : Pid.t }  (** Build all packages *)
+  | BuildPackage of { package_name : string; client_pid : Pid.t }
+        (** Build specific package *)
+  | NextTask of { worker_pid : Pid.t }
+        (** Worker requests next task from server *)
+  | TaskComplete of {
+      package_name : string;
+      success : bool;
+      hash : Hasher.hash;
+    }
+        (** Worker reports task completion *)
+  | RequeueWithDependencies of {
+      task : build_task;
+      missing_deps : Build_node.t list;
+    }
         (** Requeue task with missing dependencies *)
   | Task of build_task  (** Server assigns task to worker *)
   | NoTask  (** Server indicates no tasks available *)
