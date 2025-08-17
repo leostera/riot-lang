@@ -85,20 +85,20 @@ let remove_daemon (workspace : Workspace.workspace) =
   (try Sys.remove port_path with _ -> ());
   (try Sys.remove pid_path with _ -> ())
 
-(** Check if the server is running by trying to connect *)
+(** Check if the server is running by checking process existence *)
 let is_server_running () =
-  try
-    let client = Tusk_rpc_client.create () in
-    let result = Tusk_rpc_client.ping client in
-    Tusk_rpc_client.close client;
-    match result with
-    | Ok () -> true
-    | Error e ->
-        Printf.eprintf "[DEBUG] Ping failed: %s\n" e;
+  let workspace = current_workspace () in
+  match daemon workspace with
+  | None -> false
+  | Some info ->
+      (* Check if the process is still alive *)
+      try
+        Unix.kill info.os_pid 0;
+        true
+      with Unix.Unix_error (Unix.ESRCH, _, _) ->
+        (* Process doesn't exist, clean up stale files *)
+        remove_daemon workspace;
         false
-  with e ->
-    Printf.eprintf "[DEBUG] Ping exception: %s\n" (Printexc.to_string e);
-    false
 
 (** Start the server process in the background *)
 let start_background () =
@@ -170,23 +170,26 @@ let start_background () =
 
 (** Stop the background server *)
 let stop_background () =
-  try
-    (* Try to send shutdown command via RPC *)
-    let client = Tusk_rpc_client.create () in
-    let result = Tusk_rpc_client.shutdown client in
-    Tusk_rpc_client.close client;
-    match result with
-    | Ok _ ->
-        Printf.printf "Server shutdown requested\n";
-        (* Clean up PID file *)
-        (try System.remove_file (pid_file ()) with _ -> ());
+  let workspace = current_workspace () in
+  match daemon workspace with
+  | None ->
+      Printf.printf "Server is not running\n";
+      false
+  | Some info ->
+      try
+        (* Send SIGTERM to gracefully shutdown *)
+        Unix.kill info.os_pid Sys.sigterm;
+        Printf.printf "Server shutdown requested (pid: %d)\n" info.os_pid;
+        (* Wait a moment for graceful shutdown *)
+        Unix.sleep 1;
+        (* Clean up daemon files *)
+        remove_daemon workspace;
         true
-    | Error msg ->
-        Printf.eprintf "Failed to shutdown server: %s\n" msg;
+      with Unix.Unix_error (Unix.ESRCH, _, _) ->
+        (* Process doesn't exist, clean up stale files *)
+        Printf.printf "Server was not running (stale PID file)\n";
+        remove_daemon workspace;
         false
-  with _ ->
-    Printf.printf "Server is not running\n";
-    false
 
 (** Ensure the server is running, starting it if necessary *)
 let ensure_running () =
