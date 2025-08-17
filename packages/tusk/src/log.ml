@@ -45,9 +45,9 @@ type log_event =
   | CacheStored of { package : string; hash : string; artifacts : string list }
   (* Worker pool events *)
   | WorkerPoolStarted of { workers : int }
-  | WorkerStarted of { worker_id : int }
-  | WorkerAssigned of { worker_id : int; package : string }
-  | WorkerIdle of { worker_id : int }
+  | WorkerStarted of { worker_id : Worker_id.t }
+  | WorkerAssigned of { worker_id : Worker_id.t; package : string }
+  | WorkerIdle of { worker_id : Worker_id.t }
   (* Server events *)
   | ServerStarted of { pid : string }
   | ServerScanning of { root : string }
@@ -85,21 +85,38 @@ type log_event =
   | Warn of string
   | Error of string
 
-(** Convert log event to human-readable string *)
+(** Get current timestamp as milliseconds since Unix epoch *)
+let get_timestamp_ms () =
+  int_of_float (Unix.gettimeofday () *. 1000.)
+
+(** Format timestamp for display *)
+let format_timestamp timestamp_ms =
+  let timestamp_s = float_of_int timestamp_ms /. 1000. in
+  let tm = Unix.localtime timestamp_s in
+  Printf.sprintf "%02d:%02d:%02d.%03d"
+    tm.tm_hour tm.tm_min tm.tm_sec
+    (timestamp_ms mod 1000)
+
+(** Convert log event to human-readable string with timestamp *)
 let event_to_string = function
   | BuildStarted { packages; total_modules; workers } ->
-      Printf.sprintf "🔨 Building %d packages (%d modules) with %d workers"
-        (List.length packages) total_modules workers
+      let timestamp = format_timestamp (get_timestamp_ms ()) in
+      Printf.sprintf "[%s] 🔨 Building %d packages (%d modules) with %d workers"
+        timestamp (List.length packages) total_modules workers
   | BuildComplete { duration_ms; succeeded; failed } ->
+      let timestamp = format_timestamp (get_timestamp_ms ()) in
       let status = if failed = [] then "✅" else "❌" in
-      Printf.sprintf "%s Build completed in %.2fs: %d succeeded, %d failed"
-        status
+      Printf.sprintf "[%s] %s Build completed in %.2fs: %d succeeded, %d failed"
+        timestamp status
         (float_of_int duration_ms /. 1000.)
         (List.length succeeded) (List.length failed)
-  | PackageStarted { package } -> Printf.sprintf "  📦 Building %s..." package
+  | PackageStarted { package } -> 
+      let timestamp = format_timestamp (get_timestamp_ms ()) in
+      Printf.sprintf "[%s]   📦 Building %s..." timestamp package
   | PackageComplete res ->
+      let timestamp = format_timestamp (get_timestamp_ms ()) in
       let status = if res.success then "✓" else "✗" in
-      Printf.sprintf "  %s %s (%.2fs, %d modules, %d/%d cache hits)" status
+      Printf.sprintf "[%s]   %s %s (%.2fs, %d modules, %d/%d cache hits)" timestamp status
         res.package
         (float_of_int res.duration_ms /. 1000.)
         res.modules_compiled res.cache_hits
@@ -108,11 +125,73 @@ let event_to_string = function
       Printf.sprintf "  ❌ %s:%d:%s - %s" error.file error.line
         (match error.column with Some c -> string_of_int c | None -> "0")
         error.message
-  | Info msg -> Printf.sprintf "[INFO] %s" msg
-  | Debug msg -> Printf.sprintf "[DEBUG] %s" msg
-  | Warn msg -> Printf.sprintf "[WARN] %s" msg
-  | Error msg -> Printf.sprintf "[ERROR] %s" msg
-  | _ -> "" (* TODO: implement rest *)
+  | CacheHit { package; hash } -> 
+      let timestamp = format_timestamp (get_timestamp_ms ()) in
+      Printf.sprintf "[%s]   ⚡ Cached %s" timestamp package
+  | CacheMiss { package; hash } -> 
+      let timestamp = format_timestamp (get_timestamp_ms ()) in
+      Printf.sprintf "[%s]   💾 Cache miss: %s" timestamp package
+  | CacheStored { package; hash; artifacts } ->
+      Printf.sprintf "  💾 Cached %s (%d artifacts)" package
+        (List.length artifacts)
+  | WorkerPoolStarted { workers } ->
+      Printf.sprintf "  ⚙️ Started %d workers" workers
+  | WorkerStarted { worker_id } ->
+      Printf.sprintf "  ⚙️ Worker %s started" (Worker_id.to_string worker_id)
+  | WorkerAssigned { worker_id; package } ->
+      Printf.sprintf "  ⚙️ Worker %s building %s" (Worker_id.to_string worker_id) package
+  | WorkerIdle { worker_id } -> Printf.sprintf "  ⚙️ Worker %s idle" (Worker_id.to_string worker_id)
+  | ServerStarted { pid } -> 
+      let timestamp = format_timestamp (get_timestamp_ms ()) in
+      Printf.sprintf "[%s] 🚀 Server started (pid: %s)" timestamp pid
+  | ServerScanning { root } -> 
+      let timestamp = format_timestamp (get_timestamp_ms ()) in
+      Printf.sprintf "[%s] 🔍 Scanning workspace: %s" timestamp root
+  | ServerReady { packages; toolchain } ->
+      let timestamp = format_timestamp (get_timestamp_ms ()) in
+      Printf.sprintf "[%s] ✅ Server ready (%d packages, toolchain: %s)" timestamp packages
+        toolchain
+  | ServerShutdown -> "🛑 Server shutting down"
+  | QueuePackage { package; queue_type } ->
+      let queue_str =
+        match queue_type with `Ready -> "ready" | `Waiting -> "waiting"
+      in
+      Printf.sprintf "  🔄 Queueing %s (%s)" package queue_str
+  | QueueStats { ready; waiting; busy } ->
+      Printf.sprintf "  📊 Queue: %d ready, %d waiting, %d busy" ready waiting
+        busy
+  | DependencyMissing { package; missing } ->
+      Printf.sprintf "  ⏳ %s waiting for: %s" package
+        (String.concat ", " missing)
+  | DependencySatisfied { package } ->
+      Printf.sprintf "  ✅ Dependencies satisfied for %s" package
+  | CompilingInterface { package; file } ->
+      Printf.sprintf "  ⚙️ Compiling interface %s:%s" package file
+  | CompilingImplementation { package; file } ->
+      Printf.sprintf "  ⚙️ Compiling implementation %s:%s" package file
+  | LinkingLibrary { package; output } ->
+      Printf.sprintf "  🔗 Linking library %s -> %s" package output
+  | LinkingExecutable { package; output } ->
+      Printf.sprintf "  🔗 Linking executable %s -> %s" package output
+  | ComputingHash { package } ->
+      Printf.sprintf "  🔢 Computing hash for %s" package
+  | HashComputed { package; hash } ->
+      let timestamp = format_timestamp (get_timestamp_ms ()) in
+      Printf.sprintf "[%s]   🔢 Hash computed for %s: %s" timestamp package
+        (String.sub hash 0 (min 8 (String.length hash)))
+  | Info msg -> 
+      let timestamp = format_timestamp (get_timestamp_ms ()) in
+      Printf.sprintf "[%s] [INFO] %s" timestamp msg
+  | Debug msg -> 
+      let timestamp = format_timestamp (get_timestamp_ms ()) in
+      Printf.sprintf "[%s] [DEBUG] %s" timestamp msg
+  | Warn msg -> 
+      let timestamp = format_timestamp (get_timestamp_ms ()) in
+      Printf.sprintf "[%s] [WARN] %s" timestamp msg
+  | Error msg -> 
+      let timestamp = format_timestamp (get_timestamp_ms ()) in
+      Printf.sprintf "[%s] [ERROR] %s" timestamp msg
+  | _ -> "" (* Fallback for any remaining unimplemented events *)
 
 (** Format event according to format type *)
 let format_event format event =
@@ -172,9 +251,6 @@ let rec logger_loop state =
   (* Receive and handle messages *)
   match receive ~selector () with
   | `log (sid, event) ->
-      Printf.eprintf "[LOGGER DEBUG] Received log event: sid=%s\n"
-        (match sid with Some s -> Session_id.to_string s | None -> "none");
-      flush stderr;
       (* Log to stdout if handler exists *)
       (match state.stdout_handler with
       | Some format ->
@@ -205,19 +281,9 @@ let rec logger_loop state =
                 let response =
                   Rpc.BuildEvent { session_id; message = formatted }
                 in
-                Printf.eprintf
-                  "[LOGGER DEBUG] Sending ServerResponse to client\n";
-                flush stderr;
                 send client (Rpc.ServerResponse response)
-            | _ ->
-                Printf.eprintf "[LOGGER DEBUG] Handler not RPC type\n";
-                flush stderr;
-                ()
-          with Not_found ->
-            Printf.eprintf "[LOGGER DEBUG] No handler found for session %s\n"
-              (Session_id.to_string session_id);
-            flush stderr;
-            ())
+            | _ -> ()
+          with Not_found -> ())
       | None -> ());
 
       logger_loop state
@@ -271,23 +337,11 @@ let init () =
 
 (** Main logging function - sends to logger process *)
 let log ?sid event =
-  Printf.eprintf "[LOG DEBUG] log called: sid=%s, event_type=%s\n"
-    (match sid with Some s -> Session_id.to_string s | None -> "none")
-    (match event with
-    | BuildStarted _ -> "BuildStarted"
-    | Info _ -> "Info"
-    | Debug _ -> "Debug"
-    | _ -> "Other");
-  flush stderr;
   match !logger_pid with
   | Some pid ->
-      Printf.eprintf "[LOG DEBUG] Sending to logger process (pid exists)\n";
-      flush stderr;
       Miniriot.send pid (Log (sid, event))
   | None ->
       (* Fallback if logger not initialized *)
-      Printf.eprintf "[LOG DEBUG] Logger not initialized, printing to stdout\n";
-      flush stderr;
       Printf.printf "%s\n" (event_to_string event);
       flush stdout
 
@@ -380,17 +434,10 @@ let linking_executable ?sid ~package ~output =
 
 (** Handler management *)
 let add_rpc_handler ~sid ~client ~format =
-  Printf.eprintf "[LOG DEBUG] add_rpc_handler called: sid=%s\n"
-    (Session_id.to_string sid);
-  flush stderr;
   match !logger_pid with
   | Some pid ->
-      Printf.eprintf "[LOG DEBUG] Sending AddHandler to logger process\n";
-      flush stderr;
       Miniriot.send pid (AddHandler (Rpc { session_id = sid; client; format }))
   | None ->
-      Printf.eprintf "[LOG DEBUG] Logger not initialized in add_rpc_handler\n";
-      flush stderr;
       ()
 
 let add_stdout_handler ~format =
