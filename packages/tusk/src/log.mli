@@ -55,9 +55,9 @@ type log_event =
   | CacheStored of { package : string; hash : string; artifacts : string list }
   (* Worker pool events *)
   | WorkerPoolStarted of { workers : int }
-  | WorkerStarted of { worker_id : int }
-  | WorkerAssigned of { worker_id : int; package : string }
-  | WorkerIdle of { worker_id : int }
+  | WorkerStarted of { worker_id : Worker_id.t }
+  | WorkerAssigned of { worker_id : Worker_id.t; package : string }
+  | WorkerIdle of { worker_id : Worker_id.t }
   (* Server events *)
   | ServerStarted of { pid : string }
   | ServerScanning of { root : string }
@@ -141,9 +141,9 @@ val hash_computed : ?sid:session_id -> package:string -> hash:string -> unit
 val worker_pool_started : ?sid:session_id -> workers:int -> unit
 (** Log worker events *)
 
-val worker_started : ?sid:session_id -> worker_id:int -> unit
-val worker_assigned : ?sid:session_id -> worker_id:int -> package:string -> unit
-val worker_idle : ?sid:session_id -> worker_id:int -> unit
+val worker_started : ?sid:session_id -> worker_id:Worker_id.t -> unit
+val worker_assigned : ?sid:session_id -> worker_id:Worker_id.t -> package:string -> unit
+val worker_idle : ?sid:session_id -> worker_id:Worker_id.t -> unit
 
 val server_started : ?sid:session_id -> pid:string -> unit
 (** Log server events *)
@@ -190,3 +190,10 @@ val get_session_logs : sid:session_id -> format:format -> string
 
 val event_to_string : log_event -> string
 val format_event : format -> log_event -> string
+
+(** Structured event processing functions *)
+val get_timestamp_ms : unit -> int
+val format_timestamp : int -> string
+val event_name : log_event -> string  
+val event_level : log_event -> level
+val event_message : log_event -> string

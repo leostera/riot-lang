@@ -4,6 +4,74 @@ open Miniriot
 
 type ctx = { server_pid : Pid.t }
 
+(** Convert log_event to structured JSON with event_data *)
+let log_event_to_json log_event =
+  let timestamp = Log.format_timestamp (Log.get_timestamp_ms ()) in
+  let level = match Log.event_level log_event with
+    | Error -> "error" | Warn -> "warn" | Info -> "info" 
+    | Debug -> "debug" | Trace -> "trace" in
+  let event_name = Log.event_name log_event in
+  let message = Log.event_message log_event in
+  
+  (* Extract structured data based on log event type *)
+  let event_data = match log_event with
+    | Log.BuildStarted { packages; total_modules; workers } ->
+        Json.Object [
+          ("packages", Json.Array (List.map (fun p -> Json.String p) packages));
+          ("total_modules", Json.Int total_modules);
+          ("workers", Json.Int workers);
+        ]
+    | Log.PackageComplete res ->
+        Json.Object [
+          ("package_name", Json.String res.package);
+          ("success", Json.Bool res.success);
+          ("duration_ms", Json.Int res.duration_ms);
+          ("modules_compiled", Json.Int res.modules_compiled);
+          ("cache_hits", Json.Int res.cache_hits);
+          ("cache_misses", Json.Int res.cache_misses);
+        ]
+    | Log.CacheHit { package; hash } -> 
+        Json.Object [
+          ("package_name", Json.String package);
+          ("hash", Json.String hash);
+        ]
+    | Log.CacheMiss { package; hash } -> 
+        Json.Object [
+          ("package_name", Json.String package);
+          ("hash", Json.String hash);
+        ]
+    | Log.HashComputed { package; hash } ->
+        Json.Object [
+          ("package_name", Json.String package);
+          ("hash", Json.String hash);
+        ]
+    | Log.WorkerAssigned { worker_id; package } ->
+        Json.Object [
+          ("worker_id", Json.String (Worker_id.to_string worker_id));
+          ("package_name", Json.String package);
+        ]
+    | Log.QueuePackage { package; queue_type } ->
+        let typ = match queue_type with `Ready -> "ready" | `Waiting -> "waiting" in
+        Json.Object [
+          ("package_name", Json.String package);
+          ("queue_type", Json.String typ);
+        ]
+    | Log.Info msg | Log.Debug msg | Log.Warn msg | Log.Error msg ->
+        Json.Object [("message", Json.String msg)]
+    | _ ->
+        (* For other events, just include the message as data *)
+        Json.Object [("message", Json.String message)]
+  in
+  
+  Json.Object [
+    ("type", Json.String "build_event");
+    ("timestamp", Json.String timestamp);
+    ("level", Json.String level);
+    ("event", Json.String event_name);
+    ("message", Json.String message);
+    ("event_data", event_data);
+  ]
+
 let handle_build ctx reply params =
   let package =
     match params with
@@ -26,41 +94,62 @@ let handle_build ctx reply params =
   in
   match receive ~selector () with
   | Rpc.BuildStarted { session_id } ->
-      (* Build started, now wait for completion *)
-      (match receive ~selector () with
-      | Rpc.Success ->
-          let response =
-            Jsonrpc.make_response
-              ~result:(Json.Object [ ("status", Json.String "success") ])
-              ~id:Jsonrpc.Null ()
-          in
-          reply response
-      | Rpc.Error msg ->
-          let error =
-            Jsonrpc.{ code = InternalError; message = msg; data = None }
-          in
-          let response = Jsonrpc.make_response ~error ~id:Jsonrpc.Null () in
-          reply response
-      | _ ->
-          let error =
-            Jsonrpc.
-              { code = InternalError; message = "Unexpected response after BuildStarted"; data = None }
-          in
-          let response = Jsonrpc.make_response ~error ~id:Jsonrpc.Null () in
-          reply response)
-  | Rpc.Success ->
-      let response =
+      (* Send BuildStarted response with session_id *)
+      let start_response =
         Jsonrpc.make_response
-          ~result:(Json.Object [ ("status", Json.String "success") ])
+          ~result:
+            (Json.Object
+               [
+                 ("type", Json.String "build_started");
+                 ("session_id", Json.String (Session_id.to_string session_id));
+               ])
           ~id:Jsonrpc.Null ()
       in
-      reply response
-  | Rpc.Error msg ->
-      let error =
-        Jsonrpc.{ code = InternalError; message = msg; data = None }
+      reply start_response;
+
+      (* Now enter receive loop for build events *)
+      let rec receive_events () =
+        match receive ~selector () with
+        | Rpc.BuildEvent { session_id = _; log_event } ->
+            (* Convert log event to structured JSON *)
+            let event_json = log_event_to_json log_event in
+            let event_response =
+              Jsonrpc.make_response
+                ~result:event_json
+                ~id:Jsonrpc.Null ()
+            in
+            reply event_response;
+            receive_events () (* Continue receiving events *)
+        | Rpc.Success ->
+            (* Build completed successfully *)
+            let response =
+              Jsonrpc.make_response
+                ~result:
+                  (Json.Object
+                     [
+                       ("type", Json.String "build_completed");
+                       ("status", Json.String "success");
+                     ])
+                ~id:Jsonrpc.Null ()
+            in
+            reply response
+        | Rpc.Error msg ->
+            (* Build failed *)
+            let response =
+              Jsonrpc.make_response
+                ~result:
+                  (Json.Object
+                     [
+                       ("type", Json.String "build_completed");
+                       ("status", Json.String "error");
+                       ("message", Json.String msg);
+                     ])
+                ~id:Jsonrpc.Null ()
+            in
+            reply response
+        | _ -> receive_events () (* Ignore other messages and continue *)
       in
-      let response = Jsonrpc.make_response ~error ~id:Jsonrpc.Null () in
-      reply response
+      receive_events ()
   | _ ->
       let error =
         Jsonrpc.
@@ -108,11 +197,15 @@ let handle_workspace_config ctx reply params =
   in
   match receive ~selector () with
   | Rpc.WorkspaceConfig config ->
-      let result = Json.Object [
-        ("workspace_root", Json.String config.workspace_root);
-        ("toolchain", Json.String config.toolchain);
-        ("packages", Json.Array (List.map (fun p -> Json.String p) config.packages))
-      ] in
+      let result =
+        Json.Object
+          [
+            ("workspace_root", Json.String config.workspace_root);
+            ("toolchain", Json.String config.toolchain);
+            ( "packages",
+              Json.Array (List.map (fun p -> Json.String p) config.packages) );
+          ]
+      in
       let response = Jsonrpc.make_response ~result ~id:Jsonrpc.Null () in
       reply response
   | Rpc.Error msg ->
@@ -120,7 +213,9 @@ let handle_workspace_config ctx reply params =
       let response = Jsonrpc.make_response ~error ~id:Jsonrpc.Null () in
       reply response
   | _ ->
-      let error = Jsonrpc.make_error ~code:InternalError ~message:"Unexpected response" () in
+      let error =
+        Jsonrpc.make_error ~code:InternalError ~message:"Unexpected response" ()
+      in
       let response = Jsonrpc.make_response ~error ~id:Jsonrpc.Null () in
       reply response
 
@@ -132,16 +227,23 @@ let handle_build_graph ctx reply params =
   in
   match receive ~selector () with
   | Rpc.BuildGraph graph ->
-      let nodes_json = Json.Array (List.map (fun node ->
-        Json.Object [
-          ("package_name", Json.String node.Rpc.package_name);
-          ("src_dir", Json.String node.Rpc.src_dir);
-          ("out_dir", Json.String node.Rpc.out_dir);
-          ("status", Json.String node.Rpc.status);
-          ("deps", Json.Array (List.map (fun d -> Json.String d) node.Rpc.deps))
-        ]
-      ) graph.nodes) in
-      let result = Json.Object [("nodes", nodes_json)] in
+      let nodes_json =
+        Json.Array
+          (List.map
+             (fun node ->
+               Json.Object
+                 [
+                   ("package_name", Json.String node.Rpc.package_name);
+                   ("src_dir", Json.String node.Rpc.src_dir);
+                   ("out_dir", Json.String node.Rpc.out_dir);
+                   ("status", Json.String node.Rpc.status);
+                   ( "deps",
+                     Json.Array
+                       (List.map (fun d -> Json.String d) node.Rpc.deps) );
+                 ])
+             graph.nodes)
+      in
+      let result = Json.Object [ ("nodes", nodes_json) ] in
       let response = Jsonrpc.make_response ~result ~id:Jsonrpc.Null () in
       reply response
   | Rpc.Error msg ->
@@ -149,7 +251,9 @@ let handle_build_graph ctx reply params =
       let response = Jsonrpc.make_response ~error ~id:Jsonrpc.Null () in
       reply response
   | _ ->
-      let error = Jsonrpc.make_error ~code:InternalError ~message:"Unexpected response" () in
+      let error =
+        Jsonrpc.make_error ~code:InternalError ~message:"Unexpected response" ()
+      in
       let response = Jsonrpc.make_response ~error ~id:Jsonrpc.Null () in
       reply response
 

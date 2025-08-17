@@ -54,7 +54,7 @@ let parse_run_args args start_idx =
 (** Find all available binaries in the workspace *)
 let find_binaries () =
   let root = System.getcwd () in
-  let workspace = Workspace.scan ~root in
+  let workspace = Workspace_manager.get_workspace ~root in
 
   (* Look for packages that have main.ml files (indicating they produce binaries) *)
   List.filter_map
@@ -87,7 +87,12 @@ let get_binary_path binary_name =
 let build_command package_opt =
   (match package_opt with
   | Some pkg -> Printf.printf "🔨 Building package %s...\n" pkg
-  | None -> Printf.printf "🔨 Starting build...\n");
+  | None -> 
+      let timestamp = Unix.gettimeofday () in
+      let tm = Unix.localtime timestamp in
+      Printf.printf "[%02d:%02d:%02d.%03d] 🔨 Starting build...\n"
+        tm.tm_hour tm.tm_min tm.tm_sec
+        (int_of_float (timestamp *. 1000.) mod 1000));
 
   (* Ensure server is running *)
   if not (Server_manager.ensure_running ()) then (
@@ -101,28 +106,33 @@ let build_command package_opt =
       | None -> Tusk_rpc_client.BuildAll
     in
     let client = Tusk_rpc_client.create () in
-    let logs = ref [] in
-    let callback = function
-      | Tusk_rpc_client.BuildEvent event ->
-          (match event with
-           | Json.Object fields ->
-               (match List.assoc_opt "message" fields with
-                | Some (Json.String msg) -> logs := msg :: !logs
-                | _ -> ())
-           | _ -> ())
-      | _ -> ()
+    let result =
+      Tusk_rpc_client.build_streaming client request (function
+        | Tusk_rpc_client.BuildStarted session_id ->
+            Printf.printf "📦 Build session: %s\n"
+              (Session_id.to_string session_id);
+            flush stdout
+        | Tusk_rpc_client.BuildEvent log_event ->
+            (* Now we get typed log events, format them appropriately *)
+            let formatted = Log.event_to_string log_event in
+            Printf.printf "%s\n" formatted;
+            flush stdout
+        | Tusk_rpc_client.BuildFinished _ ->
+            (* This is handled below in the result match *)
+            ())
     in
-    let result = Tusk_rpc_client.build_streaming client request callback in
     Tusk_rpc_client.close client;
+
+    (* Print final result *)
     match result with
     | Ok (Tusk_rpc_client.BuildFinished (Ok ())) ->
-        (* Print collected logs *)
-        List.iter (fun log -> Printf.printf "%s\n" log) (List.rev !logs);
-        Printf.printf "✅ Build completed successfully\n";
+        let timestamp = Unix.gettimeofday () in
+        let tm = Unix.localtime timestamp in
+        Printf.printf "[%02d:%02d:%02d.%03d] ✅ Build completed successfully\n"
+          tm.tm_hour tm.tm_min tm.tm_sec
+          (int_of_float (timestamp *. 1000.) mod 1000);
         Process.Normal
     | Ok (Tusk_rpc_client.BuildFinished (Error msg)) ->
-        (* Print collected logs *)
-        List.iter (fun log -> Printf.printf "%s\n" log) (List.rev !logs);
         Printf.printf "❌ Build failed: %s\n" msg;
         Miniriot.shutdown ~status:1;
         Process.Normal
@@ -170,7 +180,10 @@ let build_package package_name =
   else
     (* Use JSON-RPC client to send build request *)
     let client = Tusk_rpc_client.create () in
-    let result = Tusk_rpc_client.build_streaming client (Tusk_rpc_client.BuildPackage package_name) (fun _ -> ()) in
+    let result =
+      Tusk_rpc_client.build_streaming client
+        (Tusk_rpc_client.BuildPackage package_name) (fun _ -> ())
+    in
     Tusk_rpc_client.close client;
     match result with
     | Ok (Tusk_rpc_client.BuildFinished (Ok ())) -> true
@@ -666,7 +679,7 @@ let server_command args =
 (** Execute the rpc command *)
 let rpc_command args =
   let cmd = if Array.length args > 2 then args.(2) else "" in
-  
+
   (* Show help if no subcommand provided *)
   if cmd = "" then (
     Printf.printf "Available RPC commands:\n";
@@ -684,7 +697,7 @@ let rpc_command args =
     Tusk_rpc_client.close client;
     match result with
     | Ok () ->
-        let json = Json.Object [("type", Json.String "pong")] in
+        let json = Json.Object [ ("type", Json.String "pong") ] in
         Printf.printf "%s\n" (Json.to_string json);
         Process.Normal
     | Error e ->
@@ -696,11 +709,14 @@ let rpc_command args =
     Tusk_rpc_client.close client;
     match result with
     | Ok config ->
-        let json = Json.Object [
-          ("type", Json.String "workspace_config");
-          ("root", Json.String config.Rpc.workspace_root);
-          ("toolchain", Json.String config.Rpc.toolchain);
-        ] in
+        let json =
+          Json.Object
+            [
+              ("type", Json.String "workspace_config");
+              ("root", Json.String config.Rpc.workspace_root);
+              ("toolchain", Json.String config.Rpc.toolchain);
+            ]
+        in
         Printf.printf "%s\n" (Json.to_string json);
         Process.Normal
     | Error e ->
@@ -712,17 +728,26 @@ let rpc_command args =
     Tusk_rpc_client.close client;
     match result with
     | Ok response ->
-        let nodes_json = List.map (fun node ->
-          Json.Object [
-            ("name", Json.String node.Rpc.package_name);
-            ("status", Json.String node.Rpc.status);
-            ("dependencies", Json.Array (List.map (fun d -> Json.String d) node.Rpc.deps));
-          ]
-        ) response.Rpc.nodes in
-        let json = Json.Object [
-          ("type", Json.String "build_graph");
-          ("nodes", Json.Array nodes_json);
-        ] in
+        let nodes_json =
+          List.map
+            (fun node ->
+              Json.Object
+                [
+                  ("name", Json.String node.Rpc.package_name);
+                  ("status", Json.String node.Rpc.status);
+                  ( "dependencies",
+                    Json.Array (List.map (fun d -> Json.String d) node.Rpc.deps)
+                  );
+                ])
+            response.Rpc.nodes
+        in
+        let json =
+          Json.Object
+            [
+              ("type", Json.String "build_graph");
+              ("nodes", Json.Array nodes_json);
+            ]
+        in
         Printf.printf "%s\n" (Json.to_string json);
         Process.Normal
     | Error e ->
@@ -741,23 +766,90 @@ let rpc_command args =
     let callback = function
       | Tusk_rpc_client.BuildStarted sid ->
           session_id := Some sid;
-          let json = Json.Object [
-            ("type", Json.String "build_started");
-            ("session_id", Json.String (Session_id.to_string sid));
-          ] in
+          let json =
+            Json.Object
+              [
+                ("type", Json.String "build_started");
+                ("session_id", Json.String (Session_id.to_string sid));
+              ]
+          in
           Printf.printf "%s\n" (Json.to_string json);
           flush stdout
-      | Tusk_rpc_client.BuildEvent event ->
-          (* Pass through the JSON event *)
-          Printf.printf "%s\n" (Json.to_string event);
+      | Tusk_rpc_client.BuildEvent log_event ->
+          (* Convert log event to structured JSON *)
+          let timestamp = Log.format_timestamp (Log.get_timestamp_ms ()) in
+          let level = match Log.event_level log_event with
+            | Error -> "error" | Warn -> "warn" | Info -> "info" 
+            | Debug -> "debug" | Trace -> "trace" in
+          let event_name = Log.event_name log_event in
+          let message = Log.event_message log_event in
+          
+          (* Extract structured data based on log event type *)
+          let event_data = match log_event with
+            | Log.PackageComplete res ->
+                Json.Object [
+                  ("package_name", Json.String res.package);
+                  ("success", Json.Bool res.success);
+                  ("duration_ms", Json.Int res.duration_ms);
+                  ("modules_compiled", Json.Int res.modules_compiled);
+                  ("cache_hits", Json.Int res.cache_hits);
+                  ("cache_misses", Json.Int res.cache_misses);
+                ]
+            | Log.CacheHit { package; hash } -> 
+                Json.Object [
+                  ("package_name", Json.String package);
+                  ("hash", Json.String hash);
+                ]
+            | Log.CacheMiss { package; hash } -> 
+                Json.Object [
+                  ("package_name", Json.String package);
+                  ("hash", Json.String hash);
+                ]
+            | Log.HashComputed { package; hash } ->
+                Json.Object [
+                  ("package_name", Json.String package);
+                  ("hash", Json.String hash);
+                ]
+            | Log.WorkerAssigned { worker_id; package } ->
+                Json.Object [
+                  ("worker_id", Json.String (Worker_id.to_string worker_id));
+                  ("package_name", Json.String package);
+                ]
+            | Log.QueuePackage { package; queue_type } ->
+                let typ = match queue_type with `Ready -> "ready" | `Waiting -> "waiting" in
+                Json.Object [
+                  ("package_name", Json.String package);
+                  ("queue_type", Json.String typ);
+                ]
+            | Log.Info msg | Log.Debug msg | Log.Warn msg | Log.Error msg ->
+                Json.Object [("message", Json.String msg)]
+            | _ ->
+                (* For other events, just include the message as data *)
+                Json.Object [("message", Json.String message)]
+          in
+          
+          let json =
+            Json.Object
+              [
+                ("type", Json.String "build_event");
+                ("timestamp", Json.String timestamp);
+                ("level", Json.String level);
+                ("event", Json.String event_name);
+                ("message", Json.String message);
+                ("event_data", event_data);
+              ]
+          in
+          Printf.printf "%s\n" (Json.to_string json);
           flush stdout
       | Tusk_rpc_client.BuildFinished result ->
-          let json = match result with
-          | Ok () -> Json.Object [("type", Json.String "success")]
-          | Error msg -> Json.Object [
-              ("type", Json.String "error");
-              ("message", Json.String msg);
-            ]
+          let json =
+            match result with
+            | Ok () -> Json.Object [ ("type", Json.String "success") ]
+            | Error msg ->
+                Json.Object
+                  [
+                    ("type", Json.String "error"); ("message", Json.String msg);
+                  ]
           in
           Printf.printf "%s\n" (Json.to_string json);
           flush stdout
@@ -767,10 +859,10 @@ let rpc_command args =
     match result with
     | Ok _ -> Process.Normal
     | Error e ->
-        let response = Json.Object [
-          ("type", Json.String "Error");
-          ("message", Json.String e);
-        ] in
+        let response =
+          Json.Object
+            [ ("type", Json.String "Error"); ("message", Json.String e) ]
+        in
         Printf.printf "%s\n" (Json.to_string response);
         Process.Exception (Failure e))
   else if cmd = "restart" then (
@@ -779,7 +871,7 @@ let rpc_command args =
     Tusk_rpc_client.close client;
     match result with
     | Ok () ->
-        let json = Json.Object [("type", Json.String "restarted")] in
+        let json = Json.Object [ ("type", Json.String "restarted") ] in
         Printf.printf "%s\n" (Json.to_string json);
         Process.Normal
     | Error e ->
@@ -791,7 +883,7 @@ let rpc_command args =
     Tusk_rpc_client.close client;
     match result with
     | Ok () ->
-        let json = Json.Object [("type", Json.String "shutdown")] in
+        let json = Json.Object [ ("type", Json.String "shutdown") ] in
         Printf.printf "%s\n" (Json.to_string json);
         Process.Normal
     | Error e ->
@@ -897,7 +989,7 @@ let main () =
     | "server" -> server_command args
     | "rpc" -> rpc_command args
     | "lsp" -> lsp_command args
-    | "mcp" -> 
+    | "mcp" ->
         (* Start MCP server *)
         Mcp_server.start ();
         Process.Normal

@@ -97,6 +97,139 @@ let format_timestamp timestamp_ms =
     tm.tm_hour tm.tm_min tm.tm_sec
     (timestamp_ms mod 1000)
 
+(** Get the machine-readable event name from log_event *)
+let event_name = function
+  | BuildStarted _ -> "tusk.build.started"
+  | BuildComplete _ -> "tusk.build.completed" 
+  | PackageStarted _ -> "tusk.build.package.started"
+  | PackageComplete _ -> "tusk.build.package.completed"
+  | CompileError _ -> "tusk.build.compile.error"
+  | CacheHit _ -> "tusk.build.cache.hit"
+  | CacheMiss _ -> "tusk.build.cache.miss"
+  | CacheStored _ -> "tusk.build.cache.stored"
+  | WorkerPoolStarted _ -> "tusk.build.workers.started"
+  | WorkerStarted _ -> "tusk.build.worker.started"
+  | WorkerAssigned _ -> "tusk.build.worker.assigned"
+  | WorkerIdle _ -> "tusk.build.worker.idle"
+  | ServerStarted _ -> "tusk.server.started"
+  | ServerScanning _ -> "tusk.server.scanning"
+  | ServerReady _ -> "tusk.server.ready"
+  | ServerShutdown -> "tusk.server.shutdown"
+  | QueuePackage _ -> "tusk.build.queue.package"
+  | QueueStats _ -> "tusk.build.queue.stats"
+  | DependencyMissing _ -> "tusk.build.dependency.missing"
+  | DependencySatisfied _ -> "tusk.build.dependency.satisfied"
+  | CompilingInterface _ -> "tusk.build.compile.interface"
+  | CompilingImplementation _ -> "tusk.build.compile.implementation"
+  | LinkingLibrary _ -> "tusk.build.link.library"
+  | LinkingExecutable _ -> "tusk.build.link.executable"
+  | ComputingHash _ -> "tusk.build.hash.computing"
+  | HashComputed _ -> "tusk.build.hash.computed"
+  | CopyingFile _ -> "tusk.file.copy"
+  | WritingFile _ -> "tusk.file.write"
+  | CreatingDirectory _ -> "tusk.file.mkdir"
+  | RpcRequestReceived _ -> "tusk.rpc.request.received"
+  | RpcResponseSent _ -> "tusk.rpc.response.sent"
+  | McpToolCall _ -> "tusk.mcp.tool.call"
+  | Info _ -> "tusk.info"
+  | Debug _ -> "tusk.debug"
+  | Warn _ -> "tusk.warn"
+  | Error _ -> "tusk.error"
+
+(** Level constants to avoid name collision with log_event constructors *)
+let level_info = (Info : level)
+let level_error = (Error : level) 
+let level_warn = (Warn : level)
+let level_debug = (Debug : level)
+
+(** Get the log level from log_event *)
+let event_level = function
+  | BuildStarted _ | BuildComplete _ | PackageStarted _ | PackageComplete _ 
+  | CacheHit _ | CacheMiss _ | ServerStarted _ | ServerReady _ 
+  | CompilingInterface _ | CompilingImplementation _ 
+  | LinkingLibrary _ | LinkingExecutable _ | HashComputed _ -> level_info
+  | CompileError _ | (Error _) -> level_error
+  | (Warn _) -> level_warn  
+  | (Debug _) -> level_debug
+  | _ -> level_info
+
+(** Get the human-readable message from log_event (without timestamp) *)
+let event_message = function
+  | BuildStarted { packages; total_modules; workers } ->
+      Printf.sprintf "Building %d packages (%d modules) with %d workers"
+        (List.length packages) total_modules workers
+  | BuildComplete { duration_ms; succeeded; failed } ->
+      Printf.sprintf "Build completed in %.2fs: %d succeeded, %d failed"
+        (float_of_int duration_ms /. 1000.)
+        (List.length succeeded) (List.length failed)
+  | PackageStarted { package } -> 
+      Printf.sprintf "Building %s..." package
+  | PackageComplete res ->
+      Printf.sprintf "%s completed (%.2fs, %d modules, %d/%d cache hits)"
+        res.package
+        (float_of_int res.duration_ms /. 1000.)
+        res.modules_compiled res.cache_hits
+        (res.cache_hits + res.cache_misses)
+  | CompileError error ->
+      Printf.sprintf "%s:%d:%s - %s" error.file error.line
+        (match error.column with Some c -> string_of_int c | None -> "0")
+        error.message
+  | CacheHit { package; _ } -> Printf.sprintf "Cached %s" package
+  | CacheMiss { package; _ } -> Printf.sprintf "Cache miss: %s" package
+  | CacheStored { package; artifacts } ->
+      Printf.sprintf "Cached %s (%d artifacts)" package (List.length artifacts)
+  | WorkerPoolStarted { workers } ->
+      Printf.sprintf "Started %d workers" workers
+  | WorkerStarted { worker_id } ->
+      Printf.sprintf "Worker %s started" (Worker_id.to_string worker_id)
+  | WorkerAssigned { worker_id; package } ->
+      Printf.sprintf "Worker %s building %s" (Worker_id.to_string worker_id) package
+  | WorkerIdle { worker_id } -> 
+      Printf.sprintf "Worker %s idle" (Worker_id.to_string worker_id)
+  | ServerStarted { pid } -> Printf.sprintf "Server started (pid: %s)" pid
+  | ServerScanning { root } -> Printf.sprintf "Scanning workspace: %s" root
+  | ServerReady { packages; toolchain } ->
+      Printf.sprintf "Ready with %d packages (toolchain: %s)" packages toolchain
+  | ServerShutdown -> "Server shutting down"
+  | QueuePackage { package; queue_type } ->
+      let typ = match queue_type with `Ready -> "ready" | `Waiting -> "waiting" in
+      Printf.sprintf "Queued %s (%s)" package typ
+  | QueueStats { ready; waiting; busy } ->
+      Printf.sprintf "Queue: %d ready, %d waiting, %d busy" ready waiting busy
+  | DependencyMissing { package; missing } ->
+      Printf.sprintf "%s missing dependencies: %s" package (String.concat ", " missing)
+  | DependencySatisfied { package } ->
+      Printf.sprintf "%s dependencies satisfied" package
+  | CompilingInterface { package; file } ->
+      Printf.sprintf "Compiling interface %s in %s" file package
+  | CompilingImplementation { package; file } ->
+      Printf.sprintf "Compiling implementation %s in %s" file package
+  | LinkingLibrary { package; output } ->
+      Printf.sprintf "Linking library %s -> %s" package output
+  | LinkingExecutable { package; output } ->
+      Printf.sprintf "Linking executable %s -> %s" package output
+  | ComputingHash { package } ->
+      Printf.sprintf "Computing hash for %s" package
+  | HashComputed { package; hash } ->
+      Printf.sprintf "Hash computed for %s: %s" package hash
+  | CopyingFile { source; dest } ->
+      Printf.sprintf "Copying %s -> %s" source dest
+  | WritingFile { path } ->
+      Printf.sprintf "Writing file %s" path
+  | CreatingDirectory { path } ->
+      Printf.sprintf "Creating directory %s" path
+  | RpcRequestReceived { request_type; _ } ->
+      Printf.sprintf "RPC request received: %s" request_type
+  | RpcResponseSent { success; _ } ->
+      Printf.sprintf "RPC response sent: %s" (if success then "success" else "error")
+  | McpToolCall { tool; _ } ->
+      Printf.sprintf "MCP tool call: %s" tool
+  | Info msg -> msg
+  | Debug msg -> msg
+  | Warn msg -> msg
+  | Error msg -> msg
+
+
 (** Convert log event to human-readable string with timestamp *)
 let event_to_string = function
   | BuildStarted { packages; total_modules; workers } ->
@@ -272,14 +405,9 @@ let rec logger_loop state =
           try
             match Hashtbl.find state.handlers session_id with
             | Rpc { client; format; _ } ->
-                Printf.eprintf
-                  "[LOGGER DEBUG] Found RPC handler for session %s, sending log\n"
-                  (Session_id.to_string session_id);
-                flush stderr;
-                let formatted = format_event format event in
-                (* Send as JSON-RPC response for JSON clients *)
+                (* Send log event to RPC client *)
                 let response =
-                  Rpc.BuildEvent { session_id; message = formatted }
+                  Rpc.BuildEvent { session_id; log_event = (event : log_event) }
                 in
                 send client (Rpc.ServerResponse response)
             | _ -> ()
