@@ -59,6 +59,23 @@ let mark_built t pkg =
 (** Mark a package as failed *)
 let mark_failed t pkg error = Hashtbl.replace t.results pkg (Failed error)
 
+(** Reset failed packages to NotStarted so they can be retried *)
+let reset_failed_packages t =
+  let failed_packages = ref [] in
+  Hashtbl.filter_map_inplace (fun pkg status ->
+    match status with
+    | Failed _ -> 
+        failed_packages := pkg :: !failed_packages;
+        Some NotStarted
+    | other -> Some other
+  ) t.results;
+  
+  (* Log reset information for user awareness *)
+  if !failed_packages <> [] then
+    Printf.printf "🔄 Retrying previously failed packages: %s\n" 
+      (String.concat ", " (List.rev !failed_packages));
+    flush stdout
+
 (** Check if source files are newer than build outputs *)
 let sources_newer_than_outputs workspace pkg_name =
   let root = workspace.Workspace.root in

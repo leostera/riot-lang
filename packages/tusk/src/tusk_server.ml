@@ -37,23 +37,30 @@ let queue_package_if_needed_internal state node is_ready =
   let pkg_name = node.Build_node.package.name in
   (* Don't re-queue if already building, failed, built, or busy *)
   if Build_queue.is_busy state.build_queue pkg_name then
-    Log.debug (Printf.sprintf "Skipping %s - already busy" pkg_name)
+    (* Package already busy - skip silently *)
+    ()
   else
     match Build_results.get_status state.build_results pkg_name with
     | Some Build_results.Building ->
-        Log.debug (Printf.sprintf "Skipping %s - already building" pkg_name)
+        (* Package already building - skip silently *)
+        ()
     | Some (Build_results.Failed _) ->
-        Log.debug (Printf.sprintf "Skipping %s - already failed" pkg_name)
+        (* Package already failed - skip silently *)
+        ()
     | Some (Build_results.Built _) ->
         (* Already built in this session - don't recheck *)
-        Log.debug
-          (Printf.sprintf "Skipping %s - already built in this session" pkg_name)
+        (* Package already built - skip silently *)
+        ()
     | Some Build_results.NotStarted | None ->
         (* Not started - queue it *)
         Log.queue_package ?sid:state.session_id ~package:pkg_name
           ~queue_type:(if is_ready then `Ready else `Waiting);
         let task =
-          { Build_messages.node; workspace = Option.get state.workspace }
+          {
+            Build_messages.node;
+            workspace = Option.get state.workspace;
+            session_id = state.session_id;
+          }
         in
         if is_ready then Build_queue.add_ready state.build_queue task
         else Build_queue.add_waiting state.build_queue task
@@ -63,14 +70,17 @@ let queue_package_if_needed state node is_ready =
   let pkg_name = node.Build_node.package.name in
   (* Don't re-queue if already busy *)
   if Build_queue.is_busy state.build_queue pkg_name then
-    Log.debug (Printf.sprintf "Skipping %s - already busy" pkg_name)
+    (* Package already busy - skip silently *)
+    ()
   else
     (* Don't re-queue if already building or failed *)
     match Build_results.get_status state.build_results pkg_name with
     | Some Build_results.Building ->
-        Log.debug (Printf.sprintf "Skipping %s - already building" pkg_name)
+        (* Package already building - skip silently *)
+        ()
     | Some (Build_results.Failed _) ->
-        Log.debug (Printf.sprintf "Skipping %s - already failed" pkg_name)
+        (* Package already failed - skip silently *)
+        ()
     | Some (Build_results.Built stored_hash) -> (
         (* Check if the current hash matches the stored hash *)
         match state.workspace with
@@ -90,7 +100,13 @@ let queue_package_if_needed state node is_ready =
                   node.hash <- Some current_hash;
                   (* Reset the build status since hash changed *)
                   Build_results.init_package state.build_results pkg_name;
-                  let task = { Build_messages.node; workspace } in
+                  let task =
+                    {
+                      Build_messages.node;
+                      workspace;
+                      session_id = state.session_id;
+                    }
+                  in
                   if is_ready then Build_queue.add_ready state.build_queue task
                   else Build_queue.add_waiting state.build_queue task)
             | _ ->
@@ -100,7 +116,13 @@ let queue_package_if_needed state node is_ready =
                      "Couldn't compute hash for %s, queueing anyway" pkg_name);
                 Log.queue_package ?sid:state.session_id ~package:pkg_name
                   ~queue_type:(if is_ready then `Ready else `Waiting);
-                let task = { Build_messages.node; workspace } in
+                let task =
+                  {
+                    Build_messages.node;
+                    workspace;
+                    session_id = state.session_id;
+                  }
+                in
                 if is_ready then Build_queue.add_ready state.build_queue task
                 else Build_queue.add_waiting state.build_queue task)
         | None ->
@@ -112,7 +134,11 @@ let queue_package_if_needed state node is_ready =
         Log.queue_package ?sid:state.session_id ~package:pkg_name
           ~queue_type:(if is_ready then `Ready else `Waiting);
         let task =
-          { Build_messages.node; workspace = Option.get state.workspace }
+          {
+            Build_messages.node;
+            workspace = Option.get state.workspace;
+            session_id = state.session_id;
+          }
         in
         if is_ready then Build_queue.add_ready state.build_queue task
         else Build_queue.add_waiting state.build_queue task
@@ -186,8 +212,8 @@ let check_later_queue state =
           let pkg_name = node.Build_node.package.name in
           if Build_queue.is_waiting state.build_queue pkg_name then
             if can_build_package state pkg_name then (
-              Log.debug
-                (Printf.sprintf "Moving %s from waiting to ready queue" pkg_name);
+              (* Package now ready to build *)
+              ();
               Build_queue.move_to_ready state.build_queue pkg_name))
         nodes
 
@@ -204,8 +230,8 @@ let try_assign_work state =
         match get_next_buildable_task state with
         | Some build_task ->
             let pkg_name = build_task.node.Build_node.package.name in
-            Log.debug
-              (Printf.sprintf "Sending package %s to worker pool" pkg_name);
+            (* Assign package to worker *)
+            ();
             Build_results.mark_building state.build_results pkg_name;
             Worker_pool.send_task pool build_task;
             send_ready_tasks ()
@@ -217,7 +243,8 @@ let try_assign_work state =
 let execute_build state client_pid build_graph =
   (* Create session ID for this build *)
   let sid = Session_id.make () in
-  Printf.eprintf "[SERVER DEBUG] execute_build: session_id=%s\n" (Session_id.to_string sid);
+  Printf.eprintf "[SERVER DEBUG] execute_build: session_id=%s\n"
+    (Session_id.to_string sid);
   flush stderr;
 
   (* Send BuildStarted response with session ID *)
@@ -225,12 +252,23 @@ let execute_build state client_pid build_graph =
   flush stderr;
   send client_pid (ServerResponse (Rpc.BuildStarted { session_id = sid }));
 
+  (* Register the client as a log handler for this build session *)
+  Printf.eprintf "[SERVER DEBUG] Registering log handler for session %s\n"
+    (Session_id.to_string sid);
+  flush stderr;
+  Log.add_rpc_handler ~sid ~client:client_pid ~format:Log.Human;
+
   Printf.eprintf "[SERVER DEBUG] Logging build start...\n";
   flush stderr;
   Log.info ~sid "Starting build execution...";
 
+  (* Reset failed packages so they can be retried *)
+  Build_results.reset_failed_packages state.build_results;
+
   (* Get all packages in topological order *)
+  Log.info ~sid "Computing topological sort...";
   let sorted = Build_graph.topological_sort build_graph in
+  Log.info ~sid "Topological sort completed";
 
   (* Log the build plan *)
   let packages = List.map (fun node -> node.Build_node.package.name) sorted in
@@ -247,6 +285,7 @@ let execute_build state client_pid build_graph =
     sorted;
 
   (* Queue all packages - current if ready, later if waiting on deps *)
+  Log.info ~sid "Analyzing package dependencies and queueing...";
   List.iter
     (fun node ->
       let pkg_name = node.Build_node.package.name in
@@ -262,6 +301,7 @@ let execute_build state client_pid build_graph =
                node.Build_node.dependencies);
       queue_package_if_needed state node is_ready)
     sorted;
+  Log.info ~sid "Package queueing completed";
 
   let ready_count, waiting_count, busy_count =
     Build_queue.stats state.build_queue
@@ -291,8 +331,10 @@ let execute_build state client_pid build_graph =
       match state.worker_pool with
       | Some pool -> pool
       | None ->
+          Log.info ~sid "Starting worker pool...";
           let pool = Worker_pool.start ~listener:(self ()) () in
           Log.worker_pool_started ?sid:state.session_id ~workers:10;
+          Log.info ~sid "Worker pool started";
           pool
     in
     let new_state =
@@ -313,7 +355,16 @@ let handle_task_complete state pkg_name success hash =
   Build_queue.mark_completed state.build_queue pkg_name;
 
   if success then (
-    Log.debug (Printf.sprintf "Build complete: %s" pkg_name);
+    Log.package_complete ?sid:state.session_id
+      {
+        package = pkg_name;
+        success = true;
+        duration_ms = 0;
+        modules_compiled = 0;
+        cache_hits = 0;
+        cache_misses = 0;
+        errors = [];
+      };
     Build_results.mark_built_with_hash state.build_results pkg_name hash;
 
     (* Also check if any other packages are now unblocked *)
@@ -340,7 +391,20 @@ let handle_task_complete state pkg_name success hash =
     | None -> ());
     try_assign_work state)
   else (
-    Log.error (Printf.sprintf "Build failed: %s" pkg_name);
+    (* For build failures, we rely on the detailed CompileError events 
+       that were logged during the build process in sandbox.ml.
+       Just report the package failure without redundant error details. *)
+    Log.package_complete ?sid:state.session_id
+      {
+        package = pkg_name;
+        success = false;
+        duration_ms = 0;
+        modules_compiled = 0;
+        cache_hits = 0;
+        cache_misses = 0;
+        errors = [];
+        (* Detailed errors already logged as CompileError events *)
+      };
     Build_results.mark_failed state.build_results pkg_name "Build failed")
 
 (* Removed: .merlin file generation - tusk provides dynamic Merlin protocol support *)
@@ -349,18 +413,22 @@ let handle_task_complete state pkg_name success hash =
 let handle_scan_workspace state target_package =
   let root = System.getcwd () in
   Log.server_scanning ?sid:None ~root;
+  Log.info "Loading workspace configuration...";
 
-  let workspace = Workspace.scan ~root in
+  let workspace = Workspace_manager.get_workspace ~root in
+  Log.info "Workspace configuration loaded";
   let build_graph =
     if workspace.packages = [] then None
-    else
+    else (
+      Log.info "Creating build graph...";
       let full_graph = Build_graph.create workspace state.toolchain in
+      Log.info "Build graph created";
       match target_package with
       | None -> Some full_graph
       | Some pkg_name ->
           Log.debug
             (Printf.sprintf "Filtering build graph for package: %s" pkg_name);
-          Some (Build_graph.filter_for_package full_graph pkg_name)
+          Some (Build_graph.filter_for_package full_graph pkg_name))
   in
 
   (* No longer generating .merlin files - using dynamic Merlin protocol support *)
@@ -611,7 +679,7 @@ let rec server_loop state =
     | BuildAll { client_pid = cli_pid } -> `select (`build_all cli_pid)
     | BuildPackage { package_name = pkg_name; client_pid = cli_pid } ->
         `select (`build_package (pkg_name, cli_pid))
-    | Worker_pool.TaskAssigned task -> `select (`task_assigned task)
+    | Worker_pool.TaskAssigned (task, worker_id) -> `select (`task_assigned (task, worker_id))
     | Worker_pool.NoWorkersAvailable task -> `select (`no_workers task)
     | Worker_pool.TaskCompleted (pkg_name, success, hash) ->
         `select (`task_completed (pkg_name, success, hash))
@@ -667,16 +735,16 @@ let rec server_loop state =
                pkg_name);
           let updated_state = execute_build state cli_pid graph in
           server_loop updated_state)
-  | `task_assigned task ->
+  | `task_assigned (task, worker_id) ->
       (* Worker pool assigned a task - just log it *)
       let pkg_name = task.Build_messages.node.Build_node.package.name in
-      Log.worker_assigned ?sid:state.session_id ~worker_id:0 ~package:pkg_name;
+      Log.worker_assigned ?sid:state.session_id ~worker_id ~package:pkg_name;
       server_loop state
   | `no_workers task ->
       (* No workers available - we'll retry later *)
       let pkg_name = task.Build_messages.node.Build_node.package.name in
-      Log.debug
-        (Printf.sprintf "No workers available for %s, will retry" pkg_name);
+      (* No workers available - will retry later *)
+      ();
       (* The task is still in build_results as Building, it will be retried *)
       server_loop state
   | `task_completed (pkg_name, success, hash) ->
@@ -732,7 +800,8 @@ let rec server_loop state =
         (fun dep_node -> queue_package_if_needed_internal state dep_node true)
         missing_deps;
 
-      Log.debug (Printf.sprintf "Moving %s to waiting queue" pkg_name);
+      Log.debug ?sid:state.session_id
+        (Printf.sprintf "Moving %s to waiting queue" pkg_name);
       Build_queue.add_waiting state.build_queue task;
       try_assign_work state;
       server_loop state
@@ -778,7 +847,7 @@ let start () =
 
   (* Scan workspace first *)
   let root = System.getcwd () in
-  let workspace = Workspace.scan ~root in
+  let workspace = Workspace_manager.get_workspace ~root in
   (* Ready toolchain with workspace *)
   let toolchain = Toolchains.ready_toolchains workspace in
 
@@ -808,7 +877,7 @@ let start_with_listener () =
 
   (* Scan workspace first *)
   let root = Sys.getcwd () in
-  let workspace = Workspace.scan ~root in
+  let workspace = Workspace_manager.get_workspace ~root in
   (* Ready toolchain with workspace *)
   let toolchain = Toolchains.ready_toolchains workspace in
   let build_graph =
@@ -836,8 +905,8 @@ let start_with_listener () =
   (* Start server process *)
   let my_pid = self () in
   Log.server_started ?sid:None ~pid:(Pid.to_string my_pid);
-  
+
   (* Start the TCP listener in a separate process *)
   let _ = spawn (fun () -> Listener.start my_pid) in
-  
+
   server_loop initial_state

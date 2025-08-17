@@ -63,6 +63,9 @@ val mark_built : t -> string -> unit
 val mark_failed : t -> string -> string -> unit
 (** Mark a package as failed with error message *)
 
+val reset_failed_packages : t -> unit
+(** Reset all failed packages to NotStarted so they can be retried *)
+
 (** {1 Build Validation} *)
 
 val is_built_with_current_hash : t -> string -> Hasher.hash -> bool
