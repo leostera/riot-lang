@@ -1,7 +1,11 @@
 open Miniriot
 (** Build message types shared between server and workers *)
 
-type build_task = { node : Build_node.t; workspace : Workspace.workspace }
+type build_task = {
+  node : Build_node.t;
+  workspace : Workspace.workspace;
+  session_id : Session_id.t option;
+}
 (** Task description for workers *)
 
 (** Extend Miniriot's message type with our custom messages *)
@@ -15,10 +19,13 @@ type Message.t +=
       NextTask of {
       worker_pid : Pid.t;
     }
-  | TaskComplete of {
+  | TaskCompleted of {
       package_name : string;
-      success : bool;
       hash : Hasher.hash;
+    }
+  | TaskFailed of {
+      package_name : string;
+      error : string;
     }
   | RequeueWithDependencies of {
       task : build_task;

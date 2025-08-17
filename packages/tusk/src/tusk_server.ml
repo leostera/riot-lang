@@ -349,6 +349,46 @@ let execute_build state client_pid build_graph =
     try_assign_work new_state;
     new_state
 
+(** Check if build is complete and handle client response *)
+let check_build_complete state =
+  if Build_results.all_done state.build_results then (
+    let built, failed, _building, _not_started =
+      Build_results.get_stats state.build_results
+    in
+    Log.info
+      (Printf.sprintf "All builds complete! Built: %d, Failed: %d" built
+         failed);
+
+    (* Send completion response to client *)
+    match state.client_pid with
+    | Some client_pid ->
+        let response =
+          if failed = 0 then Rpc.Success
+          else
+            Rpc.Error
+              (Printf.sprintf "Build failed: %d packages failed" failed)
+        in
+        send client_pid (ServerResponse response);
+
+        (* Keep worker pool alive for future builds *)
+        let fresh_build_queue = Build_queue.create state.build_results in
+        let new_state =
+          {
+            state with
+            build_queue = fresh_build_queue;
+            client_pid = None;
+            session_id = None;
+            active_build_graph = None;
+            (* Keep worker_pool in state for reuse *)
+          }
+        in
+        (true, new_state)
+    | None ->
+        (* This case shouldn't happen for RPC server, but keep pool alive anyway *)
+        sleep 0.1;
+        (true, state))
+  else (false, state)
+
 (** Handle task completion *)
 let handle_task_complete state pkg_name success hash =
   (* Mark task as no longer busy *)
@@ -679,10 +719,12 @@ let rec server_loop state =
     | BuildAll { client_pid = cli_pid } -> `select (`build_all cli_pid)
     | BuildPackage { package_name = pkg_name; client_pid = cli_pid } ->
         `select (`build_package (pkg_name, cli_pid))
-    | Worker_pool.TaskAssigned (task, worker_id) -> `select (`task_assigned (task, worker_id))
-    | Worker_pool.NoWorkersAvailable task -> `select (`no_workers task)
-    | Worker_pool.TaskCompleted (pkg_name, success, hash) ->
-        `select (`task_completed (pkg_name, success, hash))
+    | Worker_pool.TaskAssigned { task; worker_id } -> `select (`task_assigned (task, worker_id))
+    | Worker_pool.NoWorkersAvailable { task } -> `select (`no_workers task)
+    | Worker_pool.TaskCompleted { package_name; hash } ->
+        `select (`task_completed (package_name, hash))
+    | Worker_pool.TaskFailed { package_name; error } ->
+        `select (`task_failed (package_name, error))
     | RequeueWithDependencies { task; missing_deps } ->
         `select (`requeue (task, missing_deps))
     | Shutdown -> `select `shutdown
@@ -747,47 +789,14 @@ let rec server_loop state =
       ();
       (* The task is still in build_results as Building, it will be retried *)
       server_loop state
-  | `task_completed (pkg_name, success, hash) ->
-      handle_task_complete state pkg_name success hash;
-
-      (* Check if all done *)
-      if Build_results.all_done state.build_results then (
-        let built, failed, _building, _not_started =
-          Build_results.get_stats state.build_results
-        in
-        Log.info
-          (Printf.sprintf "All builds complete! Built: %d, Failed: %d" built
-             failed);
-
-        (* Send completion response to client *)
-        match state.client_pid with
-        | Some client_pid ->
-            let response =
-              if failed = 0 then Rpc.Success
-              else
-                Rpc.Error
-                  (Printf.sprintf "Build failed: %d packages failed" failed)
-            in
-            send client_pid (ServerResponse response);
-
-            (* Keep worker pool alive for future builds *)
-            let fresh_build_queue = Build_queue.create state.build_results in
-            let new_state =
-              {
-                state with
-                build_queue = fresh_build_queue;
-                client_pid = None;
-                session_id = None;
-                active_build_graph = None;
-                (* Keep worker_pool in state for reuse *)
-              }
-            in
-            server_loop new_state
-        | None ->
-            (* This case shouldn't happen for RPC server, but keep pool alive anyway *)
-            sleep 0.1;
-            server_loop state)
-      else server_loop state
+  | `task_completed (pkg_name, hash) ->
+      handle_task_complete state pkg_name true hash;
+      let is_complete, new_state = check_build_complete state in
+      if is_complete then server_loop new_state else server_loop state
+  | `task_failed (pkg_name, error) ->
+      handle_task_complete state pkg_name false (Hasher.of_string "failed");
+      let is_complete, new_state = check_build_complete state in
+      if is_complete then server_loop new_state else server_loop state
   | `requeue (task, missing_deps) ->
       let pkg_name = task.node.Build_node.package.name in
       let missing_names =

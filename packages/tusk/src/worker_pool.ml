@@ -9,14 +9,25 @@ type Message.t += SendTask of Build_messages.build_task | Shutdown
 
 (** Messages sent from the worker pool to the listener *)
 type Message.t +=
-  | TaskAssigned of Build_messages.build_task
-  | NoWorkersAvailable of Build_messages.build_task
-  | TaskCompleted of string * bool * Hasher.hash
+  | TaskAssigned of {
+      task : Build_messages.build_task;
+      worker_id : Worker_id.t;
+    }
+  | NoWorkersAvailable of { task : Build_messages.build_task }
+  | TaskCompleted of {
+      package_name : string;
+      hash : Hasher.hash;
+    }
+  | TaskFailed of {
+      package_name : string;
+      error : string;
+    }
 
 type state = {
   idle_workers : Pid.t Queue.t;
   busy_workers : (Pid.t, string) Hashtbl.t;
   all_workers : Pid.t list;
+  worker_ids : (Pid.t, Worker_id.t) Hashtbl.t; (* Maps worker PIDs to their IDs *)
   listener : Pid.t;
 }
 (** Internal pool state *)
@@ -24,11 +35,13 @@ type state = {
 (** Internal: Spawn workers *)
 let spawn_workers pool_pid count =
   let workers = ref [] in
+  let worker_id_map = Hashtbl.create count in
   for i = 1 to count do
-    let worker_pid = spawn (fun () -> Build_worker.main pool_pid i ()) in
-    workers := worker_pid :: !workers
+    let worker_pid = spawn (fun () -> Build_worker.main pool_pid (Worker_id.make i) ()) in
+    workers := worker_pid :: !workers;
+    Hashtbl.add worker_id_map worker_pid (Worker_id.make i)
   done;
-  !workers
+  (!workers, worker_id_map)
 
 (** Internal: Send shutdown to all workers *)
 let shutdown_all_workers workers =
@@ -39,8 +52,10 @@ let rec pool_loop state =
   let selector = function
     | SendTask task -> `select (`send_task task)
     | Build_messages.NextTask { worker_pid } -> `select (`next_task worker_pid)
-    | Build_messages.TaskComplete { package_name = pkg_name; success; hash } ->
-        `select (`task_complete (pkg_name, success, hash))
+    | Build_messages.TaskCompleted { package_name = pkg_name; hash } ->
+        `select (`task_completed (pkg_name, hash))
+    | Build_messages.TaskFailed { package_name = pkg_name; error } ->
+        `select (`task_failed (pkg_name, error))
     | Build_messages.RequeueWithDependencies { task; missing_deps } ->
         `select (`requeue (task, missing_deps))
     | Shutdown -> `select `shutdown
@@ -51,15 +66,16 @@ let rec pool_loop state =
       (* Try to assign task to an idle worker *)
       if Queue.is_empty state.idle_workers then (
         (* No workers available *)
-        send state.listener (NoWorkersAvailable task);
+        send state.listener (NoWorkersAvailable { task });
         pool_loop state)
       else
         (* Assign to idle worker *)
         let worker_pid = Queue.take state.idle_workers in
         let pkg_name = task.Build_messages.node.Build_node.package.name in
+        let worker_id = Hashtbl.find state.worker_ids worker_pid in
         Hashtbl.replace state.busy_workers worker_pid pkg_name;
         send worker_pid (Build_messages.Task task);
-        send state.listener (TaskAssigned task);
+        send state.listener (TaskAssigned { task; worker_id });
         pool_loop state
   | `next_task worker_pid ->
       (* Worker is requesting work - mark it as idle *)
@@ -71,9 +87,13 @@ let rec pool_loop state =
       Queue.add worker_pid state.idle_workers;
       send worker_pid Build_messages.NoTask;
       pool_loop state
-  | `task_complete (pkg_name, success, hash) ->
-      (* Forward completion to listener *)
-      send state.listener (TaskCompleted (pkg_name, success, hash));
+  | `task_completed (pkg_name, hash) ->
+      (* Forward successful completion to listener *)
+      send state.listener (TaskCompleted { package_name = pkg_name; hash });
+      pool_loop state
+  | `task_failed (pkg_name, error) ->
+      (* Forward failure to listener *)
+      send state.listener (TaskFailed { package_name = pkg_name; error });
       pool_loop state
   | `requeue (task, missing_deps) ->
       (* Forward requeue message to listener *)
@@ -95,7 +115,7 @@ let start ?(workers = System.cpu_count ()) ~listener () =
         flush stdout;
 
         (* Spawn worker processes *)
-        let all_workers = spawn_workers pool_pid workers in
+        let all_workers, worker_id_map = spawn_workers pool_pid workers in
 
         (* Initialize state with all workers in idle queue *)
         let idle_queue = Queue.create () in
@@ -106,6 +126,7 @@ let start ?(workers = System.cpu_count ()) ~listener () =
             idle_workers = idle_queue;
             busy_workers = Hashtbl.create 32;
             all_workers;
+            worker_ids = worker_id_map;
             listener;
           }
         in

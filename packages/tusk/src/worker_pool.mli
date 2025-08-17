@@ -13,18 +13,29 @@ type t
 
 (** Messages sent from the worker pool to the listener *)
 type Message.t +=
-  | TaskAssigned of Build_messages.build_task
+  | TaskAssigned of {
+      task : Build_messages.build_task;
+      worker_id : Worker_id.t;
+    }
         (** Task was successfully assigned to a worker *)
-  | NoWorkersAvailable of Build_messages.build_task
+  | NoWorkersAvailable of { task : Build_messages.build_task }
         (** No workers available to handle the task *)
-  | TaskCompleted of string * bool * Hasher.hash
-        (** Task completed: (package_name, success, hash) *)
+  | TaskCompleted of {
+      package_name : string;
+      hash : Hasher.hash;
+    }
+        (** Task completed successfully *)
+  | TaskFailed of {
+      package_name : string;
+      error : string;
+    }
+        (** Task failed with error message *)
 
 (** {1 Pool Management} *)
 
 val start : ?workers:int -> listener:Pid.t -> unit -> t
 (** Start a worker pool process with the specified listener. The listener will
-    receive TaskCompleted messages. Returns a handle to the pool. *)
+    receive TaskCompleted and TaskFailed messages. Returns a handle to the pool. *)
 
 val send_task : t -> Build_messages.build_task -> unit
 (** Send a task to the worker pool *)

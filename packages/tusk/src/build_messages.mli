@@ -8,6 +8,7 @@ open Miniriot
 type build_task = {
   node : Build_node.t;  (** Package to build *)
   workspace : Workspace.workspace;  (** Workspace configuration *)
+  session_id : Session_id.t option;  (** Build session ID for logging *)
 }
 (** Build task sent from server to worker *)
 
@@ -20,12 +21,16 @@ type Message.t +=
         (** Build specific package *)
   | NextTask of { worker_pid : Pid.t }
         (** Worker requests next task from server *)
-  | TaskComplete of {
+  | TaskCompleted of {
       package_name : string;
-      success : bool;
       hash : Hasher.hash;
     }
-        (** Worker reports task completion *)
+        (** Worker reports successful task completion *)
+  | TaskFailed of {
+      package_name : string;
+      error : string;
+    }
+        (** Worker reports task failure *)
   | RequeueWithDependencies of {
       task : build_task;
       missing_deps : Build_node.t list;

@@ -144,33 +144,13 @@ let rec worker_loop server_pid worker_id =
          Printf.printf "[Worker %s] Package directory not found: %s\n" (Worker_id.to_string worker_id)
            pkg_path;
          flush stdout;
-         (* Even for failures, we need to compute the hash *)
-         let store = Store.create ~root_dir:build_task.workspace.root in
-         match
-           Build_graph.get_node_hash
-             Build_node.(build_task.node.toolchain)
-             build_task.node store
-         with
-         | Build_graph.Ok current_hash ->
-             send server_pid
-               (TaskComplete
-                  {
-                    package_name = pkg_name;
-                    success = false;
-                    hash = current_hash;
-                  })
-         | Build_graph.MissingDependencies deps ->
-             send server_pid
-               (RequeueWithDependencies
-                  { task = build_task; missing_deps = deps })
-         | Build_graph.Error _ ->
-             send server_pid
-               (TaskComplete
-                  {
-                    package_name = pkg_name;
-                    success = false;
-                    hash = Hasher.of_string "error";
-                  }))
+         (* For failures, don't compute hash - failed builds should never be cached *)
+         send server_pid
+           (TaskFailed
+              {
+                package_name = pkg_name;
+                error = "Package directory not found";
+              }))
        else
          (* The build_package_with_sandbox function now computes hash internally *)
          let result = build_package_with_sandbox server_pid build_task in
@@ -188,23 +168,21 @@ let rec worker_loop server_pid worker_id =
              with
              | Build_graph.Ok current_hash ->
                  send server_pid
-                   (TaskComplete
+                   (TaskCompleted
                       {
                         package_name = pkg_name;
-                        success = true;
                         hash = current_hash;
                       })
              | Build_graph.MissingDependencies deps ->
                  send server_pid
                    (RequeueWithDependencies
                       { task = build_task; missing_deps = deps })
-             | Build_graph.Error _ ->
+             | Build_graph.Error err ->
                  send server_pid
-                   (TaskComplete
+                   (TaskFailed
                       {
                         package_name = pkg_name;
-                        success = false;
-                        hash = Hasher.of_string "error";
+                        error = err;
                       }))
          | Failed msg -> (
              Printf.printf "[Worker %s] Build failed for %s: %s\n" (Worker_id.to_string worker_id)
@@ -220,33 +198,13 @@ let rec worker_loop server_pid worker_id =
                hint = Some "Check individual compilation errors above";
              };
              flush stdout;
-             (* Compute hash and send TaskComplete *)
-             let store = Store.create ~root_dir:build_task.workspace.root in
-             match
-               Build_graph.get_node_hash
-                 Build_node.(build_task.node.toolchain)
-                 build_task.node store
-             with
-             | Build_graph.Ok current_hash ->
-                 send server_pid
-                   (TaskComplete
-                      {
-                        package_name = pkg_name;
-                        success = false;
-                        hash = current_hash;
-                      })
-             | Build_graph.MissingDependencies deps ->
-                 send server_pid
-                   (RequeueWithDependencies
-                      { task = build_task; missing_deps = deps })
-             | Build_graph.Error _ ->
-                 send server_pid
-                   (TaskComplete
-                      {
-                        package_name = pkg_name;
-                        success = false;
-                        hash = Hasher.of_string "error";
-                      }))
+             (* For failures, don't compute hash - failed builds should never be cached *)
+             send server_pid
+               (TaskFailed
+                  {
+                    package_name = pkg_name;
+                    error = msg;
+                  }))
          | Cached msg -> (
              Printf.printf "[Worker %s] Build cached for %s: %s\n" (Worker_id.to_string worker_id)
                pkg_name msg;
@@ -260,23 +218,21 @@ let rec worker_loop server_pid worker_id =
              with
              | Build_graph.Ok current_hash ->
                  send server_pid
-                   (TaskComplete
+                   (TaskCompleted
                       {
                         package_name = pkg_name;
-                        success = true;
                         hash = current_hash;
                       })
              | Build_graph.MissingDependencies deps ->
                  send server_pid
                    (RequeueWithDependencies
                       { task = build_task; missing_deps = deps })
-             | Build_graph.Error _ ->
+             | Build_graph.Error err ->
                  send server_pid
-                   (TaskComplete
+                   (TaskFailed
                       {
                         package_name = pkg_name;
-                        success = false;
-                        hash = Hasher.of_string "error";
+                        error = err;
                       }))
          | MissingDependencies deps ->
              let dep_names =
