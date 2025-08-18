@@ -29,6 +29,16 @@ type request =
   | Restart
   | Shutdown
 
+type build_stats = {
+  duration_ms : int;
+  packages_built : int;
+  packages_failed : int;
+  total_modules : int;
+  cache_hits : int;
+  cache_misses : int;
+}
+(** Build statistics *)
+
 (** RPC response types *)
 type response =
   | Pong
@@ -36,8 +46,11 @@ type response =
   | WorkspaceConfig of workspace_config
   | BuildStarted of { session_id : Session_id.t }
   | BuildEvent of { session_id : Session_id.t; log_event : Log.log_event }
-  | Error of string
-  | Success
+  | BuildComplete of build_stats
+  | BuildFailed of { stats : build_stats; error : string }
+  | ShutdownAck  (* Acknowledgment for shutdown request *)
+  | RestartAck   (* Acknowledgment for restart request *)
+  | Error of string  (* Keep for other non-build errors *)
 
 open Miniriot
 (** Actor system message wrappers *)

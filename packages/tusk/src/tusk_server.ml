@@ -328,7 +328,19 @@ let execute_build state client_pid build_graph =
          });
     let built_count = List.length sorted in
     (* Send success response to client *)
-    send client_pid (ServerResponse Rpc.Success);
+    let stats = {
+      Rpc.duration_ms;
+      packages_built = built_count;
+      packages_failed = 0;
+      total_modules = built_count;
+      cache_hits = built_count;  (* All were cached/already built *)
+      cache_misses = 0;
+    } in
+    send client_pid (ServerResponse (Rpc.BuildComplete stats));
+    (* Remove the RPC handler for this session *)
+    (match state.session_id with
+    | Some sid -> Log.remove_handler ~sid
+    | None -> ());
     (* Reset state for next build *)
     let fresh_build_queue = Build_queue.create state.build_results in
     {
@@ -371,19 +383,55 @@ let check_build_complete state =
       | Some start_time -> int_of_float ((System.gettimeofday () -. start_time) *. 1000.)
       | None -> 0
     in
+    (* Collect succeeded and failed package names *)
+    let succeeded = ref [] in
+    let failed_list = ref [] in
+    (match state.active_build_graph with
+    | Some graph ->
+        let nodes = Build_graph.topological_sort graph in
+        List.iter (fun node ->
+          let pkg_name = node.Build_node.package.name in
+          match Build_results.get_status state.build_results pkg_name with
+          | Some (Build_results.Built _) -> succeeded := pkg_name :: !succeeded
+          | Some (Build_results.Failed _) -> failed_list := pkg_name :: !failed_list
+          | _ -> ()
+        ) nodes
+    | None -> ());
     Log.log ?sid:state.session_id
       (BuildComplete
-         { duration_ms; results = []; succeeded = []; failed = [] });
+         { duration_ms; results = []; succeeded = List.rev !succeeded; failed = List.rev !failed_list });
 
     (* Send completion response to client *)
     match state.client_pid with
     | Some client_pid ->
+        (* Calculate total modules and cache stats from build results *)
+        let total_modules = built + failed in
+        let cache_hits = 0 in  (* TODO: track from build results *)
+        let cache_misses = 0 in  (* TODO: track from build results *)
+        
+        let stats = {
+          Rpc.duration_ms;
+          packages_built = built;
+          packages_failed = failed;
+          total_modules;
+          cache_hits;
+          cache_misses;
+        } in
+        
         let response =
-          if failed = 0 then Rpc.Success
+          if failed = 0 then Rpc.BuildComplete stats
           else
-            Rpc.Error (Printf.sprintf "Build failed: %d packages failed" failed)
+            Rpc.BuildFailed { 
+              stats; 
+              error = Printf.sprintf "Build failed: %d packages failed" failed 
+            }
         in
         send client_pid (ServerResponse response);
+        
+        (* Remove the RPC handler for this session *)
+        (match state.session_id with
+        | Some sid -> Log.remove_handler ~sid
+        | None -> ());
 
         (* Keep worker pool alive for future builds *)
         let fresh_build_queue = Build_queue.create state.build_results in
@@ -520,12 +568,12 @@ let handle_client_request state client_pid request =
         session_id = Some session_id;
         build_start_time = Some start_time }
   | Rpc.Restart ->
-      send client_pid (ServerResponse Rpc.Success);
+      send client_pid (ServerResponse Rpc.RestartAck);
       (* Send restart message to self to handle after responding *)
       send (self ()) RestartServer;
       state
   | Rpc.Shutdown ->
-      send client_pid (ServerResponse Rpc.Success);
+      send client_pid (ServerResponse Rpc.ShutdownAck);
       (* Send shutdown message to self to handle after responding *)
       send (self ()) ShutdownServer;
       state
@@ -688,7 +736,15 @@ let handle_client_request state client_pid request =
                    failed = [];
                  });
             let built_count = List.length sorted in
-            send client_pid (ServerResponse Rpc.Success);
+            let stats = {
+              Rpc.duration_ms;
+              packages_built = built_count;
+              packages_failed = 0;
+              total_modules = built_count;
+              cache_hits = built_count;  (* All were cached/already built *)
+              cache_misses = 0;
+            } in
+            send client_pid (ServerResponse (Rpc.BuildComplete stats));
             new_state)
           else
             (* Mark this as an RPC client build and set current_build_graph *)
@@ -739,7 +795,15 @@ let handle_client_request state client_pid request =
                    failed = [];
                  });
             let built_count = List.length sorted in
-            send client_pid (ServerResponse Rpc.Success);
+            let stats = {
+              Rpc.duration_ms;
+              packages_built = built_count;
+              packages_failed = 0;
+              total_modules = built_count;
+              cache_hits = built_count;  (* All were cached/already built *)
+              cache_misses = 0;
+            } in
+            send client_pid (ServerResponse (Rpc.BuildComplete stats));
             new_state)
           else
             (* Mark this as an RPC client build *)

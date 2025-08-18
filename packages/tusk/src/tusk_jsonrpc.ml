@@ -688,14 +688,37 @@ module TuskProtocol = struct
           ("message", Json.String event_str);
           ("event_data", log_event_to_json log_event);
         ]
-    | Rpc.Success -> Json.String "success"
+    | Rpc.BuildComplete stats ->
+        Json.Object [
+          ("type", Json.String "build_complete");
+          ("duration_ms", Json.Int stats.duration_ms);
+          ("packages_built", Json.Int stats.packages_built);
+          ("packages_failed", Json.Int stats.packages_failed);
+          ("total_modules", Json.Int stats.total_modules);
+          ("cache_hits", Json.Int stats.cache_hits);
+          ("cache_misses", Json.Int stats.cache_misses)
+        ]
+    | Rpc.BuildFailed { stats; error } ->
+        Json.Object [
+          ("type", Json.String "build_failed");
+          ("error", Json.String error);
+          ("duration_ms", Json.Int stats.duration_ms);
+          ("packages_built", Json.Int stats.packages_built);
+          ("packages_failed", Json.Int stats.packages_failed);
+          ("total_modules", Json.Int stats.total_modules);
+          ("cache_hits", Json.Int stats.cache_hits);
+          ("cache_misses", Json.Int stats.cache_misses)
+        ]
+    | Rpc.ShutdownAck ->
+        Json.Object [("type", Json.String "shutdown_ack")]
+    | Rpc.RestartAck ->
+        Json.Object [("type", Json.String "restart_ack")]
     | Rpc.Error msg -> Json.Object [("error", Json.String msg)]
 
   let response_of_json json =
     (* This would parse JSON back to response, needed for client *)
     match json with
     | Json.String "pong" -> Ok Rpc.Pong
-    | Json.String "success" -> Ok Rpc.Success
     | Json.Object fields -> (
         match List.assoc_opt "type" fields with
         | Some (Json.String "build_started") ->
@@ -718,6 +741,53 @@ module TuskProtocol = struct
               | None -> Log.BuildStarted { packages = []; total_modules = 0; workers = 0 }
             in
             Ok (Rpc.BuildEvent { session_id; log_event })
+        | Some (Json.String "build_complete") ->
+            let duration_ms = match List.assoc_opt "duration_ms" fields with
+              | Some (Json.Int n) -> n | _ -> 0
+            in
+            let packages_built = match List.assoc_opt "packages_built" fields with
+              | Some (Json.Int n) -> n | _ -> 0
+            in
+            let packages_failed = match List.assoc_opt "packages_failed" fields with
+              | Some (Json.Int n) -> n | _ -> 0
+            in
+            let total_modules = match List.assoc_opt "total_modules" fields with
+              | Some (Json.Int n) -> n | _ -> 0
+            in
+            let cache_hits = match List.assoc_opt "cache_hits" fields with
+              | Some (Json.Int n) -> n | _ -> 0
+            in
+            let cache_misses = match List.assoc_opt "cache_misses" fields with
+              | Some (Json.Int n) -> n | _ -> 0
+            in
+            Ok (Rpc.BuildComplete { duration_ms; packages_built; packages_failed; total_modules; cache_hits; cache_misses })
+        | Some (Json.String "build_failed") ->
+            let error = match List.assoc_opt "error" fields with
+              | Some (Json.String s) -> s | _ -> "Unknown error"
+            in
+            let duration_ms = match List.assoc_opt "duration_ms" fields with
+              | Some (Json.Int n) -> n | _ -> 0
+            in
+            let packages_built = match List.assoc_opt "packages_built" fields with
+              | Some (Json.Int n) -> n | _ -> 0
+            in
+            let packages_failed = match List.assoc_opt "packages_failed" fields with
+              | Some (Json.Int n) -> n | _ -> 0
+            in
+            let total_modules = match List.assoc_opt "total_modules" fields with
+              | Some (Json.Int n) -> n | _ -> 0
+            in
+            let cache_hits = match List.assoc_opt "cache_hits" fields with
+              | Some (Json.Int n) -> n | _ -> 0
+            in
+            let cache_misses = match List.assoc_opt "cache_misses" fields with
+              | Some (Json.Int n) -> n | _ -> 0
+            in
+            Ok (Rpc.BuildFailed { stats = { duration_ms; packages_built; packages_failed; total_modules; cache_hits; cache_misses }; error })
+        | Some (Json.String "shutdown_ack") ->
+            Ok Rpc.ShutdownAck
+        | Some (Json.String "restart_ack") ->
+            Ok Rpc.RestartAck
         | _ ->
             (* Try other response types *)
             match List.assoc_opt "workspace_root" fields with
@@ -882,25 +952,34 @@ module Client = struct
                   | Ok { result = Ok (Rpc.BuildEvent { session_id = _; log_event }); _ } ->
                       callback (BuildEvent log_event);
                       receive_events ()
-                  | Ok { result = Ok (Rpc.Success); _ } ->
+                  | Ok { result = Ok (Rpc.BuildComplete _); _ } ->
                       Ok (BuildFinished (Ok ()))
-                  | Ok { result = Ok (Rpc.Error msg); _ } ->
-                      Ok (BuildFinished (Error msg))
+                  | Ok { result = Ok (Rpc.BuildFailed { error; _ }); _ } ->
+                      Ok (BuildFinished (Error error))
                   | Ok { result = Error err; _ } ->
                       Ok (BuildFinished (Error err.message))
                   | Error e -> Error (Printf.sprintf "Failed to receive event: %s" e)
                   | _ -> Error "Unexpected response type"
                 in
                 receive_events ()
-            | Ok (Rpc.Success) ->
+            | Ok (Rpc.BuildComplete stats) ->
                 (* Direct success (no build needed) *)
+                Printf.eprintf "[CLIENT] Got direct BuildComplete\n";
+                flush stderr;
                 Ok (BuildFinished (Ok ()))
-            | Ok (Rpc.Error msg) ->
+            | Ok (Rpc.BuildFailed { error; _ }) ->
                 (* Direct error *)
+                Ok (BuildFinished (Error error))
+            | Ok (Rpc.Error msg) ->
+                (* Other error *)
                 Ok (BuildFinished (Error msg))
             | Error err ->
                 Error (Printf.sprintf "Build request failed: %s" err.Jsonrpc.message)
-            | _ -> Error "Unexpected response type"))
+            | Ok resp ->
+                (* Log unexpected response for debugging *)
+                Printf.eprintf "[CLIENT] Unexpected response type in build_streaming\n";
+                flush stderr;
+                Error "Unexpected response type"))
   
   (** Shutdown the server *)
   let shutdown t =
@@ -991,9 +1070,12 @@ module Server = struct
               receive_events () (* Continue receiving events *)
           | `server_response resp -> (
               match resp with
-              | Rpc.Success ->
+              | Rpc.BuildComplete stats ->
                   (* Build completed successfully *)
-                  reply Rpc.Success
+                  reply (Rpc.BuildComplete stats)
+              | Rpc.BuildFailed { stats; error } ->
+                  (* Build failed *)
+                  reply (Rpc.BuildFailed { stats; error })
               | Rpc.Error msg ->
                   (* Build failed *)
                   reply (Rpc.Error msg)
@@ -1030,7 +1112,14 @@ module Server = struct
   let handle_shutdown ctx reply request =
     (* request is already Rpc.Shutdown *)
     send ctx.server_pid (Rpc.ClientRequest (self (), request));
-    reply Rpc.Success
+    (* Wait for acknowledgment from server *)
+    let selector = function
+      | Rpc.ServerResponse response -> `select response
+      | _ -> `skip
+    in
+    match receive ~selector () with
+    | Rpc.ShutdownAck -> reply Rpc.ShutdownAck
+    | _ -> reply (Rpc.Error "Unexpected response")
   
   let handle_workspace_config ctx reply request =
     (* request is already Rpc.GetWorkspaceConfig *)
@@ -1065,7 +1154,14 @@ module Server = struct
   let handle_restart ctx reply request =
     (* request is already Rpc.Restart *)
     send ctx.server_pid (Rpc.ClientRequest (self (), request));
-    reply Rpc.Success
+    (* Wait for acknowledgment from server *)
+    let selector = function
+      | Rpc.ServerResponse response -> `select response
+      | _ -> `skip
+    in
+    match receive ~selector () with
+    | Rpc.RestartAck -> reply Rpc.RestartAck
+    | _ -> reply (Rpc.Error "Unexpected response")
   
   (** Create a JSON-RPC server handler for the tusk server *)
   let create server_pid =

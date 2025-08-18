@@ -27,14 +27,26 @@ type request =
   | Restart
   | Shutdown
 
+type build_stats = {
+  duration_ms : int;
+  packages_built : int;
+  packages_failed : int;
+  total_modules : int;
+  cache_hits : int;
+  cache_misses : int;
+}
+
 type response =
   | Pong
   | BuildGraph of build_graph_response
   | WorkspaceConfig of workspace_config
   | BuildStarted of { session_id : Session_id.t }
   | BuildEvent of { session_id : Session_id.t; log_event : Log.log_event }
+  | BuildComplete of build_stats
+  | BuildFailed of { stats : build_stats; error : string }
+  | ShutdownAck
+  | RestartAck
   | Error of string
-  | Success
 
 (** Actor system message wrappers *)
 type Message.t +=
