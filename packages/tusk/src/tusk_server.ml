@@ -16,6 +16,7 @@ type state = {
   client_pid : Pid.t option; (* PID of client to respond to *)
   session_id : Log.session_id option; (* Session ID for current build *)
   toolchain : Toolchains.toolchain; (* Current toolchain *)
+  build_start_time : float option; (* Unix timestamp when build started *)
 }
 (** Server state *)
 
@@ -312,10 +313,15 @@ let execute_build state client_pid build_graph =
   (* Check if there's actually any work to do *)
   if ready_count = 0 && waiting_count = 0 && busy_count = 0 then (
     (* All packages already built - return success immediately *)
+    let duration_ms = 
+      match state.build_start_time with
+      | Some start_time -> int_of_float ((System.gettimeofday () -. start_time) *. 1000.)
+      | None -> 0
+    in
     Log.log ?sid:state.session_id
       (BuildComplete
          {
-           duration_ms = 0;
+           duration_ms;
            results = [];
            succeeded = List.map (fun n -> n.Build_node.package.name) sorted;
            failed = [];
@@ -360,9 +366,14 @@ let check_build_complete state =
     let built, failed, _building, _not_started =
       Build_results.get_stats state.build_results
     in
+    let duration_ms = 
+      match state.build_start_time with
+      | Some start_time -> int_of_float ((System.gettimeofday () -. start_time) *. 1000.)
+      | None -> 0
+    in
     Log.log ?sid:state.session_id
       (BuildComplete
-         { duration_ms = 0; results = []; succeeded = []; failed = [] });
+         { duration_ms; results = []; succeeded = []; failed = [] });
 
     (* Send completion response to client *)
     match state.client_pid with
@@ -491,15 +502,23 @@ let handle_client_request state client_pid request =
   | Rpc.BuildAll ->
       (* Start a build all request *)
       let session_id = Session_id.make () in
+      let start_time = System.gettimeofday () in
       send client_pid (ServerResponse (Rpc.BuildStarted { session_id }));
       send (self ()) (BuildAll { client_pid });
-      { state with client_pid = Some client_pid; session_id = Some session_id }
+      { state with 
+        client_pid = Some client_pid; 
+        session_id = Some session_id;
+        build_start_time = Some start_time }
   | Rpc.BuildPackage package ->
       (* Start a build package request *)
       let session_id = Session_id.make () in
+      let start_time = System.gettimeofday () in
       send client_pid (ServerResponse (Rpc.BuildStarted { session_id }));
       send (self ()) (BuildPackage { package_name = package; client_pid });
-      { state with client_pid = Some client_pid; session_id = Some session_id }
+      { state with 
+        client_pid = Some client_pid; 
+        session_id = Some session_id;
+        build_start_time = Some start_time }
   | Rpc.Restart ->
       send client_pid (ServerResponse Rpc.Success);
       (* Send restart message to self to handle after responding *)
@@ -655,10 +674,15 @@ let handle_client_request state client_pid request =
 
           if needs_build = [] then (
             (* Everything already built, return success immediately *)
+            let duration_ms = 
+              match state.build_start_time with
+              | Some start_time -> int_of_float ((System.gettimeofday () -. start_time) *. 1000.)
+              | None -> 0
+            in
             Log.log ?sid:None
               (BuildComplete
                  {
-                   duration_ms = 0;
+                   duration_ms;
                    results = [];
                    succeeded = [ package ];
                    failed = [];
@@ -700,10 +724,15 @@ let handle_client_request state client_pid request =
 
           if needs_build = [] then (
             (* Everything already built, return success immediately *)
+            let duration_ms = 
+              match state.build_start_time with
+              | Some start_time -> int_of_float ((System.gettimeofday () -. start_time) *. 1000.)
+              | None -> 0
+            in
             Log.log ?sid:state.session_id
               (BuildComplete
                  {
-                   duration_ms = 0;
+                   duration_ms;
                    results = [];
                    succeeded =
                      List.map (fun n -> n.Build_node.package.name) sorted;
@@ -917,6 +946,7 @@ let start () =
       client_pid = None;
       session_id = None;
       toolchain;
+      build_start_time = None;
     }
   in
   spawn (fun () ->
@@ -953,6 +983,7 @@ let start_with_listener () =
       client_pid = None;
       session_id = None;
       toolchain;
+      build_start_time = None;
     }
   in
 

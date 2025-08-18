@@ -74,6 +74,12 @@ let close_process_in ic = Unix.close_process_in ic
 (** Get current time as float *)
 let time () = Unix.time ()
 
+(** Get current time with microsecond precision *)
+let gettimeofday () = Unix.gettimeofday ()
+
+(** Get current time in milliseconds *)
+let time_ms () = int_of_float (Unix.gettimeofday () *. 1000.)
+
 (** Higher-level functions that use the basic wrappers *)
 
 (** Check if a file is a regular file *)

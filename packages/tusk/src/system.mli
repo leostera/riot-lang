@@ -110,6 +110,12 @@ val cpu_count : unit -> int
 val time : unit -> float
 (** Get current time as float *)
 
+val gettimeofday : unit -> float
+(** Get current time with microsecond precision *)
+
+val time_ms : unit -> int
+(** Get current time in milliseconds *)
+
 (** {1 Environment} *)
 
 val putenv : string -> string -> unit
