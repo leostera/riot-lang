@@ -601,9 +601,23 @@ module TuskProtocol = struct
     | Rpc.Shutdown -> { method_ = method_shutdown; params = NoParams }
     | Rpc.Restart -> { method_ = method_restart; params = NoParams }
 
-  let request_of_params params =
-    (* This would parse params back to request, but we don't need it for server *)
-    Error (Json.String "Not implemented")
+  let request_of_params method_ params =
+    (* Parse params based on the method name *)
+    match method_ with
+    | "tusk.ping" -> Ok Rpc.Ping
+    | "tusk.buildAll" -> Ok Rpc.BuildAll
+    | "tusk.buildPackage" -> (
+        match params with
+        | Jsonrpc.Named fields -> (
+            match List.assoc_opt "package" fields with
+            | Some (Json.String pkg) -> Ok (Rpc.BuildPackage pkg)
+            | _ -> Error (Json.String "Missing or invalid 'package' parameter"))
+        | _ -> Error (Json.String "BuildPackage requires named parameters"))
+    | "tusk.getWorkspaceConfig" -> Ok Rpc.GetWorkspaceConfig
+    | "tusk.getBuildGraph" -> Ok Rpc.GetBuildGraph
+    | "tusk.restart" -> Ok Rpc.Restart
+    | "tusk.shutdown" -> Ok Rpc.Shutdown
+    | _ -> Error (Json.String ("Unknown method: " ^ method_))
 
   let response_to_json = function
     | Rpc.Pong -> Json.String "pong"
@@ -992,7 +1006,12 @@ module Server = struct
   
   let handle_ping ctx reply request =
     (* request is already Rpc.Ping *)
+    Printf.eprintf "[HANDLER] Sending ClientRequest to server %s from %s\n" 
+      (Pid.to_string ctx.server_pid) (Pid.to_string (self ()));
+    flush stderr;
     send ctx.server_pid (Rpc.ClientRequest (self (), request));
+    Printf.eprintf "[HANDLER] Waiting for response...\n";
+    flush stderr;
     (* Wait for response *)
     let selector = function
       | Rpc.ServerResponse response -> `select response
@@ -1000,8 +1019,12 @@ module Server = struct
     in
     match receive ~selector () with
     | Rpc.Pong ->
+        Printf.eprintf "[HANDLER] Got Pong response\n";
+        flush stderr;
         reply Rpc.Pong
     | _ ->
+        Printf.eprintf "[HANDLER] Got unexpected response\n";
+        flush stderr;
         reply (Rpc.Error "Unexpected response")
   
   let handle_shutdown ctx reply request =
@@ -1047,63 +1070,55 @@ module Server = struct
   (** Create a JSON-RPC server handler for the tusk server *)
   let create server_pid =
     let ctx = { server_pid } in
-    (* Create handlers that match on the request type *)
+    (* Create handlers using the new Handler type with individual param parsers *)
     let methods =
       [
-        { 
-          Jsonrpc.Server.method_ = method_ping; 
-          fn = fun reply request ->
-            match request with
-            | Rpc.Ping -> handle_ping ctx reply request
-            | _ -> ()
+        Jsonrpc.Server.Handler { 
+          method_ = method_ping; 
+          parse_params = (fun _params -> Ok Rpc.Ping);
+          handle_request = fun ~req ~reply -> handle_ping ctx reply req
         };
-        { 
-          Jsonrpc.Server.method_ = method_build_package; 
-          fn = fun reply request ->
-            match request with
-            | Rpc.BuildPackage _ -> handle_build ctx reply request
-            | _ -> ()
+        Jsonrpc.Server.Handler { 
+          method_ = method_build_package; 
+          parse_params = (fun params ->
+            match params with
+            | Jsonrpc.Named fields -> (
+                match List.assoc_opt "package" fields with
+                | Some (Json.String pkg) -> Ok (Rpc.BuildPackage pkg)
+                | _ -> Error (Json.String "Missing or invalid 'package' parameter"))
+            | _ -> Error (Json.String "BuildPackage requires named parameters"));
+          handle_request = fun ~req ~reply -> handle_build ctx reply req
         };
-        { 
-          Jsonrpc.Server.method_ = method_build_all; 
-          fn = fun reply request ->
-            match request with
-            | Rpc.BuildAll -> handle_build ctx reply request
-            | _ -> ()
+        Jsonrpc.Server.Handler { 
+          method_ = method_build_all; 
+          parse_params = (fun _params -> Ok Rpc.BuildAll);
+          handle_request = fun ~req ~reply -> handle_build ctx reply req
         };
-        { 
-          Jsonrpc.Server.method_ = method_get_workspace_config; 
-          fn = fun reply request ->
-            match request with
-            | Rpc.GetWorkspaceConfig -> handle_workspace_config ctx reply request
-            | _ -> ()
+        Jsonrpc.Server.Handler { 
+          method_ = method_get_workspace_config; 
+          parse_params = (fun _params -> Ok Rpc.GetWorkspaceConfig);
+          handle_request = fun ~req ~reply -> handle_workspace_config ctx reply req
         };
-        { 
-          Jsonrpc.Server.method_ = method_get_build_graph; 
-          fn = fun reply request ->
-            match request with
-            | Rpc.GetBuildGraph -> handle_build_graph ctx reply request
-            | _ -> ()
+        Jsonrpc.Server.Handler { 
+          method_ = method_get_build_graph; 
+          parse_params = (fun _params -> Ok Rpc.GetBuildGraph);
+          handle_request = fun ~req ~reply -> handle_build_graph ctx reply req
         };
-        { 
-          Jsonrpc.Server.method_ = method_restart; 
-          fn = fun reply request ->
-            match request with
-            | Rpc.Restart -> handle_restart ctx reply request
-            | _ -> ()
+        Jsonrpc.Server.Handler { 
+          method_ = method_restart; 
+          parse_params = (fun _params -> Ok Rpc.Restart);
+          handle_request = fun ~req ~reply -> handle_restart ctx reply req
         };
-        { 
-          Jsonrpc.Server.method_ = method_shutdown; 
-          fn = fun reply request ->
-            match request with
-            | Rpc.Shutdown -> handle_shutdown ctx reply request
-            | _ -> ()
+        Jsonrpc.Server.Handler { 
+          method_ = method_shutdown; 
+          parse_params = (fun _params -> Ok Rpc.Shutdown);
+          handle_request = fun ~req ~reply -> handle_shutdown ctx reply req
         };
       ]
     in
     Printf.eprintf "[RPC SERVER DEBUG] Registering methods:\n";
     List.iter
-      (fun h -> Printf.eprintf "  - %s\n" h.Jsonrpc.Server.method_)
+      (fun (Jsonrpc.Server.Handler h) -> Printf.eprintf "  - %s\n" h.method_)
       methods;
     flush stderr;
     Jsonrpc.Server.create ~protocol:(module TuskProtocol) ~methods

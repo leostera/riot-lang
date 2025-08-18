@@ -488,6 +488,18 @@ let handle_client_request state client_pid request =
   | Rpc.Ping ->
       send client_pid (ServerResponse Rpc.Pong);
       state
+  | Rpc.BuildAll ->
+      (* Start a build all request *)
+      let session_id = Session_id.make () in
+      send client_pid (ServerResponse (Rpc.BuildStarted { session_id }));
+      send (self ()) (BuildAll { client_pid });
+      { state with client_pid = Some client_pid; session_id = Some session_id }
+  | Rpc.BuildPackage package ->
+      (* Start a build package request *)
+      let session_id = Session_id.make () in
+      send client_pid (ServerResponse (Rpc.BuildStarted { session_id }));
+      send (self ()) (BuildPackage { package_name = package; client_pid });
+      { state with client_pid = Some client_pid; session_id = Some session_id }
   | Rpc.Restart ->
       send client_pid (ServerResponse Rpc.Success);
       (* Send restart message to self to handle after responding *)
@@ -741,6 +753,8 @@ let rec server_loop state =
   in
   match receive ~selector () with
   | `client_request (client_pid, request) ->
+      Printf.eprintf "[SERVER] Received ClientRequest from %s\n" (Pid.to_string client_pid);
+      flush stderr;
       let new_state = handle_client_request state client_pid request in
       server_loop new_state
   | `scan_workspace target_package ->
