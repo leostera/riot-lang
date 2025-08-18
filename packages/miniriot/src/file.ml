@@ -100,3 +100,29 @@ let write ~path ~content =
     Unix.close fd;
     result
   with Unix.Unix_error (e, _, _) -> Error (error_of_unix_error e)
+
+let list_dir ~path =
+  try
+    let handle = Unix.opendir path in
+    let files = ref [] in
+    let rec read_loop () =
+      try
+        let entry = Unix.readdir handle in
+        if entry <> "." && entry <> ".." then files := entry :: !files;
+        (* Yield to allow other tasks to run during directory scanning *)
+        Effects.yield ();
+        read_loop ()
+      with End_of_file ->
+        Unix.closedir handle;
+        Ok (List.rev !files)
+    in
+    read_loop ()
+  with Unix.Unix_error (e, _, _) -> Error (error_of_unix_error e)
+
+let list_dir_all ~path = list_dir ~path
+
+let is_directory ~path =
+  try
+    let stats = Unix.stat path in
+    stats.Unix.st_kind = Unix.S_DIR
+  with Unix.Unix_error (Unix.ENOENT, _, _) -> false

@@ -51,8 +51,9 @@ type log_event =
   (* Server events *)
   | ServerStarted of { pid : string }
   | ServerScanning of { root : string }
-  | ServerReady of { packages : int; toolchain : string }
+  | ServerRestarted of { packages : int; toolchain : string }
   | ServerShutdown
+  | WorkspaceEmpty (* No packages found in workspace *)
   (* Build queue events *)
   | QueuePackage of { package : string; queue_type : [ `Ready | `Waiting ] }
   | QueueStats of { ready : int; waiting : int; busy : int }
@@ -79,28 +80,21 @@ type log_event =
       tool : string;
       args : string; (* JSON string *)
     }
-  (* Generic messages - only for legacy/transition *)
-  | Info of string
-  | Debug of string
-  | Warn of string
-  | Error of string
 
 (** Get current timestamp as milliseconds since Unix epoch *)
-let get_timestamp_ms () =
-  int_of_float (Unix.gettimeofday () *. 1000.)
+let get_timestamp_ms () = int_of_float (Unix.gettimeofday () *. 1000.)
 
 (** Format timestamp for display *)
 let format_timestamp timestamp_ms =
   let timestamp_s = float_of_int timestamp_ms /. 1000. in
   let tm = Unix.localtime timestamp_s in
-  Printf.sprintf "%02d:%02d:%02d.%03d"
-    tm.tm_hour tm.tm_min tm.tm_sec
+  Printf.sprintf "%02d:%02d:%02d.%03d" tm.tm_hour tm.tm_min tm.tm_sec
     (timestamp_ms mod 1000)
 
 (** Get the machine-readable event name from log_event *)
 let event_name = function
   | BuildStarted _ -> "tusk.build.started"
-  | BuildComplete _ -> "tusk.build.completed" 
+  | BuildComplete _ -> "tusk.build.completed"
   | PackageStarted _ -> "tusk.build.package.started"
   | PackageComplete _ -> "tusk.build.package.completed"
   | CompileError _ -> "tusk.build.compile.error"
@@ -113,7 +107,8 @@ let event_name = function
   | WorkerIdle _ -> "tusk.build.worker.idle"
   | ServerStarted _ -> "tusk.server.started"
   | ServerScanning _ -> "tusk.server.scanning"
-  | ServerReady _ -> "tusk.server.ready"
+  | ServerRestarted _ -> "tusk.server.restarted"
+  | WorkspaceEmpty -> "tusk.workspace.empty"
   | ServerShutdown -> "tusk.server.shutdown"
   | QueuePackage _ -> "tusk.build.queue.package"
   | QueueStats _ -> "tusk.build.queue.stats"
@@ -131,26 +126,22 @@ let event_name = function
   | RpcRequestReceived _ -> "tusk.rpc.request.received"
   | RpcResponseSent _ -> "tusk.rpc.response.sent"
   | McpToolCall _ -> "tusk.mcp.tool.call"
-  | Info _ -> "tusk.info"
-  | Debug _ -> "tusk.debug"
-  | Warn _ -> "tusk.warn"
-  | Error _ -> "tusk.error"
 
-(** Level constants to avoid name collision with log_event constructors *)
-let level_info = (Info : level)
-let level_error = (Error : level) 
-let level_warn = (Warn : level)
-let level_debug = (Debug : level)
+(** Level constants *)
+let level_info = Info
+
+let level_error = Error
+let level_warn = Warn
+let level_debug = Debug
 
 (** Get the log level from log_event *)
 let event_level = function
-  | BuildStarted _ | BuildComplete _ | PackageStarted _ | PackageComplete _ 
-  | CacheHit _ | CacheMiss _ | ServerStarted _ | ServerReady _ 
-  | CompilingInterface _ | CompilingImplementation _ 
-  | LinkingLibrary _ | LinkingExecutable _ | HashComputed _ -> level_info
-  | CompileError _ | (Error _) -> level_error
-  | (Warn _) -> level_warn  
-  | (Debug _) -> level_debug
+  | BuildStarted _ | BuildComplete _ | PackageStarted _ | PackageComplete _
+  | CacheHit _ | CacheMiss _ | ServerStarted _ | ServerRestarted _
+  | WorkspaceEmpty | CompilingInterface _ | CompilingImplementation _
+  | LinkingLibrary _ | LinkingExecutable _ | HashComputed _ ->
+      level_info
+  | CompileError _ -> level_error
   | _ -> level_info
 
 (** Get the human-readable message from log_event (without timestamp) *)
@@ -162,8 +153,7 @@ let event_message = function
       Printf.sprintf "Build completed in %.2fs: %d succeeded, %d failed"
         (float_of_int duration_ms /. 1000.)
         (List.length succeeded) (List.length failed)
-  | PackageStarted { package } -> 
-      Printf.sprintf "Building %s..." package
+  | PackageStarted { package } -> Printf.sprintf "Building %s..." package
   | PackageComplete res ->
       Printf.sprintf "%s completed (%.2fs, %d modules, %d/%d cache hits)"
         res.package
@@ -178,26 +168,32 @@ let event_message = function
   | CacheMiss { package; _ } -> Printf.sprintf "Cache miss: %s" package
   | CacheStored { package; artifacts } ->
       Printf.sprintf "Cached %s (%d artifacts)" package (List.length artifacts)
-  | WorkerPoolStarted { workers } ->
-      Printf.sprintf "Started %d workers" workers
+  | WorkerPoolStarted { workers } -> Printf.sprintf "Started %d workers" workers
   | WorkerStarted { worker_id } ->
       Printf.sprintf "Worker %s started" (Worker_id.to_string worker_id)
   | WorkerAssigned { worker_id; package } ->
-      Printf.sprintf "Worker %s building %s" (Worker_id.to_string worker_id) package
-  | WorkerIdle { worker_id } -> 
+      Printf.sprintf "Worker %s building %s"
+        (Worker_id.to_string worker_id)
+        package
+  | WorkerIdle { worker_id } ->
       Printf.sprintf "Worker %s idle" (Worker_id.to_string worker_id)
   | ServerStarted { pid } -> Printf.sprintf "Server started (pid: %s)" pid
   | ServerScanning { root } -> Printf.sprintf "Scanning workspace: %s" root
-  | ServerReady { packages; toolchain } ->
-      Printf.sprintf "Ready with %d packages (toolchain: %s)" packages toolchain
+  | ServerRestarted { packages; toolchain } ->
+      Printf.sprintf "Server restarted with %d packages (toolchain: %s)"
+        packages toolchain
+  | WorkspaceEmpty -> "No packages found in workspace"
   | ServerShutdown -> "Server shutting down"
   | QueuePackage { package; queue_type } ->
-      let typ = match queue_type with `Ready -> "ready" | `Waiting -> "waiting" in
+      let typ =
+        match queue_type with `Ready -> "ready" | `Waiting -> "waiting"
+      in
       Printf.sprintf "Queued %s (%s)" package typ
   | QueueStats { ready; waiting; busy } ->
       Printf.sprintf "Queue: %d ready, %d waiting, %d busy" ready waiting busy
   | DependencyMissing { package; missing } ->
-      Printf.sprintf "%s missing dependencies: %s" package (String.concat ", " missing)
+      Printf.sprintf "%s missing dependencies: %s" package
+        (String.concat ", " missing)
   | DependencySatisfied { package } ->
       Printf.sprintf "%s dependencies satisfied" package
   | CompilingInterface { package; file } ->
@@ -208,27 +204,19 @@ let event_message = function
       Printf.sprintf "Linking library %s -> %s" package output
   | LinkingExecutable { package; output } ->
       Printf.sprintf "Linking executable %s -> %s" package output
-  | ComputingHash { package } ->
-      Printf.sprintf "Computing hash for %s" package
+  | ComputingHash { package } -> Printf.sprintf "Computing hash for %s" package
   | HashComputed { package; hash } ->
       Printf.sprintf "Hash computed for %s: %s" package hash
   | CopyingFile { source; dest } ->
       Printf.sprintf "Copying %s -> %s" source dest
-  | WritingFile { path } ->
-      Printf.sprintf "Writing file %s" path
-  | CreatingDirectory { path } ->
-      Printf.sprintf "Creating directory %s" path
+  | WritingFile { path } -> Printf.sprintf "Writing file %s" path
+  | CreatingDirectory { path } -> Printf.sprintf "Creating directory %s" path
   | RpcRequestReceived { request_type; _ } ->
       Printf.sprintf "RPC request received: %s" request_type
   | RpcResponseSent { success; _ } ->
-      Printf.sprintf "RPC response sent: %s" (if success then "success" else "error")
-  | McpToolCall { tool; _ } ->
-      Printf.sprintf "MCP tool call: %s" tool
-  | Info msg -> msg
-  | Debug msg -> msg
-  | Warn msg -> msg
-  | Error msg -> msg
-
+      Printf.sprintf "RPC response sent: %s"
+        (if success then "success" else "error")
+  | McpToolCall { tool; _ } -> Printf.sprintf "MCP tool call: %s" tool
 
 (** Convert log event to human-readable string with timestamp *)
 let event_to_string = function
@@ -243,14 +231,14 @@ let event_to_string = function
         timestamp status
         (float_of_int duration_ms /. 1000.)
         (List.length succeeded) (List.length failed)
-  | PackageStarted { package } -> 
+  | PackageStarted { package } ->
       let timestamp = format_timestamp (get_timestamp_ms ()) in
       Printf.sprintf "[%s]   📦 Building %s..." timestamp package
   | PackageComplete res ->
       let timestamp = format_timestamp (get_timestamp_ms ()) in
       let status = if res.success then "✓" else "✗" in
-      Printf.sprintf "[%s]   %s %s (%.2fs, %d modules, %d/%d cache hits)" timestamp status
-        res.package
+      Printf.sprintf "[%s]   %s %s (%.2fs, %d modules, %d/%d cache hits)"
+        timestamp status res.package
         (float_of_int res.duration_ms /. 1000.)
         res.modules_compiled res.cache_hits
         (res.cache_hits + res.cache_misses)
@@ -258,10 +246,10 @@ let event_to_string = function
       Printf.sprintf "  ❌ %s:%d:%s - %s" error.file error.line
         (match error.column with Some c -> string_of_int c | None -> "0")
         error.message
-  | CacheHit { package; hash } -> 
+  | CacheHit { package; hash } ->
       let timestamp = format_timestamp (get_timestamp_ms ()) in
       Printf.sprintf "[%s]   ⚡ Cached %s" timestamp package
-  | CacheMiss { package; hash } -> 
+  | CacheMiss { package; hash } ->
       let timestamp = format_timestamp (get_timestamp_ms ()) in
       Printf.sprintf "[%s]   💾 Cache miss: %s" timestamp package
   | CacheStored { package; hash; artifacts } ->
@@ -272,18 +260,24 @@ let event_to_string = function
   | WorkerStarted { worker_id } ->
       Printf.sprintf "  ⚙️ Worker %s started" (Worker_id.to_string worker_id)
   | WorkerAssigned { worker_id; package } ->
-      Printf.sprintf "  ⚙️ Worker %s building %s" (Worker_id.to_string worker_id) package
-  | WorkerIdle { worker_id } -> Printf.sprintf "  ⚙️ Worker %s idle" (Worker_id.to_string worker_id)
-  | ServerStarted { pid } -> 
+      Printf.sprintf "  ⚙️ Worker %s building %s"
+        (Worker_id.to_string worker_id)
+        package
+  | WorkerIdle { worker_id } ->
+      Printf.sprintf "  ⚙️ Worker %s idle" (Worker_id.to_string worker_id)
+  | ServerStarted { pid } ->
       let timestamp = format_timestamp (get_timestamp_ms ()) in
       Printf.sprintf "[%s] 🚀 Server started (pid: %s)" timestamp pid
-  | ServerScanning { root } -> 
+  | ServerScanning { root } ->
       let timestamp = format_timestamp (get_timestamp_ms ()) in
       Printf.sprintf "[%s] 🔍 Scanning workspace: %s" timestamp root
-  | ServerReady { packages; toolchain } ->
+  | ServerRestarted { packages; toolchain } ->
       let timestamp = format_timestamp (get_timestamp_ms ()) in
-      Printf.sprintf "[%s] ✅ Server ready (%d packages, toolchain: %s)" timestamp packages
-        toolchain
+      Printf.sprintf "[%s] ♻️  Server restarted (%d packages, toolchain: %s)"
+        timestamp packages toolchain
+  | WorkspaceEmpty ->
+      let timestamp = format_timestamp (get_timestamp_ms ()) in
+      Printf.sprintf "[%s] 📭 No packages found in workspace" timestamp
   | ServerShutdown -> "🛑 Server shutting down"
   | QueuePackage { package; queue_type } ->
       let queue_str =
@@ -312,18 +306,6 @@ let event_to_string = function
       let timestamp = format_timestamp (get_timestamp_ms ()) in
       Printf.sprintf "[%s]   🔢 Hash computed for %s: %s" timestamp package
         (String.sub hash 0 (min 8 (String.length hash)))
-  | Info msg -> 
-      let timestamp = format_timestamp (get_timestamp_ms ()) in
-      Printf.sprintf "[%s] [INFO] %s" timestamp msg
-  | Debug msg -> 
-      let timestamp = format_timestamp (get_timestamp_ms ()) in
-      Printf.sprintf "[%s] [DEBUG] %s" timestamp msg
-  | Warn msg -> 
-      let timestamp = format_timestamp (get_timestamp_ms ()) in
-      Printf.sprintf "[%s] [WARN] %s" timestamp msg
-  | Error msg -> 
-      let timestamp = format_timestamp (get_timestamp_ms ()) in
-      Printf.sprintf "[%s] [ERROR] %s" timestamp msg
   | _ -> "" (* Fallback for any remaining unimplemented events *)
 
 (** Format event according to format type *)
@@ -349,7 +331,7 @@ type handler =
 
 (** Extend Miniriot's Message.t with logger messages *)
 type Miniriot.Message.t +=
-  | Log of Session_id.t option * log_event
+  | Event of Session_id.t option * log_event
   | AddHandler of handler
   | RemoveHandler of Session_id.t
   | GetLogs of Session_id.t * format * Miniriot.Pid.t
@@ -373,7 +355,7 @@ let rec logger_loop state =
   (* Create selector function for message handling *)
   let selector msg =
     match msg with
-    | Log (sid, event) -> `select (`log (sid, event))
+    | Event (sid, event) -> `select (`log (sid, event))
     | AddHandler h -> `select (`add_handler h)
     | RemoveHandler sid -> `select (`remove_handler sid)
     | GetLogs (sid, fmt, client) -> `select (`get_logs (sid, fmt, client))
@@ -405,11 +387,8 @@ let rec logger_loop state =
           try
             match Hashtbl.find state.handlers session_id with
             | Rpc { client; format; _ } ->
-                (* Send log event to RPC client *)
-                let response =
-                  Rpc.BuildEvent { session_id; log_event = (event : log_event) }
-                in
-                send client (Rpc.ServerResponse response)
+                (* Send log event directly to RPC client for translation *)
+                send client (Event (Some session_id, event))
             | _ -> ()
           with Not_found -> ())
       | None -> ());
@@ -466,19 +445,13 @@ let init () =
 (** Main logging function - sends to logger process *)
 let log ?sid event =
   match !logger_pid with
-  | Some pid ->
-      Miniriot.send pid (Log (sid, event))
+  | Some pid -> Miniriot.send pid (Event (sid, event))
   | None ->
       (* Fallback if logger not initialized *)
       Printf.printf "%s\n" (event_to_string event);
       flush stdout
 
 (** Convenience logging functions *)
-let info ?sid msg = log ?sid (Info msg)
-
-let debug ?sid msg = log ?sid (Debug msg)
-let warn ?sid msg = log ?sid (Warn msg)
-let error ?sid msg = log ?sid (Error msg)
 
 (** Build lifecycle logging functions *)
 let build_started ?sid ~packages ~total_modules ~workers =
@@ -528,9 +501,10 @@ let server_started ?sid ~pid = log ?sid (ServerStarted { pid })
 
 let server_scanning ?sid ~root = log ?sid (ServerScanning { root })
 
-let server_ready ?sid ~packages ~toolchain =
-  log ?sid (ServerReady { packages; toolchain })
+let server_restarted ?sid ~packages ~toolchain =
+  log ?sid (ServerRestarted { packages; toolchain })
 
+let workspace_empty ?sid () = log ?sid WorkspaceEmpty
 let server_shutdown ?sid () = log ?sid ServerShutdown
 
 (** Queue event logging *)
@@ -565,8 +539,7 @@ let add_rpc_handler ~sid ~client ~format =
   match !logger_pid with
   | Some pid ->
       Miniriot.send pid (AddHandler (Rpc { session_id = sid; client; format }))
-  | None ->
-      ()
+  | None -> ()
 
 let add_stdout_handler ~format =
   match !logger_pid with

@@ -201,14 +201,18 @@ let compute_node_hash toolchain node =
 
   (* 3. Source file content hashes *)
   let src_dir =
-    if System.file_exists (Filename.concat node.package.path "src") then
+    if Miniriot.File.exists ~path:(Filename.concat node.package.path "src") then
       Filename.concat node.package.path "src"
     else node.package.path
   in
 
   Printf.printf "  - Source directory: %s\n" src_dir;
-  if System.file_exists src_dir then (
-    let all_files = System.list_dir_all src_dir in
+  if Miniriot.File.exists ~path:src_dir then (
+    let all_files =
+      match Miniriot.File.list_dir_all ~path:src_dir with
+      | Ok files -> files
+      | Error _ -> []
+    in
     let source_files =
       List.filter
         (fun f ->

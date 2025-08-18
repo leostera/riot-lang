@@ -14,20 +14,15 @@ type Message.t +=
       worker_id : Worker_id.t;
     }
   | NoWorkersAvailable of { task : Build_messages.build_task }
-  | TaskCompleted of {
-      package_name : string;
-      hash : Hasher.hash;
-    }
-  | TaskFailed of {
-      package_name : string;
-      error : string;
-    }
+  | TaskCompleted of { package_name : string; hash : Hasher.hash }
+  | TaskFailed of { package_name : string; error : string }
 
 type state = {
   idle_workers : Pid.t Queue.t;
   busy_workers : (Pid.t, string) Hashtbl.t;
   all_workers : Pid.t list;
-  worker_ids : (Pid.t, Worker_id.t) Hashtbl.t; (* Maps worker PIDs to their IDs *)
+  worker_ids : (Pid.t, Worker_id.t) Hashtbl.t;
+      (* Maps worker PIDs to their IDs *)
   listener : Pid.t;
 }
 (** Internal pool state *)
@@ -37,7 +32,9 @@ let spawn_workers pool_pid count =
   let workers = ref [] in
   let worker_id_map = Hashtbl.create count in
   for i = 1 to count do
-    let worker_pid = spawn (fun () -> Build_worker.main pool_pid (Worker_id.make i) ()) in
+    let worker_pid =
+      spawn (fun () -> Build_worker.main pool_pid (Worker_id.make i) ())
+    in
     workers := worker_pid :: !workers;
     Hashtbl.add worker_id_map worker_pid (Worker_id.make i)
   done;

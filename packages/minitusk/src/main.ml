@@ -466,20 +466,19 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
     else
       (* Run ocamldep to get dependencies on all files *)
       let files_str =
-        String.concat " "
-          (List.map (fun f -> Filename.basename f) all_ml_files)
+        String.concat " " (List.map (fun f -> Filename.basename f) all_ml_files)
       in
       let ocamldep =
         Printf.sprintf "%s/.tusk/toolchains/5.3.0/bin/ocamldep" home
       in
       let cmd =
-        Printf.sprintf "cd %s && %s -I . -sort %s 2>/dev/null" sandbox_dir ocamldep
-          files_str
+        Printf.sprintf "cd %s && %s -I . -sort %s 2>/dev/null" sandbox_dir
+          ocamldep files_str
       in
       let ic = Unix.open_process_in cmd in
       let sorted_str = try input_line ic with End_of_file -> "" in
       ignore (Unix.close_process_in ic);
-      
+
       Printf.printf "  OCamldep returned: %s\n%!" sorted_str;
 
       (* Parse the sorted output and map back to original filenames *)
@@ -487,17 +486,17 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
       else
         let sorted_basenames = String.split_on_char ' ' sorted_str in
         (* ocamldep -sort might not include all files, so we need to handle that *)
-        let sorted_files = List.filter_map
-          (fun basename ->
-            List.find_opt
-              (fun f -> Filename.basename f = basename)
-              all_ml_files)
-          sorted_basenames
+        let sorted_files =
+          List.filter_map
+            (fun basename ->
+              List.find_opt
+                (fun f -> Filename.basename f = basename)
+                all_ml_files)
+            sorted_basenames
         in
         (* Add any files that weren't in the sorted output at the end *)
-        let missing_files = List.filter
-          (fun f -> not (List.mem f sorted_files))
-          all_ml_files
+        let missing_files =
+          List.filter (fun f -> not (List.mem f sorted_files)) all_ml_files
         in
         sorted_files @ missing_files
   in
@@ -519,8 +518,7 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
   List.iter
     (fun mli_src ->
       let basename = Filename.basename mli_src in
-      let mli_file = basename
-      in
+      let mli_file = basename in
       (* Compile all .mli files *)
       let cmd =
         Printf.sprintf "cd %s && %s -I +unix -I . %s -c %s" sandbox_dir ocamlc
@@ -541,11 +539,10 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
   List.iter
     (fun ml_src ->
       let basename = Filename.basename ml_src in
-      let ml_file = basename
-      in
+      let ml_file = basename in
       (* Include all C objects when compiling ML files with external declarations *)
       let c_objects =
-        if c_sources <> [] && basename = (pkg.name ^ ".ml") then
+        if c_sources <> [] && basename = pkg.name ^ ".ml" then
           String.concat " "
             (List.map
                (fun c_src ->
@@ -574,24 +571,24 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
   (* Create library .cma file for all packages *)
   (* For linking, we need modules in dependency order from sorted_ml_files *)
   (* ocamldep -sort gives us compilation order, which is also the correct linking order for .ml files *)
-  let cmo_files = 
-    List.map (fun f ->
-      let basename = Filename.basename f in
-      let base = Filename.chop_suffix basename ".ml" in
-      base ^ ".cmo"
-    ) sorted_ml_files
+  let cmo_files =
+    List.map
+      (fun f ->
+        let basename = Filename.basename f in
+        let base = Filename.chop_suffix basename ".ml" in
+        base ^ ".cmo")
+      sorted_ml_files
   in
-  
+
   (* If there's a module with the same name as the package, move it to the end *)
   (* This handles the case where a module re-exports others *)
-  let cmo_files = 
+  let cmo_files =
     if List.mem (pkg.name ^ ".cmo") cmo_files then
       let others = List.filter (fun f -> f <> pkg.name ^ ".cmo") cmo_files in
-      others @ [pkg.name ^ ".cmo"]
-    else
-      cmo_files
+      others @ [ pkg.name ^ ".cmo" ]
+    else cmo_files
   in
-  
+
   let cmo_list = String.concat " " cmo_files in
   Printf.printf "  Linking order: %s\n%!" cmo_list;
   (* Include C object files in the archive *)

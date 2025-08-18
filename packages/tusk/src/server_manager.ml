@@ -16,44 +16,41 @@ let daemon_dir_for_workspace (workspace : Workspace.workspace) =
   Printf.sprintf "%s/.tusk/daemons/%s" home project_id
 
 (** PID file location for a workspace *)
-let pid_file_for_workspace workspace = 
+let pid_file_for_workspace workspace =
   Printf.sprintf "%s/server.pid" (daemon_dir_for_workspace workspace)
 
 (** Port file location for a workspace *)
-let port_file_for_workspace workspace = 
+let port_file_for_workspace workspace =
   Printf.sprintf "%s/server.port" (daemon_dir_for_workspace workspace)
 
 (** Get current workspace *)
 let current_workspace () =
-  Workspace.scan ~root:(System.getcwd ())
+  Workspace_manager.get_workspace ~root:(System.getcwd ())
 
 (** Legacy functions that work with current directory *)
 let daemon_dir () = daemon_dir_for_workspace (current_workspace ())
+
 let pid_file () = pid_file_for_workspace (current_workspace ())
 let port_file () = port_file_for_workspace (current_workspace ())
 
-type daemon = {
-  dir: string;
-  os_pid: int;
-  port: int;
-}
+type daemon = { dir : string; os_pid : int; port : int }
 
 (** Read daemon information for a workspace *)
 let daemon (workspace : Workspace.workspace) =
   let dir = daemon_dir_for_workspace workspace in
   let pid_path = pid_file_for_workspace workspace in
   let port_path = port_file_for_workspace workspace in
-  
+
   if Sys.file_exists pid_path && Sys.file_exists port_path then
     try
       let ic = open_in pid_path in
       let os_pid = int_of_string (input_line ic) in
       close_in ic;
-      
+
       let ic = open_in port_path in
       let port = int_of_string (input_line ic) in
       close_in ic;
-      
+
       Some { dir; os_pid; port }
     with _ -> None
   else None
@@ -63,15 +60,15 @@ let write_daemon (workspace : Workspace.workspace) ~port =
   let dir = daemon_dir_for_workspace workspace in
   let pid_path = pid_file_for_workspace workspace in
   let port_path = port_file_for_workspace workspace in
-  
+
   (* Create directory if needed *)
   System.mkdirp dir;
-  
+
   (* Write port file *)
   let oc = open_out port_path in
   output_string oc (string_of_int port);
   close_out oc;
-  
+
   (* Write PID file *)
   let pid = Unix.getpid () in
   let oc = open_out pid_path in
@@ -83,14 +80,14 @@ let remove_daemon (workspace : Workspace.workspace) =
   let pid_path = pid_file_for_workspace workspace in
   let port_path = port_file_for_workspace workspace in
   (try Sys.remove port_path with _ -> ());
-  (try Sys.remove pid_path with _ -> ())
+  try Sys.remove pid_path with _ -> ()
 
 (** Check if the server is running by checking process existence *)
 let is_server_running () =
   let workspace = current_workspace () in
   match daemon workspace with
   | None -> false
-  | Some info ->
+  | Some info -> (
       (* Check if the process is still alive *)
       try
         Unix.kill info.os_pid 0;
@@ -98,7 +95,7 @@ let is_server_running () =
       with Unix.Unix_error (Unix.ESRCH, _, _) ->
         (* Process doesn't exist, clean up stale files *)
         remove_daemon workspace;
-        false
+        false)
 
 (** Start the server process in the background *)
 let start_background () =
@@ -160,7 +157,8 @@ let start_background () =
       in
       Printf.printf
         "✅ Server started in background (pid: %d) on port %d for project %s\n"
-        pid port (get_project_id (current_workspace ()));
+        pid port
+        (get_project_id (current_workspace ()));
       true)
     else (
       Printf.eprintf "❌ Failed to start server\n";
@@ -175,7 +173,7 @@ let stop_background () =
   | None ->
       Printf.printf "Server is not running\n";
       false
-  | Some info ->
+  | Some info -> (
       try
         (* Send SIGTERM to gracefully shutdown *)
         Unix.kill info.os_pid Sys.sigterm;
@@ -189,7 +187,7 @@ let stop_background () =
         (* Process doesn't exist, clean up stale files *)
         Printf.printf "Server was not running (stale PID file)\n";
         remove_daemon workspace;
-        false
+        false)
 
 (** Ensure the server is running, starting it if necessary *)
 let ensure_running () =
@@ -236,4 +234,3 @@ let kill_background () =
     (* Clean up any stale port file *)
     (try System.remove_file port_path with _ -> ());
     false)
-

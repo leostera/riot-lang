@@ -123,15 +123,15 @@ let copy_dependency_artifacts sandbox =
     all_deps
 
 (** Run a list of actions in the sandbox *)
-let rec run_actions ~sandbox ~blueprint ~store =
+let rec run_actions ~sandbox ~blueprint ~store ~session_id =
   let pkg_name = sandbox.node.Build_node.package.name in
 
   (* Check if we have a blueprint hash and if artifacts are already cached *)
   match blueprint.Actions.hash with
   | Some hash ->
       if Store.exists store hash then (
-        Printf.printf "[Sandbox] Cache hit for %s (hash: %s)\n" pkg_name
-          (Hasher.to_string hash);
+        Log.cache_hit ?sid:session_id ~package:pkg_name
+          ~hash:(Hasher.to_string hash);
         flush stdout;
 
         (* Promote artifacts from store directly to target *)
@@ -139,12 +139,13 @@ let rec run_actions ~sandbox ~blueprint ~store =
           (true, "Retrieved from cache")
         else (false, "Failed to promote from cache"))
       else (
-        Printf.printf "[Sandbox] Cache miss for %s (hash: %s), building...\n"
-          pkg_name (Hasher.to_string hash);
+        Log.cache_miss ?sid:session_id ~package:pkg_name
+          ~hash:(Hasher.to_string hash);
         flush stdout;
 
         (* Proceed with normal build *)
-        build_in_sandbox ~sandbox ~blueprint ~store ~hash:(Some hash))
+        build_in_sandbox ~sandbox ~blueprint ~store ~hash:(Some hash)
+          ~session_id)
   | None ->
       Printf.printf
         "[Sandbox] No hash computed for %s, building without caching...\n"
@@ -152,10 +153,10 @@ let rec run_actions ~sandbox ~blueprint ~store =
       flush stdout;
 
       (* Proceed with normal build (no caching) *)
-      build_in_sandbox ~sandbox ~blueprint ~store ~hash:None
+      build_in_sandbox ~sandbox ~blueprint ~store ~hash:None ~session_id
 
 (** Internal function to actually build in sandbox *)
-and build_in_sandbox ~sandbox ~blueprint ~store ~hash =
+and build_in_sandbox ~sandbox ~blueprint ~store ~hash ~session_id =
   (* Print the blueprint since we're about to execute it *)
   Actions.print_blueprint blueprint;
 
@@ -181,6 +182,21 @@ and build_in_sandbox ~sandbox ~blueprint ~store ~hash =
 
       List.iteri
         (fun i action ->
+          (* Log compilation/linking events for LLM visibility *)
+          (match action with
+          | Actions.CompileInterface { source; _ } ->
+              Log.compiling_interface ?sid:session_id
+                ~package:sandbox.node.Build_node.package.name ~file:source
+          | Actions.CompileImplementation { source; _ } ->
+              Log.compiling_implementation ?sid:session_id
+                ~package:sandbox.node.Build_node.package.name ~file:source
+          | Actions.CreateLibrary { output; _ } ->
+              Log.linking_library ?sid:session_id
+                ~package:sandbox.node.Build_node.package.name ~output
+          | Actions.CreateExecutable { output; _ } ->
+              Log.linking_executable ?sid:session_id
+                ~package:sandbox.node.Build_node.package.name ~output
+          | _ -> ());
           Printf.printf "[Sandbox] Step %d: %s\n" (i + 1)
             (Actions.string_of_action action);
           flush stdout;
@@ -201,10 +217,27 @@ and build_in_sandbox ~sandbox ~blueprint ~store ~hash =
           | Actions.Skipped reason ->
               Printf.printf "  -> Skipped: %s\n" reason;
               flush stdout
-          | Actions.Failed error ->
+          | Actions.Failed error_msg ->
               success := false;
-              errors := error :: !errors;
-              Printf.printf "  -> Failed: %s\n" error;
+              errors := error_msg :: !errors;
+
+              (* Log simple compile error for streaming visibility *)
+              let compile_error =
+                Log.
+                  {
+                    package = sandbox.node.Build_node.package.name;
+                    file = "";
+                    (* Will try to parse later if needed *)
+                    line = 0;
+                    (* Will try to parse later if needed *)
+                    column = None;
+                    message = String.trim error_msg;
+                    hint = None;
+                  }
+              in
+              Log.compile_error ?sid:session_id compile_error;
+
+              Printf.printf "  -> Failed: %s\n" error_msg;
               flush stdout)
         blueprint.Actions.actions;
 

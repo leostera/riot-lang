@@ -1,11 +1,23 @@
+(** JSON-RPC 2.0 Protocol Implementation *)
+
+(* Re-export all types and functions from Common *)
 include Common
+
+(* ApplicationProtocol module type needs to be defined here *)
+module type ApplicationProtocol = sig
+  type request
+  type response
+
+  val response_to_json : response -> Json.t
+  val response_of_json : Json.t -> (response, Json.t) result
+  val request_to_params : request -> prerequest
+  val request_of_params : params -> (request, Json.t) result
+end
+
+(* Client module *)
 module Client = Client
+
+(* Server module *)
 module Server = Server
 
-(** Helper functions for creating responses *)
-
-let result ~result ~id =
-  { jsonrpc = "2.0"; result = Some result; error = None; id }
-
-let error_response ~error ~id =
-  { jsonrpc = "2.0"; result = None; error = Some error; id }
+(* Helper functions - use the ones from Common instead *)

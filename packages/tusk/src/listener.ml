@@ -24,20 +24,20 @@ let find_available_port () =
 
 (** Write port and PID files for clients to discover the server *)
 let write_port_file port =
-  let workspace = Workspace.scan ~root:(System.getcwd ()) in
+  let workspace = Workspace_manager.get_workspace ~root:(System.getcwd ()) in
   Server_manager.write_daemon workspace ~port;
   Printf.printf "[Listener] Server daemon files written for port %d\n%!" port
 
 (** Read port file to connect to existing server *)
 let read_port_file () =
-  let workspace = Workspace.scan ~root:(System.getcwd ()) in
+  let workspace = Workspace_manager.get_workspace ~root:(System.getcwd ()) in
   match Server_manager.daemon workspace with
   | Some d -> Some d.port
   | None -> None
 
 (** Remove port and PID files on shutdown *)
 let remove_port_file () =
-  let workspace = Workspace.scan ~root:(System.getcwd ()) in
+  let workspace = Workspace_manager.get_workspace ~root:(System.getcwd ()) in
   Server_manager.remove_daemon workspace
 
 (** Start the TCP listener *)
@@ -49,10 +49,8 @@ let start server_pid =
   let handler ~req stream =
     Printf.eprintf "[LISTENER DEBUG] Creating JSON-RPC server for request\n";
     flush stderr;
-    let jsonrpc_server = Tusk_rpc_server.create server_pid in
-    let reply response =
-      let response_json = Jsonrpc.response_to_json response in
-      let response_str = Json.to_string response_json in
+    let jsonrpc_server = Tusk_jsonrpc.Server.create server_pid in
+    let reply response_str =
       let _ = Net.TcpServer.send stream (response_str ^ "\n") in
       ()
     in

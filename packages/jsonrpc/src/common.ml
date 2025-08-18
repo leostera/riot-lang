@@ -7,6 +7,11 @@ type params =
   | Named of (string * Json.t) list
   | NoParams
 
+type prerequest = {
+  method_ : string;
+  params : params;
+}
+
 type request = {
   jsonrpc : string;
   method_ : string;
@@ -25,15 +30,14 @@ type error_code =
 
 type error = { code : error_code; message : string; data : Json.t option }
 
-type response = {
+type 'res response = {
   jsonrpc : string;
-  result : Json.t option;
-  error : error option;
+  result : ('res, error) result;
   id : id;
 }
 
 type batch_request = request list
-type batch_response = response list
+type 'res batch_response = 'res response list
 
 (** Convert error code to integer *)
 let error_code_to_int = function
@@ -154,47 +158,12 @@ let request_of_json json =
       | _ -> Error "Invalid request: missing jsonrpc or method field")
   | _ -> Error "Request must be an object"
 
-(** Convert response to JSON *)
-let response_to_json (resp : response) =
-  let fields =
-    [ ("jsonrpc", Json.String resp.jsonrpc); ("id", id_to_json resp.id) ]
-  in
-  let fields =
-    match (resp.result, resp.error) with
-    | Some result, None -> ("result", result) :: fields
-    | None, Some error -> ("error", error_to_json error) :: fields
-    | _ -> fields (* Invalid state but we'll encode it anyway *)
-  in
-  Json.Object fields
+(** Note: response_to_json removed - needs to be protocol-specific due to parameterized type *)
 
-(** Convert JSON to response *)
-let response_of_json json =
-  match json with
-  | Json.Object fields -> (
-      match (List.assoc_opt "jsonrpc" fields, List.assoc_opt "id" fields) with
-      | Some (Json.String "2.0"), Some id_json -> (
-          match id_of_json id_json with
-          | Ok id -> (
-              let result = List.assoc_opt "result" fields in
-              let error =
-                match List.assoc_opt "error" fields with
-                | None -> Ok None
-                | Some e -> (
-                    match error_of_json e with
-                    | Ok err -> Ok (Some err)
-                    | Error msg -> Error msg)
-              in
-              match error with
-              | Ok error -> Ok { jsonrpc = "2.0"; result; error; id }
-              | Error e -> Error e)
-          | Error e -> Error e)
-      | Some (Json.String v), _ ->
-          Error (Printf.sprintf "Invalid JSON-RPC version: %s (expected 2.0)" v)
-      | _ -> Error "Invalid response: missing jsonrpc or id field")
-  | _ -> Error "Response must be an object"
+(** Note: response_of_json removed - needs to be protocol-specific due to parameterized type *)
 
 (** Helper to make a request *)
-let make_request ~method_ ?params ?id () =
+let request ~method_ ?params ?id () =
   {
     jsonrpc = version;
     method_;
@@ -202,15 +171,25 @@ let make_request ~method_ ?params ?id () =
     id;
   }
 
-(** Helper to make a response *)
-let make_response ?result ?error ~id () =
-  { jsonrpc = version; result; error; id }
+(** Create a successful response with result *)
+let result res ~id = 
+  { jsonrpc = version; result = Ok res; id }
 
-(** Helper to make an error *)
+(** Create an error response *)
+let error_response ~error ~id = 
+  { jsonrpc = version; result = Error error; id }
+
+let ok ?(id = Null) res = 
+  { jsonrpc = version; result = Ok res; id }
+
+let error ?(id = Null) err = 
+  { jsonrpc = version; result = Error err; id }
+
+(** Helper to make an error object *)
 let make_error ~code ~message ?data () = { code; message; data }
 
 (** Helper to make a notification (request without id) *)
-let make_notification ~method_ ?params () =
+let notification ~method_ ?params () =
   {
     jsonrpc = version;
     method_;
@@ -219,5 +198,18 @@ let make_notification ~method_ ?params () =
   }
 
 (** Check if a request is a notification *)
-let is_notification (req : request) =
-  match req.id with None -> true | Some _ -> false
+let is_notification (req : request) = 
+  match req.id with 
+  | None -> true 
+  | Some _ -> false
+
+(* ApplicationProtocol module type *)
+module type ApplicationProtocol = sig
+  type request
+  type response
+
+  val response_to_json : response -> Json.t
+  val response_of_json : Json.t -> (response, Json.t) result
+  val request_to_params : request -> prerequest
+  val request_of_params : params -> (request, Json.t) result
+end

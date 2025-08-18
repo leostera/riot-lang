@@ -3,6 +3,14 @@
     This implements the ocaml-merlin protocol that ocaml-lsp-server uses to get
     build configuration. It uses S-expressions for communication. *)
 
+(** Helper to create a tusk client connected to the local server *)
+let create_local_client ~root =
+  let workspace = Workspace_manager.get_workspace ~root in
+  match Server_manager.daemon workspace with
+  | None -> Error "Server is not running for this project"
+  | Some daemon_info ->
+      Tusk_jsonrpc.Client.create ~host:"127.0.0.1" ~port:daemon_info.port
+
 (** Find the workspace root by looking for the top-level tusk.toml *)
 let find_workspace_root () =
   let rec find_root dir =
@@ -37,18 +45,25 @@ let get_build_config file_path =
     let original_cwd = Sys.getcwd () in
     let result =
       match workspace_root with
-      | Some root ->
+      | Some root -> (
           Sys.chdir root;
-          let client = Tusk_rpc_client.create () in
-          let res = Tusk_rpc_client.get_workspace_config client in
-          Tusk_rpc_client.close client;
-          Sys.chdir original_cwd;
-          res
-      | None -> 
-          let client = Tusk_rpc_client.create () in
-          let res = Tusk_rpc_client.get_workspace_config client in
-          Tusk_rpc_client.close client;
-          res
+          match create_local_client ~root with
+          | Error e -> 
+              Sys.chdir original_cwd;
+              Error e
+          | Ok client ->
+              let res = Tusk_jsonrpc.Client.get_workspace_config client in
+              Tusk_jsonrpc.Client.close client;
+              Sys.chdir original_cwd;
+              res)
+      | None -> (
+          let cwd = Sys.getcwd () in
+          match create_local_client ~root:cwd with
+          | Error e -> Error e
+          | Ok client ->
+              let res = Tusk_jsonrpc.Client.get_workspace_config client in
+              Tusk_jsonrpc.Client.close client;
+              res)
     in
     match result with
     | Ok config ->

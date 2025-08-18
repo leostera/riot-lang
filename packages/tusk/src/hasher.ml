@@ -3,22 +3,16 @@
 type hash = string
 (** Hash type - internally a SHA-256 string *)
 
-(** Hash a string content using SHA-256 *)
-let hash_string s =
-  let cmd = Printf.sprintf "echo -n '%s' | shasum -a 256 | cut -d' ' -f1" s in
-  let output = System.run_process_lines cmd in
-  match output with
-  | [ hash ] -> String.trim hash
-  | _ -> failwith "Failed to compute SHA256"
+(** Hash a string content using MD5 (fast in-memory hashing) *)
+let hash_string s = Digest.string s |> Digest.to_hex
 
-(** Hash a file's content using SHA-256 *)
+(** Hash a file's content using MD5 (async file reading + fast in-memory
+    hashing) *)
 let hash_file filepath =
-  if System.file_exists filepath then
-    let cmd = Printf.sprintf "shasum -a 256 '%s' | cut -d' ' -f1" filepath in
-    let output = System.run_process_lines cmd in
-    match output with
-    | [ hash ] -> String.trim hash
-    | _ -> filepath ^ ":missing"
+  if Miniriot.File.exists ~path:filepath then
+    match Miniriot.File.read ~path:filepath with
+    | Ok content -> Digest.string content |> Digest.to_hex
+    | Error _ -> filepath ^ ":missing"
   else filepath ^ ":missing"
 
 (** Convert hash to string for storage/display *)

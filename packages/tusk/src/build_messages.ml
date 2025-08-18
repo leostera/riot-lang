@@ -19,14 +19,8 @@ type Message.t +=
       NextTask of {
       worker_pid : Pid.t;
     }
-  | TaskCompleted of {
-      package_name : string;
-      hash : Hasher.hash;
-    }
-  | TaskFailed of {
-      package_name : string;
-      error : string;
-    }
+  | TaskCompleted of { package_name : string; hash : Hasher.hash }
+  | TaskFailed of { package_name : string; error : string }
   | RequeueWithDependencies of {
       task : build_task;
       missing_deps : Build_node.t list;

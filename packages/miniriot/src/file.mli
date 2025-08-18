@@ -21,3 +21,12 @@ val write : path:string -> content:string -> (unit, error) result
 
 val remove : path:string -> (unit, error) result
 (** Remove a file *)
+
+val list_dir : path:string -> (string list, error) result
+(** List files and directories in a directory (excluding . and ..) *)
+
+val list_dir_all : path:string -> (string list, error) result
+(** List all files and directories in a directory (alias for list_dir) *)
+
+val is_directory : path:string -> bool
+(** Check if a path is a directory *)

@@ -1,112 +1,63 @@
 (** JSON-RPC 2.0 Server Implementation *)
 
-type handler = (Common.response -> unit) -> Common.params -> unit
-
-type config = {
-  methods : (string, handler) Hashtbl.t;
-  on_notification : (string -> Common.params -> unit) option;
-  on_error : (string -> unit) option;
+type ('req, 'res) handler = { 
+  method_: string; 
+  fn: ('res -> unit) -> 'req -> unit 
 }
 
-let create_config () =
-  { methods = Hashtbl.create 32; on_notification = None; on_error = None }
+type ('request, 'response) t = {
+  protocol_mod : (module Common.ApplicationProtocol with type request = 'request and type response = 'response);
+  handlers : ('request, 'response) handler list;
+}
 
-let create ~methods =
-  let config = create_config () in
-  List.iter
-    (fun (name, handler) -> Hashtbl.replace config.methods name handler)
-    methods;
-  config
+let create ~protocol:protocol_mod ~methods:handlers =
+  { protocol_mod; handlers }
 
-let register_method config method_name handler =
-  Hashtbl.replace config.methods method_name handler
-
-let set_notification_handler config handler =
-  { config with on_notification = Some handler }
-
-let handle_request config reply (req : Common.request) =
-  (* Check JSON-RPC version *)
-  if req.jsonrpc <> "2.0" then
-    match req.id with
-    | Some id ->
-        reply
-          (Common.make_response
-             ~error:
-               (Common.make_error ~code:Common.InvalidRequest
-                  ~message:"Invalid JSON-RPC version" ())
-             ~id ())
-    | None -> () (* Notification with wrong version - ignore *)
-  else
-    (* Check if it's a notification *)
-    match req.id with
-    | None -> (
-        (* Handle notification - no response *)
-        match config.on_notification with
-        | Some handler -> handler req.method_ req.params
-        | None -> ())
-    | Some id -> (
-        (* Handle regular request *)
-        match Hashtbl.find_opt config.methods req.method_ with
-        | None ->
-            (* Method not found *)
-            reply
-              (Common.make_response
-                 ~error:
-                   (Common.make_error ~code:Common.MethodNotFound
-                      ~message:
-                        (Printf.sprintf "Method not found: %s" req.method_)
-                      ())
-                 ~id ())
-        | Some handler ->
-            (* Execute handler with reply function that wraps responses with request id *)
-            let wrapped_reply response =
-              let updated_response = { response with Common.id } in
-              reply updated_response
-            in
-            handler wrapped_reply req.params)
-
-let handle_batch config reply requests =
-  List.iter (handle_request config reply) requests
-
-let handle_json config reply json =
-  (* Try to parse as single request first *)
-  match Common.request_of_json json with
-  | Ok req -> handle_request config reply req
-  | Error _ -> (
-      (* Try as batch request *)
-      match json with
-      | Json.Array items ->
-          List.iter
-            (fun item ->
-              match Common.request_of_json item with
-              | Ok req -> handle_request config reply req
-              | Error _ ->
-                  (* Invalid request in batch *)
-                  reply
-                    (Common.make_response
-                       ~error:
-                         (Common.make_error ~code:Common.InvalidRequest
-                            ~message:"Invalid request in batch" ())
-                       ~id:Common.Null ()))
-            items
-      | _ ->
-          (* Invalid JSON-RPC *)
-          reply
-            (Common.make_response
-               ~error:
-                 (Common.make_error ~code:Common.InvalidRequest
-                    ~message:"Invalid JSON-RPC request" ())
-               ~id:Common.Null ()))
-
-let handle_message config reply str =
-  match Json.of_string str with
-  | Ok json -> handle_json config reply json
+let handle_message (type req res) (server : (req, res) t) (reply : string -> unit) (message : string) =
+  let module P = (val server.protocol_mod : Common.ApplicationProtocol with type request = req and type response = res) in
+  
+  (* Parse the incoming message *)
+  match Json.of_string message with
   | Error e ->
-      (* JSON parse error *)
-      reply
-        (Common.make_response
-           ~error:
-             (Common.make_error ~code:Common.ParseError
-                ~message:(Printf.sprintf "JSON parse error: %s" e)
-                ())
-           ~id:Common.Null ())
+      (* Parse error - can't send typed response, just log/ignore *)
+      ()
+  | Ok json -> (
+      match Common.request_of_json json with
+      | Error e ->
+          (* Invalid request - can't send typed response, just log/ignore *)
+          ()
+      | Ok request ->
+          (* Find handler for method *)
+          match List.find_opt (fun h -> h.method_ = request.method_) server.handlers with
+          | None ->
+              (* Method not found - can't send typed response, just log/ignore *)
+              ()
+          | Some handler ->
+              (* Convert params to typed request *)
+              (match P.request_of_params request.params with
+              | Error _err ->
+                  (* Invalid params - can't send typed response, just log/ignore *)
+                  ()
+              | Ok typed_request ->
+                  (* Execute handler with typed request *)
+                  if Common.is_notification request then
+                    (* Notification - no response expected *)
+                    handler.fn (fun _ -> ()) typed_request
+                  else
+                    (* Regular request - response expected *)
+                    let typed_reply res =
+                      (* Convert typed response to JSON *)
+                      let response_json = P.response_to_json res in
+                      (* Wrap in JSON-RPC response *)
+                      let id = Option.value request.id ~default:Common.Null in
+                      let json_response = 
+                        Json.obj [
+                          ("jsonrpc", Json.string Common.version);
+                          ("result", response_json);
+                          ("id", Common.id_to_json id)
+                        ] in
+                      (* Convert to string and send *)
+                      reply (Json.to_string json_response)
+                    in
+                    handler.fn typed_reply typed_request)
+  )

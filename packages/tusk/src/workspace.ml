@@ -70,11 +70,8 @@ let scan ~root =
       Printf.eprintf "Error: No tusk.toml found in %s\n" root;
       { root; target_dir_root = Filename.concat root "target"; packages = [] }
   | Some workspace_toml ->
-      Printf.printf "Found workspace at: %s\n" workspace_toml;
-
       (* Parse workspace members *)
       let members = parse_workspace_toml workspace_toml in
-      Printf.printf "Workspace members: %s\n" (String.concat ", " members);
 
       (* Scan each member package *)
       let packages =
@@ -88,8 +85,6 @@ let scan ~root =
                 None
             | Some package_toml ->
                 let name, deps = parse_package_toml package_toml in
-                Printf.printf "  Package %s: deps=[%s]\n" name
-                  (String.concat ", " deps);
                 Some
                   {
                     name;

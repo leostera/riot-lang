@@ -61,8 +61,9 @@ type log_event =
   (* Server events *)
   | ServerStarted of { pid : string }
   | ServerScanning of { root : string }
-  | ServerReady of { packages : int; toolchain : string }
+  | ServerRestarted of { packages : int; toolchain : string }
   | ServerShutdown
+  | WorkspaceEmpty (* No packages found in workspace *)
   (* Build queue events *)
   | QueuePackage of { package : string; queue_type : [ `Ready | `Waiting ] }
   | QueueStats of { ready : int; waiting : int; busy : int }
@@ -89,24 +90,15 @@ type log_event =
       tool : string;
       args : string; (* JSON string *)
     }
-  (* Generic messages - only for legacy/transition *)
-  | Info of string
-  | Debug of string
-  | Warn of string
-  | Error of string
+
+(** Public message types for external handlers *)
+type Message.t += Event of session_id option * log_event
 
 val init : unit -> Pid.t
 (** Initialize the logger process Must be called once at server startup *)
 
 val log : ?sid:session_id -> log_event -> unit
 (** Main logging function *)
-
-val info : ?sid:session_id -> string -> unit
-(** Convenience logging functions *)
-
-val debug : ?sid:session_id -> string -> unit
-val warn : ?sid:session_id -> string -> unit
-val error : ?sid:session_id -> string -> unit
 
 val build_started :
   ?sid:session_id ->
@@ -142,14 +134,21 @@ val worker_pool_started : ?sid:session_id -> workers:int -> unit
 (** Log worker events *)
 
 val worker_started : ?sid:session_id -> worker_id:Worker_id.t -> unit
-val worker_assigned : ?sid:session_id -> worker_id:Worker_id.t -> package:string -> unit
+
+val worker_assigned :
+  ?sid:session_id -> worker_id:Worker_id.t -> package:string -> unit
+
 val worker_idle : ?sid:session_id -> worker_id:Worker_id.t -> unit
 
 val server_started : ?sid:session_id -> pid:string -> unit
 (** Log server events *)
 
 val server_scanning : ?sid:session_id -> root:string -> unit
-val server_ready : ?sid:session_id -> packages:int -> toolchain:string -> unit
+
+val server_restarted :
+  ?sid:session_id -> packages:int -> toolchain:string -> unit
+
+val workspace_empty : ?sid:session_id -> unit -> unit
 val server_shutdown : ?sid:session_id -> unit -> unit
 
 val queue_package :
@@ -191,9 +190,10 @@ val get_session_logs : sid:session_id -> format:format -> string
 val event_to_string : log_event -> string
 val format_event : format -> log_event -> string
 
-(** Structured event processing functions *)
 val get_timestamp_ms : unit -> int
+(** Structured event processing functions *)
+
 val format_timestamp : int -> string
-val event_name : log_event -> string  
+val event_name : log_event -> string
 val event_level : log_event -> level
 val event_message : log_event -> string

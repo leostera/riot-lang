@@ -35,10 +35,7 @@ type response =
   | BuildGraph of build_graph_response
   | WorkspaceConfig of workspace_config
   | BuildStarted of { session_id : Session_id.t }
-  | BuildEvent of { 
-      session_id : Session_id.t; 
-      log_event : Log.log_event;
-    }
+  | BuildEvent of { session_id : Session_id.t; log_event : Log.log_event }
   | Error of string
   | Success
 

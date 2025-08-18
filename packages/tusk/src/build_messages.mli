@@ -21,15 +21,9 @@ type Message.t +=
         (** Build specific package *)
   | NextTask of { worker_pid : Pid.t }
         (** Worker requests next task from server *)
-  | TaskCompleted of {
-      package_name : string;
-      hash : Hasher.hash;
-    }
+  | TaskCompleted of { package_name : string; hash : Hasher.hash }
         (** Worker reports successful task completion *)
-  | TaskFailed of {
-      package_name : string;
-      error : string;
-    }
+  | TaskFailed of { package_name : string; error : string }
         (** Worker reports task failure *)
   | RequeueWithDependencies of {
       task : build_task;
