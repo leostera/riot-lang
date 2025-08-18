@@ -167,8 +167,8 @@ module type ApplicationProtocol = sig
   val request_to_params : request -> prerequest
   (** Convert typed request to method name and parameters *)
   
-  val request_of_params : params -> (request, Json.t) result
-  (** Parse parameters into typed request, returns error as Json.t on failure *)
+  val request_of_params : string -> params -> (request, Json.t) result
+  (** Parse parameters into typed request for the given method name, returns error as Json.t on failure *)
 end
 
 
