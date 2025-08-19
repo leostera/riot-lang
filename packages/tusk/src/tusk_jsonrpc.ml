@@ -956,10 +956,32 @@ module Client = struct
                       Ok (BuildFinished (Ok ()))
                   | Ok { result = Ok (Rpc.BuildFailed { error; _ }); _ } ->
                       Ok (BuildFinished (Error error))
+                  | Ok { result = Ok (Rpc.Error msg); _ } ->
+                      (* Got a general error response *)
+                      Printf.eprintf "[CLIENT] Got Error response: %s\n" msg;
+                      flush stderr;
+                      Error (Printf.sprintf "Server error: %s" msg)
                   | Ok { result = Error err; _ } ->
                       Ok (BuildFinished (Error err.message))
                   | Error e -> Error (Printf.sprintf "Failed to receive event: %s" e)
-                  | _ -> Error "Unexpected response type"
+                  | Ok resp ->
+                      (* Debug: print what response type we got *)
+                      let resp_type = match resp.result with
+                        | Ok (Rpc.Pong) -> "Pong"
+                        | Ok (Rpc.BuildGraph _) -> "BuildGraph"
+                        | Ok (Rpc.WorkspaceConfig _) -> "WorkspaceConfig"
+                        | Ok (Rpc.BuildStarted _) -> "BuildStarted"
+                        | Ok (Rpc.BuildEvent _) -> "BuildEvent"
+                        | Ok (Rpc.BuildComplete _) -> "BuildComplete"
+                        | Ok (Rpc.BuildFailed _) -> "BuildFailed"
+                        | Ok (Rpc.ShutdownAck) -> "ShutdownAck"
+                        | Ok (Rpc.RestartAck) -> "RestartAck"
+                        | Ok (Rpc.Error _) -> "Error"
+                        | Error e -> Printf.sprintf "JsonRpcError(%s)" e.message
+                      in
+                      Printf.eprintf "[CLIENT] Unexpected response in receive_events: %s\n" resp_type;
+                      flush stderr;
+                      Error "Unexpected response type"
                 in
                 receive_events ()
             | Ok (Rpc.BuildComplete stats) ->

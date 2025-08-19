@@ -559,6 +559,18 @@ let handle_client_request state client_pid request =
         build_start_time = Some start_time }
   | Rpc.BuildPackage package ->
       (* Start a build package request *)
+      (* First scan workspace if needed *)
+      let state = 
+        if state.workspace = None then
+          handle_scan_workspace state None
+        else state
+      in
+      (* Filter graph for the specific package *)
+      let filtered_graph =
+        match state.build_graph with
+        | Some graph -> Some (Build_graph.filter_for_package graph package)
+        | None -> None
+      in
       let session_id = Session_id.make () in
       let start_time = System.gettimeofday () in
       send client_pid (ServerResponse (Rpc.BuildStarted { session_id }));
@@ -566,7 +578,8 @@ let handle_client_request state client_pid request =
       { state with 
         client_pid = Some client_pid; 
         session_id = Some session_id;
-        build_start_time = Some start_time }
+        build_start_time = Some start_time;
+        active_build_graph = filtered_graph }
   | Rpc.Restart ->
       send client_pid (ServerResponse Rpc.RestartAck);
       (* Send restart message to self to handle after responding *)
@@ -697,6 +710,7 @@ let handle_client_request state client_pid request =
           send client_pid
             (ServerResponse (Rpc.Error "No workspace loaded"));
           state) *)
+  (* Duplicate BuildPackage handler - already handled above
   | Rpc.BuildPackage package -> (
       (* For RPC build, we need to scan workspace first if not done *)
       let new_state =
@@ -764,7 +778,7 @@ let handle_client_request state client_pid request =
           (* No build graph, need to build *)
           let new_state = { new_state with client_pid = Some client_pid } in
           send (self ()) (BuildPackage { package_name = package; client_pid });
-          new_state)
+          new_state) *)
   | Rpc.BuildAll -> (
       (* For RPC build, we need to scan workspace first if not done *)
       let new_state =
