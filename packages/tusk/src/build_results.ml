@@ -79,7 +79,7 @@ let reset_failed_packages t =
 
 (** Check if source files are newer than build outputs *)
 let sources_newer_than_outputs workspace pkg_name =
-  let root = workspace.Workspace.root in
+  let root = Std.Path.to_string workspace.Workspace.root in
   let pkg_dir = Filename.concat root ("packages/" ^ pkg_name) in
   let src_dir = Filename.concat pkg_dir "src" in
   let target_dir =
@@ -114,7 +114,7 @@ let sources_newer_than_outputs workspace pkg_name =
 
 (** Check if build outputs exist for a package *)
 let build_outputs_exist workspace pkg_name =
-  let root = workspace.Workspace.root in
+  let root = Std.Path.to_string workspace.Workspace.root in
   let target_dir = Filename.concat root "target/debug/out/packages" in
   let pkg_target_dir = Filename.concat target_dir pkg_name in
   let cma_file = Filename.concat pkg_target_dir (pkg_name ^ ".cma") in

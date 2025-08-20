@@ -5,7 +5,7 @@ open Build_messages
 
 (** Calculate target directory for a package (same logic as Sandbox.create) *)
 let get_target_dir workspace node =
-  let root = workspace.Workspace.root in
+  let root = Std.Path.to_string workspace.Workspace.root in
   let target_dir_root = Filename.concat root "target" in
   let debug_dir = Filename.concat target_dir_root "debug" in
   let out_dir = Filename.concat debug_dir "out" in
@@ -109,14 +109,17 @@ let build_package_with_sandbox server_pid build_task =
           in
 
           (* Run actions in sandbox with store *)
-          let success, msg =
+          let result =
             Sandbox.run_actions ~sandbox ~blueprint ~store ~session_id
           in
 
           (* Clean up sandbox *)
           Sandbox.cleanup sandbox;
 
-          if success then Success msg else Failed msg)
+          match result with
+          | Sandbox.Success msg -> Success msg
+          | Sandbox.Failed msg -> Failed msg
+          | Sandbox.Cached msg -> Cached msg)
   with exn ->
     let error_msg =
       Printf.sprintf "Sandbox build failed: %s" (Printexc.to_string exn)
@@ -127,7 +130,11 @@ let build_package_with_sandbox server_pid build_task =
 
 (** Worker loop that processes build tasks *)
 let rec worker_loop server_pid worker_id =
-  (* Workers are pre-added to idle queue, so just wait for work *)
+  (* Request work from the pool *)
+  Printf.printf "[Worker %s] Requesting work\n" (Worker_id.to_string worker_id);
+  flush stdout;
+  send server_pid (NextTask { worker_pid = self () });
+
   let rec wait_for_work () =
     let selector = function
       | Task build_task -> `select (`task build_task)

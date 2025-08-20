@@ -9,6 +9,6 @@ val list_installed_toolchains : unit -> string list
 val ocamlc_path : toolchain -> string
 val ocamldep_path : toolchain -> string
 val ocamlopt_path : toolchain -> string
-val ready_toolchains : Workspace.workspace -> toolchain
+val ready_toolchains : Workspace.t -> toolchain
 val toolchain_base_dir : string
 val validate_toolchain : toolchain -> bool

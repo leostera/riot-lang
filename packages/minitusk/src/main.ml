@@ -426,10 +426,8 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
         ignore (Unix.system cmd)))
     all_dep_names;
 
-  (* Build include paths for dependencies *)
-  let dep_includes =
-    String.concat " " (List.map (fun dep -> "-I .") all_dep_names)
-  in
+  (* Build include paths for dependencies - just need -I . once since all are in same sandbox *)
+  let dep_includes = "" in
 
   (* Get OCaml toolchain *)
   let home = Sys.getenv "HOME" in
@@ -639,6 +637,13 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
             | Unix.WSTOPPED n -> Printf.sprintf "stopped %d" n);
           exit 1)))
     outputs;
+
+  (* Also copy all .cmi files for multi-module packages (needed for module access) *)
+  let cmd =
+    Printf.sprintf "cp %s/*.cmi %s/ 2>/dev/null || true" sandbox_dir pkg_out_dir
+  in
+  Printf.printf "  $ %s\n%!" cmd;
+  ignore (Unix.system cmd);
 
   (* Also copy C object files for packages with C stubs *)
   if c_sources <> [] then

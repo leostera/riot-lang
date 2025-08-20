@@ -135,17 +135,7 @@ module TcpServer = struct
   type handler = req:string -> TcpStream.t -> unit
   (** Handler receives request string and stream for responses *)
 
-  type t = {
-    listener : TcpListener.t;
-    mutable accepting : bool;
-    handler : handler;
-  }
-
-  let create ?(reuse_addr = true) ?(reuse_port = false) ?(backlog = 128) addr
-      ~handler =
-    match TcpListener.bind ~reuse_addr ~reuse_port ~backlog addr with
-    | Error e -> Error e
-    | Ok listener -> Ok { listener; accepting = true; handler }
+  type t = { listener : TcpListener.t; handler : handler }
 
   let read_line stream =
     let buffer = Bytes.create 4096 in
@@ -165,7 +155,7 @@ module TcpServer = struct
     in
     loop ""
 
-  let rec listen t =
+  let rec accept_loop t =
     match TcpListener.accept t.listener with
     | Error e -> Error e
     | Ok (stream, _client_addr) ->
@@ -185,17 +175,16 @@ module TcpServer = struct
               in
               connection_loop ())
         in
-        listen t
+        accept_loop t
 
-  let send stream data =
-    let bytes = Bytes.of_string data in
-    match TcpStream.write stream bytes () with
-    | Ok _ -> Ok ()
-    | Error _ -> Error "Failed to send data"
-
-  let stop t =
-    t.accepting <- false;
-    TcpListener.close t.listener
+  let listen ?(reuse_addr = true) ?(reuse_port = false) ?(backlog = 128) addr
+      ~handler =
+    match TcpListener.bind ~reuse_addr ~reuse_port ~backlog addr with
+    | Error e -> Error e
+    | Ok listener ->
+        Fun.protect
+          ~finally:(fun () -> TcpListener.close listener)
+          (fun () -> accept_loop { listener; handler })
 end
 
 module TcpClient = struct

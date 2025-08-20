@@ -1,7 +1,7 @@
 (** Structured logging system for tusk - simplified version *)
 
 type session_id = Session_id.t
-type format = Human | Json | Quiet
+type format = Human | Json | Quiet | Cargo
 type level = Error | Warn | Info | Debug | Trace
 
 type build_error = {
@@ -308,6 +308,67 @@ let event_to_string = function
         (String.sub hash 0 (min 8 (String.length hash)))
   | _ -> "" (* Fallback for any remaining unimplemented events *)
 
+(** ANSI color codes *)
+let green = "\027[32m"
+
+let bold_green = "\027[1;32m"
+let red = "\027[31m"
+let bold_red = "\027[1;31m"
+let reset = "\027[0m"
+
+(** Convert log event to Cargo-style string *)
+let event_to_cargo_string = function
+  | BuildStarted { packages; total_modules; _ } ->
+      "" (* No output for build start in Cargo style *)
+  | BuildComplete { duration_ms; succeeded; failed } ->
+      let status = if failed = [] then "Finished" else "Failed" in
+      let color = if failed = [] then bold_green else bold_red in
+      let pkg_count = List.length succeeded + List.length failed in
+      Printf.sprintf "    %s%s%s %d package%s in %.2fs" color status reset
+        pkg_count
+        (if pkg_count = 1 then "" else "s")
+        (float_of_int duration_ms /. 1000.)
+  | PackageStarted { package } ->
+      "" (* Don't show here - will be shown by CacheMiss or CacheHit *)
+  | PackageComplete res when res.success && res.cache_hits > 0 ->
+      (* Show nothing for cached packages - already shown as CacheHit *)
+      ""
+  | PackageComplete res when res.success ->
+      (* Show nothing for successful compilation *)
+      ""
+  | PackageComplete res ->
+      (* Only show failures *)
+      Printf.sprintf "      %sFailed%s %s" bold_red reset res.package
+  | CompileError error ->
+      Printf.sprintf "%serror%s: %s\n --> %s:%d:%s" bold_red reset error.message
+        error.file error.line
+        (match error.column with Some c -> string_of_int c | None -> "0")
+  | CacheHit { package; _ } ->
+      Printf.sprintf "   %sCompiling%s %s (cached)" bold_green reset package
+  | CacheMiss { package; _ } ->
+      Printf.sprintf "   %sCompiling%s %s" bold_green reset package
+  | CacheStored _ -> "" (* Don't show cache storage in Cargo style *)
+  | WorkerPoolStarted _ -> "" (* Don't show worker info in Cargo style *)
+  | WorkerStarted _ -> ""
+  | WorkerAssigned _ -> ""
+  | WorkerIdle _ -> ""
+  | ServerStarted _ -> "" (* Don't show server info in Cargo style *)
+  | ServerScanning _ -> ""
+  | ServerRestarted _ -> ""
+  | WorkspaceEmpty -> "    No packages found in workspace"
+  | ServerShutdown -> ""
+  | QueuePackage _ -> "" (* Don't show queue info in Cargo style *)
+  | QueueStats _ -> ""
+  | DependencyMissing _ -> "" (* Don't show dependency info in Cargo style *)
+  | DependencySatisfied _ -> ""
+  | CompilingInterface _ -> "" (* Too detailed for Cargo style *)
+  | CompilingImplementation _ -> ""
+  | LinkingLibrary _ -> ""
+  | LinkingExecutable _ -> ""
+  | ComputingHash _ -> ""
+  | HashComputed _ -> ""
+  | _ -> "" (* Fallback for any remaining unimplemented events *)
+
 (** Format event according to format type *)
 let format_event format event =
   match format with
@@ -317,6 +378,7 @@ let format_event format event =
          module"
   | Human -> event_to_string event
   | Quiet -> ""
+  | Cargo -> event_to_cargo_string event
 
 (** Handler types for different log outputs *)
 type handler =

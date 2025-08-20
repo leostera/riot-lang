@@ -4,11 +4,9 @@ open Miniriot
 
 (** Helper to create a tusk client connected to the local server *)
 let create_local_client () =
-  let workspace = Workspace_manager.get_workspace ~root:(System.getcwd ()) in
-  match Server_manager.daemon workspace with
-  | None -> Error "Server is not running for this project"
-  | Some daemon_info ->
-      Tusk_jsonrpc.Client.create ~host:"127.0.0.1" ~port:daemon_info.port
+  (* TODO: Implement proper daemon discovery *)
+  (* For now, try a default port *)
+  Tusk_jsonrpc.Client.create ~host:"127.0.0.1" ~port:9876
 
 (** Logging *)
 let log_file = ref None
@@ -190,67 +188,69 @@ let execute_tool name arguments =
         | _ -> Tusk_jsonrpc.Client.BuildAll
       in
       match create_local_client () with
-      | Error e -> [ Mcp.Text (Printf.sprintf "Failed to connect to server: %s" e) ]
-      | Ok client ->
-      match
-        Tusk_jsonrpc.Client.build_streaming client request_converted callback
-      with
-      | Ok (Tusk_jsonrpc.Client.BuildFinished (Ok ())) ->
-          (* Build succeeded - return logs *)
-          let logs = List.rev !logs in
-          let sid_str =
-            match !session_id with
-            | None -> "unknown"
-            | Some sid -> Session_id.to_string sid
-          in
-          log
-            (Printf.sprintf "Build succeeded - session: %s, log count: %d"
-               sid_str (List.length logs));
-          let log_text = String.concat "\n" logs in
-          Tusk_jsonrpc.Client.close client;
-          if log_text = "" then
-            [
-              Mcp.Text
-                (Printf.sprintf "Build completed successfully (session: %s)"
-                   sid_str);
-            ]
-          else
-            [
-              Mcp.Text
-                (Printf.sprintf "Build completed (session: %s):\n%s" sid_str
-                   log_text);
-            ]
-      | Ok (Tusk_jsonrpc.Client.BuildFinished (Error msg)) ->
-          (* Build failed - return logs and error *)
-          let logs = List.rev !logs in
-          let sid_str =
-            match !session_id with
-            | None -> "unknown"
-            | Some sid -> Session_id.to_string sid
-          in
-          log
-            (Printf.sprintf
-               "Build failed - session: %s, error: %s, log count: %d" sid_str
-               msg (List.length logs));
-          let log_text = String.concat "\n" logs in
-          Tusk_jsonrpc.Client.close client;
-          [
-            Mcp.Text
-              (Printf.sprintf "Build failed (session: %s): %s\n%s" sid_str msg
-                 log_text);
-          ]
-      | Ok (Tusk_jsonrpc.Client.BuildStarted _) ->
-          (* Unexpected - this should be handled by callback *)
-          Tusk_jsonrpc.Client.close client;
-          [ Mcp.Text "Build started unexpectedly" ]
-      | Ok (Tusk_jsonrpc.Client.BuildEvent _) ->
-          (* Unexpected - this should be handled by callback *)
-          Tusk_jsonrpc.Client.close client;
-          [ Mcp.Text "Build event received unexpectedly" ]
       | Error e ->
-          log (Printf.sprintf "Build error: %s" e);
-          Tusk_jsonrpc.Client.close client;
-          [ Mcp.Text (Printf.sprintf "Build failed: %s" e) ])
+          [ Mcp.Text (Printf.sprintf "Failed to connect to server: %s" e) ]
+      | Ok client -> (
+          match
+            Tusk_jsonrpc.Client.build_streaming client request_converted
+              callback
+          with
+          | Ok (Tusk_jsonrpc.Client.BuildFinished (Ok ())) ->
+              (* Build succeeded - return logs *)
+              let logs = List.rev !logs in
+              let sid_str =
+                match !session_id with
+                | None -> "unknown"
+                | Some sid -> Session_id.to_string sid
+              in
+              log
+                (Printf.sprintf "Build succeeded - session: %s, log count: %d"
+                   sid_str (List.length logs));
+              let log_text = String.concat "\n" logs in
+              Tusk_jsonrpc.Client.close client;
+              if log_text = "" then
+                [
+                  Mcp.Text
+                    (Printf.sprintf "Build completed successfully (session: %s)"
+                       sid_str);
+                ]
+              else
+                [
+                  Mcp.Text
+                    (Printf.sprintf "Build completed (session: %s):\n%s" sid_str
+                       log_text);
+                ]
+          | Ok (Tusk_jsonrpc.Client.BuildFinished (Error msg)) ->
+              (* Build failed - return logs and error *)
+              let logs = List.rev !logs in
+              let sid_str =
+                match !session_id with
+                | None -> "unknown"
+                | Some sid -> Session_id.to_string sid
+              in
+              log
+                (Printf.sprintf
+                   "Build failed - session: %s, error: %s, log count: %d"
+                   sid_str msg (List.length logs));
+              let log_text = String.concat "\n" logs in
+              Tusk_jsonrpc.Client.close client;
+              [
+                Mcp.Text
+                  (Printf.sprintf "Build failed (session: %s): %s\n%s" sid_str
+                     msg log_text);
+              ]
+          | Ok (Tusk_jsonrpc.Client.BuildStarted _) ->
+              (* Unexpected - this should be handled by callback *)
+              Tusk_jsonrpc.Client.close client;
+              [ Mcp.Text "Build started unexpectedly" ]
+          | Ok (Tusk_jsonrpc.Client.BuildEvent _) ->
+              (* Unexpected - this should be handled by callback *)
+              Tusk_jsonrpc.Client.close client;
+              [ Mcp.Text "Build event received unexpectedly" ]
+          | Error e ->
+              log (Printf.sprintf "Build error: %s" e);
+              Tusk_jsonrpc.Client.close client;
+              [ Mcp.Text (Printf.sprintf "Build failed: %s" e) ]))
   | "clean" -> (
       (* Run clean command *)
       let result = System.system "rm -rf ./target" in
@@ -259,52 +259,55 @@ let execute_tool name arguments =
       | _ -> [ Mcp.Text "Failed to clean build artifacts" ])
   | "workspace_info" -> (
       match create_local_client () with
-      | Error e -> [ Mcp.Text (Printf.sprintf "Failed to connect to server: %s" e) ]
-      | Ok client ->
-      match Tusk_jsonrpc.Client.get_workspace_config client with
-      | Ok config ->
-          let json =
-            Json.Object
-              [
-                ("workspace_root", Json.String config.workspace_root);
-                ("toolchain", Json.String config.toolchain);
-                ( "packages",
-                  Json.Array (List.map (fun p -> Json.String p) config.packages)
-                );
-              ]
-          in
-          Tusk_jsonrpc.Client.close client;
-          [ Mcp.Text (Json.to_string json) ]
       | Error e ->
-          Tusk_jsonrpc.Client.close client;
-          [ Mcp.Text (Printf.sprintf "Failed to get workspace info: %s" e) ])
-  | "build_graph" -> (
-      match create_local_client () with
-      | Error e -> [ Mcp.Text (Printf.sprintf "Failed to connect to server: %s" e) ]
-      | Ok client ->
-      match Tusk_jsonrpc.Client.get_build_graph client with
-      | Ok graph ->
-          let nodes_json =
-            List.map
-              (fun node ->
+          [ Mcp.Text (Printf.sprintf "Failed to connect to server: %s" e) ]
+      | Ok client -> (
+          match Tusk_jsonrpc.Client.get_workspace_config client with
+          | Ok config ->
+              let json =
                 Json.Object
                   [
-                    ("package", Json.String node.Rpc.package_name);
-                    ("src_dir", Json.String node.Rpc.src_dir);
-                    ("out_dir", Json.String node.Rpc.out_dir);
-                    ("status", Json.String node.Rpc.status);
-                    ( "deps",
+                    ("workspace_root", Json.String config.workspace_root);
+                    ("toolchain", Json.String config.toolchain);
+                    ( "packages",
                       Json.Array
-                        (List.map (fun d -> Json.String d) node.Rpc.deps) );
-                  ])
-              graph.nodes
-          in
-          let json = Json.Object [ ("nodes", Json.Array nodes_json) ] in
-          Tusk_jsonrpc.Client.close client;
-          [ Mcp.Text (Json.to_string json) ]
+                        (List.map (fun p -> Json.String p) config.packages) );
+                  ]
+              in
+              Tusk_jsonrpc.Client.close client;
+              [ Mcp.Text (Json.to_string json) ]
+          | Error e ->
+              Tusk_jsonrpc.Client.close client;
+              [ Mcp.Text (Printf.sprintf "Failed to get workspace info: %s" e) ]
+          ))
+  | "build_graph" -> (
+      match create_local_client () with
       | Error e ->
-          Tusk_jsonrpc.Client.close client;
-          [ Mcp.Text (Printf.sprintf "Failed to get build graph: %s" e) ])
+          [ Mcp.Text (Printf.sprintf "Failed to connect to server: %s" e) ]
+      | Ok client -> (
+          match Tusk_jsonrpc.Client.get_build_graph client with
+          | Ok graph ->
+              let nodes_json =
+                List.map
+                  (fun node ->
+                    Json.Object
+                      [
+                        ("package", Json.String node.Rpc.package_name);
+                        ("src_dir", Json.String node.Rpc.src_dir);
+                        ("out_dir", Json.String node.Rpc.out_dir);
+                        ("status", Json.String node.Rpc.status);
+                        ( "deps",
+                          Json.Array
+                            (List.map (fun d -> Json.String d) node.Rpc.deps) );
+                      ])
+                  graph.nodes
+              in
+              let json = Json.Object [ ("nodes", Json.Array nodes_json) ] in
+              Tusk_jsonrpc.Client.close client;
+              [ Mcp.Text (Json.to_string json) ]
+          | Error e ->
+              Tusk_jsonrpc.Client.close client;
+              [ Mcp.Text (Printf.sprintf "Failed to get build graph: %s" e) ]))
   | "run" ->
       let binary =
         match arguments with
@@ -328,69 +331,81 @@ let read_resource uri =
   match uri with
   | "workspace://info" -> (
       match create_local_client () with
-      | Error e -> 
-          [ Mcp.TextContent { text = Printf.sprintf "Failed to connect to server: %s" e; mime_type = None } ]
-      | Ok client ->
-      match Tusk_jsonrpc.Client.get_workspace_config client with
-      | Ok config ->
-          let json =
-            Json.Object
-              [
-                ("workspace_root", Json.String config.workspace_root);
-                ("toolchain", Json.String config.toolchain);
-                ( "packages",
-                  Json.Array (List.map (fun p -> Json.String p) config.packages)
-                );
-              ]
-          in
-          Tusk_jsonrpc.Client.close client;
+      | Error e ->
           [
             Mcp.TextContent
               {
-                text = Json.to_string json;
-                mime_type = Some "application/json";
+                text = Printf.sprintf "Failed to connect to server: %s" e;
+                mime_type = None;
               };
           ]
-      | _ ->
-          Tusk_jsonrpc.Client.close client;
-          [
-            Mcp.TextContent
-              { text = "Failed to get workspace info"; mime_type = None };
-          ])
-  | "build://graph" -> (
-      match create_local_client () with
-      | Error e -> 
-          [ Mcp.TextContent { text = Printf.sprintf "Failed to connect to server: %s" e; mime_type = None } ]
-      | Ok client ->
-      match Tusk_jsonrpc.Client.get_build_graph client with
-      | Ok graph ->
-          let nodes_json =
-            List.map
-              (fun node ->
+      | Ok client -> (
+          match Tusk_jsonrpc.Client.get_workspace_config client with
+          | Ok config ->
+              let json =
                 Json.Object
                   [
-                    ("package", Json.String node.Rpc.package_name);
-                    ( "deps",
+                    ("workspace_root", Json.String config.workspace_root);
+                    ("toolchain", Json.String config.toolchain);
+                    ( "packages",
                       Json.Array
-                        (List.map (fun d -> Json.String d) node.Rpc.deps) );
-                  ])
-              graph.nodes
-          in
-          let json = Json.Object [ ("nodes", Json.Array nodes_json) ] in
-          Tusk_jsonrpc.Client.close client;
+                        (List.map (fun p -> Json.String p) config.packages) );
+                  ]
+              in
+              Tusk_jsonrpc.Client.close client;
+              [
+                Mcp.TextContent
+                  {
+                    text = Json.to_string json;
+                    mime_type = Some "application/json";
+                  };
+              ]
+          | _ ->
+              Tusk_jsonrpc.Client.close client;
+              [
+                Mcp.TextContent
+                  { text = "Failed to get workspace info"; mime_type = None };
+              ]))
+  | "build://graph" -> (
+      match create_local_client () with
+      | Error e ->
           [
             Mcp.TextContent
               {
-                text = Json.to_string json;
-                mime_type = Some "application/json";
+                text = Printf.sprintf "Failed to connect to server: %s" e;
+                mime_type = None;
               };
           ]
-      | _ ->
-          Tusk_jsonrpc.Client.close client;
-          [
-            Mcp.TextContent
-              { text = "Failed to get build graph"; mime_type = None };
-          ])
+      | Ok client -> (
+          match Tusk_jsonrpc.Client.get_build_graph client with
+          | Ok graph ->
+              let nodes_json =
+                List.map
+                  (fun node ->
+                    Json.Object
+                      [
+                        ("package", Json.String node.Rpc.package_name);
+                        ( "deps",
+                          Json.Array
+                            (List.map (fun d -> Json.String d) node.Rpc.deps) );
+                      ])
+                  graph.nodes
+              in
+              let json = Json.Object [ ("nodes", Json.Array nodes_json) ] in
+              Tusk_jsonrpc.Client.close client;
+              [
+                Mcp.TextContent
+                  {
+                    text = Json.to_string json;
+                    mime_type = Some "application/json";
+                  };
+              ]
+          | _ ->
+              Tusk_jsonrpc.Client.close client;
+              [
+                Mcp.TextContent
+                  { text = "Failed to get build graph"; mime_type = None };
+              ]))
   | "build://status" ->
       [
         Mcp.TextContent
@@ -615,9 +630,18 @@ let start () =
   let _ =
     try
       log "Checking if tusk server is running...";
-      ignore (Server_manager.ensure_running ());
-      log "Tusk server is running";
-      ()
+      let cwd_path = Std.Env.current_dir () |> Result.unwrap in
+      match Workspace_manager.scan cwd_path with
+      | Error _ ->
+          log "Could not find workspace";
+          Printf.eprintf "[MCP] Warning: Could not find workspace\n"
+      | Ok workspace -> (
+          match Server_manager.ensure_running ~workspace with
+          | Ok _ -> log "Tusk server is running"
+          | Error _ ->
+              log "Could not ensure tusk server is running";
+              Printf.eprintf
+                "[MCP] Warning: Could not ensure tusk server is running\n")
     with exn ->
       let msg =
         Printf.sprintf "Could not ensure tusk server is running: %s"

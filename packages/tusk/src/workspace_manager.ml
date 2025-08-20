@@ -1,7 +1,7 @@
 (** Workspace manager - caches workspace and avoids repeated scanning *)
 
 type cached_workspace = {
-  workspace : Workspace.workspace;
+  workspace : Workspace.t;
   root : string;
   last_scanned : float; (* Unix timestamp *)
 }
@@ -31,9 +31,19 @@ let get_workspace ~root =
       cached.workspace
   | _ ->
       (* Cache miss or expired - scan workspace *)
-      let workspace = Workspace.scan ~root in
+      let path = Std.Path.of_string root |> Std.Result.unwrap in
+      let workspace =
+        match Workspace.scan path with
+        | Ok ws -> ws
+        | Error _ -> failwith "Failed to scan workspace"
+      in
       workspace_cache :=
-        Some { workspace; root = workspace.root; last_scanned = Unix.time () };
+        Some
+          {
+            workspace;
+            root = Std.Path.to_string workspace.root;
+            last_scanned = Unix.time ();
+          };
       workspace
 
 (** Clear the workspace cache (useful for testing or when workspace changes) *)
@@ -42,3 +52,6 @@ let clear_cache () = workspace_cache := None
 (** Get the current cached workspace root, if any *)
 let get_cached_root () =
   match !workspace_cache with Some cached -> Some cached.root | None -> None
+
+(** Scan workspace from a given path *)
+let scan path = Workspace.scan path

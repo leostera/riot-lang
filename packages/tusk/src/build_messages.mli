@@ -7,31 +7,7 @@ open Miniriot
 
 type build_task = {
   node : Build_node.t;  (** Package to build *)
-  workspace : Workspace.workspace;  (** Workspace configuration *)
+  workspace : Workspace.t;  (** Workspace configuration *)
   session_id : Session_id.t option;  (** Build session ID for logging *)
 }
 (** Build task sent from server to worker *)
-
-(** Extend Miniriot's message type with build messages *)
-type Message.t +=
-  | ScanWorkspace of string option
-        (** Scan workspace, optionally filtering for a target package *)
-  | BuildAll of { client_pid : Pid.t }  (** Build all packages *)
-  | BuildPackage of { package_name : string; client_pid : Pid.t }
-        (** Build specific package *)
-  | NextTask of { worker_pid : Pid.t }
-        (** Worker requests next task from server *)
-  | TaskCompleted of { package_name : string; hash : Hasher.hash }
-        (** Worker reports successful task completion *)
-  | TaskFailed of { package_name : string; error : string }
-        (** Worker reports task failure *)
-  | RequeueWithDependencies of {
-      task : build_task;
-      missing_deps : Build_node.t list;
-    }
-        (** Requeue task with missing dependencies *)
-  | Task of build_task  (** Server assigns task to worker *)
-  | NoTask  (** Server indicates no tasks available *)
-  | Shutdown  (** Server requests worker shutdown *)
-  | BuildFinished of { successful : int; failed : int }
-        (** Server notifies CLI of build completion *)

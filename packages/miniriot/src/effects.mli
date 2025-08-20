@@ -12,7 +12,7 @@ val receive : selector:(Message.t -> [ `select of 'a | `skip ]) -> unit -> 'a
 val exit : unit -> Process.exit_reason
 (** Exit the current process normally *)
 
-val sleep : float -> unit
+val sleep : int -> unit
 (** Sleep for the specified duration (currently just yields) *)
 
 val syscall :

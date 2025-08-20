@@ -1,4 +1,5 @@
 (** Content-based hashing module for build artifacts *)
+(* FIXME: this module should be using Std.Crypto.* functions *)
 
 type hash = string
 (** Hash type - internally a SHA-256 string *)

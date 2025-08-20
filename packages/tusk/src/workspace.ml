@@ -1,18 +1,18 @@
 (** Workspace module - handles scanning and discovering packages in a workspace
 *)
 
+open Std
+
+type dependency = { name : string; version : string }
+
 type package = {
   name : string;
-  path : string;
-  relative_path : string; (* Path relative to workspace root *)
-  dependencies : string list;
+  path : Path.t;
+  relative_path : Path.t;
+  dependencies : dependency list;
 }
 
-type workspace = {
-  root : string;
-  target_dir_root : string;
-  packages : package list;
-}
+type t = { root : Path.t; target_dir_root : Path.t; packages : package list }
 
 (** Parse workspace members from a workspace TOML file *)
 let parse_workspace_toml toml_path =
@@ -64,11 +64,16 @@ let find_tusk_toml dir =
   if System.file_exists path then Some path else None
 
 (** Scan workspace starting from root directory *)
-let scan ~root =
+let scan_internal ~root =
   match find_tusk_toml root with
   | None ->
       Printf.eprintf "Error: No tusk.toml found in %s\n" root;
-      { root; target_dir_root = Filename.concat root "target"; packages = [] }
+      {
+        root = Path.of_string root |> Result.unwrap;
+        target_dir_root =
+          Path.of_string (Filename.concat root "target") |> Result.unwrap;
+        packages = [];
+      }
   | Some workspace_toml ->
       (* Parse workspace members *)
       let members = parse_workspace_toml workspace_toml in
@@ -88,14 +93,28 @@ let scan ~root =
                 Some
                   {
                     name;
-                    path = member_path;
-                    relative_path = member;
-                    dependencies = deps;
+                    path = Path.of_string member_path |> Result.unwrap;
+                    relative_path = Path.of_string member |> Result.unwrap;
+                    dependencies =
+                      List.map (fun d -> { name = d; version = "" }) deps;
                   })
           members
       in
 
-      { root; target_dir_root = Filename.concat root "target"; packages }
+      {
+        root = Path.of_string root |> Result.unwrap;
+        target_dir_root =
+          Path.of_string (Filename.concat root "target") |> Result.unwrap;
+        packages;
+      }
+
+(** Public interface functions *)
+let scan path =
+  let root_str = Path.to_string path in
+  try Ok (scan_internal ~root:root_str)
+  with _ -> Error Error.ScanWorkspaceError
+
+let load ~root = scan root
 
 (** Tests submodule *)
 module Tests = struct

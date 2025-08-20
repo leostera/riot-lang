@@ -4,14 +4,7 @@ open Miniriot
 open Build_messages
 
 (** Helper to create a tusk client connected to the local server *)
-let create_local_client () =
-  let workspace = Workspace_manager.get_workspace ~root:(System.getcwd ()) in
-  match Server_manager.daemon workspace with
-  | None -> failwith "Server is not running for this project. Run 'tusk server start' first."
-  | Some daemon_info ->
-      match Tusk_jsonrpc.Client.create ~host:"127.0.0.1" ~port:daemon_info.port with
-      | Ok client -> client
-      | Error e -> failwith (Printf.sprintf "Failed to connect to server: %s" e)
+let create_local_client () = ()
 
 let usage_msg =
   "tusk - OCaml build system\n\n\
@@ -95,64 +88,40 @@ let get_binary_path binary_name =
 
 (** Execute the build command *)
 let build_command package_opt =
-  (match package_opt with
-  | Some pkg -> Printf.printf "🔨 Building package %s...\n" pkg
-  | None ->
-      let timestamp = Unix.gettimeofday () in
-      let tm = Unix.localtime timestamp in
-      Printf.printf "[%02d:%02d:%02d.%03d] 🔨 Starting build...\n" tm.tm_hour
-        tm.tm_min tm.tm_sec
-        (int_of_float (timestamp *. 1000.) mod 1000));
+  (* Make sure we have a valid workspace *)
+  let cwd = Std.Env.cwd () |> Result.unwrap in
+  let workspace = Workspace_manager.scan cwd |> Result.unwrap in
 
   (* Ensure server is running *)
-  if not (Server_manager.ensure_running ()) then (
-    Printf.eprintf "❌ Failed to start server\n";
-    Process.Exception (Failure "Failed to start server"))
-  else
-    (* Use JSON-RPC client to send build request *)
-    let request =
-      match package_opt with
-      | Some pkg -> Tusk_jsonrpc.Client.BuildPackage pkg
-      | None -> Tusk_jsonrpc.Client.BuildAll
-    in
-    let client = create_local_client () in
-    let result =
-      Tusk_jsonrpc.Client.build_streaming client request (function
-        | Tusk_jsonrpc.Client.BuildStarted session_id ->
-            Printf.printf "📦 Build session: %s\n"
-              (Session_id.to_string session_id);
-            flush stdout
-        | Tusk_jsonrpc.Client.BuildEvent log_event ->
-            (* Format and display log events *)
-            let formatted = Log.event_to_string log_event in
-            Printf.printf "%s\n" formatted;
-            flush stdout
-        | Tusk_jsonrpc.Client.BuildFinished _ ->
-            (* This is handled below in the result match *)
-            ())
-    in
-    Tusk_jsonrpc.Client.close client;
+  let client = Server_manager.ensure_running () |> Result.unwrap in
 
-    (* Print final result *)
-    match result with
-    | Ok (Tusk_jsonrpc.Client.BuildFinished (Ok ())) ->
-        let timestamp = Unix.gettimeofday () in
-        let tm = Unix.localtime timestamp in
-        Printf.printf "[%02d:%02d:%02d.%03d] ✅ Build completed successfully\n"
-          tm.tm_hour tm.tm_min tm.tm_sec
-          (int_of_float (timestamp *. 1000.) mod 1000);
-        Process.Normal
-    | Ok (Tusk_jsonrpc.Client.BuildFinished (Error msg)) ->
-        Printf.printf "❌ Build failed: %s\n" msg;
-        Miniriot.shutdown ~status:1;
-        Process.Normal
-    | Error e ->
-        Printf.printf "❌ Build error: %s\n" e;
-        Miniriot.shutdown ~status:1;
-        Process.Normal
-    | _ ->
-        Printf.printf "❌ Unexpected response from server\n";
-        Process.Exception (Failure "Unexpected response")
+  let open Tusk_jsonrpc in
+  let request =
+    match package_opt with
+    | Some pkg -> Client.BuildPackage pkg
+    | None -> Client.BuildAll
+  in
+  let result =
+    Client.build_streaming client request (fun event ->
+        match event with
+        | Client.BuildStarted session_id -> ()
+        | Client.BuildEvent log_event ->
+            (* Format and display log events in Cargo style *)
+            let formatted = Log.format_event Log.Cargo log_event in
+            if formatted <> "" then (
+              Printf.printf "%s\n" formatted;
+              flush stdout)
+        | Client.BuildFinished _ -> ())
+    |> Result.unwrap
+  in
+  Client.close client;
+
+  (* Print final result *)
+  match result with
+  | Client.BuildFinished (Ok ()) -> Process.Normal
+  | Client.BuildFinished (Error msg) ->
+      Printf.eprintf "error: build failed: %s\n" msg;
+      shutdown ~status:1
 
 (** Execute a binary and handle its exit status *)
 let execute_binary binary_name binary_path =
@@ -183,8 +152,6 @@ let clean_command () =
 
 (** Build a package and wait for completion *)
 let build_package package_name =
-  Printf.printf "🔨 Building %s...\n" package_name;
-
   (* Ensure server is running *)
   if not (Server_manager.ensure_running ()) then false
   else
@@ -192,7 +159,19 @@ let build_package package_name =
     let client = create_local_client () in
     let result =
       Tusk_jsonrpc.Client.build_streaming client
-        (Tusk_jsonrpc.Client.BuildPackage package_name) (fun _ -> ())
+        (Tusk_jsonrpc.Client.BuildPackage package_name) (function
+        | Tusk_jsonrpc.Client.BuildStarted session_id ->
+            (* Don't print session ID in Cargo style *)
+            ()
+        | Tusk_jsonrpc.Client.BuildEvent log_event ->
+            (* Format and display log events in Cargo style *)
+            let formatted = Log.format_event Log.Cargo log_event in
+            if formatted <> "" then (
+              Printf.printf "%s\n" formatted;
+              flush stdout)
+        | Tusk_jsonrpc.Client.BuildFinished _ ->
+            (* This is handled below in the result match *)
+            ())
     in
     Tusk_jsonrpc.Client.close client;
     match result with
@@ -996,6 +975,8 @@ let install_command args =
 let main () =
   let args = System.argv () in
   let argc = Array.length args in
+  (* Initialize logger process first *)
+  let _logger_pid = Log.init () in
 
   if argc < 2 then (
     Printf.eprintf "Error: No command specified\n\n%s\n" usage_msg;

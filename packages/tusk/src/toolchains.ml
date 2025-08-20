@@ -407,7 +407,9 @@ let install_toolchain toolchain =
 let ready_toolchains workspace =
   (* Look for ocaml-toolchain.toml in workspace root *)
   let toolchain_file =
-    Filename.concat workspace.Workspace.root "ocaml-toolchain.toml"
+    Filename.concat
+      (Std.Path.to_string workspace.Workspace.root)
+      "ocaml-toolchain.toml"
   in
   let toolchain =
     if System.file_exists toolchain_file then

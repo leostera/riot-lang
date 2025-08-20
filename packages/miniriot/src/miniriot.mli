@@ -87,8 +87,8 @@ val receive :
 val exit : unit -> Process.exit_reason
 (** Exit normally *)
 
-val sleep : float -> unit
-(** Sleep (currently just yields) *)
+val sleep : int -> unit
+(** Sleep in milliseconds (currently just yields) *)
 
 val enable_trace : unit -> unit
 (** Enable debug tracing *)

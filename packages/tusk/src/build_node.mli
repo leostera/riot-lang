@@ -3,14 +3,35 @@
     Each node contains a package and its relationships to other packages in the
     build graph, along with content-based hashing for caching. *)
 
+type spec =
+  | Unplanned  (** A node that hasn't been planned yet *)
+  | Planned of {
+      hash : Hasher.hash;
+      outs : Path.t list;
+      blueprint : Actions.blueprint;
+    }  (** A node that has been through the planning stage *)
+
 type t = {
-  package : Workspace.package;  (** The package this node represents *)
-  toolchain : Toolchains.toolchain;  (** OCaml toolchain to use *)
-  mutable dependencies : t list;
-      (** Packages this node depends on (must be built first) *)
-  mutable dependents : t list;  (** Packages that depend on this node *)
-  mutable hash : Hasher.hash option;
-      (** Content-based hash for caching, computed on demand. [None] means the
-          hash hasn't been computed yet. *)
+  toolchain : Toolchains.toolchain;
+  package : Workspace.package;
+  srcs : Path.t list;
+  deps : t list;
+  mutable spec : spec;
 }
 (** A build node in the dependency graph *)
+
+val is_planned : t -> bool
+val is_unplanned : t -> bool
+val compare : t -> t -> int
+
+(** {1 Hash Computation} *)
+
+(** Result type for hash computation *)
+type hash_result =
+  | Planned of t
+  | MissingDependencies of { node : t; deps : t list }
+  | Error of string
+
+val compute_hash : t -> hash_result
+(** Force recomputation of hash for a node, ignoring any cached value. Returns
+    the newly computed hash. *)

@@ -1,15 +1,20 @@
 (** Sandbox - isolated build execution environment *)
 
+type build_result =
+  | Success of string  (** Build succeeded with message *)
+  | Failed of string  (** Build failed with error message *)
+  | Cached of string  (** Retrieved from cache with message *)
+
 type t = {
   root : string;
   sandbox_dir : string;
   target_dir : string;
   node : Build_node.t;
-  workspace : Workspace.workspace;
+  workspace : Workspace.t;
 }
 (** Sandbox type representing an isolated build environment *)
 
-val create : node:Build_node.t -> workspace:Workspace.workspace -> t
+val create : node:Build_node.t -> workspace:Workspace.t -> t
 (** Create a new sandbox for a build graph node *)
 
 val get_dependency_includes : t -> string list
@@ -27,7 +32,7 @@ val run_actions :
   blueprint:Actions.blueprint ->
   store:Store.t ->
   session_id:Log.session_id option ->
-  bool * string
+  build_result
 (** Run a list of actions in the sandbox *)
 
 val cleanup : t -> unit

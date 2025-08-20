@@ -211,7 +211,7 @@ let get_dependency_libs_and_includes toolchain pkg_dependencies =
 (** Generate build blueprint for a package *)
 let generate_blueprint workspace node dependencies all_packages toolchain ~hash
     () =
-  let root = workspace.Workspace.root in
+  let root = Std.Path.to_string workspace.Workspace.root in
   let pkg_name = node.Build_node.package.name in
   let pkg_path = node.Build_node.package.path in
 

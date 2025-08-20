@@ -61,7 +61,7 @@ type blueprint = {
 (** {1 Blueprint Generation} *)
 
 val generate_blueprint :
-  Workspace.workspace ->
+  Workspace.t ->
   Build_node.t ->
   dep_info list ->
   dep_info list ->
@@ -94,7 +94,7 @@ val generate_blueprint :
 val execute_action : action -> Toolchains.toolchain -> action_result * string
 (** Execute a single build action. Returns (result, output_message). *)
 
-val execute_blueprint : Workspace.workspace -> blueprint -> bool * string
+val execute_blueprint : Workspace.t -> blueprint -> bool * string
 (** Execute all actions in a blueprint. Returns (success, message) where success
     is true if all actions succeeded. *)
 

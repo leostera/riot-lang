@@ -1,11 +1,8 @@
 (** Workspace manager - caches workspace and avoids repeated scanning *)
 
-val get_workspace : root:string -> Workspace.workspace
-(** Get workspace for the given root directory. Uses cache when possible to
-    avoid repeated scanning. *)
+val get_workspace : root:string -> Workspace.t
+(** Get workspace, using cache when possible *)
 
-val clear_cache : unit -> unit
-(** Clear the workspace cache. Useful when workspace structure changes. *)
-
-val get_cached_root : unit -> string option
-(** Get the root directory of the currently cached workspace, if any. *)
+val scan : Std.Path.t -> (Workspace.t, Error.t) result
+(** Scans a directory and its parents until it finds a workspace root, then
+    loads it *)

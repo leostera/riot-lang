@@ -8,6 +8,7 @@ path = "src/main.ml"
 
 [dependencies]
 # Base dependencies first
+std = { path = "../std" }
 sexp = { path = "../sexp" }
 toml = { path = "../toml" }
 json = { path = "../json" }

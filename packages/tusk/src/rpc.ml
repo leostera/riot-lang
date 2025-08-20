@@ -42,8 +42,12 @@ type response =
   | WorkspaceConfig of workspace_config
   | BuildStarted of { session_id : Session_id.t }
   | BuildEvent of { session_id : Session_id.t; log_event : Log.log_event }
-  | BuildComplete of build_stats
-  | BuildFailed of { stats : build_stats; error : string }
+  | BuildComplete of { session_id : Session_id.t; stats : build_stats }
+  | BuildFailed of {
+      session_id : Session_id.t;
+      stats : build_stats;
+      error : string;
+    }
   | ShutdownAck
   | RestartAck
   | Error of string

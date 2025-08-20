@@ -6,7 +6,7 @@ type session_id = Session_id.t
 (** Unique session identifier *)
 
 (** Output format for log messages *)
-type format = Human | Json | Quiet
+type format = Human | Json | Quiet | Cargo
 
 (** Log severity levels *)
 type level = Error | Warn | Info | Debug | Trace

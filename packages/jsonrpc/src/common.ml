@@ -7,10 +7,7 @@ type params =
   | Named of (string * Json.t) list
   | NoParams
 
-type prerequest = {
-  method_ : string;
-  params : params;
-}
+type prerequest = { method_ : string; params : params }
 
 type request = {
   jsonrpc : string;
@@ -158,9 +155,11 @@ let request_of_json json =
       | _ -> Error "Invalid request: missing jsonrpc or method field")
   | _ -> Error "Request must be an object"
 
-(** Note: response_to_json removed - needs to be protocol-specific due to parameterized type *)
+(** Note: response_to_json removed - needs to be protocol-specific due to
+    parameterized type *)
 
-(** Note: response_of_json removed - needs to be protocol-specific due to parameterized type *)
+(** Note: response_of_json removed - needs to be protocol-specific due to
+    parameterized type *)
 
 (** Helper to make a request *)
 let request ~method_ ?params ?id () =
@@ -172,18 +171,13 @@ let request ~method_ ?params ?id () =
   }
 
 (** Create a successful response with result *)
-let result res ~id = 
-  { jsonrpc = version; result = Ok res; id }
+let result res ~id = { jsonrpc = version; result = Ok res; id }
 
 (** Create an error response *)
-let error_response ~error ~id = 
-  { jsonrpc = version; result = Error error; id }
+let error_response ~error ~id = { jsonrpc = version; result = Error error; id }
 
-let ok ?(id = Null) res = 
-  { jsonrpc = version; result = Ok res; id }
-
-let error ?(id = Null) err = 
-  { jsonrpc = version; result = Error err; id }
+let ok ?(id = Null) res = { jsonrpc = version; result = Ok res; id }
+let error ?(id = Null) err = { jsonrpc = version; result = Error err; id }
 
 (** Helper to make an error object *)
 let make_error ~code ~message ?data () = { code; message; data }
@@ -198,10 +192,8 @@ let notification ~method_ ?params () =
   }
 
 (** Check if a request is a notification *)
-let is_notification (req : request) = 
-  match req.id with 
-  | None -> true 
-  | Some _ -> false
+let is_notification (req : request) =
+  match req.id with None -> true | Some _ -> false
 
 (* ApplicationProtocol module type *)
 module type ApplicationProtocol = sig
