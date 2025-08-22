@@ -203,10 +203,14 @@ module Net : sig
 
   module TcpServer : sig
     (** TCP server that manages a listener and handles line-based protocols *)
+
     type t
+
     type handler = req:string -> TcpStream.t -> unit
-    (** Handler receives request string (line without newline) and stream for responses *)
-    val create : 
+    (** Handler receives request string (line without newline) and stream for
+        responses *)
+
+    val listen :
       ?reuse_addr:bool ->
       ?reuse_port:bool ->
       ?backlog:int ->
@@ -214,12 +218,6 @@ module Net : sig
       handler:handler ->
       (t, error) result
     (** Create a TCP server with a bound listener *)
-    val listen : t -> (unit, [> `Server_stopped | `Read_error | `Connection_closed | error]) result
-    (** Accept a connection, read a line, and call the handler *)
-    val send : TcpStream.t -> string -> (unit, string) result
-    (** Send a string to a stream - helper for handlers *)
-    val stop : t -> unit
-    (** Stop accepting new connections and close the listener *)
   end
 
   module TcpClient : sig
