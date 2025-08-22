@@ -17,3 +17,9 @@ val of_string : string -> hash
 
 val equal : hash -> hash -> bool
 (** Compare two hashes for equality *)
+
+val hash_files : Std.Path.t list -> hash
+(** Hash multiple files by combining their individual hashes *)
+
+val hash_strings : string list -> hash
+(** Hash multiple strings (typically other hashes) into a single hash *)

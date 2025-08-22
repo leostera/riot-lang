@@ -12,13 +12,33 @@ let create_local_client () =
 let log_file = ref None
 
 let ensure_log_dir () =
-  let home = Sys.getenv "HOME" in
+  let home =
+    match Env.home_dir () with
+    | Some h -> Path.to_string h
+    | None -> failwith "Failed to get home dir"
+  in
   let log_dir = Filename.concat home ".tusk/logs" in
   (* Create .tusk directory if it doesn't exist *)
   let tusk_dir = Filename.concat home ".tusk" in
-  if not (Sys.file_exists tusk_dir) then Unix.mkdir tusk_dir 0o755;
+  let () =
+    if not (Miniriot.File.exists ~path:tusk_dir) then
+      let _ =
+        Fs.mkdir
+          (Path.of_string tusk_dir |> Result.expect ~msg:"Invalid tusk_dir")
+          0o755
+      in
+      ()
+  in
   (* Create logs directory if it doesn't exist *)
-  if not (Sys.file_exists log_dir) then Unix.mkdir log_dir 0o755;
+  let () =
+    if not (Miniriot.File.exists ~path:log_dir) then
+      let _ =
+        Fs.mkdir
+          (Path.of_string log_dir |> Result.expect ~msg:"Invalid log_dir")
+          0o755
+      in
+      ()
+  in
   log_dir
 
 let init_logging () =
@@ -27,8 +47,8 @@ let init_logging () =
   let oc = open_out_gen [ Open_creat; Open_append; Open_text ] 0o644 log_path in
   log_file := Some oc;
   (* Write startup message *)
-  let timestamp = Unix.gettimeofday () in
-  let tm = Unix.localtime timestamp in
+  let timestamp = Std.gettimeofday () in
+  let tm = Std.Datetime.localtime timestamp in
   Printf.fprintf oc
     "\n===== MCP Server Started: %04d-%02d-%02d %02d:%02d:%02d =====\n"
     (tm.tm_year + 1900) (tm.tm_mon + 1) tm.tm_mday tm.tm_hour tm.tm_min
@@ -38,8 +58,8 @@ let init_logging () =
 let log msg =
   match !log_file with
   | Some oc ->
-      let timestamp = Unix.gettimeofday () in
-      let tm = Unix.localtime timestamp in
+      let timestamp = Std.gettimeofday () in
+      let tm = Std.Datetime.localtime timestamp in
       Printf.fprintf oc "[%02d:%02d:%02d] %s\n" tm.tm_hour tm.tm_min tm.tm_sec
         msg;
       flush oc
@@ -162,14 +182,14 @@ let execute_tool name arguments =
       (* Call tusk build via RPC and collect logs *)
       let request =
         match package with
-        | Some pkg -> Rpc.BuildPackage pkg
-        | None -> Rpc.BuildAll
+        | Some pkg -> Tusk_jsonrpc.TuskProtocol.BuildPackage pkg
+        | None -> Tusk_jsonrpc.TuskProtocol.BuildAll
       in
       log
         (Printf.sprintf "Calling call_build with request: %s"
            (match request with
-           | Rpc.BuildAll -> "BuildAll"
-           | Rpc.BuildPackage pkg -> Printf.sprintf "BuildPackage(%s)" pkg
+           | Tusk_jsonrpc.TuskProtocol.BuildAll -> "BuildAll"
+           | Tusk_jsonrpc.TuskProtocol.BuildPackage pkg -> Printf.sprintf "BuildPackage(%s)" pkg
            | _ -> "other"));
       let session_id = ref None in
       let logs = ref [] in
@@ -183,8 +203,8 @@ let execute_tool name arguments =
       in
       let request_converted =
         match request with
-        | Rpc.BuildPackage pkg -> Tusk_jsonrpc.Client.BuildPackage pkg
-        | Rpc.BuildAll -> Tusk_jsonrpc.Client.BuildAll
+        | Tusk_jsonrpc.TuskProtocol.BuildPackage pkg -> Tusk_jsonrpc.Client.BuildPackage pkg
+        | Tusk_jsonrpc.TuskProtocol.BuildAll -> Tusk_jsonrpc.Client.BuildAll
         | _ -> Tusk_jsonrpc.Client.BuildAll
       in
       match create_local_client () with
@@ -253,9 +273,10 @@ let execute_tool name arguments =
               [ Mcp.Text (Printf.sprintf "Build failed: %s" e) ]))
   | "clean" -> (
       (* Run clean command *)
-      let result = System.system "rm -rf ./target" in
-      match result with
-      | Unix.WEXITED 0 -> [ Mcp.Text "Build artifacts cleaned successfully" ]
+      let result = Command.system "rm -rf ./target" in
+      match Std.Process.of_unix_status result with
+      | Std.Process.Exited 0 ->
+          [ Mcp.Text "Build artifacts cleaned successfully" ]
       | _ -> [ Mcp.Text "Failed to clean build artifacts" ])
   | "workspace_info" -> (
       match create_local_client () with
@@ -292,13 +313,13 @@ let execute_tool name arguments =
                   (fun node ->
                     Json.Object
                       [
-                        ("package", Json.String node.Rpc.package_name);
-                        ("src_dir", Json.String node.Rpc.src_dir);
-                        ("out_dir", Json.String node.Rpc.out_dir);
-                        ("status", Json.String node.Rpc.status);
+                        ("package", Json.String node.Tusk_jsonrpc.TuskProtocol.package_name);
+                        ("src_dir", Json.String node.Tusk_jsonrpc.TuskProtocol.src_dir);
+                        ("out_dir", Json.String node.Tusk_jsonrpc.TuskProtocol.out_dir);
+                        ("status", Json.String node.Tusk_jsonrpc.TuskProtocol.status);
                         ( "deps",
                           Json.Array
-                            (List.map (fun d -> Json.String d) node.Rpc.deps) );
+                            (List.map (fun d -> Json.String d) node.Tusk_jsonrpc.TuskProtocol.deps) );
                       ])
                   graph.nodes
               in
@@ -384,10 +405,10 @@ let read_resource uri =
                   (fun node ->
                     Json.Object
                       [
-                        ("package", Json.String node.Rpc.package_name);
+                        ("package", Json.String node.Tusk_jsonrpc.TuskProtocol.package_name);
                         ( "deps",
                           Json.Array
-                            (List.map (fun d -> Json.String d) node.Rpc.deps) );
+                            (List.map (fun d -> Json.String d) node.Tusk_jsonrpc.TuskProtocol.deps) );
                       ])
                   graph.nodes
               in

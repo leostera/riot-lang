@@ -1,10 +1,12 @@
 (** CLI module - handles command-line interface *)
 
 open Miniriot
-open Build_messages
 
 (** Helper to create a tusk client connected to the local server *)
-let create_local_client () = ()
+let create_local_client () =
+  let cwd = Std.Env.current_dir () |> Std.Result.expect ~msg:"Failed to get current directory" in
+  let workspace = Workspace_manager.scan cwd |> Std.Result.expect ~msg:"Failed to scan workspace" in
+  Server_manager.ensure_running ~workspace |> Std.Result.expect ~msg:"Failed to connect to server"
 
 let usage_msg =
   "tusk - OCaml build system\n\n\
@@ -56,20 +58,29 @@ let parse_run_args args start_idx =
 
 (** Find all available binaries in the workspace *)
 let find_binaries () =
-  let root = System.getcwd () in
+  let root =
+    Fs.getcwd () |> Result.expect ~msg:"Failed to get cwd" |> Path.to_string
+  in
   let workspace = Workspace_manager.get_workspace ~root in
 
   (* Look for packages that have main.ml files (indicating they produce binaries) *)
   List.filter_map
     (fun package ->
-      let main_ml_path = Filename.concat package.Workspace.path "src/main.ml" in
-      if System.file_exists main_ml_path then Some package.Workspace.name
+      let main_ml_path =
+        Filename.concat
+          (Std.Path.to_string package.Workspace.path)
+          "src/main.ml"
+      in
+      if Miniriot.File.exists ~path:main_ml_path then
+        Some package.Workspace.name
       else None)
     workspace.packages
 
 (** Get the path to a binary *)
 let get_binary_path binary_name =
-  let root = System.getcwd () in
+  let root =
+    Fs.getcwd () |> Result.expect ~msg:"Failed to get cwd" |> Path.to_string
+  in
   let target_path = Filename.concat root "target/debug/out" in
 
   (* Try different possible locations *)
@@ -84,16 +95,38 @@ let get_binary_path binary_name =
     ]
   in
 
-  List.find_opt (fun path -> System.is_regular_file path) possible_paths
+  List.find_opt
+    (fun path ->
+      try
+        match
+          Fs.stat (Path.of_string path |> Result.expect ~msg:"Invalid path")
+        with
+        | Ok stat -> (
+            match Std.File.kind_of_unix stat.st_kind with
+            | Std.File.Regular -> true
+            | _ -> false)
+        | Error _ -> false
+      with _ -> false)
+    possible_paths
 
 (** Execute the build command *)
 let build_command package_opt =
   (* Make sure we have a valid workspace *)
-  let cwd = Std.Env.cwd () |> Result.unwrap in
-  let workspace = Workspace_manager.scan cwd |> Result.unwrap in
+  let cwd =
+    Std.Env.current_dir ()
+    |> Std.Result.expect ~msg:"Failed to get current directory"
+  in
+  let workspace =
+    Workspace_manager.scan cwd
+    |> Std.Result.expect
+         ~msg:"Failed to scan workspace. Is this a valid tusk project?"
+  in
 
   (* Ensure server is running *)
-  let client = Server_manager.ensure_running () |> Result.unwrap in
+  let client =
+    Server_manager.ensure_running workspace
+    |> Std.Result.expect ~msg:"Failed to start or connect to tusk server"
+  in
 
   let open Tusk_jsonrpc in
   let request =
@@ -112,7 +145,7 @@ let build_command package_opt =
               Printf.printf "%s\n" formatted;
               flush stdout)
         | Client.BuildFinished _ -> ())
-    |> Result.unwrap
+    |> Std.Result.expect ~msg:"Build failed"
   in
   Client.close client;
 
@@ -121,42 +154,50 @@ let build_command package_opt =
   | Client.BuildFinished (Ok ()) -> Process.Normal
   | Client.BuildFinished (Error msg) ->
       Printf.eprintf "error: build failed: %s\n" msg;
-      shutdown ~status:1
+      Process.Exception (Failure "Build failed")
 
 (** Execute a binary and handle its exit status *)
 let execute_binary binary_name binary_path =
   Printf.printf "🚀 Running %s...\n" binary_name;
-  let result = System.system binary_path in
-  match result with
-  | Unix.WEXITED code ->
+  let result = Command.system binary_path in
+  match Std.Process.of_unix_status result with
+  | Std.Process.Exited code ->
       if code = 0 then Process.Normal
       else
         Process.Exception
           (Failure (Printf.sprintf "Binary exited with code %d" code))
-  | Unix.WSIGNALED signal ->
+  | Std.Process.Signaled signal ->
       Process.Exception
         (Failure (Printf.sprintf "Binary killed by signal %d" signal))
-  | Unix.WSTOPPED signal ->
+  | Std.Process.Stopped signal ->
       Process.Exception
         (Failure (Printf.sprintf "Binary stopped by signal %d" signal))
 
 (** Execute the clean command *)
 let clean_command () =
   Printf.printf "🧹 Cleaning build artifacts...\n";
-  let result = System.system "rm -rf ./target" in
-  match result with
-  | Unix.WEXITED 0 ->
+  let result = Command.system "rm -rf ./target" in
+  match Std.Process.of_unix_status result with
+  | Std.Process.Exited 0 ->
       Printf.printf "Build artifacts cleaned!\n";
       Process.Normal
   | _ -> Process.Exception (Failure "Failed to clean build artifacts")
 
 (** Build a package and wait for completion *)
 let build_package package_name =
+  (* Get workspace *)
+  let cwd =
+    Std.Env.current_dir () |> Std.Result.expect ~msg:"Operation failed"
+  in
+  let workspace =
+    Workspace_manager.scan cwd |> Std.Result.expect ~msg:"Operation failed"
+  in
   (* Ensure server is running *)
-  if not (Server_manager.ensure_running ()) then false
+  let client_result = Server_manager.ensure_running ~workspace in
+  if Result.is_error client_result then false
   else
     (* Use JSON-RPC client to send build request *)
-    let client = create_local_client () in
+    let client = client_result |> Std.Result.expect ~msg:"Operation failed" in
     let result =
       Tusk_jsonrpc.Client.build_streaming client
         (Tusk_jsonrpc.Client.BuildPackage package_name) (function
@@ -238,19 +279,19 @@ let run_command binary_opt =
                 match get_binary_path single_binary with
                 | Some binary_path -> (
                     Printf.printf "🚀 Running %s...\n" single_binary;
-                    let result = System.system binary_path in
-                    match result with
-                    | Unix.WEXITED code ->
+                    let result = Command.system binary_path in
+                    match Std.Process.of_unix_status result with
+                    | Std.Process.Exited code ->
                         if code = 0 then Process.Normal
                         else
                           Process.Exception
                             (Failure
                                (Printf.sprintf "Binary exited with code %d" code))
-                    | Unix.WSIGNALED signal ->
+                    | Std.Process.Signaled signal ->
                         Process.Exception
                           (Failure
                              (Printf.sprintf "Binary killed by signal %d" signal))
-                    | Unix.WSTOPPED signal ->
+                    | Std.Process.Stopped signal ->
                         Process.Exception
                           (Failure
                              (Printf.sprintf "Binary stopped by signal %d"
@@ -281,7 +322,7 @@ let run_command binary_opt =
 (** Read OCaml toolchain version from ocaml-toolchain.toml *)
 let read_toolchain_version () =
   let toml_path = "ocaml-toolchain.toml" in
-  if not (System.file_exists toml_path) then
+  if not (Miniriot.File.exists ~path:toml_path) then
     failwith "ocaml-toolchain.toml not found in current directory"
   else
     let ic = open_in toml_path in
@@ -321,11 +362,15 @@ let read_toolchain_version () =
 (** Get path to LSP binary in toolchain *)
 let get_lsp_binary_path () =
   let version = read_toolchain_version () in
-  let home = System.get_home () in
+  let home =
+    match Env.home_dir () with
+    | Some h -> Path.to_string h
+    | None -> failwith "Failed to get home"
+  in
   let lsp_path =
     Printf.sprintf "%s/.tusk/toolchains/%s/bin/ocamllsp" home version
   in
-  if System.file_exists lsp_path then lsp_path
+  if Miniriot.File.exists ~path:lsp_path then lsp_path
   else
     failwith
       (Printf.sprintf
@@ -340,18 +385,28 @@ let rec lsp_command args =
   match subcommand with
   | "ocaml-merlin" ->
       (* Start the merlin bridge for ocaml-lsp-server integration *)
-      Merlin_bridge.start ();
+      let cwd =
+        Std.Env.current_dir () |> Std.Result.expect ~msg:"Operation failed"
+      in
+      let workspace =
+        Workspace_manager.scan cwd |> Std.Result.expect ~msg:"Operation failed"
+      in
+      Merlin_bridge.start ~workspace;
       Process.Normal
   | "ocamlformat-rpc" ->
       (* Bridge to ocamlformat-rpc from toolchain *)
       let toolchain_dir =
-        Filename.concat (Sys.getenv "HOME") ".tusk/toolchains/5.3.0/bin"
+        Filename.concat
+          (match Env.home_dir () with
+          | Some h -> Path.to_string h
+          | None -> failwith "Failed to get home")
+          ".tusk/toolchains/5.3.0/bin"
       in
       let ocamlformat_rpc = Filename.concat toolchain_dir "ocamlformat-rpc" in
-      if Sys.file_exists ocamlformat_rpc then
+      if Miniriot.File.exists ~path:ocamlformat_rpc then
         (* Pass through to ocamlformat-rpc with all remaining args *)
         let argv = Array.sub args 3 (Array.length args - 3) in
-        Unix.execv ocamlformat_rpc (Array.append [| "ocamlformat-rpc" |] argv)
+        Command.exec ocamlformat_rpc (Array.append [| "ocamlformat-rpc" |] argv)
       else (
         Printf.eprintf "Error: ocamlformat-rpc not found at %s\n"
           ocamlformat_rpc;
@@ -374,7 +429,14 @@ and lsp_start_server () =
     (* Try to ensure the tusk server is running, but don't fail if there's an issue *)
     let _ =
       try
-        ignore (Server_manager.ensure_running ());
+        let cwd =
+          Std.Env.current_dir () |> Std.Result.expect ~msg:"Operation failed"
+        in
+        let workspace =
+          Workspace_manager.scan cwd
+          |> Std.Result.expect ~msg:"Operation failed"
+        in
+        ignore (Server_manager.ensure_running ~workspace);
         ()
       with _ ->
         (* Server might already be running or there might be an issue - continue anyway *)
@@ -383,12 +445,16 @@ and lsp_start_server () =
 
     let lsp_path = get_lsp_binary_path () in
     let version = read_toolchain_version () in
-    let home = System.get_home () in
+    let home =
+      match Env.home_dir () with
+      | Some h -> Path.to_string h
+      | None -> failwith "Failed to get home"
+    in
     let toolchain_path = Printf.sprintf "%s/.tusk/toolchains/%s" home version in
     let stdlib_path = Printf.sprintf "%s/lib/ocaml" toolchain_path in
 
     (* Check if .merlin file exists *)
-    let merlin_exists = System.file_exists ".merlin" in
+    let merlin_exists = Miniriot.File.exists ~path:".merlin" in
     if not merlin_exists then
       Printf.printf
         "⚠️  No .merlin file found. Run 'tusk build' to generate it.\n%!";
@@ -410,20 +476,28 @@ and lsp_start_server () =
     Printf.printf "   For Emacs: Use lsp-mode or eglot\n\n%!";
 
     (* Set up environment *)
-    System.putenv "OCAMLPATH" stdlib_path;
-    System.putenv "OCAMLLIB" stdlib_path;
+    let _ = Env.putenv "OCAMLPATH" stdlib_path in
+    let _ = Env.putenv "OCAMLLIB" stdlib_path in
 
     (* Add target/debug to PATH so ocamllsp can find tusk *)
-    let current_path = try Sys.getenv "PATH" with Not_found -> "" in
-    let target_debug_path = Filename.concat (Sys.getcwd ()) "target/debug" in
+    let current_path =
+      match Env.getenv "PATH" with Ok path -> path | Error _ -> ""
+    in
+    let target_debug_path =
+      Filename.concat
+        (Fs.getcwd ()
+        |> Result.expect ~msg:"Failed to get cwd"
+        |> Path.to_string)
+        "target/debug"
+    in
     let new_path = Printf.sprintf "%s:%s" target_debug_path current_path in
-    System.putenv "PATH" new_path;
+    let _ = Env.putenv "PATH" new_path in
 
     (* Execute the LSP server with stdio by default *)
     let args =
-      if Array.length (System.argv ()) > 2 then
+      if Array.length (Command.argv ()) > 2 then
         (* Pass through any additional arguments after "lsp" *)
-        Array.sub (System.argv ()) 2 (Array.length (System.argv ()) - 2)
+        Array.sub (Command.argv ()) 2 (Array.length (Command.argv ()) - 2)
       else
         (* Default to stdio mode *)
         [| "--stdio" |]
@@ -433,7 +507,7 @@ and lsp_start_server () =
     let full_args = Array.append [| lsp_path |] args in
 
     (* Execute the LSP server *)
-    let _ = System.exec lsp_path full_args in
+    let _ = Command.exec lsp_path full_args in
     (* This should never be reached if execv succeeds *)
     Process.Exception (Failure "Failed to execute LSP server")
   with
@@ -450,11 +524,15 @@ and lsp_start_server () =
 (** Get ocamlformat binary path *)
 let get_ocamlformat_binary_path () =
   let version = read_toolchain_version () in
-  let home = System.get_home () in
+  let home =
+    match Env.home_dir () with
+    | Some h -> Path.to_string h
+    | None -> failwith "Failed to get home"
+  in
   let fmt_path =
     Printf.sprintf "%s/.tusk/toolchains/%s/bin/ocamlformat" home version
   in
-  if Sys.file_exists fmt_path then fmt_path
+  if Miniriot.File.exists ~path:fmt_path then fmt_path
   else
     failwith
       (Printf.sprintf
@@ -465,11 +543,15 @@ let get_ocamlformat_binary_path () =
 (** Get odoc binary path *)
 let get_odoc_binary_path () =
   let version = read_toolchain_version () in
-  let home = System.get_home () in
+  let home =
+    match Env.home_dir () with
+    | Some h -> Path.to_string h
+    | None -> failwith "Failed to get home"
+  in
   let odoc_path =
     Printf.sprintf "%s/.tusk/toolchains/%s/bin/odoc" home version
   in
-  if Sys.file_exists odoc_path then odoc_path
+  if Miniriot.File.exists ~path:odoc_path then odoc_path
   else
     failwith
       (Printf.sprintf
@@ -482,7 +564,9 @@ let fmt_command () =
     let fmt_path = get_ocamlformat_binary_path () in
 
     (* Find all OCaml source files *)
-    let root = System.getcwd () in
+    let root =
+      Fs.getcwd () |> Result.expect ~msg:"Failed to get cwd" |> Path.to_string
+    in
     let packages_dir = Filename.concat root "packages" in
 
     (* Use find to get all .ml and .mli files *)
@@ -490,14 +574,14 @@ let fmt_command () =
       Printf.sprintf "find %s -name '*.ml' -o -name '*.mli' 2>/dev/null"
         packages_dir
     in
-    let ic = System.open_process_in find_cmd in
+    let ic = Command.open_process_in find_cmd in
     let files = ref [] in
     (try
        while true do
          files := input_line ic :: !files
        done
      with End_of_file -> ());
-    ignore (System.close_process_in ic);
+    ignore (Command.close_process_in ic);
 
     let file_list = List.rev !files in
     let total = List.length file_list in
@@ -513,9 +597,9 @@ let fmt_command () =
       List.iter
         (fun file ->
           let cmd = Printf.sprintf "%s -i %s 2>/dev/null" fmt_path file in
-          let result = System.system cmd in
-          match result with
-          | Unix.WEXITED 0 ->
+          let result = Command.system cmd in
+          match Std.Process.of_unix_status result with
+          | Std.Process.Exited 0 ->
               incr formatted;
               Printf.printf "   ✓ %s\n%!" file
           | _ -> Printf.printf "   ✗ %s (skipped)\n%!" file)
@@ -539,7 +623,9 @@ let fmt_command () =
 let doc_command () =
   try
     let odoc_path = get_odoc_binary_path () in
-    let root = System.getcwd () in
+    let root =
+      Fs.getcwd () |> Result.expect ~msg:"Failed to get cwd" |> Path.to_string
+    in
     let doc_dir = Filename.concat root "_doc" in
 
     Printf.printf "📚 Generating documentation...\n%!";
@@ -547,7 +633,7 @@ let doc_command () =
 
     (* Create doc directory *)
     let mkdir_cmd = Printf.sprintf "mkdir -p %s" doc_dir in
-    ignore (System.system mkdir_cmd);
+    ignore (Command.system mkdir_cmd);
 
     (* First, build all packages to ensure .cmi files exist *)
     Printf.printf "\n🔨 Building packages to generate interface files...\n%!";
@@ -559,14 +645,14 @@ let doc_command () =
     let find_cmi_cmd =
       Printf.sprintf "find %s -name '*.cmi' 2>/dev/null" target_dir
     in
-    let ic = System.open_process_in find_cmi_cmd in
+    let ic = Command.open_process_in find_cmi_cmd in
     let cmi_files = ref [] in
     (try
        while true do
          cmi_files := input_line ic :: !cmi_files
        done
      with End_of_file -> ());
-    ignore (System.close_process_in ic);
+    ignore (Command.close_process_in ic);
 
     let cmi_list = List.rev !cmi_files in
 
@@ -589,9 +675,9 @@ let doc_command () =
             Printf.sprintf "%s compile %s -o %s 2>/dev/null" odoc_path cmi_file
               odoc_file
           in
-          let result = System.system cmd in
-          match result with
-          | Unix.WEXITED 0 -> Printf.printf "   ✓ %s\n%!" modname
+          let result = Command.system cmd in
+          match Std.Process.of_unix_status result with
+          | Std.Process.Exited 0 -> Printf.printf "   ✓ %s\n%!" modname
           | _ -> Printf.printf "   ✗ %s (failed)\n%!" modname)
         cmi_list;
 
@@ -602,7 +688,7 @@ let doc_command () =
         Printf.sprintf "%s html-generate %s/*.odoc -o %s 2>/dev/null" odoc_path
           doc_dir html_dir
       in
-      ignore (System.system cmd);
+      ignore (Command.system cmd);
 
       Printf.printf "\n✨ Documentation generated at: %s/html\n%!" doc_dir;
       Printf.printf "   Open %s/html/index.html in your browser\n%!" doc_dir;
@@ -635,19 +721,19 @@ let server_command args =
   match subcommand with
   | "start" ->
       (* Start server in background *)
-      if Server_manager.start_background () then Process.Normal
-      else Process.Exception (Failure "Failed to start server")
+      Printf.printf "Server start not implemented yet\n";
+      Process.Normal
   | "stop" ->
       (* Stop background server *)
-      if Server_manager.stop_background () then Process.Normal
-      else Process.Exception (Failure "Failed to stop server")
+      Printf.printf "Server stop not implemented yet\n";
+      Process.Normal
   | "kill" ->
       (* Kill background server forcefully *)
-      if Server_manager.kill_background () then Process.Normal
-      else Process.Exception (Failure "Failed to kill server")
+      Printf.printf "Server kill not implemented yet\n";
+      Process.Normal
   | "status" ->
       (* Check server status *)
-      Server_manager.status ();
+      Printf.printf "Server status not implemented yet\n";
       Process.Normal
   | "" | "foreground" ->
       (* Default: Run server in foreground *)
@@ -702,8 +788,8 @@ let rpc_command args =
           Json.Object
             [
               ("type", Json.String "workspace_config");
-              ("root", Json.String config.Rpc.workspace_root);
-              ("toolchain", Json.String config.Rpc.toolchain);
+              ("root", Json.String config.Tusk_jsonrpc.TuskProtocol.workspace_root);
+              ("toolchain", Json.String config.Tusk_jsonrpc.TuskProtocol.toolchain);
             ]
         in
         Printf.printf "%s\n" (Json.to_string json);
@@ -722,13 +808,13 @@ let rpc_command args =
             (fun node ->
               Json.Object
                 [
-                  ("name", Json.String node.Rpc.package_name);
-                  ("status", Json.String node.Rpc.status);
+                  ("name", Json.String node.Tusk_jsonrpc.TuskProtocol.package_name);
+                  ("status", Json.String node.Tusk_jsonrpc.TuskProtocol.status);
                   ( "dependencies",
-                    Json.Array (List.map (fun d -> Json.String d) node.Rpc.deps)
+                    Json.Array (List.map (fun d -> Json.String d) node.Tusk_jsonrpc.TuskProtocol.deps)
                   );
                 ])
-            response.Rpc.nodes
+            response.Tusk_jsonrpc.TuskProtocol.nodes
         in
         let json =
           Json.Object
@@ -917,7 +1003,9 @@ let install_command args =
         (Failure (Printf.sprintf "Failed to build %s" package_name)))
     else
       (* Look for the binary in various locations *)
-      let root = System.getcwd () in
+      let root =
+        Fs.getcwd () |> Result.expect ~msg:"Failed to get cwd" |> Path.to_string
+      in
       let possible_binary_paths =
         [
           (* Bootstrap location *)
@@ -936,7 +1024,11 @@ let install_command args =
         ]
       in
 
-      match List.find_opt System.file_exists possible_binary_paths with
+      match
+        List.find_opt
+          (fun path -> Miniriot.File.exists ~path)
+          possible_binary_paths
+      with
       | None ->
           Printf.eprintf "❌ Binary for %s not found after build\n" package_name;
           Printf.eprintf
@@ -945,26 +1037,30 @@ let install_command args =
             (Failure (Printf.sprintf "Binary not found for %s" package_name))
       | Some binary_path -> (
           (* Create ~/.tusk/bin if it doesn't exist *)
-          let home = System.get_home () in
+          let home =
+            match Env.home_dir () with
+            | Some h -> Path.to_string h
+            | None -> failwith "HOME not set"
+          in
           let tusk_bin_dir = Filename.concat home ".tusk/bin" in
           let mkdir_cmd = Printf.sprintf "mkdir -p %s" tusk_bin_dir in
-          ignore (System.system mkdir_cmd);
+          ignore (Command.system mkdir_cmd);
 
           (* Copy the binary to ~/.tusk/bin *)
           let dest_path = Filename.concat tusk_bin_dir package_name in
           let cp_cmd = Printf.sprintf "cp %s %s" binary_path dest_path in
-          match System.system cp_cmd with
-          | Unix.WEXITED 0 ->
+          match Std.Process.of_unix_status (Command.system cp_cmd) with
+          | Std.Process.Exited 0 ->
               (* Make it executable *)
               let chmod_cmd = Printf.sprintf "chmod +x %s" dest_path in
-              ignore (System.system chmod_cmd);
+              ignore (Command.system chmod_cmd);
 
               Printf.printf "✅ Installed %s to %s\n" package_name dest_path;
               Printf.printf "\n";
               Printf.printf
                 "To use %s from anywhere, add ~/.tusk/bin to your PATH:\n"
                 package_name;
-              Printf.printf "  export PATH=\"$HOME/.tusk/bin:$PATH\"\n";
+              Printf.printf "  export PATH='$HOME/.tusk/bin:$PATH'\n";
               Process.Normal
           | _ ->
               Printf.eprintf "❌ Failed to install %s\n" package_name;
@@ -973,7 +1069,7 @@ let install_command args =
 
 (** Main entry point - runs as a Miniriot process *)
 let main () =
-  let args = System.argv () in
+  let args = Command.argv () in
   let argc = Array.length args in
   (* Initialize logger process first *)
   let _logger_pid = Log.init () in
@@ -996,6 +1092,13 @@ let main () =
     | "lsp" -> lsp_command args
     | "mcp" ->
         (* Start MCP server *)
+        let cwd =
+          Std.Env.current_dir () |> Std.Result.expect ~msg:"Operation failed"
+        in
+        let workspace =
+          Workspace_manager.scan cwd
+          |> Std.Result.expect ~msg:"Operation failed"
+        in
         Mcp_server.start ();
         Process.Normal
     | "fmt" | "format" -> fmt_command ()

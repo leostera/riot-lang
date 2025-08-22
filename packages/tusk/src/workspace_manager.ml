@@ -19,7 +19,7 @@ let is_within_workspace current_dir cached_root =
 
 (** Check if cache is still valid *)
 let is_cache_valid cached =
-  let now = Unix.time () in
+  let now = Std.Datetime.now () in
   now -. cached.last_scanned < cache_ttl
 
 (** Get workspace, using cache when possible *)
@@ -42,7 +42,7 @@ let get_workspace ~root =
           {
             workspace;
             root = Std.Path.to_string workspace.root;
-            last_scanned = Unix.time ();
+            last_scanned = Std.Datetime.now ();
           };
       workspace
 

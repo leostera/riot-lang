@@ -6,7 +6,7 @@ val args : string list
 val current_dir : unit -> (Path.t, Path.error) Result.t
 val set_current_dir : Path.t -> (unit, Path.error) Result.t
 
-val home_dir : unit -> (Path.t, Path.error) Result.t
+val home_dir : unit -> Path.t option
 (** Get the user's home directory *)
 
 type 't var_type =
@@ -19,3 +19,8 @@ type 't var_type =
 val var : 't var_type -> name:string -> 't option
 val set_var : name:string -> value:string -> 't option
 val vars : unit -> (string * string) list
+
+val getenv : string -> (string, [> `EnvVarNotFound of string ]) Result.t
+(** Legacy functions for compatibility *)
+
+val putenv : string -> string -> (unit, 'a) Result.t

@@ -1,154 +1,263 @@
 (** Build server - Miniriot process that orchestrates builds *)
 
 open Miniriot
+open Tusk_protocol
 
-type target =
-  | All
-  | Package of string
+(* Explicit dependency on Worker_pool to help ocamldep *)
+let _ = Worker_pool.send_task
 
-(** Internal server messages *)
-type request = | Build of { client_pid : Pid.t; target: target } | Ping | ScanWorkspace of { client_pid: Pid.t; current_dir: Path.t } (* optional target package to filter for *)
-
-type response = | Pong | BuildCompleted
-
-type Message.t +=
-  | ServerRequest of request
-  | ServerResponse of response
-
+type t = Pid.t
+(** Server handle is just a PID *)
 
 type state = {
-  active_build_graph : Build_graph.t; (* Graph for current build (full or filtered) *)
+  active_build_graph : Build_graph.t;
+      (* Graph for current build (full or filtered) *)
   build_graph : Build_graph.t; (* Full workspace build graph *)
   build_queue : Build_queue.t; (* Two-queue system for dependency ordering *)
   build_results : Build_results.t;
-  build_stats : Build_stats.t; (* Stats of the build *)
+  build_start_time : float option; (* Start time for build stats *)
   toolchain : Toolchains.toolchain; (* Current toolchain *)
-  worker_pool : Worker_pool.t; (* Handle to the worker pool *)
+  worker_pool : Worker_pool.t option; (* Handle to the worker pool if active *)
   workspace : Workspace.t;
+  workers : int; (* Number of workers to use *)
 }
 (** Server state *)
 
-(**
-  this is the main server loop where we'll handle all the incoming requests
+(** this is the main server loop where we'll handle all the incoming requests
     from clients, be it the CLI, MCP, LSP, or direct RPC communication.
 
     None of these handlers can really block the loop, so we gotta handle and
-    dispatch, except restart and shutdown
-*)
-let rec loop state = 
- 
+    dispatch, except restart and shutdown *)
+let rec loop state =
+  let selector msg =
+    match msg with ServerRequest req -> `select req | _ -> `skip
+  in
+
   match receive ~selector () with
   | Ping { client_pid } -> handle_ping state client_pid
   | Build { client_pid; target } -> handle_build state client_pid target
+  | ScanWorkspace { client_pid; current_dir } ->
+      handle_scan_workspace state client_pid current_dir
 
-(** 
-    Handler for the ping message.
-
-*)
-and handle_ping client_pid state = 
+(** Handler for the ping message. *)
+and handle_ping state client_pid =
+  Printf.eprintf "Server: Received Ping from %s, sending Pong\n" (Pid.to_string client_pid);
   send client_pid (ServerResponse Pong);
   loop state
 
+(** Handler for the scan workspace message. *)
+and handle_scan_workspace state client_pid current_dir =
+  (* Rescan the workspace and update state *)
+  let workspace =
+    Workspace_manager.scan current_dir
+    |> Std.Result.expect ~msg:"tusk_server: operation failed"
+  in
+  let build_graph = Build_graph.create workspace state.toolchain in
+  let new_state = { state with workspace; build_graph } in
+  (* Send build completed to signal scan is done *)
+  send client_pid (ServerResponse BuildCompleted);
+  loop new_state
 
-(** 
-    Handler for the build message.
-
-*)
+(** Handler for the build message. *)
 and handle_build state client_pid target =
   let server_pid = self () in
-  let _ = spawn (fun () ->
-
-    (* 1. on every build we refresh the workspace *)
-    let workspace = Workspace_manager.scan state.workspace.root |> Result.unwrap in
-
-    (* 2. compute and queue the target build graph (this could be the whole build graph or a subset) *)
-    let target_graph = 
-        let build_graph = Build_graph.create workspace state.toolchain |> Result.unwrap in
-        match target with
-        | All -> state.build_graph
-        | Package pkg -> Build_graph.filter_for_package build_graph pkg
-    in 
-    List.iter (Build_queue.add state.build_queue) (Build_graph.to_list target_graph);
-
-    (* 3. create a worker pool to execute this build *)
-    let build_pid = self () in
-    let worker_pool = Worker_pool.start ~workers ~provider:build_pid () in
-
-    (* 4. enter the build loop *)
-    let selector msg = 
-      match msg with
-      | Worker_pool.Worker msg -> `select msg
-      | _ -> `skip
-    in
-
-    let rec build_loop () =
-      if Build_results.all_done state.build_results then ()
-      else match receive ~selector () with
-      | Worker_pool.TaskCompleted {worker; task; artifact} ->
-        Build_results.mark_completed state.build_results task artifact;
-        build_loop ()
-      | Worker_pool.TaskFailed {worker; task; error} -> 
-        Build_results.mark_failed state.build_results task error;
-        build_loop ()
-      | Worker_pool.WorkerReady worker ->
-        let () = match Build_queue.next state.build_queue with
-          | None -> ()
-          | Some task-> Worker_pool.send_task worker task
+  let _ =
+    spawn (fun () : Process.exit_reason ->
+        (* 1. on every build we refresh the workspace *)
+        let workspace =
+          Workspace_manager.scan state.workspace.root
+          |> Std.Result.expect ~msg:"tusk_server: operation failed"
         in
-        build_loop ()
-      | Worker_pool.RequeueWithDependencies { worker;task; deps} ->
-        Build_queue.queue_with_deps state.build_queue task deps;
-        build_loop ()
-    in
 
-    Fun.protect 
-      ~finally:(fun () -> 
-        let stats =
-        send client_pid (ServerResponse (BuildCompleted stats))
-      )
-      (fun () -> build_loop ())
-  ) in
+        (* 2. compute and queue the target build graph (this could be the whole build graph or a subset) *)
+        let target_graph =
+          match target with
+          | All -> state.build_graph
+          | Package pkg -> Build_graph.filter_for_package state.build_graph pkg
+        in
+        List.iter
+          (Build_queue.queue state.build_queue)
+          (Build_graph.topological_sort target_graph);
+
+        (* 3. create a worker pool to execute this build *)
+        let build_pid = self () in
+        let worker_pool =
+          Worker_pool.start ~workers:state.workers ~provider:build_pid
+            ~worker_fn:Build_worker.main ()
+        in
+
+        (* 4. enter the build loop *)
+        let selector msg =
+          match msg with Worker_pool.Worker msg -> `select msg | _ -> `skip
+        in
+
+        let rec build_loop () =
+          if Build_results.all_done state.build_results then ()
+          else
+            match receive ~selector () with
+            | Worker_pool.TaskCompleted { worker; node; artifact } ->
+                Build_results.mark_completed state.build_results node artifact;
+                build_loop ()
+            | Worker_pool.TaskFailed { worker; node; error } ->
+                Build_results.mark_failed state.build_results node ~error;
+                build_loop ()
+            | Worker_pool.WorkerReady worker ->
+                let () =
+                  match Build_queue.next state.build_queue with
+                  | None -> ()
+                  | Some node ->
+                      (* Wrap the node in a task with workspace and session_id *)
+                      let task =
+                        {
+                          Worker_pool.node;
+                          workspace = state.workspace;
+                          session_id = None;
+                        }
+                      in
+                      Worker_pool.send_task worker task
+                in
+                build_loop ()
+            | Worker_pool.RequeueWithDependencies { worker; node; deps } ->
+                Build_queue.queue_with_deps state.build_queue node ~deps;
+                build_loop ()
+            | _ ->
+                (* Ignore other messages *)
+                build_loop ()
+        in
+
+        Fun.protect
+          ~finally:(fun () -> send client_pid (ServerResponse BuildCompleted))
+          (fun () -> build_loop ());
+        Process.Normal)
+  in
   loop state
-  
-
-
 
 let start_tcp_server ~server ~port =
   spawn @@ fun () ->
-  let addr = Addr.(tcp loopback port) in
+  let addr = Net.Addr.tcp Net.Addr.loopback port in
   let jsonrpc_server = Tusk_jsonrpc.Server.create server in
   let handler ~req stream =
-    let reply msg = TcpServer.send stream (msg ^ "\n") |> Result.unwrap in
+    let reply msg =
+      let bytes = Bytes.of_string (msg ^ "\n") in
+      let _ =
+        Net.TcpStream.write stream bytes ~pos:0 ~len:(Bytes.length bytes) ()
+        |> Std.Result.expect ~msg:"tusk_server: network operation failed"
+      in
+      ()
+    in
     Jsonrpc.Server.handle_message jsonrpc_server reply req
   in
-  TcpServer.listen addr ~handler
+  let _ = Net.TcpServer.listen addr ~handler in
+  Process.Normal
 
 (** Main server loop *)
 let init ~current_dir ~workers ~port =
   let server_pid = self () in
-  let workspace = Workspace_manager.scan current_dir |> Result.unwrap in
-  let toolchain = Toolchains.ready_toolchains workspace |> Result.unwrap in
-  let build_graph = Build_graph.create workspace toolchain |> Result.unwrap in
+  let workspace =
+    Workspace_manager.scan current_dir
+    |> Std.Result.expect ~msg:"tusk_server: operation failed"
+  in
+  let toolchain = Toolchains.ready_toolchains workspace in
+  let build_graph = Build_graph.create workspace toolchain in
   let build_results = Build_results.create () in
   let build_queue = Build_queue.create build_results in
-  let tcp_listener = start_tcp_server ~server ~port in
-  let build_stats = Build_stats.empty in
+  let tcp_listener = start_tcp_server ~server:server_pid ~port in
 
-  let state = {
-  workspace; toolchain; build_graph; build_results; build_Queue; worker_pool; tcp_listener; build_stats;
-  }
+  let state =
+    {
+      workspace;
+      toolchain;
+      build_graph;
+      active_build_graph = build_graph;
+      build_results;
+      build_queue;
+      worker_pool = None;
+      build_start_time = None;
+      workers;
+    }
+  in
 
   loop state
-    
 
-(** Start the server with TCP listener for RPC. This function makes the
-    current
-  process _become_ the Tusk server and spin up a sepaarate riot process for
-  the listening in to tcp requests *)
+(** Start the server with TCP listener for RPC. This function makes the current
+    process _become_ the Tusk server and spin up a sepaarate riot process for
+    the listening in to tcp requests *)
 let start () =
-  let server_pid = self () in
-  let current_dir = Std.Env.current_dir () |> Result.unwrap in
+  spawn (fun () ->
+      let current_dir =
+        Std.Env.current_dir ()
+        |> Std.Result.expect ~msg:"tusk_server: could not get current dir"
+      in
+      let workers = Std.available_parallelism () in
+      let port = 9753 in
+      init ~current_dir ~workers ~port)
+
+(** Start with listener - makes current process become the server *)
+let start_with_listener () =
+  let current_dir =
+    Std.Env.current_dir ()
+    |> Std.Result.expect ~msg:"tusk_server: could not get current dir"
+  in
   let workers = Std.available_parallelism () in
   let port = 9753 in
-
   init ~current_dir ~workers ~port
+
+(** Scan workspace *)
+let scan_workspace server =
+  send server
+    (ServerRequest
+       (ScanWorkspace
+          {
+            client_pid = self ();
+            current_dir =
+              Std.Env.current_dir ()
+              |> Std.Result.expect ~msg:"tusk_server: operation failed";
+          }));
+  let selector msg =
+    match msg with
+    | ServerResponse BuildCompleted -> `select BuildCompleted
+    | _ -> `skip
+  in
+  match receive ~selector () with
+  | BuildCompleted ->
+      (* TODO: Return actual workspace from server response *)
+      let workspace =
+        Workspace_manager.scan
+          (Std.Env.current_dir ()
+          |> Std.Result.expect ~msg:"tusk_server: operation failed")
+        |> Std.Result.expect ~msg:"tusk_server: operation failed"
+      in
+      Ok workspace
+  | exception _ -> Error Error.ScanWorkspaceError
+
+(** Shutdown server *)
+let shutdown server =
+  (* TODO: Implement proper shutdown *)
+  Ok ()
+
+(** Build all packages *)
+let build_all server =
+  send server (ServerRequest (Build { client_pid = self (); target = All }));
+  let selector msg =
+    match msg with
+    | ServerResponse BuildCompleted -> `select BuildCompleted
+    | _ -> `skip
+  in
+  match receive ~selector () with
+  | BuildCompleted -> Ok (Build_results.create ())
+  | exception _ -> Error Error.ScanWorkspaceError
+
+(** Build specific package *)
+let build_package ~name =
+  (* For now, we'll need to start a server if not already running *)
+  let server = start () in
+  send server
+    (ServerRequest (Build { client_pid = self (); target = Package name }));
+  let selector msg =
+    match msg with
+    | ServerResponse BuildCompleted -> `select BuildCompleted
+    | _ -> `skip
+  in
+  match receive ~selector () with
+  | BuildCompleted -> Ok (Build_results.create ())
+  | exception _ -> Error Error.ScanWorkspaceError

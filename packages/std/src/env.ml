@@ -13,9 +13,13 @@ let set_current_dir path =
   with Sys_error msg -> Error (Path.SystemError msg)
 
 let home_dir () =
-  try Sys.getenv "HOME" |> Path.of_string
-  with Not_found ->
-    Error (Path.SystemError "HOME environment variable not found")
+  try
+    let home =
+      Sys.getenv "HOME" |> Path.of_string
+      |> Result.expect ~msg:"HOME path was an invalid UTF-8 path"
+    in
+    Some home
+  with Not_found -> None
 
 type 't var_type =
   | String : string var_type
@@ -59,3 +63,9 @@ let home () = home_dir ()
 
 let getenv key =
   try Ok (Sys.getenv key) with Not_found -> Error (`EnvVarNotFound key)
+
+let putenv key value =
+  Unix.putenv key value;
+  Ok ()
+
+let get_home () = home_dir ()

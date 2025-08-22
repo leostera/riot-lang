@@ -10,9 +10,9 @@ let sort ~toolchain ~cwd ~files =
       Printf.sprintf "cd %s && %s -sort %s 2>/dev/null" cwd ocamldep files_str
     in
 
-    let ic = Unix.open_process_in cmd in
+    let ic = Command.open_process_in cmd in
     let sorted_str = try input_line ic with End_of_file -> "" in
-    ignore (Unix.close_process_in ic);
+    ignore (Command.close_process_in ic);
 
     if sorted_str = "" then files (* Return original list if ocamldep fails *)
     else
@@ -34,9 +34,9 @@ let deps ~toolchain ~cwd ~file =
     Printf.sprintf "cd %s && %s -modules %s 2>/dev/null" cwd ocamldep file
   in
 
-  let ic = Unix.open_process_in cmd in
+  let ic = Command.open_process_in cmd in
   let deps_str = try input_line ic with End_of_file -> "" in
-  ignore (Unix.close_process_in ic);
+  ignore (Command.close_process_in ic);
 
   if deps_str = "" then []
   else

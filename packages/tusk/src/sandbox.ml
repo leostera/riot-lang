@@ -1,10 +1,5 @@
 (** Sandbox - isolated build execution environment *)
 
-type build_result =
-  | Success of string  (** Build succeeded with message *)
-  | Failed of string  (** Build failed with error message *)
-  | Cached of string  (** Retrieved from cache with message *)
-
 type t = {
   root : string;
   sandbox_dir : string;
@@ -13,6 +8,8 @@ type t = {
   workspace : Workspace.t;
 }
 
+type error = string
+
 (** Create a new sandbox for a build graph node *)
 let create ~node ~(workspace : Workspace.t) =
   let root = Std.Path.to_string workspace.root in
@@ -20,51 +17,63 @@ let create ~node ~(workspace : Workspace.t) =
   let debug_dir = Filename.concat target_dir_root "debug" in
   let out_dir = Filename.concat debug_dir "out" in
   let target_dir =
-    Filename.concat out_dir node.Build_node.package.relative_path
+    Filename.concat out_dir
+      (Std.Path.to_string node.Build_node.package.relative_path)
   in
 
   (* Create a unique sandbox directory for this build *)
   let sandbox_id =
     Printf.sprintf "%08x"
       (Hashtbl.hash
-         (node.Build_node.package.name ^ string_of_float (System.time ())))
+         (node.Build_node.package.name ^ string_of_float (Std.time ())))
   in
   let sandbox_dir =
     Filename.concat (Filename.concat debug_dir "sandbox") sandbox_id
   in
 
   (* Create directories *)
-  System.mkdir_safe target_dir_root 0o755;
-  System.mkdir_safe debug_dir 0o755;
-  System.mkdir_safe out_dir 0o755;
-  System.mkdir_safe (Filename.concat debug_dir "sandbox") 0o755;
-  System.mkdir_safe sandbox_dir 0o755;
+  let _ =
+    Fs.mkdir
+      (Path.of_string target_dir_root |> Result.expect ~msg:"Invalid path")
+      0o755
+  in
+  let _ =
+    Fs.mkdir
+      (Path.of_string debug_dir |> Result.expect ~msg:"Invalid path")
+      0o755
+  in
+  let _ =
+    Fs.mkdir (Path.of_string out_dir |> Result.expect ~msg:"Invalid path") 0o755
+  in
+  let _ =
+    Fs.mkdir
+      (Path.of_string (Filename.concat debug_dir "sandbox")
+      |> Result.expect ~msg:"Invalid path")
+      0o755
+  in
+  let _ =
+    Fs.mkdir
+      (Path.of_string sandbox_dir |> Result.expect ~msg:"Invalid path")
+      0o755
+  in
 
   (* Create parent directories for target_dir *)
-  System.mkdirp target_dir;
+  let _ =
+    Fs.mkdirp (Path.of_string target_dir |> Result.expect ~msg:"Invalid path")
+  in
+  ();
 
   { root; sandbox_dir; target_dir; node; workspace }
 
-(** Get dependency include paths for the sandbox *)
-let get_dependency_includes sandbox =
-  List.fold_left
-    (fun acc dep ->
-      let dep_target =
-        Filename.concat
-          (Filename.concat
-             (Filename.concat (Filename.concat sandbox.root "target") "debug")
-             "out")
-          dep.Build_node.package.relative_path
-      in
-      if System.file_exists dep_target then dep_target :: acc else acc)
-    [] sandbox.node.Build_node.dependencies
+(** Get sandbox directory *)
+let get_sandbox_dir t = t.sandbox_dir
 
 (** Get all transitive dependencies of a node *)
 let rec get_transitive_dependencies node visited =
   if List.mem node.Build_node.package.name visited then []
   else
     let visited = node.Build_node.package.name :: visited in
-    let direct_deps = node.Build_node.dependencies in
+    let direct_deps = node.Build_node.deps in
     let transitive_deps =
       List.concat
         (List.map
@@ -91,16 +100,23 @@ let copy_dependency_artifacts sandbox =
           (Filename.concat
              (Filename.concat (Filename.concat sandbox.root "target") "debug")
              "out")
-          dep.Build_node.package.relative_path
+          (Std.Path.to_string dep.Build_node.package.relative_path)
       in
 
-      if System.file_exists dep_target_dir then (
+      if Miniriot.File.exists ~path:dep_target_dir then (
         Printf.printf "[Sandbox] Copying artifacts from %s\n" dep_name;
         flush stdout;
 
         (* List files in dependency target directory *)
         let files =
-          System.list_dir dep_target_dir (fun file ->
+          let all_files =
+            Fs.readdir
+              (Path.of_string dep_target_dir
+              |> Result.expect ~msg:"Invalid dep_target_dir")
+            |> Result.expect ~msg:"Failed to read dep_target_dir"
+          in
+          List.filter
+            (fun file ->
               (* Main library archive *)
               file = dep_name ^ ".cma"
               (* Main module interface *)
@@ -108,6 +124,7 @@ let copy_dependency_artifacts sandbox =
               ||
               (* C object files *)
               Filename.check_suffix file ".o")
+            all_files
         in
         List.iter
           (fun file ->
@@ -115,8 +132,13 @@ let copy_dependency_artifacts sandbox =
             let dst = Filename.concat sandbox.sandbox_dir file in
 
             (* Only copy if destination doesn't exist *)
-            if not (System.file_exists dst) then (
-              System.copy_file src dst;
+            if not (Miniriot.File.exists ~path:dst) then (
+              let _ =
+                Fs.copy_file
+                  (Path.of_string src |> Result.expect ~msg:"Invalid src")
+                  (Path.of_string dst |> Result.expect ~msg:"Invalid dst")
+              in
+              ();
               Printf.printf "  -> Copied %s\n" file;
               flush stdout))
           files)
@@ -127,52 +149,34 @@ let copy_dependency_artifacts sandbox =
         flush stdout))
     all_deps
 
-(** Run a list of actions in the sandbox *)
-let rec run_actions ~sandbox ~blueprint ~store ~session_id =
-  let pkg_name = sandbox.node.Build_node.package.name in
+(** Run actions in the sandbox and return output paths *)
+let run_actions ~sandbox ~node ~session_id =
+  let pkg_name = node.Build_node.package.name in
 
-  (* Check if we have a blueprint hash and if artifacts are already cached *)
-  match blueprint.Actions.hash with
-  | Some hash ->
-      if Store.exists store hash then (
-        Log.cache_hit ?sid:session_id ~package:pkg_name
-          ~hash:(Hasher.to_string hash);
-        flush stdout;
-
-        (* Promote artifacts from store directly to target *)
-        if Store.promote_from_store store hash sandbox.target_dir then
-          Cached "Retrieved from cache"
-        else Failed "Failed to promote from cache")
-      else
-        (* cache_miss is already logged by build_worker.ml *)
-        (* Proceed with normal build *)
-        build_in_sandbox ~sandbox ~blueprint ~store ~hash:(Some hash)
-          ~session_id
-  | None ->
-      Printf.printf
-        "[Sandbox] No hash computed for %s, building without caching...\n"
-        pkg_name;
-      flush stdout;
-
-      (* Proceed with normal build (no caching) *)
-      build_in_sandbox ~sandbox ~blueprint ~store ~hash:None ~session_id
-
-(** Internal function to actually build in sandbox *)
-and build_in_sandbox ~sandbox ~blueprint ~store ~hash ~session_id =
-  (* Print the blueprint since we're about to execute it *)
-  Actions.print_blueprint blueprint;
+  (* Extract actions from the planned node *)
+  let actions =
+    match node.Build_node.spec with
+    | Build_node.Planned { actions; _ } -> actions
+    | Build_node.Unplanned -> []
+  in
 
   Printf.printf "[Sandbox] Running %d actions for %s in %s\n"
-    (List.length blueprint.Actions.actions)
-    sandbox.node.Build_node.package.name sandbox.sandbox_dir;
+    (List.length actions) sandbox.node.Build_node.package.name
+    sandbox.sandbox_dir;
   flush stdout;
 
   (* Copy all transitive dependency artifacts into sandbox *)
   copy_dependency_artifacts sandbox;
 
   (* Change to sandbox directory *)
-  let original_cwd = System.getcwd () in
-  System.chdir sandbox.sandbox_dir;
+  let original_cwd =
+    Fs.getcwd () |> Result.expect ~msg:"Failed to get cwd" |> Path.to_string
+  in
+  let _ =
+    Fs.chdir
+      (Path.of_string sandbox.sandbox_dir |> Result.expect ~msg:"Invalid path")
+  in
+  ();
 
   (* Track declared outputs *)
   let declared_outputs = ref [] in
@@ -209,7 +213,7 @@ and build_in_sandbox ~sandbox ~blueprint ~store ~hash ~session_id =
           | _ -> ());
 
           let result, output =
-            Actions.execute_action action blueprint.Actions.toolchain
+            Actions.execute_action action node.Build_node.toolchain
           in
           match result with
           | Actions.Success ->
@@ -229,9 +233,7 @@ and build_in_sandbox ~sandbox ~blueprint ~store ~hash ~session_id =
                   {
                     package = sandbox.node.Build_node.package.name;
                     file = "";
-                    (* Will try to parse later if needed *)
                     line = 0;
-                    (* Will try to parse later if needed *)
                     column = None;
                     message = String.trim error_msg;
                     hint = None;
@@ -241,135 +243,79 @@ and build_in_sandbox ~sandbox ~blueprint ~store ~hash ~session_id =
 
               Printf.printf "  -> Failed: %s\n" error_msg;
               flush stdout)
-        blueprint.Actions.actions;
+        actions;
 
-      if !success then Success "Build successful"
-      else Failed (String.concat "; " !errors)
+      if !success then Ok !declared_outputs
+      else Error (String.concat "; " !errors)
     with exn ->
       let error_msg =
         Printf.sprintf "Sandbox execution failed: %s" (Printexc.to_string exn)
       in
-      Failed error_msg
+      Error error_msg
   in
 
   (* Restore original working directory *)
-  System.chdir original_cwd;
+  let _ =
+    Fs.chdir (Path.of_string original_cwd |> Result.expect ~msg:"Invalid path")
+  in
+  ();
 
   (* Copy artifacts to target directory *)
-  (match result with
-  | Success _ | Cached _ -> (
-      let copy_artifacts () =
-        try
-          (* Copy only declared outputs *)
-          if !declared_outputs <> [] then (
-            Printf.printf "[Sandbox] Copying declared outputs...\n";
-            flush stdout;
-            List.iter
-              (fun output_file ->
-                let src = Filename.concat sandbox.sandbox_dir output_file in
-                if System.file_exists src then (
-                  let dst = Filename.concat sandbox.target_dir output_file in
-                  System.copy_file src dst;
-                  (* Make executable files executable *)
-                  if not (String.contains output_file '.') then (
-                    System.chmod dst 0o755;
-                    (* Also promote executable to target/<profile>/<name> *)
-                    let profile_dir =
-                      Filename.concat
-                        (Filename.concat sandbox.root "target")
-                        "debug"
-                    in
-                    let promoted_dst =
-                      Filename.concat profile_dir output_file
-                    in
-                    System.copy_file src promoted_dst;
-                    System.chmod promoted_dst 0o755;
-                    Printf.printf "[Sandbox] Promoted executable %s to %s\n"
-                      output_file promoted_dst;
-                    flush stdout);
-                  Printf.printf "[Sandbox] Copied %s to target\n" output_file;
-                  flush stdout)
-                else (
-                  Printf.printf
-                    "[Sandbox] Warning: Declared output %s not found in sandbox\n"
-                    output_file;
-                  flush stdout))
-              !declared_outputs)
-          else (
-            (* Fallback: if no outputs declared, use heuristics *)
-            Printf.printf
-              "[Sandbox] Warning: No outputs declared, using fallback heuristics\n";
-            flush stdout;
-            let pkg_name = sandbox.node.Build_node.package.name in
-            let files =
-              System.list_dir sandbox.sandbox_dir (fun file ->
-                  (* Main library archive *)
-                  file = pkg_name ^ ".cma"
-                  (* Main module interface *)
-                  || file = pkg_name ^ ".cmi"
-                  (* C object files *)
-                  || Filename.check_suffix file ".o"
-                  ||
-                  (* Executable (no extension and matches package name) *)
-                  ((not (String.contains file '.')) && file = pkg_name))
+  match result with
+  | Ok outputs ->
+      (* Copy outputs to target directory *)
+      List.iter
+        (fun output_file ->
+          let src = Filename.concat sandbox.sandbox_dir output_file in
+          if Miniriot.File.exists ~path:src then (
+            let dst = Filename.concat sandbox.target_dir output_file in
+            let _ =
+              Fs.copy_file
+                (Path.of_string src |> Result.expect ~msg:"Invalid src")
+                (Path.of_string dst |> Result.expect ~msg:"Invalid dst")
             in
-            List.iter
-              (fun file ->
-                let src = Filename.concat sandbox.sandbox_dir file in
-                let dst = Filename.concat sandbox.target_dir file in
-                System.copy_file src dst;
-                (* Make executable files executable *)
-                if not (String.contains file '.') then (
-                  System.chmod dst 0o755;
-                  (* Also promote executable to target/<profile>/<name> *)
-                  let profile_dir =
-                    Filename.concat
-                      (Filename.concat sandbox.root "target")
-                      "debug"
-                  in
-                  let promoted_dst = Filename.concat profile_dir file in
-                  System.copy_file src promoted_dst;
-                  System.chmod promoted_dst 0o755;
-                  Printf.printf "[Sandbox] Promoted executable %s to %s\n" file
-                    promoted_dst;
-                  flush stdout);
-                Printf.printf "[Sandbox] Copied %s to target\n" file;
-                flush stdout)
-              files)
-        with exn ->
-          Printf.printf "[Sandbox] Warning: Failed to copy artifacts: %s\n"
-            (Printexc.to_string exn);
-          flush stdout
-      in
-      copy_artifacts ();
-
-      (* After successful build, store artifacts in content-addressable cache *)
-      match hash with
-      | Some h when match result with Success _ -> true | _ -> false ->
-          (* Get declared outputs from the blueprint *)
-          let declared_outputs = ref [] in
-          List.iter
-            (fun action ->
-              match action with
-              | Actions.DeclareOutputs { outputs } ->
-                  declared_outputs := outputs
-              | _ -> ())
-            blueprint.Actions.actions;
-
-          if !declared_outputs <> [] then (
-            Printf.printf "[Sandbox] Storing build artifacts in cache\n";
-            flush stdout;
-            let _artifact =
-              Store.store_artifacts store h sandbox.sandbox_dir
-                !declared_outputs
-            in
-            (* TODO: Use artifact witness to update build results *)
-            ())
-      | _ -> () (* No hash or build failed, skip caching *))
-  | Failed _ -> ());
-
-  (* Don't copy artifacts on failure *)
-  result
+            (* Make executable files executable *)
+            if not (String.contains output_file '.') then (
+              let _ =
+                Fs.chmod
+                  (Path.of_string dst |> Result.expect ~msg:"Invalid dst")
+                  0o755
+              in
+              (* Also promote executable to target/<profile>/<name> *)
+              let profile_dir =
+                Filename.concat (Filename.concat sandbox.root "target") "debug"
+              in
+              let promoted_dst = Filename.concat profile_dir output_file in
+              let _ =
+                Fs.copy_file
+                  (Path.of_string src |> Result.expect ~msg:"Invalid src")
+                  (Path.of_string promoted_dst
+                  |> Result.expect ~msg:"Invalid dst")
+              in
+              let _ =
+                Fs.chmod
+                  (Path.of_string promoted_dst
+                  |> Result.expect ~msg:"Invalid promoted_dst")
+                  0o755
+              in
+              Printf.printf "[Sandbox] Promoted executable %s to %s\n"
+                output_file promoted_dst;
+              flush stdout);
+            Printf.printf "[Sandbox] Copied %s to target\n" output_file;
+            flush stdout))
+        outputs;
+      (* Return paths as Path.t *)
+      Ok
+        (List.filter_map
+           (fun s ->
+             match Std.Path.of_string s with Ok p -> Some p | Error _ -> None)
+           outputs)
+  | Error _ -> result |> Result.map (fun _ -> [])
 
 (** Clean up sandbox directory *)
-let cleanup sandbox = System.remove_dir sandbox.sandbox_dir
+let cleanup sandbox =
+  let _ =
+    Fs.remove_dir
+      (Path.of_string sandbox.sandbox_dir |> Result.expect ~msg:"Invalid path")
+  in
+  ()

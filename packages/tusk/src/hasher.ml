@@ -47,3 +47,18 @@ module Tests = struct
     (* Test that to_string and of_string are inverses *)
     Ok ()
 end [@test]
+
+(** Hash multiple files by combining their individual hashes *)
+let hash_files paths =
+  let buffer = Buffer.create 256 in
+  List.iter
+    (fun path ->
+      let path_str = Std.Path.to_string path in
+      if Miniriot.File.exists ~path:path_str then
+        let file_hash = hash_file path_str in
+        Buffer.add_string buffer (to_string file_hash))
+    paths;
+  hash_string (Buffer.contents buffer)
+
+(** Hash multiple strings (typically other hashes) into a single hash *)
+let hash_strings strings = hash_string (String.concat "" strings)

@@ -1,5 +1,14 @@
 (** Toolchain management for tusk build system *)
 
+open Std
+
+(* Helper to adapt Command.run_command Result to tuple *)
+let run_command_compat cmd =
+  match Command.run_command cmd with
+  | Ok output -> (true, output)
+  | Error (Command.SpawnFailed msg) -> (false, msg)
+  | Error _ -> (false, "Command failed")
+
 type source =
   | Version of string (* e.g., "5.3.0" *)
   | Path of string (* e.g., "./ocaml/compiler" *)
@@ -50,7 +59,11 @@ let default_toolchain =
    - Support cross-compilation toolchains
 *)
 
-let toolchain_base_dir = Filename.concat (System.get_home ()) ".tusk/toolchains"
+let toolchain_base_dir =
+  let home =
+    match Env.home_dir () with Some path -> Path.to_string path | None -> "."
+  in
+  Filename.concat home ".tusk/toolchains"
 
 let get_toolchain_path toolchain =
   Filename.concat toolchain_base_dir toolchain.version
@@ -114,7 +127,7 @@ let parse_toolchain_file path =
 let is_toolchain_installed toolchain =
   let toolchain_path = get_toolchain_path toolchain in
   let ocamlc = ocamlc_path toolchain in
-  System.file_exists toolchain_path && System.file_exists ocamlc
+  Miniriot.File.exists ~path:toolchain_path && Miniriot.File.exists ~path:ocamlc
 
 let get_version toolchain = toolchain.version
 
@@ -130,7 +143,13 @@ let get_cache_path url =
   in
 
   (* Create cache path: ~/.tusk/cache/domain/path/file *)
-  let cache_base = Filename.concat (System.get_home ()) ".tusk/cache" in
+  let cache_base =
+    Filename.concat
+      (match Env.home_dir () with
+      | Some path -> Path.to_string path
+      | None -> ".")
+      ".tusk/cache"
+  in
   Filename.concat cache_base url_without_protocol
 
 (** Build OCaml from local source directory *)
@@ -138,7 +157,7 @@ let build_from_local_source ~source_path ~toolchain_path =
   Printf.printf "Building OCaml from local source: %s...\n%!" source_path;
 
   (* Verify source directory exists *)
-  if not (System.file_exists source_path) then
+  if not (Miniriot.File.exists ~path:source_path) then
     failwith (Printf.sprintf "Source directory does not exist: %s" source_path);
 
   (* Configure *)
@@ -147,23 +166,24 @@ let build_from_local_source ~source_path ~toolchain_path =
     Printf.sprintf "cd %s && ./configure --prefix=%s --disable-ocamldoc"
       source_path toolchain_path
   in
-  let success, output = System.run_command configure_cmd in
+  let success, output = run_command_compat configure_cmd in
   if not success then
     failwith (Printf.sprintf "Failed to configure OCaml: %s" output);
 
   (* Build *)
   Printf.printf "Building OCaml (this may take a while)...\n%!";
-  let num_cores = System.cpu_count () in
+  let num_cores = 4 in
+  (* Default to 4 cores *)
   Printf.printf "Using %d cores for compilation\n%!" num_cores;
   let make_cmd = Printf.sprintf "cd %s && make -j%d" source_path num_cores in
-  let success, output = System.run_command make_cmd in
+  let success, output = run_command_compat make_cmd in
   if not success then
     failwith (Printf.sprintf "Failed to build OCaml: %s" output);
 
   (* Install *)
   Printf.printf "Installing OCaml...\n%!";
   let install_cmd = Printf.sprintf "cd %s && make install" source_path in
-  let success, output = System.run_command install_cmd in
+  let success, output = run_command_compat install_cmd in
   if not success then
     failwith (Printf.sprintf "Failed to install OCaml: %s" output);
 
@@ -175,33 +195,49 @@ let download_source_from_url url =
   let cache_dir = Filename.dirname cache_path in
 
   (* Create cache directory if needed *)
-  System.mkdirp cache_dir;
+  let _ =
+    Fs.mkdirp
+      (Path.of_string cache_dir |> Result.expect ~msg:"Invalid cache dir")
+  in
+  ();
 
   (* Check if already cached *)
-  if not (System.file_exists cache_path) then (
+  if not (Miniriot.File.exists ~path:cache_path) then (
     Printf.printf "Downloading OCaml from %s...\n%!" url;
 
     (* Download to cache *)
     let download_cmd = Printf.sprintf "curl -L -o %s %s" cache_path url in
-    let success, output = System.run_command download_cmd in
+    let success, output = run_command_compat download_cmd in
     if not success then
       failwith (Printf.sprintf "Failed to download OCaml: %s" output))
   else Printf.printf "Using cached OCaml from %s\n%!" cache_path;
 
   (* Extract to temporary directory *)
   let extract_dir =
-    Filename.concat "/tmp" (Printf.sprintf "ocaml-build-%d" (System.getpid ()))
+    Filename.concat "/tmp" (Printf.sprintf "ocaml-build-%d" (Command.getpid ()))
   in
-  System.mkdirp extract_dir;
+  let _ =
+    Fs.mkdirp
+      (Path.of_string extract_dir |> Result.expect ~msg:"Invalid extract dir")
+  in
+  ();
 
   Printf.printf "Extracting OCaml source...\n%!";
   let extract_cmd = Printf.sprintf "tar -xzf %s -C %s" cache_path extract_dir in
-  let success, output = System.run_command extract_cmd in
+  let success, output = run_command_compat extract_cmd in
   if not success then
     failwith (Printf.sprintf "Failed to extract OCaml: %s" output);
 
   (* Find the extracted directory (should be the only subdirectory) *)
-  let dirs = System.list_dir_all extract_dir in
+  let dirs =
+    (match
+       Fs.readdir
+         (Path.of_string extract_dir |> Result.expect ~msg:"Invalid extract dir")
+     with
+      | Ok files -> files
+      | Error _ -> [])
+    |> List.filter (fun f -> f <> "." && f <> "..")
+  in
   match dirs with
   | [ dir ] -> Filename.concat extract_dir dir
   | [] -> failwith "No directory found after extraction"
@@ -223,15 +259,19 @@ let download_ocaml_source version =
   let cache_dir = Filename.dirname cache_path in
 
   (* Create cache directory if needed *)
-  System.mkdirp cache_dir;
+  let _ =
+    Fs.mkdirp
+      (Path.of_string cache_dir |> Result.expect ~msg:"Invalid cache dir")
+  in
+  ();
 
   (* Check if already cached *)
-  if not (System.file_exists cache_path) then (
+  if not (Miniriot.File.exists ~path:cache_path) then (
     Printf.printf "Downloading OCaml %s from %s...\n%!" version url;
 
     (* Download to cache *)
     let download_cmd = Printf.sprintf "curl -L -o %s %s" cache_path url in
-    let success, output = System.run_command download_cmd in
+    let success, output = run_command_compat download_cmd in
     if not success then
       failwith (Printf.sprintf "Failed to download OCaml: %s" output))
   else Printf.printf "Using cached OCaml %s from %s\n%!" version cache_path;
@@ -239,13 +279,17 @@ let download_ocaml_source version =
   (* Extract to temporary directory *)
   let extract_dir =
     Filename.concat "/tmp"
-      (Printf.sprintf "ocaml-build-%s-%d" version (System.getpid ()))
+      (Printf.sprintf "ocaml-build-%s-%d" version (Command.getpid ()))
   in
-  System.mkdirp extract_dir;
+  let _ =
+    Fs.mkdirp
+      (Path.of_string extract_dir |> Result.expect ~msg:"Invalid extract dir")
+  in
+  ();
 
   Printf.printf "Extracting OCaml source...\n%!";
   let extract_cmd = Printf.sprintf "tar -xzf %s -C %s" cache_path extract_dir in
-  let success, output = System.run_command extract_cmd in
+  let success, output = run_command_compat extract_cmd in
   if not success then
     failwith (Printf.sprintf "Failed to extract OCaml: %s" output);
 
@@ -257,7 +301,9 @@ let download_ocaml_source version =
     ]
   in
 
-  match List.find_opt System.file_exists possible_dirs with
+  match
+    List.find_opt (fun path -> Miniriot.File.exists ~path) possible_dirs
+  with
   | Some dir -> dir
   | None -> failwith "Could not find extracted OCaml source directory"
 
@@ -272,9 +318,9 @@ let install_dev_tools toolchain =
   let ocamlformat = Filename.concat bin_dir "ocamlformat" in
 
   if
-    System.file_exists ocamllsp
-    && System.file_exists odoc
-    && System.file_exists ocamlformat
+    Miniriot.File.exists ~path:ocamllsp
+    && Miniriot.File.exists ~path:odoc
+    && Miniriot.File.exists ~path:ocamlformat
   then
     Printf.printf "Development tools already installed for toolchain %s\n%!"
       toolchain.version
@@ -284,14 +330,14 @@ let install_dev_tools toolchain =
 
     (* Determine host triplet *)
     let host_triplet =
-      if System.os_type () = "Unix" then
+      if Std.os_type () = "Unix" then
         let uname_s =
-          let success, output = System.run_command "uname -s" in
+          let success, output = run_command_compat "uname -s" in
           if success then String.trim output
           else failwith "Could not determine OS"
         in
         let uname_m =
-          let success, output = System.run_command "uname -m" in
+          let success, output = run_command_compat "uname -m" in
           if success then String.trim output
           else failwith "Could not determine architecture"
         in
@@ -333,7 +379,7 @@ let install_dev_tools toolchain =
     let download_cmd =
       Printf.sprintf "curl -fSL -o %s %s 2>&1" tools_archive tools_url
     in
-    let success, output = System.run_command download_cmd in
+    let success, output = run_command_compat download_cmd in
 
     if success then (
       (* Extract to toolchain directory *)
@@ -342,11 +388,11 @@ let install_dev_tools toolchain =
       let extract_cmd =
         Printf.sprintf "cd %s && tar xzf %s" toolchain_path tools_archive
       in
-      let success, output = System.run_command extract_cmd in
+      let success, output = run_command_compat extract_cmd in
 
       if success then (
         (* Clean up *)
-        ignore (System.run_command (Printf.sprintf "rm -f %s" tools_archive));
+        ignore (run_command_compat (Printf.sprintf "rm -f %s" tools_archive));
         Printf.printf "Successfully installed development tools\n%!")
       else failwith (Printf.sprintf "Failed to extract tools: %s" output))
     else
@@ -363,7 +409,12 @@ let install_toolchain toolchain =
 
     (* Create toolchain directory *)
     let toolchain_path = get_toolchain_path toolchain in
-    System.mkdirp toolchain_path;
+    let _ =
+      Fs.mkdirp
+        (Path.of_string toolchain_path
+        |> Result.expect ~msg:"Invalid toolchain path")
+    in
+    ();
 
     (* Build OCaml based on source type *)
     (match toolchain.source with
@@ -374,14 +425,18 @@ let install_toolchain toolchain =
         (* Clean up temporary extraction directory *)
         let extract_parent = Filename.dirname src_dir in
         let cleanup_cmd = Printf.sprintf "rm -rf %s" extract_parent in
-        ignore (System.run_command cleanup_cmd)
+        ignore (run_command_compat cleanup_cmd)
     | Path path ->
         (* Build from local source directory *)
         (* Resolve path relative to workspace root if needed *)
         let source_path =
           if Filename.is_relative path then
             (* Assume relative paths are relative to current working directory *)
-            Filename.concat (Sys.getcwd ()) path
+            Filename.concat
+              (Fs.getcwd ()
+              |> Result.expect ~msg:"Failed to get cwd"
+              |> Path.to_string)
+              path
           else path
         in
         build_from_local_source ~source_path ~toolchain_path
@@ -392,7 +447,7 @@ let install_toolchain toolchain =
         (* Clean up temporary extraction directory *)
         let extract_parent = Filename.dirname src_dir in
         let cleanup_cmd = Printf.sprintf "rm -rf %s" extract_parent in
-        ignore (System.run_command cleanup_cmd));
+        ignore (run_command_compat cleanup_cmd));
 
     Printf.printf "Successfully installed OCaml %s\n%!" toolchain.version;
 
@@ -412,7 +467,7 @@ let ready_toolchains workspace =
       "ocaml-toolchain.toml"
   in
   let toolchain =
-    if System.file_exists toolchain_file then
+    if Miniriot.File.exists ~path:toolchain_file then
       parse_toolchain_file toolchain_file
     else default_toolchain
   in
@@ -437,9 +492,9 @@ let ready_toolchains workspace =
 
      if
        not
-         (System.file_exists ocamllsp
-         && System.file_exists odoc
-         && System.file_exists ocamlformat)
+         (Miniriot.File.exists ~path:ocamllsp
+         && Miniriot.File.exists ~path:odoc
+         && Miniriot.File.exists ~path:ocamlformat)
      then (
        Printf.printf "Development tools missing. Installing...\n%!";
        install_dev_tools toolchain));
@@ -450,21 +505,34 @@ let ready_toolchains workspace =
 (** Validate that a toolchain is working *)
 let validate_toolchain toolchain =
   let ocamlc = ocamlc_path toolchain in
-  if not (System.file_exists ocamlc) then false
+  if not (Miniriot.File.exists ~path:ocamlc) then false
   else
     (* Try to run ocamlc -version *)
     let cmd = Printf.sprintf "%s -version" ocamlc in
-    let success, _ = System.run_command cmd in
+    let success, _ = run_command_compat cmd in
     success
 
 (** List installed toolchains *)
 let list_installed_toolchains () =
-  if System.file_exists toolchain_base_dir then
-    System.list_dir_all toolchain_base_dir
+  if Miniriot.File.exists ~path:toolchain_base_dir then
+    (match
+       Fs.readdir
+         (Path.of_string toolchain_base_dir
+         |> Result.expect ~msg:"Invalid toolchain base dir")
+     with
+      | Ok files -> files
+      | Error _ -> [])
+    |> List.filter (fun f -> f <> "." && f <> "..")
     |> List.map (fun dir -> Filename.concat toolchain_base_dir dir)
-    |> List.filter System.is_directory
     |> List.filter (fun path ->
-        System.file_exists (Filename.concat path "bin/ocamlc"))
+        match
+          Fs.is_directory
+            (Path.of_string path |> Result.expect ~msg:"Invalid path")
+        with
+        | Ok b -> b
+        | Error _ -> false)
+    |> List.filter (fun path ->
+        Miniriot.File.exists ~path:(Filename.concat path "bin/ocamlc"))
     |> List.map Filename.basename
   else []
 
@@ -495,3 +563,12 @@ module Tests = struct
     (* Test that get_version returns proper version string *)
     Ok ()
 end [@test]
+
+(** Hash a toolchain - hashes the compiler binary *)
+let hash toolchain =
+  let compiler_path = ocamlc_path toolchain in
+  if Miniriot.File.exists ~path:compiler_path then
+    Hasher.hash_file compiler_path
+  else
+    (* If compiler doesn't exist, hash the version string as fallback *)
+    Hasher.hash_string toolchain.version

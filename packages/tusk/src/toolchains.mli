@@ -12,3 +12,6 @@ val ocamlopt_path : toolchain -> string
 val ready_toolchains : Workspace.t -> toolchain
 val toolchain_base_dir : string
 val validate_toolchain : toolchain -> bool
+
+val hash : toolchain -> Hasher.hash
+(** Hash a toolchain - hashes the compiler binary *)

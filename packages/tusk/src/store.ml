@@ -2,6 +2,7 @@
 
 type artifact = { hash : Hasher.hash; files : string list }
 type t = { root_dir : string (* Root directory for the store *) }
+type error = string
 
 (** Create a new store at the given root directory *)
 let create ~root_dir =
@@ -9,7 +10,10 @@ let create ~root_dir =
     Filename.concat (Filename.concat root_dir "target/debug") "cache"
   in
   (* Create store directory if it doesn't exist *)
-  System.mkdirp store_dir;
+  let _ =
+    Fs.mkdirp
+      (Path.of_string store_dir |> Result.expect ~msg:"Invalid store path")
+  in
   { root_dir = store_dir }
 
 (** Get the path for a given hash in the store *)
@@ -19,36 +23,61 @@ let get_hash_dir store hash =
 (** Check if artifacts for a given hash exist in the store *)
 let exists store hash =
   let hash_dir = get_hash_dir store hash in
-  System.file_exists hash_dir
+  Miniriot.File.exists ~path:hash_dir
 
 (** List all files in a hash directory *)
 let list_artifacts store hash =
   let hash_dir = get_hash_dir store hash in
-  if System.file_exists hash_dir then
-    try Array.to_list (Sys.readdir hash_dir) with _ -> []
+  if Miniriot.File.exists ~path:hash_dir then
+    match
+      Fs.readdir
+        (Path.of_string hash_dir |> Result.expect ~msg:"Invalid hash_dir")
+    with
+    | Ok files -> files
+    | Error _ -> []
   else []
 
 (** Promote artifacts from store to target directory *)
 let promote_from_store store hash target_dir =
   let hash_dir = get_hash_dir store hash in
-  if System.file_exists hash_dir then (
+  if Miniriot.File.exists ~path:hash_dir then (
     Printf.printf "[Store] Promoting artifacts from cache: %s\n"
       (Hasher.to_string hash);
     flush stdout;
 
     (* Ensure target directory exists *)
-    System.mkdirp target_dir;
+    let _ =
+      Fs.mkdirp
+        (Path.of_string target_dir |> Result.expect ~msg:"Invalid target path")
+    in
+    ();
 
     (* Copy all files from hash directory to target *)
-    let files = Array.to_list (Sys.readdir hash_dir) in
+    let files =
+      Fs.readdir
+        (Path.of_string hash_dir |> Result.expect ~msg:"Invalid hash_dir")
+      |> Result.expect ~msg:"Failed to read hash_dir"
+    in
     List.iter
       (fun file ->
         let src = Filename.concat hash_dir file in
         let dst = Filename.concat target_dir file in
 
         (* Only copy if it's a file, not directory *)
-        if not (Sys.is_directory src) then (
-          System.copy_file src dst;
+        if
+          not
+            (match
+               Fs.is_directory
+                 (Path.of_string src |> Result.expect ~msg:"Invalid src")
+             with
+            | Ok b -> b
+            | Error _ -> false)
+        then (
+          let _ =
+            Fs.copy_file
+              (Path.of_string src |> Result.expect ~msg:"Invalid src")
+              (Path.of_string dst |> Result.expect ~msg:"Invalid dst")
+          in
           Printf.printf "[Store]   -> Promoted %s\n" file;
           flush stdout))
       files;
@@ -60,7 +89,10 @@ let store_artifacts store hash sandbox_dir declared_outputs =
   let hash_dir = get_hash_dir store hash in
 
   (* Create hash directory (including parent directories) *)
-  System.mkdirp hash_dir;
+  let _ =
+    Fs.mkdirp (Path.of_string hash_dir |> Result.expect ~msg:"Invalid hash dir")
+  in
+  ();
 
   Printf.printf "[Store] Storing artifacts with hash: %s\n"
     (Hasher.to_string hash);
@@ -71,9 +103,13 @@ let store_artifacts store hash sandbox_dir declared_outputs =
     List.fold_left
       (fun acc output_file ->
         let src = Filename.concat sandbox_dir output_file in
-        if System.file_exists src then (
+        if Miniriot.File.exists ~path:src then (
           let dst = Filename.concat hash_dir output_file in
-          System.copy_file src dst;
+          let _ =
+            Fs.copy_file
+              (Path.of_string src |> Result.expect ~msg:"Invalid src")
+              (Path.of_string dst |> Result.expect ~msg:"Invalid dst")
+          in
           Printf.printf "[Store]   -> Stored %s\n" output_file;
           flush stdout;
           output_file :: acc)
@@ -98,14 +134,31 @@ let gc_store store ~keep_recent_days =
 (** Get store statistics *)
 let get_stats store =
   let count_files dir =
-    if System.file_exists dir then
+    if Miniriot.File.exists ~path:dir then
       try
-        let subdirs = Array.to_list (Sys.readdir dir) in
+        let subdirs =
+          Fs.readdir (Path.of_string dir |> Result.expect ~msg:"Invalid dir")
+          |> Result.expect ~msg:"Failed to read dir"
+        in
         List.fold_left
           (fun acc subdir ->
             let subdir_path = Filename.concat dir subdir in
-            if Sys.is_directory subdir_path then
-              acc + Array.length (Sys.readdir subdir_path)
+            if
+              match
+                Fs.is_directory
+                  (Path.of_string subdir_path
+                  |> Result.expect ~msg:"Invalid subdir_path")
+              with
+              | Ok b -> b
+              | Error _ -> false
+            then
+              match
+                Fs.readdir
+                  (Path.of_string subdir_path
+                  |> Result.expect ~msg:"Invalid subdir_path")
+              with
+              | Ok files -> acc + List.length files
+              | Error _ -> acc
             else acc)
           0 subdirs
       with _ -> 0
@@ -146,3 +199,27 @@ module Tests = struct
     (* Test that artifacts are organized by hash prefix *)
     Ok ()
 end [@test]
+
+(** Simple interface - check if we have cached artifacts for a build node *)
+let get store node =
+  match node.Build_node.spec with
+  | Build_node.Unplanned -> None
+  | Build_node.Planned { hash; outs; _ } ->
+      if exists store hash then
+        let files = list_artifacts store hash in
+        Some { hash; files }
+      else None
+
+(** Save build outputs to the store *)
+let save store node ~sandbox_dir ~outs =
+  match node.Build_node.spec with
+  | Build_node.Unplanned -> Error "Cannot save artifacts for unplanned node"
+  | Build_node.Planned { hash; _ } ->
+      let outs_str = List.map Std.Path.to_string outs in
+      let artifact = store_artifacts store hash sandbox_dir outs_str in
+      Ok artifact
+
+(** Promote cached artifacts to target directory *)
+let promote store artifact ~target_dir =
+  if promote_from_store store artifact.hash target_dir then Ok ()
+  else Error "Failed to promote artifacts from cache"

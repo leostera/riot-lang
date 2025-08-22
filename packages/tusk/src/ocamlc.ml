@@ -54,8 +54,10 @@ let run ~toolchain ?(includes = []) ?(libs = []) ?(output = None)
   Printf.printf "  $ %s\n" cmd_parts;
 
   (* Execute the command *)
-  let success, output = System.run_command cmd_parts in
-  if success then Success output else Failed output
+  match Command.run_command cmd_parts with
+  | Ok output -> Success output
+  | Error (Command.SpawnFailed msg) -> Failed msg
+  | Error _ -> Failed "Command failed"
 
 (** Compile an interface file (.mli -> .cmi) *)
 let compile_interface ~toolchain ~includes ~output source =
