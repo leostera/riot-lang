@@ -57,7 +57,12 @@ let mark_built t pkg =
   Hashtbl.replace t.results pkg (Built unknown_hash)
 
 (** Mark a package as failed *)
-let mark_failed t pkg error = Hashtbl.replace t.results pkg (Failed error)
+let mark_failed_pkg t pkg error = Hashtbl.replace t.results pkg (Failed error)
+
+(** Mark a node as failed *)
+let mark_failed t node ~error =
+  let pkg_name = node.Build_node.package.name in
+  Hashtbl.replace t.results pkg_name (Failed error)
 
 (** Reset failed packages to NotStarted so they can be retried *)
 let reset_failed_packages t =
@@ -87,13 +92,22 @@ let sources_newer_than_outputs workspace pkg_name =
   in
   let output_file = Filename.concat target_dir (pkg_name ^ ".cma") in
 
-  if not (Sys.file_exists output_file) then true (* No outputs, need to build *)
+  if not (Miniriot.File.exists ~path:output_file) then true
+    (* No outputs, need to build *)
   else
-    let output_stat = Unix.stat output_file in
+    let output_stat =
+      Fs.stat
+        (Path.of_string output_file |> Result.expect ~msg:"Invalid output_file")
+      |> Result.expect ~msg:"Failed to stat output_file"
+    in
     let output_mtime = output_stat.st_mtime in
 
-    if Sys.file_exists src_dir then
-      let files = Array.to_list (Sys.readdir src_dir) in
+    if Miniriot.File.exists ~path:src_dir then
+      let files =
+        Fs.readdir
+          (Path.of_string src_dir |> Result.expect ~msg:"Invalid src_dir")
+        |> Result.expect ~msg:"Failed to read src_dir"
+      in
       let source_files =
         List.filter
           (fun f ->
@@ -105,8 +119,13 @@ let sources_newer_than_outputs workspace pkg_name =
       List.exists
         (fun file ->
           let filepath = Filename.concat src_dir file in
-          if Sys.file_exists filepath then
-            let file_stat = Unix.stat filepath in
+          if Miniriot.File.exists ~path:filepath then
+            let file_stat =
+              Fs.stat
+                (Path.of_string filepath
+                |> Result.expect ~msg:"Invalid filepath")
+              |> Result.expect ~msg:"Failed to stat filepath"
+            in
             file_stat.st_mtime > output_mtime
           else false)
         source_files
@@ -121,7 +140,7 @@ let build_outputs_exist workspace pkg_name =
   let cmi_file = Filename.concat pkg_target_dir (pkg_name ^ ".cmi") in
 
   (* Check if key build outputs exist *)
-  Sys.file_exists cma_file && Sys.file_exists cmi_file
+  Miniriot.File.exists ~path:cma_file && Miniriot.File.exists ~path:cmi_file
 
 (** Check if a package is built with the current content hash *)
 let is_built_with_current_hash t pkg current_hash =
@@ -144,10 +163,29 @@ let is_building t pkg =
 
 (** Check if all packages are done (built or failed) *)
 let all_done t =
-  Hashtbl.fold
-    (fun _pkg status acc ->
-      acc && match status with Built _ | Failed _ -> true | _ -> false)
-    t.results true
+  if Hashtbl.length t.results = 0 then false
+    (* Empty results means nothing has been queued yet *)
+  else
+    Hashtbl.fold
+      (fun _pkg status acc ->
+        acc && match status with Built _ | Failed _ -> true | _ -> false)
+      t.results true
+
+(** Mark a node as pending *)
+let mark_pending t node =
+  let pkg_name = node.Build_node.package.name in
+  Hashtbl.replace t.results pkg_name NotStarted
+
+(** Mark a node as completed with artifact *)
+let mark_completed t node artifact =
+  let pkg_name = node.Build_node.package.name in
+  (* Extract hash from the node's spec *)
+  let hash =
+    match node.Build_node.spec with
+    | Planned { hash; _ } -> hash
+    | Unplanned -> Hasher.of_string "unplanned"
+  in
+  Hashtbl.replace t.results pkg_name (Built hash)
 
 (** Get build statistics *)
 let get_stats t =

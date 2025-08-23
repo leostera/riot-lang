@@ -1,181 +1,76 @@
 (** Build queue management - Three-state system for dependency ordering *)
 
 type t = {
-  ready_queue : Build_messages.build_task Queue.t; (* Tasks ready to build *)
-  waiting_queue : Build_messages.build_task Queue.t;
-      (* Tasks waiting on dependencies *)
-  busy_tasks : (string, Build_messages.build_task) Hashtbl.t;
-      (* pkg_name -> currently building task *)
-  build_results : Build_results.t;
-      (* Reference to build results for automatic filtering *)
+  ready_queue : Build_node.t Queue.t; (* Nodes ready to build *)
+  waiting_queue : Build_node.t Queue.t; (* Nodes waiting on dependencies *)
+  busy_nodes : (string, Build_node.t) Hashtbl.t;
+      (* pkg_name -> currently building node *)
 }
-(** Queue type that manages build tasks in different states *)
 
 (** Create a new build queue *)
-let create build_results =
+let create _ =
   {
     ready_queue = Queue.create ();
     waiting_queue = Queue.create ();
-    busy_tasks = Hashtbl.create 32;
-    build_results;
+    busy_nodes = Hashtbl.create 32;
   }
 
-(** Add a task to the ready queue *)
-let add_ready t task =
-  let pkg_name = task.Build_messages.node.Build_node.package.name in
+(** Add a node to the ready queue *)
+let add_ready t node =
+  let pkg_name = node.Build_node.package.name in
   (* Don't add if already busy or already in ready queue *)
-  if not (Hashtbl.mem t.busy_tasks pkg_name) then (
+  if not (Hashtbl.mem t.busy_nodes pkg_name) then (
     (* Check if already in ready queue *)
     let already_queued = ref false in
     Queue.iter
-      (fun queued_task ->
-        let queued_pkg =
-          queued_task.Build_messages.node.Build_node.package.name
-        in
+      (fun queued_node ->
+        let queued_pkg = queued_node.Build_node.package.name in
         if queued_pkg = pkg_name then already_queued := true)
       t.ready_queue;
-    if not !already_queued then Queue.add task t.ready_queue)
+    if not !already_queued then Queue.add node t.ready_queue)
 
-(** Add a task to the waiting queue *)
-let add_waiting t task =
-  let pkg_name = task.Build_messages.node.Build_node.package.name in
-  if not (Hashtbl.mem t.busy_tasks pkg_name) then Queue.add task t.waiting_queue
+(** Add a node to the waiting queue *)
+let add_waiting t node =
+  let pkg_name = node.Build_node.package.name in
+  if not (Hashtbl.mem t.busy_nodes pkg_name) then Queue.add node t.waiting_queue
 
-(** Check if there's any work available in either queue *)
-let is_empty t = Queue.is_empty t.ready_queue && Queue.is_empty t.waiting_queue
+(** Add a node to the queue *)
+let queue t node =
+  (* For now, just add to ready queue - in reality we'd check deps *)
+  add_ready t node
 
-(** Check if the ready queue has work *)
-let has_ready_work t = not (Queue.is_empty t.ready_queue)
+(** Queue a node with dependencies *)
+let queue_with_deps t node ~deps =
+  (* First queue all dependencies *)
+  List.iter (fun dep -> add_ready t dep) deps;
+  (* Then add the node to waiting *)
+  add_waiting t node
 
-(** Helper to promote tasks from waiting queue when dependencies are ready *)
-let rec promote_from_waiting t =
-  if Queue.is_empty t.waiting_queue then ()
-  else
-    let waiting_items = ref [] in
-    (* Take all items from waiting queue *)
-    while not (Queue.is_empty t.waiting_queue) do
-      waiting_items := Queue.take t.waiting_queue :: !waiting_items
-    done;
-
-    (* Check each task and either promote or keep waiting *)
-    List.iter
-      (fun task ->
-        let pkg_name = task.Build_messages.node.Build_node.package.name in
-        (* Get dependencies for this package - we need the build graph context *)
-        (* For now, we'll use a simple check based on build results *)
-        (* In a real implementation, we'd need the dependency information *)
-        match Build_results.get_status t.build_results pkg_name with
-        | Some (Built _) -> () (* Already built, skip *)
-        | _ ->
-            (* For now, add back to waiting queue - this needs dependency checking *)
-            Queue.add task t.waiting_queue)
-      !waiting_items
-
-(** Get the next task from the ready queue and mark it as busy *)
-let rec take_ready t =
-  (* First try to promote tasks from waiting queue *)
-  promote_from_waiting t;
-
+(** Get the next node from the ready queue *)
+let rec next t =
   if Queue.is_empty t.ready_queue then None
   else
-    let task = Queue.take t.ready_queue in
-    let pkg_name = task.Build_messages.node.Build_node.package.name in
-    (* Check if already busy *)
-    if Hashtbl.mem t.busy_tasks pkg_name then
-      take_ready t (* Skip and try next *)
-    else
-      (* Check if already built *)
-      match Build_results.get_status t.build_results pkg_name with
-      | Some (Built _) -> take_ready t (* Skip and try next *)
-      | _ ->
-          (* Mark as busy *)
-          Hashtbl.replace t.busy_tasks pkg_name task;
-          Some task
+    let node = Queue.take t.ready_queue in
+    let pkg_name = node.Build_node.package.name in
+    (* Mark as busy *)
+    Hashtbl.add t.busy_nodes pkg_name node;
+    Some node
 
-(** Get statistics about the queue *)
-let stats t =
-  let ready_size = Queue.length t.ready_queue in
-  let waiting_size = Queue.length t.waiting_queue in
-  let busy_size = Hashtbl.length t.busy_tasks in
-  (ready_size, waiting_size, busy_size)
-
-(** Clear all queues *)
-let clear t =
-  Queue.clear t.ready_queue;
-  Queue.clear t.waiting_queue;
-  Hashtbl.clear t.busy_tasks
-
-(** Peek at what's in the waiting queue without removing *)
-let peek_waiting t =
-  let items = ref [] in
-  Queue.iter
-    (fun task ->
-      let pkg_name = task.Build_messages.node.Build_node.package.name in
-      items := pkg_name :: !items)
-    t.waiting_queue;
-  List.rev !items
-
-(** Peek at what's in the ready queue without removing *)
-let peek_ready t =
-  let items = ref [] in
-  Queue.iter
-    (fun task ->
-      let pkg_name = task.Build_messages.node.Build_node.package.name in
-      items := pkg_name :: !items)
-    t.ready_queue;
-  List.rev !items
-
-(** Check if a package is in the waiting queue *)
-let is_waiting t pkg_name =
-  let waiting_items = peek_waiting t in
-  List.mem pkg_name waiting_items
-
-(** Move a task from waiting to ready queue *)
-let move_to_ready t pkg_name =
-  (* Take all items from waiting queue *)
-  let waiting_items = ref [] in
+(** Mark a node as no longer busy *)
+let mark_done t node =
+  let pkg_name = node.Build_node.package.name in
+  Hashtbl.remove t.busy_nodes pkg_name;
+  (* Check if any waiting nodes can now be promoted to ready *)
+  (* Move all waiting nodes to ready for now - proper dependency checking would be better *)
+  let waiting_nodes = ref [] in
   while not (Queue.is_empty t.waiting_queue) do
-    waiting_items := Queue.take t.waiting_queue :: !waiting_items
+    waiting_nodes := Queue.take t.waiting_queue :: !waiting_nodes
   done;
+  List.iter (fun n -> add_ready t n) (List.rev !waiting_nodes)
 
-  (* Put back items except the one we're moving *)
-  List.iter
-    (fun task ->
-      let task_pkg_name = task.Build_messages.node.Build_node.package.name in
-      if task_pkg_name = pkg_name then
-        Queue.add task t.ready_queue (* Move to ready queue *)
-      else Queue.add task t.waiting_queue (* Keep in waiting queue *))
-    (List.rev !waiting_items)
-
-(** Mark a task as completed and remove from busy queue **)
-let mark_completed t pkg_name = Hashtbl.remove t.busy_tasks pkg_name
-
-(** Check if a task is currently busy **)
-let is_busy t pkg_name = Hashtbl.mem t.busy_tasks pkg_name
-
-(** Tests submodule *)
-module Tests = struct
-  let test_queue_prevents_duplicate_tasks () : (unit, string) result =
-    (* Test that same package isn't added multiple times *)
-    Ok ()
-    [@test]
-
-  let test_three_state_queue_transitions () : (unit, string) result =
-    (* Test ready -> busy -> completed transitions *)
-    Ok ()
-    [@test]
-
-  let test_waiting_queue_promotes_when_deps_ready () : (unit, string) result =
-    (* Test that waiting tasks move to ready when dependencies complete *)
-    Ok ()
-    [@test]
-
-  let test_busy_tasks_block_duplicate_assignment () : (unit, string) result =
-    (* Test that busy tasks aren't assigned again *)
-    Ok ()
-    [@test]
-
-  let test_queue_skips_already_built_packages () : (unit, string) result =
-    (* Test that take_ready skips packages already in build_results *)
-    Ok ()
-end [@test]
+(** Get queue statistics *)
+let get_stats t =
+  let ready = Queue.length t.ready_queue in
+  let waiting = Queue.length t.waiting_queue in
+  let busy = Hashtbl.length t.busy_nodes in
+  (ready, waiting, busy)
