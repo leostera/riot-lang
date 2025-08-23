@@ -35,13 +35,15 @@ let rec loop state =
 
   match receive ~selector () with
   | Ping { client_pid } -> handle_ping state client_pid
-  | Build { client_pid; target } -> handle_build state client_pid target
+  | Build { client_pid; target; session_id } ->
+      handle_build state client_pid target session_id
   | ScanWorkspace { client_pid; current_dir } ->
       handle_scan_workspace state client_pid current_dir
 
 (** Handler for the ping message. *)
 and handle_ping state client_pid =
-  Printf.eprintf "Server: Received Ping from %s, sending Pong\n" (Pid.to_string client_pid);
+  Printf.eprintf "Server: Received Ping from %s, sending Pong\n"
+    (Pid.to_string client_pid);
   send client_pid (ServerResponse Pong);
   loop state
 
@@ -59,59 +61,118 @@ and handle_scan_workspace state client_pid current_dir =
   loop new_state
 
 (** Handler for the build message. *)
-and handle_build state client_pid target =
+and handle_build state client_pid target session_id =
+  Printf.eprintf "Server: handle_build called for target: %s\n"
+    (match target with
+    | All -> "All"
+    | Package p -> Printf.sprintf "Package(%s)" p);
+  flush stderr;
   let server_pid = self () in
   let _ =
     spawn (fun () : Process.exit_reason ->
+        Printf.eprintf "Server: Build process spawned\n";
+        flush stderr;
         (* 1. on every build we refresh the workspace *)
         let workspace =
           Workspace_manager.scan state.workspace.root
           |> Std.Result.expect ~msg:"tusk_server: operation failed"
         in
+        Printf.eprintf "Server: Workspace scanned, found %d packages\n"
+          (List.length workspace.packages);
+        flush stderr;
 
-        (* 2. compute and queue the target build graph (this could be the whole build graph or a subset) *)
+        (* 2. recreate the build graph from the refreshed workspace *)
+        let fresh_build_graph = Build_graph.create workspace state.toolchain in
+
+        (* 3. compute and queue the target build graph (this could be the whole build graph or a subset) *)
         let target_graph =
           match target with
-          | All -> state.build_graph
-          | Package pkg -> Build_graph.filter_for_package state.build_graph pkg
+          | All -> fresh_build_graph
+          | Package pkg -> Build_graph.filter_for_package fresh_build_graph pkg
         in
-        List.iter
-          (Build_queue.queue state.build_queue)
-          (Build_graph.topological_sort target_graph);
+        let nodes = Build_graph.topological_sort target_graph in
 
-        (* 3. create a worker pool to execute this build *)
+        Printf.eprintf "Server: Build starting with %d nodes\n"
+          (List.length nodes);
+        flush stderr;
+
+        (* Log build started event *)
+        let packages = List.map (fun n -> n.Build_node.package.name) nodes in
+        let total_modules = 0 in
+        (* TODO: Count actual modules when available *)
+        Log.log ?sid:session_id
+          (Log.BuildStarted { packages; total_modules; workers = state.workers });
+
+        (* Queue all nodes and mark them as pending *)
+        List.iter
+          (fun node ->
+            Build_queue.queue state.build_queue node;
+            Build_results.mark_pending state.build_results node)
+          nodes;
+        Printf.eprintf "Server: Queued %d packages: %s\n" (List.length packages)
+          (String.concat ", " packages);
+        flush stderr;
+
+        (* Debug: Check queue state *)
+        let ready, waiting, busy = Build_queue.get_stats state.build_queue in
+        Printf.eprintf
+          "Server: Queue state - Ready: %d, Waiting: %d, Busy: %d\n" ready
+          waiting busy;
+        flush stderr;
+
+        (* 4. create a worker pool to execute this build *)
         let build_pid = self () in
         let worker_pool =
           Worker_pool.start ~workers:state.workers ~provider:build_pid
             ~worker_fn:Build_worker.main ()
         in
 
-        (* 4. enter the build loop *)
+        (* Track build statistics *)
+        let build_start_time = Global.time_ms () in
+        let succeeded = ref [] in
+        let failed = ref [] in
+
+        (* 5. enter the build loop *)
         let selector msg =
           match msg with Worker_pool.Worker msg -> `select msg | _ -> `skip
         in
 
         let rec build_loop () =
-          if Build_results.all_done state.build_results then ()
+          if Build_results.all_done state.build_results then (
+            Printf.eprintf "Server: All builds done\n";
+            flush stderr;
+            ())
           else
             match receive ~selector () with
             | Worker_pool.TaskCompleted { worker; node; artifact } ->
                 Build_results.mark_completed state.build_results node artifact;
+                succeeded := node.Build_node.package.name :: !succeeded;
+                Build_queue.mark_done state.build_queue node;
                 build_loop ()
             | Worker_pool.TaskFailed { worker; node; error } ->
                 Build_results.mark_failed state.build_results node ~error;
+                failed := node.Build_node.package.name :: !failed;
+                Build_queue.mark_done state.build_queue node;
                 build_loop ()
             | Worker_pool.WorkerReady worker ->
+                Printf.eprintf "Server: Worker ready\n";
+                flush stderr;
                 let () =
                   match Build_queue.next state.build_queue with
-                  | None -> ()
+                  | None ->
+                      Printf.eprintf "Server: No work available for worker\n";
+                      flush stderr;
+                      ()
                   | Some node ->
+                      Printf.eprintf "Server: Sending task %s to worker\n"
+                        node.Build_node.package.name;
+                      flush stderr;
                       (* Wrap the node in a task with workspace and session_id *)
                       let task =
                         {
                           Worker_pool.node;
                           workspace = state.workspace;
-                          session_id = None;
+                          session_id;
                         }
                       in
                       Worker_pool.send_task worker task
@@ -126,7 +187,19 @@ and handle_build state client_pid target =
         in
 
         Fun.protect
-          ~finally:(fun () -> send client_pid (ServerResponse BuildCompleted))
+          ~finally:(fun () ->
+            (* Log build complete event *)
+            let duration_ms = Global.time_ms () - build_start_time in
+            Log.log ?sid:session_id
+              (Log.BuildComplete
+                 {
+                   duration_ms;
+                   results = [];
+                   (* TODO: Get actual results from build_results *)
+                   succeeded = List.rev !succeeded;
+                   failed = List.rev !failed;
+                 });
+            send client_pid (ServerResponse BuildCompleted))
           (fun () -> build_loop ());
         Process.Normal)
   in
@@ -237,7 +310,9 @@ let shutdown server =
 
 (** Build all packages *)
 let build_all server =
-  send server (ServerRequest (Build { client_pid = self (); target = All }));
+  send server
+    (ServerRequest
+       (Build { client_pid = self (); target = All; session_id = None }));
   let selector msg =
     match msg with
     | ServerResponse BuildCompleted -> `select BuildCompleted
@@ -252,7 +327,8 @@ let build_package ~name =
   (* For now, we'll need to start a server if not already running *)
   let server = start () in
   send server
-    (ServerRequest (Build { client_pid = self (); target = Package name }));
+    (ServerRequest
+       (Build { client_pid = self (); target = Package name; session_id = None }));
   let selector msg =
     match msg with
     | ServerResponse BuildCompleted -> `select BuildCompleted
