@@ -912,8 +912,7 @@ module TuskProtocol = struct
     | Ping -> { Jsonrpc.method_ = method_ping; params = NoParams }
     | GetWorkspaceConfig ->
         { method_ = method_get_workspace_config; params = NoParams }
-    | GetBuildGraph ->
-        { method_ = method_get_build_graph; params = NoParams }
+    | GetBuildGraph -> { method_ = method_get_build_graph; params = NoParams }
     | BuildPackage pkg ->
         { method_ = method_build_package; params = build_package_params pkg }
     | BuildAll -> { method_ = method_build_all; params = NoParams }
@@ -963,8 +962,7 @@ module TuskProtocol = struct
                          ("status", Json.String node.status);
                          ( "deps",
                            Json.Array
-                             (List.map (fun d -> Json.String d) node.deps)
-                         );
+                             (List.map (fun d -> Json.String d) node.deps) );
                        ])
                    graph.nodes) );
           ]
@@ -1265,14 +1263,13 @@ module TuskProtocol = struct
                                     | _ -> []
                                   in
                                   Some
-                                    
-                                      {
-                                        package_name;
-                                        src_dir;
-                                        out_dir;
-                                        status;
-                                        deps;
-                                      }
+                                    {
+                                      package_name;
+                                      src_dir;
+                                      out_dir;
+                                      status;
+                                      deps;
+                                    }
                               | _ -> None)
                             arr
                       | _ -> []
@@ -1401,7 +1398,9 @@ module Client = struct
                   | Ok
                       {
                         result =
-                          Ok (TuskProtocol.BuildEvent { session_id = _; log_event });
+                          Ok
+                            (TuskProtocol.BuildEvent
+                               { session_id = _; log_event });
                         _;
                       } ->
                       Printf.eprintf "[CLIENT] Got BuildEvent\n";
@@ -1414,7 +1413,8 @@ module Client = struct
                       Ok (BuildFinished (Ok ()))
                   | Ok
                       {
-                        result = Ok (TuskProtocol.BuildFailed { session_id; error; _ });
+                        result =
+                          Ok (TuskProtocol.BuildFailed { session_id; error; _ });
                         _;
                       } ->
                       Printf.eprintf "[CLIENT] Got BuildFailed: %s\n" error;
@@ -1435,7 +1435,8 @@ module Client = struct
                         match resp.result with
                         | Ok TuskProtocol.Pong -> "Pong"
                         | Ok (TuskProtocol.BuildGraph _) -> "BuildGraph"
-                        | Ok (TuskProtocol.WorkspaceConfig _) -> "WorkspaceConfig"
+                        | Ok (TuskProtocol.WorkspaceConfig _) ->
+                            "WorkspaceConfig"
                         | Ok (TuskProtocol.BuildStarted _) -> "BuildStarted"
                         | Ok (TuskProtocol.BuildEvent _) -> "BuildEvent"
                         | Ok (TuskProtocol.BuildComplete _) -> "BuildComplete"
@@ -1535,11 +1536,22 @@ module Server = struct
 
   let handle_build ctx reply request =
     (* Convert to tusk_protocol message type *)
-    let server_request = match request with
-      | TuskProtocol.BuildPackage pkg -> 
-          Tusk_protocol.Build { client_pid = self (); target = Tusk_protocol.Package pkg }
+    let server_request =
+      match request with
+      | TuskProtocol.BuildPackage pkg ->
+          Tusk_protocol.Build
+            {
+              client_pid = self ();
+              target = Tusk_protocol.Package pkg;
+              session_id = None;
+            }
       | TuskProtocol.BuildAll ->
-          Tusk_protocol.Build { client_pid = self (); target = Tusk_protocol.All }
+          Tusk_protocol.Build
+            {
+              client_pid = self ();
+              target = Tusk_protocol.All;
+              session_id = None;
+            }
       | _ -> failwith "Invalid build request"
     in
     send ctx.server_pid (Tusk_protocol.ServerRequest server_request);
@@ -1551,19 +1563,22 @@ module Server = struct
     in
     match receive ~selector () with
     | Tusk_protocol.BuildCompleted ->
-        (* For now, just return a simple build complete response *)
+        (* Return a simple build complete response *)
         let session_id = Session_id.make () in
-        reply (TuskProtocol.BuildComplete { 
-          session_id; 
-          stats = {
-            duration_ms = 0;
-            packages_built = 0;
-            packages_failed = 0;
-            total_modules = 0;
-            cache_hits = 0;
-            cache_misses = 0;
-          }
-        })
+        reply
+          (TuskProtocol.BuildComplete
+             {
+               session_id;
+               stats =
+                 {
+                   duration_ms = 0;
+                   packages_built = 0;
+                   packages_failed = 0;
+                   total_modules = 0;
+                   cache_hits = 0;
+                   cache_misses = 0;
+                 };
+             })
     | _ -> reply (TuskProtocol.Error "Unexpected response")
 
   let handle_ping ctx reply request =
@@ -1572,7 +1587,8 @@ module Server = struct
       (Pid.to_string ctx.server_pid)
       (Pid.to_string (self ()));
     flush stderr;
-    send ctx.server_pid (Tusk_protocol.ServerRequest (Tusk_protocol.Ping { client_pid = self () }));
+    send ctx.server_pid
+      (Tusk_protocol.ServerRequest (Tusk_protocol.Ping { client_pid = self () }));
     Printf.eprintf "[HANDLER] Waiting for response...\n";
     flush stderr;
     (* Wait for response *)
@@ -1596,11 +1612,9 @@ module Server = struct
 
   let handle_workspace_config ctx reply request =
     (* For now, return a simple workspace config *)
-    reply (TuskProtocol.WorkspaceConfig {
-      workspace_root = "/tmp";
-      toolchain = "5.3.0";
-      packages = [];
-    })
+    reply
+      (TuskProtocol.WorkspaceConfig
+         { workspace_root = "/tmp"; toolchain = "5.3.0"; packages = [] })
 
   let handle_build_graph ctx reply request =
     (* For now, return an empty build graph *)
@@ -1655,7 +1669,8 @@ module Server = struct
             fn =
               (fun reply request ->
                 match request with
-                | TuskProtocol.GetBuildGraph -> handle_build_graph ctx reply request
+                | TuskProtocol.GetBuildGraph ->
+                    handle_build_graph ctx reply request
                 | _ -> ());
           };
           {

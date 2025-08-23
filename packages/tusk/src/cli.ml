@@ -4,9 +4,16 @@ open Miniriot
 
 (** Helper to create a tusk client connected to the local server *)
 let create_local_client () =
-  let cwd = Std.Env.current_dir () |> Std.Result.expect ~msg:"Failed to get current directory" in
-  let workspace = Workspace_manager.scan cwd |> Std.Result.expect ~msg:"Failed to scan workspace" in
-  Server_manager.ensure_running ~workspace |> Std.Result.expect ~msg:"Failed to connect to server"
+  let cwd =
+    Std.Env.current_dir ()
+    |> Std.Result.expect ~msg:"Failed to get current directory"
+  in
+  let workspace =
+    Workspace_manager.scan cwd
+    |> Std.Result.expect ~msg:"Failed to scan workspace"
+  in
+  Server_manager.ensure_running ~workspace
+  |> Std.Result.expect ~msg:"Failed to connect to server"
 
 let usage_msg =
   "tusk - OCaml build system\n\n\
@@ -788,8 +795,10 @@ let rpc_command args =
           Json.Object
             [
               ("type", Json.String "workspace_config");
-              ("root", Json.String config.Tusk_jsonrpc.TuskProtocol.workspace_root);
-              ("toolchain", Json.String config.Tusk_jsonrpc.TuskProtocol.toolchain);
+              ( "root",
+                Json.String config.Tusk_jsonrpc.TuskProtocol.workspace_root );
+              ( "toolchain",
+                Json.String config.Tusk_jsonrpc.TuskProtocol.toolchain );
             ]
         in
         Printf.printf "%s\n" (Json.to_string json);
@@ -808,11 +817,14 @@ let rpc_command args =
             (fun node ->
               Json.Object
                 [
-                  ("name", Json.String node.Tusk_jsonrpc.TuskProtocol.package_name);
+                  ( "name",
+                    Json.String node.Tusk_jsonrpc.TuskProtocol.package_name );
                   ("status", Json.String node.Tusk_jsonrpc.TuskProtocol.status);
                   ( "dependencies",
-                    Json.Array (List.map (fun d -> Json.String d) node.Tusk_jsonrpc.TuskProtocol.deps)
-                  );
+                    Json.Array
+                      (List.map
+                         (fun d -> Json.String d)
+                         node.Tusk_jsonrpc.TuskProtocol.deps) );
                 ])
             response.Tusk_jsonrpc.TuskProtocol.nodes
         in

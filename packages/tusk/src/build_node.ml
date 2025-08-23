@@ -5,61 +5,39 @@ type spec =
   | Planned of {
       hash : Hasher.hash;
       outs : Path.t list;
-      blueprint : Actions.blueprint;
+      actions : Actions.action list;
     }
 
 type t = {
-  package : Workspace.package;
   toolchain : Toolchains.toolchain;
+  package : Workspace.package;
   srcs : Path.t list;
   deps : t list;
   mutable spec : spec;
 }
 
-(* Use Hasher module for all hash operations *)
+(* Helper functions *)
+let is_planned node =
+  match node.spec with Planned _ -> true | Unplanned -> false
 
-(** Compute content-based hash for a build node *)
-let rec compute_hash node =
-  Printf.printf "[BuildGraph] Computing hash for %s...\n" node.package.name;
+let is_unplanned node = not (is_planned node)
+let compare a b = String.compare a.package.name b.package.name
 
-  (* traverse the build graph of dependencies of this node and if any of the dependencies is unplanned, requeue *)
-  match has_unplanned_deps node with
-  | UnplannedDeps deps -> Ok (RequeueWithDeps { node; deps })
-  | AllPlanned ->
-      let dep_seeds =
-        List.sort Build_node.compare node.deps |> List.map compute_node_hash
-      in
-
-      let seeds =
-        [
-          Workspace.package_hash node.package;
-          Toolchains.hash node.toolchain;
-          Hasher.hash_files node.srcs;
-        ]
-        @ dep_seeds
-      in
-
-      Std.Crypto.sha512 seeds
-
-(** Result type for hash computation *)
+(* Hash computation result types *)
 type hash_result =
-  | Ok of Hasher.hash
-  | MissingDependencies of Build_node.t list
+  | Planned of t
+  | MissingDependencies of { node : t; deps : t list }
   | Error of string
 
-(** Tests submodule *)
-module Tests = struct
-  let test_node_tracks_bidirectional_dependencies () : (unit, string) result =
-    (* Test that both dependencies and dependents are tracked correctly *)
-    Ok ()
-    [@test]
+(** Compute content-based hash for a build node *)
+let compute_hash node =
+  (* This is a simplified version - the actual hashing is done by Build_planner *)
+  (* We just check if dependencies are ready *)
+  let unplanned_deps = List.filter is_unplanned node.deps in
 
-  let test_hash_caching_works () : (unit, string) result =
-    (* Test that hash is computed once and cached *)
-    Ok ()
-    [@test]
-
-  let test_circular_dependency_detection () : (unit, string) result =
-    (* Test that circular dependencies are prevented *)
-    Ok ()
-end [@test]
+  if unplanned_deps <> [] then
+    MissingDependencies { node; deps = unplanned_deps }
+  else
+    match node.spec with
+    | Planned _ -> Planned node
+    | Unplanned -> Error "Node should be planned by Build_planner.plan_node"

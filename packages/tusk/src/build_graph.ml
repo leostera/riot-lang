@@ -10,11 +10,63 @@ type t = { nodes : (string, node) Hashtbl.t; root_nodes : node list }
 let create workspace toolchain =
   let nodes = Hashtbl.create 16 in
 
-  (* First pass: create all nodes *)
+  (* First, collect source files for each package *)
+  let get_sources package =
+    let pkg_path = Std.Path.to_string package.Workspace.path in
+    let src_dir =
+      if Miniriot.File.exists ~path:(Filename.concat pkg_path "src") then
+        Filename.concat pkg_path "src"
+      else pkg_path
+    in
+
+    let rec scan_directory dir relative_path acc =
+      if Miniriot.File.exists ~path:dir then
+        let entries =
+          Fs.readdir
+            (Path.of_string dir |> Result.expect ~msg:"Invalid dir path")
+          |> Result.expect ~msg:"Failed to read directory"
+        in
+        List.fold_left
+          (fun acc entry ->
+            let full_path = Filename.concat dir entry in
+            let rel_path =
+              if relative_path = "" then entry
+              else Filename.concat relative_path entry
+            in
+            if
+              Fs.is_directory
+                (Path.of_string full_path
+                |> Result.expect ~msg:"Invalid full_path")
+              |> Result.expect ~msg:"Failed to check directory"
+            then scan_directory full_path rel_path acc
+            else if
+              Filename.check_suffix entry ".ml"
+              || Filename.check_suffix entry ".mli"
+              || Filename.check_suffix entry ".c"
+            then
+              match Std.Path.of_string (Filename.concat src_dir rel_path) with
+              | Ok path -> path :: acc
+              | Error _ -> acc
+            else acc)
+          acc entries
+      else acc
+    in
+    scan_directory src_dir "" []
+  in
+
+  (* First pass: create all nodes without dependencies *)
   List.iter
     (fun package ->
+      let srcs = get_sources package in
       let node =
-        { package; toolchain; dependencies = []; dependents = []; hash = None }
+        {
+          Build_node.package;
+          toolchain;
+          srcs;
+          deps = [];
+          (* Will be filled in second pass *)
+          spec = Unplanned;
+        }
       in
       Hashtbl.add nodes package.Workspace.name node)
     workspace.Workspace.packages;
@@ -31,17 +83,15 @@ let create workspace toolchain =
                 Hashtbl.find_opt nodes dep.Workspace.name)
               package.dependencies
           in
-          node.dependencies <- deps;
-          (* Also update dependents *)
-          List.iter
-            (fun dep_node -> dep_node.dependents <- node :: dep_node.dependents)
-            deps)
+          (* Create a new node with dependencies filled in *)
+          let updated_node = { node with Build_node.deps } in
+          Hashtbl.replace nodes package.Workspace.name updated_node)
     workspace.packages;
 
   (* Find root nodes (no dependencies) *)
   let root_nodes =
     Hashtbl.fold
-      (fun _ node acc -> if node.dependencies = [] then node :: acc else acc)
+      (fun _ node acc -> if node.Build_node.deps = [] then node :: acc else acc)
       nodes []
   in
 
@@ -53,7 +103,7 @@ let topological_sort graph =
   let in_degree = Hashtbl.create 16 in
   Hashtbl.iter
     (fun name node ->
-      Hashtbl.add in_degree name (List.length node.dependencies))
+      Hashtbl.add in_degree name (List.length node.Build_node.deps))
     graph.nodes;
 
   (* Start with nodes that have no dependencies *)
@@ -66,17 +116,17 @@ let topological_sort graph =
     let node = Queue.take queue in
     sorted := node :: !sorted;
 
-    (* Decrease in-degree of dependent nodes *)
-    List.iter
-      (fun dependent ->
-        let name = dependent.package.name in
-        match Hashtbl.find_opt in_degree name with
-        | None -> ()
-        | Some deg ->
-            let new_deg = deg - 1 in
-            Hashtbl.replace in_degree name new_deg;
-            if new_deg = 0 then Queue.add dependent queue)
-      node.dependents
+    (* Find nodes that depend on this one and decrement their in-degree *)
+    Hashtbl.iter
+      (fun name other_node ->
+        if List.exists (fun dep -> dep == node) other_node.Build_node.deps then
+          match Hashtbl.find_opt in_degree name with
+          | None -> ()
+          | Some deg ->
+              let new_deg = deg - 1 in
+              Hashtbl.replace in_degree name new_deg;
+              if new_deg = 0 then Queue.add other_node queue)
+      graph.nodes
   done;
 
   (* Check for cycles *)
@@ -96,10 +146,12 @@ let print graph =
   List.iteri
     (fun i node ->
       Printf.printf "%d. %s" (i + 1) node.package.name;
-      if node.dependencies <> [] then
+      if node.Build_node.deps <> [] then
         Printf.printf " (deps: %s)"
           (String.concat ", "
-             (List.map (fun n -> n.package.name) node.dependencies));
+             (List.map
+                (fun n -> n.Build_node.package.name)
+                node.Build_node.deps));
       Printf.printf "\n")
     sorted;
 
@@ -112,7 +164,7 @@ let print graph =
       let visited = node.package.name :: visited in
       List.iter
         (fun dep -> print_tree (indent ^ "  ") dep visited)
-        node.dependencies)
+        node.Build_node.deps)
   in
 
   List.iter (fun node -> print_tree "" node []) graph.root_nodes
@@ -132,7 +184,7 @@ let filter_for_package graph target_pkg_name =
           let visited = node.package.name :: visited in
           List.fold_left
             (fun acc dep -> collect_deps dep acc)
-            visited node.dependencies
+            visited node.Build_node.deps
       in
 
       let needed_packages = collect_deps target_node [] in
@@ -156,7 +208,7 @@ let filter_for_package graph target_pkg_name =
             let has_deps_in_filtered =
               List.exists
                 (fun dep -> List.mem dep.package.name needed_packages)
-                node.dependencies
+                node.Build_node.deps
             in
             if not has_deps_in_filtered then node :: acc else acc)
           filtered_nodes []

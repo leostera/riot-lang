@@ -34,10 +34,9 @@ let generate_actions ~toolchain ~package ~srcs ~deps =
   (* Since all dependency artifacts are copied to the sandbox directory,
      we just need to include the current directory (.) where they'll be available *)
   let local_dep_includes =
-    if deps <> [] then 
-      ["."]  (* Sandbox directory contains all dependency artifacts *)
-    else 
-      []
+    if deps <> [] then [ "." ]
+      (* Sandbox directory contains all dependency artifacts *)
+    else []
   in
 
   (* Combine all include paths *)
@@ -64,38 +63,42 @@ let generate_actions ~toolchain ~package ~srcs ~deps =
   let sorted_ml_files, sorted_mli_files =
     if ml_files <> [] || mli_files <> [] then
       (* Get the directory containing the source files *)
-      let src_dir = 
+      let src_dir =
         match srcs with
         | [] -> "."
         | hd :: _ -> Filename.dirname (Std.Path.to_string hd)
       in
       (* Convert to basenames for ocamldep *)
-      let ml_basenames = List.map (fun f -> Filename.basename (Std.Path.to_string f)) ml_files in
-      let mli_basenames = List.map (fun f -> Filename.basename (Std.Path.to_string f)) mli_files in
+      let ml_basenames =
+        List.map (fun f -> Filename.basename (Std.Path.to_string f)) ml_files
+      in
+      let mli_basenames =
+        List.map (fun f -> Filename.basename (Std.Path.to_string f)) mli_files
+      in
       let all_basenames = mli_basenames @ ml_basenames in
-      
-      let sorted_basenames = 
+
+      let sorted_basenames =
         Ocamldep.sort ~toolchain ~cwd:src_dir ~files:all_basenames
       in
-      
+
       (* Map sorted basenames back to full paths *)
       let basename_to_path lst =
         List.filter_map (fun basename ->
-          List.find_opt (fun p -> Filename.basename (Std.Path.to_string p) = basename) lst
-        )
+            List.find_opt
+              (fun p -> Filename.basename (Std.Path.to_string p) = basename)
+              lst)
       in
-      
-      let sorted_mli = 
+
+      let sorted_mli =
         List.filter (fun f -> Filename.check_suffix f ".mli") sorted_basenames
         |> fun names -> basename_to_path mli_files names
       in
-      let sorted_ml = 
+      let sorted_ml =
         List.filter (fun f -> Filename.check_suffix f ".ml") sorted_basenames
         |> fun names -> basename_to_path ml_files names
       in
       (sorted_ml, sorted_mli)
-    else
-      (ml_files, mli_files)
+    else (ml_files, mli_files)
   in
 
   (* Compile .mli files to .cmi - DON'T reverse, we're prepending so it reverses naturally *)
@@ -169,20 +172,18 @@ let generate_actions ~toolchain ~package ~srcs ~deps =
       if List.mem node.Build_node.package.name visited then []
       else
         let visited = node.Build_node.package.name :: visited in
-        let child_deps = 
-          List.concat_map (collect_all_deps visited) node.Build_node.deps 
+        let child_deps =
+          List.concat_map (collect_all_deps visited) node.Build_node.deps
         in
         node :: child_deps
     in
-    let all_dep_nodes = 
+    let all_dep_nodes =
       List.concat_map (collect_all_deps []) deps
-      |> List.sort_uniq (fun a b -> 
+      |> List.sort_uniq (fun a b ->
           String.compare a.Build_node.package.name b.Build_node.package.name)
     in
-    let dep_libs = 
-      List.map (fun dep -> 
-        dep.Build_node.package.name ^ ".cma"
-      ) all_dep_nodes 
+    let dep_libs =
+      List.map (fun dep -> dep.Build_node.package.name ^ ".cma") all_dep_nodes
     in
     let all_libs = external_libs @ dep_libs in
     actions :=

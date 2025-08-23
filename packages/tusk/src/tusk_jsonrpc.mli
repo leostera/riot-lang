@@ -65,14 +65,17 @@ module TuskProtocol : sig
     | RestartAck
     | Error of string
 
-  include Jsonrpc.ApplicationProtocol
-    with type request := request
-     and type response := response
+  include
+    Jsonrpc.ApplicationProtocol
+      with type request := request
+       and type response := response
 end
 
 (** Server module for RPC request handling *)
 module Server : sig
-  val create : Miniriot.Pid.t -> (TuskProtocol.request, TuskProtocol.response) Jsonrpc.Server.t
+  val create :
+    Miniriot.Pid.t ->
+    (TuskProtocol.request, TuskProtocol.response) Jsonrpc.Server.t
   (** Create a JSON-RPC server that handles tusk requests *)
 end
 

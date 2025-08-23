@@ -189,7 +189,8 @@ let execute_tool name arguments =
         (Printf.sprintf "Calling call_build with request: %s"
            (match request with
            | Tusk_jsonrpc.TuskProtocol.BuildAll -> "BuildAll"
-           | Tusk_jsonrpc.TuskProtocol.BuildPackage pkg -> Printf.sprintf "BuildPackage(%s)" pkg
+           | Tusk_jsonrpc.TuskProtocol.BuildPackage pkg ->
+               Printf.sprintf "BuildPackage(%s)" pkg
            | _ -> "other"));
       let session_id = ref None in
       let logs = ref [] in
@@ -203,7 +204,8 @@ let execute_tool name arguments =
       in
       let request_converted =
         match request with
-        | Tusk_jsonrpc.TuskProtocol.BuildPackage pkg -> Tusk_jsonrpc.Client.BuildPackage pkg
+        | Tusk_jsonrpc.TuskProtocol.BuildPackage pkg ->
+            Tusk_jsonrpc.Client.BuildPackage pkg
         | Tusk_jsonrpc.TuskProtocol.BuildAll -> Tusk_jsonrpc.Client.BuildAll
         | _ -> Tusk_jsonrpc.Client.BuildAll
       in
@@ -313,13 +315,20 @@ let execute_tool name arguments =
                   (fun node ->
                     Json.Object
                       [
-                        ("package", Json.String node.Tusk_jsonrpc.TuskProtocol.package_name);
-                        ("src_dir", Json.String node.Tusk_jsonrpc.TuskProtocol.src_dir);
-                        ("out_dir", Json.String node.Tusk_jsonrpc.TuskProtocol.out_dir);
-                        ("status", Json.String node.Tusk_jsonrpc.TuskProtocol.status);
+                        ( "package",
+                          Json.String
+                            node.Tusk_jsonrpc.TuskProtocol.package_name );
+                        ( "src_dir",
+                          Json.String node.Tusk_jsonrpc.TuskProtocol.src_dir );
+                        ( "out_dir",
+                          Json.String node.Tusk_jsonrpc.TuskProtocol.out_dir );
+                        ( "status",
+                          Json.String node.Tusk_jsonrpc.TuskProtocol.status );
                         ( "deps",
                           Json.Array
-                            (List.map (fun d -> Json.String d) node.Tusk_jsonrpc.TuskProtocol.deps) );
+                            (List.map
+                               (fun d -> Json.String d)
+                               node.Tusk_jsonrpc.TuskProtocol.deps) );
                       ])
                   graph.nodes
               in
@@ -405,10 +414,14 @@ let read_resource uri =
                   (fun node ->
                     Json.Object
                       [
-                        ("package", Json.String node.Tusk_jsonrpc.TuskProtocol.package_name);
+                        ( "package",
+                          Json.String
+                            node.Tusk_jsonrpc.TuskProtocol.package_name );
                         ( "deps",
                           Json.Array
-                            (List.map (fun d -> Json.String d) node.Tusk_jsonrpc.TuskProtocol.deps) );
+                            (List.map
+                               (fun d -> Json.String d)
+                               node.Tusk_jsonrpc.TuskProtocol.deps) );
                       ])
                   graph.nodes
               in

@@ -82,12 +82,12 @@ type log_event =
     }
 
 (** Get current timestamp as milliseconds since Unix epoch *)
-let get_timestamp_ms () = int_of_float (Unix.gettimeofday () *. 1000.)
+let get_timestamp_ms () = int_of_float (Std.Datetime.now () *. 1000.)
 
 (** Format timestamp for display *)
 let format_timestamp timestamp_ms =
   let timestamp_s = float_of_int timestamp_ms /. 1000. in
-  let tm = Unix.localtime timestamp_s in
+  let tm = Std.Datetime.localtime timestamp_s in
   Printf.sprintf "%02d:%02d:%02d.%03d" tm.tm_hour tm.tm_min tm.tm_sec
     (timestamp_ms mod 1000)
 

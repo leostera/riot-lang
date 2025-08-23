@@ -134,15 +134,17 @@ let ensure_running ~workspace =
   let rec wait_server ~retries =
     if retries <= 0 then (
       Printf.eprintf "Server_manager: Failed to connect after all retries\n";
-      Error Error.ScanWorkspaceError
-    ) else (
-      Printf.eprintf "Server_manager: Trying to connect to %s:%d (retries left: %d)\n" daemon.host daemon.port retries;
+      Error Error.ScanWorkspaceError)
+    else (
+      Printf.eprintf
+        "Server_manager: Trying to connect to %s:%d (retries left: %d)\n"
+        daemon.host daemon.port retries;
       match Tusk_jsonrpc.Client.create ~host:daemon.host ~port:daemon.port with
       | Ok client -> (
           Printf.eprintf "Server_manager: Connected, sending ping...\n";
           (* Try to ping to make sure it's really ready *)
           match Tusk_jsonrpc.Client.ping client with
-          | Ok _ -> 
+          | Ok _ ->
               Printf.eprintf "Server_manager: Ping successful\n";
               Ok client
           | Error e ->
@@ -155,7 +157,6 @@ let ensure_running ~workspace =
           Printf.eprintf "Server_manager: Connection failed: %s\n" e;
           Miniriot.sleep 50;
           (* 50ms *)
-          wait_server ~retries:(retries - 1)
-    )
+          wait_server ~retries:(retries - 1))
   in
   wait_server ~retries:60 (* Wait up to 3 seconds *)

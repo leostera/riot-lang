@@ -1,7 +1,9 @@
 open Std
 
 module Directories = struct
-  let home = Env.home_dir () |> Result.unwrap
+  let home =
+    match Env.home_dir () with Some h -> h | None -> failwith "HOME not set"
+
   let dot_tusk = Path.join home (Path.of_string ".tusk" |> Result.unwrap)
   let logs = Path.join dot_tusk (Path.of_string "logs" |> Result.unwrap)
 

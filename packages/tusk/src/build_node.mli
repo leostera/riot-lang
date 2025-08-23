@@ -8,7 +8,7 @@ type spec =
   | Planned of {
       hash : Hasher.hash;
       outs : Path.t list;
-      blueprint : Actions.blueprint;
+      actions : Actions.action list;
     }  (** A node that has been through the planning stage *)
 
 type t = {
