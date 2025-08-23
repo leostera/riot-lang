@@ -41,10 +41,6 @@ let list_artifacts store hash =
 let promote_from_store store hash target_dir =
   let hash_dir = get_hash_dir store hash in
   if Miniriot.File.exists ~path:hash_dir then (
-    Printf.printf "[Store] Promoting artifacts from cache: %s\n"
-      (Hasher.to_string hash);
-    flush stdout;
-
     (* Ensure target directory exists *)
     let _ =
       Fs.mkdirp
@@ -72,14 +68,13 @@ let promote_from_store store hash target_dir =
              with
             | Ok b -> b
             | Error _ -> false)
-        then (
+        then
           let _ =
             Fs.copy_file
               (Path.of_string src |> Result.expect ~msg:"Invalid src")
               (Path.of_string dst |> Result.expect ~msg:"Invalid dst")
           in
-          Printf.printf "[Store]   -> Promoted %s\n" file;
-          flush stdout))
+          ())
       files;
     true)
   else false
@@ -94,10 +89,6 @@ let store_artifacts store hash sandbox_dir declared_outputs =
   in
   ();
 
-  Printf.printf "[Store] Storing artifacts with hash: %s\n"
-    (Hasher.to_string hash);
-  flush stdout;
-
   (* Copy declared outputs to store and track what was actually stored *)
   let stored_files =
     List.fold_left
@@ -110,14 +101,8 @@ let store_artifacts store hash sandbox_dir declared_outputs =
               (Path.of_string src |> Result.expect ~msg:"Invalid src")
               (Path.of_string dst |> Result.expect ~msg:"Invalid dst")
           in
-          Printf.printf "[Store]   -> Stored %s\n" output_file;
-          flush stdout;
           output_file :: acc)
-        else (
-          Printf.printf "[Store]   -> Warning: Output %s not found in sandbox\n"
-            output_file;
-          flush stdout;
-          acc))
+        else acc)
       [] declared_outputs
   in
 
@@ -126,10 +111,8 @@ let store_artifacts store hash sandbox_dir declared_outputs =
 
 (** Clean up old artifacts (for future use) *)
 let gc_store store ~keep_recent_days =
-  Printf.printf
-    "[Store] TODO: Implement garbage collection (keep recent %d days)\n"
-    keep_recent_days;
-  flush stdout
+  (* TODO: Implement garbage collection *)
+  ()
 
 (** Get store statistics *)
 let get_stats store =
@@ -166,9 +149,6 @@ let get_stats store =
   in
 
   let total_artifacts = count_files store.root_dir in
-  Printf.printf "[Store] Store statistics: %d cached artifacts\n"
-    total_artifacts;
-  flush stdout;
   total_artifacts
 
 (** Tests submodule *)
