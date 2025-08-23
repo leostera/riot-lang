@@ -17,15 +17,8 @@ let sort ~toolchain ~cwd ~files =
     if sorted_str = "" then files (* Return original list if ocamldep fails *)
     else
       let sorted_basenames = String.split_on_char ' ' sorted_str in
-      (* ocamldep -sort may not return all files if they have no dependencies *)
-      (* So we need to add any missing files at the end *)
-      let sorted_files =
-        List.filter (fun f -> List.mem f sorted_basenames) files
-      in
-      let missing_files =
-        List.filter (fun f -> not (List.mem f sorted_files)) files
-      in
-      sorted_files @ missing_files
+      (* ocamldep returns files in order, just return them directly *)
+      sorted_basenames
 
 (** Get dependencies for a single file *)
 let deps ~toolchain ~cwd ~file =
