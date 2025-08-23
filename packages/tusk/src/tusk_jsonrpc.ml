@@ -1303,10 +1303,8 @@ module Client = struct
   (** Create a new Tusk RPC client *)
   let create ~host ~port =
     (* Create TCP transport using Net.TcpClient *)
-    Printf.eprintf "Tusk_jsonrpc.Client: Connecting to %s:%d\n" host port;
     match Net.TcpClient.connect ~host ~port with
     | Ok transport ->
-        Printf.eprintf "Tusk_jsonrpc.Client: Connected successfully\n";
         let client =
           Jsonrpc.Client.create
             ~transport:(module Net.TcpClient)
@@ -1392,8 +1390,6 @@ module Client = struct
 
                 (* Now receive streaming events until build completes *)
                 let rec receive_events () =
-                  Printf.eprintf "[CLIENT] Waiting for response...\n";
-                  flush stderr;
                   match Jsonrpc.Client.receive_response t.client with
                   | Ok
                       {
@@ -1403,13 +1399,9 @@ module Client = struct
                                { session_id = _; log_event });
                         _;
                       } ->
-                      Printf.eprintf "[CLIENT] Got BuildEvent\n";
-                      flush stderr;
                       callback (BuildEvent log_event);
                       receive_events ()
                   | Ok { result = Ok (TuskProtocol.BuildComplete _); _ } ->
-                      Printf.eprintf "[CLIENT] Got BuildComplete!\n";
-                      flush stderr;
                       Ok (BuildFinished (Ok ()))
                   | Ok
                       {
@@ -1417,13 +1409,9 @@ module Client = struct
                           Ok (TuskProtocol.BuildFailed { session_id; error; _ });
                         _;
                       } ->
-                      Printf.eprintf "[CLIENT] Got BuildFailed: %s\n" error;
-                      flush stderr;
                       Ok (BuildFinished (Error error))
                   | Ok { result = Ok (TuskProtocol.Error msg); _ } ->
                       (* Got a general error response *)
-                      Printf.eprintf "[CLIENT] Got Error response: %s\n" msg;
-                      flush stderr;
                       Error (Printf.sprintf "Server error: %s" msg)
                   | Ok { result = Error err; _ } ->
                       Ok (BuildFinished (Error err.message))
@@ -1455,8 +1443,6 @@ module Client = struct
                 receive_events ()
             | Ok (TuskProtocol.BuildComplete { session_id; stats }) ->
                 (* Direct success (no build needed) *)
-                Printf.eprintf "[CLIENT] Got direct BuildComplete\n";
-                flush stderr;
                 Ok (BuildFinished (Ok ()))
             | Ok (TuskProtocol.BuildFailed { session_id; error; _ }) ->
                 (* Direct error *)
@@ -1469,9 +1455,6 @@ module Client = struct
                   (Printf.sprintf "Build request failed: %s" err.Jsonrpc.message)
             | Ok resp ->
                 (* Log unexpected response for debugging *)
-                Printf.eprintf
-                  "[CLIENT] Unexpected response type in build_streaming\n";
-                flush stderr;
                 Error "Unexpected response type"))
 
   (** Shutdown the server *)
@@ -1562,23 +1545,46 @@ module Server = struct
       | _ -> `skip
     in
     match receive ~selector () with
-    | Tusk_protocol.BuildCompleted ->
-        (* Return a simple build complete response *)
-        let session_id = Session_id.make () in
-        reply
-          (TuskProtocol.BuildComplete
-             {
-               session_id;
-               stats =
-                 {
-                   duration_ms = 0;
-                   packages_built = 0;
-                   packages_failed = 0;
-                   total_modules = 0;
-                   cache_hits = 0;
-                   cache_misses = 0;
-                 };
-             })
+    | Tusk_protocol.BuildStarted { session_id } ->
+        (* Register ourselves with the logger to receive events *)
+        Log.add_rpc_handler ~sid:session_id ~client:(self ()) ~format:Log.Json;
+        
+        (* Send BuildStarted to client *)
+        reply (TuskProtocol.BuildStarted { session_id });
+        
+        (* Now handle log events and BuildCompleted *)
+        let rec event_loop () =
+          let selector = function
+            | Log.Event (Some sid, event) when sid = session_id -> 
+                `select (`log_event event)
+            | Tusk_protocol.ServerResponse (Tusk_protocol.BuildCompleted { session_id = sid }) 
+              when sid = session_id -> 
+                `select `build_complete
+            | _ -> `skip
+          in
+          match receive ~selector () with
+          | `log_event event ->
+              (* Forward log event to client *)
+              reply (TuskProtocol.BuildEvent { session_id; log_event = event });
+              event_loop ()
+          | `build_complete ->
+              (* Build is done, send final response *)
+              reply
+                (TuskProtocol.BuildComplete
+                   {
+                     session_id;
+                     stats =
+                       {
+                         duration_ms = 0;
+                         packages_built = 0;
+                         packages_failed = 0;
+                         total_modules = 0;
+                         cache_hits = 0;
+                         cache_misses = 0;
+                       };
+                   })
+        in
+        event_loop ()
     | _ -> reply (TuskProtocol.Error "Unexpected response")
 
   let handle_ping ctx reply request =

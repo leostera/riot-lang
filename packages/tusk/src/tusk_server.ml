@@ -57,11 +57,12 @@ and handle_scan_workspace state client_pid current_dir =
   let build_graph = Build_graph.create workspace state.toolchain in
   let new_state = { state with workspace; build_graph } in
   (* Send build completed to signal scan is done *)
-  send client_pid (ServerResponse BuildCompleted);
+  (* For scan workspace, we don't have a build session *)
+  send client_pid (ServerResponse (BuildCompleted { session_id = Session_id.make () }));
   loop new_state
 
 (** Handler for the build message. *)
-and handle_build state client_pid target session_id =
+and handle_build state client_pid target session_id_opt =
   Printf.eprintf "Server: handle_build called for target: %s\n"
     (match target with
     | All -> "All"
@@ -72,6 +73,17 @@ and handle_build state client_pid target session_id =
     spawn (fun () : Process.exit_reason ->
         Printf.eprintf "Server: Build process spawned\n";
         flush stderr;
+        
+        (* Create session ID if not provided *)
+        let session_id = 
+          match session_id_opt with
+          | Some sid -> sid
+          | None -> Session_id.make ()
+        in
+        
+        (* Send BuildStarted response with session_id *)
+        send client_pid (ServerResponse (BuildStarted { session_id }));
+        
         (* 1. on every build we refresh the workspace *)
         let workspace =
           Workspace_manager.scan state.workspace.root
@@ -100,7 +112,7 @@ and handle_build state client_pid target session_id =
         let packages = List.map (fun n -> n.Build_node.package.name) nodes in
         let total_modules = 0 in
         (* TODO: Count actual modules when available *)
-        Log.log ?sid:session_id
+        Log.log ~sid:session_id
           (Log.BuildStarted { packages; total_modules; workers = state.workers });
 
         (* Queue all nodes and mark them as pending *)
@@ -172,7 +184,7 @@ and handle_build state client_pid target session_id =
                         {
                           Worker_pool.node;
                           workspace = state.workspace;
-                          session_id;
+                          session_id = Some session_id;
                         }
                       in
                       Worker_pool.send_task worker task
@@ -190,7 +202,7 @@ and handle_build state client_pid target session_id =
           ~finally:(fun () ->
             (* Log build complete event *)
             let duration_ms = Global.time_ms () - build_start_time in
-            Log.log ?sid:session_id
+            Log.log ~sid:session_id
               (Log.BuildComplete
                  {
                    duration_ms;
@@ -199,7 +211,7 @@ and handle_build state client_pid target session_id =
                    succeeded = List.rev !succeeded;
                    failed = List.rev !failed;
                  });
-            send client_pid (ServerResponse BuildCompleted))
+            send client_pid (ServerResponse (BuildCompleted { session_id })))
           (fun () -> build_loop ());
         Process.Normal)
   in
@@ -288,11 +300,11 @@ let scan_workspace server =
           }));
   let selector msg =
     match msg with
-    | ServerResponse BuildCompleted -> `select BuildCompleted
+    | ServerResponse (BuildCompleted _) -> `select ()
     | _ -> `skip
   in
   match receive ~selector () with
-  | BuildCompleted ->
+  | () ->
       (* TODO: Return actual workspace from server response *)
       let workspace =
         Workspace_manager.scan
@@ -315,11 +327,11 @@ let build_all server =
        (Build { client_pid = self (); target = All; session_id = None }));
   let selector msg =
     match msg with
-    | ServerResponse BuildCompleted -> `select BuildCompleted
+    | ServerResponse (BuildCompleted _) -> `select ()
     | _ -> `skip
   in
   match receive ~selector () with
-  | BuildCompleted -> Ok (Build_results.create ())
+  | () -> Ok (Build_results.create ())
   | exception _ -> Error Error.ScanWorkspaceError
 
 (** Build specific package *)
@@ -331,9 +343,9 @@ let build_package ~name =
        (Build { client_pid = self (); target = Package name; session_id = None }));
   let selector msg =
     match msg with
-    | ServerResponse BuildCompleted -> `select BuildCompleted
+    | ServerResponse (BuildCompleted _) -> `select ()
     | _ -> `skip
   in
   match receive ~selector () with
-  | BuildCompleted -> Ok (Build_results.create ())
+  | () -> Ok (Build_results.create ())
   | exception _ -> Error Error.ScanWorkspaceError
