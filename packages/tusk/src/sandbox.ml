@@ -117,13 +117,12 @@ let copy_dependency_artifacts sandbox =
           in
           List.filter
             (fun file ->
-              (* Main library archive *)
-              file = dep_name ^ ".cma"
-              (* Main module interface *)
-              || file = dep_name ^ ".cmi"
-              ||
+              (* Library archive *)
+              Filename.check_suffix file ".cma"
+              (* ALL compiled interfaces - needed for compilation *)
+              || Filename.check_suffix file ".cmi"
               (* C object files *)
-              Filename.check_suffix file ".o")
+              || Filename.check_suffix file ".o")
             all_files
         in
         List.iter
