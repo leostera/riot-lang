@@ -58,7 +58,8 @@ and handle_scan_workspace state client_pid current_dir =
   let new_state = { state with workspace; build_graph } in
   (* Send build completed to signal scan is done *)
   (* For scan workspace, we don't have a build session *)
-  send client_pid (ServerResponse (BuildCompleted { session_id = Session_id.make () }));
+  send client_pid
+    (ServerResponse (BuildCompleted { session_id = Session_id.make () }));
   loop new_state
 
 (** Handler for the build message. *)
@@ -73,17 +74,17 @@ and handle_build state client_pid target session_id_opt =
     spawn (fun () : Process.exit_reason ->
         Printf.eprintf "Server: Build process spawned\n";
         flush stderr;
-        
+
         (* Create session ID if not provided *)
-        let session_id = 
+        let session_id =
           match session_id_opt with
           | Some sid -> sid
           | None -> Session_id.make ()
         in
-        
+
         (* Send BuildStarted response with session_id *)
         send client_pid (ServerResponse (BuildStarted { session_id }));
-        
+
         (* 1. on every build we refresh the workspace *)
         let workspace =
           Workspace_manager.scan state.workspace.root

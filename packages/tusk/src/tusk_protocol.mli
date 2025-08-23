@@ -16,8 +16,8 @@ type request =
   | ScanWorkspace of { client_pid : Pid.t; current_dir : Path.t }
 
 (** Response types from the server *)
-type response = 
-  | Pong 
+type response =
+  | Pong
   | BuildStarted of { session_id : Session_id.t }
   | BuildCompleted of { session_id : Session_id.t }
 

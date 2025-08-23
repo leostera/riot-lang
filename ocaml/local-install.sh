@@ -4,7 +4,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TOOLCHAIN_VERSION="5.3.0+riot"
+TOOLCHAIN_VERSION="5.3.0"
 TOOLCHAIN_DIR="$HOME/.tusk/toolchains/$TOOLCHAIN_VERSION"
 BIN_DIR="$TOOLCHAIN_DIR/bin"
 
@@ -112,21 +112,6 @@ else
     echo "  ⚠ tusk not found. Run ./bootstrap.py first"
 fi
 echo ""
-
-# Create symlinks in standard toolchain if needed
-STANDARD_TOOLCHAIN="$HOME/.tusk/toolchains/5.3.0"
-if [ -d "$STANDARD_TOOLCHAIN" ] && [ "$STANDARD_TOOLCHAIN" != "$TOOLCHAIN_DIR" ]; then
-    echo "5. Creating symlinks in standard toolchain..."
-    
-    for binary in ocamllsp ocamlformat odoc; do
-        if [ -f "$BIN_DIR/$binary" ]; then
-            echo "  Linking $binary to standard toolchain..."
-            ln -sf "$BIN_DIR/$binary" "$STANDARD_TOOLCHAIN/bin/$binary"
-            echo "  ✓ Linked $binary"
-        fi
-    done
-    echo ""
-fi
 
 # Verify installation
 echo "=== Verifying Installation ==="

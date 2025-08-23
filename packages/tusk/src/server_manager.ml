@@ -132,15 +132,13 @@ let ensure_running ~workspace =
   in
   (* 2. Wait for server to be ready *)
   let rec wait_server ~retries =
-    if retries <= 0 then (
-      Error Error.ScanWorkspaceError)
-    else (
+    if retries <= 0 then Error Error.ScanWorkspaceError
+    else
       match Tusk_jsonrpc.Client.create ~host:daemon.host ~port:daemon.port with
       | Ok client -> (
           (* Try to ping to make sure it's really ready *)
           match Tusk_jsonrpc.Client.ping client with
-          | Ok _ ->
-              Ok client
+          | Ok _ -> Ok client
           | Error e ->
               Tusk_jsonrpc.Client.close client;
               Miniriot.sleep 50;
@@ -149,6 +147,6 @@ let ensure_running ~workspace =
       | Error e ->
           Miniriot.sleep 50;
           (* 50ms *)
-          wait_server ~retries:(retries - 1))
+          wait_server ~retries:(retries - 1)
   in
   wait_server ~retries:60 (* Wait up to 3 seconds *)

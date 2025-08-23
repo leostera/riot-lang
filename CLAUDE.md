@@ -1,5 +1,13 @@
 # Learning OCaml and Riot ML Development
 
+## System Prompt
+
+- never call `ocamlc` 
+- always build through `./target/debug/tusk`
+  - and if that's not available then use `./target/bootstrap/tusk`
+  - and if that's not available then use `./minitusk` 
+  - and if that's not available then use `./bootstarp.py`
+
 ## Lessons Learned
 
 - ALWAYS BE ON THE PROJECT ROOT
@@ -20,7 +28,33 @@
 - Avoid shadowing top-level bindings locally
 - Prefer verbose names
 - Prefer `next_state` or `new_state` over `state'` 
-- Prefer MyModule.{ record... } over { MyModule.field = ... } 
+- Prefer MyModule.{ record... } over { MyModule.field = ... }
+
+## Future Refactorings
+
+### Build_node.ml spec type refactoring
+Refactor the `spec` type to make the planned/unplanned distinction type-safe:
+
+```ocaml
+type planned_node = { 
+  toolchain; 
+  package; 
+  srcs; 
+  deps; 
+  outs; 
+  actions; 
+  hash 
+}
+type spec = 
+  | Unplanned 
+  | Planned of planned_node
+```
+
+Benefits:
+- Functions can take `Build_node.planned_node` instead of just `Build_node.t`
+- Forces explicit handling of the unplanned case at the beginning
+- Everything downstream works with `planned_node` which has all the necessary build information
+- Makes invalid states unrepresentable 
 
 ## Tusk Build System Architecture
 
@@ -52,6 +86,28 @@ Editor/AI → MCP → tusk mcp ←━━━━━━━━━━━━━━━�
 - No .merlin files needed - configuration served dynamically via ocaml-merlin protocol
 - MCP interface provides richer operations than LSP (bulk refactors, project generation, etc.)
 
+## Bug Fixes and Improvements (2024-08-19)
+
+### Completed Fixes ✅
+1. **Fixed BuildComplete not showing in Cargo-style output**
+   - Issue: "Finished" message wasn't appearing in Cargo-style builds
+   - Cause: Log.BuildComplete events weren't being forwarded to RPC clients before Rpc.BuildComplete response
+   - Fix: Send Log.BuildComplete as Log.Event directly to client before sending Rpc.BuildComplete
+
+2. **Replaced (bool * string) tuples with proper variant types**
+   - Issue: Sandbox.run_actions returned (bool * string) which was unclear
+   - Fix: Created proper build_result variant with Success, Failed, and Cached cases
+
+3. **Added bold green/red colors to Cargo-style output**
+   - Added ANSI color codes for better visibility
+   - "Compiling" and "Finished" are bold green
+   - Errors are bold red
+
+### Pending Bug Fixes 🔧
+1. **Check target folder AND build_results for cache** - rebuild if missing from target
+2. **Implement crypto module with C bindings** - std-sys/crypto should use OpenSSL for SHA256/SHA512 instead of OCaml's MD5 Digest
+3. **Add stdlib config option to tusk.toml** (ocaml vs std)
+
 ## Tusk Build System Development Roadmap
 
 ### Completed Features ✅
@@ -70,7 +126,7 @@ Editor/AI → MCP → tusk mcp ←━━━━━━━━━━━━━━━�
 
 **Week 1 (High Priority)**
 1. **`tusk new [opts] path`** - Create new package at path
-   - Initialize package structure with src/, dune files
+   - Initialize package structure with src/
    - Generate basic lib.ml/main.ml based on package type
    - Add to workspace configuration
 
@@ -290,3 +346,6 @@ Editor/AI → MCP → tusk mcp ←━━━━━━━━━━━━━━━�
 - Machine-readable build logs
 - Better debugging and monitoring
 - Enables proper build analytics
+
+
+- When writing OCaml, if I make a change in an interface file (.mli), you will follow the new interface and refactor accordingly.

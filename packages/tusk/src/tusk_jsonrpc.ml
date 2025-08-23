@@ -1548,17 +1548,18 @@ module Server = struct
     | Tusk_protocol.BuildStarted { session_id } ->
         (* Register ourselves with the logger to receive events *)
         Log.add_rpc_handler ~sid:session_id ~client:(self ()) ~format:Log.Json;
-        
+
         (* Send BuildStarted to client *)
         reply (TuskProtocol.BuildStarted { session_id });
-        
+
         (* Now handle log events and BuildCompleted *)
         let rec event_loop () =
           let selector = function
-            | Log.Event (Some sid, event) when sid = session_id -> 
+            | Log.Event (Some sid, event) when sid = session_id ->
                 `select (`log_event event)
-            | Tusk_protocol.ServerResponse (Tusk_protocol.BuildCompleted { session_id = sid }) 
-              when sid = session_id -> 
+            | Tusk_protocol.ServerResponse
+                (Tusk_protocol.BuildCompleted { session_id = sid })
+              when sid = session_id ->
                 `select `build_complete
             | _ -> `skip
           in

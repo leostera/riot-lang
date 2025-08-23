@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Configuration
-COMPILER_VERSION="5.3.0+riot"
+COMPILER_VERSION="5.3.0"
 TOOLCHAIN_DIR="$HOME/.tusk/toolchains/$COMPILER_VERSION"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPILER_DIR="$SCRIPT_DIR/compiler"

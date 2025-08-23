@@ -148,9 +148,12 @@ let build_command package_opt =
         | Client.BuildEvent log_event ->
             (* Format and display log events in Cargo style *)
             let formatted = Log.format_event Log.Cargo log_event in
-            if formatted <> "" then (
-              Printf.printf "%s\n" formatted;
-              flush stdout)
+            if formatted <> "" then Printf.printf "%s\n%!" formatted
+            else (
+              (* Debug: Show what events have empty formatting *)
+              match log_event with
+              | Log.BuildComplete _ -> Printf.eprintf "DEBUG: BuildComplete received but formatted as empty!\n%!"
+              | _ -> ())
         | Client.BuildFinished _ -> ())
     |> Std.Result.expect ~msg:"Build failed"
   in
