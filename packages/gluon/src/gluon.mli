@@ -345,6 +345,21 @@ module File : sig
   
   val write_vectored : t -> Iovec.t -> (int, [> `Noop ]) io_result
   (** Write data using scatter-gather I/O. Returns total bytes written. *)
+
+  val readdir : string -> (string list, _) io_result
+  (** Read directory contents. Returns list of filenames (excluding . and ..). *)
+
+  val mkdir : string -> int -> (unit, _) io_result
+  (** Create a directory with specified permissions. *)
+
+  val mkdirp : string -> int -> (unit, _) io_result
+  (** Create directory and all parent directories as needed. *)
+
+  val copy_file : string -> string -> (unit, _) io_result
+  (** Copy file from source to destination. *)
+
+  val is_directory : string -> (bool, _) io_result
+  (** Check if path is a directory. *)
   
   val to_source : t -> Source.t
   (** Convert file to event source for polling. *)

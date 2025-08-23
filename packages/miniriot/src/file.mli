@@ -30,3 +30,15 @@ val list_dir_all : path:string -> (string list, error) result
 
 val is_directory : path:string -> bool
 (** Check if a path is a directory *)
+
+val readdir : path:string -> (string list, error) result
+(** Read directory contents (non-blocking) *)
+
+val mkdir : path:string -> perm:int -> (unit, error) result
+(** Create a directory with specified permissions *)
+
+val mkdirp : path:string -> perm:int -> (unit, error) result
+(** Create directory and all parent directories as needed *)
+
+val copy_file : src:string -> dst:string -> (unit, error) result
+(** Copy file from source to destination (non-blocking) *)

@@ -126,3 +126,28 @@ let is_directory ~path =
     let stats = Unix.stat path in
     stats.Unix.st_kind = Unix.S_DIR
   with Unix.Unix_error (Unix.ENOENT, _, _) -> false
+
+let readdir ~path =
+  match Gluon.File.readdir path with
+  | Ok files -> Ok files
+  | Error (`Unix_error e) -> Error (error_of_unix_error e)
+  | Error _ -> Error (`Unknown "Failed to read directory")
+
+let mkdir ~path ~perm =
+  match Gluon.File.mkdir path perm with
+  | Ok () -> Ok ()
+  | Error (`Unix_error e) -> Error (error_of_unix_error e)
+  | Error _ -> Error (`Unknown "Failed to create directory")
+
+let mkdirp ~path ~perm =
+  match Gluon.File.mkdirp path perm with
+  | Ok () -> Ok ()
+  | Error (`Unix_error e) -> Error (error_of_unix_error e)
+  | Error _ -> Error (`Unknown "Failed to create directory")
+
+let copy_file ~src ~dst =
+  match Gluon.File.copy_file src dst with
+  | Ok () -> Ok ()
+  | Error (`Unix_error e) -> Error (error_of_unix_error e)
+  | Error (`Exn exn) -> Error (`Unknown (Printexc.to_string exn))
+  | Error _ -> Error (`Unknown "Failed to copy file")

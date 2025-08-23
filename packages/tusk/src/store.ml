@@ -10,10 +10,7 @@ let create ~root_dir =
     Filename.concat (Filename.concat root_dir "target/debug") "cache"
   in
   (* Create store directory if it doesn't exist *)
-  let _ =
-    Fs.mkdirp
-      (Path.of_string store_dir |> Result.expect ~msg:"Invalid store path")
-  in
+  let _ = Miniriot.File.mkdirp ~path:store_dir ~perm:0o755 in
   { root_dir = store_dir }
 
 (** Get the path for a given hash in the store *)
@@ -29,10 +26,7 @@ let exists store hash =
 let list_artifacts store hash =
   let hash_dir = get_hash_dir store hash in
   if Miniriot.File.exists ~path:hash_dir then
-    match
-      Fs.readdir
-        (Path.of_string hash_dir |> Result.expect ~msg:"Invalid hash_dir")
-    with
+    match Miniriot.File.readdir ~path:hash_dir with
     | Ok files -> files
     | Error _ -> []
   else []
@@ -42,17 +36,14 @@ let promote_from_store store hash target_dir =
   let hash_dir = get_hash_dir store hash in
   if Miniriot.File.exists ~path:hash_dir then (
     (* Ensure target directory exists *)
-    let _ =
-      Fs.mkdirp
-        (Path.of_string target_dir |> Result.expect ~msg:"Invalid target path")
-    in
+    let _ = Miniriot.File.mkdirp ~path:target_dir ~perm:0o755 in
     ();
 
     (* Copy all files from hash directory to target *)
     let files =
-      Fs.readdir
-        (Path.of_string hash_dir |> Result.expect ~msg:"Invalid hash_dir")
-      |> Result.expect ~msg:"Failed to read hash_dir"
+      match Miniriot.File.readdir ~path:hash_dir with
+      | Ok files -> files
+      | Error _ -> []
     in
     List.iter
       (fun file ->
@@ -60,20 +51,8 @@ let promote_from_store store hash target_dir =
         let dst = Filename.concat target_dir file in
 
         (* Only copy if it's a file, not directory *)
-        if
-          not
-            (match
-               Fs.is_directory
-                 (Path.of_string src |> Result.expect ~msg:"Invalid src")
-             with
-            | Ok b -> b
-            | Error _ -> false)
-        then
-          let _ =
-            Fs.copy_file
-              (Path.of_string src |> Result.expect ~msg:"Invalid src")
-              (Path.of_string dst |> Result.expect ~msg:"Invalid dst")
-          in
+        if not (Miniriot.File.is_directory ~path:src) then
+          let _ = Miniriot.File.copy_file ~src ~dst in
           ())
       files;
     true)
@@ -84,9 +63,7 @@ let store_artifacts store hash sandbox_dir declared_outputs =
   let hash_dir = get_hash_dir store hash in
 
   (* Create hash directory (including parent directories) *)
-  let _ =
-    Fs.mkdirp (Path.of_string hash_dir |> Result.expect ~msg:"Invalid hash dir")
-  in
+  let _ = Miniriot.File.mkdirp ~path:hash_dir ~perm:0o755 in
   ();
 
   (* Copy declared outputs to store and track what was actually stored *)
@@ -96,11 +73,7 @@ let store_artifacts store hash sandbox_dir declared_outputs =
         let src = Filename.concat sandbox_dir output_file in
         if Miniriot.File.exists ~path:src then (
           let dst = Filename.concat hash_dir output_file in
-          let _ =
-            Fs.copy_file
-              (Path.of_string src |> Result.expect ~msg:"Invalid src")
-              (Path.of_string dst |> Result.expect ~msg:"Invalid dst")
-          in
+          let _ = Miniriot.File.copy_file ~src ~dst in
           output_file :: acc)
         else acc)
       [] declared_outputs
@@ -118,33 +91,18 @@ let gc_store store ~keep_recent_days =
 let get_stats store =
   let count_files dir =
     if Miniriot.File.exists ~path:dir then
-      try
-        let subdirs =
-          Fs.readdir (Path.of_string dir |> Result.expect ~msg:"Invalid dir")
-          |> Result.expect ~msg:"Failed to read dir"
-        in
-        List.fold_left
-          (fun acc subdir ->
-            let subdir_path = Filename.concat dir subdir in
-            if
-              match
-                Fs.is_directory
-                  (Path.of_string subdir_path
-                  |> Result.expect ~msg:"Invalid subdir_path")
-              with
-              | Ok b -> b
-              | Error _ -> false
-            then
-              match
-                Fs.readdir
-                  (Path.of_string subdir_path
-                  |> Result.expect ~msg:"Invalid subdir_path")
-              with
-              | Ok files -> acc + List.length files
-              | Error _ -> acc
-            else acc)
-          0 subdirs
-      with _ -> 0
+      match Miniriot.File.readdir ~path:dir with
+      | Ok subdirs ->
+          List.fold_left
+            (fun acc subdir ->
+              let subdir_path = Filename.concat dir subdir in
+              if Miniriot.File.is_directory ~path:subdir_path then
+                match Miniriot.File.readdir ~path:subdir_path with
+                | Ok files -> acc + List.length files
+                | Error _ -> acc
+              else acc)
+            0 subdirs
+      | Error _ -> 0
     else 0
   in
 

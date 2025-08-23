@@ -356,6 +356,61 @@ module File = struct
   let sendfile fd ~file ~off ~len =
     syscall @@ fun () -> Ok (gluon_sendfile file fd off len)
 
+  let readdir path =
+    syscall @@ fun () ->
+    try Ok (Array.to_list (Sys.readdir path))
+    with e -> Error (`Unix_error (Unix.ENOENT))
+
+  let mkdir path perm =
+    syscall @@ fun () ->
+    try
+      Unix.mkdir path perm;
+      Ok ()
+    with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+
+  let rec mkdirp path perm =
+    syscall @@ fun () ->
+    try
+      Unix.mkdir path perm;
+      Ok ()
+    with Unix.Unix_error (Unix.EEXIST, _, _) -> Ok ()
+    | Unix.Unix_error (Unix.ENOENT, _, _) ->
+        (* Parent doesn't exist, create it recursively *)
+        let parent = Filename.dirname path in
+        if parent = path then Error (`Unix_error Unix.ENOENT)
+        else (
+          match mkdirp parent perm with
+          | Ok () -> mkdirp path perm
+          | err -> err)
+
+  let copy_file src dst =
+    syscall @@ fun () ->
+    try
+      let ic = open_in_bin src in
+      let oc = open_out_bin dst in
+      let buf_size = 65536 in (* 64KB buffer *)
+      let buf = Bytes.create buf_size in
+      let rec copy () =
+        match input ic buf 0 buf_size with
+        | 0 -> ()
+        | n ->
+            output oc buf 0 n;
+            copy ()
+      in
+      Fun.protect
+        ~finally:(fun () ->
+          close_in_noerr ic;
+          close_out_noerr oc)
+        (fun () ->
+          copy ();
+          Ok ())
+    with e -> Error (`Exn e)
+
+  let is_directory path =
+    syscall @@ fun () ->
+    try Ok (Sys.is_directory path)
+    with e -> Error (`Exn e)
+
   let to_source t =
     let module Src = struct
       type nonrec t = t
