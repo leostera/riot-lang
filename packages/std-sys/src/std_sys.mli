@@ -1,3 +1,267 @@
-(** Low-level system bindings and C interfaces *)
+(** Low-level system bindings and C interfaces 
+    
+    This module provides the foundation for all system-level operations in Riot.
+    It includes cryptography, I/O polling, networking, and filesystem operations. *)
 
 module Crypto = Crypto
+
+module IO : sig
+  type io_error =
+    [ `Connection_closed
+    | `Exn of exn
+    | `No_info
+    | `Unix_error of Unix.error
+    | `Noop
+    | `Eof
+    | `Closed
+    | `Process_down
+    | `Timeout
+    | `Would_block ]
+
+  type ('ok, 'err) io_result = ('ok, ([> io_error ] as 'err)) Stdlib.result
+
+  val pp_err : Format.formatter -> [< io_error ] -> unit
+
+  module Iovec : sig
+    type iov = { ba : bytes; off : int; len : int }
+    type t = iov array
+
+    val with_capacity : int -> t
+    val create : ?count:int -> size:int -> unit -> t
+    val sub : ?pos:int -> len:int -> t -> t
+    val length : t -> int
+    val iter : t -> (iov -> unit) -> unit
+    val of_bytes : bytes -> t
+    val from_string : string -> t
+    val from_buffer : Buffer.t -> t
+    val into_string : t -> string
+  end
+
+  module Fd : sig
+    type t = Unix.file_descr
+
+    val close : t -> unit
+    val equal : t -> t -> bool
+    val make : Unix.file_descr -> t
+    val pp : Format.formatter -> t -> unit
+    val seek : t -> int -> Unix.seek_command -> int
+    val to_int : t -> int
+  end
+
+  module Non_zero_int : sig
+    type t = int
+    val make : int -> int option
+  end
+
+  module Token : sig
+    type t
+
+    val hash : t -> int
+    val equal : ?eq:('a -> 'a -> bool) -> t -> t -> bool
+    val make : 'value -> t
+    val pp : Format.formatter -> t -> unit
+    val unsafe_to_value : t -> 'value
+  end
+
+  module Interest : sig
+    type t
+
+    val add : t -> t -> t
+    val is_readable : t -> bool
+    val is_writable : t -> bool
+    val readable : t
+    val remove : t -> t -> t option
+    val writable : t
+  end
+
+  module Event : sig
+    module type Intf = sig
+      type t
+      val is_error : t -> bool
+      val is_priority : t -> bool
+      val is_read_closed : t -> bool
+      val is_readable : t -> bool
+      val is_writable : t -> bool
+      val is_write_closed : t -> bool
+      val token : t -> Token.t
+    end
+
+    type t
+
+    val is_error : t -> bool
+    val is_priority : t -> bool
+    val is_read_closed : t -> bool
+    val is_readable : t -> bool
+    val is_writable : t -> bool
+    val is_write_closed : t -> bool
+    val make : (module Intf with type t = 'state) -> 'state -> t
+    val token : t -> Token.t
+  end
+
+  module Adapter : sig
+    module Selector : sig
+      type t
+
+      val name : string
+      val make : unit -> (t, [> `Noop ]) io_result
+      val select :
+        ?timeout:int64 ->
+        ?max_events:int ->
+        t ->
+        (Event.t list, [> `Noop ]) io_result
+      val register :
+        t ->
+        fd:Fd.t ->
+        token:Token.t ->
+        interest:Interest.t ->
+        (unit, [> `Noop ]) io_result
+      val reregister :
+        t ->
+        fd:Fd.t ->
+        token:Token.t ->
+        interest:Interest.t ->
+        (unit, [> `Noop ]) io_result
+      val deregister : t -> fd:Fd.t -> (unit, [> `Noop ]) io_result
+    end
+
+    module Event : sig
+      type t
+    end
+  end
+
+  module Source : sig
+    module type Intf = sig
+      type t
+
+      val deregister : t -> Adapter.Selector.t -> (unit, [> `Noop ]) io_result
+      val register :
+        t ->
+        Adapter.Selector.t ->
+        Token.t ->
+        Interest.t ->
+        (unit, [> `Noop ]) io_result
+      val reregister :
+        t ->
+        Adapter.Selector.t ->
+        Token.t ->
+        Interest.t ->
+        (unit, [> `Noop ]) io_result
+    end
+
+    type t = S : ((module Intf with type t = 'state) * 'state) -> t
+
+    val deregister : t -> Adapter.Selector.t -> (unit, [> `Noop ]) io_result
+    val make : (module Intf with type t = 'a) -> 'a -> t
+    val register :
+      t -> Adapter.Selector.t -> Token.t -> Interest.t -> (unit, [> `Noop ]) io_result
+    val reregister :
+      t -> Adapter.Selector.t -> Token.t -> Interest.t -> (unit, [> `Noop ]) io_result
+  end
+
+  module File : sig
+    type t = Unix.file_descr
+
+    val pp : Format.formatter -> t -> unit
+    val close : t -> unit
+    val read : t -> ?pos:int -> ?len:int -> bytes -> (int, [> `Noop ]) io_result
+    val write : t -> ?pos:int -> ?len:int -> bytes -> (int, [> `Noop ]) io_result
+    val read_vectored : t -> Iovec.t -> (int, [> `Noop ]) io_result
+    val write_vectored : t -> Iovec.t -> (int, [> `Noop ]) io_result
+    val readdir : string -> (string list, _) io_result
+    val mkdir : string -> int -> (unit, _) io_result
+    val mkdirp : string -> int -> (unit, _) io_result
+    val copy_file : string -> string -> (unit, _) io_result
+    val is_directory : string -> (bool, _) io_result
+    val file_exists : string -> (bool, _) io_result
+    val stat : string -> (Unix.stats, _) io_result
+    val chmod : string -> int -> (unit, _) io_result
+    val symlink : string -> string -> (unit, _) io_result
+    val rmdir : string -> (unit, _) io_result
+    val remove : string -> (unit, _) io_result
+    val getcwd : unit -> (string, _) io_result
+    val chdir : string -> (unit, _) io_result
+    val opendir : string -> (Unix.dir_handle, _) io_result
+    val readdir_handle : Unix.dir_handle -> (string, _) io_result
+    val closedir : Unix.dir_handle -> (unit, _) io_result
+    val to_source : t -> Source.t
+  end
+
+  module Net : sig
+    module Addr : sig
+      type 't raw_addr = string
+      type tcp_addr = [ `v4 | `v6 ] raw_addr  
+      type stream_addr
+
+      val get_info : stream_addr -> (stream_addr list, [> `Noop ]) io_result
+      val ip : stream_addr -> string
+      val loopback : tcp_addr
+      val of_addr_info : Unix.addr_info -> stream_addr option
+      val of_unix : Unix.sockaddr -> stream_addr
+      val of_host_and_port : host:string -> port:int -> (stream_addr, [> `Noop ]) io_result
+      val port : stream_addr -> int
+      val pp : Format.formatter -> stream_addr -> unit
+      val tcp : tcp_addr -> int -> stream_addr
+      val to_domain : stream_addr -> Unix.socket_domain
+      val to_string : tcp_addr -> string
+      val to_unix : stream_addr -> Unix.socket_type * Unix.sockaddr
+    end
+
+    module Socket : sig
+      type 'kind socket = Fd.t
+      type listen_socket = [ `listen ] socket
+      type stream_socket = [ `stream ] socket
+
+      val pp : Format.formatter -> _ socket -> unit
+      val close : _ socket -> unit
+    end
+
+    module TcpStream : sig
+      type t = Socket.stream_socket
+
+      val connect :
+        Addr.stream_addr ->
+        ([ `Connected of t | `In_progress of t ], [> `Noop ]) io_result
+      val close : t -> unit
+      val pp : Format.formatter -> t -> unit
+      val read : t -> ?pos:int -> ?len:int -> bytes -> (int, [> `Noop ]) io_result
+      val read_vectored : t -> Iovec.t -> (int, [> `Noop ]) io_result
+      val sendfile :
+        t -> file:Fd.t -> off:int -> len:int -> (int, [> `Noop ]) io_result
+      val to_source : t -> Source.t
+      val write :
+        t -> ?pos:int -> ?len:int -> bytes -> (int, [> `Noop ]) io_result
+      val write_vectored : t -> Iovec.t -> (int, [> `Noop ]) io_result
+    end
+
+    module TcpListener : sig
+      type t = Socket.listen_socket
+
+      val accept : t -> (TcpStream.t * Addr.stream_addr, [> `Noop ]) io_result
+      val bind :
+        ?reuse_addr:bool ->
+        ?reuse_port:bool ->
+        ?backlog:int ->
+        Addr.stream_addr ->
+        (t, [> `Noop ]) io_result
+      val close : t -> unit
+      val pp : Format.formatter -> t -> unit
+      val to_source : t -> Source.t
+    end
+  end
+
+  module Poll : sig
+    type t
+
+    val make : unit -> (t, [> `Noop ]) io_result
+    val poll :
+      ?max_events:int ->
+      ?timeout:int64 ->
+      t ->
+      (Event.t list, [> `Noop ]) io_result
+    val register :
+      t -> Token.t -> Interest.t -> Source.t -> (unit, [> `Noop ]) io_result
+    val reregister :
+      t -> Token.t -> Interest.t -> Source.t -> (unit, [> `Noop ]) io_result
+    val deregister : t -> Source.t -> (unit, [> `Noop ]) io_result
+  end
+end
