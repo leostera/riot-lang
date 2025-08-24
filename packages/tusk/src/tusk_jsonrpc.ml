@@ -11,6 +11,22 @@ let method_restart = "tusk.restart"
 let method_shutdown = "tusk.shutdown"
 let method_build_event = "tusk.buildEvent"
 
+(** IDE-like command methods *)
+let method_find_definition = "tusk.findDefinition"
+let method_find_usages = "tusk.findUsages"
+let method_add_dependency = "tusk.addDependency"
+let method_create_package = "tusk.createPackage"
+let method_explain_build_failure = "tusk.explainBuildFailure"
+let method_incremental_typecheck = "tusk.incrementalTypecheck"
+let method_suggest_imports = "tusk.suggestImports"
+let method_refactor_rename = "tusk.refactorRename"
+let method_test_runner = "tusk.testRunner"
+let method_generate_interface = "tusk.generateInterface"
+let method_module_graph = "tusk.moduleGraph"
+let method_dead_code_analysis = "tusk.deadCodeAnalysis"
+let method_type_hover = "tusk.typeHover"
+let method_workspace_stats = "tusk.workspaceStats"
+
 (** Helper to create method-specific parameters *)
 let build_package_params package =
   Jsonrpc.Named [ ("package", Json.String package) ]
@@ -34,6 +50,29 @@ module TuskProtocol = struct
     packages : string list;
   }
 
+  type location = { file : string; line : int; column : int }
+  
+  type symbol_info = {
+    name : string;
+    kind : string; (* "function" | "type" | "module" | "value" *)
+    location : location;
+    signature : string option;
+  }
+
+  type dependency_info = {
+    package : string;
+    version : string option;
+    source : string; (* "workspace" | "external" *)
+  }
+
+  type test_result = {
+    name : string;
+    package : string;
+    passed : bool;
+    duration_ms : int;
+    output : string option;
+  }
+
   type request =
     | Ping
     | GetBuildGraph
@@ -42,6 +81,21 @@ module TuskProtocol = struct
     | BuildAll
     | Restart
     | Shutdown
+    (* IDE-like commands *)
+    | FindDefinition of { symbol : string; file : string }
+    | FindUsages of { symbol : string; scope : string }
+    | AddDependency of { package : string; dependency : string; version : string option }
+    | CreatePackage of { name : string; path : string; kind : string }
+    | ExplainBuildFailure of { package : string option }
+    | IncrementalTypecheck of { file : string option; package : string option }
+    | SuggestImports of { file : string; unbound_symbol : string }
+    | RefactorRename of { old_name : string; new_name : string; kind : string }
+    | TestRunner of { pattern : string option; package : string option; watch : bool }
+    | GenerateInterface of { ml_file : string; expose_all : bool }
+    | ModuleGraph of { package : string; format : string }
+    | DeadCodeAnalysis of { scope : string; include_private : bool }
+    | TypeHover of { file : string; line : int; column : int }
+    | WorkspaceStats of { include_tests : bool; include_docs : bool }
 
   type build_stats = {
     duration_ms : int;
@@ -50,6 +104,15 @@ module TuskProtocol = struct
     total_modules : int;
     cache_hits : int;
     cache_misses : int;
+  }
+
+  type workspace_stats = {
+    total_loc : int;
+    total_packages : int;
+    total_modules : int;
+    test_coverage : float option;
+    doc_coverage : float option;
+    dependencies : dependency_info list;
   }
 
   type response =
@@ -66,6 +129,47 @@ module TuskProtocol = struct
       }
     | ShutdownAck
     | RestartAck
+    (* IDE-like command responses *)
+    | DefinitionFound of symbol_info
+    | DefinitionNotFound of { symbol : string; reason : string }
+    | UsagesFound of { symbol : string; usages : location list }
+    | DependencyAdded of { package : string; dependency : string }
+    | PackageCreated of { name : string; path : string }
+    | BuildFailureExplanation of { 
+        errors : Log.build_error list;
+        suggestions : string list;
+        missing_modules : string list;
+      }
+    | TypecheckResult of {
+        errors : Log.build_error list;
+        warnings : Log.build_error list;
+      }
+    | ImportSuggestions of {
+        symbol : string;
+        suggestions : (string * string) list; (* module * signature *)
+      }
+    | RefactorCompleted of {
+        files_changed : int;
+        changes : (string * int) list; (* file * count *)
+      }
+    | TestResults of {
+        results : test_result list;
+        total : int;
+        passed : int;
+        failed : int;
+        duration_ms : int;
+      }
+    | InterfaceGenerated of { mli_file : string; content : string }
+    | ModuleGraphResult of { graph : string }
+    | DeadCodeFound of {
+        unused : symbol_info list;
+        total : int;
+      }
+    | TypeInfo of {
+        type_signature : string;
+        documentation : string option;
+      }
+    | WorkspaceStatsResult of workspace_stats
     | Error of string
 
   (* Helper to serialize log events to JSON *)
@@ -918,6 +1022,89 @@ module TuskProtocol = struct
     | BuildAll -> { method_ = method_build_all; params = NoParams }
     | Shutdown -> { method_ = method_shutdown; params = NoParams }
     | Restart -> { method_ = method_restart; params = NoParams }
+    (* IDE-like commands *)
+    | FindDefinition { symbol; file } ->
+        { method_ = method_find_definition; 
+          params = Named [("symbol", Json.String symbol); ("file", Json.String file)] }
+    | FindUsages { symbol; scope } ->
+        { method_ = method_find_usages;
+          params = Named [("symbol", Json.String symbol); ("scope", Json.String scope)] }
+    | AddDependency { package; dependency; version } ->
+        { method_ = method_add_dependency;
+          params = Named [
+            ("package", Json.String package);
+            ("dependency", Json.String dependency);
+            ("version", match version with Some v -> Json.String v | None -> Json.Null)
+          ] }
+    | CreatePackage { name; path; kind } ->
+        { method_ = method_create_package;
+          params = Named [
+            ("name", Json.String name);
+            ("path", Json.String path);
+            ("kind", Json.String kind)
+          ] }
+    | ExplainBuildFailure { package } ->
+        { method_ = method_explain_build_failure;
+          params = Named [
+            ("package", match package with Some p -> Json.String p | None -> Json.Null)
+          ] }
+    | IncrementalTypecheck { file; package } ->
+        { method_ = method_incremental_typecheck;
+          params = Named [
+            ("file", match file with Some f -> Json.String f | None -> Json.Null);
+            ("package", match package with Some p -> Json.String p | None -> Json.Null)
+          ] }
+    | SuggestImports { file; unbound_symbol } ->
+        { method_ = method_suggest_imports;
+          params = Named [
+            ("file", Json.String file);
+            ("unbound_symbol", Json.String unbound_symbol)
+          ] }
+    | RefactorRename { old_name; new_name; kind } ->
+        { method_ = method_refactor_rename;
+          params = Named [
+            ("old_name", Json.String old_name);
+            ("new_name", Json.String new_name);
+            ("kind", Json.String kind)
+          ] }
+    | TestRunner { pattern; package; watch } ->
+        { method_ = method_test_runner;
+          params = Named [
+            ("pattern", match pattern with Some p -> Json.String p | None -> Json.Null);
+            ("package", match package with Some p -> Json.String p | None -> Json.Null);
+            ("watch", Json.Bool watch)
+          ] }
+    | GenerateInterface { ml_file; expose_all } ->
+        { method_ = method_generate_interface;
+          params = Named [
+            ("ml_file", Json.String ml_file);
+            ("expose_all", Json.Bool expose_all)
+          ] }
+    | ModuleGraph { package; format } ->
+        { method_ = method_module_graph;
+          params = Named [
+            ("package", Json.String package);
+            ("format", Json.String format)
+          ] }
+    | DeadCodeAnalysis { scope; include_private } ->
+        { method_ = method_dead_code_analysis;
+          params = Named [
+            ("scope", Json.String scope);
+            ("include_private", Json.Bool include_private)
+          ] }
+    | TypeHover { file; line; column } ->
+        { method_ = method_type_hover;
+          params = Named [
+            ("file", Json.String file);
+            ("line", Json.Int line);
+            ("column", Json.Int column)
+          ] }
+    | WorkspaceStats { include_tests; include_docs } ->
+        { method_ = method_workspace_stats;
+          params = Named [
+            ("include_tests", Json.Bool include_tests);
+            ("include_docs", Json.Bool include_docs)
+          ] }
 
   let request_of_params method_ params =
     (* Parse params based on the method name *)
@@ -1046,6 +1233,247 @@ module TuskProtocol = struct
           ]
     | ShutdownAck -> Json.Object [ ("type", Json.String "shutdown_ack") ]
     | RestartAck -> Json.Object [ ("type", Json.String "restart_ack") ]
+    (* IDE-like command responses *)
+    | DefinitionFound info ->
+        Json.Object
+          [
+            ("type", Json.String "definition_found");
+            ("name", Json.String info.name);
+            ("kind", Json.String info.kind);
+            ( "location",
+              Json.Object
+                [
+                  ("file", Json.String info.location.file);
+                  ("line", Json.Int info.location.line);
+                  ("column", Json.Int info.location.column);
+                ] );
+            ( "signature",
+              match info.signature with
+              | Some s -> Json.String s
+              | None -> Json.Null );
+          ]
+    | DefinitionNotFound { symbol; reason } ->
+        Json.Object
+          [
+            ("type", Json.String "definition_not_found");
+            ("symbol", Json.String symbol);
+            ("reason", Json.String reason);
+          ]
+    | UsagesFound { symbol; usages } ->
+        Json.Object
+          [
+            ("type", Json.String "usages_found");
+            ("symbol", Json.String symbol);
+            ( "usages",
+              Json.Array
+                (List.map
+                   (fun loc ->
+                     Json.Object
+                       [
+                         ("file", Json.String loc.file);
+                         ("line", Json.Int loc.line);
+                         ("column", Json.Int loc.column);
+                       ])
+                   usages) );
+          ]
+    | DependencyAdded { package; dependency } ->
+        Json.Object
+          [
+            ("type", Json.String "dependency_added");
+            ("package", Json.String package);
+            ("dependency", Json.String dependency);
+          ]
+    | PackageCreated { name; path } ->
+        Json.Object
+          [
+            ("type", Json.String "package_created");
+            ("name", Json.String name);
+            ("path", Json.String path);
+          ]
+    | BuildFailureExplanation { errors; suggestions; missing_modules } ->
+        Json.Object
+          [
+            ("type", Json.String "build_failure_explanation");
+            ( "errors",
+              Json.Array
+                (List.map
+                   (fun e ->
+                     Json.Object
+                       [
+                         ("file", Json.String e.Log.file);
+                         ("line", Json.Int e.Log.line);
+                         ( "column",
+                           match e.Log.column with
+                           | Some c -> Json.Int c
+                           | None -> Json.Null );
+                         ("message", Json.String e.Log.message);
+                       ])
+                   errors) );
+            ( "suggestions",
+              Json.Array (List.map (fun s -> Json.String s) suggestions) );
+            ( "missing_modules",
+              Json.Array (List.map (fun m -> Json.String m) missing_modules) );
+          ]
+    | TypecheckResult { errors; warnings } ->
+        Json.Object
+          [
+            ("type", Json.String "typecheck_result");
+            ( "errors",
+              Json.Array
+                (List.map
+                   (fun e ->
+                     Json.Object
+                       [
+                         ("file", Json.String e.Log.file);
+                         ("line", Json.Int e.Log.line);
+                         ("message", Json.String e.Log.message);
+                       ])
+                   errors) );
+            ( "warnings",
+              Json.Array
+                (List.map
+                   (fun w ->
+                     Json.Object
+                       [
+                         ("file", Json.String w.Log.file);
+                         ("line", Json.Int w.Log.line);
+                         ("message", Json.String w.Log.message);
+                       ])
+                   warnings) );
+          ]
+    | ImportSuggestions { symbol; suggestions } ->
+        Json.Object
+          [
+            ("type", Json.String "import_suggestions");
+            ("symbol", Json.String symbol);
+            ( "suggestions",
+              Json.Array
+                (List.map
+                   (fun (module_, signature) ->
+                     Json.Object
+                       [
+                         ("module", Json.String module_);
+                         ("signature", Json.String signature);
+                       ])
+                   suggestions) );
+          ]
+    | RefactorCompleted { files_changed; changes } ->
+        Json.Object
+          [
+            ("type", Json.String "refactor_completed");
+            ("files_changed", Json.Int files_changed);
+            ( "changes",
+              Json.Array
+                (List.map
+                   (fun (file, count) ->
+                     Json.Object
+                       [
+                         ("file", Json.String file);
+                         ("count", Json.Int count);
+                       ])
+                   changes) );
+          ]
+    | TestResults { results; total; passed; failed; duration_ms } ->
+        Json.Object
+          [
+            ("type", Json.String "test_results");
+            ("total", Json.Int total);
+            ("passed", Json.Int passed);
+            ("failed", Json.Int failed);
+            ("duration_ms", Json.Int duration_ms);
+            ( "results",
+              Json.Array
+                (List.map
+                   (fun r ->
+                     Json.Object
+                       [
+                         ("name", Json.String r.name);
+                         ("package", Json.String r.package);
+                         ("passed", Json.Bool r.passed);
+                         ("duration_ms", Json.Int r.duration_ms);
+                         ( "output",
+                           match r.output with
+                           | Some o -> Json.String o
+                           | None -> Json.Null );
+                       ])
+                   results) );
+          ]
+    | InterfaceGenerated { mli_file; content } ->
+        Json.Object
+          [
+            ("type", Json.String "interface_generated");
+            ("mli_file", Json.String mli_file);
+            ("content", Json.String content);
+          ]
+    | ModuleGraphResult { graph } ->
+        Json.Object
+          [
+            ("type", Json.String "module_graph_result");
+            ("graph", Json.String graph);
+          ]
+    | DeadCodeFound { unused; total } ->
+        Json.Object
+          [
+            ("type", Json.String "dead_code_found");
+            ("total", Json.Int total);
+            ( "unused",
+              Json.Array
+                (List.map
+                   (fun info ->
+                     Json.Object
+                       [
+                         ("name", Json.String info.name);
+                         ("kind", Json.String info.kind);
+                         ( "location",
+                           Json.Object
+                             [
+                               ("file", Json.String info.location.file);
+                               ("line", Json.Int info.location.line);
+                               ("column", Json.Int info.location.column);
+                             ] );
+                       ])
+                   unused) );
+          ]
+    | TypeInfo { type_signature; documentation } ->
+        Json.Object
+          [
+            ("type", Json.String "type_info");
+            ("type_signature", Json.String type_signature);
+            ( "documentation",
+              match documentation with
+              | Some d -> Json.String d
+              | None -> Json.Null );
+          ]
+    | WorkspaceStatsResult stats ->
+        Json.Object
+          [
+            ("type", Json.String "workspace_stats");
+            ("total_loc", Json.Int stats.total_loc);
+            ("total_packages", Json.Int stats.total_packages);
+            ("total_modules", Json.Int stats.total_modules);
+            ( "test_coverage",
+              match stats.test_coverage with
+              | Some c -> Json.Float c
+              | None -> Json.Null );
+            ( "doc_coverage",
+              match stats.doc_coverage with
+              | Some c -> Json.Float c
+              | None -> Json.Null );
+            ( "dependencies",
+              Json.Array
+                (List.map
+                   (fun d ->
+                     Json.Object
+                       [
+                         ("package", Json.String d.package);
+                         ( "version",
+                           match d.version with
+                           | Some v -> Json.String v
+                           | None -> Json.Null );
+                         ("source", Json.String d.source);
+                       ])
+                   stats.dependencies) );
+          ]
     | Error msg -> Json.Object [ ("error", Json.String msg) ]
 
   let response_of_json json =
