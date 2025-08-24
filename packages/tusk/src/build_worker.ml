@@ -63,34 +63,60 @@ let main server_pid worker_id () =
 
         match Store.get store planned_node with
         | Some artifact -> (
-            (* We have a cached artifact - promote it and we're done *)
-            Log.cache_hit ?sid:session_id ~package:pkg_name
-              ~hash:
-                (match planned_node.Build_node.spec with
-                | Planned { hash; _ } -> Hasher.to_string hash
-                | _ -> "unknown");
+            (* We have a cached artifact - check if target files exist *)
+            let target_files_exist =
+              List.for_all
+                (fun file ->
+                  let target_file = Filename.concat target_dir file in
+                  Miniriot.File.exists ~path:target_file)
+                artifact.files
+            in
+            
+            if target_files_exist then (
+              (* Target files exist - use cached build *)
+              Log.cache_hit ?sid:session_id ~package:pkg_name
+                ~hash:
+                  (match planned_node.Build_node.spec with
+                  | Planned { hash; _ } -> Hasher.to_string hash
+                  | _ -> "unknown");
+                  
+              send server_pid
+                (Worker_pool.Worker
+                   (Worker_pool.TaskCompleted
+                      {
+                        worker = worker_pid;
+                        node = task.Worker_pool.node;
+                        artifact;
+                      })))
+            else (
+              (* Target files missing - promote from cache *)
+              Log.cache_hit ?sid:session_id ~package:pkg_name
+                ~hash:
+                  (match planned_node.Build_node.spec with
+                  | Planned { hash; _ } -> Hasher.to_string hash
+                  | _ -> "unknown");
 
-            match Store.promote store artifact ~target_dir with
-            | Ok () ->
-                send server_pid
-                  (Worker_pool.Worker
-                     (Worker_pool.TaskCompleted
-                        {
-                          worker = worker_pid;
-                          node = task.Worker_pool.node;
-                          artifact;
-                        }))
-            | Error err ->
-                send server_pid
-                  (Worker_pool.Worker
-                     (Worker_pool.TaskFailed
-                        {
-                          worker = worker_pid;
-                          node = task.Worker_pool.node;
-                          error =
-                            Printf.sprintf "Failed to promote from cache: %s"
-                              err;
-                        })))
+              match Store.promote store artifact ~target_dir with
+              | Ok () ->
+                  send server_pid
+                    (Worker_pool.Worker
+                       (Worker_pool.TaskCompleted
+                          {
+                            worker = worker_pid;
+                            node = task.Worker_pool.node;
+                            artifact;
+                          }))
+              | Error err ->
+                  send server_pid
+                    (Worker_pool.Worker
+                       (Worker_pool.TaskFailed
+                          {
+                            worker = worker_pid;
+                            node = task.Worker_pool.node;
+                            error =
+                              Printf.sprintf "Failed to promote from cache: %s"
+                                err;
+                          }))))
         | None -> (
             (* No cache - need to build in sandbox *)
             Log.cache_miss ?sid:session_id ~package:pkg_name

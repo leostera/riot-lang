@@ -3,7 +3,7 @@
 type t
 (** Abstract type representing a store *)
 
-type artifact
+type artifact = { hash : Hasher.hash; files : string list }
 (** Artifact witness - proof that build outputs have been stored *)
 
 type error = string
