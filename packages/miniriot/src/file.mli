@@ -42,3 +42,33 @@ val mkdirp : path:string -> perm:int -> (unit, error) result
 
 val copy_file : src:string -> dst:string -> (unit, error) result
 (** Copy file from source to destination (non-blocking) *)
+
+val file_exists : path:string -> (bool, error) result
+(** Check if file exists (non-blocking) *)
+
+val stat : path:string -> (Unix.stats, error) result
+(** Get file statistics (non-blocking) *)
+
+val chmod : path:string -> perm:int -> (unit, error) result
+(** Change file permissions (non-blocking) *)
+
+val symlink : src:string -> dst:string -> (unit, error) result
+(** Create symbolic link (non-blocking) *)
+
+val rmdir : path:string -> (unit, error) result
+(** Remove empty directory (non-blocking) *)
+
+val getcwd : unit -> (string, error) result
+(** Get current working directory (non-blocking) *)
+
+val chdir : path:string -> (unit, error) result
+(** Change current working directory (non-blocking) *)
+
+val opendir : path:string -> (Unix.dir_handle, error) result
+(** Open directory for reading (non-blocking) *)
+
+val readdir_handle : handle:Unix.dir_handle -> (string, error) result
+(** Read next entry from directory handle (non-blocking) *)
+
+val closedir : handle:Unix.dir_handle -> (unit, error) result
+(** Close directory handle (non-blocking) *)

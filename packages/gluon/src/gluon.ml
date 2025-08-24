@@ -411,6 +411,75 @@ module File = struct
     try Ok (Sys.is_directory path)
     with e -> Error (`Exn e)
 
+  let file_exists path =
+    syscall @@ fun () ->
+    try Ok (Sys.file_exists path)
+    with e -> Error (`Exn e)
+
+  let stat path =
+    syscall @@ fun () ->
+    try Ok (Unix.stat path)
+    with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+
+  let chmod path perm =
+    syscall @@ fun () ->
+    try
+      Unix.chmod path perm;
+      Ok ()
+    with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+
+  let symlink src dst =
+    syscall @@ fun () ->
+    try
+      Unix.symlink src dst;
+      Ok ()
+    with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+
+  let rmdir path =
+    syscall @@ fun () ->
+    try
+      Unix.rmdir path;
+      Ok ()
+    with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+
+  let remove path =
+    syscall @@ fun () ->
+    try
+      Sys.remove path;
+      Ok ()
+    with e -> Error (`Exn e)
+
+  let getcwd () =
+    syscall @@ fun () ->
+    try Ok (Sys.getcwd ())
+    with e -> Error (`Exn e)
+
+  let chdir path =
+    syscall @@ fun () ->
+    try
+      Sys.chdir path;
+      Ok ()
+    with e -> Error (`Exn e)
+
+  let opendir path =
+    syscall @@ fun () ->
+    try Ok (Unix.opendir path)
+    with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+
+  let readdir_handle handle =
+    syscall @@ fun () ->
+    try Ok (Unix.readdir handle)
+    with 
+    | End_of_file -> Error `Eof
+    | Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+
+  let closedir handle =
+    syscall @@ fun () ->
+    try
+      Unix.closedir handle;
+      Ok ()
+    with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+
   let to_source t =
     let module Src = struct
       type nonrec t = t

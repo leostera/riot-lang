@@ -151,3 +151,61 @@ let copy_file ~src ~dst =
   | Error (`Unix_error e) -> Error (error_of_unix_error e)
   | Error (`Exn exn) -> Error (`Unknown (Printexc.to_string exn))
   | Error _ -> Error (`Unknown "Failed to copy file")
+
+let file_exists ~path =
+  match Gluon.File.file_exists path with
+  | Ok exists -> Ok exists
+  | Error _ -> Ok false
+
+let stat ~path =
+  match Gluon.File.stat path with
+  | Ok stats -> Ok stats
+  | Error (`Unix_error e) -> Error (error_of_unix_error e)
+  | Error _ -> Error (`Unknown "Failed to stat file")
+
+let chmod ~path ~perm =
+  match Gluon.File.chmod path perm with
+  | Ok () -> Ok ()
+  | Error (`Unix_error e) -> Error (error_of_unix_error e)
+  | Error _ -> Error (`Unknown "Failed to change permissions")
+
+let symlink ~src ~dst =
+  match Gluon.File.symlink src dst with
+  | Ok () -> Ok ()
+  | Error (`Unix_error e) -> Error (error_of_unix_error e)
+  | Error _ -> Error (`Unknown "Failed to create symlink")
+
+let rmdir ~path =
+  match Gluon.File.rmdir path with
+  | Ok () -> Ok ()
+  | Error (`Unix_error e) -> Error (error_of_unix_error e)
+  | Error _ -> Error (`Unknown "Failed to remove directory")
+
+let getcwd () =
+  match Gluon.File.getcwd () with
+  | Ok path -> Ok path
+  | Error _ -> Error (`Unknown "Failed to get current directory")
+
+let chdir ~path =
+  match Gluon.File.chdir path with
+  | Ok () -> Ok ()
+  | Error _ -> Error (`Unknown "Failed to change directory")
+
+let opendir ~path =
+  match Gluon.File.opendir path with
+  | Ok handle -> Ok handle
+  | Error (`Unix_error e) -> Error (error_of_unix_error e)
+  | Error _ -> Error (`Unknown "Failed to open directory")
+
+let readdir_handle ~handle =
+  match Gluon.File.readdir_handle handle with
+  | Ok entry -> Ok entry
+  | Error `Eof -> Error (`Unknown "End of directory")
+  | Error (`Unix_error e) -> Error (error_of_unix_error e)
+  | Error _ -> Error (`Unknown "Failed to read directory")
+
+let closedir ~handle =
+  match Gluon.File.closedir handle with
+  | Ok () -> Ok ()
+  | Error (`Unix_error e) -> Error (error_of_unix_error e)
+  | Error _ -> Error (`Unknown "Failed to close directory")

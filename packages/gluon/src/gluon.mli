@@ -360,6 +360,39 @@ module File : sig
 
   val is_directory : string -> (bool, _) io_result
   (** Check if path is a directory. *)
+
+  val file_exists : string -> (bool, _) io_result
+  (** Check if file exists. *)
+
+  val stat : string -> (Unix.stats, _) io_result
+  (** Get file statistics. *)
+
+  val chmod : string -> int -> (unit, _) io_result
+  (** Change file permissions. *)
+
+  val symlink : string -> string -> (unit, _) io_result
+  (** Create symbolic link. *)
+
+  val rmdir : string -> (unit, _) io_result
+  (** Remove empty directory. *)
+
+  val remove : string -> (unit, _) io_result
+  (** Remove file or directory. *)
+
+  val getcwd : unit -> (string, _) io_result
+  (** Get current working directory. *)
+
+  val chdir : string -> (unit, _) io_result
+  (** Change current working directory. *)
+
+  val opendir : string -> (Unix.dir_handle, _) io_result
+  (** Open directory for reading. *)
+
+  val readdir_handle : Unix.dir_handle -> (string, _) io_result
+  (** Read next entry from directory handle. *)
+
+  val closedir : Unix.dir_handle -> (unit, _) io_result
+  (** Close directory handle. *)
   
   val to_source : t -> Source.t
   (** Convert file to event source for polling. *)
