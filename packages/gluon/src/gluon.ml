@@ -368,20 +368,37 @@ module File = struct
       Ok ()
     with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
 
-  let rec mkdirp path perm =
+  let mkdirp path perm =
     syscall @@ fun () ->
-    try
-      Unix.mkdir path perm;
-      Ok ()
-    with Unix.Unix_error (Unix.EEXIST, _, _) -> Ok ()
-    | Unix.Unix_error (Unix.ENOENT, _, _) ->
-        (* Parent doesn't exist, create it recursively *)
-        let parent = Filename.dirname path in
-        if parent = path then Error (`Unix_error Unix.ENOENT)
-        else (
-          match mkdirp parent perm with
-          | Ok () -> mkdirp path perm
-          | err -> err)
+    (* Split path into components, handling absolute paths *)
+    let components = 
+      let parts = String.split_on_char '/' path in
+      match parts with
+      | "" :: rest -> "/" :: List.filter (fun s -> s <> "") rest
+      | parts -> List.filter (fun s -> s <> "") parts
+    in
+    (* Create each directory component incrementally using fold *)
+    let create_dir acc_result component =
+      match acc_result with
+      | Error e -> Error e
+      | Ok current_path ->
+          let new_path = 
+            match current_path, component with
+            | "", "/" -> "/"
+            | "", c -> c
+            | "/", c -> "/" ^ c
+            | p, c -> p ^ "/" ^ c
+          in
+          try
+            Unix.mkdir new_path perm;
+            Ok new_path
+          with
+          | Unix.Unix_error (Unix.EEXIST, _, _) -> Ok new_path
+          | Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+    in
+    match List.fold_left create_dir (Ok "") components with
+    | Ok _ -> Ok ()
+    | Error e -> Error e
 
   let copy_file src dst =
     syscall @@ fun () ->
