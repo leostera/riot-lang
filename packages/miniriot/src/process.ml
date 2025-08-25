@@ -1,4 +1,4 @@
-type exit_reason = Normal | Exception of exn
+type exit_reason = exn
 
 type state =
   | Uninitialized
@@ -6,22 +6,22 @@ type state =
   | Waiting_message
   | Waiting_io of {
       name : string;
-      token : Gluon.Token.t;
-      source : Gluon.Source.t;
+      token : Std_sys.IO.Token.t;
+      source : Std_sys.IO.Source.t;
     }
   | Running
-  | Exited of exit_reason
+  | Exited of (unit, exit_reason) result
   | Finalized
 
 type t = {
   pid : Pid.t;
   mutable state : state;
-  mutable cont : exit_reason Proc_state.t option;
-  mutable fn : (unit -> exit_reason) option;
+  mutable cont : (unit, exit_reason) result Proc_state.t option;
+  mutable fn : (unit -> (unit, exit_reason) result) option;
   mailbox : Mailbox.t;
   save_queue : Mailbox.t;
   mutable read_save_queue : bool;
-  mutable ready_tokens : (Gluon.Token.t * Gluon.Source.t) list;
+  mutable ready_tokens : (Std_sys.IO.Token.t * Std_sys.IO.Source.t) list;
 }
 
 let make fn =

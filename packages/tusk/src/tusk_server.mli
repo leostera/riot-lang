@@ -8,7 +8,7 @@ type t
 val start : unit -> t
 (** Start the build server and return its PID *)
 
-val start_with_listener : unit -> Miniriot.Process.exit_reason
+val start_with_listener : unit -> (unit, Miniriot.Process.exit_reason) result
 (** Start the server with TCP listener for RPC. This function makes the current
     process _become_ the Tusk server *)
 

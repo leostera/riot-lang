@@ -39,6 +39,7 @@ type log_event =
   | PackageStarted of { package : string }
   | PackageComplete of build_result
   | CompileError of build_error
+  | CycleDetected of { packages : string list }
   (* Cache events *)
   | CacheHit of { package : string; hash : string }
   | CacheMiss of { package : string; hash : string }
@@ -98,6 +99,7 @@ let event_name = function
   | PackageStarted _ -> "tusk.build.package.started"
   | PackageComplete _ -> "tusk.build.package.completed"
   | CompileError _ -> "tusk.build.compile.error"
+  | CycleDetected _ -> "tusk.build.cycle.detected"
   | CacheHit _ -> "tusk.build.cache.hit"
   | CacheMiss _ -> "tusk.build.cache.miss"
   | CacheStored _ -> "tusk.build.cache.stored"
@@ -142,6 +144,7 @@ let event_level = function
   | LinkingLibrary _ | LinkingExecutable _ | HashComputed _ ->
       level_info
   | CompileError _ -> level_error
+  | CycleDetected _ -> level_error
   | _ -> level_info
 
 (** Get the human-readable message from log_event (without timestamp) *)
@@ -164,6 +167,9 @@ let event_message = function
       Printf.sprintf "%s:%d:%s - %s" error.file error.line
         (match error.column with Some c -> string_of_int c | None -> "0")
         error.message
+  | CycleDetected { packages } ->
+      Printf.sprintf "Circular dependency detected: %s"
+        (String.concat " -> " packages)
   | CacheHit { package; _ } -> Printf.sprintf "Cached %s" package
   | CacheMiss { package; _ } -> Printf.sprintf "Cache miss: %s" package
   | CacheStored { package; artifacts } ->
@@ -246,6 +252,10 @@ let event_to_string = function
       Printf.sprintf "  ❌ %s:%d:%s - %s" error.file error.line
         (match error.column with Some c -> string_of_int c | None -> "0")
         error.message
+  | CycleDetected { packages } ->
+      let timestamp = format_timestamp (get_timestamp_ms ()) in
+      Printf.sprintf "[%s] ❌ Circular dependency detected: %s"
+        timestamp (String.concat " -> " packages)
   | CacheHit { package; hash } ->
       let timestamp = format_timestamp (get_timestamp_ms ()) in
       Printf.sprintf "[%s]   ⚡ Cached %s" timestamp package
@@ -343,6 +353,9 @@ let event_to_cargo_string = function
       Printf.sprintf "%serror%s: %s\n --> %s:%d:%s" bold_red reset error.message
         error.file error.line
         (match error.column with Some c -> string_of_int c | None -> "0")
+  | CycleDetected { packages } ->
+      Printf.sprintf "%serror%s: circular dependency detected\n %s" 
+        bold_red reset (String.concat " -> " packages)
   | CacheHit { package; _ } ->
       Printf.sprintf "   %sCompiling%s %s (cached)" bold_green reset package
   | CacheMiss { package; _ } ->
@@ -481,7 +494,7 @@ let rec logger_loop state =
       logger_loop state
   | `shutdown ->
       (* Clean shutdown *)
-      Process.Normal
+      Ok ()
 
 (** Initialize the logger process *)
 let init () =

@@ -78,7 +78,7 @@ let find_binaries () =
           (Std.Path.to_string package.Workspace.path)
           "src/main.ml"
       in
-      if Miniriot.File.exists ~path:main_ml_path then
+      if File_utils.exists ~path:main_ml_path then
         Some package.Workspace.name
       else None)
     workspace.packages
@@ -156,37 +156,37 @@ let build_command package_opt =
 
   (* Print final result *)
   match result with
-  | Client.BuildFinished (Ok ()) -> Process.Normal
+  | Client.BuildFinished (Ok ()) -> Ok ()
   | Client.BuildFinished (Error msg) ->
       Printf.eprintf "error: build failed: %s\n" msg;
-      Process.Exception (Failure "Build failed")
+      Error (Failure "Build failed")
 
 (** Execute a binary and handle its exit status *)
 let execute_binary binary_name binary_path =
   Printf.printf "🚀 Running %s...\n" binary_name;
   let result = Command.system binary_path in
-  match Std.Process.of_unix_status result with
-  | Std.Process.Exited code ->
-      if code = 0 then Process.Normal
+  match Std.Command.of_unix_status result with
+  | Std.Command.Exited code ->
+      if code = 0 then Ok ()
       else
-        Process.Exception
+        Error
           (Failure (Printf.sprintf "Binary exited with code %d" code))
-  | Std.Process.Signaled signal ->
-      Process.Exception
+  | Std.Command.Signaled signal ->
+      Error
         (Failure (Printf.sprintf "Binary killed by signal %d" signal))
-  | Std.Process.Stopped signal ->
-      Process.Exception
+  | Std.Command.Stopped signal ->
+      Error
         (Failure (Printf.sprintf "Binary stopped by signal %d" signal))
 
 (** Execute the clean command *)
 let clean_command () =
   Printf.printf "🧹 Cleaning build artifacts...\n";
   let result = Command.system "rm -rf ./target" in
-  match Std.Process.of_unix_status result with
-  | Std.Process.Exited 0 ->
+  match Std.Command.of_unix_status result with
+  | Std.Command.Exited 0 ->
       Printf.printf "Build artifacts cleaned!\n";
-      Process.Normal
-  | _ -> Process.Exception (Failure "Failed to clean build artifacts")
+      Ok ()
+  | _ -> Error (Failure "Failed to clean build artifacts")
 
 (** Build a package and wait for completion *)
 let build_package package_name =
@@ -249,28 +249,28 @@ let run_command binary_opt =
                   Printf.eprintf
                     "Error: Binary '%s' still not found after building.\n"
                     binary_name;
-                  Process.Exception
+                  Error
                     (Failure
                        (Printf.sprintf "Binary '%s' not found after build"
                           binary_name)))
             else (
               Printf.eprintf "Error: Failed to build package '%s'.\n"
                 binary_name;
-              Process.Exception
+              Error
                 (Failure (Printf.sprintf "Build failed for %s" binary_name))))
       else (
         Printf.eprintf "Error: Binary '%s' not found in workspace.\n"
           binary_name;
         Printf.eprintf "Available binaries: %s\n"
           (String.concat ", " available_binaries);
-        Process.Exception
+        Error
           (Failure (Printf.sprintf "Unknown binary: %s" binary_name)))
   | None -> (
       (* No binary specified *)
       match available_binaries with
       | [] ->
           Printf.eprintf "Error: No binaries found in workspace.\n";
-          Process.Exception (Failure "No binaries found")
+          Error (Failure "No binaries found")
       | [ single_binary ] -> (
           (* Only one binary available, run it *)
           match get_binary_path single_binary with
@@ -285,19 +285,19 @@ let run_command binary_opt =
                 | Some binary_path -> (
                     Printf.printf "🚀 Running %s...\n" single_binary;
                     let result = Command.system binary_path in
-                    match Std.Process.of_unix_status result with
-                    | Std.Process.Exited code ->
-                        if code = 0 then Process.Normal
+                    match Std.Command.of_unix_status result with
+                    | Std.Command.Exited code ->
+                        if code = 0 then Ok ()
                         else
-                          Process.Exception
+                          Error
                             (Failure
                                (Printf.sprintf "Binary exited with code %d" code))
-                    | Std.Process.Signaled signal ->
-                        Process.Exception
+                    | Std.Command.Signaled signal ->
+                        Error
                           (Failure
                              (Printf.sprintf "Binary killed by signal %d" signal))
-                    | Std.Process.Stopped signal ->
-                        Process.Exception
+                    | Std.Command.Stopped signal ->
+                        Error
                           (Failure
                              (Printf.sprintf "Binary stopped by signal %d"
                                 signal)))
@@ -305,14 +305,14 @@ let run_command binary_opt =
                     Printf.eprintf
                       "Error: Binary '%s' still not found after building.\n"
                       single_binary;
-                    Process.Exception
+                    Error
                       (Failure
                          (Printf.sprintf "Binary '%s' not found after build"
                             single_binary)))
               else (
                 Printf.eprintf "Error: Failed to build package '%s'.\n"
                   single_binary;
-                Process.Exception
+                Error
                   (Failure (Printf.sprintf "Build failed for %s" single_binary)))
           )
       | _ ->
@@ -322,12 +322,12 @@ let run_command binary_opt =
              with -b flag.\n";
           Printf.eprintf "Available binaries: %s\n"
             (String.concat ", " available_binaries);
-          Process.Exception (Failure "Multiple binaries found"))
+          Error (Failure "Multiple binaries found"))
 
 (** Read OCaml toolchain version from ocaml-toolchain.toml *)
 let read_toolchain_version () =
   let toml_path = "ocaml-toolchain.toml" in
-  if not (Miniriot.File.exists ~path:toml_path) then
+  if not (File_utils.exists ~path:toml_path) then
     failwith "ocaml-toolchain.toml not found in current directory"
   else
     let ic = open_in toml_path in
@@ -375,7 +375,7 @@ let get_lsp_binary_path () =
   let lsp_path =
     Printf.sprintf "%s/.tusk/toolchains/%s/bin/ocamllsp" home version
   in
-  if Miniriot.File.exists ~path:lsp_path then lsp_path
+  if File_utils.exists ~path:lsp_path then lsp_path
   else
     failwith
       (Printf.sprintf
@@ -397,7 +397,7 @@ let rec lsp_command args =
         Workspace_manager.scan cwd |> Std.Result.expect ~msg:"Operation failed"
       in
       Merlin_bridge.start ~workspace;
-      Process.Normal
+      Ok ()
   | "ocamlformat-rpc" ->
       (* Bridge to ocamlformat-rpc from toolchain *)
       let toolchain_dir =
@@ -408,7 +408,7 @@ let rec lsp_command args =
           ".tusk/toolchains/5.3.0/bin"
       in
       let ocamlformat_rpc = Filename.concat toolchain_dir "ocamlformat-rpc" in
-      if Miniriot.File.exists ~path:ocamlformat_rpc then
+      if File_utils.exists ~path:ocamlformat_rpc then
         (* Pass through to ocamlformat-rpc with all remaining args *)
         let argv = Array.sub args 3 (Array.length args - 3) in
         Command.exec ocamlformat_rpc (Array.append [| "ocamlformat-rpc" |] argv)
@@ -416,7 +416,7 @@ let rec lsp_command args =
         Printf.eprintf "Error: ocamlformat-rpc not found at %s\n"
           ocamlformat_rpc;
         Printf.eprintf "Please run: cd ocaml && ./local-install.sh\n";
-        Process.Exception (Failure "ocamlformat-rpc not found"))
+        Error (Failure "ocamlformat-rpc not found"))
   | "" ->
       (* Default: Start OCaml LSP server *)
       lsp_start_server ()
@@ -426,7 +426,7 @@ let rec lsp_command args =
       Printf.eprintf "  tusk lsp                 - Start OCaml LSP server\n";
       Printf.eprintf "  tusk lsp ocaml-merlin    - Run merlin protocol bridge\n";
       Printf.eprintf "  tusk lsp ocamlformat-rpc - Run ocamlformat RPC server\n";
-      Process.Exception (Failure "Invalid lsp subcommand")
+      Error (Failure "Invalid lsp subcommand")
 
 (** Start the LSP server *)
 and lsp_start_server () =
@@ -459,7 +459,7 @@ and lsp_start_server () =
     let stdlib_path = Printf.sprintf "%s/lib/ocaml" toolchain_path in
 
     (* Check if .merlin file exists *)
-    let merlin_exists = Miniriot.File.exists ~path:".merlin" in
+    let merlin_exists = File_utils.exists ~path:".merlin" in
     if not merlin_exists then
       Printf.printf
         "⚠️  No .merlin file found. Run 'tusk build' to generate it.\n%!";
@@ -514,17 +514,17 @@ and lsp_start_server () =
     (* Execute the LSP server *)
     let _ = Command.exec lsp_path full_args in
     (* This should never be reached if execv succeeds *)
-    Process.Exception (Failure "Failed to execute LSP server")
+    Error (Failure "Failed to execute LSP server")
   with
   | Failure msg ->
       Printf.eprintf "Error: %s\n" msg;
-      Process.Exception (Failure msg)
+      Error (Failure msg)
   | exn ->
       let error_msg =
         Printf.sprintf "LSP command failed: %s" (Printexc.to_string exn)
       in
       Printf.eprintf "Error: %s\n" error_msg;
-      Process.Exception (Failure error_msg)
+      Error (Failure error_msg)
 
 (** Get ocamlformat binary path *)
 let get_ocamlformat_binary_path () =
@@ -537,7 +537,7 @@ let get_ocamlformat_binary_path () =
   let fmt_path =
     Printf.sprintf "%s/.tusk/toolchains/%s/bin/ocamlformat" home version
   in
-  if Miniriot.File.exists ~path:fmt_path then fmt_path
+  if File_utils.exists ~path:fmt_path then fmt_path
   else
     failwith
       (Printf.sprintf
@@ -556,7 +556,7 @@ let get_odoc_binary_path () =
   let odoc_path =
     Printf.sprintf "%s/.tusk/toolchains/%s/bin/odoc" home version
   in
-  if Miniriot.File.exists ~path:odoc_path then odoc_path
+  if File_utils.exists ~path:odoc_path then odoc_path
   else
     failwith
       (Printf.sprintf
@@ -593,7 +593,7 @@ let fmt_command () =
 
     if total = 0 then (
       Printf.printf "No OCaml files found to format\n%!";
-      Process.Normal)
+      Ok ())
     else (
       Printf.printf "🎨 Formatting %d OCaml files...\n%!" total;
 
@@ -603,8 +603,8 @@ let fmt_command () =
         (fun file ->
           let cmd = Printf.sprintf "%s -i %s 2>/dev/null" fmt_path file in
           let result = Command.system cmd in
-          match Std.Process.of_unix_status result with
-          | Std.Process.Exited 0 ->
+          match Std.Command.of_unix_status result with
+          | Std.Command.Exited 0 ->
               incr formatted;
               Printf.printf "   ✓ %s\n%!" file
           | _ -> Printf.printf "   ✗ %s (skipped)\n%!" file)
@@ -612,17 +612,17 @@ let fmt_command () =
 
       Printf.printf "\n✨ Formatted %d/%d files successfully\n%!" !formatted
         total;
-      Process.Normal)
+      Ok ())
   with
   | Failure msg ->
       Printf.eprintf "Error: %s\n" msg;
-      Process.Exception (Failure msg)
+      Error (Failure msg)
   | exn ->
       let error_msg =
         Printf.sprintf "Format command failed: %s" (Printexc.to_string exn)
       in
       Printf.eprintf "Error: %s\n" error_msg;
-      Process.Exception (Failure error_msg)
+      Error (Failure error_msg)
 
 (** Execute the doc command *)
 let doc_command () =
@@ -664,7 +664,7 @@ let doc_command () =
     if List.length cmi_list = 0 then (
       Printf.printf
         "\n⚠️  No compiled interface files found. Build the project first.\n%!";
-      Process.Normal)
+      Ok ())
     else (
       Printf.printf "\n📝 Processing %d interface files...\n%!"
         (List.length cmi_list);
@@ -681,8 +681,8 @@ let doc_command () =
               odoc_file
           in
           let result = Command.system cmd in
-          match Std.Process.of_unix_status result with
-          | Std.Process.Exited 0 -> Printf.printf "   ✓ %s\n%!" modname
+          match Std.Command.of_unix_status result with
+          | Std.Command.Exited 0 -> Printf.printf "   ✓ %s\n%!" modname
           | _ -> Printf.printf "   ✗ %s (failed)\n%!" modname)
         cmi_list;
 
@@ -697,27 +697,27 @@ let doc_command () =
 
       Printf.printf "\n✨ Documentation generated at: %s/html\n%!" doc_dir;
       Printf.printf "   Open %s/html/index.html in your browser\n%!" doc_dir;
-      Process.Normal)
+      Ok ())
   with
   | Failure msg ->
       Printf.eprintf "Error: %s\n" msg;
-      Process.Exception (Failure msg)
+      Error (Failure msg)
   | exn ->
       let error_msg =
         Printf.sprintf "Doc command failed: %s" (Printexc.to_string exn)
       in
       Printf.eprintf "Error: %s\n" error_msg;
-      Process.Exception (Failure error_msg)
+      Error (Failure error_msg)
 
 (** Show help message *)
 let help_command () =
   Printf.printf "%s\n" usage_msg;
-  Process.Normal
+  Ok ()
 
 (** Show version *)
 let version_command () =
   Printf.printf "%s\n" Version.version;
-  Process.Normal
+  Ok ()
 
 (** Execute the server command *)
 let server_command args =
@@ -727,19 +727,19 @@ let server_command args =
   | "start" ->
       (* Start server in background *)
       Printf.printf "Server start not implemented yet\n";
-      Process.Normal
+      Ok ()
   | "stop" ->
       (* Stop background server *)
       Printf.printf "Server stop not implemented yet\n";
-      Process.Normal
+      Ok ()
   | "kill" ->
       (* Kill background server forcefully *)
       Printf.printf "Server kill not implemented yet\n";
-      Process.Normal
+      Ok ()
   | "status" ->
       (* Check server status *)
       Printf.printf "Server status not implemented yet\n";
-      Process.Normal
+      Ok ()
   | "" | "foreground" ->
       (* Default: Run server in foreground *)
       Printf.printf "🚀 Starting tusk server...\n";
@@ -754,23 +754,29 @@ let server_command args =
       Printf.eprintf
         "  tusk server kill       - Kill background server (force)\n";
       Printf.eprintf "  tusk server status     - Check server status\n";
-      Process.Exception (Failure "Invalid server subcommand")
+      Error (Failure "Invalid server subcommand")
 
 (** Execute the rpc command *)
 let rpc_command args =
   let cmd = if Array.length args > 2 then args.(2) else "" in
+  let rest = 
+    if Array.length args > 3 then 
+      Array.to_list (Array.sub args 3 (Array.length args - 3))
+    else []
+  in
 
   (* Show help if no subcommand provided *)
   if cmd = "" then (
     Printf.printf "Available RPC commands:\n";
     Printf.printf "  tusk rpc ping              - Test server connectivity\n";
     Printf.printf "  tusk rpc workspace         - Get workspace information\n";
+    Printf.printf "  tusk rpc package <name>    - Get package details including sources\n";
     Printf.printf "  tusk rpc graph             - Get build graph\n";
     Printf.printf
       "  tusk rpc build [package]   - Build all or specific package\n";
     Printf.printf "  tusk rpc restart           - Restart the server\n";
     Printf.printf "  tusk rpc shutdown          - Shutdown the server\n";
-    Process.Normal)
+    Ok ())
   else if cmd = "ping" then (
     let client = create_local_client () in
     let result = Tusk_jsonrpc.Client.ping client in
@@ -779,10 +785,10 @@ let rpc_command args =
     | Ok () ->
         let json = Json.Object [ ("type", Json.String "pong") ] in
         Printf.printf "%s\n" (Json.to_string json);
-        Process.Normal
+        Ok ()
     | Error e ->
         Printf.eprintf "Error: %s\n" e;
-        Process.Exception (Failure e))
+        Error (Failure e))
   else if cmd = "workspace" then (
     let client = create_local_client () in
     let result = Tusk_jsonrpc.Client.get_workspace_config client in
@@ -793,17 +799,71 @@ let rpc_command args =
           Json.Object
             [
               ("type", Json.String "workspace_config");
-              ( "root",
+              ( "workspace_root",
                 Json.String config.Tusk_jsonrpc.TuskProtocol.workspace_root );
+              ( "target_dir",
+                Json.String config.Tusk_jsonrpc.TuskProtocol.target_dir );
               ( "toolchain",
                 Json.String config.Tusk_jsonrpc.TuskProtocol.toolchain );
+              ( "toolchain_path",
+                Json.String config.Tusk_jsonrpc.TuskProtocol.toolchain_path );
+              ( "packages",
+                Json.Array 
+                  (List.map (fun (pkg : Tusk_jsonrpc.TuskProtocol.package_info) -> 
+                    Json.Object
+                      [
+                        ("name", Json.String pkg.name);
+                        ("path", Json.String pkg.path);
+                        ("dependencies", Json.Array (List.map (fun d -> Json.String d) pkg.dependencies));
+                      ]
+                  ) config.Tusk_jsonrpc.TuskProtocol.packages) );
+              ( "total_packages",
+                Json.Int config.Tusk_jsonrpc.TuskProtocol.total_packages );
             ]
         in
         Printf.printf "%s\n" (Json.to_string json);
-        Process.Normal
+        Ok ()
     | Error e ->
         Printf.eprintf "Error: %s\n" e;
-        Process.Exception (Failure e))
+        Error (Failure e))
+  else if cmd = "package" then (
+    match rest with
+    | [] ->
+        Printf.eprintf "Error: package name required\n";
+        Printf.eprintf "Usage: tusk rpc package <package-name>\n";
+        Error (Failure "Missing package name")
+    | package_name :: _ ->
+        let client = create_local_client () in
+        let result = Tusk_jsonrpc.Client.get_package_info client package_name in
+        Tusk_jsonrpc.Client.close client;
+        match result with
+        | Ok detail ->
+            let json =
+              Json.Object
+                [
+                  ("type", Json.String "package_info");
+                  ( "package",
+                    Json.Object
+                      [
+                        ("name", Json.String detail.Tusk_jsonrpc.TuskProtocol.package.name);
+                        ("path", Json.String detail.Tusk_jsonrpc.TuskProtocol.package.path);
+                        ("dependencies", 
+                         Json.Array (List.map (fun d -> Json.String d) 
+                           detail.Tusk_jsonrpc.TuskProtocol.package.dependencies));
+                      ] );
+                  ("sources", 
+                   Json.Array (List.map (fun s -> Json.String s) 
+                     detail.Tusk_jsonrpc.TuskProtocol.sources));
+                  ("dependency_names", 
+                   Json.Array (List.map (fun d -> Json.String d) 
+                     detail.Tusk_jsonrpc.TuskProtocol.dependency_names));
+                ]
+            in
+            Printf.printf "%s\n" (Json.to_string json);
+            Ok ()
+        | Error e ->
+            Printf.eprintf "Error: %s\n" e;
+            Error (Failure e))
   else if cmd = "graph" then (
     let client = create_local_client () in
     let result = Tusk_jsonrpc.Client.get_build_graph client in
@@ -834,10 +894,10 @@ let rpc_command args =
             ]
         in
         Printf.printf "%s\n" (Json.to_string json);
-        Process.Normal
+        Ok ()
     | Error e ->
         Printf.eprintf "Error: %s\n" e;
-        Process.Exception (Failure e))
+        Error (Failure e))
   else if cmd = "build" then (
     (* Parse optional package name *)
     let package = if Array.length args > 3 then Some args.(3) else None in
@@ -956,14 +1016,14 @@ let rpc_command args =
     let result = Tusk_jsonrpc.Client.build_streaming client request callback in
     Tusk_jsonrpc.Client.close client;
     match result with
-    | Ok _ -> Process.Normal
+    | Ok _ -> Ok ()
     | Error e ->
         let response =
           Json.Object
             [ ("type", Json.String "Error"); ("message", Json.String e) ]
         in
         Printf.printf "%s\n" (Json.to_string response);
-        Process.Exception (Failure e))
+        Error (Failure e))
   else if cmd = "restart" then (
     let client = create_local_client () in
     let result = Tusk_jsonrpc.Client.restart client in
@@ -972,10 +1032,10 @@ let rpc_command args =
     | Ok () ->
         let json = Json.Object [ ("type", Json.String "restarted") ] in
         Printf.printf "%s\n" (Json.to_string json);
-        Process.Normal
+        Ok ()
     | Error e ->
         Printf.eprintf "Error: %s\n" e;
-        Process.Exception (Failure e))
+        Error (Failure e))
   else if cmd = "shutdown" then (
     let client = create_local_client () in
     let result = Tusk_jsonrpc.Client.shutdown client in
@@ -984,23 +1044,23 @@ let rpc_command args =
     | Ok () ->
         let json = Json.Object [ ("type", Json.String "shutdown") ] in
         Printf.printf "%s\n" (Json.to_string json);
-        Process.Normal
+        Ok ()
     | Error e ->
         Printf.eprintf "Error: %s\n" e;
-        Process.Exception (Failure e))
+        Error (Failure e))
   else (
     Printf.eprintf "Error: Unknown RPC command '%s'\n" cmd;
     Printf.eprintf
       "Available commands: ping, workspace, graph, build [package], restart, \
        shutdown\n";
-    Process.Exception (Failure (Printf.sprintf "Unknown RPC command: %s" cmd)))
+    Error (Failure (Printf.sprintf "Unknown RPC command: %s" cmd)))
 
 (** Execute the install command *)
 let install_command args =
   if Array.length args < 3 then (
     Printf.eprintf "Error: Package name required\n";
     Printf.eprintf "Usage: tusk install <package>\n";
-    Process.Exception (Failure "Package name required"))
+    Error (Failure "Package name required"))
   else
     let package_name = args.(2) in
     Printf.printf "📦 Installing %s...\n" package_name;
@@ -1009,7 +1069,7 @@ let install_command args =
     Printf.printf "Building %s...\n" package_name;
     if not (build_package package_name) then (
       Printf.eprintf "❌ Failed to build %s\n" package_name;
-      Process.Exception
+      Error
         (Failure (Printf.sprintf "Failed to build %s" package_name)))
     else
       (* Look for the binary in various locations *)
@@ -1036,14 +1096,14 @@ let install_command args =
 
       match
         List.find_opt
-          (fun path -> Miniriot.File.exists ~path)
+          (fun path -> File_utils.exists ~path)
           possible_binary_paths
       with
       | None ->
           Printf.eprintf "❌ Binary for %s not found after build\n" package_name;
           Printf.eprintf
             "Note: Only packages with main.ml produce installable binaries\n";
-          Process.Exception
+          Error
             (Failure (Printf.sprintf "Binary not found for %s" package_name))
       | Some binary_path -> (
           (* Create ~/.tusk/bin if it doesn't exist *)
@@ -1059,8 +1119,8 @@ let install_command args =
           (* Copy the binary to ~/.tusk/bin *)
           let dest_path = Filename.concat tusk_bin_dir package_name in
           let cp_cmd = Printf.sprintf "cp %s %s" binary_path dest_path in
-          match Std.Process.of_unix_status (Command.system cp_cmd) with
-          | Std.Process.Exited 0 ->
+          match Std.Command.of_unix_status (Command.system cp_cmd) with
+          | Std.Command.Exited 0 ->
               (* Make it executable *)
               let chmod_cmd = Printf.sprintf "chmod +x %s" dest_path in
               ignore (Command.system chmod_cmd);
@@ -1071,10 +1131,10 @@ let install_command args =
                 "To use %s from anywhere, add ~/.tusk/bin to your PATH:\n"
                 package_name;
               Printf.printf "  export PATH='$HOME/.tusk/bin:$PATH'\n";
-              Process.Normal
+              Ok ()
           | _ ->
               Printf.eprintf "❌ Failed to install %s\n" package_name;
-              Process.Exception
+              Error
                 (Failure (Printf.sprintf "Failed to install %s" package_name)))
 
 (** Main entry point - runs as a Miniriot process *)
@@ -1086,7 +1146,7 @@ let main () =
 
   if argc < 2 then (
     Printf.eprintf "Error: No command specified\n\n%s\n" usage_msg;
-    Process.Exception (Failure "No command specified"))
+    Error (Failure "No command specified"))
   else
     let command = args.(1) in
     match command with
@@ -1110,7 +1170,7 @@ let main () =
           |> Std.Result.expect ~msg:"Operation failed"
         in
         Mcp_server.start ();
-        Process.Normal
+        Ok ()
     | "fmt" | "format" -> fmt_command ()
     | "doc" -> doc_command ()
     | "clean" -> clean_command ()
@@ -1118,5 +1178,5 @@ let main () =
     | "help" | "--help" | "-h" -> help_command ()
     | _ ->
         Printf.eprintf "Error: Unknown command '%s'\n\n%s\n" command usage_msg;
-        Process.Exception
+        Error
           (Failure (Printf.sprintf "Unknown command: %s" command))

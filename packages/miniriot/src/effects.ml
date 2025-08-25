@@ -4,7 +4,7 @@ let receive_any () =
   Effect.perform (Proc_effect.Receive { selector = (fun msg -> `select msg) })
 
 let receive ~selector () = Effect.perform (Proc_effect.Receive { selector })
-let exit () = Process.Normal
+let exit () = Ok ()
 
 let sleep _milliseconds =
   (* For now, just yield - no timer support yet *)

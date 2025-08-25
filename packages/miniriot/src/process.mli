@@ -1,8 +1,6 @@
 (** Process management and lifecycle *)
 
-type exit_reason =
-  | Normal
-  | Exception of exn  (** Reasons why a process might exit *)
+type exit_reason = exn  (** Reasons why a process might exit *)
 
 type state = private
   | Uninitialized
@@ -10,17 +8,17 @@ type state = private
   | Waiting_message
   | Waiting_io of {
       name : string;
-      token : Gluon.Token.t;
-      source : Gluon.Source.t;
+      token : Std_sys.IO.Token.t;
+      source : Std_sys.IO.Source.t;
     }
   | Running
-  | Exited of exit_reason
+  | Exited of (unit, exit_reason) result
   | Finalized  (** Process state - tracks current status in scheduler *)
 
 type t
 (** Opaque process type *)
 
-val make : (unit -> exit_reason) -> t
+val make : (unit -> (unit, exit_reason) result) -> t
 (** Create a new process from a function *)
 
 val init : t -> unit
@@ -71,16 +69,16 @@ val mark_as_runnable : t -> unit
 val mark_as_awaiting_message : t -> unit
 (** Mark process as waiting for messages *)
 
-val mark_as_exited : t -> exit_reason -> unit
+val mark_as_exited : t -> (unit, exit_reason) result -> unit
 (** Mark process as exited with given reason *)
 
 val mark_as_finalized : t -> unit
 (** Mark process as finalized *)
 
-val cont : t -> exit_reason Proc_state.t
+val cont : t -> (unit, exit_reason) result Proc_state.t
 (** Get process continuation *)
 
-val set_cont : t -> exit_reason Proc_state.t -> unit
+val set_cont : t -> (unit, exit_reason) result Proc_state.t -> unit
 (** Set process continuation *)
 
 val next_message : t -> Message.envelope option
@@ -96,16 +94,16 @@ val send_message : t -> Message.t -> unit
 (** Send a message to the process *)
 
 val mark_as_awaiting_io :
-  t -> name:string -> Gluon.Token.t -> Gluon.Source.t -> unit
+  t -> name:string -> Std_sys.IO.Token.t -> Std_sys.IO.Source.t -> unit
 (** Mark process as waiting for I/O operation *)
 
-val add_ready_token : t -> Gluon.Token.t -> Gluon.Source.t -> unit
+val add_ready_token : t -> Std_sys.IO.Token.t -> Std_sys.IO.Source.t -> unit
 (** Add a ready I/O token to the process *)
 
-val get_ready_token : t -> (Gluon.Token.t * Gluon.Source.t) option
+val get_ready_token : t -> (Std_sys.IO.Token.t * Std_sys.IO.Source.t) option
 (** Get next ready I/O token *)
 
-val consume_ready_tokens : t -> (Gluon.Token.t * Gluon.Source.t -> unit) -> unit
+val consume_ready_tokens : t -> (Std_sys.IO.Token.t * Std_sys.IO.Source.t -> unit) -> unit
 (** Consume all ready I/O tokens with a function *)
 
 val pp : Format.formatter -> t -> unit

@@ -9,7 +9,7 @@ val receive_any : unit -> Message.t
 val receive : selector:(Message.t -> [ `select of 'a | `skip ]) -> unit -> 'a
 (** Receive a message using a selector function *)
 
-val exit : unit -> Process.exit_reason
+val exit : unit -> (unit, Process.exit_reason) result
 (** Exit the current process normally *)
 
 val sleep : int -> unit
@@ -18,8 +18,8 @@ val sleep : int -> unit
 val syscall :
   ?timeout:float ->
   name:string ->
-  interest:Gluon.Interest.t ->
-  source:Gluon.Source.t ->
+  interest:Std_sys.IO.Interest.t ->
+  source:Std_sys.IO.Source.t ->
   (unit -> 'a) ->
   'a
 (** Perform a system call with I/O polling support *)

@@ -6,7 +6,7 @@ type t
 val get_scheduler : unit -> t
 (** Get the current scheduler (must be called within a running scheduler) *)
 
-val spawn : t -> (unit -> Process.exit_reason) -> Pid.t
+val spawn : t -> (unit -> (unit, Process.exit_reason) result) -> Pid.t
 (** Spawn a new process with the given function *)
 
 val self : unit -> Pid.t
@@ -18,6 +18,6 @@ val send : Pid.t -> Message.t -> unit
 val shutdown : t -> status:int -> unit
 (** Shutdown the scheduler with given exit status *)
 
-val run : main:(unit -> Process.exit_reason) -> int
+val run : main:(unit -> (unit, Process.exit_reason) result) -> int
 (** Run the scheduler with the given main function. Returns exit status. Can
     only be called once per process. *)

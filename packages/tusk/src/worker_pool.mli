@@ -41,7 +41,7 @@ type Message.t +=
 val start :
   workers:int ->
   provider:Pid.t ->
-  worker_fn:(Pid.t -> Worker_id.t -> unit -> Process.exit_reason) ->
+  worker_fn:(Pid.t -> Worker_id.t -> unit -> (unit, Process.exit_reason) result) ->
   unit ->
   t
 (** Start a worker pool with the specified number of workers. The provider will

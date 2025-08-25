@@ -10,6 +10,6 @@ module Path = Path
 module Result = Result
 module String = String
 include Global
-module Datetime = Global.Datetime
-module Process = Global.Process
-module File = Global.File
+module Datetime = Datetime
+module File = File
+module Net = Net
