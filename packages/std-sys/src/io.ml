@@ -606,6 +606,7 @@ module Net = struct
       syscall @@ fun () ->
       let raw_fd, client_addr = Unix.accept ~cloexec:true fd in
       Unix.set_nonblock raw_fd;
+      Unix.setsockopt raw_fd Unix.TCP_NODELAY true;
       let addr = Addr.of_unix client_addr in
       let fd = Fd.make raw_fd in
       Ok (fd, addr)
@@ -638,6 +639,7 @@ module Net = struct
       syscall @@ fun () ->
       try
         Unix.connect fd sock_addr;
+        Unix.setsockopt fd Unix.TCP_NODELAY true;
         Ok (`Connected fd)
       with Unix.(Unix_error (EINPROGRESS, _, _)) -> Ok (`In_progress fd)
 
