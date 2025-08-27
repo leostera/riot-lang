@@ -138,13 +138,42 @@ let cache_stored ~session_id ~package ~hash ~artifacts =
   log event
 
 (** Hash computation logging *)
-let hash_computed ~session_id ~package ~hash =
+let computing_hash ~session_id ~package =
+  let event =
+    Event.create ~session_id ~level:Debug (ComputingHash { package })
+  in
+  log event
+
+let hash_computed ~session_id ~package ~hash ~duration_ms =
   let event =
     Event.create ~session_id ~level:Info (HashComputed { package; hash })
   in
   log event
 
+(** Store event logging *)
+let store_creating ~session_id () =
+  let event = Event.create ~session_id ~level:Debug StoreCreating in
+  log event
+
+let store_created ~session_id ~duration_ms =
+  let event =
+    Event.create ~session_id ~level:Info (StoreCreated { duration_ms })
+  in
+  log event
+
 (** Worker event logging *)
+let worker_pool_creating ~session_id ~workers =
+  let event =
+    Event.create ~session_id ~level:Debug (WorkerPoolCreating { workers })
+  in
+  log event
+
+let worker_pool_created ~session_id ~workers ~duration_ms =
+  let event =
+    Event.create ~session_id ~level:Info (WorkerPoolCreated { workers; duration_ms })
+  in
+  log event
+
 let worker_pool_started ~session_id ~workers =
   let event =
     Event.create ~session_id ~level:Debug (WorkerPoolStarted { workers })

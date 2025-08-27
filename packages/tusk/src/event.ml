@@ -74,6 +74,10 @@ type kind =
   | WorkerIdle of { worker_id : Worker_id.t }
   | WorkerPoolStarted of { workers : int }
   | WorkerStarted of { worker_id : Worker_id.t }
+  | StoreCreating
+  | StoreCreated of { duration_ms : int }
+  | WorkerPoolCreating of { workers : int }
+  | WorkerPoolCreated of { workers : int; duration_ms : int }
   | WorkspaceEmpty
   | WorkspaceScanning
   | WorkspaceScanned of { packages : int; duration_ms : int }
@@ -132,6 +136,10 @@ let name = function
   | WorkspaceScanned _ -> "tusk.workspace.scanned"
   | WorkspaceScanning -> "tusk.workspace.scanning"
   | WritingFile _ -> "tusk.build.file.write"
+  | StoreCreating -> "tusk.store.creating"
+  | StoreCreated _ -> "tusk.store.created"
+  | WorkerPoolCreating _ -> "tusk.worker_pool.creating"
+  | WorkerPoolCreated _ -> "tusk.worker_pool.created"
 
 (** Get human-readable display message *)
 let display = function
@@ -209,6 +217,13 @@ let display = function
       Printf.sprintf "RPC response sent (success: %b)"
         (match result with Ok _ -> true | Error _ -> false)
   | McpToolCall { tool; _ } -> Printf.sprintf "MCP tool call: %s" tool
+  | StoreCreating -> "Creating build cache store"
+  | StoreCreated { duration_ms } ->
+      Printf.sprintf "Store created in %dms" duration_ms
+  | WorkerPoolCreating { workers } ->
+      Printf.sprintf "Creating worker pool with %d workers" workers
+  | WorkerPoolCreated { workers; duration_ms } ->
+      Printf.sprintf "Worker pool created with %d workers in %dms" workers duration_ms
 
 (** Convert to human-readable string with timestamp *)
 let to_string event =
@@ -324,6 +339,21 @@ let kind_to_json = function
       Json.Object [
         ("package", Json.String package);
         ("hash", Json.String hash);
+      ]
+  | StoreCreating ->
+      Json.Object []
+  | StoreCreated { duration_ms } ->
+      Json.Object [
+        ("duration_ms", Json.Int duration_ms);
+      ]
+  | WorkerPoolCreating { workers } ->
+      Json.Object [
+        ("workers", Json.Int workers);
+      ]
+  | WorkerPoolCreated { workers; duration_ms } ->
+      Json.Object [
+        ("workers", Json.Int workers);
+        ("duration_ms", Json.Int duration_ms);
       ]
   | LinkingExecutable { package; output } ->
       Json.Object [
@@ -654,6 +684,31 @@ let kind_from_json json =
                   in
                   Ok (LinkingLibrary { package; output })
               | _ -> Error "Invalid LinkingLibrary data")
+          | "tusk.build.hash.computing" -> (
+              match data with
+              | Json.Object data_fields ->
+                  let package =
+                    match List.assoc_opt "package" data_fields with
+                    | Some (Json.String p) -> p
+                    | _ -> ""
+                  in
+                  Ok (ComputingHash { package })
+              | _ -> Error "Invalid ComputingHash data")
+          | "tusk.build.hash.computed" -> (
+              match data with
+              | Json.Object data_fields ->
+                  let package =
+                    match List.assoc_opt "package" data_fields with
+                    | Some (Json.String p) -> p
+                    | _ -> ""
+                  in
+                  let hash =
+                    match List.assoc_opt "hash" data_fields with
+                    | Some (Json.String h) -> h
+                    | _ -> ""
+                  in
+                  Ok (HashComputed { package; hash })
+              | _ -> Error "Invalid HashComputed data")
           | "tusk.build.link.executable" -> (
               match data with
               | Json.Object data_fields ->
@@ -669,6 +724,77 @@ let kind_from_json json =
                   in
                   Ok (LinkingExecutable { package; output })
               | _ -> Error "Invalid LinkingExecutable data")
+          | "tusk.workspace.scanning" ->
+              Ok WorkspaceScanning
+          | "tusk.workspace.scanned" -> (
+              match data with
+              | Json.Object data_fields ->
+                  let packages =
+                    match List.assoc_opt "packages" data_fields with
+                    | Some (Json.Int n) -> n
+                    | _ -> 0
+                  in
+                  let duration_ms =
+                    match List.assoc_opt "duration_ms" data_fields with
+                    | Some (Json.Int n) -> n
+                    | _ -> 0
+                  in
+                  Ok (WorkspaceScanned { packages; duration_ms })
+              | _ -> Error "Invalid WorkspaceScanned data")
+          | "tusk.build_graph.creating" ->
+              Ok BuildGraphCreating
+          | "tusk.build_graph.created" -> (
+              match data with
+              | Json.Object data_fields ->
+                  let nodes =
+                    match List.assoc_opt "nodes" data_fields with
+                    | Some (Json.Int n) -> n
+                    | _ -> 0
+                  in
+                  let duration_ms =
+                    match List.assoc_opt "duration_ms" data_fields with
+                    | Some (Json.Int n) -> n
+                    | _ -> 0
+                  in
+                  Ok (BuildGraphCreated { nodes; duration_ms })
+              | _ -> Error "Invalid BuildGraphCreated data")
+          | "tusk.store.creating" ->
+              Ok StoreCreating
+          | "tusk.store.created" -> (
+              match data with
+              | Json.Object data_fields ->
+                  let duration_ms =
+                    match List.assoc_opt "duration_ms" data_fields with
+                    | Some (Json.Int n) -> n
+                    | _ -> 0
+                  in
+                  Ok (StoreCreated { duration_ms })
+              | _ -> Error "Invalid StoreCreated data")
+          | "tusk.worker_pool.creating" -> (
+              match data with
+              | Json.Object data_fields ->
+                  let workers =
+                    match List.assoc_opt "workers" data_fields with
+                    | Some (Json.Int n) -> n
+                    | _ -> 0
+                  in
+                  Ok (WorkerPoolCreating { workers })
+              | _ -> Error "Invalid WorkerPoolCreating data")
+          | "tusk.worker_pool.created" -> (
+              match data with
+              | Json.Object data_fields ->
+                  let workers =
+                    match List.assoc_opt "workers" data_fields with
+                    | Some (Json.Int n) -> n
+                    | _ -> 0
+                  in
+                  let duration_ms =
+                    match List.assoc_opt "duration_ms" data_fields with
+                    | Some (Json.Int n) -> n
+                    | _ -> 0
+                  in
+                  Ok (WorkerPoolCreated { workers; duration_ms })
+              | _ -> Error "Invalid WorkerPoolCreated data")
           | _ -> Error ("Unknown event type: " ^ event_name))
       | _ -> Error "Missing event field")
   | _ -> Error "Invalid JSON format"

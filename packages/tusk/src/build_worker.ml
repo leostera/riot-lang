@@ -24,7 +24,7 @@ and handle_task ctx task =
   (* Pass build_results so Build_planner knows which deps are already built *)
   match
     Build_planner.plan_node ~graph:ctx.build_graph ~node
-      ~build_results:ctx.build_results ()
+      ~build_results:ctx.build_results ~session_id ()
   with
   | Error err -> handle_planning_error ctx task err
   | Ok (Build_planner.MissingDependencies { deps; _ }) ->

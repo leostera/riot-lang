@@ -291,7 +291,7 @@ let compute_hash_for_planned_node ~toolchain ~package ~srcs ~deps ~outs ~actions
   (* Combine all seeds into final hash *)
   Hasher.hash_strings (List.rev !seeds)
 
-let plan_node ~graph ~node ~build_results () =
+let plan_node ~graph ~node ~build_results ~session_id () =
   (* Step 1: Check if immediate dependencies have been planned/built *)
   (* Resolve dependency IDs to nodes *)
   let dep_nodes = List.map (Build_graph.get_node graph) node.Build_node.deps in
@@ -318,10 +318,15 @@ let plan_node ~graph ~node ~build_results () =
     in
 
     (* Step 4: Compute SHA512 hash of everything *)
+    Log.computing_hash ~session_id ~package:node.package.name;
+    let hash_start = Global.time_ms () in
     let hash =
       compute_hash_for_planned_node ~toolchain:node.toolchain
         ~package:node.package ~srcs:node.srcs ~deps:dep_nodes ~outs ~actions
     in
+    let hash_duration = Global.time_ms () - hash_start in
+    Log.hash_computed ~session_id ~package:node.package.name
+      ~hash:(Hasher.to_string hash) ~duration_ms:hash_duration;
 
     (* Update the node's spec to Planned *)
     node.spec <- Planned { hash; outs; actions };

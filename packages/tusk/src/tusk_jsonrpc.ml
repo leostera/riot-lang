@@ -1745,6 +1745,12 @@ module Server = struct
   type ctx = { server_pid : Pid.t }
 
   let handle_build ctx reply request =
+    (* Generate session ID client-side so we can register immediately *)
+    let session_id = Session_id.make () in
+    
+    (* Register ourselves with the logger to receive events BEFORE sending build request *)
+    Log.add_rpc_handler ~session_id ~client:(self ());
+    
     (* Convert to tusk_protocol message type *)
     let server_request =
       match request with
@@ -1753,14 +1759,14 @@ module Server = struct
             {
               client_pid = self ();
               target = Tusk_protocol.Package pkg;
-              session_id = None;
+              session_id = Some session_id;
             }
       | TuskProtocol.BuildAll ->
           Tusk_protocol.Build
             {
               client_pid = self ();
               target = Tusk_protocol.All;
-              session_id = None;
+              session_id = Some session_id;
             }
       | _ -> failwith "Invalid build request"
     in
@@ -1773,9 +1779,8 @@ module Server = struct
     in
     match receive ~selector () with
     | Tusk_protocol.BuildStarted { session_id; started_at } ->
-        (* Register ourselves with the logger to receive events *)
-        Log.add_rpc_handler ~session_id ~client:(self ());
-
+        (* Already registered with the logger before sending request *)
+        
         (* Send BuildStarted to client *)
         reply (TuskProtocol.BuildStarted { session_id; started_at = Std.Datetime.now () });
 

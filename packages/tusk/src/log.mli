@@ -48,12 +48,23 @@ val cache_stored :
   artifacts:string list ->
   unit
 
+val computing_hash : session_id:Session_id.t -> package:string -> unit
 val hash_computed :
-  session_id:Session_id.t -> package:string -> hash:string -> unit
+  session_id:Session_id.t -> package:string -> hash:string -> duration_ms:int -> unit
 (** Hash computation *)
+
+(** Store events *)
+val store_creating : session_id:Session_id.t -> unit -> unit
+
+val store_created : session_id:Session_id.t -> duration_ms:int -> unit
 
 val worker_pool_started : session_id:Session_id.t -> workers:int -> unit
 (** Worker pool events *)
+
+val worker_pool_creating : session_id:Session_id.t -> workers:int -> unit
+
+val worker_pool_created :
+  session_id:Session_id.t -> workers:int -> duration_ms:int -> unit
 
 val worker_started : session_id:Session_id.t -> worker_id:Worker_id.t -> unit
 

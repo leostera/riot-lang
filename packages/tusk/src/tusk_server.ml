@@ -272,12 +272,21 @@ and handle_build state client_pid target session_id_opt =
             flush stderr;
 
             (* 4. create a worker pool to execute this build *)
+            Log.store_creating ~session_id ();
+            let store_start = Global.time_ms () in
             let store = Store.create ~workspace in
+            let store_duration = Global.time_ms () - store_start in
+            Log.store_created ~session_id ~duration_ms:store_duration;
+            
+            Log.worker_pool_creating ~session_id ~workers:state.workers;
+            let pool_start = Global.time_ms () in
             let worker_pool =
               Worker_pool.start ~workers:state.workers ~provider:(self ())
                 ~build_graph:target_graph ~build_results ~workspace ~store
                 ~worker_fn:Build_worker.main ()
             in
+            let pool_duration = Global.time_ms () - pool_start in
+            Log.worker_pool_created ~session_id ~workers:state.workers ~duration_ms:pool_duration;
 
             (* Track build statistics *)
             let build_start_time = Global.time_ms () in

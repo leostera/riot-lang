@@ -71,6 +71,10 @@ type kind =
   | WorkerIdle of { worker_id : Worker_id.t }
   | WorkerPoolStarted of { workers : int }
   | WorkerStarted of { worker_id : Worker_id.t }
+  | StoreCreating
+  | StoreCreated of { duration_ms : int }
+  | WorkerPoolCreating of { workers : int }
+  | WorkerPoolCreated of { workers : int; duration_ms : int }
   | WorkspaceEmpty
   | WorkspaceScanning
   | WorkspaceScanned of { packages : int; duration_ms : int }

@@ -10,6 +10,7 @@ val plan_node :
   graph:Build_graph.t ->
   node:Build_node.t ->
   build_results:Build_results.t ->
+  session_id:Session_id.t ->
   unit ->
   (plan_result, error) result
 (** Plan a build node by checking dependencies and computing build actions.
