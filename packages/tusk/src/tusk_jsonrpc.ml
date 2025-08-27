@@ -1088,8 +1088,12 @@ module TuskProtocol = struct
               Json.Array (List.map (fun s -> Json.String s) cycle_nodes) );
           ]
     | BuildEvent { session_id; event } ->
-        (* Use Event.to_json for the event *)
-        Event.to_json event
+        Json.Object
+          [
+            ("type", Json.String "build_event");
+            ("session_id", Json.String (Session_id.to_string session_id));
+            ("event_data", Event.to_json event);
+          ]
     | BuildComplete { session_id; completed_at; stats } ->
         let tm = Std.Datetime.localtime (Std.Datetime.to_float completed_at) in
         let timestamp = Printf.sprintf "%02d:%02d:%02d" tm.tm_hour tm.tm_min tm.tm_sec in
@@ -1148,40 +1152,22 @@ module TuskProtocol = struct
               | Some (Json.String s) -> Session_id.of_string s
               | _ -> Session_id.make ()
             in
-            (* Parse the full event - it should have timestamp, level, etc *)
+            (* Parse the event from event_data field *)
             let event =
-              (* The build_event response should contain the full Event.to_json output *)
-              (* which includes timestamp, session_id, level, event (name), message, and data fields *)
-              let timestamp = 
-                match List.assoc_opt "timestamp" fields with
-                | Some (Json.String ts) -> 
-                    (* Parse HH:MM:SS format back to Datetime.t *)
-                    (* For now, use current time as fallback *)
-                    Std.Datetime.now ()
-                | _ -> Std.Datetime.now ()
-              in
-              let level =
-                match List.assoc_opt "level" fields with
-                | Some (Json.String "error") -> Event.Error
-                | Some (Json.String "warn") -> Event.Warn
-                | Some (Json.String "info") -> Event.Info
-                | Some (Json.String "debug") -> Event.Debug
-                | Some (Json.String "trace") -> Event.Trace
-                | _ -> Event.Info
-              in
-              let kind =
-                match List.assoc_opt "data" fields with
-                | Some event_json -> (
-                    match event_kind_of_json (Json.Object [("type", Json.String "BuildStarted"); ("event_data", event_json)]) with
-                    | Ok evt -> evt
-                    | Error _ ->
-                        Event.BuildStarted
-                          { packages = []; total_modules = 0; workers = 0 })
-                | None ->
-                    Event.BuildStarted
-                      { packages = []; total_modules = 0; workers = 0 }
-              in
-              { Event.timestamp; session_id; level; kind }
+              match List.assoc_opt "event_data" fields with
+              | Some event_json -> (
+                  match Event.from_json event_json with
+                  | Ok evt -> evt
+                  | Error _ ->
+                      (* Fallback to a default event *)
+                      Event.create ~session_id ~level:Info
+                        (Event.BuildStarted
+                           { packages = []; total_modules = 0; workers = 0 }))
+              | None ->
+                  (* Fallback to a default event *)
+                  Event.create ~session_id ~level:Info
+                    (Event.BuildStarted
+                       { packages = []; total_modules = 0; workers = 0 })
             in
             Ok (BuildEvent { session_id; event })
         | Some (Json.String "cycle_detected") ->
