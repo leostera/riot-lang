@@ -7,10 +7,7 @@ name = "tusk"
 path = "src/main.ml"
 
 [dependencies]
-json = { path = "../json" }
 jsonrpc = { path = "../jsonrpc" }
 mcp = { path = "../mcp" }
 miniriot = { path = "../miniriot" }
-sexp = { path = "../sexp" }
 std = { path = "../std" }
-toml = { path = "../toml" }

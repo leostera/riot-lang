@@ -1,6 +1,7 @@
 (** MCP (Model Context Protocol) server for tusk build system *)
 
 open Miniriot
+open Std.Data
 
 (** Helper to create a tusk client connected to the local server *)
 let create_local_client () =

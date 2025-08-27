@@ -1,3 +1,5 @@
+open Std.Data
+
 let version = "2.0"
 
 type id = String of string | Number of int | Null

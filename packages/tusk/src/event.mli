@@ -1,5 +1,7 @@
 (** Event system for tusk - pure data types for events *)
 
+open Std.Data
+
 (** Log severity levels *)
 type level = Error | Warn | Info | Debug | Trace
 

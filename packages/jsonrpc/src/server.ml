@@ -1,5 +1,7 @@
 (** JSON-RPC 2.0 Server Implementation *)
 
+open Std.Data
+
 (* TODO: In the future, we could use a GADT handler type to allow each
    handler to have its own request type and param parser. For now,
    we use a unified request type for simplicity. *)

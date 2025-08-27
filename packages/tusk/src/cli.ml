@@ -1,6 +1,7 @@
 (** CLI module - handles command-line interface *)
 
 open Miniriot
+open Std.Data
 
 (** Format an event for cargo-style output *)
 let format_cargo_event (event : Event.t) =

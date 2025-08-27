@@ -1,6 +1,7 @@
 (** Toolchain management for tusk build system *)
 
 open Std
+open Std.Data
 
 (* Helper to adapt Command.run_command Result to tuple *)
 let run_command_compat cmd =

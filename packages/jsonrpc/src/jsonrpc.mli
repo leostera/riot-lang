@@ -7,6 +7,8 @@
     allowing for fully typed request/response handling while maintaining
     JSON-RPC 2.0 compliance. *)
 
+open Std.Data
+
 val version : string
 (** JSON-RPC version constant ("2.0") *)
 

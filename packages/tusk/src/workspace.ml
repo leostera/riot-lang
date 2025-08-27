@@ -2,6 +2,7 @@
 *)
 
 open Std
+open Std.Data
 
 type dependency = { name : string; version : string }
 

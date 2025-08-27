@@ -1,5 +1,7 @@
 (** Tusk JSON-RPC Protocol - JSON-RPC 2.0 compliant *)
 
+open Std.Data
+
 (** Method names *)
 let method_ping = "tusk.ping"
 

@@ -1,4 +1,5 @@
 open Std
+open Std.Data
 (** Event system for tusk - pure data types for events *)
 
 type level = Error | Warn | Info | Debug | Trace

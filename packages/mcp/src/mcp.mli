@@ -1,5 +1,7 @@
 (** Model Context Protocol (MCP) implementation for OCaml *)
 
+open Std.Data
+
 (** {1 Core Types} *)
 
 type protocol_version = string

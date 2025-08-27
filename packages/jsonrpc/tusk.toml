@@ -3,4 +3,4 @@ name = "jsonrpc"
 version = "0.1.0"
 
 [dependencies]
-json = { path = "../json" }
+std = { path = "../std" }

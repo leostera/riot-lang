@@ -1,5 +1,7 @@
 (** JSON-RPC 2.0 Client Implementation *)
 
+open Std.Data
+
 module type Transport = sig
   type t
 

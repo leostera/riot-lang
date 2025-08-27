@@ -1,5 +1,7 @@
 (** Model Context Protocol (MCP) implementation for OCaml *)
 
+open Std.Data
+
 type protocol_version = string
 type json = Json.t
 
