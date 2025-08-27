@@ -2,7 +2,6 @@
 
 open Miniriot
 
-(** Worker context - all the shared state a worker needs *)
 type ctx = {
   server_pid : Pid.t;
   build_graph : Build_graph.t;
@@ -10,12 +9,10 @@ type ctx = {
   workspace : Workspace.t;
   store : Store.t;
 }
+(** Worker context - all the shared state a worker needs *)
 
+type task = { node : Build_node.t; session_id : Session_id.t }
 (** Build task - just the node to build and session *)
-type task = { 
-  node : Build_node.t; 
-  session_id : Log.session_id option 
-}
 
 (** Worker pool messages *)
 type Message.t +=
@@ -28,11 +25,7 @@ type Message.t +=
       node : Build_node.t;
       artifact : Store.artifact;
     }
-  | TaskFailed of { 
-      worker : Pid.t; 
-      node : Build_node.t; 
-      error : string 
-    }
+  | TaskFailed of { worker : Pid.t; node : Build_node.t; error : string }
   | RequeueWithDependencies of {
       worker : Pid.t;
       node : Build_node.t;

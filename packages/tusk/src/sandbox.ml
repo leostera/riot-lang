@@ -98,57 +98,60 @@ let copy_dependency_artifacts sandbox ~store ~build_graph ~build_results =
     (fun dep ->
       let dep_name = dep.Build_node.package.name in
       (* Check if this dependency has a hash - either from build_results or from its spec *)
-      let dep_hash = 
+      let dep_hash =
         match Build_results.get_status build_results dep_name with
         | Some (Build_results.Built hash) -> Some hash
         | _ -> (
             (* If not marked as Built in build_results, check if the node has a planned spec with hash *)
             match dep.Build_node.spec with
-            | Build_node.Planned { hash; _ } -> 
+            | Build_node.Planned { hash; _ } ->
                 (* The dependency has been planned and has a hash, artifacts should be in store *)
-                Printf.printf "[Sandbox] Using hash from planned spec for %s\n" dep_name;
+                Printf.printf "[Sandbox] Using hash from planned spec for %s\n"
+                  dep_name;
                 flush stdout;
                 Some hash
-            | _ -> None
-        )
+            | _ -> None)
       in
       match dep_hash with
-      | Some hash -> (
-          (* Check if artifacts exist in the store *)
-          if Store.exists store hash then (
-            Printf.printf "[Sandbox] Copying artifacts from store for %s (hash: %s)\n"
+      | Some hash ->
+          if
+            (* Check if artifacts exist in the store *)
+            Store.exists store hash
+          then (
+            Printf.printf
+              "[Sandbox] Copying artifacts from store for %s (hash: %s)\n"
               dep_name (Hasher.to_string hash);
             flush stdout;
 
             (* Get list of artifacts *)
             let files = Store.list_artifacts store hash in
-            Printf.printf "[Sandbox]   Files to copy: %s\n" (String.concat ", " files);
+            Printf.printf "[Sandbox]   Files to copy: %s\n"
+              (String.concat ", " files);
             flush stdout;
-            
+
             (* Promote artifacts from store to sandbox *)
-            match
-              Store.promote_from_store store hash sandbox.sandbox_dir
-            with
+            match Store.promote_from_store store hash sandbox.sandbox_dir with
             | true ->
-                Printf.printf "[Sandbox]   - Successfully copied %d files for %s\n"
+                Printf.printf
+                  "[Sandbox]   - Successfully copied %d files for %s\n"
                   (List.length files) dep_name;
                 flush stdout
             | false ->
                 Printf.printf
-                  "[Sandbox] ERROR: Failed to copy artifacts for %s\n"
-                  dep_name;
+                  "[Sandbox] ERROR: Failed to copy artifacts for %s\n" dep_name;
                 flush stdout)
           else (
             Printf.printf
-              "[Sandbox] Warning: No cached artifacts found for dependency %s (hash: %s)\n"
+              "[Sandbox] Warning: No cached artifacts found for dependency %s \
+               (hash: %s)\n"
               dep_name (Hasher.to_string hash);
-            flush stdout))
+            flush stdout)
       | None -> (
           (* No hash available - check why *)
           match Build_results.get_status build_results dep_name with
           | Some Build_results.Building ->
-              Printf.printf "[Sandbox] Warning: Dependency %s is still building\n"
-                dep_name;
+              Printf.printf
+                "[Sandbox] Warning: Dependency %s is still building\n" dep_name;
               flush stdout
           | Some Build_results.NotStarted ->
               Printf.printf "[Sandbox] Warning: Dependency %s not started yet\n"
@@ -159,7 +162,8 @@ let copy_dependency_artifacts sandbox ~store ~build_graph ~build_results =
                 dep_name err;
               flush stdout
           | _ ->
-              Printf.printf "[Sandbox] Warning: Dependency %s not available (no hash)\n"
+              Printf.printf
+                "[Sandbox] Warning: Dependency %s not available (no hash)\n"
                 dep_name;
               flush stdout))
     all_deps
@@ -176,8 +180,7 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
   in
 
   Printf.printf "[Sandbox] Running %d actions for %s in %s\n"
-    (List.length actions) sandbox.node.Build_node.package.name
-    sandbox.sandbox_dir;
+    (List.length actions) sandbox.node.package.name sandbox.sandbox_dir;
   flush stdout;
 
   (* Copy all transitive dependency artifacts into sandbox *)
@@ -206,17 +209,17 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
           (* Log compilation/linking events for LLM visibility *)
           (match action with
           | Actions.CompileInterface { source; _ } ->
-              Log.compiling_interface ?sid:session_id
-                ~package:sandbox.node.Build_node.package.name ~file:source
+              Log.compiling_interface ~session_id
+                ~package:sandbox.node.package.name ~file:source
           | Actions.CompileImplementation { source; _ } ->
-              Log.compiling_implementation ?sid:session_id
-                ~package:sandbox.node.Build_node.package.name ~file:source
+              Log.compiling_implementation ~session_id
+                ~package:sandbox.node.package.name ~file:source
           | Actions.CreateLibrary { output; _ } ->
-              Log.linking_library ?sid:session_id
-                ~package:sandbox.node.Build_node.package.name ~output
+              Log.linking_library ~session_id ~package:sandbox.node.package.name
+                ~output
           | Actions.CreateExecutable { output; _ } ->
-              Log.linking_executable ?sid:session_id
-                ~package:sandbox.node.Build_node.package.name ~output
+              Log.linking_executable ~session_id
+                ~package:sandbox.node.package.name ~output
           | _ -> ());
           Printf.printf "[Sandbox] Step %d: %s\n" (i + 1)
             (Actions.string_of_action action);
@@ -244,9 +247,9 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
 
               (* Log simple compile error for streaming visibility *)
               let compile_error =
-                Log.
+                Event.
                   {
-                    package = sandbox.node.Build_node.package.name;
+                    package = sandbox.node.package.name;
                     file = "";
                     line = 0;
                     column = None;
@@ -254,7 +257,7 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
                     hint = None;
                   }
               in
-              Log.compile_error ?sid:session_id compile_error;
+              Log.compile_error ~session_id compile_error;
 
               Printf.printf "  -> Failed: %s\n" error_msg;
               flush stdout)

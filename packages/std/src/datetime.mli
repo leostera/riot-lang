@@ -1,7 +1,11 @@
 (** Date and time utilities *)
 
-val now : unit -> float
+type t
+
+val now : unit -> t
 (** Get current time as Unix timestamp *)
+
+val to_float : t -> float
 
 val localtime : float -> Unix.tm
 (** Convert timestamp to local time *)

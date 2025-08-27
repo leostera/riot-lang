@@ -3,7 +3,7 @@
 type cached_workspace = {
   workspace : Workspace.t;
   root : string;
-  last_scanned : float; (* Unix timestamp *)
+  last_scanned : Std.Datetime.t;
 }
 (** Cached workspace state *)
 
@@ -20,7 +20,10 @@ let is_within_workspace current_dir cached_root =
 (** Check if cache is still valid *)
 let is_cache_valid cached =
   let now = Std.Datetime.now () in
-  now -. cached.last_scanned < cache_ttl
+  let elapsed =
+    Std.Datetime.to_float now -. Std.Datetime.to_float cached.last_scanned
+  in
+  elapsed < cache_ttl
 
 (** Get workspace, using cache when possible *)
 let get_workspace ~root =

@@ -30,7 +30,14 @@ let start ~workers ~provider ~build_graph ~build_results ~workspace ~store
     spawn (fun () ->
         (* Create the context with the pool's PID as server_pid *)
         let context =
-          Worker_pool_types.{ server_pid = self (); build_graph; build_results; workspace; store }
+          Worker_pool_types.
+            {
+              server_pid = self ();
+              build_graph;
+              build_results;
+              workspace;
+              store;
+            }
         in
         let all_workers = spawn_workers workers worker_fn context in
         let state =
@@ -48,37 +55,49 @@ let start ~workers ~provider ~build_graph ~build_results ~workspace ~store
         let rec pool_loop state =
           (* Wait for messages from workers or provider *)
           match receive_any () with
-          | Worker_pool_types.Worker (Worker_pool_types.WorkerReady worker_pid) ->
+          | Worker_pool_types.Worker (Worker_pool_types.WorkerReady worker_pid)
+            ->
               (* Worker is ready for work *)
               (* Remove from busy if it was there *)
               Hashtbl.remove state.busy_workers worker_pid;
               (* Add to idle queue *)
               Queue.add worker_pid state.idle_workers;
               (* Forward the WorkerReady message to the provider *)
-              send state.provider (Worker_pool_types.Worker (Worker_pool_types.WorkerReady worker_pid));
+              send state.provider
+                (Worker_pool_types.Worker
+                   (Worker_pool_types.WorkerReady worker_pid));
               pool_loop state
-          | Worker_pool_types.Worker (Worker_pool_types.TaskCompleted { worker; node; artifact }) ->
+          | Worker_pool_types.Worker
+              (Worker_pool_types.TaskCompleted { worker; node; artifact }) ->
               (* Worker completed a task *)
               Hashtbl.remove state.busy_workers worker;
               Queue.add worker state.idle_workers;
               (* Forward to provider *)
               send state.provider
-                (Worker_pool_types.Worker (Worker_pool_types.TaskCompleted { worker; node; artifact }));
+                (Worker_pool_types.Worker
+                   (Worker_pool_types.TaskCompleted { worker; node; artifact }));
               pool_loop state
-          | Worker_pool_types.Worker (Worker_pool_types.TaskFailed { worker; node; error }) ->
+          | Worker_pool_types.Worker
+              (Worker_pool_types.TaskFailed { worker; node; error }) ->
               (* Worker failed a task *)
               Hashtbl.remove state.busy_workers worker;
               Queue.add worker state.idle_workers;
               (* Forward to provider *)
-              send state.provider (Worker_pool_types.Worker (Worker_pool_types.TaskFailed { worker; node; error }));
+              send state.provider
+                (Worker_pool_types.Worker
+                   (Worker_pool_types.TaskFailed { worker; node; error }));
               pool_loop state
-          | Worker_pool_types.Worker (Worker_pool_types.RequeueWithDependencies { worker; node; deps }) ->
+          | Worker_pool_types.Worker
+              (Worker_pool_types.RequeueWithDependencies { worker; node; deps })
+            ->
               (* Worker needs dependencies *)
               Hashtbl.remove state.busy_workers worker;
               Queue.add worker state.idle_workers;
               (* Forward to provider *)
               send state.provider
-                (Worker_pool_types.Worker (Worker_pool_types.RequeueWithDependencies { worker; node; deps }));
+                (Worker_pool_types.Worker
+                   (Worker_pool_types.RequeueWithDependencies
+                      { worker; node; deps }));
               pool_loop state
           | _ -> pool_loop state
         in

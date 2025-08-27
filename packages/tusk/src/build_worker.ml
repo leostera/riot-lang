@@ -8,7 +8,8 @@ let selector msg =
 let rec worker_loop (ctx : Worker_pool_types.ctx) =
   let worker_pid = self () in
   (* Tell server we're ready for work *)
-  send ctx.server_pid (Worker_pool_types.Worker (Worker_pool_types.WorkerReady worker_pid));
+  send ctx.server_pid
+    (Worker_pool_types.Worker (Worker_pool_types.WorkerReady worker_pid));
   let task = receive ~selector () in
   handle_task ctx task
 
@@ -17,7 +18,7 @@ and handle_task ctx task =
   let pkg_name = Build_node.(node.package.name) in
 
   (* Log that we're starting *)
-  Log.package_started ?sid:session_id ~package:pkg_name;
+  Log.package_started ~session_id ~package:pkg_name;
 
   (* Step 1: Try to plan the node *)
   (* Pass build_results so Build_planner knows which deps are already built *)
@@ -61,7 +62,7 @@ and do_build ctx task planned_node =
   let Worker_pool_types.{ node; session_id } = task in
   let pkg_name = Build_node.(node.package.name) in
   (* No cache - need to build in sandbox *)
-  Log.cache_miss ?sid:session_id ~package:pkg_name
+  Log.cache_miss ~session_id ~package:pkg_name
     ~hash:
       (match planned_node.Build_node.spec with
       | Planned { hash; _ } -> Hasher.to_string hash
@@ -81,7 +82,8 @@ and do_build ctx task planned_node =
   | Ok outs ->
       (* Save to store *)
       let artifact =
-        Store.save ctx.store planned_node ~outs ~sandbox_dir:(Sandbox.get_sandbox_dir sandbox)
+        Store.save ctx.store planned_node ~outs
+          ~sandbox_dir:(Sandbox.get_sandbox_dir sandbox)
         |> Result.expect ~msg:"Could not save artifact!"
       in
       let target_dir =
@@ -119,7 +121,7 @@ and handle_cache_hit ctx task planned_node artifact =
   let pkg_name = Build_node.(node.package.name) in
   (* We have a cached artifact *)
   (* Only log cache hit once per package *)
-  Log.cache_hit ?sid:session_id ~package:pkg_name
+  Log.cache_hit ~session_id ~package:pkg_name
     ~hash:
       (match planned_node.Build_node.spec with
       | Planned { hash; _ } -> Hasher.to_string hash

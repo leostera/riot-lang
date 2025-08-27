@@ -2,6 +2,25 @@
 
 open Miniriot
 
+(** Format an event for cargo-style output *)
+let format_cargo_event (event : Event.t) =
+  match event.kind with
+  | PackageStarted { package } ->
+      Printf.sprintf "   [1;32mCompiling[0m %s" package
+  | PackageComplete { package; success; _ } ->
+      if success then "" (* Already shown as "Compiling" *)
+      else Printf.sprintf "   [1;31mFailed[0m %s" package
+  | CacheHit { package; _ } ->
+      Printf.sprintf "   [1;32mCompiling[0m %s (cached)" package
+  | CompileError { message; _ } -> Printf.sprintf "[1;31merror[0m: %s" message
+  | BuildComplete { duration_ms; succeeded; failed; _ } ->
+      if List.length failed = 0 then
+        Printf.sprintf "   [1;32mFinished[0m in %.2fs"
+          (float_of_int duration_ms /. 1000.0)
+      else
+        Printf.sprintf "   [1;31mFailed[0m with %d errors" (List.length failed)
+  | _ -> ""
+
 (** Helper to create a tusk client connected to the local server *)
 let create_local_client () =
   let cwd =
@@ -144,9 +163,9 @@ let build_command package_opt =
     Client.build_streaming client request (fun event ->
         match event with
         | Client.BuildStarted session_id -> ()
-        | Client.BuildEvent log_event ->
+        | Client.BuildEvent event ->
             (* Format and display log events in Cargo style *)
-            let formatted = Log.format_event Log.Cargo log_event in
+            let formatted = format_cargo_event event in
             if formatted <> "" then Printf.printf "%s\n%!" formatted
         | Client.BuildFinished _ -> ())
     |> Std.Result.expect ~msg:"Build failed"
@@ -204,9 +223,9 @@ let build_package package_name =
         | Tusk_jsonrpc.Client.BuildStarted session_id ->
             (* Don't print session ID in Cargo style *)
             ()
-        | Tusk_jsonrpc.Client.BuildEvent log_event ->
+        | Tusk_jsonrpc.Client.BuildEvent event ->
             (* Format and display log events in Cargo style *)
-            let formatted = Log.format_event Log.Cargo log_event in
+            let formatted = format_cargo_event event in
             if formatted <> "" then (
               Printf.printf "%s\n" formatted;
               flush stdout)
@@ -921,93 +940,25 @@ let rpc_command args =
     let callback = function
       | Tusk_jsonrpc.Client.BuildStarted sid ->
           session_id := Some sid;
+          let tm =
+            Std.Datetime.localtime (Std.Datetime.to_float (Std.Datetime.now ()))
+          in
+          let timestamp =
+            Printf.sprintf "%02d:%02d:%02d" tm.tm_hour tm.tm_min tm.tm_sec
+          in
           let json =
             Json.Object
               [
                 ("type", Json.String "build_started");
+                ("timestamp", Json.String timestamp);
                 ("session_id", Json.String (Session_id.to_string sid));
               ]
           in
           Printf.printf "%s\n" (Json.to_string json);
           flush stdout
-      | Tusk_jsonrpc.Client.BuildEvent log_event ->
-          (* Convert log event to structured JSON *)
-          let timestamp = Log.format_timestamp (Log.get_timestamp_ms ()) in
-          let level =
-            match Log.event_level log_event with
-            | Error -> "error"
-            | Warn -> "warn"
-            | Info -> "info"
-            | Debug -> "debug"
-            | Trace -> "trace"
-          in
-          let event_name = Log.event_name log_event in
-          let message = Log.event_message log_event in
-
-          (* Extract structured data based on log event type *)
-          let event_data =
-            match log_event with
-            | Log.PackageComplete res ->
-                Json.Object
-                  [
-                    ("package_name", Json.String res.package);
-                    ("success", Json.Bool res.success);
-                    ("duration_ms", Json.Int res.duration_ms);
-                    ("modules_compiled", Json.Int res.modules_compiled);
-                    ("cache_hits", Json.Int res.cache_hits);
-                    ("cache_misses", Json.Int res.cache_misses);
-                  ]
-            | Log.CacheHit { package; hash } ->
-                Json.Object
-                  [
-                    ("package_name", Json.String package);
-                    ("hash", Json.String hash);
-                  ]
-            | Log.CacheMiss { package; hash } ->
-                Json.Object
-                  [
-                    ("package_name", Json.String package);
-                    ("hash", Json.String hash);
-                  ]
-            | Log.HashComputed { package; hash } ->
-                Json.Object
-                  [
-                    ("package_name", Json.String package);
-                    ("hash", Json.String hash);
-                  ]
-            | Log.WorkerAssigned { worker_id; package } ->
-                Json.Object
-                  [
-                    ("worker_id", Json.String (Worker_id.to_string worker_id));
-                    ("package_name", Json.String package);
-                  ]
-            | Log.QueuePackage { package; queue_type } ->
-                let typ =
-                  match queue_type with
-                  | `Ready -> "ready"
-                  | `Waiting -> "waiting"
-                in
-                Json.Object
-                  [
-                    ("package_name", Json.String package);
-                    ("queue_type", Json.String typ);
-                  ]
-            | _ ->
-                (* For other events, just include the message as data *)
-                Json.Object [ ("message", Json.String message) ]
-          in
-
-          let json =
-            Json.Object
-              [
-                ("type", Json.String "build_event");
-                ("timestamp", Json.String timestamp);
-                ("level", Json.String level);
-                ("event", Json.String event_name);
-                ("message", Json.String message);
-                ("event_data", event_data);
-              ]
-          in
+      | Tusk_jsonrpc.Client.BuildEvent event ->
+          (* Use Event.to_json for all events *)
+          let json = Event.to_json event in
           Printf.printf "%s\n" (Json.to_string json);
           flush stdout
       | Tusk_jsonrpc.Client.BuildFinished result ->

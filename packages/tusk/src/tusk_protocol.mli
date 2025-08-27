@@ -21,12 +21,12 @@ type request =
 (** Response types from the server *)
 type response =
   | Pong
-  | BuildStarted of { session_id : Session_id.t }
-  | BuildCompleted of { session_id : Session_id.t }
+  | BuildStarted of { session_id : Session_id.t; started_at : Datetime.t }
+  | BuildCompleted of { session_id : Session_id.t; completed_At : Datetime.t }
   | CycleDetected of {
       session_id : Session_id.t;
       cycle_nodes : string list;
-          (* List of package names involved in the cycle *)
+      detected_at : Datetime.t;
     }
   | WorkspaceConfig of {
       workspace : Workspace.t;

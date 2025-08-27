@@ -17,7 +17,8 @@ val start :
   build_results:Build_results.t ->
   workspace:Workspace.t ->
   store:Store.t ->
-  worker_fn:(Worker_pool_types.ctx -> unit -> (unit, Process.exit_reason) result) ->
+  worker_fn:
+    (Worker_pool_types.ctx -> unit -> (unit, Process.exit_reason) result) ->
   unit ->
   t
 (** Start a worker pool with the specified number of workers. The provider will

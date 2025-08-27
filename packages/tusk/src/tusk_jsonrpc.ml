@@ -74,12 +74,13 @@ module TuskProtocol = struct
     | BuildGraph of build_graph_response
     | WorkspaceConfig of workspace_config
     | PackageInfo of package_detail
-    | BuildStarted of { session_id : Session_id.t }
-    | BuildEvent of { session_id : Session_id.t; log_event : Log.log_event }
-    | CycleDetected of { session_id : Session_id.t; cycle_nodes : string list }
-    | BuildComplete of { session_id : Session_id.t; stats : build_stats }
+    | BuildStarted of { session_id : Session_id.t; started_at : Std.Datetime.t }
+    | BuildEvent of { session_id : Session_id.t; event : Event.t }
+    | CycleDetected of { session_id : Session_id.t; detected_at : Std.Datetime.t; cycle_nodes : string list }
+    | BuildComplete of { session_id : Session_id.t; completed_at : Std.Datetime.t; stats : build_stats }
     | BuildFailed of {
         session_id : Session_id.t;
+        failed_at : Std.Datetime.t;
         stats : build_stats;
         error : string;
       }
@@ -87,8 +88,8 @@ module TuskProtocol = struct
     | RestartAck
     | Error of string
 
-  (* Helper to serialize log events to JSON *)
-  let log_event_of_json json =
+  (* Helper to deserialize event kind from JSON *)
+  let event_kind_of_json json =
     match json with
     | Json.Object fields -> (
         match List.assoc_opt "type" fields with
@@ -111,7 +112,7 @@ module TuskProtocol = struct
               | Some (Json.Int n) -> n
               | _ -> 0
             in
-            Ok (Log.BuildStarted { packages; total_modules; workers })
+            Ok (Event.BuildStarted { packages; total_modules; workers })
         | Some (Json.String "BuildComplete") ->
             let duration_ms =
               match List.assoc_opt "duration_ms" fields with
@@ -187,7 +188,7 @@ module TuskProtocol = struct
                                         in
                                         Some
                                           {
-                                            Log.package = "";
+                                            Event.package = "";
                                             file;
                                             line;
                                             column;
@@ -200,7 +201,7 @@ module TuskProtocol = struct
                           in
                           Some
                             {
-                              Log.package;
+                              Event.package;
                               success;
                               duration_ms;
                               modules_compiled;
@@ -228,14 +229,14 @@ module TuskProtocol = struct
                     arr
               | _ -> []
             in
-            Ok (Log.BuildComplete { duration_ms; results; succeeded; failed })
+            Ok (Event.BuildComplete { duration_ms; results; succeeded; failed })
         | Some (Json.String "PackageStarted") ->
             let package =
               match List.assoc_opt "package" fields with
               | Some (Json.String s) -> s
               | _ -> ""
             in
-            Ok (Log.PackageStarted { package })
+            Ok (Event.PackageStarted { package })
         | Some (Json.String "PackageComplete") ->
             let package =
               match List.assoc_opt "package" fields with
@@ -300,7 +301,7 @@ module TuskProtocol = struct
                           in
                           Some
                             {
-                              Log.package = "";
+                              Event.package = "";
                               file;
                               line;
                               column;
@@ -312,7 +313,7 @@ module TuskProtocol = struct
               | _ -> []
             in
             Ok
-              (Log.PackageComplete
+              (Event.PackageComplete
                  {
                    package;
                    success;
@@ -353,7 +354,8 @@ module TuskProtocol = struct
               | Some (Json.String s) -> Some s
               | _ -> None
             in
-            Ok (Log.CompileError { package; file; line; column; message; hint })
+            Ok
+              (Event.CompileError { package; file; line; column; message; hint })
         | Some (Json.String "CycleDetected") ->
             let packages =
               match List.assoc_opt "packages" fields with
@@ -363,7 +365,7 @@ module TuskProtocol = struct
                     arr
               | _ -> []
             in
-            Ok (Log.CycleDetected { packages })
+            Ok (Event.CycleDetected { packages })
         | Some (Json.String "CacheHit") ->
             let package =
               match List.assoc_opt "package" fields with
@@ -375,7 +377,7 @@ module TuskProtocol = struct
               | Some (Json.String s) -> s
               | _ -> ""
             in
-            Ok (Log.CacheHit { package; hash })
+            Ok (Event.CacheHit { package; hash })
         | Some (Json.String "CacheMiss") ->
             let package =
               match List.assoc_opt "package" fields with
@@ -387,7 +389,7 @@ module TuskProtocol = struct
               | Some (Json.String s) -> s
               | _ -> ""
             in
-            Ok (Log.CacheMiss { package; hash })
+            Ok (Event.CacheMiss { package; hash })
         | Some (Json.String "CacheStored") ->
             let package =
               match List.assoc_opt "package" fields with
@@ -407,14 +409,14 @@ module TuskProtocol = struct
                     arr
               | _ -> []
             in
-            Ok (Log.CacheStored { package; hash; artifacts })
+            Ok (Event.CacheStored { package; hash; artifacts })
         | Some (Json.String "WorkerPoolStarted") ->
             let workers =
               match List.assoc_opt "workers" fields with
               | Some (Json.Int n) -> n
               | _ -> 0
             in
-            Ok (Log.WorkerPoolStarted { workers })
+            Ok (Event.WorkerPoolStarted { workers })
         | Some (Json.String "WorkerStarted") ->
             let worker_id =
               match List.assoc_opt "worker_id" fields with
@@ -422,7 +424,7 @@ module TuskProtocol = struct
                   Worker_id.make (try int_of_string s with _ -> 0)
               | _ -> Worker_id.make 0
             in
-            Ok (Log.WorkerStarted { worker_id })
+            Ok (Event.WorkerStarted { worker_id })
         | Some (Json.String "WorkerAssigned") ->
             let worker_id =
               match List.assoc_opt "worker_id" fields with
@@ -435,7 +437,7 @@ module TuskProtocol = struct
               | Some (Json.String s) -> s
               | _ -> ""
             in
-            Ok (Log.WorkerAssigned { worker_id; package })
+            Ok (Event.WorkerAssigned { worker_id; package })
         | Some (Json.String "WorkerIdle") ->
             let worker_id =
               match List.assoc_opt "worker_id" fields with
@@ -443,21 +445,21 @@ module TuskProtocol = struct
                   Worker_id.make (try int_of_string s with _ -> 0)
               | _ -> Worker_id.make 0
             in
-            Ok (Log.WorkerIdle { worker_id })
+            Ok (Event.WorkerIdle { worker_id })
         | Some (Json.String "ServerStarted") ->
             let pid =
               match List.assoc_opt "pid" fields with
               | Some (Json.String s) -> s
               | _ -> ""
             in
-            Ok (Log.ServerStarted { pid })
+            Ok (Event.ServerStarted { pid })
         | Some (Json.String "ServerScanning") ->
             let root =
               match List.assoc_opt "root" fields with
               | Some (Json.String s) -> s
               | _ -> ""
             in
-            Ok (Log.ServerScanning { root })
+            Ok (Event.ServerScanning { root })
         | Some (Json.String "ServerRestarted") ->
             let packages =
               match List.assoc_opt "packages" fields with
@@ -469,7 +471,7 @@ module TuskProtocol = struct
               | Some (Json.String s) -> s
               | _ -> ""
             in
-            Ok (Log.ServerRestarted { packages; toolchain })
+            Ok (Event.ServerRestarted { packages; toolchain })
         | Some (Json.String "QueuePackage") ->
             let package =
               match List.assoc_opt "package" fields with
@@ -482,7 +484,7 @@ module TuskProtocol = struct
               | Some (Json.String "waiting") -> `Waiting
               | _ -> `Ready
             in
-            Ok (Log.QueuePackage { package; queue_type })
+            Ok (Event.QueuePackage { package; queue_type })
         | Some (Json.String "QueueStats") ->
             let ready =
               match List.assoc_opt "ready" fields with
@@ -499,7 +501,7 @@ module TuskProtocol = struct
               | Some (Json.Int n) -> n
               | _ -> 0
             in
-            Ok (Log.QueueStats { ready; waiting; busy })
+            Ok (Event.QueueStats { ready; waiting; busy })
         | Some (Json.String "DependencyMissing") ->
             let package =
               match List.assoc_opt "package" fields with
@@ -514,14 +516,14 @@ module TuskProtocol = struct
                     arr
               | _ -> []
             in
-            Ok (Log.DependencyMissing { package; missing })
+            Ok (Event.DependencyMissing { package; missing })
         | Some (Json.String "DependencySatisfied") ->
             let package =
               match List.assoc_opt "package" fields with
               | Some (Json.String s) -> s
               | _ -> ""
             in
-            Ok (Log.DependencySatisfied { package })
+            Ok (Event.DependencySatisfied { package })
         | Some (Json.String "CompilingInterface") ->
             let package =
               match List.assoc_opt "package" fields with
@@ -533,7 +535,7 @@ module TuskProtocol = struct
               | Some (Json.String s) -> s
               | _ -> ""
             in
-            Ok (Log.CompilingInterface { package; file })
+            Ok (Event.CompilingInterface { package; file })
         | Some (Json.String "CompilingImplementation") ->
             let package =
               match List.assoc_opt "package" fields with
@@ -545,7 +547,7 @@ module TuskProtocol = struct
               | Some (Json.String s) -> s
               | _ -> ""
             in
-            Ok (Log.CompilingImplementation { package; file })
+            Ok (Event.CompilingImplementation { package; file })
         | Some (Json.String "LinkingLibrary") ->
             let package =
               match List.assoc_opt "package" fields with
@@ -557,7 +559,7 @@ module TuskProtocol = struct
               | Some (Json.String s) -> s
               | _ -> ""
             in
-            Ok (Log.LinkingLibrary { package; output })
+            Ok (Event.LinkingLibrary { package; output })
         | Some (Json.String "LinkingExecutable") ->
             let package =
               match List.assoc_opt "package" fields with
@@ -569,14 +571,14 @@ module TuskProtocol = struct
               | Some (Json.String s) -> s
               | _ -> ""
             in
-            Ok (Log.LinkingExecutable { package; output })
+            Ok (Event.LinkingExecutable { package; output })
         | Some (Json.String "ComputingHash") ->
             let package =
               match List.assoc_opt "package" fields with
               | Some (Json.String s) -> s
               | _ -> ""
             in
-            Ok (Log.ComputingHash { package })
+            Ok (Event.ComputingHash { package })
         | Some (Json.String "HashComputed") ->
             let package =
               match List.assoc_opt "package" fields with
@@ -588,7 +590,7 @@ module TuskProtocol = struct
               | Some (Json.String s) -> s
               | _ -> ""
             in
-            Ok (Log.HashComputed { package; hash })
+            Ok (Event.HashComputed { package; hash })
         | Some (Json.String "CopyingFile") ->
             let source =
               match List.assoc_opt "source" fields with
@@ -600,21 +602,21 @@ module TuskProtocol = struct
               | Some (Json.String s) -> s
               | _ -> ""
             in
-            Ok (Log.CopyingFile { source; dest })
+            Ok (Event.CopyingFile { source; dest })
         | Some (Json.String "WritingFile") ->
             let path =
               match List.assoc_opt "path" fields with
               | Some (Json.String s) -> s
               | _ -> ""
             in
-            Ok (Log.WritingFile { path })
+            Ok (Event.WritingFile { path })
         | Some (Json.String "CreatingDirectory") ->
             let path =
               match List.assoc_opt "path" fields with
               | Some (Json.String s) -> s
               | _ -> ""
             in
-            Ok (Log.CreatingDirectory { path })
+            Ok (Event.CreatingDirectory { path })
         | Some (Json.String "RpcRequestReceived") ->
             let session_id =
               match List.assoc_opt "session_id" fields with
@@ -626,7 +628,7 @@ module TuskProtocol = struct
               | Some (Json.String s) -> s
               | _ -> ""
             in
-            Ok (Log.RpcRequestReceived { session_id; request_type })
+            Ok (Event.RpcRequestReceived { request_type; args = Json.Null })
         | Some (Json.String "RpcResponseSent") ->
             let session_id =
               match List.assoc_opt "session_id" fields with
@@ -638,13 +640,10 @@ module TuskProtocol = struct
               | Some (Json.Bool b) -> b
               | _ -> false
             in
-            Ok (Log.RpcResponseSent { session_id; success })
+            Ok
+              (Event.RpcResponseSent
+                 { result = (if success then Ok () else Error "failed") })
         | Some (Json.String "McpToolCall") ->
-            let session_id =
-              match List.assoc_opt "session_id" fields with
-              | Some (Json.String s) -> Session_id.of_string s
-              | _ -> Session_id.make ()
-            in
             let tool =
               match List.assoc_opt "tool" fields with
               | Some (Json.String s) -> s
@@ -652,17 +651,17 @@ module TuskProtocol = struct
             in
             let args =
               match List.assoc_opt "args" fields with
-              | Some (Json.String s) -> s
-              | _ -> ""
+              | Some j -> j
+              | _ -> Json.Null
             in
-            Ok (Log.McpToolCall { session_id; tool; args })
-        | Some (Json.String "ServerShutdown") -> Ok Log.ServerShutdown
-        | Some (Json.String "WorkspaceEmpty") -> Ok Log.WorkspaceEmpty
+            Ok (Event.McpToolCall { tool; args })
+        | Some (Json.String "ServerShutdown") -> Ok Event.ServerShutdown
+        | Some (Json.String "WorkspaceEmpty") -> Ok Event.WorkspaceEmpty
         | _ -> Error (Json.String "Unknown log event type"))
     | _ -> Error (Json.String "Invalid log event JSON")
 
   let log_event_to_json = function
-    | Log.BuildStarted { packages; total_modules; workers } ->
+    | Event.BuildStarted { packages; total_modules; workers } ->
         Json.Object
           [
             ("type", Json.String "BuildStarted");
@@ -670,7 +669,7 @@ module TuskProtocol = struct
             ("total_modules", Json.Int total_modules);
             ("workers", Json.Int workers);
           ]
-    | Log.BuildComplete { duration_ms; results; succeeded; failed } ->
+    | Event.BuildComplete { duration_ms; results; succeeded; failed } ->
         Json.Object
           [
             ("type", Json.String "BuildComplete");
@@ -681,80 +680,80 @@ module TuskProtocol = struct
                    (fun r ->
                      Json.Object
                        [
-                         ("package", Json.String r.Log.package);
-                         ("success", Json.Bool r.Log.success);
-                         ("duration_ms", Json.Int r.Log.duration_ms);
-                         ("modules_compiled", Json.Int r.Log.modules_compiled);
-                         ("cache_hits", Json.Int r.Log.cache_hits);
-                         ("cache_misses", Json.Int r.Log.cache_misses);
+                         ("package", Json.String r.Event.package);
+                         ("success", Json.Bool r.Event.success);
+                         ("duration_ms", Json.Int r.Event.duration_ms);
+                         ("modules_compiled", Json.Int r.Event.modules_compiled);
+                         ("cache_hits", Json.Int r.Event.cache_hits);
+                         ("cache_misses", Json.Int r.Event.cache_misses);
                          ( "errors",
                            Json.Array
                              (List.map
                                 (fun e ->
                                   Json.Object
                                     [
-                                      ("file", Json.String e.Log.file);
-                                      ("line", Json.Int e.Log.line);
+                                      ("file", Json.String e.Event.file);
+                                      ("line", Json.Int e.Event.line);
                                       ( "column",
-                                        match e.Log.column with
+                                        match e.Event.column with
                                         | Some c -> Json.Int c
                                         | None -> Json.Null );
-                                      ("message", Json.String e.Log.message);
+                                      ("message", Json.String e.Event.message);
                                       ( "hint",
-                                        match e.Log.hint with
+                                        match e.Event.hint with
                                         | Some h -> Json.String h
                                         | None -> Json.Null );
                                     ])
-                                r.Log.errors) );
+                                r.Event.errors) );
                        ])
                    results) );
             ( "succeeded",
               Json.Array (List.map (fun s -> Json.String s) succeeded) );
             ("failed", Json.Array (List.map (fun f -> Json.String f) failed));
           ]
-    | Log.PackageStarted { package } ->
+    | Event.PackageStarted { package } ->
         Json.Object
           [
             ("type", Json.String "PackageStarted");
             ("package", Json.String package);
           ]
-    | Log.PackageComplete result ->
+    | Event.PackageComplete result ->
         Json.Object
           [
             ("type", Json.String "PackageComplete");
-            ("package", Json.String result.Log.package);
-            ("success", Json.Bool result.Log.success);
-            ("duration_ms", Json.Int result.Log.duration_ms);
-            ("modules_compiled", Json.Int result.Log.modules_compiled);
-            ("cache_hits", Json.Int result.Log.cache_hits);
-            ("cache_misses", Json.Int result.Log.cache_misses);
+            ("package", Json.String result.Event.package);
+            ("success", Json.Bool result.Event.success);
+            ("duration_ms", Json.Int result.Event.duration_ms);
+            ("modules_compiled", Json.Int result.Event.modules_compiled);
+            ("cache_hits", Json.Int result.Event.cache_hits);
+            ("cache_misses", Json.Int result.Event.cache_misses);
             ( "errors",
               Json.Array
                 (List.map
                    (fun e ->
                      Json.Object
                        [
-                         ("file", Json.String e.Log.file);
-                         ("line", Json.Int e.Log.line);
+                         ("file", Json.String e.Event.file);
+                         ("line", Json.Int e.Event.line);
                          ( "column",
-                           match e.Log.column with
+                           match e.Event.column with
                            | Some c -> Json.Int c
                            | None -> Json.Null );
-                         ("message", Json.String e.Log.message);
+                         ("message", Json.String e.Event.message);
                          ( "hint",
-                           match e.Log.hint with
+                           match e.Event.hint with
                            | Some h -> Json.String h
                            | None -> Json.Null );
                        ])
-                   result.Log.errors) );
+                   result.Event.errors) );
           ]
-    | Log.CycleDetected { packages } ->
+    | Event.CycleDetected { packages } ->
         Json.Object
           [
             ("type", Json.String "CycleDetected");
             ("packages", Json.Array (List.map (fun s -> Json.String s) packages));
           ]
-    | Log.CompileError { package; file; line; column; message; hint } ->
+    | Event.CompileError { package; file; line; column; message; hint } ->
         Json.Object
           [
             ("type", Json.String "CompileError");
@@ -767,21 +766,21 @@ module TuskProtocol = struct
             ( "hint",
               match hint with Some h -> Json.String h | None -> Json.Null );
           ]
-    | Log.CacheHit { package; hash } ->
+    | Event.CacheHit { package; hash } ->
         Json.Object
           [
             ("type", Json.String "CacheHit");
             ("package", Json.String package);
             ("hash", Json.String hash);
           ]
-    | Log.CacheMiss { package; hash } ->
+    | Event.CacheMiss { package; hash } ->
         Json.Object
           [
             ("type", Json.String "CacheMiss");
             ("package", Json.String package);
             ("hash", Json.String hash);
           ]
-    | Log.CacheStored { package; hash; artifacts } ->
+    | Event.CacheStored { package; hash; artifacts } ->
         Json.Object
           [
             ("type", Json.String "CacheStored");
@@ -790,45 +789,45 @@ module TuskProtocol = struct
             ( "artifacts",
               Json.Array (List.map (fun a -> Json.String a) artifacts) );
           ]
-    | Log.WorkerPoolStarted { workers } ->
+    | Event.WorkerPoolStarted { workers } ->
         Json.Object
           [
             ("type", Json.String "WorkerPoolStarted");
             ("workers", Json.Int workers);
           ]
-    | Log.WorkerStarted { worker_id } ->
+    | Event.WorkerStarted { worker_id } ->
         Json.Object
           [
             ("type", Json.String "WorkerStarted");
             ("worker_id", Json.String (Worker_id.to_string worker_id));
           ]
-    | Log.WorkerAssigned { worker_id; package } ->
+    | Event.WorkerAssigned { worker_id; package } ->
         Json.Object
           [
             ("type", Json.String "WorkerAssigned");
             ("worker_id", Json.String (Worker_id.to_string worker_id));
             ("package", Json.String package);
           ]
-    | Log.WorkerIdle { worker_id } ->
+    | Event.WorkerIdle { worker_id } ->
         Json.Object
           [
             ("type", Json.String "WorkerIdle");
             ("worker_id", Json.String (Worker_id.to_string worker_id));
           ]
-    | Log.ServerStarted { pid } ->
+    | Event.ServerStarted { pid } ->
         Json.Object
           [ ("type", Json.String "ServerStarted"); ("pid", Json.String pid) ]
-    | Log.ServerScanning { root } ->
+    | Event.ServerScanning { root } ->
         Json.Object
           [ ("type", Json.String "ServerScanning"); ("root", Json.String root) ]
-    | Log.ServerRestarted { packages; toolchain } ->
+    | Event.ServerRestarted { packages; toolchain } ->
         Json.Object
           [
             ("type", Json.String "ServerRestarted");
             ("packages", Json.Int packages);
             ("toolchain", Json.String toolchain);
           ]
-    | Log.QueuePackage { package; queue_type } ->
+    | Event.QueuePackage { package; queue_type } ->
         Json.Object
           [
             ("type", Json.String "QueuePackage");
@@ -839,7 +838,7 @@ module TuskProtocol = struct
                 | `Ready -> "ready"
                 | `Waiting -> "waiting") );
           ]
-    | Log.QueueStats { ready; waiting; busy } ->
+    | Event.QueueStats { ready; waiting; busy } ->
         Json.Object
           [
             ("type", Json.String "QueueStats");
@@ -847,101 +846,118 @@ module TuskProtocol = struct
             ("waiting", Json.Int waiting);
             ("busy", Json.Int busy);
           ]
-    | Log.DependencyMissing { package; missing } ->
+    | Event.DependencyMissing { package; missing } ->
         Json.Object
           [
             ("type", Json.String "DependencyMissing");
             ("package", Json.String package);
             ("missing", Json.Array (List.map (fun m -> Json.String m) missing));
           ]
-    | Log.DependencySatisfied { package } ->
+    | Event.DependencySatisfied { package } ->
         Json.Object
           [
             ("type", Json.String "DependencySatisfied");
             ("package", Json.String package);
           ]
-    | Log.CompilingInterface { package; file } ->
+    | Event.CompilingInterface { package; file } ->
         Json.Object
           [
             ("type", Json.String "CompilingInterface");
             ("package", Json.String package);
             ("file", Json.String file);
           ]
-    | Log.CompilingImplementation { package; file } ->
+    | Event.CompilingImplementation { package; file } ->
         Json.Object
           [
             ("type", Json.String "CompilingImplementation");
             ("package", Json.String package);
             ("file", Json.String file);
           ]
-    | Log.LinkingLibrary { package; output } ->
+    | Event.LinkingLibrary { package; output } ->
         Json.Object
           [
             ("type", Json.String "LinkingLibrary");
             ("package", Json.String package);
             ("output", Json.String output);
           ]
-    | Log.LinkingExecutable { package; output } ->
+    | Event.LinkingExecutable { package; output } ->
         Json.Object
           [
             ("type", Json.String "LinkingExecutable");
             ("package", Json.String package);
             ("output", Json.String output);
           ]
-    | Log.ComputingHash { package } ->
+    | Event.ComputingHash { package } ->
         Json.Object
           [
             ("type", Json.String "ComputingHash");
             ("package", Json.String package);
           ]
-    | Log.HashComputed { package; hash } ->
+    | Event.HashComputed { package; hash } ->
         Json.Object
           [
             ("type", Json.String "HashComputed");
             ("package", Json.String package);
             ("hash", Json.String hash);
           ]
-    | Log.CopyingFile { source; dest } ->
+    | Event.CopyingFile { source; dest } ->
         Json.Object
           [
             ("type", Json.String "CopyingFile");
             ("source", Json.String source);
             ("dest", Json.String dest);
           ]
-    | Log.WritingFile { path } ->
+    | Event.WritingFile { path } ->
         Json.Object
           [ ("type", Json.String "WritingFile"); ("path", Json.String path) ]
-    | Log.CreatingDirectory { path } ->
+    | Event.CreatingDirectory { path } ->
         Json.Object
           [
             ("type", Json.String "CreatingDirectory"); ("path", Json.String path);
           ]
-    | Log.RpcRequestReceived { session_id; request_type } ->
+    | Event.RpcRequestReceived { request_type; args } ->
         Json.Object
           [
             ("type", Json.String "RpcRequestReceived");
-            ("session_id", Json.String (Session_id.to_string session_id));
             ("request_type", Json.String request_type);
+            ("args", args);
           ]
-    | Log.RpcResponseSent { session_id; success } ->
+    | Event.RpcResponseSent { result } ->
         Json.Object
           [
             ("type", Json.String "RpcResponseSent");
-            ("session_id", Json.String (Session_id.to_string session_id));
-            ("success", Json.Bool success);
+            ( "success",
+              Json.Bool (match result with Ok _ -> true | Error _ -> false) );
           ]
-    | Log.McpToolCall { session_id; tool; args } ->
+    | Event.McpToolCall { tool; args } ->
         Json.Object
           [
             ("type", Json.String "McpToolCall");
-            ("session_id", Json.String (Session_id.to_string session_id));
             ("tool", Json.String tool);
-            ("args", Json.String args);
+            ("args", args);
           ]
-    | Log.ServerShutdown ->
+    | Event.ServerShutdown ->
         Json.Object [ ("type", Json.String "ServerShutdown") ]
-    | Log.WorkspaceEmpty ->
+    | Event.WorkspaceEmpty ->
         Json.Object [ ("type", Json.String "WorkspaceEmpty") ]
+    | Event.WorkspaceScanning ->
+        Json.Object [ ("type", Json.String "WorkspaceScanning") ]
+    | Event.WorkspaceScanned { packages; duration_ms } ->
+        Json.Object
+          [
+            ("type", Json.String "WorkspaceScanned");
+            ("packages", Json.Int packages);
+            ("duration_ms", Json.Int duration_ms);
+          ]
+    | Event.BuildGraphCreating ->
+        Json.Object [ ("type", Json.String "BuildGraphCreating") ]
+    | Event.BuildGraphCreated { nodes; duration_ms } ->
+        Json.Object
+          [
+            ("type", Json.String "BuildGraphCreated");
+            ("nodes", Json.Int nodes);
+            ("duration_ms", Json.Int duration_ms);
+          ]
 
   let request_to_params = function
     | Ping -> { Jsonrpc.method_ = method_ping; params = NoParams }
@@ -1049,73 +1065,37 @@ module TuskProtocol = struct
                        ])
                    graph.nodes) );
           ]
-    | BuildStarted { session_id } ->
+    | BuildStarted { session_id; started_at } ->
+        let tm = Std.Datetime.localtime (Std.Datetime.to_float started_at) in
+        let timestamp = Printf.sprintf "%02d:%02d:%02d" tm.tm_hour tm.tm_min tm.tm_sec in
         Json.Object
           [
             ("type", Json.String "build_started");
             ("session_id", Json.String (Session_id.to_string session_id));
+            ("started_at", Json.String timestamp);
           ]
-    | CycleDetected { session_id; cycle_nodes } ->
+    | CycleDetected { session_id; detected_at; cycle_nodes } ->
+        let tm = Std.Datetime.localtime (Std.Datetime.to_float detected_at) in
+        let timestamp = Printf.sprintf "%02d:%02d:%02d" tm.tm_hour tm.tm_min tm.tm_sec in
         Json.Object
           [
             ("type", Json.String "cycle_detected");
             ("session_id", Json.String (Session_id.to_string session_id));
+            ("detected_at", Json.String timestamp);
             ( "cycle_nodes",
               Json.Array (List.map (fun s -> Json.String s) cycle_nodes) );
           ]
-    | BuildEvent { session_id; log_event } ->
-        (* Serialize log event with type information *)
-        let event_type =
-          match log_event with
-          | Log.BuildStarted _ -> "BuildStarted"
-          | Log.BuildComplete _ -> "BuildComplete"
-          | Log.PackageStarted _ -> "PackageStarted"
-          | Log.PackageComplete _ -> "PackageComplete"
-          | Log.CompileError _ -> "CompileError"
-          | Log.CycleDetected _ -> "CycleDetected"
-          | Log.CacheHit _ -> "CacheHit"
-          | Log.CacheMiss _ -> "CacheMiss"
-          | Log.CacheStored _ -> "CacheStored"
-          | Log.WorkerPoolStarted _ -> "WorkerPoolStarted"
-          | Log.WorkerStarted _ -> "WorkerStarted"
-          | Log.WorkerAssigned _ -> "WorkerAssigned"
-          | Log.WorkerIdle _ -> "WorkerIdle"
-          | Log.ServerStarted _ -> "ServerStarted"
-          | Log.ServerScanning _ -> "ServerScanning"
-          | Log.ServerRestarted _ -> "ServerRestarted"
-          | Log.QueuePackage _ -> "QueuePackage"
-          | Log.QueueStats _ -> "QueueStats"
-          | Log.DependencyMissing _ -> "DependencyMissing"
-          | Log.DependencySatisfied _ -> "DependencySatisfied"
-          | Log.CompilingInterface _ -> "CompilingInterface"
-          | Log.CompilingImplementation _ -> "CompilingImplementation"
-          | Log.LinkingLibrary _ -> "LinkingLibrary"
-          | Log.LinkingExecutable _ -> "LinkingExecutable"
-          | Log.ComputingHash _ -> "ComputingHash"
-          | Log.HashComputed _ -> "HashComputed"
-          | Log.CopyingFile _ -> "CopyingFile"
-          | Log.WritingFile _ -> "WritingFile"
-          | Log.CreatingDirectory _ -> "CreatingDirectory"
-          | Log.RpcRequestReceived _ -> "RpcRequestReceived"
-          | Log.RpcResponseSent _ -> "RpcResponseSent"
-          | Log.McpToolCall _ -> "McpToolCall"
-          | Log.ServerShutdown -> "ServerShutdown"
-          | Log.WorkspaceEmpty -> "WorkspaceEmpty"
-        in
-        let event_str = Log.event_to_string log_event in
-        Json.Object
-          [
-            ("type", Json.String "build_event");
-            ("session_id", Json.String (Session_id.to_string session_id));
-            ("event_type", Json.String event_type);
-            ("message", Json.String event_str);
-            ("event_data", log_event_to_json log_event);
-          ]
-    | BuildComplete { session_id; stats } ->
+    | BuildEvent { session_id; event } ->
+        (* Use Event.to_json for the event *)
+        Event.to_json event
+    | BuildComplete { session_id; completed_at; stats } ->
+        let tm = Std.Datetime.localtime (Std.Datetime.to_float completed_at) in
+        let timestamp = Printf.sprintf "%02d:%02d:%02d" tm.tm_hour tm.tm_min tm.tm_sec in
         Json.Object
           [
             ("type", Json.String "build_complete");
             ("session_id", Json.String (Session_id.to_string session_id));
+            ("completed_at", Json.String timestamp);
             ("duration_ms", Json.Int stats.duration_ms);
             ("packages_built", Json.Int stats.packages_built);
             ("packages_failed", Json.Int stats.packages_failed);
@@ -1123,11 +1103,14 @@ module TuskProtocol = struct
             ("cache_hits", Json.Int stats.cache_hits);
             ("cache_misses", Json.Int stats.cache_misses);
           ]
-    | BuildFailed { session_id; stats; error } ->
+    | BuildFailed { session_id; failed_at; stats; error } ->
+        let tm = Std.Datetime.localtime (Std.Datetime.to_float failed_at) in
+        let timestamp = Printf.sprintf "%02d:%02d:%02d" tm.tm_hour tm.tm_min tm.tm_sec in
         Json.Object
           [
             ("type", Json.String "build_failed");
             ("session_id", Json.String (Session_id.to_string session_id));
+            ("failed_at", Json.String timestamp);
             ("error", Json.String error);
             ("duration_ms", Json.Int stats.duration_ms);
             ("packages_built", Json.Int stats.packages_built);
@@ -1155,27 +1138,50 @@ module TuskProtocol = struct
               | Some (Json.String s) -> Session_id.of_string s
               | _ -> Session_id.make ()
             in
-            Ok (BuildStarted { session_id })
+            let started_at = Std.Datetime.now () in (* Will be overridden by server timestamp *)
+            Ok (BuildStarted { session_id; started_at })
         | Some (Json.String "build_event") ->
             let session_id =
               match List.assoc_opt "session_id" fields with
               | Some (Json.String s) -> Session_id.of_string s
               | _ -> Session_id.make ()
             in
-            (* Use proper deserialization of log events *)
-            let log_event =
-              match List.assoc_opt "event_data" fields with
-              | Some event_json -> (
-                  match log_event_of_json event_json with
-                  | Ok evt -> evt
-                  | Error _ ->
-                      Log.BuildStarted
-                        { packages = []; total_modules = 0; workers = 0 })
-              | None ->
-                  Log.BuildStarted
-                    { packages = []; total_modules = 0; workers = 0 }
+            (* Parse the full event - it should have timestamp, level, etc *)
+            let event =
+              (* The build_event response should contain the full Event.to_json output *)
+              (* which includes timestamp, session_id, level, event (name), message, and data fields *)
+              let timestamp = 
+                match List.assoc_opt "timestamp" fields with
+                | Some (Json.String ts) -> 
+                    (* Parse HH:MM:SS format back to Datetime.t *)
+                    (* For now, use current time as fallback *)
+                    Std.Datetime.now ()
+                | _ -> Std.Datetime.now ()
+              in
+              let level =
+                match List.assoc_opt "level" fields with
+                | Some (Json.String "error") -> Event.Error
+                | Some (Json.String "warn") -> Event.Warn
+                | Some (Json.String "info") -> Event.Info
+                | Some (Json.String "debug") -> Event.Debug
+                | Some (Json.String "trace") -> Event.Trace
+                | _ -> Event.Info
+              in
+              let kind =
+                match List.assoc_opt "data" fields with
+                | Some event_json -> (
+                    match event_kind_of_json (Json.Object [("type", Json.String "BuildStarted"); ("event_data", event_json)]) with
+                    | Ok evt -> evt
+                    | Error _ ->
+                        Event.BuildStarted
+                          { packages = []; total_modules = 0; workers = 0 })
+                | None ->
+                    Event.BuildStarted
+                      { packages = []; total_modules = 0; workers = 0 }
+              in
+              { Event.timestamp; session_id; level; kind }
             in
-            Ok (BuildEvent { session_id; log_event })
+            Ok (BuildEvent { session_id; event })
         | Some (Json.String "cycle_detected") ->
             let session_id =
               match List.assoc_opt "session_id" fields with
@@ -1190,7 +1196,8 @@ module TuskProtocol = struct
                     arr
               | _ -> []
             in
-            Ok (CycleDetected { session_id; cycle_nodes })
+            let detected_at = Std.Datetime.now () in (* Will be overridden by server timestamp *)
+            Ok (CycleDetected { session_id; detected_at; cycle_nodes })
         | Some (Json.String "build_complete") ->
             let duration_ms =
               match List.assoc_opt "duration_ms" fields with
@@ -1227,10 +1234,12 @@ module TuskProtocol = struct
               | Some (Json.String s) -> Session_id.of_string s
               | _ -> Session_id.make ()
             in
+            let completed_at = Std.Datetime.now () in (* Will be overridden by server timestamp *)
             Ok
               (BuildComplete
                  {
                    session_id;
+                   completed_at;
                    stats =
                      {
                        duration_ms;
@@ -1282,10 +1291,12 @@ module TuskProtocol = struct
               | Some (Json.String s) -> Session_id.of_string s
               | _ -> Session_id.make ()
             in
+            let failed_at = Std.Datetime.now () in (* Will be overridden by server timestamp *)
             Ok
               (BuildFailed
                  {
                    session_id;
+                   failed_at;
                    stats =
                      {
                        duration_ms;
@@ -1346,7 +1357,7 @@ module TuskProtocol = struct
                   | _ -> []
                 in
                 Ok (PackageInfo { package; sources; dependency_names })
-            | None -> (
+            | Some _ | None -> (
                 (* Check if this is a WorkspaceConfig response *)
                 match List.assoc_opt "workspace_root" fields with
                 | Some (Json.String _) ->
@@ -1504,7 +1515,7 @@ module Client = struct
   (** Streaming build event *)
   type streaming_event =
     | BuildStarted of Session_id.t
-    | BuildEvent of Log.log_event
+    | BuildEvent of Event.t
     | BuildFinished of (unit, string) result
 
   (** Create a new Tusk RPC client *)
@@ -1606,7 +1617,7 @@ module Client = struct
         | Error e -> Error (Printf.sprintf "Failed to receive response: %s" e)
         | Ok response -> (
             match response.Jsonrpc.result with
-            | Ok (TuskProtocol.BuildStarted { session_id }) ->
+            | Ok (TuskProtocol.BuildStarted { session_id; started_at = _ }) ->
                 (* Got BuildStarted *)
                 callback (BuildStarted session_id);
 
@@ -1618,10 +1629,10 @@ module Client = struct
                         result =
                           Ok
                             (TuskProtocol.BuildEvent
-                               { session_id = _; log_event });
+                               { session_id = _; event });
                         _;
                       } ->
-                      callback (BuildEvent log_event);
+                      callback (BuildEvent event);
                       receive_events ()
                   | Ok
                       {
@@ -1634,7 +1645,8 @@ module Client = struct
                       (* Report cycle detected as a log event *)
                       callback
                         (BuildEvent
-                           (Log.CycleDetected { packages = cycle_nodes }));
+                           (Event.create ~session_id ~level:Error
+                              (Event.CycleDetected { packages = cycle_nodes })));
                       receive_events ()
                   | Ok { result = Ok (TuskProtocol.BuildComplete _); _ } ->
                       Ok (BuildFinished (Ok ()))
@@ -1678,7 +1690,7 @@ module Client = struct
                       Error "Unexpected response type"
                 in
                 receive_events ()
-            | Ok (TuskProtocol.BuildComplete { session_id; stats }) ->
+            | Ok (TuskProtocol.BuildComplete { session_id; completed_at = _; stats = _ }) ->
                 (* Direct success (no build needed) *)
                 Ok (BuildFinished (Ok ()))
             | Ok (TuskProtocol.BuildFailed { session_id; error; _ }) ->
@@ -1782,43 +1794,47 @@ module Server = struct
       | _ -> `skip
     in
     match receive ~selector () with
-    | Tusk_protocol.BuildStarted { session_id } ->
+    | Tusk_protocol.BuildStarted { session_id; started_at } ->
         (* Register ourselves with the logger to receive events *)
-        Log.add_rpc_handler ~sid:session_id ~client:(self ()) ~format:Log.Json;
+        Log.add_rpc_handler ~session_id ~client:(self ());
 
         (* Send BuildStarted to client *)
-        reply (TuskProtocol.BuildStarted { session_id });
+        reply (TuskProtocol.BuildStarted { session_id; started_at = Std.Datetime.now () });
 
         (* Now handle log events, CycleDetected and BuildCompleted *)
         let rec event_loop () =
           let selector = function
-            | Log.Event (Some sid, event) when sid = session_id ->
+            | Log.Event event when event.Event.session_id = session_id ->
                 `select (`log_event event)
             | Tusk_protocol.ServerResponse
-                (Tusk_protocol.CycleDetected { session_id = sid; cycle_nodes })
+                (Tusk_protocol.CycleDetected
+                   { session_id = sid; cycle_nodes; detected_at })
               when sid = session_id ->
-                `select (`cycle_detected cycle_nodes)
+                `select (`cycle_detected (cycle_nodes, detected_at))
             | Tusk_protocol.ServerResponse
-                (Tusk_protocol.BuildCompleted { session_id = sid })
+                (Tusk_protocol.BuildCompleted { session_id = sid; completed_At })
               when sid = session_id ->
-                `select `build_complete
+                `select (`build_complete completed_At)
             | _ -> `skip
           in
           match receive ~selector () with
           | `log_event event ->
               (* Forward log event to client *)
-              reply (TuskProtocol.BuildEvent { session_id; log_event = event });
+              reply (TuskProtocol.BuildEvent { session_id; event });
               event_loop ()
-          | `cycle_detected cycle_nodes ->
+          | `cycle_detected (cycle_nodes, detected_at) ->
               (* Forward cycle detected event to client *)
-              reply (TuskProtocol.CycleDetected { session_id; cycle_nodes });
+              reply
+                (TuskProtocol.CycleDetected
+                   { session_id; detected_at; cycle_nodes });
               event_loop ()
-          | `build_complete ->
+          | `build_complete completed_at ->
               (* Build is done, send final response *)
               reply
                 (TuskProtocol.BuildComplete
                    {
                      session_id;
+                     completed_at;
                      stats =
                        {
                          duration_ms = 0;

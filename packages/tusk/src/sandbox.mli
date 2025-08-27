@@ -14,7 +14,7 @@ val run_actions :
   build_graph:Build_graph.t ->
   build_results:Build_results.t ->
   node:Build_node.t ->
-  session_id:Log.session_id option ->
+  session_id:Session_id.t ->
   (Std.Path.t list, error) result
 (** Run actions in sandbox and return the output paths *)
 

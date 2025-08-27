@@ -1,5 +1,8 @@
 (** Date and time utilities *)
 
-let now () = Unix.gettimeofday ()
-let localtime timestamp = Unix.localtime timestamp
-let gmtime timestamp = Unix.gmtime timestamp
+type t = float
+
+let now = Unix.gettimeofday
+let to_float x = x
+let localtime = Unix.localtime
+let gmtime = Unix.gmtime

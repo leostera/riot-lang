@@ -27,15 +27,15 @@ let needs_unix_transitively ~graph ~node =
     else
       let visited = current_node.Build_node.package.name :: visited in
       (* Check if this node directly depends on unix *)
-      let has_unix_dep = 
-        List.exists (fun (dep : Workspace.dependency) -> 
-          dep.Workspace.name = "unix"
-        ) current_node.Build_node.package.dependencies
+      let has_unix_dep =
+        List.exists
+          (fun (dep : Workspace.dependency) -> dep.Workspace.name = "unix")
+          current_node.Build_node.package.dependencies
       in
       if has_unix_dep then true
       else
         (* Check transitive dependencies *)
-        let dep_nodes = 
+        let dep_nodes =
           List.map (Build_graph.get_node graph) current_node.Build_node.deps
         in
         List.exists (check_node visited) dep_nodes
@@ -63,11 +63,10 @@ let generate_actions ~graph ~node ~toolchain ~package ~srcs ~deps =
 
   (* Check if we need unix transitively for includes too *)
   let needs_unix_trans = needs_unix_transitively ~graph ~node in
-  let all_external_includes = 
+  let all_external_includes =
     if needs_unix_trans && not (List.mem "+unix" external_includes) then
       "+unix" :: external_includes
-    else
-      external_includes
+    else external_includes
   in
   (* Combine all include paths *)
   let dep_includes = all_external_includes @ local_dep_includes in
@@ -213,24 +212,28 @@ let generate_actions ~graph ~node ~toolchain ~package ~srcs ~deps =
     in
     let all_dep_nodes =
       List.concat_map (collect_all_deps []) deps
-      |> List.rev  (* Reverse to get dependencies before dependents *)
-      |> List.fold_left (fun acc node ->
-          if List.exists (fun n -> n.Build_node.package.name = node.Build_node.package.name) acc then
-            acc  (* Already in list, skip duplicate *)
-          else
-            node :: acc) []  (* Add unique nodes *)
-      |> List.rev  (* Reverse back to get correct order: dependencies first *)
+      |> List.rev (* Reverse to get dependencies before dependents *)
+      |> List.fold_left
+           (fun acc node ->
+             if
+               List.exists
+                 (fun n ->
+                   n.Build_node.package.name = node.Build_node.package.name)
+                 acc
+             then acc (* Already in list, skip duplicate *)
+             else node :: acc)
+           [] (* Add unique nodes *)
+      |> List.rev (* Reverse back to get correct order: dependencies first *)
     in
     let dep_libs =
       List.map (fun dep -> dep.Build_node.package.name ^ ".cma") all_dep_nodes
     in
     (* Check if we need to add unix.cma transitively *)
     let needs_unix = needs_unix_transitively ~graph ~node in
-    let all_external_libs = 
+    let all_external_libs =
       if needs_unix && not (List.mem "unix.cma" external_libs) then
         "unix.cma" :: external_libs
-      else
-        external_libs
+      else external_libs
     in
     let all_libs = all_external_libs @ dep_libs in
     actions :=
@@ -310,8 +313,8 @@ let plan_node ~graph ~node ~build_results () =
     (* Step 2: All deps are planned, we can proceed *)
     (* Step 3: Generate outputs and actions based on sources, deps, and package *)
     let outs, actions =
-      generate_actions ~graph ~node ~toolchain:node.toolchain ~package:node.package
-        ~srcs:node.srcs ~deps:dep_nodes
+      generate_actions ~graph ~node ~toolchain:node.toolchain
+        ~package:node.package ~srcs:node.srcs ~deps:dep_nodes
     in
 
     (* Step 4: Compute SHA512 hash of everything *)

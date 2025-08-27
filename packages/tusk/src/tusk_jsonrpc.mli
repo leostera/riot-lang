@@ -70,12 +70,21 @@ module TuskProtocol : sig
     | BuildGraph of build_graph_response
     | WorkspaceConfig of workspace_config
     | PackageInfo of package_detail
-    | BuildStarted of { session_id : Session_id.t }
-    | BuildEvent of { session_id : Session_id.t; log_event : Log.log_event }
-    | CycleDetected of { session_id : Session_id.t; cycle_nodes : string list }
-    | BuildComplete of { session_id : Session_id.t; stats : build_stats }
+    | BuildStarted of { session_id : Session_id.t; started_at : Datetime.t }
+    | BuildEvent of { session_id : Session_id.t; event : Event.t }
+    | CycleDetected of {
+        session_id : Session_id.t;
+        detected_at : Datetime.t;
+        cycle_nodes : string list;
+      }
+    | BuildComplete of {
+        session_id : Session_id.t;
+        completed_at : Datetime.t;
+        stats : build_stats;
+      }
     | BuildFailed of {
         session_id : Session_id.t;
+        failed_at : Datetime.t;
         stats : build_stats;
         error : string;
       }
@@ -104,7 +113,7 @@ module Client : sig
   (** Streaming build event *)
   type streaming_event =
     | BuildStarted of Session_id.t
-    | BuildEvent of Log.log_event
+    | BuildEvent of Event.t
     | BuildFinished of (unit, string) result
 
   (** Build request type *)

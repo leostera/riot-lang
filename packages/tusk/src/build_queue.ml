@@ -85,7 +85,7 @@ let mark_as_completed t node ~artifact =
   Hashtbl.remove t.busy_tasks node_id;
   (* Mark as completed in build results *)
   Build_results.mark_completed t.build_results node artifact;
-  
+
   (* Move everything from later queue back to ready queue for re-checking *)
   Queue.transfer t.later_queue t.ready_queue
 

@@ -61,7 +61,9 @@ and handle_scan_workspace state client_pid current_dir =
   (* Send build completed to signal scan is done *)
   (* For scan workspace, we don't have a build session *)
   send client_pid
-    (ServerResponse (BuildCompleted { session_id = Session_id.make () }));
+    (ServerResponse
+       (BuildCompleted
+          { session_id = Session_id.make (); completed_At = Datetime.now () }));
   loop new_state
 
 (** Handler for getting workspace configuration. *)
@@ -173,17 +175,19 @@ and handle_build state client_pid target session_id_opt =
         in
 
         (* Send BuildStarted response with session_id *)
-        send client_pid (ServerResponse (BuildStarted { session_id }));
+        send client_pid
+          (ServerResponse
+             (BuildStarted { session_id; started_at = Datetime.now () }));
 
         (* 1. on every build we refresh the workspace *)
-        Log.workspace_scanning ~sid:session_id ();
+        Log.workspace_scanning ~session_id ();
         let workspace_start = Global.time_ms () in
         let workspace =
           Workspace_manager.scan state.workspace.root
           |> Std.Result.expect ~msg:"tusk_server: operation failed"
         in
         let workspace_duration = Global.time_ms () - workspace_start in
-        Log.workspace_scanned ~sid:session_id 
+        Log.workspace_scanned ~session_id
           ~packages:(List.length workspace.packages)
           ~duration_ms:workspace_duration;
         Printf.eprintf "Server: Workspace scanned, found %d packages\n"
@@ -191,13 +195,12 @@ and handle_build state client_pid target session_id_opt =
         flush stderr;
 
         (* 2. recreate the build graph from the refreshed workspace *)
-        Log.build_graph_creating ~sid:session_id ();
+        Log.build_graph_creating ~session_id ();
         let graph_start = Global.time_ms () in
         let fresh_build_graph = Build_graph.create workspace state.toolchain in
         let graph_duration = Global.time_ms () - graph_start in
         let node_count = Build_graph.size fresh_build_graph in
-        Log.build_graph_created ~sid:session_id 
-          ~nodes:node_count
+        Log.build_graph_created ~session_id ~nodes:node_count
           ~duration_ms:graph_duration;
 
         (* 3. compute and queue the target build graph (this could be the whole build graph or a subset) *)
@@ -221,10 +224,14 @@ and handle_build state client_pid target session_id_opt =
 
             (* Send cycle detected event to client *)
             send client_pid
-              (ServerResponse (CycleDetected { session_id; cycle_nodes }));
+              (ServerResponse
+                 (CycleDetected
+                    { session_id; cycle_nodes; detected_at = Datetime.now () }));
 
             (* Send build completed event to properly finish the build *)
-            send client_pid (ServerResponse (BuildCompleted { session_id }));
+            send client_pid
+              (ServerResponse
+                 (BuildCompleted { session_id; completed_At = Datetime.now () }));
 
             (* Exit the build process since we can't proceed *)
             Ok ()
@@ -239,9 +246,8 @@ and handle_build state client_pid target session_id_opt =
             in
             let total_modules = 0 in
             (* TODO: Count actual modules when available *)
-            Log.log ~sid:session_id
-              (Log.BuildStarted
-                 { packages; total_modules; workers = state.workers });
+            Log.build_started ~session_id ~packages ~total_modules
+              ~workers:state.workers;
 
             (* Create fresh build_results and build_queue for this build request *)
             let build_results = Build_results.create () in
@@ -259,9 +265,7 @@ and handle_build state client_pid target session_id_opt =
             flush stderr;
 
             (* Debug: Check queue state *)
-            let ready, waiting, busy =
-              Build_queue.get_stats build_queue
-            in
+            let ready, waiting, busy = Build_queue.get_stats build_queue in
             Printf.eprintf
               "Server: Queue state - Ready: %d, Waiting: %d, Busy: %d\n" ready
               waiting busy;
@@ -271,8 +275,8 @@ and handle_build state client_pid target session_id_opt =
             let store = Store.create ~workspace in
             let worker_pool =
               Worker_pool.start ~workers:state.workers ~provider:(self ())
-                ~build_graph:target_graph ~build_results
-                ~workspace ~store ~worker_fn:Build_worker.main ()
+                ~build_graph:target_graph ~build_results ~workspace ~store
+                ~worker_fn:Build_worker.main ()
             in
 
             (* Track build statistics *)
@@ -297,8 +301,7 @@ and handle_build state client_pid target session_id_opt =
                 | Worker_pool_types.TaskCompleted { worker; node; artifact } ->
                     let pkg_name = node.Build_node.package.name in
                     Printf.eprintf "[DEBUG] Task completed: %s\n" pkg_name;
-                    Build_queue.mark_as_completed build_queue node
-                      ~artifact;
+                    Build_queue.mark_as_completed build_queue node ~artifact;
                     succeeded := pkg_name :: !succeeded;
                     Printf.eprintf "[DEBUG] Marked %s as completed\n" pkg_name;
 
@@ -333,13 +336,12 @@ and handle_build state client_pid target session_id_opt =
                             node.Build_node.package.name;
                           flush stderr;
                           (* Create simple task with just node and session *)
-                          let task =
-                            Worker_pool_types.{ node; session_id = Some session_id }
-                          in
+                          let task = Worker_pool_types.{ node; session_id } in
                           Worker_pool.send_task worker task
                     in
                     build_loop ()
-                | Worker_pool_types.RequeueWithDependencies { worker; node; deps } ->
+                | Worker_pool_types.RequeueWithDependencies
+                    { worker; node; deps } ->
                     let pkg_name = node.Build_node.package.name in
                     let dep_names =
                       List.map (fun d -> d.Build_node.package.name) deps
@@ -369,16 +371,12 @@ and handle_build state client_pid target session_id_opt =
               ~finally:(fun () ->
                 (* Log build complete event *)
                 let duration_ms = Global.time_ms () - build_start_time in
-                Log.log ~sid:session_id
-                  (Log.BuildComplete
-                     {
-                       duration_ms;
-                       results = [];
-                       (* TODO: Get actual results from build_results *)
-                       succeeded = List.rev !succeeded;
-                       failed = List.rev !failed;
-                     });
-                send client_pid (ServerResponse (BuildCompleted { session_id })))
+                (* TODO: Get actual results from build_results *)
+                Log.build_complete ~session_id ~duration_ms ~results:[];
+                send client_pid
+                  (ServerResponse
+                     (BuildCompleted
+                        { session_id; completed_At = Datetime.now () })))
               (fun () -> build_loop ());
             Ok ())
   in
