@@ -212,10 +212,7 @@ let display = function
 
 (** Convert to human-readable string with timestamp *)
 let to_string event =
-  let tm = Datetime.localtime (Datetime.to_float event.timestamp) in
-  let timestamp =
-    Printf.sprintf "%02d:%02d:%02d" tm.tm_hour tm.tm_min tm.tm_sec
-  in
+  let timestamp = Datetime.to_iso8601 event.timestamp in
   let level_str =
     match event.level with
     | Error -> "[ERROR]"
@@ -412,8 +409,7 @@ let kind_to_json = function
 
 (** Convert event to JSON *)
 let to_json event =
-  let tm = Datetime.localtime (Datetime.to_float event.timestamp) in
-  let timestamp = Printf.sprintf "%02d:%02d:%02d" tm.tm_hour tm.tm_min tm.tm_sec in
+  let timestamp = Datetime.to_iso8601 event.timestamp in
   Json.Object [
     ("timestamp", Json.String timestamp);
     ("session_id", Json.String (Session_id.to_string event.session_id));

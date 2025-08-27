@@ -943,12 +943,8 @@ let rpc_command args =
     let callback = function
       | Tusk_jsonrpc.Client.BuildStarted sid ->
           session_id := Some sid;
-          let tm =
-            Std.Datetime.localtime (Std.Datetime.to_float (Std.Datetime.now ()))
-          in
-          let timestamp =
-            Printf.sprintf "%02d:%02d:%02d" tm.tm_hour tm.tm_min tm.tm_sec
-          in
+          let dt = Std.Datetime.now () in
+          let timestamp = Std.Datetime.to_iso8601 dt in
           let json =
             Json.Object
               [

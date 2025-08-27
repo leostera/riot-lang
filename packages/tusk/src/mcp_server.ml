@@ -54,20 +54,19 @@ let init_logging () =
   let oc = open_out_gen [ Open_creat; Open_append; Open_text ] 0o644 log_path in
   log_file := Some oc;
   (* Write startup message *)
-  let timestamp = Std.gettimeofday () in
-  let tm = Std.Datetime.localtime timestamp in
+  let dt = Std.Datetime.now () in
+  let iso = Std.Datetime.to_iso8601 dt in
   Printf.fprintf oc
-    "\n===== MCP Server Started: %04d-%02d-%02d %02d:%02d:%02d =====\n"
-    (tm.tm_year + 1900) (tm.tm_mon + 1) tm.tm_mday tm.tm_hour tm.tm_min
-    tm.tm_sec;
+    "\n===== MCP Server Started: %s =====\n"
+    iso;
   flush oc
 
 let log msg =
   match !log_file with
   | Some oc ->
-      let timestamp = Std.gettimeofday () in
-      let tm = Std.Datetime.localtime timestamp in
-      Printf.fprintf oc "[%02d:%02d:%02d] %s\n" tm.tm_hour tm.tm_min tm.tm_sec
+      let dt = Std.Datetime.now () in
+      let timestamp = Std.Datetime.to_iso8601 dt in
+      Printf.fprintf oc "[%s] %s\n" timestamp
         msg;
       flush oc
   | None -> ()

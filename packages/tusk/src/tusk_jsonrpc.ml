@@ -1068,8 +1068,7 @@ module TuskProtocol = struct
                    graph.nodes) );
           ]
     | BuildStarted { session_id; started_at } ->
-        let tm = Std.Datetime.localtime (Std.Datetime.to_float started_at) in
-        let timestamp = Printf.sprintf "%02d:%02d:%02d" tm.tm_hour tm.tm_min tm.tm_sec in
+        let timestamp = Std.Datetime.to_iso8601 started_at in
         Json.Object
           [
             ("type", Json.String "build_started");
@@ -1077,8 +1076,7 @@ module TuskProtocol = struct
             ("started_at", Json.String timestamp);
           ]
     | CycleDetected { session_id; detected_at; cycle_nodes } ->
-        let tm = Std.Datetime.localtime (Std.Datetime.to_float detected_at) in
-        let timestamp = Printf.sprintf "%02d:%02d:%02d" tm.tm_hour tm.tm_min tm.tm_sec in
+        let timestamp = Std.Datetime.to_iso8601 detected_at in
         Json.Object
           [
             ("type", Json.String "cycle_detected");
@@ -1095,8 +1093,7 @@ module TuskProtocol = struct
             ("event_data", Event.to_json event);
           ]
     | BuildComplete { session_id; completed_at; stats } ->
-        let tm = Std.Datetime.localtime (Std.Datetime.to_float completed_at) in
-        let timestamp = Printf.sprintf "%02d:%02d:%02d" tm.tm_hour tm.tm_min tm.tm_sec in
+        let timestamp = Std.Datetime.to_iso8601 completed_at in
         Json.Object
           [
             ("type", Json.String "build_complete");
@@ -1110,8 +1107,7 @@ module TuskProtocol = struct
             ("cache_misses", Json.Int stats.cache_misses);
           ]
     | BuildFailed { session_id; failed_at; stats; error } ->
-        let tm = Std.Datetime.localtime (Std.Datetime.to_float failed_at) in
-        let timestamp = Printf.sprintf "%02d:%02d:%02d" tm.tm_hour tm.tm_min tm.tm_sec in
+        let timestamp = Std.Datetime.to_iso8601 failed_at in
         Json.Object
           [
             ("type", Json.String "build_failed");
