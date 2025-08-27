@@ -37,6 +37,9 @@ val filter_for_package : t -> string -> t
 (** Filter the graph to include only the target package and its dependencies.
     Creates a new graph containing only the necessary nodes. *)
 
+val size : t -> int
+(** Get the number of nodes in the build graph. *)
+
 (** {1 Graph Visualization} *)
 
 val print : t -> unit

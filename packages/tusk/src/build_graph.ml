@@ -216,6 +216,8 @@ let print graph =
 
 (** Create a filtered build graph containing only a package and its dependencies
 *)
+let size graph = Hashtbl.length graph.nodes
+
 let filter_for_package graph target_pkg_name =
   match Hashtbl.find_opt graph.nodes target_pkg_name with
   | None ->

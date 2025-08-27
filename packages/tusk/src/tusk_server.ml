@@ -176,16 +176,29 @@ and handle_build state client_pid target session_id_opt =
         send client_pid (ServerResponse (BuildStarted { session_id }));
 
         (* 1. on every build we refresh the workspace *)
+        Log.workspace_scanning ~sid:session_id ();
+        let workspace_start = Global.time_ms () in
         let workspace =
           Workspace_manager.scan state.workspace.root
           |> Std.Result.expect ~msg:"tusk_server: operation failed"
         in
+        let workspace_duration = Global.time_ms () - workspace_start in
+        Log.workspace_scanned ~sid:session_id 
+          ~packages:(List.length workspace.packages)
+          ~duration_ms:workspace_duration;
         Printf.eprintf "Server: Workspace scanned, found %d packages\n"
           (List.length workspace.packages);
         flush stderr;
 
         (* 2. recreate the build graph from the refreshed workspace *)
+        Log.build_graph_creating ~sid:session_id ();
+        let graph_start = Global.time_ms () in
         let fresh_build_graph = Build_graph.create workspace state.toolchain in
+        let graph_duration = Global.time_ms () - graph_start in
+        let node_count = Build_graph.size fresh_build_graph in
+        Log.build_graph_created ~sid:session_id 
+          ~nodes:node_count
+          ~duration_ms:graph_duration;
 
         (* 3. compute and queue the target build graph (this could be the whole build graph or a subset) *)
         let target_graph =

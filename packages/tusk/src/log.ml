@@ -55,6 +55,10 @@ type log_event =
   | ServerRestarted of { packages : int; toolchain : string }
   | ServerShutdown
   | WorkspaceEmpty (* No packages found in workspace *)
+  | WorkspaceScanning (* Starting workspace scan *)
+  | WorkspaceScanned of { packages : int; duration_ms : int }
+  | BuildGraphCreating (* Starting build graph creation *)  
+  | BuildGraphCreated of { nodes : int; duration_ms : int }
   (* Build queue events *)
   | QueuePackage of { package : string; queue_type : [ `Ready | `Waiting ] }
   | QueueStats of { ready : int; waiting : int; busy : int }
@@ -111,6 +115,10 @@ let event_name = function
   | ServerScanning _ -> "tusk.server.scanning"
   | ServerRestarted _ -> "tusk.server.restarted"
   | WorkspaceEmpty -> "tusk.workspace.empty"
+  | WorkspaceScanning -> "tusk.workspace.scanning"
+  | WorkspaceScanned _ -> "tusk.workspace.scanned"
+  | BuildGraphCreating -> "tusk.build_graph.creating"
+  | BuildGraphCreated _ -> "tusk.build_graph.created"
   | ServerShutdown -> "tusk.server.shutdown"
   | QueuePackage _ -> "tusk.build.queue.package"
   | QueueStats _ -> "tusk.build.queue.stats"
@@ -140,7 +148,9 @@ let level_debug = Debug
 let event_level = function
   | BuildStarted _ | BuildComplete _ | PackageStarted _ | PackageComplete _
   | CacheHit _ | CacheMiss _ | ServerStarted _ | ServerRestarted _
-  | WorkspaceEmpty | CompilingInterface _ | CompilingImplementation _
+  | WorkspaceEmpty | WorkspaceScanning | WorkspaceScanned _ 
+  | BuildGraphCreating | BuildGraphCreated _
+  | CompilingInterface _ | CompilingImplementation _
   | LinkingLibrary _ | LinkingExecutable _ | HashComputed _ ->
       level_info
   | CompileError _ -> level_error
@@ -189,6 +199,12 @@ let event_message = function
       Printf.sprintf "Server restarted with %d packages (toolchain: %s)"
         packages toolchain
   | WorkspaceEmpty -> "No packages found in workspace"
+  | WorkspaceScanning -> "Scanning workspace..."
+  | WorkspaceScanned { packages; duration_ms } ->
+      Printf.sprintf "Scanned workspace: %d packages in %dms" packages duration_ms
+  | BuildGraphCreating -> "Creating build graph..."
+  | BuildGraphCreated { nodes; duration_ms } ->
+      Printf.sprintf "Created build graph: %d nodes in %dms" nodes duration_ms
   | ServerShutdown -> "Server shutting down"
   | QueuePackage { package; queue_type } ->
       let typ =
@@ -370,6 +386,10 @@ let event_to_cargo_string = function
   | ServerScanning _ -> ""
   | ServerRestarted _ -> ""
   | WorkspaceEmpty -> "    No packages found in workspace"
+  | WorkspaceScanning -> ""  (* Don't show in cargo style *)
+  | WorkspaceScanned _ -> ""  (* Don't show in cargo style *)
+  | BuildGraphCreating -> ""  (* Don't show in cargo style *)
+  | BuildGraphCreated _ -> ""  (* Don't show in cargo style *)
   | ServerShutdown -> ""
   | QueuePackage _ -> "" (* Don't show queue info in Cargo style *)
   | QueueStats _ -> ""
@@ -581,6 +601,16 @@ let server_restarted ?sid ~packages ~toolchain =
   log ?sid (ServerRestarted { packages; toolchain })
 
 let workspace_empty ?sid () = log ?sid WorkspaceEmpty
+
+let workspace_scanning ?sid () = log ?sid WorkspaceScanning
+
+let workspace_scanned ?sid ~packages ~duration_ms =
+  log ?sid (WorkspaceScanned { packages; duration_ms })
+
+let build_graph_creating ?sid () = log ?sid BuildGraphCreating
+
+let build_graph_created ?sid ~nodes ~duration_ms =
+  log ?sid (BuildGraphCreated { nodes; duration_ms })
 let server_shutdown ?sid () = log ?sid ServerShutdown
 
 (** Queue event logging *)

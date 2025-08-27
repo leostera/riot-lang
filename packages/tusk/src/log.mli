@@ -64,7 +64,11 @@ type log_event =
   | ServerScanning of { root : string }
   | ServerRestarted of { packages : int; toolchain : string }
   | ServerShutdown
-  | WorkspaceEmpty (* No packages found in workspace *)
+  | WorkspaceEmpty
+  | WorkspaceScanning
+  | WorkspaceScanned of { packages : int; duration_ms : int }
+  | BuildGraphCreating
+  | BuildGraphCreated of { nodes : int; duration_ms : int }
   (* Build queue events *)
   | QueuePackage of { package : string; queue_type : [ `Ready | `Waiting ] }
   | QueueStats of { ready : int; waiting : int; busy : int }
@@ -150,6 +154,10 @@ val server_restarted :
   ?sid:session_id -> packages:int -> toolchain:string -> unit
 
 val workspace_empty : ?sid:session_id -> unit -> unit
+val workspace_scanning : ?sid:session_id -> unit -> unit
+val workspace_scanned : ?sid:session_id -> packages:int -> duration_ms:int -> unit
+val build_graph_creating : ?sid:session_id -> unit -> unit
+val build_graph_created : ?sid:session_id -> nodes:int -> duration_ms:int -> unit
 val server_shutdown : ?sid:session_id -> unit -> unit
 
 val queue_package :
