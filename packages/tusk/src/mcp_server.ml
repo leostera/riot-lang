@@ -321,11 +321,11 @@ module McpProtocol = struct
     | Initialize _ -> { Jsonrpc.method_ = "initialize"; params = NoParams }
     | ToolsList -> { Jsonrpc.method_ = "tools/list"; params = NoParams }
     | ToolsCall { name; arguments } ->
-        let params = Json.Object [
-          ("name", Json.String name);
-          ("arguments", Option.value ~default:Json.Null arguments);
-        ] in
-        { Jsonrpc.method_ = "tools/call"; params = Named [("params", params)] }
+        { Jsonrpc.method_ = "tools/call"; 
+          params = Named [
+            ("name", Json.String name);
+            ("arguments", Option.value ~default:Json.Null arguments);
+          ] }
 
   let request_of_params method_ params =
     match method_ with
@@ -339,14 +339,11 @@ module McpProtocol = struct
     | "tools/call" -> (
         match params with
         | Jsonrpc.Named fields -> (
-            match List.assoc_opt "params" fields with
-            | Some (Json.Object p) -> (
-                match List.assoc_opt "name" p with
-                | Some (Json.String name) ->
-                    let arguments = List.assoc_opt "arguments" p in
-                    Std.Result.Ok (ToolsCall { name; arguments })
-                | _ -> Std.Result.Error (Json.String "Missing tool name"))
-            | _ -> Std.Result.Error (Json.String "Invalid tools/call parameters"))
+            match List.assoc_opt "name" fields with
+            | Some (Json.String name) ->
+                let arguments = List.assoc_opt "arguments" fields in
+                Std.Result.Ok (ToolsCall { name; arguments })
+            | _ -> Std.Result.Error (Json.String "Missing tool name"))
         | _ -> Std.Result.Error (Json.String "Invalid tools/call parameters"))
     | _ -> Std.Result.Error (Json.String (Printf.sprintf "Unknown method: %s" method_))
 end
