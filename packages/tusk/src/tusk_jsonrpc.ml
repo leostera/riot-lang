@@ -1158,16 +1158,10 @@ module TuskProtocol = struct
               | Some event_json -> (
                   match Event.from_json event_json with
                   | Ok evt -> evt
-                  | Error _ ->
-                      (* Fallback to a default event *)
-                      Event.create ~session_id ~level:Info
-                        (Event.BuildStarted
-                           { packages = []; total_modules = 0; workers = 0 }))
-              | None ->
-                  (* Fallback to a default event *)
-                  Event.create ~session_id ~level:Info
-                    (Event.BuildStarted
-                       { packages = []; total_modules = 0; workers = 0 })
+                  | Error err ->
+                      failwith
+                        (Printf.sprintf "Failed to parse event_data: %s" err))
+              | None -> failwith "Missing event_data field in BuildEvent"
             in
             Ok (BuildEvent { session_id; event })
         | Some (Json.String "cycle_detected") ->

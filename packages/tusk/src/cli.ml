@@ -7,19 +7,19 @@ open Std.Data
 let format_cargo_event (event : Event.t) =
   match event.kind with
   | PackageStarted { package } ->
-      Printf.sprintf "   [1;32mCompiling[0m %s" package
+      Printf.sprintf "   \027[1;32mCompiling\027[0m %s" package
   | PackageComplete { package; success; _ } ->
       if success then "" (* Already shown as "Compiling" *)
-      else Printf.sprintf "   [1;31mFailed[0m %s" package
+      else Printf.sprintf "   \027[1;31mFailed\027[0m %s" package
   | CacheHit { package; _ } ->
-      Printf.sprintf "   [1;32mCompiling[0m %s (cached)" package
-  | CompileError { message; _ } -> Printf.sprintf "[1;31merror[0m: %s" message
+      Printf.sprintf "   \027[1;32mCompiling\027[0m %s (cached)" package
+  | CompileError { message; _ } -> Printf.sprintf "\027[1;31merror\027[0m: %s" message
   | BuildComplete { duration_ms; succeeded; failed; _ } ->
       if List.length failed = 0 then
-        Printf.sprintf "   [1;32mFinished[0m in %.2fs"
+        Printf.sprintf "   \027[1;32mFinished\027[0m in %.2fs"
           (float_of_int duration_ms /. 1000.0)
       else
-        Printf.sprintf "   [1;31mFailed[0m with %d errors" (List.length failed)
+        Printf.sprintf "   \027[1;31mFailed\027[0m with %d errors" (List.length failed)
   | _ -> ""
 
 (** Helper to create a tusk client connected to the local server *)
