@@ -24,34 +24,3 @@ let os_type () = Sys.os_type
 let time () = Unix.time ()
 let gettimeofday () = Unix.gettimeofday ()
 let time_ms () = int_of_float (Unix.gettimeofday () *. 1000.)
-
-(** Date and time utilities *)
-module Datetime = struct
-  let now () = Unix.gettimeofday ()
-  let localtime timestamp = Unix.localtime timestamp
-  let gmtime timestamp = Unix.gmtime timestamp
-end
-
-(** Process status types *)
-module Process = struct
-  type status = Exited of int | Signaled of int | Stopped of int
-
-  let of_unix_status = function
-    | Unix.WEXITED code -> Exited code
-    | Unix.WSIGNALED signal -> Signaled signal
-    | Unix.WSTOPPED signal -> Stopped signal
-end
-
-(** File types *)
-module File = struct
-  type kind = Regular | Directory | Character | Block | Link | Fifo | Socket
-
-  let kind_of_unix = function
-    | Unix.S_REG -> Regular
-    | Unix.S_DIR -> Directory
-    | Unix.S_CHR -> Character
-    | Unix.S_BLK -> Block
-    | Unix.S_LNK -> Link
-    | Unix.S_FIFO -> Fifo
-    | Unix.S_SOCK -> Socket
-end

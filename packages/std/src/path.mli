@@ -49,6 +49,12 @@ val is_absolute : t -> bool
 val is_relative : t -> bool
 (** Check if path is relative *)
 
+val components : t -> t list
+(** Split path into components. For example:
+    - "a/b/c" returns [a; b; c]
+    - "/a/b/c" returns [/; a; b; c]
+    - "a/b/../c" returns [a; b; ..; c] (no normalization) *)
+
 val normalize : t -> t
 (** Normalize a path (remove . and .. components) *)
 

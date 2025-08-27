@@ -127,7 +127,7 @@ let parse_toolchain_file path =
 let is_toolchain_installed toolchain =
   let toolchain_path = get_toolchain_path toolchain in
   let ocamlc = ocamlc_path toolchain in
-  Miniriot.File.exists ~path:toolchain_path && Miniriot.File.exists ~path:ocamlc
+  File_utils.exists ~path:toolchain_path && File_utils.exists ~path:ocamlc
 
 let get_version toolchain = toolchain.version
 
@@ -157,7 +157,7 @@ let build_from_local_source ~source_path ~toolchain_path =
   Printf.printf "Building OCaml from local source: %s...\n%!" source_path;
 
   (* Verify source directory exists *)
-  if not (Miniriot.File.exists ~path:source_path) then
+  if not (File_utils.exists ~path:source_path) then
     failwith (Printf.sprintf "Source directory does not exist: %s" source_path);
 
   (* Configure *)
@@ -202,7 +202,7 @@ let download_source_from_url url =
   ();
 
   (* Check if already cached *)
-  if not (Miniriot.File.exists ~path:cache_path) then (
+  if not (File_utils.exists ~path:cache_path) then (
     Printf.printf "Downloading OCaml from %s...\n%!" url;
 
     (* Download to cache *)
@@ -266,7 +266,7 @@ let download_ocaml_source version =
   ();
 
   (* Check if already cached *)
-  if not (Miniriot.File.exists ~path:cache_path) then (
+  if not (File_utils.exists ~path:cache_path) then (
     Printf.printf "Downloading OCaml %s from %s...\n%!" version url;
 
     (* Download to cache *)
@@ -301,9 +301,7 @@ let download_ocaml_source version =
     ]
   in
 
-  match
-    List.find_opt (fun path -> Miniriot.File.exists ~path) possible_dirs
-  with
+  match List.find_opt (fun path -> File_utils.exists ~path) possible_dirs with
   | Some dir -> dir
   | None -> failwith "Could not find extracted OCaml source directory"
 
@@ -318,9 +316,9 @@ let install_dev_tools toolchain =
   let ocamlformat = Filename.concat bin_dir "ocamlformat" in
 
   if
-    Miniriot.File.exists ~path:ocamllsp
-    && Miniriot.File.exists ~path:odoc
-    && Miniriot.File.exists ~path:ocamlformat
+    File_utils.exists ~path:ocamllsp
+    && File_utils.exists ~path:odoc
+    && File_utils.exists ~path:ocamlformat
   then
     Printf.printf "Development tools already installed for toolchain %s\n%!"
       toolchain.version
@@ -467,7 +465,7 @@ let ready_toolchains workspace =
       "ocaml-toolchain.toml"
   in
   let toolchain =
-    if Miniriot.File.exists ~path:toolchain_file then
+    if File_utils.exists ~path:toolchain_file then
       parse_toolchain_file toolchain_file
     else default_toolchain
   in
@@ -492,9 +490,9 @@ let ready_toolchains workspace =
 
      if
        not
-         (Miniriot.File.exists ~path:ocamllsp
-         && Miniriot.File.exists ~path:odoc
-         && Miniriot.File.exists ~path:ocamlformat)
+         (File_utils.exists ~path:ocamllsp
+         && File_utils.exists ~path:odoc
+         && File_utils.exists ~path:ocamlformat)
      then (
        Printf.printf "Development tools missing. Installing...\n%!";
        install_dev_tools toolchain));
@@ -505,7 +503,7 @@ let ready_toolchains workspace =
 (** Validate that a toolchain is working *)
 let validate_toolchain toolchain =
   let ocamlc = ocamlc_path toolchain in
-  if not (Miniriot.File.exists ~path:ocamlc) then false
+  if not (File_utils.exists ~path:ocamlc) then false
   else
     (* Try to run ocamlc -version *)
     let cmd = Printf.sprintf "%s -version" ocamlc in
@@ -514,7 +512,7 @@ let validate_toolchain toolchain =
 
 (** List installed toolchains *)
 let list_installed_toolchains () =
-  if Miniriot.File.exists ~path:toolchain_base_dir then
+  if File_utils.exists ~path:toolchain_base_dir then
     (match
        Fs.readdir
          (Path.of_string toolchain_base_dir
@@ -532,7 +530,7 @@ let list_installed_toolchains () =
         | Ok b -> b
         | Error _ -> false)
     |> List.filter (fun path ->
-        Miniriot.File.exists ~path:(Filename.concat path "bin/ocamlc"))
+        File_utils.exists ~path:(Filename.concat path "bin/ocamlc"))
     |> List.map Filename.basename
   else []
 
@@ -567,8 +565,7 @@ end [@test]
 (** Hash a toolchain - hashes the compiler binary *)
 let hash toolchain =
   let compiler_path = ocamlc_path toolchain in
-  if Miniriot.File.exists ~path:compiler_path then
-    Hasher.hash_file compiler_path
+  if File_utils.exists ~path:compiler_path then Hasher.hash_file compiler_path
   else
     (* If compiler doesn't exist, hash the version string as fallback *)
     Hasher.hash_string toolchain.version

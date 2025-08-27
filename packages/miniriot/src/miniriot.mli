@@ -61,7 +61,6 @@ module Process : sig
   val has_messages : t -> bool
   (** Check if process has messages in its mailbox *)
 
-
   val send_message : t -> Message.t -> unit
   (** Send a message to the process *)
 
@@ -75,7 +74,8 @@ module Process : sig
   val get_ready_token : t -> (Std_sys.IO.Token.t * Std_sys.IO.Source.t) option
   (** Get a ready I/O token if available *)
 
-  val consume_ready_tokens : t -> (Std_sys.IO.Token.t * Std_sys.IO.Source.t -> unit) -> unit
+  val consume_ready_tokens :
+    t -> (Std_sys.IO.Token.t * Std_sys.IO.Source.t -> unit) -> unit
   (** Consume all ready tokens with the given function *)
 end
 
@@ -85,6 +85,7 @@ val send : Pid.t -> Message.t -> unit
 val yield : unit -> unit
 val receive : selector:(Message.t -> [ `select of 'a | `skip ]) -> unit -> 'a
 val receive_any : unit -> Message.t
+
 val syscall :
   ?timeout:float ->
   name:string ->
@@ -92,7 +93,9 @@ val syscall :
   source:Std_sys.IO.Source.t ->
   (unit -> 'a) ->
   'a
+
 val run : main:(unit -> (unit, Process.exit_reason) result) -> int
+
 val enable_trace : unit -> unit
 (** Enable debug tracing *)
 

@@ -49,6 +49,7 @@ type log_event =
   | PackageStarted of { package : string }
   | PackageComplete of build_result
   | CompileError of build_error
+  | CycleDetected of { packages : string list }
   (* Cache events *)
   | CacheHit of { package : string; hash : string }
   | CacheMiss of { package : string; hash : string }

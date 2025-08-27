@@ -4,13 +4,18 @@ type artifact = { hash : Hasher.hash; files : string list }
 type t = { root_dir : string (* Root directory for the store *) }
 type error = string
 
-(** Create a new store at the given root directory *)
-let create ~root_dir =
+(** Create a new store for the given workspace *)
+let create ~(workspace : Workspace.t) =
+  let root = Std.Path.to_string workspace.root in
   let store_dir =
-    Filename.concat (Filename.concat root_dir "target/debug") "cache"
+    Filename.concat (Filename.concat root "target/debug") "cache"
   in
   (* Create store directory if it doesn't exist *)
-  let _ = Miniriot.File.mkdirp ~path:store_dir ~perm:0o755 in
+  let _ =
+    File_utils.mkdirp ~path:store_dir ~perm:0o755
+    |> Std.Result.expect
+         ~msg:(Printf.sprintf "Failed to create store directory: %s" store_dir)
+  in
   { root_dir = store_dir }
 
 (** Get the path for a given hash in the store *)
@@ -20,13 +25,13 @@ let get_hash_dir store hash =
 (** Check if artifacts for a given hash exist in the store *)
 let exists store hash =
   let hash_dir = get_hash_dir store hash in
-  Miniriot.File.exists ~path:hash_dir
+  File_utils.exists ~path:hash_dir
 
 (** List all files in a hash directory *)
 let list_artifacts store hash =
   let hash_dir = get_hash_dir store hash in
-  if Miniriot.File.exists ~path:hash_dir then
-    match Miniriot.File.readdir ~path:hash_dir with
+  if File_utils.exists ~path:hash_dir then
+    match File_utils.readdir ~path:hash_dir with
     | Ok files -> files
     | Error _ -> []
   else []
@@ -34,16 +39,20 @@ let list_artifacts store hash =
 (** Promote artifacts from store to target directory *)
 let promote_from_store store hash target_dir =
   let hash_dir = get_hash_dir store hash in
-  if Miniriot.File.exists ~path:hash_dir then (
+  if File_utils.exists ~path:hash_dir then (
     (* Ensure target directory exists *)
-    let _ = Miniriot.File.mkdirp ~path:target_dir ~perm:0o755 in
-    ();
+    let _ =
+      File_utils.mkdirp ~path:target_dir ~perm:0o755
+      |> Std.Result.expect
+           ~msg:
+             (Printf.sprintf "Failed to create target directory: %s" target_dir)
+    in
 
     (* Copy all files from hash directory to target *)
     let files =
-      match Miniriot.File.readdir ~path:hash_dir with
-      | Ok files -> files
-      | Error _ -> []
+      File_utils.readdir ~path:hash_dir
+      |> Std.Result.expect
+           ~msg:(Printf.sprintf "Failed to read hash directory: %s" hash_dir)
     in
     List.iter
       (fun file ->
@@ -51,8 +60,12 @@ let promote_from_store store hash target_dir =
         let dst = Filename.concat target_dir file in
 
         (* Only copy if it's a file, not directory *)
-        if not (Miniriot.File.is_directory ~path:src) then
-          let _ = Miniriot.File.copy_file ~src ~dst in
+        if not (File_utils.is_directory ~path:src) then
+          let _ =
+            File_utils.copy_file ~src ~dst
+            |> Std.Result.expect
+                 ~msg:(Printf.sprintf "Failed to copy file: %s -> %s" src dst)
+          in
           ())
       files;
     true)
@@ -63,18 +76,26 @@ let store_artifacts store hash sandbox_dir declared_outputs =
   let hash_dir = get_hash_dir store hash in
 
   (* Create hash directory (including parent directories) *)
-  let _ = Miniriot.File.mkdirp ~path:hash_dir ~perm:0o755 in
-  ();
+  let _ =
+    File_utils.mkdirp ~path:hash_dir ~perm:0o755
+    |> Std.Result.expect
+         ~msg:(Printf.sprintf "Failed to create hash directory: %s" hash_dir)
+  in
 
   (* Copy declared outputs to store and track what was actually stored *)
   let stored_files =
     List.fold_left
       (fun acc output_file ->
         let src = Filename.concat sandbox_dir output_file in
-        if Miniriot.File.exists ~path:src then (
+        if File_utils.exists ~path:src then
           let dst = Filename.concat hash_dir output_file in
-          let _ = Miniriot.File.copy_file ~src ~dst in
-          output_file :: acc)
+          let _ =
+            File_utils.copy_file ~src ~dst
+            |> Std.Result.expect
+                 ~msg:
+                   (Printf.sprintf "Failed to store artifact: %s -> %s" src dst)
+          in
+          output_file :: acc
         else acc)
       [] declared_outputs
   in
@@ -90,14 +111,14 @@ let gc_store store ~keep_recent_days =
 (** Get store statistics *)
 let get_stats store =
   let count_files dir =
-    if Miniriot.File.exists ~path:dir then
-      match Miniriot.File.readdir ~path:dir with
+    if File_utils.exists ~path:dir then
+      match File_utils.readdir ~path:dir with
       | Ok subdirs ->
           List.fold_left
             (fun acc subdir ->
               let subdir_path = Filename.concat dir subdir in
-              if Miniriot.File.is_directory ~path:subdir_path then
-                match Miniriot.File.readdir ~path:subdir_path with
+              if File_utils.is_directory ~path:subdir_path then
+                match File_utils.readdir ~path:subdir_path with
                 | Ok files -> acc + List.length files
                 | Error _ -> acc
               else acc)

@@ -15,7 +15,7 @@ type t = {
   toolchain : Toolchains.toolchain;
   package : Workspace.package;
   srcs : Path.t list;
-  deps : t list;
+  mutable deps : Node_id.t list; (* Dependencies as node IDs *)
   mutable spec : spec;
 }
 (** A build node in the dependency graph *)
@@ -32,6 +32,6 @@ type hash_result =
   | MissingDependencies of { node : t; deps : t list }
   | Error of string
 
-val compute_hash : t -> hash_result
+val compute_hash : t -> get_dep:(Node_id.t -> t option) -> hash_result
 (** Force recomputation of hash for a node, ignoring any cached value. Returns
     the newly computed hash. *)

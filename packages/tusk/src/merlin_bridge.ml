@@ -149,7 +149,10 @@ module SexprStdioServer = struct
 end
 
 module MerlinProtocol = struct
+  (* Temporarily disabled - client field depends on disabled Client module
   type t = { client : Tusk_jsonrpc.Client.t; workspace : Workspace.t }
+  *)
+  type t = { workspace : Workspace.t }
 
   type request =
     | File of string (* File path to get config for *)
@@ -199,21 +202,16 @@ module MerlinProtocol = struct
         | Error err -> Error err
         | Ok response -> Ok (response_to_sexpr response))
 
-  let create ~workspace ~client = { client; workspace }
+  let create ~workspace ~client:_ = { workspace }
 end
 
 (** Start the merlin bridge *)
 let start ~workspace =
-  match Server_manager.ensure_running ~workspace with
-  | Error err ->
-      Printf.eprintf "Failed to ensure server running: %s\n"
-        (match err with Error.ScanWorkspaceError -> "ScanWorkspaceError");
-      ()
-  | Ok client -> (
-      let protocol = MerlinProtocol.create ~workspace ~client in
-      let handler sexp = MerlinProtocol.handle_message protocol sexp in
-      let server = SexprStdioServer.create ~handler in
-      match SexprStdioServer.listen server with Ok () -> () | Error _ -> ())
+  (* Server_manager.ensure_running is disabled, so we skip client creation *)
+  let protocol = MerlinProtocol.create ~workspace ~client:() in
+  let handler sexp = MerlinProtocol.handle_message protocol sexp in
+  let server = SexprStdioServer.create ~handler in
+  match SexprStdioServer.listen server with Ok () -> () | Error _ -> ()
 
 (** Main entry point for the merlin bridge executable *)
 let main () =

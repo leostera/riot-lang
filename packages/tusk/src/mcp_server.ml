@@ -4,9 +4,15 @@ open Miniriot
 
 (** Helper to create a tusk client connected to the local server *)
 let create_local_client () =
-  (* TODO: Implement proper daemon discovery *)
-  (* For now, try a default port *)
-  Tusk_jsonrpc.Client.create ~host:"127.0.0.1" ~port:9876
+  (* Get current workspace *)
+  let cwd = Env.current_dir () |> Result.unwrap in
+  match Workspace_manager.scan cwd with
+  | Error _ -> Error "Failed to find workspace"
+  | Ok workspace -> (
+      (* Use Server_manager to ensure server is running and get connected client *)
+      match Server_manager.ensure_running ~workspace with
+      | Ok client -> Ok client
+      | Error _ -> Error "Failed to connect to server")
 
 (** Logging *)
 let log_file = ref None
@@ -21,7 +27,7 @@ let ensure_log_dir () =
   (* Create .tusk directory if it doesn't exist *)
   let tusk_dir = Filename.concat home ".tusk" in
   let () =
-    if not (Miniriot.File.exists ~path:tusk_dir) then
+    if not (File_utils.exists ~path:tusk_dir) then
       let _ =
         Fs.mkdir
           (Path.of_string tusk_dir |> Result.expect ~msg:"Invalid tusk_dir")
@@ -31,7 +37,7 @@ let ensure_log_dir () =
   in
   (* Create logs directory if it doesn't exist *)
   let () =
-    if not (Miniriot.File.exists ~path:log_dir) then
+    if not (File_utils.exists ~path:log_dir) then
       let _ =
         Fs.mkdir
           (Path.of_string log_dir |> Result.expect ~msg:"Invalid log_dir")
@@ -170,6 +176,10 @@ let resources =
 (** Execute a tool *)
 let execute_tool name arguments =
   match name with
+  | "build" ->
+      (* Temporarily disabled - Client module not available *)
+      [ Mcp.Text "Build command is temporarily disabled" ]
+  (* Original build handler commented out
   | "build" -> (
       let package =
         match arguments with
@@ -273,11 +283,12 @@ let execute_tool name arguments =
               log (Printf.sprintf "Build error: %s" e);
               Tusk_jsonrpc.Client.close client;
               [ Mcp.Text (Printf.sprintf "Build failed: %s" e) ]))
+  *)
   | "clean" -> (
       (* Run clean command *)
       let result = Command.system "rm -rf ./target" in
-      match Std.Process.of_unix_status result with
-      | Std.Process.Exited 0 ->
+      match Std.Command.of_unix_status result with
+      | Std.Command.Exited 0 ->
           [ Mcp.Text "Build artifacts cleaned successfully" ]
       | _ -> [ Mcp.Text "Failed to clean build artifacts" ])
   | "workspace_info" -> (
@@ -291,10 +302,26 @@ let execute_tool name arguments =
                 Json.Object
                   [
                     ("workspace_root", Json.String config.workspace_root);
+                    ("target_dir", Json.String config.target_dir);
                     ("toolchain", Json.String config.toolchain);
+                    ("toolchain_path", Json.String config.toolchain_path);
                     ( "packages",
                       Json.Array
-                        (List.map (fun p -> Json.String p) config.packages) );
+                        (List.map
+                           (fun (pkg : Tusk_jsonrpc.TuskProtocol.package_info)
+                              ->
+                             Json.Object
+                               [
+                                 ("name", Json.String pkg.name);
+                                 ("path", Json.String pkg.path);
+                                 ( "dependencies",
+                                   Json.Array
+                                     (List.map
+                                        (fun d -> Json.String d)
+                                        pkg.dependencies) );
+                               ])
+                           config.packages) );
+                    ("total_packages", Json.Int config.total_packages);
                   ]
               in
               Tusk_jsonrpc.Client.close client;
@@ -376,10 +403,26 @@ let read_resource uri =
                 Json.Object
                   [
                     ("workspace_root", Json.String config.workspace_root);
+                    ("target_dir", Json.String config.target_dir);
                     ("toolchain", Json.String config.toolchain);
+                    ("toolchain_path", Json.String config.toolchain_path);
                     ( "packages",
                       Json.Array
-                        (List.map (fun p -> Json.String p) config.packages) );
+                        (List.map
+                           (fun (pkg : Tusk_jsonrpc.TuskProtocol.package_info)
+                              ->
+                             Json.Object
+                               [
+                                 ("name", Json.String pkg.name);
+                                 ("path", Json.String pkg.path);
+                                 ( "dependencies",
+                                   Json.Array
+                                     (List.map
+                                        (fun d -> Json.String d)
+                                        pkg.dependencies) );
+                               ])
+                           config.packages) );
+                    ("total_packages", Json.Int config.total_packages);
                   ]
               in
               Tusk_jsonrpc.Client.close client;

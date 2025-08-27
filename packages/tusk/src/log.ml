@@ -254,8 +254,8 @@ let event_to_string = function
         error.message
   | CycleDetected { packages } ->
       let timestamp = format_timestamp (get_timestamp_ms ()) in
-      Printf.sprintf "[%s] ❌ Circular dependency detected: %s"
-        timestamp (String.concat " -> " packages)
+      Printf.sprintf "[%s] ❌ Circular dependency detected: %s" timestamp
+        (String.concat " -> " packages)
   | CacheHit { package; hash } ->
       let timestamp = format_timestamp (get_timestamp_ms ()) in
       Printf.sprintf "[%s]   ⚡ Cached %s" timestamp package
@@ -354,8 +354,9 @@ let event_to_cargo_string = function
         error.file error.line
         (match error.column with Some c -> string_of_int c | None -> "0")
   | CycleDetected { packages } ->
-      Printf.sprintf "%serror%s: circular dependency detected\n %s" 
-        bold_red reset (String.concat " -> " packages)
+      Printf.sprintf "%serror%s: circular dependency detected\n %s" bold_red
+        reset
+        (String.concat " -> " packages)
   | CacheHit { package; _ } ->
       Printf.sprintf "   %sCompiling%s %s (cached)" bold_green reset package
   | CacheMiss { package; _ } ->

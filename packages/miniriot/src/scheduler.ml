@@ -26,7 +26,8 @@ let create () =
         io_poll;
       }
   | Error err ->
-      Printf.printf "[Scheduler] ERROR: Failed to create Std_sys.IO.Poll: %s\n%!"
+      Printf.printf
+        "[Scheduler] ERROR: Failed to create Std_sys.IO.Poll: %s\n%!"
         (match err with
         | `System_error s -> s
         | `Noop -> "Unknown error"

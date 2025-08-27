@@ -75,6 +75,24 @@ let add_extension path ext =
 
 let is_relative = Filename.is_relative
 
+let components t =
+  if t = "" then []
+  else if t = "/" then [ "/" ]
+  else
+    let parts = String.split_on_char '/' t in
+    let rec build_components acc parts =
+      match parts with
+      | [] -> List.rev acc
+      | "" :: rest when acc = [] ->
+          (* Leading slash means absolute path *)
+          build_components [ "/" ] rest
+      | "" :: rest ->
+          (* Empty component from // in path, skip it *)
+          build_components acc rest
+      | part :: rest -> build_components (part :: acc) rest
+    in
+    build_components [] parts
+
 let rec normalize path =
   let parts = String.split_on_char '/' path in
   let rec process acc = function

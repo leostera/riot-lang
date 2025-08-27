@@ -120,23 +120,23 @@ let execute_action action toolchain =
   | CopyFile { source; destination } -> (
       try
         let content =
-          Miniriot.File.read ~path:source
+          File_utils.read ~path:source
           |> Result.expect ~msg:"Failed to read file"
         in
-        let _ = Miniriot.File.write ~path:destination ~content in
+        let _ = File_utils.write ~path:destination ~content in
         ();
         (Success, Printf.sprintf "Copied %s to %s" source destination)
       with exn -> (Failed (Printexc.to_string exn), ""))
   | WriteFile { destination; content } -> (
       try
-        let _ = Miniriot.File.write ~path:destination ~content in
+        let _ = File_utils.write ~path:destination ~content in
         ();
         (Success, Printf.sprintf "Wrote %s" destination)
       with exn -> (Failed (Printexc.to_string exn), ""))
   | DeclareOutputs { outputs } ->
       (* Just validate that declared outputs exist *)
       let missing =
-        List.filter (fun f -> not (Miniriot.File.exists ~path:f)) outputs
+        List.filter (fun f -> not (File_utils.exists ~path:f)) outputs
       in
       if missing = [] then (Success, "All outputs exist")
       else

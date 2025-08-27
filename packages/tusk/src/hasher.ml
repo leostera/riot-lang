@@ -10,11 +10,15 @@ let hash_string s = Digest.string s |> Digest.to_hex
 (** Hash a file's content using MD5 (async file reading + fast in-memory
     hashing) *)
 let hash_file filepath =
-  if Miniriot.File.exists ~path:filepath then
-    match Miniriot.File.read ~path:filepath with
-    | Ok content -> Digest.string content |> Digest.to_hex
-    | Error _ -> filepath ^ ":missing"
-  else filepath ^ ":missing"
+  match Std.Path.of_string filepath with
+  | Error _ -> filepath ^ ":missing"
+  | Ok path -> (
+      match Std.Fs.file_exists path with
+      | Ok true -> (
+          match Std.Fs.read_file path with
+          | Ok content -> Digest.string content |> Digest.to_hex
+          | Error _ -> filepath ^ ":missing")
+      | Ok false | Error _ -> filepath ^ ":missing")
 
 (** Convert hash to string for storage/display *)
 let to_string hash = hash
@@ -54,9 +58,11 @@ let hash_files paths =
   List.iter
     (fun path ->
       let path_str = Std.Path.to_string path in
-      if Miniriot.File.exists ~path:path_str then
-        let file_hash = hash_file path_str in
-        Buffer.add_string buffer (to_string file_hash))
+      match Std.Fs.file_exists path with
+      | Ok true ->
+          let file_hash = hash_file path_str in
+          Buffer.add_string buffer (to_string file_hash)
+      | Ok false | Error _ -> ())
     paths;
   hash_string (Buffer.contents buffer)
 

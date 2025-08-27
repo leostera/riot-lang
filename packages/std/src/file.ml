@@ -59,8 +59,9 @@ let read ~path =
             if bytes_read = 0 then Ok (Bytes.sub_string buffer 0 pos)
             else read_loop (pos + bytes_read) (remaining - bytes_read)
         | Error `Would_block ->
-            Miniriot.syscall ~name:"File.read" ~interest:Std_sys.IO.Interest.readable
-              ~source (fun () -> read_loop pos remaining)
+            Miniriot.syscall ~name:"File.read"
+              ~interest:Std_sys.IO.Interest.readable ~source (fun () ->
+                read_loop pos remaining)
         | Error e ->
             Unix.close fd;
             Error
@@ -94,8 +95,9 @@ let write ~path ~content =
         | Ok bytes_written ->
             write_loop (pos + bytes_written) (remaining - bytes_written)
         | Error `Would_block ->
-            Miniriot.syscall ~name:"File.write" ~interest:Std_sys.IO.Interest.writable
-              ~source (fun () -> write_loop pos remaining)
+            Miniriot.syscall ~name:"File.write"
+              ~interest:Std_sys.IO.Interest.writable ~source (fun () ->
+                write_loop pos remaining)
         | Error e ->
             Unix.close fd;
             Error

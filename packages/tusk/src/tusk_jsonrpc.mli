@@ -25,16 +25,32 @@ module TuskProtocol : sig
 
   type build_graph_response = { nodes : build_node list }
 
+  type package_info = {
+    name : string;
+    path : string;
+    dependencies : string list;
+  }
+
   type workspace_config = {
     workspace_root : string;
+    target_dir : string;
     toolchain : string;
-    packages : string list;
+    toolchain_path : string;
+    packages : package_info list;
+    total_packages : int;
+  }
+
+  type package_detail = {
+    package : package_info;
+    sources : string list;
+    dependency_names : string list;
   }
 
   type request =
     | Ping
     | GetBuildGraph
     | GetWorkspaceConfig
+    | GetPackageInfo of string
     | BuildPackage of string
     | BuildAll
     | Restart
@@ -53,8 +69,10 @@ module TuskProtocol : sig
     | Pong
     | BuildGraph of build_graph_response
     | WorkspaceConfig of workspace_config
+    | PackageInfo of package_detail
     | BuildStarted of { session_id : Session_id.t }
     | BuildEvent of { session_id : Session_id.t; log_event : Log.log_event }
+    | CycleDetected of { session_id : Session_id.t; cycle_nodes : string list }
     | BuildComplete of { session_id : Session_id.t; stats : build_stats }
     | BuildFailed of {
         session_id : Session_id.t;
@@ -103,6 +121,10 @@ module Client : sig
   val ping : t -> (unit, string) result
   val get_build_graph : t -> (TuskProtocol.build_graph_response, string) result
   val get_workspace_config : t -> (TuskProtocol.workspace_config, string) result
+
+  val get_package_info :
+    t -> string -> (TuskProtocol.package_detail, string) result
+
   val build_package : t -> string -> (TuskProtocol.response, string) result
   val build_all : t -> (TuskProtocol.response, string) result
   val restart : t -> (unit, string) result

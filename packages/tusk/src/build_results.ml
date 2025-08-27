@@ -92,7 +92,7 @@ let sources_newer_than_outputs workspace pkg_name =
   in
   let output_file = Filename.concat target_dir (pkg_name ^ ".cma") in
 
-  if not (Miniriot.File.exists ~path:output_file) then true
+  if not (File_utils.exists ~path:output_file) then true
     (* No outputs, need to build *)
   else
     let output_stat =
@@ -102,7 +102,7 @@ let sources_newer_than_outputs workspace pkg_name =
     in
     let output_mtime = output_stat.st_mtime in
 
-    if Miniriot.File.exists ~path:src_dir then
+    if File_utils.exists ~path:src_dir then
       let files =
         Fs.readdir
           (Path.of_string src_dir |> Result.expect ~msg:"Invalid src_dir")
@@ -119,7 +119,7 @@ let sources_newer_than_outputs workspace pkg_name =
       List.exists
         (fun file ->
           let filepath = Filename.concat src_dir file in
-          if Miniriot.File.exists ~path:filepath then
+          if File_utils.exists ~path:filepath then
             let file_stat =
               Fs.stat
                 (Path.of_string filepath
@@ -140,7 +140,7 @@ let build_outputs_exist workspace pkg_name =
   let cmi_file = Filename.concat pkg_target_dir (pkg_name ^ ".cmi") in
 
   (* Check if key build outputs exist *)
-  Miniriot.File.exists ~path:cma_file && Miniriot.File.exists ~path:cmi_file
+  File_utils.exists ~path:cma_file && File_utils.exists ~path:cmi_file
 
 (** Check if a package is built with the current content hash *)
 let is_built_with_current_hash t pkg current_hash =
@@ -174,7 +174,10 @@ let all_done t =
 (** Mark a node as pending *)
 let mark_pending t node =
   let pkg_name = node.Build_node.package.name in
-  Hashtbl.replace t.results pkg_name NotStarted
+  (* Only mark as pending if not already built - preserve cached builds *)
+  match Hashtbl.find_opt t.results pkg_name with
+  | Some (Built _) -> () (* Already built, don't overwrite *)
+  | _ -> Hashtbl.replace t.results pkg_name NotStarted
 
 (** Mark a node as completed with artifact *)
 let mark_completed t node artifact =

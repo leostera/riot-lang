@@ -1,5 +1,13 @@
 (** Command - OS process spawning and management *)
 
+(** Process status types - for OS processes, not actors *)
+type status = Exited of int | Signaled of int | Stopped of int
+
+let of_unix_status = function
+  | Unix.WEXITED code -> Exited code
+  | Unix.WSIGNALED signal -> Signaled signal
+  | Unix.WSTOPPED signal -> Stopped signal
+
 type t = { pid : int; cmd : string }
 type error = SpawnFailed of string | CommandNotFound of string
 

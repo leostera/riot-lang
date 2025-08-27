@@ -20,7 +20,9 @@ val var : 't var_type -> name:string -> 't option
 val set_var : name:string -> value:string -> 't option
 val vars : unit -> (string * string) list
 
+(* FIXME: remove this one, only use `Env.var` or `Env.vars` *)
 val getenv : string -> (string, [> `EnvVarNotFound of string ]) Result.t
 (** Legacy functions for compatibility *)
 
+(* FIXME: remove this one, only use `Env.set_var` *)
 val putenv : string -> string -> (unit, 'a) Result.t

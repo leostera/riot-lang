@@ -38,7 +38,9 @@ module TcpListener = struct
   type t = Std_sys.IO.Net.TcpListener.t
 
   let bind ?(reuse_addr = true) ?(reuse_port = false) ?(backlog = 128) addr =
-    match Std_sys.IO.Net.TcpListener.bind ~reuse_addr ~reuse_port ~backlog addr with
+    match
+      Std_sys.IO.Net.TcpListener.bind ~reuse_addr ~reuse_port ~backlog addr
+    with
     | Ok t -> Ok t
     | Error
         ( `Noop | `Closed | `Connection_closed | `Eof | `Exn _ | `No_info
@@ -52,8 +54,9 @@ module TcpListener = struct
       | Ok (stream, addr) -> Ok (stream, addr)
       | Error `Would_block ->
           (* Would block, register interest and wait - this suspends the process *)
-          Miniriot.syscall ~name:"TcpListener.accept" ~interest:Std_sys.IO.Interest.readable
-            ~source (fun () -> accept_loop ())
+          Miniriot.syscall ~name:"TcpListener.accept"
+            ~interest:Std_sys.IO.Interest.readable ~source (fun () ->
+              accept_loop ())
       | Error
           ( `Noop | `Closed | `Connection_closed | `Eof | `Exn _ | `No_info
           | `Process_down | `Timeout | `Unix_error _ ) ->
@@ -75,8 +78,8 @@ module TcpStream = struct
       | Ok (`In_progress stream) ->
           (* Connection in progress, wait for writable - this suspends the process *)
           let source = Std_sys.IO.Net.TcpStream.to_source stream in
-          Miniriot.syscall ~name:"TcpStream.connect" ~interest:Std_sys.IO.Interest.writable
-            ~source (fun () -> Ok stream)
+          Miniriot.syscall ~name:"TcpStream.connect"
+            ~interest:Std_sys.IO.Interest.writable ~source (fun () -> Ok stream)
       | Error
           ( `Noop | `Closed | `Connection_closed | `Eof | `Exn _ | `No_info
           | `Process_down | `Timeout | `Unix_error _ | `Would_block ) ->
@@ -96,8 +99,9 @@ module TcpStream = struct
       | Ok bytes_read -> Ok bytes_read
       | Error `Would_block ->
           (* Would block, register interest and wait - this suspends the process *)
-          Miniriot.syscall ~name:"TcpStream.read" ~interest:Std_sys.IO.Interest.readable
-            ~source (fun () -> read_loop ())
+          Miniriot.syscall ~name:"TcpStream.read"
+            ~interest:Std_sys.IO.Interest.readable ~source (fun () ->
+              read_loop ())
       | Error
           ( `Noop | `Closed | `Connection_closed | `Eof | `Exn _ | `No_info
           | `Process_down | `Timeout | `Unix_error _ ) ->
@@ -116,8 +120,9 @@ module TcpStream = struct
       | Ok bytes_written -> Ok bytes_written
       | Error `Would_block ->
           (* Would block, register interest and wait - this suspends the process *)
-          Miniriot.syscall ~name:"TcpStream.write" ~interest:Std_sys.IO.Interest.writable
-            ~source (fun () -> write_loop ())
+          Miniriot.syscall ~name:"TcpStream.write"
+            ~interest:Std_sys.IO.Interest.writable ~source (fun () ->
+              write_loop ())
       | Error
           ( `Noop | `Closed | `Connection_closed | `Eof | `Exn _ | `No_info
           | `Process_down | `Timeout | `Unix_error _ ) ->

@@ -158,14 +158,14 @@ let worker () =
   match receive () with
   | Hello name -> 
       Printf.printf "Hello, %s!\n" name;
-      Process.Normal
-  | _ -> Process.Normal
+      Ok ()
+  | _ -> Ok ()
 
 let main () =
   let worker_pid = spawn worker in
   send worker_pid (Hello "World");
   yield (); (* Let worker run *)
-  Process.Normal
+  Ok ()
 
 let () = run ~main |> exit
 ```
@@ -183,7 +183,7 @@ let server () =
         let result = "Processed: " ^ data in
         send reply_to (Response result);
         loop ()
-    | Exit -> Process.Normal
+    | Exit -> Ok ()
     | _ -> loop ()
   in loop ()
 
@@ -193,8 +193,8 @@ let client server_pid () =
   match receive () with
   | Response result -> 
       Printf.printf "Got: %s\n" result;
-      Process.Normal
-  | _ -> Process.Normal
+      Ok ()
+  | _ -> Ok ()
 ```
 
 #### 3. Build System Pattern (Coordinator/Worker)
@@ -213,7 +213,7 @@ let worker name coordinator_pid () =
         yield (); (* Simulate work *)
         send coordinator_pid (Compiled (file, true));
         loop ()
-    | Exit -> Process.Normal
+    | Exit -> Ok ()
     | _ -> loop ()
   in loop ()
 
@@ -236,7 +236,7 @@ let coordinator files () =
   in
   let results = collect (List.length files) [] in
   List.iter (send) workers Exit; (* Shutdown workers *)
-  Process.Normal
+  Ok ()
 ```
 
 ## Testing Architecture

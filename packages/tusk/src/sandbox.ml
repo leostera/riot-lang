@@ -69,87 +69,103 @@ let create ~node ~(workspace : Workspace.t) =
 let get_sandbox_dir t = t.sandbox_dir
 
 (** Get all transitive dependencies of a node *)
-let rec get_transitive_dependencies node visited =
+let rec get_transitive_dependencies node ~build_graph visited =
   if List.mem node.Build_node.package.name visited then []
   else
     let visited = node.Build_node.package.name :: visited in
-    let direct_deps = node.Build_node.deps in
+    (* Resolve dep IDs to actual nodes *)
+    let direct_deps =
+      List.map (Build_graph.get_node build_graph) node.Build_node.deps
+    in
     let transitive_deps =
       List.concat
         (List.map
-           (fun dep -> get_transitive_dependencies dep visited)
+           (fun dep -> get_transitive_dependencies dep ~build_graph visited)
            direct_deps)
     in
     direct_deps @ transitive_deps
 
 (** Copy dependency artifacts into sandbox *)
-let copy_dependency_artifacts sandbox =
+let copy_dependency_artifacts sandbox ~store ~build_graph ~build_results =
   Printf.printf "[Sandbox] Copying dependency artifacts...\n";
   flush stdout;
 
   (* Get all transitive dependencies *)
-  let all_deps = get_transitive_dependencies sandbox.node [] in
+  let all_deps = get_transitive_dependencies sandbox.node ~build_graph [] in
 
   (* Copy artifacts from each dependency *)
   List.iter
     (fun dep ->
       let dep_name = dep.Build_node.package.name in
-      (* Look in target/debug/out/<relative_path> where the artifacts are stored *)
-      let dep_target_dir =
-        Filename.concat
-          (Filename.concat
-             (Filename.concat (Filename.concat sandbox.root "target") "debug")
-             "out")
-          (Std.Path.to_string dep.Build_node.package.relative_path)
+      (* Check if this dependency has a hash - either from build_results or from its spec *)
+      let dep_hash = 
+        match Build_results.get_status build_results dep_name with
+        | Some (Build_results.Built hash) -> Some hash
+        | _ -> (
+            (* If not marked as Built in build_results, check if the node has a planned spec with hash *)
+            match dep.Build_node.spec with
+            | Build_node.Planned { hash; _ } -> 
+                (* The dependency has been planned and has a hash, artifacts should be in store *)
+                Printf.printf "[Sandbox] Using hash from planned spec for %s\n" dep_name;
+                flush stdout;
+                Some hash
+            | _ -> None
+        )
       in
+      match dep_hash with
+      | Some hash -> (
+          (* Check if artifacts exist in the store *)
+          if Store.exists store hash then (
+            Printf.printf "[Sandbox] Copying artifacts from store for %s (hash: %s)\n"
+              dep_name (Hasher.to_string hash);
+            flush stdout;
 
-      if Miniriot.File.exists ~path:dep_target_dir then (
-        Printf.printf "[Sandbox] Copying artifacts from %s\n" dep_name;
-        flush stdout;
-
-        (* List files in dependency target directory *)
-        let files =
-          let all_files =
-            Fs.readdir
-              (Path.of_string dep_target_dir
-              |> Result.expect ~msg:"Invalid dep_target_dir")
-            |> Result.expect ~msg:"Failed to read dep_target_dir"
-          in
-          List.filter
-            (fun file ->
-              (* Library archive *)
-              Filename.check_suffix file ".cma"
-              (* ALL compiled interfaces - needed for compilation *)
-              || Filename.check_suffix file ".cmi"
-              (* C object files *)
-              || Filename.check_suffix file ".o")
-            all_files
-        in
-        List.iter
-          (fun file ->
-            let src = Filename.concat dep_target_dir file in
-            let dst = Filename.concat sandbox.sandbox_dir file in
-
-            (* Only copy if destination doesn't exist *)
-            if not (Miniriot.File.exists ~path:dst) then (
-              let _ =
-                Fs.copy_file
-                  (Path.of_string src |> Result.expect ~msg:"Invalid src")
-                  (Path.of_string dst |> Result.expect ~msg:"Invalid dst")
-              in
-              ();
-              Printf.printf "  -> Copied %s\n" file;
+            (* Get list of artifacts *)
+            let files = Store.list_artifacts store hash in
+            Printf.printf "[Sandbox]   Files to copy: %s\n" (String.concat ", " files);
+            flush stdout;
+            
+            (* Promote artifacts from store to sandbox *)
+            match
+              Store.promote_from_store store hash sandbox.sandbox_dir
+            with
+            | true ->
+                Printf.printf "[Sandbox]   - Successfully copied %d files for %s\n"
+                  (List.length files) dep_name;
+                flush stdout
+            | false ->
+                Printf.printf
+                  "[Sandbox] ERROR: Failed to copy artifacts for %s\n"
+                  dep_name;
+                flush stdout)
+          else (
+            Printf.printf
+              "[Sandbox] Warning: No cached artifacts found for dependency %s (hash: %s)\n"
+              dep_name (Hasher.to_string hash);
+            flush stdout))
+      | None -> (
+          (* No hash available - check why *)
+          match Build_results.get_status build_results dep_name with
+          | Some Build_results.Building ->
+              Printf.printf "[Sandbox] Warning: Dependency %s is still building\n"
+                dep_name;
+              flush stdout
+          | Some Build_results.NotStarted ->
+              Printf.printf "[Sandbox] Warning: Dependency %s not started yet\n"
+                dep_name;
+              flush stdout
+          | Some (Build_results.Failed err) ->
+              Printf.printf "[Sandbox] Warning: Dependency %s failed: %s\n"
+                dep_name err;
+              flush stdout
+          | _ ->
+              Printf.printf "[Sandbox] Warning: Dependency %s not available (no hash)\n"
+                dep_name;
               flush stdout))
-          files)
-      else (
-        Printf.printf
-          "[Sandbox] Warning: Dependency %s has no artifacts in %s\n" dep_name
-          dep_target_dir;
-        flush stdout))
     all_deps
 
 (** Run actions in the sandbox and return output paths *)
-let run_actions ~sandbox ~node ~session_id =
+let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
   let pkg_name = node.Build_node.package.name in
 
   (* Extract actions from the planned node *)
@@ -165,7 +181,7 @@ let run_actions ~sandbox ~node ~session_id =
   flush stdout;
 
   (* Copy all transitive dependency artifacts into sandbox *)
-  copy_dependency_artifacts sandbox;
+  copy_dependency_artifacts sandbox ~store ~build_graph ~build_results;
 
   (* Change to sandbox directory *)
   let original_cwd =
@@ -266,7 +282,7 @@ let run_actions ~sandbox ~node ~session_id =
       List.iter
         (fun output_file ->
           let src = Filename.concat sandbox.sandbox_dir output_file in
-          if Miniriot.File.exists ~path:src then (
+          if File_utils.exists ~path:src then (
             let dst = Filename.concat sandbox.target_dir output_file in
             let _ =
               Fs.copy_file

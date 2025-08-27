@@ -45,17 +45,17 @@ module Daemon = struct
     let pid_path_str = Path.to_string pid_file in
     let port_path_str = Path.to_string port_file in
     match
-      ( Miniriot.File.exists ~path:pid_path_str,
-        Miniriot.File.exists ~path:port_path_str )
+      ( File_utils.exists ~path:pid_path_str,
+        File_utils.exists ~path:port_path_str )
     with
     | true, true ->
         (* Read the PID and port *)
         let pid_content =
-          Miniriot.File.read ~path:pid_path_str
+          File_utils.read ~path:pid_path_str
           |> Result.expect ~msg:"Failed to read PID file"
         in
         let port_content =
-          Miniriot.File.read ~path:port_path_str
+          File_utils.read ~path:port_path_str
           |> Result.expect ~msg:"Failed to read port file"
         in
         let pid = int_of_string (String.trim pid_content) in
@@ -91,7 +91,7 @@ module Daemon = struct
         (* Ensure daemon directory exists *)
         let daemon_path_str = Path.to_string daemon_path in
         let () =
-          if not (Miniriot.File.exists ~path:daemon_path_str) then
+          if not (File_utils.exists ~path:daemon_path_str) then
             let _ = Fs.mkdir daemon_path 0o755 in
             ()
         in
@@ -109,11 +109,11 @@ module Daemon = struct
 
             (* Write PID and port files *)
             let _ =
-              Miniriot.File.write ~path:(Path.to_string pid_file)
+              File_utils.write ~path:(Path.to_string pid_file)
                 ~content:(string_of_int pid)
             in
             let _ =
-              Miniriot.File.write ~path:(Path.to_string port_file)
+              File_utils.write ~path:(Path.to_string port_file)
                 ~content:(string_of_int port)
             in
 
@@ -141,11 +141,11 @@ let ensure_running ~workspace =
           | Ok _ -> Ok client
           | Error e ->
               Tusk_jsonrpc.Client.close client;
-              Miniriot.sleep 50;
+              Unix.sleepf 0.05;
               (* 50ms *)
               wait_server ~retries:(retries - 1))
       | Error e ->
-          Miniriot.sleep 50;
+          Unix.sleepf 0.05;
           (* 50ms *)
           wait_server ~retries:(retries - 1)
   in

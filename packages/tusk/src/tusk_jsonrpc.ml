@@ -5,6 +5,7 @@ let method_ping = "tusk.ping"
 
 let method_get_build_graph = "tusk.getBuildGraph"
 let method_get_workspace_config = "tusk.getWorkspaceConfig"
+let method_get_package_info = "tusk.getPackageInfo"
 let method_build_package = "tusk.buildPackage"
 let method_build_all = "tusk.buildAll"
 let method_restart = "tusk.restart"
@@ -28,16 +29,32 @@ module TuskProtocol = struct
 
   type build_graph_response = { nodes : build_node list }
 
+  type package_info = {
+    name : string;
+    path : string;
+    dependencies : string list;
+  }
+
   type workspace_config = {
     workspace_root : string;
+    target_dir : string;
     toolchain : string;
-    packages : string list;
+    toolchain_path : string;
+    packages : package_info list;
+    total_packages : int;
+  }
+
+  type package_detail = {
+    package : package_info;
+    sources : string list;
+    dependency_names : string list;
   }
 
   type request =
     | Ping
     | GetBuildGraph
     | GetWorkspaceConfig
+    | GetPackageInfo of string
     | BuildPackage of string
     | BuildAll
     | Restart
@@ -56,8 +73,10 @@ module TuskProtocol = struct
     | Pong
     | BuildGraph of build_graph_response
     | WorkspaceConfig of workspace_config
+    | PackageInfo of package_detail
     | BuildStarted of { session_id : Session_id.t }
     | BuildEvent of { session_id : Session_id.t; log_event : Log.log_event }
+    | CycleDetected of { session_id : Session_id.t; cycle_nodes : string list }
     | BuildComplete of { session_id : Session_id.t; stats : build_stats }
     | BuildFailed of {
         session_id : Session_id.t;
@@ -335,6 +354,16 @@ module TuskProtocol = struct
               | _ -> None
             in
             Ok (Log.CompileError { package; file; line; column; message; hint })
+        | Some (Json.String "CycleDetected") ->
+            let packages =
+              match List.assoc_opt "packages" fields with
+              | Some (Json.Array arr) ->
+                  List.filter_map
+                    (function Json.String s -> Some s | _ -> None)
+                    arr
+              | _ -> []
+            in
+            Ok (Log.CycleDetected { packages })
         | Some (Json.String "CacheHit") ->
             let package =
               match List.assoc_opt "package" fields with
@@ -719,6 +748,12 @@ module TuskProtocol = struct
                        ])
                    result.Log.errors) );
           ]
+    | Log.CycleDetected { packages } ->
+        Json.Object
+          [
+            ("type", Json.String "CycleDetected");
+            ("packages", Json.Array (List.map (fun s -> Json.String s) packages));
+          ]
     | Log.CompileError { package; file; line; column; message; hint } ->
         Json.Object
           [
@@ -912,6 +947,11 @@ module TuskProtocol = struct
     | Ping -> { Jsonrpc.method_ = method_ping; params = NoParams }
     | GetWorkspaceConfig ->
         { method_ = method_get_workspace_config; params = NoParams }
+    | GetPackageInfo pkg ->
+        {
+          method_ = method_get_package_info;
+          params = Jsonrpc.Named [ ("package", Json.String pkg) ];
+        }
     | GetBuildGraph -> { method_ = method_get_build_graph; params = NoParams }
     | BuildPackage pkg ->
         { method_ = method_build_package; params = build_package_params pkg }
@@ -932,6 +972,13 @@ module TuskProtocol = struct
             | _ -> Error (Json.String "Missing or invalid 'package' parameter"))
         | _ -> Error (Json.String "BuildPackage requires named parameters"))
     | "tusk.getWorkspaceConfig" -> Ok GetWorkspaceConfig
+    | "tusk.getPackageInfo" -> (
+        match params with
+        | Jsonrpc.Named fields -> (
+            match List.assoc_opt "package" fields with
+            | Some (Json.String pkg) -> Ok (GetPackageInfo pkg)
+            | _ -> Error (Json.String "Missing or invalid 'package' parameter"))
+        | _ -> Error (Json.String "GetPackageInfo requires named parameters"))
     | "tusk.getBuildGraph" -> Ok GetBuildGraph
     | "tusk.restart" -> Ok Restart
     | "tusk.shutdown" -> Ok Shutdown
@@ -939,13 +986,49 @@ module TuskProtocol = struct
 
   let response_to_json = function
     | Pong -> Json.String "pong"
+    | PackageInfo detail ->
+        Json.Object
+          [
+            ( "package",
+              Json.Object
+                [
+                  ("name", Json.String detail.package.name);
+                  ("path", Json.String detail.package.path);
+                  ( "dependencies",
+                    Json.Array
+                      (List.map
+                         (fun d -> Json.String d)
+                         detail.package.dependencies) );
+                ] );
+            ( "sources",
+              Json.Array (List.map (fun s -> Json.String s) detail.sources) );
+            ( "dependency_names",
+              Json.Array
+                (List.map (fun d -> Json.String d) detail.dependency_names) );
+          ]
     | WorkspaceConfig config ->
         Json.Object
           [
             ("workspace_root", Json.String config.workspace_root);
+            ("target_dir", Json.String config.target_dir);
             ("toolchain", Json.String config.toolchain);
+            ("toolchain_path", Json.String config.toolchain_path);
             ( "packages",
-              Json.Array (List.map (fun p -> Json.String p) config.packages) );
+              Json.Array
+                (List.map
+                   (fun (pkg : package_info) ->
+                     Json.Object
+                       [
+                         ("name", Json.String pkg.name);
+                         ("path", Json.String pkg.path);
+                         ( "dependencies",
+                           Json.Array
+                             (List.map
+                                (fun d -> Json.String d)
+                                pkg.dependencies) );
+                       ])
+                   config.packages) );
+            ("total_packages", Json.Int config.total_packages);
           ]
     | BuildGraph graph ->
         Json.Object
@@ -972,6 +1055,14 @@ module TuskProtocol = struct
             ("type", Json.String "build_started");
             ("session_id", Json.String (Session_id.to_string session_id));
           ]
+    | CycleDetected { session_id; cycle_nodes } ->
+        Json.Object
+          [
+            ("type", Json.String "cycle_detected");
+            ("session_id", Json.String (Session_id.to_string session_id));
+            ( "cycle_nodes",
+              Json.Array (List.map (fun s -> Json.String s) cycle_nodes) );
+          ]
     | BuildEvent { session_id; log_event } ->
         (* Serialize log event with type information *)
         let event_type =
@@ -981,6 +1072,7 @@ module TuskProtocol = struct
           | Log.PackageStarted _ -> "PackageStarted"
           | Log.PackageComplete _ -> "PackageComplete"
           | Log.CompileError _ -> "CompileError"
+          | Log.CycleDetected _ -> "CycleDetected"
           | Log.CacheHit _ -> "CacheHit"
           | Log.CacheMiss _ -> "CacheMiss"
           | Log.CacheStored _ -> "CacheStored"
@@ -1084,6 +1176,21 @@ module TuskProtocol = struct
                     { packages = []; total_modules = 0; workers = 0 }
             in
             Ok (BuildEvent { session_id; log_event })
+        | Some (Json.String "cycle_detected") ->
+            let session_id =
+              match List.assoc_opt "session_id" fields with
+              | Some (Json.String s) -> Session_id.of_string s
+              | _ -> Session_id.make ()
+            in
+            let cycle_nodes =
+              match List.assoc_opt "cycle_nodes" fields with
+              | Some (Json.Array arr) ->
+                  List.filter_map
+                    (function Json.String s -> Some s | _ -> None)
+                    arr
+              | _ -> []
+            in
+            Ok (CycleDetected { session_id; cycle_nodes })
         | Some (Json.String "build_complete") ->
             let duration_ms =
               match List.assoc_opt "duration_ms" fields with
@@ -1194,91 +1301,191 @@ module TuskProtocol = struct
         | Some (Json.String "restart_ack") -> Ok RestartAck
         | _ -> (
             (* Try other response types *)
-            match List.assoc_opt "workspace_root" fields with
-            | Some (Json.String _) ->
-                let workspace_root =
-                  match List.assoc_opt "workspace_root" fields with
-                  | Some (Json.String s) -> s
-                  | _ -> ""
+            (* First check if this is a PackageInfo response *)
+            match List.assoc_opt "package" fields with
+            | Some (Json.Object _) ->
+                (* Parse PackageInfo response *)
+                let package =
+                  match List.assoc_opt "package" fields with
+                  | Some (Json.Object pkg_fields) ->
+                      let name =
+                        match List.assoc_opt "name" pkg_fields with
+                        | Some (Json.String s) -> s
+                        | _ -> ""
+                      in
+                      let path =
+                        match List.assoc_opt "path" pkg_fields with
+                        | Some (Json.String s) -> s
+                        | _ -> ""
+                      in
+                      let dependencies =
+                        match List.assoc_opt "dependencies" pkg_fields with
+                        | Some (Json.Array deps) ->
+                            List.filter_map
+                              (function Json.String s -> Some s | _ -> None)
+                              deps
+                        | _ -> []
+                      in
+                      { name; path; dependencies }
+                  | _ -> { name = ""; path = ""; dependencies = [] }
                 in
-                let toolchain =
-                  match List.assoc_opt "toolchain" fields with
-                  | Some (Json.String s) -> s
-                  | _ -> ""
-                in
-                let packages =
-                  match List.assoc_opt "packages" fields with
+                let sources =
+                  match List.assoc_opt "sources" fields with
                   | Some (Json.Array arr) ->
                       List.filter_map
                         (function Json.String s -> Some s | _ -> None)
                         arr
                   | _ -> []
                 in
-                Ok (WorkspaceConfig { workspace_root; toolchain; packages })
-            | _ -> (
-                match List.assoc_opt "nodes" fields with
-                | Some (Json.Array _) ->
-                    let nodes =
-                      match List.assoc_opt "nodes" fields with
+                let dependency_names =
+                  match List.assoc_opt "dependency_names" fields with
+                  | Some (Json.Array arr) ->
+                      List.filter_map
+                        (function Json.String s -> Some s | _ -> None)
+                        arr
+                  | _ -> []
+                in
+                Ok (PackageInfo { package; sources; dependency_names })
+            | None -> (
+                (* Check if this is a WorkspaceConfig response *)
+                match List.assoc_opt "workspace_root" fields with
+                | Some (Json.String _) ->
+                    (* Parse WorkspaceConfig response *)
+                    let workspace_root =
+                      match List.assoc_opt "workspace_root" fields with
+                      | Some (Json.String s) -> s
+                      | _ -> ""
+                    in
+                    let target_dir =
+                      match List.assoc_opt "target_dir" fields with
+                      | Some (Json.String s) -> s
+                      | _ -> ""
+                    in
+                    let toolchain =
+                      match List.assoc_opt "toolchain" fields with
+                      | Some (Json.String s) -> s
+                      | _ -> ""
+                    in
+                    let toolchain_path =
+                      match List.assoc_opt "toolchain_path" fields with
+                      | Some (Json.String s) -> s
+                      | _ -> ""
+                    in
+                    let packages =
+                      match List.assoc_opt "packages" fields with
                       | Some (Json.Array arr) ->
                           List.filter_map
                             (function
-                              | Json.Object node_fields ->
-                                  let package_name =
-                                    match
-                                      List.assoc_opt "package_name" node_fields
-                                    with
+                              | Json.Object pkg_fields ->
+                                  let name =
+                                    match List.assoc_opt "name" pkg_fields with
                                     | Some (Json.String s) -> s
                                     | _ -> ""
                                   in
-                                  let src_dir =
-                                    match
-                                      List.assoc_opt "src_dir" node_fields
-                                    with
+                                  let path =
+                                    match List.assoc_opt "path" pkg_fields with
                                     | Some (Json.String s) -> s
                                     | _ -> ""
                                   in
-                                  let out_dir =
+                                  let dependencies =
                                     match
-                                      List.assoc_opt "out_dir" node_fields
+                                      List.assoc_opt "dependencies" pkg_fields
                                     with
-                                    | Some (Json.String s) -> s
-                                    | _ -> ""
-                                  in
-                                  let status =
-                                    match
-                                      List.assoc_opt "status" node_fields
-                                    with
-                                    | Some (Json.String s) -> s
-                                    | _ -> ""
-                                  in
-                                  let deps =
-                                    match List.assoc_opt "deps" node_fields with
-                                    | Some (Json.Array d) ->
+                                    | Some (Json.Array deps) ->
                                         List.filter_map
                                           (function
                                             | Json.String s -> Some s
                                             | _ -> None)
-                                          d
+                                          deps
                                     | _ -> []
                                   in
-                                  Some
-                                    {
-                                      package_name;
-                                      src_dir;
-                                      out_dir;
-                                      status;
-                                      deps;
-                                    }
+                                  Some { name; path; dependencies }
                               | _ -> None)
                             arr
                       | _ -> []
                     in
-                    Ok (BuildGraph { nodes })
+                    let total_packages =
+                      match List.assoc_opt "total_packages" fields with
+                      | Some (Json.Int n) -> n
+                      | _ -> 0
+                    in
+                    Ok
+                      (WorkspaceConfig
+                         {
+                           workspace_root;
+                           target_dir;
+                           toolchain;
+                           toolchain_path;
+                           packages;
+                           total_packages;
+                         })
                 | _ -> (
-                    match List.assoc_opt "error" fields with
-                    | Some (Json.String msg) -> Ok (Error msg)
-                    | _ -> Error json))))
+                    match List.assoc_opt "nodes" fields with
+                    | Some (Json.Array _) ->
+                        let nodes =
+                          match List.assoc_opt "nodes" fields with
+                          | Some (Json.Array arr) ->
+                              List.filter_map
+                                (function
+                                  | Json.Object node_fields ->
+                                      let package_name =
+                                        match
+                                          List.assoc_opt "package_name"
+                                            node_fields
+                                        with
+                                        | Some (Json.String s) -> s
+                                        | _ -> ""
+                                      in
+                                      let src_dir =
+                                        match
+                                          List.assoc_opt "src_dir" node_fields
+                                        with
+                                        | Some (Json.String s) -> s
+                                        | _ -> ""
+                                      in
+                                      let out_dir =
+                                        match
+                                          List.assoc_opt "out_dir" node_fields
+                                        with
+                                        | Some (Json.String s) -> s
+                                        | _ -> ""
+                                      in
+                                      let status =
+                                        match
+                                          List.assoc_opt "status" node_fields
+                                        with
+                                        | Some (Json.String s) -> s
+                                        | _ -> ""
+                                      in
+                                      let deps =
+                                        match
+                                          List.assoc_opt "deps" node_fields
+                                        with
+                                        | Some (Json.Array d) ->
+                                            List.filter_map
+                                              (function
+                                                | Json.String s -> Some s
+                                                | _ -> None)
+                                              d
+                                        | _ -> []
+                                      in
+                                      Some
+                                        {
+                                          package_name;
+                                          src_dir;
+                                          out_dir;
+                                          status;
+                                          deps;
+                                        }
+                                  | _ -> None)
+                                arr
+                          | _ -> []
+                        in
+                        Ok (BuildGraph { nodes })
+                    | _ -> (
+                        match List.assoc_opt "error" fields with
+                        | Some (Json.String msg) -> Ok (Error msg)
+                        | _ -> Error json)))))
     | _ -> Error json
 end
 
@@ -1288,7 +1495,7 @@ module Client = struct
 
   type t = {
     client : (TuskProtocol.request, TuskProtocol.response) Jsonrpc.Client.t;
-    transport : Net.TcpClient.t;
+    transport : Std.Net.TcpClient.t;
   }
 
   (** Build request type *)
@@ -1302,12 +1509,12 @@ module Client = struct
 
   (** Create a new Tusk RPC client *)
   let create ~host ~port =
-    (* Create TCP transport using Net.TcpClient *)
-    match Net.TcpClient.connect ~host ~port with
+    (* Create TCP transport using Std.Net.TcpClient *)
+    match Std.Net.TcpClient.connect ~host ~port with
     | Ok transport ->
         let client =
           Jsonrpc.Client.create
-            ~transport:(module Net.TcpClient)
+            ~transport:(module Std.Net.TcpClient)
             ~protocol:(module TuskProtocol)
             transport
         in
@@ -1347,6 +1554,21 @@ module Client = struct
     with
     | Ok (TuskProtocol.WorkspaceConfig config) -> Ok config
     | Ok _ -> Error "Invalid workspace config response"
+    | Error e ->
+        Error
+          (Printf.sprintf "Error %d: %s"
+             (Jsonrpc.error_code_to_int e.code)
+             e.message)
+
+  (** Get package information *)
+  let get_package_info t package_name =
+    match
+      Jsonrpc.Client.call t.client ~method_:method_get_package_info
+        ~params:(Jsonrpc.Named [ ("package", Json.String package_name) ])
+        ()
+    with
+    | Ok (TuskProtocol.PackageInfo detail) -> Ok detail
+    | Ok _ -> Error "Invalid package info response"
     | Error e ->
         Error
           (Printf.sprintf "Error %d: %s"
@@ -1401,6 +1623,19 @@ module Client = struct
                       } ->
                       callback (BuildEvent log_event);
                       receive_events ()
+                  | Ok
+                      {
+                        result =
+                          Ok
+                            (TuskProtocol.CycleDetected
+                               { session_id; cycle_nodes });
+                        _;
+                      } ->
+                      (* Report cycle detected as a log event *)
+                      callback
+                        (BuildEvent
+                           (Log.CycleDetected { packages = cycle_nodes }));
+                      receive_events ()
                   | Ok { result = Ok (TuskProtocol.BuildComplete _); _ } ->
                       Ok (BuildFinished (Ok ()))
                   | Ok
@@ -1425,8 +1660,10 @@ module Client = struct
                         | Ok (TuskProtocol.BuildGraph _) -> "BuildGraph"
                         | Ok (TuskProtocol.WorkspaceConfig _) ->
                             "WorkspaceConfig"
+                        | Ok (TuskProtocol.PackageInfo _) -> "PackageInfo"
                         | Ok (TuskProtocol.BuildStarted _) -> "BuildStarted"
                         | Ok (TuskProtocol.BuildEvent _) -> "BuildEvent"
+                        | Ok (TuskProtocol.CycleDetected _) -> "CycleDetected"
                         | Ok (TuskProtocol.BuildComplete _) -> "BuildComplete"
                         | Ok (TuskProtocol.BuildFailed _) -> "BuildFailed"
                         | Ok TuskProtocol.ShutdownAck -> "ShutdownAck"
@@ -1552,11 +1789,15 @@ module Server = struct
         (* Send BuildStarted to client *)
         reply (TuskProtocol.BuildStarted { session_id });
 
-        (* Now handle log events and BuildCompleted *)
+        (* Now handle log events, CycleDetected and BuildCompleted *)
         let rec event_loop () =
           let selector = function
             | Log.Event (Some sid, event) when sid = session_id ->
                 `select (`log_event event)
+            | Tusk_protocol.ServerResponse
+                (Tusk_protocol.CycleDetected { session_id = sid; cycle_nodes })
+              when sid = session_id ->
+                `select (`cycle_detected cycle_nodes)
             | Tusk_protocol.ServerResponse
                 (Tusk_protocol.BuildCompleted { session_id = sid })
               when sid = session_id ->
@@ -1567,6 +1808,10 @@ module Server = struct
           | `log_event event ->
               (* Forward log event to client *)
               reply (TuskProtocol.BuildEvent { session_id; log_event = event });
+              event_loop ()
+          | `cycle_detected cycle_nodes ->
+              (* Forward cycle detected event to client *)
+              reply (TuskProtocol.CycleDetected { session_id; cycle_nodes });
               event_loop ()
           | `build_complete ->
               (* Build is done, send final response *)
@@ -1618,14 +1863,118 @@ module Server = struct
     reply TuskProtocol.ShutdownAck
 
   let handle_workspace_config ctx reply request =
-    (* For now, return a simple workspace config *)
-    reply
-      (TuskProtocol.WorkspaceConfig
-         { workspace_root = "/tmp"; toolchain = "5.3.0"; packages = [] })
+    (* Send request to the actual tusk server *)
+    send ctx.server_pid
+      (Tusk_protocol.ServerRequest
+         (Tusk_protocol.GetWorkspaceConfig { client_pid = self () }));
+
+    (* Wait for response *)
+    let selector = function
+      | Tusk_protocol.ServerResponse
+          (Tusk_protocol.WorkspaceConfig { workspace; toolchain }) ->
+          `select (workspace, toolchain)
+      | _ -> `skip
+    in
+    match receive ~selector () with
+    | workspace, toolchain ->
+        (* Convert to JSON-RPC response with full details *)
+        let packages =
+          List.map
+            (fun (pkg : Workspace.package) ->
+              {
+                TuskProtocol.name = pkg.name;
+                path = Std.Path.to_string pkg.path;
+                dependencies =
+                  List.map
+                    (fun (dep : Workspace.dependency) -> dep.name)
+                    pkg.dependencies;
+              })
+            workspace.packages
+        in
+        reply
+          (TuskProtocol.WorkspaceConfig
+             {
+               workspace_root = Std.Path.to_string workspace.root;
+               target_dir = Std.Path.to_string workspace.target_dir_root;
+               toolchain = Toolchains.get_version toolchain;
+               toolchain_path = Toolchains.get_toolchain_path toolchain;
+               packages;
+               total_packages = List.length workspace.packages;
+             })
+    | exception _ -> reply (TuskProtocol.Error "Failed to get workspace config")
+
+  let handle_package_info ctx reply package_name =
+    (* Send request to the actual tusk server *)
+    send ctx.server_pid
+      (Tusk_protocol.ServerRequest
+         (Tusk_protocol.GetPackageInfo { client_pid = self (); package_name }));
+
+    (* Wait for response *)
+    let selector = function
+      | Tusk_protocol.ServerResponse
+          (Tusk_protocol.PackageInfo { package; sources; dependencies }) ->
+          `select (package, sources, dependencies)
+      | _ -> `skip
+    in
+    match receive ~selector () with
+    | package, sources, dependencies ->
+        (* Convert to JSON-RPC response *)
+        let package_info =
+          {
+            TuskProtocol.name = package.Workspace.name;
+            path = Std.Path.to_string package.path;
+            dependencies =
+              List.map
+                (fun (dep : Workspace.dependency) -> dep.name)
+                package.dependencies;
+          }
+        in
+        let source_strings = List.map Std.Path.to_string sources in
+        let dep_names =
+          List.map (fun (node : Build_node.t) -> node.package.name) dependencies
+        in
+        reply
+          (TuskProtocol.PackageInfo
+             {
+               package = package_info;
+               sources = source_strings;
+               dependency_names = dep_names;
+             })
+    | exception _ -> reply (TuskProtocol.Error "Failed to get package info")
 
   let handle_build_graph ctx reply request =
-    (* For now, return an empty build graph *)
-    reply (TuskProtocol.BuildGraph { nodes = [] })
+    (* Send request to the actual tusk server *)
+    send ctx.server_pid
+      (Tusk_protocol.ServerRequest
+         (Tusk_protocol.GetBuildGraph { client_pid = self () }));
+
+    (* Wait for response *)
+    let selector = function
+      | Tusk_protocol.ServerResponse (Tusk_protocol.BuildGraph { nodes }) ->
+          `select nodes
+      | _ -> `skip
+    in
+    match receive ~selector () with
+    | nodes ->
+        (* Convert Build_node.t list to simplified JSON-RPC format *)
+        let json_nodes =
+          List.map
+            (fun (node : Build_node.t) ->
+              {
+                TuskProtocol.package_name = node.package.name;
+                src_dir = Std.Path.to_string node.package.path;
+                out_dir = Std.Path.to_string node.package.path;
+                (* TODO: get actual out dir *)
+                status =
+                  (match node.spec with
+                  | Build_node.Unplanned -> "unplanned"
+                  | Build_node.Planned _ -> "planned");
+                deps = List.map Node_id.to_string node.deps;
+              })
+            nodes
+        in
+        reply (TuskProtocol.BuildGraph { nodes = json_nodes })
+    | exception _ -> reply (TuskProtocol.Error "Failed to get build graph")
 
   let handle_restart ctx reply request =
     (* For now, just reply with success *)
@@ -1669,6 +2018,15 @@ module Server = struct
                 match request with
                 | TuskProtocol.GetWorkspaceConfig ->
                     handle_workspace_config ctx reply request
+                | _ -> ());
+          };
+          {
+            method_ = method_get_package_info;
+            fn =
+              (fun reply request ->
+                match request with
+                | TuskProtocol.GetPackageInfo pkg ->
+                    handle_package_info ctx reply pkg
                 | _ -> ());
           };
           {

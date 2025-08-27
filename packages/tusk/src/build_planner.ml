@@ -20,7 +20,29 @@ let get_dependency_libs_and_includes toolchain dependencies =
     dependencies;
   (!libs, !includes)
 
-let generate_actions ~toolchain ~package ~srcs ~deps =
+(* Check if any transitive dependency requires unix *)
+let needs_unix_transitively ~graph ~node =
+  let rec check_node visited current_node =
+    if List.mem current_node.Build_node.package.name visited then false
+    else
+      let visited = current_node.Build_node.package.name :: visited in
+      (* Check if this node directly depends on unix *)
+      let has_unix_dep = 
+        List.exists (fun (dep : Workspace.dependency) -> 
+          dep.Workspace.name = "unix"
+        ) current_node.Build_node.package.dependencies
+      in
+      if has_unix_dep then true
+      else
+        (* Check transitive dependencies *)
+        let dep_nodes = 
+          List.map (Build_graph.get_node graph) current_node.Build_node.deps
+        in
+        List.exists (check_node visited) dep_nodes
+  in
+  check_node [] node
+
+let generate_actions ~graph ~node ~toolchain ~package ~srcs ~deps =
   let actions = ref [] in
   let outputs = ref [] in
   (* List of output file paths as strings *)
@@ -39,8 +61,16 @@ let generate_actions ~toolchain ~package ~srcs ~deps =
     else []
   in
 
+  (* Check if we need unix transitively for includes too *)
+  let needs_unix_trans = needs_unix_transitively ~graph ~node in
+  let all_external_includes = 
+    if needs_unix_trans && not (List.mem "+unix" external_includes) then
+      "+unix" :: external_includes
+    else
+      external_includes
+  in
   (* Combine all include paths *)
-  let dep_includes = external_includes @ local_dep_includes in
+  let dep_includes = all_external_includes @ local_dep_includes in
 
   (* Separate source files by type *)
   let ml_files =
@@ -168,24 +198,41 @@ let generate_actions ~toolchain ~package ~srcs ~deps =
     let exe_objects = List.rev !cmo_files @ !o_files in
     (* Include dependency libraries (.cma files) from local packages *)
     (* We need to collect ALL transitive dependencies, not just direct ones *)
-    let rec collect_all_deps visited node =
-      if List.mem node.Build_node.package.name visited then []
+    let rec collect_all_deps visited current_node =
+      if List.mem current_node.Build_node.package.name visited then []
       else
-        let visited = node.Build_node.package.name :: visited in
-        let child_deps =
-          List.concat_map (collect_all_deps visited) node.Build_node.deps
+        let visited = current_node.Build_node.package.name :: visited in
+        (* Resolve dependency IDs to nodes *)
+        let current_dep_nodes =
+          List.map (Build_graph.get_node graph) current_node.Build_node.deps
         in
-        node :: child_deps
+        let child_deps =
+          List.concat_map (collect_all_deps visited) current_dep_nodes
+        in
+        current_node :: child_deps
     in
     let all_dep_nodes =
       List.concat_map (collect_all_deps []) deps
-      |> List.sort_uniq (fun a b ->
-          String.compare a.Build_node.package.name b.Build_node.package.name)
+      |> List.rev  (* Reverse to get dependencies before dependents *)
+      |> List.fold_left (fun acc node ->
+          if List.exists (fun n -> n.Build_node.package.name = node.Build_node.package.name) acc then
+            acc  (* Already in list, skip duplicate *)
+          else
+            node :: acc) []  (* Add unique nodes *)
+      |> List.rev  (* Reverse back to get correct order: dependencies first *)
     in
     let dep_libs =
       List.map (fun dep -> dep.Build_node.package.name ^ ".cma") all_dep_nodes
     in
-    let all_libs = external_libs @ dep_libs in
+    (* Check if we need to add unix.cma transitively *)
+    let needs_unix = needs_unix_transitively ~graph ~node in
+    let all_external_libs = 
+      if needs_unix && not (List.mem "unix.cma" external_libs) then
+        "unix.cma" :: external_libs
+      else
+        external_libs
+    in
+    let all_libs = all_external_libs @ dep_libs in
     actions :=
       Actions.CreateExecutable
         {
@@ -241,10 +288,19 @@ let compute_hash_for_planned_node ~toolchain ~package ~srcs ~deps ~outs ~actions
   (* Combine all seeds into final hash *)
   Hasher.hash_strings (List.rev !seeds)
 
-let plan_node ~graph ~node () =
-  (* Step 1: Check if immediate dependencies have been planned *)
+let plan_node ~graph ~node ~build_results () =
+  (* Step 1: Check if immediate dependencies have been planned/built *)
+  (* Resolve dependency IDs to nodes *)
+  let dep_nodes = List.map (Build_graph.get_node graph) node.Build_node.deps in
   let unplanned_deps =
-    List.filter Build_node.is_unplanned node.Build_node.deps
+    List.filter
+      (fun dep ->
+        (* Consider a dep as planned if it's built in build_results *)
+        let pkg_name = dep.Build_node.package.name in
+        match Build_results.get_status build_results pkg_name with
+        | Some (Build_results.Built _) -> false (* Already built *)
+        | _ -> Build_node.is_unplanned dep (* Check if unplanned in graph *))
+      dep_nodes
   in
 
   if unplanned_deps <> [] then
@@ -254,14 +310,14 @@ let plan_node ~graph ~node () =
     (* Step 2: All deps are planned, we can proceed *)
     (* Step 3: Generate outputs and actions based on sources, deps, and package *)
     let outs, actions =
-      generate_actions ~toolchain:node.toolchain ~package:node.package
-        ~srcs:node.srcs ~deps:node.deps
+      generate_actions ~graph ~node ~toolchain:node.toolchain ~package:node.package
+        ~srcs:node.srcs ~deps:dep_nodes
     in
 
     (* Step 4: Compute SHA512 hash of everything *)
     let hash =
       compute_hash_for_planned_node ~toolchain:node.toolchain
-        ~package:node.package ~srcs:node.srcs ~deps:node.deps ~outs ~actions
+        ~package:node.package ~srcs:node.srcs ~deps:dep_nodes ~outs ~actions
     in
 
     (* Update the node's spec to Planned *)

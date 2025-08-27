@@ -12,7 +12,7 @@ type t = {
   toolchain : Toolchains.toolchain;
   package : Workspace.package;
   srcs : Path.t list;
-  deps : t list;
+  mutable deps : Node_id.t list; (* Now stores IDs, not nodes *)
   mutable spec : spec;
 }
 
@@ -30,10 +30,11 @@ type hash_result =
   | Error of string
 
 (** Compute content-based hash for a build node *)
-let compute_hash node =
+let compute_hash node ~get_dep =
   (* This is a simplified version - the actual hashing is done by Build_planner *)
   (* We just check if dependencies are ready *)
-  let unplanned_deps = List.filter is_unplanned node.deps in
+  let dep_nodes = List.filter_map get_dep node.deps in
+  let unplanned_deps = List.filter is_unplanned dep_nodes in
 
   if unplanned_deps <> [] then
     MissingDependencies { node; deps = unplanned_deps }

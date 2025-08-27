@@ -3,5 +3,4 @@ name = "std-sys"
 version = "0.0.1"
 
 [dependencies]
-std = { path = "../std" }
 unix = "*"

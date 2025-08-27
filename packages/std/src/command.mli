@@ -1,5 +1,11 @@
 (** Command - OS process spawning and management *)
 
+(** Process status types - for OS processes, not actors *)
+type status = Exited of int | Signaled of int | Stopped of int
+
+val of_unix_status : Unix.process_status -> status
+(** Convert Unix process status to our type *)
+
 type t
 (** Opaque type representing a spawned command/process *)
 

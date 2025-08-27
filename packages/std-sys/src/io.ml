@@ -1,6 +1,4 @@
-open Std
-
-let ( let* ) = Result.and_then
+let ( let* ) = fun x f -> match x with Ok v -> f v | Error e -> Error e
 let log = Format.printf
 
 type io_error =
@@ -203,7 +201,8 @@ module Adapter = struct
       syscall @@ fun () -> Ok (std_sys_unix_fcntl fd ~cmd ~arg)
 
     external std_sys_unix_kevent_register :
-      kqueue -> event array -> int array -> unit = "std_sys_unix_kevent_register"
+      kqueue -> event array -> int array -> unit
+      = "std_sys_unix_kevent_register"
 
     let kevent_register fd changes ignored_errors =
       syscall @@ fun () ->
@@ -342,7 +341,8 @@ module File = struct
     let len = Option.value len ~default:(Bytes.length buf - 1) in
     syscall @@ fun () -> Ok (UnixLabels.write fd ~buf ~pos ~len)
 
-  external std_sys_readv : Unix.file_descr -> Iovec.t -> int = "std_sys_unix_readv"
+  external std_sys_readv : Unix.file_descr -> Iovec.t -> int
+    = "std_sys_unix_readv"
 
   let read_vectored fd iov = syscall @@ fun () -> Ok (std_sys_readv fd iov)
 
@@ -361,7 +361,7 @@ module File = struct
   let readdir path =
     syscall @@ fun () ->
     try Ok (Array.to_list (Sys.readdir path))
-    with e -> Error (`Unix_error (Unix.ENOENT))
+    with e -> Error (`Unix_error Unix.ENOENT)
 
   let mkdir path perm =
     syscall @@ fun () ->
@@ -373,7 +373,7 @@ module File = struct
   let mkdirp path perm =
     syscall @@ fun () ->
     (* Split path into components, handling absolute paths *)
-    let components = 
+    let components =
       let parts = String.split_on_char '/' path in
       match parts with
       | "" :: rest -> "/" :: List.filter (fun s -> s <> "") rest
@@ -383,9 +383,9 @@ module File = struct
     let create_dir acc_result component =
       match acc_result with
       | Error e -> Error e
-      | Ok current_path ->
-          let new_path = 
-            match current_path, component with
+      | Ok current_path -> (
+          let new_path =
+            match (current_path, component) with
             | "", "/" -> "/"
             | "", c -> c
             | "/", c -> "/" ^ c
@@ -396,7 +396,7 @@ module File = struct
             Ok new_path
           with
           | Unix.Unix_error (Unix.EEXIST, _, _) -> Ok new_path
-          | Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+          | Unix.Unix_error (e, _, _) -> Error (`Unix_error e))
     in
     match List.fold_left create_dir (Ok "") components with
     | Ok _ -> Ok ()
@@ -407,7 +407,8 @@ module File = struct
     try
       let ic = open_in_bin src in
       let oc = open_out_bin dst in
-      let buf_size = 65536 in (* 64KB buffer *)
+      let buf_size = 65536 in
+      (* 64KB buffer *)
       let buf = Bytes.create buf_size in
       let rec copy () =
         match input ic buf 0 buf_size with
@@ -427,13 +428,11 @@ module File = struct
 
   let is_directory path =
     syscall @@ fun () ->
-    try Ok (Sys.is_directory path)
-    with e -> Error (`Exn e)
+    try Ok (Sys.is_directory path) with e -> Error (`Exn e)
 
   let file_exists path =
     syscall @@ fun () ->
-    try Ok (Sys.file_exists path)
-    with e -> Error (`Exn e)
+    try Ok (Sys.file_exists path) with e -> Error (`Exn e)
 
   let stat path =
     syscall @@ fun () ->
@@ -469,9 +468,7 @@ module File = struct
     with e -> Error (`Exn e)
 
   let getcwd () =
-    syscall @@ fun () ->
-    try Ok (Sys.getcwd ())
-    with e -> Error (`Exn e)
+    syscall @@ fun () -> try Ok (Sys.getcwd ()) with e -> Error (`Exn e)
 
   let chdir path =
     syscall @@ fun () ->
@@ -487,8 +484,7 @@ module File = struct
 
   let readdir_handle handle =
     syscall @@ fun () ->
-    try Ok (Unix.readdir handle)
-    with 
+    try Ok (Unix.readdir handle) with
     | End_of_file -> Error `Eof
     | Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
 

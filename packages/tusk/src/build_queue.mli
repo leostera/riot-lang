@@ -15,24 +15,23 @@ val create : Build_results.t -> t
     automatically skip packages that are already built and promote packages when
     their dependencies are ready. *)
 
-(** {1 Adding Tasks} *)
+(** {1 Core Operations} *)
 
 val queue : t -> Build_node.t -> unit
-(** Add task to the queue *)
-
-val queue_with_deps : t -> Build_node.t -> deps:Build_node.t list -> unit
-(** Add task to the queue but first add its dependencies to be built *)
-
-(** {1 Task Retrieval} *)
+(** Add task to ready queue if not already busy/built/queued *)
 
 val next : t -> Build_node.t option
-(** Get the next task from the ready queue and mark it as busy. Automatically
-    skips tasks that are already built and promotes tasks from the waiting queue
-    when their dependencies are ready. Returns [None] if no tasks are available
-    to build. *)
+(** Get next ready task, swap queues if needed. Marks task as busy. *)
 
-val mark_done : t -> Build_node.t -> unit
-(** Mark a node as no longer busy and promote any waiting nodes to ready *)
+val requeue_with_deps : t -> Build_node.t -> deps:Build_node.t list -> unit
+(** Requeue task to later queue and queue all dependencies. Removes task from
+    busy set. *)
+
+val mark_as_completed : t -> Build_node.t -> artifact:Store.artifact -> unit
+(** Mark task as completed - removes from busy and updates build results *)
+
+val mark_as_failed : t -> Build_node.t -> error:string -> unit
+(** Mark task as failed - removes from busy and updates build results *)
 
 val get_stats : t -> int * int * int
 (** Get queue statistics as (ready_count, waiting_count, busy_count) *)

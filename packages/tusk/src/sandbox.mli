@@ -10,6 +10,9 @@ val create : node:Build_node.t -> workspace:Workspace.t -> t
 
 val run_actions :
   sandbox:t ->
+  store:Store.t ->
+  build_graph:Build_graph.t ->
+  build_results:Build_results.t ->
   node:Build_node.t ->
   session_id:Log.session_id option ->
   (Std.Path.t list, error) result

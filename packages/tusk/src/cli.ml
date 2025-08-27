@@ -78,8 +78,7 @@ let find_binaries () =
           (Std.Path.to_string package.Workspace.path)
           "src/main.ml"
       in
-      if File_utils.exists ~path:main_ml_path then
-        Some package.Workspace.name
+      if File_utils.exists ~path:main_ml_path then Some package.Workspace.name
       else None)
     workspace.packages
 
@@ -168,15 +167,11 @@ let execute_binary binary_name binary_path =
   match Std.Command.of_unix_status result with
   | Std.Command.Exited code ->
       if code = 0 then Ok ()
-      else
-        Error
-          (Failure (Printf.sprintf "Binary exited with code %d" code))
+      else Error (Failure (Printf.sprintf "Binary exited with code %d" code))
   | Std.Command.Signaled signal ->
-      Error
-        (Failure (Printf.sprintf "Binary killed by signal %d" signal))
+      Error (Failure (Printf.sprintf "Binary killed by signal %d" signal))
   | Std.Command.Stopped signal ->
-      Error
-        (Failure (Printf.sprintf "Binary stopped by signal %d" signal))
+      Error (Failure (Printf.sprintf "Binary stopped by signal %d" signal))
 
 (** Execute the clean command *)
 let clean_command () =
@@ -256,15 +251,13 @@ let run_command binary_opt =
             else (
               Printf.eprintf "Error: Failed to build package '%s'.\n"
                 binary_name;
-              Error
-                (Failure (Printf.sprintf "Build failed for %s" binary_name))))
+              Error (Failure (Printf.sprintf "Build failed for %s" binary_name))))
       else (
         Printf.eprintf "Error: Binary '%s' not found in workspace.\n"
           binary_name;
         Printf.eprintf "Available binaries: %s\n"
           (String.concat ", " available_binaries);
-        Error
-          (Failure (Printf.sprintf "Unknown binary: %s" binary_name)))
+        Error (Failure (Printf.sprintf "Unknown binary: %s" binary_name)))
   | None -> (
       (* No binary specified *)
       match available_binaries with
@@ -759,8 +752,8 @@ let server_command args =
 (** Execute the rpc command *)
 let rpc_command args =
   let cmd = if Array.length args > 2 then args.(2) else "" in
-  let rest = 
-    if Array.length args > 3 then 
+  let rest =
+    if Array.length args > 3 then
       Array.to_list (Array.sub args 3 (Array.length args - 3))
     else []
   in
@@ -770,7 +763,8 @@ let rpc_command args =
     Printf.printf "Available RPC commands:\n";
     Printf.printf "  tusk rpc ping              - Test server connectivity\n";
     Printf.printf "  tusk rpc workspace         - Get workspace information\n";
-    Printf.printf "  tusk rpc package <name>    - Get package details including sources\n";
+    Printf.printf
+      "  tusk rpc package <name>    - Get package details including sources\n";
     Printf.printf "  tusk rpc graph             - Get build graph\n";
     Printf.printf
       "  tusk rpc build [package]   - Build all or specific package\n";
@@ -808,15 +802,20 @@ let rpc_command args =
               ( "toolchain_path",
                 Json.String config.Tusk_jsonrpc.TuskProtocol.toolchain_path );
               ( "packages",
-                Json.Array 
-                  (List.map (fun (pkg : Tusk_jsonrpc.TuskProtocol.package_info) -> 
-                    Json.Object
-                      [
-                        ("name", Json.String pkg.name);
-                        ("path", Json.String pkg.path);
-                        ("dependencies", Json.Array (List.map (fun d -> Json.String d) pkg.dependencies));
-                      ]
-                  ) config.Tusk_jsonrpc.TuskProtocol.packages) );
+                Json.Array
+                  (List.map
+                     (fun (pkg : Tusk_jsonrpc.TuskProtocol.package_info) ->
+                       Json.Object
+                         [
+                           ("name", Json.String pkg.name);
+                           ("path", Json.String pkg.path);
+                           ( "dependencies",
+                             Json.Array
+                               (List.map
+                                  (fun d -> Json.String d)
+                                  pkg.dependencies) );
+                         ])
+                     config.Tusk_jsonrpc.TuskProtocol.packages) );
               ( "total_packages",
                 Json.Int config.Tusk_jsonrpc.TuskProtocol.total_packages );
             ]
@@ -826,13 +825,13 @@ let rpc_command args =
     | Error e ->
         Printf.eprintf "Error: %s\n" e;
         Error (Failure e))
-  else if cmd = "package" then (
+  else if cmd = "package" then
     match rest with
     | [] ->
         Printf.eprintf "Error: package name required\n";
         Printf.eprintf "Usage: tusk rpc package <package-name>\n";
         Error (Failure "Missing package name")
-    | package_name :: _ ->
+    | package_name :: _ -> (
         let client = create_local_client () in
         let result = Tusk_jsonrpc.Client.get_package_info client package_name in
         Tusk_jsonrpc.Client.close client;
@@ -845,18 +844,29 @@ let rpc_command args =
                   ( "package",
                     Json.Object
                       [
-                        ("name", Json.String detail.Tusk_jsonrpc.TuskProtocol.package.name);
-                        ("path", Json.String detail.Tusk_jsonrpc.TuskProtocol.package.path);
-                        ("dependencies", 
-                         Json.Array (List.map (fun d -> Json.String d) 
-                           detail.Tusk_jsonrpc.TuskProtocol.package.dependencies));
+                        ( "name",
+                          Json.String
+                            detail.Tusk_jsonrpc.TuskProtocol.package.name );
+                        ( "path",
+                          Json.String
+                            detail.Tusk_jsonrpc.TuskProtocol.package.path );
+                        ( "dependencies",
+                          Json.Array
+                            (List.map
+                               (fun d -> Json.String d)
+                               detail.Tusk_jsonrpc.TuskProtocol.package
+                                 .dependencies) );
                       ] );
-                  ("sources", 
-                   Json.Array (List.map (fun s -> Json.String s) 
-                     detail.Tusk_jsonrpc.TuskProtocol.sources));
-                  ("dependency_names", 
-                   Json.Array (List.map (fun d -> Json.String d) 
-                     detail.Tusk_jsonrpc.TuskProtocol.dependency_names));
+                  ( "sources",
+                    Json.Array
+                      (List.map
+                         (fun s -> Json.String s)
+                         detail.Tusk_jsonrpc.TuskProtocol.sources) );
+                  ( "dependency_names",
+                    Json.Array
+                      (List.map
+                         (fun d -> Json.String d)
+                         detail.Tusk_jsonrpc.TuskProtocol.dependency_names) );
                 ]
             in
             Printf.printf "%s\n" (Json.to_string json);
@@ -1069,8 +1079,7 @@ let install_command args =
     Printf.printf "Building %s...\n" package_name;
     if not (build_package package_name) then (
       Printf.eprintf "❌ Failed to build %s\n" package_name;
-      Error
-        (Failure (Printf.sprintf "Failed to build %s" package_name)))
+      Error (Failure (Printf.sprintf "Failed to build %s" package_name)))
     else
       (* Look for the binary in various locations *)
       let root =
@@ -1178,5 +1187,4 @@ let main () =
     | "help" | "--help" | "-h" -> help_command ()
     | _ ->
         Printf.eprintf "Error: Unknown command '%s'\n\n%s\n" command usage_msg;
-        Error
-          (Failure (Printf.sprintf "Unknown command: %s" command))
+        Error (Failure (Printf.sprintf "Unknown command: %s" command))

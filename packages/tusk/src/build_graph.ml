@@ -6,6 +6,22 @@ open Build_node
 type node = Build_node.t
 type t = { nodes : (string, node) Hashtbl.t; root_nodes : node list }
 
+exception Cycle_detected of string list
+
+(** Find a node by package name *)
+let find_node t package_name = Hashtbl.find_opt t.nodes package_name
+
+(** Get a node by its ID *)
+let get_node t node_id =
+  match Hashtbl.find_opt t.nodes (Node_id.to_string node_id) with
+  | Some node -> node
+  | None ->
+      failwith
+        (Printf.sprintf
+           "FATAL: Node with ID '%s' not found in build graph. This should \
+            never happen!"
+           (Node_id.to_string node_id))
+
 (** Create a build graph from a workspace *)
 let create workspace toolchain =
   let nodes = Hashtbl.create 16 in
@@ -14,13 +30,13 @@ let create workspace toolchain =
   let get_sources package =
     let pkg_path = Std.Path.to_string package.Workspace.path in
     let src_dir =
-      if Miniriot.File.exists ~path:(Filename.concat pkg_path "src") then
+      if File_utils.exists ~path:(Filename.concat pkg_path "src") then
         Filename.concat pkg_path "src"
       else pkg_path
     in
 
     let rec scan_directory dir relative_path acc =
-      if Miniriot.File.exists ~path:dir then
+      if File_utils.exists ~path:dir then
         let entries =
           Fs.readdir
             (Path.of_string dir |> Result.expect ~msg:"Invalid dir path")
@@ -77,15 +93,21 @@ let create workspace toolchain =
       match Hashtbl.find_opt nodes package.Workspace.name with
       | None -> ()
       | Some node ->
-          let deps =
+          let dep_ids =
             List.filter_map
               (fun (dep : Workspace.dependency) ->
-                Hashtbl.find_opt nodes dep.Workspace.name)
+                (* Skip self-references *)
+                if dep.Workspace.name = package.Workspace.name then None
+                else
+                  (* Just store the ID, not the node *)
+                  match Hashtbl.find_opt nodes dep.Workspace.name with
+                  | Some dep_node ->
+                      Some (Node_id.of_package dep_node.Build_node.package)
+                  | None -> None)
               package.dependencies
           in
-          (* Create a new node with dependencies filled in *)
-          let updated_node = { node with Build_node.deps } in
-          Hashtbl.replace nodes package.Workspace.name updated_node)
+          (* Mutate the existing node's deps field with IDs *)
+          node.Build_node.deps <- dep_ids)
     workspace.packages;
 
   (* Find root nodes (no dependencies) *)
@@ -117,9 +139,14 @@ let topological_sort graph =
     sorted := node :: !sorted;
 
     (* Find nodes that depend on this one and decrement their in-degree *)
+    let node_id = Node_id.of_package node.Build_node.package in
     Hashtbl.iter
       (fun name other_node ->
-        if List.exists (fun dep -> dep == node) other_node.Build_node.deps then
+        if
+          List.exists
+            (fun dep_id -> Node_id.equal dep_id node_id)
+            other_node.Build_node.deps
+        then
           match Hashtbl.find_opt in_degree name with
           | None -> ()
           | Some deg ->
@@ -130,8 +157,24 @@ let topological_sort graph =
   done;
 
   (* Check for cycles *)
-  if List.length !sorted <> Hashtbl.length graph.nodes then
-    failwith "Circular dependency detected in build graph";
+  if List.length !sorted <> Hashtbl.length graph.nodes then (
+    (* Collect nodes that weren't sorted (likely part of cycle) *)
+    let cycle_nodes = ref [] in
+    Hashtbl.iter
+      (fun name node ->
+        if not (List.exists (fun n -> n.Build_node.package.name = name) !sorted)
+        then cycle_nodes := name :: !cycle_nodes)
+      graph.nodes;
+
+    Printf.eprintf
+      "Circular dependency detected: sorted %d nodes but graph has %d nodes\n"
+      (List.length !sorted)
+      (Hashtbl.length graph.nodes);
+    List.iter
+      (fun name -> Printf.eprintf "  Node '%s' is part of a cycle\n" name)
+      !cycle_nodes;
+
+    raise (Cycle_detected !cycle_nodes));
 
   List.rev !sorted
 
@@ -150,7 +193,7 @@ let print graph =
         Printf.printf " (deps: %s)"
           (String.concat ", "
              (List.map
-                (fun n -> n.Build_node.package.name)
+                (fun dep_id -> Node_id.to_string dep_id)
                 node.Build_node.deps));
       Printf.printf "\n")
     sorted;
@@ -163,7 +206,9 @@ let print graph =
       Printf.printf "%s%s\n" indent node.package.name;
       let visited = node.package.name :: visited in
       List.iter
-        (fun dep -> print_tree (indent ^ "  ") dep visited)
+        (fun dep_id ->
+          let dep = get_node graph dep_id in
+          print_tree (indent ^ "  ") dep visited)
         node.Build_node.deps)
   in
 
@@ -183,7 +228,9 @@ let filter_for_package graph target_pkg_name =
         else
           let visited = node.package.name :: visited in
           List.fold_left
-            (fun acc dep -> collect_deps dep acc)
+            (fun acc dep_id ->
+              let dep = get_node graph dep_id in
+              collect_deps dep acc)
             visited node.Build_node.deps
       in
 
@@ -207,7 +254,9 @@ let filter_for_package graph target_pkg_name =
             (* A node is a root in our filtered graph if none of its dependencies are in the filtered set *)
             let has_deps_in_filtered =
               List.exists
-                (fun dep -> List.mem dep.package.name needed_packages)
+                (fun dep_id ->
+                  let dep_name = Node_id.to_string dep_id in
+                  List.mem dep_name needed_packages)
                 node.Build_node.deps
             in
             if not has_deps_in_filtered then node :: acc else acc)

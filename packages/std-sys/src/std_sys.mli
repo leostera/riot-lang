@@ -1,7 +1,8 @@
-(** Low-level system bindings and C interfaces 
-    
+(** Low-level system bindings and C interfaces
+
     This module provides the foundation for all system-level operations in Riot.
-    It includes cryptography, I/O polling, networking, and filesystem operations. *)
+    It includes cryptography, I/O polling, networking, and filesystem
+    operations. *)
 
 module Crypto = Crypto
 
@@ -50,6 +51,7 @@ module IO : sig
 
   module Non_zero_int : sig
     type t = int
+
     val make : int -> int option
   end
 
@@ -77,6 +79,7 @@ module IO : sig
   module Event : sig
     module type Intf = sig
       type t
+
       val is_error : t -> bool
       val is_priority : t -> bool
       val is_read_closed : t -> bool
@@ -104,23 +107,27 @@ module IO : sig
 
       val name : string
       val make : unit -> (t, [> `Noop ]) io_result
+
       val select :
         ?timeout:int64 ->
         ?max_events:int ->
         t ->
         (Event.t list, [> `Noop ]) io_result
+
       val register :
         t ->
         fd:Fd.t ->
         token:Token.t ->
         interest:Interest.t ->
         (unit, [> `Noop ]) io_result
+
       val reregister :
         t ->
         fd:Fd.t ->
         token:Token.t ->
         interest:Interest.t ->
         (unit, [> `Noop ]) io_result
+
       val deregister : t -> fd:Fd.t -> (unit, [> `Noop ]) io_result
     end
 
@@ -134,12 +141,14 @@ module IO : sig
       type t
 
       val deregister : t -> Adapter.Selector.t -> (unit, [> `Noop ]) io_result
+
       val register :
         t ->
         Adapter.Selector.t ->
         Token.t ->
         Interest.t ->
         (unit, [> `Noop ]) io_result
+
       val reregister :
         t ->
         Adapter.Selector.t ->
@@ -152,10 +161,20 @@ module IO : sig
 
     val deregister : t -> Adapter.Selector.t -> (unit, [> `Noop ]) io_result
     val make : (module Intf with type t = 'a) -> 'a -> t
+
     val register :
-      t -> Adapter.Selector.t -> Token.t -> Interest.t -> (unit, [> `Noop ]) io_result
+      t ->
+      Adapter.Selector.t ->
+      Token.t ->
+      Interest.t ->
+      (unit, [> `Noop ]) io_result
+
     val reregister :
-      t -> Adapter.Selector.t -> Token.t -> Interest.t -> (unit, [> `Noop ]) io_result
+      t ->
+      Adapter.Selector.t ->
+      Token.t ->
+      Interest.t ->
+      (unit, [> `Noop ]) io_result
   end
 
   module File : sig
@@ -164,7 +183,10 @@ module IO : sig
     val pp : Format.formatter -> t -> unit
     val close : t -> unit
     val read : t -> ?pos:int -> ?len:int -> bytes -> (int, [> `Noop ]) io_result
-    val write : t -> ?pos:int -> ?len:int -> bytes -> (int, [> `Noop ]) io_result
+
+    val write :
+      t -> ?pos:int -> ?len:int -> bytes -> (int, [> `Noop ]) io_result
+
     val read_vectored : t -> Iovec.t -> (int, [> `Noop ]) io_result
     val write_vectored : t -> Iovec.t -> (int, [> `Noop ]) io_result
     val readdir : string -> (string list, _) io_result
@@ -189,7 +211,7 @@ module IO : sig
   module Net : sig
     module Addr : sig
       type 't raw_addr = string
-      type tcp_addr = [ `v4 | `v6 ] raw_addr  
+      type tcp_addr = [ `v4 | `v6 ] raw_addr
       type stream_addr
 
       val get_info : stream_addr -> (stream_addr list, [> `Noop ]) io_result
@@ -197,7 +219,10 @@ module IO : sig
       val loopback : tcp_addr
       val of_addr_info : Unix.addr_info -> stream_addr option
       val of_unix : Unix.sockaddr -> stream_addr
-      val of_host_and_port : host:string -> port:int -> (stream_addr, [> `Noop ]) io_result
+
+      val of_host_and_port :
+        host:string -> port:int -> (stream_addr, [> `Noop ]) io_result
+
       val port : stream_addr -> int
       val pp : Format.formatter -> stream_addr -> unit
       val tcp : tcp_addr -> int -> stream_addr
@@ -221,15 +246,23 @@ module IO : sig
       val connect :
         Addr.stream_addr ->
         ([ `Connected of t | `In_progress of t ], [> `Noop ]) io_result
+
       val close : t -> unit
       val pp : Format.formatter -> t -> unit
-      val read : t -> ?pos:int -> ?len:int -> bytes -> (int, [> `Noop ]) io_result
+
+      val read :
+        t -> ?pos:int -> ?len:int -> bytes -> (int, [> `Noop ]) io_result
+
       val read_vectored : t -> Iovec.t -> (int, [> `Noop ]) io_result
+
       val sendfile :
         t -> file:Fd.t -> off:int -> len:int -> (int, [> `Noop ]) io_result
+
       val to_source : t -> Source.t
+
       val write :
         t -> ?pos:int -> ?len:int -> bytes -> (int, [> `Noop ]) io_result
+
       val write_vectored : t -> Iovec.t -> (int, [> `Noop ]) io_result
     end
 
@@ -237,12 +270,14 @@ module IO : sig
       type t = Socket.listen_socket
 
       val accept : t -> (TcpStream.t * Addr.stream_addr, [> `Noop ]) io_result
+
       val bind :
         ?reuse_addr:bool ->
         ?reuse_port:bool ->
         ?backlog:int ->
         Addr.stream_addr ->
         (t, [> `Noop ]) io_result
+
       val close : t -> unit
       val pp : Format.formatter -> t -> unit
       val to_source : t -> Source.t
@@ -253,15 +288,19 @@ module IO : sig
     type t
 
     val make : unit -> (t, [> `Noop ]) io_result
+
     val poll :
       ?max_events:int ->
       ?timeout:int64 ->
       t ->
       (Event.t list, [> `Noop ]) io_result
+
     val register :
       t -> Token.t -> Interest.t -> Source.t -> (unit, [> `Noop ]) io_result
+
     val reregister :
       t -> Token.t -> Interest.t -> Source.t -> (unit, [> `Noop ]) io_result
+
     val deregister : t -> Source.t -> (unit, [> `Noop ]) io_result
   end
 end

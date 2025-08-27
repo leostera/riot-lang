@@ -10,8 +10,8 @@ type error = string
 
 (** {1 Store Management} *)
 
-val create : root_dir:string -> t
-(** Create a new store at the given root directory *)
+val create : workspace:Workspace.t -> t
+(** Create a new store for the given workspace *)
 
 (** {1 Simple Interface} *)
 
@@ -32,3 +32,13 @@ val save :
 
 val promote : t -> artifact -> target_dir:string -> (unit, error) result
 (** Promote cached artifacts to the target directory *)
+
+val exists : t -> Hasher.hash -> bool
+(** Check if artifacts for a given hash exist in the store *)
+
+val list_artifacts : t -> Hasher.hash -> string list
+(** List all files stored for a given hash *)
+
+val promote_from_store : t -> Hasher.hash -> string -> bool
+(** Promote artifacts directly from store by hash to target directory. 
+    Returns true if successful, false otherwise. *)

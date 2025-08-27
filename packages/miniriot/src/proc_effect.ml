@@ -13,8 +13,8 @@ type timeout = [ `infinity | `after of float ]
 type _ Effect.t +=
   | Syscall : {
       name : string;
-      interest : Gluon.Interest.t;
-      source : Gluon.Source.t;
+      interest : Std_sys.IO.Interest.t;
+      source : Std_sys.IO.Source.t;
       timeout : timeout;
     }
       -> unit Effect.t

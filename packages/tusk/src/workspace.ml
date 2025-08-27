@@ -61,7 +61,12 @@ let parse_package_toml toml_path =
 (** Scan a directory for a tusk.toml file *)
 let find_tusk_toml dir =
   let path = Filename.concat dir "tusk.toml" in
-  if Miniriot.File.exists ~path then Some path else None
+  match Std.Path.of_string path with
+  | Error _ -> None
+  | Ok path_obj -> (
+      match Std.Fs.file_exists path_obj with
+      | Ok true -> Some path
+      | Ok false | Error _ -> None)
 
 (** Scan workspace starting from root directory *)
 let scan_internal ~root =

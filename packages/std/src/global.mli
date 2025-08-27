@@ -20,24 +20,3 @@ val time_ms : unit -> int
 
 val panic : string -> 'a
 (** Raise a panic exception with the given message *)
-
-(** Date and time utilities *)
-module Datetime : sig
-  val now : unit -> float
-  val localtime : float -> Unix.tm
-  val gmtime : float -> Unix.tm
-end
-
-(** Process status types *)
-module Process : sig
-  type status = Exited of int | Signaled of int | Stopped of int
-
-  val of_unix_status : Unix.process_status -> status
-end
-
-(** File types *)
-module File : sig
-  type kind = Regular | Directory | Character | Block | Link | Fifo | Socket
-
-  val kind_of_unix : Unix.file_kind -> kind
-end

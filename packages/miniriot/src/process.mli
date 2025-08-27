@@ -1,6 +1,7 @@
 (** Process management and lifecycle *)
 
-type exit_reason = exn  (** Reasons why a process might exit *)
+type exit_reason = exn
+(** Reasons why a process might exit *)
 
 type state = private
   | Uninitialized
@@ -103,7 +104,8 @@ val add_ready_token : t -> Std_sys.IO.Token.t -> Std_sys.IO.Source.t -> unit
 val get_ready_token : t -> (Std_sys.IO.Token.t * Std_sys.IO.Source.t) option
 (** Get next ready I/O token *)
 
-val consume_ready_tokens : t -> (Std_sys.IO.Token.t * Std_sys.IO.Source.t -> unit) -> unit
+val consume_ready_tokens :
+  t -> (Std_sys.IO.Token.t * Std_sys.IO.Source.t -> unit) -> unit
 (** Consume all ready I/O tokens with a function *)
 
 val pp : Format.formatter -> t -> unit
