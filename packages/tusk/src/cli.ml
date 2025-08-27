@@ -6,13 +6,15 @@ open Std.Data
 (** Format an event for cargo-style output *)
 let format_cargo_event (event : Event.t) =
   match event.kind with
-  | PackageStarted { package } ->
-      Printf.sprintf "   \027[1;32mCompiling\027[0m %s" package
+  | PackageStarted { package = _ } ->
+      "" (* Don't show on start - wait for cache status *)
   | PackageComplete { package; success; _ } ->
       if success then "" (* Already shown as "Compiling" *)
       else Printf.sprintf "   \027[1;31mFailed\027[0m %s" package
   | CacheHit { package; _ } ->
-      Printf.sprintf "   \027[1;32mCompiling\027[0m %s (cached)" package
+      Printf.sprintf "   \027[1;32mCompiling\027[0m %s \027[1;90m(cached)\027[0m" package
+  | CacheMiss { package; _ } ->
+      Printf.sprintf "   \027[1;32mCompiling\027[0m %s" package
   | CompileError { message; _ } -> Printf.sprintf "\027[1;31merror\027[0m: %s" message
   | BuildComplete { duration_ms; succeeded; failed; _ } ->
       if List.length failed = 0 then
