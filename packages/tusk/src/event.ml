@@ -525,6 +525,154 @@ let kind_from_json json =
                   in
                   Ok (PackageComplete { package; success; duration_ms; modules_compiled; cache_hits; cache_misses; errors = [] })
               | _ -> Error "Invalid PackageComplete data")
+          | "tusk.build.cache.hit" -> (
+              match data with
+              | Json.Object data_fields ->
+                  let package =
+                    match List.assoc_opt "package" data_fields with
+                    | Some (Json.String p) -> p
+                    | _ -> ""
+                  in
+                  let hash =
+                    match List.assoc_opt "hash" data_fields with
+                    | Some (Json.String h) -> h
+                    | _ -> ""
+                  in
+                  Ok (CacheHit { package; hash })
+              | _ -> Error "Invalid CacheHit data")
+          | "tusk.build.cache.miss" -> (
+              match data with
+              | Json.Object data_fields ->
+                  let package =
+                    match List.assoc_opt "package" data_fields with
+                    | Some (Json.String p) -> p
+                    | _ -> ""
+                  in
+                  let hash =
+                    match List.assoc_opt "hash" data_fields with
+                    | Some (Json.String h) -> h
+                    | _ -> ""
+                  in
+                  Ok (CacheMiss { package; hash })
+              | _ -> Error "Invalid CacheMiss data")
+          | "tusk.build.cache.stored" -> (
+              match data with
+              | Json.Object data_fields ->
+                  let package =
+                    match List.assoc_opt "package" data_fields with
+                    | Some (Json.String p) -> p
+                    | _ -> ""
+                  in
+                  let hash =
+                    match List.assoc_opt "hash" data_fields with
+                    | Some (Json.String h) -> h
+                    | _ -> ""
+                  in
+                  let artifacts =
+                    match List.assoc_opt "artifacts" data_fields with
+                    | Some (Json.Array arr) ->
+                        List.filter_map
+                          (function Json.String s -> Some s | _ -> None)
+                          arr
+                    | _ -> []
+                  in
+                  Ok (CacheStored { package; hash; artifacts })
+              | _ -> Error "Invalid CacheStored data")
+          | "tusk.build.compile.interface" -> (
+              match data with
+              | Json.Object data_fields ->
+                  let package =
+                    match List.assoc_opt "package" data_fields with
+                    | Some (Json.String p) -> p
+                    | _ -> ""
+                  in
+                  let file =
+                    match List.assoc_opt "file" data_fields with
+                    | Some (Json.String f) -> f
+                    | _ -> ""
+                  in
+                  Ok (CompilingInterface { package; file })
+              | _ -> Error "Invalid CompilingInterface data")
+          | "tusk.build.compile.implementation" -> (
+              match data with
+              | Json.Object data_fields ->
+                  let package =
+                    match List.assoc_opt "package" data_fields with
+                    | Some (Json.String p) -> p
+                    | _ -> ""
+                  in
+                  let file =
+                    match List.assoc_opt "file" data_fields with
+                    | Some (Json.String f) -> f
+                    | _ -> ""
+                  in
+                  Ok (CompilingImplementation { package; file })
+              | _ -> Error "Invalid CompilingImplementation data")
+          | "tusk.build.compile.error" -> (
+              match data with
+              | Json.Object data_fields ->
+                  let package =
+                    match List.assoc_opt "package" data_fields with
+                    | Some (Json.String p) -> p
+                    | _ -> ""
+                  in
+                  let file =
+                    match List.assoc_opt "file" data_fields with
+                    | Some (Json.String f) -> f
+                    | _ -> ""
+                  in
+                  let line =
+                    match List.assoc_opt "line" data_fields with
+                    | Some (Json.Int l) -> l
+                    | _ -> 0
+                  in
+                  let column =
+                    match List.assoc_opt "column" data_fields with
+                    | Some (Json.Int c) -> Some c
+                    | _ -> None
+                  in
+                  let message =
+                    match List.assoc_opt "message" data_fields with
+                    | Some (Json.String m) -> m
+                    | _ -> ""
+                  in
+                  let hint =
+                    match List.assoc_opt "hint" data_fields with
+                    | Some (Json.String h) -> Some h
+                    | _ -> None
+                  in
+                  Ok (CompileError { package; file; line; column; message; hint })
+              | _ -> Error "Invalid CompileError data")
+          | "tusk.build.link.library" -> (
+              match data with
+              | Json.Object data_fields ->
+                  let package =
+                    match List.assoc_opt "package" data_fields with
+                    | Some (Json.String p) -> p
+                    | _ -> ""
+                  in
+                  let output =
+                    match List.assoc_opt "output" data_fields with
+                    | Some (Json.String o) -> o
+                    | _ -> ""
+                  in
+                  Ok (LinkingLibrary { package; output })
+              | _ -> Error "Invalid LinkingLibrary data")
+          | "tusk.build.link.executable" -> (
+              match data with
+              | Json.Object data_fields ->
+                  let package =
+                    match List.assoc_opt "package" data_fields with
+                    | Some (Json.String p) -> p
+                    | _ -> ""
+                  in
+                  let output =
+                    match List.assoc_opt "output" data_fields with
+                    | Some (Json.String o) -> o
+                    | _ -> ""
+                  in
+                  Ok (LinkingExecutable { package; output })
+              | _ -> Error "Invalid LinkingExecutable data")
           | _ -> Error ("Unknown event type: " ^ event_name))
       | _ -> Error "Missing event field")
   | _ -> Error "Invalid JSON format"
