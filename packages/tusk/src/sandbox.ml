@@ -245,6 +245,9 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
               success := false;
               errors := error_msg :: !errors;
 
+              (* Debug: print the raw error message *)
+              Printf.eprintf "[DEBUG SANDBOX] Raw error: '%s'\n%!" error_msg;
+
               (* Parse OCaml compiler error for better reporting *)
               let compile_error =
                 match Ocaml_error_parser.get_primary_error error_msg with

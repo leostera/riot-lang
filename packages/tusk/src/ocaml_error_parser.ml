@@ -85,12 +85,18 @@ let extract_hint context_lines =
 
 (** Parse a complete OCaml compiler error message *)
 let parse_error error_output =
+  (* Debug: print the raw error output *)
+  Printf.eprintf "[DEBUG] Raw error output:\n%s\n[END DEBUG]\n%!" error_output;
+  
   let lines = String.split_on_char '\n' error_output |> Array.of_list in
   let errors = ref [] in
   
   let i = ref 0 in
   while !i < Array.length lines do
     let line = lines.(!i) in
+    
+    (* Debug: print each line being parsed *)
+    Printf.eprintf "[DEBUG] Parsing line: '%s'\n%!" line;
     
     (* Look for file location *)
     match parse_location line with
