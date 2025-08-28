@@ -78,6 +78,9 @@ let ocamlopt_path toolchain =
 let ocamldep_path toolchain =
   Filename.concat (get_toolchain_path toolchain) "bin/ocamldep"
 
+let ocamlformat_path toolchain =
+  Filename.concat (get_toolchain_path toolchain) "bin/ocamlformat"
+
 (** Parse ocaml-toolchain.toml file *)
 let parse_toolchain_file path =
   try

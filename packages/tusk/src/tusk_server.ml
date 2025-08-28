@@ -41,6 +41,10 @@ let rec loop state =
   | GetPackageInfo { client_pid; package_name } ->
       handle_get_package_info state client_pid package_name
   | GetBuildGraph { client_pid } -> handle_get_build_graph state client_pid
+  | FormatFile { client_pid; file_path; check_only } ->
+      handle_format_file state client_pid file_path check_only
+  | FormatCode { client_pid; code; file_path } ->
+      handle_format_code state client_pid code file_path
 
 (** Handler for the ping message. *)
 and handle_ping state client_pid =
@@ -156,6 +160,29 @@ and handle_get_build_graph state client_pid =
 
   (* Send the build graph *)
   send client_pid (ServerResponse (BuildGraph { nodes }));
+  loop state
+
+and handle_format_file state client_pid file_path check_only =
+  Printf.eprintf "Server: Received FormatFile from %s for %s (check_only=%b)\n"
+    (Pid.to_string client_pid) (Std.Path.to_string file_path) check_only;
+  
+  let response = 
+    match Ocamlformat.format_file ~toolchain:state.toolchain ~file_path ~check_only with
+    | Formatted { code; changed } -> FormatResult { formatted_code = code; changed }
+    | Error error -> FormatError { error }
+  in
+  send client_pid (ServerResponse response);
+  loop state
+
+and handle_format_code state client_pid code file_path =
+  Printf.eprintf "Server: Received FormatCode from %s\n" (Pid.to_string client_pid);
+  
+  let response = 
+    match Ocamlformat.format_code ~toolchain:state.toolchain ~code ~file_path with
+    | Formatted { code; changed } -> FormatResult { formatted_code = code; changed }
+    | Error error -> FormatError { error }
+  in
+  send client_pid (ServerResponse response);
   loop state
 
 (** Handler for the build message. *)

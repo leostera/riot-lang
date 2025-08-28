@@ -56,6 +56,65 @@ let tools =
       description = Some "Get the build dependency graph";
       input_schema = Json.Object [ ("type", Json.String "object") ];
     };
+    {
+      Mcp.name = "format_file";
+      description = Some "Format an OCaml source file with ocamlformat";
+      input_schema =
+        Json.Object
+          [
+            ("type", Json.String "object");
+            ( "properties",
+              Json.Object
+                [
+                  ( "file_path",
+                    Json.Object
+                      [
+                        ("type", Json.String "string");
+                        ( "description",
+                          Json.String "Path to the OCaml file to format" );
+                      ] );
+                  ( "check_only",
+                    Json.Object
+                      [
+                        ("type", Json.String "boolean");
+                        ( "description",
+                          Json.String
+                            "If true, only check if formatting is needed \
+                             without modifying the file" );
+                      ] );
+                ] );
+            ("required", Json.Array [ Json.String "file_path" ]);
+          ];
+    };
+    {
+      Mcp.name = "format_code";
+      description = Some "Format OCaml code string with ocamlformat";
+      input_schema =
+        Json.Object
+          [
+            ("type", Json.String "object");
+            ( "properties",
+              Json.Object
+                [
+                  ( "code",
+                    Json.Object
+                      [
+                        ("type", Json.String "string");
+                        ("description", Json.String "OCaml code to format");
+                      ] );
+                  ( "file_hint",
+                    Json.Object
+                      [
+                        ("type", Json.String "string");
+                        ( "description",
+                          Json.String
+                            "Optional file path hint for determining if code \
+                             is .ml or .mli" );
+                      ] );
+                ] );
+            ("required", Json.Array [ Json.String "code" ]);
+          ];
+    };
   ]
 
 (** Execute a tool and return MCP content items *)
@@ -242,6 +301,134 @@ let execute_tool name arguments =
                 Mcp.Text
                   (Json.to_string (Json.Object [ ("error", Json.String e) ]));
               ]))
+  | "format_file" -> (
+      (* Extract arguments *)
+      let file_path, check_only =
+        match arguments with
+        | Some (Json.Object fields) -> (
+            match
+              ( List.assoc_opt "file_path" fields,
+                List.assoc_opt "check_only" fields )
+            with
+            | Some (Json.String path), Some (Json.Bool check) -> (path, check)
+            | Some (Json.String path), None -> (path, false)
+            | _ -> ("", false))
+        | _ -> ("", false)
+      in
+
+      if file_path = "" then
+        [
+          Mcp.Text
+            (Json.to_string
+               (Json.Object [ ("error", Json.String "file_path is required") ]));
+        ]
+      else
+        (* Format the file through the server *)
+        match Std.Path.of_string file_path with
+        | Error _ ->
+            [
+              Mcp.Text
+                (Json.to_string
+                   (Json.Object
+                      [
+                        ("success", Json.Bool false);
+                        ("error", Json.String "Invalid file path");
+                      ]));
+            ]
+        | Ok file_path -> (
+            match create_local_client () with
+            | Error e ->
+                [
+                  Mcp.Text
+                    (Json.to_string
+                       (Json.Object
+                          [
+                            ("success", Json.Bool false);
+                            ("error", Json.String e);
+                          ]));
+                ]
+            | Ok client -> (
+                match Tusk_jsonrpc.Client.format_file client ~file_path:(Std.Path.to_string file_path) ~check_only with
+                | Ok (formatted_code, changed) ->
+                    [
+                      Mcp.Text
+                        (Json.to_string
+                           (Json.Object
+                              [
+                                ("success", Json.Bool true);
+                                ("formatted_code", Json.String formatted_code);
+                                ("changed", Json.Bool changed);
+                              ]));
+                    ]
+                | Error error ->
+                    [
+                      Mcp.Text
+                        (Json.to_string
+                           (Json.Object
+                              [
+                                ("success", Json.Bool false);
+                                ("error", Json.String error);
+                              ]));
+                    ])))
+  | "format_code" -> (
+      (* Extract arguments *)
+      let code, file_hint =
+        match arguments with
+        | Some (Json.Object fields) -> (
+            match
+              ( List.assoc_opt "code" fields,
+                List.assoc_opt "file_hint" fields )
+            with
+            | Some (Json.String c), Some (Json.String h) ->
+                (c, match Std.Path.of_string h with Ok p -> Some p | Error _ -> None)
+            | Some (Json.String c), None -> (c, None)
+            | _ -> ("", None))
+        | _ -> ("", None)
+      in
+
+      if code = "" then
+        [
+          Mcp.Text
+            (Json.to_string
+               (Json.Object [ ("error", Json.String "code is required") ]));
+        ]
+      else
+        (* Format the code through the server *)
+        match create_local_client () with
+        | Error e ->
+            [
+              Mcp.Text
+                (Json.to_string
+                   (Json.Object
+                      [
+                        ("success", Json.Bool false);
+                        ("error", Json.String e);
+                      ]));
+            ]
+        | Ok client -> (
+            let file_hint_str = Option.map Std.Path.to_string file_hint in
+            match Tusk_jsonrpc.Client.format_code client ~code ~file_path:file_hint_str with
+            | Ok (formatted_code, changed) ->
+                [
+                  Mcp.Text
+                    (Json.to_string
+                       (Json.Object
+                          [
+                            ("success", Json.Bool true);
+                            ("formatted_code", Json.String formatted_code);
+                            ("changed", Json.Bool changed);
+                          ]));
+                ]
+            | Error error ->
+                [
+                  Mcp.Text
+                    (Json.to_string
+                       (Json.Object
+                          [
+                            ("success", Json.Bool false);
+                            ("error", Json.String error);
+                          ]));
+                ]))
   | _ ->
       [
         Mcp.Text
