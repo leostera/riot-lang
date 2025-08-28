@@ -10,35 +10,25 @@ let format_cargo_event (event : Event.t) =
       "" (* Don't show on start - wait for cache status *)
   | PackageComplete { package; success; errors; _ } ->
       if success then "" (* Already shown as "Compiling" *)
-      else if errors = [] then "" (* Skipped due to dependency failure, don't show *)
+      else if errors = [] then ""
+        (* Skipped due to dependency failure, don't show *)
       else Printf.sprintf "   \027[1;31mFailed\027[0m %s" package
   | PackageSkipped _ -> "" (* Don't show skipped packages *)
   | CacheHit { package; _ } ->
-      Printf.sprintf "   \027[1;32mCompiling\027[0m %s \027[1;90m(cached)\027[0m" package
+      Printf.sprintf
+        "   \027[1;32mCompiling\027[0m %s \027[1;90m(cached)\027[0m" package
   | CacheMiss { package; _ } ->
       Printf.sprintf "   \027[1;32mCompiling\027[0m %s" package
-  | CompileError { file; line; column; message; hint; _ } -> 
-      let location = 
-        if file <> "" then 
-          match column with
-          | Some col -> Printf.sprintf "%s:%d:%d" file line col
-          | None -> Printf.sprintf "%s:%d" file line
-        else ""
-      in
-      let hint_str = match hint with
-        | Some h -> Printf.sprintf "\n       \027[0;36mHint:\027[0m %s" h
-        | None -> ""
-      in
-      if location <> "" then
-        Printf.sprintf "\027[1;31merror\027[0m: %s\n       %s%s" location message hint_str
-      else
-        Printf.sprintf "\027[1;31merror\027[0m: %s%s" message hint_str
+  | CompileError { package = _; error } ->
+      (* Just display the raw compiler output for best fidelity *)
+      error.raw
   | BuildComplete { duration_ms; succeeded; failed; _ } ->
       if List.length failed = 0 then
         Printf.sprintf "   \027[1;32mFinished\027[0m in %.2fs"
           (float_of_int duration_ms /. 1000.0)
       else
-        Printf.sprintf "   \027[1;31mFailed\027[0m with %d errors" (List.length failed)
+        Printf.sprintf "   \027[1;31mFailed\027[0m with %d errors"
+          (List.length failed)
   | _ -> ""
 
 (** Helper to create a tusk client connected to the local server *)
@@ -187,15 +177,18 @@ let build_command package_opt =
         | Client.BuildStarted session_id -> ()
         | Client.BuildEvent event ->
             (* Only display package events once *)
-            let should_display = match event.kind with
+            let should_display =
+              match event.kind with
               | CacheHit { package; _ } | CacheMiss { package; _ } ->
                   if Hashtbl.mem displayed_packages package then false
-                  else (Hashtbl.add displayed_packages package (); true)
-              | PackageComplete { package; _ } ->
+                  else (
+                    Hashtbl.add displayed_packages package ();
+                    true)
+              | PackageComplete { package; _ } -> (
                   (* Always show failures, but not successes (already shown as Compiling) *)
-                  (match event.kind with
-                   | PackageComplete { success = false; _ } -> true
-                   | _ -> false)
+                  match event.kind with
+                  | PackageComplete { success = false; _ } -> true
+                  | _ -> false)
               | _ -> true
             in
             if should_display then
@@ -261,10 +254,13 @@ let build_package package_name =
             ()
         | Tusk_jsonrpc.Client.BuildEvent event ->
             (* Only display package events once *)
-            let should_display = match event.kind with
+            let should_display =
+              match event.kind with
               | CacheHit { package; _ } | CacheMiss { package; _ } ->
                   if Hashtbl.mem displayed_packages package then false
-                  else (Hashtbl.add displayed_packages package (); true)
+                  else (
+                    Hashtbl.add displayed_packages package ();
+                    true)
               | PackageComplete { package; success; errors; _ } ->
                   (* Always show failures with errors, but not successes or skips *)
                   success = false && errors <> []
@@ -1072,7 +1068,8 @@ let install_command args =
     (* First, build the package *)
     Printf.printf "Building %s...\n" package_name;
     if not (build_package package_name) then (
-      Printf.eprintf "\n❌ Failed to build %s, nothing was installed\n" package_name;
+      Printf.eprintf "\n❌ Failed to build %s, nothing was installed\n"
+        package_name;
       Error (Failure (Printf.sprintf "Failed to build %s" package_name)))
     else
       (* Look for the binary in various locations *)

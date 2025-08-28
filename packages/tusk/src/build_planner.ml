@@ -1,5 +1,4 @@
-type skip_reason = 
-  | DependenciesFailed of string list
+type skip_reason = DependenciesFailed of string list
 
 type plan_result =
   | Planned of Build_node.t
@@ -299,7 +298,7 @@ let plan_node ~graph ~node ~build_results ~session_id () =
   (* Step 1: Check if immediate dependencies have been planned/built *)
   (* Resolve dependency IDs to nodes *)
   let dep_nodes = List.map (Build_graph.get_node graph) node.Build_node.deps in
-  
+
   (* First, check if any dependencies have failed *)
   let failed_deps =
     List.filter_map
@@ -310,11 +309,12 @@ let plan_node ~graph ~node ~build_results ~session_id () =
         | _ -> None)
       dep_nodes
   in
-  
+
   if failed_deps <> [] then
     (* If any dependency has failed, fail this node immediately *)
-    let dep_errors = 
-      List.map (fun (name, err) -> Printf.sprintf "%s: %s" name err) failed_deps
+    (* Just record which dependencies failed, not their full error messages *)
+    let dep_errors =
+      List.map (fun (name, _err) -> name) failed_deps
     in
     Ok (Skipped { node; reason = DependenciesFailed dep_errors })
   else
@@ -326,9 +326,10 @@ let plan_node ~graph ~node ~build_results ~session_id () =
           let pkg_name = dep.Build_node.package.name in
           match Build_results.get_status build_results pkg_name with
           | Some (Build_results.Built _) -> false (* Already built - ready *)
-          | Some (Build_results.Building) -> true (* Still building - not ready *)
-          | Some (Build_results.NotStarted) -> true (* Not started - not ready *)
-          | Some (Build_results.Failed _) -> true (* Should have been caught above *)
+          | Some Build_results.Building -> true (* Still building - not ready *)
+          | Some Build_results.NotStarted -> true (* Not started - not ready *)
+          | Some (Build_results.Failed _) ->
+              true (* Should have been caught above *)
           | None -> true (* Not tracked - not ready *))
         dep_nodes
     in
@@ -337,25 +338,25 @@ let plan_node ~graph ~node ~build_results ~session_id () =
       (* Return MissingDependencies if any deps are unplanned *)
       Ok (MissingDependencies { node; deps = unplanned_deps })
     else
-    (* Step 2: All deps are planned, we can proceed *)
-    (* Step 3: Generate outputs and actions based on sources, deps, and package *)
-    let outs, actions =
-      generate_actions ~graph ~node ~toolchain:node.toolchain
-        ~package:node.package ~srcs:node.srcs ~deps:dep_nodes
-    in
+      (* Step 2: All deps are planned, we can proceed *)
+      (* Step 3: Generate outputs and actions based on sources, deps, and package *)
+      let outs, actions =
+        generate_actions ~graph ~node ~toolchain:node.toolchain
+          ~package:node.package ~srcs:node.srcs ~deps:dep_nodes
+      in
 
-    (* Step 4: Compute SHA512 hash of everything *)
-    Log.computing_hash ~session_id ~package:node.package.name;
-    let hash_start = Global.time_ms () in
-    let hash =
-      compute_hash_for_planned_node ~toolchain:node.toolchain
-        ~package:node.package ~srcs:node.srcs ~deps:dep_nodes ~outs ~actions
-    in
-    let hash_duration = Global.time_ms () - hash_start in
-    Log.hash_computed ~session_id ~package:node.package.name
-      ~hash:(Hasher.to_string hash) ~duration_ms:hash_duration;
+      (* Step 4: Compute SHA512 hash of everything *)
+      Log.computing_hash ~session_id ~package:node.package.name;
+      let hash_start = Global.time_ms () in
+      let hash =
+        compute_hash_for_planned_node ~toolchain:node.toolchain
+          ~package:node.package ~srcs:node.srcs ~deps:dep_nodes ~outs ~actions
+      in
+      let hash_duration = Global.time_ms () - hash_start in
+      Log.hash_computed ~session_id ~package:node.package.name
+        ~hash:(Hasher.to_string hash) ~duration_ms:hash_duration;
 
-    (* Update the node's spec to Planned *)
-    node.spec <- Planned { hash; outs; actions };
+      (* Update the node's spec to Planned *)
+      node.spec <- Planned { hash; outs; actions };
 
-    Ok (Planned node)
+      Ok (Planned node)

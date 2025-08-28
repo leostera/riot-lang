@@ -2,6 +2,9 @@
 
 open Std.Data
 
+(** Strip ANSI escape codes from a string *)
+val strip_ansi_codes : string -> string
+
 (** Log severity levels *)
 type level = Error | Warn | Info | Debug | Trace
 
@@ -11,13 +14,21 @@ type skip_reason =
 
 val level_to_string : level -> string
 
+type error_kind =
+  | SyntaxError
+  | TypeError of { description : string }
+  | UnboundValue of { name : string }
+  | UnboundModule of { name : string }
+  | FileNotFound of { filename : string }
+  | OtherError of { message : string }
+
 type build_error = {
-  package : string;
   file : string;
   line : int;
-  column : int option;
-  message : string;
-  hint : string option;
+  span : int * int;  (** start, end character positions *)
+  hint : string;  (** The source line with caret pointing to error *)
+  kind : error_kind;
+  raw : string;  (** Raw compiler output *)
 }
 
 type build_result = {
@@ -48,7 +59,7 @@ type kind =
   | CacheHit of { package : string; hash : string }
   | CacheMiss of { package : string; hash : string }
   | CacheStored of { package : string; hash : string; artifacts : string list }
-  | CompileError of build_error
+  | CompileError of { package : string; error : build_error }
   | CompilingImplementation of { package : string; file : string }
   | CompilingInterface of { package : string; file : string }
   | ComputingHash of { package : string }

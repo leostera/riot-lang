@@ -113,8 +113,10 @@ let package_complete ~session_id result =
   let event = Event.create ~session_id ~level:Info (PackageComplete result) in
   log event
 
-let compile_error ~session_id error =
-  let event = Event.create ~session_id ~level:Error (CompileError error) in
+let compile_error ~session_id ~package error =
+  let event =
+    Event.create ~session_id ~level:Error (CompileError { package; error })
+  in
   log event
 
 (** Cache event logging *)
@@ -170,7 +172,8 @@ let worker_pool_creating ~session_id ~workers =
 
 let worker_pool_created ~session_id ~workers ~duration_ms =
   let event =
-    Event.create ~session_id ~level:Info (WorkerPoolCreated { workers; duration_ms })
+    Event.create ~session_id ~level:Info
+      (WorkerPoolCreated { workers; duration_ms })
   in
   log event
 

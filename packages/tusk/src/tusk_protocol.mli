@@ -6,7 +6,8 @@ open Miniriot
 type target = All | Package of string
 
 module BuildStats : sig
-  type t 
+  type t
+
   val make : unit -> t
   val mark_started : t -> unit
   val mark_completed : t -> unit
@@ -40,7 +41,11 @@ type request =
 type response =
   | Pong
   | BuildStarted of { session_id : Session_id.t; started_at : Datetime.t }
-  | BuildCompleted of { session_id : Session_id.t; completed_At : Datetime.t; stats: BuildStats.t }
+  | BuildCompleted of {
+      session_id : Session_id.t;
+      completed_At : Datetime.t;
+      stats : BuildStats.t;
+    }
   | CycleDetected of {
       session_id : Session_id.t;
       cycle_nodes : string list;

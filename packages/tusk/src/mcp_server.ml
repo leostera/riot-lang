@@ -5,9 +5,9 @@ open Std.Data
 
 (** Helper to create a tusk client connected to the local server *)
 let create_local_client () =
-  let cwd = 
-    Std.Env.current_dir () 
-    |> Std.Result.expect ~msg:"Failed to get current directory" 
+  let cwd =
+    Std.Env.current_dir ()
+    |> Std.Result.expect ~msg:"Failed to get current directory"
   in
   match Workspace_manager.scan cwd with
   | Error _ -> Error "Failed to find workspace"
@@ -35,7 +35,8 @@ let tools =
                         ("type", Json.String "string");
                         ( "description",
                           Json.String
-                            "Package name to build (optional, builds all if not specified)" );
+                            "Package name to build (optional, builds all if \
+                             not specified)" );
                       ] );
                 ] );
           ];
@@ -70,52 +71,63 @@ let execute_tool name arguments =
             | _ -> None)
         | _ -> None
       in
-      
+
       (* Connect to server and build *)
       match create_local_client () with
       | Error e ->
-          [ 
-            Mcp.Text (Json.to_string (Json.Object [
-              ("error", Json.String e)
-            ])) 
+          [
+            Mcp.Text (Json.to_string (Json.Object [ ("error", Json.String e) ]));
           ]
       | Ok client -> (
           (* Collect all events as JSON *)
           let events = ref [] in
           let callback = function
             | Tusk_jsonrpc.Client.BuildStarted sid ->
-                events := Json.Object [
-                  ("type", Json.String "build_started");
-                  ("timestamp", Json.String (Datetime.to_iso8601 (Datetime.now ())));
-                  ("session_id", Json.String (Session_id.to_string sid));
-                ] :: !events
+                events :=
+                  Json.Object
+                    [
+                      ("type", Json.String "build_started");
+                      ( "timestamp",
+                        Json.String (Datetime.to_iso8601 (Datetime.now ())) );
+                      ("session_id", Json.String (Session_id.to_string sid));
+                    ]
+                  :: !events
             | Tusk_jsonrpc.Client.BuildEvent event ->
                 (* Convert event to JSON - this includes all build logs *)
                 events := Event.to_json event :: !events
             | Tusk_jsonrpc.Client.BuildFinished result ->
-                let status_json = match result with
-                  | Ok () -> Json.Object [
-                      ("type", Json.String "build_completed");
-                      ("timestamp", Json.String (Datetime.to_iso8601 (Datetime.now ())));
-                      ("success", Json.Bool true);
-                    ]
-                  | Error e -> Json.Object [
-                      ("type", Json.String "build_failed");
-                      ("timestamp", Json.String (Datetime.to_iso8601 (Datetime.now ())));
-                      ("success", Json.Bool false);
-                      ("error", Json.String e);
-                    ]
+                let status_json =
+                  match result with
+                  | Ok () ->
+                      Json.Object
+                        [
+                          ("type", Json.String "build_completed");
+                          ( "timestamp",
+                            Json.String (Datetime.to_iso8601 (Datetime.now ()))
+                          );
+                          ("success", Json.Bool true);
+                        ]
+                  | Error e ->
+                      Json.Object
+                        [
+                          ("type", Json.String "build_failed");
+                          ( "timestamp",
+                            Json.String (Datetime.to_iso8601 (Datetime.now ()))
+                          );
+                          ("success", Json.Bool false);
+                          ("error", Json.String e);
+                        ]
                 in
                 events := status_json :: !events
           in
-          
+
           (* Build the requested package or all *)
           let request =
             match package with
             | Some pkg -> Tusk_jsonrpc.Client.BuildPackage pkg
             | None -> Tusk_jsonrpc.Client.BuildAll
           in
-          
+
           (* Execute build with streaming *)
           match Tusk_jsonrpc.Client.build_streaming client request callback with
           | Ok _ ->
@@ -123,44 +135,46 @@ let execute_tool name arguments =
               let all_events = Json.Array (List.rev !events) in
               [ Mcp.Text (Json.to_string all_events) ]
           | Error e ->
-              [ 
-                Mcp.Text (Json.to_string (Json.Object [
-                  ("error", Json.String e)
-                ])) 
+              [
+                Mcp.Text
+                  (Json.to_string (Json.Object [ ("error", Json.String e) ]));
               ]))
-              
   | "clean" -> (
       (* Clean build artifacts *)
-      let cwd = 
-        Std.Env.current_dir () 
-        |> Std.Result.expect ~msg:"Failed to get current directory" 
+      let cwd =
+        Std.Env.current_dir ()
+        |> Std.Result.expect ~msg:"Failed to get current directory"
       in
       let target_dir = Filename.concat (Std.Path.to_string cwd) "target" in
       let cmd = Printf.sprintf "rm -rf %s" target_dir in
       let result = Std.Command.system cmd in
       match Std.Command.of_unix_status result with
       | Std.Command.Exited 0 ->
-          [ 
-            Mcp.Text (Json.to_string (Json.Object [
-              ("success", Json.Bool true);
-              ("message", Json.String "Build artifacts cleaned successfully");
-            ])) 
+          [
+            Mcp.Text
+              (Json.to_string
+                 (Json.Object
+                    [
+                      ("success", Json.Bool true);
+                      ( "message",
+                        Json.String "Build artifacts cleaned successfully" );
+                    ]));
           ]
-      | _ -> 
-          [ 
-            Mcp.Text (Json.to_string (Json.Object [
-              ("success", Json.Bool false);
-              ("message", Json.String "Failed to clean build artifacts");
-            ])) 
+      | _ ->
+          [
+            Mcp.Text
+              (Json.to_string
+                 (Json.Object
+                    [
+                      ("success", Json.Bool false);
+                      ("message", Json.String "Failed to clean build artifacts");
+                    ]));
           ])
-          
   | "workspace_info" -> (
       match create_local_client () with
       | Error e ->
-          [ 
-            Mcp.Text (Json.to_string (Json.Object [
-              ("error", Json.String e)
-            ])) 
+          [
+            Mcp.Text (Json.to_string (Json.Object [ ("error", Json.String e) ]));
           ]
       | Ok client -> (
           match Tusk_jsonrpc.Client.get_workspace_config client with
@@ -174,7 +188,9 @@ let execute_tool name arguments =
                         ("name", Json.String pkg.name);
                         ("path", Json.String pkg.path);
                         ( "dependencies",
-                          Json.Array (List.map (fun d -> Json.String d) pkg.dependencies) );
+                          Json.Array
+                            (List.map (fun d -> Json.String d) pkg.dependencies)
+                        );
                       ])
                   config.packages
               in
@@ -191,19 +207,15 @@ let execute_tool name arguments =
               in
               [ Mcp.Text (Json.to_string workspace_json) ]
           | Error e ->
-              [ 
-                Mcp.Text (Json.to_string (Json.Object [
-                  ("error", Json.String e)
-                ])) 
+              [
+                Mcp.Text
+                  (Json.to_string (Json.Object [ ("error", Json.String e) ]));
               ]))
-              
   | "build_graph" -> (
       match create_local_client () with
       | Error e ->
-          [ 
-            Mcp.Text (Json.to_string (Json.Object [
-              ("error", Json.String e)
-            ])) 
+          [
+            Mcp.Text (Json.to_string (Json.Object [ ("error", Json.String e) ]));
           ]
       | Ok client -> (
           match Tusk_jsonrpc.Client.get_build_graph client with
@@ -216,7 +228,8 @@ let execute_tool name arguments =
                       [
                         ("package", Json.String node.package_name);
                         ( "dependencies",
-                          Json.Array (List.map (fun d -> Json.String d) node.deps) );
+                          Json.Array
+                            (List.map (fun d -> Json.String d) node.deps) );
                       ])
                   graph.nodes
               in
@@ -225,23 +238,24 @@ let execute_tool name arguments =
               in
               [ Mcp.Text (Json.to_string graph_json) ]
           | Error e ->
-              [ 
-                Mcp.Text (Json.to_string (Json.Object [
-                  ("error", Json.String e)
-                ])) 
+              [
+                Mcp.Text
+                  (Json.to_string (Json.Object [ ("error", Json.String e) ]));
               ]))
-              
   | _ ->
-      [ 
-        Mcp.Text (Json.to_string (Json.Object [
-          ("error", Json.String (Printf.sprintf "Unknown tool: %s" name))
-        ])) 
+      [
+        Mcp.Text
+          (Json.to_string
+             (Json.Object
+                [
+                  ("error", Json.String (Printf.sprintf "Unknown tool: %s" name));
+                ]));
       ]
 
 (** MCP Protocol module implementing Jsonrpc.ApplicationProtocol *)
 module McpProtocol = struct
   type request =
-    | Initialize of { 
+    | Initialize of {
         protocol_version : string;
         capabilities : Json.t;
         client_info : Json.t;
@@ -264,8 +278,11 @@ module McpProtocol = struct
     | Json.Object fields -> (
         match List.assoc_opt "method" fields with
         | Some (Json.String "initialize") ->
-            let params = List.assoc_opt "params" fields |> Option.value ~default:(Json.Object []) in
-            let protocol_version = 
+            let params =
+              List.assoc_opt "params" fields
+              |> Option.value ~default:(Json.Object [])
+            in
+            let protocol_version =
               match params with
               | Json.Object p -> (
                   match List.assoc_opt "protocolVersion" p with
@@ -273,17 +290,22 @@ module McpProtocol = struct
                   | _ -> "2024-11-05")
               | _ -> "2024-11-05"
             in
-            let capabilities = 
+            let capabilities =
               match params with
-              | Json.Object p -> List.assoc_opt "capabilities" p |> Option.value ~default:(Json.Object [])
+              | Json.Object p ->
+                  List.assoc_opt "capabilities" p
+                  |> Option.value ~default:(Json.Object [])
               | _ -> Json.Object []
             in
             let client_info =
               match params with
-              | Json.Object p -> List.assoc_opt "clientInfo" p |> Option.value ~default:(Json.Object [])
+              | Json.Object p ->
+                  List.assoc_opt "clientInfo" p
+                  |> Option.value ~default:(Json.Object [])
               | _ -> Json.Object []
             in
-            Std.Result.Ok (Initialize { protocol_version; capabilities; client_info })
+            Std.Result.Ok
+              (Initialize { protocol_version; capabilities; client_info })
         | Some (Json.String "tools/list") -> Std.Result.Ok ToolsList
         | Some (Json.String "tools/call") -> (
             match List.assoc_opt "params" fields with
@@ -293,25 +315,25 @@ module McpProtocol = struct
                     let arguments = List.assoc_opt "arguments" params in
                     Std.Result.Ok (ToolsCall { name; arguments })
                 | _ -> Std.Result.Error (Json.String "Missing tool name"))
-            | _ -> Std.Result.Error (Json.String "Missing tool call parameters"))
-        | Some (Json.String method_name) -> 
-            Std.Result.Error (Json.String (Printf.sprintf "Unknown method: %s" method_name))
+            | _ -> Std.Result.Error (Json.String "Missing tool call parameters")
+            )
+        | Some (Json.String method_name) ->
+            Std.Result.Error
+              (Json.String (Printf.sprintf "Unknown method: %s" method_name))
         | _ -> Std.Result.Error (Json.String "Invalid method"))
     | _ -> Std.Result.Error (Json.String "Invalid request format")
 
   let response_to_json = function
     | InitializeResult { protocol_version; capabilities; server_info } ->
-        Json.Object [
-          ("protocolVersion", Json.String protocol_version);
-          ("capabilities", capabilities);
-          ("serverInfo", server_info);
-        ]
-    | ToolsListResult { tools } ->
-        Json.Object [ ("tools", tools) ]
-    | ToolsCallResult { content } ->
-        Json.Object [ ("content", content) ]
-    | Error msg ->
-        Json.Object [ ("error", Json.String msg) ]
+        Json.Object
+          [
+            ("protocolVersion", Json.String protocol_version);
+            ("capabilities", capabilities);
+            ("serverInfo", server_info);
+          ]
+    | ToolsListResult { tools } -> Json.Object [ ("tools", tools) ]
+    | ToolsCallResult { content } -> Json.Object [ ("content", content) ]
+    | Error msg -> Json.Object [ ("error", Json.String msg) ]
 
   let response_of_json json =
     (* For MCP we don't parse responses on the server side *)
@@ -321,20 +343,26 @@ module McpProtocol = struct
     | Initialize _ -> { Jsonrpc.method_ = "initialize"; params = NoParams }
     | ToolsList -> { Jsonrpc.method_ = "tools/list"; params = NoParams }
     | ToolsCall { name; arguments } ->
-        { Jsonrpc.method_ = "tools/call"; 
-          params = Named [
-            ("name", Json.String name);
-            ("arguments", Option.value ~default:Json.Null arguments);
-          ] }
+        {
+          Jsonrpc.method_ = "tools/call";
+          params =
+            Named
+              [
+                ("name", Json.String name);
+                ("arguments", Option.value ~default:Json.Null arguments);
+              ];
+        }
 
   let request_of_params method_ params =
     match method_ with
     | "initialize" ->
-        Std.Result.Ok (Initialize { 
-          protocol_version = "2024-11-05"; 
-          capabilities = Json.Object []; 
-          client_info = Json.Object [] 
-        })
+        Std.Result.Ok
+          (Initialize
+             {
+               protocol_version = "2024-11-05";
+               capabilities = Json.Object [];
+               client_info = Json.Object [];
+             })
     | "tools/list" -> Std.Result.Ok ToolsList
     | "tools/call" -> (
         match params with
@@ -345,7 +373,9 @@ module McpProtocol = struct
                 Std.Result.Ok (ToolsCall { name; arguments })
             | _ -> Std.Result.Error (Json.String "Missing tool name"))
         | _ -> Std.Result.Error (Json.String "Invalid tools/call parameters"))
-    | _ -> Std.Result.Error (Json.String (Printf.sprintf "Unknown method: %s" method_))
+    | _ ->
+        Std.Result.Error
+          (Json.String (Printf.sprintf "Unknown method: %s" method_))
 end
 
 (** Create MCP server using Jsonrpc.Server *)
@@ -355,51 +385,79 @@ let create_server () =
     [
       {
         Jsonrpc.Server.method_ = "initialize";
-        fn = (fun reply request ->
-          match request with
-          | McpProtocol.Initialize { protocol_version = _; capabilities = _; client_info = _ } ->
-              let response = McpProtocol.InitializeResult {
-                protocol_version = "2024-11-05";
-                capabilities = Json.Object [
-                  ("tools", Json.Object []);
-                ];
-                server_info = Json.Object [
-                  ("name", Json.String "tusk-mcp");
-                  ("version", Json.String "0.1.0");
-                ];
-              } in
-              reply response
-          | _ -> reply (McpProtocol.Error "Invalid request for initialize"));
+        fn =
+          (fun reply request ->
+            match request with
+            | McpProtocol.Initialize
+                { protocol_version = _; capabilities = _; client_info = _ } ->
+                let response =
+                  McpProtocol.InitializeResult
+                    {
+                      protocol_version = "2024-11-05";
+                      capabilities = Json.Object [ ("tools", Json.Object []) ];
+                      server_info =
+                        Json.Object
+                          [
+                            ("name", Json.String "tusk-mcp");
+                            ("version", Json.String "0.1.0");
+                          ];
+                    }
+                in
+                reply response
+            | _ -> reply (McpProtocol.Error "Invalid request for initialize"));
       };
       {
         Jsonrpc.Server.method_ = "tools/list";
-        fn = (fun reply request ->
-          match request with
-          | McpProtocol.ToolsList ->
-              let tools_json = List.map (fun (tool : Mcp.tool) ->
-                Json.Object [
-                  ("name", Json.String tool.name);
-                  ("description", match tool.description with Some d -> Json.String d | None -> Json.Null);
-                  ("inputSchema", tool.input_schema);
-                ]
-              ) tools in
-              let response = McpProtocol.ToolsListResult { tools = Json.Array tools_json } in
-              reply response
-          | _ -> reply (McpProtocol.Error "Invalid request for tools/list"));
+        fn =
+          (fun reply request ->
+            match request with
+            | McpProtocol.ToolsList ->
+                let tools_json =
+                  List.map
+                    (fun (tool : Mcp.tool) ->
+                      Json.Object
+                        [
+                          ("name", Json.String tool.name);
+                          ( "description",
+                            match tool.description with
+                            | Some d -> Json.String d
+                            | None -> Json.Null );
+                          ("inputSchema", tool.input_schema);
+                        ])
+                    tools
+                in
+                let response =
+                  McpProtocol.ToolsListResult { tools = Json.Array tools_json }
+                in
+                reply response
+            | _ -> reply (McpProtocol.Error "Invalid request for tools/list"));
       };
       {
         Jsonrpc.Server.method_ = "tools/call";
-        fn = (fun reply request ->
-          match request with
-          | McpProtocol.ToolsCall { name; arguments } ->
-              let content = execute_tool name arguments in
-              let content_json = List.map (function
-                | Mcp.Text text -> Json.Object [("type", Json.String "text"); ("text", Json.String text)]
-                | Mcp.Resource _ -> Json.Object [("type", Json.String "resource")]
-              ) content in
-              let response = McpProtocol.ToolsCallResult { content = Json.Array content_json } in
-              reply response
-          | _ -> reply (McpProtocol.Error "Invalid request for tools/call"));
+        fn =
+          (fun reply request ->
+            match request with
+            | McpProtocol.ToolsCall { name; arguments } ->
+                let content = execute_tool name arguments in
+                let content_json =
+                  List.map
+                    (function
+                      | Mcp.Text text ->
+                          Json.Object
+                            [
+                              ("type", Json.String "text");
+                              ("text", Json.String text);
+                            ]
+                      | Mcp.Resource _ ->
+                          Json.Object [ ("type", Json.String "resource") ])
+                    content
+                in
+                let response =
+                  McpProtocol.ToolsCallResult
+                    { content = Json.Array content_json }
+                in
+                reply response
+            | _ -> reply (McpProtocol.Error "Invalid request for tools/call"));
       };
     ]
   in
@@ -409,34 +467,33 @@ let create_server () =
 let start () =
   Printf.eprintf "[MCP] Tusk MCP Server starting...\n";
   Printf.eprintf "[MCP] Listening on stdin/stdout for JSON-RPC messages\n";
-  
+
   (* Ensure tusk server is running *)
   let _ =
     try
-      let cwd = Std.Env.current_dir () |> Std.Result.expect ~msg:"Failed to get cwd" in
+      let cwd =
+        Std.Env.current_dir () |> Std.Result.expect ~msg:"Failed to get cwd"
+      in
       match Workspace_manager.scan cwd with
-      | Error _ ->
-          Printf.eprintf "[MCP] Warning: Could not find workspace\n"
+      | Error _ -> Printf.eprintf "[MCP] Warning: Could not find workspace\n"
       | Ok workspace -> (
           match Server_manager.ensure_running ~workspace with
           | Ok _ -> ()
           | Error _ ->
-              Printf.eprintf "[MCP] Warning: Could not ensure tusk server is running\n")
-    with exn ->
-      Printf.eprintf "[MCP] Warning: %s\n" (Printexc.to_string exn)
+              Printf.eprintf
+                "[MCP] Warning: Could not ensure tusk server is running\n")
+    with exn -> Printf.eprintf "[MCP] Warning: %s\n" (Printexc.to_string exn)
   in
-  
+
   (* Create the JSON-RPC server *)
   let server = create_server () in
-  
+
   (* Main loop - read from stdin and write to stdout *)
   let rec loop () =
     try
       let line = input_line stdin in
       (* Reply function that sends response to stdout *)
-      let reply response_str =
-        Printf.printf "%s\n%!" response_str
-      in
+      let reply response_str = Printf.printf "%s\n%!" response_str in
       Jsonrpc.Server.handle_message server reply line;
       loop ()
     with

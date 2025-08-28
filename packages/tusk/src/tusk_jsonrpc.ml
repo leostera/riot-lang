@@ -78,8 +78,16 @@ module TuskProtocol = struct
     | PackageInfo of package_detail
     | BuildStarted of { session_id : Session_id.t; started_at : Std.Datetime.t }
     | BuildEvent of { session_id : Session_id.t; event : Event.t }
-    | CycleDetected of { session_id : Session_id.t; detected_at : Std.Datetime.t; cycle_nodes : string list }
-    | BuildComplete of { session_id : Session_id.t; completed_at : Std.Datetime.t; stats : build_stats }
+    | CycleDetected of {
+        session_id : Session_id.t;
+        detected_at : Std.Datetime.t;
+        cycle_nodes : string list;
+      }
+    | BuildComplete of {
+        session_id : Session_id.t;
+        completed_at : Std.Datetime.t;
+        stats : build_stats;
+      }
     | BuildFailed of {
         session_id : Session_id.t;
         failed_at : Std.Datetime.t;
@@ -188,14 +196,40 @@ module TuskProtocol = struct
                                           | Some (Json.String s) -> Some s
                                           | _ -> None
                                         in
+                                        let span =
+                                          match List.assoc_opt "span" e with
+                                          | Some
+                                              (Json.Array
+                                                 [
+                                                   Json.Int start; Json.Int end_;
+                                                 ]) ->
+                                              (start, end_)
+                                          | _ ->
+                                              let col =
+                                                match column with
+                                                | Some c -> c
+                                                | None -> 0
+                                              in
+                                              (col, col)
+                                        in
+                                        let raw =
+                                          match List.assoc_opt "raw" e with
+                                          | Some (Json.String r) -> r
+                                          | _ -> message
+                                        in
+                                        let hint_str =
+                                          match hint with
+                                          | Some h -> h
+                                          | None -> ""
+                                        in
                                         Some
                                           {
-                                            Event.package = "";
-                                            file;
+                                            Event.file;
                                             line;
-                                            column;
-                                            message;
-                                            hint;
+                                            span;
+                                            hint = hint_str;
+                                            kind = Event.OtherError { message };
+                                            raw;
                                           }
                                     | _ -> None)
                                   errs
@@ -301,14 +335,34 @@ module TuskProtocol = struct
                             | Some (Json.String s) -> Some s
                             | _ -> None
                           in
+                          let span =
+                            match List.assoc_opt "span" e with
+                            | Some
+                                (Json.Array [ Json.Int start; Json.Int end_ ])
+                              ->
+                                (start, end_)
+                            | _ ->
+                                let col =
+                                  match column with Some c -> c | None -> 0
+                                in
+                                (col, col)
+                          in
+                          let raw =
+                            match List.assoc_opt "raw" e with
+                            | Some (Json.String r) -> r
+                            | _ -> message
+                          in
+                          let hint_str =
+                            match hint with Some h -> h | None -> ""
+                          in
                           Some
                             {
-                              Event.package = "";
-                              file;
+                              Event.file;
                               line;
-                              column;
-                              message;
-                              hint;
+                              span;
+                              hint = hint_str;
+                              kind = Event.OtherError { message };
+                              raw;
                             }
                       | _ -> None)
                     errs
@@ -356,8 +410,50 @@ module TuskProtocol = struct
               | Some (Json.String s) -> Some s
               | _ -> None
             in
+            let span =
+              match List.assoc_opt "span" fields with
+              | Some (Json.Array [ Json.Int start; Json.Int end_ ]) ->
+                  (start, end_)
+              | _ -> (0, 0)
+              (* default span *)
+            in
+            let raw =
+              match List.assoc_opt "raw" fields with
+              | Some (Json.String r) -> r
+              | _ -> message
+            in
+            let hint_str = match hint with Some h -> h | None -> "" in
+            (* Try to parse error kind from message *)
+            let error_kind =
+              if message = "Syntax error" then Event.SyntaxError
+              else if String.starts_with ~prefix:"Unbound value " message then
+                Event.UnboundValue
+                  { name = String.sub message 14 (String.length message - 14) }
+              else if String.starts_with ~prefix:"Unbound module " message then
+                Event.UnboundModule
+                  { name = String.sub message 15 (String.length message - 15) }
+              else if String.starts_with ~prefix:"Cannot find file " message
+              then
+                Event.FileNotFound
+                  {
+                    filename = String.sub message 17 (String.length message - 17);
+                  }
+              else Event.OtherError { message }
+            in
             Ok
-              (Event.CompileError { package; file; line; column; message; hint })
+              (Event.CompileError
+                 {
+                   package;
+                   error =
+                     {
+                       file;
+                       line;
+                       span;
+                       hint = hint_str;
+                       kind = error_kind;
+                       raw;
+                     };
+                 })
         | Some (Json.String "CycleDetected") ->
             let packages =
               match List.assoc_opt "packages" fields with
@@ -692,19 +788,33 @@ module TuskProtocol = struct
                            Json.Array
                              (List.map
                                 (fun e ->
+                                  let col_start, col_end = e.Event.span in
+                                  let error_message =
+                                    match e.Event.kind with
+                                    | Event.SyntaxError -> "Syntax error"
+                                    | Event.TypeError { description } ->
+                                        description
+                                    | Event.UnboundValue { name } ->
+                                        Printf.sprintf "Unbound value %s" name
+                                    | Event.UnboundModule { name } ->
+                                        Printf.sprintf "Unbound module %s" name
+                                    | Event.FileNotFound { filename } ->
+                                        Printf.sprintf "Cannot find file %s"
+                                          filename
+                                    | Event.OtherError { message } -> message
+                                  in
                                   Json.Object
                                     [
                                       ("file", Json.String e.Event.file);
                                       ("line", Json.Int e.Event.line);
-                                      ( "column",
-                                        match e.Event.column with
-                                        | Some c -> Json.Int c
-                                        | None -> Json.Null );
-                                      ("message", Json.String e.Event.message);
-                                      ( "hint",
-                                        match e.Event.hint with
-                                        | Some h -> Json.String h
-                                        | None -> Json.Null );
+                                      ( "span",
+                                        Json.Array
+                                          [
+                                            Json.Int col_start; Json.Int col_end;
+                                          ] );
+                                      ("message", Json.String error_message);
+                                      ("hint", Json.String (Event.strip_ansi_codes e.Event.hint));
+                                      ("raw", Json.String (Event.strip_ansi_codes e.Event.raw));
                                     ])
                                 r.Event.errors) );
                        ])
@@ -733,19 +843,29 @@ module TuskProtocol = struct
               Json.Array
                 (List.map
                    (fun e ->
+                     let col_start, col_end = e.Event.span in
+                     let error_message =
+                       match e.Event.kind with
+                       | Event.SyntaxError -> "Syntax error"
+                       | Event.TypeError { description } -> description
+                       | Event.UnboundValue { name } ->
+                           Printf.sprintf "Unbound value %s" name
+                       | Event.UnboundModule { name } ->
+                           Printf.sprintf "Unbound module %s" name
+                       | Event.FileNotFound { filename } ->
+                           Printf.sprintf "Cannot find file %s" filename
+                       | Event.OtherError { message } -> message
+                     in
                      Json.Object
                        [
                          ("file", Json.String e.Event.file);
                          ("line", Json.Int e.Event.line);
-                         ( "column",
-                           match e.Event.column with
-                           | Some c -> Json.Int c
-                           | None -> Json.Null );
-                         ("message", Json.String e.Event.message);
-                         ( "hint",
-                           match e.Event.hint with
-                           | Some h -> Json.String h
-                           | None -> Json.Null );
+                         ( "span",
+                           Json.Array [ Json.Int col_start; Json.Int col_end ]
+                         );
+                         ("message", Json.String error_message);
+                         ("hint", Json.String (Event.strip_ansi_codes e.Event.hint));
+                         ("raw", Json.String (Event.strip_ansi_codes e.Event.raw));
                        ])
                    result.Event.errors) );
           ]
@@ -755,18 +875,30 @@ module TuskProtocol = struct
             ("type", Json.String "CycleDetected");
             ("packages", Json.Array (List.map (fun s -> Json.String s) packages));
           ]
-    | Event.CompileError { package; file; line; column; message; hint } ->
+    | Event.CompileError { package; error } ->
+        let col_start, col_end = error.span in
+        let error_message =
+          match error.kind with
+          | Event.SyntaxError -> "Syntax error"
+          | Event.TypeError { description } -> description
+          | Event.UnboundValue { name } ->
+              Printf.sprintf "Unbound value %s" name
+          | Event.UnboundModule { name } ->
+              Printf.sprintf "Unbound module %s" name
+          | Event.FileNotFound { filename } ->
+              Printf.sprintf "Cannot find file %s" filename
+          | Event.OtherError { message } -> message
+        in
         Json.Object
           [
             ("type", Json.String "CompileError");
             ("package", Json.String package);
-            ("file", Json.String file);
-            ("line", Json.Int line);
-            ( "column",
-              match column with Some c -> Json.Int c | None -> Json.Null );
-            ("message", Json.String message);
-            ( "hint",
-              match hint with Some h -> Json.String h | None -> Json.Null );
+            ("file", Json.String error.file);
+            ("line", Json.Int error.line);
+            ("span", Json.Array [ Json.Int col_start; Json.Int col_end ]);
+            ("message", Json.String error_message);
+            ("hint", Json.String (Event.strip_ansi_codes error.hint));
+            ("raw", Json.String (Event.strip_ansi_codes error.raw));
           ]
     | Event.CacheHit { package; hash } ->
         Json.Object
@@ -1140,7 +1272,8 @@ module TuskProtocol = struct
               | Some (Json.String s) -> Session_id.of_string s
               | _ -> Session_id.make ()
             in
-            let started_at = Std.Datetime.now () in (* Will be overridden by server timestamp *)
+            let started_at = Std.Datetime.now () in
+            (* Will be overridden by server timestamp *)
             Ok (BuildStarted { session_id; started_at })
         | Some (Json.String "build_event") ->
             let session_id =
@@ -1174,7 +1307,8 @@ module TuskProtocol = struct
                     arr
               | _ -> []
             in
-            let detected_at = Std.Datetime.now () in (* Will be overridden by server timestamp *)
+            let detected_at = Std.Datetime.now () in
+            (* Will be overridden by server timestamp *)
             Ok (CycleDetected { session_id; detected_at; cycle_nodes })
         | Some (Json.String "build_complete") ->
             let duration_ms =
@@ -1212,7 +1346,8 @@ module TuskProtocol = struct
               | Some (Json.String s) -> Session_id.of_string s
               | _ -> Session_id.make ()
             in
-            let completed_at = Std.Datetime.now () in (* Will be overridden by server timestamp *)
+            let completed_at = Std.Datetime.now () in
+            (* Will be overridden by server timestamp *)
             Ok
               (BuildComplete
                  {
@@ -1269,7 +1404,8 @@ module TuskProtocol = struct
               | Some (Json.String s) -> Session_id.of_string s
               | _ -> Session_id.make ()
             in
-            let failed_at = Std.Datetime.now () in (* Will be overridden by server timestamp *)
+            let failed_at = Std.Datetime.now () in
+            (* Will be overridden by server timestamp *)
             Ok
               (BuildFailed
                  {
@@ -1605,9 +1741,7 @@ module Client = struct
                   | Ok
                       {
                         result =
-                          Ok
-                            (TuskProtocol.BuildEvent
-                               { session_id = _; event });
+                          Ok (TuskProtocol.BuildEvent { session_id = _; event });
                         _;
                       } ->
                       callback (BuildEvent event);
@@ -1626,11 +1760,18 @@ module Client = struct
                            (Event.create ~session_id ~level:Error
                               (Event.CycleDetected { packages = cycle_nodes })));
                       receive_events ()
-                  | Ok { result = Ok (TuskProtocol.BuildComplete { stats; _ }); _ } ->
+                  | Ok
+                      {
+                        result = Ok (TuskProtocol.BuildComplete { stats; _ });
+                        _;
+                      } ->
                       if stats.packages_failed > 0 then
-                        Ok (BuildFinished (Error (Printf.sprintf "%d packages failed to build" stats.packages_failed)))
-                      else
-                        Ok (BuildFinished (Ok ()))
+                        Ok
+                          (BuildFinished
+                             (Error
+                                (Printf.sprintf "%d packages failed to build"
+                                   stats.packages_failed)))
+                      else Ok (BuildFinished (Ok ()))
                   | Ok
                       {
                         result =
@@ -1671,12 +1812,17 @@ module Client = struct
                       Error "Unexpected response type"
                 in
                 receive_events ()
-            | Ok (TuskProtocol.BuildComplete { session_id; completed_at = _; stats }) ->
+            | Ok
+                (TuskProtocol.BuildComplete
+                   { session_id; completed_at = _; stats }) ->
                 (* Check if build actually succeeded *)
                 if stats.packages_failed > 0 then
-                  Ok (BuildFinished (Error (Printf.sprintf "%d packages failed to build" stats.packages_failed)))
-                else
-                  Ok (BuildFinished (Ok ()))
+                  Ok
+                    (BuildFinished
+                       (Error
+                          (Printf.sprintf "%d packages failed to build"
+                             stats.packages_failed)))
+                else Ok (BuildFinished (Ok ()))
             | Ok (TuskProtocol.BuildFailed { session_id; error; _ }) ->
                 (* Direct error *)
                 Ok (BuildFinished (Error error))
@@ -1753,10 +1899,10 @@ module Server = struct
   let handle_build ctx reply request =
     (* Generate session ID client-side so we can register immediately *)
     let session_id = Session_id.make () in
-    
+
     (* Register ourselves with the logger to receive events BEFORE sending build request *)
     Log.add_rpc_handler ~session_id ~client:(self ());
-    
+
     (* Convert to tusk_protocol message type *)
     let server_request =
       match request with
@@ -1786,9 +1932,11 @@ module Server = struct
     match receive ~selector () with
     | Tusk_protocol.BuildStarted { session_id; started_at } ->
         (* Already registered with the logger before sending request *)
-        
+
         (* Send BuildStarted to client *)
-        reply (TuskProtocol.BuildStarted { session_id; started_at = Std.Datetime.now () });
+        reply
+          (TuskProtocol.BuildStarted
+             { session_id; started_at = Std.Datetime.now () });
 
         (* Now handle log events, CycleDetected and BuildCompleted *)
         let rec event_loop () =
@@ -1801,15 +1949,29 @@ module Server = struct
               when sid = session_id ->
                 `select (`cycle_detected (cycle_nodes, detected_at))
             | Tusk_protocol.ServerResponse
-                (Tusk_protocol.BuildCompleted { session_id = sid; completed_At; stats })
+                (Tusk_protocol.BuildCompleted
+                   { session_id = sid; completed_At; stats })
               when sid = session_id ->
                 `select (`build_complete (completed_At, stats))
             | _ -> `skip
           in
           match receive ~selector () with
           | `log_event event ->
-              (* Forward log event to client *)
-              reply (TuskProtocol.BuildEvent { session_id; event });
+              (* Strip ANSI codes from event before forwarding to client *)
+              let clean_event = 
+                (* Create a new event with ANSI codes stripped from compile errors *)
+                match event.Event.kind with
+                | Event.CompileError { package; error } ->
+                    let clean_error = {
+                      error with
+                      Event.raw = Event.strip_ansi_codes error.Event.raw;
+                      Event.hint = Event.strip_ansi_codes error.Event.hint;
+                    } in
+                    { event with kind = Event.CompileError { package; error = clean_error } }
+                | _ -> event
+              in
+              (* Forward cleaned event to client *)
+              reply (TuskProtocol.BuildEvent { session_id; event = clean_event });
               event_loop ()
           | `cycle_detected (cycle_nodes, detected_at) ->
               (* Forward cycle detected event to client *)
@@ -1826,12 +1988,20 @@ module Server = struct
                      completed_at;
                      stats =
                        {
-                         duration_ms = int_of_float (Tusk_protocol.BuildStats.get_build_duration stats *. 1000.0);
-                         packages_built = Tusk_protocol.BuildStats.get_packages_built stats;
-                         packages_failed = Tusk_protocol.BuildStats.get_packages_failed stats;
-                         total_modules = Tusk_protocol.BuildStats.get_total_modules stats;
-                         cache_hits = Tusk_protocol.BuildStats.get_cache_hits stats;
-                         cache_misses = Tusk_protocol.BuildStats.get_cache_misses stats;
+                         duration_ms =
+                           int_of_float
+                             (Tusk_protocol.BuildStats.get_build_duration stats
+                             *. 1000.0);
+                         packages_built =
+                           Tusk_protocol.BuildStats.get_packages_built stats;
+                         packages_failed =
+                           Tusk_protocol.BuildStats.get_packages_failed stats;
+                         total_modules =
+                           Tusk_protocol.BuildStats.get_total_modules stats;
+                         cache_hits =
+                           Tusk_protocol.BuildStats.get_cache_hits stats;
+                         cache_misses =
+                           Tusk_protocol.BuildStats.get_cache_misses stats;
                        };
                    })
         in

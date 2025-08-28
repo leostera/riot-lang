@@ -43,8 +43,9 @@ val open_process_in : string -> in_channel
 (** Close a process opened for reading *)
 val close_process_in : in_channel -> Unix.process_status
 
-(** Run a shell command and return its output *)
-val run_command : string -> (string, error) result
+(** Run a shell command and return its output 
+    @param env Optional environment variables to set as (key, value) pairs *)
+val run_command : ?env:(string * string) list -> string -> (string, error) result
 
 (** Run a command and capture its output as a list of lines *)
 val run_process_lines : string -> string list

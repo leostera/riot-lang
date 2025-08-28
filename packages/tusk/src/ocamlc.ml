@@ -53,8 +53,10 @@ let run ~toolchain ?(includes = []) ?(libs = []) ?(output = None)
   (* Always print the command for visibility *)
   Printf.printf "  $ %s\n" cmd_parts;
 
-  (* Execute the command *)
-  match Command.run_command cmd_parts with
+  (* Execute the command with colors enabled *)
+  (* Set OCAML_COLOR=always to get colored error output *)
+  let env = [("OCAML_COLOR", "always")] in
+  match Command.run_command ~env cmd_parts with
   | Ok output -> Success output
   | Error (Command.SpawnFailed msg) -> Failed msg
   | Error _ -> Failed "Command failed"

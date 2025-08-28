@@ -1,6 +1,6 @@
 (** Standard library extensions and utilities *)
 
-let a =
+module Char = Char
 module Buffer = Buffer
 module Command = Command
 module Data = Data
@@ -14,4 +14,8 @@ module Option = Option
 module Path = Path
 module Result = Result
 module String = String
+module Iterator = Iterator
+module MutIterator = MutIterator
 include Global
+
+module A = struct

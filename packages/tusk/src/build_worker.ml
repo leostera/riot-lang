@@ -57,26 +57,29 @@ and handle_missing_deps ctx task deps =
 and handle_skipped_node ctx task skipped_node reason =
   let Worker_pool_types.{ session_id; _ } = task in
   let pkg_name = Build_node.(skipped_node.package.name) in
-  
+
   (* Convert planner skip reason to event skip reason *)
-  let event_reason = match reason with
+  let event_reason =
+    match reason with
     | Build_planner.DependenciesFailed dep_errors ->
         Event.DependenciesFailed dep_errors
   in
-  
+
   (* Log that the package was skipped with the proper event *)
-  Log.log (Event.create ~session_id ~level:Info 
-    (PackageSkipped { package = pkg_name; reason = event_reason }));
-  
+  Log.log
+    (Event.create ~session_id ~level:Info
+       (PackageSkipped { package = pkg_name; reason = event_reason }));
+
   (* Format the skip reason for build_results *)
-  let reason_str = match reason with
+  let reason_str =
+    match reason with
     | Build_planner.DependenciesFailed dep_errors ->
         Printf.sprintf "Dependencies failed: %s" (String.concat ", " dep_errors)
   in
-  
+
   (* Mark as failed in build results with skip reason *)
   Build_results.mark_failed ctx.build_results skipped_node ~error:reason_str;
-  
+
   (* Send TaskFailed message to server *)
   send ctx.server_pid
     (Worker_pool_types.Worker

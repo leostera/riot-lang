@@ -63,9 +63,11 @@ and handle_scan_workspace state client_pid current_dir =
   send client_pid
     (ServerResponse
        (BuildCompleted
-          { session_id = Session_id.make (); 
+          {
+            session_id = Session_id.make ();
             completed_At = Datetime.now ();
-            stats = Tusk_protocol.BuildStats.make () }));
+            stats = Tusk_protocol.BuildStats.make ();
+          }));
   loop new_state
 
 (** Handler for getting workspace configuration. *)
@@ -234,13 +236,16 @@ and handle_build state client_pid target session_id_opt =
             let build_stats = Tusk_protocol.BuildStats.make () in
             Tusk_protocol.BuildStats.mark_started build_stats;
             Tusk_protocol.BuildStats.mark_completed build_stats;
-            
+
             (* Send build completed event to properly finish the build *)
             send client_pid
               (ServerResponse
-                 (BuildCompleted { session_id; 
-                                    completed_At = Datetime.now ();
-                                    stats = build_stats }));
+                 (BuildCompleted
+                    {
+                      session_id;
+                      completed_At = Datetime.now ();
+                      stats = build_stats;
+                    }));
 
             (* Exit the build process since we can't proceed *)
             Ok ()
@@ -290,7 +295,7 @@ and handle_build state client_pid target session_id_opt =
             let store = Store.create ~workspace in
             let store_duration = Global.time_ms () - store_start in
             Log.store_created ~session_id ~duration_ms:store_duration;
-            
+
             Log.worker_pool_creating ~session_id ~workers:state.workers;
             let pool_start = Global.time_ms () in
             let worker_pool =
@@ -299,7 +304,8 @@ and handle_build state client_pid target session_id_opt =
                 ~worker_fn:Build_worker.main ()
             in
             let pool_duration = Global.time_ms () - pool_start in
-            Log.worker_pool_created ~session_id ~workers:state.workers ~duration_ms:pool_duration;
+            Log.worker_pool_created ~session_id ~workers:state.workers
+              ~duration_ms:pool_duration;
 
             (* Track build statistics *)
             let build_start_time = Global.time_ms () in
@@ -396,15 +402,19 @@ and handle_build state client_pid target session_id_opt =
                 let duration_ms = Global.time_ms () - build_start_time in
                 (* TODO: Get actual results from build_results *)
                 Log.build_complete ~session_id ~duration_ms ~results:[];
-                
+
                 (* Mark build as completed to finalize stats *)
                 Tusk_protocol.BuildStats.mark_completed build_stats;
-                
+
                 (* Send build completed response with stats *)
                 send client_pid
                   (ServerResponse
                      (BuildCompleted
-                        { session_id; completed_At = Datetime.now (); stats = build_stats })));
+                        {
+                          session_id;
+                          completed_At = Datetime.now ();
+                          stats = build_stats;
+                        })));
             Ok ())
   in
   loop state

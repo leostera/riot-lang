@@ -12,7 +12,7 @@ module Net = Net
 module Option = Option
 module Path = Path
 module Result = Result
-module String = String
+(* module String = String (* TODO: fix iterator dependencies *) *)
 
 val available_parallelism : unit -> int
 (** Get the number of available CPU cores for parallelism *)

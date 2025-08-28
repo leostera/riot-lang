@@ -56,10 +56,22 @@ let system cmd = Unix.system cmd
 let open_process_in cmd = Unix.open_process_in cmd
 let close_process_in ic = Unix.close_process_in ic
 
-let run_command cmd =
+let run_command ?env cmd =
   Printf.printf "  $ %s\n" cmd;
   flush stdout;
-  let ic = Unix.open_process_in (cmd ^ " 2>&1") in
+  (* Prepend environment variables if provided *)
+  let cmd_with_env = 
+    match env with
+    | None -> cmd
+    | Some env_list ->
+        let env_str = 
+          env_list 
+          |> List.map (fun (k, v) -> Printf.sprintf "%s=%s" k v)
+          |> String.concat " "
+        in
+        Printf.sprintf "%s %s" env_str cmd
+  in
+  let ic = Unix.open_process_in (cmd_with_env ^ " 2>&1") in
   let output = ref [] in
   (try
      while true do

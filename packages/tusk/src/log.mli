@@ -33,7 +33,9 @@ val build_complete :
 
 val package_started : session_id:Session_id.t -> package:string -> unit
 val package_complete : session_id:Session_id.t -> Event.build_result -> unit
-val compile_error : session_id:Session_id.t -> Event.build_error -> unit
+
+val compile_error :
+  session_id:Session_id.t -> package:string -> Event.build_error -> unit
 
 val cache_hit : session_id:Session_id.t -> package:string -> hash:string -> unit
 (** Cache events *)
@@ -49,12 +51,17 @@ val cache_stored :
   unit
 
 val computing_hash : session_id:Session_id.t -> package:string -> unit
+
 val hash_computed :
-  session_id:Session_id.t -> package:string -> hash:string -> duration_ms:int -> unit
+  session_id:Session_id.t ->
+  package:string ->
+  hash:string ->
+  duration_ms:int ->
+  unit
 (** Hash computation *)
 
-(** Store events *)
 val store_creating : session_id:Session_id.t -> unit -> unit
+(** Store events *)
 
 val store_created : session_id:Session_id.t -> duration_ms:int -> unit
 
