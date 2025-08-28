@@ -1,5 +1,6 @@
 (** Standard library extensions and utilities *)
 
+let a =
 module Buffer = Buffer
 module Command = Command
 module Data = Data
