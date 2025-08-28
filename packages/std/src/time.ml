@@ -1,3 +1,6 @@
+(** this is an internal type *)
+type timespec = { secs: int; nanos: int }
+
 (** 
 A Duration type to represent a span of time, typically used for system timeouts.
 
@@ -6,7 +9,44 @@ Each Duration is composed of a whole number of seconds and a fractional part rep
 Durations implement many common traits, including Add, Sub, and other ops traits. It implements Default by returning a zero-length Duration.
 *)
 module Duration = struct
-  type t = float  (* seconds as a float *)
+  type t = timespec
+
+  let is_zero t = t.secs = 0 && t.nanos = 0
+  
+  let make ~secs ~nanos = { secs; nanos }
+  
+  let abs_diff a b = 
+    let secs_diff = abs (a.secs - b.secs) in
+    let nanos_diff = abs (a.nanos - b.nanos) in
+    { secs = secs_diff; nanos = nanos_diff }
+  
+  let from_days days = { secs = days * 86400; nanos = 0 }
+  let from_hours hours = { secs = hours * 3600; nanos = 0 }
+  let from_mins mins = { secs = mins * 60; nanos = 0 }
+  let from_secs secs = { secs; nanos = 0 }
+  let from_millis millis = 
+    let secs = millis / 1000 in
+    let nanos = (millis mod 1000) * 1_000_000 in
+    { secs; nanos }
+  let from_micros micros = 
+    let secs = micros / 1_000_000 in
+    let nanos = (micros mod 1_000_000) * 1_000 in
+    { secs; nanos }
+  let from_nanos nanos = 
+    let secs = nanos / 1_000_000_000 in
+    let remaining_nanos = nanos mod 1_000_000_000 in
+    { secs; nanos = remaining_nanos }
+  let from_secs_float f = 
+    let secs = int_of_float f in
+    let nanos = int_of_float ((f -. float_of_int secs) *. 1_000_000_000.0) in
+    { secs; nanos }
+  let from_weeks weeks = { secs = weeks * 604800; nanos = 0 }
+  
+  let to_secs t = t.secs
+  let to_secs_float t = float_of_int t.secs +. (float_of_int t.nanos /. 1_000_000_000.0)
+  let to_millis t = t.secs * 1000 + (t.nanos / 1_000_000)
+  let to_micros t = t.secs * 1_000_000 + (t.nanos / 1_000)
+  let to_ms = to_millis  (* Alias for compatibility *)
 end
 
 (**
@@ -21,7 +61,7 @@ Instants are opaque types that can only be compared to one another. There is no 
 The size of an Instant struct may vary depending on the target operating system.
 *)
 module Instant = struct
-  type t = float  (* Unix time as float *)
+  type t = timespec
 
   (** TODO: The following system calls should be used by now() and implemented in `Std_sys.Time.Instant`, to find out the current time:
 
@@ -36,7 +76,44 @@ Windows	QueryPerformanceCounter
 Disclaimer: These system calls might change over time.
 
 Note: mathematical operations like add may panic if the underlying structure cannot represent the new point in time. *)
-  let now () = Unix.gettimeofday ()
+  let now () = 
+    let time = Unix.gettimeofday () in
+    let secs = int_of_float time in
+    let nanos = int_of_float ((time -. float_of_int secs) *. 1_000_000_000.0) in
+    { secs; nanos }
+  
+  let duration_since ~earlier later = 
+    let secs_diff = later.secs - earlier.secs in
+    let nanos_diff = later.nanos - earlier.nanos in
+    if nanos_diff < 0 then
+      { secs = secs_diff - 1; nanos = nanos_diff + 1_000_000_000 }
+    else
+      { secs = secs_diff; nanos = nanos_diff }
+  
+  let elapsed t = 
+    duration_since ~earlier:t (now ())
+end
+
+(** An instant as recorded by the operating system, but different from [Instant.t] in that it is not guaranteed to be monotonic *)
+module SystemTime = struct
+  type t = timespec
+
+  let now () = 
+    let time = Unix.gettimeofday () in
+    let secs = int_of_float time in
+    let nanos = int_of_float ((time -. float_of_int secs) *. 1_000_000_000.0) in
+    { secs; nanos }
+  
+  let duration_since ~earlier later = 
+    let secs_diff = later.secs - earlier.secs in
+    let nanos_diff = later.nanos - earlier.nanos in
+    if nanos_diff < 0 then
+      { secs = secs_diff - 1; nanos = nanos_diff + 1_000_000_000 }
+    else
+      { secs = secs_diff; nanos = nanos_diff }
+  
+  let elapsed t = 
+    duration_since ~earlier:t (now ())
 end
 
 

@@ -102,6 +102,7 @@ let mark_done t node =
   let node_id = Node_id.of_package node.Build_node.package in
   Hashtbl.remove t.busy_tasks node_id
 
+
 (** Get queue statistics *)
 let get_stats t =
   let ready = Queue.length t.ready_queue in

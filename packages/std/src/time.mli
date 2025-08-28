@@ -7,6 +7,26 @@ Durations implement many common traits, including Add, Sub, and other ops traits
 *)
 module Duration : sig
   type t
+
+  val is_zero : t -> bool
+  val make : secs:int -> nanos:int -> t
+
+  val abs_diff: t -> t -> t
+
+  val from_days : int -> t
+  val from_hours : int -> t
+  val from_micros : int -> t
+  val from_millis : int -> t
+  val from_mins : int -> t
+  val from_nanos : int -> t
+  val from_secs : int -> t
+  val from_secs_float : float -> t
+  val from_weeks : int -> t
+
+  val to_secs : t -> int
+  val to_secs_float : t -> float
+  val to_millis : t -> int
+  val to_micros : t -> int
 end
 
 (**
@@ -37,4 +57,38 @@ Disclaimer: These system calls might change over time.
 
 Note: mathematical operations like add may panic if the underlying structure cannot represent the new point in time. *)
   val now : unit -> t
+
+  val duration_since : earlier:t -> t -> Duration.t
+
+  (** Time elapsed since [t], represented as a Duration.t *)
+  val elapsed : t -> Duration.t
+
+end
+
+(** An instant as recorded by the operating system, but different from [Instant.t] in that it is not guaranteed to be monotonic.
+
+NOTE: Platform-specific behavior
+The precision of SystemTime can depend on the underlying OS-specific time format. For example, on Windows the time is represented in 100 nanosecond intervals whereas Linux can represent nanosecond intervals.
+
+The following system calls are currently being used by now() to find out the current time:
+
+Platform	System call
+SGX	insecure_time usercall. More information on timekeeping in SGX
+UNIX	clock_gettime (Realtime Clock)
+Darwin	clock_gettime (Realtime Clock)
+VXWorks	clock_gettime (Realtime Clock)
+SOLID	SOLID_RTC_ReadTime
+WASI	__wasi_clock_time_get (Realtime Clock)
+Windows	GetSystemTimePreciseAsFileTime / GetSystemTimeAsFileTime
+
+    *)
+module SystemTime : sig
+  type t
+  val now : unit -> t
+
+  val duration_since : earlier:t -> t -> Duration.t
+
+  (** Time elapsed since [t], represented as a Duration.t *)
+  val elapsed : t -> Duration.t
+
 end

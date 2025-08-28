@@ -5,6 +5,7 @@ type hash = string
 (** Hash type - internally a SHA-256 string *)
 
 (** Hash a string content using MD5 (fast in-memory hashing) *)
+(* FIXME: use Std.(Crypto.sha512 s |> Base.encode_64) *)
 let hash_string s = Digest.string s |> Digest.to_hex
 
 (** Hash a file's content using MD5 (async file reading + fast in-memory

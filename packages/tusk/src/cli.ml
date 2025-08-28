@@ -8,9 +8,11 @@ let format_cargo_event (event : Event.t) =
   match event.kind with
   | PackageStarted { package = _ } ->
       "" (* Don't show on start - wait for cache status *)
-  | PackageComplete { package; success; _ } ->
+  | PackageComplete { package; success; errors; _ } ->
       if success then "" (* Already shown as "Compiling" *)
+      else if errors = [] then "" (* Skipped due to dependency failure, don't show *)
       else Printf.sprintf "   \027[1;31mFailed\027[0m %s" package
+  | PackageSkipped _ -> "" (* Don't show skipped packages *)
   | CacheHit { package; _ } ->
       Printf.sprintf "   \027[1;32mCompiling\027[0m %s \027[1;90m(cached)\027[0m" package
   | CacheMiss { package; _ } ->
@@ -177,14 +179,28 @@ let build_command package_opt =
     | Some pkg -> Client.BuildPackage pkg
     | None -> Client.BuildAll
   in
+  (* Track packages we've already displayed to avoid duplicates *)
+  let displayed_packages = Hashtbl.create 32 in
   let result =
     Client.build_streaming client request (fun event ->
         match event with
         | Client.BuildStarted session_id -> ()
         | Client.BuildEvent event ->
-            (* Format and display log events in Cargo style *)
-            let formatted = format_cargo_event event in
-            if formatted <> "" then Printf.printf "%s\n%!" formatted
+            (* Only display package events once *)
+            let should_display = match event.kind with
+              | CacheHit { package; _ } | CacheMiss { package; _ } ->
+                  if Hashtbl.mem displayed_packages package then false
+                  else (Hashtbl.add displayed_packages package (); true)
+              | PackageComplete { package; _ } ->
+                  (* Always show failures, but not successes (already shown as Compiling) *)
+                  (match event.kind with
+                   | PackageComplete { success = false; _ } -> true
+                   | _ -> false)
+              | _ -> true
+            in
+            if should_display then
+              let formatted = format_cargo_event event in
+              if formatted <> "" then Printf.printf "%s\n%!" formatted
         | Client.BuildFinished _ -> ())
     |> Std.Result.expect ~msg:"Build failed"
   in
@@ -235,6 +251,8 @@ let build_package package_name =
   else
     (* Use JSON-RPC client to send build request *)
     let client = client_result |> Std.Result.expect ~msg:"Operation failed" in
+    (* Track packages we've already displayed to avoid duplicates *)
+    let displayed_packages = Hashtbl.create 32 in
     let result =
       Tusk_jsonrpc.Client.build_streaming client
         (Tusk_jsonrpc.Client.BuildPackage package_name) (function
@@ -242,11 +260,21 @@ let build_package package_name =
             (* Don't print session ID in Cargo style *)
             ()
         | Tusk_jsonrpc.Client.BuildEvent event ->
-            (* Format and display log events in Cargo style *)
-            let formatted = format_cargo_event event in
-            if formatted <> "" then (
-              Printf.printf "%s\n" formatted;
-              flush stdout)
+            (* Only display package events once *)
+            let should_display = match event.kind with
+              | CacheHit { package; _ } | CacheMiss { package; _ } ->
+                  if Hashtbl.mem displayed_packages package then false
+                  else (Hashtbl.add displayed_packages package (); true)
+              | PackageComplete { package; success; errors; _ } ->
+                  (* Always show failures with errors, but not successes or skips *)
+                  success = false && errors <> []
+              | _ -> true
+            in
+            if should_display then
+              let formatted = format_cargo_event event in
+              if formatted <> "" then (
+                Printf.printf "%s\n" formatted;
+                flush stdout)
         | Tusk_jsonrpc.Client.BuildFinished _ ->
             (* This is handled below in the result match *)
             ())
@@ -254,7 +282,8 @@ let build_package package_name =
     Tusk_jsonrpc.Client.close client;
     match result with
     | Ok (Tusk_jsonrpc.Client.BuildFinished (Ok ())) -> true
-    | _ -> false
+    | Ok (Tusk_jsonrpc.Client.BuildFinished (Error _)) -> false
+    | Error _ -> false
 
 (** Execute the run command *)
 let run_command binary_opt =
@@ -1043,7 +1072,7 @@ let install_command args =
     (* First, build the package *)
     Printf.printf "Building %s...\n" package_name;
     if not (build_package package_name) then (
-      Printf.eprintf "❌ Failed to build %s\n" package_name;
+      Printf.eprintf "\n❌ Failed to build %s, nothing was installed\n" package_name;
       Error (Failure (Printf.sprintf "Failed to build %s" package_name)))
     else
       (* Look for the binary in various locations *)

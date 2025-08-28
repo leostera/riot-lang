@@ -1626,8 +1626,11 @@ module Client = struct
                            (Event.create ~session_id ~level:Error
                               (Event.CycleDetected { packages = cycle_nodes })));
                       receive_events ()
-                  | Ok { result = Ok (TuskProtocol.BuildComplete _); _ } ->
-                      Ok (BuildFinished (Ok ()))
+                  | Ok { result = Ok (TuskProtocol.BuildComplete { stats; _ }); _ } ->
+                      if stats.packages_failed > 0 then
+                        Ok (BuildFinished (Error (Printf.sprintf "%d packages failed to build" stats.packages_failed)))
+                      else
+                        Ok (BuildFinished (Ok ()))
                   | Ok
                       {
                         result =
@@ -1668,9 +1671,12 @@ module Client = struct
                       Error "Unexpected response type"
                 in
                 receive_events ()
-            | Ok (TuskProtocol.BuildComplete { session_id; completed_at = _; stats = _ }) ->
-                (* Direct success (no build needed) *)
-                Ok (BuildFinished (Ok ()))
+            | Ok (TuskProtocol.BuildComplete { session_id; completed_at = _; stats }) ->
+                (* Check if build actually succeeded *)
+                if stats.packages_failed > 0 then
+                  Ok (BuildFinished (Error (Printf.sprintf "%d packages failed to build" stats.packages_failed)))
+                else
+                  Ok (BuildFinished (Ok ()))
             | Ok (TuskProtocol.BuildFailed { session_id; error; _ }) ->
                 (* Direct error *)
                 Ok (BuildFinished (Error error))
@@ -1795,9 +1801,9 @@ module Server = struct
               when sid = session_id ->
                 `select (`cycle_detected (cycle_nodes, detected_at))
             | Tusk_protocol.ServerResponse
-                (Tusk_protocol.BuildCompleted { session_id = sid; completed_At })
+                (Tusk_protocol.BuildCompleted { session_id = sid; completed_At; stats })
               when sid = session_id ->
-                `select (`build_complete completed_At)
+                `select (`build_complete (completed_At, stats))
             | _ -> `skip
           in
           match receive ~selector () with
@@ -1811,8 +1817,8 @@ module Server = struct
                 (TuskProtocol.CycleDetected
                    { session_id; detected_at; cycle_nodes });
               event_loop ()
-          | `build_complete completed_at ->
-              (* Build is done, send final response *)
+          | `build_complete (completed_at, stats) ->
+              (* Build is done, send final response with actual stats *)
               reply
                 (TuskProtocol.BuildComplete
                    {
@@ -1820,12 +1826,12 @@ module Server = struct
                      completed_at;
                      stats =
                        {
-                         duration_ms = 0;
-                         packages_built = 0;
-                         packages_failed = 0;
-                         total_modules = 0;
-                         cache_hits = 0;
-                         cache_misses = 0;
+                         duration_ms = int_of_float (Tusk_protocol.BuildStats.get_build_duration stats *. 1000.0);
+                         packages_built = Tusk_protocol.BuildStats.get_packages_built stats;
+                         packages_failed = Tusk_protocol.BuildStats.get_packages_failed stats;
+                         total_modules = Tusk_protocol.BuildStats.get_total_modules stats;
+                         cache_hits = Tusk_protocol.BuildStats.get_cache_hits stats;
+                         cache_misses = Tusk_protocol.BuildStats.get_cache_misses stats;
                        };
                    })
         in

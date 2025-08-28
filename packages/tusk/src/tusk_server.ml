@@ -63,7 +63,9 @@ and handle_scan_workspace state client_pid current_dir =
   send client_pid
     (ServerResponse
        (BuildCompleted
-          { session_id = Session_id.make (); completed_At = Datetime.now () }));
+          { session_id = Session_id.make (); 
+            completed_At = Datetime.now ();
+            stats = Tusk_protocol.BuildStats.make () }));
   loop new_state
 
 (** Handler for getting workspace configuration. *)
@@ -228,10 +230,17 @@ and handle_build state client_pid target session_id_opt =
                  (CycleDetected
                     { session_id; cycle_nodes; detected_at = Datetime.now () }));
 
+            (* Create stats for this failed build *)
+            let build_stats = Tusk_protocol.BuildStats.make () in
+            Tusk_protocol.BuildStats.mark_started build_stats;
+            Tusk_protocol.BuildStats.mark_completed build_stats;
+            
             (* Send build completed event to properly finish the build *)
             send client_pid
               (ServerResponse
-                 (BuildCompleted { session_id; completed_At = Datetime.now () }));
+                 (BuildCompleted { session_id; 
+                                    completed_At = Datetime.now ();
+                                    stats = build_stats }));
 
             (* Exit the build process since we can't proceed *)
             Ok ()
@@ -248,6 +257,10 @@ and handle_build state client_pid target session_id_opt =
             (* TODO: Count actual modules when available *)
             Log.build_started ~session_id ~packages ~total_modules
               ~workers:state.workers;
+
+            (* Create mutable build stats to track throughout the build *)
+            let build_stats = Tusk_protocol.BuildStats.make () in
+            Tusk_protocol.BuildStats.mark_started build_stats;
 
             (* Create fresh build_results and build_queue for this build request *)
             let build_results = Build_results.create () in
@@ -312,6 +325,7 @@ and handle_build state client_pid target session_id_opt =
                     Printf.eprintf "[DEBUG] Task completed: %s\n" pkg_name;
                     Build_queue.mark_as_completed build_queue node ~artifact;
                     succeeded := pkg_name :: !succeeded;
+                    Tusk_protocol.BuildStats.inc_packages_built build_stats;
                     Printf.eprintf "[DEBUG] Marked %s as completed\n" pkg_name;
 
                     (* Log queue status after completion *)
@@ -324,11 +338,10 @@ and handle_build state client_pid target session_id_opt =
                     flush stderr;
                     build_loop ()
                 | Worker_pool_types.TaskFailed { worker; node; error } ->
+                    let pkg_name = node.Build_node.package.name in
                     Build_queue.mark_as_failed build_queue node ~error;
-                    failed := node.Build_node.package.name :: !failed;
-                    Printf.eprintf "[DEBUG] Task failed: %s - %s\n"
-                      node.Build_node.package.name error;
-                    flush stderr;
+                    failed := pkg_name :: !failed;
+                    Tusk_protocol.BuildStats.inc_packages_failed build_stats;
                     build_loop ()
                 | Worker_pool_types.WorkerReady worker ->
                     Printf.eprintf "Server: Worker ready\n";
@@ -377,16 +390,21 @@ and handle_build state client_pid target session_id_opt =
             in
 
             Fun.protect
+              (fun () -> build_loop ())
               ~finally:(fun () ->
                 (* Log build complete event *)
                 let duration_ms = Global.time_ms () - build_start_time in
                 (* TODO: Get actual results from build_results *)
                 Log.build_complete ~session_id ~duration_ms ~results:[];
+                
+                (* Mark build as completed to finalize stats *)
+                Tusk_protocol.BuildStats.mark_completed build_stats;
+                
+                (* Send build completed response with stats *)
                 send client_pid
                   (ServerResponse
                      (BuildCompleted
-                        { session_id; completed_At = Datetime.now () })))
-              (fun () -> build_loop ());
+                        { session_id; completed_At = Datetime.now (); stats = build_stats })));
             Ok ())
   in
   loop state

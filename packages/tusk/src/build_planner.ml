@@ -1,6 +1,10 @@
+type skip_reason = 
+  | DependenciesFailed of string list
+
 type plan_result =
   | Planned of Build_node.t
   | MissingDependencies of { node : Build_node.t; deps : Build_node.t list }
+  | Skipped of { node : Build_node.t; reason : skip_reason }
 
 type error = string
 
@@ -310,20 +314,22 @@ let plan_node ~graph ~node ~build_results ~session_id () =
   if failed_deps <> [] then
     (* If any dependency has failed, fail this node immediately *)
     let dep_errors = 
-      String.concat "; " 
-        (List.map (fun (name, err) -> Printf.sprintf "%s: %s" name err) failed_deps)
+      List.map (fun (name, err) -> Printf.sprintf "%s: %s" name err) failed_deps
     in
-    Error (Printf.sprintf "Dependencies failed: %s" dep_errors)
+    Ok (Skipped { node; reason = DependenciesFailed dep_errors })
   else
     (* Check for unplanned/unbuilt dependencies *)
     let unplanned_deps =
       List.filter
         (fun dep ->
-          (* Consider a dep as planned if it's built in build_results *)
+          (* A dependency is ready only if it's successfully built *)
           let pkg_name = dep.Build_node.package.name in
           match Build_results.get_status build_results pkg_name with
-          | Some (Build_results.Built _) -> false (* Already built *)
-          | _ -> Build_node.is_unplanned dep (* Check if unplanned in graph *))
+          | Some (Build_results.Built _) -> false (* Already built - ready *)
+          | Some (Build_results.Building) -> true (* Still building - not ready *)
+          | Some (Build_results.NotStarted) -> true (* Not started - not ready *)
+          | Some (Build_results.Failed _) -> true (* Should have been caught above *)
+          | None -> true (* Not tracked - not ready *))
         dep_nodes
     in
 

@@ -33,5 +33,6 @@ val mark_as_completed : t -> Build_node.t -> artifact:Store.artifact -> unit
 val mark_as_failed : t -> Build_node.t -> error:string -> unit
 (** Mark task as failed - removes from busy and updates build results *)
 
+
 val get_stats : t -> int * int * int
 (** Get queue statistics as (ready_count, waiting_count, busy_count) *)

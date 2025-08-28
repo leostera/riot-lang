@@ -137,35 +137,21 @@ let copy_dependency_artifacts sandbox ~store ~build_graph ~build_results =
                   (List.length files) dep_name;
                 flush stdout
             | false ->
-                Printf.printf
-                  "[Sandbox] ERROR: Failed to copy artifacts for %s\n" dep_name;
-                flush stdout)
-          else (
-            Printf.printf
-              "[Sandbox] Warning: No cached artifacts found for dependency %s \
-               (hash: %s)\n"
-              dep_name (Hasher.to_string hash);
-            flush stdout)
+                failwith (Printf.sprintf "Failed to copy artifacts for dependency %s" dep_name))
+          else 
+            failwith (Printf.sprintf "Missing cached artifacts for dependency %s (hash: %s)" dep_name (Hasher.to_string hash))
       | None -> (
           (* No hash available - check why *)
           match Build_results.get_status build_results dep_name with
           | Some Build_results.Building ->
-              Printf.printf
-                "[Sandbox] Warning: Dependency %s is still building\n" dep_name;
-              flush stdout
+              failwith (Printf.sprintf "Dependency %s is still building" dep_name)
           | Some Build_results.NotStarted ->
-              Printf.printf "[Sandbox] Warning: Dependency %s not started yet\n"
-                dep_name;
-              flush stdout
+              failwith (Printf.sprintf "Dependency %s not started yet" dep_name)
           | Some (Build_results.Failed err) ->
-              Printf.printf "[Sandbox] Warning: Dependency %s failed: %s\n"
-                dep_name err;
-              flush stdout
+              failwith (Printf.sprintf "Dependency %s failed: %s" dep_name err)
           | _ ->
-              Printf.printf
-                "[Sandbox] Warning: Dependency %s not available (no hash)\n"
-                dep_name;
-              flush stdout))
+              failwith (Printf.sprintf "Dependency %s not available (no hash)" dep_name))
+    )
     all_deps
 
 (** Run actions in the sandbox and return output paths *)
@@ -194,7 +180,6 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
     Fs.chdir
       (Path.of_string sandbox.sandbox_dir |> Result.expect ~msg:"Invalid path")
   in
-  ();
 
   (* Track declared outputs *)
   let declared_outputs = ref [] in
@@ -299,7 +284,6 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
   let _ =
     Fs.chdir (Path.of_string original_cwd |> Result.expect ~msg:"Invalid path")
   in
-  ();
 
   (* Copy artifacts to target directory *)
   match result with

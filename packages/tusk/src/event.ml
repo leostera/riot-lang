@@ -11,6 +11,9 @@ let level_to_string = function
   | Debug -> "debug"
   | Trace -> "trace"
 
+type skip_reason =
+  | DependenciesFailed of string list
+
 type build_error = {
   package : string;
   file : string;
@@ -61,6 +64,7 @@ type kind =
   | LinkingLibrary of { package : string; output : string }
   | McpToolCall of { tool : string; args : Json.t }
   | PackageComplete of build_result
+  | PackageSkipped of { package : string; reason : skip_reason }
   | PackageStarted of { package : string }
   | QueuePackage of { package : string; queue_type : [ `Ready | `Waiting ] }
   | QueueStats of { ready : int; waiting : int; busy : int }
@@ -119,6 +123,7 @@ let name = function
   | LinkingLibrary _ -> "tusk.build.link.library"
   | McpToolCall _ -> "tusk.mcp.tool_call"
   | PackageComplete _ -> "tusk.build.package.completed"
+  | PackageSkipped _ -> "tusk.build.package.skipped"
   | PackageStarted _ -> "tusk.build.package.started"
   | QueuePackage _ -> "tusk.build.queue.package"
   | QueueStats _ -> "tusk.build.queue.stats"
@@ -152,6 +157,12 @@ let display = function
   | PackageComplete { package; success; duration_ms; _ } ->
       if success then Printf.sprintf "✓ Built %s in %dms" package duration_ms
       else Printf.sprintf "✗ Failed to build %s" package
+  | PackageSkipped { package; reason } ->
+      let reason_str = match reason with
+        | DependenciesFailed deps -> 
+            Printf.sprintf "dependencies failed: %s" (String.concat ", " deps)
+      in
+      Printf.sprintf "⊘ Skipped %s (%s)" package reason_str
   | CompileError { package; file; line; message; _ } ->
       Printf.sprintf "Error in %s [%s:%d]: %s" package file line message
   | CycleDetected { packages } ->
@@ -283,6 +294,18 @@ let kind_to_json = function
         ("modules_compiled", Json.Int modules_compiled);
         ("cache_hits", Json.Int cache_hits);
         ("cache_misses", Json.Int cache_misses);
+      ]
+  | PackageSkipped { package; reason } ->
+      let reason_json = match reason with
+        | DependenciesFailed deps ->
+            Json.Object [
+              ("type", Json.String "dependencies_failed");
+              ("dependencies", Json.Array (List.map (fun d -> Json.String d) deps));
+            ]
+      in
+      Json.Object [
+        ("package", Json.String package);
+        ("reason", reason_json);
       ]
   | CompileError { package; file; line; column; message; hint } ->
       Json.Object [
@@ -551,6 +574,34 @@ let kind_from_json json =
                   in
                   Ok (PackageComplete { package; success; duration_ms; modules_compiled; cache_hits; cache_misses; errors = [] })
               | _ -> Error "Invalid PackageComplete data")
+          | "tusk.build.package.skipped" -> (
+              match data with
+              | Json.Object data_fields ->
+                  let package =
+                    match List.assoc_opt "package" data_fields with
+                    | Some (Json.String p) -> p
+                    | _ -> ""
+                  in
+                  let reason =
+                    match List.assoc_opt "reason" data_fields with
+                    | Some (Json.Object reason_fields) -> (
+                        match List.assoc_opt "type" reason_fields with
+                        | Some (Json.String "dependencies_failed") -> (
+                            match List.assoc_opt "dependencies" reason_fields with
+                            | Some (Json.Array deps) ->
+                                let dep_names = List.filter_map (function
+                                  | Json.String s -> Some s
+                                  | _ -> None
+                                ) deps in
+                                DependenciesFailed dep_names
+                            | _ -> DependenciesFailed []
+                          )
+                        | _ -> DependenciesFailed []
+                      )
+                    | _ -> DependenciesFailed []
+                  in
+                  Ok (PackageSkipped { package; reason })
+              | _ -> Error "Invalid PackageSkipped data")
           | "tusk.build.cache.hit" -> (
               match data with
               | Json.Object data_fields ->

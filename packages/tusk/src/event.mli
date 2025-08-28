@@ -5,6 +5,10 @@ open Std.Data
 (** Log severity levels *)
 type level = Error | Warn | Info | Debug | Trace
 
+(** Reasons why a package was skipped *)
+type skip_reason =
+  | DependenciesFailed of string list  (** List of failed dependency names *)
+
 val level_to_string : level -> string
 
 type build_error = {
@@ -58,6 +62,7 @@ type kind =
   | LinkingLibrary of { package : string; output : string }
   | McpToolCall of { tool : string; args : Json.t }
   | PackageComplete of build_result
+  | PackageSkipped of { package : string; reason : skip_reason }
   | PackageStarted of { package : string }
   | QueuePackage of { package : string; queue_type : [ `Ready | `Waiting ] }
   | QueueStats of { ready : int; waiting : int; busy : int }
