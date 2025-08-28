@@ -295,21 +295,42 @@ let plan_node ~graph ~node ~build_results ~session_id () =
   (* Step 1: Check if immediate dependencies have been planned/built *)
   (* Resolve dependency IDs to nodes *)
   let dep_nodes = List.map (Build_graph.get_node graph) node.Build_node.deps in
-  let unplanned_deps =
-    List.filter
+  
+  (* First, check if any dependencies have failed *)
+  let failed_deps =
+    List.filter_map
       (fun dep ->
-        (* Consider a dep as planned if it's built in build_results *)
         let pkg_name = dep.Build_node.package.name in
         match Build_results.get_status build_results pkg_name with
-        | Some (Build_results.Built _) -> false (* Already built *)
-        | _ -> Build_node.is_unplanned dep (* Check if unplanned in graph *))
+        | Some (Build_results.Failed error) -> Some (pkg_name, error)
+        | _ -> None)
       dep_nodes
   in
-
-  if unplanned_deps <> [] then
-    (* Return MissingDependencies if any deps are unplanned *)
-    Ok (MissingDependencies { node; deps = unplanned_deps })
+  
+  if failed_deps <> [] then
+    (* If any dependency has failed, fail this node immediately *)
+    let dep_errors = 
+      String.concat "; " 
+        (List.map (fun (name, err) -> Printf.sprintf "%s: %s" name err) failed_deps)
+    in
+    Error (Printf.sprintf "Dependencies failed: %s" dep_errors)
   else
+    (* Check for unplanned/unbuilt dependencies *)
+    let unplanned_deps =
+      List.filter
+        (fun dep ->
+          (* Consider a dep as planned if it's built in build_results *)
+          let pkg_name = dep.Build_node.package.name in
+          match Build_results.get_status build_results pkg_name with
+          | Some (Build_results.Built _) -> false (* Already built *)
+          | _ -> Build_node.is_unplanned dep (* Check if unplanned in graph *))
+        dep_nodes
+    in
+
+    if unplanned_deps <> [] then
+      (* Return MissingDependencies if any deps are unplanned *)
+      Ok (MissingDependencies { node; deps = unplanned_deps })
+    else
     (* Step 2: All deps are planned, we can proceed *)
     (* Step 3: Generate outputs and actions based on sources, deps, and package *)
     let outs, actions =

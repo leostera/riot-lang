@@ -245,17 +245,30 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
               success := false;
               errors := error_msg :: !errors;
 
-              (* Log simple compile error for streaming visibility *)
+              (* Parse OCaml compiler error for better reporting *)
               let compile_error =
-                Event.
-                  {
-                    package = sandbox.node.package.name;
-                    file = "";
-                    line = 0;
-                    column = None;
-                    message = String.trim error_msg;
-                    hint = None;
-                  }
+                match Ocaml_error_parser.get_primary_error error_msg with
+                | Some parsed ->
+                    Event.
+                      {
+                        package = sandbox.node.package.name;
+                        file = parsed.file;
+                        line = parsed.line_start;
+                        column = Some parsed.col_start;
+                        message = Printf.sprintf "%s: %s" parsed.error_type parsed.message;
+                        hint = parsed.hint;
+                      }
+                | None ->
+                    (* Fallback to simple error if parsing fails *)
+                    Event.
+                      {
+                        package = sandbox.node.package.name;
+                        file = "";
+                        line = 0;
+                        column = None;
+                        message = String.trim error_msg;
+                        hint = None;
+                      }
               in
               Log.compile_error ~session_id compile_error;
 

@@ -15,7 +15,22 @@ let format_cargo_event (event : Event.t) =
       Printf.sprintf "   \027[1;32mCompiling\027[0m %s \027[1;90m(cached)\027[0m" package
   | CacheMiss { package; _ } ->
       Printf.sprintf "   \027[1;32mCompiling\027[0m %s" package
-  | CompileError { message; _ } -> Printf.sprintf "\027[1;31merror\027[0m: %s" message
+  | CompileError { file; line; column; message; hint; _ } -> 
+      let location = 
+        if file <> "" then 
+          match column with
+          | Some col -> Printf.sprintf "%s:%d:%d" file line col
+          | None -> Printf.sprintf "%s:%d" file line
+        else ""
+      in
+      let hint_str = match hint with
+        | Some h -> Printf.sprintf "\n       \027[0;36mHint:\027[0m %s" h
+        | None -> ""
+      in
+      if location <> "" then
+        Printf.sprintf "\027[1;31merror\027[0m: %s\n       %s%s" location message hint_str
+      else
+        Printf.sprintf "\027[1;31merror\027[0m: %s%s" message hint_str
   | BuildComplete { duration_ms; succeeded; failed; _ } ->
       if List.length failed = 0 then
         Printf.sprintf "   \027[1;32mFinished\027[0m in %.2fs"
