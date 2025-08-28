@@ -56,6 +56,7 @@ type request =
   | GetBuildGraph of { client_pid : Pid.t }
   | FormatFile of { client_pid : Pid.t; file_path : Path.t; check_only : bool }
   | FormatCode of { client_pid : Pid.t; code : string; file_path : Path.t option }
+  | NewPackage of { client_pid : Pid.t; path : Path.t; name : string; is_library : bool }
 
 (** Response types from the server *)
 type response =
@@ -83,6 +84,8 @@ type response =
   | BuildGraph of { nodes : Build_node.t list }
   | FormatResult of { formatted_code : string; changed : bool }
   | FormatError of { error : string }
+  | PackageCreated of { path : string; name : string }
+  | PackageCreationError of { error : string }
 
 (** Message types for server communication *)
 type Message.t += ServerRequest of request | ServerResponse of response

@@ -56,6 +56,7 @@ let usage_msg =
   \  install  Install a package binary to ~/.tusk/bin/\n\
   \  lsp      Start OCaml LSP server\n\
   \  mcp      Start Model Context Protocol server\n\
+  \  new      Create a new package\n\
   \  rpc      Send RPC command to server\n\
   \  run      Run a binary\n\
   \  server   Start the tusk server (for debugging)\n\
@@ -1133,6 +1134,77 @@ let rpc_command args =
        format-check <file>, format-code <code>, restart, shutdown\n";
     Error (Failure (Printf.sprintf "Unknown RPC command: %s" cmd)))
 
+(** Execute the new command *)
+let new_command args =
+  if Array.length args < 3 then (
+    Printf.eprintf "Error: Package path required\n";
+    Printf.eprintf "Usage: tusk new <path> [--lib|--bin]\n";
+    Error (Failure "Missing package path"))
+  else
+    let path = args.(2) in
+    let is_library = 
+      if Array.length args > 3 then
+        match args.(3) with
+        | "--bin" -> false
+        | "--lib" -> true
+        | _ -> true  (* default to library *)
+      else true
+    in
+    
+    (* Extract package name from path *)
+    let name = Filename.basename path in
+    
+    (* Send request to server to create the package *)
+    let cwd = Std.Env.current_dir () |> Std.Result.expect ~msg:"Failed to get current directory" in
+    let workspace = Workspace_manager.scan cwd |> Std.Result.expect ~msg:"Failed to scan workspace" in
+    let pid = Server_manager.ensure_running ~workspace |> Std.Result.expect ~msg:"Failed to connect to server" in
+    
+    (* Convert path to absolute if relative *)
+    let abs_path = 
+      if Filename.is_relative path then
+        Filename.concat (Std.Path.to_string cwd) path
+      else
+        path
+    in
+    
+    let path_result = Std.Path.of_string abs_path in
+    match path_result with
+    | Error _ ->
+        Printf.eprintf "Error: Invalid path '%s'\n" abs_path;
+        Error (Failure "Invalid path")
+    | Ok package_path ->
+        (* Send NewPackage request *)
+        Miniriot.send pid 
+          (Tusk_protocol.ServerRequest 
+             (Tusk_protocol.NewPackage { 
+                client_pid = Miniriot.self (); 
+                path = package_path; 
+                name; 
+                is_library 
+              }));
+        
+        (* Wait for response *)
+        let selector = function
+          | Tusk_protocol.ServerResponse (Tusk_protocol.PackageCreated { path; name }) ->
+              `select (`created (path, name))
+          | Tusk_protocol.ServerResponse (Tusk_protocol.PackageCreationError { error }) ->
+              `select (`error error)
+          | _ -> `skip
+        in
+        
+        match Miniriot.receive ~selector () with
+        | `created (path, name) ->
+            Printf.printf "✨ Created package '%s' at %s\n" name path;
+            Printf.printf "\nTo add this package to your workspace, add the following to your tusk.toml:\n";
+            Printf.printf "\n  members = [..., \"%s\"]\n\n" (Filename.concat "packages" name);
+            Ok ()
+        | `error error ->
+            Printf.eprintf "Error creating package: %s\n" error;
+            Error (Failure error)
+        | exception _ ->
+            Printf.eprintf "Error: Request timed out\n";
+            Error (Failure "Request timed out")
+
 (** Execute the install command *)
 let install_command args =
   if Array.length args < 3 then (
@@ -1234,6 +1306,7 @@ let main () =
     | "run" ->
         let binary_opt = parse_run_args args 2 in
         run_command binary_opt
+    | "new" -> new_command args
     | "install" -> install_command args
     | "server" -> server_command args
     | "rpc" -> rpc_command args

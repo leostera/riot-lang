@@ -45,6 +45,8 @@ let rec loop state =
       handle_format_file state client_pid file_path check_only
   | FormatCode { client_pid; code; file_path } ->
       handle_format_code state client_pid code file_path
+  | NewPackage { client_pid; path; name; is_library } ->
+      handle_new_package state client_pid path name is_library
 
 (** Handler for the ping message. *)
 and handle_ping state client_pid =
@@ -183,6 +185,54 @@ and handle_format_code state client_pid code file_path =
     | Error error -> FormatError { error }
   in
   send client_pid (ServerResponse response);
+  loop state
+
+and handle_new_package state client_pid path name is_library =
+  Printf.eprintf "Server: Received NewPackage from %s for %s at %s\n" 
+    (Pid.to_string client_pid) name (Std.Path.to_string path);
+  
+  let path_str = Std.Path.to_string path in
+  let src_dir = Filename.concat path_str "src" in
+  
+  (* Create directories *)
+  let _ = Std.Command.run_command (Printf.sprintf "mkdir -p %s" src_dir) in
+  
+  (* Create main module files *)
+  let main_ml = Filename.concat src_dir (name ^ ".ml") in
+  let main_mli = Filename.concat src_dir (name ^ ".mli") in
+  
+  let ml_content = if is_library then
+    "(** Main module for " ^ name ^ " library *)\n"
+  else
+    "(** Main entry point for " ^ name ^ " *)\n\nlet () = print_endline \"Hello from " ^ name ^ "\"\n"
+  in
+  
+  let mli_content = if is_library then
+    "(** " ^ String.capitalize_ascii name ^ " library interface *)\n"
+  else
+    "(** " ^ String.capitalize_ascii name ^ " executable interface *)\n"
+  in
+  
+  (* Write module files *)
+  let _ = Std.File.write ~path:main_ml ~content:ml_content in
+  let _ = Std.File.write ~path:main_mli ~content:mli_content in
+  
+  (* Create package tusk.toml *)
+  let package_toml = Filename.concat path_str "tusk.toml" in
+  let toml_content = Printf.sprintf "[package]
+name = \"%s\"
+version = \"0.1.0\"
+
+[dependencies]
+# Add dependencies here
+
+%s
+" name (if is_library then "" else "[package.bin]\nmain = \"" ^ name ^ "\"")
+  in
+  let _ = Std.File.write ~path:package_toml ~content:toml_content in
+  
+  (* Send success response *)
+  send client_pid (ServerResponse (PackageCreated { path = path_str; name }));
   loop state
 
 (** Handler for the build message. *)
