@@ -242,15 +242,21 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
               Printf.printf "  -> Skipped: %s\n" reason;
               flush stdout
           | Actions.Failed error_msg ->
-              success := false;
-              errors := error_msg :: !errors;
+              (* Check if this is a fatal build system error *)
+              if String.starts_with ~prefix:"Missing outputs:" error_msg then (
+                (* Fatal build system error - don't continue *)
+                Printf.eprintf "\n\027[1;31mFATAL BUILD ERROR:\027[0m %s\n" error_msg;
+                Printf.eprintf "The build system detected missing expected outputs.\n";
+                Printf.eprintf "This indicates a serious internal error. Build halted.\n%!";
+                (* Instead of exit, raise an exception that can be caught at higher level *)
+                failwith ("FATAL_BUILD_ERROR: " ^ error_msg)
+              ) else (
+                success := false;
+                errors := error_msg :: !errors;
 
-              (* Debug: print the raw error message *)
-              Printf.eprintf "[DEBUG SANDBOX] Raw error: '%s'\n%!" error_msg;
-
-              (* Parse OCaml compiler error for better reporting *)
-              let compile_error =
-                match Ocaml_error_parser.get_primary_error error_msg with
+                (* Parse OCaml compiler error for better reporting *)
+                let compile_error =
+                  match Ocaml_error_parser.get_primary_error error_msg with
                 | Some parsed ->
                     Event.
                       {
@@ -273,10 +279,11 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
                         hint = None;
                       }
               in
-              Log.compile_error ~session_id compile_error;
+                Log.compile_error ~session_id compile_error;
 
-              Printf.printf "  -> Failed: %s\n" error_msg;
-              flush stdout)
+                Printf.printf "  -> Failed: %s\n" error_msg;
+                flush stdout
+              ))
         actions;
 
       if !success then Ok !declared_outputs
