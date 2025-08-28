@@ -36,6 +36,8 @@ type request =
   | GetWorkspaceConfig of { client_pid : Pid.t }
   | GetPackageInfo of { client_pid : Pid.t; package_name : string }
   | GetBuildGraph of { client_pid : Pid.t }
+  | FormatFile of { client_pid : Pid.t; file_path : Path.t; check_only : bool }
+  | FormatCode of { client_pid : Pid.t; code : string; file_path : Path.t option }
 
 (** Response types from the server *)
 type response =
@@ -61,6 +63,8 @@ type response =
       dependencies : Build_node.t list;
     }
   | BuildGraph of { nodes : Build_node.t list }
+  | FormatResult of { formatted_code : string; changed : bool }
+  | FormatError of { error : string }
 
 (** Message types for server communication *)
 type Message.t += ServerRequest of request | ServerResponse of response

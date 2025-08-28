@@ -17,5 +17,3 @@ module String = String
 module Iterator = Iterator
 module MutIterator = MutIterator
 include Global
-
-module A = struct

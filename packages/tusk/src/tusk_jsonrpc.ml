@@ -13,6 +13,8 @@ let method_build_all = "tusk.buildAll"
 let method_restart = "tusk.restart"
 let method_shutdown = "tusk.shutdown"
 let method_build_event = "tusk.buildEvent"
+let method_format_file = "tusk.formatFile"
+let method_format_code = "tusk.formatCode"
 
 (** Helper to create method-specific parameters *)
 let build_package_params package =
@@ -61,6 +63,8 @@ module TuskProtocol = struct
     | BuildAll
     | Restart
     | Shutdown
+    | FormatFile of { file_path : string; check_only : bool }
+    | FormatCode of { code : string; file_path : string option }
 
   type build_stats = {
     duration_ms : int;
@@ -96,6 +100,8 @@ module TuskProtocol = struct
       }
     | ShutdownAck
     | RestartAck
+    | FormatResult of { formatted_code : string; changed : bool }
+    | FormatError of { error : string }
     | Error of string
 
   (* Helper to deserialize event kind from JSON *)
@@ -1092,6 +1098,24 @@ module TuskProtocol = struct
             ("nodes", Json.Int nodes);
             ("duration_ms", Json.Int duration_ms);
           ]
+    | Event.StoreCreating ->
+        Json.Object [ ("type", Json.String "StoreCreating") ]
+    | Event.StoreCreated { duration_ms } ->
+        Json.Object
+          [
+            ("type", Json.String "StoreCreated");
+            ("duration_ms", Json.Int duration_ms);
+          ]
+    | Event.PackageSkipped { package } ->
+        Json.Object
+          [
+            ("type", Json.String "PackageSkipped");
+            ("package", Json.String package);
+          ]
+    | Event.WorkerPoolCreating _ ->
+        Json.Object [ ("type", Json.String "WorkerPoolCreating") ]
+    | Event.WorkerPoolCreated _ ->
+        Json.Object [ ("type", Json.String "WorkerPoolCreated") ]
 
   let request_to_params = function
     | Ping -> { Jsonrpc.method_ = method_ping; params = NoParams }
@@ -1108,6 +1132,18 @@ module TuskProtocol = struct
     | BuildAll -> { method_ = method_build_all; params = NoParams }
     | Shutdown -> { method_ = method_shutdown; params = NoParams }
     | Restart -> { method_ = method_restart; params = NoParams }
+    | FormatFile { file_path; check_only } ->
+        { method_ = method_format_file; 
+          params = Named [
+            ("file_path", Json.String file_path);
+            ("check_only", Json.Bool check_only)
+          ] }
+    | FormatCode { code; file_path } ->
+        { method_ = method_format_code;
+          params = Named [
+            ("code", Json.String code);
+            ("file_path", match file_path with Some fp -> Json.String fp | None -> Json.Null)
+          ] }
 
   let request_of_params method_ params =
     (* Parse params based on the method name *)
@@ -1132,6 +1168,29 @@ module TuskProtocol = struct
     | "tusk.getBuildGraph" -> Ok GetBuildGraph
     | "tusk.restart" -> Ok Restart
     | "tusk.shutdown" -> Ok Shutdown
+    | "tusk.formatFile" -> (
+        match params with
+        | Jsonrpc.Named fields -> (
+            match (List.assoc_opt "file_path" fields, List.assoc_opt "check_only" fields) with
+            | Some (Json.String file_path), Some (Json.Bool check_only) ->
+                Ok (FormatFile { file_path; check_only })
+            | Some (Json.String file_path), None ->
+                Ok (FormatFile { file_path; check_only = false })
+            | _ -> Error (Json.String "Missing or invalid 'file_path' parameter"))
+        | _ -> Error (Json.String "Invalid parameters for formatFile"))
+    | "tusk.formatCode" -> (
+        match params with
+        | Jsonrpc.Named fields -> (
+            match List.assoc_opt "code" fields with
+            | Some (Json.String code) ->
+                let file_path = 
+                  match List.assoc_opt "file_path" fields with
+                  | Some (Json.String fp) -> Some fp
+                  | _ -> None
+                in
+                Ok (FormatCode { code; file_path })
+            | _ -> Error (Json.String "Missing or invalid 'code' parameter"))
+        | _ -> Error (Json.String "Invalid parameters for formatCode"))
     | _ -> Error (Json.String ("Unknown method: " ^ method_))
 
   let response_to_json = function
@@ -1255,6 +1314,17 @@ module TuskProtocol = struct
           ]
     | ShutdownAck -> Json.Object [ ("type", Json.String "shutdown_ack") ]
     | RestartAck -> Json.Object [ ("type", Json.String "restart_ack") ]
+    | FormatResult { formatted_code; changed } ->
+        Json.Object [
+          ("type", Json.String "format_result");
+          ("formatted_code", Json.String formatted_code);
+          ("changed", Json.Bool changed)
+        ]
+    | FormatError { error } ->
+        Json.Object [
+          ("type", Json.String "format_error");
+          ("error", Json.String error)
+        ]
     | Error msg -> Json.Object [ ("error", Json.String msg) ]
 
   let response_of_json json =
@@ -1424,6 +1494,15 @@ module TuskProtocol = struct
                  })
         | Some (Json.String "shutdown_ack") -> Ok ShutdownAck
         | Some (Json.String "restart_ack") -> Ok RestartAck
+        | Some (Json.String "format_result") -> (
+            match (List.assoc_opt "formatted_code" fields, List.assoc_opt "changed" fields) with
+            | Some (Json.String formatted_code), Some (Json.Bool changed) ->
+                Ok (FormatResult { formatted_code; changed })
+            | _ -> Error (Json.String "Invalid format_result response"))
+        | Some (Json.String "format_error") -> (
+            match List.assoc_opt "error" fields with
+            | Some (Json.String error) -> Ok (FormatError { error })
+            | _ -> Error (Json.String "Invalid format_error response"))
         | _ -> (
             (* Try other response types *)
             (* First check if this is a PackageInfo response *)
@@ -1802,6 +1881,8 @@ module Client = struct
                         | Ok (TuskProtocol.BuildFailed _) -> "BuildFailed"
                         | Ok TuskProtocol.ShutdownAck -> "ShutdownAck"
                         | Ok TuskProtocol.RestartAck -> "RestartAck"
+                        | Ok (TuskProtocol.FormatResult _) -> "FormatResult"
+                        | Ok (TuskProtocol.FormatError _) -> "FormatError"
                         | Ok (TuskProtocol.Error _) -> "Error"
                         | Error e -> Printf.sprintf "JsonRpcError(%s)" e.message
                       in
@@ -1883,6 +1964,57 @@ module Client = struct
         ~params:Jsonrpc.NoParams ()
     with
     | Ok _ -> Ok ()
+    | Error e ->
+        Error
+          (Printf.sprintf "Error %d: %s"
+             (Jsonrpc.error_code_to_int e.code)
+             e.message)
+
+  (** Format a file with ocamlformat *)
+  let format_file t ~file_path ~check_only =
+    match
+      Jsonrpc.Client.call t.client ~method_:method_format_file
+        ~params:(Jsonrpc.Named [ 
+          ("file_path", Json.String file_path);
+          ("check_only", Json.Bool check_only)
+        ])
+        ()
+    with
+    | Ok (TuskProtocol.FormatResult { formatted_code; changed }) -> 
+        Ok (formatted_code, changed)
+    | Ok (TuskProtocol.FormatError { error }) ->
+        Error error
+    | Ok _ -> Error "Invalid format response"
+    | Error e ->
+        Error
+          (Printf.sprintf "Error %d: %s"
+             (Jsonrpc.error_code_to_int e.code)
+             e.message)
+
+  (** Format code string with ocamlformat *)
+  let format_code t ~code ~file_path =
+    let params = 
+      match file_path with
+      | Some path ->
+          Jsonrpc.Named [ 
+            ("code", Json.String code);
+            ("file_path", Json.String path)
+          ]
+      | None ->
+          Jsonrpc.Named [ 
+            ("code", Json.String code)
+          ]
+    in
+    match
+      Jsonrpc.Client.call t.client ~method_:method_format_code
+        ~params
+        ()
+    with
+    | Ok (TuskProtocol.FormatResult { formatted_code; changed }) -> 
+        Ok (formatted_code, changed)
+    | Ok (TuskProtocol.FormatError { error }) ->
+        Error error
+    | Ok _ -> Error "Invalid format response"
     | Error e ->
         Error
           (Printf.sprintf "Error %d: %s"
@@ -2155,6 +2287,61 @@ module Server = struct
     (* For now, just reply with success *)
     reply TuskProtocol.RestartAck
 
+  let handle_format_file ctx reply file_path check_only =
+    (* Send format request to the actual tusk server *)
+    (match Std.Path.of_string file_path with
+     | Ok path ->
+         send ctx.server_pid
+           (Tusk_protocol.ServerRequest
+              (Tusk_protocol.FormatFile { client_pid = self (); file_path = path; check_only }));
+         
+         (* Wait for response *)
+         let selector = function
+           | Tusk_protocol.ServerResponse (Tusk_protocol.FormatResult { formatted_code; changed }) ->
+               `select (`format_result (formatted_code, changed))
+           | Tusk_protocol.ServerResponse (Tusk_protocol.FormatError { error }) ->
+               `select (`format_error error)
+           | _ -> `skip
+         in
+         (match receive ~selector () with
+          | `format_result (formatted_code, changed) ->
+              reply (TuskProtocol.FormatResult { formatted_code; changed })
+          | `format_error error ->
+              reply (TuskProtocol.FormatError { error })
+          | exception _ ->
+              reply (TuskProtocol.FormatError { error = "Format request timed out" }))
+     | Error _ ->
+         reply (TuskProtocol.FormatError { error = "Invalid file path" }))
+
+  let handle_format_code ctx reply code file_path =
+    (* Send format request to the actual tusk server *)
+    let file_path_opt = match file_path with
+      | Some fp -> (
+          match Std.Path.of_string fp with
+          | Ok p -> Some p
+          | Error _ -> None)
+      | None -> None
+    in
+    send ctx.server_pid
+      (Tusk_protocol.ServerRequest
+         (Tusk_protocol.FormatCode { client_pid = self (); code; file_path = file_path_opt }));
+    
+    (* Wait for response *)
+    let selector = function
+      | Tusk_protocol.ServerResponse (Tusk_protocol.FormatResult { formatted_code; changed }) ->
+          `select (`format_result (formatted_code, changed))
+      | Tusk_protocol.ServerResponse (Tusk_protocol.FormatError { error }) ->
+          `select (`format_error error)
+      | _ -> `skip
+    in
+    (match receive ~selector () with
+     | `format_result (formatted_code, changed) ->
+         reply (TuskProtocol.FormatResult { formatted_code; changed })
+     | `format_error error ->
+         reply (TuskProtocol.FormatError { error })
+     | exception _ ->
+         reply (TuskProtocol.FormatError { error = "Format request timed out" }))
+
   (** Create a JSON-RPC server handler for the tusk server *)
   let create server_pid =
     let ctx = { server_pid } in
@@ -2227,6 +2414,24 @@ module Server = struct
               (fun reply request ->
                 match request with
                 | TuskProtocol.Shutdown -> handle_shutdown ctx reply request
+                | _ -> ());
+          };
+          {
+            method_ = method_format_file;
+            fn =
+              (fun reply request ->
+                match request with
+                | TuskProtocol.FormatFile { file_path; check_only } ->
+                    handle_format_file ctx reply file_path check_only
+                | _ -> ());
+          };
+          {
+            method_ = method_format_code;
+            fn =
+              (fun reply request ->
+                match request with
+                | TuskProtocol.FormatCode { code; file_path } ->
+                    handle_format_code ctx reply code file_path
                 | _ -> ());
           };
         ]
