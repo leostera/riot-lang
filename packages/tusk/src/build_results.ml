@@ -1,4 +1,5 @@
 (** Build results - tracks which packages have been built *)
+open Std
 
 type status =
   | NotStarted

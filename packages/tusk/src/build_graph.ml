@@ -1,6 +1,7 @@
 (** Build graph module - handles dependency graph construction and topological
     sorting *)
 
+open Std
 open Build_node
 
 type node = Build_node.t

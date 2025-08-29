@@ -2,6 +2,7 @@
 
     Each node contains a package and its relationships to other packages in the
     build graph, along with content-based hashing for caching. *)
+  open Std
 
 type spec =
   | Unplanned  (** A node that hasn't been planned yet *)

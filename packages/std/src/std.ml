@@ -1,5 +1,6 @@
 (** Standard library extensions and utilities *)
 
+module Log = Log
 module Char = Char
 module Buffer = Buffer
 module Command = Command

@@ -1,5 +1,7 @@
 (** Tusk JSON-RPC Protocol - JSON-RPC 2.0 compliant *)
 
+open Std
+
 val method_ping : string
 (** Method names *)
 

@@ -1,4 +1,5 @@
 (** OCamldep wrapper - handles dependency analysis *)
+open Std
 
 (** Sort ML/MLI files in dependency order *)
 let sort ~toolchain ~cwd ~files =

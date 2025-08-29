@@ -1,9 +1,12 @@
 (** OCaml compiler command generation and execution *)
+  open Std
 
 (** Compiler flags *)
 type compiler_flag =
   | NoAliasDeps  (** -no-alias-deps: Do not record dependencies for module aliases *)
   | Open of string  (** -open <module>: Opens the module before typing *)
+  | NoStdlib  (** -nostdlib: Do not automatically link with the standard library *)
+  | NoPervasives  (** -nopervasives: Do not open the Pervasives module (or Stdlib) *)
 
 (** Compilation mode *)
 type mode =
@@ -28,6 +31,8 @@ let flags_to_string flags =
     match flag with
     | Open m -> acc @ ["-open"; m]
     | NoAliasDeps -> acc @ ["-no-alias-deps"]
+    | NoStdlib -> acc @ ["-nostdlib"]
+    | NoPervasives -> acc @ ["-nopervasives"]
   ) [] flags
 
 (** Build and run an ocamlc command *)
@@ -75,8 +80,28 @@ let run ~toolchain ?(includes = []) ?(libs = []) ?(output = None)
   | Error _ -> Failed "Command failed"
 
 (** Compile an interface file (.mli -> .cmi) *)
-let compile_interface ~toolchain ~includes ~output source =
-  run ~toolchain ~includes ~output:(Some output) ~mode:Compile [ source ]
+let compile_interface ~toolchain ~includes ~flags ~output source =
+  (* Include current directory for .cmi files *)
+  let includes_with_dot = "." :: includes in
+  
+  (* If we have flags, we need to build command parts directly *)
+  if flags <> [] then
+    let flag_args = flags_to_string flags in
+    let cmd_parts = 
+      [base_command toolchain; "-c"] 
+      @ flag_args
+      @ List.concat_map (fun dir -> ["-I"; dir]) includes_with_dot
+      @ ["-o"; output; source]
+    in
+    let cmd = String.concat " " cmd_parts in
+    let env = [ ("OCAML_COLOR", "always") ] in
+    match Command.run_command ~env cmd with
+    | Ok output -> Success output
+    | Error (Command.SpawnFailed msg) -> Failed msg
+    | Error _ -> Failed "Command failed"
+  else
+    run ~toolchain ~includes:includes_with_dot ~output:(Some output) ~mode:Compile
+      [ source ]
 
 (** Compile an implementation file (.ml -> .cmo) *)  
 let compile_impl ~toolchain ~includes ~flags ~output source =

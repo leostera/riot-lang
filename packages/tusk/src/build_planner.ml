@@ -1,3 +1,5 @@
+open Std
+
 type skip_reason = DependenciesFailed of string list
 
 type plan_result =
@@ -127,8 +129,8 @@ let generate_actions ~graph ~node ~toolchain ~package ~srcs ~deps =
     else (ml_sources, mli_sources)
   in
 
-  (* Prepare alias module FIRST if we have namespaced modules *)
-  let alias_module_name_opt, open_flags = 
+  (* Prepare alias module configuration but don't add actions yet *)
+  let alias_module_name_opt, open_flags, alias_cmo_opt = 
     (* Collect all modules that need aliases *)
     let module_aliases = 
       (sorted_ml_sources @ sorted_mli_sources)
@@ -159,16 +161,8 @@ let generate_actions ~graph ~node ~toolchain ~package ~srcs ~deps =
       let alias_ml = alias_module_name ^ ".ml" in
       let alias_cmo = alias_module_name ^ ".cmo" in
       
-      (* Write and compile the alias module with -no-alias-deps *)
-      actions := Actions.WriteFile { destination = alias_ml; content = alias_content } :: !actions;
-      actions := Actions.CompileImplementation 
-        { source = alias_ml; output = alias_cmo; 
-          includes = dep_includes;
-          flags = [Ocamlc.NoAliasDeps] } :: !actions;
-      outputs := alias_cmo :: !outputs;
-      
-      (Some alias_module_name, [Ocamlc.Open alias_module_name])
-    ) else (None, [])
+      (Some alias_module_name, [Ocamlc.Open alias_module_name], Some (alias_ml, alias_cmo, alias_content))
+    ) else (None, [], None)
   in
 
   (* Compile .mli files to .cmi with -open flag if we have aliases *)
@@ -181,10 +175,10 @@ let generate_actions ~graph ~node ~toolchain ~package ~srcs ~deps =
         | Build_node.MLI { namespaced_name; _ } -> namespaced_name ^ ".cmi"
         | _ -> failwith "Internal error: non-MLI source in mli_sources"
       in
-      (* We can't add flags to CompileInterface yet, so just use includes *)
+      (* Add -open flag if we have an alias module *)
       actions :=
         Actions.CompileInterface
-          { source = mli_str; output = cmi_path; includes = dep_includes }
+          { source = mli_str; output = cmi_path; includes = dep_includes; flags = open_flags }
         :: !actions;
       outputs := cmi_path :: !outputs)
     sorted_mli_sources;
@@ -305,6 +299,14 @@ let generate_actions ~graph ~node ~toolchain ~package ~srcs ~deps =
       :: !actions;
     outputs := exe_path :: !outputs);
 
+  (* Add alias module to outputs BEFORE DeclareOutputs *)
+  (match alias_cmo_opt with
+  | Some (_, alias_cmo, _) ->
+      (* Add both .cmo and .cmi files for the alias module *)
+      let alias_cmi = Filename.chop_extension alias_cmo ^ ".cmi" in
+      outputs := alias_cmi :: alias_cmo :: !outputs
+  | None -> ());
+
   (* Add DeclareOutputs action *)
   if !outputs <> [] then
     actions := Actions.DeclareOutputs { outputs = !outputs } :: !actions;
@@ -316,7 +318,25 @@ let generate_actions ~graph ~node ~toolchain ~package ~srcs ~deps =
         match Std.Path.of_string s with Ok p -> Some p | Error _ -> None)
       !outputs
   in
-  (List.rev output_paths, List.rev !actions)
+  
+  (* Build final action list with alias module FIRST *)
+  let final_actions = 
+    match alias_cmo_opt with
+    | Some (alias_ml, alias_cmo, alias_content) ->
+        (* Alias module actions go first *)
+        let alias_actions = [
+          Actions.WriteFile { destination = alias_ml; content = alias_content };
+          Actions.CompileImplementation 
+            { source = alias_ml; output = alias_cmo; 
+              includes = dep_includes;
+              flags = [Ocamlc.NoAliasDeps] }
+        ] in
+        (* Alias actions first, then all other actions (reversed) *)
+        alias_actions @ (List.rev !actions)
+    | None -> 
+        List.rev !actions
+  in
+  (List.rev output_paths, final_actions)
 
 let compute_hash_for_planned_node ~toolchain ~package ~srcs ~deps ~outs ~actions
     =
@@ -401,12 +421,12 @@ let plan_node ~graph ~node ~build_results ~session_id () =
 
       (* Step 4: Compute SHA512 hash of everything *)
       Log.computing_hash ~session_id ~package:node.package.name;
-      let hash_start = Global.time_ms () in
+      let hash_start = time_ms () in
       let hash =
         compute_hash_for_planned_node ~toolchain:node.toolchain
           ~package:node.package ~srcs:node.srcs ~deps:dep_nodes ~outs ~actions
       in
-      let hash_duration = Global.time_ms () - hash_start in
+      let hash_duration = time_ms () - hash_start in
       Log.hash_computed ~session_id ~package:node.package.name
         ~hash:(Hasher.to_string hash) ~duration_ms:hash_duration;
 

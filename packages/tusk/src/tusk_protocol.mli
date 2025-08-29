@@ -1,5 +1,6 @@
 (** Protocol types for communication with the Tusk server *)
 
+open Std
 open Miniriot
 
 (** Target for build operations *)

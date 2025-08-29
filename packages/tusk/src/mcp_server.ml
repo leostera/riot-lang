@@ -1,13 +1,14 @@
 (** MCP (Model Context Protocol) server for tusk build system *)
 
-open Miniriot
+open Std
 open Std.Data
+open Miniriot
 
 (** Helper to create a tusk client connected to the local server *)
 let create_local_client () =
   let cwd =
-    Std.Env.current_dir ()
-    |> Std.Result.expect ~msg:"Failed to get current directory"
+    Env.current_dir ()
+    |> Result.expect ~msg:"Failed to get current directory"
   in
   match Workspace_manager.scan cwd with
   | Error _ -> Error "Failed to find workspace"
@@ -265,14 +266,14 @@ let execute_tool name arguments =
   | "clean" -> (
       (* Clean build artifacts *)
       let cwd =
-        Std.Env.current_dir ()
-        |> Std.Result.expect ~msg:"Failed to get current directory"
+        Env.current_dir ()
+        |> Result.expect ~msg:"Failed to get current directory"
       in
-      let target_dir = Filename.concat (Std.Path.to_string cwd) "target" in
+      let target_dir = Filename.concat (Path.to_string cwd) "target" in
       let cmd = Printf.sprintf "rm -rf %s" target_dir in
-      let result = Std.Command.system cmd in
-      match Std.Command.of_unix_status result with
-      | Std.Command.Exited 0 ->
+      let result = Command.system cmd in
+      match Command.of_unix_status result with
+      | Command.Exited 0 ->
           [
             Mcp.Text
               (Json.to_string
@@ -388,7 +389,7 @@ let execute_tool name arguments =
         ]
       else
         (* Format the file through the server *)
-        match Std.Path.of_string file_path with
+        match Path.of_string file_path with
         | Error _ ->
             [
               Mcp.Text
@@ -414,7 +415,7 @@ let execute_tool name arguments =
             | Ok client -> (
                 match
                   Tusk_jsonrpc.Client.format_file client
-                    ~file_path:(Std.Path.to_string file_path)
+                    ~file_path:(Path.to_string file_path)
                     ~check_only
                 with
                 | Ok (formatted_code, changed) ->
@@ -448,7 +449,7 @@ let execute_tool name arguments =
             with
             | Some (Json.String c), Some (Json.String h) ->
                 ( c,
-                  match Std.Path.of_string h with
+                  match Path.of_string h with
                   | Ok p -> Some p
                   | Error _ -> None )
             | Some (Json.String c), None -> (c, None)
@@ -473,7 +474,7 @@ let execute_tool name arguments =
                       [ ("success", Json.Bool false); ("error", Json.String e) ]));
             ]
         | Ok client -> (
-            let file_hint_str = Option.map Std.Path.to_string file_hint in
+            let file_hint_str = Option.map Path.to_string file_hint in
             match
               Tusk_jsonrpc.Client.format_code client ~code
                 ~file_path:file_hint_str
@@ -526,19 +527,19 @@ let execute_tool name arguments =
       else
         (* Create the package *)
         let cwd =
-          Std.Env.current_dir ()
-          |> Std.Result.expect ~msg:"Failed to get current directory"
+          Env.current_dir ()
+          |> Result.expect ~msg:"Failed to get current directory"
         in
         let package_dir =
           Filename.concat
-            (Filename.concat (Std.Path.to_string cwd) "packages")
+            (Filename.concat (Path.to_string cwd) "packages")
             name
         in
         let src_dir = Filename.concat package_dir "src" in
 
         (* Create directories *)
         let _ =
-          Std.Command.run_command (Printf.sprintf "mkdir -p %s" src_dir)
+          Command.run_command (Printf.sprintf "mkdir -p %s" src_dir)
         in
 
         (* Create main module file *)
@@ -560,12 +561,12 @@ let execute_tool name arguments =
         in
 
         (* Write files *)
-        let _ = Std.File.write ~path:main_ml ~content:ml_content in
-        let _ = Std.File.write ~path:main_mli ~content:mli_content in
+        let _ = File.write ~path:main_ml ~content:ml_content in
+        let _ = File.write ~path:main_mli ~content:mli_content in
 
         (* Update tusk.toml *)
-        let toml_path = Filename.concat (Std.Path.to_string cwd) "tusk.toml" in
-        match Std.File.read ~path:toml_path with
+        let toml_path = Filename.concat (Path.to_string cwd) "tusk.toml" in
+        match File.read ~path:toml_path with
         | Ok content -> (
             (* Find the last package and insert after it *)
             let lines = String.split_on_char '\n' content in
@@ -608,7 +609,7 @@ let execute_tool name arguments =
             in
             let updated_lines = insert_package lines [] false in
             let updated_content = String.concat "\n" updated_lines in
-            match Std.File.write ~path:toml_path ~content:updated_content with
+            match File.write ~path:toml_path ~content:updated_content with
             | Ok () ->
                 [
                   Mcp.Text
@@ -675,12 +676,12 @@ let execute_tool name arguments =
       else
         (* Create the module *)
         let cwd =
-          Std.Env.current_dir ()
-          |> Std.Result.expect ~msg:"Failed to get current directory"
+          Env.current_dir ()
+          |> Result.expect ~msg:"Failed to get current directory"
         in
         let package_dir =
           Filename.concat
-            (Filename.concat (Std.Path.to_string cwd) "packages")
+            (Filename.concat (Path.to_string cwd) "packages")
             package
         in
         let src_dir = Filename.concat package_dir "src" in
@@ -699,8 +700,8 @@ let execute_tool name arguments =
         in
 
         (* Write module files *)
-        let _ = Std.File.write ~path:module_ml ~content:ml_content in
-        let _ = Std.File.write ~path:module_mli ~content:mli_content in
+        let _ = File.write ~path:module_ml ~content:ml_content in
+        let _ = File.write ~path:module_mli ~content:mli_content in
 
         (* If public, add to package interface *)
         if is_public then (
@@ -708,7 +709,7 @@ let execute_tool name arguments =
           let package_mli = Filename.concat src_dir (package ^ ".mli") in
 
           (* Add module export to package.ml *)
-          (match Std.File.read ~path:package_ml with
+          (match File.read ~path:package_ml with
           | Ok content ->
               let updated_content =
                 content ^ "\nmodule "
@@ -718,13 +719,13 @@ let execute_tool name arguments =
                 ^ "\n"
               in
               let _ =
-                Std.File.write ~path:package_ml ~content:updated_content
+                File.write ~path:package_ml ~content:updated_content
               in
               ()
           | Error _ -> ());
 
           (* Add module signature to package.mli *)
-          match Std.File.read ~path:package_mli with
+          match File.read ~path:package_mli with
           | Ok content ->
               let updated_content =
                 content ^ "\nmodule "
@@ -734,7 +735,7 @@ let execute_tool name arguments =
                 ^ "\n"
               in
               let _ =
-                Std.File.write ~path:package_mli ~content:updated_content
+                File.write ~path:package_mli ~content:updated_content
               in
               ()
           | Error _ -> ());
@@ -817,24 +818,24 @@ module McpProtocol = struct
                   |> Option.value ~default:(Json.Object [])
               | _ -> Json.Object []
             in
-            Std.Result.Ok
+            Result.Ok
               (Initialize { protocol_version; capabilities; client_info })
-        | Some (Json.String "tools/list") -> Std.Result.Ok ToolsList
+        | Some (Json.String "tools/list") -> Result.Ok ToolsList
         | Some (Json.String "tools/call") -> (
             match List.assoc_opt "params" fields with
             | Some (Json.Object params) -> (
                 match List.assoc_opt "name" params with
                 | Some (Json.String name) ->
                     let arguments = List.assoc_opt "arguments" params in
-                    Std.Result.Ok (ToolsCall { name; arguments })
-                | _ -> Std.Result.Error (Json.String "Missing tool name"))
-            | _ -> Std.Result.Error (Json.String "Missing tool call parameters")
+                    Result.Ok (ToolsCall { name; arguments })
+                | _ -> Result.Error (Json.String "Missing tool name"))
+            | _ -> Result.Error (Json.String "Missing tool call parameters")
             )
         | Some (Json.String method_name) ->
-            Std.Result.Error
+            Result.Error
               (Json.String (Printf.sprintf "Unknown method: %s" method_name))
-        | _ -> Std.Result.Error (Json.String "Invalid method"))
-    | _ -> Std.Result.Error (Json.String "Invalid request format")
+        | _ -> Result.Error (Json.String "Invalid method"))
+    | _ -> Result.Error (Json.String "Invalid request format")
 
   let response_to_json = function
     | InitializeResult { protocol_version; capabilities; server_info } ->
@@ -850,7 +851,7 @@ module McpProtocol = struct
 
   let response_of_json json =
     (* For MCP we don't parse responses on the server side *)
-    Std.Result.Error (Json.String "Response parsing not implemented")
+    Result.Error (Json.String "Response parsing not implemented")
 
   let request_to_params = function
     | Initialize _ -> { Jsonrpc.method_ = "initialize"; params = NoParams }
@@ -869,25 +870,25 @@ module McpProtocol = struct
   let request_of_params method_ params =
     match method_ with
     | "initialize" ->
-        Std.Result.Ok
+        Result.Ok
           (Initialize
              {
                protocol_version = "2024-11-05";
                capabilities = Json.Object [];
                client_info = Json.Object [];
              })
-    | "tools/list" -> Std.Result.Ok ToolsList
+    | "tools/list" -> Result.Ok ToolsList
     | "tools/call" -> (
         match params with
         | Jsonrpc.Named fields -> (
             match List.assoc_opt "name" fields with
             | Some (Json.String name) ->
                 let arguments = List.assoc_opt "arguments" fields in
-                Std.Result.Ok (ToolsCall { name; arguments })
-            | _ -> Std.Result.Error (Json.String "Missing tool name"))
-        | _ -> Std.Result.Error (Json.String "Invalid tools/call parameters"))
+                Result.Ok (ToolsCall { name; arguments })
+            | _ -> Result.Error (Json.String "Missing tool name"))
+        | _ -> Result.Error (Json.String "Invalid tools/call parameters"))
     | _ ->
-        Std.Result.Error
+        Result.Error
           (Json.String (Printf.sprintf "Unknown method: %s" method_))
 end
 
@@ -985,7 +986,7 @@ let start () =
   let _ =
     try
       let cwd =
-        Std.Env.current_dir () |> Std.Result.expect ~msg:"Failed to get cwd"
+        Env.current_dir () |> Result.expect ~msg:"Failed to get cwd"
       in
       match Workspace_manager.scan cwd with
       | Error _ -> Printf.eprintf "[MCP] Warning: Could not find workspace\n"

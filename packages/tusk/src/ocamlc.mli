@@ -7,6 +7,8 @@
 type compiler_flag =
   | NoAliasDeps  (** -no-alias-deps: Do not record dependencies for module aliases *)
   | Open of string  (** -open <module>: Opens the module before typing *)
+  | NoStdlib  (** -nostdlib: Do not automatically link with the standard library *)
+  | NoPervasives  (** -nopervasives: Do not open the Pervasives module (or Stdlib) *)
 
 (** Compilation mode *)
 type mode =
@@ -59,6 +61,7 @@ val run :
 val compile_interface :
   toolchain:Toolchains.toolchain ->
   includes:string list ->
+  flags:compiler_flag list ->
   output:string ->
   string ->
   result

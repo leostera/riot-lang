@@ -1,13 +1,13 @@
 (** Model Context Protocol (MCP) implementation for OCaml *)
 
-open Std.Data
+open Std
 
 (** {1 Core Types} *)
 
 type protocol_version = string
 (** Protocol version string (e.g., "2024-11-05") *)
 
-type json = Json.t
+type json = Data.Json.t
 (** JSON type alias *)
 
 (** {2 JSON-RPC Base Types} *)

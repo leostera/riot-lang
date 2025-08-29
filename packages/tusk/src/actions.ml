@@ -1,4 +1,5 @@
 (** Build actions - concrete build steps that happen in the sandbox *)
+  open Std
 
 type action =
   (* File compilation actions *)
@@ -6,6 +7,7 @@ type action =
       source : string;
       output : string;
       includes : string list;
+      flags : Ocamlc.compiler_flag list;
     }
   | CompileImplementation of {
       source : string;
@@ -40,14 +42,24 @@ type resolved_dep = { lib_file : string; include_path : string }
 (** Convert action to canonical string for hashing *)
 let action_to_string action =
   match action with
-  | CompileInterface { source; output; includes } ->
-      Printf.sprintf "compile_interface(%s,%s,[%s])" source output
-        (String.concat "," includes)
+  | CompileInterface { source; output; includes; flags } ->
+      let flags_str = 
+        flags |> List.map (function
+          | Ocamlc.NoAliasDeps -> "no-alias-deps"
+          | Ocamlc.Open m -> "open:" ^ m
+          | Ocamlc.NoStdlib -> "nostdlib"
+          | Ocamlc.NoPervasives -> "nopervasives")
+        |> String.concat ","
+      in
+      Printf.sprintf "compile_interface(%s,%s,[%s],[%s])" source output
+        (String.concat "," includes) flags_str
   | CompileImplementation { source; output; includes; flags } ->
       let flags_str = 
         flags |> List.map (function
           | Ocamlc.NoAliasDeps -> "no-alias-deps"
-          | Ocamlc.Open m -> "open:" ^ m)
+          | Ocamlc.Open m -> "open:" ^ m
+          | Ocamlc.NoStdlib -> "nostdlib"
+          | Ocamlc.NoPervasives -> "nopervasives")
         |> String.concat ","
       in
       Printf.sprintf "compile_impl(%s,%s,[%s],[%s])" source output
@@ -109,8 +121,8 @@ let execute_action action toolchain =
     | Ocamlc.Failed err -> (Failed err, "")
   in
   match action with
-  | CompileInterface { source; output; includes } ->
-      Ocamlc.compile_interface ~toolchain ~includes ~output source
+  | CompileInterface { source; output; includes; flags } ->
+      Ocamlc.compile_interface ~toolchain ~includes ~flags ~output source
       |> convert_result
   | CompileImplementation { source; output; includes; flags } ->
       Ocamlc.compile_impl ~toolchain ~includes ~flags ~output source |> convert_result

@@ -1,5 +1,6 @@
 (** Build worker - executes build tasks in sandboxes *)
 
+open Std
 open Miniriot
 
 let selector msg =

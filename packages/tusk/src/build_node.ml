@@ -1,4 +1,5 @@
 (** Build node definition - separated to avoid circular dependencies *)
+  open Std
 
 type spec =
   | Unplanned

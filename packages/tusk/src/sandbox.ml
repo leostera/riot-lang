@@ -1,5 +1,6 @@
 (** Sandbox - isolated build execution environment *)
 
+  open Std
 type t = {
   root : string;
   sandbox_dir : string;
@@ -12,20 +13,20 @@ type error = string
 
 (** Create a new sandbox for a build graph node *)
 let create ~node ~(workspace : Workspace.t) =
-  let root = Std.Path.to_string workspace.root in
+  let root = Path.to_string workspace.root in
   let target_dir_root = Filename.concat root "target" in
   let debug_dir = Filename.concat target_dir_root "debug" in
   let out_dir = Filename.concat debug_dir "out" in
   let target_dir =
     Filename.concat out_dir
-      (Std.Path.to_string node.Build_node.package.relative_path)
+      (Path.to_string node.Build_node.package.relative_path)
   in
 
   (* Create a unique sandbox directory for this build *)
   let sandbox_id =
     Printf.sprintf "%08x"
       (Hashtbl.hash
-         (node.Build_node.package.name ^ string_of_float (Std.time ())))
+         (node.Build_node.package.name ^ string_of_float (time ())))
   in
   let sandbox_dir =
     Filename.concat (Filename.concat debug_dir "sandbox") sandbox_id
@@ -365,7 +366,7 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
       Ok
         (List.filter_map
            (fun s ->
-             match Std.Path.of_string s with Ok p -> Some p | Error _ -> None)
+             match Path.of_string s with Ok p -> Some p | Error _ -> None)
            outputs)
   | Error _ -> result |> Result.map (fun _ -> [])
 

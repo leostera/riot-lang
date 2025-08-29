@@ -229,6 +229,23 @@ let topological_sort packages =
   (* Return packages in build order *)
   List.rev !sorted |> List.filter_map (fun name -> List.assoc_opt name pkg_map)
 
+(* Generate namespaced module name *)
+let get_namespaced_name ~package_name basename =
+  let name_without_ext =
+    if Filename.check_suffix basename ".ml" then
+      Filename.chop_suffix basename ".ml"
+    else if Filename.check_suffix basename ".mli" then
+      Filename.chop_suffix basename ".mli"
+    else basename
+  in
+  (* Replace hyphens with underscores in package name *)
+  let safe_package_name = String.map (fun c -> if c = '-' then '_' else c) package_name in
+  (* Check if this is the main package module *)
+  if name_without_ext = safe_package_name then
+    String.capitalize_ascii name_without_ext
+  else
+    String.capitalize_ascii safe_package_name ^ "__" ^ String.capitalize_ascii name_without_ext
+
 (* Collect source files *)
 let collect_sources pkg_path =
   let src_dir = Filename.concat pkg_path "src" in
@@ -512,15 +529,87 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
     Printf.printf "  Sorted build order: %s\n%!"
       (String.concat ", " (List.map Filename.basename sorted_all_files));
 
+  (* Generate alias module if we have namespaced modules *)
+  let alias_module_name_opt =
+    (* Collect all modules that need aliases *)
+    let module_aliases = 
+      (sorted_ml_files @ sorted_mli_files)
+      |> List.filter_map (fun file ->
+          let basename = Filename.basename file in
+          let simple_name = 
+            if Filename.check_suffix basename ".ml" then
+              Filename.chop_suffix basename ".ml"
+            else if Filename.check_suffix basename ".mli" then
+              Filename.chop_suffix basename ".mli"
+            else basename
+          in
+          let namespaced = get_namespaced_name ~package_name:pkg.name basename in
+          (* Skip if it's the main package module or if names are the same *)
+          if String.capitalize_ascii simple_name = namespaced then None
+          else Some (String.capitalize_ascii simple_name, namespaced))
+      |> List.sort_uniq compare  (* Remove duplicates *)
+    in
+    
+    if module_aliases <> [] then (
+      (* Generate alias module content *)
+      let alias_content = 
+        "(* Auto-generated module aliases for package " ^ pkg.name ^ " *)\n" ^
+        (List.map (fun (simple, namespaced) ->
+           Printf.sprintf "module %s = %s" simple namespaced)
+         module_aliases
+         |> String.concat "\n")
+      in
+      
+      (* Create a unique alias module name *)
+      let safe_name = String.map (fun c -> if c = '-' then '_' else c) pkg.name in
+      let alias_module_name = String.capitalize_ascii safe_name ^ "__aliases" in
+      let alias_ml = alias_module_name ^ ".ml" in
+      
+      (* Write alias module file *)
+      let alias_file_path = Filename.concat sandbox_dir alias_ml in
+      let oc = open_out alias_file_path in
+      output_string oc alias_content;
+      close_out oc;
+      
+      (* Compile the alias module with -no-alias-deps *)
+      let alias_cmo = alias_module_name ^ ".cmo" in
+      let cmd =
+        Printf.sprintf "cd %s && %s -I +unix -I . %s -no-alias-deps -c -o %s %s" 
+          sandbox_dir ocamlc dep_includes alias_cmo alias_ml
+      in
+      Printf.printf "  $ %s\n%!" cmd;
+      let ret = Unix.system cmd in
+      if ret <> Unix.WEXITED 0 then (
+        Printf.printf "Error: Command failed with %s\n%!"
+          (match ret with
+          | Unix.WEXITED n -> Printf.sprintf "exit code %d" n
+          | Unix.WSIGNALED n -> Printf.sprintf "signal %d" n
+          | Unix.WSTOPPED n -> Printf.sprintf "stopped %d" n);
+        exit 1);
+      
+      Some alias_module_name
+    ) else None
+  in
+  
+  (* Build -open flag if we have an alias module *)
+  let open_flag = 
+    match alias_module_name_opt with
+    | Some name -> " -open " ^ name
+    | None -> ""
+  in
+
   (* Compile ML interfaces in sorted order with namespacing *)
   List.iter
     (fun mli_src ->
       let basename = Filename.basename mli_src in
       let mli_file = basename in
-      (* Compile all .mli files *)
+      (* Generate namespaced output name *)
+      let namespaced = get_namespaced_name ~package_name:pkg.name basename in
+      let cmi_output = namespaced ^ ".cmi" in
+      (* Compile all .mli files with -open flag if we have aliases *)
       let cmd =
-        Printf.sprintf "cd %s && %s -I +unix -I . %s -c %s" sandbox_dir ocamlc
-          dep_includes mli_file
+        Printf.sprintf "cd %s && %s -I +unix -I . %s%s -c -o %s %s" sandbox_dir ocamlc
+          dep_includes open_flag cmi_output mli_file
       in
       Printf.printf "  $ %s\n%!" cmd;
       let ret = Unix.system cmd in
@@ -533,11 +622,14 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
         exit 1))
     sorted_mli_files;
 
-  (* Compile ML implementations in sorted order *)
+  (* Compile ML implementations in sorted order with namespacing *)
   List.iter
     (fun ml_src ->
       let basename = Filename.basename ml_src in
       let ml_file = basename in
+      (* Generate namespaced output name *)
+      let namespaced = get_namespaced_name ~package_name:pkg.name basename in
+      let cmo_output = namespaced ^ ".cmo" in
       (* Include all C objects when compiling ML files with external declarations *)
       let c_objects =
         if c_sources <> [] && basename = pkg.name ^ ".ml" then
@@ -552,8 +644,8 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
         else ""
       in
       let cmd =
-        Printf.sprintf "cd %s && %s -I +unix -I . %s -c %s %s" sandbox_dir
-          ocamlc dep_includes ml_file c_objects
+        Printf.sprintf "cd %s && %s -I +unix -I . %s%s -c -o %s %s %s" sandbox_dir
+          ocamlc dep_includes open_flag cmo_output ml_file c_objects
       in
       Printf.printf "  $ %s\n%!" cmd;
       let ret = Unix.system cmd in
@@ -570,20 +662,30 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
   (* For linking, we need modules in dependency order from sorted_ml_files *)
   (* ocamldep -sort gives us compilation order, which is also the correct linking order for .ml files *)
   let cmo_files =
-    List.map
+    (* Add alias module first if it exists *)
+    let alias_cmo_list = 
+      match alias_module_name_opt with
+      | Some name -> [name ^ ".cmo"]
+      | None -> []
+    in
+    let ml_cmos = List.map
       (fun f ->
         let basename = Filename.basename f in
-        let base = Filename.chop_suffix basename ".ml" in
-        base ^ ".cmo")
+        let namespaced = get_namespaced_name ~package_name:pkg.name basename in
+        namespaced ^ ".cmo")
       sorted_ml_files
+    in
+    alias_cmo_list @ ml_cmos
   in
 
   (* If there's a module with the same name as the package, move it to the end *)
   (* This handles the case where a module re-exports others *)
+  let safe_pkg_name = String.map (fun c -> if c = '-' then '_' else c) pkg.name in
+  let main_module_cmo = String.capitalize_ascii safe_pkg_name ^ ".cmo" in
   let cmo_files =
-    if List.mem (pkg.name ^ ".cmo") cmo_files then
-      let others = List.filter (fun f -> f <> pkg.name ^ ".cmo") cmo_files in
-      others @ [ pkg.name ^ ".cmo" ]
+    if List.mem main_module_cmo cmo_files then
+      let others = List.filter (fun f -> f <> main_module_cmo) cmo_files in
+      others @ [ main_module_cmo ]
     else cmo_files
   in
 
@@ -668,8 +770,9 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
     let all_cmos =
       List.map
         (fun src ->
-          let base = Filename.chop_suffix (Filename.basename src) ".ml" in
-          base ^ ".cmo")
+          let basename = Filename.basename src in
+          let namespaced = get_namespaced_name ~package_name:pkg.name basename in
+          namespaced ^ ".cmo")
         sorted_ml_files
     in
 

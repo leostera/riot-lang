@@ -10,6 +10,7 @@ type action =
       source : string;
       output : string;
       includes : string list;
+      flags : Ocamlc.compiler_flag list;
     }  (** Compile .mli file *)
   | CompileImplementation of {
       source : string;
