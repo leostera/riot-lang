@@ -49,13 +49,13 @@ let build_module_tree ~package_name ~srcs =
         if path = "" then
           (* This is a root module *)
           { name; impl; intf; 
-            root = Path.of_string "." |> Result.get_ok; 
+            root = Path.of_string "." |> Result.expect ~msg:"Invalid path '.'"; 
             children = [] } :: acc
         else if not (String.contains path '/') then
           (* This is a folder at root level *)
           let folder_modules = build_subtree path in
           { name = path; impl = None; intf = None;
-            root = Path.of_string path |> Result.get_ok;
+            root = Path.of_string path |> Result.expect ~msg:("Invalid path: " ^ path);
             children = folder_modules } :: acc
         else acc
       else
@@ -66,13 +66,13 @@ let build_module_tree ~package_name ~srcs =
           if not (String.contains suffix '/') then
             (* Direct child of this folder *)
             { name; impl; intf;
-              root = Path.of_string path |> Result.get_ok;
+              root = Path.of_string path |> Result.expect ~msg:("Invalid path: " ^ path);
               children = [] } :: acc
           else acc
         else if path = current_path then
           (* This is the folder's own module (e.g., cli/cli.ml) *)
           { name; impl; intf;
-            root = Path.of_string current_path |> Result.get_ok;
+            root = Path.of_string current_path |> Result.expect ~msg:("Invalid path: " ^ current_path);
             children = [] } :: acc
         else acc
     ) path_map [] in
@@ -99,10 +99,10 @@ let build_module_tree ~package_name ~srcs =
     impl = !pkg_impl;
     intf = !pkg_intf;
     root = (match srcs with 
-           | [] -> Path.of_string "." |> Result.get_ok
+           | [] -> Path.of_string "." |> Result.expect ~msg:"Invalid path '.'"
            | hd :: _ -> 
                let dir = Filename.dirname (Path.to_string hd.Build_node.file) in
-               Path.of_string dir |> Result.get_ok);
+               Path.of_string dir |> Result.expect ~msg:("Invalid path: " ^ dir));
     children = children;
   }
 
@@ -155,12 +155,17 @@ let rec generate_actions_from_tree ~tree ~package ~dep_includes ~parent_aliases 
       let module_aliases = 
         List.filter_map (fun child ->
           match child.impl, child.intf with
-          | Some impl, _ | None, Some intf ->
-              let source = Option.value impl ~default:intf in
-              (match source.Build_node.kind with
-               | Build_node.ML { simple_name; namespaced_name; _ }
+          | Some impl, _ ->
+              (match impl.Build_node.kind with
+               | Build_node.ML { simple_name; namespaced_name; _ } ->
+                   if simple_name <> tree.name then
+                     Some (simple_name, namespaced_name)
+                   else None
+               | _ -> None)
+          | None, Some intf ->
+              (match intf.Build_node.kind with
                | Build_node.MLI { simple_name; namespaced_name; _ } ->
-                   if simple_name <> tree.name then  (* Don't alias the folder interface *)
+                   if simple_name <> tree.name then
                      Some (simple_name, namespaced_name)
                    else None
                | _ -> None)

@@ -84,11 +84,11 @@ let create workspace toolchain =
                         in
                         String.capitalize_ascii name_without_ext
                       in
-                      (* Get the namespaced name with folder support *)
+                      (* Get the namespaced name - use folder support if available *)
                       let namespaced_name = 
-                        Namespacing.get_module_name_with_folders 
+                        (* For now, use the old function until minitusk is updated *)
+                        Namespacing.get_module_name 
                           ~package_name:package.Workspace.name 
-                          ~namespace
                           (Std.Path.to_string path)
                       in
                       (* Create the appropriate variant *)
