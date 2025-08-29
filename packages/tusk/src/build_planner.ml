@@ -586,7 +586,7 @@ let generate_actions ~graph ~node ~toolchain ~package ~srcs ~deps =
   (match alias_cmo_opt with
   | Some (_, alias_cmo, _) ->
       (* Add both .cmo and .cmi files for the alias module *)
-      let alias_cmi = Filename.chop_extension alias_cmo ^ ".cmi" in
+      let alias_cmi = Filename.chop_suffix alias_cmo ".cmo" ^ ".cmi" in
       outputs := alias_cmi :: alias_cmo :: !outputs
   | None -> ());
 
@@ -606,15 +606,22 @@ let generate_actions ~graph ~node ~toolchain ~package ~srcs ~deps =
   let final_actions = 
     match alias_cmo_opt with
     | Some (alias_ml, alias_cmo, alias_content) ->
-        (* Alias module actions go first *)
+        (* Generate .cmi file path *)
+        let alias_cmi = Filename.chop_suffix alias_cmo ".cmo" ^ ".cmi" in
+        
+        (* Alias module actions go first since other modules depend on them via -open *)
         let alias_actions = [
           Actions.WriteFile { destination = alias_ml; content = alias_content };
+          Actions.CompileInterface
+            { source = alias_ml; output = alias_cmi;
+              includes = dep_includes;
+              flags = [Ocamlc.NoAliasDeps] };
           Actions.CompileImplementation 
             { source = alias_ml; output = alias_cmo; 
               includes = dep_includes;
               flags = [Ocamlc.NoAliasDeps] }
         ] in
-        (* Alias actions first, then all other actions (reversed) *)
+        (* Alias actions first, then regular actions *)
         alias_actions @ (List.rev !actions)
     | None -> 
         List.rev !actions
