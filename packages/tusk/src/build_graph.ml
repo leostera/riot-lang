@@ -84,7 +84,7 @@ let create workspace toolchain =
                         in
                         (* Compute folder-aware simple name *)
                         let full_path = Std.Path.to_string path in
-                        let src_dir = Filename.concat package.Workspace.path "src" in
+                        let src_dir = Filename.concat (Std.Path.to_string package.Workspace.path) "src" in
                         
                         if String.starts_with ~prefix:(src_dir ^ "/") full_path then
                           let relative_path = String.sub full_path (String.length src_dir + 1) (String.length full_path - String.length src_dir - 1) in

@@ -18,6 +18,31 @@ type plan_result =
 
 type error = string
 
+(** Convert module tree to JSON string for debugging *)
+let rec module_tree_to_json tree =
+  let escape_string s = "\"" ^ String.escaped s ^ "\"" in
+  let impl_json = match tree.impl with
+    | Some impl -> (match impl.Build_node.kind with
+        | Build_node.ML { simple_name; namespaced_name; namespace; _ } ->
+            Printf.sprintf "{\"type\":\"ML\",\"simple_name\":%s,\"namespaced_name\":%s,\"namespace\":[%s]}"
+              (escape_string simple_name) (escape_string namespaced_name)
+              (String.concat "," (List.map escape_string namespace))
+        | _ -> "null")
+    | None -> "null"
+  in
+  let intf_json = match tree.intf with
+    | Some intf -> (match intf.Build_node.kind with
+        | Build_node.MLI { simple_name; namespaced_name; namespace; _ } ->
+            Printf.sprintf "{\"type\":\"MLI\",\"simple_name\":%s,\"namespaced_name\":%s,\"namespace\":[%s]}"
+              (escape_string simple_name) (escape_string namespaced_name)
+              (String.concat "," (List.map escape_string namespace))
+        | _ -> "null")
+    | None -> "null"
+  in
+  let children_json = "[" ^ String.concat "," (List.map module_tree_to_json tree.children) ^ "]" in
+  Printf.sprintf "{\"name\":%s,\"impl\":%s,\"intf\":%s,\"children\":%s}"
+    (escape_string tree.name) impl_json intf_json children_json
+
 (** Build a module tree from a list of sources *)
 let build_module_tree ~package_name ~srcs =
   let safe_package_name = String.map (fun c -> if c = '-' then '_' else c) package_name in
@@ -358,6 +383,7 @@ let generate_actions ~graph ~node ~toolchain ~package ~srcs ~deps =
     (* Build module tree and collect ALL modules that need aliases *)
     let tree = build_module_tree ~package_name:package.Workspace.name ~srcs in
     
+    
     (* Recursively collect all modules from the tree *)
     let rec collect_all_modules tree =
       let current_modules = 
@@ -396,14 +422,6 @@ let generate_actions ~graph ~node ~toolchain ~package ~srcs ~deps =
     in
     
     let module_aliases = collect_all_modules tree |> List.sort_uniq compare in
-    
-    (* Debug: show what aliases were collected for tusk package *)
-    if package.Workspace.name = "tusk" then (
-      Printf.eprintf "DEBUG: Collected %d module aliases for tusk:\n" (List.length module_aliases);
-      List.iter (fun (simple, namespaced) ->
-        Printf.eprintf "  %s -> %s\n" simple namespaced
-      ) module_aliases
-    );
     
     if module_aliases <> [] then (
       (* Generate alias module content *)
