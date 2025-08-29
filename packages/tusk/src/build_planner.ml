@@ -180,41 +180,35 @@ let rec generate_actions_from_tree ~tree ~package ~dep_includes ~parent_aliases 
   (* Generate alias module for this level if it has children *)
   let alias_module_opt, open_flags = 
     if tree.children <> [] then
-      (* Collect aliases for modules at this level *)
+      (* Collect aliases for modules at this level ONLY *)
       let module_aliases = 
         List.filter_map (fun child ->
           match child.impl, child.intf with
           | Some impl, _ ->
               (match impl.Build_node.kind with
                | Build_node.ML { simple_name; namespaced_name; _ } ->
-                   (* Include all modules at package level (level=0), but exclude folder interfaces at deeper levels *)
-                   if level = 0 || simple_name <> tree.name then
+                   (* Only include direct children, not nested modules *)
+                   (* At package level: only top-level files *)
+                   (* At folder level: only files directly in this folder *)
+                   if simple_name <> tree.name then (* Exclude folder interface modules *)
                      Some (simple_name, namespaced_name)
                    else None
                | _ -> None)
           | None, Some intf ->
               (match intf.Build_node.kind with
                | Build_node.MLI { simple_name; namespaced_name; _ } ->
-                   (* Include all modules at package level (level=0), but exclude folder interfaces at deeper levels *)
-                   if level = 0 || simple_name <> tree.name then
+                   (* Only include direct children, not nested modules *)
+                   if simple_name <> tree.name then (* Exclude folder interface modules *)
                      Some (simple_name, namespaced_name)
                    else None
                | _ -> None)
           | None, None when child.children <> [] ->
-              (* This is a subfolder *)
-              let folder_name = String.capitalize_ascii child.name in
-              let namespaced_folder = 
-                if level = 0 then
-                  String.capitalize_ascii safe_package_name ^ "__" ^ folder_name
-                else
-                  let parent_namespace = 
-                    match parent_aliases with
-                    | Some (parent_name, _) -> parent_name ^ "__"
-                    | None -> String.capitalize_ascii safe_package_name ^ "__"
-                  in
-                  parent_namespace ^ folder_name
-              in
-              Some (folder_name, namespaced_folder)
+              (* This is a subfolder - only include at package level *)
+              if level = 0 then (
+                let folder_name = String.capitalize_ascii child.name in
+                let namespaced_folder = String.capitalize_ascii safe_package_name ^ "__" ^ folder_name in
+                Some (folder_name, namespaced_folder)
+              ) else None
           | _ -> None
         ) tree.children
       in
@@ -382,11 +376,72 @@ let generate_actions ~graph ~node ~toolchain ~package ~srcs ~deps =
     else (ml_sources, mli_sources)
   in
 
-  (* Generate hierarchical alias modules using the tree approach *)
+  (* Build module tree but don't use hierarchical generation yet - go back to flat approach *)
   let tree = build_module_tree ~package_name:package.Workspace.name ~srcs in
   
-  (* Use hierarchical alias generation *)
-  generate_actions_from_tree ~tree ~package ~dep_includes ~parent_aliases:None ~level:0 ~actions ~outputs;
+  (* Recursively collect all modules from the tree - but only package-level modules *)
+  let rec collect_package_level_modules tree =
+    let current_modules = 
+      (* Add module for current tree node if it has implementation or interface *)
+      (match tree.impl with
+       | Some impl -> 
+           (match impl.Build_node.kind with
+            | Build_node.ML { simple_name; namespaced_name; _ } ->
+                if simple_name = namespaced_name then [] else [(simple_name, namespaced_name)]
+            | _ -> [])
+       | None -> []) @
+      (match tree.intf with
+       | Some intf -> 
+           (match intf.Build_node.kind with
+            | Build_node.MLI { simple_name; namespaced_name; _ } ->
+                (* Only add MLI if there's no corresponding ML *)
+                if tree.impl = None && simple_name <> namespaced_name then [(simple_name, namespaced_name)] else []
+            | _ -> [])
+       | None -> [])
+    in
+    (* Add folder aliases for children that have children (subfolders) - ONLY top-level folders *)
+    let folder_modules = 
+      List.filter_map (fun child ->
+        if child.children <> [] then
+          (* This is a subfolder, create an alias for it *)
+          let folder_name = String.capitalize_ascii child.name in
+          let safe_package_name = String.map (fun c -> if c = '-' then '_' else c) package.Workspace.name in
+          let namespaced_folder = String.capitalize_ascii safe_package_name ^ "__" ^ folder_name in
+          Some (folder_name, namespaced_folder)
+        else None
+      ) tree.children
+    in
+    (* DON'T recursively collect from children - only top level *)
+    current_modules @ folder_modules
+  in
+  
+  let module_aliases = collect_package_level_modules tree |> List.sort_uniq compare in
+  
+  if module_aliases <> [] then (
+    (* Generate alias module content *)
+    let alias_content = 
+      "(* Auto-generated module aliases for package " ^ package.Workspace.name ^ " *)\n" ^
+      (module_aliases
+       |> List.map (fun (simple, namespaced) ->
+           Printf.sprintf "module %s = %s" simple namespaced)
+       |> String.concat "\n")
+    in
+    
+    (* Create a unique alias module name *)
+    let safe_name = String.map (fun c -> if c = '-' then '_' else c) package.Workspace.name in
+    let alias_module_name = String.capitalize_ascii safe_name ^ "__aliases" in
+    let alias_ml = alias_module_name ^ ".ml" in
+    let alias_cmi = alias_module_name ^ ".cmi" in
+    let alias_cmo = alias_module_name ^ ".cmo" in
+    
+    (* Add alias module actions first *)
+    actions := Actions.WriteFile { destination = alias_ml; content = alias_content } :: !actions;
+    actions := Actions.CompileInterface 
+      { source = alias_ml; output = alias_cmi; includes = dep_includes; flags = [Ocamlc.NoAliasDeps] } :: !actions;
+    actions := Actions.CompileImplementation 
+      { source = alias_ml; output = alias_cmo; includes = dep_includes; flags = [Ocamlc.NoAliasDeps] } :: !actions;
+    outputs := alias_cmi :: alias_cmo :: !outputs
+  );
   
   (* For compatibility, determine open flags and main alias info *)
   let alias_module_name_opt, open_flags = 
