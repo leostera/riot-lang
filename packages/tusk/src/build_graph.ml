@@ -113,7 +113,7 @@ let create workspace toolchain =
                       let namespaced_name = 
                         Namespacing.get_module_name_with_folders
                           ~package_name:package.Workspace.name 
-                          ~namespace:"" 
+                          ~namespace:namespace 
                           (Std.Path.to_string path)
                       in
                       (* Create the appropriate variant *)

@@ -379,6 +379,7 @@ let generate_actions ~graph ~node ~toolchain ~package ~srcs ~deps =
          |> String.concat "\n")
       in
       
+      
       (* Create a unique alias module name *)
       let safe_name = String.map (fun c -> if c = '-' then '_' else c) package.Workspace.name in
       let alias_module_name = String.capitalize_ascii safe_name ^ "__aliases" in
