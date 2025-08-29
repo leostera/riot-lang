@@ -382,70 +382,20 @@ let generate_actions ~graph ~node ~toolchain ~package ~srcs ~deps =
     else (ml_sources, mli_sources)
   in
 
-  (* Prepare alias module configuration but don't add actions yet *)
-  let alias_module_name_opt, open_flags, alias_cmo_opt = 
-    (* Build module tree and collect ALL modules that need aliases *)
-    let tree = build_module_tree ~package_name:package.Workspace.name ~srcs in
-    
-    
-    (* Recursively collect all modules from the tree *)
-    let rec collect_all_modules tree =
-      let current_modules = 
-        (* Add module for current tree node if it has implementation or interface *)
-        (match tree.impl with
-         | Some impl -> 
-             (match impl.Build_node.kind with
-              | Build_node.ML { simple_name; namespaced_name; _ } ->
-                  if simple_name = namespaced_name then [] else [(simple_name, namespaced_name)]
-              | _ -> [])
-         | None -> []) @
-        (match tree.intf with
-         | Some intf -> 
-             (match intf.Build_node.kind with
-              | Build_node.MLI { simple_name; namespaced_name; _ } ->
-                  (* Only add MLI if there's no corresponding ML *)
-                  if tree.impl = None && simple_name <> namespaced_name then [(simple_name, namespaced_name)] else []
-              | _ -> [])
-         | None -> [])
-      in
-      (* Add folder aliases for children that have children (subfolders) *)
-      let folder_modules = 
-        List.filter_map (fun child ->
-          if child.children <> [] then
-            (* This is a subfolder, create an alias for it *)
-            let folder_name = String.capitalize_ascii child.name in
-            let safe_package_name = String.map (fun c -> if c = '-' then '_' else c) package.Workspace.name in
-            let namespaced_folder = String.capitalize_ascii safe_package_name ^ "__" ^ folder_name in
-            Some (folder_name, namespaced_folder)
-          else None
-        ) tree.children
-      in
-      (* Recursively collect from children *)
-      let child_modules = List.concat_map collect_all_modules tree.children in
-      current_modules @ folder_modules @ child_modules
-    in
-    
-    let module_aliases = collect_all_modules tree |> List.sort_uniq compare in
-    
-    if module_aliases <> [] then (
-      (* Generate alias module content *)
-      let alias_content = 
-        "(* Auto-generated module aliases for package " ^ package.Workspace.name ^ " *)\n" ^
-        (module_aliases
-         |> List.map (fun (simple, namespaced) ->
-             Printf.sprintf "module %s = %s" simple namespaced)
-         |> String.concat "\n")
-      in
-      
-      
-      (* Create a unique alias module name *)
-      let safe_name = String.map (fun c -> if c = '-' then '_' else c) package.Workspace.name in
-      let alias_module_name = String.capitalize_ascii safe_name ^ "__aliases" in
-      let alias_ml = alias_module_name ^ ".ml" in
-      let alias_cmo = alias_module_name ^ ".cmo" in
-      
-      (Some alias_module_name, [Ocamlc.Open alias_module_name], Some (alias_ml, alias_cmo, alias_content))
-    ) else (None, [], None)
+  (* Generate hierarchical alias modules using the tree approach *)
+  let tree = build_module_tree ~package_name:package.Workspace.name ~srcs in
+  
+  (* Use hierarchical alias generation *)
+  generate_actions_from_tree ~tree ~package ~dep_includes ~parent_aliases:None ~level:0 ~actions ~outputs;
+  
+  (* For compatibility, determine open flags and main alias info *)
+  let alias_module_name_opt, open_flags = 
+    let safe_name = String.map (fun c -> if c = '-' then '_' else c) package.Workspace.name in
+    let main_alias_name = String.capitalize_ascii safe_name ^ "__aliases" in
+    (Some main_alias_name, [Ocamlc.Open main_alias_name])
+  in
+  
+  let alias_cmo_opt = None (* Now handled by generate_actions_from_tree *)
   in
 
   (* Compile .mli files to .cmi with -open flag if we have aliases *)
@@ -582,14 +532,6 @@ let generate_actions ~graph ~node ~toolchain ~package ~srcs ~deps =
       :: !actions;
     outputs := exe_path :: !outputs);
 
-  (* Add alias module to outputs BEFORE DeclareOutputs *)
-  (match alias_cmo_opt with
-  | Some (_, alias_cmo, _) ->
-      (* Add both .cmo and .cmi files for the alias module *)
-      let alias_cmi = Filename.chop_suffix alias_cmo ".cmo" ^ ".cmi" in
-      outputs := alias_cmi :: alias_cmo :: !outputs
-  | None -> ());
-
   (* Add DeclareOutputs action *)
   if !outputs <> [] then
     actions := Actions.DeclareOutputs { outputs = !outputs } :: !actions;
@@ -602,31 +544,8 @@ let generate_actions ~graph ~node ~toolchain ~package ~srcs ~deps =
       !outputs
   in
   
-  (* Build final action list with alias module FIRST *)
-  let final_actions = 
-    match alias_cmo_opt with
-    | Some (alias_ml, alias_cmo, alias_content) ->
-        (* Generate .cmi file path *)
-        let alias_cmi = Filename.chop_suffix alias_cmo ".cmo" ^ ".cmi" in
-        
-        (* Alias module actions go first since other modules depend on them via -open *)
-        let alias_actions = [
-          Actions.WriteFile { destination = alias_ml; content = alias_content };
-          Actions.CompileInterface
-            { source = alias_ml; output = alias_cmi;
-              includes = dep_includes;
-              flags = [Ocamlc.NoAliasDeps] };
-          Actions.CompileImplementation 
-            { source = alias_ml; output = alias_cmo; 
-              includes = dep_includes;
-              flags = [Ocamlc.NoAliasDeps] }
-        ] in
-        (* Alias actions first, then regular actions *)
-        alias_actions @ (List.rev !actions)
-    | None -> 
-        List.rev !actions
-  in
-  (List.rev output_paths, final_actions)
+  (* Return actions in reverse order - alias modules are already added first by generate_actions_from_tree *)
+  (List.rev output_paths, List.rev !actions)
 
 let compute_hash_for_planned_node ~toolchain ~package ~srcs ~deps ~outs ~actions
     =
