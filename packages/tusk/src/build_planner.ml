@@ -74,38 +74,32 @@ let generate_actions ~graph ~node ~toolchain ~package ~srcs ~deps =
   (* Combine all include paths *)
   let dep_includes = all_external_includes @ local_dep_includes in
 
-  (* Separate source files by type *)
-  let ml_files =
-    List.filter
-      (fun f -> Filename.check_suffix (Std.Path.to_string f) ".ml")
-      srcs
+  (* Separate source files by type using the kind field *)
+  let ml_sources =
+    List.filter (fun s -> match s.Build_node.kind with Build_node.ML _ -> true | _ -> false) srcs
   in
-  let mli_files =
-    List.filter
-      (fun f -> Filename.check_suffix (Std.Path.to_string f) ".mli")
-      srcs
+  let mli_sources =
+    List.filter (fun s -> match s.Build_node.kind with Build_node.MLI _ -> true | _ -> false) srcs
   in
-  let c_files =
-    List.filter
-      (fun f -> Filename.check_suffix (Std.Path.to_string f) ".c")
-      srcs
+  let c_sources =
+    List.filter (fun s -> match s.Build_node.kind with Build_node.C_stub -> true | _ -> false) srcs
   in
 
   (* Sort ML and MLI files in dependency order using ocamldep *)
-  let sorted_ml_files, sorted_mli_files =
-    if ml_files <> [] || mli_files <> [] then
+  let sorted_ml_sources, sorted_mli_sources =
+    if ml_sources <> [] || mli_sources <> [] then
       (* Get the directory containing the source files *)
       let src_dir =
         match srcs with
         | [] -> "."
-        | hd :: _ -> Filename.dirname (Std.Path.to_string hd)
+        | hd :: _ -> Filename.dirname (Std.Path.to_string hd.Build_node.file)
       in
       (* Convert to basenames for ocamldep *)
       let ml_basenames =
-        List.map (fun f -> Filename.basename (Std.Path.to_string f)) ml_files
+        List.map (fun s -> Filename.basename (Std.Path.to_string s.Build_node.file)) ml_sources
       in
       let mli_basenames =
-        List.map (fun f -> Filename.basename (Std.Path.to_string f)) mli_files
+        List.map (fun s -> Filename.basename (Std.Path.to_string s.Build_node.file)) mli_sources
       in
       let all_basenames = mli_basenames @ ml_basenames in
 
@@ -113,66 +107,128 @@ let generate_actions ~graph ~node ~toolchain ~package ~srcs ~deps =
         Ocamldep.sort ~toolchain ~cwd:src_dir ~files:all_basenames
       in
 
-      (* Map sorted basenames back to full paths *)
-      let basename_to_path lst =
+      (* Map sorted basenames back to source records *)
+      let basename_to_source lst =
         List.filter_map (fun basename ->
             List.find_opt
-              (fun p -> Filename.basename (Std.Path.to_string p) = basename)
+              (fun s -> Filename.basename (Std.Path.to_string s.Build_node.file) = basename)
               lst)
       in
 
       let sorted_mli =
         List.filter (fun f -> Filename.check_suffix f ".mli") sorted_basenames
-        |> fun names -> basename_to_path mli_files names
+        |> fun names -> basename_to_source mli_sources names
       in
       let sorted_ml =
         List.filter (fun f -> Filename.check_suffix f ".ml") sorted_basenames
-        |> fun names -> basename_to_path ml_files names
+        |> fun names -> basename_to_source ml_sources names
       in
       (sorted_ml, sorted_mli)
-    else (ml_files, mli_files)
+    else (ml_sources, mli_sources)
   in
 
-  (* Compile .mli files to .cmi - DON'T reverse, we're prepending so it reverses naturally *)
+  (* Prepare alias module FIRST if we have namespaced modules *)
+  let alias_module_name_opt, open_flags = 
+    (* Collect all modules that need aliases *)
+    let module_aliases = 
+      (sorted_ml_sources @ sorted_mli_sources)
+      |> List.filter_map (fun source ->
+          match source.Build_node.kind with
+          | Build_node.ML { simple_name; namespaced_name; _ } 
+          | Build_node.MLI { simple_name; namespaced_name; _ } ->
+              (* Skip if it's the main package module or if names are the same *)
+              if simple_name = namespaced_name then None
+              else Some (simple_name, namespaced_name)
+          | _ -> None)
+      |> List.sort_uniq compare  (* Remove duplicates *)
+    in
+    
+    if module_aliases <> [] then (
+      (* Generate alias module content *)
+      let alias_content = 
+        "(* Auto-generated module aliases for package " ^ package.Workspace.name ^ " *)\n" ^
+        (module_aliases
+         |> List.map (fun (simple, namespaced) ->
+             Printf.sprintf "module %s = %s" simple namespaced)
+         |> String.concat "\n")
+      in
+      
+      (* Create a unique alias module name *)
+      let safe_name = String.map (fun c -> if c = '-' then '_' else c) package.Workspace.name in
+      let alias_module_name = String.capitalize_ascii safe_name ^ "__aliases" in
+      let alias_ml = alias_module_name ^ ".ml" in
+      let alias_cmo = alias_module_name ^ ".cmo" in
+      
+      (* Write and compile the alias module with -no-alias-deps *)
+      actions := Actions.WriteFile { destination = alias_ml; content = alias_content } :: !actions;
+      actions := Actions.CompileImplementation 
+        { source = alias_ml; output = alias_cmo; 
+          includes = "-no-alias-deps" :: dep_includes } :: !actions;
+      outputs := alias_cmo :: !outputs;
+      
+      (Some alias_module_name, ["-open"; alias_module_name])
+    ) else (None, [])
+  in
+
+  (* Compile .mli files to .cmi with -open flag if we have aliases *)
   List.iter
-    (fun mli_file ->
-      let mli_str = Std.Path.to_string mli_file in
-      let basename = Filename.chop_suffix (Filename.basename mli_str) ".mli" in
-      let cmi_path = basename ^ ".cmi" in
+    (fun mli_source ->
+      let mli_str = Std.Path.to_string mli_source.Build_node.file in
+      (* Use the pre-computed namespaced module name *)
+      let cmi_path = 
+        match mli_source.Build_node.kind with
+        | Build_node.MLI { namespaced_name; _ } -> namespaced_name ^ ".cmi"
+        | _ -> failwith "Internal error: non-MLI source in mli_sources"
+      in
+      (* Add -open flag to includes if we have an alias module *)
+      let compile_includes = open_flags @ dep_includes in
       actions :=
         Actions.CompileInterface
-          { source = mli_str; output = cmi_path; includes = dep_includes }
+          { source = mli_str; output = cmi_path; includes = compile_includes }
         :: !actions;
       outputs := cmi_path :: !outputs)
-    sorted_mli_files;
+    sorted_mli_sources;
 
   (* Compile .c files to .o *)
   let o_files = ref [] in
   List.iter
-    (fun c_file ->
-      let c_str = Std.Path.to_string c_file in
-      let basename = Filename.chop_suffix (Filename.basename c_str) ".c" in
+    (fun c_source ->
+      let c_str = Std.Path.to_string c_source.Build_node.file in
+      (* C files just use their basename without extension *)
+      let basename = Filename.chop_extension (Filename.basename c_str) in
       let o_path = basename ^ ".o" in
       actions :=
         Actions.CompileC { source = c_str; output = o_path } :: !actions;
       o_files := o_path :: !o_files;
       outputs := o_path :: !outputs)
-    c_files;
+    c_sources;
 
   (* Compile .ml files to .cmo - DON'T reverse, we're prepending so it reverses naturally *)
   let cmo_files = ref [] in
+  (* Add alias module to cmo_files if it exists *)
+  (match alias_module_name_opt with
+   | Some alias_name -> cmo_files := (alias_name ^ ".cmo") :: !cmo_files
+   | None -> ());
+  
   List.iter
-    (fun ml_file ->
-      let ml_str = Std.Path.to_string ml_file in
-      let basename = Filename.chop_suffix (Filename.basename ml_str) ".ml" in
-      let cmo_path = basename ^ ".cmo" in
+    (fun ml_source ->
+      let ml_str = Std.Path.to_string ml_source.Build_node.file in
+      (* Use the pre-computed namespaced module name *)
+      let cmo_path = 
+        match ml_source.Build_node.kind with
+        | Build_node.ML { namespaced_name; _ } -> namespaced_name ^ ".cmo"
+        | _ -> failwith "Internal error: non-ML source in ml_sources"
+      in
+      (* Add -open flag to includes if we have an alias module *)
+      let compile_includes = open_flags @ dep_includes in
       actions :=
         Actions.CompileImplementation
-          { source = ml_str; output = cmo_path; includes = dep_includes }
+          { source = ml_str; output = cmo_path; includes = compile_includes }
         :: !actions;
       cmo_files := cmo_path :: !cmo_files;
       outputs := cmo_path :: !outputs)
-    sorted_ml_files;
+    sorted_ml_sources;
+
 
   (* Always build a library if we have any .ml files *)
   if !cmo_files <> [] then (
@@ -190,8 +246,8 @@ let generate_actions ~graph ~node ~toolchain ~package ~srcs ~deps =
   (* TODO: In the future, use [[bin]] definitions from package config *)
   let has_main_ml =
     List.exists
-      (fun f -> Filename.basename (Std.Path.to_string f) = "main.ml")
-      sorted_ml_files
+      (fun s -> Filename.basename (Std.Path.to_string s.Build_node.file) = "main.ml")
+      sorted_ml_sources
   in
 
   if has_main_ml then (
@@ -275,8 +331,9 @@ let compute_hash_for_planned_node ~toolchain ~package ~srcs ~deps ~outs ~actions
   (* Add package name *)
   seeds := package.Workspace.name :: !seeds;
 
-  (* Hash source files *)
-  let srcs_hash = Hasher.hash_files srcs in
+  (* Hash source files - extract the file paths from source records *)
+  let src_files = List.map (fun s -> s.Build_node.file) srcs in
+  let srcs_hash = Hasher.hash_files src_files in
   seeds := Hasher.to_string srcs_hash :: !seeds;
 
   (* Add dependency hashes *)
