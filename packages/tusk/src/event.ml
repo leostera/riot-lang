@@ -481,14 +481,16 @@ let kind_to_json = function
 let to_json event =
   let timestamp = Datetime.to_iso8601 event.timestamp in
   (* Strip ANSI codes from the event before converting to JSON *)
-  let clean_event = 
+  let clean_event =
     match event.kind with
     | CompileError { package; error } ->
-        let clean_error = {
-          error with
-          raw = strip_ansi_codes error.raw;
-          hint = strip_ansi_codes error.hint;
-        } in
+        let clean_error =
+          {
+            error with
+            raw = strip_ansi_codes error.raw;
+            hint = strip_ansi_codes error.hint;
+          }
+        in
         { event with kind = CompileError { package; error = clean_error } }
     | _ -> event
   in

@@ -2,8 +2,8 @@
 
 open Std.Data
 
-(** Strip ANSI escape codes from a string *)
 val strip_ansi_codes : string -> string
+(** Strip ANSI escape codes from a string *)
 
 (** Log severity levels *)
 type level = Error | Warn | Info | Debug | Trace

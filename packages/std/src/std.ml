@@ -16,4 +16,5 @@ module Result = Result
 module String = String
 module Iterator = Iterator
 module MutIterator = MutIterator
+module WorkerPool = Workerpool
 include Global

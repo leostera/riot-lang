@@ -12,6 +12,8 @@ val method_shutdown : string
 val method_build_event : string
 val method_format_file : string
 val method_format_code : string
+val method_format_all : string
+val method_new_package : string
 
 val build_package_params : string -> Jsonrpc.params
 (** Helper to create method-specific parameters *)
@@ -59,6 +61,8 @@ module TuskProtocol : sig
     | Shutdown
     | FormatFile of { file_path : string; check_only : bool }
     | FormatCode of { code : string; file_path : string option }
+    | FormatAll of { mode : [ `check | `write ] }
+    | NewPackage of { path : string; name : string; is_library : bool }
 
   type build_stats = {
     duration_ms : int;
@@ -96,6 +100,13 @@ module TuskProtocol : sig
     | RestartAck
     | FormatResult of { formatted_code : string; changed : bool }
     | FormatError of { error : string }
+    | FormatAllResult of {
+        files_formatted : int;
+        files_failed : int;
+        errors : (string * string) list;
+      }
+    | PackageCreated of { path : string; name : string }
+    | PackageCreationError of { error : string }
     | Error of string
 
   include
@@ -144,12 +155,27 @@ module Client : sig
   val build_all : t -> (TuskProtocol.response, string) result
   val restart : t -> (unit, string) result
   val shutdown : t -> (unit, string) result
-  
-  val format_file : 
+
+  val format_file :
     t -> file_path:string -> check_only:bool -> (string * bool, string) result
-  
+
   val format_code :
-    t -> code:string -> file_path:string option -> (string * bool, string) result
-    
+    t ->
+    code:string ->
+    file_path:string option ->
+    (string * bool, string) result
+
+  val format_all :
+    t ->
+    mode:[ `check | `write ] ->
+    (int * int * (string * string) list, string) result
+
+  val new_package :
+    t ->
+    path:string ->
+    name:string ->
+    is_library:bool ->
+    (string * string, string) result
+
   val close : t -> unit
 end

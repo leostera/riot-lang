@@ -135,7 +135,9 @@ let tools =
                     Json.Object
                       [
                         ("type", Json.String "boolean");
-                        ("description", Json.String "Whether this is a library (default: true)");
+                        ( "description",
+                          Json.String
+                            "Whether this is a library (default: true)" );
                       ] );
                 ] );
             ("required", Json.Array [ Json.String "name" ]);
@@ -167,10 +169,14 @@ let tools =
                     Json.Object
                       [
                         ("type", Json.String "boolean");
-                        ("description", Json.String "Whether to expose in package interface (default: false)");
+                        ( "description",
+                          Json.String
+                            "Whether to expose in package interface (default: \
+                             false)" );
                       ] );
                 ] );
-            ("required", Json.Array [ Json.String "package"; Json.String "name" ]);
+            ( "required",
+              Json.Array [ Json.String "package"; Json.String "name" ] );
           ];
     };
   ]
@@ -406,7 +412,11 @@ let execute_tool name arguments =
                           ]));
                 ]
             | Ok client -> (
-                match Tusk_jsonrpc.Client.format_file client ~file_path:(Std.Path.to_string file_path) ~check_only with
+                match
+                  Tusk_jsonrpc.Client.format_file client
+                    ~file_path:(Std.Path.to_string file_path)
+                    ~check_only
+                with
                 | Ok (formatted_code, changed) ->
                     [
                       Mcp.Text
@@ -434,11 +444,13 @@ let execute_tool name arguments =
         match arguments with
         | Some (Json.Object fields) -> (
             match
-              ( List.assoc_opt "code" fields,
-                List.assoc_opt "file_hint" fields )
+              (List.assoc_opt "code" fields, List.assoc_opt "file_hint" fields)
             with
             | Some (Json.String c), Some (Json.String h) ->
-                (c, match Std.Path.of_string h with Ok p -> Some p | Error _ -> None)
+                ( c,
+                  match Std.Path.of_string h with
+                  | Ok p -> Some p
+                  | Error _ -> None )
             | Some (Json.String c), None -> (c, None)
             | _ -> ("", None))
         | _ -> ("", None)
@@ -458,14 +470,14 @@ let execute_tool name arguments =
               Mcp.Text
                 (Json.to_string
                    (Json.Object
-                      [
-                        ("success", Json.Bool false);
-                        ("error", Json.String e);
-                      ]));
+                      [ ("success", Json.Bool false); ("error", Json.String e) ]));
             ]
         | Ok client -> (
             let file_hint_str = Option.map Std.Path.to_string file_hint in
-            match Tusk_jsonrpc.Client.format_code client ~code ~file_path:file_hint_str with
+            match
+              Tusk_jsonrpc.Client.format_code client ~code
+                ~file_path:file_hint_str
+            with
             | Ok (formatted_code, changed) ->
                 [
                   Mcp.Text
@@ -494,110 +506,134 @@ let execute_tool name arguments =
         | Some (Json.Object fields) -> (
             match List.assoc_opt "name" fields with
             | Some (Json.String n) ->
-                let is_lib = 
+                let is_lib =
                   match List.assoc_opt "is_library" fields with
                   | Some (Json.Bool b) -> b
-                  | _ -> true  (* default to library *)
+                  | _ -> true (* default to library *)
                 in
                 (n, is_lib)
             | _ -> ("", true))
         | _ -> ("", true)
       in
-      
+
       if name = "" then
         [
           Mcp.Text
             (Json.to_string
-               (Json.Object [ ("error", Json.String "Package name is required") ]));
+               (Json.Object
+                  [ ("error", Json.String "Package name is required") ]));
         ]
       else
         (* Create the package *)
-        let cwd = Std.Env.current_dir () |> Std.Result.expect ~msg:"Failed to get current directory" in
-        let package_dir = Filename.concat (Filename.concat (Std.Path.to_string cwd) "packages") name in
+        let cwd =
+          Std.Env.current_dir ()
+          |> Std.Result.expect ~msg:"Failed to get current directory"
+        in
+        let package_dir =
+          Filename.concat
+            (Filename.concat (Std.Path.to_string cwd) "packages")
+            name
+        in
         let src_dir = Filename.concat package_dir "src" in
-        
+
         (* Create directories *)
-        let _ = Std.Command.run_command (Printf.sprintf "mkdir -p %s" src_dir) in
-        
+        let _ =
+          Std.Command.run_command (Printf.sprintf "mkdir -p %s" src_dir)
+        in
+
         (* Create main module file *)
         let main_ml = Filename.concat src_dir (name ^ ".ml") in
         let main_mli = Filename.concat src_dir (name ^ ".mli") in
-        
-        let ml_content = if is_library then
-          "(** Main module for " ^ name ^ " library *)\n"
-        else
-          "(** Main entry point for " ^ name ^ " *)\n\nlet () = print_endline \"Hello from " ^ name ^ "\"\n"
+
+        let ml_content =
+          if is_library then "(** Main module for " ^ name ^ " library *)\n"
+          else
+            "(** Main entry point for " ^ name
+            ^ " *)\n\nlet () = print_endline \"Hello from " ^ name ^ "\"\n"
         in
-        
-        let mli_content = if is_library then
-          "(** " ^ String.capitalize_ascii name ^ " library interface *)\n"
-        else
-          "(** " ^ String.capitalize_ascii name ^ " executable interface *)\n"
+
+        let mli_content =
+          if is_library then
+            "(** " ^ String.capitalize_ascii name ^ " library interface *)\n"
+          else
+            "(** " ^ String.capitalize_ascii name ^ " executable interface *)\n"
         in
-        
+
         (* Write files *)
         let _ = Std.File.write ~path:main_ml ~content:ml_content in
         let _ = Std.File.write ~path:main_mli ~content:mli_content in
-        
+
         (* Update tusk.toml *)
         let toml_path = Filename.concat (Std.Path.to_string cwd) "tusk.toml" in
         match Std.File.read ~path:toml_path with
-        | Ok content ->
+        | Ok content -> (
             (* Find the last package and insert after it *)
             let lines = String.split_on_char '\n' content in
             let rec insert_package lines acc found_last_package =
               match lines with
               | [] -> List.rev acc
               | line :: rest ->
-                  if String.starts_with ~prefix:"[[workspace.packages]]" line && not found_last_package then
+                  if
+                    String.starts_with ~prefix:"[[workspace.packages]]" line
+                    && not found_last_package
+                  then
                     (* This is a package declaration, keep looking *)
                     insert_package rest (line :: acc) false
                   else if found_last_package then
                     (* We've passed all packages, insert here *)
-                    let new_package = [
-                      "";
-                      "[[workspace.packages]]";
-                      "name = \"" ^ name ^ "\"";
-                      "path = \"packages/" ^ name ^ "\"";
-                      if not is_library then "bin = true" else ""
-                    ] |> List.filter (fun s -> s <> "") in
+                    let new_package =
+                      [
+                        "";
+                        "[[workspace.packages]]";
+                        "name = \"" ^ name ^ "\"";
+                        "path = \"packages/" ^ name ^ "\"";
+                        (if not is_library then "bin = true" else "");
+                      ]
+                      |> List.filter (fun s -> s <> "")
+                    in
                     List.rev_append acc (new_package @ (line :: rest))
-                  else if line = "" && List.length acc > 0 && 
-                         (match acc with
-                          | prev :: _ -> String.starts_with ~prefix:"path = " prev || 
-                                       String.starts_with ~prefix:"bin = " prev
-                          | [] -> false) then
+                  else if
+                    line = ""
+                    && List.length acc > 0
+                    &&
+                    match acc with
+                    | prev :: _ ->
+                        String.starts_with ~prefix:"path = " prev
+                        || String.starts_with ~prefix:"bin = " prev
+                    | [] -> false
+                  then
                     (* Empty line after a package, this is where we insert *)
                     insert_package rest (line :: acc) true
-                  else
-                    insert_package rest (line :: acc) false
+                  else insert_package rest (line :: acc) false
             in
             let updated_lines = insert_package lines [] false in
             let updated_content = String.concat "\n" updated_lines in
-            (match Std.File.write ~path:toml_path ~content:updated_content with
-             | Ok () ->
-                 [
-                   Mcp.Text
-                     (Json.to_string
-                        (Json.Object
-                           [
-                             ("success", Json.Bool true);
-                             ("package_name", Json.String name);
-                             ("package_path", Json.String package_dir);
-                             ("is_library", Json.Bool is_library);
-                             ("message", Json.String ("Successfully created package " ^ name));
-                           ]));
-                 ]
-             | Error _ ->
-                 [
-                   Mcp.Text
-                     (Json.to_string
-                        (Json.Object
-                           [
-                             ("success", Json.Bool false);
-                             ("error", Json.String "Failed to update tusk.toml");
-                           ]));
-                 ])
+            match Std.File.write ~path:toml_path ~content:updated_content with
+            | Ok () ->
+                [
+                  Mcp.Text
+                    (Json.to_string
+                       (Json.Object
+                          [
+                            ("success", Json.Bool true);
+                            ("package_name", Json.String name);
+                            ("package_path", Json.String package_dir);
+                            ("is_library", Json.Bool is_library);
+                            ( "message",
+                              Json.String
+                                ("Successfully created package " ^ name) );
+                          ]));
+                ]
+            | Error _ ->
+                [
+                  Mcp.Text
+                    (Json.to_string
+                       (Json.Object
+                          [
+                            ("success", Json.Bool false);
+                            ("error", Json.String "Failed to update tusk.toml");
+                          ]));
+                ])
         | Error _ ->
             [
               Mcp.Text
@@ -608,66 +644,101 @@ let execute_tool name arguments =
                         ("error", Json.String "Failed to read tusk.toml");
                       ]));
             ])
-  | "create_module" -> (
+  | "create_module" ->
       (* Extract arguments *)
       let package, name, is_public =
         match arguments with
         | Some (Json.Object fields) -> (
-            match (List.assoc_opt "package" fields, List.assoc_opt "name" fields) with
+            match
+              (List.assoc_opt "package" fields, List.assoc_opt "name" fields)
+            with
             | Some (Json.String p), Some (Json.String n) ->
-                let is_pub = 
+                let is_pub =
                   match List.assoc_opt "is_public" fields with
                   | Some (Json.Bool b) -> b
-                  | _ -> false  (* default to private *)
+                  | _ -> false (* default to private *)
                 in
                 (p, n, is_pub)
             | _ -> ("", "", false))
         | _ -> ("", "", false)
       in
-      
+
       if package = "" || name = "" then
         [
           Mcp.Text
             (Json.to_string
-               (Json.Object [ ("error", Json.String "Package and module name are required") ]));
+               (Json.Object
+                  [
+                    ("error", Json.String "Package and module name are required");
+                  ]));
         ]
       else
         (* Create the module *)
-        let cwd = Std.Env.current_dir () |> Std.Result.expect ~msg:"Failed to get current directory" in
-        let package_dir = Filename.concat (Filename.concat (Std.Path.to_string cwd) "packages") package in
+        let cwd =
+          Std.Env.current_dir ()
+          |> Std.Result.expect ~msg:"Failed to get current directory"
+        in
+        let package_dir =
+          Filename.concat
+            (Filename.concat (Std.Path.to_string cwd) "packages")
+            package
+        in
         let src_dir = Filename.concat package_dir "src" in
-        
+
         (* Create module files *)
         let module_ml = Filename.concat src_dir (name ^ ".ml") in
         let module_mli = Filename.concat src_dir (name ^ ".mli") in
-        
-        let ml_content = "(** Implementation of " ^ String.capitalize_ascii name ^ " module *)\n" in
-        let mli_content = "(** Interface for " ^ String.capitalize_ascii name ^ " module *)\n" in
-        
+
+        let ml_content =
+          "(** Implementation of "
+          ^ String.capitalize_ascii name
+          ^ " module *)\n"
+        in
+        let mli_content =
+          "(** Interface for " ^ String.capitalize_ascii name ^ " module *)\n"
+        in
+
         (* Write module files *)
         let _ = Std.File.write ~path:module_ml ~content:ml_content in
         let _ = Std.File.write ~path:module_mli ~content:mli_content in
-        
+
         (* If public, add to package interface *)
         if is_public then (
           let package_ml = Filename.concat src_dir (package ^ ".ml") in
           let package_mli = Filename.concat src_dir (package ^ ".mli") in
-          
+
           (* Add module export to package.ml *)
           (match Std.File.read ~path:package_ml with
-           | Ok content ->
-               let updated_content = content ^ "\nmodule " ^ String.capitalize_ascii name ^ " = " ^ String.capitalize_ascii name ^ "\n" in
-               let _ = Std.File.write ~path:package_ml ~content:updated_content in ()
-           | Error _ -> ());
-          
+          | Ok content ->
+              let updated_content =
+                content ^ "\nmodule "
+                ^ String.capitalize_ascii name
+                ^ " = "
+                ^ String.capitalize_ascii name
+                ^ "\n"
+              in
+              let _ =
+                Std.File.write ~path:package_ml ~content:updated_content
+              in
+              ()
+          | Error _ -> ());
+
           (* Add module signature to package.mli *)
-          (match Std.File.read ~path:package_mli with
-           | Ok content ->
-               let updated_content = content ^ "\nmodule " ^ String.capitalize_ascii name ^ " : module type of " ^ String.capitalize_ascii name ^ "\n" in
-               let _ = Std.File.write ~path:package_mli ~content:updated_content in ()
-           | Error _ -> ())
-        );
-        
+          match Std.File.read ~path:package_mli with
+          | Ok content ->
+              let updated_content =
+                content ^ "\nmodule "
+                ^ String.capitalize_ascii name
+                ^ " : module type of "
+                ^ String.capitalize_ascii name
+                ^ "\n"
+              in
+              let _ =
+                Std.File.write ~path:package_mli ~content:updated_content
+              in
+              ()
+          | Error _ -> ());
+
         [
           Mcp.Text
             (Json.to_string
@@ -678,9 +749,12 @@ let execute_tool name arguments =
                     ("module_name", Json.String name);
                     ("is_public", Json.Bool is_public);
                     ("module_path", Json.String module_ml);
-                    ("message", Json.String ("Successfully created module " ^ name ^ " in package " ^ package));
+                    ( "message",
+                      Json.String
+                        ("Successfully created module " ^ name ^ " in package "
+                       ^ package) );
                   ]));
-        ])
+        ]
   | _ ->
       [
         Mcp.Text

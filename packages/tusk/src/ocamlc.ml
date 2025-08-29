@@ -55,7 +55,7 @@ let run ~toolchain ?(includes = []) ?(libs = []) ?(output = None)
 
   (* Execute the command with colors enabled *)
   (* Set OCAML_COLOR=always to get colored error output *)
-  let env = [("OCAML_COLOR", "always")] in
+  let env = [ ("OCAML_COLOR", "always") ] in
   match Command.run_command ~env cmd_parts with
   | Ok output -> Success output
   | Error (Command.SpawnFailed msg) -> Failed msg

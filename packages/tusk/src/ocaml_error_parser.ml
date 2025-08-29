@@ -145,15 +145,15 @@ let parse_error error_output =
 (** Get the first (primary) error from compiler output *)
 let get_primary_error error_output =
   (* Filter out internal build system errors *)
-  let filtered_lines = 
-    error_output
-    |> String.split_on_char '\n'
+  let filtered_lines =
+    error_output |> String.split_on_char '\n'
     |> List.filter (fun line ->
         (* Filter out "Cannot find file *.cmo" errors which are internal *)
-        not (String.starts_with ~prefix:"Error: Cannot find file" line 
-             && (String.ends_with ~suffix:".cmo\"" line 
-                 || String.ends_with ~suffix:".cmi\"" line
-                 || String.ends_with ~suffix:".cma\"" line)))
+        not
+          (String.starts_with ~prefix:"Error: Cannot find file" line
+          && (String.ends_with ~suffix:".cmo\"" line
+             || String.ends_with ~suffix:".cmi\"" line
+             || String.ends_with ~suffix:".cma\"" line)))
     |> String.concat "\n"
   in
   match parse_error filtered_lines with [] -> None | err :: _ -> Some err

@@ -60,12 +60,12 @@ let run_command ?env cmd =
   Printf.printf "  $ %s\n" cmd;
   flush stdout;
   (* Prepend environment variables if provided *)
-  let cmd_with_env = 
+  let cmd_with_env =
     match env with
     | None -> cmd
     | Some env_list ->
-        let env_str = 
-          env_list 
+        let env_str =
+          env_list
           |> List.map (fun (k, v) -> Printf.sprintf "%s=%s" k v)
           |> String.concat " "
         in

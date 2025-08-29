@@ -160,7 +160,7 @@ let build_command package_opt =
 
   (* Ensure server is running *)
   let client =
-    Server_manager.ensure_running workspace
+    Server_manager.ensure_running ~workspace
     |> Std.Result.expect ~msg:"Failed to start or connect to tusk server"
   in
 
@@ -1049,7 +1049,7 @@ let rpc_command args =
     | Error e ->
         Printf.eprintf "Error: %s\n" e;
         Error (Failure e))
-  else if cmd = "format" then (
+  else if cmd = "format" then
     (* Format a file *)
     match rest with
     | [] ->
@@ -1058,23 +1058,26 @@ let rpc_command args =
         Error (Failure "Missing file path")
     | file_path :: _ -> (
         let client = create_local_client () in
-        let result = Tusk_jsonrpc.Client.format_file client ~file_path ~check_only:false in
+        let result =
+          Tusk_jsonrpc.Client.format_file client ~file_path ~check_only:false
+        in
         Tusk_jsonrpc.Client.close client;
         match result with
         | Ok (formatted_code, changed) ->
-            let json = 
-              Json.Object [ 
-                ("type", Json.String "format_result");
-                ("formatted_code", Json.String formatted_code);
-                ("changed", Json.Bool changed)
-              ] 
+            let json =
+              Json.Object
+                [
+                  ("type", Json.String "format_result");
+                  ("formatted_code", Json.String formatted_code);
+                  ("changed", Json.Bool changed);
+                ]
             in
             Printf.printf "%s\n" (Json.to_string json);
             Ok ()
         | Error e ->
             Printf.eprintf "Error: %s\n" e;
-            Error (Failure e)))
-  else if cmd = "format-check" then (
+            Error (Failure e))
+  else if cmd = "format-check" then
     (* Check if a file needs formatting *)
     match rest with
     | [] ->
@@ -1083,22 +1086,25 @@ let rpc_command args =
         Error (Failure "Missing file path")
     | file_path :: _ -> (
         let client = create_local_client () in
-        let result = Tusk_jsonrpc.Client.format_file client ~file_path ~check_only:true in
+        let result =
+          Tusk_jsonrpc.Client.format_file client ~file_path ~check_only:true
+        in
         Tusk_jsonrpc.Client.close client;
         match result with
         | Ok (_formatted_code, changed) ->
-            let json = 
-              Json.Object [ 
-                ("type", Json.String "format_check");
-                ("needs_formatting", Json.Bool changed)
-              ] 
+            let json =
+              Json.Object
+                [
+                  ("type", Json.String "format_check");
+                  ("needs_formatting", Json.Bool changed);
+                ]
             in
             Printf.printf "%s\n" (Json.to_string json);
             Ok ()
         | Error e ->
             Printf.eprintf "Error: %s\n" e;
-            Error (Failure e)))
-  else if cmd = "format-code" then (
+            Error (Failure e))
+  else if cmd = "format-code" then
     (* Format code string *)
     match rest with
     | [] ->
@@ -1106,32 +1112,30 @@ let rpc_command args =
         Printf.eprintf "Usage: tusk rpc format-code <code-string> [file-hint]\n";
         Error (Failure "Missing code string")
     | code :: file_hint -> (
-        let file_path = match file_hint with
-          | [] -> None
-          | h :: _ -> Some h
-        in
+        let file_path = match file_hint with [] -> None | h :: _ -> Some h in
         let client = create_local_client () in
         let result = Tusk_jsonrpc.Client.format_code client ~code ~file_path in
         Tusk_jsonrpc.Client.close client;
         match result with
         | Ok (formatted_code, changed) ->
-            let json = 
-              Json.Object [ 
-                ("type", Json.String "format_result");
-                ("formatted_code", Json.String formatted_code);
-                ("changed", Json.Bool changed)
-              ] 
+            let json =
+              Json.Object
+                [
+                  ("type", Json.String "format_result");
+                  ("formatted_code", Json.String formatted_code);
+                  ("changed", Json.Bool changed);
+                ]
             in
             Printf.printf "%s\n" (Json.to_string json);
             Ok ()
         | Error e ->
             Printf.eprintf "Error: %s\n" e;
-            Error (Failure e)))
+            Error (Failure e))
   else (
     Printf.eprintf "Error: Unknown RPC command '%s'\n" cmd;
     Printf.eprintf
-      "Available commands: ping, workspace, graph, build [package], format <file>, \
-       format-check <file>, format-code <code>, restart, shutdown\n";
+      "Available commands: ping, workspace, graph, build [package], format \
+       <file>, format-check <file>, format-code <code>, restart, shutdown\n";
     Error (Failure (Printf.sprintf "Unknown RPC command: %s" cmd)))
 
 (** Execute the new command *)
@@ -1142,68 +1146,40 @@ let new_command args =
     Error (Failure "Missing package path"))
   else
     let path = args.(2) in
-    let is_library = 
+    let is_library =
       if Array.length args > 3 then
         match args.(3) with
         | "--bin" -> false
         | "--lib" -> true
-        | _ -> true  (* default to library *)
+        | _ -> true (* default to library *)
       else true
     in
-    
+
     (* Extract package name from path *)
     let name = Filename.basename path in
-    
-    (* Send request to server to create the package *)
-    let cwd = Std.Env.current_dir () |> Std.Result.expect ~msg:"Failed to get current directory" in
-    let workspace = Workspace_manager.scan cwd |> Std.Result.expect ~msg:"Failed to scan workspace" in
-    let pid = Server_manager.ensure_running ~workspace |> Std.Result.expect ~msg:"Failed to connect to server" in
-    
-    (* Convert path to absolute if relative *)
-    let abs_path = 
-      if Filename.is_relative path then
-        Filename.concat (Std.Path.to_string cwd) path
-      else
-        path
+
+    (* Use server to create the package *)
+    let cwd =
+      Std.Env.current_dir ()
+      |> Std.Result.expect ~msg:"Failed to get current directory"
     in
-    
-    let path_result = Std.Path.of_string abs_path in
-    match path_result with
-    | Error _ ->
-        Printf.eprintf "Error: Invalid path '%s'\n" abs_path;
-        Error (Failure "Invalid path")
-    | Ok package_path ->
-        (* Send NewPackage request *)
-        Miniriot.send pid 
-          (Tusk_protocol.ServerRequest 
-             (Tusk_protocol.NewPackage { 
-                client_pid = Miniriot.self (); 
-                path = package_path; 
-                name; 
-                is_library 
-              }));
-        
-        (* Wait for response *)
-        let selector = function
-          | Tusk_protocol.ServerResponse (Tusk_protocol.PackageCreated { path; name }) ->
-              `select (`created (path, name))
-          | Tusk_protocol.ServerResponse (Tusk_protocol.PackageCreationError { error }) ->
-              `select (`error error)
-          | _ -> `skip
-        in
-        
-        match Miniriot.receive ~selector () with
-        | `created (path, name) ->
-            Printf.printf "✨ Created package '%s' at %s\n" name path;
-            Printf.printf "\nTo add this package to your workspace, add the following to your tusk.toml:\n";
-            Printf.printf "\n  members = [..., \"%s\"]\n\n" (Filename.concat "packages" name);
+    let workspace =
+      Workspace_manager.scan cwd
+      |> Std.Result.expect ~msg:"Failed to scan workspace"
+    in
+
+    (* Ensure server is running and create package via client *)
+    match Server_manager.ensure_running ~workspace with
+    | Ok client -> (
+        match
+          Tusk_jsonrpc.Client.new_package client ~path ~name ~is_library
+        with
+        | Ok (created_path, created_name) ->
+            Printf.printf "Package '%s' created at '%s'\n" created_name
+              created_path;
             Ok ()
-        | `error error ->
-            Printf.eprintf "Error creating package: %s\n" error;
-            Error (Failure error)
-        | exception _ ->
-            Printf.eprintf "Error: Request timed out\n";
-            Error (Failure "Request timed out")
+        | Error e -> Error (Failure ("Package creation failed: " ^ e)))
+    | Error _e -> Error (Failure "Failed to connect to server")
 
 (** Execute the install command *)
 let install_command args =

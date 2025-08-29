@@ -1,5 +1,6 @@
 (** Build server - Miniriot process that orchestrates builds *)
 
+open Std
 open Miniriot
 open Tusk_protocol
 
@@ -45,6 +46,7 @@ let rec loop state =
       handle_format_file state client_pid file_path check_only
   | FormatCode { client_pid; code; file_path } ->
       handle_format_code state client_pid code file_path
+  | FormatAll { client_pid; mode } -> handle_format_all state client_pid mode
   | NewPackage { client_pid; path; name; is_library } ->
       handle_new_package state client_pid path name is_library
 
@@ -60,7 +62,7 @@ and handle_scan_workspace state client_pid current_dir =
   (* Rescan the workspace and update state *)
   let workspace =
     Workspace_manager.scan current_dir
-    |> Std.Result.expect ~msg:"tusk_server: operation failed"
+    |> Result.expect ~msg:"tusk_server: operation failed"
   in
   let build_graph = Build_graph.create workspace state.toolchain in
   let new_state = { state with workspace; build_graph } in
@@ -110,8 +112,8 @@ and handle_get_package_info state client_pid package_name =
                 package =
                   {
                     name = package_name;
-                    path = Std.Path.of_string "" |> Result.unwrap;
-                    relative_path = Std.Path.of_string "" |> Result.unwrap;
+                    path = Path.of_string "" |> Result.unwrap;
+                    relative_path = Path.of_string "" |> Result.unwrap;
                     dependencies = [];
                   };
                 sources = [];
@@ -166,71 +168,92 @@ and handle_get_build_graph state client_pid =
 
 and handle_format_file state client_pid file_path check_only =
   Printf.eprintf "Server: Received FormatFile from %s for %s (check_only=%b)\n"
-    (Pid.to_string client_pid) (Std.Path.to_string file_path) check_only;
-  
-  let response = 
-    match Ocamlformat.format_file ~toolchain:state.toolchain ~file_path ~check_only with
-    | Formatted { code; changed } -> FormatResult { formatted_code = code; changed }
+    (Pid.to_string client_pid) (Path.to_string file_path) check_only;
+
+  let response =
+    match
+      Ocamlformat.format_file ~toolchain:state.toolchain ~file_path ~check_only
+    with
+    | Formatted { code; changed } ->
+        FormatResult { formatted_code = code; changed }
     | Error error -> FormatError { error }
   in
   send client_pid (ServerResponse response);
   loop state
 
 and handle_format_code state client_pid code file_path =
-  Printf.eprintf "Server: Received FormatCode from %s\n" (Pid.to_string client_pid);
-  
-  let response = 
-    match Ocamlformat.format_code ~toolchain:state.toolchain ~code ~file_path with
-    | Formatted { code; changed } -> FormatResult { formatted_code = code; changed }
+  Printf.eprintf "Server: Received FormatCode from %s\n"
+    (Pid.to_string client_pid);
+
+  let response =
+    match
+      Ocamlformat.format_code ~toolchain:state.toolchain ~code ~file_path
+    with
+    | Formatted { code; changed } ->
+        FormatResult { formatted_code = code; changed }
     | Error error -> FormatError { error }
   in
   send client_pid (ServerResponse response);
   loop state
 
+and handle_format_all state client_pid mode =
+  Printf.eprintf "Server: Received FormatAll from %s (mode=%s)\n"
+    (Pid.to_string client_pid)
+    (match mode with `check -> "check" | `write -> "write");
+
+  (* TODO: Implement using GenericWorkerPool for concurrent formatting *)
+  send client_pid
+    (ServerResponse
+       (FormatError { error = "FormatAll not yet implemented with worker pool" }));
+  loop state
+
 and handle_new_package state client_pid path name is_library =
-  Printf.eprintf "Server: Received NewPackage from %s for %s at %s\n" 
-    (Pid.to_string client_pid) name (Std.Path.to_string path);
-  
-  let path_str = Std.Path.to_string path in
+  Printf.eprintf "Server: Received NewPackage from %s for %s at %s\n"
+    (Pid.to_string client_pid) name (Path.to_string path);
+
+  let path_str = Path.to_string path in
   let src_dir = Filename.concat path_str "src" in
-  
+
   (* Create directories *)
-  let _ = Std.Command.run_command (Printf.sprintf "mkdir -p %s" src_dir) in
-  
+  let _ = Command.run_command (Printf.sprintf "mkdir -p %s" src_dir) in
+
   (* Create main module files *)
   let main_ml = Filename.concat src_dir (name ^ ".ml") in
   let main_mli = Filename.concat src_dir (name ^ ".mli") in
-  
-  let ml_content = if is_library then
-    "(** Main module for " ^ name ^ " library *)\n"
-  else
-    "(** Main entry point for " ^ name ^ " *)\n\nlet () = print_endline \"Hello from " ^ name ^ "\"\n"
+
+  let ml_content =
+    if is_library then "(** Main module for " ^ name ^ " library *)\n"
+    else
+      "(** Main entry point for " ^ name
+      ^ " *)\n\nlet () = print_endline \"Hello from " ^ name ^ "\"\n"
   in
-  
-  let mli_content = if is_library then
-    "(** " ^ String.capitalize_ascii name ^ " library interface *)\n"
-  else
-    "(** " ^ String.capitalize_ascii name ^ " executable interface *)\n"
+
+  let mli_content =
+    if is_library then
+      "(** " ^ String.capitalize_ascii name ^ " library interface *)\n"
+    else "(** " ^ String.capitalize_ascii name ^ " executable interface *)\n"
   in
-  
+
   (* Write module files *)
-  let _ = Std.File.write ~path:main_ml ~content:ml_content in
-  let _ = Std.File.write ~path:main_mli ~content:mli_content in
-  
+  let _ = File.write ~path:main_ml ~content:ml_content in
+  let _ = File.write ~path:main_mli ~content:mli_content in
+
   (* Create package tusk.toml *)
   let package_toml = Filename.concat path_str "tusk.toml" in
-  let toml_content = Printf.sprintf "[package]
-name = \"%s\"
-version = \"0.1.0\"
-
-[dependencies]
-# Add dependencies here
-
-%s
-" name (if is_library then "" else "[package.bin]\nmain = \"" ^ name ^ "\"")
+  let toml_content =
+    Printf.sprintf
+      "[package]\n\
+       name = \"%s\"\n\
+       version = \"0.1.0\"\n\n\
+       [dependencies]\n\
+       std = \"*\"\n\
+       # Add dependencies here\n\n\
+       %s\n"
+      name
+      (if is_library then "" else "[package.bin]\nmain = \"" ^ name ^ "\"")
   in
-  let _ = Std.File.write ~path:package_toml ~content:toml_content in
-  
+  let _ = File.write ~path:package_toml ~content:toml_content in
+
   (* Send success response *)
   send client_pid (ServerResponse (PackageCreated { path = path_str; name }));
   loop state
@@ -265,7 +288,7 @@ and handle_build state client_pid target session_id_opt =
         let workspace_start = Global.time_ms () in
         let workspace =
           Workspace_manager.scan state.workspace.root
-          |> Std.Result.expect ~msg:"tusk_server: operation failed"
+          |> Result.expect ~msg:"tusk_server: operation failed"
         in
         let workspace_duration = Global.time_ms () - workspace_start in
         Log.workspace_scanned ~session_id
@@ -505,7 +528,7 @@ let start_tcp_server ~server ~port =
       let bytes = Bytes.of_string (msg ^ "\n") in
       let _ =
         Net.TcpStream.write stream bytes ~pos:0 ~len:(Bytes.length bytes) ()
-        |> Std.Result.expect ~msg:"tusk_server: network operation failed"
+        |> Result.expect ~msg:"tusk_server: network operation failed"
       in
       ()
     in
@@ -519,7 +542,7 @@ let init ~current_dir ~workers ~port =
   let server_pid = self () in
   let workspace =
     Workspace_manager.scan current_dir
-    |> Std.Result.expect ~msg:"tusk_server: operation failed"
+    |> Result.expect ~msg:"tusk_server: operation failed"
   in
   let toolchain = Toolchains.ready_toolchains workspace in
   let build_graph = Build_graph.create workspace toolchain in
@@ -549,20 +572,20 @@ let init ~current_dir ~workers ~port =
 let start () =
   spawn (fun () ->
       let current_dir =
-        Std.Env.current_dir ()
-        |> Std.Result.expect ~msg:"tusk_server: could not get current dir"
+        Env.current_dir ()
+        |> Result.expect ~msg:"tusk_server: could not get current dir"
       in
-      let workers = Std.available_parallelism () in
+      let workers = available_parallelism () in
       let port = 9753 in
       init ~current_dir ~workers ~port)
 
 (** Start with listener - makes current process become the server *)
 let start_with_listener () =
   let current_dir =
-    Std.Env.current_dir ()
-    |> Std.Result.expect ~msg:"tusk_server: could not get current dir"
+    Env.current_dir ()
+    |> Result.expect ~msg:"tusk_server: could not get current dir"
   in
-  let workers = Std.available_parallelism () in
+  let workers = available_parallelism () in
   let port = 9753 in
   init ~current_dir ~workers ~port
 
@@ -574,8 +597,8 @@ let scan_workspace server =
           {
             client_pid = self ();
             current_dir =
-              Std.Env.current_dir ()
-              |> Std.Result.expect ~msg:"tusk_server: operation failed";
+              Env.current_dir ()
+              |> Result.expect ~msg:"tusk_server: operation failed";
           }));
   let selector msg =
     match msg with
@@ -587,9 +610,9 @@ let scan_workspace server =
       (* TODO: Return actual workspace from server response *)
       let workspace =
         Workspace_manager.scan
-          (Std.Env.current_dir ()
-          |> Std.Result.expect ~msg:"tusk_server: operation failed")
-        |> Std.Result.expect ~msg:"tusk_server: operation failed"
+          (Env.current_dir ()
+          |> Result.expect ~msg:"tusk_server: operation failed")
+        |> Result.expect ~msg:"tusk_server: operation failed"
       in
       Ok workspace
   | exception _ -> Error Error.ScanWorkspaceError

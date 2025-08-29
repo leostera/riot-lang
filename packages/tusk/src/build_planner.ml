@@ -313,9 +313,7 @@ let plan_node ~graph ~node ~build_results ~session_id () =
   if failed_deps <> [] then
     (* If any dependency has failed, fail this node immediately *)
     (* Just record which dependencies failed, not their full error messages *)
-    let dep_errors =
-      List.map (fun (name, _err) -> name) failed_deps
-    in
+    let dep_errors = List.map (fun (name, _err) -> name) failed_deps in
     Ok (Skipped { node; reason = DependenciesFailed dep_errors })
   else
     (* Check for unplanned/unbuilt dependencies *)

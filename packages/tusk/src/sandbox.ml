@@ -198,108 +198,110 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
 
       (* Use exception to break out of iteration on first failure *)
       (try
-        List.iteri
-          (fun i action ->
-          (* Log compilation/linking events for LLM visibility *)
-          (match action with
-          | Actions.CompileInterface { source; _ } ->
-              Log.compiling_interface ~session_id
-                ~package:sandbox.node.package.name ~file:source
-          | Actions.CompileImplementation { source; _ } ->
-              Log.compiling_implementation ~session_id
-                ~package:sandbox.node.package.name ~file:source
-          | Actions.CreateLibrary { output; _ } ->
-              Log.linking_library ~session_id ~package:sandbox.node.package.name
-                ~output
-          | Actions.CreateExecutable { output; _ } ->
-              Log.linking_executable ~session_id
-                ~package:sandbox.node.package.name ~output
-          | _ -> ());
-          Printf.printf "[Sandbox] Step %d: %s\n" (i + 1)
-            (Actions.string_of_action action);
-          flush stdout;
+         List.iteri
+           (fun i action ->
+             (* Log compilation/linking events for LLM visibility *)
+             (match action with
+             | Actions.CompileInterface { source; _ } ->
+                 Log.compiling_interface ~session_id
+                   ~package:sandbox.node.package.name ~file:source
+             | Actions.CompileImplementation { source; _ } ->
+                 Log.compiling_implementation ~session_id
+                   ~package:sandbox.node.package.name ~file:source
+             | Actions.CreateLibrary { output; _ } ->
+                 Log.linking_library ~session_id
+                   ~package:sandbox.node.package.name ~output
+             | Actions.CreateExecutable { output; _ } ->
+                 Log.linking_executable ~session_id
+                   ~package:sandbox.node.package.name ~output
+             | _ -> ());
+             Printf.printf "[Sandbox] Step %d: %s\n" (i + 1)
+               (Actions.string_of_action action);
+             flush stdout;
 
-          (* Track declared outputs *)
-          (match action with
-          | Actions.DeclareOutputs { outputs } -> declared_outputs := outputs
-          | _ -> ());
+             (* Track declared outputs *)
+             (match action with
+             | Actions.DeclareOutputs { outputs } -> declared_outputs := outputs
+             | _ -> ());
 
-          let result, output =
-            Actions.execute_action action node.Build_node.toolchain
-          in
-          match result with
-          | Actions.Success ->
-              if output <> "" then (
-                Printf.printf "  -> %s\n" output;
-                flush stdout)
-          | Actions.Skipped reason ->
-              Printf.printf "  -> Skipped: %s\n" reason;
-              flush stdout
-          | Actions.Failed error_msg ->
-              (* Check if this is a fatal build system error *)
-              if String.starts_with ~prefix:"Missing outputs:" error_msg then (
-                (* Fatal build system error - don't continue *)
-                Printf.eprintf "\n\027[1;31mFATAL BUILD ERROR:\027[0m %s\n"
-                  error_msg;
-                Printf.eprintf
-                  "The build system detected missing expected outputs.\n";
-                Printf.eprintf
-                  "This indicates a serious internal error. Build halted.\n%!";
-                (* Instead of exit, raise an exception that can be caught at higher level *)
-                failwith ("FATAL_BUILD_ERROR: " ^ error_msg))
-              else (
-                success := false;
-                errors := error_msg :: !errors;
+             let result, output =
+               Actions.execute_action action node.Build_node.toolchain
+             in
+             match result with
+             | Actions.Success ->
+                 if output <> "" then (
+                   Printf.printf "  -> %s\n" output;
+                   flush stdout)
+             | Actions.Skipped reason ->
+                 Printf.printf "  -> Skipped: %s\n" reason;
+                 flush stdout
+             | Actions.Failed error_msg ->
+                 (* Check if this is a fatal build system error *)
+                 if String.starts_with ~prefix:"Missing outputs:" error_msg then (
+                   (* Fatal build system error - don't continue *)
+                   Printf.eprintf "\n\027[1;31mFATAL BUILD ERROR:\027[0m %s\n"
+                     error_msg;
+                   Printf.eprintf
+                     "The build system detected missing expected outputs.\n";
+                   Printf.eprintf
+                     "This indicates a serious internal error. Build halted.\n\
+                      %!";
+                   (* Instead of exit, raise an exception that can be caught at higher level *)
+                   failwith ("FATAL_BUILD_ERROR: " ^ error_msg))
+                 else (
+                   success := false;
+                   errors := error_msg :: !errors;
 
-                (* Parse OCaml compiler error for better reporting *)
-                let compile_error =
-                  match Ocaml_error_parser.get_primary_error error_msg with
-                  | Some parsed ->
-                      let error_kind =
-                        match parsed.error with
-                        | Ocaml_error_parser.SyntaxError -> Event.SyntaxError
-                        | Ocaml_error_parser.TypeError s ->
-                            Event.TypeError { description = s }
-                        | Ocaml_error_parser.UnboundValue v ->
-                            Event.UnboundValue { name = v }
-                        | Ocaml_error_parser.UnboundModule m ->
-                            Event.UnboundModule { name = m }
-                        | Ocaml_error_parser.FileNotFound f ->
-                            Event.FileNotFound { filename = f }
-                        | Ocaml_error_parser.OtherError e ->
-                            Event.OtherError { message = e }
-                      in
-                      Event.
-                        {
-                          file = parsed.file;
-                          line = parsed.line;
-                          span = parsed.span;
-                          hint = parsed.hint;
-                          kind = error_kind;
-                          raw = parsed.raw;
-                        }
-                  | None ->
-                      (* Fallback to simple error if parsing fails *)
-                      Event.
-                        {
-                          file = "_unknown_";
-                          line = 1;
-                          span = (0, 0);
-                          hint = "";
-                          kind =
-                            Event.OtherError { message = String.trim error_msg };
-                          raw = error_msg;
-                        }
-                in
-                Log.compile_error ~session_id ~package:sandbox.node.package.name
-                  compile_error;
+                   (* Parse OCaml compiler error for better reporting *)
+                   let compile_error =
+                     match Ocaml_error_parser.get_primary_error error_msg with
+                     | Some parsed ->
+                         let error_kind =
+                           match parsed.error with
+                           | Ocaml_error_parser.SyntaxError -> Event.SyntaxError
+                           | Ocaml_error_parser.TypeError s ->
+                               Event.TypeError { description = s }
+                           | Ocaml_error_parser.UnboundValue v ->
+                               Event.UnboundValue { name = v }
+                           | Ocaml_error_parser.UnboundModule m ->
+                               Event.UnboundModule { name = m }
+                           | Ocaml_error_parser.FileNotFound f ->
+                               Event.FileNotFound { filename = f }
+                           | Ocaml_error_parser.OtherError e ->
+                               Event.OtherError { message = e }
+                         in
+                         Event.
+                           {
+                             file = parsed.file;
+                             line = parsed.line;
+                             span = parsed.span;
+                             hint = parsed.hint;
+                             kind = error_kind;
+                             raw = parsed.raw;
+                           }
+                     | None ->
+                         (* Fallback to simple error if parsing fails *)
+                         Event.
+                           {
+                             file = "_unknown_";
+                             line = 1;
+                             span = (0, 0);
+                             hint = "";
+                             kind =
+                               Event.OtherError
+                                 { message = String.trim error_msg };
+                             raw = error_msg;
+                           }
+                   in
+                   Log.compile_error ~session_id
+                     ~package:sandbox.node.package.name compile_error;
 
-                Printf.printf "  -> Failed: %s\n" error_msg;
-                flush stdout;
-                (* Stop processing further actions on failure *)
-                raise Exit))
-          actions
-      with Exit -> ());
+                   Printf.printf "  -> Failed: %s\n" error_msg;
+                   flush stdout;
+                   (* Stop processing further actions on failure *)
+                   raise Exit))
+           actions
+       with Exit -> ());
 
       if !success then Ok !declared_outputs
       else Error (String.concat "; " !errors)
