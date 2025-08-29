@@ -379,40 +379,37 @@ let generate_actions ~graph ~node ~toolchain ~package ~srcs ~deps =
   (* Build module tree but don't use hierarchical generation yet - go back to flat approach *)
   let tree = build_module_tree ~package_name:package.Workspace.name ~srcs in
   
-  (* Recursively collect all modules from the tree - but only package-level modules *)
-  let rec collect_package_level_modules tree =
-    let current_modules = 
-      (* Add module for current tree node if it has implementation or interface *)
-      (match tree.impl with
-       | Some impl -> 
-           (match impl.Build_node.kind with
-            | Build_node.ML { simple_name; namespaced_name; _ } ->
-                if simple_name = namespaced_name then [] else [(simple_name, namespaced_name)]
-            | _ -> [])
-       | None -> []) @
-      (match tree.intf with
-       | Some intf -> 
-           (match intf.Build_node.kind with
-            | Build_node.MLI { simple_name; namespaced_name; _ } ->
-                (* Only add MLI if there's no corresponding ML *)
-                if tree.impl = None && simple_name <> namespaced_name then [(simple_name, namespaced_name)] else []
-            | _ -> [])
-       | None -> [])
-    in
-    (* Add folder aliases for children that have children (subfolders) - ONLY top-level folders *)
-    let folder_modules = 
+  (* Collect ONLY direct package-level modules and folders *)
+  let collect_package_level_modules tree =
+    let safe_package_name = String.map (fun c -> if c = '-' then '_' else c) package.Workspace.name in
+    
+    (* Only collect from direct children of the root *)
+    let direct_children_aliases =
       List.filter_map (fun child ->
-        if child.children <> [] then
-          (* This is a subfolder, create an alias for it *)
-          let folder_name = String.capitalize_ascii child.name in
-          let safe_package_name = String.map (fun c -> if c = '-' then '_' else c) package.Workspace.name in
-          let namespaced_folder = String.capitalize_ascii safe_package_name ^ "__" ^ folder_name in
-          Some (folder_name, namespaced_folder)
-        else None
+        match child.impl, child.intf, child.children with
+        | Some impl, _, [] ->
+            (* Direct child file (not folder) with implementation *)
+            (match impl.Build_node.kind with
+             | Build_node.ML { simple_name; namespaced_name; _ } ->
+                 if simple_name <> namespaced_name then Some (simple_name, namespaced_name) else None
+             | _ -> None)
+        | None, Some intf, [] ->
+            (* Direct child file (not folder) with only interface *)
+            (match intf.Build_node.kind with
+             | Build_node.MLI { simple_name; namespaced_name; _ } ->
+                 if simple_name <> namespaced_name then Some (simple_name, namespaced_name) else None
+             | _ -> None)
+        | _, _, _ :: _ ->
+            (* This is a folder - create alias to folder interface module *)
+            let folder_name = String.capitalize_ascii child.name in
+            let namespaced_folder = String.capitalize_ascii safe_package_name ^ "__" ^ folder_name in
+            Some (folder_name, namespaced_folder)
+        | None, None, [] ->
+            (* Empty node - skip *)
+            None
       ) tree.children
     in
-    (* DON'T recursively collect from children - only top level *)
-    current_modules @ folder_modules
+    direct_children_aliases
   in
   
   let module_aliases = collect_package_level_modules tree |> List.sort_uniq compare in
