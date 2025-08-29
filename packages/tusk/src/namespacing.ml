@@ -60,6 +60,54 @@ let get_module_name ~package_name file_path =
     (* Regular module, add namespace prefix *)
     String.capitalize_ascii safe_package_name ^ "__" ^ String.capitalize_ascii name_without_ext
 
+(** Get the transformed module name with folder-based namespacing
+    Examples:
+    - src/utils.ml -> Package__Utils
+    - src/cli/build.ml -> Package__Cli__Build
+    - src/cli/cli.ml -> Package__Cli (folder interface module) *)
+let get_module_name_with_folders ~package_name ~namespace file_path =
+  let basename = Filename.basename file_path in
+  
+  (* Remove extension *)
+  let name_without_ext =
+    if Filename.check_suffix basename ".ml" then
+      Filename.chop_suffix basename ".ml"
+    else if Filename.check_suffix basename ".mli" then
+      Filename.chop_suffix basename ".mli"
+    else basename
+  in
+  
+  (* Replace hyphens with underscores in package name *)
+  let safe_package_name = String.map (fun c -> if c = '-' then '_' else c) package_name in
+  
+  (* Build the full namespaced name based on folder hierarchy *)
+  match namespace with
+  | [] ->
+      (* No folders - use existing logic *)
+      if name_without_ext = safe_package_name then
+        String.capitalize_ascii name_without_ext
+      else
+        String.capitalize_ascii safe_package_name ^ "__" ^ String.capitalize_ascii name_without_ext
+  | folders ->
+      (* Has folders - build hierarchical namespace *)
+      let folder_parts = List.map String.capitalize_ascii folders in
+      
+      (* Check if this is a folder interface module (e.g., cli/cli.ml) *)
+      let is_folder_interface = 
+        match List.rev folders with
+        | last_folder :: _ -> last_folder = name_without_ext
+        | [] -> false
+      in
+      
+      if is_folder_interface then
+        (* This is a folder interface module - name it after the folder *)
+        String.capitalize_ascii safe_package_name ^ "__" ^ String.concat "__" folder_parts
+      else
+        (* Regular module within a folder *)
+        String.capitalize_ascii safe_package_name ^ "__" ^ 
+        String.concat "__" folder_parts ^ "__" ^ 
+        String.capitalize_ascii name_without_ext
+
 (** Generate a module alias file that re-exports all modules in a package *)
 let generate_package_module ~package_name ~modules =
   let buffer = Buffer.create 1024 in

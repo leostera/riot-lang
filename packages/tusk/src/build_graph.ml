@@ -84,10 +84,11 @@ let create workspace toolchain =
                         in
                         String.capitalize_ascii name_without_ext
                       in
-                      (* Get the namespaced name *)
+                      (* Get the namespaced name with folder support *)
                       let namespaced_name = 
-                        Namespacing.get_module_name 
+                        Namespacing.get_module_name_with_folders 
                           ~package_name:package.Workspace.name 
+                          ~namespace
                           (Std.Path.to_string path)
                       in
                       (* Create the appropriate variant *)
