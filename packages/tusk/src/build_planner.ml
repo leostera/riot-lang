@@ -53,12 +53,14 @@ let build_module_tree ~package_name ~srcs =
   List.iter (fun source ->
     match source.Build_node.kind with
     | Build_node.ML { simple_name; namespace; _ } ->
-        let path_key = String.concat "/" namespace in
+        (* Use simple_name as key for top-level modules to avoid collisions *)
+        let path_key = if namespace = [] then simple_name else String.concat "/" namespace in
         let existing = Hashtbl.find_opt path_map path_key |> Option.value ~default:(simple_name, None, None) in
         let (name, _, intf) = existing in
         Hashtbl.replace path_map path_key (name, Some source, intf)
     | Build_node.MLI { simple_name; namespace; _ } ->
-        let path_key = String.concat "/" namespace in
+        (* Use simple_name as key for top-level modules to avoid collisions *)
+        let path_key = if namespace = [] then simple_name else String.concat "/" namespace in
         let existing = Hashtbl.find_opt path_map path_key |> Option.value ~default:(simple_name, None, None) in
         let (name, impl, _) = existing in
         Hashtbl.replace path_map path_key (name, impl, Some source)
@@ -71,17 +73,19 @@ let build_module_tree ~package_name ~srcs =
     let direct_children = Hashtbl.fold (fun path (name, impl, intf) acc ->
       if current_path = "" then
         (* At root - find modules with no namespace *)
-        if path = "" then
-          (* This is a root module *)
-          { name; impl; intf; 
-            root = Path.of_string "." |> Result.expect ~msg:"Invalid path '.'"; 
-            children = [] } :: acc
-        else if not (String.contains path '/') then
-          (* This is a folder at root level *)
-          let folder_modules = build_subtree path in
-          { name = path; impl = None; intf = None;
-            root = Path.of_string path |> Result.expect ~msg:("Invalid path: " ^ path);
-            children = folder_modules } :: acc
+        if not (String.contains path '/') then
+          (* This is a root module (simple_name as key) or a folder *)
+          if impl <> None || intf <> None then
+            (* This is a root module with implementation or interface *)
+            { name; impl; intf; 
+              root = Path.of_string "." |> Result.expect ~msg:"Invalid path '.'"; 
+              children = [] } :: acc
+          else
+            (* This might be a folder at root level *)
+            let folder_modules = build_subtree path in
+            { name = path; impl = None; intf = None;
+              root = Path.of_string path |> Result.expect ~msg:("Invalid path: " ^ path);
+              children = folder_modules } :: acc
         else acc
       else
         (* In a folder - find modules in this folder *)
