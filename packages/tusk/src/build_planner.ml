@@ -158,14 +158,16 @@ let rec generate_actions_from_tree ~tree ~package ~dep_includes ~parent_aliases 
           | Some impl, _ ->
               (match impl.Build_node.kind with
                | Build_node.ML { simple_name; namespaced_name; _ } ->
-                   if simple_name <> tree.name then
+                   (* Include all modules at package level (level=0), but exclude folder interfaces at deeper levels *)
+                   if level = 0 || simple_name <> tree.name then
                      Some (simple_name, namespaced_name)
                    else None
                | _ -> None)
           | None, Some intf ->
               (match intf.Build_node.kind with
                | Build_node.MLI { simple_name; namespaced_name; _ } ->
-                   if simple_name <> tree.name then
+                   (* Include all modules at package level (level=0), but exclude folder interfaces at deeper levels *)
+                   if level = 0 || simple_name <> tree.name then
                      Some (simple_name, namespaced_name)
                    else None
                | _ -> None)

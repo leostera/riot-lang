@@ -74,7 +74,7 @@ let create workspace toolchain =
                   (* Determine file kind and create appropriate source *)
                   let kind = 
                     if Filename.check_suffix entry ".ml" || Filename.check_suffix entry ".mli" then
-                      (* Get the simple module name *)
+                      (* Get the simple module name with folder awareness *)
                       let simple_name = 
                         let name_without_ext =
                           if Filename.check_suffix entry ".ml" then
@@ -82,13 +82,38 @@ let create workspace toolchain =
                           else
                             Filename.chop_suffix entry ".mli"
                         in
-                        String.capitalize_ascii name_without_ext
+                        (* Compute folder-aware simple name *)
+                        let full_path = Std.Path.to_string path in
+                        let src_dir = Filename.concat package.Workspace.path "src" in
+                        
+                        if String.starts_with ~prefix:(src_dir ^ "/") full_path then
+                          let relative_path = String.sub full_path (String.length src_dir + 1) (String.length full_path - String.length src_dir - 1) in
+                          let dir_path = Filename.dirname relative_path in
+                          if dir_path = "." then
+                            (* Top-level file *)
+                            String.capitalize_ascii name_without_ext
+                          else
+                            (* File in subdirectory *)
+                            let folder_parts = String.split_on_char '/' dir_path in
+                            let is_folder_interface = 
+                              match List.rev folder_parts with
+                              | folder :: _ when folder = name_without_ext -> true
+                              | _ -> false
+                            in
+                            if is_folder_interface then
+                              (* Folder interface: cli/cli.ml -> Cli *)
+                              String.concat "." (List.map String.capitalize_ascii folder_parts)
+                            else
+                              (* Regular file in folder: cli/build.ml -> Cli.Build *)
+                              String.concat "." (List.map String.capitalize_ascii folder_parts @ [String.capitalize_ascii name_without_ext])
+                        else
+                          String.capitalize_ascii name_without_ext
                       in
-                      (* Get the namespaced name - use folder support if available *)
+                      (* Get the namespaced name - use folder support *)
                       let namespaced_name = 
-                        (* For now, use the old function until minitusk is updated *)
-                        Namespacing.get_module_name 
+                        Namespacing.get_module_name_with_folders
                           ~package_name:package.Workspace.name 
+                          ~namespace:"" 
                           (Std.Path.to_string path)
                       in
                       (* Create the appropriate variant *)
