@@ -355,19 +355,55 @@ let generate_actions ~graph ~node ~toolchain ~package ~srcs ~deps =
 
   (* Prepare alias module configuration but don't add actions yet *)
   let alias_module_name_opt, open_flags, alias_cmo_opt = 
-    (* Collect all modules that need aliases *)
-    let module_aliases = 
-      (sorted_ml_sources @ sorted_mli_sources)
-      |> List.filter_map (fun source ->
-          match source.Build_node.kind with
-          | Build_node.ML { simple_name; namespaced_name; _ } 
-          | Build_node.MLI { simple_name; namespaced_name; _ } ->
-              (* Skip if it's the main package module or if names are the same *)
-              if simple_name = namespaced_name then None
-              else Some (simple_name, namespaced_name)
-          | _ -> None)
-      |> List.sort_uniq compare  (* Remove duplicates *)
+    (* Build module tree and collect ALL modules that need aliases *)
+    let tree = build_module_tree ~package_name:package.Workspace.name ~srcs in
+    
+    (* Recursively collect all modules from the tree *)
+    let rec collect_all_modules tree =
+      let current_modules = 
+        (* Add module for current tree node if it has implementation or interface *)
+        (match tree.impl with
+         | Some impl -> 
+             (match impl.Build_node.kind with
+              | Build_node.ML { simple_name; namespaced_name; _ } ->
+                  if simple_name = namespaced_name then [] else [(simple_name, namespaced_name)]
+              | _ -> [])
+         | None -> []) @
+        (match tree.intf with
+         | Some intf -> 
+             (match intf.Build_node.kind with
+              | Build_node.MLI { simple_name; namespaced_name; _ } ->
+                  (* Only add MLI if there's no corresponding ML *)
+                  if tree.impl = None && simple_name <> namespaced_name then [(simple_name, namespaced_name)] else []
+              | _ -> [])
+         | None -> [])
+      in
+      (* Add folder aliases for children that have children (subfolders) *)
+      let folder_modules = 
+        List.filter_map (fun child ->
+          if child.children <> [] then
+            (* This is a subfolder, create an alias for it *)
+            let folder_name = String.capitalize_ascii child.name in
+            let safe_package_name = String.map (fun c -> if c = '-' then '_' else c) package.Workspace.name in
+            let namespaced_folder = String.capitalize_ascii safe_package_name ^ "__" ^ folder_name in
+            Some (folder_name, namespaced_folder)
+          else None
+        ) tree.children
+      in
+      (* Recursively collect from children *)
+      let child_modules = List.concat_map collect_all_modules tree.children in
+      current_modules @ folder_modules @ child_modules
     in
+    
+    let module_aliases = collect_all_modules tree |> List.sort_uniq compare in
+    
+    (* Debug: show what aliases were collected for tusk package *)
+    if package.Workspace.name = "tusk" then (
+      Printf.eprintf "DEBUG: Collected %d module aliases for tusk:\n" (List.length module_aliases);
+      List.iter (fun (simple, namespaced) ->
+        Printf.eprintf "  %s -> %s\n" simple namespaced
+      ) module_aliases
+    );
     
     if module_aliases <> [] then (
       (* Generate alias module content *)
