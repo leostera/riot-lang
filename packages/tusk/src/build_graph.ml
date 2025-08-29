@@ -61,7 +61,49 @@ let create workspace toolchain =
               || Filename.check_suffix entry ".c"
             then
               match Std.Path.of_string (Filename.concat src_dir rel_path) with
-              | Ok path -> path :: acc
+              | Ok path -> 
+                  (* Extract namespace from relative path for future use *)
+                  let namespace = 
+                    if relative_path = "" || relative_path = entry then []
+                    else 
+                      let dir_part = Filename.dirname rel_path in
+                      if dir_part = "." then []
+                      else String.split_on_char '/' dir_part
+                  in
+                  (* Determine file kind and create appropriate source *)
+                  let kind = 
+                    if Filename.check_suffix entry ".ml" || Filename.check_suffix entry ".mli" then
+                      (* Get the simple module name *)
+                      let simple_name = 
+                        let name_without_ext =
+                          if Filename.check_suffix entry ".ml" then
+                            Filename.chop_suffix entry ".ml"
+                          else
+                            Filename.chop_suffix entry ".mli"
+                        in
+                        String.capitalize_ascii name_without_ext
+                      in
+                      (* Get the namespaced name *)
+                      let namespaced_name = 
+                        Namespacing.get_module_name 
+                          ~package_name:package.Workspace.name 
+                          (Std.Path.to_string path)
+                      in
+                      (* Create the appropriate variant *)
+                      if Filename.check_suffix entry ".ml" then
+                        Build_node.ML { simple_name; namespaced_name; namespace }
+                      else
+                        Build_node.MLI { simple_name; namespaced_name; namespace }
+                    else if Filename.check_suffix entry ".c" then 
+                      Build_node.C_stub
+                    else 
+                      Build_node.Other (Filename.extension entry)
+                  in
+                  let source = {
+                    Build_node.file = path;
+                    kind
+                  } in
+                  source :: acc
               | Error _ -> acc
             else acc)
           acc entries

@@ -163,10 +163,11 @@ let generate_actions ~graph ~node ~toolchain ~package ~srcs ~deps =
       actions := Actions.WriteFile { destination = alias_ml; content = alias_content } :: !actions;
       actions := Actions.CompileImplementation 
         { source = alias_ml; output = alias_cmo; 
-          includes = "-no-alias-deps" :: dep_includes } :: !actions;
+          includes = dep_includes;
+          flags = [Ocamlc.NoAliasDeps] } :: !actions;
       outputs := alias_cmo :: !outputs;
       
-      (Some alias_module_name, ["-open"; alias_module_name])
+      (Some alias_module_name, [Ocamlc.Open alias_module_name])
     ) else (None, [])
   in
 
@@ -180,11 +181,10 @@ let generate_actions ~graph ~node ~toolchain ~package ~srcs ~deps =
         | Build_node.MLI { namespaced_name; _ } -> namespaced_name ^ ".cmi"
         | _ -> failwith "Internal error: non-MLI source in mli_sources"
       in
-      (* Add -open flag to includes if we have an alias module *)
-      let compile_includes = open_flags @ dep_includes in
+      (* We can't add flags to CompileInterface yet, so just use includes *)
       actions :=
         Actions.CompileInterface
-          { source = mli_str; output = cmi_path; includes = compile_includes }
+          { source = mli_str; output = cmi_path; includes = dep_includes }
         :: !actions;
       outputs := cmi_path :: !outputs)
     sorted_mli_sources;
@@ -219,11 +219,10 @@ let generate_actions ~graph ~node ~toolchain ~package ~srcs ~deps =
         | Build_node.ML { namespaced_name; _ } -> namespaced_name ^ ".cmo"
         | _ -> failwith "Internal error: non-ML source in ml_sources"
       in
-      (* Add -open flag to includes if we have an alias module *)
-      let compile_includes = open_flags @ dep_includes in
+      (* Add -open flag if we have an alias module *)
       actions :=
         Actions.CompileImplementation
-          { source = ml_str; output = cmo_path; includes = compile_includes }
+          { source = ml_str; output = cmo_path; includes = dep_includes; flags = open_flags }
         :: !actions;
       cmo_files := cmo_path :: !cmo_files;
       outputs := cmo_path :: !outputs)

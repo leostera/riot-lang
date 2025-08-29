@@ -4,10 +4,7 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'packages/gluon/**'
-      - 'packages/miniriot/**'
-      - 'packages/tusk/**'
-      - 'packages/minitusk/**'
+      - 'packages/**'
       - '.github/workflows/bootstrap.yml'
   pull_request:
     branches: [ main ]

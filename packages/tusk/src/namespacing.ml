@@ -37,7 +37,7 @@ let path_to_module_name ~package_name path =
 
 (** Get the transformed module name for a source file *)
 let get_module_name ~package_name file_path =
-  (* TEMPORARY: Disable namespacing - just return the original module name *)
+  (* Enable namespacing - prefix with package name *)
   let basename = Filename.basename file_path in
 
   (* Remove extension *)
@@ -49,8 +49,16 @@ let get_module_name ~package_name file_path =
     else basename
   in
 
-  (* Just capitalize the module name without any prefixing *)
-  String.capitalize_ascii name_without_ext
+  (* Replace hyphens with underscores in package name to make valid module name *)
+  let safe_package_name = String.map (fun c -> if c = '-' then '_' else c) package_name in
+  
+  (* Check if this is the main package module - if so, don't namespace it *)
+  if name_without_ext = safe_package_name then
+    (* This is the package's main module, don't namespace it *)
+    String.capitalize_ascii name_without_ext
+  else
+    (* Regular module, add namespace prefix *)
+    String.capitalize_ascii safe_package_name ^ "__" ^ String.capitalize_ascii name_without_ext
 
 (** Generate a module alias file that re-exports all modules in a package *)
 let generate_package_module ~package_name ~modules =
@@ -87,7 +95,18 @@ let generate_package_module ~package_name ~modules =
 (** Get the flattened module name for compilation Example: "a/b/hello_world.ml"
     -> "pkg__a__b__hello_world.ml" *)
 let get_flat_filename ~package_name file_path =
-  (* TEMPORARY: Disable namespacing - just return the original filename *)
-  let _ = package_name in
-  (* Suppress unused variable warning *)
-  Filename.basename file_path
+  (* Enable namespacing - return namespaced filename *)
+  let basename = Filename.basename file_path in
+  
+  (* Remove extension to get module name *)
+  let name_without_ext =
+    if Filename.check_suffix basename ".ml" then
+      Filename.chop_suffix basename ".ml"
+    else if Filename.check_suffix basename ".mli" then
+      Filename.chop_suffix basename ".mli"
+    else basename
+  in
+  
+  (* Add back the extension with namespaced name *)
+  let ext = Filename.extension basename in
+  String.capitalize_ascii package_name ^ "__" ^ String.capitalize_ascii name_without_ext ^ ext

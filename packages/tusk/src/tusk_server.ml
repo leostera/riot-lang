@@ -144,7 +144,7 @@ and handle_get_package_info state client_pid package_name =
                (PackageInfo
                   {
                     package;
-                    sources = node.Build_node.srcs;
+                    sources = List.map (fun s -> s.Build_node.file) node.Build_node.srcs;
                     dependencies = dep_nodes;
                   }));
           loop state)

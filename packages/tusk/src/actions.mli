@@ -15,6 +15,7 @@ type action =
       source : string;
       output : string;
       includes : string list;
+      flags : Ocamlc.compiler_flag list;
     }  (** Compile .ml file *)
   | CompileC of { source : string; output : string }  (** Compile C file *)
   (* Linking actions *)

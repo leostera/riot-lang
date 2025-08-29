@@ -1,5 +1,10 @@
 (** OCaml compiler command generation and execution *)
 
+(** Compiler flags *)
+type compiler_flag =
+  | NoAliasDeps  (** -no-alias-deps: Do not record dependencies for module aliases *)
+  | Open of string  (** -open <module>: Opens the module before typing *)
+
 (** Compilation mode *)
 type mode =
   | Compile (* -c flag *)
@@ -16,6 +21,14 @@ let make_include_flags dirs =
 
 (** Generate the base ocamlc command from toolchain *)
 let base_command toolchain = Toolchains.ocamlc_path toolchain
+
+(** Convert compiler flags to command-line arguments *)
+let flags_to_string flags =
+  List.fold_left (fun acc flag ->
+    match flag with
+    | Open m -> acc @ ["-open"; m]
+    | NoAliasDeps -> acc @ ["-no-alias-deps"]
+  ) [] flags
 
 (** Build and run an ocamlc command *)
 let run ~toolchain ?(includes = []) ?(libs = []) ?(output = None)
@@ -65,12 +78,29 @@ let run ~toolchain ?(includes = []) ?(libs = []) ?(output = None)
 let compile_interface ~toolchain ~includes ~output source =
   run ~toolchain ~includes ~output:(Some output) ~mode:Compile [ source ]
 
-(** Compile an implementation file (.ml -> .cmo) *)
-let compile_impl ~toolchain ~includes ~output source =
+(** Compile an implementation file (.ml -> .cmo) *)  
+let compile_impl ~toolchain ~includes ~flags ~output source =
   (* Include current directory for .cmi files *)
   let includes_with_dot = "." :: includes in
-  run ~toolchain ~includes:includes_with_dot ~output:(Some output) ~mode:Compile
-    [ source ]
+  
+  (* If we have flags, we need to build command parts directly *)
+  if flags <> [] then
+    let flag_args = flags_to_string flags in
+    let cmd_parts = 
+      [base_command toolchain; "-c"] 
+      @ flag_args
+      @ List.concat_map (fun dir -> ["-I"; dir]) includes_with_dot
+      @ ["-o"; output; source]
+    in
+    let cmd = String.concat " " cmd_parts in
+    let env = [ ("OCAML_COLOR", "always") ] in
+    match Command.run_command ~env cmd with
+    | Ok output -> Success output
+    | Error (Command.SpawnFailed msg) -> Failed msg
+    | Error _ -> Failed "Command failed"
+  else
+    run ~toolchain ~includes:includes_with_dot ~output:(Some output) ~mode:Compile
+      [ source ]
 
 (** Compile a C file *)
 let compile_c ~toolchain ~includes ~output source =

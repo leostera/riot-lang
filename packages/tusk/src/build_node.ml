@@ -8,10 +8,29 @@ type spec =
       actions : Actions.action list;
     }
 
+type source_kind = 
+  | C_stub       (* .c stub file *)
+  | ML of {      (* .ml implementation file *)
+      simple_name: string;     (* Original module name (e.g., "Config") *)
+      namespaced_name: string; (* Full namespaced name (e.g., "Std__Config") *)
+      namespace: string list;  (* For future folder-based namespacing *)
+    }
+  | MLI of {     (* .mli interface file *)
+      simple_name: string;     (* Original module name (e.g., "Config") *)
+      namespaced_name: string; (* Full namespaced name (e.g., "Std__Config") *)
+      namespace: string list;  (* For future folder-based namespacing *)
+    }
+  | Other of string  (* Other file types *)
+
+type source = {
+  file: Path.t;
+  kind: source_kind;
+}
+
 type t = {
   toolchain : Toolchains.toolchain;
   package : Workspace.package;
-  srcs : Path.t list;
+  srcs : source list;
   mutable deps : Node_id.t list; (* Now stores IDs, not nodes *)
   mutable spec : spec;
 }

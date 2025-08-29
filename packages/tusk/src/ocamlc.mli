@@ -3,6 +3,11 @@
     This module provides a high-level interface for invoking the OCaml compiler
     with proper configuration and error handling. *)
 
+(** Compiler flags *)
+type compiler_flag =
+  | NoAliasDeps  (** -no-alias-deps: Do not record dependencies for module aliases *)
+  | Open of string  (** -open <module>: Opens the module before typing *)
+
 (** Compilation mode *)
 type mode =
   | Compile  (** Compile to object file (-c flag) *)
@@ -63,6 +68,7 @@ val compile_interface :
 val compile_impl :
   toolchain:Toolchains.toolchain ->
   includes:string list ->
+  flags:compiler_flag list ->
   output:string ->
   string ->
   result

@@ -11,6 +11,7 @@ type action =
       source : string;
       output : string;
       includes : string list;
+      flags : Ocamlc.compiler_flag list;
     }
   | CompileC of { source : string; output : string }
   (* Linking actions *)
@@ -42,9 +43,15 @@ let action_to_string action =
   | CompileInterface { source; output; includes } ->
       Printf.sprintf "compile_interface(%s,%s,[%s])" source output
         (String.concat "," includes)
-  | CompileImplementation { source; output; includes } ->
-      Printf.sprintf "compile_impl(%s,%s,[%s])" source output
-        (String.concat "," includes)
+  | CompileImplementation { source; output; includes; flags } ->
+      let flags_str = 
+        flags |> List.map (function
+          | Ocamlc.NoAliasDeps -> "no-alias-deps"
+          | Ocamlc.Open m -> "open:" ^ m)
+        |> String.concat ","
+      in
+      Printf.sprintf "compile_impl(%s,%s,[%s],[%s])" source output
+        (String.concat "," includes) flags_str
   | CompileC { source; output } ->
       Printf.sprintf "compile_c(%s,%s)" source output
   | CreateLibrary { output; objects; includes } ->
@@ -105,8 +112,8 @@ let execute_action action toolchain =
   | CompileInterface { source; output; includes } ->
       Ocamlc.compile_interface ~toolchain ~includes ~output source
       |> convert_result
-  | CompileImplementation { source; output; includes } ->
-      Ocamlc.compile_impl ~toolchain ~includes ~output source |> convert_result
+  | CompileImplementation { source; output; includes; flags } ->
+      Ocamlc.compile_impl ~toolchain ~includes ~flags ~output source |> convert_result
   | CompileC { source; output } ->
       Ocamlc.compile_c ~toolchain ~includes:[] ~output source |> convert_result
   | CreateLibrary { output; objects; includes } ->
