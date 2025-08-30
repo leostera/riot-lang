@@ -376,15 +376,59 @@ let generate_actions ~graph ~node ~toolchain ~package ~srcs ~deps =
     else (ml_sources, mli_sources)
   in
 
-  (* Build module tree but don't use hierarchical generation yet - go back to flat approach *)
+  (* Build module tree from source paths *)
   let tree = build_module_tree ~package_name:package.Workspace.name ~srcs in
   
-  (* Collect ONLY direct package-level modules and folders *)
-  let collect_package_level_modules tree =
-    let safe_package_name = String.map (fun c -> if c = '-' then '_' else c) package.Workspace.name in
+  (* Recursively generate alias files for each directory level *)
+  let rec generate_hierarchical_aliases ~tree ~package_name ~namespace_prefix ~actions ~outputs ~dep_includes =
+    let safe_package_name = String.map (fun c -> if c = '-' then '_' else c) package_name in
     
-    (* Only collect from direct children of the root *)
-    let direct_children_aliases =
+    (* Generate alias module name for this directory level *)
+    let alias_module_name = 
+      if namespace_prefix = "" then
+        String.capitalize_ascii safe_package_name ^ "__aliases"
+      else
+        namespace_prefix ^ "__aliases"
+    in
+    
+    (* If this is a subdirectory (not the root), also generate a wrapper module *)
+    if namespace_prefix <> "" then (
+      let wrapper_module_name = namespace_prefix ^ "__wrapper" in
+      let wrapper_ml = wrapper_module_name ^ ".ml" in
+      let wrapper_cmi = wrapper_module_name ^ ".cmi" in
+      let wrapper_cmo = wrapper_module_name ^ ".cmo" in
+      
+      (* Generate an empty wrapper module like dune does *)
+      let wrapper_content = 
+        "(* Auto-generated wrapper module for subdirectory *)\n" ^
+        "module " ^ wrapper_module_name ^ " = struct end\n" ^
+        "[@@deprecated \"this module is shadowed\"]"
+      in
+      
+      (* Add actions to write and compile the wrapper module *)
+      actions := Actions.WriteFile { destination = wrapper_ml; content = wrapper_content } :: !actions;
+      outputs := wrapper_ml :: !outputs;
+      
+      (* Compile wrapper interface first (generate empty .mli) *)
+      let wrapper_mli = wrapper_module_name ^ ".mli" in
+      let wrapper_mli_content = "(* Auto-generated wrapper interface *)" in
+      actions := Actions.WriteFile { destination = wrapper_mli; content = wrapper_mli_content } :: !actions;
+      outputs := wrapper_mli :: !outputs;
+      
+      actions := Actions.CompileInterface
+        { source = wrapper_mli; output = wrapper_cmi; includes = dep_includes; flags = [] }
+        :: !actions;
+      outputs := wrapper_cmi :: !outputs;
+      
+      (* Compile wrapper implementation *)
+      actions := Actions.CompileImplementation
+        { source = wrapper_ml; output = wrapper_cmo; includes = dep_includes; flags = [] }
+        :: !actions;
+      outputs := wrapper_cmo :: !outputs
+    );
+    
+    (* Collect aliases for direct children only *)
+    let direct_child_aliases =
       List.filter_map (fun child ->
         match child.impl, child.intf, child.children with
         | Some impl, _, [] ->
@@ -402,55 +446,116 @@ let generate_actions ~graph ~node ~toolchain ~package ~srcs ~deps =
         | _, _, _ :: _ ->
             (* This is a folder - create alias to folder interface module *)
             let folder_name = String.capitalize_ascii child.name in
-            let namespaced_folder = String.capitalize_ascii safe_package_name ^ "__" ^ folder_name in
-            Some (folder_name, namespaced_folder)
+            let folder_namespace = 
+              if namespace_prefix = "" then
+                String.capitalize_ascii safe_package_name ^ "__" ^ folder_name
+              else
+                namespace_prefix ^ "__" ^ folder_name
+            in
+            Some (folder_name, folder_namespace)
         | None, None, [] ->
             (* Empty node - skip *)
             None
       ) tree.children
     in
-    direct_children_aliases
-  in
-  
-  let module_aliases = collect_package_level_modules tree |> List.sort_uniq compare in
-  
-  if module_aliases <> [] then (
-    (* Generate alias module content *)
-    let alias_content = 
-      "(* Auto-generated module aliases for package " ^ package.Workspace.name ^ " *)\n" ^
-      (module_aliases
-       |> List.map (fun (simple, namespaced) ->
-           Printf.sprintf "module %s = %s" simple namespaced)
-       |> String.concat "\n")
+    
+    (* Generate alias file content *)
+    let comment = 
+      if namespace_prefix = "" then
+        "(* Auto-generated module aliases for package " ^ package_name ^ " *)"
+      else  
+        "(* Auto-generated module aliases for folder " ^ (String.uncapitalize_ascii tree.name) ^ " *)"
     in
     
-    (* Create a unique alias module name *)
-    let safe_name = String.map (fun c -> if c = '-' then '_' else c) package.Workspace.name in
-    let alias_module_name = String.capitalize_ascii safe_name ^ "__aliases" in
+    let alias_content = 
+      comment ^ "\n" ^
+      (if direct_child_aliases = [] then
+         "(* No module aliases needed for this directory *)\n"
+       else
+         (direct_child_aliases
+          |> List.sort_uniq compare
+          |> List.map (fun (simple, namespaced) ->
+              Printf.sprintf "module %s = %s" simple namespaced)
+          |> String.concat "\n"))
+    in
+    
+    (* Generate alias module files *)
     let alias_ml = alias_module_name ^ ".ml" in
     let alias_cmi = alias_module_name ^ ".cmi" in
     let alias_cmo = alias_module_name ^ ".cmo" in
     
-    (* Add alias module actions first *)
+    (* Add alias module actions first (they need to be compiled before modules that open them) *)
     actions := Actions.WriteFile { destination = alias_ml; content = alias_content } :: !actions;
     actions := Actions.CompileInterface 
       { source = alias_ml; output = alias_cmi; includes = dep_includes; flags = [Ocamlc.NoAliasDeps] } :: !actions;
     actions := Actions.CompileImplementation 
       { source = alias_ml; output = alias_cmo; includes = dep_includes; flags = [Ocamlc.NoAliasDeps] } :: !actions;
-    outputs := alias_cmi :: alias_cmo :: !outputs
-  );
+    outputs := alias_cmi :: alias_cmo :: !outputs;
+    
+    (* Recursively process subdirectories *)
+    List.iter (fun child ->
+      if child.children <> [] then
+        let child_namespace = 
+          if namespace_prefix = "" then
+            String.capitalize_ascii safe_package_name ^ "__" ^ String.capitalize_ascii child.name
+          else
+            namespace_prefix ^ "__" ^ String.capitalize_ascii child.name
+        in
+        generate_hierarchical_aliases ~tree:child ~package_name ~namespace_prefix:child_namespace ~actions ~outputs ~dep_includes
+    ) tree.children
+  in
   
-  (* For compatibility, determine open flags and main alias info *)
-  let alias_module_name_opt, open_flags = 
-    let safe_name = String.map (fun c -> if c = '-' then '_' else c) package.Workspace.name in
-    let main_alias_name = String.capitalize_ascii safe_name ^ "__aliases" in
-    (Some main_alias_name, [Ocamlc.Open main_alias_name])
+  (* Check if we have any subdirectories that need aliasing *)
+  let has_subdirs = 
+    List.exists (fun child -> child.children <> []) tree.children
+  in
+  
+  (* Only generate alias files if we have subdirectories *)
+  let alias_module_name_opt = 
+    if has_subdirs then (
+      (* Generate all hierarchical alias files *)
+      generate_hierarchical_aliases ~tree ~package_name:package.Workspace.name ~namespace_prefix:"" ~actions ~outputs ~dep_includes;
+      
+      (* Return the main alias module name *)
+      let safe_package_name = String.map (fun c -> if c = '-' then '_' else c) package.Workspace.name in
+      let main_alias_name = String.capitalize_ascii safe_package_name ^ "__aliases" in
+      Some main_alias_name
+    ) else
+      None
   in
   
   let alias_cmo_opt = None (* Now handled by generate_actions_from_tree *)
   in
+  
+  (* Helper to determine the correct open flags for a source file based on its path *)
+  let get_open_flags_for_source source_file =
+    match alias_module_name_opt with
+    | None -> [] (* No alias module, no open flags *)
+    | Some main_alias_name ->
+        let safe_package_name = String.map (fun c -> if c = '-' then '_' else c) package.Workspace.name in
+        let path_str = Std.Path.to_string source_file in
+        let src_dir_str = "packages/" ^ package.Workspace.name ^ "/src" in
+        
+        (* Check if the file is in a subdirectory *)
+        if String.starts_with ~prefix:(src_dir_str ^ "/") path_str then
+          let relative_path = String.sub path_str (String.length src_dir_str + 1) (String.length path_str - String.length src_dir_str - 1) in
+          (* Check if it's in a subdirectory (has a / in the relative path) *)
+          match String.index_opt relative_path '/' with
+          | Some idx ->
+              (* It's in a subdirectory - extract the subdirectory name *)
+              let subdir_name = String.sub relative_path 0 idx in
+              let subdir_module = String.capitalize_ascii safe_package_name ^ "__" ^ String.capitalize_ascii subdir_name in
+              (* Open both the subdirectory wrapper and the main alias module *)
+              [Ocamlc.Open (subdir_module ^ "__wrapper"); Ocamlc.Open main_alias_name]
+          | None ->
+              (* Top-level file - only open the main alias module *)
+              [Ocamlc.Open main_alias_name]
+        else
+          (* Not in src dir - only open the main alias module *)
+          [Ocamlc.Open main_alias_name]
+  in
 
-  (* Compile .mli files to .cmi with -open flag if we have aliases *)
+  (* Compile .mli files to .cmi with appropriate open flags *)
   List.iter
     (fun mli_source ->
       let mli_str = Std.Path.to_string mli_source.Build_node.file in
@@ -460,7 +565,8 @@ let generate_actions ~graph ~node ~toolchain ~package ~srcs ~deps =
         | Build_node.MLI { namespaced_name; _ } -> namespaced_name ^ ".cmi"
         | _ -> failwith "Internal error: non-MLI source in mli_sources"
       in
-      (* Add -open flag if we have an alias module *)
+      (* Get appropriate open flags based on source location *)
+      let open_flags = get_open_flags_for_source mli_source.Build_node.file in
       actions :=
         Actions.CompileInterface
           { source = mli_str; output = cmi_path; includes = dep_includes; flags = open_flags }
@@ -498,7 +604,8 @@ let generate_actions ~graph ~node ~toolchain ~package ~srcs ~deps =
         | Build_node.ML { namespaced_name; _ } -> namespaced_name ^ ".cmo"
         | _ -> failwith "Internal error: non-ML source in ml_sources"
       in
-      (* Add -open flag if we have an alias module *)
+      (* Get appropriate open flags based on source location *)
+      let open_flags = get_open_flags_for_source ml_source.Build_node.file in
       actions :=
         Actions.CompileImplementation
           { source = ml_str; output = cmo_path; includes = dep_includes; flags = open_flags }
