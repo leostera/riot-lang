@@ -505,20 +505,31 @@ let generate_actions ~graph ~node ~toolchain ~package ~srcs ~deps =
     ) tree.children
   in
   
-  (* Check if we have any subdirectories that need aliasing *)
-  let has_subdirs = 
-    List.exists (fun child -> child.children <> []) tree.children
+  let safe_package_name = String.map (fun c -> if c = '-' then '_' else c) package.Workspace.name in
+  let main_alias_name = String.capitalize_ascii safe_package_name ^ "__aliases" in
+  
+  (* Check if we actually need aliasing at all *)
+  (* We need aliasing if we have multiple top-level modules or any subdirectories *)
+  let needs_aliasing = 
+    (* Check if we have multiple top-level modules or any subdirectories *)
+    let top_level_modules = List.filter (fun child -> 
+      child.impl <> None || child.intf <> None
+    ) tree.children in
+    (* Special case: if the package has a single module with the same name as the package, no aliasing needed *)
+    if List.length top_level_modules = 1 && List.length tree.children = 1 then
+      let single_module = List.hd tree.children in
+      (* Check if this single module matches the package name *)
+      not (String.lowercase_ascii single_module.name = String.lowercase_ascii package.Workspace.name)
+    else
+      List.length top_level_modules > 1 || 
+      List.exists (fun child -> child.children <> []) tree.children
   in
   
-  (* Only generate alias files if we have subdirectories *)
+  (* Only generate alias files if we actually need them *)
   let alias_module_name_opt = 
-    if has_subdirs then (
+    if needs_aliasing then (
       (* Generate all hierarchical alias files *)
       generate_hierarchical_aliases ~tree ~package_name:package.Workspace.name ~namespace_prefix:"" ~actions ~outputs ~dep_includes;
-      
-      (* Return the main alias module name *)
-      let safe_package_name = String.map (fun c -> if c = '-' then '_' else c) package.Workspace.name in
-      let main_alias_name = String.capitalize_ascii safe_package_name ^ "__aliases" in
       Some main_alias_name
     ) else
       None
