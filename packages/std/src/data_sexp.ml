@@ -311,27 +311,7 @@ module Csexp = struct
 
   (** Read canonical S-expression from input channel *)
   let input ic =
-    let pos = ref 0 in
-
     let read_char () = try Some (input_char ic) with End_of_file -> None in
-
-    let parse_number () =
-      let buffer = Buffer.create 4 in
-      let rec loop () =
-        match read_char () with
-        | Some ('0' .. '9' as c) ->
-            Buffer.add_char buffer c;
-            loop ()
-        | Some c ->
-            (* Put back the character we read *)
-            Scanf.sscanf (String.make 1 c ^ "") "%c" (fun _ -> ());
-            let s = Buffer.contents buffer in
-            if s = "" then raise (Parse_error "Expected number")
-            else int_of_string s
-        | None -> raise (Parse_error "Unexpected EOF while reading number")
-      in
-      loop ()
-    in
 
     let read_atom_content n =
       let buffer = Buffer.create n in

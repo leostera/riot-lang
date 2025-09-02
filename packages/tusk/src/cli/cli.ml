@@ -207,6 +207,9 @@ let build_command package_opt =
   | Client.BuildFinished (Error msg) ->
       Printf.eprintf "error: build failed: %s\n" msg;
       Error (Failure "Build failed")
+  | Client.BuildStarted _ | Client.BuildEvent _ ->
+      (* These should not happen as final result, but handle just in case *)
+      Error (Failure "Unexpected response from server")
 
 (** Execute a binary and handle its exit status *)
 let execute_binary binary_name binary_path =
@@ -281,6 +284,7 @@ let build_package package_name =
     match result with
     | Ok (Tusk_jsonrpc.Client.BuildFinished (Ok ())) -> true
     | Ok (Tusk_jsonrpc.Client.BuildFinished (Error _)) -> false
+    | Ok (Tusk_jsonrpc.Client.BuildStarted _ | Tusk_jsonrpc.Client.BuildEvent _) -> false
     | Error _ -> false
 
 (** Execute the run command *)
@@ -1290,13 +1294,6 @@ let main () =
     | "lsp" -> lsp_command args
     | "mcp" ->
         (* Start MCP server *)
-        let cwd =
-          Std.Env.current_dir () |> Std.Result.expect ~msg:"Operation failed"
-        in
-        let workspace =
-          Workspace_manager.scan cwd
-          |> Std.Result.expect ~msg:"Operation failed"
-        in
         Mcp_server.start ();
         Ok ()
     | "fmt" | "format" -> fmt_command ()

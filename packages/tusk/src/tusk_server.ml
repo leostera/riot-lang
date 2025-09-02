@@ -265,7 +265,6 @@ and handle_build state client_pid target session_id_opt =
     | All -> "All"
     | Package p -> Printf.sprintf "Package(%s)" p);
   flush stderr;
-  let server_pid = self () in
   let _ =
     spawn (fun () ->
         Printf.eprintf "Server: Build process spawned\n";
@@ -398,7 +397,7 @@ and handle_build state client_pid target session_id_opt =
 
             Log.worker_pool_creating ~session_id ~workers:state.workers;
             let pool_start = time_ms () in
-            let worker_pool =
+            let _ =
               Worker_pool.start ~workers:state.workers ~provider:(self ())
                 ~build_graph:target_graph ~build_results ~workspace ~store
                 ~worker_fn:Build_worker.main ()
@@ -548,7 +547,7 @@ let init ~current_dir ~workers ~port =
   let build_graph = Build_graph.create workspace toolchain in
   let build_results = Build_results.create () in
   let build_queue = Build_queue.create build_results in
-  let tcp_listener = start_tcp_server ~server:server_pid ~port in
+  let _ = start_tcp_server ~server:server_pid ~port in
 
   let state =
     {

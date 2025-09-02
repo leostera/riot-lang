@@ -642,9 +642,14 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
           in
           
           let namespaced = get_namespaced_name ~package_name:pkg.name ~file_path:file in
+          
+          (* Folder interface modules (like cli/cli.ml) should NOT point to __aliases *)
+          (* They ARE the folder module themselves *)
+          let target_module = namespaced in
+          
           (* Skip if it's the main package module or if names are the same *)
           if simple_name = namespaced then None
-          else Some (simple_name, namespaced))
+          else Some (simple_name, target_module))
       |> List.sort_uniq compare  (* Remove duplicates *)
     in
     
@@ -677,10 +682,10 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
       output_string oc alias_content;
       close_out oc;
       
-      (* Compile the alias module with -no-alias-deps *)
+      (* Compile the alias module with -no-alias-deps and suppress warning 49 *)
       let alias_cmo = alias_module_name ^ ".cmo" in
       let cmd =
-        Printf.sprintf "cd %s && %s -I +unix -I . %s -no-alias-deps -c -o %s %s" 
+        Printf.sprintf "cd %s && %s -I +unix -I . %s -no-alias-deps -w -49 -c -o %s %s" 
           sandbox_dir ocamlc dep_includes alias_cmo alias_ml
       in
       Printf.printf "  $ %s\n%!" cmd;

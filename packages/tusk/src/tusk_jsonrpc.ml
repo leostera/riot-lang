@@ -413,11 +413,7 @@ module TuskProtocol = struct
               | Some (Json.Int n) -> n
               | _ -> 0
             in
-            let column =
-              match List.assoc_opt "column" fields with
-              | Some (Json.Int n) -> Some n
-              | _ -> None
-            in
+            (* column field is optional and not currently used *)
             let message =
               match List.assoc_opt "message" fields with
               | Some (Json.String s) -> s
@@ -734,11 +730,7 @@ module TuskProtocol = struct
             in
             Ok (Event.CreatingDirectory { path })
         | Some (Json.String "RpcRequestReceived") ->
-            let session_id =
-              match List.assoc_opt "session_id" fields with
-              | Some (Json.String s) -> Session_id.of_string s
-              | _ -> Session_id.make ()
-            in
+            (* session_id field not currently used *)
             let request_type =
               match List.assoc_opt "request_type" fields with
               | Some (Json.String s) -> s
@@ -746,11 +738,7 @@ module TuskProtocol = struct
             in
             Ok (Event.RpcRequestReceived { request_type; args = Json.Null })
         | Some (Json.String "RpcResponseSent") ->
-            let session_id =
-              match List.assoc_opt "session_id" fields with
-              | Some (Json.String s) -> Session_id.of_string s
-              | _ -> Session_id.make ()
-            in
+            (* session_id field not currently used *)
             let success =
               match List.assoc_opt "success" fields with
               | Some (Json.Bool b) -> b

@@ -894,7 +894,6 @@ end
 
 (** Create MCP server using Jsonrpc.Server *)
 let create_server () =
-  let ctx = () in
   let methods =
     [
       {

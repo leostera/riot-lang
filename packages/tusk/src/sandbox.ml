@@ -164,8 +164,6 @@ let copy_dependency_artifacts sandbox ~store ~build_graph ~build_results =
 
 (** Run actions in the sandbox and return output paths *)
 let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
-  let pkg_name = node.Build_node.package.name in
-
   (* Extract actions from the planned node *)
   let actions =
     match node.Build_node.spec with
