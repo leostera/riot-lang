@@ -3,12 +3,23 @@
     This module provides a high-level interface for invoking the OCaml compiler
     with proper configuration and error handling. *)
 
+(** Compiler warnings that can be suppressed *)
+type compiler_warning =
+  | NoCmiFile  (** Warning 49: Absent cmi file when looking up module alias *)
+  | All  (** All warnings *)
+
 (** Compiler flags *)
 type compiler_flag =
-  | NoAliasDeps  (** -no-alias-deps: Do not record dependencies for module aliases *)
+  | NoAliasDeps
+      (** -no-alias-deps: Do not record dependencies for module aliases *)
   | Open of string  (** -open <module>: Opens the module before typing *)
-  | NoStdlib  (** -nostdlib: Do not automatically link with the standard library *)
-  | NoPervasives  (** -nopervasives: Do not open the Pervasives module (or Stdlib) *)
+  | NoStdlib
+      (** -nostdlib: Do not automatically link with the standard library *)
+  | NoPervasives
+      (** -nopervasives: Do not open the Pervasives module (or Stdlib) *)
+  | Impl of Std.Path.t
+      (** -impl <file>: Compile <file> as an implementation file *)
+  | Warning of compiler_warning list  (** -w: Configure warning flags *)
 
 (** Compilation mode *)
 type mode =

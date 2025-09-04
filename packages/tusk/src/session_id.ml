@@ -1,5 +1,5 @@
+open Std
 (** Session ID module - provides opaque session identifiers *)
-  open Std
 
 type t = string
 

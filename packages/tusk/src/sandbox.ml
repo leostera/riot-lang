@@ -1,6 +1,7 @@
 (** Sandbox - isolated build execution environment *)
 
-  open Std
+open Std
+
 type t = {
   root : string;
   sandbox_dir : string;
@@ -25,8 +26,7 @@ let create ~node ~(workspace : Workspace.t) =
   (* Create a unique sandbox directory for this build *)
   let sandbox_id =
     Printf.sprintf "%08x"
-      (Hashtbl.hash
-         (node.Build_node.package.name ^ string_of_float (time ())))
+      (Hashtbl.hash (node.Build_node.package.name ^ string_of_float (time ())))
   in
   let sandbox_dir =
     Filename.concat (Filename.concat debug_dir "sandbox") sandbox_id
@@ -302,7 +302,12 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
            actions
        with Exit -> ());
 
-      if !success then Ok !declared_outputs
+      if !success then
+        if !declared_outputs = [] then
+          Error
+            "No DeclareOutputs action found - build_planner must declare \
+             expected outputs!"
+        else Ok !declared_outputs
       else Error (String.concat "; " !errors)
     with exn ->
       let error_msg =

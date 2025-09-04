@@ -12,7 +12,8 @@ val path_to_module_name : package_name:string -> string -> string
 val get_module_name : package_name:string -> string -> string
 (** Get the transformed module name for a source file *)
 
-val get_module_name_with_folders : package_name:string -> namespace:string list -> string -> string
+val get_module_name_with_folders :
+  package_name:string -> namespace:string list -> string -> string
 (** Get the transformed module name with folder-based namespacing support *)
 
 val generate_package_module :

@@ -7,8 +7,7 @@ open Miniriot
 (** Helper to create a tusk client connected to the local server *)
 let create_local_client () =
   let cwd =
-    Env.current_dir ()
-    |> Result.expect ~msg:"Failed to get current directory"
+    Env.current_dir () |> Result.expect ~msg:"Failed to get current directory"
   in
   match Workspace_manager.scan cwd with
   | Error _ -> Error "Failed to find workspace"
@@ -415,8 +414,7 @@ let execute_tool name arguments =
             | Ok client -> (
                 match
                   Tusk_jsonrpc.Client.format_file client
-                    ~file_path:(Path.to_string file_path)
-                    ~check_only
+                    ~file_path:(Path.to_string file_path) ~check_only
                 with
                 | Ok (formatted_code, changed) ->
                     [
@@ -449,9 +447,8 @@ let execute_tool name arguments =
             with
             | Some (Json.String c), Some (Json.String h) ->
                 ( c,
-                  match Path.of_string h with
-                  | Ok p -> Some p
-                  | Error _ -> None )
+                  match Path.of_string h with Ok p -> Some p | Error _ -> None
+                )
             | Some (Json.String c), None -> (c, None)
             | _ -> ("", None))
         | _ -> ("", None)
@@ -531,16 +528,12 @@ let execute_tool name arguments =
           |> Result.expect ~msg:"Failed to get current directory"
         in
         let package_dir =
-          Filename.concat
-            (Filename.concat (Path.to_string cwd) "packages")
-            name
+          Filename.concat (Filename.concat (Path.to_string cwd) "packages") name
         in
         let src_dir = Filename.concat package_dir "src" in
 
         (* Create directories *)
-        let _ =
-          Command.run_command (Printf.sprintf "mkdir -p %s" src_dir)
-        in
+        let _ = Command.run_command (Printf.sprintf "mkdir -p %s" src_dir) in
 
         (* Create main module file *)
         let main_ml = Filename.concat src_dir (name ^ ".ml") in
@@ -718,9 +711,7 @@ let execute_tool name arguments =
                 ^ String.capitalize_ascii name
                 ^ "\n"
               in
-              let _ =
-                File.write ~path:package_ml ~content:updated_content
-              in
+              let _ = File.write ~path:package_ml ~content:updated_content in
               ()
           | Error _ -> ());
 
@@ -734,9 +725,7 @@ let execute_tool name arguments =
                 ^ String.capitalize_ascii name
                 ^ "\n"
               in
-              let _ =
-                File.write ~path:package_mli ~content:updated_content
-              in
+              let _ = File.write ~path:package_mli ~content:updated_content in
               ()
           | Error _ -> ());
 
@@ -829,8 +818,7 @@ module McpProtocol = struct
                     let arguments = List.assoc_opt "arguments" params in
                     Result.Ok (ToolsCall { name; arguments })
                 | _ -> Result.Error (Json.String "Missing tool name"))
-            | _ -> Result.Error (Json.String "Missing tool call parameters")
-            )
+            | _ -> Result.Error (Json.String "Missing tool call parameters"))
         | Some (Json.String method_name) ->
             Result.Error
               (Json.String (Printf.sprintf "Unknown method: %s" method_name))
@@ -888,8 +876,7 @@ module McpProtocol = struct
             | _ -> Result.Error (Json.String "Missing tool name"))
         | _ -> Result.Error (Json.String "Invalid tools/call parameters"))
     | _ ->
-        Result.Error
-          (Json.String (Printf.sprintf "Unknown method: %s" method_))
+        Result.Error (Json.String (Printf.sprintf "Unknown method: %s" method_))
 end
 
 (** Create MCP server using Jsonrpc.Server *)
@@ -984,9 +971,7 @@ let start () =
   (* Ensure tusk server is running *)
   let _ =
     try
-      let cwd =
-        Env.current_dir () |> Result.expect ~msg:"Failed to get cwd"
-      in
+      let cwd = Env.current_dir () |> Result.expect ~msg:"Failed to get cwd" in
       match Workspace_manager.scan cwd with
       | Error _ -> Printf.eprintf "[MCP] Warning: Could not find workspace\n"
       | Ok workspace -> (

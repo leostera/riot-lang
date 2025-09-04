@@ -1,5 +1,5 @@
+open Std
 (** Build actions - concrete build steps that happen in the sandbox *)
-  open Std
 
 type action =
   (* File compilation actions *)
@@ -43,27 +43,49 @@ type resolved_dep = { lib_file : string; include_path : string }
 let action_to_string action =
   match action with
   | CompileInterface { source; output; includes; flags } ->
-      let flags_str = 
-        flags |> List.map (function
+      let flags_str =
+        flags
+        |> List.map (function
           | Ocamlc.NoAliasDeps -> "no-alias-deps"
           | Ocamlc.Open m -> "open:" ^ m
           | Ocamlc.NoStdlib -> "nostdlib"
-          | Ocamlc.NoPervasives -> "nopervasives")
+          | Ocamlc.NoPervasives -> "nopervasives"
+          | Ocamlc.Impl file -> "impl:" ^ Std.Path.to_string file
+          | Ocamlc.Warning warnings ->
+              let warning_strs =
+                List.map
+                  (function
+                    | Ocamlc.NoCmiFile -> "no-cmi-file" | Ocamlc.All -> "all")
+                  warnings
+              in
+              "warning:[" ^ String.concat ";" warning_strs ^ "]")
         |> String.concat ","
       in
       Printf.sprintf "compile_interface(%s,%s,[%s],[%s])" source output
-        (String.concat "," includes) flags_str
+        (String.concat "," includes)
+        flags_str
   | CompileImplementation { source; output; includes; flags } ->
-      let flags_str = 
-        flags |> List.map (function
+      let flags_str =
+        flags
+        |> List.map (function
           | Ocamlc.NoAliasDeps -> "no-alias-deps"
           | Ocamlc.Open m -> "open:" ^ m
           | Ocamlc.NoStdlib -> "nostdlib"
-          | Ocamlc.NoPervasives -> "nopervasives")
+          | Ocamlc.NoPervasives -> "nopervasives"
+          | Ocamlc.Impl file -> "impl:" ^ Std.Path.to_string file
+          | Ocamlc.Warning warnings ->
+              let warning_strs =
+                List.map
+                  (function
+                    | Ocamlc.NoCmiFile -> "no-cmi-file" | Ocamlc.All -> "all")
+                  warnings
+              in
+              "warning:[" ^ String.concat ";" warning_strs ^ "]")
         |> String.concat ","
       in
       Printf.sprintf "compile_impl(%s,%s,[%s],[%s])" source output
-        (String.concat "," includes) flags_str
+        (String.concat "," includes)
+        flags_str
   | CompileC { source; output } ->
       Printf.sprintf "compile_c(%s,%s)" source output
   | CreateLibrary { output; objects; includes } ->
@@ -125,7 +147,8 @@ let execute_action action toolchain =
       Ocamlc.compile_interface ~toolchain ~includes ~flags ~output source
       |> convert_result
   | CompileImplementation { source; output; includes; flags } ->
-      Ocamlc.compile_impl ~toolchain ~includes ~flags ~output source |> convert_result
+      Ocamlc.compile_impl ~toolchain ~includes ~flags ~output source
+      |> convert_result
   | CompileC { source; output } ->
       Ocamlc.compile_c ~toolchain ~includes:[] ~output source |> convert_result
   | CreateLibrary { output; objects; includes } ->
@@ -153,15 +176,9 @@ let execute_action action toolchain =
         (Success, Printf.sprintf "Wrote %s" destination)
       with exn -> (Failed (Printexc.to_string exn), ""))
   | DeclareOutputs { outputs } ->
-      (* Just validate that declared outputs exist *)
-      let missing =
-        List.filter (fun f -> not (File_utils.exists ~path:f)) outputs
-      in
-      if missing = [] then (Success, "All outputs exist")
-      else
-        ( Failed
-            (Printf.sprintf "Missing outputs: %s" (String.concat ", " missing)),
-          "" )
+      (* Just record the expected outputs - don't validate yet as they haven't been built *)
+      ( Success,
+        Printf.sprintf "Declared %d expected outputs" (List.length outputs) )
 
 (** Hash a list of actions *)
 let hash actions =

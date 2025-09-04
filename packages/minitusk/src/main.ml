@@ -240,42 +240,47 @@ let get_namespaced_name ~package_name ~file_path =
     else basename
   in
   (* Replace hyphens with underscores in package name *)
-  let safe_package_name = String.map (fun c -> if c = '-' then '_' else c) package_name in
-  
+  let safe_package_name =
+    String.map (fun c -> if c = '-' then '_' else c) package_name
+  in
+
   (* Get folder structure relative to src/ *)
   let rec get_folder_parts path acc =
     let dir = Filename.dirname path in
     let base = Filename.basename dir in
-    if base = "src" || dir = "." || dir = "/" then
-      acc
-    else
-      get_folder_parts dir (base :: acc)
+    if base = "src" || dir = "." || dir = "/" then acc
+    else get_folder_parts dir (base :: acc)
   in
   let folder_parts = get_folder_parts file_path [] in
-  
+
   (* Check if this is a folder interface (e.g., cli/cli.ml) *)
-  let is_folder_interface = 
+  let is_folder_interface =
     match List.rev folder_parts with
     | folder :: _ when folder = name_without_ext -> true
     | _ -> false
   in
-  
+
   (* Build the full namespaced name *)
   if name_without_ext = safe_package_name && folder_parts = [] then
     (* Main package module *)
     String.capitalize_ascii name_without_ext
   else if folder_parts = [] then
     (* Top-level module *)
-    String.capitalize_ascii safe_package_name ^ "__" ^ String.capitalize_ascii name_without_ext
+    String.capitalize_ascii safe_package_name
+    ^ "__"
+    ^ String.capitalize_ascii name_without_ext
   else if is_folder_interface then
     (* Folder interface module (e.g., cli/cli.ml -> Tusk__Cli) *)
-    String.capitalize_ascii safe_package_name ^ "__" ^ 
-    String.concat "__" (List.map String.capitalize_ascii folder_parts)
+    String.capitalize_ascii safe_package_name
+    ^ "__"
+    ^ String.concat "__" (List.map String.capitalize_ascii folder_parts)
   else
     (* Module in a folder (e.g., cli/build.ml -> Tusk__Cli__Build) *)
-    String.capitalize_ascii safe_package_name ^ "__" ^ 
-    String.concat "__" (List.map String.capitalize_ascii folder_parts) ^ "__" ^
-    String.capitalize_ascii name_without_ext
+    String.capitalize_ascii safe_package_name
+    ^ "__"
+    ^ String.concat "__" (List.map String.capitalize_ascii folder_parts)
+    ^ "__"
+    ^ String.capitalize_ascii name_without_ext
 
 (* Collect source files *)
 let collect_sources pkg_path =
@@ -373,30 +378,29 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
       let basename = Filename.basename src in
       (* Get relative path from src/ directory *)
       let src_dir = Filename.concat pkg.path "src" in
-      let relative_path = 
+      let relative_path =
         (* Remove the package src directory prefix to get relative path *)
         if String.starts_with ~prefix:(src_dir ^ "/") src then
-          String.sub src (String.length src_dir + 1) (String.length src - String.length src_dir - 1)
-        else
-          basename
+          String.sub src
+            (String.length src_dir + 1)
+            (String.length src - String.length src_dir - 1)
+        else basename
       in
-      
+
       let dest_path =
         if basename = "lib.ml" then
           Filename.concat sandbox_dir (pkg.name ^ ".ml")
         else if basename = "lib.mli" then
           Filename.concat sandbox_dir (pkg.name ^ ".mli")
-        else
-          Filename.concat sandbox_dir relative_path
+        else Filename.concat sandbox_dir relative_path
       in
-      
+
       (* Create parent directory if needed *)
       let dest_dir = Filename.dirname dest_path in
-      if dest_dir <> sandbox_dir && dest_dir <> "." then (
-        let cmd = Printf.sprintf "mkdir -p %s" dest_dir in
-        ignore (Unix.system cmd)
-      );
-      
+      (if dest_dir <> sandbox_dir && dest_dir <> "." then
+         let cmd = Printf.sprintf "mkdir -p %s" dest_dir in
+         ignore (Unix.system cmd));
+
       let cmd = Printf.sprintf "cp %s %s" src dest_path in
       ignore (Unix.system cmd))
     (sources @ c_sources);
@@ -534,23 +538,24 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
       let source_to_sandbox_name src =
         let basename = Filename.basename src in
         let src_dir = Filename.concat pkg.path "src" in
-        
-        if basename = "lib.ml" then
-          pkg.name ^ ".ml"
-        else if basename = "lib.mli" then
-          pkg.name ^ ".mli"
+
+        if basename = "lib.ml" then pkg.name ^ ".ml"
+        else if basename = "lib.mli" then pkg.name ^ ".mli"
         else if String.starts_with ~prefix:(src_dir ^ "/") src then
           (* Get relative path from src/ *)
-          String.sub src (String.length src_dir + 1) (String.length src - String.length src_dir - 1)
-        else
-          basename
+          String.sub src
+            (String.length src_dir + 1)
+            (String.length src - String.length src_dir - 1)
+        else basename
       in
       let ocamldep =
         Printf.sprintf "%s/.tusk/toolchains/5.3.0/bin/ocamldep" home
       in
       let cmd =
-        Printf.sprintf "cd %s && find . -name '*.ml' -o -name '*.mli' | xargs %s -I . -sort 2>/dev/null" sandbox_dir
-          ocamldep
+        Printf.sprintf
+          "cd %s && find . -name '*.ml' -o -name '*.mli' | xargs %s -I . -sort \
+           2>/dev/null"
+          sandbox_dir ocamldep
       in
       let ic = Unix.open_process_in cmd in
       let sorted_str = try input_line ic with End_of_file -> "" in
@@ -567,7 +572,7 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
           List.filter_map
             (fun sandbox_name ->
               (* Remove ./ prefix if present *)
-              let clean_name = 
+              let clean_name =
                 if String.starts_with ~prefix:"./" sandbox_name then
                   String.sub sandbox_name 2 (String.length sandbox_name - 2)
                 else sandbox_name
@@ -601,91 +606,99 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
   (* Generate alias module if we have namespaced modules *)
   let alias_module_name_opt =
     (* Collect all modules that need aliases *)
-    let module_aliases = 
-      (sorted_ml_files @ sorted_mli_files)
+    let module_aliases =
+      sorted_ml_files @ sorted_mli_files
       |> List.filter_map (fun file ->
           let basename = Filename.basename file in
-          let name_without_ext = 
+          let name_without_ext =
             if Filename.check_suffix basename ".ml" then
               Filename.chop_suffix basename ".ml"
             else if Filename.check_suffix basename ".mli" then
               Filename.chop_suffix basename ".mli"
             else basename
           in
-          
+
           (* Get folder structure for simple name *)
           let rec get_folder_parts path acc =
             let dir = Filename.dirname path in
             let base = Filename.basename dir in
-            if base = "src" || dir = "." || dir = "/" then
-              acc
-            else
-              get_folder_parts dir (base :: acc)
+            if base = "src" || dir = "." || dir = "/" then acc
+            else get_folder_parts dir (base :: acc)
           in
           let folder_parts = get_folder_parts file [] in
-          
+
           (* Build simple name with folder structure *)
-          let simple_name = 
-            if folder_parts = [] then
-              String.capitalize_ascii name_without_ext
+          let simple_name =
+            if folder_parts = [] then String.capitalize_ascii name_without_ext
             else
               (* Check if it's a folder interface *)
-              let is_folder_interface = 
+              let is_folder_interface =
                 match List.rev folder_parts with
                 | folder :: _ when folder = name_without_ext -> true
                 | _ -> false
               in
               if is_folder_interface then
-                String.concat "." (List.map String.capitalize_ascii folder_parts)
+                String.concat "."
+                  (List.map String.capitalize_ascii folder_parts)
               else
-                String.concat "." (List.map String.capitalize_ascii folder_parts @ [String.capitalize_ascii name_without_ext])
+                String.concat "."
+                  (List.map String.capitalize_ascii folder_parts
+                  @ [ String.capitalize_ascii name_without_ext ])
           in
-          
-          let namespaced = get_namespaced_name ~package_name:pkg.name ~file_path:file in
-          
+
+          let namespaced =
+            get_namespaced_name ~package_name:pkg.name ~file_path:file
+          in
+
           (* Folder interface modules (like cli/cli.ml) should NOT point to __aliases *)
           (* They ARE the folder module themselves *)
           let target_module = namespaced in
-          
+
           (* Skip if it's the main package module or if names are the same *)
           if simple_name = namespaced then None
           else Some (simple_name, target_module))
-      |> List.sort_uniq compare  (* Remove duplicates *)
+      |> List.sort_uniq compare (* Remove duplicates *)
     in
-    
+
     if module_aliases <> [] then (
       (* Generate alias module content *)
       (* Convert dot notation to simple names for OCaml syntax *)
-      let alias_content = 
-        "(* Auto-generated module aliases for package " ^ pkg.name ^ " *)\n" ^
-        (List.map (fun (simple, namespaced) ->
-           (* If simple name contains a dot, we need to convert it to a valid OCaml module name *)
-           if String.contains simple '.' then
-             (* For Cli.Build, generate: module Build = Tusk__Cli__Build *)
-             let last_dot = String.rindex simple '.' in
-             let module_name = String.sub simple (last_dot + 1) (String.length simple - last_dot - 1) in
-             Printf.sprintf "module %s = %s" module_name namespaced
-           else
-             Printf.sprintf "module %s = %s" simple namespaced)
-         module_aliases
-         |> String.concat "\n")
+      let alias_content =
+        "(* Auto-generated module aliases for package " ^ pkg.name ^ " *)\n"
+        ^ (List.map
+             (fun (simple, namespaced) ->
+               (* If simple name contains a dot, we need to convert it to a valid OCaml module name *)
+               if String.contains simple '.' then
+                 (* For Cli.Build, generate: module Build = Tusk__Cli__Build *)
+                 let last_dot = String.rindex simple '.' in
+                 let module_name =
+                   String.sub simple (last_dot + 1)
+                     (String.length simple - last_dot - 1)
+                 in
+                 Printf.sprintf "module %s = %s" module_name namespaced
+               else Printf.sprintf "module %s = %s" simple namespaced)
+             module_aliases
+          |> String.concat "\n")
       in
-      
+
       (* Create a unique alias module name *)
-      let safe_name = String.map (fun c -> if c = '-' then '_' else c) pkg.name in
+      let safe_name =
+        String.map (fun c -> if c = '-' then '_' else c) pkg.name
+      in
       let alias_module_name = String.capitalize_ascii safe_name ^ "__aliases" in
       let alias_ml = alias_module_name ^ ".ml" in
-      
+
       (* Write alias module file *)
       let alias_file_path = Filename.concat sandbox_dir alias_ml in
       let oc = open_out alias_file_path in
       output_string oc alias_content;
       close_out oc;
-      
+
       (* Compile the alias module with -no-alias-deps and suppress warning 49 *)
       let alias_cmo = alias_module_name ^ ".cmo" in
       let cmd =
-        Printf.sprintf "cd %s && %s -I +unix -I . %s -no-alias-deps -w -49 -c -o %s %s" 
+        Printf.sprintf
+          "cd %s && %s -I +unix -I . %s -no-alias-deps -w -49 -c -o %s %s"
           sandbox_dir ocamlc dep_includes alias_cmo alias_ml
       in
       Printf.printf "  $ %s\n%!" cmd;
@@ -697,13 +710,13 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
           | Unix.WSIGNALED n -> Printf.sprintf "signal %d" n
           | Unix.WSTOPPED n -> Printf.sprintf "stopped %d" n);
         exit 1);
-      
-      Some alias_module_name
-    ) else None
+
+      Some alias_module_name)
+    else None
   in
-  
+
   (* Build -open flag if we have an alias module *)
-  let open_flag = 
+  let open_flag =
     match alias_module_name_opt with
     | Some name -> " -open " ^ name
     | None -> ""
@@ -715,21 +728,23 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
       let basename = Filename.basename mli_src in
       let src_dir = Filename.concat pkg.path "src" in
       (* Get the file path in sandbox *)
-      let mli_file = 
-        if basename = "lib.mli" then
-          pkg.name ^ ".mli"
+      let mli_file =
+        if basename = "lib.mli" then pkg.name ^ ".mli"
         else if String.starts_with ~prefix:(src_dir ^ "/") mli_src then
-          String.sub mli_src (String.length src_dir + 1) (String.length mli_src - String.length src_dir - 1)
-        else
-          basename
+          String.sub mli_src
+            (String.length src_dir + 1)
+            (String.length mli_src - String.length src_dir - 1)
+        else basename
       in
       (* Generate namespaced output name *)
-      let namespaced = get_namespaced_name ~package_name:pkg.name ~file_path:mli_src in
+      let namespaced =
+        get_namespaced_name ~package_name:pkg.name ~file_path:mli_src
+      in
       let cmi_output = namespaced ^ ".cmi" in
       (* Compile all .mli files with -open flag if we have aliases *)
       let cmd =
-        Printf.sprintf "cd %s && %s -I +unix -I . %s%s -c -o %s %s" sandbox_dir ocamlc
-          dep_includes open_flag cmi_output mli_file
+        Printf.sprintf "cd %s && %s -I +unix -I . %s%s -c -o %s %s" sandbox_dir
+          ocamlc dep_includes open_flag cmi_output mli_file
       in
       Printf.printf "  $ %s\n%!" cmd;
       let ret = Unix.system cmd in
@@ -748,16 +763,18 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
       let basename = Filename.basename ml_src in
       let src_dir = Filename.concat pkg.path "src" in
       (* Get the file path in sandbox *)
-      let ml_file = 
-        if basename = "lib.ml" then
-          pkg.name ^ ".ml"
+      let ml_file =
+        if basename = "lib.ml" then pkg.name ^ ".ml"
         else if String.starts_with ~prefix:(src_dir ^ "/") ml_src then
-          String.sub ml_src (String.length src_dir + 1) (String.length ml_src - String.length src_dir - 1)
-        else
-          basename
+          String.sub ml_src
+            (String.length src_dir + 1)
+            (String.length ml_src - String.length src_dir - 1)
+        else basename
       in
       (* Generate namespaced output name *)
-      let namespaced = get_namespaced_name ~package_name:pkg.name ~file_path:ml_src in
+      let namespaced =
+        get_namespaced_name ~package_name:pkg.name ~file_path:ml_src
+      in
       let cmo_output = namespaced ^ ".cmo" in
       (* Include all C objects when compiling ML files with external declarations *)
       let c_objects =
@@ -773,8 +790,8 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
         else ""
       in
       let cmd =
-        Printf.sprintf "cd %s && %s -I +unix -I . %s%s -c -o %s %s %s" sandbox_dir
-          ocamlc dep_includes open_flag cmo_output ml_file c_objects
+        Printf.sprintf "cd %s && %s -I +unix -I . %s%s -c -o %s %s %s"
+          sandbox_dir ocamlc dep_includes open_flag cmo_output ml_file c_objects
       in
       Printf.printf "  $ %s\n%!" cmd;
       let ret = Unix.system cmd in
@@ -792,23 +809,29 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
   (* ocamldep -sort gives us compilation order, which is also the correct linking order for .ml files *)
   let cmo_files =
     (* Add alias module first if it exists *)
-    let alias_cmo_list = 
+    let alias_cmo_list =
       match alias_module_name_opt with
-      | Some name -> [name ^ ".cmo"]
+      | Some name -> [ name ^ ".cmo" ]
       | None -> []
     in
-    let ml_cmos = List.map
-      (fun f ->
-        let namespaced = get_namespaced_name ~package_name:pkg.name ~file_path:f in
-        namespaced ^ ".cmo")
-      sorted_ml_files
+    let ml_cmos =
+      List.map
+        (fun f ->
+          let namespaced =
+            get_namespaced_name ~package_name:pkg.name ~file_path:f
+          in
+          namespaced ^ ".cmo")
+        sorted_ml_files
     in
     (* Deduplicate the list while preserving order *)
     let deduplicate lst =
       let seen = Hashtbl.create 10 in
-      List.filter (fun x ->
-        if Hashtbl.mem seen x then false
-        else (Hashtbl.add seen x true; true))
+      List.filter
+        (fun x ->
+          if Hashtbl.mem seen x then false
+          else (
+            Hashtbl.add seen x true;
+            true))
         lst
     in
     deduplicate (alias_cmo_list @ ml_cmos)
@@ -816,7 +839,9 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
 
   (* If there's a module with the same name as the package, move it to the end *)
   (* This handles the case where a module re-exports others *)
-  let safe_pkg_name = String.map (fun c -> if c = '-' then '_' else c) pkg.name in
+  let safe_pkg_name =
+    String.map (fun c -> if c = '-' then '_' else c) pkg.name
+  in
   let main_module_cmo = String.capitalize_ascii safe_pkg_name ^ ".cmo" in
   let cmo_files =
     if List.mem main_module_cmo cmo_files then
@@ -906,7 +931,9 @@ let build_package packages pkg sources c_sources outputs transitive_deps =
     let all_cmos =
       List.map
         (fun src ->
-          let namespaced = get_namespaced_name ~package_name:pkg.name ~file_path:src in
+          let namespaced =
+            get_namespaced_name ~package_name:pkg.name ~file_path:src
+          in
           namespaced ^ ".cmo")
         sorted_ml_files
     in

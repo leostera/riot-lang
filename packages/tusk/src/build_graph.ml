@@ -62,74 +62,86 @@ let create workspace toolchain =
               || Filename.check_suffix entry ".c"
             then
               match Std.Path.of_string (Filename.concat src_dir rel_path) with
-              | Ok path -> 
+              | Ok path ->
                   (* Extract namespace from relative path for future use *)
-                  let namespace = 
+                  let namespace =
                     if relative_path = "" || relative_path = entry then []
-                    else 
+                    else
                       let dir_part = Filename.dirname rel_path in
                       if dir_part = "." then []
                       else String.split_on_char '/' dir_part
                   in
                   (* Determine file kind and create appropriate source *)
-                  let kind = 
-                    if Filename.check_suffix entry ".ml" || Filename.check_suffix entry ".mli" then
+                  let kind =
+                    if
+                      Filename.check_suffix entry ".ml"
+                      || Filename.check_suffix entry ".mli"
+                    then
                       (* Get the simple module name with folder awareness *)
-                      let simple_name = 
+                      let simple_name =
                         let name_without_ext =
                           if Filename.check_suffix entry ".ml" then
                             Filename.chop_suffix entry ".ml"
-                          else
-                            Filename.chop_suffix entry ".mli"
+                          else Filename.chop_suffix entry ".mli"
                         in
                         (* Compute folder-aware simple name *)
                         let full_path = Std.Path.to_string path in
-                        let src_dir = Filename.concat (Std.Path.to_string package.Workspace.path) "src" in
-                        
-                        if String.starts_with ~prefix:(src_dir ^ "/") full_path then
-                          let relative_path = String.sub full_path (String.length src_dir + 1) (String.length full_path - String.length src_dir - 1) in
+                        let src_dir =
+                          Filename.concat
+                            (Std.Path.to_string package.Workspace.path)
+                            "src"
+                        in
+
+                        if String.starts_with ~prefix:(src_dir ^ "/") full_path
+                        then
+                          let relative_path =
+                            String.sub full_path
+                              (String.length src_dir + 1)
+                              (String.length full_path - String.length src_dir
+                             - 1)
+                          in
                           let dir_path = Filename.dirname relative_path in
                           if dir_path = "." then
                             (* Top-level file *)
                             String.capitalize_ascii name_without_ext
                           else
                             (* File in subdirectory *)
-                            let folder_parts = String.split_on_char '/' dir_path in
-                            let is_folder_interface = 
+                            let folder_parts =
+                              String.split_on_char '/' dir_path
+                            in
+                            let is_folder_interface =
                               match List.rev folder_parts with
-                              | folder :: _ when folder = name_without_ext -> true
+                              | folder :: _ when folder = name_without_ext ->
+                                  true
                               | _ -> false
                             in
                             if is_folder_interface then
                               (* Folder interface: cli/cli.ml -> Cli *)
-                              String.concat "." (List.map String.capitalize_ascii folder_parts)
+                              String.concat "."
+                                (List.map String.capitalize_ascii folder_parts)
                             else
-                              (* Regular file in folder: cli/build.ml -> Cli.Build *)
-                              String.concat "." (List.map String.capitalize_ascii folder_parts @ [String.capitalize_ascii name_without_ext])
-                        else
-                          String.capitalize_ascii name_without_ext
+                              (* Regular file in folder: cli/build.ml -> Build (just the module name) *)
+                              String.capitalize_ascii name_without_ext
+                        else String.capitalize_ascii name_without_ext
                       in
                       (* Get the namespaced name - use folder support *)
-                      let namespaced_name = 
+                      let namespaced_name =
                         Namespacing.get_module_name_with_folders
-                          ~package_name:package.Workspace.name 
-                          ~namespace:namespace 
+                          ~package_name:package.Workspace.name ~namespace
                           (Std.Path.to_string path)
                       in
                       (* Create the appropriate variant *)
                       if Filename.check_suffix entry ".ml" then
-                        Build_node.ML { simple_name; namespaced_name; namespace }
+                        Build_node.ML
+                          { simple_name; namespaced_name; namespace }
                       else
-                        Build_node.MLI { simple_name; namespaced_name; namespace }
-                    else if Filename.check_suffix entry ".c" then 
+                        Build_node.MLI
+                          { simple_name; namespaced_name; namespace }
+                    else if Filename.check_suffix entry ".c" then
                       Build_node.C_stub
-                    else 
-                      Build_node.Other (Filename.extension entry)
+                    else Build_node.Other (Filename.extension entry)
                   in
-                  let source = {
-                    Build_node.file = path;
-                    kind
-                  } in
+                  let source = { Build_node.file = path; kind } in
                   source :: acc
               | Error _ -> acc
             else acc)

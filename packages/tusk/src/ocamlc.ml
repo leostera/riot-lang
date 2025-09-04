@@ -1,12 +1,23 @@
+open Std
 (** OCaml compiler command generation and execution *)
-  open Std
+
+(** Compiler warnings that can be suppressed *)
+type compiler_warning =
+  | NoCmiFile  (** Warning 49: Absent cmi file when looking up module alias *)
+  | All  (** All warnings *)
 
 (** Compiler flags *)
 type compiler_flag =
-  | NoAliasDeps  (** -no-alias-deps: Do not record dependencies for module aliases *)
+  | NoAliasDeps
+      (** -no-alias-deps: Do not record dependencies for module aliases *)
   | Open of string  (** -open <module>: Opens the module before typing *)
-  | NoStdlib  (** -nostdlib: Do not automatically link with the standard library *)
-  | NoPervasives  (** -nopervasives: Do not open the Pervasives module (or Stdlib) *)
+  | NoStdlib
+      (** -nostdlib: Do not automatically link with the standard library *)
+  | NoPervasives
+      (** -nopervasives: Do not open the Pervasives module (or Stdlib) *)
+  | Impl of Std.Path.t
+      (** -impl <file>: Compile <file> as an implementation file *)
+  | Warning of compiler_warning list  (** -w: Configure warning flags *)
 
 (** Compilation mode *)
 type mode =
@@ -25,15 +36,25 @@ let make_include_flags dirs =
 (** Generate the base ocamlc command from toolchain *)
 let base_command toolchain = Toolchains.ocamlc_path toolchain
 
+(** Convert warning to its numeric code *)
+let warning_to_code = function NoCmiFile -> "49" | All -> "a"
+
 (** Convert compiler flags to command-line arguments *)
 let flags_to_string flags =
-  List.fold_left (fun acc flag ->
-    match flag with
-    | Open m -> acc @ ["-open"; m]
-    | NoAliasDeps -> acc @ ["-no-alias-deps"]
-    | NoStdlib -> acc @ ["-nostdlib"]
-    | NoPervasives -> acc @ ["-nopervasives"]
-  ) [] flags
+  List.fold_left
+    (fun acc flag ->
+      match flag with
+      | Open m -> acc @ [ "-open"; m ]
+      | NoAliasDeps -> acc @ [ "-no-alias-deps" ]
+      | NoStdlib -> acc @ [ "-nostdlib" ]
+      | NoPervasives -> acc @ [ "-nopervasives" ]
+      | Impl file -> acc @ [ "-impl"; Path.to_string file ]
+      | Warning warnings ->
+          (* Convert warnings to -w flag format *)
+          let warning_codes = List.map warning_to_code warnings in
+          let warning_str = "-" ^ String.concat "-" warning_codes in
+          acc @ [ "-w"; warning_str ])
+    [] flags
 
 (** Build and run an ocamlc command *)
 let run ~toolchain ?(includes = []) ?(libs = []) ?(output = None)
@@ -83,15 +104,20 @@ let run ~toolchain ?(includes = []) ?(libs = []) ?(output = None)
 let compile_interface ~toolchain ~includes ~flags ~output source =
   (* Include current directory for .cmi files *)
   let includes_with_dot = "." :: includes in
-  
+
   (* If we have flags, we need to build command parts directly *)
   if flags <> [] then
     let flag_args = flags_to_string flags in
-    let cmd_parts = 
-      [base_command toolchain; "-c"] 
+    (* Check if we have an -impl flag - if so, don't add source at the end *)
+    let has_impl_flag =
+      List.exists (function Impl _ -> true | _ -> false) flags
+    in
+    let cmd_parts =
+      [ base_command toolchain; "-c" ]
       @ flag_args
-      @ List.concat_map (fun dir -> ["-I"; dir]) includes_with_dot
-      @ ["-o"; output; source]
+      @ List.concat_map (fun dir -> [ "-I"; dir ]) includes_with_dot
+      @ [ "-o"; output ]
+      @ if has_impl_flag then [] else [ source ]
     in
     let cmd = String.concat " " cmd_parts in
     let env = [ ("OCAML_COLOR", "always") ] in
@@ -100,22 +126,27 @@ let compile_interface ~toolchain ~includes ~flags ~output source =
     | Error (Command.SpawnFailed msg) -> Failed msg
     | Error _ -> Failed "Command failed"
   else
-    run ~toolchain ~includes:includes_with_dot ~output:(Some output) ~mode:Compile
-      [ source ]
+    run ~toolchain ~includes:includes_with_dot ~output:(Some output)
+      ~mode:Compile [ source ]
 
-(** Compile an implementation file (.ml -> .cmo) *)  
+(** Compile an implementation file (.ml -> .cmo) *)
 let compile_impl ~toolchain ~includes ~flags ~output source =
   (* Include current directory for .cmi files *)
   let includes_with_dot = "." :: includes in
-  
+
   (* If we have flags, we need to build command parts directly *)
   if flags <> [] then
     let flag_args = flags_to_string flags in
-    let cmd_parts = 
-      [base_command toolchain; "-c"] 
+    (* Check if we have an -impl flag - if so, don't add source at the end *)
+    let has_impl_flag =
+      List.exists (function Impl _ -> true | _ -> false) flags
+    in
+    let cmd_parts =
+      [ base_command toolchain; "-c" ]
       @ flag_args
-      @ List.concat_map (fun dir -> ["-I"; dir]) includes_with_dot
-      @ ["-o"; output; source]
+      @ List.concat_map (fun dir -> [ "-I"; dir ]) includes_with_dot
+      @ [ "-o"; output ]
+      @ if has_impl_flag then [] else [ source ]
     in
     let cmd = String.concat " " cmd_parts in
     let env = [ ("OCAML_COLOR", "always") ] in
@@ -124,8 +155,8 @@ let compile_impl ~toolchain ~includes ~flags ~output source =
     | Error (Command.SpawnFailed msg) -> Failed msg
     | Error _ -> Failed "Command failed"
   else
-    run ~toolchain ~includes:includes_with_dot ~output:(Some output) ~mode:Compile
-      [ source ]
+    run ~toolchain ~includes:includes_with_dot ~output:(Some output)
+      ~mode:Compile [ source ]
 
 (** Compile a C file *)
 let compile_c ~toolchain ~includes ~output source =

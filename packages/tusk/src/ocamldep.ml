@@ -1,5 +1,5 @@
-(** OCamldep wrapper - handles dependency analysis *)
 open Std
+(** OCamldep wrapper - handles dependency analysis *)
 
 (** Sort ML/MLI files in dependency order *)
 let sort ~toolchain ~cwd ~files =
@@ -10,16 +10,20 @@ let sort ~toolchain ~cwd ~files =
     let cmd =
       Printf.sprintf "cd %s && %s -sort %s 2>/dev/null" cwd ocamldep files_str
     in
+    
+    Format.eprintf "[DEBUG Ocamldep] Running: %s@." cmd;
 
     let ic = Command.open_process_in cmd in
     let sorted_str = try input_line ic with End_of_file -> "" in
     ignore (Command.close_process_in ic);
+    
+    Format.eprintf "[DEBUG Ocamldep] Result: %s@." sorted_str;
 
     if sorted_str = "" then files (* Return original list if ocamldep fails *)
     else
       let sorted_basenames = String.split_on_char ' ' sorted_str in
-      (* ocamldep returns files in order, just return them directly *)
-      sorted_basenames
+      (* Filter out empty strings and return files in dependency order *)
+      List.filter (fun s -> s <> "") sorted_basenames
 
 (** Get dependencies for a single file *)
 let deps ~toolchain ~cwd ~file =

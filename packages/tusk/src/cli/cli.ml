@@ -284,7 +284,9 @@ let build_package package_name =
     match result with
     | Ok (Tusk_jsonrpc.Client.BuildFinished (Ok ())) -> true
     | Ok (Tusk_jsonrpc.Client.BuildFinished (Error _)) -> false
-    | Ok (Tusk_jsonrpc.Client.BuildStarted _ | Tusk_jsonrpc.Client.BuildEvent _) -> false
+    | Ok (Tusk_jsonrpc.Client.BuildStarted _ | Tusk_jsonrpc.Client.BuildEvent _)
+      ->
+        false
     | Error _ -> false
 
 (** Execute the run command *)
