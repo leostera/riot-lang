@@ -44,7 +44,7 @@ let read ~path =
   try
     let fd = Unix.openfile path open_flags 0o640 in
     let gluon_fd = fd in
-    let source = Std_sys.IO.File.to_source gluon_fd in
+    let source = Kernel.IO.File.to_source gluon_fd in
 
     (* Get file size *)
     let stats = Unix.fstat fd in
@@ -54,13 +54,13 @@ let read ~path =
     let rec read_loop pos remaining =
       if remaining = 0 then Ok (Bytes.to_string buffer)
       else
-        match Std_sys.IO.File.read gluon_fd buffer ~pos ~len:remaining with
+        match Kernel.IO.File.read gluon_fd buffer ~pos ~len:remaining with
         | Ok bytes_read ->
             if bytes_read = 0 then Ok (Bytes.sub_string buffer 0 pos)
             else read_loop (pos + bytes_read) (remaining - bytes_read)
         | Error `Would_block ->
             Miniriot.syscall ~name:"File.read"
-              ~interest:Std_sys.IO.Interest.readable ~source (fun () ->
+              ~interest:Kernel.IO.Interest.readable ~source (fun () ->
                 read_loop pos remaining)
         | Error e ->
             Unix.close fd;
@@ -84,19 +84,19 @@ let write ~path ~content =
   try
     let fd = Unix.openfile path open_flags 0o640 in
     let gluon_fd = fd in
-    let source = Std_sys.IO.File.to_source gluon_fd in
+    let source = Kernel.IO.File.to_source gluon_fd in
     let buffer = Bytes.of_string content in
     let len = Bytes.length buffer in
 
     let rec write_loop pos remaining =
       if remaining = 0 then Ok ()
       else
-        match Std_sys.IO.File.write gluon_fd buffer ~pos ~len:remaining with
+        match Kernel.IO.File.write gluon_fd buffer ~pos ~len:remaining with
         | Ok bytes_written ->
             write_loop (pos + bytes_written) (remaining - bytes_written)
         | Error `Would_block ->
             Miniriot.syscall ~name:"File.write"
-              ~interest:Std_sys.IO.Interest.writable ~source (fun () ->
+              ~interest:Kernel.IO.Interest.writable ~source (fun () ->
                 write_loop pos remaining)
         | Error e ->
             Unix.close fd;
@@ -142,84 +142,84 @@ let is_directory ~path =
   with Unix.Unix_error (Unix.ENOENT, _, _) -> false
 
 let readdir ~path =
-  match Std_sys.IO.File.readdir path with
+  match Kernel.IO.File.readdir path with
   | Ok files -> Ok files
   | Error (`Unix_error e) -> Error (error_of_unix_error e)
   | Error _ -> Error (`Unknown "Failed to read directory")
 
 let mkdir ~path ~perm =
-  match Std_sys.IO.File.mkdir path perm with
+  match Kernel.IO.File.mkdir path perm with
   | Ok () -> Ok ()
   | Error (`Unix_error e) -> Error (error_of_unix_error e)
   | Error _ -> Error (`Unknown "Failed to create directory")
 
 let mkdirp ~path ~perm =
-  match Std_sys.IO.File.mkdirp path perm with
+  match Kernel.IO.File.mkdirp path perm with
   | Ok () -> Ok ()
   | Error (`Unix_error e) -> Error (error_of_unix_error e)
   | Error _ -> Error (`Unknown "Failed to create directory")
 
 let copy_file ~src ~dst =
-  match Std_sys.IO.File.copy_file src dst with
+  match Kernel.IO.File.copy_file src dst with
   | Ok () -> Ok ()
   | Error (`Unix_error e) -> Error (error_of_unix_error e)
   | Error (`Exn exn) -> Error (`Unknown (Printexc.to_string exn))
   | Error _ -> Error (`Unknown "Failed to copy file")
 
 let file_exists ~path =
-  match Std_sys.IO.File.file_exists path with
+  match Kernel.IO.File.file_exists path with
   | Ok exists -> Ok exists
   | Error _ -> Ok false
 
 let stat ~path =
-  match Std_sys.IO.File.stat path with
+  match Kernel.IO.File.stat path with
   | Ok stats -> Ok stats
   | Error (`Unix_error e) -> Error (error_of_unix_error e)
   | Error _ -> Error (`Unknown "Failed to stat file")
 
 let chmod ~path ~perm =
-  match Std_sys.IO.File.chmod path perm with
+  match Kernel.IO.File.chmod path perm with
   | Ok () -> Ok ()
   | Error (`Unix_error e) -> Error (error_of_unix_error e)
   | Error _ -> Error (`Unknown "Failed to change permissions")
 
 let symlink ~src ~dst =
-  match Std_sys.IO.File.symlink src dst with
+  match Kernel.IO.File.symlink src dst with
   | Ok () -> Ok ()
   | Error (`Unix_error e) -> Error (error_of_unix_error e)
   | Error _ -> Error (`Unknown "Failed to create symlink")
 
 let rmdir ~path =
-  match Std_sys.IO.File.rmdir path with
+  match Kernel.IO.File.rmdir path with
   | Ok () -> Ok ()
   | Error (`Unix_error e) -> Error (error_of_unix_error e)
   | Error _ -> Error (`Unknown "Failed to remove directory")
 
 let getcwd () =
-  match Std_sys.IO.File.getcwd () with
+  match Kernel.IO.File.getcwd () with
   | Ok path -> Ok path
   | Error _ -> Error (`Unknown "Failed to get current directory")
 
 let chdir ~path =
-  match Std_sys.IO.File.chdir path with
+  match Kernel.IO.File.chdir path with
   | Ok () -> Ok ()
   | Error _ -> Error (`Unknown "Failed to change directory")
 
 let opendir ~path =
-  match Std_sys.IO.File.opendir path with
+  match Kernel.IO.File.opendir path with
   | Ok handle -> Ok handle
   | Error (`Unix_error e) -> Error (error_of_unix_error e)
   | Error _ -> Error (`Unknown "Failed to open directory")
 
 let readdir_handle ~handle =
-  match Std_sys.IO.File.readdir_handle handle with
+  match Kernel.IO.File.readdir_handle handle with
   | Ok entry -> Ok entry
   | Error `Eof -> Error (`Unknown "End of directory")
   | Error (`Unix_error e) -> Error (error_of_unix_error e)
   | Error _ -> Error (`Unknown "Failed to read directory")
 
 let closedir ~handle =
-  match Std_sys.IO.File.closedir handle with
+  match Kernel.IO.File.closedir handle with
   | Ok () -> Ok ()
   | Error (`Unix_error e) -> Error (error_of_unix_error e)
   | Error _ -> Error (`Unknown "Failed to close directory")

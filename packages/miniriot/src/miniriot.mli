@@ -36,8 +36,8 @@ module Process : sig
     | Waiting_message
     | Waiting_io of {
         name : string;
-        token : Std_sys.IO.Token.t;
-        source : Std_sys.IO.Source.t;
+        token : Kernel.IO.Token.t;
+        source : Kernel.IO.Source.t;
       }
     | Running
     | Exited of (unit, exit_reason) result
@@ -65,17 +65,17 @@ module Process : sig
   (** Send a message to the process *)
 
   val mark_as_awaiting_io :
-    t -> name:string -> Std_sys.IO.Token.t -> Std_sys.IO.Source.t -> unit
+    t -> name:string -> Kernel.IO.Token.t -> Kernel.IO.Source.t -> unit
   (** Mark process as waiting for I/O operation *)
 
-  val add_ready_token : t -> Std_sys.IO.Token.t -> Std_sys.IO.Source.t -> unit
+  val add_ready_token : t -> Kernel.IO.Token.t -> Kernel.IO.Source.t -> unit
   (** Add a ready I/O token to the process *)
 
-  val get_ready_token : t -> (Std_sys.IO.Token.t * Std_sys.IO.Source.t) option
+  val get_ready_token : t -> (Kernel.IO.Token.t * Kernel.IO.Source.t) option
   (** Get a ready I/O token if available *)
 
   val consume_ready_tokens :
-    t -> (Std_sys.IO.Token.t * Std_sys.IO.Source.t -> unit) -> unit
+    t -> (Kernel.IO.Token.t * Kernel.IO.Source.t -> unit) -> unit
   (** Consume all ready tokens with the given function *)
 end
 
@@ -85,12 +85,13 @@ val send : Pid.t -> Message.t -> unit
 val yield : unit -> unit
 val receive : selector:(Message.t -> [ `select of 'a | `skip ]) -> unit -> 'a
 val receive_any : unit -> Message.t
+val shutdown : status:int -> unit
 
 val syscall :
   ?timeout:float ->
   name:string ->
-  interest:Std_sys.IO.Interest.t ->
-  source:Std_sys.IO.Source.t ->
+  interest:Kernel.IO.Interest.t ->
+  source:Kernel.IO.Source.t ->
   (unit -> 'a) ->
   'a
 

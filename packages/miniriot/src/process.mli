@@ -9,8 +9,8 @@ type state = private
   | Waiting_message
   | Waiting_io of {
       name : string;
-      token : Std_sys.IO.Token.t;
-      source : Std_sys.IO.Source.t;
+      token : Kernel.IO.Token.t;
+      source : Kernel.IO.Source.t;
     }
   | Running
   | Exited of (unit, exit_reason) result
@@ -95,17 +95,17 @@ val send_message : t -> Message.t -> unit
 (** Send a message to the process *)
 
 val mark_as_awaiting_io :
-  t -> name:string -> Std_sys.IO.Token.t -> Std_sys.IO.Source.t -> unit
+  t -> name:string -> Kernel.IO.Token.t -> Kernel.IO.Source.t -> unit
 (** Mark process as waiting for I/O operation *)
 
-val add_ready_token : t -> Std_sys.IO.Token.t -> Std_sys.IO.Source.t -> unit
+val add_ready_token : t -> Kernel.IO.Token.t -> Kernel.IO.Source.t -> unit
 (** Add a ready I/O token to the process *)
 
-val get_ready_token : t -> (Std_sys.IO.Token.t * Std_sys.IO.Source.t) option
+val get_ready_token : t -> (Kernel.IO.Token.t * Kernel.IO.Source.t) option
 (** Get next ready I/O token *)
 
 val consume_ready_tokens :
-  t -> (Std_sys.IO.Token.t * Std_sys.IO.Source.t -> unit) -> unit
+  t -> (Kernel.IO.Token.t * Kernel.IO.Source.t -> unit) -> unit
 (** Consume all ready I/O tokens with a function *)
 
 val pp : Format.formatter -> t -> unit

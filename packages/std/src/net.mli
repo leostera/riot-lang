@@ -9,9 +9,9 @@ type error = [ `Connection_refused | `Closed | `System_error of string ]
 module Addr : sig
   (** Network addresses *)
 
-  type 't raw_addr = 't Std_sys.IO.Net.Addr.raw_addr
-  type tcp_addr = Std_sys.IO.Net.Addr.tcp_addr
-  type stream_addr = Std_sys.IO.Net.Addr.stream_addr
+  type 't raw_addr = 't Kernel.IO.Net.Addr.raw_addr
+  type tcp_addr = Kernel.IO.Net.Addr.tcp_addr
+  type stream_addr = Kernel.IO.Net.Addr.stream_addr
 
   val loopback : tcp_addr
   val tcp : tcp_addr -> int -> stream_addr

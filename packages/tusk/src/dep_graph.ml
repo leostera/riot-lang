@@ -826,6 +826,8 @@ let to_action_list graph =
                     includes = [ "." ];
                     flags =
                       [
+                        Ocamlc.NoStdlib;
+                        Ocamlc.NoPervasives;
                         Ocamlc.NoAliasDeps;
                         Ocamlc.Impl impl_path;
                         Ocamlc.Warning [ Ocamlc.NoCmiFile ];
@@ -843,6 +845,8 @@ let to_action_list graph =
                     includes = [ "." ];
                     flags =
                       [
+                        Ocamlc.NoStdlib;
+                        Ocamlc.NoPervasives;
                         Ocamlc.NoAliasDeps;
                         Ocamlc.Impl impl_path;
                         Ocamlc.Warning [ Ocamlc.NoCmiFile ];
@@ -859,6 +863,8 @@ let to_action_list graph =
 
               (* Get open flags for this module *)
               let open_flags =
+                (* Always compile without stdlib - kernel provides what we need *)
+                Ocamlc.NoStdlib :: Ocamlc.NoPervasives ::
                 List.map (fun alias -> Ocamlc.Open alias) node.parent_aliases
               in
 
@@ -896,6 +902,8 @@ let to_action_list graph =
 
               (* Get open flags for this module *)
               let open_flags =
+                (* Always compile without stdlib - kernel provides what we need *)
+                Ocamlc.NoStdlib :: Ocamlc.NoPervasives ::
                 List.map (fun alias -> Ocamlc.Open alias) node.parent_aliases
               in
 

@@ -16,8 +16,8 @@ type _ Effect.t +=
 type _ Effect.t +=
   | Syscall : {
       name : string;
-      interest : Std_sys.IO.Interest.t;
-      source : Std_sys.IO.Source.t;
+      interest : Kernel.IO.Interest.t;
+      source : Kernel.IO.Source.t;
       timeout : timeout;
     }
       -> unit Effect.t

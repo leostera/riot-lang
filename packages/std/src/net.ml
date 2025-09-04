@@ -1,15 +1,15 @@
 (** Network I/O operations for Miniriot *)
 
-open Std_sys.IO
+open Kernel.IO
 
 type error = [ `Connection_refused | `Closed | `System_error of string ]
 
 module Addr = struct
-  include Std_sys.IO.Net.Addr
+  include Kernel.IO.Net.Addr
 
   (* Wrap of_host_and_port to match our error type *)
   let of_host_and_port ~host ~port =
-    match Std_sys.IO.Net.Addr.of_host_and_port ~host ~port with
+    match Kernel.IO.Net.Addr.of_host_and_port ~host ~port with
     | Ok addr -> Ok addr
     | Error `Noop -> Error (`System_error "Failed to resolve address")
     | Error `No_info -> Error (`System_error "No address info available")
@@ -35,11 +35,11 @@ module Addr = struct
 end
 
 module TcpListener = struct
-  type t = Std_sys.IO.Net.TcpListener.t
+  type t = Kernel.IO.Net.TcpListener.t
 
   let bind ?(reuse_addr = true) ?(reuse_port = false) ?(backlog = 128) addr =
     match
-      Std_sys.IO.Net.TcpListener.bind ~reuse_addr ~reuse_port ~backlog addr
+      Kernel.IO.Net.TcpListener.bind ~reuse_addr ~reuse_port ~backlog addr
     with
     | Ok t -> Ok t
     | Error
@@ -48,14 +48,14 @@ module TcpListener = struct
         Error (`System_error "Failed to bind")
 
   let accept t =
-    let source = Std_sys.IO.Net.TcpListener.to_source t in
+    let source = Kernel.IO.Net.TcpListener.to_source t in
     let rec accept_loop () =
-      match Std_sys.IO.Net.TcpListener.accept t with
+      match Kernel.IO.Net.TcpListener.accept t with
       | Ok (stream, addr) -> Ok (stream, addr)
       | Error `Would_block ->
           (* Would block, register interest and wait - this suspends the process *)
           Miniriot.syscall ~name:"TcpListener.accept"
-            ~interest:Std_sys.IO.Interest.readable ~source (fun () ->
+            ~interest:Kernel.IO.Interest.readable ~source (fun () ->
               accept_loop ())
       | Error
           ( `Noop | `Closed | `Connection_closed | `Eof | `Exn _ | `No_info
@@ -65,21 +65,21 @@ module TcpListener = struct
     in
     accept_loop ()
 
-  let close = Std_sys.IO.Net.TcpListener.close
+  let close = Kernel.IO.Net.TcpListener.close
 end
 
 module TcpStream = struct
-  type t = Std_sys.IO.Net.TcpStream.t
+  type t = Kernel.IO.Net.TcpStream.t
 
   let connect addr =
     let rec connect_loop () =
-      match Std_sys.IO.Net.TcpStream.connect addr with
+      match Kernel.IO.Net.TcpStream.connect addr with
       | Ok (`Connected stream) -> Ok stream
       | Ok (`In_progress stream) ->
           (* Connection in progress, wait for writable - this suspends the process *)
-          let source = Std_sys.IO.Net.TcpStream.to_source stream in
+          let source = Kernel.IO.Net.TcpStream.to_source stream in
           Miniriot.syscall ~name:"TcpStream.connect"
-            ~interest:Std_sys.IO.Interest.writable ~source (fun () -> Ok stream)
+            ~interest:Kernel.IO.Interest.writable ~source (fun () -> Ok stream)
       | Error
           ( `Noop | `Closed | `Connection_closed | `Eof | `Exn _ | `No_info
           | `Process_down | `Timeout | `Unix_error _ | `Would_block ) ->
@@ -92,15 +92,15 @@ module TcpStream = struct
     let len =
       match len with None -> Bytes.length buffer - pos | Some l -> l
     in
-    let source = Std_sys.IO.Net.TcpStream.to_source stream in
+    let source = Kernel.IO.Net.TcpStream.to_source stream in
     let rec read_loop () =
-      match Std_sys.IO.Net.TcpStream.read stream buffer ~pos ~len with
+      match Kernel.IO.Net.TcpStream.read stream buffer ~pos ~len with
       | Ok 0 -> Error `Closed (* EOF *)
       | Ok bytes_read -> Ok bytes_read
       | Error `Would_block ->
           (* Would block, register interest and wait - this suspends the process *)
           Miniriot.syscall ~name:"TcpStream.read"
-            ~interest:Std_sys.IO.Interest.readable ~source (fun () ->
+            ~interest:Kernel.IO.Interest.readable ~source (fun () ->
               read_loop ())
       | Error
           ( `Noop | `Closed | `Connection_closed | `Eof | `Exn _ | `No_info
@@ -114,14 +114,14 @@ module TcpStream = struct
     let len =
       match len with None -> Bytes.length buffer - pos | Some l -> l
     in
-    let source = Std_sys.IO.Net.TcpStream.to_source stream in
+    let source = Kernel.IO.Net.TcpStream.to_source stream in
     let rec write_loop () =
-      match Std_sys.IO.Net.TcpStream.write stream buffer ~pos ~len with
+      match Kernel.IO.Net.TcpStream.write stream buffer ~pos ~len with
       | Ok bytes_written -> Ok bytes_written
       | Error `Would_block ->
           (* Would block, register interest and wait - this suspends the process *)
           Miniriot.syscall ~name:"TcpStream.write"
-            ~interest:Std_sys.IO.Interest.writable ~source (fun () ->
+            ~interest:Kernel.IO.Interest.writable ~source (fun () ->
               write_loop ())
       | Error
           ( `Noop | `Closed | `Connection_closed | `Eof | `Exn _ | `No_info
@@ -131,7 +131,7 @@ module TcpStream = struct
     in
     write_loop ()
 
-  let close = Std_sys.IO.Net.TcpStream.close
+  let close = Kernel.IO.Net.TcpStream.close
 end
 
 module TcpServer = struct

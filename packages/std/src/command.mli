@@ -29,7 +29,7 @@ val kill : t -> (unit, error) result
 val is_pid_running : int -> bool
 
 (** Execute a program, replacing the current process *)
-val exec : string -> string array -> 'a
+val exec : ?args:string list -> string -> unit -> 'a
 
 (** Get current process ID *)
 val getpid : unit -> int

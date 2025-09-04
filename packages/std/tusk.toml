@@ -4,4 +4,4 @@ version = "0.1.0"
 
 [dependencies]
 miniriot = { path = "../miniriot" }
-std-sys = { path = "../std-sys" }
+kernel = { path = "../kernel" }

@@ -84,7 +84,7 @@ module Instant = struct
   type t = timespec
 
   (** TODO: The following system calls should be used by now() and implemented
-      in `Std_sys.Time.Instant`, to find out the current time:
+      in `Kernel.Time.Instant`, to find out the current time:
 
       Platform System call SGX insecure_time usercall. More information on
       timekeeping in SGX UNIX clock_gettime (Monotonic Clock) Darwin

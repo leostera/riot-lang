@@ -50,7 +50,7 @@ let is_pid_running pid =
     true
   with Unix.Unix_error _ -> false
 
-let exec prog args = Unix.execv prog args
+let exec ?(args = []) prog () = Unix.execv prog (Array.of_list args)
 let getpid () = Unix.getpid ()
 let system cmd = Unix.system cmd
 let open_process_in cmd = Unix.open_process_in cmd
