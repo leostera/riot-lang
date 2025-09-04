@@ -302,18 +302,31 @@ let insert_alias_modules tree =
           List.filter_map
             (fun child ->
               match child with
-              | Mod_tree.Library
-                  { name; folder_interface = Some (Mod_tree.Concrete info); _ }
-                ->
-                  (* Folder with interface - add to parent's aliases *)
-                  Format.eprintf
-                    "[DEBUG]   Package alias: folder %s with interface %s -> \
-                     %s@."
-                    (Mod_name.qualified_name name)
-                    info.simple_name info.namespaced_name;
-                  if info.simple_name <> info.namespaced_name then
-                    Some (info.simple_name, info.namespaced_name)
-                  else None
+              | Mod_tree.Library { name; children; _ } -> (
+                  (* Look for a module named after the folder (e.g., Data in data/) *)
+                  let folder_name = Mod_name.module_name name in
+                  let folder_module =
+                    List.find_opt
+                      (function
+                        | Mod_tree.Module (Mod_tree.Concrete info)
+                          when String.lowercase_ascii info.simple_name
+                               = String.lowercase_ascii folder_name ->
+                            true
+                        | _ -> false)
+                      children
+                  in
+                  match folder_module with
+                  | Some (Mod_tree.Module (Mod_tree.Concrete info)) ->
+                      (* Found a module with same name as folder - add to parent's aliases *)
+                      Format.eprintf
+                        "[DEBUG]   Package alias: folder %s with module %s -> \
+                         %s@."
+                        (Mod_name.qualified_name name)
+                        info.simple_name info.namespaced_name;
+                      if info.simple_name <> info.namespaced_name then
+                        Some (info.simple_name, info.namespaced_name)
+                      else None
+                  | _ -> None)
               | Mod_tree.Module
                   (Mod_tree.Concrete { simple_name; namespaced_name; _ }) ->
                   (* Direct module - add to aliases if names differ *)
@@ -337,6 +350,7 @@ let insert_alias_modules tree =
                        Printf.sprintf "module %s = %s" simple ns)
                      aliases)
             in
+            Format.eprintf "[DEBUG] Generated aliases content for %s: %s@." name content;
             let alias_name = String.capitalize_ascii name ^ "__aliases" in
             [
               Mod_tree.Generated
@@ -437,19 +451,20 @@ let extract_alias_subtree tree =
   let rec extract_children children =
     List.filter_map
       (function
-        | Mod_tree.Package _ -> None  (* Shouldn't have nested packages *)
+        | Mod_tree.Package _ -> None (* Shouldn't have nested packages *)
         | Mod_tree.Library { name; folder_interface; children; aliases } ->
             (* Keep the library node but only with alias-related children *)
             let child_trees = extract_children children in
             (* Only keep this library if it has aliases or alias-containing children *)
             if aliases <> [] || child_trees <> [] then
-              Some (Mod_tree.Library
-                {
-                  name;
-                  folder_interface = None;
-                  children = child_trees;
-                  aliases;
-                })
+              Some
+                (Mod_tree.Library
+                   {
+                     name;
+                     folder_interface = None;
+                     children = child_trees;
+                     aliases;
+                   })
             else None
         | Mod_tree.Module _ ->
             (* Regular modules don't belong in the alias tree *)
@@ -461,38 +476,24 @@ let extract_alias_subtree tree =
       (* Keep the package node but only with alias-related children *)
       let child_trees = extract_children children in
       Mod_tree.Package
-        {
-          name;
-          kind;
-          entry_point = None;
-          children = child_trees;
-          aliases;
-        }
-  | _ -> tree  (* Should be a Package at the root *)
+        { name; kind; entry_point = None; children = child_trees; aliases }
+  | _ -> tree (* Should be a Package at the root *)
 
 let extract_intf_subtree tree =
   let rec extract = function
     | Mod_tree.Package { name; kind; entry_point; children; aliases } ->
         (* Keep the package node but only with interface-bearing children *)
-        let child_trees =
-          List.filter_map
-            (fun child ->
-              match extract child with
-              | Mod_tree.Package { children = []; _ } -> None
-              | Mod_tree.Library { children = []; folder_interface = None; _ }
-                ->
-                  None
-              | tree -> Some tree)
-            children
-        in
-        Mod_tree.Package
-          {
-            name;
-            kind;
-            entry_point = None;
-            children = child_trees;
-            aliases;  (* Keep aliases in interface tree *)
-          }
+        let child_trees = List.filter_map extract children in
+        Some
+          (Mod_tree.Package
+             {
+               name;
+               kind;
+               entry_point = None;
+               children = child_trees;
+               aliases;
+               (* Keep aliases in interface tree *)
+             })
     | Mod_tree.Library { name; folder_interface; children; aliases } ->
         (* Keep folder interface if it has an interface *)
         let intf =
@@ -500,38 +501,40 @@ let extract_intf_subtree tree =
           | Some (Mod_tree.Concrete { intf = Some _; _ } as info) -> Some info
           | _ -> None
         in
-        let child_trees =
-          List.filter_map
-            (fun child ->
-              match extract child with
-              | Mod_tree.Package { children = []; _ } -> None
-              | Mod_tree.Library { children = []; folder_interface = None; _ }
-                ->
-                  None
-              | tree -> Some tree)
-            children
-        in
-        Mod_tree.Library
-          {
-            name;
-            folder_interface = intf;
-            children = child_trees;
-            aliases;  (* Keep aliases in interface tree *)
-          }
-    | Mod_tree.Module (Mod_tree.Concrete { intf = Some intf_src; namespaced_name; simple_name; _ }) ->
+        let child_trees = List.filter_map extract children in
+        (* Only keep library if it has content *)
+        if intf = None && child_trees = [] then None
+        else
+          Some
+            (Mod_tree.Library
+               {
+                 name;
+                 folder_interface = intf;
+                 children = child_trees;
+                 aliases;
+                 (* Keep aliases in interface tree *)
+               })
+    | Mod_tree.Module
+        (Mod_tree.Concrete
+           { intf = Some intf_src; namespaced_name; simple_name; _ }) ->
         (* Create interface-only node *)
-        Mod_tree.Module (Mod_tree.Concrete { 
-          impl = None; 
-          intf = Some intf_src; 
-          namespaced_name; 
-          simple_name 
-        })
+        Some
+          (Mod_tree.Module
+             (Mod_tree.Concrete
+                {
+                  impl = None;
+                  intf = Some intf_src;
+                  namespaced_name;
+                  simple_name;
+                }))
     | _ ->
-        Mod_tree.Module
-          (Mod_tree.Generated
-             { simple_name = ""; contents = ""; path = ""; filename = "" })
+        (* No interface content - return None instead of empty placeholder *)
+        None
   in
-  extract tree
+  (* extract returns an option, but the top level should always be Some *)
+  match extract tree with
+  | Some tree -> tree
+  | None -> tree (* Should not happen for top-level *)
 
 let extract_impl_subtree tree =
   let rec extract = function
@@ -542,26 +545,17 @@ let extract_impl_subtree tree =
           | Some (Mod_tree.Concrete { impl = Some _; _ } as info) -> Some info
           | _ -> None
         in
-        let child_trees =
-          List.filter_map
-            (fun child ->
-              match extract child with
-              | Mod_tree.Package { children = []; entry_point = None; aliases = [] } ->
-                  None
-              | Mod_tree.Library { children = []; folder_interface = None; aliases = [] }
-                ->
-                  None
-              | tree -> Some tree)
-            children
-        in
-        Mod_tree.Package
-          {
-            name;
-            kind;
-            entry_point = entry;
-            children = child_trees;
-            aliases;  (* Keep aliases in impl tree *)
-          }
+        let child_trees = List.filter_map extract children in
+        Some
+          (Mod_tree.Package
+             {
+               name;
+               kind;
+               entry_point = entry;
+               children = child_trees;
+               aliases;
+               (* Keep aliases in impl tree *)
+             })
     | Mod_tree.Library { name; folder_interface; children; aliases } ->
         (* Keep folder interface if it has an implementation *)
         let intf =
@@ -569,39 +563,40 @@ let extract_impl_subtree tree =
           | Some (Mod_tree.Concrete { impl = Some _; _ } as info) -> Some info
           | _ -> None
         in
-        let child_trees =
-          List.filter_map
-            (fun child ->
-              match extract child with
-              | Mod_tree.Package { children = []; entry_point = None; aliases = [] } ->
-                  None
-              | Mod_tree.Library { children = []; folder_interface = None; aliases = [] }
-                ->
-                  None
-              | tree -> Some tree)
-            children
-        in
-        Mod_tree.Library
-          {
-            name;
-            folder_interface = intf;
-            children = child_trees;
-            aliases;  (* Keep aliases in impl tree *)
-          }
-    | Mod_tree.Module (Mod_tree.Concrete { impl = Some impl_src; namespaced_name; simple_name; _ }) ->
+        let child_trees = List.filter_map extract children in
+        (* Only keep library if it has content *)
+        if intf = None && child_trees = [] && aliases = [] then None
+        else
+          Some
+            (Mod_tree.Library
+               {
+                 name;
+                 folder_interface = intf;
+                 children = child_trees;
+                 aliases;
+                 (* Keep aliases in impl tree *)
+               })
+    | Mod_tree.Module
+        (Mod_tree.Concrete
+           { impl = Some impl_src; namespaced_name; simple_name; _ }) ->
         (* Create implementation-only node *)
-        Mod_tree.Module (Mod_tree.Concrete { 
-          impl = Some impl_src; 
-          intf = None; 
-          namespaced_name; 
-          simple_name 
-        })
+        Some
+          (Mod_tree.Module
+             (Mod_tree.Concrete
+                {
+                  impl = Some impl_src;
+                  intf = None;
+                  namespaced_name;
+                  simple_name;
+                }))
     | _ ->
-        Mod_tree.Module
-          (Mod_tree.Generated
-             { simple_name = ""; contents = ""; path = ""; filename = "" })
+        (* No implementation content - return None instead of empty placeholder *)
+        None
   in
-  extract tree
+  (* extract returns an option, but the top level should always be Some *)
+  match extract tree with
+  | Some tree -> tree
+  | None -> tree (* Should not happen for top-level *)
 
 (** Compute hash for a planned node *)
 let compute_hash_for_planned_node ~toolchain ~package ~srcs ~deps ~outs ~actions
@@ -639,7 +634,8 @@ let compute_hash_for_planned_node ~toolchain ~package ~srcs ~deps ~outs ~actions
   Hasher.hash_strings (List.rev !seeds)
 
 (** Step 5: Generate actions from module trees using Dep_set for ordering *)
-let module_trees_to_actions_v2 ~toolchain ~package ~alias_modules ~intf_modules ~impl_modules =
+let module_trees_to_actions_v2 ~toolchain ~package ~full_tree ~alias_modules
+    ~intf_modules ~impl_modules =
   let actions = ref [] in
 
   (* Determine the main alias module name for -open flag *)
@@ -649,9 +645,92 @@ let module_trees_to_actions_v2 ~toolchain ~package ~alias_modules ~intf_modules 
   let main_alias_module =
     String.capitalize_ascii safe_package_name ^ "__aliases"
   in
-  let open_flags =
+  let base_open_flags =
     if Dep_set.size alias_modules > 0 then [ Ocamlc.Open main_alias_module ]
     else []
+  in
+
+  (* Build a map from module to its parent alias modules (as strings) *)
+  let module_to_aliases = Hashtbl.create 100 in
+
+  (* Initial parent aliases list - just the main alias module name if it exists *)
+  (* But only for top-level modules, not for subfolder modules *)
+  let initial_parent_aliases =
+    if Dep_set.size alias_modules > 0 then [ main_alias_module ] else []
+  in
+
+  (* Traverse the tree to collect parent aliases for each module *)
+  let rec collect_parent_aliases tree parent_aliases =
+    match tree with
+    | Mod_tree.Package { children; aliases; entry_point; _ } ->
+        (* Add entry point with current parent aliases *)
+        (match entry_point with
+        | Some (Mod_tree.Concrete info) ->
+            Hashtbl.add module_to_aliases info.namespaced_name parent_aliases
+        | _ -> ());
+
+        (* Process children with current parent aliases *)
+        List.iter
+          (fun child -> collect_parent_aliases child parent_aliases)
+          children
+    | Mod_tree.Library { name; children; aliases; folder_interface; _ } ->
+        (* For libraries/folders, add their alias module to parent list if it exists *)
+        let new_parent_aliases =
+          if aliases <> [] then
+            (* Find the generated alias module for this library *)
+            let lib_alias_name =
+              match
+                List.find_opt
+                  (function
+                    | Mod_tree.Generated { simple_name; _ } ->
+                        String.ends_with ~suffix:"__aliases" simple_name
+                    | _ -> false)
+                  aliases
+              with
+              | Some (Mod_tree.Generated { simple_name; _ }) -> Some simple_name
+              | _ -> None
+            in
+            match lib_alias_name with
+            | Some name -> parent_aliases @ [ name ]
+            | None -> parent_aliases
+          else parent_aliases
+        in
+
+        (* Add folder interface with parent aliases *)
+        (match folder_interface with
+        | Some (Mod_tree.Concrete info) ->
+            Hashtbl.add module_to_aliases info.namespaced_name
+              new_parent_aliases
+        | _ -> ());
+
+        (* Process children with new parent aliases *)
+        List.iter
+          (fun child -> collect_parent_aliases child new_parent_aliases)
+          children
+    | Mod_tree.Module (Mod_tree.Concrete info) ->
+        (* Leaf module - use current parent aliases *)
+        Hashtbl.add module_to_aliases info.namespaced_name parent_aliases
+    | _ -> ()
+  in
+
+  (* Traverse the full tree with aliases to build the parent mapping *)
+  collect_parent_aliases full_tree initial_parent_aliases;
+
+  (* Helper to get open flags for a module *)
+  let get_open_flags ~simple_name ~namespaced_name =
+    (* All modules should open the alias module if it exists, including package-level modules
+       The alias module itself doesn't include the package-level module, so there's no circularity *)
+    
+      try
+        let aliases = Hashtbl.find module_to_aliases namespaced_name in
+        Format.eprintf "[DEBUG] Module %s will open aliases: %s@." namespaced_name
+          (String.concat ", " aliases);
+        List.map (fun a -> Ocamlc.Open a) aliases
+      with Not_found ->
+        Format.eprintf
+          "[DEBUG] Module %s not found in alias map, using base flags@."
+          namespaced_name;
+        base_open_flags
   in
 
   (* Phase 1: Process alias modules (no dependencies, no ocamldep needed) *)
@@ -724,20 +803,22 @@ let module_trees_to_actions_v2 ~toolchain ~package ~alias_modules ~intf_modules 
   Dep_set.iter
     (function
       | Mod_tree.Module
-          (Mod_tree.Concrete { intf = Some src; namespaced_name; _ }) ->
+          (Mod_tree.Concrete
+             { intf = Some src; namespaced_name; simple_name; _ }) ->
           let original_path = Path.to_string src.Build_node.file in
           let source_name = Filename.basename original_path in
           let output = namespaced_name ^ ".cmi" in
-          
+
+          (* For interface files, we always need aliases opened for module references *)
+          (* Even package-level modules need aliases for their interface files *)
+          let module_open_flags = get_open_flags ~simple_name ~namespaced_name in
+
           (* First copy the source file to sandbox *)
           actions :=
             Actions.CopyFile
-              {
-                source = original_path;
-                destination = source_name;
-              }
+              { source = original_path; destination = source_name }
             :: !actions;
-          
+
           Format.eprintf "[DEBUG]   CompileInterface: %s -> %s@." source_name
             output;
           actions :=
@@ -746,7 +827,7 @@ let module_trees_to_actions_v2 ~toolchain ~package ~alias_modules ~intf_modules 
                 source = source_name;
                 output;
                 includes = [ "." ];
-                flags = open_flags;
+                flags = module_open_flags;
               }
             :: !actions
       | _ -> ())
@@ -761,17 +842,21 @@ let module_trees_to_actions_v2 ~toolchain ~package ~alias_modules ~intf_modules 
   Dep_set.iter
     (function
       | Mod_tree.Module
-          (Mod_tree.Concrete { impl = Some src; namespaced_name; intf; _ }) ->
+          (Mod_tree.Concrete
+             { impl = Some src; namespaced_name; simple_name; intf; _ }) ->
           let original_path = Path.to_string src.Build_node.file in
           let source_name = Filename.basename original_path in
-          
+
+          (* Check if this is the package-level module (not namespaced) *)
+          let is_package_module = simple_name = namespaced_name in
+          (* Package-level modules ALSO need aliases for module references to work *)
+          (* The aliases define the non-namespaced names that the package module uses *)
+          let module_open_flags = get_open_flags ~simple_name ~namespaced_name in
+
           (* First copy the source file to sandbox *)
           actions :=
             Actions.CopyFile
-              {
-                source = original_path;
-                destination = source_name;
-              }
+              { source = original_path; destination = source_name }
             :: !actions;
 
           (* If no interface file exists, we need to generate .cmi from .ml *)
@@ -786,7 +871,7 @@ let module_trees_to_actions_v2 ~toolchain ~package ~alias_modules ~intf_modules 
                     source = source_name;
                     output = cmi_output;
                     includes = [ "." ];
-                    flags = open_flags;
+                    flags = module_open_flags;
                   }
                 :: !actions
           | Some _ -> ());
@@ -800,7 +885,7 @@ let module_trees_to_actions_v2 ~toolchain ~package ~alias_modules ~intf_modules 
                 source = source_name;
                 output = cmo_output;
                 includes = [ "." ];
-                flags = open_flags;
+                flags = module_open_flags;
               }
             :: !actions;
           cmo_files := cmo_output :: !cmo_files
@@ -906,35 +991,74 @@ let plan_node ~graph ~node ~build_results ~session_id () =
         Format.eprintf "[DEBUG] Extracted impl tree:@.";
         Mod_tree.print impl_tree;
 
-        (* Step 4: Create Dep_sets for each tree *)
-        let alias_depset =
-          Dep_set.create
-            ~name:(package_name ^ "_aliases")
-            ~toolchain 
-            ~tree:alias_tree
+        (* Step 4: Create dependency graph and print it *)
+        let dep_graph = 
+          Dep_graph.from_mod_tree ~toolchain ~package tree_with_aliases
         in
-        let intf_depset =
-          Dep_set.create
-            ~name:(package_name ^ "_interfaces")
-            ~toolchain 
-            ~tree:intf_tree
-        in
-        let impl_depset =
-          Dep_set.create
-            ~name:(package_name ^ "_implementations")
-            ~toolchain 
-            ~tree:impl_tree
-        in
+        
+        (* Print the graph for debugging *)
+        Dep_graph.print dep_graph;
+        
+        (* Print topological sort *)
+        (match Dep_graph.topological_sort dep_graph with
+         | Ok sorted ->
+             Format.eprintf "[DEBUG] Topological sort:@.%!";
+             List.iter (fun node ->
+               let name = match node.Dep_graph.module_info with
+                 | Mod_tree.Concrete info -> info.namespaced_name
+                 | Mod_tree.Generated info -> info.simple_name
+               in
+               let kind_str = match node.Dep_graph.file_kind with
+                 | Dep_graph.Interface -> ".mli"
+                 | Dep_graph.Implementation -> ".ml"
+                 | Dep_graph.Alias -> ""
+               in
+               Format.eprintf "  %s%s@.%!" name kind_str
+             ) sorted
+         | Error msg ->
+             Format.eprintf "[DEBUG] Topological sort failed: %s@.%!" msg);
+        
+        (* Step 5: Generate actions from the dependency graph *)
+        Format.eprintf "[DEBUG] Generating actions from dependency graph...@.%!";
+        let actions = match Dep_graph.to_action_list dep_graph with
+          | Ok dep_graph_actions -> 
+              (* Print the actions for debugging *)
+              Format.eprintf "[DEBUG] Generated %d actions from dep_graph:@.%!" (List.length dep_graph_actions);
+              List.iteri (fun i action ->
+                Format.eprintf "  %d. %s@.%!" (i+1) (Actions.action_to_string action)
+              ) dep_graph_actions;
+              Format.eprintf "[DEBUG] Using dep_graph actions!@.%!";
+              dep_graph_actions
+          | Error msg ->
+              Format.eprintf "[DEBUG] Failed to generate actions: %s@.%!" msg;
+              Format.eprintf "[DEBUG] Falling back to Dep_sets approach...@.%!";
+              
+              (* Fall back to old approach *)
+              let alias_depset =
+                Dep_set.create
+                  ~name:(package_name ^ "_aliases")
+                  ~toolchain ~tree:alias_tree
+              in
+              let intf_depset =
+                Dep_set.create
+                  ~name:(package_name ^ "_interfaces")
+                  ~toolchain ~tree:intf_tree
+              in
+              let impl_depset =
+                Dep_set.create
+                  ~name:(package_name ^ "_implementations")
+                  ~toolchain ~tree:impl_tree
+              in
 
-        (* Step 5: Generate actions from the Dep_sets *)
-        let actions =
-          module_trees_to_actions_v2 ~toolchain ~package
-            ~alias_modules:alias_depset
-            ~intf_modules:intf_depset
-            ~impl_modules:impl_depset
+              (* Generate actions from the Dep_sets *)
+              let depset_actions =
+                module_trees_to_actions_v2 ~toolchain ~package
+                  ~full_tree:tree_with_aliases ~alias_modules:alias_depset
+                  ~intf_modules:intf_depset ~impl_modules:impl_depset
+              in
+              Format.eprintf "[DEBUG] Generated %d actions from Dep_sets@.%!" (List.length depset_actions);
+              depset_actions
         in
-
-        Format.eprintf "[DEBUG] Generated %d actions@." (List.length actions);
 
         (* Get dependency nodes for hash computation *)
         let dep_nodes = List.map (Build_graph.get_node graph) node.deps in
@@ -958,21 +1082,21 @@ let plan_node ~graph ~node ~build_results ~session_id () =
               | _ -> None)
             actions
         in
-        
+
         (* Add DeclareOutputs action if we have outputs *)
         let actions =
           if output_files <> [] then
             Actions.DeclareOutputs { outputs = output_files } :: actions
-          else
-            actions
+          else actions
         in
-        
+
         (* Convert output strings to paths for the outs field *)
         let outs =
           List.map
             (fun output ->
               Path.of_string output
-              |> Result.expect ~msg:(Printf.sprintf "Expected %s to be a valid path" output))
+              |> Result.expect
+                   ~msg:(Printf.sprintf "Expected %s to be a valid path" output))
             output_files
         in
 
@@ -980,13 +1104,7 @@ let plan_node ~graph ~node ~build_results ~session_id () =
         let planned_node =
           {
             node with
-            Build_node.spec =
-              Build_node.Planned
-                {
-                  hash;
-                  outs;
-                  actions;
-                };
+            Build_node.spec = Build_node.Planned { hash; outs; actions };
           }
         in
 
