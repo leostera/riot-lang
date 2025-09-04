@@ -291,7 +291,22 @@ let from_mod_tree ~toolchain ~package tree =
           children
     | Mod_tree.Module info ->
         (* Standalone module (shouldn't happen at top level) *)
-        let _ = add_node graph ~module_info:info ~level ~parent_aliases in ()
+        match info with
+        | Mod_tree.Concrete { impl; intf; _ } ->
+            (* Create separate nodes for .mli and .ml if they exist *)
+            if intf <> None then
+              add_node graph ~module_info:info ~file_kind:Interface ~level
+                ~parent_aliases
+              |> ignore;
+            if impl <> None then
+              add_node graph ~module_info:info ~file_kind:Implementation ~level
+                ~parent_aliases
+              |> ignore
+        | Mod_tree.Generated _ ->
+            (* Generated modules are alias modules *)
+            add_node graph ~module_info:info ~file_kind:Alias ~level
+              ~parent_aliases
+            |> ignore
   in
 
   collect_nodes tree Root [];
