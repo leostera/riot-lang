@@ -1,5 +1,5 @@
-(** Build results - tracks which packages have been built *)
 open Std
+(** Build results - tracks which packages have been built *)
 
 type status =
   | NotStarted
@@ -187,7 +187,8 @@ let mark_completed t node artifact =
   let hash =
     match node.Build_node.spec with
     | Planned { hash; _ } -> hash
-    | Unplanned -> Hasher.of_string "unplanned"
+    | Unplanned -> 
+        failwith (Printf.sprintf "CRITICAL: Trying to mark unplanned node %s as completed! This should never happen." pkg_name)
   in
   Hashtbl.replace t.results pkg_name (Built hash)
 
@@ -206,6 +207,40 @@ let get_stats t =
       | NotStarted -> incr not_started)
     t.results;
   (!built, !failed, !building, !not_started)
+
+(** Convert build results to Event.build_result list *)
+let to_events t =
+  Hashtbl.fold
+    (fun package status acc ->
+      match status with
+      | Built _ ->
+          let result : Event.build_result =
+            {
+              package;
+              success = true;
+              duration_ms = 0;  (* TODO: track per-package timing *)
+              modules_compiled = 0;  (* TODO: track modules compiled *)
+              cache_hits = 0;  (* TODO: track cache hits *)
+              cache_misses = 0;  (* TODO: track cache misses *)
+              errors = [];
+            }
+          in
+          result :: acc
+      | Failed error ->
+          let result : Event.build_result =
+            {
+              package;
+              success = false;
+              duration_ms = 0;
+              modules_compiled = 0;
+              cache_hits = 0;
+              cache_misses = 0;
+              errors = [];  (* TODO: Convert string error to proper Event.build_error *)
+            }
+          in
+          result :: acc
+      | _ -> acc)  (* Don't include Building or NotStarted in final results *)
+    t.results []
 
 (** Tests submodule *)
 module Tests = struct

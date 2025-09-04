@@ -140,7 +140,7 @@ and do_build ctx task planned_node =
       send ctx.server_pid
         (Worker_pool_types.Worker
            (Worker_pool_types.TaskCompleted
-              { worker = self (); node = task.Worker_pool_types.node; artifact }));
+              { worker = self (); node = planned_node; artifact }));
 
       worker_loop ctx
   | Error error_msg ->
@@ -180,7 +180,7 @@ and handle_cache_hit ctx task planned_node artifact =
   send ctx.server_pid
     (Worker_pool_types.Worker
        (Worker_pool_types.TaskCompleted
-          { worker = self (); node = task.Worker_pool_types.node; artifact }));
+          { worker = self (); node = planned_node; artifact }));
   worker_loop ctx
 
 (** Main worker loop *)

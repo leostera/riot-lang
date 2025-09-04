@@ -175,3 +175,39 @@ let chdir path =
     Sys.chdir path_str;
     Ok ()
   with e -> Error (SystemError (Printexc.to_string e))
+
+let with_tempdir ?(prefix = "tmp") f =
+  (* Create a unique temporary file to get a unique name *)
+  let temp_base =
+    try Filename.temp_file prefix ""
+    with e ->
+      failwith
+        (Printf.sprintf "Failed to create temp file: %s" (Printexc.to_string e))
+  in
+
+  (* Convert to path and remove the file *)
+  let temp_path =
+    match Path.of_string temp_base with
+    | Ok p -> p
+    | Error _ -> failwith (Printf.sprintf "Invalid temp path: %s" temp_base)
+  in
+
+  (* Remove the file created by temp_file *)
+  let _ = try Unix.unlink temp_base with _ -> () in
+
+  (* Create the directory *)
+  match create_dir temp_path with
+  | Error e -> Error e
+  | Ok () -> (
+      (* Run the function with proper cleanup *)
+      try
+        let result = f temp_path in
+        (* Clean up the directory *)
+        let _ = remove_dir temp_path in
+        Ok result
+      with e ->
+        (* Clean up even if the function fails *)
+        let _ = remove_dir temp_path in
+        Error
+          (SystemError
+             (Printf.sprintf "Function failed: %s" (Printexc.to_string e))))

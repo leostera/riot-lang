@@ -26,6 +26,8 @@ type t
 val create : unit -> t
 (** Create a new build results tracker *)
 
+val to_events : t -> Event.build_result list
+
 (** {1 Package Initialization} *)
 
 val all_done : t -> bool

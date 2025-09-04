@@ -144,7 +144,8 @@ and handle_get_package_info state client_pid package_name =
                (PackageInfo
                   {
                     package;
-                    sources = List.map (fun s -> s.Build_node.file) node.Build_node.srcs;
+                    sources =
+                      List.map (fun s -> s.Build_node.file) node.Build_node.srcs;
                     dependencies = dep_nodes;
                   }));
           loop state)
@@ -499,8 +500,9 @@ and handle_build state client_pid target session_id_opt =
               ~finally:(fun () ->
                 (* Log build complete event *)
                 let duration_ms = time_ms () - build_start_time in
-                (* TODO: Get actual results from build_results *)
-                Log.build_complete ~session_id ~duration_ms ~results:[];
+                (* Get results from Build_results module *)
+                let results = Build_results.to_events build_results in
+                Log.build_complete ~session_id ~duration_ms ~results;
 
                 (* Mark build as completed to finalize stats *)
                 Tusk_protocol.BuildStats.mark_completed build_stats;

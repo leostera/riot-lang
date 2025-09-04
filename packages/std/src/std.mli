@@ -12,6 +12,8 @@ module Net = Net
 module Option = Option
 module Path = Path
 module Result = Result
+module Iterator = Iterator
+module MutIterator = MutIterator
 (* module String = String (* TODO: fix iterator dependencies *) *)
 
 val available_parallelism : unit -> int

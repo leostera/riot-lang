@@ -129,3 +129,12 @@ val getcwd : unit -> (Path.t, error) Result.t
 
 val chdir : Path.t -> (unit, error) Result.t
 (** Change current working directory *)
+
+val with_tempdir : ?prefix:string -> (Path.t -> 'a) -> ('a, error) Result.t
+(** Create a temporary directory, run a function with it, then clean it up. The
+    temporary directory is automatically removed when the function returns, even
+    if an exception is raised.
+    @param prefix
+      Optional prefix for the temporary directory name (default: "tmp")
+    @param f Function to run with the temporary directory path
+    @return Result of the function or an error if directory creation fails *)
