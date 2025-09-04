@@ -291,7 +291,7 @@ let from_mod_tree ~toolchain ~package tree =
           children
     | Mod_tree.Module info ->
         (* Standalone module (shouldn't happen at top level) *)
-        add_node graph ~module_info:info ~level ~parent_aliases |> ignore
+        let _ = add_node graph ~module_info:info ~level ~parent_aliases in ()
   in
 
   collect_nodes tree Root [];
@@ -429,12 +429,34 @@ let from_mod_tree ~toolchain ~package tree =
             in
             
             (* Use the Ocamldep module to get dependencies *)
-            let deps_map = Ocamldep.find_modules_dependencies ~toolchain ~temp_dir:temp_dir_path
-              ~files ~open_module:alias_module
+            let open_flags = match alias_module with
+              | Some m -> "-open " ^ m ^ " "
+              | None -> ""
             in
             
-            (* Process dependencies from the map *)
-            Hashtbl.iter (fun file deps ->
+            (* Get dependencies for all files *)
+            let deps_list = 
+              List.map (fun file ->
+                let ocamldep_cmd = Printf.sprintf "%s %s-modules %s 2>/dev/null" 
+                  (Toolchains.ocamldep_path toolchain) open_flags file
+                in
+                let full_cmd = Printf.sprintf "cd %s && %s" temp_dir ocamldep_cmd in
+                
+                match Command.exec full_cmd ~args:[] () with
+                | Ok output ->
+                    (* Parse output: "file.ml: Module1 Module2 Module3" *)
+                    (match String.split_on_char ':' output with
+                     | [_; deps_str] ->
+                         let deps = String.trim deps_str |> String.split_on_char ' '
+                           |> List.filter (fun s -> s <> "") in
+                         (file, deps)
+                     | _ -> (file, []))
+                | Error _ -> (file, [])
+              ) files
+            in
+            
+            (* Process dependencies from the list *)
+            List.iter (fun (file, deps) ->
               (* Find the node for this file *)
               match Hashtbl.find_opt file_to_node file with
               | Some source_node ->
@@ -443,12 +465,13 @@ let from_mod_tree ~toolchain ~package tree =
                     (fun dep_module ->
                       (* Try to find a node with this module name *)
                       (* Need to handle namespacing *)
+                      let capitalized_package = String.capitalize_ascii package.name in
                       let possible_names =
                         [
                           dep_module;
                           (* Direct name *)
-                          package.name ^ "__" ^ dep_module;
-                          (* Package namespaced *)
+                          capitalized_package ^ "__" ^ dep_module;
+                          (* Package namespaced with correct capitalization *)
                           "Std__" ^ dep_module;
                           (* Common namespace pattern *)
                           (* Add more patterns as needed *)
@@ -491,7 +514,7 @@ let from_mod_tree ~toolchain ~package tree =
                         possible_names)
                     deps
               | None -> ()
-            ) deps_map
+            ) deps_list
           )
         in
         
