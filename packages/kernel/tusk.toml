@@ -2,5 +2,5 @@
 name = "kernel"
 version = "0.0.1"
 
-# No dependencies - this is the base layer
 [dependencies]
+unix = "*"
