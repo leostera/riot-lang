@@ -491,7 +491,7 @@ let extract_intf_subtree tree =
             kind;
             entry_point = None;
             children = child_trees;
-            aliases = [];
+            aliases;  (* Keep aliases in interface tree *)
           }
     | Mod_tree.Library { name; folder_interface; children; aliases } ->
         (* Keep folder interface if it has an interface *)
@@ -516,10 +516,16 @@ let extract_intf_subtree tree =
             name;
             folder_interface = intf;
             children = child_trees;
-            aliases = [];
+            aliases;  (* Keep aliases in interface tree *)
           }
-    | Mod_tree.Module (Mod_tree.Concrete { intf = Some _; _ } as info) ->
-        Mod_tree.Module info
+    | Mod_tree.Module (Mod_tree.Concrete { intf = Some intf_src; namespaced_name; simple_name; _ }) ->
+        (* Create interface-only node *)
+        Mod_tree.Module (Mod_tree.Concrete { 
+          impl = None; 
+          intf = Some intf_src; 
+          namespaced_name; 
+          simple_name 
+        })
     | _ ->
         Mod_tree.Module
           (Mod_tree.Generated
@@ -554,7 +560,7 @@ let extract_impl_subtree tree =
             kind;
             entry_point = entry;
             children = child_trees;
-            aliases = [];  (* Remove aliases from impl tree *)
+            aliases;  (* Keep aliases in impl tree *)
           }
     | Mod_tree.Library { name; folder_interface; children; aliases } ->
         (* Keep folder interface if it has an implementation *)
@@ -580,10 +586,16 @@ let extract_impl_subtree tree =
             name;
             folder_interface = intf;
             children = child_trees;
-            aliases = [];  (* Remove aliases from impl tree *)
+            aliases;  (* Keep aliases in impl tree *)
           }
-    | Mod_tree.Module (Mod_tree.Concrete { impl = Some _; _ } as info) ->
-        Mod_tree.Module info
+    | Mod_tree.Module (Mod_tree.Concrete { impl = Some impl_src; namespaced_name; simple_name; _ }) ->
+        (* Create implementation-only node *)
+        Mod_tree.Module (Mod_tree.Concrete { 
+          impl = Some impl_src; 
+          intf = None; 
+          namespaced_name; 
+          simple_name 
+        })
     | _ ->
         Mod_tree.Module
           (Mod_tree.Generated

@@ -57,8 +57,8 @@ let sort_all_files ~toolchain ~tree =
             | Mod_tree.Module (Mod_tree.Concrete { impl; intf; namespaced_name; _ }) -> (
                 (match impl with
                 | Some src ->
-                    (* Use namespaced name for the file in temp dir *)
-                    let dest_name = namespaced_name ^ ".ml" in
+                    (* Use original filename to preserve dependencies *)
+                    let dest_name = Path.basename src.Build_node.file in
                     let dest = Filename.concat temp_dir dest_name in
                     Format.eprintf "[DEBUG DepSet] Copying %s -> %s@."
                       (Path.to_string src.Build_node.file) dest;
@@ -70,8 +70,8 @@ let sort_all_files ~toolchain ~tree =
                 | None -> ());
                 match intf with
                 | Some src ->
-                    (* Use namespaced name for the file in temp dir *)
-                    let dest_name = namespaced_name ^ ".mli" in
+                    (* Use original filename to preserve dependencies *)
+                    let dest_name = Path.basename src.Build_node.file in
                     let dest = Filename.concat temp_dir dest_name in
                     Format.eprintf "[DEBUG DepSet] Copying %s -> %s@."
                       (Path.to_string src.Build_node.file) dest;
@@ -113,59 +113,49 @@ let sort_all_files ~toolchain ~tree =
         Format.eprintf "[DEBUG DepSet]   .ml files: %s@."
           (String.concat ", " ml_files);
         
-        (* Sort using ocamldep *)
+        (* Sort using ocamldep - sort .mli and .ml files separately *)
         let sorted_files =
-          let sorted_mli =
-            if mli_files = [] then []
-            else begin
-              Format.eprintf "[DEBUG DepSet] Running ocamldep on .mli files...@.";
-              let result = Ocamldep.sort ~toolchain ~cwd:temp_dir ~files:mli_files in
-              Format.eprintf "[DEBUG DepSet]   Sorted .mli: %s@."
-                (String.concat ", " result);
-              result
-            end
-          in
-          let sorted_ml =
-            if ml_files = [] then []
-            else begin
+          match (mli_files, ml_files) with
+          | [], [] -> []
+          | [], ml_files ->
+              (* Only .ml files *)
               Format.eprintf "[DEBUG DepSet] Running ocamldep on .ml files...@.";
               let result = Ocamldep.sort ~toolchain ~cwd:temp_dir ~files:ml_files in
               Format.eprintf "[DEBUG DepSet]   Sorted .ml: %s@."
                 (String.concat ", " result);
               result
-            end
-          in
-          sorted_mli @ sorted_ml
+          | mli_files, [] ->
+              (* Only .mli files - sort them by their dependencies *)
+              Format.eprintf "[DEBUG DepSet] Running ocamldep on .mli files...@.";
+              let result = Ocamldep.sort ~toolchain ~cwd:temp_dir ~files:mli_files in
+              Format.eprintf "[DEBUG DepSet]   Sorted .mli: %s@."
+                (String.concat ", " result);
+              result
+          | mli_files, ml_files ->
+              (* Both .mli and .ml files - shouldn't happen in our three-tree approach *)
+              (* But if it does, sort each separately and concatenate *)
+              Format.eprintf "[DEBUG DepSet] Running ocamldep on .mli files...@.";
+              let sorted_mli = Ocamldep.sort ~toolchain ~cwd:temp_dir ~files:mli_files in
+              Format.eprintf "[DEBUG DepSet]   Sorted .mli: %s@."
+                (String.concat ", " sorted_mli);
+              Format.eprintf "[DEBUG DepSet] Running ocamldep on .ml files...@.";
+              let sorted_ml = Ocamldep.sort ~toolchain ~cwd:temp_dir ~files:ml_files in
+              Format.eprintf "[DEBUG DepSet]   Sorted .ml: %s@."
+                (String.concat ", " sorted_ml);
+              sorted_mli @ sorted_ml
         in
         
         Format.eprintf "[DEBUG DepSet] Final sorted order: %s@."
           (String.concat ", " sorted_files);
         
         (* Map back to nodes in sorted order *)
-        (* Important: we need to deduplicate - if a module has both .ml and .mli,
-           we only want it once in our iteration order *)
-        let seen_modules = Hashtbl.create 32 in
+        (* Important: keep nodes in exact dependency order without deduplication
+           since interface and implementation trees are processed separately *)
         let sorted_nodes =
           List.filter_map
             (fun filename ->
               match Hashtbl.find_opt file_to_node filename with
-              | Some node ->
-                  (* Extract module name to check for duplicates *)
-                  let module_name =
-                    if String.ends_with ~suffix:".mli" filename then
-                      String.sub filename 0 (String.length filename - 4)
-                    else if String.ends_with ~suffix:".ml" filename then
-                      String.sub filename 0 (String.length filename - 3)
-                    else if String.ends_with ~suffix:".ml.gen" filename then
-                      String.sub filename 0 (String.length filename - 7)
-                    else filename
-                  in
-                  if Hashtbl.mem seen_modules module_name then
-                    None  (* Already processed this module *)
-                  else begin
-                    Hashtbl.add seen_modules module_name ();
-                    Some node
-                  end
+              | Some node -> Some node
               | None -> None)
             sorted_files
         in
