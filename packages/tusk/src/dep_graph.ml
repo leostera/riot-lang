@@ -910,25 +910,10 @@ let to_action_list graph =
                       { source = original_path; destination = source_name }
                     :: !actions;
 
-                  (* If no separate interface node exists, we need to compile 
-                     the .ml file to generate the .cmi first *)
-                  let intf_key = namespaced_name ^ ".mli" in
-                  (match find_node graph intf_key with
-                  | None ->
-                      (* No .mli file, so compile .ml to generate .cmi *)
-                      let cmi_output = namespaced_name ^ ".cmi" in
-                      actions :=
-                        Actions.CompileImplementation
-                          {
-                            source = source_name;
-                            output = cmi_output;
-                            includes = [ "." ];
-                            flags = open_flags;
-                          }
-                        :: !actions
-                  | Some _ ->
-                      (* .mli exists and will be compiled by its Interface node *)
-                      ());
+                  (* No need to explicitly generate .cmi - when we compile the .ml file
+                     without a corresponding .mli, ocamlc automatically generates both
+                     the .cmi and .cmo files in one compilation *)
+                  ();
 
                   (* Compile implementation *)
                   let cmo_output = namespaced_name ^ ".cmo" in
