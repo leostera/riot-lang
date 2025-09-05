@@ -976,6 +976,19 @@ let plan_node ~graph ~node ~build_results ~session_id () =
         let package = node.Build_node.package in
         let toolchain = node.toolchain in
 
+        (* Step 0: Compile C files first *)
+        let c_actions = ref [] in
+        let c_objects = ref [] in
+        List.iter (fun source ->
+          match source.Build_node.kind with
+          | Build_node.C_stub ->
+              let source_path = Std.Path.to_string source.Build_node.file in
+              let output = Filename.chop_extension (Filename.basename source_path) ^ ".o" in
+              c_actions := Actions.CompileC { source = source_path; output } :: !c_actions;
+              c_objects := output :: !c_objects
+          | _ -> ()
+        ) node.srcs;
+        
         (* Step 1: Build module tree from sources *)
         let package_name = package.Workspace.name in
         let tree = build_modtree ~package_name ~srcs:node.srcs in
@@ -1031,7 +1044,26 @@ let plan_node ~graph ~node ~build_results ~session_id () =
         
         (* Step 5: Generate actions from the dependency graph *)
         Format.eprintf "[DEBUG] Generating actions from dependency graph...@.%!";
-        let actions = match Dep_graph.to_action_list dep_graph with
+        (* Collect all transitive dependency libraries in topological order *)
+        let dep_libraries = 
+          (* Get ALL nodes in topological order *)
+          let all_sorted = Build_graph.topological_sort graph in
+          (* Find all packages that come BEFORE our package in topological order *)
+          let rec collect_deps acc = function
+            | [] -> List.rev acc
+            | n :: rest ->
+                if n.Build_node.package.name = node.package.name then
+                  (* Found our package, stop collecting *)
+                  List.rev acc
+                else
+                  (* This is a dependency that should be linked *)
+                  let pkg_name = n.Build_node.package.name in
+                  let safe_name = String.map (function '-' -> '_' | c -> c) pkg_name in
+                  collect_deps ((safe_name ^ ".cma") :: acc) rest
+          in
+          collect_deps [] all_sorted
+        in
+        let actions = match Dep_graph.to_action_list ~dep_libraries ~c_objects:!c_objects dep_graph with
           | Ok dep_graph_actions -> 
               (* Print the actions for debugging *)
               Format.eprintf "[DEBUG] Generated %d actions from dep_graph:@.%!" (List.length dep_graph_actions);
@@ -1039,7 +1071,8 @@ let plan_node ~graph ~node ~build_results ~session_id () =
                 Format.eprintf "  %d. %s@.%!" (i+1) (Actions.action_to_string action)
               ) dep_graph_actions;
               Format.eprintf "[DEBUG] Using dep_graph actions!@.%!";
-              dep_graph_actions
+              (* Add C compilation actions at the beginning *)
+              List.rev !c_actions @ dep_graph_actions
           | Error msg ->
               Format.eprintf "[DEBUG] Failed to generate actions: %s@.%!" msg;
               Format.eprintf "[DEBUG] Falling back to Dep_sets approach...@.%!";
@@ -1088,6 +1121,7 @@ let plan_node ~graph ~node ~build_results ~session_id () =
               match action with
               | Actions.CompileInterface { output; _ } -> Some output
               | Actions.CompileImplementation { output; _ } -> Some output
+              | Actions.CompileC { output; _ } -> Some output
               | Actions.CreateLibrary { output; _ } -> Some output
               | Actions.CreateExecutable { output; _ } -> Some output
               | _ -> None)
