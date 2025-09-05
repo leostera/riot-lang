@@ -18,6 +18,12 @@ type action =
       includes : string list;
       flags : Ocamlc.compiler_flag list;
     }  (** Compile .ml file *)
+  | GenerateInterface of {
+      source : string;
+      output : string;
+      includes : string list;
+      flags : Ocamlc.compiler_flag list;
+    }  (** Generate .mli from .ml using ocamlc -i *)
   | CompileC of { source : string; output : string }  (** Compile C file *)
   (* Linking actions *)
   | CreateLibrary of {

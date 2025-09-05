@@ -15,6 +15,12 @@ type action =
       includes : string list;
       flags : Ocamlc.compiler_flag list;
     }
+  | GenerateInterface of {
+      source : string;
+      output : string;
+      includes : string list;
+      flags : Ocamlc.compiler_flag list;
+    }
   | CompileC of { source : string; output : string }
   (* Linking actions *)
   | CreateLibrary of {
@@ -86,6 +92,29 @@ let action_to_string action =
       Printf.sprintf "compile_impl(%s,%s,[%s],[%s])" source output
         (String.concat "," includes)
         flags_str
+  | GenerateInterface { source; output; includes; flags } ->
+      let flags_str =
+        flags
+        |> List.map (function
+          | Ocamlc.NoAliasDeps -> "no-alias-deps"
+          | Ocamlc.Open m -> "open:" ^ m
+          | Ocamlc.NoStdlib -> "nostdlib"
+          | Ocamlc.NoPervasives -> "nopervasives"
+          | Ocamlc.Impl file -> "impl:" ^ Std.Path.to_string file
+          | Ocamlc.Warning warnings ->
+              let warning_strs =
+                List.map
+                  (function
+                    | Ocamlc.NoCmiFile -> "no-cmi-file" | Ocamlc.All -> "all")
+                  warnings
+              in
+              "warning:[" ^ String.concat ";" warning_strs ^ "]")
+        |> String.concat ","
+      in
+      Printf.sprintf "generate_interface(%s -> %s)[includes: %s][%s])" source
+        output
+        (String.concat "," includes)
+        flags_str
   | CompileC { source; output } ->
       Printf.sprintf "compile_c(%s,%s)" source output
   | CreateLibrary { output; objects; includes } ->
@@ -112,6 +141,10 @@ let string_of_action = function
         (String.concat "; " includes)
   | CompileImplementation { source; output; includes } ->
       Printf.sprintf "compile_impl(%s -> %s) [includes: %s]"
+        (Filename.basename source) (Filename.basename output)
+        (String.concat "; " includes)
+  | GenerateInterface { source; output; includes } ->
+      Printf.sprintf "generate_interface(%s -> %s) [includes: %s]"
         (Filename.basename source) (Filename.basename output)
         (String.concat "; " includes)
   | CompileC { source; output } ->
@@ -148,6 +181,9 @@ let execute_action action toolchain =
       |> convert_result
   | CompileImplementation { source; output; includes; flags } ->
       Ocamlc.compile_impl ~toolchain ~includes ~flags ~output source
+      |> convert_result
+  | GenerateInterface { source; output; includes; flags } ->
+      Ocamlc.generate_interface ~toolchain ~includes ~flags ~output source
       |> convert_result
   | CompileC { source; output } ->
       Ocamlc.compile_c ~toolchain ~includes:[] ~output source |> convert_result

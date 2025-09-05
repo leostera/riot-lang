@@ -89,6 +89,16 @@ val compile_impl :
 (** Compile an implementation file (.ml -> .cmo). The current directory is
     automatically included. *)
 
+val generate_interface :
+  toolchain:Toolchains.toolchain ->
+  includes:string list ->
+  flags:compiler_flag list ->
+  output:string ->
+  string ->
+  result
+(** Generate interface file (.ml -> .mli) using ocamlc -i. Infers the module
+    interface from an implementation file and writes it to output. *)
+
 val compile_c :
   toolchain:Toolchains.toolchain ->
   includes:string list ->
