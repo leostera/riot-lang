@@ -913,13 +913,25 @@ let module_trees_to_actions_v2 ~toolchain ~package ~full_tree ~alias_modules
       Format.eprintf "[DEBUG]   CreateExecutable: %s@." output;
       Format.eprintf "[DEBUG]   Link order: %s@."
         (String.concat ", " all_objects);
+      (* Collect dependency libraries *)
+      let dep_libraries = 
+        List.map (fun (dep : Workspace.dependency) -> dep.name ^ ".cma") package.dependencies 
+      in
+      (* Add unix.cma if it's in the dependencies *)
+      let dep_libraries = 
+        if List.exists (fun (dep : Workspace.dependency) -> dep.name = "unix") package.dependencies then
+          "unix.cma" :: dep_libraries
+        else
+          dep_libraries
+      in
+      Format.eprintf "[DEBUG]   Dependencies: %s@."
+        (String.concat ", " dep_libraries);
       actions :=
         Actions.CreateExecutable
           {
             output;
             objects = all_objects;
-            libraries = [];
-            (* TODO: Add dependencies *)
+            libraries = dep_libraries;
             includes = [ "." ];
           }
         :: !actions)
