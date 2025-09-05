@@ -910,21 +910,13 @@ let to_action_list graph =
                       { source = original_path; destination = source_name }
                     :: !actions;
 
-                  (* If no separate interface node exists, compile .cmi from .ml *)
+                  (* If no separate interface node exists, the .cmi will be 
+                     generated automatically when we compile the .ml file *)
                   let intf_key = namespaced_name ^ ".mli" in
                   (match find_node graph intf_key with
                   | None ->
-                      (* No .mli file, so compile .cmi from .ml *)
-                      let cmi_output = namespaced_name ^ ".cmi" in
-                      actions :=
-                        Actions.CompileInterface
-                          {
-                            source = source_name;
-                            output = cmi_output;
-                            includes = [ "." ];
-                            flags = open_flags;
-                          }
-                        :: !actions
+                      (* No .mli file - the .cmi will be created when we compile the .ml *)
+                      ()
                   | Some _ ->
                       (* .mli exists and will be compiled by its Interface node *)
                       ());
