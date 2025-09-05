@@ -751,7 +751,7 @@ let print graph =
     graph.nodes
 
 (** Convert dependency graph to a list of actions *)
-let to_action_list graph =
+let to_action_list ?(dep_libraries = []) ?(c_objects = []) graph =
   match topological_sort graph with
   | Error msg -> Error msg
   | Ok sorted_nodes ->
@@ -926,14 +926,17 @@ let to_action_list graph =
          in
 
          if has_main then
-           (* Binary *)
+           (* Binary - use the transitive dependency libraries passed from build_planner *)
            let output = graph.package.Workspace.name in
+           (* dep_libraries are already in topological order from the build graph *)
+           (* Add unix.cma at the beginning for system dependencies *)
+          let libraries = "unix.cma" :: dep_libraries in
            actions :=
              Actions.CreateExecutable
                {
                  output;
                  objects = List.rev !cmo_files;
-                 libraries = [];
+                 libraries;
                  includes = [ "." ];
                }
              :: !actions
@@ -942,7 +945,7 @@ let to_action_list graph =
            let output = safe_package_name ^ ".cma" in
            actions :=
              Actions.CreateLibrary
-               { output; objects = List.rev !cmo_files; includes = [ "." ] }
+               { output; objects = List.rev !cmo_files @ c_objects; includes = [ "." ] }
              :: !actions);
 
       Ok (List.rev !actions)
