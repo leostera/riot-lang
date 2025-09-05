@@ -261,30 +261,30 @@ let topological_sort graph =
 
 (** Print the build graph *)
 let print graph =
-  Printf.printf "\n=== Build Graph ===\n";
+  Printf.printf "\n=== Build Graph ===\n%!";
 
   (* Print in topological order *)
   let sorted = topological_sort graph in
 
-  Printf.printf "\nBuild order:\n";
+  Printf.printf "\nBuild order:\n%!";
   List.iteri
     (fun i node ->
-      Printf.printf "%d. %s" (i + 1) node.package.name;
+      Printf.printf "%d. %s%!" (i + 1) node.package.name;
       if node.Build_node.deps <> [] then
-        Printf.printf " (deps: %s)"
+        Printf.printf " (deps: %s)%!"
           (String.concat ", "
              (List.map
                 (fun dep_id -> Node_id.to_string dep_id)
                 node.Build_node.deps));
-      Printf.printf "\n")
+      Printf.printf "\n%!")
     sorted;
 
-  Printf.printf "\nDependency tree:\n";
+  Printf.printf "\nDependency tree:\n%!";
   let rec print_tree indent node visited =
     if List.mem node.package.name visited then
-      Printf.printf "%s%s (circular reference)\n" indent node.package.name
+      Printf.printf "%s%s (circular reference)\n%!" indent node.package.name
     else (
-      Printf.printf "%s%s\n" indent node.package.name;
+      Printf.printf "%s%s\n%!" indent node.package.name;
       let visited = node.package.name :: visited in
       List.iter
         (fun dep_id ->

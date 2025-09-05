@@ -90,7 +90,7 @@ let run ~toolchain ?(includes = []) ?(libs = []) ?(output = None)
   in
 
   (* Always print the command for visibility *)
-  Printf.printf "  $ %s\n" cmd_parts;
+  Printf.printf "  $ %s\n%!" cmd_parts;
 
   (* Execute the command with colors enabled *)
   (* Set OCAML_COLOR=always to get colored error output *)
@@ -157,6 +157,37 @@ let compile_impl ~toolchain ~includes ~flags ~output source =
   else
     run ~toolchain ~includes:includes_with_dot ~output:(Some output)
       ~mode:Compile [ source ]
+
+(** Generate interface file (.ml -> .mli) using ocamlc -i *)
+let generate_interface ~toolchain ~includes ~flags ~output source =
+  (* Include current directory for .cmi files *)
+  let includes_with_dot = "." :: includes in
+
+  (* Build command using new Command API *)
+  let cmd =
+    Std.Command.(
+      make (base_command toolchain)
+      |> arg "-i"
+      |> args (flags_to_string flags)
+      |> args (List.concat_map (fun dir -> [ "-I"; dir ]) includes_with_dot)
+      |> arg source)
+  in
+
+  (* Execute and capture only stdout (stderr has warnings) *)
+  match Std.Command.output cmd with
+  | Ok out ->
+      if out.status = 0 then
+        (* Write the stdout (inferred interface) to the output file *)
+        match File_utils.write ~path:output ~content:out.stdout with
+        | Ok _ -> Success (Printf.sprintf "Generated interface %s" output)
+        | Error (`System_error msg) ->
+            Failed (Printf.sprintf "Failed to write %s: %s" output msg)
+      else
+        (* Include stderr in the error message for debugging *)
+        Failed
+          (Printf.sprintf "ocamlc -i failed with exit code %d: %s" out.status
+             out.stderr)
+  | Error err -> Failed (Std.Command.show_error err)
 
 (** Compile a C file *)
 let compile_c ~toolchain ~includes ~output source =

@@ -321,8 +321,8 @@ end
       let response = Client.receive_response client in
       match response with
       | Ok { result = Ok Pong; _ } -> print_endline "Got pong!"
-      | Ok { result = Error err; _ } -> Printf.printf "Error: %s\n" err.message
-      | Error e -> Printf.printf "Protocol error: %s\n" e
+      | Ok { result = Error err; _ } -> Printf.printf "Error: %s\n%!" err.message
+      | Error e -> Printf.printf "Protocol error: %s\n%!" e
 
       (* Create server *)
       let server = Server.create

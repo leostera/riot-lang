@@ -88,7 +88,7 @@ let rec get_transitive_dependencies node ~build_graph visited =
 
 (** Copy dependency artifacts into sandbox *)
 let copy_dependency_artifacts sandbox ~store ~build_graph ~build_results =
-  Printf.printf "[Sandbox] Copying dependency artifacts...\n";
+  Printf.printf "[Sandbox] Copying dependency artifacts...\n%!";
   flush stdout;
 
   (* Get all transitive dependencies *)
@@ -107,7 +107,7 @@ let copy_dependency_artifacts sandbox ~store ~build_graph ~build_results =
             match dep.Build_node.spec with
             | Build_node.Planned { hash; _ } ->
                 (* The dependency has been planned and has a hash, artifacts should be in store *)
-                Printf.printf "[Sandbox] Using hash from planned spec for %s\n"
+                Printf.printf "[Sandbox] Using hash from planned spec for %s\n%!"
                   dep_name;
                 flush stdout;
                 Some hash
@@ -120,13 +120,13 @@ let copy_dependency_artifacts sandbox ~store ~build_graph ~build_results =
             Store.exists store hash
           then (
             Printf.printf
-              "[Sandbox] Copying artifacts from store for %s (hash: %s)\n"
+              "[Sandbox] Copying artifacts from store for %s (hash: %s)\n%!"
               dep_name (Hasher.to_string hash);
             flush stdout;
 
             (* Get list of artifacts *)
             let files = Store.list_artifacts store hash in
-            Printf.printf "[Sandbox]   Files to copy: %s\n"
+            Printf.printf "[Sandbox]   Files to copy: %s\n%!"
               (String.concat ", " files);
             flush stdout;
 
@@ -134,7 +134,7 @@ let copy_dependency_artifacts sandbox ~store ~build_graph ~build_results =
             match Store.promote_from_store store hash sandbox.sandbox_dir with
             | true ->
                 Printf.printf
-                  "[Sandbox]   - Successfully copied %d files for %s\n"
+                  "[Sandbox]   - Successfully copied %d files for %s\n%!"
                   (List.length files) dep_name;
                 flush stdout
             | false ->
@@ -171,7 +171,7 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
     | Build_node.Unplanned -> []
   in
 
-  Printf.printf "[Sandbox] Running %d actions for %s in %s\n"
+  Printf.printf "[Sandbox] Running %d actions for %s in %s\n%!"
     (List.length actions) sandbox.node.package.name sandbox.sandbox_dir;
   flush stdout;
 
@@ -214,7 +214,7 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
                  Log.linking_executable ~session_id
                    ~package:sandbox.node.package.name ~output
              | _ -> ());
-             Printf.printf "[Sandbox] Step %d: %s\n" (i + 1)
+             Printf.printf "[Sandbox] Step %d: %s\n%!" (i + 1)
                (Actions.string_of_action action);
              flush stdout;
 
@@ -229,10 +229,10 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
              match result with
              | Actions.Success ->
                  if output <> "" then (
-                   Printf.printf "  -> %s\n" output;
+                   Printf.printf "  -> %s\n%!" output;
                    flush stdout)
              | Actions.Skipped reason ->
-                 Printf.printf "  -> Skipped: %s\n" reason;
+                 Printf.printf "  -> Skipped: %s\n%!" reason;
                  flush stdout
              | Actions.Failed error_msg ->
                  (* Check if this is a fatal build system error *)
@@ -295,7 +295,7 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
                    Log.compile_error ~session_id
                      ~package:sandbox.node.package.name compile_error;
 
-                   Printf.printf "  -> Failed: %s\n" error_msg;
+                   Printf.printf "  -> Failed: %s\n%!" error_msg;
                    flush stdout;
                    (* Stop processing further actions on failure *)
                    raise Exit))
@@ -359,10 +359,10 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
                   |> Result.expect ~msg:"Invalid promoted_dst")
                   0o755
               in
-              Printf.printf "[Sandbox] Promoted executable %s to %s\n"
+              Printf.printf "[Sandbox] Promoted executable %s to %s\n%!"
                 output_file promoted_dst;
               flush stdout);
-            Printf.printf "[Sandbox] Copied %s to target\n" output_file;
+            Printf.printf "[Sandbox] Copied %s to target\n%!" output_file;
             flush stdout))
         outputs;
       (* Return paths as Path.t *)

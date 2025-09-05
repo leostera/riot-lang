@@ -69,13 +69,13 @@ let usage_msg =
 (** Parse command line arguments for build command *)
 let parse_build_args args start_idx =
   let rec parse idx package =
-    if idx >= Array.length args then package
+    if idx >= List.length args then package
     else
-      match args.(idx) with
-      | "-p" when idx + 1 < Array.length args ->
-          parse (idx + 2) (Some args.(idx + 1))
+      match List.nth args idx with
+      | "-p" when idx + 1 < List.length args ->
+          parse (idx + 2) (Some (List.nth args (idx + 1)))
       | _ ->
-          Printf.eprintf "Warning: Unknown argument '%s'\n" args.(idx);
+          Printf.eprintf "Warning: Unknown argument '%s'\n" (List.nth args idx);
           parse (idx + 1) package
   in
   parse start_idx None
@@ -83,13 +83,13 @@ let parse_build_args args start_idx =
 (** Parse command line arguments for run command *)
 let parse_run_args args start_idx =
   let rec parse idx binary =
-    if idx >= Array.length args then binary
+    if idx >= List.length args then binary
     else
-      match args.(idx) with
-      | "-b" when idx + 1 < Array.length args ->
-          parse (idx + 2) (Some args.(idx + 1))
+      match List.nth args idx with
+      | "-b" when idx + 1 < List.length args ->
+          parse (idx + 2) (Some (List.nth args (idx + 1)))
       | _ ->
-          Printf.eprintf "Warning: Unknown argument '%s'\n" args.(idx);
+          Printf.eprintf "Warning: Unknown argument '%s'\n" (List.nth args idx);
           parse (idx + 1) binary
   in
   parse start_idx None
@@ -213,7 +213,7 @@ let build_command package_opt =
 
 (** Execute a binary and handle its exit status *)
 let execute_binary binary_name binary_path =
-  Printf.printf "🚀 Running %s...\n" binary_name;
+  Printf.printf "🚀 Running %s...\n%!" binary_name;
   let result = Command.system binary_path in
   match Std.Command.of_unix_status result with
   | Std.Command.Exited code ->
@@ -226,11 +226,11 @@ let execute_binary binary_name binary_path =
 
 (** Execute the clean command *)
 let clean_command () =
-  Printf.printf "🧹 Cleaning build artifacts...\n";
+  Printf.printf "🧹 Cleaning build artifacts...\n%!";
   let result = Command.system "rm -rf ./target" in
   match Std.Command.of_unix_status result with
   | Std.Command.Exited 0 ->
-      Printf.printf "Build artifacts cleaned!\n";
+      Printf.printf "Build artifacts cleaned!\n%!";
       Ok ()
   | _ -> Error (Failure "Failed to clean build artifacts")
 
@@ -274,7 +274,7 @@ let build_package package_name =
             if should_display then
               let formatted = format_cargo_event event in
               if formatted <> "" then (
-                Printf.printf "%s\n" formatted;
+                Printf.printf "%s\n%!" formatted;
                 flush stdout)
         | Tusk_jsonrpc.Client.BuildFinished _ ->
             (* This is handled below in the result match *)
@@ -304,7 +304,7 @@ let run_command binary_opt =
             execute_binary binary_name binary_path
         | None ->
             (* Binary doesn't exist, build it first *)
-            Printf.printf "📦 Binary '%s' not found, building first...\n"
+            Printf.printf "📦 Binary '%s' not found, building first...\n%!"
               binary_name;
             if build_package binary_name then (
               (* Build succeeded, try to run again *)
@@ -340,13 +340,13 @@ let run_command binary_opt =
           | Some binary_path -> execute_binary single_binary binary_path
           | None ->
               (* Binary doesn't exist, build it first *)
-              Printf.printf "📦 Binary '%s' not found, building first...\n"
+              Printf.printf "📦 Binary '%s' not found, building first...\n%!"
                 single_binary;
               if build_package single_binary then (
                 (* Build succeeded, try to run again *)
                 match get_binary_path single_binary with
                 | Some binary_path -> (
-                    Printf.printf "🚀 Running %s...\n" single_binary;
+                    Printf.printf "🚀 Running %s...\n%!" single_binary;
                     let result = Command.system binary_path in
                     match Std.Command.of_unix_status result with
                     | Std.Command.Exited code ->
@@ -449,7 +449,7 @@ let get_lsp_binary_path () =
 (** Execute the LSP command *)
 let rec lsp_command args =
   (* Parse subcommand if provided *)
-  let subcommand = if Array.length args > 2 then args.(2) else "" in
+  let subcommand = if List.length args > 0 then List.nth args 0 else "" in
   match subcommand with
   | "ocaml-merlin" ->
       (* Start the merlin bridge for ocaml-lsp-server integration *)
@@ -473,8 +473,12 @@ let rec lsp_command args =
       let ocamlformat_rpc = Filename.concat toolchain_dir "ocamlformat-rpc" in
       if File_utils.exists ~path:ocamlformat_rpc then
         (* Pass through to ocamlformat-rpc with all remaining args *)
-        let argv = Array.sub args 3 (Array.length args - 3) in
-        Command.exec ocamlformat_rpc (Array.append [| "ocamlformat-rpc" |] argv)
+        let rec drop n lst =
+          if n <= 0 then lst
+          else match lst with [] -> [] | _ :: t -> drop (n - 1) t
+        in
+        let args = drop 1 args in
+        Command.exec ocamlformat_rpc ~args:(args @ [ "ocamlformat-rpc" ]) ()
       else (
         Printf.eprintf "Error: ocamlformat-rpc not found at %s\n"
           ocamlformat_rpc;
@@ -562,20 +566,22 @@ and lsp_start_server () =
     let _ = Env.putenv "PATH" new_path in
 
     (* Execute the LSP server with stdio by default *)
-    let args =
-      if Array.length (Command.argv ()) > 2 then
+    let args = Env.args in
+    let lsp_args =
+      if List.length args > 0 then
         (* Pass through any additional arguments after "lsp" *)
-        Array.sub (Command.argv ()) 2 (Array.length (Command.argv ()) - 2)
+        let rec drop n lst =
+          if n <= 0 then lst
+          else match lst with [] -> [] | _ :: t -> drop (n - 1) t
+        in
+        drop 0 args
       else
         (* Default to stdio mode *)
-        [| "--stdio" |]
+        [ "--stdio" ]
     in
 
-    (* Build the full command *)
-    let full_args = Array.append [| lsp_path |] args in
-
     (* Execute the LSP server *)
-    let _ = Command.exec lsp_path full_args in
+    let _ = Command.exec lsp_path ~args:lsp_args () in
     (* This should never be reached if execv succeeds *)
     Error (Failure "Failed to execute LSP server")
   with
@@ -774,39 +780,39 @@ let doc_command () =
 
 (** Show help message *)
 let help_command () =
-  Printf.printf "%s\n" usage_msg;
+  Printf.printf "%s\n%!" usage_msg;
   Ok ()
 
 (** Show version *)
 let version_command () =
-  Printf.printf "%s\n" Version.version;
+  Printf.printf "%s\n%!" Version.version;
   Ok ()
 
 (** Execute the server command *)
 let server_command args =
   (* Parse subcommand if provided *)
-  let subcommand = if Array.length args > 2 then args.(2) else "" in
+  let subcommand = if List.length args > 0 then List.nth args 0 else "" in
   match subcommand with
   | "start" ->
       (* Start server in background *)
-      Printf.printf "Server start not implemented yet\n";
+      Printf.printf "Server start not implemented yet\n%!";
       Ok ()
   | "stop" ->
       (* Stop background server *)
-      Printf.printf "Server stop not implemented yet\n";
+      Printf.printf "Server stop not implemented yet\n%!";
       Ok ()
   | "kill" ->
       (* Kill background server forcefully *)
-      Printf.printf "Server kill not implemented yet\n";
+      Printf.printf "Server kill not implemented yet\n%!";
       Ok ()
   | "status" ->
       (* Check server status *)
-      Printf.printf "Server status not implemented yet\n";
+      Printf.printf "Server status not implemented yet\n%!";
       Ok ()
   | "" | "foreground" ->
       (* Default: Run server in foreground *)
-      Printf.printf "🚀 Starting tusk server...\n";
-      Printf.printf "   Press Ctrl+C to stop\n\n";
+      Printf.printf "🚀 Starting tusk server...\n%!";
+      Printf.printf "   Press Ctrl+C to stop\n\n%!";
       Tusk_server.start_with_listener ()
   | _ ->
       Printf.eprintf "Unknown server subcommand: %s\n" subcommand;
@@ -821,25 +827,29 @@ let server_command args =
 
 (** Execute the rpc command *)
 let rpc_command args =
-  let cmd = if Array.length args > 2 then args.(2) else "" in
+  let cmd = if List.length args > 0 then List.nth args 0 else "" in
   let rest =
-    if Array.length args > 3 then
-      Array.to_list (Array.sub args 3 (Array.length args - 3))
+    if List.length args > 1 then
+      let rec drop n lst =
+        if n <= 0 then lst
+        else match lst with [] -> [] | _ :: t -> drop (n - 1) t
+      in
+      drop 1 args
     else []
   in
 
   (* Show help if no subcommand provided *)
   if cmd = "" then (
-    Printf.printf "Available RPC commands:\n";
-    Printf.printf "  tusk rpc ping              - Test server connectivity\n";
-    Printf.printf "  tusk rpc workspace         - Get workspace information\n";
+    Printf.printf "Available RPC commands:\n%!";
+    Printf.printf "  tusk rpc ping              - Test server connectivity\n%!";
+    Printf.printf "  tusk rpc workspace         - Get workspace information\n%!";
     Printf.printf
-      "  tusk rpc package <name>    - Get package details including sources\n";
-    Printf.printf "  tusk rpc graph             - Get build graph\n";
+      "  tusk rpc package <name>    - Get package details including sources\n%!";
+    Printf.printf "  tusk rpc graph             - Get build graph\n%!";
     Printf.printf
-      "  tusk rpc build [package]   - Build all or specific package\n";
-    Printf.printf "  tusk rpc restart           - Restart the server\n";
-    Printf.printf "  tusk rpc shutdown          - Shutdown the server\n";
+      "  tusk rpc build [package]   - Build all or specific package\n%!";
+    Printf.printf "  tusk rpc restart           - Restart the server\n%!";
+    Printf.printf "  tusk rpc shutdown          - Shutdown the server\n%!";
     Ok ())
   else if cmd = "ping" then (
     let client = create_local_client () in
@@ -848,7 +858,7 @@ let rpc_command args =
     match result with
     | Ok () ->
         let json = Json.Object [ ("type", Json.String "pong") ] in
-        Printf.printf "%s\n" (Json.to_string json);
+        Printf.printf "%s\n%!" (Json.to_string json);
         Ok ()
     | Error e ->
         Printf.eprintf "Error: %s\n" e;
@@ -890,7 +900,7 @@ let rpc_command args =
                 Json.Int config.Tusk_jsonrpc.TuskProtocol.total_packages );
             ]
         in
-        Printf.printf "%s\n" (Json.to_string json);
+        Printf.printf "%s\n%!" (Json.to_string json);
         Ok ()
     | Error e ->
         Printf.eprintf "Error: %s\n" e;
@@ -939,7 +949,7 @@ let rpc_command args =
                          detail.Tusk_jsonrpc.TuskProtocol.dependency_names) );
                 ]
             in
-            Printf.printf "%s\n" (Json.to_string json);
+            Printf.printf "%s\n%!" (Json.to_string json);
             Ok ()
         | Error e ->
             Printf.eprintf "Error: %s\n" e;
@@ -973,14 +983,16 @@ let rpc_command args =
               ("nodes", Json.Array nodes_json);
             ]
         in
-        Printf.printf "%s\n" (Json.to_string json);
+        Printf.printf "%s\n%!" (Json.to_string json);
         Ok ()
     | Error e ->
         Printf.eprintf "Error: %s\n" e;
         Error (Failure e))
   else if cmd = "build" then (
     (* Parse optional package name *)
-    let package = if Array.length args > 3 then Some args.(3) else None in
+    let package =
+      if List.length args > 1 then Some (List.nth args 1) else None
+    in
     let request =
       match package with
       | Some pkg -> Tusk_jsonrpc.Client.BuildPackage pkg
@@ -1001,12 +1013,12 @@ let rpc_command args =
                 ("session_id", Json.String (Session_id.to_string sid));
               ]
           in
-          Printf.printf "%s\n" (Json.to_string json);
+          Printf.printf "%s\n%!" (Json.to_string json);
           flush stdout
       | Tusk_jsonrpc.Client.BuildEvent event ->
           (* Use Event.to_json for all events *)
           let json = Event.to_json event in
-          Printf.printf "%s\n" (Json.to_string json);
+          Printf.printf "%s\n%!" (Json.to_string json);
           flush stdout
       | Tusk_jsonrpc.Client.BuildFinished result ->
           let json =
@@ -1018,7 +1030,7 @@ let rpc_command args =
                     ("type", Json.String "error"); ("message", Json.String msg);
                   ]
           in
-          Printf.printf "%s\n" (Json.to_string json);
+          Printf.printf "%s\n%!" (Json.to_string json);
           flush stdout
     in
     let result = Tusk_jsonrpc.Client.build_streaming client request callback in
@@ -1030,7 +1042,7 @@ let rpc_command args =
           Json.Object
             [ ("type", Json.String "Error"); ("message", Json.String e) ]
         in
-        Printf.printf "%s\n" (Json.to_string response);
+        Printf.printf "%s\n%!" (Json.to_string response);
         Error (Failure e))
   else if cmd = "restart" then (
     let client = create_local_client () in
@@ -1039,7 +1051,7 @@ let rpc_command args =
     match result with
     | Ok () ->
         let json = Json.Object [ ("type", Json.String "restarted") ] in
-        Printf.printf "%s\n" (Json.to_string json);
+        Printf.printf "%s\n%!" (Json.to_string json);
         Ok ()
     | Error e ->
         Printf.eprintf "Error: %s\n" e;
@@ -1051,7 +1063,7 @@ let rpc_command args =
     match result with
     | Ok () ->
         let json = Json.Object [ ("type", Json.String "shutdown") ] in
-        Printf.printf "%s\n" (Json.to_string json);
+        Printf.printf "%s\n%!" (Json.to_string json);
         Ok ()
     | Error e ->
         Printf.eprintf "Error: %s\n" e;
@@ -1079,7 +1091,7 @@ let rpc_command args =
                   ("changed", Json.Bool changed);
                 ]
             in
-            Printf.printf "%s\n" (Json.to_string json);
+            Printf.printf "%s\n%!" (Json.to_string json);
             Ok ()
         | Error e ->
             Printf.eprintf "Error: %s\n" e;
@@ -1106,7 +1118,7 @@ let rpc_command args =
                   ("needs_formatting", Json.Bool changed);
                 ]
             in
-            Printf.printf "%s\n" (Json.to_string json);
+            Printf.printf "%s\n%!" (Json.to_string json);
             Ok ()
         | Error e ->
             Printf.eprintf "Error: %s\n" e;
@@ -1133,7 +1145,7 @@ let rpc_command args =
                   ("changed", Json.Bool changed);
                 ]
             in
-            Printf.printf "%s\n" (Json.to_string json);
+            Printf.printf "%s\n%!" (Json.to_string json);
             Ok ()
         | Error e ->
             Printf.eprintf "Error: %s\n" e;
@@ -1147,15 +1159,15 @@ let rpc_command args =
 
 (** Execute the new command *)
 let new_command args =
-  if Array.length args < 3 then (
+  if List.length args < 1 then (
     Printf.eprintf "Error: Package path required\n";
     Printf.eprintf "Usage: tusk new <path> [--lib|--bin]\n";
     Error (Failure "Missing package path"))
   else
-    let path = args.(2) in
+    let path = List.nth args 0 in
     let is_library =
-      if Array.length args > 3 then
-        match args.(3) with
+      if List.length args > 1 then
+        match List.nth args 1 with
         | "--bin" -> false
         | "--lib" -> true
         | _ -> true (* default to library *)
@@ -1182,7 +1194,7 @@ let new_command args =
           Tusk_jsonrpc.Client.new_package client ~path ~name ~is_library
         with
         | Ok (created_path, created_name) ->
-            Printf.printf "Package '%s' created at '%s'\n" created_name
+            Printf.printf "Package '%s' created at '%s'\n%!" created_name
               created_path;
             Ok ()
         | Error e -> Error (Failure ("Package creation failed: " ^ e)))
@@ -1190,16 +1202,16 @@ let new_command args =
 
 (** Execute the install command *)
 let install_command args =
-  if Array.length args < 3 then (
+  if List.length args < 1 then (
     Printf.eprintf "Error: Package name required\n";
     Printf.eprintf "Usage: tusk install <package>\n";
     Error (Failure "Package name required"))
   else
-    let package_name = args.(2) in
-    Printf.printf "📦 Installing %s...\n" package_name;
+    let package_name = List.nth args 0 in
+    Printf.printf "📦 Installing %s...\n%!" package_name;
 
     (* First, build the package *)
-    Printf.printf "Building %s...\n" package_name;
+    Printf.printf "Building %s...\n%!" package_name;
     if not (build_package package_name) then (
       Printf.eprintf "\n❌ Failed to build %s, nothing was installed\n"
         package_name;
@@ -1258,12 +1270,12 @@ let install_command args =
               let chmod_cmd = Printf.sprintf "chmod +x %s" dest_path in
               ignore (Command.system chmod_cmd);
 
-              Printf.printf "✅ Installed %s to %s\n" package_name dest_path;
-              Printf.printf "\n";
+              Printf.printf "✅ Installed %s to %s\n%!" package_name dest_path;
+              Printf.printf "\n%!";
               Printf.printf
-                "To use %s from anywhere, add ~/.tusk/bin to your PATH:\n"
+                "To use %s from anywhere, add ~/.tusk/bin to your PATH:\n%!"
                 package_name;
-              Printf.printf "  export PATH='$HOME/.tusk/bin:$PATH'\n";
+              Printf.printf "  export PATH='$HOME/.tusk/bin:$PATH'\n%!";
               Ok ()
           | _ ->
               Printf.eprintf "❌ Failed to install %s\n" package_name;
@@ -1272,28 +1284,30 @@ let install_command args =
 
 (** Main entry point - runs as a Miniriot process *)
 let main () =
-  let args = Command.argv () in
-  let argc = Array.length args in
+  let args = Env.args in
+  let argc = List.length args in
   (* Initialize logger process first *)
   let _logger_pid = Log.init () in
 
-  if argc < 2 then (
+  if argc < 1 then (
     Printf.eprintf "Error: No command specified\n\n%s\n" usage_msg;
     Error (Failure "No command specified"))
   else
-    let command = args.(1) in
+    let command = List.nth args 0 in
+    let cmd_args = List.tl args in
+    (* Remove the command itself *)
     match command with
     | "build" ->
-        let package_opt = parse_build_args args 2 in
+        let package_opt = parse_build_args cmd_args 0 in
         build_command package_opt
     | "run" ->
-        let binary_opt = parse_run_args args 2 in
+        let binary_opt = parse_run_args cmd_args 0 in
         run_command binary_opt
-    | "new" -> new_command args
-    | "install" -> install_command args
-    | "server" -> server_command args
-    | "rpc" -> rpc_command args
-    | "lsp" -> lsp_command args
+    | "new" -> new_command cmd_args
+    | "install" -> install_command cmd_args
+    | "server" -> server_command cmd_args
+    | "rpc" -> rpc_command cmd_args
+    | "lsp" -> lsp_command cmd_args
     | "mcp" ->
         (* Start MCP server *)
         Mcp_server.start ();
