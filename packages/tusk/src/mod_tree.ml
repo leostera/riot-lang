@@ -2,12 +2,14 @@
 
 open Std
 
+type gen_kind =
+  | Static of { contents : string; path : Path.t }
+  | Dynamic of { path : Path.t }
+
 type module_info =
   | Generated of {
       simple_name : string;
-      contents : string;
-      path : string;
-      filename : string;
+      kind : gen_kind;
     }
   | Concrete of {
       simple_name : string;
@@ -68,8 +70,12 @@ let rec print ?(indent = "") tree =
         (match folder_interface with Some _ -> "yes" | None -> "no")
         (List.length aliases);
       List.iter (print ~indent:(indent ^ "  ")) children
-  | Module (Generated { simple_name; _ }) ->
-      Format.eprintf "%sGenerated: %s@." indent simple_name
+  | Module (Generated { simple_name; kind }) ->
+      let kind_str = match kind with
+        | Static _ -> "(static)"
+        | Dynamic _ -> "(dynamic)"
+      in
+      Format.eprintf "%sGenerated: %s %s@." indent simple_name kind_str
   | Module (Concrete { simple_name; namespaced_name; impl; intf }) ->
       Format.eprintf "%sModule: %s -> %s (impl=%s, intf=%s)@." indent
         simple_name namespaced_name

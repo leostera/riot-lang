@@ -11,6 +11,157 @@ let of_unix_status = function
 type t = { pid : int; cmd : string }
 type error = SpawnFailed of string | CommandNotFound of string
 
+let show_error = function
+  | SpawnFailed msg -> "Spawn failed: " ^ msg
+  | CommandNotFound cmd -> "Command not found: " ^ cmd
+
+type output = { status : int; stdout : string; stderr : string }
+(** Output from a command execution *)
+
+type cmd = {
+  program : string;
+  arguments : string list;
+  environment : (string * string) list;
+  stdin_cfg : [ `Pipe | `Null | `Inherit ];
+  stdout_cfg : [ `Pipe | `Null | `Inherit ];
+  stderr_cfg : [ `Pipe | `Null | `Inherit ];
+}
+(** Command builder type *)
+
+(** Create a new command *)
+let make program =
+  {
+    program;
+    arguments = [];
+    environment = [];
+    stdin_cfg = `Inherit;
+    stdout_cfg = `Pipe;
+    stderr_cfg = `Pipe;
+  }
+
+(** Add a single argument *)
+let arg arg cmd = { cmd with arguments = cmd.arguments @ [ arg ] }
+
+(** Add multiple arguments *)
+let args args cmd = { cmd with arguments = cmd.arguments @ args }
+
+(** Set an environment variable *)
+let env key value cmd =
+  { cmd with environment = (key, value) :: cmd.environment }
+
+(** Set multiple environment variables *)
+let envs vars cmd = { cmd with environment = vars @ cmd.environment }
+
+(** Configure stdin *)
+let stdin cfg cmd = { cmd with stdin_cfg = cfg }
+
+(** Configure stdout *)
+let stdout cfg cmd = { cmd with stdout_cfg = cfg }
+
+(** Configure stderr *)
+let stderr cfg cmd = { cmd with stderr_cfg = cfg }
+
+(** Helper to build the full command string with environment *)
+let build_command_string cmd =
+  let env_str =
+    if cmd.environment = [] then ""
+    else
+      (cmd.environment
+      |> List.map (fun (k, v) -> Printf.sprintf "%s=%s" k v)
+      |> String.concat " ")
+      ^ " "
+  in
+  let args_str = String.concat " " cmd.arguments in
+  Printf.sprintf "%s%s %s" env_str cmd.program args_str
+
+(** Execute command and capture output *)
+let output cmd =
+  (* Build the full command string *)
+  let cmd_str = build_command_string cmd in
+  Printf.printf "  $ %s\n%!" cmd_str;
+
+  (* Use open_process_full to get stdin, stdout, and stderr *)
+  let env_array =
+    if cmd.environment = [] then Unix.environment ()
+    else
+      let base_env = Unix.environment () |> Array.to_list in
+      let env_list =
+        List.fold_left
+          (fun acc (k, v) ->
+            let kv = Printf.sprintf "%s=%s" k v in
+            (* Replace existing or add new *)
+            let without_key =
+              List.filter
+                (fun s -> not (String.starts_with ~prefix:(k ^ "=") s))
+                acc
+            in
+            kv :: without_key)
+          base_env cmd.environment
+      in
+      Array.of_list env_list
+  in
+
+  (* Execute the command *)
+  let stdout_ic, stdin_oc, stderr_ic =
+    Unix.open_process_full
+      (cmd.program ^ " " ^ String.concat " " cmd.arguments)
+      env_array
+  in
+
+  (* Close stdin if not needed *)
+  (match cmd.stdin_cfg with
+  | `Null | `Inherit -> close_out stdin_oc
+  | `Pipe -> ());
+
+  (* Read stdout *)
+  let stdout_lines = ref [] in
+  (try
+     while true do
+       stdout_lines := input_line stdout_ic :: !stdout_lines
+     done
+   with End_of_file -> ());
+
+  (* Read stderr *)
+  let stderr_lines = ref [] in
+  (try
+     while true do
+       stderr_lines := input_line stderr_ic :: !stderr_lines
+     done
+   with End_of_file -> ());
+
+  (* Wait for process and get exit status *)
+  let process_status =
+    Unix.close_process_full (stdout_ic, stdin_oc, stderr_ic)
+  in
+
+  let status_code =
+    match process_status with
+    | Unix.WEXITED code -> code
+    | Unix.WSIGNALED n -> 128 + n
+    | Unix.WSTOPPED n -> 128 + n
+  in
+
+  Ok
+    {
+      status = status_code;
+      stdout = String.concat "\n" (List.rev !stdout_lines);
+      stderr = String.concat "\n" (List.rev !stderr_lines);
+    }
+
+(** Execute command and return only the exit status *)
+let status cmd =
+  (* For status, we typically want output to go to the console *)
+  let cmd_with_inherit = cmd |> stdout `Inherit |> stderr `Inherit in
+
+  let cmd_str = build_command_string cmd_with_inherit in
+  Printf.printf "  $ %s\n%!" cmd_str;
+
+  (* Use system for simpler status-only execution when inheriting stdout/stderr *)
+  match Unix.system cmd_str with
+  | Unix.WEXITED code -> Ok code
+  | Unix.WSIGNALED n -> Ok (128 + n)
+  | Unix.WSTOPPED n -> Ok (128 + n)
+
 let spawn ~cmd ~args =
   try
     (* Use Unix.create_process to spawn a detached process *)
@@ -56,33 +207,29 @@ let system cmd = Unix.system cmd
 let open_process_in cmd = Unix.open_process_in cmd
 let close_process_in ic = Unix.close_process_in ic
 
-let run_command ?env cmd =
-  Printf.printf "  $ %s\n" cmd;
-  flush stdout;
-  (* Prepend environment variables if provided *)
-  let cmd_with_env =
-    match env with
-    | None -> cmd
-    | Some env_list ->
-        let env_str =
-          env_list
-          |> List.map (fun (k, v) -> Printf.sprintf "%s=%s" k v)
-          |> String.concat " "
-        in
-        Printf.sprintf "%s %s" env_str cmd
-  in
-  let ic = Unix.open_process_in (cmd_with_env ^ " 2>&1") in
-  let output = ref [] in
-  (try
-     while true do
-       output := input_line ic :: !output
-     done
-   with End_of_file -> ());
-  let result = Unix.close_process_in ic in
-  let output_str = String.concat "\n" (List.rev !output) in
-  match result with
-  | Unix.WEXITED 0 -> Ok output_str
-  | _ -> Error (SpawnFailed output_str)
+let run_command ?env cmd_str =
+  (* Legacy API - parse the command string and use the new API *)
+  (* Split command string into program and arguments *)
+  let parts = String.split_on_char ' ' cmd_str in
+  match parts with
+  | [] -> Error (CommandNotFound "Empty command")
+  | prog :: args_list -> (
+      let cmd_obj = make prog |> args args_list in
+      let cmd_with_env =
+        match env with
+        | None -> cmd_obj
+        | Some env_list -> envs env_list cmd_obj
+      in
+      (* For backward compatibility, combine stdout and stderr like 2>&1 *)
+      match output cmd_with_env with
+      | Ok out ->
+          (* Combine stdout and stderr like the old version did with 2>&1 *)
+          let combined =
+            if out.stderr = "" then out.stdout
+            else out.stdout ^ "\n" ^ out.stderr
+          in
+          if out.status = 0 then Ok combined else Error (SpawnFailed combined)
+      | Error e -> Error e)
 
 let run_process_lines cmd =
   let ic = Unix.open_process_in cmd in

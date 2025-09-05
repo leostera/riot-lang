@@ -356,9 +356,10 @@ let insert_alias_modules tree =
               Mod_tree.Generated
                 {
                   simple_name = alias_name;
-                  contents = content;
-                  path = alias_name ^ ".ml.gen";
-                  filename = alias_name ^ ".ml.gen";
+                  kind = Static {
+                    contents = content;
+                    path = Path.of_string (alias_name ^ ".ml.gen") |> Result.expect ~msg:"Invalid path";
+                  };
                 };
             ]
           else []
@@ -426,9 +427,10 @@ let insert_alias_modules tree =
               Mod_tree.Generated
                 {
                   simple_name = alias_name;
-                  contents = content;
-                  path = alias_name ^ ".ml.gen";
-                  filename = alias_name ^ ".ml.gen";
+                  kind = Static {
+                    contents = content;
+                    path = Path.of_string (alias_name ^ ".ml.gen") |> Result.expect ~msg:"Invalid path";
+                  };
                 };
             ]
           else []
@@ -739,19 +741,16 @@ let module_trees_to_actions_v2 ~toolchain ~package ~full_tree ~alias_modules
   Dep_set.iter
     (function
       | Mod_tree.Module
-          (Mod_tree.Generated { filename; contents; simple_name; _ }) ->
+          (Mod_tree.Generated { kind = Static { contents; path }; simple_name; _ }) ->
           (* Write the file *)
+          let filename = Path.to_string path in
           Format.eprintf "[DEBUG]   WriteFile: %s@." filename;
           actions :=
             Actions.WriteFile { destination = filename; content = contents }
             :: !actions;
 
           (* Compile interface and implementation *)
-          let impl_path =
-            Path.of_string filename
-            |> Result.expect
-                 ~msg:
-                   (Printf.sprintf "Expected '%s' to be a valid Path" filename)
+          let impl_path = path
           in
           let modname =
             Mod_name.make ~filename:impl_path

@@ -162,7 +162,7 @@ let from_mod_tree ~toolchain ~package tree =
                   add_node graph ~module_info:info ~file_kind:Implementation
                     ~level ~parent_aliases:package_aliases
             | Mod_tree.Module info ->
-                (* Generated module *)
+                (* Generated alias module *)
                 add_node graph ~module_info:info ~file_kind:Alias ~level
                   ~parent_aliases:package_aliases
             | Mod_tree.Library { name = lib_name; _ } ->
@@ -252,7 +252,7 @@ let from_mod_tree ~toolchain ~package tree =
                   add_node graph ~module_info:info ~file_kind:Implementation
                     ~level ~parent_aliases:new_parent_aliases
             | Mod_tree.Module info ->
-                (* Generated module *)
+                (* Generated alias module *)
                 add_node graph ~module_info:info ~file_kind:Alias ~level
                   ~parent_aliases:new_parent_aliases
             | Mod_tree.Library { name = lib_name; _ } ->
@@ -392,9 +392,10 @@ let from_mod_tree ~toolchain ~package tree =
                             Hashtbl.add file_to_node basename node)
                       | None -> ())
                   | Alias -> ())
-              | Mod_tree.Generated { contents; filename; _ }
+              | Mod_tree.Generated { kind = Static { contents; path }; _ }
                 when node.file_kind = Alias ->
                   (* Write generated alias file *)
+                  let filename = Path.to_string path in
                   if filename <> "" && not (Hashtbl.mem copied_files filename)
                   then (
                     let dest = Filename.concat temp_dir filename in
@@ -434,18 +435,12 @@ let from_mod_tree ~toolchain ~package tree =
               let deps_list =
                 List.map
                   (fun file ->
-                    if file = "scheduler.mli" then
-                      Format.eprintf "[DEBUG Dep_graph] Getting deps for scheduler.mli using Ocamldep.deps@.%!";
-                    
                     (* Use the Ocamldep module to get dependencies *)
-                    let deps = Ocamldep.deps ~toolchain:graph.toolchain ~cwd:temp_dir ~file in
-                    
-                    if file = "scheduler.mli" && deps <> [] then (
-                      Format.eprintf "[DEBUG Dep_graph] Ocamldep.deps returned for %s: [%s]@.%!" 
-                        file (String.concat ", " deps);
-                      if List.mem "Process" deps then
-                        Format.eprintf "[DEBUG Dep_graph] scheduler.mli depends on Process!@.%!";
-                    );
+                    (* Get the package namespace for this file *)
+                    let package_namespace = Mod_name.namespace_of_list [
+                      String.capitalize_ascii package.name
+                    ] in
+                    let deps = Ocamldep.deps ~toolchain:graph.toolchain ~cwd:temp_dir ~file ~package_namespace in
                     (file, deps))
                   files
               in
@@ -456,36 +451,21 @@ let from_mod_tree ~toolchain ~package tree =
                   (* Find the node for this file *)
                   match Hashtbl.find_opt file_to_node file with
                   | Some source_node ->
-                      if file = "scheduler.mli" then
-                        Format.eprintf "[DEBUG Dep_graph] Processing deps for scheduler.mli: [%s]@.%!"
-                          (String.concat ", " deps);
-                      
                       (* For each dependency, find the corresponding node *)
                       List.iter
-                        (fun dep_module ->
-                          if file = "scheduler.mli" then
-                            Format.eprintf "[DEBUG Dep_graph] Processing dependency '%s' for scheduler.mli@.%!" dep_module;
+                        (fun dep_modname ->
+                          let dep_module = Mod_name.module_name dep_modname in
+                          let qualified_name = Mod_name.qualified_name dep_modname in
                           
                           (* Try to find a node with this module name *)
-                          (* Need to handle namespacing *)
-                          let capitalized_package =
-                            String.capitalize_ascii package.name
-                          in
                           let possible_names =
                             [
-                              dep_module;
-                              (* Direct name *)
-                              capitalized_package ^ "__" ^ dep_module;
-                              (* Package namespaced with correct capitalization *)
-                              "Std__" ^ dep_module;
-                              (* Common namespace pattern *)
-                              (* Add more patterns as needed *)
+                              qualified_name;  (* Already qualified name from ocamldep *)
+                              qualified_name ^ ".ml";
+                              qualified_name ^ ".mli";
+                              dep_module;  (* Try unqualified too *)
                             ]
                           in
-
-                          if file = "scheduler.mli" && dep_module = "Process" then
-                            Format.eprintf "[DEBUG Dep_graph] Possible names for Process: [%s]@.%!"
-                              (String.concat ", " possible_names);
 
                           (* Track whether we found the dependency *)
                           let found = ref false in
@@ -494,57 +474,48 @@ let from_mod_tree ~toolchain ~package tree =
                             (fun name ->
                               if not !found then (
                                 (* Determine what kind of node to look for based on source *)
-                                let target_key =
+                                let keys_to_try =
                                   match source_node.file_kind with
                                   | Interface ->
                                       (* .mli files can only depend on other .mli files *)
-                                      name ^ ".mli"
+                                      [ name ^ ".mli"; name ]
                                   | Implementation ->
-                                      (* .ml files depend on .mli files for compilation *)
-                                      name ^ ".mli"
+                                      (* .ml files need both:
+                                         - the .mli for type checking during compilation
+                                         - the .ml for linking (to get the .cmo)
+                                         We add both dependencies to ensure proper ordering *)
+                                      [ name ^ ".mli"; name ^ ".ml"; name ]
                                   | Alias ->
                                       (* Alias modules are self-contained *)
-                                      name
-                                in
-
-                                (* Also check for alias modules which don't have suffix *)
-                                let keys_to_try =
-                                  if source_node.file_kind = Alias then [ name ]
-                                    (* Alias to alias *)
-                                  else [ target_key; name ]
-                                  (* Regular to interface or alias *)
+                                      [ name ]
                                 in
                                 
-                                if file = "scheduler.mli" && dep_module = "Process" then
-                                  Format.eprintf "[DEBUG Dep_graph]   For name %s, keys to try: [%s]@.%!"
-                                    name (String.concat ", " keys_to_try);
-
                                 List.iter
                                   (fun key ->
                                     if not !found then (
-                                      if file = "scheduler.mli" && dep_module = "Process" then
-                                        Format.eprintf "[DEBUG Dep_graph]     Looking for node with key: %s@.%!" key;
                                       match find_node graph key with
                                       | Some target_node ->
-                                          if file = "scheduler.mli" && dep_module = "Process" then
-                                            Format.eprintf "[DEBUG Dep_graph]     FOUND node: %s@.%!" key;
                                           (* Don't add self-dependencies *)
                                           if target_node.id <> source_node.id then (
                                             add_dependency graph ~source:source_node
                                               ~target:target_node;
-                                            found := true
+                                            (* For .ml dependencies, we found at least one target,
+                                               but continue looking for both .mli and .ml *)
+                                            if source_node.file_kind <> Implementation then
+                                              found := true
                                           )
-                                      | None ->
-                                          if file = "scheduler.mli" && dep_module = "Process" then
-                                            Format.eprintf "[DEBUG Dep_graph]     Node NOT found: %s@.%!" key))
-                                  keys_to_try))
+                                      | None -> ()))
+                                  keys_to_try;
+                                  
+                                (* Mark as found if we added any dependency *)
+                                if source_node.file_kind = Implementation && 
+                                   List.exists (fun dep -> dep <> source_node) source_node.dependencies then
+                                  found := true))
                             possible_names;
                           
                           (* If we couldn't find the dependency, it might be a standard library module *)
                           (* Only warn for debugging, don't fail *)
-                          if not !found && file = "scheduler.mli" then
-                            Format.eprintf "[DEBUG Dep_graph] Could not resolve dependency %s for %s (might be stdlib)@.%!"
-                              dep_module file)
+                          ())
                         deps
                   | None -> 
                       Format.eprintf "[DEBUG Dep_graph] WARNING: No node found for file %s@.%!" file)
@@ -793,22 +764,20 @@ let to_action_list graph =
       List.iter
         (fun node ->
           match (node.module_info, node.file_kind) with
-          | Mod_tree.Generated { simple_name; contents; filename; _ }, Alias ->
+          | Mod_tree.Generated { simple_name; kind = Static { contents; path }; _ }, Alias ->
               (* Generated alias module *)
               Format.eprintf
                 "[DEBUG] Generating actions for alias module: %s@.%!"
                 simple_name;
 
               (* Write the file *)
+              let filename = Path.to_string path in
               actions :=
                 Actions.WriteFile { destination = filename; content = contents }
                 :: !actions;
 
               (* Create module name for compilation *)
-              let impl_path =
-                Path.of_string filename
-                |> Result.expect
-                     ~msg:(Printf.sprintf "Invalid path: %s" filename)
+              let impl_path = path
               in
               let modname =
                 Mod_name.make ~filename:impl_path

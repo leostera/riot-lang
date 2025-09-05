@@ -25,8 +25,8 @@ let sort ~toolchain ~cwd ~files =
       (* Filter out empty strings and return files in dependency order *)
       List.filter (fun s -> s <> "") sorted_basenames
 
-(** Get dependencies for a single file *)
-let deps ~toolchain ~cwd ~file =
+(** Get dependencies for a single file - returns Mod_name.t list *)
+let deps ~toolchain ~cwd ~file ~package_namespace =
   let ocamldep = Toolchains.ocamldep_path toolchain in
   let cmd =
     Printf.sprintf "cd %s && %s -modules %s 2>/dev/null" cwd ocamldep file
@@ -43,14 +43,21 @@ let deps ~toolchain ~cwd ~file =
     | [ _; deps_part ] ->
         let deps = String.trim deps_part in
         if deps = "" then []
-        else String.split_on_char ' ' deps |> List.map String.trim
+        else
+          String.split_on_char ' ' deps
+          |> List.map String.trim
+          |> List.map (fun modname ->
+              (* Convert string module name to Mod_name.t with proper namespace *)
+              Mod_name.of_string ~namespace:package_namespace modname)
     | _ -> []
 
-(** Get dependencies for a single file with optional flags *)
-let deps_with_flags ~toolchain ~cwd ~file ~flags =
+(** Get dependencies for a single file with optional flags - returns Mod_name.t
+    list *)
+let deps_with_flags ~toolchain ~cwd ~file ~flags ~package_namespace =
   let ocamldep = Toolchains.ocamldep_path toolchain in
   let cmd =
-    Printf.sprintf "cd %s && %s %s -modules %s 2>/dev/null" cwd ocamldep flags file
+    Printf.sprintf "cd %s && %s %s -modules %s 2>/dev/null" cwd ocamldep flags
+      file
   in
 
   let ic = Command.open_process_in cmd in
@@ -64,13 +71,18 @@ let deps_with_flags ~toolchain ~cwd ~file ~flags =
     | [ _; deps_part ] ->
         let deps = String.trim deps_part in
         if deps = "" then []
-        else String.split_on_char ' ' deps |> List.map String.trim
+        else
+          String.split_on_char ' ' deps
+          |> List.map String.trim
+          |> List.map (fun modname ->
+              (* Convert string module name to Mod_name.t with proper namespace *)
+              Mod_name.of_string ~namespace:package_namespace modname)
     | _ -> []
 
 (** Get all module dependencies (for building .merlin files) *)
-let all_deps ~toolchain ~cwd ~files =
+let all_deps ~toolchain ~cwd ~files ~package_namespace =
   List.map
     (fun file ->
-      let deps = deps ~toolchain ~cwd ~file in
+      let deps = deps ~toolchain ~cwd ~file ~package_namespace in
       (file, deps))
     files
