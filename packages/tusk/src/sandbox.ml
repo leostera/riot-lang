@@ -121,17 +121,43 @@ let copy_dependency_artifacts sandbox ~store ~build_graph ~build_results =
               (String.concat ", " files);
             flush stdout;
 
-            (* Promote artifacts from store to sandbox *)
-            match Store.promote_from_store store hash sandbox.sandbox_dir with
-            | true ->
-                Printf.printf
-                  "[Sandbox]   - Successfully copied %d files for %s\n%!"
-                  (List.length files) dep_name;
-                flush stdout
-            | false ->
-                failwith
-                  (Printf.sprintf "Failed to copy artifacts for dependency %s"
-                     dep_name))
+            (* Only copy .cma and .cmi files for the package itself, not aliases from other packages *)
+            (* This prevents "inconsistent assumptions" errors when multiple packages include the same .cmi files *)
+            let files_to_copy = 
+              List.filter (fun file ->
+                (* Copy .cma files *)
+                Filename.check_suffix file ".cma" ||
+                (* Copy .o files for C bindings *)
+                Filename.check_suffix file ".o" ||
+                (* Copy .cmi files that belong to this package *)
+                (Filename.check_suffix file ".cmi" && 
+                 (let base = Filename.chop_suffix file ".cmi" in
+                  (* Copy if it's the main package interface or starts with package prefix *)
+                  let safe_name = String.map (fun c -> if c = '-' then '_' else c) dep_name in
+                  let capitalized = String.capitalize_ascii safe_name in
+                  base = capitalized || 
+                  String.starts_with ~prefix:(capitalized ^ "__") base ||
+                  base = String.capitalize_ascii dep_name))
+              ) files 
+            in
+            
+            Printf.printf "[Sandbox]   Filtered files to copy: %s\n%!"
+              (String.concat ", " files_to_copy);
+            
+            (* Copy each filtered file individually *)
+            List.iter (fun file ->
+              let src = Filename.concat (Store.get_hash_dir store hash) file in
+              let dst = Filename.concat sandbox.sandbox_dir file in
+              match File_utils.copy_file ~src ~dst with
+              | Ok () -> ()
+              | Error _ ->
+                  failwith (Printf.sprintf "Failed to copy %s to %s" src dst)
+            ) files_to_copy;
+            
+            Printf.printf
+              "[Sandbox]   - Successfully copied %d files for %s\n%!"
+              (List.length files_to_copy) dep_name;
+            flush stdout)
           else
             failwith
               (Printf.sprintf

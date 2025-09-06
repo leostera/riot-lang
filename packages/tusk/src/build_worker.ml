@@ -128,8 +128,10 @@ and do_build ctx task planned_node =
       in
       let target_dir =
         Filename.concat
-          (Filename.concat (Std.Path.to_string ctx.workspace.root) "target")
-          "debug"
+          (Filename.concat 
+            (Filename.concat (Std.Path.to_string ctx.workspace.root) "target")
+            "debug")
+          (Filename.concat "out" (Filename.concat "packages" planned_node.package.name))
       in
       let () =
         Store.promote ctx.store artifact ~target_dir
@@ -169,8 +171,10 @@ and handle_cache_hit ctx task planned_node artifact =
 
   let target_dir =
     Filename.concat
-      (Filename.concat (Std.Path.to_string ctx.workspace.root) "target")
-      "debug"
+      (Filename.concat 
+        (Filename.concat (Std.Path.to_string ctx.workspace.root) "target")
+        "debug")
+      (Filename.concat "out" (Filename.concat "packages" planned_node.package.name))
   in
   let () =
     Store.promote ctx.store artifact ~target_dir

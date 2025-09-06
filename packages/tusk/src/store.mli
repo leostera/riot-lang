@@ -42,3 +42,6 @@ val list_artifacts : t -> Hasher.hash -> string list
 val promote_from_store : t -> Hasher.hash -> string -> bool
 (** Promote artifacts directly from store by hash to target directory. Returns
     true if successful, false otherwise. *)
+
+val get_hash_dir : t -> Hasher.hash -> string
+(** Get the directory path for a given hash in the store *)
