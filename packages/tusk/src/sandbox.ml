@@ -121,23 +121,23 @@ let copy_dependency_artifacts sandbox ~store ~build_graph ~build_results =
               (String.concat ", " files);
             flush stdout;
 
-            (* Only copy .cma and .cmi files for the package itself, not aliases from other packages *)
-            (* This prevents "inconsistent assumptions" errors when multiple packages include the same .cmi files *)
+            (* Only copy essential files needed for linking:
+               - .cma files (library archives) 
+               - .o files (C object files)
+               - The main package .cmi file (needed for type checking)
+               This prevents "inconsistent assumptions" errors from duplicate .cmi files *)
             let files_to_copy = 
               List.filter (fun file ->
-                (* Copy .cma files *)
+                (* Copy .cma files - the compiled library *)
                 Filename.check_suffix file ".cma" ||
                 (* Copy .o files for C bindings *)
                 Filename.check_suffix file ".o" ||
-                (* Copy .cmi files that belong to this package *)
+                (* Only copy the main package interface file *)
                 (Filename.check_suffix file ".cmi" && 
-                 (let base = Filename.chop_suffix file ".cmi" in
-                  (* Copy if it's the main package interface or starts with package prefix *)
-                  let safe_name = String.map (fun c -> if c = '-' then '_' else c) dep_name in
-                  let capitalized = String.capitalize_ascii safe_name in
-                  base = capitalized || 
-                  String.starts_with ~prefix:(capitalized ^ "__") base ||
-                  base = String.capitalize_ascii dep_name))
+                 let base = Filename.chop_suffix file ".cmi" in
+                 let safe_name = String.map (fun c -> if c = '-' then '_' else c) dep_name in
+                 let capitalized = String.capitalize_ascii safe_name in
+                 base = capitalized)
               ) files 
             in
             
