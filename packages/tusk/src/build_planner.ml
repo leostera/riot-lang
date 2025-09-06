@@ -89,9 +89,10 @@ type error = string
 let build_modtree ~package_name ~srcs =
   Format.eprintf "[DEBUG] build_modtree: package_name=%s, srcs count=%d@."
     package_name (List.length srcs);
-  let safe_package_name =
-    String.map (fun c -> if c = '-' then '_' else c) package_name
+  let make_safe_name pkg_name =
+    String.map (fun c -> if c = '-' then '_' else c) pkg_name
   in
+  let safe_package_name = make_safe_name package_name in
 
   (* Helper: organize sources by their path *)
   let sources_by_path = Hashtbl.create 32 in
@@ -641,9 +642,10 @@ let module_trees_to_actions_v2 ~toolchain ~package ~full_tree ~alias_modules
   let actions = ref [] in
 
   (* Determine the main alias module name for -open flag *)
-  let safe_package_name =
-    String.map (fun c -> if c = '-' then '_' else c) package.Workspace.name
+  let make_safe_name pkg_name =
+    String.map (fun c -> if c = '-' then '_' else c) pkg_name
   in
+  let safe_package_name = make_safe_name package.Workspace.name in
   let main_alias_module =
     String.capitalize_ascii safe_package_name ^ "__aliases"
   in
@@ -1042,24 +1044,40 @@ let plan_node ~graph ~node ~build_results ~session_id () =
         
         (* Step 5: Generate actions from the dependency graph *)
         Format.eprintf "[DEBUG] Generating actions from dependency graph...@.%!";
-        (* Collect all transitive dependency libraries in topological order *)
+        (* Helper to make package names safe for OCaml *)
+        let make_safe_name pkg_name =
+          String.map (fun c -> if c = '-' then '_' else c) pkg_name
+        in
+        
+        (* Collect actual dependency libraries *)
         let dep_libraries = 
-          (* Get ALL nodes in topological order *)
-          let all_sorted = Build_graph.topological_sort graph in
-          (* Find all packages that come BEFORE our package in topological order *)
-          let rec collect_deps acc = function
-            | [] -> List.rev acc
-            | n :: rest ->
-                if n.Build_node.package.name = node.package.name then
-                  (* Found our package, stop collecting *)
-                  List.rev acc
-                else
-                  (* This is a dependency that should be linked *)
-                  let pkg_name = n.Build_node.package.name in
-                  let safe_name = String.map (function '-' -> '_' | c -> c) pkg_name in
-                  collect_deps ((safe_name ^ ".cma") :: acc) rest
+          (* Only include actual dependencies from the package configuration *)
+          let rec collect_transitive_deps acc visited pkg_name =
+            if List.mem pkg_name visited then acc
+            else
+              let visited = pkg_name :: visited in
+              (* Find the node for this package *)
+              match List.find_opt (fun n -> n.Build_node.package.name = pkg_name) 
+                      (Build_graph.topological_sort graph) with
+              | None -> acc
+              | Some dep_node ->
+                  (* Get this package's dependencies *)
+                  let direct_deps = dep_node.Build_node.package.dependencies in
+                  let dep_names = List.map (fun (d : Workspace.dependency) -> d.name) direct_deps in
+                  (* First, recursively collect transitive dependencies *)
+                  let acc = List.fold_left (fun acc dep -> collect_transitive_deps acc visited dep) acc dep_names in
+                  (* Then add this package's .cma after its dependencies *)
+                  if pkg_name = "unix" then 
+                    acc  (* unix is handled specially *)
+                  else
+                    let cma_name = make_safe_name pkg_name ^ ".cma" in
+                    if List.mem cma_name acc then acc else acc @ [cma_name]
           in
-          collect_deps [] all_sorted
+          (* Get dependencies for this package *)
+          let direct_deps = node.package.dependencies in
+          let dep_names = List.map (fun (d : Workspace.dependency) -> d.name) direct_deps in
+          (* Collect all dependencies, preserving order and avoiding duplicates *)
+          List.fold_left (fun acc dep -> collect_transitive_deps acc [] dep) [] dep_names
         in
         let actions = match Dep_graph.to_action_list ~dep_libraries ~c_objects:!c_objects dep_graph with
           | Ok dep_graph_actions -> 
