@@ -2,7 +2,17 @@
 
 ## System Prompt
 
-- never call `ocamlc` 
+- always explain your reasoning in steps
+- if you think you're overcomplicating things, ask me
+- scrutinize my inputs and corrections
+- always go back to the project root after `cd`-ing somewhere
+- never call `ocamlc` directly
+
+when working on `tusk`:
+- never call `tusk`, only call `./minitusk`
+- NEVER MODIFY OTHER PACKAGE SOURCES TO FIX BUILD LOGIC ERRORS
+
+when workgin on any other package:
 - always build through `./target/debug/tusk`
   - and if that's not available then use `./target/bootstrap/tusk`
   - and if that's not available then use `./minitusk` 
@@ -15,13 +25,6 @@
 - Recognize that the lack of comprehensive testing in critical infrastructure is a significant risk that must be addressed systematically
 - Develop a test-driven development (TDD) approach that builds test coverage incrementally, starting with the most critical components
 - Build test suites that validate not just correctness, but also performance, concurrent behavior, and cross-platform compatibility
-
-### Miniriot and Gluon Integration
-- **Miniriot uses Gluon internally** for its kqueue-based I/O polling
-- **Miniriot currently only exposes File I/O APIs**, not networking
-- **DO NOT mix Gluon.create() with Miniriot processes** - the scheduler already has its own kqueue poll
-- When adding networking to Miniriot processes, use non-blocking operations with sleep/yield until proper networking APIs are added to Miniriot
-- The tusk server's TCP listener currently uses Gluon directly with exponential backoff - this should be refactored once Miniriot adds networking support
 
 ## OCaml Best Practices
 
