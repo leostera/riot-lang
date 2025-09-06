@@ -158,6 +158,11 @@ let build_modtree ~package_name ~srcs =
             else acc
           else acc)
         sources_by_path []
+      |> List.sort (fun (Mod_tree.Module a) (Mod_tree.Module b) -> 
+           match (a, b) with
+           | (Mod_tree.Concrete a_info, Mod_tree.Concrete b_info) ->
+               String.compare a_info.simple_name b_info.simple_name
+           | _ -> 0)
     in
 
     (* Find subfolders at this level *)
@@ -176,6 +181,7 @@ let build_modtree ~package_name ~srcs =
             | None -> acc
           else acc)
         sources_by_path []
+      |> List.sort String.compare
     in
 
     (* Build Library nodes for subfolders *)

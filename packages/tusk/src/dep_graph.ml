@@ -7,6 +7,7 @@ module DepId : sig
 
   val next : unit -> t
   val eq : t -> t -> bool
+  val compare : t -> t -> int
 end = struct
   type t = int
 
@@ -17,6 +18,7 @@ end = struct
       !_id
 
   let eq = Int.equal
+  let compare = Int.compare
 end
 
 type level = Root | Library of { dir : Path.t; parent : level }
@@ -683,12 +685,17 @@ let topological_sort graph =
   let result = ref [] in
 
   (* Initialize in-degrees and find nodes with no dependencies *)
-  Hashtbl.iter
-    (fun id node ->
+  (* Sort nodes by ID to ensure deterministic ordering *)
+  let sorted_nodes = 
+    Hashtbl.fold (fun id node acc -> (id, node) :: acc) graph.nodes []
+    |> List.sort (fun (id1, _) (id2, _) -> DepId.compare id1 id2)
+  in
+  List.iter
+    (fun (id, node) ->
       let degree = List.length node.dependencies in
       Hashtbl.add in_degree id degree;
       if degree = 0 then Queue.push node queue)
-    graph.nodes;
+    sorted_nodes;
 
   (* Process nodes in topological order *)
   while not (Queue.is_empty queue) do
@@ -696,6 +703,10 @@ let topological_sort graph =
     result := node :: !result;
 
     (* Decrease in-degree of dependents *)
+    (* Sort dependents by ID to ensure deterministic ordering *)
+    let sorted_dependents = 
+      List.sort (fun a b -> DepId.compare a.id b.id) node.dependents 
+    in
     List.iter
       (fun dependent ->
         let dep_id = dependent.id in
@@ -703,7 +714,7 @@ let topological_sort graph =
         let new_degree = current_degree - 1 in
         Hashtbl.replace in_degree dep_id new_degree;
         if new_degree = 0 then Queue.push dependent queue)
-      node.dependents
+      sorted_dependents
   done;
 
   (* Check for cycles *)
