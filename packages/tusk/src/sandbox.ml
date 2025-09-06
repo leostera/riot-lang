@@ -98,20 +98,11 @@ let copy_dependency_artifacts sandbox ~store ~build_graph ~build_results =
   List.iter
     (fun dep ->
       let dep_name = dep.Build_node.package.name in
-      (* Check if this dependency has a hash - either from build_results or from its spec *)
+      (* Check if this dependency has been built and stored *)
       let dep_hash =
         match Build_results.get_status build_results dep_name with
         | Some (Build_results.Built hash) -> Some hash
-        | _ -> (
-            (* If not marked as Built in build_results, check if the node has a planned spec with hash *)
-            match dep.Build_node.spec with
-            | Build_node.Planned { hash; _ } ->
-                (* The dependency has been planned and has a hash, artifacts should be in store *)
-                Printf.printf "[Sandbox] Using hash from planned spec for %s\n%!"
-                  dep_name;
-                flush stdout;
-                Some hash
-            | _ -> None)
+        | _ -> None
       in
       match dep_hash with
       | Some hash ->
@@ -178,50 +169,25 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
   (* Copy all transitive dependency artifacts into sandbox *)
   copy_dependency_artifacts sandbox ~store ~build_graph ~build_results;
   
-  (* Copy dependency .cma files from target/debug to sandbox *)
-  let copy_dependency_libraries () =
-    Printf.printf "[Sandbox] Copying dependency libraries...\n%!";
-    let root = Path.to_string sandbox.workspace.root in
-    let target_debug = Filename.concat root "target/debug" in
-    List.iter (fun (dep : Workspace.dependency) ->
-      let cma_name = dep.name ^ ".cma" in
-      let src_path = Filename.concat target_debug cma_name in
-      let dst_path = Filename.concat sandbox.sandbox_dir cma_name in
-      let src_exists = 
-        match Fs.file_exists (Path.of_string src_path |> Result.expect ~msg:"Invalid path") with
-        | Ok exists -> exists
-        | Error _ -> false
-      in
-      if src_exists then (
-        Printf.printf "[Sandbox]   Copying %s\n%!" cma_name;
-        match File_utils.read ~path:src_path with
-        | Ok content -> 
-            let _ = File_utils.write ~path:dst_path ~content in
-            ()
-        | Error _ -> Printf.printf "[Sandbox]   Warning: Failed to copy %s\n%!" cma_name
-      )
-    ) sandbox.node.package.dependencies;
-    (* Also copy unix.cma if needed *)
-    if List.exists (fun (dep : Workspace.dependency) -> dep.name = "unix") 
-         sandbox.node.package.dependencies then (
-      let toolchain_path = Toolchains.get_toolchain_path sandbox.node.toolchain in
-      let unix_cma = Filename.concat toolchain_path "lib/ocaml/unix.cma" in
-      let unix_exists = 
-        match Fs.file_exists (Path.of_string unix_cma |> Result.expect ~msg:"Invalid path") with
-        | Ok exists -> exists
-        | Error _ -> false
-      in
-      if unix_exists then (
-        Printf.printf "[Sandbox]   Copying unix.cma\n%!";
-        match File_utils.read ~path:unix_cma with
-        | Ok content ->
-            let _ = File_utils.write ~path:(Filename.concat sandbox.sandbox_dir "unix.cma") ~content in
-            ()
-        | Error _ -> ()
-      )
+  (* Copy unix.cma if needed - it's not in our Store *)
+  if List.exists (fun (dep : Workspace.dependency) -> dep.name = "unix") 
+       sandbox.node.package.dependencies then (
+    let toolchain_path = Toolchains.get_toolchain_path sandbox.node.toolchain in
+    let unix_cma = Filename.concat toolchain_path "lib/ocaml/unix.cma" in
+    let unix_exists = 
+      match Fs.file_exists (Path.of_string unix_cma |> Result.expect ~msg:"Invalid path") with
+      | Ok exists -> exists
+      | Error _ -> false
+    in
+    if unix_exists then (
+      Printf.printf "[Sandbox] Copying unix.cma from toolchain\n%!";
+      match File_utils.read ~path:unix_cma with
+      | Ok content ->
+          let _ = File_utils.write ~path:(Filename.concat sandbox.sandbox_dir "unix.cma") ~content in
+          ()
+      | Error _ -> ()
     )
-  in
-  copy_dependency_libraries ();
+  );
 
   (* Change to sandbox directory *)
   let original_cwd =

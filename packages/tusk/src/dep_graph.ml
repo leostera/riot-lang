@@ -258,7 +258,6 @@ let from_mod_tree ~toolchain ~package tree =
             | Mod_tree.Library { name = lib_name; _ } ->
                 (* Nested subfolder *)
                 let dir_path =
-                  let qualified = Mod_name.qualified_name lib_name in
                   (* Extract just the folder name for the path *)
                   Mod_name.module_name lib_name |> String.lowercase_ascii
                 in
@@ -627,7 +626,6 @@ let from_mod_tree ~toolchain ~package tree =
               String.sub namespaced_name 0
                 (String.length namespaced_name - String.length simple_name - 2)
             in
-            let folder_interface_name = prefix ^ "__" ^ simple_name in
 
             (* If this module's namespace matches a folder interface, add dependency *)
             Hashtbl.iter

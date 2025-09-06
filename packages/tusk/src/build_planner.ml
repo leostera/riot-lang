@@ -846,8 +846,6 @@ let module_trees_to_actions_v2 ~toolchain ~package ~full_tree ~alias_modules
           let original_path = Path.to_string src.Build_node.file in
           let source_name = Filename.basename original_path in
 
-          (* Check if this is the package-level module (not namespaced) *)
-          let is_package_module = simple_name = namespaced_name in
           (* Package-level modules ALSO need aliases for module references to work *)
           (* The aliases define the non-namespaced names that the package module uses *)
           let module_open_flags = get_open_flags ~simple_name ~namespaced_name in
