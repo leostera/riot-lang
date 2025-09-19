@@ -76,10 +76,7 @@ let build graph dir =
           (parts |> List.map String.capitalize_ascii |> String.concat "__") ^
           "__aliases"
       in
-      let file_path =
-        if dir = "." then "aliases.ml.gen"
-        else dir ^ "/aliases.ml.gen"
-      in
+      let file_path = alias_name ^ ".ml.gen" in
       let node = add_node graph file_path alias_name alias_name in
       (dir, node)
     )
