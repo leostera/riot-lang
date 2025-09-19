@@ -16,6 +16,10 @@ val of_string : string -> (t, error) Result.t
 (** Create a path from a string, returning an error if the string is not valid
     UTF-8. *)
 
+val v : string -> t
+(** Create a path from a string, panics if the string is not valid UTF-8.
+    Convenient function for when you know the path string is valid. *)
+
 val to_string : t -> string
 (** Convert a path to a string (always valid UTF-8) *)
 
@@ -23,7 +27,7 @@ val join : t -> t -> t
 (** Join two paths together *)
 
 val ( / ) : t -> t -> t
-(** Join paths together - allows Path.(a / b / c) *)
+(** Join paths together - allows chaining: a / b / c *)
 
 val parent : t -> t option
 (** Get the parent directory of a path *)

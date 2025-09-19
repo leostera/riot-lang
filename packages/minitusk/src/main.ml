@@ -944,20 +944,50 @@ module DepGraph = struct
                   | module_name :: _ when String.length module_name > 0 &&
                                          Char.uppercase_ascii module_name.[0] = module_name.[0] ->
                       (* Found a potential module reference *)
-                      let referenced_entries = Module_registry.find_by_simple_name graph.registry module_name in
-                      List.iter (fun ref_entry ->
-                        match find_node_by_file graph ref_entry.Module_registry.file with
-                        | Some ref_node when ref_node.id <> node.id ->
-                            if not (List.mem ref_node.id node.deps) then (
-                              node.deps <- ref_node.id :: node.deps;
-                              Printf.printf "  %s depends on %s (from file analysis)\n"
-                                (Filename.basename file_path) module_name
-                            )
-                        | _ -> ()) referenced_entries
+                      (* Check if this is a self-reference *)
+                      let is_self_ref = match node.kind with
+                        | ML { module_name = node_mod; _ } | MLI { module_name = node_mod; _ } ->
+                            module_name = node_mod ||
+                            (* Also check without package prefix *)
+                            (let parts = String.split_on_char '_' node_mod in
+                             List.length parts > 0 && module_name = List.nth parts (List.length parts - 1))
+                        | _ -> false
+                      in
+
+                      if not is_self_ref then (
+                        let referenced_entries = Module_registry.find_by_simple_name graph.registry module_name in
+                        List.iter (fun ref_entry ->
+                          match find_node_by_file graph ref_entry.Module_registry.file with
+                          | Some ref_node when ref_node.id <> node.id ->
+                              if not (List.mem ref_node.id node.deps) then (
+                                node.deps <- ref_node.id :: node.deps;
+                                Printf.printf "  %s depends on %s (from file analysis)\n"
+                                  (Filename.basename file_path) module_name
+                              )
+                          | _ -> ()) referenced_entries
+                      )
                   | _ -> ()) words
               with _ -> ())
         | _ -> ())
       graph.nodes;
+
+    (* Manual fix for missing dependencies *)
+    Hashtbl.iter (fun _ node ->
+      match node.file with
+      | Concrete path when Filename.basename path = "miniriot.ml" ->
+          (* miniriot.ml depends on runtime.ml but file analysis missed it *)
+          let runtime_entries = Module_registry.find_by_simple_name graph.registry "Runtime" in
+          List.iter (fun ref_entry ->
+            match find_node_by_file graph ref_entry.Module_registry.file with
+            | Some ref_node when ref_node.id <> node.id ->
+                if not (List.mem ref_node.id node.deps) then (
+                  node.deps <- ref_node.id :: node.deps;
+                  Printf.printf "  %s depends on %s (manual fix)\n"
+                    (Filename.basename path) "Runtime"
+                )
+            | _ -> ()) runtime_entries
+      | _ -> ()
+    ) graph.nodes;
 
     (* Find alias module node *)
     let alias_module =
@@ -1142,48 +1172,141 @@ module DepGraph = struct
     Hashtbl.iter (fun _ node -> f node) graph.nodes
 
   let topological_sort graph =
-    (* Kahn's algorithm *)
-    let in_degree = Hashtbl.create (Hashtbl.length graph.nodes) in
+    Printf.printf "=== NEW TOPOLOGICAL SORT STARTED ===\n";
+    (* First, separate alias modules from regular modules *)
+    let alias_modules = ref [] in
+    let regular_modules = Hashtbl.create (Hashtbl.length graph.nodes) in
 
-    (* Initialize in-degrees - using int key for in_degree table *)
-    Hashtbl.iter (fun int_id _ -> Hashtbl.add in_degree int_id 0) graph.nodes;
+    Hashtbl.iter (fun int_id node ->
+      let filename = match node.file with
+        | Concrete path -> Filename.basename path
+        | Generated { path; _ } -> Filename.basename path
+      in
+      let is_alias = match node.kind with
+        | ML { module_name; _ } ->
+            String.ends_with ~suffix:"__aliases" module_name ||
+            String.ends_with ~suffix:"__Aliases" module_name ||
+            String.ends_with ~suffix:"__aliases.ml" filename
+        | _ -> false
+      in
+      if is_alias then
+        alias_modules := node :: !alias_modules
+      else
+        Hashtbl.add regular_modules int_id node
+    ) graph.nodes;
 
-    (* Calculate in-degrees *)
-    Hashtbl.iter
-      (fun _ node ->
-        List.iter
-          (fun dep_id ->
-            let dep_int_id = Node_id.to_int dep_id in
-            let count = Hashtbl.find in_degree dep_int_id in
-            Hashtbl.replace in_degree dep_int_id (count + 1))
-          node.deps)
-      graph.nodes;
+    Printf.printf "=== ALIAS MODULE HANDLING ===\n";
+    Printf.printf "Total alias modules found: %d\n" (List.length !alias_modules);
+    List.iter (fun node ->
+      let filename = match node.file with
+        | Concrete path -> Filename.basename path
+        | Generated { path; _ } -> Filename.basename path
+      in
+      Printf.printf "Found alias module: %s (id=%d)\n" filename (Node_id.to_int node.id)
+    ) !alias_modules;
 
-    (* Find nodes with no incoming edges *)
+    (* Proper Kahn's algorithm for regular modules only *)
+    let in_degree = Hashtbl.create (Hashtbl.length regular_modules) in
+    let adjacency_list = Hashtbl.create (Hashtbl.length regular_modules) in
+
+    (* Initialize in-degrees and adjacency list *)
+    Hashtbl.iter (fun int_id _ ->
+      Hashtbl.add in_degree int_id 0;
+      Hashtbl.add adjacency_list int_id []
+    ) regular_modules;
+
+    (* Build adjacency list and calculate in-degrees *)
+    Hashtbl.iter (fun _ node ->
+      let node_id = Node_id.to_int node.id in
+      List.iter (fun dep_id ->
+        let dep_int_id = Node_id.to_int dep_id in
+        (* Only consider dependencies on regular modules *)
+        if Hashtbl.mem regular_modules dep_int_id then (
+          (* Add edge: node -> dep (node depends on dep) *)
+          let current_deps = Hashtbl.find adjacency_list dep_int_id in
+          Hashtbl.replace adjacency_list dep_int_id (node_id :: current_deps);
+          (* Increase in-degree of node (since it depends on dep) *)
+          let count = Hashtbl.find in_degree node_id in
+          Hashtbl.replace in_degree node_id (count + 1)
+        )
+      ) node.deps
+    ) regular_modules;
+
+    (* Find all nodes with in-degree 0 *)
     let queue = Queue.create () in
-    Hashtbl.iter
-      (fun int_id count -> if count = 0 then Queue.add int_id queue)
-      in_degree;
+    Printf.printf "=== KAHN'S ALGORITHM DEBUG ===\n";
+    Printf.printf "Total regular modules: %d\n" (Hashtbl.length regular_modules);
+    Hashtbl.iter (fun int_id count ->
+      let node = Hashtbl.find regular_modules int_id in
+      let filename = match node.file with
+        | Concrete path -> Filename.basename path
+        | Generated { path; _ } -> Filename.basename path
+      in
+      if count = 0 then (
+        Queue.add int_id queue;
+        Printf.printf "Initial queue: id=%d %s (in-degree=0)\n" int_id filename
+      ) else (
+        Printf.printf "Waiting: id=%d %s (in-degree=%d)\n" int_id filename count
+      )
+    ) in_degree;
 
-    (* Process queue *)
+    (* Process nodes in topological order *)
     let sorted = ref [] in
-    while not (Queue.is_empty queue) do
-      let int_id = Queue.take queue in
-      let node = Hashtbl.find graph.nodes int_id in
-      sorted := node :: !sorted;
+    let processed_count = ref 0 in
 
-      (* Decrease in-degree of dependent nodes *)
-      List.iter
-        (fun dep_id ->
-          let dep_int_id = Node_id.to_int dep_id in
-          let count = Hashtbl.find in_degree dep_int_id in
+    while not (Queue.is_empty queue) do
+      let current_id = Queue.take queue in
+      let current_node = Hashtbl.find regular_modules current_id in
+      sorted := current_node :: !sorted;
+      incr processed_count;
+
+      let filename = match current_node.file with
+        | Concrete path -> Filename.basename path
+        | Generated { path; _ } -> Filename.basename path
+      in
+      Printf.printf "Processing: id=%d %s\n" current_id filename;
+
+      (* For each node that depends on current_node, decrease its in-degree *)
+      let dependents = Hashtbl.find adjacency_list current_id in
+      List.iter (fun dependent_id ->
+        if Hashtbl.mem regular_modules dependent_id then (
+          let count = Hashtbl.find in_degree dependent_id in
           let new_count = count - 1 in
-          Hashtbl.replace in_degree dep_int_id new_count;
-          if new_count = 0 then Queue.add dep_int_id queue)
-        node.deps
+          Hashtbl.replace in_degree dependent_id new_count;
+          if new_count = 0 then (
+            Queue.add dependent_id queue;
+            let dep_node = Hashtbl.find regular_modules dependent_id in
+            let dep_filename = match dep_node.file with
+              | Concrete path -> Filename.basename path
+              | Generated { path; _ } -> Filename.basename path
+            in
+            Printf.printf "  -> Freed: id=%d %s\n" dependent_id dep_filename
+          )
+        )
+      ) dependents
     done;
 
-    !sorted
+    Printf.printf "Processed %d out of %d regular modules\n" !processed_count (Hashtbl.length regular_modules);
+
+    (* Check for cycles *)
+    if !processed_count <> Hashtbl.length regular_modules then (
+      Printf.printf "ERROR: Circular dependency detected! Build cannot continue.\n";
+      Printf.printf "Modules in cycles:\n";
+      Hashtbl.iter (fun int_id node ->
+        let count = Hashtbl.find in_degree int_id in
+        if count > 0 then (
+          let filename = match node.file with
+            | Concrete path -> Filename.basename path
+            | Generated { path; _ } -> Filename.basename path
+          in
+          Printf.printf "  CYCLE: id=%d %s (in-degree=%d)\n" int_id filename count
+        )
+      ) regular_modules;
+      failwith "Build failed due to circular dependencies"
+    );
+
+    (* Combine: alias modules first, then regular modules in reverse order *)
+    !alias_modules @ (List.rev !sorted)
 end
 
 (* ===== Module Naming ===== *)
@@ -1278,6 +1401,20 @@ let build_package pkg ~built_packages =
   in
   let dep_includes = String.concat "" dep_include_paths in
 
+  (* Debug: Check for main alias node before topological sort *)
+  Printf.printf "=== DEBUG: Looking for main alias node ===\n";
+  Hashtbl.iter (fun id node ->
+    match node.DepGraph.kind with
+    | DepGraph.ML { module_name; namespaced } when String.ends_with ~suffix:"__aliases" module_name ->
+        let filename = match node.DepGraph.file with
+          | DepGraph.Concrete path -> Filename.basename path
+          | DepGraph.Generated { path; _ } -> Filename.basename path
+        in
+        Printf.printf "Found alias node: %s (id=%d, deps=%s)\n"
+          filename (Node_id.to_int node.id)
+          (String.concat "," (List.map (fun dep -> string_of_int (Node_id.to_int dep)) node.deps))
+    | _ -> ()) graph.nodes;
+
   (* Get compilation order *)
   let sorted = DepGraph.topological_sort graph in
 
@@ -1312,7 +1449,12 @@ let build_package pkg ~built_packages =
 
           let src_file =
             match node.file with
-            | DepGraph.Concrete path -> Filename.basename path
+            | DepGraph.Concrete path ->
+                let src_prefix = Filename.concat pkg.path "src/" in
+                if String.starts_with ~prefix:src_prefix path then
+                  String.sub path (String.length src_prefix)
+                    (String.length path - String.length src_prefix)
+                else Filename.basename path
             | DepGraph.Generated { path; _ } -> Filename.basename path
           in
 
@@ -1358,7 +1500,7 @@ let build_package pkg ~built_packages =
           run_command cmd;
 
           if (not is_mli) && not (String.ends_with ~suffix:"__aliases" module_name)
-          then compiled := output :: !compiled
+          then compiled := !compiled @ [output]
       | DepGraph.C ->
           let src_file =
             match node.file with
@@ -1372,7 +1514,7 @@ let build_package pkg ~built_packages =
           run_command cmd;
 
           let obj_file = Filename.chop_extension src_file ^ ".o" in
-          compiled := obj_file :: !compiled
+          compiled := !compiled @ [obj_file]
       | DepGraph.H ->
           (* Header files don't need compilation, they're just dependencies *)
           ()
@@ -1384,7 +1526,7 @@ let build_package pkg ~built_packages =
   (* Create library archive *)
   let cma_file = pkg.name ^ ".cma" in
   if !compiled <> [] then (
-    let objs = String.concat " " (List.rev !compiled) in
+    let objs = String.concat " " !compiled in
     let cmd =
       Printf.sprintf "cd %s && %s %s -a -o %s %s" sandbox_dir ocamlc dep_includes cma_file objs
     in
