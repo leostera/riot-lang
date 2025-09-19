@@ -15,7 +15,7 @@ type node = {
   id : Node_id.t;
   file : string;
   module_name : string;
-  namespaced : string;
+  namespaced : string list;
   file_kind : file_kind;
   node_kind : node_kind;
   mutable deps : Node_id.t list; (* Node IDs this depends on *)

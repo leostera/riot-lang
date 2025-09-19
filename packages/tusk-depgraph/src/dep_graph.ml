@@ -21,7 +21,7 @@ type node = {
   id : Node_id.t;
   file : string;
   module_name : string;
-  namespaced : string;
+  namespaced : string list;
   file_kind : file_kind;
   node_kind : node_kind;
   mutable deps : Node_id.t list;
@@ -96,7 +96,7 @@ let build graph dir =
           aliases_suffix
       in
       let file_path = alias_name ^ ml_gen_extension in
-      let node = add_node graph file_path alias_name alias_name ML Generated in
+      let node = add_node graph file_path alias_name [alias_name] ML Generated in
       (dir, node)
     )
   in
@@ -113,45 +113,49 @@ let build graph dir =
   (* Create nodes and register modules *)
   List.iter
     (fun file ->
-      (* Create registry entry *)
-      let entry = Module_registry.entry_from_file graph.registry file in
+      (* Skip if this file is already in the graph (e.g., generated library interface) *)
+      match find_node_by_file graph file with
+      | Some _ -> () (* Already exists, skip *)
+      | None ->
+        (* Create registry entry *)
+        let entry = Module_registry.entry_from_file graph.registry file in
 
-      (* Add to graph *)
-      let module_name = Module_registry.module_name_from_path file in
-      let path = Path.of_string file |> Result.expect ~msg:"Invalid file path" in
-      let extension = Path.extension path |> Option.value ~default:"" in
-      let file_kind =
-        match extension with
-        | ".mli" -> MLI
-        | ".ml" -> ML
-        | ".c" -> C
-        | ".h" -> H
-        | ext -> Other ext
-      in
-      let node_kind =
-        if extension = ml_gen_extension then Generated
-        else File
-      in
-      let node = add_node graph file module_name entry.namespaced file_kind node_kind in
+        (* Add to graph *)
+        let module_name = Module_registry.module_name_from_path file in
+        let path = Path.of_string file |> Result.expect ~msg:"Invalid file path" in
+        let extension = Path.extension path |> Option.value ~default:"" in
+        let file_kind =
+          match extension with
+          | ".mli" -> MLI
+          | ".ml" -> ML
+          | ".c" -> C
+          | ".h" -> H
+          | ext -> Other ext
+        in
+        let node_kind =
+          if extension = ml_gen_extension then Generated
+          else File
+        in
+        let node = add_node graph file module_name entry.namespaced file_kind node_kind in
 
-      (* Register in module registry *)
-      Module_registry.register graph.registry entry;
+        (* Register in module registry *)
+        Module_registry.register graph.registry entry;
 
-      (* Add dependency on the alias module for this file's directory *)
-      let file_dir =
-        match Path.of_string file with
-        | Error _ -> current_dir
-        | Ok p ->
-            let d = Path.dirname p |> Path.to_string in
-            if d = "" then current_dir else d
-      in
+        (* Add dependency on the alias module for this file's directory *)
+        let file_dir =
+          match Path.of_string file with
+          | Error _ -> current_dir
+          | Ok p ->
+              let d = Path.dirname p |> Path.to_string in
+              if d = "" then current_dir else d
+        in
 
-      (* Find the corresponding alias node *)
-      match List.find_opt (fun (d, _) -> d = file_dir) alias_nodes with
-      | Some (_, alias_node) ->
-          (* This module depends on its directory's alias module *)
-          node.deps <- alias_node.id :: node.deps
-      | None -> ()
+        (* Find the corresponding alias node *)
+        match List.find_opt (fun (d, _) -> d = file_dir) alias_nodes with
+        | Some (_, alias_node) ->
+            (* This module depends on its directory's alias module *)
+            node.deps <- alias_node.id :: node.deps
+        | None -> ()
     )
     source_files;
 
@@ -172,11 +176,11 @@ let build graph dir =
         in
         (* Find the alias module for this file's directory *)
         match List.find_opt (fun (d, _) -> d = file_dir) alias_nodes with
-        | Some (_, alias_node) -> [ alias_node.namespaced ]
+        | Some (_, alias_node) -> [ String.concat "__" alias_node.namespaced ]
         | None ->
             (* If no specific directory alias, use root alias if it exists *)
             (match List.find_opt (fun (d, _) -> d = current_dir) alias_nodes with
-             | Some (_, root_alias) -> [ root_alias.namespaced ]
+             | Some (_, root_alias) -> [ String.concat "__" root_alias.namespaced ]
              | None -> [])
       in
 
@@ -256,11 +260,9 @@ let build graph dir =
           let interface_file = dir ^ "/" ^ dir_name ^ ".ml" in
           let module_name = String.capitalize_ascii dir_name in
           let namespaced =
-            (* Build namespaced name like Tusk__Cli__Cli *)
+            (* Build namespaced name parts like ["Std"; "Data"] (package + directory) *)
             let dir_parts = String.split_on_char '/' dir in
-            graph.package_name ^ Module_registry.namespace_separator ^
-            (dir_parts |> List.map String.capitalize_ascii |> String.concat Module_registry.namespace_separator) ^
-            Module_registry.namespace_separator ^ module_name
+            graph.package_name :: (dir_parts |> List.map String.capitalize_ascii)
           in
           let interface_node = add_node graph interface_file module_name namespaced ML Generated in
 

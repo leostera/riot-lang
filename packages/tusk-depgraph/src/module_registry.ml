@@ -2,6 +2,12 @@ open Std
 
 (** Constants for module naming conventions *)
 let namespace_separator = "__"
+
+(** Convert namespaced parts to string *)
+let namespaced_to_string parts = String.concat namespace_separator parts
+
+(** Convert string to namespaced parts *)
+let string_to_namespaced str = String.split_on_char '_' str |> List.filter (fun s -> s <> "")
 let path_separator = '/'
 let current_dir = "."
 let empty_dir = ""
@@ -13,7 +19,7 @@ type file_kind = MLI | ML | Alias
 type entry = {
   file : string;
   simple_name : string;
-  namespaced : string;
+  namespaced : string list;
   kind : file_kind;
   is_library_interface : bool;
 }
@@ -57,7 +63,7 @@ let module_name_from_path path =
 
 (** Create a namespaced module name *)
 let make_namespaced registry module_name =
-  registry.package_name ^ namespace_separator ^ module_name
+  [registry.package_name; module_name]
 
 (** Create an entry from a file path *)
 let entry_from_file registry file =
@@ -96,16 +102,18 @@ let register registry entry =
   Hashtbl.replace registry.by_simple entry.simple_name (entry :: simple_entries);
 
   (* Add to namespaced index *)
+  let namespaced_key = namespaced_to_string entry.namespaced in
   let ns_entries =
-    try Hashtbl.find registry.by_namespaced entry.namespaced
+    try Hashtbl.find registry.by_namespaced namespaced_key
     with Not_found -> []
   in
-  Hashtbl.replace registry.by_namespaced entry.namespaced (entry :: ns_entries)
+  Hashtbl.replace registry.by_namespaced namespaced_key (entry :: ns_entries)
 
 let find_by_simple_name registry name =
   try Hashtbl.find registry.by_simple name with Not_found -> []
 
-let find_by_namespaced registry name =
+let find_by_namespaced registry name_parts =
+  let name = namespaced_to_string name_parts in
   try Hashtbl.find registry.by_namespaced name with Not_found -> []
 
 let all_entries registry = List.rev registry.entries
@@ -120,6 +128,6 @@ let dump registry =
         | ML -> " [.ml]"
         | Alias -> " [alias]"
       in
-      Printf.printf "  %s -> %s%s%s\n" entry.file entry.namespaced kind_str
+      Printf.printf "  %s -> %s%s%s\n" entry.file (namespaced_to_string entry.namespaced) kind_str
         (if entry.is_library_interface then " [library-interface]" else ""))
     (all_entries registry)
