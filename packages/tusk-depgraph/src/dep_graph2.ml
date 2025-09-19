@@ -38,6 +38,13 @@ let add_node graph file kind =
   node
 
 let find_node_by_file graph file_path =
+  (* Convert to absolute path for comparison *)
+  let target_path =
+    if String.contains file_path '/' then
+      Path.to_string Path.(graph.root / v "src" / v file_path)
+    else
+      Path.to_string Path.(graph.root / v "src" / v file_path)
+  in
   Hashtbl.fold
     (fun _ node acc ->
       match acc with
@@ -47,7 +54,7 @@ let find_node_by_file graph file_path =
             | Concrete path -> Path.to_string path
             | Generated { path; _ } -> Path.to_string path
           in
-          if node_path = file_path then Some node else None)
+          if node_path = target_path then Some node else None)
     graph.nodes None
 
 let make ~root ~package_name =
@@ -157,7 +164,41 @@ let rec scan_directory graph ~current_path ~relative_path ~namespace =
     node
   in
 
-  (* Process all files *)
+  (* First register ALL OCaml modules before processing *)
+  List.iter (fun entry ->
+    let entry_path = Path.join current_path entry in
+    let entry_str = Path.to_string entry in
+    let entry_relative = if relative_path = "" then entry_str else relative_path ^ "/" ^ entry_str in
+
+    (* Skip if this is the library interface file we already registered *)
+    let dir_name = Path.basename current_path in
+    let file_name = Filename.remove_extension (Path.basename entry_path) in
+    let is_library_interface =
+      relative_path <> "" &&
+      file_name = dir_name &&
+      (Path.extension entry_path |> Option.value ~default:"" |> fun ext -> ext = ".ml" || ext = ".mli") in
+
+    if not is_library_interface then
+      let ext = Path.extension entry_path |> Option.value ~default:"" in
+      let module_name = String.capitalize_ascii file_name in
+      let full_namespaced = namespace @ [module_name] in
+
+      let kind = kind_of_extension ext ~module_name ~namespaced:full_namespaced in
+
+      if is_ocaml_source kind then (
+        (* Register in module registry *)
+        let entry_data = {
+          Module_registry.file = entry_relative;
+          simple_name = module_name;
+          namespaced = full_namespaced;
+          kind = (match kind with ML _ -> Module_registry.ML | MLI _ -> Module_registry.MLI | _ -> Module_registry.ML);
+          is_library_interface = false;
+        } in
+        Module_registry.register graph.registry entry_data
+      )
+  ) files;
+
+  (* Now process all files and create nodes *)
   let file_nodes = List.filter_map (fun entry ->
     let entry_path = Path.join current_path entry in
     let entry_str = Path.to_string entry in
@@ -184,16 +225,6 @@ let rec scan_directory graph ~current_path ~relative_path ~namespace =
       if is_ocaml_source kind then (
         (* Create node for OCaml source file *)
         let node = add_node graph file kind in
-
-        (* Create registry entry *)
-        let entry_data = {
-          Module_registry.file = entry_relative;
-          simple_name = module_name;
-          namespaced = full_namespaced;
-          kind = (match kind with ML _ -> Module_registry.ML | MLI _ -> Module_registry.MLI | _ -> Module_registry.ML);
-          is_library_interface = false;
-        } in
-        Module_registry.register graph.registry entry_data;
 
         Printf.printf "  Added OCaml file: %s -> module %s (namespace: [%s])\n"
           entry_relative module_name (String.concat "; " full_namespaced);
@@ -253,7 +284,17 @@ let scan ~(root: Path.t) ~(package_name: string) =
           | Concrete path -> path
           | Generated { path; _ } -> path
         in
-        let relative_file = Path.v (Path.basename path) in
+        (* Get path relative to src_root for ocamldep *)
+        let src_root_str = Path.to_string src_root in
+        let path_str = Path.to_string path in
+        let relative_file =
+          if String.starts_with ~prefix:(src_root_str ^ "/") path_str then
+            let rel = String.sub path_str (String.length src_root_str + 1)
+                        (String.length path_str - String.length src_root_str - 1) in
+            Path.v rel
+          else
+            Path.v (Path.basename path)
+        in
 
         match Ocamldep.get_deps ~cwd:src_root ~file:relative_file ~open_modules () with
         | Some deps_line ->
