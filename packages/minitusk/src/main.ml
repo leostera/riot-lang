@@ -56,6 +56,109 @@ let run_command cmd =
 
 type package = { name : string; path : string; deps : string list }
 
+(* ===== Build Action Types ===== *)
+
+type action =
+  | CreateDirectory of string
+  | WriteFile of { path : string; content : string }
+  | CopyFile of { src : string; dst : string }
+  | CompileInterface of {
+      sandbox_dir : string;
+      src_file : string;
+      output : string;
+      includes : string list;
+      opens : string list;
+    }
+  | CompileImplementation of {
+      sandbox_dir : string;
+      src_file : string;
+      output : string;
+      includes : string list;
+      opens : string list;
+    }
+  | CompileC of {
+      sandbox_dir : string;
+      src_file : string;
+    }
+  | CreateArchive of {
+      sandbox_dir : string;
+      archive_name : string;
+      object_files : string list;
+      includes : string list;
+    }
+
+type build_plan = action list
+
+(* ===== Action Execution ===== *)
+
+let print_action action =
+  match action with
+  | CreateDirectory dir ->
+      Printf.printf "CREATE_DIR: %s\n" dir
+  | WriteFile { path; content } ->
+      Printf.printf "WRITE_FILE: %s (%d bytes)\n" path (String.length content)
+  | CopyFile { src; dst } ->
+      Printf.printf "COPY_FILE: %s -> %s\n" src dst
+  | CompileInterface { sandbox_dir; src_file; output; includes; opens } ->
+      Printf.printf "COMPILE_MLI: %s -> %s (includes: %s) (opens: %s)\n"
+        src_file output
+        (String.concat " " includes)
+        (String.concat " " opens)
+  | CompileImplementation { sandbox_dir; src_file; output; includes; opens } ->
+      Printf.printf "COMPILE_ML: %s -> %s (includes: %s) (opens: %s)\n"
+        src_file output
+        (String.concat " " includes)
+        (String.concat " " opens)
+  | CompileC { sandbox_dir; src_file } ->
+      Printf.printf "COMPILE_C: %s\n" src_file
+  | CreateArchive { sandbox_dir; archive_name; object_files; includes } ->
+      Printf.printf "CREATE_ARCHIVE: %s (objects: %s) (includes: %s)\n"
+        archive_name
+        (String.concat " " object_files)
+        (String.concat " " includes)
+
+let print_build_plan plan =
+  Printf.printf "\n=== BUILD PLAN ===\n";
+  List.iteri (fun i action ->
+    Printf.printf "%3d. " (i + 1);
+    print_action action) plan;
+  Printf.printf "=== END BUILD PLAN ===\n\n"
+
+let execute_action action =
+  let ocamlc = "/Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc" in
+  match action with
+  | CreateDirectory dir ->
+      mkdir_p dir
+  | WriteFile { path; content } ->
+      write_file path content
+  | CopyFile { src; dst } ->
+      copy_file src dst
+  | CompileInterface { sandbox_dir; src_file; output; includes; opens } ->
+      let include_flags = List.fold_left (fun acc inc -> acc ^ " -I " ^ inc) "" includes in
+      let open_flags = List.fold_left (fun acc op -> acc ^ " -open " ^ op) "" opens in
+      let cmd = Printf.sprintf "cd %s && %s -I +unix%s%s -c -o %s %s"
+        sandbox_dir ocamlc include_flags open_flags output src_file in
+      run_command cmd
+  | CompileImplementation { sandbox_dir; src_file; output; includes; opens } ->
+      let include_flags = List.fold_left (fun acc inc -> acc ^ " -I " ^ inc) "" includes in
+      let open_flags = List.fold_left (fun acc op -> acc ^ " -open " ^ op) "" opens in
+      let cmd = Printf.sprintf "cd %s && %s -I +unix%s%s -c -o %s %s"
+        sandbox_dir ocamlc include_flags open_flags output src_file in
+      run_command cmd
+  | CompileC { sandbox_dir; src_file } ->
+      let cmd = Printf.sprintf "cd %s && %s -I +unix -c %s"
+        sandbox_dir ocamlc src_file in
+      run_command cmd
+  | CreateArchive { sandbox_dir; archive_name; object_files; includes } ->
+      let include_flags = List.fold_left (fun acc inc -> acc ^ " -I " ^ inc) "" includes in
+      let cmd = Printf.sprintf "cd %s && %s%s -a -o %s %s"
+        sandbox_dir ocamlc include_flags archive_name (String.concat " " object_files) in
+      run_command cmd
+
+let execute_build_plan plan =
+  Printf.printf "Executing %d actions...\n" (List.length plan);
+  List.iter execute_action plan
+
 (* TOML parser module *)
 module Toml = struct
   let parse_file filename =
@@ -1225,17 +1328,7 @@ let build_package pkg ~built_packages =
               in
               let open_flags = if alias_exists then [" -open " ^ target_alias_name] else [] in
 
-              (* Add opens for external package dependencies *)
-              let external_opens =
-                List.fold_left
-                  (fun acc dep_pkg ->
-                    let dep_alias = String.capitalize_ascii (String.map (fun c -> if c = '-' then '_' else c) dep_pkg) ^ "__Aliases" in
-                    (" -open " ^ dep_alias) :: acc)
-                  []
-                  pkg.deps
-              in
-
-              String.concat "" (open_flags @ external_opens)
+              String.concat "" open_flags
           in
 
           let cmd =
