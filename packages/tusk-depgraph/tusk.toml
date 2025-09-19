@@ -1,0 +1,10 @@
+[package]
+name = "tusk-depgraph"
+version = "0.1.0"
+
+[[bin]]
+name = "tusk-depgraph"
+main = "main.ml"
+
+[dependencies]
+std = { path = "../std" }

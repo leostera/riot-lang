@@ -1,0 +1,27 @@
+graph TD
+  2["main.ml"]
+  7[["workspace.mli"]]
+  0[["mod_name.mli"]]
+  10[["toolchains.mli"]]
+  5[["error.mli"]]
+  6["error.ml"]
+  9["toolchains.ml"]
+  3["mod_name.ml"]
+  1["workspace_manager.ml"]
+  8[["workspace_manager.mli"]]
+  4["workspace.ml"]
+
+  7 --> 5
+  7 --> 6
+  10 --> 4
+  10 --> 7
+  9 --> 4
+  9 --> 7
+  1 --> 4
+  1 --> 7
+  8 --> 4
+  8 --> 7
+  8 --> 5
+  8 --> 6
+  4 --> 5
+  4 --> 6

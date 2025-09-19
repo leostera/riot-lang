@@ -1,0 +1,27 @@
+digraph Tusk {
+  "2" [label="main.ml", color="green", style="filled", fillcolor="lightgreen"];
+  "7" [label="workspace.mli", color="blue", style="filled", fillcolor="lightblue"];
+  "0" [label="mod_name.mli", color="blue", style="filled", fillcolor="lightblue"];
+  "10" [label="toolchains.mli", color="blue", style="filled", fillcolor="lightblue"];
+  "5" [label="error.mli", color="blue", style="filled", fillcolor="lightblue"];
+  "6" [label="error.ml", color="green", style="filled", fillcolor="lightgreen"];
+  "9" [label="toolchains.ml", color="green", style="filled", fillcolor="lightgreen"];
+  "3" [label="mod_name.ml", color="green", style="filled", fillcolor="lightgreen"];
+  "1" [label="workspace_manager.ml", color="green", style="filled", fillcolor="lightgreen"];
+  "8" [label="workspace_manager.mli", color="blue", style="filled", fillcolor="lightblue"];
+  "4" [label="workspace.ml", color="green", style="filled", fillcolor="lightgreen"];
+
+  "7" -> "5";
+  "7" -> "6";
+  "10" -> "4";
+  "10" -> "7";
+  "9" -> "4";
+  "9" -> "7";
+  "1" -> "4";
+  "1" -> "7";
+  "8" -> "4";
+  "8" -> "7";
+  "8" -> "5";
+  "8" -> "6";
+  "4" -> "5";
+  "4" -> "6";}
