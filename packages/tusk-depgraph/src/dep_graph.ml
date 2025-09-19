@@ -28,14 +28,11 @@ type node = {
 }
 
 type t = {
+  root : Path.t;
   nodes : (int, node) Hashtbl.t;
   registry : Module_registry.t;
   package_name : string;
 }
-
-let create ~package_name =
-  let registry = Module_registry.create ~package_name in
-  { nodes = Hashtbl.create 100; registry; package_name }
 
 let add_node graph file module_name namespaced file_kind node_kind =
   let id = Node_id.next () in
@@ -51,27 +48,54 @@ let find_node_by_file graph file =
       | None -> if node.file = file then Some node else None)
     graph.nodes None
 
-let build graph dir =
-  (* Look for src directory under package root *)
-  let scan_root =
-    let dir_path = Path.of_string dir |> Result.expect ~msg:"Invalid directory path" in
-    let src_path = Path.join dir_path (Path.of_string src_dir |> Result.expect ~msg:src_dir) in
-    let has_src = Fs.is_directory src_path |> Result.expect ~msg:"Failed to check src directory" in
-    if has_src then Path.to_string src_path else dir
+let make ~root ~package_name = 
+  let registry = Module_registry.create ~package_name in
+  let graph = { root; nodes = Hashtbl.create 100; registry; package_name } in
+graph
+
+let scan ~(root: Path.t) ~(package_name: string) =
+  let graph = make ~root ~package_name in
+
+  (* First pass: Scan for source files (non-recursive) *)
+  let sources =
+    (* Look for src directory under package root *)
+    let src_root = Path.(root / v "src") in
+    Printf.printf "Scanning from: %s\n" (Path.to_string src_root);
+
+    let files = match Fs.read_dir src_root with
+      | Error e ->
+          Printf.eprintf "Warning: Could not read directory %s: %s\n"
+            (Path.to_string src_root)
+            (match e with Fs.SystemError s -> s);
+          []
+      | Ok dir_iter ->
+          let rec collect_files acc =
+            match Fs.ReadDir.next dir_iter with
+            | None ->
+                let _ = Fs.ReadDir.close dir_iter in
+                acc
+            | Some entry ->
+                let entry_path = Path.join src_root entry in
+                match Fs.is_directory entry_path with
+                | Error _ -> collect_files acc
+                | Ok true -> collect_files acc (* Skip directories *)
+                | Ok false ->
+                    (* Check if it's an OCaml source file *)
+                    let ext = Path.extension entry_path |> Option.value ~default:"" in
+                    if ext = ".ml" || ext = ".mli" then
+                      entry :: acc
+                    else
+                      collect_files acc
+          in
+          List.rev (collect_files [])
+    in
+    Printf.printf "Found %d source files\n" (List.length files);
+    files
   in
-
-  Printf.printf "Scanning from: %s\n" scan_root;
-
-  (* First pass: Recursively scan for all source files *)
-  let scan_result = File_scanner.scan ~root:scan_root in
-  let ocaml_files = File_scanner.ocaml_source_files scan_result in
-  let source_files = List.map (fun f -> File_scanner.(f.path)) ocaml_files in
-
-  Printf.printf "Found %d OCaml source files\n" (List.length source_files);
 
   (* Extract unique directories from source files *)
   let directories =
-    source_files
+    sources
     |> List.map (fun file ->
         match Path.of_string file with
         | Error _ -> ""
@@ -157,7 +181,7 @@ let build graph dir =
             node.deps <- alias_node.id :: node.deps
         | None -> ()
     )
-    source_files;
+    sources;
 
   Printf.printf "Created %d nodes\n" (Hashtbl.length graph.nodes);
 
@@ -184,7 +208,7 @@ let build graph dir =
              | None -> [])
       in
 
-      match Ocamldep.get_deps ~cwd:scan_root ~file:node.file ~open_modules () with
+      match Ocamldep.get_deps ~cwd:(Path.to_string src_root) ~file:node.file ~open_modules () with
       | Some line ->
           let deps = Ocamldep.parse_deps line in
           Printf.printf "  %s depends on: %s\n" node.file
@@ -260,9 +284,10 @@ let build graph dir =
           let interface_file = dir ^ "/" ^ dir_name ^ ".ml" in
           let module_name = String.capitalize_ascii dir_name in
           let namespaced =
-            (* Build namespaced name parts like ["Std"; "Data"] (package + directory) *)
-            let dir_parts = String.split_on_char '/' dir in
-            graph.package_name :: (dir_parts |> List.map String.capitalize_ascii)
+            if dir_name = String.lowercase_ascii module_name then
+              [graph.package_name]
+            else
+              [graph.package_name; dir_name]
           in
           let interface_node = add_node graph interface_file module_name namespaced ML Generated in
 
