@@ -1277,14 +1277,22 @@ let build_package pkg ~built_packages =
   (* Get compilation order *)
   let sorted = DepGraph.topological_sort graph in
 
-  (* Debug: Print compilation order *)
-  Printf.printf "Compilation order:\n";
+  (* Debug: Print ALL nodes in sorted order with filenames *)
+  Printf.printf "Compilation order (ALL nodes):\n";
   List.iteri
     (fun i node ->
-      match node.DepGraph.kind with
-      | DepGraph.ML { namespaced; _ } | DepGraph.MLI { namespaced; _ } ->
-          Printf.printf "  %d. %s\n" (i + 1) (String.concat "__" namespaced)
-      | _ -> ())
+      let filename = match node.DepGraph.file with
+        | DepGraph.Concrete path -> Filename.basename path
+        | DepGraph.Generated { path; _ } -> Filename.basename path
+      in
+      let kind_str = match node.DepGraph.kind with
+        | DepGraph.ML { namespaced; _ } -> "ML(" ^ String.concat "__" namespaced ^ ")"
+        | DepGraph.MLI { namespaced; _ } -> "MLI(" ^ String.concat "__" namespaced ^ ")"
+        | DepGraph.C -> "C"
+        | DepGraph.H -> "H"
+        | DepGraph.Other _ -> "Other"
+      in
+      Printf.printf "  %d. %s [%s]\n" (i + 1) filename kind_str)
     sorted;
 
   (* Compile each file *)
