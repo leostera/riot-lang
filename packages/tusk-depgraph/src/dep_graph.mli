@@ -1,22 +1,21 @@
 (** Dependency graph builder *)
 
 type node = {
-  id : int;
+  id : Node_id.t;
   file : string;
   module_name : string;
   namespaced : string;
-  mutable deps : int list; (* Node IDs this depends on *)
+  mutable deps : Node_id.t list; (* Node IDs this depends on *)
 }
 
 type t = {
   nodes : (int, node) Hashtbl.t;
   registry : Module_registry.t;
   package_name : string;
-  mutable next_id : int;
 }
 
-val create : package_name:string -> Module_registry.t -> t
-(** Create a dependency graph from a module registry *)
+val create : package_name:string -> t
+(** Create a dependency graph for a package *)
 
 val build : t -> string -> unit
 (** Build dependency graph for files in directory *)

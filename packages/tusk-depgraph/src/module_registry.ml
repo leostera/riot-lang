@@ -1,3 +1,13 @@
+open Std
+
+(** Constants for module naming conventions *)
+let namespace_separator = "__"
+let path_separator = '/'
+let current_dir = "."
+let empty_dir = ""
+let mli_extension = ".mli"
+let ml_extension = ".ml"
+
 type file_kind = MLI | ML | Alias
 
 type entry = {
@@ -12,13 +22,68 @@ type t = {
   mutable entries : entry list;
   by_simple : (string, entry list) Hashtbl.t;
   by_namespaced : (string, entry list) Hashtbl.t;
+  package_name : string;
 }
 
-let create () =
+let create ~package_name =
   {
     entries = [];
     by_simple = Hashtbl.create 100;
     by_namespaced = Hashtbl.create 100;
+    package_name;
+  }
+
+(** Convert a file path to a module name, handling subdirectories *)
+let module_name_from_path path =
+  match Path.of_string path with
+  | Error _ -> failwith ("Invalid path: " ^ path)
+  | Ok p ->
+      let stem_path = Path.remove_extension p in
+      let stem = Path.basename stem_path in
+      let dir = Path.dirname p |> Path.to_string in
+
+      (* Build module parts from directory structure *)
+      let module_parts =
+        if dir = current_dir || dir = empty_dir then
+          [stem]
+        else
+          String.split_on_char path_separator dir @ [stem]
+      in
+
+      (* Capitalize each part and join with namespace separator *)
+      module_parts
+      |> List.map String.capitalize_ascii
+      |> String.concat namespace_separator
+
+(** Create a namespaced module name *)
+let make_namespaced registry module_name =
+  registry.package_name ^ namespace_separator ^ module_name
+
+(** Create an entry from a file path *)
+let entry_from_file registry file =
+  let path = match Path.of_string file with
+    | Ok p -> p
+    | Error _ -> failwith ("Invalid file path: " ^ file)
+  in
+
+  let ext = Path.extension path in
+  let kind = match ext with
+    | Some ext when ext = mli_extension -> MLI
+    | Some ext when ext = ml_extension -> ML
+    | _ -> failwith ("Unexpected file extension: " ^ file)
+  in
+
+  let stem_path = Path.remove_extension path in
+  let simple_name = Path.basename stem_path |> String.capitalize_ascii in
+  let module_name = module_name_from_path file in
+  let namespaced = make_namespaced registry module_name in
+
+  {
+    file;
+    simple_name;
+    namespaced;
+    kind;
+    is_library_interface = false;  (* TODO: detect library interfaces *)
   }
 
 let register registry entry =

@@ -17,8 +17,17 @@ type entry = {
 
 type t
 
-val create : unit -> t
-(** Create a new empty registry *)
+val create : package_name:string -> t
+(** Create a new empty registry for a package *)
+
+val module_name_from_path : string -> string
+(** Convert a file path to a module name, handling subdirectories *)
+
+val make_namespaced : t -> string -> string
+(** Create a namespaced module name from a module name *)
+
+val entry_from_file : t -> string -> entry
+(** Create a registry entry from a file path *)
 
 val register : t -> entry -> unit
 (** Register a module entry *)

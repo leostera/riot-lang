@@ -20,16 +20,13 @@ let () =
 
       Printf.printf "Package: %s\n\n" package_name;
 
-      (* Create module registry *)
-      let registry = Module_registry.create () in
-
       (* Build dependency graph *)
-      let graph = Dep_graph.create ~package_name registry in
-      Dep_graph.build graph (dir ^ "/src");
+      let graph = Dep_graph.create ~package_name in
+      Dep_graph.build graph dir;
 
       (* Print registry *)
       Printf.printf "\n";
-      Module_registry.dump registry;
+      Module_registry.dump Dep_graph.(graph.registry);
 
       (* Generate DOT output *)
       let dot = Dep_graph.to_dot graph in
@@ -52,8 +49,8 @@ let () =
       let sorted = Dep_graph.topological_sort graph in
       List.iteri
         (fun i node ->
-          Printf.printf "%2d. %s (%s)\n" (i + 1) node.Dep_graph.file
-            node.Dep_graph.module_name)
+          let open Dep_graph in
+          Printf.printf "%2d. %s (%s)\n" (i + 1) node.file node.module_name)
         sorted
   | [] ->
       Printf.eprintf "Usage: tusk-depgraph <directory>\n";
