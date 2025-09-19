@@ -920,9 +920,13 @@ module DepGraph = struct
     Hashtbl.iter
       (fun _id node ->
         match node.kind with
-        | MLI _ | ML _ ->
-            (* Read file and scan for module references *)
-            (try
+        | MLI { module_name; _ } | ML { module_name; _ } ->
+            (* Skip dependency analysis for alias modules - they use -no-alias-deps *)
+            if String.ends_with ~suffix:"__aliases" module_name then
+              ()
+            else (
+              (* Read file and scan for module references *)
+              try
               let file_path = match node.file with
                 | Concrete path -> path
                 | Generated { path; _ } -> path
@@ -951,7 +955,7 @@ module DepGraph = struct
                             )
                         | _ -> ()) referenced_entries
                   | _ -> ()) words
-            with _ -> ())
+              with _ -> ())
         | _ -> ())
       graph.nodes;
 
