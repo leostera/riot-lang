@@ -222,12 +222,7 @@ let build graph dir =
         dir ^ "/" ^ dir_name ^ ".mli";
       ] in
 
-      (* Find the library interface module(s) *)
-      let library_interfaces = List.filter_map (fun file ->
-        find_node_by_file graph file
-      ) library_interface_files in
-
-      (* Find all other modules in this directory *)
+      (* Find all other modules in this directory first *)
       let dir_modules = Hashtbl.fold (fun _ node acc ->
         (* Check if this node is in the current directory *)
         let node_dir =
@@ -247,6 +242,42 @@ let build graph dir =
         else
           acc
       ) graph.nodes [] in
+
+      (* Find or create library interface module(s) *)
+      let library_interfaces =
+        (* Check if interface already exists *)
+        let existing = List.filter_map (fun file ->
+          find_node_by_file graph file
+        ) library_interface_files in
+
+        (* If no interface exists but directory has modules, create one *)
+        if existing = [] && dir_modules <> [] then
+          (* Create a generated library interface .ml file *)
+          let interface_file = dir ^ "/" ^ dir_name ^ ".ml" in
+          let module_name = String.capitalize_ascii dir_name in
+          let namespaced =
+            (* Build namespaced name like Tusk__Cli__Cli *)
+            let dir_parts = String.split_on_char '/' dir in
+            graph.package_name ^ Module_registry.namespace_separator ^
+            (dir_parts |> List.map String.capitalize_ascii |> String.concat Module_registry.namespace_separator) ^
+            Module_registry.namespace_separator ^ module_name
+          in
+          let interface_node = add_node graph interface_file module_name namespaced ML Generated in
+
+          (* Register in module registry *)
+          let entry = {
+            Module_registry.file = interface_file;
+            simple_name = module_name;
+            namespaced = namespaced;
+            kind = Module_registry.ML;
+            is_library_interface = true;
+          } in
+          Module_registry.register graph.registry entry;
+
+          [ interface_node ]
+        else
+          existing
+      in
 
       (* Make library interface depend on all modules in its directory *)
       List.iter (fun lib_interface ->

@@ -61,7 +61,7 @@ let () =
             | File -> ""
             | Generated -> " [gen]"
           in
-          Printf.printf "%2d. %s (%s) [%s]%s\n" (i + 1) node.file node.module_name file_str node_str)
+          Printf.printf "%2d. %s (%s) [%s]%s\n" (i + 1) node.file node.namespaced file_str node_str)
         sorted
   | [] ->
       Printf.eprintf "Usage: tusk-depgraph <directory>\n";
