@@ -15,9 +15,6 @@ cd src
 echo "Compiling ocamldep..."
 /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I $STD_DIR -c ocamldep.ml
 
-echo "Compiling file_scanner..."
-/Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I $STD_DIR -c file_scanner.ml
-
 # Compile node_id
 echo "Compiling node_id..."
 /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I $STD_DIR -c node_id.mli
@@ -28,10 +25,9 @@ echo "Compiling module_registry..."
 /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I $STD_DIR -c module_registry.mli
 /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I $STD_DIR -c module_registry.ml
 
-# Compile dep_graph
-echo "Compiling dep_graph..."
-/Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I $STD_DIR -c dep_graph.mli
-/Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I $STD_DIR -c dep_graph.ml
+# Compile dep_graph2
+echo "Compiling dep_graph2..."
+/Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I $STD_DIR -c dep_graph2.ml
 
 # Compile main
 echo "Compiling main..."
@@ -44,10 +40,9 @@ echo "Linking..."
     str.cma \
     $STD_DIR/std.cma \
     ocamldep.cmo \
-    file_scanner.cmo \
     node_id.cmo \
     module_registry.cmo \
-    dep_graph.cmo \
+    dep_graph2.cmo \
     main.cmo \
     -o tusk-depgraph
 

@@ -10,11 +10,11 @@ let ocamldep_path =
   | None -> "/Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep"  (* Fallback *)
 
 (** Run ocamldep to get module dependencies for a file *)
-let get_deps ~cwd ~file ?(open_modules = []) () =
+let get_deps ~(cwd: Path.t) ~(file: Path.t) ?(open_modules = []) () =
   let cmd = Command.make ocamldep_path in
 
   (* Add -I flag for current directory *)
-  let cmd = Command.(cmd |> arg "-I" |> arg cwd) in
+  let cmd = Command.(cmd |> arg "-I" |> arg (Path.to_string cwd)) in
 
   (* Add -open flags *)
   let cmd = List.fold_left (fun cmd m ->
@@ -22,8 +22,8 @@ let get_deps ~cwd ~file ?(open_modules = []) () =
   ) cmd open_modules in
 
   (* Add -modules flag and file path *)
-  let full_path = Filename.concat cwd file in
-  let cmd = Command.(cmd |> arg "-modules" |> arg full_path) in
+  let full_path = Path.join cwd file in
+  let cmd = Command.(cmd |> arg "-modules" |> arg (Path.to_string full_path)) in
   match Command.output cmd with
   | Ok output ->
       (* Get first line of stdout *)
@@ -43,30 +43,33 @@ let parse_deps line =
   | _ -> []
 
 (** Sort files in dependency order *)
-let sort_files ~cwd ~files =
+let sort_files ~(cwd: Path.t) ~(files: Path.t list) =
   if files = [] then []
   else
     let cmd = Command.make ocamldep_path in
 
     (* Add -I flag for current directory *)
-    let cmd = Command.(cmd |> arg "-I" |> arg cwd) in
+    let cmd = Command.(cmd |> arg "-I" |> arg (Path.to_string cwd)) in
 
     (* Add -sort flag *)
     let cmd = Command.(cmd |> arg "-sort") in
 
     (* Add all files with full paths *)
     let cmd = List.fold_left (fun cmd file ->
-      let full_path = Filename.concat cwd file in
-      Command.(cmd |> arg full_path)
+      let full_path = Path.join cwd file in
+      Command.(cmd |> arg (Path.to_string full_path))
     ) cmd files in
 
     match Command.output cmd with
     | Ok output ->
         (match String.split_on_char '\n' output.stdout with
          | sorted_str :: _ when sorted_str <> "" ->
-             (* ocamldep returns full paths, extract basenames *)
+             (* ocamldep returns full paths, convert back to Path.t *)
              String.split_on_char ' ' sorted_str
-             |> List.map Filename.basename
-             |> List.filter (fun s -> s <> "")
+             |> List.filter_map (fun s ->
+                if s = "" then None
+                else match Path.of_string s with
+                  | Ok p -> Some (Path.v (Path.basename p))
+                  | Error _ -> None)
          | _ -> files)
     | Error _ -> files (* Return original list if ocamldep fails *)
