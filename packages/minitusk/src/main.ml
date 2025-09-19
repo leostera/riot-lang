@@ -829,6 +829,98 @@ module DepGraph = struct
                       (String.concat "__" namespaced)
                 | None -> ())
               process_entries
+        | MLI { module_name = "Process"; namespaced } | ML { module_name = "Process"; namespaced } ->
+            (* Process depends on Pid *)
+            let pid_entries = Module_registry.find_by_simple_name graph.registry "Pid" in
+            List.iter
+              (fun pid_entry ->
+                match find_node_by_file graph pid_entry.Module_registry.file with
+                | Some pid_node ->
+                    node.deps <- pid_node.id :: node.deps;
+                    Printf.printf "  %s depends on Pid\n"
+                      (String.concat "__" namespaced)
+                | None -> ())
+              pid_entries;
+            (* Process also depends on Proc_state *)
+            let proc_state_entries = Module_registry.find_by_simple_name graph.registry "Proc_state" in
+            List.iter
+              (fun proc_state_entry ->
+                match find_node_by_file graph proc_state_entry.Module_registry.file with
+                | Some proc_state_node ->
+                    node.deps <- proc_state_node.id :: node.deps;
+                    Printf.printf "  %s depends on Proc_state\n"
+                      (String.concat "__" namespaced)
+                | None -> ())
+              proc_state_entries;
+            (* Process also depends on Message *)
+            let message_entries = Module_registry.find_by_simple_name graph.registry "Message" in
+            List.iter
+              (fun message_entry ->
+                match find_node_by_file graph message_entry.Module_registry.file with
+                | Some message_node ->
+                    node.deps <- message_node.id :: node.deps;
+                    Printf.printf "  %s depends on Message\n"
+                      (String.concat "__" namespaced)
+                | None -> ())
+              message_entries;
+            (* Process also depends on Mailbox *)
+            let mailbox_entries = Module_registry.find_by_simple_name graph.registry "Mailbox" in
+            List.iter
+              (fun mailbox_entry ->
+                match find_node_by_file graph mailbox_entry.Module_registry.file with
+                | Some mailbox_node ->
+                    node.deps <- mailbox_node.id :: node.deps;
+                    Printf.printf "  %s depends on Mailbox\n"
+                      (String.concat "__" namespaced)
+                | None -> ())
+              mailbox_entries;
+            (* Process also depends on Proc_effect *)
+            let proc_effect_entries = Module_registry.find_by_simple_name graph.registry "Proc_effect" in
+            List.iter
+              (fun proc_effect_entry ->
+                match find_node_by_file graph proc_effect_entry.Module_registry.file with
+                | Some proc_effect_node ->
+                    node.deps <- proc_effect_node.id :: node.deps;
+                    Printf.printf "  %s depends on Proc_effect\n"
+                      (String.concat "__" namespaced)
+                | None -> ())
+              proc_effect_entries
+        | MLI { module_name = "Runtime"; namespaced } | ML { module_name = "Runtime"; namespaced } ->
+            (* Runtime depends on Effects *)
+            let effects_entries = Module_registry.find_by_simple_name graph.registry "Effects" in
+            List.iter
+              (fun effects_entry ->
+                match find_node_by_file graph effects_entry.Module_registry.file with
+                | Some effects_node ->
+                    node.deps <- effects_node.id :: node.deps;
+                    Printf.printf "  %s depends on Effects\n"
+                      (String.concat "__" namespaced)
+                | None -> ())
+              effects_entries
+        | MLI { module_name = "Miniriot"; namespaced } | ML { module_name = "Miniriot"; namespaced } ->
+            (* Miniriot depends on Scheduler *)
+            let scheduler_entries = Module_registry.find_by_simple_name graph.registry "Scheduler" in
+            List.iter
+              (fun scheduler_entry ->
+                match find_node_by_file graph scheduler_entry.Module_registry.file with
+                | Some scheduler_node ->
+                    node.deps <- scheduler_node.id :: node.deps;
+                    Printf.printf "  %s depends on Scheduler\n"
+                      (String.concat "__" namespaced)
+                | None -> ())
+              scheduler_entries
+        | MLI { module_name = "Scheduler"; namespaced } | ML { module_name = "Scheduler"; namespaced } ->
+            (* Scheduler depends on Trace *)
+            let trace_entries = Module_registry.find_by_simple_name graph.registry "Trace" in
+            List.iter
+              (fun trace_entry ->
+                match find_node_by_file graph trace_entry.Module_registry.file with
+                | Some trace_node ->
+                    node.deps <- trace_node.id :: node.deps;
+                    Printf.printf "  %s depends on Trace\n"
+                      (String.concat "__" namespaced)
+                | None -> ())
+              trace_entries
         | _ -> ())
       graph.nodes;
 
@@ -1135,7 +1227,7 @@ let build_package pkg ~built_packages =
   let dep_include_paths =
     List.fold_left
       (fun acc dep_pkg ->
-        let dep_out_dir = Printf.sprintf "./target/bootstrap/out/%s" dep_pkg in
+        let dep_out_dir = Printf.sprintf "%s/target/bootstrap/out/%s" (Sys.getcwd ()) dep_pkg in
         if Sys.file_exists dep_out_dir then
           (" -I " ^ dep_out_dir) :: acc
         else acc)
