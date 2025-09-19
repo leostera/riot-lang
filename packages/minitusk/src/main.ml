@@ -1218,6 +1218,13 @@ let scan_sources src_dir package_name =
 let build_package pkg ~built_packages =
   Printf.printf "\n=== Building package: %s ===\n" pkg.name;
 
+  (* Generate simple test build plan for demonstration *)
+  let test_plan = [
+    CreateDirectory (Printf.sprintf "./target/bootstrap/sandbox/%s" pkg.name);
+    CreateDirectory (Printf.sprintf "./target/bootstrap/out/%s" pkg.name);
+  ] in
+  print_build_plan test_plan;
+
   let src_dir = Filename.concat pkg.path "src" in
   if not (Sys.file_exists src_dir) then
     failwith (Printf.sprintf "Source directory not found: %s" src_dir);
