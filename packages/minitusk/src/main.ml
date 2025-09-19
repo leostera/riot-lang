@@ -812,6 +812,46 @@ module DepGraph = struct
     (* Add basic dependencies *)
     Printf.printf "Adding basic dependencies...\n";
 
+    (* Scan files for module dependencies *)
+    Printf.printf "Scanning for module dependencies...\n";
+    Hashtbl.iter
+      (fun _id node ->
+        match node.kind with
+        | MLI _ | ML _ ->
+            (* Read file and scan for module references *)
+            (try
+              let file_path = match node.file with
+                | Concrete path -> path
+                | Generated { path; _ } -> path
+              in
+              let ic = open_in file_path in
+              let content = really_input_string ic (in_channel_length ic) in
+              close_in ic;
+
+              (* Simple pattern: look for "ModuleName." references *)
+              let words = String.split_on_char ' ' content in
+              List.iter (fun word ->
+                if String.contains word '.' then
+                  let parts = String.split_on_char '.' word in
+                  match parts with
+                  | module_name :: _ when String.length module_name > 0 &&
+                                         Char.uppercase_ascii module_name.[0] = module_name.[0] ->
+                      (* Found a potential module reference *)
+                      let referenced_entries = Module_registry.find_by_simple_name graph.registry module_name in
+                      List.iter (fun ref_entry ->
+                        match find_node_by_file graph ref_entry.Module_registry.file with
+                        | Some ref_node when ref_node.id <> node.id ->
+                            if not (List.mem ref_node.id node.deps) then (
+                              node.deps <- ref_node.id :: node.deps;
+                              Printf.printf "  %s depends on %s (from file analysis)\n"
+                                (Filename.basename file_path) module_name
+                            )
+                        | _ -> ()) referenced_entries
+                  | _ -> ()) words
+            with _ -> ())
+        | _ -> ())
+      graph.nodes;
+
     (* Find alias module node *)
     let alias_module =
       Hashtbl.fold
