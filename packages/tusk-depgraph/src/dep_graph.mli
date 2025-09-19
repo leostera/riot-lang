@@ -1,10 +1,23 @@
 (** Dependency graph builder *)
 
+type file_kind =
+  | ML         (** .ml file *)
+  | MLI        (** .mli file *)
+  | C          (** .c file *)
+  | H          (** .h file *)
+  | Other of string  (** Other file extensions *)
+
+type node_kind =
+  | File       (** Concrete file on disk *)
+  | Generated  (** To be generated *)
+
 type node = {
   id : Node_id.t;
   file : string;
   module_name : string;
   namespaced : string;
+  file_kind : file_kind;
+  node_kind : node_kind;
   mutable deps : Node_id.t list; (* Node IDs this depends on *)
 }
 

@@ -1,10 +1,29 @@
 open Std
 
+(** Constants *)
+let ml_gen_extension = ".ml.gen"
+let aliases_suffix = "__aliases"
+let src_dir = "src"
+let current_dir = "."
+
+type file_kind =
+  | ML         (** .ml file *)
+  | MLI        (** .mli file *)
+  | C          (** .c file *)
+  | H          (** .h file *)
+  | Other of string  (** Other file extensions *)
+
+type node_kind =
+  | File       (** Concrete file on disk *)
+  | Generated  (** To be generated *)
+
 type node = {
   id : Node_id.t;
   file : string;
   module_name : string;
   namespaced : string;
+  file_kind : file_kind;
+  node_kind : node_kind;
   mutable deps : Node_id.t list;
 }
 
@@ -18,9 +37,9 @@ let create ~package_name =
   let registry = Module_registry.create ~package_name in
   { nodes = Hashtbl.create 100; registry; package_name }
 
-let add_node graph file module_name namespaced =
+let add_node graph file module_name namespaced file_kind node_kind =
   let id = Node_id.next () in
-  let node = { id; file; module_name; namespaced; deps = [] } in
+  let node = { id; file; module_name; namespaced; file_kind; node_kind; deps = [] } in
   Hashtbl.add graph.nodes (Node_id.to_int id) node;
   node
 
@@ -36,7 +55,7 @@ let build graph dir =
   (* Look for src directory under package root *)
   let scan_root =
     let dir_path = Path.of_string dir |> Result.expect ~msg:"Invalid directory path" in
-    let src_path = Path.join dir_path (Path.of_string "src" |> Result.expect ~msg:"src") in
+    let src_path = Path.join dir_path (Path.of_string src_dir |> Result.expect ~msg:src_dir) in
     let has_src = Fs.is_directory src_path |> Result.expect ~msg:"Failed to check src directory" in
     if has_src then Path.to_string src_path else dir
   in
@@ -58,35 +77,35 @@ let build graph dir =
         | Error _ -> ""
         | Ok p -> Path.dirname p |> Path.to_string)
     |> List.sort_uniq String.compare
-    |> List.filter (fun d -> d <> "." && d <> "")
+    |> List.filter (fun d -> d <> current_dir && d <> "")
   in
 
   Printf.printf "Found directories: %s\n" (String.concat ", " directories);
 
   (* Create alias module nodes for each directory including root *)
   let alias_nodes =
-    ("." :: directories) |> List.map (fun dir ->
+    (current_dir :: directories) |> List.map (fun dir ->
       let alias_name =
-        if dir = "." then
-          graph.package_name ^ "__aliases"
+        if dir = current_dir then
+          graph.package_name ^ aliases_suffix
         else
           (* Convert directory path to module name: data -> Data, data/foo -> Data__Foo *)
           let parts = String.split_on_char '/' dir in
-          graph.package_name ^ "__" ^
-          (parts |> List.map String.capitalize_ascii |> String.concat "__") ^
-          "__aliases"
+          graph.package_name ^ Module_registry.namespace_separator ^
+          (parts |> List.map String.capitalize_ascii |> String.concat Module_registry.namespace_separator) ^
+          aliases_suffix
       in
-      let file_path = alias_name ^ ".ml.gen" in
-      let node = add_node graph file_path alias_name alias_name in
+      let file_path = alias_name ^ ml_gen_extension in
+      let node = add_node graph file_path alias_name alias_name ML Generated in
       (dir, node)
     )
   in
 
   (* Make root alias module depend on all subdirectory alias modules *)
-  (match List.find_opt (fun (d, _) -> d = ".") alias_nodes with
+  (match List.find_opt (fun (d, _) -> d = current_dir) alias_nodes with
   | Some (_, root_alias) ->
       List.iter (fun (dir, subdir_alias) ->
-        if dir <> "." then
+        if dir <> current_dir then
           root_alias.deps <- subdir_alias.id :: root_alias.deps
       ) alias_nodes
   | None -> ());
@@ -99,15 +118,32 @@ let build graph dir =
 
       (* Add to graph *)
       let module_name = Module_registry.module_name_from_path file in
-      let node = add_node graph file module_name entry.namespaced in
+      let path = Path.of_string file |> Result.expect ~msg:"Invalid file path" in
+      let extension = Path.extension path |> Option.value ~default:"" in
+      let file_kind =
+        match extension with
+        | ".mli" -> MLI
+        | ".ml" -> ML
+        | ".c" -> C
+        | ".h" -> H
+        | ext -> Other ext
+      in
+      let node_kind =
+        if extension = ml_gen_extension then Generated
+        else File
+      in
+      let node = add_node graph file module_name entry.namespaced file_kind node_kind in
+
+      (* Register in module registry *)
+      Module_registry.register graph.registry entry;
 
       (* Add dependency on the alias module for this file's directory *)
       let file_dir =
         match Path.of_string file with
-        | Error _ -> "."
+        | Error _ -> current_dir
         | Ok p ->
             let d = Path.dirname p |> Path.to_string in
-            if d = "" then "." else d
+            if d = "" then current_dir else d
       in
 
       (* Find the corresponding alias node *)
@@ -125,7 +161,26 @@ let build graph dir =
   Printf.printf "Analyzing dependencies...\n";
   Hashtbl.iter
     (fun _id node ->
-      match Ocamldep.get_deps ~cwd:scan_root ~file:node.file with
+      (* Determine which alias module to open for this file *)
+      let open_modules =
+        let file_dir =
+          match Path.of_string node.file with
+          | Error _ -> ""
+          | Ok p ->
+              let d = Path.dirname p |> Path.to_string in
+              if d = "." || d = "" then "" else d
+        in
+        (* Find the alias module for this file's directory *)
+        match List.find_opt (fun (d, _) -> d = file_dir) alias_nodes with
+        | Some (_, alias_node) -> [ alias_node.namespaced ]
+        | None ->
+            (* If no specific directory alias, use root alias if it exists *)
+            (match List.find_opt (fun (d, _) -> d = current_dir) alias_nodes with
+             | Some (_, root_alias) -> [ root_alias.namespaced ]
+             | None -> [])
+      in
+
+      match Ocamldep.get_deps ~cwd:scan_root ~file:node.file ~open_modules () with
       | Some line ->
           let deps = Ocamldep.parse_deps line in
           Printf.printf "  %s depends on: %s\n" node.file
@@ -154,7 +209,54 @@ let build graph dir =
                 dep_entries)
             deps
       | None -> Printf.printf "  %s: (no dependencies detected)\n" node.file)
-    graph.nodes
+    graph.nodes;
+
+  (* Third pass: Add library interface dependencies *)
+  (* For each directory, if there's a module with the same name as the directory,
+     it's the library interface and should depend on all other modules in that directory *)
+  List.iter (fun dir ->
+    if dir <> current_dir then (* Skip root directory *)
+      let dir_name = Filename.basename dir in
+      let library_interface_files = [
+        dir ^ "/" ^ dir_name ^ ".ml";
+        dir ^ "/" ^ dir_name ^ ".mli";
+      ] in
+
+      (* Find the library interface module(s) *)
+      let library_interfaces = List.filter_map (fun file ->
+        find_node_by_file graph file
+      ) library_interface_files in
+
+      (* Find all other modules in this directory *)
+      let dir_modules = Hashtbl.fold (fun _ node acc ->
+        (* Check if this node is in the current directory *)
+        let node_dir =
+          match Path.of_string node.file with
+          | Error _ -> ""
+          | Ok p ->
+              let d = Path.dirname p |> Path.to_string in
+              if d = "." then "" else d
+        in
+        (* Include modules in this directory, excluding:
+           - The library interface files themselves
+           - Generated alias modules *)
+        if node_dir = dir &&
+           not (List.mem node.file library_interface_files) &&
+           node.node_kind <> Generated then
+          node :: acc
+        else
+          acc
+      ) graph.nodes [] in
+
+      (* Make library interface depend on all modules in its directory *)
+      List.iter (fun lib_interface ->
+        List.iter (fun module_in_dir ->
+          if not (Node_id.eq lib_interface.id module_in_dir.id) &&
+             not (List.exists (fun dep_id -> Node_id.eq dep_id module_in_dir.id) lib_interface.deps) then
+            lib_interface.deps <- module_in_dir.id :: lib_interface.deps
+        ) dir_modules
+      ) library_interfaces
+  ) directories
 
 let to_mermaid graph =
   let mermaid = Graph.Mermaid.create ~direction:Graph.Mermaid.TD () in
@@ -164,10 +266,10 @@ let to_mermaid graph =
     Hashtbl.fold
       (fun _id (node : node) acc ->
         let shape =
-          if String.ends_with ~suffix:".mli" node.file then
-            Graph.Mermaid.Subroutine (* Interface files use double brackets *)
-          else Graph.Mermaid.Rectangle
-          (* Implementation files use regular rectangles *)
+          match node.file_kind with
+          | MLI -> Graph.Mermaid.Subroutine (* Interface files use double brackets *)
+          | _ -> Graph.Mermaid.Rectangle
+          (* Other files use regular rectangles *)
         in
         Graph.Mermaid.add_node acc ~id:(Node_id.to_string node.id) ~label:node.file ~shape ())
       graph.nodes mermaid
@@ -195,15 +297,40 @@ let to_dot graph =
     Hashtbl.fold
       (fun _id (node : node) acc ->
         let color =
-          if String.ends_with ~suffix:".mli" node.file then
+          match node.file_kind, node.node_kind with
+          | MLI, File ->
             [
               ("color", "blue"); ("style", "filled"); ("fillcolor", "lightblue");
             ]
-          else
+          | ML, File ->
             [
               ("color", "green");
               ("style", "filled");
               ("fillcolor", "lightgreen");
+            ]
+          | _, Generated ->
+            [
+              ("color", "gray");
+              ("style", "filled");
+              ("fillcolor", "lightgray");
+            ]
+          | C, File ->
+            [
+              ("color", "red");
+              ("style", "filled");
+              ("fillcolor", "lightyellow");
+            ]
+          | H, File ->
+            [
+              ("color", "orange");
+              ("style", "filled");
+              ("fillcolor", "lightyellow");
+            ]
+          | Other _, File ->
+            [
+              ("color", "black");
+              ("style", "filled");
+              ("fillcolor", "white");
             ]
         in
         Graph.Dot.add_node acc ~id:(Node_id.to_string node.id) ~label:node.file
@@ -261,4 +388,4 @@ let topological_sort graph =
       node.deps
   done;
 
-  List.rev !sorted
+  !sorted

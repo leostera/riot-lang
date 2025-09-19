@@ -50,7 +50,18 @@ let () =
       List.iteri
         (fun i node ->
           let open Dep_graph in
-          Printf.printf "%2d. %s (%s)\n" (i + 1) node.file node.module_name)
+          let file_str = match node.file_kind with
+            | ML -> ".ml"
+            | MLI -> ".mli"
+            | C -> ".c"
+            | H -> ".h"
+            | Other ext -> ext
+          in
+          let node_str = match node.node_kind with
+            | File -> ""
+            | Generated -> " [gen]"
+          in
+          Printf.printf "%2d. %s (%s) [%s]%s\n" (i + 1) node.file node.module_name file_str node_str)
         sorted
   | [] ->
       Printf.eprintf "Usage: tusk-depgraph <directory>\n";

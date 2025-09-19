@@ -1,21 +1,36 @@
-(** Simple ocamldep wrapper for dependency analysis *)
+open Std
 
-let ocamldep_path = "/Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep"
+(** OCamldep wrapper for dependency analysis *)
+
+let ocamldep_path =
+  match Env.home_dir () with
+  | Some home ->
+      let p = Path.join home (Path.of_string ".tusk/toolchains/5.3.0/bin/ocamldep" |> Result.expect ~msg:"") in
+      Path.to_string p
+  | None -> "/Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep"  (* Fallback *)
 
 (** Run ocamldep to get module dependencies for a file *)
-let get_deps ~cwd ~file =
-  let cmd =
-    Printf.sprintf "cd %s && %s -modules %s 2>/dev/null" cwd ocamldep_path file
-  in
-  let ic = Unix.open_process_in cmd in
-  let result =
-    try
-      let line = input_line ic in
-      Some line
-    with End_of_file -> None
-  in
-  ignore (Unix.close_process_in ic);
-  result
+let get_deps ~cwd ~file ?(open_modules = []) () =
+  let cmd = Command.make ocamldep_path in
+
+  (* Add -I flag for current directory *)
+  let cmd = Command.(cmd |> arg "-I" |> arg cwd) in
+
+  (* Add -open flags *)
+  let cmd = List.fold_left (fun cmd m ->
+    Command.(cmd |> arg "-open" |> arg m)
+  ) cmd open_modules in
+
+  (* Add -modules flag and file path *)
+  let full_path = Filename.concat cwd file in
+  let cmd = Command.(cmd |> arg "-modules" |> arg full_path) in
+  match Command.output cmd with
+  | Ok output ->
+      (* Get first line of stdout *)
+      (match String.split_on_char '\n' output.stdout with
+       | line :: _ when line <> "" -> Some line
+       | _ -> None)
+  | Error _ -> None
 
 (** Parse ocamldep output to extract module names *)
 let parse_deps line =
@@ -31,18 +46,27 @@ let parse_deps line =
 let sort_files ~cwd ~files =
   if files = [] then []
   else
-    let files_str = String.concat " " files in
-    let cmd =
-      Printf.sprintf "cd %s && %s -sort %s 2>/dev/null" cwd ocamldep_path
-        files_str
-    in
+    let cmd = Command.make ocamldep_path in
 
-    let ic = Unix.open_process_in cmd in
-    let sorted_str = try input_line ic with End_of_file -> "" in
-    ignore (Unix.close_process_in ic);
+    (* Add -I flag for current directory *)
+    let cmd = Command.(cmd |> arg "-I" |> arg cwd) in
 
-    if sorted_str = "" then files (* Return original list if ocamldep fails *)
-    else
-      let sorted_basenames = String.split_on_char ' ' sorted_str in
-      (* Filter out empty strings and return files in dependency order *)
-      List.filter (fun s -> s <> "") sorted_basenames
+    (* Add -sort flag *)
+    let cmd = Command.(cmd |> arg "-sort") in
+
+    (* Add all files with full paths *)
+    let cmd = List.fold_left (fun cmd file ->
+      let full_path = Filename.concat cwd file in
+      Command.(cmd |> arg full_path)
+    ) cmd files in
+
+    match Command.output cmd with
+    | Ok output ->
+        (match String.split_on_char '\n' output.stdout with
+         | sorted_str :: _ when sorted_str <> "" ->
+             (* ocamldep returns full paths, extract basenames *)
+             String.split_on_char ' ' sorted_str
+             |> List.map Filename.basename
+             |> List.filter (fun s -> s <> "")
+         | _ -> files)
+    | Error _ -> files (* Return original list if ocamldep fails *)
