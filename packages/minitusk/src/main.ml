@@ -445,10 +445,18 @@ module DepGraph = struct
     graph
 
   (** Get kind from extension and module info *)
-  let kind_of_extension ext ~module_name ~namespaced =
+  let kind_of_extension ext ~module_name ~namespaced ~is_package_main =
     match ext with
-    | ".mli" -> MLI { module_name; namespaced }
-    | ".ml" -> ML { module_name; namespaced }
+    | ".mli" ->
+        if is_package_main then
+          MLI { module_name = String.capitalize_ascii (List.hd namespaced); namespaced = [String.capitalize_ascii (List.hd namespaced)] }
+        else
+          MLI { module_name; namespaced }
+    | ".ml" ->
+        if is_package_main then
+          ML { module_name = String.capitalize_ascii (List.hd namespaced); namespaced = [String.capitalize_ascii (List.hd namespaced)] }
+        else
+          ML { module_name; namespaced }
     | ".c" -> C
     | ".h" -> H
     | other -> Other other
@@ -619,8 +627,13 @@ module DepGraph = struct
           let module_name = String.capitalize_ascii file_name in
           let full_namespaced = namespace @ [ module_name ] in
 
+          (* Check if this is the main package file (e.g., kernel.ml for kernel package) *)
+          let is_package_main =
+            String.lowercase_ascii file_name = String.lowercase_ascii (List.hd namespace)
+          in
+
           let kind =
-            kind_of_extension ext ~module_name ~namespaced:full_namespaced
+            kind_of_extension ext ~module_name ~namespaced:full_namespaced ~is_package_main
           in
 
           if is_ocaml_source kind then
@@ -677,8 +690,13 @@ module DepGraph = struct
             let module_name = String.capitalize_ascii file_name in
             let full_namespaced = namespace @ [ module_name ] in
 
+            (* Check if this is the main package file (e.g., kernel.ml for kernel package) *)
+            let is_package_main =
+              String.lowercase_ascii file_name = String.lowercase_ascii (List.hd namespace)
+            in
+
             let kind =
-              kind_of_extension ext ~module_name ~namespaced:full_namespaced
+              kind_of_extension ext ~module_name ~namespaced:full_namespaced ~is_package_main
             in
             let file = Concrete entry_path in
 
@@ -763,6 +781,11 @@ module DepGraph = struct
                     let full_name = String.concat "__" namespaced in
                     if not (List.mem_assoc simple_name !aliases) then
                       aliases := (simple_name, full_name) :: !aliases
+                | ML { module_name; namespaced } | MLI { module_name; namespaced }
+                  when List.length namespaced = 1 &&
+                       String.lowercase_ascii module_name = String.lowercase_ascii package_name ->
+                    (* This is the main package module - don't add to aliases *)
+                    ()
                 | _ -> ())
               graph.nodes;
 
@@ -788,6 +811,26 @@ module DepGraph = struct
 
     (* Second pass: Add basic .mli -> .ml dependencies *)
     Printf.printf "Adding basic dependencies...\n";
+
+    (* Add some manual inter-module dependencies to fix compilation order *)
+    Printf.printf "Adding manual inter-module dependencies...\n";
+    Hashtbl.iter
+      (fun _id node ->
+        match node.kind with
+        | MLI { module_name = "Effects"; namespaced } | ML { module_name = "Effects"; namespaced } ->
+            (* Effects depends on Process *)
+            let process_entries = Module_registry.find_by_simple_name graph.registry "Process" in
+            List.iter
+              (fun process_entry ->
+                match find_node_by_file graph process_entry.Module_registry.file with
+                | Some process_node ->
+                    node.deps <- process_node.id :: node.deps;
+                    Printf.printf "  %s depends on Process\n"
+                      (String.concat "__" namespaced)
+                | None -> ())
+              process_entries
+        | _ -> ())
+      graph.nodes;
 
     (* Find alias module node *)
     let alias_module =
@@ -823,13 +866,43 @@ module DepGraph = struct
       (fun _id node ->
         match node.kind with
         | ML { namespaced; module_name; _ } ->
-            (* Make non-alias modules depend on alias module *)
-            (match alias_module with
-            | Some alias_node when not (String.ends_with ~suffix:"__aliases" module_name) ->
-                node.deps <- alias_node.id :: node.deps;
-                Printf.printf "  %s depends on alias module\n"
-                  (String.concat "__" namespaced ^ ".ml")
-            | _ -> ());
+            (* Make non-alias modules depend on their directory's alias module *)
+            if not (String.ends_with ~suffix:"__aliases" module_name) then (
+              (* For main package modules (length=1), use the package root alias *)
+              let target_namespace, target_alias_namespace =
+                if List.length namespaced = 1 then
+                  (* Main package module depends on root alias *)
+                  ([List.hd namespaced], [List.hd namespaced; "Aliases"])
+                else
+                  (* Regular modules depend on their directory alias *)
+                  let target_ns = List.rev (List.tl (List.rev namespaced)) in
+                  (target_ns, target_ns @ ["Aliases"])
+              in
+
+              let dir_alias_node =
+                Hashtbl.fold
+                  (fun _ alias_node acc ->
+                    match acc with
+                    | Some _ -> acc
+                    | None ->
+                        (match alias_node.kind with
+                        | ML { namespaced = alias_ns; _ } when alias_ns = target_alias_namespace ->
+                            Some alias_node
+                        | _ -> None))
+                  graph.nodes None
+              in
+
+              match dir_alias_node with
+              | Some alias_node ->
+                  node.deps <- alias_node.id :: node.deps;
+                  Printf.printf "  %s depends on %s\n"
+                    (String.concat "__" namespaced ^ ".ml")
+                    (String.concat "__" target_alias_namespace)
+              | None ->
+                  Printf.printf "  %s: no alias module found for namespace %s\n"
+                    (String.concat "__" namespaced ^ ".ml")
+                    (String.concat "__" target_namespace)
+            );
 
             (* Find corresponding .mli file *)
             let mli_node_opt =
@@ -854,13 +927,43 @@ module DepGraph = struct
                 Printf.printf "  %s: no interface file\n"
                   (String.concat "__" namespaced ^ ".ml"))
         | MLI { module_name; namespaced } ->
-            (* Make non-alias interfaces depend on alias module *)
-            (match alias_module with
-            | Some alias_node when not (String.ends_with ~suffix:"__aliases" module_name) ->
-                node.deps <- alias_node.id :: node.deps;
-                Printf.printf "  %s depends on alias module\n"
-                  (String.concat "__" namespaced ^ ".mli")
-            | _ -> ());
+            (* Make non-alias interfaces depend on their directory's alias module *)
+            if not (String.ends_with ~suffix:"__aliases" module_name) then (
+              (* For main package modules (length=1), use the package root alias *)
+              let target_namespace, target_alias_namespace =
+                if List.length namespaced = 1 then
+                  (* Main package module depends on root alias *)
+                  ([List.hd namespaced], [List.hd namespaced; "Aliases"])
+                else
+                  (* Regular modules depend on their directory alias *)
+                  let target_ns = List.rev (List.tl (List.rev namespaced)) in
+                  (target_ns, target_ns @ ["Aliases"])
+              in
+
+              let dir_alias_node =
+                Hashtbl.fold
+                  (fun _ alias_node acc ->
+                    match acc with
+                    | Some _ -> acc
+                    | None ->
+                        (match alias_node.kind with
+                        | ML { namespaced = alias_ns; _ } when alias_ns = target_alias_namespace ->
+                            Some alias_node
+                        | _ -> None))
+                  graph.nodes None
+              in
+
+              match dir_alias_node with
+              | Some alias_node ->
+                  node.deps <- alias_node.id :: node.deps;
+                  Printf.printf "  %s depends on %s\n"
+                    (String.concat "__" namespaced ^ ".mli")
+                    (String.concat "__" target_alias_namespace)
+              | None ->
+                  Printf.printf "  %s: no alias module found for namespace %s\n"
+                    (String.concat "__" namespaced ^ ".mli")
+                    (String.concat "__" target_namespace)
+            );
 
             (* If this is the package root interface, make it depend on all other interfaces *)
             (match package_root_interface with
@@ -989,7 +1092,7 @@ let scan_sources src_dir package_name =
 
 (* ===== Build Execution ===== *)
 
-let build_package pkg =
+let build_package pkg ~built_packages =
   Printf.printf "\n=== Building package: %s ===\n" pkg.name;
 
   let src_dir = Filename.concat pkg.path "src" in
@@ -1027,6 +1130,19 @@ let build_package pkg =
   (* Setup compiler *)
   let home = Sys.getenv "HOME" in
   let ocamlc = Printf.sprintf "%s/.tusk/toolchains/5.3.0/bin/ocamlc" home in
+
+  (* Build include paths for dependencies *)
+  let dep_include_paths =
+    List.fold_left
+      (fun acc dep_pkg ->
+        let dep_out_dir = Printf.sprintf "./target/bootstrap/out/%s" dep_pkg in
+        if Sys.file_exists dep_out_dir then
+          (" -I " ^ dep_out_dir) :: acc
+        else acc)
+      []
+      pkg.deps
+  in
+  let dep_includes = String.concat "" dep_include_paths in
 
   (* Get compilation order *)
   let sorted = DepGraph.topological_sort graph in
@@ -1066,24 +1182,45 @@ let build_package pkg =
             if String.ends_with ~suffix:"__aliases" module_name then
               " -no-alias-deps -w -49"
             else
-              let safe_pkg =
-                String.map (fun c -> if c = '-' then '_' else c) pkg.name
+              (* For main package modules (length=1), use the package root alias *)
+              let target_namespace, target_alias_name =
+                if List.length namespaced = 1 then
+                  (* Main package module opens root alias *)
+                  let ns = [List.hd namespaced] in
+                  (ns, String.concat "__" (ns @ ["Aliases"]))
+                else
+                  (* Regular modules open their directory alias *)
+                  let target_ns = List.rev (List.tl (List.rev namespaced)) in
+                  (target_ns, String.concat "__" (target_ns @ ["Aliases"]))
               in
-              let pkg_alias = String.capitalize_ascii safe_pkg ^ "__Aliases" in
+
               let alias_exists =
                 Hashtbl.fold
                   (fun _ node acc ->
                     match node.DepGraph.kind with
-                    | DepGraph.ML { module_name; _ } when String.ends_with ~suffix:"__aliases" module_name -> true
+                    | DepGraph.ML { namespaced = alias_ns; _ }
+                      when alias_ns = target_namespace @ ["Aliases"] -> true
                     | _ -> acc)
                   graph.nodes false
               in
-              if alias_exists then " -open " ^ pkg_alias else ""
+              let open_flags = if alias_exists then [" -open " ^ target_alias_name] else [] in
+
+              (* Add opens for external package dependencies *)
+              let external_opens =
+                List.fold_left
+                  (fun acc dep_pkg ->
+                    let dep_alias = String.capitalize_ascii (String.map (fun c -> if c = '-' then '_' else c) dep_pkg) ^ "__Aliases" in
+                    (" -open " ^ dep_alias) :: acc)
+                  []
+                  pkg.deps
+              in
+
+              String.concat "" (open_flags @ external_opens)
           in
 
           let cmd =
-            Printf.sprintf "cd %s && %s -I +unix -I . %s -c -o %s %s"
-              sandbox_dir ocamlc open_flag output src_file
+            Printf.sprintf "cd %s && %s -I +unix -I . %s %s -c -o %s %s"
+              sandbox_dir ocamlc dep_includes open_flag output src_file
           in
 
           run_command cmd;
@@ -1097,8 +1234,8 @@ let build_package pkg =
             | _ -> failwith "C files cannot be generated"
           in
           let cmd =
-            Printf.sprintf "cd %s && %s -I +unix -c %s" sandbox_dir ocamlc
-              src_file
+            Printf.sprintf "cd %s && %s -I +unix %s -c %s" sandbox_dir ocamlc
+              dep_includes src_file
           in
           run_command cmd;
 
@@ -1117,7 +1254,7 @@ let build_package pkg =
   if !compiled <> [] then (
     let objs = String.concat " " (List.rev !compiled) in
     let cmd =
-      Printf.sprintf "cd %s && %s -a -o %s %s" sandbox_dir ocamlc cma_file objs
+      Printf.sprintf "cd %s && %s %s -a -o %s %s" sandbox_dir ocamlc dep_includes cma_file objs
     in
     run_command cmd;
 
@@ -1147,7 +1284,12 @@ let () =
   Printf.printf "=== Minitusk Build System ===\n";
   Printf.printf "Building %d packages\n" (List.length packages);
 
-  (* Build each package in order *)
-  List.iter build_package packages;
+  (* Build each package in order, tracking built packages *)
+  let built_packages = ref [] in
+  List.iter
+    (fun pkg ->
+      build_package pkg ~built_packages:!built_packages;
+      built_packages := pkg.name :: !built_packages)
+    packages;
 
   Printf.printf "\n=== Build complete! ===\n"
