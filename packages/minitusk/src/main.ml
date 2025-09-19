@@ -870,25 +870,35 @@ module DepGraph = struct
     Hashtbl.iter
       (fun _id node ->
         match node.kind with
-        | ML { module_name; _ } when String.ends_with ~suffix:"__aliases" module_name ->
+        | ML { module_name; namespaced } when String.ends_with ~suffix:"__aliases" module_name ->
             (* Update the alias module content *)
+
+            (* Determine the namespace this alias module is for *)
+            (* E.g., Std__Collections__Aliases -> [Std; Collections] *)
+            let alias_namespace = List.rev (List.tl (List.rev namespaced)) in
+
             let aliases = ref [] in
             Hashtbl.iter
               (fun _ other_node ->
                 match other_node.kind with
                 | ML { module_name; namespaced } | MLI { module_name; namespaced }
-                  when List.length namespaced = 2 &&
-                       not (String.ends_with ~suffix:"aliases" module_name) &&
+                  when not (String.ends_with ~suffix:"aliases" module_name) &&
                        not (String.lowercase_ascii module_name = String.lowercase_ascii package_name) ->
-                    let simple_name = module_name in
-                    let full_name = String.concat "__" namespaced in
-                    if not (List.mem_assoc simple_name !aliases) then
-                      aliases := (simple_name, full_name) :: !aliases
-                | ML { module_name; namespaced } | MLI { module_name; namespaced }
-                  when List.length namespaced = 1 &&
-                       String.lowercase_ascii module_name = String.lowercase_ascii package_name ->
-                    (* This is the main package module - don't add to aliases *)
-                    ()
+                    (* Check if this module belongs in this alias namespace *)
+                    (* For Std__Collections__Aliases, we want modules with namespace [Std; Collections; X] *)
+                    let module_parent_ns =
+                      if List.length namespaced > List.length alias_namespace then
+                        List.rev (List.tl (List.rev namespaced))
+                      else []
+                    in
+
+                    if module_parent_ns = alias_namespace && List.length namespaced = List.length alias_namespace + 1 then (
+                      (* This module belongs in this alias file *)
+                      let simple_name = List.nth namespaced (List.length namespaced - 1) in
+                      let full_name = String.concat "__" namespaced in
+                      if not (List.mem_assoc simple_name !aliases) then
+                        aliases := (simple_name, full_name) :: !aliases
+                    )
                 | _ -> ())
               graph.nodes;
 
@@ -1466,14 +1476,33 @@ let build_package pkg ~built_packages =
             if String.ends_with ~suffix:"__aliases" module_name then
               " -no-alias-deps -w -49"
             else
-              (* For main package modules (length=1), use the package root alias *)
+              (* Determine which alias module to open *)
               let target_namespace, target_alias_name =
+                (* Check if this is a library interface file for a directory *)
+                let is_library_interface =
+                  match node.file with
+                  | DepGraph.Concrete path ->
+                      let src_prefix = Filename.concat pkg.path "src/" in
+                      if String.starts_with ~prefix:src_prefix path then
+                        let rel_path = String.sub path (String.length src_prefix)
+                                        (String.length path - String.length src_prefix) in
+                        let dir = Filename.dirname rel_path in
+                        let base = Filename.basename rel_path in
+                        let name_no_ext = Filename.remove_extension base in
+                        dir <> "." && name_no_ext = Filename.basename dir
+                      else false
+                  | _ -> false
+                in
+
                 if List.length namespaced = 1 then
                   (* Main package module opens root alias *)
                   let ns = [List.hd namespaced] in
                   (ns, String.concat "__" (ns @ ["Aliases"]))
+                else if is_library_interface then
+                  (* Library interface opens its own directory's alias *)
+                  (namespaced, String.concat "__" (namespaced @ ["Aliases"]))
                 else
-                  (* Regular modules open their directory alias *)
+                  (* Regular modules open their parent directory alias *)
                   let target_ns = List.rev (List.tl (List.rev namespaced)) in
                   (target_ns, String.concat "__" (target_ns @ ["Aliases"]))
               in
