@@ -129,15 +129,21 @@ let rec scan_directory graph ~current_path ~relative_path ~namespace =
           (file, true)
       in
 
-      let kind = ML { module_name; namespaced = namespace } in
+      let file_ext = match user_provided_interface with
+        | Some f -> Path.extension f |> Option.value ~default:".ml"
+        | None -> ".ml"
+      in
+      let kind = if file_ext = ".mli"
+        then MLI { module_name; namespaced = namespace }
+        else ML { module_name; namespaced = namespace } in
       let node = add_node graph file kind in
 
-      (* Register in module registry *)
+      (* Register in module registry with correct path and namespacing *)
       let entry_data = {
-        Module_registry.file = relative_path ^ "/" ^ dir_name ^ ".ml";
+        Module_registry.file = relative_path ^ "/" ^ dir_name ^ file_ext;
         simple_name = module_name;
         namespaced = namespace;
-        kind = Module_registry.ML;
+        kind = (if file_ext = ".mli" then Module_registry.MLI else Module_registry.ML);
         is_library_interface = true;
       } in
       Module_registry.register graph.registry entry_data;
