@@ -27,7 +27,6 @@ let build_package (pkg : Package.t) =
       Printf.printf "  - %s\n%!" filename)
     dep_graph;
 
-
   Printf.printf "\n\nModule Registry:\n%!";
   Dep_graph.print_registry dep_graph
 

@@ -1,3 +1,25 @@
+let stdlib_modules =
+  [
+    "Array";
+    "Buffer";
+    "Bytes";
+    "Digest";
+    "Effect";
+    "Filename";
+    "Format";
+    "Fun";
+    "Obj";
+    "Int";
+    "Printexc";
+    "Stdlib";
+    "List";
+    "Option";
+    "String";
+    "Sys";
+    "Unix";
+    "UnixLabels";
+  ]
+
 (** Compiler warnings that can be suppressed *)
 type compiler_warning =
   | NoCmiFile  (** Warning 49: Absent cmi file when looking up module alias *)
@@ -178,6 +200,19 @@ module Ocamldep = struct
     let home = try Sys.getenv "HOME" with Not_found -> "/Users/ostera" in
     Filename.concat home ".tusk/toolchains/5.3.0/bin/ocamldep"
 
+  let skip_stdlib deps =
+    List.filter (fun dep -> not (List.mem dep stdlib_modules)) deps
+
+  (** Parse ocamldep output to extract module names *)
+  let parse_deps line =
+    (* Format: "file.ml: Module1 Module2 Module3" *)
+    match String.split_on_char ':' line with
+    | [ _file; deps_str ] ->
+        let deps = String.trim deps_str in
+        if deps = "" then []
+        else String.split_on_char ' ' deps |> List.map String.trim
+    | _ -> []
+
   (** Run ocamldep to get module dependencies for a file *)
   let get_deps ?(includes = []) ?(open_modules = []) source =
     (* Build command arguments *)
@@ -200,18 +235,10 @@ module Ocamldep = struct
     | Ok output -> (
         (* Get the first line of output *)
         let lines = String.split_on_char '\n' output in
-        match lines with line :: _ when line <> "" -> Some line | _ -> None)
-    | Error _ -> None
-
-  (** Parse ocamldep output to extract module names *)
-  let parse_deps line =
-    (* Format: "file.ml: Module1 Module2 Module3" *)
-    match String.split_on_char ':' line with
-    | [ _file; deps_str ] ->
-        let deps = String.trim deps_str in
-        if deps = "" then []
-        else String.split_on_char ' ' deps |> List.map String.trim
-    | _ -> []
+        match lines with
+        | line :: _ when line <> "" -> parse_deps line |> skip_stdlib
+        | _ -> [])
+    | Error _ -> []
 
   (** Sort files in dependency order *)
   let sort_files ?(includes = []) files =

@@ -35,7 +35,7 @@ let add_node graph value =
   Hashtbl.add graph.nodes id node;
   node
 
-let get_node = Hashtbl.find
+let get_node t node_id = Hashtbl.find t.nodes node_id
 
 (** Add a dependency edge between two nodes *)
 let add_edge node ~depends_on = node.deps <- depends_on.id :: node.deps

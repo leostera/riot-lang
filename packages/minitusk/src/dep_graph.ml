@@ -23,8 +23,8 @@ end
 
 module Namespace : sig
   type t
-  val empty : t
 
+  val empty : t
   val of_parts : Module_name.t list -> t
   val to_string : t -> string
   val add : t -> Module_name.t -> t
@@ -81,22 +81,49 @@ module Module_registry : sig
   val create : unit -> t
   val register : t -> Module.t -> Graph.Node_id.t -> unit
   val get : t -> Graph.Node_id.t -> Module.t
+  val get_by_name : t -> string -> Graph.Node_id.t
   val print : t -> unit
 end = struct
-  type t = { modules : (Graph.Node_id.t, Module.t) Hashtbl.t }
+  type t = {
+    modules : (Graph.Node_id.t, Module.t) Hashtbl.t;
+    intf_by_name : (string, Graph.Node_id.t) Hashtbl.t;
+    impl_by_name : (string, Graph.Node_id.t) Hashtbl.t;
+  }
 
-  let create () = { modules = Hashtbl.create 16 }
-  let register t mod_ node_id = Hashtbl.add t.modules node_id mod_
+  let create () =
+    {
+      modules = Hashtbl.create 16;
+      intf_by_name = Hashtbl.create 16;
+      impl_by_name = Hashtbl.create 16;
+    }
+
+  let register t mod_ node_id =
+    Hashtbl.add t.modules node_id mod_;
+    let table =
+      match Module.kind mod_ with
+      | `implementation -> t.impl_by_name
+      | `interface -> t.intf_by_name
+    in
+    let mod_name = Module.module_name mod_ |> Module_name.to_string in
+    Hashtbl.add table mod_name node_id;
+    ()
+
   let get t node_id = Hashtbl.find t.modules node_id
+  let get_by_name t name = 
+    match Hashtbl.find_opt t.intf_by_name name with
+  | Some node -> node
+  | None -> Hashtbl.find t.impl_by_name name
 
   let print t =
     printf "  Registry contains %d modules:\n" (Hashtbl.length t.modules);
-    Hashtbl.iter (fun node_id mod_ ->
-      printf "    Node %s -> %s (%s)\n"
-        (Graph.Node_id.to_string node_id)
-        (Module.namespaced_name mod_)
-        (Module.path mod_)
-    ) t.modules
+    Hashtbl.iter
+      (fun node_id mod_ ->
+        printf "    Node %s -> %s | %s (%s)\n"
+          (Graph.Node_id.to_string node_id)
+          (Module.module_name mod_ |> Module_name.to_string)
+          (Module.namespaced_name mod_)
+          (Module.path mod_))
+      t.modules
 end
 
 type kind = ML of Module.t | MLI of Module.t | C | H | Other of string | Root
@@ -104,6 +131,11 @@ type kind = ML of Module.t | MLI of Module.t | C | H | Other of string | Root
 type file =
   | Concrete of string
   | Generated of { path : string; contents : string }
+
+let file_to_string file =
+  match file with
+  | Concrete str -> str
+  | Generated { path; _ } -> path ^ " (generated)"
 
 type dep = {
   file : file;
@@ -154,6 +186,15 @@ let to_dot dep_graph =
             ("color", "red"); ("style", "filled"); ("fillcolor", "lightyellow");
           ]
       | _ -> [])
+
+let iter fn dep_graph =
+  let nodes = Graph.topo_sort dep_graph.graph in
+  List.iter
+    (fun (node : dep Graph.node) ->
+      match node.value.kind with Root -> () | _ -> fn node)
+    nodes
+
+let print_registry dep_graph = Module_registry.print dep_graph.registry
 
 module Alias_module = struct
   let template (modules : Module.t list) =
@@ -304,7 +345,10 @@ and handle_ocaml_module ~t ~ctx file =
 
   let mod_ = Module.of_path ~ns file.path in
   let node = Ocaml_module.make_node mod_ aliases |> Graph.add_node t.graph in
-  printf "Handling OCamml module %S at %s\n" (Module.namespaced_name mod_) file.path;
+  printf "Handling OCamml module %S (or %S) at %s\n"
+    (Module.module_name mod_ |> Module_name.to_string)
+    (Module.namespaced_name mod_)
+    file.path;
 
   Module_registry.register t.registry mod_ node.id;
 
@@ -398,33 +442,54 @@ and handle_library ~t ~ctx { path; name; children } =
   let ctx =
     {
       ns;
-      aliases= aliases @ [ aliases_node ];
+      aliases = aliases @ [ aliases_node ];
       parent_impl = impl_node;
       parent_intf = intf_node;
     }
   in
   List.iter (do_scan ~t ~ctx) children
 
-(* This function handles the special case of the root module of the package *)
-let scan ~root ~package_name =
-  printf "Scanning package %S from %s" package_name root;
-  let t = make ~root ~package_name in
+let scan_from_root t =
   match t.file_tree with
   | File_scanner.Dir dir ->
       let root_node = Graph.add_node t.graph root_node in
       let dir = { dir with name = t.package_name } in
 
       let ctx =
-        { ns = Namespace.empty; parent_impl = root_node; parent_intf = root_node; aliases = [] }
+        {
+          ns = Namespace.empty;
+          parent_impl = root_node;
+          parent_intf = root_node;
+          aliases = [];
+        }
       in
-      handle_library ~t ~ctx dir;
-      t
+      handle_library ~t ~ctx dir
   | File file ->
       failwith
-        (Format.sprintf "Expected root src dir! Instead found: %S" file.path)
+        (Format.sprintf "Expected root src dir! Instead found: %S\n" file.path)
 
-let iter fn dep_graph =
-  let nodes = Graph.topo_sort dep_graph.graph in
-  List.iter fn nodes
+let handle_dep t (node : dep Graph.node) =
+  let dep = node.value in
+  printf "iter %S\n" (file_to_string dep.file);
+  match dep.kind with
+  | ML mod_ | MLI mod_ ->
+      let deps = Ocamldep.get_deps (Module.path mod_) in
+      List.iter
+        (fun dep ->
+          printf "- %s\n" dep;
+          let node_id = Module_registry.get_by_name t.registry dep in
+          let dep_node = Graph.get_node t.graph node_id in
+          Graph.add_edge node ~depends_on:dep_node)
+        deps
+  | _ -> ()
 
-let print_registry dep_graph = Module_registry.print dep_graph.registry
+let wire_deps t = iter (handle_dep t) t
+
+(* This function handles the special case of the root module of the package *)
+let scan ~root ~package_name =
+  printf "Scanning package %S from %s\n" package_name root;
+  let t = make ~root ~package_name in
+  scan_from_root t;
+  print_registry t;
+  wire_deps t;
+  t
