@@ -27,8 +27,11 @@ let build_package (pkg : Package.t) =
       Printf.printf "  - %s\n%!" filename)
     dep_graph;
 
-  Printf.printf "\n\nModule Registry:\n%!";
-  Dep_graph.print_registry dep_graph
+  Printf.printf "\n\nBuild Plan: %s\n" pkg.name;
+  let build_plan = Action.from_dep_graph dep_graph in
+  Action.print_build_plan build_plan;
+  Action.execute_build_plan build_plan;
+  Action.promote_outputs build_plan
 
 let () =
   (* Simple package configuration *)
@@ -36,9 +39,11 @@ let () =
     Package.
       [
         { name = "kernel"; path = "packages/kernel"; deps = [] };
+        (*
         { name = "miniriot"; path = "packages/miniriot"; deps = [ "kernel" ] };
         { name = "std"; path = "packages/std"; deps = [ "kernel"; "miniriot" ] };
         { name = "tusk"; path = "packages/tusk"; deps = [ "kernel"; "miniriot"; "std" ]; };
+      *)
       ]
   in
 
