@@ -1,0 +1,1993 @@
+(** Minitusk - Minimal build system for tusk *)
+
+(* Namespacing utilities for module name manipulation *)
+module Namespacing = struct
+  (* Extract simple module name from a namespaced name *)
+  (* E.g., Tusk__Core__Build_node -> Build_node *)
+  let extract_simple_name namespaced =
+    let rec find_double_underscore s i =
+      if i >= String.length s - 1 then None
+      else if s.[i] = '_' && s.[i + 1] = '_' then Some i
+      else find_double_underscore s (i + 1)
+    in
+
+    let rec get_last_component s =
+      match find_double_underscore s 0 with
+      | Some idx ->
+          let after = String.sub s (idx + 2) (String.length s - idx - 2) in
+          get_last_component after
+      | None -> s
+    in
+
+    if String.contains namespaced '_' then
+      match find_double_underscore namespaced 0 with
+      | Some _ -> get_last_component namespaced
+      | None -> namespaced
+    else namespaced
+
+  (* Get submodule name without package prefix *)
+  (* E.g., Tusk__Core__Build_node -> Core__Build_node *)
+  let get_submodule_name namespaced =
+    let rec find_double_underscore s i =
+      if i >= String.length s - 1 then None
+      else if s.[i] = '_' && s.[i + 1] = '_' then Some i
+      else find_double_underscore s (i + 1)
+    in
+
+    match find_double_underscore namespaced 0 with
+    | Some idx ->
+        let after_pkg =
+          String.sub namespaced (idx + 2) (String.length namespaced - idx - 2)
+        in
+        Some after_pkg
+    | None -> None
+
+  (* Generate all possible names for a module *)
+  (* E.g., Tusk__Core__Build_node -> [Build_node; Core__Build_node] *)
+  let get_all_names namespaced =
+    let simple = extract_simple_name namespaced in
+    let names = [ simple; namespaced ] in
+    match get_submodule_name namespaced with
+    | Some sub when sub <> simple -> sub :: names
+    | _ -> names
+
+  (* Create namespaced module name from package and module *)
+  (* E.g., ("Tusk", "Core__Build_node") -> "Tusk__Core__Build_node" *)
+  let make_namespaced ~package_name ~module_path =
+    if module_path = "" then package_name else package_name ^ "__" ^ module_path
+
+  (* Check if a name is already namespaced *)
+  let is_namespaced name =
+    String.contains name '_'
+    &&
+    let rec has_double_underscore s i =
+      if i >= String.length s - 1 then false
+      else if s.[i] = '_' && s.[i + 1] = '_' then true
+      else has_double_underscore s (i + 1)
+    in
+    has_double_underscore name 0
+end
+
+(* Dependency Graph module for proper build ordering *)
+module DepGraph = struct
+  type node_id = int
+
+  let next_id = ref 0
+  let make_node_id () =
+    let id = !next_id in
+    incr next_id;
+    id
+
+  type file_kind =
+    | ML of { module_name: string; namespaced: string }
+    | MLI of { module_name: string; namespaced: string }
+    | C
+    | H
+    | Other of string
+
+  type file_source =
+    | Concrete of string  (* actual file path *)
+    | Generated of { path: string; contents: string }  (* generated file *)
+
+  type node = {
+    id: node_id;
+    file: file_source;
+    kind: file_kind;
+    mutable deps: node_id list;
+  }
+
+  type t = {
+    nodes: (node_id, node) Hashtbl.t;
+    package_name: string;
+    src_dir: string;
+  }
+
+  let create ~package_name ~src_dir =
+    next_id := 0;  (* Reset ID counter for each graph *)
+    { nodes = Hashtbl.create 100; package_name; src_dir }
+
+  let add_node graph file kind =
+    let id = make_node_id () in
+    let node = { id; file; kind; deps = [] } in
+    Hashtbl.add graph.nodes id node;
+    node
+
+  let add_dependency node dep_id =
+    if not (List.mem dep_id node.deps) then
+      node.deps <- dep_id :: node.deps
+
+  let find_node_by_namespaced graph namespaced =
+    Hashtbl.fold (fun _ node acc ->
+      match acc with
+      | Some _ -> acc
+      | None ->
+        match node.kind with
+        | ML { namespaced = n; _ } | MLI { namespaced = n; _ } when n = namespaced -> Some node
+        | _ -> None
+    ) graph.nodes None
+
+  (* Get file extension and determine kind *)
+  let kind_of_file path ~module_name ~namespaced =
+    if Filename.check_suffix path ".ml" then
+      ML { module_name; namespaced }
+    else if Filename.check_suffix path ".mli" then
+      MLI { module_name; namespaced }
+    else if Filename.check_suffix path ".c" then C
+    else if Filename.check_suffix path ".h" then H
+    else Other (Filename.extension path)
+
+  (* Scan directory recursively and build graph *)
+  let rec scan_directory graph rel_path =
+    let full_dir =
+      if rel_path = "" then graph.src_dir
+      else Filename.concat graph.src_dir rel_path
+    in
+    if not (Sys.file_exists full_dir && Sys.is_directory full_dir) then ()
+    else
+      let entries = Sys.readdir full_dir in
+      Array.iter (fun entry ->
+        let full_path = Filename.concat full_dir entry in
+        let rel_entry =
+          if rel_path = "" then entry
+          else Filename.concat rel_path entry
+        in
+
+        if Sys.is_directory full_path then
+          (* Recursively scan subdirectory *)
+          scan_directory graph rel_entry
+        else if Filename.check_suffix entry ".ml" || Filename.check_suffix entry ".mli" ||
+                Filename.check_suffix entry ".c" || Filename.check_suffix entry ".h" then
+          (* Process source file *)
+          let basename = Filename.chop_extension entry in
+          let module_name = String.capitalize_ascii basename in
+
+          (* Compute namespaced name based on path *)
+          let path_parts =
+            if rel_path = "" then []
+            else String.split_on_char Filename.dir_sep.[0] rel_path
+          in
+          let safe_package = String.map (fun c -> if c = '-' then '_' else c) graph.package_name in
+          let namespaced_parts =
+            String.capitalize_ascii safe_package ::
+            List.map String.capitalize_ascii path_parts @
+            [module_name]
+          in
+          let namespaced = String.concat "__" namespaced_parts in
+
+          let kind = kind_of_file entry ~module_name ~namespaced in
+          let _node = add_node graph (Concrete full_path) kind in
+          ()
+      ) entries
+
+  (* Generate alias module for a folder *)
+  let generate_alias_module graph folder_path modules =
+    let safe_package = String.map (fun c -> if c = '-' then '_' else c) graph.package_name in
+    let folder_parts =
+      if folder_path = "" then []
+      else String.split_on_char Filename.dir_sep.[0] folder_path
+    in
+    let alias_name_parts =
+      String.capitalize_ascii safe_package ::
+      List.map String.capitalize_ascii folder_parts @
+      ["aliases"]
+    in
+    let alias_module_name = String.concat "__" alias_name_parts in
+    let alias_contents =
+      "(* Auto-generated module aliases *)\n" ^
+      String.concat "\n" (List.map (fun (simple, full) ->
+        Printf.sprintf "module %s = %s" simple full
+      ) modules)
+    in
+    let alias_path = alias_module_name ^ ".ml" in
+    let node = add_node graph (Generated { path = alias_path; contents = alias_contents })
+      (ML { module_name = alias_module_name; namespaced = alias_module_name })
+    in
+    node
+
+  (* Topological sort using Kahn's algorithm *)
+  let topological_sort graph =
+    let in_degree = Hashtbl.create (Hashtbl.length graph.nodes) in
+
+    (* Initialize in-degrees *)
+    Hashtbl.iter (fun id _ -> Hashtbl.add in_degree id 0) graph.nodes;
+
+    (* Calculate in-degrees *)
+    Hashtbl.iter (fun _ node ->
+      List.iter (fun dep_id ->
+        let count = try Hashtbl.find in_degree dep_id with Not_found -> 0 in
+        Hashtbl.replace in_degree dep_id (count + 1)
+      ) node.deps
+    ) graph.nodes;
+
+    (* Find nodes with no incoming edges *)
+    let queue = Queue.create () in
+    Hashtbl.iter (fun id count ->
+      if count = 0 then Queue.add id queue
+    ) in_degree;
+
+    (* Process queue *)
+    let sorted = ref [] in
+    while not (Queue.is_empty queue) do
+      let id = Queue.take queue in
+      let node = Hashtbl.find graph.nodes id in
+      sorted := node :: !sorted;
+
+      (* Decrease in-degree of dependent nodes *)
+      List.iter (fun dep_id ->
+        let count = Hashtbl.find in_degree dep_id in
+        let new_count = count - 1 in
+        Hashtbl.replace in_degree dep_id new_count;
+        if new_count = 0 then Queue.add dep_id queue
+      ) node.deps
+    done;
+
+    List.rev !sorted
+
+  (* Add dependencies based on OCaml module rules *)
+  let add_ocaml_dependencies graph =
+    (* For each .ml file, depend on its .mli if it exists *)
+    Hashtbl.iter (fun _ node ->
+      match node.kind with
+      | ML { namespaced; _ } ->
+        (* Find corresponding .mli *)
+        Hashtbl.iter (fun _ other ->
+          match other.kind with
+          | MLI { namespaced = other_ns; _ } when other_ns = namespaced ->
+            add_dependency node other.id
+          | _ -> ()
+        ) graph.nodes
+      | _ -> ()
+    ) graph.nodes
+
+  (* Parse ocamldep output and add dependencies *)
+  let parse_ocamldep_line graph line =
+    (* Format: "file.cmo: Module1 Module2 Module3" *)
+    if String.contains line ':' then
+      let colon_idx = String.index line ':' in
+      let target = String.sub line 0 colon_idx in
+      let deps_str = String.sub line (colon_idx + 1) (String.length line - colon_idx - 1) in
+
+      (* Extract module name from target *)
+      let target_module =
+        let base = Filename.chop_extension target in
+        if Filename.check_suffix base ".cmi" || Filename.check_suffix base ".cmo" then
+          Filename.chop_extension base
+        else base
+      in
+
+      (* Find the node for this target *)
+      match find_node_by_namespaced graph target_module with
+      | Some target_node ->
+        (* Parse dependencies *)
+        let deps = String.split_on_char ' ' (String.trim deps_str) in
+        List.iter (fun dep ->
+          let dep = String.trim dep in
+          if dep <> "" then
+            (* Try to find the dependency node *)
+            match find_node_by_namespaced graph dep with
+            | Some dep_node -> add_dependency target_node dep_node.id
+            | None ->
+              (* Also try with package prefix *)
+              let with_prefix = graph.package_name ^ "__" ^ dep in
+              match find_node_by_namespaced graph with_prefix with
+              | Some dep_node -> add_dependency target_node dep_node.id
+              | None -> ()
+        ) deps
+      | None -> ()
+end
+
+(* Module registry for managing module name resolution *)
+module ModuleRegistry = struct
+  type entry = {
+    file : string; (* e.g., "core/build_node.ml" *)
+    simple_name : string; (* e.g., "Build_node" *)
+    namespaced : string; (* e.g., "Tusk__Core__Build_node" *)
+    submodule_names : string list; (* e.g., ["Core__Build_node"] *)
+  }
+
+  type t = {
+    mutable entries : entry list;
+    by_file : (string, entry) Hashtbl.t;
+    by_simple_name : (string, entry) Hashtbl.t;
+    by_namespaced : (string, entry) Hashtbl.t;
+    by_any_name : (string, entry) Hashtbl.t; (* Includes all possible names *)
+  }
+
+  let create () =
+    {
+      entries = [];
+      by_file = Hashtbl.create 100;
+      by_simple_name = Hashtbl.create 100;
+      by_namespaced = Hashtbl.create 100;
+      by_any_name = Hashtbl.create 100;
+    }
+
+  let add_module registry ~file ~namespaced =
+    (* Use Namespacing module to extract names *)
+    let simple_name = Namespacing.extract_simple_name namespaced in
+
+    (* Generate submodule names *)
+    let submodule_names =
+      match Namespacing.get_submodule_name namespaced with
+      | Some sub when sub <> simple_name -> [ sub ]
+      | _ -> []
+    in
+
+    (* Debug output *)
+    (* Printf.eprintf "[ModuleRegistry] Adding: file=%s, namespaced=%s, simple=%s, submodules=[%s]\n" 
+      file namespaced simple_name (String.concat "; " submodule_names); *)
+    let entry = { file; simple_name; namespaced; submodule_names } in
+
+    (* Add to all tables *)
+    registry.entries <- entry :: registry.entries;
+    Hashtbl.replace registry.by_file file entry;
+    Hashtbl.replace registry.by_simple_name simple_name entry;
+    Hashtbl.replace registry.by_namespaced namespaced entry;
+
+    (* Add all possible names to the any_name table *)
+    Hashtbl.replace registry.by_any_name simple_name entry;
+    Hashtbl.replace registry.by_any_name namespaced entry;
+    List.iter
+      (fun name -> Hashtbl.replace registry.by_any_name name entry)
+      submodule_names;
+
+    (* SPECIAL CASE: For aggregator modules like core/core.ml that define Tusk__Core,
+       also register just "Core" as an alias since that's how it's referenced 
+       in open statements and by ocamldep *)
+    (match Namespacing.get_submodule_name namespaced with
+    | Some submod when not (String.contains submod '_') ->
+        (* This is a single-level submodule like Core, Cli, Store (not Core__Build_node) *)
+        if submod <> simple_name then
+          Hashtbl.replace registry.by_any_name submod entry
+    | _ -> ());
+
+    entry
+
+  let find_by_name registry name =
+    (*Printf.eprintf "[ModuleRegistry] Looking up: %s\n" name;*)
+    let result = Hashtbl.find_opt registry.by_any_name name in
+    (*(match result with
+     | Some entry -> Printf.eprintf "  -> Found: %s (file=%s)\n" entry.namespaced entry.file
+     | None -> Printf.eprintf "  -> Not found\n");*)
+    result
+
+  let find_by_file registry file = Hashtbl.find_opt registry.by_file file
+  let all_entries registry = registry.entries
+end
+
+(* Dependency graph module for proper build ordering - following tusk's dep_graph.ml *)
+module DepGraph = struct
+  (* Types matching tusk's approach *)
+  type file_kind = Interface | Implementation
+
+  type node = {
+    id : int; (* Unique node ID *)
+    file : string; (* File path in sandbox *)
+    kind : file_kind; (* .mli or .ml *)
+    namespaced : string; (* Namespaced module name *)
+    mutable dependencies : node list; (* Direct dependencies *)
+    mutable dependents : node list; (* Nodes that depend on this *)
+  }
+
+  type t = {
+    nodes : (int, node) Hashtbl.t; (* ID -> node *)
+    name_to_node : (string, node) Hashtbl.t; (* namespaced+suffix -> node *)
+    module_registry : ModuleRegistry.t; (* Module name resolution *)
+    package_namespace : string; (* Package namespace *)
+  }
+
+  (* Create node ID generator *)
+  let next_id =
+    let counter = ref 0 in
+    fun () ->
+      incr counter;
+      !counter
+
+  (* Create empty graph *)
+  let create ~package_namespace =
+    {
+      nodes = Hashtbl.create 100;
+      name_to_node = Hashtbl.create 100;
+      module_registry = ModuleRegistry.create ();
+      package_namespace;
+    }
+
+  (* Add a node to the graph *)
+  let add_node graph ~file ~kind ~namespaced =
+    let id = next_id () in
+    let node =
+      { id; file; kind; namespaced; dependencies = []; dependents = [] }
+    in
+
+    (* Add to nodes table *)
+    Hashtbl.add graph.nodes id node;
+
+    (* Add to name lookup table with suffix to distinguish .mli from .ml *)
+    let key =
+      match kind with
+      | Interface -> namespaced ^ ".mli"
+      | Implementation -> namespaced ^ ".ml"
+    in
+    Hashtbl.add graph.name_to_node key node;
+
+    (* Register module in the registry *)
+    ignore (ModuleRegistry.add_module graph.module_registry ~file ~namespaced);
+
+    node
+
+  (* Find node by namespaced name and kind *)
+  let find_node graph name = Hashtbl.find_opt graph.name_to_node name
+
+  (* Add dependency edge *)
+  let add_dependency ~source ~target =
+    if not (List.exists (fun n -> n.id = target.id) source.dependencies) then (
+      source.dependencies <- target :: source.dependencies;
+      target.dependents <- source :: target.dependents)
+
+  (* Parse ocamldep output to get module dependencies *)
+  let get_ocamldep_deps ~ocamldep ~package_namespace file =
+    let cmd = Printf.sprintf "%s -modules %s 2>/dev/null" ocamldep file in
+    let ic = Unix.open_process_in cmd in
+    let deps =
+      try
+        let line = input_line ic in
+        (* ocamldep -modules output: "file.ml: Module1 Module2 ..." *)
+        let parts = String.split_on_char ':' line in
+        if List.length parts >= 2 then
+          let deps_str = String.trim (List.nth parts 1) in
+          if deps_str = "" then []
+          else
+            String.split_on_char ' ' deps_str
+            |> List.map String.trim
+            |> List.filter (fun s -> s <> "")
+          (* Return simple module names as-is, we'll look them up in our tables *)
+        else []
+      with End_of_file -> []
+    in
+    ignore (Unix.close_process_in ic);
+    deps
+
+  (* Build graph from files *)
+  let build_from_files ~ocamldep ~package_namespace files_with_names =
+    let graph = create ~package_namespace in
+
+    (* First pass: create all nodes *)
+    let all_nodes =
+      List.map
+        (fun (file, namespaced) ->
+          let kind =
+            if Filename.check_suffix file ".mli" then Interface
+            else if Filename.check_suffix file ".ml" then Implementation
+            else failwith ("Unknown file type: " ^ file)
+          in
+          add_node graph ~file ~kind ~namespaced)
+        files_with_names
+    in
+
+    (* Second pass: add dependencies from ocamldep *)
+    List.iter
+      (fun node ->
+        let dep_modules =
+          get_ocamldep_deps ~ocamldep ~package_namespace node.file
+        in
+
+        (* For each dependency module, find corresponding nodes using ModuleRegistry *)
+        List.iter
+          (fun dep_mod_name ->
+            (* Look up the module in the registry - handles all name variations *)
+            match
+              ModuleRegistry.find_by_name graph.module_registry dep_mod_name
+            with
+            | Some entry -> (
+                (* Apply tusk's rules:
+               - .mli files only depend on other .mli files  
+               - .ml files depend on both .mli (for types) and .ml (for linking) *)
+                match node.kind with
+                | Interface -> (
+                    (* Interface depends on other interfaces, but if no interface exists,
+                    it must depend on the implementation *)
+                    let intf_name = entry.namespaced ^ ".mli" in
+                    let impl_name = entry.namespaced ^ ".ml" in
+                    match find_node graph intf_name with
+                    | Some target -> add_dependency ~source:node ~target
+                    | None -> (
+                        (* No interface, try implementation *)
+                        match find_node graph impl_name with
+                        | Some target -> add_dependency ~source:node ~target
+                        | None -> ()))
+                | Implementation -> (
+                    (* Implementation depends on both interface and implementation *)
+                    (match find_node graph (entry.namespaced ^ ".mli") with
+                    | Some target -> add_dependency ~source:node ~target
+                    | None -> ());
+                    match find_node graph (entry.namespaced ^ ".ml") with
+                    | Some target when target.id <> node.id ->
+                        add_dependency ~source:node ~target
+                    | _ -> ()))
+            | None ->
+                (* Module not found in our files - might be external *)
+                ())
+          dep_modules)
+      all_nodes;
+
+    (* Third pass: add structural dependencies - every .ml depends on its .mli *)
+    List.iter
+      (fun node ->
+        if node.kind = Implementation then
+          match find_node graph (node.namespaced ^ ".mli") with
+          | Some intf_node -> add_dependency ~source:node ~target:intf_node
+          | None -> ())
+      all_nodes;
+
+    (graph, all_nodes)
+
+  (* Topological sort using Kahn's algorithm *)
+  let topological_sort graph nodes =
+    (* Count in-degrees *)
+    let in_degree = Hashtbl.create 100 in
+    List.iter
+      (fun node ->
+        Hashtbl.add in_degree node.id (List.length node.dependencies))
+      nodes;
+
+    (* Find starting nodes (in-degree = 0) *)
+    let queue = Queue.create () in
+    let sorted_starts =
+      List.filter (fun node -> Hashtbl.find in_degree node.id = 0) nodes
+      |> List.sort (fun a b ->
+          (* Deterministic order: sort by name, .mli before .ml *)
+          let cmp = String.compare a.namespaced b.namespaced in
+          if cmp <> 0 then cmp
+          else
+            match (a.kind, b.kind) with
+            | Interface, Implementation -> -1
+            | Implementation, Interface -> 1
+            | _ -> 0)
+    in
+    List.iter (fun n -> Queue.push n queue) sorted_starts;
+
+    (* Process queue *)
+    let result = ref [] in
+    let processed = Hashtbl.create 100 in
+    while not (Queue.is_empty queue) do
+      let node = Queue.pop queue in
+      result := node :: !result;
+      Hashtbl.add processed node.id true;
+
+      (* Decrease in-degree of dependents *)
+      let sorted_deps =
+        List.sort
+          (fun a b ->
+            let cmp = String.compare a.namespaced b.namespaced in
+            if cmp <> 0 then cmp
+            else
+              match (a.kind, b.kind) with
+              | Interface, Implementation -> -1
+              | Implementation, Interface -> 1
+              | _ -> 0)
+          node.dependents
+      in
+
+      List.iter
+        (fun dependent ->
+          let current = Hashtbl.find in_degree dependent.id in
+          let new_degree = current - 1 in
+          Hashtbl.replace in_degree dependent.id new_degree;
+          if new_degree = 0 then Queue.push dependent queue)
+        sorted_deps
+    done;
+
+    (* Check for cycles - find nodes that weren't processed *)
+    if List.length !result <> List.length nodes then
+      let unprocessed =
+        List.filter (fun node -> not (Hashtbl.mem processed node.id)) nodes
+      in
+
+      (* Find a cycle starting from an unprocessed node *)
+      let rec find_cycle visited node =
+        if List.exists (fun n -> n.id = node.id) visited then
+          (* Found cycle *)
+          let cycle_start = List.find (fun n -> n.id = node.id) visited in
+          let rec extract_cycle acc = function
+            | [] -> acc
+            | h :: t when h.id = cycle_start.id -> h :: acc
+            | h :: t -> extract_cycle (h :: acc) t
+          in
+          Some (extract_cycle [ node ] visited)
+        else
+          (* Try each dependency *)
+          let rec check_deps = function
+            | [] -> None
+            | dep :: rest -> (
+                match find_cycle (node :: visited) dep with
+                | Some cycle -> Some cycle
+                | None -> check_deps rest)
+          in
+          check_deps node.dependencies
+      in
+
+      match unprocessed with
+      | [] ->
+          failwith "Dependency cycle detected but no unprocessed nodes found"
+      | first :: _ -> (
+          match find_cycle [] first with
+          | Some cycle ->
+              let cycle_str =
+                String.concat " -> "
+                  (List.map
+                     (fun n ->
+                       Printf.sprintf "%s (%s)" n.namespaced
+                         (match n.kind with
+                         | Interface -> "mli"
+                         | Implementation -> "ml"))
+                     cycle)
+              in
+              failwith
+                (Printf.sprintf "Dependency cycle detected: %s" cycle_str)
+          | None ->
+              (* Report which nodes couldn't be processed *)
+              let unprocessed_str =
+                String.concat ", " (List.map (fun n -> n.file) unprocessed)
+              in
+              failwith
+                (Printf.sprintf "Could not process nodes (possible cycle): %s"
+                   unprocessed_str))
+    else List.rev !result
+
+  (* Main entry point *)
+  let order_compilation_units ~ocamldep ~package_namespace ~cwd files_with_names
+      =
+    let old_cwd = Sys.getcwd () in
+    Sys.chdir cwd;
+
+    let result =
+      try
+        let graph, nodes =
+          build_from_files ~ocamldep ~package_namespace files_with_names
+        in
+        let sorted = topological_sort graph nodes in
+        Sys.chdir old_cwd;
+        (* Return file names in order *)
+        List.map (fun node -> node.file) sorted
+      with e ->
+        Sys.chdir old_cwd;
+        raise e
+    in
+    result
+end
+
+(* Simple TOML parser for our needs *)
+module Toml = struct
+  let parse_file filename =
+    let ic = open_in filename in
+    let rec parse_lines acc =
+      try
+        let line = input_line ic in
+        let trimmed = String.trim line in
+        if String.length trimmed > 0 && trimmed.[0] <> '#' then
+          parse_lines (trimmed :: acc)
+        else parse_lines acc
+      with End_of_file ->
+        close_in ic;
+        List.rev acc
+    in
+    parse_lines []
+
+  let get_string_value lines key =
+    List.find_map
+      (fun line ->
+        if String.starts_with ~prefix:(key ^ " = ") line then
+          let value =
+            String.sub line
+              (String.length key + 3)
+              (String.length line - String.length key - 3)
+          in
+          let value = String.trim value in
+          if
+            String.length value >= 2
+            && value.[0] = '"'
+            && value.[String.length value - 1] = '"'
+          then Some (String.sub value 1 (String.length value - 2))
+          else Some value
+        else None)
+      lines
+
+  let get_array_value lines key =
+    let rec find_array = function
+      | [] -> []
+      | line :: rest ->
+          if String.starts_with ~prefix:(key ^ " = [") line then
+            (* Handle inline array like: members = ["a", "b"] *)
+            if String.contains line ']' then
+              let start = String.index line '[' + 1 in
+              let end_ = String.index line ']' in
+              let content = String.sub line start (end_ - start) in
+              parse_inline_array content
+            else collect_array rest []
+          else find_array rest
+    and collect_array lines acc =
+      match lines with
+      | [] -> List.rev acc
+      | line :: rest ->
+          let trimmed = String.trim line in
+          if trimmed = "]" then List.rev acc
+          else if String.ends_with ~suffix:"]" trimmed then
+            let item = String.sub trimmed 0 (String.length trimmed - 1) in
+            List.rev (parse_array_item item :: acc)
+          else collect_array rest (parse_array_item trimmed :: acc)
+    and parse_array_item item =
+      let item = String.trim item in
+      let item =
+        if String.ends_with ~suffix:"," item then
+          String.sub item 0 (String.length item - 1)
+        else item
+      in
+      let item = String.trim item in
+      if
+        String.length item >= 2
+        && item.[0] = '"'
+        && item.[String.length item - 1] = '"'
+      then String.sub item 1 (String.length item - 2)
+      else item
+    and parse_inline_array content =
+      let items = String.split_on_char ',' content in
+      List.map parse_array_item items
+    in
+    find_array lines
+end
+
+(* Types *)
+type package = { name : string; path : string; dependencies : string list }
+type workspace = { packages : string list }
+
+(* Read workspace tusk.toml *)
+let read_workspace_config () =
+  let lines = Toml.parse_file "tusk.toml" in
+  (* Find lines after [workspace] section *)
+  let rec find_workspace_section = function
+    | [] -> []
+    | line :: rest ->
+        if line = "[workspace]" then rest (* Return lines after [workspace] *)
+        else find_workspace_section rest
+  in
+  let workspace_lines = find_workspace_section lines in
+  let members = Toml.get_array_value workspace_lines "members" in
+  { packages = members }
+
+(* Read package tusk.toml *)
+let read_package_config path =
+  let toml_path = Filename.concat path "tusk.toml" in
+  if Sys.file_exists toml_path then
+    let lines = Toml.parse_file toml_path in
+    (* Find lines after [package] section *)
+    let rec find_package_section = function
+      | [] -> []
+      | line :: rest ->
+          if line = "[package]" then rest else find_package_section rest
+    in
+    let package_lines = find_package_section lines in
+    let name =
+      match Toml.get_string_value package_lines "name" with
+      | Some n -> n
+      | None -> Filename.basename path
+    in
+    (* Parse dependencies - find [dependencies] section *)
+    let rec find_dependencies_section = function
+      | [] -> []
+      | line :: rest ->
+          if line = "[dependencies]" then
+            (* Collect until next section *)
+            let rec collect_deps acc = function
+              | [] -> List.rev acc
+              | line :: rest ->
+                  if String.length line > 0 && line.[0] = '[' then
+                    List.rev acc (* Hit next section *)
+                  else collect_deps (line :: acc) rest
+            in
+            collect_deps [] rest
+          else find_dependencies_section rest
+    in
+    let dep_lines = find_dependencies_section lines in
+    let dependencies =
+      List.filter_map
+        (fun line ->
+          (* Look for lines like: miniriot = { path = "../miniriot" } *)
+          if String.contains line '=' then
+            let dep_name =
+              String.trim (String.sub line 0 (String.index line '='))
+            in
+            if dep_name <> "" then Some dep_name else None
+          else None)
+        dep_lines
+    in
+    Some { name; path; dependencies }
+  else None
+
+(* Build dependency graph *)
+let build_dependency_graph workspace =
+  let real_packages =
+    List.filter_map
+      (fun pkg_path -> read_package_config pkg_path)
+      workspace.packages
+  in
+
+  (* Inject fake "unix" package so dependency resolution works *)
+  let unix_package = { name = "unix"; path = ""; dependencies = [] } in
+  unix_package :: real_packages
+
+(* Print dependency graph *)
+let print_dependency_graph packages =
+  Printf.printf "=== Workspace Dependency Graph ===\n\n%!";
+  List.iter
+    (fun pkg ->
+      Printf.printf "Package: %s (at %s)\n%!" pkg.name pkg.path;
+      if List.length pkg.dependencies > 0 then (
+        Printf.printf "  Dependencies:\n%!";
+        List.iter (fun dep -> Printf.printf "    - %s\n%!" dep) pkg.dependencies)
+      else Printf.printf "  No dependencies\n%!";
+      Printf.printf "\n%!")
+    packages
+
+(* Topological sort *)
+let topological_sort packages =
+  (* Build adjacency list and in-degree count *)
+  let pkg_map =
+    List.fold_left
+      (fun acc pkg ->
+        List.assoc_opt pkg.name acc |> function
+        | None -> (pkg.name, pkg) :: acc
+        | Some _ -> acc)
+      [] packages
+  in
+
+  let in_degree = Hashtbl.create 16 in
+  let adj_list = Hashtbl.create 16 in
+
+  (* Initialize *)
+  List.iter
+    (fun pkg ->
+      Hashtbl.replace in_degree pkg.name 0;
+      Hashtbl.replace adj_list pkg.name [])
+    packages;
+
+  (* Build graph *)
+  List.iter
+    (fun pkg ->
+      List.iter
+        (fun dep ->
+          (* Add edge from dep to pkg *)
+          let deps = try Hashtbl.find adj_list dep with Not_found -> [] in
+          Hashtbl.replace adj_list dep (pkg.name :: deps);
+          (* Increment in-degree *)
+          let deg = try Hashtbl.find in_degree pkg.name with Not_found -> 0 in
+          Hashtbl.replace in_degree pkg.name (deg + 1))
+        pkg.dependencies)
+    packages;
+
+  (* Kahn's algorithm *)
+  let queue = Queue.create () in
+  Hashtbl.iter (fun name deg -> if deg = 0 then Queue.add name queue) in_degree;
+
+  let sorted = ref [] in
+  while not (Queue.is_empty queue) do
+    let name = Queue.take queue in
+    sorted := name :: !sorted;
+
+    let neighbors = try Hashtbl.find adj_list name with Not_found -> [] in
+    List.iter
+      (fun neighbor ->
+        let deg = Hashtbl.find in_degree neighbor in
+        Hashtbl.replace in_degree neighbor (deg - 1);
+        if deg - 1 = 0 then Queue.add neighbor queue)
+      neighbors
+  done;
+
+  (* Return packages in build order *)
+  List.rev !sorted |> List.filter_map (fun name -> List.assoc_opt name pkg_map)
+
+(* Generate namespaced module name *)
+let get_namespaced_name ~package_name ~file_path =
+  let basename = Filename.basename file_path in
+  let name_without_ext =
+    if Filename.check_suffix basename ".ml" then
+      Filename.chop_suffix basename ".ml"
+    else if Filename.check_suffix basename ".mli" then
+      Filename.chop_suffix basename ".mli"
+    else basename
+  in
+  (* Replace hyphens with underscores in package name *)
+  let safe_package_name =
+    String.map (fun c -> if c = '-' then '_' else c) package_name
+  in
+
+  (* Get folder structure relative to src/ *)
+  let rec get_folder_parts path acc =
+    let dir = Filename.dirname path in
+    let base = Filename.basename dir in
+    if base = "src" || dir = "." || dir = "/" then acc
+    else get_folder_parts dir (base :: acc)
+  in
+  let folder_parts = get_folder_parts file_path [] in
+
+  (* Check if this is a folder interface (e.g., cli/cli.ml) *)
+  let is_folder_interface =
+    match List.rev folder_parts with
+    | folder :: _ when folder = name_without_ext -> true
+    | _ -> false
+  in
+
+  (* Build the full namespaced name *)
+  if name_without_ext = safe_package_name && folder_parts = [] then
+    (* Main package module *)
+    String.capitalize_ascii name_without_ext
+  else if folder_parts = [] then
+    (* Top-level module *)
+    String.capitalize_ascii safe_package_name
+    ^ "__"
+    ^ String.capitalize_ascii name_without_ext
+  else if is_folder_interface then
+    (* Folder interface module (e.g., cli/cli.ml -> Tusk__Cli) *)
+    String.capitalize_ascii safe_package_name
+    ^ "__"
+    ^ String.concat "__" (List.map String.capitalize_ascii folder_parts)
+  else
+    (* Module in a folder (e.g., cli/build.ml -> Tusk__Cli__Build) *)
+    String.capitalize_ascii safe_package_name
+    ^ "__"
+    ^ String.concat "__" (List.map String.capitalize_ascii folder_parts)
+    ^ "__"
+    ^ String.capitalize_ascii name_without_ext
+
+(* Collect source files *)
+let collect_sources pkg_path =
+  let src_dir = Filename.concat pkg_path "src" in
+
+  let rec collect_files dir acc =
+    if Sys.file_exists dir && Sys.is_directory dir then
+      let files = Sys.readdir dir in
+      Array.fold_left
+        (fun acc file ->
+          let path = Filename.concat dir file in
+          if Sys.is_directory path then collect_files path acc else path :: acc)
+        acc files
+    else acc
+  in
+
+  let all_files = collect_files src_dir [] in
+
+  (* Separate ML and C files *)
+  let is_ml_file f =
+    Filename.check_suffix f ".ml" || Filename.check_suffix f ".mli"
+  in
+  let is_c_file f = Filename.check_suffix f ".c" in
+
+  let ml_sources =
+    List.filter (fun f -> is_ml_file (Filename.basename f)) all_files
+  in
+  let c_sources =
+    List.filter (fun f -> is_c_file (Filename.basename f)) all_files
+  in
+
+  (ml_sources, c_sources)
+
+(* Convert snake_case to CamelCase *)
+let snake_to_camel s =
+  s |> String.split_on_char '_'
+  |> List.map String.capitalize_ascii
+  |> String.concat ""
+
+(* Determine expected outputs *)
+let expected_outputs pkg sources c_sources =
+  (* All packages produce .cma and .cmi files *)
+  let outputs = ref [] in
+
+  outputs := (pkg.name ^ ".cma") :: !outputs;
+  outputs := (pkg.name ^ ".cmi") :: !outputs;
+
+  !outputs
+
+(* Compute SHA512 *)
+let sha512_file path =
+  let ic = open_in_bin path in
+  let digest = Digest.file path in
+  close_in ic;
+  Digest.to_hex digest
+
+let sha512_string str = Digest.to_hex (Digest.string str)
+
+(* Build a package *)
+let build_package packages pkg sources c_sources outputs transitive_deps =
+  (* Compute build hash *)
+  let source_hashes = List.map sha512_file (sources @ c_sources) in
+  let all_hashes = source_hashes @ transitive_deps in
+  let commands_hash = sha512_string "ocamlc" in
+  (* Simplified for now *)
+  let build_hash =
+    sha512_string (String.concat "" (all_hashes @ [ commands_hash ]))
+  in
+
+  let sandbox_dir = Printf.sprintf "./target/bootstrap/sandbox/%s" build_hash in
+  let out_dir = "./target/bootstrap/out" in
+
+  (* Create directories *)
+  let rec mkdir_p dir =
+    if not (Sys.file_exists dir) then (
+      mkdir_p (Filename.dirname dir);
+      try Unix.mkdir dir 0o755 with Unix.Unix_error (Unix.EEXIST, _, _) -> ())
+  in
+  mkdir_p sandbox_dir;
+  mkdir_p out_dir;
+
+  Printf.printf "\nBuilding %s in %s\n%!" pkg.name sandbox_dir;
+  Printf.printf "  Sources: %d ML, %d C\n%!" (List.length sources)
+    (List.length c_sources);
+  Printf.printf "  Expected outputs: %s\n%!" (String.concat ", " outputs);
+
+  (* Copy sources to sandbox, renaming lib.ml/lib.mli to package name *)
+  (* For packages with single module, also create package interface *)
+  let has_lib_ml =
+    List.exists (fun src -> Filename.basename src = "lib.ml") sources
+  in
+
+  List.iter
+    (fun src ->
+      let basename = Filename.basename src in
+      (* Get relative path from src/ directory *)
+      let src_dir = Filename.concat pkg.path "src" in
+      let relative_path =
+        (* Remove the package src directory prefix to get relative path *)
+        if String.starts_with ~prefix:(src_dir ^ "/") src then
+          String.sub src
+            (String.length src_dir + 1)
+            (String.length src - String.length src_dir - 1)
+        else basename
+      in
+
+      let dest_path =
+        if basename = "lib.ml" then
+          Filename.concat sandbox_dir (pkg.name ^ ".ml")
+        else if basename = "lib.mli" then
+          Filename.concat sandbox_dir (pkg.name ^ ".mli")
+        else Filename.concat sandbox_dir relative_path
+      in
+
+      (* Create parent directory if needed *)
+      let dest_dir = Filename.dirname dest_path in
+      (if dest_dir <> sandbox_dir && dest_dir <> "." then
+         let cmd = Printf.sprintf "mkdir -p %s" dest_dir in
+         ignore (Unix.system cmd));
+
+      (* Regular file copy - no preprocessing needed *)
+      let cmd = Printf.sprintf "cp %s %s" src dest_path in
+      ignore (Unix.system cmd))
+    (sources @ c_sources);
+
+  (* Also copy header files from the source directory *)
+  let src_dir = Filename.concat pkg.path "src" in
+  let header_files =
+    try
+      Array.to_list (Sys.readdir src_dir)
+      |> List.filter (fun f -> Filename.check_suffix f ".h")
+      |> List.map (fun f -> Filename.concat src_dir f)
+    with _ -> []
+  in
+  List.iter
+    (fun header ->
+      let basename = Filename.basename header in
+      let dest = Filename.concat sandbox_dir basename in
+      let cmd = Printf.sprintf "cp %s %s" header dest in
+      ignore (Unix.system cmd))
+    header_files;
+
+  (* For single-module packages, create package interface *)
+  (if (not has_lib_ml) && List.length sources = 1 then (
+     let src = List.hd sources in
+     let basename = Filename.basename src in
+     if Filename.check_suffix basename ".ml" then (
+       let cmd = Printf.sprintf "cp %s %s/%s.ml" src sandbox_dir pkg.name in
+       ignore (Unix.system cmd);
+       (* Also copy .mli if it exists *)
+       let mli_src = Filename.chop_suffix src ".ml" ^ ".mli" in
+       if List.exists (fun s -> s = mli_src) sources then
+         let cmd =
+           Printf.sprintf "cp %s %s/%s.mli" mli_src sandbox_dir pkg.name
+         in
+         ignore (Unix.system cmd)))
+   else if (not has_lib_ml) && List.length sources = 2 then
+     (* Handle case with .ml and .mli *)
+     let ml_file =
+       List.find_opt (fun s -> Filename.check_suffix s ".ml") sources
+     in
+     let mli_file =
+       List.find_opt (fun s -> Filename.check_suffix s ".mli") sources
+     in
+     match (ml_file, mli_file) with
+     | Some ml, Some mli ->
+         let cmd = Printf.sprintf "cp %s %s/%s.ml" ml sandbox_dir pkg.name in
+         ignore (Unix.system cmd);
+         let cmd = Printf.sprintf "cp %s %s/%s.mli" mli sandbox_dir pkg.name in
+         ignore (Unix.system cmd)
+     | _ -> ());
+
+  (* Copy all transitive dependencies' outputs to sandbox *)
+  let rec get_all_deps dep_name visited =
+    if List.mem dep_name visited then visited
+    else
+      match List.find_opt (fun p -> p.name = dep_name) packages with
+      | None -> dep_name :: visited
+      | Some dep_pkg ->
+          let visited = dep_name :: visited in
+          List.fold_left
+            (fun acc d -> get_all_deps d acc)
+            visited dep_pkg.dependencies
+  in
+  let all_dep_names =
+    List.fold_left (fun acc dep -> get_all_deps dep acc) [] pkg.dependencies
+    |> List.rev
+  in
+
+  List.iter
+    (fun dep_name ->
+      let dep_out = Filename.concat out_dir dep_name in
+      if Sys.file_exists dep_out && Sys.is_directory dep_out then (
+        (* Copy all .cmi and .cma files, plus .cmo for non-library modules *)
+        let cmd =
+          Printf.sprintf "cp %s/*.cmi %s/ 2>/dev/null || true" dep_out
+            sandbox_dir
+        in
+        ignore (Unix.system cmd);
+        let cmd =
+          Printf.sprintf "cp %s/*.cma %s/ 2>/dev/null || true" dep_out
+            sandbox_dir
+        in
+        ignore (Unix.system cmd);
+        (* For standalone modules without lib.ml, also copy .cmo files *)
+        let cmd =
+          Printf.sprintf "cp %s/*.cmo %s/ 2>/dev/null || true" dep_out
+            sandbox_dir
+        in
+        ignore (Unix.system cmd);
+        (* Also copy C object files for packages with C stubs *)
+        let cmd =
+          Printf.sprintf "cp %s/*.o %s/ 2>/dev/null || true" dep_out sandbox_dir
+        in
+        ignore (Unix.system cmd)))
+    all_dep_names;
+
+  (* Build include paths for dependencies - just need -I . once since all are in same sandbox *)
+  let dep_includes = "" in
+
+  (* Get OCaml toolchain *)
+  let home = Sys.getenv "HOME" in
+  let ocamlc = Printf.sprintf "%s/.tusk/toolchains/5.3.0/bin/ocamlc" home in
+
+  (* Compile C files *)
+  List.iter
+    (fun c_src ->
+      let c_file = Filename.basename c_src in
+      let cmd =
+        Printf.sprintf "cd %s && %s -I +unix -c %s" sandbox_dir ocamlc c_file
+      in
+      Printf.printf "  $ %s\n%!" cmd;
+      let ret = Unix.system cmd in
+      if ret <> Unix.WEXITED 0 then (
+        Printf.printf "Error: Command failed with %s\n%!"
+          (match ret with
+          | Unix.WEXITED n -> Printf.sprintf "exit code %d" n
+          | Unix.WSIGNALED n -> Printf.sprintf "signal %d" n
+          | Unix.WSTOPPED n -> Printf.sprintf "stopped %d" n);
+        exit 1))
+    c_sources;
+
+  (* Use DepGraph to order compilation units properly *)
+  let ml_files = List.filter (fun f -> Filename.check_suffix f ".ml") sources in
+  let mli_files =
+    List.filter (fun f -> Filename.check_suffix f ".mli") sources
+  in
+  let all_ml_files = mli_files @ ml_files in
+
+  Printf.eprintf "[build_package] Starting DepGraph for %s with %d files\n%!"
+    pkg.name (List.length all_ml_files);
+
+  (* Get properly ordered compilation units from DepGraph *)
+  let ordered_units =
+    if all_ml_files = [] then []
+    else
+      (* Map source files to their sandbox names and namespaced names *)
+      let source_to_sandbox_and_namespace src =
+        let basename = Filename.basename src in
+        let src_dir = Filename.concat pkg.path "src" in
+
+        let sandbox_name =
+          if basename = "lib.ml" then pkg.name ^ ".ml"
+          else if basename = "lib.mli" then pkg.name ^ ".mli"
+          else if String.starts_with ~prefix:(src_dir ^ "/") src then
+            (* Get relative path from src/ *)
+            String.sub src
+              (String.length src_dir + 1)
+              (String.length src - String.length src_dir - 1)
+          else basename
+        in
+
+        (* Get namespaced name for this file *)
+        let namespaced =
+          get_namespaced_name ~package_name:pkg.name ~file_path:src
+        in
+
+        (sandbox_name, namespaced)
+      in
+
+      (* Build list of (sandbox_file, namespaced_name) pairs *)
+      let files_with_names =
+        List.map
+          (fun src ->
+            let sandbox_name, namespaced =
+              source_to_sandbox_and_namespace src
+            in
+            (sandbox_name, namespaced))
+          all_ml_files
+      in
+
+      (* Use DepGraph to get proper compilation order *)
+      let ocamldep =
+        Printf.sprintf "%s/.tusk/toolchains/5.3.0/bin/ocamldep" home
+      in
+      let safe_pkg_name =
+        String.map (fun c -> if c = '-' then '_' else c) pkg.name
+      in
+      let package_namespace = String.capitalize_ascii safe_pkg_name in
+
+      (* Debug: show what we're passing to DepGraph *)
+      Printf.eprintf "[Debug] Files passed to DepGraph for %s:\n" pkg.name;
+      List.iter
+        (fun (f, ns) -> Printf.eprintf "  %s -> %s\n" f ns)
+        files_with_names;
+
+      let ordered_sandbox_files =
+        DepGraph.order_compilation_units ~ocamldep ~package_namespace
+          ~cwd:sandbox_dir files_with_names
+      in
+
+      (* Debug: show what DepGraph returned *)
+      Printf.eprintf "[Debug] DepGraph returned order:\n";
+      List.iter (fun f -> Printf.eprintf "  %s\n" f) ordered_sandbox_files;
+
+      (* Map back from sandbox files to source files *)
+      List.filter_map
+        (fun sandbox_file ->
+          (* Find the original source file that maps to this sandbox file *)
+          List.find_opt
+            (fun src ->
+              let sname, _ = source_to_sandbox_and_namespace src in
+              sname = sandbox_file)
+            all_ml_files)
+        ordered_sandbox_files
+  in
+
+  (* For compatibility, keep sorted_mli_files and sorted_ml_files for now *)
+  (* They'll be used by the alias generation code that needs all files *)
+  let sorted_mli_files =
+    List.filter (fun f -> Filename.check_suffix f ".mli") ordered_units
+  in
+  let sorted_ml_files =
+    List.filter (fun f -> Filename.check_suffix f ".ml") ordered_units
+  in
+
+  (* Debug: show sorted order from DepGraph *)
+  if ordered_units <> [] then
+    Printf.printf "  DepGraph order: %s\n%!"
+      (String.concat ", " (List.map Filename.basename ordered_units));
+
+  (* Generate alias modules with proper nested namespacing *)
+  (* Track generated alias modules (needs to be in outer scope for later use) *)
+  let generated_alias_modules = ref [] in
+  (* Track generated folder interface modules (needs to be in outer scope for compilation) *)
+  let folder_modules = ref [] in
+
+  let alias_module_name_opt =
+    (* Group modules by their folder *)
+    let modules_by_folder = Hashtbl.create 16 in
+    let top_level_modules = ref [] in
+    let folder_interfaces = ref [] in
+
+    (* Process each source file *)
+    List.iter
+      (fun file ->
+        let basename = Filename.basename file in
+        let name_without_ext =
+          if Filename.check_suffix basename ".ml" then
+            Filename.chop_suffix basename ".ml"
+          else if Filename.check_suffix basename ".mli" then
+            Filename.chop_suffix basename ".mli"
+          else basename
+        in
+
+        (* Get folder structure *)
+        let rec get_folder_parts path acc =
+          let dir = Filename.dirname path in
+          let base = Filename.basename dir in
+          if base = "src" || dir = "." || dir = "/" then acc
+          else get_folder_parts dir (base :: acc)
+        in
+        let folder_parts = get_folder_parts file [] in
+
+        let namespaced =
+          get_namespaced_name ~package_name:pkg.name ~file_path:file
+        in
+        let simple_name = String.capitalize_ascii name_without_ext in
+
+        match folder_parts with
+        | [] ->
+            (* Top-level module *)
+            if simple_name <> String.capitalize_ascii pkg.name then
+              top_level_modules :=
+                (simple_name, namespaced) :: !top_level_modules
+        | _ ->
+            (* Module in a folder - use the full folder path *)
+            let folder_path = String.concat "/" folder_parts in
+            let is_folder_interface =
+              match List.rev folder_parts with
+              | last :: _ -> last = name_without_ext
+              | [] -> false
+            in
+            if is_folder_interface then (
+              (* This is a folder interface like build/build.ml or common/common.ml *)
+              let folder_module = String.capitalize_ascii (List.hd (List.rev folder_parts)) in
+              folder_interfaces :=
+                (folder_module, namespaced) :: !folder_interfaces;
+              (* Ensure the folder is tracked even if it has no other modules *)
+              if not (Hashtbl.mem modules_by_folder folder_path) then
+                Hashtbl.replace modules_by_folder folder_path [])
+            else
+              (* Regular module in a folder *)
+              let modules =
+                try Hashtbl.find modules_by_folder folder_path with Not_found -> []
+              in
+              Hashtbl.replace modules_by_folder folder_path
+                ((simple_name, namespaced) :: modules))
+      (sorted_ml_files @ sorted_mli_files);
+
+    (* Generate alias files for each subdirectory *)
+    let safe_name = String.map (fun c -> if c = '-' then '_' else c) pkg.name in
+
+    Hashtbl.iter
+      (fun folder modules ->
+        (* Always create alias files, even for empty folders *)
+        (* Handle nested folders like "net/http" -> "Net__Http" *)
+        let folder_parts = String.split_on_char '/' folder in
+        let folder_cap =
+          String.concat "__" (List.map String.capitalize_ascii folder_parts)
+        in
+        let alias_module_name =
+          String.capitalize_ascii safe_name ^ "__" ^ folder_cap ^ "__aliases"
+        in
+        let alias_ml = alias_module_name ^ ".ml" in
+
+        (* Generate content for this folder's alias file *)
+        (* Include Common module if this isn't the common folder itself *)
+        let common_alias =
+          if
+            folder <> "common"
+            && List.exists (fun (name, _) -> name = "Common") !folder_interfaces
+          then "module Common = Tusk__Common\n"
+          else ""
+        in
+        let alias_content =
+          if modules = [] then
+            "(* Auto-generated module aliases for " ^ pkg.name ^ "/" ^ folder
+            ^ " *)\n" ^ common_alias ^ "(* No modules in this folder *)\n"
+          else
+            "(* Auto-generated module aliases for " ^ pkg.name ^ "/" ^ folder
+            ^ " *)\n" ^ common_alias
+            ^ (List.map
+                 (fun (simple, namespaced) ->
+                   Printf.sprintf "module %s = %s" simple namespaced)
+                 (List.sort_uniq compare modules)
+              |> String.concat "\n")
+        in
+
+        (* Write the folder's alias file *)
+        let alias_file_path = Filename.concat sandbox_dir alias_ml in
+        let oc = open_out alias_file_path in
+        output_string oc alias_content;
+        close_out oc;
+
+        (* Compile the folder's alias module *)
+        let alias_cmo = alias_module_name ^ ".cmo" in
+        let cmd =
+          Printf.sprintf
+            "cd %s && %s -I +unix -I . %s -no-alias-deps -w -49 -c -o %s %s"
+            sandbox_dir ocamlc dep_includes alias_cmo alias_ml
+        in
+        Printf.printf "  $ %s\n%!" cmd;
+        if Unix.system cmd <> Unix.WEXITED 0 then
+          failwith ("Failed to compile alias module: " ^ alias_ml);
+
+        generated_alias_modules := alias_module_name :: !generated_alias_modules)
+      modules_by_folder;
+
+    (* Generate folder interface modules for folders without explicit interfaces *)
+    Hashtbl.iter
+      (fun folder modules ->
+        if modules <> [] then
+          (* Handle nested folders like "net/http" -> "Net__Http" *)
+          let folder_parts = String.split_on_char '/' folder in
+          let folder_cap =
+            String.concat "__" (List.map String.capitalize_ascii folder_parts)
+          in
+          let last_folder_part =
+            match List.rev folder_parts with
+            | last :: _ -> String.capitalize_ascii last
+            | [] -> folder_cap
+          in
+          (* Check if we already have an explicit interface for this folder *)
+          if
+            not
+              (List.exists
+                 (fun (name, _) -> name = last_folder_part)
+                 !folder_interfaces)
+          then (
+            (* No explicit interface, generate one *)
+            let folder_module_name =
+              String.capitalize_ascii safe_name ^ "__" ^ folder_cap
+            in
+            let folder_ml = folder_module_name ^ ".ml" in
+            let folder_alias_name = folder_module_name ^ "__aliases" in
+
+            (* Generate content that includes the folder's alias module *)
+            let folder_content =
+              "(* Auto-generated folder interface for " ^ pkg.name ^ "/"
+              ^ folder ^ " *)\n" ^ "include " ^ folder_alias_name ^ "\n"
+            in
+
+            (* Write the folder interface file *)
+            let folder_file_path = Filename.concat sandbox_dir folder_ml in
+            let oc = open_out folder_file_path in
+            output_string oc folder_content;
+            close_out oc;
+
+            (* Add to folder modules list - will be compiled later in normal order *)
+            folder_modules :=
+              (last_folder_part, folder_module_name) :: !folder_modules))
+      modules_by_folder;
+
+    (* Check if we have a common/common.ml that re-exports modules *)
+    let common_re_exports = ref [] in
+    (if List.exists (fun (name, _) -> name = "Common") !folder_interfaces then
+       (* Look for modules in the common folder to re-export *)
+       try
+         let common_modules = Hashtbl.find modules_by_folder "common" in
+         (* Re-export common modules at the package level *)
+         common_re_exports :=
+           List.map
+             (fun (simple, full) ->
+               (* Map Tusk__Common__Session_id to Session_id = Tusk__Common__Session_id *)
+               let re_export_name = simple in
+               (* Use the full internal module name directly since we're using -no-alias-deps *)
+               let re_export_value = full in
+               (re_export_name, re_export_value))
+             common_modules
+       with Not_found -> ());
+
+    (* Don't export subfolder modules at the top level - only folder interfaces *)
+    (* But DO re-export Common modules if they exist *)
+    let main_aliases =
+      !top_level_modules @ !folder_interfaces @ !folder_modules
+      @ !common_re_exports
+    in
+
+    if main_aliases <> [] || !generated_alias_modules <> [] then (
+      let alias_module_name = String.capitalize_ascii safe_name ^ "__aliases" in
+      let alias_ml = alias_module_name ^ ".ml" in
+
+      let alias_content =
+        "(* Auto-generated module aliases for package " ^ pkg.name ^ " *)\n"
+        ^ (List.map
+             (fun (simple, namespaced) ->
+               Printf.sprintf "module %s = %s" simple namespaced)
+             (List.sort_uniq compare main_aliases)
+          |> String.concat "\n")
+      in
+
+      (* Write main alias file *)
+      let alias_file_path = Filename.concat sandbox_dir alias_ml in
+      let oc = open_out alias_file_path in
+      output_string oc alias_content;
+      close_out oc;
+
+      (* Compile the main alias module *)
+      let alias_cmo = alias_module_name ^ ".cmo" in
+      let cmd =
+        Printf.sprintf
+          "cd %s && %s -I +unix -I . %s -no-alias-deps -w -49 -c -o %s %s"
+          sandbox_dir ocamlc dep_includes alias_cmo alias_ml
+      in
+      Printf.printf "  $ %s\n%!" cmd;
+      let ret = Unix.system cmd in
+      if ret <> Unix.WEXITED 0 then (
+        Printf.printf "Error: Command failed with %s\n%!"
+          (match ret with
+          | Unix.WEXITED n -> Printf.sprintf "exit code %d" n
+          | Unix.WSIGNALED n -> Printf.sprintf "signal %d" n
+          | Unix.WSTOPPED n -> Printf.sprintf "stopped %d" n);
+        exit 1);
+
+      Some alias_module_name)
+    else None
+  in
+
+  (* Build -open flag if we have an alias module *)
+  let open_flag =
+    match alias_module_name_opt with
+    | Some name -> " -open " ^ name
+    | None -> ""
+  in
+
+  (* Compile all files in dependency order *)
+  (* CRITICAL: Process library interfaces first, then .mli files, then .ml files *)
+  let ordered_for_compilation =
+    (* Identify library interface modules (e.g., core.ml for core/, cli.ml for cli/)
+       These are already renamed in the sandbox, so we check against the original src *)
+    let is_library_interface_file sandbox_file =
+      if Filename.check_suffix sandbox_file ".ml" then
+        (* Check if this was originally a folder/folder.ml file *)
+        List.exists
+          (fun src ->
+            let parts = String.split_on_char '/' src in
+            match parts with
+            | [ folder; file ] when folder <> "src" ->
+                let folder_lower = String.lowercase_ascii folder in
+                let file_base = Filename.chop_suffix file ".ml" in
+                folder_lower = file_base && sandbox_file = folder_lower ^ ".ml"
+            | _ -> false)
+          ml_files
+      else false
+    in
+
+    let library_interfaces, other_units =
+      List.partition is_library_interface_file ordered_units
+    in
+    if library_interfaces <> [] then
+      Printf.eprintf "[Debug] Found library interfaces: %s\n"
+        (String.concat ", " library_interfaces);
+    let mli_units =
+      List.filter (fun f -> Filename.check_suffix f ".mli") other_units
+    in
+    let ml_units =
+      List.filter (fun f -> Filename.check_suffix f ".ml") other_units
+    in
+    (* Add generated folder interface files to the compilation order *)
+    let folder_interface_files =
+      List.map (fun (_, module_name) -> module_name ^ ".ml") !folder_modules
+    in
+    library_interfaces @ mli_units @ folder_interface_files @ ml_units
+  in
+
+  Printf.printf "  Compilation order: %s\n%!"
+    (String.concat ", " (List.map Filename.basename ordered_for_compilation));
+
+  List.iter
+    (fun src ->
+      let is_mli = Filename.check_suffix src ".mli" in
+      let basename = Filename.basename src in
+      let src_dir = Filename.concat pkg.path "src" in
+
+      (* Check if this is a generated folder interface file *)
+      let is_generated_folder_interface =
+        List.exists (fun (_, module_name) -> src = module_name ^ ".ml") !folder_modules
+      in
+
+      (* Get the file path in sandbox and namespaced name *)
+      let sandbox_file, namespaced =
+        if is_generated_folder_interface then
+          (* This is a generated file, it's already in the sandbox *)
+          let module_name = Filename.chop_suffix src ".ml" in
+          (src, module_name)
+        else
+          (* Regular source file *)
+          let sandbox_file =
+            if basename = "lib.ml" then pkg.name ^ ".ml"
+            else if basename = "lib.mli" then pkg.name ^ ".mli"
+            else if String.starts_with ~prefix:(src_dir ^ "/") src then
+              String.sub src
+                (String.length src_dir + 1)
+                (String.length src - String.length src_dir - 1)
+            else basename
+          in
+          let namespaced =
+            get_namespaced_name ~package_name:pkg.name ~file_path:src
+          in
+          (sandbox_file, namespaced)
+      in
+
+      let output_file =
+        if is_mli then namespaced ^ ".cmi" else namespaced ^ ".cmo"
+      in
+
+      (* Check if this file is in a folder and needs its folder's alias *)
+      let folder_open_flag =
+        if is_generated_folder_interface then
+          (* Generated folder interfaces don't need to open any alias module *)
+          ""
+        else
+          (* Get the full folder path relative to src *)
+          let rec get_folder_parts path acc =
+            let dir = Filename.dirname path in
+            let base = Filename.basename dir in
+            if base = "src" || dir = "." || dir = "/" then acc
+            else get_folder_parts dir (base :: acc)
+          in
+          let folder_parts = get_folder_parts src [] in
+
+          if folder_parts <> [] then
+          (* This file is in a folder - open the folder's alias module *)
+          let safe_name =
+            String.map (fun c -> if c = '-' then '_' else c) pkg.name
+          in
+          (* Handle nested folders like ["net", "http"] -> "Net__Http" *)
+          let folder_cap =
+            String.concat "__" (List.map String.capitalize_ascii folder_parts)
+          in
+          let folder_alias =
+            String.capitalize_ascii safe_name ^ "__" ^ folder_cap ^ "__aliases"
+          in
+          " -open " ^ folder_alias
+        else ""
+      in
+
+      (* Include C objects for ML files with external declarations *)
+      let c_objects =
+        if (not is_mli) && c_sources <> [] && basename = pkg.name ^ ".ml" then
+          String.concat " "
+            (List.map
+               (fun c_src ->
+                 let base =
+                   Filename.chop_suffix (Filename.basename c_src) ".c"
+                 in
+                 base ^ ".o")
+               c_sources)
+        else ""
+      in
+
+      (* Check if this is a library interface module (e.g., core/core.ml) *)
+      let is_library_interface =
+        let parts = String.split_on_char '/' src in
+        match parts with
+        | [ folder; file ] when folder <> "src" ->
+            let folder_lower = String.lowercase_ascii folder in
+            let file_base =
+              Filename.chop_suffix file (if is_mli then ".mli" else ".ml")
+            in
+            folder_lower = file_base
+        | _ -> false
+      in
+
+      (* Add -no-alias-deps for library interface modules to break dependency cycles *)
+      let extra_flags =
+        if is_library_interface then " -no-alias-deps" else ""
+      in
+
+      (* Compile with appropriate -open flags *)
+      let cmd =
+        Printf.sprintf "cd %s && %s -I +unix -I . %s%s%s%s -c -o %s %s %s"
+          sandbox_dir ocamlc dep_includes open_flag folder_open_flag extra_flags
+          output_file sandbox_file c_objects
+      in
+      Printf.printf "  $ %s\n%!" cmd;
+      let ret = Unix.system cmd in
+      if ret <> Unix.WEXITED 0 then (
+        Printf.printf "Error: Command failed with %s\n%!"
+          (match ret with
+          | Unix.WEXITED n -> Printf.sprintf "exit code %d" n
+          | Unix.WSIGNALED n -> Printf.sprintf "signal %d" n
+          | Unix.WSTOPPED n -> Printf.sprintf "stopped %d" n);
+        exit 1))
+    ordered_for_compilation;
+
+  (* Create library .cma file for all packages *)
+  (* For linking, we need modules in dependency order from sorted_ml_files *)
+  (* ocamldep -sort gives us compilation order, which is also the correct linking order for .ml files *)
+  let cmo_files =
+    (* Collect all alias modules - both main and subfolder aliases *)
+    let all_alias_cmos =
+      (* Main alias module *)
+      let main_alias =
+        match alias_module_name_opt with
+        | Some name -> [ name ^ ".cmo" ]
+        | None -> []
+      in
+      (* Subfolder alias modules *)
+      let subfolder_aliases =
+        List.map (fun name -> name ^ ".cmo") !generated_alias_modules
+      in
+      main_alias @ subfolder_aliases
+    in
+    let ml_cmos =
+      List.map
+        (fun f ->
+          let namespaced =
+            get_namespaced_name ~package_name:pkg.name ~file_path:f
+          in
+          namespaced ^ ".cmo")
+        sorted_ml_files
+    in
+    (* Deduplicate the list while preserving order *)
+    let deduplicate lst =
+      let seen = Hashtbl.create 10 in
+      List.filter
+        (fun x ->
+          if Hashtbl.mem seen x then false
+          else (
+            Hashtbl.add seen x true;
+            true))
+        lst
+    in
+    deduplicate (all_alias_cmos @ ml_cmos)
+  in
+
+  (* If there's a module with the same name as the package, move it to the end *)
+  (* This handles the case where a module re-exports others *)
+  let safe_pkg_name =
+    String.map (fun c -> if c = '-' then '_' else c) pkg.name
+  in
+  let main_module_cmo = String.capitalize_ascii safe_pkg_name ^ ".cmo" in
+  let cmo_files =
+    if List.mem main_module_cmo cmo_files then
+      let others = List.filter (fun f -> f <> main_module_cmo) cmo_files in
+      others @ [ main_module_cmo ]
+    else cmo_files
+  in
+
+  let cmo_list = String.concat " " cmo_files in
+  Printf.printf "  Linking order: %s\n%!" cmo_list;
+  (* Include C object files in the archive *)
+  let c_obj_files =
+    List.map
+      (fun c_src ->
+        let base = Filename.chop_suffix (Filename.basename c_src) ".c" in
+        base ^ ".o")
+      c_sources
+  in
+  let c_obj_list = String.concat " " c_obj_files in
+  let all_objects =
+    if c_obj_list = "" then cmo_list else cmo_list ^ " " ^ c_obj_list
+  in
+  let cmd =
+    Printf.sprintf "cd %s && %s -a -o %s.cma %s" sandbox_dir ocamlc pkg.name
+      all_objects
+  in
+  Printf.printf "  $ %s\n%!" cmd;
+  let ret = Unix.system cmd in
+  if ret <> Unix.WEXITED 0 then (
+    Printf.printf "Error: Command failed with %s\n%!"
+      (match ret with
+      | Unix.WEXITED n -> Printf.sprintf "exit code %d" n
+      | Unix.WSIGNALED n -> Printf.sprintf "signal %d" n
+      | Unix.WSTOPPED n -> Printf.sprintf "stopped %d" n);
+    exit 1);
+
+  (* C objects are now embedded in .cmo files, no separate static library needed *)
+
+  (* Copy outputs to out_dir *)
+  let pkg_out_dir = Filename.concat out_dir pkg.name in
+  mkdir_p pkg_out_dir;
+
+  (* Copy all expected outputs *)
+  List.iter
+    (fun out ->
+      let src_file = Filename.concat sandbox_dir out in
+      if Sys.file_exists src_file then (
+        let cmd = Printf.sprintf "cp %s %s/" src_file pkg_out_dir in
+        Printf.printf "  $ %s\n%!" cmd;
+        let ret = Unix.system cmd in
+        if ret <> Unix.WEXITED 0 then (
+          Printf.printf "Error: Command failed with %s\n%!"
+            (match ret with
+            | Unix.WEXITED n -> Printf.sprintf "exit code %d" n
+            | Unix.WSIGNALED n -> Printf.sprintf "signal %d" n
+            | Unix.WSTOPPED n -> Printf.sprintf "stopped %d" n);
+          exit 1)))
+    outputs;
+
+  (* Also copy all .cmi files for multi-module packages (needed for module access) *)
+  let cmd =
+    Printf.sprintf "cp %s/*.cmi %s/ 2>/dev/null || true" sandbox_dir pkg_out_dir
+  in
+  Printf.printf "  $ %s\n%!" cmd;
+  ignore (Unix.system cmd);
+
+  (* Also copy C object files for packages with C stubs *)
+  if c_sources <> [] then
+    List.iter
+      (fun c_src ->
+        let obj_name =
+          Filename.chop_suffix (Filename.basename c_src) ".c" ^ ".o"
+        in
+        let src_file = Filename.concat sandbox_dir obj_name in
+        if Sys.file_exists src_file then (
+          let cmd = Printf.sprintf "cp %s %s/" src_file pkg_out_dir in
+          Printf.printf "  $ %s\n%!" cmd;
+          ignore (Unix.system cmd)))
+      c_sources;
+
+  (* Build executable if main.ml exists *)
+  let has_main_ml =
+    List.exists (fun src -> Filename.basename src = "main.ml") sources
+  in
+  if has_main_ml then (
+    (* Link all .cmo files and dependencies into executable *)
+    (* For executables, we need to use the same cmo_files list that was used for the library,
+       which includes all the alias modules *)
+    let all_cmos = cmo_files in
+
+    (* Get all transitive dependencies for linking *)
+    let all_deps = all_dep_names in
+    (* Use the same list we computed for copying *)
+
+    (* Group packages by name - each package's .cma and .cmo together *)
+    let dep_files = ref [] in
+
+    (* Process dependencies in topological order (dependencies first) *)
+    let sorted_deps =
+      List.filter
+        (fun pkg -> List.mem pkg.name all_deps)
+        (topological_sort packages)
+    in
+
+    List.iter
+      (fun pkg ->
+        let dep_name = pkg.name in
+        let cma_path = Printf.sprintf "%s.cma" dep_name in
+
+        if Sys.file_exists (Filename.concat sandbox_dir cma_path) then
+          (* All packages now produce .cma files *)
+          dep_files := !dep_files @ [ cma_path ])
+      sorted_deps;
+
+    let link_deps = String.concat " " !dep_files in
+    let link_objs = String.concat " " all_cmos in
+
+    (* C objects are now embedded in .cma files, no separate static library linking needed *)
+
+    (* Correct OCaml link order: dependencies grouped by package, then current modules *)
+    (* Use -custom flag when linking with C stubs *)
+    let has_c_stubs =
+      c_sources <> []
+      || List.exists
+           (fun dep_pkg ->
+             let _, dep_c_sources = collect_sources dep_pkg.path in
+             dep_c_sources <> [])
+           sorted_deps
+    in
+    let custom_flag = if has_c_stubs then "-custom" else "" in
+    (* C objects are already embedded in .cma files, no need to link them separately *)
+    let cmd =
+      Printf.sprintf "cd %s && %s %s -I +unix -I . %s -o %s unix.cma %s %s"
+        sandbox_dir ocamlc custom_flag dep_includes pkg.name link_deps link_objs
+    in
+    Printf.printf "  $ %s\n%!" cmd;
+    let ret = Unix.system cmd in
+    if ret <> Unix.WEXITED 0 then (
+      Printf.printf "Error: Command failed with %s\n%!"
+        (match ret with
+        | Unix.WEXITED n -> Printf.sprintf "exit code %d" n
+        | Unix.WSIGNALED n -> Printf.sprintf "signal %d" n
+        | Unix.WSTOPPED n -> Printf.sprintf "stopped %d" n);
+      exit 1);
+
+    (* Copy executable to package out dir *)
+    let exe_path = Filename.concat sandbox_dir pkg.name in
+    let cmd = Printf.sprintf "cp %s %s/" exe_path pkg_out_dir in
+    Printf.printf "  $ %s\n%!" cmd;
+    let ret = Unix.system cmd in
+    if ret <> Unix.WEXITED 0 then (
+      Printf.printf "Error: Command failed with %s\n%!"
+        (match ret with
+        | Unix.WEXITED n -> Printf.sprintf "exit code %d" n
+        | Unix.WSIGNALED n -> Printf.sprintf "signal %d" n
+        | Unix.WSTOPPED n -> Printf.sprintf "stopped %d" n);
+      exit 1);
+
+    (* Also copy to ./target/bootstrap/<package-name> *)
+    let target_exe = Printf.sprintf "./target/bootstrap/%s" pkg.name in
+    let cmd = Printf.sprintf "cp %s %s" exe_path target_exe in
+    Printf.printf "  $ %s\n%!" cmd;
+    let ret = Unix.system cmd in
+    if ret <> Unix.WEXITED 0 then (
+      Printf.printf "Error: Command failed with %s\n%!"
+        (match ret with
+        | Unix.WEXITED n -> Printf.sprintf "exit code %d" n
+        | Unix.WSIGNALED n -> Printf.sprintf "signal %d" n
+        | Unix.WSTOPPED n -> Printf.sprintf "stopped %d" n);
+      exit 1));
+
+  (* Return output hashes for dependencies *)
+  List.map (fun out -> sha512_string out) outputs
+
+(* Main *)
+let () =
+  Printf.printf "=== Minitusk Build System ===\n\n%!";
+
+  (* Step 1: Read top-level tusk.toml *)
+  Printf.printf "Reading workspace configuration...\n%!";
+  let workspace = read_workspace_config () in
+  Printf.printf "Found %d packages\n\n%!" (List.length workspace.packages);
+
+  (* Step 2: List all packages *)
+  Printf.printf "Packages in workspace:\n%!";
+  List.iter (fun pkg -> Printf.printf "  - %s\n%!" pkg) workspace.packages;
+  Printf.printf "\n%!";
+
+  (* Step 3: Read each package's tusk.toml *)
+  Printf.printf "Reading package configurations...\n%!";
+  let packages = build_dependency_graph workspace in
+
+  (* Step 4 & 5: Build and print dependency graph *)
+  print_dependency_graph packages;
+
+  (* Step 6: Topological sort *)
+  Printf.printf "=== Build Order ===\n\n%!";
+  let build_order = topological_sort packages in
+  List.iteri
+    (fun i pkg -> Printf.printf "%d. %s\n%!" (i + 1) pkg.name)
+    build_order;
+
+  (* Step 7: Build packages *)
+  Printf.printf "\n=== Building Packages ===\n%!";
+  let built_outputs = Hashtbl.create 16 in
+
+  List.iter
+    (fun pkg ->
+      (* Skip fake unix package *)
+      if pkg.name = "unix" then
+        Printf.printf "\nSkipping external package: %s\n%!" pkg.name
+      else (
+        Printf.printf "\n";
+        (* Collect sources *)
+        let sources, c_sources = collect_sources pkg.path in
+
+        (* Determine outputs *)
+        let outputs = expected_outputs pkg sources c_sources in
+
+        (* Collect transitive dependencies *)
+        let transitive_deps =
+          let rec collect pkg_name acc =
+            match List.find_opt (fun p -> p.name = pkg_name) packages with
+            | None -> acc
+            | Some p ->
+                let dep_outputs =
+                  try Hashtbl.find built_outputs p.name with Not_found -> []
+                in
+                List.fold_left
+                  (fun acc dep -> collect dep (dep_outputs @ acc))
+                  (dep_outputs @ acc) p.dependencies
+          in
+          List.fold_left (fun acc dep -> collect dep acc) [] pkg.dependencies
+        in
+
+        (* Build *)
+        let output_hashes =
+          build_package packages pkg sources c_sources outputs transitive_deps
+        in
+        Hashtbl.replace built_outputs pkg.name output_hashes))
+    build_order
