@@ -25,7 +25,11 @@ let build_package (pkg : Package.t) =
         | Generated { path; _ } -> Filename.basename path ^ " (generated)"
       in
       Printf.printf "  - %s\n%!" filename)
-    dep_graph
+    dep_graph;
+
+
+  Printf.printf "\n\nModule Registry:\n%!";
+  Dep_graph.print_registry dep_graph
 
 let () =
   (* Simple package configuration *)
@@ -34,10 +38,8 @@ let () =
       [
         { name = "kernel"; path = "packages/kernel"; deps = [] };
         { name = "miniriot"; path = "packages/miniriot"; deps = [ "kernel" ] };
-        (*
         { name = "std"; path = "packages/std"; deps = [ "kernel"; "miniriot" ] };
         { name = "tusk"; path = "packages/tusk"; deps = [ "kernel"; "miniriot"; "std" ]; };
-      *)
       ]
   in
 
