@@ -1,5 +1,4 @@
 type t =
-  | CreateDirectory of string
   | WriteFile of { path : string; content : string }
   | CopyFile of { src : string; dst : string }
   | CompileInterface of {
@@ -25,11 +24,10 @@ type t =
       includes : string list;
     }
 
-type build_plan = { actions : t list; outputs : string list }
+type build_plan = { sandbox_dir: string ; actions : t list; outputs : string list }
 
 let print action =
   match action with
-  | CreateDirectory dir -> Printf.printf "CREATE_DIR: %s\n" dir
   | WriteFile { path; content } ->
       Printf.printf "WRITE_FILE: %s (%d bytes)\n" path (String.length content)
   | CopyFile { src; dst } -> Printf.printf "COPY_FILE: %s -> %s\n" src dst
@@ -54,7 +52,6 @@ let print action =
 
 let print_action action =
   match action with
-  | CreateDirectory dir -> Printf.printf "CREATE_DIR: %s\n" dir
   | WriteFile { path; _ } -> Printf.printf "WRITE_FILE: %s\n" path
   | CopyFile { src; dst } -> Printf.printf "COPY: %s -> %s\n" src dst
   | CompileInterface { src_file; output; _ } ->
@@ -85,22 +82,23 @@ let print_build_plan plan =
 
   Printf.printf "=== END BUILD PLAN ===\n\n"
 
-let execute_action action =
+let execute_action ~project_root action =
   match action with
-  | CreateDirectory dir -> Io.mkdir_p dir
   | WriteFile { path; content } -> Io.write_file path content
-  | CopyFile { src; dst } -> Io.copy_file src dst
+  | CopyFile { src; dst } ->
+      (* src is relative from project root, dst preserves directory structure *)
+      let src_absolute = Filename.concat project_root src in
+      (* Create parent directory if needed *)
+      let dst_dir = Filename.dirname dst in
+      if dst_dir <> "." && dst_dir <> "" then Io.mkdir_p dst_dir;
+      Io.copy_file src_absolute dst
   | CompileInterface { sandbox_dir; src_file; output; includes; opens } -> (
       (* Build flags for open modules *)
       let flags = List.map (fun m -> Ocaml_platform.Open m) opens in
-      (* Add sandbox_dir to includes *)
-      let full_includes = sandbox_dir :: includes in
-      (* Build full paths *)
-      let full_src = Filename.concat sandbox_dir src_file in
-      let full_output = Filename.concat sandbox_dir output in
+      (* Now we're in sandbox_dir, so use relative paths *)
       match
-        Ocaml_platform.Ocamlc.compile_interface ~includes:full_includes ~flags
-          ~output:full_output full_src
+        Ocaml_platform.Ocamlc.compile_interface ~includes:("." :: includes) ~flags
+          ~output:output src_file
       with
       | Ok _ -> () (* Ignore stdout output *)
       | Error err ->
@@ -108,46 +106,36 @@ let execute_action action =
           failwith "compilation error")
   | CompileImplementation
       { sandbox_dir; src_file; output; includes; opens; is_aliases } -> (
-      (* Add sandbox_dir to includes *)
-      let full_includes = sandbox_dir :: includes in
-      (* Build full paths *)
-      let full_src = Filename.concat sandbox_dir src_file in
-      let full_output = Filename.concat sandbox_dir output in
+      (* Now we're in sandbox_dir, so use relative paths *)
       (* Build flags for open modules *)
       let flags =
         List.map (fun m -> Ocaml_platform.Open m) opens
-        @ Ocaml_platform.[ Impl full_src ]
+        @ Ocaml_platform.[ Impl src_file ]
         @ if is_aliases then Ocaml_platform.[ NoAliasDeps ] else []
       in
       match
-        Ocaml_platform.Ocamlc.compile_impl ~includes:full_includes ~flags
-          ~output:full_output full_src
+        Ocaml_platform.Ocamlc.compile_impl ~includes:("." :: includes) ~flags
+          ~output:output src_file
       with
       | Ok _ -> () (* Ignore stdout output *)
       | Error err ->
           Printf.printf "%s\n%!" err;
           failwith "compilation error")
   | CompileC { sandbox_dir; src_file } -> (
-      (* Build full paths *)
-      let full_src = Filename.concat sandbox_dir src_file in
-      let output = Filename.chop_extension full_src ^ ".o" in
+      (* Already in sandbox directory *)
+      let output = Filename.chop_extension src_file ^ ".o" in
       match
-        Ocaml_platform.Ocamlc.compile_c ~includes:[ sandbox_dir ] ~output
-          full_src
+        Ocaml_platform.Ocamlc.compile_c ~includes:["."] ~output src_file
       with
       | Ok _ -> () (* Ignore stdout output *)
       | Error err ->
           Printf.printf "%s\n%!" err;
           failwith "compilation error")
   | CreateArchive { sandbox_dir; archive_name; object_files; includes } -> (
-      (* Add sandbox_dir to includes *)
-      let full_includes = sandbox_dir :: includes in
-      (* Build full paths for object files *)
-      let full_objects = List.map (Filename.concat sandbox_dir) object_files in
-      let full_output = Filename.concat sandbox_dir archive_name in
+      (* Already in sandbox directory *)
       match
-        Ocaml_platform.Ocamlc.create_library ~includes:full_includes
-          ~output:full_output full_objects
+        Ocaml_platform.Ocamlc.create_library ~includes:("." :: includes)
+          ~output:archive_name object_files
       with
       | Ok _ -> () (* Ignore stdout output *)
       | Error err ->
@@ -156,7 +144,26 @@ let execute_action action =
 
 let execute_build_plan plan =
   Printf.printf "Executing %d actions...\n" (List.length plan.actions);
-  List.iter execute_action plan.actions
+  (* Save current directory *)
+  let original_cwd = Io.getcwd () in
+
+  (* Get sandbox dir from first action *)
+  let sandbox_dir = plan.sandbox_dir in
+  (* 1. Remove old sandbox if it exists *)
+  Io.rm_rf sandbox_dir;
+
+  (* 2. Create fresh sandbox dir *)
+  Io.mkdir_p sandbox_dir;
+
+  (* 3. Change to sandbox directory *)
+  Io.chdir sandbox_dir;
+  Printf.printf "Working in: %s\n" (Io.getcwd ());
+
+  (* 4. Execute all actions *)
+  List.iter (execute_action ~project_root:original_cwd) plan.actions;
+
+  (* 5. Restore original directory *)
+  Io.chdir original_cwd
 
 let promote_outputs (plan : build_plan) =
   (* Extract package name from first output path *)
@@ -177,7 +184,7 @@ let promote_outputs (plan : build_plan) =
   List.iter (fun src ->
     let basename = Filename.basename src in
     let dst = Filename.concat out_dir basename in
-    if Sys.file_exists src then begin
+    if Io.file_exists src then begin
       Io.copy_file src dst;
       Printf.printf "  - %s\n" basename
     end
@@ -191,11 +198,10 @@ let from_dep_graph (dep_graph : Dep_graph.t) : build_plan =
   in
   let actions = ref [] in
   let cmo_files = ref [] in
+  let o_files = ref [] in
   let outputs = ref [] in
 
   (* Create sandbox directory *)
-  actions := CreateDirectory sandbox_dir :: !actions;
-
   let opens mods =
     List.filter_map
       (fun (node : Dep_graph.dep Graph.node) ->
@@ -206,6 +212,18 @@ let from_dep_graph (dep_graph : Dep_graph.t) : build_plan =
       mods
   in
 
+  (* First, copy all header files *)
+  Dep_graph.iter
+    (fun node ->
+      let open Dep_graph in
+      match node.value with
+      | { kind = H; file = Concrete path; _ } ->
+          actions :=
+            CopyFile { src = path; dst = path }
+            :: !actions
+      | _ -> ())
+    dep_graph;
+
   (* Generate actions in dependency order *)
   Dep_graph.iter
     (fun node ->
@@ -213,9 +231,8 @@ let from_dep_graph (dep_graph : Dep_graph.t) : build_plan =
       match node.value with
       | { kind = MLI mod_; file = Concrete path; open_modules; _ } ->
           (* Copy source file to sandbox *)
-          let basename = Filename.basename path in
           actions :=
-            CopyFile { src = path; dst = Filename.concat sandbox_dir basename }
+            CopyFile { src = path; dst = path }
             :: !actions;
 
           (* Compile interface *)
@@ -223,15 +240,14 @@ let from_dep_graph (dep_graph : Dep_graph.t) : build_plan =
           let opens = opens open_modules in
           let action =
             CompileInterface
-              { sandbox_dir; src_file = basename; output; includes = []; opens }
+              { sandbox_dir; src_file = path; output; includes = []; opens }
           in
           actions := action :: !actions;
           outputs := Filename.concat sandbox_dir output :: !outputs
       | { kind = ML mod_; file = Concrete path; open_modules; _ } ->
           (* Copy source file to sandbox *)
-          let basename = Filename.basename path in
           actions :=
-            CopyFile { src = path; dst = Filename.concat sandbox_dir basename }
+            CopyFile { src = path; dst = path }
             :: !actions;
 
           (* Compile implementation *)
@@ -241,7 +257,7 @@ let from_dep_graph (dep_graph : Dep_graph.t) : build_plan =
             CompileImplementation
               {
                 sandbox_dir;
-                src_file = basename;
+                src_file = path;
                 output;
                 includes = [];
                 opens;
@@ -256,7 +272,7 @@ let from_dep_graph (dep_graph : Dep_graph.t) : build_plan =
           (* Write generated .ml file *)
           let write =
             WriteFile
-              { path = Filename.concat sandbox_dir path; content = contents }
+              { path; content = contents }
           in
           actions := write :: !actions;
 
@@ -282,32 +298,36 @@ let from_dep_graph (dep_graph : Dep_graph.t) : build_plan =
           (* Other generated files (not .ml) *)
           let action =
             WriteFile
-              { path = Filename.concat sandbox_dir path; content = contents }
+              { path; content = contents }
           in
           actions := action :: !actions
       | { kind = C; file = Concrete path; _ } ->
           (* Copy and compile C files *)
-          let basename = Filename.basename path in
           actions :=
-            CopyFile { src = path; dst = Filename.concat sandbox_dir basename }
+            CopyFile { src = path; dst = path }
             :: !actions;
-          let compile = CompileC { sandbox_dir; src_file = basename } in
+          let compile = CompileC { sandbox_dir; src_file = path } in
           actions := compile :: !actions;
-          let obj_file = Filename.chop_extension basename ^ ".o" in
+          let obj_file = Filename.chop_extension (Filename.basename path) ^ ".o" in
+          o_files := obj_file :: !o_files;
           outputs := Filename.concat sandbox_dir obj_file :: !outputs
+      | { kind = H; _ } ->
+          (* Header files already copied at the beginning *)
+          ()
       | _ -> () (* Skip Root, etc *))
     dep_graph;
 
-  (* Add final archive creation if we have any .cmo files *)
+  (* Add final archive creation if we have any .cmo or .o files *)
   let () =
-    if !cmo_files <> [] then (
+    if !cmo_files <> [] || !o_files <> [] then (
       let archive_name = dep_graph.package_name ^ ".cma" in
+      let all_objects = List.rev !cmo_files @ List.rev !o_files in
       let archive =
         CreateArchive
           {
             sandbox_dir;
             archive_name;
-            object_files = List.rev !cmo_files;
+            object_files = all_objects;
             includes = [];
           }
       in
@@ -315,4 +335,4 @@ let from_dep_graph (dep_graph : Dep_graph.t) : build_plan =
       outputs := Filename.concat sandbox_dir archive_name :: !outputs)
   in
 
-  { actions = List.rev !actions; outputs = List.rev !outputs }
+  { sandbox_dir; actions = List.rev !actions; outputs = List.rev !outputs }

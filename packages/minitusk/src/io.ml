@@ -52,3 +52,10 @@ let run_command_with_output cmd =
   let stderr = read_all stderr_ch "" in
   let status = Unix.close_process_full (stdout_ch, stdin_ch, stderr_ch) in
   match status with Unix.WEXITED 0 -> Ok stdout | _ -> Error stderr
+
+let getcwd = Sys.getcwd
+let chdir = Sys.chdir
+
+let rm_rf path = run_command ["rm";"-rf";path]
+
+let file_exists = Sys.file_exists

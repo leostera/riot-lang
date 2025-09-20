@@ -107,7 +107,7 @@ module Ocamlc = struct
     Io.run_command_with_output args
 
   (** Compile an interface file (.mli -> .cmi) *)
-  let compile_interface ~includes ~flags ~output source =
+  let compile_interface ?(cwd = "") ~includes ~flags ~output source =
     (* Include current directory for .cmi files *)
     let includes_with_dot = "." :: includes in
 
@@ -124,13 +124,18 @@ module Ocamlc = struct
         @ [ "-o"; output ]
         @ if has_impl_flag then [] else [ source ]
       in
-      Io.run_command_with_output cmd_parts
+      if cwd = "" then
+        Io.run_command_with_output cmd_parts
+      else
+        let cmd_str = String.concat " " cmd_parts in
+        let full_cmd = Printf.sprintf "cd %s && %s" cwd cmd_str in
+        Io.run_command_with_output [ "/bin/sh"; "-c"; full_cmd ]
     else
       run ~includes:includes_with_dot ~output:(Some output) ~mode:Compile
         [ source ]
 
   (** Compile an implementation file (.ml -> .cmo) *)
-  let compile_impl ~includes ~flags ~output source =
+  let compile_impl ?(cwd = "") ~includes ~flags ~output source =
     (* Include current directory for .cmi files *)
     let includes_with_dot = "." :: includes in
 
@@ -147,7 +152,12 @@ module Ocamlc = struct
         @ [ "-o"; output ]
         @ if has_impl_flag then [] else [ source ]
       in
-      Io.run_command_with_output cmd_parts
+      if cwd = "" then
+        Io.run_command_with_output cmd_parts
+      else
+        let cmd_str = String.concat " " cmd_parts in
+        let full_cmd = Printf.sprintf "cd %s && %s" cwd cmd_str in
+        Io.run_command_with_output [ "/bin/sh"; "-c"; full_cmd ]
     else
       run ~includes:includes_with_dot ~output:(Some output) ~mode:Compile
         [ source ]
@@ -173,8 +183,18 @@ module Ocamlc = struct
     | Error err -> Error err
 
   (** Compile a C file *)
-  let compile_c ~includes ~output source =
-    run ~includes ~output:(Some output) ~mode:Compile [ source ]
+  let compile_c ?(cwd = "") ~includes ~output source =
+    if cwd = "" then
+      run ~includes ~output:(Some output) ~mode:Compile [ source ]
+    else
+      let cmd_parts =
+        [ ocamlc_path; "-c" ]
+        @ List.concat_map (fun dir -> [ "-I"; dir ]) includes
+        @ [ "-o"; output; source ]
+      in
+      let cmd_str = String.concat " " cmd_parts in
+      let full_cmd = Printf.sprintf "cd %s && %s" cwd cmd_str in
+      Io.run_command_with_output [ "/bin/sh"; "-c"; full_cmd ]
 
   (** Create a library (.cma) from object files *)
   let create_library ~includes ~output objects =

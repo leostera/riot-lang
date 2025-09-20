@@ -347,8 +347,39 @@ let rec do_scan ~t ~ctx (file_tree : File_scanner.file_tree) =
   match file_tree with
   | File_scanner.File ({ ext = ".ml" | ".mli"; _ } as file) ->
       handle_ocaml_module ~t ~ctx file
-  | File _ -> ()
+  | File_scanner.File ({ ext = ".c"; _ } as file) ->
+      handle_c_file ~t ~ctx file
+  | File_scanner.File ({ ext = ".h"; _ } as file) ->
+      handle_h_file ~t ~ctx file
+  | File_scanner.File file ->
+      printf "Skipping file with ext=%s: %s\n" file.ext file.path
   | Dir dir -> handle_library ~t ~ctx dir
+
+and handle_c_file ~t ~ctx file =
+  printf "HANDLE_C_FILE: %s\n" file.path;
+  let { parent_impl; _ } = ctx in
+
+  (* Create a C file node *)
+  let node = {
+    file = Concrete file.path;
+    open_modules = [];
+    kind = C;
+  } in
+  let c_node = Graph.add_node t.graph node in
+  printf "  Added C node %d for %s\n" (Graph.Node_id.to_int c_node.id) file.path;
+
+  (* C files are dependencies of the implementation *)
+  Graph.add_edge parent_impl ~depends_on:c_node
+
+and handle_h_file ~t ~ctx file =
+  (* Header files just need to be copied, not compiled *)
+  let node = {
+    file = Concrete file.path;
+    open_modules = [];
+    kind = H;
+  } in
+  let _h_node = Graph.add_node t.graph node in
+  ()
 
 and handle_ocaml_module ~t ~ctx file =
   let { ns; aliases; parent_impl; parent_intf } = ctx in
@@ -403,7 +434,7 @@ and handle_library ~t ~ctx { path; name; children } =
       children
   in
 
-  let children =
+  let children_without_lib_files =
     List.filter
       (fun child ->
         match child with
@@ -422,7 +453,7 @@ and handle_library ~t ~ctx { path; name; children } =
         | File_scanner.Dir _ ->
             Some (Module.of_path ~ns (File_scanner.path child))
         | _ -> None)
-      children
+      children_without_lib_files
   in
   (* First we create the top-level aliases module *)
   let aliases_node =
@@ -463,7 +494,11 @@ and handle_library ~t ~ctx { path; name; children } =
       parent_intf = intf_node;
     }
   in
-  List.iter (do_scan ~t ~ctx) children
+  printf "Scanning %d children (without lib files)\n" (List.length children_without_lib_files);
+  List.iter (fun child ->
+    printf "  Child: %s\n" (File_scanner.path child);
+    do_scan ~t ~ctx child
+  ) children_without_lib_files
 
 let scan_from_root t =
   match t.file_tree with
