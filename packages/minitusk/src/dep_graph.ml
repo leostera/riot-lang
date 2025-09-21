@@ -356,7 +356,7 @@ module Library_interface = struct
         Module.eq lib child)
       children
 
-  let make_node (lib : Module.t) (children : Module.t list) aliases_node ~exists ~actual_path
+  let make_node (lib : Module.t) (children : Module.t list) aliases ~exists ~actual_path
       =
     let path = match actual_path with
       | Some p -> p  (* Use the actual file path from the file tree *)
@@ -371,7 +371,8 @@ module Library_interface = struct
       | `interface -> MLI lib
       | `implementation -> ML lib
     in
-    { file; open_modules = [ aliases_node ]; kind }
+    let open_modules = aliases in
+    { file; open_modules; kind }
 end
 
 module Ocaml_module = struct
@@ -659,7 +660,7 @@ and handle_library ~t ~ctx { path; name; children } =
   (* Then we create the library interface for the package *)
   let intf_node =
     let intf =
-      Library_interface.make_node intf_mod child_modules aliases_node
+      Library_interface.make_node intf_mod child_modules (aliases @ [ aliases_node ])
         ~exists:has_library_interface_mli
         ~actual_path:library_interface_mli_path
     in
@@ -670,7 +671,7 @@ and handle_library ~t ~ctx { path; name; children } =
 
   let impl_node =
     let impl =
-      Library_interface.make_node impl_mod child_modules aliases_node
+      Library_interface.make_node impl_mod child_modules (aliases @ [ aliases_node ])
         ~exists:has_library_interface_ml
         ~actual_path:library_interface_ml_path
     in
