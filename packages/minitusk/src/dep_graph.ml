@@ -162,7 +162,7 @@ module Module_registry : sig
   val create : unit -> t
   val register : t -> Module.t -> Graph.Node_id.t -> unit
   val get : t -> Graph.Node_id.t -> Module.t
-  val get_by_name : t -> Module_name.t -> Graph.Node_id.t
+  val get_by_name : t -> Module_name.t -> Graph.Node_id.t list  (* Returns list of nodes *)
   val print : t -> unit
 end = struct
   type t = {
@@ -192,20 +192,44 @@ end = struct
   let get t node_id = Hashtbl.find t.modules node_id
 
   let get_by_name t name =
-    match Hashtbl.find_opt t.intf_by_name name with
-    | Some node -> node
-    | None -> Hashtbl.find t.impl_by_name name
+    let nodes = ref [] in
+    (* Add interface node if it exists *)
+    (match Hashtbl.find_opt t.intf_by_name name with
+    | Some node -> nodes := node :: !nodes
+    | None -> ());
+    (* Add implementation node if it exists *)
+    (match Hashtbl.find_opt t.impl_by_name name with
+    | Some node -> nodes := node :: !nodes
+    | None -> ());
+    match !nodes with
+    | [] -> raise Not_found
+    | nodes -> nodes
 
   let print t =
     printf "  Registry contains %d modules:\n" (Hashtbl.length t.modules);
-    Hashtbl.iter
-      (fun node_id mod_ ->
+    (* Collect all entries and sort them *)
+    let entries =
+      Hashtbl.fold
+        (fun node_id mod_ acc -> (node_id, mod_) :: acc)
+        t.modules
+        []
+    in
+    let sorted_entries =
+      List.sort
+        (fun (_, mod1) (_, mod2) ->
+          String.compare
+            (Module.module_name mod1 |> Module_name.to_string)
+            (Module.module_name mod2 |> Module_name.to_string))
+        entries
+    in
+    List.iter
+      (fun (node_id, mod_) ->
         printf "    Node %s -> %s | %s (%s)\n"
           (Graph.Node_id.to_string node_id)
           (Module.module_name mod_ |> Module_name.to_string)
           (Module.namespaced_name mod_)
           (Module.path mod_))
-      t.modules
+      sorted_entries
 end
 
 type kind = ML of Module.t | MLI of Module.t | C | H | Other of string | Root
@@ -486,17 +510,19 @@ and handle_ocaml_module ~t ~ctx file =
       (* Try to find the interface node in the registry *)
       let mod_name = Module.module_name mod_ in
       (try
-        let intf_node_id = Module_registry.get_by_name t.registry mod_name in
-        let intf_node = Graph.get_node t.graph intf_node_id in
-        (* Check if it's actually an interface *)
-        (match intf_node.value.kind with
-        | MLI intf_mod when Module.module_name intf_mod = mod_name ->
-            (* Add edge from implementation to interface *)
-            Graph.add_edge node ~depends_on:intf_node;
-            printf "  Added edge from %s.ml to %s.mli\n"
-              (Module_name.to_string mod_name)
-              (Module_name.to_string mod_name)
-        | _ -> ())
+        let node_ids = Module_registry.get_by_name t.registry mod_name in
+        List.iter (fun intf_node_id ->
+          let intf_node = Graph.get_node t.graph intf_node_id in
+          (* Check if it's actually an interface *)
+          (match intf_node.value.kind with
+          | MLI intf_mod when Module.module_name intf_mod = mod_name ->
+              (* Add edge from implementation to interface *)
+              Graph.add_edge node ~depends_on:intf_node;
+              printf "  Added edge from %s.ml to %s.mli\n"
+                (Module_name.to_string mod_name)
+                (Module_name.to_string mod_name)
+          | _ -> ())
+        ) node_ids
       with Not_found -> ())
   | `interface -> ());
 
@@ -721,22 +747,44 @@ let handle_dep t (node : dep Graph.node) =
       List.iter
         (fun dep ->
           printf "- %s\n" dep;
-        let dep = Module_name.of_string dep in
-        if Build_results.has_module t.build_results dep then
-          printf "  (external dependency from build_results)\n"
-        else
-          try
-            let node_id = Module_registry.get_by_name t.registry dep in
-            let dep_node = Graph.get_node t.graph node_id in
-            Graph.add_edge node ~depends_on:dep_node;
-            printf "  Added edge to node %d\n" (Graph.Node_id.to_int node_id)
-          with Not_found ->
-            printf "  WARNING: Module %s not found in registry!\n" (Module_name.to_string dep)
+        (* First try to find in local module registry - this handles our local String/List modules *)
+        let dep_name = Module_name.of_string dep in
+        printf "  Looking for '%s' in registry\n" (Module_name.to_string dep_name);
+
+        (* Try to find in local registry *)
+        try
+          let node_ids = Module_registry.get_by_name t.registry dep_name in
+          List.iter (fun dep_node_id ->
+            let dep_node = Graph.get_node t.graph dep_node_id in
+            (* For .ml files, add edges to both .mli and .ml dependencies
+               For .mli files, only add edges to .mli dependencies *)
+            match node.value.kind, dep_node.value.kind with
+            | MLI _, ML _ ->
+                (* Interface files don't depend on implementations *)
+                ()
+            | _ ->
+                Graph.add_edge node ~depends_on:dep_node;
+                printf "  Added edge to local module (node %d)\n" (Graph.Node_id.to_int dep_node_id)
+          ) node_ids
+        with Not_found ->
+          (* Then check if it's an external dependency from build_results *)
+          let dep_name = Module_name.of_string dep in
+          if Build_results.has_module t.build_results dep_name then
+            printf "  (external dependency from build_results)\n"
+          (* Finally check if it's a stdlib module *)
+          else if List.mem dep Ocaml_platform.stdlib_modules then
+            printf "  (stdlib module)\n"
+          else
+            printf "  WARNING: Module %s not found in registry!\n" (Module_name.to_string dep_name)
       )
         deps
   | _ -> ()
 
-let wire_deps  t = iter (handle_dep t) t
+let wire_deps  t =
+  printf "\n=== Module Registry before wiring deps ===\n";
+  Module_registry.print t.registry;
+  printf "=== End Registry ===\n\n";
+  iter (handle_dep t) t
 
 (* This function handles the special case of the root module of the package *)
 let scan ~root ~package_name ~build_results =

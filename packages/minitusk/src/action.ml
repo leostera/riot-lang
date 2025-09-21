@@ -347,8 +347,7 @@ let from_dep_graph (dep_graph : Dep_graph.t) : build_plan =
   let () =
     if !cmo_files <> [] || !o_files <> [] then (
       let archive_name = Dep_graph.Module_name.cma dep_graph.package_name in
-      (* cmo_files are already in topological order (dependencies last)
-         For linking, we need dependencies first, so keep them as-is *)
+      (* cmo_files should now be in correct linking order after edge fixes *)
       let all_objects = !cmo_files @ !o_files in
       let archive =
         CreateArchive
