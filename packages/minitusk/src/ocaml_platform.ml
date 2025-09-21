@@ -10,7 +10,10 @@ let stdlib_modules =
     "Fun";
     "Obj";
     "Int";
+    "Printf";
+    "Queue";
     "Printexc";
+    "Hashtbl";
     "Stdlib";
     "List";
     "Option";
@@ -73,7 +76,7 @@ module Ocamlc = struct
 
   (** Build and run an ocamlc command *)
   let run ?(includes = []) ?(libs = []) ?(output = None) ?(mode = Compile)
-      ?(verbose = false) sources =
+      ?(flags = []) ?(verbose = false) sources =
     (* Build command arguments *)
     let args = [ ocamlc_path ] in
 
@@ -85,6 +88,9 @@ module Ocamlc = struct
       | CustomExe -> args @ [ "-custom" ]
       | Executable -> args
     in
+
+    (* Add flags *)
+    let args = args @ flags_to_string flags in
 
     (* Add include directories *)
     let args =
@@ -198,30 +204,27 @@ module Ocamlc = struct
 
   (** Create a library (.cma) from object files *)
   let create_library ~includes ~output objects =
-    run ~includes ~output:(Some output) ~mode:Library objects
+    run ~includes ~output:(Some output) ~mode:Library ~flags:[NoStdlib] objects
 
   (** Create an executable from object files and libraries *)
   let create_executable ~includes ~output ~libs objects =
     (* Include current directory *)
     let includes_with_dot = "." :: includes in
     run ~includes:includes_with_dot ~libs ~output:(Some output) ~mode:Executable
-      objects
+      ~flags:[NoStdlib] objects
 
   (** Create a custom executable (with C stubs) *)
   let create_custom_executable ~includes ~output ~libs objects =
     (* Include current directory *)
     let includes_with_dot = "." :: includes in
     run ~includes:includes_with_dot ~libs ~output:(Some output) ~mode:CustomExe
-      objects
+      ~flags:[NoStdlib] objects
 end
 
 module Ocamldep = struct
   let ocamldep_path =
     let home = try Sys.getenv "HOME" with Not_found -> "/Users/ostera" in
     Filename.concat home ".tusk/toolchains/5.3.0/bin/ocamldep"
-
-  let skip_stdlib deps =
-    List.filter (fun dep -> not (List.mem dep stdlib_modules)) deps
 
   (** Parse ocamldep output to extract module names *)
   let parse_deps line =
@@ -256,7 +259,7 @@ module Ocamldep = struct
         (* Get the first line of output *)
         let lines = String.split_on_char '\n' output in
         match lines with
-        | line :: _ when line <> "" -> parse_deps line |> skip_stdlib
+        | line :: _ when line <> "" -> parse_deps line
         | _ -> [])
     | Error _ -> []
 

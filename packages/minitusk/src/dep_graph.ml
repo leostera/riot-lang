@@ -7,6 +7,8 @@ module Module_name : sig
   val of_string : string -> t
   val of_path : string -> t
   val to_string : t -> string
+
+    val cma : t -> string
 end = struct
   type t = string
 
@@ -19,6 +21,8 @@ end = struct
       try Filename.chop_extension basename with Invalid_argument _ -> basename
     in
     of_string name_without_ext
+
+  let cma t = t ^ ".cma"
 end
 
 module Namespace : sig
@@ -28,6 +32,7 @@ module Namespace : sig
   val of_parts : Module_name.t list -> t
   val to_string : t -> string
   val add : t -> Module_name.t -> t
+  val is_empty : t -> bool
 end = struct
   type t = Module_name.t list
 
@@ -36,6 +41,7 @@ end = struct
   let of_parts t = t
   let to_string t = String.concat separator (List.map Module_name.to_string t)
   let add t name = t @ [ name ]
+  let is_empty t = t = []
 end
 
 module Module : sig
@@ -82,19 +88,87 @@ end = struct
   let is_aliases t = Module_name.to_string t.module_name = "Aliases"
 end
 
+module Build_results : sig
+  type t
+  val create : unit -> t
+  (* Register a package with it's module interface *)
+  val register : t -> Package.t -> Module_name.t -> outputs:string list -> unit
+  val has_module : t -> Module_name.t -> bool
+  val copy_to_sandbox : t -> string -> unit
+end = struct
+  (* Build results tracking for cross-package dependencies *)
+
+  (*
+
+  in this module we want to
+
+  1. save a package's interface name (kernel for packages/kernel)
+  2. associate its outputs with it
+
+  so that later on when we're creating actions from a dep_graph
+  we can copy the outputs associated with this package
+
+  and so when adding edges to things we'll basically check if something is an external dep (is in build_results)
+  and if it isn't then complain
+
+  i mean we don't need the thing to be magic or super flexible, this is just for bootstrapping tusk
+  *)
+
+  type entry = {
+    package: Package.t;
+    module_name: Module_name.t;
+    outputs: string list;
+  }
+
+  type t = {
+    (* Map from package name (e.g., "kernel") to list of output paths *)
+    packages : (Module_name.t, entry) Hashtbl.t;
+  }
+
+  let create () = {
+    packages = Hashtbl.create 8;
+  }
+
+  let register t package module_name ~outputs =
+    Hashtbl.replace t.packages module_name { package;module_name;outputs}
+
+  let has_module t module_name =
+    Hashtbl.mem t.packages module_name
+
+  let copy_to_sandbox t sandbox_dir =
+    (* Copy all package outputs to the sandbox *)
+    Hashtbl.iter (fun _mod_name entry ->
+      List.iter (fun src ->
+        if Io.file_exists src then
+          let dst = Filename.concat sandbox_dir (Filename.basename src) in
+          Io.copy_file src dst;
+          Printf.printf "  Copied dependency: %s\n" (Filename.basename src)
+      ) entry.outputs
+    ) t.packages
+
+  let print t =
+    Printf.printf "\n=== Build Results ===\n";
+    Hashtbl.iter (fun mod_name entry ->
+      Printf.printf "Package %s: %d outputs\n" (Module_name.to_string mod_name) (List.length entry.outputs);
+      List.iter (fun out ->
+        Printf.printf "  - %s\n" (Filename.basename out)
+      ) entry.outputs
+    ) t.packages
+end
+
 module Module_registry : sig
   type t
 
   val create : unit -> t
   val register : t -> Module.t -> Graph.Node_id.t -> unit
   val get : t -> Graph.Node_id.t -> Module.t
-  val get_by_name : t -> string -> Graph.Node_id.t
+  val get_by_name : t -> Module_name.t -> Graph.Node_id.t
   val print : t -> unit
 end = struct
   type t = {
     modules : (Graph.Node_id.t, Module.t) Hashtbl.t;
-    intf_by_name : (string, Graph.Node_id.t) Hashtbl.t;
-    impl_by_name : (string, Graph.Node_id.t) Hashtbl.t;
+    intf_by_name : (Module_name.t, Graph.Node_id.t) Hashtbl.t;
+    impl_by_name : (Module_name.t, Graph.Node_id.t) Hashtbl.t;
   }
 
   let create () =
@@ -111,7 +185,7 @@ end = struct
       | `implementation -> t.impl_by_name
       | `interface -> t.intf_by_name
     in
-    let mod_name = Module.module_name mod_ |> Module_name.to_string in
+    let mod_name = Module.module_name mod_ in
     Hashtbl.add table mod_name node_id;
     ()
 
@@ -158,12 +232,13 @@ type t = {
   file_tree : File_scanner.file_tree;
   graph : dep Graph.t;
   registry : Module_registry.t;
-  package_name : string;
+  build_results : Build_results.t;
+  package_name : Module_name.t;
 }
 
 let root_node = { file = Concrete ""; open_modules = []; kind = Root }
 
-let make ~root ~package_name =
+let make ~root ~package_name ~build_results =
   let src_root = Filename.concat root Const.src_dir in
   let file_tree = File_scanner.walk ~root:src_root in
   {
@@ -171,12 +246,13 @@ let make ~root ~package_name =
     src_root;
     file_tree;
     graph = Graph.make ();
-    package_name;
+    package_name = Module_name.of_string package_name;
     registry = Module_registry.create ();
+    build_results ;
   }
 
 let to_dot dep_graph =
-  Graph.to_dot dep_graph.graph ~name:dep_graph.package_name
+  Graph.to_dot dep_graph.graph ~name:(Module_name.to_string dep_graph.package_name)
     ~node_to_label:(fun dep ->
       match dep.file with
       | Concrete path -> Filename.basename path
@@ -207,17 +283,21 @@ let print_registry dep_graph = Module_registry.print dep_graph.registry
 module Alias_module = struct
   let template (modules : Module.t list) =
     let header = "(* Alias module generated by tusk *)" in
-    let body =
+    (* Deduplicate by module name - only implementations, one alias per module *)
+    let unique_modules =
       modules
-      |> List.map (fun mod_ ->
+      |> List.filter_map (fun mod_ ->
           match Module.kind mod_ with
-          | `interface -> ""
+          | `interface -> None
           | `implementation ->
-              Format.sprintf "module %s = %s"
-                (Module.module_name mod_ |> Module_name.to_string)
-                (Module.namespaced_name mod_))
-      |> List.filter (fun str -> str <> "")
-      |> List.sort String.compare
+              Some (Module.module_name mod_ |> Module_name.to_string,
+                    Module.namespaced_name mod_))
+      |> List.sort_uniq (fun (n1, _) (n2, _) -> String.compare n1 n2)
+    in
+    let body =
+      List.map
+        (fun (name, ns) -> Format.sprintf "module %s = %s" name ns)
+        unique_modules
     in
     String.concat "\n" (header :: body)
 
@@ -232,12 +312,16 @@ end
 module Library_interface = struct
   let template (children : Module.t list) =
     let header = "(* Library interface module generated by tusk *)" in
+    (* Deduplicate by module name - we only need one entry per module *)
+    let unique_names =
+      children
+      |> List.map (fun mod_ -> Module.module_name mod_ |> Module_name.to_string)
+      |> List.sort_uniq String.compare
+    in
     let body =
       List.map
-        (fun mod_ ->
-          let name = Module.module_name mod_ |> Module_name.to_string in
-          Format.sprintf "module %s = %s" name name)
-        children
+        (fun name -> Format.sprintf "module %s = %s" name name)
+        unique_names
     in
     String.concat "\n" (header :: body)
 
@@ -248,9 +332,12 @@ module Library_interface = struct
         Module.eq lib child)
       children
 
-  let make_node (lib : Module.t) (children : Module.t list) aliases_node ~exists
+  let make_node (lib : Module.t) (children : Module.t list) aliases_node ~exists ~actual_path
       =
-    let path = Module.path lib in
+    let path = match actual_path with
+      | Some p -> p  (* Use the actual file path from the file tree *)
+      | None -> Module.path lib  (* Use the constructed path for generated files *)
+    in
     let file =
       if exists then Concrete path
       else Generated { path; contents = template children }
@@ -393,6 +480,26 @@ and handle_ocaml_module ~t ~ctx file =
 
   Module_registry.register t.registry mod_ node.id;
 
+  (* If this is an implementation file, check if we have a corresponding interface *)
+  (match Module.kind mod_ with
+  | `implementation ->
+      (* Try to find the interface node in the registry *)
+      let mod_name = Module.module_name mod_ in
+      (try
+        let intf_node_id = Module_registry.get_by_name t.registry mod_name in
+        let intf_node = Graph.get_node t.graph intf_node_id in
+        (* Check if it's actually an interface *)
+        (match intf_node.value.kind with
+        | MLI intf_mod when Module.module_name intf_mod = mod_name ->
+            (* Add edge from implementation to interface *)
+            Graph.add_edge node ~depends_on:intf_node;
+            printf "  Added edge from %s.ml to %s.mli\n"
+              (Module_name.to_string mod_name)
+              (Module_name.to_string mod_name)
+        | _ -> ())
+      with Not_found -> ())
+  | `interface -> ());
+
   let parent =
     match Module.kind mod_ with
     | `interface -> parent_intf
@@ -407,54 +514,116 @@ and handle_ocaml_module ~t ~ctx file =
 and handle_library ~t ~ctx { path; name; children } =
   let { ns; aliases; parent_impl; parent_intf } = ctx in
 
-  let intf_file = t.src_root ^ "/" ^ name ^ ".mli" in
+  (* For the root library (when ns is empty), use package name; otherwise use the dir path *)
+  let base_path =
+    if Namespace.is_empty ns then
+      (* Root package library: packages/kernel/src/Kernel *)
+      t.src_root ^ "/" ^ name
+    else
+      (* Nested library: packages/std/src/data/data *)
+      path ^ "/" ^ name
+  in
+
+  let intf_file = base_path ^ ".mli" in
   let intf_mod = Module.of_path ~ns intf_file in
 
-  let impl_file = t.src_root ^ "/" ^ name ^ ".ml" in
+  let impl_file = base_path ^ ".ml" in
   let impl_mod = Module.of_path ~ns impl_file in
 
   printf "Handling library %S at %s\n" (Module.namespaced_name impl_mod) path;
 
   let ns = Namespace.add ns (Module.module_name impl_mod) in
 
-  let has_library_interface_ml =
-    List.exists
-      (fun child ->
-        match child with
-        | File_scanner.File { path; _ } -> path = impl_file
-        | _ -> false)
+  (* Only create modules for ML/MLI files, not directories *)
+  let children = List.map (fun child ->
+    match child with
+    | File_scanner.File { ext = (".ml" | ".mli"); _ } ->
+        (Some (Module.of_path ~ns (File_scanner.path child)), child)
+    | _ -> (None, child)
+  ) children in
+
+  (* Check if library interface files exist among children by comparing module names *)
+  (* Also get the actual file path if it exists *)
+  let library_interface_ml_path =
+    List.find_map
+      (fun (mod_opt, child) ->
+        match mod_opt, child with
+        | Some mod_, File_scanner.File { path; _ } ->
+            (* Compare module names, not paths - this handles case normalization *)
+            if Module_name.to_string (Module.module_name mod_) =
+               Module_name.to_string (Module.module_name impl_mod)
+               && Filename.extension path = ".ml"
+            then Some path
+            else None
+        | _ -> None)
       children
   in
-  let has_library_interface_mli =
-    List.exists
-      (fun child ->
-        match child with
-        | File_scanner.File { path; _ } -> path = intf_file
-        | _ -> false)
+  let library_interface_mli_path =
+    List.find_map
+      (fun (mod_opt, child) ->
+        match mod_opt, child with
+        | Some mod_, File_scanner.File { path; _ } ->
+            (* Compare module names, not paths - this handles case normalization *)
+            if Module_name.to_string (Module.module_name mod_) =
+               Module_name.to_string (Module.module_name intf_mod)
+               && Filename.extension path = ".mli"
+            then Some path
+            else None
+        | _ -> None)
       children
   in
+  let has_library_interface_ml = library_interface_ml_path <> None in
+  let has_library_interface_mli = library_interface_mli_path <> None in
 
   let children_without_lib_files =
     List.filter
-      (fun child ->
-        match child with
-        | File_scanner.File { path; _ } ->
-            not (path = intf_file || path = impl_file)
+      (fun (mod_opt, child) ->
+        match mod_opt, child with
+        | Some mod_, File_scanner.File { path; _ } ->
+            (* Skip files that have the same module name as the library interface *)
+            let is_lib_file =
+              Module_name.to_string (Module.module_name mod_) =
+              Module_name.to_string (Module.module_name impl_mod) in
+            not is_lib_file
         | _ -> true)
       children
   in
 
-  let child_modules =
+  (* Get modules from files first *)
+  let file_modules =
     List.filter_map
-      (fun (child : File_scanner.file_tree) ->
-        match child with
-        | File_scanner.File { ext = ".mli" | ".ml"; _ } ->
-            Some (Module.of_path ~ns (File_scanner.path child))
-        | File_scanner.Dir _ ->
-            Some (Module.of_path ~ns (File_scanner.path child))
+      (fun (mod_opt, child) ->
+        match mod_opt, child with
+        | Some mod_, File_scanner.File { ext = ".mli" | ".ml"; _ } ->
+            Some mod_
         | _ -> None)
       children_without_lib_files
   in
+
+  (* Get module names that already exist from files *)
+  let existing_module_names =
+    List.map (fun m -> Module.module_name m |> Module_name.to_string) file_modules
+    |> List.sort_uniq String.compare
+  in
+
+  (* Add directories only if there's no file module with the same name *)
+  let dir_modules =
+    List.filter_map
+      (fun (mod_opt, child) ->
+        match mod_opt, child with
+        | None, File_scanner.Dir { name; path; _ } ->
+            let module_name = Module_name.of_string name in
+            if List.mem (Module_name.to_string module_name) existing_module_names then
+              None  (* Skip directories that have corresponding .ml/.mli files *)
+            else
+              (* For directories, create a module from the directory name with .ml extension *)
+              (* This is just for the alias generation - the directory itself doesn't become a module *)
+              Some (Module.of_path ~ns (path ^ "/" ^ name ^ ".ml"))
+        | _ -> None)
+      children_without_lib_files
+  in
+
+  let child_modules = file_modules @ dir_modules in
   (* First we create the top-level aliases module *)
   let aliases_node =
     let node = Alias_module.make_node ns child_modules in
@@ -466,6 +635,7 @@ and handle_library ~t ~ctx { path; name; children } =
     let intf =
       Library_interface.make_node intf_mod child_modules aliases_node
         ~exists:has_library_interface_mli
+        ~actual_path:library_interface_mli_path
     in
     Graph.add_node t.graph intf
   in
@@ -476,6 +646,7 @@ and handle_library ~t ~ctx { path; name; children } =
     let impl =
       Library_interface.make_node impl_mod child_modules aliases_node
         ~exists:has_library_interface_ml
+        ~actual_path:library_interface_ml_path
     in
     Graph.add_node t.graph impl
   in
@@ -484,6 +655,7 @@ and handle_library ~t ~ctx { path; name; children } =
 
   (* Add edges between aliases, intf, and impl for the package *)
   Graph.add_edge intf_node ~depends_on:aliases_node;
+  Graph.add_edge impl_node ~depends_on:aliases_node; (* impl also needs aliases directly *)
   Graph.add_edge impl_node ~depends_on:intf_node;
 
   let ctx =
@@ -494,17 +666,38 @@ and handle_library ~t ~ctx { path; name; children } =
       parent_intf = intf_node;
     }
   in
-  printf "Scanning %d children (without lib files)\n" (List.length children_without_lib_files);
-  List.iter (fun child ->
+  (* Sort children to process .mli files before .ml files *)
+  let sorted_children = List.sort (fun (_, a) (_, b) ->
+    let ext_a = match a with
+      | File_scanner.File { ext; _ } -> ext
+      | _ -> ""
+    in
+    let ext_b = match b with
+      | File_scanner.File { ext; _ } -> ext
+      | _ -> ""
+    in
+    (* .mli < .ml < others *)
+    match ext_a, ext_b with
+    | ".mli", ".mli" -> 0
+    | ".mli", _ -> -1
+    | _, ".mli" -> 1
+    | ".ml", ".ml" -> 0
+    | ".ml", _ -> -1
+    | _, ".ml" -> 1
+    | _ -> 0
+  ) children_without_lib_files in
+
+  printf "Scanning %d children (without lib files)\n" (List.length sorted_children);
+  List.iter (fun (_mod_opt, child) ->
     printf "  Child: %s\n" (File_scanner.path child);
     do_scan ~t ~ctx child
-  ) children_without_lib_files
+  ) sorted_children
 
 let scan_from_root t =
   match t.file_tree with
   | File_scanner.Dir dir ->
       let root_node = Graph.add_node t.graph root_node in
-      let dir = { dir with name = t.package_name } in
+      let dir = { dir with name = (Module_name.to_string t.package_name) } in
 
       let ctx =
         {
@@ -528,18 +721,28 @@ let handle_dep t (node : dep Graph.node) =
       List.iter
         (fun dep ->
           printf "- %s\n" dep;
-          let node_id = Module_registry.get_by_name t.registry dep in
-          let dep_node = Graph.get_node t.graph node_id in
-          Graph.add_edge node ~depends_on:dep_node)
+        let dep = Module_name.of_string dep in
+        if Build_results.has_module t.build_results dep then
+          printf "  (external dependency from build_results)\n"
+        else
+          try
+            let node_id = Module_registry.get_by_name t.registry dep in
+            let dep_node = Graph.get_node t.graph node_id in
+            Graph.add_edge node ~depends_on:dep_node;
+            printf "  Added edge to node %d\n" (Graph.Node_id.to_int node_id)
+          with Not_found ->
+            printf "  WARNING: Module %s not found in registry!\n" (Module_name.to_string dep)
+      )
         deps
   | _ -> ()
 
-let wire_deps t = iter (handle_dep t) t
+let wire_deps  t = iter (handle_dep t) t
 
 (* This function handles the special case of the root module of the package *)
-let scan ~root ~package_name =
+let scan ~root ~package_name ~build_results =
   printf "Scanning package %S from %s\n" package_name root;
-  let t = make ~root ~package_name in
+  let t = make ~root ~package_name ~build_results in
+
   scan_from_root t;
   print_registry t;
   wire_deps t;

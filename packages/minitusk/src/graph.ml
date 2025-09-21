@@ -95,17 +95,32 @@ let topo_sort graph =
   (* Create in-degree table *)
   let in_degree = Hashtbl.create (Hashtbl.length graph.nodes) in
 
-  (* Initialize all nodes with in-degree 0 *)
-  Hashtbl.iter (fun id _ -> Hashtbl.add in_degree id 0) graph.nodes;
+  (* Create reverse dependency map: for each node, track who depends on it *)
+  let reverse_deps = Hashtbl.create (Hashtbl.length graph.nodes) in
 
-  (* Calculate in-degrees *)
+  (* Initialize all nodes with in-degree 0 and empty reverse deps *)
+  Hashtbl.iter (fun id _ ->
+    Hashtbl.add in_degree id 0;
+    Hashtbl.add reverse_deps id []
+  ) graph.nodes;
+
+  (* Calculate in-degrees and reverse dependencies *)
+  (* If node A depends on node B (A.deps contains B), then:
+     - B must come before A in the build order
+     - A has an incoming edge FROM B (A's in-degree increases)
+     - B has A as a reverse dependency (when B is processed, A's in-degree decreases)
+  *)
   Hashtbl.iter
-    (fun _ node ->
-      List.iter
-        (fun dep_id ->
-          let count = Hashtbl.find in_degree dep_id in
-          Hashtbl.replace in_degree dep_id (count + 1))
-        node.deps)
+    (fun my_id node ->
+      (* For each dependency I have, I have an incoming edge from it *)
+      let my_in_degree = List.length node.deps in
+      Hashtbl.replace in_degree my_id my_in_degree;
+
+      (* Also track reverse dependencies *)
+      List.iter (fun dep_id ->
+        let current_rev_deps = Hashtbl.find reverse_deps dep_id in
+        Hashtbl.replace reverse_deps dep_id (my_id :: current_rev_deps)
+      ) node.deps)
     graph.nodes;
 
   (* Find nodes with no incoming edges *)
@@ -122,14 +137,15 @@ let topo_sort graph =
     sorted := node :: !sorted;
     incr processed;
 
-    (* Decrease in-degree of dependent nodes *)
+    (* Decrease in-degree of nodes that depend on this one *)
+    let rev_deps = Hashtbl.find reverse_deps id in
     List.iter
-      (fun dep_id ->
-        let count = Hashtbl.find in_degree dep_id in
+      (fun dependent_id ->
+        let count = Hashtbl.find in_degree dependent_id in
         let new_count = count - 1 in
-        Hashtbl.replace in_degree dep_id new_count;
-        if new_count = 0 then Queue.add dep_id queue)
-      node.deps
+        Hashtbl.replace in_degree dependent_id new_count;
+        if new_count = 0 then Queue.add dependent_id queue)
+      rev_deps
   done;
 
   (* Check for cycles *)
@@ -140,4 +156,4 @@ let topo_sort graph =
       (fun id count -> if count > 0 then cycle_nodes := id :: !cycle_nodes)
       in_degree;
     raise (Cycle !cycle_nodes))
-  else !sorted
+  else List.rev !sorted

@@ -24,7 +24,9 @@ type t =
       includes : string list;
     }
 
-type build_plan = { sandbox_dir: string ; actions : t list; outputs : string list }
+type build_plan = { 
+  package_name: Dep_graph.Module_name.t;
+  sandbox_dir: string ; actions : t list; outputs : string list }
 
 let print action =
   match action with
@@ -142,7 +144,7 @@ let execute_action ~project_root action =
           Printf.printf "%s\n%!" err;
           failwith "compilation error")
 
-let execute_build_plan plan =
+let execute_build_plan ~build_results plan =
   Printf.printf "Executing %d actions...\n" (List.length plan.actions);
   (* Save current directory *)
   let original_cwd = Io.getcwd () in
@@ -155,14 +157,17 @@ let execute_build_plan plan =
   (* 2. Create fresh sandbox dir *)
   Io.mkdir_p sandbox_dir;
 
-  (* 3. Change to sandbox directory *)
+  (* 3. Copy dependency outputs to sandbox *)
+  Dep_graph.Build_results.copy_to_sandbox build_results sandbox_dir;
+
+  (* 4. Change to sandbox directory *)
   Io.chdir sandbox_dir;
   Printf.printf "Working in: %s\n" (Io.getcwd ());
 
-  (* 4. Execute all actions *)
+  (* 5. Execute all actions *)
   List.iter (execute_action ~project_root:original_cwd) plan.actions;
 
-  (* 5. Restore original directory *)
+  (* 6. Restore original directory *)
   Io.chdir original_cwd
 
 let promote_outputs (plan : build_plan) =
@@ -194,7 +199,7 @@ let promote_outputs (plan : build_plan) =
 
 let from_dep_graph (dep_graph : Dep_graph.t) : build_plan =
   let sandbox_dir =
-    Printf.sprintf "target/bootstrap/sandbox/%s" dep_graph.package_name
+    Printf.sprintf "target/bootstrap/sandbox/%s" (Dep_graph.Module_name.to_string dep_graph.package_name)
   in
   let actions = ref [] in
   let cmo_files = ref [] in
@@ -265,7 +270,7 @@ let from_dep_graph (dep_graph : Dep_graph.t) : build_plan =
               }
           in
           actions := action :: !actions;
-          cmo_files := output :: !cmo_files;
+          cmo_files := !cmo_files @ [output];
           outputs := Filename.concat sandbox_dir output :: !outputs
       | { file = Generated { path; contents }; kind = ML mod_; open_modules; _ }
         ->
@@ -292,10 +297,31 @@ let from_dep_graph (dep_graph : Dep_graph.t) : build_plan =
               }
           in
           actions := compile :: !actions;
-          cmo_files := output :: !cmo_files;
+          cmo_files := !cmo_files @ [output];
+          outputs := Filename.concat sandbox_dir output :: !outputs;
+          (* For aliases modules, also add the .cmi as an output *)
+          if is_aliases then
+            let cmi_output = Module.cmi mod_ in
+            outputs := Filename.concat sandbox_dir cmi_output :: !outputs
+      | { file = Generated { path; contents }; kind = MLI mod_; open_modules; _ } ->
+          (* Write generated .mli file *)
+          let write =
+            WriteFile
+              { path; content = contents }
+          in
+          actions := write :: !actions;
+
+          (* Compile the generated interface file *)
+          let output = Module.cmi mod_ in
+          let opens = opens open_modules in
+          let compile =
+            CompileInterface
+              { sandbox_dir; src_file = path; output; includes = []; opens }
+          in
+          actions := compile :: !actions;
           outputs := Filename.concat sandbox_dir output :: !outputs
       | { file = Generated { path; contents }; _ } ->
-          (* Other generated files (not .ml) *)
+          (* Other generated files (not .ml or .mli) *)
           let action =
             WriteFile
               { path; content = contents }
@@ -309,7 +335,7 @@ let from_dep_graph (dep_graph : Dep_graph.t) : build_plan =
           let compile = CompileC { sandbox_dir; src_file = path } in
           actions := compile :: !actions;
           let obj_file = Filename.chop_extension (Filename.basename path) ^ ".o" in
-          o_files := obj_file :: !o_files;
+          o_files := !o_files @ [obj_file];
           outputs := Filename.concat sandbox_dir obj_file :: !outputs
       | { kind = H; _ } ->
           (* Header files already copied at the beginning *)
@@ -320,8 +346,10 @@ let from_dep_graph (dep_graph : Dep_graph.t) : build_plan =
   (* Add final archive creation if we have any .cmo or .o files *)
   let () =
     if !cmo_files <> [] || !o_files <> [] then (
-      let archive_name = dep_graph.package_name ^ ".cma" in
-      let all_objects = List.rev !cmo_files @ List.rev !o_files in
+      let archive_name = Dep_graph.Module_name.cma dep_graph.package_name in
+      (* cmo_files are already in topological order (dependencies last)
+         For linking, we need dependencies first, so keep them as-is *)
+      let all_objects = !cmo_files @ !o_files in
       let archive =
         CreateArchive
           {
@@ -335,4 +363,6 @@ let from_dep_graph (dep_graph : Dep_graph.t) : build_plan =
       outputs := Filename.concat sandbox_dir archive_name :: !outputs)
   in
 
-  { sandbox_dir; actions = List.rev !actions; outputs = List.rev !outputs }
+  { 
+    package_name = dep_graph.package_name;
+    sandbox_dir; actions = List.rev !actions; outputs = List.rev !outputs }
