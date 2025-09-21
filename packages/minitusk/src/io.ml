@@ -55,7 +55,5 @@ let run_command_with_output cmd =
 
 let getcwd = Sys.getcwd
 let chdir = Sys.chdir
-
-let rm_rf path = run_command ["rm";"-rf";path]
-
+let rm_rf path = run_command [ "rm"; "-rf"; path ]
 let file_exists = Sys.file_exists

@@ -99,10 +99,11 @@ let topo_sort graph =
   let reverse_deps = Hashtbl.create (Hashtbl.length graph.nodes) in
 
   (* Initialize all nodes with in-degree 0 and empty reverse deps *)
-  Hashtbl.iter (fun id _ ->
-    Hashtbl.add in_degree id 0;
-    Hashtbl.add reverse_deps id []
-  ) graph.nodes;
+  Hashtbl.iter
+    (fun id _ ->
+      Hashtbl.add in_degree id 0;
+      Hashtbl.add reverse_deps id [])
+    graph.nodes;
 
   (* Calculate in-degrees and reverse dependencies *)
   (* If node A depends on node B (A.deps contains B), then:
@@ -117,10 +118,11 @@ let topo_sort graph =
       Hashtbl.replace in_degree my_id my_in_degree;
 
       (* Also track reverse dependencies *)
-      List.iter (fun dep_id ->
-        let current_rev_deps = Hashtbl.find reverse_deps dep_id in
-        Hashtbl.replace reverse_deps dep_id (my_id :: current_rev_deps)
-      ) node.deps)
+      List.iter
+        (fun dep_id ->
+          let current_rev_deps = Hashtbl.find reverse_deps dep_id in
+          Hashtbl.replace reverse_deps dep_id (my_id :: current_rev_deps))
+        node.deps)
     graph.nodes;
 
   (* Find nodes with no incoming edges *)

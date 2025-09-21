@@ -130,8 +130,7 @@ module Ocamlc = struct
         @ [ "-o"; output ]
         @ if has_impl_flag then [] else [ source ]
       in
-      if cwd = "" then
-        Io.run_command_with_output cmd_parts
+      if cwd = "" then Io.run_command_with_output cmd_parts
       else
         let cmd_str = String.concat " " cmd_parts in
         let full_cmd = Printf.sprintf "cd %s && %s" cwd cmd_str in
@@ -158,8 +157,7 @@ module Ocamlc = struct
         @ [ "-o"; output ]
         @ if has_impl_flag then [] else [ source ]
       in
-      if cwd = "" then
-        Io.run_command_with_output cmd_parts
+      if cwd = "" then Io.run_command_with_output cmd_parts
       else
         let cmd_str = String.concat " " cmd_parts in
         let full_cmd = Printf.sprintf "cd %s && %s" cwd cmd_str in
@@ -204,21 +202,22 @@ module Ocamlc = struct
 
   (** Create a library (.cma) from object files *)
   let create_library ~includes ~output objects =
-    run ~includes ~output:(Some output) ~mode:Library ~flags:[NoStdlib] objects
+    run ~includes ~output:(Some output) ~mode:Library ~flags:[ NoStdlib ]
+      objects
 
   (** Create an executable from object files and libraries *)
   let create_executable ~includes ~output ~libs objects =
     (* Include current directory *)
     let includes_with_dot = "." :: includes in
     run ~includes:includes_with_dot ~libs ~output:(Some output) ~mode:Executable
-      ~flags:[NoStdlib] objects
+      ~flags:[ NoStdlib ] objects
 
   (** Create a custom executable (with C stubs) *)
   let create_custom_executable ~includes ~output ~libs objects =
     (* Include current directory *)
     let includes_with_dot = "." :: includes in
     run ~includes:includes_with_dot ~libs ~output:(Some output) ~mode:CustomExe
-      ~flags:[NoStdlib] objects
+      ~flags:[ NoStdlib ] objects
 end
 
 module Ocamldep = struct
