@@ -49,19 +49,38 @@ def main():
     ocamlc = f"{toolchain_dir}/bin/ocamlc"
     
     print("\nBuilding minitusk...\n")
-    
+
     # Clean and create bootstrap directory
     run("rm -rf ./target/bootstrap")
-    os.makedirs("./target/bootstrap", exist_ok=True)
-    
-    # Build minitusk (just needs Unix module)
+    os.makedirs("./target/bootstrap/sandbox/minitusk", exist_ok=True)
+
+    # Build minitusk (compile all modules in dependency order)
     print("=== Compiling minitusk ===")
-    run("cp packages/minitusk/src/main.ml ./target/bootstrap/minitusk.ml")
-    run(f"cd ./target/bootstrap && {ocamlc} -I +unix -o minitusk unix.cma minitusk.ml")
+
+    # Copy all source files to bootstrap directory
+    # Build order based on dependencies
+    source_files = [
+        "const.ml",
+        "io.ml",
+        "ocaml_platform.ml",
+        "toml.ml",
+        "file_scanner.ml",
+        "graph.ml",
+        "package.ml",
+        "dep_graph.ml",
+        "action.ml",
+        "main.ml"
+    ]
+
+    for file in source_files:
+        run(f"cp packages/minitusk/src/{file} ./target/bootstrap/sandbox/minitusk")
+
+    # Compile in dependency order (as determined by ocamldep)
+    run(f"cd ./target/bootstrap/sandbox/minitusk && {ocamlc} -I +unix -o minitusk unix.cma " + " ".join(source_files))
     
     # Install
     run("rm -f ./minitusk")
-    run("cp ./target/bootstrap/minitusk ./minitusk")
+    run("cp ./target/bootstrap/sandbox/minitusk/minitusk ./minitusk")
     run("chmod +x ./minitusk")
     
     print("\n✓ Bootstrap complete! Minitusk executable at: ./minitusk")

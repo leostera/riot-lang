@@ -23,6 +23,14 @@ type t =
       object_files : string list;
       includes : string list;
     }
+  | CreateExecutable of {
+      sandbox_dir : string;
+      exe_name : string;
+      main_module : string;
+      archive : string;
+      dependencies : string list;  (* List of dependency package names *)
+    }
+  | SetPermissions of { path : string; executable : bool }
 
 type build_plan = {
   package_name : Dep_graph.Module_name.t;
@@ -46,6 +54,10 @@ let print action =
       Printf.printf "  Compiling %s\n" (Filename.basename src_file)
   | CreateArchive { archive_name; _ } ->
       Printf.printf "  Creating %s\n" archive_name
+  | CreateExecutable { exe_name; _ } ->
+      Printf.printf "  Creating executable %s\n" exe_name
+  | SetPermissions { path; executable } ->
+      Printf.printf "  Setting permissions on %s\n" path
 
 let print_action action =
   match action with
@@ -59,6 +71,10 @@ let print_action action =
   | CreateArchive { archive_name; object_files; _ } ->
       Printf.printf "BUILD_ARCHIVE: %s (%d objects)\n" archive_name
         (List.length object_files)
+  | CreateExecutable { exe_name; main_module; archive; _ } ->
+      Printf.printf "BUILD_EXECUTABLE: %s from %s + %s\n" exe_name main_module archive
+  | SetPermissions { path; executable } ->
+      Printf.printf "SET_PERMISSIONS: %s (executable=%b)\n" path executable
 
 let print_build_plan plan =
   (* Quiet mode - only show action count *)
@@ -142,6 +158,31 @@ let execute_action ~project_root action =
       | Error err ->
           Printf.printf "%s\n%!" err;
           failwith "compilation error")
+  | CreateExecutable { sandbox_dir; exe_name; main_module; archive; dependencies } -> (
+      (* Link an executable from main module and archive *)
+      (* Dependencies should have been copied to our sandbox already *)
+      let dep_archives =
+        List.map (fun dep_name ->
+          Dep_graph.Module_name.cma (Dep_graph.Module_name.of_string dep_name)
+        ) dependencies
+      in
+      let libs = ["unix.cma"] @ dep_archives @ [archive] in
+      (* Everything is in the current sandbox directory *)
+      let includes = ["."] in
+      match
+        Ocaml_platform.Ocamlc.run ~includes ~libs ~output:(Some exe_name)
+          ~mode:Ocaml_platform.CustomExe ~flags:[] [main_module]
+      with
+      | Ok _ -> () (* Ignore stdout output *)
+      | Error err ->
+          Printf.printf "%s\n%!" err;
+          failwith "compilation error")
+  | SetPermissions { path; executable } ->
+      (* Set file permissions *)
+      if executable then
+        Unix.chmod path 0o755  (* rwxr-xr-x *)
+      else
+        Unix.chmod path 0o644  (* rw-r--r-- *)
 
 let execute_build_plan ~build_results plan =
   Printf.printf "Executing %d actions...\n" (List.length plan.actions);
@@ -190,7 +231,8 @@ let promote_outputs (plan : build_plan) =
       let basename = Filename.basename src in
       let dst = Filename.concat out_dir basename in
       if Io.file_exists src then (
-        Io.copy_file src dst;
+        (* Use copy_file_with_permissions to preserve executable bit *)
+        Io.copy_file_with_permissions src dst;
         Printf.printf "  - %s\n" basename))
     plan.outputs;
 
@@ -323,10 +365,12 @@ let from_dep_graph (dep_graph : Dep_graph.t) : build_plan =
           actions := CopyFile { src = path; dst = path } :: !actions;
           let compile = CompileC { sandbox_dir; src_file = path } in
           actions := compile :: !actions;
-          let obj_file =
-            Filename.chop_extension (Filename.basename path) ^ ".o"
-          in
-          o_files := !o_files @ [ obj_file ];
+          (* The .o file is created at the same path as the .c file, just different extension *)
+          let obj_file = Filename.chop_extension path ^ ".o" in
+          (* For the archive, we just need the basename *)
+          let obj_basename = Filename.chop_extension (Filename.basename path) ^ ".o" in
+          o_files := !o_files @ [ obj_basename ];
+          (* But for outputs, we need the full path so it gets promoted correctly *)
           outputs := Filename.concat sandbox_dir obj_file :: !outputs
       | { kind = H; _ } ->
           (* Header files already copied at the beginning *)
@@ -351,6 +395,53 @@ let from_dep_graph (dep_graph : Dep_graph.t) : build_plan =
       in
       actions := archive :: !actions;
       outputs := Filename.concat sandbox_dir archive_name :: !outputs)
+  in
+
+  (* Check if we have a main.ml file - if so, add binary creation *)
+  let () =
+    let has_main = ref false in
+    let main_cmo = ref "" in
+    Dep_graph.iter
+      (fun node ->
+        match node.value with
+        | { kind = Dep_graph.ML mod_; file = Concrete path; _ } ->
+            if Filename.basename path = "main.ml" then (
+              has_main := true;
+              main_cmo := Dep_graph.Module.namespaced_name mod_ ^ ".cmo"
+            )
+        | _ -> ())
+      dep_graph;
+
+    if !has_main then (
+      (* Create a simple executable linking main.cmo with the archive *)
+      let package_name_str = Dep_graph.Module_name.to_string dep_graph.package_name in
+      (* Use lowercase for the binary name *)
+      let binary_name = String.lowercase_ascii package_name_str in
+      let archive_name = Dep_graph.Module_name.cma dep_graph.package_name in
+      Printf.printf "  Adding binary creation for %s (found main.ml)\n" binary_name;
+
+      (* Get the package's dependencies in topological order *)
+      let dependencies = Dep_graph.get_dependencies dep_graph in
+      Printf.printf "  Dependencies for %s: [%s]\n" binary_name (String.concat "; " dependencies);
+
+      (* Create executable linking main.cmo with the package's archive *)
+      let link_action =
+        CreateExecutable {
+          sandbox_dir;
+          exe_name = binary_name;
+          main_module = !main_cmo;
+          archive = archive_name;
+          dependencies;
+        }
+      in
+      actions := link_action :: !actions;
+
+      (* Add action to make it executable *)
+      let chmod_action = SetPermissions { path = binary_name; executable = true } in
+      actions := chmod_action :: !actions;
+
+      outputs := Filename.concat sandbox_dir binary_name :: !outputs
+    )
   in
 
   {

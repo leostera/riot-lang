@@ -96,6 +96,7 @@ module Build_results : sig
   val register : t -> Package.t -> Module_name.t -> outputs:string list -> unit
   val has_module : t -> Module_name.t -> bool
   val copy_to_sandbox : t -> string -> unit
+  val get_package_names : t -> string list
 end = struct
   (* Build results tracking for cross-package dependencies *)
 
@@ -124,11 +125,16 @@ end = struct
   type t = {
     (* Map from package name (e.g., "kernel") to list of output paths *)
     packages : (Module_name.t, entry) Hashtbl.t;
+    (* Track order of registration *)
+    mutable order : Module_name.t list;
   }
 
-  let create () = { packages = Hashtbl.create 8 }
+  let create () = { packages = Hashtbl.create 8; order = [] }
 
   let register t package module_name ~outputs =
+    (* Add to order list if not already there *)
+    if not (Hashtbl.mem t.packages module_name) then
+      t.order <- t.order @ [module_name];
     Hashtbl.replace t.packages module_name { package; module_name; outputs }
 
   let has_module t module_name = Hashtbl.mem t.packages module_name
@@ -145,6 +151,10 @@ end = struct
               printf "  Copied dependency: %s\n" (Filename.basename src)))
           entry.outputs)
       t.packages
+
+  let get_package_names t =
+    (* Get list of all registered package names in registration order *)
+    List.map Module_name.to_string t.order
 
   let print t =
     printf "\n=== Build Results ===\n";
@@ -820,6 +830,14 @@ let wire_deps t =
   iter (handle_dep t) t
 
 (* This function handles the special case of the root module of the package *)
+let get_dependencies t =
+  (* Get list of dependency package names from build_results *)
+  (* These are all packages that were built before us *)
+  let all_packages = Build_results.get_package_names t.build_results in
+  List.filter
+    (fun name -> name <> Module_name.to_string t.package_name)
+    all_packages
+
 let scan ~root ~package_name ~build_results =
   printf "Scanning package %S from %s\n" package_name root;
   let t = make ~root ~package_name ~build_results in

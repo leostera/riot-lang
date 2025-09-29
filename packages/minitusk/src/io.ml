@@ -22,6 +22,14 @@ let copy_file src dst =
   let content = read_file src in
   write_file dst content
 
+let copy_file_with_permissions src dst =
+  (* Copy file content *)
+  let content = read_file src in
+  write_file dst content;
+  (* Copy permissions *)
+  let src_stat = Unix.stat src in
+  Unix.chmod dst src_stat.st_perm
+
 let run_command cmd : unit =
   let cmd = String.concat " " cmd in
   Printf.printf "  $ %s\n%!" cmd;
