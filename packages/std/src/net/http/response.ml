@@ -6,12 +6,7 @@ type t = {
 }
 
 let create status =
-  {
-    status;
-    version = Version.Http11;
-    headers = Header.empty;
-    body = None;
-  }
+  { status; version = Version.Http11; headers = Header.empty; body = None }
 
 let status response = response.status
 let version response = response.version
@@ -46,12 +41,7 @@ module Builder = struct
   }
 
   let create status =
-    {
-      status;
-      version = Version.Http11;
-      headers = Header.empty;
-      body = None;
-    }
+    { status; version = Version.Http11; headers = Header.empty; body = None }
 
   let status builder status = { builder with status }
   let version builder version = { builder with version }
