@@ -28,7 +28,7 @@ value kqueue_event_to_record(struct kevent *kevent) {
   CAMLreturn(event);
 }
 
-CAMLprim value std_sys_unix_kevent(value max_events_val, value timeout_val, value fd_val) {
+CAMLprim value kernel_unix_kevent(value max_events_val, value timeout_val, value fd_val) {
     // fprintf(stderr, "waiting events\n");
     CAMLparam3(max_events_val, timeout_val, fd_val);
     CAMLlocal1(event_array);
@@ -77,7 +77,7 @@ CAMLprim value std_sys_unix_kevent(value max_events_val, value timeout_val, valu
     CAMLreturn(event_array);
 }
 
-CAMLprim value std_sys_unix_fcntl(value fd, value cmd, value arg) {
+CAMLprim value kernel_unix_fcntl(value fd, value cmd, value arg) {
     CAMLparam3(fd, cmd, arg);
 
     int c_fd = Int_val(fd);
@@ -90,7 +90,7 @@ CAMLprim value std_sys_unix_fcntl(value fd, value cmd, value arg) {
     CAMLreturn(Val_int(result));
 }
 
-CAMLprim value std_sys_unix_kqueue(value unit) {
+CAMLprim value kernel_unix_kqueue(value unit) {
     CAMLparam1(unit);
 
     int fd = kqueue();
@@ -99,7 +99,7 @@ CAMLprim value std_sys_unix_kqueue(value unit) {
     CAMLreturn(Val_int(fd));
 }
 
-CAMLprim value std_sys_unix_kevent_register(value fd_val, value events_val, value ignored_errors_val) {
+CAMLprim value kernel_unix_kevent_register(value fd_val, value events_val, value ignored_errors_val) {
     CAMLparam3(fd_val, events_val, ignored_errors_val);
     int fd = Int_val(fd_val);
     int num_events = Wosize_val(events_val);

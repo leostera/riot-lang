@@ -23,7 +23,7 @@
 
 #endif
 
-CAMLprim value std_sys_unix_sendfile(value v_fd, value v_s, value v_offset, value v_len) {
+CAMLprim value kernel_unix_sendfile(value v_fd, value v_s, value v_offset, value v_len) {
   CAMLparam4(v_fd, v_s, v_offset, v_len);
   int fd = Int_val(v_fd);
   int s = Int_val(v_s);
@@ -76,7 +76,7 @@ static void fill_iov(struct iovec *iov, value v_bufs) {
   }
 }
 
-CAMLprim value std_sys_unix_readv(value v_fd, value v_bufs) {
+CAMLprim value kernel_unix_readv(value v_fd, value v_bufs) {
   CAMLparam1(v_bufs);
   ssize_t r;
   int n_bufs = Wosize_val(v_bufs);
@@ -92,7 +92,7 @@ CAMLprim value std_sys_unix_readv(value v_fd, value v_bufs) {
   CAMLreturn(Val_long(r));
 }
 
-CAMLprim value std_sys_unix_writev(value v_fd, value v_bufs) {
+CAMLprim value kernel_unix_writev(value v_fd, value v_bufs) {
   CAMLparam1(v_bufs);
   ssize_t r;
   int n_bufs = Wosize_val(v_bufs);
