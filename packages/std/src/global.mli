@@ -20,3 +20,6 @@ val time_ms : unit -> int
 
 val panic : string -> 'a
 (** Raise a panic exception with the given message *)
+
+val cell : 'a -> 'a Cell.t
+(** Create a mutable cell with the given value *)
