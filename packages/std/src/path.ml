@@ -42,6 +42,10 @@ let is_valid_utf8 s =
 let of_string s =
   if is_valid_utf8 s then Result.ok s else Result.err (InvalidUtf8 { path = s })
 
+let v path =
+  of_string path
+  |> Result.expect ~msg:(Format.sprintf "Invalid string path %S" path)
+
 let to_string t = t
 
 let join base path =
@@ -111,8 +115,16 @@ let rec normalize path =
   else if result = "" then "."
   else result
 
-let exists = Sys.file_exists
-let is_directory path = try Sys.is_directory path with Sys_error _ -> false
+let exists path =
+  match Kernel.IO.File.file_exists path with
+  | Ok exists -> exists
+  | Error _ -> false
+
+let is_directory path =
+  match Kernel.IO.File.is_directory path with
+  | Ok is_dir -> is_dir
+  | Error _ -> false
+
 let is_file path = exists path && not (is_directory path)
 let equal p1 p2 = normalize p1 = normalize p2
 let pp fmt path = Format.pp_print_string fmt (to_string path)

@@ -1,21 +1,30 @@
 (** Environment utilities *)
 
-let args = Array.to_list Sys.argv |> List.tl
+let args = Array.to_list (Kernel.System.argv ()) |> List.tl
 
 let current_dir () =
-  try Sys.getcwd () |> Path.of_string
-  with Sys_error msg -> Error (Path.SystemError msg)
+  match Kernel.IO.File.getcwd () with
+  | Ok cwd -> Path.of_string cwd
+  | Error e ->
+      Error
+        (Path.SystemError
+           (Kernel.IO.pp_err Format.str_formatter e;
+            Format.flush_str_formatter ()))
 
 let set_current_dir path =
-  try
-    Sys.chdir (Path.to_string path);
-    Ok ()
-  with Sys_error msg -> Error (Path.SystemError msg)
+  match Kernel.IO.File.chdir (Path.to_string path) with
+  | Ok () -> Ok ()
+  | Error e ->
+      Error
+        (Path.SystemError
+           (Kernel.IO.pp_err Format.str_formatter e;
+            Format.flush_str_formatter ()))
 
 let home_dir () =
   try
     let home =
-      Sys.getenv "HOME" |> Path.of_string
+      Kernel.Env.getenv_exn "HOME"
+      |> Path.of_string
       |> Result.expect ~msg:"HOME path was an invalid UTF-8 path"
     in
     Some home
@@ -31,7 +40,7 @@ type 't var_type =
 let var : type t. t var_type -> name:string -> t option =
  fun var_type ~name ->
   try
-    let value = Sys.getenv name in
+    let value = Kernel.Env.getenv_exn name in
     match var_type with
     | String -> Some value
     | Int -> ( try Some (int_of_string value) with _ -> None)
@@ -45,11 +54,11 @@ let var : type t. t var_type -> name:string -> t option =
   with Not_found -> None
 
 let set_var ~name ~value =
-  Unix.putenv name value;
+  Kernel.Env.putenv name value;
   None
 
 let vars () =
-  Unix.environment () |> Array.to_list
+  Kernel.Env.environment () |> Array.to_list
   |> List.filter_map (fun s ->
       match String.index_opt s '=' with
       | None -> None
@@ -62,10 +71,11 @@ let vars () =
 let home () = home_dir ()
 
 let getenv key =
-  try Ok (Sys.getenv key) with Not_found -> Error (`EnvVarNotFound key)
+  try Ok (Kernel.Env.getenv_exn key)
+  with Not_found -> Error (`EnvVarNotFound key)
 
 let putenv key value =
-  Unix.putenv key value;
+  Kernel.Env.putenv key value;
   Ok ()
 
 let get_home () = home_dir ()

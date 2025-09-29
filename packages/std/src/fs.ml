@@ -2,100 +2,120 @@
 
 type error = SystemError of string
 
-(** Basic filesystem operations - defined first as they're used by other functions *)
+(** Helper to convert Kernel.IO errors to our error type *)
+let kernel_error_to_string = function
+  | `Noop -> "No operation"
+  | `Eof -> "End of file"
+  | `Timeout -> "Timeout"
+  | `Process_down -> "Process down"
+  | `Closed -> "Closed"
+  | `Connection_closed -> "Connection closed"
+  | `Exn exn -> Printexc.to_string exn
+  | `No_info -> "No info"
+  | `Would_block -> "Would block"
+  | `Unix_error err -> Unix.error_message err
+  | _ -> "Unknown error"
+
+let convert_kernel_result = function
+  | Ok v -> Ok v
+  | Error e -> Error (SystemError (kernel_error_to_string e))
+
+(** Basic filesystem operations - defined first as they're used by other
+    functions *)
 
 let is_directory path =
   let path_str = Path.to_string path in
-  try Ok (Sys.is_directory path_str)
-  with e -> Error (SystemError (Printexc.to_string e))
+  Kernel.IO.File.is_directory path_str |> convert_kernel_result
 
 let is_regular_file path =
   let path_str = Path.to_string path in
-  try Ok ((Unix.stat path_str).st_kind = Unix.S_REG) with _ -> Ok false
+  match Kernel.IO.File.stat path_str with
+  | Ok stats -> Ok (stats.st_kind = Unix.S_REG)
+  | Error _ -> Ok false
 
 let remove_file path =
   let path_str = Path.to_string path in
-  try
-    Sys.remove path_str;
-    Ok ()
-  with e -> Error (SystemError (Printexc.to_string e))
+  Kernel.IO.File.remove path_str |> convert_kernel_result
 
 let rmdir path =
   let path_str = Path.to_string path in
-  try
-    Unix.rmdir path_str;
-    Ok ()
-  with e -> Error (SystemError (Printexc.to_string e))
+  Kernel.IO.File.rmdir path_str |> convert_kernel_result
 
 let opendir path =
   let path_str = Path.to_string path in
-  try Ok (Unix.opendir path_str)
-  with e -> Error (SystemError (Printexc.to_string e))
+  Kernel.IO.File.opendir path_str |> convert_kernel_result
 
 let readdir_handle handle =
-  try Ok (Unix.readdir handle) with
-  | End_of_file -> Error (SystemError "End of directory")
-  | e -> Error (SystemError (Printexc.to_string e))
+  match Kernel.IO.File.readdir_handle handle with
+  | Error `Eof -> Error (SystemError "End of directory")
+  | result -> convert_kernel_result result
 
-let closedir handle =
-  try
-    Unix.closedir handle;
-    Ok ()
-  with e -> Error (SystemError (Printexc.to_string e))
+let closedir handle = Kernel.IO.File.closedir handle |> convert_kernel_result
 
 let readdir path =
   match opendir path with
   | Error e -> Error e
-  | Ok handle ->
+  | Ok handle -> (
       let rec read_all acc =
         match readdir_handle handle with
-        | Error _ -> List.rev acc  (* End of directory or error *)
+        | Error _ -> List.rev acc (* End of directory or error *)
         | Ok entry ->
-            if entry = "." || entry = ".." then
-              read_all acc
-            else
-              read_all (entry :: acc)
+            if entry = "." || entry = ".." then read_all acc
+            else read_all (entry :: acc)
       in
       let entries = read_all [] in
-      match closedir handle with
-      | Error e -> Error e
-      | Ok () -> Ok entries
+      match closedir handle with Error e -> Error e | Ok () -> Ok entries)
 
 (** Directory reading iterator *)
 module ReadDir = struct
-  type t = {
-    handle : Unix.dir_handle;
-    mutable closed : bool;
-  }
+  type t = { path : Path.t; handle : Unix.dir_handle; mutable closed : bool }
+  type state = t
+  type item = Path.t
 
   let create path =
     match opendir path with
     | Error e -> Error e
-    | Ok handle -> Ok { handle; closed = false }
-
-  let rec next t =
-    if t.closed then None
-    else
-      try
-        let entry = Unix.readdir t.handle in
-        if entry = "." || entry = ".." then
-          next t  (* Skip . and .. *)
-        else
-          match Path.of_string entry with
-          | Ok p -> Some p
-          | Error _ -> next t  (* Skip invalid paths *)
-      with End_of_file ->
-        t.closed <- true;
-        None
+    | Ok handle -> Ok { path; handle; closed = false }
 
   let close t =
     if not t.closed then (
       t.closed <- true;
       try
-        Unix.closedir t.handle;
+        Kernel.IO.File.closedir t.handle |> ignore;
         Ok ()
-      with e -> Error (SystemError (Printexc.to_string e))
-    ) else Ok ()
+      with e -> Error (SystemError (Printexc.to_string e)))
+    else Ok ()
+
+  let rec next t =
+    if t.closed then None
+    else
+      try
+        let entry =
+          match Kernel.IO.File.readdir_handle t.handle with
+          | Ok e -> e
+          | Error _ -> raise End_of_file
+        in
+        if entry = "." || entry = ".." then next t (* Skip . and .. *)
+        else
+          match Path.of_string entry with
+          | Ok p -> Some p
+          | Error _ -> next t (* Skip invalid paths *)
+      with End_of_file ->
+        close t
+        |> Result.expect
+             ~msg:
+               (Format.sprintf "Could not close ReadDir.t for %S"
+                  (Path.to_string t.path));
+        None
+
+  (* MutIterator.Intf implementation *)
+  let size _t = 0 (* Unknown size for directory iteration *)
+
+  let clone t =
+    (* Can't really clone a directory handle, so we create a new one *)
+    match create t.path with
+    | Ok new_t -> new_t
+    | Error _ -> t (* Fall back to the original if we can't create a new one *)
 end
 
 (** Clean API implementations following the FIXME guidelines *)
@@ -103,7 +123,11 @@ end
 let canonicalize path =
   let path_str = Path.to_string path in
   try
-    let abs_path = Unix.realpath path_str in
+    let abs_path =
+      match Kernel.IO.File.realpath path_str with
+      | Ok p -> p
+      | Error _ -> path_str
+    in
     match Path.of_string abs_path with
     | Ok p -> Ok p
     | Error _ -> Error (SystemError "Invalid canonical path")
@@ -121,15 +145,20 @@ let copy ~src ~dst =
       let n = input ic buf 0 buf_size in
       if n > 0 then (
         output oc buf 0 n;
-        copy_loop ()
-      )
+        copy_loop ())
     in
     copy_loop ();
     close_in ic;
     close_out oc;
     (* Copy permissions *)
-    let stats = Unix.stat src_str in
-    Unix.chmod dst_str stats.st_perm;
+    let stats =
+      match Kernel.IO.File.stat src_str with
+      | Ok s -> s
+      | Error _ -> raise (Sys_error "Failed to stat source file")
+    in
+    (match Kernel.IO.File.chmod dst_str stats.st_perm with
+    | Ok () -> ()
+    | Error _ -> raise (Sys_error "Failed to chmod dest file"));
     Ok ()
   with e -> Error (SystemError (Printexc.to_string e))
 
@@ -141,42 +170,38 @@ let create_dir_all path =
         if not (Path.exists parent) then
           match create_parents parent with
           | Error e -> Error e
-          | Ok () ->
+          | Ok () -> (
               let parent_str = Path.to_string parent in
               try
-                Unix.mkdir parent_str 0o755;
-                Ok ()
-              with
-              | Unix.Unix_error (Unix.EEXIST, _, _) -> Ok ()
-              | e -> Error (SystemError (Printexc.to_string e))
+                match Kernel.IO.File.mkdir parent_str 0o755 with
+                | Ok () -> Ok ()
+                | Error (`Unix_error Unix.EEXIST) -> Ok ()
+                | Error e -> Error (SystemError (kernel_error_to_string e))
+              with e -> Error (SystemError (Printexc.to_string e)))
         else Ok ()
   in
   match create_parents path with
   | Error e -> Error e
-  | Ok () ->
+  | Ok () -> (
       let path_str = Path.to_string path in
       try
-        Unix.mkdir path_str 0o755;
-        Ok ()
-      with
-      | Unix.Unix_error (Unix.EEXIST, _, _) -> Ok ()
-      | e -> Error (SystemError (Printexc.to_string e))
+        match Kernel.IO.File.mkdir path_str 0o755 with
+        | Ok () -> Ok ()
+        | Error (`Unix_error Unix.EEXIST) -> Ok ()
+        | Error e -> Error (SystemError (kernel_error_to_string e))
+      with e -> Error (SystemError (Printexc.to_string e)))
 
-let exists path =
-  Ok (Path.exists path)
+let exists path = Ok (Path.exists path)
 
 let hard_link ~src ~dst =
   let src_str = Path.to_string src in
   let dst_str = Path.to_string dst in
-  try
-    Unix.link src_str dst_str;
-    Ok ()
+  try Kernel.IO.File.link src_str dst_str |> convert_kernel_result
   with e -> Error (SystemError (Printexc.to_string e))
 
 let metadata path =
   let path_str = Path.to_string path in
-  try Ok (Unix.stat path_str)
-  with e -> Error (SystemError (Printexc.to_string e))
+  Kernel.IO.File.stat path_str |> convert_kernel_result
 
 let read_to_string path =
   let path_str = Path.to_string path in
@@ -188,7 +213,10 @@ let read_to_string path =
     Ok buf
   with e -> Error (SystemError (Printexc.to_string e))
 
-let read_dir path = ReadDir.create path
+let read_dir path =
+  match ReadDir.create path with
+  | Error e -> Error e
+  | Ok state -> Ok (MutIterator.make (module ReadDir) state)
 
 let remove_dir_all path =
   let rec remove_recursive path =
@@ -197,40 +225,35 @@ let remove_dir_all path =
     | Ok false ->
         (* It's a file *)
         remove_file path
-    | Ok true ->
+    | Ok true -> (
         (* It's a directory *)
         match readdir path with
         | Error e -> Error e
         | Ok entries ->
             let rec remove_entries = function
               | [] -> rmdir path
-              | entry :: rest ->
+              | entry :: rest -> (
                   match Path.of_string entry with
                   | Error _ -> Error (SystemError ("Invalid path: " ^ entry))
-                  | Ok entry_path ->
+                  | Ok entry_path -> (
                       let full_path = Path.join path entry_path in
                       match remove_recursive full_path with
                       | Error e -> Error e
-                      | Ok () -> remove_entries rest
+                      | Ok () -> remove_entries rest))
             in
-            remove_entries entries
+            remove_entries entries)
   in
   remove_recursive path
 
 let rename ~src ~dst =
   let src_str = Path.to_string src in
   let dst_str = Path.to_string dst in
-  try
-    Unix.rename src_str dst_str;
-    Ok ()
+  try Kernel.IO.File.rename src_str dst_str |> convert_kernel_result
   with e -> Error (SystemError (Printexc.to_string e))
 
 let set_permissions path perm =
   let path_str = Path.to_string path in
-  try
-    Unix.chmod path_str perm;
-    Ok ()
-  with e -> Error (SystemError (Printexc.to_string e))
+  Kernel.IO.File.chmod path_str perm |> convert_kernel_result
 
 let write content path =
   let path_str = Path.to_string path in
@@ -244,7 +267,11 @@ let write content path =
 let read_link path =
   let path_str = Path.to_string path in
   try
-    let target = Unix.readlink path_str in
+    let target =
+      match Kernel.IO.File.readlink path_str with
+      | Ok t -> t
+      | Error e -> raise (Sys_error (kernel_error_to_string e))
+    in
     match Path.of_string target with
     | Ok p -> Ok p
     | Error _ -> Error (SystemError "Invalid link target")
@@ -252,60 +279,49 @@ let read_link path =
 
 let create_dir path =
   let path_str = Path.to_string path in
-  try
-    if not (Sys.file_exists path_str) then Unix.mkdir path_str 0o755;
-    Ok ()
-  with e -> Error (SystemError (Printexc.to_string e))
+  match Kernel.IO.File.file_exists path_str with
+  | Ok false | Error _ ->
+      Kernel.IO.File.mkdir path_str 0o755 |> convert_kernel_result
+  | Ok true -> Ok ()
 
 let file_exists path =
   let path_str = Path.to_string path in
-  try Ok (Sys.file_exists path_str)
-  with e -> Error (SystemError (Printexc.to_string e))
+  Kernel.IO.File.file_exists path_str |> convert_kernel_result
 
 let dir_exists path =
   let path_str = Path.to_string path in
-  try Ok (Sys.file_exists path_str && Sys.is_directory path_str)
-  with e -> Error (SystemError (Printexc.to_string e))
+  match Kernel.IO.File.file_exists path_str with
+  | Ok true -> Kernel.IO.File.is_directory path_str |> convert_kernel_result
+  | Ok false -> Ok false
+  | Error e -> Error (SystemError (kernel_error_to_string e))
 
 let stat path =
   let path_str = Path.to_string path in
-  try Ok (Unix.stat path_str)
-  with e -> Error (SystemError (Printexc.to_string e))
+  Kernel.IO.File.stat path_str |> convert_kernel_result
 
 let chmod path perm =
   let path_str = Path.to_string path in
-  try
-    Unix.chmod path_str perm;
-    Ok ()
-  with e -> Error (SystemError (Printexc.to_string e))
+  Kernel.IO.File.chmod path_str perm |> convert_kernel_result
 
 let symlink src dst =
   let src_str = Path.to_string src in
   let dst_str = Path.to_string dst in
-  try
-    Unix.symlink src_str dst_str;
-    Ok ()
-  with e -> Error (SystemError (Printexc.to_string e))
+  Kernel.IO.File.symlink src_str dst_str |> convert_kernel_result
 
 let mkdir path perm =
   let path_str = Path.to_string path in
-  try
-    Unix.mkdir path_str perm;
-    Ok ()
-  with e -> Error (SystemError (Printexc.to_string e))
+  Kernel.IO.File.mkdir path_str perm |> convert_kernel_result
 
 let mkdir_safe path perm =
   let path_str = Path.to_string path in
-  try
-    Unix.mkdir path_str perm;
-    Ok ()
-  with
-  | Unix.Unix_error (Unix.EEXIST, _, _) -> Ok ()
-  | e -> Error (SystemError (Printexc.to_string e))
+  match Kernel.IO.File.mkdir path_str perm with
+  | Ok () -> Ok ()
+  | Error (`Unix_error Unix.EEXIST) -> Ok ()
+  | Error e -> Error (SystemError (kernel_error_to_string e))
 
 let rec mkdirp path =
   let path_str = Path.to_string path in
-  if not (Sys.file_exists path_str) then
+  if not (Kernel.IO.File.file_exists path_str = Ok true) then
     match Path.parent path with
     | Some parent ->
         let _ = mkdirp parent in
@@ -315,26 +331,38 @@ let rec mkdirp path =
 
 let rec remove_dir path =
   let path_str = Path.to_string path in
-  try
-    let handle = Unix.opendir path_str in
-    (try
-       while true do
-         let file = Unix.readdir handle in
-         if file <> "." && file <> ".." then
-           let file_path =
-             Path.join path
-               (Path.of_string file |> Result.expect ~msg:"Invalid file path")
-           in
-           if Sys.is_directory (Path.to_string file_path) then
-             let _ = remove_dir file_path in
-             ()
-           else Sys.remove (Path.to_string file_path)
-       done
-     with End_of_file -> ());
-    Unix.closedir handle;
-    Unix.rmdir path_str;
-    Ok ()
-  with e -> Error (SystemError (Printexc.to_string e))
+  match Kernel.IO.File.opendir path_str with
+  | Error e -> Error (SystemError (kernel_error_to_string e))
+  | Ok handle -> (
+      let rec process_entries () =
+        match Kernel.IO.File.readdir_handle handle with
+        | Error `Eof -> Ok ()
+        | Error e -> Error (SystemError (kernel_error_to_string e))
+        | Ok file when file = "." || file = ".." -> process_entries ()
+        | Ok file -> (
+            let file_path =
+              Path.join path
+                (Path.of_string file |> Result.expect ~msg:"Invalid file path")
+            in
+            let file_path_str = Path.to_string file_path in
+            match Kernel.IO.File.is_directory file_path_str with
+            | Ok true -> (
+                match remove_dir file_path with
+                | Error e -> Error e
+                | Ok () -> process_entries ())
+            | Ok false | Error _ -> (
+                match Kernel.IO.File.remove file_path_str with
+                | Error e -> Error (SystemError (kernel_error_to_string e))
+                | Ok () -> process_entries ()))
+      in
+      match process_entries () with
+      | Error e ->
+          let _ = Kernel.IO.File.closedir handle in
+          Error e
+      | Ok () -> (
+          match Kernel.IO.File.closedir handle with
+          | Error e -> Error (SystemError (kernel_error_to_string e))
+          | Ok () -> Kernel.IO.File.rmdir path_str |> convert_kernel_result))
 
 let copy_file src dst =
   let src_str = Path.to_string src in
@@ -353,17 +381,15 @@ let copy_file src dst =
   with e -> Error (SystemError (Printexc.to_string e))
 
 let getcwd () =
-  try
-    match Path.of_string (Sys.getcwd ()) with
-    | Ok path -> Ok path
-    | Error path_error -> Error (SystemError "Invalid path")
-  with e -> Error (SystemError (Printexc.to_string e))
+  match Kernel.IO.File.getcwd () with
+  | Ok cwd_str -> (
+      match Path.of_string cwd_str with
+      | Ok path -> Ok path
+      | Error _ -> Error (SystemError "Invalid path"))
+  | Error e -> Error (SystemError (kernel_error_to_string e))
 
 let chdir path =
-  try
-    Sys.chdir (Path.to_string path);
-    Ok ()
-  with e -> Error (SystemError (Printexc.to_string e))
+  Kernel.IO.File.chdir (Path.to_string path) |> convert_kernel_result
 
 let temp_dir () =
   try
@@ -374,7 +400,7 @@ let temp_dir () =
 
 let home_dir () =
   try
-    match Sys.getenv_opt "HOME" with
+    match Kernel.Env.getenv "HOME" with
     | Some home -> (
         match Path.of_string home with
         | Ok path -> Ok path
@@ -384,22 +410,21 @@ let home_dir () =
 
 let file_size path =
   let path_str = Path.to_string path in
-  try Ok (Unix.stat path_str).st_size
-  with e -> Error (SystemError (Printexc.to_string e))
+  match Kernel.IO.File.stat path_str with
+  | Ok stats -> Ok stats.st_size
+  | Error e -> Error (SystemError (kernel_error_to_string e))
 
-let path_separator () = if Sys.unix then "/" else "\\"
+let path_separator () = if Kernel.System.unix then "/" else "\\"
 
 let current_executable () =
   try
-    match Path.of_string Sys.executable_name with
+    match Path.of_string Kernel.System.executable_name with
     | Ok path -> Ok path
     | Error _ -> Error (SystemError "Invalid executable path")
   with e -> Error (SystemError (Printexc.to_string e))
 
 let is_absolute path = Path.is_absolute path
-
 let is_relative path = Path.is_relative path
-
 let join paths = List.fold_left Path.join (List.hd paths) (List.tl paths)
 
 let read path =
@@ -413,7 +438,6 @@ let read path =
   with e -> Error (SystemError (Printexc.to_string e))
 
 let read_file = read
-
 let write_file path content = write content path
 
 (** Create a temporary directory, run a function with it, then clean it up *)
@@ -441,9 +465,7 @@ let list_dir path =
       let paths =
         List.filter_map
           (fun entry ->
-            match Path.of_string entry with
-            | Ok p -> Some p
-            | Error _ -> None)
+            match Path.of_string entry with Ok p -> Some p | Error _ -> None)
           entries
       in
       Ok paths
@@ -462,14 +484,13 @@ let rec walk path fn =
       | Ok entries ->
           let rec walk_entries = function
             | [] -> Ok ()
-            | entry :: rest ->
+            | entry :: rest -> (
                 let full_path =
                   Path.join path
                     (Path.of_string entry |> Result.expect ~msg:"Invalid path")
                 in
                 match walk full_path fn with
                 | Error e -> Error e
-                | Ok () -> walk_entries rest
+                | Ok () -> walk_entries rest)
           in
           walk_entries (List.filter (fun e -> e <> "." && e <> "..") entries))
-

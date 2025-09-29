@@ -82,9 +82,9 @@ let output cmd =
 
   (* Use open_process_full to get stdin, stdout, and stderr *)
   let env_array =
-    if cmd.environment = [] then Unix.environment ()
+    if cmd.environment = [] then Kernel.OsProcess.environment ()
     else
-      let base_env = Unix.environment () |> Array.to_list in
+      let base_env = Kernel.OsProcess.environment () |> Array.to_list in
       let env_list =
         List.fold_left
           (fun acc (k, v) ->
@@ -103,7 +103,7 @@ let output cmd =
 
   (* Execute the command *)
   let stdout_ic, stdin_oc, stderr_ic =
-    Unix.open_process_full
+    Kernel.OsProcess.open_process_full
       (cmd.program ^ " " ^ String.concat " " cmd.arguments)
       env_array
   in
@@ -131,7 +131,7 @@ let output cmd =
 
   (* Wait for process and get exit status *)
   let process_status =
-    Unix.close_process_full (stdout_ic, stdin_oc, stderr_ic)
+    Kernel.OsProcess.close_process_full (stdout_ic, stdin_oc, stderr_ic)
   in
 
   let status_code =
@@ -157,7 +157,7 @@ let status cmd =
   Printf.printf "  $ %s\n%!" cmd_str;
 
   (* Use system for simpler status-only execution when inheriting stdout/stderr *)
-  match Unix.system cmd_str with
+  match Kernel.OsProcess.system cmd_str with
   | Unix.WEXITED code -> Ok code
   | Unix.WSIGNALED n -> Ok (128 + n)
   | Unix.WSTOPPED n -> Ok (128 + n)
@@ -170,7 +170,9 @@ let spawn ~cmd ~args =
     (* Open /dev/null for stdin/stdout/stderr to detach the process *)
     let null_in = Unix.openfile "/dev/null" [ Unix.O_RDONLY ] 0o000 in
     let null_out = Unix.openfile "/dev/null" [ Unix.O_WRONLY ] 0o000 in
-    let pid = Unix.create_process cmd args_array null_in null_out null_out in
+    let pid =
+      Kernel.OsProcess.create_process cmd args_array null_in null_out null_out
+    in
     Unix.close null_in;
     Unix.close null_out;
     Ok { pid; cmd }
@@ -183,13 +185,13 @@ let pid t = t.pid
 let is_running t =
   try
     (* Send signal 0 to check if process exists *)
-    Unix.kill t.pid 0;
+    Kernel.OsProcess.kill t.pid 0;
     true
   with Unix.Unix_error _ -> false
 
 let kill t =
   try
-    Unix.kill t.pid Sys.sigterm;
+    Kernel.OsProcess.kill t.pid Kernel.OsProcess.sigterm;
     Ok ()
   with Unix.Unix_error (_, _, _) as exn ->
     Error (SpawnFailed (Printexc.to_string exn))
@@ -197,15 +199,15 @@ let kill t =
 let is_pid_running pid =
   try
     (* Send signal 0 to check if process exists *)
-    Unix.kill pid 0;
+    Kernel.OsProcess.kill pid 0;
     true
   with Unix.Unix_error _ -> false
 
-let exec ?(args = []) prog () = Unix.execv prog (Array.of_list args)
-let getpid () = Unix.getpid ()
-let system cmd = Unix.system cmd
-let open_process_in cmd = Unix.open_process_in cmd
-let close_process_in ic = Unix.close_process_in ic
+let exec ?(args = []) prog () = Kernel.OsProcess.execv prog (Array.of_list args)
+let getpid () = Kernel.OsProcess.getpid ()
+let system cmd = Kernel.OsProcess.system cmd
+let open_process_in cmd = Kernel.OsProcess.open_process_in cmd
+let close_process_in ic = Kernel.OsProcess.close_process_in ic
 
 let run_command ?env cmd_str =
   (* Legacy API - parse the command string and use the new API *)
@@ -232,15 +234,15 @@ let run_command ?env cmd_str =
       | Error e -> Error e)
 
 let run_process_lines cmd =
-  let ic = Unix.open_process_in cmd in
+  let ic = Kernel.OsProcess.open_process_in cmd in
   let lines = ref [] in
   (try
      while true do
        lines := input_line ic :: !lines
      done
    with End_of_file -> ());
-  ignore (Unix.close_process_in ic);
+  ignore (Kernel.OsProcess.close_process_in ic);
   List.rev !lines
 
-let executable_name = Sys.executable_name
-let argv () = Sys.argv
+let executable_name = Kernel.System.executable_name
+let argv () = Kernel.System.argv ()

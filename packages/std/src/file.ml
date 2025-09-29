@@ -29,25 +29,35 @@ let error_of_unix_error = function
   | e -> `Unknown (Unix.error_message e)
 
 let exists ~path =
-  match Unix.stat path with
-  | exception Unix.Unix_error (Unix.ENOENT, _, _) -> false
-  | _ -> true
+  match Kernel.IO.File.file_exists path with
+  | Ok exists -> exists
+  | Error _ -> false
 
 let remove ~path =
-  try
-    Unix.unlink path;
-    Ok ()
-  with Unix.Unix_error (e, _, _) -> Error (error_of_unix_error e)
+  match Kernel.IO.File.remove path with
+  | Ok () -> Ok ()
+  | Error (`Unix_error e) -> Error (error_of_unix_error e)
+  | Error _ -> Error (`Unknown "Failed to remove file")
 
 let read ~path =
   let open_flags = [ Unix.O_RDONLY ] in
   try
-    let fd = Unix.openfile path open_flags 0o640 in
+    let fd =
+      match Kernel.IO.File.open_file path open_flags 0o640 with
+      | Ok fd -> fd
+      | Error (`Unix_error e) -> raise (Unix.Unix_error (e, "open", path))
+      | Error _ -> raise (Unix.Unix_error (Unix.ENOENT, "open", path))
+    in
     let gluon_fd = fd in
     let source = Kernel.IO.File.to_source gluon_fd in
 
     (* Get file size *)
-    let stats = Unix.fstat fd in
+    let stats =
+      match Kernel.IO.File.fstat fd with
+      | Ok s -> s
+      | Error (`Unix_error e) -> raise (Unix.Unix_error (e, "fstat", ""))
+      | Error _ -> raise (Unix.Unix_error (Unix.ENOENT, "fstat", ""))
+    in
     let size = stats.Unix.st_size in
     let buffer = Bytes.create size in
 
@@ -63,7 +73,7 @@ let read ~path =
               ~interest:Kernel.IO.Interest.readable ~source (fun () ->
                 read_loop pos remaining)
         | Error e ->
-            Unix.close fd;
+            Kernel.IO.File.close_fd fd |> ignore;
             Error
               (`Unknown
                  (Printf.sprintf "Read error: %s"
@@ -75,14 +85,19 @@ let read ~path =
     in
 
     let result = read_loop 0 size in
-    Unix.close fd;
+    Kernel.IO.File.close_fd fd |> ignore;
     result
   with Unix.Unix_error (e, _, _) -> Error (error_of_unix_error e)
 
 let write ~path ~content =
   let open_flags = [ Unix.O_WRONLY; Unix.O_CREAT; Unix.O_TRUNC ] in
   try
-    let fd = Unix.openfile path open_flags 0o640 in
+    let fd =
+      match Kernel.IO.File.open_file path open_flags 0o640 with
+      | Ok fd -> fd
+      | Error (`Unix_error e) -> raise (Unix.Unix_error (e, "open", path))
+      | Error _ -> raise (Unix.Unix_error (Unix.ENOENT, "open", path))
+    in
     let gluon_fd = fd in
     let source = Kernel.IO.File.to_source gluon_fd in
     let buffer = Bytes.of_string content in
@@ -99,7 +114,7 @@ let write ~path ~content =
               ~interest:Kernel.IO.Interest.writable ~source (fun () ->
                 write_loop pos remaining)
         | Error e ->
-            Unix.close fd;
+            Kernel.IO.File.close_fd fd |> ignore;
             Error
               (`Unknown
                  (Printf.sprintf "Write error: %s"
@@ -111,35 +126,41 @@ let write ~path ~content =
     in
 
     let result = write_loop 0 len in
-    Unix.close fd;
+    Kernel.IO.File.close_fd fd |> ignore;
     result
   with Unix.Unix_error (e, _, _) -> Error (error_of_unix_error e)
 
 let list_dir ~path =
-  try
-    let handle = Unix.opendir path in
-    let files = ref [] in
-    let rec read_loop () =
-      try
-        let entry = Unix.readdir handle in
-        if entry <> "." && entry <> ".." then files := entry :: !files;
-        (* Yield to allow other tasks to run during directory scanning *)
-        Miniriot.yield ();
-        read_loop ()
-      with End_of_file ->
-        Unix.closedir handle;
-        Ok (List.rev !files)
-    in
-    read_loop ()
-  with Unix.Unix_error (e, _, _) -> Error (error_of_unix_error e)
+  match Kernel.IO.File.opendir path with
+  | Error (`Unix_error e) -> Error (error_of_unix_error e)
+  | Error _ -> Error (`Unknown "Failed to open directory")
+  | Ok handle ->
+      let files = ref [] in
+      let rec read_loop () =
+        match Kernel.IO.File.readdir_handle handle with
+        | Error `Eof ->
+            let _ = Kernel.IO.File.closedir handle in
+            Ok (List.rev !files)
+        | Error (`Unix_error e) ->
+            let _ = Kernel.IO.File.closedir handle in
+            Error (error_of_unix_error e)
+        | Error _ ->
+            let _ = Kernel.IO.File.closedir handle in
+            Error (`Unknown "Failed to read directory")
+        | Ok entry ->
+            if entry <> "." && entry <> ".." then files := entry :: !files;
+            (* Yield to allow other tasks to run during directory scanning *)
+            Miniriot.yield ();
+            read_loop ()
+      in
+      read_loop ()
 
 let list_dir_all ~path = list_dir ~path
 
 let is_directory ~path =
-  try
-    let stats = Unix.stat path in
-    stats.Unix.st_kind = Unix.S_DIR
-  with Unix.Unix_error (Unix.ENOENT, _, _) -> false
+  match Kernel.IO.File.is_directory path with
+  | Ok is_dir -> is_dir
+  | Error _ -> false
 
 let readdir ~path =
   match Kernel.IO.File.readdir path with

@@ -20,12 +20,12 @@ val canonicalize : Path.t -> (Path.t, error) Result.t
     components normalized and symbolic links resolved. *)
 
 val copy : src:Path.t -> dst:Path.t -> (unit, error) Result.t
-(** Copies the contents of one file to another. This function will also
-    copy the permission bits of the original file to the destination file. *)
+(** Copies the contents of one file to another. This function will also copy the
+    permission bits of the original file to the destination file. *)
 
 val create_dir_all : Path.t -> (unit, error) Result.t
-(** Recursively create a directory and all of its parent components if
-    they are missing. *)
+(** Recursively create a directory and all of its parent components if they are
+    missing. *)
 
 val exists : Path.t -> (bool, error) Result.t
 (** Returns Ok(true) if the path points at an existing entity. *)
@@ -34,10 +34,10 @@ val hard_link : src:Path.t -> dst:Path.t -> (unit, error) Result.t
 (** Creates a new hard link on the filesystem. *)
 
 val metadata : Path.t -> (Unix.stats, error) Result.t
-(** Given a path, queries the file system to get information about a
-    file, directory, etc. *)
+(** Given a path, queries the file system to get information about a file,
+    directory, etc. *)
 
-val read_dir : Path.t -> (ReadDir.t, error) Result.t
+val read_dir : Path.t -> (Path.t MutIterator.t, error) Result.t
 (** Returns an iterator over the entries within a directory. *)
 
 val read_link : Path.t -> (Path.t, error) Result.t
@@ -47,12 +47,12 @@ val read_to_string : Path.t -> (string, error) Result.t
 (** Reads the entire contents of a file into a string. *)
 
 val remove_dir_all : Path.t -> (unit, error) Result.t
-(** Removes a directory at this path, after removing all its contents.
-    Use carefully! *)
+(** Removes a directory at this path, after removing all its contents. Use
+    carefully! *)
 
 val rename : src:Path.t -> dst:Path.t -> (unit, error) Result.t
-(** Renames a file or directory to a new name, replacing the original
-    file if to already exists. *)
+(** Renames a file or directory to a new name, replacing the original file if to
+    already exists. *)
 
 val set_permissions : Path.t -> int -> (unit, error) Result.t
 (** Changes the permissions found on a file or a directory. *)
