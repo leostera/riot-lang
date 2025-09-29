@@ -1,6 +1,8 @@
 (** Riot's Standard library *)
 
 module Buffer = Buffer
+module Cell = Cell
+module Collections = Collections
 module Command = Command
 module Data = Data
 module Datetime = Datetime
@@ -12,8 +14,10 @@ module Net = Net
 module Option = Option
 module Path = Path
 module Result = Result
+module Time = Time
 module Iterator = Iterator
 module MutIterator = MutIterator
+module Graph = Graph
 (* module String = String (* TODO: fix iterator dependencies *) *)
 
 val available_parallelism : unit -> int
@@ -41,3 +45,6 @@ val time_ms : unit -> int
 
 val panic : string -> 'a
 (** Panic with a message - raises an uncatchable exception *)
+
+val cell : 'a -> 'a Cell.t
+(** Create a mutable cell with the given value *)
