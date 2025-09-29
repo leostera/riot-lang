@@ -20,8 +20,8 @@ type t = {
 }
 
 let now () =
-  let unix_time = Unix.gettimeofday () in
-  let tm = Unix.localtime unix_time in
+  let unix_time = Kernel.Time.gettimeofday () in
+  let tm = Kernel.Time.localtime unix_time in
   let microseconds =
     let frac = unix_time -. floor unix_time in
     let micros = int_of_float (frac *. 1_000_000.0) in
@@ -43,8 +43,8 @@ let now () =
   }
 
 let now_utc () =
-  let unix_time = Unix.gettimeofday () in
-  let tm = Unix.gmtime unix_time in
+  let unix_time = Kernel.Time.gettimeofday () in
+  let tm = Kernel.Time.gmtime unix_time in
   let microseconds =
     let frac = unix_time -. floor unix_time in
     let micros = int_of_float (frac *. 1_000_000.0) in
@@ -64,7 +64,7 @@ let now_utc () =
   }
 
 let from_unix_time unix_time =
-  let tm = Unix.localtime unix_time in
+  let tm = Kernel.Time.localtime unix_time in
   let microseconds =
     let frac = unix_time -. floor unix_time in
     let micros = int_of_float (frac *. 1_000_000.0) in
@@ -100,7 +100,7 @@ let to_unix t =
       tm_isdst = false;
     }
   in
-  let base_time = fst (Unix.mktime tm) in
+  let base_time = fst (Kernel.Time.mktime tm) in
   let micros, _ = t.microseconds in
   base_time +. (float_of_int micros /. 1_000_000.0)
 
