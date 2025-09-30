@@ -164,36 +164,43 @@ let generate_actions t =
               (List.map Graph.Node_id.to_string cycle_ids)))
   in
 
-  (* Generate actions for each node in order *)
+  (* Generate actions for each node in order and collect outputs *)
   let actions = ref [] in
+  let outputs = ref [] in
   List.iter
     (fun (node : dep Graph.node) ->
       match node.value.kind with
       | MLI mod_name ->
           (* Compile interface *)
+          let output_file = Module_name.cmi mod_name in
           let action =
             Actions.CompileInterface {
               source = Path.to_string node.value.path;
-              output = Module_name.cmi mod_name;
+              output = output_file;
               includes = ["."];  (* Current directory *)
               flags = [];  (* No special flags for now *)
             }
           in
-          actions := action :: !actions
+          actions := action :: !actions;
+          outputs := output_file :: !outputs
       | ML mod_name ->
           (* Compile implementation *)
+          let output_file = Module_name.cmo mod_name in
           let action =
             Actions.CompileImplementation {
               source = Path.to_string node.value.path;
-              output = Module_name.cmo mod_name;
+              output = output_file;
               includes = ["."];
               flags = [];
             }
           in
-          actions := action :: !actions)
+          actions := action :: !actions;
+          outputs := output_file :: !outputs)
     sorted_nodes;
 
-  List.rev !actions
+  (* Add DeclareOutputs action at the end *)
+  let declare_action = Actions.DeclareOutputs { outputs = List.rev !outputs } in
+  List.rev (declare_action :: !actions)
 
 (** Build the complete module graph for a package *)
 let build ~node ~workspace =
