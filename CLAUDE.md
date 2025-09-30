@@ -11,6 +11,7 @@
 when working on `tusk`:
 - never call `tusk`, only call `./minitusk`
 - NEVER MODIFY OTHER PACKAGE SOURCES TO FIX BUILD LOGIC ERRORS
+- never call `tusk clean`
 
 when workgin on any other package:
 - always build through `./target/debug/tusk`
@@ -34,6 +35,15 @@ when workgin on any other package:
 - Prefer MyModule.{ record... } over { MyModule.field = ... }
 
 ## Future Refactorings
+
+### Runtime-level integer types (i8, u8, i16, u16, etc.)
+Consider implementing proper fixed-width integer types at the OCaml runtime level:
+- Provide C-level support in packages/kernel for u8/i8, u16/i16, u32/i32, u64/i64
+- Proper overflow semantics (wrapping vs checked)
+- Type-safe operations that prevent mixing with regular ints
+- Important for systems programming, binary protocols, and hash functions
+- Would enable type aliases like `type u8` with actual 8-bit semantics
+- For now, using int64 for hash functions and int for smaller values
 
 ### Build_node.ml spec type refactoring
 Refactor the `spec` type to make the planned/unplanned distinction type-safe:

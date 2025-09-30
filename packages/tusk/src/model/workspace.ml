@@ -65,7 +65,7 @@ let find_tusk_toml dir =
   match Std.Path.of_string path with
   | Error _ -> None
   | Ok path_obj -> (
-      match Std.Fs.file_exists path_obj with
+      match Std.Fs.exists path_obj with
       | Ok true -> Some path
       | Ok false | Error _ -> None)
 

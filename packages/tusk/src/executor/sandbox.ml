@@ -6,9 +6,9 @@ open Ocaml
 open Model
 
 type t = {
-  root : string;
-  sandbox_dir : string;
-  target_dir : string;
+  root : Path.t;
+  sandbox_dir : Path.t;
+  target_dir : Path.t;
   node : Build_node.t;
   workspace : Workspace.t;
 }
@@ -17,54 +17,23 @@ type error = string
 
 (** Create a new sandbox for a build graph node *)
 let create ~node ~(workspace : Workspace.t) =
-  let root = Path.to_string workspace.root in
-  let target_dir_root = Filename.concat root "target" in
-  let debug_dir = Filename.concat target_dir_root "debug" in
-  let out_dir = Filename.concat debug_dir "out" in
-  let target_dir =
-    Filename.concat out_dir
-      (Path.to_string node.Build_node.package.relative_path)
-  in
+  let root = workspace.root in
+  let target_dir_root = Path.(root / Path.v "target") in
+  let debug_dir = Path.(target_dir_root / Path.v "debug") in
+  let out_dir = Path.(debug_dir / Path.v "out") in
+  let target_dir = Path.(out_dir / node.Build_node.package.relative_path) in
 
   (* Create a unique sandbox directory for this build *)
   let sandbox_id =
     Printf.sprintf "%08x"
       (Hashtbl.hash (node.Build_node.package.name ^ string_of_float (time ())))
   in
-  let sandbox_dir =
-    Filename.concat (Filename.concat debug_dir "sandbox") sandbox_id
-  in
+  let sandbox_dir = Path.(debug_dir / Path.v "sandbox" / Path.v sandbox_id) in
 
   (* Create directories *)
-  let _ =
-    Fs.mkdir
-      (Path.of_string target_dir_root |> Result.expect ~msg:"Invalid path")
-      0o755
-  in
-  let _ =
-    Fs.mkdir
-      (Path.of_string debug_dir |> Result.expect ~msg:"Invalid path")
-      0o755
-  in
-  let _ =
-    Fs.mkdir (Path.of_string out_dir |> Result.expect ~msg:"Invalid path") 0o755
-  in
-  let _ =
-    Fs.mkdir
-      (Path.of_string (Filename.concat debug_dir "sandbox")
-      |> Result.expect ~msg:"Invalid path")
-      0o755
-  in
-  let _ =
-    Fs.mkdir
-      (Path.of_string sandbox_dir |> Result.expect ~msg:"Invalid path")
-      0o755
-  in
-
-  (* Create parent directories for target_dir *)
-  let _ =
-    Fs.mkdirp (Path.of_string target_dir |> Result.expect ~msg:"Invalid path")
-  in
+  let _ = Fs.create_dir_all target_dir_root in
+  let _ = Fs.create_dir_all sandbox_dir in
+  let _ = Fs.create_dir_all target_dir in
   ();
 
   { root; sandbox_dir; target_dir; node; workspace }
@@ -119,7 +88,8 @@ let copy_dependency_artifacts sandbox ~store ~build_graph ~build_results =
 
             (* Read manifest to get list of files to copy *)
             let manifest_path =
-              Filename.concat (Store.get_hash_dir store hash) "manifest.json"
+              Path.(Store.get_hash_dir store hash / Path.v "manifest.json")
+              |> Path.to_string
             in
             let files_to_copy =
               match Store.Manifest.load ~path:manifest_path with
@@ -147,16 +117,14 @@ let copy_dependency_artifacts sandbox ~store ~build_graph ~build_results =
             (* Copy each file individually *)
             List.iter
               (fun file ->
-                let src =
-                  Filename.concat (Store.get_hash_dir store hash) file
-                in
-                let dst = Filename.concat sandbox.sandbox_dir file in
-                let src_path = Path.of_string src |> Result.expect ~msg:"Invalid src" in
-                let dst_path = Path.of_string dst |> Result.expect ~msg:"Invalid dst" in
-                match Fs.copy ~src:src_path ~dst:dst_path with
+                let src = Path.(Store.get_hash_dir store hash / Path.v file) in
+                let dst_path = Path.(sandbox.sandbox_dir / Path.v file) in
+                match Fs.copy ~src ~dst:dst_path with
                 | Ok () -> ()
                 | Error _ ->
-                    failwith (Printf.sprintf "Failed to copy %s to %s" src dst))
+                    failwith
+                      (Printf.sprintf "Failed to copy %s to %s"
+                         (Path.to_string src) (Path.to_string dst_path)))
               files_to_copy;
 
             Printf.printf
@@ -195,7 +163,8 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
   in
 
   Printf.printf "[Sandbox] Running %d actions for %s in %s\n%!"
-    (List.length actions) sandbox.node.package.name sandbox.sandbox_dir;
+    (List.length actions) sandbox.node.package.name
+    (Path.to_string sandbox.sandbox_dir);
 
   (* Copy all transitive dependency artifacts into sandbox *)
   copy_dependency_artifacts sandbox ~store ~build_graph ~build_results;
@@ -209,32 +178,24 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
      let toolchain_path =
        Toolchains.get_toolchain_path sandbox.node.toolchain
      in
-     let unix_cma = Filename.concat toolchain_path "lib/ocaml/unix.cma" in
+     let unix_cma =
+       Path.(toolchain_path / Path.v "lib" / Path.v "ocaml" / Path.v "unix.cma")
+     in
      let unix_exists =
-       match
-         Fs.file_exists
-           (Path.of_string unix_cma |> Result.expect ~msg:"Invalid path")
-       with
-       | Ok exists -> exists
-       | Error _ -> false
+       match Fs.exists unix_cma with Ok exists -> exists | Error _ -> false
      in
      if unix_exists then (
        Printf.printf "[Sandbox] Copying unix.cma from toolchain\n%!";
-       let unix_cma_path = Path.of_string unix_cma |> Result.expect ~msg:"Invalid unix.cma path" in
-       let dst_path = Path.of_string (Filename.concat sandbox.sandbox_dir "unix.cma")
-                      |> Result.expect ~msg:"Invalid dst path" in
-       match Fs.copy ~src:unix_cma_path ~dst:dst_path with
+       let dst_path = Path.(sandbox.sandbox_dir / Path.v "unix.cma") in
+       match Fs.copy ~src:unix_cma ~dst:dst_path with
        | Ok () -> ()
        | Error _ -> ()));
 
   (* Change to sandbox directory *)
   let original_cwd =
-    Fs.getcwd () |> Result.expect ~msg:"Failed to get cwd" |> Path.to_string
+    Env.current_dir () |> Result.expect ~msg:"Failed to get cwd"
   in
-  let _ =
-    Fs.chdir
-      (Path.of_string sandbox.sandbox_dir |> Result.expect ~msg:"Invalid path")
-  in
+  let _ = Env.set_current_dir sandbox.sandbox_dir in
 
   (* Track declared outputs *)
   let declared_outputs = ref [] in
@@ -361,9 +322,7 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
   in
 
   (* Restore original working directory *)
-  let _ =
-    Fs.chdir (Path.of_string original_cwd |> Result.expect ~msg:"Invalid path")
-  in
+  let _ = Env.set_current_dir original_cwd in
 
   (* Copy artifacts to target directory *)
   match result with
@@ -371,28 +330,27 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
       (* Copy outputs to target directory *)
       List.iter
         (fun output_file ->
-          let src = Filename.concat sandbox.sandbox_dir output_file in
-          let src_path = Path.of_string src |> Result.expect ~msg:"Invalid src" in
+          let src_path = Path.(sandbox.sandbox_dir / Path.v output_file) in
           match Fs.exists src_path with
-          | Ok true -> (
-            let dst = Filename.concat sandbox.target_dir output_file in
-            let dst_path = Path.of_string dst |> Result.expect ~msg:"Invalid dst" in
-            let _ = Fs.copy_file src_path dst_path in
-            (* Make executable files executable *)
-            (if not (String.contains output_file '.') then
-               let _ = Fs.chmod dst_path 0o755 in
-               (* Also promote executable to target/<profile>/<name> *)
-               let profile_dir =
-                 Filename.concat (Filename.concat sandbox.root "target") "debug"
-               in
-               let promoted_dst = Filename.concat profile_dir output_file in
-               let promoted_dst_path = Path.of_string promoted_dst
-                   |> Result.expect ~msg:"Invalid dst" in
-               let _ = Fs.copy_file src_path promoted_dst_path in
-               let _ = Fs.chmod promoted_dst_path 0o755 in
-               Printf.printf "[Sandbox] Promoted executable %s to %s\n%!"
-                 output_file promoted_dst);
-            Printf.printf "[Sandbox] Copied %s to target\n%!" output_file)
+          | Ok true ->
+              let dst_path = Path.(sandbox.target_dir / Path.v output_file) in
+              let _ = Fs.copy ~src:src_path ~dst:dst_path in
+              (* Make executable files executable *)
+              (if not (String.contains output_file '.') then
+                 let _ = Fs.set_permissions dst_path 0o755 in
+                 (* Also promote executable to target/<profile>/<name> *)
+                 let profile_dir =
+                   Path.(sandbox.root / Path.v "target" / Path.v "debug")
+                 in
+                 let promoted_dst_path =
+                   Path.(profile_dir / Path.v output_file)
+                 in
+                 let _ = Fs.copy ~src:src_path ~dst:promoted_dst_path in
+                 let _ = Fs.set_permissions promoted_dst_path 0o755 in
+                 Printf.printf "[Sandbox] Promoted executable %s to %s\n%!"
+                   output_file
+                   (Path.to_string promoted_dst_path));
+              Printf.printf "[Sandbox] Copied %s to target\n%!" output_file
           | _ -> ())
         outputs;
       (* Return paths as Path.t *)
@@ -405,8 +363,5 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
 
 (** Clean up sandbox directory *)
 let cleanup sandbox =
-  let _ =
-    Fs.remove_dir
-      (Path.of_string sandbox.sandbox_dir |> Result.expect ~msg:"Invalid path")
-  in
+  let _ = Fs.remove_dir_all sandbox.sandbox_dir in
   ()

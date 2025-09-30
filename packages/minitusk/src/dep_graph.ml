@@ -11,7 +11,13 @@ module Module_name : sig
 end = struct
   type t = string
 
-  let of_string str = String.capitalize_ascii str
+  let of_string str =
+    (* Uppercase first character only, preserve rest *)
+    if String.length str > 0 then
+      let first_char = Char.uppercase_ascii str.[0] in
+      String.mapi (fun i c -> if i = 0 then first_char else c) str
+    else str
+
   let to_string str = str
 
   let of_path path =
@@ -134,7 +140,7 @@ end = struct
   let register t package module_name ~outputs =
     (* Add to order list if not already there *)
     if not (Hashtbl.mem t.packages module_name) then
-      t.order <- t.order @ [module_name];
+      t.order <- t.order @ [ module_name ];
     Hashtbl.replace t.packages module_name { package; module_name; outputs }
 
   let has_module t module_name = Hashtbl.mem t.packages module_name
@@ -317,19 +323,23 @@ let iter fn dep_graph =
   with Graph.Cycle node_ids ->
     Printf.printf "\n!!! ERROR: Dependency cycle detected !!!\n";
     Printf.printf "The following modules form a cycle:\n\n";
-    List.iter (fun node_id ->
-      try
-        let node = Graph.get_node dep_graph.graph node_id in
-        let module_info =
-          match node.value.file with
-          | Concrete path -> Printf.sprintf "%s" path
-          | Generated { path; _ } -> Printf.sprintf "%s (generated)" path
-        in
-        Printf.printf "  Node %d: %s\n" (Graph.Node_id.to_int node_id) module_info
-      with Not_found ->
-        Printf.printf "  Node %d: <unknown>\n" (Graph.Node_id.to_int node_id)
-    ) node_ids;
-    Printf.printf "\nPlease check the dependency graph for circular dependencies.\n";
+    List.iter
+      (fun node_id ->
+        try
+          let node = Graph.get_node dep_graph.graph node_id in
+          let module_info =
+            match node.value.file with
+            | Concrete path -> Printf.sprintf "%s" path
+            | Generated { path; _ } -> Printf.sprintf "%s (generated)" path
+          in
+          Printf.printf "  Node %d: %s\n"
+            (Graph.Node_id.to_int node_id)
+            module_info
+        with Not_found ->
+          Printf.printf "  Node %d: <unknown>\n" (Graph.Node_id.to_int node_id))
+      node_ids;
+    Printf.printf
+      "\nPlease check the dependency graph for circular dependencies.\n";
     raise (Graph.Cycle node_ids)
 
 let print_registry dep_graph = Module_registry.print dep_graph.registry
@@ -785,7 +795,12 @@ let handle_dep t (node : dep Graph.node) =
   (* printf "iter %S\n" (file_to_string dep.file); *)
   match dep.kind with
   | ML mod_ | MLI mod_ ->
-      let deps = Ocamldep.get_deps (Module.path mod_) in
+      (* Skip ocamldep for generated files since they don't exist yet *)
+      let deps =
+        match dep.file with
+        | Generated _ -> [] (* Generated files have no external dependencies *)
+        | Concrete _ -> Ocamldep.get_deps (Module.path mod_)
+      in
       List.iter
         (fun dep ->
           (* printf "- %s\n" dep; *)

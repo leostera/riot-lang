@@ -1,0 +1,615 @@
+; ./src/tusk-depgraph ../kernel
+Building dependency graph for ../kernel
+
+Package: Kernel
+
+Starting scan from: ../kernel/src
+Scanning: ../kernel/src (namespace: [Kernel])
+  Added other file: utils.h
+  Added OCaml file: crypto.mli -> module Crypto (namespace: [Kernel; Crypto])
+  Added OCaml file: crypto.ml -> module Crypto (namespace: [Kernel; Crypto])
+  Added other file: std_sys_unix_io.c
+  Added OCaml file: kernel.ml -> module Kernel (namespace: [Kernel; Kernel])
+  Added other file: std_sys_unix_kqueue.c
+  Added OCaml file: kernel.mli -> module Kernel (namespace: [Kernel; Kernel])
+  Added OCaml file: io.ml -> module Io (namespace: [Kernel; Io])
+Created 8 nodes total
+Analyzing dependencies...
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../kernel/src -modules ../kernel/src/crypto.ml
+  crypto.ml depends on: Digest
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../kernel/src -modules ../kernel/src/io.ml
+  io.ml depends on: Array, Buffer, Bytes, Format, Fun, Int, List, Obj, Option, Printexc, Stdlib, String, Sys, Unix, UnixLabels
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../kernel/src -modules ../kernel/src/kernel.mli
+  kernel.mli depends on: Buffer, Crypto, Format, Stdlib, Unix
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../kernel/src -modules ../kernel/src/crypto.mli
+  crypto.mli depends on:
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../kernel/src -modules ../kernel/src/kernel.ml
+  kernel.ml depends on: Crypto, Io
+
+Module Registry (5 entries):
+  crypto.mli -> Kernel__Crypto [.mli]
+  crypto.ml -> Kernel__Crypto [.ml]
+  kernel.ml -> Kernel__Kernel [.ml]
+  kernel.mli -> Kernel__Kernel [.mli]
+  io.ml -> Kernel__Io [.ml]
+
+Wrote DOT graph to: Kernel.dot
+Wrote Mermaid diagram to: Kernel.mermaid
+
+=== Topological Sort ===
+ 1. crypto.ml (Kernel__Crypto) [.ml]
+ 2. crypto.mli (Kernel__Crypto) [.mli]
+ 3. io.ml (Kernel__Io) [.ml]
+ 4. utils.h (Kernel) [.h]
+ 5. std_sys_unix_kqueue.c (Kernel) [.c]
+ 6. kernel.ml (Kernel__Kernel) [.ml]
+ 7. std_sys_unix_io.c (Kernel) [.c]
+ 8. kernel.mli (Kernel__Kernel) [.mli]
+; ./src/tusk-depgraph ../miniriot
+Building dependency graph for ../miniriot
+
+Package: Miniriot
+
+Starting scan from: ../miniriot/src
+Scanning: ../miniriot/src (namespace: [Miniriot])
+  Added OCaml file: process.ml -> module Process (namespace: [Miniriot; Process])
+  Added OCaml file: mailbox.ml -> module Mailbox (namespace: [Miniriot; Mailbox])
+  Added OCaml file: runtime.mli -> module Runtime (namespace: [Miniriot; Runtime])
+  Added OCaml file: proc_effect.mli -> module Proc_effect (namespace: [Miniriot; Proc_effect])
+  Added OCaml file: mailbox.mli -> module Mailbox (namespace: [Miniriot; Mailbox])
+  Added OCaml file: miniriot.ml -> module Miniriot (namespace: [Miniriot; Miniriot])
+  Added OCaml file: proc_effect.ml -> module Proc_effect (namespace: [Miniriot; Proc_effect])
+  Added OCaml file: scheduler.ml -> module Scheduler (namespace: [Miniriot; Scheduler])
+  Added OCaml file: trace.mli -> module Trace (namespace: [Miniriot; Trace])
+  Added OCaml file: trace.ml -> module Trace (namespace: [Miniriot; Trace])
+  Added OCaml file: effects.ml -> module Effects (namespace: [Miniriot; Effects])
+  Added OCaml file: scheduler.mli -> module Scheduler (namespace: [Miniriot; Scheduler])
+  Added OCaml file: proc_state.mli -> module Proc_state (namespace: [Miniriot; Proc_state])
+  Added OCaml file: runtime.ml -> module Runtime (namespace: [Miniriot; Runtime])
+  Added OCaml file: effects.mli -> module Effects (namespace: [Miniriot; Effects])
+  Added OCaml file: message.ml -> module Message (namespace: [Miniriot; Message])
+  Added OCaml file: miniriot.mli -> module Miniriot (namespace: [Miniriot; Miniriot])
+  Added OCaml file: proc_state.ml -> module Proc_state (namespace: [Miniriot; Proc_state])
+  Added OCaml file: pid.mli -> module Pid (namespace: [Miniriot; Pid])
+  Added OCaml file: process.mli -> module Process (namespace: [Miniriot; Process])
+  Added OCaml file: message.mli -> module Message (namespace: [Miniriot; Message])
+  Added OCaml file: pid.ml -> module Pid (namespace: [Miniriot; Pid])
+Created 22 nodes total
+Analyzing dependencies...
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../miniriot/src -modules ../miniriot/src/message.mli
+  message.mli depends on:
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../miniriot/src -modules ../miniriot/src/runtime.mli
+  runtime.mli depends on:
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../miniriot/src -modules ../miniriot/src/scheduler.ml
+  scheduler.ml depends on: Hashtbl, Kernel, List, Message, Pid, Printexc, Printf, Proc_effect, Proc_state, Process, Queue, Trace, Unix
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../miniriot/src -modules ../miniriot/src/process.ml
+  process.ml depends on: Format, Kernel, List, Mailbox, Message, Option, Pid, Printf, Proc_effect, Proc_state
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../miniriot/src -modules ../miniriot/src/effects.ml
+  effects.ml depends on: Effect, Proc_effect
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../miniriot/src -modules ../miniriot/src/miniriot.ml                 miniriot.ml depends on: Effect, Effects, Message, Pid, Proc_effect, Process, Runtime, Scheduler, Trace
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../miniriot/src -modules ../miniriot/src/proc_effect.ml
+  proc_effect.ml depends on: Effect, Kernel, Message
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../miniriot/src -modules ../miniriot/src/proc_state.ml
+  proc_state.ml depends on: Effect, Format, Printexc
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../miniriot/src -modules ../miniriot/src/process.mli
+  process.mli depends on: Format, Kernel, Message, Pid, Proc_state
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../miniriot/src -modules ../miniriot/src/runtime.ml
+  runtime.ml depends on: Effects
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../miniriot/src -modules ../miniriot/src/trace.ml
+  trace.ml depends on: Printf
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../miniriot/src -modules ../miniriot/src/scheduler.mli
+  scheduler.mli depends on: Message, Pid, Process
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../miniriot/src -modules ../miniriot/src/pid.ml
+  pid.ml depends on: Format, Int
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../miniriot/src -modules ../miniriot/src/miniriot.mli
+  miniriot.mli depends on: Kernel
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../miniriot/src -modules ../miniriot/src/proc_effect.mli
+  proc_effect.mli depends on: Effect, Kernel, Message
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../miniriot/src -modules ../miniriot/src/mailbox.ml
+  mailbox.ml depends on: Message, Queue
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../miniriot/src -modules ../miniriot/src/trace.mli
+  trace.mli depends on:
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../miniriot/src -modules ../miniriot/src/proc_state.mli
+  proc_state.mli depends on: Effect, Format
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../miniriot/src -modules ../miniriot/src/message.ml
+  message.ml depends on:
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../miniriot/src -modules ../miniriot/src/effects.mli
+  effects.mli depends on: Kernel, Message, Process
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../miniriot/src -modules ../miniriot/src/mailbox.mli
+  mailbox.mli depends on: Message
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../miniriot/src -modules ../miniriot/src/pid.mli
+  pid.mli depends on: Format
+
+Module Registry (22 entries):
+  process.ml -> Miniriot__Process [.ml]
+  mailbox.ml -> Miniriot__Mailbox [.ml]
+  runtime.mli -> Miniriot__Runtime [.mli]
+  proc_effect.mli -> Miniriot__Proc_effect [.mli]
+  mailbox.mli -> Miniriot__Mailbox [.mli]
+  miniriot.ml -> Miniriot__Miniriot [.ml]
+  proc_effect.ml -> Miniriot__Proc_effect [.ml]
+  scheduler.ml -> Miniriot__Scheduler [.ml]
+  trace.mli -> Miniriot__Trace [.mli]
+  trace.ml -> Miniriot__Trace [.ml]
+  effects.ml -> Miniriot__Effects [.ml]
+  scheduler.mli -> Miniriot__Scheduler [.mli]
+  proc_state.mli -> Miniriot__Proc_state [.mli]
+  runtime.ml -> Miniriot__Runtime [.ml]
+  effects.mli -> Miniriot__Effects [.mli]
+  message.ml -> Miniriot__Message [.ml]
+  miniriot.mli -> Miniriot__Miniriot [.mli]
+  proc_state.ml -> Miniriot__Proc_state [.ml]
+  pid.mli -> Miniriot__Pid [.mli]
+  process.mli -> Miniriot__Process [.mli]
+  message.mli -> Miniriot__Message [.mli]
+  pid.ml -> Miniriot__Pid [.ml]
+
+Wrote DOT graph to: Miniriot.dot
+Wrote Mermaid diagram to: Miniriot.mermaid
+
+=== Topological Sort ===
+ 1. message.mli (Miniriot__Message) [.mli]
+ 2. message.ml (Miniriot__Message) [.ml]
+ 3. pid.ml (Miniriot__Pid) [.ml]
+ 4. pid.mli (Miniriot__Pid) [.mli]
+ 5. proc_state.ml (Miniriot__Proc_state) [.ml]
+ 6. proc_state.mli (Miniriot__Proc_state) [.mli]
+ 7. mailbox.mli (Miniriot__Mailbox) [.mli]
+ 8. mailbox.ml (Miniriot__Mailbox) [.ml]
+ 9. proc_effect.ml (Miniriot__Proc_effect) [.ml]
+10. proc_effect.mli (Miniriot__Proc_effect) [.mli]
+11. process.mli (Miniriot__Process) [.mli]
+12. process.ml (Miniriot__Process) [.ml]
+13. effects.mli (Miniriot__Effects) [.mli]
+14. effects.ml (Miniriot__Effects) [.ml]
+15. trace.ml (Miniriot__Trace) [.ml]
+16. trace.mli (Miniriot__Trace) [.mli]
+17. runtime.ml (Miniriot__Runtime) [.ml]
+18. runtime.mli (Miniriot__Runtime) [.mli]
+19. scheduler.mli (Miniriot__Scheduler) [.mli]
+20. scheduler.ml (Miniriot__Scheduler) [.ml]
+21. miniriot.ml (Miniriot__Miniriot) [.ml]
+22. miniriot.mli (Miniriot__Miniriot) [.mli]
+; ./src/tusk-depgraph ../std
+Building dependency graph for ../std
+
+Package: Std
+
+Starting scan from: ../std/src
+Scanning: ../std/src (namespace: [Std])
+  Added OCaml file: ref.ml -> module Ref (namespace: [Std; Ref])
+  Added OCaml file: buffer.ml -> module Buffer (namespace: [Std; Buffer])
+  Added OCaml file: uri.ml -> module Uri (namespace: [Std; Uri])
+  Added OCaml file: global.mli -> module Global (namespace: [Std; Global])
+  Added OCaml file: fs.ml -> module Fs (namespace: [Std; Fs])
+  Added OCaml file: datetime.mli -> module Datetime (namespace: [Std; Datetime])
+Scanning: ../std/src/net (namespace: [Std; Net])
+  Added OCaml file: net/http_status.ml -> module Http_status (namespace: [Std; Net; Http_status])
+  Added OCaml file: net/http_version.ml -> module Http_version (namespace: [Std; Net; Http_version])
+  Added OCaml file: net/http_header.mli -> module Http_header (namespace: [Std; Net; Http_header])
+  Added OCaml file: net/http_status.mli -> module Http_status (namespace: [Std; Net; Http_status])
+  Added OCaml file: net/http_method.ml -> module Http_method (namespace: [Std; Net; Http_method])
+  Added OCaml file: net/http_request.ml -> module Http_request (namespace: [Std; Net; Http_request])
+  Added OCaml file: net/http_version.mli -> module Http_version (namespace: [Std; Net; Http_version])
+  Added OCaml file: net/http_request.mli -> module Http_request (namespace: [Std; Net; Http_request])
+  Added OCaml file: net/http_method.mli -> module Http_method (namespace: [Std; Net; Http_method])
+  Added OCaml file: net/http_response.mli -> module Http_response (namespace: [Std; Net; Http_response])
+  Added OCaml file: net/http_header.ml -> module Http_header (namespace: [Std; Net; Http_header])
+  Added OCaml file: net/http_response.ml -> module Http_response (namespace: [Std; Net; Http_response])
+  Added OCaml file: Iterator.ml -> module Iterator (namespace: [Std; Iterator])
+  Added OCaml file: std.mli -> module Std (namespace: [Std; Std])
+  Added OCaml file: file.ml -> module File (namespace: [Std; File])
+  Added OCaml file: dot.mli -> module Dot (namespace: [Std; Dot])
+  Added OCaml file: result.ml -> module Result (namespace: [Std; Result])
+  Added OCaml file: option.mli -> module Option (namespace: [Std; Option])
+  Added OCaml file: mermaid.mli -> module Mermaid (namespace: [Std; Mermaid])
+  Added OCaml file: Char_Cursor.ml -> module Char_Cursor (namespace: [Std; Char_Cursor])
+  Added OCaml file: env.mli -> module Env (namespace: [Std; Env])
+  Added OCaml file: file.mli -> module File (namespace: [Std; File])
+Scanning: ../std/src/graph (namespace: [Std; Graph])
+  Added OCaml file: path.ml -> module Path (namespace: [Std; Path])
+  Added OCaml file: fs.mli -> module Fs (namespace: [Std; Fs])
+  Added OCaml file: datetime.ml -> module Datetime (namespace: [Std; Datetime])
+  Added OCaml file: list.mli -> module List (namespace: [Std; List])
+  Added OCaml file: workerpool.mli -> module Workerpool (namespace: [Std; Workerpool])
+  Added OCaml file: result.mli -> module Result (namespace: [Std; Result])
+  Added OCaml file: string.ml -> module String (namespace: [Std; String])
+  Added OCaml file: dot.ml -> module Dot (namespace: [Std; Dot])
+  Added OCaml file: path.mli -> module Path (namespace: [Std; Path])
+  Added OCaml file: log.ml -> module Log (namespace: [Std; Log])
+Scanning: ../std/src/time (namespace: [Std; Time])
+  Added OCaml file: time/system_time.ml -> module System_time (namespace: [Std; Time; System_time])
+  Added OCaml file: time/instant.mli -> module Instant (namespace: [Std; Time; Instant])
+  Added OCaml file: time/system_time.mli -> module System_time (namespace: [Std; Time; System_time])
+  Added OCaml file: time/time.mli -> module Time (namespace: [Std; Time; Time])
+  Added OCaml file: time/instant.ml -> module Instant (namespace: [Std; Time; Instant])
+  Added OCaml file: time/time.ml -> module Time (namespace: [Std; Time; Time])
+  Added OCaml file: time/duration.ml -> module Duration (namespace: [Std; Time; Duration])
+  Added OCaml file: time/duration.mli -> module Duration (namespace: [Std; Time; Duration])
+  Added OCaml file: global.ml -> module Global (namespace: [Std; Global])
+  Added OCaml file: option.ml -> module Option (namespace: [Std; Option])
+  Added OCaml file: list.ml -> module List (namespace: [Std; List])
+  Added OCaml file: env.ml -> module Env (namespace: [Std; Env])
+  Added OCaml file: command.ml -> module Command (namespace: [Std; Command])
+  Added OCaml file: uri.mli -> module Uri (namespace: [Std; Uri])
+  Added OCaml file: command.mli -> module Command (namespace: [Std; Command])
+  Added OCaml file: net.mli -> module Net (namespace: [Std; Net])
+  Added OCaml file: buffer.mli -> module Buffer (namespace: [Std; Buffer])
+  Added OCaml file: MutIterator.ml -> module MutIterator (namespace: [Std; MutIterator])
+  Added OCaml file: workerpool.ml -> module Workerpool (namespace: [Std; Workerpool])
+  Added other file: dot.cmi
+  Added OCaml file: char.mli -> module Char (namespace: [Std; Char])
+  Added OCaml file: log.mli -> module Log (namespace: [Std; Log])
+  Added OCaml file: std.ml -> module Std (namespace: [Std; Std])
+Scanning: ../std/src/collections (namespace: [Std; Collections])
+  Added OCaml file: collections/hashset.mli -> module Hashset (namespace: [Std; Collections; Hashset])
+  Added OCaml file: collections/hashset.ml -> module Hashset (namespace: [Std; Collections; Hashset])
+  Added OCaml file: collections/collections.ml -> module Collections (namespace: [Std; Collections; Collections])
+  Added OCaml file: collections/vector.mli -> module Vector (namespace: [Std; Collections; Vector])
+  Added OCaml file: collections/hashmap.ml -> module Hashmap (namespace: [Std; Collections; Hashmap])
+  Added OCaml file: collections/queue.mli -> module Queue (namespace: [Std; Collections; Queue])
+  Added OCaml file: collections/deque.ml -> module Deque (namespace: [Std; Collections; Deque])
+  Added OCaml file: collections/vector.ml -> module Vector (namespace: [Std; Collections; Vector])
+  Added OCaml file: collections/queue.ml -> module Queue (namespace: [Std; Collections; Queue])
+  Added OCaml file: collections/deque.mli -> module Deque (namespace: [Std; Collections; Deque])
+  Added OCaml file: collections/collections.mli -> module Collections (namespace: [Std; Collections; Collections])
+  Added OCaml file: collections/hashmap.mli -> module Hashmap (namespace: [Std; Collections; Hashmap])
+Scanning: ../std/src/data (namespace: [Std; Data])
+  Added OCaml file: data/sexp.mli -> module Sexp (namespace: [Std; Data; Sexp])
+  Added OCaml file: data/json.mli -> module Json (namespace: [Std; Data; Json])
+  Added OCaml file: data/toml.ml -> module Toml (namespace: [Std; Data; Toml])
+  Added OCaml file: data/json.ml -> module Json (namespace: [Std; Data; Json])
+  Added other file: data/data.ml.bak
+  Added OCaml file: data/sexp.ml -> module Sexp (namespace: [Std; Data; Sexp])
+  Added other file: data/data.mli.bak
+  Added OCaml file: data/toml.mli -> module Toml (namespace: [Std; Data; Toml])
+  Added OCaml file: net.ml -> module Net (namespace: [Std; Net])
+  Added OCaml file: Iterator.mli -> module Iterator (namespace: [Std; Iterator])
+  Added OCaml file: graph.ml -> module Graph (namespace: [Std; Graph])
+  Added OCaml file: char.ml -> module Char (namespace: [Std; Char])
+  Added OCaml file: mermaid.ml -> module Mermaid (namespace: [Std; Mermaid])
+Created 86 nodes total
+Analyzing dependencies...
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/file.ml
+  file.ml depends on: Bytes, Kernel, List, Miniriot, Printexc, Printf, Unix
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/uri.ml
+  uri.ml depends on: List, String
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/time/time.ml
+  time/time.ml depends on: Duration, Instant, System_time
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/fs.mli
+  fs.mli depends on: Path, Result, Unix
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/dot.ml
+  dot.ml depends on: List, Printf, String
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/net/http_version.ml
+  net/http_version.ml depends on: Int
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/graph.ml
+  graph.ml depends on: Dot, Mermaid
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/collections/queue.mli
+  collections/queue.mli depends on:
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/time/instant.mli
+  time/instant.mli depends on: Duration
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/global.ml
+  global.ml depends on: Sys, Unix
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/ref.ml
+  ref.ml depends on: Atomic, Format, Int64, Obj, Type
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/time/instant.ml
+  time/instant.ml depends on: Duration, Unix
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/net/http_method.ml
+  net/http_method.ml depends on: Int, String
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/time/time.mli
+  time/time.mli depends on: Duration, Instant, System_time
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/collections/vector.mli
+  collections/vector.mli depends on:
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/log.ml
+  log.ml depends on:
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/result.mli
+  result.mli depends on: Stdlib
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/collections/hashmap.mli
+  collections/hashmap.mli depends on:
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/datetime.mli
+  datetime.mli depends on:
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/time/duration.ml
+  time/duration.ml depends on: Int64
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/data/sexp.mli
+  data/sexp.mli depends on:
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/option.ml
+  option.ml depends on: List, Result
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/collections/hashmap.ml
+  collections/hashmap.ml depends on: Hashtbl, List
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/net.mli
+  net.mli depends on: Kernel
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/path.ml
+  path.ml depends on: Char, Filename, Format, List, Result, String, Sys
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/result.ml
+  result.ml depends on: Global, List, Stdlib
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/collections/collections.mli
+  collections/collections.mli depends on: Deque, Hashmap, Hashset, Queue, Vector
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/list.ml
+  list.ml depends on: Stdlib
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/data/toml.ml
+  data/toml.ml depends on: List, String
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/data/json.mli
+  data/json.mli depends on:
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/string.ml
+  string.ml depends on: Iterator, MutIterator, Stdlib, Uchar
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/char.ml
+  char.ml depends on: Stdlib
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/char.mli
+  char.mli depends on: Stdlib
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/collections/hashset.mli
+  collections/hashset.mli depends on:
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/time/system_time.ml
+  time/system_time.ml depends on: Duration, Unix
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/file.mli
+  file.mli depends on: Unix
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/net/http_status.ml
+  net/http_status.ml depends on: Int, Result
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/log.mli
+  log.mli depends on:
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/std.ml
+  std.ml depends on: Buffer, Char, Collections, Command, Data, Datetime, Env, File, Fs, Global, Graph, Iterator, List, Log, MutIterator, Net, Option, Path, Result, String, Time, Uri, Workerpool
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/MutIterator.ml
+  MutIterator.ml depends on: List
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/collections/deque.ml
+  collections/deque.ml depends on: Array, List
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/time/system_time.mli
+  time/system_time.mli depends on: Duration
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/net/http_response.ml
+  net/http_response.ml depends on: Http_header, Http_status, Http_version
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/workerpool.mli
+  workerpool.mli depends on:
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/std.mli
+  std.mli depends on: Buffer, Collections, Command, Data, Datetime, Env, File, Fs, Graph, Iterator, List, MutIterator, Net, Option, Path, Result, Time, Uri
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/uri.mli
+  uri.mli depends on: Result
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/collections/collections.ml
+  collections/collections.ml depends on: Deque, Hashmap, Hashset, Queue, Vector
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/net/http_request.mli
+  net/http_request.mli depends on: Http_header, Http_method, Http_version, Uri
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/net/http_status.mli
+  net/http_status.mli depends on:
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/net/http_request.ml
+  net/http_request.ml depends on: Http_header, Http_method, Http_version, Uri
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/env.mli
+  env.mli depends on: Path, Result
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/mermaid.ml
+  mermaid.ml depends on: Buffer, List, Printf
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/collections/vector.ml
+  collections/vector.ml depends on: Array, List, Obj
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/data/json.ml
+  data/json.ml depends on: Buffer, List, Printf, String
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/path.mli
+  path.mli depends on: Format, Result
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/dot.mli
+  dot.mli depends on:
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/mermaid.mli
+  mermaid.mli depends on:
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/net/http_header.ml
+  net/http_header.ml depends on: List, String
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/global.mli
+  global.mli depends on:
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/collections/deque.mli
+  collections/deque.mli depends on:
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/option.mli
+  option.mli depends on: Result
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/net.ml
+  net.ml depends on: Bytes, Fun, Kernel, Miniriot, Printf, String
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/buffer.ml
+  buffer.ml depends on: Stdlib
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/data/sexp.ml
+  data/sexp.ml depends on: Buffer, List, Printf, String
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/buffer.mli
+  buffer.mli depends on: Stdlib
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/time/duration.mli
+  time/duration.mli depends on:
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/net/http_header.mli
+  net/http_header.mli depends on:
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/collections/queue.ml
+  collections/queue.ml depends on: List
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/net/http_version.mli
+  net/http_version.mli depends on:
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/list.mli
+  list.mli depends on: Stdlib
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/workerpool.ml
+  workerpool.ml depends on:
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/Iterator.mli
+  Iterator.mli depends on:
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/net/http_response.mli
+  net/http_response.mli depends on: Http_header, Http_status, Http_version
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/net/http_method.mli
+  net/http_method.mli depends on:
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/collections/hashset.ml
+  collections/hashset.ml depends on: Hashtbl, List
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/datetime.ml
+  datetime.ml depends on: Printf, Unix
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/fs.ml
+  fs.ml depends on: Bytes, Filename, List, Path, Printexc, Result, Sys, Unix
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/command.mli
+  command.mli depends on: Unix
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/env.ml
+  env.ml depends on: Array, List, Path, Result, String, Sys, Unix
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/Char_Cursor.ml
+  Char_Cursor.ml depends on:
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/data/toml.mli
+  data/toml.mli depends on:
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/command.ml
+  command.ml depends on: Array, List, Printexc, Printf, String, Sys, Unix
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -modules ../std/src/Iterator.ml
+  Iterator.ml depends on: List
+
+Module Registry (83 entries):
+  ref.ml -> Std__Ref [.ml]
+  buffer.ml -> Std__Buffer [.ml]
+  uri.ml -> Std__Uri [.ml]
+  global.mli -> Std__Global [.mli]
+  fs.ml -> Std__Fs [.ml]
+  datetime.mli -> Std__Datetime [.mli]
+  net/http_status.ml -> Std__Net__Http_status [.ml]
+  net/http_version.ml -> Std__Net__Http_version [.ml]
+  net/http_header.mli -> Std__Net__Http_header [.mli]
+  net/http_status.mli -> Std__Net__Http_status [.mli]
+  net/http_method.ml -> Std__Net__Http_method [.ml]
+  net/http_request.ml -> Std__Net__Http_request [.ml]
+  net/http_version.mli -> Std__Net__Http_version [.mli]
+  net/http_request.mli -> Std__Net__Http_request [.mli]
+  net/http_method.mli -> Std__Net__Http_method [.mli]
+  net/http_response.mli -> Std__Net__Http_response [.mli]
+  net/http_header.ml -> Std__Net__Http_header [.ml]
+  net/http_response.ml -> Std__Net__Http_response [.ml]
+  Iterator.ml -> Std__Iterator [.ml]
+  std.mli -> Std__Std [.mli]
+  file.ml -> Std__File [.ml]
+  dot.mli -> Std__Dot [.mli]
+  result.ml -> Std__Result [.ml]
+  option.mli -> Std__Option [.mli]
+  mermaid.mli -> Std__Mermaid [.mli]
+  Char_Cursor.ml -> Std__Char_Cursor [.ml]
+  env.mli -> Std__Env [.mli]
+  file.mli -> Std__File [.mli]
+  path.ml -> Std__Path [.ml]
+  fs.mli -> Std__Fs [.mli]
+  datetime.ml -> Std__Datetime [.ml]
+  list.mli -> Std__List [.mli]
+  workerpool.mli -> Std__Workerpool [.mli]
+  result.mli -> Std__Result [.mli]
+  string.ml -> Std__String [.ml]
+  dot.ml -> Std__Dot [.ml]
+  path.mli -> Std__Path [.mli]
+  log.ml -> Std__Log [.ml]
+  time/system_time.ml -> Std__Time__System_time [.ml]
+  time/instant.mli -> Std__Time__Instant [.mli]
+  time/system_time.mli -> Std__Time__System_time [.mli]
+  time/time.mli -> Std__Time__Time [.mli]
+  time/instant.ml -> Std__Time__Instant [.ml]
+  time/time.ml -> Std__Time__Time [.ml]
+  time/duration.ml -> Std__Time__Duration [.ml]
+  time/duration.mli -> Std__Time__Duration [.mli]
+  global.ml -> Std__Global [.ml]
+  option.ml -> Std__Option [.ml]
+  list.ml -> Std__List [.ml]
+  env.ml -> Std__Env [.ml]
+  command.ml -> Std__Command [.ml]
+  uri.mli -> Std__Uri [.mli]
+  command.mli -> Std__Command [.mli]
+  net.mli -> Std__Net [.mli]
+  buffer.mli -> Std__Buffer [.mli]
+  MutIterator.ml -> Std__MutIterator [.ml]
+  workerpool.ml -> Std__Workerpool [.ml]
+  char.mli -> Std__Char [.mli]
+  log.mli -> Std__Log [.mli]
+  std.ml -> Std__Std [.ml]
+  collections/hashset.mli -> Std__Collections__Hashset [.mli]
+  collections/hashset.ml -> Std__Collections__Hashset [.ml]
+  collections/collections.ml -> Std__Collections__Collections [.ml]
+  collections/vector.mli -> Std__Collections__Vector [.mli]
+  collections/hashmap.ml -> Std__Collections__Hashmap [.ml]
+  collections/queue.mli -> Std__Collections__Queue [.mli]
+  collections/deque.ml -> Std__Collections__Deque [.ml]
+  collections/vector.ml -> Std__Collections__Vector [.ml]
+  collections/queue.ml -> Std__Collections__Queue [.ml]
+  collections/deque.mli -> Std__Collections__Deque [.mli]
+  collections/collections.mli -> Std__Collections__Collections [.mli]
+  collections/hashmap.mli -> Std__Collections__Hashmap [.mli]
+  data/sexp.mli -> Std__Data__Sexp [.mli]
+  data/json.mli -> Std__Data__Json [.mli]
+  data/toml.ml -> Std__Data__Toml [.ml]
+  data/json.ml -> Std__Data__Json [.ml]
+  data/sexp.ml -> Std__Data__Sexp [.ml]
+  data/toml.mli -> Std__Data__Toml [.mli]
+  net.ml -> Std__Net [.ml]
+  Iterator.mli -> Std__Iterator [.mli]
+  graph.ml -> Std__Graph [.ml]
+  char.ml -> Std__Char [.ml]
+  mermaid.ml -> Std__Mermaid [.ml]
+
+Wrote DOT graph to: Std.dot
+Wrote Mermaid diagram to: Std.mermaid
+
+=== Topological Sort ===
+ 1. list.ml (Std__List) [.ml]
+ 2. list.mli (Std__List) [.mli]
+ 3. global.ml (Std__Global) [.ml]
+ 4. global.mli (Std__Global) [.mli]
+ 5. Iterator.mli (Std__Iterator) [.mli]
+ 6. Iterator.ml (Std__Iterator) [.ml]
+ 7. MutIterator.ml (Std__MutIterator) [.ml]
+ 8. result.mli (Std__Result) [.mli]
+ 9. result.ml (Std__Result) [.ml]
+10. char.ml (Std__Char) [.ml]
+11. char.mli (Std__Char) [.mli]
+12. string.ml (Std__String) [.ml]
+13. buffer.mli (Std__Buffer) [.mli]
+14. buffer.ml (Std__Buffer) [.ml]
+15. time/duration.mli (Std__Time__Duration) [.mli]
+16. time/duration.ml (Std__Time__Duration) [.ml]
+17. collections/deque.mli (Std__Collections__Deque) [.mli]
+18. collections/deque.ml (Std__Collections__Deque) [.ml]
+19. collections/hashmap.mli (Std__Collections__Hashmap) [.mli]
+20. collections/hashmap.ml (Std__Collections__Hashmap) [.ml]
+21. collections/hashset.ml (Std__Collections__Hashset) [.ml]
+22. collections/hashset.mli (Std__Collections__Hashset) [.mli]
+23. collections/queue.ml (Std__Collections__Queue) [.ml]
+24. collections/queue.mli (Std__Collections__Queue) [.mli]
+25. collections/vector.ml (Std__Collections__Vector) [.ml]
+26. collections/vector.mli (Std__Collections__Vector) [.mli]
+27. path.mli (Std__Path) [.mli]
+28. path.ml (Std__Path) [.ml]
+29. dot.ml (Std__Dot) [.ml]
+30. dot.mli (Std__Dot) [.mli]
+31. mermaid.ml (Std__Mermaid) [.ml]
+32. mermaid.mli (Std__Mermaid) [.mli]
+33. time/instant.ml (Std__Time__Instant) [.ml]
+34. time/instant.mli (Std__Time__Instant) [.mli]
+35. time/system_time.mli (Std__Time__System_time) [.mli]
+36. time/system_time.ml (Std__Time__System_time) [.ml]
+37. net/http_header.ml (Std__Net__Http_header) [.ml]
+38. net/http_header.mli (Std__Net__Http_header) [.mli]
+39. net/http_status.mli (Std__Net__Http_status) [.mli]
+40. net/http_status.ml (Std__Net__Http_status) [.ml]
+41. net/http_version.mli (Std__Net__Http_version) [.mli]
+42. net/http_version.ml (Std__Net__Http_version) [.ml]
+43. net/http_method.mli (Std__Net__Http_method) [.mli]
+44. net/http_method.ml (Std__Net__Http_method) [.ml]
+45. uri.mli (Std__Uri) [.mli]
+46. uri.ml (Std__Uri) [.ml]
+47. collections/collections.mli (Std__Collections__Collections) [.mli]
+48. collections/collections.ml (Std__Collections__Collections) [.ml]
+49. command.mli (Std__Command) [.mli]
+50. command.ml (Std__Command) [.ml]
+51. datetime.ml (Std__Datetime) [.ml]
+52. datetime.mli (Std__Datetime) [.mli]
+53. env.ml (Std__Env) [.ml]
+54. env.mli (Std__Env) [.mli]
+55. file.mli (Std__File) [.mli]
+56. file.ml (Std__File) [.ml]
+57. fs.mli (Std__Fs) [.mli]
+58. fs.ml (Std__Fs) [.ml]
+59. graph.ml (Std__Graph) [.ml]
+60. net.ml (Std__Net) [.ml]
+61. net.mli (Std__Net) [.mli]
+62. option.ml (Std__Option) [.ml]
+63. option.mli (Std__Option) [.mli]
+64. time/time.ml (Std__Time__Time) [.ml]
+65. time/time.mli (Std__Time__Time) [.mli]
+66. log.mli (Std__Log) [.mli]
+67. log.ml (Std__Log) [.ml]
+68. workerpool.ml (Std__Workerpool) [.ml]
+69. workerpool.mli (Std__Workerpool) [.mli]
+70. data/toml.mli (Std__Data__Toml) [.mli]
+71. Char_Cursor.ml (Std__Char_Cursor) [.ml]
+72. net/http_response.mli (Std__Net__Http_response) [.mli]
+73. data/data.mli.bak (Std__Data) [.bak]
+74. data/sexp.ml (Std__Data__Sexp) [.ml]
+75. data/data.ml.bak (Std__Data) [.bak]
+76. data/json.ml (Std__Data__Json) [.ml]
+77. dot.cmi (Std) [.cmi]
+78. net/http_request.ml (Std__Net__Http_request) [.ml]
+79. net/http_request.mli (Std__Net__Http_request) [.mli]
+80. std.mli (Std__Std) [.mli]
+81. net/http_response.ml (Std__Net__Http_response) [.ml]
+82. std.ml (Std__Std) [.ml]
+83. data/json.mli (Std__Data__Json) [.mli]
+84. data/toml.ml (Std__Data__Toml) [.ml]
+85. data/sexp.mli (Std__Data__Sexp) [.mli]
+86. ref.ml (Std__Ref) [.ml]
+;

@@ -1,0 +1,221 @@
+; ./bootstrap.py && ./minitusk
+; ./bootstrap.py && ./minitusk
+=== Bootstrap: Building minitusk ===
+
+✓ OCaml 5.3.0+riot already installed
+
+Building minitusk...
+
+$ rm -rf ./target/bootstrap
+=== Compiling minitusk ===
+$ cp packages/minitusk/src/const.ml ./target/bootstrap/sandbox/minitusk
+$ cp packages/minitusk/src/io.ml ./target/bootstrap/sandbox/minitusk
+$ cp packages/minitusk/src/ocaml_platform.ml ./target/bootstrap/sandbox/minitusk
+$ cp packages/minitusk/src/toml.ml ./target/bootstrap/sandbox/minitusk
+$ cp packages/minitusk/src/file_scanner.ml ./target/bootstrap/sandbox/minitusk
+$ cp packages/minitusk/src/graph.ml ./target/bootstrap/sandbox/minitusk
+$ cp packages/minitusk/src/package.ml ./target/bootstrap/sandbox/minitusk
+$ cp packages/minitusk/src/dep_graph.ml ./target/bootstrap/sandbox/minitusk
+$ cp packages/minitusk/src/action.ml ./target/bootstrap/sandbox/minitusk
+$ cp packages/minitusk/src/main.ml ./target/bootstrap/sandbox/minitusk
+$ cd ./target/bootstrap/sandbox/minitusk && /Users/ostera/.tusk/toolchains/5.3.0+riot/bin/ocamlc -I +unix -o minitusk unix.cma const.ml io.ml ocaml_platform.ml toml.ml file_scanner.ml graph.ml package.ml dep_graph.ml action.ml main.ml
+$ rm -f ./minitusk
+$ cp ./target/bootstrap/sandbox/minitusk/minitusk ./minitusk
+$ chmod +x ./minitusk
+
+✓ Bootstrap complete! Minitusk executable at: ./minitusk
+
+Now run: ./minitusk
+=== Minitusk Build System ===
+
+Building package: kernel
+  Path: packages/kernel
+Scanning package "kernel" from packages/kernel
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules aliases
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules aliases
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/kernel/src/IO.ml
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/kernel/src/osprocess.mli
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/kernel/src/types.ml
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/kernel/src/env.mli
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/kernel/src/time.mli
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/kernel/src/system.mli
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/kernel/src/crypto/crypto_stubs.ml
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/kernel/src/crypto/hash.mli
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/kernel/src/osprocess.ml
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/kernel/src/env.ml
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/kernel/src/time.ml
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/kernel/src/Kernel.mli
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/kernel/src/system.ml                                                                                          $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/kernel/src/crypto/crypto.mli                                                                                  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/kernel/src/crypto/hash.ml
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/kernel/src/Kernel.ml
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/kernel/src/crypto/crypto.ml
++ src/
+  - osprocess.ml
+  - utils.h
+  + crypto/
+    - crypto.mli
+    - hash.mli
+    - crypto.ml
+    - hash.ml
+    - kernel_crypto.c
+    - crypto_stubs.ml
+  - time.mli
+  - kernel_unix_io.c
+  - env.mli
+  - system.mli
+  - env.ml
+  - osprocess.mli
+  - system.ml
+  - time.ml
+  - types.ml
+  - kernel_unix_kqueue.c
+  - IO.ml
+Dumped graph to target/bootstrap/out/kernel/graph.dot
+Executing 46 actions...
+  $ rm -rf target/bootstrap/sandbox/Kernel
+Working in: /Users/ostera/Developer/github.com/riot-ml/riot/target/bootstrap/sandbox/Kernel
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -c -impl Kernel__Aliases.ml.gen -no-alias-deps -I . -I . -o Kernel__Aliases.cmo
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -c -impl Kernel__Crypto__Aliases.ml.gen -no-alias-deps -I . -I . -o Kernel__Crypto__Aliases.cmo
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -c -I . -o packages/kernel/src/kernel_unix_kqueue.o packages/kernel/src/kernel_unix_kqueue.c
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -c -I . -o packages/kernel/src/kernel_unix_io.o packages/kernel/src/kernel_unix_io.c
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -c -I . -o packages/kernel/src/crypto/kernel_crypto.o packages/kernel/src/crypto/kernel_crypto.c
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -c -open Kernel__Aliases -impl packages/kernel/src/IO.ml -I . -I . -o Kernel__IO.cmo
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -c -open Kernel__Aliases -I . -I . -o Kernel__Osprocess.cmi packages/kernel/src/osprocess.mli
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -c -open Kernel__Aliases -impl packages/kernel/src/types.ml -I . -I . -o Kernel__Types.cmo
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -c -open Kernel__Aliases -I . -I . -o Kernel__Env.cmi packages/kernel/src/env.mli
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -c -open Kernel__Aliases -I . -I . -o Kernel__Time.cmi packages/kernel/src/time.mli
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -c -open Kernel__Aliases -I . -I . -o Kernel__System.cmi packages/kernel/src/system.mli
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -c -open Kernel__Aliases -open Kernel__Crypto__Aliases -impl packages/kernel/src/crypto/crypto_stubs.ml -I . -I . -o Kernel__Crypto__Crypto_stubs.cmo
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -c -open Kernel__Aliases -open Kernel__Crypto__Aliases -I . -I . -o Kernel__Crypto__Hash.cmi packages/kernel/src/crypto/hash.mli
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -c -open Kernel__Aliases -impl packages/kernel/src/osprocess.ml -I . -I . -o Kernel__Osprocess.cmo
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -c -open Kernel__Aliases -impl packages/kernel/src/env.ml -I . -I . -o Kernel__Env.cmo
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -c -open Kernel__Aliases -impl packages/kernel/src/time.ml -I . -I . -o Kernel__Time.cmo
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -c -open Kernel__Aliases -I . -I . -o Kernel.cmi packages/kernel/src/Kernel.mli
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -c -open Kernel__Aliases -impl packages/kernel/src/system.ml -I . -I . -o Kernel__System.cmo
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -c -open Kernel__Aliases -open Kernel__Crypto__Aliases -I . -I . -o Kernel__Crypto.cmi packages/kernel/src/crypto/crypto.mli
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -c -open Kernel__Aliases -open Kernel__Crypto__Aliases -impl packages/kernel/src/crypto/hash.ml -I . -I . -o Kernel__Crypto__Hash.cmo
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -c -open Kernel__Aliases -impl packages/kernel/src/Kernel.ml -I . -I . -o Kernel.cmo
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -c -open Kernel__Aliases -open Kernel__Crypto__Aliases -impl packages/kernel/src/crypto/crypto.ml -I . -I . -o Kernel__Crypto.cmo
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -a -nostdlib -I . -o Kernel.cma Kernel__Aliases.cmo Kernel__Crypto__Aliases.cmo Kernel__IO.cmo Kernel__Types.cmo Kernel__Crypto__Crypto_stubs.cmo Kernel__Osprocess.cmo Kernel__Env.cmo Kernel__Time.cmo Kernel__System.cmo Kernel__Crypto__Hash.cmo Kernel.cmo Kernel__Crypto.cmo kernel_unix_kqueue.o kernel_unix_io.o kernel_crypto.o
+
+Promoting outputs for Kernel:
+  - Kernel__Aliases.cmo
+  - Kernel__Aliases.cmi
+  - Kernel__Crypto__Aliases.cmo
+  - Kernel__Crypto__Aliases.cmi
+  - kernel_unix_kqueue.o
+  - kernel_unix_io.o
+  - kernel_crypto.o
+  - Kernel__IO.cmo
+  - Kernel__Osprocess.cmi
+  - Kernel__Types.cmo
+  - Kernel__Env.cmi
+  - Kernel__Time.cmi
+  - Kernel__System.cmi
+  - Kernel__Crypto__Crypto_stubs.cmo
+  - Kernel__Crypto__Hash.cmi
+  - Kernel__Osprocess.cmo
+  - Kernel__Env.cmo
+  - Kernel__Time.cmo
+  - Kernel.cmi
+  - Kernel__System.cmo
+  - Kernel__Crypto.cmi
+  - Kernel__Crypto__Hash.cmo
+  - Kernel.cmo
+  - Kernel__Crypto.cmo
+  - Kernel.cma
+Promoted 25 artifacts to target/bootstrap/out/Kernel
+
+Building package: miniriot
+  Path: packages/miniriot
+Scanning package "miniriot" from packages/miniriot
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules aliases
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/miniriot/src/proc_effect.mli
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/miniriot/src/mailbox.mli
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/miniriot/src/pid.mli
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/miniriot/src/trace.mli
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/miniriot/src/message.mli
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/miniriot/src/proc_state.mli
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/miniriot/src/scheduler.mli
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/miniriot/src/process.mli
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/miniriot/src/effects.mli
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/miniriot/src/runtime.mli
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/miniriot/src/proc_effect.ml
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/miniriot/src/mailbox.ml
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/miniriot/src/pid.ml
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/miniriot/src/trace.ml
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/miniriot/src/message.ml
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/miniriot/src/proc_state.ml
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/miniriot/src/scheduler.ml
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/miniriot/src/process.ml
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/miniriot/src/effects.ml
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/miniriot/src/runtime.ml
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/miniriot/src/Miniriot.mli
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -modules packages/miniriot/src/Miniriot.ml
++ src/
+  - process.ml
+  - mailbox.ml
+  - runtime.mli
+  - proc_effect.mli
+  - mailbox.mli
+  - miniriot.ml
+  - proc_effect.ml
+  - scheduler.ml
+  - trace.mli
+  - trace.ml
+  - effects.ml
+  - scheduler.mli
+  - proc_state.mli
+  - runtime.ml
+  - effects.mli
+  - message.ml
+  - miniriot.mli
+  - proc_state.ml
+  - pid.mli
+  - process.mli
+  - message.mli
+  - pid.ml
+Dumped graph to target/bootstrap/out/miniriot/graph.dot
+Executing 47 actions...
+  $ rm -rf target/bootstrap/sandbox/Miniriot
+  Copied dependency: Kernel__Aliases.cmo
+  Copied dependency: Kernel__Aliases.cmi
+  Copied dependency: Kernel__Crypto__Aliases.cmo
+  Copied dependency: Kernel__Crypto__Aliases.cmi
+  Copied dependency: kernel_unix_kqueue.o
+  Copied dependency: kernel_unix_io.o
+  Copied dependency: kernel_crypto.o
+  Copied dependency: Kernel__IO.cmo
+  Copied dependency: Kernel__Osprocess.cmi
+  Copied dependency: Kernel__Types.cmo
+  Copied dependency: Kernel__Env.cmi
+  Copied dependency: Kernel__Time.cmi
+  Copied dependency: Kernel__System.cmi
+  Copied dependency: Kernel__Crypto__Crypto_stubs.cmo
+  Copied dependency: Kernel__Crypto__Hash.cmi
+  Copied dependency: Kernel__Osprocess.cmo
+  Copied dependency: Kernel__Env.cmo
+  Copied dependency: Kernel__Time.cmo
+  Copied dependency: Kernel.cmi
+  Copied dependency: Kernel__System.cmo
+  Copied dependency: Kernel__Crypto.cmi
+  Copied dependency: Kernel__Crypto__Hash.cmo
+  Copied dependency: Kernel.cmo
+  Copied dependency: Kernel__Crypto.cmo
+  Copied dependency: Kernel.cma
+Working in: /Users/ostera/Developer/github.com/riot-ml/riot/target/bootstrap/sandbox/Miniriot
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -c -impl Miniriot__Aliases.ml.gen -no-alias-deps -I . -I . -o Miniriot__Aliases.cmo
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -c -open Miniriot__Aliases -I . -I . -o Miniriot__Pid.cmi packages/miniriot/src/pid.mli
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -c -open Miniriot__Aliases -I . -I . -o Miniriot__Trace.cmi packages/miniriot/src/trace.mli
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -c -open Miniriot__Aliases -I . -I . -o Miniriot__Message.cmi packages/miniriot/src/message.mli
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -c -open Miniriot__Aliases -I . -I . -o Miniriot__Proc_state.cmi packages/miniriot/src/proc_state.mli
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -c -open Miniriot__Aliases -I . -I . -o Miniriot__Runtime.cmi packages/miniriot/src/runtime.mli
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -c -open Miniriot__Aliases -impl packages/miniriot/src/pid.ml -I . -I . -o Miniriot__Pid.cmo
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -c -open Miniriot__Aliases -impl packages/miniriot/src/trace.ml -I . -I . -o Miniriot__Trace.cmo
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -c -open Miniriot__Aliases -I . -I . -o Miniriot__Proc_effect.cmi packages/miniriot/src/proc_effect.mli
+File "packages/miniriot/src/proc_effect.mli", line 19, characters 17-37:
+19 |       interest : Kernel.IO.Interest.t;
+                      ^^^^^^^^^^^^^^^^^^^^
+Error: The module "Kernel.IO" is an alias for module "Kernel__IO", which is missing
+
+Fatal error: exception Failure("compilation error")
+;

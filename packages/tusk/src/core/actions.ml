@@ -200,17 +200,28 @@ let execute_action action toolchain =
       |> convert_result
   | CopyFile { source; destination } -> (
       try
-        let src_path = Path.of_string source |> Result.expect ~msg:"Invalid source path" in
-        let dst_path = Path.of_string destination |> Result.expect ~msg:"Invalid destination path" in
-        let _ = Fs.copy ~src:src_path ~dst:dst_path
-                |> Result.expect ~msg:"Failed to copy file" in
+        let src_path =
+          Path.of_string source |> Result.expect ~msg:"Invalid source path"
+        in
+        let dst_path =
+          Path.of_string destination
+          |> Result.expect ~msg:"Invalid destination path"
+        in
+        let _ =
+          Fs.copy ~src:src_path ~dst:dst_path
+          |> Result.expect ~msg:"Failed to copy file"
+        in
         (Success, Printf.sprintf "Copied %s to %s" source destination)
       with exn -> (Failed (Printexc.to_string exn), ""))
   | WriteFile { destination; content } -> (
       try
-        let dst_path = Path.of_string destination |> Result.expect ~msg:"Invalid destination path" in
-        let _ = Fs.write content dst_path
-                |> Result.expect ~msg:"Failed to write file" in
+        let dst_path =
+          Path.of_string destination
+          |> Result.expect ~msg:"Invalid destination path"
+        in
+        let _ =
+          Fs.write content dst_path |> Result.expect ~msg:"Failed to write file"
+        in
         (Success, Printf.sprintf "Wrote %s" destination)
       with exn -> (Failed (Printexc.to_string exn), ""))
   | DeclareOutputs { outputs } ->

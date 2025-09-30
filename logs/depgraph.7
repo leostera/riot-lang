@@ -1,0 +1,39 @@
+;
+; ./src/tusk-depgraph ../kernel
+Building dependency graph for ../kernel
+
+Package: Kernel
+
+Scanning from: ../kernel/src
+Scanning directory tree from: ../kernel/src
+Found 8 files and 0 directories
+Found 5 OCaml source files
+Found directories:
+Created 6 nodes
+Analyzing dependencies...
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../kernel/src -open Kernel__aliases -modules ../kernel/src/crypto.ml
+  crypto.ml depends on: Digest, Kernel__aliases
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../kernel/src -open Kernel__aliases -modules ../kernel/src/Kernel__aliases.ml.gen
+  Kernel__aliases.ml.gen: (no dependencies detected)
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../kernel/src -open Kernel__aliases -modules ../kernel/src/io.ml
+  io.ml depends on: Array, Buffer, Bytes, Format, Fun, Int, Kernel__aliases, List, Obj, Option, Printexc, Stdlib, String, Sys, Unix, UnixLabels
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../kernel/src -open Kernel__aliases -modules ../kernel/src/kernel.ml
+  kernel.ml depends on: Crypto, Io, Kernel__aliases
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../kernel/src -open Kernel__aliases -modules ../kernel/src/crypto.mli
+  crypto.mli depends on: Kernel__aliases
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../kernel/src -open Kernel__aliases -modules ../kernel/src/kernel.mli
+  kernel.mli depends on: Buffer, Crypto, Format, Kernel__aliases, Stdlib, Unix
+                                                                                                                                 Module Registry (5 entries):
+  crypto.mli -> Kernel__Crypto [.mli]
+  crypto.ml -> Kernel__Crypto [.ml]
+  kernel.ml -> Kernel__Kernel [.ml]
+  kernel.mli -> Kernel__Kernel [.mli]                                                                                              io.ml -> Kernel__Io [.ml]
+
+Wrote DOT graph to: Kernel.dot                                                                                                   Wrote Mermaid diagram to: Kernel.mermaid
+
+=== Topological Sort ===
+ 1. Kernel__aliases.ml.gen (Kernel__aliases) [.ml] [gen]
+ 2. crypto.ml (Crypto) [.ml]                                                                                                      3. crypto.mli (Crypto) [.mli]
+ 4. io.ml (Io) [.ml]
+ 5. kernel.mli (Kernel) [.mli]                                                                                                    6. kernel.ml (Kernel) [.ml]
+;

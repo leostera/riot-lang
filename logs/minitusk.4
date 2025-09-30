@@ -1,0 +1,71 @@
+;
+;
+; ./minitusk
+=== Minitusk Build System ===
+
+Reading workspace configuration...
+Found 7 packages
+
+Packages in workspace:
+  - packages/std
+  - packages/kernel
+  - packages/jsonrpc
+  - packages/mcp
+  - packages/miniriot
+  - packages/minitusk
+  - packages/tusk
+
+Reading package configurations...
+=== Workspace Dependency Graph ===
+
+Package: unix (at )
+  No dependencies
+
+Package: std (at packages/std)
+  Dependencies:
+    - miniriot
+    - kernel
+
+Package: kernel (at packages/kernel)
+  Dependencies:
+    - unix
+
+Package: jsonrpc (at packages/jsonrpc)
+  Dependencies:
+    - std
+                                                                                                                                 Package: mcp (at packages/mcp)
+  Dependencies:                                                                                                                      - std
+                                                                                                                                 Package: miniriot (at packages/miniriot)
+  Dependencies:                                                                                                                      - kernel
+                                                                                                                                 Package: minitusk (at packages/minitusk)
+  Dependencies:                                                                                                                      - unix
+                                                                                                                                 Package: tusk (at packages/tusk)
+  Dependencies:                                                                                                                      - jsonrpc
+    - mcp                                                                                                                            - miniriot
+    - std
+=== Build Order ===
+1. unix                                                                                                                          2. minitusk
+3. kernel                                                                                                                        4. miniriot
+5. std                                                                                                                           6. mcp
+7. jsonrpc                                                                                                                       8. tusk
+                                                                                                                                 === Building Packages ===
+                                                                                                                                 Skipping external package: unix
+
+Building minitusk in ./target/bootstrap/sandbox/3503cf4c0e13b349c427b2add26be033                                                   Sources: 1 ML, 0 C
+  Expected outputs: minitusk.cmi, minitusk.cma                                                                                     Sorted build order: main.ml
+  $ cd ./target/bootstrap/sandbox/3503cf4c0e13b349c427b2add26be033 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -no-alias-deps -w -49 -c -o Minitusk__aliases.cmo Minitusk__aliases.ml
+  $ cd ./target/bootstrap/sandbox/3503cf4c0e13b349c427b2add26be033 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Minitusk__aliases -c -o Minitusk__Main.cmo main.ml
+  Linking order: Minitusk__aliases.cmo Minitusk__Main.cmo                                                                          $ cd ./target/bootstrap/sandbox/3503cf4c0e13b349c427b2add26be033 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -a -o minitusk.cma Minitusk__aliases.cmo Minitusk__Main.cmo                                                                                   $ cp ./target/bootstrap/sandbox/3503cf4c0e13b349c427b2add26be033/minitusk.cma ./target/bootstrap/out/minitusk/
+  $ cp ./target/bootstrap/sandbox/3503cf4c0e13b349c427b2add26be033/*.cmi ./target/bootstrap/out/minitusk/ 2>/dev/null || true      $ cd ./target/bootstrap/sandbox/3503cf4c0e13b349c427b2add26be033 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc  -I +unix -I .  -o minitusk unix.cma  Minitusk__Main.cmo                                                                                      $ cp ./target/bootstrap/sandbox/3503cf4c0e13b349c427b2add26be033/minitusk ./target/bootstrap/out/minitusk/
+  $ cp ./target/bootstrap/sandbox/3503cf4c0e13b349c427b2add26be033/minitusk ./target/bootstrap/minitusk
+                                                                                                                                 Building kernel in ./target/bootstrap/sandbox/272b3e7a8feb6fae6c1a95d8d21d1bca
+  Sources: 5 ML, 2 C                                                                                                               Expected outputs: kernel.cmi, kernel.cma
+  $ cd ./target/bootstrap/sandbox/272b3e7a8feb6fae6c1a95d8d21d1bca && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -c std_sys_unix_kqueue.c
+  $ cd ./target/bootstrap/sandbox/272b3e7a8feb6fae6c1a95d8d21d1bca && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -c std_sys_unix_io.c
+  Sorted build order: crypto.ml, kernel.ml, io.ml, crypto.mli, kernel.mli
+  $ cd ./target/bootstrap/sandbox/272b3e7a8feb6fae6c1a95d8d21d1bca && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -no-alias-deps -w -49 -c -o Kernel__aliases.cmo Kernel__aliases.ml
+  $ cd ./target/bootstrap/sandbox/272b3e7a8feb6fae6c1a95d8d21d1bca && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Kernel__aliases -c -o Kernel__Crypto.cmo crypto.ml
+File "crypto.ml", line 1:
+Error: Could not find the .cmi file for interface crypto.mli.
+Error: Command failed with exit code 2
+;

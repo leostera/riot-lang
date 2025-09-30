@@ -10,11 +10,11 @@ let available_parallelism () =
   | "Unix" -> (
       try
         let ic =
-          Kernel.OsProcess.open_process_in
+          Kernel.Osprocess.open_process_in
             "nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4"
         in
         let cores = input_line ic |> int_of_string in
-        ignore (Kernel.OsProcess.close_process_in ic);
+        ignore (Kernel.Osprocess.close_process_in ic);
         cores
       with _ -> 4)
   | _ -> 4

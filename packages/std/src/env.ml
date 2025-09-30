@@ -3,21 +3,21 @@
 let args = Array.to_list (Kernel.System.argv ()) |> List.tl
 
 let current_dir () =
-  match Kernel.IO.File.getcwd () with
+  match Kernel.Fs.File.getcwd () with
   | Ok cwd -> Path.of_string cwd
   | Error e ->
       Error
         (Path.SystemError
-           (Kernel.IO.pp_err Format.str_formatter e;
+           (Kernel.Async.pp_err Format.str_formatter e;
             Format.flush_str_formatter ()))
 
 let set_current_dir path =
-  match Kernel.IO.File.chdir (Path.to_string path) with
+  match Kernel.Fs.File.chdir (Path.to_string path) with
   | Ok () -> Ok ()
   | Error e ->
       Error
         (Path.SystemError
-           (Kernel.IO.pp_err Format.str_formatter e;
+           (Kernel.Async.pp_err Format.str_formatter e;
             Format.flush_str_formatter ()))
 
 let home_dir () =

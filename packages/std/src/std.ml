@@ -1,25 +1,26 @@
 (** Standard library extensions and utilities *)
 
-module Log = Log
-module Char = Char
 module Buffer = Buffer
 module Cell = Cell
+module Char = Char
 module Collections = Collections
 module Command = Command
+module Crypto = Crypto
 module Data = Data
 module Datetime = Datetime
 module Env = Env
-module File = File
 module Fs = Fs
 module Graph = Graph
+module Iterator = Iterator
 module List = List
+module Log = Log
+module MutIterator = MutIterator
 module Net = Net
 module Option = Option
 module Path = Path
 module Result = Result
 module String = String
 module Time = Time
-module Iterator = Iterator
-module MutIterator = MutIterator
+module Version = Version
 module WorkerPool = Workerpool
 include Global

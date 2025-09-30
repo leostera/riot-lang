@@ -11,9 +11,9 @@ module Uri = Uri
 module Addr : sig
   (** Network addresses *)
 
-  type 't raw_addr = 't Kernel.Net.Addr.raw_addr
-  type tcp_addr = Kernel.Net.Addr.tcp_addr
-  type stream_addr = Kernel.Net.Addr.stream_addr
+  type 't raw_addr
+  type tcp_addr
+  type stream_addr
 
   val loopback : tcp_addr
   val tcp : tcp_addr -> int -> stream_addr

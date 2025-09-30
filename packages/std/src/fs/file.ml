@@ -1,0 +1,249 @@
+open Common
+
+type t = { fd : Unix.file_descr; mutable closed : bool }
+
+(* Helper to check if file is closed *)
+let ensure_open t =
+  if t.closed then Error (SystemError "File is closed") else Ok ()
+
+(* Opening files *)
+
+let open_with_flags path flags mode =
+  let path_str = Path.to_string path in
+  match Kernel.Fs.File.open_file path_str flags mode with
+  | Ok fd -> Ok { fd; closed = false }
+  | Error e -> Error (SystemError (kernel_error_to_string e))
+
+let create path =
+  open_with_flags path
+    [ Kernel.Fs.File.WriteOnly; Kernel.Fs.File.Create; Kernel.Fs.File.Truncate ]
+    0o644
+
+let create_new path =
+  open_with_flags path
+    [ Kernel.Fs.File.WriteOnly; Kernel.Fs.File.Create; Kernel.Fs.File.Exclusive ]
+    0o644
+
+let open_read path =
+  open_with_flags path [ Kernel.Fs.File.ReadOnly ] 0o644
+
+let open_write path =
+  open_with_flags path
+    [ Kernel.Fs.File.WriteOnly; Kernel.Fs.File.Create ]
+    0o644
+
+let open_append path =
+  open_with_flags path
+    [ Kernel.Fs.File.WriteOnly; Kernel.Fs.File.Append; Kernel.Fs.File.Create ]
+    0o644
+
+let open_read_write path =
+  open_with_flags path [ Kernel.Fs.File.ReadWrite ] 0o644
+
+(* Reading - with async/Miniriot support *)
+
+let read t buffer ~offset ~len =
+  match ensure_open t with
+  | Error e -> Error e
+  | Ok () ->
+      let source = Kernel.Fs.File.to_source t.fd in
+      let rec read_loop () =
+        match Kernel.Fs.File.read t.fd buffer ~pos:offset ~len with
+        | Ok bytes_read -> Ok bytes_read
+        | Error `Would_block ->
+            Miniriot.syscall ~name:"File.read"
+              ~interest:Kernel.Async.Interest.readable ~source read_loop
+        | Error e -> Error (SystemError (kernel_error_to_string e))
+      in
+      read_loop ()
+
+let read_to_end t =
+  match ensure_open t with
+  | Error e -> Error e
+  | Ok () -> (
+      match Kernel.Fs.File.lseek t.fd 0L Kernel.Fs.File.SeekCur with
+      | Error e -> Error (SystemError (kernel_error_to_string e))
+      | Ok current_pos -> (
+          match Kernel.Fs.File.fstat t.fd with
+          | Error e -> Error (SystemError (kernel_error_to_string e))
+          | Ok stats ->
+              let file_size = Int64.of_int (Kernel.Fs.File.Metadata.size stats) in
+              let remaining =
+                Int64.to_int (Int64.sub file_size current_pos)
+              in
+              if remaining <= 0 then Ok ""
+              else
+                let buffer = Bytes.create remaining in
+                match read t buffer ~offset:0 ~len:remaining with
+                | Ok bytes_read -> Ok (Bytes.sub_string buffer 0 bytes_read)
+                | Error e -> Error e))
+
+let read_exact t buffer ~offset ~len =
+  let rec read_loop pos remaining =
+    if remaining = 0 then Ok ()
+    else
+      match read t buffer ~offset:pos ~len:remaining with
+      | Ok 0 -> Error (SystemError "Unexpected EOF")
+      | Ok n -> read_loop (pos + n) (remaining - n)
+      | Error e -> Error e
+  in
+  read_loop offset len
+
+(* Writing - with async/Miniriot support *)
+
+let write t buffer ~offset ~len =
+  match ensure_open t with
+  | Error e -> Error e
+  | Ok () ->
+      let source = Kernel.Fs.File.to_source t.fd in
+      let rec write_loop () =
+        match Kernel.Fs.File.write t.fd buffer ~pos:offset ~len with
+        | Ok bytes_written -> Ok bytes_written
+        | Error `Would_block ->
+            Miniriot.syscall ~name:"File.write"
+              ~interest:Kernel.Async.Interest.writable ~source write_loop
+        | Error e -> Error (SystemError (kernel_error_to_string e))
+      in
+      write_loop ()
+
+let write_string t str =
+  let buffer = Bytes.of_string str in
+  write t buffer ~offset:0 ~len:(String.length str)
+
+let write_all t str =
+  let buffer = Bytes.of_string str in
+  let len = String.length str in
+  let rec write_loop pos remaining =
+    if remaining = 0 then Ok ()
+    else
+      match write t buffer ~offset:pos ~len:remaining with
+      | Ok n -> write_loop (pos + n) (remaining - n)
+      | Error e -> Error e
+  in
+  write_loop 0 len
+
+(* Seeking *)
+
+let seek t pos =
+  match ensure_open t with
+  | Error e -> Error e
+  | Ok () ->
+      Kernel.Fs.File.lseek t.fd pos Kernel.Fs.File.SeekSet
+      |> convert_kernel_result
+
+let seek_from_current t offset =
+  match ensure_open t with
+  | Error e -> Error e
+  | Ok () ->
+      Kernel.Fs.File.lseek t.fd offset Kernel.Fs.File.SeekCur
+      |> convert_kernel_result
+
+let seek_from_end t offset =
+  match ensure_open t with
+  | Error e -> Error e
+  | Ok () ->
+      Kernel.Fs.File.lseek t.fd offset Kernel.Fs.File.SeekEnd
+      |> convert_kernel_result
+
+let tell t =
+  match ensure_open t with
+  | Error e -> Error e
+  | Ok () ->
+      Kernel.Fs.File.lseek t.fd 0L Kernel.Fs.File.SeekCur
+      |> convert_kernel_result
+
+let rewind t = seek t 0L |> Result.map (fun _ -> ())
+
+(* Synchronization *)
+
+let sync_all t =
+  match ensure_open t with
+  | Error e -> Error e
+  | Ok () -> Kernel.Fs.File.fsync t.fd |> convert_kernel_result
+
+let sync_data t =
+  match ensure_open t with
+  | Error e -> Error e
+  | Ok () ->
+      (* fdatasync not in OCaml Unix, fall back to fsync *)
+      Kernel.Fs.File.fsync t.fd |> convert_kernel_result
+
+(* Metadata *)
+
+let metadata t =
+  match ensure_open t with
+  | Error e -> Error e
+  | Ok () ->
+      Kernel.Fs.File.fstat t.fd |> convert_kernel_result
+      |> Result.map Metadata.of_unix
+
+let set_len t len =
+  match ensure_open t with
+  | Error e -> Error e
+  | Ok () -> Kernel.Fs.File.ftruncate t.fd len |> convert_kernel_result
+
+let set_permissions t perm =
+  match ensure_open t with
+  | Error e -> Error e
+  | Ok () ->
+      Kernel.Fs.File.fchmod t.fd (Permissions.to_mode perm)
+      |> convert_kernel_result
+
+(* File locking *)
+
+let lock_exclusive t =
+  match ensure_open t with
+  | Error e -> Error e
+  | Ok () -> Kernel.Fs.File.lockf t.fd Kernel.Fs.File.LockExclusive 0 |> convert_kernel_result
+
+let lock_shared t =
+  match ensure_open t with
+  | Error e -> Error e
+  | Ok () -> Kernel.Fs.File.lockf t.fd Kernel.Fs.File.LockShared 0 |> convert_kernel_result
+
+let try_lock_exclusive t =
+  match ensure_open t with
+  | Error e -> Error e
+  | Ok () -> (
+      match Kernel.Fs.File.lockf t.fd Kernel.Fs.File.TryLockExclusive 0 with
+      | Ok () -> Ok true
+      | Error (`Unix_error Unix.EAGAIN) -> Ok false
+      | Error (`Unix_error Unix.EACCES) -> Ok false
+      | Error e -> Error (SystemError (kernel_error_to_string e)))
+
+let try_lock_shared t =
+  match ensure_open t with
+  | Error e -> Error e
+  | Ok () -> (
+      match Kernel.Fs.File.lockf t.fd Kernel.Fs.File.TryLockShared 0 with
+      | Ok () -> Ok true
+      | Error (`Unix_error Unix.EAGAIN) -> Ok false
+      | Error (`Unix_error Unix.EACCES) -> Ok false
+      | Error e -> Error (SystemError (kernel_error_to_string e)))
+
+let unlock t =
+  match ensure_open t with
+  | Error e -> Error e
+  | Ok () -> Kernel.Fs.File.lockf t.fd Kernel.Fs.File.Unlock 0 |> convert_kernel_result
+
+(* Advanced *)
+
+let try_clone t =
+  match ensure_open t with
+  | Error e -> Error e
+  | Ok () ->
+      Kernel.Fs.File.dup t.fd |> convert_kernel_result
+      |> Result.map (fun new_fd -> { fd = new_fd; closed = false })
+
+let into_fd t = t.fd
+let from_fd fd = { fd; closed = false }
+
+(* Closing *)
+
+let close t =
+  if t.closed then Ok ()
+  else
+    try
+      Kernel.Fs.File.close_fd t.fd |> convert_kernel_result
+      |> Result.map (fun () -> t.closed <- true)
+    with e -> Error (SystemError (Printexc.to_string e))

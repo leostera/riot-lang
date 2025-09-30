@@ -1,0 +1,105 @@
+(** MD5 cryptographic hash implementation (legacy, not secure) *)
+
+type state = { mutable buffer : Buffer.t }
+
+let create () = { buffer = Buffer.create 128 }
+let write state bytes = Buffer.add_bytes state.buffer bytes
+let write_string state s = write state (Bytes.unsafe_of_string s)
+
+let write_unit state () =
+  (* MD5 specific: unit is hashed as a single null byte for legacy compat *)
+  write state (Bytes.create 1)
+
+let write_int state i =
+  let b = Bytes.create 8 in
+  Bytes.set_int64_ne b 0 (Int64.of_int i);
+  write state b
+
+let write_int32 state i =
+  let b = Bytes.create 4 in
+  Bytes.set_int32_ne b 0 i;
+  write state b
+
+let write_int64 state i =
+  let b = Bytes.create 8 in
+  Bytes.set_int64_ne b 0 i;
+  write state b
+
+let write_float state f = write_int64 state (Int64.bits_of_float f)
+
+let write_bool state b =
+  let byte = Bytes.create 1 in
+  Bytes.set byte 0 (if b then '\001' else '\000');
+  write state byte
+
+let write_list writer state lst =
+  (* MD5: don't include length for backwards compatibility *)
+  List.iter (writer state) lst
+
+let write_array writer state arr =
+  (* MD5: don't include length for backwards compatibility *)
+  Array.iter (writer state) arr
+
+let finish state =
+  let data = Buffer.contents state.buffer in
+  let digest = Stdlib.Digest.string data in
+  Kernel.Crypto.Hash.of_bytes (Bytes.of_string digest)
+
+(* Convenience functions *)
+let hash_string s =
+  let state = create () in
+  write_string state s;
+  finish state
+
+let hash_bytes b =
+  let state = create () in
+  write state b;
+  finish state
+
+let hash_unit () =
+  let state = create () in
+  write_unit state ();
+  finish state
+
+let hash_int i =
+  let state = create () in
+  write_int state i;
+  finish state
+
+let hash_int32 i =
+  let state = create () in
+  write_int32 state i;
+  finish state
+
+let hash_int64 i =
+  let state = create () in
+  write_int64 state i;
+  finish state
+
+let hash_float f =
+  let state = create () in
+  write_float state f;
+  finish state
+
+let hash_bool b =
+  let state = create () in
+  write_bool state b;
+  finish state
+
+let hash_list hasher lst =
+  let state = create () in
+  write_list
+    (fun s x ->
+      let h = hasher x in
+      write s (Kernel.Crypto.Hash.to_bytes h))
+    state lst;
+  finish state
+
+let hash_array hasher arr =
+  let state = create () in
+  write_array
+    (fun s x ->
+      let h = hasher x in
+      write s (Kernel.Crypto.Hash.to_bytes h))
+    state arr;
+  finish state

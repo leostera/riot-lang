@@ -11,75 +11,38 @@ let err e = Error e
 let is_ok = function Ok _ -> true | Error _ -> false
 let is_error = function Ok _ -> false | Error _ -> true
 let is_err = is_error
-
-let is_ok_and f = function
-  | Ok x -> f x
-  | Error _ -> false
-
-let is_err_and f = function
-  | Error e -> f e
-  | Ok _ -> false
+let is_ok_and f = function Ok x -> f x | Error _ -> false
+let is_err_and f = function Error e -> f e | Ok _ -> false
 
 (* Transforming *)
 let map f = function Ok x -> Ok (f x) | Error e -> Error e
 let map_error f = function Ok x -> Ok x | Error e -> Error (f e)
 let map_err = map_error
-
-let map_or ~default f = function
-  | Ok x -> f x
-  | Error _ -> default
-
-let map_or_else ~default f = function
-  | Ok x -> f x
-  | Error e -> default e
+let map_or ~default f = function Ok x -> f x | Error _ -> default
+let map_or_else ~default f = function Ok x -> f x | Error e -> default e
 
 (* Chaining *)
 let and_then r f = match r with Ok x -> f x | Error e -> Error e
-
-let or_ r1 r2 = match r1 with
-  | Ok _ -> r1
-  | Error _ -> r2
-
-let or_else r f = match r with
-  | Ok x -> Ok x
-  | Error e -> f e
+let or_ r1 r2 = match r1 with Ok _ -> r1 | Error _ -> r2
+let or_else r f = match r with Ok x -> Ok x | Error e -> f e
 
 (* Extracting values *)
 let unwrap = function
   | Ok x -> x
   | Error _ -> panic "called Result.unwrap on an Error value"
 
-let unwrap_or ~default = function
-  | Ok x -> x
-  | Error _ -> default
-
-let unwrap_or_default ~default = function
-  | Ok x -> x
-  | Error _ -> default ()
-
-let unwrap_or_else ~fn = function
-  | Ok x -> x
-  | Error _ -> fn ()
+let unwrap_or ~default = function Ok x -> x | Error _ -> default
+let unwrap_or_default ~default = function Ok x -> x | Error _ -> default ()
+let unwrap_or_else ~fn = function Ok x -> x | Error _ -> fn ()
 
 let unwrap_err = function
   | Error e -> e
   | Ok _ -> panic "called Result.unwrap_err on an Ok value"
 
-let expect ~msg = function
-  | Ok x -> x
-  | Error _ -> panic msg
-
-let expect_err ~msg = function
-  | Error e -> e
-  | Ok _ -> panic msg
-
-let ok_value = function
-  | Ok x -> Some x
-  | Error _ -> None
-
-let err_value = function
-  | Error e -> Some e
-  | Ok _ -> None
+let expect ~msg = function Ok x -> x | Error _ -> panic msg
+let expect_err ~msg = function Error e -> e | Ok _ -> panic msg
+let ok_value = function Ok x -> Some x | Error _ -> None
+let err_value = function Error e -> Some e | Ok _ -> None
 
 (* Inspecting *)
 let inspect f r =

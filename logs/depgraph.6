@@ -1,0 +1,216 @@
+; ./src/tusk-depgraph ../std
+Building dependency graph for ../std
+
+Package: Std
+
+Scanning from: ../std/src
+Scanning directory tree from: ../std/src
+Found 54 files and 2 directories
+Found 53 OCaml source files
+Found directories: data
+Created 55 nodes
+Analyzing dependencies...
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/datetime.ml
+  datetime.ml depends on: Printf, Std__aliases, Unix
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/ref.ml
+  ref.ml depends on: Atomic, Format, Int64, Obj, Std__aliases, Type
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__Data__aliases -modules ../std/src/data/json.mli
+  data/json.mli depends on: Std__Data__aliases
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/option.ml
+  option.ml depends on: List, Result, Std__aliases
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/net.mli
+  net.mli depends on: Kernel, Std__aliases
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/Iterator.ml
+  Iterator.ml depends on: List, Std__aliases
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/char.mli
+  char.mli depends on: Std__aliases, Stdlib
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__Data__aliases -modules ../std/src/data/json.ml
+  data/json.ml depends on: Buffer, List, Printf, Std__Data__aliases, String                                                        $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/Std__aliases.ml.gen
+  Std__aliases.ml.gen: (no dependencies detected)
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__Data__aliases -modules ../std/src/data/sexp.mli
+  data/sexp.mli depends on: Std__Data__aliases
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/dot.mli                 dot.mli depends on: Std__aliases
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/std.ml
+  std.ml depends on: Buffer, Char, Command, Data, Datetime, Env, File, Fs, Global, Graph, Iterator, List, Log, MutIterator, Net, Option, Path, Result, Std__aliases, String, Workerpool
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/MutIterator.ml
+  MutIterator.ml depends on: List, Std__aliases
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/command.mli
+  command.mli depends on: Std__aliases, Unix                                                                                       $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/fs.ml
+  fs.ml depends on: Bytes, Filename, List, Path, Printexc, Result, Std__aliases, Sys, Unix
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__Data__aliases -modules ../std/src/data/toml.ml      data/toml.ml depends on: List, Std__Data__aliases, String
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__Data__aliases -modules ../std/src/data/sexp.ml
+  data/sexp.ml depends on: Buffer, List, Printf, Std__Data__aliases, String                                                        $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/char.ml
+  char.ml depends on: Std__aliases, Stdlib
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/global.ml               global.ml depends on: Std__aliases, Sys, Unix
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/workerpool.mli
+  workerpool.mli depends on: Std__aliases                                                                                          $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__Data__aliases -modules ../std/src/data/data.mli
+  data/data.mli depends on: Json, Sexp, Std__Data__aliases, Toml
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/time.ml                 time.ml depends on: Std__aliases, Unix
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/workerpool.ml
+  workerpool.ml depends on: Std__aliases                                                                                           $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/log.ml
+  log.ml depends on: Std__aliases
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/datetime.mli            datetime.mli depends on: Std__aliases
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/log.mli                 log.mli depends on: Std__aliases
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/file.mli                file.mli depends on: Std__aliases, Unix
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/command.ml
+  command.ml depends on: Array, List, Printexc, Printf, Std__aliases, String, Sys, Unix                                            $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/fs.mli
+  fs.mli depends on: Path, Result, Std__aliases, Unix
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/Iterator.mli            Iterator.mli depends on: Std__aliases
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/option.mli
+  option.mli depends on: Result, Std__aliases                                                                                      $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/file.ml
+  file.ml depends on: Bytes, Kernel, List, Miniriot, Printexc, Printf, Std__aliases, Unix
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/result.ml               result.ml depends on: Global, List, Std__aliases, Stdlib
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/path.mli
+  path.mli depends on: Format, Result, Std__aliases
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/buffer.mli
+  buffer.mli depends on: Std__aliases, Stdlib
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/list.mli
+  list.mli depends on: Std__aliases, Stdlib
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/string.ml
+  string.ml depends on: Iterator, MutIterator, Std__aliases, Stdlib, Uchar
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/env.mli
+  env.mli depends on: Path, Result, Std__aliases
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/buffer.ml
+  buffer.ml depends on: Std__aliases, Stdlib
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/result.mli
+  result.mli depends on: Std__aliases, Stdlib
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/Std__Data__aliases.ml.gen
+  Std__Data__aliases.ml.gen: (no dependencies detected)
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/mermaid.ml
+  mermaid.ml depends on: Buffer, List, Printf, Std__aliases
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__Data__aliases -modules ../std/src/data/data.ml
+  data/data.ml depends on: Json, Sexp, Std__Data__aliases, Toml
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/std.mli
+  std.mli depends on: Buffer, Command, Data, Datetime, Env, File, Fs, Graph, Iterator, List, MutIterator, Net, Option, Path, Result, Std__aliases
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/time.mli
+  time.mli depends on: Std__aliases
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/env.ml
+  env.ml depends on: Array, List, Path, Result, Std__aliases, String, Sys, Unix
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/Char_Cursor.ml
+  Char_Cursor.ml depends on: Std__aliases
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/mermaid.mli
+  mermaid.mli depends on: Std__aliases
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/list.ml
+  list.ml depends on: Std__aliases, Stdlib
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/global.mli
+  global.mli depends on: Std__aliases
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/graph.ml
+  graph.ml depends on: Dot, Mermaid, Std__aliases
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__Data__aliases -modules ../std/src/data/toml.mli
+  data/toml.mli depends on: Std__Data__aliases
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/dot.ml
+  dot.ml depends on: List, Printf, Std__aliases, String
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/net.ml
+  net.ml depends on: Bytes, Fun, Kernel, Miniriot, Printf, Std__aliases, String
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamldep -I ../std/src -open Std__aliases -modules ../std/src/path.ml
+  path.ml depends on: Char, Filename, Format, List, Result, Std__aliases, String, Sys
+
+Module Registry (53 entries):
+  ref.ml -> Std__Ref [.ml]
+  buffer.ml -> Std__Buffer [.ml]
+  global.mli -> Std__Global [.mli]
+  fs.ml -> Std__Fs [.ml]
+  datetime.mli -> Std__Datetime [.mli]
+  Iterator.ml -> Std__Iterator [.ml]
+  std.mli -> Std__Std [.mli]
+  file.ml -> Std__File [.ml]
+  dot.mli -> Std__Dot [.mli]
+  result.ml -> Std__Result [.ml]
+  time.mli -> Std__Time [.mli]
+  option.mli -> Std__Option [.mli]
+  mermaid.mli -> Std__Mermaid [.mli]
+  Char_Cursor.ml -> Std__Char_Cursor [.ml]
+  env.mli -> Std__Env [.mli]
+  file.mli -> Std__File [.mli]
+  path.ml -> Std__Path [.ml]
+  fs.mli -> Std__Fs [.mli]
+  datetime.ml -> Std__Datetime [.ml]
+  list.mli -> Std__List [.mli]
+  workerpool.mli -> Std__Workerpool [.mli]
+  result.mli -> Std__Result [.mli]
+  string.ml -> Std__String [.ml]
+  dot.ml -> Std__Dot [.ml]
+  path.mli -> Std__Path [.mli]
+  log.ml -> Std__Log [.ml]
+  global.ml -> Std__Global [.ml]
+  option.ml -> Std__Option [.ml]
+  list.ml -> Std__List [.ml]
+  env.ml -> Std__Env [.ml]
+  command.ml -> Std__Command [.ml]
+  command.mli -> Std__Command [.mli]
+  time.ml -> Std__Time [.ml]                                                                                                       net.mli -> Std__Net [.mli]
+  buffer.mli -> Std__Buffer [.mli]
+  MutIterator.ml -> Std__MutIterator [.ml]                                                                                         workerpool.ml -> Std__Workerpool [.ml]
+  char.mli -> Std__Char [.mli]
+  log.mli -> Std__Log [.mli]                                                                                                       std.ml -> Std__Std [.ml]
+  data/sexp.mli -> Std__Data__Sexp [.mli]
+  data/json.mli -> Std__Data__Json [.mli]                                                                                          data/toml.ml -> Std__Data__Toml [.ml]
+  data/data.ml -> Std__Data__Data [.ml]
+  data/json.ml -> Std__Data__Json [.ml]                                                                                            data/sexp.ml -> Std__Data__Sexp [.ml]
+  data/data.mli -> Std__Data__Data [.mli]
+  data/toml.mli -> Std__Data__Toml [.mli]
+  net.ml -> Std__Net [.ml]
+  Iterator.mli -> Std__Iterator [.mli]
+  graph.ml -> Std__Graph [.ml]
+  char.ml -> Std__Char [.ml]
+  mermaid.ml -> Std__Mermaid [.ml]
+
+Wrote DOT graph to: Std.dot
+Wrote Mermaid diagram to: Std.mermaid
+
+=== Topological Sort ===
+ 1. Std__Data__aliases.ml.gen (Std__Data__aliases) [.ml] [gen]
+ 2. Std__aliases.ml.gen (Std__aliases) [.ml] [gen]
+ 3. list.ml (List) [.ml]
+ 4. list.mli (List) [.mli]
+ 5. Iterator.mli (Iterator) [.mli]
+ 6. Iterator.ml (Iterator) [.ml]
+ 7. MutIterator.ml (MutIterator) [.ml]
+ 8. global.ml (Global) [.ml]
+ 9. global.mli (Global) [.mli]
+10. buffer.mli (Buffer) [.mli]
+11. buffer.ml (Buffer) [.ml]
+12. string.ml (String) [.ml]
+13. result.mli (Result) [.mli]
+14. result.ml (Result) [.ml]
+15. char.ml (Char) [.ml]
+16. char.mli (Char) [.mli]
+17. data/json.ml (Data__Json) [.ml]
+18. data/json.mli (Data__Json) [.mli]                                                                                            19. data/sexp.ml (Data__Sexp) [.ml]
+20. data/sexp.mli (Data__Sexp) [.mli]
+21. data/toml.mli (Data__Toml) [.mli]
+22. data/toml.ml (Data__Toml) [.ml]
+23. path.mli (Path) [.mli]
+24. path.ml (Path) [.ml]
+25. dot.ml (Dot) [.ml]
+26. dot.mli (Dot) [.mli]
+27. mermaid.ml (Mermaid) [.ml]
+28. mermaid.mli (Mermaid) [.mli]
+29. command.mli (Command) [.mli]
+30. command.ml (Command) [.ml]
+31. data/data.mli (Data__Data) [.mli]
+32. data/data.ml (Data__Data) [.ml]
+33. datetime.ml (Datetime) [.ml]
+34. datetime.mli (Datetime) [.mli]
+35. env.ml (Env) [.ml]
+36. env.mli (Env) [.mli]
+37. file.mli (File) [.mli]
+38. file.ml (File) [.ml]
+39. fs.mli (Fs) [.mli]
+40. fs.ml (Fs) [.ml]
+41. graph.ml (Graph) [.ml]
+42. net.ml (Net) [.ml]
+43. net.mli (Net) [.mli]
+44. option.ml (Option) [.ml]
+45. option.mli (Option) [.mli]
+46. log.mli (Log) [.mli]
+47. log.ml (Log) [.ml]
+48. workerpool.ml (Workerpool) [.ml]
+49. workerpool.mli (Workerpool) [.mli]
+50. Char_Cursor.ml (Char_Cursor) [.ml]
+51. time.mli (Time) [.mli]
+52. time.ml (Time) [.ml]
+53. std.mli (Std) [.mli]
+54. std.ml (Std) [.ml]
+55. ref.ml (Ref) [.ml]
+;

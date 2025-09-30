@@ -18,7 +18,9 @@ let create ~(workspace : Workspace.t) =
   let _ =
     Fs.create_dir_all store_dir
     |> Result.expect
-         ~msg:(Printf.sprintf "Failed to create store directory: %s" (Path.to_string store_dir))
+         ~msg:
+           (Printf.sprintf "Failed to create store directory: %s"
+              (Path.to_string store_dir))
   in
   { root_dir = store_dir }
 
@@ -29,9 +31,7 @@ let get_hash_dir store hash =
 (** Check if artifacts for a given hash exist in the store *)
 let exists store hash =
   let hash_dir = get_hash_dir store hash in
-  match Fs.exists hash_dir with
-  | Ok b -> b
-  | Error _ -> false
+  match Fs.exists hash_dir with Ok b -> b | Error _ -> false
 
 (** List all files in a hash directory *)
 let list_artifacts store hash =
@@ -62,7 +62,8 @@ let promote_from_store store hash target_dir =
         Fs.create_dir_all target_dir
         |> Result.expect
              ~msg:
-               (Printf.sprintf "Failed to create target directory: %s" (Path.to_string target_dir))
+               (Printf.sprintf "Failed to create target directory: %s"
+                  (Path.to_string target_dir))
       in
 
       (* Copy all files from hash directory to target *)
@@ -77,13 +78,14 @@ let promote_from_store store hash target_dir =
                 let dst = Path.(target_dir / Path.v file) in
 
                 (* Only copy if it's a file, not directory *)
-                (match Fs.is_directory src with
-                | Ok false ->
+                (match Fs.metadata src with
+                | Ok stat when stat.st_kind <> Unix.S_DIR ->
                     let _ =
                       Fs.copy ~src ~dst
                       |> Result.expect
-                           ~msg:(Printf.sprintf "Failed to copy file: %s -> %s"
-                                   (Path.to_string src) (Path.to_string dst))
+                           ~msg:
+                             (Printf.sprintf "Failed to copy file: %s -> %s"
+                                (Path.to_string src) (Path.to_string dst))
                     in
                     ()
                 | _ -> ());
@@ -103,7 +105,9 @@ let store_artifacts store ~package hash sandbox_dir declared_outputs =
   let _ =
     Fs.create_dir_all hash_dir
     |> Result.expect
-         ~msg:(Printf.sprintf "Failed to create hash directory: %s" (Path.to_string hash_dir))
+         ~msg:
+           (Printf.sprintf "Failed to create hash directory: %s"
+              (Path.to_string hash_dir))
   in
 
   (* Copy declared outputs to store and track what was actually stored *)
@@ -123,7 +127,7 @@ let store_artifacts store ~package hash sandbox_dir declared_outputs =
             in
             (* Get file size for manifest *)
             let size =
-              match Fs.stat dst with
+              match Fs.metadata dst with
               | Ok stat -> stat.st_size
               | Error _ -> 0
             in
@@ -134,11 +138,13 @@ let store_artifacts store ~package hash sandbox_dir declared_outputs =
 
   (* Create and save manifest *)
   let manifest =
-    Manifest.create ~package ~build_hash:(Std.Crypto.Digest.hex hash)
+    Manifest.create ~package
+      ~build_hash:(Std.Crypto.Digest.hex hash)
       ~files:(List.rev stored_files_with_sizes)
   in
   let manifest_path = Path.(hash_dir / Path.v "manifest.json") in
-  Printf.printf "[Store] Saving manifest to %s\n%!" (Path.to_string manifest_path);
+  Printf.printf "[Store] Saving manifest to %s\n%!"
+    (Path.to_string manifest_path);
   let _ =
     Manifest.save manifest ~path:(Path.to_string manifest_path)
     |> Result.expect ~msg:"Failed to save manifest"
@@ -168,8 +174,8 @@ let get_stats store =
               | None -> acc
               | Some subdir_path ->
                   let count_in_subdir =
-                    match Fs.is_directory subdir_path with
-                    | Ok true -> (
+                    match Fs.metadata subdir_path with
+                    | Ok stat when stat.st_kind = Unix.S_DIR -> (
                         match Fs.read_dir subdir_path with
                         | Ok subiter ->
                             let rec count_sub acc2 =

@@ -1,0 +1,27 @@
+digraph Jsonrpc {
+  rankdir=TB;
+  node [shape=box];
+
+  n149 [label="client.ml", color="green", style="filled", fillcolor="lightgreen"];
+  n148 [label="server.ml", color="green", style="filled", fillcolor="lightgreen"];
+  n147 [label="common.ml", color="green", style="filled", fillcolor="lightgreen"];
+  n144 [label="Jsonrpc__Aliases.ml.gen (gen)", color="green", style="filled", fillcolor="lightgreen"];
+  n143 [label="."];
+  n146 [label="jsonrpc.ml", color="green", style="filled", fillcolor="lightgreen"];
+  n145 [label="jsonrpc.mli", color="blue", style="filled", fillcolor="lightblue"];
+
+  n149 -> n147;
+  n149 -> n144;
+  n148 -> n147;
+  n148 -> n144;
+  n147 -> n144;
+  n146 -> n148;
+  n146 -> n147;
+  n146 -> n149;
+  n146 -> n149;
+  n146 -> n148;
+  n146 -> n147;
+  n146 -> n145;
+  n146 -> n144;
+  n145 -> n144;
+}

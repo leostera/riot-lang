@@ -42,7 +42,8 @@ val map_or : default:'b -> ('a -> 'b) -> ('a, 'e) t -> 'b
 (** Returns the result of applying function to Ok value, or default if Error *)
 
 val map_or_else : default:('e -> 'b) -> ('a -> 'b) -> ('a, 'e) t -> 'b
-(** Returns the result of applying function to Ok value, or computes default from Error *)
+(** Returns the result of applying function to Ok value, or computes default
+    from Error *)
 
 (** {1 Chaining} *)
 

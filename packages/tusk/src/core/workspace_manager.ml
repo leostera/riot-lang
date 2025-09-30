@@ -1,3 +1,4 @@
+open Model
 (** Workspace manager - caches workspace and avoids repeated scanning *)
 
 type cached_workspace = {

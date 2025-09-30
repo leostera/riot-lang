@@ -9,15 +9,18 @@
 
     {2 When to use each cell type}
 
-    - Use {b Cell.t} when you need simple mutable storage without sharing concerns
-    - Use {b OnceCell} when you need to initialize a value once (e.g., configuration, singletons)
-    - Use {b LazyCell} for expensive computations that should be deferred until needed
-    - Use {b RefCell} when multiple actors need coordinated access to shared data
-*)
+    - Use {b Cell.t} when you need simple mutable storage without sharing
+      concerns
+    - Use {b OnceCell} when you need to initialize a value once (e.g.,
+      configuration, singletons)
+    - Use {b LazyCell} for expensive computations that should be deferred until
+      needed
+    - Use {b RefCell} when multiple actors need coordinated access to shared
+      data *)
 
 type 'a t
-(** A basic mutable cell containing a value of type 'a.
-    Simple storage with no borrowing rules or initialization logic. *)
+(** A basic mutable cell containing a value of type 'a. Simple storage with no
+    borrowing rules or initialization logic. *)
 
 (** {1 Creation} *)
 
@@ -53,7 +56,8 @@ val swap : 'a t -> 'a t -> unit
 (** {1 Comparison} *)
 
 val compare_and_swap : 'a t -> 'a -> 'a -> bool
-(** Compare and swap: if the cell contains the expected value, set it to the new value and return true, otherwise return false *)
+(** Compare and swap: if the cell contains the expected value, set it to the new
+    value and return true, otherwise return false *)
 
 val equal : 'a t -> 'a t -> bool
 (** Check if two cells contain equal values *)
@@ -78,8 +82,7 @@ val equal : 'a t -> 'a t -> bool
 
       (* Access the config *)
       let cfg = OnceCell.get_or_init config (fun () -> default_config ())
-    ]}
-*)
+    ]} *)
 module OnceCell : sig
   type 'a t
   (** A cell that holds an optional value and can only be set once *)
@@ -96,7 +99,7 @@ module OnceCell : sig
   val get_or_try_init : 'a t -> (unit -> ('a, 'e) result) -> ('a, 'e) result
   (** Try to get the value, initializing it if necessary, propagating errors *)
 
-  val set : 'a t -> 'a -> (unit, [`AlreadyInitialized]) result
+  val set : 'a t -> 'a -> (unit, [ `AlreadyInitialized ]) result
   (** Set the value if not already set, returns error if already initialized *)
 
   val is_initialized : 'a t -> bool
@@ -110,8 +113,8 @@ end
 
 (** A cell that lazily initializes its value on first access.
 
-    LazyCell differs from OnceCell in that the initialization function
-    is provided at creation time and automatically called on first access.
+    LazyCell differs from OnceCell in that the initialization function is
+    provided at creation time and automatically called on first access.
 
     Perfect for:
     - Expensive computations that should be deferred
@@ -121,18 +124,17 @@ end
     Example:
     {[
       (* The expensive computation is not run yet *)
-      let data = LazyCell.create (fun () ->
-        print_endline "Loading data...";
-        expensive_data_load ()
-      )
+      let data =
+        LazyCell.create (fun () ->
+            print_endline "Loading data...";
+            expensive_data_load ())
 
       (* First access triggers computation *)
-      let value = LazyCell.get data  (* Prints "Loading data..." *)
+      let value = LazyCell.get data (* Prints "Loading data..." *)
 
       (* Subsequent accesses return cached value *)
       let value2 = LazyCell.get data (* No print, returns cached *)
-    ]}
-*)
+    ]} *)
 module LazyCell : sig
   type 'a t
   (** A lazy cell that computes its value on first access *)
@@ -195,8 +197,7 @@ end
           RefCell.release_borrow_mut borrow_mut
       | Error msg ->
           Printf.printf "Cannot borrow: %s\n" msg
-    ]}
-*)
+    ]} *)
 module RefCell : sig
   type 'a t
   (** A mutable cell with runtime borrow checking *)
@@ -219,15 +220,15 @@ module RefCell : sig
   (** A mutable borrow handle *)
 
   val borrow : 'a t -> 'a borrow
-  (** Borrow the value immutably. Multiple immutable borrows are allowed.
-      Raises BorrowError if the cell is mutably borrowed. *)
+  (** Borrow the value immutably. Multiple immutable borrows are allowed. Raises
+      BorrowError if the cell is mutably borrowed. *)
 
   val release_borrow : 'a borrow -> unit
   (** Release an immutable borrow *)
 
   val borrow_mut : 'a t -> 'a borrow_mut
-  (** Borrow the value mutably. Only one mutable borrow is allowed.
-      Raises BorrowMutError if the cell is already borrowed. *)
+  (** Borrow the value mutably. Only one mutable borrow is allowed. Raises
+      BorrowMutError if the cell is already borrowed. *)
 
   val get_mut : 'a borrow_mut -> 'a
   (** Get the value from a mutable borrow *)
@@ -244,8 +245,8 @@ module RefCell : sig
   (** Safely borrow the value for the duration of a function *)
 
   val with_borrow_mut : 'a t -> ((unit -> 'a) -> ('a -> unit) -> 'b) -> 'b
-  (** Safely mutably borrow the value for the duration of a function.
-      The function receives a getter and setter. *)
+  (** Safely mutably borrow the value for the duration of a function. The
+      function receives a getter and setter. *)
 
   (** {2 Try variants} *)
 

@@ -1,0 +1,2273 @@
+;
+; ./target/bootstrap/tusk server foreground
+🚀 Starting tusk server...
+   Press Ctrl+C to stop
+
+Using OCaml toolchain: 5.3.0
+[RPC SERVER DEBUG] Registering methods:
+  - tusk.ping
+  - tusk.buildPackage
+  - tusk.buildAll
+  - tusk.getWorkspaceConfig
+  - tusk.getPackageInfo
+  - tusk.getBuildGraph
+  - tusk.restart
+  - tusk.shutdown
+  - tusk.formatFile
+  - tusk.formatCode
+  - tusk.formatAll
+  - tusk.newPackage
+[JSONRPC SERVER] Found handler for tusk.ping
+[JSONRPC SERVER] Calling handler
+[HANDLER] Sending Ping to server pid<0> from pid<3>
+[HANDLER] Waiting for response...
+Server: Received Ping from pid<3>, sending Pong
+[HANDLER] Got Pong response
+[JSONRPC SERVER] Found handler for tusk.buildPackage
+[JSONRPC SERVER] Calling handler
+Server: handle_build called for target: Package(mcp)
+Server: Build process spawned
+Server: Workspace scanned, found 7 packages
+Server: Build starting with 4 nodes
+Server: Queued 4 packages: kernel, miniriot, std, mcp
+Server: Queue state - Ready: 4, Waiting: 0, Busy: 0
+[2025-09-06T14:10:35.260Z] Scanning workspace...
+[2025-09-06T14:10:35.261Z] Scanned workspace: 7 packages in 1ms
+[2025-09-06T14:10:35.261Z] Creating build graph...
+[2025-09-06T14:10:35.266Z] Created build graph: 7 nodes in 5ms
+[2025-09-06T14:10:35.266Z] Build started for 4 packages
+[2025-09-06T14:10:35.266Z] [DEBUG] Creating build cache store
+[2025-09-06T14:10:35.266Z] Store created in 0ms
+[2025-09-06T14:10:35.266Z] [DEBUG] Creating worker pool with 10 workers
+[2025-09-06T14:10:35.266Z] Worker pool created with 10 workers in 0ms
+Server: Worker ready
+Server: Sending task kernel to worker
+Server: Worker ready
+Server: Sending task miniriot to worker
+Server: Worker ready
+Server: Sending task std to worker
+Server: Worker ready
+Server: Sending task mcp to worker
+Server: Worker ready
+Server: No work available for worker
+Server: Worker ready
+Server: No work available for worker
+Server: Worker ready
+Server: No work available for worker
+Server: Worker ready
+Server: No work available for worker
+Server: Worker ready
+Server: No work available for worker
+Server: Worker ready
+Server: No work available for worker
+[DEBUG] build_modtree: package_name=kernel, srcs count=7
+[DEBUG]   ML: key=Io, simple=Io, namespaced=Kernel__Io
+[DEBUG]   MLI: key=Kernel, simple=Kernel, namespaced=Kernel
+[DEBUG]   ML: key=Kernel, simple=Kernel, namespaced=Kernel
+[DEBUG]   ML: key=Crypto, simple=Crypto, namespaced=Kernel__Crypto
+[DEBUG]   MLI: key=Crypto, simple=Crypto, namespaced=Kernel__Crypto
+[DEBUG] Tree after build_modtree:
+Package: kernel (kind=Library, entry=no, 0 aliases)
+  Module: Crypto -> Kernel__Crypto (impl=yes, intf=yes)
+  Module: Io -> Kernel__Io (impl=yes, intf=no)
+  Module: Kernel -> Kernel (impl=yes, intf=yes)
+[DEBUG]   Package alias: module Crypto -> Kernel__Crypto
+[DEBUG]   Package alias: module Io -> Kernel__Io
+[DEBUG]   Package alias: module Kernel -> Kernel
+[DEBUG] Generated aliases content for kernel: (* Auto-generated module aliases *)
+module Crypto = Kernel__Crypto
+module Io = Kernel__Io
+[DEBUG] Tree after insert_alias_modules:
+Package: kernel (kind=Library, entry=no, 1 aliases)
+  Module: Crypto -> Kernel__Crypto (impl=yes, intf=yes)
+  Module: Io -> Kernel__Io (impl=yes, intf=no)
+  Module: Kernel -> Kernel (impl=yes, intf=yes)
+[DEBUG] ===== EXTRACTING THREE SUBTREES =====
+[DEBUG] Extracted alias tree:
+Package: kernel (kind=Library, entry=no, 1 aliases)
+[DEBUG] Extracted intf tree:
+Package: kernel (kind=Library, entry=no, 1 aliases)
+  Module: Crypto -> Kernel__Crypto (impl=no, intf=yes)
+  Module: Kernel -> Kernel (impl=no, intf=yes)
+[DEBUG] Extracted impl tree:
+Package: kernel (kind=Library, entry=no, 1 aliases)
+  Module: Crypto -> Kernel__Crypto (impl=yes, intf=no)
+  Module: Io -> Kernel__Io (impl=yes, intf=no)
+  Module: Kernel -> Kernel (impl=yes, intf=no)
+[DEBUG Dep_graph] Created 6 nodes for kernel
+[DEBUG Dep_graph] Nodes:
+  - Kernel__Crypto.mli (level=0, parent_aliases=[Kernel__aliases])
+  - Kernel.mli (level=0, parent_aliases=[Kernel__aliases])
+  - Kernel.ml (level=0, parent_aliases=[Kernel__aliases])
+  - Kernel__Crypto.ml (level=0, parent_aliases=[Kernel__aliases])
+  - Kernel__aliases (alias) (level=0, parent_aliases=[])
+  - Kernel__Io.ml (level=0, parent_aliases=[Kernel__aliases])
+[DEBUG Dep_graph] Running ocamldep on 2 .mli files
+[DEBUG Dep_graph] Running ocamldep on 4 .ml files
+[DEBUG Dep_graph] Kernel.ml depends on Kernel.mli
+[DEBUG Dep_graph] Kernel__Crypto.ml depends on Kernel__Crypto.mli
+[DEBUG Dep_graph] Dependencies found:
+  Kernel.mli -> [Kernel__Crypto.mli]
+  Kernel.ml -> [Kernel.mli, Kernel__Io.ml, Kernel__Crypto.ml, Kernel__Crypto.mli]
+  Kernel__Crypto.ml -> [Kernel__Crypto.mli]
+[DEBUG Dep_graph] Kernel__Crypto.mli depends on alias Kernel__aliases
+[DEBUG Dep_graph] Kernel.mli depends on alias Kernel__aliases
+[DEBUG Dep_graph] Kernel.ml depends on alias Kernel__aliases
+[DEBUG Dep_graph] Kernel__Crypto.ml depends on alias Kernel__aliases
+[DEBUG Dep_graph] Kernel__Io.ml depends on alias Kernel__aliases
+Dependency Graph:
+  Kernel__Crypto.mli (level 0) -> [Kernel__aliases]
+  Kernel.mli (level 0) -> [Kernel__aliases, Kernel__Io.ml, Kernel__Crypto.ml, Kernel__Crypto.mli, Kernel__Crypto.mli]
+  Kernel.ml (level 0) -> [Kernel__aliases, Kernel__Io.ml, Kernel__Crypto.ml, Kernel__Crypto.mli, Kernel.mli, Kernel__Io.ml, Kernel__Crypto.ml, Kernel__Crypto.mli]
+  Kernel__Crypto.ml (level 0) -> [Kernel__aliases, Kernel__Crypto.mli]
+  Kernel__aliases (level 0) -> []
+  Kernel__Io.ml (level 0) -> [Kernel__aliases]
+[DEBUG] Topological sort:
+  Kernel__aliases
+  Kernel__Crypto.mli
+  Kernel__Io.ml
+  Kernel__Crypto.ml
+  Kernel.mli
+  Kernel.ml
+[DEBUG] Generating actions from dependency graph...
+[DEBUG] Generating actions for alias module: Kernel__aliases
+[DEBUG] Generating actions for interface: Kernel__Crypto.mli
+[DEBUG] Generating actions for implementation: Kernel__Io.ml
+[DEBUG] Generating actions for implementation: Kernel__Crypto.ml
+[DEBUG] Generating actions for interface: Kernel.mli
+[DEBUG] Generating actions for implementation: Kernel.ml
+[DEBUG] Generated 14 actions from dep_graph:
+  1. write(Kernel__aliases.ml.gen,89 bytes)
+  2. compile_interface(Kernel__aliases.ml.gen,Kernel__aliases.cmi,[.],[no-alias-deps,impl:Kernel__aliases.ml.gen,warning:[no-cmi-file]])
+  3. compile_impl(Kernel__aliases.ml.gen,Kernel__aliases.cmo,[.],[no-alias-deps,impl:Kernel__aliases.ml.gen,warning:[no-cmi-file]])
+  4. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/kernel/src/crypto.mli,crypto.mli)
+  5. compile_interface(crypto.mli,Kernel__Crypto.cmi,[.],[open:Kernel__aliases])
+  6. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/kernel/src/io.ml,io.ml)
+  7. compile_impl(io.ml,Kernel__Io.cmo,[.],[open:Kernel__aliases])
+  8. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/kernel/src/crypto.ml,crypto.ml)
+  9. compile_impl(crypto.ml,Kernel__Crypto.cmo,[.],[open:Kernel__aliases])
+  10. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/kernel/src/kernel.mli,kernel.mli)
+  11. compile_interface(kernel.mli,Kernel.cmi,[.],[open:Kernel__aliases])
+  12. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/kernel/src/kernel.ml,kernel.ml)
+  13. compile_impl(kernel.ml,Kernel.cmo,[.],[open:Kernel__aliases])
+  14. create_library(kernel.cma,[Kernel__aliases.cmo,Kernel__Io.cmo,Kernel__Crypto.cmo,Kernel.cmo,std_sys_unix_io.o,std_sys_unix_kqueue.o],[.])
+[DEBUG] Using dep_graph actions!
+[2025-09-06T14:10:35.269Z] Building kernel...
+[2025-09-06T14:10:35.356Z] Cached kernel
+[2025-09-06T14:10:35.357Z] Building miniriot...
+[2025-09-06T14:10:35.358Z] Building std...
+[2025-09-06T14:10:35.358Z] Building mcp...
+[DEBUG] Task completed: kernel
+[DEBUG] Marked kernel as completed
+[DEBUG] Queue state after kernel: Ready=0, Later=0, Busy=3
+Server: Worker ready
+Server: No work available for worker
+[DEBUG] Requeuing miniriot with deps: [kernel]
+[DEBUG] Queue state after requeue: Ready=1, Later=1, Busy=2
+Server: Worker ready
+Server: Sending task kernel to worker
+[DEBUG] Requeuing std with deps: [miniriot, kernel]
+[DEBUG] Queue state after requeue: Ready=0, Later=2, Busy=2
+Server: Worker ready
+Server: Sending task miniriot to worker
+[DEBUG] Requeuing mcp with deps: [std]
+[DEBUG] Queue state after requeue: Ready=1, Later=1, Busy=2
+Server: Worker ready
+Server: Sending task std to worker
+[DEBUG] build_modtree: package_name=kernel, srcs count=7
+[DEBUG]   ML: key=Io, simple=Io, namespaced=Kernel__Io
+[DEBUG]   MLI: key=Kernel, simple=Kernel, namespaced=Kernel
+[DEBUG]   ML: key=Kernel, simple=Kernel, namespaced=Kernel
+[DEBUG]   ML: key=Crypto, simple=Crypto, namespaced=Kernel__Crypto
+[DEBUG]   MLI: key=Crypto, simple=Crypto, namespaced=Kernel__Crypto
+[DEBUG] Tree after build_modtree:
+Package: kernel (kind=Library, entry=no, 0 aliases)
+  Module: Crypto -> Kernel__Crypto (impl=yes, intf=yes)
+  Module: Io -> Kernel__Io (impl=yes, intf=no)
+  Module: Kernel -> Kernel (impl=yes, intf=yes)
+[DEBUG]   Package alias: module Crypto -> Kernel__Crypto
+[DEBUG]   Package alias: module Io -> Kernel__Io
+[DEBUG]   Package alias: module Kernel -> Kernel
+[DEBUG] Generated aliases content for kernel: (* Auto-generated module aliases *)
+module Crypto = Kernel__Crypto
+module Io = Kernel__Io
+[DEBUG] Tree after insert_alias_modules:
+Package: kernel (kind=Library, entry=no, 1 aliases)
+  Module: Crypto -> Kernel__Crypto (impl=yes, intf=yes)
+  Module: Io -> Kernel__Io (impl=yes, intf=no)
+  Module: Kernel -> Kernel (impl=yes, intf=yes)
+[DEBUG] ===== EXTRACTING THREE SUBTREES =====
+[DEBUG] Extracted alias tree:
+Package: kernel (kind=Library, entry=no, 1 aliases)
+[DEBUG] Extracted intf tree:
+Package: kernel (kind=Library, entry=no, 1 aliases)
+  Module: Crypto -> Kernel__Crypto (impl=no, intf=yes)
+  Module: Kernel -> Kernel (impl=no, intf=yes)
+[DEBUG] Extracted impl tree:
+Package: kernel (kind=Library, entry=no, 1 aliases)
+  Module: Crypto -> Kernel__Crypto (impl=yes, intf=no)
+  Module: Io -> Kernel__Io (impl=yes, intf=no)
+  Module: Kernel -> Kernel (impl=yes, intf=no)
+[DEBUG Dep_graph] Created 6 nodes for kernel
+[DEBUG Dep_graph] Nodes:
+  - Kernel__aliases (alias) (level=0, parent_aliases=[])
+  - Kernel__Io.ml (level=0, parent_aliases=[Kernel__aliases])
+  - Kernel__Crypto.ml (level=0, parent_aliases=[Kernel__aliases])
+  - Kernel.mli (level=0, parent_aliases=[Kernel__aliases])
+  - Kernel__Crypto.mli (level=0, parent_aliases=[Kernel__aliases])
+  - Kernel.ml (level=0, parent_aliases=[Kernel__aliases])
+[DEBUG Dep_graph] Running ocamldep on 2 .mli files
+[DEBUG Dep_graph] Running ocamldep on 4 .ml files
+[DEBUG Dep_graph] Kernel__Crypto.ml depends on Kernel__Crypto.mli
+[DEBUG Dep_graph] Kernel.ml depends on Kernel.mli
+[DEBUG Dep_graph] Dependencies found:
+  Kernel__Crypto.ml -> [Kernel__Crypto.mli]
+  Kernel.mli -> [Kernel__Crypto.mli]
+  Kernel.ml -> [Kernel.mli, Kernel__Io.ml, Kernel__Crypto.ml, Kernel__Crypto.mli]
+[DEBUG Dep_graph] Kernel__Io.ml depends on alias Kernel__aliases
+[DEBUG Dep_graph] Kernel__Crypto.ml depends on alias Kernel__aliases
+[DEBUG Dep_graph] Kernel.mli depends on alias Kernel__aliases
+[DEBUG Dep_graph] Kernel__Crypto.mli depends on alias Kernel__aliases
+[DEBUG Dep_graph] Kernel.ml depends on alias Kernel__aliases
+Dependency Graph:
+  Kernel__aliases (level 0) -> []
+  Kernel__Io.ml (level 0) -> [Kernel__aliases]
+  Kernel__Crypto.ml (level 0) -> [Kernel__aliases, Kernel__Crypto.mli]
+  Kernel.mli (level 0) -> [Kernel__aliases, Kernel__Crypto.mli, Kernel__Crypto.ml, Kernel__Io.ml, Kernel__Crypto.mli]
+  Kernel__Crypto.mli (level 0) -> [Kernel__aliases]
+  Kernel.ml (level 0) -> [Kernel__aliases, Kernel__Crypto.mli, Kernel__Crypto.ml, Kernel__Io.ml, Kernel.mli, Kernel__Io.ml, Kernel__Crypto.ml, Kernel__Crypto.mli]
+[DEBUG] Topological sort:
+  Kernel__aliases
+  Kernel__Crypto.mli
+  Kernel__Io.ml
+  Kernel__Crypto.ml
+  Kernel.mli
+  Kernel.ml
+[DEBUG] Generating actions from dependency graph...
+[DEBUG] Generating actions for alias module: Kernel__aliases
+[DEBUG] Generating actions for interface: Kernel__Crypto.mli
+[DEBUG] Generating actions for implementation: Kernel__Io.ml
+[DEBUG] Generating actions for implementation: Kernel__Crypto.ml
+[DEBUG] Generating actions for interface: Kernel.mli
+[DEBUG] Generating actions for implementation: Kernel.ml
+[DEBUG] Generated 14 actions from dep_graph:
+  1. write(Kernel__aliases.ml.gen,89 bytes)
+  2. compile_interface(Kernel__aliases.ml.gen,Kernel__aliases.cmi,[.],[no-alias-deps,impl:Kernel__aliases.ml.gen,warning:[no-cmi-file]])
+  3. compile_impl(Kernel__aliases.ml.gen,Kernel__aliases.cmo,[.],[no-alias-deps,impl:Kernel__aliases.ml.gen,warning:[no-cmi-file]])
+  4. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/kernel/src/crypto.mli,crypto.mli)
+  5. compile_interface(crypto.mli,Kernel__Crypto.cmi,[.],[open:Kernel__aliases])
+  6. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/kernel/src/io.ml,io.ml)
+  7. compile_impl(io.ml,Kernel__Io.cmo,[.],[open:Kernel__aliases])
+  8. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/kernel/src/crypto.ml,crypto.ml)
+  9. compile_impl(crypto.ml,Kernel__Crypto.cmo,[.],[open:Kernel__aliases])
+  10. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/kernel/src/kernel.mli,kernel.mli)
+  11. compile_interface(kernel.mli,Kernel.cmi,[.],[open:Kernel__aliases])
+  12. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/kernel/src/kernel.ml,kernel.ml)
+  13. compile_impl(kernel.ml,Kernel.cmo,[.],[open:Kernel__aliases])
+  14. create_library(kernel.cma,[Kernel__aliases.cmo,Kernel__Io.cmo,Kernel__Crypto.cmo,Kernel.cmo,std_sys_unix_io.o,std_sys_unix_kqueue.o],[.])
+[DEBUG] Using dep_graph actions!
+[DEBUG] build_modtree: package_name=miniriot, srcs count=22
+[DEBUG]   ML: key=Pid, simple=Pid, namespaced=Miniriot__Pid
+[DEBUG]   MLI: key=Message, simple=Message, namespaced=Miniriot__Message
+[DEBUG]   MLI: key=Process, simple=Process, namespaced=Miniriot__Process
+[DEBUG]   MLI: key=Pid, simple=Pid, namespaced=Miniriot__Pid
+[DEBUG]   ML: key=Proc_state, simple=Proc_state, namespaced=Miniriot__Proc_state
+[DEBUG]   MLI: key=Miniriot, simple=Miniriot, namespaced=Miniriot
+[DEBUG]   ML: key=Message, simple=Message, namespaced=Miniriot__Message
+[DEBUG]   MLI: key=Effects, simple=Effects, namespaced=Miniriot__Effects
+[DEBUG]   ML: key=Runtime, simple=Runtime, namespaced=Miniriot__Runtime
+[DEBUG]   MLI: key=Proc_state, simple=Proc_state, namespaced=Miniriot__Proc_state
+[DEBUG]   MLI: key=Scheduler, simple=Scheduler, namespaced=Miniriot__Scheduler
+[DEBUG]   ML: key=Effects, simple=Effects, namespaced=Miniriot__Effects
+[DEBUG]   ML: key=Trace, simple=Trace, namespaced=Miniriot__Trace
+[DEBUG]   MLI: key=Trace, simple=Trace, namespaced=Miniriot__Trace
+[DEBUG]   ML: key=Scheduler, simple=Scheduler, namespaced=Miniriot__Scheduler
+[DEBUG]   ML: key=Proc_effect, simple=Proc_effect, namespaced=Miniriot__Proc_effect
+[DEBUG]   ML: key=Miniriot, simple=Miniriot, namespaced=Miniriot
+[DEBUG]   MLI: key=Mailbox, simple=Mailbox, namespaced=Miniriot__Mailbox
+[DEBUG]   MLI: key=Proc_effect, simple=Proc_effect, namespaced=Miniriot__Proc_effect
+[DEBUG]   MLI: key=Runtime, simple=Runtime, namespaced=Miniriot__Runtime
+[DEBUG]   ML: key=Mailbox, simple=Mailbox, namespaced=Miniriot__Mailbox
+[DEBUG]   ML: key=Process, simple=Process, namespaced=Miniriot__Process
+[DEBUG] Tree after build_modtree:
+Package: miniriot (kind=Library, entry=no, 0 aliases)
+  Module: Effects -> Miniriot__Effects (impl=yes, intf=yes)
+  Module: Mailbox -> Miniriot__Mailbox (impl=yes, intf=yes)
+  Module: Message -> Miniriot__Message (impl=yes, intf=yes)
+  Module: Miniriot -> Miniriot (impl=yes, intf=yes)
+  Module: Pid -> Miniriot__Pid (impl=yes, intf=yes)
+  Module: Proc_effect -> Miniriot__Proc_effect (impl=yes, intf=yes)
+  Module: Proc_state -> Miniriot__Proc_state (impl=yes, intf=yes)
+  Module: Process -> Miniriot__Process (impl=yes, intf=yes)
+  Module: Runtime -> Miniriot__Runtime (impl=yes, intf=yes)
+  Module: Scheduler -> Miniriot__Scheduler (impl=yes, intf=yes)
+  Module: Trace -> Miniriot__Trace (impl=yes, intf=yes)
+[DEBUG]   Package alias: module Effects -> Miniriot__Effects
+[DEBUG]   Package alias: module Mailbox -> Miniriot__Mailbox
+[DEBUG]   Package alias: module Message -> Miniriot__Message
+[DEBUG]   Package alias: module Miniriot -> Miniriot
+[DEBUG]   Package alias: module Pid -> Miniriot__Pid
+[DEBUG]   Package alias: module Proc_effect -> Miniriot__Proc_effect
+[DEBUG]   Package alias: module Proc_state -> Miniriot__Proc_state
+[DEBUG]   Package alias: module Process -> Miniriot__Process
+[DEBUG]   Package alias: module Runtime -> Miniriot__Runtime
+[DEBUG]   Package alias: module Scheduler -> Miniriot__Scheduler
+[DEBUG]   Package alias: module Trace -> Miniriot__Trace
+[DEBUG] Generated aliases content for miniriot: (* Auto-generated module aliases *)
+module Effects = Miniriot__Effects
+module Mailbox = Miniriot__Mailbox
+module Message = Miniriot__Message
+module Pid = Miniriot__Pid
+module Proc_effect = Miniriot__Proc_effect
+module Proc_state = Miniriot__Proc_state
+module Process = Miniriot__Process
+module Runtime = Miniriot__Runtime
+module Scheduler = Miniriot__Scheduler
+module Trace = Miniriot__Trace
+[DEBUG] Tree after insert_alias_modules:
+Package: miniriot (kind=Library, entry=no, 1 aliases)
+  Module: Effects -> Miniriot__Effects (impl=yes, intf=yes)
+  Module: Mailbox -> Miniriot__Mailbox (impl=yes, intf=yes)
+  Module: Message -> Miniriot__Message (impl=yes, intf=yes)
+  Module: Miniriot -> Miniriot (impl=yes, intf=yes)
+  Module: Pid -> Miniriot__Pid (impl=yes, intf=yes)
+  Module: Proc_effect -> Miniriot__Proc_effect (impl=yes, intf=yes)
+  Module: Proc_state -> Miniriot__Proc_state (impl=yes, intf=yes)
+  Module: Process -> Miniriot__Process (impl=yes, intf=yes)
+  Module: Runtime -> Miniriot__Runtime (impl=yes, intf=yes)
+  Module: Scheduler -> Miniriot__Scheduler (impl=yes, intf=yes)
+  Module: Trace -> Miniriot__Trace (impl=yes, intf=yes)
+[DEBUG] ===== EXTRACTING THREE SUBTREES =====
+[DEBUG] Extracted alias tree:
+Package: miniriot (kind=Library, entry=no, 1 aliases)
+[DEBUG] Extracted intf tree:
+Package: miniriot (kind=Library, entry=no, 1 aliases)
+  Module: Effects -> Miniriot__Effects (impl=no, intf=yes)
+  Module: Mailbox -> Miniriot__Mailbox (impl=no, intf=yes)
+  Module: Message -> Miniriot__Message (impl=no, intf=yes)
+  Module: Miniriot -> Miniriot (impl=no, intf=yes)
+  Module: Pid -> Miniriot__Pid (impl=no, intf=yes)
+  Module: Proc_effect -> Miniriot__Proc_effect (impl=no, intf=yes)
+  Module: Proc_state -> Miniriot__Proc_state (impl=no, intf=yes)
+  Module: Process -> Miniriot__Process (impl=no, intf=yes)
+  Module: Runtime -> Miniriot__Runtime (impl=no, intf=yes)
+  Module: Scheduler -> Miniriot__Scheduler (impl=no, intf=yes)
+  Module: Trace -> Miniriot__Trace (impl=no, intf=yes)
+[DEBUG] Extracted impl tree:
+Package: miniriot (kind=Library, entry=no, 1 aliases)
+  Module: Effects -> Miniriot__Effects (impl=yes, intf=no)
+  Module: Mailbox -> Miniriot__Mailbox (impl=yes, intf=no)
+  Module: Message -> Miniriot__Message (impl=yes, intf=no)
+  Module: Miniriot -> Miniriot (impl=yes, intf=no)
+  Module: Pid -> Miniriot__Pid (impl=yes, intf=no)
+  Module: Proc_effect -> Miniriot__Proc_effect (impl=yes, intf=no)
+  Module: Proc_state -> Miniriot__Proc_state (impl=yes, intf=no)
+  Module: Process -> Miniriot__Process (impl=yes, intf=no)
+  Module: Runtime -> Miniriot__Runtime (impl=yes, intf=no)
+  Module: Scheduler -> Miniriot__Scheduler (impl=yes, intf=no)
+  Module: Trace -> Miniriot__Trace (impl=yes, intf=no)
+[DEBUG Dep_graph] Created 23 nodes for miniriot
+[DEBUG Dep_graph] Nodes:
+  - Miniriot.mli (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Process.ml (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Trace.ml (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Scheduler.ml (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Process.mli (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Pid.mli (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Trace.mli (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Proc_state.ml (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Mailbox.ml (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Scheduler.mli (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Message.ml (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__aliases (alias) (level=0, parent_aliases=[])
+  - Miniriot__Proc_state.mli (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot.ml (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Proc_effect.mli (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Mailbox.mli (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Pid.ml (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Runtime.ml (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Effects.ml (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Effects.mli (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Runtime.mli (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Proc_effect.ml (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Message.mli (level=0, parent_aliases=[Miniriot__aliases])
+[DEBUG Dep_graph] Running ocamldep on 11 .mli files
+[DEBUG Dep_graph] Files in temp dir for miniriot: [process.ml, mailbox.ml, runtime.mli, proc_effect.mli, mailbox.mli, Miniriot__aliases.ml.gen, miniriot.ml, proc_effect.ml, scheduler.ml, trace.mli, trace.ml, effects.ml, scheduler.mli, proc_state.mli, runtime.ml, effects.mli, message.ml, miniriot.mli, proc_state.ml, pid.mli, process.mli, message.mli, pid.ml]
+[DEBUG Dep_graph] .mli files: [runtime.mli, proc_effect.mli, mailbox.mli, trace.mli, scheduler.mli, proc_state.mli, effects.mli, miniriot.mli, pid.mli, process.mli, message.mli]
+[DEBUG Dep_graph] Running ocamldep on 12 .ml files
+[DEBUG Dep_graph] Miniriot__Process.ml depends on Miniriot__Process.mli
+[DEBUG Dep_graph] Miniriot__Trace.ml depends on Miniriot__Trace.mli
+[DEBUG Dep_graph] Miniriot__Scheduler.ml depends on Miniriot__Scheduler.mli
+[DEBUG Dep_graph] Miniriot__Proc_state.ml depends on Miniriot__Proc_state.mli
+[DEBUG Dep_graph] Miniriot__Mailbox.ml depends on Miniriot__Mailbox.mli
+[DEBUG Dep_graph] Miniriot__Message.ml depends on Miniriot__Message.mli
+[DEBUG Dep_graph] Miniriot.ml depends on Miniriot.mli
+[DEBUG Dep_graph] Miniriot__Pid.ml depends on Miniriot__Pid.mli
+[DEBUG Dep_graph] Miniriot__Runtime.ml depends on Miniriot__Runtime.mli
+[DEBUG Dep_graph] Miniriot__Effects.ml depends on Miniriot__Effects.mli
+[DEBUG Dep_graph] Miniriot__Proc_effect.ml depends on Miniriot__Proc_effect.mli
+[DEBUG Dep_graph] Dependencies found:
+  Miniriot__Process.ml -> [Miniriot__Process.mli, Miniriot__Proc_state.ml, Miniriot__Proc_state.mli, Miniriot__Proc_effect.ml, Miniriot__Proc_effect.mli, Miniriot__Pid.ml, Miniriot__Pid.mli, Miniriot__Message.ml, Miniriot__Message.mli, Miniriot__Mailbox.ml, Miniriot__Mailbox.mli]
+  Miniriot__Trace.ml -> [Miniriot__Trace.mli]
+  Miniriot__Scheduler.ml -> [Miniriot__Scheduler.mli, Miniriot__Trace.ml, Miniriot__Trace.mli, Miniriot__Process.ml, Miniriot__Process.mli, Miniriot__Proc_state.ml, Miniriot__Proc_state.mli, Miniriot__Proc_effect.ml, Miniriot__Proc_effect.mli, Miniriot__Pid.ml, Miniriot__Pid.mli, Miniriot__Message.ml, Miniriot__Message.mli]
+  Miniriot__Process.mli -> [Miniriot__Proc_state.mli, Miniriot__Pid.mli, Miniriot__Message.mli]
+  Miniriot__Proc_state.ml -> [Miniriot__Proc_state.mli]
+  Miniriot__Mailbox.ml -> [Miniriot__Mailbox.mli, Miniriot__Message.ml, Miniriot__Message.mli]
+  Miniriot__Scheduler.mli -> [Miniriot__Process.mli, Miniriot__Pid.mli, Miniriot__Message.mli]
+  Miniriot__Message.ml -> [Miniriot__Message.mli]
+  Miniriot.ml -> [Miniriot.mli, Miniriot__Trace.ml, Miniriot__Trace.mli, Miniriot__Scheduler.ml, Miniriot__Scheduler.mli, Miniriot__Runtime.ml, Miniriot__Runtime.mli, Miniriot__Process.ml, Miniriot__Process.mli, Miniriot__Proc_effect.ml, Miniriot__Proc_effect.mli, Miniriot__Pid.ml, Miniriot__Pid.mli, Miniriot__Message.ml, Miniriot__Message.mli, Miniriot__Effects.ml, Miniriot__Effects.mli]
+  Miniriot__Proc_effect.mli -> [Miniriot__Message.mli]
+  Miniriot__Mailbox.mli -> [Miniriot__Message.mli]
+  Miniriot__Pid.ml -> [Miniriot__Pid.mli]
+  Miniriot__Runtime.ml -> [Miniriot__Runtime.mli, Miniriot__Effects.ml, Miniriot__Effects.mli]
+  Miniriot__Effects.ml -> [Miniriot__Effects.mli, Miniriot__Proc_effect.ml, Miniriot__Proc_effect.mli]
+  Miniriot__Effects.mli -> [Miniriot__Process.mli, Miniriot__Message.mli]
+  Miniriot__Proc_effect.ml -> [Miniriot__Proc_effect.mli, Miniriot__Message.ml, Miniriot__Message.mli]
+[DEBUG Dep_graph] Miniriot.mli depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Process.ml depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Trace.ml depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Scheduler.ml depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Process.mli depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Pid.mli depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Trace.mli depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Proc_state.ml depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Mailbox.ml depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Scheduler.mli depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Message.ml depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Proc_state.mli depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot.ml depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Proc_effect.mli depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Mailbox.mli depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Pid.ml depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Runtime.ml depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Effects.ml depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Effects.mli depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Runtime.mli depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Proc_effect.ml depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Message.mli depends on alias Miniriot__aliases
+Dependency Graph:
+  Miniriot.mli (level 0) -> [Miniriot__aliases, Miniriot__Message.mli, Miniriot__Proc_effect.ml, Miniriot__Runtime.mli, Miniriot__Effects.mli, Miniriot__Effects.ml, Miniriot__Runtime.ml, Miniriot__Pid.ml, Miniriot__Mailbox.mli, Miniriot__Proc_effect.mli, Miniriot__Proc_state.mli, Miniriot__Message.ml, Miniriot__Scheduler.mli, Miniriot__Mailbox.ml, Miniriot__Proc_state.ml, Miniriot__Trace.mli, Miniriot__Pid.mli, Miniriot__Process.mli, Miniriot__Scheduler.ml, Miniriot__Trace.ml, Miniriot__Process.ml]
+  Miniriot__Process.ml (level 0) -> [Miniriot__aliases, Miniriot__Process.mli, Miniriot__Proc_state.ml, Miniriot__Proc_state.mli, Miniriot__Proc_effect.ml, Miniriot__Proc_effect.mli, Miniriot__Pid.ml, Miniriot__Pid.mli, Miniriot__Message.ml, Miniriot__Message.mli, Miniriot__Mailbox.ml, Miniriot__Mailbox.mli]
+  Miniriot__Trace.ml (level 0) -> [Miniriot__aliases, Miniriot__Trace.mli]
+  Miniriot__Scheduler.ml (level 0) -> [Miniriot__aliases, Miniriot__Scheduler.mli, Miniriot__Trace.ml, Miniriot__Trace.mli, Miniriot__Process.ml, Miniriot__Process.mli, Miniriot__Proc_state.ml, Miniriot__Proc_state.mli, Miniriot__Proc_effect.ml, Miniriot__Proc_effect.mli, Miniriot__Pid.ml, Miniriot__Pid.mli, Miniriot__Message.ml, Miniriot__Message.mli]
+  Miniriot__Process.mli (level 0) -> [Miniriot__aliases, Miniriot__Proc_state.mli, Miniriot__Pid.mli, Miniriot__Message.mli]
+  Miniriot__Pid.mli (level 0) -> [Miniriot__aliases]
+  Miniriot__Trace.mli (level 0) -> [Miniriot__aliases]
+  Miniriot__Proc_state.ml (level 0) -> [Miniriot__aliases, Miniriot__Proc_state.mli]
+  Miniriot__Mailbox.ml (level 0) -> [Miniriot__aliases, Miniriot__Mailbox.mli, Miniriot__Message.ml, Miniriot__Message.mli]
+  Miniriot__Scheduler.mli (level 0) -> [Miniriot__aliases, Miniriot__Process.mli, Miniriot__Pid.mli, Miniriot__Message.mli]
+  Miniriot__Message.ml (level 0) -> [Miniriot__aliases, Miniriot__Message.mli]
+  Miniriot__aliases (level 0) -> []
+  Miniriot__Proc_state.mli (level 0) -> [Miniriot__aliases]
+  Miniriot.ml (level 0) -> [Miniriot__aliases, Miniriot__Message.mli, Miniriot__Proc_effect.ml, Miniriot__Runtime.mli, Miniriot__Effects.mli, Miniriot__Effects.ml, Miniriot__Runtime.ml, Miniriot__Pid.ml, Miniriot__Mailbox.mli, Miniriot__Proc_effect.mli, Miniriot__Proc_state.mli, Miniriot__Message.ml, Miniriot__Scheduler.mli, Miniriot__Mailbox.ml, Miniriot__Proc_state.ml, Miniriot__Trace.mli, Miniriot__Pid.mli, Miniriot__Process.mli, Miniriot__Scheduler.ml, Miniriot__Trace.ml, Miniriot__Process.ml, Miniriot.mli, Miniriot__Trace.ml, Miniriot__Trace.mli, Miniriot__Scheduler.ml, Miniriot__Scheduler.mli, Miniriot__Runtime.ml, Miniriot__Runtime.mli, Miniriot__Process.ml, Miniriot__Process.mli, Miniriot__Proc_effect.ml, Miniriot__Proc_effect.mli, Miniriot__Pid.ml, Miniriot__Pid.mli, Miniriot__Message.ml, Miniriot__Message.mli, Miniriot__Effects.ml, Miniriot__Effects.mli]
+  Miniriot__Proc_effect.mli (level 0) -> [Miniriot__aliases, Miniriot__Message.mli]
+  Miniriot__Mailbox.mli (level 0) -> [Miniriot__aliases, Miniriot__Message.mli]
+  Miniriot__Pid.ml (level 0) -> [Miniriot__aliases, Miniriot__Pid.mli]
+  Miniriot__Runtime.ml (level 0) -> [Miniriot__aliases, Miniriot__Runtime.mli, Miniriot__Effects.ml, Miniriot__Effects.mli]
+  Miniriot__Effects.ml (level 0) -> [Miniriot__aliases, Miniriot__Effects.mli, Miniriot__Proc_effect.ml, Miniriot__Proc_effect.mli]
+  Miniriot__Effects.mli (level 0) -> [Miniriot__aliases, Miniriot__Process.mli, Miniriot__Message.mli]
+  Miniriot__Runtime.mli (level 0) -> [Miniriot__aliases]
+  Miniriot__Proc_effect.ml (level 0) -> [Miniriot__aliases, Miniriot__Proc_effect.mli, Miniriot__Message.ml, Miniriot__Message.mli]
+  Miniriot__Message.mli (level 0) -> [Miniriot__aliases]
+[DEBUG] Topological sort:
+  Miniriot__aliases
+  Miniriot__Message.mli
+  Miniriot__Pid.mli
+  Miniriot__Proc_state.mli
+  Miniriot__Runtime.mli
+  Miniriot__Trace.mli
+  Miniriot__Mailbox.mli
+  Miniriot__Message.ml
+  Miniriot__Proc_effect.mli
+  Miniriot__Pid.ml
+  Miniriot__Proc_state.ml
+  Miniriot__Process.mli
+  Miniriot__Trace.ml
+  Miniriot__Mailbox.ml
+  Miniriot__Proc_effect.ml
+  Miniriot__Effects.mli
+  Miniriot__Scheduler.mli
+  Miniriot__Process.ml
+  Miniriot__Effects.ml
+  Miniriot__Scheduler.ml
+  Miniriot__Runtime.ml
+  Miniriot.mli
+  Miniriot.ml
+[DEBUG] Generating actions from dependency graph...
+[DEBUG] Generating actions for alias module: Miniriot__aliases
+[DEBUG] Generating actions for interface: Miniriot__Message.mli
+[DEBUG] Generating actions for interface: Miniriot__Pid.mli
+[DEBUG] Generating actions for interface: Miniriot__Proc_state.mli
+[DEBUG] Generating actions for interface: Miniriot__Runtime.mli
+[DEBUG] Generating actions for interface: Miniriot__Trace.mli
+[DEBUG] Generating actions for interface: Miniriot__Mailbox.mli
+[DEBUG] Generating actions for implementation: Miniriot__Message.ml
+[DEBUG] Generating actions for interface: Miniriot__Proc_effect.mli
+[DEBUG] Generating actions for implementation: Miniriot__Pid.ml
+[DEBUG] Generating actions for implementation: Miniriot__Proc_state.ml
+[DEBUG] Generating actions for interface: Miniriot__Process.mli
+[DEBUG] Generating actions for implementation: Miniriot__Trace.ml
+[DEBUG] Generating actions for implementation: Miniriot__Mailbox.ml
+[DEBUG] Generating actions for implementation: Miniriot__Proc_effect.ml
+[DEBUG] Generating actions for interface: Miniriot__Effects.mli
+[DEBUG] Generating actions for interface: Miniriot__Scheduler.mli
+[DEBUG] Generating actions for implementation: Miniriot__Process.ml
+[DEBUG] Generating actions for implementation: Miniriot__Effects.ml
+[DEBUG] Generating actions for implementation: Miniriot__Scheduler.ml
+[DEBUG] Generating actions for implementation: Miniriot__Runtime.ml
+[DEBUG] Generating actions for interface: Miniriot.mli
+[DEBUG] Generating actions for implementation: Miniriot.ml
+[DEBUG] Generated 48 actions from dep_graph:
+  1. write(Miniriot__aliases.ml.gen,391 bytes)
+  2. compile_interface(Miniriot__aliases.ml.gen,Miniriot__aliases.cmi,[.],[no-alias-deps,impl:Miniriot__aliases.ml.gen,warning:[no-cmi-file]])
+  3. compile_impl(Miniriot__aliases.ml.gen,Miniriot__aliases.cmo,[.],[no-alias-deps,impl:Miniriot__aliases.ml.gen,warning:[no-cmi-file]])
+  4. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/message.mli,message.mli)
+  5. compile_interface(message.mli,Miniriot__Message.cmi,[.],[open:Miniriot__aliases])
+  6. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/pid.mli,pid.mli)
+  7. compile_interface(pid.mli,Miniriot__Pid.cmi,[.],[open:Miniriot__aliases])
+  8. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/proc_state.mli,proc_state.mli)
+  9. compile_interface(proc_state.mli,Miniriot__Proc_state.cmi,[.],[open:Miniriot__aliases])
+  10. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/runtime.mli,runtime.mli)
+  11. compile_interface(runtime.mli,Miniriot__Runtime.cmi,[.],[open:Miniriot__aliases])
+  12. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/trace.mli,trace.mli)
+  13. compile_interface(trace.mli,Miniriot__Trace.cmi,[.],[open:Miniriot__aliases])
+  14. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/mailbox.mli,mailbox.mli)
+  15. compile_interface(mailbox.mli,Miniriot__Mailbox.cmi,[.],[open:Miniriot__aliases])
+  16. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/message.ml,message.ml)
+  17. compile_impl(message.ml,Miniriot__Message.cmo,[.],[open:Miniriot__aliases])
+  18. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/proc_effect.mli,proc_effect.mli)
+  19. compile_interface(proc_effect.mli,Miniriot__Proc_effect.cmi,[.],[open:Miniriot__aliases])
+  20. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/pid.ml,pid.ml)
+  21. compile_impl(pid.ml,Miniriot__Pid.cmo,[.],[open:Miniriot__aliases])
+  22. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/proc_state.ml,proc_state.ml)
+  23. compile_impl(proc_state.ml,Miniriot__Proc_state.cmo,[.],[open:Miniriot__aliases])
+  24. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/process.mli,process.mli)
+  25. compile_interface(process.mli,Miniriot__Process.cmi,[.],[open:Miniriot__aliases])
+  26. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/trace.ml,trace.ml)
+  27. compile_impl(trace.ml,Miniriot__Trace.cmo,[.],[open:Miniriot__aliases])
+  28. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/mailbox.ml,mailbox.ml)
+  29. compile_impl(mailbox.ml,Miniriot__Mailbox.cmo,[.],[open:Miniriot__aliases])
+  30. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/proc_effect.ml,proc_effect.ml)
+  31. compile_impl(proc_effect.ml,Miniriot__Proc_effect.cmo,[.],[open:Miniriot__aliases])
+  32. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/effects.mli,effects.mli)
+  33. compile_interface(effects.mli,Miniriot__Effects.cmi,[.],[open:Miniriot__aliases])
+  34. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/scheduler.mli,scheduler.mli)
+  35. compile_interface(scheduler.mli,Miniriot__Scheduler.cmi,[.],[open:Miniriot__aliases])
+  36. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/process.ml,process.ml)
+  37. compile_impl(process.ml,Miniriot__Process.cmo,[.],[open:Miniriot__aliases])
+  38. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/effects.ml,effects.ml)
+  39. compile_impl(effects.ml,Miniriot__Effects.cmo,[.],[open:Miniriot__aliases])
+  40. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/scheduler.ml,scheduler.ml)
+  41. compile_impl(scheduler.ml,Miniriot__Scheduler.cmo,[.],[open:Miniriot__aliases])
+  42. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/runtime.ml,runtime.ml)
+  43. compile_impl(runtime.ml,Miniriot__Runtime.cmo,[.],[open:Miniriot__aliases])
+  44. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/miniriot.mli,miniriot.mli)
+  45. compile_interface(miniriot.mli,Miniriot.cmi,[.],[open:Miniriot__aliases])
+  46. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/miniriot.ml,miniriot.ml)
+  47. compile_impl(miniriot.ml,Miniriot.cmo,[.],[open:Miniriot__aliases])
+  48. create_library(miniriot.cma,[Miniriot__aliases.cmo,Miniriot__Message.cmo,Miniriot__Pid.cmo,Miniriot__Proc_state.cmo,Miniriot__Trace.cmo,Miniriot__Mailbox.cmo,Miniriot__Proc_effect.cmo,Miniriot__Process.cmo,Miniriot__Effects.cmo,Miniriot__Scheduler.cmo,Miniriot__Runtime.cmo,Miniriot.cmo],[.])
+[DEBUG] Using dep_graph actions!
+[2025-09-06T14:10:35.359Z] Building kernel...
+[2025-09-06T14:10:35.434Z] Cached kernel
+[2025-09-06T14:10:35.435Z] Building miniriot...
+[2025-09-06T14:10:35.641Z] Cached miniriot
+[2025-09-06T14:10:35.643Z] Building std...
+[DEBUG] Task completed: kernel
+[DEBUG] Marked kernel as completed
+[DEBUG] Queue state after kernel: Ready=1, Later=0, Busy=2
+Server: Worker ready
+Server: Sending task mcp to worker
+[DEBUG] Task completed: miniriot
+[DEBUG] Marked miniriot as completed
+[DEBUG] Queue state after miniriot: Ready=0, Later=0, Busy=2
+Server: Worker ready
+Server: No work available for worker
+[DEBUG] Requeuing std with deps: [miniriot]
+[DEBUG] Queue state after requeue: Ready=1, Later=1, Busy=1
+Server: Worker ready
+Server: Sending task miniriot to worker
+[DEBUG] build_modtree: package_name=miniriot, srcs count=22
+[DEBUG]   ML: key=Pid, simple=Pid, namespaced=Miniriot__Pid
+[DEBUG]   MLI: key=Message, simple=Message, namespaced=Miniriot__Message
+[DEBUG]   MLI: key=Process, simple=Process, namespaced=Miniriot__Process
+[DEBUG]   MLI: key=Pid, simple=Pid, namespaced=Miniriot__Pid
+[DEBUG]   ML: key=Proc_state, simple=Proc_state, namespaced=Miniriot__Proc_state
+[DEBUG]   MLI: key=Miniriot, simple=Miniriot, namespaced=Miniriot
+[DEBUG]   ML: key=Message, simple=Message, namespaced=Miniriot__Message
+[DEBUG]   MLI: key=Effects, simple=Effects, namespaced=Miniriot__Effects
+[DEBUG]   ML: key=Runtime, simple=Runtime, namespaced=Miniriot__Runtime
+[DEBUG]   MLI: key=Proc_state, simple=Proc_state, namespaced=Miniriot__Proc_state
+[DEBUG]   MLI: key=Scheduler, simple=Scheduler, namespaced=Miniriot__Scheduler
+[DEBUG]   ML: key=Effects, simple=Effects, namespaced=Miniriot__Effects
+[DEBUG]   ML: key=Trace, simple=Trace, namespaced=Miniriot__Trace
+[DEBUG]   MLI: key=Trace, simple=Trace, namespaced=Miniriot__Trace
+[DEBUG]   ML: key=Scheduler, simple=Scheduler, namespaced=Miniriot__Scheduler
+[DEBUG]   ML: key=Proc_effect, simple=Proc_effect, namespaced=Miniriot__Proc_effect
+[DEBUG]   ML: key=Miniriot, simple=Miniriot, namespaced=Miniriot
+[DEBUG]   MLI: key=Mailbox, simple=Mailbox, namespaced=Miniriot__Mailbox
+[DEBUG]   MLI: key=Proc_effect, simple=Proc_effect, namespaced=Miniriot__Proc_effect
+[DEBUG]   MLI: key=Runtime, simple=Runtime, namespaced=Miniriot__Runtime
+[DEBUG]   ML: key=Mailbox, simple=Mailbox, namespaced=Miniriot__Mailbox
+[DEBUG]   ML: key=Process, simple=Process, namespaced=Miniriot__Process
+[DEBUG] Tree after build_modtree:
+Package: miniriot (kind=Library, entry=no, 0 aliases)
+  Module: Effects -> Miniriot__Effects (impl=yes, intf=yes)
+  Module: Mailbox -> Miniriot__Mailbox (impl=yes, intf=yes)
+  Module: Message -> Miniriot__Message (impl=yes, intf=yes)
+  Module: Miniriot -> Miniriot (impl=yes, intf=yes)
+  Module: Pid -> Miniriot__Pid (impl=yes, intf=yes)
+  Module: Proc_effect -> Miniriot__Proc_effect (impl=yes, intf=yes)
+  Module: Proc_state -> Miniriot__Proc_state (impl=yes, intf=yes)
+  Module: Process -> Miniriot__Process (impl=yes, intf=yes)
+  Module: Runtime -> Miniriot__Runtime (impl=yes, intf=yes)
+  Module: Scheduler -> Miniriot__Scheduler (impl=yes, intf=yes)
+  Module: Trace -> Miniriot__Trace (impl=yes, intf=yes)
+[DEBUG]   Package alias: module Effects -> Miniriot__Effects
+[DEBUG]   Package alias: module Mailbox -> Miniriot__Mailbox
+[DEBUG]   Package alias: module Message -> Miniriot__Message
+[DEBUG]   Package alias: module Miniriot -> Miniriot
+[DEBUG]   Package alias: module Pid -> Miniriot__Pid
+[DEBUG]   Package alias: module Proc_effect -> Miniriot__Proc_effect
+[DEBUG]   Package alias: module Proc_state -> Miniriot__Proc_state
+[DEBUG]   Package alias: module Process -> Miniriot__Process
+[DEBUG]   Package alias: module Runtime -> Miniriot__Runtime
+[DEBUG]   Package alias: module Scheduler -> Miniriot__Scheduler
+[DEBUG]   Package alias: module Trace -> Miniriot__Trace
+[DEBUG] Generated aliases content for miniriot: (* Auto-generated module aliases *)
+module Effects = Miniriot__Effects
+module Mailbox = Miniriot__Mailbox
+module Message = Miniriot__Message
+module Pid = Miniriot__Pid
+module Proc_effect = Miniriot__Proc_effect
+module Proc_state = Miniriot__Proc_state
+module Process = Miniriot__Process
+module Runtime = Miniriot__Runtime
+module Scheduler = Miniriot__Scheduler
+module Trace = Miniriot__Trace
+[DEBUG] Tree after insert_alias_modules:
+Package: miniriot (kind=Library, entry=no, 1 aliases)
+  Module: Effects -> Miniriot__Effects (impl=yes, intf=yes)
+  Module: Mailbox -> Miniriot__Mailbox (impl=yes, intf=yes)
+  Module: Message -> Miniriot__Message (impl=yes, intf=yes)
+  Module: Miniriot -> Miniriot (impl=yes, intf=yes)
+  Module: Pid -> Miniriot__Pid (impl=yes, intf=yes)
+  Module: Proc_effect -> Miniriot__Proc_effect (impl=yes, intf=yes)
+  Module: Proc_state -> Miniriot__Proc_state (impl=yes, intf=yes)
+  Module: Process -> Miniriot__Process (impl=yes, intf=yes)
+  Module: Runtime -> Miniriot__Runtime (impl=yes, intf=yes)
+  Module: Scheduler -> Miniriot__Scheduler (impl=yes, intf=yes)
+  Module: Trace -> Miniriot__Trace (impl=yes, intf=yes)
+[DEBUG] ===== EXTRACTING THREE SUBTREES =====
+[DEBUG] Extracted alias tree:
+Package: miniriot (kind=Library, entry=no, 1 aliases)
+[DEBUG] Extracted intf tree:
+Package: miniriot (kind=Library, entry=no, 1 aliases)
+  Module: Effects -> Miniriot__Effects (impl=no, intf=yes)
+  Module: Mailbox -> Miniriot__Mailbox (impl=no, intf=yes)
+  Module: Message -> Miniriot__Message (impl=no, intf=yes)
+  Module: Miniriot -> Miniriot (impl=no, intf=yes)
+  Module: Pid -> Miniriot__Pid (impl=no, intf=yes)
+  Module: Proc_effect -> Miniriot__Proc_effect (impl=no, intf=yes)
+  Module: Proc_state -> Miniriot__Proc_state (impl=no, intf=yes)
+  Module: Process -> Miniriot__Process (impl=no, intf=yes)
+  Module: Runtime -> Miniriot__Runtime (impl=no, intf=yes)
+  Module: Scheduler -> Miniriot__Scheduler (impl=no, intf=yes)
+  Module: Trace -> Miniriot__Trace (impl=no, intf=yes)
+[DEBUG] Extracted impl tree:
+Package: miniriot (kind=Library, entry=no, 1 aliases)
+  Module: Effects -> Miniriot__Effects (impl=yes, intf=no)
+  Module: Mailbox -> Miniriot__Mailbox (impl=yes, intf=no)
+  Module: Message -> Miniriot__Message (impl=yes, intf=no)
+  Module: Miniriot -> Miniriot (impl=yes, intf=no)
+  Module: Pid -> Miniriot__Pid (impl=yes, intf=no)
+  Module: Proc_effect -> Miniriot__Proc_effect (impl=yes, intf=no)
+  Module: Proc_state -> Miniriot__Proc_state (impl=yes, intf=no)
+  Module: Process -> Miniriot__Process (impl=yes, intf=no)
+  Module: Runtime -> Miniriot__Runtime (impl=yes, intf=no)
+  Module: Scheduler -> Miniriot__Scheduler (impl=yes, intf=no)
+  Module: Trace -> Miniriot__Trace (impl=yes, intf=no)
+[DEBUG Dep_graph] Created 23 nodes for miniriot
+[DEBUG Dep_graph] Nodes:
+  - Miniriot.mli (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Mailbox.mli (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Pid.ml (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Message.ml (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Message.mli (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Effects.mli (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot.ml (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Proc_effect.mli (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Runtime.mli (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Proc_effect.ml (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Trace.ml (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Effects.ml (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Scheduler.mli (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Mailbox.ml (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Process.mli (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Trace.mli (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__aliases (alias) (level=0, parent_aliases=[])
+  - Miniriot__Runtime.ml (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Pid.mli (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Scheduler.ml (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Process.ml (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Proc_state.mli (level=0, parent_aliases=[Miniriot__aliases])
+  - Miniriot__Proc_state.ml (level=0, parent_aliases=[Miniriot__aliases])
+[DEBUG Dep_graph] Running ocamldep on 11 .mli files
+[DEBUG Dep_graph] Files in temp dir for miniriot: [process.ml, mailbox.ml, runtime.mli, proc_effect.mli, mailbox.mli, Miniriot__aliases.ml.gen, miniriot.ml, proc_effect.ml, scheduler.ml, trace.mli, trace.ml, effects.ml, scheduler.mli, proc_state.mli, runtime.ml, effects.mli, message.ml, miniriot.mli, proc_state.ml, pid.mli, process.mli, message.mli, pid.ml]
+[DEBUG Dep_graph] .mli files: [runtime.mli, proc_effect.mli, mailbox.mli, trace.mli, scheduler.mli, proc_state.mli, effects.mli, miniriot.mli, pid.mli, process.mli, message.mli]
+[DEBUG Dep_graph] Running ocamldep on 12 .ml files
+[DEBUG Dep_graph] Miniriot__Pid.ml depends on Miniriot__Pid.mli
+[DEBUG Dep_graph] Miniriot__Message.ml depends on Miniriot__Message.mli
+[DEBUG Dep_graph] Miniriot.ml depends on Miniriot.mli
+[DEBUG Dep_graph] Miniriot__Proc_effect.ml depends on Miniriot__Proc_effect.mli
+[DEBUG Dep_graph] Miniriot__Trace.ml depends on Miniriot__Trace.mli
+[DEBUG Dep_graph] Miniriot__Effects.ml depends on Miniriot__Effects.mli
+[DEBUG Dep_graph] Miniriot__Mailbox.ml depends on Miniriot__Mailbox.mli
+[DEBUG Dep_graph] Miniriot__Runtime.ml depends on Miniriot__Runtime.mli
+[DEBUG Dep_graph] Miniriot__Scheduler.ml depends on Miniriot__Scheduler.mli
+[DEBUG Dep_graph] Miniriot__Process.ml depends on Miniriot__Process.mli
+[DEBUG Dep_graph] Miniriot__Proc_state.ml depends on Miniriot__Proc_state.mli
+[DEBUG Dep_graph] Dependencies found:
+  Miniriot__Mailbox.mli -> [Miniriot__Message.mli]
+  Miniriot__Pid.ml -> [Miniriot__Pid.mli]
+  Miniriot__Message.ml -> [Miniriot__Message.mli]
+  Miniriot__Effects.mli -> [Miniriot__Process.mli, Miniriot__Message.mli]
+  Miniriot.ml -> [Miniriot.mli, Miniriot__Trace.ml, Miniriot__Trace.mli, Miniriot__Scheduler.ml, Miniriot__Scheduler.mli, Miniriot__Runtime.ml, Miniriot__Runtime.mli, Miniriot__Process.ml, Miniriot__Process.mli, Miniriot__Proc_effect.ml, Miniriot__Proc_effect.mli, Miniriot__Pid.ml, Miniriot__Pid.mli, Miniriot__Message.ml, Miniriot__Message.mli, Miniriot__Effects.ml, Miniriot__Effects.mli]
+  Miniriot__Proc_effect.mli -> [Miniriot__Message.mli]
+  Miniriot__Proc_effect.ml -> [Miniriot__Proc_effect.mli, Miniriot__Message.ml, Miniriot__Message.mli]
+  Miniriot__Trace.ml -> [Miniriot__Trace.mli]
+  Miniriot__Effects.ml -> [Miniriot__Effects.mli, Miniriot__Proc_effect.ml, Miniriot__Proc_effect.mli]
+  Miniriot__Scheduler.mli -> [Miniriot__Process.mli, Miniriot__Pid.mli, Miniriot__Message.mli]
+  Miniriot__Mailbox.ml -> [Miniriot__Mailbox.mli, Miniriot__Message.ml, Miniriot__Message.mli]
+  Miniriot__Process.mli -> [Miniriot__Proc_state.mli, Miniriot__Pid.mli, Miniriot__Message.mli]
+  Miniriot__Runtime.ml -> [Miniriot__Runtime.mli, Miniriot__Effects.ml, Miniriot__Effects.mli]
+  Miniriot__Scheduler.ml -> [Miniriot__Scheduler.mli, Miniriot__Trace.ml, Miniriot__Trace.mli, Miniriot__Process.ml, Miniriot__Process.mli, Miniriot__Proc_state.ml, Miniriot__Proc_state.mli, Miniriot__Proc_effect.ml, Miniriot__Proc_effect.mli, Miniriot__Pid.ml, Miniriot__Pid.mli, Miniriot__Message.ml, Miniriot__Message.mli]
+  Miniriot__Process.ml -> [Miniriot__Process.mli, Miniriot__Proc_state.ml, Miniriot__Proc_state.mli, Miniriot__Proc_effect.ml, Miniriot__Proc_effect.mli, Miniriot__Pid.ml, Miniriot__Pid.mli, Miniriot__Message.ml, Miniriot__Message.mli, Miniriot__Mailbox.ml, Miniriot__Mailbox.mli]
+  Miniriot__Proc_state.ml -> [Miniriot__Proc_state.mli]
+[DEBUG Dep_graph] Miniriot.mli depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Mailbox.mli depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Pid.ml depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Message.ml depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Message.mli depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Effects.mli depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot.ml depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Proc_effect.mli depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Runtime.mli depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Proc_effect.ml depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Trace.ml depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Effects.ml depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Scheduler.mli depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Mailbox.ml depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Process.mli depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Trace.mli depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Runtime.ml depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Pid.mli depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Scheduler.ml depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Process.ml depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Proc_state.mli depends on alias Miniriot__aliases
+[DEBUG Dep_graph] Miniriot__Proc_state.ml depends on alias Miniriot__aliases
+Dependency Graph:
+  Miniriot.mli (level 0) -> [Miniriot__aliases, Miniriot__Proc_state.ml, Miniriot__Proc_state.mli, Miniriot__Process.ml, Miniriot__Scheduler.ml, Miniriot__Pid.mli, Miniriot__Runtime.ml, Miniriot__Trace.mli, Miniriot__Process.mli, Miniriot__Mailbox.ml, Miniriot__Scheduler.mli, Miniriot__Effects.ml, Miniriot__Trace.ml, Miniriot__Proc_effect.ml, Miniriot__Runtime.mli, Miniriot__Proc_effect.mli, Miniriot__Effects.mli, Miniriot__Message.mli, Miniriot__Message.ml, Miniriot__Pid.ml, Miniriot__Mailbox.mli]
+  Miniriot__Mailbox.mli (level 0) -> [Miniriot__aliases, Miniriot__Message.mli]
+  Miniriot__Pid.ml (level 0) -> [Miniriot__aliases, Miniriot__Pid.mli]
+  Miniriot__Message.ml (level 0) -> [Miniriot__aliases, Miniriot__Message.mli]
+  Miniriot__Message.mli (level 0) -> [Miniriot__aliases]
+  Miniriot__Effects.mli (level 0) -> [Miniriot__aliases, Miniriot__Process.mli, Miniriot__Message.mli]
+  Miniriot.ml (level 0) -> [Miniriot__aliases, Miniriot__Proc_state.ml, Miniriot__Proc_state.mli, Miniriot__Process.ml, Miniriot__Scheduler.ml, Miniriot__Pid.mli, Miniriot__Runtime.ml, Miniriot__Trace.mli, Miniriot__Process.mli, Miniriot__Mailbox.ml, Miniriot__Scheduler.mli, Miniriot__Effects.ml, Miniriot__Trace.ml, Miniriot__Proc_effect.ml, Miniriot__Runtime.mli, Miniriot__Proc_effect.mli, Miniriot__Effects.mli, Miniriot__Message.mli, Miniriot__Message.ml, Miniriot__Pid.ml, Miniriot__Mailbox.mli, Miniriot.mli, Miniriot__Trace.ml, Miniriot__Trace.mli, Miniriot__Scheduler.ml, Miniriot__Scheduler.mli, Miniriot__Runtime.ml, Miniriot__Runtime.mli, Miniriot__Process.ml, Miniriot__Process.mli, Miniriot__Proc_effect.ml, Miniriot__Proc_effect.mli, Miniriot__Pid.ml, Miniriot__Pid.mli, Miniriot__Message.ml, Miniriot__Message.mli, Miniriot__Effects.ml, Miniriot__Effects.mli]
+  Miniriot__Proc_effect.mli (level 0) -> [Miniriot__aliases, Miniriot__Message.mli]
+  Miniriot__Runtime.mli (level 0) -> [Miniriot__aliases]
+  Miniriot__Proc_effect.ml (level 0) -> [Miniriot__aliases, Miniriot__Proc_effect.mli, Miniriot__Message.ml, Miniriot__Message.mli]
+  Miniriot__Trace.ml (level 0) -> [Miniriot__aliases, Miniriot__Trace.mli]
+  Miniriot__Effects.ml (level 0) -> [Miniriot__aliases, Miniriot__Effects.mli, Miniriot__Proc_effect.ml, Miniriot__Proc_effect.mli]
+  Miniriot__Scheduler.mli (level 0) -> [Miniriot__aliases, Miniriot__Process.mli, Miniriot__Pid.mli, Miniriot__Message.mli]
+  Miniriot__Mailbox.ml (level 0) -> [Miniriot__aliases, Miniriot__Mailbox.mli, Miniriot__Message.ml, Miniriot__Message.mli]
+  Miniriot__Process.mli (level 0) -> [Miniriot__aliases, Miniriot__Proc_state.mli, Miniriot__Pid.mli, Miniriot__Message.mli]
+  Miniriot__Trace.mli (level 0) -> [Miniriot__aliases]
+  Miniriot__aliases (level 0) -> []
+  Miniriot__Runtime.ml (level 0) -> [Miniriot__aliases, Miniriot__Runtime.mli, Miniriot__Effects.ml, Miniriot__Effects.mli]
+  Miniriot__Pid.mli (level 0) -> [Miniriot__aliases]
+  Miniriot__Scheduler.ml (level 0) -> [Miniriot__aliases, Miniriot__Scheduler.mli, Miniriot__Trace.ml, Miniriot__Trace.mli, Miniriot__Process.ml, Miniriot__Process.mli, Miniriot__Proc_state.ml, Miniriot__Proc_state.mli, Miniriot__Proc_effect.ml, Miniriot__Proc_effect.mli, Miniriot__Pid.ml, Miniriot__Pid.mli, Miniriot__Message.ml, Miniriot__Message.mli]
+  Miniriot__Process.ml (level 0) -> [Miniriot__aliases, Miniriot__Process.mli, Miniriot__Proc_state.ml, Miniriot__Proc_state.mli, Miniriot__Proc_effect.ml, Miniriot__Proc_effect.mli, Miniriot__Pid.ml, Miniriot__Pid.mli, Miniriot__Message.ml, Miniriot__Message.mli, Miniriot__Mailbox.ml, Miniriot__Mailbox.mli]
+  Miniriot__Proc_state.mli (level 0) -> [Miniriot__aliases]
+  Miniriot__Proc_state.ml (level 0) -> [Miniriot__aliases, Miniriot__Proc_state.mli]
+[DEBUG] Topological sort:
+  Miniriot__aliases
+  Miniriot__Message.mli
+  Miniriot__Pid.mli
+  Miniriot__Proc_state.mli
+  Miniriot__Runtime.mli
+  Miniriot__Trace.mli
+  Miniriot__Mailbox.mli
+  Miniriot__Message.ml
+  Miniriot__Proc_effect.mli
+  Miniriot__Pid.ml
+  Miniriot__Proc_state.ml
+  Miniriot__Process.mli
+  Miniriot__Trace.ml
+  Miniriot__Mailbox.ml
+  Miniriot__Proc_effect.ml
+  Miniriot__Effects.mli
+  Miniriot__Scheduler.mli
+  Miniriot__Process.ml
+  Miniriot__Effects.ml
+  Miniriot__Scheduler.ml
+  Miniriot__Runtime.ml
+  Miniriot.mli
+  Miniriot.ml
+[DEBUG] Generating actions from dependency graph...
+[DEBUG] Generating actions for alias module: Miniriot__aliases
+[DEBUG] Generating actions for interface: Miniriot__Message.mli
+[DEBUG] Generating actions for interface: Miniriot__Pid.mli
+[DEBUG] Generating actions for interface: Miniriot__Proc_state.mli
+[DEBUG] Generating actions for interface: Miniriot__Runtime.mli
+[DEBUG] Generating actions for interface: Miniriot__Trace.mli
+[DEBUG] Generating actions for interface: Miniriot__Mailbox.mli
+[DEBUG] Generating actions for implementation: Miniriot__Message.ml
+[DEBUG] Generating actions for interface: Miniriot__Proc_effect.mli
+[DEBUG] Generating actions for implementation: Miniriot__Pid.ml
+[DEBUG] Generating actions for implementation: Miniriot__Proc_state.ml
+[DEBUG] Generating actions for interface: Miniriot__Process.mli
+[DEBUG] Generating actions for implementation: Miniriot__Trace.ml
+[DEBUG] Generating actions for implementation: Miniriot__Mailbox.ml
+[DEBUG] Generating actions for implementation: Miniriot__Proc_effect.ml
+[DEBUG] Generating actions for interface: Miniriot__Effects.mli
+[DEBUG] Generating actions for interface: Miniriot__Scheduler.mli
+[DEBUG] Generating actions for implementation: Miniriot__Process.ml
+[DEBUG] Generating actions for implementation: Miniriot__Effects.ml
+[DEBUG] Generating actions for implementation: Miniriot__Scheduler.ml
+[DEBUG] Generating actions for implementation: Miniriot__Runtime.ml
+[DEBUG] Generating actions for interface: Miniriot.mli
+[DEBUG] Generating actions for implementation: Miniriot.ml
+[DEBUG] Generated 48 actions from dep_graph:
+  1. write(Miniriot__aliases.ml.gen,391 bytes)
+  2. compile_interface(Miniriot__aliases.ml.gen,Miniriot__aliases.cmi,[.],[no-alias-deps,impl:Miniriot__aliases.ml.gen,warning:[no-cmi-file]])
+  3. compile_impl(Miniriot__aliases.ml.gen,Miniriot__aliases.cmo,[.],[no-alias-deps,impl:Miniriot__aliases.ml.gen,warning:[no-cmi-file]])
+  4. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/message.mli,message.mli)
+  5. compile_interface(message.mli,Miniriot__Message.cmi,[.],[open:Miniriot__aliases])
+  6. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/pid.mli,pid.mli)
+  7. compile_interface(pid.mli,Miniriot__Pid.cmi,[.],[open:Miniriot__aliases])
+  8. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/proc_state.mli,proc_state.mli)
+  9. compile_interface(proc_state.mli,Miniriot__Proc_state.cmi,[.],[open:Miniriot__aliases])
+  10. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/runtime.mli,runtime.mli)
+  11. compile_interface(runtime.mli,Miniriot__Runtime.cmi,[.],[open:Miniriot__aliases])
+  12. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/trace.mli,trace.mli)
+  13. compile_interface(trace.mli,Miniriot__Trace.cmi,[.],[open:Miniriot__aliases])
+  14. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/mailbox.mli,mailbox.mli)
+  15. compile_interface(mailbox.mli,Miniriot__Mailbox.cmi,[.],[open:Miniriot__aliases])
+  16. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/message.ml,message.ml)
+  17. compile_impl(message.ml,Miniriot__Message.cmo,[.],[open:Miniriot__aliases])
+  18. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/proc_effect.mli,proc_effect.mli)
+  19. compile_interface(proc_effect.mli,Miniriot__Proc_effect.cmi,[.],[open:Miniriot__aliases])
+  20. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/pid.ml,pid.ml)
+  21. compile_impl(pid.ml,Miniriot__Pid.cmo,[.],[open:Miniriot__aliases])
+  22. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/proc_state.ml,proc_state.ml)
+  23. compile_impl(proc_state.ml,Miniriot__Proc_state.cmo,[.],[open:Miniriot__aliases])
+  24. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/process.mli,process.mli)
+  25. compile_interface(process.mli,Miniriot__Process.cmi,[.],[open:Miniriot__aliases])
+  26. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/trace.ml,trace.ml)
+  27. compile_impl(trace.ml,Miniriot__Trace.cmo,[.],[open:Miniriot__aliases])
+  28. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/mailbox.ml,mailbox.ml)
+  29. compile_impl(mailbox.ml,Miniriot__Mailbox.cmo,[.],[open:Miniriot__aliases])
+  30. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/proc_effect.ml,proc_effect.ml)
+  31. compile_impl(proc_effect.ml,Miniriot__Proc_effect.cmo,[.],[open:Miniriot__aliases])
+  32. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/effects.mli,effects.mli)
+  33. compile_interface(effects.mli,Miniriot__Effects.cmi,[.],[open:Miniriot__aliases])
+  34. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/scheduler.mli,scheduler.mli)
+  35. compile_interface(scheduler.mli,Miniriot__Scheduler.cmi,[.],[open:Miniriot__aliases])
+  36. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/process.ml,process.ml)
+  37. compile_impl(process.ml,Miniriot__Process.cmo,[.],[open:Miniriot__aliases])
+  38. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/effects.ml,effects.ml)
+  39. compile_impl(effects.ml,Miniriot__Effects.cmo,[.],[open:Miniriot__aliases])
+  40. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/scheduler.ml,scheduler.ml)
+  41. compile_impl(scheduler.ml,Miniriot__Scheduler.cmo,[.],[open:Miniriot__aliases])
+  42. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/runtime.ml,runtime.ml)
+  43. compile_impl(runtime.ml,Miniriot__Runtime.cmo,[.],[open:Miniriot__aliases])
+  44. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/miniriot.mli,miniriot.mli)
+  45. compile_interface(miniriot.mli,Miniriot.cmi,[.],[open:Miniriot__aliases])
+  46. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/miniriot/src/miniriot.ml,miniriot.ml)
+  47. compile_impl(miniriot.ml,Miniriot.cmo,[.],[open:Miniriot__aliases])
+  48. create_library(miniriot.cma,[Miniriot__aliases.cmo,Miniriot__Message.cmo,Miniriot__Pid.cmo,Miniriot__Proc_state.cmo,Miniriot__Trace.cmo,Miniriot__Mailbox.cmo,Miniriot__Proc_effect.cmo,Miniriot__Process.cmo,Miniriot__Effects.cmo,Miniriot__Scheduler.cmo,Miniriot__Runtime.cmo,Miniriot.cmo],[.])
+[DEBUG] Using dep_graph actions!
+[2025-09-06T14:10:35.644Z] Building mcp...
+[2025-09-06T14:10:35.644Z] Building miniriot...
+[2025-09-06T14:10:35.845Z] Cached miniriot
+[DEBUG] Requeuing mcp with deps: [std]
+[DEBUG] Queue state after requeue: Ready=0, Later=2, Busy=1
+Server: Worker ready
+Server: Sending task std to worker
+[DEBUG] Task completed: miniriot
+[DEBUG] Marked miniriot as completed
+[DEBUG] Queue state after miniriot: Ready=1, Later=0, Busy=1
+Server: Worker ready
+Server: Sending task mcp to worker
+[DEBUG] build_modtree: package_name=std, srcs count=48
+[DEBUG]   ML: key=Char, simple=Char, namespaced=Std__Char
+[DEBUG]   MLI: key=Iterator, simple=Iterator, namespaced=Std__Iterator
+[DEBUG]   ML: key=Net, simple=Net, namespaced=Std__Net
+[DEBUG]   MLI: key=data/Toml, simple=Toml, namespaced=Std__Data__Toml
+[DEBUG]   MLI: key=data/Data, simple=Data, namespaced=Std__Data
+[DEBUG]   ML: key=data/Sexp, simple=Sexp, namespaced=Std__Data__Sexp
+[DEBUG]   ML: key=data/Json, simple=Json, namespaced=Std__Data__Json
+[DEBUG]   ML: key=data/Data, simple=Data, namespaced=Std__Data
+[DEBUG]   ML: key=data/Toml, simple=Toml, namespaced=Std__Data__Toml
+[DEBUG]   MLI: key=data/Json, simple=Json, namespaced=Std__Data__Json
+[DEBUG]   MLI: key=data/Sexp, simple=Sexp, namespaced=Std__Data__Sexp
+[DEBUG]   ML: key=Std, simple=Std, namespaced=Std
+[DEBUG]   MLI: key=Log, simple=Log, namespaced=Std__Log
+[DEBUG]   MLI: key=Char, simple=Char, namespaced=Std__Char
+[DEBUG]   ML: key=Workerpool, simple=Workerpool, namespaced=Std__Workerpool
+[DEBUG]   ML: key=MutIterator, simple=MutIterator, namespaced=Std__MutIterator
+[DEBUG]   MLI: key=Buffer, simple=Buffer, namespaced=Std__Buffer
+[DEBUG]   MLI: key=Net, simple=Net, namespaced=Std__Net
+[DEBUG]   ML: key=Time, simple=Time, namespaced=Std__Time
+[DEBUG]   MLI: key=Command, simple=Command, namespaced=Std__Command
+[DEBUG]   ML: key=Command, simple=Command, namespaced=Std__Command
+[DEBUG]   ML: key=Env, simple=Env, namespaced=Std__Env
+[DEBUG]   ML: key=List, simple=List, namespaced=Std__List
+[DEBUG]   ML: key=Option, simple=Option, namespaced=Std__Option
+[DEBUG]   ML: key=Global, simple=Global, namespaced=Std__Global
+[DEBUG]   ML: key=Log, simple=Log, namespaced=Std__Log
+[DEBUG]   MLI: key=Path, simple=Path, namespaced=Std__Path
+[DEBUG]   ML: key=String, simple=String, namespaced=Std__String
+[DEBUG]   MLI: key=Result, simple=Result, namespaced=Std__Result
+[DEBUG]   MLI: key=Workerpool, simple=Workerpool, namespaced=Std__Workerpool
+[DEBUG]   MLI: key=List, simple=List, namespaced=Std__List
+[DEBUG]   ML: key=Datetime, simple=Datetime, namespaced=Std__Datetime
+[DEBUG]   MLI: key=Fs, simple=Fs, namespaced=Std__Fs
+[DEBUG]   ML: key=Path, simple=Path, namespaced=Std__Path
+[DEBUG]   MLI: key=File, simple=File, namespaced=Std__File
+[DEBUG]   MLI: key=Env, simple=Env, namespaced=Std__Env
+[DEBUG]   ML: key=Char_Cursor, simple=Char_Cursor, namespaced=Std__Char_Cursor
+[DEBUG]   MLI: key=Option, simple=Option, namespaced=Std__Option
+[DEBUG]   MLI: key=Time, simple=Time, namespaced=Std__Time
+[DEBUG]   ML: key=Result, simple=Result, namespaced=Std__Result
+[DEBUG]   ML: key=File, simple=File, namespaced=Std__File
+[DEBUG]   MLI: key=Std, simple=Std, namespaced=Std
+[DEBUG]   ML: key=Iterator, simple=Iterator, namespaced=Std__Iterator
+[DEBUG]   MLI: key=Datetime, simple=Datetime, namespaced=Std__Datetime
+[DEBUG]   ML: key=Fs, simple=Fs, namespaced=Std__Fs
+[DEBUG]   MLI: key=Global, simple=Global, namespaced=Std__Global
+[DEBUG]   ML: key=Buffer, simple=Buffer, namespaced=Std__Buffer
+[DEBUG]   ML: key=Ref, simple=Ref, namespaced=Std__Ref
+[DEBUG] Tree after build_modtree:
+Package: std (kind=Library, entry=no, 0 aliases)
+  Module: Buffer -> Std__Buffer (impl=yes, intf=yes)
+  Module: Char -> Std__Char (impl=yes, intf=yes)
+  Module: Char_Cursor -> Std__Char_Cursor (impl=yes, intf=no)
+  Module: Command -> Std__Command (impl=yes, intf=yes)
+  Module: Datetime -> Std__Datetime (impl=yes, intf=yes)
+  Module: Env -> Std__Env (impl=yes, intf=yes)
+  Module: File -> Std__File (impl=yes, intf=yes)
+  Module: Fs -> Std__Fs (impl=yes, intf=yes)
+  Module: Global -> Std__Global (impl=yes, intf=yes)
+  Module: Iterator -> Std__Iterator (impl=yes, intf=yes)
+  Module: List -> Std__List (impl=yes, intf=yes)
+  Module: Log -> Std__Log (impl=yes, intf=yes)
+  Module: MutIterator -> Std__MutIterator (impl=yes, intf=no)
+  Module: Net -> Std__Net (impl=yes, intf=yes)
+  Module: Option -> Std__Option (impl=yes, intf=yes)
+  Module: Path -> Std__Path (impl=yes, intf=yes)
+  Module: Ref -> Std__Ref (impl=yes, intf=no)
+  Module: Result -> Std__Result (impl=yes, intf=yes)
+  Module: Std -> Std (impl=yes, intf=yes)
+  Module: String -> Std__String (impl=yes, intf=no)
+  Module: Time -> Std__Time (impl=yes, intf=yes)
+  Module: Workerpool -> Std__Workerpool (impl=yes, intf=yes)
+  Library: Data -> Std__Data (interface=no, 0 aliases)
+    Module: Data -> Std__Data (impl=yes, intf=yes)
+    Module: Json -> Std__Data__Json (impl=yes, intf=yes)
+    Module: Sexp -> Std__Data__Sexp (impl=yes, intf=yes)
+    Module: Toml -> Std__Data__Toml (impl=yes, intf=yes)
+[DEBUG]   Library Std__Data alias: module Data -> Std__Data
+[DEBUG]   Library Std__Data alias: module Json -> Std__Data__Json
+[DEBUG]   Library Std__Data alias: module Sexp -> Std__Data__Sexp
+[DEBUG]   Library Std__Data alias: module Toml -> Std__Data__Toml
+[DEBUG]   Package alias: module Buffer -> Std__Buffer
+[DEBUG]   Package alias: module Char -> Std__Char
+[DEBUG]   Package alias: module Char_Cursor -> Std__Char_Cursor
+[DEBUG]   Package alias: module Command -> Std__Command
+[DEBUG]   Package alias: module Datetime -> Std__Datetime
+[DEBUG]   Package alias: module Env -> Std__Env
+[DEBUG]   Package alias: module File -> Std__File
+[DEBUG]   Package alias: module Fs -> Std__Fs
+[DEBUG]   Package alias: module Global -> Std__Global
+[DEBUG]   Package alias: module Iterator -> Std__Iterator
+[DEBUG]   Package alias: module List -> Std__List
+[DEBUG]   Package alias: module Log -> Std__Log
+[DEBUG]   Package alias: module MutIterator -> Std__MutIterator
+[DEBUG]   Package alias: module Net -> Std__Net
+[DEBUG]   Package alias: module Option -> Std__Option
+[DEBUG]   Package alias: module Path -> Std__Path
+[DEBUG]   Package alias: module Ref -> Std__Ref
+[DEBUG]   Package alias: module Result -> Std__Result
+[DEBUG]   Package alias: module Std -> Std
+[DEBUG]   Package alias: module String -> Std__String
+[DEBUG]   Package alias: module Time -> Std__Time
+[DEBUG]   Package alias: module Workerpool -> Std__Workerpool
+[DEBUG]   Package alias: folder Std__Data with module Data -> Std__Data
+[DEBUG] Generated aliases content for std: (* Auto-generated module aliases *)
+module Buffer = Std__Buffer
+module Char = Std__Char
+module Char_Cursor = Std__Char_Cursor
+module Command = Std__Command
+module Datetime = Std__Datetime
+module Env = Std__Env
+module File = Std__File
+module Fs = Std__Fs
+module Global = Std__Global
+module Iterator = Std__Iterator
+module List = Std__List
+module Log = Std__Log
+module MutIterator = Std__MutIterator
+module Net = Std__Net
+module Option = Std__Option
+module Path = Std__Path
+module Ref = Std__Ref
+module Result = Std__Result
+module String = Std__String
+module Time = Std__Time
+module Workerpool = Std__Workerpool
+module Data = Std__Data
+[DEBUG] Tree after insert_alias_modules:
+Package: std (kind=Library, entry=no, 1 aliases)
+  Module: Buffer -> Std__Buffer (impl=yes, intf=yes)
+  Module: Char -> Std__Char (impl=yes, intf=yes)
+  Module: Char_Cursor -> Std__Char_Cursor (impl=yes, intf=no)
+  Module: Command -> Std__Command (impl=yes, intf=yes)
+  Module: Datetime -> Std__Datetime (impl=yes, intf=yes)
+  Module: Env -> Std__Env (impl=yes, intf=yes)
+  Module: File -> Std__File (impl=yes, intf=yes)
+  Module: Fs -> Std__Fs (impl=yes, intf=yes)
+  Module: Global -> Std__Global (impl=yes, intf=yes)
+  Module: Iterator -> Std__Iterator (impl=yes, intf=yes)
+  Module: List -> Std__List (impl=yes, intf=yes)
+  Module: Log -> Std__Log (impl=yes, intf=yes)
+  Module: MutIterator -> Std__MutIterator (impl=yes, intf=no)
+  Module: Net -> Std__Net (impl=yes, intf=yes)
+  Module: Option -> Std__Option (impl=yes, intf=yes)
+  Module: Path -> Std__Path (impl=yes, intf=yes)
+  Module: Ref -> Std__Ref (impl=yes, intf=no)
+  Module: Result -> Std__Result (impl=yes, intf=yes)
+  Module: Std -> Std (impl=yes, intf=yes)
+  Module: String -> Std__String (impl=yes, intf=no)
+  Module: Time -> Std__Time (impl=yes, intf=yes)
+  Module: Workerpool -> Std__Workerpool (impl=yes, intf=yes)
+  Library: Data -> Std__Data (interface=no, 1 aliases)
+    Module: Data -> Std__Data (impl=yes, intf=yes)
+    Module: Json -> Std__Data__Json (impl=yes, intf=yes)
+    Module: Sexp -> Std__Data__Sexp (impl=yes, intf=yes)
+    Module: Toml -> Std__Data__Toml (impl=yes, intf=yes)
+[DEBUG] ===== EXTRACTING THREE SUBTREES =====
+[DEBUG] Extracted alias tree:
+Package: std (kind=Library, entry=no, 1 aliases)
+  Library: Data -> Std__Data (interface=no, 1 aliases)
+[DEBUG] Extracted intf tree:
+Package: std (kind=Library, entry=no, 1 aliases)
+  Module: Buffer -> Std__Buffer (impl=no, intf=yes)
+  Module: Char -> Std__Char (impl=no, intf=yes)
+  Module: Command -> Std__Command (impl=no, intf=yes)
+  Module: Datetime -> Std__Datetime (impl=no, intf=yes)
+  Module: Env -> Std__Env (impl=no, intf=yes)
+  Module: File -> Std__File (impl=no, intf=yes)
+  Module: Fs -> Std__Fs (impl=no, intf=yes)
+  Module: Global -> Std__Global (impl=no, intf=yes)
+  Module: Iterator -> Std__Iterator (impl=no, intf=yes)
+  Module: List -> Std__List (impl=no, intf=yes)
+  Module: Log -> Std__Log (impl=no, intf=yes)
+  Module: Net -> Std__Net (impl=no, intf=yes)
+  Module: Option -> Std__Option (impl=no, intf=yes)
+  Module: Path -> Std__Path (impl=no, intf=yes)
+  Module: Result -> Std__Result (impl=no, intf=yes)
+  Module: Std -> Std (impl=no, intf=yes)
+  Module: Time -> Std__Time (impl=no, intf=yes)
+  Module: Workerpool -> Std__Workerpool (impl=no, intf=yes)
+  Library: Data -> Std__Data (interface=no, 1 aliases)
+    Module: Data -> Std__Data (impl=no, intf=yes)
+    Module: Json -> Std__Data__Json (impl=no, intf=yes)
+    Module: Sexp -> Std__Data__Sexp (impl=no, intf=yes)
+    Module: Toml -> Std__Data__Toml (impl=no, intf=yes)
+[DEBUG] Extracted impl tree:
+Package: std (kind=Library, entry=no, 1 aliases)
+  Module: Buffer -> Std__Buffer (impl=yes, intf=no)
+  Module: Char -> Std__Char (impl=yes, intf=no)
+  Module: Char_Cursor -> Std__Char_Cursor (impl=yes, intf=no)
+  Module: Command -> Std__Command (impl=yes, intf=no)
+  Module: Datetime -> Std__Datetime (impl=yes, intf=no)
+  Module: Env -> Std__Env (impl=yes, intf=no)
+  Module: File -> Std__File (impl=yes, intf=no)
+  Module: Fs -> Std__Fs (impl=yes, intf=no)
+  Module: Global -> Std__Global (impl=yes, intf=no)
+  Module: Iterator -> Std__Iterator (impl=yes, intf=no)
+  Module: List -> Std__List (impl=yes, intf=no)
+  Module: Log -> Std__Log (impl=yes, intf=no)
+  Module: MutIterator -> Std__MutIterator (impl=yes, intf=no)
+  Module: Net -> Std__Net (impl=yes, intf=no)
+  Module: Option -> Std__Option (impl=yes, intf=no)
+  Module: Path -> Std__Path (impl=yes, intf=no)
+  Module: Ref -> Std__Ref (impl=yes, intf=no)
+  Module: Result -> Std__Result (impl=yes, intf=no)
+  Module: Std -> Std (impl=yes, intf=no)
+  Module: String -> Std__String (impl=yes, intf=no)
+  Module: Time -> Std__Time (impl=yes, intf=no)
+  Module: Workerpool -> Std__Workerpool (impl=yes, intf=no)
+  Library: Data -> Std__Data (interface=no, 1 aliases)
+    Module: Data -> Std__Data (impl=yes, intf=no)
+    Module: Json -> Std__Data__Json (impl=yes, intf=no)
+    Module: Sexp -> Std__Data__Sexp (impl=yes, intf=no)
+    Module: Toml -> Std__Data__Toml (impl=yes, intf=no)
+[DEBUG Dep_graph] Created 50 nodes for std
+[DEBUG Dep_graph] Nodes:
+  - Std__Option.mli (level=0, parent_aliases=[Std__aliases])
+  - Std__Path.mli (level=0, parent_aliases=[Std__aliases])
+  - Std__MutIterator.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__Command.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__Result.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__String.ml (level=0, parent_aliases=[Std__aliases])
+  - Std.mli (level=0, parent_aliases=[Std__aliases])
+  - Std__Char_Cursor.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__Workerpool.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__File.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__Time.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__Result.mli (level=0, parent_aliases=[Std__aliases])
+  - Std__Fs.mli (level=0, parent_aliases=[Std__aliases])
+  - Std__Command.mli (level=0, parent_aliases=[Std__aliases])
+  - Std__File.mli (level=0, parent_aliases=[Std__aliases])
+  - Std__Global.mli (level=0, parent_aliases=[Std__aliases])
+  - Std__Fs.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__Net.mli (level=0, parent_aliases=[Std__aliases])
+  - Std__Option.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__Buffer.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__aliases (alias) (level=0, parent_aliases=[])
+  - Std__Buffer.mli (level=0, parent_aliases=[Std__aliases])
+  - Std__Datetime.mli (level=0, parent_aliases=[Std__aliases])
+  - Std__Ref.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__Data__Toml.mli (level=1, parent_aliases=[Std__aliases, Std__Data__aliases])
+  - Std__Char.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__Data__Sexp.mli (level=1, parent_aliases=[Std__aliases, Std__Data__aliases])
+  - Std__Workerpool.mli (level=0, parent_aliases=[Std__aliases])
+  - Std__Data__aliases (alias) (level=1, parent_aliases=[])
+  - Std__Net.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__Datetime.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__Global.ml (level=0, parent_aliases=[Std__aliases])
+  - Std.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__Env.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__Iterator.mli (level=0, parent_aliases=[Std__aliases])
+  - Std__Log.mli (level=0, parent_aliases=[Std__aliases])
+  - Std__Iterator.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__Time.mli (level=0, parent_aliases=[Std__aliases])
+  - Std__Env.mli (level=0, parent_aliases=[Std__aliases])
+  - Std__Data.mli (level=1, parent_aliases=[Std__aliases, Std__Data__aliases])
+  - Std__List.mli (level=0, parent_aliases=[Std__aliases])
+  - Std__Path.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__Log.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__Data__Sexp.ml (level=1, parent_aliases=[Std__aliases, Std__Data__aliases])
+  - Std__Data.ml (level=1, parent_aliases=[Std__aliases, Std__Data__aliases])
+  - Std__Data__Json.mli (level=1, parent_aliases=[Std__aliases, Std__Data__aliases])
+  - Std__Char.mli (level=0, parent_aliases=[Std__aliases])
+  - Std__Data__Json.ml (level=1, parent_aliases=[Std__aliases, Std__Data__aliases])
+  - Std__Data__Toml.ml (level=1, parent_aliases=[Std__aliases, Std__Data__aliases])
+  - Std__List.ml (level=0, parent_aliases=[Std__aliases])
+[DEBUG Dep_graph] Running ocamldep on 22 .mli files
+[DEBUG Dep_graph] Running ocamldep on 28 .ml files
+[DEBUG Dep_graph] Std__Command.ml depends on Std__Command.mli
+[DEBUG Dep_graph] Std__Result.ml depends on Std__Result.mli
+[DEBUG Dep_graph] Std__Workerpool.ml depends on Std__Workerpool.mli
+[DEBUG Dep_graph] Std__File.ml depends on Std__File.mli
+[DEBUG Dep_graph] Std__Time.ml depends on Std__Time.mli
+[DEBUG Dep_graph] Std__Fs.ml depends on Std__Fs.mli
+[DEBUG Dep_graph] Std__Option.ml depends on Std__Option.mli
+[DEBUG Dep_graph] Std__Buffer.ml depends on Std__Buffer.mli
+[DEBUG Dep_graph] Std__Char.ml depends on Std__Char.mli
+[DEBUG Dep_graph] Std__Net.ml depends on Std__Net.mli
+[DEBUG Dep_graph] Std__Datetime.ml depends on Std__Datetime.mli
+[DEBUG Dep_graph] Std__Global.ml depends on Std__Global.mli
+[DEBUG Dep_graph] Std.ml depends on Std.mli
+[DEBUG Dep_graph] Std__Env.ml depends on Std__Env.mli
+[DEBUG Dep_graph] Std__Iterator.ml depends on Std__Iterator.mli
+[DEBUG Dep_graph] Std__Path.ml depends on Std__Path.mli
+[DEBUG Dep_graph] Std__Log.ml depends on Std__Log.mli
+[DEBUG Dep_graph] Std__Data__Sexp.ml depends on Std__Data__Sexp.mli
+[DEBUG Dep_graph] Std__Data.ml depends on Std__Data.mli
+[DEBUG Dep_graph] Std__Data__Json.ml depends on Std__Data__Json.mli
+[DEBUG Dep_graph] Std__Data__Toml.ml depends on Std__Data__Toml.mli
+[DEBUG Dep_graph] Std__List.ml depends on Std__List.mli
+[DEBUG Dep_graph] Dependencies found:
+  Std__Option.mli -> [Std__Result.mli]
+  Std__Path.mli -> [Std__Result.mli]
+  Std__MutIterator.ml -> [Std__List.ml, Std__List.mli]
+  Std__Command.ml -> [Std__Command.mli, Std__String.ml, Std__List.ml, Std__List.mli]
+  Std__Result.ml -> [Std__Result.mli, Std__List.ml, Std__List.mli, Std__Global.ml, Std__Global.mli]
+  Std__String.ml -> [Std__MutIterator.ml, Std__Iterator.ml, Std__Iterator.mli]
+  Std.mli -> [Std__Result.mli, Std__Path.mli, Std__Option.mli, Std__Net.mli, Std__MutIterator.ml, Std__List.mli, Std__Iterator.mli, Std__Fs.mli, Std__File.mli, Std__Env.mli, Std__Datetime.mli, Std__Data.mli, Std__Command.mli, Std__Buffer.mli]
+  Std__Workerpool.ml -> [Std__Workerpool.mli]
+  Std__File.ml -> [Std__File.mli, Std__List.ml, Std__List.mli]
+  Std__Time.ml -> [Std__Time.mli]
+  Std__Fs.mli -> [Std__Result.mli, Std__Path.mli]
+  Std__Fs.ml -> [Std__Fs.mli, Std__Result.ml, Std__Result.mli, Std__Path.ml, Std__Path.mli]
+  Std__Option.ml -> [Std__Option.mli, Std__Result.ml, Std__Result.mli, Std__List.ml, Std__List.mli]
+  Std__Buffer.ml -> [Std__Buffer.mli]
+  Std__Char.ml -> [Std__Char.mli]
+  Std__Net.ml -> [Std__Net.mli, Std__String.ml]
+  Std__Datetime.ml -> [Std__Datetime.mli]
+  Std__Global.ml -> [Std__Global.mli]
+  Std.ml -> [Std.mli, Std__Workerpool.ml, Std__Workerpool.mli, Std__String.ml, Std__Result.ml, Std__Result.mli, Std__Path.ml, Std__Path.mli, Std__Option.ml, Std__Option.mli, Std__Net.ml, Std__Net.mli, Std__MutIterator.ml, Std__Log.ml, Std__Log.mli, Std__List.ml, Std__List.mli, Std__Iterator.ml, Std__Iterator.mli, Std__Global.ml, Std__Global.mli, Std__Fs.ml, Std__Fs.mli, Std__File.ml, Std__File.mli, Std__Env.ml, Std__Env.mli, Std__Datetime.ml, Std__Datetime.mli, Std__Data.ml, Std__Data.mli, Std__Command.ml, Std__Command.mli, Std__Char.ml, Std__Char.mli, Std__Buffer.ml, Std__Buffer.mli]
+  Std__Env.ml -> [Std__Env.mli, Std__String.ml, Std__Result.ml, Std__Result.mli, Std__Path.ml, Std__Path.mli, Std__List.ml, Std__List.mli]
+  Std__Iterator.ml -> [Std__Iterator.mli, Std__List.ml, Std__List.mli]
+  Std__Env.mli -> [Std__Result.mli, Std__Path.mli]
+  Std__Path.ml -> [Std__Path.mli, Std__String.ml, Std__Result.ml, Std__Result.mli, Std__List.ml, Std__List.mli, Std__Char.ml, Std__Char.mli]
+  Std__Log.ml -> [Std__Log.mli]
+  Std__Data__Sexp.ml -> [Std__Data__Sexp.mli, Std__String.ml, Std__List.ml, Std__List.mli, Std__Buffer.ml, Std__Buffer.mli]
+  Std__Data.ml -> [Std__Data.mli]
+  Std__Data__Json.ml -> [Std__Data__Json.mli, Std__String.ml, Std__List.ml, Std__List.mli, Std__Buffer.ml, Std__Buffer.mli]
+  Std__Data__Toml.ml -> [Std__Data__Toml.mli, Std__String.ml, Std__List.ml, Std__List.mli]
+  Std__List.ml -> [Std__List.mli]
+[DEBUG Dep_graph] Std__Option.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Path.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__MutIterator.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Command.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Result.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__String.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Char_Cursor.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Workerpool.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__File.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Time.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Result.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Fs.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Command.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__File.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Global.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Fs.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Net.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Option.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Buffer.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Buffer.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Datetime.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Ref.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Data__Toml.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Data__Toml.mli depends on alias Std__Data__aliases
+[DEBUG Dep_graph] Std__Char.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Data__Sexp.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Data__Sexp.mli depends on alias Std__Data__aliases
+[DEBUG Dep_graph] Std__Workerpool.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Net.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Datetime.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Global.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Env.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Iterator.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Log.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Iterator.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Time.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Env.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Data.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Data.mli depends on alias Std__Data__aliases
+[DEBUG Dep_graph] Std__List.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Path.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Log.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Data__Sexp.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Data__Sexp.ml depends on alias Std__Data__aliases
+[DEBUG Dep_graph] Std__Data.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Data.ml depends on alias Std__Data__aliases
+[DEBUG Dep_graph] Std__Data__Json.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Data__Json.mli depends on alias Std__Data__aliases
+[DEBUG Dep_graph] Std__Char.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Data__Json.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Data__Json.ml depends on alias Std__Data__aliases
+[DEBUG Dep_graph] Std__Data__Toml.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Data__Toml.ml depends on alias Std__Data__aliases
+[DEBUG Dep_graph] Std__List.ml depends on alias Std__aliases
+Dependency Graph:
+  Std__Option.mli (level 0) -> [Std__aliases, Std__Result.mli]
+  Std__Path.mli (level 0) -> [Std__aliases, Std__Result.mli]
+  Std__MutIterator.ml (level 0) -> [Std__aliases, Std__List.ml, Std__List.mli]
+  Std__Command.ml (level 0) -> [Std__aliases, Std__Command.mli, Std__String.ml, Std__List.ml, Std__List.mli]
+  Std__Result.ml (level 0) -> [Std__aliases, Std__Result.mli, Std__List.ml, Std__List.mli, Std__Global.ml, Std__Global.mli]
+  Std__String.ml (level 0) -> [Std__aliases, Std__MutIterator.ml, Std__Iterator.ml, Std__Iterator.mli]
+  Std.mli (level 0) -> [Std__aliases, Std__List.ml, Std__Char.mli, Std__Data.ml, Std__Log.ml, Std__Path.ml, Std__List.mli, Std__Data.mli, Std__Env.mli, Std__Time.mli, Std__Iterator.ml, Std__Log.mli, Std__Iterator.mli, Std__Env.ml, Std__Global.ml, Std__Datetime.ml, Std__Net.ml, Std__Workerpool.mli, Std__Char.ml, Std__Ref.ml, Std__Datetime.mli, Std__Buffer.mli, Std__Buffer.ml, Std__Option.ml, Std__Net.mli, Std__Fs.ml, Std__Global.mli, Std__File.mli, Std__Command.mli, Std__Fs.mli, Std__Result.mli, Std__Time.ml, Std__File.ml, Std__Workerpool.ml, Std__Char_Cursor.ml, Std__String.ml, Std__Result.ml, Std__Command.ml, Std__MutIterator.ml, Std__Path.mli, Std__Option.mli, Std__Result.mli, Std__Path.mli, Std__Option.mli, Std__Net.mli, Std__MutIterator.ml, Std__List.mli, Std__Iterator.mli, Std__Fs.mli, Std__File.mli, Std__Env.mli, Std__Datetime.mli, Std__Data.mli, Std__Command.mli, Std__Buffer.mli]
+  Std__Char_Cursor.ml (level 0) -> [Std__aliases]
+  Std__Workerpool.ml (level 0) -> [Std__aliases, Std__Workerpool.mli]
+  Std__File.ml (level 0) -> [Std__aliases, Std__File.mli, Std__List.ml, Std__List.mli]
+  Std__Time.ml (level 0) -> [Std__aliases, Std__Time.mli]
+  Std__Result.mli (level 0) -> [Std__aliases]
+  Std__Fs.mli (level 0) -> [Std__aliases, Std__Result.mli, Std__Path.mli]
+  Std__Command.mli (level 0) -> [Std__aliases]
+  Std__File.mli (level 0) -> [Std__aliases]
+  Std__Global.mli (level 0) -> [Std__aliases]
+  Std__Fs.ml (level 0) -> [Std__aliases, Std__Fs.mli, Std__Result.ml, Std__Result.mli, Std__Path.ml, Std__Path.mli]
+  Std__Net.mli (level 0) -> [Std__aliases]
+  Std__Option.ml (level 0) -> [Std__aliases, Std__Option.mli, Std__Result.ml, Std__Result.mli, Std__List.ml, Std__List.mli]
+  Std__Buffer.ml (level 0) -> [Std__aliases, Std__Buffer.mli]
+  Std__aliases (level 0) -> []
+  Std__Buffer.mli (level 0) -> [Std__aliases]
+  Std__Datetime.mli (level 0) -> [Std__aliases]
+  Std__Ref.ml (level 0) -> [Std__aliases]
+  Std__Data__Toml.mli (level 1) -> [Std__Data__aliases, Std__aliases]
+  Std__Char.ml (level 0) -> [Std__aliases, Std__Char.mli]
+  Std__Data__Sexp.mli (level 1) -> [Std__Data__aliases, Std__aliases]
+  Std__Workerpool.mli (level 0) -> [Std__aliases]
+  Std__Data__aliases (level 1) -> []
+  Std__Net.ml (level 0) -> [Std__aliases, Std__Net.mli, Std__String.ml]
+  Std__Datetime.ml (level 0) -> [Std__aliases, Std__Datetime.mli]
+  Std__Global.ml (level 0) -> [Std__aliases, Std__Global.mli]
+  Std.ml (level 0) -> [Std__aliases, Std__List.ml, Std__Char.mli, Std__Data.ml, Std__Log.ml, Std__Path.ml, Std__List.mli, Std__Data.mli, Std__Env.mli, Std__Time.mli, Std__Iterator.ml, Std__Log.mli, Std__Iterator.mli, Std__Env.ml, Std__Global.ml, Std__Datetime.ml, Std__Net.ml, Std__Workerpool.mli, Std__Char.ml, Std__Ref.ml, Std__Datetime.mli, Std__Buffer.mli, Std__Buffer.ml, Std__Option.ml, Std__Net.mli, Std__Fs.ml, Std__Global.mli, Std__File.mli, Std__Command.mli, Std__Fs.mli, Std__Result.mli, Std__Time.ml, Std__File.ml, Std__Workerpool.ml, Std__Char_Cursor.ml, Std__String.ml, Std__Result.ml, Std__Command.ml, Std__MutIterator.ml, Std__Path.mli, Std__Option.mli, Std.mli, Std__Workerpool.ml, Std__Workerpool.mli, Std__String.ml, Std__Result.ml, Std__Result.mli, Std__Path.ml, Std__Path.mli, Std__Option.ml, Std__Option.mli, Std__Net.ml, Std__Net.mli, Std__MutIterator.ml, Std__Log.ml, Std__Log.mli, Std__List.ml, Std__List.mli, Std__Iterator.ml, Std__Iterator.mli, Std__Global.ml, Std__Global.mli, Std__Fs.ml, Std__Fs.mli, Std__File.ml, Std__File.mli, Std__Env.ml, Std__Env.mli, Std__Datetime.ml, Std__Datetime.mli, Std__Data.ml, Std__Data.mli, Std__Command.ml, Std__Command.mli, Std__Char.ml, Std__Char.mli, Std__Buffer.ml, Std__Buffer.mli]
+  Std__Env.ml (level 0) -> [Std__aliases, Std__Env.mli, Std__String.ml, Std__Result.ml, Std__Result.mli, Std__Path.ml, Std__Path.mli, Std__List.ml, Std__List.mli]
+  Std__Iterator.mli (level 0) -> [Std__aliases]
+  Std__Log.mli (level 0) -> [Std__aliases]
+  Std__Iterator.ml (level 0) -> [Std__aliases, Std__Iterator.mli, Std__List.ml, Std__List.mli]
+  Std__Time.mli (level 0) -> [Std__aliases]
+  Std__Env.mli (level 0) -> [Std__aliases, Std__Result.mli, Std__Path.mli]
+  Std__Data.mli (level 1) -> [Std__Data__aliases, Std__aliases, Std__Data__Toml.ml, Std__Data__Json.ml, Std__Data__Json.mli, Std__Data__Sexp.ml, Std__Data__Sexp.mli, Std__Data__Toml.mli]
+  Std__List.mli (level 0) -> [Std__aliases]
+  Std__Path.ml (level 0) -> [Std__aliases, Std__Path.mli, Std__String.ml, Std__Result.ml, Std__Result.mli, Std__List.ml, Std__List.mli, Std__Char.ml, Std__Char.mli]
+  Std__Log.ml (level 0) -> [Std__aliases, Std__Log.mli]
+  Std__Data__Sexp.ml (level 1) -> [Std__Data__aliases, Std__aliases, Std__Data__Sexp.mli, Std__String.ml, Std__List.ml, Std__List.mli, Std__Buffer.ml, Std__Buffer.mli]
+  Std__Data.ml (level 1) -> [Std__Data__aliases, Std__aliases, Std__Data__Toml.ml, Std__Data__Json.ml, Std__Data__Json.mli, Std__Data__Sexp.ml, Std__Data__Sexp.mli, Std__Data__Toml.mli, Std__Data.mli]
+  Std__Data__Json.mli (level 1) -> [Std__Data__aliases, Std__aliases]
+  Std__Char.mli (level 0) -> [Std__aliases]
+  Std__Data__Json.ml (level 1) -> [Std__Data__aliases, Std__aliases, Std__Data__Json.mli, Std__String.ml, Std__List.ml, Std__List.mli, Std__Buffer.ml, Std__Buffer.mli]
+  Std__Data__Toml.ml (level 1) -> [Std__Data__aliases, Std__aliases, Std__Data__Toml.mli, Std__String.ml, Std__List.ml, Std__List.mli]
+  Std__List.ml (level 0) -> [Std__aliases, Std__List.mli]
+[DEBUG] Topological sort:
+  Std__aliases
+  Std__Data__aliases
+  Std__Buffer.mli
+  Std__Char.mli
+  Std__Char_Cursor.ml
+  Std__Command.mli
+  Std__Datetime.mli
+  Std__File.mli
+  Std__Global.mli
+  Std__Iterator.mli
+  Std__List.mli
+  Std__Log.mli
+  Std__Net.mli
+  Std__Ref.ml
+  Std__Result.mli
+  Std__Time.mli
+  Std__Workerpool.mli
+  Std__Data__Json.mli
+  Std__Data__Sexp.mli
+  Std__Data__Toml.mli
+  Std__Buffer.ml
+  Std__Char.ml
+  Std__Datetime.ml
+  Std__Global.ml
+  Std__List.ml
+  Std__Log.ml
+  Std__Option.mli
+  Std__Path.mli
+  Std__Time.ml
+  Std__Workerpool.ml
+  Std__File.ml
+  Std__Iterator.ml
+  Std__MutIterator.ml
+  Std__Result.ml
+  Std__Env.mli
+  Std__Fs.mli
+  Std__String.ml
+  Std__Option.ml
+  Std__Command.ml
+  Std__Net.ml
+  Std__Path.ml
+  Std__Data__Json.ml
+  Std__Data__Sexp.ml
+  Std__Data__Toml.ml
+  Std__Env.ml
+  Std__Fs.ml
+  Std__Data.mli
+  Std__Data.ml
+  Std.mli
+  Std.ml
+[DEBUG] Generating actions from dependency graph...
+[DEBUG] Generating actions for alias module: Std__aliases
+[DEBUG] Generating actions for alias module: Std__Data__aliases
+[DEBUG] Generating actions for interface: Std__Buffer.mli
+[DEBUG] Generating actions for interface: Std__Char.mli
+[DEBUG] Generating actions for implementation: Std__Char_Cursor.ml
+[DEBUG] Generating actions for interface: Std__Command.mli
+[DEBUG] Generating actions for interface: Std__Datetime.mli
+[DEBUG] Generating actions for interface: Std__File.mli
+[DEBUG] Generating actions for interface: Std__Global.mli
+[DEBUG] Generating actions for interface: Std__Iterator.mli
+[DEBUG] Generating actions for interface: Std__List.mli
+[DEBUG] Generating actions for interface: Std__Log.mli
+[DEBUG] Generating actions for interface: Std__Net.mli
+[DEBUG] Generating actions for implementation: Std__Ref.ml
+[DEBUG] Generating actions for interface: Std__Result.mli
+[DEBUG] Generating actions for interface: Std__Time.mli
+[DEBUG] Generating actions for interface: Std__Workerpool.mli
+[DEBUG] Generating actions for interface: Std__Data__Json.mli
+[DEBUG] Generating actions for interface: Std__Data__Sexp.mli
+[DEBUG] Generating actions for interface: Std__Data__Toml.mli
+[DEBUG] Generating actions for implementation: Std__Buffer.ml
+[DEBUG] Generating actions for implementation: Std__Char.ml
+[DEBUG] Generating actions for implementation: Std__Datetime.ml
+[DEBUG] Generating actions for implementation: Std__Global.ml
+[DEBUG] Generating actions for implementation: Std__List.ml
+[DEBUG] Generating actions for implementation: Std__Log.ml
+[DEBUG] Generating actions for interface: Std__Option.mli
+[DEBUG] Generating actions for interface: Std__Path.mli
+[DEBUG] Generating actions for implementation: Std__Time.ml
+[DEBUG] Generating actions for implementation: Std__Workerpool.ml
+[DEBUG] Generating actions for implementation: Std__File.ml
+[DEBUG] Generating actions for implementation: Std__Iterator.ml
+[DEBUG] Generating actions for implementation: Std__MutIterator.ml
+[DEBUG] Generating actions for implementation: Std__Result.ml
+[DEBUG] Generating actions for interface: Std__Env.mli
+[DEBUG] Generating actions for interface: Std__Fs.mli
+[DEBUG] Generating actions for implementation: Std__String.ml
+[DEBUG] Generating actions for implementation: Std__Option.ml
+[DEBUG] Generating actions for implementation: Std__Command.ml
+[DEBUG] Generating actions for implementation: Std__Net.ml
+[DEBUG] Generating actions for implementation: Std__Path.ml
+[DEBUG] Generating actions for implementation: Std__Data__Json.ml
+[DEBUG] Generating actions for implementation: Std__Data__Sexp.ml
+[DEBUG] Generating actions for implementation: Std__Data__Toml.ml
+[DEBUG] Generating actions for implementation: Std__Env.ml
+[DEBUG] Generating actions for implementation: Std__Fs.ml
+[DEBUG] Generating actions for interface: Std__Data.mli
+[DEBUG] Generating actions for implementation: Std__Data.ml
+[DEBUG] Generating actions for interface: Std.mli
+[DEBUG] Generating actions for implementation: Std.ml
+[DEBUG] Generated 103 actions from dep_graph:
+  1. write(Std__aliases.ml.gen,633 bytes)
+  2. compile_interface(Std__aliases.ml.gen,Std__aliases.cmi,[.],[no-alias-deps,impl:Std__aliases.ml.gen,warning:[no-cmi-file]])
+  3. compile_impl(Std__aliases.ml.gen,Std__aliases.cmo,[.],[no-alias-deps,impl:Std__aliases.ml.gen,warning:[no-cmi-file]])
+  4. write(Std__Data__aliases.ml.gen,149 bytes)
+  5. compile_interface(Std__Data__aliases.ml.gen,Std__Data__aliases.cmi,[.],[no-alias-deps,impl:Std__Data__aliases.ml.gen,warning:[no-cmi-file]])
+  6. compile_impl(Std__Data__aliases.ml.gen,Std__Data__aliases.cmo,[.],[no-alias-deps,impl:Std__Data__aliases.ml.gen,warning:[no-cmi-file]])
+  7. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/buffer.mli,buffer.mli)
+  8. compile_interface(buffer.mli,Std__Buffer.cmi,[.],[open:Std__aliases])
+  9. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/char.mli,char.mli)
+  10. compile_interface(char.mli,Std__Char.cmi,[.],[open:Std__aliases])
+  11. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/Char_Cursor.ml,Char_Cursor.ml)
+  12. compile_impl(Char_Cursor.ml,Std__Char_Cursor.cmo,[.],[open:Std__aliases])
+  13. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/command.mli,command.mli)
+  14. compile_interface(command.mli,Std__Command.cmi,[.],[open:Std__aliases])
+  15. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/datetime.mli,datetime.mli)
+  16. compile_interface(datetime.mli,Std__Datetime.cmi,[.],[open:Std__aliases])
+  17. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/file.mli,file.mli)
+  18. compile_interface(file.mli,Std__File.cmi,[.],[open:Std__aliases])
+  19. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/global.mli,global.mli)
+  20. compile_interface(global.mli,Std__Global.cmi,[.],[open:Std__aliases])
+  21. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/Iterator.mli,Iterator.mli)
+  22. compile_interface(Iterator.mli,Std__Iterator.cmi,[.],[open:Std__aliases])
+  23. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/list.mli,list.mli)
+  24. compile_interface(list.mli,Std__List.cmi,[.],[open:Std__aliases])
+  25. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/log.mli,log.mli)
+  26. compile_interface(log.mli,Std__Log.cmi,[.],[open:Std__aliases])
+  27. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/net.mli,net.mli)
+  28. compile_interface(net.mli,Std__Net.cmi,[.],[open:Std__aliases])
+  29. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/ref.ml,ref.ml)
+  30. compile_impl(ref.ml,Std__Ref.cmo,[.],[open:Std__aliases])
+  31. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/result.mli,result.mli)
+  32. compile_interface(result.mli,Std__Result.cmi,[.],[open:Std__aliases])
+  33. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/time.mli,time.mli)
+  34. compile_interface(time.mli,Std__Time.cmi,[.],[open:Std__aliases])
+  35. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/workerpool.mli,workerpool.mli)
+  36. compile_interface(workerpool.mli,Std__Workerpool.cmi,[.],[open:Std__aliases])
+  37. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/data/json.mli,json.mli)
+  38. compile_interface(json.mli,Std__Data__Json.cmi,[.],[open:Std__aliases,open:Std__Data__aliases])
+  39. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/data/sexp.mli,sexp.mli)
+  40. compile_interface(sexp.mli,Std__Data__Sexp.cmi,[.],[open:Std__aliases,open:Std__Data__aliases])
+  41. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/data/toml.mli,toml.mli)
+  42. compile_interface(toml.mli,Std__Data__Toml.cmi,[.],[open:Std__aliases,open:Std__Data__aliases])
+  43. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/buffer.ml,buffer.ml)
+  44. compile_impl(buffer.ml,Std__Buffer.cmo,[.],[open:Std__aliases])
+  45. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/char.ml,char.ml)
+  46. compile_impl(char.ml,Std__Char.cmo,[.],[open:Std__aliases])
+  47. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/datetime.ml,datetime.ml)
+  48. compile_impl(datetime.ml,Std__Datetime.cmo,[.],[open:Std__aliases])
+  49. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/global.ml,global.ml)
+  50. compile_impl(global.ml,Std__Global.cmo,[.],[open:Std__aliases])
+  51. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/list.ml,list.ml)
+  52. compile_impl(list.ml,Std__List.cmo,[.],[open:Std__aliases])
+  53. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/log.ml,log.ml)
+  54. compile_impl(log.ml,Std__Log.cmo,[.],[open:Std__aliases])
+  55. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/option.mli,option.mli)
+  56. compile_interface(option.mli,Std__Option.cmi,[.],[open:Std__aliases])
+  57. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/path.mli,path.mli)
+  58. compile_interface(path.mli,Std__Path.cmi,[.],[open:Std__aliases])
+  59. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/time.ml,time.ml)
+  60. compile_impl(time.ml,Std__Time.cmo,[.],[open:Std__aliases])
+  61. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/workerpool.ml,workerpool.ml)
+  62. compile_impl(workerpool.ml,Std__Workerpool.cmo,[.],[open:Std__aliases])
+  63. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/file.ml,file.ml)
+  64. compile_impl(file.ml,Std__File.cmo,[.],[open:Std__aliases])
+  65. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/Iterator.ml,Iterator.ml)
+  66. compile_impl(Iterator.ml,Std__Iterator.cmo,[.],[open:Std__aliases])
+  67. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/MutIterator.ml,MutIterator.ml)
+  68. compile_impl(MutIterator.ml,Std__MutIterator.cmo,[.],[open:Std__aliases])
+  69. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/result.ml,result.ml)
+  70. compile_impl(result.ml,Std__Result.cmo,[.],[open:Std__aliases])
+  71. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/env.mli,env.mli)
+  72. compile_interface(env.mli,Std__Env.cmi,[.],[open:Std__aliases])
+  73. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/fs.mli,fs.mli)
+  74. compile_interface(fs.mli,Std__Fs.cmi,[.],[open:Std__aliases])
+  75. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/string.ml,string.ml)
+  76. compile_impl(string.ml,Std__String.cmo,[.],[open:Std__aliases])
+  77. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/option.ml,option.ml)
+  78. compile_impl(option.ml,Std__Option.cmo,[.],[open:Std__aliases])
+  79. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/command.ml,command.ml)
+  80. compile_impl(command.ml,Std__Command.cmo,[.],[open:Std__aliases])
+  81. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/net.ml,net.ml)
+  82. compile_impl(net.ml,Std__Net.cmo,[.],[open:Std__aliases])
+  83. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/path.ml,path.ml)
+  84. compile_impl(path.ml,Std__Path.cmo,[.],[open:Std__aliases])
+  85. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/data/json.ml,json.ml)
+  86. compile_impl(json.ml,Std__Data__Json.cmo,[.],[open:Std__aliases,open:Std__Data__aliases])
+  87. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/data/sexp.ml,sexp.ml)
+  88. compile_impl(sexp.ml,Std__Data__Sexp.cmo,[.],[open:Std__aliases,open:Std__Data__aliases])
+  89. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/data/toml.ml,toml.ml)
+  90. compile_impl(toml.ml,Std__Data__Toml.cmo,[.],[open:Std__aliases,open:Std__Data__aliases])
+  91. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/env.ml,env.ml)
+  92. compile_impl(env.ml,Std__Env.cmo,[.],[open:Std__aliases])
+  93. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/fs.ml,fs.ml)
+  94. compile_impl(fs.ml,Std__Fs.cmo,[.],[open:Std__aliases])
+  95. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/data/data.mli,data.mli)
+  96. compile_interface(data.mli,Std__Data.cmi,[.],[open:Std__aliases,open:Std__Data__aliases])
+  97. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/data/data.ml,data.ml)
+  98. compile_impl(data.ml,Std__Data.cmo,[.],[open:Std__aliases,open:Std__Data__aliases])
+  99. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/std.mli,std.mli)
+  100. compile_interface(std.mli,Std.cmi,[.],[open:Std__aliases])
+  101. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/std.ml,std.ml)
+  102. compile_impl(std.ml,Std.cmo,[.],[open:Std__aliases])
+  103. create_library(std.cma,[Std__aliases.cmo,Std__Data__aliases.cmo,Std__Char_Cursor.cmo,Std__Ref.cmo,Std__Buffer.cmo,Std__Char.cmo,Std__Datetime.cmo,Std__Global.cmo,Std__List.cmo,Std__Log.cmo,Std__Time.cmo,Std__Workerpool.cmo,Std__File.cmo,Std__Iterator.cmo,Std__MutIterator.cmo,Std__Result.cmo,Std__String.cmo,Std__Option.cmo,Std__Command.cmo,Std__Net.cmo,Std__Path.cmo,Std__Data__Json.cmo,Std__Data__Sexp.cmo,Std__Data__Toml.cmo,Std__Env.cmo,Std__Fs.cmo,Std__Data.cmo,Std.cmo],[.])
+[DEBUG] Using dep_graph actions!
+[2025-09-06T14:10:35.848Z] Building std...
+[2025-09-06T14:10:36.298Z] Cached std
+[2025-09-06T14:10:36.303Z] Building mcp...
+[DEBUG] Task completed: std
+[DEBUG] Marked std as completed
+[DEBUG] Queue state after std: Ready=0, Later=0, Busy=1
+Server: Worker ready
+Server: No work available for worker
+[DEBUG] Requeuing mcp with deps: [std]
+[DEBUG] Queue state after requeue: Ready=1, Later=1, Busy=0
+Server: Worker ready
+Server: Sending task std to worker
+[DEBUG] build_modtree: package_name=std, srcs count=48
+[DEBUG]   ML: key=Char, simple=Char, namespaced=Std__Char
+[DEBUG]   MLI: key=Iterator, simple=Iterator, namespaced=Std__Iterator
+[DEBUG]   ML: key=Net, simple=Net, namespaced=Std__Net
+[DEBUG]   MLI: key=data/Toml, simple=Toml, namespaced=Std__Data__Toml
+[DEBUG]   MLI: key=data/Data, simple=Data, namespaced=Std__Data
+[DEBUG]   ML: key=data/Sexp, simple=Sexp, namespaced=Std__Data__Sexp
+[DEBUG]   ML: key=data/Json, simple=Json, namespaced=Std__Data__Json
+[DEBUG]   ML: key=data/Data, simple=Data, namespaced=Std__Data
+[DEBUG]   ML: key=data/Toml, simple=Toml, namespaced=Std__Data__Toml
+[DEBUG]   MLI: key=data/Json, simple=Json, namespaced=Std__Data__Json
+[DEBUG]   MLI: key=data/Sexp, simple=Sexp, namespaced=Std__Data__Sexp
+[DEBUG]   ML: key=Std, simple=Std, namespaced=Std
+[DEBUG]   MLI: key=Log, simple=Log, namespaced=Std__Log
+[DEBUG]   MLI: key=Char, simple=Char, namespaced=Std__Char
+[DEBUG]   ML: key=Workerpool, simple=Workerpool, namespaced=Std__Workerpool
+[DEBUG]   ML: key=MutIterator, simple=MutIterator, namespaced=Std__MutIterator
+[DEBUG]   MLI: key=Buffer, simple=Buffer, namespaced=Std__Buffer
+[DEBUG]   MLI: key=Net, simple=Net, namespaced=Std__Net
+[DEBUG]   ML: key=Time, simple=Time, namespaced=Std__Time
+[DEBUG]   MLI: key=Command, simple=Command, namespaced=Std__Command
+[DEBUG]   ML: key=Command, simple=Command, namespaced=Std__Command
+[DEBUG]   ML: key=Env, simple=Env, namespaced=Std__Env
+[DEBUG]   ML: key=List, simple=List, namespaced=Std__List
+[DEBUG]   ML: key=Option, simple=Option, namespaced=Std__Option
+[DEBUG]   ML: key=Global, simple=Global, namespaced=Std__Global
+[DEBUG]   ML: key=Log, simple=Log, namespaced=Std__Log
+[DEBUG]   MLI: key=Path, simple=Path, namespaced=Std__Path
+[DEBUG]   ML: key=String, simple=String, namespaced=Std__String
+[DEBUG]   MLI: key=Result, simple=Result, namespaced=Std__Result
+[DEBUG]   MLI: key=Workerpool, simple=Workerpool, namespaced=Std__Workerpool
+[DEBUG]   MLI: key=List, simple=List, namespaced=Std__List
+[DEBUG]   ML: key=Datetime, simple=Datetime, namespaced=Std__Datetime
+[DEBUG]   MLI: key=Fs, simple=Fs, namespaced=Std__Fs
+[DEBUG]   ML: key=Path, simple=Path, namespaced=Std__Path
+[DEBUG]   MLI: key=File, simple=File, namespaced=Std__File
+[DEBUG]   MLI: key=Env, simple=Env, namespaced=Std__Env
+[DEBUG]   ML: key=Char_Cursor, simple=Char_Cursor, namespaced=Std__Char_Cursor
+[DEBUG]   MLI: key=Option, simple=Option, namespaced=Std__Option
+[DEBUG]   MLI: key=Time, simple=Time, namespaced=Std__Time
+[DEBUG]   ML: key=Result, simple=Result, namespaced=Std__Result
+[DEBUG]   ML: key=File, simple=File, namespaced=Std__File
+[DEBUG]   MLI: key=Std, simple=Std, namespaced=Std
+[DEBUG]   ML: key=Iterator, simple=Iterator, namespaced=Std__Iterator
+[DEBUG]   MLI: key=Datetime, simple=Datetime, namespaced=Std__Datetime
+[DEBUG]   ML: key=Fs, simple=Fs, namespaced=Std__Fs
+[DEBUG]   MLI: key=Global, simple=Global, namespaced=Std__Global
+[DEBUG]   ML: key=Buffer, simple=Buffer, namespaced=Std__Buffer
+[DEBUG]   ML: key=Ref, simple=Ref, namespaced=Std__Ref
+[DEBUG] Tree after build_modtree:
+Package: std (kind=Library, entry=no, 0 aliases)
+  Module: Buffer -> Std__Buffer (impl=yes, intf=yes)
+  Module: Char -> Std__Char (impl=yes, intf=yes)
+  Module: Char_Cursor -> Std__Char_Cursor (impl=yes, intf=no)
+  Module: Command -> Std__Command (impl=yes, intf=yes)
+  Module: Datetime -> Std__Datetime (impl=yes, intf=yes)
+  Module: Env -> Std__Env (impl=yes, intf=yes)
+  Module: File -> Std__File (impl=yes, intf=yes)
+  Module: Fs -> Std__Fs (impl=yes, intf=yes)
+  Module: Global -> Std__Global (impl=yes, intf=yes)
+  Module: Iterator -> Std__Iterator (impl=yes, intf=yes)
+  Module: List -> Std__List (impl=yes, intf=yes)
+  Module: Log -> Std__Log (impl=yes, intf=yes)
+  Module: MutIterator -> Std__MutIterator (impl=yes, intf=no)
+  Module: Net -> Std__Net (impl=yes, intf=yes)
+  Module: Option -> Std__Option (impl=yes, intf=yes)
+  Module: Path -> Std__Path (impl=yes, intf=yes)
+  Module: Ref -> Std__Ref (impl=yes, intf=no)
+  Module: Result -> Std__Result (impl=yes, intf=yes)
+  Module: Std -> Std (impl=yes, intf=yes)
+  Module: String -> Std__String (impl=yes, intf=no)
+  Module: Time -> Std__Time (impl=yes, intf=yes)
+  Module: Workerpool -> Std__Workerpool (impl=yes, intf=yes)
+  Library: Data -> Std__Data (interface=no, 0 aliases)
+    Module: Data -> Std__Data (impl=yes, intf=yes)
+    Module: Json -> Std__Data__Json (impl=yes, intf=yes)
+    Module: Sexp -> Std__Data__Sexp (impl=yes, intf=yes)
+    Module: Toml -> Std__Data__Toml (impl=yes, intf=yes)
+[DEBUG]   Library Std__Data alias: module Data -> Std__Data
+[DEBUG]   Library Std__Data alias: module Json -> Std__Data__Json
+[DEBUG]   Library Std__Data alias: module Sexp -> Std__Data__Sexp
+[DEBUG]   Library Std__Data alias: module Toml -> Std__Data__Toml
+[DEBUG]   Package alias: module Buffer -> Std__Buffer
+[DEBUG]   Package alias: module Char -> Std__Char
+[DEBUG]   Package alias: module Char_Cursor -> Std__Char_Cursor
+[DEBUG]   Package alias: module Command -> Std__Command
+[DEBUG]   Package alias: module Datetime -> Std__Datetime
+[DEBUG]   Package alias: module Env -> Std__Env
+[DEBUG]   Package alias: module File -> Std__File
+[DEBUG]   Package alias: module Fs -> Std__Fs
+[DEBUG]   Package alias: module Global -> Std__Global
+[DEBUG]   Package alias: module Iterator -> Std__Iterator
+[DEBUG]   Package alias: module List -> Std__List
+[DEBUG]   Package alias: module Log -> Std__Log
+[DEBUG]   Package alias: module MutIterator -> Std__MutIterator
+[DEBUG]   Package alias: module Net -> Std__Net
+[DEBUG]   Package alias: module Option -> Std__Option
+[DEBUG]   Package alias: module Path -> Std__Path
+[DEBUG]   Package alias: module Ref -> Std__Ref
+[DEBUG]   Package alias: module Result -> Std__Result
+[DEBUG]   Package alias: module Std -> Std
+[DEBUG]   Package alias: module String -> Std__String
+[DEBUG]   Package alias: module Time -> Std__Time
+[DEBUG]   Package alias: module Workerpool -> Std__Workerpool
+[DEBUG]   Package alias: folder Std__Data with module Data -> Std__Data
+[DEBUG] Generated aliases content for std: (* Auto-generated module aliases *)
+module Buffer = Std__Buffer
+module Char = Std__Char
+module Char_Cursor = Std__Char_Cursor
+module Command = Std__Command
+module Datetime = Std__Datetime
+module Env = Std__Env
+module File = Std__File
+module Fs = Std__Fs
+module Global = Std__Global
+module Iterator = Std__Iterator
+module List = Std__List
+module Log = Std__Log
+module MutIterator = Std__MutIterator
+module Net = Std__Net
+module Option = Std__Option
+module Path = Std__Path
+module Ref = Std__Ref
+module Result = Std__Result
+module String = Std__String
+module Time = Std__Time
+module Workerpool = Std__Workerpool
+module Data = Std__Data
+[DEBUG] Tree after insert_alias_modules:
+Package: std (kind=Library, entry=no, 1 aliases)
+  Module: Buffer -> Std__Buffer (impl=yes, intf=yes)
+  Module: Char -> Std__Char (impl=yes, intf=yes)
+  Module: Char_Cursor -> Std__Char_Cursor (impl=yes, intf=no)
+  Module: Command -> Std__Command (impl=yes, intf=yes)
+  Module: Datetime -> Std__Datetime (impl=yes, intf=yes)
+  Module: Env -> Std__Env (impl=yes, intf=yes)
+  Module: File -> Std__File (impl=yes, intf=yes)
+  Module: Fs -> Std__Fs (impl=yes, intf=yes)
+  Module: Global -> Std__Global (impl=yes, intf=yes)
+  Module: Iterator -> Std__Iterator (impl=yes, intf=yes)
+  Module: List -> Std__List (impl=yes, intf=yes)
+  Module: Log -> Std__Log (impl=yes, intf=yes)
+  Module: MutIterator -> Std__MutIterator (impl=yes, intf=no)
+  Module: Net -> Std__Net (impl=yes, intf=yes)
+  Module: Option -> Std__Option (impl=yes, intf=yes)
+  Module: Path -> Std__Path (impl=yes, intf=yes)
+  Module: Ref -> Std__Ref (impl=yes, intf=no)
+  Module: Result -> Std__Result (impl=yes, intf=yes)
+  Module: Std -> Std (impl=yes, intf=yes)
+  Module: String -> Std__String (impl=yes, intf=no)
+  Module: Time -> Std__Time (impl=yes, intf=yes)
+  Module: Workerpool -> Std__Workerpool (impl=yes, intf=yes)
+  Library: Data -> Std__Data (interface=no, 1 aliases)
+    Module: Data -> Std__Data (impl=yes, intf=yes)
+    Module: Json -> Std__Data__Json (impl=yes, intf=yes)
+    Module: Sexp -> Std__Data__Sexp (impl=yes, intf=yes)
+    Module: Toml -> Std__Data__Toml (impl=yes, intf=yes)
+[DEBUG] ===== EXTRACTING THREE SUBTREES =====
+[DEBUG] Extracted alias tree:
+Package: std (kind=Library, entry=no, 1 aliases)
+  Library: Data -> Std__Data (interface=no, 1 aliases)
+[DEBUG] Extracted intf tree:
+Package: std (kind=Library, entry=no, 1 aliases)
+  Module: Buffer -> Std__Buffer (impl=no, intf=yes)
+  Module: Char -> Std__Char (impl=no, intf=yes)
+  Module: Command -> Std__Command (impl=no, intf=yes)
+  Module: Datetime -> Std__Datetime (impl=no, intf=yes)
+  Module: Env -> Std__Env (impl=no, intf=yes)
+  Module: File -> Std__File (impl=no, intf=yes)
+  Module: Fs -> Std__Fs (impl=no, intf=yes)
+  Module: Global -> Std__Global (impl=no, intf=yes)
+  Module: Iterator -> Std__Iterator (impl=no, intf=yes)
+  Module: List -> Std__List (impl=no, intf=yes)
+  Module: Log -> Std__Log (impl=no, intf=yes)
+  Module: Net -> Std__Net (impl=no, intf=yes)
+  Module: Option -> Std__Option (impl=no, intf=yes)
+  Module: Path -> Std__Path (impl=no, intf=yes)
+  Module: Result -> Std__Result (impl=no, intf=yes)
+  Module: Std -> Std (impl=no, intf=yes)
+  Module: Time -> Std__Time (impl=no, intf=yes)
+  Module: Workerpool -> Std__Workerpool (impl=no, intf=yes)
+  Library: Data -> Std__Data (interface=no, 1 aliases)
+    Module: Data -> Std__Data (impl=no, intf=yes)
+    Module: Json -> Std__Data__Json (impl=no, intf=yes)
+    Module: Sexp -> Std__Data__Sexp (impl=no, intf=yes)
+    Module: Toml -> Std__Data__Toml (impl=no, intf=yes)
+[DEBUG] Extracted impl tree:
+Package: std (kind=Library, entry=no, 1 aliases)
+  Module: Buffer -> Std__Buffer (impl=yes, intf=no)
+  Module: Char -> Std__Char (impl=yes, intf=no)
+  Module: Char_Cursor -> Std__Char_Cursor (impl=yes, intf=no)
+  Module: Command -> Std__Command (impl=yes, intf=no)
+  Module: Datetime -> Std__Datetime (impl=yes, intf=no)
+  Module: Env -> Std__Env (impl=yes, intf=no)
+  Module: File -> Std__File (impl=yes, intf=no)
+  Module: Fs -> Std__Fs (impl=yes, intf=no)
+  Module: Global -> Std__Global (impl=yes, intf=no)
+  Module: Iterator -> Std__Iterator (impl=yes, intf=no)
+  Module: List -> Std__List (impl=yes, intf=no)
+  Module: Log -> Std__Log (impl=yes, intf=no)
+  Module: MutIterator -> Std__MutIterator (impl=yes, intf=no)
+  Module: Net -> Std__Net (impl=yes, intf=no)
+  Module: Option -> Std__Option (impl=yes, intf=no)
+  Module: Path -> Std__Path (impl=yes, intf=no)
+  Module: Ref -> Std__Ref (impl=yes, intf=no)
+  Module: Result -> Std__Result (impl=yes, intf=no)
+  Module: Std -> Std (impl=yes, intf=no)
+  Module: String -> Std__String (impl=yes, intf=no)
+  Module: Time -> Std__Time (impl=yes, intf=no)
+  Module: Workerpool -> Std__Workerpool (impl=yes, intf=no)
+  Library: Data -> Std__Data (interface=no, 1 aliases)
+    Module: Data -> Std__Data (impl=yes, intf=no)
+    Module: Json -> Std__Data__Json (impl=yes, intf=no)
+    Module: Sexp -> Std__Data__Sexp (impl=yes, intf=no)
+    Module: Toml -> Std__Data__Toml (impl=yes, intf=no)
+[DEBUG Dep_graph] Created 50 nodes for std
+[DEBUG Dep_graph] Nodes:
+  - Std__Global.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__Data__Json.mli (level=1, parent_aliases=[Std__aliases, Std__Data__aliases])
+  - Std__Option.mli (level=0, parent_aliases=[Std__aliases])
+  - Std__Command.mli (level=0, parent_aliases=[Std__aliases])
+  - Std__Workerpool.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__Env.mli (level=0, parent_aliases=[Std__aliases])
+  - Std__Char_Cursor.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__Env.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__Workerpool.mli (level=0, parent_aliases=[Std__aliases])
+  - Std__Time.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__Path.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__Iterator.mli (level=0, parent_aliases=[Std__aliases])
+  - Std__Fs.mli (level=0, parent_aliases=[Std__aliases])
+  - Std__Char.mli (level=0, parent_aliases=[Std__aliases])
+  - Std__Path.mli (level=0, parent_aliases=[Std__aliases])
+  - Std__Char.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__Data__Toml.ml (level=1, parent_aliases=[Std__aliases, Std__Data__aliases])
+  - Std__Data__Toml.mli (level=1, parent_aliases=[Std__aliases, Std__Data__aliases])
+  - Std__Data.mli (level=1, parent_aliases=[Std__aliases, Std__Data__aliases])
+  - Std__Data__Json.ml (level=1, parent_aliases=[Std__aliases, Std__Data__aliases])
+  - Std__Option.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__Command.ml (level=0, parent_aliases=[Std__aliases])
+  - Std.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__Result.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__Data__Sexp.mli (level=1, parent_aliases=[Std__aliases, Std__Data__aliases])
+  - Std__Data__aliases (alias) (level=1, parent_aliases=[])
+  - Std__Buffer.mli (level=0, parent_aliases=[Std__aliases])
+  - Std__Log.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__Datetime.mli (level=0, parent_aliases=[Std__aliases])
+  - Std.mli (level=0, parent_aliases=[Std__aliases])
+  - Std__Global.mli (level=0, parent_aliases=[Std__aliases])
+  - Std__Time.mli (level=0, parent_aliases=[Std__aliases])
+  - Std__Net.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__File.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__Data__Sexp.ml (level=1, parent_aliases=[Std__aliases, Std__Data__aliases])
+  - Std__Log.mli (level=0, parent_aliases=[Std__aliases])
+  - Std__aliases (alias) (level=0, parent_aliases=[])
+  - Std__Net.mli (level=0, parent_aliases=[Std__aliases])
+  - Std__Iterator.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__Ref.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__Datetime.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__Fs.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__Data.ml (level=1, parent_aliases=[Std__aliases, Std__Data__aliases])
+  - Std__Result.mli (level=0, parent_aliases=[Std__aliases])
+  - Std__File.mli (level=0, parent_aliases=[Std__aliases])
+  - Std__MutIterator.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__String.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__Buffer.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__List.ml (level=0, parent_aliases=[Std__aliases])
+  - Std__List.mli (level=0, parent_aliases=[Std__aliases])
+[DEBUG Dep_graph] Running ocamldep on 22 .mli files
+[DEBUG Dep_graph] Running ocamldep on 28 .ml files
+[DEBUG Dep_graph] Std__Global.ml depends on Std__Global.mli
+[DEBUG Dep_graph] Std__Workerpool.ml depends on Std__Workerpool.mli
+[DEBUG Dep_graph] Std__Env.ml depends on Std__Env.mli
+[DEBUG Dep_graph] Std__Time.ml depends on Std__Time.mli
+[DEBUG Dep_graph] Std__Path.ml depends on Std__Path.mli
+[DEBUG Dep_graph] Std__Char.ml depends on Std__Char.mli
+[DEBUG Dep_graph] Std__Data__Toml.ml depends on Std__Data__Toml.mli
+[DEBUG Dep_graph] Std__Data__Json.ml depends on Std__Data__Json.mli
+[DEBUG Dep_graph] Std__Option.ml depends on Std__Option.mli
+[DEBUG Dep_graph] Std__Command.ml depends on Std__Command.mli
+[DEBUG Dep_graph] Std.ml depends on Std.mli
+[DEBUG Dep_graph] Std__Result.ml depends on Std__Result.mli
+[DEBUG Dep_graph] Std__Log.ml depends on Std__Log.mli
+[DEBUG Dep_graph] Std__Net.ml depends on Std__Net.mli
+[DEBUG Dep_graph] Std__File.ml depends on Std__File.mli
+[DEBUG Dep_graph] Std__Data__Sexp.ml depends on Std__Data__Sexp.mli
+[DEBUG Dep_graph] Std__Iterator.ml depends on Std__Iterator.mli
+[DEBUG Dep_graph] Std__Datetime.ml depends on Std__Datetime.mli
+[DEBUG Dep_graph] Std__Fs.ml depends on Std__Fs.mli
+[DEBUG Dep_graph] Std__Data.ml depends on Std__Data.mli
+[DEBUG Dep_graph] Std__Buffer.ml depends on Std__Buffer.mli
+[DEBUG Dep_graph] Std__List.ml depends on Std__List.mli
+[DEBUG Dep_graph] Dependencies found:
+  Std__Global.ml -> [Std__Global.mli]
+  Std__Option.mli -> [Std__Result.mli]
+  Std__Workerpool.ml -> [Std__Workerpool.mli]
+  Std__Env.mli -> [Std__Result.mli, Std__Path.mli]
+  Std__Env.ml -> [Std__Env.mli, Std__String.ml, Std__Result.ml, Std__Result.mli, Std__Path.ml, Std__Path.mli, Std__List.ml, Std__List.mli]
+  Std__Time.ml -> [Std__Time.mli]
+  Std__Path.ml -> [Std__Path.mli, Std__String.ml, Std__Result.ml, Std__Result.mli, Std__List.ml, Std__List.mli, Std__Char.ml, Std__Char.mli]
+  Std__Fs.mli -> [Std__Result.mli, Std__Path.mli]
+  Std__Path.mli -> [Std__Result.mli]
+  Std__Char.ml -> [Std__Char.mli]
+  Std__Data__Toml.ml -> [Std__Data__Toml.mli, Std__String.ml, Std__List.ml, Std__List.mli]
+  Std__Data__Json.ml -> [Std__Data__Json.mli, Std__String.ml, Std__List.ml, Std__List.mli, Std__Buffer.ml, Std__Buffer.mli]
+  Std__Option.ml -> [Std__Option.mli, Std__Result.ml, Std__Result.mli, Std__List.ml, Std__List.mli]
+  Std__Command.ml -> [Std__Command.mli, Std__String.ml, Std__List.ml, Std__List.mli]
+  Std.ml -> [Std.mli, Std__Workerpool.ml, Std__Workerpool.mli, Std__String.ml, Std__Result.ml, Std__Result.mli, Std__Path.ml, Std__Path.mli, Std__Option.ml, Std__Option.mli, Std__Net.ml, Std__Net.mli, Std__MutIterator.ml, Std__Log.ml, Std__Log.mli, Std__List.ml, Std__List.mli, Std__Iterator.ml, Std__Iterator.mli, Std__Global.ml, Std__Global.mli, Std__Fs.ml, Std__Fs.mli, Std__File.ml, Std__File.mli, Std__Env.ml, Std__Env.mli, Std__Datetime.ml, Std__Datetime.mli, Std__Data.ml, Std__Data.mli, Std__Command.ml, Std__Command.mli, Std__Char.ml, Std__Char.mli, Std__Buffer.ml, Std__Buffer.mli]
+  Std__Result.ml -> [Std__Result.mli, Std__List.ml, Std__List.mli, Std__Global.ml, Std__Global.mli]
+  Std__Log.ml -> [Std__Log.mli]
+  Std.mli -> [Std__Result.mli, Std__Path.mli, Std__Option.mli, Std__Net.mli, Std__MutIterator.ml, Std__List.mli, Std__Iterator.mli, Std__Fs.mli, Std__File.mli, Std__Env.mli, Std__Datetime.mli, Std__Data.mli, Std__Command.mli, Std__Buffer.mli]
+  Std__Net.ml -> [Std__Net.mli, Std__String.ml]
+  Std__File.ml -> [Std__File.mli, Std__List.ml, Std__List.mli]
+  Std__Data__Sexp.ml -> [Std__Data__Sexp.mli, Std__String.ml, Std__List.ml, Std__List.mli, Std__Buffer.ml, Std__Buffer.mli]
+  Std__Iterator.ml -> [Std__Iterator.mli, Std__List.ml, Std__List.mli]
+  Std__Datetime.ml -> [Std__Datetime.mli]
+  Std__Fs.ml -> [Std__Fs.mli, Std__Result.ml, Std__Result.mli, Std__Path.ml, Std__Path.mli]
+  Std__Data.ml -> [Std__Data.mli]
+  Std__MutIterator.ml -> [Std__List.ml, Std__List.mli]
+  Std__String.ml -> [Std__MutIterator.ml, Std__Iterator.ml, Std__Iterator.mli]
+  Std__Buffer.ml -> [Std__Buffer.mli]
+  Std__List.ml -> [Std__List.mli]
+[DEBUG Dep_graph] Std__Global.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Data__Json.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Data__Json.mli depends on alias Std__Data__aliases
+[DEBUG Dep_graph] Std__Option.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Command.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Workerpool.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Env.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Char_Cursor.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Env.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Workerpool.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Time.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Path.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Iterator.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Fs.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Char.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Path.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Char.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Data__Toml.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Data__Toml.ml depends on alias Std__Data__aliases
+[DEBUG Dep_graph] Std__Data__Toml.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Data__Toml.mli depends on alias Std__Data__aliases
+[DEBUG Dep_graph] Std__Data.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Data.mli depends on alias Std__Data__aliases
+[DEBUG Dep_graph] Std__Data__Json.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Data__Json.ml depends on alias Std__Data__aliases
+[DEBUG Dep_graph] Std__Option.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Command.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Result.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Data__Sexp.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Data__Sexp.mli depends on alias Std__Data__aliases
+[DEBUG Dep_graph] Std__Buffer.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Log.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Datetime.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Global.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Time.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Net.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__File.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Data__Sexp.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Data__Sexp.ml depends on alias Std__Data__aliases
+[DEBUG Dep_graph] Std__Log.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Net.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Iterator.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Ref.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Datetime.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Fs.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Data.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Data.ml depends on alias Std__Data__aliases
+[DEBUG Dep_graph] Std__Result.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__File.mli depends on alias Std__aliases
+[DEBUG Dep_graph] Std__MutIterator.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__String.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__Buffer.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__List.ml depends on alias Std__aliases
+[DEBUG Dep_graph] Std__List.mli depends on alias Std__aliases
+Dependency Graph:
+  Std__Global.ml (level 0) -> [Std__aliases, Std__Global.mli]
+  Std__Data__Json.mli (level 1) -> [Std__Data__aliases, Std__aliases]
+  Std__Option.mli (level 0) -> [Std__aliases, Std__Result.mli]
+  Std__Command.mli (level 0) -> [Std__aliases]
+  Std__Workerpool.ml (level 0) -> [Std__aliases, Std__Workerpool.mli]
+  Std__Env.mli (level 0) -> [Std__aliases, Std__Result.mli, Std__Path.mli]
+  Std__Char_Cursor.ml (level 0) -> [Std__aliases]
+  Std__Env.ml (level 0) -> [Std__aliases, Std__Env.mli, Std__String.ml, Std__Result.ml, Std__Result.mli, Std__Path.ml, Std__Path.mli, Std__List.ml, Std__List.mli]
+  Std__Workerpool.mli (level 0) -> [Std__aliases]
+  Std__Time.ml (level 0) -> [Std__aliases, Std__Time.mli]
+  Std__Path.ml (level 0) -> [Std__aliases, Std__Path.mli, Std__String.ml, Std__Result.ml, Std__Result.mli, Std__List.ml, Std__List.mli, Std__Char.ml, Std__Char.mli]
+  Std__Iterator.mli (level 0) -> [Std__aliases]
+  Std__Fs.mli (level 0) -> [Std__aliases, Std__Result.mli, Std__Path.mli]
+  Std__Char.mli (level 0) -> [Std__aliases]
+  Std__Path.mli (level 0) -> [Std__aliases, Std__Result.mli]
+  Std__Char.ml (level 0) -> [Std__aliases, Std__Char.mli]
+  Std__Data__Toml.ml (level 1) -> [Std__Data__aliases, Std__aliases, Std__Data__Toml.mli, Std__String.ml, Std__List.ml, Std__List.mli]
+  Std__Data__Toml.mli (level 1) -> [Std__Data__aliases, Std__aliases]
+  Std__Data.mli (level 1) -> [Std__Data__aliases, Std__aliases, Std__Data__Sexp.ml, Std__Data__Sexp.mli, Std__Data__Json.ml, Std__Data__Toml.mli, Std__Data__Toml.ml, Std__Data__Json.mli]
+  Std__Data__Json.ml (level 1) -> [Std__Data__aliases, Std__aliases, Std__Data__Json.mli, Std__String.ml, Std__List.ml, Std__List.mli, Std__Buffer.ml, Std__Buffer.mli]
+  Std__Option.ml (level 0) -> [Std__aliases, Std__Option.mli, Std__Result.ml, Std__Result.mli, Std__List.ml, Std__List.mli]
+  Std__Command.ml (level 0) -> [Std__aliases, Std__Command.mli, Std__String.ml, Std__List.ml, Std__List.mli]
+  Std.ml (level 0) -> [Std__aliases, Std__List.mli, Std__List.ml, Std__Buffer.ml, Std__String.ml, Std__MutIterator.ml, Std__File.mli, Std__Result.mli, Std__Data.ml, Std__Fs.ml, Std__Datetime.ml, Std__Ref.ml, Std__Iterator.ml, Std__Net.mli, Std__Log.mli, Std__File.ml, Std__Net.ml, Std__Time.mli, Std__Global.mli, Std__Datetime.mli, Std__Log.ml, Std__Buffer.mli, Std__Result.ml, Std__Command.ml, Std__Option.ml, Std__Data.mli, Std__Char.ml, Std__Path.mli, Std__Char.mli, Std__Fs.mli, Std__Iterator.mli, Std__Path.ml, Std__Time.ml, Std__Workerpool.mli, Std__Env.ml, Std__Char_Cursor.ml, Std__Env.mli, Std__Workerpool.ml, Std__Command.mli, Std__Option.mli, Std__Global.ml, Std.mli, Std__Workerpool.ml, Std__Workerpool.mli, Std__String.ml, Std__Result.ml, Std__Result.mli, Std__Path.ml, Std__Path.mli, Std__Option.ml, Std__Option.mli, Std__Net.ml, Std__Net.mli, Std__MutIterator.ml, Std__Log.ml, Std__Log.mli, Std__List.ml, Std__List.mli, Std__Iterator.ml, Std__Iterator.mli, Std__Global.ml, Std__Global.mli, Std__Fs.ml, Std__Fs.mli, Std__File.ml, Std__File.mli, Std__Env.ml, Std__Env.mli, Std__Datetime.ml, Std__Datetime.mli, Std__Data.ml, Std__Data.mli, Std__Command.ml, Std__Command.mli, Std__Char.ml, Std__Char.mli, Std__Buffer.ml, Std__Buffer.mli]
+  Std__Result.ml (level 0) -> [Std__aliases, Std__Result.mli, Std__List.ml, Std__List.mli, Std__Global.ml, Std__Global.mli]
+  Std__Data__Sexp.mli (level 1) -> [Std__Data__aliases, Std__aliases]
+  Std__Data__aliases (level 1) -> []
+  Std__Buffer.mli (level 0) -> [Std__aliases]
+  Std__Log.ml (level 0) -> [Std__aliases, Std__Log.mli]
+  Std__Datetime.mli (level 0) -> [Std__aliases]
+  Std.mli (level 0) -> [Std__aliases, Std__List.mli, Std__List.ml, Std__Buffer.ml, Std__String.ml, Std__MutIterator.ml, Std__File.mli, Std__Result.mli, Std__Data.ml, Std__Fs.ml, Std__Datetime.ml, Std__Ref.ml, Std__Iterator.ml, Std__Net.mli, Std__Log.mli, Std__File.ml, Std__Net.ml, Std__Time.mli, Std__Global.mli, Std__Datetime.mli, Std__Log.ml, Std__Buffer.mli, Std__Result.ml, Std__Command.ml, Std__Option.ml, Std__Data.mli, Std__Char.ml, Std__Path.mli, Std__Char.mli, Std__Fs.mli, Std__Iterator.mli, Std__Path.ml, Std__Time.ml, Std__Workerpool.mli, Std__Env.ml, Std__Char_Cursor.ml, Std__Env.mli, Std__Workerpool.ml, Std__Command.mli, Std__Option.mli, Std__Global.ml, Std__Result.mli, Std__Path.mli, Std__Option.mli, Std__Net.mli, Std__MutIterator.ml, Std__List.mli, Std__Iterator.mli, Std__Fs.mli, Std__File.mli, Std__Env.mli, Std__Datetime.mli, Std__Data.mli, Std__Command.mli, Std__Buffer.mli]
+  Std__Global.mli (level 0) -> [Std__aliases]
+  Std__Time.mli (level 0) -> [Std__aliases]
+  Std__Net.ml (level 0) -> [Std__aliases, Std__Net.mli, Std__String.ml]
+  Std__File.ml (level 0) -> [Std__aliases, Std__File.mli, Std__List.ml, Std__List.mli]
+  Std__Data__Sexp.ml (level 1) -> [Std__Data__aliases, Std__aliases, Std__Data__Sexp.mli, Std__String.ml, Std__List.ml, Std__List.mli, Std__Buffer.ml, Std__Buffer.mli]
+  Std__Log.mli (level 0) -> [Std__aliases]
+  Std__aliases (level 0) -> []
+  Std__Net.mli (level 0) -> [Std__aliases]
+  Std__Iterator.ml (level 0) -> [Std__aliases, Std__Iterator.mli, Std__List.ml, Std__List.mli]
+  Std__Ref.ml (level 0) -> [Std__aliases]
+  Std__Datetime.ml (level 0) -> [Std__aliases, Std__Datetime.mli]
+  Std__Fs.ml (level 0) -> [Std__aliases, Std__Fs.mli, Std__Result.ml, Std__Result.mli, Std__Path.ml, Std__Path.mli]
+  Std__Data.ml (level 1) -> [Std__Data__aliases, Std__aliases, Std__Data__Sexp.ml, Std__Data__Sexp.mli, Std__Data__Json.ml, Std__Data__Toml.mli, Std__Data__Toml.ml, Std__Data__Json.mli, Std__Data.mli]
+  Std__Result.mli (level 0) -> [Std__aliases]
+  Std__File.mli (level 0) -> [Std__aliases]
+  Std__MutIterator.ml (level 0) -> [Std__aliases, Std__List.ml, Std__List.mli]
+  Std__String.ml (level 0) -> [Std__aliases, Std__MutIterator.ml, Std__Iterator.ml, Std__Iterator.mli]
+  Std__Buffer.ml (level 0) -> [Std__aliases, Std__Buffer.mli]
+  Std__List.ml (level 0) -> [Std__aliases, Std__List.mli]
+  Std__List.mli (level 0) -> [Std__aliases]
+[DEBUG] Topological sort:
+  Std__aliases
+  Std__Data__aliases
+  Std__Buffer.mli
+  Std__Char.mli
+  Std__Char_Cursor.ml
+  Std__Command.mli
+  Std__Datetime.mli
+  Std__File.mli
+  Std__Global.mli
+  Std__Iterator.mli
+  Std__List.mli
+  Std__Log.mli
+  Std__Net.mli
+  Std__Ref.ml
+  Std__Result.mli
+  Std__Time.mli
+  Std__Workerpool.mli
+  Std__Data__Json.mli
+  Std__Data__Sexp.mli
+  Std__Data__Toml.mli
+  Std__Buffer.ml
+  Std__Char.ml
+  Std__Datetime.ml
+  Std__Global.ml
+  Std__List.ml
+  Std__Log.ml
+  Std__Option.mli
+  Std__Path.mli
+  Std__Time.ml
+  Std__Workerpool.ml
+  Std__File.ml
+  Std__Iterator.ml
+  Std__MutIterator.ml
+  Std__Result.ml
+  Std__Env.mli
+  Std__Fs.mli
+  Std__String.ml
+  Std__Option.ml
+  Std__Command.ml
+  Std__Net.ml
+  Std__Path.ml
+  Std__Data__Json.ml
+  Std__Data__Sexp.ml
+  Std__Data__Toml.ml
+  Std__Env.ml
+  Std__Fs.ml
+  Std__Data.mli
+  Std__Data.ml
+  Std.mli
+  Std.ml
+[DEBUG] Generating actions from dependency graph...
+[DEBUG] Generating actions for alias module: Std__aliases
+[DEBUG] Generating actions for alias module: Std__Data__aliases
+[DEBUG] Generating actions for interface: Std__Buffer.mli
+[DEBUG] Generating actions for interface: Std__Char.mli
+[DEBUG] Generating actions for implementation: Std__Char_Cursor.ml
+[DEBUG] Generating actions for interface: Std__Command.mli
+[DEBUG] Generating actions for interface: Std__Datetime.mli
+[DEBUG] Generating actions for interface: Std__File.mli
+[DEBUG] Generating actions for interface: Std__Global.mli
+[DEBUG] Generating actions for interface: Std__Iterator.mli
+[DEBUG] Generating actions for interface: Std__List.mli
+[DEBUG] Generating actions for interface: Std__Log.mli
+[DEBUG] Generating actions for interface: Std__Net.mli
+[DEBUG] Generating actions for implementation: Std__Ref.ml
+[DEBUG] Generating actions for interface: Std__Result.mli
+[DEBUG] Generating actions for interface: Std__Time.mli
+[DEBUG] Generating actions for interface: Std__Workerpool.mli
+[DEBUG] Generating actions for interface: Std__Data__Json.mli
+[DEBUG] Generating actions for interface: Std__Data__Sexp.mli
+[DEBUG] Generating actions for interface: Std__Data__Toml.mli
+[DEBUG] Generating actions for implementation: Std__Buffer.ml
+[DEBUG] Generating actions for implementation: Std__Char.ml
+[DEBUG] Generating actions for implementation: Std__Datetime.ml
+[DEBUG] Generating actions for implementation: Std__Global.ml
+[DEBUG] Generating actions for implementation: Std__List.ml
+[DEBUG] Generating actions for implementation: Std__Log.ml
+[DEBUG] Generating actions for interface: Std__Option.mli
+[DEBUG] Generating actions for interface: Std__Path.mli
+[DEBUG] Generating actions for implementation: Std__Time.ml
+[DEBUG] Generating actions for implementation: Std__Workerpool.ml
+[DEBUG] Generating actions for implementation: Std__File.ml
+[DEBUG] Generating actions for implementation: Std__Iterator.ml
+[DEBUG] Generating actions for implementation: Std__MutIterator.ml
+[DEBUG] Generating actions for implementation: Std__Result.ml
+[DEBUG] Generating actions for interface: Std__Env.mli
+[DEBUG] Generating actions for interface: Std__Fs.mli
+[DEBUG] Generating actions for implementation: Std__String.ml
+[DEBUG] Generating actions for implementation: Std__Option.ml
+[DEBUG] Generating actions for implementation: Std__Command.ml
+[DEBUG] Generating actions for implementation: Std__Net.ml
+[DEBUG] Generating actions for implementation: Std__Path.ml
+[DEBUG] Generating actions for implementation: Std__Data__Json.ml
+[DEBUG] Generating actions for implementation: Std__Data__Sexp.ml
+[DEBUG] Generating actions for implementation: Std__Data__Toml.ml
+[DEBUG] Generating actions for implementation: Std__Env.ml
+[DEBUG] Generating actions for implementation: Std__Fs.ml
+[DEBUG] Generating actions for interface: Std__Data.mli
+[DEBUG] Generating actions for implementation: Std__Data.ml
+[DEBUG] Generating actions for interface: Std.mli
+[DEBUG] Generating actions for implementation: Std.ml
+[DEBUG] Generated 103 actions from dep_graph:
+  1. write(Std__aliases.ml.gen,633 bytes)
+  2. compile_interface(Std__aliases.ml.gen,Std__aliases.cmi,[.],[no-alias-deps,impl:Std__aliases.ml.gen,warning:[no-cmi-file]])
+  3. compile_impl(Std__aliases.ml.gen,Std__aliases.cmo,[.],[no-alias-deps,impl:Std__aliases.ml.gen,warning:[no-cmi-file]])
+  4. write(Std__Data__aliases.ml.gen,149 bytes)
+  5. compile_interface(Std__Data__aliases.ml.gen,Std__Data__aliases.cmi,[.],[no-alias-deps,impl:Std__Data__aliases.ml.gen,warning:[no-cmi-file]])
+  6. compile_impl(Std__Data__aliases.ml.gen,Std__Data__aliases.cmo,[.],[no-alias-deps,impl:Std__Data__aliases.ml.gen,warning:[no-cmi-file]])
+  7. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/buffer.mli,buffer.mli)
+  8. compile_interface(buffer.mli,Std__Buffer.cmi,[.],[open:Std__aliases])
+  9. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/char.mli,char.mli)
+  10. compile_interface(char.mli,Std__Char.cmi,[.],[open:Std__aliases])
+  11. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/Char_Cursor.ml,Char_Cursor.ml)
+  12. compile_impl(Char_Cursor.ml,Std__Char_Cursor.cmo,[.],[open:Std__aliases])
+  13. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/command.mli,command.mli)
+  14. compile_interface(command.mli,Std__Command.cmi,[.],[open:Std__aliases])
+  15. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/datetime.mli,datetime.mli)
+  16. compile_interface(datetime.mli,Std__Datetime.cmi,[.],[open:Std__aliases])
+  17. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/file.mli,file.mli)
+  18. compile_interface(file.mli,Std__File.cmi,[.],[open:Std__aliases])
+  19. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/global.mli,global.mli)
+  20. compile_interface(global.mli,Std__Global.cmi,[.],[open:Std__aliases])
+  21. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/Iterator.mli,Iterator.mli)
+  22. compile_interface(Iterator.mli,Std__Iterator.cmi,[.],[open:Std__aliases])
+  23. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/list.mli,list.mli)
+  24. compile_interface(list.mli,Std__List.cmi,[.],[open:Std__aliases])
+  25. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/log.mli,log.mli)
+  26. compile_interface(log.mli,Std__Log.cmi,[.],[open:Std__aliases])
+  27. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/net.mli,net.mli)
+  28. compile_interface(net.mli,Std__Net.cmi,[.],[open:Std__aliases])
+  29. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/ref.ml,ref.ml)
+  30. compile_impl(ref.ml,Std__Ref.cmo,[.],[open:Std__aliases])
+  31. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/result.mli,result.mli)
+  32. compile_interface(result.mli,Std__Result.cmi,[.],[open:Std__aliases])
+  33. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/time.mli,time.mli)
+  34. compile_interface(time.mli,Std__Time.cmi,[.],[open:Std__aliases])
+  35. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/workerpool.mli,workerpool.mli)
+  36. compile_interface(workerpool.mli,Std__Workerpool.cmi,[.],[open:Std__aliases])
+  37. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/data/json.mli,json.mli)
+  38. compile_interface(json.mli,Std__Data__Json.cmi,[.],[open:Std__aliases,open:Std__Data__aliases])
+  39. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/data/sexp.mli,sexp.mli)
+  40. compile_interface(sexp.mli,Std__Data__Sexp.cmi,[.],[open:Std__aliases,open:Std__Data__aliases])
+  41. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/data/toml.mli,toml.mli)
+  42. compile_interface(toml.mli,Std__Data__Toml.cmi,[.],[open:Std__aliases,open:Std__Data__aliases])
+  43. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/buffer.ml,buffer.ml)
+  44. compile_impl(buffer.ml,Std__Buffer.cmo,[.],[open:Std__aliases])
+  45. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/char.ml,char.ml)
+  46. compile_impl(char.ml,Std__Char.cmo,[.],[open:Std__aliases])
+  47. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/datetime.ml,datetime.ml)
+  48. compile_impl(datetime.ml,Std__Datetime.cmo,[.],[open:Std__aliases])
+  49. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/global.ml,global.ml)
+  50. compile_impl(global.ml,Std__Global.cmo,[.],[open:Std__aliases])
+  51. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/list.ml,list.ml)
+  52. compile_impl(list.ml,Std__List.cmo,[.],[open:Std__aliases])
+  53. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/log.ml,log.ml)
+  54. compile_impl(log.ml,Std__Log.cmo,[.],[open:Std__aliases])
+  55. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/option.mli,option.mli)
+  56. compile_interface(option.mli,Std__Option.cmi,[.],[open:Std__aliases])
+  57. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/path.mli,path.mli)
+  58. compile_interface(path.mli,Std__Path.cmi,[.],[open:Std__aliases])
+  59. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/time.ml,time.ml)
+  60. compile_impl(time.ml,Std__Time.cmo,[.],[open:Std__aliases])
+  61. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/workerpool.ml,workerpool.ml)
+  62. compile_impl(workerpool.ml,Std__Workerpool.cmo,[.],[open:Std__aliases])
+  63. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/file.ml,file.ml)
+  64. compile_impl(file.ml,Std__File.cmo,[.],[open:Std__aliases])
+  65. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/Iterator.ml,Iterator.ml)
+  66. compile_impl(Iterator.ml,Std__Iterator.cmo,[.],[open:Std__aliases])
+  67. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/MutIterator.ml,MutIterator.ml)
+  68. compile_impl(MutIterator.ml,Std__MutIterator.cmo,[.],[open:Std__aliases])
+  69. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/result.ml,result.ml)
+  70. compile_impl(result.ml,Std__Result.cmo,[.],[open:Std__aliases])
+  71. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/env.mli,env.mli)
+  72. compile_interface(env.mli,Std__Env.cmi,[.],[open:Std__aliases])
+  73. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/fs.mli,fs.mli)
+  74. compile_interface(fs.mli,Std__Fs.cmi,[.],[open:Std__aliases])
+  75. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/string.ml,string.ml)
+  76. compile_impl(string.ml,Std__String.cmo,[.],[open:Std__aliases])
+  77. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/option.ml,option.ml)
+  78. compile_impl(option.ml,Std__Option.cmo,[.],[open:Std__aliases])
+  79. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/command.ml,command.ml)
+  80. compile_impl(command.ml,Std__Command.cmo,[.],[open:Std__aliases])
+  81. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/net.ml,net.ml)
+  82. compile_impl(net.ml,Std__Net.cmo,[.],[open:Std__aliases])
+  83. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/path.ml,path.ml)
+  84. compile_impl(path.ml,Std__Path.cmo,[.],[open:Std__aliases])
+  85. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/data/json.ml,json.ml)
+  86. compile_impl(json.ml,Std__Data__Json.cmo,[.],[open:Std__aliases,open:Std__Data__aliases])
+  87. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/data/sexp.ml,sexp.ml)
+  88. compile_impl(sexp.ml,Std__Data__Sexp.cmo,[.],[open:Std__aliases,open:Std__Data__aliases])
+  89. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/data/toml.ml,toml.ml)
+  90. compile_impl(toml.ml,Std__Data__Toml.cmo,[.],[open:Std__aliases,open:Std__Data__aliases])
+  91. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/env.ml,env.ml)
+  92. compile_impl(env.ml,Std__Env.cmo,[.],[open:Std__aliases])
+  93. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/fs.ml,fs.ml)
+  94. compile_impl(fs.ml,Std__Fs.cmo,[.],[open:Std__aliases])
+  95. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/data/data.mli,data.mli)
+  96. compile_interface(data.mli,Std__Data.cmi,[.],[open:Std__aliases,open:Std__Data__aliases])
+  97. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/data/data.ml,data.ml)
+  98. compile_impl(data.ml,Std__Data.cmo,[.],[open:Std__aliases,open:Std__Data__aliases])
+  99. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/std.mli,std.mli)
+  100. compile_interface(std.mli,Std.cmi,[.],[open:Std__aliases])
+  101. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/std/src/std.ml,std.ml)
+  102. compile_impl(std.ml,Std.cmo,[.],[open:Std__aliases])
+  103. create_library(std.cma,[Std__aliases.cmo,Std__Data__aliases.cmo,Std__Char_Cursor.cmo,Std__Ref.cmo,Std__Buffer.cmo,Std__Char.cmo,Std__Datetime.cmo,Std__Global.cmo,Std__List.cmo,Std__Log.cmo,Std__Time.cmo,Std__Workerpool.cmo,Std__File.cmo,Std__Iterator.cmo,Std__MutIterator.cmo,Std__Result.cmo,Std__String.cmo,Std__Option.cmo,Std__Command.cmo,Std__Net.cmo,Std__Path.cmo,Std__Data__Json.cmo,Std__Data__Sexp.cmo,Std__Data__Toml.cmo,Std__Env.cmo,Std__Fs.cmo,Std__Data.cmo,Std.cmo],[.])
+[DEBUG] Using dep_graph actions!
+[2025-09-06T14:10:36.303Z] Building std...
+[2025-09-06T14:10:36.752Z] Cached std
+[DEBUG] Task completed: std
+[DEBUG] Marked std as completed
+[DEBUG] Queue state after std: Ready=1, Later=0, Busy=0
+Server: Worker ready
+Server: Sending task mcp to worker
+[DEBUG] build_modtree: package_name=mcp, srcs count=2
+[DEBUG]   MLI: key=Mcp, simple=Mcp, namespaced=Mcp
+[DEBUG]   ML: key=Mcp, simple=Mcp, namespaced=Mcp
+[DEBUG] Tree after build_modtree:
+Package: mcp (kind=Library, entry=no, 0 aliases)
+  Module: Mcp -> Mcp (impl=yes, intf=yes)
+[DEBUG]   Package alias: module Mcp -> Mcp
+[DEBUG] Tree after insert_alias_modules:
+Package: mcp (kind=Library, entry=no, 0 aliases)
+  Module: Mcp -> Mcp (impl=yes, intf=yes)
+[DEBUG] ===== EXTRACTING THREE SUBTREES =====
+[DEBUG] Extracted alias tree:
+Package: mcp (kind=Library, entry=no, 0 aliases)
+[DEBUG] Extracted intf tree:
+Package: mcp (kind=Library, entry=no, 0 aliases)
+  Module: Mcp -> Mcp (impl=no, intf=yes)
+[DEBUG] Extracted impl tree:
+Package: mcp (kind=Library, entry=no, 0 aliases)
+  Module: Mcp -> Mcp (impl=yes, intf=no)
+[DEBUG Dep_graph] Created 2 nodes for mcp
+[DEBUG Dep_graph] Nodes:
+  - Mcp.mli (level=0, parent_aliases=[])
+  - Mcp.ml (level=0, parent_aliases=[])
+[DEBUG Dep_graph] Running ocamldep on 1 .mli files
+[DEBUG Dep_graph] Running ocamldep on 1 .ml files
+[DEBUG Dep_graph] Mcp.ml depends on Mcp.mli
+[DEBUG Dep_graph] Dependencies found:
+  Mcp.ml -> [Mcp.mli]
+Dependency Graph:
+  Mcp.mli (level 0) -> []
+  Mcp.ml (level 0) -> [Mcp.mli]
+[DEBUG] Topological sort:
+  Mcp.mli
+  Mcp.ml
+[DEBUG] Generating actions from dependency graph...
+[DEBUG] Generating actions for interface: Mcp.mli
+[DEBUG] Generating actions for implementation: Mcp.ml
+[DEBUG] Generated 5 actions from dep_graph:
+  1. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/mcp/src/mcp.mli,mcp.mli)
+  2. compile_interface(mcp.mli,Mcp.cmi,[.],[])
+  3. copy(/Users/ostera/Developer/github.com/riot-ml/riot/packages/mcp/src/mcp.ml,mcp.ml)
+  4. compile_impl(mcp.ml,Mcp.cmo,[.],[])
+  5. create_library(mcp.cma,[Mcp.cmo],[.])
+[DEBUG] Using dep_graph actions!
+[Sandbox] Running 6 actions for mcp in /Users/ostera/Developer/github.com/riot-ml/riot/target/debug/sandbox/16a3a8aa
+[Sandbox] Copying dependency artifacts...
+[Sandbox] Copying artifacts from store for std (hash: 477806790f65faf3dfd9a8b55f0aee94)
+[Sandbox]   Files from manifest: Std__aliases.cmi, Std__aliases.cmo, Std__Data__aliases.cmi, Std__Data__aliases.cmo, Std__Buffer.cmi, Std__Char.cmi, Std__Char_Cursor.cmo, Std__Command.cmi, Std__Datetime.cmi, Std__File.cmi, Std__Global.cmi, Std__Iterator.cmi, Std__List.cmi, Std__Log.cmi, Std__Net.cmi, Std__Ref.cmo, Std__Result.cmi, Std__Time.cmi, Std__Workerpool.cmi, Std__Data__Json.cmi, Std__Data__Sexp.cmi, Std__Data__Toml.cmi, Std__Buffer.cmo, Std__Char.cmo, Std__Datetime.cmo, Std__Global.cmo, Std__List.cmo, Std__Log.cmo, Std__Option.cmi, Std__Path.cmi, Std__Time.cmo, Std__Workerpool.cmo, Std__File.cmo, Std__Iterator.cmo, Std__MutIterator.cmo, Std__Result.cmo, Std__Env.cmi, Std__Fs.cmi, Std__String.cmo, Std__Option.cmo, Std__Command.cmo, Std__Net.cmo, Std__Path.cmo, Std__Data__Json.cmo, Std__Data__Sexp.cmo, Std__Data__Toml.cmo, Std__Env.cmo, Std__Fs.cmo, Std__Data.cmi, Std__Data.cmo, Std.cmi, Std.cmo, std.cma
+[Sandbox]   Filtered files to copy: Std.cmi, std.cma
+[Sandbox]   - Successfully copied 2 files for std
+[Sandbox] Copying artifacts from store for miniriot (hash: 9a388d06b2d1c86ccf562b0a2249e195)
+[Sandbox]   Files from manifest: Miniriot__aliases.cmi, Miniriot__aliases.cmo, Miniriot__Message.cmi, Miniriot__Pid.cmi, Miniriot__Proc_state.cmi, Miniriot__Runtime.cmi, Miniriot__Trace.cmi, Miniriot__Mailbox.cmi, Miniriot__Message.cmo, Miniriot__Proc_effect.cmi, Miniriot__Pid.cmo, Miniriot__Proc_state.cmo, Miniriot__Process.cmi, Miniriot__Trace.cmo, Miniriot__Mailbox.cmo, Miniriot__Proc_effect.cmo, Miniriot__Effects.cmi, Miniriot__Scheduler.cmi, Miniriot__Process.cmo, Miniriot__Effects.cmo, Miniriot__Scheduler.cmo, Miniriot__Runtime.cmo, Miniriot.cmi, Miniriot.cmo, miniriot.cma
+[Sandbox]   Filtered files to copy: Miniriot.cmi, miniriot.cma
+[Sandbox]   - Successfully copied 2 files for miniriot
+[Sandbox] Copying artifacts from store for kernel (hash: b0acb0ed2d17418d886be5a6989413b5)
+[Sandbox]   Files from manifest: std_sys_unix_kqueue.o, std_sys_unix_io.o, Kernel__aliases.cmi, Kernel__aliases.cmo, Kernel__Crypto.cmi, Kernel__Io.cmo, Kernel__Crypto.cmo, Kernel.cmi, Kernel.cmo, kernel.cma
+[Sandbox]   Filtered files to copy: std_sys_unix_kqueue.o, std_sys_unix_io.o, Kernel.cmi, kernel.cma
+[Sandbox]   - Successfully copied 4 files for kernel
+[Sandbox] Copying artifacts from store for kernel (hash: b0acb0ed2d17418d886be5a6989413b5)
+[Sandbox]   Files from manifest: std_sys_unix_kqueue.o, std_sys_unix_io.o, Kernel__aliases.cmi, Kernel__aliases.cmo, Kernel__Crypto.cmi, Kernel__Io.cmo, Kernel__Crypto.cmo, Kernel.cmi, Kernel.cmo, kernel.cma
+[Sandbox]   Filtered files to copy: std_sys_unix_kqueue.o, std_sys_unix_io.o, Kernel.cmi, kernel.cma
+[Sandbox]   - Successfully copied 4 files for kernel
+[Sandbox] Step 1: declare_outputs([Mcp.cmi; Mcp.cmo; mcp.cma])
+  -> Declared 3 expected outputs
+[Sandbox] Step 2: copy(mcp.mli -> mcp.mli)
+  -> Copied /Users/ostera/Developer/github.com/riot-ml/riot/packages/mcp/src/mcp.mli to mcp.mli
+[Sandbox] Step 3: compile_interface(mcp.mli -> Mcp.cmi) [includes: .]
+  $ /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -c -I . -I . -o Mcp.cmi mcp.mli
+  $ OCAML_COLOR=always /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -c -I . -I . -o Mcp.cmi mcp.mli
+  -> Failed:
+File "mcp.mli", line 10, characters 12-23:
+10 | type json = Data.Json.t
+                 ^^^^^^^^^^^
+Error: The module Data is an alias for module Std__aliases.Data, which is missing
+[2025-09-06T14:10:36.757Z] Building mcp...
+[2025-09-06T14:10:36.799Z] Cache miss for mcp
+[2025-09-06T14:10:36.801Z] [DEBUG] [mcp] Compiling interface mcp.mli
+[2025-09-06T14:10:36.813Z] [ERROR] Error in mcp [_unknown_:1:0]: File "mcp.mli", line 10, characters 12-23:
+10 | type json = Data.Json.t
+                 ^^^^^^^^^^^
+Error: The module Data is an alias for module Std__aliases.Data, which is missing
+Server: All builds done
+[2025-09-06T14:10:36.814Z] Build completed in 1548ms (3 succeeded, 1 failed)

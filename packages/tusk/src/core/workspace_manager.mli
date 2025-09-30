@@ -1,3 +1,4 @@
+open Model
 (** Workspace manager - caches workspace and avoids repeated scanning *)
 
 val get_workspace : root:string -> Workspace.t

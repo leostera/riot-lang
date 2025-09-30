@@ -90,53 +90,60 @@ let sources_newer_than_outputs workspace pkg_name =
   in
   let output_file = Filename.concat target_dir (pkg_name ^ ".cma") in
 
-  let output_file_path = Path.of_string output_file |> Result.expect ~msg:"Invalid output_file" in
+  let output_file_path =
+    Path.of_string output_file |> Result.expect ~msg:"Invalid output_file"
+  in
   match Fs.exists output_file_path with
   | Ok false | Error _ -> true (* No outputs, need to build *)
-  | Ok true ->
-    let output_stat =
-      Fs.stat output_file_path
-      |> Result.expect ~msg:"Failed to stat output_file"
-    in
-    let output_mtime = output_stat.st_mtime in
+  | Ok true -> (
+      let output_stat =
+        Fs.metadata output_file_path
+        |> Result.expect ~msg:"Failed to stat output_file"
+      in
+      let output_mtime = output_stat.st_mtime in
 
-    let src_dir_path = Path.of_string src_dir |> Result.expect ~msg:"Invalid src_dir" in
-    match Fs.exists src_dir_path with
-    | Ok true ->
-      (match Fs.read_dir src_dir_path with
-      | Ok iter ->
-          let result = ref [] in
-          let rec collect () =
-            match MutIterator.next iter with
-            | None -> List.rev !result
-            | Some path ->
-                result := Path.basename path :: !result;
-                collect ()
-          in
-          let files = collect () in
-          let source_files =
-            List.filter
-              (fun f ->
-                String.ends_with ~suffix:".ml" f
-                || String.ends_with ~suffix:".mli" f)
-              files
-          in
+      let src_dir_path =
+        Path.of_string src_dir |> Result.expect ~msg:"Invalid src_dir"
+      in
+      match Fs.exists src_dir_path with
+      | Ok true -> (
+          match Fs.read_dir src_dir_path with
+          | Ok iter ->
+              let result = ref [] in
+              let rec collect () =
+                match MutIterator.next iter with
+                | None -> List.rev !result
+                | Some path ->
+                    result := Path.basename path :: !result;
+                    collect ()
+              in
+              let files = collect () in
+              let source_files =
+                List.filter
+                  (fun f ->
+                    String.ends_with ~suffix:".ml" f
+                    || String.ends_with ~suffix:".mli" f)
+                  files
+              in
 
-          List.exists
-            (fun file ->
-              let filepath = Filename.concat src_dir file in
-              let filepath_path = Path.of_string filepath |> Result.expect ~msg:"Invalid filepath" in
-              match Fs.exists filepath_path with
-              | Ok true ->
-                  let file_stat =
-                    Fs.stat filepath_path
-                    |> Result.expect ~msg:"Failed to stat filepath"
+              List.exists
+                (fun file ->
+                  let filepath = Filename.concat src_dir file in
+                  let filepath_path =
+                    Path.of_string filepath
+                    |> Result.expect ~msg:"Invalid filepath"
                   in
-                  file_stat.st_mtime > output_mtime
-              | _ -> false)
-            source_files
-      | Error _ -> false)
-    | _ -> false
+                  match Fs.exists filepath_path with
+                  | Ok true ->
+                      let file_stat =
+                        Fs.metadata filepath_path
+                        |> Result.expect ~msg:"Failed to stat filepath"
+                      in
+                      file_stat.st_mtime > output_mtime
+                  | _ -> false)
+                source_files
+          | Error _ -> false)
+      | _ -> false)
 
 (** Check if build outputs exist for a package *)
 let build_outputs_exist workspace pkg_name =
@@ -148,11 +155,15 @@ let build_outputs_exist workspace pkg_name =
 
   (* Check if key build outputs exist *)
   let cma_exists =
-    let cma_path = Path.of_string cma_file |> Result.expect ~msg:"Invalid cma_file" in
+    let cma_path =
+      Path.of_string cma_file |> Result.expect ~msg:"Invalid cma_file"
+    in
     match Fs.exists cma_path with Ok true -> true | _ -> false
   in
   let cmi_exists =
-    let cmi_path = Path.of_string cmi_file |> Result.expect ~msg:"Invalid cmi_file" in
+    let cmi_path =
+      Path.of_string cmi_file |> Result.expect ~msg:"Invalid cmi_file"
+    in
     match Fs.exists cmi_path with Ok true -> true | _ -> false
   in
   cma_exists && cmi_exists

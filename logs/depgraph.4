@@ -1,0 +1,505 @@
+; ./src/tusk-depgraph ../std
+Building dependency graph for ../std
+
+Package: Std
+
+Scanning from: ../std/src
+Scanning directory tree from: ../std/src
+Found 54 files and 2 directories
+Found 53 OCaml source files
+Found directories: data
+Created 55 nodes
+Analyzing dependencies...
+  datetime.ml depends on: Printf, Unix
+  ref.ml depends on: Atomic, Format, Int64, Obj, Type
+  data/json.mli depends on:
+  option.ml depends on: List, Result
+  net.mli depends on: Kernel
+  Iterator.ml depends on: List
+  char.mli depends on: Stdlib
+  data/json.ml depends on: Buffer, List, Printf, String
+  Std__aliases.ml.gen: (no dependencies detected)
+  data/sexp.mli depends on:
+  dot.mli depends on:
+  std.ml depends on: Buffer, Char, Command, Data, Datetime, Env, File, Fs, Global, Graph, Iterator, List, Log, MutIterator, Net, Option, Path, Result, String, Workerpool
+  MutIterator.ml depends on: List
+  command.mli depends on: Unix
+  fs.ml depends on: Bytes, Filename, List, Path, Printexc, Result, Sys, Unix
+  data/toml.ml depends on: List, String
+  data/sexp.ml depends on: Buffer, List, Printf, String
+  char.ml depends on: Stdlib
+  global.ml depends on: Sys, Unix
+  workerpool.mli depends on:
+  data/data.mli depends on: Json, Sexp, Toml
+  time.ml depends on: Unix
+  workerpool.ml depends on:
+  log.ml depends on:
+  datetime.mli depends on:
+  log.mli depends on:
+  file.mli depends on: Unix
+  command.ml depends on: Array, List, Printexc, Printf, String, Sys, Unix
+  fs.mli depends on: Path, Result, Unix
+  Iterator.mli depends on:
+  option.mli depends on: Result
+  file.ml depends on: Bytes, Kernel, List, Miniriot, Printexc, Printf, Unix
+  result.ml depends on: Global, List, Stdlib
+  path.mli depends on: Format, Result
+  buffer.mli depends on: Stdlib
+  list.mli depends on: Stdlib
+  string.ml depends on: Iterator, MutIterator, Stdlib, Uchar
+  env.mli depends on: Path, Result
+  buffer.ml depends on: Stdlib
+  result.mli depends on: Stdlib
+  Std__Data__aliases.ml.gen: (no dependencies detected)
+  mermaid.ml depends on: Buffer, List, Printf
+  data/data.ml depends on: Json, Sexp, Toml
+  std.mli depends on: Buffer, Command, Data, Datetime, Env, File, Fs, Graph, Iterator, List, MutIterator, Net, Option, Path, Result
+  time.mli depends on:
+  env.ml depends on: Array, List, Path, Result, String, Sys, Unix
+  Char_Cursor.ml depends on:
+  mermaid.mli depends on:
+  list.ml depends on: Stdlib
+  global.mli depends on:
+  graph.ml depends on: Dot, Mermaid
+  data/toml.mli depends on:
+  dot.ml depends on: List, Printf, String
+  net.ml depends on: Bytes, Fun, Kernel, Miniriot, Printf, String
+  path.ml depends on: Char, Filename, Format, List, Result, String, Sys
+
+Module Registry (53 entries):
+  ref.ml -> Std__Ref [.ml]
+  buffer.ml -> Std__Buffer [.ml]
+  global.mli -> Std__Global [.mli]
+  fs.ml -> Std__Fs [.ml]
+  datetime.mli -> Std__Datetime [.mli]
+  Iterator.ml -> Std__Iterator [.ml]
+  std.mli -> Std__Std [.mli]
+  file.ml -> Std__File [.ml]
+  dot.mli -> Std__Dot [.mli]
+  result.ml -> Std__Result [.ml]
+  time.mli -> Std__Time [.mli]
+  option.mli -> Std__Option [.mli]
+  mermaid.mli -> Std__Mermaid [.mli]
+  Char_Cursor.ml -> Std__Char_Cursor [.ml]
+  env.mli -> Std__Env [.mli]
+  file.mli -> Std__File [.mli]
+  path.ml -> Std__Path [.ml]
+  fs.mli -> Std__Fs [.mli]
+  datetime.ml -> Std__Datetime [.ml]
+  list.mli -> Std__List [.mli]
+  workerpool.mli -> Std__Workerpool [.mli]
+  result.mli -> Std__Result [.mli]
+  string.ml -> Std__String [.ml]
+  dot.ml -> Std__Dot [.ml]
+  path.mli -> Std__Path [.mli]
+  log.ml -> Std__Log [.ml]
+  global.ml -> Std__Global [.ml]
+  option.ml -> Std__Option [.ml]
+  list.ml -> Std__List [.ml]
+  env.ml -> Std__Env [.ml]
+  command.ml -> Std__Command [.ml]
+  command.mli -> Std__Command [.mli]
+  time.ml -> Std__Time [.ml]
+  net.mli -> Std__Net [.mli]
+  buffer.mli -> Std__Buffer [.mli]
+  MutIterator.ml -> Std__MutIterator [.ml]
+  workerpool.ml -> Std__Workerpool [.ml]
+  char.mli -> Std__Char [.mli]
+  log.mli -> Std__Log [.mli]
+  std.ml -> Std__Std [.ml]
+  data/sexp.mli -> Std__Data__Sexp [.mli]
+  data/json.mli -> Std__Data__Json [.mli]
+  data/toml.ml -> Std__Data__Toml [.ml]
+  data/data.ml -> Std__Data__Data [.ml]
+  data/json.ml -> Std__Data__Json [.ml]
+  data/sexp.ml -> Std__Data__Sexp [.ml]
+  data/data.mli -> Std__Data__Data [.mli]
+  data/toml.mli -> Std__Data__Toml [.mli]
+  net.ml -> Std__Net [.ml]
+  Iterator.mli -> Std__Iterator [.mli]
+  graph.ml -> Std__Graph [.ml]
+  char.ml -> Std__Char [.ml]
+  mermaid.ml -> Std__Mermaid [.ml]
+
+Wrote DOT graph to: Std.dot
+Wrote Mermaid diagram to: Std.mermaid
+
+=== Topological Sort ===
+ 1. Std__Data__aliases.ml.gen (Std__Data__aliases)
+ 2. Std__aliases.ml.gen (Std__aliases)
+ 3. list.ml (List)
+ 4. list.mli (List)
+ 5. Iterator.mli (Iterator)
+ 6. Iterator.ml (Iterator)
+ 7. MutIterator.ml (MutIterator)
+ 8. global.ml (Global)
+ 9. global.mli (Global)
+10. buffer.mli (Buffer)
+11. buffer.ml (Buffer)
+12. string.ml (String)
+13. result.mli (Result)
+14. result.ml (Result)
+15. char.ml (Char)
+16. char.mli (Char)
+17. data/json.ml (Data__Json)
+18. data/json.mli (Data__Json)
+19. data/sexp.ml (Data__Sexp)
+20. data/sexp.mli (Data__Sexp)
+21. data/toml.mli (Data__Toml)
+22. data/toml.ml (Data__Toml)
+23. path.mli (Path)
+24. path.ml (Path)
+25. dot.ml (Dot)
+26. dot.mli (Dot)
+27. mermaid.ml (Mermaid)
+28. mermaid.mli (Mermaid)
+29. command.mli (Command)
+30. command.ml (Command)
+31. data/data.mli (Data__Data)
+32. data/data.ml (Data__Data)
+33. datetime.ml (Datetime)
+34. datetime.mli (Datetime)
+35. env.ml (Env)
+36. env.mli (Env)
+37. file.mli (File)
+38. file.ml (File)
+39. fs.mli (Fs)
+40. fs.ml (Fs)
+41. graph.ml (Graph)
+42. net.ml (Net)
+43. net.mli (Net)
+44. option.ml (Option)
+45. option.mli (Option)
+46. log.mli (Log)
+47. log.ml (Log)
+48. workerpool.ml (Workerpool)
+49. workerpool.mli (Workerpool)
+50. Char_Cursor.ml (Char_Cursor)
+51. time.mli (Time)
+52. time.ml (Time)
+53. std.mli (Std)
+54. std.ml (Std)
+55. ref.ml (Ref)
+;
+; ./src/tusk-depgraph ../tusk
+Building dependency graph for ../tusk
+
+Package: Tusk
+
+Scanning from: ../tusk/src
+Scanning directory tree from: ../tusk/src
+Found 95 files and 10 directories
+Found 94 OCaml source files
+Found directories: cli, core, executor, merlin_bridge, ocaml, server, store, tusk_mcp, utils
+Created 104 nodes
+Analyzing dependencies...
+  core/tusk_protocol.mli depends on: Build_node, Datetime, Message, Miniriot, Path, Pid, Session_id, Std, Toolchains, Workspace
+  Tusk__Core__aliases.ml.gen: (no dependencies detected)
+  merlin_bridge/merlin_bridge.mli depends on: Workspace
+  core/session_id.ml depends on: Command, Printf, Random, Std
+  core/config.mli depends on: Path, Std
+  core/version.mli depends on:
+  workspace_manager.mli depends on: Error, Std, Workspace
+  Tusk__Store__aliases.ml.gen: (no dependencies detected)
+  error.mli depends on:
+  server/tusk_jsonrpc.ml depends on: Build_node, Core, Event, Json, Jsonrpc, List, Log, Miniriot, Node_id, Pid, Printf, Session_id, Std, String, Toolchains, Tusk_protocol, Worker_id, Workspace
+  core/config.ml depends on: Env, Fs, Path, Result, Std
+  core/build_results.ml depends on: Build_node, Event, File_utils, Filename, Fs, Hasher, Hashtbl, List, Path, Printf, Result, Std, String, Utils, Workspace
+  Tusk__aliases.ml.gen: (no dependencies detected)
+  core/module_registry.mli depends on:
+  mod_name.mli depends on: Std
+  executor/sandbox.mli depends on: Build_graph, Build_node, Build_results, Core, Session_id, Std, Store, Workspace
+  executor/worker_pool_types.ml depends on: Artifact, Build_graph, Build_node, Build_results, Core, Message, Miniriot, Pid, Session_id, Store, Workspace
+  core/event.ml depends on: Datetime, Json, List, Option, Printf, Session_id, Std, String, Worker_id
+  executor/worker_pool.ml depends on: Core, Hashtbl, List, Miniriot, Pid, Queue, Worker_pool_types
+  server/server_manager.ml depends on: Command, Env, Error, File_utils, Fs, Hashtbl, Path, Printf, Result, Std, String, Tusk_jsonrpc, Unix, Utils, Workspace
+  core/artifact.ml depends on: Hasher, Utils
+  core/build_queue.ml depends on: Build_node, Build_results, Hashtbl, List, Node_id, Queue
+  toolchains.mli depends on: Hasher, Utils, Workspace
+  utils/hasher.ml depends on: Buffer, Digest, List, Std, String
+  executor/worker_pool_types.mli depends on: Artifact, Build_graph, Build_node, Build_results, Core, Message, Miniriot, Pid, Session_id, Store, Workspace
+  executor/build_server.ml depends on: Build_graph, Build_node, Build_queue, Build_results, Build_worker, Core, Datetime, Fun, List, Log, Miniriot, Printf, Result, Std, Store, String, Tusk_protocol, Utils, Worker_pool, Worker_pool_types, Workspace, Workspace_manager
+  Tusk__Ocaml__aliases.ml.gen: (no dependencies detected)
+  core/mod_tree.ml depends on: Build_node, Format, List, Mod_name, Path, Std
+  utils/utils.mli depends on: File_utils, Hasher
+  core/build_graph.ml depends on: Build_node, File_utils, Filename, Fs, Hashtbl, List, Namespacing, Node_id, Path, Printf, Queue, Result, Std, String, Utils, Workspace
+  server/tusk_server.mli depends on: Build_results, Core, Error, Miniriot, Process, Workspace
+  core/worker_id.mli depends on:
+  core/node_id.ml depends on: Format, String, Workspace
+  core/build_results.mli depends on: Artifact, Build_node, Event, Hasher, Utils
+  utils/utils.ml depends on: File_utils, Hasher
+  core/core.ml depends on: Actions, Artifact, Build_graph, Build_node, Build_planner, Build_queue, Build_results, Dep_graph, Dep_set, Event, Log, Mod_name, Mod_tree, Namespacing, Node_id, Session_id, Tusk_protocol, Worker_id
+  mod_name.ml depends on: Filename, List, Path, Printf, Result, Std, String
+  utils/hasher.mli depends on: Std
+  core/build_planner.mli depends on: Build_graph, Build_node, Build_results, Session_id
+  error.ml depends on:
+  core/core.mli depends on: Actions, Artifact, Build_graph, Build_node, Build_planner, Build_queue, Build_results, Dep_graph, Dep_set, Event, Log, Mod_name, Mod_tree, Namespacing, Node_id, Session_id, Tusk_protocol, Worker_id
+  workspace.mli depends on: Error, Path, Std
+  workspace_manager.ml depends on: Std, String, Workspace
+  core/version.ml depends on:
+  core/tusk_protocol.ml depends on: Build_node, Datetime, Message, Miniriot, Path, Pid, Session_id, Std, Toolchains, Unix, Workspace
+  Tusk__Server__aliases.ml.gen: (no dependencies detected)
+  tusk_mcp/mcp_server.mli depends on:
+  tusk_mcp/mcp_server.ml depends on: Command, Core, Datetime, Env, Event, File, Filename, Json, Jsonrpc, List, Mcp, Miniriot, Option, Path, Printexc, Printf, Result, Server, Server_manager, Session_id, Std, String, Tusk_jsonrpc, Utils, Workspace_manager
+  core/dep_set.ml depends on: Build_node, Command, Filename, Format, Fs, Hashtbl, List, Mod_tree, Ocaml, Ocamldep, Path, Printf, Result, Std, String, Toolchains
+  server/listener.ml depends on: Miniriot
+  core/build_node.mli depends on: Actions, Hasher, Node_id, Path, Std, Toolchains, Utils, Workspace
+  executor/sandbox.ml depends on: Actions, Build_graph, Build_node, Build_results, Core, Event, File_utils, Filename, Fs, Hasher, Hashtbl, List, Log, Ocaml, Ocaml_error_parser, Path, Printexc, Printf, Result, Std, Store, String, Toolchains, Utils, Workspace
+  ocaml/ocaml_error_parser.ml depends on: Array, List, Option, Printf, Scanf, String
+  core/log.ml depends on: Event, Hashtbl, List, Message, Miniriot, Pid, Printf, Session_id, Std
+  core/build_graph.mli depends on: Build_node, Node_id, Toolchains, Workspace
+  core/node_id.mli depends on: Format, Workspace
+  server/tusk_server.ml depends on: Build_graph, Build_node, Build_queue, Build_results, Build_server, Bytes, Command, Core, Datetime, Env, Error, Executor, File, Filename, Jsonrpc, List, Miniriot, Net, Ocaml, Ocamlformat, Path, Pid, Printf, Result, Session_id, Std, String, Toolchains, Tusk_jsonrpc, Tusk_protocol, Workspace, Workspace_manager
+  ocaml/ocamldep.mli depends on: Mod_name, Ocamlc, Toolchains
+  Tusk__Utils__aliases.ml.gen: (no dependencies detected)
+  ocaml/ocamlformat.ml depends on: Command, File, Path, Printf, Std, String, Toolchains, Unix
+  toolchains.ml depends on: Command, Env, File_utils, Filename, Fs, Hasher, List, Path, Printf, Result, Std, String, Toml, Utils, Workspace
+  core/build_node.ml depends on: Actions, Hasher, List, Node_id, Path, Std, String, Toolchains, Utils, Workspace
+  store/store.mli depends on: Artifact, Build_node, Core, Hasher, Manifest, Std, Utils, Workspace
+  merlin_bridge/merlin_bridge.ml depends on: Bytes, Error, List, Printexc, Printf, Result, Std, String, Workspace, Workspace_manager
+  server/server_manager.mli depends on: Error, Tusk_jsonrpc, Workspace
+  core/dep_graph.ml depends on: Actions, Array, Build_node, Command, Filename, Format, Fs, Hashtbl, Int, List, Mod_name, Mod_tree, Module_registry, Ocaml, Ocamlc, Ocamldep, Path, Printf, Queue, Result, Std, String, Sys, Toolchains, Workspace
+  workspace.ml depends on: Error, Filename, List, Path, Printf, Result, Std, String, Toml
+  core/artifact.mli depends on: Hasher, Utils
+  executor/build_worker.mli depends on: Miniriot, Process, Worker_pool_types
+  core/namespacing.ml depends on: Buffer, Filename, List, Printf, String
+  core/actions.mli depends on: Hasher, Ocaml, Ocamlc, Toolchains, Utils
+  ocaml/ocamlformat.mli depends on: Std, Toolchains
+  Tusk__Executor__aliases.ml.gen: (no dependencies detected)
+  utils/file_utils.ml depends on: Array, Filename, Sys, Unix
+  cli/cli.ml depends on: Client, Command, Core, Env, Event, File_utils, Filename, Fs, Hashtbl, Json, List, Log, Mcp_server, Merlin_bridge, Miniriot, Path, Printexc, Printf, Result, Server, Server_manager, Session_id, Std, String, Tusk_jsonrpc, Tusk_mcp, Tusk_protocol, Tusk_server, Utils, Workspace, Workspace_manager
+  core/worker_id.ml depends on: Int
+  cli/build.ml depends on: Printf, String
+  Tusk__Cli__aliases.ml.gen: (no dependencies detected)
+  cli/build.mli depends on:
+  core/namespacing.mli depends on:
+  core/dep_graph.mli depends on: Actions, Hashtbl, Mod_tree, Module_registry, Path, Std, Toolchains, Workspace
+  executor/worker_pool.mli depends on: Build_graph, Build_results, Core, Miniriot, Pid, Process, Store, Worker_pool_types, Workspace
+  Tusk__Tusk_mcp__aliases.ml.gen: (no dependencies detected)
+  server/tusk_jsonrpc.mli depends on: Core, Datetime, Event, Jsonrpc, Miniriot, Session_id, Std
+  store/manifest.mli depends on: Hasher, Std, Utils
+  ocaml/ocamlc.mli depends on: Std, Toolchains
+  core/session_id.mli depends on:
+  cli/rpc.ml depends on: Printf, String
+  core/build_queue.mli depends on: Artifact, Build_node, Build_results
+  executor/build_worker.ml depends on: Build_node, Build_planner, Build_results, Core, Event, Filename, Hasher, Log, Miniriot, Printexc, Printf, Result, Sandbox, Std, Store, String, Utils, Worker_pool_types
+  cli/rpc.mli depends on:
+  ocaml/ocamlc.ml depends on: Command, File_utils, List, Path, Printf, Std, String, Toolchains, Utils
+  ocaml/ocamldep.ml depends on: Command, Format, List, Mod_name, Ocamlc, Printf, Std, String, Toolchains
+  store/manifest.ml depends on: Data, Datetime, File, Filename, Hasher, List, Result, Std, Utils
+  store/store.ml depends on: Artifact, Build_node, Core, File_utils, Filename, Fs, Hasher, List, Manifest, Path, Printf, Result, Std, Utils, Workspace
+  main.ml depends on: Cli, Miniriot, Sys
+  core/mod_tree.mli depends on: Build_node, Mod_name, Path, Std
+  Tusk__Merlin_bridge__aliases.ml.gen: (no dependencies detected)
+  core/build_planner.ml depends on: Actions, Build_graph, Build_node, Build_results, Dep_graph, Dep_set, Filename, Format, Hasher, Hashtbl, List, Mod_name, Mod_tree, Ocaml, Ocamlc, Option, Path, Printf, Result, Std, String, Toolchains, Utils, Workspace
+  core/log.mli depends on: Event, Message, Miniriot, Pid, Session_id, Worker_id
+  core/module_registry.ml depends on: Hashtbl, List
+  cli/cli.mli depends on:
+  core/actions.ml depends on: Buffer, File_utils, Filename, Hasher, List, Ocaml, Ocamlc, Printexc, Printf, Result, Std, String, Utils
+  core/event.mli depends on: Json, Session_id, Std, Worker_id
+
+Module Registry (94 entries):
+  mod_name.mli -> Tusk__Mod_name [.mli]
+  ocaml/ocamlformat.ml -> Tusk__Ocaml__Ocamlformat [.ml]
+  ocaml/ocamlc.mli -> Tusk__Ocaml__Ocamlc [.mli]
+  ocaml/ocamldep.mli -> Tusk__Ocaml__Ocamldep [.mli]
+  ocaml/ocamldep.ml -> Tusk__Ocaml__Ocamldep [.ml]
+  ocaml/ocamlc.ml -> Tusk__Ocaml__Ocamlc [.ml]
+  ocaml/ocamlformat.mli -> Tusk__Ocaml__Ocamlformat [.mli]
+  ocaml/ocaml_error_parser.ml -> Tusk__Ocaml__Ocaml_error_parser [.ml]
+  core/event.mli -> Tusk__Core__Event [.mli]
+  core/build_graph.mli -> Tusk__Core__Build_graph [.mli]
+  core/tusk_protocol.mli -> Tusk__Core__Tusk_protocol [.mli]
+  core/namespacing.ml -> Tusk__Core__Namespacing [.ml]
+  core/build_results.mli -> Tusk__Core__Build_results [.mli]
+  core/worker_id.ml -> Tusk__Core__Worker_id [.ml]
+  core/actions.mli -> Tusk__Core__Actions [.mli]
+  core/module_registry.ml -> Tusk__Core__Module_registry [.ml]
+  core/build_node.ml -> Tusk__Core__Build_node [.ml]
+  core/tusk_protocol.ml -> Tusk__Core__Tusk_protocol [.ml]
+  core/node_id.ml -> Tusk__Core__Node_id [.ml]
+  core/config.mli -> Tusk__Core__Config [.mli]
+  core/mod_tree.mli -> Tusk__Core__Mod_tree [.mli]
+  core/session_id.mli -> Tusk__Core__Session_id [.mli]
+  core/log.ml -> Tusk__Core__Log [.ml]
+  core/build_queue.ml -> Tusk__Core__Build_queue [.ml]
+  core/build_planner.mli -> Tusk__Core__Build_planner [.mli]
+  core/version.mli -> Tusk__Core__Version [.mli]
+  core/artifact.mli -> Tusk__Core__Artifact [.mli]
+  core/artifact.ml -> Tusk__Core__Artifact [.ml]
+  core/version.ml -> Tusk__Core__Version [.ml]
+  core/config.ml -> Tusk__Core__Config [.ml]
+  core/build_node.mli -> Tusk__Core__Build_node [.mli]
+  core/event.ml -> Tusk__Core__Event [.ml]
+  core/module_registry.mli -> Tusk__Core__Module_registry [.mli]
+  core/session_id.ml -> Tusk__Core__Session_id [.ml]
+  core/mod_tree.ml -> Tusk__Core__Mod_tree [.ml]
+  core/dep_graph.mli -> Tusk__Core__Dep_graph [.mli]
+  core/build_results.ml -> Tusk__Core__Build_results [.ml]
+  core/build_graph.ml -> Tusk__Core__Build_graph [.ml]
+  core/core.ml -> Tusk__Core__Core [.ml]
+  core/log.mli -> Tusk__Core__Log [.mli]
+  core/actions.ml -> Tusk__Core__Actions [.ml]
+  core/node_id.mli -> Tusk__Core__Node_id [.mli]
+  core/build_planner.ml -> Tusk__Core__Build_planner [.ml]
+  core/worker_id.mli -> Tusk__Core__Worker_id [.mli]
+  core/namespacing.mli -> Tusk__Core__Namespacing [.mli]
+  core/dep_set.ml -> Tusk__Core__Dep_set [.ml]
+  core/build_queue.mli -> Tusk__Core__Build_queue [.mli]
+  core/dep_graph.ml -> Tusk__Core__Dep_graph [.ml]
+  core/core.mli -> Tusk__Core__Core [.mli]
+  tusk_mcp/mcp_server.mli -> Tusk__Tusk_mcp__Mcp_server [.mli]
+  tusk_mcp/mcp_server.ml -> Tusk__Tusk_mcp__Mcp_server [.ml]
+  workspace_manager.ml -> Tusk__Workspace_manager [.ml]
+  main.ml -> Tusk__Main [.ml]
+  server/tusk_server.ml -> Tusk__Server__Tusk_server [.ml]
+  server/server_manager.ml -> Tusk__Server__Server_manager [.ml]
+  server/tusk_server.mli -> Tusk__Server__Tusk_server [.mli]
+  server/tusk_jsonrpc.ml -> Tusk__Server__Tusk_jsonrpc [.ml]
+  server/listener.ml -> Tusk__Server__Listener [.ml]
+  server/server_manager.mli -> Tusk__Server__Server_manager [.mli]
+  server/tusk_jsonrpc.mli -> Tusk__Server__Tusk_jsonrpc [.mli]
+  utils/file_utils.ml -> Tusk__Utils__File_utils [.ml]
+  utils/utils.ml -> Tusk__Utils__Utils [.ml]
+  utils/hasher.ml -> Tusk__Utils__Hasher [.ml]
+  utils/utils.mli -> Tusk__Utils__Utils [.mli]
+  utils/hasher.mli -> Tusk__Utils__Hasher [.mli]
+  mod_name.ml -> Tusk__Mod_name [.ml]
+  workspace.ml -> Tusk__Workspace [.ml]
+  cli/cli.ml -> Tusk__Cli__Cli [.ml]
+  cli/build.mli -> Tusk__Cli__Build [.mli]
+  cli/rpc.ml -> Tusk__Cli__Rpc [.ml]
+  cli/cli.mli -> Tusk__Cli__Cli [.mli]
+  cli/build.ml -> Tusk__Cli__Build [.ml]
+  cli/rpc.mli -> Tusk__Cli__Rpc [.mli]
+  error.mli -> Tusk__Error [.mli]
+  error.ml -> Tusk__Error [.ml]
+  merlin_bridge/merlin_bridge.ml -> Tusk__Merlin_bridge__Merlin_bridge [.ml]
+  merlin_bridge/merlin_bridge.mli -> Tusk__Merlin_bridge__Merlin_bridge [.mli]
+  workspace.mli -> Tusk__Workspace [.mli]
+  workspace_manager.mli -> Tusk__Workspace_manager [.mli]
+  executor/build_worker.ml -> Tusk__Executor__Build_worker [.ml]
+  executor/sandbox.ml -> Tusk__Executor__Sandbox [.ml]
+  executor/build_server.ml -> Tusk__Executor__Build_server [.ml]
+  executor/sandbox.mli -> Tusk__Executor__Sandbox [.mli]
+  executor/worker_pool.ml -> Tusk__Executor__Worker_pool [.ml]
+  executor/build_worker.mli -> Tusk__Executor__Build_worker [.mli]
+  executor/worker_pool_types.ml -> Tusk__Executor__Worker_pool_types [.ml]
+  executor/worker_pool.mli -> Tusk__Executor__Worker_pool [.mli]
+  executor/worker_pool_types.mli -> Tusk__Executor__Worker_pool_types [.mli]
+  toolchains.ml -> Tusk__Toolchains [.ml]
+  toolchains.mli -> Tusk__Toolchains [.mli]
+  store/store.mli -> Tusk__Store__Store [.mli]
+  store/manifest.mli -> Tusk__Store__Manifest [.mli]
+  store/manifest.ml -> Tusk__Store__Manifest [.ml]
+  store/store.ml -> Tusk__Store__Store [.ml]
+
+Wrote DOT graph to: Tusk.dot
+Wrote Mermaid diagram to: Tusk.mermaid
+
+=== Topological Sort ===
+ 1. Tusk__Cli__aliases.ml.gen (Tusk__Cli__aliases)
+ 2. Tusk__Core__aliases.ml.gen (Tusk__Core__aliases)
+ 3. Tusk__Executor__aliases.ml.gen (Tusk__Executor__aliases)
+ 4. Tusk__Merlin_bridge__aliases.ml.gen (Tusk__Merlin_bridge__aliases)
+ 5. Tusk__Ocaml__aliases.ml.gen (Tusk__Ocaml__aliases)
+ 6. Tusk__Server__aliases.ml.gen (Tusk__Server__aliases)
+ 7. Tusk__Store__aliases.ml.gen (Tusk__Store__aliases)
+ 8. Tusk__Tusk_mcp__aliases.ml.gen (Tusk__Tusk_mcp__aliases)
+ 9. Tusk__Utils__aliases.ml.gen (Tusk__Utils__aliases)
+10. Tusk__aliases.ml.gen (Tusk__aliases)
+11. utils/file_utils.ml (Utils__File_utils)
+12. utils/hasher.mli (Utils__Hasher)
+13. utils/hasher.ml (Utils__Hasher)
+14. error.ml (Error)
+15. error.mli (Error)
+16. utils/utils.mli (Utils__Utils)
+17. utils/utils.ml (Utils__Utils)
+18. workspace.mli (Workspace)
+19. workspace.ml (Workspace)
+20. toolchains.mli (Toolchains)
+21. toolchains.ml (Toolchains)
+22. ocaml/ocamlc.ml (Ocaml__Ocamlc)
+23. ocaml/ocamlc.mli (Ocaml__Ocamlc)
+24. core/actions.ml (Core__Actions)
+25. core/actions.mli (Core__Actions)
+26. core/node_id.mli (Core__Node_id)
+27. core/node_id.ml (Core__Node_id)
+28. core/session_id.ml (Core__Session_id)
+29. core/session_id.mli (Core__Session_id)
+30. core/worker_id.mli (Core__Worker_id)
+31. core/worker_id.ml (Core__Worker_id)
+32. core/build_node.mli (Core__Build_node)
+33. core/build_node.ml (Core__Build_node)
+34. mod_name.ml (Mod_name)
+35. mod_name.mli (Mod_name)
+36. core/namespacing.mli (Core__Namespacing)
+37. core/namespacing.ml (Core__Namespacing)
+38. core/event.ml (Core__Event)
+39. core/event.mli (Core__Event)
+40. core/artifact.ml (Core__Artifact)
+41. core/artifact.mli (Core__Artifact)
+42. core/mod_tree.ml (Core__Mod_tree)
+43. core/mod_tree.mli (Core__Mod_tree)
+44. core/module_registry.mli (Core__Module_registry)
+45. core/module_registry.ml (Core__Module_registry)
+46. ocaml/ocamldep.ml (Ocaml__Ocamldep)
+47. ocaml/ocamldep.mli (Ocaml__Ocamldep)
+48. core/build_graph.ml (Core__Build_graph)
+49. core/build_graph.mli (Core__Build_graph)
+50. core/build_results.ml (Core__Build_results)
+51. core/build_results.mli (Core__Build_results)
+52. core/dep_graph.ml (Core__Dep_graph)
+53. core/dep_graph.mli (Core__Dep_graph)
+54. core/dep_set.ml (Core__Dep_set)
+55. core/build_planner.ml (Core__Build_planner)
+56. core/build_planner.mli (Core__Build_planner)
+57. core/build_queue.mli (Core__Build_queue)
+58. core/build_queue.ml (Core__Build_queue)
+59. core/log.mli (Core__Log)
+60. core/log.ml (Core__Log)
+61. core/tusk_protocol.ml (Core__Tusk_protocol)
+62. core/tusk_protocol.mli (Core__Tusk_protocol)
+63. core/core.mli (Core__Core)
+64. core/core.ml (Core__Core)
+65. store/manifest.ml (Store__Manifest)
+66. store/manifest.mli (Store__Manifest)
+67. store/store.ml (Store__Store)
+68. store/store.mli (Store__Store)
+69. ocaml/ocaml_error_parser.ml (Ocaml__Ocaml_error_parser)
+70. executor/worker_pool_types.mli (Executor__Worker_pool_types)
+71. executor/worker_pool_types.ml (Executor__Worker_pool_types)
+72. executor/sandbox.mli (Executor__Sandbox)
+73. executor/sandbox.ml (Executor__Sandbox)
+74. server/tusk_jsonrpc.mli (Server__Tusk_jsonrpc)
+75. server/tusk_jsonrpc.ml (Server__Tusk_jsonrpc)
+76. executor/build_worker.mli (Executor__Build_worker)
+77. executor/build_worker.ml (Executor__Build_worker)
+78. executor/worker_pool.mli (Executor__Worker_pool)
+79. executor/worker_pool.ml (Executor__Worker_pool)
+80. workspace_manager.mli (Workspace_manager)
+81. workspace_manager.ml (Workspace_manager)
+82. server/server_manager.mli (Server__Server_manager)
+83. server/server_manager.ml (Server__Server_manager)
+84. executor/build_server.ml (Executor__Build_server)
+85. ocaml/ocamlformat.mli (Ocaml__Ocamlformat)
+86. ocaml/ocamlformat.ml (Ocaml__Ocamlformat)
+87. tusk_mcp/mcp_server.ml (Tusk_mcp__Mcp_server)
+88. tusk_mcp/mcp_server.mli (Tusk_mcp__Mcp_server)
+89. merlin_bridge/merlin_bridge.mli (Merlin_bridge__Merlin_bridge)
+90. merlin_bridge/merlin_bridge.ml (Merlin_bridge__Merlin_bridge)
+91. server/tusk_server.mli (Server__Tusk_server)
+92. server/tusk_server.ml (Server__Tusk_server)
+93. cli/cli.mli (Cli__Cli)
+94. cli/cli.ml (Cli__Cli)
+95. main.ml (Main)
+96. cli/rpc.mli (Cli__Rpc)
+97. cli/rpc.ml (Cli__Rpc)
+98. cli/build.mli (Cli__Build)
+99. cli/build.ml (Cli__Build)
+100. server/listener.ml (Server__Listener)
+101. core/version.ml (Core__Version)
+102. core/config.ml (Core__Config)
+103. core/version.mli (Core__Version)
+104. core/config.mli (Core__Config)
+;

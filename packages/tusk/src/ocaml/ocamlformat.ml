@@ -35,7 +35,9 @@ let format_file ~toolchain ~file_path ~check_only =
   then Error (Printf.sprintf "Not an OCaml file: %s" file_str)
   else
     let check_flag = if check_only then "--check" else "--inplace" in
-    let ocamlformat_bin = Path.to_string (Toolchains.ocamlformat_path toolchain) in
+    let ocamlformat_bin =
+      Path.to_string (Toolchains.ocamlformat_path toolchain)
+    in
     let cmd = Printf.sprintf "%s %s %s" ocamlformat_bin check_flag file_str in
 
     match Command.run_command cmd with
@@ -92,7 +94,9 @@ let format_code ~toolchain ~code ~file_path =
       Error (Printf.sprintf "Failed to write temp file: %s" err_msg)
   | Ok () ->
       let result =
-        let ocamlformat_bin = Path.to_string (Toolchains.ocamlformat_path toolchain) in
+        let ocamlformat_bin =
+          Path.to_string (Toolchains.ocamlformat_path toolchain)
+        in
         let cmd =
           Printf.sprintf "%s --enable-outside-detected-project %s"
             ocamlformat_bin temp_file

@@ -1,0 +1,56 @@
+open Async
+
+type t = Socket.stream_socket
+
+let pp = Socket.pp
+let close = Socket.close
+
+let connect addr =
+  let sock_domain = Addr.to_domain addr in
+  let sock_type, sock_addr = Addr.to_unix addr in
+  let fd = Socket.make sock_domain sock_type in
+  syscall @@ fun () ->
+  try
+    Unix.connect fd sock_addr;
+    Unix.setsockopt fd Unix.TCP_NODELAY true;
+    Ok (`Connected fd)
+  with Unix.(Unix_error (EINPROGRESS, _, _)) -> Ok (`In_progress fd)
+
+let read fd ?(pos = 0) ?len buf =
+  let len = Option.value len ~default:(Bytes.length buf - 1) in
+  syscall @@ fun () -> Ok (UnixLabels.read fd ~buf ~pos ~len)
+
+let write fd ?(pos = 0) ?len buf =
+  let len = Option.value len ~default:(Bytes.length buf - 1) in
+  syscall @@ fun () -> Ok (UnixLabels.write fd ~buf ~pos ~len)
+
+external std_sys_readv : Unix.file_descr -> Iovec.t -> int
+  = "kernel_unix_readv"
+
+let read_vectored fd iov = syscall @@ fun () -> Ok (std_sys_readv fd iov)
+
+external std_sys_writev : Unix.file_descr -> Iovec.t -> int
+  = "kernel_unix_writev"
+
+let write_vectored fd iov = syscall @@ fun () -> Ok (std_sys_writev fd iov)
+
+external std_sys_sendfile :
+  Unix.file_descr -> Unix.file_descr -> int -> int -> int
+  = "kernel_unix_sendfile"
+
+let sendfile fd ~file ~off ~len =
+  syscall @@ fun () -> Ok (std_sys_sendfile file fd off len)
+
+let to_source t =
+  let module Src = struct
+    type nonrec t = t
+
+    let register t selector token interest =
+      Adapter.Selector.register selector ~fd:t ~token ~interest
+
+    let reregister t selector token interest =
+      Adapter.Selector.reregister selector ~fd:t ~token ~interest
+
+    let deregister t selector = Adapter.Selector.deregister selector ~fd:t
+  end in
+  Source.make (module Src) t

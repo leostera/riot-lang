@@ -2397,7 +2397,8 @@ module Server = struct
                workspace_root = Std.Path.to_string workspace.root;
                target_dir = Std.Path.to_string workspace.target_dir_root;
                toolchain = Toolchains.get_version toolchain;
-               toolchain_path = Std.Path.to_string (Toolchains.get_toolchain_path toolchain);
+               toolchain_path =
+                 Std.Path.to_string (Toolchains.get_toolchain_path toolchain);
                packages;
                total_packages = List.length workspace.packages;
              })

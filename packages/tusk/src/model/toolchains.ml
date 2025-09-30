@@ -13,8 +13,8 @@ let run_command_compat cmd =
 type source =
   | Version of string (* e.g., "5.3.0" *)
   | Path of Path.t (* e.g., "./ocaml/compiler" *)
-  | Url of
-      Net.Uri.t (* e.g., "https://github.com/user/ocaml/archive/branch.tar.gz" *)
+  | Url of Net.Uri.t
+(* e.g., "https://github.com/user/ocaml/archive/branch.tar.gz" *)
 
 type toolchain = {
   version : string; (* version string for directory name *)
@@ -74,7 +74,6 @@ let get_toolchain_path toolchain =
 
 let bin_dir toolchain = Path.(get_toolchain_path toolchain / Path.v "bin")
 let bin_path toolchain bin = Path.(bin_dir toolchain / Path.v bin)
-
 let ocamlc_path toolchain = bin_path toolchain "ocamlc"
 let ocamldep_path toolchain = bin_path toolchain "ocamldep"
 let ocamlformat_path toolchain = bin_path toolchain "ocamlformat"
@@ -170,7 +169,8 @@ let build_from_local_source ~source_path ~toolchain_path =
   (* Verify source directory exists *)
   (match Fs.exists source_path with
   | Ok true -> ()
-  | _ -> failwith (Printf.sprintf "Source directory does not exist: %s" source_str));
+  | _ ->
+      failwith (Printf.sprintf "Source directory does not exist: %s" source_str));
 
   (* Configure *)
   Printf.printf "Configuring OCaml...\n%!";
@@ -227,13 +227,16 @@ let download_source_from_url uri =
 
   (* Extract to temporary directory *)
   let extract_dir =
-    Path.(Path.v "/tmp" / Path.v (Printf.sprintf "ocaml-build-%d" (Command.getpid ())))
+    Path.(
+      Path.v "/tmp"
+      / Path.v (Printf.sprintf "ocaml-build-%d" (Command.getpid ())))
   in
   let _ = Fs.create_dir_all extract_dir in
 
   Printf.printf "Extracting OCaml source...\n%!";
   let extract_cmd =
-    Printf.sprintf "tar -xzf %s -C %s" (Path.to_string cache_path)
+    Printf.sprintf "tar -xzf %s -C %s"
+      (Path.to_string cache_path)
       (Path.to_string extract_dir)
   in
   let success, output = run_command_compat extract_cmd in
@@ -243,15 +246,17 @@ let download_source_from_url uri =
   (* Find the extracted directory (should be the only subdirectory) *)
   let dirs =
     (match Fs.read_dir extract_dir with
-    | Ok iter ->
-        let result = ref [] in
-        let rec read_all () =
-          match MutIterator.next iter with
-          | Some file -> result := Path.basename file :: !result; read_all ()
-          | None -> !result
-        in
-        read_all ()
-    | Error _ -> [])
+      | Ok iter ->
+          let result = ref [] in
+          let rec read_all () =
+            match MutIterator.next iter with
+            | Some file ->
+                result := Path.basename file :: !result;
+                read_all ()
+            | None -> !result
+          in
+          read_all ()
+      | Error _ -> [])
     |> List.filter (fun f -> f <> "." && f <> "..")
   in
   match dirs with
@@ -304,7 +309,8 @@ let download_ocaml_source version =
 
   Printf.printf "Extracting OCaml source...\n%!";
   let extract_cmd =
-    Printf.sprintf "tar -xzf %s -C %s" (Path.to_string cache_path)
+    Printf.sprintf "tar -xzf %s -C %s"
+      (Path.to_string cache_path)
       (Path.to_string extract_dir)
   in
   let success, output = run_command_compat extract_cmd in
@@ -320,7 +326,9 @@ let download_ocaml_source version =
   in
 
   match
-    List.find_opt (fun dir -> Fs.exists dir |> Result.unwrap_or ~default:false) possible_dirs
+    List.find_opt
+      (fun dir -> Fs.exists dir |> Result.unwrap_or ~default:false)
+      possible_dirs
   with
   | Some dir -> dir
   | None -> failwith "Could not find extracted OCaml source directory"
@@ -398,7 +406,8 @@ let install_dev_tools toolchain =
 
     (* Use -S to show errors, -f to fail on HTTP errors *)
     let download_cmd =
-      Printf.sprintf "curl -fSL -o %s %s 2>&1" (Path.to_string tools_archive)
+      Printf.sprintf "curl -fSL -o %s %s 2>&1"
+        (Path.to_string tools_archive)
         tools_url
     in
     let success, output = run_command_compat download_cmd in
@@ -408,15 +417,16 @@ let install_dev_tools toolchain =
       Printf.printf "Extracting development tools...\n%!";
 
       let extract_cmd =
-        Printf.sprintf "cd %s && tar xzf %s" (Path.to_string toolchain_path)
+        Printf.sprintf "cd %s && tar xzf %s"
+          (Path.to_string toolchain_path)
           (Path.to_string tools_archive)
       in
       let success, output = run_command_compat extract_cmd in
 
-      if success then (
+      if success then
         (* Clean up *)
-        let _ = Fs.remove_file tools_archive in
-        Printf.printf "Successfully installed development tools\n%!")
+        let _ = Unix.unlink (Path.to_string tools_archive) in
+        Printf.printf "Successfully installed development tools\n%!"
       else failwith (Printf.sprintf "Failed to extract tools: %s" output))
     else
       failwith
@@ -450,7 +460,9 @@ let install_toolchain toolchain =
         let source_path =
           if Path.is_relative path then
             (* Assume relative paths are relative to current working directory *)
-            let cwd = Fs.getcwd () |> Result.expect ~msg:"Failed to get cwd" in
+            let cwd =
+              Env.current_dir () |> Result.expect ~msg:"Failed to get cwd"
+            in
             Path.join cwd path
           else path
         in
@@ -539,22 +551,25 @@ let list_installed_toolchains () =
             | None -> List.rev !result
             | Some path ->
                 let dir_name = Path.basename path in
-                if dir_name <> "." && dir_name <> ".." then (
-                  let full_path = Path.(toolchain_base_dir / Path.v dir_name) in
-                  let is_valid_dir =
-                    match Fs.is_directory full_path with
-                    | Ok true ->
-                        let ocamlc_exists =
-                          match
-                            Fs.exists Path.(full_path / Path.v "bin" / Path.v "ocamlc")
-                          with
-                          | Ok b -> b
-                          | Error _ -> false
-                        in
-                        ocamlc_exists
-                    | _ -> false
-                  in
-                  if is_valid_dir then result := dir_name :: !result);
+                (if dir_name <> "." && dir_name <> ".." then
+                   let full_path =
+                     Path.(toolchain_base_dir / Path.v dir_name)
+                   in
+                   let is_valid_dir =
+                     match Fs.metadata full_path with
+                     | Ok stat when stat.st_kind = Unix.S_DIR ->
+                         let ocamlc_exists =
+                           match
+                             Fs.exists
+                               Path.(full_path / Path.v "bin" / Path.v "ocamlc")
+                           with
+                           | Ok b -> b
+                           | Error _ -> false
+                         in
+                         ocamlc_exists
+                     | _ -> false
+                   in
+                   if is_valid_dir then result := dir_name :: !result);
                 collect ()
           in
           collect ()

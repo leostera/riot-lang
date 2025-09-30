@@ -1,0 +1,180 @@
+; ./src/tusk-depgraph ../std
+Building dependency graph for ../std
+
+Package: Std
+
+Scanning from: ../std/src
+Scanning directory tree from: ../std/src
+Found 54 files and 2 directories
+Found 53 OCaml source files
+Found directories: data
+Created 55 nodes
+Analyzing dependencies...
+  datetime.ml depends on: Printf, Unix
+  ref.ml depends on: Atomic, Format, Int64, Obj, Type
+  data/json.mli depends on:
+  option.ml depends on: List, Result
+  net.mli depends on: Kernel
+  Iterator.ml depends on: List
+  char.mli depends on: Stdlib
+  data/json.ml depends on: Buffer, List, Printf, String
+  Std__aliases.ml.gen: (no dependencies detected)
+  data/sexp.mli depends on:
+  dot.mli depends on:
+  std.ml depends on: Buffer, Char, Command, Data, Datetime, Env, File, Fs, Global, Graph, Iterator, List, Log, MutIterator, Net, Option, Path, Result, String, Workerpool
+  MutIterator.ml depends on: List
+  command.mli depends on: Unix
+  fs.ml depends on: Bytes, Filename, List, Path, Printexc, Result, Sys, Unix
+  data/toml.ml depends on: List, String
+  data/sexp.ml depends on: Buffer, List, Printf, String
+  char.ml depends on: Stdlib
+  global.ml depends on: Sys, Unix
+  workerpool.mli depends on:
+  data/data.mli depends on: Json, Sexp, Toml
+  time.ml depends on: Unix
+  workerpool.ml depends on:                                                                                                        log.ml depends on:
+  datetime.mli depends on:
+  log.mli depends on:
+  file.mli depends on: Unix
+  command.ml depends on: Array, List, Printexc, Printf, String, Sys, Unix
+  fs.mli depends on: Path, Result, Unix
+  Iterator.mli depends on:
+  option.mli depends on: Result
+  file.ml depends on: Bytes, Kernel, List, Miniriot, Printexc, Printf, Unix
+  result.ml depends on: Global, List, Stdlib
+  path.mli depends on: Format, Result
+  buffer.mli depends on: Stdlib
+  list.mli depends on: Stdlib
+  string.ml depends on: Iterator, MutIterator, Stdlib, Uchar
+  env.mli depends on: Path, Result
+  buffer.ml depends on: Stdlib
+  result.mli depends on: Stdlib
+  Std__Data__aliases.ml.gen: (no dependencies detected)
+  mermaid.ml depends on: Buffer, List, Printf
+  data/data.ml depends on: Json, Sexp, Toml
+  std.mli depends on: Buffer, Command, Data, Datetime, Env, File, Fs, Graph, Iterator, List, MutIterator, Net, Option, Path, Result                                                                                                                                 time.mli depends on:
+  env.ml depends on: Array, List, Path, Result, String, Sys, Unix
+  Char_Cursor.ml depends on:
+  mermaid.mli depends on:
+  list.ml depends on: Stdlib
+  global.mli depends on:
+  graph.ml depends on: Dot, Mermaid
+  data/toml.mli depends on:
+  dot.ml depends on: List, Printf, String
+  net.ml depends on: Bytes, Fun, Kernel, Miniriot, Printf, String
+  path.ml depends on: Char, Filename, Format, List, Result, String, Sys
+
+Module Registry (53 entries):
+  ref.ml -> Std__Ref [.ml]
+  buffer.ml -> Std__Buffer [.ml]
+  global.mli -> Std__Global [.mli]
+  fs.ml -> Std__Fs [.ml]
+  datetime.mli -> Std__Datetime [.mli]
+  Iterator.ml -> Std__Iterator [.ml]
+  std.mli -> Std__Std [.mli]
+  file.ml -> Std__File [.ml]
+  dot.mli -> Std__Dot [.mli]
+  result.ml -> Std__Result [.ml]
+  time.mli -> Std__Time [.mli]
+  option.mli -> Std__Option [.mli]
+  mermaid.mli -> Std__Mermaid [.mli]
+  Char_Cursor.ml -> Std__Char_Cursor [.ml]
+  env.mli -> Std__Env [.mli]
+  file.mli -> Std__File [.mli]
+  path.ml -> Std__Path [.ml]
+  fs.mli -> Std__Fs [.mli]
+  datetime.ml -> Std__Datetime [.ml]
+  list.mli -> Std__List [.mli]
+  workerpool.mli -> Std__Workerpool [.mli]
+  result.mli -> Std__Result [.mli]
+  string.ml -> Std__String [.ml]
+  dot.ml -> Std__Dot [.ml]
+  path.mli -> Std__Path [.mli]
+  log.ml -> Std__Log [.ml]
+  global.ml -> Std__Global [.ml]
+  option.ml -> Std__Option [.ml]
+  list.ml -> Std__List [.ml]
+  env.ml -> Std__Env [.ml]
+  command.ml -> Std__Command [.ml]
+  command.mli -> Std__Command [.mli]
+  time.ml -> Std__Time [.ml]
+  net.mli -> Std__Net [.mli]
+  buffer.mli -> Std__Buffer [.mli]
+  MutIterator.ml -> Std__MutIterator [.ml]
+  workerpool.ml -> Std__Workerpool [.ml]
+  char.mli -> Std__Char [.mli]
+  log.mli -> Std__Log [.mli]
+  std.ml -> Std__Std [.ml]
+  data/sexp.mli -> Std__Data__Sexp [.mli]
+  data/json.mli -> Std__Data__Json [.mli]
+  data/toml.ml -> Std__Data__Toml [.ml]
+  data/data.ml -> Std__Data__Data [.ml]
+  data/json.ml -> Std__Data__Json [.ml]
+  data/sexp.ml -> Std__Data__Sexp [.ml]
+  data/data.mli -> Std__Data__Data [.mli]
+  data/toml.mli -> Std__Data__Toml [.mli]
+  net.ml -> Std__Net [.ml]
+  Iterator.mli -> Std__Iterator [.mli]
+  graph.ml -> Std__Graph [.ml]
+  char.ml -> Std__Char [.ml]
+  mermaid.ml -> Std__Mermaid [.ml]
+
+Wrote DOT graph to: Std.dot
+Wrote Mermaid diagram to: Std.mermaid
+
+=== Topological Sort ===
+ 1. ref.ml (Ref)
+ 2. std.ml (Std)
+ 3. std.mli (Std)
+ 4. time.ml (Time)
+ 5. time.mli (Time)
+ 6. Char_Cursor.ml (Char_Cursor)
+ 7. workerpool.mli (Workerpool)
+ 8. workerpool.ml (Workerpool)
+ 9. log.ml (Log)
+10. log.mli (Log)
+11. option.mli (Option)
+12. option.ml (Option)
+13. net.mli (Net)
+14. net.ml (Net)
+15. graph.ml (Graph)
+16. fs.ml (Fs)
+17. fs.mli (Fs)
+18. file.ml (File)
+19. file.mli (File)
+20. env.mli (Env)
+21. env.ml (Env)
+22. datetime.mli (Datetime)
+23. datetime.ml (Datetime)
+24. data/data.ml (Data__Data)
+25. data/data.mli (Data__Data)
+26. command.ml (Command)
+27. command.mli (Command)
+28. mermaid.mli (Mermaid)
+29. mermaid.ml (Mermaid)
+30. dot.mli (Dot)
+31. dot.ml (Dot)
+32. path.ml (Path)
+33. path.mli (Path)
+34. data/toml.ml (Data__Toml)
+35. data/toml.mli (Data__Toml)
+36. data/sexp.mli (Data__Sexp)
+37. data/sexp.ml (Data__Sexp)
+38. data/json.mli (Data__Json)
+39. data/json.ml (Data__Json)
+40. char.mli (Char)
+41. char.ml (Char)
+42. result.ml (Result)                                                                                                           43. result.mli (Result)
+44. string.ml (String)
+45. buffer.ml (Buffer)
+46. buffer.mli (Buffer)
+47. global.mli (Global)
+48. global.ml (Global)
+49. MutIterator.ml (MutIterator)
+50. Iterator.ml (Iterator)
+51. Iterator.mli (Iterator)
+52. list.mli (List)
+53. list.ml (List)
+54. Std__aliases.ml.gen (Std__aliases)
+55. Std__Data__aliases.ml.gen (Std__Data__aliases)
+;

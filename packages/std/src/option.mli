@@ -33,15 +33,18 @@ val map_or : default:'b -> ('a -> 'b) -> 'a t -> 'b
 (** Returns the result of applying function to Some value, or default if None *)
 
 val map_or_default : default:(unit -> 'b) -> ('a -> 'b) -> 'a t -> 'b
-(** Returns the result of applying function to Some value, or computes default if None *)
+(** Returns the result of applying function to Some value, or computes default
+    if None *)
 
 val map_or_else : default:(unit -> 'b) -> ('a -> 'b) -> 'a t -> 'b
-(** Returns the result of applying function to Some value, or computes default if None *)
+(** Returns the result of applying function to Some value, or computes default
+    if None *)
 
 (** {1 Chaining} *)
 
 val and_ : 'a t -> 'b t -> 'b t
-(** Returns None if the first option is None, otherwise returns the second option *)
+(** Returns None if the first option is None, otherwise returns the second
+    option *)
 
 val and_then : 'a t -> ('a -> 'b t) -> 'b t
 (** Chains another operation if Some, short-circuits on None *)

@@ -116,12 +116,12 @@ let rec normalize path =
   else result
 
 let exists path =
-  match Kernel.IO.File.file_exists path with
+  match Kernel.Fs.File.file_exists path with
   | Ok exists -> exists
   | Error _ -> false
 
 let is_directory path =
-  match Kernel.IO.File.is_directory path with
+  match Kernel.Fs.File.is_directory path with
   | Ok is_dir -> is_dir
   | Error _ -> false
 

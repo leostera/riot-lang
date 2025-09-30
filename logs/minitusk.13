@@ -1,0 +1,694 @@
+; ./minitusk
+=== Minitusk Build System ===
+
+Reading workspace configuration...
+Found 7 packages
+
+Packages in workspace:
+  - packages/std
+  - packages/kernel
+  - packages/jsonrpc
+  - packages/mcp
+  - packages/miniriot
+  - packages/minitusk
+  - packages/tusk
+
+Reading package configurations...
+=== Workspace Dependency Graph ===
+
+Package: unix (at )
+  No dependencies
+
+Package: std (at packages/std)
+  Dependencies:
+    - miniriot
+    - kernel
+
+Package: kernel (at packages/kernel)
+  Dependencies:
+    - unix
+
+Package: jsonrpc (at packages/jsonrpc)
+  Dependencies:
+    - std
+
+Package: mcp (at packages/mcp)
+  Dependencies:
+    - std
+
+Package: miniriot (at packages/miniriot)                                                                                           Dependencies:
+    - kernel
+Package: minitusk (at packages/minitusk)                                                                                           Dependencies:
+    - unix
+Package: tusk (at packages/tusk)                                                                                                   Dependencies:
+    - jsonrpc                                                                                                                        - mcp
+    - miniriot                                                                                                                       - std
+                                                                                                                                 === Build Order ===
+                                                                                                                                 1. unix
+2. minitusk                                                                                                                      3. kernel
+4. miniriot                                                                                                                      5. std
+6. mcp
+7. jsonrpc
+8. tusk
+
+=== Building Packages ===
+Skipping external package: unix
+                                                                                                                                 Building minitusk in ./target/bootstrap/sandbox/cb075b4d3a0ad1bad4b2231b8c7692c1                                                   Sources: 1 ML, 0 C                                                                                                               Expected outputs: minitusk.cmi, minitusk.cma                                                                                   [build_package] Starting DepGraph for minitusk with 1 files                                                                        DepGraph order: main.ml                                                                                                          $ cd ./target/bootstrap/sandbox/cb075b4d3a0ad1bad4b2231b8c7692c1 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -no-alias-deps -w -49 -c -o Minitusk__aliases.cmo Minitusk__aliases.ml                                                         Compilation order: main.ml                                                                                                       $ cd ./target/bootstrap/sandbox/cb075b4d3a0ad1bad4b2231b8c7692c1 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Minitusk__aliases -c -o Minitusk__Main.cmo main.ml                                                                       Linking order: Minitusk__aliases.cmo Minitusk__Main.cmo                                                                          $ cd ./target/bootstrap/sandbox/cb075b4d3a0ad1bad4b2231b8c7692c1 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -a -o minitusk.cma Minitusk__aliases.cmo Minitusk__Main.cmo                                                                                   $ cp ./target/bootstrap/sandbox/cb075b4d3a0ad1bad4b2231b8c7692c1/minitusk.cma ./target/bootstrap/out/minitusk/                   $ cp ./target/bootstrap/sandbox/cb075b4d3a0ad1bad4b2231b8c7692c1/*.cmi ./target/bootstrap/out/minitusk/ 2>/dev/null || true      $ cd ./target/bootstrap/sandbox/cb075b4d3a0ad1bad4b2231b8c7692c1 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc  -I +unix -I .  -o minitusk unix.cma  Minitusk__Main.cmo                                                                                      $ cp ./target/bootstrap/sandbox/cb075b4d3a0ad1bad4b2231b8c7692c1/minitusk ./target/bootstrap/out/minitusk/                       $ cp ./target/bootstrap/sandbox/cb075b4d3a0ad1bad4b2231b8c7692c1/minitusk ./target/bootstrap/minitusk
+
+Building kernel in ./target/bootstrap/sandbox/272b3e7a8feb6fae6c1a95d8d21d1bca
+  Sources: 5 ML, 2 C                                                                                                               Expected outputs: kernel.cmi, kernel.cma                                                                                         $ cd ./target/bootstrap/sandbox/272b3e7a8feb6fae6c1a95d8d21d1bca && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -c std_sys_unix_kqueue.c                                                                                                             $ cd ./target/bootstrap/sandbox/272b3e7a8feb6fae6c1a95d8d21d1bca && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -c std_sys_unix_io.c                                                                                                               [Debug] Files passed to DepGraph for minitusk:                                                                                     main.ml -> Minitusk__Main                                                                                                      [Debug] DepGraph returned order:                                                                                                   main.ml                                                                                                                        [build_package] Starting DepGraph for kernel with 5 files                                                                          DepGraph order: crypto.mli, io.ml, kernel.mli, crypto.ml, kernel.ml
+  $ cd ./target/bootstrap/sandbox/272b3e7a8feb6fae6c1a95d8d21d1bca && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -no-alias-deps -w -49 -c -o Kernel__aliases.cmo Kernel__aliases.ml
+  Compilation order: crypto.mli, kernel.mli, io.ml, crypto.ml, kernel.ml
+  $ cd ./target/bootstrap/sandbox/272b3e7a8feb6fae6c1a95d8d21d1bca && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Kernel__aliases -c -o Kernel__Crypto.cmi crypto.mli
+  $ cd ./target/bootstrap/sandbox/272b3e7a8feb6fae6c1a95d8d21d1bca && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Kernel__aliases -c -o Kernel.cmi kernel.mli
+  $ cd ./target/bootstrap/sandbox/272b3e7a8feb6fae6c1a95d8d21d1bca && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Kernel__aliases -c -o Kernel__Io.cmo io.ml
+  $ cd ./target/bootstrap/sandbox/272b3e7a8feb6fae6c1a95d8d21d1bca && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Kernel__aliases -c -o Kernel__Crypto.cmo crypto.ml
+  $ cd ./target/bootstrap/sandbox/272b3e7a8feb6fae6c1a95d8d21d1bca && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Kernel__aliases -c -o Kernel.cmo kernel.ml std_sys_unix_kqueue.o std_sys_unix_io.o
+  Linking order: Kernel__aliases.cmo Kernel__Io.cmo Kernel__Crypto.cmo Kernel.cmo
+  $ cd ./target/bootstrap/sandbox/272b3e7a8feb6fae6c1a95d8d21d1bca && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -a -o kernel.cma Kernel__aliases.cmo Kernel__Io.cmo Kernel__Crypto.cmo Kernel.cmo std_sys_unix_kqueue.o std_sys_unix_io.o
+  $ cp ./target/bootstrap/sandbox/272b3e7a8feb6fae6c1a95d8d21d1bca/kernel.cmi ./target/bootstrap/out/kernel/
+  $ cp ./target/bootstrap/sandbox/272b3e7a8feb6fae6c1a95d8d21d1bca/kernel.cma ./target/bootstrap/out/kernel/
+  $ cp ./target/bootstrap/sandbox/272b3e7a8feb6fae6c1a95d8d21d1bca/*.cmi ./target/bootstrap/out/kernel/ 2>/dev/null || true
+  $ cp ./target/bootstrap/sandbox/272b3e7a8feb6fae6c1a95d8d21d1bca/std_sys_unix_kqueue.o ./target/bootstrap/out/kernel/
+  $ cp ./target/bootstrap/sandbox/272b3e7a8feb6fae6c1a95d8d21d1bca/std_sys_unix_io.o ./target/bootstrap/out/kernel/
+
+
+Building miniriot in ./target/bootstrap/sandbox/197ebd780ecfbed49506285735c36524
+  Sources: 22 ML, 0 C
+  Expected outputs: miniriot.cmi, miniriot.cma
+[Debug] Files passed to DepGraph for kernel:
+  kernel.mli -> Kernel
+  crypto.mli -> Kernel__Crypto
+  io.ml -> Kernel__Io
+  kernel.ml -> Kernel
+  crypto.ml -> Kernel__Crypto
+[Debug] DepGraph returned order:
+  crypto.mli
+  io.ml
+  kernel.mli
+  crypto.ml
+  kernel.ml
+[build_package] Starting DepGraph for miniriot with 22 files
+  DepGraph order: miniriot.mli, message.mli, pid.mli, proc_state.mli, runtime.mli, trace.mli, mailbox.mli, message.ml, proc_effect.mli, pid.ml, proc_state.ml, process.mli, trace.ml, mailbox.ml, proc_effect.ml, effects.mli, scheduler.mli, process.ml, effects.ml, scheduler.ml, runtime.ml, miniriot.ml
+  $ cd ./target/bootstrap/sandbox/197ebd780ecfbed49506285735c36524 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -no-alias-deps -w -49 -c -o Miniriot__aliases.cmo Miniriot__aliases.ml
+  Compilation order: miniriot.mli, message.mli, pid.mli, proc_state.mli, runtime.mli, trace.mli, mailbox.mli, proc_effect.mli, process.mli, effects.mli, scheduler.mli, message.ml, pid.ml, proc_state.ml, trace.ml, mailbox.ml, proc_effect.ml, process.ml, effects.ml, scheduler.ml, runtime.ml, miniriot.ml
+  $ cd ./target/bootstrap/sandbox/197ebd780ecfbed49506285735c36524 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Miniriot__aliases -c -o Miniriot.cmi miniriot.mli
+  $ cd ./target/bootstrap/sandbox/197ebd780ecfbed49506285735c36524 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Miniriot__aliases -c -o Miniriot__Message.cmi message.mli
+  $ cd ./target/bootstrap/sandbox/197ebd780ecfbed49506285735c36524 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Miniriot__aliases -c -o Miniriot__Pid.cmi pid.mli
+  $ cd ./target/bootstrap/sandbox/197ebd780ecfbed49506285735c36524 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Miniriot__aliases -c -o Miniriot__Proc_state.cmi proc_state.mli
+  $ cd ./target/bootstrap/sandbox/197ebd780ecfbed49506285735c36524 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Miniriot__aliases -c -o Miniriot__Runtime.cmi runtime.mli
+  $ cd ./target/bootstrap/sandbox/197ebd780ecfbed49506285735c36524 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Miniriot__aliases -c -o Miniriot__Trace.cmi trace.mli
+  $ cd ./target/bootstrap/sandbox/197ebd780ecfbed49506285735c36524 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Miniriot__aliases -c -o Miniriot__Mailbox.cmi mailbox.mli
+  $ cd ./target/bootstrap/sandbox/197ebd780ecfbed49506285735c36524 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Miniriot__aliases -c -o Miniriot__Proc_effect.cmi proc_effect.mli
+  $ cd ./target/bootstrap/sandbox/197ebd780ecfbed49506285735c36524 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Miniriot__aliases -c -o Miniriot__Process.cmi process.mli
+  $ cd ./target/bootstrap/sandbox/197ebd780ecfbed49506285735c36524 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Miniriot__aliases -c -o Miniriot__Effects.cmi effects.mli
+  $ cd ./target/bootstrap/sandbox/197ebd780ecfbed49506285735c36524 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Miniriot__aliases -c -o Miniriot__Scheduler.cmi scheduler.mli
+  $ cd ./target/bootstrap/sandbox/197ebd780ecfbed49506285735c36524 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Miniriot__aliases -c -o Miniriot__Message.cmo message.ml
+  $ cd ./target/bootstrap/sandbox/197ebd780ecfbed49506285735c36524 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Miniriot__aliases -c -o Miniriot__Pid.cmo pid.ml
+  $ cd ./target/bootstrap/sandbox/197ebd780ecfbed49506285735c36524 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Miniriot__aliases -c -o Miniriot__Proc_state.cmo proc_state.ml
+  $ cd ./target/bootstrap/sandbox/197ebd780ecfbed49506285735c36524 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Miniriot__aliases -c -o Miniriot__Trace.cmo trace.ml
+  $ cd ./target/bootstrap/sandbox/197ebd780ecfbed49506285735c36524 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Miniriot__aliases -c -o Miniriot__Mailbox.cmo mailbox.ml
+  $ cd ./target/bootstrap/sandbox/197ebd780ecfbed49506285735c36524 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Miniriot__aliases -c -o Miniriot__Proc_effect.cmo proc_effect.ml
+  $ cd ./target/bootstrap/sandbox/197ebd780ecfbed49506285735c36524 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Miniriot__aliases -c -o Miniriot__Process.cmo process.ml
+  $ cd ./target/bootstrap/sandbox/197ebd780ecfbed49506285735c36524 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Miniriot__aliases -c -o Miniriot__Effects.cmo effects.ml
+  $ cd ./target/bootstrap/sandbox/197ebd780ecfbed49506285735c36524 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Miniriot__aliases -c -o Miniriot__Scheduler.cmo scheduler.ml
+  $ cd ./target/bootstrap/sandbox/197ebd780ecfbed49506285735c36524 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Miniriot__aliases -c -o Miniriot__Runtime.cmo runtime.ml
+  $ cd ./target/bootstrap/sandbox/197ebd780ecfbed49506285735c36524 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Miniriot__aliases -c -o Miniriot.cmo miniriot.ml
+  Linking order: Miniriot__aliases.cmo Miniriot__Message.cmo Miniriot__Pid.cmo Miniriot__Proc_state.cmo Miniriot__Trace.cmo Miniriot__Mailbox.cmo Miniriot__Proc_effect.cmo Miniriot__Process.cmo Miniriot__Effects.cmo Miniriot__Scheduler.cmo Miniriot__Runtime.cmo Miniriot.cmo
+  $ cd ./target/bootstrap/sandbox/197ebd780ecfbed49506285735c36524 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -a -o miniriot.cma Miniriot__aliases.cmo Miniriot__Message.cmo Miniriot__Pid.cmo Miniriot__Proc_state.cmo Miniriot__Trace.cmo Miniriot__Mailbox.cmo Miniriot__Proc_effect.cmo Miniriot__Process.cmo Miniriot__Effects.cmo Miniriot__Scheduler.cmo Miniriot__Runtime.cmo Miniriot.cmo
+  $ cp ./target/bootstrap/sandbox/197ebd780ecfbed49506285735c36524/miniriot.cmi ./target/bootstrap/out/miniriot/
+  $ cp ./target/bootstrap/sandbox/197ebd780ecfbed49506285735c36524/miniriot.cma ./target/bootstrap/out/miniriot/
+  $ cp ./target/bootstrap/sandbox/197ebd780ecfbed49506285735c36524/*.cmi ./target/bootstrap/out/miniriot/ 2>/dev/null || true
+
+
+Building std in ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7
+  Sources: 48 ML, 0 C
+  Expected outputs: std.cmi, std.cma
+[Debug] Files passed to DepGraph for miniriot:
+  message.mli -> Miniriot__Message
+  process.mli -> Miniriot__Process
+  pid.mli -> Miniriot__Pid
+  miniriot.mli -> Miniriot
+  effects.mli -> Miniriot__Effects
+  proc_state.mli -> Miniriot__Proc_state
+  scheduler.mli -> Miniriot__Scheduler
+  trace.mli -> Miniriot__Trace
+  mailbox.mli -> Miniriot__Mailbox
+  proc_effect.mli -> Miniriot__Proc_effect
+  runtime.mli -> Miniriot__Runtime
+  pid.ml -> Miniriot__Pid
+  proc_state.ml -> Miniriot__Proc_state
+  message.ml -> Miniriot__Message
+  runtime.ml -> Miniriot__Runtime
+  effects.ml -> Miniriot__Effects
+  trace.ml -> Miniriot__Trace
+  scheduler.ml -> Miniriot__Scheduler
+  proc_effect.ml -> Miniriot__Proc_effect
+  miniriot.ml -> Miniriot
+  mailbox.ml -> Miniriot__Mailbox
+  process.ml -> Miniriot__Process
+[Debug] DepGraph returned order:
+  miniriot.mli
+  message.mli
+  pid.mli
+  proc_state.mli
+  runtime.mli
+  trace.mli
+  mailbox.mli
+  message.ml
+  proc_effect.mli
+  pid.ml
+  proc_state.ml
+  process.mli
+  trace.ml
+  mailbox.ml
+  proc_effect.ml
+  effects.mli
+  scheduler.mli
+  process.ml
+  effects.ml
+  scheduler.ml
+  runtime.ml
+  miniriot.ml
+[build_package] Starting DepGraph for std with 48 files
+  DepGraph order: buffer.mli, char.mli, Char_Cursor.ml, command.mli, json.mli, sexp.mli, toml.mli, datetime.mli, file.mli, global.mli, Iterator.mli, list.mli, log.mli, net.mli, ref.ml, result.mli, time.mli, workerpool.mli, buffer.ml, char.ml, data.mli, datetime.ml, global.ml, list.ml, log.ml, option.mli, path.mli, time.ml, workerpool.ml, file.ml, Iterator.ml, MutIterator.ml, result.ml, env.mli, fs.mli, string.ml, option.ml, std.mli, command.ml, json.ml, sexp.ml, toml.ml, net.ml, path.ml, data.ml, env.ml, fs.ml, std.ml
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -no-alias-deps -w -49 -c -o Std__Data__aliases.cmo Std__Data__aliases.ml
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -no-alias-deps -w -49 -c -o Std__aliases.cmo Std__aliases.ml
+  Compilation order: buffer.mli, char.mli, command.mli, json.mli, sexp.mli, toml.mli, datetime.mli, file.mli, global.mli, Iterator.mli, list.mli, log.mli, net.mli, result.mli, time.mli, workerpool.mli, data.mli, option.mli, path.mli, env.mli, fs.mli, std.mli, Char_Cursor.ml, ref.ml, buffer.ml, char.ml, datetime.ml, global.ml, list.ml, log.ml, time.ml, workerpool.ml, file.ml, Iterator.ml, MutIterator.ml, result.ml, string.ml, option.ml, command.ml, json.ml, sexp.ml, toml.ml, net.ml, path.ml, data.ml, env.ml, fs.ml, std.ml                                                                                                                         $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__Buffer.cmi buffer.mli                                                                            $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__Char.cmi char.mli                                                                                $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__Command.cmi command.mli                                                                          $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -open Std__Data__aliases -c -o Std__Data__Json.cmi data/json.mli                                            $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -open Std__Data__aliases -c -o Std__Data__Sexp.cmi data/sexp.mli                                            $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -open Std__Data__aliases -c -o Std__Data__Toml.cmi data/toml.mli                                            $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__Datetime.cmi datetime.mli                                                                        $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__File.cmi file.mli                                                                                $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__Global.cmi global.mli                                                                            $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__Iterator.cmi Iterator.mli
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__List.cmi list.mli
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__Log.cmi log.mli
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__Net.cmi net.mli
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__Result.cmi result.mli
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__Time.cmi time.mli
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__Workerpool.cmi workerpool.mli
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -open Std__Data__aliases -c -o Std__Data.cmi data/data.mli
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__Option.cmi option.mli
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__Path.cmi path.mli
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__Env.cmi env.mli
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__Fs.cmi fs.mli
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std.cmi std.mli
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__Char_Cursor.cmo Char_Cursor.ml
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__Ref.cmo ref.ml
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__Buffer.cmo buffer.ml
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__Char.cmo char.ml
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__Datetime.cmo datetime.ml
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__Global.cmo global.ml
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__List.cmo list.ml
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__Log.cmo log.ml
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__Time.cmo time.ml
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__Workerpool.cmo workerpool.ml
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__File.cmo file.ml
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__Iterator.cmo Iterator.ml
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__MutIterator.cmo MutIterator.ml
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__Result.cmo result.ml
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__String.cmo string.ml
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__Option.cmo option.ml
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__Command.cmo command.ml
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -open Std__Data__aliases -c -o Std__Data__Json.cmo data/json.ml
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -open Std__Data__aliases -c -o Std__Data__Sexp.cmo data/sexp.ml
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -open Std__Data__aliases -c -o Std__Data__Toml.cmo data/toml.ml
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__Net.cmo net.ml
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__Path.cmo path.ml
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -open Std__Data__aliases -c -o Std__Data.cmo data/data.ml
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__Env.cmo env.ml
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std__Fs.cmo fs.ml
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Std__aliases -c -o Std.cmo std.ml
+  Linking order: Std__aliases.cmo Std__Char_Cursor.cmo Std__Ref.cmo Std__Buffer.cmo Std__Char.cmo Std__Datetime.cmo Std__Global.cmo Std__List.cmo Std__Log.cmo Std__Time.cmo Std__Workerpool.cmo Std__File.cmo Std__Iterator.cmo Std__MutIterator.cmo Std__Result.cmo Std__String.cmo Std__Option.cmo Std__Command.cmo Std__Data__Json.cmo Std__Data__Sexp.cmo Std__Data__Toml.cmo Std__Net.cmo Std__Path.cmo Std__Data.cmo Std__Env.cmo Std__Fs.cmo Std.cmo
+  $ cd ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -a -o std.cma Std__aliases.cmo Std__Char_Cursor.cmo Std__Ref.cmo Std__Buffer.cmo Std__Char.cmo Std__Datetime.cmo Std__Global.cmo Std__List.cmo Std__Log.cmo Std__Time.cmo Std__Workerpool.cmo Std__File.cmo Std__Iterator.cmo Std__MutIterator.cmo Std__Result.cmo Std__String.cmo Std__Option.cmo Std__Command.cmo Std__Data__Json.cmo Std__Data__Sexp.cmo Std__Data__Toml.cmo Std__Net.cmo Std__Path.cmo Std__Data.cmo Std__Env.cmo Std__Fs.cmo Std.cmo
+  $ cp ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7/std.cmi ./target/bootstrap/out/std/
+  $ cp ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7/std.cma ./target/bootstrap/out/std/
+  $ cp ./target/bootstrap/sandbox/f306f67ce120898f19b34c12df14eee7/*.cmi ./target/bootstrap/out/std/ 2>/dev/null || true
+
+
+Building mcp in ./target/bootstrap/sandbox/54c2d7f3d2d3cd34c91eaa9b8ec88525
+  Sources: 2 ML, 0 C
+  Expected outputs: mcp.cmi, mcp.cma
+[Debug] Files passed to DepGraph for std:
+  Iterator.mli -> Std__Iterator
+  data/toml.mli -> Std__Data__Toml
+  data/data.mli -> Std__Data
+  data/json.mli -> Std__Data__Json
+  data/sexp.mli -> Std__Data__Sexp
+  log.mli -> Std__Log
+  char.mli -> Std__Char
+  buffer.mli -> Std__Buffer
+  net.mli -> Std__Net
+  command.mli -> Std__Command
+  path.mli -> Std__Path
+  result.mli -> Std__Result
+  workerpool.mli -> Std__Workerpool
+  list.mli -> Std__List
+  fs.mli -> Std__Fs
+  file.mli -> Std__File
+  env.mli -> Std__Env
+  option.mli -> Std__Option
+  time.mli -> Std__Time
+  std.mli -> Std
+  datetime.mli -> Std__Datetime
+  global.mli -> Std__Global
+  char.ml -> Std__Char
+  net.ml -> Std__Net
+  data/sexp.ml -> Std__Data__Sexp
+  data/json.ml -> Std__Data__Json
+  data/data.ml -> Std__Data
+  data/toml.ml -> Std__Data__Toml
+  std.ml -> Std
+  workerpool.ml -> Std__Workerpool
+  MutIterator.ml -> Std__MutIterator
+  time.ml -> Std__Time
+  command.ml -> Std__Command
+  env.ml -> Std__Env
+  list.ml -> Std__List
+  option.ml -> Std__Option
+  global.ml -> Std__Global
+  log.ml -> Std__Log
+  string.ml -> Std__String
+  datetime.ml -> Std__Datetime
+  path.ml -> Std__Path
+  Char_Cursor.ml -> Std__Char_Cursor
+  result.ml -> Std__Result
+  file.ml -> Std__File
+  Iterator.ml -> Std__Iterator
+  fs.ml -> Std__Fs
+  buffer.ml -> Std__Buffer
+  ref.ml -> Std__Ref
+[Debug] DepGraph returned order:
+  buffer.mli
+  char.mli
+  Char_Cursor.ml
+  command.mli
+  data/json.mli
+  data/sexp.mli
+  data/toml.mli
+  datetime.mli
+  file.mli
+  global.mli
+  Iterator.mli
+  list.mli
+  log.mli
+  net.mli
+  ref.ml
+  result.mli
+  time.mli
+  workerpool.mli
+  buffer.ml
+  char.ml
+  data/data.mli
+  datetime.ml
+  global.ml
+  list.ml
+  log.ml
+  option.mli
+  path.mli
+  time.ml
+  workerpool.ml
+  file.ml
+  Iterator.ml
+  MutIterator.ml
+  result.ml
+  env.mli
+  fs.mli
+  string.ml
+  option.ml
+  std.mli
+  command.ml
+  data/json.ml
+  data/sexp.ml
+  data/toml.ml
+  net.ml
+  path.ml
+  data/data.ml
+  env.ml
+  fs.ml
+  std.ml
+[build_package] Starting DepGraph for mcp with 2 files
+  DepGraph order: mcp.mli, mcp.ml
+  Compilation order: mcp.mli, mcp.ml
+  $ cd ./target/bootstrap/sandbox/54c2d7f3d2d3cd34c91eaa9b8ec88525 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -c -o Mcp.cmi mcp.mli
+  $ cd ./target/bootstrap/sandbox/54c2d7f3d2d3cd34c91eaa9b8ec88525 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -c -o Mcp.cmo mcp.ml
+  Linking order: Mcp.cmo
+  $ cd ./target/bootstrap/sandbox/54c2d7f3d2d3cd34c91eaa9b8ec88525 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -a -o mcp.cma Mcp.cmo
+  $ cp ./target/bootstrap/sandbox/54c2d7f3d2d3cd34c91eaa9b8ec88525/mcp.cmi ./target/bootstrap/out/mcp/
+  $ cp ./target/bootstrap/sandbox/54c2d7f3d2d3cd34c91eaa9b8ec88525/mcp.cma ./target/bootstrap/out/mcp/
+  $ cp ./target/bootstrap/sandbox/54c2d7f3d2d3cd34c91eaa9b8ec88525/*.cmi ./target/bootstrap/out/mcp/ 2>/dev/null || true
+
+
+Building jsonrpc in ./target/bootstrap/sandbox/6dc76b330092df81788544c2a9300270
+  Sources: 5 ML, 0 C
+  Expected outputs: jsonrpc.cmi, jsonrpc.cma
+[Debug] Files passed to DepGraph for mcp:
+  mcp.mli -> Mcp
+  mcp.ml -> Mcp
+[Debug] DepGraph returned order:
+  mcp.mli
+  mcp.ml
+[build_package] Starting DepGraph for jsonrpc with 5 files
+  DepGraph order: jsonrpc.mli, common.ml, client.ml, server.ml, jsonrpc.ml
+  $ cd ./target/bootstrap/sandbox/6dc76b330092df81788544c2a9300270 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -no-alias-deps -w -49 -c -o Jsonrpc__aliases.cmo Jsonrpc__aliases.ml
+  Compilation order: jsonrpc.mli, common.ml, client.ml, server.ml, jsonrpc.ml
+  $ cd ./target/bootstrap/sandbox/6dc76b330092df81788544c2a9300270 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Jsonrpc__aliases -c -o Jsonrpc.cmi jsonrpc.mli
+  $ cd ./target/bootstrap/sandbox/6dc76b330092df81788544c2a9300270 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Jsonrpc__aliases -c -o Jsonrpc__Common.cmo common.ml
+  $ cd ./target/bootstrap/sandbox/6dc76b330092df81788544c2a9300270 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Jsonrpc__aliases -c -o Jsonrpc__Client.cmo client.ml
+  $ cd ./target/bootstrap/sandbox/6dc76b330092df81788544c2a9300270 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Jsonrpc__aliases -c -o Jsonrpc__Server.cmo server.ml
+  $ cd ./target/bootstrap/sandbox/6dc76b330092df81788544c2a9300270 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Jsonrpc__aliases -c -o Jsonrpc.cmo jsonrpc.ml
+  Linking order: Jsonrpc__aliases.cmo Jsonrpc__Common.cmo Jsonrpc__Client.cmo Jsonrpc__Server.cmo Jsonrpc.cmo
+  $ cd ./target/bootstrap/sandbox/6dc76b330092df81788544c2a9300270 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -a -o jsonrpc.cma Jsonrpc__aliases.cmo Jsonrpc__Common.cmo Jsonrpc__Client.cmo Jsonrpc__Server.cmo Jsonrpc.cmo
+  $ cp ./target/bootstrap/sandbox/6dc76b330092df81788544c2a9300270/jsonrpc.cmi ./target/bootstrap/out/jsonrpc/
+  $ cp ./target/bootstrap/sandbox/6dc76b330092df81788544c2a9300270/jsonrpc.cma ./target/bootstrap/out/jsonrpc/
+  $ cp ./target/bootstrap/sandbox/6dc76b330092df81788544c2a9300270/*.cmi ./target/bootstrap/out/jsonrpc/ 2>/dev/null || true
+
+
+Building tusk in ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39
+  Sources: 90 ML, 0 C
+  Expected outputs: tusk.cmi, tusk.cma
+[Debug] Files passed to DepGraph for jsonrpc:
+  jsonrpc.mli -> Jsonrpc
+  client.ml -> Jsonrpc__Client
+  server.ml -> Jsonrpc__Server
+  jsonrpc.ml -> Jsonrpc
+  common.ml -> Jsonrpc__Common
+[Debug] DepGraph returned order:
+  jsonrpc.mli
+  common.ml
+  client.ml
+  server.ml
+  jsonrpc.ml
+[build_package] Starting DepGraph for tusk with 90 files
+  DepGraph order: cli.mli, build.mli, rpc.mli, config.mli, namespacing.mli, session_id.mli, version.mli, worker_id.mli, error.mli, mod_name.mli, ocaml_error_parser.ml, listener.ml, mcp_server.mli, file_utils.ml, hasher.mli, build.ml, rpc.ml, config.ml, namespacing.ml, session_id.ml, version.ml, event.mli, worker_id.ml, error.ml, workspace.mli, mod_name.ml, artifact.mli, manifest.mli, hasher.ml, log.mli, event.ml, node_id.mli, merlin_bridge.mli, toolchains.mli, workspace.ml, workspace_manager.mli, artifact.ml, manifest.ml, log.ml, ocamlc.mli, ocamldep.mli, ocamlformat.mli, node_id.ml, toolchains.ml, workspace_manager.ml, actions.mli, ocamlc.ml, ocamldep.ml, ocamlformat.ml, merlin_bridge.ml, build_node.mli, actions.ml, build_graph.mli, build_results.mli, mod_tree.mli, tusk_protocol.mli, build_node.ml, build_planner.mli, build_queue.mli, dep_graph.mli, build_graph.ml, build_results.ml, mod_tree.ml, tusk_protocol.ml, build_queue.ml, dep_graph.ml, dep_set.ml, core.mli, build_planner.ml, tusk_jsonrpc.mli, tusk_server.mli, store.mli, core.ml, server_manager.mli, sandbox.mli, worker_pool_types.mli, tusk_jsonrpc.ml, store.ml, build_worker.mli, worker_pool.mli, server_manager.ml, sandbox.ml, worker_pool_types.ml, mcp_server.ml, build_worker.ml, worker_pool.ml, build_server.ml, tusk_server.ml, cli.ml, main.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -no-alias-deps -w -49 -c -o Tusk__Tusk_mcp__aliases.cmo Tusk__Tusk_mcp__aliases.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -no-alias-deps -w -49 -c -o Tusk__Server__aliases.cmo Tusk__Server__aliases.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -no-alias-deps -w -49 -c -o Tusk__Ocaml__aliases.cmo Tusk__Ocaml__aliases.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -no-alias-deps -w -49 -c -o Tusk__Utils__aliases.cmo Tusk__Utils__aliases.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -no-alias-deps -w -49 -c -o Tusk__Merlin_bridge__aliases.cmo Tusk__Merlin_bridge__aliases.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -no-alias-deps -w -49 -c -o Tusk__Store__aliases.cmo Tusk__Store__aliases.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -no-alias-deps -w -49 -c -o Tusk__Cli__aliases.cmo Tusk__Cli__aliases.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -no-alias-deps -w -49 -c -o Tusk__Executor__aliases.cmo Tusk__Executor__aliases.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -no-alias-deps -w -49 -c -o Tusk__Core__aliases.cmo Tusk__Core__aliases.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -no-alias-deps -w -49 -c -o Tusk__Tusk_mcp.cmo Tusk__Tusk_mcp.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -no-alias-deps -w -49 -c -o Tusk__Server.cmo Tusk__Server.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -no-alias-deps -w -49 -c -o Tusk__Ocaml.cmo Tusk__Ocaml.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -no-alias-deps -w -49 -c -o Tusk__Utils.cmo Tusk__Utils.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -no-alias-deps -w -49 -c -o Tusk__Executor.cmo Tusk__Executor.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -no-alias-deps -w -49 -c -o Tusk__aliases.cmo Tusk__aliases.ml
+  Compilation order: cli.mli, build.mli, rpc.mli, config.mli, namespacing.mli, session_id.mli, version.mli, worker_id.mli, error.mli, mod_name.mli, mcp_server.mli, hasher.mli, event.mli, workspace.mli, artifact.mli, manifest.mli, log.mli, node_id.mli, merlin_bridge.mli, toolchains.mli, workspace_manager.mli, ocamlc.mli, ocamldep.mli, ocamlformat.mli, actions.mli, build_node.mli, build_graph.mli, build_results.mli, mod_tree.mli, tusk_protocol.mli, build_planner.mli, build_queue.mli, dep_graph.mli, core.mli, tusk_jsonrpc.mli, tusk_server.mli, store.mli, server_manager.mli, sandbox.mli, worker_pool_types.mli, build_worker.mli, worker_pool.mli, ocaml_error_parser.ml, listener.ml, file_utils.ml, build.ml, rpc.ml, config.ml, namespacing.ml, session_id.ml, version.ml, worker_id.ml, error.ml, mod_name.ml, hasher.ml, event.ml, workspace.ml, artifact.ml, manifest.ml, log.ml, node_id.ml, toolchains.ml, workspace_manager.ml, ocamlc.ml, ocamldep.ml, ocamlformat.ml, merlin_bridge.ml, actions.ml, build_node.ml, build_graph.ml, build_results.ml, mod_tree.ml, tusk_protocol.ml, build_queue.ml, dep_graph.ml, dep_set.ml, build_planner.ml, core.ml, tusk_jsonrpc.ml, store.ml, server_manager.ml, sandbox.ml, worker_pool_types.ml, mcp_server.ml, build_worker.ml, worker_pool.ml, build_server.ml, tusk_server.ml, cli.ml, main.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Cli__aliases -c -o Tusk__Cli.cmi cli/cli.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Cli__aliases -c -o Tusk__Cli__Build.cmi cli/build.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Cli__aliases -c -o Tusk__Cli__Rpc.cmi cli/rpc.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Config.cmi core/config.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Namespacing.cmi core/namespacing.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Session_id.cmi core/session_id.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Version.cmi core/version.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Worker_id.cmi core/worker_id.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -c -o Tusk__Error.cmi error.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -c -o Tusk__Mod_name.cmi mod_name.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Tusk_mcp__aliases -c -o Tusk__Tusk_mcp__Mcp_server.cmi tusk_mcp/mcp_server.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Utils__aliases -c -o Tusk__Utils__Hasher.cmi utils/hasher.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Event.cmi core/event.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -c -o Tusk__Workspace.cmi workspace.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Artifact.cmi core/artifact.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Store__aliases -c -o Tusk__Store__Manifest.cmi store/manifest.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Log.cmi core/log.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Node_id.cmi core/node_id.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Merlin_bridge__aliases -c -o Tusk__Merlin_bridge.cmi merlin_bridge/merlin_bridge.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -c -o Tusk__Toolchains.cmi toolchains.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -c -o Tusk__Workspace_manager.cmi workspace_manager.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Ocaml__aliases -c -o Tusk__Ocaml__Ocamlc.cmi ocaml/ocamlc.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Ocaml__aliases -c -o Tusk__Ocaml__Ocamldep.cmi ocaml/ocamldep.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Ocaml__aliases -c -o Tusk__Ocaml__Ocamlformat.cmi ocaml/ocamlformat.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Actions.cmi core/actions.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Build_node.cmi core/build_node.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Build_graph.cmi core/build_graph.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Build_results.cmi core/build_results.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Mod_tree.cmi core/mod_tree.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Tusk_protocol.cmi core/tusk_protocol.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Build_planner.cmi core/build_planner.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Build_queue.cmi core/build_queue.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Dep_graph.cmi core/dep_graph.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core.cmi core/core.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Server__aliases -c -o Tusk__Server__Tusk_jsonrpc.cmi server/tusk_jsonrpc.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Server__aliases -c -o Tusk__Server__Tusk_server.cmi server/tusk_server.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Store__aliases -c -o Tusk__Store.cmi store/store.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Server__aliases -c -o Tusk__Server__Server_manager.cmi server/server_manager.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Executor__aliases -c -o Tusk__Executor__Sandbox.cmi executor/sandbox.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Executor__aliases -c -o Tusk__Executor__Worker_pool_types.cmi executor/worker_pool_types.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Executor__aliases -c -o Tusk__Executor__Build_worker.cmi executor/build_worker.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Executor__aliases -c -o Tusk__Executor__Worker_pool.cmi executor/worker_pool.mli
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Ocaml__aliases -c -o Tusk__Ocaml__Ocaml_error_parser.cmo ocaml/ocaml_error_parser.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Server__aliases -c -o Tusk__Server__Listener.cmo server/listener.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Utils__aliases -c -o Tusk__Utils__File_utils.cmo utils/file_utils.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Cli__aliases -c -o Tusk__Cli__Build.cmo cli/build.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Cli__aliases -c -o Tusk__Cli__Rpc.cmo cli/rpc.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Config.cmo core/config.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Namespacing.cmo core/namespacing.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Session_id.cmo core/session_id.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Version.cmo core/version.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Worker_id.cmo core/worker_id.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -c -o Tusk__Error.cmo error.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -c -o Tusk__Mod_name.cmo mod_name.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Utils__aliases -c -o Tusk__Utils__Hasher.cmo utils/hasher.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Event.cmo core/event.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -c -o Tusk__Workspace.cmo workspace.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Artifact.cmo core/artifact.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Store__aliases -c -o Tusk__Store__Manifest.cmo store/manifest.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Log.cmo core/log.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Node_id.cmo core/node_id.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -c -o Tusk__Toolchains.cmo toolchains.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -c -o Tusk__Workspace_manager.cmo workspace_manager.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Ocaml__aliases -c -o Tusk__Ocaml__Ocamlc.cmo ocaml/ocamlc.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Ocaml__aliases -c -o Tusk__Ocaml__Ocamldep.cmo ocaml/ocamldep.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Ocaml__aliases -c -o Tusk__Ocaml__Ocamlformat.cmo ocaml/ocamlformat.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Merlin_bridge__aliases -c -o Tusk__Merlin_bridge.cmo merlin_bridge/merlin_bridge.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Actions.cmo core/actions.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Build_node.cmo core/build_node.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Build_graph.cmo core/build_graph.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Build_results.cmo core/build_results.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Mod_tree.cmo core/mod_tree.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Tusk_protocol.cmo core/tusk_protocol.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Build_queue.cmo core/build_queue.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Dep_graph.cmo core/dep_graph.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Dep_set.cmo core/dep_set.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core__Build_planner.cmo core/build_planner.ml
+File "core/build_planner.ml", line 163, characters 44-63:
+163 |       |> List.sort (fun (Mod_tree.Module a) (Mod_tree.Module b) ->
+                                                  ^^^^^^^^^^^^^^^^^^^
+Warning 8 [partial-match]: this pattern-matching is not exhaustive.
+Here is an example of a case that is not matched:
+(Package { _ }|Library {name={ _ }; _ })
+
+File "core/build_planner.ml", line 163, characters 24-43:
+163 |       |> List.sort (fun (Mod_tree.Module a) (Mod_tree.Module b) ->
+                              ^^^^^^^^^^^^^^^^^^^
+Warning 8 [partial-match]: this pattern-matching is not exhaustive.
+Here is an example of a case that is not matched:
+(Package { _ }|Library {name={ _ }; _ })
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Core__aliases -c -o Tusk__Core.cmo core/core.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Server__aliases -c -o Tusk__Server__Tusk_jsonrpc.cmo server/tusk_jsonrpc.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Store__aliases -c -o Tusk__Store.cmo store/store.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Server__aliases -c -o Tusk__Server__Server_manager.cmo server/server_manager.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Executor__aliases -c -o Tusk__Executor__Sandbox.cmo executor/sandbox.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Executor__aliases -c -o Tusk__Executor__Worker_pool_types.cmo executor/worker_pool_types.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Tusk_mcp__aliases -c -o Tusk__Tusk_mcp__Mcp_server.cmo tusk_mcp/mcp_server.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Executor__aliases -c -o Tusk__Executor__Build_worker.cmo executor/build_worker.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Executor__aliases -c -o Tusk__Executor__Worker_pool.cmo executor/worker_pool.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Executor__aliases -c -o Tusk__Executor__Build_server.cmo executor/build_server.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Server__aliases -c -o Tusk__Server__Tusk_server.cmo server/tusk_server.ml
+File "server/tusk_server.ml", lines 271-272, characters 2-58:
+271 | ..Build_server.start ~workspace:state.workspace ~toolchain:state.toolchain
+272 |     ~workers:state.workers ~session_id ~client_pid ~target.
+Warning 10 [non-unit-statement]: this expression should have type unit.
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -open Tusk__Cli__aliases -c -o Tusk__Cli.cmo cli/cli.ml
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -I +unix -I .  -open Tusk__aliases -c -o Tusk__Main.cmo main.ml
+  Linking order: Tusk__aliases.cmo Tusk__Ocaml__Ocaml_error_parser.cmo Tusk__Server__Listener.cmo Tusk__Utils__File_utils.cmo Tusk__Cli__Build.cmo Tusk__Cli__Rpc.cmo Tusk__Core__Config.cmo Tusk__Core__Namespacing.cmo Tusk__Core__Session_id.cmo Tusk__Core__Version.cmo Tusk__Core__Worker_id.cmo Tusk__Error.cmo Tusk__Mod_name.cmo Tusk__Utils__Hasher.cmo Tusk__Core__Event.cmo Tusk__Workspace.cmo Tusk__Core__Artifact.cmo Tusk__Store__Manifest.cmo Tusk__Core__Log.cmo Tusk__Core__Node_id.cmo Tusk__Toolchains.cmo Tusk__Workspace_manager.cmo Tusk__Ocaml__Ocamlc.cmo Tusk__Ocaml__Ocamldep.cmo Tusk__Ocaml__Ocamlformat.cmo Tusk__Merlin_bridge.cmo Tusk__Core__Actions.cmo Tusk__Core__Build_node.cmo Tusk__Core__Build_graph.cmo Tusk__Core__Build_results.cmo Tusk__Core__Mod_tree.cmo Tusk__Core__Tusk_protocol.cmo Tusk__Core__Build_queue.cmo Tusk__Core__Dep_graph.cmo Tusk__Core__Dep_set.cmo Tusk__Core__Build_planner.cmo Tusk__Core.cmo Tusk__Server__Tusk_jsonrpc.cmo Tusk__Store.cmo Tusk__Server__Server_manager.cmo Tusk__Executor__Sandbox.cmo Tusk__Executor__Worker_pool_types.cmo Tusk__Tusk_mcp__Mcp_server.cmo Tusk__Executor__Build_worker.cmo Tusk__Executor__Worker_pool.cmo Tusk__Executor__Build_server.cmo Tusk__Server__Tusk_server.cmo Tusk__Cli.cmo Tusk__Main.cmo
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -a -o tusk.cma Tusk__aliases.cmo Tusk__Ocaml__Ocaml_error_parser.cmo Tusk__Server__Listener.cmo Tusk__Utils__File_utils.cmo Tusk__Cli__Build.cmo Tusk__Cli__Rpc.cmo Tusk__Core__Config.cmo Tusk__Core__Namespacing.cmo Tusk__Core__Session_id.cmo Tusk__Core__Version.cmo Tusk__Core__Worker_id.cmo Tusk__Error.cmo Tusk__Mod_name.cmo Tusk__Utils__Hasher.cmo Tusk__Core__Event.cmo Tusk__Workspace.cmo Tusk__Core__Artifact.cmo Tusk__Store__Manifest.cmo Tusk__Core__Log.cmo Tusk__Core__Node_id.cmo Tusk__Toolchains.cmo Tusk__Workspace_manager.cmo Tusk__Ocaml__Ocamlc.cmo Tusk__Ocaml__Ocamldep.cmo Tusk__Ocaml__Ocamlformat.cmo Tusk__Merlin_bridge.cmo Tusk__Core__Actions.cmo Tusk__Core__Build_node.cmo Tusk__Core__Build_graph.cmo Tusk__Core__Build_results.cmo Tusk__Core__Mod_tree.cmo Tusk__Core__Tusk_protocol.cmo Tusk__Core__Build_queue.cmo Tusk__Core__Dep_graph.cmo Tusk__Core__Dep_set.cmo Tusk__Core__Build_planner.cmo Tusk__Core.cmo Tusk__Server__Tusk_jsonrpc.cmo Tusk__Store.cmo Tusk__Server__Server_manager.cmo Tusk__Executor__Sandbox.cmo Tusk__Executor__Worker_pool_types.cmo Tusk__Tusk_mcp__Mcp_server.cmo Tusk__Executor__Build_worker.cmo Tusk__Executor__Worker_pool.cmo Tusk__Executor__Build_server.cmo Tusk__Server__Tusk_server.cmo Tusk__Cli.cmo Tusk__Main.cmo
+  $ cp ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39/tusk.cma ./target/bootstrap/out/tusk/
+  $ cp ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39/*.cmi ./target/bootstrap/out/tusk/ 2>/dev/null || true
+  $ cd ./target/bootstrap/sandbox/e9fcfda8519e219d9179f567dbab8b39 && /Users/ostera/.tusk/toolchains/5.3.0/bin/ocamlc -custom -I +unix -I .  -o tusk unix.cma kernel.cma miniriot.cma std.cma mcp.cma jsonrpc.cma Tusk__Ocaml__Ocaml_error_parser.cmo Tusk__Server__Listener.cmo Tusk__Utils__File_utils.cmo Tusk__Cli__Build.cmo Tusk__Cli__Rpc.cmo Tusk__Core__Config.cmo Tusk__Core__Namespacing.cmo Tusk__Core__Session_id.cmo Tusk__Core__Version.cmo Tusk__Core__Worker_id.cmo Tusk__Error.cmo Tusk__Mod_name.cmo Tusk__Utils__Hasher.cmo Tusk__Core__Event.cmo Tusk__Workspace.cmo Tusk__Core__Artifact.cmo Tusk__Store__Manifest.cmo Tusk__Core__Log.cmo Tusk__Core__Node_id.cmo Tusk__Toolchains.cmo Tusk__Workspace_manager.cmo Tusk__Ocaml__Ocamlc.cmo Tusk__Ocaml__Ocamldep.cmo Tusk__Ocaml__Ocamlformat.cmo Tusk__Merlin_bridge.cmo Tusk__Core__Actions.cmo Tusk__Core__Build_node.cmo Tusk__Core__Build_graph.cmo Tusk__Core__Build_results.cmo Tusk__Core__Mod_tree.cmo Tusk__Core__Tusk_protocol.cmo Tusk__Core__Build_queue.cmo Tusk__Core__Dep_graph.cmo Tusk__Core__Dep_set.cmo Tusk__Core__Build_planner.cmo Tusk__Core.cmo Tusk__Server__Tusk_jsonrpc.cmo Tusk__Store.cmo Tusk__Server__Server_manager.cmo Tusk__Executor__Sandbox.cmo Tusk__Executor__Worker_pool_types.cmo Tusk__Tusk_mcp__Mcp_server.cmo Tusk__Executor__Build_worker.cmo Tusk__Executor__Worker_pool.cmo Tusk__Executor__Build_server.cmo Tusk__Server__Tusk_server.cmo Tusk__Cli.cmo Tusk__Main.cmo
+File "_none_", line 1:
+Error: No implementation provided for the following modules:
+         Tusk__aliases referenced from Tusk__Core (Tusk__Core.cmo)
+         Tusk__Core__aliases referenced from Tusk__Core (Tusk__Core.cmo)
+         Tusk__Store__aliases referenced from Tusk__Store (Tusk__Store.cmo)
+Error: Command failed with exit code 2
+[Debug] Files passed to DepGraph for tusk:
+  store/manifest.mli -> Tusk__Store__Manifest
+  store/store.mli -> Tusk__Store
+  toolchains.mli -> Tusk__Toolchains
+  executor/worker_pool_types.mli -> Tusk__Executor__Worker_pool_types
+  executor/worker_pool.mli -> Tusk__Executor__Worker_pool
+  executor/build_worker.mli -> Tusk__Executor__Build_worker
+  executor/sandbox.mli -> Tusk__Executor__Sandbox
+  workspace_manager.mli -> Tusk__Workspace_manager
+  workspace.mli -> Tusk__Workspace
+  merlin_bridge/merlin_bridge.mli -> Tusk__Merlin_bridge
+  error.mli -> Tusk__Error
+  cli/rpc.mli -> Tusk__Cli__Rpc
+  cli/cli.mli -> Tusk__Cli
+  cli/build.mli -> Tusk__Cli__Build
+  utils/hasher.mli -> Tusk__Utils__Hasher
+  server/tusk_jsonrpc.mli -> Tusk__Server__Tusk_jsonrpc
+  server/server_manager.mli -> Tusk__Server__Server_manager
+  server/tusk_server.mli -> Tusk__Server__Tusk_server
+  tusk_mcp/mcp_server.mli -> Tusk__Tusk_mcp__Mcp_server
+  core/core.mli -> Tusk__Core
+  core/build_queue.mli -> Tusk__Core__Build_queue
+  core/namespacing.mli -> Tusk__Core__Namespacing
+  core/worker_id.mli -> Tusk__Core__Worker_id
+  core/node_id.mli -> Tusk__Core__Node_id
+  core/log.mli -> Tusk__Core__Log
+  core/dep_graph.mli -> Tusk__Core__Dep_graph
+  core/build_node.mli -> Tusk__Core__Build_node
+  core/artifact.mli -> Tusk__Core__Artifact
+  core/version.mli -> Tusk__Core__Version
+  core/build_planner.mli -> Tusk__Core__Build_planner
+  core/session_id.mli -> Tusk__Core__Session_id
+  core/mod_tree.mli -> Tusk__Core__Mod_tree
+  core/config.mli -> Tusk__Core__Config
+  core/actions.mli -> Tusk__Core__Actions
+  core/build_results.mli -> Tusk__Core__Build_results
+  core/tusk_protocol.mli -> Tusk__Core__Tusk_protocol
+  core/build_graph.mli -> Tusk__Core__Build_graph
+  core/event.mli -> Tusk__Core__Event
+  ocaml/ocamlformat.mli -> Tusk__Ocaml__Ocamlformat
+  ocaml/ocamldep.mli -> Tusk__Ocaml__Ocamldep
+  ocaml/ocamlc.mli -> Tusk__Ocaml__Ocamlc
+  mod_name.mli -> Tusk__Mod_name
+  store/store.ml -> Tusk__Store
+  store/manifest.ml -> Tusk__Store__Manifest
+  toolchains.ml -> Tusk__Toolchains
+  executor/worker_pool_types.ml -> Tusk__Executor__Worker_pool_types
+  executor/worker_pool.ml -> Tusk__Executor__Worker_pool
+  executor/build_server.ml -> Tusk__Executor__Build_server
+  executor/sandbox.ml -> Tusk__Executor__Sandbox
+  executor/build_worker.ml -> Tusk__Executor__Build_worker
+  merlin_bridge/merlin_bridge.ml -> Tusk__Merlin_bridge
+  error.ml -> Tusk__Error
+  cli/build.ml -> Tusk__Cli__Build
+  cli/rpc.ml -> Tusk__Cli__Rpc
+  cli/cli.ml -> Tusk__Cli
+  workspace.ml -> Tusk__Workspace
+  mod_name.ml -> Tusk__Mod_name
+  utils/hasher.ml -> Tusk__Utils__Hasher
+  utils/file_utils.ml -> Tusk__Utils__File_utils
+  server/listener.ml -> Tusk__Server__Listener
+  server/tusk_jsonrpc.ml -> Tusk__Server__Tusk_jsonrpc
+  server/server_manager.ml -> Tusk__Server__Server_manager
+  server/tusk_server.ml -> Tusk__Server__Tusk_server
+  main.ml -> Tusk__Main
+  workspace_manager.ml -> Tusk__Workspace_manager
+  tusk_mcp/mcp_server.ml -> Tusk__Tusk_mcp__Mcp_server
+  core/dep_graph.ml -> Tusk__Core__Dep_graph
+  core/dep_set.ml -> Tusk__Core__Dep_set
+  core/build_planner.ml -> Tusk__Core__Build_planner
+  core/actions.ml -> Tusk__Core__Actions
+  core/core.ml -> Tusk__Core
+  core/build_graph.ml -> Tusk__Core__Build_graph
+  core/build_results.ml -> Tusk__Core__Build_results
+  core/mod_tree.ml -> Tusk__Core__Mod_tree
+  core/session_id.ml -> Tusk__Core__Session_id
+  core/event.ml -> Tusk__Core__Event
+  core/config.ml -> Tusk__Core__Config
+  core/version.ml -> Tusk__Core__Version
+  core/artifact.ml -> Tusk__Core__Artifact
+  core/build_queue.ml -> Tusk__Core__Build_queue
+  core/log.ml -> Tusk__Core__Log
+  core/node_id.ml -> Tusk__Core__Node_id
+  core/tusk_protocol.ml -> Tusk__Core__Tusk_protocol
+  core/build_node.ml -> Tusk__Core__Build_node
+  core/worker_id.ml -> Tusk__Core__Worker_id
+  core/namespacing.ml -> Tusk__Core__Namespacing
+  ocaml/ocaml_error_parser.ml -> Tusk__Ocaml__Ocaml_error_parser
+  ocaml/ocamlc.ml -> Tusk__Ocaml__Ocamlc
+  ocaml/ocamldep.ml -> Tusk__Ocaml__Ocamldep
+  ocaml/ocamlformat.ml -> Tusk__Ocaml__Ocamlformat
+[Debug] DepGraph returned order:
+  cli/cli.mli
+  cli/build.mli
+  cli/rpc.mli
+  core/config.mli
+  core/namespacing.mli
+  core/session_id.mli
+  core/version.mli
+  core/worker_id.mli
+  error.mli
+  mod_name.mli
+  ocaml/ocaml_error_parser.ml
+  server/listener.ml
+  tusk_mcp/mcp_server.mli
+  utils/file_utils.ml
+  utils/hasher.mli
+  cli/build.ml
+  cli/rpc.ml
+  core/config.ml
+  core/namespacing.ml
+  core/session_id.ml
+  core/version.ml
+  core/event.mli
+  core/worker_id.ml
+  error.ml
+  workspace.mli
+  mod_name.ml
+  core/artifact.mli
+  store/manifest.mli
+  utils/hasher.ml
+  core/log.mli
+  core/event.ml
+  core/node_id.mli
+  merlin_bridge/merlin_bridge.mli
+  toolchains.mli
+  workspace.ml
+  workspace_manager.mli
+  core/artifact.ml
+  store/manifest.ml
+  core/log.ml
+  ocaml/ocamlc.mli
+  ocaml/ocamldep.mli
+  ocaml/ocamlformat.mli
+  core/node_id.ml
+  toolchains.ml
+  workspace_manager.ml
+  core/actions.mli
+  ocaml/ocamlc.ml
+  ocaml/ocamldep.ml
+  ocaml/ocamlformat.ml
+  merlin_bridge/merlin_bridge.ml
+  core/build_node.mli
+  core/actions.ml
+  core/build_graph.mli
+  core/build_results.mli
+  core/mod_tree.mli
+  core/tusk_protocol.mli
+  core/build_node.ml
+  core/build_planner.mli
+  core/build_queue.mli
+  core/dep_graph.mli
+  core/build_graph.ml
+  core/build_results.ml
+  core/mod_tree.ml
+  core/tusk_protocol.ml
+  core/build_queue.ml
+  core/dep_graph.ml
+  core/dep_set.ml
+  core/core.mli
+  core/build_planner.ml
+  server/tusk_jsonrpc.mli
+  server/tusk_server.mli
+  store/store.mli
+  core/core.ml
+  server/server_manager.mli
+  executor/sandbox.mli
+  executor/worker_pool_types.mli
+  server/tusk_jsonrpc.ml
+  store/store.ml
+  executor/build_worker.mli
+  executor/worker_pool.mli
+  server/server_manager.ml
+  executor/sandbox.ml
+  executor/worker_pool_types.ml
+  tusk_mcp/mcp_server.ml
+  executor/build_worker.ml
+  executor/worker_pool.ml
+  executor/build_server.ml
+  server/tusk_server.ml
+  cli/cli.ml
+  main.ml
+;
