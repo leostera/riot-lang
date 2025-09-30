@@ -21,16 +21,15 @@ let create path =
 
 let create_new path =
   open_with_flags path
-    [ Kernel.Fs.File.WriteOnly; Kernel.Fs.File.Create; Kernel.Fs.File.Exclusive ]
+    [
+      Kernel.Fs.File.WriteOnly; Kernel.Fs.File.Create; Kernel.Fs.File.Exclusive;
+    ]
     0o644
 
-let open_read path =
-  open_with_flags path [ Kernel.Fs.File.ReadOnly ] 0o644
+let open_read path = open_with_flags path [ Kernel.Fs.File.ReadOnly ] 0o644
 
 let open_write path =
-  open_with_flags path
-    [ Kernel.Fs.File.WriteOnly; Kernel.Fs.File.Create ]
-    0o644
+  open_with_flags path [ Kernel.Fs.File.WriteOnly; Kernel.Fs.File.Create ] 0o644
 
 let open_append path =
   open_with_flags path
@@ -66,17 +65,17 @@ let read_to_end t =
       | Ok current_pos -> (
           match Kernel.Fs.File.fstat t.fd with
           | Error e -> Error (SystemError (kernel_error_to_string e))
-          | Ok stats ->
-              let file_size = Int64.of_int (Kernel.Fs.File.Metadata.size stats) in
-              let remaining =
-                Int64.to_int (Int64.sub file_size current_pos)
+          | Ok stats -> (
+              let file_size =
+                Int64.of_int (Kernel.Fs.File.Metadata.size stats)
               in
+              let remaining = Int64.to_int (Int64.sub file_size current_pos) in
               if remaining <= 0 then Ok ""
               else
                 let buffer = Bytes.create remaining in
                 match read t buffer ~offset:0 ~len:remaining with
                 | Ok bytes_read -> Ok (Bytes.sub_string buffer 0 bytes_read)
-                | Error e -> Error e))
+                | Error e -> Error e)))
 
 let read_exact t buffer ~offset ~len =
   let rec read_loop pos remaining =
@@ -194,12 +193,16 @@ let set_permissions t ~permissions =
 let lock_exclusive t =
   match ensure_open t with
   | Error e -> Error e
-  | Ok () -> Kernel.Fs.File.lockf t.fd Kernel.Fs.File.LockExclusive 0 |> convert_kernel_result
+  | Ok () ->
+      Kernel.Fs.File.lockf t.fd Kernel.Fs.File.LockExclusive 0
+      |> convert_kernel_result
 
 let lock_shared t =
   match ensure_open t with
   | Error e -> Error e
-  | Ok () -> Kernel.Fs.File.lockf t.fd Kernel.Fs.File.LockShared 0 |> convert_kernel_result
+  | Ok () ->
+      Kernel.Fs.File.lockf t.fd Kernel.Fs.File.LockShared 0
+      |> convert_kernel_result
 
 let try_lock_exclusive t =
   match ensure_open t with
@@ -224,7 +227,8 @@ let try_lock_shared t =
 let unlock t =
   match ensure_open t with
   | Error e -> Error e
-  | Ok () -> Kernel.Fs.File.lockf t.fd Kernel.Fs.File.Unlock 0 |> convert_kernel_result
+  | Ok () ->
+      Kernel.Fs.File.lockf t.fd Kernel.Fs.File.Unlock 0 |> convert_kernel_result
 
 (* Advanced *)
 
@@ -244,6 +248,7 @@ let close t =
   if t.closed then Ok ()
   else
     try
-      Kernel.Fs.File.close_fd t.fd |> convert_kernel_result
+      Kernel.Fs.File.close_fd t.fd
+      |> convert_kernel_result
       |> Result.map (fun () -> t.closed <- true)
     with e -> Error (SystemError (Printexc.to_string e))

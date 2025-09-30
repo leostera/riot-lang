@@ -3,7 +3,6 @@
 type error = SystemError of string
 
 module Permissions : sig
-
   type t
   (** Unix file permissions *)
 
@@ -60,19 +59,12 @@ module Permissions : sig
 end
 
 module Metadata : sig
-
   type t
   (** File metadata *)
 
   val file_type :
     t ->
-    [ `Regular
-    | `Directory
-    | `Symlink
-    | `Block
-    | `Character
-    | `Fifo
-    | `Socket ]
+    [ `Regular | `Directory | `Symlink | `Block | `Character | `Fifo | `Socket ]
   (** Get the file type *)
 
   val is_file : t -> bool
@@ -312,4 +304,3 @@ val with_tempdir : ?prefix:string -> (Path.t -> 'a) -> ('a, error) Result.t
       Optional prefix for the temporary directory name (default: "tmp")
     @param f Function to run with the temporary directory path
     @return Result of the function or an error if directory creation fails *)
-

@@ -26,11 +26,9 @@ val set_readonly : t -> bool -> t
 val user_read : t -> bool
 val user_write : t -> bool
 val user_execute : t -> bool
-
 val group_read : t -> bool
 val group_write : t -> bool
 val group_execute : t -> bool
-
 val other_read : t -> bool
 val other_write : t -> bool
 val other_execute : t -> bool

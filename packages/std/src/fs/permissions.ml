@@ -5,7 +5,6 @@ let to_mode t = t
 
 (* Check if any write bit is set *)
 let has_write_bit mode = mode land 0o222 <> 0
-
 let readonly t = not (has_write_bit t)
 
 let set_readonly t readonly =

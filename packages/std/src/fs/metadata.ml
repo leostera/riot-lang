@@ -16,17 +16,13 @@ let file_type t =
 let is_file t = t.Unix.st_kind = Unix.S_REG
 let is_dir t = t.Unix.st_kind = Unix.S_DIR
 let is_symlink t = t.Unix.st_kind = Unix.S_LNK
-
 let len t = t.Unix.st_size
-
 let permissions t = Permissions.of_mode t.Unix.st_perm
-
 let accessed t = t.Unix.st_atime
 let modified t = t.Unix.st_mtime
 
 (* Birth time is not in Unix.stats, platform-specific *)
 let created _t = None
-
 let mode t = t.Unix.st_perm
 let uid t = t.Unix.st_uid
 let gid t = t.Unix.st_gid

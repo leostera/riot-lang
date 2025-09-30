@@ -40,8 +40,8 @@ val read_exact : t -> bytes -> offset:int -> len:int -> (unit, error) result
 (** {1 Writing} *)
 
 val write : t -> bytes -> offset:int -> len:int -> (int, error) result
-(** Write bytes from buffer at offset. Returns bytes actually written.
-    Uses async I/O with Miniriot syscalls. *)
+(** Write bytes from buffer at offset. Returns bytes actually written. Uses
+    async I/O with Miniriot syscalls. *)
 
 val write_all : t -> string -> (unit, error) result
 (** Write entire string to file *)

@@ -15,6 +15,7 @@ val next : t -> Path.t option
 val close : t -> (unit, error) Result.t
 (** Close the directory handle *)
 
-(** MutIterator interface *)
 val size : t -> int
+(** MutIterator interface *)
+
 val clone : t -> t

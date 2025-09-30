@@ -66,7 +66,9 @@ let copy ~src ~dst =
       | Ok s -> s
       | Error _ -> raise (Sys_error "Failed to stat source file")
     in
-    (match Kernel.Fs.File.chmod dst_str (Kernel.Fs.File.Metadata.perm stats) with
+    (match
+       Kernel.Fs.File.chmod dst_str (Kernel.Fs.File.Metadata.perm stats)
+     with
     | Ok () -> ()
     | Error _ -> raise (Sys_error "Failed to chmod dest file"));
     Ok ()
@@ -111,12 +113,14 @@ let hard_link ~src ~dst =
 
 let metadata path =
   let path_str = Path.to_string path in
-  Kernel.Fs.File.stat path_str |> convert_kernel_result
+  Kernel.Fs.File.stat path_str
+  |> convert_kernel_result
   |> Result.map Metadata.of_unix
 
 let symlink_metadata path =
   let path_str = Path.to_string path in
-  Kernel.Fs.File.lstat path_str |> convert_kernel_result
+  Kernel.Fs.File.lstat path_str
+  |> convert_kernel_result
   |> Result.map Metadata.of_unix
 
 let read_to_string path =
@@ -153,9 +157,9 @@ let remove_dir_all path =
             let rec remove_entries () =
               match ReadDir.next dir with
               | None -> rmdir path
-              | Some entry_path ->
+              | Some entry_path -> (
                   let full_path = Path.join path entry_path in
-                  (match remove_recursive full_path with
+                  match remove_recursive full_path with
                   | Error e -> Error e
                   | Ok () -> remove_entries ())
             in
@@ -171,7 +175,8 @@ let rename ~src ~dst =
 
 let set_permissions path perm =
   let path_str = Path.to_string path in
-  Kernel.Fs.File.chmod path_str (Permissions.to_mode perm) |> convert_kernel_result
+  Kernel.Fs.File.chmod path_str (Permissions.to_mode perm)
+  |> convert_kernel_result
 
 let write content path =
   let path_str = Path.to_string path in
@@ -215,12 +220,14 @@ let dir_exists path =
 
 let stat path =
   let path_str = Path.to_string path in
-  Kernel.Fs.File.stat path_str |> convert_kernel_result
+  Kernel.Fs.File.stat path_str
+  |> convert_kernel_result
   |> Result.map Metadata.of_unix
 
 let chmod path perm =
   let path_str = Path.to_string path in
-  Kernel.Fs.File.chmod path_str (Permissions.to_mode perm) |> convert_kernel_result
+  Kernel.Fs.File.chmod path_str (Permissions.to_mode perm)
+  |> convert_kernel_result
 
 let symlink ~src ~dst =
   let src_str = Path.to_string src in
@@ -347,9 +354,9 @@ let rec walk path fn =
           let rec walk_entries () =
             match ReadDir.next dir with
             | None -> Ok ()
-            | Some entry_path ->
+            | Some entry_path -> (
                 let full_path = Path.join path entry_path in
-                (match walk full_path fn with
+                match walk full_path fn with
                 | Error e -> Error e
                 | Ok () -> walk_entries ())
           in
@@ -361,9 +368,7 @@ let is_file path =
   | Ok m -> Ok (Metadata.is_file m)
 
 let is_dir path =
-  match metadata path with
-  | Error e -> Error e
-  | Ok m -> Ok (Metadata.is_dir m)
+  match metadata path with Error e -> Error e | Ok m -> Ok (Metadata.is_dir m)
 
 let current_dir () =
   match Env.current_dir () with
