@@ -30,24 +30,18 @@ let create workspace toolchain =
 
   (* First, collect source files for each package *)
   let get_sources package =
-    let pkg_path = Std.Path.to_string package.Workspace.path in
-    let src_dir_candidate = Filename.concat pkg_path "src" in
-    let src_dir_path =
-      Path.of_string src_dir_candidate |> Result.expect ~msg:"Invalid src_dir"
-    in
+    let pkg_path = package.Workspace.path in
+    let src_dir_candidate = Path.(pkg_path / Path.v "src") in
     let src_dir =
-      match Fs.exists src_dir_path with
+      match Fs.exists src_dir_candidate with
       | Ok true -> src_dir_candidate
       | _ -> pkg_path
     in
 
     let rec scan_directory dir relative_path acc =
-      let dir_path =
-        Path.of_string dir |> Result.expect ~msg:"Invalid dir path"
-      in
-      match Fs.exists dir_path with
+      match Fs.exists dir with
       | Ok true -> (
-          match Fs.read_dir dir_path with
+          match Fs.read_dir dir with
           | Ok iter ->
               let result = ref [] in
               let rec collect () =
@@ -60,56 +54,56 @@ let create workspace toolchain =
               let entries = collect () in
               List.fold_left
                 (fun acc entry ->
-                  let full_path = Filename.concat dir entry in
+                  let full_path = Path.(dir / Path.v entry) in
                   let rel_path =
                     if relative_path = "" then entry
-                    else Filename.concat relative_path entry
-                  in
-                  let full_path_obj =
-                    Path.of_string full_path
-                    |> Result.expect ~msg:"Invalid full_path"
+                    else relative_path ^ "/" ^ entry
                   in
                   if
-                    match Fs.is_dir full_path_obj with
+                    match Fs.is_dir full_path with
                     | Ok true -> true
                     | _ -> false
                   then scan_directory full_path rel_path acc
                   else if
-                    Filename.check_suffix entry ".ml"
-                    || Filename.check_suffix entry ".mli"
-                    || Filename.check_suffix entry ".c"
+                    String.ends_with ~suffix:".ml" entry
+                    || String.ends_with ~suffix:".mli" entry
+                    || String.ends_with ~suffix:".c" entry
                   then
                     match
-                      Std.Path.of_string (Filename.concat src_dir rel_path)
+                      Std.Path.of_string
+                        (Path.to_string Path.(src_dir / Path.v rel_path))
                     with
                     | Ok path ->
                         (* Extract namespace from relative path for future use *)
                         let namespace =
                           if relative_path = "" || relative_path = entry then []
                           else
-                            let dir_part = Filename.dirname rel_path in
-                            if dir_part = "." then []
-                            else String.split_on_char '/' dir_part
+                            let dir_part = Path.parent (Path.v rel_path) in
+                            match dir_part with
+                            | None -> []
+                            | Some p ->
+                                let dir_str = Path.to_string p in
+                                if dir_str = "." then []
+                                else String.split_on_char '/' dir_str
                         in
                         (* Determine file kind and create appropriate source *)
                         let kind =
                           if
-                            Filename.check_suffix entry ".ml"
-                            || Filename.check_suffix entry ".mli"
+                            String.ends_with ~suffix:".ml" entry
+                            || String.ends_with ~suffix:".mli" entry
                           then
                             (* Get the simple module name with folder awareness *)
                             let simple_name =
                               let name_without_ext =
-                                if Filename.check_suffix entry ".ml" then
-                                  Filename.chop_suffix entry ".ml"
-                                else Filename.chop_suffix entry ".mli"
+                                if String.ends_with ~suffix:".ml" entry then
+                                  String.sub entry 0 (String.length entry - 3)
+                                else String.sub entry 0 (String.length entry - 4)
                               in
                               (* Compute folder-aware simple name *)
                               let full_path = Std.Path.to_string path in
                               let src_dir =
-                                Filename.concat
-                                  (Std.Path.to_string package.Workspace.path)
-                                  "src"
+                                Path.to_string
+                                  Path.(package.Workspace.path / Path.v "src")
                               in
 
                               if
@@ -122,30 +116,38 @@ let create workspace toolchain =
                                     (String.length full_path
                                    - String.length src_dir - 1)
                                 in
-                                let dir_path = Filename.dirname relative_path in
-                                if dir_path = "." then
-                                  (* Top-level file *)
-                                  String.capitalize_ascii name_without_ext
-                                else
-                                  (* File in subdirectory *)
-                                  let folder_parts =
-                                    String.split_on_char '/' dir_path
-                                  in
-                                  let is_folder_interface =
-                                    match List.rev folder_parts with
-                                    | folder :: _ when folder = name_without_ext
-                                      ->
-                                        true
-                                    | _ -> false
-                                  in
-                                  if is_folder_interface then
-                                    (* Folder interface: cli/cli.ml -> Cli *)
-                                    String.concat "."
-                                      (List.map String.capitalize_ascii
-                                         folder_parts)
-                                  else
-                                    (* Regular file in folder: cli/build.ml -> Build (just the module name) *)
+                                let dir_part =
+                                  Path.parent (Path.v relative_path)
+                                in
+                                match dir_part with
+                                | None ->
+                                    (* Top-level file *)
                                     String.capitalize_ascii name_without_ext
+                                | Some dir_path_obj ->
+                                    let dir_path = Path.to_string dir_path_obj in
+                                    if dir_path = "." then
+                                      (* Top-level file *)
+                                      String.capitalize_ascii name_without_ext
+                                    else
+                                      (* File in subdirectory *)
+                                      let folder_parts =
+                                        String.split_on_char '/' dir_path
+                                      in
+                                      let is_folder_interface =
+                                        match List.rev folder_parts with
+                                        | folder :: _
+                                          when folder = name_without_ext ->
+                                            true
+                                        | _ -> false
+                                      in
+                                      if is_folder_interface then
+                                        (* Folder interface: cli/cli.ml -> Cli *)
+                                        String.concat "."
+                                          (List.map String.capitalize_ascii
+                                             folder_parts)
+                                      else
+                                        (* Regular file in folder: cli/build.ml -> Build (just the module name) *)
+                                        String.capitalize_ascii name_without_ext
                               else String.capitalize_ascii name_without_ext
                             in
                             (* Get the namespaced name - use folder support *)
@@ -167,12 +169,16 @@ let create workspace toolchain =
                                   (String.length full_path
                                  - String.length src_dir - 1)
                               in
-                              let dir_path = Filename.dirname relative_path in
+                              let dir_part = Path.parent (Path.v relative_path) in
                               let folder_parts =
-                                if dir_path = "." then []
-                                else
-                                  String.split_on_char '/' dir_path
-                                  |> List.map String.capitalize_ascii
+                                match dir_part with
+                                | None -> []
+                                | Some dir_path_obj ->
+                                    let dir_path = Path.to_string dir_path_obj in
+                                    if dir_path = "." then []
+                                    else
+                                      String.split_on_char '/' dir_path
+                                      |> List.map String.capitalize_ascii
                               in
                               (* Combine all parts with double underscores *)
                               let all_parts =
@@ -181,15 +187,21 @@ let create workspace toolchain =
                               String.concat "__" all_parts
                             in
                             (* Create the appropriate variant *)
-                            if Filename.check_suffix entry ".ml" then
+                            if String.ends_with ~suffix:".ml" entry then
                               Build_node.ML
                                 { simple_name; namespaced_name; namespace }
                             else
                               Build_node.MLI
                                 { simple_name; namespaced_name; namespace }
-                          else if Filename.check_suffix entry ".c" then
+                          else if String.ends_with ~suffix:".c" entry then
                             Build_node.C_stub
-                          else Build_node.Other (Filename.extension entry)
+                          else
+                            let ext =
+                              match Path.extension (Path.v entry) with
+                              | Some e -> e
+                              | None -> ""
+                            in
+                            Build_node.Other ext
                         in
                         let source = { Build_node.file = path; kind } in
                         source :: acc

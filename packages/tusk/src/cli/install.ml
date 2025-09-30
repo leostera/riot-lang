@@ -74,26 +74,23 @@ let run args =
       Error (Failure (Printf.sprintf "Failed to build %s" package_name)))
     else
       (* Look for the binary in various locations *)
-      let root =
-        Env.current_dir () |> Result.expect ~msg:"Failed to get cwd" |> Path.to_string
-      in
+      let root = Env.current_dir () |> Result.expect ~msg:"Failed to get cwd" in
       let possible_binary_paths =
         [
           (* Bootstrap location *)
-          Filename.concat (Filename.concat root "target/bootstrap") package_name;
-          Filename.concat
-            (Filename.concat root "target/bootstrap/out")
-            (package_name ^ "/" ^ package_name);
+          Path.(root / Path.v "target/bootstrap" / Path.v package_name);
+          Path.(
+            root / Path.v "target/bootstrap/out"
+            / Path.v (package_name ^ "/" ^ package_name));
           (* Debug location *)
-          Filename.concat (Filename.concat root "target/debug") package_name;
-          Filename.concat
-            (Filename.concat root "target/debug/out")
-            (package_name ^ "/" ^ package_name);
-          Filename.concat
-            (Filename.concat root "target/debug/out")
-            ("packages/" ^ package_name ^ "/" ^ package_name);
+          Path.(root / Path.v "target/debug" / Path.v package_name);
+          Path.(
+            root / Path.v "target/debug/out"
+            / Path.v (package_name ^ "/" ^ package_name));
+          Path.(
+            root / Path.v "target/debug/out"
+            / Path.v ("packages/" ^ package_name ^ "/" ^ package_name));
         ]
-        |> List.map Std.Path.v
       in
 
       match
@@ -111,25 +108,31 @@ let run args =
           (* Create ~/.tusk/bin if it doesn't exist *)
           let home =
             match Env.home_dir () with
-            | Some h -> Path.to_string h
+            | Some h -> h
             | None -> failwith "HOME not set"
           in
-          let tusk_bin_dir = Filename.concat home ".tusk/bin" in
-          let mkdir_cmd = Printf.sprintf "mkdir -p %s" tusk_bin_dir in
-          ignore (Command.system mkdir_cmd);
+          let tusk_bin_dir = Path.(home / Path.v ".tusk/bin") in
+          let _ =
+            Fs.create_dir_all tusk_bin_dir
+            |> Result.expect ~msg:"Failed to create ~/.tusk/bin"
+          in
 
           (* Copy the binary to ~/.tusk/bin *)
-          let dest_path = Filename.concat tusk_bin_dir package_name in
+          let dest_path = Path.(tusk_bin_dir / Path.v package_name) in
           let cp_cmd =
-            Printf.sprintf "cp %s %s" (Path.to_string binary_path) dest_path
+            Printf.sprintf "cp %s %s" (Path.to_string binary_path)
+              (Path.to_string dest_path)
           in
           match Command.of_unix_status (Command.system cp_cmd) with
           | Command.Exited 0 ->
               (* Make it executable *)
-              let chmod_cmd = Printf.sprintf "chmod +x %s" dest_path in
+              let chmod_cmd =
+                Printf.sprintf "chmod +x %s" (Path.to_string dest_path)
+              in
               ignore (Command.system chmod_cmd);
 
-              Printf.printf "✅ Installed %s to %s\n%!" package_name dest_path;
+              Printf.printf "✅ Installed %s to %s\n%!" package_name
+                (Path.to_string dest_path);
               Printf.printf "\n%!";
               Printf.printf
                 "To use %s from anywhere, add ~/.tusk/bin to your PATH:\n%!"

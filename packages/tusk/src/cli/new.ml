@@ -19,7 +19,8 @@ let run args =
     in
 
     (* Extract package name from path *)
-    let name = Filename.basename path in
+    let path_obj = Path.of_string path |> Result.unwrap in
+    let name = Path.basename path_obj in
 
     (* Use server to create the package *)
     let cwd =

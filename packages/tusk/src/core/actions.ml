@@ -140,33 +140,38 @@ let action_to_string action =
 let string_of_action = function
   | CompileInterface { source; output; includes } ->
       Printf.sprintf "compile_interface(%s -> %s) [includes: %s]"
-        (Filename.basename source) (Filename.basename output)
+        (Path.basename (Path.v source))
+        (Path.basename (Path.v output))
         (String.concat "; " includes)
   | CompileImplementation { source; output; includes } ->
       Printf.sprintf "compile_impl(%s -> %s) [includes: %s]"
-        (Filename.basename source) (Filename.basename output)
+        (Path.basename (Path.v source))
+        (Path.basename (Path.v output))
         (String.concat "; " includes)
   | GenerateInterface { source; output; includes } ->
       Printf.sprintf "generate_interface(%s -> %s) [includes: %s]"
-        (Filename.basename source) (Filename.basename output)
+        (Path.basename (Path.v source))
+        (Path.basename (Path.v output))
         (String.concat "; " includes)
   | CompileC { source; output } ->
-      Printf.sprintf "compile_c(%s -> %s)" (Filename.basename source)
-        (Filename.basename output)
+      Printf.sprintf "compile_c(%s -> %s)" (Path.basename (Path.v source))
+        (Path.basename (Path.v output))
   | CreateLibrary { output; objects; includes } ->
       Printf.sprintf "create_library(%s from [%s]) [includes: %s]"
-        (Filename.basename output)
-        (String.concat "; " (List.map Filename.basename objects))
+        (Path.basename (Path.v output))
+        (String.concat "; "
+           (List.map (fun o -> Path.basename (Path.v o)) objects))
         (String.concat "; " includes)
   | CreateExecutable { output; objects; libraries; includes } ->
       Printf.sprintf "create_exe(%s from [%s] with [%s]) [includes: %s]"
-        (Filename.basename output)
-        (String.concat "; " (List.map Filename.basename objects))
+        (Path.basename (Path.v output))
+        (String.concat "; "
+           (List.map (fun o -> Path.basename (Path.v o)) objects))
         (String.concat "; " libraries)
         (String.concat "; " includes)
   | CopyFile { source; destination } ->
-      Printf.sprintf "copy(%s -> %s)" (Filename.basename source)
-        (Filename.basename destination)
+      Printf.sprintf "copy(%s -> %s)" (Path.basename (Path.v source))
+        (Path.basename (Path.v destination))
   | WriteFile { destination; content } ->
       Printf.sprintf "write(%s, %d bytes)" destination (String.length content)
   | DeclareOutputs { outputs } ->

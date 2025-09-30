@@ -215,15 +215,16 @@ and handle_new_package state client_pid path name is_library =
   Printf.eprintf "Server: Received NewPackage from %s for %s at %s\n"
     (Pid.to_string client_pid) name (Path.to_string path);
 
-  let path_str = Path.to_string path in
-  let src_dir = Filename.concat path_str "src" in
+  let src_dir = Path.(path / Path.v "src") in
 
   (* Create directories *)
-  let _ = Command.run_command (Printf.sprintf "mkdir -p %s" src_dir) in
+  let _ =
+    Fs.create_dir_all src_dir |> Result.expect ~msg:"Failed to create src dir"
+  in
 
   (* Create main module files *)
-  let main_ml = Filename.concat src_dir (name ^ ".ml") in
-  let main_mli = Filename.concat src_dir (name ^ ".mli") in
+  let main_ml = Path.(src_dir / Path.v (name ^ ".ml")) in
+  let main_mli = Path.(src_dir / Path.v (name ^ ".mli")) in
 
   let ml_content =
     if is_library then "(** Main module for " ^ name ^ " library *)\n"
@@ -239,14 +240,11 @@ and handle_new_package state client_pid path name is_library =
   in
 
   (* Write module files *)
-  let main_ml_path = Path.of_string main_ml |> Result.unwrap in
-  let main_mli_path = Path.of_string main_mli |> Result.unwrap in
-  let _ = Fs.write ml_content main_ml_path in
-  let _ = Fs.write mli_content main_mli_path in
+  let _ = Fs.write ml_content main_ml in
+  let _ = Fs.write mli_content main_mli in
 
   (* Create package tusk.toml *)
-  let package_toml = Filename.concat path_str "tusk.toml" in
-  let package_toml_path = Path.of_string package_toml |> Result.unwrap in
+  let package_toml = Path.(path / Path.v "tusk.toml") in
   let toml_content =
     Printf.sprintf
       "[package]\n\
@@ -259,10 +257,11 @@ and handle_new_package state client_pid path name is_library =
       name
       (if is_library then "" else "[package.bin]\nmain = \"" ^ name ^ "\"")
   in
-  let _ = Fs.write toml_content package_toml_path in
+  let _ = Fs.write toml_content package_toml in
 
   (* Send success response *)
-  send client_pid (ServerResponse (PackageCreated { path = path_str; name }));
+  send client_pid
+    (ServerResponse (PackageCreated { path = Path.to_string path; name }));
   loop state
 
 (** Handler for the build message. *)
