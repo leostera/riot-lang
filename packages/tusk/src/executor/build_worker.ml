@@ -26,7 +26,7 @@ and handle_task ctx task =
   (* Pass build_results so Build_planner knows which deps are already built *)
   match
     Build_planner.plan_node ~graph:ctx.build_graph ~node
-      ~build_results:ctx.build_results ~session_id ()
+      ~build_results:ctx.build_results ~workspace:ctx.workspace ~session_id ()
   with
   | exception exn -> handle_planning_exception ctx task exn
   | Error err -> handle_planning_error ctx task err
