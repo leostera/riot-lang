@@ -14,7 +14,7 @@ type source =
   | Version of string (* e.g., "5.3.0" *)
   | Path of Path.t (* e.g., "./ocaml/compiler" *)
   | Url of
-      string (* e.g., "https://github.com/user/ocaml/archive/branch.tar.gz" *)
+      Net.Uri.t (* e.g., "https://github.com/user/ocaml/archive/branch.tar.gz" *)
 
 type toolchain = {
   version : string; (* version string for directory name *)
@@ -119,7 +119,8 @@ let parse_toolchain_file path =
                         else last
                       else "custom"
                     in
-                    { version = version_name; source = Url url_str }
+                    let uri = Net.Uri.of_string url_str |> Result.unwrap in
+                    { version = version_name; source = Url uri }
                 | _ -> default_toolchain))
         | Toml.String v ->
             (* It's a string version *)
@@ -141,17 +142,8 @@ let is_toolchain_installed toolchain =
 let get_version toolchain = toolchain.version
 
 (** Get cache directory for a URL *)
-let get_cache_path url =
-  (* Remove protocol prefix *)
-  let url_without_protocol =
-    if String.length url > 8 && String.sub url 0 8 = "https://" then
-      String.sub url 8 (String.length url - 8)
-    else if String.length url > 7 && String.sub url 0 7 = "http://" then
-      String.sub url 7 (String.length url - 7)
-    else url
-  in
-
-  (* Create cache path: ~/.tusk/cache/domain/path/file *)
+let get_cache_path uri =
+  (* Build cache path from URI components: ~/.tusk/cache/host/path *)
   let cache_base =
     let home =
       match Env.home_dir () with
@@ -161,7 +153,13 @@ let get_cache_path url =
     in
     Path.(home / Path.v ".tusk" / Path.v "cache")
   in
-  Path.(cache_base / Path.v url_without_protocol)
+
+  (* Construct path from host and path components *)
+  let host = Net.Uri.host uri |> Option.unwrap_or ~default:"unknown" in
+  let path = Net.Uri.path uri in
+  let relative_path = host ^ path in
+
+  Path.(cache_base / Path.v relative_path)
 
 (** Build OCaml from local source directory *)
 let build_from_local_source ~source_path ~toolchain_path =
@@ -204,8 +202,9 @@ let build_from_local_source ~source_path ~toolchain_path =
   Printf.printf "Successfully built and installed OCaml from %s\n%!" source_str
 
 (** Download OCaml source from URL *)
-let download_source_from_url url =
-  let cache_path = get_cache_path url in
+let download_source_from_url uri =
+  let url_str = Net.Uri.to_string uri in
+  let cache_path = get_cache_path uri in
   let cache_dir = Path.parent cache_path |> Option.unwrap in
 
   (* Create cache directory if needed *)
@@ -215,10 +214,10 @@ let download_source_from_url url =
   (match Fs.exists cache_path with
   | Ok false ->
       let cache_str = Path.to_string cache_path in
-      Printf.printf "Downloading OCaml from %s...\n%!" url;
+      Printf.printf "Downloading OCaml from %s...\n%!" url_str;
 
       (* Download to cache *)
-      let download_cmd = Printf.sprintf "curl -L -o %s %s" cache_str url in
+      let download_cmd = Printf.sprintf "curl -L -o %s %s" cache_str url_str in
       let success, output = run_command_compat download_cmd in
       if not success then
         failwith (Printf.sprintf "Failed to download OCaml: %s" output)
@@ -269,10 +268,11 @@ let download_ocaml_source version =
     | _ -> version
   in
 
-  let url =
+  let url_str =
     Printf.sprintf "https://github.com/ocaml/ocaml/archive/%s.tar.gz" version
   in
-  let cache_path = get_cache_path url in
+  let uri = Net.Uri.of_string url_str |> Result.unwrap in
+  let cache_path = get_cache_path uri in
   let cache_dir = Path.parent cache_path |> Option.unwrap in
 
   (* Create cache directory if needed *)
@@ -282,10 +282,10 @@ let download_ocaml_source version =
   (match Fs.exists cache_path with
   | Ok false ->
       let cache_str = Path.to_string cache_path in
-      Printf.printf "Downloading OCaml %s from %s...\n%!" version url;
+      Printf.printf "Downloading OCaml %s from %s...\n%!" version url_str;
 
       (* Download to cache *)
-      let download_cmd = Printf.sprintf "curl -L -o %s %s" cache_str url in
+      let download_cmd = Printf.sprintf "curl -L -o %s %s" cache_str url_str in
       let success, output = run_command_compat download_cmd in
       if not success then
         failwith (Printf.sprintf "Failed to download OCaml: %s" output)
@@ -455,9 +455,9 @@ let install_toolchain toolchain =
           else path
         in
         build_from_local_source ~source_path ~toolchain_path
-    | Url url ->
+    | Url uri ->
         (* Download and build from URL *)
-        let src_dir = download_source_from_url url in
+        let src_dir = download_source_from_url uri in
         build_from_local_source ~source_path:src_dir ~toolchain_path;
         (* Clean up temporary extraction directory *)
         let extract_parent = Path.parent src_dir |> Option.unwrap in
@@ -489,7 +489,7 @@ let ready_toolchains workspace =
     (match toolchain.source with
     | Version v -> v
     | Path p -> Printf.sprintf "path:%s" (Path.to_string p)
-    | Url u -> Printf.sprintf "url:%s" u);
+    | Url u -> Printf.sprintf "url:%s" (Net.Uri.to_string u));
 
   (* Ensure toolchain is installed *)
   (if not (is_toolchain_installed toolchain) then (
@@ -538,9 +538,9 @@ let list_installed_toolchains () =
             match MutIterator.next iter with
             | None -> List.rev !result
             | Some path ->
-                let basename = Path.basename path in
-                if basename <> "." && basename <> ".." then (
-                  let full_path = Path.(toolchain_base_dir / Path.v basename) in
+                let dir_name = Path.basename path in
+                if dir_name <> "." && dir_name <> ".." then (
+                  let full_path = Path.(toolchain_base_dir / Path.v dir_name) in
                   let is_valid_dir =
                     match Fs.is_directory full_path with
                     | Ok true ->
@@ -554,7 +554,7 @@ let list_installed_toolchains () =
                         ocamlc_exists
                     | _ -> false
                   in
-                  if is_valid_dir then result := basename :: !result);
+                  if is_valid_dir then result := dir_name :: !result);
                 collect ()
           in
           collect ()

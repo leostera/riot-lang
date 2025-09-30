@@ -6,6 +6,8 @@
 
 type error = [ `Connection_refused | `Closed | `System_error of string ]
 
+module Uri = Uri
+
 module Addr : sig
   (** Network addresses *)
 

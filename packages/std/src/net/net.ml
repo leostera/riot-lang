@@ -4,6 +4,8 @@ open Kernel.IO
 
 type error = [ `Connection_refused | `Closed | `System_error of string ]
 
+module Uri = Uri
+
 module Addr = struct
   include Kernel.IO.Net.Addr
 
