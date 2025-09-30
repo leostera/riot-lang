@@ -22,8 +22,8 @@ let accept fd =
   Unix.set_nonblock raw_fd;
   Unix.setsockopt raw_fd Unix.TCP_NODELAY true;
   let addr = Addr.of_unix client_addr in
-  let fd = Fd.make raw_fd in
-  Ok (fd, addr)
+  let stream = Tcp_stream.of_fd (Fd.make raw_fd) in
+  Ok (stream, addr)
 
 let to_source t =
   let module Src = struct
