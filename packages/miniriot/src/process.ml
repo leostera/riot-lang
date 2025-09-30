@@ -6,8 +6,8 @@ type state =
   | Waiting_message
   | Waiting_io of {
       name : string;
-      token : Kernel.IO.Token.t;
-      source : Kernel.IO.Source.t;
+      token : Kernel.Async.Token.t;
+      source : Kernel.Async.Source.t;
     }
   | Running
   | Exited of (unit, exit_reason) result
@@ -21,7 +21,7 @@ type t = {
   mailbox : Mailbox.t;
   save_queue : Mailbox.t;
   mutable read_save_queue : bool;
-  mutable ready_tokens : (Kernel.IO.Token.t * Kernel.IO.Source.t) list;
+  mutable ready_tokens : (Kernel.Async.Token.t * Kernel.Async.Source.t) list;
 }
 
 let make fn =

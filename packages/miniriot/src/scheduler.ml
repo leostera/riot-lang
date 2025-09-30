@@ -11,11 +11,11 @@ type t = {
   run_queue : Process.t Queue.t;
   processes : Process.t Pid_table.t;
   mutable current_process : Process.t option;
-  io_poll : Kernel.IO.Poll.t;
+  io_poll : Kernel.Async.Poll.t;
 }
 
 let create () =
-  match Kernel.IO.Poll.make () with
+  match Kernel.Async.Poll.make () with
   | Ok io_poll ->
       {
         stop = false;
@@ -26,7 +26,7 @@ let create () =
         io_poll;
       }
   | Error err ->
-      Printf.printf "[Scheduler] ERROR: Failed to create Kernel.IO.Poll: %s\n%!"
+      Printf.printf "[Scheduler] ERROR: Failed to create Kernel.Async.Poll: %s\n%!"
         (match err with
         | `System_error s -> s
         | `Noop -> "Unknown error"
@@ -131,10 +131,10 @@ let handle_syscall k t proc name interest source _timeout =
       Trace.trace "Process %s syscall %s ready" pid_str name;
       k (Continue ())
   | None -> (
-      let token = Kernel.IO.Token.make proc in
+      let token = Kernel.Async.Token.make proc in
       Trace.trace "Process %s registering for I/O" pid_str;
       Process.mark_as_awaiting_io proc ~name token source;
-      match Kernel.IO.Poll.register t.io_poll token interest source with
+      match Kernel.Async.Poll.register t.io_poll token interest source with
       | Ok () ->
           Trace.trace "Process %s registered for I/O successfully" pid_str;
           k Suspend
@@ -170,7 +170,7 @@ let handle_exit_proc t proc reason =
 
     (* Clean up any I/O registrations *)
     Process.consume_ready_tokens proc (fun (_token, source) ->
-        match Kernel.IO.Poll.deregister t.io_poll source with
+        match Kernel.Async.Poll.deregister t.io_poll source with
         | Ok () -> ()
         | Error err ->
             Printf.printf "[Scheduler] WARN: Failed to deregister I/O: %s\n%!"
@@ -249,7 +249,7 @@ let step_process t proc =
 let poll_io t =
   Trace.trace "Polling for I/O events";
   let events =
-    match Kernel.IO.Poll.poll t.io_poll with
+    match Kernel.Async.Poll.poll t.io_poll with
     | Ok events -> events
     | Error err ->
         Printf.printf "[Scheduler] ERROR: Failed to poll I/O: %s\n%!"
@@ -261,12 +261,12 @@ let poll_io t =
   in
   List.iter
     (fun event ->
-      let token = Kernel.IO.Event.token event in
-      let proc : Process.t = Kernel.IO.Token.unsafe_to_value token in
+      let token = Kernel.Async.Event.token event in
+      let proc : Process.t = Kernel.Async.Token.unsafe_to_value token in
       Trace.trace "I/O ready for process %s" (Pid.to_string (Process.pid proc));
       match Process.state proc with
       | Waiting_io { source; _ } ->
-          (match Kernel.IO.Poll.deregister t.io_poll source with
+          (match Kernel.Async.Poll.deregister t.io_poll source with
           | Ok () -> ()
           | Error err ->
               Printf.printf

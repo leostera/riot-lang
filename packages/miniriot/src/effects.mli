@@ -18,8 +18,8 @@ val sleep : int -> unit
 val syscall :
   ?timeout:float ->
   name:string ->
-  interest:Kernel.IO.Interest.t ->
-  source:Kernel.IO.Source.t ->
+  interest:Kernel.Async.Interest.t ->
+  source:Kernel.Async.Source.t ->
   (unit -> 'a) ->
   'a
 (** Perform a system call with I/O polling support *)
