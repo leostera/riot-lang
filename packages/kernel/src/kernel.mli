@@ -5,6 +5,10 @@
     operations. *)
 
 module Crypto = Crypto
+module Env = Env
+module OsProcess = Osprocess
+module System = System
+module Time = Time
 
 module IO : sig
   type io_error =
@@ -205,6 +209,19 @@ module IO : sig
     val opendir : string -> (Unix.dir_handle, _) io_result
     val readdir_handle : Unix.dir_handle -> (string, _) io_result
     val closedir : Unix.dir_handle -> (unit, _) io_result
+    val is_regular_file : string -> (bool, _) io_result
+    val realpath : string -> (string, _) io_result
+    val link : string -> string -> (unit, _) io_result
+    val rename : string -> string -> (unit, _) io_result
+    val readlink : string -> (string, _) io_result
+
+    val open_file :
+      string -> Unix.open_flag list -> int -> (Unix.file_descr, _) io_result
+
+    val fstat : Unix.file_descr -> (Unix.stats, _) io_result
+    val close_fd : Unix.file_descr -> (unit, _) io_result
+    val get_temp_dir : unit -> (string, _) io_result
+    val temp_dir : ?temp_dir:string -> string -> string -> (string, _) io_result
     val to_source : t -> Source.t
   end
 

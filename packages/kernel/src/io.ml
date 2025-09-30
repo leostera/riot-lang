@@ -183,30 +183,29 @@ module Adapter = struct
   type event = { fd : Fd.t; filter : int; flags : int; token : int }
 
   module FFI = struct
-    external std_sys_unix_kevent :
+    external kernel_unix_kevent :
       max_events:int -> timeout:int64 -> kqueue -> event array
-      = "std_sys_unix_kevent"
+      = "kernel_unix_kevent"
 
     let kevent ~max_events ~timeout kq =
-      syscall @@ fun () -> Ok (std_sys_unix_kevent ~max_events ~timeout kq)
+      syscall @@ fun () -> Ok (kernel_unix_kevent ~max_events ~timeout kq)
 
-    external std_sys_unix_kqueue : unit -> kqueue = "std_sys_unix_kqueue"
+    external kernel_unix_kqueue : unit -> kqueue = "kernel_unix_kqueue"
 
-    let kqueue () = syscall @@ fun () -> Ok (std_sys_unix_kqueue ())
+    let kqueue () = syscall @@ fun () -> Ok (kernel_unix_kqueue ())
 
-    external std_sys_unix_fcntl : Fd.t -> cmd:int -> arg:int -> int
-      = "std_sys_unix_fcntl"
+    external kernel_unix_fcntl : Fd.t -> cmd:int -> arg:int -> int
+      = "kernel_unix_fcntl"
 
     let fcntl fd cmd arg =
-      syscall @@ fun () -> Ok (std_sys_unix_fcntl fd ~cmd ~arg)
+      syscall @@ fun () -> Ok (kernel_unix_fcntl fd ~cmd ~arg)
 
-    external std_sys_unix_kevent_register :
-      kqueue -> event array -> int array -> unit
-      = "std_sys_unix_kevent_register"
+    external kernel_unix_kevent_register :
+      kqueue -> event array -> int array -> unit = "kernel_unix_kevent_register"
 
     let kevent_register fd changes ignored_errors =
       syscall @@ fun () ->
-      Ok (std_sys_unix_kevent_register fd changes ignored_errors)
+      Ok (kernel_unix_kevent_register fd changes ignored_errors)
   end
 
   module Kevent = struct
@@ -342,18 +341,18 @@ module File = struct
     syscall @@ fun () -> Ok (UnixLabels.write fd ~buf ~pos ~len)
 
   external std_sys_readv : Unix.file_descr -> Iovec.t -> int
-    = "std_sys_unix_readv"
+    = "kernel_unix_readv"
 
   let read_vectored fd iov = syscall @@ fun () -> Ok (std_sys_readv fd iov)
 
   external std_sys_writev : Unix.file_descr -> Iovec.t -> int
-    = "std_sys_unix_writev"
+    = "kernel_unix_writev"
 
   let write_vectored fd iov = syscall @@ fun () -> Ok (std_sys_writev fd iov)
 
   external std_sys_sendfile :
     Unix.file_descr -> Unix.file_descr -> int -> int -> int
-    = "std_sys_unix_sendfile"
+    = "kernel_unix_sendfile"
 
   let sendfile fd ~file ~off ~len =
     syscall @@ fun () -> Ok (std_sys_sendfile file fd off len)
@@ -494,6 +493,64 @@ module File = struct
       Unix.closedir handle;
       Ok ()
     with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+
+  let is_regular_file path =
+    syscall @@ fun () ->
+    try
+      match Unix.stat path with
+      | { st_kind = Unix.S_REG; _ } -> Ok true
+      | _ -> Ok false
+    with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+
+  let realpath path =
+    syscall @@ fun () ->
+    try Ok (Unix.realpath path)
+    with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+
+  let link src dst =
+    syscall @@ fun () ->
+    try
+      Unix.link src dst;
+      Ok ()
+    with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+
+  let rename src dst =
+    syscall @@ fun () ->
+    try
+      Unix.rename src dst;
+      Ok ()
+    with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+
+  let readlink path =
+    syscall @@ fun () ->
+    try Ok (Unix.readlink path)
+    with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+
+  let open_file path flags perm =
+    syscall @@ fun () ->
+    try Ok (Unix.openfile path flags perm)
+    with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+
+  let fstat fd =
+    syscall @@ fun () ->
+    try Ok (Unix.fstat fd)
+    with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+
+  let close_fd fd =
+    syscall @@ fun () ->
+    try
+      Unix.close fd;
+      Ok ()
+    with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+
+  let get_temp_dir () =
+    syscall @@ fun () ->
+    try Ok (Filename.get_temp_dir_name ()) with e -> Error (`Exn e)
+
+  let temp_dir ?(temp_dir = Filename.get_temp_dir_name ()) prefix suffix =
+    syscall @@ fun () ->
+    try Ok (Filename.temp_dir ~temp_dir prefix suffix)
+    with e -> Error (`Exn e)
 
   let to_source t =
     let module Src = struct
@@ -652,18 +709,18 @@ module Net = struct
       syscall @@ fun () -> Ok (UnixLabels.write fd ~buf ~pos ~len)
 
     external std_sys_readv : Unix.file_descr -> Iovec.t -> int
-      = "std_sys_unix_readv"
+      = "kernel_unix_readv"
 
     let read_vectored fd iov = syscall @@ fun () -> Ok (std_sys_readv fd iov)
 
     external std_sys_writev : Unix.file_descr -> Iovec.t -> int
-      = "std_sys_unix_writev"
+      = "kernel_unix_writev"
 
     let write_vectored fd iov = syscall @@ fun () -> Ok (std_sys_writev fd iov)
 
     external std_sys_sendfile :
       Unix.file_descr -> Unix.file_descr -> int -> int -> int
-      = "std_sys_unix_sendfile"
+      = "kernel_unix_sendfile"
 
     let sendfile fd ~file ~off ~len =
       syscall @@ fun () -> Ok (std_sys_sendfile file fd off len)
