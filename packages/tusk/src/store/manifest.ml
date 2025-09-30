@@ -128,13 +128,13 @@ let of_json json =
 let save manifest ~path =
   let json = to_json manifest in
   let content = Data.Json.to_string json in
-  match File.write ~path ~content with
+  match Std.Fs.write content path with
   | Ok () -> Ok ()
   | Error _ -> Error "Failed to write manifest"
 
 (** Read manifest from file *)
 let load ~path =
-  match File.read ~path with
+  match Std.Fs.read path with
   | Ok content -> (
       match Data.Json.of_string content with
       | Ok json -> of_json json

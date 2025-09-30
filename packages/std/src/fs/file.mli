@@ -79,10 +79,10 @@ val sync_data : t -> (unit, error) result
 val metadata : t -> (Metadata.t, error) result
 (** Get file metadata from handle (fstat) *)
 
-val set_len : t -> int64 -> (unit, error) result
+val set_len : t -> len:int64 -> (unit, error) result
 (** Truncate or extend file to specified length (ftruncate) *)
 
-val set_permissions : t -> Permissions.t -> (unit, error) result
+val set_permissions : t -> permissions:Permissions.t -> (unit, error) result
 (** Change file permissions (fchmod) *)
 
 (** {1 File Locking} *)

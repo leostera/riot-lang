@@ -177,16 +177,16 @@ let metadata t =
       Kernel.Fs.File.fstat t.fd |> convert_kernel_result
       |> Result.map Metadata.of_unix
 
-let set_len t len =
+let set_len t ~len =
   match ensure_open t with
   | Error e -> Error e
   | Ok () -> Kernel.Fs.File.ftruncate t.fd len |> convert_kernel_result
 
-let set_permissions t perm =
+let set_permissions t ~permissions =
   match ensure_open t with
   | Error e -> Error e
   | Ok () ->
-      Kernel.Fs.File.fchmod t.fd (Permissions.to_mode perm)
+      Kernel.Fs.File.fchmod t.fd (Permissions.to_mode permissions)
       |> convert_kernel_result
 
 (* File locking *)
