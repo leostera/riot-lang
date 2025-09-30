@@ -68,10 +68,12 @@ module Process : sig
     t -> name:string -> Kernel.Async.Token.t -> Kernel.Async.Source.t -> unit
   (** Mark process as waiting for I/O operation *)
 
-  val add_ready_token : t -> Kernel.Async.Token.t -> Kernel.Async.Source.t -> unit
+  val add_ready_token :
+    t -> Kernel.Async.Token.t -> Kernel.Async.Source.t -> unit
   (** Add a ready I/O token to the process *)
 
-  val get_ready_token : t -> (Kernel.Async.Token.t * Kernel.Async.Source.t) option
+  val get_ready_token :
+    t -> (Kernel.Async.Token.t * Kernel.Async.Source.t) option
   (** Get a ready I/O token if available *)
 
   val consume_ready_tokens :
