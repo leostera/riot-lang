@@ -181,10 +181,10 @@ let generate_interface ~toolchain ~includes ~flags ~output source =
       if out.status = 0 then
         (* Write the stdout (inferred interface) to the output file *)
         let output_path = Path.of_string output |> Result.expect ~msg:"Invalid output path" in
-        match Fs.write_string ~path:output_path ~data:out.stdout with
+        match Fs.write out.stdout output_path with
         | Ok _ -> Success (Printf.sprintf "Generated interface %s" output)
-        | Error err ->
-            Failed (Printf.sprintf "Failed to write %s: %s" output (Fs.show_error err))
+        | Error (Fs.SystemError msg) ->
+            Failed (Printf.sprintf "Failed to write %s: %s" output msg)
       else
         (* Include stderr in the error message for debugging *)
         Failed

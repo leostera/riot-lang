@@ -85,12 +85,8 @@ module Daemon = struct
             (* Default port *)
 
             (* Write PID and port files *)
-            let _ =
-              Fs.write_string ~path:pid_file ~data:(string_of_int pid)
-            in
-            let _ =
-              Fs.write_string ~path:port_file ~data:(string_of_int port)
-            in
+            let _ = Fs.write (string_of_int pid) pid_file in
+            let _ = Fs.write (string_of_int port) port_file in
 
             (* Give the server a moment to start up *)
             Unix.sleepf 0.1;

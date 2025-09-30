@@ -23,18 +23,18 @@ let create ~(workspace : Workspace.t) =
   { root_dir = store_dir }
 
 (** Get the path for a given hash in the store *)
-let get_hash_dir store hash =
+let get_hash_dir store (hash : Std.Crypto.hash) =
   Path.(store.root_dir / Path.v (Std.Crypto.Digest.hex hash))
 
 (** Check if artifacts for a given hash exist in the store *)
-let exists store hash =
+let exists store (hash : Std.Crypto.hash) =
   let hash_dir = get_hash_dir store hash in
   match Fs.exists hash_dir with
   | Ok b -> b
   | Error _ -> false
 
 (** List all files in a hash directory *)
-let list_artifacts store hash =
+let list_artifacts store (hash : Std.Crypto.hash) =
   let hash_dir = get_hash_dir store hash in
   match Fs.exists hash_dir with
   | Ok true -> (
@@ -53,7 +53,7 @@ let list_artifacts store hash =
   | _ -> []
 
 (** Promote artifacts from store to target directory *)
-let promote_from_store store hash target_dir =
+let promote_from_store store (hash : Std.Crypto.hash) target_dir =
   let hash_dir = get_hash_dir store hash in
   match Fs.exists hash_dir with
   | Ok true ->
@@ -95,7 +95,7 @@ let promote_from_store store hash target_dir =
   | _ -> false
 
 (** Store artifacts from sandbox to content-addressable store *)
-let store_artifacts store ~package hash sandbox_dir declared_outputs =
+let store_artifacts store ~package (hash : Std.Crypto.hash) sandbox_dir declared_outputs =
   Printf.printf "[Store] store_artifacts called for package %s\n%!" package;
   let hash_dir = get_hash_dir store hash in
 
@@ -127,14 +127,14 @@ let store_artifacts store ~package hash sandbox_dir declared_outputs =
               | Ok stat -> stat.st_size
               | Error _ -> 0
             in
-            (Path.to_string dst, size) :: acc
+            (dst, size) :: acc
         | _ -> acc)
       [] declared_outputs
   in
 
   (* Create and save manifest *)
   let manifest =
-    Manifest.create ~package ~build_hash:hash
+    Manifest.create ~package ~build_hash:(Std.Crypto.Digest.hex hash)
       ~files:(List.rev stored_files_with_sizes)
   in
   let manifest_path = Path.(hash_dir / Path.v "manifest.json") in
@@ -147,7 +147,7 @@ let store_artifacts store ~package hash sandbox_dir declared_outputs =
 
   (* Return artifact witness with just the filenames *)
   let stored_files =
-    List.map (fun (path, _) -> Filename.basename path) stored_files_with_sizes
+    List.map (fun (path, _) -> Path.basename path) stored_files_with_sizes
   in
   Artifact.{ hash; files = List.rev stored_files }
 

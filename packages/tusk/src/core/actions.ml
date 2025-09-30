@@ -209,7 +209,7 @@ let execute_action action toolchain =
   | WriteFile { destination; content } -> (
       try
         let dst_path = Path.of_string destination |> Result.expect ~msg:"Invalid destination path" in
-        let _ = Fs.write_string ~path:dst_path ~data:content
+        let _ = Fs.write content dst_path
                 |> Result.expect ~msg:"Failed to write file" in
         (Success, Printf.sprintf "Wrote %s" destination)
       with exn -> (Failed (Printexc.to_string exn), ""))
