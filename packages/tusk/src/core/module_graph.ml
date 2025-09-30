@@ -39,6 +39,13 @@ type dep = {
   kind : kind;
 }
 
+(** Module registry to track nodes by name *)
+type module_registry_t = {
+  modules : (G.Node_id.t, Module.t) Hashtbl.t;
+  intf_by_name : (string, G.Node_id.t) Hashtbl.t;
+  impl_by_name : (string, G.Node_id.t) Hashtbl.t;
+}
+
 (** The module graph structure *)
 type t = {
   package : Workspace.package;
@@ -46,19 +53,12 @@ type t = {
   namespace : Namespace.t;
   workspace : Workspace.t;
   graph : dep G.t;
-  registry : Module_registry.t;
+  registry : module_registry_t;
 }
 
 type error = string
 
 let root_node = { file = Concrete (Path.v ""); open_modules = []; kind = Root }
-
-(** Module registry to track nodes by name *)
-and module_registry_t = {
-  modules : (G.Node_id.t, Module.t) Hashtbl.t;
-  intf_by_name : (string, G.Node_id.t) Hashtbl.t;
-  impl_by_name : (string, G.Node_id.t) Hashtbl.t;
-}
 
 module Module_registry : sig
   type t = module_registry_t
