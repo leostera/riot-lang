@@ -271,8 +271,8 @@ let execute_tool name arguments =
         Env.current_dir ()
         |> Result.expect ~msg:"Failed to get current directory"
       in
-      let target_dir = Filename.concat (Path.to_string cwd) "target" in
-      let cmd = Printf.sprintf "rm -rf %s" target_dir in
+      let target_dir = Path.(cwd / Path.v "target") in
+      let cmd = Printf.sprintf "rm -rf %s" (Path.to_string target_dir) in
       let result = Command.system cmd in
       match Command.of_unix_status result with
       | Command.Exited 0 ->
@@ -530,17 +530,18 @@ let execute_tool name arguments =
           Env.current_dir ()
           |> Result.expect ~msg:"Failed to get current directory"
         in
-        let package_dir =
-          Filename.concat (Filename.concat (Path.to_string cwd) "packages") name
-        in
-        let src_dir = Filename.concat package_dir "src" in
+        let package_dir = Path.(cwd / Path.v "packages" / Path.v name) in
+        let src_dir = Path.(package_dir / Path.v "src") in
 
         (* Create directories *)
-        let _ = Command.run_command (Printf.sprintf "mkdir -p %s" src_dir) in
+        let _ =
+          Fs.create_dir_all src_dir
+          |> Result.expect ~msg:"Failed to create src directory"
+        in
 
         (* Create main module file *)
-        let main_ml = Filename.concat src_dir (name ^ ".ml") in
-        let main_mli = Filename.concat src_dir (name ^ ".mli") in
+        let main_ml = Path.(src_dir / Path.v (name ^ ".ml")) in
+        let main_mli = Path.(src_dir / Path.v (name ^ ".mli")) in
 
         let ml_content =
           if is_library then "(** Main module for " ^ name ^ " library *)\n"
@@ -557,15 +558,12 @@ let execute_tool name arguments =
         in
 
         (* Write files *)
-        let main_ml_path = Path.of_string main_ml |> Result.unwrap in
-        let main_mli_path = Path.of_string main_mli |> Result.unwrap in
-        let _ = Fs.write ml_content main_ml_path in
-        let _ = Fs.write mli_content main_mli_path in
+        let _ = Fs.write ml_content main_ml in
+        let _ = Fs.write mli_content main_mli in
 
         (* Update tusk.toml *)
-        let toml_path = Filename.concat (Path.to_string cwd) "tusk.toml" in
-        let toml_path_obj = Path.of_string toml_path |> Result.unwrap in
-        match Fs.read toml_path_obj with
+        let toml_path = Path.(cwd / Path.v "tusk.toml") in
+        match Fs.read toml_path with
         | Ok content -> (
             (* Find the last package and insert after it *)
             let lines = String.split_on_char '\n' content in
@@ -608,7 +606,7 @@ let execute_tool name arguments =
             in
             let updated_lines = insert_package lines [] false in
             let updated_content = String.concat "\n" updated_lines in
-            match Fs.write updated_content toml_path_obj with
+            match Fs.write updated_content toml_path with
             | Ok () ->
                 [
                   Mcp.Text
@@ -617,7 +615,7 @@ let execute_tool name arguments =
                           [
                             ("success", Json.Bool true);
                             ("package_name", Json.String name);
-                            ("package_path", Json.String package_dir);
+                            ("package_path", Json.String (Path.to_string package_dir));
                             ("is_library", Json.Bool is_library);
                             ( "message",
                               Json.String
@@ -678,16 +676,12 @@ let execute_tool name arguments =
           Env.current_dir ()
           |> Result.expect ~msg:"Failed to get current directory"
         in
-        let package_dir =
-          Filename.concat
-            (Filename.concat (Path.to_string cwd) "packages")
-            package
-        in
-        let src_dir = Filename.concat package_dir "src" in
+        let package_dir = Path.(cwd / Path.v "packages" / Path.v package) in
+        let src_dir = Path.(package_dir / Path.v "src") in
 
         (* Create module files *)
-        let module_ml = Filename.concat src_dir (name ^ ".ml") in
-        let module_mli = Filename.concat src_dir (name ^ ".mli") in
+        let module_ml = Path.(src_dir / Path.v (name ^ ".ml")) in
+        let module_mli = Path.(src_dir / Path.v (name ^ ".mli")) in
 
         let ml_content =
           "(** Implementation of "
@@ -699,20 +693,16 @@ let execute_tool name arguments =
         in
 
         (* Write module files *)
-        let module_ml_path = Path.of_string module_ml |> Result.unwrap in
-        let module_mli_path = Path.of_string module_mli |> Result.unwrap in
-        let _ = Fs.write ml_content module_ml_path in
-        let _ = Fs.write mli_content module_mli_path in
+        let _ = Fs.write ml_content module_ml in
+        let _ = Fs.write mli_content module_mli in
 
         (* If public, add to package interface *)
         if is_public then (
-          let package_ml = Filename.concat src_dir (package ^ ".ml") in
-          let package_mli = Filename.concat src_dir (package ^ ".mli") in
-          let package_ml_path = Path.of_string package_ml |> Result.unwrap in
-          let package_mli_path = Path.of_string package_mli |> Result.unwrap in
+          let package_ml = Path.(src_dir / Path.v (package ^ ".ml")) in
+          let package_mli = Path.(src_dir / Path.v (package ^ ".mli")) in
 
           (* Add module export to package.ml *)
-          (match Fs.read package_ml_path with
+          (match Fs.read package_ml with
           | Ok content ->
               let updated_content =
                 content ^ "\nmodule "
@@ -721,12 +711,12 @@ let execute_tool name arguments =
                 ^ String.capitalize_ascii name
                 ^ "\n"
               in
-              let _ = Fs.write updated_content package_ml_path in
+              let _ = Fs.write updated_content package_ml in
               ()
           | Error _ -> ());
 
           (* Add module signature to package.mli *)
-          match Fs.read package_mli_path with
+          match Fs.read package_mli with
           | Ok content ->
               let updated_content =
                 content ^ "\nmodule "
@@ -735,7 +725,7 @@ let execute_tool name arguments =
                 ^ String.capitalize_ascii name
                 ^ "\n"
               in
-              let _ = Fs.write updated_content package_mli_path in
+              let _ = Fs.write updated_content package_mli in
               ()
           | Error _ -> ());
 
@@ -748,7 +738,7 @@ let execute_tool name arguments =
                     ("package", Json.String package);
                     ("module_name", Json.String name);
                     ("is_public", Json.Bool is_public);
-                    ("module_path", Json.String module_ml);
+                    ("module_path", Json.String (Path.to_string module_ml));
                     ( "message",
                       Json.String
                         ("Successfully created module " ^ name ^ " in package "
