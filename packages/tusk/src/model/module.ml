@@ -17,7 +17,8 @@ and t = {
 }
 
 let create ~package_name ~path =
-  let basename = Filename.remove_extension (Filename.basename path) in
+  let path_obj = Path.v path in
+  let basename = Path.remove_extension path_obj |> Path.basename in
   let module_name = String.capitalize_ascii basename in
   let namespace = Namespace.of_list [ String.capitalize_ascii package_name ] in
   let namespaced_name =

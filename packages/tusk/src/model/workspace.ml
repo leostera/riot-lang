@@ -38,8 +38,16 @@ let parse_package_toml toml_path =
       | Some name_value -> (
           match Toml.get_string name_value with
           | Some n -> n
-          | None -> Filename.basename (Filename.dirname toml_path))
-      | None -> Filename.basename (Filename.dirname toml_path)
+          | None ->
+              let path_obj = Path.v toml_path in
+              let dir = Path.parent path_obj in
+              (match dir with
+              | Some d -> Path.basename d
+              | None -> "unknown"))
+      | None ->
+          let path_obj = Path.v toml_path in
+          let dir = Path.parent path_obj in
+          (match dir with Some d -> Path.basename d | None -> "unknown")
     in
     (* Get dependencies - need to extract from the flattened table *)
     let deps =
@@ -56,18 +64,18 @@ let parse_package_toml toml_path =
     in
     (name, deps)
   with _ ->
-    let name = Filename.basename (Filename.dirname toml_path) in
+    let path_obj = Path.v toml_path in
+    let dir = Path.parent path_obj in
+    let name = match dir with Some d -> Path.basename d | None -> "unknown" in
     (name, [])
 
 (** Scan a directory for a tusk.toml file *)
 let find_tusk_toml dir =
-  let path = Filename.concat dir "tusk.toml" in
-  match Std.Path.of_string path with
-  | Error _ -> None
-  | Ok path_obj -> (
-      match Std.Fs.exists path_obj with
-      | Ok true -> Some path
-      | Ok false | Error _ -> None)
+  let dir_path = Path.v dir in
+  let path = Path.(dir_path / Path.v "tusk.toml") in
+  match Std.Fs.exists path with
+  | Ok true -> Some (Path.to_string path)
+  | Ok false | Error _ -> None
 
 (** Scan workspace starting from root directory *)
 let scan_internal ~root =
@@ -75,9 +83,8 @@ let scan_internal ~root =
   | None ->
       Printf.eprintf "Error: No tusk.toml found in %s\n" root;
       {
-        root = Path.of_string root |> Result.unwrap;
-        target_dir_root =
-          Path.of_string (Filename.concat root "target") |> Result.unwrap;
+        root = Path.v root;
+        target_dir_root = Path.(Path.v root / Path.v "target");
         packages = [];
       }
   | Some workspace_toml ->
@@ -88,7 +95,7 @@ let scan_internal ~root =
       let packages =
         List.filter_map
           (fun member ->
-            let member_path = Filename.concat root member in
+            let member_path = Path.to_string Path.(Path.v root / Path.v member) in
             match find_tusk_toml member_path with
             | None ->
                 Printf.eprintf "Warning: No tusk.toml found for member %s\n"
@@ -99,8 +106,8 @@ let scan_internal ~root =
                 Some
                   {
                     name;
-                    path = Path.of_string member_path |> Result.unwrap;
-                    relative_path = Path.of_string member |> Result.unwrap;
+                    path = Path.v member_path;
+                    relative_path = Path.v member;
                     dependencies =
                       List.map (fun d -> { name = d; version = "" }) deps;
                   })
@@ -108,9 +115,8 @@ let scan_internal ~root =
       in
 
       {
-        root = Path.of_string root |> Result.unwrap;
-        target_dir_root =
-          Path.of_string (Filename.concat root "target") |> Result.unwrap;
+        root = Path.v root;
+        target_dir_root = Path.(Path.v root / Path.v "target");
         packages;
       }
 

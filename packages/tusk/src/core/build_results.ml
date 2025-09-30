@@ -82,17 +82,13 @@ let reset_failed_packages t =
 
 (** Check if source files are newer than build outputs *)
 let sources_newer_than_outputs workspace pkg_name =
-  let root = Std.Path.to_string workspace.Workspace.root in
-  let pkg_dir = Filename.concat root ("packages/" ^ pkg_name) in
-  let src_dir = Filename.concat pkg_dir "src" in
+  let root = workspace.Workspace.root in
+  let pkg_dir = Path.(root / Path.v "packages" / Path.v pkg_name) in
+  let src_dir = Path.(pkg_dir / Path.v "src") in
   let target_dir =
-    Filename.concat root ("target/debug/out/packages/" ^ pkg_name)
+    Path.(root / Path.v "target/debug/out/packages" / Path.v pkg_name)
   in
-  let output_file = Filename.concat target_dir (pkg_name ^ ".cma") in
-
-  let output_file_path =
-    Path.of_string output_file |> Result.expect ~msg:"Invalid output_file"
-  in
+  let output_file_path = Path.(target_dir / Path.v (pkg_name ^ ".cma")) in
   match Fs.exists output_file_path with
   | Ok false | Error _ -> true (* No outputs, need to build *)
   | Ok true -> (
@@ -102,12 +98,9 @@ let sources_newer_than_outputs workspace pkg_name =
       in
       let output_mtime = Fs.Metadata.modified output_stat in
 
-      let src_dir_path =
-        Path.of_string src_dir |> Result.expect ~msg:"Invalid src_dir"
-      in
-      match Fs.exists src_dir_path with
+      match Fs.exists src_dir with
       | Ok true -> (
-          match Fs.read_dir src_dir_path with
+          match Fs.read_dir src_dir with
           | Ok iter ->
               let result = ref [] in
               let rec collect () =
@@ -128,15 +121,11 @@ let sources_newer_than_outputs workspace pkg_name =
 
               List.exists
                 (fun file ->
-                  let filepath = Filename.concat src_dir file in
-                  let filepath_path =
-                    Path.of_string filepath
-                    |> Result.expect ~msg:"Invalid filepath"
-                  in
-                  match Fs.exists filepath_path with
+                  let filepath = Path.(src_dir / Path.v file) in
+                  match Fs.exists filepath with
                   | Ok true ->
                       let file_stat =
-                        Fs.metadata filepath_path
+                        Fs.metadata filepath
                         |> Result.expect ~msg:"Failed to stat filepath"
                       in
                       Fs.Metadata.modified file_stat > output_mtime
@@ -147,24 +136,19 @@ let sources_newer_than_outputs workspace pkg_name =
 
 (** Check if build outputs exist for a package *)
 let build_outputs_exist workspace pkg_name =
-  let root = Std.Path.to_string workspace.Workspace.root in
-  let target_dir = Filename.concat root "target/debug/out/packages" in
-  let pkg_target_dir = Filename.concat target_dir pkg_name in
-  let cma_file = Filename.concat pkg_target_dir (pkg_name ^ ".cma") in
-  let cmi_file = Filename.concat pkg_target_dir (pkg_name ^ ".cmi") in
+  let root = workspace.Workspace.root in
+  let pkg_target_dir =
+    Path.(root / Path.v "target/debug/out/packages" / Path.v pkg_name)
+  in
+  let cma_file = Path.(pkg_target_dir / Path.v (pkg_name ^ ".cma")) in
+  let cmi_file = Path.(pkg_target_dir / Path.v (pkg_name ^ ".cmi")) in
 
   (* Check if key build outputs exist *)
   let cma_exists =
-    let cma_path =
-      Path.of_string cma_file |> Result.expect ~msg:"Invalid cma_file"
-    in
-    match Fs.exists cma_path with Ok true -> true | _ -> false
+    match Fs.exists cma_file with Ok true -> true | _ -> false
   in
   let cmi_exists =
-    let cmi_path =
-      Path.of_string cmi_file |> Result.expect ~msg:"Invalid cmi_file"
-    in
-    match Fs.exists cmi_path with Ok true -> true | _ -> false
+    match Fs.exists cmi_file with Ok true -> true | _ -> false
   in
   cma_exists && cmi_exists
 
