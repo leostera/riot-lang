@@ -1,64 +1,40 @@
-(** Module registry for managing module name resolution *)
+(** Module registry for tracking module graph nodes by name *)
 
-type entry = {
-  file : string; (* e.g., "build_node.ml" *)
-  simple_name : string; (* e.g., "Build_node" *)
-  namespaced : string; (* e.g., "Tusk__Core__Build_node" *)
-  submodule_names : string list; (* e.g., ["Core__Build_node"] *)
-  is_alias : bool; (* Whether this is an alias module *)
-}
+open Std
+open Model
 
 type t = {
-  mutable entries : entry list;
-  by_file : (string, entry) Hashtbl.t;
-  by_simple_name : (string, entry) Hashtbl.t;
-  by_namespaced : (string, entry) Hashtbl.t;
-  by_any_name : (string, entry) Hashtbl.t; (* Includes all possible names *)
+  modules : (Graph.SimpleGraph.Node_id.t, Module.t) Hashtbl.t;
+  intf_by_name : (string, Graph.SimpleGraph.Node_id.t) Hashtbl.t;
+  impl_by_name : (string, Graph.SimpleGraph.Node_id.t) Hashtbl.t;
 }
 
-let create () =
-  {
-    entries = [];
-    by_file = Hashtbl.create 100;
-    by_simple_name = Hashtbl.create 100;
-    by_namespaced = Hashtbl.create 100;
-    by_any_name = Hashtbl.create 100;
-  }
+let create () = {
+  modules = Hashtbl.create 16;
+  intf_by_name = Hashtbl.create 16;
+  impl_by_name = Hashtbl.create 16;
+}
 
-let register registry entry =
-  (* Add to entries list *)
-  registry.entries <- entry :: registry.entries;
+let register t mod_ node_id =
+  Hashtbl.add t.modules node_id mod_;
+  let mod_name = Module.name mod_ |> Module_name.to_string in
+  let table =
+    match Module.kind mod_ with
+    | Module.Implementation -> t.impl_by_name
+    | Module.Interface -> t.intf_by_name
+  in
+  Hashtbl.add table mod_name node_id
 
-  (* Index by file *)
-  Hashtbl.add registry.by_file entry.file entry;
+let get t node_id = Hashtbl.find t.modules node_id
 
-  (* Index by simple name *)
-  Hashtbl.add registry.by_simple_name entry.simple_name entry;
-
-  (* Index by namespaced name *)
-  Hashtbl.add registry.by_namespaced entry.namespaced entry;
-
-  (* Index by all names in the any_name table *)
-  Hashtbl.add registry.by_any_name entry.file entry;
-  Hashtbl.add registry.by_any_name entry.simple_name entry;
-  Hashtbl.add registry.by_any_name entry.namespaced entry;
-
-  (* Also index by submodule names *)
-  List.iter
-    (fun name -> Hashtbl.add registry.by_any_name name entry)
-    entry.submodule_names
-
-let find_by_file registry file = Hashtbl.find_opt registry.by_file file
-
-let find_by_simple_name registry name =
-  Hashtbl.find_opt registry.by_simple_name name
-
-let find_by_namespaced registry name =
-  Hashtbl.find_opt registry.by_namespaced name
-
-let find_by_name registry name = Hashtbl.find_opt registry.by_any_name name
-let all_entries registry = registry.entries
-let entry_simple_name entry = entry.simple_name
-let entry_namespaced entry = entry.namespaced
-let entry_file entry = entry.file
-let entry_is_alias entry = entry.is_alias
+let get_by_name t name =
+  let nodes = ref [] in
+  (match Hashtbl.find_opt t.intf_by_name name with
+  | Some node -> nodes := node :: !nodes
+  | None -> ());
+  (match Hashtbl.find_opt t.impl_by_name name with
+  | Some node -> nodes := node :: !nodes
+  | None -> ());
+  match !nodes with
+  | [] -> raise Not_found
+  | nodes -> nodes

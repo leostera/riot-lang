@@ -39,13 +39,6 @@ type dep = {
   kind : kind;
 }
 
-(** Module registry to track nodes by name *)
-type module_registry_t = {
-  modules : (G.Node_id.t, Module.t) Hashtbl.t;
-  intf_by_name : (string, G.Node_id.t) Hashtbl.t;
-  impl_by_name : (string, G.Node_id.t) Hashtbl.t;
-}
-
 (** The module graph structure *)
 type t = {
   package : Workspace.package;
@@ -53,53 +46,12 @@ type t = {
   namespace : Namespace.t;
   workspace : Workspace.t;
   graph : dep G.t;
-  registry : module_registry_t;
+  registry : Module_registry.t;
 }
 
 type error = string
 
 let root_node = { file = Concrete (Path.v ""); open_modules = []; kind = Root }
-
-module Module_registry : sig
-  type t = module_registry_t
-
-  val create : unit -> t
-  val register : t -> Module.t -> G.Node_id.t -> unit
-  val get : t -> G.Node_id.t -> Module.t
-  val get_by_name : t -> string -> G.Node_id.t list
-end = struct
-  type t = module_registry_t
-
-  let create () = {
-    modules = Hashtbl.create 16;
-    intf_by_name = Hashtbl.create 16;
-    impl_by_name = Hashtbl.create 16;
-  }
-
-  let register t mod_ node_id =
-    Hashtbl.add t.modules node_id mod_;
-    let mod_name = Module.name mod_ |> Module_name.to_string in
-    let table =
-      match Module.kind mod_ with
-      | Module.Implementation -> t.impl_by_name
-      | Module.Interface -> t.intf_by_name
-    in
-    Hashtbl.add table mod_name node_id
-
-  let get t node_id = Hashtbl.find t.modules node_id
-
-  let get_by_name t name =
-    let nodes = ref [] in
-    (match Hashtbl.find_opt t.intf_by_name name with
-    | Some node -> nodes := node :: !nodes
-    | None -> ());
-    (match Hashtbl.find_opt t.impl_by_name name with
-    | Some node -> nodes := node :: !nodes
-    | None -> ());
-    match !nodes with
-    | [] -> raise Not_found
-    | nodes -> nodes
-end
 
 module Alias_module = struct
   let template (modules : Module.t list) =
