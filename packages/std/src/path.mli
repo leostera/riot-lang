@@ -44,7 +44,7 @@ val extension : t -> string option
 val remove_extension : t -> t
 (** Remove extension from path *)
 
-val add_extension : t -> string -> t
+val add_extension : t -> ext:string -> t
 (** Add or replace extension *)
 
 val is_absolute : t -> bool

@@ -20,3 +20,6 @@ val to_string : t -> string
 
 val to_list : t -> string list
 (** Get list of namespace components *)
+
+val is_empty : t -> bool
+(** Check if namespace is empty *)

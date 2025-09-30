@@ -71,7 +71,7 @@ let extension path =
 
 let remove_extension = Filename.remove_extension
 
-let add_extension path ext =
+let add_extension path ~ext =
   let ext =
     if String.length ext > 0 && ext.[0] <> '.' then "." ^ ext else ext
   in

@@ -204,7 +204,7 @@ and handle_ocaml_module ~t ~ctx path =
   (* If implementation, check for corresponding interface *)
   (match Module.kind mod_ with
   | `implementation -> (
-      let mod_name = Module.module_name mod_ in
+      let mod_name = Module.module_name mod_ |> Module_name.to_string in
       try
         let node_ids = Module_registry.get_by_name t.registry mod_name in
         List.iter
@@ -212,7 +212,7 @@ and handle_ocaml_module ~t ~ctx path =
             let intf_node = G.get_node t.graph intf_node_id in
             match intf_node.value.kind with
             | MLI intf_mod
-              when Module_name.to_string (Module.module_name intf_mod) = mod_name ->
+              when Module.module_name intf_mod |> Module_name.to_string = mod_name ->
                 G.add_edge node ~depends_on:intf_node
             | _ -> ())
           node_ids
@@ -237,13 +237,13 @@ and handle_library ~t ~ctx dir name children src_dir =
     else Path.(dir / Path.v name)
   in
 
-  let intf_file = Path.(base_path |> Path.add_extension "mli") in
+  let intf_file = Path.add_extension base_path ~ext:"mli" in
   let intf_mod = Module.make ~namespace:ns ~filename:intf_file in
 
-  let impl_file = Path.(base_path |> Path.add_extension "ml") in
+  let impl_file = Path.add_extension base_path ~ext:"ml" in
   let impl_mod = Module.make ~namespace:ns ~filename:impl_file in
 
-  let ns = Namespace.append ns (Module.module_name impl_mod) in
+  let ns = Namespace.append ns (Module.module_name impl_mod |> Module_name.to_string) in
 
   (* Parse children to separate files from subdirectories *)
   let child_files =
@@ -460,7 +460,7 @@ let generate_actions t =
                 source = Path.to_string path;
                 output;
                 includes = [ "." ];
-                flags = opens open_modules;
+                flags = List.map (fun m -> Ocamlc.Open m) (opens open_modules);
               }
           in
           actions := action :: !actions;
@@ -473,7 +473,7 @@ let generate_actions t =
                 source = Path.to_string path;
                 output;
                 includes = [ "." ];
-                flags = opens open_modules;
+                flags = List.map (fun m -> Ocamlc.Open m) (opens open_modules);
               }
           in
           actions := action :: !actions;
@@ -483,7 +483,7 @@ let generate_actions t =
         ->
           (* Write generated file *)
           let write_action =
-            Actions.WriteFile { path = Path.to_string path; content = contents }
+            Actions.WriteFile { destination = Path.to_string path; content = contents }
           in
           actions := write_action :: !actions;
 
@@ -495,7 +495,7 @@ let generate_actions t =
                 source = Path.to_string path;
                 output;
                 includes = [ "." ];
-                flags = opens open_modules;
+                flags = List.map (fun m -> Ocamlc.Open m) (opens open_modules);
               }
           in
           actions := action :: !actions;
@@ -509,7 +509,7 @@ let generate_actions t =
       } ->
           (* Write generated file *)
           let write_action =
-            Actions.WriteFile { path = Path.to_string path; content = contents }
+            Actions.WriteFile { destination = Path.to_string path; content = contents }
           in
           actions := write_action :: !actions;
 
@@ -521,7 +521,7 @@ let generate_actions t =
                 source = Path.to_string path;
                 output;
                 includes = [ "." ];
-                flags = opens open_modules;
+                flags = List.map (fun m -> Ocamlc.Open m) (opens open_modules);
               }
           in
           actions := action :: !actions;
@@ -529,12 +529,12 @@ let generate_actions t =
       | { kind = C; file = Concrete path; _ } ->
           let src = Path.to_string path in
           let obj_file =
-            Path.remove_extension path |> Path.add_extension "o"
+            Path.remove_extension path |> Path.add_extension ~ext:"o"
             |> Path.to_string
           in
           let action =
             Actions.CompileC
-              { source = src; output = obj_file; includes = [ "." ] }
+              { source = src; output = obj_file }
           in
           actions := action :: !actions;
           outputs := obj_file :: !outputs
@@ -552,9 +552,8 @@ let generate_actions t =
       Actions.CreateLibrary
         {
           output = library_name;
-          modules = List.rev !cmo_files;
+          objects = List.rev !cmo_files;
           includes = [ "." ];
-          flags = [];
         }
     in
     actions := archive_action :: !actions;

@@ -25,3 +25,4 @@ let of_list l = l
 let append ns component = ns @ [ component ]
 let to_string = function [] -> "" | ns -> String.concat "__" ns
 let to_list ns = ns
+let is_empty ns = ns = []
