@@ -28,8 +28,7 @@ let of_unix sockaddr =
   | Unix.ADDR_UNIX addr -> failwith ("unsupported unix addresses: " ^ addr)
 
 let pp ppf (addr : stream_addr) =
-  match addr with
-  | `Tcp (host, port) -> Format.fprintf ppf "%s:%d" host port
+  match addr with `Tcp (host, port) -> Format.fprintf ppf "%s:%d" host port
 
 let to_string t = t
 

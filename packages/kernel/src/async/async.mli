@@ -13,7 +13,9 @@ type io_error =
 type ('ok, 'err) io_result = ('ok, ([> io_error ] as 'err)) Stdlib.result
 
 val pp_err : Format.formatter -> [< io_error ] -> unit
-val syscall : (unit -> ('a, [> io_error ] as 'b) io_result) -> ('a, 'b) io_result
+
+val syscall :
+  (unit -> ('a, ([> io_error ] as 'b)) io_result) -> ('a, 'b) io_result
 
 module Iovec : sig
   type iov = { ba : bytes; off : int; len : int }

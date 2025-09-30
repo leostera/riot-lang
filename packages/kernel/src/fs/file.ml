@@ -9,10 +9,7 @@ type open_flag =
   | Append
   | Exclusive
 
-type seek_command =
-  | SeekSet
-  | SeekCur
-  | SeekEnd
+type seek_command = SeekSet | SeekCur | SeekEnd
 
 type lock_command =
   | LockExclusive
@@ -22,15 +19,16 @@ type lock_command =
   | Unlock
 
 let open_flags_to_unix flags =
-  List.map (function
-    | ReadOnly -> Unix.O_RDONLY
-    | WriteOnly -> Unix.O_WRONLY
-    | ReadWrite -> Unix.O_RDWR
-    | Create -> Unix.O_CREAT
-    | Truncate -> Unix.O_TRUNC
-    | Append -> Unix.O_APPEND
-    | Exclusive -> Unix.O_EXCL
-  ) flags
+  List.map
+    (function
+      | ReadOnly -> Unix.O_RDONLY
+      | WriteOnly -> Unix.O_WRONLY
+      | ReadWrite -> Unix.O_RDWR
+      | Create -> Unix.O_CREAT
+      | Truncate -> Unix.O_TRUNC
+      | Append -> Unix.O_APPEND
+      | Exclusive -> Unix.O_EXCL)
+    flags
 
 let seek_command_to_unix = function
   | SeekSet -> Unix.SEEK_SET
@@ -74,8 +72,7 @@ let write fd ?(pos = 0) ?len buf =
   let len = Option.value len ~default:(Bytes.length buf - 1) in
   syscall @@ fun () -> Ok (UnixLabels.write fd ~buf ~pos ~len)
 
-external std_sys_readv : Unix.file_descr -> Iovec.t -> int
-  = "kernel_unix_readv"
+external std_sys_readv : Unix.file_descr -> Iovec.t -> int = "kernel_unix_readv"
 
 let read_vectored fd iov = syscall @@ fun () -> Ok (std_sys_readv fd iov)
 
@@ -160,12 +157,10 @@ let copy_file src dst =
   with e -> Error (`Exn e)
 
 let is_directory path =
-  syscall @@ fun () ->
-  try Ok (Sys.is_directory path) with e -> Error (`Exn e)
+  syscall @@ fun () -> try Ok (Sys.is_directory path) with e -> Error (`Exn e)
 
 let file_exists path =
-  syscall @@ fun () ->
-  try Ok (Sys.file_exists path) with e -> Error (`Exn e)
+  syscall @@ fun () -> try Ok (Sys.file_exists path) with e -> Error (`Exn e)
 
 let stat path =
   syscall @@ fun () ->
@@ -303,8 +298,7 @@ let fsync fd =
 
 let dup fd =
   syscall @@ fun () ->
-  try Ok (Unix.dup fd)
-  with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+  try Ok (Unix.dup fd) with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
 
 let lockf fd cmd len =
   syscall @@ fun () ->
@@ -326,8 +320,7 @@ let get_temp_dir () =
 
 let temp_dir ?(temp_dir = Filename.get_temp_dir_name ()) prefix suffix =
   syscall @@ fun () ->
-  try Ok (Filename.temp_dir ~temp_dir prefix suffix)
-  with e -> Error (`Exn e)
+  try Ok (Filename.temp_dir ~temp_dir prefix suffix) with e -> Error (`Exn e)
 
 let to_source t =
   let module Src = struct

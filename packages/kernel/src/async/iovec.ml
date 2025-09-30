@@ -6,8 +6,7 @@ let create ?(count = 1) ~size () =
   assert (count > 0);
   assert (size > 0);
   let size = size / count in
-  Array.init count (fun _id ->
-      { ba = Bytes.create size; off = 0; len = size })
+  Array.init count (fun _id -> { ba = Bytes.create size; off = 0; len = size })
 
 let with_capacity size = create ~size ()
 

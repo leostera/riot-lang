@@ -26,8 +26,7 @@ let write fd ?(pos = 0) ?len buf =
   let len = Option.value len ~default:(Bytes.length buf - 1) in
   syscall @@ fun () -> Ok (UnixLabels.write fd ~buf ~pos ~len)
 
-external std_sys_readv : Unix.file_descr -> Iovec.t -> int
-  = "kernel_unix_readv"
+external std_sys_readv : Unix.file_descr -> Iovec.t -> int = "kernel_unix_readv"
 
 let read_vectored fd iov = syscall @@ fun () -> Ok (std_sys_readv fd iov)
 

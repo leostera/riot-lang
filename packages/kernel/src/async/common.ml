@@ -37,4 +37,3 @@ let rec syscall fn =
   | exception Unix.(Unix_error ((EAGAIN | EWOULDBLOCK), _, _)) ->
       Error `Would_block
   | exception Unix.(Unix_error (reason, _, _)) -> Error (`Unix_error reason)
-
