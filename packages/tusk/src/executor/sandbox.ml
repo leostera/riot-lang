@@ -392,7 +392,7 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
                let _ = Fs.chmod promoted_dst_path 0o755 in
                Printf.printf "[Sandbox] Promoted executable %s to %s\n%!"
                  output_file promoted_dst);
-            Printf.printf "[Sandbox] Copied %s to target\n%!" output_file))
+            Printf.printf "[Sandbox] Copied %s to target\n%!" output_file)
           | _ -> ())
         outputs;
       (* Return paths as Path.t *)
