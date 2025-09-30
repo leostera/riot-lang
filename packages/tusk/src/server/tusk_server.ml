@@ -239,11 +239,14 @@ and handle_new_package state client_pid path name is_library =
   in
 
   (* Write module files *)
-  let _ = File.write ~path:main_ml ~content:ml_content in
-  let _ = File.write ~path:main_mli ~content:mli_content in
+  let main_ml_path = Path.of_string main_ml |> Result.unwrap in
+  let main_mli_path = Path.of_string main_mli |> Result.unwrap in
+  let _ = Fs.write ml_content main_ml_path in
+  let _ = Fs.write mli_content main_mli_path in
 
   (* Create package tusk.toml *)
   let package_toml = Filename.concat path_str "tusk.toml" in
+  let package_toml_path = Path.of_string package_toml |> Result.unwrap in
   let toml_content =
     Printf.sprintf
       "[package]\n\
@@ -256,7 +259,7 @@ and handle_new_package state client_pid path name is_library =
       name
       (if is_library then "" else "[package.bin]\nmain = \"" ^ name ^ "\"")
   in
-  let _ = File.write ~path:package_toml ~content:toml_content in
+  let _ = Fs.write toml_content package_toml_path in
 
   (* Send success response *)
   send client_pid (ServerResponse (PackageCreated { path = path_str; name }));

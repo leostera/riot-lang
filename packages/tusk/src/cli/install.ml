@@ -75,7 +75,7 @@ let run args =
     else
       (* Look for the binary in various locations *)
       let root =
-        Fs.getcwd () |> Result.expect ~msg:"Failed to get cwd" |> Path.to_string
+        Env.current_dir () |> Result.expect ~msg:"Failed to get cwd" |> Path.to_string
       in
       let possible_binary_paths =
         [

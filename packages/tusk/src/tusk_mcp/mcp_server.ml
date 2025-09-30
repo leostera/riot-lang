@@ -557,12 +557,15 @@ let execute_tool name arguments =
         in
 
         (* Write files *)
-        let _ = File.write ~path:main_ml ~content:ml_content in
-        let _ = File.write ~path:main_mli ~content:mli_content in
+        let main_ml_path = Path.of_string main_ml |> Result.unwrap in
+        let main_mli_path = Path.of_string main_mli |> Result.unwrap in
+        let _ = Fs.write ml_content main_ml_path in
+        let _ = Fs.write mli_content main_mli_path in
 
         (* Update tusk.toml *)
         let toml_path = Filename.concat (Path.to_string cwd) "tusk.toml" in
-        match File.read ~path:toml_path with
+        let toml_path_obj = Path.of_string toml_path |> Result.unwrap in
+        match Fs.read toml_path_obj with
         | Ok content -> (
             (* Find the last package and insert after it *)
             let lines = String.split_on_char '\n' content in
@@ -605,7 +608,7 @@ let execute_tool name arguments =
             in
             let updated_lines = insert_package lines [] false in
             let updated_content = String.concat "\n" updated_lines in
-            match File.write ~path:toml_path ~content:updated_content with
+            match Fs.write updated_content toml_path_obj with
             | Ok () ->
                 [
                   Mcp.Text
@@ -696,16 +699,20 @@ let execute_tool name arguments =
         in
 
         (* Write module files *)
-        let _ = File.write ~path:module_ml ~content:ml_content in
-        let _ = File.write ~path:module_mli ~content:mli_content in
+        let module_ml_path = Path.of_string module_ml |> Result.unwrap in
+        let module_mli_path = Path.of_string module_mli |> Result.unwrap in
+        let _ = Fs.write ml_content module_ml_path in
+        let _ = Fs.write mli_content module_mli_path in
 
         (* If public, add to package interface *)
         if is_public then (
           let package_ml = Filename.concat src_dir (package ^ ".ml") in
           let package_mli = Filename.concat src_dir (package ^ ".mli") in
+          let package_ml_path = Path.of_string package_ml |> Result.unwrap in
+          let package_mli_path = Path.of_string package_mli |> Result.unwrap in
 
           (* Add module export to package.ml *)
-          (match File.read ~path:package_ml with
+          (match Fs.read package_ml_path with
           | Ok content ->
               let updated_content =
                 content ^ "\nmodule "
@@ -714,12 +721,12 @@ let execute_tool name arguments =
                 ^ String.capitalize_ascii name
                 ^ "\n"
               in
-              let _ = File.write ~path:package_ml ~content:updated_content in
+              let _ = Fs.write updated_content package_ml_path in
               ()
           | Error _ -> ());
 
           (* Add module signature to package.mli *)
-          match File.read ~path:package_mli with
+          match Fs.read package_mli_path with
           | Ok content ->
               let updated_content =
                 content ^ "\nmodule "
@@ -728,7 +735,7 @@ let execute_tool name arguments =
                 ^ String.capitalize_ascii name
                 ^ "\n"
               in
-              let _ = File.write ~path:package_mli ~content:updated_content in
+              let _ = Fs.write updated_content package_mli_path in
               ()
           | Error _ -> ());
 
