@@ -1,4 +1,5 @@
 (** Build planner - plans a build node. *)
+open Model
 
 type skip_reason = DependenciesFailed of string list
 

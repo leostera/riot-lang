@@ -1,7 +1,7 @@
 (** Build planner - plans a build node. *)
 
 open Std
-open Core
+open Model
 
 type skip_reason = DependenciesFailed of string list
 
@@ -61,7 +61,7 @@ let plan_node ~graph ~node ~build_results ~workspace ~session_id () =
       | Ok (_module_graph, actions) ->
           (* Step 5: Update node spec to Planned *)
           (* For now, use a dummy hash - we'll compute proper hashes later *)
-          let dummy_hash = Crypto.Hash.of_string "dummy" in
+          let dummy_hash = Crypto.Sha256.hash_string "dummy" in
           let outs = [] in (* TODO: extract outputs from actions *)
 
           node.spec <- Planned { hash = dummy_hash; outs; actions };
