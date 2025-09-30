@@ -16,12 +16,16 @@ let start ~workspace ~toolchain ~workers ~session_id ~client_pid ~target =
 
       (* 1. on every build we refresh the workspace *)
       Log.workspace_scanning ~session_id ();
-      let workspace_start = time_ms () in
+      let workspace_start = Time.Instant.now () in
       let workspace =
         Workspace_manager.scan workspace.root
         |> Result.expect ~msg:"tusk_server: operation failed"
       in
-      let workspace_duration = time_ms () - workspace_start in
+      let workspace_duration =
+        Time.Instant.duration_since ~earlier:workspace_start
+          (Time.Instant.now ())
+        |> Time.Duration.to_millis
+      in
       Log.workspace_scanned ~session_id
         ~packages:(List.length workspace.packages)
         ~duration_ms:workspace_duration;
@@ -31,9 +35,12 @@ let start ~workspace ~toolchain ~workers ~session_id ~client_pid ~target =
 
       (* 2. recreate the build graph from the refreshed workspace *)
       Log.build_graph_creating ~session_id ();
-      let graph_start = time_ms () in
+      let graph_start = Time.Instant.now () in
       let fresh_build_graph = Build_graph.create workspace toolchain in
-      let graph_duration = time_ms () - graph_start in
+      let graph_duration =
+        Time.Instant.duration_since ~earlier:graph_start (Time.Instant.now ())
+        |> Time.Duration.to_millis
+      in
       let node_count = Build_graph.size fresh_build_graph in
       Log.build_graph_created ~session_id ~nodes:node_count
         ~duration_ms:graph_duration;
@@ -119,24 +126,31 @@ let start ~workspace ~toolchain ~workers ~session_id ~client_pid ~target =
 
           (* 4. create a worker pool to execute this build *)
           Log.store_creating ~session_id ();
-          let store_start = time_ms () in
+          let store_start = Time.Instant.now () in
           let store = Store.create ~workspace in
-          let store_duration = time_ms () - store_start in
+          let store_duration =
+            Time.Instant.duration_since ~earlier:store_start
+              (Time.Instant.now ())
+            |> Time.Duration.to_millis
+          in
           Log.store_created ~session_id ~duration_ms:store_duration;
 
           Log.worker_pool_creating ~session_id ~workers;
-          let pool_start = time_ms () in
+          let pool_start = Time.Instant.now () in
           let _ =
             Worker_pool.start ~workers ~provider:(self ())
               ~build_graph:target_graph ~build_results ~workspace ~store
               ~worker_fn:Build_worker.main ()
           in
-          let pool_duration = time_ms () - pool_start in
+          let pool_duration =
+            Time.Instant.duration_since ~earlier:pool_start (Time.Instant.now ())
+            |> Time.Duration.to_millis
+          in
           Log.worker_pool_created ~session_id ~workers
             ~duration_ms:pool_duration;
 
           (* Track build statistics *)
-          let build_start_time = time_ms () in
+          let build_start_time = Time.Instant.now () in
           let succeeded = ref [] in
           let failed = ref [] in
 
@@ -222,7 +236,11 @@ let start ~workspace ~toolchain ~workers ~session_id ~client_pid ~target =
             (fun () -> build_loop ())
             ~finally:(fun () ->
               (* Log build complete event *)
-              let duration_ms = time_ms () - build_start_time in
+              let duration_ms =
+                Time.Instant.duration_since ~earlier:build_start_time
+                  (Time.Instant.now ())
+                |> Time.Duration.to_millis
+              in
               (* Get results from Build_results module *)
               let results = Build_results.to_events build_results in
               Log.build_complete ~session_id ~duration_ms ~results;

@@ -24,9 +24,11 @@ let create ~node ~(workspace : Workspace.t) =
   let target_dir = Path.(out_dir / node.Build_node.package.relative_path) in
 
   (* Create a unique sandbox directory for this build *)
+  let now = Time.Instant.now () in
+  let nanos = Time.Instant.elapsed now |> Time.Duration.to_nanos in
   let sandbox_id =
     Printf.sprintf "%08x"
-      (Hashtbl.hash (node.Build_node.package.name ^ string_of_float (time ())))
+      (Hashtbl.hash (node.Build_node.package.name ^ string_of_int nanos))
   in
   let sandbox_dir = Path.(debug_dir / Path.v "sandbox" / Path.v sandbox_id) in
 
@@ -336,7 +338,9 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
               let _ = Fs.copy ~src:src_path ~dst:dst_path in
               (* Make executable files executable *)
               (if not (String.contains output_file '.') then
-                 let _ = Fs.set_permissions dst_path (Fs.Permissions.of_mode 0o755) in
+                 let _ =
+                   Fs.set_permissions dst_path (Fs.Permissions.of_mode 0o755)
+                 in
                  (* Also promote executable to target/<profile>/<name> *)
                  let profile_dir =
                    Path.(sandbox.root / Path.v "target" / Path.v "debug")
@@ -345,7 +349,10 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
                    Path.(profile_dir / Path.v output_file)
                  in
                  let _ = Fs.copy ~src:src_path ~dst:promoted_dst_path in
-                 let _ = Fs.set_permissions promoted_dst_path (Fs.Permissions.of_mode 0o755) in
+                 let _ =
+                   Fs.set_permissions promoted_dst_path
+                     (Fs.Permissions.of_mode 0o755)
+                 in
                  Printf.printf "[Sandbox] Promoted executable %s to %s\n%!"
                    output_file
                    (Path.to_string promoted_dst_path));
