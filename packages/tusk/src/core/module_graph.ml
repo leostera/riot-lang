@@ -100,7 +100,7 @@ let register_modules t sources =
         | Some ".mli" -> true
         | _ -> false
       in
-      let mod_name = Module_name.of_path source_path in
+      let mod_name = Module_name.of_filename ~namespace:t.namespace source_path in
       let kind = if is_interface then MLI mod_name else ML mod_name in
       let dep = { kind; path = source_path } in
       let node = Graph.add_node t.graph dep in
