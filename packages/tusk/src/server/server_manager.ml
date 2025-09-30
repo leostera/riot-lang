@@ -52,8 +52,8 @@ module Daemon = struct
           Some { workspace; os_pid = pid; port; host = "127.0.0.1" }
         else
           (* Process died, clean up *)
-          let _ = Unix.unlink (Path.to_string pid_file) in
-          let _ = Unix.unlink (Path.to_string port_file) in
+          let _ = Fs.remove_file pid_file in
+          let _ = Fs.remove_file port_file in
           None
     | _ -> None
 

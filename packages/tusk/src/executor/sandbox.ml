@@ -89,7 +89,6 @@ let copy_dependency_artifacts sandbox ~store ~build_graph ~build_results =
             (* Read manifest to get list of files to copy *)
             let manifest_path =
               Path.(Store.get_hash_dir store hash / Path.v "manifest.json")
-              |> Path.to_string
             in
             let files_to_copy =
               match Store.Manifest.load ~path:manifest_path with
@@ -337,7 +336,7 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
               let _ = Fs.copy ~src:src_path ~dst:dst_path in
               (* Make executable files executable *)
               (if not (String.contains output_file '.') then
-                 let _ = Fs.set_permissions dst_path 0o755 in
+                 let _ = Fs.set_permissions dst_path (Fs.Permissions.of_mode 0o755) in
                  (* Also promote executable to target/<profile>/<name> *)
                  let profile_dir =
                    Path.(sandbox.root / Path.v "target" / Path.v "debug")
@@ -346,7 +345,7 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
                    Path.(profile_dir / Path.v output_file)
                  in
                  let _ = Fs.copy ~src:src_path ~dst:promoted_dst_path in
-                 let _ = Fs.set_permissions promoted_dst_path 0o755 in
+                 let _ = Fs.set_permissions promoted_dst_path (Fs.Permissions.of_mode 0o755) in
                  Printf.printf "[Sandbox] Promoted executable %s to %s\n%!"
                    output_file
                    (Path.to_string promoted_dst_path));

@@ -100,7 +100,7 @@ let sources_newer_than_outputs workspace pkg_name =
         Fs.metadata output_file_path
         |> Result.expect ~msg:"Failed to stat output_file"
       in
-      let output_mtime = output_stat.st_mtime in
+      let output_mtime = Fs.Metadata.modified output_stat in
 
       let src_dir_path =
         Path.of_string src_dir |> Result.expect ~msg:"Invalid src_dir"
@@ -139,7 +139,7 @@ let sources_newer_than_outputs workspace pkg_name =
                         Fs.metadata filepath_path
                         |> Result.expect ~msg:"Failed to stat filepath"
                       in
-                      file_stat.st_mtime > output_mtime
+                      Fs.Metadata.modified file_stat > output_mtime
                   | _ -> false)
                 source_files
           | Error _ -> false)

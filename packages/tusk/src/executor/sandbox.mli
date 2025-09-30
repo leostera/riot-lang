@@ -24,5 +24,5 @@ val run_actions :
 val cleanup : t -> unit
 (** Clean up sandbox directory *)
 
-val get_sandbox_dir : t -> string
+val get_sandbox_dir : t -> Std.Path.t
 (** Get the sandbox directory path *)

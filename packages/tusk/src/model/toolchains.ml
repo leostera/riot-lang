@@ -423,10 +423,10 @@ let install_dev_tools toolchain =
       in
       let success, output = run_command_compat extract_cmd in
 
-      if success then
+      if success then (
         (* Clean up *)
-        let _ = Unix.unlink (Path.to_string tools_archive) in
-        Printf.printf "Successfully installed development tools\n%!"
+        let _ = Fs.remove_file tools_archive in
+        Printf.printf "Successfully installed development tools\n%!")
       else failwith (Printf.sprintf "Failed to extract tools: %s" output))
     else
       failwith
@@ -556,8 +556,8 @@ let list_installed_toolchains () =
                      Path.(toolchain_base_dir / Path.v dir_name)
                    in
                    let is_valid_dir =
-                     match Fs.metadata full_path with
-                     | Ok stat when stat.st_kind = Unix.S_DIR ->
+                     match Fs.is_dir full_path with
+                     | Ok true ->
                          let ocamlc_exists =
                            match
                              Fs.exists

@@ -70,9 +70,9 @@ let create workspace toolchain =
                     |> Result.expect ~msg:"Invalid full_path"
                   in
                   if
-                    match Fs.metadata full_path_obj with
-                    | Ok stat -> stat.st_kind = Unix.S_DIR
-                    | Error _ -> false
+                    match Fs.is_dir full_path_obj with
+                    | Ok true -> true
+                    | _ -> false
                   then scan_directory full_path rel_path acc
                   else if
                     Filename.check_suffix entry ".ml"

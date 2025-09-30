@@ -78,8 +78,8 @@ let promote_from_store store hash target_dir =
                 let dst = Path.(target_dir / Path.v file) in
 
                 (* Only copy if it's a file, not directory *)
-                (match Fs.metadata src with
-                | Ok stat when stat.st_kind <> Unix.S_DIR ->
+                (match Fs.is_file src with
+                | Ok true ->
                     let _ =
                       Fs.copy ~src ~dst
                       |> Result.expect
@@ -128,7 +128,7 @@ let store_artifacts store ~package hash sandbox_dir declared_outputs =
             (* Get file size for manifest *)
             let size =
               match Fs.metadata dst with
-              | Ok stat -> stat.st_size
+              | Ok stat -> Fs.Metadata.len stat
               | Error _ -> 0
             in
             (dst, size) :: acc
@@ -146,7 +146,7 @@ let store_artifacts store ~package hash sandbox_dir declared_outputs =
   Printf.printf "[Store] Saving manifest to %s\n%!"
     (Path.to_string manifest_path);
   let _ =
-    Manifest.save manifest ~path:(Path.to_string manifest_path)
+    Manifest.save manifest ~path:manifest_path
     |> Result.expect ~msg:"Failed to save manifest"
   in
   Printf.printf "[Store] Manifest saved successfully\n%!";
@@ -174,8 +174,8 @@ let get_stats store =
               | None -> acc
               | Some subdir_path ->
                   let count_in_subdir =
-                    match Fs.metadata subdir_path with
-                    | Ok stat when stat.st_kind = Unix.S_DIR -> (
+                    match Fs.is_dir subdir_path with
+                    | Ok true -> (
                         match Fs.read_dir subdir_path with
                         | Ok subiter ->
                             let rec count_sub acc2 =

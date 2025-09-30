@@ -11,7 +11,7 @@ let find_ocamlformat_config path =
     | Error _ -> None
     | Ok ocamlformat_name -> (
         let ocamlformat_file = Path.join dir ocamlformat_name in
-        if File.exists ~path:(Path.to_string ocamlformat_file) then
+        if Fs.exists ocamlformat_file |> Result.unwrap_or ~default:false then
           Some ocamlformat_file
         else
           match Path.parent dir with
@@ -20,13 +20,13 @@ let find_ocamlformat_config path =
         )
   in
   search
-    (if File.is_directory ~path:(Path.to_string path) then path
+    (if Fs.is_dir path |> Result.unwrap_or ~default:false then path
      else match Path.parent path with None -> path | Some parent -> parent)
 
 let format_file ~toolchain ~file_path ~check_only =
   let file_str = Path.to_string file_path in
 
-  if not (File.exists ~path:file_str) then
+  if not (Fs.exists file_path |> Result.unwrap_or ~default:false) then
     Error (Printf.sprintf "File not found: %s" file_str)
   else if
     not
@@ -47,20 +47,10 @@ let format_file ~toolchain ~file_path ~check_only =
           Formatted { code = output; changed = false }
         else
           (* In inplace mode, we need to read the file to get formatted content *)
-          match File.read ~path:file_str with
+          match Fs.read file_path with
           | Ok content -> Formatted { code = content; changed = true }
-          | Error err ->
-              let err_msg =
-                match err with
-                | `File_not_found -> "File not found"
-                | `Permission_denied -> "Permission denied"
-                | `Is_a_directory -> "Is a directory"
-                | `Not_a_directory -> "Not a directory"
-                | `Already_exists -> "Already exists"
-                | `No_space -> "No space"
-                | `Unknown msg -> msg
-              in
-              Error (Printf.sprintf "Failed to read formatted file: %s" err_msg)
+          | Error (Fs.SystemError err) ->
+              Error (Printf.sprintf "Failed to read formatted file: %s" err)
         )
     | Error (Command.SpawnFailed msg) -> Error msg
     | Error (Command.CommandNotFound msg) -> Error msg
@@ -79,19 +69,10 @@ let format_code ~toolchain ~code ~file_path =
     Printf.sprintf "/tmp/tusk_format_%d%s" (Unix.getpid ()) extension
   in
 
-  match File.write ~path:temp_file ~content:code with
-  | Error err ->
-      let err_msg =
-        match err with
-        | `File_not_found -> "File not found"
-        | `Permission_denied -> "Permission denied"
-        | `Is_a_directory -> "Is a directory"
-        | `Not_a_directory -> "Not a directory"
-        | `Already_exists -> "Already exists"
-        | `No_space -> "No space"
-        | `Unknown msg -> msg
-      in
-      Error (Printf.sprintf "Failed to write temp file: %s" err_msg)
+  let temp_file_path = Path.of_string temp_file |> Result.unwrap in
+  match Fs.write code temp_file_path with
+  | Error (Fs.SystemError err) ->
+      Error (Printf.sprintf "Failed to write temp file: %s" err)
   | Ok () ->
       let result =
         let ocamlformat_bin =

@@ -18,10 +18,10 @@ val create :
 (** Create a manifest for stored files. Takes a list of (file_path, size) pairs
     and calculates hashes. *)
 
-val save : t -> path:string -> (unit, string) result
+val save : t -> path:Path.t -> (unit, string) result
 (** Save manifest to a JSON file *)
 
-val load : path:string -> (t, string) result
+val load : path:Path.t -> (t, string) result
 (** Load manifest from a JSON file *)
 
 val to_json : t -> Std.Data.Json.t
