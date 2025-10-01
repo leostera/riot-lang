@@ -129,24 +129,35 @@ let is_file path = exists path && not (is_directory path)
 let equal p1 p2 = normalize p1 = normalize p2
 
 let strip_prefix path ~prefix =
-  let path_str = to_string path in
-  let prefix_str = to_string prefix in
+  let path_components = components path in
+  let prefix_components = components prefix in
 
-  (* Normalize to ensure trailing slashes don't affect comparison *)
-  let prefix_str =
-    if prefix_str <> "" && prefix_str.[String.length prefix_str - 1] <> '/' then
-      prefix_str ^ "/"
-    else prefix_str
+  (* Recursively consume matching prefix components *)
+  let rec consume path_parts prefix_parts =
+    match (path_parts, prefix_parts) with
+    | _, [] ->
+        (* Prefix fully consumed, return remaining path components *)
+        Result.ok path_parts
+    | [], _ :: _ ->
+        (* Ran out of path before consuming prefix *)
+        Result.err (SystemError
+          (Printf.sprintf "Path %s does not start with prefix %s"
+            (to_string path) (to_string prefix)))
+    | p :: path_rest, pre :: prefix_rest ->
+        if to_string p = to_string pre then
+          consume path_rest prefix_rest
+        else
+          Result.err (SystemError
+            (Printf.sprintf "Path %s does not start with prefix %s"
+              (to_string path) (to_string prefix)))
   in
 
-  let prefix_len = String.length prefix_str in
-  let path_len = String.length path_str in
-
-  if path_len >= prefix_len && String.sub path_str 0 prefix_len = prefix_str then
-    (* Path starts with prefix, return the remaining part *)
-    let remaining = String.sub path_str prefix_len (path_len - prefix_len) in
-    Result.ok (v remaining)
-  else
-    Result.err (SystemError (Printf.sprintf "Path %s does not start with prefix %s" path_str prefix_str))
+  match consume path_components prefix_components with
+  | Ok [] -> Result.ok (v "")
+  | Ok remaining ->
+      (* Join remaining components back into a path *)
+      let result = List.fold_left join (List.hd remaining) (List.tl remaining) in
+      Result.ok result
+  | Error e -> Result.err e
 
 let pp fmt path = Format.pp_print_string fmt (to_string path)
