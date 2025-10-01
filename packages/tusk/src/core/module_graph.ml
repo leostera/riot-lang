@@ -413,6 +413,14 @@ and handle_library ~t ~ctx dir name children src_dir =
   (* NOTE: We ONLY depend on child_files (actual files in this directory), *)
   (* NOT on child_dirs (subdirectories that become library interfaces themselves) *)
   (* Depending on child_dirs would create cycles! *)
+
+  Printf.printf "[MODULE_GRAPH] Library %s has %d child_files:\n%!" name (List.length child_files);
+  List.iter (fun m ->
+    Printf.printf "[MODULE_GRAPH]   - %s (%s)\n%!"
+      (Module.module_name m |> Module_name.to_string)
+      (Module.filename m |> Path.to_string)
+  ) child_files;
+
   List.iter
     (fun child_mod ->
       try
@@ -423,6 +431,8 @@ and handle_library ~t ~ctx dir name children src_dir =
         List.iter
           (fun child_node_id ->
             let child_node = G.get_node t.graph child_node_id in
+            Printf.printf "[MODULE_GRAPH]   Adding edge: %s.ml/mli -> %s\n%!"
+              name (file_to_string child_node.value.file);
             (* Add dependency from library interface to child file *)
             G.add_edge intf_node ~depends_on:child_node;
             G.add_edge impl_node ~depends_on:child_node)
