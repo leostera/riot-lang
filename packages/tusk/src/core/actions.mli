@@ -41,6 +41,7 @@ type action =
       includes : string list;
     }  (** Create executable *)
   (* File operations *)
+  | CopyDir of { source : string; destination : string }  (** Copy directory recursively *)
   | CopyFile of { source : string; destination : string }  (** Copy file *)
   | WriteFile of { destination : string; content : string }
       (** Write content to file *)
