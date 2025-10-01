@@ -574,8 +574,11 @@ let generate_actions t =
       match node.value with
       | { kind = MLI mod_; file = Concrete path; open_modules; _ } ->
           Printf.printf "[MODULE_GRAPH]     -> MLI (Concrete)\n%!";
+          Printf.printf "[MODULE_GRAPH]       path (absolute): %s\n%!" (Path.to_string path);
+          Printf.printf "[MODULE_GRAPH]       package.path: %s\n%!" (Path.to_string t.package.path);
           (* Copy source file to sandbox first *)
           let relative_path = Path.strip_prefix path ~prefix:t.package.path |> Result.unwrap in
+          Printf.printf "[MODULE_GRAPH]       relative_path: %s\n%!" (Path.to_string relative_path);
           let copy_action =
             Actions.CopyFile
               {
@@ -600,8 +603,11 @@ let generate_actions t =
           outputs := cmi_output :: !outputs
       | { kind = ML mod_; file = Concrete path; open_modules; _ } ->
           Printf.printf "[MODULE_GRAPH]     -> ML (Concrete)\n%!";
+          Printf.printf "[MODULE_GRAPH]       path (absolute): %s\n%!" (Path.to_string path);
+          Printf.printf "[MODULE_GRAPH]       package.path: %s\n%!" (Path.to_string t.package.path);
           (* Copy source file to sandbox first *)
           let relative_path = Path.strip_prefix path ~prefix:t.package.path |> Result.unwrap in
+          Printf.printf "[MODULE_GRAPH]       relative_path: %s\n%!" (Path.to_string relative_path);
           let copy_action =
             Actions.CopyFile
               {
