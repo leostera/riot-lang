@@ -215,9 +215,11 @@ and handle_c_file ~t ~ctx path =
   G.add_edge parent_impl ~depends_on:c_node
 
 and handle_h_file ~t ~ctx path =
+  let { parent_impl; _ } = ctx in
   let node = { file = Concrete path; open_modules = []; kind = H } in
-  let _h_node = G.add_node t.graph node in
-  ()
+  let h_node = G.add_node t.graph node in
+  (* H files must be available before C compilation, so make parent depend on them *)
+  G.add_edge parent_impl ~depends_on:h_node
 
 and handle_ocaml_module ~t ~ctx path =
   let { ns; aliases; parent_impl; parent_intf } = ctx in
