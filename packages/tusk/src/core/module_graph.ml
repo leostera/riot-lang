@@ -338,11 +338,15 @@ and handle_library ~t ~ctx dir name children src_dir =
     G.add_node t.graph node
   in
 
-  (* Create library interface - NO open modules, they reference submodules directly *)
+  (* Create library interface *)
+  (* Only top-level library interfaces (empty ns) skip -open flags *)
+  (* Subdirectory library interfaces need parent aliases *)
+  let lib_aliases = if Namespace.is_empty ns then [] else aliases @ [ aliases_node ] in
+
   let intf_node =
     let intf =
       Library_interface.make_node intf_mod child_modules
-        [] (* Don't open aliases in library interface *)
+        lib_aliases
         ~exists:has_library_interface_mli
         ~actual_path:library_interface_mli_path
     in
@@ -353,7 +357,7 @@ and handle_library ~t ~ctx dir name children src_dir =
   let impl_node =
     let impl =
       Library_interface.make_node impl_mod child_modules
-        [] (* Don't open aliases in library interface *)
+        lib_aliases
         ~exists:has_library_interface_ml ~actual_path:library_interface_ml_path
     in
     G.add_node t.graph impl
