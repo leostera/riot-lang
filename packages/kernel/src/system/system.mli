@@ -116,3 +116,5 @@ val executable_name : string
 
 val argv : unit -> string array
 (** Command line arguments *)
+
+module OsProcess = OsProcess

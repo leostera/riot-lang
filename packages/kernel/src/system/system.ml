@@ -85,3 +85,5 @@ let runtime_warnings_enabled = Sys.runtime_warnings_enabled
 let opaque_identity = Sys.opaque_identity
 let executable_name = Sys.executable_name
 let argv () = Sys.argv
+
+module OsProcess = OsProcess
