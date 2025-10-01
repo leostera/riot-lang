@@ -26,13 +26,13 @@ val spawn :
 (** Spawn a process. All piped file descriptors are set to non-blocking mode.
     Returns a process handle that can be used for I/O and status checking. *)
 
-val stdin : t -> Unix.file_descr option
+val stdin : t -> Async.Fd.t option
 (** Get stdin fd if configured as `Pipe. Ready for non-blocking writes. *)
 
-val stdout : t -> Unix.file_descr option
+val stdout : t -> Async.Fd.t option
 (** Get stdout fd if configured as `Pipe. Ready for non-blocking reads. *)
 
-val stderr : t -> Unix.file_descr option
+val stderr : t -> Async.Fd.t option
 (** Get stderr fd if configured as `Pipe. Ready for non-blocking reads. *)
 
 val pid : t -> int
@@ -50,3 +50,6 @@ val kill : t -> signal:int -> unit
 val close : t -> unit
 (** Close all file descriptors and release resources. Does not wait for
     process termination - call try_wait first if you need the exit status. *)
+
+val current_pid : unit -> int
+(** Get the current process ID *)

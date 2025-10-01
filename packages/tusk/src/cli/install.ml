@@ -120,18 +120,11 @@ let run args =
 
           (* Copy the binary to ~/.tusk/bin *)
           let dest_path = Path.(tusk_bin_dir / Path.v package_name) in
-          let cp_cmd =
-            Printf.sprintf "cp %s %s"
-              (Path.to_string binary_path)
-              (Path.to_string dest_path)
-          in
-          match Command.of_unix_status (Command.system cp_cmd) with
-          | Command.Exited 0 ->
+          match Fs.copy ~src:binary_path ~dst:dest_path with
+          | Ok () ->
               (* Make it executable *)
-              let chmod_cmd =
-                Printf.sprintf "chmod +x %s" (Path.to_string dest_path)
-              in
-              ignore (Command.system chmod_cmd);
+              let perms = Fs.Permissions.executable in
+              ignore (Fs.set_permissions dest_path perms);
 
               Printf.printf "✅ Installed %s to %s\n%!" package_name
                 (Path.to_string dest_path);

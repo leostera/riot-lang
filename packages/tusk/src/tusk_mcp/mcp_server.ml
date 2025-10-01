@@ -272,10 +272,8 @@ let execute_tool name arguments =
         |> Result.expect ~msg:"Failed to get current directory"
       in
       let target_dir = Path.(cwd / Path.v "target") in
-      let cmd = Printf.sprintf "rm -rf %s" (Path.to_string target_dir) in
-      let result = Command.system cmd in
-      match Command.of_unix_status result with
-      | Command.Exited 0 ->
+      match Fs.remove_dir_all target_dir with
+      | Ok () ->
           [
             Mcp.Text
               (Json.to_string

@@ -10,9 +10,9 @@ type stdio_config = {
 
 type t = {
   pid : int;
-  stdin_fd : Unix.file_descr option;
-  stdout_fd : Unix.file_descr option;
-  stderr_fd : Unix.file_descr option;
+  stdin_fd : Async.Fd.t option;
+  stdout_fd : Async.Fd.t option;
+  stderr_fd : Async.Fd.t option;
   mutable status : status;
 }
 
@@ -160,3 +160,5 @@ let close t =
   (match t.stdin_fd with Some fd -> Unix.close fd | None -> ());
   (match t.stdout_fd with Some fd -> Unix.close fd | None -> ());
   (match t.stderr_fd with Some fd -> Unix.close fd | None -> ())
+
+let current_pid () = Unix.getpid ()

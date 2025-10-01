@@ -15,9 +15,15 @@ let sort ~toolchain ~cwd ~files =
 
     Format.eprintf "[DEBUG Ocamldep] Running: %s@." cmd;
 
-    let ic = Command.open_process_in cmd in
-    let sorted_str = try input_line ic with End_of_file -> "" in
-    ignore (Command.close_process_in ic);
+    let sorted_str =
+      let command = Command.make ~args:["-c"; cmd] "sh" in
+      match Command.output command with
+      | Ok output -> (
+          match String.split_on_char '\n' output.Command.stdout with
+          | line :: _ -> String.trim line
+          | [] -> "")
+      | Error _ -> ""
+    in
 
     Format.eprintf "[DEBUG Ocamldep] Result: %s@." sorted_str;
 
@@ -34,9 +40,15 @@ let deps ~toolchain ~cwd ~file ~package_namespace =
     Printf.sprintf "cd %s && %s -modules %s 2>/dev/null" cwd ocamldep file
   in
 
-  let ic = Command.open_process_in cmd in
-  let deps_str = try input_line ic with End_of_file -> "" in
-  ignore (Command.close_process_in ic);
+  let deps_str =
+    let command = Command.make ~args:["-c"; cmd] "sh" in
+    match Command.output command with
+    | Ok output -> (
+        match String.split_on_char '\n' output.Command.stdout with
+        | line :: _ -> String.trim line
+        | [] -> "")
+    | Error _ -> ""
+  in
 
   if deps_str = "" then []
   else
@@ -64,9 +76,15 @@ let deps_with_flags ~toolchain ~cwd ~file ~flags ~package_namespace =
       flags_str file
   in
 
-  let ic = Command.open_process_in cmd in
-  let deps_str = try input_line ic with End_of_file -> "" in
-  ignore (Command.close_process_in ic);
+  let deps_str =
+    let command = Command.make ~args:["-c"; cmd] "sh" in
+    match Command.output command with
+    | Ok output -> (
+        match String.split_on_char '\n' output.Command.stdout with
+        | line :: _ -> String.trim line
+        | [] -> "")
+    | Error _ -> ""
+  in
 
   if deps_str = "" then []
   else
