@@ -547,13 +547,22 @@ let generate_actions t =
   let outputs = ref [] in
   let cmo_files = ref [] in
 
-  (* First action: Copy entire src directory to sandbox *)
-  let package_src = Path.(t.package.path / Path.v "src") in
-  let copydir_action =
-    Actions.CopyDir
-      { source = Path.to_string package_src; destination = "src" }
-  in
-  actions := [ copydir_action ];
+  (* First pass: Generate CopyFile actions for all Concrete source files *)
+  List.iter
+    (fun (node : dep G.node) ->
+      match node.value.file with
+      | Concrete path ->
+          let relative_path = Path.strip_prefix path ~prefix:t.package.path |> Result.unwrap in
+          let copy_action =
+            Actions.CopyFile
+              {
+                source = Path.to_string path;
+                destination = Path.to_string relative_path;
+              }
+          in
+          actions := copy_action :: !actions
+      | Generated _ -> ())
+    sorted_nodes;
 
   (* Helper to get open modules *)
   let opens mods =
