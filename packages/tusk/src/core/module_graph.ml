@@ -509,6 +509,15 @@ let generate_actions t =
 
           (* Compile it *)
           let output = Module.cmo mod_ in
+          (* Check if this is an alias file - they need -no-alias-deps *)
+          let is_alias_file =
+            let filename = Path.to_string path in
+            String.ends_with ~suffix:"Aliases.ml.gen" filename
+          in
+          let base_flags =
+            if is_alias_file then [ Ocamlc.NoAliasDeps; Ocamlc.Impl path ]
+            else [ Ocamlc.Impl path ]
+          in
           let action =
             Actions.CompileImplementation
               {
@@ -516,8 +525,8 @@ let generate_actions t =
                 output;
                 includes = [ "." ];
                 flags =
-                  Ocamlc.Impl path
-                  :: List.map (fun m -> Ocamlc.Open m) (opens open_modules);
+                  base_flags
+                  @ List.map (fun m -> Ocamlc.Open m) (opens open_modules);
               }
           in
           actions := action :: !actions;
