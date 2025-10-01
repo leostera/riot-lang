@@ -88,7 +88,7 @@ let sources_newer_than_outputs workspace pkg_name =
   let target_dir =
     Path.(root / Path.v "target/debug/out/packages" / Path.v pkg_name)
   in
-  let output_file_path = Path.(target_dir / Path.v (pkg_name ^ ".cma")) in
+  let output_file_path = Path.(target_dir / Path.v (pkg_name ^ ".cmxa")) in
   match Fs.exists output_file_path with
   | Ok false | Error _ -> true (* No outputs, need to build *)
   | Ok true -> (
@@ -140,17 +140,17 @@ let build_outputs_exist workspace pkg_name =
   let pkg_target_dir =
     Path.(root / Path.v "target/debug/out/packages" / Path.v pkg_name)
   in
-  let cma_file = Path.(pkg_target_dir / Path.v (pkg_name ^ ".cma")) in
+  let cmxa_file = Path.(pkg_target_dir / Path.v (pkg_name ^ ".cmxa")) in
   let cmi_file = Path.(pkg_target_dir / Path.v (pkg_name ^ ".cmi")) in
 
   (* Check if key build outputs exist *)
-  let cma_exists =
-    match Fs.exists cma_file with Ok true -> true | _ -> false
+  let cmxa_exists =
+    match Fs.exists cmxa_file with Ok true -> true | _ -> false
   in
   let cmi_exists =
     match Fs.exists cmi_file with Ok true -> true | _ -> false
   in
-  cma_exists && cmi_exists
+  cmxa_exists && cmi_exists
 
 (** Check if a package is built with the current content hash *)
 let is_built_with_current_hash t pkg current_hash =

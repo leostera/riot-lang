@@ -170,7 +170,7 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
   (* Copy all transitive dependency artifacts into sandbox *)
   copy_dependency_artifacts sandbox ~store ~build_graph ~build_results;
 
-  (* Copy unix.cma if needed - it's not in our Store *)
+  (* Copy unix.cmxa if needed - it's not in our Store *)
   (if
      List.exists
        (fun (dep : Workspace.dependency) -> dep.name = "unix")
@@ -179,16 +179,16 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
      let toolchain_path =
        Toolchains.get_toolchain_path sandbox.node.toolchain
      in
-     let unix_cma =
-       Path.(toolchain_path / Path.v "lib" / Path.v "ocaml" / Path.v "unix.cma")
+     let unix_cmxa =
+       Path.(toolchain_path / Path.v "lib" / Path.v "ocaml" / Path.v "unix.cmxa")
      in
      let unix_exists =
-       match Fs.exists unix_cma with Ok exists -> exists | Error _ -> false
+       match Fs.exists unix_cmxa with Ok exists -> exists | Error _ -> false
      in
      if unix_exists then (
-       Printf.printf "[Sandbox] Copying unix.cma from toolchain\n%!";
-       let dst_path = Path.(sandbox.sandbox_dir / Path.v "unix.cma") in
-       match Fs.copy ~src:unix_cma ~dst:dst_path with
+       Printf.printf "[Sandbox] Copying unix.cmxa from toolchain\n%!";
+       let dst_path = Path.(sandbox.sandbox_dir / Path.v "unix.cmxa") in
+       match Fs.copy ~src:unix_cmxa ~dst:dst_path with
        | Ok () -> ()
        | Error _ -> ()));
 

@@ -28,5 +28,8 @@ val cmi : t -> Path.t
 val cmo : t -> Path.t
 (** Get the compiled object filename (e.g., "Std__Path.cmo") *)
 
+val cmx : t -> Path.t
+(** Get the compiled object filename (e.g., "Std__Path.cmx") *)
+
 val eq : t -> t -> bool
 (** Check if two modules are equal *)

@@ -148,12 +148,12 @@ let get_primary_error error_output =
   let filtered_lines =
     error_output |> String.split_on_char '\n'
     |> List.filter (fun line ->
-        (* Filter out "Cannot find file *.cmo" errors which are internal *)
+        (* Filter out "Cannot find file *.cmx" errors which are internal *)
         not
           (String.starts_with ~prefix:"Error: Cannot find file" line
-          && (String.ends_with ~suffix:".cmo\"" line
+          && (String.ends_with ~suffix:".cmx\"" line
              || String.ends_with ~suffix:".cmi\"" line
-             || String.ends_with ~suffix:".cma\"" line)))
+             || String.ends_with ~suffix:".cmxa\"" line)))
     |> String.concat "\n"
   in
   match parse_error filtered_lines with [] -> None | err :: _ -> Some err

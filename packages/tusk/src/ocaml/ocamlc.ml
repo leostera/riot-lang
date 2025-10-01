@@ -35,8 +35,15 @@ type result = Success of string | Failed of string
 let make_include_flags dirs =
   dirs |> List.map (fun dir -> "-I " ^ dir) |> String.concat " "
 
-(** Generate the base ocamlc command from toolchain *)
-let base_command toolchain = Path.to_string (Toolchains.ocamlc_path toolchain)
+(** Generate the base compiler command from toolchain *)
+let base_command_bytecode toolchain =
+  Path.to_string (Toolchains.ocamlc_path toolchain)
+
+let base_command_native toolchain =
+  Path.to_string (Toolchains.ocamlopt_path toolchain)
+
+(* Use native compilation by default *)
+let base_command = base_command_native
 
 (** Convert warning to its numeric code *)
 let warning_to_code = function NoCmiFile -> "49" | All -> "a"
@@ -107,6 +114,7 @@ let compile_interface ~toolchain ~includes ~flags ~output source =
   (* Include current directory for .cmi files *)
   let includes_with_dot = "." :: includes in
 
+  (* Interface compilation uses ocamlc (same for bytecode and native) *)
   (* If we have flags, we need to build command parts directly *)
   if flags <> [] then
     let flag_args = flags_to_string flags in
@@ -115,7 +123,7 @@ let compile_interface ~toolchain ~includes ~flags ~output source =
       List.exists (function Impl _ -> true | _ -> false) flags
     in
     let cmd_parts =
-      [ base_command toolchain; "-c" ]
+      [ base_command_bytecode toolchain; "-c" ]
       @ flag_args
       @ List.concat_map (fun dir -> [ "-I"; dir ]) includes_with_dot
       @ [ "-o"; output ]
@@ -131,7 +139,7 @@ let compile_interface ~toolchain ~includes ~flags ~output source =
     run ~toolchain ~includes:includes_with_dot ~output:(Some output)
       ~mode:Compile [ source ]
 
-(** Compile an implementation file (.ml -> .cmo) *)
+(** Compile an implementation file (.ml -> .cmx) *)
 let compile_impl ~toolchain ~includes ~flags ~output source =
   (* Include current directory for .cmi files *)
   let includes_with_dot = "." :: includes in
@@ -198,7 +206,7 @@ let generate_interface ~toolchain ~includes ~flags ~output source =
 let compile_c ~toolchain ~includes ~output source =
   run ~toolchain ~includes ~output:(Some output) ~mode:Compile [ source ]
 
-(** Create a library (.cma) from object files *)
+(** Create a library (.cmxa) from object files *)
 let create_library ~toolchain ~includes ~output objects =
   run ~toolchain ~includes ~output:(Some output) ~mode:Library objects
 
@@ -229,13 +237,13 @@ module Tests = struct
     Success "Test passed"
     [@test]
 
-  let test_compile_impl_generates_cmo () =
-    (* Test that .ml compilation produces .cmo file *)
+  let test_compile_impl_generates_cmx () =
+    (* Test that .ml compilation produces .cmx file *)
     Success "Test passed"
     [@test]
 
   let test_create_library_bundles_objects () =
-    (* Test that .cma creation includes all object files *)
+    (* Test that .cmxa creation includes all object files *)
     Success "Test passed"
     [@test]
 

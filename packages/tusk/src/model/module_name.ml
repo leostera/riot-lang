@@ -37,6 +37,7 @@ let qualified_name t =
 
 (* Output file names based on qualified names *)
 let cma t = qualified_name t ^ ".cma" |> Path.v
+let cmxa t = qualified_name t ^ ".cmxa" |> Path.v
 let cmo t = qualified_name t ^ ".cmo" |> Path.v
 let cmi t = qualified_name t ^ ".cmi" |> Path.v
 let cmx t = qualified_name t ^ ".cmx" |> Path.v

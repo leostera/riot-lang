@@ -30,7 +30,10 @@ val qualified_name : t -> string
 (** Get the fully qualified name (namespace__name) *)
 
 val cma : t -> Path.t
-(** Get the .cmo filename based on qualified name *)
+(** Get the .cma filename based on qualified name *)
+
+val cmxa : t -> Path.t
+(** Get the .cmxa filename based on qualified name *)
 
 val cmo : t -> Path.t
 (** Get the .cmo filename based on qualified name *)

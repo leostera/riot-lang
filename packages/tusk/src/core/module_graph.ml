@@ -563,7 +563,7 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
 
   let actions = ref [] in
   let outputs = ref [] in
-  let cmo_files = ref [] in
+  let cmx_files = ref [] in
   let c_objects = ref [] in
   (* Track .o files from C compilation *)
 
@@ -641,19 +641,19 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
           let relative_path =
             Path.strip_prefix path ~prefix:t.package.path |> Result.unwrap
           in
-          let cmo_output = Module.cmo mod_ in
+          let cmx_output = Module.cmx mod_ in
           let cmi_output = Module.cmi mod_ in
           let compile_action =
             Actions.CompileImplementation
               {
                 source = relative_path;
-                output = cmo_output;
+                output = cmx_output;
                 includes = [ Path.v "." ];
                 flags = List.map (fun m -> Ocamlc.Open m) (opens open_modules);
               }
           in
           actions := compile_action :: !actions;
-          cmo_files := cmo_output :: !cmo_files;
+          cmx_files := cmx_output :: !cmx_files;
           outputs := cmi_output :: !outputs
       | { kind = ML mod_; file = Generated { path; contents }; open_modules; _ }
         ->
@@ -666,7 +666,7 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
           actions := write_action :: !actions;
 
           (* Compile it *)
-          let cmo_output = Module.cmo mod_ in
+          let cmx_output = Module.cmx mod_ in
           let cmi_output = Module.cmi mod_ in
           (* Check if this is an alias file - they need -no-alias-deps and produce .cmi *)
           let is_alias_file =
@@ -686,7 +686,7 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
             Actions.CompileImplementation
               {
                 source = path;
-                output = cmo_output;
+                output = cmx_output;
                 includes = [ Path.v "." ];
                 flags =
                   base_flags
@@ -694,7 +694,7 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
               }
           in
           actions := action :: !actions;
-          cmo_files := cmo_output :: !cmo_files;
+          cmx_files := cmx_output :: !cmx_files;
           (* Generated .ml files always produce .cmi (no separate .mli) *)
           outputs := cmi_output :: !outputs
       | {
@@ -757,10 +757,10 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
     (List.length sorted_nodes);
 
   (* Create library archive *)
-  let library_name = Module_name.(of_string t.package.name |> cma) in
-  if !cmo_files <> [] then (
-    (* Include both .cmo files and .o files (C stubs) in the library *)
-    let all_objects = List.rev !cmo_files @ List.rev !c_objects in
+  let library_name = Module_name.(of_string t.package.name |> cmxa) in
+  if !cmx_files <> [] then (
+    (* Include both .cmx files and .o files (C stubs) in the library *)
+    let all_objects = List.rev !cmx_files @ List.rev !c_objects in
     let archive_action =
       Actions.CreateLibrary
         {
@@ -793,7 +793,7 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
       |> Build_graph.topological_sort
     in
 
-    (* Get dependency .cma files in topological order *)
+    (* Get dependency .cmxa files in topological order *)
     let dep_libraries =
       List.filter_map
         (fun dep_node ->
@@ -802,7 +802,7 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
           if dep_pkg_name = "unix" || dep_pkg_name = t.package.name then None
           else
             let dep_name = Module_name.of_string dep_pkg_name in
-            Some (Module_name.cma dep_name))
+            Some (Module_name.cmxa dep_name))
         sorted_deps
     in
 
@@ -821,7 +821,7 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
 
     (* Libraries: unix first (if needed), then topologically sorted deps, then our library *)
     let libraries =
-      (if has_unix_dep then Path.[ v "unix.cma" ] else [])
+      (if has_unix_dep then Path.[ v "unix.cmxa" ] else [])
       @ dep_libraries @ [ library_name ]
     in
 
@@ -829,7 +829,7 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
       Actions.CreateExecutable
         {
           output = binary_name;
-          objects = List.rev !cmo_files;
+          objects = List.rev !cmx_files;
           libraries;
           includes;
         }
