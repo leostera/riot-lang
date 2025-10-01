@@ -20,9 +20,11 @@ module Package = struct
   let hash (type state) (module H : Crypto.Hasher.Intf with type state = state)
       (hasher : state) (pkg : package) =
     H.write_string hasher pkg.name;
+    (* Sort dependencies by name for deterministic hashing *)
+    let sorted_deps = List.sort (fun (a : dependency) (b : dependency) -> String.compare a.name b.name) pkg.dependencies in
     List.iter
       (fun (dep : dependency) -> H.write_string hasher dep.name)
-      pkg.dependencies
+      sorted_deps
 end
 
 (** Parse workspace members from a workspace TOML file *)

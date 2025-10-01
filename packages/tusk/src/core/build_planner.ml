@@ -90,6 +90,8 @@ let plan_node ~graph ~node ~build_results ~workspace ~session_id () =
             | Error _ -> ()
             | Ok iter ->
                 let files = MutIterator.to_list iter in
+                (* Sort files for deterministic hashing - filesystem order is non-deterministic *)
+                let sorted_files = List.sort (fun a b -> String.compare (Path.to_string a) (Path.to_string b)) files in
                 List.iter
                   (fun file ->
                     let file_path = Path.(dir / file) in
@@ -103,7 +105,7 @@ let plan_node ~graph ~node ~build_results ~workspace ~session_id () =
                             | Error _ -> ())
                         | _ -> ())
                     | Error _ -> ())
-                  files
+                  sorted_files
           in
           hash_source_files src_dir;
 
@@ -111,13 +113,15 @@ let plan_node ~graph ~node ~build_results ~workspace ~session_id () =
           Actions.hash_actions (module Sha256) hasher actions;
 
           (* Hash 3: Package dependencies (their hashes) *)
+          (* Sort deps by ID for deterministic hashing *)
+          let sorted_deps = List.sort Node_id.compare node.deps in
           List.iter
             (fun dep_id ->
               let dep_node = Build_graph.get_node graph dep_id in
               match dep_node.spec with
               | Planned { hash; _ } -> Sha256.write hasher (Digest.bytes hash)
               | Unplanned -> ())
-            node.deps;
+            sorted_deps;
 
           let hash = Sha256.finish hasher in
 

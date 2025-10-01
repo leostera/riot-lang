@@ -469,8 +469,8 @@ let scan_sources t =
 (** Wire dependencies using ocamldep *)
 let wire_dependencies t =
   Printf.printf "[MODULE_GRAPH] Wiring dependencies with ocamldep\n%!";
-  G.iter
-    (fun _node_id (node : dep G.node) ->
+  G.map t.graph ~fn:(fun (_node_id, (node : dep G.node)) ->
+      Std.Task.async @@ fun () ->
       let dep = node.value in
       match dep.kind with
       | ML mod_ | MLI mod_ ->
@@ -516,7 +516,8 @@ let wire_dependencies t =
                   dep_name)
             deps
       | _ -> ())
-    t.graph
+  |> List.map Std.Task.await |> Result.all
+  |> Result.expect ~msg:"Something went wrong wiring dependencies!"
 
 (** Generate compilation actions from the module graph *)
 let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
@@ -827,7 +828,7 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
     let exe_action =
       Actions.CreateExecutable
         {
-          output =  binary_name;
+          output = binary_name;
           objects = List.rev !cmo_files;
           libraries;
           includes;

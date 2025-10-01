@@ -20,6 +20,7 @@ module Option = Option
 module Path = Path
 module Result = Result
 module String = String
+module Task = Task
 module Time = Time
 module Version = Version
 module WorkerPool = Workerpool
