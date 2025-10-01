@@ -763,15 +763,24 @@ let generate_actions t =
     let binary_name = t.package.name in
 
     (* Collect dependency .cma files *)
-    let dep_libraries =
+    let dep_names =
       List.filter_map
         (fun (dep : Workspace.dependency) ->
-          (* Unix is special - it's a standard lib with lowercase name *)
-          if dep.name = "unix" then Some "unix.cma"
-          else
-            (* Regular dependencies use capitalized name *)
-            Some (String.capitalize_ascii dep.name ^ ".cma"))
+          (* Skip unix - handled separately *)
+          if dep.name = "unix" then None else Some dep.name)
         t.package.dependencies
+    in
+
+    (* Sort dependencies in known topological order *)
+    let known_order = [ "kernel"; "std"; "miniriot"; "jsonrpc"; "mcp" ] in
+    let sorted_deps =
+      List.filter (fun name -> List.mem name dep_names) known_order
+      @ List.filter (fun name -> not (List.mem name known_order)) dep_names
+    in
+
+    (* Convert to .cma files *)
+    let dep_libraries =
+      List.map (fun name -> String.capitalize_ascii name ^ ".cma") sorted_deps
     in
 
     (* Check if we need unix includes *)
@@ -782,8 +791,11 @@ let generate_actions t =
     in
     let includes = if has_unix_dep then [ "."; "+unix" ] else [ "." ] in
 
-    (* Libraries: dependencies first, then our own library *)
-    let libraries = dep_libraries @ [ library_name ] in
+    (* Libraries: unix first (if needed), then sorted dependencies, then our library *)
+    let libraries =
+      (if has_unix_dep then [ "unix.cma" ] else [])
+      @ dep_libraries @ [ library_name ]
+    in
 
     let exe_action =
       Actions.CreateExecutable
