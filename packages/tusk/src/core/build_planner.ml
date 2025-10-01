@@ -117,9 +117,9 @@ let plan_node ~graph ~node ~build_results ~workspace ~session_id () =
               | Actions.CompileC { output; _ }
               | Actions.CreateLibrary { output; _ }
               | Actions.CreateExecutable { output; _ } ->
-                  outs := output :: !outs
+                  outs := Path.v output :: !outs
               | Actions.DeclareOutputs { outputs } ->
-                  outs := List.rev_append outputs !outs
+                  outs := List.rev_append (List.map Path.v outputs) !outs
               | Actions.CopyFile _ | Actions.WriteFile _ -> ())
             actions;
 
