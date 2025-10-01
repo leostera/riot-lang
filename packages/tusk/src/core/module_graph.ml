@@ -546,6 +546,7 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
   let actions = ref [] in
   let outputs = ref [] in
   let cmo_files = ref [] in
+  let c_objects = ref [] in  (* Track .o files from C compilation *)
 
   Printf.printf "[MODULE_GRAPH] Starting first pass: copying source files...\n%!";
   Printf.printf "[MODULE_GRAPH] Package path: %s\n%!" (Path.to_string t.package.path);
@@ -718,7 +719,8 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
           let output_name = Path.basename (Path.v obj_file) in
           let compile_action = Actions.CompileC { source = Path.to_string relative_path; output = obj_file } in
           actions := compile_action :: !actions;
-          outputs := output_name :: !outputs
+          outputs := output_name :: !outputs;
+          c_objects := output_name :: !c_objects
       | { kind = H; file = Concrete path; _ } ->
           Printf.printf "[MODULE_GRAPH]     -> H file\n%!";
           (* Header files are already in sandbox via CopyDir, no action needed *)
@@ -736,11 +738,13 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
   (* Create library archive *)
   let library_name = String.capitalize_ascii t.package.name ^ ".cma" in
   if !cmo_files <> [] then (
+    (* Include both .cmo files and .o files (C stubs) in the library *)
+    let all_objects = List.rev !cmo_files @ List.rev !c_objects in
     let archive_action =
       Actions.CreateLibrary
         {
           output = library_name;
-          objects = List.rev !cmo_files;
+          objects = all_objects;
           includes = [ "." ];
         }
     in
@@ -762,20 +766,21 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
     Printf.printf "[MODULE_GRAPH] Found main.ml - creating executable\n%!";
     let binary_name = t.package.name in
 
-    (* Get dependency .cma files in topological order from build graph *)
+    (* Get topologically sorted dependencies *)
+    let sorted_deps = Build_graph.filter_for_package build_graph t.package.name
+                      |> Build_graph.topological_sort in
+
+    (* Get dependency .cma files in topological order *)
     let dep_libraries =
-      Build_graph.filter_for_package build_graph t.package.name
-      |> Build_graph.topological_sort
-      |> List.filter_map (fun dep_node ->
+      List.filter_map (fun dep_node ->
           let dep_pkg_name = dep_node.Build_node.package.name in
           (* Skip unix (handled separately) and skip ourselves *)
           if dep_pkg_name = "unix" || dep_pkg_name = t.package.name then None
           else Some (String.capitalize_ascii dep_pkg_name ^ ".cma"))
+        sorted_deps
     in
 
     (* Check if we or any of our dependencies need unix *)
-    let sorted_deps = Build_graph.filter_for_package build_graph t.package.name
-                      |> Build_graph.topological_sort in
     let has_unix_dep =
       List.exists
         (fun dep_node ->
