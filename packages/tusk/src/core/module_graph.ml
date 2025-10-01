@@ -469,7 +469,7 @@ let scan_sources t =
 (** Wire dependencies using ocamldep *)
 let wire_dependencies t =
   Printf.printf "[MODULE_GRAPH] Wiring dependencies with ocamldep\n%!";
-  G.map t.graph ~fn:(fun (_node_id, (node : dep G.node)) ->
+  let results = G.map t.graph ~fn:(fun (_node_id, (node : dep G.node)) ->
       Std.Task.async @@ fun () ->
       let dep = node.value in
       match dep.kind with
@@ -516,7 +516,13 @@ let wire_dependencies t =
                   dep_name)
             deps
       | _ -> ())
-  |> List.map Std.Task.await |> Result.all
+  |> Std.Task.await_all
+    in
+
+  Printf.printf "[MODULE_GRAPH] Ran %d tasks\n%!" (List.length results);
+
+    results
+  |> Result.all
   |> Result.expect ~msg:"Something went wrong wiring dependencies!"
 
 (** Generate compilation actions from the module graph *)
