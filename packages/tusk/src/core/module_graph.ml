@@ -64,7 +64,12 @@ module Alias_module = struct
     String.concat "\n" (header :: body)
 
   let make_node (ns : Namespace.t) (modules : Module.t list) =
-    let path = Path.v "aliases.ml.gen" in
+    let ns_prefix = Namespace.to_string ns in
+    let filename =
+      if ns_prefix = "" then "Aliases.ml.gen"
+      else ns_prefix ^ "__Aliases.ml.gen"
+    in
+    let path = Path.v filename in
     let mod_ = Module.make ~namespace:ns ~filename:path in
     let file = Generated { path; contents = template modules } in
     let kind = ML mod_ in
@@ -161,8 +166,19 @@ let rec scan_directory dir =
           | Error _ -> [])
         entries
 
+(** Sort entries so .mli files are processed before .ml files (REQ-051) *)
+let sort_entries entries =
+  List.sort
+    (fun (_, e1) (_, e2) ->
+      match (e1, e2) with
+      | `File (_, ".mli"), `File (_, ".ml") -> -1
+      | `File (_, ".ml"), `File (_, ".mli") -> 1
+      | _ -> 0)
+    entries
+
 let rec do_scan ~t ~ctx entries src_dir =
-  match entries with
+  let sorted_entries = sort_entries entries in
+  match sorted_entries with
   | [] -> ()
   | (name, entry) :: rest -> (
       match entry with
@@ -212,7 +228,8 @@ and handle_ocaml_module ~t ~ctx path =
             let intf_node = G.get_node t.graph intf_node_id in
             match intf_node.value.kind with
             | MLI intf_mod
-              when Module.module_name intf_mod |> Module_name.to_string = mod_name ->
+              when Module.module_name intf_mod
+                   |> Module_name.to_string = mod_name ->
                 G.add_edge node ~depends_on:intf_node
             | _ -> ())
           node_ids
@@ -243,7 +260,9 @@ and handle_library ~t ~ctx dir name children src_dir =
   let impl_file = Path.add_extension base_path ~ext:"ml" in
   let impl_mod = Module.make ~namespace:ns ~filename:impl_file in
 
-  let ns = Namespace.append ns (Module.module_name impl_mod |> Module_name.to_string) in
+  let ns =
+    Namespace.append ns (Module.module_name impl_mod |> Module_name.to_string)
+  in
 
   (* Parse children to separate files from subdirectories *)
   let child_files =
@@ -483,7 +502,8 @@ let generate_actions t =
         ->
           (* Write generated file *)
           let write_action =
-            Actions.WriteFile { destination = Path.to_string path; content = contents }
+            Actions.WriteFile
+              { destination = Path.to_string path; content = contents }
           in
           actions := write_action :: !actions;
 
@@ -509,7 +529,8 @@ let generate_actions t =
       } ->
           (* Write generated file *)
           let write_action =
-            Actions.WriteFile { destination = Path.to_string path; content = contents }
+            Actions.WriteFile
+              { destination = Path.to_string path; content = contents }
           in
           actions := write_action :: !actions;
 
@@ -529,13 +550,11 @@ let generate_actions t =
       | { kind = C; file = Concrete path; _ } ->
           let src = Path.to_string path in
           let obj_file =
-            Path.remove_extension path |> Path.add_extension ~ext:"o"
+            Path.remove_extension path
+            |> Path.add_extension ~ext:"o"
             |> Path.to_string
           in
-          let action =
-            Actions.CompileC
-              { source = src; output = obj_file }
-          in
+          let action = Actions.CompileC { source = src; output = obj_file } in
           actions := action :: !actions;
           outputs := obj_file :: !outputs
       | { kind = H; file = Concrete path; _ } ->
