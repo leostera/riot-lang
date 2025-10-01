@@ -3,6 +3,7 @@
     This module defines the build actions that can be executed in a sandbox and
     provides blueprint generation for packages. *)
 
+open Std
 open Model
 open Ocaml
 
@@ -10,43 +11,43 @@ open Ocaml
 type action =
   (* File compilation actions *)
   | CompileInterface of {
-      source : string;
-      output : string;
-      includes : string list;
+      source : Path.t;
+      output : Path.t;
+      includes : Path.t list;
       flags : Ocamlc.compiler_flag list;
     }  (** Compile .mli file *)
   | CompileImplementation of {
-      source : string;
-      output : string;
-      includes : string list;
+      source : Path.t;
+      output : Path.t;
+      includes : Path.t list;
       flags : Ocamlc.compiler_flag list;
     }  (** Compile .ml file *)
   | GenerateInterface of {
-      source : string;
-      output : string;
-      includes : string list;
+      source : Path.t;
+      output : Path.t;
+      includes : Path.t list;
       flags : Ocamlc.compiler_flag list;
     }  (** Generate .mli from .ml using ocamlc -i *)
-  | CompileC of { source : string; output : string }  (** Compile C file *)
+  | CompileC of { source : Path.t; output : Path.t }  (** Compile C file *)
   (* Linking actions *)
   | CreateLibrary of {
-      output : string;
-      objects : string list;
-      includes : string list;
+      output : Path.t;
+      objects : Path.t list;
+      includes : Path.t list;
     }  (** Create .cma library *)
   | CreateExecutable of {
-      output : string;
-      objects : string list;
-      libraries : string list;
-      includes : string list;
+      output : Path.t;
+      objects : Path.t list;
+      libraries : Path.t list;
+      includes : Path.t list;
     }  (** Create executable *)
   (* File operations *)
-  | CopyDir of { source : string; destination : string }  (** Copy directory recursively *)
-  | CopyFile of { source : string; destination : string }  (** Copy file *)
-  | WriteFile of { destination : string; content : string }
+  | CopyDir of { source : Path.t; destination : Path.t }  (** Copy directory recursively *)
+  | CopyFile of { source : Path.t; destination : Path.t }  (** Copy file *)
+  | WriteFile of { destination : Path.t; content : string }
       (** Write content to file *)
   (* Output declaration *)
-  | DeclareOutputs of { outputs : string list }
+  | DeclareOutputs of { outputs : Path.t list }
       (** Declare output files that should be copied to target *)
 
 (** Result of executing an action *)

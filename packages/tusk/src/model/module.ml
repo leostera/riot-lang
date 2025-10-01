@@ -24,8 +24,8 @@ let namespaced_name t = Module_name.qualified_name t.module_name
 let qualified_name t = namespaced_name t
 let filename t = t.filename
 let kind t = t.kind
-let cmi t = Module_name.cmi t.module_name
-let cmo t = Module_name.cmo t.module_name
+let cmi t = Path.v (Module_name.cmi t.module_name)
+let cmo t = Path.v (Module_name.cmo t.module_name)
 
 let eq a b =
   Module_name.qualified_name a.module_name

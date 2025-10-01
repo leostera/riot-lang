@@ -562,8 +562,8 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
               let copy_action =
                 Actions.CopyFile
                   {
-                    source = Path.to_string path;
-                    destination = Path.to_string relative_path;
+                    source = path;
+                    destination = relative_path;
                   }
               in
               actions := copy_action :: !actions
@@ -611,9 +611,9 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
           let compile_action =
             Actions.CompileInterface
               {
-                source = Path.to_string relative_path;
-                output = cmi_output;
-                includes = [ "." ];
+                source = relative_path;
+                output = Path.v cmi_output;
+                includes = [ Path.v "." ];
                 flags = List.map (fun m -> Ocamlc.Open m) (opens open_modules);
               }
           in
@@ -628,22 +628,22 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
           let compile_action =
             Actions.CompileImplementation
               {
-                source = Path.to_string relative_path;
-                output = cmo_output;
-                includes = [ "." ];
+                source = relative_path;
+                output = Path.v cmo_output;
+                includes = [ Path.v "." ];
                 flags = List.map (fun m -> Ocamlc.Open m) (opens open_modules);
               }
           in
           actions := compile_action :: !actions;
           cmo_files := cmo_output :: !cmo_files;
-          outputs := cmi_output :: cmo_output :: !outputs
+          outputs := cmi_output :: !outputs
       | { kind = ML mod_; file = Generated { path; contents }; open_modules; _ }
         ->
           Printf.printf "[MODULE_GRAPH]     -> ML (Generated): %s\n%!" (Path.to_string path);
           (* Write generated file *)
           let write_action =
             Actions.WriteFile
-              { destination = Path.to_string path; content = contents }
+              { destination = path; content = contents }
           in
           actions := write_action :: !actions;
 
@@ -667,9 +667,9 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
           let action =
             Actions.CompileImplementation
               {
-                source = Path.to_string path;
-                output = cmo_output;
-                includes = [ "." ];
+                source = path;
+                output = Path.v cmo_output;
+                includes = [ Path.v "." ];
                 flags =
                   base_flags
                   @ List.map (fun m -> Ocamlc.Open m) (opens open_modules);
@@ -678,7 +678,7 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
           actions := action :: !actions;
           cmo_files := cmo_output :: !cmo_files;
           (* Generated .ml files always produce .cmi (no separate .mli) *)
-          outputs := cmi_output :: cmo_output :: !outputs
+          outputs := cmi_output :: !outputs
       | {
        kind = MLI mod_;
        file = Generated { path; contents };
@@ -689,7 +689,7 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
           (* Write generated file *)
           let write_action =
             Actions.WriteFile
-              { destination = Path.to_string path; content = contents }
+              { destination = path; content = contents }
           in
           actions := write_action :: !actions;
 
@@ -698,9 +698,9 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
           let action =
             Actions.CompileInterface
               {
-                source = Path.to_string path;
-                output;
-                includes = [ "." ];
+                source = path;
+                output = Path.v output;
+                includes = [ Path.v "." ];
                 flags = List.map (fun m -> Ocamlc.Open m) (opens open_modules);
               }
           in
@@ -717,7 +717,7 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
           in
           (* Use basename for output tracking *)
           let output_name = Path.basename (Path.v obj_file) in
-          let compile_action = Actions.CompileC { source = Path.to_string relative_path; output = obj_file } in
+          let compile_action = Actions.CompileC { source = relative_path; output = Path.v obj_file } in
           actions := compile_action :: !actions;
           outputs := output_name :: !outputs;
           c_objects := output_name :: !c_objects
@@ -743,9 +743,9 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
     let archive_action =
       Actions.CreateLibrary
         {
-          output = library_name;
-          objects = all_objects;
-          includes = [ "." ];
+          output = Path.v library_name;
+          objects = List.map Path.v all_objects;
+          includes = [ Path.v "." ];
         }
     in
     actions := archive_action :: !actions;
@@ -800,19 +800,23 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
     let exe_action =
       Actions.CreateExecutable
         {
-          output = binary_name;
-          objects = List.rev !cmo_files;
-          libraries;
-          includes;
+          output = Path.v binary_name;
+          objects = List.map Path.v (List.rev !cmo_files);
+          libraries = List.map Path.v libraries;
+          includes = List.map Path.v includes;
         }
     in
     actions := exe_action :: !actions;
     outputs := binary_name :: !outputs);
 
-  (* Add DeclareOutputs *)
-  let declare_action = Actions.DeclareOutputs { outputs = List.rev !outputs } in
+  let outputs_strings = List.rev !outputs in
 
-  (List.rev (declare_action :: !actions), List.rev !outputs)
+  (* Add DeclareOutputs *)
+  let declare_action = Actions.DeclareOutputs { outputs = List.map Path.v outputs_strings } in
+
+  let outputs_paths = List.map Path.v outputs_strings in
+
+  (List.rev (declare_action :: !actions), outputs_paths)
 
 (** Build the complete module graph for a package *)
 let build ~node ~workspace ~build_graph =
@@ -835,4 +839,4 @@ let build ~node ~workspace ~build_graph =
   Printf.printf "[MODULE_GRAPH] ===== Completed module graph for %s =====\n%!"
     node.Build_node.package.name;
 
-  Ok (t, actions)
+  Ok (t, actions, outputs)

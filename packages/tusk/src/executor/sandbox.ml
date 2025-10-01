@@ -214,16 +214,16 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
              (match action with
              | Actions.CompileInterface { source; _ } ->
                  Log.compiling_interface ~session_id
-                   ~package:sandbox.node.package.name ~file:source
+                   ~package:sandbox.node.package.name ~file:(Path.to_string source)
              | Actions.CompileImplementation { source; _ } ->
                  Log.compiling_implementation ~session_id
-                   ~package:sandbox.node.package.name ~file:source
+                   ~package:sandbox.node.package.name ~file:(Path.to_string source)
              | Actions.CreateLibrary { output; _ } ->
                  Log.linking_library ~session_id
-                   ~package:sandbox.node.package.name ~output
+                   ~package:sandbox.node.package.name ~output:(Path.to_string output)
              | Actions.CreateExecutable { output; _ } ->
                  Log.linking_executable ~session_id
-                   ~package:sandbox.node.package.name ~output
+                   ~package:sandbox.node.package.name ~output:(Path.to_string output)
              | _ -> ());
              Printf.printf "[Sandbox] Step %d: %s\n%!" (i + 1)
                (Actions.string_of_action action);
