@@ -773,11 +773,16 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
           else Some (String.capitalize_ascii dep_pkg_name ^ ".cma"))
     in
 
-    (* Check if we need unix includes *)
+    (* Check if we or any of our dependencies need unix *)
+    let sorted_deps = Build_graph.filter_for_package build_graph t.package.name
+                      |> Build_graph.topological_sort in
     let has_unix_dep =
       List.exists
-        (fun (dep : Workspace.dependency) -> dep.name = "unix")
-        t.package.dependencies
+        (fun dep_node ->
+          List.exists
+            (fun (dep : Workspace.dependency) -> dep.name = "unix")
+            dep_node.Build_node.package.dependencies)
+        sorted_deps
     in
     let includes = if has_unix_dep then [ "."; "+unix" ] else [ "." ] in
 
