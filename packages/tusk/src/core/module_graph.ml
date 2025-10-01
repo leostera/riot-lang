@@ -281,11 +281,13 @@ and handle_library ~t ~ctx dir name children src_dir =
   in
 
   (* Parse children to separate files from subdirectories *)
+  (* IMPORTANT: Exclude the library interface files themselves (name.ml and name.mli) *)
+  (* to avoid creating self-loops: lib.ml -> lib.ml *)
   let child_files =
     List.filter_map
       (fun (n, e) ->
         match e with
-        | `File (p, (".ml" | ".mli")) ->
+        | `File (p, (".ml" | ".mli")) when n <> name ^ ".ml" && n <> name ^ ".mli" ->
             Some (Module.make ~namespace:ns ~filename:p)
         | _ -> None)
       children
@@ -461,6 +463,7 @@ let scan_sources t =
 
 (** Wire dependencies using ocamldep *)
 let wire_dependencies t =
+  Printf.printf "[MODULE_GRAPH] Wiring dependencies with ocamldep\n%!";
   G.iter
     (fun _node_id (node : dep G.node) ->
       let dep = node.value in
@@ -476,6 +479,11 @@ let wire_dependencies t =
                   ~package_namespace:t.namespace
           in
 
+          if deps <> [] then
+            Printf.printf "[MODULE_GRAPH]   %s depends on: %s\n%!"
+              (file_to_string dep.file)
+              (String.concat ", " (List.map Module_name.to_string deps));
+
           List.iter
             (fun dep_mod_name ->
               let dep_name = Module_name.to_string dep_mod_name in
@@ -488,9 +496,14 @@ let wire_dependencies t =
                     let dep_node = G.get_node t.graph dep_node_id in
                     match (node.value.kind, dep_node.value.kind) with
                     | MLI _, ML _ -> ()
-                    | _ -> G.add_edge node ~depends_on:dep_node)
+                    | _ ->
+                        Printf.printf "[MODULE_GRAPH]     Adding ocamldep edge: %s -> %s\n%!"
+                          (file_to_string node.value.file)
+                          (file_to_string dep_node.value.file);
+                        G.add_edge node ~depends_on:dep_node)
                   node_ids
-              with Not_found -> ())
+              with Not_found ->
+                Printf.printf "[MODULE_GRAPH]     WARNING: Module %s not found in registry\n%!" dep_name)
             deps
       | _ -> ())
     t.graph
