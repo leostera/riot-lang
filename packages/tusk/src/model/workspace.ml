@@ -15,6 +15,16 @@ type package = {
 
 type t = { root : Path.t; target_dir_root : Path.t; packages : package list }
 
+(** Hash a package into a hasher *)
+module Package = struct
+  let hash (type state) (module H : Crypto.Hasher.Intf with type state = state)
+      (hasher : state) (pkg : package) =
+    H.write_string hasher pkg.name;
+    List.iter
+      (fun (dep : dependency) -> H.write_string hasher dep.name)
+      pkg.dependencies
+end
+
 (** Parse workspace members from a workspace TOML file *)
 let parse_workspace_toml toml_path =
   try
@@ -38,16 +48,14 @@ let parse_package_toml toml_path =
       | Some name_value -> (
           match Toml.get_string name_value with
           | Some n -> n
-          | None ->
+          | None -> (
               let path_obj = Path.v toml_path in
               let dir = Path.parent path_obj in
-              (match dir with
-              | Some d -> Path.basename d
-              | None -> "unknown"))
-      | None ->
+              match dir with Some d -> Path.basename d | None -> "unknown"))
+      | None -> (
           let path_obj = Path.v toml_path in
           let dir = Path.parent path_obj in
-          (match dir with Some d -> Path.basename d | None -> "unknown")
+          match dir with Some d -> Path.basename d | None -> "unknown")
     in
     (* Get dependencies - need to extract from the flattened table *)
     let deps =
@@ -95,7 +103,9 @@ let scan_internal ~root =
       let packages =
         List.filter_map
           (fun member ->
-            let member_path = Path.to_string Path.(Path.v root / Path.v member) in
+            let member_path =
+              Path.to_string Path.(Path.v root / Path.v member)
+            in
             match find_tusk_toml member_path with
             | None ->
                 Printf.eprintf "Warning: No tusk.toml found for member %s\n"

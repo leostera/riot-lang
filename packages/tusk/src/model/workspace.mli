@@ -13,6 +13,14 @@ type package = {
 (* The manifest of a workspace *)
 type t = { root : Path.t; target_dir_root : Path.t; packages : package list }
 
+module Package : sig
+  val hash :
+    (module Std.Crypto.Hasher.Intf with type state = 'state) ->
+    'state ->
+    package ->
+    unit
+end
+
 val load : root:Path.t -> (t, Error.t) result
 (** Load a workspace starting at [root]. *)
 

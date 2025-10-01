@@ -64,6 +64,20 @@ val action_to_string : action -> string
 val hash : action list -> Std.Crypto.hash
 (** Hash a list of actions *)
 
+val hash_action :
+  (module Std.Crypto.Hasher.Intf with type state = 'state) ->
+  'state ->
+  action ->
+  unit
+(** Hash a single action into a hasher *)
+
+val hash_actions :
+  (module Std.Crypto.Hasher.Intf with type state = 'state) ->
+  'state ->
+  action list ->
+  unit
+(** Hash a list of actions into a hasher *)
+
 (** {1 Display} *)
 
 val string_of_action : action -> string

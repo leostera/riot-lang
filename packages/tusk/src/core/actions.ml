@@ -154,7 +154,8 @@ let string_of_action = function
         (Path.basename (Path.v output))
         (String.concat "; " includes)
   | CompileC { source; output } ->
-      Printf.sprintf "compile_c(%s -> %s)" (Path.basename (Path.v source))
+      Printf.sprintf "compile_c(%s -> %s)"
+        (Path.basename (Path.v source))
         (Path.basename (Path.v output))
   | CreateLibrary { output; objects; includes } ->
       Printf.sprintf "create_library(%s from [%s]) [includes: %s]"
@@ -170,7 +171,8 @@ let string_of_action = function
         (String.concat "; " libraries)
         (String.concat "; " includes)
   | CopyFile { source; destination } ->
-      Printf.sprintf "copy(%s -> %s)" (Path.basename (Path.v source))
+      Printf.sprintf "copy(%s -> %s)"
+        (Path.basename (Path.v source))
         (Path.basename (Path.v destination))
   | WriteFile { destination; content } ->
       Printf.sprintf "write(%s, %d bytes)" destination (String.length content)
@@ -241,3 +243,13 @@ let hash actions =
     (fun action -> Buffer.add_string buffer (action_to_string action))
     actions;
   Std.Crypto.hash_string (Buffer.contents buffer)
+
+let hash_action (type state)
+    (module H : Std.Crypto.Hasher.Intf with type state = state) (hasher : state)
+    (action : action) =
+  H.write_string hasher (action_to_string action)
+
+let hash_actions (type state)
+    (module H : Std.Crypto.Hasher.Intf with type state = state) (hasher : state)
+    (actions : action list) =
+  List.iter (hash_action (module H) hasher) actions
