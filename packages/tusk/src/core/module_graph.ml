@@ -547,22 +547,32 @@ let generate_actions t =
   let outputs = ref [] in
   let cmo_files = ref [] in
 
+  Printf.printf "[MODULE_GRAPH] Starting first pass: copying source files...\n%!";
+  Printf.printf "[MODULE_GRAPH] Package path: %s\n%!" (Path.to_string t.package.path);
   (* First pass: Generate CopyFile actions for all Concrete source files *)
   List.iter
     (fun (node : dep G.node) ->
       match node.value.file with
       | Concrete path ->
-          let relative_path = Path.strip_prefix path ~prefix:t.package.path |> Result.unwrap in
-          let copy_action =
-            Actions.CopyFile
-              {
-                source = Path.to_string path;
-                destination = Path.to_string relative_path;
-              }
-          in
-          actions := copy_action :: !actions
+          Printf.printf "[MODULE_GRAPH]   Copying: %s\n%!" (Path.to_string path);
+          (match Path.strip_prefix path ~prefix:t.package.path with
+          | Ok relative_path ->
+              Printf.printf "[MODULE_GRAPH]     -> relative: %s\n%!" (Path.to_string relative_path);
+              let copy_action =
+                Actions.CopyFile
+                  {
+                    source = Path.to_string path;
+                    destination = Path.to_string relative_path;
+                  }
+              in
+              actions := copy_action :: !actions
+          | Error err ->
+              Printf.printf "[MODULE_GRAPH]     -> ERROR: Failed to strip prefix: %s\n%!"
+                (match err with Path.SystemError msg -> msg | _ -> "unknown error");
+              Printf.printf "[MODULE_GRAPH]     -> Skipping file outside package path\n%!")
       | Generated _ -> ())
     sorted_nodes;
+  Printf.printf "[MODULE_GRAPH] First pass complete. Generated %d copy actions.\n%!" (List.length !actions);
 
   (* Helper to get open modules *)
   let opens mods =
@@ -586,6 +596,7 @@ let generate_actions t =
       mods
   in
 
+  Printf.printf "[MODULE_GRAPH] Starting second pass: generating compilation actions...\n%!";
   (* Generate actions for each node *)
   List.iter
     (fun (node : dep G.node) ->
