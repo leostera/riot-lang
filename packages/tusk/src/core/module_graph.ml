@@ -395,7 +395,26 @@ and handle_library ~t ~ctx dir name children src_dir =
       children_without_lib
   in
 
-  do_scan ~t ~ctx sorted_children src_dir
+  do_scan ~t ~ctx sorted_children src_dir;
+
+  (* Library interface files must be compiled AFTER all child modules *)
+  (* because they reference the child modules directly *)
+  List.iter
+    (fun child_mod ->
+      try
+        let child_node_ids =
+          Module_registry.get_by_name t.registry
+            (Module.module_name child_mod |> Module_name.to_string)
+        in
+        List.iter
+          (fun child_node_id ->
+            let child_node = G.get_node t.graph child_node_id in
+            (* Add dependency from library interface to child module *)
+            G.add_edge intf_node ~depends_on:child_node;
+            G.add_edge impl_node ~depends_on:child_node)
+          child_node_ids
+      with Not_found -> ())
+    child_modules
 
 (** Scan source files *)
 let scan_sources t =
@@ -494,32 +513,47 @@ let generate_actions t =
     (fun (node : dep G.node) ->
       match node.value with
       | { kind = MLI mod_; file = Concrete path; open_modules; _ } ->
-          let output = Module.cmi mod_ in
+          let cmi_output = Module.cmi mod_ in
           let action =
             Actions.CompileInterface
               {
                 source = Path.to_string path;
-                output;
+                output = cmi_output;
                 includes = [ "." ];
                 flags = List.map (fun m -> Ocamlc.Open m) (opens open_modules);
               }
           in
           actions := action :: !actions;
-          outputs := output :: !outputs
+          outputs := cmi_output :: !outputs
       | { kind = ML mod_; file = Concrete path; open_modules; _ } ->
-          let output = Module.cmo mod_ in
+          let cmo_output = Module.cmo mod_ in
+          let cmi_output = Module.cmi mod_ in
           let action =
             Actions.CompileImplementation
               {
                 source = Path.to_string path;
-                output;
+                output = cmo_output;
                 includes = [ "." ];
                 flags = List.map (fun m -> Ocamlc.Open m) (opens open_modules);
               }
           in
           actions := action :: !actions;
-          outputs := output :: !outputs;
-          cmo_files := output :: !cmo_files
+          (* Only output .cmi if it exists (implementation with interface) *)
+          (* .cmo goes into archive, not outputs *)
+          cmo_files := cmo_output :: !cmo_files;
+          (* Check if there's a corresponding .mli - if not, this .ml produces a .cmi *)
+          let mod_name = Module.module_name mod_ |> Module_name.to_string in
+          let has_interface =
+            try
+              let node_ids = Module_registry.get_by_name t.registry mod_name in
+              List.exists
+                (fun node_id ->
+                  let node = G.get_node t.graph node_id in
+                  match node.value.kind with MLI _ -> true | _ -> false)
+                node_ids
+            with Not_found -> false
+          in
+          if not has_interface then outputs := cmi_output :: !outputs
       | { kind = ML mod_; file = Generated { path; contents }; open_modules; _ }
         ->
           (* Write generated file *)
@@ -557,10 +591,9 @@ let generate_actions t =
               }
           in
           actions := action :: !actions;
-          outputs := cmo_output :: !outputs;
           cmo_files := cmo_output :: !cmo_files;
-          (* Alias files also produce .cmi files *)
-          if is_alias_file then outputs := cmi_output :: !outputs
+          (* Generated .ml files always produce .cmi (no separate .mli) *)
+          outputs := cmi_output :: !outputs
       | {
        kind = MLI mod_;
        file = Generated { path; contents };
