@@ -515,7 +515,9 @@ let generate_actions t =
                 source = Path.to_string path;
                 output;
                 includes = [ "." ];
-                flags = List.map (fun m -> Ocamlc.Open m) (opens open_modules);
+                flags =
+                  Ocamlc.Impl path
+                  :: List.map (fun m -> Ocamlc.Open m) (opens open_modules);
               }
           in
           actions := action :: !actions;
