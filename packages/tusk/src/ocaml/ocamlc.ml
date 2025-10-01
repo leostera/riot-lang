@@ -95,7 +95,7 @@ let run ~toolchain ?(includes = []) ?(libs = []) ?(output = None)
 
   (* Build the complete command *)
   let cmd_parts =
-    [ ocamlc; mode_flag; include_flags; output_flag; libs_str; sources_str ]
+    [ ocamlc; "-g"; mode_flag; include_flags; output_flag; libs_str; sources_str ]
     |> List.filter (fun s -> s <> "") (* Remove empty strings *)
     |> String.concat " "
   in
@@ -125,7 +125,7 @@ let compile_interface ~toolchain ~includes ~flags ~output source =
       List.exists (function Impl _ -> true | _ -> false) flags
     in
     let cmd_parts =
-      [ base_command_bytecode toolchain; "-c" ]
+      [ base_command_bytecode toolchain; "-g"; "-c" ]
       @ flag_args
       @ List.concat_map (fun dir -> [ "-I"; dir ]) includes_with_dot
       @ [ "-o"; output ]
@@ -154,7 +154,7 @@ let compile_impl ~toolchain ~includes ~flags ~output source =
       List.exists (function Impl _ -> true | _ -> false) flags
     in
     let cmd_parts =
-      [ base_command toolchain; "-c" ]
+      [ base_command toolchain; "-g"; "-c" ]
       @ flag_args
       @ List.concat_map (fun dir -> [ "-I"; dir ]) includes_with_dot
       @ [ "-o"; output ]
