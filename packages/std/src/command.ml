@@ -1,7 +1,5 @@
 type status = int
-
 type output = { stdout : string; stderr : string; status : status }
-
 type error = SystemError of string
 
 type state =
@@ -13,7 +11,6 @@ type state =
     }
   | Exited of output
 
-(** Command - OS process spawning and management *)
 type t = {
   cmd : string;
   args : string list;
@@ -21,6 +18,7 @@ type t = {
   cwd : string option;
   mutable state : state;
 }
+(** Command - OS process spawning and management *)
 
 let make ?cwd ?(env = []) ?(args = []) cmd =
   let cwd_str = Option.map Path.to_string cwd in
@@ -42,8 +40,9 @@ let output t =
         Kernel.System.OsProcess.spawn ~program:t.cmd ~args:t.args ~env:t.env
           ?cwd:t.cwd ~stdio ()
       with
-      | Error (`SpawnFailed msg) -> Error (SystemError msg)
-      | Ok proc -> (
+      | Error (`SpawnFailed msg) ->
+          Error (SystemError msg)
+      | Ok proc ->
           (* Get piped file descriptors *)
           let stdout_fd = Kernel.System.OsProcess.stdout proc in
           let stderr_fd = Kernel.System.OsProcess.stderr proc in
@@ -64,18 +63,21 @@ let output t =
               n > 0 (* return true if we read data *)
             with
             | Unix.Unix_error ((Unix.EAGAIN | Unix.EWOULDBLOCK), _, _) -> false
-            | Unix.Unix_error (Unix.EPIPE, _, _) -> false (* Broken pipe - process ended *)
+            | Unix.Unix_error (Unix.EPIPE, _, _) ->
+                false (* Broken pipe - process ended *)
             | End_of_file -> false
           in
 
           (* Wait for process to exit while draining pipes *)
           let rec wait_and_drain () =
             (* Try to read from pipes *)
-            let stdout_read = match stdout_fd with
+            let stdout_read =
+              match stdout_fd with
               | None -> false
               | Some fd -> try_read_from_fd fd stdout_buf
             in
-            let stderr_read = match stderr_fd with
+            let stderr_read =
+              match stderr_fd with
               | None -> false
               | Some fd -> try_read_from_fd fd stderr_buf
             in
@@ -96,8 +98,8 @@ let output t =
                 status
             | None ->
                 (* Still running - yield if we didn't read anything *)
-                if not (stdout_read || stderr_read) then
-                  Miniriot.yield ();
+                if not (stdout_read || stderr_read) then (
+                  Miniriot.yield ());
                 wait_and_drain ()
           in
 
@@ -105,6 +107,14 @@ let output t =
 
           let stdout_data = Buffer.contents stdout_buf in
           let stderr_data = Buffer.contents stderr_buf in
+
+          (* Close file descriptors *)
+          (match stdout_fd with
+          | Some fd -> ignore (Kernel.Fs.File.close_fd fd)
+          | None -> ());
+          (match stderr_fd with
+          | Some fd -> ignore (Kernel.Fs.File.close_fd fd)
+          | None -> ());
 
           (* Close the process *)
           Kernel.System.OsProcess.close proc;
@@ -125,7 +135,7 @@ let output t =
           (* Update state to Exited *)
           t.state <- Exited result;
 
-          Ok result))
+          Ok result)
 
 let status t =
   match t.state with
@@ -144,7 +154,7 @@ let status t =
           ?cwd:t.cwd ~stdio ()
       with
       | Error (`SpawnFailed msg) -> Error (SystemError msg)
-      | Ok proc -> (
+      | Ok proc ->
           (* Wait for process to exit - async-friendly polling *)
           let rec wait_for_exit () =
             match Kernel.System.OsProcess.try_wait proc with
@@ -171,4 +181,4 @@ let status t =
           (* Update state to Exited (with empty stdout/stderr since we didn't capture) *)
           t.state <- Exited { status = status_code; stdout = ""; stderr = "" };
 
-          Ok status_code))
+          Ok status_code)
