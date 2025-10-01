@@ -761,17 +761,30 @@ let generate_actions t =
   if has_main then (
     Printf.printf "[MODULE_GRAPH] Found main.ml - creating executable\n%!";
     let binary_name = t.package.name in
-    (* Check if package depends on unix *)
+
+    (* Collect dependency .cma files *)
+    let dep_libraries =
+      List.filter_map
+        (fun (dep : Workspace.dependency) ->
+          (* Unix is special - it's a standard lib with lowercase name *)
+          if dep.name = "unix" then Some "unix.cma"
+          else
+            (* Regular dependencies use capitalized name *)
+            Some (String.capitalize_ascii dep.name ^ ".cma"))
+        t.package.dependencies
+    in
+
+    (* Check if we need unix includes *)
     let has_unix_dep =
       List.exists
         (fun (dep : Workspace.dependency) -> dep.name = "unix")
         t.package.dependencies
     in
     let includes = if has_unix_dep then [ "."; "+unix" ] else [ "." ] in
-    let libraries =
-      if has_unix_dep then [ "unix.cma"; library_name ]
-      else [ library_name ]
-    in
+
+    (* Libraries: dependencies first, then our own library *)
+    let libraries = dep_libraries @ [ library_name ] in
+
     let exe_action =
       Actions.CreateExecutable
         {
