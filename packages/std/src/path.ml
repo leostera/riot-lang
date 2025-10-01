@@ -145,8 +145,8 @@ let strip_prefix path ~prefix =
   if path_len >= prefix_len && String.sub path_str 0 prefix_len = prefix_str then
     (* Path starts with prefix, return the remaining part *)
     let remaining = String.sub path_str prefix_len (path_len - prefix_len) in
-    Some (v remaining)
+    Result.ok (v remaining)
   else
-    None
+    Result.err (SystemError (Printf.sprintf "Path %s does not start with prefix %s" path_str prefix_str))
 
 let pp fmt path = Format.pp_print_string fmt (to_string path)

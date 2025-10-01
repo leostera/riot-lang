@@ -267,9 +267,7 @@ and handle_library ~t ~ctx dir name children src_dir =
   (* Make paths relative to package root for generated library interface files *)
   (* This ensures generated files go to sandbox, not source directory *)
   let relative_base_path =
-    match Path.strip_prefix base_path ~prefix:t.package.path with
-    | Some rel -> rel
-    | None -> base_path  (* Fallback to absolute if strip fails *)
+    Path.strip_prefix base_path ~prefix:t.package.path |> Result.unwrap
   in
 
   let intf_file = Path.add_extension relative_base_path ~ext:"mli" in
@@ -409,7 +407,28 @@ and handle_library ~t ~ctx dir name children src_dir =
       children_without_lib
   in
 
-  do_scan ~t ~ctx sorted_children src_dir
+  do_scan ~t ~ctx sorted_children src_dir;
+
+  (* Library interface files must be compiled AFTER their direct child files *)
+  (* NOTE: We ONLY depend on child_files (actual files in this directory), *)
+  (* NOT on child_dirs (subdirectories that become library interfaces themselves) *)
+  (* Depending on child_dirs would create cycles! *)
+  List.iter
+    (fun child_mod ->
+      try
+        let child_node_ids =
+          Module_registry.get_by_name t.registry
+            (Module.module_name child_mod |> Module_name.to_string)
+        in
+        List.iter
+          (fun child_node_id ->
+            let child_node = G.get_node t.graph child_node_id in
+            (* Add dependency from library interface to child file *)
+            G.add_edge intf_node ~depends_on:child_node;
+            G.add_edge impl_node ~depends_on:child_node)
+          child_node_ids
+      with Not_found -> ())
+    child_files  (* IMPORTANT: only child_files, not child_modules! *)
 
 (** Scan source files *)
 let scan_sources t =
