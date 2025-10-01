@@ -74,11 +74,13 @@ let run ~toolchain ?(includes = []) ?(libs = []) ?(output = None)
   let include_flags = make_include_flags includes in
 
   (* Mode-specific flags *)
+  (* Note: -custom is only for ocamlc (bytecode), not ocamlopt (native) *)
+  (* In native compilation, C stubs are linked automatically via .o files *)
   let mode_flag =
     match mode with
     | Compile -> "-c"
     | Library -> "-a"
-    | CustomExe -> "-custom"
+    | CustomExe -> "" (* No -custom for native, C stubs linked via .o *)
     | Executable -> ""
   in
 
