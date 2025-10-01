@@ -489,10 +489,19 @@ let generate_actions t =
       result
     with
     | G.Cycle cycle_ids ->
-      Printf.printf "[MODULE_GRAPH] ERROR: Cycle detected!\n%!";
-      failwith
-        (Printf.sprintf "Cycle detected in module dependencies: %s"
-           (String.concat " -> " (List.map G.Node_id.to_string cycle_ids)))
+      let cycle_str = String.concat " -> " (List.map G.Node_id.to_string cycle_ids) in
+      Printf.eprintf "[MODULE_GRAPH] ERROR: Cycle detected in module dependencies!\n%!";
+      Printf.eprintf "[MODULE_GRAPH] Cycle: %s\n%!" cycle_str;
+      (* Try to get more details about the nodes in the cycle *)
+      List.iter (fun node_id ->
+        try
+          let node = G.get_node t.graph node_id in
+          Printf.eprintf "[MODULE_GRAPH]   - %s (%s)\n%!"
+            (G.Node_id.to_string node_id)
+            (file_to_string node.value.file)
+        with _ -> Printf.eprintf "[MODULE_GRAPH]   - %s (unknown)\n%!" (G.Node_id.to_string node_id)
+      ) cycle_ids;
+      failwith (Printf.sprintf "Cycle detected in module dependencies: %s" cycle_str)
     | exn ->
       Printf.printf "[MODULE_GRAPH] ERROR: Exception in topo_sort: %s\n%!" (Printexc.to_string exn);
       raise exn
