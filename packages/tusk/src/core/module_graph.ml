@@ -264,10 +264,18 @@ and handle_library ~t ~ctx dir name children src_dir =
     else Path.(dir / Path.v name)
   in
 
-  let intf_file = Path.add_extension base_path ~ext:"mli" in
+  (* Make paths relative to package root for generated library interface files *)
+  (* This ensures generated files go to sandbox, not source directory *)
+  let relative_base_path =
+    match Path.strip_prefix base_path ~prefix:t.package.path with
+    | Some rel -> rel
+    | None -> base_path  (* Fallback to absolute if strip fails *)
+  in
+
+  let intf_file = Path.add_extension relative_base_path ~ext:"mli" in
   let intf_mod = Module.make ~namespace:ns ~filename:intf_file in
 
-  let impl_file = Path.add_extension base_path ~ext:"ml" in
+  let impl_file = Path.add_extension relative_base_path ~ext:"ml" in
   let impl_mod = Module.make ~namespace:ns ~filename:impl_file in
 
   let ns =
@@ -550,22 +558,8 @@ let generate_actions t =
               }
           in
           actions := action :: !actions;
-          (* Only output .cmi if it exists (implementation with interface) *)
-          (* .cmo goes into archive, not outputs *)
           cmo_files := cmo_output :: !cmo_files;
-          (* Check if there's a corresponding .mli - if not, this .ml produces a .cmi *)
-          let mod_name = Module.module_name mod_ |> Module_name.to_string in
-          let has_interface =
-            try
-              let node_ids = Module_registry.get_by_name t.registry mod_name in
-              List.exists
-                (fun node_id ->
-                  let node = G.get_node t.graph node_id in
-                  match node.value.kind with MLI _ -> true | _ -> false)
-                node_ids
-            with Not_found -> false
-          in
-          if not has_interface then outputs := cmi_output :: !outputs
+          outputs := cmi_output :: cmo_output :: !outputs
       | { kind = ML mod_; file = Generated { path; contents }; open_modules; _ }
         ->
           Printf.printf "[MODULE_GRAPH]     -> ML (Generated): %s\n%!" (Path.to_string path);
@@ -607,7 +601,7 @@ let generate_actions t =
           actions := action :: !actions;
           cmo_files := cmo_output :: !cmo_files;
           (* Generated .ml files always produce .cmi (no separate .mli) *)
-          outputs := cmi_output :: !outputs
+          outputs := cmi_output :: cmo_output :: !outputs
       | {
        kind = MLI mod_;
        file = Generated { path; contents };

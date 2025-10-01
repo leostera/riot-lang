@@ -74,5 +74,10 @@ val is_file : t -> bool
 val equal : t -> t -> bool
 (** Compare two paths for equality *)
 
+val strip_prefix : t -> prefix:t -> t option
+(** Strip a prefix from a path if it matches.
+    Returns Some(remaining) if path starts with prefix, None otherwise.
+    Example: strip_prefix (v "/a/b/c") ~prefix:(v "/a/b") = Some (v "c") *)
+
 val pp : Format.formatter -> t -> unit
 (** Pretty print a path *)

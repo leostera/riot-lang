@@ -127,4 +127,26 @@ let is_directory path =
 
 let is_file path = exists path && not (is_directory path)
 let equal p1 p2 = normalize p1 = normalize p2
+
+let strip_prefix path ~prefix =
+  let path_str = to_string path in
+  let prefix_str = to_string prefix in
+
+  (* Normalize to ensure trailing slashes don't affect comparison *)
+  let prefix_str =
+    if prefix_str <> "" && prefix_str.[String.length prefix_str - 1] <> '/' then
+      prefix_str ^ "/"
+    else prefix_str
+  in
+
+  let prefix_len = String.length prefix_str in
+  let path_len = String.length path_str in
+
+  if path_len >= prefix_len && String.sub path_str 0 prefix_len = prefix_str then
+    (* Path starts with prefix, return the remaining part *)
+    let remaining = String.sub path_str prefix_len (path_len - prefix_len) in
+    Some (v remaining)
+  else
+    None
+
 let pp fmt path = Format.pp_print_string fmt (to_string path)
