@@ -213,13 +213,11 @@ let execute_action action toolchain =
   | CopyDir { source; destination } -> (
       try
         (* Use cp -r to recursively copy directory *)
-        let cmd = Printf.sprintf "cp -r %s %s" source destination in
-        let result = Ocaml.run_command cmd in
-        (match result with
-        | Ocamlc.Success _ ->
+        match Command.run "cp" [ "-r"; source; destination ] with
+        | Ok _ ->
             (Success, Printf.sprintf "Copied directory %s to %s" source destination)
-        | Ocamlc.Failed err ->
-            (Failed err, ""))
+        | Error err ->
+            (Failed (Command.show_error err), "")
       with exn -> (Failed (Printexc.to_string exn), ""))
   | CopyFile { source; destination } -> (
       try
