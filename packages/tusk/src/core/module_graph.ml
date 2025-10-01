@@ -530,8 +530,9 @@ let generate_actions t =
           actions := write_action :: !actions;
 
           (* Compile it *)
-          let output = Module.cmo mod_ in
-          (* Check if this is an alias file - they need -no-alias-deps *)
+          let cmo_output = Module.cmo mod_ in
+          let cmi_output = Module.cmi mod_ in
+          (* Check if this is an alias file - they need -no-alias-deps and produce .cmi *)
           let is_alias_file =
             let filename = Path.to_string path in
             String.ends_with ~suffix:"Aliases.ml-gen" filename
@@ -548,7 +549,7 @@ let generate_actions t =
             Actions.CompileImplementation
               {
                 source = Path.to_string path;
-                output;
+                output = cmo_output;
                 includes = [ "." ];
                 flags =
                   base_flags
@@ -556,8 +557,10 @@ let generate_actions t =
               }
           in
           actions := action :: !actions;
-          outputs := output :: !outputs;
-          cmo_files := output :: !cmo_files
+          outputs := cmo_output :: !outputs;
+          cmo_files := cmo_output :: !cmo_files;
+          (* Alias files also produce .cmi files *)
+          if is_alias_file then outputs := cmi_output :: !outputs
       | {
        kind = MLI mod_;
        file = Generated { path; contents };
