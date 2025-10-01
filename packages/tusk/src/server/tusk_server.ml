@@ -329,7 +329,7 @@ let start () =
         Env.current_dir ()
         |> Result.expect ~msg:"tusk_server: could not get current dir"
       in
-      let workers = available_parallelism () in
+      let workers = Std.System.available_parallelism in
       let port = 9753 in
       init ~current_dir ~workers ~port)
 
@@ -339,7 +339,7 @@ let start_with_listener () =
     Env.current_dir ()
     |> Result.expect ~msg:"tusk_server: could not get current dir"
   in
-  let workers = available_parallelism () in
+  let workers = Std.System.available_parallelism in
   let port = 9753 in
   init ~current_dir ~workers ~port
 

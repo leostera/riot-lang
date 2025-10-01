@@ -1,7 +1,7 @@
 (** System-level operations for Kernel *)
 
 (** Host triplet module *)
-module HostTriplet = struct
+module Host = struct
   type t = {
     architecture : string;
     vendor : string;
@@ -23,7 +23,7 @@ module HostTriplet = struct
 end
 
 (** Get the host triplet from C FFI *)
-let host_triplet = HostTriplet.current
+let host_triplet = Host.current
 
 let available_parallelism = Domain.recommended_domain_count ()
 let os_type = Sys.os_type

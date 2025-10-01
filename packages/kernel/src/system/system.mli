@@ -1,7 +1,7 @@
 (** System-level operations for Kernel *)
 
 (** Host triplet type representing the target platform *)
-module HostTriplet : sig
+module Host : sig
   type t = {
     architecture : string;  (** CPU architecture: x86_64, aarch64, arm, etc. *)
     vendor : string;  (** Vendor: apple, pc, unknown, etc. *)
@@ -15,7 +15,7 @@ module HostTriplet : sig
   (** Convert host triplet to standard string format: arch-vendor-os[-abi] *)
 end
 
-val host_triplet : HostTriplet.t
+val host_triplet : Host.t
 (** The current host triplet *)
 
 val available_parallelism : int

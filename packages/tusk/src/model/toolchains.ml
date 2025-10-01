@@ -357,37 +357,7 @@ let install_dev_tools toolchain =
       toolchain.version;
 
     (* Determine host triplet *)
-    let host_triplet =
-      if os_type () = "Unix" then
-        let uname_s =
-          let success, output = run_command_compat "uname -s" in
-          if success then String.trim output
-          else failwith "Could not determine OS"
-        in
-        let uname_m =
-          let success, output = run_command_compat "uname -m" in
-          if success then String.trim output
-          else failwith "Could not determine architecture"
-        in
-
-        let host_os =
-          match String.lowercase_ascii uname_s with
-          | "darwin" -> "apple-darwin"
-          | "linux" -> "unknown-linux-gnu"
-          | os -> failwith (Printf.sprintf "Unsupported OS: %s" os)
-        in
-
-        let host_arch =
-          match uname_m with
-          | "arm64" | "aarch64" -> "aarch64"
-          | "x86_64" -> "x86_64"
-          | arch ->
-              failwith (Printf.sprintf "Unsupported architecture: %s" arch)
-        in
-
-        Printf.sprintf "%s-%s" host_arch host_os
-      else failwith "Windows not yet supported"
-    in
+    let host_triplet = Std.System.Host.(to_string current) in
 
     (* Download from the S3 CDN *)
     let tools_url =

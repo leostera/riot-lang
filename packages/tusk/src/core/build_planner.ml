@@ -91,7 +91,12 @@ let plan_node ~graph ~node ~build_results ~workspace ~session_id () =
             | Ok iter ->
                 let files = MutIterator.to_list iter in
                 (* Sort files for deterministic hashing - filesystem order is non-deterministic *)
-                let sorted_files = List.sort (fun a b -> String.compare (Path.to_string a) (Path.to_string b)) files in
+                let sorted_files =
+                  List.sort
+                    (fun a b ->
+                      String.compare (Path.to_string a) (Path.to_string b))
+                    files
+                in
                 List.iter
                   (fun file ->
                     let file_path = Path.(dir / file) in

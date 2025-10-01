@@ -21,7 +21,11 @@ module Package = struct
       (hasher : state) (pkg : package) =
     H.write_string hasher pkg.name;
     (* Sort dependencies by name for deterministic hashing *)
-    let sorted_deps = List.sort (fun (a : dependency) (b : dependency) -> String.compare a.name b.name) pkg.dependencies in
+    let sorted_deps =
+      List.sort
+        (fun (a : dependency) (b : dependency) -> String.compare a.name b.name)
+        pkg.dependencies
+    in
     List.iter
       (fun (dep : dependency) -> H.write_string hasher dep.name)
       sorted_deps
