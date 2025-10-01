@@ -64,7 +64,7 @@ let plan_node ~graph ~node ~build_results ~workspace ~session_id () =
       (* Step 4: All dependencies satisfied - build module graph and generate actions *)
       Printf.printf "[BUILD_PLANNER] Building module graph for %s\n%!"
         node.Build_node.package.name;
-      match Module_graph.build ~node ~workspace with
+      match Module_graph.build ~node ~workspace ~build_graph:graph with
       | Error err ->
           Printf.printf "[BUILD_PLANNER] Module graph failed for %s: %s\n%!"
             node.Build_node.package.name err;

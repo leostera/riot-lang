@@ -511,7 +511,7 @@ let wire_dependencies t =
     t.graph
 
 (** Generate compilation actions from the module graph *)
-let generate_actions t =
+let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t) =
   Printf.printf "[MODULE_GRAPH] Generating compilation actions\n%!";
   Printf.printf "[MODULE_GRAPH] About to call topo_sort on graph\n%!";
   let sorted_nodes =
@@ -762,25 +762,16 @@ let generate_actions t =
     Printf.printf "[MODULE_GRAPH] Found main.ml - creating executable\n%!";
     let binary_name = t.package.name in
 
-    (* Collect dependency .cma files *)
-    let dep_names =
-      List.filter_map
-        (fun (dep : Workspace.dependency) ->
-          (* Skip unix - handled separately *)
-          if dep.name = "unix" then None else Some dep.name)
-        t.package.dependencies
-    in
-
-    (* Sort dependencies in known topological order *)
-    let known_order = [ "kernel"; "std"; "miniriot"; "jsonrpc"; "mcp" ] in
-    let sorted_deps =
-      List.filter (fun name -> List.mem name dep_names) known_order
-      @ List.filter (fun name -> not (List.mem name known_order)) dep_names
-    in
-
-    (* Convert to .cma files *)
+    (* Get dependency .cma files in topological order from build graph *)
     let dep_libraries =
-      List.map (fun name -> String.capitalize_ascii name ^ ".cma") sorted_deps
+      List.filter_map
+        (fun dep_id ->
+          let dep_node = Build_graph.get_node build_graph dep_id in
+          let dep_pkg_name = dep_node.package.name in
+          (* Skip unix - it's handled separately *)
+          if dep_pkg_name = "unix" then None
+          else Some (String.capitalize_ascii dep_pkg_name ^ ".cma"))
+        node.deps
     in
 
     (* Check if we need unix includes *)
@@ -791,7 +782,7 @@ let generate_actions t =
     in
     let includes = if has_unix_dep then [ "."; "+unix" ] else [ "." ] in
 
-    (* Libraries: unix first (if needed), then sorted dependencies, then our library *)
+    (* Libraries: unix first (if needed), then topologically sorted deps, then our library *)
     let libraries =
       (if has_unix_dep then [ "unix.cma" ] else [])
       @ dep_libraries @ [ library_name ]
@@ -815,7 +806,7 @@ let generate_actions t =
   (List.rev (declare_action :: !actions), List.rev !outputs)
 
 (** Build the complete module graph for a package *)
-let build ~node ~workspace =
+let build ~node ~workspace ~build_graph =
   Printf.printf "[MODULE_GRAPH] ===== Building module graph for %s =====\n%!"
     node.Build_node.package.name;
   let t = create ~node ~workspace in
@@ -830,7 +821,7 @@ let build ~node ~workspace =
 
   (* Step 3: Generate compilation actions *)
   Printf.printf "[MODULE_GRAPH] Step 3: Generating actions\n%!";
-  let actions, outputs = generate_actions t in
+  let actions, outputs = generate_actions t node build_graph in
 
   Printf.printf "[MODULE_GRAPH] ===== Completed module graph for %s =====\n%!"
     node.Build_node.package.name;

@@ -13,9 +13,11 @@ type error = string
 val build :
   node:Build_node.t ->
   workspace:Workspace.t ->
+  build_graph:Build_graph.t ->
   (t * Actions.action list, error) result
 (** Build a module graph for a package
 
     @param node The build node containing package info
     @param workspace The workspace context
+    @param build_graph The build graph for dependency ordering
     @return Result containing the module graph and compilation actions *)
