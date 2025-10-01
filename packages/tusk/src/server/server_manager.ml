@@ -47,8 +47,9 @@ module Daemon = struct
         let pid = int_of_string (String.trim pid_content) in
         let port = int_of_string (String.trim port_content) in
 
-        (* Check if process is still running *)
-        if Command.is_pid_running pid then
+        (* Check if process is still running by sending signal 0 *)
+        let is_pid_running = try Unix.kill pid 0; true with Unix.Unix_error _ -> false in
+        if is_pid_running then
           Some { workspace; os_pid = pid; port; host = "127.0.0.1" }
         else
           (* Process died, clean up *)
@@ -76,13 +77,20 @@ module Daemon = struct
         | _ -> ());
 
         (* Get tusk executable path - use the current executable *)
-        let tusk_exe = Command.executable_name in
+        let tusk_exe = Sys.executable_name in
 
         (* Spawn the server in foreground mode *)
         (* Note: We use "server" "foreground" to run the server *)
-        match Command.spawn ~cmd:tusk_exe ~args:[ "server"; "foreground" ] with
+        let stdio =
+          Kernel.System.OsProcess.
+            { stdin = `Null; stdout = `Inherit; stderr = `Inherit }
+        in
+        match
+          Kernel.System.OsProcess.spawn ~program:tusk_exe
+            ~args:[ "server"; "foreground" ] ~stdio ()
+        with
         | Ok process ->
-            let pid = Command.pid process in
+            let pid = Kernel.System.OsProcess.pid process in
             let port = 9753 in
             (* Default port *)
 
@@ -94,7 +102,8 @@ module Daemon = struct
             Unix.sleepf 0.1;
 
             Ok { workspace; os_pid = pid; port; host = "127.0.0.1" }
-        | Error err -> Error Error.ScanWorkspaceError)
+        | Error (`SpawnFailed msg) ->
+            Error Error.ScanWorkspaceError)
 end
 
 let ensure_running ~workspace =
