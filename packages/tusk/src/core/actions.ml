@@ -213,11 +213,12 @@ let execute_action action toolchain =
   | CopyDir { source; destination } -> (
       try
         (* Use cp -r to recursively copy directory *)
-        match Std.Command.run "cp" [ "-r"; source; destination ] with
-        | Ok _ ->
+        let cmd = Printf.sprintf "cp -r %s %s" source destination in
+        let exit_code = Sys.command cmd in
+        if exit_code = 0 then
             (Success, Printf.sprintf "Copied directory %s to %s" source destination)
-        | Error err ->
-            (Failed (Std.Command.show_error err), "")
+        else
+            (Failed (Printf.sprintf "cp command failed with exit code %d" exit_code), "")
       with exn -> (Failed (Printexc.to_string exn), ""))
   | CopyFile { source; destination } -> (
       try
