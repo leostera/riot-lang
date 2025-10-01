@@ -234,9 +234,25 @@ Checking implementation in `packages/tusk/src/core/module_graph.ml` against requ
 
 ## Dependency Wiring (ocamldep Integration)
 
-### MISSING REQ-060-065: ocamldep Integration
-- No visible `wire_dependencies` or ocamldep calls in provided code
-- This is a critical missing piece
+### ✅ REQ-060: Dependency Extraction from Concrete Files
+- Implemented in `wire_dependencies` (lines 411-444)
+- Calls `Ocamldep.deps` for concrete files
+
+### ✅ REQ-061: Skip Dependency Extraction for Generated Files
+- Line 419: `Generated _ -> []` skips generated files
+
+### ✅ REQ-062: Local Module Dependency Resolution
+- Lines 430-441 lookup dependencies in module registry
+- Adds edges when found
+
+### ✅ REQ-063: Interface Cannot Depend on Implementation
+- Line 438: `| MLI _, ML _ -> ()` prevents interface → implementation edges
+
+### ✅ REQ-064: Implementation Depends on Available Nodes
+- Lines 434-440 add edges to all matching nodes for ML files
+
+### ✅ REQ-065: Silent External Dependency Resolution
+- Line 441: `with Not_found -> ()` silently skips external dependencies
 
 ## Cross-Package Dependencies
 
@@ -245,15 +261,17 @@ Checking implementation in `packages/tusk/src/core/module_graph.ml` against requ
 
 ## Build Order Computation
 
-### ⚠️ REQ-068: Topological Sort for Build Order
-- Graph has topological sort capability
-- Need to verify usage
+### ✅ REQ-068: Topological Sort for Build Order
+- Line 449: `G.topo_sort t.graph` computes build order
+- Used in `generate_actions` to produce actions in correct order
 
-### MISSING REQ-069: Cycle Detection and Reporting
-- Graph has cycle detection but need custom error reporting
+### ✅ REQ-069: Cycle Detection and Reporting
+- Lines 450-453: Catches `G.Cycle` exception
+- Reports cycle with node IDs in error message
 
-### ⚠️ REQ-070: Iteration in Build Order Skips Root
-- Need to check iteration implementation
+### ✅ REQ-070: Iteration in Build Order Skips Root
+- Line 471: `List.iter` over sorted nodes
+- Root node has `kind = Root` which is pattern matched and skipped (line 542)
 
 ## Graph Visualization
 
