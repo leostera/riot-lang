@@ -529,7 +529,11 @@ let generate_actions t =
             String.ends_with ~suffix:"Aliases.ml-gen" filename
           in
           let base_flags =
-            if is_alias_file then [ Ocamlc.NoAliasDeps; Ocamlc.Impl path ]
+            if is_alias_file then
+              [ Ocamlc.NoAliasDeps
+              ; Ocamlc.Warning [ Ocamlc.NoCmiFile ]
+              ; Ocamlc.Impl path
+              ]
             else [ Ocamlc.Impl path ]
           in
           let action =
@@ -579,9 +583,11 @@ let generate_actions t =
             |> Path.add_extension ~ext:"o"
             |> Path.to_string
           in
+          (* Use basename for output tracking - full path is only for compilation *)
+          let output_name = Path.basename (Path.v obj_file) in
           let action = Actions.CompileC { source = src; output = obj_file } in
           actions := action :: !actions;
-          outputs := obj_file :: !outputs
+          outputs := output_name :: !outputs
       | { kind = H; file = Concrete path; _ } ->
           (* Header files just need to be available, no action needed *)
           ()
