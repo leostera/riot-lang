@@ -480,12 +480,22 @@ let wire_dependencies t =
 (** Generate compilation actions from the module graph *)
 let generate_actions t =
   Printf.printf "[MODULE_GRAPH] Generating compilation actions\n%!";
+  Printf.printf "[MODULE_GRAPH] About to call topo_sort on graph\n%!";
   let sorted_nodes =
-    try G.topo_sort t.graph
-    with G.Cycle cycle_ids ->
+    try
+      Printf.printf "[MODULE_GRAPH] Calling G.topo_sort...\n%!";
+      let result = G.topo_sort t.graph in
+      Printf.printf "[MODULE_GRAPH] G.topo_sort returned successfully\n%!";
+      result
+    with
+    | G.Cycle cycle_ids ->
+      Printf.printf "[MODULE_GRAPH] ERROR: Cycle detected!\n%!";
       failwith
         (Printf.sprintf "Cycle detected in module dependencies: %s"
            (String.concat " -> " (List.map G.Node_id.to_string cycle_ids)))
+    | exn ->
+      Printf.printf "[MODULE_GRAPH] ERROR: Exception in topo_sort: %s\n%!" (Printexc.to_string exn);
+      raise exn
   in
 
   Printf.printf "[MODULE_GRAPH] Topologically sorted %d nodes\n%!"
