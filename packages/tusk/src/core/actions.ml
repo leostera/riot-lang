@@ -214,6 +214,13 @@ let execute_action action toolchain =
           Path.of_string destination
           |> Result.expect ~msg:"Invalid destination path"
         in
+        (* Create parent directories for destination *)
+        let parent_dir = Path.dirname dst_path in
+        let _ =
+          Fs.create_dir_all parent_dir
+          |> Result.expect ~msg:"Failed to create parent directories"
+        in
+        (* Copy the file *)
         let _ =
           Fs.copy ~src:src_path ~dst:dst_path
           |> Result.expect ~msg:"Failed to copy file"
@@ -226,6 +233,13 @@ let execute_action action toolchain =
           Path.of_string destination
           |> Result.expect ~msg:"Invalid destination path"
         in
+        (* Create parent directories for destination *)
+        let parent_dir = Path.dirname dst_path in
+        let _ =
+          Fs.create_dir_all parent_dir
+          |> Result.expect ~msg:"Failed to create parent directories"
+        in
+        (* Write the file *)
         let _ =
           Fs.write content dst_path |> Result.expect ~msg:"Failed to write file"
         in
