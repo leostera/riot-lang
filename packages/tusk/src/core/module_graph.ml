@@ -574,32 +574,56 @@ let generate_actions t =
       match node.value with
       | { kind = MLI mod_; file = Concrete path; open_modules; _ } ->
           Printf.printf "[MODULE_GRAPH]     -> MLI (Concrete)\n%!";
-          let cmi_output = Module.cmi mod_ in
-          let action =
-            Actions.CompileInterface
+          (* Copy source file to sandbox first *)
+          let relative_path = Path.strip_prefix path ~prefix:t.package.path |> Result.unwrap in
+          let copy_action =
+            Actions.CopyFile
               {
                 source = Path.to_string path;
+                destination = Path.to_string relative_path;
+              }
+          in
+          actions := copy_action :: !actions;
+
+          (* Compile from relative path in sandbox *)
+          let cmi_output = Module.cmi mod_ in
+          let compile_action =
+            Actions.CompileInterface
+              {
+                source = Path.to_string relative_path;
                 output = cmi_output;
                 includes = [ "." ];
                 flags = List.map (fun m -> Ocamlc.Open m) (opens open_modules);
               }
           in
-          actions := action :: !actions;
+          actions := compile_action :: !actions;
           outputs := cmi_output :: !outputs
       | { kind = ML mod_; file = Concrete path; open_modules; _ } ->
           Printf.printf "[MODULE_GRAPH]     -> ML (Concrete)\n%!";
-          let cmo_output = Module.cmo mod_ in
-          let cmi_output = Module.cmi mod_ in
-          let action =
-            Actions.CompileImplementation
+          (* Copy source file to sandbox first *)
+          let relative_path = Path.strip_prefix path ~prefix:t.package.path |> Result.unwrap in
+          let copy_action =
+            Actions.CopyFile
               {
                 source = Path.to_string path;
+                destination = Path.to_string relative_path;
+              }
+          in
+          actions := copy_action :: !actions;
+
+          (* Compile from relative path in sandbox *)
+          let cmo_output = Module.cmo mod_ in
+          let cmi_output = Module.cmi mod_ in
+          let compile_action =
+            Actions.CompileImplementation
+              {
+                source = Path.to_string relative_path;
                 output = cmo_output;
                 includes = [ "." ];
                 flags = List.map (fun m -> Ocamlc.Open m) (opens open_modules);
               }
           in
-          actions := action :: !actions;
+          actions := compile_action :: !actions;
           cmo_files := cmo_output :: !cmo_files;
           outputs := cmi_output :: cmo_output :: !outputs
       | { kind = ML mod_; file = Generated { path; contents }; open_modules; _ }
@@ -673,21 +697,40 @@ let generate_actions t =
           outputs := output :: !outputs
       | { kind = C; file = Concrete path; _ } ->
           Printf.printf "[MODULE_GRAPH]     -> C file\n%!";
-          let src = Path.to_string path in
+          (* Copy source file to sandbox first *)
+          let relative_path = Path.strip_prefix path ~prefix:t.package.path |> Result.unwrap in
+          let copy_action =
+            Actions.CopyFile
+              {
+                source = Path.to_string path;
+                destination = Path.to_string relative_path;
+              }
+          in
+          actions := copy_action :: !actions;
+
+          (* Compile from relative path in sandbox *)
           let obj_file =
-            Path.remove_extension path
+            Path.remove_extension relative_path
             |> Path.add_extension ~ext:"o"
             |> Path.to_string
           in
-          (* Use basename for output tracking - full path is only for compilation *)
+          (* Use basename for output tracking *)
           let output_name = Path.basename (Path.v obj_file) in
-          let action = Actions.CompileC { source = src; output = obj_file } in
-          actions := action :: !actions;
+          let compile_action = Actions.CompileC { source = Path.to_string relative_path; output = obj_file } in
+          actions := compile_action :: !actions;
           outputs := output_name :: !outputs
       | { kind = H; file = Concrete path; _ } ->
           Printf.printf "[MODULE_GRAPH]     -> H file\n%!";
-          (* Header files just need to be available, no action needed *)
-          ()
+          (* Copy header file to sandbox - needed for C compilation *)
+          let relative_path = Path.strip_prefix path ~prefix:t.package.path |> Result.unwrap in
+          let copy_action =
+            Actions.CopyFile
+              {
+                source = Path.to_string path;
+                destination = Path.to_string relative_path;
+              }
+          in
+          actions := copy_action :: !actions
       | { kind = Root; _ } ->
           Printf.printf "[MODULE_GRAPH]     -> Root\n%!";
           ()
