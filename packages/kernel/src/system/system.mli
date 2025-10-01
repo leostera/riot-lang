@@ -1,5 +1,25 @@
 (** System-level operations for Kernel *)
 
+(** Host triplet type representing the target platform *)
+module HostTriplet : sig
+  type t = {
+    architecture : string;  (** CPU architecture: x86_64, aarch64, arm, etc. *)
+    vendor : string;  (** Vendor: apple, pc, unknown, etc. *)
+    os : string;  (** Operating system: linux, darwin, windows, etc. *)
+    abi : string option;  (** ABI: gnu, musl, msvc, mingw, etc. *)
+  }
+
+  val current : t
+
+  val to_string : t -> string
+  (** Convert host triplet to standard string format: arch-vendor-os[-abi] *)
+end
+
+val host_triplet : HostTriplet.t
+(** The current host triplet *)
+
+val available_parallelism : int
+
 val os_type : string
 (** The type of the operating system (Unix, Win32, Cygwin) *)
 

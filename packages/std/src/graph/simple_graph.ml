@@ -113,4 +113,5 @@ let topo_sort graph =
     raise (Cycle !cycle_nodes))
   else List.rev !sorted
 
-let iter f graph = Hashtbl.iter f graph.nodes
+let iter graph ~fn = Hashtbl.iter fn graph.nodes
+let map graph ~fn = Hashtbl.to_seq graph.nodes |> List.of_seq |> List.map fn

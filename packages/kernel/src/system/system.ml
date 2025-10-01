@@ -1,5 +1,31 @@
 (** System-level operations for Kernel *)
 
+(** Host triplet module *)
+module HostTriplet = struct
+  type t = {
+    architecture : string;
+    vendor : string;
+    os : string;
+    abi : string option;
+  }
+
+  let to_string t =
+    let base = Printf.sprintf "%s-%s-%s" t.architecture t.vendor t.os in
+    match t.abi with Some abi when abi <> "" -> base ^ "-" ^ abi | _ -> base
+
+  let current =
+    let arch = Host_stubs.get_arch () in
+    let vendor = Host_stubs.get_vendor () in
+    let os = Host_stubs.get_os () in
+    let abi_str = Host_stubs.get_abi () in
+    let abi = if abi_str = "" then None else Some abi_str in
+    { architecture = arch; vendor; os; abi }
+end
+
+(** Get the host triplet from C FFI *)
+let host_triplet = HostTriplet.current
+
+let available_parallelism = Domain.recommended_domain_count ()
 let os_type = Sys.os_type
 let unix = Sys.unix
 let win32 = Sys.win32
