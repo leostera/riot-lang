@@ -747,6 +747,43 @@ let generate_actions t =
     actions := archive_action :: !actions;
     outputs := library_name :: !outputs);
 
+  (* Check if package has main.ml and create executable *)
+  let has_main =
+    List.exists
+      (fun (node : dep G.node) ->
+        match node.value.file with
+        | Concrete path ->
+            let basename = Path.basename path in
+            basename = "main.ml"
+        | _ -> false)
+      sorted_nodes
+  in
+  if has_main then (
+    Printf.printf "[MODULE_GRAPH] Found main.ml - creating executable\n%!";
+    let binary_name = t.package.name in
+    (* Check if package depends on unix *)
+    let has_unix_dep =
+      List.exists
+        (fun (dep : Workspace.dependency) -> dep.name = "unix")
+        t.package.dependencies
+    in
+    let includes = if has_unix_dep then [ "."; "+unix" ] else [ "." ] in
+    let libraries =
+      if has_unix_dep then [ "unix.cma"; library_name ]
+      else [ library_name ]
+    in
+    let exe_action =
+      Actions.CreateExecutable
+        {
+          output = binary_name;
+          objects = List.rev !cmo_files;
+          libraries;
+          includes;
+        }
+    in
+    actions := exe_action :: !actions;
+    outputs := binary_name :: !outputs);
+
   (* Add DeclareOutputs *)
   let declare_action = Actions.DeclareOutputs { outputs = List.rev !outputs } in
 
