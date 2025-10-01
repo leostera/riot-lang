@@ -547,6 +547,14 @@ let generate_actions t =
   let outputs = ref [] in
   let cmo_files = ref [] in
 
+  (* First action: Copy entire src directory to sandbox *)
+  let package_src = Path.(t.package.path / Path.v "src") in
+  let copydir_action =
+    Actions.CopyDir
+      { source = Path.to_string package_src; destination = "src" }
+  in
+  actions := [ copydir_action ];
+
   (* Helper to get open modules *)
   let opens mods =
     List.filter_map
@@ -576,21 +584,8 @@ let generate_actions t =
       match node.value with
       | { kind = MLI mod_; file = Concrete path; open_modules; _ } ->
           Printf.printf "[MODULE_GRAPH]     -> MLI (Concrete)\n%!";
-          Printf.printf "[MODULE_GRAPH]       path (absolute): %s\n%!" (Path.to_string path);
-          Printf.printf "[MODULE_GRAPH]       package.path: %s\n%!" (Path.to_string t.package.path);
-          (* Copy source file to sandbox first *)
+          (* Source is already in sandbox via CopyDir, use relative path *)
           let relative_path = Path.strip_prefix path ~prefix:t.package.path |> Result.unwrap in
-          Printf.printf "[MODULE_GRAPH]       relative_path: %s\n%!" (Path.to_string relative_path);
-          let copy_action =
-            Actions.CopyFile
-              {
-                source = Path.to_string path;
-                destination = Path.to_string relative_path;
-              }
-          in
-          actions := copy_action :: !actions;
-
-          (* Compile from relative path in sandbox *)
           let cmi_output = Module.cmi mod_ in
           let compile_action =
             Actions.CompileInterface
@@ -605,21 +600,8 @@ let generate_actions t =
           outputs := cmi_output :: !outputs
       | { kind = ML mod_; file = Concrete path; open_modules; _ } ->
           Printf.printf "[MODULE_GRAPH]     -> ML (Concrete)\n%!";
-          Printf.printf "[MODULE_GRAPH]       path (absolute): %s\n%!" (Path.to_string path);
-          Printf.printf "[MODULE_GRAPH]       package.path: %s\n%!" (Path.to_string t.package.path);
-          (* Copy source file to sandbox first *)
+          (* Source is already in sandbox via CopyDir, use relative path *)
           let relative_path = Path.strip_prefix path ~prefix:t.package.path |> Result.unwrap in
-          Printf.printf "[MODULE_GRAPH]       relative_path: %s\n%!" (Path.to_string relative_path);
-          let copy_action =
-            Actions.CopyFile
-              {
-                source = Path.to_string path;
-                destination = Path.to_string relative_path;
-              }
-          in
-          actions := copy_action :: !actions;
-
-          (* Compile from relative path in sandbox *)
           let cmo_output = Module.cmo mod_ in
           let cmi_output = Module.cmi mod_ in
           let compile_action =
@@ -705,18 +687,8 @@ let generate_actions t =
           outputs := output :: !outputs
       | { kind = C; file = Concrete path; _ } ->
           Printf.printf "[MODULE_GRAPH]     -> C file\n%!";
-          (* Copy source file to sandbox first *)
+          (* Source is already in sandbox via CopyDir, use relative path *)
           let relative_path = Path.strip_prefix path ~prefix:t.package.path |> Result.unwrap in
-          let copy_action =
-            Actions.CopyFile
-              {
-                source = Path.to_string path;
-                destination = Path.to_string relative_path;
-              }
-          in
-          actions := copy_action :: !actions;
-
-          (* Compile from relative path in sandbox *)
           let obj_file =
             Path.remove_extension relative_path
             |> Path.add_extension ~ext:"o"
@@ -729,16 +701,8 @@ let generate_actions t =
           outputs := output_name :: !outputs
       | { kind = H; file = Concrete path; _ } ->
           Printf.printf "[MODULE_GRAPH]     -> H file\n%!";
-          (* Copy header file to sandbox - needed for C compilation *)
-          let relative_path = Path.strip_prefix path ~prefix:t.package.path |> Result.unwrap in
-          let copy_action =
-            Actions.CopyFile
-              {
-                source = Path.to_string path;
-                destination = Path.to_string relative_path;
-              }
-          in
-          actions := copy_action :: !actions
+          (* Header files are already in sandbox via CopyDir, no action needed *)
+          ()
       | { kind = Root; _ } ->
           Printf.printf "[MODULE_GRAPH]     -> Root\n%!";
           ()

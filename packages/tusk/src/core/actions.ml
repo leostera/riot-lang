@@ -38,6 +38,7 @@ type action =
       includes : string list;
     }
   (* File operations *)
+  | CopyDir of { source : string; destination : string }
   | CopyFile of { source : string; destination : string }
   | WriteFile of { destination : string; content : string }
   (* Output declaration *)
@@ -129,6 +130,8 @@ let action_to_string action =
         (String.concat "," objects)
         (String.concat "," libraries)
         (String.concat "," includes)
+  | CopyDir { source; destination } ->
+      Printf.sprintf "copydir(%s,%s)" source destination
   | CopyFile { source; destination } ->
       Printf.sprintf "copy(%s,%s)" source destination
   | WriteFile { destination; content } ->
@@ -170,6 +173,8 @@ let string_of_action = function
            (List.map (fun o -> Path.basename (Path.v o)) objects))
         (String.concat "; " libraries)
         (String.concat "; " includes)
+  | CopyDir { source; destination } ->
+      Printf.sprintf "copydir(%s -> %s)" source destination
   | CopyFile { source; destination } ->
       Printf.sprintf "copy(%s -> %s)"
         (Path.basename (Path.v source))
@@ -205,6 +210,17 @@ let execute_action action toolchain =
       Ocamlc.create_custom_executable ~toolchain ~includes ~output
         ~libs:libraries objects
       |> convert_result
+  | CopyDir { source; destination } -> (
+      try
+        (* Use cp -r to recursively copy directory *)
+        let cmd = Printf.sprintf "cp -r %s %s" source destination in
+        let result = Ocaml.run_command cmd in
+        (match result with
+        | Ocamlc.Success _ ->
+            (Success, Printf.sprintf "Copied directory %s to %s" source destination)
+        | Ocamlc.Failed err ->
+            (Failed err, ""))
+      with exn -> (Failed (Printexc.to_string exn), ""))
   | CopyFile { source; destination } -> (
       try
         let src_path =
