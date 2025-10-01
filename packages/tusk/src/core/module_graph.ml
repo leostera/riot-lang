@@ -764,14 +764,13 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
 
     (* Get dependency .cma files in topological order from build graph *)
     let dep_libraries =
-      List.filter_map
-        (fun dep_id ->
-          let dep_node = Build_graph.get_node build_graph dep_id in
-          let dep_pkg_name = dep_node.package.name in
-          (* Skip unix - it's handled separately *)
-          if dep_pkg_name = "unix" then None
+      Build_graph.filter_for_package build_graph t.package.name
+      |> Build_graph.topological_sort
+      |> List.filter_map (fun dep_node ->
+          let dep_pkg_name = dep_node.Build_node.package.name in
+          (* Skip unix (handled separately) and skip ourselves *)
+          if dep_pkg_name = "unix" || dep_pkg_name = t.package.name then None
           else Some (String.capitalize_ascii dep_pkg_name ^ ".cma"))
-        node.deps
     in
 
     (* Check if we need unix includes *)
