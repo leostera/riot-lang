@@ -70,7 +70,8 @@ module Alias_module = struct
       else ns_prefix ^ "__Aliases.ml.gen"
     in
     let path = Path.v filename in
-    let mod_ = Module.make ~namespace:ns ~filename:path in
+    (* Don't pass namespace - it's already in the filename *)
+    let mod_ = Module.make ~namespace:Namespace.empty ~filename:path in
     let file = Generated { path; contents = template modules } in
     let kind = ML mod_ in
     { file; open_modules = []; kind }
