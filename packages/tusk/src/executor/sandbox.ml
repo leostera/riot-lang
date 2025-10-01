@@ -369,5 +369,5 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
 
 (** Clean up sandbox directory *)
 let cleanup sandbox =
-  let _ = Fs.remove_dir_all sandbox.sandbox_dir in
+  (* let _ = Fs.remove_dir_all sandbox.sandbox_dir in *)
   ()

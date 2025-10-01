@@ -423,10 +423,10 @@ let install_dev_tools toolchain =
       in
       let success, output = run_command_compat extract_cmd in
 
-      if success then (
+      if success then
         (* Clean up *)
         let _ = Fs.remove_file tools_archive in
-        Printf.printf "Successfully installed development tools\n%!")
+        Printf.printf "Successfully installed development tools\n%!"
       else failwith (Printf.sprintf "Failed to extract tools: %s" output))
     else
       failwith

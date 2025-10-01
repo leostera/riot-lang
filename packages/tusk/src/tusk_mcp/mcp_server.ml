@@ -615,7 +615,8 @@ let execute_tool name arguments =
                           [
                             ("success", Json.Bool true);
                             ("package_name", Json.String name);
-                            ("package_path", Json.String (Path.to_string package_dir));
+                            ( "package_path",
+                              Json.String (Path.to_string package_dir) );
                             ("is_library", Json.Bool is_library);
                             ( "message",
                               Json.String

@@ -50,8 +50,7 @@ let format_file ~toolchain ~file_path ~check_only =
           match Fs.read file_path with
           | Ok content -> Formatted { code = content; changed = true }
           | Error (Fs.SystemError err) ->
-              Error (Printf.sprintf "Failed to read formatted file: %s" err)
-        )
+              Error (Printf.sprintf "Failed to read formatted file: %s" err))
     | Error (Command.SpawnFailed msg) -> Error msg
     | Error (Command.CommandNotFound msg) -> Error msg
 

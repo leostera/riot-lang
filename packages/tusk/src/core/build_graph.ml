@@ -124,7 +124,9 @@ let create workspace toolchain =
                                     (* Top-level file *)
                                     String.capitalize_ascii name_without_ext
                                 | Some dir_path_obj ->
-                                    let dir_path = Path.to_string dir_path_obj in
+                                    let dir_path =
+                                      Path.to_string dir_path_obj
+                                    in
                                     if dir_path = "." then
                                       (* Top-level file *)
                                       String.capitalize_ascii name_without_ext
@@ -169,12 +171,16 @@ let create workspace toolchain =
                                   (String.length full_path
                                  - String.length src_dir - 1)
                               in
-                              let dir_part = Path.parent (Path.v relative_path) in
+                              let dir_part =
+                                Path.parent (Path.v relative_path)
+                              in
                               let folder_parts =
                                 match dir_part with
                                 | None -> []
                                 | Some dir_path_obj ->
-                                    let dir_path = Path.to_string dir_path_obj in
+                                    let dir_path =
+                                      Path.to_string dir_path_obj
+                                    in
                                     if dir_path = "." then []
                                     else
                                       String.split_on_char '/' dir_path

@@ -33,8 +33,7 @@ let version_command () =
   Ok ()
 
 (** Main entry point - runs as a Miniriot process *)
-let main () =
-  let args = Env.args in
+let main ~args =
   let argc = List.length args in
   (* Initialize logger process first *)
   let _logger_pid = Core.Log.init () in

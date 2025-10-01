@@ -33,7 +33,15 @@ module DefaultHasher = Default.DefaultHasher
 module RandomState = Default.RandomState
 (** Random state for HashMap/HashSet *)
 
-val hash_string : string -> hash
-(** Quick hash functions using the default hasher *)
+val hash_string : string -> Kernel.Crypto.hash
+(** {1 Convenience functions to hash values directly} *)
 
-val hash_bytes : bytes -> hash
+val hash_bytes : bytes -> Kernel.Crypto.hash
+val hash_unit : unit -> Kernel.Crypto.hash
+val hash_int : int -> Kernel.Crypto.hash
+val hash_int32 : int32 -> Kernel.Crypto.hash
+val hash_int64 : int64 -> Kernel.Crypto.hash
+val hash_float : float -> Kernel.Crypto.hash
+val hash_bool : bool -> Kernel.Crypto.hash
+val hash_list : ('a -> Kernel.Crypto.hash) -> 'a list -> Kernel.Crypto.hash
+val hash_array : ('a -> Kernel.Crypto.hash) -> 'a array -> Kernel.Crypto.hash

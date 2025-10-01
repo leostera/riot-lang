@@ -266,11 +266,10 @@ and handle_new_package state client_pid path name is_library =
 
 (** Handler for the build message. *)
 and handle_build state client_pid target session_id =
-  Printf.eprintf "Server: handle_build called for target: %s\n"
+  Printf.eprintf "Server: handle_build called for target: %s\n%!"
     (match target with
     | All -> "All"
     | Package p -> Printf.sprintf "Package(%s)" p);
-  flush stderr;
   Build_server.start ~workspace:state.workspace ~toolchain:state.toolchain
     ~workers:state.workers ~session_id ~client_pid ~target;
   loop state

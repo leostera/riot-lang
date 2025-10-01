@@ -1,7 +1,7 @@
 (** Module registry for tracking module graph nodes by name.
 
-    This module provides mapping between Module.t and graph node IDs,
-    with separate tracking for interface and implementation files. *)
+    This module provides mapping between Module.t and graph node IDs, with
+    separate tracking for interface and implementation files. *)
 
 open Std
 open Model

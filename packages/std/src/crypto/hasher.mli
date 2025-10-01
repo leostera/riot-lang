@@ -3,13 +3,13 @@
 (** Interface that all hash algorithms must implement *)
 module type Intf = sig
   type state
-  (** Internal state of the hasher *)
+  (** Internal state of the state *)
 
   val create : unit -> state
-  (** Create a new hasher state *)
+  (** Create a new state state *)
 
   val write : state -> bytes -> unit
-  (** Write data to the hasher *)
+  (** Write data to the state *)
 
   val write_string : state -> string -> unit
   val write_unit : state -> unit -> unit

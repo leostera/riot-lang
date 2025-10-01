@@ -97,7 +97,10 @@ val syscall :
   (unit -> 'a) ->
   'a
 
-val run : main:(unit -> (unit, Process.exit_reason) result) -> int
+val run :
+  main:(args:string list -> (unit, Process.exit_reason) result) ->
+  args:string list ->
+  int
 
 val enable_trace : unit -> unit
 (** Enable debug tracing *)

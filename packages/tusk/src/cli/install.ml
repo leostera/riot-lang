@@ -80,7 +80,8 @@ let run args =
           (* Bootstrap location *)
           Path.(root / Path.v "target/bootstrap" / Path.v package_name);
           Path.(
-            root / Path.v "target/bootstrap/out"
+            root
+            / Path.v "target/bootstrap/out"
             / Path.v (package_name ^ "/" ^ package_name));
           (* Debug location *)
           Path.(root / Path.v "target/debug" / Path.v package_name);
@@ -120,7 +121,8 @@ let run args =
           (* Copy the binary to ~/.tusk/bin *)
           let dest_path = Path.(tusk_bin_dir / Path.v package_name) in
           let cp_cmd =
-            Printf.sprintf "cp %s %s" (Path.to_string binary_path)
+            Printf.sprintf "cp %s %s"
+              (Path.to_string binary_path)
               (Path.to_string dest_path)
           in
           match Command.of_unix_status (Command.system cp_cmd) with

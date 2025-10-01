@@ -8,7 +8,7 @@ let disable_trace () = Trace.disable ()
 
 type Message.t += Exit
 
-let run ~main = Scheduler.run ~main
+let run ~main ~args = Scheduler.run ~main:(fun () -> main ~args)
 let shutdown ~status = Scheduler.shutdown (Scheduler.get_scheduler ()) ~status
 let spawn fn = Scheduler.spawn (Scheduler.get_scheduler ()) fn
 let self () = Scheduler.self ()
