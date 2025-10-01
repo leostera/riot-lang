@@ -1,248 +1,174 @@
-(** Command - OS process spawning and management *)
+type status = int
 
-(** Process status types - for OS processes, not actors *)
-type status = Exited of int | Signaled of int | Stopped of int
+type output = { stdout : string; stderr : string; status : status }
 
-let of_unix_status = function
-  | Unix.WEXITED code -> Exited code
-  | Unix.WSIGNALED signal -> Signaled signal
-  | Unix.WSTOPPED signal -> Stopped signal
+type error = SystemError of string
 
-type t = { pid : int; cmd : string }
-type error = SpawnFailed of string | CommandNotFound of string
-
-let show_error = function
-  | SpawnFailed msg -> "Spawn failed: " ^ msg
-  | CommandNotFound cmd -> "Command not found: " ^ cmd
-
-type output = { status : int; stdout : string; stderr : string }
-(** Output from a command execution *)
-
-type cmd = {
-  program : string;
-  arguments : string list;
-  environment : (string * string) list;
-  stdin_cfg : [ `Pipe | `Null | `Inherit ];
-  stdout_cfg : [ `Pipe | `Null | `Inherit ];
-  stderr_cfg : [ `Pipe | `Null | `Inherit ];
-}
-(** Command builder type *)
-
-(** Create a new command *)
-let make program =
-  {
-    program;
-    arguments = [];
-    environment = [];
-    stdin_cfg = `Inherit;
-    stdout_cfg = `Pipe;
-    stderr_cfg = `Pipe;
-  }
-
-(** Add a single argument *)
-let arg arg cmd = { cmd with arguments = cmd.arguments @ [ arg ] }
-
-(** Add multiple arguments *)
-let args args cmd = { cmd with arguments = cmd.arguments @ args }
-
-(** Set an environment variable *)
-let env key value cmd =
-  { cmd with environment = (key, value) :: cmd.environment }
-
-(** Set multiple environment variables *)
-let envs vars cmd = { cmd with environment = vars @ cmd.environment }
-
-(** Configure stdin *)
-let stdin cfg cmd = { cmd with stdin_cfg = cfg }
-
-(** Configure stdout *)
-let stdout cfg cmd = { cmd with stdout_cfg = cfg }
-
-(** Configure stderr *)
-let stderr cfg cmd = { cmd with stderr_cfg = cfg }
-
-(** Helper to build the full command string with environment *)
-let build_command_string cmd =
-  let env_str =
-    if cmd.environment = [] then ""
-    else
-      (cmd.environment
-      |> List.map (fun (k, v) -> Printf.sprintf "%s=%s" k v)
-      |> String.concat " ")
-      ^ " "
-  in
-  let args_str = String.concat " " cmd.arguments in
-  Printf.sprintf "%s%s %s" env_str cmd.program args_str
-
-(** Execute command and capture output *)
-let output cmd =
-  (* Build the full command string *)
-  let cmd_str = build_command_string cmd in
-  Printf.printf "  $ %s\n%!" cmd_str;
-
-  (* Use open_process_full to get stdin, stdout, and stderr *)
-  let env_array =
-    if cmd.environment = [] then Kernel.Osprocess.environment ()
-    else
-      let base_env = Kernel.Osprocess.environment () |> Array.to_list in
-      let env_list =
-        List.fold_left
-          (fun acc (k, v) ->
-            let kv = Printf.sprintf "%s=%s" k v in
-            (* Replace existing or add new *)
-            let without_key =
-              List.filter
-                (fun s -> not (String.starts_with ~prefix:(k ^ "=") s))
-                acc
-            in
-            kv :: without_key)
-          base_env cmd.environment
-      in
-      Array.of_list env_list
-  in
-
-  (* Execute the command *)
-  let stdout_ic, stdin_oc, stderr_ic =
-    Kernel.Osprocess.open_process_full
-      (cmd.program ^ " " ^ String.concat " " cmd.arguments)
-      env_array
-  in
-
-  (* Close stdin if not needed *)
-  (match cmd.stdin_cfg with
-  | `Null | `Inherit -> close_out stdin_oc
-  | `Pipe -> ());
-
-  (* Read stdout *)
-  let stdout_lines = ref [] in
-  (try
-     while true do
-       stdout_lines := input_line stdout_ic :: !stdout_lines
-     done
-   with End_of_file -> ());
-
-  (* Read stderr *)
-  let stderr_lines = ref [] in
-  (try
-     while true do
-       stderr_lines := input_line stderr_ic :: !stderr_lines
-     done
-   with End_of_file -> ());
-
-  (* Wait for process and get exit status *)
-  let process_status =
-    Kernel.Osprocess.close_process_full (stdout_ic, stdin_oc, stderr_ic)
-  in
-
-  let status_code =
-    match process_status with
-    | Unix.WEXITED code -> code
-    | Unix.WSIGNALED n -> 128 + n
-    | Unix.WSTOPPED n -> 128 + n
-  in
-
-  Ok
-    {
-      status = status_code;
-      stdout = String.concat "\n" (List.rev !stdout_lines);
-      stderr = String.concat "\n" (List.rev !stderr_lines);
+type state =
+  | Pending
+  | Running of {
+      proc : Kernel.System.OsProcess.t;
+      stdout_fd : Unix.file_descr option;
+      stderr_fd : Unix.file_descr option;
     }
+  | Exited of output
 
-(** Execute command and return only the exit status *)
-let status cmd =
-  (* For status, we typically want output to go to the console *)
-  let cmd_with_inherit = cmd |> stdout `Inherit |> stderr `Inherit in
+(** Command - OS process spawning and management *)
+type t = {
+  cmd : string;
+  args : string list;
+  env : (string * string) list;
+  cwd : string option;
+  mutable state : state;
+}
 
-  let cmd_str = build_command_string cmd_with_inherit in
-  Printf.printf "  $ %s\n%!" cmd_str;
+let make ?cwd ?(env = []) ?(args = []) cmd =
+  let cwd_str = Option.map Path.to_string cwd in
+  { cmd; args; env; cwd = cwd_str; state = Pending }
 
-  (* Use system for simpler status-only execution when inheriting stdout/stderr *)
-  match Kernel.Osprocess.system cmd_str with
-  | Unix.WEXITED code -> Ok code
-  | Unix.WSIGNALED n -> Ok (128 + n)
-  | Unix.WSTOPPED n -> Ok (128 + n)
-
-let spawn ~cmd ~args =
-  try
-    (* Use Unix.create_process to spawn a detached process *)
-    (* For daemon processes, we need to detach from the parent's I/O *)
-    let args_array = Array.of_list (cmd :: args) in
-    (* Open /dev/null for stdin/stdout/stderr to detach the process *)
-    let null_in = Unix.openfile "/dev/null" [ Unix.O_RDONLY ] 0o000 in
-    let null_out = Unix.openfile "/dev/null" [ Unix.O_WRONLY ] 0o000 in
-    let pid =
-      Kernel.Osprocess.create_process cmd args_array null_in null_out null_out
-    in
-    Unix.close null_in;
-    Unix.close null_out;
-    Ok { pid; cmd }
-  with
-  | Unix.Unix_error (Unix.ENOENT, _, _) -> Error (CommandNotFound cmd)
-  | exn -> Error (SpawnFailed (Printexc.to_string exn))
-
-let pid t = t.pid
-
-let is_running t =
-  try
-    (* Send signal 0 to check if process exists *)
-    Kernel.Osprocess.kill t.pid 0;
-    true
-  with Unix.Unix_error _ -> false
-
-let kill t =
-  try
-    Kernel.Osprocess.kill t.pid Kernel.Osprocess.sigterm;
-    Ok ()
-  with Unix.Unix_error (_, _, _) as exn ->
-    Error (SpawnFailed (Printexc.to_string exn))
-
-let is_pid_running pid =
-  try
-    (* Send signal 0 to check if process exists *)
-    Kernel.Osprocess.kill pid 0;
-    true
-  with Unix.Unix_error _ -> false
-
-let exec ?(args = []) prog () = Kernel.Osprocess.execv prog (Array.of_list args)
-let getpid () = Kernel.Osprocess.getpid ()
-let system cmd = Kernel.Osprocess.system cmd
-let open_process_in cmd = Kernel.Osprocess.open_process_in cmd
-let close_process_in ic = Kernel.Osprocess.close_process_in ic
-
-let run_command ?env cmd_str =
-  (* Legacy API - parse the command string and use the new API *)
-  (* Split command string into program and arguments *)
-  let parts = String.split_on_char ' ' cmd_str in
-  match parts with
-  | [] -> Error (CommandNotFound "Empty command")
-  | prog :: args_list -> (
-      let cmd_obj = make prog |> args args_list in
-      let cmd_with_env =
-        match env with
-        | None -> cmd_obj
-        | Some env_list -> envs env_list cmd_obj
+let output t =
+  match t.state with
+  | Exited out -> Ok out
+  | Running _ -> Error (SystemError "Command is already running")
+  | Pending -> (
+      (* Build stdio config to capture stdout and stderr *)
+      let stdio =
+        Kernel.System.OsProcess.
+          { stdin = `Null; stdout = `Pipe; stderr = `Pipe }
       in
-      (* For backward compatibility, combine stdout and stderr like 2>&1 *)
-      match output cmd_with_env with
-      | Ok out ->
-          (* Combine stdout and stderr like the old version did with 2>&1 *)
-          let combined =
-            if out.stderr = "" then out.stdout
-            else out.stdout ^ "\n" ^ out.stderr
+
+      (* Spawn the process *)
+      match
+        Kernel.System.OsProcess.spawn ~program:t.cmd ~args:t.args ~env:t.env
+          ?cwd:t.cwd ~stdio ()
+      with
+      | Error (`SpawnFailed msg) -> Error (SystemError msg)
+      | Ok proc -> (
+          (* Get piped file descriptors *)
+          let stdout_fd = Kernel.System.OsProcess.stdout proc in
+          let stderr_fd = Kernel.System.OsProcess.stderr proc in
+
+          (* Update state to Running *)
+          t.state <- Running { proc; stdout_fd; stderr_fd };
+
+          (* Read from pipes while waiting for process to exit *)
+          (* This prevents deadlock if pipes fill up *)
+          let stdout_buf = Buffer.create 4096 in
+          let stderr_buf = Buffer.create 4096 in
+          let read_buffer = Bytes.create 4096 in
+
+          let try_read_from_fd fd buf =
+            try
+              let n = Unix.read fd read_buffer 0 4096 in
+              if n > 0 then Buffer.add_subbytes buf read_buffer 0 n;
+              n > 0 (* return true if we read data *)
+            with
+            | Unix.Unix_error ((Unix.EAGAIN | Unix.EWOULDBLOCK), _, _) -> false
+            | Unix.Unix_error (Unix.EPIPE, _, _) -> false (* Broken pipe - process ended *)
+            | End_of_file -> false
           in
-          if out.status = 0 then Ok combined else Error (SpawnFailed combined)
-      | Error e -> Error e)
 
-let run_process_lines cmd =
-  let ic = Kernel.Osprocess.open_process_in cmd in
-  let lines = ref [] in
-  (try
-     while true do
-       lines := input_line ic :: !lines
-     done
-   with End_of_file -> ());
-  ignore (Kernel.Osprocess.close_process_in ic);
-  List.rev !lines
+          (* Wait for process to exit while draining pipes *)
+          let rec wait_and_drain () =
+            (* Try to read from pipes *)
+            let stdout_read = match stdout_fd with
+              | None -> false
+              | Some fd -> try_read_from_fd fd stdout_buf
+            in
+            let stderr_read = match stderr_fd with
+              | None -> false
+              | Some fd -> try_read_from_fd fd stderr_buf
+            in
 
-let executable_name = Kernel.System.executable_name
-let argv () = Kernel.System.argv ()
+            (* Check if process has exited *)
+            match Kernel.System.OsProcess.try_wait proc with
+            | Some status ->
+                (* Process exited - drain any remaining data from pipes *)
+                let rec drain_pipe_final fd buf =
+                  if try_read_from_fd fd buf then drain_pipe_final fd buf
+                in
+                (match stdout_fd with
+                | Some fd -> drain_pipe_final fd stdout_buf
+                | None -> ());
+                (match stderr_fd with
+                | Some fd -> drain_pipe_final fd stderr_buf
+                | None -> ());
+                status
+            | None ->
+                (* Still running - yield if we didn't read anything *)
+                if not (stdout_read || stderr_read) then
+                  Miniriot.yield ();
+                wait_and_drain ()
+          in
+
+          let exit_status = wait_and_drain () in
+
+          let stdout_data = Buffer.contents stdout_buf in
+          let stderr_data = Buffer.contents stderr_buf in
+
+          (* Close the process *)
+          Kernel.System.OsProcess.close proc;
+
+          (* Convert status *)
+          let status_code =
+            match exit_status with
+            | Kernel.System.OsProcess.Running -> 0 (* Should not happen *)
+            | Kernel.System.OsProcess.Exited code -> code
+            | Kernel.System.OsProcess.Signaled n -> 128 + n
+            | Kernel.System.OsProcess.Stopped n -> 128 + n
+          in
+
+          let result =
+            { status = status_code; stdout = stdout_data; stderr = stderr_data }
+          in
+
+          (* Update state to Exited *)
+          t.state <- Exited result;
+
+          Ok result))
+
+let status t =
+  match t.state with
+  | Exited out -> Ok out.status
+  | Running _ -> Error (SystemError "Command is already running")
+  | Pending -> (
+      (* Build stdio config to inherit stdout and stderr (don't capture) *)
+      let stdio =
+        Kernel.System.OsProcess.
+          { stdin = `Null; stdout = `Inherit; stderr = `Inherit }
+      in
+
+      (* Spawn the process *)
+      match
+        Kernel.System.OsProcess.spawn ~program:t.cmd ~args:t.args ~env:t.env
+          ?cwd:t.cwd ~stdio ()
+      with
+      | Error (`SpawnFailed msg) -> Error (SystemError msg)
+      | Ok proc -> (
+          (* Wait for process to exit - async-friendly polling *)
+          let rec wait_for_exit () =
+            match Kernel.System.OsProcess.try_wait proc with
+            | None ->
+                (* Still running - yield to other processes *)
+                Miniriot.yield ();
+                wait_for_exit ()
+            | Some status -> status
+          in
+          let exit_status = wait_for_exit () in
+
+          (* Close the process *)
+          Kernel.System.OsProcess.close proc;
+
+          (* Convert status *)
+          let status_code =
+            match exit_status with
+            | Kernel.System.OsProcess.Running -> 0 (* Should not happen *)
+            | Kernel.System.OsProcess.Exited code -> code
+            | Kernel.System.OsProcess.Signaled n -> 128 + n
+            | Kernel.System.OsProcess.Stopped n -> 128 + n
+          in
+
+          (* Update state to Exited (with empty stdout/stderr since we didn't capture) *)
+          t.state <- Exited { status = status_code; stdout = ""; stderr = "" };
+
+          Ok status_code))
