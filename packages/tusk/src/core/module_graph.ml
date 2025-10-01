@@ -462,7 +462,20 @@ let generate_actions t =
     List.filter_map
       (fun (node : dep G.node) ->
         match node.value.kind with
-        | ML mod_ | MLI mod_ -> Some (Module.namespaced_name mod_)
+        | ML mod_ | MLI mod_ ->
+            (* Get the module name from the cmo/cmi output, which is the correct module name *)
+            let output =
+              match node.value.kind with
+              | ML mod_ -> Module.cmo mod_
+              | MLI mod_ -> Module.cmi mod_
+              | _ -> ""
+            in
+            (* Strip the extension to get the module name *)
+            let module_name =
+              output
+              |> Path.v |> Path.remove_extension |> Path.to_string
+            in
+            Some module_name
         | _ -> None)
       mods
   in
