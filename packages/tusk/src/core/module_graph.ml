@@ -758,6 +758,7 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
 
   (* Create library archive *)
   let library_name = Module_name.(of_string t.package.name |> cmxa) in
+  let static_lib_name = Module_name.(of_string t.package.name |> a) in
   if !cmx_files <> [] then (
     (* Include both .cmx files and .o files (C stubs) in the library *)
     let all_objects = List.rev !cmx_files @ List.rev !c_objects in
@@ -770,7 +771,8 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
         }
     in
     actions := archive_action :: !actions;
-    outputs := library_name :: !outputs);
+    (* Native compilation produces both .cmxa and .a files *)
+    outputs := library_name :: static_lib_name :: !outputs);
 
   (* Check if package has main.ml and create executable *)
   let has_main =

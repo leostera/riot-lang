@@ -47,6 +47,9 @@ val cmx : t -> Path.t
 val o : t -> Path.t
 (** Get the .o filename based on qualified name *)
 
+val a : t -> Path.t
+(** Get the .a filename based on qualified name *)
+
 val canonical_mli : t -> Path.t
 (** Get the canonical .mli filename *)
 
