@@ -66,8 +66,8 @@ module Alias_module = struct
   let make_node (ns : Namespace.t) (modules : Module.t list) =
     let ns_prefix = Namespace.to_string ns in
     let filename =
-      if ns_prefix = "" then "Aliases.ml.gen"
-      else ns_prefix ^ "__Aliases.ml.gen"
+      if ns_prefix = "" then "Aliases.ml-gen"
+      else ns_prefix ^ "__Aliases.ml-gen"
     in
     let path = Path.v filename in
     (* Don't pass namespace - it's already in the filename *)
@@ -526,7 +526,7 @@ let generate_actions t =
           (* Check if this is an alias file - they need -no-alias-deps *)
           let is_alias_file =
             let filename = Path.to_string path in
-            String.ends_with ~suffix:"Aliases.ml.gen" filename
+            String.ends_with ~suffix:"Aliases.ml-gen" filename
           in
           let base_flags =
             if is_alias_file then [ Ocamlc.NoAliasDeps; Ocamlc.Impl path ]
