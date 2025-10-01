@@ -214,16 +214,20 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
              (match action with
              | Actions.CompileInterface { source; _ } ->
                  Log.compiling_interface ~session_id
-                   ~package:sandbox.node.package.name ~file:(Path.to_string source)
+                   ~package:sandbox.node.package.name
+                   ~file:(Path.to_string source)
              | Actions.CompileImplementation { source; _ } ->
                  Log.compiling_implementation ~session_id
-                   ~package:sandbox.node.package.name ~file:(Path.to_string source)
+                   ~package:sandbox.node.package.name
+                   ~file:(Path.to_string source)
              | Actions.CreateLibrary { output; _ } ->
                  Log.linking_library ~session_id
-                   ~package:sandbox.node.package.name ~output:(Path.to_string output)
+                   ~package:sandbox.node.package.name
+                   ~output:(Path.to_string output)
              | Actions.CreateExecutable { output; _ } ->
                  Log.linking_executable ~session_id
-                   ~package:sandbox.node.package.name ~output:(Path.to_string output)
+                   ~package:sandbox.node.package.name
+                   ~output:(Path.to_string output)
              | _ -> ());
              Printf.printf "[Sandbox] Step %d: %s\n%!" (i + 1)
                (Actions.string_of_action action);
@@ -331,40 +335,40 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
       (* Copy outputs to target directory *)
       List.iter
         (fun output_file ->
-          let src_path = Path.(sandbox.sandbox_dir / Path.v output_file) in
-          match Fs.exists src_path with
-          | Ok true ->
-              let dst_path = Path.(sandbox.target_dir / Path.v output_file) in
-              let _ = Fs.copy ~src:src_path ~dst:dst_path in
-              (* Make executable files executable *)
-              (if not (String.contains output_file '.') then
-                 let _ =
-                   Fs.set_permissions dst_path (Fs.Permissions.of_mode 0o755)
-                 in
-                 (* Also promote executable to target/<profile>/<name> *)
-                 let profile_dir =
-                   Path.(sandbox.root / Path.v "target" / Path.v "debug")
-                 in
-                 let promoted_dst_path =
-                   Path.(profile_dir / Path.v output_file)
-                 in
-                 let _ = Fs.copy ~src:src_path ~dst:promoted_dst_path in
-                 let _ =
-                   Fs.set_permissions promoted_dst_path
-                     (Fs.Permissions.of_mode 0o755)
-                 in
-                 Printf.printf "[Sandbox] Promoted executable %s to %s\n%!"
-                   output_file
-                   (Path.to_string promoted_dst_path));
-              Printf.printf "[Sandbox] Copied %s to target\n%!" output_file
-          | _ -> ())
+          let src_path = Path.(sandbox.sandbox_dir / output_file) in
+          let exists =
+            Fs.exists src_path
+            |> Result.expect ~msg:(Printf.sprintf "Failed to check if output file exists: %s" (Path.to_string src_path))
+          in
+          if not exists then
+            failwith (Printf.sprintf "Missing declared output file: %s (expected at %s)"
+              (Path.to_string output_file) (Path.to_string src_path));
+
+          let dst_path = Path.(sandbox.target_dir /  output_file) in
+          let _ = Fs.copy ~src:src_path ~dst:dst_path in
+          (* Make executable files executable *)
+          (if not (String.contains (Path.to_string output_file) '.') then
+             let _ =
+               Fs.set_permissions dst_path (Fs.Permissions.of_mode 0o755)
+             in
+             (* Also promote executable to target/<profile>/<name> *)
+             let profile_dir =
+               Path.(sandbox.root / Path.v "target" / Path.v "debug")
+             in
+             let promoted_dst_path =
+               Path.(profile_dir /  output_file)
+             in
+             let _ = Fs.copy ~src:src_path ~dst:promoted_dst_path in
+             let _ =
+               Fs.set_permissions promoted_dst_path
+                 (Fs.Permissions.of_mode 0o755)
+             in
+             Printf.printf "[Sandbox] Promoted executable %s to %s\n%!"
+               (Path.to_string output_file)
+               (Path.to_string promoted_dst_path));
+          Printf.printf "[Sandbox] Copied %s to target\n%!" (Path.to_string output_file))
         outputs;
-      (* Return paths as Path.t *)
-      Ok
-        (List.filter_map
-           (fun s ->
-             match Path.of_string s with Ok p -> Some p | Error _ -> None)
-           outputs)
+      Ok outputs 
   | Error _ -> result |> Result.map (fun _ -> [])
 
 (** Clean up sandbox directory *)

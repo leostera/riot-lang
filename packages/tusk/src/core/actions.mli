@@ -42,7 +42,8 @@ type action =
       includes : Path.t list;
     }  (** Create executable *)
   (* File operations *)
-  | CopyDir of { source : Path.t; destination : Path.t }  (** Copy directory recursively *)
+  | CopyDir of { source : Path.t; destination : Path.t }
+      (** Copy directory recursively *)
   | CopyFile of { source : Path.t; destination : Path.t }  (** Copy file *)
   | WriteFile of { destination : Path.t; content : string }
       (** Write content to file *)

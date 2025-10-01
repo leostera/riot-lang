@@ -69,7 +69,7 @@ let plan_node ~graph ~node ~build_results ~workspace ~session_id () =
           Printf.printf "[BUILD_PLANNER] Module graph failed for %s: %s\n%!"
             node.Build_node.package.name err;
           Error err
-      | Ok (_module_graph, actions) ->
+      | Ok (_module_graph, actions, outs) ->
           Printf.printf "[BUILD_PLANNER] Generated %d actions for %s\n%!"
             (List.length actions) node.Build_node.package.name;
           (* Step 5: Compute content-based hash *)
@@ -121,23 +121,6 @@ let plan_node ~graph ~node ~build_results ~workspace ~session_id () =
 
           let hash = Sha256.finish hasher in
 
-          (* Extract outputs from actions *)
-          let outs = ref [] in
-          List.iter
-            (fun action ->
-              match action with
-              | Actions.CompileInterface { output; _ }
-              | Actions.CompileImplementation { output; _ }
-              | Actions.GenerateInterface { output; _ }
-              | Actions.CompileC { output; _ }
-              | Actions.CreateLibrary { output; _ }
-              | Actions.CreateExecutable { output; _ } ->
-                  outs := Path.v output :: !outs
-              | Actions.DeclareOutputs { outputs } ->
-                  outs := List.rev_append (List.map Path.v outputs) !outs
-              | Actions.CopyFile _ | Actions.WriteFile _ -> ())
-            actions;
-
-          node.spec <- Planned { hash; outs = !outs; actions };
+          node.spec <- Planned { hash; outs; actions };
 
           Ok (Planned node))

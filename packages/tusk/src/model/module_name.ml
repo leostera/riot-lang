@@ -36,9 +36,10 @@ let qualified_name t =
   | ns -> Namespace.to_string (Namespace.append t.namespace t.name)
 
 (* Output file names based on qualified names *)
-let cmo t = qualified_name t ^ ".cmo"
-let cmi t = qualified_name t ^ ".cmi"
-let cmx t = qualified_name t ^ ".cmx"
-let o t = qualified_name t ^ ".o"
-let canonical_mli t = qualified_name t ^ ".mli"
-let canonical_ml t = qualified_name t ^ ".ml"
+let cma t = qualified_name t ^ ".cma" |> Path.v
+let cmo t = qualified_name t ^ ".cmo" |> Path.v
+let cmi t = qualified_name t ^ ".cmi" |> Path.v
+let cmx t = qualified_name t ^ ".cmx" |> Path.v
+let o t = qualified_name t ^ ".o" |> Path.v
+let canonical_mli t = qualified_name t ^ ".mli" |> Path.v
+let canonical_ml t = qualified_name t ^ ".ml" |> Path.v

@@ -83,9 +83,9 @@ module Library_interface = struct
     let unique_modules =
       children
       |> List.map (fun mod_ ->
-             let simple_name = Module.module_name mod_ |> Module_name.to_string in
-             let qualified_name = Module.qualified_name mod_ in
-             (simple_name, qualified_name))
+          let simple_name = Module.module_name mod_ |> Module_name.to_string in
+          let qualified_name = Module.qualified_name mod_ in
+          (simple_name, qualified_name))
       |> List.sort_uniq (fun (a, _) (b, _) -> String.compare a b)
     in
     let body =
@@ -289,7 +289,8 @@ and handle_library ~t ~ctx dir name children src_dir =
     List.filter_map
       (fun (n, e) ->
         match e with
-        | `File (p, (".ml" | ".mli")) when n <> name ^ ".ml" && n <> name ^ ".mli" ->
+        | `File (p, (".ml" | ".mli"))
+          when n <> name ^ ".ml" && n <> name ^ ".mli" ->
             Some (Module.make ~namespace:ns ~filename:p)
         | _ -> None)
       children
@@ -417,13 +418,14 @@ and handle_library ~t ~ctx dir name children src_dir =
   (* NOTE: We ONLY depend on child_files (actual files in this directory), *)
   (* NOT on child_dirs (subdirectories that become library interfaces themselves) *)
   (* Depending on child_dirs would create cycles! *)
-
-  Printf.printf "[MODULE_GRAPH] Library %s has %d child_files:\n%!" name (List.length child_files);
-  List.iter (fun m ->
-    Printf.printf "[MODULE_GRAPH]   - %s (%s)\n%!"
-      (Module.module_name m |> Module_name.to_string)
-      (Module.filename m |> Path.to_string)
-  ) child_files;
+  Printf.printf "[MODULE_GRAPH] Library %s has %d child_files:\n%!" name
+    (List.length child_files);
+  List.iter
+    (fun m ->
+      Printf.printf "[MODULE_GRAPH]   - %s (%s)\n%!"
+        (Module.module_name m |> Module_name.to_string)
+        (Module.filename m |> Path.to_string))
+    child_files;
 
   List.iter
     (fun child_mod ->
@@ -436,13 +438,14 @@ and handle_library ~t ~ctx dir name children src_dir =
           (fun child_node_id ->
             let child_node = G.get_node t.graph child_node_id in
             Printf.printf "[MODULE_GRAPH]   Adding edge: %s.ml/mli -> %s\n%!"
-              name (file_to_string child_node.value.file);
+              name
+              (file_to_string child_node.value.file);
             (* Add dependency from library interface to child file *)
             G.add_edge intf_node ~depends_on:child_node;
             G.add_edge impl_node ~depends_on:child_node)
           child_node_ids
       with Not_found -> ())
-    child_files  (* IMPORTANT: only child_files, not child_modules! *)
+    child_files (* IMPORTANT: only child_files, not child_modules! *)
 
 (** Scan source files *)
 let scan_sources t =
@@ -499,19 +502,25 @@ let wire_dependencies t =
                     match (node.value.kind, dep_node.value.kind) with
                     | MLI _, ML _ -> ()
                     | _ ->
-                        Printf.printf "[MODULE_GRAPH]     Adding ocamldep edge: %s -> %s\n%!"
+                        Printf.printf
+                          "[MODULE_GRAPH]     Adding ocamldep edge: %s -> %s\n\
+                           %!"
                           (file_to_string node.value.file)
                           (file_to_string dep_node.value.file);
                         G.add_edge node ~depends_on:dep_node)
                   node_ids
               with Not_found ->
-                Printf.printf "[MODULE_GRAPH]     WARNING: Module %s not found in registry\n%!" dep_name)
+                Printf.printf
+                  "[MODULE_GRAPH]     WARNING: Module %s not found in registry\n\
+                   %!"
+                  dep_name)
             deps
       | _ -> ())
     t.graph
 
 (** Generate compilation actions from the module graph *)
-let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t) =
+let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
+    =
   Printf.printf "[MODULE_GRAPH] Generating compilation actions\n%!";
   Printf.printf "[MODULE_GRAPH] About to call topo_sort on graph\n%!";
   let sorted_nodes =
@@ -522,22 +531,30 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
       result
     with
     | G.Cycle cycle_ids ->
-      let cycle_str = String.concat " -> " (List.map G.Node_id.to_string cycle_ids) in
-      Printf.eprintf "[MODULE_GRAPH] ERROR: Cycle detected in module dependencies!\n%!";
-      Printf.eprintf "[MODULE_GRAPH] Cycle: %s\n%!" cycle_str;
-      (* Try to get more details about the nodes in the cycle *)
-      List.iter (fun node_id ->
-        try
-          let node = G.get_node t.graph node_id in
-          Printf.eprintf "[MODULE_GRAPH]   - %s (%s)\n%!"
-            (G.Node_id.to_string node_id)
-            (file_to_string node.value.file)
-        with _ -> Printf.eprintf "[MODULE_GRAPH]   - %s (unknown)\n%!" (G.Node_id.to_string node_id)
-      ) cycle_ids;
-      failwith (Printf.sprintf "Cycle detected in module dependencies: %s" cycle_str)
+        let cycle_str =
+          String.concat " -> " (List.map G.Node_id.to_string cycle_ids)
+        in
+        Printf.eprintf
+          "[MODULE_GRAPH] ERROR: Cycle detected in module dependencies!\n%!";
+        Printf.eprintf "[MODULE_GRAPH] Cycle: %s\n%!" cycle_str;
+        (* Try to get more details about the nodes in the cycle *)
+        List.iter
+          (fun node_id ->
+            try
+              let node = G.get_node t.graph node_id in
+              Printf.eprintf "[MODULE_GRAPH]   - %s (%s)\n%!"
+                (G.Node_id.to_string node_id)
+                (file_to_string node.value.file)
+            with _ ->
+              Printf.eprintf "[MODULE_GRAPH]   - %s (unknown)\n%!"
+                (G.Node_id.to_string node_id))
+          cycle_ids;
+        failwith
+          (Printf.sprintf "Cycle detected in module dependencies: %s" cycle_str)
     | exn ->
-      Printf.printf "[MODULE_GRAPH] ERROR: Exception in topo_sort: %s\n%!" (Printexc.to_string exn);
-      raise exn
+        Printf.printf "[MODULE_GRAPH] ERROR: Exception in topo_sort: %s\n%!"
+          (Printexc.to_string exn);
+        raise exn
   in
 
   Printf.printf "[MODULE_GRAPH] Topologically sorted %d nodes\n%!"
@@ -546,73 +563,71 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
   let actions = ref [] in
   let outputs = ref [] in
   let cmo_files = ref [] in
-  let c_objects = ref [] in  (* Track .o files from C compilation *)
+  let c_objects = ref [] in
+  (* Track .o files from C compilation *)
 
-  Printf.printf "[MODULE_GRAPH] Starting first pass: copying source files...\n%!";
-  Printf.printf "[MODULE_GRAPH] Package path: %s\n%!" (Path.to_string t.package.path);
+  Printf.printf
+    "[MODULE_GRAPH] Starting first pass: copying source files...\n%!";
+  Printf.printf "[MODULE_GRAPH] Package path: %s\n%!"
+    (Path.to_string t.package.path);
   (* First pass: Generate CopyFile actions for all Concrete source files *)
   List.iter
     (fun (node : dep G.node) ->
       match node.value.file with
-      | Concrete path ->
+      | Concrete path -> (
           Printf.printf "[MODULE_GRAPH]   Copying: %s\n%!" (Path.to_string path);
-          (match Path.strip_prefix path ~prefix:t.package.path with
+          match Path.strip_prefix path ~prefix:t.package.path with
           | Ok relative_path ->
-              Printf.printf "[MODULE_GRAPH]     -> relative: %s\n%!" (Path.to_string relative_path);
+              Printf.printf "[MODULE_GRAPH]     -> relative: %s\n%!"
+                (Path.to_string relative_path);
               let copy_action =
-                Actions.CopyFile
-                  {
-                    source = path;
-                    destination = relative_path;
-                  }
+                Actions.CopyFile { source = path; destination = relative_path }
               in
               actions := copy_action :: !actions
           | Error err ->
-              Printf.printf "[MODULE_GRAPH]     -> ERROR: Failed to strip prefix: %s\n%!"
-                (match err with Path.SystemError msg -> msg | _ -> "unknown error");
-              Printf.printf "[MODULE_GRAPH]     -> Skipping file outside package path\n%!")
+              Printf.printf
+                "[MODULE_GRAPH]     -> ERROR: Failed to strip prefix: %s\n%!"
+                (match err with
+                | Path.SystemError msg -> msg
+                | _ -> "unknown error");
+              Printf.printf
+                "[MODULE_GRAPH]     -> Skipping file outside package path\n%!")
       | Generated _ -> ())
     sorted_nodes;
-  Printf.printf "[MODULE_GRAPH] First pass complete. Generated %d copy actions.\n%!" (List.length !actions);
+  Printf.printf
+    "[MODULE_GRAPH] First pass complete. Generated %d copy actions.\n%!"
+    (List.length !actions);
 
   (* Helper to get open modules *)
   let opens mods =
     List.filter_map
       (fun (node : dep G.node) ->
         match node.value.kind with
-        | ML mod_ | MLI mod_ ->
-            (* Get the module name from the cmo/cmi output, which is the correct module name *)
-            let output =
-              match node.value.kind with
-              | ML mod_ -> Module.cmo mod_
-              | MLI mod_ -> Module.cmi mod_
-              | _ -> ""
-            in
-            (* Strip the extension to get the module name *)
-            let module_name =
-              output |> Path.v |> Path.remove_extension |> Path.to_string
-            in
-            Some module_name
+        | ML mod_ | MLI mod_ -> Some (Module.namespaced_name mod_)
         | _ -> None)
       mods
   in
 
-  Printf.printf "[MODULE_GRAPH] Starting second pass: generating compilation actions...\n%!";
+  Printf.printf
+    "[MODULE_GRAPH] Starting second pass: generating compilation actions...\n%!";
   (* Generate actions for each node *)
   List.iter
     (fun (node : dep G.node) ->
-      Printf.printf "[MODULE_GRAPH]   Processing node: %s\n%!" (file_to_string node.value.file);
+      Printf.printf "[MODULE_GRAPH]   Processing node: %s\n%!"
+        (file_to_string node.value.file);
       match node.value with
       | { kind = MLI mod_; file = Concrete path; open_modules; _ } ->
           Printf.printf "[MODULE_GRAPH]     -> MLI (Concrete)\n%!";
           (* Source is already in sandbox via CopyDir, use relative path *)
-          let relative_path = Path.strip_prefix path ~prefix:t.package.path |> Result.unwrap in
+          let relative_path =
+            Path.strip_prefix path ~prefix:t.package.path |> Result.unwrap
+          in
           let cmi_output = Module.cmi mod_ in
           let compile_action =
             Actions.CompileInterface
               {
                 source = relative_path;
-                output = Path.v cmi_output;
+                output = cmi_output;
                 includes = [ Path.v "." ];
                 flags = List.map (fun m -> Ocamlc.Open m) (opens open_modules);
               }
@@ -622,14 +637,16 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
       | { kind = ML mod_; file = Concrete path; open_modules; _ } ->
           Printf.printf "[MODULE_GRAPH]     -> ML (Concrete)\n%!";
           (* Source is already in sandbox via CopyDir, use relative path *)
-          let relative_path = Path.strip_prefix path ~prefix:t.package.path |> Result.unwrap in
+          let relative_path =
+            Path.strip_prefix path ~prefix:t.package.path |> Result.unwrap
+          in
           let cmo_output = Module.cmo mod_ in
           let cmi_output = Module.cmi mod_ in
           let compile_action =
             Actions.CompileImplementation
               {
                 source = relative_path;
-                output = Path.v cmo_output;
+                output = cmo_output;
                 includes = [ Path.v "." ];
                 flags = List.map (fun m -> Ocamlc.Open m) (opens open_modules);
               }
@@ -639,11 +656,11 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
           outputs := cmi_output :: !outputs
       | { kind = ML mod_; file = Generated { path; contents }; open_modules; _ }
         ->
-          Printf.printf "[MODULE_GRAPH]     -> ML (Generated): %s\n%!" (Path.to_string path);
+          Printf.printf "[MODULE_GRAPH]     -> ML (Generated): %s\n%!"
+            (Path.to_string path);
           (* Write generated file *)
           let write_action =
-            Actions.WriteFile
-              { destination = path; content = contents }
+            Actions.WriteFile { destination = path; content = contents }
           in
           actions := write_action :: !actions;
 
@@ -668,7 +685,7 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
             Actions.CompileImplementation
               {
                 source = path;
-                output = Path.v cmo_output;
+                output = cmo_output;
                 includes = [ Path.v "." ];
                 flags =
                   base_flags
@@ -685,11 +702,11 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
        open_modules;
        _;
       } ->
-          Printf.printf "[MODULE_GRAPH]     -> MLI (Generated): %s\n%!" (Path.to_string path);
+          Printf.printf "[MODULE_GRAPH]     -> MLI (Generated): %s\n%!"
+            (Path.to_string path);
           (* Write generated file *)
           let write_action =
-            Actions.WriteFile
-              { destination = path; content = contents }
+            Actions.WriteFile { destination = path; content = contents }
           in
           actions := write_action :: !actions;
 
@@ -699,7 +716,7 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
             Actions.CompileInterface
               {
                 source = path;
-                output = Path.v output;
+                output;
                 includes = [ Path.v "." ];
                 flags = List.map (fun m -> Ocamlc.Open m) (opens open_modules);
               }
@@ -709,15 +726,17 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
       | { kind = C; file = Concrete path; _ } ->
           Printf.printf "[MODULE_GRAPH]     -> C file\n%!";
           (* Source is already in sandbox via CopyDir, use relative path *)
-          let relative_path = Path.strip_prefix path ~prefix:t.package.path |> Result.unwrap in
+          let relative_path =
+            Path.strip_prefix path ~prefix:t.package.path |> Result.unwrap
+          in
           let obj_file =
-            Path.remove_extension relative_path
-            |> Path.add_extension ~ext:"o"
-            |> Path.to_string
+            Path.remove_extension relative_path |> Path.add_extension ~ext:"o"
           in
           (* Use basename for output tracking *)
-          let output_name = Path.basename (Path.v obj_file) in
-          let compile_action = Actions.CompileC { source = relative_path; output = Path.v obj_file } in
+          let output_name = Path.basename obj_file |> Path.v in
+          let compile_action =
+            Actions.CompileC { source = relative_path; output = output_name }
+          in
           actions := compile_action :: !actions;
           outputs := output_name :: !outputs;
           c_objects := output_name :: !c_objects
@@ -733,18 +752,19 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
           ())
     sorted_nodes;
 
-  Printf.printf "[MODULE_GRAPH] Finished processing all %d nodes\n%!" (List.length sorted_nodes);
+  Printf.printf "[MODULE_GRAPH] Finished processing all %d nodes\n%!"
+    (List.length sorted_nodes);
 
   (* Create library archive *)
-  let library_name = String.capitalize_ascii t.package.name ^ ".cma" in
+  let library_name = Module_name.(of_string t.package.name |> cma) in
   if !cmo_files <> [] then (
     (* Include both .cmo files and .o files (C stubs) in the library *)
     let all_objects = List.rev !cmo_files @ List.rev !c_objects in
     let archive_action =
       Actions.CreateLibrary
         {
-          output = Path.v library_name;
-          objects = List.map Path.v all_objects;
+          output = library_name;
+          objects = all_objects;
           includes = [ Path.v "." ];
         }
     in
@@ -764,19 +784,24 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
   in
   if has_main then (
     Printf.printf "[MODULE_GRAPH] Found main.ml - creating executable\n%!";
-    let binary_name = t.package.name in
+    let binary_name = Path.v t.package.name in
 
     (* Get topologically sorted dependencies *)
-    let sorted_deps = Build_graph.filter_for_package build_graph t.package.name
-                      |> Build_graph.topological_sort in
+    let sorted_deps =
+      Build_graph.filter_for_package build_graph t.package.name
+      |> Build_graph.topological_sort
+    in
 
     (* Get dependency .cma files in topological order *)
     let dep_libraries =
-      List.filter_map (fun dep_node ->
+      List.filter_map
+        (fun dep_node ->
           let dep_pkg_name = dep_node.Build_node.package.name in
           (* Skip unix (handled separately) and skip ourselves *)
           if dep_pkg_name = "unix" || dep_pkg_name = t.package.name then None
-          else Some (String.capitalize_ascii dep_pkg_name ^ ".cma"))
+          else
+            let dep_name = Module_name.of_string dep_pkg_name in
+            Some (Module_name.cma dep_name))
         sorted_deps
     in
 
@@ -789,34 +814,34 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
             dep_node.Build_node.package.dependencies)
         sorted_deps
     in
-    let includes = if has_unix_dep then [ "."; "+unix" ] else [ "." ] in
+    let includes =
+      if has_unix_dep then Path.[ v "."; v "+unix" ] else Path.[ v "." ]
+    in
 
     (* Libraries: unix first (if needed), then topologically sorted deps, then our library *)
     let libraries =
-      (if has_unix_dep then [ "unix.cma" ] else [])
+      (if has_unix_dep then Path.[ v "unix.cma" ] else [])
       @ dep_libraries @ [ library_name ]
     in
 
     let exe_action =
       Actions.CreateExecutable
         {
-          output = Path.v binary_name;
-          objects = List.map Path.v (List.rev !cmo_files);
-          libraries = List.map Path.v libraries;
-          includes = List.map Path.v includes;
+          output =  binary_name;
+          objects = List.rev !cmo_files;
+          libraries;
+          includes;
         }
     in
     actions := exe_action :: !actions;
     outputs := binary_name :: !outputs);
 
-  let outputs_strings = List.rev !outputs in
+  let outputs = List.rev !outputs in
 
   (* Add DeclareOutputs *)
-  let declare_action = Actions.DeclareOutputs { outputs = List.map Path.v outputs_strings } in
+  let declare_action = Actions.DeclareOutputs { outputs } in
 
-  let outputs_paths = List.map Path.v outputs_strings in
-
-  (List.rev (declare_action :: !actions), outputs_paths)
+  (List.rev (declare_action :: !actions), outputs)
 
 (** Build the complete module graph for a package *)
 let build ~node ~workspace ~build_graph =

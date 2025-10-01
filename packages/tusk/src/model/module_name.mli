@@ -29,20 +29,23 @@ val namespace : t -> Namespace.t
 val qualified_name : t -> string
 (** Get the fully qualified name (namespace__name) *)
 
-val cmo : t -> string
+val cma : t -> Path.t
 (** Get the .cmo filename based on qualified name *)
 
-val cmi : t -> string
+val cmo : t -> Path.t
+(** Get the .cmo filename based on qualified name *)
+
+val cmi : t -> Path.t
 (** Get the .cmi filename based on qualified name *)
 
-val cmx : t -> string
+val cmx : t -> Path.t
 (** Get the .cmx filename based on qualified name *)
 
-val o : t -> string
+val o : t -> Path.t
 (** Get the .o filename based on qualified name *)
 
-val canonical_mli : t -> string
+val canonical_mli : t -> Path.t
 (** Get the canonical .mli filename *)
 
-val canonical_ml : t -> string
+val canonical_ml : t -> Path.t
 (** Get the canonical .ml filename *)

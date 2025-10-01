@@ -22,10 +22,10 @@ val filename : t -> Path.t
 val kind : t -> [ `implementation | `interface ]
 (** Get whether this is an implementation or interface file *)
 
-val cmi : t -> string
+val cmi : t -> Path.t
 (** Get the compiled interface filename (e.g., "Std__Path.cmi") *)
 
-val cmo : t -> string
+val cmo : t -> Path.t
 (** Get the compiled object filename (e.g., "Std__Path.cmo") *)
 
 val eq : t -> t -> bool

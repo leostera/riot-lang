@@ -14,7 +14,7 @@ val build :
   node:Build_node.t ->
   workspace:Workspace.t ->
   build_graph:Build_graph.t ->
-  (t * Actions.action list, error) result
+  (t * Actions.action list * Path.t list, error) result
 (** Build a module graph for a package
 
     @param node The build node containing package info

@@ -140,23 +140,26 @@ let strip_prefix path ~prefix =
         Result.ok path_parts
     | [], _ :: _ ->
         (* Ran out of path before consuming prefix *)
-        Result.err (SystemError
-          (Printf.sprintf "Path %s does not start with prefix %s"
-            (to_string path) (to_string prefix)))
+        Result.err
+          (SystemError
+             (Printf.sprintf "Path %s does not start with prefix %s"
+                (to_string path) (to_string prefix)))
     | p :: path_rest, pre :: prefix_rest ->
-        if to_string p = to_string pre then
-          consume path_rest prefix_rest
+        if to_string p = to_string pre then consume path_rest prefix_rest
         else
-          Result.err (SystemError
-            (Printf.sprintf "Path %s does not start with prefix %s"
-              (to_string path) (to_string prefix)))
+          Result.err
+            (SystemError
+               (Printf.sprintf "Path %s does not start with prefix %s"
+                  (to_string path) (to_string prefix)))
   in
 
   match consume path_components prefix_components with
   | Ok [] -> Result.ok (v "")
   | Ok remaining ->
       (* Join remaining components back into a path *)
-      let result = List.fold_left join (List.hd remaining) (List.tl remaining) in
+      let result =
+        List.fold_left join (List.hd remaining) (List.tl remaining)
+      in
       Result.ok result
   | Error e -> Result.err e
 
