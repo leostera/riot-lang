@@ -96,21 +96,26 @@ let rec to_string = function
 let of_string str =
   let len = String.length str in
   let pos = ref 0 in
+  
+  Log.trace "[JSON PARSER] Starting parse, string length: %d" len;
+  Log.trace "[JSON PARSER] Input: %s" str;
 
   let peek () = if !pos < len then Some str.[!pos] else None in
 
-  let advance () = incr pos in
+  let advance () = 
+    Log.trace "[JSON PARSER] Advancing from pos %d to %d (len=%d)" !pos (!pos + 1) len;
+    incr pos in
 
-  let skip_whitespace () =
-    while
-      !pos < len
-      && (str.[!pos] = ' '
-         || str.[!pos] = '\t'
-         || str.[!pos] = '\n'
-         || str.[!pos] = '\r')
-    do
-      incr pos
-    done
+  let rec skip_whitespace () =
+    Log.trace "[JSON PARSER] skip_whitespace at pos %d (len=%d)" !pos len;
+    if !pos >= len then ()
+    else
+      match str.[!pos] with
+      | ' ' | '\t' | '\n' | '\r' ->
+          Log.trace "[JSON PARSER] skip_whitespace skipping char at pos %d" !pos;
+          advance ();
+          skip_whitespace ()
+      | _ -> ()
   in
 
   let exception Json_parse_error of error in
@@ -118,6 +123,7 @@ let of_string str =
   let raise_error err = raise (Json_parse_error err) in
 
   let parse_string () =
+    Log.trace "[JSON PARSER] parse_string at pos %d" !pos;
     advance ();
     (* skip opening quote *)
     let buffer = Buffer.create 16 in
@@ -128,7 +134,9 @@ let of_string str =
         match str.[!pos] with
         | '"' ->
             advance ();
-            Buffer.contents buffer
+            let result = Buffer.contents buffer in
+            Log.trace "[JSON PARSER] Parsed string: \"%s\"" result;
+            result
         | '\\' ->
             advance ();
             if !pos >= len then 
@@ -151,6 +159,7 @@ let of_string str =
   in
 
   let parse_number () =
+    Log.trace "[JSON PARSER] parse_number at pos %d" !pos;
     let start = !pos in
     let is_float = ref false in
     while
@@ -166,23 +175,40 @@ let of_string str =
       advance ()
     done;
     let num_str = String.sub str start (!pos - start) in
+    Log.trace "[JSON PARSER] Parsed number: %s" num_str;
     if !is_float then Float (float_of_string num_str)
     else Int (int_of_string num_str)
   in
 
   let rec parse_value () =
     skip_whitespace ();
+    Log.trace "[JSON PARSER] parse_value at pos %d (len=%d), char: %s" 
+      !pos len (match peek () with Some c -> format "%c" c | None -> "EOF");
     match peek () with
     | None -> raise_error (Unexpected_end_of_input { expected = "value" })
     | Some 'n' ->
         let start_pos = !pos in
-        if !pos + 4 <= len && String.sub str !pos 4 = "null" then (
-          pos := !pos + 4;
-          Null)
-        else 
+        Log.trace "[JSON PARSER] Parsing 'null' at pos %d, checking bounds: pos+4=%d <= len=%d = %b" 
+          !pos (!pos + 4) len (!pos + 4 <= len);
+        if !pos + 4 <= len then (
+          let substring = 
+            try String.sub str !pos 4
+            with Invalid_argument msg ->
+              Log.trace "[JSON PARSER] ERROR: String.sub failed: %s (pos=%d, len=4, str_len=%d)" msg !pos len;
+              raise (Invalid_argument msg)
+          in
+          if substring = "null" then (
+            pos := !pos + 4;
+            Null)
+          else
+            raise_error (Invalid_literal { expected = "null"; position = start_pos; found = substring })
+        ) else 
           let found = 
-            if !pos + 4 <= len then String.sub str !pos 4 
-            else if !pos < len then String.sub str !pos (len - !pos) 
+            if !pos < len then (
+              let remaining = len - !pos in
+              Log.trace "[JSON PARSER] Getting substring: pos=%d, remaining=%d" !pos remaining;
+              String.sub str !pos remaining
+            )
             else "" 
           in
           raise_error (Invalid_literal { expected = "null"; position = start_pos; found })
@@ -212,10 +238,12 @@ let of_string str =
           raise_error (Invalid_literal { expected = "false"; position = start_pos; found })
     | Some '"' -> String (parse_string ())
     | Some '[' ->
+        Log.trace "[JSON PARSER] Parsing array at pos %d" !pos;
         advance ();
         skip_whitespace ();
         if peek () = Some ']' then (
           advance ();
+          Log.trace "[JSON PARSER] Parsed empty array";
           Array [])
         else
           let rec parse_items acc =
@@ -233,10 +261,12 @@ let of_string str =
           in
           parse_items []
     | Some '{' ->
+        Log.trace "[JSON PARSER] Parsing object at pos %d" !pos;
         advance ();
         skip_whitespace ();
         if peek () = Some '}' then (
           advance ();
+          Log.trace "[JSON PARSER] Parsed empty object";
           Object [])
         else
           let rec parse_fields acc =
@@ -271,13 +301,17 @@ let of_string str =
   try
     skip_whitespace ();
     let result = parse_value () in
+    Log.trace "[JSON PARSER] Finished parse_value, now at pos %d (len=%d)" !pos len;
     skip_whitespace ();
+    Log.trace "[JSON PARSER] After skip_whitespace, at pos %d (len=%d)" !pos len;
     if !pos < len then 
       Error (Extra_input_after_value { position = !pos })
     else Ok result
   with
   | Json_parse_error err -> Error err
-  | exn -> Error (Unknown_error (Exception.to_string exn))
+  | exn -> 
+      Log.error "[JSON PARSER] Exception: %s at pos %d (len=%d)" (Exception.to_string exn) !pos len;
+      Error (Unknown_error (Exception.to_string exn))
 
 (** Helper functions *)
 let null = Null
