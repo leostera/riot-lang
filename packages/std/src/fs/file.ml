@@ -252,4 +252,4 @@ let close t =
       Kernel.Fs.File.close_fd t.fd
       |> convert_kernel_result
       |> Result.map (fun () -> t.closed <- true)
-    with e -> Error (SystemError (Printexc.to_string e))
+    with e -> Error (SystemError (Exception.to_string e))

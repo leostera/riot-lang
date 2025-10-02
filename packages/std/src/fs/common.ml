@@ -8,7 +8,7 @@ let kernel_error_to_string = function
   | `Process_down -> "Process down"
   | `Closed -> "Closed"
   | `Connection_closed -> "Connection closed"
-  | `Exn exn -> Printexc.to_string exn
+  | `Exn exn -> Exception.to_string exn
   | `No_info -> "No info"
   | `Would_block -> "Would block"
   | `IO_error err -> Kernel.IO.error_message err

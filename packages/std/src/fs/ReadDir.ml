@@ -18,7 +18,7 @@ let close t =
     try
       Kernel.Fs.File.closedir t.handle |> ignore;
       Ok ()
-    with e -> Error (SystemError (Printexc.to_string e)))
+    with e -> Error (SystemError (Exception.to_string e)))
   else Ok ()
 
 let rec next t =
