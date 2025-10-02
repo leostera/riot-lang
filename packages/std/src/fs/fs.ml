@@ -124,14 +124,16 @@ let symlink_metadata path =
   |> Result.map Metadata.of_unix
 
 let read_to_string path =
-  let path_str = Path.to_string path in
-  try
-    let ic = open_in_bin path_str in
-    let len = in_channel_length ic in
-    let buf = really_input_string ic len in
-    close_in ic;
-    Ok buf
-  with e -> Error (SystemError (Printexc.to_string e))
+  match File.open_read path with
+  | Error e -> Error e
+  | Ok file -> (
+      match File.read_to_end file with
+      | Error e ->
+          let _ = File.close file in
+          Error e
+      | Ok content ->
+          let _ = File.close file in
+          Ok content)
 
 let read_dir path =
   match ReadDir.create path with
@@ -310,14 +312,16 @@ let is_relative path = Path.is_relative path
 let join paths = List.fold_left Path.join (List.hd paths) (List.tl paths)
 
 let read path =
-  let path_str = Path.to_string path in
-  try
-    let ic = open_in_bin path_str in
-    let len = in_channel_length ic in
-    let content = really_input_string ic len in
-    close_in ic;
-    Ok content
-  with e -> Error (SystemError (Printexc.to_string e))
+  match File.open_read path with
+  | Error e -> Error e
+  | Ok file -> (
+      match File.read_to_end file with
+      | Error e ->
+          let _ = File.close file in
+          Error e
+      | Ok content ->
+          let _ = File.close file in
+          Ok content)
 
 let read_file = read
 let write_file path content = write content path

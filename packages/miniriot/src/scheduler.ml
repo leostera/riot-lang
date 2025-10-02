@@ -31,7 +31,7 @@ let create () =
         (match err with
         | `System_error s -> s
         | `Noop -> "Unknown error"
-        | `Unix_error e -> Unix.error_message e
+        | `Unix_error e -> Kernel.IO.unix_error_message e
         | `Closed -> "Closed"
         | `Connection_closed -> "Connection closed"
         | `Eof -> "End of file"
@@ -144,7 +144,7 @@ let handle_syscall k t proc name interest source _timeout =
             "[Scheduler] ERROR: Failed to register I/O for process %s: %s\n%!"
             pid_str
             (match err with
-            | `Unix_error e -> Unix.error_message e
+            | `Unix_error e -> Kernel.IO.unix_error_message e
             | `Noop -> "Unknown error"
             | _ -> "Other error");
           (* Don't continue - the I/O operation failed to register *)
@@ -176,7 +176,7 @@ let handle_exit_proc t proc reason =
         | Error err ->
             Printf.printf "[Scheduler] WARN: Failed to deregister I/O: %s\n%!"
               (match err with
-              | `Unix_error e -> Unix.error_message e
+              | `Unix_error e -> Kernel.IO.unix_error_message e
               | `Noop -> "Unknown error"
               | _ -> "Other error"));
 
@@ -255,7 +255,7 @@ let poll_io t =
     | Error err ->
         Printf.printf "[Scheduler] ERROR: Failed to poll I/O: %s\n%!"
           (match err with
-          | `Unix_error e -> Unix.error_message e
+          | `Unix_error e -> Kernel.IO.unix_error_message e
           | `Noop -> "Unknown error"
           | _ -> "Other error");
         []
@@ -275,7 +275,7 @@ let poll_io t =
                  %!"
                 (Pid.to_string (Process.pid proc))
                 (match err with
-                | `Unix_error e -> Unix.error_message e
+                | `Unix_error e -> Kernel.IO.unix_error_message e
                 | `Noop -> "Unknown error"
                 | _ -> "Other error"));
           if Process.is_alive proc then (

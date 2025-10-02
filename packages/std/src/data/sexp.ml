@@ -199,23 +199,13 @@ let rec assoc key = function
 
 (** Read S-expressions from a file *)
 let parse_file filename =
-  try
-    let ic = open_in filename in
-    let len = in_channel_length ic in
-    let content = really_input_string ic len in
-    close_in ic;
-    parse_many content
-  with Sys_error msg -> Error msg
+  match Fs.read_to_string filename with
+  | Ok content -> parse_many content
+  | Error err -> Error err
 
 (** Write S-expression to a file *)
 let to_file filename sexp =
-  try
-    let oc = open_out filename in
-    output_string oc (to_string sexp);
-    output_char oc '\n';
-    close_out oc;
-    Ok ()
-  with Sys_error msg -> Error msg
+  Fs.write (to_string sexp ^ "\n") filename
 
 (** Canonical S-expressions (Csexp) module *)
 module Csexp = struct
@@ -228,11 +218,6 @@ module Csexp = struct
         (* Format: (<elem1><elem2>...) *)
         let contents = String.concat "" (List.map to_string elems) in
         Printf.sprintf "(%s)" contents
-
-  (** Write S-expression to channel in canonical format *)
-  let to_channel oc sexp =
-    output_string oc (to_string sexp);
-    flush oc
 
   (** Parse canonical S-expression from string *)
   let of_string str =
@@ -309,78 +294,4 @@ module Csexp = struct
     | Parse_error msg -> Error msg
     | _ -> Error "Parse error"
 
-  (** Read canonical S-expression from input channel *)
-  let input ic =
-    let read_char () = try Some (input_char ic) with End_of_file -> None in
-
-    let read_atom_content n =
-      let buffer = Buffer.create n in
-      for i = 1 to n do
-        match read_char () with
-        | Some c -> Buffer.add_char buffer c
-        | None -> raise (Parse_error "Unexpected EOF in atom")
-      done;
-      Buffer.contents buffer
-    in
-
-    let rec parse_sexp () =
-      match read_char () with
-      | None -> raise (Parse_error "Unexpected EOF")
-      | Some '(' -> parse_list ()
-      | Some ('0' .. '9' as c) ->
-          (* Put back the digit and parse number *)
-          let first_digit = String.make 1 c in
-          let rest =
-            let buf = Buffer.create 4 in
-            let rec loop () =
-              match read_char () with
-              | Some ('0' .. '9' as c) ->
-                  Buffer.add_char buf c;
-                  loop ()
-              | Some ':' -> Buffer.contents buf
-              | _ -> raise (Parse_error "Expected ':' after atom length")
-            in
-            loop ()
-          in
-          let n = int_of_string (first_digit ^ rest) in
-          Atom (read_atom_content n)
-      | Some c ->
-          raise (Parse_error (Printf.sprintf "Unexpected character '%c'" c))
-    and parse_list () =
-      let rec loop acc =
-        match read_char () with
-        | None -> raise (Parse_error "Unclosed list")
-        | Some ')' -> List (List.rev acc)
-        | Some c ->
-            (* We need to "unread" this character for parse_sexp *)
-            (* For now, we'll use a simpler approach with look-ahead *)
-            raise
-              (Parse_error "Cannot look ahead in stream - use of_string instead")
-      in
-      loop []
-    in
-
-    try Ok (parse_sexp ()) with
-    | Parse_error msg -> Error msg
-    | End_of_file -> Error "Unexpected end of file"
-    | _ -> Error "Parse error"
-
-  (** Read canonical S-expression from input, returning None on EOF *)
-  let input_opt ic =
-    (* Read all available input into a string *)
-    let buffer = Buffer.create 256 in
-    let rec read_all () =
-      try
-        Buffer.add_char buffer (input_char ic);
-        read_all ()
-      with End_of_file -> ()
-    in
-    read_all ();
-
-    let content = Buffer.contents buffer in
-    if content = "" then Ok None (* Empty input means EOF *)
-    else
-      match of_string content with
-      | Ok sexp -> Ok (Some sexp)
-      | Error msg -> Error msg
 end

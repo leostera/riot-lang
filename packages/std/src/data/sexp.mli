@@ -65,15 +65,6 @@ module Csexp : sig
   val to_string : t -> string
   (** Convert S-expression to canonical S-expression format *)
 
-  val to_channel : out_channel -> t -> unit
-  (** Write S-expression to channel in canonical format *)
-
   val of_string : string -> (t, string) result
   (** Parse canonical S-expression from string *)
-
-  val input : in_channel -> (t, string) result
-  (** Read canonical S-expression from input channel *)
-
-  val input_opt : in_channel -> (t option, string) result
-  (** Read canonical S-expression from input channel, returning None on EOF *)
 end

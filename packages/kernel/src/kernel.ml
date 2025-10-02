@@ -3,6 +3,7 @@ module Async = Async
 module Crypto = Crypto
 module Env = Env
 module Fs = Fs
+module IO = Io
 module Net = Net
 module System = System
 module Time = Time
@@ -17,6 +18,7 @@ module Int = Int
 module Queue = Queue
 module Option = Option
 module List = List
+module Hashtbl = Hashtbl
 
 (* Re-export global types and functions at top level for convenience *)
 include Global
