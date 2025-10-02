@@ -34,3 +34,9 @@ val cell : 'a -> 'a Cell.t
 
 val format : ('a, unit, string, string) format4 -> 'a
 (** Format string helper - alias for Printf.sprintf *)
+
+val print : ('a, unit, string, unit) format4 -> 'a
+(** Print to stdout with immediate flush *)
+
+val println : ('a, unit, string, unit) format4 -> 'a
+(** Print to stdout with newline and immediate flush *)
