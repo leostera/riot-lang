@@ -20,7 +20,7 @@ and handle_task ctx task =
   let pkg_name = Build_node.(node.package.name) in
 
   (* Log that we're starting *)
-  Log.package_started ~session_id ~package:pkg_name;
+  Tusk_log.package_started ~session_id ~package:pkg_name;
 
   (* Step 1: Create sandbox first *)
   let sandbox = Sandbox.create ~node ~workspace:ctx.workspace in
@@ -50,7 +50,7 @@ and handle_planning_exception ctx task exn =
             worker = self ();
             node = task.Worker_pool_types.node;
             error =
-              Printf.sprintf "Planning failed: %s" (Printexc.to_string exn);
+              Printf.sprintf "Planning failed: %s" (Exception.to_string exn);
           }));
   worker_loop ctx
 
@@ -86,7 +86,7 @@ and handle_skipped_node ctx task skipped_node reason =
   in
 
   (* Log that the package was skipped with the proper event *)
-  Log.log
+  Tusk_log.log
     (Event.create ~session_id ~level:Info
        (PackageSkipped { package = pkg_name; reason = event_reason }));
 
@@ -121,7 +121,7 @@ and do_build ctx task planned_node sandbox =
   let Worker_pool_types.{ node; session_id } = task in
   let pkg_name = Build_node.(node.package.name) in
   (* No cache - need to build in sandbox *)
-  Log.cache_miss ~session_id ~package:pkg_name
+  Tusk_log.cache_miss ~session_id ~package:pkg_name
     ~hash:
       (match planned_node.Build_node.spec with
       | Planned { hash; _ } -> Std.Crypto.Digest.hex hash
@@ -179,7 +179,7 @@ and handle_cache_hit ctx task planned_node artifact =
   let pkg_name = Build_node.(node.package.name) in
   (* We have a cached artifact *)
   (* Only log cache hit once per package *)
-  Log.cache_hit ~session_id ~package:pkg_name
+  Tusk_log.cache_hit ~session_id ~package:pkg_name
     ~hash:
       (match planned_node.Build_node.spec with
       | Planned { hash; _ } -> Std.Crypto.Digest.hex hash

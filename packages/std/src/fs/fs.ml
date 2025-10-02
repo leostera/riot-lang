@@ -41,7 +41,7 @@ let canonicalize path =
     match Path.of_string abs_path with
     | Ok p -> Ok p
     | Error _ -> Error (SystemError "Invalid canonical path")
-  with e -> Error (SystemError (Printexc.to_string e))
+  with e -> Error (SystemError (Exception.to_string e))
 
 let copy ~src ~dst =
   let src_str = Path.to_string src in
@@ -65,7 +65,7 @@ let create_dir_all path =
                 | Ok () -> Ok ()
                 | Error (`IO_error Kernel.IO.File_exists) -> Ok ()
                 | Error e -> Error (SystemError (kernel_error_to_string e))
-              with e -> Error (SystemError (Printexc.to_string e)))
+              with e -> Error (SystemError (Exception.to_string e)))
         else Ok ()
   in
   match create_parents path with
@@ -77,7 +77,7 @@ let create_dir_all path =
         | Ok () -> Ok ()
         | Error (`IO_error Kernel.IO.File_exists) -> Ok ()
         | Error e -> Error (SystemError (kernel_error_to_string e))
-      with e -> Error (SystemError (Printexc.to_string e)))
+      with e -> Error (SystemError (Exception.to_string e)))
 
 let exists path = Ok (Path.exists path)
 
@@ -85,7 +85,7 @@ let hard_link ~src ~dst =
   let src_str = Path.to_string src in
   let dst_str = Path.to_string dst in
   try Kernel.Fs.File.link src_str dst_str |> convert_kernel_result
-  with e -> Error (SystemError (Printexc.to_string e))
+  with e -> Error (SystemError (Exception.to_string e))
 
 let metadata path =
   let path_str = Path.to_string path in
@@ -145,7 +145,7 @@ let rename ~src ~dst =
   let src_str = Path.to_string src in
   let dst_str = Path.to_string dst in
   try Kernel.Fs.File.rename src_str dst_str |> convert_kernel_result
-  with e -> Error (SystemError (Printexc.to_string e))
+  with e -> Error (SystemError (Exception.to_string e))
 
 let set_permissions path perm =
   let path_str = Path.to_string path in
@@ -179,7 +179,7 @@ let read_link path =
     match Path.of_string target with
     | Ok p -> Ok p
     | Error _ -> Error (SystemError "Invalid link target")
-  with e -> Error (SystemError (Printexc.to_string e))
+  with e -> Error (SystemError (Exception.to_string e))
 
 let create_dir path =
   let path_str = Path.to_string path in
@@ -282,7 +282,7 @@ let current_executable () =
     match Path.of_string Kernel.System.executable_name with
     | Ok path -> Ok path
     | Error _ -> Error (SystemError "Invalid executable path")
-  with e -> Error (SystemError (Printexc.to_string e))
+  with e -> Error (SystemError (Exception.to_string e))
 
 let is_absolute path = Path.is_absolute path
 let is_relative path = Path.is_relative path
@@ -313,12 +313,12 @@ let with_tempdir ?(prefix = "tmp") fn =
     | Ok temp_path ->
         let result =
           try Ok (fn temp_path)
-          with e -> Error (SystemError (Printexc.to_string e))
+          with e -> Error (SystemError (Exception.to_string e))
         in
         (* Clean up the temp directory *)
         let _ = remove_dir_all temp_path in
         result
-  with e -> Error (SystemError (Printexc.to_string e))
+  with e -> Error (SystemError (Exception.to_string e))
 
 (** Walk directory tree and call function on each path *)
 let rec walk path fn =

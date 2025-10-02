@@ -593,7 +593,7 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
           (Printf.sprintf "Cycle detected in module dependencies: %s" cycle_str)
     | exn ->
         Printf.printf "[MODULE_GRAPH] ERROR: Exception in topo_sort: %s\n%!"
-          (Printexc.to_string exn);
+          (Exception.to_string exn);
         raise exn
   in
 

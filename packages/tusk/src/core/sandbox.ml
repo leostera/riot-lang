@@ -268,19 +268,19 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
              (* Log compilation/linking events for LLM visibility *)
              (match action with
              | Actions.CompileInterface { source; _ } ->
-                 Log.compiling_interface ~session_id
+                 Tusk_log.compiling_interface ~session_id
                    ~package:sandbox.node.package.name
                    ~file:(Path.to_string source)
              | Actions.CompileImplementation { source; _ } ->
-                 Log.compiling_implementation ~session_id
+                 Tusk_log.compiling_implementation ~session_id
                    ~package:sandbox.node.package.name
                    ~file:(Path.to_string source)
              | Actions.CreateLibrary { output; _ } ->
-                 Log.linking_library ~session_id
+                 Tusk_log.linking_library ~session_id
                    ~package:sandbox.node.package.name
                    ~output:(Path.to_string output)
              | Actions.CreateExecutable { output; _ } ->
-                 Log.linking_executable ~session_id
+                 Tusk_log.linking_executable ~session_id
                    ~package:sandbox.node.package.name
                    ~output:(Path.to_string output)
              | _ -> ());
@@ -359,7 +359,7 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
                              raw = error_msg;
                            }
                    in
-                   Log.compile_error ~session_id
+                   Tusk_log.compile_error ~session_id
                      ~package:sandbox.node.package.name compile_error;
 
                    Printf.printf "  -> Failed: %s\n%!" error_msg;
@@ -377,7 +377,7 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
       else Error (String.concat "; " !errors)
     with exn ->
       let error_msg =
-        Printf.sprintf "Sandbox execution failed: %s" (Printexc.to_string exn)
+        Printf.sprintf "Sandbox execution failed: %s" (Exception.to_string exn)
       in
       Error error_msg
   in

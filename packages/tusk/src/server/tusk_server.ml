@@ -8,6 +8,8 @@ open Tusk_protocol
 open Ocaml
 open Executor
 
+module Log = Std.Log
+
 type t = Pid.t
 (** Server handle is just a PID *)
 
@@ -292,18 +294,61 @@ let start_tcp_server ~server ~port =
   let _ = Net.TcpServer.listen addr ~handler in
   Ok ()
 
+(** Write daemon files so RPC clients can find us *)
+let write_daemon_files ~workspace ~port =
+  let home =
+    match Env.home_dir () with
+    | Some h -> h
+    | None -> failwith "Failed to get home directory"
+  in
+  let root_str = Path.to_string workspace.Workspace.root in
+  let project_id = Printf.sprintf "%08x" (Hashtbl.hash root_str) in
+  let daemon_path = Path.(home / Path.v ".tusk" / Path.v "daemons" / Path.v project_id) in
+  
+  let _ = Fs.create_dir_all daemon_path |> Result.expect ~msg:"Failed to create daemon dir" in
+  
+  let pid = Kernel.System.OsProcess.current_pid () in
+  let pid_file = Path.(daemon_path / Path.v "server.pid") in
+  let port_file = Path.(daemon_path / Path.v "server.port") in
+  
+  let _ = Fs.write (string_of_int pid) pid_file in
+  let _ = Fs.write (string_of_int port) port_file in
+  Log.debug "Wrote daemon files: pid=%d, port=%d" pid port
+
 (** Main server loop *)
 let init ~current_dir ~workers ~port =
+  Log.info "Tusk server initializing...";
+  Log.debug "Current dir: %s" (Path.to_string current_dir);
+  Log.debug "Workers: %d, Port: %d" workers port;
+  
   let server_pid = self () in
+  Log.trace "Server PID: %s" (Pid.to_string server_pid);
+  
+  Log.info "Scanning workspace...";
   let workspace =
     Workspace_manager.scan current_dir
     |> Result.expect ~msg:"tusk_server: operation failed"
   in
+  Log.info "Workspace scanned successfully: %d packages found" 
+    (List.length workspace.packages);
+  
+  Log.info "Loading toolchains...";
   let toolchain = Toolchains.ready_toolchains workspace in
+  Log.info "Toolchain ready: %s" 
+    (Path.to_string (Toolchains.get_toolchain_path toolchain));
+  
+  Log.info "Building dependency graph...";
   let build_graph = Build_graph.create workspace toolchain in
+  Log.info "Build graph created with %d nodes" (Build_graph.size build_graph);
+  
   let build_results = Build_results.create () in
   let build_queue = Build_queue.create build_results in
+  
+  Log.info "Starting TCP server on port %d..." port;
   let _ = start_tcp_server ~server:server_pid ~port in
+  Log.info "TCP server started successfully";
+  
+  write_daemon_files ~workspace ~port;
 
   let state =
     {
@@ -318,6 +363,7 @@ let init ~current_dir ~workers ~port =
     }
   in
 
+  Log.info "Tusk server entering main loop";
   loop state
 
 (** Start the server with TCP listener for RPC. This function makes the current
@@ -335,13 +381,26 @@ let start () =
 
 (** Start with listener - makes current process become the server *)
 let start_with_listener () =
-  let current_dir =
-    Env.current_dir ()
-    |> Result.expect ~msg:"tusk_server: could not get current dir"
-  in
-  let workers = Std.System.available_parallelism in
-  let port = 9753 in
-  init ~current_dir ~workers ~port
+  try
+    Log.info "Starting Tusk server with listener";
+    let current_dir =
+      Env.current_dir ()
+      |> Result.expect ~msg:"tusk_server: could not get current dir"
+    in
+    Log.debug "Got current directory: %s" (Path.to_string current_dir);
+    let workers = Std.System.available_parallelism in
+    let port = 9753 in
+    Log.debug "Configuration: workers=%d, port=%d" workers port;
+    
+    init ~current_dir ~workers ~port
+  with
+  | Failure msg ->
+      Log.error "Server initialization failed: %s" msg;
+      raise (Failure msg)
+  | exn ->
+      Log.error "Server initialization failed with exception: %s"
+        (Exception.to_string exn);
+      raise exn
 
 (** Scan workspace *)
 let scan_workspace server =

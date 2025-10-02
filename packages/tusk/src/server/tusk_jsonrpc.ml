@@ -2222,7 +2222,7 @@ module Server = struct
     let session_id = Session_id.make () in
 
     (* Register ourselves with the logger to receive events BEFORE sending build request *)
-    Log.add_rpc_handler ~session_id ~client:(self ());
+    Tusk_log.add_rpc_handler ~session_id ~client:(self ());
 
     (* Convert to tusk_protocol message type *)
     let server_request =
@@ -2258,7 +2258,7 @@ module Server = struct
         (* Now handle log events, CycleDetected and BuildCompleted *)
         let rec event_loop () =
           let selector = function
-            | Log.Event event when event.Event.session_id = session_id ->
+            | Tusk_log.Event event when event.Event.session_id = session_id ->
                 `select (`log_event event)
             | Tusk_protocol.ServerResponse
                 (Tusk_protocol.CycleDetected

@@ -255,7 +255,7 @@ let execute_action action toolchain cwd =
             | Error (Command.SystemError err) ->
               ( Failed (Printf.sprintf "cp command failed: %s" err),
                 "" )
-          with exn -> (Failed (Printexc.to_string exn), ""))
+          with exn -> (Failed (Exception.to_string exn), ""))
       | CopyFile { source; destination } -> (
           try
             (* Create parent directories for destination *)
@@ -272,7 +272,7 @@ let execute_action action toolchain cwd =
             ( Success,
               Printf.sprintf "Copied %s to %s" (Path.to_string source)
                 (Path.to_string destination) )
-          with exn -> (Failed (Printexc.to_string exn), ""))
+          with exn -> (Failed (Exception.to_string exn), ""))
       | WriteFile { destination; content } -> (
           try
             (* Create parent directories for destination *)
@@ -287,7 +287,7 @@ let execute_action action toolchain cwd =
               |> Result.expect ~msg:"Failed to write file"
             in
             (Success, Printf.sprintf "Wrote %s" (Path.to_string destination))
-          with exn -> (Failed (Printexc.to_string exn), ""))
+          with exn -> (Failed (Exception.to_string exn), ""))
       | DeclareOutputs { outputs } ->
           (* Just record the expected outputs - don't validate yet as they haven't been built *)
           ( Success,

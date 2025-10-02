@@ -90,7 +90,7 @@ let do_build ~session_id ~client_pid ~build_results ~build_queue ~build_stats
       in
       (* Get results from Build_results module *)
       let results = Build_results.to_events build_results in
-      Log.build_complete ~session_id ~duration_ms ~results;
+      Tusk_log.build_complete ~session_id ~duration_ms ~results;
 
       (* Mark build as completed to finalize stats *)
       Tusk_protocol.BuildStats.mark_completed build_stats;
@@ -115,7 +115,7 @@ let start ~workspace ~toolchain ~workers ~session_id ~client_pid ~target =
     (ServerResponse (BuildStarted { session_id; started_at = Datetime.now () }));
 
   (* 1. on every build we refresh the workspace *)
-  Log.workspace_scanning ~session_id ();
+  Tusk_log.workspace_scanning ~session_id ();
   let workspace_start = Time.Instant.now () in
   let workspace =
     Workspace_manager.scan workspace.root
@@ -125,14 +125,14 @@ let start ~workspace ~toolchain ~workers ~session_id ~client_pid ~target =
     Time.Instant.duration_since ~earlier:workspace_start (Time.Instant.now ())
     |> Time.Duration.to_millis
   in
-  Log.workspace_scanned ~session_id
+  Tusk_log.workspace_scanned ~session_id
     ~packages:(List.length workspace.packages)
     ~duration_ms:workspace_duration;
   Printf.eprintf "Server: Workspace scanned, found %d packages\n%!"
     (List.length workspace.packages);
 
   (* 2. recreate the build graph from the refreshed workspace *)
-  Log.build_graph_creating ~session_id ();
+  Tusk_log.build_graph_creating ~session_id ();
   let graph_start = Time.Instant.now () in
   let fresh_build_graph = Build_graph.create workspace toolchain in
   let graph_duration =
@@ -140,7 +140,7 @@ let start ~workspace ~toolchain ~workers ~session_id ~client_pid ~target =
     |> Time.Duration.to_millis
   in
   let node_count = Build_graph.size fresh_build_graph in
-  Log.build_graph_created ~session_id ~nodes:node_count
+  Tusk_log.build_graph_created ~session_id ~nodes:node_count
     ~duration_ms:graph_duration;
 
   (* 3. compute and queue the target build graph (this could be the whole build graph or a subset) *)
@@ -192,7 +192,7 @@ let start ~workspace ~toolchain ~workers ~session_id ~client_pid ~target =
       let packages = List.map (fun n -> n.Build_node.package.name) nodes in
       let total_modules = 0 in
       (* TODO: Count actual modules when available *)
-      Log.build_started ~session_id ~packages ~total_modules ~workers;
+      Tusk_log.build_started ~session_id ~packages ~total_modules ~workers;
 
       (* Create mutable build stats to track throughout the build *)
       let build_stats = Tusk_protocol.BuildStats.make () in
@@ -218,16 +218,16 @@ let start ~workspace ~toolchain ~workers ~session_id ~client_pid ~target =
         waiting busy;
 
       (* 4. create a worker pool to execute this build *)
-      Log.store_creating ~session_id ();
+      Tusk_log.store_creating ~session_id ();
       let store_start = Time.Instant.now () in
       let store = Store.create ~workspace in
       let store_duration =
         Time.Instant.duration_since ~earlier:store_start (Time.Instant.now ())
         |> Time.Duration.to_millis
       in
-      Log.store_created ~session_id ~duration_ms:store_duration;
+      Tusk_log.store_created ~session_id ~duration_ms:store_duration;
 
-      Log.worker_pool_creating ~session_id ~workers;
+      Tusk_log.worker_pool_creating ~session_id ~workers;
       let pool_start = Time.Instant.now () in
       let _ =
         Worker_pool.start ~workers ~provider:(self ()) ~build_graph:target_graph
@@ -237,7 +237,7 @@ let start ~workspace ~toolchain ~workers ~session_id ~client_pid ~target =
         Time.Instant.duration_since ~earlier:pool_start (Time.Instant.now ())
         |> Time.Duration.to_millis
       in
-      Log.worker_pool_created ~session_id ~workers ~duration_ms:pool_duration;
+      Tusk_log.worker_pool_created ~session_id ~workers ~duration_ms:pool_duration;
 
       (* 5. enter the build loop *)
       do_build ~session_id ~client_pid ~build_results ~build_queue ~build_stats

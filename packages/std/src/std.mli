@@ -2,6 +2,7 @@
 
 module Buffer = Buffer
 module Cell = Cell
+module Char = Char
 module Collections = Collections
 module Command = Command
 module Crypto = Crypto
@@ -12,11 +13,13 @@ module Fs = Fs
 module Graph = Graph
 module Iterator = Iterator
 module List = List
+module Log = Log
 module MutIterator = MutIterator
 module Net = Net
 module Option = Option
 module Path = Path
 module Result = Result
+module String = String
 module System = System
 module Task = Task
 module Time = Time

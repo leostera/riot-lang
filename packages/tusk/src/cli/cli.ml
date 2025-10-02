@@ -36,7 +36,7 @@ let version_command () =
 let main ~args =
   let argc = List.length args in
   (* Initialize logger process first *)
-  let _logger_pid = Core.Log.init () in
+  let _logger_pid = Core.Tusk_log.init () in
 
   if argc < 1 then (
     Printf.eprintf "Error: No command specified\n\n%s\n" usage_msg;
