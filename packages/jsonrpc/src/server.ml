@@ -29,35 +29,43 @@ let handle_message (type req res) (server : (req, res) t)
          and type response = res)
   in
   (* Parse the incoming message *)
+  Std.Log.debug "[JSONRPC SERVER] Parsing message: %s" message;
   match Json.of_string message with
   | Error e ->
       (* Parse error - can't send typed response, just log/ignore *)
+      Std.Log.error "[JSONRPC SERVER] JSON parse error: %s" (Json.error_to_string e);
       ()
   | Ok json -> (
+      Std.Log.debug "[JSONRPC SERVER] JSON parsed successfully";
       match Common.request_of_json json with
       | Error e ->
           (* Invalid request - can't send typed response, just log/ignore *)
+          Std.Log.error "[JSONRPC SERVER] Request parse error";
           ()
       | Ok request -> (
+          Std.Log.debug "[JSONRPC SERVER] Looking for handler for method: %s" request.method_;
+          Std.Log.debug "[JSONRPC SERVER] Available handlers: %d" (List.length server.handlers);
+          List.iter (fun h -> Std.Log.debug "[JSONRPC SERVER]   - %s" h.method_) server.handlers;
           (* Find handler for method *)
           match
             List.find_opt (fun h -> h.method_ = request.method_) server.handlers
           with
           | None ->
               (* Method not found - can't send typed response, just log/ignore *)
+              Std.Log.error "[JSONRPC SERVER] No handler found for method: %s" request.method_;
               ()
           | Some handler -> (
               (* Convert params to typed request using method name *)
-              Printf.eprintf "[JSONRPC SERVER] Found handler for %s\n"
+              Std.Log.debug "[JSONRPC SERVER] Found handler for %s"
                 request.method_;
               match P.request_of_params request.method_ request.params with
               | Error _err ->
                   (* Invalid params - can't send typed response, just log/ignore *)
-                  Printf.eprintf "[JSONRPC SERVER] Failed to convert params\n";
+                  Std.Log.error "[JSONRPC SERVER] Failed to convert params";
                   ()
               | Ok typed_request ->
                   (* Execute handler with typed request *)
-                  Printf.eprintf "[JSONRPC SERVER] Calling handler\n";
+                  Std.Log.debug "[JSONRPC SERVER] Calling handler";
                   if Common.is_notification request then
                     (* Notification - no response expected *)
                     handler.fn (fun _ -> ()) typed_request

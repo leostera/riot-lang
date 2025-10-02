@@ -61,7 +61,7 @@ let receive_response (type req res) (Client c as client : (req, res) t) :
   | Error e -> Error e
   | Ok str -> (
       match Json.of_string str with
-      | Error e -> Error (Printf.sprintf "JSON parse error: %s" e)
+      | Error e -> Error (Printf.sprintf "JSON parse error: %s" (Json.error_to_string e))
       | Ok json -> (
           match json with
           | Json.Object fields -> (
@@ -132,20 +132,21 @@ let call (type req res) (client : (req, res) t) ~method_ ?params () =
       | Error e ->
           Error (Common.make_error ~code:Common.InternalError ~message:e ())
       | Ok str -> (
-          match Json.of_string str with
-          | Error e ->
-              Error (Common.make_error ~code:Common.ParseError ~message:e ())
-          | Ok json -> (
-              match json with
-              | Json.Object fields -> (
-                  match List.assoc_opt "error" fields with
-                  | Some err_json -> (
-                      match Common.error_of_json err_json with
-                      | Ok err -> Error err
-                      | Error e ->
-                          Error
-                            (Common.make_error ~code:Common.ParseError
-                               ~message:e ()))
+       match Json.of_string str with
+           | Error e ->
+               Error (Common.make_error ~code:Common.ParseError 
+                 ~message:(Json.error_to_string e) ())
+           | Ok json -> (
+               match json with
+               | Json.Object fields -> (
+                   match List.assoc_opt "error" fields with
+                   | Some err_json -> (
+                       match Common.error_of_json err_json with
+                       | Ok err -> Error err
+                       | Error e ->
+                           Error
+                             (Common.make_error ~code:Common.ParseError
+                                ~message:e ()))
                   | None -> (
                       match List.assoc_opt "result" fields with
                       | Some result_json -> (
@@ -206,7 +207,7 @@ let call_batch (type req res) (client : (req, res) t) (requests : req list) =
       | Error e -> Error e
       | Ok str -> (
           match Json.of_string str with
-          | Error e -> Error (Printf.sprintf "JSON parse error: %s" e)
+          | Error e -> Error (Printf.sprintf "JSON parse error: %s" (Json.error_to_string e))
           | Ok (Json.Array responses) -> (
               (* Parse each response *)
               let parsed_responses =

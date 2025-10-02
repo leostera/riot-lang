@@ -10,3 +10,6 @@ let panic msg =
 
 (** Create a mutable cell *)
 let cell x = Cell.create x
+
+(** Format string helper *)
+let format = Kernel.Printf.sprintf
