@@ -458,9 +458,10 @@ let wire_dependencies t sandbox_dir =
   Log.debug "[MODULE_GRAPH] Wiring dependencies with ocamldep";
   (* Keep both node_id and node for later edge addition *)
   let node_tasks = G.map t.graph ~fn:(fun (node_id, node) -> (node_id, node)) in
+  Log.debug "[MODULE_GRAPH] Created %d node tasks" (List.length node_tasks);
 
   (* Run ocamldep in parallel, collecting edges instead of mutating graph *)
-  let deps =
+  let deps_raw =
     Std.WorkerPool.SimpleWorkerPool.run ~tasks:node_tasks
       ~fn:(fun (node_id, node) ->
         let dep = node.value in
@@ -473,17 +474,28 @@ let wire_dependencies t sandbox_dir =
                   (* Use sandbox_dir as cwd since paths are relative to sandbox *)
                   let cwd = Path.to_string sandbox_dir in
                   let file = Path.to_string path in
-                  Ocamldep.deps ~toolchain:t.toolchain ~cwd ~file
-                    ~package_namespace:t.namespace
+                  let result = Ocamldep.deps ~toolchain:t.toolchain ~cwd ~file
+                    ~package_namespace:t.namespace in
+                  Log.debug "[MODULE_GRAPH] After ocamldep for %s: got %d deps" file (List.length result);
+                  result
             in
+            Log.debug "[MODULE_GRAPH] Returning deps for %s: %d items" (file_to_string dep.file) (List.length deps);
             Some (node_id, node, deps)
         | _ -> None)
       ()
-    |> List.filter_map (fun (_idx, result) -> result)
   in
+
+  Log.debug "[MODULE_GRAPH] WorkerPool.run returned %d raw results for %d tasks" 
+    (List.length deps_raw) (List.length node_tasks);
+  
+  let deps = List.filter_map (fun (_idx, result) -> result) deps_raw in
+
+  Log.debug "[MODULE_GRAPH] After filter_map: %d results" (List.length deps);
 
   let handle_edges node_id (node : dep G.node) deps =
     let dep = node.value in
+
+    Log.debug "[MODULE_GRAPH] handle_edges called for %s with %d deps" (file_to_string dep.file) (List.length deps);
 
     if deps <> [] then
       Log.debug "[MODULE_GRAPH]   %s depends on: %s" (file_to_string dep.file)
@@ -555,10 +567,19 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
       Log.debug "[MODULE_GRAPH] Calling G.topo_sort...";
       let result = G.topo_sort t.graph in
       Log.debug "[MODULE_GRAPH] G.topo_sort returned successfully";
-      Log.debug "[MODULE_GRAPH] Topo sort order (first 10):";
+      Log.debug "[MODULE_GRAPH] Topo sort order (first 20):";
       List.iteri
         (fun i (node : dep G.node) ->
-          if i < 10 then
+          if i < 20 then
+            Log.debug "[MODULE_GRAPH]   %d. %s (deps: %d)" i
+              (file_to_string node.value.file)
+              (List.length node.deps))
+        result;
+      Log.debug "[MODULE_GRAPH] Topo sort order (last 10):";
+      let len = List.length result in
+      List.iteri
+        (fun i (node : dep G.node) ->
+          if i >= len - 10 then
             Log.debug "[MODULE_GRAPH]   %d. %s (deps: %d)" i
               (file_to_string node.value.file)
               (List.length node.deps))
@@ -753,7 +774,23 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
   let static_lib_name = Module_name.(of_string t.package.name |> a) in
   if !cmx_files <> [] then (
     (* Include both .cmx files and .o files (C stubs) in the library *)
+    (* sorted_nodes is in topo order (dependencies first), but we build cmx_files *)
+    (* by prepending, which reverses the order. So we need to reverse it back! *)
+    Log.debug "[MODULE_GRAPH] cmx_files BEFORE reverse (first 10):";
+    List.iteri
+      (fun i obj ->
+        if i < 10 then
+          Log.debug "[MODULE_GRAPH]   %d. %s" i (Path.to_string obj))
+      !cmx_files;
     let all_objects = List.rev !cmx_files @ List.rev !c_objects in
+    Log.debug "[MODULE_GRAPH] Creating library with %d objects (%d cmx + %d c objects)"
+      (List.length all_objects) (List.length !cmx_files) (List.length !c_objects);
+    Log.debug "[MODULE_GRAPH] Link order AFTER reverse (first 20):";
+    List.iteri
+      (fun i obj ->
+        if i < 20 then
+          Log.debug "[MODULE_GRAPH]   %d. %s" i (Path.to_string obj))
+      all_objects;
     let archive_action =
       Actions.CreateLibrary
         {
