@@ -37,6 +37,14 @@ let parse_workspace_toml toml_path =
   try
     let toml = Toml.parse_file toml_path in
     Log.debug "[WORKSPACE] TOML parsed successfully";
+    
+    (* Debug: print all keys in the TOML *)
+    (match toml with
+    | Toml.Table items ->
+        Log.debug "[WORKSPACE] TOML has %d top-level keys:" (List.length items);
+        List.iter (fun (key, _) -> Log.debug "[WORKSPACE]   - %s" key) items
+    | _ -> Log.debug "[WORKSPACE] TOML is not a table");
+    
     (* The parser flattens sections, so look for "workspace.members" *)
     match Toml.find_value "workspace.members" toml with
     | Some members_value -> (
