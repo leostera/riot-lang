@@ -118,7 +118,10 @@ let execute_action ~project_root action =
       Io.copy_file src_absolute dst
   | CompileInterface { sandbox_dir; src_file; output; includes; opens } -> (
       (* Build flags for open modules *)
-      let flags = List.map (fun m -> Ocaml_platform.Open m) opens in
+      let flags = 
+        List.map (fun m -> Ocaml_platform.Open m) opens 
+        @ [Ocaml_platform.NoPervasives; Ocaml_platform.NoStdlib]
+      in
       (* Now we're in sandbox_dir, so use relative paths *)
       match
         Ocaml_platform.Ocamlc.compile_interface ~includes:("." :: includes)
@@ -134,6 +137,7 @@ let execute_action ~project_root action =
       (* Build flags for open modules *)
       let flags =
         List.map (fun m -> Ocaml_platform.Open m) opens
+        @ [Ocaml_platform.NoPervasives; Ocaml_platform.NoStdlib]
         @ Ocaml_platform.[ Impl src_file ]
         @ if is_aliases then Ocaml_platform.[ NoAliasDeps ] else []
       in
@@ -175,7 +179,14 @@ let execute_action ~project_root action =
             Dep_graph.Module_name.cma (Dep_graph.Module_name.of_string dep_name))
           dependencies
       in
-      let libs = [ "unix.cma" ] @ dep_archives @ [ archive ] in
+      (* Only link unix.cma for kernel package or packages that depend on kernel *)
+      let needs_unix = 
+        exe_name = "kernel" || List.mem "kernel" dependencies
+      in
+      let libs = 
+        (if needs_unix then [ "unix.cma" ] else [])
+        @ dep_archives @ [ archive ]
+      in
       (* Everything is in the current sandbox directory *)
       let includes = [ "." ] in
       match
