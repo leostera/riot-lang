@@ -8,12 +8,13 @@ module System = System
 module Time = Time
 
 (* Core types and modules for nostdlib packages *)
-module Types = Types
+module Global = Global
 module Format = Format
 module Effect = Effect
 module Printf = Printf
 module Printexc = Printexc
 module Int = Int
+module Queue = Queue
 
-(* Re-export common types at top level for convenience *)
-include module type of Types
+(* Re-export global types and functions at top level for convenience *)
+include module type of Global

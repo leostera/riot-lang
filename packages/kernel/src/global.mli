@@ -56,3 +56,8 @@ val ( ~+. ) : float -> float
 val not : bool -> bool
 val ( && ) : bool -> bool -> bool
 val ( || ) : bool -> bool -> bool
+
+(* Utility functions *)
+val ignore : 'a -> unit
+val ( |> ) : 'a -> ('a -> 'b) -> 'b
+val ( @@ ) : ('a -> 'b) -> 'a -> 'b

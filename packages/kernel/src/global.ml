@@ -56,3 +56,8 @@ let ( ~+. ) = Stdlib.( ~+. )
 let not = Stdlib.not
 let ( && ) = Stdlib.( && )
 let ( || ) = Stdlib.( || )
+
+(* Utility functions *)
+let ignore = Stdlib.ignore
+let ( |> ) = Stdlib.( |> )
+let ( @@ ) = Stdlib.( @@ )
