@@ -50,7 +50,7 @@ let rec scan_and_copy_directory ~from_dir ~to_dir ~rel_path =
                   | Ok () ->
                       [ (Path.basename entry, `File (entry_rel_path, ext)) ]
                   | Error _ ->
-                      Printf.eprintf "Warning: Failed to copy %s to %s\n%!"
+                      Log.debug "Warning: Failed to copy %s to %s"
                         (Path.to_string source_path)
                         (Path.to_string dest_path);
                       [])
@@ -70,7 +70,7 @@ let create ~node ~(workspace : Workspace.t) =
   let now = Time.Instant.now () in
   let nanos = Time.Instant.elapsed now |> Time.Duration.to_nanos in
   let sandbox_id =
-    Printf.sprintf "%08x"
+    format "%08x"
       (Hashtbl.hash (node.Build_node.package.name ^ string_of_int nanos))
   in
   let sandbox_dir = Path.(debug_dir / Path.v "sandbox" / Path.v sandbox_id) in
@@ -84,14 +84,14 @@ let create ~node ~(workspace : Workspace.t) =
   (* Copy all source files from package to sandbox *)
   let package_src_dir = Path.(node.Build_node.package.path / Path.v "src") in
   let sandbox_src_dir = Path.(sandbox_dir / Path.v "src") in
-  Printf.printf "[SANDBOX] Copying sources from %s to %s\n%!"
+  Log.debug "[SANDBOX] Copying sources from %s to %s"
     (Path.to_string package_src_dir)
     (Path.to_string sandbox_src_dir);
   let sources =
     scan_and_copy_directory ~from_dir:package_src_dir ~to_dir:sandbox_src_dir
       ~rel_path:(Path.v "src")
   in
-  Printf.printf "[SANDBOX] Copied %d entries to sandbox\n%!"
+  Log.debug "[SANDBOX] Copied %d entries to sandbox"
     (List.length sources);
 
   { root; sandbox_dir; target_dir; node; workspace; sources }
@@ -122,7 +122,7 @@ let rec get_transitive_dependencies node ~build_graph visited =
 
 (** Copy dependency artifacts into sandbox *)
 let copy_dependency_artifacts sandbox ~store ~build_graph ~build_results =
-  Printf.printf "[Sandbox] Copying dependency artifacts...\n%!";
+  Log.debug "[Sandbox] Copying dependency artifacts...";
 
   (* Get all transitive dependencies *)
   let all_deps = get_transitive_dependencies sandbox.node ~build_graph [] in
@@ -143,10 +143,7 @@ let copy_dependency_artifacts sandbox ~store ~build_graph ~build_results =
             (* Check if artifacts exist in the store *)
             Store.exists store hash
           then (
-            Printf.printf
-              "[Sandbox] Copying artifacts from store for %s (hash: %s)\n%!"
-              dep_name
-              (Std.Crypto.Digest.hex hash);
+            Log.debug "[Sandbox] Copying artifacts from store for %s (hash: %s)" dep_name (Std.Crypto.Digest.hex hash);
 
             (* Read manifest to get list of files to copy *)
             let manifest_path =
@@ -161,13 +158,13 @@ let copy_dependency_artifacts sandbox ~store ~build_graph ~build_results =
                       (fun entry -> Store.Manifest.(entry.path))
                       manifest.files
                   in
-                  Printf.printf "[Sandbox]   Files from manifest: %s\n%!"
+                  Log.debug "[Sandbox]   Files from manifest: %s"
                     (String.concat ", " manifest_files);
                   manifest_files
               | Error msg ->
                   (* Missing manifest is a store error - should never happen *)
                   failwith
-                    (Printf.sprintf
+                    (format
                        "Store integrity error: missing manifest for %s (hash: \
                         %s): %s"
                        dep_name
@@ -184,17 +181,14 @@ let copy_dependency_artifacts sandbox ~store ~build_graph ~build_results =
                 | Ok () -> ()
                 | Error _ ->
                     failwith
-                      (Printf.sprintf "Failed to copy %s to %s"
+                      (format "Failed to copy %s to %s"
                          (Path.to_string src) (Path.to_string dst_path)))
               files_to_copy;
 
-            Printf.printf
-              "[Sandbox]   - Successfully copied %d files for %s\n%!"
-              (List.length files_to_copy)
-              dep_name)
+            Log.debug "[Sandbox]   - Successfully copied %d files for %s" (List.length files_to_copy) dep_name)
           else
             failwith
-              (Printf.sprintf
+              (format
                  "Missing cached artifacts for dependency %s (hash: %s)"
                  dep_name
                  (Std.Crypto.Digest.hex hash))
@@ -203,14 +197,14 @@ let copy_dependency_artifacts sandbox ~store ~build_graph ~build_results =
           match Build_results.get_status build_results dep_name with
           | Some Build_results.Building ->
               failwith
-                (Printf.sprintf "Dependency %s is still building" dep_name)
+                (format "Dependency %s is still building" dep_name)
           | Some Build_results.NotStarted ->
-              failwith (Printf.sprintf "Dependency %s not started yet" dep_name)
+              failwith (format "Dependency %s not started yet" dep_name)
           | Some (Build_results.Failed err) ->
-              failwith (Printf.sprintf "Dependency %s failed: %s" dep_name err)
+              failwith (format "Dependency %s failed: %s" dep_name err)
           | _ ->
               failwith
-                (Printf.sprintf "Dependency %s not available (no hash)" dep_name)
+                (format "Dependency %s not available (no hash)" dep_name)
           ))
     all_deps
 
@@ -223,7 +217,7 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
     | Build_node.Unplanned -> []
   in
 
-  Printf.printf "[Sandbox] Running %d actions for %s in %s\n%!"
+  Log.debug "[Sandbox] Running %d actions for %s in %s"
     (List.length actions) sandbox.node.package.name
     (Path.to_string sandbox.sandbox_dir);
 
@@ -247,7 +241,7 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
        match Fs.exists unix_cmxa with Ok exists -> exists | Error _ -> false
      in
      if unix_exists then (
-       Printf.printf "[Sandbox] Copying unix.cmxa from toolchain\n%!";
+       Log.debug "[Sandbox] Copying unix.cmxa from toolchain";
        let dst_path = Path.(sandbox.sandbox_dir / Path.v "unix.cmxa") in
        match Fs.copy ~src:unix_cmxa ~dst:dst_path with
        | Ok () -> ()
@@ -284,7 +278,7 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
                    ~package:sandbox.node.package.name
                    ~output:(Path.to_string output)
              | _ -> ());
-             Printf.printf "[Sandbox] Step %d: %s\n%!" (i + 1)
+             Log.debug "[Sandbox] Step %d: %s" (i + 1)
                (Actions.string_of_action action);
 
              (* Track declared outputs *)
@@ -298,20 +292,16 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
              in
              match result with
              | Actions.Success ->
-                 if output <> "" then Printf.printf "  -> %s\n%!" output
+                 if output <> "" then Log.debug "  -> %s" output
              | Actions.Skipped reason ->
-                 Printf.printf "  -> Skipped: %s\n%!" reason
+                 Log.debug "  -> Skipped: %s" reason
              | Actions.Failed error_msg ->
                  (* Check if this is a fatal build system error *)
                  if String.starts_with ~prefix:"Missing outputs:" error_msg then (
                    (* Fatal build system error - don't continue *)
-                   Printf.eprintf "\n\027[1;31mFATAL BUILD ERROR:\027[0m %s\n"
-                     error_msg;
-                   Printf.eprintf
-                     "The build system detected missing expected outputs.\n";
-                   Printf.eprintf
-                     "This indicates a serious internal error. Build halted.\n\
-                      %!";
+                   println "\n\027[1;31mFATAL BUILD ERROR:\027[0m %s" error_msg;
+                    println "The build system detected missing expected outputs.";
+                    println "This indicates a serious internal error. Build halted.";
                    (* Instead of exit, raise an exception that can be caught at higher level *)
                    failwith ("FATAL_BUILD_ERROR: " ^ error_msg))
                  else (
@@ -362,7 +352,7 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
                    Tusk_log.compile_error ~session_id
                      ~package:sandbox.node.package.name compile_error;
 
-                   Printf.printf "  -> Failed: %s\n%!" error_msg;
+                   Log.debug "  -> Failed: %s" error_msg;
                    (* Stop processing further actions on failure *)
                    raise Exit))
            actions
@@ -377,7 +367,7 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
       else Error (String.concat "; " !errors)
     with exn ->
       let error_msg =
-        Printf.sprintf "Sandbox execution failed: %s" (Exception.to_string exn)
+        format "Sandbox execution failed: %s" (Exception.to_string exn)
       in
       Error error_msg
   in
@@ -393,12 +383,12 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
             Fs.exists src_path
             |> Result.expect
                  ~msg:
-                   (Printf.sprintf "Failed to check if output file exists: %s"
+                   (format "Failed to check if output file exists: %s"
                       (Path.to_string src_path))
           in
           if not exists then
             failwith
-              (Printf.sprintf
+              (format
                  "Missing declared output file: %s (expected at %s)"
                  (Path.to_string output_file)
                  (Path.to_string src_path));
@@ -420,10 +410,10 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
                Fs.set_permissions promoted_dst_path
                  (Fs.Permissions.of_mode 0o755)
              in
-             Printf.printf "[Sandbox] Promoted executable %s to %s\n%!"
+             Log.debug "[Sandbox] Promoted executable %s to %s"
                (Path.to_string output_file)
                (Path.to_string promoted_dst_path));
-          Printf.printf "[Sandbox] Copied %s to target\n%!"
+          Log.debug "[Sandbox] Copied %s to target"
             (Path.to_string output_file))
         outputs;
       Ok outputs

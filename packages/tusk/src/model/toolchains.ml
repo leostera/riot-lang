@@ -100,7 +100,7 @@ let parse_toolchain_file path =
                 let source_path = Path.of_string path_str |> Result.unwrap in
                 let version_name =
                   (* Use basename + "-local" to make it unique *)
-                  Printf.sprintf "%s-local" (Path.basename source_path)
+                  format "%s-local" (Path.basename source_path)
                 in
                 { version = version_name; source = Path source_path }
             | _ -> (
@@ -164,42 +164,42 @@ let get_cache_path uri =
 let build_from_local_source ~source_path ~toolchain_path =
   let source_str = Path.to_string source_path in
   let toolchain_str = Path.to_string toolchain_path in
-  Printf.printf "Building OCaml from local source: %s...\n%!" source_str;
+  println "Building OCaml from local source: %s..." source_str;
 
   (* Verify source directory exists *)
   (match Fs.exists source_path with
   | Ok true -> ()
   | _ ->
-      failwith (Printf.sprintf "Source directory does not exist: %s" source_str));
+      failwith (format "Source directory does not exist: %s" source_str));
 
   (* Configure *)
-  Printf.printf "Configuring OCaml...\n%!";
+  println "Configuring OCaml...";
   let configure_cmd =
-    Printf.sprintf "cd %s && ./configure --prefix=%s --disable-ocamldoc"
+    format "cd %s && ./configure --prefix=%s --disable-ocamldoc"
       source_str toolchain_str
   in
   let success, output = run_command_compat configure_cmd in
   if not success then
-    failwith (Printf.sprintf "Failed to configure OCaml: %s" output);
+    failwith (format "Failed to configure OCaml: %s" output);
 
   (* Build *)
-  Printf.printf "Building OCaml (this may take a while)...\n%!";
+  println "Building OCaml (this may take a while)...";
   let num_cores = 4 in
   (* Default to 4 cores *)
-  Printf.printf "Using %d cores for compilation\n%!" num_cores;
-  let make_cmd = Printf.sprintf "cd %s && make -j%d" source_str num_cores in
+  println "Using %d cores for compilation" num_cores;
+  let make_cmd = format "cd %s && make -j%d" source_str num_cores in
   let success, output = run_command_compat make_cmd in
   if not success then
-    failwith (Printf.sprintf "Failed to build OCaml: %s" output);
+    failwith (format "Failed to build OCaml: %s" output);
 
   (* Install *)
-  Printf.printf "Installing OCaml...\n%!";
-  let install_cmd = Printf.sprintf "cd %s && make install" source_str in
+  println "Installing OCaml...";
+  let install_cmd = format "cd %s && make install" source_str in
   let success, output = run_command_compat install_cmd in
   if not success then
-    failwith (Printf.sprintf "Failed to install OCaml: %s" output);
+    failwith (format "Failed to install OCaml: %s" output);
 
-  Printf.printf "Successfully built and installed OCaml from %s\n%!" source_str
+  println "Successfully built and installed OCaml from %s" source_str
 
 (** Download OCaml source from URL *)
 let download_source_from_url uri =
@@ -214,15 +214,15 @@ let download_source_from_url uri =
   (match Fs.exists cache_path with
   | Ok false ->
       let cache_str = Path.to_string cache_path in
-      Printf.printf "Downloading OCaml from %s...\n%!" url_str;
+      println "Downloading OCaml from %s..." url_str;
 
       (* Download to cache *)
-      let download_cmd = Printf.sprintf "curl -L -o %s %s" cache_str url_str in
+      let download_cmd = format "curl -L -o %s %s" cache_str url_str in
       let success, output = run_command_compat download_cmd in
       if not success then
-        failwith (Printf.sprintf "Failed to download OCaml: %s" output)
+        failwith (format "Failed to download OCaml: %s" output)
   | Ok true ->
-      Printf.printf "Using cached OCaml from %s\n%!" (Path.to_string cache_path)
+      println "Using cached OCaml from %s" (Path.to_string cache_path)
   | Error _ -> failwith "Failed to check cache");
 
   (* Extract to temporary directory *)
@@ -230,19 +230,19 @@ let download_source_from_url uri =
     Path.(
       Path.v "/tmp"
       / Path.v
-          (Printf.sprintf "ocaml-build-%d" (System.OsProcess.current_pid ())))
+          (format "ocaml-build-%d" (System.OsProcess.current_pid ())))
   in
   let _ = Fs.create_dir_all extract_dir in
 
-  Printf.printf "Extracting OCaml source...\n%!";
+  println "Extracting OCaml source...";
   let extract_cmd =
-    Printf.sprintf "tar -xzf %s -C %s"
+    format "tar -xzf %s -C %s"
       (Path.to_string cache_path)
       (Path.to_string extract_dir)
   in
   let success, output = run_command_compat extract_cmd in
   if not success then
-    failwith (Printf.sprintf "Failed to extract OCaml: %s" output);
+    failwith (format "Failed to extract OCaml: %s" output);
 
   (* Find the extracted directory (should be the only subdirectory) *)
   let dirs =
@@ -275,7 +275,7 @@ let download_ocaml_source version =
   in
 
   let url_str =
-    Printf.sprintf "https://github.com/ocaml/ocaml/archive/%s.tar.gz" version
+    format "https://github.com/ocaml/ocaml/archive/%s.tar.gz" version
   in
   let uri = Net.Uri.of_string url_str |> Result.unwrap in
   let cache_path = get_cache_path uri in
@@ -288,15 +288,15 @@ let download_ocaml_source version =
   (match Fs.exists cache_path with
   | Ok false ->
       let cache_str = Path.to_string cache_path in
-      Printf.printf "Downloading OCaml %s from %s...\n%!" version url_str;
+      println "Downloading OCaml %s from %s..." version url_str;
 
       (* Download to cache *)
-      let download_cmd = Printf.sprintf "curl -L -o %s %s" cache_str url_str in
+      let download_cmd = format "curl -L -o %s %s" cache_str url_str in
       let success, output = run_command_compat download_cmd in
       if not success then
-        failwith (Printf.sprintf "Failed to download OCaml: %s" output)
+        failwith (format "Failed to download OCaml: %s" output)
   | Ok true ->
-      Printf.printf "Using cached OCaml %s from %s\n%!" version
+      println "Using cached OCaml %s from %s" version
         (Path.to_string cache_path)
   | Error _ -> failwith "Failed to check cache");
 
@@ -305,26 +305,26 @@ let download_ocaml_source version =
     Path.(
       Path.v "/tmp"
       / Path.v
-          (Printf.sprintf "ocaml-build-%s-%d" version
+          (format "ocaml-build-%s-%d" version
              (System.OsProcess.current_pid ())))
   in
   let _ = Fs.create_dir_all extract_dir in
 
-  Printf.printf "Extracting OCaml source...\n%!";
+  println "Extracting OCaml source...";
   let extract_cmd =
-    Printf.sprintf "tar -xzf %s -C %s"
+    format "tar -xzf %s -C %s"
       (Path.to_string cache_path)
       (Path.to_string extract_dir)
   in
   let success, output = run_command_compat extract_cmd in
   if not success then
-    failwith (Printf.sprintf "Failed to extract OCaml: %s" output);
+    failwith (format "Failed to extract OCaml: %s" output);
 
   (* The extracted directory might be ocaml-5.3.0 or ocaml-5.3.0 *)
   let possible_dirs =
     [
-      Path.(extract_dir / Path.v (Printf.sprintf "ocaml-%s" version));
-      Path.(extract_dir / Path.v (Printf.sprintf "ocaml-%s" major_minor));
+      Path.(extract_dir / Path.v (format "ocaml-%s" version));
+      Path.(extract_dir / Path.v (format "ocaml-%s" major_minor));
     ]
   in
 
@@ -353,10 +353,10 @@ let install_dev_tools toolchain =
   in
 
   if all_exist then
-    Printf.printf "Development tools already installed for toolchain %s\n%!"
+    println "Development tools already installed for toolchain %s"
       toolchain.version
   else (
-    Printf.printf "Installing development tools for toolchain %s...\n%!"
+    println "Installing development tools for toolchain %s..."
       toolchain.version;
 
     (* Determine host triplet *)
@@ -364,7 +364,7 @@ let install_dev_tools toolchain =
 
     (* Download from the S3 CDN *)
     let tools_url =
-      Printf.sprintf
+      format
         "https://hel1.your-objectstorage.com/ml-riot-cdn/ocaml-platform/ocaml-platform-%s-%s.tar.gz"
         toolchain.version host_triplet
     in
@@ -372,14 +372,14 @@ let install_dev_tools toolchain =
     let tools_archive =
       Path.(
         Path.v "/tmp"
-        / Path.v (Printf.sprintf "ocaml-platform-%s.tar.gz" toolchain.version))
+        / Path.v (format "ocaml-platform-%s.tar.gz" toolchain.version))
     in
 
-    Printf.printf "Downloading pre-built tools from %s...\n%!" tools_url;
+    println "Downloading pre-built tools from %s..." tools_url;
 
     (* Use -S to show errors, -f to fail on HTTP errors *)
     let download_cmd =
-      Printf.sprintf "curl -fSL -o %s %s 2>&1"
+      format "curl -fSL -o %s %s 2>&1"
         (Path.to_string tools_archive)
         tools_url
     in
@@ -387,10 +387,10 @@ let install_dev_tools toolchain =
 
     if success then (
       (* Extract to toolchain directory *)
-      Printf.printf "Extracting development tools...\n%!";
+      println "Extracting development tools...";
 
       let extract_cmd =
-        Printf.sprintf "cd %s && tar xzf %s"
+        format "cd %s && tar xzf %s"
           (Path.to_string toolchain_path)
           (Path.to_string tools_archive)
       in
@@ -399,19 +399,19 @@ let install_dev_tools toolchain =
       if success then
         (* Clean up *)
         let _ = Fs.remove_file tools_archive in
-        Printf.printf "Successfully installed development tools\n%!"
-      else failwith (Printf.sprintf "Failed to extract tools: %s" output))
+        println "Successfully installed development tools"
+      else failwith (format "Failed to extract tools: %s" output))
     else
       failwith
-        (Printf.sprintf "Failed to download pre-built tools from %s: %s"
+        (format "Failed to download pre-built tools from %s: %s"
            tools_url output))
 
 (** Install a toolchain *)
 let install_toolchain toolchain =
   if is_toolchain_installed toolchain then
-    Printf.printf "Toolchain %s is already installed\n%!" toolchain.version
+    println "Toolchain %s is already installed" toolchain.version
   else (
-    Printf.printf "Installing OCaml toolchain %s...\n%!" toolchain.version;
+    println "Installing OCaml toolchain %s..." toolchain.version;
 
     (* Create toolchain directory *)
     let toolchain_path = get_toolchain_path toolchain in
@@ -449,14 +449,13 @@ let install_toolchain toolchain =
         let _ = Fs.remove_dir_all extract_parent in
         ());
 
-    Printf.printf "Successfully installed OCaml %s\n%!" toolchain.version;
+    println "Successfully installed OCaml %s" toolchain.version;
 
     (* Download pre-built dev tools - only for Version sources *)
     match toolchain.source with
     | Version _ -> install_dev_tools toolchain
     | Path _ | Url _ ->
-        Printf.printf
-          "Note: Development tools not installed for custom toolchain\n%!")
+        println "Note: Development tools not installed for custom toolchain")
 
 (** Ready toolchains for a workspace *)
 let ready_toolchains workspace =
@@ -470,15 +469,15 @@ let ready_toolchains workspace =
     | _ -> default_toolchain
   in
 
-  Printf.printf "Using OCaml toolchain: %s\n%!"
+  println "Using OCaml toolchain: %s"
     (match toolchain.source with
     | Version v -> v
-    | Path p -> Printf.sprintf "path:%s" (Path.to_string p)
-    | Url u -> Printf.sprintf "url:%s" (Net.Uri.to_string u));
+    | Path p -> format "path:%s" (Path.to_string p)
+    | Url u -> format "url:%s" (Net.Uri.to_string u));
 
   (* Ensure toolchain is installed *)
   (if not (is_toolchain_installed toolchain) then (
-     Printf.printf "Toolchain %s not found. Installing...\n%!" toolchain.version;
+     println "Toolchain %s not found. Installing..." toolchain.version;
      install_toolchain toolchain)
    else
      (* Check if dev tools are installed even if compiler exists *)
@@ -493,7 +492,7 @@ let ready_toolchains workspace =
      in
 
      if tools_missing then (
-       Printf.printf "Development tools missing. Installing...\n%!";
+       println "Development tools missing. Installing...";
        install_dev_tools toolchain));
 
   (* Return the toolchain *)
@@ -506,7 +505,7 @@ let validate_toolchain toolchain =
   | Ok false -> false
   | Ok true ->
       (* Try to run ocamlc -version *)
-      let cmd = Printf.sprintf "%s -version" (Path.to_string ocamlc) in
+      let cmd = format "%s -version" (Path.to_string ocamlc) in
       let success, _ = run_command_compat cmd in
       success
   | Error _ -> false

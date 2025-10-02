@@ -176,103 +176,103 @@ let name = function
 (** Get human-readable display message *)
 let display = function
   | BuildStarted { packages; _ } ->
-      Printf.sprintf "Build started for %d packages" (List.length packages)
+      format "Build started for %d packages" (List.length packages)
   | BuildComplete { duration_ms; succeeded; failed; _ } ->
-      Printf.sprintf "Build completed in %dms (%d succeeded, %d failed)"
+      format "Build completed in %dms (%d succeeded, %d failed)"
         duration_ms (List.length succeeded) (List.length failed)
-  | PackageStarted { package } -> Printf.sprintf "Building %s..." package
+  | PackageStarted { package } -> format "Building %s..." package
   | PackageComplete { package; success; duration_ms; _ } ->
-      if success then Printf.sprintf "✓ Built %s in %dms" package duration_ms
-      else Printf.sprintf "✗ Failed to build %s" package
+      if success then format "✓ Built %s in %dms" package duration_ms
+      else format "✗ Failed to build %s" package
   | PackageSkipped { package; reason } ->
       let reason_str =
         match reason with
         | DependenciesFailed deps ->
-            Printf.sprintf "dependencies failed: %s" (String.concat ", " deps)
+            format "dependencies failed: %s" (String.concat ", " deps)
       in
-      Printf.sprintf "⊘ Skipped %s (%s)" package reason_str
+      format "⊘ Skipped %s (%s)" package reason_str
   | CompileError { package; error } ->
       let col_start, _ = error.span in
-      Printf.sprintf "Error in %s [%s:%d:%d]: %s" package error.file error.line
+      format "Error in %s [%s:%d:%d]: %s" package error.file error.line
         col_start
         (match error.kind with
         | SyntaxError -> "Syntax error"
         | TypeError { description } -> description
-        | UnboundValue { name } -> Printf.sprintf "Unbound value %s" name
-        | UnboundModule { name } -> Printf.sprintf "Unbound module %s" name
+        | UnboundValue { name } -> format "Unbound value %s" name
+        | UnboundModule { name } -> format "Unbound module %s" name
         | FileNotFound { filename } ->
-            Printf.sprintf "Cannot find file %s" filename
+            format "Cannot find file %s" filename
         | OtherError { message } -> message)
   | CycleDetected { packages } ->
-      Printf.sprintf "Circular dependency detected: %s"
+      format "Circular dependency detected: %s"
         (String.concat " -> " packages)
-  | CacheHit { package; _ } -> Printf.sprintf "Cached %s" package
-  | CacheMiss { package; _ } -> Printf.sprintf "Cache miss for %s" package
+  | CacheHit { package; _ } -> format "Cached %s" package
+  | CacheMiss { package; _ } -> format "Cache miss for %s" package
   | CacheStored { package; artifacts; _ } ->
-      Printf.sprintf "Cached %s (%d artifacts)" package (List.length artifacts)
+      format "Cached %s (%d artifacts)" package (List.length artifacts)
   | WorkerPoolStarted { workers } ->
-      Printf.sprintf "Started worker pool with %d workers" workers
+      format "Started worker pool with %d workers" workers
   | WorkerStarted { worker_id } ->
-      Printf.sprintf "Worker %s started" (Worker_id.to_string worker_id)
+      format "Worker %s started" (Worker_id.to_string worker_id)
   | WorkerAssigned { worker_id; package } ->
-      Printf.sprintf "Worker %s assigned to %s"
+      format "Worker %s assigned to %s"
         (Worker_id.to_string worker_id)
         package
   | WorkerIdle { worker_id } ->
-      Printf.sprintf "Worker %s idle" (Worker_id.to_string worker_id)
-  | ServerStarted { pid } -> Printf.sprintf "Server started (pid: %s)" pid
-  | ServerScanning { root } -> Printf.sprintf "Scanning workspace: %s" root
+      format "Worker %s idle" (Worker_id.to_string worker_id)
+  | ServerStarted { pid } -> format "Server started (pid: %s)" pid
+  | ServerScanning { root } -> format "Scanning workspace: %s" root
   | ServerRestarted { packages; toolchain } ->
-      Printf.sprintf "Server restarted with %d packages (toolchain: %s)"
+      format "Server restarted with %d packages (toolchain: %s)"
         packages toolchain
   | WorkspaceEmpty -> "No packages found in workspace"
   | WorkspaceScanning -> "Scanning workspace..."
   | WorkspaceScanned { packages; duration_ms } ->
-      Printf.sprintf "Scanned workspace: %d packages in %dms" packages
+      format "Scanned workspace: %d packages in %dms" packages
         duration_ms
   | BuildGraphCreating -> "Creating build graph..."
   | BuildGraphCreated { nodes; duration_ms } ->
-      Printf.sprintf "Created build graph: %d nodes in %dms" nodes duration_ms
+      format "Created build graph: %d nodes in %dms" nodes duration_ms
   | ServerShutdown -> "Server shutting down"
   | QueuePackage { package; queue_type } ->
       let typ =
         match queue_type with `Ready -> "ready" | `Waiting -> "waiting"
       in
-      Printf.sprintf "Queued %s (%s)" package typ
+      format "Queued %s (%s)" package typ
   | QueueStats { ready; waiting; busy } ->
-      Printf.sprintf "Queue: %d ready, %d waiting, %d busy" ready waiting busy
+      format "Queue: %d ready, %d waiting, %d busy" ready waiting busy
   | DependencyMissing { package; missing } ->
-      Printf.sprintf "%s waiting for: %s" package (String.concat ", " missing)
+      format "%s waiting for: %s" package (String.concat ", " missing)
   | DependencySatisfied { package } ->
-      Printf.sprintf "%s dependencies satisfied" package
+      format "%s dependencies satisfied" package
   | CompilingInterface { package; file } ->
-      Printf.sprintf "[%s] Compiling interface %s" package file
+      format "[%s] Compiling interface %s" package file
   | CompilingImplementation { package; file } ->
-      Printf.sprintf "[%s] Compiling %s" package file
+      format "[%s] Compiling %s" package file
   | LinkingLibrary { package; output } ->
-      Printf.sprintf "[%s] Linking library %s" package output
+      format "[%s] Linking library %s" package output
   | LinkingExecutable { package; output } ->
-      Printf.sprintf "[%s] Linking executable %s" package output
-  | ComputingHash { package } -> Printf.sprintf "Computing hash for %s" package
+      format "[%s] Linking executable %s" package output
+  | ComputingHash { package } -> format "Computing hash for %s" package
   | HashComputed { package; hash } ->
-      Printf.sprintf "Hash for %s: %s" package hash
+      format "Hash for %s: %s" package hash
   | CopyingFile { source; dest } ->
-      Printf.sprintf "Copying %s -> %s" source dest
-  | WritingFile { path } -> Printf.sprintf "Writing %s" path
-  | CreatingDirectory { path } -> Printf.sprintf "Creating directory %s" path
+      format "Copying %s -> %s" source dest
+  | WritingFile { path } -> format "Writing %s" path
+  | CreatingDirectory { path } -> format "Creating directory %s" path
   | RpcRequestReceived { request_type; _ } ->
-      Printf.sprintf "RPC request: %s" request_type
+      format "RPC request: %s" request_type
   | RpcResponseSent { result } ->
-      Printf.sprintf "RPC response sent (success: %b)"
+      format "RPC response sent (success: %b)"
         (match result with Ok _ -> true | Error _ -> false)
-  | McpToolCall { tool; _ } -> Printf.sprintf "MCP tool call: %s" tool
+  | McpToolCall { tool; _ } -> format "MCP tool call: %s" tool
   | StoreCreating -> "Creating build cache store"
   | StoreCreated { duration_ms } ->
-      Printf.sprintf "Store created in %dms" duration_ms
+      format "Store created in %dms" duration_ms
   | WorkerPoolCreating { workers } ->
-      Printf.sprintf "Creating worker pool with %d workers" workers
+      format "Creating worker pool with %d workers" workers
   | WorkerPoolCreated { workers; duration_ms } ->
-      Printf.sprintf "Worker pool created with %d workers in %dms" workers
+      format "Worker pool created with %d workers in %dms" workers
         duration_ms
 
 (** Convert to human-readable string with timestamp *)
@@ -287,8 +287,8 @@ let to_string event =
     | Trace -> "[TRACE]"
   in
   let msg = display event.kind in
-  if level_str = "" then Printf.sprintf "[%s] %s" timestamp msg
-  else Printf.sprintf "[%s] %s %s" timestamp level_str msg
+  if level_str = "" then format "[%s] %s" timestamp msg
+  else format "[%s] %s %s" timestamp level_str msg
 
 (** Convert kind to JSON *)
 let kind_to_json = function
@@ -355,10 +355,10 @@ let kind_to_json = function
         match error.kind with
         | SyntaxError -> "Syntax error"
         | TypeError { description } -> strip_ansi_codes description
-        | UnboundValue { name } -> Printf.sprintf "Unbound value %s" name
-        | UnboundModule { name } -> Printf.sprintf "Unbound module %s" name
+        | UnboundValue { name } -> format "Unbound value %s" name
+        | UnboundModule { name } -> format "Unbound module %s" name
         | FileNotFound { filename } ->
-            Printf.sprintf "Cannot find file %s" filename
+            format "Cannot find file %s" filename
         | OtherError { message } -> strip_ansi_codes message
       in
       Json.Object

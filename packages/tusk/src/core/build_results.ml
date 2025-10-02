@@ -76,7 +76,7 @@ let reset_failed_packages t =
 
   (* Log reset information for user awareness *)
   if !failed_packages <> [] then
-    Printf.printf "🔄 Retrying previously failed packages: %s\n"
+    println "🔄 Retrying previously failed packages: %s"
       (String.concat ", " (List.rev !failed_packages))
 
 (** Check if source files are newer than build outputs *)
@@ -197,7 +197,7 @@ let mark_completed t node artifact =
     | Planned { hash; _ } -> hash
     | Unplanned ->
         failwith
-          (Printf.sprintf
+          (format
              "CRITICAL: Trying to mark unplanned node %s as completed! This \
               should never happen."
              pkg_name)

@@ -71,7 +71,7 @@ let action_to_string action =
               "warning:[" ^ String.concat ";" warning_strs ^ "]")
         |> String.concat ","
       in
-      Printf.sprintf "compile_interface(%s,%s,[%s],[%s])"
+      format "compile_interface(%s,%s,[%s],[%s])"
         (Path.to_string source) (Path.to_string output)
         (String.concat "," (List.map Path.to_string includes))
         flags_str
@@ -94,7 +94,7 @@ let action_to_string action =
               "warning:[" ^ String.concat ";" warning_strs ^ "]")
         |> String.concat ","
       in
-      Printf.sprintf "compile_impl(%s,%s,[%s],[%s])" (Path.to_string source)
+      format "compile_impl(%s,%s,[%s],[%s])" (Path.to_string source)
         (Path.to_string output)
         (String.concat "," (List.map Path.to_string includes))
         flags_str
@@ -117,76 +117,76 @@ let action_to_string action =
               "warning:[" ^ String.concat ";" warning_strs ^ "]")
         |> String.concat ","
       in
-      Printf.sprintf "generate_interface(%s -> %s)[includes: %s][%s])"
+      format "generate_interface(%s -> %s)[includes: %s][%s])"
         (Path.to_string source) (Path.to_string output)
         (String.concat "," (List.map Path.to_string includes))
         flags_str
   | CompileC { source; output } ->
-      Printf.sprintf "compile_c(%s,%s)" (Path.to_string source)
+      format "compile_c(%s,%s)" (Path.to_string source)
         (Path.to_string output)
   | CreateLibrary { output; objects; includes } ->
-      Printf.sprintf "create_library(%s,[%s],[%s])" (Path.to_string output)
+      format "create_library(%s,[%s],[%s])" (Path.to_string output)
         (String.concat "," (List.map Path.to_string objects))
         (String.concat "," (List.map Path.to_string includes))
   | CreateExecutable { output; objects; libraries; includes } ->
-      Printf.sprintf "create_exe(%s,[%s],[%s],[%s])" (Path.to_string output)
+      format "create_exe(%s,[%s],[%s],[%s])" (Path.to_string output)
         (String.concat "," (List.map Path.to_string objects))
         (String.concat "," (List.map Path.to_string libraries))
         (String.concat "," (List.map Path.to_string includes))
   | CopyDir { source; destination } ->
-      Printf.sprintf "copydir(%s,%s)" (Path.to_string source)
+      format "copydir(%s,%s)" (Path.to_string source)
         (Path.to_string destination)
   | CopyFile { source; destination } ->
-      Printf.sprintf "copy(%s,%s)" (Path.to_string source)
+      format "copy(%s,%s)" (Path.to_string source)
         (Path.to_string destination)
   | WriteFile { destination; content } ->
-      Printf.sprintf "write(%s,%d bytes)"
+      format "write(%s,%d bytes)"
         (Path.to_string destination)
         (String.length content)
   | DeclareOutputs { outputs } ->
-      Printf.sprintf "declare_outputs([%s])"
+      format "declare_outputs([%s])"
         (String.concat "," (List.map Path.to_string outputs))
 
 (** Pretty print an action *)
 let string_of_action = function
   | CompileInterface { source; output; includes } ->
-      Printf.sprintf "compile_interface(%s -> %s) [includes: %s]"
+      format "compile_interface(%s -> %s) [includes: %s]"
         (Path.basename source) (Path.basename output)
         (String.concat "; " (List.map Path.to_string includes))
   | CompileImplementation { source; output; includes } ->
-      Printf.sprintf "compile_impl(%s -> %s) [includes: %s]"
+      format "compile_impl(%s -> %s) [includes: %s]"
         (Path.basename source) (Path.basename output)
         (String.concat "; " (List.map Path.to_string includes))
   | GenerateInterface { source; output; includes } ->
-      Printf.sprintf "generate_interface(%s -> %s) [includes: %s]"
+      format "generate_interface(%s -> %s) [includes: %s]"
         (Path.basename source) (Path.basename output)
         (String.concat "; " (List.map Path.to_string includes))
   | CompileC { source; output } ->
-      Printf.sprintf "compile_c(%s -> %s)" (Path.basename source)
+      format "compile_c(%s -> %s)" (Path.basename source)
         (Path.basename output)
   | CreateLibrary { output; objects; includes } ->
-      Printf.sprintf "create_library(%s from [%s]) [includes: %s]"
+      format "create_library(%s from [%s]) [includes: %s]"
         (Path.basename output)
         (String.concat "; " (List.map Path.basename objects))
         (String.concat "; " (List.map Path.to_string includes))
   | CreateExecutable { output; objects; libraries; includes } ->
-      Printf.sprintf "create_exe(%s from [%s] with [%s]) [includes: %s]"
+      format "create_exe(%s from [%s] with [%s]) [includes: %s]"
         (Path.basename output)
         (String.concat "; " (List.map Path.basename objects))
         (String.concat "; " (List.map Path.to_string libraries))
         (String.concat "; " (List.map Path.to_string includes))
   | CopyDir { source; destination } ->
-      Printf.sprintf "copydir(%s -> %s)" (Path.to_string source)
+      format "copydir(%s -> %s)" (Path.to_string source)
         (Path.to_string destination)
   | CopyFile { source; destination } ->
-      Printf.sprintf "copy(%s -> %s)" (Path.basename source)
+      format "copy(%s -> %s)" (Path.basename source)
         (Path.basename destination)
   | WriteFile { destination; content } ->
-      Printf.sprintf "write(%s, %d bytes)"
+      format "write(%s, %d bytes)"
         (Path.to_string destination)
         (String.length content)
   | DeclareOutputs { outputs } ->
-      Printf.sprintf "declare_outputs([%s])"
+      format "declare_outputs([%s])"
         (String.concat "; " (List.map Path.to_string outputs))
 
 (** Execute a single build action *)
@@ -246,14 +246,14 @@ let execute_action action toolchain cwd =
             match result with
             | Ok 0 ->
               ( Success,
-                Printf.sprintf "Copied directory %s to %s"
+                format "Copied directory %s to %s"
                   (Path.to_string source)
                   (Path.to_string destination) )
             | Ok exit_code ->
-              ( Failed (Printf.sprintf "cp command failed with exit code %d" exit_code),
+              ( Failed (format "cp command failed with exit code %d" exit_code),
                 "" )
             | Error (Command.SystemError err) ->
-              ( Failed (Printf.sprintf "cp command failed: %s" err),
+              ( Failed (format "cp command failed: %s" err),
                 "" )
           with exn -> (Failed (Exception.to_string exn), ""))
       | CopyFile { source; destination } -> (
@@ -270,7 +270,7 @@ let execute_action action toolchain cwd =
               |> Result.expect ~msg:"Failed to copy file"
             in
             ( Success,
-              Printf.sprintf "Copied %s to %s" (Path.to_string source)
+              format "Copied %s to %s" (Path.to_string source)
                 (Path.to_string destination) )
           with exn -> (Failed (Exception.to_string exn), ""))
       | WriteFile { destination; content } -> (
@@ -286,12 +286,12 @@ let execute_action action toolchain cwd =
               Fs.write content destination
               |> Result.expect ~msg:"Failed to write file"
             in
-            (Success, Printf.sprintf "Wrote %s" (Path.to_string destination))
+            (Success, format "Wrote %s" (Path.to_string destination))
           with exn -> (Failed (Exception.to_string exn), ""))
       | DeclareOutputs { outputs } ->
           (* Just record the expected outputs - don't validate yet as they haven't been built *)
           ( Success,
-            Printf.sprintf "Declared %d expected outputs" (List.length outputs)
+            format "Declared %d expected outputs" (List.length outputs)
           )
     with exn ->
       (* Ensure directory is restored even on exception *)

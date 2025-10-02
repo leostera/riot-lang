@@ -100,7 +100,7 @@ and handle_scan_workspace state client_pid current_dir =
 
 (** Handler for getting workspace configuration. *)
 and handle_get_workspace_config state client_pid =
-  Printf.eprintf "Server: Received GetWorkspaceConfig from %s\n"
+  Log.debug "Server: Received GetWorkspaceConfig from %s"
     (Pid.to_string client_pid);
   (* Send the current workspace and toolchain information *)
   send client_pid
@@ -111,7 +111,7 @@ and handle_get_workspace_config state client_pid =
 
 (** Handler for getting package information. *)
 and handle_get_package_info state client_pid package_name =
-  Printf.eprintf "Server: Received GetPackageInfo for %s from %s\n" package_name
+  Log.debug "Server: Received GetPackageInfo for %s from %s" package_name
     (Pid.to_string client_pid);
 
   (* Find the package in the workspace *)
@@ -124,7 +124,7 @@ and handle_get_package_info state client_pid package_name =
   match package_opt with
   | None ->
       (* Package not found *)
-      Printf.eprintf "Server: Package %s not found\n" package_name;
+      Log.debug "Server: Package %s not found" package_name;
       send client_pid
         (ServerResponse
            (PackageInfo
@@ -172,7 +172,7 @@ and handle_get_package_info state client_pid package_name =
 
 (** Handler for getting the build graph. *)
 and handle_get_build_graph state client_pid =
-  Printf.eprintf "Server: Received GetBuildGraph from %s\n"
+  Log.debug "Server: Received GetBuildGraph from %s"
     (Pid.to_string client_pid);
 
   (* Get all nodes from the build graph using topological sort *)
@@ -188,7 +188,7 @@ and handle_get_build_graph state client_pid =
   loop state
 
 and handle_format_file state client_pid file_path check_only =
-  Printf.eprintf "Server: Received FormatFile from %s for %s (check_only=%b)\n"
+  Log.debug "Server: Received FormatFile from %s for %s (check_only=%b)"
     (Pid.to_string client_pid) (Path.to_string file_path) check_only;
 
   let response =
@@ -203,7 +203,7 @@ and handle_format_file state client_pid file_path check_only =
   loop state
 
 and handle_format_code state client_pid code file_path =
-  Printf.eprintf "Server: Received FormatCode from %s\n"
+  Log.debug "Server: Received FormatCode from %s"
     (Pid.to_string client_pid);
 
   let response =
@@ -218,7 +218,7 @@ and handle_format_code state client_pid code file_path =
   loop state
 
 and handle_format_all state client_pid mode =
-  Printf.eprintf "Server: Received FormatAll from %s (mode=%s)\n"
+  Log.debug "Server: Received FormatAll from %s (mode=%s)"
     (Pid.to_string client_pid)
     (match mode with `check -> "check" | `write -> "write");
 
@@ -229,7 +229,7 @@ and handle_format_all state client_pid mode =
   loop state
 
 and handle_new_package state client_pid path name is_library =
-  Printf.eprintf "Server: Received NewPackage from %s for %s at %s\n"
+  Log.debug "Server: Received NewPackage from %s for %s at %s"
     (Pid.to_string client_pid) name (Path.to_string path);
 
   let src_dir = Path.(path / Path.v "src") in
@@ -263,7 +263,7 @@ and handle_new_package state client_pid path name is_library =
   (* Create package tusk.toml *)
   let package_toml = Path.(path / Path.v "tusk.toml") in
   let toml_content =
-    Printf.sprintf
+    format
       "[package]\n\
        name = \"%s\"\n\
        version = \"0.1.0\"\n\n\
@@ -283,10 +283,10 @@ and handle_new_package state client_pid path name is_library =
 
 (** Handler for the build message. *)
 and handle_build state client_pid target session_id =
-  Printf.eprintf "Server: handle_build called for target: %s\n%!"
+  Log.debug "Server: handle_build called for target: %s"
     (match target with
     | All -> "All"
-    | Package p -> Printf.sprintf "Package(%s)" p);
+    | Package p -> format "Package(%s)" p);
   Build_server.start ~workspace:state.workspace ~toolchain:state.toolchain
     ~workers:state.workers ~session_id ~client_pid ~target;
   loop state
@@ -331,7 +331,7 @@ let write_daemon_files ~workspace ~port =
     | None -> failwith "Failed to get home directory"
   in
   let root_str = Path.to_string workspace.Workspace.root in
-  let project_id = Printf.sprintf "%08x" (Hashtbl.hash root_str) in
+  let project_id = format "%08x" (Hashtbl.hash root_str) in
   let daemon_path = Path.(home / Path.v ".tusk" / Path.v "daemons" / Path.v project_id) in
   
   let _ = Fs.create_dir_all daemon_path |> Result.expect ~msg:"Failed to create daemon dir" in

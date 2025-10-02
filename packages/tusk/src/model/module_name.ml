@@ -16,7 +16,7 @@ let of_string ?(namespace = Namespace.empty) s =
   let name = String.capitalize_ascii s in
   let filename =
     Path.of_string s
-    |> Result.expect ~msg:(Printf.sprintf "Expected '%s' to be a valid Path" s)
+    |> Result.expect ~msg:(format "Expected '%s' to be a valid Path" s)
   in
   { filename; namespace; name }
 

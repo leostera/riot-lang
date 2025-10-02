@@ -12,4 +12,4 @@ let template ~parent ~modules ~stdlib_modules =
         true))
   |> List.map (fun child ->
       let child_str = Module_name.to_string child in
-      Printf.sprintf "module %s = %s__%s" child_str parent_str child_str)
+      format "module %s = %s__%s" child_str parent_str child_str)

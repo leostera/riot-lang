@@ -803,11 +803,11 @@ module TuskProtocol = struct
                                     | Event.TypeError { description } ->
                                         description
                                     | Event.UnboundValue { name } ->
-                                        Printf.sprintf "Unbound value %s" name
+                                        format "Unbound value %s" name
                                     | Event.UnboundModule { name } ->
-                                        Printf.sprintf "Unbound module %s" name
+                                        format "Unbound module %s" name
                                     | Event.FileNotFound { filename } ->
-                                        Printf.sprintf "Cannot find file %s"
+                                        format "Cannot find file %s"
                                           filename
                                     | Event.OtherError { message } -> message
                                   in
@@ -863,11 +863,11 @@ module TuskProtocol = struct
                        | Event.SyntaxError -> "Syntax error"
                        | Event.TypeError { description } -> description
                        | Event.UnboundValue { name } ->
-                           Printf.sprintf "Unbound value %s" name
+                           format "Unbound value %s" name
                        | Event.UnboundModule { name } ->
-                           Printf.sprintf "Unbound module %s" name
+                           format "Unbound module %s" name
                        | Event.FileNotFound { filename } ->
-                           Printf.sprintf "Cannot find file %s" filename
+                           format "Cannot find file %s" filename
                        | Event.OtherError { message } -> message
                      in
                      Json.Object
@@ -898,11 +898,11 @@ module TuskProtocol = struct
           | Event.SyntaxError -> "Syntax error"
           | Event.TypeError { description } -> description
           | Event.UnboundValue { name } ->
-              Printf.sprintf "Unbound value %s" name
+              format "Unbound value %s" name
           | Event.UnboundModule { name } ->
-              Printf.sprintf "Unbound module %s" name
+              format "Unbound module %s" name
           | Event.FileNotFound { filename } ->
-              Printf.sprintf "Cannot find file %s" filename
+              format "Cannot find file %s" filename
           | Event.OtherError { message } -> message
         in
         Json.Object
@@ -1464,7 +1464,7 @@ module TuskProtocol = struct
                   | Ok evt -> evt
                   | Error err ->
                       failwith
-                        (Printf.sprintf "Failed to parse event_data: %s" err))
+                        (format "Failed to parse event_data: %s" err))
               | None -> failwith "Missing event_data field in BuildEvent"
             in
             Ok (BuildEvent { session_id; event })
@@ -1873,9 +1873,9 @@ module Client = struct
           match e with
           | `Connection_refused -> "Connection refused"
           | `Closed -> "Connection closed"
-          | `System_error msg -> Printf.sprintf "System error: %s" msg
+          | `System_error msg -> format "System error: %s" msg
         in
-        Error (Printf.sprintf "Failed to connect to server: %s" error_msg)
+        Error (format "Failed to connect to server: %s" error_msg)
 
   (** Format all OCaml files in the workspace *)
   let format_all t ~mode =
@@ -1898,7 +1898,7 @@ module Client = struct
     | Ok _ -> Error "Invalid format all response"
     | Error e ->
         Error
-          (Printf.sprintf "Error %d: %s"
+          (format "Error %d: %s"
              (Jsonrpc.error_code_to_int e.code)
              e.message)
 
@@ -1920,7 +1920,7 @@ module Client = struct
     | Ok _ -> Error "Invalid package creation response"
     | Error e ->
         Error
-          (Printf.sprintf "Error %d: %s"
+          (format "Error %d: %s"
              (Jsonrpc.error_code_to_int e.code)
              e.message)
 
@@ -1938,7 +1938,7 @@ module Client = struct
     | Ok _ -> Ok ()
     | Error e ->
         Error
-          (Printf.sprintf "Error %d: %s"
+          (format "Error %d: %s"
              (Jsonrpc.error_code_to_int e.code)
              e.message)
 
@@ -1952,7 +1952,7 @@ module Client = struct
     | Ok _ -> Error "Invalid workspace config response"
     | Error e ->
         Error
-          (Printf.sprintf "Error %d: %s"
+          (format "Error %d: %s"
              (Jsonrpc.error_code_to_int e.code)
              e.message)
 
@@ -1967,7 +1967,7 @@ module Client = struct
     | Ok _ -> Error "Invalid package info response"
     | Error e ->
         Error
-          (Printf.sprintf "Error %d: %s"
+          (format "Error %d: %s"
              (Jsonrpc.error_code_to_int e.code)
              e.message)
 
@@ -1981,7 +1981,7 @@ module Client = struct
     | Ok _ -> Error "Invalid build graph response"
     | Error e ->
         Error
-          (Printf.sprintf "Error %d: %s"
+          (format "Error %d: %s"
              (Jsonrpc.error_code_to_int e.code)
              e.message)
 
@@ -1995,11 +1995,11 @@ module Client = struct
 
     (* Send the typed build request - this starts a streaming response *)
     match Jsonrpc.Client.send_request t.client typed_request with
-    | Error e -> Error (Printf.sprintf "Failed to send request: %s" e)
+    | Error e -> Error (format "Failed to send request: %s" e)
     | Ok () -> (
         (* Receive the first response *)
         match Jsonrpc.Client.receive_response t.client with
-        | Error e -> Error (Printf.sprintf "Failed to receive response: %s" e)
+        | Error e -> Error (format "Failed to receive response: %s" e)
         | Ok response -> (
             match response.Jsonrpc.result with
             | Ok (TuskProtocol.BuildStarted { session_id; started_at = _ }) ->
@@ -2040,7 +2040,7 @@ module Client = struct
                         Ok
                           (BuildFinished
                              (Error
-                                (Printf.sprintf "%d packages failed to build"
+                                (format "%d packages failed to build"
                                    stats.packages_failed)))
                       else Ok (BuildFinished (Ok ()))
                   | Ok
@@ -2052,11 +2052,11 @@ module Client = struct
                       Ok (BuildFinished (Error error))
                   | Ok { result = Ok (TuskProtocol.Error msg); _ } ->
                       (* Got a general error response *)
-                      Error (Printf.sprintf "Server error: %s" msg)
+                      Error (format "Server error: %s" msg)
                   | Ok { result = Error err; _ } ->
                       Ok (BuildFinished (Error err.message))
                   | Error e ->
-                      Error (Printf.sprintf "Failed to receive event: %s" e)
+                      Error (format "Failed to receive event: %s" e)
                   | Ok resp ->
                       (* Debug: print what response type we got *)
                       let resp_type =
@@ -2081,11 +2081,9 @@ module Client = struct
                         | Ok (TuskProtocol.PackageCreationError _) ->
                             "PackageCreationError"
                         | Ok (TuskProtocol.Error _) -> "Error"
-                        | Error e -> Printf.sprintf "JsonRpcError(%s)" e.message
+                        | Error e -> format "JsonRpcError(%s)" e.message
                       in
-                      Printf.eprintf
-                        "[CLIENT] Unexpected response in receive_events: %s\n"
-                        resp_type;
+                      Log.debug "[CLIENT] Unexpected response in receive_events: %s" resp_type;
                       Error "Unexpected response type"
                 in
                 receive_events ()
@@ -2097,7 +2095,7 @@ module Client = struct
                   Ok
                     (BuildFinished
                        (Error
-                          (Printf.sprintf "%d packages failed to build"
+                          (format "%d packages failed to build"
                              stats.packages_failed)))
                 else Ok (BuildFinished (Ok ()))
             | Ok (TuskProtocol.BuildFailed { session_id; error; _ }) ->
@@ -2108,7 +2106,7 @@ module Client = struct
                 Ok (BuildFinished (Error msg))
             | Error err ->
                 Error
-                  (Printf.sprintf "Build request failed: %s" err.Jsonrpc.message)
+                  (format "Build request failed: %s" err.Jsonrpc.message)
             | Ok resp ->
                 (* Log unexpected response for debugging *)
                 Error "Unexpected response type"))
@@ -2122,7 +2120,7 @@ module Client = struct
     | Ok _ -> Ok ()
     | Error e ->
         Error
-          (Printf.sprintf "Error %d: %s"
+          (format "Error %d: %s"
              (Jsonrpc.error_code_to_int e.code)
              e.message)
 
@@ -2136,7 +2134,7 @@ module Client = struct
     | Ok response -> Ok response
     | Error e ->
         Error
-          (Printf.sprintf "Error %d: %s"
+          (format "Error %d: %s"
              (Jsonrpc.error_code_to_int e.code)
              e.message)
 
@@ -2149,7 +2147,7 @@ module Client = struct
     | Ok response -> Ok response
     | Error e ->
         Error
-          (Printf.sprintf "Error %d: %s"
+          (format "Error %d: %s"
              (Jsonrpc.error_code_to_int e.code)
              e.message)
 
@@ -2162,7 +2160,7 @@ module Client = struct
     | Ok _ -> Ok ()
     | Error e ->
         Error
-          (Printf.sprintf "Error %d: %s"
+          (format "Error %d: %s"
              (Jsonrpc.error_code_to_int e.code)
              e.message)
 
@@ -2184,7 +2182,7 @@ module Client = struct
     | Ok _ -> Error "Invalid format response"
     | Error e ->
         Error
-          (Printf.sprintf "Error %d: %s"
+          (format "Error %d: %s"
              (Jsonrpc.error_code_to_int e.code)
              e.message)
 
@@ -2206,7 +2204,7 @@ module Client = struct
     | Ok _ -> Error "Invalid format response"
     | Error e ->
         Error
-          (Printf.sprintf "Error %d: %s"
+          (format "Error %d: %s"
              (Jsonrpc.error_code_to_int e.code)
              e.message)
 end
@@ -2709,9 +2707,9 @@ module Server = struct
           };
         ]
     in
-    Printf.eprintf "[RPC SERVER DEBUG] Registering methods:\n";
+    Log.debug "[RPC SERVER] Registering methods:";
     List.iter
-      (fun h -> Printf.eprintf "  - %s\n" h.Jsonrpc.Server.method_)
+      (fun h -> Log.debug "  - %s" h.Jsonrpc.Server.method_)
       methods;
     Jsonrpc.Server.create ~protocol:(module TuskProtocol) ~methods
 end

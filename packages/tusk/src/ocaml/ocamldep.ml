@@ -10,7 +10,7 @@ let sort ~toolchain ~cwd ~files =
     let ocamldep = Path.to_string (Toolchains.ocamldep_path toolchain) in
     let files_str = String.concat " " files in
     let cmd =
-      Printf.sprintf "cd %s && %s -sort %s 2>/dev/null" cwd ocamldep files_str
+      format "cd %s && %s -sort %s 2>/dev/null" cwd ocamldep files_str
     in
 
     Format.eprintf "[DEBUG Ocamldep] Running: %s@." cmd;
@@ -37,7 +37,7 @@ let sort ~toolchain ~cwd ~files =
 let deps ~toolchain ~cwd ~file ~package_namespace =
   let ocamldep = Path.to_string (Toolchains.ocamldep_path toolchain) in
   let cmd =
-    Printf.sprintf "cd %s && %s -modules %s 2>/dev/null" cwd ocamldep file
+    format "cd %s && %s -modules %s 2>/dev/null" cwd ocamldep file
   in
 
   let deps_str =
@@ -72,7 +72,7 @@ let deps_with_flags ~toolchain ~cwd ~file ~flags ~package_namespace =
   let flags_str = Ocamlc.flags_to_string flags |> String.concat " " in
   (* Always include current directory so ocamldep can find .cmi files *)
   let cmd =
-    Printf.sprintf "cd %s && %s -I . %s -modules %s 2>/dev/null" cwd ocamldep
+    format "cd %s && %s -I . %s -modules %s 2>/dev/null" cwd ocamldep
       flags_str file
   in
 

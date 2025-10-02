@@ -18,41 +18,40 @@ let do_build ~session_id ~client_pid ~build_results ~build_queue ~build_stats
 
   let rec build_loop () =
     if Build_results.all_done build_results then (
-      Printf.eprintf "Server: All builds done\n%!";
+      Log.debug "Server: All builds done";
       ())
     else
       match receive ~selector () with
       | Worker_pool_types.TaskCompleted { worker; node; artifact } ->
           let pkg_name = node.Build_node.package.name in
-          Printf.eprintf "[DEBUG] Task completed: %s\n" pkg_name;
+          Log.debug "Task completed: %s\n" pkg_name;
           Build_queue.mark_as_completed build_queue node ~artifact;
           succeeded := pkg_name :: !succeeded;
           Tusk_protocol.BuildStats.inc_packages_built build_stats;
-          Printf.eprintf "[DEBUG] Marked %s as completed\n" pkg_name;
+          Log.debug "Marked %s as completed\n" pkg_name;
 
           (* Log queue status after completion *)
           let ready, later, busy = Build_queue.get_stats build_queue in
-          Printf.eprintf
-            "[DEBUG] Queue state after %s: Ready=%d, Later=%d, Busy=%d\n%!"
+          Log.debug "[DEBUG] Queue state after %s: Ready=%d, Later=%d, Busy=%d"
             pkg_name ready later busy;
           build_loop ()
       | Worker_pool_types.TaskFailed { worker; node; error } ->
           let pkg_name = node.Build_node.package.name in
-          Printf.printf "[BUILD_SERVER] Package %s failed: %s\n%!" pkg_name
+          Log.debug "[BUILD_SERVER] Package %s failed: %s" pkg_name
             error;
           Build_queue.mark_as_failed build_queue node ~error;
           failed := pkg_name :: !failed;
           Tusk_protocol.BuildStats.inc_packages_failed build_stats;
           ()
       | Worker_pool_types.WorkerReady worker ->
-          Printf.eprintf "Server: Worker ready\n%!";
+          Log.debug "Server: Worker ready";
           let () =
             match Build_queue.next build_queue with
             | None ->
-                Printf.eprintf "Server: No work available for worker\n%!";
+                Log.debug "Server: No work available for worker";
                 ()
             | Some node ->
-                Printf.eprintf "Server: Sending task %s to worker %s\n%!"
+                Log.debug "Server: Sending task %s to worker %s"
                   node.Build_node.package.name
                   Pid.(to_string worker);
                 (* Create simple task with just node and session *)
@@ -63,15 +62,14 @@ let do_build ~session_id ~client_pid ~build_results ~build_queue ~build_stats
       | Worker_pool_types.RequeueWithDependencies { worker; node; deps } ->
           let pkg_name = node.Build_node.package.name in
           let dep_names = List.map (fun d -> d.Build_node.package.name) deps in
-          Printf.eprintf "[DEBUG] Requeuing %s with deps: [%s]\n" pkg_name
+          Log.debug "Requeuing %s with deps: [%s]\n" pkg_name
             (String.concat ", " dep_names);
 
           (* requeue_with_deps will handle removing from busy tasks *)
           Build_queue.requeue_with_deps build_queue node ~deps;
 
           let ready, later, busy = Build_queue.get_stats build_queue in
-          Printf.eprintf
-            "[DEBUG] Queue state after requeue: Ready=%d, Later=%d, Busy=%d\n%!"
+          Log.debug "[DEBUG] Queue state after requeue: Ready=%d, Later=%d, Busy=%d"
             ready later busy;
           build_loop ()
       | _ ->
@@ -108,7 +106,7 @@ let do_build ~session_id ~client_pid ~build_results ~build_queue ~build_stats
 
 let start ~workspace ~toolchain ~workers ~session_id ~client_pid ~target =
   spawn @@ fun () ->
-  Printf.eprintf "Server: Build process spawned\n%!";
+  Log.debug "Server: Build process spawned";
 
   (* Send BuildStarted response with session_id *)
   send client_pid
@@ -128,7 +126,7 @@ let start ~workspace ~toolchain ~workers ~session_id ~client_pid ~target =
   Tusk_log.workspace_scanned ~session_id
     ~packages:(List.length workspace.packages)
     ~duration_ms:workspace_duration;
-  Printf.eprintf "Server: Workspace scanned, found %d packages\n%!"
+  Log.debug "Server: Workspace scanned, found %d packages"
     (List.length workspace.packages);
 
   (* 2. recreate the build graph from the refreshed workspace *)
@@ -158,7 +156,7 @@ let start ~workspace ~toolchain ~workers ~session_id ~client_pid ~target =
 
   match nodes_result with
   | Error cycle_nodes ->
-      Printf.eprintf "Server: Cycle detected involving packages: %s\n%!"
+      Log.debug "Server: Cycle detected involving packages: %s"
         (String.concat ", " cycle_nodes);
 
       (* Send cycle detected event to client *)
@@ -185,7 +183,7 @@ let start ~workspace ~toolchain ~workers ~session_id ~client_pid ~target =
       (* Exit the build process since we can't proceed *)
       Ok ()
   | Ok nodes ->
-      Printf.eprintf "Server: Build starting with %d nodes\n%!"
+      Log.debug "Server: Build starting with %d nodes"
         (List.length nodes);
 
       (* Log build started event *)
@@ -208,14 +206,12 @@ let start ~workspace ~toolchain ~workers ~session_id ~client_pid ~target =
           Build_queue.queue build_queue node;
           Build_results.mark_pending build_results node)
         nodes;
-      Printf.eprintf "Server: Queued %d packages: %s\n%!" (List.length packages)
+      Log.debug "Server: Queued %d packages: %s" (List.length packages)
         (String.concat ", " packages);
 
       (* Debug: Check queue state *)
       let ready, waiting, busy = Build_queue.get_stats build_queue in
-      Printf.eprintf
-        "Server: Queue state - Ready: %d, Waiting: %d, Busy: %d\n%!" ready
-        waiting busy;
+      Log.debug "Server: Queue state - Ready: %d, Waiting: %d, Busy: %d" ready waiting busy;
 
       (* 4. create a worker pool to execute this build *)
       Tusk_log.store_creating ~session_id ();

@@ -18,7 +18,7 @@ let create ~(workspace : Workspace.t) =
     Fs.create_dir_all store_dir
     |> Result.expect
          ~msg:
-           (Printf.sprintf "Failed to create store directory: %s"
+           (format "Failed to create store directory: %s"
               (Path.to_string store_dir))
   in
   { root_dir = store_dir }
@@ -61,7 +61,7 @@ let promote_from_store store hash target_dir =
         Fs.create_dir_all target_dir
         |> Result.expect
              ~msg:
-               (Printf.sprintf "Failed to create target directory: %s"
+               (format "Failed to create target directory: %s"
                   (Path.to_string target_dir))
       in
 
@@ -83,7 +83,7 @@ let promote_from_store store hash target_dir =
                       Fs.copy ~src ~dst
                       |> Result.expect
                            ~msg:
-                             (Printf.sprintf "Failed to copy file: %s -> %s"
+                             (format "Failed to copy file: %s -> %s"
                                 (Path.to_string src) (Path.to_string dst))
                     in
                     ()
@@ -97,7 +97,7 @@ let promote_from_store store hash target_dir =
 
 (** Store artifacts from sandbox to content-addressable store *)
 let store_artifacts store ~package hash sandbox_dir declared_outputs =
-  Printf.printf "[Store] store_artifacts called for package %s\n%!" package;
+  Log.debug "[Store] store_artifacts called for package %s" package;
   let hash_dir = get_hash_dir store hash in
 
   (* Create hash directory (including parent directories) *)
@@ -105,7 +105,7 @@ let store_artifacts store ~package hash sandbox_dir declared_outputs =
     Fs.create_dir_all hash_dir
     |> Result.expect
          ~msg:
-           (Printf.sprintf "Failed to create hash directory: %s"
+           (format "Failed to create hash directory: %s"
               (Path.to_string hash_dir))
   in
 
@@ -121,7 +121,7 @@ let store_artifacts store ~package hash sandbox_dir declared_outputs =
               Fs.copy ~src ~dst
               |> Result.expect
                    ~msg:
-                     (Printf.sprintf "Failed to store artifact: %s -> %s"
+                     (format "Failed to store artifact: %s -> %s"
                         (Path.to_string src) (Path.to_string dst))
             in
             (* Get file size for manifest *)
@@ -142,13 +142,13 @@ let store_artifacts store ~package hash sandbox_dir declared_outputs =
       ~files:(List.rev stored_files_with_sizes)
   in
   let manifest_path = Path.(hash_dir / Path.v "manifest.json") in
-  Printf.printf "[Store] Saving manifest to %s\n%!"
+  Log.debug "[Store] Saving manifest to %s"
     (Path.to_string manifest_path);
   let _ =
     Manifest.save manifest ~path:manifest_path
     |> Result.expect ~msg:"Failed to save manifest"
   in
-  Printf.printf "[Store] Manifest saved successfully\n%!";
+  Log.debug "[Store] Manifest saved successfully";
 
   (* Return artifact witness with just the filenames *)
   let stored_files =

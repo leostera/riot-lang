@@ -95,7 +95,7 @@ let find_tusk_toml dir =
 let scan_internal ~root =
   match find_tusk_toml root with
   | None ->
-      Printf.eprintf "Error: No tusk.toml found in %s\n" root;
+      println "Error: No tusk.toml found in %s" root;
       {
         root = Path.v root;
         target_dir_root = Path.(Path.v root / Path.v "target");
@@ -114,7 +114,7 @@ let scan_internal ~root =
             in
             match find_tusk_toml member_path with
             | None ->
-                Printf.eprintf "Warning: No tusk.toml found for member %s\n"
+                println "Warning: No tusk.toml found for member %s"
                   member;
                 None
             | Some package_toml ->

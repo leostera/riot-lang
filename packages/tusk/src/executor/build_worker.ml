@@ -50,7 +50,7 @@ and handle_planning_exception ctx task exn =
             worker = self ();
             node = task.Worker_pool_types.node;
             error =
-              Printf.sprintf "Planning failed: %s" (Exception.to_string exn);
+              format "Planning failed: %s" (Exception.to_string exn);
           }));
   worker_loop ctx
 
@@ -62,7 +62,7 @@ and handle_planning_error ctx task err =
           {
             worker = self ();
             node = task.Worker_pool_types.node;
-            error = Printf.sprintf "Planning failed: %s" err;
+            error = format "Planning failed: %s" err;
           }));
   worker_loop ctx
 
@@ -94,7 +94,7 @@ and handle_skipped_node ctx task skipped_node reason =
   let reason_str =
     match reason with
     | Build_planner.DependenciesFailed dep_errors ->
-        Printf.sprintf "Dependencies failed: %s" (String.concat ", " dep_errors)
+        format "Dependencies failed: %s" (String.concat ", " dep_errors)
   in
 
   (* Mark as failed in build results with skip reason *)

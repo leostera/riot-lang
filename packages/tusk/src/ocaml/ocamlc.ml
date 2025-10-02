@@ -103,7 +103,7 @@ let run ~toolchain ~cwd ?(includes = []) ?(libs = []) ?(output = None)
   in
 
   (* Always print the command for visibility *)
-  Printf.printf "  $ %s\n%!" cmd_parts;
+  Log.debug "  $ %s" cmd_parts;
 
   (* Execute the command with colors enabled *)
   (* Set OCAML_COLOR=always to get colored error output *)
@@ -113,7 +113,7 @@ let run ~toolchain ~cwd ?(includes = []) ?(libs = []) ?(output = None)
   | Ok output when output.Command.status = 0 -> Success output.Command.stdout
   | Ok output ->
       Failed
-        (Printf.sprintf "Command failed with status %d: %s"
+        (format "Command failed with status %d: %s"
            output.Command.status output.Command.stderr)
   | Error (Command.SystemError msg) -> Failed msg
 
@@ -144,7 +144,7 @@ let compile_interface ~toolchain ~cwd ~includes ~flags ~output source =
     | Ok output when output.Command.status = 0 -> Success output.Command.stdout
     | Ok output ->
         Failed
-          (Printf.sprintf "Command failed with status %d: %s"
+          (format "Command failed with status %d: %s"
              output.Command.status output.Command.stderr)
     | Error (Command.SystemError msg) -> Failed msg
   else
@@ -177,7 +177,7 @@ let compile_impl ~toolchain ~cwd ~includes ~flags ~output source =
     | Ok output when output.Command.status = 0 -> Success output.Command.stdout
     | Ok output ->
         Failed
-          (Printf.sprintf "Command failed with status %d: %s"
+          (format "Command failed with status %d: %s"
              output.Command.status output.Command.stderr)
     | Error (Command.SystemError msg) -> Failed msg
   else
@@ -209,13 +209,13 @@ let generate_interface ~toolchain ~cwd ~includes ~flags ~output source =
           Path.of_string output |> Result.expect ~msg:"Invalid output path"
         in
         match Fs.write out.Command.stdout output_path with
-        | Ok _ -> Success (Printf.sprintf "Generated interface %s" output)
+        | Ok _ -> Success (format "Generated interface %s" output)
         | Error (Fs.SystemError msg) ->
-            Failed (Printf.sprintf "Failed to write %s: %s" output msg)
+            Failed (format "Failed to write %s: %s" output msg)
       else
         (* Include stderr in the error message for debugging *)
         Failed
-          (Printf.sprintf "ocamlc -i failed with exit code %d: %s"
+          (format "ocamlc -i failed with exit code %d: %s"
              out.Command.status out.Command.stderr)
   | Error (Command.SystemError msg) -> Failed msg
 

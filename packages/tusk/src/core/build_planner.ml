@@ -13,7 +13,7 @@ type plan_result =
 type error = string
 
 let plan_node ~graph ~node ~build_results ~workspace ~session_id ~sandbox () =
-  Printf.printf "[BUILD_PLANNER] Planning %s\n%!" node.Build_node.package.name;
+  Log.debug "[BUILD_PLANNER] Planning %s" node.Build_node.package.name;
 
   (* Step 1: Check if all package-level dependencies are already built *)
   let missing_deps = ref [] in
@@ -26,19 +26,19 @@ let plan_node ~graph ~node ~build_results ~workspace ~session_id ~sandbox () =
       match Build_results.get_status build_results dep_name with
       | Some (Build_results.Built _) ->
           (* Dependency is built - good! *)
-          Printf.printf "[BUILD_PLANNER] Dependency %s is built\n%!" dep_name
+          Log.debug "[BUILD_PLANNER] Dependency %s is built" dep_name
       | Some Build_results.NotStarted | Some Build_results.Building | None ->
           (* Dependency not built yet *)
-          Printf.printf "[BUILD_PLANNER] Dependency %s not ready\n%!" dep_name;
+          Log.debug "[BUILD_PLANNER] Dependency %s not ready" dep_name;
           missing_deps := dep_node :: !missing_deps
       | Some (Build_results.Failed err) ->
           (* Dependency failed - we should skip this node *)
-          Printf.printf "[BUILD_PLANNER] Dependency %s failed\n%!" dep_name)
+          Log.debug "[BUILD_PLANNER] Dependency %s failed" dep_name)
     node.Build_node.deps;
 
   (* Step 2: If missing dependencies, return MissingDependencies *)
   if !missing_deps <> [] then (
-    Printf.printf "[BUILD_PLANNER] %s has missing dependencies\n%!"
+    Log.debug "[BUILD_PLANNER] %s has missing dependencies"
       node.Build_node.package.name;
     Ok (MissingDependencies { node; deps = !missing_deps }))
   else
@@ -56,21 +56,21 @@ let plan_node ~graph ~node ~build_results ~workspace ~session_id ~sandbox () =
       node.Build_node.deps;
 
     if !failed_deps <> [] then (
-      Printf.printf "[BUILD_PLANNER] %s skipped - failed deps: %s\n%!"
+      Log.debug "[BUILD_PLANNER] %s skipped - failed deps: %s"
         node.Build_node.package.name
         (String.concat ", " !failed_deps);
       Ok (Skipped { node; reason = DependenciesFailed !failed_deps }))
     else (
       (* Step 4: All dependencies satisfied - build module graph with provided sandbox *)
-      Printf.printf "[BUILD_PLANNER] Building module graph for %s\n%!"
+      Log.debug "[BUILD_PLANNER] Building module graph for %s"
         node.Build_node.package.name;
       match Module_graph.build ~node ~workspace ~build_graph:graph ~sandbox with
       | Error err ->
-          Printf.printf "[BUILD_PLANNER] Module graph failed for %s: %s\n%!"
+          Log.debug "[BUILD_PLANNER] Module graph failed for %s: %s"
             node.Build_node.package.name err;
           Error err
       | Ok (_module_graph, actions, outs) ->
-          Printf.printf "[BUILD_PLANNER] Generated %d actions for %s\n%!"
+          Log.debug "[BUILD_PLANNER] Generated %d actions for %s"
             (List.length actions) node.Build_node.package.name;
           (* Step 5: Compute content-based hash *)
           let open Crypto in

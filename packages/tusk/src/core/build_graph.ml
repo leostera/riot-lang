@@ -19,7 +19,7 @@ let get_node t node_id =
   | Some node -> node
   | None ->
       failwith
-        (Printf.sprintf
+        (format
            "FATAL: Node with ID '%s' not found in build graph. This should \
             never happen!"
            (Node_id.to_string node_id))
@@ -316,12 +316,9 @@ let topological_sort graph =
         then cycle_nodes := name :: !cycle_nodes)
       graph.nodes;
 
-    Printf.eprintf
-      "Circular dependency detected: sorted %d nodes but graph has %d nodes\n"
-      (List.length !sorted)
-      (Hashtbl.length graph.nodes);
+    Log.debug "Circular dependency detected: sorted %d nodes but graph has %d nodes" (List.length !sorted) (Hashtbl.length graph.nodes);
     List.iter
-      (fun name -> Printf.eprintf "  Node '%s' is part of a cycle\n" name)
+      (fun name -> Log.debug "  Node '%s' is part of a cycle" name)
       !cycle_nodes;
 
     raise (Cycle_detected !cycle_nodes));
@@ -330,12 +327,12 @@ let topological_sort graph =
 
 (** Print the build graph *)
 let print graph =
-  Printf.printf "\n=== Build Graph ===\n%!";
+  Log.debug "\n=== Build Graph ===";
 
   (* Print in topological order *)
   let sorted = topological_sort graph in
 
-  Printf.printf "\nBuild order:\n%!";
+  Log.debug "\nBuild order:";
   List.iteri
     (fun i node ->
       Printf.printf "%d. %s%!" (i + 1) node.package.name;
@@ -345,15 +342,15 @@ let print graph =
              (List.map
                 (fun dep_id -> Node_id.to_string dep_id)
                 node.Build_node.deps));
-      Printf.printf "\n%!")
+      Log.debug "")
     sorted;
 
-  Printf.printf "\nDependency tree:\n%!";
+  Log.debug "\nDependency tree:";
   let rec print_tree indent node visited =
     if List.mem node.package.name visited then
-      Printf.printf "%s%s (circular reference)\n%!" indent node.package.name
+      Log.debug "%s%s (circular reference)" indent node.package.name
     else (
-      Printf.printf "%s%s\n%!" indent node.package.name;
+      Log.debug "%s%s" indent node.package.name;
       let visited = node.package.name :: visited in
       List.iter
         (fun dep_id ->
@@ -372,7 +369,7 @@ let filter_for_package graph target_pkg_name =
   match Hashtbl.find_opt graph.nodes target_pkg_name with
   | None ->
       failwith
-        (Printf.sprintf "Package '%s' not found in workspace" target_pkg_name)
+        (format "Package '%s' not found in workspace" target_pkg_name)
   | Some target_node ->
       (* Collect target and all its transitive dependencies *)
       let rec collect_deps node visited =

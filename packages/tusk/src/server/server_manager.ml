@@ -16,7 +16,7 @@ module Daemon = struct
     (* Use workspace root path as a simple project ID *)
     let root_str = Path.to_string workspace.Workspace.root in
     (* Hash the path to get a shorter ID *)
-    Printf.sprintf "%08x" (Hashtbl.hash root_str)
+    format "%08x" (Hashtbl.hash root_str)
 
   let daemon_dir ~workspace =
     let home =
@@ -66,7 +66,7 @@ module Daemon = struct
                 (match e with
                 | `Connection_refused -> "connection refused"
                 | `Closed -> "connection closed"
-                | `System_error msg -> Printf.sprintf "system error: %s" msg);
+                | `System_error msg -> format "system error: %s" msg);
               false
         in
         if is_server_running then
