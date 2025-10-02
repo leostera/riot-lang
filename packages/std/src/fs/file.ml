@@ -172,9 +172,10 @@ let sync_data t =
 let metadata t =
   match ensure_open t with
   | Error e -> Error e
-  | Ok () ->
-      Kernel.Fs.File.fstat t.fd |> convert_kernel_result
-      |> Result.map Metadata.of_unix
+  | Ok () -> (
+      match Kernel.Fs.File.fstat t.fd |> convert_kernel_result with
+      | Ok m -> Ok (m : Metadata.t)
+      | Error e -> Error e)
 
 let set_len t ~len =
   match ensure_open t with
@@ -210,8 +211,8 @@ let try_lock_exclusive t =
   | Ok () -> (
       match Kernel.Fs.File.lockf t.fd Kernel.Fs.File.TryLockExclusive 0 with
       | Ok () -> Ok true
-      | Error (`Unix_error Unix.EAGAIN) -> Ok false
-      | Error (`Unix_error Unix.EACCES) -> Ok false
+      | Error (`Unix_error e) when Kernel.IO.error_of_unix e = Kernel.IO.Resource_unavailable_try_again -> Ok false
+      | Error (`Unix_error e) when Kernel.IO.error_of_unix e = Kernel.IO.Permission_denied -> Ok false
       | Error e -> Error (SystemError (kernel_error_to_string e)))
 
 let try_lock_shared t =
@@ -220,8 +221,8 @@ let try_lock_shared t =
   | Ok () -> (
       match Kernel.Fs.File.lockf t.fd Kernel.Fs.File.TryLockShared 0 with
       | Ok () -> Ok true
-      | Error (`Unix_error Unix.EAGAIN) -> Ok false
-      | Error (`Unix_error Unix.EACCES) -> Ok false
+      | Error (`Unix_error e) when Kernel.IO.error_of_unix e = Kernel.IO.Resource_unavailable_try_again -> Ok false
+      | Error (`Unix_error e) when Kernel.IO.error_of_unix e = Kernel.IO.Permission_denied -> Ok false
       | Error e -> Error (SystemError (kernel_error_to_string e)))
 
 let unlock t =

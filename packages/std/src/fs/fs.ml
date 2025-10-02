@@ -113,15 +113,11 @@ let hard_link ~src ~dst =
 
 let metadata path =
   let path_str = Path.to_string path in
-  Kernel.Fs.File.stat path_str
-  |> convert_kernel_result
-  |> Result.map Metadata.of_unix
+  Kernel.Fs.File.stat path_str |> convert_kernel_result
 
 let symlink_metadata path =
   let path_str = Path.to_string path in
-  Kernel.Fs.File.lstat path_str
-  |> convert_kernel_result
-  |> Result.map Metadata.of_unix
+  Kernel.Fs.File.lstat path_str |> convert_kernel_result
 
 let read_to_string path =
   match File.open_read path with
@@ -222,9 +218,7 @@ let dir_exists path =
 
 let stat path =
   let path_str = Path.to_string path in
-  Kernel.Fs.File.stat path_str
-  |> convert_kernel_result
-  |> Result.map Metadata.of_unix
+  Kernel.Fs.File.stat path_str |> convert_kernel_result
 
 let chmod path perm =
   let path_str = Path.to_string path in

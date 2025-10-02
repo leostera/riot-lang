@@ -1,4 +1,4 @@
-type t
+type t = Kernel.Fs.File.Metadata.t
 (** File metadata *)
 
 (** {1 File Properties} *)

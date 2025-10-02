@@ -1,6 +1,6 @@
 open Common
 
-type t = { path : Path.t; handle : Unix.dir_handle; mutable closed : bool }
+type t = { path : Path.t; handle : Kernel.IO.dir_handle; mutable closed : bool }
 (** Directory reading iterator *)
 
 type state = t
