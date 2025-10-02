@@ -74,7 +74,8 @@ let rec loop (state : 'task state) : (unit, Process.exit_reason) result =
       (* Remove from idle if it was there *)
       let new_idle = Queue.create () in
       Queue.iter
-        (fun pid -> if not (Pid.equal pid worker.pid) then Queue.add pid new_idle)
+        (fun pid ->
+          if not (Pid.equal pid worker.pid) then Queue.add pid new_idle)
         state.idle_workers;
       Queue.clear state.idle_workers;
       Queue.transfer new_idle state.idle_workers;
