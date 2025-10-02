@@ -6,8 +6,8 @@
 
     Two modes of operation:
 
-    1. Simple mode (start_with_tasks): Pre-queue all tasks upfront 2. Advanced
-    mode (start + WorkerReady): Dynamic task assignment
+    1. Simple mode (start_with_tasks): Pre-queue all tasks upfront
+    2. Dynamic mode (start + WorkerReady): Manual task assignment
 
     Example - Simple mode:
 
@@ -16,10 +16,10 @@
       type Message.t += TaskResult of string * int
 
       let results = ref [] in
-      let pool = Worker_pool.start_with_tasks ~workers:8
+      let pool = Worker_pool.SimpleWorkerPool.start_with_tasks ~workers:8
         ~owner:(self ())
         ~tasks:["task1"; "task2"; "task3"]
-        ~worker_fn:(fun ~owner task ->
+        ~worker_fn:(fun ~owner ~task ->
           let result = expensive_computation task in
           send owner (TaskResult (task, result)))
         () in
@@ -29,20 +29,17 @@
         match receive_any () with
         | TaskResult (task, result) -> results := result :: !results
         | _ -> ()
-      done;
-
-      Worker_pool.stop pool
+      done
     ]}
 
-    Example - Advanced mode:
+    Example - Dynamic mode:
 
     {[
       type Message.t +=
         | TaskResult of string * int
-        | WorkerReady of Worker_pool.worker
 
-      let pool = Worker_pool.start ~workers:8 ~owner:(self ())
-        ~worker_fn:(fun ~owner task ->
+      let pool = Worker_pool.DynamicWorkerPool.start ~workers:8 ~owner:(self ())
+        ~worker_fn:(fun ~owner ~task ->
           let result = expensive_computation task in
           send owner (TaskResult (task, result)))
         () in
@@ -50,10 +47,10 @@
       (* Assign tasks dynamically *)
       let rec dispatch_loop tasks =
         match receive_any () with
-        | WorkerReady worker ->
+        | Worker_pool.DynamicWorkerPool.WorkerReady worker ->
             (match tasks with
             | task :: rest ->
-                Worker_pool.send_task pool worker task;
+                Worker_pool.DynamicWorkerPool.send_task pool worker task;
                 dispatch_loop rest
             | [] -> dispatch_loop [])
         | TaskResult _ -> dispatch_loop tasks

@@ -1,5 +1,6 @@
 open Global
 open Miniriot
+open Types
 
 type 'task state = {
   coordinator : Pid.t;
@@ -11,12 +12,12 @@ type 'task state = {
 (** Worker loop - receives tasks from coordinator and executes them *)
 let rec loop (state : 'task state) : (unit, Process.exit_reason) result =
   let selector msg =
-    match msg with Messages.ToWorker msg -> `select msg | _ -> `skip
+    match msg with Types.ToWorker msg -> `select msg | _ -> `skip
   in
 
   match receive ~selector () with
-  | Messages.Stop -> Ok ()
-  | Messages.Task (task, ref) -> (
+  | Types.Stop -> Ok ()
+  | Types.Task (task, ref) -> (
       (* Verify type safety with Ref.type_equal *)
       match Ref.type_equal state.ref ref with
       | Some Type.Equal ->
@@ -25,7 +26,7 @@ let rec loop (state : 'task state) : (unit, Process.exit_reason) result =
 
           (* Notify coordinator that we're done *)
           send state.coordinator
-            (Messages.FromWorker (Messages.TaskCompleted (self ())));
+            (Types.FromWorker (Types.TaskCompleted (self ())));
 
           (* Continue looping for more tasks *)
           loop state
