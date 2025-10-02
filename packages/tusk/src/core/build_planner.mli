@@ -10,12 +10,16 @@ type plan_result =
 
 type error = string
 
+type entry = string * [ `File of Std.Path.t * string | `Dir of Std.Path.t * entry list ]
+
 val plan_node :
   graph:Build_graph.t ->
   node:Build_node.t ->
   build_results:Build_results.t ->
   workspace:Workspace.t ->
   session_id:Session_id.t ->
+  sandbox_dir:Std.Path.t ->
+  sources:entry list ->
   unit ->
   (plan_result, error) result
 (** Plan a build node by checking dependencies and computing build actions.

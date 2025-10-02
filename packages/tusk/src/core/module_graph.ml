@@ -40,6 +40,8 @@ type t = {
 
 type error = string
 
+type entry = string * [ `File of Path.t * string | `Dir of Path.t * entry list ]
+
 let root_node = { file = Concrete (Path.v ""); open_modules = []; kind = Root }
 
 module Alias_module = struct
@@ -448,9 +450,9 @@ and handle_library ~t ~ctx dir name children src_dir =
     child_files (* IMPORTANT: only child_files, not child_modules! *)
 
 (** Scan source files *)
-let scan_sources t =
-  let src_dir = Path.(t.package.path / Path.v "src") in
-  let entries = scan_directory src_dir in
+let scan_sources t sandbox_dir sources =
+  (* Use pre-copied sources from sandbox instead of scanning *)
+  let sandbox_src_dir = Path.(sandbox_dir / Path.v "src") in
 
   let root_node = G.add_node t.graph root_node in
 
@@ -464,7 +466,7 @@ let scan_sources t =
   in
 
   (* Treat the entire src directory as the root library *)
-  handle_library ~t ~ctx src_dir t.package.name entries src_dir
+  handle_library ~t ~ctx sandbox_src_dir t.package.name sources sandbox_src_dir
 
 (** Wire dependencies using ocamldep *)
 let wire_dependencies t =
@@ -473,9 +475,8 @@ let wire_dependencies t =
   let node_tasks = G.map t.graph ~fn:(fun (node_id, node) -> (node_id, node)) in
 
   (* Run ocamldep in parallel, collecting edges instead of mutating graph *)
-  let edge_lists =
-    Std.WorkerPool.SimpleWorkerPool.run
-      ~tasks:node_tasks
+  let deps =
+    Std.WorkerPool.SimpleWorkerPool.run ~tasks:node_tasks
       ~fn:(fun (node_id, node) ->
         let dep = node.value in
         match dep.kind with
@@ -489,95 +490,75 @@ let wire_dependencies t =
                   Ocamldep.deps ~toolchain:t.toolchain ~cwd ~file
                     ~package_namespace:t.namespace
             in
-
-            if deps <> [] then
-              Printf.printf "[MODULE_GRAPH]   %s depends on: %s\n%!"
-                (file_to_string dep.file)
-                (String.concat ", " (List.map Module_name.to_string deps));
-
-            (* Collect edges to add later *)
-            let edges = ref [] in
-            List.iter
-              (fun dep_mod_name ->
-                let dep_name = Module_name.to_string dep_mod_name in
-                try
-                  let dep_node_ids =
-                    Module_registry.get_by_name t.registry dep_name
-                  in
-                  List.iter
-                    (fun dep_node_id ->
-                      (* Store edge as (from_node_id, to_node_id) pair *)
-                      let dep_node = G.get_node t.graph dep_node_id in
-                      Printf.printf
-                        "[MODULE_GRAPH]     Collected edge: %s -> %s (kind: %s -> \
-                         %s)\n\
-                         %!"
-                        (file_to_string dep.file)
-                        (file_to_string dep_node.value.file)
-                        (match dep.kind with
-                        | ML _ -> "ML"
-                        | MLI _ -> "MLI"
-                        | C -> "C"
-                        | H -> "H"
-                        | Other _ -> "Other"
-                        | Root -> "Root")
-                        (match dep_node.value.kind with
-                        | ML _ -> "ML"
-                        | MLI _ -> "MLI"
-                        | C -> "C"
-                        | H -> "H"
-                        | Other _ -> "Other"
-                        | Root -> "Root");
-                      edges := (node_id, dep_node_id) :: !edges)
-                    dep_node_ids
-                with Not_found ->
-                  Printf.printf
-                    "[MODULE_GRAPH]     WARNING: Module %s not found in registry\n\
-                     %!"
-                    dep_name)
-              deps;
-            let result = !edges in
-            Printf.printf
-              "[MODULE_GRAPH]     Worker returning %d edges for %s\n%!"
-              (List.length result) (file_to_string dep.file);
-            result
-        | _ ->
-            Printf.printf "[MODULE_GRAPH]     Worker returning 0 edges for %s (not \
-                           ML/MLI)\n%!"
-              (file_to_string dep.file);
-            [])
+            Some (node_id, node, deps)
+        | _ -> None)
       ()
+    |> List.filter_map (fun (_idx, result) -> result)
   in
 
-  (* Add all edges sequentially after parallel ocamldep completes *)
-  Printf.printf "[MODULE_GRAPH] Adding %d edge lists sequentially\n%!"
-    (List.length edge_lists);
-  List.iter
-    (fun (_idx, edges) ->
-      Printf.printf "[MODULE_GRAPH]   Processing edge list with %d edges\n%!"
-        (List.length edges);
-      List.iter
-        (fun (from_node_id, to_node_id) ->
-          try
-            let from_node = G.get_node t.graph from_node_id in
-            let to_node = G.get_node t.graph to_node_id in
-            match (from_node.value.kind, to_node.value.kind) with
-            | MLI _, ML _ ->
-                Printf.printf
-                  "[MODULE_GRAPH]     SKIPPED edge (MLI->ML): %s -> %s\n%!"
-                  (file_to_string from_node.value.file)
-                  (file_to_string to_node.value.file)
-            | _ ->
-                Printf.printf
-                  "[MODULE_GRAPH]     Adding ocamldep edge: %s -> %s\n%!"
-                  (file_to_string from_node.value.file)
-                  (file_to_string to_node.value.file);
-                G.add_edge from_node ~depends_on:to_node
-          with exn ->
-            Printf.printf "[MODULE_GRAPH]     ERROR adding edge: %s\n%!"
-              (Printexc.to_string exn))
-        edges)
-    edge_lists
+  let handle_edges node_id (node : dep G.node) deps =
+    let dep = node.value in
+
+    if deps <> [] then
+      Printf.printf "[MODULE_GRAPH]   %s depends on: %s\n%!"
+        (file_to_string dep.file)
+        (String.concat ", " (List.map Module_name.to_string deps));
+
+    let edges_collected = ref 0 in
+    let edges_wired = ref 0 in
+    let edges_skipped = ref 0 in
+
+    List.iter
+      (fun dep_mod_name ->
+        let dep_name = Module_name.to_string dep_mod_name in
+        try
+          let dep_node_ids = Module_registry.get_by_name t.registry dep_name in
+          List.iter
+            (fun dep_node_id ->
+              incr edges_collected;
+              let dep_node = G.get_node t.graph dep_node_id in
+
+              match (dep.kind, dep_node.value.kind) with
+              | MLI _, ML _ ->
+                  incr edges_skipped;
+                  Printf.printf
+                    "[MODULE_GRAPH]     SKIPPED edge (MLI->ML): %s -> %s\n%!"
+                    (file_to_string dep.file)
+                    (file_to_string dep_node.value.file)
+              | _ ->
+                  incr edges_wired;
+                  Printf.printf "[MODULE_GRAPH]     Adding edge: %s -> %s\n%!"
+                    (file_to_string dep.file)
+                    (file_to_string dep_node.value.file);
+                  G.add_edge node ~depends_on:dep_node)
+            dep_node_ids
+        with Not_found ->
+          Printf.printf
+            "[MODULE_GRAPH]     WARNING: Module %s not found in registry\n%!"
+            dep_name)
+      deps;
+
+    if !edges_collected > 0 then
+      Printf.printf
+        "[MODULE_GRAPH]   Summary for %s: collected=%d, wired=%d, skipped=%d\n\
+         %!"
+        (file_to_string dep.file) !edges_collected !edges_wired !edges_skipped
+  in
+
+  Printf.printf "[MODULE_GRAPH] Processing %d modules with dependencies\n%!"
+    (List.length deps);
+  List.iter (fun (id, node, dep) -> handle_edges id node dep) deps;
+  Printf.printf "[MODULE_GRAPH] Finished wiring dependencies\n%!";
+
+  (* Verify graph structure after wiring *)
+  let total_edges = ref 0 in
+  G.iter t.graph ~fn:(fun node_id node ->
+    let dep_count = List.length node.deps in
+    total_edges := !total_edges + dep_count;
+    if dep_count > 0 then
+      Printf.printf "[MODULE_GRAPH] Graph state: %s has %d edges\n%!"
+        (file_to_string node.value.file) dep_count);
+  Printf.printf "[MODULE_GRAPH] Total edges in graph: %d\n%!" !total_edges
 
 (** Generate compilation actions from the module graph *)
 let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
@@ -589,6 +570,11 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
       Printf.printf "[MODULE_GRAPH] Calling G.topo_sort...\n%!";
       let result = G.topo_sort t.graph in
       Printf.printf "[MODULE_GRAPH] G.topo_sort returned successfully\n%!";
+      Printf.printf "[MODULE_GRAPH] Topo sort order (first 10):\n%!";
+      List.iteri (fun i (node : dep G.node) ->
+        if i < 10 then
+          Printf.printf "[MODULE_GRAPH]   %d. %s (deps: %d)\n%!"
+            i (file_to_string node.value.file) (List.length node.deps)) result;
       result
     with
     | G.Cycle cycle_ids ->
@@ -907,14 +893,14 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
   (List.rev (declare_action :: !actions), outputs)
 
 (** Build the complete module graph for a package *)
-let build ~node ~workspace ~build_graph =
+let build ~node ~workspace ~build_graph ~sandbox_dir ~sources =
   Printf.printf "[MODULE_GRAPH] ===== Building module graph for %s =====\n%!"
     node.Build_node.package.name;
   let t = create ~node ~workspace in
 
   (* Step 1: Scan source files and build file tree *)
-  Printf.printf "[MODULE_GRAPH] Step 1: Scanning source files\n%!";
-  scan_sources t;
+  Printf.printf "[MODULE_GRAPH] Step 1: Using sandbox source files\n%!";
+  scan_sources t sandbox_dir sources;
 
   (* Step 2: Wire dependencies with ocamldep *)
   Printf.printf "[MODULE_GRAPH] Step 2: Wiring dependencies\n%!";

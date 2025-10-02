@@ -5,15 +5,52 @@ open Core
 open Ocaml
 open Model
 
+type entry = string * [ `File of Path.t * string | `Dir of Path.t * entry list ]
+
 type t = {
   root : Path.t;
   sandbox_dir : Path.t;
   target_dir : Path.t;
   node : Build_node.t;
   workspace : Workspace.t;
+  sources : entry list;
 }
 
 type error = string
+
+(** Recursively scan directory and copy all files to sandbox, returning structure with absolute sandbox paths *)
+let rec scan_and_copy_directory ~from_dir ~to_dir =
+  match Fs.read_dir from_dir with
+  | Error _ -> []
+  | Ok iter ->
+      let entries = MutIterator.to_list iter in
+      List.concat_map
+        (fun entry ->
+          let source_path = Path.(from_dir / entry) in
+          let dest_path = Path.(to_dir / entry) in
+          match Fs.is_dir source_path with
+          | Ok true ->
+              (* Subdirectory - create it and recursively copy *)
+              let _ = Fs.create_dir_all dest_path in
+              let children = scan_and_copy_directory ~from_dir:source_path ~to_dir:dest_path in
+              [ (Path.basename entry, `Dir (dest_path, children)) ]
+          | Ok false -> (
+              (* File - copy it *)
+              match Path.extension source_path with
+              | Some ext ->
+                  (* Create parent directories if needed *)
+                  let parent = Path.dirname dest_path in
+                  let _ = Fs.create_dir_all parent in
+                  (* Copy the file *)
+                  (match Fs.copy ~src:source_path ~dst:dest_path with
+                  | Ok () -> [ (Path.basename entry, `File (dest_path, ext)) ]
+                  | Error _ ->
+                      Printf.eprintf "Warning: Failed to copy %s to %s\n%!"
+                        (Path.to_string source_path) (Path.to_string dest_path);
+                      [])
+              | None -> [])
+          | Error _ -> [])
+        entries
 
 (** Create a new sandbox for a build graph node *)
 let create ~node ~(workspace : Workspace.t) =
@@ -38,10 +75,21 @@ let create ~node ~(workspace : Workspace.t) =
   let _ = Fs.create_dir_all target_dir in
   ();
 
-  { root; sandbox_dir; target_dir; node; workspace }
+  (* Copy all source files from package to sandbox *)
+  let package_src_dir = Path.(node.Build_node.package.path / Path.v "src") in
+  let sandbox_src_dir = Path.(sandbox_dir / Path.v "src") in
+  Printf.printf "[SANDBOX] Copying sources from %s to %s\n%!"
+    (Path.to_string package_src_dir) (Path.to_string sandbox_src_dir);
+  let sources = scan_and_copy_directory ~from_dir:package_src_dir ~to_dir:sandbox_src_dir in
+  Printf.printf "[SANDBOX] Copied %d entries to sandbox\n%!" (List.length sources);
+
+  { root; sandbox_dir; target_dir; node; workspace; sources }
 
 (** Get sandbox directory *)
 let get_sandbox_dir t = t.sandbox_dir
+
+(** Get sandbox sources (hierarchical structure with absolute paths in sandbox) *)
+let sources t = t.sources
 
 (** Get all transitive dependencies of a node *)
 let rec get_transitive_dependencies node ~build_graph visited =

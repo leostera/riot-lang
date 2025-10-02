@@ -22,11 +22,16 @@ and handle_task ctx task =
   (* Log that we're starting *)
   Log.package_started ~session_id ~package:pkg_name;
 
-  (* Step 1: Try to plan the node *)
+  (* Step 1: Create sandbox first *)
+  let sandbox = Sandbox.create ~node ~workspace:ctx.workspace in
+
+  (* Step 2: Try to plan the node with the sandbox *)
   (* Pass build_results so Build_planner knows which deps are already built *)
   match
     Build_planner.plan_node ~graph:ctx.build_graph ~node
-      ~build_results:ctx.build_results ~workspace:ctx.workspace ~session_id ()
+      ~build_results:ctx.build_results ~workspace:ctx.workspace ~session_id
+      ~sandbox_dir:(Sandbox.get_sandbox_dir sandbox)
+      ~sources:(Sandbox.sources sandbox) ()
   with
   | exception exn -> handle_planning_exception ctx task exn
   | Error err -> handle_planning_error ctx task err
@@ -35,7 +40,7 @@ and handle_task ctx task =
   | Ok (Build_planner.Skipped { node = skipped_node; reason }) ->
       handle_skipped_node ctx task skipped_node reason
   | Ok (Build_planner.Planned planned_node) ->
-      handle_planned_node ctx task planned_node
+      handle_planned_node ctx task planned_node sandbox
 
 and handle_planning_exception ctx task exn =
   (* Planning exception *)
@@ -107,13 +112,13 @@ and handle_skipped_node ctx task skipped_node reason =
           }));
   worker_loop ctx
 
-and handle_planned_node ctx task planned_node =
+and handle_planned_node ctx task planned_node sandbox =
   (* Step 2: Check if we have a cached artifact for this node *)
   match Store.get ctx.store planned_node with
   | Some artifact -> handle_cache_hit ctx task planned_node artifact
-  | None -> do_build ctx task planned_node
+  | None -> do_build ctx task planned_node sandbox
 
-and do_build ctx task planned_node =
+and do_build ctx task planned_node sandbox =
   let Worker_pool_types.{ node; session_id } = task in
   let pkg_name = Build_node.(node.package.name) in
   (* No cache - need to build in sandbox *)
@@ -123,9 +128,7 @@ and do_build ctx task planned_node =
       | Planned { hash; _ } -> Std.Crypto.Digest.hex hash
       | _ -> "unknown");
 
-  (* Create sandbox *)
-  let sandbox = Sandbox.create ~node:planned_node ~workspace:ctx.workspace in
-
+  (* Use sandbox from planner (already contains copied sources) *)
   (* Run actions in sandbox *)
   let result =
     Sandbox.run_actions ~sandbox ~store:ctx.store ~build_graph:ctx.build_graph
