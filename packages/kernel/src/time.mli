@@ -1,16 +1,26 @@
-(** Time operations for Kernel *)
+(** Low-level time operations for Kernel - minimal interface *)
 
-val time : unit -> float
-(** Return the current time since 00:00:00 GMT, Jan. 1, 1970, in seconds *)
+type tm = {
+  tm_sec : int;    (** Seconds 0-60 *)
+  tm_min : int;    (** Minutes 0-59 *)
+  tm_hour : int;   (** Hours 0-23 *)
+  tm_mday : int;   (** Day of month 1-31 *)
+  tm_mon : int;    (** Month 0-11 *)
+  tm_year : int;   (** Year - 1900 *)
+  tm_wday : int;   (** Day of week 0-6 (Sunday = 0) *)
+  tm_yday : int;   (** Day of year 0-365 *)
+  tm_isdst : bool; (** Daylight saving time *)
+}
+(** Broken-down time representation compatible with C's struct tm *)
 
 val gettimeofday : unit -> float
-(** Same as {!time}, but with microsecond precision *)
+(** Get current time since Unix epoch with microsecond precision *)
 
-val localtime : float -> Unix.tm
-(** Convert a time in seconds to a date and time in the local time zone *)
+val localtime : float -> tm
+(** Convert Unix timestamp to broken-down time in local timezone *)
 
-val gmtime : float -> Unix.tm
-(** Convert a time in seconds to a date and time in UTC *)
+val gmtime : float -> tm
+(** Convert Unix timestamp to broken-down time in UTC *)
 
-val mktime : Unix.tm -> float * Unix.tm
-(** Convert a date and time to a time in seconds *)
+val mktime : tm -> float * tm
+(** Convert broken-down time to Unix timestamp. Returns (timestamp, normalized_tm) *)
