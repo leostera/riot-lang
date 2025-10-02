@@ -550,20 +550,24 @@ let wire_dependencies t =
         (List.length edges);
       List.iter
         (fun (from_node_id, to_node_id) ->
-          let from_node = G.get_node t.graph from_node_id in
-          let to_node = G.get_node t.graph to_node_id in
-          match (from_node.value.kind, to_node.value.kind) with
-          | MLI _, ML _ ->
-              Printf.printf
-                "[MODULE_GRAPH]     SKIPPED edge (MLI->ML): %s -> %s\n%!"
-                (file_to_string from_node.value.file)
-                (file_to_string to_node.value.file)
-          | _ ->
-              Printf.printf
-                "[MODULE_GRAPH]     Adding ocamldep edge: %s -> %s\n%!"
-                (file_to_string from_node.value.file)
-                (file_to_string to_node.value.file);
-              G.add_edge from_node ~depends_on:to_node)
+          try
+            let from_node = G.get_node t.graph from_node_id in
+            let to_node = G.get_node t.graph to_node_id in
+            match (from_node.value.kind, to_node.value.kind) with
+            | MLI _, ML _ ->
+                Printf.printf
+                  "[MODULE_GRAPH]     SKIPPED edge (MLI->ML): %s -> %s\n%!"
+                  (file_to_string from_node.value.file)
+                  (file_to_string to_node.value.file)
+            | _ ->
+                Printf.printf
+                  "[MODULE_GRAPH]     Adding ocamldep edge: %s -> %s\n%!"
+                  (file_to_string from_node.value.file)
+                  (file_to_string to_node.value.file);
+                G.add_edge from_node ~depends_on:to_node
+          with exn ->
+            Printf.printf "[MODULE_GRAPH]     ERROR adding edge: %s\n%!"
+              (Printexc.to_string exn))
         edges)
     edge_lists
 
