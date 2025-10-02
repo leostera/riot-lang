@@ -34,74 +34,76 @@ end
 (** Parse workspace members from a workspace TOML file *)
 let parse_workspace_toml toml_path =
   Log.debug "[WORKSPACE] Parsing workspace TOML: %s" toml_path;
-  try
-    let toml = Toml.parse_file toml_path in
-    Log.debug "[WORKSPACE] TOML parsed successfully";
-    
-    (* Debug: print all keys in the TOML *)
-    (match toml with
-    | Toml.Table items ->
-        Log.debug "[WORKSPACE] TOML has %d top-level keys:" (List.length items);
-        List.iter (fun (key, _) -> Log.debug "[WORKSPACE]   - %s" key) items
-    | _ -> Log.debug "[WORKSPACE] TOML is not a table");
-    
-    (* The parser flattens sections, so look for "workspace.members" *)
-    match Toml.find_value "workspace.members" toml with
-    | Some members_value -> (
-        Log.debug "[WORKSPACE] Found workspace.members field";
-        match Toml.get_array members_value with
-        | Some arr -> 
-            let members = List.filter_map (fun v -> Toml.get_string v) arr in
-            Log.debug "[WORKSPACE] Extracted %d members from array" (List.length members);
-            members
-        | None -> 
-            Log.debug "[WORKSPACE] workspace.members is not an array";
-            [])
-    | None -> 
-        Log.debug "[WORKSPACE] No workspace.members field found in TOML";
-        []
-  with exn -> 
-      Log.debug "[WORKSPACE] Exception parsing TOML: %s" (Exception.to_string exn);
+  match Toml.parse_file toml_path with
+  | Error err ->
+      Log.debug "[WORKSPACE] TOML parse error: %s" (Toml.error_to_string err);
       []
+  | Ok toml ->
+      Log.debug "[WORKSPACE] TOML parsed successfully";
+      
+      (* Debug: print all keys in the TOML *)
+      (match toml with
+      | Toml.Table items ->
+          Log.debug "[WORKSPACE] TOML has %d top-level keys:" (List.length items);
+          List.iter (fun (key, _) -> Log.debug "[WORKSPACE]   - %s" key) items
+      | _ -> Log.debug "[WORKSPACE] TOML is not a table");
+      
+      (* The parser flattens sections, so look for "workspace.members" *)
+      match Toml.find_value "workspace.members" toml with
+      | Some members_value -> (
+          Log.debug "[WORKSPACE] Found workspace.members field";
+          match Toml.get_array members_value with
+          | Some arr -> 
+              let members = List.filter_map (fun v -> Toml.get_string v) arr in
+              Log.debug "[WORKSPACE] Extracted %d members from array" (List.length members);
+              members
+          | None -> 
+              Log.debug "[WORKSPACE] workspace.members is not an array";
+              [])
+      | None -> 
+          Log.debug "[WORKSPACE] No workspace.members field found in TOML";
+          []
 
 (** Parse package dependencies from a package TOML file *)
 let parse_package_toml toml_path =
-  try
-    let toml = Toml.parse_file toml_path in
-    (* Get package name - look for flattened "package.name" *)
-    let name =
-      match Toml.find_value "package.name" toml with
-      | Some name_value -> (
-          match Toml.get_string name_value with
-          | Some n -> n
-          | None -> (
-              let path_obj = Path.v toml_path in
-              let dir = Path.parent path_obj in
-              match dir with Some d -> Path.basename d | None -> "unknown"))
-      | None -> (
-          let path_obj = Path.v toml_path in
-          let dir = Path.parent path_obj in
-          match dir with Some d -> Path.basename d | None -> "unknown")
-    in
-    (* Get dependencies - need to extract from the flattened table *)
-    let deps =
-      match toml with
-      | Table items ->
-          (* Look for all keys starting with "dependencies." *)
-          List.filter_map
-            (fun (key, _value) ->
-              if String.length key > 13 && String.sub key 0 13 = "dependencies."
-              then Some (String.sub key 13 (String.length key - 13))
-              else None)
-            items
-      | _ -> []
-    in
-    (name, deps)
-  with _ ->
-    let path_obj = Path.v toml_path in
-    let dir = Path.parent path_obj in
-    let name = match dir with Some d -> Path.basename d | None -> "unknown" in
-    (name, [])
+  match Toml.parse_file toml_path with
+  | Error err ->
+      Log.debug "[WORKSPACE] Failed to parse package TOML %s: %s" 
+        toml_path (Toml.error_to_string err);
+      let path_obj = Path.v toml_path in
+      let dir = Path.parent path_obj in
+      let name = match dir with Some d -> Path.basename d | None -> "unknown" in
+      (name, [])
+  | Ok toml ->
+      (* Get package name - look for flattened "package.name" *)
+      let name =
+        match Toml.find_value "package.name" toml with
+        | Some name_value -> (
+            match Toml.get_string name_value with
+            | Some n -> n
+            | None -> (
+                let path_obj = Path.v toml_path in
+                let dir = Path.parent path_obj in
+                match dir with Some d -> Path.basename d | None -> "unknown"))
+        | None -> (
+            let path_obj = Path.v toml_path in
+            let dir = Path.parent path_obj in
+            match dir with Some d -> Path.basename d | None -> "unknown")
+      in
+      (* Get dependencies - need to extract from the flattened table *)
+      let deps =
+        match toml with
+        | Table items ->
+            (* Look for all keys starting with "dependencies." *)
+            List.filter_map
+              (fun (key, _value) ->
+                if String.length key > 13 && String.sub key 0 13 = "dependencies."
+                then Some (String.sub key 13 (String.length key - 13))
+                else None)
+              items
+        | _ -> []
+      in
+      (name, deps)
 
 (** Scan a directory for a tusk.toml file *)
 let find_tusk_toml dir =
