@@ -61,3 +61,5 @@ let ( || ) = Stdlib.( || )
 let ignore = Stdlib.ignore
 let ( |> ) = Stdlib.( |> )
 let ( @@ ) = Stdlib.( @@ )
+let fst = Stdlib.fst
+let snd = Stdlib.snd

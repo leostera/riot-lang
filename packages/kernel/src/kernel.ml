@@ -19,6 +19,14 @@ module Queue = Queue
 module Option = Option
 module List = List
 module Hashtbl = Hashtbl
+module Type = Type
+module Atomic = Atomic
+module Int64 = Int64
+module Obj = Obj
+module String = String
+module Buffer = Buffer
+module Bytes = Bytes
+module Seq = Seq
 
 (* Re-export global types and functions at top level for convenience *)
 include Global

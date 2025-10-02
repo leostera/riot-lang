@@ -61,3 +61,5 @@ val ( || ) : bool -> bool -> bool
 val ignore : 'a -> unit
 val ( |> ) : 'a -> ('a -> 'b) -> 'b
 val ( @@ ) : ('a -> 'b) -> 'a -> 'b
+val fst : 'a * 'b -> 'a
+val snd : 'a * 'b -> 'b
