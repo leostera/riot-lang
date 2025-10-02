@@ -10,14 +10,11 @@ type t
 type error = string
 (** Error type *)
 
-type entry = string * [ `File of Std.Path.t * string | `Dir of Std.Path.t * entry list ]
-
 val build :
   node:Build_node.t ->
   workspace:Workspace.t ->
   build_graph:Build_graph.t ->
-  sandbox_dir:Std.Path.t ->
-  sources:entry list ->
+  sandbox:Sandbox.t ->
   (t * Actions.action list * Path.t list, error) result
 (** Build a module graph for a package
 

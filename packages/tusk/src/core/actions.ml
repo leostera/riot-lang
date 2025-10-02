@@ -195,93 +195,113 @@ let execute_action action toolchain cwd =
     | Ocamlc.Success msg -> (Success, msg)
     | Ocamlc.Failed err -> (Failed err, "")
   in
-  match action with
-  | CompileInterface { source; output; includes; flags } ->
-      Ocamlc.compile_interface ~toolchain ~cwd
-        ~includes:(List.map Path.to_string includes)
-        ~flags ~output:(Path.to_string output) (Path.to_string source)
-      |> convert_result
-  | CompileImplementation { source; output; includes; flags } ->
-      Ocamlc.compile_impl ~toolchain ~cwd
-        ~includes:(List.map Path.to_string includes)
-        ~flags ~output:(Path.to_string output) (Path.to_string source)
-      |> convert_result
-  | GenerateInterface { source; output; includes; flags } ->
-      Ocamlc.generate_interface ~toolchain ~cwd
-        ~includes:(List.map Path.to_string includes)
-        ~flags ~output:(Path.to_string output) (Path.to_string source)
-      |> convert_result
-  | CompileC { source; output } ->
-      Ocamlc.compile_c ~toolchain ~cwd ~includes:[] ~output:(Path.to_string output)
-        (Path.to_string source)
-      |> convert_result
-  | CreateLibrary { output; objects; includes } ->
-      Ocamlc.create_library ~toolchain ~cwd
-        ~includes:(List.map Path.to_string includes)
-        ~output:(Path.to_string output)
-        (List.map Path.to_string objects)
-      |> convert_result
-  | CreateExecutable { output; objects; libraries; includes } ->
-      (* Use custom executable for C stubs *)
-      Ocamlc.create_custom_executable ~toolchain ~cwd
-        ~includes:(List.map Path.to_string includes)
-        ~output:(Path.to_string output)
-        ~libs:(List.map Path.to_string libraries)
-        (List.map Path.to_string objects)
-      |> convert_result
-  | CopyDir { source; destination } -> (
-      try
-        (* Use cp -r to recursively copy directory *)
-        let cmd =
-          Printf.sprintf "cp -r %s %s" (Path.to_string source)
-            (Path.to_string destination)
-        in
-        let exit_code = Sys.command cmd in
-        if exit_code = 0 then
+  (* Save current directory and change to cwd for execution *)
+  let original_dir =
+    Env.current_dir () |> Result.expect ~msg:"Failed to get current directory"
+  in
+  Env.set_current_dir cwd;
+
+  (* Execute action with relative paths, restoring directory afterwards *)
+  let result =
+    try
+      match action with
+      | CompileInterface { source; output; includes; flags } ->
+          Ocamlc.compile_interface ~toolchain ~cwd
+            ~includes:(List.map Path.to_string includes)
+            ~flags ~output:(Path.to_string output) (Path.to_string source)
+          |> convert_result
+      | CompileImplementation { source; output; includes; flags } ->
+          Ocamlc.compile_impl ~toolchain ~cwd
+            ~includes:(List.map Path.to_string includes)
+            ~flags ~output:(Path.to_string output) (Path.to_string source)
+          |> convert_result
+      | GenerateInterface { source; output; includes; flags } ->
+          Ocamlc.generate_interface ~toolchain ~cwd
+            ~includes:(List.map Path.to_string includes)
+            ~flags ~output:(Path.to_string output) (Path.to_string source)
+          |> convert_result
+      | CompileC { source; output } ->
+          Ocamlc.compile_c ~toolchain ~cwd ~includes:[]
+            ~output:(Path.to_string output) (Path.to_string source)
+          |> convert_result
+      | CreateLibrary { output; objects; includes } ->
+          Ocamlc.create_library ~toolchain ~cwd
+            ~includes:(List.map Path.to_string includes)
+            ~output:(Path.to_string output)
+            (List.map Path.to_string objects)
+          |> convert_result
+      | CreateExecutable { output; objects; libraries; includes } ->
+          (* Use custom executable for C stubs *)
+          Ocamlc.create_custom_executable ~toolchain ~cwd
+            ~includes:(List.map Path.to_string includes)
+            ~output:(Path.to_string output)
+            ~libs:(List.map Path.to_string libraries)
+            (List.map Path.to_string objects)
+          |> convert_result
+      | CopyDir { source; destination } -> (
+          try
+            (* Use cp -r to recursively copy directory *)
+            let cmd =
+              Printf.sprintf "cp -r %s %s" (Path.to_string source)
+                (Path.to_string destination)
+            in
+            let exit_code = Sys.command cmd in
+            if exit_code = 0 then
+              ( Success,
+                Printf.sprintf "Copied directory %s to %s"
+                  (Path.to_string source)
+                  (Path.to_string destination) )
+            else
+              ( Failed
+                  (Printf.sprintf "cp command failed with exit code %d"
+                     exit_code),
+                "" )
+          with exn -> (Failed (Printexc.to_string exn), ""))
+      | CopyFile { source; destination } -> (
+          try
+            (* Create parent directories for destination *)
+            let parent_dir = Path.dirname destination in
+            let _ =
+              Fs.create_dir_all parent_dir
+              |> Result.expect ~msg:"Failed to create parent directories"
+            in
+            (* Copy the file *)
+            let _ =
+              Fs.copy ~src:source ~dst:destination
+              |> Result.expect ~msg:"Failed to copy file"
+            in
+            ( Success,
+              Printf.sprintf "Copied %s to %s" (Path.to_string source)
+                (Path.to_string destination) )
+          with exn -> (Failed (Printexc.to_string exn), ""))
+      | WriteFile { destination; content } -> (
+          try
+            (* Create parent directories for destination *)
+            let parent_dir = Path.dirname destination in
+            let _ =
+              Fs.create_dir_all parent_dir
+              |> Result.expect ~msg:"Failed to create parent directories"
+            in
+            (* Write the file *)
+            let _ =
+              Fs.write content destination
+              |> Result.expect ~msg:"Failed to write file"
+            in
+            (Success, Printf.sprintf "Wrote %s" (Path.to_string destination))
+          with exn -> (Failed (Printexc.to_string exn), ""))
+      | DeclareOutputs { outputs } ->
+          (* Just record the expected outputs - don't validate yet as they haven't been built *)
           ( Success,
-            Printf.sprintf "Copied directory %s to %s" (Path.to_string source)
-              (Path.to_string destination) )
-        else
-          ( Failed
-              (Printf.sprintf "cp command failed with exit code %d" exit_code),
-            "" )
-      with exn -> (Failed (Printexc.to_string exn), ""))
-  | CopyFile { source; destination } -> (
-      try
-        (* Create parent directories for destination *)
-        let parent_dir = Path.dirname destination in
-        let _ =
-          Fs.create_dir_all parent_dir
-          |> Result.expect ~msg:"Failed to create parent directories"
-        in
-        (* Copy the file *)
-        let _ =
-          Fs.copy ~src:source ~dst:destination
-          |> Result.expect ~msg:"Failed to copy file"
-        in
-        ( Success,
-          Printf.sprintf "Copied %s to %s" (Path.to_string source)
-            (Path.to_string destination) )
-      with exn -> (Failed (Printexc.to_string exn), ""))
-  | WriteFile { destination; content } -> (
-      try
-        (* Create parent directories for destination *)
-        let parent_dir = Path.dirname destination in
-        let _ =
-          Fs.create_dir_all parent_dir
-          |> Result.expect ~msg:"Failed to create parent directories"
-        in
-        (* Write the file *)
-        let _ =
-          Fs.write content destination
-          |> Result.expect ~msg:"Failed to write file"
-        in
-        (Success, Printf.sprintf "Wrote %s" (Path.to_string destination))
-      with exn -> (Failed (Printexc.to_string exn), ""))
-  | DeclareOutputs { outputs } ->
-      (* Just record the expected outputs - don't validate yet as they haven't been built *)
-      ( Success,
-        Printf.sprintf "Declared %d expected outputs" (List.length outputs) )
+            Printf.sprintf "Declared %d expected outputs" (List.length outputs)
+          )
+    with exn ->
+      (* Ensure directory is restored even on exception *)
+      Env.set_current_dir original_dir;
+      raise exn
+  in
+  (* Restore original directory *)
+  Env.set_current_dir original_dir;
+  result
 
 (** Hash a list of actions *)
 let hash actions =

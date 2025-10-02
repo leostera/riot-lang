@@ -40,8 +40,6 @@ type t = {
 
 type error = string
 
-type entry = string * [ `File of Path.t * string | `Dir of Path.t * entry list ]
-
 let root_node = { file = Concrete (Path.v ""); open_modules = []; kind = Root }
 
 module Alias_module = struct
@@ -71,6 +69,7 @@ module Alias_module = struct
       if ns_prefix = "" then "Aliases.ml-gen"
       else ns_prefix ^ "__Aliases.ml-gen"
     in
+    (* Use relative path - alias files are at sandbox root *)
     let path = Path.v filename in
     (* Don't pass namespace - it's already in the filename *)
     let mod_ = Module.make ~namespace:Namespace.empty ~filename:path in
@@ -188,7 +187,7 @@ let sort_entries entries =
       | _ -> 0)
     entries
 
-let rec do_scan ~t ~ctx entries src_dir =
+let rec do_scan ~t ~ctx entries =
   let sorted_entries = sort_entries entries in
   match sorted_entries with
   | [] -> ()
@@ -196,19 +195,19 @@ let rec do_scan ~t ~ctx entries src_dir =
       match entry with
       | `File (path, ((".ml" | ".mli") as ext)) ->
           handle_ocaml_module ~t ~ctx path;
-          do_scan ~t ~ctx rest src_dir
+          do_scan ~t ~ctx rest
       | `File (path, ".c") ->
           handle_c_file ~t ~ctx path;
-          do_scan ~t ~ctx rest src_dir
+          do_scan ~t ~ctx rest
       | `File (path, ".h") ->
           handle_h_file ~t ~ctx path;
-          do_scan ~t ~ctx rest src_dir
+          do_scan ~t ~ctx rest
       | `File (_, _) ->
           (* Skip other files *)
-          do_scan ~t ~ctx rest src_dir
+          do_scan ~t ~ctx rest
       | `Dir (path, children) ->
-          handle_library ~t ~ctx path name children src_dir;
-          do_scan ~t ~ctx rest src_dir)
+          handle_library ~t ~ctx path name children;
+          do_scan ~t ~ctx rest)
 
 and handle_c_file ~t ~ctx path =
   let { parent_impl; _ } = ctx in
@@ -260,24 +259,15 @@ and handle_ocaml_module ~t ~ctx path =
     (fun aliases_node -> G.add_edge node ~depends_on:aliases_node)
     aliases
 
-and handle_library ~t ~ctx dir name children src_dir =
+and handle_library ~t ~ctx dir name children =
   let { ns; aliases; parent_impl; parent_intf } = ctx in
 
-  let base_path =
-    if Namespace.is_empty ns then Path.(src_dir / Path.v name)
-    else Path.(dir / Path.v name)
-  in
-
-  (* Make paths relative to package root for generated library interface files *)
-  (* This ensures generated files go to sandbox, not source directory *)
-  let relative_base_path =
-    Path.strip_prefix base_path ~prefix:t.package.path |> Result.unwrap
-  in
-
-  let intf_file = Path.add_extension relative_base_path ~ext:"mli" in
+  (* Use relative paths for library interface files *)
+  let base_path = Path.(dir / Path.v name) in
+  let intf_file = Path.add_extension base_path ~ext:"mli" in
   let intf_mod = Module.make ~namespace:ns ~filename:intf_file in
 
-  let impl_file = Path.add_extension relative_base_path ~ext:"ml" in
+  let impl_file = Path.add_extension base_path ~ext:"ml" in
   let impl_mod = Module.make ~namespace:ns ~filename:impl_file in
 
   let ns =
@@ -414,7 +404,7 @@ and handle_library ~t ~ctx dir name children src_dir =
       children_without_lib
   in
 
-  do_scan ~t ~ctx sorted_children src_dir;
+  do_scan ~t ~ctx sorted_children;
 
   (* Library interface files must be compiled AFTER their direct child files *)
   (* NOTE: We ONLY depend on child_files (actual files in this directory), *)
@@ -450,10 +440,8 @@ and handle_library ~t ~ctx dir name children src_dir =
     child_files (* IMPORTANT: only child_files, not child_modules! *)
 
 (** Scan source files *)
-let scan_sources t sandbox_dir sources =
-  (* Use pre-copied sources from sandbox instead of scanning *)
-  let sandbox_src_dir = Path.(sandbox_dir / Path.v "src") in
-
+let scan_sources t sandbox_dir (sources : Sandbox.entry list) =
+  (* Use pre-copied sources from sandbox - paths are already relative *)
   let root_node = G.add_node t.graph root_node in
 
   let ctx =
@@ -466,10 +454,10 @@ let scan_sources t sandbox_dir sources =
   in
 
   (* Treat the entire src directory as the root library *)
-  handle_library ~t ~ctx sandbox_src_dir t.package.name sources sandbox_src_dir
+  handle_library ~t ~ctx (Path.v "src") t.package.name sources
 
 (** Wire dependencies using ocamldep *)
-let wire_dependencies t =
+let wire_dependencies t sandbox_dir =
   Printf.printf "[MODULE_GRAPH] Wiring dependencies with ocamldep\n%!";
   (* Keep both node_id and node for later edge addition *)
   let node_tasks = G.map t.graph ~fn:(fun (node_id, node) -> (node_id, node)) in
@@ -485,7 +473,8 @@ let wire_dependencies t =
               match dep.file with
               | Generated _ -> []
               | Concrete path ->
-                  let cwd = Path.to_string t.package.path in
+                  (* Use sandbox_dir as cwd since paths are relative to sandbox *)
+                  let cwd = Path.to_string sandbox_dir in
                   let file = Path.to_string path in
                   Ocamldep.deps ~toolchain:t.toolchain ~cwd ~file
                     ~package_namespace:t.namespace
@@ -553,11 +542,12 @@ let wire_dependencies t =
   (* Verify graph structure after wiring *)
   let total_edges = ref 0 in
   G.iter t.graph ~fn:(fun node_id node ->
-    let dep_count = List.length node.deps in
-    total_edges := !total_edges + dep_count;
-    if dep_count > 0 then
-      Printf.printf "[MODULE_GRAPH] Graph state: %s has %d edges\n%!"
-        (file_to_string node.value.file) dep_count);
+      let dep_count = List.length node.deps in
+      total_edges := !total_edges + dep_count;
+      if dep_count > 0 then
+        Printf.printf "[MODULE_GRAPH] Graph state: %s has %d edges\n%!"
+          (file_to_string node.value.file)
+          dep_count);
   Printf.printf "[MODULE_GRAPH] Total edges in graph: %d\n%!" !total_edges
 
 (** Generate compilation actions from the module graph *)
@@ -571,10 +561,13 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
       let result = G.topo_sort t.graph in
       Printf.printf "[MODULE_GRAPH] G.topo_sort returned successfully\n%!";
       Printf.printf "[MODULE_GRAPH] Topo sort order (first 10):\n%!";
-      List.iteri (fun i (node : dep G.node) ->
-        if i < 10 then
-          Printf.printf "[MODULE_GRAPH]   %d. %s (deps: %d)\n%!"
-            i (file_to_string node.value.file) (List.length node.deps)) result;
+      List.iteri
+        (fun i (node : dep G.node) ->
+          if i < 10 then
+            Printf.printf "[MODULE_GRAPH]   %d. %s (deps: %d)\n%!" i
+              (file_to_string node.value.file)
+              (List.length node.deps))
+        result;
       result
     with
     | G.Cycle cycle_ids ->
@@ -613,37 +606,8 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
   let c_objects = ref [] in
   (* Track .o files from C compilation *)
 
-  Printf.printf
-    "[MODULE_GRAPH] Starting first pass: copying source files...\n%!";
-  Printf.printf "[MODULE_GRAPH] Package path: %s\n%!"
-    (Path.to_string t.package.path);
-  (* First pass: Generate CopyFile actions for all Concrete source files *)
-  List.iter
-    (fun (node : dep G.node) ->
-      match node.value.file with
-      | Concrete path -> (
-          Printf.printf "[MODULE_GRAPH]   Copying: %s\n%!" (Path.to_string path);
-          match Path.strip_prefix path ~prefix:t.package.path with
-          | Ok relative_path ->
-              Printf.printf "[MODULE_GRAPH]     -> relative: %s\n%!"
-                (Path.to_string relative_path);
-              let copy_action =
-                Actions.CopyFile { source = path; destination = relative_path }
-              in
-              actions := copy_action :: !actions
-          | Error err ->
-              Printf.printf
-                "[MODULE_GRAPH]     -> ERROR: Failed to strip prefix: %s\n%!"
-                (match err with
-                | Path.SystemError msg -> msg
-                | _ -> "unknown error");
-              Printf.printf
-                "[MODULE_GRAPH]     -> Skipping file outside package path\n%!")
-      | Generated _ -> ())
-    sorted_nodes;
-  Printf.printf
-    "[MODULE_GRAPH] First pass complete. Generated %d copy actions.\n%!"
-    (List.length !actions);
+  (* Files are already in sandbox - no need to copy *)
+  Printf.printf "[MODULE_GRAPH] Generating compilation actions...\n%!";
 
   (* Helper to get open modules *)
   let opens mods =
@@ -655,8 +619,6 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
       mods
   in
 
-  Printf.printf
-    "[MODULE_GRAPH] Starting second pass: generating compilation actions...\n%!";
   (* Generate actions for each node *)
   List.iter
     (fun (node : dep G.node) ->
@@ -665,15 +627,12 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
       match node.value with
       | { kind = MLI mod_; file = Concrete path; open_modules; _ } ->
           Printf.printf "[MODULE_GRAPH]     -> MLI (Concrete)\n%!";
-          (* Source is already in sandbox via CopyDir, use relative path *)
-          let relative_path =
-            Path.strip_prefix path ~prefix:t.package.path |> Result.unwrap
-          in
+          (* Use absolute sandbox path *)
           let cmi_output = Module.cmi mod_ in
           let compile_action =
             Actions.CompileInterface
               {
-                source = relative_path;
+                source = path;
                 output = cmi_output;
                 includes = [ Path.v "." ];
                 flags = List.map (fun m -> Ocamlc.Open m) (opens open_modules);
@@ -683,16 +642,13 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
           outputs := cmi_output :: !outputs
       | { kind = ML mod_; file = Concrete path; open_modules; _ } ->
           Printf.printf "[MODULE_GRAPH]     -> ML (Concrete)\n%!";
-          (* Source is already in sandbox via CopyDir, use relative path *)
-          let relative_path =
-            Path.strip_prefix path ~prefix:t.package.path |> Result.unwrap
-          in
+          (* Use absolute sandbox path *)
           let cmx_output = Module.cmx mod_ in
           let cmi_output = Module.cmi mod_ in
           let compile_action =
             Actions.CompileImplementation
               {
-                source = relative_path;
+                source = path;
                 output = cmx_output;
                 includes = [ Path.v "." ];
                 flags = List.map (fun m -> Ocamlc.Open m) (opens open_modules);
@@ -772,17 +728,14 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
           outputs := output :: !outputs
       | { kind = C; file = Concrete path; _ } ->
           Printf.printf "[MODULE_GRAPH]     -> C file\n%!";
-          (* Source is already in sandbox via CopyDir, use relative path *)
-          let relative_path =
-            Path.strip_prefix path ~prefix:t.package.path |> Result.unwrap
-          in
+          (* Use absolute sandbox path *)
           let obj_file =
-            Path.remove_extension relative_path |> Path.add_extension ~ext:"o"
+            Path.remove_extension path |> Path.add_extension ~ext:"o"
           in
           (* Use basename for output tracking *)
           let output_name = Path.basename obj_file |> Path.v in
           let compile_action =
-            Actions.CompileC { source = relative_path; output = output_name }
+            Actions.CompileC { source = path; output = output_name }
           in
           actions := compile_action :: !actions;
           outputs := output_name :: !outputs;
@@ -893,18 +846,20 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
   (List.rev (declare_action :: !actions), outputs)
 
 (** Build the complete module graph for a package *)
-let build ~node ~workspace ~build_graph ~sandbox_dir ~sources =
+let build ~node ~workspace ~build_graph ~sandbox =
   Printf.printf "[MODULE_GRAPH] ===== Building module graph for %s =====\n%!"
     node.Build_node.package.name;
   let t = create ~node ~workspace in
 
   (* Step 1: Scan source files and build file tree *)
   Printf.printf "[MODULE_GRAPH] Step 1: Using sandbox source files\n%!";
+  let sandbox_dir = Sandbox.get_sandbox_dir sandbox in
+  let sources = Sandbox.sources sandbox in
   scan_sources t sandbox_dir sources;
 
   (* Step 2: Wire dependencies with ocamldep *)
   Printf.printf "[MODULE_GRAPH] Step 2: Wiring dependencies\n%!";
-  wire_dependencies t;
+  wire_dependencies t sandbox_dir;
 
   (* Step 3: Generate compilation actions *)
   Printf.printf "[MODULE_GRAPH] Step 3: Generating actions\n%!";

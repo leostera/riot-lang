@@ -1,7 +1,6 @@
 open Model
 
-open Core
-(** Content-addressable storage for build Artifact.ts *)
+(** Content-addressable storage for build artifacts *)
 
 module Manifest = Manifest
 
@@ -20,8 +19,8 @@ val create : workspace:Workspace.t -> t
 (** {1 Simple Interface} *)
 
 val get : t -> Build_node.t -> Artifact.t option
-(** Check if we have cached Artifact.ts for this build node. Returns Some
-    Artifact.t if cached, None if not. *)
+(** Check if we have cached artifacts for this build node. Returns Some
+    artifact if cached, None if not. *)
 
 val save :
   t ->
@@ -35,7 +34,7 @@ val save :
 (** {1 Artifact Operations} *)
 
 val promote : t -> Artifact.t -> target_dir:Std.Path.t -> (unit, error) result
-(** Promote cached Artifact.ts to the target directory *)
+(** Promote cached artifacts to the target directory *)
 
 val exists : t -> Std.Crypto.hash -> bool
 (** Check if Artifact.ts for a given hash exist in the store *)

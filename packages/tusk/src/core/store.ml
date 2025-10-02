@@ -3,7 +3,6 @@ open Std
 open Model
 (** Store - Content-addressable storage for build artifacts **)
 
-open Core
 module Manifest = Manifest
 
 type t = { root_dir : Path.t (* Root directory for the store *) }

@@ -12,9 +12,7 @@ type plan_result =
 
 type error = string
 
-type entry = string * [ `File of Path.t * string | `Dir of Path.t * entry list ]
-
-let plan_node ~graph ~node ~build_results ~workspace ~session_id ~sandbox_dir ~sources () =
+let plan_node ~graph ~node ~build_results ~workspace ~session_id ~sandbox () =
   Printf.printf "[BUILD_PLANNER] Planning %s\n%!" node.Build_node.package.name;
 
   (* Step 1: Check if all package-level dependencies are already built *)
@@ -66,8 +64,7 @@ let plan_node ~graph ~node ~build_results ~workspace ~session_id ~sandbox_dir ~s
       (* Step 4: All dependencies satisfied - build module graph with provided sandbox *)
       Printf.printf "[BUILD_PLANNER] Building module graph for %s\n%!"
         node.Build_node.package.name;
-      match Module_graph.build ~node ~workspace ~build_graph:graph
-        ~sandbox_dir ~sources with
+      match Module_graph.build ~node ~workspace ~build_graph:graph ~sandbox with
       | Error err ->
           Printf.printf "[BUILD_PLANNER] Module graph failed for %s: %s\n%!"
             node.Build_node.package.name err;
