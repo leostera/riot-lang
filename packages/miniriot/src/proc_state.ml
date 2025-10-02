@@ -25,7 +25,7 @@ let pp fmt t =
   match t with
   | Finished (Ok _) -> Format.fprintf fmt "Finished(Ok _)"
   | Finished (Error exn) ->
-      Format.fprintf fmt "Finished(Error %s)" (Printexc.to_string exn)
+      Format.fprintf fmt "Finished(Error %s)" (Exception.to_string exn)
   | Suspended (_, _) -> Format.fprintf fmt "Suspended"
   | Unhandled (_, _) -> Format.fprintf fmt "Unhandled"
 

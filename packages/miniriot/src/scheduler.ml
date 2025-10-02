@@ -35,7 +35,7 @@ let create () =
         | `Closed -> "Closed"
         | `Connection_closed -> "Connection closed"
         | `Eof -> "End of file"
-        | `Exn e -> Printexc.to_string e
+        | `Exn e -> Exception.to_string e
         | `No_info -> "No info"
         | `Process_down -> "Process down"
         | `Timeout -> "Timeout"
@@ -214,11 +214,11 @@ let handle_run_proc t proc =
   | Proc_state.Finished (Error exn) ->
       (* Always print exception details, not just when tracing is enabled *)
       Printf.printf "[Scheduler] Process %s finished with exception: %s\n%!"
-        pid_str (Printexc.to_string exn);
+        pid_str (Exception.to_string exn);
       Printf.printf "[Scheduler] Backtrace:\n%s\n%!"
-        (Printexc.raw_backtrace_to_string (Printexc.get_raw_backtrace ()));
+        (Exception.raw_backtrace_to_string (Exception.get_raw_backtrace ()));
       Trace.trace "Process %s finished with exception: %s" pid_str
-        (Printexc.to_string exn);
+        (Exception.to_string exn);
       Process.mark_as_exited proc (Error exn);
       add_to_run_queue t proc
   | _ when Process.is_waiting proc ->
