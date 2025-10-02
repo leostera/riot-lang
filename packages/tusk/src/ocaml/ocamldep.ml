@@ -38,30 +38,47 @@ let deps ~toolchain ~cwd ~file ~package_namespace =
   let ocamldep = Path.to_string (Toolchains.ocamldep_path toolchain) in
   let cmd = format "cd %s && %s -modules %s 2>/dev/null" cwd ocamldep file in
 
+  Log.debug "[OCAMLDEP] Running for %s: %s" file cmd;
+
   let deps_str =
     let command = Command.make ~args:[ "-c"; cmd ] "sh" in
     match Command.output command with
     | Ok output -> (
         match String.split_on_char '\n' output.Command.stdout with
-        | line :: _ -> String.trim line
-        | [] -> "")
-    | Error _ -> ""
+        | line :: _ -> 
+            let trimmed = String.trim line in
+            Log.debug "[OCAMLDEP] Result for %s: %s" file trimmed;
+            trimmed
+        | [] ->
+            Log.debug "[OCAMLDEP] Empty output for %s" file;
+            "")
+    | Error _err ->
+        Log.debug "[OCAMLDEP] Error for %s" file;
+        ""
   in
 
-  if deps_str = "" then []
+  if deps_str = "" then (
+    Log.debug "[OCAMLDEP] No deps for %s" file;
+    [])
   else
     (* Output format: "file.ml: Module1 Module2 Module3" *)
     match String.split_on_char ':' deps_str with
     | [ _; deps_part ] ->
         let deps = String.trim deps_part in
-        if deps = "" then []
+        if deps = "" then (
+          Log.debug "[OCAMLDEP] Empty deps part for %s" file;
+          [])
         else
-          String.split_on_char ' ' deps
+          let result = String.split_on_char ' ' deps
           |> List.map String.trim
           |> List.map (fun modname ->
               (* Convert string module name to Module_name.t with proper namespace *)
-              Model.Module_name.of_string ~namespace:package_namespace modname)
-    | _ -> []
+              Model.Module_name.of_string ~namespace:package_namespace modname) in
+          Log.debug "[OCAMLDEP] Parsed %d deps for %s: %s" (List.length result) file deps;
+          result
+    | _ ->
+        Log.debug "[OCAMLDEP] Failed to parse deps for %s: %s" file deps_str;
+        []
 
 (** Get dependencies for a single file with optional flags - returns
     Module_name.t list *)
