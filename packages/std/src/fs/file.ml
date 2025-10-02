@@ -1,6 +1,6 @@
 open Common
 
-type t = { fd : Unix.file_descr; mutable closed : bool }
+type t = { fd : Kernel.Async.Fd.t; mutable closed : bool }
 
 (* Helper to check if file is closed *)
 let ensure_open t =

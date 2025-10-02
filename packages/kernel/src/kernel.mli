@@ -27,6 +27,8 @@ module String = String
 module Buffer = Buffer
 module Bytes = Bytes
 module Seq = Seq
+module Uchar = Uchar
+module Array = Array
 
 (* Re-export global types and functions at top level for convenience *)
 include module type of Global

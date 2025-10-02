@@ -43,6 +43,17 @@ val ( ~+ ) : int -> int
 val abs : int -> int
 val succ : int -> int
 val pred : int -> int
+val max_int : int
+val min_int : int
+
+(* Bitwise operations *)
+val ( land ) : int -> int -> int
+val ( lor ) : int -> int -> int
+val ( lxor ) : int -> int -> int
+val lnot : int -> int
+val ( lsl ) : int -> int -> int
+val ( lsr ) : int -> int -> int
+val ( asr ) : int -> int -> int
 
 (* Float arithmetic *)
 val ( +. ) : float -> float -> float
@@ -51,6 +62,56 @@ val ( *. ) : float -> float -> float
 val ( /. ) : float -> float -> float
 val ( ~-. ) : float -> float
 val ( ~+. ) : float -> float
+val floor : float -> float
+val ceil : float -> float
+val sqrt : float -> float
+val exp : float -> float
+val log : float -> float
+val log10 : float -> float
+val cos : float -> float
+val sin : float -> float
+val tan : float -> float
+val acos : float -> float
+val asin : float -> float
+val atan : float -> float
+val atan2 : float -> float -> float
+val cosh : float -> float
+val sinh : float -> float
+val tanh : float -> float
+val acosh : float -> float
+val asinh : float -> float
+val atanh : float -> float
+val expm1 : float -> float
+val log1p : float -> float
+val copysign : float -> float -> float
+val mod_float : float -> float -> float
+val frexp : float -> float * int
+val ldexp : float -> int -> float
+val modf : float -> float * float
+val float_of_int : int -> float
+val int_of_float : float -> int
+val truncate : float -> int
+val string_of_int : int -> string
+val string_of_float : float -> string
+val int_of_string : string -> int
+val float_of_string : string -> float
+val string_of_bool : bool -> string
+val bool_of_string : string -> bool
+val ( ^ ) : string -> string -> string
+val infinity : float
+val neg_infinity : float
+val nan : float
+val max_float : float
+val min_float : float
+val epsilon_float : float
+type fpclass = Stdlib.fpclass =
+  | FP_normal
+  | FP_subnormal
+  | FP_zero
+  | FP_infinite
+  | FP_nan
+
+val classify_float : float -> fpclass
 
 (* Boolean operations *)
 val not : bool -> bool

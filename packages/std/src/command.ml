@@ -6,8 +6,8 @@ type state =
   | Pending
   | Running of {
       proc : Kernel.System.OsProcess.t;
-      stdout_fd : Unix.file_descr option;
-      stderr_fd : Unix.file_descr option;
+      stdout_fd : Kernel.Async.Fd.t option;
+      stderr_fd : Kernel.Async.Fd.t option;
     }
   | Exited of output
 

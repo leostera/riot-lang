@@ -3,7 +3,7 @@ open Common
 (** File handle for reading and writing *)
 
 type t
-(** Opaque file handle wrapping Unix.file_descr *)
+(** Opaque file handle wrapping Kernel.Async.Fd.t *)
 
 (** {1 Opening Files} *)
 
@@ -107,11 +107,11 @@ val unlock : t -> (unit, error) result
 val try_clone : t -> (t, error) result
 (** Duplicate file descriptor (dup) *)
 
-val into_fd : t -> Unix.file_descr
-(** Extract raw Unix file descriptor *)
+val into_fd : t -> Kernel.Async.Fd.t
+(** Extract raw file descriptor *)
 
-val from_fd : Unix.file_descr -> t
-(** Wrap Unix file descriptor as file handle *)
+val from_fd : Kernel.Async.Fd.t -> t
+(** Wrap file descriptor as file handle *)
 
 (** {1 Closing} *)
 

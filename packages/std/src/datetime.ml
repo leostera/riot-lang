@@ -83,26 +83,7 @@ let from_unix_time unix_time =
     std_offset = 0;
   }
 
-let to_unix t =
-  let tm =
-    {
-      Unix.tm_sec = t.second;
-      tm_min = t.minute;
-      tm_hour = t.hour;
-      tm_mday = t.day;
-      tm_mon = t.month - 1;
-      (* Convert back to 0-11 *)
-      tm_year = t.year - 1900;
-      tm_wday = 0;
-      (* Ignored by mktime *)
-      tm_yday = 0;
-      (* Ignored by mktime *)
-      tm_isdst = false;
-    }
-  in
-  let base_time = fst (Kernel.Time.mktime tm) in
-  let micros, _ = t.microseconds in
-  base_time +. (float_of_int micros /. 1_000_000.0)
+
 
 let to_iso8601 t =
   let micros, _ = t.microseconds in

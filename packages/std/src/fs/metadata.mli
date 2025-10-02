@@ -1,13 +1,5 @@
 type t
-(** File metadata wrapper around Unix.stats *)
-
-(** {1 Conversion} *)
-
-val of_unix : Unix.stats -> t
-(** Create from Unix.stats *)
-
-val to_unix : t -> Unix.stats
-(** Convert to Unix.stats *)
+(** File metadata *)
 
 (** {1 File Properties} *)
 
