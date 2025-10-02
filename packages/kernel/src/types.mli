@@ -25,3 +25,34 @@ val ( >= ) : 'a -> 'a -> bool
 val compare : 'a -> 'a -> int
 val min : 'a -> 'a -> 'a
 val max : 'a -> 'a -> 'a
+
+(* Exception handling *)
+val raise : exn -> 'a
+val raise_notrace : exn -> 'a
+val failwith : string -> 'a
+val invalid_arg : string -> 'a
+
+(* Integer arithmetic *)
+val ( + ) : int -> int -> int
+val ( - ) : int -> int -> int
+val ( * ) : int -> int -> int
+val ( / ) : int -> int -> int
+val ( mod ) : int -> int -> int
+val ( ~- ) : int -> int
+val ( ~+ ) : int -> int
+val abs : int -> int
+val succ : int -> int
+val pred : int -> int
+
+(* Float arithmetic *)
+val ( +. ) : float -> float -> float
+val ( -. ) : float -> float -> float
+val ( *. ) : float -> float -> float
+val ( /. ) : float -> float -> float
+val ( ~-. ) : float -> float
+val ( ~+. ) : float -> float
+
+(* Boolean operations *)
+val not : bool -> bool
+val ( && ) : bool -> bool -> bool
+val ( || ) : bool -> bool -> bool

@@ -25,3 +25,34 @@ let ( >= ) = Stdlib.( >= )
 let compare = Stdlib.compare
 let min = Stdlib.min
 let max = Stdlib.max
+
+(* Exception handling *)
+let raise = Stdlib.raise
+let raise_notrace = Stdlib.raise_notrace
+let failwith = Stdlib.failwith
+let invalid_arg = Stdlib.invalid_arg
+
+(* Integer arithmetic *)
+let ( + ) = Stdlib.( + )
+let ( - ) = Stdlib.( - )
+let ( * ) = Stdlib.( * )
+let ( / ) = Stdlib.( / )
+let ( mod ) = Stdlib.( mod )
+let ( ~- ) = Stdlib.( ~- )
+let ( ~+ ) = Stdlib.( ~+ )
+let abs = Stdlib.abs
+let succ = Stdlib.succ
+let pred = Stdlib.pred
+
+(* Float arithmetic *)
+let ( +. ) = Stdlib.( +. )
+let ( -. ) = Stdlib.( -. )
+let ( *. ) = Stdlib.( *. )
+let ( /. ) = Stdlib.( /. )
+let ( ~-. ) = Stdlib.( ~-. )
+let ( ~+. ) = Stdlib.( ~+. )
+
+(* Boolean operations *)
+let not = Stdlib.not
+let ( && ) = Stdlib.( && )
+let ( || ) = Stdlib.( || )
