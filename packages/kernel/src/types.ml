@@ -12,3 +12,5 @@ type 'a ref = 'a Stdlib.ref = { mutable contents : 'a }
 let ref = Stdlib.ref
 let ( ! ) = Stdlib.( ! )
 let ( := ) = Stdlib.( := )
+let incr = Stdlib.incr
+let decr = Stdlib.decr

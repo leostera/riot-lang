@@ -12,3 +12,5 @@ type 'a ref = 'a Stdlib.ref = { mutable contents : 'a }
 val ref : 'a -> 'a ref
 val ( ! ) : 'a ref -> 'a
 val ( := ) : 'a ref -> 'a -> unit
+val incr : int ref -> unit
+val decr : int ref -> unit
