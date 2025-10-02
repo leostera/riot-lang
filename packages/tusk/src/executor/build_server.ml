@@ -37,8 +37,7 @@ let do_build ~session_id ~client_pid ~build_results ~build_queue ~build_stats
           build_loop ()
       | Worker_pool_types.TaskFailed { worker; node; error } ->
           let pkg_name = node.Build_node.package.name in
-          Log.debug "[BUILD_SERVER] Package %s failed: %s" pkg_name
-            error;
+          Log.debug "[BUILD_SERVER] Package %s failed: %s" pkg_name error;
           Build_queue.mark_as_failed build_queue node ~error;
           failed := pkg_name :: !failed;
           Tusk_protocol.BuildStats.inc_packages_failed build_stats;
@@ -69,7 +68,8 @@ let do_build ~session_id ~client_pid ~build_results ~build_queue ~build_stats
           Build_queue.requeue_with_deps build_queue node ~deps;
 
           let ready, later, busy = Build_queue.get_stats build_queue in
-          Log.debug "[DEBUG] Queue state after requeue: Ready=%d, Later=%d, Busy=%d"
+          Log.debug
+            "[DEBUG] Queue state after requeue: Ready=%d, Later=%d, Busy=%d"
             ready later busy;
           build_loop ()
       | _ ->
@@ -183,8 +183,7 @@ let start ~workspace ~toolchain ~workers ~session_id ~client_pid ~target =
       (* Exit the build process since we can't proceed *)
       Ok ()
   | Ok nodes ->
-      Log.debug "Server: Build starting with %d nodes"
-        (List.length nodes);
+      Log.debug "Server: Build starting with %d nodes" (List.length nodes);
 
       (* Log build started event *)
       let packages = List.map (fun n -> n.Build_node.package.name) nodes in
@@ -211,7 +210,8 @@ let start ~workspace ~toolchain ~workers ~session_id ~client_pid ~target =
 
       (* Debug: Check queue state *)
       let ready, waiting, busy = Build_queue.get_stats build_queue in
-      Log.debug "Server: Queue state - Ready: %d, Waiting: %d, Busy: %d" ready waiting busy;
+      Log.debug "Server: Queue state - Ready: %d, Waiting: %d, Busy: %d" ready
+        waiting busy;
 
       (* 4. create a worker pool to execute this build *)
       Tusk_log.store_creating ~session_id ();
@@ -233,7 +233,8 @@ let start ~workspace ~toolchain ~workers ~session_id ~client_pid ~target =
         Time.Instant.duration_since ~earlier:pool_start (Time.Instant.now ())
         |> Time.Duration.to_millis
       in
-      Tusk_log.worker_pool_created ~session_id ~workers ~duration_ms:pool_duration;
+      Tusk_log.worker_pool_created ~session_id ~workers
+        ~duration_ms:pool_duration;
 
       (* 5. enter the build loop *)
       do_build ~session_id ~client_pid ~build_results ~build_queue ~build_stats

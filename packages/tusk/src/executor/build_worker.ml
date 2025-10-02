@@ -49,8 +49,7 @@ and handle_planning_exception ctx task exn =
           {
             worker = self ();
             node = task.Worker_pool_types.node;
-            error =
-              format "Planning failed: %s" (Exception.to_string exn);
+            error = format "Planning failed: %s" (Exception.to_string exn);
           }));
   worker_loop ctx
 

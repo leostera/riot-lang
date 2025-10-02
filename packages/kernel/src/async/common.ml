@@ -27,8 +27,7 @@ let pp_err fmt = function
       Format.fprintf fmt "Unexpected exceptoin: %s" (Printexc.to_string exn)
   | `No_info -> Format.fprintf fmt "No info"
   | `Would_block -> Format.fprintf fmt "Would block"
-  | `IO_error err ->
-      Format.fprintf fmt "IO_error(%s)" (IO.error_message err)
+  | `IO_error err -> Format.fprintf fmt "IO_error(%s)" (IO.error_message err)
 
 let rec syscall fn =
   match fn () with
@@ -36,4 +35,5 @@ let rec syscall fn =
   | exception Unix.(Unix_error (EINTR, _, _)) -> syscall fn
   | exception Unix.(Unix_error ((EAGAIN | EWOULDBLOCK), _, _)) ->
       Error `Would_block
-  | exception Unix.(Unix_error (reason, _, _)) -> Error (`IO_error (IO.error_of_unix reason))
+  | exception Unix.(Unix_error (reason, _, _)) ->
+      Error (`IO_error (IO.error_of_unix reason))

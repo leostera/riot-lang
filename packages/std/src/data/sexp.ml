@@ -273,8 +273,7 @@ module Csexp = struct
               advance ();
               Atom (parse_atom_content n)
           | _ -> raise (Parse_error "Expected ':' after atom length"))
-      | Some c ->
-          raise (Parse_error (format "Unexpected character '%c'" c))
+      | Some c -> raise (Parse_error (format "Unexpected character '%c'" c))
     and parse_list () =
       let rec loop acc =
         match peek () with
@@ -289,8 +288,7 @@ module Csexp = struct
         | Some c ->
             raise
               (Parse_error
-                 (format "Unexpected character '%c' in list at pos %d" c
-                    !pos))
+                 (format "Unexpected character '%c' in list at pos %d" c !pos))
       in
       loop []
     in
@@ -301,5 +299,4 @@ module Csexp = struct
     with
     | Parse_error msg -> Error msg
     | _ -> Error "Parse error"
-
 end

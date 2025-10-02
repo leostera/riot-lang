@@ -1,7 +1,8 @@
 open Std
 (** CLI module - handles command-line interface *)
 
-let usage_msg = {|
+let usage_msg =
+  {|
    tusk - OCaml build system\n\n\
    Usage: tusk [COMMAND] [OPTIONS]\n\n\
    Commands:\n\

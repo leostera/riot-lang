@@ -85,47 +85,45 @@ let odoc_path toolchain = bin_path toolchain "odoc"
 let parse_toolchain_file path =
   try
     let path_str = Path.to_string path in
-    let toml = Toml.parse_file path_str in
-    (* Look for toolchain.version *)
-    match Toml.find_value "toolchain.version" toml with
-    | Some value -> (
-        (* Check if it's a table with path or url *)
-        (* Check if value is a table with path or url *)
-        match value with
+    match Toml.parse_file path_str with
+    | Error err ->
+        Log.debug "[TOOLCHAINS] Failed to parse toolchain TOML: %s" (Toml.error_to_string err);
+        { version = "5.3.0"; source = Version "5.3.0" }
+    | Ok toml ->
+        (* Pattern match on the nested structure *)
+        match toml with
         | Toml.Table items -> (
-            (* Look for path field *)
-            match List.assoc_opt "path" items with
-            | Some (Toml.String path_str) ->
-                (* For path sources, create a version name from the path *)
-                let source_path = Path.of_string path_str |> Result.unwrap in
-                let version_name =
-                  (* Use basename + "-local" to make it unique *)
-                  format "%s-local" (Path.basename source_path)
-                in
-                { version = version_name; source = Path source_path }
-            | _ -> (
-                (* Look for url field *)
-                match List.assoc_opt "url" items with
-                | Some (Toml.String url_str) ->
-                    (* For URL sources, extract version from URL or use hash *)
-                    let version_name =
-                      (* Try to extract version from URL *)
-                      if String.contains url_str '/' then
-                        let parts = String.split_on_char '/' url_str in
-                        let last = List.hd (List.rev parts) in
-                        if String.contains last '.' then
-                          Path.v last |> Path.remove_extension |> Path.to_string
-                        else last
-                      else "custom"
-                    in
-                    let uri = Net.Uri.of_string url_str |> Result.unwrap in
-                    { version = version_name; source = Url uri }
-                | _ -> default_toolchain))
-        | Toml.String v ->
-            (* It's a string version *)
-            { version = v; source = Version v }
-        | _ -> default_toolchain)
-    | None -> default_toolchain
+            match List.assoc_opt "toolchain" items with
+            | Some (Toml.Table toolchain_items) -> (
+                match List.assoc_opt "version" toolchain_items with
+                | Some (Toml.Table version_items) -> (
+                    (* Check if it's a table with path or url *)
+                    match List.assoc_opt "path" version_items with
+                    | Some (Toml.String path_str) ->
+                        let source_path = Path.of_string path_str |> Result.unwrap in
+                        let version_name = format "%s-local" (Path.basename source_path) in
+                        { version = version_name; source = Path source_path }
+                    | _ -> (
+                        match List.assoc_opt "url" version_items with
+                        | Some (Toml.String url_str) ->
+                            let version_name =
+                              if String.contains url_str '/' then
+                                let parts = String.split_on_char '/' url_str in
+                                let last = List.hd (List.rev parts) in
+                                if String.contains last '.' then
+                                  Path.v last |> Path.remove_extension |> Path.to_string
+                                else last
+                              else "custom"
+                            in
+                            let uri = Net.Uri.of_string url_str |> Result.unwrap in
+                            { version = version_name; source = Url uri }
+                        | _ -> default_toolchain))
+                | Some (Toml.String v) ->
+                    (* It's a string version *)
+                    { version = v; source = Version v }
+                | _ -> default_toolchain)
+            | _ -> default_toolchain)
+        | _ -> default_toolchain
   with _ ->
     (* Default to stable version if file doesn't exist or can't be parsed *)
     default_toolchain
@@ -169,18 +167,16 @@ let build_from_local_source ~source_path ~toolchain_path =
   (* Verify source directory exists *)
   (match Fs.exists source_path with
   | Ok true -> ()
-  | _ ->
-      failwith (format "Source directory does not exist: %s" source_str));
+  | _ -> failwith (format "Source directory does not exist: %s" source_str));
 
   (* Configure *)
   println "Configuring OCaml...";
   let configure_cmd =
-    format "cd %s && ./configure --prefix=%s --disable-ocamldoc"
-      source_str toolchain_str
+    format "cd %s && ./configure --prefix=%s --disable-ocamldoc" source_str
+      toolchain_str
   in
   let success, output = run_command_compat configure_cmd in
-  if not success then
-    failwith (format "Failed to configure OCaml: %s" output);
+  if not success then failwith (format "Failed to configure OCaml: %s" output);
 
   (* Build *)
   println "Building OCaml (this may take a while)...";
@@ -189,15 +185,13 @@ let build_from_local_source ~source_path ~toolchain_path =
   println "Using %d cores for compilation" num_cores;
   let make_cmd = format "cd %s && make -j%d" source_str num_cores in
   let success, output = run_command_compat make_cmd in
-  if not success then
-    failwith (format "Failed to build OCaml: %s" output);
+  if not success then failwith (format "Failed to build OCaml: %s" output);
 
   (* Install *)
   println "Installing OCaml...";
   let install_cmd = format "cd %s && make install" source_str in
   let success, output = run_command_compat install_cmd in
-  if not success then
-    failwith (format "Failed to install OCaml: %s" output);
+  if not success then failwith (format "Failed to install OCaml: %s" output);
 
   println "Successfully built and installed OCaml from %s" source_str
 
@@ -221,16 +215,14 @@ let download_source_from_url uri =
       let success, output = run_command_compat download_cmd in
       if not success then
         failwith (format "Failed to download OCaml: %s" output)
-  | Ok true ->
-      println "Using cached OCaml from %s" (Path.to_string cache_path)
+  | Ok true -> println "Using cached OCaml from %s" (Path.to_string cache_path)
   | Error _ -> failwith "Failed to check cache");
 
   (* Extract to temporary directory *)
   let extract_dir =
     Path.(
       Path.v "/tmp"
-      / Path.v
-          (format "ocaml-build-%d" (System.OsProcess.current_pid ())))
+      / Path.v (format "ocaml-build-%d" (System.OsProcess.current_pid ())))
   in
   let _ = Fs.create_dir_all extract_dir in
 
@@ -241,8 +233,7 @@ let download_source_from_url uri =
       (Path.to_string extract_dir)
   in
   let success, output = run_command_compat extract_cmd in
-  if not success then
-    failwith (format "Failed to extract OCaml: %s" output);
+  if not success then failwith (format "Failed to extract OCaml: %s" output);
 
   (* Find the extracted directory (should be the only subdirectory) *)
   let dirs =
@@ -305,8 +296,7 @@ let download_ocaml_source version =
     Path.(
       Path.v "/tmp"
       / Path.v
-          (format "ocaml-build-%s-%d" version
-             (System.OsProcess.current_pid ())))
+          (format "ocaml-build-%s-%d" version (System.OsProcess.current_pid ())))
   in
   let _ = Fs.create_dir_all extract_dir in
 
@@ -317,8 +307,7 @@ let download_ocaml_source version =
       (Path.to_string extract_dir)
   in
   let success, output = run_command_compat extract_cmd in
-  if not success then
-    failwith (format "Failed to extract OCaml: %s" output);
+  if not success then failwith (format "Failed to extract OCaml: %s" output);
 
   (* The extracted directory might be ocaml-5.3.0 or ocaml-5.3.0 *)
   let possible_dirs =
@@ -356,8 +345,7 @@ let install_dev_tools toolchain =
     println "Development tools already installed for toolchain %s"
       toolchain.version
   else (
-    println "Installing development tools for toolchain %s..."
-      toolchain.version;
+    println "Installing development tools for toolchain %s..." toolchain.version;
 
     (* Determine host triplet *)
     let host_triplet = Std.System.Host.(to_string current) in
@@ -379,9 +367,7 @@ let install_dev_tools toolchain =
 
     (* Use -S to show errors, -f to fail on HTTP errors *)
     let download_cmd =
-      format "curl -fSL -o %s %s 2>&1"
-        (Path.to_string tools_archive)
-        tools_url
+      format "curl -fSL -o %s %s 2>&1" (Path.to_string tools_archive) tools_url
     in
     let success, output = run_command_compat download_cmd in
 
@@ -403,8 +389,8 @@ let install_dev_tools toolchain =
       else failwith (format "Failed to extract tools: %s" output))
     else
       failwith
-        (format "Failed to download pre-built tools from %s: %s"
-           tools_url output))
+        (format "Failed to download pre-built tools from %s: %s" tools_url
+           output))
 
 (** Install a toolchain *)
 let install_toolchain toolchain =

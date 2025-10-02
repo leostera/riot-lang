@@ -316,7 +316,10 @@ let topological_sort graph =
         then cycle_nodes := name :: !cycle_nodes)
       graph.nodes;
 
-    Log.debug "Circular dependency detected: sorted %d nodes but graph has %d nodes" (List.length !sorted) (Hashtbl.length graph.nodes);
+    Log.debug
+      "Circular dependency detected: sorted %d nodes but graph has %d nodes"
+      (List.length !sorted)
+      (Hashtbl.length graph.nodes);
     List.iter
       (fun name -> Log.debug "  Node '%s' is part of a cycle" name)
       !cycle_nodes;
@@ -368,8 +371,7 @@ let size graph = Hashtbl.length graph.nodes
 let filter_for_package graph target_pkg_name =
   match Hashtbl.find_opt graph.nodes target_pkg_name with
   | None ->
-      failwith
-        (format "Package '%s' not found in workspace" target_pkg_name)
+      failwith (format "Package '%s' not found in workspace" target_pkg_name)
   | Some target_node ->
       (* Collect target and all its transitive dependencies *)
       let rec collect_deps node visited =

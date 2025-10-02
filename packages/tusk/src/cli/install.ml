@@ -40,9 +40,7 @@ let build_package package_name =
             in
             if should_display then
               let formatted = Event_formatter.format event in
-              if formatted <> "" then (
-                println "%s" formatted;
-                )
+              if formatted <> "" then println "%s" formatted
         | Tusk_jsonrpc.Client.BuildFinished _ ->
             (* This is handled below in the result match *)
             ())
@@ -69,8 +67,7 @@ let run args =
     (* First, build the package *)
     println "Building %s..." package_name;
     if not (build_package package_name) then (
-      println "\n❌ Failed to build %s, nothing was installed"
-        package_name;
+      println "\n❌ Failed to build %s, nothing was installed" package_name;
       Error (Failure (format "Failed to build %s" package_name)))
     else
       (* Look for the binary in various locations *)
@@ -101,9 +98,9 @@ let run args =
       with
       | None ->
           println "❌ Binary for %s not found after build" package_name;
-          println "Note: Only packages with main.ml produce installable binaries";
-          Error
-            (Failure (format "Binary not found for %s" package_name))
+          println
+            "Note: Only packages with main.ml produce installable binaries";
+          Error (Failure (format "Binary not found for %s" package_name))
       | Some binary_path -> (
           (* Create ~/.tusk/bin if it doesn't exist *)
           let home =
@@ -128,10 +125,10 @@ let run args =
               println "✅ Installed %s to %s" package_name
                 (Path.to_string dest_path);
               println "";
-              println "To use %s from anywhere, add ~/.tusk/bin to your PATH:" package_name;
+              println "To use %s from anywhere, add ~/.tusk/bin to your PATH:"
+                package_name;
               println "  export PATH='$HOME/.tusk/bin:$PATH'";
               Ok ()
           | _ ->
               println "❌ Failed to install %s" package_name;
-              Error
-                (Failure (format "Failed to install %s" package_name)))
+              Error (Failure (format "Failed to install %s" package_name)))

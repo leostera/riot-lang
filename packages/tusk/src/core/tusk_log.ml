@@ -31,8 +31,7 @@ let rec logger_loop state =
   match receive ~selector () with
   | Log event ->
       (* Log to stdout if handler exists *)
-      if state.stdout_handler then
-        println "%s" (Event.to_string event);
+      if state.stdout_handler then println "%s" (Event.to_string event);
 
       (* Send to session-specific RPC handlers *)
       (match Hashtbl.find_opt state.handlers event.session_id with

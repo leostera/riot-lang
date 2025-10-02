@@ -38,9 +38,7 @@ let format_file ~toolchain ~file_path ~check_only =
     let ocamlformat_bin =
       Path.to_string (Toolchains.ocamlformat_path toolchain)
     in
-    let cmd_str =
-      format "%s %s %s" ocamlformat_bin check_flag file_str
-    in
+    let cmd_str = format "%s %s %s" ocamlformat_bin check_flag file_str in
     let cmd = Command.make ~args:[ "-c"; cmd_str ] "sh" in
 
     match Command.output cmd with
@@ -55,9 +53,7 @@ let format_file ~toolchain ~file_path ~check_only =
           | Error (Fs.SystemError err) ->
               Error (format "Failed to read formatted file: %s" err))
     | Ok output ->
-        Error
-          (format "ocamlformat failed with status %d"
-             output.Command.status)
+        Error (format "ocamlformat failed with status %d" output.Command.status)
     | Error (Command.SystemError msg) -> Error msg
 
 let format_code ~toolchain ~code ~file_path =
@@ -71,9 +67,7 @@ let format_code ~toolchain ~code ~file_path =
   in
 
   let temp_file =
-    format "/tmp/tusk_format_%d%s"
-      (System.OsProcess.current_pid ())
-      extension
+    format "/tmp/tusk_format_%d%s" (System.OsProcess.current_pid ()) extension
   in
 
   let temp_file_path = Path.of_string temp_file |> Result.unwrap in
@@ -86,8 +80,8 @@ let format_code ~toolchain ~code ~file_path =
           Path.to_string (Toolchains.ocamlformat_path toolchain)
         in
         let cmd_str =
-          format "%s --enable-outside-detected-project %s"
-            ocamlformat_bin temp_file
+          format "%s --enable-outside-detected-project %s" ocamlformat_bin
+            temp_file
         in
         let cmd = Command.make ~args:[ "-c"; cmd_str ] "sh" in
         match Command.output cmd with
@@ -101,8 +95,7 @@ let format_code ~toolchain ~code ~file_path =
             Formatted { code = output.Command.stdout; changed }
         | Ok output ->
             Error
-              (format "ocamlformat failed with status %d"
-                 output.Command.status)
+              (format "ocamlformat failed with status %d" output.Command.status)
         | Error (Command.SystemError msg) -> Error msg
       in
       (* Clean up temp file *)

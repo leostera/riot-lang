@@ -116,11 +116,17 @@ module Ocamlc = struct
   let compile_interface ?(cwd = "") ~includes ~flags ~output source =
     (* Include current directory for .cmi files *)
     let includes_with_dot = "." :: includes in
-    
+
     (* Add stdlib path if -nostdlib is used (needed for camlinternalFormatBasics) *)
-    let has_nostdlib = List.exists (function NoStdlib -> true | _ -> false) flags in
-    let stdlib_path = Filename.concat (Filename.dirname (Filename.dirname ocamlc_path)) "lib/ocaml" in
-    let final_includes = 
+    let has_nostdlib =
+      List.exists (function NoStdlib -> true | _ -> false) flags
+    in
+    let stdlib_path =
+      Filename.concat
+        (Filename.dirname (Filename.dirname ocamlc_path))
+        "lib/ocaml"
+    in
+    let final_includes =
       if has_nostdlib then stdlib_path :: includes_with_dot
       else includes_with_dot
     in
@@ -151,11 +157,17 @@ module Ocamlc = struct
   let compile_impl ?(cwd = "") ~includes ~flags ~output source =
     (* Include current directory for .cmi files *)
     let includes_with_dot = "." :: includes in
-    
+
     (* Add stdlib path if -nostdlib is used (needed for camlinternalFormatBasics) *)
-    let has_nostdlib = List.exists (function NoStdlib -> true | _ -> false) flags in
-    let stdlib_path = Filename.concat (Filename.dirname (Filename.dirname ocamlc_path)) "lib/ocaml" in
-    let final_includes = 
+    let has_nostdlib =
+      List.exists (function NoStdlib -> true | _ -> false) flags
+    in
+    let stdlib_path =
+      Filename.concat
+        (Filename.dirname (Filename.dirname ocamlc_path))
+        "lib/ocaml"
+    in
+    let final_includes =
       if has_nostdlib then stdlib_path :: includes_with_dot
       else includes_with_dot
     in

@@ -10,9 +10,18 @@ let file_type t =
   | Kernel.IO.Fifo -> `Fifo
   | Kernel.IO.Socket -> `Socket
 
-let is_file t = Kernel.IO.file_kind_of_unix (Kernel.Fs.File.Metadata.kind t) = Kernel.IO.Regular
-let is_dir t = Kernel.IO.file_kind_of_unix (Kernel.Fs.File.Metadata.kind t) = Kernel.IO.Directory
-let is_symlink t = Kernel.IO.file_kind_of_unix (Kernel.Fs.File.Metadata.kind t) = Kernel.IO.Symlink
+let is_file t =
+  Kernel.IO.file_kind_of_unix (Kernel.Fs.File.Metadata.kind t)
+  = Kernel.IO.Regular
+
+let is_dir t =
+  Kernel.IO.file_kind_of_unix (Kernel.Fs.File.Metadata.kind t)
+  = Kernel.IO.Directory
+
+let is_symlink t =
+  Kernel.IO.file_kind_of_unix (Kernel.Fs.File.Metadata.kind t)
+  = Kernel.IO.Symlink
+
 let len t = Kernel.Fs.File.Metadata.size t
 let permissions t = Permissions.of_mode (Kernel.Fs.File.Metadata.perm t)
 let accessed t = Kernel.Fs.File.Metadata.atime t

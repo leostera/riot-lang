@@ -71,8 +71,8 @@ let action_to_string action =
               "warning:[" ^ String.concat ";" warning_strs ^ "]")
         |> String.concat ","
       in
-      format "compile_interface(%s,%s,[%s],[%s])"
-        (Path.to_string source) (Path.to_string output)
+      format "compile_interface(%s,%s,[%s],[%s])" (Path.to_string source)
+        (Path.to_string output)
         (String.concat "," (List.map Path.to_string includes))
         flags_str
   | CompileImplementation { source; output; includes; flags } ->
@@ -122,8 +122,7 @@ let action_to_string action =
         (String.concat "," (List.map Path.to_string includes))
         flags_str
   | CompileC { source; output } ->
-      format "compile_c(%s,%s)" (Path.to_string source)
-        (Path.to_string output)
+      format "compile_c(%s,%s)" (Path.to_string source) (Path.to_string output)
   | CreateLibrary { output; objects; includes } ->
       format "create_library(%s,[%s],[%s])" (Path.to_string output)
         (String.concat "," (List.map Path.to_string objects))
@@ -137,8 +136,7 @@ let action_to_string action =
       format "copydir(%s,%s)" (Path.to_string source)
         (Path.to_string destination)
   | CopyFile { source; destination } ->
-      format "copy(%s,%s)" (Path.to_string source)
-        (Path.to_string destination)
+      format "copy(%s,%s)" (Path.to_string source) (Path.to_string destination)
   | WriteFile { destination; content } ->
       format "write(%s,%d bytes)"
         (Path.to_string destination)
@@ -150,20 +148,19 @@ let action_to_string action =
 (** Pretty print an action *)
 let string_of_action = function
   | CompileInterface { source; output; includes } ->
-      format "compile_interface(%s -> %s) [includes: %s]"
-        (Path.basename source) (Path.basename output)
+      format "compile_interface(%s -> %s) [includes: %s]" (Path.basename source)
+        (Path.basename output)
         (String.concat "; " (List.map Path.to_string includes))
   | CompileImplementation { source; output; includes } ->
-      format "compile_impl(%s -> %s) [includes: %s]"
-        (Path.basename source) (Path.basename output)
+      format "compile_impl(%s -> %s) [includes: %s]" (Path.basename source)
+        (Path.basename output)
         (String.concat "; " (List.map Path.to_string includes))
   | GenerateInterface { source; output; includes } ->
       format "generate_interface(%s -> %s) [includes: %s]"
         (Path.basename source) (Path.basename output)
         (String.concat "; " (List.map Path.to_string includes))
   | CompileC { source; output } ->
-      format "compile_c(%s -> %s)" (Path.basename source)
-        (Path.basename output)
+      format "compile_c(%s -> %s)" (Path.basename source) (Path.basename output)
   | CreateLibrary { output; objects; includes } ->
       format "create_library(%s from [%s]) [includes: %s]"
         (Path.basename output)
@@ -179,8 +176,7 @@ let string_of_action = function
       format "copydir(%s -> %s)" (Path.to_string source)
         (Path.to_string destination)
   | CopyFile { source; destination } ->
-      format "copy(%s -> %s)" (Path.basename source)
-        (Path.basename destination)
+      format "copy(%s -> %s)" (Path.basename source) (Path.basename destination)
   | WriteFile { destination; content } ->
       format "write(%s, %d bytes)"
         (Path.to_string destination)
@@ -241,20 +237,23 @@ let execute_action action toolchain cwd =
       | CopyDir { source; destination } -> (
           try
             (* Use cp -r to recursively copy directory *)
-            let cmd = Command.make ~args:["-r"; Path.to_string source; Path.to_string destination] "cp" in
+            let cmd =
+              Command.make
+                ~args:
+                  [ "-r"; Path.to_string source; Path.to_string destination ]
+                "cp"
+            in
             let result = Command.status cmd in
             match result with
             | Ok 0 ->
-              ( Success,
-                format "Copied directory %s to %s"
-                  (Path.to_string source)
-                  (Path.to_string destination) )
+                ( Success,
+                  format "Copied directory %s to %s" (Path.to_string source)
+                    (Path.to_string destination) )
             | Ok exit_code ->
-              ( Failed (format "cp command failed with exit code %d" exit_code),
-                "" )
+                ( Failed (format "cp command failed with exit code %d" exit_code),
+                  "" )
             | Error (Command.SystemError err) ->
-              ( Failed (format "cp command failed: %s" err),
-                "" )
+                (Failed (format "cp command failed: %s" err), "")
           with exn -> (Failed (Exception.to_string exn), ""))
       | CopyFile { source; destination } -> (
           try
@@ -290,9 +289,7 @@ let execute_action action toolchain cwd =
           with exn -> (Failed (Exception.to_string exn), ""))
       | DeclareOutputs { outputs } ->
           (* Just record the expected outputs - don't validate yet as they haven't been built *)
-          ( Success,
-            format "Declared %d expected outputs" (List.length outputs)
-          )
+          (Success, format "Declared %d expected outputs" (List.length outputs))
     with exn ->
       (* Ensure directory is restored even on exception *)
       Env.set_current_dir original_dir;

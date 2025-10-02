@@ -7,7 +7,6 @@ open Core
 open Tusk_protocol
 open Ocaml
 open Executor
-
 module Log = Std.Log
 
 type t = Pid.t
@@ -38,7 +37,7 @@ let rec loop state =
 
   Log.trace "Server loop waiting for message...";
   match receive ~selector () with
-  | Ping { client_pid } -> 
+  | Ping { client_pid } ->
       Log.debug "Server loop received: Ping";
       handle_ping state client_pid
   | Build { client_pid; target; session_id } ->
@@ -53,7 +52,7 @@ let rec loop state =
   | GetPackageInfo { client_pid; package_name } ->
       Log.debug "Server loop received: GetPackageInfo";
       handle_get_package_info state client_pid package_name
-  | GetBuildGraph { client_pid } -> 
+  | GetBuildGraph { client_pid } ->
       Log.debug "Server loop received: GetBuildGraph";
       handle_get_build_graph state client_pid
   | FormatFile { client_pid; file_path; check_only } ->
@@ -62,7 +61,7 @@ let rec loop state =
   | FormatCode { client_pid; code; file_path } ->
       Log.debug "Server loop received: FormatCode";
       handle_format_code state client_pid code file_path
-  | FormatAll { client_pid; mode } -> 
+  | FormatAll { client_pid; mode } ->
       Log.debug "Server loop received: FormatAll";
       handle_format_all state client_pid mode
   | NewPackage { client_pid; path; name; is_library } ->
@@ -172,8 +171,7 @@ and handle_get_package_info state client_pid package_name =
 
 (** Handler for getting the build graph. *)
 and handle_get_build_graph state client_pid =
-  Log.debug "Server: Received GetBuildGraph from %s"
-    (Pid.to_string client_pid);
+  Log.debug "Server: Received GetBuildGraph from %s" (Pid.to_string client_pid);
 
   (* Get all nodes from the build graph using topological sort *)
   let nodes =
@@ -203,8 +201,7 @@ and handle_format_file state client_pid file_path check_only =
   loop state
 
 and handle_format_code state client_pid code file_path =
-  Log.debug "Server: Received FormatCode from %s"
-    (Pid.to_string client_pid);
+  Log.debug "Server: Received FormatCode from %s" (Pid.to_string client_pid);
 
   let response =
     match
@@ -284,9 +281,7 @@ and handle_new_package state client_pid path name is_library =
 (** Handler for the build message. *)
 and handle_build state client_pid target session_id =
   Log.debug "Server: handle_build called for target: %s"
-    (match target with
-    | All -> "All"
-    | Package p -> format "Package(%s)" p);
+    (match target with All -> "All" | Package p -> format "Package(%s)" p);
   Build_server.start ~workspace:state.workspace ~toolchain:state.toolchain
     ~workers:state.workers ~session_id ~client_pid ~target;
   loop state
@@ -303,15 +298,15 @@ let start_tcp_server ~server ~port =
       Log.debug "reply() called with: %s" msg;
       let bytes = Bytes.of_string (msg ^ "\n") in
       Log.debug "Writing %d bytes to stream" (Bytes.length bytes);
-      match Net.TcpStream.write stream bytes ~pos:0 ~len:(Bytes.length bytes) () with
+      match
+        Net.TcpStream.write stream bytes ~pos:0 ~len:(Bytes.length bytes) ()
+      with
       | Ok bytes_written ->
           Log.debug "Successfully wrote %d bytes" bytes_written;
           ()
       | Error e ->
-          Log.error "Failed to write to stream: %s" 
-            (match e with
-            | `Closed -> "closed"
-            | `System_error msg -> msg);
+          Log.error "Failed to write to stream: %s"
+            (match e with `Closed -> "closed" | `System_error msg -> msg);
           failwith "network write failed"
     in
     Log.debug "Calling Jsonrpc.Server.handle_message";
@@ -332,14 +327,19 @@ let write_daemon_files ~workspace ~port =
   in
   let root_str = Path.to_string workspace.Workspace.root in
   let project_id = format "%08x" (Hashtbl.hash root_str) in
-  let daemon_path = Path.(home / Path.v ".tusk" / Path.v "daemons" / Path.v project_id) in
-  
-  let _ = Fs.create_dir_all daemon_path |> Result.expect ~msg:"Failed to create daemon dir" in
-  
+  let daemon_path =
+    Path.(home / Path.v ".tusk" / Path.v "daemons" / Path.v project_id)
+  in
+
+  let _ =
+    Fs.create_dir_all daemon_path
+    |> Result.expect ~msg:"Failed to create daemon dir"
+  in
+
   let pid = Kernel.System.OsProcess.current_pid () in
   let pid_file = Path.(daemon_path / Path.v "server.pid") in
   let port_file = Path.(daemon_path / Path.v "server.port") in
-  
+
   let _ = Fs.write (string_of_int pid) pid_file in
   let _ = Fs.write (string_of_int port) port_file in
   Log.debug "Wrote daemon files: pid=%d, port=%d" pid port
@@ -349,34 +349,34 @@ let init ~current_dir ~workers ~port =
   Log.info "Tusk server initializing...";
   Log.debug "Current dir: %s" (Path.to_string current_dir);
   Log.debug "Workers: %d, Port: %d" workers port;
-  
+
   let server_pid = self () in
   Log.trace "Server PID: %s" (Pid.to_string server_pid);
-  
+
   Log.info "Scanning workspace...";
   let workspace =
     Workspace_manager.scan current_dir
     |> Result.expect ~msg:"tusk_server: operation failed"
   in
-  Log.info "Workspace scanned successfully: %d packages found" 
+  Log.info "Workspace scanned successfully: %d packages found"
     (List.length workspace.packages);
-  
+
   Log.info "Loading toolchains...";
   let toolchain = Toolchains.ready_toolchains workspace in
-  Log.info "Toolchain ready: %s" 
+  Log.info "Toolchain ready: %s"
     (Path.to_string (Toolchains.get_toolchain_path toolchain));
-  
+
   Log.info "Building dependency graph...";
   let build_graph = Build_graph.create workspace toolchain in
   Log.info "Build graph created with %d nodes" (Build_graph.size build_graph);
-  
+
   let build_results = Build_results.create () in
   let build_queue = Build_queue.create build_results in
-  
+
   Log.info "Starting TCP server on port %d..." port;
   let _ = start_tcp_server ~server:server_pid ~port in
   Log.info "TCP server started successfully";
-  
+
   write_daemon_files ~workspace ~port;
 
   let state =

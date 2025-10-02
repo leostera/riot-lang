@@ -17,17 +17,14 @@ let level_to_string = function
   | Error -> "ERROR"
 
 let current_level = ref Info
-
 let set_level level = current_level := level
 let get_level () = !current_level
-
 let should_log level = level_to_int level >= level_to_int !current_level
 
 let log level fmt =
   if should_log level then
     Printf.ksprintf
-      (fun msg ->
-         Printf.eprintf "[%s] %s\n%!" (level_to_string level) msg)
+      (fun msg -> Printf.eprintf "[%s] %s\n%!" (level_to_string level) msg)
       fmt
   else Printf.ifprintf () fmt
 

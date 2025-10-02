@@ -12,8 +12,8 @@ let format (event : Event.t) =
       else format "   \027[1;31mFailed\027[0m %s" package
   | PackageSkipped _ -> "" (* Don't show skipped packages *)
   | CacheHit { package; _ } ->
-      format
-        "   \027[1;32mCompiling\027[0m %s \027[1;90m(cached)\027[0m" package
+      format "   \027[1;32mCompiling\027[0m %s \027[1;90m(cached)\027[0m"
+        package
   | CacheMiss { package; _ } ->
       format "   \027[1;32mCompiling\027[0m %s" package
   | CompileError { package = _; error } ->
@@ -24,6 +24,5 @@ let format (event : Event.t) =
         format "   \027[1;32mFinished\027[0m in %.2fs"
           (float_of_int duration_ms /. 1000.0)
       else
-        format "   \027[1;31mFailed\027[0m with %d errors"
-          (List.length failed)
+        format "   \027[1;31mFailed\027[0m with %d errors" (List.length failed)
   | _ -> ""

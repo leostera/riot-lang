@@ -35,7 +35,8 @@ let run args =
     println "Available RPC commands:";
     println "  tusk rpc ping              - Test server connectivity";
     println "  tusk rpc workspace         - Get workspace information";
-    println "  tusk rpc package <name>    - Get package details including sources";
+    println
+      "  tusk rpc package <name>    - Get package details including sources";
     println "  tusk rpc graph             - Get build graph";
     println "  tusk rpc build [package]   - Build all or specific package";
     println "  tusk rpc restart           - Restart the server";
@@ -203,13 +204,11 @@ let run args =
                 ("session_id", Json.String (Session_id.to_string sid));
               ]
           in
-          println "%s" (Json.to_string json);
-          
+          println "%s" (Json.to_string json)
       | Tusk_jsonrpc.Client.BuildEvent event ->
           (* Use Event.to_json for all events *)
           let json = Event.to_json event in
-          println "%s" (Json.to_string json);
-          
+          println "%s" (Json.to_string json)
       | Tusk_jsonrpc.Client.BuildFinished result ->
           let json =
             match result with
@@ -220,8 +219,7 @@ let run args =
                     ("type", Json.String "error"); ("message", Json.String msg);
                   ]
           in
-          println "%s" (Json.to_string json);
-          
+          println "%s" (Json.to_string json)
     in
     let result = Tusk_jsonrpc.Client.build_streaming client request callback in
     Tusk_jsonrpc.Client.close client;

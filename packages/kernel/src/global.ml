@@ -1,6 +1,9 @@
 (** Common types re-exported from Stdlib for use in nostdlib packages *)
 
-type ('value, 'error) result = ('value, 'error) Result.t = Ok of 'value | Error of 'error
+type ('value, 'error) result = ('value, 'error) Result.t =
+  | Ok of 'value
+  | Error of 'error
+
 type 'a option = 'a Option.t = None | Some of 'a
 
 (* Format types needed for Format.formatter *)
@@ -18,6 +21,7 @@ let println fmt = Printf.ksprintf (fun s -> Printf.printf "%s\n%!" s) fmt
 
 (* Reference type and operations *)
 type 'a ref = 'a Stdlib.ref = { mutable contents : 'a }
+
 let ref = Stdlib.ref
 let ( ! ) = Stdlib.( ! )
 let ( := ) = Stdlib.( := )
@@ -37,6 +41,7 @@ let max = Stdlib.max
 
 (* Exception handling *)
 exception Exit = Stdlib.Exit
+
 let raise = Stdlib.raise
 let raise_notrace = Stdlib.raise_notrace
 let failwith = Stdlib.failwith
@@ -119,6 +124,7 @@ let nan = Stdlib.nan
 let max_float = Stdlib.max_float
 let min_float = Stdlib.min_float
 let epsilon_float = Stdlib.epsilon_float
+
 type fpclass = Stdlib.fpclass =
   | FP_normal
   | FP_subnormal

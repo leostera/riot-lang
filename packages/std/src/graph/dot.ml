@@ -50,9 +50,7 @@ let format_attrs attrs =
   if attrs = [] then ""
   else
     let attr_strs =
-      List.map
-        (fun (k, v) -> format "%s=\"%s\"" k (escape_string v))
-        attrs
+      List.map (fun (k, v) -> format "%s=\"%s\"" k (escape_string v)) attrs
     in
     format " [%s]" (String.concat ", " attr_strs)
 

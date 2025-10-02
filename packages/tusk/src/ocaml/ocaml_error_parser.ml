@@ -21,7 +21,6 @@ type error_info = {
 let parse_location _line = None
 
 let classify_error _lines = OtherError "Error classification not implemented"
-
 let extract_hint _lines = ""
 
 let parse_error_message raw_output =
@@ -35,11 +34,7 @@ let parse_error_message raw_output =
   }
 
 let parse_errors _output = []
-
 let format_error_short _err = "Error details not available"
-
 let format_error_long _err = "Error details not available"
-
 let suggest_fixes _err = []
-
 let get_primary_error _output : error_info option = None

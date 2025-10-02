@@ -81,9 +81,9 @@ let topo_sort graph =
   (* Find nodes with no incoming edges *)
   let queue = Queue.create () in
   let initial_nodes =
-    Hashtbl.fold (fun id count acc ->
-      if count = 0 then id :: acc else acc
-    ) in_degree []
+    Hashtbl.fold
+      (fun id count acc -> if count = 0 then id :: acc else acc)
+      in_degree []
     |> List.sort (fun a b -> Int.compare (Node_id.to_int a) (Node_id.to_int b))
   in
   List.iter (fun id -> Queue.add id queue) initial_nodes;
@@ -99,8 +99,10 @@ let topo_sort graph =
     incr processed;
 
     (* Decrease in-degree of nodes that depend on this one *)
-    let rev_deps = Hashtbl.find reverse_deps id
-      |> List.sort (fun a b -> Int.compare (Node_id.to_int a) (Node_id.to_int b))
+    let rev_deps =
+      Hashtbl.find reverse_deps id
+      |> List.sort (fun a b ->
+          Int.compare (Node_id.to_int a) (Node_id.to_int b))
     in
     List.iter
       (fun dependent_id ->

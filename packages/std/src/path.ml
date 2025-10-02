@@ -43,8 +43,7 @@ let of_string s =
   if is_valid_utf8 s then Result.ok s else Result.err (InvalidUtf8 { path = s })
 
 let v path =
-  of_string path
-  |> Result.expect ~msg:(format "Invalid string path %S" path)
+  of_string path |> Result.expect ~msg:(format "Invalid string path %S" path)
 
 let to_string t = t
 
@@ -142,15 +141,15 @@ let strip_prefix path ~prefix =
         (* Ran out of path before consuming prefix *)
         Result.err
           (SystemError
-             (format "Path %s does not start with prefix %s"
-                (to_string path) (to_string prefix)))
+             (format "Path %s does not start with prefix %s" (to_string path)
+                (to_string prefix)))
     | p :: path_rest, pre :: prefix_rest ->
         if to_string p = to_string pre then consume path_rest prefix_rest
         else
           Result.err
             (SystemError
-               (format "Path %s does not start with prefix %s"
-                  (to_string path) (to_string prefix)))
+               (format "Path %s does not start with prefix %s" (to_string path)
+                  (to_string prefix)))
   in
 
   match consume path_components prefix_components with

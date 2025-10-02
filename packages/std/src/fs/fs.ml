@@ -155,7 +155,7 @@ let set_permissions path perm =
 let write content path =
   let path_str = Path.to_string path in
   let open Kernel.Fs.File in
-  match open_file path_str [WriteOnly; Create; Truncate] 0o644 with
+  match open_file path_str [ WriteOnly; Create; Truncate ] 0o644 with
   | Error e -> Error (SystemError (kernel_error_to_string e))
   | Ok fd -> (
       let buf = Bytes.of_string content in

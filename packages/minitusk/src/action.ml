@@ -122,10 +122,10 @@ let execute_action ~project_root ~package_name action =
       (* For non-kernel packages: add -nopervasives -nostdlib and open Kernel *)
       let flags =
         if package_name = "Kernel" then base_flags
-        else 
-          [Ocaml_platform.Open "Kernel"] 
-          @ base_flags 
-          @ [Ocaml_platform.NoPervasives; Ocaml_platform.NoStdlib]
+        else
+          [ Ocaml_platform.Open "Kernel" ]
+          @ base_flags
+          @ [ Ocaml_platform.NoPervasives; Ocaml_platform.NoStdlib ]
       in
       (* Now we're in sandbox_dir, so use relative paths *)
       match
@@ -143,12 +143,11 @@ let execute_action ~project_root ~package_name action =
       let base_flags = List.map (fun m -> Ocaml_platform.Open m) opens in
       (* For non-kernel packages: add -nopervasives -nostdlib and open Kernel *)
       let kernel_open =
-        if package_name = "Kernel" then []
-        else [Ocaml_platform.Open "Kernel"]
+        if package_name = "Kernel" then [] else [ Ocaml_platform.Open "Kernel" ]
       in
       let stdlib_flags =
         if package_name = "Kernel" then []
-        else [Ocaml_platform.NoPervasives; Ocaml_platform.NoStdlib]
+        else [ Ocaml_platform.NoPervasives; Ocaml_platform.NoStdlib ]
       in
       let flags =
         kernel_open @ base_flags @ stdlib_flags
@@ -194,12 +193,9 @@ let execute_action ~project_root ~package_name action =
           dependencies
       in
       (* Only link unix.cma for kernel package or packages that depend on kernel *)
-      let needs_unix = 
-        exe_name = "kernel" || List.mem "Kernel" dependencies
-      in
-      let libs = 
-        (if needs_unix then [ "unix.cma" ] else [])
-        @ dep_archives @ [ archive ]
+      let needs_unix = exe_name = "kernel" || List.mem "Kernel" dependencies in
+      let libs =
+        (if needs_unix then [ "unix.cma" ] else []) @ dep_archives @ [ archive ]
       in
       (* Everything is in the current sandbox directory *)
       (* Add +unix to includes if we need the unix library *)
@@ -226,7 +222,7 @@ let execute_build_plan ~build_results plan =
   let sandbox_dir = plan.sandbox_dir in
   (* Get package name *)
   let package_name = Dep_graph.Module_name.to_string plan.package_name in
-  
+
   (* 1. Remove old sandbox if it exists *)
   Io.rm_rf sandbox_dir;
 
@@ -241,7 +237,9 @@ let execute_build_plan ~build_results plan =
   Printf.printf "Working in: %s\n" (Io.getcwd ());
 
   (* 5. Execute all actions *)
-  List.iter (execute_action ~project_root:original_cwd ~package_name) plan.actions;
+  List.iter
+    (execute_action ~project_root:original_cwd ~package_name)
+    plan.actions;
 
   (* 6. Restore original directory *)
   Io.chdir original_cwd

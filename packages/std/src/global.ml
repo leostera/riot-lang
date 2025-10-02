@@ -15,7 +15,9 @@ let cell x = Cell.create x
 let format = Kernel.format
 
 (** Print to stdout with flush *)
-let print fmt = Kernel.Printf.ksprintf (fun s -> Kernel.Printf.printf "%s%!" s) fmt
+let print fmt =
+  Kernel.Printf.ksprintf (fun s -> Kernel.Printf.printf "%s%!" s) fmt
 
 (** Print to stdout with newline and flush *)
-let println fmt = Kernel.Printf.ksprintf (fun s -> Kernel.Printf.printf "%s\n%!" s) fmt
+let println fmt =
+  Kernel.Printf.ksprintf (fun s -> Kernel.Printf.printf "%s\n%!" s) fmt

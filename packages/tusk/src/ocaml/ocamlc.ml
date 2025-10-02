@@ -113,8 +113,8 @@ let run ~toolchain ~cwd ?(includes = []) ?(libs = []) ?(output = None)
   | Ok output when output.Command.status = 0 -> Success output.Command.stdout
   | Ok output ->
       Failed
-        (format "Command failed with status %d: %s"
-           output.Command.status output.Command.stderr)
+        (format "Command failed with status %d: %s" output.Command.status
+           output.Command.stderr)
   | Error (Command.SystemError msg) -> Failed msg
 
 (** Compile an interface file (.mli -> .cmi) *)
@@ -144,8 +144,8 @@ let compile_interface ~toolchain ~cwd ~includes ~flags ~output source =
     | Ok output when output.Command.status = 0 -> Success output.Command.stdout
     | Ok output ->
         Failed
-          (format "Command failed with status %d: %s"
-             output.Command.status output.Command.stderr)
+          (format "Command failed with status %d: %s" output.Command.status
+             output.Command.stderr)
     | Error (Command.SystemError msg) -> Failed msg
   else
     run ~toolchain ~cwd ~includes:includes_with_dot ~output:(Some output)
@@ -177,8 +177,8 @@ let compile_impl ~toolchain ~cwd ~includes ~flags ~output source =
     | Ok output when output.Command.status = 0 -> Success output.Command.stdout
     | Ok output ->
         Failed
-          (format "Command failed with status %d: %s"
-             output.Command.status output.Command.stderr)
+          (format "Command failed with status %d: %s" output.Command.status
+             output.Command.stderr)
     | Error (Command.SystemError msg) -> Failed msg
   else
     run ~toolchain ~cwd ~includes:includes_with_dot ~output:(Some output)
@@ -215,8 +215,8 @@ let generate_interface ~toolchain ~cwd ~includes ~flags ~output source =
       else
         (* Include stderr in the error message for debugging *)
         Failed
-          (format "ocamlc -i failed with exit code %d: %s"
-             out.Command.status out.Command.stderr)
+          (format "ocamlc -i failed with exit code %d: %s" out.Command.status
+             out.Command.stderr)
   | Error (Command.SystemError msg) -> Failed msg
 
 (** Compile a C file *)

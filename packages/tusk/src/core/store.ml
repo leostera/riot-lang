@@ -142,8 +142,7 @@ let store_artifacts store ~package hash sandbox_dir declared_outputs =
       ~files:(List.rev stored_files_with_sizes)
   in
   let manifest_path = Path.(hash_dir / Path.v "manifest.json") in
-  Log.debug "[Store] Saving manifest to %s"
-    (Path.to_string manifest_path);
+  Log.debug "[Store] Saving manifest to %s" (Path.to_string manifest_path);
   let _ =
     Manifest.save manifest ~path:manifest_path
     |> Result.expect ~msg:"Failed to save manifest"

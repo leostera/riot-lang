@@ -15,11 +15,19 @@ type error =
   | Unterminated_string of { position : int }
   | Invalid_literal of { expected : string; position : int; found : string }
   | Invalid_number of { position : int; text : string }
-  | Expected_comma_or_bracket of { kind : string; position : int; found : char option }
+  | Expected_comma_or_bracket of {
+      kind : string;
+      position : int;
+      found : char option;
+    }
   | Expected_string_key of { position : int; found : char option }
   | Expected_colon of { position : int; found : char option }
   | Unexpected_end_of_input of { expected : string }
-  | Unexpected_character of { position : int; character : char; expected : string }
+  | Unexpected_character of {
+      position : int;
+      character : char;
+      expected : string;
+    }
   | Extra_input_after_value of { position : int }
   | Unknown_error of string
 

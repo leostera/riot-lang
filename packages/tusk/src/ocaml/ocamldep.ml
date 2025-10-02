@@ -36,9 +36,7 @@ let sort ~toolchain ~cwd ~files =
 (** Get dependencies for a single file - returns Module_name.t list *)
 let deps ~toolchain ~cwd ~file ~package_namespace =
   let ocamldep = Path.to_string (Toolchains.ocamldep_path toolchain) in
-  let cmd =
-    format "cd %s && %s -modules %s 2>/dev/null" cwd ocamldep file
-  in
+  let cmd = format "cd %s && %s -modules %s 2>/dev/null" cwd ocamldep file in
 
   let deps_str =
     let command = Command.make ~args:[ "-c"; cmd ] "sh" in
@@ -72,8 +70,8 @@ let deps_with_flags ~toolchain ~cwd ~file ~flags ~package_namespace =
   let flags_str = Ocamlc.flags_to_string flags |> String.concat " " in
   (* Always include current directory so ocamldep can find .cmi files *)
   let cmd =
-    format "cd %s && %s -I . %s -modules %s 2>/dev/null" cwd ocamldep
-      flags_str file
+    format "cd %s && %s -I . %s -modules %s 2>/dev/null" cwd ocamldep flags_str
+      file
   in
 
   let deps_str =

@@ -298,7 +298,8 @@ let fsync fd =
 
 let dup fd =
   syscall @@ fun () ->
-  try Ok (Unix.dup fd) with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
+  try Ok (Unix.dup fd)
+  with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
 
 let lockf fd cmd len =
   syscall @@ fun () ->

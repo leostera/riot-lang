@@ -91,8 +91,7 @@ module Library_interface = struct
     in
     let body =
       List.map
-        (fun (simple, qualified) ->
-          format "module %s = %s" simple qualified)
+        (fun (simple, qualified) -> format "module %s = %s" simple qualified)
         unique_modules
     in
     String.concat "\n" (header :: body)
@@ -141,7 +140,9 @@ let create ~node:(build_node : Build_node.t) ~workspace =
   let toolchain = build_node.toolchain in
   let namespace = Namespace.of_list [ String.capitalize_ascii package.name ] in
 
-  Log.debug "[MODULE_GRAPH] Creating module graph for %s (namespace: %s)" package.name (Namespace.to_string namespace);
+  Log.debug "[MODULE_GRAPH] Creating module graph for %s (namespace: %s)"
+    package.name
+    (Namespace.to_string namespace);
 
   {
     package;
@@ -426,8 +427,7 @@ and handle_library ~t ~ctx dir name children =
         List.iter
           (fun child_node_id ->
             let child_node = G.get_node t.graph child_node_id in
-            Log.debug "[MODULE_GRAPH]   Adding edge: %s.ml/mli -> %s"
-              name
+            Log.debug "[MODULE_GRAPH]   Adding edge: %s.ml/mli -> %s" name
               (file_to_string child_node.value.file);
             (* Add dependency from library interface to child file *)
             G.add_edge intf_node ~depends_on:child_node;
@@ -486,8 +486,7 @@ let wire_dependencies t sandbox_dir =
     let dep = node.value in
 
     if deps <> [] then
-      Log.debug "[MODULE_GRAPH]   %s depends on: %s"
-        (file_to_string dep.file)
+      Log.debug "[MODULE_GRAPH]   %s depends on: %s" (file_to_string dep.file)
         (String.concat ", " (List.map Module_name.to_string deps));
 
     let edges_collected = ref 0 in
@@ -507,7 +506,10 @@ let wire_dependencies t sandbox_dir =
               match (dep.kind, dep_node.value.kind) with
               | MLI _, ML _ ->
                   incr edges_skipped;
-                  Log.debug "[MODULE_GRAPH]     SKIPPED edge (MLI->ML): %s -> %s" (file_to_string dep.file) (file_to_string dep_node.value.file)
+                  Log.debug
+                    "[MODULE_GRAPH]     SKIPPED edge (MLI->ML): %s -> %s"
+                    (file_to_string dep.file)
+                    (file_to_string dep_node.value.file)
               | _ ->
                   incr edges_wired;
                   Log.debug "[MODULE_GRAPH]     Adding edge: %s -> %s"
@@ -516,11 +518,15 @@ let wire_dependencies t sandbox_dir =
                   G.add_edge node ~depends_on:dep_node)
             dep_node_ids
         with Not_found ->
-          Log.debug "[MODULE_GRAPH]     WARNING: Module %s not found in registry" dep_name)
+          Log.debug
+            "[MODULE_GRAPH]     WARNING: Module %s not found in registry"
+            dep_name)
       deps;
 
     if !edges_collected > 0 then
-      Log.debug "[MODULE_GRAPH]   Summary for %s: collected=%d, wired=%d, skipped=%d" (file_to_string dep.file) !edges_collected !edges_wired !edges_skipped
+      Log.debug
+        "[MODULE_GRAPH]   Summary for %s: collected=%d, wired=%d, skipped=%d"
+        (file_to_string dep.file) !edges_collected !edges_wired !edges_skipped
   in
 
   Log.debug "[MODULE_GRAPH] Processing %d modules with dependencies"
@@ -577,8 +583,7 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
               Log.debug "[MODULE_GRAPH]   - %s (unknown)"
                 (G.Node_id.to_string node_id))
           cycle_ids;
-        failwith
-          (format "Cycle detected in module dependencies: %s" cycle_str)
+        failwith (format "Cycle detected in module dependencies: %s" cycle_str)
     | exn ->
         Log.debug "[MODULE_GRAPH] ERROR: Exception in topo_sort: %s"
           (Exception.to_string exn);

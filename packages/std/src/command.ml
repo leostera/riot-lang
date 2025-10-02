@@ -60,9 +60,13 @@ let output t =
             | Ok n ->
                 if n > 0 then Buffer.add_subbytes buf read_buffer 0 n;
                 n > 0 (* return true if we read data *)
-            | Error (`IO_error e) when e = Kernel.IO.Resource_unavailable_try_again -> false
-            | Error (`IO_error e) when e = Kernel.IO.Operation_would_block -> false
-            | Error (`IO_error e) when e = Kernel.IO.Broken_pipe -> false (* Broken pipe - process ended *)
+            | Error (`IO_error e)
+              when e = Kernel.IO.Resource_unavailable_try_again ->
+                false
+            | Error (`IO_error e) when e = Kernel.IO.Operation_would_block ->
+                false
+            | Error (`IO_error e) when e = Kernel.IO.Broken_pipe ->
+                false (* Broken pipe - process ended *)
             | Error _ -> false (* EOF or other errors *)
           in
 

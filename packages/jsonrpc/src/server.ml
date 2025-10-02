@@ -33,7 +33,8 @@ let handle_message (type req res) (server : (req, res) t)
   match Json.of_string message with
   | Error e ->
       (* Parse error - can't send typed response, just log/ignore *)
-      Std.Log.error "[JSONRPC SERVER] JSON parse error: %s" (Json.error_to_string e);
+      Std.Log.error "[JSONRPC SERVER] JSON parse error: %s"
+        (Json.error_to_string e);
       ()
   | Ok json -> (
       Std.Log.debug "[JSONRPC SERVER] JSON parsed successfully";
@@ -43,16 +44,21 @@ let handle_message (type req res) (server : (req, res) t)
           Std.Log.error "[JSONRPC SERVER] Request parse error";
           ()
       | Ok request -> (
-          Std.Log.debug "[JSONRPC SERVER] Looking for handler for method: %s" request.method_;
-          Std.Log.debug "[JSONRPC SERVER] Available handlers: %d" (List.length server.handlers);
-          List.iter (fun h -> Std.Log.debug "[JSONRPC SERVER]   - %s" h.method_) server.handlers;
+          Std.Log.debug "[JSONRPC SERVER] Looking for handler for method: %s"
+            request.method_;
+          Std.Log.debug "[JSONRPC SERVER] Available handlers: %d"
+            (List.length server.handlers);
+          List.iter
+            (fun h -> Std.Log.debug "[JSONRPC SERVER]   - %s" h.method_)
+            server.handlers;
           (* Find handler for method *)
           match
             List.find_opt (fun h -> h.method_ = request.method_) server.handlers
           with
           | None ->
               (* Method not found - can't send typed response, just log/ignore *)
-              Std.Log.error "[JSONRPC SERVER] No handler found for method: %s" request.method_;
+              Std.Log.error "[JSONRPC SERVER] No handler found for method: %s"
+                request.method_;
               ()
           | Some handler -> (
               (* Convert params to typed request using method name *)

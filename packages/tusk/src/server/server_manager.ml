@@ -49,7 +49,7 @@ module Daemon = struct
         in
         let pid = int_of_string (String.trim pid_content) in
         let port = int_of_string (String.trim port_content) in
-        
+
         Std.Log.debug "Found daemon: pid=%d, port=%d" pid port;
 
         (* Check if server is actually running by trying to connect *)
@@ -62,7 +62,7 @@ module Daemon = struct
               let _ = Std.Net.TcpClient.close stream in
               true
           | Error e ->
-              Std.Log.debug "Failed to connect: %s" 
+              Std.Log.debug "Failed to connect: %s"
                 (match e with
                 | `Connection_refused -> "connection refused"
                 | `Closed -> "connection closed"
@@ -77,7 +77,7 @@ module Daemon = struct
           let _ = Fs.remove_file pid_file in
           let _ = Fs.remove_file port_file in
           None)
-    | _ -> 
+    | _ ->
         Std.Log.debug "Daemon files not found";
         None
 
@@ -136,19 +136,19 @@ let ensure_running ~workspace =
     |> Result.expect ~msg:"Failed to get daemon info from workspace"
   in
   Std.Log.debug "ensure_running: Got daemon at %s:%d" daemon.host daemon.port;
-  
+
   (* 2. Wait for server to be ready *)
   let rec wait_server ~retries =
     if retries <= 0 then (
       Std.Log.error "Failed to connect to server after 60 retries";
-      Error Error.ScanWorkspaceError
-    ) else
+      Error Error.ScanWorkspaceError)
+    else
       match Tusk_jsonrpc.Client.create ~host:daemon.host ~port:daemon.port with
       | Ok client -> (
           Std.Log.debug "Created client, testing with ping";
           (* Try to ping to make sure it's really ready *)
           match Tusk_jsonrpc.Client.ping client with
-          | Ok _ -> 
+          | Ok _ ->
               Std.Log.debug "Ping successful!";
               Ok client
           | Error e ->

@@ -178,8 +178,8 @@ let display = function
   | BuildStarted { packages; _ } ->
       format "Build started for %d packages" (List.length packages)
   | BuildComplete { duration_ms; succeeded; failed; _ } ->
-      format "Build completed in %dms (%d succeeded, %d failed)"
-        duration_ms (List.length succeeded) (List.length failed)
+      format "Build completed in %dms (%d succeeded, %d failed)" duration_ms
+        (List.length succeeded) (List.length failed)
   | PackageStarted { package } -> format "Building %s..." package
   | PackageComplete { package; success; duration_ms; _ } ->
       if success then format "✓ Built %s in %dms" package duration_ms
@@ -200,12 +200,10 @@ let display = function
         | TypeError { description } -> description
         | UnboundValue { name } -> format "Unbound value %s" name
         | UnboundModule { name } -> format "Unbound module %s" name
-        | FileNotFound { filename } ->
-            format "Cannot find file %s" filename
+        | FileNotFound { filename } -> format "Cannot find file %s" filename
         | OtherError { message } -> message)
   | CycleDetected { packages } ->
-      format "Circular dependency detected: %s"
-        (String.concat " -> " packages)
+      format "Circular dependency detected: %s" (String.concat " -> " packages)
   | CacheHit { package; _ } -> format "Cached %s" package
   | CacheMiss { package; _ } -> format "Cache miss for %s" package
   | CacheStored { package; artifacts; _ } ->
@@ -215,21 +213,18 @@ let display = function
   | WorkerStarted { worker_id } ->
       format "Worker %s started" (Worker_id.to_string worker_id)
   | WorkerAssigned { worker_id; package } ->
-      format "Worker %s assigned to %s"
-        (Worker_id.to_string worker_id)
-        package
+      format "Worker %s assigned to %s" (Worker_id.to_string worker_id) package
   | WorkerIdle { worker_id } ->
       format "Worker %s idle" (Worker_id.to_string worker_id)
   | ServerStarted { pid } -> format "Server started (pid: %s)" pid
   | ServerScanning { root } -> format "Scanning workspace: %s" root
   | ServerRestarted { packages; toolchain } ->
-      format "Server restarted with %d packages (toolchain: %s)"
-        packages toolchain
+      format "Server restarted with %d packages (toolchain: %s)" packages
+        toolchain
   | WorkspaceEmpty -> "No packages found in workspace"
   | WorkspaceScanning -> "Scanning workspace..."
   | WorkspaceScanned { packages; duration_ms } ->
-      format "Scanned workspace: %d packages in %dms" packages
-        duration_ms
+      format "Scanned workspace: %d packages in %dms" packages duration_ms
   | BuildGraphCreating -> "Creating build graph..."
   | BuildGraphCreated { nodes; duration_ms } ->
       format "Created build graph: %d nodes in %dms" nodes duration_ms
@@ -254,10 +249,8 @@ let display = function
   | LinkingExecutable { package; output } ->
       format "[%s] Linking executable %s" package output
   | ComputingHash { package } -> format "Computing hash for %s" package
-  | HashComputed { package; hash } ->
-      format "Hash for %s: %s" package hash
-  | CopyingFile { source; dest } ->
-      format "Copying %s -> %s" source dest
+  | HashComputed { package; hash } -> format "Hash for %s: %s" package hash
+  | CopyingFile { source; dest } -> format "Copying %s -> %s" source dest
   | WritingFile { path } -> format "Writing %s" path
   | CreatingDirectory { path } -> format "Creating directory %s" path
   | RpcRequestReceived { request_type; _ } ->
@@ -267,13 +260,11 @@ let display = function
         (match result with Ok _ -> true | Error _ -> false)
   | McpToolCall { tool; _ } -> format "MCP tool call: %s" tool
   | StoreCreating -> "Creating build cache store"
-  | StoreCreated { duration_ms } ->
-      format "Store created in %dms" duration_ms
+  | StoreCreated { duration_ms } -> format "Store created in %dms" duration_ms
   | WorkerPoolCreating { workers } ->
       format "Creating worker pool with %d workers" workers
   | WorkerPoolCreated { workers; duration_ms } ->
-      format "Worker pool created with %d workers in %dms" workers
-        duration_ms
+      format "Worker pool created with %d workers in %dms" workers duration_ms
 
 (** Convert to human-readable string with timestamp *)
 let to_string event =
@@ -357,8 +348,7 @@ let kind_to_json = function
         | TypeError { description } -> strip_ansi_codes description
         | UnboundValue { name } -> format "Unbound value %s" name
         | UnboundModule { name } -> format "Unbound module %s" name
-        | FileNotFound { filename } ->
-            format "Cannot find file %s" filename
+        | FileNotFound { filename } -> format "Cannot find file %s" filename
         | OtherError { message } -> strip_ansi_codes message
       in
       Json.Object

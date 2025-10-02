@@ -91,8 +91,7 @@ let create ~node ~(workspace : Workspace.t) =
     scan_and_copy_directory ~from_dir:package_src_dir ~to_dir:sandbox_src_dir
       ~rel_path:(Path.v "src")
   in
-  Log.debug "[SANDBOX] Copied %d entries to sandbox"
-    (List.length sources);
+  Log.debug "[SANDBOX] Copied %d entries to sandbox" (List.length sources);
 
   { root; sandbox_dir; target_dir; node; workspace; sources }
 
@@ -143,7 +142,9 @@ let copy_dependency_artifacts sandbox ~store ~build_graph ~build_results =
             (* Check if artifacts exist in the store *)
             Store.exists store hash
           then (
-            Log.debug "[Sandbox] Copying artifacts from store for %s (hash: %s)" dep_name (Std.Crypto.Digest.hex hash);
+            Log.debug "[Sandbox] Copying artifacts from store for %s (hash: %s)"
+              dep_name
+              (Std.Crypto.Digest.hex hash);
 
             (* Read manifest to get list of files to copy *)
             let manifest_path =
@@ -181,30 +182,29 @@ let copy_dependency_artifacts sandbox ~store ~build_graph ~build_results =
                 | Ok () -> ()
                 | Error _ ->
                     failwith
-                      (format "Failed to copy %s to %s"
-                         (Path.to_string src) (Path.to_string dst_path)))
+                      (format "Failed to copy %s to %s" (Path.to_string src)
+                         (Path.to_string dst_path)))
               files_to_copy;
 
-            Log.debug "[Sandbox]   - Successfully copied %d files for %s" (List.length files_to_copy) dep_name)
+            Log.debug "[Sandbox]   - Successfully copied %d files for %s"
+              (List.length files_to_copy)
+              dep_name)
           else
             failwith
-              (format
-                 "Missing cached artifacts for dependency %s (hash: %s)"
+              (format "Missing cached artifacts for dependency %s (hash: %s)"
                  dep_name
                  (Std.Crypto.Digest.hex hash))
       | None -> (
           (* No hash available - check why *)
           match Build_results.get_status build_results dep_name with
           | Some Build_results.Building ->
-              failwith
-                (format "Dependency %s is still building" dep_name)
+              failwith (format "Dependency %s is still building" dep_name)
           | Some Build_results.NotStarted ->
               failwith (format "Dependency %s not started yet" dep_name)
           | Some (Build_results.Failed err) ->
               failwith (format "Dependency %s failed: %s" dep_name err)
           | _ ->
-              failwith
-                (format "Dependency %s not available (no hash)" dep_name)
+              failwith (format "Dependency %s not available (no hash)" dep_name)
           ))
     all_deps
 
@@ -217,8 +217,8 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
     | Build_node.Unplanned -> []
   in
 
-  Log.debug "[Sandbox] Running %d actions for %s in %s"
-    (List.length actions) sandbox.node.package.name
+  Log.debug "[Sandbox] Running %d actions for %s in %s" (List.length actions)
+    sandbox.node.package.name
     (Path.to_string sandbox.sandbox_dir);
 
   (* Copy all transitive dependency artifacts into sandbox *)
@@ -293,15 +293,15 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
              match result with
              | Actions.Success ->
                  if output <> "" then Log.debug "  -> %s" output
-             | Actions.Skipped reason ->
-                 Log.debug "  -> Skipped: %s" reason
+             | Actions.Skipped reason -> Log.debug "  -> Skipped: %s" reason
              | Actions.Failed error_msg ->
                  (* Check if this is a fatal build system error *)
                  if String.starts_with ~prefix:"Missing outputs:" error_msg then (
                    (* Fatal build system error - don't continue *)
                    println "\n\027[1;31mFATAL BUILD ERROR:\027[0m %s" error_msg;
-                    println "The build system detected missing expected outputs.";
-                    println "This indicates a serious internal error. Build halted.";
+                   println "The build system detected missing expected outputs.";
+                   println
+                     "This indicates a serious internal error. Build halted.";
                    (* Instead of exit, raise an exception that can be caught at higher level *)
                    failwith ("FATAL_BUILD_ERROR: " ^ error_msg))
                  else (
@@ -388,8 +388,7 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
           in
           if not exists then
             failwith
-              (format
-                 "Missing declared output file: %s (expected at %s)"
+              (format "Missing declared output file: %s (expected at %s)"
                  (Path.to_string output_file)
                  (Path.to_string src_path));
 
@@ -413,8 +412,7 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
              Log.debug "[Sandbox] Promoted executable %s to %s"
                (Path.to_string output_file)
                (Path.to_string promoted_dst_path));
-          Log.debug "[Sandbox] Copied %s to target"
-            (Path.to_string output_file))
+          Log.debug "[Sandbox] Copied %s to target" (Path.to_string output_file))
         outputs;
       Ok outputs
   | Error _ -> result |> Result.map (fun _ -> [])

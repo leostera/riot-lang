@@ -25,5 +25,4 @@ module Task = Task
 module Time = Time
 module Version = Version
 module WorkerPool = Worker_pool
-
 include Global

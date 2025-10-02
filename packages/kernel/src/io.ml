@@ -8,7 +8,7 @@ type error =
   | Bad_file_descriptor
   | Resource_unavailable_try_again
   | Out_of_memory
-  | Permission_denied_on_file  
+  | Permission_denied_on_file
   | Bad_address
   | Resource_busy
   | File_exists
