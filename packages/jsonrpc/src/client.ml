@@ -61,7 +61,7 @@ let receive_response (type req res) (Client c as client : (req, res) t) :
   | Error e -> Error e
   | Ok str -> (
       match Json.of_string str with
-      | Error e -> Error (Printf.sprintf "JSON parse error: %s" (Json.error_to_string e))
+      | Error e -> Error (format "JSON parse error: %s" (Json.error_to_string e))
       | Ok json -> (
           match json with
           | Json.Object fields -> (
@@ -98,7 +98,7 @@ let receive_response (type req res) (Client c as client : (req, res) t) :
                                     }
                               | Error err_json ->
                                   Error
-                                    (Printf.sprintf "Failed to parse result: %s"
+                                    (format "Failed to parse result: %s"
                                        (Json.to_string err_json)))
                           | None ->
                               Error "Response missing both result and error")
@@ -157,7 +157,7 @@ let call (type req res) (client : (req, res) t) ~method_ ?params () =
                               Error
                                 (Common.make_error ~code:Common.ParseError
                                    ~message:
-                                     (Printf.sprintf
+                                     (format
                                         "Failed to parse result: %s"
                                         (Json.to_string err_json))
                                    ()))
@@ -207,7 +207,7 @@ let call_batch (type req res) (client : (req, res) t) (requests : req list) =
       | Error e -> Error e
       | Ok str -> (
           match Json.of_string str with
-          | Error e -> Error (Printf.sprintf "JSON parse error: %s" (Json.error_to_string e))
+          | Error e -> Error (format "JSON parse error: %s" (Json.error_to_string e))
           | Ok (Json.Array responses) -> (
               (* Parse each response *)
               let parsed_responses =

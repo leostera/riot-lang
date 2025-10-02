@@ -9,32 +9,31 @@ let run args =
   match subcommand with
   | "start" ->
       (* Start server in background *)
-      Printf.printf "Server start not implemented yet\n%!";
+      println "Server start not implemented yet";
       Ok ()
   | "stop" ->
       (* Stop background server *)
-      Printf.printf "Server stop not implemented yet\n%!";
+      println "Server stop not implemented yet";
       Ok ()
   | "kill" ->
       (* Kill background server forcefully *)
-      Printf.printf "Server kill not implemented yet\n%!";
+      println "Server kill not implemented yet";
       Ok ()
   | "status" ->
       (* Check server status *)
-      Printf.printf "Server status not implemented yet\n%!";
+      println "Server status not implemented yet";
       Ok ()
   | "" | "foreground" ->
       (* Default: Run server in foreground *)
-      Printf.printf "🚀 Starting tusk server...\n%!";
-      Printf.printf "   Press Ctrl+C to stop\n\n%!";
+      println "🚀 Starting tusk server...";
+      println "   Press Ctrl+C to stop\n";
       Tusk_server.start_with_listener ()
   | _ ->
-      Printf.eprintf "Unknown server subcommand: %s\n" subcommand;
-      Printf.eprintf "Available subcommands:\n";
-      Printf.eprintf "  tusk server            - Start server in foreground\n";
-      Printf.eprintf "  tusk server start      - Start server in background\n";
-      Printf.eprintf "  tusk server stop       - Stop background server\n";
-      Printf.eprintf
-        "  tusk server kill       - Kill background server (force)\n";
-      Printf.eprintf "  tusk server status     - Check server status\n";
+      println "Unknown server subcommand: %s" subcommand;
+      println "Available subcommands:";
+      println "  tusk server            - Start server in foreground";
+      println "  tusk server start      - Start server in background";
+      println "  tusk server stop       - Stop background server";
+      println "  tusk server kill       - Kill background server (force)";
+      println "  tusk server status     - Check server status";
       Error (Failure "Invalid server subcommand")

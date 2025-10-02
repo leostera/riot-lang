@@ -127,7 +127,7 @@ let pre_release_segment_to_string = function
   | Alphanumeric s -> s
 
 let to_string v =
-  let base = Printf.sprintf "%d.%d.%d" v.major v.minor v.patch in
+  let base = format "%d.%d.%d" v.major v.minor v.patch in
   let with_pre =
     match v.pre with
     | [] -> base

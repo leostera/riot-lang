@@ -51,17 +51,17 @@ let format_attrs attrs =
   else
     let attr_strs =
       List.map
-        (fun (k, v) -> Printf.sprintf "%s=\"%s\"" k (escape_string v))
+        (fun (k, v) -> format "%s=\"%s\"" k (escape_string v))
         attrs
     in
-    Printf.sprintf " [%s]" (String.concat ", " attr_strs)
+    format " [%s]" (String.concat ", " attr_strs)
 
 let format_node (node : node) =
   let label_attr =
     match node.label with Some l -> [ ("label", l) ] | None -> []
   in
   let all_attrs = label_attr @ node.attrs in
-  Printf.sprintf "  \"%s\"%s;" (escape_string node.id) (format_attrs all_attrs)
+  format "  \"%s\"%s;" (escape_string node.id) (format_attrs all_attrs)
 
 let format_edge style edge =
   let arrow = match style with Directed -> "->" | Undirected -> "--" in
@@ -69,7 +69,7 @@ let format_edge style edge =
     match edge.label with Some l -> [ ("label", l) ] | None -> []
   in
   let all_attrs = label_attr @ edge.attrs in
-  Printf.sprintf "  \"%s\" %s \"%s\"%s;"
+  format "  \"%s\" %s \"%s\"%s;"
     (escape_string edge.from_node)
     arrow
     (escape_string edge.to_node)
@@ -83,7 +83,7 @@ let to_string t =
     if t.graph_attrs = [] then ""
     else
       List.map
-        (fun (k, v) -> Printf.sprintf "  %s=\"%s\";\n" k (escape_string v))
+        (fun (k, v) -> format "  %s=\"%s\";\n" k (escape_string v))
         t.graph_attrs
       |> String.concat ""
   in
@@ -91,7 +91,7 @@ let to_string t =
   let edge_strs =
     List.rev_map (format_edge t.style) t.edges |> String.concat "\n"
   in
-  Printf.sprintf "%s %s {\n%s%s%s%s}\n" graph_type t.name graph_attr_str
+  format "%s %s {\n%s%s%s%s}\n" graph_type t.name graph_attr_str
     (if node_strs = "" then "" else node_strs ^ "\n")
     (if node_strs <> "" && edge_strs <> "" then "\n" else "")
     edge_strs

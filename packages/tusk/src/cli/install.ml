@@ -41,7 +41,7 @@ let build_package package_name =
             if should_display then
               let formatted = Event_formatter.format event in
               if formatted <> "" then (
-                Printf.printf "%s\n%!" formatted;
+                println "%s" formatted;
                 )
         | Tusk_jsonrpc.Client.BuildFinished _ ->
             (* This is handled below in the result match *)
@@ -59,19 +59,19 @@ let build_package package_name =
 (** Execute the install command *)
 let run args =
   if List.length args < 1 then (
-    Printf.eprintf "Error: Package name required\n";
-    Printf.eprintf "Usage: tusk install <package>\n";
+    println "Error: Package name required";
+    println "Usage: tusk install <package>";
     Error (Failure "Package name required"))
   else
     let package_name = List.nth args 0 in
-    Printf.printf "📦 Installing %s...\n%!" package_name;
+    println "📦 Installing %s..." package_name;
 
     (* First, build the package *)
-    Printf.printf "Building %s...\n%!" package_name;
+    println "Building %s..." package_name;
     if not (build_package package_name) then (
-      Printf.eprintf "\n❌ Failed to build %s, nothing was installed\n"
+      println "\n❌ Failed to build %s, nothing was installed"
         package_name;
-      Error (Failure (Printf.sprintf "Failed to build %s" package_name)))
+      Error (Failure (format "Failed to build %s" package_name)))
     else
       (* Look for the binary in various locations *)
       let root = Env.current_dir () |> Result.expect ~msg:"Failed to get cwd" in
@@ -100,11 +100,10 @@ let run args =
           possible_binary_paths
       with
       | None ->
-          Printf.eprintf "❌ Binary for %s not found after build\n" package_name;
-          Printf.eprintf
-            "Note: Only packages with main.ml produce installable binaries\n";
+          println "❌ Binary for %s not found after build" package_name;
+          println "Note: Only packages with main.ml produce installable binaries";
           Error
-            (Failure (Printf.sprintf "Binary not found for %s" package_name))
+            (Failure (format "Binary not found for %s" package_name))
       | Some binary_path -> (
           (* Create ~/.tusk/bin if it doesn't exist *)
           let home =
@@ -126,15 +125,13 @@ let run args =
               let perms = Fs.Permissions.executable in
               ignore (Fs.set_permissions dest_path perms);
 
-              Printf.printf "✅ Installed %s to %s\n%!" package_name
+              println "✅ Installed %s to %s" package_name
                 (Path.to_string dest_path);
-              Printf.printf "\n%!";
-              Printf.printf
-                "To use %s from anywhere, add ~/.tusk/bin to your PATH:\n%!"
-                package_name;
-              Printf.printf "  export PATH='$HOME/.tusk/bin:$PATH'\n%!";
+              println "";
+              println "To use %s from anywhere, add ~/.tusk/bin to your PATH:" package_name;
+              println "  export PATH='$HOME/.tusk/bin:$PATH'";
               Ok ()
           | _ ->
-              Printf.eprintf "❌ Failed to install %s\n" package_name;
+              println "❌ Failed to install %s" package_name;
               Error
-                (Failure (Printf.sprintf "Failed to install %s" package_name)))
+                (Failure (format "Failed to install %s" package_name)))

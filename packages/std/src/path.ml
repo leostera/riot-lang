@@ -44,7 +44,7 @@ let of_string s =
 
 let v path =
   of_string path
-  |> Result.expect ~msg:(Format.sprintf "Invalid string path %S" path)
+  |> Result.expect ~msg:(format "Invalid string path %S" path)
 
 let to_string t = t
 
@@ -142,14 +142,14 @@ let strip_prefix path ~prefix =
         (* Ran out of path before consuming prefix *)
         Result.err
           (SystemError
-             (Printf.sprintf "Path %s does not start with prefix %s"
+             (format "Path %s does not start with prefix %s"
                 (to_string path) (to_string prefix)))
     | p :: path_rest, pre :: prefix_rest ->
         if to_string p = to_string pre then consume path_rest prefix_rest
         else
           Result.err
             (SystemError
-               (Printf.sprintf "Path %s does not start with prefix %s"
+               (format "Path %s does not start with prefix %s"
                   (to_string path) (to_string prefix)))
   in
 

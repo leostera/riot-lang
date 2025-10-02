@@ -7,6 +7,15 @@ type 'a option = 'a Option.t = None | Some of 'a
 type ('a, 'b, 'c, 'd) format4 = ('a, 'b, 'c, 'd) Stdlib.format4
 type ('a, 'b, 'c, 'd, 'e, 'f) format6 = ('a, 'b, 'c, 'd, 'e, 'f) Stdlib.format6
 
+(** Format string helper *)
+let format = Printf.sprintf
+
+(** Print to stdout with flush *)
+let print fmt = Printf.ksprintf (fun s -> Printf.printf "%s%!" s) fmt
+
+(** Print to stdout with newline and flush *)
+let println fmt = Printf.ksprintf (fun s -> Printf.printf "%s\n%!" s) fmt
+
 (* Reference type and operations *)
 type 'a ref = 'a Stdlib.ref = { mutable contents : 'a }
 let ref = Stdlib.ref

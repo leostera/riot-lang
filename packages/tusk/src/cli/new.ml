@@ -4,8 +4,8 @@ open Server
 (** Execute the new command *)
 let run args =
   if List.length args < 1 then (
-    Printf.eprintf "Error: Package path required\n";
-    Printf.eprintf "Usage: tusk new <path> [--lib|--bin]\n";
+    println "Error: Package path required";
+    println "Usage: tusk new <path> [--lib|--bin]";
     Error (Failure "Missing package path"))
   else
     let path = List.nth args 0 in
@@ -39,8 +39,7 @@ let run args =
           Tusk_jsonrpc.Client.new_package client ~path ~name ~is_library
         with
         | Ok (created_path, created_name) ->
-            Printf.printf "Package '%s' created at '%s'\n%!" created_name
-              created_path;
+            println "Package '%s' created at '%s'" created_name created_path;
             Ok ()
         | Error e -> Error (Failure ("Package creation failed: " ^ e)))
     | Error _e -> Error (Failure "Failed to connect to server")

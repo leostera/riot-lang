@@ -32,16 +32,14 @@ let run args =
 
   (* Show help if no subcommand provided *)
   if cmd = "" then (
-    Printf.printf "Available RPC commands:\n%!";
-    Printf.printf "  tusk rpc ping              - Test server connectivity\n%!";
-    Printf.printf "  tusk rpc workspace         - Get workspace information\n%!";
-    Printf.printf
-      "  tusk rpc package <name>    - Get package details including sources\n%!";
-    Printf.printf "  tusk rpc graph             - Get build graph\n%!";
-    Printf.printf
-      "  tusk rpc build [package]   - Build all or specific package\n%!";
-    Printf.printf "  tusk rpc restart           - Restart the server\n%!";
-    Printf.printf "  tusk rpc shutdown          - Shutdown the server\n%!";
+    println "Available RPC commands:";
+    println "  tusk rpc ping              - Test server connectivity";
+    println "  tusk rpc workspace         - Get workspace information";
+    println "  tusk rpc package <name>    - Get package details including sources";
+    println "  tusk rpc graph             - Get build graph";
+    println "  tusk rpc build [package]   - Build all or specific package";
+    println "  tusk rpc restart           - Restart the server";
+    println "  tusk rpc shutdown          - Shutdown the server";
     Ok ())
   else if cmd = "ping" then (
     let client = create_local_client () in
@@ -50,10 +48,10 @@ let run args =
     match result with
     | Ok () ->
         let json = Json.Object [ ("type", Json.String "pong") ] in
-        Printf.printf "%s\n%!" (Json.to_string json);
+        println "%s" (Json.to_string json);
         Ok ()
     | Error e ->
-        Printf.eprintf "Error: %s\n" e;
+        println "Error: %s" e;
         Error (Failure e))
   else if cmd = "workspace" then (
     let client = create_local_client () in
@@ -92,16 +90,16 @@ let run args =
                 Json.Int config.Tusk_jsonrpc.TuskProtocol.total_packages );
             ]
         in
-        Printf.printf "%s\n%!" (Json.to_string json);
+        println "%s" (Json.to_string json);
         Ok ()
     | Error e ->
-        Printf.eprintf "Error: %s\n" e;
+        println "Error: %s" e;
         Error (Failure e))
   else if cmd = "package" then
     match rest with
     | [] ->
-        Printf.eprintf "Error: package name required\n";
-        Printf.eprintf "Usage: tusk rpc package <package-name>\n";
+        println "Error: package name required";
+        println "Usage: tusk rpc package <package-name>";
         Error (Failure "Missing package name")
     | package_name :: _ -> (
         let client = create_local_client () in
@@ -141,10 +139,10 @@ let run args =
                          detail.Tusk_jsonrpc.TuskProtocol.dependency_names) );
                 ]
             in
-            Printf.printf "%s\n%!" (Json.to_string json);
+            println "%s" (Json.to_string json);
             Ok ()
         | Error e ->
-            Printf.eprintf "Error: %s\n" e;
+            println "Error: %s" e;
             Error (Failure e))
   else if cmd = "graph" then (
     let client = create_local_client () in
@@ -175,10 +173,10 @@ let run args =
               ("nodes", Json.Array nodes_json);
             ]
         in
-        Printf.printf "%s\n%!" (Json.to_string json);
+        println "%s" (Json.to_string json);
         Ok ()
     | Error e ->
-        Printf.eprintf "Error: %s\n" e;
+        println "Error: %s" e;
         Error (Failure e))
   else if cmd = "build" then (
     (* Parse optional package name *)
@@ -205,12 +203,12 @@ let run args =
                 ("session_id", Json.String (Session_id.to_string sid));
               ]
           in
-          Printf.printf "%s\n%!" (Json.to_string json);
+          println "%s" (Json.to_string json);
           
       | Tusk_jsonrpc.Client.BuildEvent event ->
           (* Use Event.to_json for all events *)
           let json = Event.to_json event in
-          Printf.printf "%s\n%!" (Json.to_string json);
+          println "%s" (Json.to_string json);
           
       | Tusk_jsonrpc.Client.BuildFinished result ->
           let json =
@@ -222,7 +220,7 @@ let run args =
                     ("type", Json.String "error"); ("message", Json.String msg);
                   ]
           in
-          Printf.printf "%s\n%!" (Json.to_string json);
+          println "%s" (Json.to_string json);
           
     in
     let result = Tusk_jsonrpc.Client.build_streaming client request callback in
@@ -234,7 +232,7 @@ let run args =
           Json.Object
             [ ("type", Json.String "Error"); ("message", Json.String e) ]
         in
-        Printf.printf "%s\n%!" (Json.to_string response);
+        println "%s" (Json.to_string response);
         Error (Failure e))
   else if cmd = "restart" then (
     let client = create_local_client () in
@@ -243,10 +241,10 @@ let run args =
     match result with
     | Ok () ->
         let json = Json.Object [ ("type", Json.String "restarted") ] in
-        Printf.printf "%s\n%!" (Json.to_string json);
+        println "%s" (Json.to_string json);
         Ok ()
     | Error e ->
-        Printf.eprintf "Error: %s\n" e;
+        println "Error: %s" e;
         Error (Failure e))
   else if cmd = "shutdown" then (
     let client = create_local_client () in
@@ -255,17 +253,17 @@ let run args =
     match result with
     | Ok () ->
         let json = Json.Object [ ("type", Json.String "shutdown") ] in
-        Printf.printf "%s\n%!" (Json.to_string json);
+        println "%s" (Json.to_string json);
         Ok ()
     | Error e ->
-        Printf.eprintf "Error: %s\n" e;
+        println "Error: %s" e;
         Error (Failure e))
   else if cmd = "format" then
     (* Format a file *)
     match rest with
     | [] ->
-        Printf.eprintf "Error: file path required\n";
-        Printf.eprintf "Usage: tusk rpc format <file-path>\n";
+        println "Error: file path required";
+        println "Usage: tusk rpc format <file-path>";
         Error (Failure "Missing file path")
     | file_path :: _ -> (
         let client = create_local_client () in
@@ -283,17 +281,17 @@ let run args =
                   ("changed", Json.Bool changed);
                 ]
             in
-            Printf.printf "%s\n%!" (Json.to_string json);
+            println "%s" (Json.to_string json);
             Ok ()
         | Error e ->
-            Printf.eprintf "Error: %s\n" e;
+            println "Error: %s" e;
             Error (Failure e))
   else if cmd = "format-check" then
     (* Check if a file needs formatting *)
     match rest with
     | [] ->
-        Printf.eprintf "Error: file path required\n";
-        Printf.eprintf "Usage: tusk rpc format-check <file-path>\n";
+        println "Error: file path required";
+        println "Usage: tusk rpc format-check <file-path>";
         Error (Failure "Missing file path")
     | file_path :: _ -> (
         let client = create_local_client () in
@@ -310,17 +308,17 @@ let run args =
                   ("needs_formatting", Json.Bool changed);
                 ]
             in
-            Printf.printf "%s\n%!" (Json.to_string json);
+            println "%s" (Json.to_string json);
             Ok ()
         | Error e ->
-            Printf.eprintf "Error: %s\n" e;
+            println "Error: %s" e;
             Error (Failure e))
   else if cmd = "format-code" then
     (* Format code string *)
     match rest with
     | [] ->
-        Printf.eprintf "Error: code string required\n";
-        Printf.eprintf "Usage: tusk rpc format-code <code-string> [file-hint]\n";
+        println "Error: code string required";
+        println "Usage: tusk rpc format-code <code-string> [file-hint]";
         Error (Failure "Missing code string")
     | code :: file_hint -> (
         let file_path = match file_hint with [] -> None | h :: _ -> Some h in
@@ -337,14 +335,14 @@ let run args =
                   ("changed", Json.Bool changed);
                 ]
             in
-            Printf.printf "%s\n%!" (Json.to_string json);
+            println "%s" (Json.to_string json);
             Ok ()
         | Error e ->
-            Printf.eprintf "Error: %s\n" e;
+            println "Error: %s" e;
             Error (Failure e))
   else (
-    Printf.eprintf "Error: Unknown RPC command '%s'\n" cmd;
-    Printf.eprintf
+    println "Error: Unknown RPC command '%s'" cmd;
+    println
       "Available commands: ping, workspace, graph, build [package], format \
-       <file>, format-check <file>, format-code <code>, restart, shutdown\n";
-    Error (Failure (Printf.sprintf "Unknown RPC command: %s" cmd)))
+       <file>, format-check <file>, format-code <code>, restart, shutdown";
+    Error (Failure (format "Unknown RPC command: %s" cmd)))

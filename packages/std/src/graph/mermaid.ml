@@ -45,32 +45,32 @@ let direction_to_string = function
 
 let format_node node =
   match node.shape with
-  | Rectangle -> Printf.sprintf "  %s[\"%s\"]" node.id node.label
-  | Round -> Printf.sprintf "  %s(\"%s\")" node.id node.label
-  | Stadium -> Printf.sprintf "  %s([\"%s\"])" node.id node.label
-  | Subroutine -> Printf.sprintf "  %s[[\"%s\"]]" node.id node.label
-  | Cylindrical -> Printf.sprintf "  %s[(\"%s\")]" node.id node.label
-  | Circle -> Printf.sprintf "  %s((\"%s\"))" node.id node.label
-  | Diamond -> Printf.sprintf "  %s{\"%s\"}" node.id node.label
-  | Hexagon -> Printf.sprintf "  %s{{\"%s\"}}" node.id node.label
-  | Parallelogram -> Printf.sprintf "  %s[/\"%s\"/]" node.id node.label
-  | Trapezoid -> Printf.sprintf "  %s[\\\"%s\"/]" node.id node.label
+  | Rectangle -> format "  %s[\"%s\"]" node.id node.label
+  | Round -> format "  %s(\"%s\")" node.id node.label
+  | Stadium -> format "  %s([\"%s\"])" node.id node.label
+  | Subroutine -> format "  %s[[\"%s\"]]" node.id node.label
+  | Cylindrical -> format "  %s[(\"%s\")]" node.id node.label
+  | Circle -> format "  %s((\"%s\"))" node.id node.label
+  | Diamond -> format "  %s{\"%s\"}" node.id node.label
+  | Hexagon -> format "  %s{{\"%s\"}}" node.id node.label
+  | Parallelogram -> format "  %s[/\"%s\"/]" node.id node.label
+  | Trapezoid -> format "  %s[\\\"%s\"/]" node.id node.label
 
 let format_edge edge =
   let arrow =
     match edge.style with Solid -> "-->" | Dotted -> "-.->" | Thick -> "==>"
   in
   match edge.label with
-  | None -> Printf.sprintf "  %s %s %s" edge.from_node arrow edge.to_node
+  | None -> format "  %s %s %s" edge.from_node arrow edge.to_node
   | Some label ->
-      Printf.sprintf "  %s %s|%s| %s" edge.from_node arrow label edge.to_node
+      format "  %s %s|%s| %s" edge.from_node arrow label edge.to_node
 
 let to_string t =
   let buffer = Buffer.create 1024 in
 
   (* Add graph direction *)
   Buffer.add_string buffer
-    (Printf.sprintf "graph %s\n" (direction_to_string t.direction));
+    (format "graph %s\n" (direction_to_string t.direction));
 
   (* Add nodes *)
   List.iter

@@ -153,7 +153,7 @@ let request_of_json json =
           | Error e, _ -> Error e
           | _, Error e -> Error e)
       | Some (Json.String v), _ ->
-          Error (Printf.sprintf "Invalid JSON-RPC version: %s (expected 2.0)" v)
+          Error (format "Invalid JSON-RPC version: %s (expected 2.0)" v)
       | _ -> Error "Invalid request: missing jsonrpc or method field")
   | _ -> Error "Request must be an object"
 

@@ -108,7 +108,7 @@ let pp ppf t =
     | Uninitialized -> "Uninitialized"
     | Runnable -> "Runnable"
     | Waiting_message -> "Waiting_message"
-    | Waiting_io { name; _ } -> Printf.sprintf "Waiting_io(%s)" name
+    | Waiting_io { name; _ } -> format "Waiting_io(%s)" name
     | Running -> "Running"
     | Exited _ -> "Exited"
     | Finalized -> "Finalized")

@@ -14,18 +14,18 @@ let rec to_string = function
         String.contains s ' ' || String.contains s '(' || String.contains s ')'
         || String.contains s '"' || String.contains s '\n'
         || String.contains s '\t'
-      then Printf.sprintf "\"%s\"" (String.escaped s)
+      then format "\"%s\"" (String.escaped s)
       else s
   | List elems -> "(" ^ String.concat " " (List.map to_string elems) ^ ")"
 
 (** Pretty print S-expression *)
 let rec pp_sexp indent = function
-  | Atom s -> Printf.sprintf "%s%s" indent (to_string (Atom s))
-  | List [] -> Printf.sprintf "%s()" indent
-  | List [ single ] -> Printf.sprintf "%s(%s)" indent (to_string single)
+  | Atom s -> format "%s%s" indent (to_string (Atom s))
+  | List [] -> format "%s()" indent
+  | List [ single ] -> format "%s(%s)" indent (to_string single)
   | List elems ->
       let indent_next = indent ^ "  " in
-      Printf.sprintf "%s(\n%s\n%s)" indent
+      format "%s(\n%s\n%s)" indent
         (String.concat "\n" (List.map (pp_sexp indent_next) elems))
         indent
 
@@ -221,11 +221,11 @@ module Csexp = struct
   let rec to_string = function
     | Atom s ->
         (* Format: <length>:<string> *)
-        Printf.sprintf "%d:%s" (String.length s) s
+        format "%d:%s" (String.length s) s
     | List elems ->
         (* Format: (<elem1><elem2>...) *)
         let contents = String.concat "" (List.map to_string elems) in
-        Printf.sprintf "(%s)" contents
+        format "(%s)" contents
 
   (** Parse canonical S-expression from string *)
   let of_string str =
@@ -274,7 +274,7 @@ module Csexp = struct
               Atom (parse_atom_content n)
           | _ -> raise (Parse_error "Expected ':' after atom length"))
       | Some c ->
-          raise (Parse_error (Printf.sprintf "Unexpected character '%c'" c))
+          raise (Parse_error (format "Unexpected character '%c'" c))
     and parse_list () =
       let rec loop acc =
         match peek () with
@@ -289,7 +289,7 @@ module Csexp = struct
         | Some c ->
             raise
               (Parse_error
-                 (Printf.sprintf "Unexpected character '%c' in list at pos %d" c
+                 (format "Unexpected character '%c' in list at pos %d" c
                     !pos))
       in
       loop []

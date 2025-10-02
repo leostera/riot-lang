@@ -110,7 +110,7 @@ let to_iso8601 t =
           let hours = abs t.utc_offset / 3600 in
           let mins = abs t.utc_offset mod 3600 / 60 in
           let sign = if t.utc_offset >= 0 then "+" else "-" in
-          Printf.sprintf "%s%02d:%02d" sign hours mins
+          format "%s%02d:%02d" sign hours mins
   in
-  Printf.sprintf "%04d-%02d-%02dT%02d:%02d:%02d.%03d%s" t.year t.month t.day
+  format "%04d-%02d-%02dT%02d:%02d:%02d.%03d%s" t.year t.month t.day
     t.hour t.minute t.second millis tz_suffix

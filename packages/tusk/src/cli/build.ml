@@ -15,7 +15,7 @@ let parse_build_args args start_idx =
       | "-p" when idx + 1 < List.length args ->
           parse (idx + 2) (Some (List.nth args (idx + 1)))
       | _ ->
-          Printf.eprintf "Warning: Unknown argument '%s'\n" (List.nth args idx);
+          println "Warning: Unknown argument '%s'" (List.nth args idx);
           parse (idx + 1) package
   in
   parse start_idx None
@@ -68,7 +68,7 @@ let build_command package_opt =
             in
             if should_display then
               let formatted = Event_formatter.format event in
-              if formatted <> "" then Printf.printf "%s\n%!" formatted
+              if formatted <> "" then println "%s" formatted
         | Client.BuildFinished _ -> ())
     |> Result.expect ~msg:"Build failed"
   in
@@ -78,7 +78,7 @@ let build_command package_opt =
   match result with
   | Client.BuildFinished (Ok ()) -> Ok ()
   | Client.BuildFinished (Error msg) ->
-      Printf.eprintf "error: build failed: %s\n" msg;
+      println "error: build failed: %s" msg;
       Error (Failure "Build failed")
   | Client.BuildStarted _ | Client.BuildEvent _ ->
       (* These should not happen as final result, but handle just in case *)

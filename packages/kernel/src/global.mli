@@ -130,3 +130,12 @@ val ( |> ) : 'a -> ('a -> 'b) -> 'b
 val ( @@ ) : ('a -> 'b) -> 'a -> 'b
 val fst : 'a * 'b -> 'a
 val snd : 'a * 'b -> 'b
+
+val format : ('a, unit, string, string) format4 -> 'a
+(** Format string helper - alias for format *)
+
+val print : ('a, unit, string, unit) format4 -> 'a
+(** Print to stdout with immediate flush *)
+
+val println : ('a, unit, string, unit) format4 -> 'a
+(** Print to stdout with newline and immediate flush *)

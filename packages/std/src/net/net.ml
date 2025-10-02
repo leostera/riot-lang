@@ -215,7 +215,7 @@ module TcpClient = struct
         | Ok bytes_written -> send_all (pos + bytes_written)
         | Error e ->
             Error
-              (Printf.sprintf "Send failed: %s"
+              (format "Send failed: %s"
                  (match e with
                  | `Closed -> "connection closed"
                  | `System_error s -> s))

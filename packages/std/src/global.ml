@@ -12,7 +12,7 @@ let panic msg =
 let cell x = Cell.create x
 
 (** Format string helper *)
-let format = Kernel.Printf.sprintf
+let format = Kernel.format
 
 (** Print to stdout with flush *)
 let print fmt = Kernel.Printf.ksprintf (fun s -> Kernel.Printf.printf "%s%!" s) fmt
