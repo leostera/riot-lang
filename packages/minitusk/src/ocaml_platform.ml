@@ -116,6 +116,14 @@ module Ocamlc = struct
   let compile_interface ?(cwd = "") ~includes ~flags ~output source =
     (* Include current directory for .cmi files *)
     let includes_with_dot = "." :: includes in
+    
+    (* Add stdlib path if -nostdlib is used (needed for camlinternalFormatBasics) *)
+    let has_nostdlib = List.exists (function NoStdlib -> true | _ -> false) flags in
+    let stdlib_path = Filename.concat (Filename.dirname (Filename.dirname ocamlc_path)) "lib/ocaml" in
+    let final_includes = 
+      if has_nostdlib then stdlib_path :: includes_with_dot
+      else includes_with_dot
+    in
 
     (* If we have flags, we need to build command parts directly *)
     if flags <> [] then
@@ -126,7 +134,7 @@ module Ocamlc = struct
       in
       let cmd_parts =
         [ ocamlc_path; "-c" ] @ flag_args
-        @ List.concat_map (fun dir -> [ "-I"; dir ]) includes_with_dot
+        @ List.concat_map (fun dir -> [ "-I"; dir ]) final_includes
         @ [ "-o"; output ]
         @ if has_impl_flag then [] else [ source ]
       in
@@ -136,13 +144,21 @@ module Ocamlc = struct
         let full_cmd = Printf.sprintf "cd %s && %s" cwd cmd_str in
         Io.run_command_with_output [ "/bin/sh"; "-c"; full_cmd ]
     else
-      run ~includes:includes_with_dot ~output:(Some output) ~mode:Compile
+      run ~includes:final_includes ~output:(Some output) ~mode:Compile
         [ source ]
 
   (** Compile an implementation file (.ml -> .cmo) *)
   let compile_impl ?(cwd = "") ~includes ~flags ~output source =
     (* Include current directory for .cmi files *)
     let includes_with_dot = "." :: includes in
+    
+    (* Add stdlib path if -nostdlib is used (needed for camlinternalFormatBasics) *)
+    let has_nostdlib = List.exists (function NoStdlib -> true | _ -> false) flags in
+    let stdlib_path = Filename.concat (Filename.dirname (Filename.dirname ocamlc_path)) "lib/ocaml" in
+    let final_includes = 
+      if has_nostdlib then stdlib_path :: includes_with_dot
+      else includes_with_dot
+    in
 
     (* If we have flags, we need to build command parts directly *)
     if flags <> [] then
@@ -153,7 +169,7 @@ module Ocamlc = struct
       in
       let cmd_parts =
         [ ocamlc_path; "-c" ] @ flag_args
-        @ List.concat_map (fun dir -> [ "-I"; dir ]) includes_with_dot
+        @ List.concat_map (fun dir -> [ "-I"; dir ]) final_includes
         @ [ "-o"; output ]
         @ if has_impl_flag then [] else [ source ]
       in
@@ -163,7 +179,7 @@ module Ocamlc = struct
         let full_cmd = Printf.sprintf "cd %s && %s" cwd cmd_str in
         Io.run_command_with_output [ "/bin/sh"; "-c"; full_cmd ]
     else
-      run ~includes:includes_with_dot ~output:(Some output) ~mode:Compile
+      run ~includes:final_includes ~output:(Some output) ~mode:Compile
         [ source ]
 
   (** Generate interface file (.ml -> .mli) using ocamlc -i *)

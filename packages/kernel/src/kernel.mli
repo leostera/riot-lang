@@ -12,6 +12,7 @@ module Types = Types
 module Format = Format
 module Effect = Effect
 module Printf = Printf
+module Printexc = Printexc
 module Int = Int
 
 (* Re-export common types at top level for convenience *)

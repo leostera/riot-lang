@@ -14,3 +14,14 @@ let ( ! ) = Stdlib.( ! )
 let ( := ) = Stdlib.( := )
 let incr = Stdlib.incr
 let decr = Stdlib.decr
+
+(* Comparison operators *)
+let ( = ) = Stdlib.( = )
+let ( <> ) = Stdlib.( <> )
+let ( < ) = Stdlib.( < )
+let ( > ) = Stdlib.( > )
+let ( <= ) = Stdlib.( <= )
+let ( >= ) = Stdlib.( >= )
+let compare = Stdlib.compare
+let min = Stdlib.min
+let max = Stdlib.max

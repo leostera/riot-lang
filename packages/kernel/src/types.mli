@@ -14,3 +14,14 @@ val ( ! ) : 'a ref -> 'a
 val ( := ) : 'a ref -> 'a -> unit
 val incr : int ref -> unit
 val decr : int ref -> unit
+
+(* Comparison operators *)
+val ( = ) : 'a -> 'a -> bool
+val ( <> ) : 'a -> 'a -> bool
+val ( < ) : 'a -> 'a -> bool
+val ( > ) : 'a -> 'a -> bool
+val ( <= ) : 'a -> 'a -> bool
+val ( >= ) : 'a -> 'a -> bool
+val compare : 'a -> 'a -> int
+val min : 'a -> 'a -> 'a
+val max : 'a -> 'a -> 'a
