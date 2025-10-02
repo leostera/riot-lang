@@ -159,7 +159,8 @@ let write content path =
   | Error e -> Error (SystemError (kernel_error_to_string e))
   | Ok fd -> (
       let buf = Bytes.of_string content in
-      match write fd buf with
+      let len = Bytes.length buf in
+      match write fd buf ~len with
       | Error e ->
           let _ = close_fd fd in
           Error (SystemError (kernel_error_to_string e))

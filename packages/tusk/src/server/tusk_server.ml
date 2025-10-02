@@ -36,30 +36,45 @@ let rec loop state =
     match msg with ServerRequest req -> `select req | _ -> `skip
   in
 
+  Log.trace "Server loop waiting for message...";
   match receive ~selector () with
-  | Ping { client_pid } -> handle_ping state client_pid
+  | Ping { client_pid } -> 
+      Log.debug "Server loop received: Ping";
+      handle_ping state client_pid
   | Build { client_pid; target; session_id } ->
+      Log.debug "Server loop received: Build";
       handle_build state client_pid target session_id
   | ScanWorkspace { client_pid; current_dir } ->
+      Log.debug "Server loop received: ScanWorkspace";
       handle_scan_workspace state client_pid current_dir
   | GetWorkspaceConfig { client_pid } ->
+      Log.debug "Server loop received: GetWorkspaceConfig";
       handle_get_workspace_config state client_pid
   | GetPackageInfo { client_pid; package_name } ->
+      Log.debug "Server loop received: GetPackageInfo";
       handle_get_package_info state client_pid package_name
-  | GetBuildGraph { client_pid } -> handle_get_build_graph state client_pid
+  | GetBuildGraph { client_pid } -> 
+      Log.debug "Server loop received: GetBuildGraph";
+      handle_get_build_graph state client_pid
   | FormatFile { client_pid; file_path; check_only } ->
+      Log.debug "Server loop received: FormatFile";
       handle_format_file state client_pid file_path check_only
   | FormatCode { client_pid; code; file_path } ->
+      Log.debug "Server loop received: FormatCode";
       handle_format_code state client_pid code file_path
-  | FormatAll { client_pid; mode } -> handle_format_all state client_pid mode
+  | FormatAll { client_pid; mode } -> 
+      Log.debug "Server loop received: FormatAll";
+      handle_format_all state client_pid mode
   | NewPackage { client_pid; path; name; is_library } ->
+      Log.debug "Server loop received: NewPackage";
       handle_new_package state client_pid path name is_library
 
 (** Handler for the ping message. *)
 and handle_ping state client_pid =
-  Printf.eprintf "Server: Received Ping from %s, sending Pong\n"
-    (Pid.to_string client_pid);
+  Log.debug "handle_ping: Received Ping from %s" (Pid.to_string client_pid);
+  Log.debug "handle_ping: Sending Pong response";
   send client_pid (ServerResponse Pong);
+  Log.debug "handle_ping: Pong sent, continuing loop";
   loop state
 
 (** Handler for the scan workspace message. *)
@@ -279,19 +294,33 @@ and handle_build state client_pid target session_id =
 let start_tcp_server ~server ~port =
   spawn @@ fun () ->
   let addr = Net.Addr.tcp Net.Addr.loopback port in
+  Log.debug "TCP server binding to 127.0.0.1:%d" port;
   let jsonrpc_server = Tusk_jsonrpc.Server.create server in
   let handler ~req stream =
+    Log.debug "TCP server received connection";
+    Log.debug "Request: %s" req;
     let reply msg =
+      Log.debug "reply() called with: %s" msg;
       let bytes = Bytes.of_string (msg ^ "\n") in
-      let _ =
-        Net.TcpStream.write stream bytes ~pos:0 ~len:(Bytes.length bytes) ()
-        |> Result.expect ~msg:"tusk_server: network operation failed"
-      in
-      ()
+      Log.debug "Writing %d bytes to stream" (Bytes.length bytes);
+      match Net.TcpStream.write stream bytes ~pos:0 ~len:(Bytes.length bytes) () with
+      | Ok bytes_written ->
+          Log.debug "Successfully wrote %d bytes" bytes_written;
+          ()
+      | Error e ->
+          Log.error "Failed to write to stream: %s" 
+            (match e with
+            | `Closed -> "closed"
+            | `System_error msg -> msg);
+          failwith "network write failed"
     in
-    Jsonrpc.Server.handle_message jsonrpc_server reply req
+    Log.debug "Calling Jsonrpc.Server.handle_message";
+    Jsonrpc.Server.handle_message jsonrpc_server reply req;
+    Log.debug "Handler finished"
   in
+  Log.debug "Starting TCP listener...";
   let _ = Net.TcpServer.listen addr ~handler in
+  Log.info "TCP server listening successfully";
   Ok ()
 
 (** Write daemon files so RPC clients can find us *)
@@ -382,6 +411,7 @@ let start () =
 (** Start with listener - makes current process become the server *)
 let start_with_listener () =
   try
+    Log.set_level Log.Debug;
     Log.info "Starting Tusk server with listener";
     let current_dir =
       Env.current_dir ()
@@ -391,7 +421,6 @@ let start_with_listener () =
     let workers = Std.System.available_parallelism in
     let port = 9753 in
     Log.debug "Configuration: workers=%d, port=%d" workers port;
-    
     init ~current_dir ~workers ~port
   with
   | Failure msg ->

@@ -32,9 +32,12 @@ module Daemon = struct
     let pid_file = Path.(daemon_path / Path.v "server.pid") in
     let port_file = Path.(daemon_path / Path.v "server.port") in
 
+    Std.Log.debug "Checking for daemon files at %s" (Path.to_string daemon_path);
+
     (* Check if daemon files exist and process is running *)
     match (Fs.exists pid_file, Fs.exists port_file) with
     | Ok true, Ok true ->
+        Std.Log.debug "Found daemon files, reading PID and port";
         (* Read the PID and port *)
         let pid_content =
           Fs.read_to_string pid_file
@@ -46,22 +49,37 @@ module Daemon = struct
         in
         let pid = int_of_string (String.trim pid_content) in
         let port = int_of_string (String.trim port_content) in
+        
+        Std.Log.debug "Found daemon: pid=%d, port=%d" pid port;
 
-        (* Check if process is still running by sending signal 0 *)
-        let is_pid_running =
-          let cmd = Command.make ~args:["-0"; string_of_int pid] "kill" in
-          match Command.status cmd with
-          | Ok 0 -> true (* Process exists *)
-          | Ok _ | Error _ -> false (* Process doesn't exist or error checking *)
+        (* Check if server is actually running by trying to connect *)
+        Std.Log.debug "Attempting to connect to 127.0.0.1:%d" port;
+        let is_server_running =
+          match Std.Net.TcpClient.connect ~host:"127.0.0.1" ~port with
+          | Ok stream ->
+              (* Connection successful - server is running *)
+              Std.Log.debug "Successfully connected to server";
+              let _ = Std.Net.TcpClient.close stream in
+              true
+          | Error e ->
+              Std.Log.debug "Failed to connect: %s" 
+                (match e with
+                | `Connection_refused -> "connection refused"
+                | `Closed -> "connection closed"
+                | `System_error msg -> Printf.sprintf "system error: %s" msg);
+              false
         in
-        if is_pid_running then
+        if is_server_running then
           Some { workspace; os_pid = pid; port; host = "127.0.0.1" }
-        else
-          (* Process died, clean up *)
+        else (
+          (* Server not responding, clean up daemon files *)
+          Std.Log.debug "Server not responding, cleaning up daemon files";
           let _ = Fs.remove_file pid_file in
           let _ = Fs.remove_file port_file in
-          None
-    | _ -> None
+          None)
+    | _ -> 
+        Std.Log.debug "Daemon files not found";
+        None
 
   (** Start the daemon process *)
   let of_workspace ~workspace =
@@ -111,26 +129,36 @@ module Daemon = struct
 end
 
 let ensure_running ~workspace =
+  Std.Log.debug "ensure_running: Getting daemon for workspace";
   (* 1. Get a daemon for the workspace *)
   let daemon =
     Daemon.of_workspace ~workspace
     |> Result.expect ~msg:"Failed to get daemon info from workspace"
   in
+  Std.Log.debug "ensure_running: Got daemon at %s:%d" daemon.host daemon.port;
+  
   (* 2. Wait for server to be ready *)
   let rec wait_server ~retries =
-    if retries <= 0 then Error Error.ScanWorkspaceError
-    else
+    if retries <= 0 then (
+      Std.Log.error "Failed to connect to server after 60 retries";
+      Error Error.ScanWorkspaceError
+    ) else
       match Tusk_jsonrpc.Client.create ~host:daemon.host ~port:daemon.port with
       | Ok client -> (
+          Std.Log.debug "Created client, testing with ping";
           (* Try to ping to make sure it's really ready *)
           match Tusk_jsonrpc.Client.ping client with
-          | Ok _ -> Ok client
+          | Ok _ -> 
+              Std.Log.debug "Ping successful!";
+              Ok client
           | Error e ->
+              Std.Log.debug "Ping failed: %s, retrying..." e;
               Tusk_jsonrpc.Client.close client;
               Kernel.Time.sleep 0.05;
               (* 50ms *)
               wait_server ~retries:(retries - 1))
       | Error e ->
+          Std.Log.debug "Failed to create client: %s, retrying..." e;
           Kernel.Time.sleep 0.05;
           (* 50ms *)
           wait_server ~retries:(retries - 1)

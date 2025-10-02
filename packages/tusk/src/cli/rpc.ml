@@ -18,6 +18,7 @@ let create_local_client () =
 
 (** Execute the rpc command *)
 let run args =
+  Std.Log.set_level Std.Log.Debug;
   let cmd = if List.length args > 0 then List.nth args 0 else "" in
   let rest =
     if List.length args > 1 then

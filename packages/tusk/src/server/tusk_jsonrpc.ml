@@ -2332,13 +2332,14 @@ module Server = struct
     | _ -> reply (TuskProtocol.Error "Unexpected response")
 
   let handle_ping ctx reply request =
+    Std.Log.debug "[JSONRPC] handle_ping called";
     (* Convert to tusk_protocol message type and send *)
-    Printf.eprintf "[HANDLER] Sending Ping to server %s from %s\n"
+    Std.Log.debug "[JSONRPC] Sending Ping to server %s from %s"
       (Pid.to_string ctx.server_pid)
       (Pid.to_string (self ()));
     send ctx.server_pid
       (Tusk_protocol.ServerRequest (Tusk_protocol.Ping { client_pid = self () }));
-    Printf.eprintf "[HANDLER] Waiting for response...\n";
+    Std.Log.debug "[JSONRPC] Waiting for Pong response...";
     (* Wait for response *)
     let selector = function
       | Tusk_protocol.ServerResponse response -> `select response
@@ -2346,10 +2347,11 @@ module Server = struct
     in
     match receive ~selector () with
     | Tusk_protocol.Pong ->
-        Printf.eprintf "[HANDLER] Got Pong response\n";
-        reply TuskProtocol.Pong
+        Std.Log.debug "[JSONRPC] Got Pong response, sending reply";
+        reply TuskProtocol.Pong;
+        Std.Log.debug "[JSONRPC] Reply sent"
     | _ ->
-        Printf.eprintf "[HANDLER] Got unexpected response\n";
+        Std.Log.error "[JSONRPC] Got unexpected response";
         reply (TuskProtocol.Error "Unexpected response")
 
   let handle_shutdown ctx reply request =
@@ -2601,9 +2603,14 @@ module Server = struct
             method_ = method_ping;
             fn =
               (fun reply request ->
+                Std.Log.debug "[JSONRPC] method_ping handler called";
                 match request with
-                | TuskProtocol.Ping -> handle_ping ctx reply request
-                | _ -> ());
+                | TuskProtocol.Ping -> 
+                    Std.Log.debug "[JSONRPC] Request is Ping, calling handle_ping";
+                    handle_ping ctx reply request
+                | _ -> 
+                    Std.Log.error "[JSONRPC] Request is not Ping!";
+                    ());
           };
           {
             method_ = method_build_package;
