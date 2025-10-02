@@ -109,7 +109,9 @@ let spawn ~program ~args ?(env = []) ?cwd ~stdio () =
       Unix.close stderr_child;
 
     (* Set parent-side fds to non-blocking *)
-    (match stdin_parent with Some fd -> Unix.set_nonblock fd | None -> ());
+    (match stdin_parent with
+    | Some fd -> Unix.set_nonblock fd
+    | None -> ());
     (match stdout_parent with Some fd -> Unix.set_nonblock fd | None -> ());
     (match stderr_parent with Some fd -> Unix.set_nonblock fd | None -> ());
 
@@ -125,7 +127,7 @@ let spawn ~program ~args ?(env = []) ?cwd ~stdio () =
   | Unix.Unix_error (err, fn, arg) ->
       Error
         (`SpawnFailed
-          (Printf.sprintf "%s: %s(%s)" (Unix.error_message err) fn arg))
+           (Printf.sprintf "%s: %s(%s)" (Unix.error_message err) fn arg))
   | exn -> Error (`SpawnFailed (Printexc.to_string exn))
 
 let try_wait t =
@@ -159,6 +161,6 @@ let close t =
   (* Close all open file descriptors *)
   (match t.stdin_fd with Some fd -> Unix.close fd | None -> ());
   (match t.stdout_fd with Some fd -> Unix.close fd | None -> ());
-  (match t.stderr_fd with Some fd -> Unix.close fd | None -> ())
+  match t.stderr_fd with Some fd -> Unix.close fd | None -> ()
 
 let current_pid () = Unix.getpid ()

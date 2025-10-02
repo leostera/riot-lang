@@ -5,7 +5,7 @@ open Std.Data
 
 (* Helper to run shell commands and return (success, output) *)
 let run_command_compat cmd_str =
-  let cmd = Command.make ~args:["-c"; cmd_str] "sh" in
+  let cmd = Command.make ~args:[ "-c"; cmd_str ] "sh" in
   match Command.output cmd with
   | Ok output -> (output.Command.status = 0, output.Command.stdout)
   | Error (Command.SystemError msg) -> (false, msg)
@@ -229,7 +229,8 @@ let download_source_from_url uri =
   let extract_dir =
     Path.(
       Path.v "/tmp"
-      / Path.v (Printf.sprintf "ocaml-build-%d" (System.OsProcess.current_pid ())))
+      / Path.v
+          (Printf.sprintf "ocaml-build-%d" (System.OsProcess.current_pid ())))
   in
   let _ = Fs.create_dir_all extract_dir in
 
@@ -303,7 +304,9 @@ let download_ocaml_source version =
   let extract_dir =
     Path.(
       Path.v "/tmp"
-      / Path.v (Printf.sprintf "ocaml-build-%s-%d" version (System.OsProcess.current_pid ())))
+      / Path.v
+          (Printf.sprintf "ocaml-build-%s-%d" version
+             (System.OsProcess.current_pid ())))
   in
   let _ = Fs.create_dir_all extract_dir in
 

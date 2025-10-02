@@ -40,8 +40,7 @@ let output t =
         Kernel.System.OsProcess.spawn ~program:t.cmd ~args:t.args ~env:t.env
           ?cwd:t.cwd ~stdio ()
       with
-      | Error (`SpawnFailed msg) ->
-          Error (SystemError msg)
+      | Error (`SpawnFailed msg) -> Error (SystemError msg)
       | Ok proc ->
           (* Get piped file descriptors *)
           let stdout_fd = Kernel.System.OsProcess.stdout proc in
@@ -98,8 +97,7 @@ let output t =
                 status
             | None ->
                 (* Still running - yield if we didn't read anything *)
-                if not (stdout_read || stderr_read) then (
-                  Miniriot.yield ());
+                if not (stdout_read || stderr_read) then Miniriot.yield ();
                 wait_and_drain ()
           in
 
@@ -107,14 +105,6 @@ let output t =
 
           let stdout_data = Buffer.contents stdout_buf in
           let stderr_data = Buffer.contents stderr_buf in
-
-          (* Close file descriptors *)
-          (match stdout_fd with
-          | Some fd -> ignore (Kernel.Fs.File.close_fd fd)
-          | None -> ());
-          (match stderr_fd with
-          | Some fd -> ignore (Kernel.Fs.File.close_fd fd)
-          | None -> ());
 
           (* Close the process *)
           Kernel.System.OsProcess.close proc;

@@ -5,8 +5,7 @@ type status =
   | Running
   | Exited of int
   | Signaled of int
-  | Stopped of int
-(** Process status *)
+  | Stopped of int  (** Process status *)
 
 type stdio_config = {
   stdin : [ `Null | `Pipe | `Inherit ];
@@ -39,17 +38,17 @@ val pid : t -> int
 (** Get the OS process ID *)
 
 val try_wait : t -> status option
-(** Non-blocking status check using WNOHANG. Returns Some status if process
-    has changed state, None if still running. This is the only way to check
-    process status at the Kernel level - higher layers can implement async
-    waiting by polling this with yields. *)
+(** Non-blocking status check using WNOHANG. Returns Some status if process has
+    changed state, None if still running. This is the only way to check process
+    status at the Kernel level - higher layers can implement async waiting by
+    polling this with yields. *)
 
 val kill : t -> signal:int -> unit
 (** Send a signal to the process *)
 
 val close : t -> unit
-(** Close all file descriptors and release resources. Does not wait for
-    process termination - call try_wait first if you need the exit status. *)
+(** Close all file descriptors and release resources. Does not wait for process
+    termination - call try_wait first if you need the exit status. *)
 
 val current_pid : unit -> int
 (** Get the current process ID *)

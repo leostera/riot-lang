@@ -95,7 +95,9 @@ let run ~toolchain ?(includes = []) ?(libs = []) ?(output = None)
 
   (* Build the complete command *)
   let cmd_parts =
-    [ ocamlc; "-g"; mode_flag; include_flags; output_flag; libs_str; sources_str ]
+    [
+      ocamlc; "-g"; mode_flag; include_flags; output_flag; libs_str; sources_str;
+    ]
     |> List.filter (fun s -> s <> "") (* Remove empty strings *)
     |> String.concat " "
   in
@@ -106,10 +108,13 @@ let run ~toolchain ?(includes = []) ?(libs = []) ?(output = None)
   (* Execute the command with colors enabled *)
   (* Set OCAML_COLOR=always to get colored error output *)
   let env = [ ("OCAML_COLOR", "always") ] in
-  let cmd = Command.make ~env ~args:["-c"; cmd_parts] "sh" in
+  let cmd = Command.make ~env ~args:[ "-c"; cmd_parts ] "sh" in
   match Command.output cmd with
   | Ok output when output.Command.status = 0 -> Success output.Command.stdout
-  | Ok output -> Failed (Printf.sprintf "Command failed with status %d: %s" output.Command.status output.Command.stderr)
+  | Ok output ->
+      Failed
+        (Printf.sprintf "Command failed with status %d: %s"
+           output.Command.status output.Command.stderr)
   | Error (Command.SystemError msg) -> Failed msg
 
 (** Compile an interface file (.mli -> .cmi) *)
@@ -134,10 +139,13 @@ let compile_interface ~toolchain ~includes ~flags ~output source =
     in
     let cmd_str = String.concat " " cmd_parts in
     let env = [ ("OCAML_COLOR", "always") ] in
-    let cmd = Command.make ~env ~args:["-c"; cmd_str] "sh" in
+    let cmd = Command.make ~env ~args:[ "-c"; cmd_str ] "sh" in
     match Command.output cmd with
     | Ok output when output.Command.status = 0 -> Success output.Command.stdout
-    | Ok output -> Failed (Printf.sprintf "Command failed with status %d: %s" output.Command.status output.Command.stderr)
+    | Ok output ->
+        Failed
+          (Printf.sprintf "Command failed with status %d: %s"
+             output.Command.status output.Command.stderr)
     | Error (Command.SystemError msg) -> Failed msg
   else
     run ~toolchain ~includes:includes_with_dot ~output:(Some output)
@@ -164,10 +172,13 @@ let compile_impl ~toolchain ~includes ~flags ~output source =
     in
     let cmd_str = String.concat " " cmd_parts in
     let env = [ ("OCAML_COLOR", "always") ] in
-    let cmd = Command.make ~env ~args:["-c"; cmd_str] "sh" in
+    let cmd = Command.make ~env ~args:[ "-c"; cmd_str ] "sh" in
     match Command.output cmd with
     | Ok output when output.Command.status = 0 -> Success output.Command.stdout
-    | Ok output -> Failed (Printf.sprintf "Command failed with status %d: %s" output.Command.status output.Command.stderr)
+    | Ok output ->
+        Failed
+          (Printf.sprintf "Command failed with status %d: %s"
+             output.Command.status output.Command.stderr)
     | Error (Command.SystemError msg) -> Failed msg
   else
     run ~toolchain ~includes:includes_with_dot ~output:(Some output)
@@ -187,7 +198,7 @@ let generate_interface ~toolchain ~includes ~flags ~output source =
   in
   let cmd_str = String.concat " " cmd_parts in
   let env = [ ("OCAML_COLOR", "always") ] in
-  let cmd = Command.make ~env ~args:["-c"; cmd_str] "sh" in
+  let cmd = Command.make ~env ~args:[ "-c"; cmd_str ] "sh" in
 
   (* Execute and capture only stdout (stderr has warnings) *)
   match Command.output cmd with
@@ -204,8 +215,8 @@ let generate_interface ~toolchain ~includes ~flags ~output source =
       else
         (* Include stderr in the error message for debugging *)
         Failed
-          (Printf.sprintf "ocamlc -i failed with exit code %d: %s" out.Command.status
-             out.Command.stderr)
+          (Printf.sprintf "ocamlc -i failed with exit code %d: %s"
+             out.Command.status out.Command.stderr)
   | Error (Command.SystemError msg) -> Failed msg
 
 (** Compile a C file *)

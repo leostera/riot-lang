@@ -2,6 +2,8 @@
 
 include Stdlib.List
 
+let make ~len ~fn = Stdlib.List.init len fn
+
 let rec find_map f = function
   | [] -> None
   | x :: xs -> (

@@ -16,7 +16,7 @@ let sort ~toolchain ~cwd ~files =
     Format.eprintf "[DEBUG Ocamldep] Running: %s@." cmd;
 
     let sorted_str =
-      let command = Command.make ~args:["-c"; cmd] "sh" in
+      let command = Command.make ~args:[ "-c"; cmd ] "sh" in
       match Command.output command with
       | Ok output -> (
           match String.split_on_char '\n' output.Command.stdout with
@@ -41,7 +41,7 @@ let deps ~toolchain ~cwd ~file ~package_namespace =
   in
 
   let deps_str =
-    let command = Command.make ~args:["-c"; cmd] "sh" in
+    let command = Command.make ~args:[ "-c"; cmd ] "sh" in
     match Command.output command with
     | Ok output -> (
         match String.split_on_char '\n' output.Command.stdout with
@@ -77,7 +77,7 @@ let deps_with_flags ~toolchain ~cwd ~file ~flags ~package_namespace =
   in
 
   let deps_str =
-    let command = Command.make ~args:["-c"; cmd] "sh" in
+    let command = Command.make ~args:[ "-c"; cmd ] "sh" in
     match Command.output command with
     | Ok output -> (
         match String.split_on_char '\n' output.Command.stdout with

@@ -24,5 +24,5 @@ module System = System
 module Task = Task
 module Time = Time
 module Version = Version
-module Worker_pool = Worker_pool
+module WorkerPool = Worker_pool
 include Global

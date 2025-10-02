@@ -2,6 +2,9 @@
 
 include module type of Stdlib.List
 
+val make : len:int -> fn:(int -> 'a) -> 'a list
+(** Make a new list of length `len` using `fn` *)
+
 val find_map : ('a -> 'b option) -> 'a list -> 'b option
 (** Find and return the first element matching predicate *)
 

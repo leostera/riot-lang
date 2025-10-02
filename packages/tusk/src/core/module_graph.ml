@@ -469,60 +469,60 @@ let scan_sources t =
 (** Wire dependencies using ocamldep *)
 let wire_dependencies t =
   Printf.printf "[MODULE_GRAPH] Wiring dependencies with ocamldep\n%!";
-  let results = G.map t.graph ~fn:(fun (_node_id, (node : dep G.node)) ->
-      Std.Task.async @@ fun () ->
-      let dep = node.value in
-      match dep.kind with
-      | ML mod_ | MLI mod_ ->
-          let deps =
-            match dep.file with
-            | Generated _ -> []
-            | Concrete path ->
-                let cwd = Path.to_string t.package.path in
-                let file = Path.to_string path in
-                Ocamldep.deps ~toolchain:t.toolchain ~cwd ~file
-                  ~package_namespace:t.namespace
-          in
+  let results =
+    G.map t.graph ~fn:(fun (_node_id, (node : dep G.node)) ->
+        Std.Task.async @@ fun () ->
+        let dep = node.value in
+        match dep.kind with
+        | ML mod_ | MLI mod_ ->
+            let deps =
+              match dep.file with
+              | Generated _ -> []
+              | Concrete path ->
+                  let cwd = Path.to_string t.package.path in
+                  let file = Path.to_string path in
+                  Ocamldep.deps ~toolchain:t.toolchain ~cwd ~file
+                    ~package_namespace:t.namespace
+            in
 
-          if deps <> [] then
-            Printf.printf "[MODULE_GRAPH]   %s depends on: %s\n%!"
-              (file_to_string dep.file)
-              (String.concat ", " (List.map Module_name.to_string deps));
+            if deps <> [] then
+              Printf.printf "[MODULE_GRAPH]   %s depends on: %s\n%!"
+                (file_to_string dep.file)
+                (String.concat ", " (List.map Module_name.to_string deps));
 
-          List.iter
-            (fun dep_mod_name ->
-              let dep_name = Module_name.to_string dep_mod_name in
-              try
-                let node_ids =
-                  Module_registry.get_by_name t.registry dep_name
-                in
-                List.iter
-                  (fun dep_node_id ->
-                    let dep_node = G.get_node t.graph dep_node_id in
-                    match (node.value.kind, dep_node.value.kind) with
-                    | MLI _, ML _ -> ()
-                    | _ ->
-                        Printf.printf
-                          "[MODULE_GRAPH]     Adding ocamldep edge: %s -> %s\n\
-                           %!"
-                          (file_to_string node.value.file)
-                          (file_to_string dep_node.value.file);
-                        G.add_edge node ~depends_on:dep_node)
-                  node_ids
-              with Not_found ->
-                Printf.printf
-                  "[MODULE_GRAPH]     WARNING: Module %s not found in registry\n\
-                   %!"
-                  dep_name)
-            deps
-      | _ -> ())
-  |> Std.Task.await_all
-    in
+            List.iter
+              (fun dep_mod_name ->
+                let dep_name = Module_name.to_string dep_mod_name in
+                try
+                  let node_ids =
+                    Module_registry.get_by_name t.registry dep_name
+                  in
+                  List.iter
+                    (fun dep_node_id ->
+                      let dep_node = G.get_node t.graph dep_node_id in
+                      match (node.value.kind, dep_node.value.kind) with
+                      | MLI _, ML _ -> ()
+                      | _ ->
+                          Printf.printf
+                            "[MODULE_GRAPH]     Adding ocamldep edge: %s -> %s\n\
+                             %!"
+                            (file_to_string node.value.file)
+                            (file_to_string dep_node.value.file);
+                          G.add_edge node ~depends_on:dep_node)
+                    node_ids
+                with Not_found ->
+                  Printf.printf
+                    "[MODULE_GRAPH]     WARNING: Module %s not found in registry\n\
+                     %!"
+                    dep_name)
+              deps
+        | _ -> ())
+    |> Std.Task.await_all
+  in
 
   Printf.printf "[MODULE_GRAPH] Ran %d tasks\n%!" (List.length results);
 
-    results
-  |> Result.all
+  results |> Result.all
   |> Result.expect ~msg:"Something went wrong wiring dependencies!"
 
 (** Generate compilation actions from the module graph *)

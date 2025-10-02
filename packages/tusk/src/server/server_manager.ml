@@ -48,7 +48,12 @@ module Daemon = struct
         let port = int_of_string (String.trim port_content) in
 
         (* Check if process is still running by sending signal 0 *)
-        let is_pid_running = try Unix.kill pid 0; true with Unix.Unix_error _ -> false in
+        let is_pid_running =
+          try
+            Unix.kill pid 0;
+            true
+          with Unix.Unix_error _ -> false
+        in
         if is_pid_running then
           Some { workspace; os_pid = pid; port; host = "127.0.0.1" }
         else
@@ -102,8 +107,7 @@ module Daemon = struct
             Unix.sleepf 0.1;
 
             Ok { workspace; os_pid = pid; port; host = "127.0.0.1" }
-        | Error (`SpawnFailed msg) ->
-            Error Error.ScanWorkspaceError)
+        | Error (`SpawnFailed msg) -> Error Error.ScanWorkspaceError)
 end
 
 let ensure_running ~workspace =

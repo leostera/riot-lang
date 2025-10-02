@@ -12,14 +12,7 @@ module Runtime : sig
       towards zero rather than counting up. *)
 end
 
-module Pid : sig
-  (** Process identifier *)
-
-  type t
-
-  val next : unit -> t
-  val to_string : t -> string
-end
+module Pid = Pid
 
 module Message : sig
   type t = ..
@@ -85,7 +78,10 @@ val self : unit -> Pid.t
 val spawn : (unit -> (unit, Process.exit_reason) result) -> Pid.t
 val send : Pid.t -> Message.t -> unit
 val yield : unit -> unit
-val receive : selector:(Message.t -> [ `select of 'a | `skip ]) -> unit -> 'a
+
+type 'msg selector = Message.t -> [ `select of 'msg | `skip ]
+
+val receive : selector:'value selector -> unit -> 'value
 val receive_any : unit -> Message.t
 val shutdown : status:int -> unit
 

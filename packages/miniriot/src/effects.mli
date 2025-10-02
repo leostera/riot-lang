@@ -6,7 +6,9 @@ val yield : unit -> unit
 val receive_any : unit -> Message.t
 (** Receive any message from the process mailbox *)
 
-val receive : selector:(Message.t -> [ `select of 'a | `skip ]) -> unit -> 'a
+type 'msg selector = Message.t -> [ `select of 'msg | `skip ]
+
+val receive : selector:'a selector -> unit -> 'a
 (** Receive a message using a selector function *)
 
 val exit : unit -> (unit, Process.exit_reason) result

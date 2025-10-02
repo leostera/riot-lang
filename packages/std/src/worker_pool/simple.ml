@@ -1,66 +1,112 @@
-(** Simple worker pool - convenience wrapper around Dynamic
+(** Simple worker pool - parallel map with controlled concurrency
 
-    Pre-queues all tasks and automatically dispatches them to workers.
-    Workers still send results directly to the actual owner (no dispatcher hop). *)
+    Provides a simple API for parallel execution: like List.map but with limited
+    workers. *)
 
 open Global
 open Miniriot
 open Types
 
-type 'task t = {
-  dispatcher_pid : Pid.t;
+type ('task, 'result) state = {
+  owner : Pid.t;
   pool : 'task Dynamic.t;
-  actual_owner : Pid.t;
+  task_queue : 'task Queue.t;
+  mutable results : (int * 'result) list;
+  result_ref : 'result Ref.t;
 }
 
-(** Start a worker pool with pre-queued tasks *)
-let start_with_tasks :
-    type task.
-    workers:int ->
-    owner:Pid.t ->
-    tasks:task list ->
-    worker_fn:(owner:Pid.t -> task:task -> unit) ->
-    unit ->
-    task t =
- fun ~workers ~owner ~tasks ~worker_fn () ->
-  (* Create a task queue *)
-  let task_queue = Queue.create () in
-  List.iter (fun task -> Queue.add task task_queue) tasks;
-  let remaining = ref (List.length tasks) in
+type Message.t +=
+  | TaskResult : {
+      idx : int;
+      result : 'result;
+      result_ref : 'result Ref.t;
+    }
+      -> Message.t
+  | Completed : {
+      results : (int * 'result) list;
+      result_ref : 'result Ref.t;
+    }
+      -> Message.t
 
-  (* Spawn dispatcher process *)
-  let dispatcher_pid =
-    spawn (fun () ->
-        let dispatcher_self = self () in
-
-        (* Start dynamic pool with dispatcher as the owner *)
-        let pool =
-          Dynamic.start ~workers ~owner:dispatcher_self ~worker_fn ()
-        in
-
-        (* Dispatch loop: receive WorkerReady, send next task *)
-        let rec dispatch_loop () =
-          match receive_any () with
-          | Dynamic.WorkerReady worker ->
-              if !remaining > 0 && not (Queue.is_empty task_queue) then (
-                let task = Queue.pop task_queue in
-                Dynamic.send_task pool worker task;
-                decr remaining
-              );
-              dispatch_loop ()
-          | ToCoordinator Stop ->
-              (* Forward stop to underlying pool *)
-              Dynamic.stop pool;
-              Ok ()
-          | _ -> dispatch_loop ()
-        in
-
-        dispatch_loop ())
+let rec loop : type task res.
+    (task, res) state -> (unit, Process.exit_reason) result =
+ fun state ->
+  let selector :
+      [ `WorkerReady of task worker | `TaskResult of int * res ] selector =
+   fun msg ->
+    match msg with
+    | Dynamic.WorkerReady worker -> (
+        match Ref.type_equal state.pool.task_ref worker.task_ref with
+        | Some Type.Equal -> `select (`WorkerReady worker)
+        | None -> panic "bad message")
+    | TaskResult { idx; result; result_ref } -> (
+        match Ref.type_equal state.result_ref result_ref with
+        | Some Type.Equal -> `select (`TaskResult (idx, result))
+        | None -> panic "bad message")
+    | _ -> `skip
   in
 
-  (* We need a placeholder pool handle for the public API *)
-  (* The actual pool is inside the dispatcher, but we return a handle *)
-  let dummy_ref = Ref.make () in
-  let dummy_pool = Dynamic.{ coordinator_pid = dispatcher_pid; ref = dummy_ref } in
+  match receive ~selector () with
+  | `TaskResult res ->
+      state.results <- res :: state.results;
+      loop state
+  | `WorkerReady worker -> (
+      match Queue.take_opt state.task_queue with
+      | Some task ->
+          Dynamic.send_task state.pool worker task;
+          loop state
+      | None ->
+          send state.owner
+            (Completed
+               { results = state.results; result_ref = state.result_ref });
+          Ok ())
 
-  { dispatcher_pid; pool = dummy_pool; actual_owner = owner }
+let init ~owner ~concurrency ~tasks ~result_ref ~fn () =
+  let dispatcher_self = self () in
+
+  (* Worker function: execute user's fn and send result back *)
+  let worker_fn ~owner ~task:(idx, task) =
+    let result = fn task in
+    send owner (TaskResult { idx; result; result_ref })
+  in
+
+  (* Start dynamic pool with indexed tasks *)
+  let indexed_tasks = List.mapi (fun idx task -> (idx, task)) tasks in
+  let task_queue = Queue.create () in
+  List.iter (fun t -> Queue.add t task_queue) indexed_tasks;
+  let results = [] in
+
+  let pool = Dynamic.start ~concurrency ~owner:dispatcher_self ~worker_fn () in
+
+  loop { owner; pool; task_queue; results; result_ref }
+
+(** Run tasks in parallel with limited concurrency, collecting results in order
+*)
+let run : type task result.
+    ?concurrency:int ->
+    tasks:task list ->
+    fn:(task -> result) ->
+    unit ->
+    (int * result) list =
+ fun ?(concurrency = System.available_parallelism) ~tasks ~fn () ->
+  (* Edge case: empty task list *)
+  if tasks = [] then []
+  else
+    let result_ref : result Ref.t = Ref.make () in
+    let owner = self () in
+
+    (* Spawn dispatcher process *)
+    let _dispatcher_pid =
+      spawn (init ~owner ~result_ref ~concurrency ~tasks ~fn)
+    in
+
+    let selector : (int * result) list selector = function
+      | Completed { results; result_ref = ref } when Ref.equal result_ref ref
+        -> (
+          match Ref.type_equal result_ref ref with
+          | Some Type.Equal -> `select results
+          | None -> panic "bad message")
+      | _ -> `skip
+    in
+
+    receive ~selector ()

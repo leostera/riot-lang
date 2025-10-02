@@ -180,7 +180,8 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
        Toolchains.get_toolchain_path sandbox.node.toolchain
      in
      let unix_cmxa =
-       Path.(toolchain_path / Path.v "lib" / Path.v "ocaml" / Path.v "unix.cmxa")
+       Path.(
+         toolchain_path / Path.v "lib" / Path.v "ocaml" / Path.v "unix.cmxa")
      in
      let unix_exists =
        match Fs.exists unix_cmxa with Ok exists -> exists | Error _ -> false

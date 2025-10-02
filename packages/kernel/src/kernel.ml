@@ -4,7 +4,6 @@ module Crypto = Crypto
 module Env = Env
 module Fs = Fs
 module Net = Net
-module Osprocess = Osprocess
 module System = System
 module Time = Time
 module Types = Types

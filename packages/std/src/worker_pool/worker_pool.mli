@@ -6,30 +6,20 @@
 
     Two modes of operation:
 
-    1. Simple mode (start_with_tasks): Pre-queue all tasks upfront
-    2. Dynamic mode (start + WorkerReady): Manual task assignment
+    1. Simple mode (run): Parallel map with controlled concurrency 2. Dynamic
+    mode (start + WorkerReady): Manual task assignment
 
-    Example - Simple mode:
+    Example - Simple mode (parallel map):
 
     {[
-      type my_task = string
-      type Message.t += TaskResult of string * int
+      (* Run tasks in parallel with 8 workers *)
+      let results =
+        Worker_pool.SimpleWorkerPool.run ~concurrency:8
+          ~tasks:[ "task1"; "task2"; "task3" ]
+          ~fn:(fun task -> expensive_computation task)
+          ()
 
-      let results = ref [] in
-      let pool = Worker_pool.SimpleWorkerPool.start_with_tasks ~workers:8
-        ~owner:(self ())
-        ~tasks:["task1"; "task2"; "task3"]
-        ~worker_fn:(fun ~owner ~task ->
-          let result = expensive_computation task in
-          send owner (TaskResult (task, result)))
-        () in
-
-      (* Collect results as they arrive *)
-      for _ = 1 to 3 do
-        match receive_any () with
-        | TaskResult (task, result) -> results := result :: !results
-        | _ -> ()
-      done
+      (* results is a list in the same order as tasks *)
     ]}
 
     Example - Dynamic mode:
@@ -38,7 +28,7 @@
       type Message.t +=
         | TaskResult of string * int
 
-      let pool = Worker_pool.DynamicWorkerPool.start ~workers:8 ~owner:(self ())
+      let pool = Worker_pool.DynamicWorkerPool.start ~concurrency:8 ~owner:(self ())
         ~worker_fn:(fun ~owner ~task ->
           let result = expensive_computation task in
           send owner (TaskResult (task, result)))
@@ -80,12 +70,12 @@ module DynamicWorkerPool : sig
           *)
 
   val start :
-    workers:int ->
+    concurrency:int ->
     owner:Pid.t ->
     worker_fn:(owner:Pid.t -> task:'task -> unit) ->
     unit ->
     'task t
-  (** [start ~workers ~owner ~worker_fn ()] creates a worker pool with no
+  (** [start ~concurrency ~owner ~worker_fn ()] creates a worker pool with no
       pre-queued tasks. The owner will receive [WorkerReady worker] messages and
       must call [send_task pool worker task] to assign work.
 
@@ -103,38 +93,37 @@ module DynamicWorkerPool : sig
       Type safety: The worker and task must have matching types. *)
 
   (** {1 Lifecycle} *)
-
-  val stop : 'task t -> unit
-  (** [stop pool] stops the worker pool and all worker processes.
-
-      Note: This does not wait for in-flight tasks to complete. The caller
-      should ensure all tasks have completed before calling stop. *)
 end
 
 module SimpleWorkerPool : sig
-  (** {1 Simple Mode - Pre-queue Tasks} *)
+  (** {1 Simple Mode - Parallel Map} *)
 
-  type 'task t
-  (** A pool of worker processes that execute tasks of type ['task]. *)
-
-  val start_with_tasks :
-    workers:int ->
-    owner:Pid.t ->
+  val run :
+    ?concurrency:int ->
     tasks:'task list ->
-    worker_fn:(owner:Pid.t -> task:'task -> unit) ->
+    fn:('task -> 'result) ->
     unit ->
-    'task t
-  (** [start_with_tasks ~workers ~owner ~tasks ~worker_fn ()] creates a worker
-      pool and pre-queues all tasks. Workers automatically pull from the queue
-      as they become ready.
+    (int * 'result) list
+  (** [run ~concurrency ~tasks ~fn ()] executes [fn] on each task in parallel
+      using a pool of worker processes, collecting results in order.
 
-      - [workers]: Number of concurrent worker processes to spawn
-      - [owner]: The process that will receive messages from workers
-      - [tasks]: List of all tasks to execute
-      - [worker_fn]: Function executed by each worker for each task. The worker
-        function receives the owner PID and the task, and is responsible for
-        sending result messages back to the owner.
+      This is like [List.map] but with controlled parallelism:
+      {[
+        (* Sequential *)
+        let results = List.map (fun x -> expensive_computation x) tasks
 
-      This is the simplest mode - just provide all tasks upfront and collect
-      results. The pool handles all scheduling automatically. *)
+        (* Parallel with 8 workers *)
+        let results =
+          SimpleWorkerPool.run ~concurrency:8 ~tasks
+            ~fn:(fun x -> expensive_computation x)
+            ()
+      ]}
+
+      - [concurrency]: Number of concurrent workers (default: 8)
+      - [tasks]: List of tasks to execute
+      - [fn]: Function to execute on each task
+      - Returns: Results in the same order as input tasks
+
+      The operation blocks until all tasks complete. Workers automatically pull
+      from the task queue as they become ready. *)
 end

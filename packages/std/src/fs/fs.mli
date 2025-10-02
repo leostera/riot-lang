@@ -216,6 +216,9 @@ module File : sig
   val try_clone : t -> (t, error) result
   (** Duplicate file descriptor *)
 
+  val from_fd : Kernel.Async.Fd.t -> t
+  (** Wrap a file descriptor as a file handle *)
+
   val close : t -> (unit, error) result
   (** Close file handle *)
 end

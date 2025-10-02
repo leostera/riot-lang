@@ -6,28 +6,32 @@ type 'task state = {
   coordinator : Pid.t;
   owner : Pid.t;
   worker_fn : owner:Pid.t -> task:'task -> unit;
-  ref : 'task Ref.t;
+  task_ref : 'task Ref.t;
 }
 
 (** Worker loop - receives tasks from coordinator and executes them *)
-let rec loop (state : 'task state) : (unit, Process.exit_reason) result =
+let rec loop state =
   let selector msg =
-    match msg with Types.ToWorker msg -> `select msg | _ -> `skip
+    match msg with ToWorker (Task task) -> `select task | _ -> `skip
   in
 
-  match receive ~selector () with
-  | Types.Stop -> Ok ()
-  | Types.Task (task, ref) -> (
-      (* Verify type safety with Ref.type_equal *)
-      match Ref.type_equal state.ref ref with
-      | Some Type.Equal ->
-          (* Execute the user's worker function *)
-          state.worker_fn ~owner:state.owner ~task;
+  let task = receive ~selector () in
+  match Task.value task state.task_ref with
+  | Some task ->
+      (* Execute the user's worker function *)
+      state.worker_fn ~owner:state.owner ~task;
 
-          (* Notify coordinator that we're done *)
-          send state.coordinator
-            (Types.FromWorker (Types.TaskCompleted (self ())));
+      (* Notify coordinator that we're done *)
+      let handle = { pid = self (); task_ref = state.task_ref } in
+      send state.coordinator (ToCoordinator (TaskCompleted handle));
 
-          (* Continue looping for more tasks *)
-          loop state
-      | None -> panic "Worker received task with mismatched type")
+      (* Continue looping for more tasks *)
+      loop state
+  | None -> panic "Worker received task with mismatched type"
+
+let init ~coordinator ~owner ~worker_fn ~task_ref () =
+  let state = { coordinator; owner; worker_fn; task_ref } in
+  loop state
+
+let start ~coordinator ~owner ~worker_fn ~task_ref =
+  spawn (init ~coordinator ~owner ~worker_fn ~task_ref)

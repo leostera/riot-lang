@@ -1,5 +1,7 @@
 let yield () = Effect.perform Proc_effect.Yield
 
+type 'msg selector = Message.t -> [ `select of 'msg | `skip ]
+
 let receive_any () =
   Effect.perform (Proc_effect.Receive { selector = (fun msg -> `select msg) })
 
