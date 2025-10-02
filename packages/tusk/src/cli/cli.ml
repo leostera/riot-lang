@@ -1,8 +1,8 @@
 open Std
 (** CLI module - handles command-line interface *)
 
-let usage_msg =
-  "tusk - OCaml build system\n\n\
+let usage_msg = {|
+   tusk - OCaml build system\n\n\
    Usage: tusk [COMMAND] [OPTIONS]\n\n\
    Commands:\n\
   \  build    Build packages\n\
@@ -20,16 +20,17 @@ let usage_msg =
   \  version  Show tusk version\n\
    Options:\n\
   \  -p <package>    Build only the specified package\n\
-  \  -b <binary>     Run the specified binary"
+  \  -b <binary>     Run the specified binary
+|}
 
 (** Show help message *)
 let help_command () =
-  Printf.printf "%s\n%!" usage_msg;
+  println "%s" usage_msg;
   Ok ()
 
 (** Show version *)
 let version_command () =
-  Printf.printf "dev\n%!";
+  println "dev";
   Ok ()
 
 (** Main entry point - runs as a Miniriot process *)
@@ -39,7 +40,7 @@ let main ~args =
   let _logger_pid = Core.Tusk_log.init () in
 
   if argc < 1 then (
-    Printf.eprintf "Error: No command specified\n\n%s\n" usage_msg;
+    println "Error: No command specified\n\n%s" usage_msg;
     Error (Failure "No command specified"))
   else
     let command = List.nth args 0 in
@@ -56,5 +57,5 @@ let main ~args =
     | "version" | "--version" | "-v" -> version_command ()
     | "help" | "--help" | "-h" -> help_command ()
     | _ ->
-        Printf.eprintf "Error: Unknown command '%s'\n\n%s\n" command usage_msg;
-        Error (Failure (Printf.sprintf "Unknown command: %s" command))
+        println "Error: Unknown command '%s'\n\n%s" command usage_msg;
+        Error (Failure (format "Unknown command: %s" command))

@@ -335,14 +335,14 @@ let print graph =
   Log.debug "\nBuild order:";
   List.iteri
     (fun i node ->
-      Printf.printf "%d. %s%!" (i + 1) node.package.name;
+      print "%d. %s" (i + 1) node.package.name;
       if node.Build_node.deps <> [] then
-        Printf.printf " (deps: %s)%!"
+        print " (deps: %s)"
           (String.concat ", "
              (List.map
                 (fun dep_id -> Node_id.to_string dep_id)
                 node.Build_node.deps));
-      Log.debug "")
+      println "")
     sorted;
 
   Log.debug "\nDependency tree:";
