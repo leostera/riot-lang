@@ -66,7 +66,7 @@ let flags_to_string flags =
     [] flags
 
 (** Build and run an ocamlc command *)
-let run ~toolchain ?(includes = []) ?(libs = []) ?(output = None)
+let run ~toolchain ~cwd ?(includes = []) ?(libs = []) ?(output = None)
     ?(mode = Compile) ?(verbose = false) sources =
   let ocamlc = base_command toolchain in
 
@@ -108,7 +108,7 @@ let run ~toolchain ?(includes = []) ?(libs = []) ?(output = None)
   (* Execute the command with colors enabled *)
   (* Set OCAML_COLOR=always to get colored error output *)
   let env = [ ("OCAML_COLOR", "always") ] in
-  let cmd = Command.make ~env ~args:[ "-c"; cmd_parts ] "sh" in
+  let cmd = Command.make ~cwd ~env ~args:[ "-c"; cmd_parts ] "sh" in
   match Command.output cmd with
   | Ok output when output.Command.status = 0 -> Success output.Command.stdout
   | Ok output ->
@@ -118,7 +118,7 @@ let run ~toolchain ?(includes = []) ?(libs = []) ?(output = None)
   | Error (Command.SystemError msg) -> Failed msg
 
 (** Compile an interface file (.mli -> .cmi) *)
-let compile_interface ~toolchain ~includes ~flags ~output source =
+let compile_interface ~toolchain ~cwd ~includes ~flags ~output source =
   (* Include current directory for .cmi files *)
   let includes_with_dot = "." :: includes in
 
@@ -139,7 +139,7 @@ let compile_interface ~toolchain ~includes ~flags ~output source =
     in
     let cmd_str = String.concat " " cmd_parts in
     let env = [ ("OCAML_COLOR", "always") ] in
-    let cmd = Command.make ~env ~args:[ "-c"; cmd_str ] "sh" in
+    let cmd = Command.make ~cwd ~env ~args:[ "-c"; cmd_str ] "sh" in
     match Command.output cmd with
     | Ok output when output.Command.status = 0 -> Success output.Command.stdout
     | Ok output ->
@@ -148,11 +148,11 @@ let compile_interface ~toolchain ~includes ~flags ~output source =
              output.Command.status output.Command.stderr)
     | Error (Command.SystemError msg) -> Failed msg
   else
-    run ~toolchain ~includes:includes_with_dot ~output:(Some output)
+    run ~toolchain ~cwd ~includes:includes_with_dot ~output:(Some output)
       ~mode:Compile [ source ]
 
 (** Compile an implementation file (.ml -> .cmx) *)
-let compile_impl ~toolchain ~includes ~flags ~output source =
+let compile_impl ~toolchain ~cwd ~includes ~flags ~output source =
   (* Include current directory for .cmi files *)
   let includes_with_dot = "." :: includes in
 
@@ -172,7 +172,7 @@ let compile_impl ~toolchain ~includes ~flags ~output source =
     in
     let cmd_str = String.concat " " cmd_parts in
     let env = [ ("OCAML_COLOR", "always") ] in
-    let cmd = Command.make ~env ~args:[ "-c"; cmd_str ] "sh" in
+    let cmd = Command.make ~cwd ~env ~args:[ "-c"; cmd_str ] "sh" in
     match Command.output cmd with
     | Ok output when output.Command.status = 0 -> Success output.Command.stdout
     | Ok output ->
@@ -181,11 +181,11 @@ let compile_impl ~toolchain ~includes ~flags ~output source =
              output.Command.status output.Command.stderr)
     | Error (Command.SystemError msg) -> Failed msg
   else
-    run ~toolchain ~includes:includes_with_dot ~output:(Some output)
+    run ~toolchain ~cwd ~includes:includes_with_dot ~output:(Some output)
       ~mode:Compile [ source ]
 
 (** Generate interface file (.ml -> .mli) using ocamlc -i *)
-let generate_interface ~toolchain ~includes ~flags ~output source =
+let generate_interface ~toolchain ~cwd ~includes ~flags ~output source =
   (* Include current directory for .cmi files *)
   let includes_with_dot = "." :: includes in
 
@@ -198,7 +198,7 @@ let generate_interface ~toolchain ~includes ~flags ~output source =
   in
   let cmd_str = String.concat " " cmd_parts in
   let env = [ ("OCAML_COLOR", "always") ] in
-  let cmd = Command.make ~env ~args:[ "-c"; cmd_str ] "sh" in
+  let cmd = Command.make ~cwd ~env ~args:[ "-c"; cmd_str ] "sh" in
 
   (* Execute and capture only stdout (stderr has warnings) *)
   match Command.output cmd with
@@ -220,25 +220,25 @@ let generate_interface ~toolchain ~includes ~flags ~output source =
   | Error (Command.SystemError msg) -> Failed msg
 
 (** Compile a C file *)
-let compile_c ~toolchain ~includes ~output source =
-  run ~toolchain ~includes ~output:(Some output) ~mode:Compile [ source ]
+let compile_c ~toolchain ~cwd ~includes ~output source =
+  run ~toolchain ~cwd ~includes ~output:(Some output) ~mode:Compile [ source ]
 
 (** Create a library (.cmxa) from object files *)
-let create_library ~toolchain ~includes ~output objects =
-  run ~toolchain ~includes ~output:(Some output) ~mode:Library objects
+let create_library ~toolchain ~cwd ~includes ~output objects =
+  run ~toolchain ~cwd ~includes ~output:(Some output) ~mode:Library objects
 
 (** Create an executable from object files and libraries *)
-let create_executable ~toolchain ~includes ~output ~libs objects =
+let create_executable ~toolchain ~cwd ~includes ~output ~libs objects =
   (* Include current directory *)
   let includes_with_dot = "." :: includes in
-  run ~toolchain ~includes:includes_with_dot ~libs ~output:(Some output)
+  run ~toolchain ~cwd ~includes:includes_with_dot ~libs ~output:(Some output)
     ~mode:Executable objects
 
 (** Create a custom executable (with C stubs) *)
-let create_custom_executable ~toolchain ~includes ~output ~libs objects =
+let create_custom_executable ~toolchain ~cwd ~includes ~output ~libs objects =
   (* Include current directory *)
   let includes_with_dot = "." :: includes in
-  run ~toolchain ~includes:includes_with_dot ~libs ~output:(Some output)
+  run ~toolchain ~cwd ~includes:includes_with_dot ~libs ~output:(Some output)
     ~mode:CustomExe objects
 
 (** Helper to check if compilation succeeded *)

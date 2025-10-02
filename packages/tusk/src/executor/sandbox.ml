@@ -193,12 +193,6 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
        | Ok () -> ()
        | Error _ -> ()));
 
-  (* Change to sandbox directory *)
-  let original_cwd =
-    Env.current_dir () |> Result.expect ~msg:"Failed to get cwd"
-  in
-  let _ = Env.set_current_dir sandbox.sandbox_dir in
-
   (* Track declared outputs *)
   let declared_outputs = ref [] in
 
@@ -240,6 +234,7 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
 
              let result, output =
                Actions.execute_action action node.Build_node.toolchain
+                 sandbox.sandbox_dir
              in
              match result with
              | Actions.Success ->
@@ -326,9 +321,6 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
       in
       Error error_msg
   in
-
-  (* Restore original working directory *)
-  let _ = Env.set_current_dir original_cwd in
 
   (* Copy artifacts to target directory *)
   match result with

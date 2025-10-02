@@ -190,40 +190,40 @@ let string_of_action = function
         (String.concat "; " (List.map Path.to_string outputs))
 
 (** Execute a single build action *)
-let execute_action action toolchain =
+let execute_action action toolchain cwd =
   let convert_result = function
     | Ocamlc.Success msg -> (Success, msg)
     | Ocamlc.Failed err -> (Failed err, "")
   in
   match action with
   | CompileInterface { source; output; includes; flags } ->
-      Ocamlc.compile_interface ~toolchain
+      Ocamlc.compile_interface ~toolchain ~cwd
         ~includes:(List.map Path.to_string includes)
         ~flags ~output:(Path.to_string output) (Path.to_string source)
       |> convert_result
   | CompileImplementation { source; output; includes; flags } ->
-      Ocamlc.compile_impl ~toolchain
+      Ocamlc.compile_impl ~toolchain ~cwd
         ~includes:(List.map Path.to_string includes)
         ~flags ~output:(Path.to_string output) (Path.to_string source)
       |> convert_result
   | GenerateInterface { source; output; includes; flags } ->
-      Ocamlc.generate_interface ~toolchain
+      Ocamlc.generate_interface ~toolchain ~cwd
         ~includes:(List.map Path.to_string includes)
         ~flags ~output:(Path.to_string output) (Path.to_string source)
       |> convert_result
   | CompileC { source; output } ->
-      Ocamlc.compile_c ~toolchain ~includes:[] ~output:(Path.to_string output)
+      Ocamlc.compile_c ~toolchain ~cwd ~includes:[] ~output:(Path.to_string output)
         (Path.to_string source)
       |> convert_result
   | CreateLibrary { output; objects; includes } ->
-      Ocamlc.create_library ~toolchain
+      Ocamlc.create_library ~toolchain ~cwd
         ~includes:(List.map Path.to_string includes)
         ~output:(Path.to_string output)
         (List.map Path.to_string objects)
       |> convert_result
   | CreateExecutable { output; objects; libraries; includes } ->
       (* Use custom executable for C stubs *)
-      Ocamlc.create_custom_executable ~toolchain
+      Ocamlc.create_custom_executable ~toolchain ~cwd
         ~includes:(List.map Path.to_string includes)
         ~output:(Path.to_string output)
         ~libs:(List.map Path.to_string libraries)
