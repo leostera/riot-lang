@@ -241,20 +241,19 @@ let execute_action action toolchain cwd =
       | CopyDir { source; destination } -> (
           try
             (* Use cp -r to recursively copy directory *)
-            let cmd =
-              Printf.sprintf "cp -r %s %s" (Path.to_string source)
-                (Path.to_string destination)
-            in
-            let exit_code = Sys.command cmd in
-            if exit_code = 0 then
+            let cmd = Command.make ~args:["-r"; Path.to_string source; Path.to_string destination] "cp" in
+            let result = Command.status cmd in
+            match result with
+            | Ok 0 ->
               ( Success,
                 Printf.sprintf "Copied directory %s to %s"
                   (Path.to_string source)
                   (Path.to_string destination) )
-            else
-              ( Failed
-                  (Printf.sprintf "cp command failed with exit code %d"
-                     exit_code),
+            | Ok exit_code ->
+              ( Failed (Printf.sprintf "cp command failed with exit code %d" exit_code),
+                "" )
+            | Error (Command.SystemError err) ->
+              ( Failed (Printf.sprintf "cp command failed: %s" err),
                 "" )
           with exn -> (Failed (Printexc.to_string exn), ""))
       | CopyFile { source; destination } -> (

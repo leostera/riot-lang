@@ -42,7 +42,7 @@ let build_package package_name =
               let formatted = Event_formatter.format event in
               if formatted <> "" then (
                 Printf.printf "%s\n%!" formatted;
-                flush stdout)
+                )
         | Tusk_jsonrpc.Client.BuildFinished _ ->
             (* This is handled below in the result match *)
             ())

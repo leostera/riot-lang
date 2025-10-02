@@ -24,3 +24,6 @@ val gmtime : float -> tm
 
 val mktime : tm -> float * tm
 (** Convert broken-down time to Unix timestamp. Returns (timestamp, normalized_tm) *)
+
+val sleep : float -> unit
+(** Sleep for the specified number of seconds *)

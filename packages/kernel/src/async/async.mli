@@ -2,7 +2,7 @@ type io_error =
   [ `Connection_closed
   | `Exn of exn
   | `No_info
-  | `Unix_error of Unix.error
+  | `IO_error of IO.error
   | `Noop
   | `Eof
   | `Closed

@@ -27,10 +27,12 @@ let min = Stdlib.min
 let max = Stdlib.max
 
 (* Exception handling *)
+exception Exit = Stdlib.Exit
 let raise = Stdlib.raise
 let raise_notrace = Stdlib.raise_notrace
 let failwith = Stdlib.failwith
 let invalid_arg = Stdlib.invalid_arg
+let exit = Stdlib.exit
 
 (* Integer arithmetic *)
 let ( + ) = Stdlib.( + )

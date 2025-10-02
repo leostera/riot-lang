@@ -91,14 +91,14 @@ let sendfile fd ~file ~off ~len =
 let readdir path =
   syscall @@ fun () ->
   try Ok (Array.to_list (Sys.readdir path))
-  with e -> Error (`Unix_error Unix.ENOENT)
+  with e -> Error (`IO_error (IO.error_of_unix Unix.ENOENT))
 
 let mkdir path perm =
   syscall @@ fun () ->
   try
     Unix.mkdir path perm;
     Ok ()
-  with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+  with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
 
 let mkdirp path perm =
   syscall @@ fun () ->
@@ -126,7 +126,7 @@ let mkdirp path perm =
           Ok new_path
         with
         | Unix.Unix_error (Unix.EEXIST, _, _) -> Ok new_path
-        | Unix.Unix_error (e, _, _) -> Error (`Unix_error e))
+        | Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e)))
   in
   match List.fold_left create_dir (Ok "") components with
   | Ok _ -> Ok ()
@@ -165,28 +165,28 @@ let file_exists path =
 let stat path =
   syscall @@ fun () ->
   try Ok (Unix.stat path)
-  with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+  with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
 
 let chmod path perm =
   syscall @@ fun () ->
   try
     Unix.chmod path perm;
     Ok ()
-  with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+  with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
 
 let symlink src dst =
   syscall @@ fun () ->
   try
     Unix.symlink src dst;
     Ok ()
-  with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+  with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
 
 let rmdir path =
   syscall @@ fun () ->
   try
     Unix.rmdir path;
     Ok ()
-  with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+  with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
 
 let remove path =
   syscall @@ fun () ->
@@ -208,20 +208,20 @@ let chdir path =
 let opendir path =
   syscall @@ fun () ->
   try Ok (Unix.opendir path)
-  with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+  with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
 
 let readdir_handle handle =
   syscall @@ fun () ->
   try Ok (Unix.readdir handle) with
   | End_of_file -> Error `Eof
-  | Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+  | Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
 
 let closedir handle =
   syscall @@ fun () ->
   try
     Unix.closedir handle;
     Ok ()
-  with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+  with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
 
 let is_regular_file path =
   syscall @@ fun () ->
@@ -229,90 +229,90 @@ let is_regular_file path =
     match Unix.stat path with
     | { st_kind = Unix.S_REG; _ } -> Ok true
     | _ -> Ok false
-  with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+  with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
 
 let realpath path =
   syscall @@ fun () ->
   try Ok (Unix.realpath path)
-  with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+  with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
 
 let link src dst =
   syscall @@ fun () ->
   try
     Unix.link src dst;
     Ok ()
-  with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+  with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
 
 let rename src dst =
   syscall @@ fun () ->
   try
     Unix.rename src dst;
     Ok ()
-  with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+  with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
 
 let readlink path =
   syscall @@ fun () ->
   try Ok (Unix.readlink path)
-  with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+  with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
 
 let open_file path flags perm =
   syscall @@ fun () ->
   try Ok (Unix.openfile path (open_flags_to_unix flags) perm)
-  with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+  with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
 
 let fstat fd =
   syscall @@ fun () ->
   try Ok (Unix.fstat fd)
-  with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+  with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
 
 let lstat path =
   syscall @@ fun () ->
   try Ok (Unix.lstat path)
-  with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+  with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
 
 let lseek fd pos whence =
   syscall @@ fun () ->
   try Ok (Unix.LargeFile.lseek fd pos (seek_command_to_unix whence))
-  with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+  with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
 
 let ftruncate fd len =
   syscall @@ fun () ->
   try
     Unix.LargeFile.ftruncate fd len;
     Ok ()
-  with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+  with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
 
 let fchmod fd perm =
   syscall @@ fun () ->
   try
     Unix.fchmod fd perm;
     Ok ()
-  with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+  with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
 
 let fsync fd =
   syscall @@ fun () ->
   try
     Unix.fsync fd;
     Ok ()
-  with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+  with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
 
 let dup fd =
   syscall @@ fun () ->
-  try Ok (Unix.dup fd) with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+  try Ok (Unix.dup fd) with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
 
 let lockf fd cmd len =
   syscall @@ fun () ->
   try
     Unix.lockf fd (lock_command_to_unix cmd) len;
     Ok ()
-  with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+  with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
 
 let close_fd fd =
   syscall @@ fun () ->
   try
     Unix.close fd;
     Ok ()
-  with Unix.Unix_error (e, _, _) -> Error (`Unix_error e)
+  with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
 
 let get_temp_dir () =
   syscall @@ fun () ->

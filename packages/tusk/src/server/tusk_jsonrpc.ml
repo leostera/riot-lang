@@ -1436,8 +1436,7 @@ module TuskProtocol = struct
   let response_of_json json =
     (* This would parse JSON back to response, needed for client *)
     (* Debug: log what we're trying to parse *)
-    (* Printf.eprintf "[TUSK PROTOCOL] Parsing response JSON: %s\n" (Json.to_string json);
-    flush stderr; *)
+    (* Printf.eprintf "[TUSK PROTOCOL] Parsing response JSON: %s\n" (Json.to_string json); *)
     match json with
     | Json.String "pong" -> Ok Pong
     | Json.Object fields -> (
@@ -2087,7 +2086,6 @@ module Client = struct
                       Printf.eprintf
                         "[CLIENT] Unexpected response in receive_events: %s\n"
                         resp_type;
-                      flush stderr;
                       Error "Unexpected response type"
                 in
                 receive_events ()
@@ -2338,11 +2336,9 @@ module Server = struct
     Printf.eprintf "[HANDLER] Sending Ping to server %s from %s\n"
       (Pid.to_string ctx.server_pid)
       (Pid.to_string (self ()));
-    flush stderr;
     send ctx.server_pid
       (Tusk_protocol.ServerRequest (Tusk_protocol.Ping { client_pid = self () }));
     Printf.eprintf "[HANDLER] Waiting for response...\n";
-    flush stderr;
     (* Wait for response *)
     let selector = function
       | Tusk_protocol.ServerResponse response -> `select response
@@ -2351,11 +2347,9 @@ module Server = struct
     match receive ~selector () with
     | Tusk_protocol.Pong ->
         Printf.eprintf "[HANDLER] Got Pong response\n";
-        flush stderr;
         reply TuskProtocol.Pong
     | _ ->
         Printf.eprintf "[HANDLER] Got unexpected response\n";
-        flush stderr;
         reply (TuskProtocol.Error "Unexpected response")
 
   let handle_shutdown ctx reply request =
@@ -2712,6 +2706,5 @@ module Server = struct
     List.iter
       (fun h -> Printf.eprintf "  - %s\n" h.Jsonrpc.Server.method_)
       methods;
-    flush stderr;
     Jsonrpc.Server.create ~protocol:(module TuskProtocol) ~methods
 end

@@ -211,8 +211,8 @@ let try_lock_exclusive t =
   | Ok () -> (
       match Kernel.Fs.File.lockf t.fd Kernel.Fs.File.TryLockExclusive 0 with
       | Ok () -> Ok true
-      | Error (`Unix_error e) when Kernel.IO.error_of_unix e = Kernel.IO.Resource_unavailable_try_again -> Ok false
-      | Error (`Unix_error e) when Kernel.IO.error_of_unix e = Kernel.IO.Permission_denied -> Ok false
+      | Error (`IO_error e) when e = Kernel.IO.Resource_unavailable_try_again -> Ok false
+      | Error (`IO_error e) when e = Kernel.IO.Permission_denied -> Ok false
       | Error e -> Error (SystemError (kernel_error_to_string e)))
 
 let try_lock_shared t =
@@ -221,8 +221,8 @@ let try_lock_shared t =
   | Ok () -> (
       match Kernel.Fs.File.lockf t.fd Kernel.Fs.File.TryLockShared 0 with
       | Ok () -> Ok true
-      | Error (`Unix_error e) when Kernel.IO.error_of_unix e = Kernel.IO.Resource_unavailable_try_again -> Ok false
-      | Error (`Unix_error e) when Kernel.IO.error_of_unix e = Kernel.IO.Permission_denied -> Ok false
+      | Error (`IO_error e) when e = Kernel.IO.Resource_unavailable_try_again -> Ok false
+      | Error (`IO_error e) when e = Kernel.IO.Permission_denied -> Ok false
       | Error e -> Error (SystemError (kernel_error_to_string e)))
 
 let unlock t =

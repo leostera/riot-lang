@@ -50,17 +50,14 @@ let handle_message (type req res) (server : (req, res) t)
               (* Convert params to typed request using method name *)
               Printf.eprintf "[JSONRPC SERVER] Found handler for %s\n"
                 request.method_;
-              flush stderr;
               match P.request_of_params request.method_ request.params with
               | Error _err ->
                   (* Invalid params - can't send typed response, just log/ignore *)
                   Printf.eprintf "[JSONRPC SERVER] Failed to convert params\n";
-                  flush stderr;
                   ()
               | Ok typed_request ->
                   (* Execute handler with typed request *)
                   Printf.eprintf "[JSONRPC SERVER] Calling handler\n";
-                  flush stderr;
                   if Common.is_notification request then
                     (* Notification - no response expected *)
                     handler.fn (fun _ -> ()) typed_request

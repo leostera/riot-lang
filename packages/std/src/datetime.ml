@@ -83,7 +83,20 @@ let from_unix_time unix_time =
     std_offset = 0;
   }
 
-
+let to_timestamp t =
+  let tm = {
+    Kernel.Time.tm_sec = t.second;
+    tm_min = t.minute;
+    tm_hour = t.hour;
+    tm_mday = t.day;
+    tm_mon = t.month - 1;
+    tm_year = t.year - 1900;
+    tm_wday = 0;
+    tm_yday = 0;
+    tm_isdst = false;
+  } in
+  let unix_time, _ = Kernel.Time.mktime tm in
+  unix_time
 
 let to_iso8601 t =
   let micros, _ = t.microseconds in

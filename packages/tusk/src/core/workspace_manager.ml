@@ -22,7 +22,7 @@ let is_within_workspace current_dir cached_root =
 let is_cache_valid cached =
   let now = Std.Datetime.now () in
   let elapsed =
-    Std.Datetime.to_unix now -. Std.Datetime.to_unix cached.last_scanned
+    Std.Datetime.to_timestamp now -. Std.Datetime.to_timestamp cached.last_scanned
   in
   elapsed < cache_ttl
 

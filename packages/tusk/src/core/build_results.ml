@@ -77,8 +77,7 @@ let reset_failed_packages t =
   (* Log reset information for user awareness *)
   if !failed_packages <> [] then
     Printf.printf "🔄 Retrying previously failed packages: %s\n"
-      (String.concat ", " (List.rev !failed_packages));
-  flush stdout
+      (String.concat ", " (List.rev !failed_packages))
 
 (** Check if source files are newer than build outputs *)
 let sources_newer_than_outputs workspace pkg_name =

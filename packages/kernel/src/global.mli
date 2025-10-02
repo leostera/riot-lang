@@ -27,10 +27,12 @@ val min : 'a -> 'a -> 'a
 val max : 'a -> 'a -> 'a
 
 (* Exception handling *)
+exception Exit
 val raise : exn -> 'a
 val raise_notrace : exn -> 'a
 val failwith : string -> 'a
 val invalid_arg : string -> 'a
+val exit : int -> 'a
 
 (* Integer arithmetic *)
 val ( + ) : int -> int -> int

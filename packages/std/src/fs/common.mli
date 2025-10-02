@@ -9,7 +9,7 @@ val kernel_error_to_string :
   | `Noop
   | `Process_down
   | `Timeout
-  | `Unix_error of Kernel.IO.error
+  | `IO_error of Kernel.IO.error
   | `Would_block ] ->
   string
 
@@ -23,7 +23,7 @@ val convert_kernel_result :
     | `Noop
     | `Process_down
     | `Timeout
-    | `Unix_error of Kernel.IO.error
+    | `IO_error of Kernel.IO.error
     | `Would_block ] )
   result ->
   ('a, error) result

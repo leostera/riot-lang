@@ -28,7 +28,8 @@ val now_utc : unit -> t
 val from_unix_time : float -> t
 (** Create datetime from Unix timestamp *)
 
-
+val to_timestamp : t -> float
+(** Convert datetime to Unix timestamp (seconds since epoch) *)
 
 val to_iso8601 : t -> string
 (** Convert to ISO 8601 format string, e.g. "2025-08-27T21:07:31.426Z" *)

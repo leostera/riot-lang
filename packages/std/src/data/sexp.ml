@@ -199,13 +199,21 @@ let rec assoc key = function
 
 (** Read S-expressions from a file *)
 let parse_file filename =
-  match Fs.read_to_string filename with
-  | Ok content -> parse_many content
-  | Error err -> Error err
+  match Path.of_string filename with
+  | Error _ -> Error ("Invalid path: " ^ filename)
+  | Ok path -> (
+      match Fs.read_to_string path with
+      | Ok content -> parse_many content
+      | Error (Fs.SystemError msg) -> Error ("File error: " ^ msg))
 
 (** Write S-expression to a file *)
 let to_file filename sexp =
-  Fs.write (to_string sexp ^ "\n") filename
+  match Path.of_string filename with
+  | Error _ -> Error ("Invalid path: " ^ filename)
+  | Ok path -> (
+      match Fs.write (to_string sexp ^ "\n") path with
+      | Ok () -> Ok ()
+      | Error (Fs.SystemError msg) -> Error ("File error: " ^ msg))
 
 (** Canonical S-expressions (Csexp) module *)
 module Csexp = struct

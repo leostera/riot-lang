@@ -53,9 +53,13 @@ let parse_section_header line =
 
 let parse_file filename =
   try
-    let content = match Fs.read_to_string (Path.of_string filename) with
+    let path = match Path.of_string filename with
+      | Ok p -> p
+      | Error _ -> raise (Failure "Invalid path")
+    in
+    let content = match Fs.read_to_string path with
       | Ok s -> s
-      | Error _ -> raise (Parse_error "Failed to read file")
+      | Error _ -> raise (Failure "Failed to read file")
     in
     let lines = String.split_on_char '\n' content in
     let sections = ref [] in

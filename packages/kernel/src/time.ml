@@ -16,3 +16,5 @@ external gettimeofday : unit -> float = "caml_kernel_gettimeofday"
 external localtime : float -> tm = "caml_kernel_localtime"
 external gmtime : float -> tm = "caml_kernel_gmtime"
 external mktime : tm -> float * tm = "caml_kernel_mktime"
+
+let sleep = Unix.sleepf

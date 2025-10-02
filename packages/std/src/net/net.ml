@@ -46,7 +46,7 @@ module TcpListener = struct
     | Ok t -> Ok t
     | Error
         ( `Noop | `Closed | `Connection_closed | `Eof | `Exn _ | `No_info
-        | `Process_down | `Timeout | `Unix_error _ | `Would_block ) ->
+        | `Process_down | `Timeout | `IO_error _ | `Would_block ) ->
         Error (`System_error "Failed to bind")
 
   let accept t =
@@ -60,7 +60,7 @@ module TcpListener = struct
             ~interest:Interest.readable ~source (fun () -> accept_loop ())
       | Error
           ( `Noop | `Closed | `Connection_closed | `Eof | `Exn _ | `No_info
-          | `Process_down | `Timeout | `Unix_error _ ) ->
+          | `Process_down | `Timeout | `IO_error _ ) ->
           (* Some other error *)
           Error (`System_error "Accept failed")
     in
@@ -83,7 +83,7 @@ module TcpStream = struct
             ~source (fun () -> Ok stream)
       | Error
           ( `Noop | `Closed | `Connection_closed | `Eof | `Exn _ | `No_info
-          | `Process_down | `Timeout | `Unix_error _ | `Would_block ) ->
+          | `Process_down | `Timeout | `IO_error _ | `Would_block ) ->
           (* Connection refused or error *)
           Error `Connection_refused
     in
@@ -104,7 +104,7 @@ module TcpStream = struct
             ~source (fun () -> read_loop ())
       | Error
           ( `Noop | `Closed | `Connection_closed | `Eof | `Exn _ | `No_info
-          | `Process_down | `Timeout | `Unix_error _ ) ->
+          | `Process_down | `Timeout | `IO_error _ ) ->
           (* Some other error *)
           Error (`System_error "Read failed")
     in
@@ -124,7 +124,7 @@ module TcpStream = struct
             ~source (fun () -> write_loop ())
       | Error
           ( `Noop | `Closed | `Connection_closed | `Eof | `Exn _ | `No_info
-          | `Process_down | `Timeout | `Unix_error _ ) ->
+          | `Process_down | `Timeout | `IO_error _ ) ->
           (* Some other error *)
           Error (`System_error "Write failed")
     in

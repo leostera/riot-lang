@@ -205,12 +205,12 @@ let run args =
               ]
           in
           Printf.printf "%s\n%!" (Json.to_string json);
-          flush stdout
+          
       | Tusk_jsonrpc.Client.BuildEvent event ->
           (* Use Event.to_json for all events *)
           let json = Event.to_json event in
           Printf.printf "%s\n%!" (Json.to_string json);
-          flush stdout
+          
       | Tusk_jsonrpc.Client.BuildFinished result ->
           let json =
             match result with
@@ -222,7 +222,7 @@ let run args =
                   ]
           in
           Printf.printf "%s\n%!" (Json.to_string json);
-          flush stdout
+          
     in
     let result = Tusk_jsonrpc.Client.build_streaming client request callback in
     Tusk_jsonrpc.Client.close client;

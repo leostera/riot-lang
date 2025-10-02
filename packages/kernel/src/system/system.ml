@@ -39,6 +39,11 @@ let max_floatarray_length = Sys.max_floatarray_length
 let runtime_variant () = Sys.runtime_variant ()
 let runtime_parameters () = Sys.runtime_parameters ()
 
+type signal_behavior = Sys.signal_behavior =
+  | Signal_default
+  | Signal_ignore
+  | Signal_handle of (int -> unit)
+
 let signal signum handler =
   let old_handler = Sys.signal signum (Sys.Signal_handle handler) in
   match old_handler with

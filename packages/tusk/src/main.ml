@@ -2,7 +2,7 @@
 
 let main args =
   (* Ignore SIGPIPE to prevent exit code 141 when output is piped *)
-  Sys.set_signal Sys.sigpipe Sys.Signal_ignore;
+  Kernel.System.set_signal Kernel.System.sigpipe Kernel.System.Signal_ignore;
   Miniriot.run ~main:Cli.main ~args |> exit
 ;;
 

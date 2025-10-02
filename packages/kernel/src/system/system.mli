@@ -56,10 +56,16 @@ val runtime_variant : unit -> string
 val runtime_parameters : unit -> string
 (** Return the values of the runtime parameters *)
 
+type signal_behavior = Sys.signal_behavior =
+  | Signal_default
+  | Signal_ignore
+  | Signal_handle of (int -> unit)
+(** Behavior for signal handling *)
+
 val signal : int -> (int -> unit) -> int -> unit
 (** Set signal handler and return the previous handler *)
 
-val set_signal : int -> Sys.signal_behavior -> unit
+val set_signal : int -> signal_behavior -> unit
 (** Set the behavior of the given signal *)
 
 val sigabrt : int

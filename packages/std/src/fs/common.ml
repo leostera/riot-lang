@@ -11,7 +11,7 @@ let kernel_error_to_string = function
   | `Exn exn -> Printexc.to_string exn
   | `No_info -> "No info"
   | `Would_block -> "Would block"
-  | `Unix_error err -> Kernel.IO.error_message (Kernel.IO.error_of_unix err)
+  | `IO_error err -> Kernel.IO.error_message err
   | _ -> "Unknown error"
 
 let convert_kernel_result = function

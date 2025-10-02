@@ -143,7 +143,7 @@ let load ~path =
 
 (** Create a manifest for stored files *)
 let create ~package ~build_hash ~files =
-  let timestamp = Datetime.to_unix (Datetime.now ()) in
+  let timestamp = Datetime.to_timestamp (Datetime.now ()) in
   let file_entries =
     List.map
       (fun (path, size) ->

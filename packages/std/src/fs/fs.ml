@@ -46,33 +46,9 @@ let canonicalize path =
 let copy ~src ~dst =
   let src_str = Path.to_string src in
   let dst_str = Path.to_string dst in
-  try
-    let ic = open_in_bin src_str in
-    let oc = open_out_bin dst_str in
-    let buf_size = 8192 in
-    let buf = Bytes.create buf_size in
-    let rec copy_loop () =
-      let n = input ic buf 0 buf_size in
-      if n > 0 then (
-        output oc buf 0 n;
-        copy_loop ())
-    in
-    copy_loop ();
-    close_in ic;
-    close_out oc;
-    (* Copy permissions *)
-    let stats =
-      match Kernel.Fs.File.stat src_str with
-      | Ok s -> s
-      | Error _ -> raise (Sys_error "Failed to stat source file")
-    in
-    (match
-       Kernel.Fs.File.chmod dst_str (Kernel.Fs.File.Metadata.perm stats)
-     with
-    | Ok () -> ()
-    | Error _ -> raise (Sys_error "Failed to chmod dest file"));
-    Ok ()
-  with e -> Error (SystemError (Printexc.to_string e))
+  match Kernel.Fs.File.copy_file src_str dst_str with
+  | Ok () -> Ok ()
+  | Error e -> Error (SystemError (kernel_error_to_string e))
 
 let create_dir_all path =
   let rec create_parents path =
@@ -87,7 +63,7 @@ let create_dir_all path =
               try
                 match Kernel.Fs.File.mkdir parent_str 0o755 with
                 | Ok () -> Ok ()
-                | Error (`Unix_error Unix.EEXIST) -> Ok ()
+                | Error (`IO_error Kernel.IO.File_exists) -> Ok ()
                 | Error e -> Error (SystemError (kernel_error_to_string e))
               with e -> Error (SystemError (Printexc.to_string e)))
         else Ok ()
@@ -99,7 +75,7 @@ let create_dir_all path =
       try
         match Kernel.Fs.File.mkdir path_str 0o755 with
         | Ok () -> Ok ()
-        | Error (`Unix_error Unix.EEXIST) -> Ok ()
+        | Error (`IO_error Kernel.IO.File_exists) -> Ok ()
         | Error e -> Error (SystemError (kernel_error_to_string e))
       with e -> Error (SystemError (Printexc.to_string e)))
 
@@ -178,12 +154,19 @@ let set_permissions path perm =
 
 let write content path =
   let path_str = Path.to_string path in
-  try
-    let oc = open_out_bin path_str in
-    output_string oc content;
-    close_out oc;
-    Ok ()
-  with e -> Error (SystemError (Printexc.to_string e))
+  let open Kernel.Fs.File in
+  match open_file path_str [WriteOnly; Create; Truncate] 0o644 with
+  | Error e -> Error (SystemError (kernel_error_to_string e))
+  | Ok fd -> (
+      let buf = Bytes.of_string content in
+      match write fd buf with
+      | Error e ->
+          let _ = close_fd fd in
+          Error (SystemError (kernel_error_to_string e))
+      | Ok _ -> (
+          match close_fd fd with
+          | Ok () -> Ok ()
+          | Error e -> Error (SystemError (kernel_error_to_string e))))
 
 let read_link path =
   let path_str = Path.to_string path in
@@ -238,7 +221,7 @@ let mkdir_safe path perm =
   let path_str = Path.to_string path in
   match Kernel.Fs.File.mkdir path_str perm with
   | Ok () -> Ok ()
-  | Error (`Unix_error Unix.EEXIST) -> Ok ()
+  | Error (`IO_error Kernel.IO.File_exists) -> Ok ()
   | Error e -> Error (SystemError (kernel_error_to_string e))
 
 let rec mkdirp path =
