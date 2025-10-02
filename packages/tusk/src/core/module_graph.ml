@@ -469,9 +469,14 @@ let scan_sources t =
 (** Wire dependencies using ocamldep *)
 let wire_dependencies t =
   Printf.printf "[MODULE_GRAPH] Wiring dependencies with ocamldep\n%!";
-  let results =
-    G.map t.graph ~fn:(fun (_node_id, (node : dep G.node)) ->
-        Std.Task.async @@ fun () ->
+  (* Keep both node_id and node for later edge addition *)
+  let node_tasks = G.map t.graph ~fn:(fun (node_id, node) -> (node_id, node)) in
+
+  (* Run ocamldep in parallel, collecting edges instead of mutating graph *)
+  let edge_lists =
+    Std.WorkerPool.SimpleWorkerPool.run
+      ~tasks:node_tasks
+      ~fn:(fun (node_id, node) ->
         let dep = node.value in
         match dep.kind with
         | ML mod_ | MLI mod_ ->
@@ -490,40 +495,77 @@ let wire_dependencies t =
                 (file_to_string dep.file)
                 (String.concat ", " (List.map Module_name.to_string deps));
 
+            (* Collect edges to add later *)
+            let edges = ref [] in
             List.iter
               (fun dep_mod_name ->
                 let dep_name = Module_name.to_string dep_mod_name in
                 try
-                  let node_ids =
+                  let dep_node_ids =
                     Module_registry.get_by_name t.registry dep_name
                   in
                   List.iter
                     (fun dep_node_id ->
+                      (* Store edge as (from_node_id, to_node_id) pair *)
                       let dep_node = G.get_node t.graph dep_node_id in
-                      match (node.value.kind, dep_node.value.kind) with
-                      | MLI _, ML _ -> ()
-                      | _ ->
-                          Printf.printf
-                            "[MODULE_GRAPH]     Adding ocamldep edge: %s -> %s\n\
-                             %!"
-                            (file_to_string node.value.file)
-                            (file_to_string dep_node.value.file);
-                          G.add_edge node ~depends_on:dep_node)
-                    node_ids
+                      Printf.printf
+                        "[MODULE_GRAPH]     Collected edge: %s -> %s (kind: %s -> \
+                         %s)\n\
+                         %!"
+                        (file_to_string dep.file)
+                        (file_to_string dep_node.value.file)
+                        (match dep.kind with
+                        | ML _ -> "ML"
+                        | MLI _ -> "MLI"
+                        | C -> "C"
+                        | H -> "H"
+                        | Other _ -> "Other"
+                        | Root -> "Root")
+                        (match dep_node.value.kind with
+                        | ML _ -> "ML"
+                        | MLI _ -> "MLI"
+                        | C -> "C"
+                        | H -> "H"
+                        | Other _ -> "Other"
+                        | Root -> "Root");
+                      edges := (node_id, dep_node_id) :: !edges)
+                    dep_node_ids
                 with Not_found ->
                   Printf.printf
                     "[MODULE_GRAPH]     WARNING: Module %s not found in registry\n\
                      %!"
                     dep_name)
-              deps
-        | _ -> ())
-    |> Std.Task.await_all
+              deps;
+            !edges
+        | _ -> [])
+      ()
   in
 
-  Printf.printf "[MODULE_GRAPH] Ran %d tasks\n%!" (List.length results);
-
-  results |> Result.all
-  |> Result.expect ~msg:"Something went wrong wiring dependencies!"
+  (* Add all edges sequentially after parallel ocamldep completes *)
+  Printf.printf "[MODULE_GRAPH] Adding %d edge lists sequentially\n%!"
+    (List.length edge_lists);
+  List.iter
+    (fun (_idx, edges) ->
+      Printf.printf "[MODULE_GRAPH]   Processing edge list with %d edges\n%!"
+        (List.length edges);
+      List.iter
+        (fun (from_node_id, to_node_id) ->
+          let from_node = G.get_node t.graph from_node_id in
+          let to_node = G.get_node t.graph to_node_id in
+          match (from_node.value.kind, to_node.value.kind) with
+          | MLI _, ML _ ->
+              Printf.printf
+                "[MODULE_GRAPH]     SKIPPED edge (MLI->ML): %s -> %s\n%!"
+                (file_to_string from_node.value.file)
+                (file_to_string to_node.value.file)
+          | _ ->
+              Printf.printf
+                "[MODULE_GRAPH]     Adding ocamldep edge: %s -> %s\n%!"
+                (file_to_string from_node.value.file)
+                (file_to_string to_node.value.file);
+              G.add_edge from_node ~depends_on:to_node)
+        edges)
+    edge_lists
 
 (** Generate compilation actions from the module graph *)
 let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
