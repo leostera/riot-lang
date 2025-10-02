@@ -100,7 +100,7 @@ let print_build_plan plan =
   Printf.printf "=== END BUILD PLAN ===\n\n"
   *)
 
-let execute_action ~project_root action =
+let execute_action ~project_root ~package_name action =
   match action with
   | WriteFile { path; content } ->
       Printf.printf "  DEBUG: Writing generated file %s\n" path;
@@ -118,9 +118,11 @@ let execute_action ~project_root action =
       Io.copy_file src_absolute dst
   | CompileInterface { sandbox_dir; src_file; output; includes; opens } -> (
       (* Build flags for open modules *)
-      let flags = 
-        List.map (fun m -> Ocaml_platform.Open m) opens 
-        @ [Ocaml_platform.NoPervasives; Ocaml_platform.NoStdlib]
+      let base_flags = List.map (fun m -> Ocaml_platform.Open m) opens in
+      (* Only add -nopervasives -nostdlib for non-kernel packages *)
+      let flags =
+        if package_name = "Kernel" then base_flags
+        else base_flags @ [Ocaml_platform.NoPervasives; Ocaml_platform.NoStdlib]
       in
       (* Now we're in sandbox_dir, so use relative paths *)
       match
@@ -135,9 +137,14 @@ let execute_action ~project_root action =
       { sandbox_dir; src_file; output; includes; opens; is_aliases } -> (
       (* Now we're in sandbox_dir, so use relative paths *)
       (* Build flags for open modules *)
+      let base_flags = List.map (fun m -> Ocaml_platform.Open m) opens in
+      (* Only add -nopervasives -nostdlib for non-kernel packages *)
+      let stdlib_flags =
+        if package_name = "Kernel" then []
+        else [Ocaml_platform.NoPervasives; Ocaml_platform.NoStdlib]
+      in
       let flags =
-        List.map (fun m -> Ocaml_platform.Open m) opens
-        @ [Ocaml_platform.NoPervasives; Ocaml_platform.NoStdlib]
+        base_flags @ stdlib_flags
         @ Ocaml_platform.[ Impl src_file ]
         @ if is_aliases then Ocaml_platform.[ NoAliasDeps ] else []
       in
@@ -209,6 +216,9 @@ let execute_build_plan ~build_results plan =
 
   (* Get sandbox dir from first action *)
   let sandbox_dir = plan.sandbox_dir in
+  (* Get package name *)
+  let package_name = Dep_graph.Module_name.to_string plan.package_name in
+  
   (* 1. Remove old sandbox if it exists *)
   Io.rm_rf sandbox_dir;
 
@@ -223,7 +233,7 @@ let execute_build_plan ~build_results plan =
   Printf.printf "Working in: %s\n" (Io.getcwd ());
 
   (* 5. Execute all actions *)
-  List.iter (execute_action ~project_root:original_cwd) plan.actions;
+  List.iter (execute_action ~project_root:original_cwd ~package_name) plan.actions;
 
   (* 6. Restore original directory *)
   Io.chdir original_cwd
