@@ -33,16 +33,28 @@ end
 
 (** Parse workspace members from a workspace TOML file *)
 let parse_workspace_toml toml_path =
+  Log.debug "[WORKSPACE] Parsing workspace TOML: %s" toml_path;
   try
     let toml = Toml.parse_file toml_path in
+    Log.debug "[WORKSPACE] TOML parsed successfully";
     (* The parser flattens sections, so look for "workspace.members" *)
     match Toml.find_value "workspace.members" toml with
     | Some members_value -> (
+        Log.debug "[WORKSPACE] Found workspace.members field";
         match Toml.get_array members_value with
-        | Some arr -> List.filter_map (fun v -> Toml.get_string v) arr
-        | None -> [])
-    | None -> []
-  with _ -> []
+        | Some arr -> 
+            let members = List.filter_map (fun v -> Toml.get_string v) arr in
+            Log.debug "[WORKSPACE] Extracted %d members from array" (List.length members);
+            members
+        | None -> 
+            Log.debug "[WORKSPACE] workspace.members is not an array";
+            [])
+    | None -> 
+        Log.debug "[WORKSPACE] No workspace.members field found in TOML";
+        []
+  with exn -> 
+      Log.debug "[WORKSPACE] Exception parsing TOML: %s" (Exception.to_string exn);
+      []
 
 (** Parse package dependencies from a package TOML file *)
 let parse_package_toml toml_path =
@@ -87,14 +99,24 @@ let parse_package_toml toml_path =
 let find_tusk_toml dir =
   let dir_path = Path.v dir in
   let path = Path.(dir_path / Path.v "tusk.toml") in
+  Log.debug "[WORKSPACE] Looking for tusk.toml at: %s" (Path.to_string path);
   match Std.Fs.exists path with
-  | Ok true -> Some (Path.to_string path)
-  | Ok false | Error _ -> None
+  | Ok true -> 
+      Log.debug "[WORKSPACE] Found tusk.toml";
+      Some (Path.to_string path)
+  | Ok false -> 
+      Log.debug "[WORKSPACE] tusk.toml does not exist";
+      None
+  | Error err -> 
+      Log.debug "[WORKSPACE] Error checking for tusk.toml: %s" (Fs.error_to_string err);
+      None
 
 (** Scan workspace starting from root directory *)
 let scan_internal ~root =
+  Log.debug "[WORKSPACE] Scanning workspace from root: %s" root;
   match find_tusk_toml root with
   | None ->
+      Log.debug "[WORKSPACE] No tusk.toml found in %s" root;
       println "Error: No tusk.toml found in %s" root;
       {
         root = Path.v root;
@@ -102,23 +124,31 @@ let scan_internal ~root =
         packages = [];
       }
   | Some workspace_toml ->
+      Log.debug "[WORKSPACE] Found workspace tusk.toml: %s" workspace_toml;
       (* Parse workspace members *)
       let members = parse_workspace_toml workspace_toml in
+      Log.debug "[WORKSPACE] Parsed %d workspace members: [%s]" 
+        (List.length members) (String.concat ", " members);
 
       (* Scan each member package *)
       let packages =
         List.filter_map
           (fun member ->
+            Log.debug "[WORKSPACE] Scanning member: %s" member;
             let member_path =
               Path.to_string Path.(Path.v root / Path.v member)
             in
+            Log.debug "[WORKSPACE]   Member path: %s" member_path;
             match find_tusk_toml member_path with
             | None ->
+                Log.debug "[WORKSPACE]   No tusk.toml found for member %s" member;
                 println "Warning: No tusk.toml found for member %s"
                   member;
                 None
             | Some package_toml ->
+                Log.debug "[WORKSPACE]   Found package tusk.toml: %s" package_toml;
                 let name, deps = parse_package_toml package_toml in
+                Log.debug "[WORKSPACE]   Package name: %s, deps: [%s]" name (String.concat ", " deps);
                 Some
                   {
                     name;
@@ -130,6 +160,7 @@ let scan_internal ~root =
           members
       in
 
+      Log.debug "[WORKSPACE] Scan complete: found %d packages" (List.length packages);
       {
         root = Path.v root;
         target_dir_root = Path.(Path.v root / Path.v "target");
@@ -139,8 +170,14 @@ let scan_internal ~root =
 (** Public interface functions *)
 let scan path =
   let root_str = Path.to_string path in
-  try Ok (scan_internal ~root:root_str)
-  with _ -> Error Error.ScanWorkspaceError
+  Log.debug "[WORKSPACE] scan() called with path: %s" root_str;
+  try 
+    let workspace = scan_internal ~root:root_str in
+    Log.debug "[WORKSPACE] scan() succeeded with %d packages" (List.length workspace.packages);
+    Ok workspace
+  with exn -> 
+      Log.debug "[WORKSPACE] scan() failed with exception: %s" (Exception.to_string exn);
+      Error Error.ScanWorkspaceError
 
 let load ~root = scan root
 
