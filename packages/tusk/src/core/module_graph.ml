@@ -536,8 +536,16 @@ let wire_dependencies t =
                      %!"
                     dep_name)
               deps;
-            !edges
-        | _ -> [])
+            let result = !edges in
+            Printf.printf
+              "[MODULE_GRAPH]     Worker returning %d edges for %s\n%!"
+              (List.length result) (file_to_string dep.file);
+            result
+        | _ ->
+            Printf.printf "[MODULE_GRAPH]     Worker returning 0 edges for %s (not \
+                           ML/MLI)\n%!"
+              (file_to_string dep.file);
+            [])
       ()
   in
 
