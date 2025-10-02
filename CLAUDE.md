@@ -19,6 +19,17 @@ when workgin on any other package:
   - and if that's not available then use `./minitusk` 
   - and if that's not available then use `./bootstarp.py`
 
+## Writing OCaml with Tusk
+
+* NEVER reference modules by their namespaced name. For ex. Std.Crypto.Algo.Sha256 is also available as Std__Crypto__Algo__Sha256 but it should NEVER be referenced as such
+
+## Writing OCaml with Std
+
+* Always `open Std` at the top
+* Use Path.t for paths instead of strings, and create them with Path.of_string only when you want to handle the error case of not valid paths -- otherwise use Path.v to make new paths from strings
+* If you see Path.to_string, consider keeping the Path.t around until it needs printing instead of turning it into a string for manipulation
+* Prefer Result.expect ~msg and Option.expect ~msg over Result.unwrap or Option.unwrap
+
 ## Lessons Learned
 
 - ALWAYS BE ON THE PROJECT ROOT

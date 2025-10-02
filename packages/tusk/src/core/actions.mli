@@ -58,7 +58,8 @@ type action_result = Success | Failed of string | Skipped of string
 
 val execute_action :
   action -> Toolchains.toolchain -> Std.Path.t -> action_result * string
-(** Execute a single build action in the specified working directory. Returns (result, output_message). *)
+(** Execute a single build action in the specified working directory. Returns
+    (result, output_message). *)
 
 (** {1 Hashing} *)
 

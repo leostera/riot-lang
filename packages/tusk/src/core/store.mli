@@ -19,8 +19,8 @@ val create : workspace:Workspace.t -> t
 (** {1 Simple Interface} *)
 
 val get : t -> Build_node.t -> Artifact.t option
-(** Check if we have cached artifacts for this build node. Returns Some
-    artifact if cached, None if not. *)
+(** Check if we have cached artifacts for this build node. Returns Some artifact
+    if cached, None if not. *)
 
 val save :
   t ->

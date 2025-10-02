@@ -6,4 +6,12 @@ module Fs = Fs
 module Net = Net
 module System = System
 module Time = Time
+
+(* Core types and modules for nostdlib packages *)
 module Types = Types
+module Format = Format
+module Effect = Effect
+module Printf = Printf
+
+(* Re-export common types at top level for convenience *)
+include Types

@@ -25,7 +25,8 @@ val cleanup : t -> unit
 val get_sandbox_dir : t -> Std.Path.t
 (** Get the sandbox directory path *)
 
-type entry = string * [ `File of Std.Path.t * string | `Dir of Std.Path.t * entry list ]
+type entry =
+  string * [ `File of Std.Path.t * string | `Dir of Std.Path.t * entry list ]
 
 val sources : t -> entry list
 (** Get the sources copied to the sandbox *)

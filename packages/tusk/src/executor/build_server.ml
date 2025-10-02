@@ -38,6 +38,8 @@ let do_build ~session_id ~client_pid ~build_results ~build_queue ~build_stats
           build_loop ()
       | Worker_pool_types.TaskFailed { worker; node; error } ->
           let pkg_name = node.Build_node.package.name in
+          Printf.printf "[BUILD_SERVER] Package %s failed: %s\n%!" pkg_name
+            error;
           Build_queue.mark_as_failed build_queue node ~error;
           failed := pkg_name :: !failed;
           Tusk_protocol.BuildStats.inc_packages_failed build_stats;

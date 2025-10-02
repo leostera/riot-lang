@@ -18,7 +18,7 @@ let rec loop : type task. task state -> (unit, Process.exit_reason) result =
   in
 
   match receive ~selector () with
-  | TaskCompleted worker -> (
+  | WorkerReady worker -> (
       match Ref.type_equal state.task_ref worker.task_ref with
       | Some Type.Equal -> handle_worker_ready state worker
       | None -> panic "Received worker of the wrong type?!")

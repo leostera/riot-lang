@@ -9,6 +9,6 @@ type ('a, 'b, 'c, 'd, 'e, 'f) format6 = ('a, 'b, 'c, 'd, 'e, 'f) Stdlib.format6
 
 (* Reference type and operations *)
 type 'a ref = 'a Stdlib.ref = { mutable contents : 'a }
-let ref = Stdlib.ref
-let ( ! ) = Stdlib.( ! )
-let ( := ) = Stdlib.( := )
+val ref : 'a -> 'a ref
+val ( ! ) : 'a ref -> 'a
+val ( := ) : 'a ref -> 'a -> unit

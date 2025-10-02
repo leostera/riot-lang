@@ -30,8 +30,7 @@ and handle_task ctx task =
   match
     Build_planner.plan_node ~graph:ctx.build_graph ~node
       ~build_results:ctx.build_results ~workspace:ctx.workspace ~session_id
-      ~sandbox_dir:(Sandbox.get_sandbox_dir sandbox)
-      ~sources:(Sandbox.sources sandbox) ()
+      ~sandbox ()
   with
   | exception exn -> handle_planning_exception ctx task exn
   | Error err -> handle_planning_error ctx task err

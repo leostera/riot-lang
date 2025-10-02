@@ -9,9 +9,7 @@ type worker_message = Task of Task.t
 type Message.t += ToWorker of worker_message
 
 (** Internal Messages to Coordinator *)
-type coordinator_message =
-  | TaskCompleted : 'task worker -> coordinator_message
-  | WorkerReady : 'task worker -> coordinator_message
+type coordinator_message = WorkerReady : 'task worker -> coordinator_message
 
 type Message.t += ToCoordinator of coordinator_message
 

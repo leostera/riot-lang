@@ -23,7 +23,7 @@ let rec loop state =
 
       (* Notify coordinator that we're done *)
       let handle = { pid = self (); task_ref = state.task_ref } in
-      send state.coordinator (ToCoordinator (TaskCompleted handle));
+      send state.coordinator (ToCoordinator (WorkerReady handle));
 
       (* Continue looping for more tasks *)
       loop state

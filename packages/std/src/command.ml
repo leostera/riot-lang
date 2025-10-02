@@ -56,15 +56,14 @@ let output t =
           let read_buffer = Bytes.create 4096 in
 
           let try_read_from_fd fd buf =
-            try
-              let n = Unix.read fd read_buffer 0 4096 in
-              if n > 0 then Buffer.add_subbytes buf read_buffer 0 n;
-              n > 0 (* return true if we read data *)
-            with
-            | Unix.Unix_error ((Unix.EAGAIN | Unix.EWOULDBLOCK), _, _) -> false
-            | Unix.Unix_error (Unix.EPIPE, _, _) ->
-                false (* Broken pipe - process ended *)
-            | End_of_file -> false
+            match Kernel.Fs.File.read fd read_buffer ~pos:0 ~len:4096 with
+            | Ok n ->
+                if n > 0 then Buffer.add_subbytes buf read_buffer 0 n;
+                n > 0 (* return true if we read data *)
+            | Error (`Unix_error Unix.EAGAIN) -> false
+            | Error (`Unix_error Unix.EWOULDBLOCK) -> false
+            | Error (`Unix_error Unix.EPIPE) -> false (* Broken pipe - process ended *)
+            | Error _ -> false (* EOF or other errors *)
           in
 
           (* Wait for process to exit while draining pipes *)

@@ -20,3 +20,4 @@ target
 *.cmi
 *.cmo
 *.cma
+/logs
