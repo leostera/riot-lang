@@ -48,6 +48,7 @@ val base_command : Model.Toolchains.toolchain -> string
 
 val run :
   toolchain:Model.Toolchains.toolchain ->
+  cwd:Std.Path.t ->
   ?includes:string list ->
   ?libs:string list ->
   ?output:string option ->
@@ -73,6 +74,7 @@ val run :
 
 val compile_interface :
   toolchain:Model.Toolchains.toolchain ->
+  cwd:Std.Path.t ->
   includes:string list ->
   flags:compiler_flag list ->
   output:string ->
@@ -83,6 +85,7 @@ val compile_interface :
 
 val compile_impl :
   toolchain:Model.Toolchains.toolchain ->
+  cwd:Std.Path.t ->
   includes:string list ->
   flags:compiler_flag list ->
   output:string ->
@@ -93,6 +96,7 @@ val compile_impl :
 
 val generate_interface :
   toolchain:Model.Toolchains.toolchain ->
+  cwd:Std.Path.t ->
   includes:string list ->
   flags:compiler_flag list ->
   output:string ->
@@ -103,6 +107,7 @@ val generate_interface :
 
 val compile_c :
   toolchain:Model.Toolchains.toolchain ->
+  cwd:Std.Path.t ->
   includes:string list ->
   output:string ->
   string ->
@@ -111,6 +116,7 @@ val compile_c :
 
 val create_library :
   toolchain:Model.Toolchains.toolchain ->
+  cwd:Std.Path.t ->
   includes:string list ->
   output:string ->
   string list ->
@@ -119,6 +125,7 @@ val create_library :
 
 val create_executable :
   toolchain:Model.Toolchains.toolchain ->
+  cwd:Std.Path.t ->
   includes:string list ->
   output:string ->
   libs:string list ->
@@ -129,6 +136,7 @@ val create_executable :
 
 val create_custom_executable :
   toolchain:Model.Toolchains.toolchain ->
+  cwd:Std.Path.t ->
   includes:string list ->
   output:string ->
   libs:string list ->
