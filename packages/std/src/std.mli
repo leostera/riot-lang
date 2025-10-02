@@ -21,6 +21,7 @@ module System = System
 module Task = Task
 module Time = Time
 module Version = Version
+module Worker_pool = Worker_pool
 
 val panic : string -> 'a
 (** Panic with a message - raises an uncatchable exception *)
