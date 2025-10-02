@@ -94,10 +94,14 @@ val truncate : float -> int
 val string_of_int : int -> string
 val string_of_float : float -> string
 val int_of_string : string -> int
+val int_of_string_opt : string -> int option
 val float_of_string : string -> float
+val float_of_string_opt : string -> float option
 val string_of_bool : bool -> string
 val bool_of_string : string -> bool
+val bool_of_string_opt : string -> bool option
 val ( ^ ) : string -> string -> string
+val ( @ ) : 'a list -> 'a list -> 'a list
 val infinity : float
 val neg_infinity : float
 val nan : float

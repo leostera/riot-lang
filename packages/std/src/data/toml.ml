@@ -53,16 +53,11 @@ let parse_section_header line =
 
 let parse_file filename =
   try
-    let ic = open_in filename in
-    let lines = ref [] in
-    (try
-       while true do
-         lines := input_line ic :: !lines
-       done
-     with End_of_file -> ());
-    close_in ic;
-
-    let lines = List.rev !lines in
+    let content = match Fs.read_to_string (Path.of_string filename) with
+      | Ok s -> s
+      | Error _ -> raise (Parse_error "Failed to read file")
+    in
+    let lines = String.split_on_char '\n' content in
     let sections = ref [] in
     let current_section = ref None in
     let current_items = ref [] in

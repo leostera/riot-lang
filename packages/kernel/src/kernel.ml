@@ -29,6 +29,7 @@ module Bytes = Bytes
 module Seq = Seq
 module Uchar = Uchar
 module Array = Array
+module Filename = Filename
 
 (* Re-export global types and functions at top level for convenience *)
 include Global
