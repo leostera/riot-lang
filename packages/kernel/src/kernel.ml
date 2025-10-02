@@ -15,6 +15,8 @@ module Printf = Printf
 module Printexc = Printexc
 module Int = Int
 module Queue = Queue
+module Option = Option
+module List = List
 
 (* Re-export global types and functions at top level for convenience *)
 include Global
