@@ -195,14 +195,15 @@ let execute_action ~project_root ~package_name action =
       in
       (* Only link unix.cma for kernel package or packages that depend on kernel *)
       let needs_unix = 
-        exe_name = "kernel" || List.mem "kernel" dependencies
+        exe_name = "kernel" || List.mem "Kernel" dependencies
       in
       let libs = 
         (if needs_unix then [ "unix.cma" ] else [])
         @ dep_archives @ [ archive ]
       in
       (* Everything is in the current sandbox directory *)
-      let includes = [ "." ] in
+      (* Add +unix to includes if we need the unix library *)
+      let includes = if needs_unix then [ "."; "+unix" ] else [ "." ] in
       match
         Ocaml_platform.Ocamlc.run ~includes ~libs ~output:(Some exe_name)
           ~mode:Ocaml_platform.CustomExe ~flags:[] [ main_module ]
