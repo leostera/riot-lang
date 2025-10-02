@@ -107,8 +107,8 @@ let find_tusk_toml dir =
   | Ok false -> 
       Log.debug "[WORKSPACE] tusk.toml does not exist";
       None
-  | Error err -> 
-      Log.debug "[WORKSPACE] Error checking for tusk.toml: %s" (Fs.error_to_string err);
+  | Error (Fs.SystemError msg) -> 
+      Log.debug "[WORKSPACE] Error checking for tusk.toml: %s" msg;
       None
 
 (** Scan workspace starting from root directory *)
