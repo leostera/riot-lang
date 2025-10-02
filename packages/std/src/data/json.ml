@@ -113,13 +113,17 @@ let of_string str =
     done
   in
 
+  let exception Json_parse_error of error in
+  
+  let raise_error err = raise (Json_parse_error err) in
+
   let parse_string () =
     advance ();
     (* skip opening quote *)
     let buffer = Buffer.create 16 in
     let rec loop () =
       if !pos >= len then 
-        raise (Failure (format "Unterminated_string:%d" !pos))
+        raise_error (Unterminated_string { position = !pos })
       else
         match str.[!pos] with
         | '"' ->
@@ -128,7 +132,7 @@ let of_string str =
         | '\\' ->
             advance ();
             if !pos >= len then 
-              raise (Failure (format "Unterminated_string:%d" !pos));
+              raise_error (Unterminated_string { position = !pos });
             (match str.[!pos] with
             | '"' -> Buffer.add_char buffer '"'
             | '\\' -> Buffer.add_char buffer '\\'
@@ -169,31 +173,43 @@ let of_string str =
   let rec parse_value () =
     skip_whitespace ();
     match peek () with
-    | None -> raise (Failure "Unexpected_end_of_input:value")
+    | None -> raise_error (Unexpected_end_of_input { expected = "value" })
     | Some 'n' ->
         let start_pos = !pos in
         if !pos + 4 <= len && String.sub str !pos 4 = "null" then (
           pos := !pos + 4;
           Null)
         else 
-          let found = if !pos + 4 <= len then String.sub str !pos 4 else String.sub str !pos (len - !pos) in
-          raise (Failure (format "Invalid_literal:null:%d:%s" start_pos found))
+          let found = 
+            if !pos + 4 <= len then String.sub str !pos 4 
+            else if !pos < len then String.sub str !pos (len - !pos) 
+            else "" 
+          in
+          raise_error (Invalid_literal { expected = "null"; position = start_pos; found })
     | Some 't' ->
         let start_pos = !pos in
         if !pos + 4 <= len && String.sub str !pos 4 = "true" then (
           pos := !pos + 4;
           Bool true)
         else 
-          let found = if !pos + 4 <= len then String.sub str !pos 4 else String.sub str !pos (len - !pos) in
-          raise (Failure (format "Invalid_literal:true:%d:%s" start_pos found))
+          let found = 
+            if !pos + 4 <= len then String.sub str !pos 4
+            else if !pos < len then String.sub str !pos (len - !pos)
+            else ""
+          in
+          raise_error (Invalid_literal { expected = "true"; position = start_pos; found })
     | Some 'f' ->
         let start_pos = !pos in
         if !pos + 5 <= len && String.sub str !pos 5 = "false" then (
           pos := !pos + 5;
           Bool false)
         else 
-          let found = if !pos + 5 <= len then String.sub str !pos 5 else String.sub str !pos (len - !pos) in
-          raise (Failure (format "Invalid_literal:false:%d:%s" start_pos found))
+          let found = 
+            if !pos + 5 <= len then String.sub str !pos 5
+            else if !pos < len then String.sub str !pos (len - !pos)
+            else ""
+          in
+          raise_error (Invalid_literal { expected = "false"; position = start_pos; found })
     | Some '"' -> String (parse_string ())
     | Some '[' ->
         advance ();
@@ -212,8 +228,8 @@ let of_string str =
             | Some ']' ->
                 advance ();
                 Array (List.rev (item :: acc))
-            | Some c -> raise (Failure (format "Expected_comma_or_bracket:array:%d:%c" !pos c))
-            | None -> raise (Failure (format "Expected_comma_or_bracket:array:%d:none" !pos))
+            | Some c -> raise_error (Expected_comma_or_bracket { kind = "array"; position = !pos; found = Some c })
+            | None -> raise_error (Expected_comma_or_bracket { kind = "array"; position = !pos; found = None })
           in
           parse_items []
     | Some '{' ->
@@ -227,14 +243,14 @@ let of_string str =
             skip_whitespace ();
             (match peek () with
             | Some '"' -> ()
-            | Some c -> raise (Failure (format "Expected_string_key:%d:%c" !pos c))
-            | None -> raise (Failure (format "Expected_string_key:%d:none" !pos)));
+            | Some c -> raise_error (Expected_string_key { position = !pos; found = Some c })
+            | None -> raise_error (Expected_string_key { position = !pos; found = None }));
             let key = parse_string () in
             skip_whitespace ();
             (match peek () with
             | Some ':' -> advance ()
-            | Some c -> raise (Failure (format "Expected_colon:%d:%c" !pos c))
-            | None -> raise (Failure (format "Expected_colon:%d:none" !pos)));
+            | Some c -> raise_error (Expected_colon { position = !pos; found = Some c })
+            | None -> raise_error (Expected_colon { position = !pos; found = None }));
             let value = parse_value () in
             skip_whitespace ();
             match peek () with
@@ -244,12 +260,12 @@ let of_string str =
             | Some '}' ->
                 advance ();
                 Object (List.rev ((key, value) :: acc))
-            | Some c -> raise (Failure (format "Expected_comma_or_bracket:object:%d:%c" !pos c))
-            | None -> raise (Failure (format "Expected_comma_or_bracket:object:%d:none" !pos))
+            | Some c -> raise_error (Expected_comma_or_bracket { kind = "object"; position = !pos; found = Some c })
+            | None -> raise_error (Expected_comma_or_bracket { kind = "object"; position = !pos; found = None })
           in
           parse_fields []
     | Some ('-' | '0' .. '9') -> parse_number ()
-    | Some c -> raise (Failure (format "Unexpected_character:%d:%c:value" !pos c))
+    | Some c -> raise_error (Unexpected_character { position = !pos; character = c; expected = "value" })
   in
 
   try
@@ -260,31 +276,7 @@ let of_string str =
       Error (Extra_input_after_value { position = !pos })
     else Ok result
   with
-  | Failure msg -> (
-      (* Parse the encoded error message *)
-      match String.split_on_char ':' msg with
-      | "Unterminated_string" :: pos :: _ ->
-          Error (Unterminated_string { position = int_of_string pos })
-      | "Invalid_literal" :: expected :: pos :: found :: _ ->
-          Error (Invalid_literal { expected; position = int_of_string pos; found })
-      | "Unexpected_end_of_input" :: expected :: _ ->
-          Error (Unexpected_end_of_input { expected })
-      | "Expected_comma_or_bracket" :: kind :: pos :: "none" :: _ ->
-          Error (Expected_comma_or_bracket { kind; position = int_of_string pos; found = None })
-      | "Expected_comma_or_bracket" :: kind :: pos :: c :: _ ->
-          Error (Expected_comma_or_bracket { kind; position = int_of_string pos; found = Some c.[0] })
-      | "Expected_string_key" :: pos :: "none" :: _ ->
-          Error (Expected_string_key { position = int_of_string pos; found = None })
-      | "Expected_string_key" :: pos :: c :: _ ->
-          Error (Expected_string_key { position = int_of_string pos; found = Some c.[0] })
-      | "Expected_colon" :: pos :: "none" :: _ ->
-          Error (Expected_colon { position = int_of_string pos; found = None })
-      | "Expected_colon" :: pos :: c :: _ ->
-          Error (Expected_colon { position = int_of_string pos; found = Some c.[0] })
-      | "Unexpected_character" :: pos :: c :: expected :: _ ->
-          Error (Unexpected_character { position = int_of_string pos; character = c.[0]; expected })
-      | _ -> Error (Unknown_error msg)
-    )
+  | Json_parse_error err -> Error err
   | exn -> Error (Unknown_error (Exception.to_string exn))
 
 (** Helper functions *)
