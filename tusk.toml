@@ -1,5 +1,13 @@
 [workspace]
-members = ["packages/std", "packages/kernel", "packages/jsonrpc", "packages/mcp", "packages/miniriot", "packages/minitusk", "packages/tusk"]
+members = [
+  "packages/jsonrpc",
+  "packages/kernel",
+  "packages/mcp",
+  "packages/miniriot",
+  "packages/minitusk",
+  "packages/std", 
+  "packages/tusk",
+]
 
 [dependencies]
 # Shared external dependencies across workspace members
