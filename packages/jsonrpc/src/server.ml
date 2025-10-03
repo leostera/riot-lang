@@ -29,6 +29,9 @@ let handle_message (type req res) (server : (req, res) t)
         : Common.ApplicationProtocol with type request = req
          and type response = res)
   in
+  (* Log current directory at start of request *)
+  let cwd = Env.current_dir () |> Result.unwrap |> Path.to_string in
+  Log.debug "[JSONRPC SERVER] Processing request in cwd: %s" cwd;
   (* Parse the incoming message *)
   Log.trace "[JSONRPC SERVER] Parsing message: %s" message;
   match Json.of_string message with
@@ -70,12 +73,15 @@ let handle_message (type req res) (server : (req, res) t)
                   (* Invalid params - can't send typed response, just log/ignore *)
                   Log.error "[JSONRPC SERVER] Failed to convert params";
                   ()
-              | Ok typed_request ->
+                             | Ok typed_request ->
                   (* Execute handler with typed request *)
                   Log.trace "[JSONRPC SERVER] Calling handler";
-                  if Common.is_notification request then
+                  if Common.is_notification request then (
                     (* Notification - no response expected *)
-                    handler.fn (fun _ -> ()) typed_request
+                    handler.fn (fun _ -> ()) typed_request;
+                    let cwd_after = Env.current_dir () |> Result.unwrap |> Path.to_string in
+                    if cwd <> cwd_after then
+                      Log.warn "[JSONRPC SERVER] CWD changed during handler! %s -> %s" cwd cwd_after)
                   else
                     (* Regular request - response expected *)
                     let typed_reply res =
@@ -92,6 +98,9 @@ let handle_message (type req res) (server : (req, res) t)
                           ]
                       in
                       (* Convert to string and send *)
-                      reply (Json.to_string json_response)
+                      reply (Json.to_string json_response);
+                      let cwd_after = Env.current_dir () |> Result.unwrap |> Path.to_string in
+                      if cwd <> cwd_after then
+                        Log.warn "[JSONRPC SERVER] CWD changed during handler! %s -> %s" cwd cwd_after
                     in
                     handler.fn typed_reply typed_request)))
