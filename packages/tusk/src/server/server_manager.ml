@@ -209,7 +209,7 @@ let ensure_running ~workspace =
           | Error e ->
               Std.Log.debug "Ping failed: %s, retrying..." e;
               Tusk_jsonrpc.Client.close client;
-              Std.Time.sleep 0.05;
+              Kernel.Time.sleep 0.05;
               (* 50ms *)
               wait_server ~retries:(retries - 1) ~daemon)
       | Error e ->
