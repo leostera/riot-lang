@@ -127,6 +127,54 @@ let deps_with_flags ~toolchain ~cwd ~file ~flags ~package_namespace =
               Model.Module_name.of_string ~namespace:package_namespace modname)
     | _ -> []
 
+(** Get dependencies for multiple files in one ocamldep call - returns (file, deps) list *)
+let batch_deps ~toolchain ~cwd ~files ~package_namespace =
+  if files = [] then []
+  else
+    let ocamldep = Path.to_string (Toolchains.ocamldep_path toolchain) in
+    let files_str = String.concat " " (List.map Path.to_string files) in
+    let cmd =
+      format "cd %s && %s -modules %s 2>/dev/null" (Path.to_string cwd)
+        ocamldep files_str
+    in
+
+    Log.debug "[OCAMLDEP] Batch running for %d files" (List.length files);
+
+    let output =
+      let command = Command.make ~args:[ "-c"; cmd ] "sh" in
+      match Command.output command with
+      | Ok output -> output.Command.stdout
+      | Error _err -> ""
+    in
+
+    if output = "" then
+      List.map (fun file -> (file, [])) files
+    else
+      (* Parse output - each line is "file.ml: Module1 Module2 Module3" *)
+      let lines = String.split_on_char '\n' output in
+      List.filter_map
+        (fun line ->
+          let trimmed = String.trim line in
+          if trimmed = "" then None
+          else
+            match String.split_on_char ':' trimmed with
+            | [ file_part; deps_part ] ->
+                let file = Path.v (String.trim file_part) in
+                let deps = String.trim deps_part in
+                let dep_list =
+                  if deps = "" then []
+                  else
+                    String.split_on_char ' ' deps
+                    |> List.map String.trim
+                    |> List.filter (fun s -> s <> "")
+                    |> List.map (fun modname ->
+                        Model.Module_name.of_string ~namespace:package_namespace
+                          modname)
+                in
+                Some (file, dep_list)
+            | _ -> None)
+        lines
+
 (** Get all module dependencies (for building .merlin files) *)
 let all_deps ~toolchain ~cwd ~files ~package_namespace =
   List.map

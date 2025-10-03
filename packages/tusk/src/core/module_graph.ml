@@ -456,53 +456,57 @@ let scan_sources t sandbox_dir (sources : Sandbox.entry list) =
 (** Wire dependencies using ocamldep *)
 let wire_dependencies t sandbox_dir =
   Log.debug "[MODULE_GRAPH] Wiring dependencies with ocamldep";
-  (* Keep both node_id and node for later edge addition *)
-  let node_tasks = G.map t.graph ~fn:(fun (node_id, node) -> (node_id, node)) in
-  Log.debug "[MODULE_GRAPH] Created %d node tasks" (List.length node_tasks);
-
-  (* Run ocamldep in parallel, collecting edges instead of mutating graph *)
-  let deps_raw =
-    Std.WorkerPool.SimpleWorkerPool.run ~tasks:node_tasks
-      ~fn:(fun (node_id, node) ->
+  
+  (* Collect all concrete files and their node info *)
+  let all_nodes = G.map t.graph ~fn:(fun (node_id, node) -> (node_id, node)) in
+  
+  let files_with_nodes =
+    List.filter_map
+      (fun (node_id, node) ->
         let dep = node.value in
         match dep.kind with
-        | ML mod_ | MLI mod_ ->
-            let deps =
-              match dep.file with
-              | Generated _ -> []
-              | Concrete path ->
-                  (* Use sandbox_dir as cwd since paths are relative to sandbox *)
-                  let result =
-                    Ocamldep.deps ~toolchain:t.toolchain ~cwd:sandbox_dir
-                      ~file:path ~package_namespace:t.namespace
-                  in
-                  Log.debug "[MODULE_GRAPH] After ocamldep for %s: got %d deps"
-                    (Path.to_string path) (List.length result);
-                  result
-            in
-            Log.debug "[MODULE_GRAPH] Returning deps for %s: %d items"
-              (file_to_string dep.file) (List.length deps);
-            Some (node_id, node, deps)
+        | ML _ | MLI _ -> (
+            match dep.file with
+            | Concrete path -> Some (path, node_id, node)
+            | Generated _ -> None)
         | _ -> None)
-      ()
+      all_nodes
   in
-
-  Log.debug "[MODULE_GRAPH] WorkerPool.run returned %d raw results for %d tasks"
-    (List.length deps_raw) (List.length node_tasks);
-
-  (* Count how many None vs Some results *)
-  let none_count = ref 0 in
-  let some_count = ref 0 in
+  
+  let files = List.map (fun (path, _, _) -> path) files_with_nodes in
+  
+  Log.debug "[MODULE_GRAPH] Running batch ocamldep for %d files" (List.length files);
+  
+  (* Run ocamldep once for all files *)
+  let file_deps_map =
+    Ocamldep.batch_deps ~toolchain:t.toolchain ~cwd:sandbox_dir ~files
+      ~package_namespace:t.namespace
+  in
+  
+  (* Create a lookup table for quick access *)
+  let deps_table = Hashtbl.create (List.length file_deps_map) in
   List.iter
-    (fun (_idx, result) ->
-      match result with None -> incr none_count | Some _ -> incr some_count)
-    deps_raw;
-  Log.debug "[MODULE_GRAPH] Raw results breakdown: %d Some, %d None" !some_count
-    !none_count;
-
-  let deps = List.filter_map (fun (_idx, result) -> result) deps_raw in
-
-  Log.debug "[MODULE_GRAPH] After filter_map: %d results" (List.length deps);
+    (fun (file, deps) -> Hashtbl.add deps_table (Path.to_string file) deps)
+    file_deps_map;
+  
+  (* Map back to (node_id, node, deps) format *)
+  let deps =
+    List.filter_map
+      (fun (path, node_id, node) ->
+        let path_str = Path.to_string path in
+        match Hashtbl.find_opt deps_table path_str with
+        | Some deps ->
+            Log.debug "[MODULE_GRAPH] File %s has %d deps" path_str
+              (List.length deps);
+            Some (node_id, node, deps)
+        | None ->
+            Log.debug "[MODULE_GRAPH] No deps found for %s" path_str;
+            Some (node_id, node, []))
+      files_with_nodes
+  in
+  
+  Log.debug "[MODULE_GRAPH] Processed %d files with dependencies"
+    (List.length deps);
 
   let handle_edges node_id (node : dep G.node) deps =
     let dep = node.value in

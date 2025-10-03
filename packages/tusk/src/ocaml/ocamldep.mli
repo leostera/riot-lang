@@ -28,6 +28,15 @@ val deps_with_flags :
 (** Get dependencies for a single file with additional ocamldep flags - returns
     Module_name.t list *)
 
+val batch_deps :
+  toolchain:Toolchains.toolchain ->
+  cwd:Path.t ->
+  files:Path.t list ->
+  package_namespace:Model.Namespace.t ->
+  (Path.t * Model.Module_name.t list) list
+(** Get dependencies for multiple files in one ocamldep call - much faster than
+    calling deps for each file individually *)
+
 val all_deps :
   toolchain:Toolchains.toolchain ->
   cwd:Path.t ->
