@@ -1,5 +1,6 @@
 (** Standard library extensions and utilities *)
 
+module ArgParser = Arg_parser
 module Buffer = Buffer
 module Cell = Cell
 module Char = Char
