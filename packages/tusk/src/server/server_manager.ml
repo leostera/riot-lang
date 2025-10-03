@@ -107,9 +107,10 @@ module Daemon = struct
         let stdout_log = Path.(daemon_path / Path.v "stdout.log") in
         let stderr_log = Path.(daemon_path / Path.v "stderr.log") in
         
-        (* Build shell command with redirection *)
+        (* Build shell command with redirection and background execution *)
+        (* Use nohup to prevent the server from being killed when parent exits *)
         let cmd = 
-          format "%s server foreground > %s 2> %s"
+          format "nohup %s server foreground > %s 2> %s &"
             tusk_exe
             (Path.to_string stdout_log)
             (Path.to_string stderr_log)
