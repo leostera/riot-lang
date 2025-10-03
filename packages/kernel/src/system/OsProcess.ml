@@ -83,24 +83,11 @@ let spawn ~program ~args ?(env = []) ?cwd ~stdio () =
     (* Build argument array *)
     let argv = Array.of_list (program :: args) in
 
-    (* Change directory if requested *)
-    let original_cwd =
-      match cwd with
-      | Some dir ->
-          let old = Unix.getcwd () in
-          Unix.chdir dir;
-          Some old
-      | None -> None
-    in
-
     (* Spawn the process *)
     let pid =
       Unix.create_process_env program argv env_array stdin_child stdout_child
         stderr_child
     in
-
-    (* Restore original directory *)
-    (match original_cwd with Some dir -> Unix.chdir dir | None -> ());
 
     (* Close child-side fds in parent *)
     if stdio.stdin = `Pipe then Unix.close stdin_child;
@@ -159,8 +146,9 @@ let kill t ~signal = Unix.kill t.pid signal
 
 let close t =
   (* Close all open file descriptors *)
-  (match t.stdin_fd with Some fd -> Unix.close fd | None -> ());
   (match t.stdout_fd with Some fd -> Unix.close fd | None -> ());
-  match t.stderr_fd with Some fd -> Unix.close fd | None -> ()
+  (match t.stderr_fd with Some fd -> Unix.close fd | None -> ());
+  (match t.stdin_fd with Some fd -> Unix.close fd | None -> ());
+  ()
 
 let current_pid () = Unix.getpid ()
