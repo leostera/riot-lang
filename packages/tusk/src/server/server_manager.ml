@@ -214,7 +214,7 @@ let ensure_running ~workspace =
               wait_server ~retries:(retries - 1) ~daemon)
       | Error e ->
           Std.Log.debug "Failed to create client: %s, retrying..." e;
-          Std.Time.sleep 0.05;
+          Kernel.Time.sleep 0.05;
           (* 50ms *)
           wait_server ~retries:(retries - 1) ~daemon
   in
