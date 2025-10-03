@@ -75,7 +75,7 @@ let run args =
     println "No OCaml files found.";
     Ok ())
   else
-    let concurrency = min (System.available_parallelism / 2) 8 in
+    let concurrency = min System.available_parallelism 50 in
     let concurrency = max concurrency 1 in
 
     println "Found %d files, using %d workers" file_count concurrency;
@@ -123,7 +123,7 @@ let run args =
         failures;
       println "");
 
-    if check_only then (
+    if check_only then
       if changed_count > 0 then (
         println "\027[1;33m%d files need formatting:\027[0m" changed_count;
         List.iter
@@ -136,7 +136,7 @@ let run args =
       else (
         println "\027[1;32m✓ All files are formatted correctly\027[0m";
         println "  %d files checked" file_count;
-        Ok ()))
+        Ok ())
     else (
       println "\027[1;32m✓ Formatting complete\027[0m";
       if changed_count > 0 then println "  %d files formatted" changed_count;
