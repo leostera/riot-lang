@@ -103,32 +103,44 @@ module Daemon = struct
         let tusk_exe = Kernel.System.executable_name in
 
         (* Spawn the server in foreground mode as a detached background process *)
-        (* Use shell to redirect stdout/stderr to log files *)
+        (* Open log files for redirection *)
         let stdout_log = Path.(daemon_path / Path.v "stdout.log") in
         let stderr_log = Path.(daemon_path / Path.v "stderr.log") in
         
-        (* Build shell command with redirection and background execution *)
-        (* Use setsid to create a new session and detach from terminal *)
-        let cmd = 
-          format "setsid %s server foreground > %s 2> %s < /dev/null &"
-            tusk_exe
-            (Path.to_string stdout_log)
-            (Path.to_string stderr_log)
+        let stdout_fd =
+          Kernel.Fs.File.openfile (Path.to_string stdout_log)
+            [ Kernel.Fs.File.O_WRONLY; Kernel.Fs.File.O_CREAT; Kernel.Fs.File.O_TRUNC ]
+            0o644
+          |> Result.expect ~msg:"Failed to open stdout.log"
+        in
+        let stderr_fd =
+          Kernel.Fs.File.openfile (Path.to_string stderr_log)
+            [ Kernel.Fs.File.O_WRONLY; Kernel.Fs.File.O_CREAT; Kernel.Fs.File.O_TRUNC ]
+            0o644
+          |> Result.expect ~msg:"Failed to open stderr.log"
         in
         
+        (* Configure stdio to redirect to log files *)
         let stdio =
-          Kernel.System.OsProcess.
-            { stdin = `Null; stdout = `Inherit; stderr = `Inherit }
+          Kernel.System.OsProcess.{
+            stdin = `Null;
+            stdout = `File stdout_fd;
+            stderr = `File stderr_fd;
+          }
         in
         
         match
-          Kernel.System.OsProcess.spawn ~program:"/bin/sh"
-            ~args:[ "-c"; cmd ] ~stdio ()
+          Kernel.System.OsProcess.spawn ~program:tusk_exe
+            ~args:[ "server"; "foreground" ] ~stdio ()
         with
         | Ok process ->
             let pid = Kernel.System.OsProcess.pid process in
             let port = 9753 in
             (* Default port *)
+            
+            (* Close file descriptors in parent - child has inherited them *)
+            let _ = Kernel.Fs.File.close_fd stdout_fd in
+            let _ = Kernel.Fs.File.close_fd stderr_fd in
 
             (* Write PID and port files *)
             let _ = Fs.write (string_of_int pid) pid_file in
