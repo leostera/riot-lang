@@ -2,6 +2,8 @@
 
 type error = SystemError of string
 
+module Fd = Fd
+
 module Permissions : sig
   type t
   (** Unix file permissions *)

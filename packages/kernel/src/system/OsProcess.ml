@@ -33,9 +33,7 @@ let spawn ~program ~args ?(env = []) ?cwd ~stdio () =
       | `Pipe ->
           let read_fd, write_fd = Unix.pipe () in
           (read_fd, Some write_fd, read_fd, Some write_fd)
-      | `File fd ->
-          let unix_fd = Async.Fd.to_unix_fd fd in
-          (unix_fd, None, unix_fd, None)
+      | `File fd -> (fd, None, fd, None)
     in
 
     (* Prepare stdout *)
@@ -48,9 +46,7 @@ let spawn ~program ~args ?(env = []) ?cwd ~stdio () =
       | `Pipe ->
           let read_fd, write_fd = Unix.pipe () in
           (write_fd, Some read_fd, write_fd, Some read_fd)
-      | `File fd ->
-          let unix_fd = Async.Fd.to_unix_fd fd in
-          (unix_fd, None, unix_fd, None)
+      | `File unix_fd -> (unix_fd, None, unix_fd, None)
     in
 
     (* Prepare stderr *)
@@ -64,8 +60,7 @@ let spawn ~program ~args ?(env = []) ?cwd ~stdio () =
           let read_fd, write_fd = Unix.pipe () in
           (write_fd, Some read_fd, write_fd, Some read_fd)
       | `Redirect_to_stdout -> (stdout_child, None, stdout_child, None)
-      | `File fd ->
-          let unix_fd = Async.Fd.to_unix_fd fd in
+      | `File unix_fd ->
           (unix_fd, None, unix_fd, None)
     in
 
