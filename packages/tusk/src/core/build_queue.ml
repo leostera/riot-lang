@@ -68,26 +68,47 @@ let requeue_with_deps t node ~deps =
 (** Compatibility alias *)
 let queue_with_deps = requeue_with_deps
 
-(** 2. Next - get next ready task, swap queues if needed *)
-let rec next t =
-  if Queue.is_empty t.ready_queue then
-    if
-      (* Ready queue empty - swap with later queue and try again *)
-      Queue.is_empty t.later_queue
-    then None (* Both queues empty *)
-    else (
-      Std.Log.debug
-        "[BUILD_QUEUE] Ready queue empty, transferring %d tasks from later \
-         queue"
-        (Queue.length t.later_queue);
-      Queue.transfer t.later_queue t.ready_queue;
-      next t)
-  else
-    let node = Queue.take t.ready_queue in
-    let node_id = Node_id.of_package node.Build_node.package in
-    (* Mark as busy *)
-    Hashtbl.add t.busy_tasks node_id node;
-    Some node
+(** Helper: Check if all dependencies of a node are built *)
+let dependencies_satisfied t node =
+  List.for_all
+    (fun dep_id ->
+      let dep_name = Node_id.to_string dep_id in
+      match Build_results.get_status t.build_results dep_name with
+      | Some (Build_results.Built _) -> true
+      | _ -> false)
+    node.Build_node.deps
+
+(** 2. Next - get next ready task, checking dependencies before returning *)
+let next t =
+  (* Transfer any waiting tasks to ready queue *)
+  if Queue.is_empty t.ready_queue && not (Queue.is_empty t.later_queue) then
+    Queue.transfer t.later_queue t.ready_queue;
+
+  (* Check ready queue for a task with satisfied dependencies *)
+  let rec find_ready checked =
+    if Queue.is_empty t.ready_queue then (
+      (* No more tasks in ready queue - put checked items back in later queue *)
+      List.iter (fun node -> Queue.add node t.later_queue) checked;
+      None)
+    else
+      let node = Queue.take t.ready_queue in
+      let pkg_name = node.Build_node.package.name in
+
+      if dependencies_satisfied t node then (
+        (* Found a task with satisfied dependencies - put checked items back and return *)
+        List.iter (fun n -> Queue.add n t.ready_queue) checked;
+        let node_id = Node_id.of_package node.Build_node.package in
+        Hashtbl.add t.busy_tasks node_id node;
+        Std.Log.debug "[BUILD_QUEUE] Returning %s (dependencies satisfied)"
+          pkg_name;
+        Some node)
+      else (
+        (* Dependencies not satisfied - check next task *)
+        Std.Log.debug "[BUILD_QUEUE] %s has unsatisfied deps, checking next"
+          pkg_name;
+        find_ready (node :: checked))
+  in
+  find_ready []
 
 (** 4. Mark as completed - remove from busy and mark in build results *)
 let mark_as_completed t node ~artifact =
