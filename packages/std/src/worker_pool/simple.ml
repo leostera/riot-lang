@@ -13,6 +13,7 @@ type ('task, 'result) state = {
   task_queue : 'task Queue.t;
   mutable results : (int * 'result) list;
   result_ref : 'result Ref.t;
+  mutable tasks_in_flight : int;
 }
 
 type Message.t +=
@@ -49,17 +50,23 @@ let rec loop : type task res.
   match receive ~selector () with
   | `TaskResult res ->
       state.results <- res :: state.results;
+      state.tasks_in_flight <- state.tasks_in_flight - 1;
       loop state
   | `WorkerReady worker -> (
       match Queue.take_opt state.task_queue with
       | Some task ->
+          state.tasks_in_flight <- state.tasks_in_flight + 1;
           Dynamic.send_task state.pool worker task;
           loop state
       | None ->
-          send state.owner
-            (Completed
-               { results = state.results; result_ref = state.result_ref });
-          Ok ())
+          (* Only send Completed when queue is empty AND no tasks in flight *)
+          if state.tasks_in_flight = 0 then (
+            send state.owner
+              (Completed
+                 { results = state.results; result_ref = state.result_ref });
+            Ok ())
+          else
+            loop state)
 
 let init ~owner ~concurrency ~tasks ~result_ref ~fn () =
   let dispatcher_self = self () in
@@ -78,7 +85,7 @@ let init ~owner ~concurrency ~tasks ~result_ref ~fn () =
 
   let pool = Dynamic.start ~concurrency ~owner:dispatcher_self ~worker_fn () in
 
-  loop { owner; pool; task_queue; results; result_ref }
+  loop { owner; pool; task_queue; results; result_ref; tasks_in_flight = 0 }
 
 (** Run tasks in parallel with limited concurrency, collecting results in order
 *)

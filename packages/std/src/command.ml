@@ -51,11 +51,11 @@ let output t =
           (* Update state to Running *)
           t.state <- Running { proc; stdout = Some stdout_fd; stderr = Some stderr_fd};
 
-          (* Read output before waiting - this prevents deadlocks *)
+          (* Read output BEFORE waiting - prevents deadlock if pipes fill up *)
           let stdout_str = Fs.File.read_to_end stdout_fd |> Result.unwrap in
           let stderr_str = Fs.File.read_to_end stderr_fd |> Result.unwrap in
 
-          (* Wait for process to exit *)
+          (* Now wait for process to exit *)
           let rec wait_for_exit () =
             match OsProcess.try_wait proc with
             | None ->
@@ -65,7 +65,7 @@ let output t =
           in
           let exit_status = wait_for_exit () in
 
-          (* Close the process - this closes all associated file descriptors *)
+          (* Close the process *)
           OsProcess.close proc;
 
           (* Convert status *)

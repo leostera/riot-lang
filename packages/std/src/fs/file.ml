@@ -59,23 +59,19 @@ let read t buffer ~offset ~len =
 let read_to_end t =
   match ensure_open t with
   | Error e -> Error e
-  | Ok () -> (
-      match Kernel.Fs.File.lseek t.fd 0L Kernel.Fs.File.SeekCur with
-      | Error e -> Error (SystemError (kernel_error_to_string e))
-      | Ok current_pos -> (
-          match Kernel.Fs.File.fstat t.fd with
-          | Error e -> Error (SystemError (kernel_error_to_string e))
-          | Ok stats -> (
-              let file_size =
-                Int64.of_int (Kernel.Fs.File.Metadata.size stats)
-              in
-              let remaining = Int64.to_int (Int64.sub file_size current_pos) in
-              if remaining <= 0 then Ok ""
-              else
-                let buffer = Bytes.create remaining in
-                match read t buffer ~offset:0 ~len:remaining with
-                | Ok bytes_read -> Ok (Bytes.sub_string buffer 0 bytes_read)
-                | Error e -> Error e)))
+  | Ok () ->
+      (* Read in chunks until EOF - works for both files and pipes *)
+      let buf = Buffer.create 4096 in
+      let chunk = Bytes.create 4096 in
+      let rec drain () =
+        match read t chunk ~offset:0 ~len:4096 with
+        | Ok 0 -> Ok (Buffer.contents buf) (* EOF *)
+        | Ok n ->
+            Buffer.add_subbytes buf chunk 0 n;
+            drain ()
+        | Error e -> Error e
+      in
+      drain ()
 
 let read_exact t buffer ~offset ~len =
   let rec read_loop pos remaining =
@@ -251,7 +247,7 @@ let close t =
   if t.closed then Ok ()
   else
     try
+      t.closed <- true;
       Kernel.Fs.File.close_fd t.fd
       |> convert_kernel_result
-      |> Result.map (fun () -> t.closed <- true)
     with e -> Error (SystemError (Exception.to_string e))
