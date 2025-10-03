@@ -102,15 +102,27 @@ module Daemon = struct
         (* Get tusk executable path - use the current executable *)
         let tusk_exe = Kernel.System.executable_name in
 
-        (* Spawn the server in foreground mode *)
-        (* Note: We use "server" "foreground" to run the server *)
+        (* Spawn the server in foreground mode as a detached background process *)
+        (* Use shell to redirect stdout/stderr to log files *)
+        let stdout_log = Path.(daemon_path / Path.v "stdout.log") in
+        let stderr_log = Path.(daemon_path / Path.v "stderr.log") in
+        
+        (* Build shell command with redirection *)
+        let cmd = 
+          format "%s server foreground > %s 2> %s"
+            tusk_exe
+            (Path.to_string stdout_log)
+            (Path.to_string stderr_log)
+        in
+        
         let stdio =
           Kernel.System.OsProcess.
             { stdin = `Null; stdout = `Inherit; stderr = `Inherit }
         in
+        
         match
-          Kernel.System.OsProcess.spawn ~program:tusk_exe
-            ~args:[ "server"; "foreground" ] ~stdio ()
+          Kernel.System.OsProcess.spawn ~program:"/bin/sh"
+            ~args:[ "-c"; cmd ] ~stdio ()
         with
         | Ok process ->
             let pid = Kernel.System.OsProcess.pid process in
@@ -121,8 +133,8 @@ module Daemon = struct
             let _ = Fs.write (string_of_int pid) pid_file in
             let _ = Fs.write (string_of_int port) port_file in
 
-            (* Give the server a moment to start up *)
-            Kernel.Time.sleep 0.1;
+            (* Give the server more time to start up since it's detached *)
+            Kernel.Time.sleep 0.5;
 
             Ok { workspace; os_pid = pid; port; host = "127.0.0.1" }
         | Error (`SpawnFailed msg) -> Error Error.ScanWorkspaceError)
