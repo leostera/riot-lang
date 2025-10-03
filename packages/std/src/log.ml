@@ -24,7 +24,9 @@ let should_log level = level_to_int level >= level_to_int !current_level
 let log level fmt =
   if should_log level then
     Printf.ksprintf
-      (fun msg -> Printf.eprintf "[%s] %s\n%!" (level_to_string level) msg)
+      (fun msg ->
+        let timestamp = Datetime.to_iso8601 (Datetime.now ()) in
+        Printf.eprintf "[%s] [%s] %s\n%!" timestamp (level_to_string level) msg)
       fmt
   else Printf.ifprintf () fmt
 
