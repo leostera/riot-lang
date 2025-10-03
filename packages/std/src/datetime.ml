@@ -1,3 +1,4 @@
+open Global
 (** Date and time utilities *)
 
 module Tz = struct

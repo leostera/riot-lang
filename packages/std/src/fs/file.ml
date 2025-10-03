@@ -1,3 +1,4 @@
+open Global
 open Common
 
 type t = { fd : Kernel.Async.Fd.t; mutable closed : bool }

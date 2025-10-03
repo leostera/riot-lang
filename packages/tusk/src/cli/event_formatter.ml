@@ -1,3 +1,4 @@
+open Std
 open Core
 
 (** Format an event for cargo-style output *)

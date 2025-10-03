@@ -9,6 +9,7 @@ module Crypto = Crypto
 module Data = Data
 module Datetime = Datetime
 module Env = Env
+module Exception = Exception
 module Fs = Fs
 module Graph = Graph
 module Iterator = Iterator
@@ -25,4 +26,6 @@ module Task = Task
 module Time = Time
 module Version = Version
 module WorkerPool = Worker_pool
+
+(* Include all the globals *)
 include Global

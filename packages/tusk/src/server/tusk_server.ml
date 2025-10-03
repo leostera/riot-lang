@@ -407,7 +407,7 @@ let start () =
 (** Start with listener - makes current process become the server *)
 let start_with_listener () =
   try
-    Log.set_level Log.Debug;
+    Log.(set_level Debug);
     Log.info "Starting Tusk server with listener";
     let current_dir =
       Env.current_dir ()

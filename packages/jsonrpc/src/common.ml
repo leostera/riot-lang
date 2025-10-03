@@ -1,3 +1,4 @@
+open Std
 open Std.Data
 
 let version = "2.0"
@@ -168,7 +169,7 @@ let request ~method_ ?params ?id () =
   {
     jsonrpc = version;
     method_;
-    params = Option.value params ~default:NoParams;
+    params = Option.unwrap_or params ~default:NoParams;
     id;
   }
 
@@ -189,7 +190,7 @@ let notification ~method_ ?params () =
   {
     jsonrpc = version;
     method_;
-    params = Option.value params ~default:NoParams;
+    params = Option.unwrap_or params ~default:NoParams;
     id = None;
   }
 

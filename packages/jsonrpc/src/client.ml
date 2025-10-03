@@ -1,5 +1,6 @@
 (** JSON-RPC 2.0 Client Implementation *)
 
+open Std
 open Std.Data
 
 module type Transport = sig
@@ -120,7 +121,7 @@ let call (type req res) (client : (req, res) t) ~method_ ?params () =
   c.next_id <- c.next_id + 1;
   let jsonrpc_req =
     Common.request ~method_
-      ~params:(Option.value params ~default:Common.NoParams)
+      ~params:(Option.unwrap_or params ~default:Common.NoParams)
       ~id ()
   in
   let json = Common.request_to_json jsonrpc_req in

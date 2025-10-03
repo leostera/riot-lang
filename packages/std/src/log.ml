@@ -26,7 +26,7 @@ let log level fmt =
     Printf.ksprintf
       (fun msg ->
         let timestamp = Datetime.to_iso8601 (Datetime.now ()) in
-        Printf.eprintf "[%s] [%s] %s\n%!" timestamp (level_to_string level) msg)
+        Printf.printf "%s | %s | %s\n%!" timestamp (level_to_string level) msg)
       fmt
   else Printf.ifprintf () fmt
 

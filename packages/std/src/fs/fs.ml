@@ -1,5 +1,6 @@
 (** Filesystem utilities *)
 
+open Global
 include Common
 module Permissions = Permissions
 module Metadata = Metadata

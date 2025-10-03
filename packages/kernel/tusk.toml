@@ -3,5 +3,5 @@ name = "kernel"
 version = "0.0.1"
 
 [dependencies]
-ocaml-stdlib = "*"
-ocaml-unix = "*"
+stdlib = "*"
+unix = "*"

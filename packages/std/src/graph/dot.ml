@@ -1,3 +1,4 @@
+open Global
 (** DOT graph format generation for Graphviz *)
 
 type graph_style = Directed | Undirected

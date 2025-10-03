@@ -1,5 +1,6 @@
 (** Network I/O operations for Miniriot *)
 
+open Global
 open Kernel.Async
 
 type error = [ `Connection_refused | `Closed | `System_error of string ]

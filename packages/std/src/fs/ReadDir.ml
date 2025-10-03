@@ -1,3 +1,4 @@
+open Global
 open Common
 
 type t = { path : Path.t; handle : Kernel.IO.dir_handle; mutable closed : bool }

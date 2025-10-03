@@ -1,3 +1,4 @@
+open Global
 (** Mermaid diagram format generation *)
 
 type direction = TD | TB | BT | RL | LR

@@ -9,6 +9,7 @@ module Crypto = Crypto
 module Data = Data
 module Datetime = Datetime
 module Env = Env
+module Exception = Exception
 module Fs = Fs
 module Graph = Graph
 module Iterator = Iterator
