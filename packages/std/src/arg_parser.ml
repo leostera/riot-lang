@@ -1,4 +1,6 @@
-  open Global
+open Global
+
+let ( let* ) = Result.and_then
 
 type action = Set | SetTrue | SetFalse | Append | Count
 
@@ -78,7 +80,6 @@ module Arg = struct
   let action a arg = { arg with action = a }
   let multiple arg = { arg with multiple = true }
   let count arg = { arg with action = Count }
-
   let possible_values vals arg = { arg with possible_values = Some vals }
 
   let conflicts_with name arg =
@@ -115,16 +116,16 @@ let rec get_matches cmd args =
     | "--version" :: _ when Option.is_some cmd.version ->
         Printf.printf "%s\n" (Option.unwrap cmd.version);
         exit 0
-    | arg_str :: rest when String.starts_with ~prefix:"--" arg_str ->
+    | arg_str :: rest when String.starts_with ~prefix:"--" arg_str -> (
         let name = String.sub arg_str 2 (String.length arg_str - 2) in
-        (match find_arg_by_long cmd name with
+        match find_arg_by_long cmd name with
         | Some arg -> parse_long_arg arg name rest
         | None -> Error (UnknownArgument arg_str))
     | arg_str :: rest
       when String.starts_with ~prefix:"-" arg_str && String.length arg_str > 1
-      ->
+      -> (
         let c = String.get arg_str 1 in
-        (match find_arg_by_short cmd c with
+        match find_arg_by_short cmd c with
         | Some arg -> parse_short_arg arg c rest
         | None -> Error (UnknownArgument arg_str))
     | subcmd :: rest -> (
@@ -141,7 +142,7 @@ let rec get_matches cmd args =
         parse_args rest
     | Count ->
         let count =
-          Hashtbl.find_opt matches.flags name |> Option.value ~default:0
+          Hashtbl.find_opt matches.flags name |> Option.unwrap_or ~default:0
         in
         Hashtbl.replace matches.flags name (count + 1);
         parse_args rest
@@ -150,7 +151,8 @@ let rec get_matches cmd args =
         | [] -> Error (InvalidValue (name, "missing value"))
         | value :: rest' ->
             let current =
-              Hashtbl.find_opt matches.values name |> Option.value ~default:[]
+              Hashtbl.find_opt matches.values name
+              |> Option.unwrap_or ~default:[]
             in
             Hashtbl.replace matches.values name (current @ [ value ]);
             parse_args rest')
@@ -172,9 +174,7 @@ and print_help cmd =
   (match cmd.version with
   | Some v -> Printf.printf "Version: %s\n" v
   | None -> ());
-  (match cmd.about with
-  | Some a -> Printf.printf "\n%s\n\n" a
-  | None -> ());
+  (match cmd.about with Some a -> Printf.printf "\n%s\n\n" a | None -> ());
 
   Printf.printf "USAGE:\n";
   Printf.printf "    %s [OPTIONS]\n" cmd.name;
@@ -213,18 +213,16 @@ let get_one matches name =
   | _ -> None
 
 let get_flag matches name =
-  Hashtbl.find_opt matches.flags name |> Option.value ~default:0 > 0
+  Hashtbl.find_opt matches.flags name |> Option.unwrap_or ~default:0 > 0
 
 let get_count matches name =
-  Hashtbl.find_opt matches.flags name |> Option.value ~default:0
+  Hashtbl.find_opt matches.flags name |> Option.unwrap_or ~default:0
 
 let get_many matches name =
-  Hashtbl.find_opt matches.values name |> Option.value ~default:[]
+  Hashtbl.find_opt matches.values name |> Option.unwrap_or ~default:[]
 
 let get_int matches name =
-  match get_one matches name with
-  | Some s -> int_of_string_opt s
-  | None -> None
+  match get_one matches name with Some s -> int_of_string_opt s | None -> None
 
 let get_float matches name =
   match get_one matches name with
@@ -233,7 +231,10 @@ let get_float matches name =
 
 let get_path matches name =
   match get_one matches name with
-  | Some s -> Some (Path.of_string s)
+  | Some s -> (
+      match Path.of_string s with
+      | Ok path -> Some path
+      | Error _ -> None)
   | None -> None
 
 let subcommand matches = matches.subcommand
