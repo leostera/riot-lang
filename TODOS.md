@@ -251,54 +251,121 @@
 
 ## Phase 2: Testing Infrastructure
 
-### Core Test Framework
+### Design Decision: Convention-Based Tests
 
-#### [P1] Implement test discovery via `[@test]` attribute
+**Approach**: Start with `tests/` folder convention, later add inline `[@test]` support
+
+**Test Location**: `packages/<name>/tests/*.ml`
+- Each test file becomes a separate test binary
+- Tests use the public API of their parent package
+- Test files are NOT included in library builds
+- Clear separation between library code and tests
+
+**Test Discovery**: Convention-based filename patterns
+- Files in `tests/` folder with `test_*` functions
+- Simple regex to find `let test_* () = ...` patterns
+- Generate test runner that calls all discovered test functions
+
+### Phase 2a: Std.Test Module
+
+#### [P1] Implement Std.Test - Standard test runtime
+- **Size**: S
+- **Tags**: #std #test #feature
+- **Module**: `packages/std/src/test.ml`
+- **Description**: Standard test runtime for all Tusk tests
+- **API Design**:
+```ocaml
+module Test : sig
+  type result = Pass | Fail of string | Error of exn
+  type test_case = { name : string; fn : unit -> unit }
+  
+  val case : string -> (unit -> unit) -> test_case
+  val run : test_case list -> unit  (* exits 0 or 1 *)
+  
+  (* Assert helpers *)
+  val assert_equal : expected:'a -> actual:'a -> unit
+  val assert_ok : ('a, 'b) result -> unit
+  val assert_error : ('a, 'b) result -> unit
+  val assert_true : bool -> unit
+  val assert_false : bool -> unit
+end
+```
+- **Features**:
+  - Clean pass/fail reporting with ✓/✗ symbols
+  - Captures exceptions as test errors
+  - Summary with passed/failed/total counts
+  - Exits with code 1 if any tests fail
+  - Type-safe assert helpers for common patterns
+
+### Phase 2b: Core Test Framework
+
+#### [P1] Implement test discovery in Module_graph
 - **Size**: M
 - **Tags**: #test #feature
-- **Description**: Scan workspace for .ml files with [@test] attributes
-- **Module**: `test_discovery.ml`
+- **Description**: Scan `tests/` folders and find test functions
+- **Module**: `packages/tusk/src/core/module_graph.ml`
 - **Features**:
-  - Regex-based scanning for `[@test]` pattern
-  - Build package -> file -> tests mapping
-  - Skip generated *_test.ml files
+  - Scan package `tests/` directories for `*.ml` files
+  - Exclude test files from library/executable builds
+  - Parse test files with regex to find `let test_* () = ...` functions
+  - Build mapping: test_file -> [test_function_names]
+  - Skip test files when creating alias modules and library interfaces
 
 #### [P1] Implement test runner generation
 - **Size**: M
 - **Tags**: #test #feature
-- **Description**: Generate *_test.ml files with test runners
-- **Module**: `test_generator.ml`
+- **Description**: Generate runner code for each test file
+- **Module**: `packages/tusk/src/test/test_generator.ml` (new)
 - **Features**:
-  - Include original source via `include struct`
-  - Add test runner invocation
-  - Handle module paths correctly
+  - For each `tests/foo_test.ml`, generate `tests/.tusk/foo_test_runner.ml`
+  - Generated code:
+    ```ocaml
+    open Std
+    open Foo_test
+    
+    let () = 
+      Test.run [
+        Test.case "test_addition" test_addition;
+        Test.case "test_subtraction" test_subtraction;
+      ]
+    ```
+  - Inject discovered test function names into runner
+  - Handle module namespacing correctly
 
-#### [P1] Implement test building
+#### [P1] Implement test build nodes
 - **Size**: S
 - **Tags**: #test #feature
-- **Description**: Compile test files to executables
-- **Module**: `test_builder.ml`
+- **Description**: Create executable build nodes for test runners
+- **Module**: `packages/tusk/src/core/build_graph.ml`
 - **Features**:
-  - Link with dependencies
-  - Place in target/test/
+  - Each test runner becomes a binary (e.g., `foo_test`)
+  - Link against parent package library
+  - Place binaries in `target/debug/tests/` or `target/release/tests/`
+  - Test executables depend on parent package being built first
 
 #### [P1] Implement test execution
 - **Size**: M
 - **Tags**: #test #feature
 - **Description**: Run test executables and collect results
-- **Module**: `test_executor.ml`
+- **Module**: `packages/tusk/src/test/test_executor.ml` (new)
 - **Features**:
-  - Capture output and exit codes
-  - Report results
-  - Return appropriate exit code
+  - Execute each test binary in parallel
+  - Capture stdout/stderr
+  - Collect exit codes (0 = success, 1 = failure)
+  - Aggregate results across all test binaries
+  - Pretty-print summary
 
-#### [P1] Add `tusk test` CLI integration
+#### [P1] Add `tusk test` CLI command
 - **Size**: S
 - **Tags**: #test #feature #cli
 - **Description**: Add test subcommand to CLI
+- **Module**: `packages/tusk/src/cli/cli.ml`
 - **Features**:
+  - `tusk test` - run all tests in workspace
+  - `tusk test -p <package>` - run tests for specific package
   - Parse test-specific options
-  - Invoke test pipeline
+  - Invoke test discovery -> generation -> build -> execution pipeline
+  - Return appropriate exit code for CI
 
 ### Advanced Test Features
 
