@@ -462,7 +462,7 @@ let wire_dependencies t sandbox_dir =
   
   let files_with_nodes =
     List.filter_map
-      (fun (node_id, node) ->
+      (fun (node_id, (node : dep G.node)) ->
         let dep = node.value in
         match dep.kind with
         | ML _ | MLI _ -> (
