@@ -145,7 +145,11 @@ let start ~workspace ~toolchain ~workers ~session_id ~client_pid ~target =
   let target_graph =
     match target with
     | All -> fresh_build_graph
-    | Package pkg -> Build_graph.filter_for_package fresh_build_graph pkg
+    | Package pkg ->
+        let filtered = Build_graph.filter_for_package fresh_build_graph pkg in
+        Log.debug "[BUILD_SERVER] Filtered graph for package '%s' has %d nodes"
+          pkg (Build_graph.size filtered);
+        filtered
   in
 
   (* Try to sort the graph - if there's a cycle, report it and bail out *)
@@ -187,6 +191,8 @@ let start ~workspace ~toolchain ~workers ~session_id ~client_pid ~target =
 
       (* Log build started event *)
       let packages = List.map (fun n -> n.Build_node.package.name) nodes in
+      Log.debug "[BUILD_SERVER] Packages to build: %s"
+        (String.concat ", " packages);
       let total_modules = 0 in
       (* TODO: Count actual modules when available *)
       Tusk_log.build_started ~session_id ~packages ~total_modules ~workers;
