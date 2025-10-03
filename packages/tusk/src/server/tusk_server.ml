@@ -236,9 +236,16 @@ and handle_new_package state client_pid path name is_library =
     Fs.create_dir_all src_dir |> Result.expect ~msg:"Failed to create src dir"
   in
 
+  (* Convert package name to OCaml module name (hello-world -> HelloWorld) *)
+  let module_name =
+    String.split_on_char '-' name
+    |> List.map String.capitalize_ascii
+    |> String.concat ""
+  in
+
   (* Create main module files *)
-  let main_ml = Path.(src_dir / Path.v (name ^ ".ml")) in
-  let main_mli = Path.(src_dir / Path.v (name ^ ".mli")) in
+  let main_ml = Path.(src_dir / Path.v (module_name ^ ".ml")) in
+  let main_mli = Path.(src_dir / Path.v (module_name ^ ".mli")) in
 
   let ml_content =
     if is_library then "(** Main module for " ^ name ^ " library *)\n"
