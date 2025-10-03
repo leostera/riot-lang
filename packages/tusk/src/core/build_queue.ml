@@ -56,7 +56,14 @@ let requeue_with_deps t node ~deps =
   if not (is_in_queue t.later_queue pkg_name) then Queue.add node t.later_queue;
 
   (* Queue all dependencies *)
-  List.iter (queue t) deps
+  Std.Log.debug "[BUILD_QUEUE] Queueing %d dependencies for %s"
+    (List.length deps) pkg_name;
+  List.iter
+    (fun dep ->
+      Std.Log.debug "[BUILD_QUEUE]   -> Queueing dep: %s"
+        dep.Build_node.package.name;
+      queue t dep)
+    deps
 
 (** Compatibility alias *)
 let queue_with_deps = requeue_with_deps
@@ -69,6 +76,10 @@ let rec next t =
       Queue.is_empty t.later_queue
     then None (* Both queues empty *)
     else (
+      Std.Log.debug
+        "[BUILD_QUEUE] Ready queue empty, transferring %d tasks from later \
+         queue"
+        (Queue.length t.later_queue);
       Queue.transfer t.later_queue t.ready_queue;
       next t)
   else
