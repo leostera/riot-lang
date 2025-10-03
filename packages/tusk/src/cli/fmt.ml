@@ -17,9 +17,10 @@ let collect_ocaml_files workspace =
             let entry_path = Path.(dir / entry) in
             match Fs.is_dir entry_path with
             | Ok true ->
-                if String.starts_with ~prefix:"." (Path.to_string entry)
-                   || String.equal (Path.to_string entry) "_build"
-                   || String.equal (Path.to_string entry) "target"
+                if
+                  String.starts_with ~prefix:"." (Path.to_string entry)
+                  || String.equal (Path.to_string entry) "_build"
+                  || String.equal (Path.to_string entry) "target"
                 then []
                 else walk_dir entry_path
             | Ok false | Error _ ->
@@ -32,7 +33,8 @@ let collect_ocaml_files workspace =
           entry_list
   in
   List.concat_map
-    (fun (pkg : Workspace.package) -> walk_dir Path.(workspace.Workspace.root / pkg.path))
+    (fun (pkg : Workspace.package) ->
+      walk_dir Path.(workspace.Workspace.root / pkg.path))
     workspace.packages
 
 let format_file toolchain check_only file_path =
@@ -44,9 +46,9 @@ let format_file toolchain check_only file_path =
   in
   let status_char =
     match result with
-    | Success { changed = true; _ } -> "[1;32m✓[0m"
-    | Success { changed = false; _ } -> "[1;90m-[0m"
-    | Failed _ -> "[1;31m✗[0m"
+    | Success { changed = true; _ } -> "\027[1;32m✓\027[0m"
+    | Success { changed = false; _ } -> "\027[1;90m-\027[0m"
+    | Failed _ -> "\027[1;31m✗\027[0m"
   in
   println "%s %s" status_char (Path.to_string file_path);
   result
@@ -58,8 +60,7 @@ let run args =
     Env.current_dir () |> Result.expect ~msg:"Failed to get current directory"
   in
   let workspace =
-    Workspace_manager.scan cwd
-    |> Result.expect ~msg:"Failed to scan workspace"
+    Workspace_manager.scan cwd |> Result.expect ~msg:"Failed to scan workspace"
   in
 
   let toolchain = Toolchains.ready_toolchains workspace in
@@ -112,11 +113,11 @@ let run args =
     let failed_count = List.length failures in
 
     if failed_count > 0 then (
-      println "[1;31mFailed to format %d files:[0m" failed_count;
+      println "\027[1;31mFailed to format %d files:\027[0m" failed_count;
       println "";
       List.iter
         (fun (file, error) ->
-          println "  [1;31m✗[0m %s" (Path.to_string file);
+          println "  \027[1;31m✗\027[0m %s" (Path.to_string file);
           println "    %s" error;
           println "")
         failures;
@@ -124,7 +125,7 @@ let run args =
 
     if check_only then (
       if changed_count > 0 then (
-        println "[1;33m%d files need formatting:[0m" changed_count;
+        println "\027[1;33m%d files need formatting:\027[0m" changed_count;
         List.iter
           (fun (file, changed) ->
             if changed then println "  • %s" (Path.to_string file))
@@ -133,11 +134,11 @@ let run args =
         println "Run 'tusk fmt' to format these files.";
         Error (Failure "Files need formatting"))
       else (
-        println "[1;32m✓ All files are formatted correctly[0m";
+        println "\027[1;32m✓ All files are formatted correctly\027[0m";
         println "  %d files checked" file_count;
         Ok ()))
     else (
-      println "[1;32m✓ Formatting complete[0m";
+      println "\027[1;32m✓ Formatting complete\027[0m";
       if changed_count > 0 then println "  %d files formatted" changed_count;
       if unchanged_count > 0 then
         println "  %d files already formatted" unchanged_count;
