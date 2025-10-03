@@ -100,29 +100,32 @@ module Daemon = struct
         | _ -> ());
 
         (* Get tusk executable path - use the current executable *)
-        let tusk_exe = Kernel.System.executable_name in
+        let tusk_exe = System.executable_name in
 
         (* Spawn the server in foreground mode as a detached background process *)
         (* Open log files for redirection *)
         let stdout_log = Path.(daemon_path / Path.v "stdout.log") in
         let stderr_log = Path.(daemon_path / Path.v "stderr.log") in
         
-        let stdout_fd =
-          Kernel.Fs.File.openfile (Path.to_string stdout_log)
-            [ Kernel.Fs.File.O_WRONLY; Kernel.Fs.File.O_CREAT; Kernel.Fs.File.O_TRUNC ]
+        let stdout_file =
+          Fs.File.openfile (Path.to_string stdout_log)
+            [ Fs.File.O_WRONLY; Fs.File.O_CREAT; Fs.File.O_TRUNC ]
             0o644
           |> Result.expect ~msg:"Failed to open stdout.log"
         in
-        let stderr_fd =
-          Kernel.Fs.File.openfile (Path.to_string stderr_log)
-            [ Kernel.Fs.File.O_WRONLY; Kernel.Fs.File.O_CREAT; Kernel.Fs.File.O_TRUNC ]
+        let stderr_file =
+          Fs.File.openfile (Path.to_string stderr_log)
+            [ Fs.File.O_WRONLY; Fs.File.O_CREAT; Fs.File.O_TRUNC ]
             0o644
           |> Result.expect ~msg:"Failed to open stderr.log"
         in
         
+        let stdout_fd = Fs.File.into_fd stdout_file in
+        let stderr_fd = Fs.File.into_fd stderr_file in
+        
         (* Configure stdio to redirect to log files *)
         let stdio =
-          Kernel.System.OsProcess.{
+          System.OsProcess.{
             stdin = `Null;
             stdout = `File stdout_fd;
             stderr = `File stderr_fd;
@@ -130,24 +133,22 @@ module Daemon = struct
         in
         
         match
-          Kernel.System.OsProcess.spawn ~program:tusk_exe
+          System.OsProcess.spawn ~program:tusk_exe
             ~args:[ "server"; "foreground" ] ~stdio ()
         with
         | Ok process ->
-            let pid = Kernel.System.OsProcess.pid process in
+            let pid = System.OsProcess.pid process in
             let port = 9753 in
             (* Default port *)
             
-            (* Close file descriptors in parent - child has inherited them *)
-            let _ = Kernel.Fs.File.close_fd stdout_fd in
-            let _ = Kernel.Fs.File.close_fd stderr_fd in
+            (* File descriptors were consumed by into_fd, no need to close *)
 
             (* Write PID and port files *)
             let _ = Fs.write (string_of_int pid) pid_file in
             let _ = Fs.write (string_of_int port) port_file in
 
             (* Give the server more time to start up since it's detached *)
-            Kernel.Time.sleep 0.5;
+            Time.sleep 0.5;
 
             Ok { workspace; os_pid = pid; port; host = "127.0.0.1" }
         | Error (`SpawnFailed msg) -> Error Error.ScanWorkspaceError)
@@ -179,12 +180,12 @@ let ensure_running ~workspace =
           | Error e ->
               Std.Log.debug "Ping failed: %s, retrying..." e;
               Tusk_jsonrpc.Client.close client;
-              Kernel.Time.sleep 0.05;
+              Time.sleep 0.05;
               (* 50ms *)
               wait_server ~retries:(retries - 1))
       | Error e ->
           Std.Log.debug "Failed to create client: %s, retrying..." e;
-          Kernel.Time.sleep 0.05;
+          Time.sleep 0.05;
           (* 50ms *)
           wait_server ~retries:(retries - 1)
   in
