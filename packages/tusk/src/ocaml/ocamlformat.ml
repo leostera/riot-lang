@@ -53,7 +53,13 @@ let format_file ~toolchain ~file_path ~check_only =
           | Error (Fs.SystemError err) ->
               Error (format "Failed to read formatted file: %s" err))
     | Ok output ->
-        Error (format "ocamlformat failed with status %d" output.Command.status)
+        let error_msg =
+          if String.length output.Command.stderr > 0 then
+            format "ocamlformat failed with status %d: %s" output.Command.status
+              (String.trim output.Command.stderr)
+          else format "ocamlformat failed with status %d" output.Command.status
+        in
+        Error error_msg
     | Error (Command.SystemError msg) -> Error msg
 
 let format_code ~toolchain ~code ~file_path =

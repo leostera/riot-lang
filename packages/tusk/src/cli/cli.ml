@@ -55,6 +55,7 @@ let main ~args =
     | "rpc" -> Rpc.run cmd_args
     | "mcp" -> Mcp_cmd.run cmd_args
     | "clean" -> Clean.run cmd_args
+    | "fmt" | "format" -> Fmt.run cmd_args
     | "version" | "--version" | "-v" -> version_command ()
     | "help" | "--help" | "-h" -> help_command ()
     | _ ->
