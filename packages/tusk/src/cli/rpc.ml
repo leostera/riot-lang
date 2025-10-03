@@ -86,21 +86,8 @@ and run args =
     else []
   in
 
-  (* Show help if no subcommand provided *)
-  if cmd = "" then (
-    println "Available RPC commands:";
-    println "  tusk rpc ping                    - Test server connectivity";
-    println "  tusk rpc workspace               - Get workspace information";
-    println "  tusk rpc package <name>          - Get package details";
-    println "  tusk rpc graph                   - Get build graph";
-    println "  tusk rpc build [package]         - Build all or specific package";
-    println "  tusk rpc format <file>           - Format a file";
-    println
-      "  tusk rpc format-check <file>     - Check if file needs formatting";
-    println "  tusk rpc format-code <code> [hint] - Format code string";
-    println "  tusk rpc restart                 - Restart the server";
-    println "  tusk rpc shutdown                - Shutdown the server";
-    Ok ())
+  if cmd = "" then
+    Error (Failure "No RPC command specified")
   else if cmd = "ping" then (
     let client = create_local_client () in
     let result = Tusk_jsonrpc.Client.ping client in
