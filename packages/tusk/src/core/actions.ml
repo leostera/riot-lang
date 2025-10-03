@@ -272,11 +272,12 @@ let execute_action action toolchain cwd =
             let destination = Path.(cwd / destination) in
             (* Create parent directories for destination *)
             let parent_dir = Path.dirname destination in
-            Fs.create_dir_all parent_dir |> Result.expect ~msg:"Failed to create parent directories";
+            Fs.create_dir_all parent_dir 
+            |> Result.expect ~msg:(format "Failed to create parent directories for: %s" (Path.to_string destination));
             (* Write the file *)
             let _ =
               Fs.write content destination
-              |> Result.expect ~msg:"Failed to write file"
+              |> Result.expect ~msg:(format "Failed to write file: %s" (Path.to_string destination))
             in
             (Success, format "Wrote %s" (Path.to_string destination))
           with exn -> (Failed (Exception.to_string exn), ""))
