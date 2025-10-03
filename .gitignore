@@ -21,3 +21,4 @@ target
 *.cmo
 *.cma
 /logs
+run_tusk.sh
