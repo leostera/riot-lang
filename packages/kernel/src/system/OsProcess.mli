@@ -8,11 +8,16 @@ type status =
   | Stopped of int  (** Process status *)
 
 type stdio_config = {
-  stdin : [ `Null | `Pipe | `Inherit ];
-  stdout : [ `Null | `Pipe | `Inherit ];
-  stderr : [ `Null | `Pipe | `Inherit | `Redirect_to_stdout ];
+  stdin : [ `Null | `Pipe | `Inherit | `File of Fs.File.fd ];
+  stdout : [ `Null | `Pipe | `Inherit | `File of Fs.File.fd ];
+  stderr : [ `Null | `Pipe | `Inherit | `Redirect_to_stdout | `File of Fs.File.fd ];
 }
-(** Standard I/O configuration for spawned process *)
+(** Standard I/O configuration for spawned process.
+    - `Null: redirect to /dev/null
+    - `Pipe: create a pipe for parent-child communication
+    - `Inherit: inherit from parent process
+    - `File fd: redirect to an open file descriptor
+    - `Redirect_to_stdout: (stderr only) redirect stderr to stdout *)
 
 val spawn :
   program:string ->

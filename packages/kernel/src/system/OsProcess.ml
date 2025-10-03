@@ -3,9 +3,9 @@
 type status = Running | Exited of int | Signaled of int | Stopped of int
 
 type stdio_config = {
-  stdin : [ `Null | `Pipe | `Inherit ];
-  stdout : [ `Null | `Pipe | `Inherit ];
-  stderr : [ `Null | `Pipe | `Inherit | `Redirect_to_stdout ];
+  stdin : [ `Null | `Pipe | `Inherit | `File of Fs.File.fd ];
+  stdout : [ `Null | `Pipe | `Inherit | `File of Fs.File.fd ];
+  stderr : [ `Null | `Pipe | `Inherit | `Redirect_to_stdout | `File of Fs.File.fd ];
 }
 
 type t = {
@@ -33,6 +33,9 @@ let spawn ~program ~args ?(env = []) ?cwd ~stdio () =
       | `Pipe ->
           let read_fd, write_fd = Unix.pipe () in
           (read_fd, Some write_fd, read_fd, Some write_fd)
+      | `File fd ->
+          let unix_fd = Fs.File.to_unix_fd fd in
+          (unix_fd, None, unix_fd, None)
     in
 
     (* Prepare stdout *)
@@ -45,6 +48,9 @@ let spawn ~program ~args ?(env = []) ?cwd ~stdio () =
       | `Pipe ->
           let read_fd, write_fd = Unix.pipe () in
           (write_fd, Some read_fd, write_fd, Some read_fd)
+      | `File fd ->
+          let unix_fd = Fs.File.to_unix_fd fd in
+          (unix_fd, None, unix_fd, None)
     in
 
     (* Prepare stderr *)
@@ -54,10 +60,13 @@ let spawn ~program ~args ?(env = []) ?cwd ~stdio () =
           let null_fd = Unix.openfile "/dev/null" [ Unix.O_WRONLY ] 0 in
           (null_fd, None, null_fd, None)
       | `Inherit -> (Unix.stderr, None, Unix.stderr, None)
-      | `Redirect_to_stdout -> (stdout_write, None, stdout_write, None)
       | `Pipe ->
           let read_fd, write_fd = Unix.pipe () in
           (write_fd, Some read_fd, write_fd, Some read_fd)
+      | `Redirect_to_stdout -> (stdout_child, None, stdout_child, None)
+      | `File fd ->
+          let unix_fd = Fs.File.to_unix_fd fd in
+          (unix_fd, None, unix_fd, None)
     in
 
     (* Build environment array *)
@@ -89,14 +98,19 @@ let spawn ~program ~args ?(env = []) ?cwd ~stdio () =
         stderr_child
     in
 
-    (* Close child-side fds in parent *)
-    if stdio.stdin = `Pipe then Unix.close stdin_child;
-    if stdio.stdin = `Null then Unix.close stdin_child;
-    if stdio.stdout = `Pipe then Unix.close stdout_child;
-    if stdio.stdout = `Null then Unix.close stdout_child;
-    if stdio.stderr = `Pipe && stdio.stderr <> `Redirect_to_stdout then
-      Unix.close stderr_child;
-    if stdio.stderr = `Null then Unix.close stderr_child;
+    (* Close child-side fds in parent (but NOT File fds - caller owns those) *)
+    (match stdio.stdin with
+    | `Pipe | `Null -> Unix.close stdin_child
+    | `Inherit | `File _ -> ());
+    
+    (match stdio.stdout with
+    | `Pipe | `Null -> Unix.close stdout_child
+    | `Inherit | `File _ -> ());
+    
+    (match stdio.stderr with
+    | `Pipe | `Null -> Unix.close stderr_child
+    | `Redirect_to_stdout -> ()
+    | `Inherit | `File _ -> ());
 
     (* Set parent-side fds to non-blocking *)
     (match stdin_parent with

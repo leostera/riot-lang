@@ -1,5 +1,14 @@
 open Kernel.System
 
+module Stdio = struct
+  type t = Null | Inherit | Pipe | File of Fs.File.fd
+
+  let null () = Null
+  let inherit_ () = Inherit
+  let pipe () = Pipe
+  let from_file fd = File fd
+end
+
 type status = int
 type output = { stdout : string; stderr : string; status : status }
 type error = SystemError of string
