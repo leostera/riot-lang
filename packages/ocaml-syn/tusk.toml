@@ -1,0 +1,10 @@
+[package]
+name = "ocaml-syn"
+version = "0.1.0"
+
+[dependencies]
+std = { path = "../std" }
+
+[[bin]]
+name = "test_lexer"
+path = "test/test_lexer.ml"
