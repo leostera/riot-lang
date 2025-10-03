@@ -21,7 +21,7 @@ def ensure_toolchain(version):
     """Ensure OCaml toolchain is installed"""
     home = os.path.expanduser("~")
     toolchain_dir = os.path.join(home, ".tusk", "toolchains", version)
-    ocamlc = os.path.join(toolchain_dir, "bin", "ocamlc")
+    ocamlc = os.path.join(toolchain_dir, "bin", "ocamlopt.opt")
     
     if os.path.exists(ocamlc):
         print(f"✓ OCaml {version} already installed")

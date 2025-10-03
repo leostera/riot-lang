@@ -52,7 +52,7 @@ module Ocamlc = struct
   (** Generate the base ocamlc command from toolchain *)
   let ocamlc_path =
     let home = try Sys.getenv "HOME" with Not_found -> "/Users/ostera" in
-    Filename.concat home ".tusk/toolchains/5.3.0/bin/ocamlc"
+    Filename.concat home ".tusk/toolchains/5.3.0/bin/ocamlc.opt"
 
   (** Convert warning to its numeric code *)
   let warning_to_code = function NoCmiFile -> "49" | All -> "a"
@@ -251,7 +251,7 @@ end
 module Ocamldep = struct
   let ocamldep_path =
     let home = try Sys.getenv "HOME" with Not_found -> "/Users/ostera" in
-    Filename.concat home ".tusk/toolchains/5.3.0/bin/ocamldep"
+    Filename.concat home ".tusk/toolchains/5.3.0/bin/ocamldep.opt"
 
   (** Parse ocamldep output to extract module names *)
   let parse_deps line =

@@ -74,11 +74,11 @@ let get_toolchain_path toolchain =
 
 let bin_dir toolchain = Path.(get_toolchain_path toolchain / Path.v "bin")
 let bin_path toolchain bin = Path.(bin_dir toolchain / Path.v bin)
-let ocamlc_path toolchain = bin_path toolchain "ocamlc"
-let ocamldep_path toolchain = bin_path toolchain "ocamldep"
+let ocamlc_path toolchain = bin_path toolchain "ocamlc.opt"
+let ocamldep_path toolchain = bin_path toolchain "ocamldep.opt"
 let ocamlformat_path toolchain = bin_path toolchain "ocamlformat"
 let ocamllsp_path toolchain = bin_path toolchain "ocamllsp"
-let ocamlopt_path toolchain = bin_path toolchain "ocamlopt"
+let ocamlopt_path toolchain = bin_path toolchain "ocamlopt.opt"
 let odoc_path toolchain = bin_path toolchain "odoc"
 
 (** Parse ocaml-toolchain.toml file *)
