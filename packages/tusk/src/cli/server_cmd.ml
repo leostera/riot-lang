@@ -18,8 +18,64 @@ let run args =
       Ok ()
   | "kill" ->
       (* Kill background server forcefully *)
-      println "Server kill not implemented yet";
-      Ok ()
+      let cwd =
+        Env.current_dir ()
+        |> Result.expect ~msg:"Failed to get current directory"
+      in
+      let workspace =
+        Workspace_manager.scan cwd
+        |> Result.expect ~msg:"Failed to scan workspace"
+      in
+      
+      (* Get daemon directory *)
+      let home =
+        match Env.home_dir () with
+        | Some h -> h
+        | None -> failwith "Failed to get home directory"
+      in
+      let root_str = Path.to_string workspace.Workspace.root in
+      let project_id = format "%08x" (Hashtbl.hash root_str) in
+      let daemon_path =
+        Path.(home / Path.v ".tusk" / Path.v "daemons" / Path.v project_id)
+      in
+      let pid_file = Path.(daemon_path / Path.v "server.pid") in
+      
+      (* Read PID and kill the process *)
+      (match Fs.exists pid_file with
+      | Ok true -> (
+          match Fs.read_to_string pid_file with
+          | Ok pid_str ->
+              let pid = int_of_string (String.trim pid_str) in
+              (try
+                 Unix.kill pid Sys.sigterm;
+                 println "Sent SIGTERM to server process (PID %d)" pid;
+                 Kernel.Time.sleep 0.5;
+                 (* Check if process is still alive *)
+                 (try
+                    Unix.kill pid 0;
+                    (* Still alive, send SIGKILL *)
+                    Unix.kill pid Sys.sigkill;
+                    println "Sent SIGKILL to server process (PID %d)" pid
+                  with Unix.Unix_error _ ->
+                    println "Server process terminated gracefully")
+               with Unix.Unix_error (Unix.ESRCH, _, _) ->
+                 println "Server process (PID %d) not found" pid);
+              
+              (* Clean up daemon files *)
+              let port_file = Path.(daemon_path / Path.v "server.port") in
+              let _ = Fs.remove_file pid_file in
+              let _ = Fs.remove_file port_file in
+              println "Cleaned up daemon files";
+              Ok ()
+          | Error _ ->
+              println "Error: Failed to read PID file";
+              Error (Failure "Failed to read PID file"))
+      | Ok false ->
+          println "No server is running (PID file not found)";
+          Ok ()
+      | Error _ ->
+          println "Error: Failed to check for PID file";
+          Error (Failure "Failed to check PID file"))
   | "status" ->
       (* Check server status *)
       println "Server status not implemented yet";
