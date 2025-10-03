@@ -3,6 +3,13 @@ open Model
 
 (** OCaml compiler command generation and execution *)
 
+(** Helper to run a command in a specific directory without using Process cwd
+    This avoids "Too many open files" errors from excessive getcwd() calls *)
+let run_in_dir ~cwd ~env cmd_str =
+  let cmd_with_cd = format "cd %s && %s" (Path.to_string cwd) cmd_str in
+  Log.debug "  $ %s" cmd_with_cd;
+  Command.make ~env ~args:[ "-c"; cmd_with_cd ] "sh"
+
 (** Compiler warnings that can be suppressed *)
 type compiler_warning =
   | NoCmiFile  (** Warning 49: Absent cmi file when looking up module alias *)
@@ -71,7 +78,7 @@ let run ~toolchain ~cwd ?(includes = []) ?(libs = []) ?(output = None)
   let ocamlc = base_command toolchain in
 
   (* Generate include flags from provided directories *)
-  let include_flags = make_include_flags includes in
+  let include_flags = make_include_flags (List.map Path.to_string includes) in
 
   (* Mode-specific flags *)
   (* Note: -custom is only for ocamlc (bytecode), not ocamlopt (native) *)
@@ -85,13 +92,13 @@ let run ~toolchain ~cwd ?(includes = []) ?(libs = []) ?(output = None)
   in
 
   (* Output flag *)
-  let output_flag = match output with Some out -> "-o " ^ out | None -> "" in
+  let output_flag = match output with Some out -> "-o " ^ Path.to_string out | None -> "" in
 
   (* Join source files *)
   let sources_str = String.concat " " sources in
 
   (* Join library files *)
-  let libs_str = String.concat " " libs in
+  let libs_str = String.concat " " (List.map Path.to_string libs) in
 
   (* Build the complete command *)
   let cmd_parts =
@@ -102,15 +109,12 @@ let run ~toolchain ~cwd ?(includes = []) ?(libs = []) ?(output = None)
     |> String.concat " "
   in
 
-  (* Always print the command for visibility *)
-  Log.debug "  $ %s" cmd_parts;
-
   (* Execute the command with colors enabled *)
   (* Set OCAML_COLOR=always to get colored error output *)
-  let env = [ ("OCAML_COLOR", "always") ] in
-  let cmd = Command.make ~cwd ~env ~args:[ "-c"; cmd_parts ] "sh" in
-  match Command.output cmd with
-  | Ok output when output.Command.status = 0 -> Success output.Command.stdout
+    let env = [ ("OCAML_COLOR", "always") ] in
+    let cmd = run_in_dir ~cwd ~env cmd_parts in
+    match Command.output cmd with
+    | Ok output when output.Command.status = 0 -> Success output.Command.stdout
   | Ok output ->
       Failed
         (format "Command failed with status %d: %s" output.Command.status
@@ -120,7 +124,7 @@ let run ~toolchain ~cwd ?(includes = []) ?(libs = []) ?(output = None)
 (** Compile an interface file (.mli -> .cmi) *)
 let compile_interface ~toolchain ~cwd ~includes ~flags ~output source =
   (* Include current directory for .cmi files *)
-  let includes_with_dot = "." :: includes in
+  let includes_with_dot = Path.v "." :: includes in
 
   (* Interface compilation uses ocamlc (same for bytecode and native) *)
   (* If we have flags, we need to build command parts directly *)
@@ -133,13 +137,13 @@ let compile_interface ~toolchain ~cwd ~includes ~flags ~output source =
     let cmd_parts =
       [ base_command_bytecode toolchain; "-g"; "-c" ]
       @ flag_args
-      @ List.concat_map (fun dir -> [ "-I"; dir ]) includes_with_dot
-      @ [ "-o"; output ]
-      @ if has_impl_flag then [] else [ source ]
+      @ List.concat_map (fun dir -> [ "-I"; Path.to_string dir ]) includes_with_dot
+      @ [ "-o"; Path.to_string output ]
+      @ if has_impl_flag then [] else [ Path.to_string source ]
     in
     let cmd_str = String.concat " " cmd_parts in
     let env = [ ("OCAML_COLOR", "always") ] in
-    let cmd = Command.make ~cwd ~env ~args:[ "-c"; cmd_str ] "sh" in
+    let cmd = run_in_dir ~cwd ~env cmd_str in
     match Command.output cmd with
     | Ok output when output.Command.status = 0 -> Success output.Command.stdout
     | Ok output ->
@@ -149,12 +153,12 @@ let compile_interface ~toolchain ~cwd ~includes ~flags ~output source =
     | Error (Command.SystemError msg) -> Failed msg
   else
     run ~toolchain ~cwd ~includes:includes_with_dot ~output:(Some output)
-      ~mode:Compile [ source ]
+      ~mode:Compile [ Path.to_string source ]
 
 (** Compile an implementation file (.ml -> .cmx) *)
 let compile_impl ~toolchain ~cwd ~includes ~flags ~output source =
   (* Include current directory for .cmi files *)
-  let includes_with_dot = "." :: includes in
+  let includes_with_dot = Path.v "." :: includes in
 
   (* If we have flags, we need to build command parts directly *)
   if flags <> [] then
@@ -166,13 +170,13 @@ let compile_impl ~toolchain ~cwd ~includes ~flags ~output source =
     let cmd_parts =
       [ base_command toolchain; "-g"; "-c" ]
       @ flag_args
-      @ List.concat_map (fun dir -> [ "-I"; dir ]) includes_with_dot
-      @ [ "-o"; output ]
-      @ if has_impl_flag then [] else [ source ]
+      @ List.concat_map (fun dir -> [ "-I"; Path.to_string dir ]) includes_with_dot
+      @ [ "-o"; Path.to_string output ]
+      @ if has_impl_flag then [] else [ Path.to_string source ]
     in
     let cmd_str = String.concat " " cmd_parts in
     let env = [ ("OCAML_COLOR", "always") ] in
-    let cmd = Command.make ~cwd ~env ~args:[ "-c"; cmd_str ] "sh" in
+    let cmd = run_in_dir ~cwd ~env cmd_str in
     match Command.output cmd with
     | Ok output when output.Command.status = 0 -> Success output.Command.stdout
     | Ok output ->
@@ -182,36 +186,33 @@ let compile_impl ~toolchain ~cwd ~includes ~flags ~output source =
     | Error (Command.SystemError msg) -> Failed msg
   else
     run ~toolchain ~cwd ~includes:includes_with_dot ~output:(Some output)
-      ~mode:Compile [ source ]
+      ~mode:Compile [ Path.to_string source ]
 
 (** Generate interface file (.ml -> .mli) using ocamlc -i *)
 let generate_interface ~toolchain ~cwd ~includes ~flags ~output source =
   (* Include current directory for .cmi files *)
-  let includes_with_dot = "." :: includes in
+  let includes_with_dot = Path.v "." :: includes in
 
   (* Build command *)
   let cmd_parts =
     [ base_command toolchain; "-i" ]
     @ flags_to_string flags
-    @ List.concat_map (fun dir -> [ "-I"; dir ]) includes_with_dot
-    @ [ source ]
+    @ List.concat_map (fun dir -> [ "-I"; Path.to_string dir ]) includes_with_dot
+    @ [ Path.to_string source ]
   in
-  let cmd_str = String.concat " " cmd_parts in
-  let env = [ ("OCAML_COLOR", "always") ] in
-  let cmd = Command.make ~cwd ~env ~args:[ "-c"; cmd_str ] "sh" in
+    let cmd_str = String.concat " " cmd_parts in
+    let env = [ ("OCAML_COLOR", "always") ] in
+    let cmd = run_in_dir ~cwd ~env cmd_str in
 
   (* Execute and capture only stdout (stderr has warnings) *)
   match Command.output cmd with
   | Ok out ->
       if out.Command.status = 0 then
         (* Write the stdout (inferred interface) to the output file *)
-        let output_path =
-          Path.of_string output |> Result.expect ~msg:"Invalid output path"
-        in
-        match Fs.write out.Command.stdout output_path with
-        | Ok _ -> Success (format "Generated interface %s" output)
+        match Fs.write out.Command.stdout output with
+        | Ok _ -> Success (format "Generated interface %s" (Path.to_string output))
         | Error (Fs.SystemError msg) ->
-            Failed (format "Failed to write %s: %s" output msg)
+            Failed (format "Failed to write %s: %s" (Path.to_string output) msg)
       else
         (* Include stderr in the error message for debugging *)
         Failed
@@ -221,25 +222,25 @@ let generate_interface ~toolchain ~cwd ~includes ~flags ~output source =
 
 (** Compile a C file *)
 let compile_c ~toolchain ~cwd ~includes ~output source =
-  run ~toolchain ~cwd ~includes ~output:(Some output) ~mode:Compile [ source ]
+  run ~toolchain ~cwd ~includes ~output:(Some output) ~mode:Compile [ Path.to_string source ]
 
 (** Create a library (.cmxa) from object files *)
 let create_library ~toolchain ~cwd ~includes ~output objects =
-  run ~toolchain ~cwd ~includes ~output:(Some output) ~mode:Library objects
+  run ~toolchain ~cwd ~includes ~output:(Some output) ~mode:Library (List.map Path.to_string objects)
 
 (** Create an executable from object files and libraries *)
 let create_executable ~toolchain ~cwd ~includes ~output ~libs objects =
   (* Include current directory *)
-  let includes_with_dot = "." :: includes in
+  let includes_with_dot = Path.v "." :: includes in
   run ~toolchain ~cwd ~includes:includes_with_dot ~libs ~output:(Some output)
-    ~mode:Executable objects
+    ~mode:Executable (List.map Path.to_string objects)
 
 (** Create a custom executable (with C stubs) *)
 let create_custom_executable ~toolchain ~cwd ~includes ~output ~libs objects =
   (* Include current directory *)
-  let includes_with_dot = "." :: includes in
+  let includes_with_dot = Path.v "." :: includes in
   run ~toolchain ~cwd ~includes:includes_with_dot ~libs ~output:(Some output)
-    ~mode:CustomExe objects
+    ~mode:CustomExe (List.map Path.to_string objects)
 
 (** Helper to check if compilation succeeded *)
 let is_success = function Success _ -> true | Failed _ -> false

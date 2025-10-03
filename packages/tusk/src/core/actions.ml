@@ -191,48 +191,43 @@ let execute_action action toolchain cwd =
     | Ocamlc.Success msg -> (Success, msg)
     | Ocamlc.Failed err -> (Failed err, "")
   in
-  (* Save current directory and change to cwd for execution *)
-  let original_dir =
-    Env.current_dir () |> Result.expect ~msg:"Failed to get current directory"
-  in
-  Env.set_current_dir cwd;
-
-  (* Execute action with relative paths, restoring directory afterwards *)
+  (* Execute action with relative paths *)
+  (* Note: We no longer change the global cwd here - Ocamlc functions handle cwd internally *)
   let result =
     try
       match action with
       | CompileInterface { source; output; includes; flags } ->
           Ocamlc.compile_interface ~toolchain ~cwd
-            ~includes:(List.map Path.to_string includes)
-            ~flags ~output:(Path.to_string output) (Path.to_string source)
+            ~includes
+            ~flags ~output source
           |> convert_result
       | CompileImplementation { source; output; includes; flags } ->
           Ocamlc.compile_impl ~toolchain ~cwd
-            ~includes:(List.map Path.to_string includes)
-            ~flags ~output:(Path.to_string output) (Path.to_string source)
+            ~includes
+            ~flags ~output source
           |> convert_result
       | GenerateInterface { source; output; includes; flags } ->
           Ocamlc.generate_interface ~toolchain ~cwd
-            ~includes:(List.map Path.to_string includes)
-            ~flags ~output:(Path.to_string output) (Path.to_string source)
+            ~includes
+            ~flags ~output source
           |> convert_result
       | CompileC { source; output } ->
           Ocamlc.compile_c ~toolchain ~cwd ~includes:[]
-            ~output:(Path.to_string output) (Path.to_string source)
+            ~output source
           |> convert_result
       | CreateLibrary { output; objects; includes } ->
           Ocamlc.create_library ~toolchain ~cwd
-            ~includes:(List.map Path.to_string includes)
-            ~output:(Path.to_string output)
-            (List.map Path.to_string objects)
+            ~includes
+            ~output
+            objects
           |> convert_result
       | CreateExecutable { output; objects; libraries; includes } ->
           (* Use custom executable for C stubs *)
           Ocamlc.create_custom_executable ~toolchain ~cwd
-            ~includes:(List.map Path.to_string includes)
-            ~output:(Path.to_string output)
-            ~libs:(List.map Path.to_string libraries)
-            (List.map Path.to_string objects)
+            ~includes
+            ~output
+            ~libs:libraries
+            objects
           |> convert_result
       | CopyDir { source; destination } -> (
           try
@@ -274,12 +269,10 @@ let execute_action action toolchain cwd =
           with exn -> (Failed (Exception.to_string exn), ""))
       | WriteFile { destination; content } -> (
           try
+            let destination = Path.(cwd / destination) in
             (* Create parent directories for destination *)
             let parent_dir = Path.dirname destination in
-            let _ =
-              Fs.create_dir_all parent_dir
-              |> Result.expect ~msg:"Failed to create parent directories"
-            in
+            Fs.create_dir_all parent_dir |> Result.expect ~msg:"Failed to create parent directories";
             (* Write the file *)
             let _ =
               Fs.write content destination
@@ -287,17 +280,12 @@ let execute_action action toolchain cwd =
             in
             (Success, format "Wrote %s" (Path.to_string destination))
           with exn -> (Failed (Exception.to_string exn), ""))
-      | DeclareOutputs { outputs } ->
-          (* Just record the expected outputs - don't validate yet as they haven't been built *)
-          (Success, format "Declared %d expected outputs" (List.length outputs))
-    with exn ->
-      (* Ensure directory is restored even on exception *)
-      Env.set_current_dir original_dir;
-      raise exn
-  in
-  (* Restore original directory *)
-  Env.set_current_dir original_dir;
-  result
+       | DeclareOutputs { outputs } ->
+           (* Just record the expected outputs - don't validate yet as they haven't been built *)
+           (Success, format "Declared %d expected outputs" (List.length outputs))
+     with exn -> raise exn
+   in
+   result
 
 (** Hash a list of actions *)
 let hash actions =

@@ -472,11 +472,9 @@ let wire_dependencies t sandbox_dir =
               | Generated _ -> []
               | Concrete path ->
                   (* Use sandbox_dir as cwd since paths are relative to sandbox *)
-                  let cwd = Path.to_string sandbox_dir in
-                  let file = Path.to_string path in
-                  let result = Ocamldep.deps ~toolchain:t.toolchain ~cwd ~file
+                  let result = Ocamldep.deps ~toolchain:t.toolchain ~cwd:sandbox_dir ~file:path
                     ~package_namespace:t.namespace in
-                  Log.debug "[MODULE_GRAPH] After ocamldep for %s: got %d deps" file (List.length result);
+                  Log.debug "[MODULE_GRAPH] After ocamldep for %s: got %d deps" (Path.to_string path) (List.length result);
                   result
             in
             Log.debug "[MODULE_GRAPH] Returning deps for %s: %d items" (file_to_string dep.file) (List.length deps);
@@ -487,6 +485,16 @@ let wire_dependencies t sandbox_dir =
 
   Log.debug "[MODULE_GRAPH] WorkerPool.run returned %d raw results for %d tasks" 
     (List.length deps_raw) (List.length node_tasks);
+  
+  (* Count how many None vs Some results *)
+  let none_count = ref 0 in
+  let some_count = ref 0 in
+  List.iter (fun (_idx, result) ->
+    match result with
+    | None -> incr none_count
+    | Some _ -> incr some_count)
+    deps_raw;
+  Log.debug "[MODULE_GRAPH] Raw results breakdown: %d Some, %d None" !some_count !none_count;
   
   let deps = List.filter_map (fun (_idx, result) -> result) deps_raw in
 

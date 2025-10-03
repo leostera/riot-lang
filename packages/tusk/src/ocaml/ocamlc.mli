@@ -3,6 +3,8 @@
     This module provides a high-level interface for invoking the OCaml compiler
     with proper configuration and error handling. *)
 
+open Std
+
 (** Compiler warnings that can be suppressed *)
 type compiler_warning =
   | NoCmiFile  (** Warning 49: Absent cmi file when looking up module alias *)
@@ -48,10 +50,10 @@ val base_command : Model.Toolchains.toolchain -> string
 
 val run :
   toolchain:Model.Toolchains.toolchain ->
-  cwd:Std.Path.t ->
-  ?includes:string list ->
-  ?libs:string list ->
-  ?output:string option ->
+  cwd:Path.t ->
+  ?includes:Path.t list ->
+  ?libs:Path.t list ->
+  ?output:Path.t option ->
   ?mode:mode ->
   ?verbose:bool ->
   string list ->
@@ -75,10 +77,10 @@ val run :
 val compile_interface :
   toolchain:Model.Toolchains.toolchain ->
   cwd:Std.Path.t ->
-  includes:string list ->
+  includes:Path.t list ->
   flags:compiler_flag list ->
-  output:string ->
-  string ->
+  output:Path.t ->
+  Path.t ->
   result
 (** Compile an interface file (.mli -> .cmi). The current directory is
     automatically included. *)
@@ -86,10 +88,10 @@ val compile_interface :
 val compile_impl :
   toolchain:Model.Toolchains.toolchain ->
   cwd:Std.Path.t ->
-  includes:string list ->
+  includes:Path.t list ->
   flags:compiler_flag list ->
-  output:string ->
-  string ->
+  output:Path.t ->
+  Path.t ->
   result
 (** Compile an implementation file (.ml -> .cmo). The current directory is
     automatically included. *)
@@ -97,10 +99,10 @@ val compile_impl :
 val generate_interface :
   toolchain:Model.Toolchains.toolchain ->
   cwd:Std.Path.t ->
-  includes:string list ->
+  includes:Path.t list ->
   flags:compiler_flag list ->
-  output:string ->
-  string ->
+  output:Path.t ->
+  Path.t ->
   result
 (** Generate interface file (.ml -> .mli) using ocamlc -i. Infers the module
     interface from an implementation file and writes it to output. *)
@@ -108,28 +110,28 @@ val generate_interface :
 val compile_c :
   toolchain:Model.Toolchains.toolchain ->
   cwd:Std.Path.t ->
-  includes:string list ->
-  output:string ->
-  string ->
+  includes:Path.t list ->
+  output:Path.t ->
+  Path.t ->
   result
 (** Compile a C file *)
 
 val create_library :
   toolchain:Model.Toolchains.toolchain ->
   cwd:Std.Path.t ->
-  includes:string list ->
-  output:string ->
-  string list ->
+  includes:Path.t list ->
+  output:Path.t ->
+  Path.t list ->
   result
 (** Create a library (.cma) from object files *)
 
 val create_executable :
   toolchain:Model.Toolchains.toolchain ->
   cwd:Std.Path.t ->
-  includes:string list ->
-  output:string ->
-  libs:string list ->
-  string list ->
+  includes:Path.t list ->
+  output:Path.t ->
+  libs:Path.t list ->
+  Path.t list ->
   result
 (** Create an executable from object files and libraries. The current directory
     is automatically included. *)
@@ -137,10 +139,10 @@ val create_executable :
 val create_custom_executable :
   toolchain:Model.Toolchains.toolchain ->
   cwd:Std.Path.t ->
-  includes:string list ->
-  output:string ->
-  libs:string list ->
-  string list ->
+  includes:Path.t list ->
+  output:Path.t ->
+  libs:Path.t list ->
+  Path.t list ->
   result
 (** Create a custom executable with C stubs. The current directory is
     automatically included. *)
