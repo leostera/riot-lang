@@ -16,8 +16,49 @@ let create_local_client () =
   Server.Server_manager.ensure_running ~workspace
   |> Result.expect ~msg:"Failed to connect to server"
 
-(** Execute the rpc command *)
-let run args =
+let rec run_with_matches matches =
+  let open ArgParser in
+  match get_subcommand matches with
+  | Some ("ping", _) -> run ["ping"]
+  | Some ("workspace", _) -> run ["workspace"]
+  | Some ("graph", _) -> run ["graph"]
+  | Some ("build", build_matches) ->
+      let package = get_one build_matches "package" in
+      let args = match package with Some p -> ["build"; p] | None -> ["build"] in
+      run args
+  | Some ("package", pkg_matches) ->
+      let name = get_one pkg_matches "name" in
+      let args = match name with Some n -> ["package"; n] | None -> ["package"] in
+      run args
+  | Some ("format", fmt_matches) ->
+      let file = get_one fmt_matches "file" in
+      let args = match file with Some f -> ["format"; f] | None -> ["format"] in
+      run args
+  | Some ("format-check", fmt_matches) ->
+      let file = get_one fmt_matches "file" in
+      let args = match file with Some f -> ["format-check"; f] | None -> ["format-check"] in
+      run args
+  | Some ("format-code", fmt_matches) ->
+      let code = get_one fmt_matches "code" in
+      let hint = get_one fmt_matches "hint" in
+      let args = 
+        match (code, hint) with
+        | (Some c, Some h) -> ["format-code"; c; h]
+        | (Some c, None) -> ["format-code"; c]
+        | _ -> ["format-code"]
+      in
+      run args
+  | Some ("restart", _) -> run ["restart"]
+  | Some ("shutdown", _) -> run ["shutdown"]
+  | Some (cmd, _) ->
+      println "Unknown rpc command: %s" cmd;
+      Error (Failure (format "Unknown rpc command: %s" cmd))
+  | None ->
+      (* ArgParser should have shown help and exited, but if we get here somehow *)
+      println "No rpc subcommand provided. Use 'tusk rpc --help' for usage.";
+      Error (Failure "No rpc subcommand")
+
+and run args =
   let cmd = if List.length args > 0 then List.nth args 0 else "" in
   let rest =
     if List.length args > 1 then
