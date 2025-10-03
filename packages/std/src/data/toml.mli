@@ -14,7 +14,6 @@ type error =
 
 val error_to_string : error -> string
 val parse_file : string -> (value, error) result
-
 val get_string : value -> string option
 val get_array : value -> value list option
 val get_table : value -> (string * value) list option

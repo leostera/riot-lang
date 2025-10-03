@@ -44,17 +44,21 @@ let parse_workspace_toml toml_path =
       (* Pattern match directly on the nested structure *)
       match toml with
       | Toml.Table items -> (
-          Log.debug "[WORKSPACE] TOML has %d top-level sections:" (List.length items);
+          Log.debug "[WORKSPACE] TOML has %d top-level sections:"
+            (List.length items);
           List.iter (fun (key, _) -> Log.debug "[WORKSPACE]   - %s" key) items;
-          
+
           (* Look for workspace.members *)
           match List.assoc_opt "workspace" items with
           | Some (Toml.Table workspace_items) -> (
               Log.debug "[WORKSPACE] Found workspace section";
               match List.assoc_opt "members" workspace_items with
               | Some (Toml.Array members) ->
-                  let member_strings = List.filter_map Toml.get_string members in
-                  Log.debug "[WORKSPACE] Found %d members" (List.length member_strings);
+                  let member_strings =
+                    List.filter_map Toml.get_string members
+                  in
+                  Log.debug "[WORKSPACE] Found %d members"
+                    (List.length member_strings);
                   member_strings
               | _ ->
                   Log.debug "[WORKSPACE] No members array in workspace section";
@@ -78,7 +82,7 @@ let parse_package_toml toml_path =
         match dir with Some d -> Path.basename d | None -> "unknown"
       in
       (name, [])
-  | Ok toml ->
+  | Ok toml -> (
       match toml with
       | Toml.Table items ->
           (* Get package name from package.name *)
@@ -87,32 +91,35 @@ let parse_package_toml toml_path =
             | Some (Toml.Table pkg_items) -> (
                 match List.assoc_opt "name" pkg_items with
                 | Some (Toml.String n) -> n
-                | _ ->
+                | _ -> (
                     let path_obj = Path.v toml_path in
                     let dir = Path.parent path_obj in
-                    (match dir with Some d -> Path.basename d | None -> "unknown"))
-            | _ ->
+                    match dir with
+                    | Some d -> Path.basename d
+                    | None -> "unknown"))
+            | _ -> (
                 let path_obj = Path.v toml_path in
                 let dir = Path.parent path_obj in
-                (match dir with Some d -> Path.basename d | None -> "unknown")
+                match dir with Some d -> Path.basename d | None -> "unknown")
           in
-          
+
           (* Get dependencies - just the keys from the dependencies section *)
           let deps =
             match List.assoc_opt "dependencies" items with
-            | Some (Toml.Table dep_items) ->
-                List.map fst dep_items
+            | Some (Toml.Table dep_items) -> List.map fst dep_items
             | _ -> []
           in
-          
-          Log.debug "[WORKSPACE] Package '%s' has %d dependencies: [%s]" 
-            name (List.length deps) (String.concat ", " deps);
+
+          Log.debug "[WORKSPACE] Package '%s' has %d dependencies: [%s]" name
+            (List.length deps) (String.concat ", " deps);
           (name, deps)
       | _ ->
           let path_obj = Path.v toml_path in
           let dir = Path.parent path_obj in
-          let name = match dir with Some d -> Path.basename d | None -> "unknown" in
-          (name, [])
+          let name =
+            match dir with Some d -> Path.basename d | None -> "unknown"
+          in
+          (name, []))
 
 (** Scan a directory for a tusk.toml file *)
 let find_tusk_toml dir =

@@ -299,8 +299,7 @@ let start_tcp_server ~server ~port =
       match
         Net.TcpStream.write stream bytes ~pos:0 ~len:(Bytes.length bytes) ()
       with
-      | Ok bytes_written ->
-          ()
+      | Ok bytes_written -> ()
       | Error e ->
           Log.error "Failed to write to stream: %s"
             (match e with `Closed -> "closed" | `System_error msg -> msg);

@@ -32,24 +32,26 @@ let output t =
   | Running _ -> Error (SystemError "Command is already running")
   | Pending -> (
       (* Build stdio config to capture stdout and stderr *)
-      let stdio =
-        OsProcess.
-          { stdin = `Null; stdout = `Pipe; stderr = `Pipe }
-      in
+      let stdio = OsProcess.{ stdin = `Null; stdout = `Pipe; stderr = `Pipe } in
 
       (* Spawn the process *)
       match
-        OsProcess.spawn ~program:t.cmd ~args:t.args ~env:t.env
-          ?cwd:t.cwd ~stdio ()
+        OsProcess.spawn ~program:t.cmd ~args:t.args ~env:t.env ?cwd:t.cwd ~stdio
+          ()
       with
       | Error (`SpawnFailed msg) -> Error (SystemError msg)
       | Ok proc ->
           (* Get piped file descriptors *)
-          let stdout_fd = OsProcess.stdout proc |> Option.unwrap |> Fs.File.from_fd in
-          let stderr_fd = OsProcess.stderr proc |> Option.unwrap |> Fs.File.from_fd in
+          let stdout_fd =
+            OsProcess.stdout proc |> Option.unwrap |> Fs.File.from_fd
+          in
+          let stderr_fd =
+            OsProcess.stderr proc |> Option.unwrap |> Fs.File.from_fd
+          in
 
           (* Update state to Running *)
-          t.state <- Running { proc; stdout = Some stdout_fd; stderr = Some stderr_fd};
+          t.state <-
+            Running { proc; stdout = Some stdout_fd; stderr = Some stderr_fd };
 
           (* Read output BEFORE waiting - prevents deadlock if pipes fill up *)
           let stdout_str = Fs.File.read_to_end stdout_fd |> Result.unwrap in
@@ -93,14 +95,13 @@ let status t =
   | Pending -> (
       (* Build stdio config to inherit stdout and stderr (don't capture) *)
       let stdio =
-        OsProcess.
-          { stdin = `Null; stdout = `Inherit; stderr = `Inherit }
+        OsProcess.{ stdin = `Null; stdout = `Inherit; stderr = `Inherit }
       in
 
       (* Spawn the process *)
       match
-        OsProcess.spawn ~program:t.cmd ~args:t.args ~env:t.env
-          ?cwd:t.cwd ~stdio ()
+        OsProcess.spawn ~program:t.cmd ~args:t.args ~env:t.env ?cwd:t.cwd ~stdio
+          ()
       with
       | Error (`SpawnFailed msg) -> Error (SystemError msg)
       | Ok proc ->

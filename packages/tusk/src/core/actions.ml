@@ -197,37 +197,26 @@ let execute_action action toolchain cwd =
     try
       match action with
       | CompileInterface { source; output; includes; flags } ->
-          Ocamlc.compile_interface ~toolchain ~cwd
-            ~includes
-            ~flags ~output source
+          Ocamlc.compile_interface ~toolchain ~cwd ~includes ~flags ~output
+            source
           |> convert_result
       | CompileImplementation { source; output; includes; flags } ->
-          Ocamlc.compile_impl ~toolchain ~cwd
-            ~includes
-            ~flags ~output source
+          Ocamlc.compile_impl ~toolchain ~cwd ~includes ~flags ~output source
           |> convert_result
       | GenerateInterface { source; output; includes; flags } ->
-          Ocamlc.generate_interface ~toolchain ~cwd
-            ~includes
-            ~flags ~output source
+          Ocamlc.generate_interface ~toolchain ~cwd ~includes ~flags ~output
+            source
           |> convert_result
       | CompileC { source; output } ->
-          Ocamlc.compile_c ~toolchain ~cwd ~includes:[]
-            ~output source
+          Ocamlc.compile_c ~toolchain ~cwd ~includes:[] ~output source
           |> convert_result
       | CreateLibrary { output; objects; includes } ->
-          Ocamlc.create_library ~toolchain ~cwd
-            ~includes
-            ~output
-            objects
+          Ocamlc.create_library ~toolchain ~cwd ~includes ~output objects
           |> convert_result
       | CreateExecutable { output; objects; libraries; includes } ->
           (* Use custom executable for C stubs *)
-          Ocamlc.create_custom_executable ~toolchain ~cwd
-            ~includes
-            ~output
-            ~libs:libraries
-            objects
+          Ocamlc.create_custom_executable ~toolchain ~cwd ~includes ~output
+            ~libs:libraries objects
           |> convert_result
       | CopyDir { source; destination } -> (
           try
@@ -272,21 +261,29 @@ let execute_action action toolchain cwd =
             let destination = Path.(cwd / destination) in
             (* Create parent directories for destination *)
             let parent_dir = Path.dirname destination in
-            Fs.create_dir_all parent_dir 
-            |> Result.expect ~msg:(format "Failed to create parent directories for: %s" (Path.to_string destination));
+            Fs.create_dir_all parent_dir
+            |> Result.expect
+                 ~msg:
+                   (format "Failed to create parent directories for: %s"
+                      (Path.to_string destination));
             (* Write the file *)
             let _ =
-              Fs.write content destination
-              |> Result.expect ~msg:(format "Failed to write file: %s" (Path.to_string destination))
+              match Fs.write content destination with
+              | Ok _ -> ()
+              | Error Fs.(SystemError reason) ->
+                  panic
+                    (format "Failed to write file: %s due to %s"
+                       (Path.to_string destination)
+                       reason)
             in
             (Success, format "Wrote %s" (Path.to_string destination))
           with exn -> (Failed (Exception.to_string exn), ""))
-       | DeclareOutputs { outputs } ->
-           (* Just record the expected outputs - don't validate yet as they haven't been built *)
-           (Success, format "Declared %d expected outputs" (List.length outputs))
-     with exn -> raise exn
-   in
-   result
+      | DeclareOutputs { outputs } ->
+          (* Just record the expected outputs - don't validate yet as they haven't been built *)
+          (Success, format "Declared %d expected outputs" (List.length outputs))
+    with exn -> raise exn
+  in
+  result
 
 (** Hash a list of actions *)
 let hash actions =

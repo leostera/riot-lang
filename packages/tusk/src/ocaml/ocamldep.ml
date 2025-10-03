@@ -10,7 +10,8 @@ let sort ~toolchain ~cwd ~files =
     let ocamldep = Path.to_string (Toolchains.ocamldep_path toolchain) in
     let files_str = String.concat " " (List.map Path.to_string files) in
     let cmd =
-      format "cd %s && %s -sort %s 2>/dev/null" (Path.to_string cwd) ocamldep files_str
+      format "cd %s && %s -sort %s 2>/dev/null" (Path.to_string cwd) ocamldep
+        files_str
     in
 
     Log.debug "  $ %s" cmd;
@@ -31,13 +32,18 @@ let sort ~toolchain ~cwd ~files =
     else
       let sorted_basenames = String.split_on_char ' ' sorted_str in
       (* Filter out empty strings and return files in dependency order *)
-      List.filter_map (fun s -> if s = "" then None else Some (Path.v s)) sorted_basenames
+      List.filter_map
+        (fun s -> if s = "" then None else Some (Path.v s))
+        sorted_basenames
 
 (** Get dependencies for a single file - returns Module_name.t list *)
 let deps ~toolchain ~cwd ~file ~package_namespace =
   let ocamldep = Path.to_string (Toolchains.ocamldep_path toolchain) in
   let file_str = Path.to_string file in
-  let cmd = format "cd %s && %s -modules %s 2>/dev/null" (Path.to_string cwd) ocamldep file_str in
+  let cmd =
+    format "cd %s && %s -modules %s 2>/dev/null" (Path.to_string cwd) ocamldep
+      file_str
+  in
 
   Log.debug "[OCAMLDEP] Running for %s: %s" file_str cmd;
 
@@ -46,7 +52,7 @@ let deps ~toolchain ~cwd ~file ~package_namespace =
     match Command.output command with
     | Ok output -> (
         match String.split_on_char '\n' output.Command.stdout with
-        | line :: _ -> 
+        | line :: _ ->
             let trimmed = String.trim line in
             Log.debug "[OCAMLDEP] Result for %s: %s" file_str trimmed;
             trimmed
@@ -70,12 +76,15 @@ let deps ~toolchain ~cwd ~file ~package_namespace =
           Log.debug "[OCAMLDEP] Empty deps part for %s" file_str;
           [])
         else
-          let result = String.split_on_char ' ' deps
-          |> List.map String.trim
-          |> List.map (fun modname ->
-              (* Convert string module name to Module_name.t with proper namespace *)
-              Model.Module_name.of_string ~namespace:package_namespace modname) in
-          Log.debug "[OCAMLDEP] Parsed %d deps for %s: %s" (List.length result) file_str deps;
+          let result =
+            String.split_on_char ' ' deps
+            |> List.map String.trim
+            |> List.map (fun modname ->
+                (* Convert string module name to Module_name.t with proper namespace *)
+                Model.Module_name.of_string ~namespace:package_namespace modname)
+          in
+          Log.debug "[OCAMLDEP] Parsed %d deps for %s: %s" (List.length result)
+            file_str deps;
           result
     | _ ->
         Log.debug "[OCAMLDEP] Failed to parse deps for %s: %s" file_str deps_str;
@@ -89,8 +98,8 @@ let deps_with_flags ~toolchain ~cwd ~file ~flags ~package_namespace =
   let file_str = Path.to_string file in
   (* Always include current directory so ocamldep can find .cmi files *)
   let cmd =
-    format "cd %s && %s -I . %s -modules %s 2>/dev/null" (Path.to_string cwd) ocamldep flags_str
-      file_str
+    format "cd %s && %s -I . %s -modules %s 2>/dev/null" (Path.to_string cwd)
+      ocamldep flags_str file_str
   in
 
   let deps_str =

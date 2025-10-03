@@ -472,30 +472,34 @@ let wire_dependencies t sandbox_dir =
               | Generated _ -> []
               | Concrete path ->
                   (* Use sandbox_dir as cwd since paths are relative to sandbox *)
-                  let result = Ocamldep.deps ~toolchain:t.toolchain ~cwd:sandbox_dir ~file:path
-                    ~package_namespace:t.namespace in
-                  Log.debug "[MODULE_GRAPH] After ocamldep for %s: got %d deps" (Path.to_string path) (List.length result);
+                  let result =
+                    Ocamldep.deps ~toolchain:t.toolchain ~cwd:sandbox_dir
+                      ~file:path ~package_namespace:t.namespace
+                  in
+                  Log.debug "[MODULE_GRAPH] After ocamldep for %s: got %d deps"
+                    (Path.to_string path) (List.length result);
                   result
             in
-            Log.debug "[MODULE_GRAPH] Returning deps for %s: %d items" (file_to_string dep.file) (List.length deps);
+            Log.debug "[MODULE_GRAPH] Returning deps for %s: %d items"
+              (file_to_string dep.file) (List.length deps);
             Some (node_id, node, deps)
         | _ -> None)
       ()
   in
 
-  Log.debug "[MODULE_GRAPH] WorkerPool.run returned %d raw results for %d tasks" 
+  Log.debug "[MODULE_GRAPH] WorkerPool.run returned %d raw results for %d tasks"
     (List.length deps_raw) (List.length node_tasks);
-  
+
   (* Count how many None vs Some results *)
   let none_count = ref 0 in
   let some_count = ref 0 in
-  List.iter (fun (_idx, result) ->
-    match result with
-    | None -> incr none_count
-    | Some _ -> incr some_count)
+  List.iter
+    (fun (_idx, result) ->
+      match result with None -> incr none_count | Some _ -> incr some_count)
     deps_raw;
-  Log.debug "[MODULE_GRAPH] Raw results breakdown: %d Some, %d None" !some_count !none_count;
-  
+  Log.debug "[MODULE_GRAPH] Raw results breakdown: %d Some, %d None" !some_count
+    !none_count;
+
   let deps = List.filter_map (fun (_idx, result) -> result) deps_raw in
 
   Log.debug "[MODULE_GRAPH] After filter_map: %d results" (List.length deps);
@@ -503,7 +507,8 @@ let wire_dependencies t sandbox_dir =
   let handle_edges node_id (node : dep G.node) deps =
     let dep = node.value in
 
-    Log.debug "[MODULE_GRAPH] handle_edges called for %s with %d deps" (file_to_string dep.file) (List.length deps);
+    Log.debug "[MODULE_GRAPH] handle_edges called for %s with %d deps"
+      (file_to_string dep.file) (List.length deps);
 
     if deps <> [] then
       Log.debug "[MODULE_GRAPH]   %s depends on: %s" (file_to_string dep.file)
@@ -791,8 +796,10 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
           Log.debug "[MODULE_GRAPH]   %d. %s" i (Path.to_string obj))
       !cmx_files;
     let all_objects = List.rev !cmx_files @ List.rev !c_objects in
-    Log.debug "[MODULE_GRAPH] Creating library with %d objects (%d cmx + %d c objects)"
-      (List.length all_objects) (List.length !cmx_files) (List.length !c_objects);
+    Log.debug
+      "[MODULE_GRAPH] Creating library with %d objects (%d cmx + %d c objects)"
+      (List.length all_objects) (List.length !cmx_files)
+      (List.length !c_objects);
     Log.debug "[MODULE_GRAPH] Link order AFTER reverse (first 20):";
     List.iteri
       (fun i obj ->

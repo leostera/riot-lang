@@ -248,6 +248,5 @@ let close t =
   else
     try
       t.closed <- true;
-      Kernel.Fs.File.close_fd t.fd
-      |> convert_kernel_result
+      Kernel.Fs.File.close_fd t.fd |> convert_kernel_result
     with e -> Error (SystemError (Exception.to_string e))

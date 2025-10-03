@@ -87,9 +87,10 @@ let parse_toolchain_file path =
     let path_str = Path.to_string path in
     match Toml.parse_file path_str with
     | Error err ->
-        Log.debug "[TOOLCHAINS] Failed to parse toolchain TOML: %s" (Toml.error_to_string err);
+        Log.debug "[TOOLCHAINS] Failed to parse toolchain TOML: %s"
+          (Toml.error_to_string err);
         { version = "5.3.0"; source = Version "5.3.0" }
-    | Ok toml ->
+    | Ok toml -> (
         (* Pattern match on the nested structure *)
         match toml with
         | Toml.Table items -> (
@@ -100,8 +101,12 @@ let parse_toolchain_file path =
                     (* Check if it's a table with path or url *)
                     match List.assoc_opt "path" version_items with
                     | Some (Toml.String path_str) ->
-                        let source_path = Path.of_string path_str |> Result.unwrap in
-                        let version_name = format "%s-local" (Path.basename source_path) in
+                        let source_path =
+                          Path.of_string path_str |> Result.unwrap
+                        in
+                        let version_name =
+                          format "%s-local" (Path.basename source_path)
+                        in
                         { version = version_name; source = Path source_path }
                     | _ -> (
                         match List.assoc_opt "url" version_items with
@@ -111,11 +116,14 @@ let parse_toolchain_file path =
                                 let parts = String.split_on_char '/' url_str in
                                 let last = List.hd (List.rev parts) in
                                 if String.contains last '.' then
-                                  Path.v last |> Path.remove_extension |> Path.to_string
+                                  Path.v last |> Path.remove_extension
+                                  |> Path.to_string
                                 else last
                               else "custom"
                             in
-                            let uri = Net.Uri.of_string url_str |> Result.unwrap in
+                            let uri =
+                              Net.Uri.of_string url_str |> Result.unwrap
+                            in
                             { version = version_name; source = Url uri }
                         | _ -> default_toolchain))
                 | Some (Toml.String v) ->
@@ -123,7 +131,7 @@ let parse_toolchain_file path =
                     { version = v; source = Version v }
                 | _ -> default_toolchain)
             | _ -> default_toolchain)
-        | _ -> default_toolchain
+        | _ -> default_toolchain)
   with _ ->
     (* Default to stable version if file doesn't exist or can't be parsed *)
     default_toolchain

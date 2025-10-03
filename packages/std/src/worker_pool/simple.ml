@@ -65,8 +65,7 @@ let rec loop : type task res.
               (Completed
                  { results = state.results; result_ref = state.result_ref });
             Ok ())
-          else
-            loop state)
+          else loop state)
 
 let init ~owner ~concurrency ~tasks ~result_ref ~fn () =
   let dispatcher_self = self () in
