@@ -151,7 +151,7 @@ let hash_computed ~session_id ~package ~hash ~duration_ms =
 
 (** Store event logging *)
 let store_creating ~session_id () =
-  let event = Event.create ~session_id ~level:Debug StoreCreating in
+  let event = Event.create ~session_id ~level:Info StoreCreating in
   log event
 
 let store_created ~session_id ~duration_ms =
@@ -163,7 +163,7 @@ let store_created ~session_id ~duration_ms =
 (** Worker event logging *)
 let worker_pool_creating ~session_id ~workers =
   let event =
-    Event.create ~session_id ~level:Debug (WorkerPoolCreating { workers })
+    Event.create ~session_id ~level:Info (WorkerPoolCreating { workers })
   in
   log event
 
