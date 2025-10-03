@@ -3,9 +3,9 @@
 type status = Running | Exited of int | Signaled of int | Stopped of int
 
 type stdio_config = {
-  stdin : [ `Null | `Pipe | `Inherit | `File of Fs.File.fd ];
-  stdout : [ `Null | `Pipe | `Inherit | `File of Fs.File.fd ];
-  stderr : [ `Null | `Pipe | `Inherit | `Redirect_to_stdout | `File of Fs.File.fd ];
+  stdin : [ `Null | `Pipe | `Inherit | `File of Async.Fd.t ];
+  stdout : [ `Null | `Pipe | `Inherit | `File of Async.Fd.t ];
+  stderr : [ `Null | `Pipe | `Inherit | `Redirect_to_stdout | `File of Async.Fd.t ];
 }
 
 type t = {
@@ -34,7 +34,7 @@ let spawn ~program ~args ?(env = []) ?cwd ~stdio () =
           let read_fd, write_fd = Unix.pipe () in
           (read_fd, Some write_fd, read_fd, Some write_fd)
       | `File fd ->
-          let unix_fd = Fs.File.to_unix_fd fd in
+          let unix_fd = Async.Fd.to_unix_fd fd in
           (unix_fd, None, unix_fd, None)
     in
 
@@ -49,7 +49,7 @@ let spawn ~program ~args ?(env = []) ?cwd ~stdio () =
           let read_fd, write_fd = Unix.pipe () in
           (write_fd, Some read_fd, write_fd, Some read_fd)
       | `File fd ->
-          let unix_fd = Fs.File.to_unix_fd fd in
+          let unix_fd = Async.Fd.to_unix_fd fd in
           (unix_fd, None, unix_fd, None)
     in
 
@@ -65,7 +65,7 @@ let spawn ~program ~args ?(env = []) ?cwd ~stdio () =
           (write_fd, Some read_fd, write_fd, Some read_fd)
       | `Redirect_to_stdout -> (stdout_child, None, stdout_child, None)
       | `File fd ->
-          let unix_fd = Fs.File.to_unix_fd fd in
+          let unix_fd = Async.Fd.to_unix_fd fd in
           (unix_fd, None, unix_fd, None)
     in
 

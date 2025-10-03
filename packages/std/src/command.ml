@@ -7,6 +7,20 @@ module Stdio = struct
   let inherit_ () = Inherit
   let pipe () = Pipe
   let from_file fd = File fd
+  
+  (* Internal: convert to Kernel's OsProcess.stdio_config *)
+  let to_osprocess_config ~stdin ~stdout ~stderr =
+    let convert = function
+      | Null -> `Null
+      | Inherit -> `Inherit
+      | Pipe -> `Pipe
+      | File fd -> `File (Fs.File.to_fd fd)
+    in
+    Kernel.System.OsProcess.{
+      stdin = convert stdin;
+      stdout = convert stdout;
+      stderr = convert stderr;
+    }
 end
 
 type status = int
