@@ -91,9 +91,12 @@ let spawn ~program ~args ?(env = []) ?cwd ~stdio () =
 
     (* Close child-side fds in parent *)
     if stdio.stdin = `Pipe then Unix.close stdin_child;
+    if stdio.stdin = `Null then Unix.close stdin_child;
     if stdio.stdout = `Pipe then Unix.close stdout_child;
+    if stdio.stdout = `Null then Unix.close stdout_child;
     if stdio.stderr = `Pipe && stdio.stderr <> `Redirect_to_stdout then
       Unix.close stderr_child;
+    if stdio.stderr = `Null then Unix.close stderr_child;
 
     (* Set parent-side fds to non-blocking *)
     (match stdin_parent with
