@@ -55,10 +55,6 @@ let output t =
           let stdout_str = Fs.File.read_to_end stdout_fd |> Result.unwrap in
           let stderr_str = Fs.File.read_to_end stderr_fd |> Result.unwrap in
 
-          (* Close the File handles explicitly - we're done reading *)
-          let _ = Fs.File.close stdout_fd in
-          let _ = Fs.File.close stderr_fd in
-
           (* Now wait for process to exit *)
           let rec wait_for_exit () =
             match OsProcess.try_wait proc with
@@ -69,9 +65,8 @@ let output t =
           in
           let exit_status = wait_for_exit () in
 
-          (* Note: OsProcess.close would double-close the FDs we already closed above.
-             Since we've already closed stdout/stderr via Fs.File.close, we don't call
-             OsProcess.close here. The process itself has already exited. *)
+          (* Close the process *)
+          OsProcess.close proc;
 
           (* Convert status *)
           let status_code =
