@@ -35,14 +35,15 @@ module Arg : sig
   val requires : string -> 'a t -> 'a t
 end
 
-val command :
-  ?version:string option -> ?about:string option -> string -> command
-
+val command : string -> command
 val version : string -> command -> command
 val about : string -> command -> command
 val author : string -> command -> command
 val arg : unit arg -> command -> command
+val args : unit arg list -> command -> command
 val subcommand : command -> command -> command
+val subcommands : command list -> command -> command
+val allow_trailing_args : command -> command
 val get_matches : command -> string list -> (matches, error) result
 val get_one : matches -> string -> string option
 val get_flag : matches -> string -> bool
@@ -51,8 +52,10 @@ val get_many : matches -> string -> string list
 val get_int : matches -> string -> int option
 val get_float : matches -> string -> float option
 val get_path : matches -> string -> Path.t option
-val subcommand : matches -> (string * matches) option
+val get_subcommand : matches -> (string * matches) option
 val subcommand_name : matches -> string option
 val subcommand_matches : matches -> string -> matches option
+val trailing_args : matches -> string list
+val print_help : command -> unit
 val error_message : error -> string
 val print_error : error -> unit

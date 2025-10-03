@@ -1,63 +1,133 @@
 open Std
-(** CLI module - handles command-line interface *)
 
-let usage_msg =
-  {|
-   tusk - OCaml build system\n\n\
-   Usage: tusk [COMMAND] [OPTIONS]\n\n\
-   Commands:\n\
-  \  build    Build packages\n\
-  \  clean    Clean build artifacts\n\
-  \  doc      Generate documentation\n\
-  \  fmt      Format OCaml code\n\
-  \  help     Show this help message\n\n\
-  \  install  Install a package binary to ~/.tusk/bin/\n\
-  \  lsp      Start OCaml LSP server\n\
-  \  mcp      Start Model Context Protocol server\n\
-  \  new      Create a new package\n\
-  \  rpc      Send RPC command to server\n\
-  \  run      Run a binary\n\
-  \  server   Start the tusk server (for debugging)\n\
-  \  version  Show tusk version\n\
-   Options:\n\
-  \  -p <package>    Build only the specified package\n\
-  \  -b <binary>     Run the specified binary
-|}
+let cli =
+  let open ArgParser in
+  let open Arg in
+  command "tusk" |> version "0.1.0"
+  |> about "OCaml build system and package manager"
+  |> args
+       [
+         flag "verbose" |> short 'v' |> long "verbose"
+         |> help "Enable verbose output"
+         |> count;
+       ]
+  |> subcommands
+       [
+         command "build" |> about "Build packages"
+         |> args
+              [
+                option "package" |> short 'p' |> long "package"
+                |> help "Build only the specified package";
+              ];
+         command "run" |> about "Run a binary"
+         |> args
+              [
+                option "binary" |> short 'b' |> long "binary"
+                |> help "Specify which binary to run";
+              ];
+         command "clean" |> about "Clean build artifacts";
+         command "new"
+         |> about "Create a new package"
+         |> args [ positional "path" |> help "Path for new package" ];
+         command "install"
+         |> about "Install a binary to ~/.tusk/bin"
+         |> args
+              [
+                option "binary" |> short 'b' |> long "binary"
+                |> help "Binary to install";
+              ];
+         command "server"
+         |> about "Start or manage the tusk server"
+         |> args
+              [
+                option "action"
+                |> help "Action: start, stop, kill, or status"
+                |> possible_values [ "start"; "stop"; "kill"; "status" ];
+              ];
+         command "rpc"
+         |> about "Send RPC command to server"
+         |> subcommands
+              [
+                command "ping" |> about "Test server connectivity";
+                command "workspace" |> about "Get workspace information";
+                command "graph" |> about "Get build graph";
+                command "build"
+                |> about "Build all or specific package"
+                |> args [ positional "package" |> help "Package to build" ];
+                command "package"
+                |> about "Get package details"
+                |> args [ positional "name" |> help "Package name" ];
+                command "format" |> about "Format a file"
+                |> args [ positional "file" |> help "File to format" ];
+                command "format-check"
+                |> about "Check if file needs formatting"
+                |> args [ positional "file" |> help "File to check" ];
+                command "format-code" |> about "Format code string"
+                |> args
+                     [
+                       positional "code" |> help "Code to format";
+                       positional "hint" |> help "Hint for parsing (optional)";
+                     ];
+                command "restart" |> about "Restart the server";
+                command "shutdown" |> about "Shutdown the server";
+              ];
+         command "mcp" |> about "Start Model Context Protocol server";
+         command "doc" |> about "Generate documentation";
+         command "fmt" |> about "Format OCaml code";
+         command "lsp" |> about "Start OCaml LSP server";
+         command "version" |> about "Show tusk version";
+       ]
 
-(** Show help message *)
-let help_command () =
-  println "%s" usage_msg;
-  Ok ()
-
-(** Show version *)
-let version_command () =
-  println "dev";
-  Ok ()
-
-(** Main entry point - runs as a Miniriot process *)
-let main ~args =
-  let argc = List.length args in
-  (* Initialize logger process first *)
+let main ~args:argv =
+  let open ArgParser in
   let _logger_pid = Core.Tusk_log.init () in
 
-  if argc < 1 then (
-    println "Error: No command specified\n\n%s" usage_msg;
-    Error (Failure "No command specified"))
-  else
-    let command = List.nth args 0 in
-    let cmd_args = List.tl args in
-    (* Remove the command itself *)
-    match command with
-    | "build" -> Build.run cmd_args
-    | "new" -> New.run cmd_args
-    | "install" -> Install.run cmd_args
-    | "server" -> Server_cmd.run cmd_args
-    | "rpc" -> Rpc.run cmd_args
-    | "mcp" -> Mcp_cmd.run cmd_args
-    | "clean" -> Clean.run cmd_args
-    | "fmt" | "format" -> Fmt.run cmd_args
-    | "version" | "--version" | "-v" -> version_command ()
-    | "help" | "--help" | "-h" -> help_command ()
-    | _ ->
-        println "Error: Unknown command '%s'\n\n%s" command usage_msg;
-        Error (Failure (format "Unknown command: %s" command))
+  match get_matches cli argv with
+  | Error err ->
+      print_error err;
+      Error (Failure "Argument parsing failed")
+  | Ok matches -> (
+      let verbose = get_count matches "verbose" in
+      (* TODO: Set log level based on verbose count *)
+
+      match get_subcommand matches with
+      | Some ("build", build_matches) ->
+          let package = get_one build_matches "package" in
+          let args = match package with Some p -> [ "-p"; p ] | None -> [] in
+          Build.run args
+      | Some ("run", run_matches) ->
+          let binary = get_one run_matches "binary" in
+          let args = match binary with Some b -> [ "-b"; b ] | None -> [] in
+          (* TODO: Pass remaining args to binary *)
+          Ok ()
+      | Some ("clean", _) -> Clean.run []
+      | Some ("new", new_matches) ->
+          (* TODO: Extract positional path argument *)
+          New.run []
+      | Some ("install", install_matches) ->
+          let binary = get_one install_matches "binary" in
+          let args = match binary with Some b -> [ "-b"; b ] | None -> [] in
+          Install.run args
+      | Some ("server", server_matches) ->
+          let action = get_one server_matches "action" in
+          let args = match action with Some a -> [ a ] | None -> [] in
+          Server_cmd.run args
+      | Some ("rpc", rpc_matches) -> Rpc.run_with_matches rpc_matches
+      | Some ("mcp", _) -> Mcp_cmd.run []
+      | Some ("doc", _) ->
+          println "doc command not yet implemented";
+          Ok ()
+      | Some ("fmt", fmt_matches) -> Fmt.run []
+      | Some ("lsp", _) ->
+          println "lsp command not yet implemented";
+          Ok ()
+      | Some ("version", _) ->
+          println "tusk 0.1.0";
+          Ok ()
+      | None ->
+          (* No subcommand provided - show help *)
+          print_help cli;
+          Ok ()
+      | Some (cmd, _) ->
+          ArgParser.print_error (ArgParser.UnknownSubcommand cmd);
+          Error (Failure (format "Unknown command: %s" cmd)))

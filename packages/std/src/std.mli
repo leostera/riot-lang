@@ -1,5 +1,6 @@
 (** Riot's Standard library *)
 
+module ArgParser = Arg_parser
 module Buffer = Buffer
 module Cell = Cell
 module Char = Char

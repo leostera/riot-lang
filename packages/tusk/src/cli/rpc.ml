@@ -19,37 +19,53 @@ let create_local_client () =
 let rec run_with_matches matches =
   let open ArgParser in
   match get_subcommand matches with
-  | Some ("ping", _) -> run ["ping"]
-  | Some ("workspace", _) -> run ["workspace"]
-  | Some ("graph", _) -> run ["graph"]
+  | Some ("ping", _) -> run [ "ping" ]
+  | Some ("workspace", _) -> run [ "workspace" ]
+  | Some ("graph", _) -> run [ "graph" ]
   | Some ("build", build_matches) ->
       let package = get_one build_matches "package" in
-      let args = match package with Some p -> ["build"; p] | None -> ["build"] in
+      let args =
+        match package with Some p -> [ "build"; p ] | None -> [ "build" ]
+      in
       run args
   | Some ("package", pkg_matches) ->
       let name = get_one pkg_matches "name" in
-      let args = match name with Some n -> ["package"; n] | None -> ["package"] in
+      let args =
+        match name with Some n -> [ "package"; n ] | None -> [ "package" ]
+      in
       run args
   | Some ("format", fmt_matches) ->
       let file = get_one fmt_matches "file" in
-      let args = match file with Some f -> ["format"; f] | None -> ["format"] in
+      let args =
+        match file with Some f -> [ "format"; f ] | None -> [ "format" ]
+      in
       run args
   | Some ("format-check", fmt_matches) ->
       let file = get_one fmt_matches "file" in
-      let args = match file with Some f -> ["format-check"; f] | None -> ["format-check"] in
+      let args =
+        match file with
+        | Some f -> [ "format-check"; f ]
+        | None -> [ "format-check" ]
+      in
       run args
   | Some ("format-code", fmt_matches) ->
       let code = get_one fmt_matches "code" in
       let hint = get_one fmt_matches "hint" in
-      let args = 
+      let args =
         match (code, hint) with
-        | (Some c, Some h) -> ["format-code"; c; h]
-        | (Some c, None) -> ["format-code"; c]
-        | _ -> ["format-code"]
+        | Some c, Some h -> [ "format-code"; c; h ]
+        | Some c, None -> [ "format-code"; c ]
+        | _ -> [ "format-code" ]
       in
       run args
-  | Some ("restart", _) -> run ["restart"]
-  | Some ("shutdown", _) -> run ["shutdown"]
+  | Some ("json", json_matches) ->
+      let json_str = get_one json_matches "json" in
+      let args =
+        match json_str with Some j -> [ "json"; j ] | None -> [ "json" ]
+      in
+      run args
+  | Some ("restart", _) -> run [ "restart" ]
+  | Some ("shutdown", _) -> run [ "shutdown" ]
   | Some (cmd, _) ->
       println "Unknown rpc command: %s" cmd;
       Error (Failure (format "Unknown rpc command: %s" cmd))
@@ -79,7 +95,8 @@ and run args =
     println "  tusk rpc graph                   - Get build graph";
     println "  tusk rpc build [package]         - Build all or specific package";
     println "  tusk rpc format <file>           - Format a file";
-    println "  tusk rpc format-check <file>     - Check if file needs formatting";
+    println
+      "  tusk rpc format-check <file>     - Check if file needs formatting";
     println "  tusk rpc format-code <code> [hint] - Format code string";
     println "  tusk rpc restart                 - Restart the server";
     println "  tusk rpc shutdown                - Shutdown the server";
@@ -384,5 +401,6 @@ and run args =
     println "Error: Unknown RPC command '%s'" cmd;
     println
       "Available commands: ping, workspace, graph, build [package], format \
-       <file>, format-check <file>, format-code <code>, restart, shutdown";
+       <file>, format-check <file>, format-code <code>, json <json>, restart, \
+       shutdown";
     Error (Failure (format "Unknown RPC command: %s" cmd)))
