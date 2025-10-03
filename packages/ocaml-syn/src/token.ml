@@ -108,6 +108,7 @@ type t =
   | Dollar
   | Pipe
   | Ampersand
+  | Underscore
   | Whitespace
   | EOF
   | Unknown of char

@@ -62,6 +62,7 @@ let token_to_string = function
   | Token.Dollar -> "Dollar"
   | Token.Pipe -> "Pipe"
   | Token.Ampersand -> "Ampersand"
+  | Token.Underscore -> "Underscore"
   | Token.Whitespace -> "Whitespace"
   | Token.EOF -> "EOF"
   | Token.Unknown c -> format "Unknown(%c)" c

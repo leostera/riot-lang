@@ -3,15 +3,10 @@ open Std
 let test_code =
   {|
 let x = 42
-
 let add a b = a + b
-
-type t = int
-
-module M = struct
-  let y = true
-end
 |}
+
+let simple_expr = {|1 + 2 * 3|}
 
 let () =
   println "=== Testing Lexer ===\n";
@@ -34,5 +29,16 @@ let () =
 
   let trees = Ocaml_syn.parse_token_trees test_code in
   println "%s" (Ocaml_syn.TokenTree.list_to_string trees);
+
+  println "\n=== Testing Parser ===\n";
+
+  (match Ocaml_syn.parse simple_expr with
+  | Ok ast -> println "Parsed expression successfully! %d items" (List.length ast)
+  | Error (Ocaml_syn.Parser.UnexpectedToken { expected; found = _ }) ->
+      println "Parse error: expected %s" expected
+  | Error Ocaml_syn.Parser.UnexpectedEOF -> println "Parse error: unexpected EOF"
+  | Error Ocaml_syn.Parser.InvalidPattern -> println "Parse error: invalid pattern"
+  | Error (Ocaml_syn.Parser.InvalidExpression msg) ->
+      println "Parse error: %s" msg);
 
   println "\nDone!"

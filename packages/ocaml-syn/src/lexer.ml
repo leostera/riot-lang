@@ -55,14 +55,16 @@ let lex_ident cursor =
   let len = Cursor.position cursor - start in
   let ident = Cursor.slice cursor start len in
 
-  match Token.keyword_of_string ident with
-  | Some kw ->
-      if Token.is_opening_keyword ident then
-        let delim = Token.delimiter_of_keyword ident |> Option.unwrap in
-        Token.OpenDelim delim
-      else if Token.is_closing_keyword ident then Token.CloseDelim BeginEnd
-      else Token.Keyword kw
-  | None -> Token.Ident ident
+  if ident = "_" then Token.Underscore
+  else
+    match Token.keyword_of_string ident with
+    | Some kw ->
+        if Token.is_opening_keyword ident then
+          let delim = Token.delimiter_of_keyword ident |> Option.unwrap in
+          Token.OpenDelim delim
+        else if Token.is_closing_keyword ident then Token.CloseDelim BeginEnd
+        else Token.Keyword kw
+    | None -> Token.Ident ident
 
 let lex_number cursor =
   let num_str = Cursor.take_while cursor is_digit in
