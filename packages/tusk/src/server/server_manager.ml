@@ -160,7 +160,7 @@ let ensure_running ~workspace =
   Std.Log.debug "ensure_running: Got daemon at %s:%d" daemon.host daemon.port;
 
   (* 2. Wait for server to be ready *)
-  let rec wait_server ~retries ~daemon =
+  let rec wait_server ~retries ~(daemon : Daemon.t) =
     if retries <= 0 then (
       Std.Log.error "Failed to connect to server after 60 retries";
       Std.Log.info "Checking if server process is still alive...";
