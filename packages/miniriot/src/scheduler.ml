@@ -1,3 +1,5 @@
+  open Kernel
+
 module Pid_table = Hashtbl.Make (struct
   type t = Pid.t
 
@@ -11,11 +13,11 @@ type t = {
   run_queue : Process.t Queue.t;
   processes : Process.t Pid_table.t;
   mutable current_process : Process.t option;
-  io_poll : Kernel.Async.Poll.t;
+  io_poll : Async.Poll.t;
 }
 
 let create () =
-  match Kernel.Async.Poll.make () with
+  match Async.Poll.make () with
   | Ok io_poll ->
       {
         stop = false;
@@ -27,11 +29,11 @@ let create () =
       }
   | Error err ->
       Printf.printf
-        "[Scheduler] ERROR: Failed to create Kernel.Async.Poll: %s\n%!"
+        "[Scheduler] ERROR: Failed to create Async.Poll: %s\n%!"
         (match err with
         | `System_error s -> s
         | `Noop -> "Unknown error"
-        | `IO_error e -> Kernel.IO.error_message e
+        | `IO_error e -> IO.error_message e
         | `Closed -> "Closed"
         | `Connection_closed -> "Connection closed"
         | `Eof -> "End of file"
@@ -132,10 +134,10 @@ let handle_syscall k t proc name interest source _timeout =
       Trace.trace "Process %s syscall %s ready" pid_str name;
       k (Continue ())
   | None -> (
-      let token = Kernel.Async.Token.make proc in
+      let token = Async.Token.make proc in
       Trace.trace "Process %s registering for I/O" pid_str;
       Process.mark_as_awaiting_io proc ~name token source;
-      match Kernel.Async.Poll.register t.io_poll token interest source with
+      match Async.Poll.register t.io_poll token interest source with
       | Ok () ->
           Trace.trace "Process %s registered for I/O successfully" pid_str;
           k Suspend
@@ -144,7 +146,7 @@ let handle_syscall k t proc name interest source _timeout =
             "[Scheduler] ERROR: Failed to register I/O for process %s: %s\n%!"
             pid_str
             (match err with
-            | `IO_error e -> Kernel.IO.error_message e
+            | `IO_error e -> IO.error_message e
             | `Noop -> "Unknown error"
             | _ -> "Other error");
           (* Don't continue - the I/O operation failed to register *)
@@ -171,12 +173,12 @@ let handle_exit_proc t proc reason =
 
     (* Clean up any I/O registrations *)
     Process.consume_ready_tokens proc (fun (_token, source) ->
-        match Kernel.Async.Poll.deregister t.io_poll source with
+        match Async.Poll.deregister t.io_poll source with
         | Ok () -> ()
         | Error err ->
             Printf.printf "[Scheduler] WARN: Failed to deregister I/O: %s\n%!"
               (match err with
-              | `IO_error e -> Kernel.IO.error_message e
+              | `IO_error e -> IO.error_message e
               | `Noop -> "Unknown error"
               | _ -> "Other error"));
 
@@ -250,24 +252,24 @@ let step_process t proc =
 let poll_io t =
   Trace.trace "Polling for I/O events";
   let events =
-    match Kernel.Async.Poll.poll t.io_poll with
+    match Async.Poll.poll t.io_poll with
     | Ok events -> events
     | Error err ->
         Printf.printf "[Scheduler] ERROR: Failed to poll I/O: %s\n%!"
           (match err with
-          | `IO_error e -> Kernel.IO.error_message e
+          | `IO_error e -> IO.error_message e
           | `Noop -> "Unknown error"
           | _ -> "Other error");
         []
   in
   List.iter
     (fun event ->
-      let token = Kernel.Async.Event.token event in
-      let proc : Process.t = Kernel.Async.Token.unsafe_to_value token in
+      let token = Async.Event.token event in
+      let proc : Process.t = Async.Token.unsafe_to_value token in
       Trace.trace "I/O ready for process %s" (Pid.to_string (Process.pid proc));
       match Process.state proc with
       | Waiting_io { source; _ } ->
-          (match Kernel.Async.Poll.deregister t.io_poll source with
+          (match Async.Poll.deregister t.io_poll source with
           | Ok () -> ()
           | Error err ->
               Printf.printf
@@ -275,7 +277,7 @@ let poll_io t =
                  %!"
                 (Pid.to_string (Process.pid proc))
                 (match err with
-                | `IO_error e -> Kernel.IO.error_message e
+                | `IO_error e -> IO.error_message e
                 | `Noop -> "Unknown error"
                 | _ -> "Other error"));
           if Process.is_alive proc then (

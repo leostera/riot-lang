@@ -1,3 +1,4 @@
+open Kernel
 exception Unwind
 
 type ('a, 'b) continuation = ('a, 'b) Effect.Shallow.continuation
