@@ -2,12 +2,52 @@
 
 > This file consolidates all todos from various documentation files into a single source of truth.
 > These will be converted into Linear issues with appropriate tags and metadata.
+> 
+> **Last Updated**: 2025-10-03
+> **Status**: Active tracking - regularly review completed items and move to archive
 
 ## Legend
 
 - **Priority**: `P0` (Critical), `P1` (High), `P2` (Medium), `P3` (Low)
 - **Size**: `XS` (< 1 day), `S` (1-3 days), `M` (3-7 days), `L` (1-2 weeks), `XL` (2+ weeks)
-- **Tags**: `#mcp`, `#test`, `#package`, `#format`, `#std`, `#plugin`, `#cross-compile`, `#bugfix`, `#feature`, `#infra`, `#docs`
+- **Tags**: `#mcp`, `#test`, `#package`, `#format`, `#std`, `#plugin`, `#cross-compile`, `#bugfix`, `#feature`, `#infra`, `#docs`, `#cli`, `#argparse`
+- **Status**: Items marked with ✅ are implemented and should be moved to archive
+
+---
+
+## Quick Status Overview
+
+### ✅ Recently Completed (Move to Archive)
+- Std.Fs - Non-blocking filesystem operations
+- Std.Path - Path manipulation
+- Std.Crypto.Hash - Cryptographic hashing
+- Std.Json - JSON parsing/generation
+- Std.Toml - TOML parsing
+- Std.Net.Http.* - Complete RFC 7231-compliant HTTP/1.1 types
+- Std.Command - System command execution
+- Std.Collections.* - Full suite of data structures
+- Std.Time.* - Time types (Duration, Instant, SystemTime)
+- Std.WorkerPool - Parallel task execution
+- `tusk build` - Package building with dependency graph
+- `tusk clean` - Build artifact cleanup
+- `tusk new` - Package scaffolding
+- `tusk install` - Binary installation
+- `tusk run` - Binary execution
+- `tusk version` - Version display (basic)
+
+### 🚧 High Priority Next Steps
+1. **Std.ArgParser** - Declarative CLI parsing (design complete, ready to implement)
+2. **Std.Http.Client** - HTTP client for network requests
+3. **tusk test** - Test framework with [@test] attributes
+4. **tusk fmt** - Code formatting (mentioned in help but missing)
+5. **tusk doc** - Documentation generation (mentioned in help but missing)
+
+### 📦 Major Systems Not Yet Started
+- Package Management (PubGrub resolver, registry, publish/install)
+- Plugin System (workspace commands, dependency plugins)
+- Cross-Compilation (multi-target builds)
+- Format System (beyond basic fmt command)
+- Advanced MCP Tools (most IDE-like features)
 
 ---
 
@@ -542,37 +582,181 @@
 
 ## Phase 5: Standard Library Development
 
-### Core I/O & Filesystem
+### ✅ Completed Standard Library Modules
 
-#### [P1] Implement Std.Fs - Non-blocking filesystem
+The following modules are already implemented:
+- ✅ **Std.Fs** - Non-blocking filesystem operations
+- ✅ **Std.Path** - Path manipulation and normalization
+- ✅ **Std.Crypto.Hash** - Cryptographic hashing (SHA256, SHA512, etc.)
+- ✅ **Std.Json** - JSON parsing and serialization
+- ✅ **Std.Toml** - TOML parsing
+- ✅ **Std.Net.Uri** - URI parsing and manipulation
+- ✅ **Std.Net.Http.*** - Complete HTTP/1.1 types (RFC 7231 compliant)
+  - Method, Status, Header, Request, Response, Version
+- ✅ **Std.Command** - System command execution
+- ✅ **Std.Env** - Environment variable access
+- ✅ **Std.Time.*** - Time types (Duration, Instant, SystemTime)
+- ✅ **Std.Collections.*** - Data structures (Vector, HashMap, HashSet, Queue, Deque)
+- ✅ **Std.Graph.*** - Graph utilities (Dot, Mermaid)
+- ✅ **Std.Log** - Structured logging
+- ✅ **Std.DateTime** - Date and time handling
+- ✅ **Std.WorkerPool** - Parallel task execution
+
+### CLI & Application Support
+
+#### [P1] Implement Std.ArgParser - Declarative CLI argument parsing
 - **Size**: L
-- **Tags**: #std #feature #fs
-- **Module**: `packages/std/src/fs.ml`
-- **Features**:
-  - Non-blocking read/write using Gluon
-  - Copy, move, remove operations
-  - Directory operations
-  - File queries (exists, is_file, is_dir)
-  - Atomic writes
+- **Tags**: #std #feature #cli #argparse
+- **Module**: `packages/std/src/arg_parser.ml`
+- **Status**: Not implemented - design complete
+- **Inspiration**: Rust's Clap library - declarative builder pattern with type-safe extraction
+- **Philosophy**:
+  - Declarative schema definition using builder pattern
+  - Auto-generate help text from schema
+  - Type-safe argument extraction
+  - Support flags, options, positional args, and subcommands
+  - Clap-style extraction API for ergonomic pattern matching
 
-#### [P1] Implement Std.Path - Path manipulation
-- **Size**: M
-- **Tags**: #std #feature #fs
-- **Module**: `packages/std/src/path.ml`
-- **Features**:
-  - Join, dirname, basename, extension
-  - Normalization and resolution
-  - Cross-platform path handling
+**Core API Design**:
+```ocaml
+module Std.ArgParser : sig
+  type command
+  type matches
+  
+  (* Command construction *)
+  val command : string -> command
+  val version : string -> command -> command
+  val about : string -> command -> command
+  val author : string -> command -> command
+  
+  (* Adding arguments and subcommands *)
+  val arg : 'a Arg.t -> command -> command
+  val subcommand : command -> command -> command
+  
+  (* Parsing *)
+  val get_matches : command -> string list -> (matches, error) result
+  
+  (* Extracting values - Clap style! *)
+  val get_one : matches -> string -> string option
+  val get_flag : matches -> string -> bool
+  val get_count : matches -> string -> int  (* for -vvv *)
+  val get_many : matches -> string -> string list
+  val get_int : matches -> string -> int option
+  val get_float : matches -> string -> float option
+  val get_path : matches -> string -> Path.t option
+  
+  (* Subcommand matching *)
+  val subcommand : matches -> (string * matches) option
+  val subcommand_name : matches -> string option
+  val subcommand_matches : matches -> string -> matches option
+  
+  (* Argument builders *)
+  module Arg : sig
+    type 'a t
+    
+    val flag : string -> bool t
+    val option : string -> string t
+    val positional : string -> string t
+    val trailing : string -> string list t
+    
+    (* Chainable modifiers *)
+    val short : char -> 'a t -> 'a t
+    val long : string -> 'a t -> 'a t
+    val help : string -> 'a t -> 'a t
+    val value_name : string -> 'a t -> 'a t
+    val required : bool -> 'a t -> 'a t
+    val default : string -> 'a t -> 'a t
+    val env : string -> 'a t -> 'a t
+    val action : action -> 'a t -> 'a t
+    val multiple : 'a t -> 'a t
+    val count : bool t -> bool t  (* -vvv = 3 *)
+    val possible_values : string list -> 'a t -> 'a t
+    val conflicts_with : string -> 'a t -> 'a t
+    val requires : string -> 'a t -> 'a t
+  end
+  
+  type action = Set | SetTrue | SetFalse | Append | Count
+  type error = (* ... *)
+end
+```
 
-#### [P1] Implement Std.Crypto.Hash - Cryptographic hashing
-- **Size**: M
-- **Tags**: #std #feature #crypto
-- **Module**: `packages/std/src/crypto/hash.ml`
-- **Features**:
-  - SHA256, SHA512, Blake3
-  - File hashing
-  - Incremental hashing
-  - Use OpenSSL/libsodium bindings
+**Example Usage**:
+```ocaml
+let cli =
+  ArgParser.command "tusk"
+  |> ArgParser.version "0.1.0"
+  |> ArgParser.about "OCaml build system"
+  |> ArgParser.arg Arg.(
+      flag "verbose"
+      |> short 'v'
+      |> long "verbose"
+      |> help "Enable verbose output"
+      |> count  (* supports -vvv *)
+  )
+  |> ArgParser.subcommand (
+      ArgParser.command "build"
+      |> ArgParser.about "Build packages"
+      |> ArgParser.arg Arg.(
+          option "package"
+          |> short 'p'
+          |> long "package"
+          |> help "Build specific package"
+      )
+      |> ArgParser.arg Arg.(
+          flag "release"
+          |> long "release"
+          |> help "Build in release mode"
+      )
+  )
+
+match ArgParser.get_matches cli Env.args with
+| Ok matches ->
+    let verbose_level = ArgParser.get_count matches "verbose" in
+    (match ArgParser.subcommand matches with
+    | Some ("build", build_matches) ->
+        let package = ArgParser.get_one build_matches "package" in
+        let release = ArgParser.get_flag build_matches "release" in
+        Build.run ~verbose_level ~release ?package ()
+    | _ -> ())
+| Error err ->
+    ArgParser.print_error err;
+    exit 1
+```
+
+**Features**:
+- Declarative builder pattern with `|>` chaining
+- Auto-generated help text (`--help`, `-h`)
+- Auto-generated version flag if version is set
+- Support for short (`-v`) and long (`--verbose`) flags
+- Count repeated flags (`-vvv` = verbosity level 3)
+- Required vs optional arguments
+- Default values
+- Environment variable fallback
+- Argument validation (possible_values, conflicts_with, requires)
+- Positional arguments
+- Trailing arguments (after `--`)
+- Multiple subcommand levels
+- Type-safe extraction with proper error handling
+- Clean pattern matching on subcommands
+
+**Implementation Notes**:
+- Use string-based argument names for simplicity (like Clap)
+- Separate getters for different types (get_flag, get_one, get_int, etc.)
+- Builder pattern returns new immutable values
+- Parse returns Result for proper error handling
+- Auto-generate usage strings from schema
+- Support both `subcommand` (returns tuple) and `subcommand_matches` (returns matches option)
+
+**Dependencies**:
+- None - pure OCaml implementation
+- Uses existing Std.String, Std.List, Std.Result
+
+**Future Enhancements**:
+- Shell completion generation (bash, zsh, fish)
+- Custom value parsers
+- Argument groups for help organization
+- Colored help output using existing color support
+- PPX for deriving CLI from record types
 
 ### Network & HTTP
 
@@ -606,30 +790,25 @@
 
 ### Data Formats
 
-#### [P1] Implement Std.Json - JSON parsing/generation
-- **Size**: M
-- **Tags**: #std #feature #data
-- **Module**: `packages/std/src/json.ml`
-- **Features**:
-  - Fast parsing
-  - Builder API
-  - Path-based access
-  - Pretty printing
-
-#### [P2] Implement Std.Toml - TOML parsing
-- **Size**: M
-- **Tags**: #std #feature #data
-- **Module**: `packages/std/src/toml.ml`
-
 #### [P2] Implement Std.Xml - XML parsing
 - **Size**: M
 - **Tags**: #std #feature #data
 - **Module**: `packages/std/src/xml.ml`
+- **Status**: Not implemented
+- **Features**:
+  - DOM and SAX parsing
+  - XPath support
+  - XML generation
 
 #### [P2] Implement Std.Csv - CSV handling
 - **Size**: S
 - **Tags**: #std #feature #data
 - **Module**: `packages/std/src/csv.ml`
+- **Status**: Not implemented
+- **Features**:
+  - CSV parsing and writing
+  - Custom delimiters
+  - Header handling
 
 ### Actor System Extensions
 
@@ -664,18 +843,11 @@
 - **Size**: M
 - **Tags**: #std #feature #app
 - **Module**: `packages/std/src/config.ml`
+- **Status**: Not implemented
 - **Features**:
   - Load from files and environment
   - Nested configuration access
-
-#### [P2] Implement Std.Log - Structured logging
-- **Size**: M
-- **Tags**: #std #feature #app
-- **Module**: `packages/std/src/log.ml`
-- **Features**:
-  - Multiple log levels
-  - Structured fields
-  - JSON/pretty output formats
+  - Type-safe config extraction
 
 #### [P3] Implement Std.Sql - Database interface
 - **Size**: XL
@@ -860,18 +1032,29 @@
 
 ### CLI Improvements
 
-#### [P1] Implement `tusk version` command
+#### [P1] Implement `tusk fmt` command
+- **Size**: M
+- **Tags**: #cli #feature #format
+- **Description**: Format OCaml code (currently in help text but not implemented)
+- **Status**: Mentioned in CLI help but handler missing
+- **Depends on**: Phase 4 Format System
+
+#### [P1] Implement `tusk doc` command
+- **Size**: M
+- **Tags**: #cli #feature #docs
+- **Description**: Generate documentation (currently in help text but not implemented)
+- **Status**: Mentioned in CLI help but handler missing
+- **Features**:
+  - Integration with odoc
+  - Cross-package documentation
+
+#### [P2] Improve `tusk version` command
 - **Size**: XS
 - **Tags**: #cli #feature
-- **Description**: Display version, commit hash, build date
+- **Description**: Currently shows "dev", should show actual version, commit hash, build date
+- **Status**: Basic implementation exists
 
-#### [P1] Implement `tusk new` command
-- **Size**: M
-- **Tags**: #cli #feature
-- **Description**: Create new package with scaffolding
-- **Usage**: `tusk new [opts] path`
-
-#### [P2] Implement `tusk clean` command improvements
+#### [P2] Enhance `tusk clean` command improvements
 - **Size**: S
 - **Tags**: #cli #feature
 - **Description**: Report space freed, artifacts removed count
