@@ -295,14 +295,11 @@ let start_tcp_server ~server ~port =
     Log.debug "TCP server received connection";
     Log.debug "Request: %s" req;
     let reply msg =
-      Log.debug "reply() called with: %s" msg;
       let bytes = Bytes.of_string (msg ^ "\n") in
-      Log.debug "Writing %d bytes to stream" (Bytes.length bytes);
       match
         Net.TcpStream.write stream bytes ~pos:0 ~len:(Bytes.length bytes) ()
       with
       | Ok bytes_written ->
-          Log.debug "Successfully wrote %d bytes" bytes_written;
           ()
       | Error e ->
           Log.error "Failed to write to stream: %s"

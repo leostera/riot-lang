@@ -1,5 +1,6 @@
 (** JSON-RPC 2.0 Server Implementation *)
 
+open Std
 open Std.Data
 
 (* TODO: In the future, we could use a GADT handler type to allow each
@@ -29,27 +30,27 @@ let handle_message (type req res) (server : (req, res) t)
          and type response = res)
   in
   (* Parse the incoming message *)
-  Std.Log.debug "[JSONRPC SERVER] Parsing message: %s" message;
+  Log.trace "[JSONRPC SERVER] Parsing message: %s" message;
   match Json.of_string message with
   | Error e ->
       (* Parse error - can't send typed response, just log/ignore *)
-      Std.Log.error "[JSONRPC SERVER] JSON parse error: %s"
+      Log.error "[JSONRPC SERVER] JSON parse error: %s"
         (Json.error_to_string e);
       ()
   | Ok json -> (
-      Std.Log.debug "[JSONRPC SERVER] JSON parsed successfully";
+      Log.trace "[JSONRPC SERVER] JSON parsed successfully";
       match Common.request_of_json json with
       | Error e ->
           (* Invalid request - can't send typed response, just log/ignore *)
-          Std.Log.error "[JSONRPC SERVER] Request parse error";
+          Log.error "[JSONRPC SERVER] Request parse error";
           ()
       | Ok request -> (
-          Std.Log.debug "[JSONRPC SERVER] Looking for handler for method: %s"
+          Log.trace "[JSONRPC SERVER] Looking for handler for method: %s"
             request.method_;
-          Std.Log.debug "[JSONRPC SERVER] Available handlers: %d"
+          Log.trace "[JSONRPC SERVER] Available handlers: %d"
             (List.length server.handlers);
           List.iter
-            (fun h -> Std.Log.debug "[JSONRPC SERVER]   - %s" h.method_)
+            (fun h -> Log.trace "[JSONRPC SERVER]   - %s" h.method_)
             server.handlers;
           (* Find handler for method *)
           match
@@ -57,21 +58,21 @@ let handle_message (type req res) (server : (req, res) t)
           with
           | None ->
               (* Method not found - can't send typed response, just log/ignore *)
-              Std.Log.error "[JSONRPC SERVER] No handler found for method: %s"
+              Log.error "[JSONRPC SERVER] No handler found for method: %s"
                 request.method_;
               ()
           | Some handler -> (
               (* Convert params to typed request using method name *)
-              Std.Log.debug "[JSONRPC SERVER] Found handler for %s"
+              Log.trace "[JSONRPC SERVER] Found handler for %s"
                 request.method_;
               match P.request_of_params request.method_ request.params with
               | Error _err ->
                   (* Invalid params - can't send typed response, just log/ignore *)
-                  Std.Log.error "[JSONRPC SERVER] Failed to convert params";
+                  Log.error "[JSONRPC SERVER] Failed to convert params";
                   ()
               | Ok typed_request ->
                   (* Execute handler with typed request *)
-                  Std.Log.debug "[JSONRPC SERVER] Calling handler";
+                  Log.trace "[JSONRPC SERVER] Calling handler";
                   if Common.is_notification request then
                     (* Notification - no response expected *)
                     handler.fn (fun _ -> ()) typed_request
@@ -81,7 +82,7 @@ let handle_message (type req res) (server : (req, res) t)
                       (* Convert typed response to JSON *)
                       let response_json = P.response_to_json res in
                       (* Wrap in JSON-RPC response *)
-                      let id = Option.value request.id ~default:Common.Null in
+                      let id = Option.unwrap_or request.id ~default:Common.Null in
                       let json_response =
                         Json.obj
                           [
