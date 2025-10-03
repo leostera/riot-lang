@@ -1,4 +1,5 @@
 open Kernel
+
 type error = SystemError of string
 
 (** Helper to convert Kernel.IO errors to our error type *)

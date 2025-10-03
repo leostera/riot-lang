@@ -1,5 +1,5 @@
 (* Library interface module utilities *)
-  open Std
+open Std
 
 let template ~parent ~modules ~stdlib_modules =
   let parent_str = Module_name.to_string parent in

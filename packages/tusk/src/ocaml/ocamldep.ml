@@ -127,15 +127,16 @@ let deps_with_flags ~toolchain ~cwd ~file ~flags ~package_namespace =
               Model.Module_name.of_string ~namespace:package_namespace modname)
     | _ -> []
 
-(** Get dependencies for multiple files in one ocamldep call - returns (file, deps) list *)
+(** Get dependencies for multiple files in one ocamldep call - returns (file,
+    deps) list *)
 let batch_deps ~toolchain ~cwd ~files ~package_namespace =
   if files = [] then []
   else
     let ocamldep = Path.to_string (Toolchains.ocamldep_path toolchain) in
     let files_str = String.concat " " (List.map Path.to_string files) in
     let cmd =
-      format "cd %s && %s -modules %s 2>/dev/null" (Path.to_string cwd)
-        ocamldep files_str
+      format "cd %s && %s -modules %s 2>/dev/null" (Path.to_string cwd) ocamldep
+        files_str
     in
 
     Log.debug "[OCAMLDEP] Batch running for %d files" (List.length files);
@@ -147,8 +148,7 @@ let batch_deps ~toolchain ~cwd ~files ~package_namespace =
       | Error _err -> ""
     in
 
-    if output = "" then
-      List.map (fun file -> (file, [])) files
+    if output = "" then List.map (fun file -> (file, [])) files
     else
       (* Parse output - each line is "file.ml: Module1 Module2 Module3" *)
       let lines = String.split_on_char '\n' output in

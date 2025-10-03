@@ -1,4 +1,5 @@
 open Global
+
 type value =
   | String of string
   | Array of value list

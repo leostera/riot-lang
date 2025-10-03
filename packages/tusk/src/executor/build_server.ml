@@ -148,7 +148,8 @@ let start ~workspace ~toolchain ~workers ~session_id ~client_pid ~target =
     | Package pkg ->
         let filtered = Build_graph.filter_for_package fresh_build_graph pkg in
         Log.debug "[BUILD_SERVER] Filtered graph for package '%s' has %d nodes"
-          pkg (Build_graph.size filtered);
+          pkg
+          (Build_graph.size filtered);
         filtered
   in
 

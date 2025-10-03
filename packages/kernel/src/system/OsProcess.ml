@@ -5,7 +5,8 @@ type status = Running | Exited of int | Signaled of int | Stopped of int
 type stdio_config = {
   stdin : [ `Null | `Pipe | `Inherit | `File of Async.Fd.t ];
   stdout : [ `Null | `Pipe | `Inherit | `File of Async.Fd.t ];
-  stderr : [ `Null | `Pipe | `Inherit | `Redirect_to_stdout | `File of Async.Fd.t ];
+  stderr :
+    [ `Null | `Pipe | `Inherit | `Redirect_to_stdout | `File of Async.Fd.t ];
 }
 
 type t = {
@@ -60,8 +61,7 @@ let spawn ~program ~args ?(env = []) ?cwd ~stdio () =
           let read_fd, write_fd = Unix.pipe () in
           (write_fd, Some read_fd, write_fd, Some read_fd)
       | `Redirect_to_stdout -> (stdout_child, None, stdout_child, None)
-      | `File unix_fd ->
-          (unix_fd, None, unix_fd, None)
+      | `File unix_fd -> (unix_fd, None, unix_fd, None)
     in
 
     (* Build environment array *)
@@ -97,20 +97,18 @@ let spawn ~program ~args ?(env = []) ?cwd ~stdio () =
     (match stdio.stdin with
     | `Pipe | `Null -> Unix.close stdin_child
     | `Inherit | `File _ -> ());
-    
+
     (match stdio.stdout with
     | `Pipe | `Null -> Unix.close stdout_child
     | `Inherit | `File _ -> ());
-    
+
     (match stdio.stderr with
     | `Pipe | `Null -> Unix.close stderr_child
     | `Redirect_to_stdout -> ()
     | `Inherit | `File _ -> ());
 
     (* Set parent-side fds to non-blocking *)
-    (match stdin_parent with
-    | Some fd -> Unix.set_nonblock fd
-    | None -> ());
+    (match stdin_parent with Some fd -> Unix.set_nonblock fd | None -> ());
     (match stdout_parent with Some fd -> Unix.set_nonblock fd | None -> ());
     (match stderr_parent with Some fd -> Unix.set_nonblock fd | None -> ());
 

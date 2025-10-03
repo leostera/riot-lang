@@ -456,10 +456,10 @@ let scan_sources t sandbox_dir (sources : Sandbox.entry list) =
 (** Wire dependencies using ocamldep *)
 let wire_dependencies t sandbox_dir =
   Log.debug "[MODULE_GRAPH] Wiring dependencies with ocamldep";
-  
+
   (* Collect all concrete files and their node info *)
   let all_nodes = G.map t.graph ~fn:(fun (node_id, node) -> (node_id, node)) in
-  
+
   let files_with_nodes =
     List.filter_map
       (fun (node_id, (node : dep G.node)) ->
@@ -472,23 +472,24 @@ let wire_dependencies t sandbox_dir =
         | _ -> None)
       all_nodes
   in
-  
+
   let files = List.map (fun (path, _, _) -> path) files_with_nodes in
-  
-  Log.debug "[MODULE_GRAPH] Running batch ocamldep for %d files" (List.length files);
-  
+
+  Log.debug "[MODULE_GRAPH] Running batch ocamldep for %d files"
+    (List.length files);
+
   (* Run ocamldep once for all files *)
   let file_deps_map =
     Ocamldep.batch_deps ~toolchain:t.toolchain ~cwd:sandbox_dir ~files
       ~package_namespace:t.namespace
   in
-  
+
   (* Create a lookup table for quick access *)
   let deps_table = Hashtbl.create (List.length file_deps_map) in
   List.iter
     (fun (file, deps) -> Hashtbl.add deps_table (Path.to_string file) deps)
     file_deps_map;
-  
+
   (* Map back to (node_id, node, deps) format *)
   let deps =
     List.filter_map
@@ -504,7 +505,7 @@ let wire_dependencies t sandbox_dir =
             Some (node_id, node, []))
       files_with_nodes
   in
-  
+
   Log.debug "[MODULE_GRAPH] Processed %d files with dependencies"
     (List.length deps);
 

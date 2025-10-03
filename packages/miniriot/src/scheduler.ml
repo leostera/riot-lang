@@ -1,4 +1,4 @@
-  open Kernel
+open Kernel
 
 module Pid_table = Hashtbl.Make (struct
   type t = Pid.t
@@ -28,8 +28,7 @@ let create () =
         io_poll;
       }
   | Error err ->
-      Printf.printf
-        "[Scheduler] ERROR: Failed to create Async.Poll: %s\n%!"
+      Printf.printf "[Scheduler] ERROR: Failed to create Async.Poll: %s\n%!"
         (match err with
         | `System_error s -> s
         | `Noop -> "Unknown error"

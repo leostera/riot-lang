@@ -1,4 +1,4 @@
-  open Global
+open Global
 (** S-expression parsing and printing library *)
 
 (** S-expression type *)

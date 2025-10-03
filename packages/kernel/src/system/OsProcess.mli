@@ -10,7 +10,8 @@ type status =
 type stdio_config = {
   stdin : [ `Null | `Pipe | `Inherit | `File of Async.Fd.t ];
   stdout : [ `Null | `Pipe | `Inherit | `File of Async.Fd.t ];
-  stderr : [ `Null | `Pipe | `Inherit | `Redirect_to_stdout | `File of Async.Fd.t ];
+  stderr :
+    [ `Null | `Pipe | `Inherit | `Redirect_to_stdout | `File of Async.Fd.t ];
 }
 (** Standard I/O configuration for spawned process.
     - `Null: redirect to /dev/null

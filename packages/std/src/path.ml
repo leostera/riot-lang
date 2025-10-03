@@ -1,4 +1,4 @@
-  open Global
+open Global
 (** Path manipulation module - Type-safe filesystem paths *)
 
 type t = string (* Internal representation - always valid UTF-8 *)

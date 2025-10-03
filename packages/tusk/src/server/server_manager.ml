@@ -106,7 +106,7 @@ module Daemon = struct
         (* Open log files for redirection *)
         let stdout_log = Path.(daemon_path / Path.v "stdout.log") in
         let stderr_log = Path.(daemon_path / Path.v "stderr.log") in
-        
+
         let stdout_file =
           Fs.File.open_write stdout_log
           |> Result.expect ~msg:"Failed to open stdout.log"
@@ -115,19 +115,20 @@ module Daemon = struct
           Fs.File.open_write stderr_log
           |> Result.expect ~msg:"Failed to open stderr.log"
         in
-        
+
         let stdout_fd = Fs.File.into_fd stdout_file in
         let stderr_fd = Fs.File.into_fd stderr_file in
-        
+
         (* Configure stdio to redirect to log files *)
         let stdio =
-          System.OsProcess.{
-            stdin = `Null;
-            stdout = `File stdout_fd;
-            stderr = `File stderr_fd;
-          }
+          System.OsProcess.
+            {
+              stdin = `Null;
+              stdout = `File stdout_fd;
+              stderr = `File stderr_fd;
+            }
         in
-        
+
         match
           System.OsProcess.spawn ~program:tusk_exe
             ~args:[ "server"; "foreground" ] ~stdio ()
@@ -136,7 +137,7 @@ module Daemon = struct
             let pid = System.OsProcess.pid process in
             let port = 9753 in
             (* Default port *)
-            
+
             (* File descriptors were consumed by into_fd, no need to close *)
 
             (* Write PID and port files *)
@@ -163,22 +164,29 @@ let ensure_running ~workspace =
   let rec wait_server ~retries ~(daemon : Daemon.t) =
     if retries <= 0 then (
       Std.Log.error "Failed to connect to server after 60 retries";
-      Std.Log.warn "Server (PID %d) not responding, cleaning up and restarting..." daemon.os_pid;
-      
+      Std.Log.warn
+        "Server (PID %d) not responding, cleaning up and restarting..."
+        daemon.os_pid;
+
       (* Clean up stale daemon files *)
-      let home = match Env.home_dir () with Some h -> h | None -> failwith "No home" in
+      let home =
+        match Env.home_dir () with Some h -> h | None -> failwith "No home"
+      in
       let root_str = Path.to_string daemon.workspace.Workspace.root in
       let project_id = format "%08x" (Hashtbl.hash root_str) in
-      let daemon_path = Path.(home / Path.v ".tusk" / Path.v "daemons" / Path.v project_id) in
+      let daemon_path =
+        Path.(home / Path.v ".tusk" / Path.v "daemons" / Path.v project_id)
+      in
       let pid_file = Path.(daemon_path / Path.v "server.pid") in
       let port_file = Path.(daemon_path / Path.v "server.port") in
       let _ = Fs.remove_file pid_file in
       let _ = Fs.remove_file port_file in
-      
+
       (* Try to start a new daemon *)
       match Daemon.of_workspace ~workspace:daemon.workspace with
       | Ok new_daemon ->
-          Std.Log.info "Started new server (PID %d), retrying connection..." new_daemon.os_pid;
+          Std.Log.info "Started new server (PID %d), retrying connection..."
+            new_daemon.os_pid;
           wait_server ~retries:60 ~daemon:new_daemon
       | Error e ->
           Std.Log.error "Failed to restart server";
