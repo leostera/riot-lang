@@ -163,40 +163,26 @@ let ensure_running ~workspace =
   let rec wait_server ~retries ~(daemon : Daemon.t) =
     if retries <= 0 then (
       Std.Log.error "Failed to connect to server after 60 retries";
-      Std.Log.info "Checking if server process is still alive...";
+      Std.Log.warn "Server (PID %d) not responding, cleaning up and restarting..." daemon.os_pid;
       
-      (* Check if the daemon process is still running *)
-      let pid_alive =
-        try
-          Unix.kill daemon.os_pid 0;
-          true
-        with Unix.Unix_error _ -> false
-      in
+      (* Clean up stale daemon files *)
+      let home = match Env.home_dir () with Some h -> h | None -> failwith "No home" in
+      let root_str = Path.to_string daemon.workspace.Workspace.root in
+      let project_id = format "%08x" (Hashtbl.hash root_str) in
+      let daemon_path = Path.(home / Path.v ".tusk" / Path.v "daemons" / Path.v project_id) in
+      let pid_file = Path.(daemon_path / Path.v "server.pid") in
+      let port_file = Path.(daemon_path / Path.v "server.port") in
+      let _ = Fs.remove_file pid_file in
+      let _ = Fs.remove_file port_file in
       
-      if not pid_alive then (
-        Std.Log.warn "Server process (PID %d) is dead, cleaning up and restarting..." daemon.os_pid;
-        (* Clean up stale daemon files *)
-        let home = match Env.home_dir () with Some h -> h | None -> failwith "No home" in
-        let root_str = Path.to_string daemon.workspace.Workspace.root in
-        let project_id = format "%08x" (Hashtbl.hash root_str) in
-        let daemon_path = Path.(home / Path.v ".tusk" / Path.v "daemons" / Path.v project_id) in
-        let pid_file = Path.(daemon_path / Path.v "server.pid") in
-        let port_file = Path.(daemon_path / Path.v "server.port") in
-        let _ = Fs.remove_file pid_file in
-        let _ = Fs.remove_file port_file in
-        
-        (* Try to start a new daemon *)
-        match Daemon.of_workspace ~workspace:daemon.workspace with
-        | Ok new_daemon ->
-            Std.Log.info "Started new server (PID %d), retrying connection..." new_daemon.os_pid;
-            wait_server ~retries:60 ~daemon:new_daemon
-        | Error e ->
-            Std.Log.error "Failed to restart server";
-            Error e
-      ) else (
-        Std.Log.error "Server process is alive but not responding";
-        Error Error.ScanWorkspaceError
-      ))
+      (* Try to start a new daemon *)
+      match Daemon.of_workspace ~workspace:daemon.workspace with
+      | Ok new_daemon ->
+          Std.Log.info "Started new server (PID %d), retrying connection..." new_daemon.os_pid;
+          wait_server ~retries:60 ~daemon:new_daemon
+      | Error e ->
+          Std.Log.error "Failed to restart server";
+          Error e)
     else
       match Tusk_jsonrpc.Client.create ~host:daemon.host ~port:daemon.port with
       | Ok client -> (

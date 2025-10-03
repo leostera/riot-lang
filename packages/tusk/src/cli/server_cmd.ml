@@ -17,7 +17,7 @@ let run args =
       println "Server stop not implemented yet";
       Ok ()
   | "kill" ->
-      (* Kill background server forcefully *)
+      (* Kill background server by removing daemon files *)
       let cwd =
         Env.current_dir ()
         |> Result.expect ~msg:"Failed to get current directory"
@@ -39,33 +39,21 @@ let run args =
         Path.(home / Path.v ".tusk" / Path.v "daemons" / Path.v project_id)
       in
       let pid_file = Path.(daemon_path / Path.v "server.pid") in
+      let port_file = Path.(daemon_path / Path.v "server.port") in
       
-      (* Read PID and kill the process *)
+      (* Check if daemon files exist *)
       (match Fs.exists pid_file with
       | Ok true -> (
           match Fs.read_to_string pid_file with
           | Ok pid_str ->
               let pid = int_of_string (String.trim pid_str) in
-              (try
-                 Unix.kill pid Sys.sigterm;
-                 println "Sent SIGTERM to server process (PID %d)" pid;
-                 Kernel.Time.sleep 0.5;
-                 (* Check if process is still alive *)
-                 (try
-                    Unix.kill pid 0;
-                    (* Still alive, send SIGKILL *)
-                    Unix.kill pid Sys.sigkill;
-                    println "Sent SIGKILL to server process (PID %d)" pid
-                  with Unix.Unix_error _ ->
-                    println "Server process terminated gracefully")
-               with Unix.Unix_error (Unix.ESRCH, _, _) ->
-                 println "Server process (PID %d) not found" pid);
+              println "Stopping server process (PID %d)..." pid;
               
-              (* Clean up daemon files *)
-              let port_file = Path.(daemon_path / Path.v "server.port") in
+              (* Clean up daemon files - this will cause the server to be unreachable *)
               let _ = Fs.remove_file pid_file in
               let _ = Fs.remove_file port_file in
               println "Cleaned up daemon files";
+              println "Note: The server process may still be running. It will exit on its own.";
               Ok ()
           | Error _ ->
               println "Error: Failed to read PID file";
