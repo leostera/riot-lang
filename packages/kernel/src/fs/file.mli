@@ -20,7 +20,7 @@ val open_flags_to_unix : open_flag list -> Unix.open_flag list
 val seek_command_to_unix : seek_command -> Unix.seek_command
 val lock_command_to_unix : lock_command -> Unix.lock_command
 
-type t = Async.Fd.t
+type t = Fd.t
 
 module Metadata : sig
   type t = Unix.stats
@@ -39,7 +39,7 @@ module Metadata : sig
   val ctime : t -> float
 end
 
-val pp : Format.formatter -> t -> unit
+val to_string : t -> string
 val close : t -> unit
 
 val read :
@@ -64,7 +64,7 @@ val write_vectored :
 
 val sendfile :
   t ->
-  file:Async.Fd.t ->
+  file:Fd.t ->
   off:int ->
   len:int ->
   (int, [> Async.io_error ]) Async.io_result

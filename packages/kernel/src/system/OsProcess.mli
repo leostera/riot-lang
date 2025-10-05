@@ -8,10 +8,9 @@ type status =
   | Stopped of int  (** Process status *)
 
 type stdio_config = {
-  stdin : [ `Null | `Pipe | `Inherit | `File of Async.Fd.t ];
-  stdout : [ `Null | `Pipe | `Inherit | `File of Async.Fd.t ];
-  stderr :
-    [ `Null | `Pipe | `Inherit | `Redirect_to_stdout | `File of Async.Fd.t ];
+  stdin : [ `Null | `Pipe | `Inherit | `File of Fd.t ];
+  stdout : [ `Null | `Pipe | `Inherit | `File of Fd.t ];
+  stderr : [ `Null | `Pipe | `Inherit | `Redirect_to_stdout | `File of Fd.t ];
 }
 (** Standard I/O configuration for spawned process.
     - `Null: redirect to /dev/null
@@ -31,13 +30,13 @@ val spawn :
 (** Spawn a process. All piped file descriptors are set to non-blocking mode.
     Returns a process handle that can be used for I/O and status checking. *)
 
-val stdin : t -> Async.Fd.t option
+val stdin : t -> Fd.t option
 (** Get stdin fd if configured as `Pipe. Ready for non-blocking writes. *)
 
-val stdout : t -> Async.Fd.t option
+val stdout : t -> Fd.t option
 (** Get stdout fd if configured as `Pipe. Ready for non-blocking reads. *)
 
-val stderr : t -> Async.Fd.t option
+val stderr : t -> Fd.t option
 (** Get stderr fd if configured as `Pipe. Ready for non-blocking reads. *)
 
 val pid : t -> int

@@ -4,7 +4,7 @@ type t = Socket.stream_socket
 type connect_result = [ `Connected of t | `In_progress of t ]
 
 let of_fd fd = fd
-let pp = Socket.pp
+let to_string = Socket.to_string
 let close = Socket.close
 
 let connect addr =

@@ -1,8 +1,8 @@
 type t
 type connect_result = [ `Connected of t | `In_progress of t ]
 
-val of_fd : Async.Fd.t -> t
-val pp : Format.formatter -> t -> unit
+val of_fd : Fd.t -> t
+val to_string : t -> string
 val close : t -> unit
 
 val connect :
@@ -30,7 +30,7 @@ val write_vectored :
 
 val sendfile :
   t ->
-  file:Async.Fd.t ->
+  file:Fd.t ->
   off:int ->
   len:int ->
   (int, [> Async.io_error ]) Async.io_result

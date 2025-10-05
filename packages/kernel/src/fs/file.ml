@@ -61,7 +61,7 @@ module Metadata = struct
   let ctime s = s.Unix.st_ctime
 end
 
-let pp = Fd.pp
+let to_string = Fd.to_string
 let close = Fd.close
 
 let read fd ?(pos = 0) ?len buf =

@@ -1,6 +1,6 @@
 type t
 
-val pp : Format.formatter -> t -> unit
+val to_string : t -> string
 val close : t -> unit
 
 val bind :

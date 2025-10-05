@@ -3,17 +3,16 @@
 type status = Running | Exited of int | Signaled of int | Stopped of int
 
 type stdio_config = {
-  stdin : [ `Null | `Pipe | `Inherit | `File of Async.Fd.t ];
-  stdout : [ `Null | `Pipe | `Inherit | `File of Async.Fd.t ];
-  stderr :
-    [ `Null | `Pipe | `Inherit | `Redirect_to_stdout | `File of Async.Fd.t ];
+  stdin : [ `Null | `Pipe | `Inherit | `File of Fd.t ];
+  stdout : [ `Null | `Pipe | `Inherit | `File of Fd.t ];
+  stderr : [ `Null | `Pipe | `Inherit | `Redirect_to_stdout | `File of Fd.t ];
 }
 
 type t = {
   pid : int;
-  stdin_fd : Async.Fd.t option;
-  stdout_fd : Async.Fd.t option;
-  stderr_fd : Async.Fd.t option;
+  stdin_fd : Fd.t option;
+  stdout_fd : Fd.t option;
+  stderr_fd : Fd.t option;
   mutable status : status;
 }
 
