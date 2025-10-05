@@ -215,3 +215,7 @@ let file_kind_to_unix = function
   | Character -> Unix.S_CHR
   | Fifo -> Unix.S_FIFO
   | Socket -> Unix.S_SOCK
+
+let stdin = Unix.stdin
+let stdout = Unix.stdout
+let stderr = Unix.stderr

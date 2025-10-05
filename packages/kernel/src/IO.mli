@@ -77,3 +77,9 @@ type file_kind =
 
 val file_kind_of_unix : Unix.file_kind -> file_kind
 val file_kind_to_unix : file_kind -> Unix.file_kind
+
+val stdin : Fd.t
+(** Standard file descriptors *)
+
+val stdout : Fd.t
+val stderr : Fd.t
