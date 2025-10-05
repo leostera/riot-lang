@@ -2,6 +2,7 @@
 module Async = Async
 module Crypto = Crypto
 module Env = Env
+module Fd = Fd
 module Fs = Fs
 module IO = IO
 module Net = Net

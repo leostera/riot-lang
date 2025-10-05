@@ -32,17 +32,6 @@ module Iovec : sig
   val into_string : t -> string
 end
 
-module Fd : sig
-  type t = Unix.file_descr
-
-  val close : t -> unit
-  val equal : t -> t -> bool
-  val make : Unix.file_descr -> t
-  val pp : Format.formatter -> t -> unit
-  val seek : t -> int -> Unix.seek_command -> int
-  val to_int : t -> int
-end
-
 module Token : sig
   type t
 
