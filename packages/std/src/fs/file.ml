@@ -97,8 +97,7 @@ let read_line t =
         | Ok 1 ->
             let c = Bytes.get chunk 0 in
             Buffer.add_char buf c;
-            if c = '\n' then Ok (Buffer.contents buf)
-            else read_until_newline ()
+            if c = '\n' then Ok (Buffer.contents buf) else read_until_newline ()
         | Ok _ -> Error (SystemError "Unexpected read result")
         | Error e -> Error e
       in
