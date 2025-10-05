@@ -21,3 +21,6 @@ let print fmt =
 (** Print to stdout with newline and flush *)
 let println fmt =
   Kernel.Printf.ksprintf (fun s -> Kernel.Printf.printf "%s\n%!" s) fmt
+
+let todo msg = panic (format "TODO: %s" msg)
+let unimplemented () = panic "unimplemented"

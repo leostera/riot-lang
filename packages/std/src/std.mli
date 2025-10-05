@@ -13,6 +13,7 @@ module Env = Env
 module Exception = Exception
 module Fs = Fs
 module Graph = Graph
+module IO = Kernel.IO
 module Iterator = Iterator
 module List = List
 module Log = Log
@@ -42,3 +43,9 @@ val print : ('a, unit, string, unit) format4 -> 'a
 
 val println : ('a, unit, string, unit) format4 -> 'a
 (** Print to stdout with newline and immediate flush *)
+
+val todo : string -> 'a
+(** Mark code as TODO with a message - panics when called *)
+
+val unimplemented : unit -> 'a
+(** Mark code as unimplemented - panics when called *)

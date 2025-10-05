@@ -14,3 +14,9 @@ val print : ('a, unit, string, unit) format4 -> 'a
 
 val println : ('a, unit, string, unit) format4 -> 'a
 (** Print to stdout with newline and immediate flush *)
+
+val todo : string -> 'a
+(** Mark code as TODO with a message - panics when called *)
+
+val unimplemented : unit -> 'a
+(** Mark code as unimplemented - panics when called *)

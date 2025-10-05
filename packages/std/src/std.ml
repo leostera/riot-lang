@@ -13,6 +13,7 @@ module Env = Env
 module Exception = Exception
 module Fs = Fs
 module Graph = Graph
+module IO = Kernel.IO
 module Iterator = Iterator
 module List = List
 module Log = Log
