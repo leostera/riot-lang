@@ -1,0 +1,54 @@
+(* Test: Type definitions *)
+
+(* Type alias *)
+type   id   =   int
+type   name   =   string
+
+(* Record type *)
+type   person   =   {
+  name   :   string;
+  age   :   int;
+  email   :   string   option;
+}
+
+(* Variant type *)
+type   result   =
+  |   Ok   of   string
+  |   Error   of   string
+
+(* Polymorphic type *)
+type   'a   my_option   =
+  |   None
+  |   Some   of   'a
+
+(* Multiple type parameters *)
+type   ('a,   'b)   either   =
+  |   Left   of   'a
+  |   Right   of   'b
+
+(* Recursive type *)
+type   'a   tree   =
+  |   Leaf
+  |   Node   of   'a   *   'a   tree   *   'a   tree
+
+(* Mutually recursive types *)
+type   expr   =
+  |   Int   of   int
+  |   Add   of   expr   *   expr
+  |   Let   of   string   *   expr   *   expr
+and   statement   =
+  |   Expr   of   expr
+  |   Print   of   expr
+
+(* Type with constraints *)
+type   'a   constrained   =   'a   constraint   'a   =   int
+
+(* Polymorphic variants *)
+type   basic_color   =   [`Red   |   `Green   |   `Blue]
+type   extended_color   =   [basic_color   |   `Yellow   |   `Purple]
+
+(* GADT *)
+type   _   term   =
+  |   Int   :   int   ->   int   term
+  |   Bool   :   bool   ->   bool   term
+  |   Add   :   int   term   *   int   term   ->   int   term

@@ -1,0 +1,46 @@
+(* Test: Pattern matching *)
+
+(* Simple match *)
+let   check_sign   n   =
+  match   n   with
+  |   0   ->   "zero"
+  |   n   when   n   >   0   ->   "positive"
+  |   _   ->   "negative"
+
+(* Pattern matching with variants *)
+type   color   =   Red   |   Green   |   Blue
+
+let   color_to_string   =   function
+  |   Red   ->   "red"
+  |   Green   ->   "green"  
+  |   Blue   ->   "blue"
+
+(* Nested patterns *)
+let   check_pair   =   function
+  |   (0,   0)   ->   "origin"
+  |   (0,   _)   ->   "on y-axis"
+  |   (_,   0)   ->   "on x-axis"
+  |   (x,   y)   when   x   =   y   ->   "diagonal"
+  |   _   ->   "general"
+
+(* List patterns *)
+let   rec   length   =   function
+  |   []   ->   0
+  |   _   ::   tail   ->   1   +   length   tail
+
+(* Or patterns *)
+let   is_vowel   =   function
+  |   'a'   |   'e'   |   'i'   |   'o'   |   'u'   ->   true
+  |   _   ->   false
+
+(* Record patterns *)
+type   person   =   {   name:   string;   age:   int   }
+
+let   can_vote   =   function
+  |   {   age;   _   }   when   age   >=   18   ->   true
+  |   _   ->   false
+
+(* As patterns *)
+let   first_two   =   function
+  |   (   _   ::   _   ::   _   )   as   lst   ->   Some   lst
+  |   _   ->   None

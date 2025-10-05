@@ -1,0 +1,72 @@
+(* Test: Control flow *)
+
+(* If-then-else *)
+let   sign   n   =
+  if   n   >   0   then   "positive"
+  else   if   n   <   0   then   "negative"
+  else   "zero"
+
+(* Nested if *)
+let   check   x   y   =
+  if   x   >   0   then
+    if   y   >   0   then
+      "both positive"
+    else
+      "x positive, y not"
+  else
+    "x not positive"
+
+(* If without else *)
+let   print_if_positive   n   =
+  if   n   >   0   then
+    Std.print   "%d"   n
+
+(* While loop *)
+let   count   ()   =
+  let   i   =   ref   0   in
+  while   !i   <   10   do
+    Std.print   "%d"   !i;
+    i   :=   !i   +   1
+  done
+
+(* For loop *)
+let   print_range   ()   =
+  for   i   =   0   to   9   do
+    Std.print   "%d"   i
+  done
+
+(* For downto *)
+let   countdown   ()   =
+  for   i   =   10   downto   1   do
+    Std.print   "%d"   i
+  done
+
+(* Try-with *)
+let   safe_divide   x   y   =
+  try
+    Some   (x   /   y)
+  with
+  |   Division_by_zero   ->   None
+
+(* Multiple exception patterns *)
+let   handle_errors   f   =
+  try
+    f   ()
+  with
+  |   Not_found   ->   Std.println   "Not found"
+  |   Invalid_argument   msg   ->   Std.println   ("Invalid: "   ^   msg)
+  |   e   ->   raise   e
+
+(* Sequence *)
+let   do_stuff   ()   =
+  Std.println   "First";
+  Std.println   "Second";
+  Std.println   "Third"
+
+(* Begin-end *)
+let   complex   x   =
+  begin
+    let   y   =   x   *   2   in
+    let   z   =   y   +   1   in
+    z   *   z
+  end

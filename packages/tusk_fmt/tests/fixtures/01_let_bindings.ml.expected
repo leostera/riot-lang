@@ -1,0 +1,30 @@
+(*  Test: Basic let bindings  *)
+(*  Simple let binding  *)
+let x = 42
+
+(*  Let with function  *)
+let f x y = x + y
+
+(*  Nested let  *)
+let outer =
+
+let inner = 10 in inner * 2
+
+(*  Let rec  *)
+let rec factorial n = if n <= 1 then 1 else n * factorial(n - 1)
+
+(*  Multiple let bindings  *)
+let a = 1
+
+let b = 2
+
+let c = a + b
+
+(*  Let with type annotation  *)
+let (x: int) = 42
+
+(*  Let with pattern matching  *)
+let (a, b) = (1, 2)
+
+(*  Let and  *)
+let x = 1 and y = 2 and z = 3
