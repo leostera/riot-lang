@@ -58,11 +58,11 @@ let format_file workspace toolchain check_only quiet file_path =
   in
   (* Always print failures, print successes unless quiet *)
   (match result with
-   | Failed _ ->
-       println "%s %s" status_char (relative_to_workspace workspace file_path)
-   | Success _ when not quiet ->
-       println "%s %s" status_char (relative_to_workspace workspace file_path)
-   | Success _ -> ());
+  | Failed _ ->
+      println "%s %s" status_char (relative_to_workspace workspace file_path)
+  | Success _ when not quiet ->
+      println "%s %s" status_char (relative_to_workspace workspace file_path)
+  | Success _ -> ());
   result
 
 let run fmt_matches =
