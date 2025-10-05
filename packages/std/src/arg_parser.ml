@@ -193,7 +193,7 @@ let rec get_matches cmd args =
     | SetFalse ->
         Hashtbl.replace matches.flags name 0;
         parse_args rest
-  and parse_short_arg arg c rest = parse_long_arg arg (String.make 1 c) rest
+  and parse_short_arg arg c rest = parse_long_arg arg arg.name rest
   and parse_positional pos_args =
     (* Find the next positional arg definition (one without short/long flags) *)
     let positional_args =

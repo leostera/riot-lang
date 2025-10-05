@@ -1,1 +1,1 @@
-val run : string list -> (unit, exn) result
+val run : Std.ArgParser.matches -> (unit, exn) result

@@ -73,7 +73,14 @@ let cli =
               ];
          command "mcp" |> about "Start Model Context Protocol server";
          command "doc" |> about "Generate documentation";
-         command "fmt" |> about "Format OCaml code";
+         command "fmt" |> about "Format OCaml code"
+         |> args
+              [
+                flag "check" |> long "check"
+                |> help "Check if files need formatting without modifying them";
+                flag "quiet" |> short 'q' |> long "quiet"
+                |> help "Only show failures, suppress successful file messages";
+              ];
          command "lsp" |> about "Start OCaml LSP server";
          command "version" |> about "Show tusk version";
        ]
@@ -117,7 +124,7 @@ let main ~args:argv =
       | Some ("doc", _) ->
           println "doc command not yet implemented";
           Ok ()
-      | Some ("fmt", fmt_matches) -> Fmt.run []
+      | Some ("fmt", fmt_matches) -> Fmt.run fmt_matches
       | Some ("lsp", _) ->
           println "lsp command not yet implemented";
           Ok ()

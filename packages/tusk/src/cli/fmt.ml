@@ -1,6 +1,7 @@
 open Std
 open Core
 open Model
+open ArgParser
 
 type format_status =
   | Success of { file : Path.t; changed : bool }
@@ -37,7 +38,12 @@ let collect_ocaml_files workspace =
       walk_dir Path.(workspace.Workspace.root / pkg.path))
     workspace.packages
 
-let format_file toolchain check_only file_path =
+let relative_to_workspace workspace path =
+  match Path.strip_prefix path ~prefix:workspace.Workspace.root with
+  | Ok rel_path -> Path.to_string rel_path
+  | Error _ -> Path.to_string path
+
+let format_file workspace toolchain check_only quiet file_path =
   let result =
     match Ocaml.Ocamlformat.format_file ~toolchain ~file_path ~check_only with
     | Ocaml.Ocamlformat.Formatted { changed; _ } ->
@@ -50,11 +56,18 @@ let format_file toolchain check_only file_path =
     | Success { changed = false; _ } -> "\027[1;90m-\027[0m"
     | Failed _ -> "\027[1;31m✗\027[0m"
   in
-  println "%s %s" status_char (Path.to_string file_path);
+  (* Always print failures, print successes unless quiet *)
+  (match result with
+   | Failed _ ->
+       println "%s %s" status_char (relative_to_workspace workspace file_path)
+   | Success _ when not quiet ->
+       println "%s %s" status_char (relative_to_workspace workspace file_path)
+   | Success _ -> ());
   result
 
-let run args =
-  let check_only = List.mem "--check" args in
+let run fmt_matches =
+  let check_only = get_flag fmt_matches "check" in
+  let quiet = get_flag fmt_matches "quiet" in
 
   let cwd =
     Env.current_dir () |> Result.expect ~msg:"Failed to get current directory"
@@ -83,7 +96,7 @@ let run args =
 
     let results =
       WorkerPool.SimpleWorkerPool.run ~concurrency ~tasks:files
-        ~fn:(fun file -> format_file toolchain check_only file)
+        ~fn:(fun file -> format_file workspace toolchain check_only quiet file)
         ()
     in
 
@@ -117,7 +130,8 @@ let run args =
       println "";
       List.iter
         (fun (file, error) ->
-          println "  \027[1;31m✗\027[0m %s" (Path.to_string file);
+          println "  \027[1;31m✗\027[0m %s"
+            (relative_to_workspace workspace file);
           println "    %s" error;
           println "")
         failures;
@@ -128,7 +142,8 @@ let run args =
         println "\027[1;33m%d files need formatting:\027[0m" changed_count;
         List.iter
           (fun (file, changed) ->
-            if changed then println "  • %s" (Path.to_string file))
+            if changed then
+              println "  • %s" (relative_to_workspace workspace file))
           successes;
         println "";
         println "Run 'tusk fmt' to format these files.";
