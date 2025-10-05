@@ -661,6 +661,7 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
           Log.debug "[MODULE_GRAPH]     -> MLI (Concrete)";
           (* Use absolute sandbox path *)
           let cmi_output = Module.cmi mod_ in
+          let cmti_output = Module.cmti mod_ in
           let compile_action =
             Actions.CompileInterface
               {
@@ -671,12 +672,13 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
               }
           in
           actions := compile_action :: !actions;
-          outputs := cmi_output :: !outputs
+          outputs := cmti_output :: cmi_output :: !outputs
       | { kind = ML mod_; file = Concrete path; open_modules; _ } ->
           Log.debug "[MODULE_GRAPH]     -> ML (Concrete)";
           (* Use absolute sandbox path *)
           let cmx_output = Module.cmx mod_ in
           let cmi_output = Module.cmi mod_ in
+          let cmt_output = Module.cmt mod_ in
           let compile_action =
             Actions.CompileImplementation
               {
@@ -688,7 +690,7 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
           in
           actions := compile_action :: !actions;
           cmx_files := cmx_output :: !cmx_files;
-          outputs := cmi_output :: !outputs
+          outputs := cmt_output :: cmi_output :: !outputs
       | { kind = ML mod_; file = Generated { path; contents }; open_modules; _ }
         ->
           Log.debug "[MODULE_GRAPH]     -> ML (Generated): %s"
@@ -702,6 +704,7 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
           (* Compile it *)
           let cmx_output = Module.cmx mod_ in
           let cmi_output = Module.cmi mod_ in
+          let cmt_output = Module.cmt mod_ in
           (* Check if this is an alias file - they need -no-alias-deps and produce .cmi *)
           let is_alias_file =
             let filename = Path.to_string path in
@@ -729,8 +732,8 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
           in
           actions := action :: !actions;
           cmx_files := cmx_output :: !cmx_files;
-          (* Generated .ml files always produce .cmi (no separate .mli) *)
-          outputs := cmi_output :: !outputs
+          (* Generated .ml files always produce .cmi and .cmt (no separate .mli) *)
+          outputs := cmt_output :: cmi_output :: !outputs
       | {
        kind = MLI mod_;
        file = Generated { path; contents };
@@ -746,18 +749,19 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
           actions := write_action :: !actions;
 
           (* Compile it *)
-          let output = Module.cmi mod_ in
+          let cmi_output = Module.cmi mod_ in
+          let cmti_output = Module.cmti mod_ in
           let action =
             Actions.CompileInterface
               {
                 source = path;
-                output;
+                output = cmi_output;
                 includes = [ Path.v "." ];
                 flags = List.map (fun m -> Ocamlc.Open m) (opens open_modules);
               }
           in
           actions := action :: !actions;
-          outputs := output :: !outputs
+          outputs := cmti_output :: cmi_output :: !outputs
       | { kind = C; file = Concrete path; _ } ->
           Log.debug "[MODULE_GRAPH]     -> C file";
           (* Use absolute sandbox path *)

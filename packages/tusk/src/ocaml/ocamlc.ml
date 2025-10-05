@@ -105,7 +105,14 @@ let run ~toolchain ~cwd ?(includes = []) ?(libs = []) ?(output = None)
   (* Build the complete command *)
   let cmd_parts =
     [
-      ocamlc; "-g"; mode_flag; include_flags; output_flag; libs_str; sources_str;
+      ocamlc;
+      "-g";
+      "-bin-annot";
+      mode_flag;
+      include_flags;
+      output_flag;
+      libs_str;
+      sources_str;
     ]
     |> List.filter (fun s -> s <> "") (* Remove empty strings *)
     |> String.concat " "
@@ -137,7 +144,7 @@ let compile_interface ~toolchain ~cwd ~includes ~flags ~output source =
       List.exists (function Impl _ -> true | _ -> false) flags
     in
     let cmd_parts =
-      [ base_command_bytecode toolchain; "-g"; "-c" ]
+      [ base_command_bytecode toolchain; "-g"; "-bin-annot"; "-c" ]
       @ flag_args
       @ List.concat_map
           (fun dir -> [ "-I"; Path.to_string dir ])
@@ -173,7 +180,7 @@ let compile_impl ~toolchain ~cwd ~includes ~flags ~output source =
       List.exists (function Impl _ -> true | _ -> false) flags
     in
     let cmd_parts =
-      [ base_command toolchain; "-g"; "-c" ]
+      [ base_command toolchain; "-g"; "-bin-annot"; "-c" ]
       @ flag_args
       @ List.concat_map
           (fun dir -> [ "-I"; Path.to_string dir ])
