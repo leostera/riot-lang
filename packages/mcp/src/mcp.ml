@@ -604,3 +604,278 @@ let make_notification ?params method_type =
     method_name = notification_method_to_string method_type;
     params;
   }
+
+module Protocol :
+  Jsonrpc.ApplicationProtocol
+    with type request = request
+     and type response = response = struct
+  type nonrec request = request
+  type nonrec response = response
+
+  let request_to_params (req : request) : Jsonrpc.prerequest =
+    let params =
+      match req.params with
+      | None -> Jsonrpc.NoParams
+      | Some p ->
+          let json = request_params_to_json p in
+          Jsonrpc.Named [ ("params", json) ]
+    in
+    { Jsonrpc.method_ = req.method_name; params }
+
+  let request_of_params (method_ : string) (params : Jsonrpc.params) :
+      (request, Json.t) result =
+    let id = String "0" in
+    Ok { jsonrpc = "2.0"; id; method_name = method_; params = None }
+
+  let response_to_json (resp : response) : Json.t =
+    match resp with
+    | SuccessResponse { result; _ } -> response_result_to_json result
+    | ErrorResponse { error; _ } -> error_to_json error
+
+  let response_of_json (json : Json.t) : (response, Json.t) result =
+    match response_of_json json with
+    | Ok r -> Ok r
+    | Error e -> Error (Json.String e)
+end
+
+module type ToolProtocol = sig
+  type tool_request
+  type tool_response
+
+  val tools : tool list
+  val resources : resource list
+
+  val tool_call_to_request :
+    string -> json option -> (tool_request, string) result
+
+  val tool_response_to_content : tool_response -> message_content list * bool
+
+  val resource_uri_to_content :
+    string -> (resource_contents list, string) result
+end
+
+module type McpApplicationProtocol = sig
+  type tool_request
+  type tool_response
+
+  type request =
+    | Initialize of {
+        protocol_version : string;
+        capabilities : client_capabilities;
+        client_info : client_info;
+      }
+    | Initialized
+    | ListTools
+    | CallTool of tool_request
+    | ListResources
+    | ReadResource of { uri : string }
+    | Ping
+    | Shutdown
+
+  type response =
+    | InitializeResult of {
+        protocol_version : string;
+        capabilities : server_capabilities;
+        server_info : server_info;
+        instructions : string option;
+      }
+    | InitializedResult
+    | ListToolsResult of { tools : tool list }
+    | CallToolResult of tool_response
+    | ListResourcesResult of { resources : resource list }
+    | ReadResourceResult of { contents : resource_contents list }
+    | PingResult
+    | ShutdownResult
+    | Error of string
+
+  include
+    Jsonrpc.ApplicationProtocol
+      with type request := request
+       and type response := response
+
+  val make_initialize_result :
+    protocol_version:string ->
+    capabilities:server_capabilities ->
+    server_info:server_info ->
+    instructions:string option ->
+    response
+
+  val make_initialized_result : response
+  val make_list_tools_result : tools:tool list -> response
+  val make_call_tool_result : tool_response -> response
+  val make_list_resources_result : resources:resource list -> response
+  val make_read_resource_result : contents:resource_contents list -> response
+  val make_ping_result : response
+  val make_shutdown_result : response
+  val make_error : string -> response
+end
+
+module MakeProtocol (T : ToolProtocol) :
+  McpApplicationProtocol
+    with type tool_request = T.tool_request
+     and type tool_response = T.tool_response = struct
+  type tool_request = T.tool_request
+  type tool_response = T.tool_response
+
+  type request =
+    | Initialize of {
+        protocol_version : string;
+        capabilities : client_capabilities;
+        client_info : client_info;
+      }
+    | Initialized
+    | ListTools
+    | CallTool of T.tool_request
+    | ListResources
+    | ReadResource of { uri : string }
+    | Ping
+    | Shutdown
+
+  type response =
+    | InitializeResult of {
+        protocol_version : string;
+        capabilities : server_capabilities;
+        server_info : server_info;
+        instructions : string option;
+      }
+    | InitializedResult
+    | ListToolsResult of { tools : tool list }
+    | CallToolResult of T.tool_response
+    | ListResourcesResult of { resources : resource list }
+    | ReadResourceResult of { contents : resource_contents list }
+    | PingResult
+    | ShutdownResult
+    | Error of string
+
+  let request_to_params = function
+    | Initialize { protocol_version; capabilities; client_info } ->
+        { Jsonrpc.method_ = "initialize"; params = Jsonrpc.NoParams }
+    | Initialized -> { method_ = "initialized"; params = NoParams }
+    | ListTools -> { method_ = "tools/list"; params = NoParams }
+    | CallTool _ -> { method_ = "tools/call"; params = NoParams }
+    | ListResources -> { method_ = "resources/list"; params = NoParams }
+    | ReadResource { uri } ->
+        {
+          method_ = "resources/read";
+          params = Named [ ("uri", Json.String uri) ];
+        }
+    | Ping -> { method_ = "ping"; params = NoParams }
+    | Shutdown -> { method_ = "shutdown"; params = NoParams }
+
+  let request_of_params method_ params =
+    match method_ with
+    | "initialize" -> Ok Initialized
+    | "initialized" -> Ok Initialized
+    | "tools/list" -> Ok ListTools
+    | "tools/call" -> (
+        match params with
+        | Jsonrpc.Named fields -> (
+            let name =
+              match List.assoc_opt "name" fields with
+              | Some (Json.String s) -> s
+              | _ -> ""
+            in
+            let arguments = List.assoc_opt "arguments" fields in
+            match T.tool_call_to_request name arguments with
+            | Ok req -> Ok (CallTool req)
+            | Error e -> Error (Json.String e))
+        | _ -> Error (Json.String "tools/call requires named parameters"))
+    | "resources/list" -> Ok ListResources
+    | "resources/read" -> (
+        match params with
+        | Jsonrpc.Named fields -> (
+            match List.assoc_opt "uri" fields with
+            | Some (Json.String uri) -> Ok (ReadResource { uri })
+            | _ -> Error (Json.String "Missing uri parameter"))
+        | _ -> Error (Json.String "resources/read requires named parameters"))
+    | "ping" -> Ok Ping
+    | "shutdown" -> Ok Shutdown
+    | _ -> Error (Json.String (Std.format "Unknown method: %s" method_))
+
+  let response_to_json = function
+    | InitializeResult
+        { protocol_version; capabilities; server_info; instructions } ->
+        Json.Object
+          [
+            ("protocolVersion", Json.String protocol_version);
+            ( "serverInfo",
+              Json.Object
+                [
+                  ("name", Json.String server_info.name);
+                  ("version", Json.String server_info.version);
+                ] );
+          ]
+    | InitializedResult -> Json.Object []
+    | ListToolsResult { tools } ->
+        Json.Object
+          [
+            ( "tools",
+              Json.Array
+                (List.map
+                   (fun (t : tool) ->
+                     Json.Object
+                       [
+                         ("name", Json.String t.name);
+                         ( "description",
+                           match t.description with
+                           | Some d -> Json.String d
+                           | None -> Json.Null );
+                         ("inputSchema", t.input_schema);
+                       ])
+                   tools) );
+          ]
+    | CallToolResult resp ->
+        let content, is_error = T.tool_response_to_content resp in
+        Json.Object
+          [
+            ("content", Json.Array (List.map message_content_to_json content));
+            ("isError", Json.Bool is_error);
+          ]
+    | ListResourcesResult { resources } ->
+        Json.Object
+          [
+            ( "resources",
+              Json.Array
+                (List.map
+                   (fun r ->
+                     Json.Object
+                       [
+                         ("uri", Json.String r.uri);
+                         ( "name",
+                           match r.name with
+                           | Some n -> Json.String n
+                           | None -> Json.Null );
+                         ( "description",
+                           match r.description with
+                           | Some d -> Json.String d
+                           | None -> Json.Null );
+                       ])
+                   resources) );
+          ]
+    | ReadResourceResult { contents } ->
+        Json.Object
+          [
+            ( "contents",
+              Json.Array (List.map resource_contents_to_json contents) );
+          ]
+    | PingResult -> Json.Object []
+    | ShutdownResult -> Json.Object []
+    | Error msg -> Json.Object [ ("error", Json.String msg) ]
+
+  let response_of_json _json : (response, Json.t) result =
+    Error (Json.String "Not implemented")
+
+  let make_initialize_result ~protocol_version ~capabilities ~server_info
+      ~instructions =
+    InitializeResult
+      { protocol_version; capabilities; server_info; instructions }
+
+  let make_initialized_result = InitializedResult
+  let make_list_tools_result ~tools = ListToolsResult { tools }
+  let make_call_tool_result resp = CallToolResult resp
+  let make_list_resources_result ~resources = ListResourcesResult { resources }
+  let make_read_resource_result ~contents = ReadResourceResult { contents }
+  let make_ping_result = PingResult
+  let make_shutdown_result = ShutdownResult
+  let make_error msg = Error msg
+end
