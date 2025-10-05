@@ -1,9 +1,7 @@
 open Std
 
 type location = { start : int; end_ : int }
-
 type ident = string
-
 type 'a node = { loc : location; data : 'a }
 
 type pattern = pattern_kind node
@@ -51,9 +49,7 @@ and expr_kind =
   | Construct of ident * expr option
 
 and case = { pattern : pattern; guard : expr option; body : expr }
-
 and rec_flag = Recursive | Nonrecursive
-
 and type_expr = type_expr_kind node
 
 and type_expr_kind =
@@ -77,7 +73,6 @@ and type_kind =
   | Variant of (ident * type_expr option) list
 
 and structure = structure_item list
-
 and structure_item = structure_item_kind node
 
 and structure_item_kind =
@@ -96,11 +91,8 @@ and module_expr_kind =
   | ModFunctor of ident * module_type option * module_expr
 
 and module_type = module_type_kind node
-
 and module_type_kind = MtSig of signature | MtIdent of ident
-
 and signature = signature_item list
-
 and signature_item = signature_item_kind node
 
 and signature_item_kind =

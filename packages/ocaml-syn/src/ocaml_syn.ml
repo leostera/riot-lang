@@ -1,5 +1,4 @@
 open Std
-
 module Token = Token
 module Cursor = Cursor
 module Lexer = Lexer

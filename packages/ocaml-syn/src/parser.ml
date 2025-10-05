@@ -149,9 +149,9 @@ and parse_paren_expr parser start =
       advance parser;
       let loc = { Ast.start; end_ = parser.pos } in
       Ok (Ast.mk_expr loc (Ast.Const (Bool true)))
-  | _ ->
+  | _ -> (
       let* expr = parse_expr parser 0 in
-      (match peek parser with
+      match peek parser with
       | Some Token.Comma -> parse_tuple_expr parser start expr
       | Some Token.Semi -> parse_sequence_in_parens parser start expr
       | Some (Token.CloseDelim Token.Paren) ->
@@ -186,9 +186,9 @@ and parse_list_expr parser start =
         advance parser;
         let* expr = parse_expr parser 0 in
         loop (expr :: acc)
-    | _ ->
+    | _ -> (
         let* expr = parse_expr parser 0 in
-        (match peek parser with
+        match peek parser with
         | Some (Token.CloseDelim Token.Bracket) ->
             advance parser;
             let loc = { Ast.start; end_ = parser.pos } in
@@ -272,9 +272,9 @@ and parse_if_expr parser start =
 and parse_sequence_in_parens parser start first =
   let rec loop acc =
     match peek parser with
-    | Some Token.Semi ->
+    | Some Token.Semi -> (
         advance parser;
-        (match peek parser with
+        match peek parser with
         | Some (Token.CloseDelim Token.Paren) ->
             advance parser;
             let loc = { Ast.start; end_ = parser.pos } in
@@ -294,7 +294,7 @@ and parse_sequence_in_parens parser start first =
 and parse_begin_expr parser start =
   advance parser;
   let* expr = parse_expr parser 0 in
-  (match peek parser with
+  match peek parser with
   | Some (Token.CloseDelim _) ->
       advance parser;
       Ok expr
@@ -302,29 +302,23 @@ and parse_begin_expr parser start =
       advance parser;
       let* rest = parse_sequence_until_end parser [ expr ] in
       Ok rest
-  | _ -> Error (InvalidExpression "Expected end or ; in begin block"))
+  | _ -> Error (InvalidExpression "Expected end or ; in begin block")
 
 and parse_sequence_until_end parser acc =
   match peek parser with
   | Some (Token.CloseDelim _) ->
       advance parser;
       let loc =
-        {
-          Ast.start = (List.hd acc).Ast.loc.start;
-          end_ = parser.pos;
-        }
+        { Ast.start = (List.hd acc).Ast.loc.start; end_ = parser.pos }
       in
       Ok (Ast.mk_expr loc (Ast.Sequence (List.rev acc)))
-  | Some Token.Semi ->
+  | Some Token.Semi -> (
       advance parser;
-      (match peek parser with
+      match peek parser with
       | Some (Token.CloseDelim _) ->
           advance parser;
           let loc =
-            {
-              Ast.start = (List.hd acc).Ast.loc.start;
-              end_ = parser.pos;
-            }
+            { Ast.start = (List.hd acc).Ast.loc.start; end_ = parser.pos }
           in
           Ok (Ast.mk_expr loc (Ast.Sequence (List.rev acc)))
       | _ ->
@@ -342,9 +336,9 @@ and parse_record_expr parser start =
         advance parser;
         let loc = { Ast.start; end_ = parser.pos } in
         Ok (Ast.mk_expr loc (Ast.Record (List.rev acc)))
-    | Some Token.Semi ->
+    | Some Token.Semi -> (
         advance parser;
-        (match peek parser with
+        match peek parser with
         | Some (Token.CloseDelim Token.Brace) ->
             advance parser;
             let loc = { Ast.start; end_ = parser.pos } in
@@ -414,7 +408,11 @@ and parse_cases parser =
         let* case = parse_case parser in
         Ok (List.rev (case :: acc))
   in
-  match peek parser with Some Token.Pipe -> advance parser; loop [] | _ -> loop []
+  match peek parser with
+  | Some Token.Pipe ->
+      advance parser;
+      loop []
+  | _ -> loop []
 
 and parse_case parser =
   let* pattern = parse_pattern parser in
@@ -499,10 +497,16 @@ and parse_expr_rest parser left min_prec =
 
 and parse_application parser left min_prec =
   match peek parser with
-  | Some Token.EOF | Some Token.Semi | Some (Token.Keyword Token.In)
-  | Some (Token.Keyword Token.Then) | Some (Token.Keyword Token.Else)
-  | Some (Token.Keyword Token.With) | Some Token.Arrow | Some Token.Pipe
-  | Some Token.Comma | Some (Token.CloseDelim _) ->
+  | Some Token.EOF
+  | Some Token.Semi
+  | Some (Token.Keyword Token.In)
+  | Some (Token.Keyword Token.Then)
+  | Some (Token.Keyword Token.Else)
+  | Some (Token.Keyword Token.With)
+  | Some Token.Arrow
+  | Some Token.Pipe
+  | Some Token.Comma
+  | Some (Token.CloseDelim _) ->
       Ok left
   | Some tok when is_infix_op tok -> Ok left
   | _ ->
@@ -515,9 +519,9 @@ and parse_application parser left min_prec =
 
 and parse_sequence_rest parser acc =
   match peek parser with
-  | Some Token.Semi ->
+  | Some Token.Semi -> (
       advance parser;
-      (match peek parser with
+      match peek parser with
       | Some (Token.CloseDelim _) | Some Token.EOF ->
           let loc =
             {
@@ -566,9 +570,7 @@ let parse_structure_item parser =
           Ast.name;
           params = [];
           manifest = None;
-          kind =
-            Alias
-              (Ast.mk_node loc (Ast.TConstr (name2, [])));
+          kind = Alias (Ast.mk_node loc (Ast.TConstr (name2, [])));
         }
       in
       Ok (Ast.mk_node loc (Ast.TypeItem [ type_decl ]))

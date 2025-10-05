@@ -3,10 +3,7 @@ open Std
 type t = Cursor.t
 
 let create source = Cursor.create source
-
-let is_whitespace = function
-  | ' ' | '\t' | '\n' | '\r' -> true
-  | _ -> false
+let is_whitespace = function ' ' | '\t' | '\n' | '\r' -> true | _ -> false
 
 let is_ident_start = function
   | 'a' .. 'z' | 'A' .. 'Z' | '_' -> true
@@ -92,7 +89,9 @@ let lex_string cursor =
         Cursor.advance cursor;
         loop ()
     | Some '"' ->
-        let value = Cursor.slice cursor start (Cursor.position cursor - start) in
+        let value =
+          Cursor.slice cursor start (Cursor.position cursor - start)
+        in
         Cursor.advance cursor;
         (value, true)
     | Some _ ->
@@ -106,18 +105,18 @@ let lex_char cursor =
   Cursor.advance cursor;
   match Cursor.peek cursor with
   | None -> Token.Unknown '\''
-  | Some '\\' ->
+  | Some '\\' -> (
       Cursor.advance cursor;
       let escaped = Cursor.peek cursor in
       Cursor.advance cursor;
-      (match Cursor.peek cursor with
+      match Cursor.peek cursor with
       | Some '\'' ->
           Cursor.advance cursor;
           Token.Literal (Char (Option.value ~default:' ' escaped))
       | _ -> Token.Unknown '\'')
-  | Some c ->
+  | Some c -> (
       Cursor.advance cursor;
-      (match Cursor.peek cursor with
+      match Cursor.peek cursor with
       | Some '\'' ->
           Cursor.advance cursor;
           Token.Literal (Char c)

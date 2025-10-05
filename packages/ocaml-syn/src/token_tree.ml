@@ -75,7 +75,8 @@ let rec to_string_indent indent tree =
       let contents =
         List.map (to_string_indent (indent + 1)) trees |> String.concat ""
       in
-      format "%sTree(%s) {\n%s%s}\n" indent_str (delimiter_to_string delim)
+      format "%sTree(%s) {\n%s%s}\n" indent_str
+        (delimiter_to_string delim)
         contents indent_str
 
 let to_string tree = to_string_indent 0 tree
