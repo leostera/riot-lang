@@ -3,7 +3,7 @@ open Common
 (** File handle for reading and writing *)
 
 type t
-(** Opaque file handle wrapping Kernel.Async.Fd.t *)
+(** Opaque file handle wrapping Kernel.Fd.t *)
 
 (** {1 Opening Files} *)
 
@@ -36,6 +36,10 @@ val read_to_end : t -> (string, error) result
 
 val read_exact : t -> bytes -> offset:int -> len:int -> (unit, error) result
 (** Read exactly len bytes or fail *)
+
+val read_line : t -> (string, error) result
+(** Read a line from the file, including the newline character if present.
+    Returns empty string on EOF. *)
 
 (** {1 Writing} *)
 
@@ -107,10 +111,10 @@ val unlock : t -> (unit, error) result
 val try_clone : t -> (t, error) result
 (** Duplicate file descriptor (dup) *)
 
-val into_fd : t -> Kernel.Async.Fd.t
+val into_fd : t -> Kernel.Fd.t
 (** Extract raw file descriptor *)
 
-val from_fd : Kernel.Async.Fd.t -> t
+val from_fd : Kernel.Fd.t -> t
 (** Wrap file descriptor as file handle *)
 
 (** {1 Closing} *)

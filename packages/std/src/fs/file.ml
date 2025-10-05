@@ -1,7 +1,7 @@
 open Global
 open Common
 
-type t = { fd : Kernel.Async.Fd.t; mutable closed : bool }
+type t = { fd : Kernel.Fd.t; mutable closed : bool }
 
 (* Helper to check if file is closed *)
 let ensure_open t =
@@ -84,6 +84,25 @@ let read_exact t buffer ~offset ~len =
       | Error e -> Error e
   in
   read_loop offset len
+
+let read_line t =
+  match ensure_open t with
+  | Error e -> Error e
+  | Ok () ->
+      let buf = Buffer.create 256 in
+      let chunk = Bytes.create 1 in
+      let rec read_until_newline () =
+        match read t chunk ~offset:0 ~len:1 with
+        | Ok 0 -> Ok (Buffer.contents buf)
+        | Ok 1 ->
+            let c = Bytes.get chunk 0 in
+            Buffer.add_char buf c;
+            if c = '\n' then Ok (Buffer.contents buf)
+            else read_until_newline ()
+        | Ok _ -> Error (SystemError "Unexpected read result")
+        | Error e -> Error e
+      in
+      read_until_newline ()
 
 (* Writing - with async/Miniriot support *)
 
