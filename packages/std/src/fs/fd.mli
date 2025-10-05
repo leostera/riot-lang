@@ -1,1 +1,1 @@
-type t = Kernel.Async.Fd.t
+type t = Kernel.Fd.t
