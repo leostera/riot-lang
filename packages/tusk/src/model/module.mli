@@ -31,5 +31,11 @@ val cmo : t -> Path.t
 val cmx : t -> Path.t
 (** Get the compiled object filename (e.g., "Std__Path.cmx") *)
 
+val cmt : t -> Path.t
+(** Get the compiled typed tree filename (e.g., "Std__Path.cmt") *)
+
+val cmti : t -> Path.t
+(** Get the compiled interface typed tree filename (e.g., "Std__Path.cmti") *)
+
 val eq : t -> t -> bool
 (** Check if two modules are equal *)

@@ -44,6 +44,12 @@ val cmi : t -> Path.t
 val cmx : t -> Path.t
 (** Get the .cmx filename based on qualified name *)
 
+val cmt : t -> Path.t
+(** Get the .cmt filename based on qualified name *)
+
+val cmti : t -> Path.t
+(** Get the .cmti filename based on qualified name *)
+
 val o : t -> Path.t
 (** Get the .o filename based on qualified name *)
 

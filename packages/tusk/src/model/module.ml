@@ -27,6 +27,8 @@ let kind t = t.kind
 let cmi t = Module_name.cmi t.module_name
 let cmo t = Module_name.cmo t.module_name
 let cmx t = Module_name.cmx t.module_name
+let cmt t = Module_name.cmt t.module_name
+let cmti t = Module_name.cmti t.module_name
 
 let eq a b =
   Module_name.qualified_name a.module_name
