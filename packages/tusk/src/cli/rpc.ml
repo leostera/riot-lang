@@ -86,8 +86,7 @@ and run args =
     else []
   in
 
-  if cmd = "" then
-    Error (Failure "No RPC command specified")
+  if cmd = "" then Error (Failure "No RPC command specified")
   else if cmd = "ping" then (
     let client = create_local_client () in
     let result = Tusk_jsonrpc.Client.ping client in
