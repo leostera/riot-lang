@@ -1546,3 +1546,144 @@ tusk test --target linux-x64  # Run in container
 - Todos will be synced to Linear with appropriate metadata
 - Archive completed todos in TODOS_ARCHIVE.md
 - All implementation details from docs/*.md are now consolidated here
+
+---
+
+More MCP commands
+
+### Essential IDE-like Commands (Priority 1)
+1. **`find_definition`** - Jump to definition of a module/function/type
+   - Args: `symbol_name`, `file_path`
+   - Returns: File path and line number where defined
+
+2. **`find_usages`** - Find all references to a symbol across the workspace
+   - Args: `symbol_name`, `scope` (package/workspace)
+   - Returns: List of locations using the symbol
+
+3. **`add_dependency`** - Add a dependency to a package
+   - Args: `package`, `dependency`, `version` (optional)
+   - Updates the tusk.toml and rebuilds if needed
+
+4. **`create_package`** - Scaffold a new package in the workspace
+   - Args: `name`, `type` (library/binary), `dependencies`
+   - Creates directory structure, basic files, updates workspace
+
+5. **`explain_build_failure`** - Get detailed error analysis
+   - Args: `package` (optional)
+   - Returns: Parsed errors with suggestions, missing modules, type mismatches
+
+6. **`incremental_typecheck`** - Fast type-check without full build
+   - Args: `file_path` or `package`
+   - Returns: Type errors only, much faster than full build
+
+7. **`suggest_imports`** - Find and add missing module opens/imports
+   - Args: `file_path`, `unbound_symbol`
+   - Returns: Suggested modules to open/import with auto-fix option
+
+8. **`refactor_rename`** - Rename symbol across entire workspace
+   - Args: `old_name`, `new_name`, `kind` (function/type/module)
+   - Updates all references maintaining consistency
+
+9. **`test_runner`** - Run tests with filtering and watch mode
+   - Args: `pattern`, `package`, `watch` (bool)
+   - Returns: Test results with inline failure details
+
+10. **`generate_interface`** - Auto-generate .mli from .ml file
+    - Args: `ml_file_path`, `expose_all` (bool)
+    - Creates interface file with inferred types, respects privacy
+
+### Power-User Commands (Priority 2)
+
+11. **`module_graph`** - Visualize module dependencies within a package
+    - Args: `package`, `format` (text/dot/json)
+    - Returns: Module dependency graph showing internal structure
+
+12. **`benchmark_compare`** - Run and compare benchmarks between versions
+    - Args: `baseline_ref`, `current_ref`, `package`
+    - Returns: Performance regression/improvement analysis
+
+13. **`dead_code_analysis`** - Find unused functions, types, and modules
+    - Args: `scope` (file/package/workspace), `include_private`
+    - Returns: List of potentially dead code with confidence scores
+
+14. **`extract_module`** - Extract functions/types into a new module
+    - Args: `source_file`, `symbols[]`, `target_module`
+    - Refactors code into new module with proper imports
+
+15. **`inline_module`** - Opposite of extract - inline a module's contents
+    - Args: `module_path`, `target_file`
+    - Merges module contents into target, updates references
+
+16. **`type_hover`** - Get type information at specific position
+    - Args: `file_path`, `line`, `column`
+    - Returns: Inferred type, documentation, signature
+
+17. **`auto_derive`** - Generate boilerplate for common patterns
+    - Args: `type_name`, `derivations[]` (show/eq/ord/sexp/json)
+    - Creates comparison, serialization, pretty-printing functions
+
+18. **`upgrade_syntax`** - Modernize OCaml syntax patterns
+    - Args: `package`, `patterns[]` (e.g., "fun-arrows", "let-operators")
+    - Updates code to use newer OCaml syntax features
+
+19. **`profile_build`** - Analyze build performance bottlenecks
+    - Args: `package`, `detail_level`
+    - Returns: Timing breakdown, slowest modules, parallelization opportunities
+
+20. **`workspace_stats`** - Get comprehensive codebase metrics
+    - Args: `include_tests`, `include_docs`
+    - Returns: LOC, complexity, test coverage, doc coverage, tech debt indicators
+
+## Enhanced MCP Command Responses (Current Commands)
+
+### `build` - PRIORITY ENHANCEMENT
+**Current:** "Build started successfully"
+**Required:**
+- Build duration (total and per package)
+- Success/failure status
+- Packages built successfully (list)
+- Packages failed (list with reasons)
+- Detailed failure information:
+  - File path and line number
+  - Error type (syntax/type/linking)
+  - Error message
+  - Suggested fixes
+- Build statistics:
+  - Total modules compiled
+  - Cache hits/misses
+  - Parallelism used
+
+### `build_graph`
+**Current:** Basic dependency graph
+**Should add:**
+- Build order sequence
+- Cycle detection warnings
+- Module count per package
+- Estimated build time per package
+- Critical path (longest dependency chain)
+- Cache status per package
+
+### `workspace_info`
+**Current:** Root, toolchain, packages
+**Should add:**
+- Total LOC
+- Last successful build timestamp
+- Cache size and location
+- Workspace health status
+- Active configuration
+
+### `clean`
+**Current:** Basic success/failure
+**Should add:**
+- Space freed
+- Artifacts removed count
+- Impact on next build
+
+### `run`
+**Current:** "Would run binary: X"
+**Should add:**
+- Binary path
+- Build status (needs rebuild?)
+- Last built timestamp
+- Available arguments
+
