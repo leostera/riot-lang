@@ -42,8 +42,8 @@ module TuskMcp = struct
                           ("type", Json.String "string");
                           ( "description",
                             Json.String
-                              "Package name to build (optional, builds all if not \
-                               specified)" );
+                              "Package name to build (optional, builds all if \
+                               not specified)" );
                         ] );
                   ] );
             ];
@@ -66,7 +66,8 @@ module TuskMcp = struct
         name = "tusk.package";
         description =
           Some
-            "Get detailed information about a specific package including sources";
+            "Get detailed information about a specific package including \
+             sources";
         input_schema =
           Json.Object
             [
@@ -140,7 +141,10 @@ module TuskMcp = struct
     | CallTool _ -> { method_ = "tools/call"; params = NoParams }
     | ListResources -> { method_ = "resources/list"; params = NoParams }
     | ReadResource { uri } ->
-        { method_ = "resources/read"; params = Named [ ("uri", Json.String uri) ] }
+        {
+          method_ = "resources/read";
+          params = Named [ ("uri", Json.String uri) ];
+        }
     | Ping -> { method_ = "ping"; params = NoParams }
     | Shutdown -> { method_ = "shutdown"; params = NoParams }
 
@@ -194,7 +198,8 @@ module TuskMcp = struct
     | _ -> Error (Json.String (format "Unknown method: %s" method_))
 
   let response_to_json = function
-    | InitializeResult { protocol_version; capabilities; server_info; instructions } ->
+    | InitializeResult
+        { protocol_version; capabilities; server_info; instructions } ->
         Json.Object
           [
             ("protocolVersion", Json.String protocol_version);
@@ -269,11 +274,14 @@ module TuskMcp = struct
                        [
                          ("uri", Json.String r.uri);
                          ( "name",
-                           match r.name with Some n -> Json.String n | None -> Json.Null );
+                           match r.name with
+                           | Some n -> Json.String n
+                           | None -> Json.Null );
                        ])
                    resources) );
           ]
-    | ReadResourceResult { contents } -> Json.Object [ ("contents", Json.Array []) ]
+    | ReadResourceResult { contents } ->
+        Json.Object [ ("contents", Json.Array []) ]
     | PingResult -> Json.Object []
     | ShutdownResult -> Json.Object []
     | Error msg -> Json.Object [ ("error", Json.String msg) ]
@@ -282,13 +290,15 @@ module TuskMcp = struct
     Error (Json.String "Not implemented")
 end
 
-let execute_tool (ctx : ctx) (req : TuskMcp.tool_request) : TuskMcp.tool_response =
+let execute_tool (ctx : ctx) (req : TuskMcp.tool_request) :
+    TuskMcp.tool_response =
   match req with
   | TuskMcp.Build { package } ->
       TuskMcp.Error { message = "Build not implemented yet" }
   | TuskMcp.GetWorkspace ->
       TuskMcp.Error { message = "GetWorkspace not implemented yet" }
-  | TuskMcp.GetGraph -> TuskMcp.Error { message = "GetGraph not implemented yet" }
+  | TuskMcp.GetGraph ->
+      TuskMcp.Error { message = "GetGraph not implemented yet" }
   | TuskMcp.GetPackage { name } ->
       TuskMcp.Error { message = "GetPackage not implemented yet" }
 
@@ -307,14 +317,15 @@ let create_server (ctx : ctx) =
                      capabilities =
                        {
                          Mcp.tools = Some ();
-                         resources = Some { subscribe = None; list_changed = None };
+                         resources =
+                           Some { subscribe = None; list_changed = None };
                          prompts = None;
                        };
                      server_info = { name = "tusk-mcp"; version = "0.1.0" };
                      instructions =
                        Some
-                         "Tusk MCP server provides tools and resources for building \
-                          OCaml projects";
+                         "Tusk MCP server provides tools and resources for \
+                          building OCaml projects";
                    }));
         };
         {
@@ -341,7 +352,8 @@ let create_server (ctx : ctx) =
           method_ = "resources/list";
           fn =
             (fun reply _req ->
-              reply (TuskMcp.ListResourcesResult { resources = TuskMcp.resources }));
+              reply
+                (TuskMcp.ListResourcesResult { resources = TuskMcp.resources }));
         };
         {
           method_ = "resources/read";
@@ -351,7 +363,10 @@ let create_server (ctx : ctx) =
               | TuskMcp.ReadResource { uri } ->
                   reply
                     (TuskMcp.ReadResourceResult
-                       { contents = [ Mcp.TextContent { text = uri; mime_type = None } ] })
+                       {
+                         contents =
+                           [ Mcp.TextContent { text = uri; mime_type = None } ];
+                       })
               | _ -> ());
         };
         { method_ = "ping"; fn = (fun reply _req -> reply TuskMcp.PingResult) };
@@ -373,7 +388,7 @@ let start_stdio_server ~client =
   let mcp_server = create_server ctx in
 
   let stdin_file = Fs.File.from_fd IO.stdin in
-  
+
   let rec server_loop () =
     match Fs.File.read_line stdin_file with
     | Ok line ->
