@@ -15,37 +15,40 @@ let is_ident_continue = function
 
 let is_digit = function '0' .. '9' -> true | _ -> false
 
-let lex_whitespace cursor =
+let lex_whitespace cursor start =
   Cursor.skip_while cursor is_whitespace;
-  Token.Whitespace
+  let end_ = Cursor.position cursor in
+  { Token.kind = Token.Whitespace; span = { start; end_ } }
 
-let rec lex_block_comment cursor depth start_pos =
+let rec lex_block_comment cursor depth content_start token_start =
   match Cursor.peek cursor with
   | None -> 
-      let value = Cursor.slice cursor start_pos (Cursor.position cursor - start_pos) in
-      Token.Comment { value; terminated = false }
+      let value = Cursor.slice cursor content_start (Cursor.position cursor - content_start) in
+      let end_ = Cursor.position cursor in
+      { Token.kind = Token.Comment { value; terminated = false }; span = { start = token_start; end_ } }
   | Some '(' -> (
       Cursor.advance cursor;
       match Cursor.peek cursor with
       | Some '*' ->
           Cursor.advance cursor;
-          lex_block_comment cursor (depth + 1) start_pos
-      | _ -> lex_block_comment cursor depth start_pos)
+          lex_block_comment cursor (depth + 1) content_start token_start
+      | _ -> lex_block_comment cursor depth content_start token_start)
   | Some '*' -> (
       Cursor.advance cursor;
       match Cursor.peek cursor with
       | Some ')' ->
           Cursor.advance cursor;
           if depth = 1 then 
-            let value = Cursor.slice cursor start_pos (Cursor.position cursor - start_pos - 2) in
-            Token.Comment { value; terminated = true }
-          else lex_block_comment cursor (depth - 1) start_pos
-      | _ -> lex_block_comment cursor depth start_pos)
+            let value = Cursor.slice cursor content_start (Cursor.position cursor - content_start - 2) in
+            let end_ = Cursor.position cursor in
+            { Token.kind = Token.Comment { value; terminated = true }; span = { start = token_start; end_ } }
+          else lex_block_comment cursor (depth - 1) content_start token_start
+      | _ -> lex_block_comment cursor depth content_start token_start)
   | Some _ ->
       Cursor.advance cursor;
-      lex_block_comment cursor depth start_pos
+      lex_block_comment cursor depth content_start token_start
 
-let lex_comment cursor =
+let lex_comment cursor token_start =
   Cursor.advance cursor;  (* skip '(' *)
   Cursor.advance cursor;  (* skip '*' *)
   (* Check if it's a docstring *)
@@ -53,16 +56,17 @@ let lex_comment cursor =
     | Some '*' when (match Cursor.peek_n cursor 1 with Some ')' -> false | _ -> true) -> true
     | _ -> false
   in
-  let start_pos = Cursor.position cursor in
+  let content_start = Cursor.position cursor in
   
   let rec lex_content depth =
     match Cursor.peek cursor with
     | None -> 
-        let value = Cursor.slice cursor start_pos (Cursor.position cursor - start_pos) in
+        let value = Cursor.slice cursor content_start (Cursor.position cursor - content_start) in
+        let end_ = Cursor.position cursor in
         if is_docstring then
-          Token.Docstring { value; terminated = false }
+          { Token.kind = Token.Docstring { value; terminated = false }; span = { start = token_start; end_ } }
         else
-          Token.Comment { value; terminated = false }
+          { Token.kind = Token.Comment { value; terminated = false }; span = { start = token_start; end_ } }
     | Some '(' -> (
         Cursor.advance cursor;
         match Cursor.peek cursor with
@@ -76,11 +80,12 @@ let lex_comment cursor =
         | Some ')' ->
             Cursor.advance cursor;
             if depth = 1 then 
-              let value = Cursor.slice cursor start_pos (Cursor.position cursor - start_pos - 2) in
+              let value = Cursor.slice cursor content_start (Cursor.position cursor - content_start - 2) in
+              let end_ = Cursor.position cursor in
               if is_docstring then
-                Token.Docstring { value; terminated = true }
+                { Token.kind = Token.Docstring { value; terminated = true }; span = { start = token_start; end_ } }
               else
-                Token.Comment { value; terminated = true }
+                { Token.kind = Token.Comment { value; terminated = true }; span = { start = token_start; end_ } }
             else lex_content (depth - 1)
         | _ -> lex_content depth)
     | Some _ ->
@@ -89,39 +94,47 @@ let lex_comment cursor =
   in
   lex_content 1
 
-let lex_ident cursor =
+let lex_ident cursor token_start =
   let start = Cursor.position cursor in
   Cursor.skip_while cursor is_ident_continue;
   let len = Cursor.position cursor - start in
   let ident = Cursor.slice cursor start len in
+  let end_ = Cursor.position cursor in
 
-  if ident = "_" then Token.Underscore
-  else
-    match Token.keyword_of_string ident with
-    | Some kw ->
-        if Token.is_opening_keyword ident then
-          let delim = Token.delimiter_of_keyword ident |> Option.unwrap in
-          Token.OpenDelim delim
-        else if Token.is_closing_keyword ident then Token.CloseDelim BeginEnd
-        else Token.Keyword kw
-    | None -> Token.Ident ident
+  let kind =
+    if ident = "_" then Token.Underscore
+    else
+      match Token.keyword_of_string ident with
+      | Some kw ->
+          if Token.is_opening_keyword ident then
+            let delim = Token.delimiter_of_keyword ident |> Option.unwrap in
+            Token.OpenDelim delim
+          else if Token.is_closing_keyword ident then Token.CloseDelim BeginEnd
+          else Token.Keyword kw
+      | None -> Token.Ident ident
+  in
+  { Token.kind; span = { start = token_start; end_ } }
 
-let lex_number cursor =
+let lex_number cursor token_start =
   let num_str = Cursor.take_while cursor is_digit in
-  match Cursor.peek cursor with
-  | Some '.' -> (
-      Cursor.advance cursor;
-      let frac = Cursor.take_while cursor is_digit in
-      let float_str = num_str ^ "." ^ frac in
-      match float_of_string_opt float_str with
-      | Some f -> Token.Literal (Float f)
-      | None -> Token.Unknown '.')
-  | _ -> (
-      match int_of_string_opt num_str with
-      | Some i -> Token.Literal (Int i)
-      | None -> Token.Unknown '0')
+  let end_ = Cursor.position cursor in
+  let kind =
+    match Cursor.peek cursor with
+    | Some '.' -> (
+        Cursor.advance cursor;
+        let frac = Cursor.take_while cursor is_digit in
+        let float_str = num_str ^ "." ^ frac in
+        match float_of_string_opt float_str with
+        | Some f -> Token.Literal (Float f)
+        | None -> Token.Unknown '.')
+    | _ -> (
+        match int_of_string_opt num_str with
+        | Some i -> Token.Literal (Int i)
+        | None -> Token.Unknown '0')
+  in
+  { Token.kind; span = { start = token_start; end_ = Cursor.position cursor } }
 
-let lex_string cursor =
+let lex_string cursor token_start =
   Cursor.advance cursor;
   let start = Cursor.position cursor in
   let rec loop () =
@@ -142,160 +155,209 @@ let lex_string cursor =
         loop ()
   in
   let value, terminated = loop () in
-  Token.Literal (String { value; terminated })
+  let end_ = Cursor.position cursor in
+  { Token.kind = Token.Literal (String { value; terminated }); span = { start = token_start; end_ } }
 
-let lex_char cursor =
+let lex_char cursor token_start =
   Cursor.advance cursor;
-  match Cursor.peek cursor with
-  | None -> Token.Unknown '\''
-  | Some '\\' -> (
-      Cursor.advance cursor;
-      let escaped = Cursor.peek cursor in
-      Cursor.advance cursor;
-      match Cursor.peek cursor with
-      | Some '\'' ->
-          Cursor.advance cursor;
-          Token.Literal (Char (Option.unwrap_or ~default:' ' escaped))
-      | _ -> Token.Unknown '\'')
-  | Some c -> (
-      Cursor.advance cursor;
-      match Cursor.peek cursor with
-      | Some '\'' ->
-          Cursor.advance cursor;
-          Token.Literal (Char c)
-      | _ -> Token.Unknown '\'')
+  let kind =
+    match Cursor.peek cursor with
+    | None -> Token.Unknown '\''
+    | Some '\\' -> (
+        Cursor.advance cursor;
+        let escaped = Cursor.peek cursor in
+        Cursor.advance cursor;
+        match Cursor.peek cursor with
+        | Some '\'' ->
+            Cursor.advance cursor;
+            Token.Literal (Char (Option.unwrap_or ~default:' ' escaped))
+        | _ -> Token.Unknown '\'')
+    | Some c -> (
+        Cursor.advance cursor;
+        match Cursor.peek cursor with
+        | Some '\'' ->
+            Cursor.advance cursor;
+            Token.Literal (Char c)
+        | _ -> Token.Unknown '\'')
+  in
+  let end_ = Cursor.position cursor in
+  { Token.kind; span = { start = token_start; end_ } }
 
 let next cursor =
-  if Cursor.is_eof cursor then Token.EOF
+  let start = Cursor.position cursor in
+  if Cursor.is_eof cursor then 
+    { Token.kind = Token.EOF; span = { start; end_ = start } }
   else
     match Cursor.peek cursor with
-    | None -> Token.EOF
-    | Some c when is_whitespace c -> lex_whitespace cursor
+    | None -> { Token.kind = Token.EOF; span = { start; end_ = start } }
+    | Some c when is_whitespace c -> lex_whitespace cursor start
     | Some '(' -> (
         match Cursor.peek_n cursor 1 with
-        | Some '*' -> lex_comment cursor
+        | Some '*' -> lex_comment cursor start
         | _ ->
             Cursor.advance cursor;
-            Token.OpenDelim Paren)
+            let end_ = Cursor.position cursor in
+            { Token.kind = Token.OpenDelim Paren; span = { start; end_ } })
     | Some ')' ->
         Cursor.advance cursor;
-        Token.CloseDelim Paren
+        let end_ = Cursor.position cursor in
+        { Token.kind = Token.CloseDelim Paren; span = { start; end_ } }
     | Some '[' ->
         Cursor.advance cursor;
-        Token.OpenDelim Bracket
+        let end_ = Cursor.position cursor in
+        { Token.kind = Token.OpenDelim Bracket; span = { start; end_ } }
     | Some ']' ->
         Cursor.advance cursor;
-        Token.CloseDelim Bracket
+        let end_ = Cursor.position cursor in
+        { Token.kind = Token.CloseDelim Bracket; span = { start; end_ } }
     | Some '{' ->
         Cursor.advance cursor;
-        Token.OpenDelim Brace
+        let end_ = Cursor.position cursor in
+        { Token.kind = Token.OpenDelim Brace; span = { start; end_ } }
     | Some '}' ->
         Cursor.advance cursor;
-        Token.CloseDelim Brace
+        let end_ = Cursor.position cursor in
+        { Token.kind = Token.CloseDelim Brace; span = { start; end_ } }
     | Some '+' ->
         Cursor.advance cursor;
-        Token.Plus
+        let end_ = Cursor.position cursor in
+        { Token.kind = Token.Plus; span = { start; end_ } }
     | Some '-' -> (
         Cursor.advance cursor;
         match Cursor.peek cursor with
         | Some '>' ->
             Cursor.advance cursor;
-            Token.Arrow
-        | _ -> Token.Minus)
+            let end_ = Cursor.position cursor in
+            { Token.kind = Token.Arrow; span = { start; end_ } }
+        | _ -> 
+            let end_ = Cursor.position cursor in
+            { Token.kind = Token.Minus; span = { start; end_ } })
     | Some '*' ->
         Cursor.advance cursor;
-        Token.Star
+        let end_ = Cursor.position cursor in
+        { Token.kind = Token.Star; span = { start; end_ } }
     | Some '/' ->
         Cursor.advance cursor;
-        Token.Slash
+        let end_ = Cursor.position cursor in
+        { Token.kind = Token.Slash; span = { start; end_ } }
     | Some '%' ->
         Cursor.advance cursor;
-        Token.Percent
+        let end_ = Cursor.position cursor in
+        { Token.kind = Token.Percent; span = { start; end_ } }
     | Some '^' ->
         Cursor.advance cursor;
-        Token.Caret
+        let end_ = Cursor.position cursor in
+        { Token.kind = Token.Caret; span = { start; end_ } }
     | Some '=' -> (
         Cursor.advance cursor;
         match Cursor.peek cursor with
         | Some '>' ->
             Cursor.advance cursor;
-            Token.FatArrow
-        | _ -> Token.Eq)
+            let end_ = Cursor.position cursor in
+            { Token.kind = Token.FatArrow; span = { start; end_ } }
+        | _ -> 
+            let end_ = Cursor.position cursor in
+            { Token.kind = Token.Eq; span = { start; end_ } })
     | Some '<' ->
         Cursor.advance cursor;
         (match Cursor.peek cursor with
          | Some '=' -> 
              Cursor.advance cursor;
-             Token.LtEq
+             let end_ = Cursor.position cursor in
+             { Token.kind = Token.LtEq; span = { start; end_ } }
          | Some '-' ->
              Cursor.advance cursor;
-             Token.Arrow  (* <- arrow *)
+             let end_ = Cursor.position cursor in
+             { Token.kind = Token.Arrow; span = { start; end_ } }
          | Some '>' ->
              Cursor.advance cursor;
-             Token.Ne  (* <> not equal *)
-         | _ -> Token.Lt)
+             let end_ = Cursor.position cursor in
+             { Token.kind = Token.Ne; span = { start; end_ } }
+         | _ -> 
+             let end_ = Cursor.position cursor in
+             { Token.kind = Token.Lt; span = { start; end_ } })
     | Some '>' ->
         Cursor.advance cursor;
         (match Cursor.peek cursor with
          | Some '=' ->
              Cursor.advance cursor;
-             Token.GtEq
-         | _ -> Token.Gt)
+             let end_ = Cursor.position cursor in
+             { Token.kind = Token.GtEq; span = { start; end_ } }
+         | _ -> 
+             let end_ = Cursor.position cursor in
+             { Token.kind = Token.Gt; span = { start; end_ } })
     | Some '!' ->
         Cursor.advance cursor;
-        Token.Bang
+        let end_ = Cursor.position cursor in
+        { Token.kind = Token.Bang; span = { start; end_ } }
     | Some '&' ->
         Cursor.advance cursor;
-        Token.Ampersand
+        let end_ = Cursor.position cursor in
+        { Token.kind = Token.Ampersand; span = { start; end_ } }
     | Some '|' ->
         Cursor.advance cursor;
-        Token.Pipe
+        let end_ = Cursor.position cursor in
+        { Token.kind = Token.Pipe; span = { start; end_ } }
     | Some ':' -> (
         Cursor.advance cursor;
         match Cursor.peek cursor with
         | Some ':' ->
             Cursor.advance cursor;
-            Token.ColonColon
+            let end_ = Cursor.position cursor in
+            { Token.kind = Token.ColonColon; span = { start; end_ } }
         | Some '=' ->
             Cursor.advance cursor;
-            Token.ColonEq
-        | _ -> Token.Colon)
+            let end_ = Cursor.position cursor in
+            { Token.kind = Token.ColonEq; span = { start; end_ } }
+        | _ -> 
+            let end_ = Cursor.position cursor in
+            { Token.kind = Token.Colon; span = { start; end_ } })
     | Some ';' ->
         Cursor.advance cursor;
-        Token.Semi
+        let end_ = Cursor.position cursor in
+        { Token.kind = Token.Semi; span = { start; end_ } }
     | Some ',' ->
         Cursor.advance cursor;
-        Token.Comma
+        let end_ = Cursor.position cursor in
+        { Token.kind = Token.Comma; span = { start; end_ } }
     | Some '.' ->
         Cursor.advance cursor;
-        Token.Dot
+        let end_ = Cursor.position cursor in
+        { Token.kind = Token.Dot; span = { start; end_ } }
     | Some '?' ->
         Cursor.advance cursor;
-        Token.Question
+        let end_ = Cursor.position cursor in
+        { Token.kind = Token.Question; span = { start; end_ } }
     | Some '@' ->
         Cursor.advance cursor;
-        Token.At
+        let end_ = Cursor.position cursor in
+        { Token.kind = Token.At; span = { start; end_ } }
     | Some '#' ->
         Cursor.advance cursor;
-        Token.Hash
+        let end_ = Cursor.position cursor in
+        { Token.kind = Token.Hash; span = { start; end_ } }
     | Some '~' ->
         Cursor.advance cursor;
-        Token.Tilde
+        let end_ = Cursor.position cursor in
+        { Token.kind = Token.Tilde; span = { start; end_ } }
     | Some '$' ->
         Cursor.advance cursor;
-        Token.Dollar
-    | Some '"' -> lex_string cursor
-    | Some '\'' -> lex_char cursor
-    | Some c when is_digit c -> lex_number cursor
-    | Some c when is_ident_start c -> lex_ident cursor
+        let end_ = Cursor.position cursor in
+        { Token.kind = Token.Dollar; span = { start; end_ } }
+    | Some '"' -> lex_string cursor start
+    | Some '\'' -> lex_char cursor start
+    | Some c when is_digit c -> lex_number cursor start
+    | Some c when is_ident_start c -> lex_ident cursor start
     | Some c ->
         Cursor.advance cursor;
-        Token.Unknown c
+        let end_ = Cursor.position cursor in
+        { Token.kind = Token.Unknown c; span = { start; end_ } }
 
 let rec lex_all cursor acc =
-  match next cursor with
-  | Token.EOF -> List.rev (Token.EOF :: acc)
-  | token -> lex_all cursor (token :: acc)
+  let token = next cursor in
+  match token.Token.kind with
+  | Token.EOF -> List.rev (token :: acc)
+  | _ -> lex_all cursor (token :: acc)
 
 let tokenize source =
   let cursor = create source in

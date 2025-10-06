@@ -89,7 +89,7 @@ let rec format_token_tree indent tree =
   let indent_str = String.make (indent * 2) ' ' in
   match tree with
   | Token_tree.Token tok ->
-      Printf.sprintf "%s%s" indent_str (format_token tok)
+      Printf.sprintf "%s%s" indent_str (format_token tok.Token.kind)
   | Token_tree.Tree (delim, children) ->
       let delim_str = 
         match delim with
@@ -111,7 +111,7 @@ let rec format_token_tree indent tree =
 (* JSON output for tokens *)
 let token_to_json tok =
   let open Data.Json in
-  match tok with
+  match tok.Token.kind with
   | Token.Keyword kw ->
       obj ["type", string "keyword"; 
            "value", string (format_token (Token.Keyword kw))]
@@ -133,8 +133,8 @@ let token_to_json tok =
       obj ["type", string "whitespace"]
   | Token.EOF ->
       obj ["type", string "eof"]
-  | tok ->
-      obj ["type", string "token"; "value", string (format_token tok)]
+  | kind ->
+      obj ["type", string "token"; "value", string (format_token kind)]
 
 (* JSON output for token trees *)
 let rec token_tree_to_json = function
@@ -207,8 +207,8 @@ let () =
                if json then
                  let json_tokens = Data.Json.array (List.map token_to_json tokens) in
                  println "%s" (Data.Json.to_string json_tokens)
-               else
-                 List.iter (fun tok -> println "%s" (format_token tok)) tokens)
+                else
+                  List.iter (fun tok -> println "%s" (format_token tok.Token.kind)) tokens)
       | Some ("token-tree", sub_matches) ->
           let file = ArgParser.get_one sub_matches "FILE" |> Option.expect ~msg:"FILE required" in
           let json = ArgParser.get_flag sub_matches "json" in

@@ -1,5 +1,7 @@
 open Std
 
+type span = { start : int; end_ : int }
+
 type keyword =
   | And
   | As
@@ -73,7 +75,7 @@ type delimiter =
   | SigEnd
   | ObjectEnd
 
-type t =
+type token_kind =
   | Keyword of keyword
   | Ident of string
   | Literal of literal
@@ -115,6 +117,8 @@ type t =
   | Whitespace
   | EOF
   | Unknown of char
+
+type t = { kind : token_kind; span : span }
 
 val keyword_of_string : string -> keyword option
 val is_opening_keyword : string -> bool
