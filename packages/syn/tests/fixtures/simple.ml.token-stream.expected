@@ -1,0 +1,24 @@
+Comment(" Simple test file ", terminated=true)
+Whitespace
+Keyword(let)
+Whitespace
+Ident(x)
+Whitespace
+Eq
+Whitespace
+Int(42)
+Whitespace
+Keyword(let)
+Whitespace
+Ident(f)
+Whitespace
+Ident(y)
+Whitespace
+Eq
+Whitespace
+Ident(x)
+Whitespace
+Plus
+Whitespace
+Ident(y)
+EOF

@@ -1,0 +1,52 @@
+Tree #0:
+Tree(BeginEnd) [
+  Comment(" This is a comment ", terminated=true)
+  Whitespace
+  Keyword(let)
+  Whitespace
+  Ident(x)
+  Whitespace
+  Eq
+  Whitespace
+  Int(42)
+  Whitespace
+]
+
+Tree #1:
+Tree(BeginEnd) [
+  Docstring("* This is a docstring ", terminated=true)
+  Whitespace
+  Keyword(type)
+  Whitespace
+  Ident(t)
+  Whitespace
+  Eq
+  Whitespace
+  Ident(int)
+  Whitespace
+]
+
+Tree #2:
+Tree(BeginEnd) [
+  Comment(" Multi-line\n   comment ", terminated=true)
+  Whitespace
+  Keyword(module)
+  Whitespace
+  Ident(M)
+  Whitespace
+  Eq
+  Whitespace
+  Tree(StructEnd) [
+    Whitespace
+    Keyword(let)
+    Whitespace
+    Ident(y)
+    Whitespace
+    Eq
+    Whitespace
+    Int(1)
+    Whitespace
+    CloseDelim(BeginEnd)
+  ]
+]
+

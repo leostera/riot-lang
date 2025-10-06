@@ -1,0 +1,10 @@
+[package]
+name = "syn"
+version = "0.1.0"
+
+[dependencies]
+std = { path = "../std" }
+
+[[bin]]
+name = "syn"
+main = "main.ml"
