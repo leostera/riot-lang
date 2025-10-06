@@ -11,28 +11,31 @@ let documented = "value"
 let y = 100
 
 let z =
-
-(*  inline comment  *)
-50
+  (*  inline comment  *)
+  50
 
 (*  Comment before  *)
 let a =
-
-(*  Comment inside  *)
-10 +
-
-(*  another inline  *)
-20
+  (*  Comment inside  *)
+  10 +
+  (*  another inline  *)
+  20
 
 (** * Module documentation  *)
-module M =struct
+module M = struct
   (** * Function documentation  *)
-  let f x = x + 1(*  Regular comment  *)
-  let g = 42(*  Nested comments (* like (* this *) *)  *)
-  let nested = true (* 
+  let f x = x + 1
+
+  (*  Regular comment  *)
+  let g = 42
+end
+
+(*  Nested comments (* like (* this *) *)  *)
+let nested = true
+
+(* 
  * Formatted comment block
  * with multiple lines
  * and asterisks
   *)
-  let formatted = "block"
-end
+let formatted = "block"

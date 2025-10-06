@@ -12,21 +12,19 @@ let compose = fun f g -> fun x -> f (g x)
 let result = add 12
 
 (*  Complex application  *)
-let result2 = Std.List.map (fun x -> x * 2)[1;
-2;
-3]
+let result2 = Std.List.map (fun x -> x * 2) [1; 2; 3]
 
 (*  Partial application  *)
 let add5 = add 5
 
 (*  Labeled arguments  *)
-let create ~name ~age ={name = name;
-age = age}
+let create ~name ~age = { name = name; age = age }
 
 (*  Optional arguments  *)
-let greet ?title name = match title with
-  |None -> "Hello " ^ name
-  |Some t -> "Hello " ^ t ^ " " ^ name
+let greet ?title name = 
+  match title with
+  | None -> "Hello " ^ name
+  | Some t -> "Hello " ^ t ^ " " ^ name
 
-  (*  Unit argument  *)
-  let print_hello ()= Std.println"Hello"
+(*  Unit argument  *)
+let print_hello () = Std.println "Hello"
