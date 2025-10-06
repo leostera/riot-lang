@@ -160,7 +160,7 @@ let rec format_token_tree ctx prev_token = function
       let needs_space = match prev_token, delim with
         | Some (Syn.Token.Keyword _), Syn.Token.Paren -> true
         | Some Syn.Token.Eq, Syn.Token.Paren -> true
-        | Some (Syn.Token.Ident _), Syn.Token.Paren -> true (* function call needs space *)
+        | Some (Syn.Token.Ident _), Syn.Token.Paren -> true (* space for function calls *)
         | _ -> false
       in
       if needs_space && not ctx.last_was_newline then emit ctx " ";

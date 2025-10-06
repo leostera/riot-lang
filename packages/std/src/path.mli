@@ -1,83 +1,468 @@
-(** Path manipulation module - Type-safe filesystem paths
-
-    All paths are guaranteed to be valid UTF-8 strings. Similar to Rust's
-    std::path::Path, but owned (like PathBuf) since OCaml has GC. *)
+(** # Path - Type-safe filesystem paths
+    
+    This module provides a type-safe wrapper for filesystem paths, ensuring
+    all paths are valid UTF-8 strings. Similar to Rust's `std::path::Path`,
+    but owned (like `PathBuf`) since OCaml has garbage collection.
+    
+    ## Examples
+    
+    Basic path manipulation:
+    
+    ```ocaml
+    open Std
+    
+    (* Create paths *)
+    let home = Path.v "/home/user" in
+    let config = home / Path.v ".config" / Path.v "app.toml" in
+    (* config = "/home/user/.config/app.toml" *)
+    
+    (* Extract components *)
+    let file = Path.v "/dir/file.txt" in
+    let parent = Path.parent file in  (* Some "/dir" *)
+    let name = Path.basename file in  (* "file.txt" *)
+    let ext = Path.extension file in  (* Some "txt" *)
+    
+    (* Check properties *)
+    if Path.exists config then
+      println "Config found at %s" (Path.to_string config)
+    ```
+    
+    ## Path Safety
+    
+    Unlike string-based paths, this module ensures:
+    - All paths are valid UTF-8
+    - Path operations preserve validity
+    - Type safety prevents mixing paths with regular strings
+    
+    ## Platform Differences
+    
+    Path separators are platform-specific:
+    - Unix-like systems: `/`
+    - Windows: `\` (though `/` is also accepted)
+*)
 
 type t
-(** Abstract type representing a filesystem path (always valid UTF-8) *)
+(** The type of filesystem paths. Always contains valid UTF-8. *)
 
-(** Path-specific errors *)
+(** # Errors *)
+
 type error =
   | InvalidUtf8 of { path : string }
+  (** Path contains invalid UTF-8 bytes *)
   | SystemInvalidUtf8 of { syscall : string; path : string }
+  (** System call returned invalid UTF-8 *)
   | SystemError of string
+  (** Other system-level error *)
+
+(** # Construction and Conversion *)
 
 val of_string : string -> (t, error) Result.t
-(** Create a path from a string, returning an error if the string is not valid
-    UTF-8. *)
+(** Creates a path from a string, validating UTF-8 encoding.
+    
+    ## Examples
+    
+    ```ocaml
+    (* Safe construction with error handling *)
+    match Path.of_string "/home/user" with
+    | Ok path -> println "Valid path: %s" (Path.to_string path)
+    | Error (InvalidUtf8 {path}) -> println "Invalid UTF-8 in: %s" path
+    
+    (* Handle user input *)
+    let parse_path input =
+      Path.of_string input
+      |> Result.map_err (fun _ -> "Invalid path provided")
+    ```
+*)
 
 val v : string -> t
-(** Create a path from a string, panics if the string is not valid UTF-8.
-    Convenient function for when you know the path string is valid. *)
+(** Creates a path from a string literal.
+    
+    ## Panics
+    
+    Panics if the string is not valid UTF-8. Use this only with string
+    literals or when you're certain the string is valid.
+    
+    ## Examples
+    
+    ```ocaml
+    (* Safe with literals *)
+    let home = Path.v "/home/user" in
+    let config = Path.v "config.toml" in
+    
+    (* Building paths *)
+    let full_path = home / config
+    (* full_path = "/home/user/config.toml" *)
+    ```
+*)
 
 val to_string : t -> string
-(** Convert a path to a string (always valid UTF-8) *)
+(** Converts a path to a UTF-8 string.
+    
+    The returned string is always valid UTF-8 since paths are
+    validated at construction time.
+    
+    ## Examples
+    
+    ```ocaml
+    let path = Path.v "/usr/local/bin" in
+    Printf.printf "Path: %s\n" (Path.to_string path);
+    
+    (* Use with string functions *)
+    let contains_local path =
+      String.contains (Path.to_string path) "local"
+    ```
+*)
+
+(** # Path Operations *)
 
 val join : t -> t -> t
-(** Join two paths together *)
+(** Joins two paths together with a path separator.
+    
+    ## Examples
+    
+    ```ocaml
+    let dir = Path.v "/usr" in
+    let subdir = Path.v "local/bin" in
+    let full = Path.join dir subdir in
+    (* full = "/usr/local/bin" *)
+    
+    (* Joining absolute paths replaces the first path *)
+    let path1 = Path.v "/home/user" in
+    let path2 = Path.v "/etc" in
+    let result = Path.join path1 path2 in
+    (* result = "/etc" *)
+    ```
+*)
 
 val ( / ) : t -> t -> t
-(** Join paths together - allows chaining: a / b / c *)
+(** Infix operator for joining paths.
+    
+    Allows natural path construction with chaining.
+    
+    ## Examples
+    
+    ```ocaml
+    let path = Path.v "/home" / Path.v "user" / Path.v "documents" in
+    (* path = "/home/user/documents" *)
+    
+    (* Build paths incrementally *)
+    let home = Path.v (Sys.getenv "HOME") in
+    let config = home / Path.v ".config" / Path.v "myapp" in
+    let settings = config / Path.v "settings.json"
+    ```
+*)
 
 val parent : t -> t option
-(** Get the parent directory of a path *)
+(** Returns the parent directory, if any.
+    
+    Returns [`None`] for root paths or single components.
+    
+    ## Examples
+    
+    ```ocaml
+    let path = Path.v "/home/user/file.txt" in
+    assert (Path.parent path = Some (Path.v "/home/user"));
+    
+    let root = Path.v "/" in
+    assert (Path.parent root = None);
+    
+    let relative = Path.v "file.txt" in
+    assert (Path.parent relative = None)
+    ```
+*)
 
 val basename : t -> string
-(** Get the basename (filename) of a path *)
+(** Returns the final component of a path as a string.
+    
+    Returns empty string for root paths.
+    
+    ## Examples
+    
+    ```ocaml
+    assert (Path.basename (Path.v "/home/user/file.txt") = "file.txt");
+    assert (Path.basename (Path.v "/home/user/") = "user");
+    assert (Path.basename (Path.v "/") = "");
+    assert (Path.basename (Path.v "file.txt") = "file.txt")
+    ```
+*)
 
 val dirname : t -> t
-(** Get the directory name of a path *)
+(** Returns the directory portion of a path.
+    
+    Similar to [`parent`] but returns the path itself if no parent.
+    
+    ## Examples
+    
+    ```ocaml
+    let file = Path.v "/home/user/file.txt" in
+    assert (Path.dirname file = Path.v "/home/user");
+    
+    let dir = Path.v "/home/user/" in
+    assert (Path.dirname dir = Path.v "/home");
+    
+    let root = Path.v "/" in
+    assert (Path.dirname root = Path.v "/")
+    ```
+*)
+
+(** # Extensions and Properties *)
 
 val extension : t -> string option
-(** Get file extension if present *)
+(** Returns the file extension, if any.
+    
+    The extension is the part after the final `.` in the basename.
+    
+    ## Examples
+    
+    ```ocaml
+    assert (Path.extension (Path.v "file.txt") = Some "txt");
+    assert (Path.extension (Path.v "archive.tar.gz") = Some "gz");
+    assert (Path.extension (Path.v "README") = None);
+    assert (Path.extension (Path.v ".gitignore") = None);
+    assert (Path.extension (Path.v "file.") = Some "")
+    ```
+*)
 
 val remove_extension : t -> t
-(** Remove extension from path *)
+(** Removes the file extension, if present.
+    
+    ## Examples
+    
+    ```ocaml
+    let path = Path.v "/dir/file.txt" in
+    assert (Path.remove_extension path = Path.v "/dir/file");
+    
+    let no_ext = Path.v "/dir/README" in
+    assert (Path.remove_extension no_ext = no_ext);
+    
+    (* Only removes last extension *)
+    let archive = Path.v "file.tar.gz" in
+    assert (Path.remove_extension archive = Path.v "file.tar")
+    ```
+*)
 
 val add_extension : t -> ext:string -> t
-(** Add or replace extension *)
+(** Adds or replaces the file extension.
+    
+    If the path already has an extension, it's replaced.
+    The extension should not include the leading dot.
+    
+    ## Examples
+    
+    ```ocaml
+    let path = Path.v "file" in
+    assert (Path.add_extension path ~ext:"txt" = Path.v "file.txt");
+    
+    (* Replaces existing extension *)
+    let doc = Path.v "document.doc" in
+    assert (Path.add_extension doc ~ext:"pdf" = Path.v "document.pdf");
+    
+    (* Create backup files *)
+    let backup path = Path.add_extension path ~ext:"bak"
+    ```
+*)
 
 val is_absolute : t -> bool
-(** Check if path is absolute *)
+(** Returns `true` if the path is absolute.
+    
+    Absolute paths start from the root of the filesystem.
+    
+    ## Examples
+    
+    ```ocaml
+    assert (Path.is_absolute (Path.v "/home/user"));
+    assert (Path.is_absolute (Path.v "/"));
+    assert (not (Path.is_absolute (Path.v "relative/path")));
+    assert (not (Path.is_absolute (Path.v "./file")));
+    
+    (* Platform-specific on Windows *)
+    (* Path.is_absolute (Path.v "C:\\Windows") = true on Windows *)
+    ```
+*)
 
 val is_relative : t -> bool
-(** Check if path is relative *)
+(** Returns `true` if the path is relative.
+    
+    Relative paths are interpreted from the current directory.
+    
+    ## Examples
+    
+    ```ocaml
+    assert (Path.is_relative (Path.v "file.txt"));
+    assert (Path.is_relative (Path.v "./subdir"));
+    assert (Path.is_relative (Path.v "../parent"));
+    assert (not (Path.is_relative (Path.v "/absolute")))
+    ```
+*)
+
+(** # Path Analysis *)
 
 val components : t -> t list
-(** Split path into components. For example:
-    - "a/b/c" returns [a; b; c]
-    - "/a/b/c" returns [/; a; b; c]
-    - "a/b/../c" returns [a; b; ..; c] (no normalization) *)
+(** Splits a path into its components.
+    
+    Returns a list of path segments. Does not normalize the path.
+    
+    ## Examples
+    
+    ```ocaml
+    let parts = Path.components (Path.v "a/b/c") in
+    (* parts = [Path.v "a"; Path.v "b"; Path.v "c"] *)
+    
+    let abs = Path.components (Path.v "/usr/local/bin") in
+    (* abs = [Path.v "/"; Path.v "usr"; Path.v "local"; Path.v "bin"] *)
+    
+    (* Special components are preserved *)
+    let with_dots = Path.components (Path.v "a/./b/../c") in
+    (* with_dots = [Path.v "a"; Path.v "."; Path.v "b"; Path.v ".."; Path.v "c"] *)
+    ```
+*)
 
 val normalize : t -> t
-(** Normalize a path (remove . and .. components) *)
+(** Normalizes a path by resolving `.` and `..` components.
+    
+    Does not access the filesystem or resolve symbolic links.
+    
+    ## Examples
+    
+    ```ocaml
+    let path = Path.v "/home/user/../admin/./config" in
+    assert (Path.normalize path = Path.v "/home/admin/config");
+    
+    let relative = Path.v "./a/b/../c/." in
+    assert (Path.normalize relative = Path.v "a/c");
+    
+    (* Can't go above root *)
+    let above_root = Path.v "/../.." in
+    assert (Path.normalize above_root = Path.v "/")
+    ```
+*)
+
+(** # Filesystem Queries *)
 
 val exists : t -> bool
-(** Check if path exists on filesystem *)
+(** Checks if the path exists on the filesystem.
+    
+    ## Examples
+    
+    ```ocaml
+    if Path.exists (Path.v "config.json") then
+      println "Config file found"
+    else
+      println "No config file, using defaults"
+    
+    (* Check before operations *)
+    let safe_remove path =
+      if Path.exists path then
+        Fs.remove_file path
+      else
+        Ok ()
+    ```
+    
+    ## Note
+    
+    Subject to TOCTOU race conditions. The file may be created or
+    deleted between this check and subsequent operations.
+*)
 
 val is_directory : t -> bool
-(** Check if path is a directory *)
+(** Returns `true` if the path exists and is a directory.
+    
+    ## Examples
+    
+    ```ocaml
+    let path = Path.v "/home" in
+    assert (Path.is_directory path);
+    
+    let file = Path.v "/etc/passwd" in
+    assert (not (Path.is_directory file));
+    
+    (* Returns false if path doesn't exist *)
+    let missing = Path.v "/does/not/exist" in
+    assert (not (Path.is_directory missing))
+    ```
+*)
 
 val is_file : t -> bool
-(** Check if path is a file *)
+(** Returns `true` if the path exists and is a regular file.
+    
+    ## Examples
+    
+    ```ocaml
+    let file = Path.v "/etc/passwd" in
+    assert (Path.is_file file);
+    
+    let dir = Path.v "/home" in
+    assert (not (Path.is_file dir));
+    
+    (* Process only files *)
+    let process_if_file path =
+      if Path.is_file path then
+        process_file path
+      else
+        println "Not a file: %s" (Path.to_string path)
+    ```
+*)
+
+(** # Comparison and Manipulation *)
 
 val equal : t -> t -> bool
-(** Compare two paths for equality *)
+(** Compares two paths for equality.
+    
+    Comparison is byte-for-byte. Paths are not normalized before comparison.
+    
+    ## Examples
+    
+    ```ocaml
+    let p1 = Path.v "/home/user" in
+    let p2 = Path.v "/home/user" in
+    assert (Path.equal p1 p2);
+    
+    (* Different representations are not equal *)
+    let p3 = Path.v "/home/./user" in
+    assert (not (Path.equal p1 p3));
+    
+    (* Normalize first for semantic equality *)
+    assert (Path.equal 
+      (Path.normalize p1) 
+      (Path.normalize p3))
+    ```
+*)
 
 val strip_prefix : t -> prefix:t -> (t, error) Result.t
-(** Strip a prefix from a path if it matches. Returns Ok(remaining) if path
-    starts with prefix, Error otherwise. Example: strip_prefix (v "/a/b/c")
-    ~prefix:(v "/a/b") = Ok (v "c") *)
+(** Removes a prefix from a path if it matches.
+    
+    Returns the remaining path after removing the prefix.
+    
+    ## Examples
+    
+    ```ocaml
+    let path = Path.v "/home/user/documents/file.txt" in
+    let prefix = Path.v "/home/user" in
+    
+    match Path.strip_prefix path ~prefix with
+    | Ok rel -> 
+        (* rel = Path.v "documents/file.txt" *)
+        println "Relative: %s" (Path.to_string rel)
+    | Error _ -> 
+        println "Not a prefix"
+    
+    (* Make paths relative to a base directory *)
+    let make_relative ~base path =
+      Path.strip_prefix path ~prefix:base
+      |> Result.unwrap_or ~default:path
+    ```
+*)
 
 val pp : Format.formatter -> t -> unit
-(** Pretty print a path *)
+(** Pretty-prints a path for debugging.
+    
+    ## Examples
+    
+    ```ocaml
+    let path = Path.v "/home/user" in
+    Format.printf "Path: %a\n" Path.pp path;
+    
+    (* In error messages *)
+    Format.eprintf "Cannot read file: %a\n" Path.pp path
+    ```
+*)

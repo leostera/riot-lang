@@ -53,7 +53,9 @@ let lex_comment cursor token_start =
   Cursor.advance cursor;  (* skip '*' *)
   (* Check if it's a docstring *)
   let is_docstring = match Cursor.peek cursor with
-    | Some '*' when (match Cursor.peek_n cursor 1 with Some ')' -> false | _ -> true) -> true
+    | Some '*' when (match Cursor.peek_n cursor 1 with Some ')' -> false | _ -> true) -> 
+        Cursor.advance cursor;  (* skip the second '*' for docstrings *)
+        true
     | _ -> false
   in
   let content_start = Cursor.position cursor in
