@@ -40,10 +40,35 @@
     | Error e -> println "Error: %s" (show_error e)
     ```
     
+    ## Time-of-Check to Time-of-Use (TOCTOU)
+    
+    Many filesystem operations are subject to TOCTOU race conditions. This occurs
+    when checking a condition (like file existence) and then using that information,
+    but the condition may change between check and use.
+    
+    For example:
+    ```ocaml
+    (* TOCTOU vulnerable - file might be created between check and write *)
+    if not (Fs.exists path |> Result.unwrap_or ~default:false) then
+      Fs.write content path  (* Another process might create it first *)
+    ```
+    
+    To avoid TOCTOU issues:
+    - Use atomic operations when possible (e.g., [`File.create_new`])
+    - Keep files open for the duration of operations
+    - Be aware that metadata operations may be affected by concurrent changes
+    
     ## Error Handling
     
     All operations return `Result.t` for explicit error handling.
-    Never throws exceptions for I/O errors.
+    Never throws exceptions for I/O errors. Common error conditions include:
+    - `SystemError` for permission denied, file not found, disk full, etc.
+    
+    ## Platform-specific behavior
+    
+    This module uses OCaml's Unix module internally, which provides cross-platform
+    filesystem operations. Behavior may vary slightly between Unix-like systems
+    and Windows, particularly for permissions and symbolic links.
 *)
 
 type error = SystemError of string
@@ -270,10 +295,14 @@ val create_dir_all : Path.t -> (unit, error) Result.t
 *)
 
 val exists : Path.t -> (bool, error) Result.t
-(** Checks if a path exists.
+(** Returns `Ok true` if the path points at an existing entity.
     
-    Returns `Ok true` if path exists (file, directory, or symlink),
-    `Ok false` if it doesn't exist.
+    This function will traverse symbolic links to query the destination.
+    For broken symbolic links, returns `Ok false`.
+    
+    As opposed to a simple boolean check, this returns `Ok true` or `Ok false`
+    only if existence was *verified*. If existence can neither be confirmed
+    nor denied (e.g., permission denied on parent directory), returns `Error`.
     
     ## Examples
     
@@ -283,13 +312,24 @@ val exists : Path.t -> (bool, error) Result.t
        |> Result.unwrap_or ~default:false then
       println "Config found"
     
-    (* Conditional processing *)
-    let process_if_exists path f =
-      match Fs.exists path with
-      | Ok true -> f path
-      | Ok false -> println "File not found: %s" (Path.to_string path)
-      | Error e -> println "Error checking: %s" (show_error e)
+    (* Distinguish between not found and error *)
+    match Fs.exists (Path.v "/root/secret.txt") with
+    | Ok false -> println "File doesn't exist"
+    | Ok true -> println "File exists"  
+    | Error _ -> println "Cannot determine (permission denied?)"
     ```
+    
+    ## TOCTOU Warning
+    
+    Note that while this avoids some pitfalls, it still cannot prevent
+    TOCTOU bugs. The file's existence may change between this check and
+    subsequent use. Only use where TOCTOU is not a concern.
+    
+    ## See Also
+    
+    - [`is_file`] - Check if path is specifically a file
+    - [`is_dir`] - Check if path is specifically a directory
+    - [`File.create_new`] - Atomically create if doesn't exist
 *)
 
 val hard_link : src:Path.t -> dst:Path.t -> (unit, error) Result.t
@@ -333,6 +373,19 @@ val read : Path.t -> (string, error) Result.t
       Fs.read (Path.v "README.md")
       |> Result.unwrap_or ~default:"No documentation available"
     ```
+    
+    ## Errors
+    
+    - File doesn't exist
+    - Permission denied  
+    - Not a regular file (e.g., directory)
+    - Invalid UTF-8 content
+    
+    ## See Also
+    
+    - [`read_to_string`] - Alias for this function
+    - [`File.open_`] and [`File.read_all`] - For more control
+    - [`File.read_lines`] - To read line by line
 *)
 
 val read_dir : Path.t -> (Path.t MutIterator.t, error) Result.t
@@ -424,6 +477,9 @@ val remove_dir_all : Path.t -> (unit, error) Result.t
     
     Like `rm -rf`. **Use with extreme caution!**
     
+    This function does **not** follow symbolic links - it will remove the
+    symlink itself, not the target.
+    
     ## Examples
     
     ```ocaml
@@ -438,6 +494,19 @@ val remove_dir_all : Path.t -> (unit, error) Result.t
       else
         Error (SystemError "Won't delete absolute paths")
     ```
+    
+    ## Errors
+    
+    - Path doesn't exist (returns error, not idempotent)
+    - Path is not a directory
+    - Permission denied
+    - Directory being modified concurrently (partial deletion)
+    
+    ## TOCTOU Considerations
+    
+    On most platforms, this function protects against symlink TOCTOU races
+    by using directory file descriptors. However, concurrent modifications
+    to the directory tree may cause partial deletion.
 *)
 
 val remove_file : Path.t -> (unit, error) Result.t
@@ -532,8 +601,8 @@ val symlink : src:Path.t -> dst:Path.t -> (unit, error) Result.t
 val write : string -> Path.t -> (unit, error) Result.t
 (** Writes string to file, creating or overwriting it.
     
-    Creates parent directories if needed. For atomic writes,
-    consider writing to temp file then renaming.
+    This function will **overwrite** existing file contents. Parent 
+    directories are NOT automatically created.
     
     ## Examples
     
@@ -547,12 +616,31 @@ val write : string -> Path.t -> (unit, error) Result.t
       Data.Json.to_string data
       |> fun json -> Fs.write json path
     
-    (* Write with error handling *)
-    match Fs.write log_entry (Path.v "app.log") with
-    | Ok () -> ()
-    | Error (SystemError msg) -> 
-        Printf.eprintf "Logging failed: %s\n" msg
+    (* Atomic write pattern *)
+    let atomic_write path content =
+      let tmp = Path.add_extension path ~ext:"tmp" in
+      Fs.write content tmp |> Result.and_then (fun () ->
+        Fs.rename ~src:tmp ~dst:path
+      )
     ```
+    
+    ## Errors
+    
+    - Parent directory doesn't exist
+    - Permission denied
+    - Disk full
+    - Path is a directory
+    
+    ## Platform-specific behavior
+    
+    On Unix, creates files with mode 0o666 (modified by umask).
+    On Windows, uses default file permissions.
+    
+    ## See Also
+    
+    - [`File.create`] - For writing with specific options
+    - [`File.append`] - To append instead of overwrite
+    - [`create_dir_all`] - To ensure parent directories exist
 *)
 
 (** # Metadata Queries *)
