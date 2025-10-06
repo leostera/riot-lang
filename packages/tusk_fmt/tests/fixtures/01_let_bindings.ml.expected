@@ -11,7 +11,7 @@ let outer =
 let inner = 10 in inner * 2
 
 (*  Let rec  *)
-let rec factorial n = if n <= 1 then 1 else n * factorial(n - 1)
+let rec factorial n = if n <= 1 then 1 else n * factorial (n - 1)
 
 (*  Multiple let bindings  *)
 let a = 1

@@ -5,6 +5,7 @@ type context = {
   mutable newline_before : bool;
   mutable last_was_newline : bool;
   mutable buffer : Buffer.t;
+  mutable in_match : bool;
 }
 
 let create_context () = {
@@ -12,6 +13,7 @@ let create_context () = {
   newline_before = false;
   last_was_newline = true;
   buffer = Buffer.create 1024;
+  in_match = false;
 }
 
 let emit ctx s = 
@@ -158,7 +160,7 @@ let rec format_token_tree ctx prev_token = function
       let needs_space = match prev_token, delim with
         | Some (Syn.Token.Keyword _), Syn.Token.Paren -> true
         | Some Syn.Token.Eq, Syn.Token.Paren -> true
-        | Some (Syn.Token.Ident _), Syn.Token.Paren -> false (* function call *)
+        | Some (Syn.Token.Ident _), Syn.Token.Paren -> true (* function call needs space *)
         | _ -> false
       in
       if needs_space && not ctx.last_was_newline then emit ctx " ";
@@ -218,6 +220,12 @@ and format_token ctx prev_token tok =
     | Some Syn.Token.Dot, _ -> false
     (* No space after :: *)
     | Some Syn.Token.ColonColon, _ -> false
+    (* Space after ~ and ? for labeled/optional args *)
+    | Some Syn.Token.Tilde, _ -> false  (* No space after ~ *)
+    | Some Syn.Token.Question, _ -> false  (* No space after ? *)
+    (* Space before ~ and ? *)
+    | Some _, Syn.Token.Tilde -> true
+    | Some _, Syn.Token.Question -> true
     (* Default *)
     | _ -> false
   in
@@ -225,16 +233,19 @@ and format_token ctx prev_token tok =
   let needs_newline_before = match (prev_token, tok) with
     (* Newline after semi at top level *)
     | Some Syn.Token.Semi, _ when ctx.indent = 0 -> true
-    (* Pipe on new line in match cases *)
-    | Some _, Syn.Token.Pipe -> ctx.indent > 0
+    (* Pipe on new line - but check if it's the first pipe after 'with' *)
+    | Some _, Syn.Token.Pipe -> 
+        prev_token <> Some (Syn.Token.Keyword Syn.Token.With)
     | _ -> false
   in
   
   let needs_newline_after = match tok with
+    | Syn.Token.Keyword Syn.Token.With when ctx.in_match -> true
     | _ -> false
   in
   
   let needs_indent_after = match tok with
+    | Syn.Token.Keyword Syn.Token.With when ctx.in_match -> true
     | _ -> false
   in
   
@@ -252,7 +263,13 @@ and format_token ctx prev_token tok =
      | Syn.Token.Docstring { value; _ } -> 
          emit ctx (format "(** %s *)" value);
          emit_newline ctx
-     | Syn.Token.Keyword kw -> emit ctx (keyword_to_string kw)
+     | Syn.Token.Keyword kw -> 
+         (match kw with
+          | Syn.Token.Match -> ctx.in_match <- true
+          | Syn.Token.With when ctx.in_match -> 
+              ctx.in_match <- false  (* Reset match state *)
+          | _ -> ());
+         emit ctx (keyword_to_string kw)
      | Syn.Token.Ident s -> emit ctx s
      | Syn.Token.Literal lit -> emit ctx (literal_to_string lit)
      | Syn.Token.Plus -> emit ctx "+"
