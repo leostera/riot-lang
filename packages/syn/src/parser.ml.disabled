@@ -1,0 +1,595 @@
+open Std
+
+let ( let* ) = Result.and_then
+
+type error =
+  | UnexpectedToken of { expected : string; found : Token.t }
+  | UnexpectedEOF
+  | InvalidPattern
+  | InvalidExpression of string
+
+type t = { tokens : Token.t list; mutable pos : int }
+
+let create tokens = { tokens; pos = 0 }
+
+let peek parser =
+  if parser.pos >= List.length parser.tokens then None
+  else Some (List.nth parser.tokens parser.pos)
+
+let advance parser = parser.pos <- parser.pos + 1
+
+let expect parser token =
+  match peek parser with
+  | Some tok when tok = token ->
+      advance parser;
+      Ok ()
+  | Some tok -> Error (UnexpectedToken { expected = "expected"; found = tok })
+  | None -> Error UnexpectedEOF
+
+let expect_ident parser =
+  match peek parser with
+  | Some (Token.Ident name) ->
+      advance parser;
+      Ok name
+  | Some tok -> Error (UnexpectedToken { expected = "identifier"; found = tok })
+  | None -> Error UnexpectedEOF
+
+let is_infix_op = function
+  | Token.Plus | Token.Minus | Token.Star | Token.Slash | Token.Percent
+  | Token.Eq | Token.Lt | Token.Gt | Token.And | Token.Or | Token.Pipe
+  | Token.Ampersand | Token.Caret | Token.ColonColon | Token.Arrow ->
+      true
+  | Token.Ident op when String.starts_with ~prefix:"+" op -> true
+  | Token.Ident op when String.starts_with ~prefix:"-" op -> true
+  | Token.Ident op when String.starts_with ~prefix:"*" op -> true
+  | Token.Ident op when String.starts_with ~prefix:"/" op -> true
+  | Token.Ident op when String.starts_with ~prefix:"=" op -> true
+  | Token.Ident op when String.starts_with ~prefix:"<" op -> true
+  | Token.Ident op when String.starts_with ~prefix:">" op -> true
+  | Token.Ident op when String.starts_with ~prefix:"&" op -> true
+  | Token.Ident op when String.starts_with ~prefix:"|" op -> true
+  | Token.Ident op when String.starts_with ~prefix:"@" op -> true
+  | Token.Ident op when String.starts_with ~prefix:"^" op -> true
+  | Token.Ident op when String.starts_with ~prefix:"$" op -> true
+  | _ -> false
+
+let precedence = function
+  | Token.Pipe -> 1
+  | Token.Or -> 2
+  | Token.And | Token.Ampersand -> 3
+  | Token.Eq | Token.Lt | Token.Gt -> 4
+  | Token.Ident op when String.starts_with ~prefix:"=" op -> 4
+  | Token.Ident op when String.starts_with ~prefix:"<" op -> 4
+  | Token.Ident op when String.starts_with ~prefix:">" op -> 4
+  | Token.At -> 5
+  | Token.ColonColon -> 6
+  | Token.Plus | Token.Minus -> 7
+  | Token.Ident op when String.starts_with ~prefix:"+" op -> 7
+  | Token.Ident op when String.starts_with ~prefix:"-" op -> 7
+  | Token.Star | Token.Slash | Token.Percent -> 8
+  | Token.Ident op when String.starts_with ~prefix:"*" op -> 8
+  | Token.Ident op when String.starts_with ~prefix:"/" op -> 8
+  | Token.Caret -> 9
+  | Token.Ident op when String.starts_with ~prefix:"^" op -> 9
+  | Token.Dot -> 10
+  | _ -> 0
+
+let token_to_op_string = function
+  | Token.Plus -> "+"
+  | Token.Minus -> "-"
+  | Token.Star -> "*"
+  | Token.Slash -> "/"
+  | Token.Percent -> "%"
+  | Token.Eq -> "="
+  | Token.Lt -> "<"
+  | Token.Gt -> ">"
+  | Token.And -> "&&"
+  | Token.Or -> "||"
+  | Token.Pipe -> "|"
+  | Token.Ampersand -> "&"
+  | Token.Caret -> "^"
+  | Token.ColonColon -> "::"
+  | Token.At -> "@"
+  | Token.Arrow -> "->"
+  | Token.Dot -> "."
+  | Token.Ident s -> s
+  | _ -> "?"
+
+let rec parse_primary parser =
+  let start = parser.pos in
+  match peek parser with
+  | None -> Error UnexpectedEOF
+  | Some Token.EOF -> Error UnexpectedEOF
+  | Some (Token.Keyword Token.True) ->
+      advance parser;
+      let loc = { Ast.start; end_ = parser.pos } in
+      Ok (Ast.mk_expr loc (Ast.Const (Bool true)))
+  | Some (Token.Keyword Token.False) ->
+      advance parser;
+      let loc = { Ast.start; end_ = parser.pos } in
+      Ok (Ast.mk_expr loc (Ast.Const (Bool false)))
+  | Some (Token.Literal (Token.Int i)) ->
+      advance parser;
+      let loc = { Ast.start; end_ = parser.pos } in
+      Ok (Ast.mk_expr loc (Ast.Const (Int i)))
+  | Some (Token.Literal (Token.Float f)) ->
+      advance parser;
+      let loc = { Ast.start; end_ = parser.pos } in
+      Ok (Ast.mk_expr loc (Ast.Const (Float f)))
+  | Some (Token.Literal (Token.String { value; _ })) ->
+      advance parser;
+      let loc = { Ast.start; end_ = parser.pos } in
+      Ok (Ast.mk_expr loc (Ast.Const (String value)))
+  | Some (Token.Literal (Token.Char c)) ->
+      advance parser;
+      let loc = { Ast.start; end_ = parser.pos } in
+      Ok (Ast.mk_expr loc (Ast.Const (Char c)))
+  | Some (Token.Ident name) ->
+      advance parser;
+      let loc = { Ast.start; end_ = parser.pos } in
+      Ok (Ast.mk_expr loc (Ast.Var name))
+  | Some (Token.OpenDelim Token.Paren) -> parse_paren_expr parser start
+  | Some (Token.OpenDelim Token.Bracket) -> parse_list_expr parser start
+  | Some (Token.OpenDelim Token.Brace) -> parse_record_expr parser start
+  | Some (Token.OpenDelim Token.BeginEnd) -> parse_begin_expr parser start
+  | Some (Token.Keyword Token.Let) -> parse_let_expr parser start
+  | Some (Token.Keyword Token.Fun) -> parse_fun_expr parser start
+  | Some (Token.Keyword Token.Function) -> parse_function_expr parser start
+  | Some (Token.Keyword Token.Match) -> parse_match_expr parser start
+  | Some (Token.Keyword Token.If) -> parse_if_expr parser start
+  | Some (Token.Keyword Token.While) -> parse_while_expr parser start
+  | Some (Token.Keyword Token.For) -> parse_for_expr parser start
+  | Some (Token.Keyword Token.Try) -> parse_try_expr parser start
+  | Some tok ->
+      Error (InvalidExpression (format "Unexpected token in expression"))
+  | _ -> Error (InvalidExpression "Cannot parse expression")
+
+and parse_paren_expr parser start =
+  advance parser;
+  match peek parser with
+  | Some (Token.CloseDelim Token.Paren) ->
+      advance parser;
+      let loc = { Ast.start; end_ = parser.pos } in
+      Ok (Ast.mk_expr loc (Ast.Const (Bool true)))
+  | _ -> (
+      let* expr = parse_expr parser 0 in
+      match peek parser with
+      | Some Token.Comma -> parse_tuple_expr parser start expr
+      | Some Token.Semi -> parse_sequence_in_parens parser start expr
+      | Some (Token.CloseDelim Token.Paren) ->
+          advance parser;
+          Ok expr
+      | _ -> Error (InvalidExpression "Expected ), , or ; in parentheses"))
+
+and parse_tuple_expr parser start first =
+  let rec loop acc =
+    match peek parser with
+    | Some Token.Comma ->
+        advance parser;
+        let* expr = parse_expr parser 0 in
+        loop (expr :: acc)
+    | Some (Token.CloseDelim Token.Paren) ->
+        advance parser;
+        let loc = { Ast.start; end_ = parser.pos } in
+        Ok (Ast.mk_expr loc (Ast.Tuple (List.rev acc)))
+    | _ -> Error (InvalidExpression "Expected ) or , in tuple")
+  in
+  loop [ first ]
+
+and parse_list_expr parser start =
+  advance parser;
+  let rec loop acc =
+    match peek parser with
+    | Some (Token.CloseDelim Token.Bracket) ->
+        advance parser;
+        let loc = { Ast.start; end_ = parser.pos } in
+        Ok (Ast.mk_expr loc (Ast.List (List.rev acc)))
+    | Some Token.Semi ->
+        advance parser;
+        let* expr = parse_expr parser 0 in
+        loop (expr :: acc)
+    | _ -> (
+        let* expr = parse_expr parser 0 in
+        match peek parser with
+        | Some (Token.CloseDelim Token.Bracket) ->
+            advance parser;
+            let loc = { Ast.start; end_ = parser.pos } in
+            Ok (Ast.mk_expr loc (Ast.List (List.rev (expr :: acc))))
+        | Some Token.Semi ->
+            advance parser;
+            loop (expr :: acc)
+        | _ -> Error (InvalidExpression "Expected ] or ; in list"))
+  in
+  match peek parser with
+  | Some (Token.CloseDelim Token.Bracket) ->
+      advance parser;
+      let loc = { Ast.start; end_ = parser.pos } in
+      Ok (Ast.mk_expr loc (Ast.List []))
+  | _ -> loop []
+
+and parse_let_expr parser start =
+  advance parser;
+  let rec_flag =
+    match peek parser with
+    | Some (Token.Keyword Token.Rec) ->
+        advance parser;
+        Ast.Recursive
+    | _ -> Ast.Nonrecursive
+  in
+  let* pat = parse_pattern parser in
+  let* _ = expect parser Token.Eq in
+  let* value = parse_expr parser 0 in
+  let* _ = expect parser (Token.Keyword Token.In) in
+  let* body = parse_expr parser 0 in
+  let loc = { Ast.start; end_ = parser.pos } in
+  Ok (Ast.mk_expr loc (Ast.Let (rec_flag, pat, value, body)))
+
+and parse_fun_expr parser start =
+  advance parser;
+  let rec parse_params acc =
+    match peek parser with
+    | Some Token.Arrow ->
+        advance parser;
+        Ok (List.rev acc)
+    | _ ->
+        let* pat = parse_pattern parser in
+        parse_params (pat :: acc)
+  in
+  let* params = parse_params [] in
+  let* body = parse_expr parser 0 in
+  let loc = { Ast.start; end_ = parser.pos } in
+  Ok (Ast.mk_expr loc (Ast.Fun (params, body)))
+
+and parse_function_expr parser start =
+  advance parser;
+  let* cases = parse_cases parser in
+  let loc = { Ast.start; end_ = parser.pos } in
+  Ok (Ast.mk_expr loc (Ast.Function cases))
+
+and parse_match_expr parser start =
+  advance parser;
+  let* scrutinee = parse_expr parser 0 in
+  let* _ = expect parser (Token.Keyword Token.With) in
+  let* cases = parse_cases parser in
+  let loc = { Ast.start; end_ = parser.pos } in
+  Ok (Ast.mk_expr loc (Ast.Match (scrutinee, cases)))
+
+and parse_if_expr parser start =
+  advance parser;
+  let* cond = parse_expr parser 0 in
+  let* _ = expect parser (Token.Keyword Token.Then) in
+  let* then_branch = parse_expr parser 0 in
+  let else_branch =
+    match peek parser with
+    | Some (Token.Keyword Token.Else) ->
+        advance parser;
+        let* e = parse_expr parser 0 in
+        Ok (Some e)
+    | _ -> Ok None
+  in
+  let* else_branch = else_branch in
+  let loc = { Ast.start; end_ = parser.pos } in
+  Ok (Ast.mk_expr loc (Ast.If (cond, then_branch, else_branch)))
+
+and parse_sequence_in_parens parser start first =
+  let rec loop acc =
+    match peek parser with
+    | Some Token.Semi -> (
+        advance parser;
+        match peek parser with
+        | Some (Token.CloseDelim Token.Paren) ->
+            advance parser;
+            let loc = { Ast.start; end_ = parser.pos } in
+            Ok (Ast.mk_expr loc (Ast.Sequence (List.rev acc)))
+        | _ ->
+            let* expr = parse_expr parser 0 in
+            loop (expr :: acc))
+    | Some (Token.CloseDelim Token.Paren) ->
+        advance parser;
+        let loc = { Ast.start; end_ = parser.pos } in
+        Ok (Ast.mk_expr loc (Ast.Sequence (List.rev acc)))
+    | _ -> Error (InvalidExpression "Expected ; or ) in sequence")
+  in
+  advance parser;
+  loop [ first ]
+
+and parse_begin_expr parser start =
+  advance parser;
+  let* expr = parse_expr parser 0 in
+  match peek parser with
+  | Some (Token.CloseDelim _) ->
+      advance parser;
+      Ok expr
+  | Some Token.Semi ->
+      advance parser;
+      let* rest = parse_sequence_until_end parser [ expr ] in
+      Ok rest
+  | _ -> Error (InvalidExpression "Expected end or ; in begin block")
+
+and parse_sequence_until_end parser acc =
+  match peek parser with
+  | Some (Token.CloseDelim _) ->
+      advance parser;
+      let loc =
+        { Ast.start = (List.hd acc).Ast.loc.start; end_ = parser.pos }
+      in
+      Ok (Ast.mk_expr loc (Ast.Sequence (List.rev acc)))
+  | Some Token.Semi -> (
+      advance parser;
+      match peek parser with
+      | Some (Token.CloseDelim _) ->
+          advance parser;
+          let loc =
+            { Ast.start = (List.hd acc).Ast.loc.start; end_ = parser.pos }
+          in
+          Ok (Ast.mk_expr loc (Ast.Sequence (List.rev acc)))
+      | _ ->
+          let* expr = parse_expr parser 0 in
+          parse_sequence_until_end parser (expr :: acc))
+  | _ ->
+      let* expr = parse_expr parser 0 in
+      parse_sequence_until_end parser (expr :: acc)
+
+and parse_record_expr parser start =
+  advance parser;
+  let rec loop acc =
+    match peek parser with
+    | Some (Token.CloseDelim Token.Brace) ->
+        advance parser;
+        let loc = { Ast.start; end_ = parser.pos } in
+        Ok (Ast.mk_expr loc (Ast.Record (List.rev acc)))
+    | Some Token.Semi -> (
+        advance parser;
+        match peek parser with
+        | Some (Token.CloseDelim Token.Brace) ->
+            advance parser;
+            let loc = { Ast.start; end_ = parser.pos } in
+            Ok (Ast.mk_expr loc (Ast.Record (List.rev acc)))
+        | _ -> parse_field parser acc)
+    | _ -> parse_field parser acc
+  and parse_field acc =
+    let* name = expect_ident parser in
+    let* _ = expect parser Token.Eq in
+    let* value = parse_expr parser 0 in
+    loop ((name, value) :: acc)
+  in
+  match peek parser with
+  | Some (Token.CloseDelim Token.Brace) ->
+      advance parser;
+      let loc = { Ast.start; end_ = parser.pos } in
+      Ok (Ast.mk_expr loc (Ast.Record []))
+  | _ -> loop []
+
+and parse_while_expr parser start =
+  advance parser;
+  let* cond = parse_expr parser 0 in
+  let* _ = expect parser (Token.Keyword Token.Do) in
+  let* body = parse_expr parser 0 in
+  let* _ = expect parser (Token.Keyword Token.Done) in
+  let loc = { Ast.start; end_ = parser.pos } in
+  Ok (Ast.mk_expr loc (Ast.Sequence [ cond; body ]))
+
+and parse_for_expr parser start =
+  advance parser;
+  let* var = expect_ident parser in
+  let* _ = expect parser Token.Eq in
+  let* from_expr = parse_expr parser 0 in
+  let* direction =
+    match peek parser with
+    | Some (Token.Keyword Token.To) ->
+        advance parser;
+        Ok `To
+    | Some (Token.Keyword Token.Downto) ->
+        advance parser;
+        Ok `Downto
+    | _ -> Error (InvalidExpression "Expected 'to' or 'downto' in for loop")
+  in
+  let* to_expr = parse_expr parser 0 in
+  let* _ = expect parser (Token.Keyword Token.Do) in
+  let* body = parse_expr parser 0 in
+  let* _ = expect parser (Token.Keyword Token.Done) in
+  let loc = { Ast.start; end_ = parser.pos } in
+  Ok (Ast.mk_expr loc (Ast.Sequence [ from_expr; to_expr; body ]))
+
+and parse_try_expr parser start =
+  advance parser;
+  let* body = parse_expr parser 0 in
+  let* _ = expect parser (Token.Keyword Token.With) in
+  let* cases = parse_cases parser in
+  let loc = { Ast.start; end_ = parser.pos } in
+  Ok (Ast.mk_expr loc (Ast.Match (body, cases)))
+
+and parse_cases parser =
+  let rec loop acc =
+    match peek parser with
+    | Some Token.Pipe ->
+        advance parser;
+        let* case = parse_case parser in
+        loop (case :: acc)
+    | _ ->
+        let* case = parse_case parser in
+        Ok (List.rev (case :: acc))
+  in
+  match peek parser with
+  | Some Token.Pipe ->
+      advance parser;
+      loop []
+  | _ -> loop []
+
+and parse_case parser =
+  let* pattern = parse_pattern parser in
+  let guard =
+    match peek parser with
+    | Some (Token.Keyword Token.When) ->
+        advance parser;
+        let* g = parse_expr parser 0 in
+        Ok (Some g)
+    | _ -> Ok None
+  in
+  let* guard = guard in
+  let* _ = expect parser Token.Arrow in
+  let* body = parse_expr parser 0 in
+  Ok { Ast.pattern; guard; body }
+
+and parse_pattern parser =
+  let start = parser.pos in
+  match peek parser with
+  | None -> Error InvalidPattern
+  | Some Token.Underscore ->
+      advance parser;
+      let loc = { Ast.start; end_ = parser.pos } in
+      Ok (Ast.mk_pattern loc Ast.PatAny)
+  | Some (Token.Ident name) ->
+      advance parser;
+      let loc = { Ast.start; end_ = parser.pos } in
+      Ok (Ast.mk_pattern loc (Ast.PatVar name))
+  | Some (Token.Literal (Token.Int i)) ->
+      advance parser;
+      let loc = { Ast.start; end_ = parser.pos } in
+      Ok (Ast.mk_pattern loc (Ast.PatConst (Int i)))
+  | Some (Token.Literal (Token.String { value; _ })) ->
+      advance parser;
+      let loc = { Ast.start; end_ = parser.pos } in
+      Ok (Ast.mk_pattern loc (Ast.PatConst (String value)))
+  | Some (Token.Literal (Token.Char c)) ->
+      advance parser;
+      let loc = { Ast.start; end_ = parser.pos } in
+      Ok (Ast.mk_pattern loc (Ast.PatConst (Char c)))
+  | Some (Token.Keyword Token.True) ->
+      advance parser;
+      let loc = { Ast.start; end_ = parser.pos } in
+      Ok (Ast.mk_pattern loc (Ast.PatConst (Bool true)))
+  | Some (Token.Keyword Token.False) ->
+      advance parser;
+      let loc = { Ast.start; end_ = parser.pos } in
+      Ok (Ast.mk_pattern loc (Ast.PatConst (Bool false)))
+  | _ -> Error InvalidPattern
+
+and parse_expr parser min_prec =
+  let* left = parse_primary parser in
+  parse_expr_rest parser left min_prec
+
+and parse_expr_rest parser left min_prec =
+  match peek parser with
+  | Some tok when is_infix_op tok ->
+      let prec = precedence tok in
+      if prec < min_prec then Ok left
+      else
+        let op = token_to_op_string tok in
+        advance parser;
+        let* right = parse_expr parser (prec + 1) in
+        let start = left.Ast.loc.start in
+        let end_ = right.Ast.loc.end_ in
+        let loc = { Ast.start; end_ } in
+        let new_expr = Ast.mk_expr loc (Ast.Infix (op, left, right)) in
+        parse_expr_rest parser new_expr min_prec
+  | Some Token.Semi ->
+      advance parser;
+      let* rest = parse_sequence_rest parser [ left ] in
+      Ok rest
+  | Some Token.Dot ->
+      advance parser;
+      let* field = expect_ident parser in
+      let start = left.Ast.loc.start in
+      let end_ = parser.pos in
+      let loc = { Ast.start; end_ } in
+      let new_expr = Ast.mk_expr loc (Ast.Field (left, field)) in
+      parse_expr_rest parser new_expr min_prec
+  | _ -> parse_application parser left min_prec
+
+and parse_application parser left min_prec =
+  match peek parser with
+  | Some Token.EOF
+  | Some Token.Semi
+  | Some (Token.Keyword Token.In)
+  | Some (Token.Keyword Token.Then)
+  | Some (Token.Keyword Token.Else)
+  | Some (Token.Keyword Token.With)
+  | Some Token.Arrow
+  | Some Token.Pipe
+  | Some Token.Comma
+  | Some (Token.CloseDelim _) ->
+      Ok left
+  | Some tok when is_infix_op tok -> Ok left
+  | _ ->
+      let* arg = parse_primary parser in
+      let start = left.Ast.loc.start in
+      let end_ = arg.Ast.loc.end_ in
+      let loc = { Ast.start; end_ } in
+      let app_expr = Ast.mk_expr loc (Ast.Apply (left, [ arg ])) in
+      parse_application parser app_expr min_prec
+
+and parse_sequence_rest parser acc =
+  match peek parser with
+  | Some Token.Semi -> (
+      advance parser;
+      match peek parser with
+      | Some (Token.CloseDelim _) | Some Token.EOF ->
+          let loc =
+            {
+              Ast.start = (List.hd acc).Ast.loc.start;
+              end_ = (List.hd acc).Ast.loc.end_;
+            }
+          in
+          Ok (Ast.mk_expr loc (Ast.Sequence (List.rev acc)))
+      | _ ->
+          let* expr = parse_expr parser 0 in
+          parse_sequence_rest parser (expr :: acc))
+  | _ ->
+      let loc =
+        {
+          Ast.start = (List.hd acc).Ast.loc.start;
+          end_ = (List.hd acc).Ast.loc.end_;
+        }
+      in
+      Ok (Ast.mk_expr loc (Ast.Sequence (List.rev acc)))
+
+let parse_structure_item parser =
+  let start = parser.pos in
+  match peek parser with
+  | Some (Token.Keyword Token.Let) ->
+      advance parser;
+      let rec_flag =
+        match peek parser with
+        | Some (Token.Keyword Token.Rec) ->
+            advance parser;
+            Ast.Recursive
+        | _ -> Ast.Nonrecursive
+      in
+      let* pat = parse_pattern parser in
+      let* _ = expect parser Token.Eq in
+      let* expr = parse_expr parser 0 in
+      let loc = { Ast.start; end_ = parser.pos } in
+      Ok (Ast.mk_node loc (Ast.LetItem (rec_flag, [ (pat, expr) ])))
+  | Some (Token.Keyword Token.Type) ->
+      advance parser;
+      let* name = expect_ident parser in
+      let* _ = expect parser Token.Eq in
+      let* name2 = expect_ident parser in
+      let loc = { Ast.start; end_ = parser.pos } in
+      let type_decl =
+        {
+          Ast.name;
+          params = [];
+          manifest = None;
+          kind = Alias (Ast.mk_node loc (Ast.TConstr (name2, [])));
+        }
+      in
+      Ok (Ast.mk_node loc (Ast.TypeItem [ type_decl ]))
+  | _ -> Error (InvalidExpression "Expected structure item")
+
+let parse parser =
+  let rec loop acc =
+    match peek parser with
+    | None | Some Token.EOF -> Ok (List.rev acc)
+    | Some Token.Whitespace ->
+        advance parser;
+        loop acc
+    | Some Token.Semi ->
+        advance parser;
+        loop acc
+    | _ ->
+        let* item = parse_structure_item parser in
+        loop (item :: acc)
+  in
+  loop []
