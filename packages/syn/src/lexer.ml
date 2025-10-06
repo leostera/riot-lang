@@ -223,10 +223,24 @@ let next cursor =
         | _ -> Token.Eq)
     | Some '<' ->
         Cursor.advance cursor;
-        Token.Lt
+        (match Cursor.peek cursor with
+         | Some '=' -> 
+             Cursor.advance cursor;
+             Token.LtEq
+         | Some '-' ->
+             Cursor.advance cursor;
+             Token.Arrow  (* <- arrow *)
+         | Some '>' ->
+             Cursor.advance cursor;
+             Token.Ne  (* <> not equal *)
+         | _ -> Token.Lt)
     | Some '>' ->
         Cursor.advance cursor;
-        Token.Gt
+        (match Cursor.peek cursor with
+         | Some '=' ->
+             Cursor.advance cursor;
+             Token.GtEq
+         | _ -> Token.Gt)
     | Some '!' ->
         Cursor.advance cursor;
         Token.Bang

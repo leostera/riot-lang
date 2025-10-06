@@ -271,6 +271,41 @@ let bad_process () =
   in loop ()
 ```
 
+### Library-Specific LLM Guidance
+
+#### Collections (CRITICAL)
+**NEVER use OCaml stdlib collections!** Always use Std.Collections instead:
+
+| OCaml Stdlib (NEVER USE) | Std.Collections (ALWAYS USE) |
+|---------------------------|------------------------------|
+| `Hashtbl` | `Std.Collections.HashMap` |
+| `Hashtbl.create` | `HashMap.create ()` |
+| `Hashtbl.add` | `HashMap.insert` |
+| `Hashtbl.find` | `HashMap.get` (returns Option) |
+| `Hashtbl.mem` | `HashMap.contains_key` |
+| `Set` | `Std.Collections.HashSet` |
+| `Queue` | `Std.Collections.Queue` or `Deque` |
+| `Stack` | `Std.Collections.Vector` (use as stack) |
+| `Array` | `Std.Collections.Vector` for growable arrays |
+
+#### Filesystem Operations (CRITICAL)
+**NEVER use Unix, Sys, or Stdlib filesystem functions!** Always use Std.Fs:
+
+| OCaml Stdlib/Unix (NEVER USE) | Std.Fs (ALWAYS USE) |
+|--------------------------------|---------------------|
+| `Unix.open_file` | `Std.File.open_` |
+| `Sys.file_exists` | `Std.Fs.exists` |
+| `Sys.is_directory` | `Std.Fs.is_dir` |
+| `Sys.remove` | `Std.Fs.remove_file` |
+| `Unix.mkdir` | `Std.Fs.create_dir` |
+| `Unix.rmdir` | `Std.Fs.remove_dir` |
+| `open_in` / `open_out` | `Std.File` functions |
+| `input_line` | `Std.File.read_lines` |
+| `Sys.readdir` | `Std.Fs.read_dir` |
+| `Unix.rename` | `Std.Fs.rename` |
+| `Unix.stat` | `Std.Fs.metadata` |
+| `Unix.chmod` | `Std.Fs.set_permissions` |
+
 ### Common Patterns and Best Practices
 
 #### Path Handling

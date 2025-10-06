@@ -189,17 +189,22 @@ and format_token ctx prev_token tok =
     | Some op, _ when is_binop op -> true
     (* Space after keywords *)
     | Some (Syn.Token.Keyword _), _ -> true
-    (* Space before keywords except 'in' *)
-    | Some _, Syn.Token.Keyword kw when kw <> Syn.Token.In -> true
+    (* Space before keywords *)
+    | Some _, Syn.Token.Keyword _ -> true
+    (* Space after 'in' *)
+    | Some (Syn.Token.Keyword Syn.Token.In), _ -> true
     (* Space around = *)
     | Some _, Syn.Token.Eq -> true
     | Some Syn.Token.Eq, _ -> true
-    (* Space after arrow *)
+    (* Space before and after arrow *)
+    | Some _, Syn.Token.Arrow -> true
     | Some Syn.Token.Arrow, _ -> true
     (* No space before comma, semi, pipe *)
     | Some _, (Syn.Token.Comma | Syn.Token.Semi | Syn.Token.Pipe) -> false
-    (* Space after comma, semi, colon *)
-    | Some (Syn.Token.Comma | Syn.Token.Semi | Syn.Token.Colon), _ -> true
+    (* Space after comma and colon *)
+    | Some (Syn.Token.Comma | Syn.Token.Colon), _ -> true
+    (* Space after semi *)
+    | Some Syn.Token.Semi, _ -> true
     (* Space between identifiers *)
     | Some (Syn.Token.Ident _), Syn.Token.Ident _ -> true
     (* Space between identifier and number *)
@@ -220,8 +225,6 @@ and format_token ctx prev_token tok =
   let needs_newline_before = match (prev_token, tok) with
     (* Newline after semi at top level *)
     | Some Syn.Token.Semi, _ when ctx.indent = 0 -> true
-    (* Newline after comments *)
-    | Some (Syn.Token.Comment _ | Syn.Token.Docstring _), _ -> true
     (* Pipe on new line in match cases *)
     | Some _, Syn.Token.Pipe -> ctx.indent > 0
     | _ -> false
@@ -244,9 +247,11 @@ and format_token ctx prev_token tok =
     (* Emit the actual token *)
     (match tok with
      | Syn.Token.Comment { value; _ } -> 
-         emit ctx (format "(* %s *)" value)
+         emit ctx (format "(* %s *)" value);
+         emit_newline ctx
      | Syn.Token.Docstring { value; _ } -> 
-         emit ctx (format "(** %s *)" value)
+         emit ctx (format "(** %s *)" value);
+         emit_newline ctx
      | Syn.Token.Keyword kw -> emit ctx (keyword_to_string kw)
      | Syn.Token.Ident s -> emit ctx s
      | Syn.Token.Literal lit -> emit ctx (literal_to_string lit)
@@ -259,6 +264,9 @@ and format_token ctx prev_token tok =
      | Syn.Token.Eq -> emit ctx "="
      | Syn.Token.Lt -> emit ctx "<"
      | Syn.Token.Gt -> emit ctx ">"
+     | Syn.Token.LtEq -> emit ctx "<="
+     | Syn.Token.GtEq -> emit ctx ">="
+     | Syn.Token.Ne -> emit ctx "<>"
      | Syn.Token.Bang -> emit ctx "!"
      | Syn.Token.And -> emit ctx "&&"
      | Syn.Token.Or -> emit ctx "||"
@@ -296,6 +304,7 @@ and format_token ctx prev_token tok =
 and is_binop = function
   | Syn.Token.Plus | Syn.Token.Minus | Syn.Token.Star | Syn.Token.Slash
   | Syn.Token.Percent | Syn.Token.Caret | Syn.Token.Lt | Syn.Token.Gt
+  | Syn.Token.LtEq | Syn.Token.GtEq | Syn.Token.Ne
   | Syn.Token.And | Syn.Token.Or | Syn.Token.ColonColon -> true
   | _ -> false
 

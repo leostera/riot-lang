@@ -90,6 +90,9 @@ type t =
   | Eq
   | Lt
   | Gt
+  | LtEq
+  | GtEq
+  | Ne
   | Bang
   | And
   | Or

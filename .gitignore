@@ -22,3 +22,5 @@ target
 *.cma
 /logs
 run_tusk.sh
+
+/llm

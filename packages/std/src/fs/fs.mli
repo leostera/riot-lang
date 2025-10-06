@@ -1,8 +1,56 @@
-(** Filesystem utilities - PUBLIC INTERFACE *)
+(** # Fs - Filesystem operations
+    
+    Safe, ergonomic filesystem operations with Result-based error handling.
+    All path operations use the type-safe `Path.t` instead of strings.
+    
+    ## Examples
+    
+    Basic file operations:
+    
+    ```ocaml
+    open Std
+    
+    (* Read a file *)
+    let content = 
+      Fs.read (Path.v "config.toml")
+      |> Result.expect ~msg:"Config file required"
+    
+    (* Write a file *)
+    Fs.write "Hello, world!" (Path.v "output.txt")
+    |> Result.expect ~msg:"Failed to write"
+    
+    (* Check if path exists *)
+    if Fs.exists (Path.v "data.json") |> Result.unwrap_or ~default:false then
+      println "Data file found"
+    ```
+    
+    Directory operations:
+    
+    ```ocaml
+    (* Create directory tree *)
+    Fs.create_dir_all (Path.v "output/results/2024")
+    |> Result.expect ~msg:"Failed to create directories"
+    
+    (* Read directory contents *)
+    match Fs.read_dir (Path.v "src") with
+    | Ok iter ->
+        MutIterator.iter (fun path ->
+          println "Found: %s" (Path.to_string path)
+        ) iter
+    | Error e -> println "Error: %s" (show_error e)
+    ```
+    
+    ## Error Handling
+    
+    All operations return `Result.t` for explicit error handling.
+    Never throws exceptions for I/O errors.
+*)
 
 type error = SystemError of string
+(** Filesystem error type *)
 
 module Fd = Fd
+(** File descriptor module *)
 
 module Permissions : sig
   type t
@@ -130,87 +178,526 @@ end
 
 module File = File
 
-(** {1 Path Operations} *)
+(** # Path Operations *)
 
 val canonicalize : Path.t -> (Path.t, error) Result.t
-(** Returns the canonical, absolute form of a path with all intermediate
-    components normalized and symbolic links resolved. *)
+(** Returns the canonical, absolute form of a path.
+    
+    All intermediate components are normalized and symbolic links resolved.
+    The path must exist.
+    
+    ## Examples
+    
+    ```ocaml
+    (* Resolve relative paths and symlinks *)
+    let abs_path = 
+      Fs.canonicalize (Path.v "../data/input.txt")
+      |> Result.expect ~msg:"Path must exist"
+    (* abs_path might be "/home/user/project/data/input.txt" *)
+    
+    (* Follow symlinks to real file *)
+    let real_file = 
+      Fs.canonicalize (Path.v "latest.log")  (* symlink *)
+      |> Result.unwrap
+    (* real_file might be "logs/2024-01-15.log" *)
+    ```
+*)
 
 val copy : src:Path.t -> dst:Path.t -> (unit, error) Result.t
-(** Copies the contents of one file to another. This function will also copy the
-    permission bits of the original file to the destination file. *)
+(** Copies file contents and permissions from source to destination.
+    
+    Overwrites destination if it exists. Creates parent directories
+    if needed.
+    
+    ## Examples
+    
+    ```ocaml
+    (* Simple file copy *)
+    Fs.copy ~src:(Path.v "template.html") 
+            ~dst:(Path.v "index.html")
+    |> Result.expect ~msg:"Copy failed"
+    
+    (* Backup before modifying *)
+    let backup_file path =
+      let backup = Path.add_extension path ~ext:"bak" in
+      Fs.copy ~src:path ~dst:backup
+    ```
+    
+    ## Errors
+    
+    - Source file doesn't exist
+    - Insufficient permissions
+    - Disk full
+*)
 
 val create_dir : Path.t -> (unit, error) Result.t
-(** Create a single directory (non-recursive) *)
+(** Creates a single directory.
+    
+    Fails if parent doesn't exist or directory already exists.
+    
+    ## Examples
+    
+    ```ocaml
+    (* Create directory in existing parent *)
+    Fs.create_dir (Path.v "output")
+    |> Result.expect ~msg:"Failed to create output dir"
+    
+    (* Handle existing directory *)
+    match Fs.create_dir (Path.v "cache") with
+    | Ok () -> println "Created cache directory"
+    | Error _ -> println "Cache directory already exists"
+    ```
+*)
 
 val create_dir_all : Path.t -> (unit, error) Result.t
-(** Recursively create a directory and all of its parent components if they are
-    missing. *)
+(** Recursively creates directory and all parent directories.
+    
+    Like `mkdir -p`. Succeeds if directory already exists.
+    
+    ## Examples
+    
+    ```ocaml
+    (* Create deep directory structure *)
+    Fs.create_dir_all (Path.v "output/2024/01/15")
+    |> Result.expect ~msg:"Failed to create directories"
+    
+    (* Ensure directory exists before writing *)
+    let write_to_dir dir filename content =
+      Fs.create_dir_all dir |> Result.and_then (fun () ->
+        Fs.write content (dir / Path.v filename)
+      )
+    ```
+*)
 
 val exists : Path.t -> (bool, error) Result.t
-(** Returns Ok(true) if the path points at an existing entity. *)
+(** Checks if a path exists.
+    
+    Returns `Ok true` if path exists (file, directory, or symlink),
+    `Ok false` if it doesn't exist.
+    
+    ## Examples
+    
+    ```ocaml
+    (* Simple existence check *)
+    if Fs.exists (Path.v "config.json") 
+       |> Result.unwrap_or ~default:false then
+      println "Config found"
+    
+    (* Conditional processing *)
+    let process_if_exists path f =
+      match Fs.exists path with
+      | Ok true -> f path
+      | Ok false -> println "File not found: %s" (Path.to_string path)
+      | Error e -> println "Error checking: %s" (show_error e)
+    ```
+*)
 
 val hard_link : src:Path.t -> dst:Path.t -> (unit, error) Result.t
-(** Creates a new hard link on the filesystem. *)
+(** Creates a hard link to an existing file.
+    
+    Both paths will refer to the same file data. Changes through
+    either path affect the same file.
+    
+    ## Examples
+    
+    ```ocaml
+    (* Create hard link for important file *)
+    Fs.hard_link ~src:(Path.v "data.db") 
+                 ~dst:(Path.v "data.db.link")
+    |> Result.expect ~msg:"Failed to create hard link"
+    ```
+*)
 
 val read : Path.t -> (string, error) Result.t
-(** Read entire file as string *)
+(** Reads entire file contents as a UTF-8 string.
+    
+    Best for reasonably-sized text files. For large files,
+    consider streaming with `File` module.
+    
+    ## Examples
+    
+    ```ocaml
+    (* Read configuration file *)
+    let config = 
+      Fs.read (Path.v "config.toml")
+      |> Result.expect ~msg:"Config required"
+    
+    (* Read and parse JSON *)
+    let data =
+      Fs.read (Path.v "data.json")
+      |> Result.and_then Data.Json.parse
+      |> Result.expect ~msg:"Invalid JSON"
+    
+    (* Read with default value *)
+    let readme = 
+      Fs.read (Path.v "README.md")
+      |> Result.unwrap_or ~default:"No documentation available"
+    ```
+*)
 
 val read_dir : Path.t -> (Path.t MutIterator.t, error) Result.t
-(** Returns an iterator over the entries within a directory. *)
+(** Returns an iterator over directory entries.
+    
+    Automatically skips `.` and `..` entries. The iterator yields
+    full paths (directory path joined with entry name).
+    
+    ## Examples
+    
+    ```ocaml
+    (* List all files in directory *)
+    match Fs.read_dir (Path.v "src") with
+    | Ok iter ->
+        MutIterator.iter (fun path ->
+          println "- %s" (Path.to_string path)
+        ) iter
+    | Error e -> 
+        println "Cannot read directory: %s" (show_error e)
+    
+    (* Find specific files *)
+    let find_ml_files dir =
+      Fs.read_dir dir
+      |> Result.map (fun iter ->
+        MutIterator.filter (fun path ->
+          Path.extension path = Some "ml"
+        ) iter |> MutIterator.to_list
+      )
+    
+    (* Process directory recursively *)
+    let rec process_tree dir =
+      match Fs.read_dir dir with
+      | Ok iter ->
+          MutIterator.iter (fun path ->
+            if Fs.is_dir path |> Result.unwrap_or ~default:false then
+              process_tree path
+            else
+              process_file path
+          ) iter
+      | Error _ -> ()
+    ```
+*)
 
 val read_link : Path.t -> (Path.t, error) Result.t
-(** Reads a symbolic link, returning the file that the link points to. *)
+(** Reads a symbolic link target.
+    
+    Returns the path the symlink points to (may be relative).
+    Does not resolve the target.
+    
+    ## Examples
+    
+    ```ocaml
+    (* Read symlink target *)
+    match Fs.read_link (Path.v "latest") with
+    | Ok target -> 
+        println "Latest points to: %s" (Path.to_string target)
+    | Error _ -> 
+        println "Not a symbolic link"
+    ```
+*)
 
 val read_to_string : Path.t -> (string, error) Result.t
-(** Reads the entire contents of a file into a string (alias for read). *)
+(** Reads entire file as string (alias for `read`).
+    
+    ## Examples
+    
+    ```ocaml
+    let content = Fs.read_to_string (Path.v "data.txt")
+                  |> Result.expect ~msg:"Cannot read file"
+    ```
+*)
 
 val remove_dir : Path.t -> (unit, error) Result.t
-(** Remove empty directory *)
+(** Removes an empty directory.
+    
+    Fails if directory is not empty or doesn't exist.
+    
+    ## Examples
+    
+    ```ocaml
+    (* Remove temporary directory after cleanup *)
+    Fs.remove_dir (Path.v "tmp")
+    |> Result.expect ~msg:"Directory not empty"
+    ```
+*)
 
 val remove_dir_all : Path.t -> (unit, error) Result.t
-(** Removes a directory at this path, after removing all its contents. Use
-    carefully! *)
+(** Recursively removes directory and all contents.
+    
+    Like `rm -rf`. **Use with extreme caution!**
+    
+    ## Examples
+    
+    ```ocaml
+    (* Clean build artifacts *)
+    Fs.remove_dir_all (Path.v "_build")
+    |> Result.unwrap_or ~default:() (* Ignore if doesn't exist *)
+    
+    (* Safe cleanup with confirmation *)
+    let cleanup_if_safe dir =
+      if not (Path.is_absolute dir) then
+        Fs.remove_dir_all dir
+      else
+        Error (SystemError "Won't delete absolute paths")
+    ```
+*)
 
 val remove_file : Path.t -> (unit, error) Result.t
-(** Remove a file *)
+(** Removes a file.
+    
+    Fails if path is a directory or doesn't exist.
+    
+    ## Examples
+    
+    ```ocaml
+    (* Delete temporary file *)
+    Fs.remove_file (Path.v "output.tmp")
+    |> Result.expect ~msg:"Failed to remove temp file"
+    
+    (* Clean up multiple files *)
+    ["a.tmp"; "b.tmp"; "c.tmp"]
+    |> List.iter (fun name ->
+      Fs.remove_file (Path.v name) |> ignore
+    )
+    ```
+*)
 
 val rename : src:Path.t -> dst:Path.t -> (unit, error) Result.t
-(** Renames a file or directory to a new name, replacing the original file if to
-    already exists. *)
+(** Renames file or directory, replacing destination if it exists.
+    
+    Can move across directories but not filesystems.
+    
+    ## Examples
+    
+    ```ocaml
+    (* Simple rename *)
+    Fs.rename ~src:(Path.v "draft.txt") 
+              ~dst:(Path.v "final.txt")
+    |> Result.expect ~msg:"Rename failed"
+    
+    (* Move to different directory *)
+    Fs.rename ~src:(Path.v "downloads/file.pdf")
+              ~dst:(Path.v "documents/file.pdf")
+    |> Result.expect ~msg:"Move failed"
+    
+    (* Atomic file update pattern *)
+    let atomic_write path content =
+      let tmp = Path.add_extension path ~ext:"tmp" in
+      Fs.write content tmp |> Result.and_then (fun () ->
+        Fs.rename ~src:tmp ~dst:path
+      )
+    ```
+*)
 
 val set_permissions : Path.t -> Permissions.t -> (unit, error) Result.t
-(** Changes the permissions found on a file or a directory. *)
+(** Changes file or directory permissions.
+    
+    ## Examples
+    
+    ```ocaml
+    (* Make file executable *)
+    Fs.set_permissions (Path.v "script.sh") Permissions.executable
+    |> Result.expect ~msg:"Cannot change permissions"
+    
+    (* Make file read-only *)
+    Fs.set_permissions (Path.v "config.locked") 
+                      Permissions.read_write
+    |> Result.expect ~msg:"Cannot change permissions"
+    
+    (* Restrict access to owner only *)
+    Fs.set_permissions (Path.v "secrets.txt")
+                      Permissions.private_read_write
+    |> Result.expect ~msg:"Cannot secure file"
+    ```
+*)
 
 val symlink : src:Path.t -> dst:Path.t -> (unit, error) Result.t
-(** Create symbolic link *)
+(** Creates a symbolic link.
+    
+    `dst` is the name of the symlink, `src` is what it points to.
+    
+    ## Examples
+    
+    ```ocaml
+    (* Create symlink to latest log *)
+    Fs.symlink ~src:(Path.v "logs/2024-01-15.log")
+               ~dst:(Path.v "latest.log")
+    |> Result.expect ~msg:"Cannot create symlink"
+    
+    (* Link to directory *)
+    Fs.symlink ~src:(Path.v "/usr/local/bin")
+               ~dst:(Path.v "bin")
+    |> Result.expect ~msg:"Cannot create symlink"
+    ```
+*)
 
 val write : string -> Path.t -> (unit, error) Result.t
-(** Write string to file *)
+(** Writes string to file, creating or overwriting it.
+    
+    Creates parent directories if needed. For atomic writes,
+    consider writing to temp file then renaming.
+    
+    ## Examples
+    
+    ```ocaml
+    (* Write simple file *)
+    Fs.write "Hello, World!" (Path.v "greeting.txt")
+    |> Result.expect ~msg:"Write failed"
+    
+    (* Write JSON data *)
+    let save_json data path =
+      Data.Json.to_string data
+      |> fun json -> Fs.write json path
+    
+    (* Write with error handling *)
+    match Fs.write log_entry (Path.v "app.log") with
+    | Ok () -> ()
+    | Error (SystemError msg) -> 
+        Printf.eprintf "Logging failed: %s\n" msg
+    ```
+*)
 
-(** {1 Metadata Queries} *)
+(** # Metadata Queries *)
 
 val metadata : Path.t -> (Metadata.t, error) Result.t
-(** Query file metadata, following symlinks (stat) *)
+(** Gets file metadata, following symbolic links.
+    
+    Use this for getting size, permissions, timestamps, etc.
+    
+    ## Examples
+    
+    ```ocaml
+    (* Get file size *)
+    let size = 
+      Fs.metadata (Path.v "data.bin")
+      |> Result.map Metadata.len
+      |> Result.unwrap_or ~default:0
+    
+    (* Check file age *)
+    let is_stale path max_age =
+      match Fs.metadata path with
+      | Ok meta ->
+          let age = Unix.time () -. Metadata.modified meta in
+          age > max_age
+      | Error _ -> true
+    
+    (* Get all file info *)
+    match Fs.metadata (Path.v "important.doc") with
+    | Ok meta ->
+        println "Size: %d bytes" (Metadata.len meta);
+        println "Modified: %.0f" (Metadata.modified meta);
+        println "Permissions: %o" (Metadata.mode meta)
+    | Error e ->
+        println "Cannot stat file: %s" (show_error e)
+    ```
+*)
 
 val symlink_metadata : Path.t -> (Metadata.t, error) Result.t
-(** Query file metadata, NOT following symlinks (lstat) *)
+(** Gets metadata without following symbolic links.
+    
+    Use this to get information about the symlink itself.
+    
+    ## Examples
+    
+    ```ocaml
+    (* Check if path is a symlink *)
+    let is_symlink path =
+      match Fs.symlink_metadata path with
+      | Ok meta -> Metadata.is_symlink meta
+      | Error _ -> false
+    ```
+*)
 
-(** {1 Convenience Queries} *)
+(** # Convenience Queries *)
 
 val is_file : Path.t -> (bool, error) Result.t
-(** Returns true if path is a regular file *)
+(** Checks if path is a regular file (not directory or symlink).
+    
+    ## Examples
+    
+    ```ocaml
+    (* Filter files from paths *)
+    let files_only paths =
+      List.filter (fun p ->
+        Fs.is_file p |> Result.unwrap_or ~default:false
+      ) paths
+    
+    (* Validate input *)
+    let process_file path =
+      match Fs.is_file path with
+      | Ok true -> do_processing path
+      | Ok false -> Error "Not a file"
+      | Error e -> Error (show_error e)
+    ```
+*)
 
 val is_dir : Path.t -> (bool, error) Result.t
-(** Returns true if path is a directory *)
+(** Checks if path is a directory.
+    
+    ## Examples
+    
+    ```ocaml
+    (* Ensure directory exists *)
+    let ensure_dir path =
+      match Fs.is_dir path with
+      | Ok true -> Ok ()
+      | Ok false -> Error "Path exists but is not a directory"
+      | Error _ -> Fs.create_dir path
+    
+    (* Recursive traversal *)
+    let rec count_files dir =
+      if not (Fs.is_dir dir |> Result.unwrap_or ~default:false) then
+        0
+      else
+        match Fs.read_dir dir with
+        | Ok iter ->
+            MutIterator.fold (fun acc path ->
+              if Fs.is_dir path |> Result.unwrap_or ~default:false then
+                acc + count_files path
+              else
+                acc + 1
+            ) 0 iter
+        | Error _ -> 0
+    ```
+*)
 
-(** {1 Utilities} *)
+(** # Utilities *)
 
 val with_tempdir : ?prefix:string -> (Path.t -> 'a) -> ('a, error) Result.t
-(** Create a temporary directory, run a function with it, then clean it up. The
-    temporary directory is automatically removed when the function returns, even
-    if an exception is raised.
-    @param prefix
-      Optional prefix for the temporary directory name (default: "tmp")
-    @param f Function to run with the temporary directory path
-    @return Result of the function or an error if directory creation fails *)
+(** Creates a temporary directory, runs a function, then cleans up.
+    
+    The directory is automatically removed even if the function raises
+    an exception. Perfect for tests and temporary workspaces.
+    
+    ## Examples
+    
+    ```ocaml
+    (* Run tests in isolated environment *)
+    let test_result =
+      Fs.with_tempdir (fun tmpdir ->
+        (* tmpdir is created and empty *)
+        let test_file = tmpdir / Path.v "test.txt" in
+        Fs.write "test data" test_file |> Result.unwrap;
+        
+        (* Run actual tests *)
+        run_tests tmpdir
+      ) (* tmpdir is automatically deleted here *)
+      |> Result.expect ~msg:"Test failed"
+    
+    (* Process files in temporary workspace *)
+    let process_archive archive =
+      Fs.with_tempdir ~prefix:"extract_" (fun workspace ->
+        extract_to workspace archive;
+        let files = Fs.read_dir workspace |> Result.unwrap in
+        MutIterator.map process_file files |> MutIterator.to_list
+      )
+    
+    (* Cleanup happens even on failure *)
+    let safe_operation () =
+      Fs.with_tempdir (fun tmp ->
+        Fs.write "data" (tmp / Path.v "file.txt") |> Result.unwrap;
+        failwith "Something went wrong"  (* tmp still gets cleaned up *)
+      )
+    ```
+    
+    - `prefix`: Optional prefix for directory name (default: "tmp")
+    - Returns: Result of the function or filesystem error
+*)
