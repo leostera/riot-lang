@@ -1,5 +1,42 @@
 # Prompt for working on this repository
 
+## CRITICAL: GIT SAFETY RULES - NEVER VIOLATE THESE
+
+### NEVER USE `git reset --hard` WITHOUT CHECKING FIRST
+**THIS IS THE MOST IMPORTANT RULE.** Using `git reset --hard` will PERMANENTLY DESTROY:
+- ALL uncommitted changes in the working directory
+- ALL staged changes
+- ALL untracked files that other agents or users may have been working on
+- WEEKS OR MONTHS of work can be lost in an instant
+
+### ALWAYS follow these git safety practices:
+1. **BEFORE any destructive git operation:**
+   - Run `git status` to check for uncommitted changes
+   - Run `git stash` to save any uncommitted work
+   - Run `git diff` to see what changes exist
+   - Check if other agents might have work in progress
+
+2. **NEVER use these commands without explicit user permission:**
+   - `git reset --hard`
+   - `git clean -fd`
+   - `git push --force`
+   - Any command that rewrites history
+
+3. **SAFE alternatives to use instead:**
+   - Use `git revert` to undo commits (creates a new commit, preserves history)
+   - Use `git reset --soft` to undo commits but keep changes staged
+   - Use `git stash` to temporarily save work
+   - Use `git checkout -- <file>` to discard changes to specific files only
+   - Use `git reset HEAD~1` (without --hard) to undo last commit but keep changes
+
+4. **If you need to undo changes:**
+   - First ALWAYS check `git status`
+   - Save any important work with `git stash`
+   - Use the least destructive method possible
+   - Prefer creating new commits over destroying old ones
+
+**Remember:** Once `git reset --hard` is run, the changes are GONE FOREVER. There is no undo. You will destroy work that cannot be recovered. This is not a joke or exaggeration - you WILL lose data permanently.
+
 ## System Prompt
 
 - always explain your reasoning in steps
