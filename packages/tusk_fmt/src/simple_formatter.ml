@@ -114,6 +114,12 @@ let rec format_token_tree ctx prev_token = function
        | Syn.Token.Comment _ 
        | Syn.Token.Docstring _ -> prev_token
        | _ -> Some tok)
+  | Syn.TokenTree.Tree (Syn.Token.BeginEnd, contents) ->
+      (* This is a top-level grouping - just format the contents *)
+      let last_tok = List.fold_left (fun prev tree ->
+        format_token_tree ctx prev tree
+      ) prev_token contents in
+      last_tok
   | Syn.TokenTree.Tree (delim, contents) ->
       let open_str, close_str = delimiter_strings delim in
       (* Check if we need space before opening delimiter *)
@@ -135,7 +141,10 @@ and delimiter_strings = function
   | Syn.Token.Paren -> ("(", ")")
   | Syn.Token.Brace -> ("{", "}")
   | Syn.Token.Bracket -> ("[", "]")
-  | Syn.Token.BeginEnd -> ("begin", "end")
+  | Syn.Token.BeginEnd -> ("", "")  (* Don't output anything for top-level groupings *)
+  | Syn.Token.StructEnd -> ("struct", "end")
+  | Syn.Token.SigEnd -> ("sig", "end")
+  | Syn.Token.ObjectEnd -> ("object", "end")
   | Syn.Token.StructEnd -> ("struct", "end")
   | Syn.Token.SigEnd -> ("sig", "end")
   | Syn.Token.ObjectEnd -> ("object", "end")
@@ -322,7 +331,23 @@ and is_binop = function
 
 let format trees =
   let ctx = create_context () in
-  let _ = List.fold_left (fun prev tree ->
-    format_token_tree ctx prev tree
-  ) None trees in
+  let is_first = ref true in
+  
+  List.iter (fun tree ->
+    (* Add blank line between top-level definitions (except for the first) *)
+    (match tree with
+     | Syn.TokenTree.Tree (Syn.Token.BeginEnd, _) ->
+         if not !is_first then (
+           (* Add blank line before non-first top-level definitions *)
+           emit_newline ctx;
+           Buffer.add_char ctx.buffer '\n';
+           ctx.last_was_newline <- true
+         );
+         is_first := false
+     | _ -> ());
+    
+    let _ = format_token_tree ctx None tree in
+    ()
+  ) trees;
+  
   Buffer.contents ctx.buffer

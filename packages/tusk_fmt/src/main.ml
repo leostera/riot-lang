@@ -38,7 +38,14 @@ let () =
           let tokens = Syn.tokenize content in
           let trees = Syn.TokenTree.of_tokens tokens in
           (* Debug: print tree structure *)
-          (* Printf.eprintf "Trees:\n%s\n" (Syn.TokenTree.list_to_string trees); *)
+          if false then (
+            Printf.eprintf "Trees count: %d\n" (List.length trees);
+            List.iteri (fun i tree ->
+              Printf.eprintf "Tree %d: %s\n" i (match tree with
+                | Syn.TokenTree.Tree (Syn.Token.BeginEnd, _) -> "BeginEnd"
+                | Syn.TokenTree.Tree _ -> "Tree"
+                | Syn.TokenTree.Token _ -> "Token")
+            ) trees);
           let formatted = Formatter.format trees in
 
           if check_mode then if content = formatted then exit 0 else exit 1
