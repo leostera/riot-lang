@@ -100,10 +100,10 @@ let keyword_to_string : Syn.Token.keyword -> string = function
   | With -> "with"
 
 let literal_to_string : Syn.Token.literal -> string = function
-  | String { value; _ } -> format "\"%s\"" value
+  | String { value; _ } -> Printf.sprintf "\"%s\"" value
   | Int i -> string_of_int i
   | Float f -> string_of_float f
-  | Char c -> format "'%c'" c
+  | Char c -> Printf.sprintf "'%c'" c
 
 let rec format_token_tree ctx prev_token = function
   | Syn.TokenTree.Token tok -> 
@@ -120,6 +120,38 @@ let rec format_token_tree ctx prev_token = function
         format_token_tree ctx prev tree
       ) prev_token contents in
       last_tok
+  | Syn.TokenTree.Tree ((Syn.Token.StructEnd | Syn.Token.SigEnd | Syn.Token.ObjectEnd) as delim, contents) ->
+      (* Special handling for struct/sig/object blocks *)
+      let open_str, close_str = delimiter_strings delim in
+      emit ctx open_str;
+      
+      (* Add newline and increase indent after struct/sig/object *)
+      emit_newline ctx;
+      ctx.indent <- ctx.indent + 1;
+      
+      (* Format contents - need to handle let/type/module keywords specially *)
+      let rec format_struct_contents prev = function
+        | [] -> prev
+        | Syn.TokenTree.Token (Syn.Token.Keyword (Syn.Token.Let | Syn.Token.Type | Syn.Token.Module | Syn.Token.Open | Syn.Token.Include | Syn.Token.Val | Syn.Token.Exception) as kw) :: rest ->
+            (* Start of a new definition inside struct/sig *)
+            if prev <> None then emit_newline ctx;
+            format_token ctx prev kw;
+            format_struct_contents (Some kw) rest
+        | tree :: rest ->
+            let new_prev = format_token_tree ctx prev tree in
+            format_struct_contents new_prev rest
+      in
+      
+      let _ = format_struct_contents None contents in
+      
+      (* Decrease indent and emit end *)
+      ctx.indent <- ctx.indent - 1;
+      emit_newline ctx;
+      emit ctx close_str;
+      
+      (* Return end as last token *)
+      Some (Syn.Token.Keyword Syn.Token.End)
+      
   | Syn.TokenTree.Tree (delim, contents) ->
       let open_str, close_str = delimiter_strings delim in
       (* Check if we need space before opening delimiter *)
@@ -145,183 +177,121 @@ and delimiter_strings = function
   | Syn.Token.StructEnd -> ("struct", "end")
   | Syn.Token.SigEnd -> ("sig", "end")
   | Syn.Token.ObjectEnd -> ("object", "end")
-  | Syn.Token.StructEnd -> ("struct", "end")
-  | Syn.Token.SigEnd -> ("sig", "end")
-  | Syn.Token.ObjectEnd -> ("object", "end")
 
 and format_token ctx prev_token tok =
-  (* Decide on spacing/newlines based on token patterns *)
-  let needs_space_before = 
-    match prev_token, tok with
-    (* Never add space before whitespace tokens themselves *)
-    | _, Syn.Token.Whitespace -> false
-    (* No space before/after comments on same line *)
-    | _, Syn.Token.Comment _ | _, Syn.Token.Docstring _ -> false
-    | Some (Syn.Token.Comment _), _ | Some (Syn.Token.Docstring _), _ -> true
-    
-    (* Keywords generally need space after *)
-    | Some (Syn.Token.Keyword Syn.Token.Let), Syn.Token.OpenDelim Syn.Token.Paren -> true
-    | Some (Syn.Token.Keyword _), _ -> true
-    
-    (* Identifiers and literals *)
-    | Some (Syn.Token.Ident _), Syn.Token.Ident _ -> true  (* Space between identifiers *)
-    | Some (Syn.Token.Ident _), Syn.Token.Literal _ -> true  
-    | Some (Syn.Token.Ident _), Syn.Token.OpenDelim Syn.Token.Paren -> false  (* No space before ( in function calls *)
-    | Some (Syn.Token.Literal (Syn.Token.Int _)), Syn.Token.Ident s when String.length s > 0 && s.[0] = 'x' -> false  (* hex literals like 0x80 *)
-    | Some (Syn.Token.Literal _), Syn.Token.Ident _ -> true
-    | Some (Syn.Token.Ident _), Syn.Token.Underscore -> true
-    | Some Syn.Token.Underscore, Syn.Token.Ident _ -> true
-    | Some Syn.Token.Underscore, Syn.Token.OpenDelim Syn.Token.Paren -> false
-    
-    (* Operators *)
-    | Some Syn.Token.Eq, _ -> true
-    | _, Syn.Token.Semi -> false
-    | Some Syn.Token.Arrow, _ -> true
-    | Some Syn.Token.Colon, Syn.Token.Colon -> false  (* :: *)
-    | Some Syn.Token.Colon, Syn.Token.Eq -> false  (* := *)
-    | Some Syn.Token.Colon, _ -> true
-    | Some Syn.Token.Lt, Syn.Token.Eq -> false  (* <= *)
-    | Some Syn.Token.Gt, Syn.Token.Eq -> false  (* >= *)
-    | Some Syn.Token.Lt, Syn.Token.Gt -> false  (* <> *)
-    | Some Syn.Token.Eq, Syn.Token.Gt -> false  (* => *)
-    | Some Syn.Token.Minus, Syn.Token.Gt -> false  (* -> *)
-    | Some Syn.Token.Star, Syn.Token.Star -> false  (* ** *)
-    | Some Syn.Token.And, Syn.Token.And -> false  (* && - but this is wrong, token is already && *)
-    | Some Syn.Token.Pipe, Syn.Token.Pipe -> false  (* || - but this is wrong too *)
-    | Some Syn.Token.Pipe, Syn.Token.Gt -> false  (* |> *)
-    | _, Syn.Token.Eq -> true
-    | _, Syn.Token.Arrow -> true
+  let format = Printf.sprintf in
+  
+  let needs_space_before = match (prev_token, tok) with
+    (* No space after opening delimiters or before closing *)
+    | None, _ -> false
+    (* Space around binary operators *)
+    | Some t, op when is_binop op && t <> Syn.Token.OpenDelim Syn.Token.Paren -> true
     | Some op, _ when is_binop op -> true
-    | _, op when is_binop op -> true
+    (* Space after keywords *)
+    | Some (Syn.Token.Keyword _), _ -> true
+    (* Space before keywords except 'in' *)
+    | Some _, Syn.Token.Keyword kw when kw <> Syn.Token.In -> true
+    (* Space around = *)
+    | Some _, Syn.Token.Eq -> true
+    | Some Syn.Token.Eq, _ -> true
+    (* Space after arrow *)
+    | Some Syn.Token.Arrow, _ -> true
+    (* No space before comma, semi, pipe *)
+    | Some _, (Syn.Token.Comma | Syn.Token.Semi | Syn.Token.Pipe) -> false
+    (* Space after comma, semi, colon *)
+    | Some (Syn.Token.Comma | Syn.Token.Semi | Syn.Token.Colon), _ -> true
+    (* Space between identifiers *)
+    | Some (Syn.Token.Ident _), Syn.Token.Ident _ -> true
+    (* Space between identifier and number *)
+    | Some (Syn.Token.Ident _), Syn.Token.Literal (Syn.Token.Int _) -> true
+    (* No space after ( or [ or { *)
+    | Some (Syn.Token.OpenDelim _), _ -> false
+    (* No space before ) or ] or } *)
+    | Some _, Syn.Token.CloseDelim _ -> false
+    (* No space around . *)
+    | Some _, Syn.Token.Dot -> false
+    | Some Syn.Token.Dot, _ -> false
+    (* No space after :: *)
+    | Some Syn.Token.ColonColon, _ -> false
+    (* Default *)
+    | _ -> false
+  in
+  
+  let needs_newline_before = match (prev_token, tok) with
+    (* Newline after semi at top level *)
+    | Some Syn.Token.Semi, _ when ctx.indent = 0 -> true
+    (* Newline after comments *)
+    | Some (Syn.Token.Comment _ | Syn.Token.Docstring _), _ -> true
+    (* Pipe on new line in match cases *)
+    | Some _, Syn.Token.Pipe -> ctx.indent > 0
+    | _ -> false
+  in
+  
+  let needs_newline_after = match tok with
+    | _ -> false
+  in
+  
+  let needs_indent_after = match tok with
+    | _ -> false
+  in
+  
+  (* Skip whitespace tokens *)
+  if tok = Syn.Token.Whitespace then ()
+  else begin
+    if needs_newline_before then emit_newline ctx
+    else if needs_space_before && not ctx.last_was_newline then emit ctx " ";
     
-    (* Delimiters - no space after opening paren *)
-    | Some (Syn.Token.OpenDelim Syn.Token.Paren), _ -> false
-    | Some (Syn.Token.OpenDelim Syn.Token.Bracket), _ -> false
-    | Some (Syn.Token.OpenDelim Syn.Token.Brace), _ -> false
-    | Some (Syn.Token.OpenDelim _), Syn.Token.CloseDelim _ -> false
-    | Some (Syn.Token.CloseDelim _), Syn.Token.OpenDelim _ -> false
-    | Some (Syn.Token.CloseDelim _), Syn.Token.Ident _ -> true
-    | Some (Syn.Token.CloseDelim _), Syn.Token.Literal _ -> true
-    | Some (Syn.Token.CloseDelim Syn.Token.Paren), Syn.Token.CloseDelim Syn.Token.Paren -> false
-    | Some Syn.Token.Comma, _ -> true
-    | _, Syn.Token.Comma -> false
-    | Some Syn.Token.Semi, _ -> true
-    | _, Syn.Token.CloseDelim Syn.Token.Paren -> false
-    
-    (* Special cases for keywords that need space before *)
-    | _, Syn.Token.Keyword Syn.Token.In -> true
-    | _, Syn.Token.Keyword Syn.Token.Then -> true  
-    | _, Syn.Token.Keyword Syn.Token.Else -> true
-    | _, Syn.Token.Keyword Syn.Token.With -> true
-    | _, Syn.Token.Keyword Syn.Token.When -> true
-    | _, Syn.Token.Keyword Syn.Token.And -> true
-    
-    | _ -> false
-  in
-  
-  let needs_newline_after =
-    match tok with
-    | Syn.Token.Comment _ | Syn.Token.Docstring _ -> true
-    | _ -> false
-  in
-  
-  let needs_newline_before =
-    match prev_token, tok with
-    (* Comments typically go on their own line *)
-    | Some _, (Syn.Token.Comment _ | Syn.Token.Docstring _) -> 
-        not ctx.last_was_newline
-    | Some (Syn.Token.Comment _ | Syn.Token.Docstring _), _ when tok <> Syn.Token.Whitespace -> true
-    | _, Syn.Token.Keyword Syn.Token.Let when prev_token <> None -> true
-    | _, Syn.Token.Keyword Syn.Token.Type when prev_token <> None -> true
-    | _, Syn.Token.Keyword Syn.Token.Module when prev_token <> None && prev_token <> Some (Syn.Token.Keyword Syn.Token.Open) -> true
-    | _, Syn.Token.Keyword Syn.Token.Open when prev_token <> None -> true
-    | _, Syn.Token.Keyword Syn.Token.Val when prev_token <> None -> true
-    | _, Syn.Token.Pipe -> true
-    | _ -> false
-  in
-  
-  let needs_indent_after =
-    match tok with
-    | Syn.Token.Keyword Syn.Token.Struct
-    | Syn.Token.Keyword Syn.Token.Sig
-    | Syn.Token.Keyword Syn.Token.Object
-    | Syn.Token.Keyword Syn.Token.Begin
-    | Syn.Token.OpenDelim Syn.Token.Brace -> true
-    | _ -> false
-  in
-  
-  let needs_dedent_before =
-    match tok with
-    | Syn.Token.Keyword Syn.Token.End
-    | Syn.Token.CloseDelim Syn.Token.Brace -> true
-    | _ -> false
-  in
-  
-  if needs_dedent_before then ctx.indent <- max 0 (ctx.indent - 1);
-  if needs_newline_before then emit_newline ctx
-  else if needs_space_before && not ctx.last_was_newline then emit ctx " ";
-  
-
-  
-  (* Debug: Print current token type *)
-  (*
-  (match tok with
-   | Syn.Token.Ident s -> Printf.eprintf "Token: Ident(%s) space=%b prev=%s\n" s needs_space_before 
-       (match prev_token with None -> "None" | Some _ -> "Some")
-   | Syn.Token.Keyword _k -> Printf.eprintf "Token: Keyword space=%b\n" needs_space_before
-   | _ -> ());
-  *)
-  
-  (* Emit the actual token *)
-  (match tok with
-   | Syn.Token.Comment { value; _ } -> 
-       emit ctx (format "(* %s *)" value)
-   | Syn.Token.Docstring { value; _ } -> 
-       emit ctx (format "(** %s *)" value)
-   | Syn.Token.Keyword kw -> emit ctx (keyword_to_string kw)
-   | Syn.Token.Ident s -> emit ctx s
-   | Syn.Token.Literal lit -> emit ctx (literal_to_string lit)
-   | Syn.Token.Plus -> emit ctx "+"
-   | Syn.Token.Minus -> emit ctx "-"
-   | Syn.Token.Star -> emit ctx "*"
-   | Syn.Token.Slash -> emit ctx "/"
-   | Syn.Token.Percent -> emit ctx "%"
-   | Syn.Token.Caret -> emit ctx "^"
-   | Syn.Token.Eq -> emit ctx "="
-   | Syn.Token.Lt -> emit ctx "<"
-   | Syn.Token.Gt -> emit ctx ">"
-   | Syn.Token.Bang -> emit ctx "!"
-   | Syn.Token.And -> emit ctx "&&"
-   | Syn.Token.Or -> emit ctx "||"
-   | Syn.Token.Colon -> emit ctx ":"
-   | Syn.Token.Semi -> emit ctx ";"
-   | Syn.Token.Comma -> emit ctx ","
-   | Syn.Token.Dot -> emit ctx "."
-   | Syn.Token.Arrow -> emit ctx "->"
-   | Syn.Token.FatArrow -> emit ctx "=>"
-   | Syn.Token.ColonColon -> emit ctx "::"
-   | Syn.Token.ColonEq -> emit ctx ":="
-   | Syn.Token.Question -> emit ctx "?"
-   | Syn.Token.At -> emit ctx "@"
-   | Syn.Token.Hash -> emit ctx "#"
-   | Syn.Token.Tilde -> emit ctx "~"
-   | Syn.Token.Dollar -> emit ctx "$"
-   | Syn.Token.Pipe -> emit ctx "|"
-   | Syn.Token.Ampersand -> emit ctx "&"
-   | Syn.Token.Underscore -> emit ctx "_"
-   | Syn.Token.Whitespace -> ()
-   | Syn.Token.EOF -> ()
-   | Syn.Token.Unknown c -> emit ctx (format "%c" c)
-   | Syn.Token.OpenDelim Syn.Token.Paren -> emit ctx "("
-   | Syn.Token.OpenDelim Syn.Token.Bracket -> emit ctx "["
-   | Syn.Token.OpenDelim Syn.Token.Brace -> emit ctx "{"
-   | Syn.Token.CloseDelim Syn.Token.Paren -> emit ctx ")"
-   | Syn.Token.CloseDelim Syn.Token.Bracket -> emit ctx "]"
-   | Syn.Token.CloseDelim Syn.Token.Brace -> emit ctx "}"
-   | Syn.Token.OpenDelim _ | Syn.Token.CloseDelim _ -> ());
-  
-  if needs_newline_after then emit_newline ctx;
-  if needs_indent_after then ctx.indent <- ctx.indent + 1
+    (* Emit the actual token *)
+    (match tok with
+     | Syn.Token.Comment { value; _ } -> 
+         emit ctx (format "(* %s *)" value)
+     | Syn.Token.Docstring { value; _ } -> 
+         emit ctx (format "(** %s *)" value)
+     | Syn.Token.Keyword kw -> emit ctx (keyword_to_string kw)
+     | Syn.Token.Ident s -> emit ctx s
+     | Syn.Token.Literal lit -> emit ctx (literal_to_string lit)
+     | Syn.Token.Plus -> emit ctx "+"
+     | Syn.Token.Minus -> emit ctx "-"
+     | Syn.Token.Star -> emit ctx "*"
+     | Syn.Token.Slash -> emit ctx "/"
+     | Syn.Token.Percent -> emit ctx "%"
+     | Syn.Token.Caret -> emit ctx "^"
+     | Syn.Token.Eq -> emit ctx "="
+     | Syn.Token.Lt -> emit ctx "<"
+     | Syn.Token.Gt -> emit ctx ">"
+     | Syn.Token.Bang -> emit ctx "!"
+     | Syn.Token.And -> emit ctx "&&"
+     | Syn.Token.Or -> emit ctx "||"
+     | Syn.Token.Colon -> emit ctx ":"
+     | Syn.Token.Semi -> emit ctx ";"
+     | Syn.Token.Comma -> emit ctx ","
+     | Syn.Token.Dot -> emit ctx "."
+     | Syn.Token.Arrow -> emit ctx "->"
+     | Syn.Token.FatArrow -> emit ctx "=>"
+     | Syn.Token.ColonColon -> emit ctx "::"
+     | Syn.Token.ColonEq -> emit ctx ":="
+     | Syn.Token.Question -> emit ctx "?"
+     | Syn.Token.At -> emit ctx "@"
+     | Syn.Token.Hash -> emit ctx "#"
+     | Syn.Token.Tilde -> emit ctx "~"
+     | Syn.Token.Dollar -> emit ctx "$"
+     | Syn.Token.Pipe -> emit ctx "|"
+     | Syn.Token.Ampersand -> emit ctx "&"
+     | Syn.Token.Underscore -> emit ctx "_"
+     | Syn.Token.Whitespace -> ()
+     | Syn.Token.EOF -> ()
+     | Syn.Token.Unknown c -> emit ctx (format "%c" c)
+     | Syn.Token.OpenDelim Syn.Token.Paren -> emit ctx "("
+     | Syn.Token.OpenDelim Syn.Token.Bracket -> emit ctx "["
+     | Syn.Token.OpenDelim Syn.Token.Brace -> emit ctx "{"
+     | Syn.Token.CloseDelim Syn.Token.Paren -> emit ctx ")"
+     | Syn.Token.CloseDelim Syn.Token.Bracket -> emit ctx "]"
+     | Syn.Token.CloseDelim Syn.Token.Brace -> emit ctx "}"
+     | Syn.Token.OpenDelim _ | Syn.Token.CloseDelim _ -> ());
+   
+    if needs_newline_after then emit_newline ctx;
+    if needs_indent_after then ctx.indent <- ctx.indent + 1
+  end
 
 and is_binop = function
   | Syn.Token.Plus | Syn.Token.Minus | Syn.Token.Star | Syn.Token.Slash
