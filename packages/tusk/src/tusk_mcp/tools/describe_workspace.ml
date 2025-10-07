@@ -61,19 +61,19 @@ let execute (client : Server.Tusk_jsonrpc.Client.t) (_ : request) : response =
         Json.Object
           [
             ( "workspace_root",
-              Json.String config.Server.Tusk_jsonrpc.TuskProtocol.workspace_root
+              Json.String config.Server.Tusk_jsonrpc.WireProtocol.workspace_root
             );
             ( "target_dir",
-              Json.String config.Server.Tusk_jsonrpc.TuskProtocol.target_dir );
+              Json.String config.Server.Tusk_jsonrpc.WireProtocol.target_dir );
             ( "toolchain",
-              Json.String config.Server.Tusk_jsonrpc.TuskProtocol.toolchain );
+              Json.String config.Server.Tusk_jsonrpc.WireProtocol.toolchain );
             ( "toolchain_path",
-              Json.String config.Server.Tusk_jsonrpc.TuskProtocol.toolchain_path
+              Json.String config.Server.Tusk_jsonrpc.WireProtocol.toolchain_path
             );
             ( "packages",
               Json.Array
                 (List.map
-                   (fun (pkg : Server.Tusk_jsonrpc.TuskProtocol.package_info) ->
+                   (fun (pkg : Server.Tusk_jsonrpc.WireProtocol.package_info) ->
                      Json.Object
                        [
                          ("name", Json.String pkg.name);
@@ -84,9 +84,9 @@ let execute (client : Server.Tusk_jsonrpc.Client.t) (_ : request) : response =
                                 (fun d -> Json.String d)
                                 pkg.dependencies) );
                        ])
-                   config.Server.Tusk_jsonrpc.TuskProtocol.packages) );
+                   config.Server.Tusk_jsonrpc.WireProtocol.packages) );
             ( "total_packages",
-              Json.Int config.Server.Tusk_jsonrpc.TuskProtocol.total_packages );
+              Json.Int config.Server.Tusk_jsonrpc.WireProtocol.total_packages );
           ]
         |> Json.to_string
       in

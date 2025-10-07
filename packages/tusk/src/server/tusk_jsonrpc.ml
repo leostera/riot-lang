@@ -28,7 +28,19 @@ let build_package_params package =
   Jsonrpc.Named [ ("package", Json.String package) ]
 
 (** TuskProtocol implementation for JSON-RPC *)
-module TuskProtocol = struct
+module WireProtocol = struct
+  (** WireProtocol - External RPC Wire Format
+      
+      This module defines the JSON-RPC wire protocol for external clients (CLI, MCP).
+      It uses simple, JSON-serializable types only (strings, ints, records).
+      
+      The JSONRPC handlers convert between WireProtocol and TuskProtocol:
+      - Incoming requests: WireProtocol → TuskProtocol (adds client_pid)
+      - Outgoing responses: TuskProtocol → WireProtocol (converts rich types to strings)
+      
+      For the internal server protocol, see TuskProtocol in core/tusk_protocol.ml.
+  *)
+  
   (* Define request/response types for JSON-RPC communication *)
   type build_node = {
     package_name : string;
@@ -1963,7 +1975,7 @@ module Client = struct
   open Miniriot
 
   type t = {
-    client : (TuskProtocol.request, TuskProtocol.response) Jsonrpc.Client.t;
+    client : (WireProtocol.request, WireProtocol.response) Jsonrpc.Client.t;
     transport : Std.Net.TcpClient.t;
   }
 
@@ -1984,7 +1996,7 @@ module Client = struct
         let client =
           Jsonrpc.Client.create
             ~transport:(module Std.Net.TcpClient)
-            ~protocol:(module TuskProtocol)
+            ~protocol:(module WireProtocol)
             transport
         in
         Ok { client; transport }
@@ -2011,10 +2023,10 @@ module Client = struct
         ()
     with
     | Ok
-        (TuskProtocol.FormatAllResult { files_formatted; files_failed; errors })
+        (WireProtocol.FormatAllResult { files_formatted; files_failed; errors })
       ->
         Ok (files_formatted, files_failed, errors)
-    | Ok (TuskProtocol.FormatError { error }) -> Error error
+    | Ok (WireProtocol.FormatError { error }) -> Error error
     | Ok _ -> Error "Invalid format all response"
     | Error e ->
         Error
@@ -2033,8 +2045,8 @@ module Client = struct
              ])
         ()
     with
-    | Ok (TuskProtocol.PackageCreated { path; name }) -> Ok (path, name)
-    | Ok (TuskProtocol.PackageCreationError { error }) -> Error error
+    | Ok (WireProtocol.PackageCreated { path; name }) -> Ok (path, name)
+    | Ok (WireProtocol.PackageCreationError { error }) -> Error error
     | Ok _ -> Error "Invalid package creation response"
     | Error e ->
         Error
@@ -2084,7 +2096,7 @@ module Client = struct
       Jsonrpc.Client.call t.client ~method_:method_get_workspace_config
         ~params:Jsonrpc.NoParams ()
     with
-    | Ok (TuskProtocol.WorkspaceConfig config) -> Ok config
+    | Ok (WireProtocol.WorkspaceConfig config) -> Ok config
     | Ok _ -> Error "Invalid workspace config response"
     | Error e ->
         Error
@@ -2097,7 +2109,7 @@ module Client = struct
         ~params:(Jsonrpc.Named [ ("package", Json.String package_name) ])
         ()
     with
-    | Ok (TuskProtocol.PackageInfo detail) -> Ok detail
+    | Ok (WireProtocol.PackageInfo detail) -> Ok detail
     | Ok _ -> Error "Invalid package info response"
     | Error e ->
         Error
@@ -2109,7 +2121,7 @@ module Client = struct
       Jsonrpc.Client.call t.client ~method_:method_get_build_graph
         ~params:Jsonrpc.NoParams ()
     with
-    | Ok (TuskProtocol.BuildGraph graph) -> Ok graph
+    | Ok (WireProtocol.BuildGraph graph) -> Ok graph
     | Ok _ -> Error "Invalid build graph response"
     | Error e ->
         Error
@@ -2119,8 +2131,8 @@ module Client = struct
   let build_streaming t request callback =
     let typed_request =
       match request with
-      | BuildPackage pkg -> TuskProtocol.BuildPackage pkg
-      | BuildAll -> TuskProtocol.BuildAll
+      | BuildPackage pkg -> WireProtocol.BuildPackage pkg
+      | BuildAll -> WireProtocol.BuildAll
     in
 
     (* Send the typed build request - this starts a streaming response *)
@@ -2132,7 +2144,7 @@ module Client = struct
         | Error e -> Error (format "Failed to receive response: %s" e)
         | Ok response -> (
             match response.Jsonrpc.result with
-            | Ok (TuskProtocol.BuildStarted { session_id; started_at = _ }) ->
+            | Ok (WireProtocol.BuildStarted { session_id; started_at = _ }) ->
                 (* Got BuildStarted *)
                 callback (BuildStarted session_id);
 
@@ -2142,7 +2154,7 @@ module Client = struct
                   | Ok
                       {
                         result =
-                          Ok (TuskProtocol.BuildEvent { session_id = _; event });
+                          Ok (WireProtocol.BuildEvent { session_id = _; event });
                         _;
                       } ->
                       callback (BuildEvent event);
@@ -2151,7 +2163,7 @@ module Client = struct
                       {
                         result =
                           Ok
-                            (TuskProtocol.CycleDetected
+                            (WireProtocol.CycleDetected
                                { session_id; cycle_nodes });
                         _;
                       } ->
@@ -2165,7 +2177,7 @@ module Client = struct
                       {
                         result =
                           Ok
-                            (TuskProtocol.PackageNotFound
+                            (WireProtocol.PackageNotFound
                                { session_id; package_name; available_packages });
                         _;
                       } ->
@@ -2179,7 +2191,7 @@ module Client = struct
                       Ok (BuildFinished (Error error_msg))
                   | Ok
                       {
-                        result = Ok (TuskProtocol.BuildComplete { stats; _ });
+                        result = Ok (WireProtocol.BuildComplete { stats; _ });
                         _;
                       } ->
                       if stats.packages_failed > 0 then
@@ -2192,11 +2204,11 @@ module Client = struct
                   | Ok
                       {
                         result =
-                          Ok (TuskProtocol.BuildFailed { session_id; error; _ });
+                          Ok (WireProtocol.BuildFailed { session_id; error; _ });
                         _;
                       } ->
                       Ok (BuildFinished (Error error))
-                  | Ok { result = Ok (TuskProtocol.Error msg); _ } ->
+                  | Ok { result = Ok (WireProtocol.Error msg); _ } ->
                       (* Got a general error response *)
                       Error (format "Server error: %s" msg)
                   | Ok { result = Error err; _ } ->
@@ -2206,35 +2218,35 @@ module Client = struct
                       (* Debug: print what response type we got *)
                       let resp_type =
                         match resp.result with
-                        | Ok TuskProtocol.Pong -> "Pong"
-                        | Ok (TuskProtocol.BuildGraph _) -> "BuildGraph"
-                        | Ok (TuskProtocol.WorkspaceConfig _) ->
+                        | Ok WireProtocol.Pong -> "Pong"
+                        | Ok (WireProtocol.BuildGraph _) -> "BuildGraph"
+                        | Ok (WireProtocol.WorkspaceConfig _) ->
                             "WorkspaceConfig"
-                        | Ok (TuskProtocol.PackageInfo _) -> "PackageInfo"
-                        | Ok (TuskProtocol.BuildStarted _) -> "BuildStarted"
-                        | Ok (TuskProtocol.BuildEvent _) -> "BuildEvent"
-                        | Ok (TuskProtocol.CycleDetected _) -> "CycleDetected"
-                        | Ok (TuskProtocol.BuildComplete _) -> "BuildComplete"
-                        | Ok (TuskProtocol.BuildFailed _) -> "BuildFailed"
-                        | Ok TuskProtocol.ShutdownAck -> "ShutdownAck"
-                        | Ok TuskProtocol.RestartAck -> "RestartAck"
-                        | Ok (TuskProtocol.FormatResult _) -> "FormatResult"
-                        | Ok (TuskProtocol.FormatError _) -> "FormatError"
-                        | Ok (TuskProtocol.FormatAllResult _) ->
+                        | Ok (WireProtocol.PackageInfo _) -> "PackageInfo"
+                        | Ok (WireProtocol.BuildStarted _) -> "BuildStarted"
+                        | Ok (WireProtocol.BuildEvent _) -> "BuildEvent"
+                        | Ok (WireProtocol.CycleDetected _) -> "CycleDetected"
+                        | Ok (WireProtocol.BuildComplete _) -> "BuildComplete"
+                        | Ok (WireProtocol.BuildFailed _) -> "BuildFailed"
+                        | Ok WireProtocol.ShutdownAck -> "ShutdownAck"
+                        | Ok WireProtocol.RestartAck -> "RestartAck"
+                        | Ok (WireProtocol.FormatResult _) -> "FormatResult"
+                        | Ok (WireProtocol.FormatError _) -> "FormatError"
+                        | Ok (WireProtocol.FormatAllResult _) ->
                             "FormatAllResult"
-                        | Ok (TuskProtocol.PackageCreated _) -> "PackageCreated"
-                        | Ok (TuskProtocol.PackageCreationError _) ->
+                        | Ok (WireProtocol.PackageCreated _) -> "PackageCreated"
+                        | Ok (WireProtocol.PackageCreationError _) ->
                             "PackageCreationError"
-                        | Ok (TuskProtocol.PackageNotFound _) ->
+                        | Ok (WireProtocol.PackageNotFound _) ->
                             "PackageNotFound"
-                        | Ok TuskProtocol.ExecutableNotFound ->
+                        | Ok WireProtocol.ExecutableNotFound ->
                             "ExecutableNotFound"
-                        | Ok (TuskProtocol.ExecutableFound _) ->
+                        | Ok (WireProtocol.ExecutableFound _) ->
                             "ExecutableFound"
-                        | Ok (TuskProtocol.ArtifactFound _) -> "ArtifactFound"
-                        | Ok (TuskProtocol.ArtifactNotFound _) ->
+                        | Ok (WireProtocol.ArtifactFound _) -> "ArtifactFound"
+                        | Ok (WireProtocol.ArtifactNotFound _) ->
                             "ArtifactNotFound"
-                        | Ok (TuskProtocol.Error _) -> "Error"
+                        | Ok (WireProtocol.Error _) -> "Error"
                         | Error e -> format "JsonRpcError(%s)" e.message
                       in
                       Log.debug
@@ -2244,7 +2256,7 @@ module Client = struct
                 in
                 receive_events ()
             | Ok
-                (TuskProtocol.BuildComplete
+                (WireProtocol.BuildComplete
                    { session_id; completed_at = _; stats }) ->
                 (* Check if build actually succeeded *)
                 if stats.packages_failed > 0 then
@@ -2254,10 +2266,10 @@ module Client = struct
                           (format "%d packages failed to build"
                              stats.packages_failed)))
                 else Ok (BuildFinished (Ok ()))
-            | Ok (TuskProtocol.BuildFailed { session_id; error; _ }) ->
+            | Ok (WireProtocol.BuildFailed { session_id; error; _ }) ->
                 (* Direct error *)
                 Ok (BuildFinished (Error error))
-            | Ok (TuskProtocol.Error msg) ->
+            | Ok (WireProtocol.Error msg) ->
                 (* Other error *)
                 Ok (BuildFinished (Error msg))
             | Error err ->
@@ -2307,9 +2319,9 @@ module Client = struct
         ~params:(Jsonrpc.Named [ ("name", Json.String name) ])
         ()
     with
-    | Ok (TuskProtocol.ExecutableFound { package; binary }) ->
+    | Ok (WireProtocol.ExecutableFound { package; binary }) ->
         Ok (Some (package, binary))
-    | Ok TuskProtocol.ExecutableNotFound -> Ok None
+    | Ok WireProtocol.ExecutableNotFound -> Ok None
     | Ok _ -> Error "Invalid findExecutable response"
     | Error e ->
         Error
@@ -2328,8 +2340,8 @@ module Client = struct
              ])
         ()
     with
-    | Ok (TuskProtocol.ArtifactFound { path }) -> Ok path
-    | Ok (TuskProtocol.ArtifactNotFound { error }) -> Error error
+    | Ok (WireProtocol.ArtifactFound { path }) -> Ok path
+    | Ok (WireProtocol.ArtifactNotFound { error }) -> Error error
     | Ok _ -> Error "Invalid findArtifact response"
     | Error e ->
         Error
@@ -2358,9 +2370,9 @@ module Client = struct
              ])
         ()
     with
-    | Ok (TuskProtocol.FormatResult { formatted_code; changed }) ->
+    | Ok (WireProtocol.FormatResult { formatted_code; changed }) ->
         Ok (formatted_code, changed)
-    | Ok (TuskProtocol.FormatError { error }) -> Error error
+    | Ok (WireProtocol.FormatError { error }) -> Error error
     | Ok _ -> Error "Invalid format response"
     | Error e ->
         Error
@@ -2378,9 +2390,9 @@ module Client = struct
     match
       Jsonrpc.Client.call t.client ~method_:method_format_code ~params ()
     with
-    | Ok (TuskProtocol.FormatResult { formatted_code; changed }) ->
+    | Ok (WireProtocol.FormatResult { formatted_code; changed }) ->
         Ok (formatted_code, changed)
-    | Ok (TuskProtocol.FormatError { error }) -> Error error
+    | Ok (WireProtocol.FormatError { error }) -> Error error
     | Ok _ -> Error "Invalid format response"
     | Error e ->
         Error
@@ -2403,14 +2415,14 @@ module Server = struct
     (* Convert to tusk_protocol message type *)
     let server_request =
       match request with
-      | TuskProtocol.BuildPackage pkg ->
+      | WireProtocol.BuildPackage pkg ->
           Tusk_protocol.Build
             {
               client_pid = self ();
               target = Tusk_protocol.Package pkg;
               session_id;
             }
-      | TuskProtocol.BuildAll ->
+      | WireProtocol.BuildAll ->
           Tusk_protocol.Build
             { client_pid = self (); target = Tusk_protocol.All; session_id }
       | _ -> failwith "Invalid build request"
@@ -2428,7 +2440,7 @@ module Server = struct
 
         (* Send BuildStarted to client *)
         reply
-          (TuskProtocol.BuildStarted
+          (WireProtocol.BuildStarted
              { session_id; started_at = Std.Datetime.now () });
 
         (* Now handle log events, PackageNotFound, CycleDetected and BuildCompleted *)
@@ -2475,24 +2487,24 @@ module Server = struct
               in
               (* Forward cleaned event to client *)
               reply
-                (TuskProtocol.BuildEvent { session_id; event = clean_event });
+                (WireProtocol.BuildEvent { session_id; event = clean_event });
               event_loop ()
           | `package_not_found (package_name, available_packages) ->
               (* Forward package not found to client *)
               reply
-                (TuskProtocol.PackageNotFound
+                (WireProtocol.PackageNotFound
                    { session_id; package_name; available_packages });
               event_loop ()
           | `cycle_detected (cycle_nodes, detected_at) ->
               (* Forward cycle detected event to client *)
               reply
-                (TuskProtocol.CycleDetected
+                (WireProtocol.CycleDetected
                    { session_id; detected_at; cycle_nodes });
               event_loop ()
           | `build_complete (completed_at, stats) ->
               (* Build is done, send final response with actual stats *)
               reply
-                (TuskProtocol.BuildComplete
+                (WireProtocol.BuildComplete
                    {
                      session_id;
                      completed_at;
@@ -2516,7 +2528,7 @@ module Server = struct
                    })
         in
         event_loop ()
-    | _ -> reply (TuskProtocol.Error "Unexpected response")
+    | _ -> reply (WireProtocol.Error "Unexpected response")
 
   let handle_ping ctx reply request =
     Std.Log.debug "[JSONRPC] handle_ping called";
@@ -2535,15 +2547,15 @@ module Server = struct
     match receive ~selector () with
     | Tusk_protocol.Pong ->
         Std.Log.debug "[JSONRPC] Got Pong response, sending reply";
-        reply TuskProtocol.Pong;
+        reply WireProtocol.Pong;
         Std.Log.debug "[JSONRPC] Reply sent"
     | _ ->
         Std.Log.error "[JSONRPC] Got unexpected response";
-        reply (TuskProtocol.Error "Unexpected response")
+        reply (WireProtocol.Error "Unexpected response")
 
   let handle_shutdown ctx reply request =
     (* For now, just reply with success *)
-    reply TuskProtocol.ShutdownAck
+    reply WireProtocol.ShutdownAck
 
   let handle_workspace_config ctx reply request =
     (* Send request to the actual tusk server *)
@@ -2565,7 +2577,7 @@ module Server = struct
           List.map
             (fun (pkg : Workspace.package) ->
               {
-                TuskProtocol.name = pkg.name;
+                WireProtocol.name = pkg.name;
                 path = Std.Path.to_string pkg.path;
                 dependencies =
                   List.map
@@ -2575,7 +2587,7 @@ module Server = struct
             workspace.packages
         in
         reply
-          (TuskProtocol.WorkspaceConfig
+          (WireProtocol.WorkspaceConfig
              {
                workspace_root = Std.Path.to_string workspace.root;
                target_dir = Std.Path.to_string workspace.target_dir_root;
@@ -2585,7 +2597,7 @@ module Server = struct
                packages;
                total_packages = List.length workspace.packages;
              })
-    | exception _ -> reply (TuskProtocol.Error "Failed to get workspace config")
+    | exception _ -> reply (WireProtocol.Error "Failed to get workspace config")
 
   let handle_package_info ctx reply package_name =
     (* Send request to the actual tusk server *)
@@ -2605,7 +2617,7 @@ module Server = struct
         (* Convert to JSON-RPC response *)
         let package_info =
           {
-            TuskProtocol.name = package.Workspace.name;
+            WireProtocol.name = package.Workspace.name;
             path = Std.Path.to_string package.path;
             dependencies =
               List.map
@@ -2618,13 +2630,13 @@ module Server = struct
           List.map (fun (node : Build_node.t) -> node.package.name) dependencies
         in
         reply
-          (TuskProtocol.PackageInfo
+          (WireProtocol.PackageInfo
              {
                package = package_info;
                sources = source_strings;
                dependency_names = dep_names;
              })
-    | exception _ -> reply (TuskProtocol.Error "Failed to get package info")
+    | exception _ -> reply (WireProtocol.Error "Failed to get package info")
 
   let handle_build_graph ctx reply request =
     (* Send request to the actual tusk server *)
@@ -2645,7 +2657,7 @@ module Server = struct
           List.map
             (fun (node : Build_node.t) ->
               {
-                TuskProtocol.package_name = node.package.name;
+                WireProtocol.package_name = node.package.name;
                 src_dir = Std.Path.to_string node.package.path;
                 out_dir = Std.Path.to_string node.package.path;
                 (* TODO: get actual out dir *)
@@ -2657,12 +2669,12 @@ module Server = struct
               })
             nodes
         in
-        reply (TuskProtocol.BuildGraph { nodes = json_nodes })
-    | exception _ -> reply (TuskProtocol.Error "Failed to get build graph")
+        reply (WireProtocol.BuildGraph { nodes = json_nodes })
+    | exception _ -> reply (WireProtocol.Error "Failed to get build graph")
 
   let handle_restart ctx reply request =
     (* For now, just reply with success *)
-    reply TuskProtocol.RestartAck
+    reply WireProtocol.RestartAck
 
   let handle_find_executable ctx reply name =
     send ctx.server_pid
@@ -2678,8 +2690,8 @@ module Server = struct
     in
     match receive ~selector () with
     | `found (package, binary) ->
-        reply (TuskProtocol.ExecutableFound { package; binary })
-    | `not_found -> reply TuskProtocol.ExecutableNotFound
+        reply (WireProtocol.ExecutableFound { package; binary })
+    | `not_found -> reply WireProtocol.ExecutableNotFound
 
   let handle_find_artifact ctx reply package kind name =
     send ctx.server_pid
@@ -2696,8 +2708,8 @@ module Server = struct
     in
     match receive ~selector () with
     | `found path ->
-        reply (TuskProtocol.ArtifactFound { path = Std.Path.to_string path })
-    | `err error -> reply (TuskProtocol.ArtifactNotFound { error })
+        reply (WireProtocol.ArtifactFound { path = Std.Path.to_string path })
+    | `err error -> reply (WireProtocol.ArtifactNotFound { error })
 
   let handle_format_file ctx reply file_path check_only =
     (* Send format request to the actual tusk server *)
@@ -2720,13 +2732,13 @@ module Server = struct
         in
         match receive ~selector () with
         | `format_result (formatted_code, changed) ->
-            reply (TuskProtocol.FormatResult { formatted_code; changed })
-        | `format_error error -> reply (TuskProtocol.FormatError { error })
+            reply (WireProtocol.FormatResult { formatted_code; changed })
+        | `format_error error -> reply (WireProtocol.FormatError { error })
         | exception _ ->
             reply
-              (TuskProtocol.FormatError { error = "Format request timed out" }))
+              (WireProtocol.FormatError { error = "Format request timed out" }))
     | Error _ ->
-        reply (TuskProtocol.FormatError { error = "Invalid file path" })
+        reply (WireProtocol.FormatError { error = "Invalid file path" })
 
   let handle_format_code ctx reply code file_path =
     (* Send format request to the actual tusk server *)
@@ -2752,10 +2764,10 @@ module Server = struct
     in
     match receive ~selector () with
     | `format_result (formatted_code, changed) ->
-        reply (TuskProtocol.FormatResult { formatted_code; changed })
-    | `format_error error -> reply (TuskProtocol.FormatError { error })
+        reply (WireProtocol.FormatResult { formatted_code; changed })
+    | `format_error error -> reply (WireProtocol.FormatError { error })
     | exception _ ->
-        reply (TuskProtocol.FormatError { error = "Format request timed out" })
+        reply (WireProtocol.FormatError { error = "Format request timed out" })
 
   let handle_format_all ctx reply mode =
     (* Send format all request to the actual tusk server *)
@@ -2776,12 +2788,12 @@ module Server = struct
     match receive ~selector () with
     | `format_all_result (files_formatted, files_failed, errors) ->
         reply
-          (TuskProtocol.FormatAllResult
+          (WireProtocol.FormatAllResult
              { files_formatted; files_failed; errors })
-    | `format_error error -> reply (TuskProtocol.FormatError { error })
+    | `format_error error -> reply (WireProtocol.FormatError { error })
     | exception _ ->
         reply
-          (TuskProtocol.FormatError { error = "Format all request timed out" })
+          (WireProtocol.FormatError { error = "Format all request timed out" })
 
   let handle_new_package ctx reply path name is_library =
     (* Convert string path to Path.t *)
@@ -2804,15 +2816,15 @@ module Server = struct
         in
         match receive ~selector () with
         | `package_created (path, name) ->
-            reply (TuskProtocol.PackageCreated { path; name })
+            reply (WireProtocol.PackageCreated { path; name })
         | `package_creation_error error ->
-            reply (TuskProtocol.PackageCreationError { error })
+            reply (WireProtocol.PackageCreationError { error })
         | exception _ ->
             reply
-              (TuskProtocol.PackageCreationError
+              (WireProtocol.PackageCreationError
                  { error = "Package creation request timed out" }))
     | Error _ ->
-        reply (TuskProtocol.PackageCreationError { error = "Invalid path" })
+        reply (WireProtocol.PackageCreationError { error = "Invalid path" })
 
   (** Create a JSON-RPC server handler for the tusk server *)
   let create server_pid =
@@ -2827,7 +2839,7 @@ module Server = struct
               (fun reply request ->
                 Std.Log.debug "[JSONRPC] method_ping handler called";
                 match request with
-                | TuskProtocol.Ping ->
+                | WireProtocol.Ping ->
                     Std.Log.debug
                       "[JSONRPC] Request is Ping, calling handle_ping";
                     handle_ping ctx reply request
@@ -2840,7 +2852,7 @@ module Server = struct
             fn =
               (fun reply request ->
                 match request with
-                | TuskProtocol.BuildPackage _ -> handle_build ctx reply request
+                | WireProtocol.BuildPackage _ -> handle_build ctx reply request
                 | _ -> ());
           };
           {
@@ -2848,7 +2860,7 @@ module Server = struct
             fn =
               (fun reply request ->
                 match request with
-                | TuskProtocol.BuildAll -> handle_build ctx reply request
+                | WireProtocol.BuildAll -> handle_build ctx reply request
                 | _ -> ());
           };
           {
@@ -2856,7 +2868,7 @@ module Server = struct
             fn =
               (fun reply request ->
                 match request with
-                | TuskProtocol.GetWorkspaceConfig ->
+                | WireProtocol.GetWorkspaceConfig ->
                     handle_workspace_config ctx reply request
                 | _ -> ());
           };
@@ -2865,7 +2877,7 @@ module Server = struct
             fn =
               (fun reply request ->
                 match request with
-                | TuskProtocol.GetPackageInfo pkg ->
+                | WireProtocol.GetPackageInfo pkg ->
                     handle_package_info ctx reply pkg
                 | _ -> ());
           };
@@ -2874,7 +2886,7 @@ module Server = struct
             fn =
               (fun reply request ->
                 match request with
-                | TuskProtocol.GetBuildGraph ->
+                | WireProtocol.GetBuildGraph ->
                     handle_build_graph ctx reply request
                 | _ -> ());
           };
@@ -2883,7 +2895,7 @@ module Server = struct
             fn =
               (fun reply request ->
                 match request with
-                | TuskProtocol.FindExecutable name ->
+                | WireProtocol.FindExecutable name ->
                     handle_find_executable ctx reply name
                 | _ -> ());
           };
@@ -2892,7 +2904,7 @@ module Server = struct
             fn =
               (fun reply request ->
                 match request with
-                | TuskProtocol.FindArtifact { package; kind; name } ->
+                | WireProtocol.FindArtifact { package; kind; name } ->
                     handle_find_artifact ctx reply package kind name
                 | _ -> ());
           };
@@ -2901,7 +2913,7 @@ module Server = struct
             fn =
               (fun reply request ->
                 match request with
-                | TuskProtocol.Restart -> handle_restart ctx reply request
+                | WireProtocol.Restart -> handle_restart ctx reply request
                 | _ -> ());
           };
           {
@@ -2909,7 +2921,7 @@ module Server = struct
             fn =
               (fun reply request ->
                 match request with
-                | TuskProtocol.Shutdown -> handle_shutdown ctx reply request
+                | WireProtocol.Shutdown -> handle_shutdown ctx reply request
                 | _ -> ());
           };
           {
@@ -2917,7 +2929,7 @@ module Server = struct
             fn =
               (fun reply request ->
                 match request with
-                | TuskProtocol.FormatFile { file_path; check_only } ->
+                | WireProtocol.FormatFile { file_path; check_only } ->
                     handle_format_file ctx reply file_path check_only
                 | _ -> ());
           };
@@ -2926,7 +2938,7 @@ module Server = struct
             fn =
               (fun reply request ->
                 match request with
-                | TuskProtocol.FormatCode { code; file_path } ->
+                | WireProtocol.FormatCode { code; file_path } ->
                     handle_format_code ctx reply code file_path
                 | _ -> ());
           };
@@ -2935,7 +2947,7 @@ module Server = struct
             fn =
               (fun reply request ->
                 match request with
-                | TuskProtocol.FormatAll { mode } ->
+                | WireProtocol.FormatAll { mode } ->
                     handle_format_all ctx reply mode
                 | _ -> ());
           };
@@ -2944,7 +2956,7 @@ module Server = struct
             fn =
               (fun reply request ->
                 match request with
-                | TuskProtocol.NewPackage { path; name; is_library } ->
+                | WireProtocol.NewPackage { path; name; is_library } ->
                     handle_new_package ctx reply path name is_library
                 | _ -> ());
           };
@@ -2952,5 +2964,5 @@ module Server = struct
     in
     Log.debug "[RPC SERVER] Registering methods:";
     List.iter (fun h -> Log.debug "  - %s" h.Jsonrpc.Server.method_) methods;
-    Jsonrpc.Server.create ~protocol:(module TuskProtocol) ~methods
+    Jsonrpc.Server.create ~protocol:(module WireProtocol) ~methods
 end

@@ -76,27 +76,27 @@ let execute (client : Server.Tusk_jsonrpc.Client.t) (req : request) : response =
                 [
                   ( "name",
                     Json.String
-                      detail.Server.Tusk_jsonrpc.TuskProtocol.package.name );
+                      detail.Server.Tusk_jsonrpc.WireProtocol.package.name );
                   ( "path",
                     Json.String
-                      detail.Server.Tusk_jsonrpc.TuskProtocol.package.path );
+                      detail.Server.Tusk_jsonrpc.WireProtocol.package.path );
                   ( "dependencies",
                     Json.Array
                       (List.map
                          (fun d -> Json.String d)
-                         detail.Server.Tusk_jsonrpc.TuskProtocol.package
+                         detail.Server.Tusk_jsonrpc.WireProtocol.package
                            .dependencies) );
                 ] );
             ( "sources",
               Json.Array
                 (List.map
                    (fun s -> Json.String s)
-                   detail.Server.Tusk_jsonrpc.TuskProtocol.sources) );
+                   detail.Server.Tusk_jsonrpc.WireProtocol.sources) );
             ( "dependency_names",
               Json.Array
                 (List.map
                    (fun d -> Json.String d)
-                   detail.Server.Tusk_jsonrpc.TuskProtocol.dependency_names) );
+                   detail.Server.Tusk_jsonrpc.WireProtocol.dependency_names) );
           ]
         |> Json.to_string
       in

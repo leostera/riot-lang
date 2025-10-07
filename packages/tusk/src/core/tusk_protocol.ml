@@ -1,4 +1,11 @@
-(** Protocol types for communication with the Tusk server *)
+(** TuskProtocol - Internal Server Protocol
+    
+    This module defines the internal message-passing protocol used within the
+    Tusk server. It uses rich OCaml types (Path.t, Workspace.t, Pid.t) and
+    includes client_pid fields for Miniriot message routing.
+    
+    For the external RPC wire protocol, see WireProtocol in tusk_jsonrpc.ml.
+*)
 
 open Std
 open Miniriot

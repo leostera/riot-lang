@@ -62,18 +62,18 @@ let execute (client : Server.Tusk_jsonrpc.Client.t) (_ : request) : response =
                        [
                          ( "package",
                            Json.String
-                             node.Server.Tusk_jsonrpc.TuskProtocol.package_name
+                             node.Server.Tusk_jsonrpc.WireProtocol.package_name
                          );
                          ( "status",
                            Json.String
-                             node.Server.Tusk_jsonrpc.TuskProtocol.status );
+                             node.Server.Tusk_jsonrpc.WireProtocol.status );
                          ( "dependencies",
                            Json.Array
                              (List.map
                                 (fun d -> Json.String d)
-                                node.Server.Tusk_jsonrpc.TuskProtocol.deps) );
+                                node.Server.Tusk_jsonrpc.WireProtocol.deps) );
                        ])
-                   response.Server.Tusk_jsonrpc.TuskProtocol.nodes) );
+                   response.Server.Tusk_jsonrpc.WireProtocol.nodes) );
           ]
         |> Json.to_string
       in

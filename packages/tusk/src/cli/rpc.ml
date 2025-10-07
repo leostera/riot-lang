@@ -83,16 +83,16 @@ let handle_workspace client _sub_matches =
           [
             ("type", Json.String "workspace_config");
             ( "workspace_root",
-              Json.String config.Tusk_jsonrpc.TuskProtocol.workspace_root );
+              Json.String config.Tusk_jsonrpc.WireProtocol.workspace_root );
             ( "target_dir",
-              Json.String config.Tusk_jsonrpc.TuskProtocol.target_dir );
-            ("toolchain", Json.String config.Tusk_jsonrpc.TuskProtocol.toolchain);
+              Json.String config.Tusk_jsonrpc.WireProtocol.target_dir );
+            ("toolchain", Json.String config.Tusk_jsonrpc.WireProtocol.toolchain);
             ( "toolchain_path",
-              Json.String config.Tusk_jsonrpc.TuskProtocol.toolchain_path );
+              Json.String config.Tusk_jsonrpc.WireProtocol.toolchain_path );
             ( "packages",
               Json.Array
                 (List.map
-                   (fun (pkg : Tusk_jsonrpc.TuskProtocol.package_info) ->
+                   (fun (pkg : Tusk_jsonrpc.WireProtocol.package_info) ->
                      Json.Object
                        [
                          ("name", Json.String pkg.name);
@@ -103,9 +103,9 @@ let handle_workspace client _sub_matches =
                                 (fun d -> Json.String d)
                                 pkg.dependencies) );
                        ])
-                   config.Tusk_jsonrpc.TuskProtocol.packages) );
+                   config.Tusk_jsonrpc.WireProtocol.packages) );
             ( "total_packages",
-              Json.Int config.Tusk_jsonrpc.TuskProtocol.total_packages );
+              Json.Int config.Tusk_jsonrpc.WireProtocol.total_packages );
           ]
       in
       println "%s" (Json.to_string json);
@@ -181,26 +181,26 @@ let handle_package client sub_matches =
               Json.Object
                 [
                   ( "name",
-                    Json.String detail.Tusk_jsonrpc.TuskProtocol.package.name );
+                    Json.String detail.Tusk_jsonrpc.WireProtocol.package.name );
                   ( "path",
-                    Json.String detail.Tusk_jsonrpc.TuskProtocol.package.path );
+                    Json.String detail.Tusk_jsonrpc.WireProtocol.package.path );
                   ( "dependencies",
                     Json.Array
                       (List.map
                          (fun d -> Json.String d)
-                         detail.Tusk_jsonrpc.TuskProtocol.package.dependencies)
+                         detail.Tusk_jsonrpc.WireProtocol.package.dependencies)
                   );
                 ] );
             ( "sources",
               Json.Array
                 (List.map
                    (fun s -> Json.String s)
-                   detail.Tusk_jsonrpc.TuskProtocol.sources) );
+                   detail.Tusk_jsonrpc.WireProtocol.sources) );
             ( "dependency_names",
               Json.Array
                 (List.map
                    (fun d -> Json.String d)
-                   detail.Tusk_jsonrpc.TuskProtocol.dependency_names) );
+                   detail.Tusk_jsonrpc.WireProtocol.dependency_names) );
           ]
       in
       println "%s" (Json.to_string json);
@@ -218,15 +218,15 @@ let handle_graph client _sub_matches =
           (fun node ->
             Json.Object
               [
-                ("name", Json.String node.Tusk_jsonrpc.TuskProtocol.package_name);
-                ("status", Json.String node.Tusk_jsonrpc.TuskProtocol.status);
+                ("name", Json.String node.Tusk_jsonrpc.WireProtocol.package_name);
+                ("status", Json.String node.Tusk_jsonrpc.WireProtocol.status);
                 ( "dependencies",
                   Json.Array
                     (List.map
                        (fun d -> Json.String d)
-                       node.Tusk_jsonrpc.TuskProtocol.deps) );
+                       node.Tusk_jsonrpc.WireProtocol.deps) );
               ])
-          response.Tusk_jsonrpc.TuskProtocol.nodes
+          response.Tusk_jsonrpc.WireProtocol.nodes
       in
       let json =
         Json.Object

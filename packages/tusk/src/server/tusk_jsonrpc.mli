@@ -23,7 +23,9 @@ val method_find_artifact : string
 val build_package_params : string -> Jsonrpc.params
 (** Helper to create method-specific parameters *)
 
-module TuskProtocol : sig
+module WireProtocol : sig
+  (** External RPC Wire Protocol - simple, JSON-serializable types for external clients *)
+  
   type build_node = {
     package_name : string;
     src_dir : string;
@@ -135,7 +137,7 @@ end
 module Server : sig
   val create :
     Miniriot.Pid.t ->
-    (TuskProtocol.request, TuskProtocol.response) Jsonrpc.Server.t
+    (WireProtocol.request, WireProtocol.response) Jsonrpc.Server.t
   (** Create a JSON-RPC server that handles tusk requests *)
 end
 
@@ -161,14 +163,14 @@ module Client : sig
     (streaming_event, string) result
 
   val ping : t -> (unit, string) result
-  val get_build_graph : t -> (TuskProtocol.build_graph_response, string) result
-  val get_workspace_config : t -> (TuskProtocol.workspace_config, string) result
+  val get_build_graph : t -> (WireProtocol.build_graph_response, string) result
+  val get_workspace_config : t -> (WireProtocol.workspace_config, string) result
 
   val get_package_info :
-    t -> string -> (TuskProtocol.package_detail, string) result
+    t -> string -> (WireProtocol.package_detail, string) result
 
-  val build_package : t -> string -> (TuskProtocol.response, string) result
-  val build_all : t -> (TuskProtocol.response, string) result
+  val build_package : t -> string -> (WireProtocol.response, string) result
+  val build_all : t -> (WireProtocol.response, string) result
   val find_executable : t -> string -> ((string * string) option, string) result
 
   val find_artifact :
