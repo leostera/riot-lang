@@ -82,8 +82,12 @@
     For simple scripts, manual argv parsing might be sufficient.
 *)
 
-type action = Set | SetTrue | SetFalse | Append | Count
-(** How an argument's value should be set. *)
+type action =
+  | Set
+  | SetTrue
+  | SetFalse
+  | Append
+  | Count  (** How an argument's value should be set. *)
 
 type 'a arg
 (** Command-line argument definition. *)
@@ -102,8 +106,7 @@ type error =
   | MissingSubcommand
   | ConflictingArguments of string * string
   | TooManyValues of string
-  | TooFewValues of string
-(** Parsing errors. *)
+  | TooFewValues of string  (** Parsing errors. *)
 
 module Arg : sig
   type 'a t = 'a arg
@@ -151,3 +154,5 @@ val trailing_args : matches -> string list
 val print_help : command -> unit
 val error_message : error -> string
 val print_error : error -> unit
+val usage_string : command -> string
+val print_usage : command -> unit

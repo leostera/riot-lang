@@ -1,28 +1,19 @@
 open Std
-
 open Core
-(** Build command implementation *)
-
 open Model
 open Server
 
-(** Parse command line arguments for build command *)
-let parse_build_args args start_idx =
-  let rec parse idx package =
-    if idx >= List.length args then package
-    else
-      match List.nth args idx with
-      | "-p" when idx + 1 < List.length args ->
-          parse (idx + 2) (Some (List.nth args (idx + 1)))
-      | _ ->
-          println "Warning: Unknown argument '%s'" (List.nth args idx);
-          parse (idx + 1) package
-  in
-  parse start_idx None
+let command =
+  let open ArgParser in
+  let open Arg in
+  command "build" |> about "Build packages"
+  |> args
+       [
+         option "package" |> short 'p' |> long "package"
+         |> help "Build only the specified package";
+       ]
 
-(** Execute the build command *)
 let build_command package_opt =
-  (* Make sure we have a valid workspace *)
   let cwd =
     Env.current_dir () |> Result.expect ~msg:"Failed to get current directory"
   in
@@ -32,7 +23,6 @@ let build_command package_opt =
          ~msg:"Failed to scan workspace. Is this a valid tusk project?"
   in
 
-  (* Ensure server is running *)
   let client =
     Server.Server_manager.ensure_running ~workspace
     |> Result.expect ~msg:"Failed to start or connect to tusk server"
@@ -44,14 +34,12 @@ let build_command package_opt =
     | Some pkg -> Client.BuildPackage pkg
     | None -> Client.BuildAll
   in
-  (* Track packages we've already displayed to avoid duplicates *)
   let displayed_packages = Hashtbl.create 32 in
   let result =
     Client.build_streaming client request (fun event ->
         match event with
         | Client.BuildStarted session_id -> ()
         | Client.BuildEvent event ->
-            (* Only display package events once *)
             let should_display =
               match event.kind with
               | CacheHit { package; _ } | CacheMiss { package; _ } ->
@@ -60,7 +48,6 @@ let build_command package_opt =
                     Hashtbl.add displayed_packages package ();
                     true)
               | PackageComplete { package; _ } -> (
-                  (* Always show failures, but not successes (already shown as Compiling) *)
                   match event.kind with
                   | PackageComplete { success = false; _ } -> true
                   | _ -> false)
@@ -74,16 +61,15 @@ let build_command package_opt =
   in
   Client.close client;
 
-  (* Print final result *)
   match result with
   | Client.BuildFinished (Ok ()) -> Ok ()
   | Client.BuildFinished (Error msg) ->
       println "error: build failed: %s" msg;
       Error (Failure "Build failed")
   | Client.BuildStarted _ | Client.BuildEvent _ ->
-      (* These should not happen as final result, but handle just in case *)
       Error (Failure "Unexpected response from server")
 
-let run args =
-  let package_opt = parse_build_args args 0 in
+let run matches =
+  let open ArgParser in
+  let package_opt = get_one matches "package" in
   build_command package_opt

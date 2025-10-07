@@ -1,2 +1,2 @@
-val run : string list -> (unit, exn) result
-val run_with_matches : Std.ArgParser.matches -> (unit, exn) result
+val command : Std.ArgParser.command
+val run : Std.ArgParser.matches -> (unit, exn) result

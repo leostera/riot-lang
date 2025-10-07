@@ -124,6 +124,27 @@ let create_matches name =
 
 let rec get_matches cmd args =
   let matches = create_matches cmd.name in
+  let validate_required () =
+    (* Check that all required args have values *)
+    let missing =
+      List.find_opt
+        (fun arg ->
+          arg.required
+          &&
+          match Hashtbl.find_opt matches.values arg.name with
+          | None -> true
+          | Some [] -> true
+          | Some _ -> false)
+        cmd.args
+    in
+    match missing with
+    | Some arg ->
+        println "Missing required argument: %s" arg.name;
+        println "";
+        print_help cmd;
+        exit 1
+    | None -> Ok matches
+  in
   let rec parse_args args_list =
     match args_list with
     | [] ->
@@ -131,12 +152,12 @@ let rec get_matches cmd args =
         if List.length cmd.subcommands > 0 then (
           print_help cmd;
           exit 0)
-        else Ok matches
+        else validate_required ()
     | "--help" :: _ | "-h" :: _ ->
         print_help cmd;
         exit 0
     | "--version" :: _ when Option.is_some cmd.version ->
-        Printf.printf "%s\n" (Option.unwrap cmd.version);
+        println "%s" (Option.unwrap cmd.version);
         exit 0
     | arg_str :: rest when String.starts_with ~prefix:"--" arg_str -> (
         let name = String.sub arg_str 2 (String.length arg_str - 2) in
@@ -165,10 +186,8 @@ let rec get_matches cmd args =
             matches.subcommand <- Some (subcmd, sub_matches);
             Ok matches
         | None ->
-            if cmd.allow_trailing then (
-              matches.trailing_args <- args_list;
-              Ok matches)
-            else parse_positional args_list)
+            (* Prefer consuming as positional when not a subcommand *)
+            parse_positional args_list)
   and parse_long_arg arg name rest =
     match arg.action with
     | SetTrue ->
@@ -195,11 +214,24 @@ let rec get_matches cmd args =
         parse_args rest
   and parse_short_arg arg c rest = parse_long_arg arg arg.name rest
   and parse_positional pos_args =
-    (* Find the next positional arg definition (one without short/long flags) *)
-    let positional_args =
-      List.filter (fun arg -> arg.short = None && arg.long = None) cmd.args
+    (* Find positional args that haven't been filled yet *)
+    let positional_args : unit arg list =
+      List.filter
+        (fun positional_arg ->
+          positional_arg.short = None && positional_arg.long = None)
+        cmd.args
     in
-    match (positional_args, pos_args) with
+    let unfilled_positionals : unit arg list =
+      List.filter
+        (fun (positional_arg : unit arg) ->
+          let current = Hashtbl.find_opt matches.values positional_arg.name in
+          match current with
+          | None -> true
+          | Some [] -> true
+          | Some _ -> positional_arg.multiple)
+        positional_args
+    in
+    match (unfilled_positionals, pos_args) with
     | [], _ -> Error (UnknownArgument (List.hd pos_args))
     | arg :: _, value :: rest ->
         let current =
@@ -207,9 +239,9 @@ let rec get_matches cmd args =
           |> Option.unwrap_or ~default:[]
         in
         Hashtbl.replace matches.values arg.name (current @ [ value ]);
-        if arg.multiple then parse_args rest else parse_args rest
+        parse_args rest
     | arg :: _, [] when arg.required -> Error (MissingRequired arg.name)
-    | _, [] -> Ok matches
+    | _, [] -> validate_required ()
   in
   parse_args args
 
@@ -222,18 +254,33 @@ and find_arg_by_short cmd short_char =
 and print_help cmd =
   (* Title/about on first line *)
   (match cmd.about with
-  | Some a -> Printf.printf "%s\n\n" a
-  | None -> Printf.printf "%s\n\n" cmd.name);
+  | Some a -> println "%s\n" a
+  | None -> println "%s\n" cmd.name);
+
+  (* Separate positional args from options *)
+  let positionals =
+    List.filter (fun arg -> arg.short = None && arg.long = None) cmd.args
+  in
+  let options =
+    List.filter (fun arg -> arg.short <> None || arg.long <> None) cmd.args
+  in
 
   (* Usage section *)
-  Printf.printf "Usage: %s" cmd.name;
-  if List.length cmd.args > 0 then Printf.printf " [OPTIONS]";
-  if List.length cmd.subcommands > 0 then Printf.printf " [COMMAND]";
-  Printf.printf "\n";
+  let usage_buf = Buffer.create 128 in
+  Buffer.add_string usage_buf (format "Usage: %s" cmd.name);
+  if List.length options > 0 then Buffer.add_string usage_buf " [OPTIONS]";
+  List.iter
+    (fun arg ->
+      if arg.required then Buffer.add_string usage_buf (format " <%s>" arg.name)
+      else Buffer.add_string usage_buf (format " [%s]" arg.name))
+    positionals;
+  if List.length cmd.subcommands > 0 then
+    Buffer.add_string usage_buf " [COMMAND]";
+  println "%s" (Buffer.contents usage_buf);
 
   (* Options section *)
-  if List.length cmd.args > 0 then (
-    Printf.printf "\nOptions:\n";
+  if List.length options > 0 then (
+    println "\nOptions:";
     (* Calculate max width for alignment *)
     let max_opt_width =
       List.fold_left
@@ -243,29 +290,26 @@ and print_help cmd =
             match arg.long with Some l -> String.length l + 2 | None -> 0
           in
           max acc (short_len + long_len))
-        0 cmd.args
+        0 options
     in
     List.iter
       (fun arg ->
         let short_str =
-          match arg.short with
-          | Some c -> Printf.sprintf "-%c, " c
-          | None -> "    "
+          match arg.short with Some c -> format "-%c, " c | None -> "    "
         in
         let long_str =
-          match arg.long with Some l -> Printf.sprintf "--%s" l | None -> ""
+          match arg.long with Some l -> format "--%s" l | None -> ""
         in
         let opt_str = short_str ^ long_str in
-        let padding =
-          String.make (max_opt_width - String.length opt_str + 2) ' '
-        in
+        let padding_len = max 2 (max_opt_width - String.length opt_str + 2) in
+        let padding = String.make padding_len ' ' in
         let help_str = match arg.help with Some h -> h | None -> "" in
-        Printf.printf "  %s%s%s\n" opt_str padding help_str)
-      cmd.args);
+        println "  %s%s%s" opt_str padding help_str)
+      options);
 
   (* Commands section *)
   if List.length cmd.subcommands > 0 then (
-    Printf.printf "\nCommands:\n";
+    println "\nCommands:";
     (* Sort subcommands alphabetically *)
     let sorted_subs =
       List.sort (fun a b -> String.compare a.name b.name) cmd.subcommands
@@ -281,11 +325,10 @@ and print_help cmd =
           String.make (max_name_len - String.length sub.name + 4) ' '
         in
         let about_str = match sub.about with Some a -> a | None -> "" in
-        Printf.printf "    %s%s%s\n" sub.name padding about_str)
+        println "    %s%s%s" sub.name padding about_str)
       sorted_subs;
-    Printf.printf
-      "\n\
-       See '%s <command> --help' for more information on a specific command.\n"
+    println
+      "\nSee '%s <command> --help' for more information on a specific command."
       cmd.name)
 
 let get_one matches name =
@@ -329,15 +372,40 @@ let subcommand_matches matches name =
 let trailing_args matches = matches.trailing_args
 
 let error_message = function
-  | UnknownArgument arg -> Printf.sprintf "Unknown argument: %s" arg
-  | MissingRequired name -> Printf.sprintf "Missing required argument: %s" name
-  | InvalidValue (name, msg) ->
-      Printf.sprintf "Invalid value for %s: %s" name msg
-  | UnknownSubcommand name -> Printf.sprintf "Unknown subcommand: %s" name
+  | UnknownArgument arg -> format "Unknown argument: %s" arg
+  | MissingRequired name -> format "Missing required argument: %s" name
+  | InvalidValue (name, msg) -> format "Invalid value for %s: %s" name msg
+  | UnknownSubcommand name -> format "Unknown subcommand: %s" name
   | MissingSubcommand -> "Missing subcommand"
-  | ConflictingArguments (a, b) ->
-      Printf.sprintf "Conflicting arguments: %s and %s" a b
-  | TooManyValues name -> Printf.sprintf "Too many values for: %s" name
-  | TooFewValues name -> Printf.sprintf "Too few values for: %s" name
+  | ConflictingArguments (a, b) -> format "Conflicting arguments: %s and %s" a b
+  | TooManyValues name -> format "Too many values for: %s" name
+  | TooFewValues name -> format "Too few values for: %s" name
 
-let print_error err = Printf.printf "error: %s\n" (error_message err)
+let print_error err = println "error: %s" (error_message err)
+
+let usage_string cmd =
+  let buf = Buffer.create 256 in
+  Buffer.add_string buf (format "Usage: %s" cmd.name);
+
+  (* Add options if any *)
+  let has_options =
+    List.exists (fun arg -> arg.short <> None || arg.long <> None) cmd.args
+  in
+  if has_options then Buffer.add_string buf " [OPTIONS]";
+
+  (* Add positional args *)
+  let positionals =
+    List.filter (fun arg -> arg.short = None && arg.long = None) cmd.args
+  in
+  List.iter
+    (fun arg ->
+      if arg.required then Buffer.add_string buf (format " <%s>" arg.name)
+      else Buffer.add_string buf (format " [%s]" arg.name))
+    positionals;
+
+  (* Add subcommands indicator *)
+  if List.length cmd.subcommands > 0 then Buffer.add_string buf " [COMMAND]";
+
+  Buffer.contents buf
+
+let print_usage cmd = println "%s" (usage_string cmd)

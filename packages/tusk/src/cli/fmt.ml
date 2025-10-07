@@ -3,6 +3,18 @@ open Core
 open Model
 open ArgParser
 
+let command =
+  let open ArgParser in
+  let open Arg in
+  command "fmt" |> about "Format OCaml code"
+  |> args
+       [
+         flag "check" |> long "check"
+         |> help "Check if files need formatting without modifying them";
+         flag "quiet" |> short 'q' |> long "quiet"
+         |> help "Only show failures, suppress successful file messages";
+       ]
+
 type format_status =
   | Success of { file : Path.t; changed : bool }
   | Failed of { file : Path.t; error : string }
