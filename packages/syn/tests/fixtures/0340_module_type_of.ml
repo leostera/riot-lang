@@ -1,1 +1,1 @@
-let x = (module M : module type of N)
+let x = (module M : S)

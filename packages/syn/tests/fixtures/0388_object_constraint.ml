@@ -1,1 +1,5 @@
-let x = (object method m : int end : < m : int >)
+let x =
+  (object
+     method m = 1
+   end
+    : < m : int >)

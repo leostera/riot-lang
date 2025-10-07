@@ -1,1 +1,1 @@
-let x = function ~y -> y + 1
+let x = fun ~y -> y + 1
