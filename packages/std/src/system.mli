@@ -1,7 +1,7 @@
 (** # System - System information and operations
     
-    System-level operations and information queries. This is a re-export
-    of [Kernel.System] with cross-platform abstractions for common system tasks.
+    System-level operations and information queries with cross-platform
+    abstractions for common system tasks.
     
     ## Examples
     
@@ -32,7 +32,6 @@
     
     - [Env] for environment variables
     - [Command] for running external processes
-    - Full Kernel.System documentation for all available functions
 *)
 
 include module type of Kernel.System

@@ -3,7 +3,7 @@ open Common
 (** File handle for reading and writing *)
 
 type t
-(** Opaque file handle wrapping Kernel.Fd.t *)
+(** Opaque file handle for reading and writing files. *)
 
 (** {1 Opening Files} *)
 

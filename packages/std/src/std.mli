@@ -91,7 +91,6 @@
     - [MutIterator] - Mutable iteration
     - [Cell] - Mutable cells
     - [Exception] - Exception handling
-    - [IO] - Direct I/O (from Kernel)
 *)
 
 module ArgParser = Arg_parser
