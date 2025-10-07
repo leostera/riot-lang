@@ -1,1 +1,3 @@
-let exception E = () in raise E
+exception E
+
+let x = raise E
