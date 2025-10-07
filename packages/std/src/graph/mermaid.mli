@@ -1,4 +1,80 @@
-(** Mermaid diagram format generation *)
+(** # Mermaid - Mermaid.js diagram generation
+
+    Generate Mermaid diagram format for rendering in browsers, Markdown,
+    and documentation tools.
+
+    ## Examples
+
+    ```ocaml
+    open Std
+
+    (* Create a flowchart *)
+    let diagram = Graph.Mermaid.create ~direction:LR ()
+      |> Graph.Mermaid.add_node ~id:"start" ~label:"Start" ~shape:Circle ()
+      |> Graph.Mermaid.add_node ~id:"process" ~label:"Process Data" ~shape:Rectangle ()
+      |> Graph.Mermaid.add_node ~id:"decision" ~label:"Valid?" ~shape:Diamond ()
+      |> Graph.Mermaid.add_node ~id:"end" ~label:"End" ~shape:Circle ()
+      |> Graph.Mermaid.add_edge ~from_node:"start" ~to_node:"process" ()
+      |> Graph.Mermaid.add_edge ~from_node:"process" ~to_node:"decision" ()
+      |> Graph.Mermaid.add_edge ~from_node:"decision" ~to_node:"end" 
+          ~label:"Yes" ~style:Solid ()
+      |> Graph.Mermaid.add_edge ~from_node:"decision" ~to_node:"process" 
+          ~label:"No" ~style:Dotted () in
+
+    let mermaid = Graph.Mermaid.to_string diagram
+    (* graph LR
+         start((Start))
+         process[Process Data]
+         decision{Valid?}
+         end((End))
+         start --> process
+         process --> decision
+         decision -->|Yes| end
+         decision -.->|No| process *)
+    ```
+
+    In Markdown:
+
+    ```markdown
+    ```mermaid
+    graph TD
+        A[Start] --> B{Decision}
+        B -->|Yes| C[Action 1]
+        B -->|No| D[Action 2]
+    ```
+    ```
+
+    ## Directions
+
+    - **LR**: Left to Right (horizontal flow)
+    - **TD/TB**: Top to Down/Bottom (vertical flow)
+    - **RL**: Right to Left
+    - **BT**: Bottom to Top
+
+    ## Node Shapes
+
+    - **Rectangle**: Default box `[text]`
+    - **Round**: Rounded `(text)`
+    - **Circle**: Circle `((text))`
+    - **Diamond**: Decision `{text}`
+    - **Hexagon**: Hexagon `{{text}}`
+    - **Stadium**: Pill shape `([text])`
+
+    ## Edge Styles
+
+    - **Solid**: Normal arrow `-->`
+    - **Dotted**: Dotted arrow `-.->` (optional/error paths)
+    - **Thick**: Thick arrow `==>` (primary path)
+
+    ## When to Use
+
+    - Documentation embedded in Markdown/MDX
+    - GitHub README diagrams
+    - Browser-based interactive diagrams
+    - GitBook, Docusaurus, Astro documentation
+
+    See [Dot] for Graphviz format (better for complex graphs).
+*)
 
 (** Direction of graph layout *)
 type direction =
@@ -22,6 +98,7 @@ type node_shape =
   | Trapezoid  (** [\text/] - Trapezoid *)
 
 type node = { id : string; label : string; shape : node_shape }
+(** Node with label and shape. *)
 
 type edge_style =
   | Solid  (** --> Normal arrow *)
@@ -34,14 +111,16 @@ type edge = {
   label : string option;
   style : edge_style;
 }
+(** Edge with optional label and style. *)
 
 type t = { direction : direction; nodes : node list; edges : edge list }
+(** Mermaid diagram representation. *)
 
 val create : ?direction:direction -> unit -> t
-(** Create a new Mermaid graph with optional direction (default: TD) *)
+(** Create a new Mermaid graph with optional direction (default: TD). *)
 
 val add_node : t -> id:string -> label:string -> ?shape:node_shape -> unit -> t
-(** Add a node to the graph *)
+(** Add a node to the graph. *)
 
 val add_edge :
   t ->
@@ -51,7 +130,7 @@ val add_edge :
   ?style:edge_style ->
   unit ->
   t
-(** Add an edge between two nodes *)
+(** Add an edge between two nodes. *)
 
 val to_string : t -> string
-(** Convert to Mermaid diagram string *)
+(** Convert to Mermaid diagram string. *)
