@@ -340,10 +340,22 @@ and handle_new_package state client_pid path name is_library =
   in
   let _ = Fs.write toml_content package_toml in
 
+  (* Rescan workspace to pick up the new package *)
+  Log.debug "Server: Rescanning workspace after package creation";
+  let updated_workspace =
+    Workspace_manager.scan state.workspace.root
+    |> Result.expect ~msg:"Failed to rescan workspace after package creation"
+  in
+  Log.debug "Server: Workspace rescanned, found %d packages"
+    (List.length updated_workspace.packages);
+
+  (* Update state with new workspace *)
+  let updated_state = { state with workspace = updated_workspace } in
+
   (* Send success response *)
   send client_pid
     (ServerResponse (PackageCreated { path = Path.to_string path; name }));
-  loop state
+  loop updated_state
 
 (** Handler for the build message. *)
 and handle_build state client_pid target session_id =
