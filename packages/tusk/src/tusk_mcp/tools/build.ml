@@ -78,6 +78,7 @@ let execute (client : Server.Tusk_jsonrpc.Client.t) (req : request) : response =
   in
   Log.debug "[BUILD TOOL] Created build request, calling build_streaming";
   let messages = ref [] in
+  let has_error = ref false in
   let result =
     Server.Tusk_jsonrpc.Client.build_streaming client build_request (function
       | Server.Tusk_jsonrpc.Client.BuildStarted _ ->
@@ -103,10 +104,14 @@ let execute (client : Server.Tusk_jsonrpc.Client.t) (req : request) : response =
           messages := !messages @ [ "Build completed successfully" ]
       | Server.Tusk_jsonrpc.Client.BuildFinished (Error msg) ->
           Log.debug "[BUILD TOOL] BuildFinished Error callback";
+          has_error := true;
           messages := !messages @ [ format "Build failed: %s" msg ])
   in
   Log.debug "[BUILD TOOL] build_streaming returned, processing result";
   match result with
+  | Ok _ when !has_error ->
+      Log.debug "[BUILD TOOL] returning Error from messages";
+      Error (String.concat "\n" !messages)
   | Ok _ ->
       Log.debug "[BUILD TOOL] returning BuildResult";
       BuildResult { messages = !messages }
