@@ -74,7 +74,7 @@
                           },
                           {
                             "type": "token",
-                            "kind": "INFIX_EXPR",
+                            "kind": "FUN_EXPR",
                             "text": "->",
                             "width": 2
                           },
@@ -138,7 +138,7 @@
                           },
                           {
                             "type": "token",
-                            "kind": "INFIX_EXPR",
+                            "kind": "FUN_EXPR",
                             "text": "->",
                             "width": 2
                           },
