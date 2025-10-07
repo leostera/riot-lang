@@ -1,21 +1,84 @@
-(** URL parsing and manipulation similar to Rust's HTTP URI module *)
+(** # Net.Uri - URL/URI parsing and manipulation
+    
+    URL and URI parsing with support for all standard components:
+    scheme, authority, path, query, and fragment. Provides builder
+    pattern and query parameter utilities.
+    
+    ## Examples
+    
+    Parsing URLs:
+    
+    ```ocaml
+    open Std.Net
+    
+    match Uri.of_string "https://api.example.com:443/v1/users?page=1#top" with
+    | Ok uri ->
+        Uri.scheme uri        (* Some "https" *)
+        Uri.host uri          (* Some "api.example.com" *)
+        Uri.port uri          (* Some 443 *)
+        Uri.path uri          (* "/v1/users" *)
+        Uri.query uri         (* Some "page=1" *)
+        Uri.fragment uri      (* Some "top" *)
+    | Error err -> Log.error "Invalid URI"
+    ```
+    
+    Building URLs:
+    
+    ```ocaml
+    let uri = Uri.Builder.create ()
+      |> Uri.Builder.scheme "https"
+      |> Uri.Builder.host "api.example.com"
+      |> Uri.Builder.path "/v1/users"
+      |> Uri.Builder.query "status=active"
+      |> Uri.Builder.build
+      |> Result.unwrap in
+    
+    Uri.to_string uri
+    (* "https://api.example.com/v1/users?status=active" *)
+    ```
+    
+    Working with query parameters:
+    
+    ```ocaml
+    let query_str = "page=1&limit=10&sort=name" in
+    let params = Uri.Query.parse query_str in
+    
+    (* Get specific parameter *)
+    Uri.Query.get params "page"  (* Some "1" *)
+    
+    (* Add parameter *)
+    let params = Uri.Query.add params "filter" "active" in
+    Uri.Query.to_string params
+    (* "page=1&limit=10&sort=name&filter=active" *)
+    ```
+    
+    Joining paths:
+    
+    ```ocaml
+    let base = Uri.of_string "https://example.com/api" |> Result.unwrap in
+    let full = Uri.join base "v1/users" |> Result.unwrap in
+    Uri.to_string full
+    (* "https://example.com/api/v1/users" *)
+    ```
+*)
 
 type t
-(** The main URL/URI type *)
+(** A parsed URL/URI with all components. *)
 
 type url = t
+(** Alias for [t]. *)
 
-(** URL parsing errors *)
 type error =
-  | InvalidScheme
-  | InvalidAuthority
-  | InvalidPath
-  | InvalidQuery
-  | InvalidFragment
-  | InvalidFormat
-  | TooLong
+  | InvalidScheme     (** Invalid or unsupported scheme *)
+  | InvalidAuthority  (** Malformed authority section *)
+  | InvalidPath       (** Invalid path component *)
+  | InvalidQuery      (** Malformed query string *)
+  | InvalidFragment   (** Invalid fragment identifier *)
+  | InvalidFormat     (** General parsing error *)
+  | TooLong           (** URL exceeds maximum length *)
+(** URL parsing errors. *)
 
-(** {1 Creation and Parsing} *)
+(** ## Creation and Parsing *)
 
 val of_string : string -> (t, error) result
 (** Parse a string into a URL *)
@@ -23,7 +86,7 @@ val of_string : string -> (t, error) result
 val to_string : t -> string
 (** Convert a URL back to string representation *)
 
-(** {1 Components Access} *)
+(** ## Components Access *)
 
 val scheme : t -> string option
 (** Get the scheme (e.g., "http", "https") *)
@@ -49,7 +112,7 @@ val fragment : t -> string option
 val path_and_query : t -> string
 (** Get combined path and query (e.g., "/path?query") *)
 
-(** {1 Component Types} *)
+(** ## Component Types *)
 
 module Scheme : sig
   type t = string
@@ -81,7 +144,7 @@ module PathAndQuery : sig
   val to_string : t -> string
 end
 
-(** {1 URL Builder} *)
+(** ## URL Builder *)
 
 module Builder : sig
   type t
@@ -97,7 +160,7 @@ module Builder : sig
   val build : t -> (url, error) result
 end
 
-(** {1 Utilities} *)
+(** ## Utilities *)
 
 val is_absolute : t -> bool
 (** Check if URL is absolute (has scheme) *)
@@ -114,7 +177,7 @@ val equal : t -> t -> bool
 val compare : t -> t -> int
 (** Compare two URLs *)
 
-(** {1 Query Parameter Utilities} *)
+(** ## Query Parameter Utilities *)
 
 module Query : sig
   type param = string * string
