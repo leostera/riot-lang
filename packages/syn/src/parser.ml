@@ -74,8 +74,17 @@ let token_kind_to_syntax_kind = function
   | Token.Literal (Token.Char _) -> Syntax_kind.CHAR_LITERAL
   | Token.Keyword Keyword.True | Token.Keyword Keyword.False -> Syntax_kind.BOOL_LITERAL
   | Token.Keyword Keyword.Let -> Syntax_kind.LET_BINDING
+  | Token.Keyword Keyword.Rec -> Syntax_kind.LET_REC_EXPR
+  | Token.Keyword Keyword.In -> Syntax_kind.LET_EXPR
+  | Token.Keyword Keyword.If -> Syntax_kind.IF_EXPR
+  | Token.Keyword Keyword.Then | Token.Keyword Keyword.Else -> Syntax_kind.IF_EXPR
   | Token.Ident _ -> Syntax_kind.IDENT_EXPR
-  | Token.Eq -> Syntax_kind.INFIX_EXPR
+  | Token.Plus | Token.Minus | Token.Star | Token.Slash | Token.Percent
+  | Token.Eq | Token.Ne | Token.Lt | Token.Gt | Token.LtEq | Token.GtEq
+  | Token.And | Token.Or | Token.ColonColon
+  -> Syntax_kind.INFIX_EXPR
+  | Token.Bang -> Syntax_kind.PREFIX_EXPR
+  | Token.OpenDelim _ | Token.CloseDelim _ -> Syntax_kind.WHITESPACE
   | _ -> Syntax_kind.ERROR  (* TODO: Map remaining token kinds *)
 
 let token_to_green_token parser tok =
@@ -156,49 +165,124 @@ let parse_literal parser =
   | _ -> None
 
 (* ========================================================================= *)
-(* EXPRESSIONS - Forward declarations *)
+(* EXPRESSIONS *)
 (* ========================================================================= *)
 
+let is_infix_op = function
+  | Token.Plus | Token.Minus | Token.Star | Token.Slash | Token.Percent
+  | Token.Eq | Token.Ne | Token.Lt | Token.Gt | Token.LtEq | Token.GtEq
+  | Token.And | Token.Or | Token.ColonColon
+  -> true
+  | _ -> false
+
+let get_precedence = function
+  | Token.Or -> 1
+  | Token.And -> 2
+  | Token.Eq | Token.Ne | Token.Lt | Token.Gt | Token.LtEq | Token.GtEq -> 3
+  | Token.ColonColon -> 4
+  | Token.Plus | Token.Minus -> 5
+  | Token.Star | Token.Slash | Token.Percent -> 6
+  | _ -> 0
+
 let rec parse_expr parser =
-  parse_primary parser
+  parse_expr_bp parser 0
+
+and parse_expr_bp parser min_bp =
+  skip_trivia parser;
+  
+  match parse_primary parser with
+  | None -> None
+  | Some lhs ->
+      let rec loop lhs =
+        skip_trivia parser;
+        match peek_kind parser with
+        | Some op_kind when is_infix_op op_kind ->
+            let prec = get_precedence op_kind in
+            if prec < min_bp then
+              Some lhs
+            else begin
+              let op_tok = consume parser in
+              skip_trivia parser;
+              match parse_expr_bp parser (prec + 1) with
+              | Some rhs ->
+                  let infix = make_node ~kind:Syntax_kind.INFIX_EXPR 
+                    [| Ceibo.Green.Node lhs; op_tok; Ceibo.Green.Node rhs |] in
+                  loop infix
+              | None -> Some lhs
+            end
+        | Some _ when can_start_primary parser ->
+            (* Function application - juxtaposition *)
+            let app_prec = 8 in  (* Highest precedence *)
+            if app_prec < min_bp then
+              Some lhs
+            else begin
+              match parse_primary parser with
+              | Some rhs ->
+                  let app = make_node ~kind:Syntax_kind.APPLY_EXPR
+                    [| Ceibo.Green.Node lhs; Ceibo.Green.Node rhs |] in
+                  loop app
+              | None -> Some lhs
+            end
+        | Some _ | None -> Some lhs
+      in
+      loop lhs
+
+and can_start_primary parser =
+  match peek_kind parser with
+  | Some (Token.Literal _) | Some (Token.Ident _) | Some (Token.OpenDelim Token.Paren)
+  | Some (Token.Keyword (Keyword.True | Keyword.False | Keyword.Let | Keyword.If 
+                        | Keyword.Match | Keyword.Fun | Keyword.Function))
+  | Some (Token.Minus) | Some (Token.Bang)
+  -> true
+  | _ -> false
 
 and parse_primary parser =
   skip_trivia parser;
   
-  (* Try to parse a literal *)
-  match parse_literal parser with
-  | Some lit -> Some lit
-  | None -> (
-      match peek_kind parser with
-      (* Identifier *)
-      | Some (Token.Ident _) ->
-          let ident = consume parser in
-          Some (make_node ~kind:Syntax_kind.IDENT_EXPR [| ident |])
-      
-      (* Parenthesized expression *)
-      | Some (Token.OpenDelim Token.Paren) ->
-          parse_paren_expr parser
-      
-      (* Let expression *)
-      | Some (Token.Keyword Keyword.Let) ->
-          parse_let_expr parser
-      
-      (* If expression *)
-      | Some (Token.Keyword Keyword.If) ->
-          parse_if_expr parser
-      
-      (* Match expression *)
-      | Some (Token.Keyword Keyword.Match) ->
-          parse_match_expr parser
-      
-      (* Fun/function *)
-      | Some (Token.Keyword Keyword.Fun) ->
-          parse_fun_expr parser
-      
-      | Some (Token.Keyword Keyword.Function) ->
-          parse_function_expr parser
-      
-      | _ -> None)
+  (* Check for prefix operators *)
+  match peek_kind parser with
+  | Some Token.Minus | Some Token.Bang ->
+      let op = consume parser in
+      skip_trivia parser;
+      (match parse_expr_bp parser 7 with  (* Higher precedence for prefix *)
+       | Some operand ->
+           Some (make_node ~kind:Syntax_kind.PREFIX_EXPR [| op; Ceibo.Green.Node operand |])
+       | None -> None)
+  | _ ->
+      (* Try to parse a literal *)
+      match parse_literal parser with
+      | Some lit -> Some lit
+      | None -> (
+          match peek_kind parser with
+          (* Identifier *)
+          | Some (Token.Ident _) ->
+              let ident = consume parser in
+              Some (make_node ~kind:Syntax_kind.IDENT_EXPR [| ident |])
+          
+          (* Parenthesized expression *)
+          | Some (Token.OpenDelim Token.Paren) ->
+              parse_paren_expr parser
+          
+          (* Let expression *)
+          | Some (Token.Keyword Keyword.Let) ->
+              parse_let_expr parser
+          
+          (* If expression *)
+          | Some (Token.Keyword Keyword.If) ->
+              parse_if_expr parser
+          
+          (* Match expression *)
+          | Some (Token.Keyword Keyword.Match) ->
+              parse_match_expr parser
+          
+          (* Fun/function *)
+          | Some (Token.Keyword Keyword.Fun) ->
+              parse_fun_expr parser
+          
+          | Some (Token.Keyword Keyword.Function) ->
+              parse_function_expr parser
+          
+          | _ -> None)
 
 and parse_paren_expr parser =
   let open_paren = consume parser in
@@ -217,12 +301,136 @@ and parse_paren_expr parser =
       Some (make_error_node parser ~kind:(Diagnostic.InvalidSyntax { context = "parenthesized expression" }) ~span)
 
 and parse_let_expr parser =
-  (* TODO: Implement *)
-  None
+  let let_kw = consume parser in
+  skip_trivia parser;
+  
+  (* Check for 'rec' *)
+  let is_rec = at parser (Token.Keyword Keyword.Rec) in
+  let rec_kw = if is_rec then begin
+    let kw = consume parser in
+    skip_trivia parser;
+    Some kw
+  end else None in
+  
+  (* Parse pattern (for now, just identifier) *)
+  let pattern = match peek_kind parser with
+    | Some (Token.Ident _) -> consume parser
+    | _ -> 
+        let span = match peek parser with
+          | Some tok -> tok.Token.span
+          | None -> Ceibo.Span.make ~start:0 ~end_:0
+        in
+        report_error parser (Diagnostic.make_missing_token ~expected:"identifier" ~span);
+        Ceibo.Green.Token (Ceibo.Green.make_token ~kind:Syntax_kind.MISSING ~text:"" ~width:0)
+  in
+  
+  skip_trivia parser;
+  
+  (* Expect '=' *)
+  let eq = expect parser Token.Eq in
+  
+  skip_trivia parser;
+  
+  (* Parse value expression *)
+  let value_expr = match parse_expr parser with
+    | Some e -> Ceibo.Green.Node e
+    | None ->
+        let span = match peek parser with
+          | Some tok -> tok.Token.span
+          | None -> Ceibo.Span.make ~start:0 ~end_:0
+        in
+        report_error parser (Diagnostic.make_missing_token ~expected:"expression" ~span);
+        Ceibo.Green.Token (Ceibo.Green.make_token ~kind:Syntax_kind.MISSING ~text:"" ~width:0)
+  in
+  
+  skip_trivia parser;
+  
+  (* Expect 'in' *)
+  let in_kw = expect parser (Token.Keyword Keyword.In) in
+  
+  skip_trivia parser;
+  
+  (* Parse body expression *)
+  let body_expr = match parse_expr parser with
+    | Some e -> Ceibo.Green.Node e
+    | None ->
+        let span = match peek parser with
+          | Some tok -> tok.Token.span
+          | None -> Ceibo.Span.make ~start:0 ~end_:0
+        in
+        report_error parser (Diagnostic.make_missing_token ~expected:"expression" ~span);
+        Ceibo.Green.Token (Ceibo.Green.make_token ~kind:Syntax_kind.MISSING ~text:"" ~width:0)
+  in
+  
+  let kind = if is_rec then Syntax_kind.LET_REC_EXPR else Syntax_kind.LET_EXPR in
+  
+  match rec_kw with
+  | Some kw ->
+      Some (make_node ~kind [| let_kw; kw; pattern; eq; value_expr; in_kw; body_expr |])
+  | None ->
+      Some (make_node ~kind [| let_kw; pattern; eq; value_expr; in_kw; body_expr |])
 
 and parse_if_expr parser =
-  (* TODO: Implement *)
-  None
+  let if_kw = consume parser in
+  skip_trivia parser;
+  
+  (* Parse condition *)
+  let cond = match parse_expr parser with
+    | Some e -> Ceibo.Green.Node e
+    | None ->
+        let span = match peek parser with
+          | Some tok -> tok.Token.span
+          | None -> Ceibo.Span.make ~start:0 ~end_:0
+        in
+        report_error parser (Diagnostic.make_missing_token ~expected:"condition" ~span);
+        Ceibo.Green.Token (Ceibo.Green.make_token ~kind:Syntax_kind.MISSING ~text:"" ~width:0)
+  in
+  
+  skip_trivia parser;
+  
+  (* Expect 'then' *)
+  let then_kw = expect parser (Token.Keyword Keyword.Then) in
+  
+  skip_trivia parser;
+  
+  (* Parse then branch *)
+  let then_expr = match parse_expr parser with
+    | Some e -> Ceibo.Green.Node e
+    | None ->
+        let span = match peek parser with
+          | Some tok -> tok.Token.span
+          | None -> Ceibo.Span.make ~start:0 ~end_:0
+        in
+        report_error parser (Diagnostic.make_missing_token ~expected:"expression" ~span);
+        Ceibo.Green.Token (Ceibo.Green.make_token ~kind:Syntax_kind.MISSING ~text:"" ~width:0)
+  in
+  
+  skip_trivia parser;
+  
+  (* Check for 'else' *)
+  let has_else = at parser (Token.Keyword Keyword.Else) in
+  if has_else then begin
+    let else_kw = consume parser in
+    skip_trivia parser;
+    
+    (* Parse else branch *)
+    let else_expr = match parse_expr parser with
+      | Some e -> Ceibo.Green.Node e
+      | None ->
+          let span = match peek parser with
+            | Some tok -> tok.Token.span
+            | None -> Ceibo.Span.make ~start:0 ~end_:0
+          in
+          report_error parser (Diagnostic.make_missing_token ~expected:"expression" ~span);
+          Ceibo.Green.Token (Ceibo.Green.make_token ~kind:Syntax_kind.MISSING ~text:"" ~width:0)
+    in
+    
+    Some (make_node ~kind:Syntax_kind.IF_EXPR 
+      [| if_kw; cond; then_kw; then_expr; else_kw; else_expr |])
+  end else begin
+    Some (make_node ~kind:Syntax_kind.IF_EXPR 
+      [| if_kw; cond; then_kw; then_expr |])
+  end
 
 and parse_match_expr parser =
   (* TODO: Implement *)

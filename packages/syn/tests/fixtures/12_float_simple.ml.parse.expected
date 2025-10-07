@@ -1,0 +1,48 @@
+{
+  "tree": {
+    "type": "node",
+    "kind": "SOURCE_FILE",
+    "width": 9,
+    "children": [
+      {
+        "type": "node",
+        "kind": "LET_BINDING",
+        "width": 9,
+        "children": [
+          {
+            "type": "token",
+            "kind": "LET_BINDING",
+            "text": "let",
+            "width": 3
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "INFIX_EXPR",
+            "text": "=",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "FLOAT_LITERAL",
+            "width": 4,
+            "children": [
+              {
+                "type": "token",
+                "kind": "FLOAT_LITERAL",
+                "text": "3.14",
+                "width": 4
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "diagnostics": []
+}

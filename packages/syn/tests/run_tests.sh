@@ -34,7 +34,8 @@ for fixture in $FIXTURES_DIR/*.ml; do
             ((failed++))
         fi
     else
-        echo "SKIPPED (no expected file)"
+        echo -e "${RED}FAILED${NC} (no expected file)"
+        ((failed++))
     fi
     
     # Test parse
@@ -54,7 +55,8 @@ for fixture in $FIXTURES_DIR/*.ml; do
             ((failed++))
         fi
     else
-        echo "SKIPPED (no expected file)"
+        echo -e "${RED}FAILED${NC} (no expected file)"
+        ((failed++))
     fi
 done
 

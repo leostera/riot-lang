@@ -1,0 +1,86 @@
+{
+  "tree": {
+    "type": "node",
+    "kind": "SOURCE_FILE",
+    "width": 17,
+    "children": [
+      {
+        "type": "node",
+        "kind": "LET_BINDING",
+        "width": 17,
+        "children": [
+          {
+            "type": "token",
+            "kind": "LET_BINDING",
+            "text": "let",
+            "width": 3
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "INFIX_EXPR",
+            "text": "=",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "IF_EXPR",
+            "width": 12,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IF_EXPR",
+                "text": "if",
+                "width": 2
+              },
+              {
+                "type": "node",
+                "kind": "BOOL_LITERAL",
+                "width": 4,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "BOOL_LITERAL",
+                    "text": "true",
+                    "width": 4
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "IF_EXPR",
+                "text": "then",
+                "width": 4
+              },
+              {
+                "type": "node",
+                "kind": "UNIT_LITERAL",
+                "width": 2,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": "(",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": ")",
+                    "width": 1
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "diagnostics": []
+}
