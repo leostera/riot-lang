@@ -239,6 +239,12 @@ and handle_find_artifact state client_pid package kind name =
                  format "Artifact '%s' not found in package '%s'" name package;
              })
   in
+  Log.debug "Server: Sending response: %s"
+    (match response with
+    | ServerResponse (ArtifactFound _) -> "ArtifactFound"
+    | ServerResponse (ArtifactNotFound { error }) ->
+        format "ArtifactNotFound(%s)" error
+    | _ -> "Unknown");
   send client_pid response;
   Log.debug "Server: Response sent, continuing loop";
   loop state
