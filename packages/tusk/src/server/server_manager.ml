@@ -12,18 +12,13 @@ module Daemon = struct
     host : string;
   }
 
-  let get_project_id workspace =
-    (* Use workspace root path with / replaced by - as project ID *)
-    let root_str = Path.to_string workspace.Workspace.root in
-    String.map (fun c -> if c = '/' then '-' else c) root_str
-
   let daemon_dir ~workspace =
     let home =
       match Env.home_dir () with
       | Some h -> h
       | None -> failwith "Failed to get home directory"
     in
-    let project_id = get_project_id workspace in
+    let project_id = Workspace.project_id workspace in
     Path.(home / Path.v ".tusk" / Path.v "projects" / Path.v project_id)
 
   let daemon_exists ~workspace =

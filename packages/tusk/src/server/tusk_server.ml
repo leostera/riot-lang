@@ -372,8 +372,7 @@ let write_daemon_files ~workspace ~port =
     | Some h -> h
     | None -> failwith "Failed to get home directory"
   in
-  let root_str = Path.to_string workspace.Workspace.root in
-  let project_id = String.map (fun c -> if c = '/' then '-' else c) root_str in
+  let project_id = Workspace.project_id workspace in
   let daemon_path =
     Path.(home / Path.v ".tusk" / Path.v "projects" / Path.v project_id)
   in

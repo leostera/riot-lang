@@ -213,6 +213,10 @@ let scan path =
 
 let load ~root = scan root
 
+let project_id workspace =
+  let root_str = Path.to_string workspace.root in
+  String.map (fun c -> if c = '/' then '-' else c) root_str
+
 (** Tests submodule *)
 module Tests = struct
   let test_scan_finds_workspace_toml () : (unit, string) result =

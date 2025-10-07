@@ -27,3 +27,6 @@ val load : root:Path.t -> (t, Error.t) result
 val scan : Path.t -> (t, Error.t) result
 (** Scans a directory and its parents until it finds a workspace root, then
     loads it *)
+
+val project_id : t -> string
+(** Get a unique project identifier for the workspace by replacing / with - in the root path *)
