@@ -34,7 +34,7 @@
             "children": [
               {
                 "type": "token",
-                "kind": "ERROR",
+                "kind": "WHITESPACE",
                 "text": "(",
                 "width": 1
               },
@@ -53,7 +53,7 @@
               },
               {
                 "type": "token",
-                "kind": "ERROR",
+                "kind": "WHITESPACE",
                 "text": ")",
                 "width": 1
               }

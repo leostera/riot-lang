@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 10,
+    "width": 14,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 10,
+        "width": 14,
         "children": [
           {
             "type": "token",
@@ -18,8 +18,8 @@
           {
             "type": "token",
             "kind": "IDENT_EXPR",
-            "text": "sum",
-            "width": 3
+            "text": "x",
+            "width": 1
           },
           {
             "type": "token",
@@ -29,9 +29,27 @@
           },
           {
             "type": "node",
-            "kind": "INFIX_EXPR",
-            "width": 3,
+            "kind": "LET_EXPR",
+            "width": 9,
             "children": [
+              {
+                "type": "token",
+                "kind": "LET_BINDING",
+                "text": "let",
+                "width": 3
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "y",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "INFIX_EXPR",
+                "text": "=",
+                "width": 1
+              },
               {
                 "type": "node",
                 "kind": "INT_LITERAL",
@@ -47,19 +65,19 @@
               },
               {
                 "type": "token",
-                "kind": "INFIX_EXPR",
-                "text": "+",
-                "width": 1
+                "kind": "LET_EXPR",
+                "text": "in",
+                "width": 2
               },
               {
                 "type": "node",
-                "kind": "INT_LITERAL",
+                "kind": "IDENT_EXPR",
                 "width": 1,
                 "children": [
                   {
                     "type": "token",
-                    "kind": "INT_LITERAL",
-                    "text": "2",
+                    "kind": "IDENT_EXPR",
+                    "text": "y",
                     "width": 1
                   }
                 ]

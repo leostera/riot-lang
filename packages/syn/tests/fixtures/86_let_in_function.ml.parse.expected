@@ -1,0 +1,109 @@
+{
+  "tree": {
+    "type": "node",
+    "kind": "SOURCE_FILE",
+    "width": 10,
+    "children": [
+      {
+        "type": "node",
+        "kind": "LET_BINDING",
+        "width": 10,
+        "children": [
+          {
+            "type": "token",
+            "kind": "LET_BINDING",
+            "text": "let",
+            "width": 3
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "INFIX_EXPR",
+            "text": "=",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "LET_EXPR",
+            "width": 5,
+            "children": [
+              {
+                "type": "token",
+                "kind": "LET_BINDING",
+                "text": "let",
+                "width": 3
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "f",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "INFIX_EXPR",
+                "text": "=",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "MISSING",
+                "text": "",
+                "width": 0
+              },
+              {
+                "type": "token",
+                "kind": "MISSING",
+                "text": "",
+                "width": 0
+              },
+              {
+                "type": "token",
+                "kind": "MISSING",
+                "text": "",
+                "width": 0
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "kind": {
+        "type": "missing_token",
+        "expected": "expression"
+      },
+      "span": {
+        "start": 16,
+        "end": 19
+      }
+    },
+    {
+      "kind": {
+        "type": "missing_token",
+        "expected": "keyword"
+      },
+      "span": {
+        "start": 16,
+        "end": 16
+      }
+    },
+    {
+      "kind": {
+        "type": "missing_token",
+        "expected": "expression"
+      },
+      "span": {
+        "start": 16,
+        "end": 19
+      }
+    }
+  ]
+}
