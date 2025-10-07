@@ -1,34 +1,149 @@
-(** HTTP request methods **)
+(** # Net.Http.Method - HTTP request methods
+    
+    HTTP request method types and utilities following RFC 7231.
+    
+    ## Examples
+    
+    Basic usage:
+    
+    ```ocaml
+    open Std.Net.Http
+    
+    let method_ = Method.Get in
+    Method.to_string method_  (* "GET" *)
+    
+    let method_ = Method.of_string "POST" in
+    (* Method.Post *)
+    ```
+    
+    Checking method properties:
+    
+    ```ocaml
+    (* Safe methods don't modify server state *)
+    Method.is_safe Method.Get  (* true *)
+    Method.is_safe Method.Post  (* false *)
+    
+    (* Idempotent methods produce same result when repeated *)
+    Method.is_idempotent Method.Put  (* true *)
+    Method.is_idempotent Method.Post  (* false *)
+    
+    (* Cacheable methods can have responses cached *)
+    Method.is_cacheable Method.Get  (* true *)
+    Method.is_cacheable Method.Post  (* false *)
+    ```
+    
+    Custom methods:
+    
+    ```ocaml
+    (* Non-standard methods *)
+    let custom = Method.Extension "PURGE" in
+    Method.to_string custom  (* "PURGE" *)
+    ```
+    
+    ## Method Properties
+    
+    | Method | Safe | Idempotent | Cacheable |
+    |--------|------|------------|-----------|
+    | GET | ✓ | ✓ | ✓ |
+    | HEAD | ✓ | ✓ | ✓ |
+    | POST | ✗ | ✗ | ✗ |
+    | PUT | ✗ | ✓ | ✗ |
+    | DELETE | ✗ | ✓ | ✗ |
+    | PATCH | ✗ | ✗ | ✗ |
+    | OPTIONS | ✓ | ✓ | ✗ |
+    | TRACE | ✓ | ✓ | ✗ |
+*)
 
 type t =
-  | Get
-  | Head
-  | Post
-  | Put
-  | Delete
-  | Connect
-  | Options
-  | Trace
-  | Patch
-  | Extension of string
+  | Get  (** GET - Retrieve resource *)
+  | Head  (** HEAD - GET without body *)
+  | Post  (** POST - Submit data *)
+  | Put  (** PUT - Replace resource *)
+  | Delete  (** DELETE - Remove resource *)
+  | Connect  (** CONNECT - Tunnel proxy *)
+  | Options  (** OPTIONS - Communication options *)
+  | Trace  (** TRACE - Echo request *)
+  | Patch  (** PATCH - Partial modification *)
+  | Extension of string  (** Non-standard methods *)
 
 val of_string : string -> t
-(** Parse an HTTP method from string **)
+(** Parses an HTTP method from string. Case-insensitive for standard methods.
+    
+    ## Examples
+    
+    ```ocaml
+    Method.of_string "GET"  (* Get *)
+    Method.of_string "get"  (* Get *)
+    Method.of_string "PURGE"  (* Extension "PURGE" *)
+    ```
+*)
 
 val to_string : t -> string
-(** Convert HTTP method to string **)
+(** Converts HTTP method to uppercase string.
+    
+    ## Examples
+    
+    ```ocaml
+    Method.to_string Method.Get  (* "GET" *)
+    Method.to_string (Method.Extension "PURGE")  (* "PURGE" *)
+    ```
+*)
 
 val is_safe : t -> bool
-(** Check if the method is safe (GET, HEAD, OPTIONS, TRACE) **)
+(** Returns [true] if the method is safe (read-only, doesn't modify state).
+    
+    Safe methods: GET, HEAD, OPTIONS, TRACE
+    
+    ## Examples
+    
+    ```ocaml
+    Method.is_safe Method.Get  (* true *)
+    Method.is_safe Method.Post  (* false *)
+    ```
+*)
 
 val is_idempotent : t -> bool
-(** Check if the method is idempotent **)
+(** Returns [true] if the method is idempotent (same result when repeated).
+    
+    Idempotent methods: GET, HEAD, PUT, DELETE, OPTIONS, TRACE
+    
+    ## Examples
+    
+    ```ocaml
+    Method.is_idempotent Method.Put  (* true - PUT same resource twice = same result *)
+    Method.is_idempotent Method.Post  (* false - POST twice creates two resources *)
+    ```
+*)
 
 val is_cacheable : t -> bool
-(** Check if responses to this method can be cached **)
+(** Returns [true] if responses to this method can be cached.
+    
+    Cacheable methods: GET, HEAD, POST (conditionally)
+    
+    ## Examples
+    
+    ```ocaml
+    Method.is_cacheable Method.Get  (* true *)
+    Method.is_cacheable Method.Delete  (* false *)
+    ```
+*)
 
 val compare : t -> t -> int
-(** Compare two HTTP methods **)
+(** Compares two HTTP methods.
+    
+    ## Examples
+    
+    ```ocaml
+    Method.compare Method.Get Method.Post  (* < 0 *)
+    ```
+*)
 
 val equal : t -> t -> bool
-(** Check if two HTTP methods are equal **)
+(** Checks if two HTTP methods are equal.
+    
+    ## Examples
+    
+    ```ocaml
+    Method.equal Method.Get Method.Get  (* true *)
+    ```
+*)
