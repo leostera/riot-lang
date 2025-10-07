@@ -25,6 +25,7 @@ type token_kind =
   | CloseDelim of delimiter
   | Comment of { value : string; terminated : bool }
   | Docstring of { value : string; terminated : bool }
+  | Whitespace
   | Plus
   | Minus
   | Star
@@ -56,7 +57,6 @@ type token_kind =
   | Pipe
   | Ampersand
   | Underscore
-  | Whitespace
   | EOF
   | Unknown of char
 
