@@ -27,32 +27,6 @@ let is_cache_valid cached =
   in
   elapsed < cache_ttl
 
-(** Get workspace, using cache when possible *)
-let get_workspace ~root =
-  match !workspace_cache with
-  | Some cached
-    when is_within_workspace root cached.root && is_cache_valid cached ->
-      (* Cache hit - reuse existing workspace *)
-      cached.workspace
-  | _ ->
-      (* Cache miss or expired - scan workspace *)
-      let path = Std.Path.of_string root |> Std.Result.unwrap in
-      let workspace =
-        match Workspace.scan path with
-        | Ok ws -> ws
-        | Error e ->
-            Std.Log.error "Failed to scan workspace: %s" (Error.to_string e);
-            raise (Failure "Failed to scan workspace")
-      in
-      workspace_cache :=
-        Some
-          {
-            workspace;
-            root = Std.Path.to_string workspace.root;
-            last_scanned = Std.Datetime.now ();
-          };
-      workspace
-
 (** Clear the workspace cache (useful for testing or when workspace changes) *)
 let clear_cache () = workspace_cache := None
 
