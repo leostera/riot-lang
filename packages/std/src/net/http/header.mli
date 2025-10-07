@@ -1,92 +1,409 @@
-(** HTTP headers **)
+(** # Net.Http.Header - HTTP headers
+    
+    HTTP header manipulation with case-insensitive names and support
+    for multiple values per header name.
+    
+    ## Examples
+    
+    Creating and manipulating headers:
+    
+    ```ocaml
+    open Std.Net.Http
+    
+    let headers = Header.empty in
+    let headers = Header.set headers "Content-Type" "application/json" in
+    let headers = Header.set headers "Accept" "application/json" in
+    
+    (* Get header value *)
+    match Header.get headers "Content-Type" with
+    | Some ct -> Printf.printf "Content-Type: %s\n" ct
+    | None -> ()
+    
+    (* Headers are case-insensitive *)
+    Header.get headers "content-type"  (* Some "application/json" *)
+    ```
+    
+    Multiple values per header:
+    
+    ```ocaml
+    let headers = Header.empty in
+    let headers = Header.add headers "Accept" "text/html" in
+    let headers = Header.add headers "Accept" "application/json" in
+    
+    (* Get all values *)
+    Header.get_all headers "Accept"
+    (* ["text/html"; "application/json"] *)
+    
+    (* Get first value *)
+    Header.get headers "Accept"  (* Some "text/html" *)
+    ```
+    
+    Using common header names:
+    
+    ```ocaml
+    let headers = Header.empty in
+    let headers = Header.set headers Header.Name.content_type "text/plain" in
+    let headers = Header.set headers Header.Name.authorization "Bearer token123" in
+    
+    Header.get headers Header.Name.content_type  (* Some "text/plain" *)
+    ```
+    
+    Parsing header values:
+    
+    ```ocaml
+    let ct = "application/json; charset=utf-8" in
+    match Header.Value.parse_content_type ct with
+    | Ok (media_type, params) ->
+        (* media_type = "application/json" *)
+        (* params = [("charset", "utf-8")] *)
+    | Error `InvalidContentType -> ()
+    ```
+*)
 
 type name = string
+(** Header name (case-insensitive) *)
+
 type value = string
+(** Header value *)
+
 type t
+(** Collection of HTTP headers *)
+
+(** {1 Construction} *)
 
 val empty : t
-(** Create empty headers **)
+(** Creates an empty header collection.
+    
+    ## Examples
+    
+    ```ocaml
+    let headers = Header.empty in
+    assert (Header.is_empty headers)
+    ```
+*)
 
 val of_list : (name * value) list -> t
-(** Create headers from list of name-value pairs **)
+(** Creates headers from a list of name-value pairs.
+    
+    ## Examples
+    
+    ```ocaml
+    let headers = Header.of_list [
+      ("Content-Type", "text/html");
+      ("Accept", "text/html")
+    ]
+    ```
+*)
 
 val to_list : t -> (name * value) list
-(** Convert headers to list of name-value pairs **)
+(** Converts headers to a list of name-value pairs.
+    
+    ## Examples
+    
+    ```ocaml
+    let headers = Header.of_list [("Host", "example.com")] in
+    Header.to_list headers  (* [("host", "example.com")] *)
+    ```
+*)
+
+(** {1 Modification} *)
 
 val add : t -> name -> value -> t
-(** Add a header (allows duplicates) **)
+(** Adds a header, allowing multiple values for the same name.
+    
+    ## Examples
+    
+    ```ocaml
+    let headers = Header.empty in
+    let headers = Header.add headers "Accept" "text/html" in
+    let headers = Header.add headers "Accept" "application/json" in
+    
+    Header.get_all headers "Accept"
+    (* ["text/html"; "application/json"] *)
+    ```
+*)
 
 val set : t -> name -> value -> t
-(** Set a header (replaces existing) **)
-
-val get : t -> name -> value option
-(** Get first value for header name **)
-
-val get_all : t -> name -> value list
-(** Get all values for header name **)
+(** Sets a header, replacing any existing values for that name.
+    
+    ## Examples
+    
+    ```ocaml
+    let headers = Header.empty in
+    let headers = Header.set headers "Host" "old.com" in
+    let headers = Header.set headers "Host" "new.com" in
+    
+    Header.get headers "Host"  (* Some "new.com" *)
+    ```
+*)
 
 val remove : t -> name -> t
-(** Remove all headers with given name **)
+(** Removes all headers with the given name.
+    
+    ## Examples
+    
+    ```ocaml
+    let headers = Header.set Header.empty "Host" "example.com" in
+    let headers = Header.remove headers "Host" in
+    
+    Header.has headers "Host"  (* false *)
+    ```
+*)
+
+(** {1 Access} *)
+
+val get : t -> name -> value option
+(** Returns the first value for the given header name.
+    
+    ## Examples
+    
+    ```ocaml
+    Header.get headers "Content-Type"  (* Some "text/html" *)
+    Header.get headers "Missing"  (* None *)
+    
+    (* Case-insensitive *)
+    Header.get headers "content-type"  (* Some "text/html" *)
+    ```
+*)
+
+val get_all : t -> name -> value list
+(** Returns all values for the given header name.
+    
+    ## Examples
+    
+    ```ocaml
+    let headers = Header.empty
+      |> Header.add "Accept" "text/html"
+      |> Header.add "Accept" "application/json" in
+    
+    Header.get_all headers "Accept"
+    (* ["text/html"; "application/json"] *)
+    ```
+*)
 
 val has : t -> name -> bool
-(** Check if header exists **)
+(** Checks if a header with the given name exists.
+    
+    ## Examples
+    
+    ```ocaml
+    Header.has headers "Content-Type"  (* true *)
+    Header.has headers "Missing"  (* false *)
+    ```
+*)
+
+(** {1 Iteration} *)
 
 val iter : (name -> value -> unit) -> t -> unit
-(** Iterate over all headers **)
+(** Applies function to each header name-value pair.
+    
+    ## Examples
+    
+    ```ocaml
+    Header.iter (fun name value ->
+      Printf.printf "%s: %s\n" name value
+    ) headers
+    ```
+*)
 
 val fold : (name -> value -> 'a -> 'a) -> t -> 'a -> 'a
-(** Fold over all headers **)
+(** Folds over all header name-value pairs.
+    
+    ## Examples
+    
+    ```ocaml
+    let count = Header.fold (fun _ _ acc -> acc + 1) headers 0 in
+    ```
+*)
+
+(** {1 Properties} *)
 
 val length : t -> int
-(** Get number of header entries **)
+(** Returns the number of header entries (including duplicates).
+    
+    ## Examples
+    
+    ```ocaml
+    let headers = Header.empty
+      |> Header.add "Accept" "text/html"
+      |> Header.add "Accept" "application/json" in
+    
+    Header.length headers  (* 2 *)
+    ```
+*)
 
 val is_empty : t -> bool
-(** Check if headers are empty **)
+(** Checks if headers collection is empty.
+    
+    ## Examples
+    
+    ```ocaml
+    Header.is_empty Header.empty  (* true *)
+    ```
+*)
 
-(** Common header names **)
+(** {1 Common Header Names} *)
+
 module Name : sig
+  (** Standard HTTP header name constants. Using these ensures correct
+      spelling and consistency.
+      
+      ## Examples
+      
+      ```ocaml
+      Header.set headers Header.Name.content_type "text/html"
+      Header.set headers Header.Name.authorization "Bearer token"
+      ```
+  *)
+
   val content_type : name
+  (** "Content-Type" - Media type of the resource *)
+
   val content_length : name
+  (** "Content-Length" - Size of the resource in bytes *)
+
   val authorization : name
+  (** "Authorization" - Authentication credentials *)
+
   val user_agent : name
+  (** "User-Agent" - Client software information *)
+
   val accept : name
+  (** "Accept" - Acceptable media types *)
+
   val accept_encoding : name
+  (** "Accept-Encoding" - Acceptable content encodings *)
+
   val accept_language : name
+  (** "Accept-Language" - Acceptable languages *)
+
   val cache_control : name
+  (** "Cache-Control" - Caching directives *)
+
   val connection : name
+  (** "Connection" - Connection options *)
+
   val cookie : name
+  (** "Cookie" - HTTP cookies *)
+
   val host : name
+  (** "Host" - Target host and port *)
+
   val referer : name
+  (** "Referer" - Previous page URL *)
+
   val server : name
+  (** "Server" - Server software information *)
+
   val set_cookie : name
+  (** "Set-Cookie" - Set HTTP cookies *)
+
   val transfer_encoding : name
+  (** "Transfer-Encoding" - Transfer encoding method *)
+
   val location : name
+  (** "Location" - Redirect target URL *)
+
   val www_authenticate : name
+  (** "WWW-Authenticate" - Authentication method *)
+
   val date : name
+  (** "Date" - Message origination date/time *)
+
   val etag : name
+  (** "ETag" - Entity tag for cache validation *)
+
   val expires : name
+  (** "Expires" - Expiration date/time *)
+
   val last_modified : name
+  (** "Last-Modified" - Last modification date/time *)
+
   val if_modified_since : name
+  (** "If-Modified-Since" - Conditional request *)
+
   val if_none_match : name
+  (** "If-None-Match" - Conditional request with ETag *)
+
   val vary : name
+  (** "Vary" - Variance in content negotiation *)
+
   val x_forwarded_for : name
+  (** "X-Forwarded-For" - Original client IP (proxy) *)
+
   val x_real_ip : name
+  (** "X-Real-IP" - Original client IP (nginx) *)
 end
 
-(** Header value parsing utilities **)
+(** {1 Header Value Parsing} *)
+
 module Value : sig
+  (** Utilities for parsing structured header values following HTTP
+      specifications.
+      
+      ## Examples
+      
+      ```ocaml
+      let ct = "application/json; charset=utf-8" in
+      match Header.Value.parse_content_type ct with
+      | Ok (media_type, params) ->
+          (* media_type = "application/json" *)
+          (* params = [("charset", "utf-8")] *)
+      | Error _ -> ()
+      ```
+  *)
+
   val parse_content_type :
     value -> (string * (string * string) list, [ `InvalidContentType ]) result
-  (** Parse Content-Type header into media type and parameters **)
+  (** Parses Content-Type header into media type and parameters.
+      
+      ## Examples
+      
+      ```ocaml
+      Header.Value.parse_content_type "text/html; charset=utf-8"
+      (* Ok ("text/html", [("charset", "utf-8")]) *)
+      
+      Header.Value.parse_content_type "application/json"
+      (* Ok ("application/json", []) *)
+      ```
+  *)
 
   val parse_authorization :
     value -> (string * string, [ `InvalidAuthorization ]) result
-  (** Parse Authorization header into scheme and credentials **)
+  (** Parses Authorization header into scheme and credentials.
+      
+      ## Examples
+      
+      ```ocaml
+      Header.Value.parse_authorization "Bearer abc123"
+      (* Ok ("Bearer", "abc123") *)
+      
+      Header.Value.parse_authorization "Basic dXNlcjpwYXNz"
+      (* Ok ("Basic", "dXNlcjpwYXNz") *)
+      ```
+  *)
 
   val parse_cache_control : value -> (string * string option) list
-  (** Parse Cache-Control directives **)
+  (** Parses Cache-Control directives into list of (directive, value) pairs.
+      
+      ## Examples
+      
+      ```ocaml
+      Header.Value.parse_cache_control "max-age=3600, must-revalidate"
+      (* [("max-age", Some "3600"); ("must-revalidate", None)] *)
+      ```
+  *)
 
   val parse_accept :
     value -> (string * float option * (string * string) list) list
-  (** Parse Accept header with quality values **)
+  (** Parses Accept header with quality values and parameters.
+      Returns list of (media_type, quality, parameters).
+      
+      ## Examples
+      
+      ```ocaml
+      Header.Value.parse_accept "text/html;q=0.9, application/json"
+      (* [("text/html", Some 0.9, []); ("application/json", None, [])] *)
+      ```
+  *)
 end
