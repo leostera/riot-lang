@@ -1,0 +1,67 @@
+{
+  "tree": {
+    "type": "node",
+    "kind": "SOURCE_FILE",
+    "width": 17,
+    "children": [
+      {
+        "type": "node",
+        "kind": "LET_BINDING",
+        "width": 17,
+        "children": [
+          {
+            "type": "token",
+            "kind": "LET_BINDING",
+            "text": "let",
+            "width": 3
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "INFIX_EXPR",
+            "text": "=",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "POLY_VARIANT_EXPR",
+            "width": 12,
+            "children": [
+              {
+                "type": "token",
+                "kind": "POLY_VARIANT_EXPR",
+                "text": "`",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "Name",
+                "width": 4
+              },
+              {
+                "type": "node",
+                "kind": "STRING_LITERAL",
+                "width": 7,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "STRING_LITERAL",
+                    "text": "\"Alice\"",
+                    "width": 7
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "diagnostics": []
+}

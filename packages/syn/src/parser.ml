@@ -2101,7 +2101,7 @@ and parse_record_pattern parser =
 
   (* Parse field patterns *)
   let fields = ref [] in
-  
+
   let rec loop () =
     if at parser (Token.CloseDelim Token.Brace) then ()
     else
@@ -2109,7 +2109,7 @@ and parse_record_pattern parser =
       | Some (Token.Ident _) ->
           let field_name = consume parser in
           let _ = consume_trivia parser in
-          
+
           (* Check if there's a '=' for field = pattern or just field (punning) *)
           if at parser Token.Eq then
             let eq = consume parser in
