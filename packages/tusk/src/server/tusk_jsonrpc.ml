@@ -30,17 +30,19 @@ let build_package_params package =
 (** TuskProtocol implementation for JSON-RPC *)
 module WireProtocol = struct
   (** WireProtocol - External RPC Wire Format
-      
-      This module defines the JSON-RPC wire protocol for external clients (CLI, MCP).
-      It uses simple, JSON-serializable types only (strings, ints, records).
-      
+
+      This module defines the JSON-RPC wire protocol for external clients (CLI,
+      MCP). It uses simple, JSON-serializable types only (strings, ints,
+      records).
+
       The JSONRPC handlers convert between WireProtocol and TuskProtocol:
       - Incoming requests: WireProtocol → TuskProtocol (adds client_pid)
-      - Outgoing responses: TuskProtocol → WireProtocol (converts rich types to strings)
-      
-      For the internal server protocol, see TuskProtocol in core/tusk_protocol.ml.
-  *)
-  
+      - Outgoing responses: TuskProtocol → WireProtocol (converts rich types to
+        strings)
+
+      For the internal server protocol, see TuskProtocol in
+      core/tusk_protocol.ml. *)
+
   (* Define request/response types for JSON-RPC communication *)
   type build_node = {
     package_name : string;

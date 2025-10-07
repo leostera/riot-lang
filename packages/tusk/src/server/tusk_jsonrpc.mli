@@ -24,8 +24,9 @@ val build_package_params : string -> Jsonrpc.params
 (** Helper to create method-specific parameters *)
 
 module WireProtocol : sig
-  (** External RPC Wire Protocol - simple, JSON-serializable types for external clients *)
-  
+  (** External RPC Wire Protocol - simple, JSON-serializable types for external
+      clients *)
+
   type build_node = {
     package_name : string;
     src_dir : string;

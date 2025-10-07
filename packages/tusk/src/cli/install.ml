@@ -61,7 +61,7 @@ let run matches =
     get_one matches "package" |> Option.expect ~msg:"package required"
   in
   let local_only = get_flag matches "local" in
-  
+
   println "📦 Installing %s..." package_name;
 
   println "Building %s..." package_name;
@@ -96,9 +96,9 @@ let run matches =
         println "❌ Binary for %s not found after build" package_name;
         println "Note: Only packages with main.ml produce installable binaries";
         Error (Failure (format "Binary not found for %s" package_name))
-    | Some binary_path -> (
+    | Some binary_path ->
         let perms = Fs.Permissions.executable in
-        
+
         (* Always promote to project root *)
         let project_binary = Path.(root / Path.v package_name) in
         (match Fs.copy ~src:binary_path ~dst:project_binary with
@@ -106,36 +106,34 @@ let run matches =
             ignore (Fs.set_permissions project_binary perms);
             println "✅ Promoted %s to %s" package_name
               (Path.to_string project_binary)
-        | Error _ ->
-            println "⚠️  Failed to promote to project root");
-        
-        (* If not --local, also install to ~/.tusk/bin *)
-        if not local_only then (
-          let home =
-            match Env.home_dir () with
-            | Some h -> h
-            | None -> 
-                println "⚠️  HOME not set, skipping global install";
-                Path.v "/tmp"
-          in
-          let tusk_bin_dir = Path.(home / Path.v ".tusk/bin") in
-          let _ =
-            Fs.create_dir_all tusk_bin_dir
-            |> Result.expect ~msg:"Failed to create ~/.tusk/bin"
-          in
+        | Error _ -> println "⚠️  Failed to promote to project root");
 
-          let dest_path = Path.(tusk_bin_dir / Path.v package_name) in
-          match Fs.copy ~src:binary_path ~dst:dest_path with
-          | Ok () ->
-              ignore (Fs.set_permissions dest_path perms);
-              println "✅ Installed %s to %s" package_name
-                (Path.to_string dest_path);
-              println "";
-              println "To use %s from anywhere, add ~/.tusk/bin to your PATH:"
-                package_name;
-              println "  export PATH='$HOME/.tusk/bin:$PATH'"
-          | Error _ ->
-              println "⚠️  Failed to install to ~/.tusk/bin (non-fatal)"
-        );
-        
-        Ok ())
+        (* If not --local, also install to ~/.tusk/bin *)
+        (if not local_only then
+           let home =
+             match Env.home_dir () with
+             | Some h -> h
+             | None ->
+                 println "⚠️  HOME not set, skipping global install";
+                 Path.v "/tmp"
+           in
+           let tusk_bin_dir = Path.(home / Path.v ".tusk/bin") in
+           let _ =
+             Fs.create_dir_all tusk_bin_dir
+             |> Result.expect ~msg:"Failed to create ~/.tusk/bin"
+           in
+
+           let dest_path = Path.(tusk_bin_dir / Path.v package_name) in
+           match Fs.copy ~src:binary_path ~dst:dest_path with
+           | Ok () ->
+               ignore (Fs.set_permissions dest_path perms);
+               println "✅ Installed %s to %s" package_name
+                 (Path.to_string dest_path);
+               println "";
+               println "To use %s from anywhere, add ~/.tusk/bin to your PATH:"
+                 package_name;
+               println "  export PATH='$HOME/.tusk/bin:$PATH'"
+           | Error _ ->
+               println "⚠️  Failed to install to ~/.tusk/bin (non-fatal)");
+
+        Ok ()
