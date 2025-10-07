@@ -103,9 +103,9 @@ module TuskProtocol : sig
         stats : build_stats;
         error : string;
       }
-    | FoundExecutable of { package : string; binary : string }
+    | ExecutableFound of { package : string; binary : string }
     | ExecutableNotFound
-    | FoundArtifact of { path : string }
+    | ArtifactFound of { path : string }
     | ArtifactNotFound of { error : string }
     | ShutdownAck
     | RestartAck

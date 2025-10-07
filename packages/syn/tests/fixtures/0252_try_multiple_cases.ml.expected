@@ -44,16 +44,17 @@
                 "width": 6,
                 "children": [
                   {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "E1",
-                    "width": 2
-                  },
-                  {
                     "type": "node",
-                    "kind": "MISSING",
-                    "width": 0,
-                    "children": []
+                    "kind": "IDENT_PATTERN",
+                    "width": 2,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "E1",
+                        "width": 2
+                      }
+                    ]
                   },
                   {
                     "type": "token",
@@ -77,27 +78,28 @@
                 ]
               },
               {
-                "type": "token",
-                "kind": "MATCH_EXPR",
-                "text": "|",
-                "width": 1
-              },
-              {
                 "type": "node",
                 "kind": "MATCH_CASE",
-                "width": 6,
+                "width": 7,
                 "children": [
                   {
                     "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "E2",
-                    "width": 2
+                    "kind": "MATCH_EXPR",
+                    "text": "|",
+                    "width": 1
                   },
                   {
                     "type": "node",
-                    "kind": "MISSING",
-                    "width": 0,
-                    "children": []
+                    "kind": "IDENT_PATTERN",
+                    "width": 2,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "E2",
+                        "width": 2
+                      }
+                    ]
                   },
                   {
                     "type": "token",
@@ -145,26 +147,5 @@
       }
     ]
   },
-  "diagnostics": [
-    {
-      "kind": {
-        "type": "missing_token",
-        "expected": "pattern"
-      },
-      "span": {
-        "start": 25,
-        "end": 27
-      }
-    },
-    {
-      "kind": {
-        "type": "missing_token",
-        "expected": "pattern"
-      },
-      "span": {
-        "start": 36,
-        "end": 38
-      }
-    }
-  ]
+  "diagnostics": []
 }

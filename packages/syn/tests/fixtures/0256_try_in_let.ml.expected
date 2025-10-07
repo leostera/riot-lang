@@ -67,16 +67,17 @@
                     "width": 4,
                     "children": [
                       {
-                        "type": "token",
-                        "kind": "IDENT_EXPR",
-                        "text": "E",
-                        "width": 1
-                      },
-                      {
                         "type": "node",
-                        "kind": "MISSING",
-                        "width": 0,
-                        "children": []
+                        "kind": "IDENT_PATTERN",
+                        "width": 1,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "IDENT_EXPR",
+                            "text": "E",
+                            "width": 1
+                          }
+                        ]
                       },
                       {
                         "type": "token",
@@ -145,16 +146,5 @@
       }
     ]
   },
-  "diagnostics": [
-    {
-      "kind": {
-        "type": "missing_token",
-        "expected": "pattern"
-      },
-      "span": {
-        "start": 31,
-        "end": 33
-      }
-    }
-  ]
+  "diagnostics": []
 }
