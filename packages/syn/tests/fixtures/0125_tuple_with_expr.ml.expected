@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 9,
+    "width": 14,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 9,
+        "width": 14,
         "children": [
           {
             "type": "token",
@@ -29,8 +29,8 @@
           },
           {
             "type": "node",
-            "kind": "PAREN_EXPR",
-            "width": 4,
+            "kind": "TUPLE_EXPR",
+            "width": 9,
             "children": [
               {
                 "type": "token",
@@ -79,9 +79,54 @@
               },
               {
                 "type": "token",
-                "kind": "MISSING",
-                "text": "",
-                "width": 0
+                "kind": "TUPLE_EXPR",
+                "text": ",",
+                "width": 1
+              },
+              {
+                "type": "node",
+                "kind": "INFIX_EXPR",
+                "width": 3,
+                "children": [
+                  {
+                    "type": "node",
+                    "kind": "INT_LITERAL",
+                    "width": 1,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "INT_LITERAL",
+                        "text": "3",
+                        "width": 1
+                      }
+                    ]
+                  },
+                  {
+                    "type": "token",
+                    "kind": "INFIX_EXPR",
+                    "text": "*",
+                    "width": 1
+                  },
+                  {
+                    "type": "node",
+                    "kind": "INT_LITERAL",
+                    "width": 1,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "INT_LITERAL",
+                        "text": "4",
+                        "width": 1
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": ")",
+                "width": 1
               }
             ]
           }
@@ -89,16 +134,5 @@
       }
     ]
   },
-  "diagnostics": [
-    {
-      "kind": {
-        "type": "missing_token",
-        "expected": "')'"
-      },
-      "span": {
-        "start": 14,
-        "end": 14
-      }
-    }
-  ]
+  "diagnostics": []
 }

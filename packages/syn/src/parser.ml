@@ -359,15 +359,42 @@ and parse_paren_expr parser =
     match parse_expr parser with
     | Some expr ->
         let _ = consume_trivia parser in
-        let close_paren = expect parser (Token.CloseDelim Token.Paren) in
-        let children = prepend_pending_trivia parser [| open_paren; Ceibo.Green.Node expr; close_paren |] in
-        Some (make_node ~kind:Syntax_kind.PAREN_EXPR children)
+        (* Check if it's a tuple (has comma) or just parenthesized expr *)
+        if at parser Token.Comma then
+          parse_tuple_rest parser open_paren expr
+        else begin
+          let close_paren = expect parser (Token.CloseDelim Token.Paren) in
+          let children = prepend_pending_trivia parser [| open_paren; Ceibo.Green.Node expr; close_paren |] in
+          Some (make_node ~kind:Syntax_kind.PAREN_EXPR children)
+        end
     | None ->
         let span = match peek parser with
           | Some tok -> Ceibo.Span.make ~start:tok.Token.span.start ~end_:tok.Token.span.end_
           | None -> Ceibo.Span.make ~start:0 ~end_:0
         in
         Some (make_error_node parser ~kind:(Diagnostic.InvalidSyntax { context = "parenthesized expression" }) ~span)
+
+and parse_tuple_rest parser open_paren first_expr =
+  let elements = ref [Ceibo.Green.Node first_expr] in
+  
+  while at parser Token.Comma do
+    let comma = consume parser in
+    let _ = consume_trivia parser in
+    elements := comma :: !elements;
+    
+    (match parse_expr parser with
+    | Some expr ->
+        elements := Ceibo.Green.Node expr :: !elements;
+        let _ = consume_trivia parser in
+        ()
+    | None -> ())
+  done;
+  
+  let close_paren = expect parser (Token.CloseDelim Token.Paren) in
+  let children = Array.of_list (List.rev (close_paren :: !elements)) in
+  let children = Array.append [| open_paren |] children in
+  let children = prepend_pending_trivia parser children in
+  Some (make_node ~kind:Syntax_kind.TUPLE_EXPR children)
 
 and parse_let_expr parser =
   let let_kw = consume parser in
