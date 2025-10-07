@@ -325,6 +325,10 @@ and parse_primary parser =
           | Some (Token.OpenDelim Token.Paren) ->
               parse_paren_expr parser
           
+          (* List literal *)
+          | Some (Token.OpenDelim Token.Bracket) ->
+              parse_list_expr parser
+          
           (* Let expression *)
           | Some (Token.Keyword Keyword.Let) ->
               parse_let_expr parser
@@ -395,6 +399,47 @@ and parse_tuple_rest parser open_paren first_expr =
   let children = Array.append [| open_paren |] children in
   let children = prepend_pending_trivia parser children in
   Some (make_node ~kind:Syntax_kind.TUPLE_EXPR children)
+
+and parse_list_expr parser =
+  let open_bracket = consume parser in
+  let _ = consume_trivia parser in
+  
+  (* Check for empty list [] *)
+  if at parser (Token.CloseDelim Token.Bracket) then begin
+    let close_bracket = consume parser in
+    let children = prepend_pending_trivia parser [| open_bracket; close_bracket |] in
+    Some (make_node ~kind:Syntax_kind.LIST_EXPR children)
+  end else
+    match parse_expr parser with
+    | Some first_expr ->
+        let _ = consume_trivia parser in
+        (* List elements are separated by semicolons *)
+        let elements = ref [Ceibo.Green.Node first_expr] in
+        
+        while at parser Token.Semi do
+          let semi = consume parser in
+          let _ = consume_trivia parser in
+          elements := semi :: !elements;
+          
+          (match parse_expr parser with
+          | Some expr ->
+              elements := Ceibo.Green.Node expr :: !elements;
+              let _ = consume_trivia parser in
+              ()
+          | None -> ())
+        done;
+        
+        let close_bracket = expect parser (Token.CloseDelim Token.Bracket) in
+        let children = Array.of_list (List.rev (close_bracket :: !elements)) in
+        let children = Array.append [| open_bracket |] children in
+        let children = prepend_pending_trivia parser children in
+        Some (make_node ~kind:Syntax_kind.LIST_EXPR children)
+    | None ->
+        let span = match peek parser with
+          | Some tok -> Ceibo.Span.make ~start:tok.Token.span.start ~end_:tok.Token.span.end_
+          | None -> Ceibo.Span.make ~start:0 ~end_:0
+        in
+        Some (make_error_node parser ~kind:(Diagnostic.InvalidSyntax { context = "list expression" }) ~span)
 
 and parse_let_expr parser =
   let let_kw = consume parser in
