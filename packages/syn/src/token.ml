@@ -58,6 +58,7 @@ type token_kind =
   | Pipe
   | Ampersand
   | Underscore
+  | Backtick
   | StarStar
   | EqEq
   | BangEq
@@ -132,6 +133,7 @@ let show_kind = function
   | Pipe -> "'|'"
   | Ampersand -> "'&'"
   | Underscore -> "'_'"
+  | Backtick -> "'`'"
   | StarStar -> "'**'"
   | EqEq -> "'=='"
   | BangEq -> "'!='"

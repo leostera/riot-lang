@@ -101,6 +101,7 @@ let token_kind_to_syntax_kind = function
       Syntax_kind.INFIX_EXPR
   | Token.Bang | Token.Keyword Keyword.Lnot -> Syntax_kind.PREFIX_EXPR
   | Token.Tilde | Token.Question -> Syntax_kind.ARGUMENT
+  | Token.Backtick -> Syntax_kind.POLY_VARIANT_EXPR
   | Token.Keyword Keyword.Assert -> Syntax_kind.ASSERT_EXPR
   | Token.Keyword Keyword.Lazy -> Syntax_kind.LAZY_EXPR
   | Token.Keyword Keyword.For
@@ -423,7 +424,8 @@ and can_start_primary parser =
          | Keyword.Lazy | Keyword.For | Keyword.While | Keyword.Begin
          | Keyword.Try ))
   | Some Token.Minus
-  | Some Token.Bang ->
+  | Some Token.Bang
+  | Some Token.Backtick ->
       true
   | _ -> false
 
@@ -512,6 +514,8 @@ and parse_primary parser =
           | Some (Token.Keyword Keyword.Begin) -> parse_begin_expr parser
           (* Try/catch *)
           | Some (Token.Keyword Keyword.Try) -> parse_try_expr parser
+          (* Polymorphic variant *)
+          | Some Token.Backtick -> parse_poly_variant_expr parser
           | _ -> None))
 
 and parse_labeled_or_optional_arg parser =
@@ -651,7 +655,9 @@ and parse_labeled_or_optional_param parser =
                 match parse_expr parser with
                 | Some default ->
                     let _ = consume_trivia parser in
-                    let close_paren = expect parser (Token.CloseDelim Token.Paren) in
+                    let close_paren =
+                      expect parser (Token.CloseDelim Token.Paren)
+                    in
                     let children =
                       prepend_pending_trivia parser
                         [|
@@ -666,12 +672,14 @@ and parse_labeled_or_optional_param parser =
                     Some (make_node ~kind:Syntax_kind.PARAMETER children)
                 | None ->
                     let children =
-                      prepend_pending_trivia parser [| question; open_paren; label |]
+                      prepend_pending_trivia parser
+                        [| question; open_paren; label |]
                     in
                     Some (make_node ~kind:Syntax_kind.PARAMETER children)
               else
                 let children =
-                  prepend_pending_trivia parser [| question; open_paren; label |]
+                  prepend_pending_trivia parser
+                    [| question; open_paren; label |]
                 in
                 Some (make_node ~kind:Syntax_kind.PARAMETER children)
           | _ -> None)
@@ -1079,6 +1087,34 @@ and parse_lazy_expr parser =
       in
       Some (make_node ~kind:Syntax_kind.LAZY_EXPR children)
   | None -> None
+
+and parse_poly_variant_expr parser =
+  let backtick = consume parser in
+  let _ = consume_trivia parser in
+
+  (* Polymorphic variant tag must be a capitalized identifier *)
+  match peek_kind parser with
+  | Some (Token.Ident tag) when String.length tag > 0 && Char.uppercase_ascii tag.[0] = tag.[0] ->
+      let tag_token = consume parser in
+      let _ = consume_trivia parser in
+      (* Check if there's an argument *)
+      if can_start_primary parser then
+        match parse_primary parser with
+        | Some arg ->
+            let children =
+              prepend_pending_trivia parser [| backtick; tag_token; Ceibo.Green.Node arg |]
+            in
+            Some (make_node ~kind:Syntax_kind.POLY_VARIANT_EXPR children)
+        | None ->
+            let children = prepend_pending_trivia parser [| backtick; tag_token |] in
+            Some (make_node ~kind:Syntax_kind.POLY_VARIANT_EXPR children)
+      else
+        let children = prepend_pending_trivia parser [| backtick; tag_token |] in
+        Some (make_node ~kind:Syntax_kind.POLY_VARIANT_EXPR children)
+  | _ ->
+      (* Missing or invalid tag *)
+      let children = prepend_pending_trivia parser [| backtick |] in
+      Some (make_node ~kind:Syntax_kind.POLY_VARIANT_EXPR children)
 
 and parse_for_expr parser =
   let for_kw = consume parser in
@@ -1663,6 +1699,8 @@ and parse_pattern parser =
       | None -> None)
   (* Parenthesized pattern or tuple *)
   | Some (Token.OpenDelim Token.Paren) -> parse_paren_pattern parser
+  (* Polymorphic variant pattern *)
+  | Some Token.Backtick -> parse_poly_variant_pattern parser
   | _ -> None
 
 and parse_list_pattern parser =
@@ -1884,6 +1922,40 @@ and parse_match_case parser =
       let children_with_pipe = Array.append [| pipe |] case_children in
       Some (make_node ~kind:Syntax_kind.MATCH_CASE children_with_pipe)
   | None -> None
+
+and parse_poly_variant_pattern parser =
+  let backtick = consume parser in
+  let _ = consume_trivia parser in
+
+  (* Polymorphic variant tag must be a capitalized identifier *)
+  match peek_kind parser with
+  | Some (Token.Ident tag) when String.length tag > 0 && Char.uppercase_ascii tag.[0] = tag.[0] ->
+      let tag_token = consume parser in
+      let _ = consume_trivia parser in
+      (* Check if there's a pattern argument *)
+      match peek_kind parser with
+      | Some Token.Underscore
+      | Some (Token.Ident _)
+      | Some (Token.Literal _)
+      | Some (Token.OpenDelim Token.Paren)
+      | Some (Token.OpenDelim Token.Bracket)
+      | Some Token.Backtick -> (
+          match parse_pattern parser with
+          | Some pat ->
+              let children =
+                prepend_pending_trivia parser [| backtick; tag_token; Ceibo.Green.Node pat |]
+              in
+              Some (make_node ~kind:Syntax_kind.POLY_VARIANT_PATTERN children)
+          | None ->
+              let children = prepend_pending_trivia parser [| backtick; tag_token |] in
+              Some (make_node ~kind:Syntax_kind.POLY_VARIANT_PATTERN children))
+      | _ ->
+          let children = prepend_pending_trivia parser [| backtick; tag_token |] in
+          Some (make_node ~kind:Syntax_kind.POLY_VARIANT_PATTERN children)
+  | _ ->
+      (* Missing or invalid tag *)
+      let children = prepend_pending_trivia parser [| backtick |] in
+      Some (make_node ~kind:Syntax_kind.POLY_VARIANT_PATTERN children)
 
 and parse_match_case_body parser first_pattern =
   let _ = consume_trivia parser in

@@ -42,6 +42,7 @@ type t =
   | ARRAY_INDEX_EXPR (* arr.(i) *)
   | STRING_INDEX_EXPR (* s.[i] *)
   | CONSTRUCTOR_EXPR (* Some e, Ok value *)
+  | POLY_VARIANT_EXPR (* `Tag or `Tag value *)
   | ASSERT_EXPR (* assert e *)
   | LAZY_EXPR (* lazy e *)
   | WHILE_EXPR (* while c do e done *)
@@ -67,6 +68,7 @@ type t =
   | LAZY_PATTERN (* lazy p *)
   | EXCEPTION_PATTERN (* exception p *)
   | PAREN_PATTERN (* (p) *)
+  | POLY_VARIANT_PATTERN (* `Tag or `Tag p *)
   (* ========================================================================= *)
   (* TOP-LEVEL DECLARATIONS *)
   (* ========================================================================= *)
@@ -129,6 +131,7 @@ let to_string = function
   | ARRAY_INDEX_EXPR -> "ARRAY_INDEX_EXPR"
   | STRING_INDEX_EXPR -> "STRING_INDEX_EXPR"
   | CONSTRUCTOR_EXPR -> "CONSTRUCTOR_EXPR"
+  | POLY_VARIANT_EXPR -> "POLY_VARIANT_EXPR"
   | ASSERT_EXPR -> "ASSERT_EXPR"
   | LAZY_EXPR -> "LAZY_EXPR"
   | WHILE_EXPR -> "WHILE_EXPR"
@@ -151,6 +154,7 @@ let to_string = function
   | LAZY_PATTERN -> "LAZY_PATTERN"
   | EXCEPTION_PATTERN -> "EXCEPTION_PATTERN"
   | PAREN_PATTERN -> "PAREN_PATTERN"
+  | POLY_VARIANT_PATTERN -> "POLY_VARIANT_PATTERN"
   | LET_BINDING -> "LET_BINDING"
   | LET_REC_BINDING -> "LET_REC_BINDING"
   | TYPE_DECL -> "TYPE_DECL"

@@ -1,0 +1,73 @@
+{
+  "tree": {
+    "type": "node",
+    "kind": "SOURCE_FILE",
+    "width": 15,
+    "children": [
+      {
+        "type": "node",
+        "kind": "LET_BINDING",
+        "width": 15,
+        "children": [
+          {
+            "type": "token",
+            "kind": "LET_BINDING",
+            "text": "let",
+            "width": 3
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "INFIX_EXPR",
+            "text": "=",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "POLY_VARIANT_EXPR",
+            "width": 10,
+            "children": [
+              {
+                "type": "token",
+                "kind": "POLY_VARIANT_EXPR",
+                "text": "`",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "Some",
+                "width": 4
+              },
+              {
+                "type": "node",
+                "kind": "POLY_VARIANT_EXPR",
+                "width": 5,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "POLY_VARIANT_EXPR",
+                    "text": "`",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "None",
+                    "width": 4
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "diagnostics": []
+}

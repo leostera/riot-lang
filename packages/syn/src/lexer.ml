@@ -464,6 +464,10 @@ let next cursor =
         Cursor.advance cursor;
         let end_ = Cursor.position cursor in
         { Token.kind = Token.Tilde; span = Ceibo.Span.make ~start ~end_ }
+    | Some '`' ->
+        Cursor.advance cursor;
+        let end_ = Cursor.position cursor in
+        { Token.kind = Token.Backtick; span = Ceibo.Span.make ~start ~end_ }
     | Some '$' ->
         Cursor.advance cursor;
         let end_ = Cursor.position cursor in

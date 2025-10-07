@@ -93,6 +93,7 @@ type token_kind =
   | Pipe  (** `|` *)
   | Ampersand  (** `&` *)
   | Underscore  (** `_` *)
+  | Backtick  (** `` ` `` - polymorphic variant tag *)
   | StarStar  (** `**` - float power *)
   | EqEq  (** `==` - physical equality *)
   | BangEq  (** `!=` - physical inequality *)

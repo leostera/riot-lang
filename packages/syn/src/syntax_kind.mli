@@ -72,6 +72,7 @@ type t =
   | STRING_INDEX_EXPR  (** String indexing: `s.[i]` *)
   | CONSTRUCTOR_EXPR
       (** Constructor application: `Some 42`, `Node (l, x, r)` *)
+  | POLY_VARIANT_EXPR  (** Polymorphic variant: `` `Tag ``, `` `Tag value `` *)
   | ASSERT_EXPR  (** Assertion: `assert condition` *)
   | LAZY_EXPR  (** Lazy value: `lazy expr` *)
   | WHILE_EXPR  (** While loop: `while cond do ... done` *)
@@ -97,6 +98,7 @@ type t =
   | LAZY_PATTERN  (** Lazy pattern: `lazy pattern` *)
   | EXCEPTION_PATTERN  (** Exception pattern: `exception E` *)
   | PAREN_PATTERN  (** Parenthesized pattern: `(pattern)` *)
+  | POLY_VARIANT_PATTERN  (** Polymorphic variant pattern: `` `Tag ``, `` `Tag p `` *)
   (* ===================================================================== *)
   (* TOP-LEVEL DECLARATIONS *)
   (* ===================================================================== *)
