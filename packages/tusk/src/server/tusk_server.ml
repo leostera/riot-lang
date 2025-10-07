@@ -224,7 +224,9 @@ and handle_find_artifact state client_pid package kind name =
       state.workspace.root / Path.v "target" / Path.v "debug" / Path.v "out"
       / Path.v "packages" / Path.v package / Path.v name)
   in
+  Log.debug "Server: Sending ArtifactFound response to %s" (Pid.to_string client_pid);
   send client_pid (ServerResponse (ArtifactFound { path }));
+  Log.debug "Server: Response sent, continuing loop";
   loop state
 
 and handle_format_file state client_pid file_path check_only =
