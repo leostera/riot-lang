@@ -2430,11 +2430,16 @@ module Server = struct
           (TuskProtocol.BuildStarted
              { session_id; started_at = Std.Datetime.now () });
 
-        (* Now handle log events, CycleDetected and BuildCompleted *)
+        (* Now handle log events, PackageNotFound, CycleDetected and BuildCompleted *)
         let rec event_loop () =
           let selector = function
             | Tusk_log.Event event when event.Event.session_id = session_id ->
                 `select (`log_event event)
+            | Tusk_protocol.ServerResponse
+                (Tusk_protocol.PackageNotFound
+                   { session_id = sid; package_name; available_packages })
+              when sid = session_id ->
+                `select (`package_not_found (package_name, available_packages))
             | Tusk_protocol.ServerResponse
                 (Tusk_protocol.CycleDetected
                    { session_id = sid; cycle_nodes; detected_at })
@@ -2470,6 +2475,12 @@ module Server = struct
               (* Forward cleaned event to client *)
               reply
                 (TuskProtocol.BuildEvent { session_id; event = clean_event });
+              event_loop ()
+          | `package_not_found (package_name, available_packages) ->
+              (* Forward package not found to client *)
+              reply
+                (TuskProtocol.PackageNotFound
+                   { session_id; package_name; available_packages });
               event_loop ()
           | `cycle_detected (cycle_nodes, detected_at) ->
               (* Forward cycle detected event to client *)

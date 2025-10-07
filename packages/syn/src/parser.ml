@@ -395,7 +395,9 @@ and can_start_primary parser =
   | Some
       (Token.Keyword
          ( Keyword.True | Keyword.False | Keyword.If | Keyword.Match
-         | Keyword.Fun | Keyword.Function | Keyword.Lnot ))
+         | Keyword.Fun | Keyword.Function | Keyword.Lnot
+         | Keyword.Assert | Keyword.Lazy | Keyword.For | Keyword.While
+         | Keyword.Begin ))
   | Some Token.Minus
   | Some Token.Bang ->
       true
@@ -474,6 +476,16 @@ and parse_primary parser =
           (* Fun/function *)
           | Some (Token.Keyword Keyword.Fun) -> parse_fun_expr parser
           | Some (Token.Keyword Keyword.Function) -> parse_function_expr parser
+          (* Assert *)
+          | Some (Token.Keyword Keyword.Assert) -> parse_assert_expr parser
+          (* Lazy *)
+          | Some (Token.Keyword Keyword.Lazy) -> parse_lazy_expr parser
+          (* For loop *)
+          | Some (Token.Keyword Keyword.For) -> parse_for_expr parser
+          (* While loop *)
+          | Some (Token.Keyword Keyword.While) -> parse_while_expr parser
+          (* Begin/end *)
+          | Some (Token.Keyword Keyword.Begin) -> parse_begin_expr parser
           | _ -> None))
 
 and parse_paren_expr parser =
