@@ -1,10 +1,86 @@
-(** Network I/O operations for Miniriot
+(** # Net - Network I/O for actors
 
-    This module provides actor-friendly networking operations that integrate
-    with Miniriot's scheduler and I/O polling. All blocking operations will
-    properly suspend the calling process until I/O is ready. *)
+    Actor-friendly networking operations that integrate with Miniriot's
+    scheduler. All blocking operations properly suspend the calling process
+    until I/O is ready, allowing other actors to run.
+
+    ## Examples
+
+    TCP client:
+
+    ```ocaml
+    open Std
+    open Miniriot
+
+    let client_process () =
+      let addr = Net.Addr.of_host_and_port ~host:"example.com" ~port:80
+        |> Result.expect ~msg:"Invalid address" in
+
+      let stream = Net.TcpStream.connect addr
+        |> Result.expect ~msg:"Connection failed" in
+
+      let request = "GET / HTTP/1.0\r\n\r\n" in
+      let buf = Bytes.of_string request in
+      Net.TcpStream.write stream buf () |> ignore;
+
+      let response = Bytes.create 4096 in
+      match Net.TcpStream.read stream response () with
+      | Ok n -> Log.info "Received %d bytes" n
+      | Error e -> Log.error "Read failed";
+
+      Net.TcpStream.close stream
+
+    let () = spawn client_process |> ignore
+    ```
+
+    TCP server:
+
+    ```ocaml
+    let server_process () =
+      let addr = Net.Addr.(tcp loopback 8080) in
+      let listener = Net.TcpListener.bind ~reuse_addr:true addr
+        |> Result.expect ~msg:"Failed to bind" in
+
+      Log.info "Server listening on port 8080";
+
+      let rec accept_loop () =
+        match Net.TcpListener.accept listener with
+        | Ok (stream, client_addr) ->
+            Log.info "Client connected from %s:%d"
+              (Net.Addr.ip client_addr)
+              (Net.Addr.port client_addr);
+            spawn (fun () -> handle_client stream) |> ignore;
+            accept_loop ()
+        | Error e ->
+            Log.error "Accept failed"
+      in
+      accept_loop ()
+
+    and handle_client stream =
+      (* Handle client... *)
+      Net.TcpStream.close stream
+
+    let () = spawn server_process |> ignore
+    ```
+
+    ## Key Features
+
+    - **Non-blocking I/O**: All operations suspend the actor, not the scheduler
+    - **Process-based concurrency**: Spawn an actor per connection
+    - **Error handling**: Explicit Result types for all I/O operations
+    - **Address parsing**: Type-safe network address handling
+
+    ## When to Use
+
+    - Building network servers (HTTP, TCP protocols)
+    - Network clients that need to be concurrent
+    - Any I/O-bound network application with many connections
+
+    See [Uri] for URL parsing and [Http] for HTTP-specific functionality.
+*)
 
 type error = [ `Connection_refused | `Closed | `System_error of string ]
+(** Network error types. *)
 
 module Uri = Uri
 
