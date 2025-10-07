@@ -1,0 +1,157 @@
+{
+  "tree": {
+    "type": "node",
+    "kind": "SOURCE_FILE",
+    "width": 50,
+    "children": [
+      {
+        "type": "node",
+        "kind": "LET_BINDING",
+        "width": 50,
+        "children": [
+          {
+            "type": "token",
+            "kind": "LET_BINDING",
+            "text": "let",
+            "width": 3
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "INFIX_EXPR",
+            "text": "=",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "WHILE_EXPR",
+            "width": 45,
+            "children": [
+              {
+                "type": "token",
+                "kind": "WHILE_EXPR",
+                "text": "while",
+                "width": 5
+              },
+              {
+                "type": "node",
+                "kind": "PREFIX_EXPR",
+                "width": 9,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "PREFIX_EXPR",
+                    "text": "!",
+                    "width": 1
+                  },
+                  {
+                    "type": "node",
+                    "kind": "IDENT_EXPR",
+                    "width": 8,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "continue",
+                        "width": 8
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "FOR_EXPR",
+                "text": "do",
+                "width": 2
+              },
+              {
+                "type": "node",
+                "kind": "IF_EXPR",
+                "width": 25,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IF_EXPR",
+                    "text": "if",
+                    "width": 2
+                  },
+                  {
+                    "type": "node",
+                    "kind": "IDENT_EXPR",
+                    "width": 4,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "cond",
+                        "width": 4
+                      }
+                    ]
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IF_EXPR",
+                    "text": "then",
+                    "width": 4
+                  },
+                  {
+                    "type": "node",
+                    "kind": "INFIX_EXPR",
+                    "width": 15,
+                    "children": [
+                      {
+                        "type": "node",
+                        "kind": "IDENT_EXPR",
+                        "width": 8,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "IDENT_EXPR",
+                            "text": "continue",
+                            "width": 8
+                          }
+                        ]
+                      },
+                      {
+                        "type": "token",
+                        "kind": "INFIX_EXPR",
+                        "text": ":=",
+                        "width": 2
+                      },
+                      {
+                        "type": "node",
+                        "kind": "BOOL_LITERAL",
+                        "width": 5,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "BOOL_LITERAL",
+                            "text": "false",
+                            "width": 5
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "FOR_EXPR",
+                "text": "done",
+                "width": 4
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "diagnostics": []
+}

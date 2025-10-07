@@ -98,6 +98,15 @@ let token_kind_to_syntax_kind = function
       | Keyword.Lsr | Keyword.Asr ) ->
       Syntax_kind.INFIX_EXPR
   | Token.Bang | Token.Keyword Keyword.Lnot -> Syntax_kind.PREFIX_EXPR
+  | Token.Keyword Keyword.Assert -> Syntax_kind.ASSERT_EXPR
+  | Token.Keyword Keyword.Lazy -> Syntax_kind.LAZY_EXPR
+  | Token.Keyword Keyword.For
+  | Token.Keyword (Keyword.To | Keyword.Downto)
+  | Token.Keyword Keyword.Do
+  | Token.Keyword Keyword.Done ->
+      Syntax_kind.FOR_EXPR
+  | Token.Keyword Keyword.While -> Syntax_kind.WHILE_EXPR
+  | Token.Keyword (Keyword.Begin | Keyword.End) -> Syntax_kind.PAREN_EXPR
   | Token.OpenDelim _ | Token.CloseDelim _ -> Syntax_kind.WHITESPACE
   | _ -> Syntax_kind.ERROR (* TODO: Map remaining token kinds *)
 
@@ -395,9 +404,8 @@ and can_start_primary parser =
   | Some
       (Token.Keyword
          ( Keyword.True | Keyword.False | Keyword.If | Keyword.Match
-         | Keyword.Fun | Keyword.Function | Keyword.Lnot
-         | Keyword.Assert | Keyword.Lazy | Keyword.For | Keyword.While
-         | Keyword.Begin ))
+         | Keyword.Fun | Keyword.Function | Keyword.Lnot | Keyword.Assert
+         | Keyword.Lazy | Keyword.For | Keyword.While | Keyword.Begin ))
   | Some Token.Minus
   | Some Token.Bang ->
       true
@@ -837,6 +845,199 @@ and parse_array_expr parser open_bracket =
               [| open_bracket; open_pipe; close_pipe; close_bracket |]
           in
           Some (make_node ~kind:Syntax_kind.ARRAY_EXPR children)
+
+and parse_assert_expr parser =
+  let assert_kw = consume parser in
+  let _ = consume_trivia parser in
+
+  match parse_expr parser with
+  | Some expr ->
+      let children =
+        prepend_pending_trivia parser [| assert_kw; Ceibo.Green.Node expr |]
+      in
+      Some (make_node ~kind:Syntax_kind.ASSERT_EXPR children)
+  | None -> None
+
+and parse_lazy_expr parser =
+  let lazy_kw = consume parser in
+  let _ = consume_trivia parser in
+
+  match parse_expr parser with
+  | Some expr ->
+      let children =
+        prepend_pending_trivia parser [| lazy_kw; Ceibo.Green.Node expr |]
+      in
+      Some (make_node ~kind:Syntax_kind.LAZY_EXPR children)
+  | None -> None
+
+and parse_for_expr parser =
+  let for_kw = consume parser in
+  let _ = consume_trivia parser in
+
+  (* Parse: for <ident> = <expr> to/downto <expr> do <expr> done *)
+  let ident =
+    match peek_kind parser with
+    | Some (Token.Ident _) -> consume parser
+    | _ ->
+        let span =
+          match peek parser with
+          | Some tok -> tok.Token.span
+          | None -> Ceibo.Span.make ~start:0 ~end_:0
+        in
+        report_error parser
+          (Diagnostic.make_missing_token ~expected:"identifier" ~span);
+        Ceibo.Green.Token
+          (Ceibo.Green.make_token ~kind:Syntax_kind.MISSING ~text:"" ~width:0)
+  in
+
+  let _ = consume_trivia parser in
+  let eq = expect parser Token.Eq in
+  let _ = consume_trivia parser in
+
+  let start_expr =
+    match parse_expr parser with
+    | Some e -> e
+    | None ->
+        let span =
+          match peek parser with
+          | Some tok -> tok.Token.span
+          | None -> Ceibo.Span.make ~start:0 ~end_:0
+        in
+        make_error_node parser
+          ~kind:(Diagnostic.InvalidSyntax { context = "for loop start" })
+          ~span
+  in
+
+  let _ = consume_trivia parser in
+  let direction =
+    match peek_kind parser with
+    | Some (Token.Keyword Keyword.To) -> consume parser
+    | Some (Token.Keyword Keyword.Downto) -> consume parser
+    | _ ->
+        let span =
+          match peek parser with
+          | Some tok -> tok.Token.span
+          | None -> Ceibo.Span.make ~start:0 ~end_:0
+        in
+        report_error parser
+          (Diagnostic.make_missing_token ~expected:"'to' or 'downto'" ~span);
+        Ceibo.Green.Token
+          (Ceibo.Green.make_token ~kind:Syntax_kind.MISSING ~text:"" ~width:0)
+  in
+
+  let _ = consume_trivia parser in
+  let end_expr =
+    match parse_expr parser with
+    | Some e -> e
+    | None ->
+        let span =
+          match peek parser with
+          | Some tok -> tok.Token.span
+          | None -> Ceibo.Span.make ~start:0 ~end_:0
+        in
+        make_error_node parser
+          ~kind:(Diagnostic.InvalidSyntax { context = "for loop end" })
+          ~span
+  in
+
+  let _ = consume_trivia parser in
+  let do_kw = expect parser (Token.Keyword Keyword.Do) in
+  let _ = consume_trivia parser in
+
+  let body =
+    match parse_expr parser with
+    | Some e -> e
+    | None ->
+        let span =
+          match peek parser with
+          | Some tok -> tok.Token.span
+          | None -> Ceibo.Span.make ~start:0 ~end_:0
+        in
+        make_error_node parser
+          ~kind:(Diagnostic.InvalidSyntax { context = "for loop body" })
+          ~span
+  in
+
+  let _ = consume_trivia parser in
+  let done_kw = expect parser (Token.Keyword Keyword.Done) in
+
+  let children =
+    prepend_pending_trivia parser
+      [|
+        for_kw;
+        ident;
+        eq;
+        Ceibo.Green.Node start_expr;
+        direction;
+        Ceibo.Green.Node end_expr;
+        do_kw;
+        Ceibo.Green.Node body;
+        done_kw;
+      |]
+  in
+  Some (make_node ~kind:Syntax_kind.FOR_EXPR children)
+
+and parse_while_expr parser =
+  let while_kw = consume parser in
+  let _ = consume_trivia parser in
+
+  let cond =
+    match parse_expr parser with
+    | Some e -> e
+    | None ->
+        let span =
+          match peek parser with
+          | Some tok -> tok.Token.span
+          | None -> Ceibo.Span.make ~start:0 ~end_:0
+        in
+        make_error_node parser
+          ~kind:(Diagnostic.InvalidSyntax { context = "while condition" })
+          ~span
+  in
+
+  let _ = consume_trivia parser in
+  let do_kw = expect parser (Token.Keyword Keyword.Do) in
+  let _ = consume_trivia parser in
+
+  let body =
+    match parse_expr parser with
+    | Some e -> e
+    | None ->
+        let span =
+          match peek parser with
+          | Some tok -> tok.Token.span
+          | None -> Ceibo.Span.make ~start:0 ~end_:0
+        in
+        make_error_node parser
+          ~kind:(Diagnostic.InvalidSyntax { context = "while body" })
+          ~span
+  in
+
+  let _ = consume_trivia parser in
+  let done_kw = expect parser (Token.Keyword Keyword.Done) in
+
+  let children =
+    prepend_pending_trivia parser
+      [|
+        while_kw; Ceibo.Green.Node cond; do_kw; Ceibo.Green.Node body; done_kw;
+      |]
+  in
+  Some (make_node ~kind:Syntax_kind.WHILE_EXPR children)
+
+and parse_begin_expr parser =
+  let begin_kw = consume parser in
+  let _ = consume_trivia parser in
+
+  match parse_expr parser with
+  | Some expr ->
+      let _ = consume_trivia parser in
+      let end_kw = expect parser (Token.Keyword Keyword.End) in
+      let children =
+        prepend_pending_trivia parser
+          [| begin_kw; Ceibo.Green.Node expr; end_kw |]
+      in
+      Some (make_node ~kind:Syntax_kind.PAREN_EXPR children)
+  | None -> None
 
 and parse_let_expr parser =
   let let_kw = consume parser in
