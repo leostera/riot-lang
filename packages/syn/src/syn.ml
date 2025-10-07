@@ -1,5 +1,4 @@
 open Std
-
 module Ceibo = Ceibo
 module Token = Token
 module Keyword = Keyword
@@ -11,6 +10,6 @@ module Parser = Parser
 
 let tokenize source = Lexer.tokenize source
 
-let parse source = 
+let parse source =
   let tokens = Lexer.tokenize source in
   Parser.parse ~source tokens

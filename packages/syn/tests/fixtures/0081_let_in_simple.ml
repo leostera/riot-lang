@@ -1,1 +1,3 @@
-let x = let y = 1 in y
+let x =
+  let y = 1 in
+  y

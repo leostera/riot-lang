@@ -201,26 +201,23 @@ module Green : sig
 
   val children : ('kind, 'text) node -> ('kind, 'text) element array
   (** `children node` returns all children as an array. *)
-  
+
   (** ## Serialization *)
-  
+
   val to_json :
     kind_to_json:('kind -> Data.Json.t) ->
     text_to_json:('text -> Data.Json.t) ->
     ('kind, 'text) element ->
     Data.Json.t
-  (** `to_json ~kind_to_json ~text_to_json elem` serializes a green element to JSON.
-      
-      You must provide functions to convert your custom `'kind` and `'text` types
-      to JSON values.
-      
-      Example:
-      ```ocaml
-      let kind_to_json kind = Data.Json.String (show_kind kind) in
-      let text_to_json text = Data.Json.String text in
-      let json = Green.to_json ~kind_to_json ~text_to_json (Green.Node tree)
-      ```
-  *)
+  (** `to_json ~kind_to_json ~text_to_json elem` serializes a green element to
+      JSON.
+
+      You must provide functions to convert your custom `'kind` and `'text`
+      types to JSON values.
+
+      Example: ```ocaml let kind_to_json kind = Data.Json.String (show_kind
+      kind) in let text_to_json text = Data.Json.String text in let json =
+      Green.to_json ~kind_to_json ~text_to_json (Green.Node tree) ``` *)
 end
 
 (** # Red Layer

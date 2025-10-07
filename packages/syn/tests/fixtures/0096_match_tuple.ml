@@ -1,1 +1,1 @@
-let x = match pair with | (a, b) -> a + b
+let x = match pair with a, b -> a + b

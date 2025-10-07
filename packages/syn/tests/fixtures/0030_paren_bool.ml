@@ -1,1 +1,1 @@
-let x = (true)
+let x = true

@@ -10,7 +10,4 @@ let union t1 t2 = { start = min t1.start t2.start; end_ = max t1.end_ t2.end_ }
 let to_string t = Printf.sprintf "%d..%d" t.start t.end_
 
 let to_json t =
-  Data.Json.(Object [
-    ("start", Int t.start);
-    ("end", Int t.end_);
-  ])
+  Data.Json.(Object [ ("start", Int t.start); ("end", Int t.end_) ])

@@ -1,1 +1,1 @@
-let x = true && false || true
+let x = (true && false) || true

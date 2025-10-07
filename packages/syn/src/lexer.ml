@@ -169,7 +169,10 @@ let lex_number cursor token_start =
         | Some i -> Token.Literal (Int i)
         | None -> Token.Unknown '0')
   in
-  { Token.kind; span = Ceibo.Span.make ~start:token_start ~end_:(Cursor.position cursor) }
+  {
+    Token.kind;
+    span = Ceibo.Span.make ~start:token_start ~end_:(Cursor.position cursor);
+  }
 
 let lex_string cursor token_start =
   Cursor.advance cursor;
@@ -237,27 +240,45 @@ let next cursor =
         | _ ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.OpenDelim Paren; span = Ceibo.Span.make ~start ~end_ })
+            {
+              Token.kind = Token.OpenDelim Paren;
+              span = Ceibo.Span.make ~start ~end_;
+            })
     | Some ')' ->
         Cursor.advance cursor;
         let end_ = Cursor.position cursor in
-        { Token.kind = Token.CloseDelim Paren; span = Ceibo.Span.make ~start ~end_ }
+        {
+          Token.kind = Token.CloseDelim Paren;
+          span = Ceibo.Span.make ~start ~end_;
+        }
     | Some '[' ->
         Cursor.advance cursor;
         let end_ = Cursor.position cursor in
-        { Token.kind = Token.OpenDelim Bracket; span = Ceibo.Span.make ~start ~end_ }
+        {
+          Token.kind = Token.OpenDelim Bracket;
+          span = Ceibo.Span.make ~start ~end_;
+        }
     | Some ']' ->
         Cursor.advance cursor;
         let end_ = Cursor.position cursor in
-        { Token.kind = Token.CloseDelim Bracket; span = Ceibo.Span.make ~start ~end_ }
+        {
+          Token.kind = Token.CloseDelim Bracket;
+          span = Ceibo.Span.make ~start ~end_;
+        }
     | Some '{' ->
         Cursor.advance cursor;
         let end_ = Cursor.position cursor in
-        { Token.kind = Token.OpenDelim Brace; span = Ceibo.Span.make ~start ~end_ }
+        {
+          Token.kind = Token.OpenDelim Brace;
+          span = Ceibo.Span.make ~start ~end_;
+        }
     | Some '}' ->
         Cursor.advance cursor;
         let end_ = Cursor.position cursor in
-        { Token.kind = Token.CloseDelim Brace; span = Ceibo.Span.make ~start ~end_ }
+        {
+          Token.kind = Token.CloseDelim Brace;
+          span = Ceibo.Span.make ~start ~end_;
+        }
     | Some '+' ->
         Cursor.advance cursor;
         let end_ = Cursor.position cursor in
@@ -344,7 +365,10 @@ let next cursor =
         | Some ':' ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.ColonColon; span = Ceibo.Span.make ~start ~end_ }
+            {
+              Token.kind = Token.ColonColon;
+              span = Ceibo.Span.make ~start ~end_;
+            }
         | Some '=' ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in

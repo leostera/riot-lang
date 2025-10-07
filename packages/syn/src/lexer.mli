@@ -84,43 +84,29 @@ type t
 
 val create : string -> t
 (** `create source` creates a new lexer for the given source code.
-    
-    Example:
-    ```ocaml
-    let lexer = Lexer.create "let x = 1" in
-    let tok = Lexer.next lexer
-    ```
-*)
+
+    Example: ```ocaml let lexer = Lexer.create "let x = 1" in let tok =
+    Lexer.next lexer ``` *)
 
 (** # Tokenization *)
 
 val next : t -> Token.t
 (** `next lexer` returns the next token from the source.
-    
-    Advances the lexer position past the returned token.
-    Returns EOF token when end of source is reached.
-    
-    Example:
-    ```ocaml
-    let lexer = Lexer.create source in
-    let tok1 = Lexer.next lexer in  (* first token *)
-    let tok2 = Lexer.next lexer in  (* second token *)
-    (* ... *)
-    let last = Lexer.next lexer in  (* eventually returns EOF *)
-    ```
-*)
+
+    Advances the lexer position past the returned token. Returns EOF token when
+    end of source is reached.
+
+    Example: ```ocaml let lexer = Lexer.create source in let tok1 = Lexer.next
+    lexer in (* first token *) let tok2 = Lexer.next lexer in (* second token *)
+    (* ... *) let last = Lexer.next lexer in (* eventually returns EOF *) ``` *)
 
 val tokenize : string -> Token.t list
 (** `tokenize source` lexes the entire source into a token list.
-    
-    This is a convenience function that creates a lexer, repeatedly calls
-    `next` until EOF, and returns all tokens (including trivia).
-    
+
+    This is a convenience function that creates a lexer, repeatedly calls `next`
+    until EOF, and returns all tokens (including trivia).
+
     The returned list always ends with an EOF token.
-    
-    Example:
-    ```ocaml
-    let tokens = Lexer.tokenize "let x = 42" in
-    List.length tokens  (* typically 6: let, ws, x, ws, =, ws, 42, EOF *)
-    ```
-*)
+
+    Example: ```ocaml let tokens = Lexer.tokenize "let x = 42" in List.length
+    tokens (* typically 6: let, ws, x, ws, =, ws, 42, EOF *) ``` *)
