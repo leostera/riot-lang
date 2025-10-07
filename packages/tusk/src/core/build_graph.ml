@@ -371,7 +371,10 @@ let size graph = Hashtbl.length graph.nodes
 let filter_for_package graph target_pkg_name =
   match Hashtbl.find_opt graph.nodes target_pkg_name with
   | None ->
-      failwith (format "Package '%s' not found in workspace" target_pkg_name)
+      (* Package not found - return an empty graph *)
+      Log.debug "[BUILD_GRAPH] Package '%s' not found, returning empty graph"
+        target_pkg_name;
+      { nodes = Hashtbl.create 0; root_nodes = [] }
   | Some target_node ->
       (* Collect target and all its transitive dependencies *)
       let rec collect_deps node visited =

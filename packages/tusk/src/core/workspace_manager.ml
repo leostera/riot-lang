@@ -40,7 +40,9 @@ let get_workspace ~root =
       let workspace =
         match Workspace.scan path with
         | Ok ws -> ws
-        | Error _ -> failwith "Failed to scan workspace"
+        | Error e ->
+            Std.Log.error "Failed to scan workspace: %s" (Error.to_string e);
+            raise (Failure "Failed to scan workspace")
       in
       workspace_cache :=
         Some
