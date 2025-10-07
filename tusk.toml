@@ -8,8 +8,6 @@ members = [
   "packages/syn",
   "packages/std", 
   "packages/tusk",
-  "packages/tusk_fmt",
-  "packages/tusk_lint",
 ]
 
 [dependencies]
