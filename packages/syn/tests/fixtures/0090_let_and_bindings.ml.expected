@@ -88,8 +88,8 @@
         "expected": "keyword"
       },
       "span": {
-        "start": 18,
-        "end": 18
+        "start": 20,
+        "end": 20
       }
     },
     {
@@ -98,8 +98,8 @@
         "expected": "expression"
       },
       "span": {
-        "start": 18,
-        "end": 21
+        "start": 20,
+        "end": 23
       }
     }
   ]

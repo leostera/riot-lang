@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 32,
+    "width": 21,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 32,
+        "width": 21,
         "children": [
           {
             "type": "token",
@@ -29,88 +29,32 @@
           },
           {
             "type": "node",
-            "kind": "FUNCTION_EXPR",
-            "width": 27,
+            "kind": "INFIX_EXPR",
+            "width": 16,
             "children": [
               {
-                "type": "token",
-                "kind": "FUNCTION_EXPR",
-                "text": "function",
-                "width": 8
-              },
-              {
                 "type": "node",
-                "kind": "MATCH_CASE",
-                "width": 14,
+                "kind": "INFIX_EXPR",
+                "width": 12,
                 "children": [
                   {
-                    "type": "token",
-                    "kind": "MATCH_EXPR",
-                    "text": "|",
-                    "width": 1
-                  },
-                  {
                     "type": "node",
-                    "kind": "CONS_PATTERN",
-                    "width": 8,
+                    "kind": "APPLY_EXPR",
+                    "width": 9,
                     "children": [
                       {
-                        "type": "token",
-                        "kind": "IDENT_EXPR",
-                        "text": "x",
-                        "width": 1
-                      },
-                      {
-                        "type": "token",
-                        "kind": "INFIX_EXPR",
-                        "text": "::",
-                        "width": 2
-                      },
-                      {
                         "type": "node",
-                        "kind": "CONS_PATTERN",
-                        "width": 5,
+                        "kind": "FUNCTION_EXPR",
+                        "width": 8,
                         "children": [
                           {
                             "type": "token",
-                            "kind": "IDENT_EXPR",
-                            "text": "y",
-                            "width": 1
-                          },
-                          {
-                            "type": "token",
-                            "kind": "INFIX_EXPR",
-                            "text": "::",
-                            "width": 2
-                          },
-                          {
-                            "type": "node",
-                            "kind": "IDENT_PATTERN",
-                            "width": 2,
-                            "children": [
-                              {
-                                "type": "token",
-                                "kind": "IDENT_EXPR",
-                                "text": "zs",
-                                "width": 2
-                              }
-                            ]
+                            "kind": "FUNCTION_EXPR",
+                            "text": "function",
+                            "width": 8
                           }
                         ]
-                      }
-                    ]
-                  },
-                  {
-                    "type": "token",
-                    "kind": "FUN_EXPR",
-                    "text": "->",
-                    "width": 2
-                  },
-                  {
-                    "type": "node",
-                    "kind": "INFIX_EXPR",
-                    "width": 3,
-                    "children": [
+                      },
                       {
                         "type": "node",
                         "kind": "IDENT_EXPR",
@@ -123,72 +67,46 @@
                             "width": 1
                           }
                         ]
-                      },
+                      }
+                    ]
+                  },
+                  {
+                    "type": "token",
+                    "kind": "INFIX_EXPR",
+                    "text": "::",
+                    "width": 2
+                  },
+                  {
+                    "type": "node",
+                    "kind": "IDENT_EXPR",
+                    "width": 1,
+                    "children": [
                       {
                         "type": "token",
-                        "kind": "INFIX_EXPR",
-                        "text": "+",
-                        "width": 1
-                      },
-                      {
-                        "type": "node",
                         "kind": "IDENT_EXPR",
-                        "width": 1,
-                        "children": [
-                          {
-                            "type": "token",
-                            "kind": "IDENT_EXPR",
-                            "text": "y",
-                            "width": 1
-                          }
-                        ]
+                        "text": "y",
+                        "width": 1
                       }
                     ]
                   }
                 ]
               },
               {
+                "type": "token",
+                "kind": "INFIX_EXPR",
+                "text": "::",
+                "width": 2
+              },
+              {
                 "type": "node",
-                "kind": "MATCH_CASE",
-                "width": 5,
+                "kind": "IDENT_EXPR",
+                "width": 2,
                 "children": [
                   {
                     "type": "token",
-                    "kind": "MATCH_EXPR",
-                    "text": "|",
-                    "width": 1
-                  },
-                  {
-                    "type": "node",
-                    "kind": "WILDCARD_PATTERN",
-                    "width": 1,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "WILDCARD_PATTERN",
-                        "text": "_",
-                        "width": 1
-                      }
-                    ]
-                  },
-                  {
-                    "type": "token",
-                    "kind": "FUN_EXPR",
-                    "text": "->",
+                    "kind": "IDENT_EXPR",
+                    "text": "zs",
                     "width": 2
-                  },
-                  {
-                    "type": "node",
-                    "kind": "INT_LITERAL",
-                    "width": 1,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "INT_LITERAL",
-                        "text": "0",
-                        "width": 1
-                      }
-                    ]
                   }
                 ]
               }

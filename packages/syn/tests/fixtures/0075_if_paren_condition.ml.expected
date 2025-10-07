@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 9,
+    "width": 8,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 9,
+        "width": 8,
         "children": [
           {
             "type": "token",
@@ -30,7 +30,7 @@
           {
             "type": "node",
             "kind": "IF_EXPR",
-            "width": 4,
+            "width": 3,
             "children": [
               {
                 "type": "token",
@@ -40,33 +40,14 @@
               },
               {
                 "type": "node",
-                "kind": "PAREN_EXPR",
-                "width": 2,
+                "kind": "IDENT_EXPR",
+                "width": 1,
                 "children": [
                   {
                     "type": "token",
-                    "kind": "WHITESPACE",
-                    "text": "(",
-                    "width": 1
-                  },
-                  {
-                    "type": "node",
                     "kind": "IDENT_EXPR",
-                    "width": 1,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "IDENT_EXPR",
-                        "text": "a",
-                        "width": 1
-                      }
-                    ]
-                  },
-                  {
-                    "type": "token",
-                    "kind": "MISSING",
-                    "text": "",
-                    "width": 0
+                    "text": "a",
+                    "width": 1
                   }
                 ]
               },
@@ -92,21 +73,11 @@
     {
       "kind": {
         "type": "missing_token",
-        "expected": "')'"
-      },
-      "span": {
-        "start": 14,
-        "end": 14
-      }
-    },
-    {
-      "kind": {
-        "type": "missing_token",
         "expected": "keyword"
       },
       "span": {
-        "start": 14,
-        "end": 14
+        "start": 13,
+        "end": 13
       }
     },
     {
@@ -115,8 +86,8 @@
         "expected": "expression"
       },
       "span": {
-        "start": 14,
-        "end": 15
+        "start": 13,
+        "end": 14
       }
     }
   ]

@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 19,
+    "width": 13,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 19,
+        "width": 13,
         "children": [
           {
             "type": "token",
@@ -30,58 +30,13 @@
           {
             "type": "node",
             "kind": "FUNCTION_EXPR",
-            "width": 14,
+            "width": 8,
             "children": [
               {
                 "type": "token",
                 "kind": "FUNCTION_EXPR",
                 "text": "function",
                 "width": 8
-              },
-              {
-                "type": "node",
-                "kind": "MATCH_CASE",
-                "width": 6,
-                "children": [
-                  {
-                    "type": "token",
-                    "kind": "MATCH_EXPR",
-                    "text": "|",
-                    "width": 1
-                  },
-                  {
-                    "type": "node",
-                    "kind": "WILDCARD_PATTERN",
-                    "width": 1,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "WILDCARD_PATTERN",
-                        "text": "_",
-                        "width": 1
-                      }
-                    ]
-                  },
-                  {
-                    "type": "token",
-                    "kind": "FUN_EXPR",
-                    "text": "->",
-                    "width": 2
-                  },
-                  {
-                    "type": "node",
-                    "kind": "INT_LITERAL",
-                    "width": 2,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "INT_LITERAL",
-                        "text": "42",
-                        "width": 2
-                      }
-                    ]
-                  }
-                ]
               }
             ]
           }

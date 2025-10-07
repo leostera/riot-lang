@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 34,
+    "width": 14,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 34,
+        "width": 14,
         "children": [
           {
             "type": "token",
@@ -29,109 +29,32 @@
           },
           {
             "type": "node",
-            "kind": "FUNCTION_EXPR",
-            "width": 29,
+            "kind": "APPLY_EXPR",
+            "width": 9,
             "children": [
               {
-                "type": "token",
-                "kind": "FUNCTION_EXPR",
-                "text": "function",
-                "width": 8
-              },
-              {
                 "type": "node",
-                "kind": "MATCH_CASE",
-                "width": 10,
+                "kind": "FUNCTION_EXPR",
+                "width": 8,
                 "children": [
                   {
                     "type": "token",
-                    "kind": "MATCH_EXPR",
-                    "text": "|",
-                    "width": 1
-                  },
-                  {
-                    "type": "node",
-                    "kind": "LITERAL_PATTERN",
-                    "width": 1,
-                    "children": [
-                      {
-                        "type": "node",
-                        "kind": "INT_LITERAL",
-                        "width": 1,
-                        "children": [
-                          {
-                            "type": "token",
-                            "kind": "INT_LITERAL",
-                            "text": "0",
-                            "width": 1
-                          }
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "type": "token",
-                    "kind": "FUN_EXPR",
-                    "text": "->",
-                    "width": 2
-                  },
-                  {
-                    "type": "node",
-                    "kind": "STRING_LITERAL",
-                    "width": 6,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "STRING_LITERAL",
-                        "text": "\"zero\"",
-                        "width": 6
-                      }
-                    ]
+                    "kind": "FUNCTION_EXPR",
+                    "text": "function",
+                    "width": 8
                   }
                 ]
               },
               {
                 "type": "node",
-                "kind": "MATCH_CASE",
-                "width": 11,
+                "kind": "INT_LITERAL",
+                "width": 1,
                 "children": [
                   {
                     "type": "token",
-                    "kind": "MATCH_EXPR",
-                    "text": "|",
+                    "kind": "INT_LITERAL",
+                    "text": "0",
                     "width": 1
-                  },
-                  {
-                    "type": "node",
-                    "kind": "WILDCARD_PATTERN",
-                    "width": 1,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "WILDCARD_PATTERN",
-                        "text": "_",
-                        "width": 1
-                      }
-                    ]
-                  },
-                  {
-                    "type": "token",
-                    "kind": "FUN_EXPR",
-                    "text": "->",
-                    "width": 2
-                  },
-                  {
-                    "type": "node",
-                    "kind": "STRING_LITERAL",
-                    "width": 7,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "STRING_LITERAL",
-                        "text": "\"other\"",
-                        "width": 7
-                      }
-                    ]
                   }
                 ]
               }
