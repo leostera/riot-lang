@@ -109,9 +109,9 @@ module TuskProtocol = struct
         stats : build_stats;
         error : string;
       }
-    | FoundExecutable of { package : string; binary : string }
+    | ExecutableFound of { package : string; binary : string }
     | ExecutableNotFound
-    | FoundArtifact of { path : string }
+    | ArtifactFound of { path : string }
     | ArtifactNotFound of { error : string }
     | ShutdownAck
     | RestartAck
@@ -1394,7 +1394,7 @@ module TuskProtocol = struct
             ("session_id", Json.String (Session_id.to_string session_id));
             ("started_at", Json.String timestamp);
           ]
-    | FoundExecutable { package; binary } ->
+    | ExecutableFound { package; binary } ->
         Json.Object
           [
             ("type", Json.String "found_executable");
@@ -1403,7 +1403,7 @@ module TuskProtocol = struct
           ]
     | ExecutableNotFound ->
         Json.Object [ ("type", Json.String "executable_not_found") ]
-    | FoundArtifact { path } ->
+    | ArtifactFound { path } ->
         Json.Object
           [ ("type", Json.String "artifact_found"); ("path", Json.String path) ]
     | ArtifactNotFound { error } ->
@@ -1539,11 +1539,11 @@ module TuskProtocol = struct
               | Some (Json.String s) -> s
               | _ -> ""
             in
-            Ok (FoundExecutable { package; binary })
+            Ok (ExecutableFound { package; binary })
         | Some (Json.String "executable_not_found") -> Ok ExecutableNotFound
         | Some (Json.String "artifact_found") -> (
             match List.assoc_opt "path" fields with
-            | Some (Json.String p) -> Ok (FoundArtifact { path = p })
+            | Some (Json.String p) -> Ok (ArtifactFound { path = p })
             | _ -> Error (Json.String "Invalid artifact_found response"))
         | Some (Json.String "artifact_not_found") -> (
             match List.assoc_opt "error" fields with
@@ -2229,9 +2229,9 @@ module Client = struct
                             "PackageNotFound"
                         | Ok TuskProtocol.ExecutableNotFound ->
                             "ExecutableNotFound"
-                        | Ok (TuskProtocol.FoundExecutable _) ->
-                            "FoundExecutable"
-                        | Ok (TuskProtocol.FoundArtifact _) -> "FoundArtifact"
+                        | Ok (TuskProtocol.ExecutableFound _) ->
+                            "ExecutableFound"
+                        | Ok (TuskProtocol.ArtifactFound _) -> "ArtifactFound"
                         | Ok (TuskProtocol.ArtifactNotFound _) ->
                             "ArtifactNotFound"
                         | Ok (TuskProtocol.Error _) -> "Error"
@@ -2307,7 +2307,7 @@ module Client = struct
         ~params:(Jsonrpc.Named [ ("name", Json.String name) ])
         ()
     with
-    | Ok (TuskProtocol.FoundExecutable { package; binary }) ->
+    | Ok (TuskProtocol.ExecutableFound { package; binary }) ->
         Ok (Some (package, binary))
     | Ok TuskProtocol.ExecutableNotFound -> Ok None
     | Ok _ -> Error "Invalid findExecutable response"
@@ -2328,7 +2328,7 @@ module Client = struct
              ])
         ()
     with
-    | Ok (TuskProtocol.FoundArtifact { path }) -> Ok path
+    | Ok (TuskProtocol.ArtifactFound { path }) -> Ok path
     | Ok (TuskProtocol.ArtifactNotFound { error }) -> Error error
     | Ok _ -> Error "Invalid findArtifact response"
     | Error e ->
@@ -2678,7 +2678,7 @@ module Server = struct
     in
     match receive ~selector () with
     | `found (package, binary) ->
-        reply (TuskProtocol.FoundExecutable { package; binary })
+        reply (TuskProtocol.ExecutableFound { package; binary })
     | `not_found -> reply TuskProtocol.ExecutableNotFound
 
   let handle_find_artifact ctx reply package kind name =
@@ -2696,7 +2696,7 @@ module Server = struct
     in
     match receive ~selector () with
     | `found path ->
-        reply (TuskProtocol.FoundArtifact { path = Std.Path.to_string path })
+        reply (TuskProtocol.ArtifactFound { path = Std.Path.to_string path })
     | `err error -> reply (TuskProtocol.ArtifactNotFound { error })
 
   let handle_format_file ctx reply file_path check_only =

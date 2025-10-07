@@ -77,6 +77,7 @@ let token_kind_to_syntax_kind = function
   | Token.Keyword Keyword.Fun -> Syntax_kind.FUN_EXPR
   | Token.Keyword Keyword.Function -> Syntax_kind.FUNCTION_EXPR
   | Token.Keyword Keyword.Match -> Syntax_kind.MATCH_EXPR
+  | Token.Keyword Keyword.Try -> Syntax_kind.TRY_EXPR
   | Token.Keyword Keyword.With -> Syntax_kind.MATCH_EXPR
   | Token.Keyword Keyword.When -> Syntax_kind.MATCH_EXPR
   | Token.Arrow -> Syntax_kind.FUN_EXPR (* -> is part of fun/function syntax *)
@@ -405,7 +406,8 @@ and can_start_primary parser =
       (Token.Keyword
          ( Keyword.True | Keyword.False | Keyword.If | Keyword.Match
          | Keyword.Fun | Keyword.Function | Keyword.Lnot | Keyword.Assert
-         | Keyword.Lazy | Keyword.For | Keyword.While | Keyword.Begin ))
+         | Keyword.Lazy | Keyword.For | Keyword.While | Keyword.Begin
+         | Keyword.Try ))
   | Some Token.Minus
   | Some Token.Bang ->
       true
@@ -494,6 +496,8 @@ and parse_primary parser =
           | Some (Token.Keyword Keyword.While) -> parse_while_expr parser
           (* Begin/end *)
           | Some (Token.Keyword Keyword.Begin) -> parse_begin_expr parser
+          (* Try/catch *)
+          | Some (Token.Keyword Keyword.Try) -> parse_try_expr parser
           | _ -> None))
 
 and parse_paren_expr parser =
@@ -1039,6 +1043,42 @@ and parse_begin_expr parser =
       Some (make_node ~kind:Syntax_kind.PAREN_EXPR children)
   | None -> None
 
+and parse_try_expr parser =
+  let try_kw = consume parser in
+  let _ = consume_trivia parser in
+  
+  match parse_expr parser with
+  | Some expr ->
+      let _ = consume_trivia parser in
+      let with_kw = expect parser (Token.Keyword Keyword.With) in
+      let _ = consume_trivia parser in
+      
+      let cases = ref [] in
+      
+      (* First case may not have leading | *)
+      (if not (at parser Token.Pipe) then
+        match parse_match_case_no_pipe parser with
+        | Some case ->
+            cases := Ceibo.Green.Node case :: !cases;
+            let _ = consume_trivia parser in
+            ()
+        | None -> ());
+      
+      (* Remaining cases with | *)
+      while at parser Token.Pipe do
+        match parse_match_case parser with
+        | Some case -> cases := Ceibo.Green.Node case :: !cases
+        | None -> ()
+      done;
+      
+      let children =
+        Array.of_list (List.rev (with_kw :: Ceibo.Green.Node expr :: !cases))
+      in
+      let children = Array.append [| try_kw |] children in
+      let children = prepend_pending_trivia parser children in
+      Some (make_node ~kind:Syntax_kind.TRY_EXPR children)
+  | None -> None
+
 and parse_let_expr parser =
   let let_kw = consume parser in
   let _ = consume_trivia parser in
@@ -1564,6 +1604,17 @@ and parse_match_expr parser =
   let _ = consume_trivia parser in
 
   let cases = ref [] in
+  
+  (* First case may not have leading | *)
+  (if not (at parser Token.Pipe) then
+    match parse_match_case_no_pipe parser with
+    | Some case ->
+        cases := Ceibo.Green.Node case :: !cases;
+        let _ = consume_trivia parser in
+        ()
+    | None -> ());
+  
+  (* Remaining cases with | *)
   while at parser Token.Pipe do
     match parse_match_case parser with
     | Some case -> cases := Ceibo.Green.Node case :: !cases
@@ -1574,6 +1625,23 @@ and parse_match_expr parser =
   let all_children = Array.append children (Array.of_list (List.rev !cases)) in
 
   Some (make_node ~kind:Syntax_kind.MATCH_EXPR all_children)
+
+and parse_match_case_no_pipe parser =
+  (* Parse a match case without expecting a leading | *)
+  let first_pattern =
+    match parse_pattern parser with
+    | Some pat -> pat
+    | None ->
+        let span =
+          match peek parser with
+          | Some tok -> tok.Token.span
+          | None -> Ceibo.Span.make ~start:0 ~end_:0
+        in
+        let err = Diagnostic.make_missing_token ~expected:"pattern" ~span in
+        report_error parser err;
+        make_node ~kind:Syntax_kind.MISSING [||]
+  in
+  parse_match_case_body parser first_pattern
 
 and parse_match_case parser =
   let pipe = consume parser in
@@ -1592,6 +1660,19 @@ and parse_match_case parser =
         report_error parser err;
         make_node ~kind:Syntax_kind.MISSING [||]
   in
+  
+  match parse_match_case_body parser first_pattern with
+  | Some case ->
+      (* Prepend the pipe token *)
+      let case_children = match case with
+        | Ceibo.Green.Node n -> Ceibo.Green.children n
+        | _ -> [||]
+      in
+      let children_with_pipe = Array.append [| pipe |] case_children in
+      Some (make_node ~kind:Syntax_kind.MATCH_EXPR children_with_pipe)
+  | None -> None
+
+and parse_match_case_body parser first_pattern =
 
   let _ = consume_trivia parser in
 
@@ -1695,8 +1776,8 @@ and parse_match_case parser =
 
   let children =
     match guard with
-    | Some g -> [| pipe; pattern; g; arrow; expr |]
-    | None -> [| pipe; pattern; arrow; expr |]
+    | Some g -> [| pattern; g; arrow; expr |]
+    | None -> [| pattern; arrow; expr |]
   in
 
   Some (make_node ~kind:Syntax_kind.MATCH_CASE children)
