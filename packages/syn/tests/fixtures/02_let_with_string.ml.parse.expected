@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 7,
+    "width": 15,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 7,
+        "width": 15,
         "children": [
           {
             "type": "token",
@@ -18,8 +18,8 @@
           {
             "type": "token",
             "kind": "IDENT_EXPR",
-            "text": "x",
-            "width": 1
+            "text": "name",
+            "width": 4
           },
           {
             "type": "token",
@@ -29,14 +29,14 @@
           },
           {
             "type": "node",
-            "kind": "INT_LITERAL",
-            "width": 2,
+            "kind": "STRING_LITERAL",
+            "width": 7,
             "children": [
               {
                 "type": "token",
-                "kind": "INT_LITERAL",
-                "text": "42",
-                "width": 2
+                "kind": "STRING_LITERAL",
+                "text": "\"Alice\"",
+                "width": 7
               }
             ]
           }

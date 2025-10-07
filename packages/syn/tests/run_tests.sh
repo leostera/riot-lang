@@ -41,7 +41,7 @@ for fixture in $FIXTURES_DIR/*.ml; do
     echo -n "Testing parse for $base... "
     expected="$fixture.parse.expected"
     if [ -f "$expected" ]; then
-        output=$($SYN parse --json "$fixture" 2>&1)
+        output=$($SYN parse --json "$fixture" 2>&1 | jq '.')
         expected_content=$(cat "$expected")
         if [ "$output" = "$expected_content" ]; then
             echo -e "${GREEN}PASSED${NC}"
