@@ -224,9 +224,22 @@ and handle_find_artifact state client_pid package kind name =
       state.workspace.root / Path.v "target" / Path.v "debug" / Path.v "out"
       / Path.v "packages" / Path.v package / Path.v name)
   in
-  Log.debug "Server: Sending ArtifactFound response to %s"
-    (Pid.to_string client_pid);
-  send client_pid (ServerResponse (ArtifactFound { path }));
+  (* Check if the artifact actually exists *)
+  let response =
+    match Fs.exists path with
+    | Ok true ->
+        Log.debug "Server: Artifact found at %s" (Path.to_string path);
+        ServerResponse (ArtifactFound { path })
+    | Ok false | Error _ ->
+        Log.debug "Server: Artifact not found at %s" (Path.to_string path);
+        ServerResponse
+          (ArtifactNotFound
+             {
+               error =
+                 format "Artifact '%s' not found in package '%s'" name package;
+             })
+  in
+  send client_pid response;
   Log.debug "Server: Response sent, continuing loop";
   loop state
 
