@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 10,
+    "width": 24,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 10,
+        "width": 24,
         "children": [
           {
             "type": "token",
@@ -29,14 +29,72 @@
           },
           {
             "type": "node",
-            "kind": "PAREN_EXPR",
-            "width": 5,
+            "kind": "INFIX_EXPR",
+            "width": 19,
             "children": [
               {
+                "type": "node",
+                "kind": "PAREN_EXPR",
+                "width": 13,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": "(",
+                    "width": 1
+                  },
+                  {
+                    "type": "node",
+                    "kind": "INFIX_EXPR",
+                    "width": 11,
+                    "children": [
+                      {
+                        "type": "node",
+                        "kind": "BOOL_LITERAL",
+                        "width": 4,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "BOOL_LITERAL",
+                            "text": "true",
+                            "width": 4
+                          }
+                        ]
+                      },
+                      {
+                        "type": "token",
+                        "kind": "INFIX_EXPR",
+                        "text": "&&",
+                        "width": 2
+                      },
+                      {
+                        "type": "node",
+                        "kind": "BOOL_LITERAL",
+                        "width": 5,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "BOOL_LITERAL",
+                            "text": "false",
+                            "width": 5
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": ")",
+                    "width": 1
+                  }
+                ]
+              },
+              {
                 "type": "token",
-                "kind": "WHITESPACE",
-                "text": "(",
-                "width": 1
+                "kind": "INFIX_EXPR",
+                "text": "||",
+                "width": 2
               },
               {
                 "type": "node",
@@ -50,12 +108,6 @@
                     "width": 4
                   }
                 ]
-              },
-              {
-                "type": "token",
-                "kind": "MISSING",
-                "text": "",
-                "width": 0
               }
             ]
           }
@@ -63,16 +115,5 @@
       }
     ]
   },
-  "diagnostics": [
-    {
-      "kind": {
-        "type": "missing_token",
-        "expected": "')'"
-      },
-      "span": {
-        "start": 14,
-        "end": 14
-      }
-    }
-  ]
+  "diagnostics": []
 }

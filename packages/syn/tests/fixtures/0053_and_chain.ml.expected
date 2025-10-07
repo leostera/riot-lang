@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 9,
+    "width": 22,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 9,
+        "width": 22,
         "children": [
           {
             "type": "token",
@@ -29,14 +29,66 @@
           },
           {
             "type": "node",
-            "kind": "BOOL_LITERAL",
-            "width": 4,
+            "kind": "INFIX_EXPR",
+            "width": 17,
             "children": [
               {
+                "type": "node",
+                "kind": "INFIX_EXPR",
+                "width": 11,
+                "children": [
+                  {
+                    "type": "node",
+                    "kind": "BOOL_LITERAL",
+                    "width": 4,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "BOOL_LITERAL",
+                        "text": "true",
+                        "width": 4
+                      }
+                    ]
+                  },
+                  {
+                    "type": "token",
+                    "kind": "INFIX_EXPR",
+                    "text": "&&",
+                    "width": 2
+                  },
+                  {
+                    "type": "node",
+                    "kind": "BOOL_LITERAL",
+                    "width": 5,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "BOOL_LITERAL",
+                        "text": "false",
+                        "width": 5
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
                 "type": "token",
+                "kind": "INFIX_EXPR",
+                "text": "&&",
+                "width": 2
+              },
+              {
+                "type": "node",
                 "kind": "BOOL_LITERAL",
-                "text": "true",
-                "width": 4
+                "width": 4,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "BOOL_LITERAL",
+                    "text": "true",
+                    "width": 4
+                  }
+                ]
               }
             ]
           }

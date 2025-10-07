@@ -351,14 +351,26 @@ let next cursor =
         Cursor.advance cursor;
         let end_ = Cursor.position cursor in
         { Token.kind = Token.Bang; span = Ceibo.Span.make ~start ~end_ }
-    | Some '&' ->
+    | Some '&' -> (
         Cursor.advance cursor;
-        let end_ = Cursor.position cursor in
-        { Token.kind = Token.Ampersand; span = Ceibo.Span.make ~start ~end_ }
-    | Some '|' ->
+        match Cursor.peek cursor with
+        | Some '&' ->
+            Cursor.advance cursor;
+            let end_ = Cursor.position cursor in
+            { Token.kind = Token.And; span = Ceibo.Span.make ~start ~end_ }
+        | _ ->
+            let end_ = Cursor.position cursor in
+            { Token.kind = Token.Ampersand; span = Ceibo.Span.make ~start ~end_ })
+    | Some '|' -> (
         Cursor.advance cursor;
-        let end_ = Cursor.position cursor in
-        { Token.kind = Token.Pipe; span = Ceibo.Span.make ~start ~end_ }
+        match Cursor.peek cursor with
+        | Some '|' ->
+            Cursor.advance cursor;
+            let end_ = Cursor.position cursor in
+            { Token.kind = Token.Or; span = Ceibo.Span.make ~start ~end_ }
+        | _ ->
+            let end_ = Cursor.position cursor in
+            { Token.kind = Token.Pipe; span = Ceibo.Span.make ~start ~end_ })
     | Some ':' -> (
         Cursor.advance cursor;
         match Cursor.peek cursor with

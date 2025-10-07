@@ -31,6 +31,11 @@ for fixture in $FIXTURES_DIR/*.ml; do
             echo -e "${RED}FAILED${NC} (parser produces ERROR/MISSING tokens)"
             echo "  File: $fixture"
             ((failed++))
+        # Check if expected file has ERROR or MISSING tokens (test expectations are wrong)
+        elif echo "$expected_content" | grep -q '"ERROR"' || echo "$expected_content" | grep -q '"MISSING"'; then
+            echo -e "${RED}FAILED${NC} (expected file contains ERROR/MISSING tokens)"
+            echo "  File: $fixture"
+            ((failed++))
         elif [ "$output" = "$expected_content" ]; then
             echo -e "${GREEN}PASSED${NC}"
             ((passed++))
