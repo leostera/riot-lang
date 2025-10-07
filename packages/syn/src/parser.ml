@@ -24,6 +24,11 @@ let peek parser =
     Some parser.tokens.(parser.position)
   else None
 
+let peek_nth parser n =
+  if parser.position + n < Array.length parser.tokens then
+    Some parser.tokens.(parser.position + n).Token.kind
+  else None
+
 let peek_kind parser =
   match peek parser with
   | Some tok -> Some tok.Token.kind
@@ -73,6 +78,7 @@ let token_kind_to_syntax_kind = function
   | Token.Pipe -> Syntax_kind.MATCH_EXPR  (* | is part of match/function syntax *)
   | Token.Semi -> Syntax_kind.SEQUENCE_EXPR
   | Token.Comma -> Syntax_kind.TUPLE_EXPR
+  | Token.Dot -> Syntax_kind.IDENT_EXPR  (* . can be part of operator identifiers like -. *)
   | Token.Ident _ -> Syntax_kind.IDENT_EXPR
   | Token.Plus | Token.Minus | Token.Star | Token.Slash | Token.Percent
   | Token.Eq | Token.Ne | Token.Lt | Token.Gt | Token.LtEq | Token.GtEq
@@ -277,7 +283,24 @@ and parse_primary parser =
   
   (* Check for prefix operators *)
   match peek_kind parser with
-  | Some Token.Minus | Some Token.Bang ->
+  | Some Token.Minus ->
+      (* Check if this is a compound operator identifier like -. *)
+      if peek_nth parser 1 = Some Token.Dot then
+        (* Parse as operator identifier -. *)
+        let minus = consume parser in
+        let dot = consume parser in
+        let children = prepend_pending_trivia parser [| minus; dot |] in
+        Some (make_node ~kind:Syntax_kind.IDENT_EXPR children)
+      else
+        (* Parse as prefix operator - *)
+        let op = consume parser in
+        let _ = consume_trivia parser in
+        (match parse_expr_bp parser 7 with
+         | Some operand ->
+             let children = prepend_pending_trivia parser [| op; Ceibo.Green.Node operand |] in
+             Some (make_node ~kind:Syntax_kind.PREFIX_EXPR children)
+         | None -> None)
+  | Some Token.Bang ->
       let op = consume parser in
       let _ = consume_trivia parser in
       (match parse_expr_bp parser 7 with  (* Higher precedence for prefix *)
