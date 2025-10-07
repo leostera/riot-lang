@@ -1,1 +1,3 @@
-item[@@@attr]
+item;;
+
+[@@@attr]
