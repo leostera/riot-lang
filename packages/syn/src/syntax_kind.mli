@@ -98,7 +98,8 @@ type t =
   | LAZY_PATTERN  (** Lazy pattern: `lazy pattern` *)
   | EXCEPTION_PATTERN  (** Exception pattern: `exception E` *)
   | PAREN_PATTERN  (** Parenthesized pattern: `(pattern)` *)
-  | POLY_VARIANT_PATTERN  (** Polymorphic variant pattern: `` `Tag ``, `` `Tag p `` *)
+  | POLY_VARIANT_PATTERN
+      (** Polymorphic variant pattern: `` `Tag ``, `` `Tag p `` *)
   (* ===================================================================== *)
   (* TOP-LEVEL DECLARATIONS *)
   (* ===================================================================== *)

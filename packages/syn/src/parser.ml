@@ -71,6 +71,7 @@ let token_kind_to_syntax_kind = function
   | Token.Keyword Keyword.Let -> Syntax_kind.LET_BINDING
   | Token.Keyword Keyword.Rec -> Syntax_kind.LET_REC_EXPR
   | Token.Keyword Keyword.In -> Syntax_kind.LET_EXPR
+  | Token.Keyword Keyword.And -> Syntax_kind.LET_EXPR (* 'and' in let bindings *)
   | Token.Keyword Keyword.If -> Syntax_kind.IF_EXPR
   | Token.Keyword Keyword.Then | Token.Keyword Keyword.Else ->
       Syntax_kind.IF_EXPR
@@ -1094,7 +1095,8 @@ and parse_poly_variant_expr parser =
 
   (* Polymorphic variant tag must be a capitalized identifier *)
   match peek_kind parser with
-  | Some (Token.Ident tag) when String.length tag > 0 && Char.uppercase_ascii tag.[0] = tag.[0] ->
+  | Some (Token.Ident tag)
+    when String.length tag > 0 && Char.uppercase_ascii tag.[0] = tag.[0] ->
       let tag_token = consume parser in
       let _ = consume_trivia parser in
       (* Check if there's an argument *)
@@ -1102,14 +1104,19 @@ and parse_poly_variant_expr parser =
         match parse_primary parser with
         | Some arg ->
             let children =
-              prepend_pending_trivia parser [| backtick; tag_token; Ceibo.Green.Node arg |]
+              prepend_pending_trivia parser
+                [| backtick; tag_token; Ceibo.Green.Node arg |]
             in
             Some (make_node ~kind:Syntax_kind.POLY_VARIANT_EXPR children)
         | None ->
-            let children = prepend_pending_trivia parser [| backtick; tag_token |] in
+            let children =
+              prepend_pending_trivia parser [| backtick; tag_token |]
+            in
             Some (make_node ~kind:Syntax_kind.POLY_VARIANT_EXPR children)
       else
-        let children = prepend_pending_trivia parser [| backtick; tag_token |] in
+        let children =
+          prepend_pending_trivia parser [| backtick; tag_token |]
+        in
         Some (make_node ~kind:Syntax_kind.POLY_VARIANT_EXPR children)
   | _ ->
       (* Missing or invalid tag *)
@@ -1376,6 +1383,52 @@ and parse_let_expr parser =
 
   let _ = consume_trivia parser in
 
+  (* Check for 'and' bindings *)
+  let and_bindings = ref [] in
+  while at parser (Token.Keyword Keyword.And) do
+    let and_kw = consume parser in
+    let _ = consume_trivia parser in
+    
+    (* Parse pattern *)
+    let and_pattern =
+      match peek_kind parser with
+      | Some (Token.Ident _) -> consume parser
+      | _ ->
+          let span =
+            match peek parser with
+            | Some tok -> tok.Token.span
+            | None -> Ceibo.Span.make ~start:0 ~end_:0
+          in
+          report_error parser
+            (Diagnostic.make_missing_token ~expected:"identifier" ~span);
+          Ceibo.Green.Token
+            (Ceibo.Green.make_token ~kind:Syntax_kind.MISSING ~text:"" ~width:0)
+    in
+    
+    let _ = consume_trivia parser in
+    let and_eq = expect parser Token.Eq in
+    let _ = consume_trivia parser in
+    
+    (* Parse value *)
+    let and_value =
+      match parse_expr parser with
+      | Some e -> Ceibo.Green.Node e
+      | None ->
+          let span =
+            match peek parser with
+            | Some tok -> tok.Token.span
+            | None -> Ceibo.Span.make ~start:0 ~end_:0
+          in
+          report_error parser
+            (Diagnostic.make_missing_token ~expected:"expression" ~span);
+          Ceibo.Green.Token
+            (Ceibo.Green.make_token ~kind:Syntax_kind.MISSING ~text:"" ~width:0)
+    in
+    
+    let _ = consume_trivia parser in
+    and_bindings := and_value :: and_eq :: and_pattern :: and_kw :: !and_bindings
+  done;
+
   (* Expect 'in' *)
   let in_kw = expect parser (Token.Keyword Keyword.In) in
 
@@ -1401,15 +1454,19 @@ and parse_let_expr parser =
     if is_rec then Syntax_kind.LET_REC_EXPR else Syntax_kind.LET_EXPR
   in
 
+  let and_bindings_array = Array.of_list (List.rev !and_bindings) in
+  
   match rec_kw with
   | Some kw ->
-      Some
-        (make_node ~kind
-           [| let_kw; kw; pattern; eq; value_expr; in_kw; body_expr |])
+      let base = [| let_kw; kw; pattern; eq; value_expr |] in
+      let with_and = Array.append base and_bindings_array in
+      let with_in_body = Array.append with_and [| in_kw; body_expr |] in
+      Some (make_node ~kind with_in_body)
   | None ->
-      Some
-        (make_node ~kind
-           [| let_kw; pattern; eq; value_expr; in_kw; body_expr |])
+      let base = [| let_kw; pattern; eq; value_expr |] in
+      let with_and = Array.append base and_bindings_array in
+      let with_in_body = Array.append with_and [| in_kw; body_expr |] in
+      Some (make_node ~kind with_in_body)
 
 and parse_if_expr parser =
   let if_kw = consume parser in
@@ -1929,7 +1986,8 @@ and parse_poly_variant_pattern parser =
 
   (* Polymorphic variant tag must be a capitalized identifier *)
   match peek_kind parser with
-  | Some (Token.Ident tag) when String.length tag > 0 && Char.uppercase_ascii tag.[0] = tag.[0] ->
+  | Some (Token.Ident tag)
+    when String.length tag > 0 && Char.uppercase_ascii tag.[0] = tag.[0] -> (
       let tag_token = consume parser in
       let _ = consume_trivia parser in
       (* Check if there's a pattern argument *)
@@ -1943,19 +2001,24 @@ and parse_poly_variant_pattern parser =
           match parse_pattern parser with
           | Some pat ->
               let children =
-                prepend_pending_trivia parser [| backtick; tag_token; Ceibo.Green.Node pat |]
+                prepend_pending_trivia parser
+                  [| backtick; tag_token; Ceibo.Green.Node pat |]
               in
               Some (make_node ~kind:Syntax_kind.POLY_VARIANT_PATTERN children)
           | None ->
-              let children = prepend_pending_trivia parser [| backtick; tag_token |] in
+              let children =
+                prepend_pending_trivia parser [| backtick; tag_token |]
+              in
               Some (make_node ~kind:Syntax_kind.POLY_VARIANT_PATTERN children))
       | _ ->
-          let children = prepend_pending_trivia parser [| backtick; tag_token |] in
+          let children =
+            prepend_pending_trivia parser [| backtick; tag_token |]
+          in
           Some (make_node ~kind:Syntax_kind.POLY_VARIANT_PATTERN children)
-  | _ ->
-      (* Missing or invalid tag *)
-      let children = prepend_pending_trivia parser [| backtick |] in
-      Some (make_node ~kind:Syntax_kind.POLY_VARIANT_PATTERN children)
+      | _ ->
+          (* Missing or invalid tag *)
+          let children = prepend_pending_trivia parser [| backtick |] in
+          Some (make_node ~kind:Syntax_kind.POLY_VARIANT_PATTERN children))
 
 and parse_match_case_body parser first_pattern =
   let _ = consume_trivia parser in

@@ -1,6 +1,5 @@
 [workspace]
 members = [
-  "packages/asdf",
   "packages/jsonrpc",
   "packages/kernel",
   "packages/mcp",
