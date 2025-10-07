@@ -143,3 +143,20 @@ end
 let new_root green_node =
   { green_node; parent = None; offset = 0 }
 
+let rec to_json ~kind_to_json ~text_to_json elem =
+  match elem with
+  | Token tok ->
+      Data.Json.Object [
+        ("type", Data.Json.String "token");
+        ("kind", kind_to_json (SyntaxToken.kind tok));
+        ("text", text_to_json (SyntaxToken.text tok));
+        ("span", Span.to_json (SyntaxToken.span tok));
+      ]
+  | Node node ->
+      Data.Json.Object [
+        ("type", Data.Json.String "node");
+        ("kind", kind_to_json (SyntaxNode.kind node));
+        ("span", Span.to_json (SyntaxNode.span node));
+        ("children", Data.Json.Array (Array.to_list (Array.map (to_json ~kind_to_json ~text_to_json) (SyntaxNode.children node))));
+      ]
+

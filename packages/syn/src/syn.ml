@@ -1,8 +1,16 @@
 open Std
+
+module Ceibo = Ceibo
 module Token = Token
+module Keyword = Keyword
 module Cursor = Cursor
 module Lexer = Lexer
-module TokenTree = Token_tree
+module SyntaxKind = Syntax_kind
+module Diagnostic = Diagnostic
+module Parser = Parser
 
 let tokenize source = Lexer.tokenize source
-let parse_token_trees source = source |> tokenize |> TokenTree.of_tokens
+
+let parse source = 
+  let tokens = Lexer.tokenize source in
+  Parser.parse ~source tokens

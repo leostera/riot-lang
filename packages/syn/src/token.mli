@@ -1,64 +1,6 @@
 open Std
 
-type span = { start : int; end_ : int }
-
-type keyword =
-  | And
-  | As
-  | Asr
-  | Assert
-  | Begin
-  | Class
-  | Constraint
-  | Do
-  | Done
-  | Downto
-  | Else
-  | End
-  | Exception
-  | External
-  | False
-  | For
-  | Fun
-  | Function
-  | Functor
-  | If
-  | In
-  | Include
-  | Inherit
-  | Initializer
-  | Land
-  | Lazy
-  | Let
-  | Lor
-  | Lsl
-  | Lsr
-  | Lxor
-  | Match
-  | Method
-  | Mod
-  | Module
-  | Mutable
-  | New
-  | Nonrec
-  | Object
-  | Of
-  | Open
-  | Or
-  | Private
-  | Rec
-  | Sig
-  | Struct
-  | Then
-  | To
-  | True
-  | Try
-  | Type
-  | Val
-  | Virtual
-  | When
-  | While
-  | With
+type keyword = Keyword.t
 
 type literal =
   | String of { value : string; terminated : bool }
@@ -118,9 +60,10 @@ type token_kind =
   | EOF
   | Unknown of char
 
-type t = { kind : token_kind; span : span }
+type t = { kind : token_kind; span : Ceibo.Span.t }
 
-val keyword_of_string : string -> keyword option
-val is_opening_keyword : string -> bool
-val is_closing_keyword : string -> bool
-val delimiter_of_keyword : string -> delimiter option
+val delimiter_of_keyword : keyword -> delimiter option
+(** Get the delimiter associated with a keyword (begin, struct, sig, object) *)
+
+val show_kind : token_kind -> string
+(** Get a human-readable name for a token kind *)

@@ -48,3 +48,20 @@ let children node = node.children
 
 let make_node_list ~kind elements =
   make_node ~kind ~children:(Array.of_list elements)
+
+let rec to_json ~kind_to_json ~text_to_json elem =
+  match elem with
+  | Token tok ->
+      Data.Json.Object [
+        ("type", Data.Json.String "token");
+        ("kind", kind_to_json tok.kind);
+        ("text", text_to_json tok.text);
+        ("width", Data.Json.Int tok.width);
+      ]
+  | Node node ->
+      Data.Json.Object [
+        ("type", Data.Json.String "node");
+        ("kind", kind_to_json node.kind);
+        ("width", Data.Json.Int node.width);
+        ("children", Data.Json.Array (Array.to_list (Array.map (to_json ~kind_to_json ~text_to_json) node.children)));
+      ]
