@@ -100,6 +100,7 @@ let token_kind_to_syntax_kind = function
       | Keyword.Lsr | Keyword.Asr ) ->
       Syntax_kind.INFIX_EXPR
   | Token.Bang | Token.Keyword Keyword.Lnot -> Syntax_kind.PREFIX_EXPR
+  | Token.Tilde | Token.Question -> Syntax_kind.ARGUMENT
   | Token.Keyword Keyword.Assert -> Syntax_kind.ASSERT_EXPR
   | Token.Keyword Keyword.Lazy -> Syntax_kind.LAZY_EXPR
   | Token.Keyword Keyword.For
@@ -377,6 +378,18 @@ and parse_expr_bp parser min_bp =
                   let infix = make_node ~kind:Syntax_kind.INFIX_EXPR children in
                   loop infix
               | None -> Some lhs)
+        | (Some Token.Tilde | Some Token.Question) when min_bp <= 8 -> (
+            (* Labeled or optional argument *)
+            match parse_labeled_or_optional_arg parser with
+            | Some arg ->
+                let trivia = take_pending_trivia parser in
+                let children =
+                  [| Ceibo.Green.Node lhs; Ceibo.Green.Node arg |]
+                in
+                let children = Array.append (Array.of_list trivia) children in
+                let app = make_node ~kind:Syntax_kind.APPLY_EXPR children in
+                loop app
+            | None -> Some lhs)
         | Some _ when can_start_primary parser -> (
             (* Function application - juxtaposition *)
             let app_prec = 8 in
@@ -500,6 +513,170 @@ and parse_primary parser =
           (* Try/catch *)
           | Some (Token.Keyword Keyword.Try) -> parse_try_expr parser
           | _ -> None))
+
+and parse_labeled_or_optional_arg parser =
+  let _ = consume_trivia parser in
+  match peek_kind parser with
+  | Some Token.Tilde -> (
+      (* Labeled argument: ~label or ~label:expr *)
+      let tilde = consume parser in
+      let _ = consume_trivia parser in
+      match peek_kind parser with
+      | Some (Token.Ident _) ->
+          let label = consume parser in
+          let _ = consume_trivia parser in
+          if at parser Token.Colon then
+            let colon = consume parser in
+            let _ = consume_trivia parser in
+            match parse_primary parser with
+            | Some value ->
+                let children =
+                  prepend_pending_trivia parser
+                    [| tilde; label; colon; Ceibo.Green.Node value |]
+                in
+                Some (make_node ~kind:Syntax_kind.ARGUMENT children)
+            | None ->
+                let children =
+                  prepend_pending_trivia parser [| tilde; label |]
+                in
+                Some (make_node ~kind:Syntax_kind.ARGUMENT children)
+          else
+            (* Punning: ~label is shorthand for ~label:label *)
+            let children = prepend_pending_trivia parser [| tilde; label |] in
+            Some (make_node ~kind:Syntax_kind.ARGUMENT children)
+      | _ -> None)
+  | Some Token.Question -> (
+      (* Optional argument: ?label or ?label:expr *)
+      let question = consume parser in
+      let _ = consume_trivia parser in
+      match peek_kind parser with
+      | Some (Token.Ident _) ->
+          let label = consume parser in
+          let _ = consume_trivia parser in
+          if at parser Token.Colon then
+            let colon = consume parser in
+            let _ = consume_trivia parser in
+            match parse_primary parser with
+            | Some value ->
+                let children =
+                  prepend_pending_trivia parser
+                    [| question; label; colon; Ceibo.Green.Node value |]
+                in
+                Some (make_node ~kind:Syntax_kind.ARGUMENT children)
+            | None ->
+                let children =
+                  prepend_pending_trivia parser [| question; label |]
+                in
+                Some (make_node ~kind:Syntax_kind.ARGUMENT children)
+          else
+            (* Punning: ?label is shorthand for ?label:label *)
+            let children =
+              prepend_pending_trivia parser [| question; label |]
+            in
+            Some (make_node ~kind:Syntax_kind.ARGUMENT children)
+      | _ -> None)
+  | _ -> None
+
+and parse_labeled_or_optional_param parser =
+  let _ = consume_trivia parser in
+  match peek_kind parser with
+  | Some Token.Tilde -> (
+      (* Labeled parameter: ~label or ~label:pattern or ~(label:pattern) *)
+      let tilde = consume parser in
+      let _ = consume_trivia parser in
+      match peek_kind parser with
+      | Some (Token.Ident _) ->
+          let label = consume parser in
+          let _ = consume_trivia parser in
+          if at parser Token.Colon then
+            let colon = consume parser in
+            let _ = consume_trivia parser in
+            match parse_pattern parser with
+            | Some pattern ->
+                let children =
+                  prepend_pending_trivia parser
+                    [| tilde; label; colon; Ceibo.Green.Node pattern |]
+                in
+                Some (make_node ~kind:Syntax_kind.PARAMETER children)
+            | None ->
+                let children =
+                  prepend_pending_trivia parser [| tilde; label |]
+                in
+                Some (make_node ~kind:Syntax_kind.PARAMETER children)
+          else
+            (* Punning: ~label is parameter named label *)
+            let children = prepend_pending_trivia parser [| tilde; label |] in
+            Some (make_node ~kind:Syntax_kind.PARAMETER children)
+      | _ -> None)
+  | Some Token.Question -> (
+      (* Optional parameter: ?label or ?label:pattern or ?(label = default) *)
+      let question = consume parser in
+      let _ = consume_trivia parser in
+      match peek_kind parser with
+      | Some (Token.Ident _) ->
+          let label = consume parser in
+          let _ = consume_trivia parser in
+          if at parser Token.Colon then
+            let colon = consume parser in
+            let _ = consume_trivia parser in
+            match parse_pattern parser with
+            | Some pattern ->
+                let children =
+                  prepend_pending_trivia parser
+                    [| question; label; colon; Ceibo.Green.Node pattern |]
+                in
+                Some (make_node ~kind:Syntax_kind.PARAMETER children)
+            | None ->
+                let children =
+                  prepend_pending_trivia parser [| question; label |]
+                in
+                Some (make_node ~kind:Syntax_kind.PARAMETER children)
+          else
+            (* Punning: ?label is optional parameter named label *)
+            let children =
+              prepend_pending_trivia parser [| question; label |]
+            in
+            Some (make_node ~kind:Syntax_kind.PARAMETER children)
+      | Some (Token.OpenDelim Token.Paren) -> (
+          (* Parenthesized optional with default: ?(label = default) *)
+          let open_paren = consume parser in
+          let _ = consume_trivia parser in
+          match peek_kind parser with
+          | Some (Token.Ident _) ->
+              let label = consume parser in
+              let _ = consume_trivia parser in
+              if at parser Token.Eq then
+                let eq = consume parser in
+                let _ = consume_trivia parser in
+                match parse_expr parser with
+                | Some default ->
+                    let _ = consume_trivia parser in
+                    let close_paren = expect parser (Token.CloseDelim Token.Paren) in
+                    let children =
+                      prepend_pending_trivia parser
+                        [|
+                          question;
+                          open_paren;
+                          label;
+                          eq;
+                          Ceibo.Green.Node default;
+                          close_paren;
+                        |]
+                    in
+                    Some (make_node ~kind:Syntax_kind.PARAMETER children)
+                | None ->
+                    let children =
+                      prepend_pending_trivia parser [| question; open_paren; label |]
+                    in
+                    Some (make_node ~kind:Syntax_kind.PARAMETER children)
+              else
+                let children =
+                  prepend_pending_trivia parser [| question; open_paren; label |]
+                in
+                Some (make_node ~kind:Syntax_kind.PARAMETER children)
+          | _ -> None)
+      | _ -> None)
+  | _ -> None
 
 and parse_paren_expr parser =
   let open_paren = consume parser in
@@ -1280,12 +1457,22 @@ and parse_fun_expr parser =
   let params = ref [] in
   let continue = ref true in
   while !continue && (not (at parser Token.Arrow)) && peek parser <> None do
-    match parse_pattern parser with
-    | Some pat ->
-        params := Ceibo.Green.Node pat :: !params;
-        let _ = consume_trivia parser in
-        ()
-    | None -> continue := false
+    (* Check for labeled/optional parameter *)
+    match peek_kind parser with
+    | Some Token.Tilde | Some Token.Question -> (
+        match parse_labeled_or_optional_param parser with
+        | Some param ->
+            params := Ceibo.Green.Node param :: !params;
+            let _ = consume_trivia parser in
+            ()
+        | None -> continue := false)
+    | _ -> (
+        match parse_pattern parser with
+        | Some pat ->
+            params := Ceibo.Green.Node pat :: !params;
+            let _ = consume_trivia parser in
+            ()
+        | None -> continue := false)
   done;
 
   let arrow = expect parser Token.Arrow in
