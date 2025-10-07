@@ -2,14 +2,31 @@
 
 A pragmatic, incremental approach to building a ceibo-based parser for OCaml.
 
+## Scope
+
+**Focus: Expression Language + Module System**
+
+We're implementing:
+- ✅ All expression forms (let, match, if, fun, etc.)
+- ✅ Pattern matching
+- ✅ Type definitions (records, variants, aliases)
+- ✅ Module system (structures, signatures, functors)
+- ✅ Top-level declarations
+
+We're explicitly **NOT** implementing (yet):
+- ❌ Classes and objects
+- ❌ Polymorphic variants (can add later if needed)
+- ❌ First-class modules (can add later)
+- ❌ GADTs (can add later)
+
+This covers 95%+ of code in our codebase.
+
 ## Philosophy
 
 **Start simple, grow organically.** We'll implement just enough to:
 1. Parse real code from our codebase
 2. Support formatters and linters  
 3. Add features as needed
-
-**Not trying to parse all of OCaml initially** - that's months of work. Instead, we parse the subset we actually use.
 
 ## Phase 1: Core Expressions (Week 1-2)
 
@@ -134,16 +151,45 @@ end
 ### Deliverable
 Parse simple module files from our codebase.
 
-## Phase 5: Advanced Features (Weeks 7+)
+## Phase 5: Functors & Advanced Modules (Week 7-8)
+
+### 5.1 Functors
+```ocaml
+module Make (S : Sig) = struct
+  (* ... *)
+end
+
+module M = Make(Impl)
+```
+
+### 5.2 Module Types
+```ocaml
+module type S = sig
+  val x : int
+  type t
+end
+```
+
+### 5.3 Include
+```ocaml
+include Base
+include Collections.HashMap
+```
+
+### Deliverable
+Parse module-heavy code like our `std` and `kernel` packages.
+
+## Phase 6: Extensions (Week 9+)
 
 **Add these as needed:**
-- Functors
-- First-class modules
-- Objects and classes
-- Polymorphic variants
-- GADTs
-- Extension nodes (PPX)
-- Attributes
+- Extension nodes (PPX): `[%extension ...]`
+- Attributes: `[@attr]`, `[@@attr]`
+- First-class modules (if needed)
+- Polymorphic variants (if needed)
+- GADTs (if needed)
+
+**Never implementing:**
+- Classes and objects (not used in our codebase)
 
 ## Implementation Strategy
 
@@ -402,21 +448,28 @@ let test_round_trip source =
 
 ## Pragmatic Shortcuts
 
-**Things we can skip initially:**
+**Things we're NOT implementing:**
+
+1. **Object system** - Classes, objects, methods - not used in our codebase
+2. **Polymorphic variants** - `[> | < ]` syntax - can add later if needed
+3. **First-class modules** - Can add when needed
+4. **GADTs** - Can add when needed
+
+**Things we can defer:**
 
 1. **Full Unicode support** - Handle ASCII well, add Unicode later
-2. **PPX attributes** - Parse as unknown for now
-3. **Object system** - Almost never used in our code
-4. **Polymorphic variants** - Add when needed
-5. **Format strings** - Treat as regular strings
-6. **Quoted strings** - Basic support only
+2. **PPX attributes** - Parse as tokens, ignore for now
+3. **Format strings** - Treat as regular strings
+4. **Quoted strings** - Basic support only
 
 **Things we MUST get right:**
 
 1. **Trivia handling** - Comments and whitespace crucial for formatter
 2. **Error recovery** - Must handle incomplete files
 3. **Span tracking** - Accurate positions for errors
-4. **Common expressions** - let, match, if, function calls
+4. **Expression language** - let, match, if, function calls, operators
+5. **Module system** - struct, sig, open, include
+6. **Type definitions** - records, variants, type aliases
 
 ## Success Metrics
 
