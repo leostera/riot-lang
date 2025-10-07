@@ -55,6 +55,14 @@ let rec loop state =
   | GetBuildGraph { client_pid } ->
       Log.debug "Server loop received: GetBuildGraph";
       handle_get_build_graph state client_pid
+  | FindExecutable { client_pid; name } ->
+      Log.debug "Server loop received: FindExecutable(%s)" name;
+      handle_find_executable state client_pid name
+  | FindArtifact { client_pid; package; kind; name } ->
+      Log.debug
+        "Server loop received: FindArtifact(package=%s, kind=%s, name=%s)"
+        package kind name;
+      handle_find_artifact state client_pid package kind name
   | FormatFile { client_pid; file_path; check_only } ->
       Log.debug "Server loop received: FormatFile";
       handle_format_file state client_pid file_path check_only
@@ -183,6 +191,39 @@ and handle_get_build_graph state client_pid =
 
   (* Send the build graph *)
   send client_pid (ServerResponse (BuildGraph { nodes }));
+  loop state
+
+and handle_find_executable state client_pid name =
+  Log.debug "Server: handle_find_executable %s" name;
+  let found =
+    List.find_opt
+      (fun (pkg : Workspace.package) ->
+        if pkg.name <> name then false
+        else
+          let main_ml =
+            Path.(state.workspace.root / pkg.relative_path / Path.v "src"
+                  / Path.v "main.ml")
+          in
+          match Fs.exists main_ml with Ok true -> true | _ -> false)
+      state.workspace.packages
+  in
+  (match found with
+  | Some pkg ->
+      send client_pid
+        (ServerResponse (ExecutableFound { package = pkg.name; binary = name }))
+  | None -> send client_pid (ServerResponse ExecutableNotFound));
+  loop state
+
+and handle_find_artifact state client_pid package kind name =
+  Log.debug "Server: handle_find_artifact package=%s kind=%s name=%s" package kind
+    name;
+  (* For now we only support binaries *)
+  let path =
+    Path.(
+      state.workspace.root / Path.v "target" / Path.v "debug" / Path.v "out"
+      / Path.v "packages" / Path.v package / Path.v name)
+  in
+  send client_pid (ServerResponse (ArtifactFound { path }));
   loop state
 
 and handle_format_file state client_pid file_path check_only =

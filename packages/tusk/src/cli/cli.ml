@@ -20,11 +20,16 @@ let cli =
                 |> help "Build only the specified package";
               ];
          command "run" |> about "Run a binary"
-         |> args
-              [
-                option "binary" |> short 'b' |> long "binary"
-                |> help "Specify which binary to run";
-              ];
+          |> ArgParser.allow_trailing_args
+          |> args
+               [
+                 positional "name" |> help "Binary name to run";
+                 option "binary" |> short 'b' |> long "binary"
+                 |> help "Specify which binary to run";
+                 flag "verbose" |> short 'v' |> long "verbose"
+                 |> help "Enable verbose output for run" |> count;
+               ];
+
          command "clean" |> about "Clean build artifacts";
          command "new"
          |> about "Create a new package"
@@ -102,11 +107,7 @@ let main ~args:argv =
           let package = get_one build_matches "package" in
           let args = match package with Some p -> [ "-p"; p ] | None -> [] in
           Build.run args
-      | Some ("run", run_matches) ->
-          let binary = get_one run_matches "binary" in
-          let args = match binary with Some b -> [ "-b"; b ] | None -> [] in
-          (* TODO: Pass remaining args to binary *)
-          Ok ()
+      | Some ("run", run_matches) -> Run.run run_matches
       | Some ("clean", _) -> Clean.run []
       | Some ("new", new_matches) ->
           (* TODO: Extract positional path argument *)

@@ -17,6 +17,8 @@ val method_format_file : string
 val method_format_code : string
 val method_format_all : string
 val method_new_package : string
+val method_find_executable : string
+val method_find_artifact : string
 
 val build_package_params : string -> Jsonrpc.params
 (** Helper to create method-specific parameters *)
@@ -62,6 +64,8 @@ module TuskProtocol : sig
     | BuildAll
     | Restart
     | Shutdown
+    | FindExecutable of string
+    | FindArtifact of { package : string; kind : string; name : string }
     | FormatFile of { file_path : string; check_only : bool }
     | FormatCode of { code : string; file_path : string option }
     | FormatAll of { mode : [ `check | `write ] }
@@ -99,6 +103,10 @@ module TuskProtocol : sig
         stats : build_stats;
         error : string;
       }
+    | FoundExecutable of { package : string; binary : string }
+    | ExecutableNotFound
+    | FoundArtifact of { path : string }
+    | ArtifactNotFound of { error : string }
     | ShutdownAck
     | RestartAck
     | FormatResult of { formatted_code : string; changed : bool }
@@ -156,6 +164,8 @@ module Client : sig
 
   val build_package : t -> string -> (TuskProtocol.response, string) result
   val build_all : t -> (TuskProtocol.response, string) result
+  val find_executable : t -> string -> ((string * string) option, string) result
+  val find_artifact : t -> package:string -> kind:string -> name:string -> (string, string) result
   val restart : t -> (unit, string) result
   val shutdown : t -> (unit, string) result
 

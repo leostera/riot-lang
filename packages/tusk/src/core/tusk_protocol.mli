@@ -34,6 +34,13 @@ type request =
   | GetWorkspaceConfig of { client_pid : Pid.t }
   | GetPackageInfo of { client_pid : Pid.t; package_name : string }
   | GetBuildGraph of { client_pid : Pid.t }
+  | FindExecutable of { client_pid : Pid.t; name : string }
+  | FindArtifact of {
+      client_pid : Pid.t;
+      package : string;
+      kind : string;
+      name : string;
+    }
   | FormatFile of { client_pid : Pid.t; file_path : Path.t; check_only : bool }
   | FormatCode of {
       client_pid : Pid.t;
@@ -72,6 +79,10 @@ type response =
       dependencies : Build_node.t list;
     }
   | BuildGraph of { nodes : Build_node.t list }
+  | ExecutableFound of { package : string; binary : string }
+  | ExecutableNotFound
+  | ArtifactFound of { path : Path.t }
+  | ArtifactNotFound of { error : string }
   | FormatResult of { formatted_code : string; changed : bool }
   | FormatError of { error : string }
   | FormatAllResult of {

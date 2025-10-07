@@ -20,6 +20,8 @@ let method_format_file = "tusk.formatFile"
 let method_format_code = "tusk.formatCode"
 let method_format_all = "tusk.formatAll"
 let method_new_package = "tusk.newPackage"
+let method_find_executable = "tusk.findExecutable"
+let method_find_artifact = "tusk.findArtifact"
 
 (** Helper to create method-specific parameters *)
 let build_package_params package =
@@ -68,6 +70,8 @@ module TuskProtocol = struct
     | BuildAll
     | Restart
     | Shutdown
+    | FindExecutable of string
+    | FindArtifact of { package : string; kind : string; name : string }
     | FormatFile of { file_path : string; check_only : bool }
     | FormatCode of { code : string; file_path : string option }
     | FormatAll of { mode : [ `check | `write ] }
@@ -105,6 +109,10 @@ module TuskProtocol = struct
         stats : build_stats;
         error : string;
       }
+    | FoundExecutable of { package : string; binary : string }
+    | ExecutableNotFound
+    | FoundArtifact of { path : string }
+    | ArtifactNotFound of { error : string }
     | ShutdownAck
     | RestartAck
     | FormatResult of { formatted_code : string; changed : bool }
@@ -1139,6 +1147,22 @@ module TuskProtocol = struct
     | BuildAll -> { method_ = method_build_all; params = NoParams }
     | Shutdown -> { method_ = method_shutdown; params = NoParams }
     | Restart -> { method_ = method_restart; params = NoParams }
+    | FindExecutable name ->
+        {
+          method_ = method_find_executable;
+          params = Jsonrpc.Named [ ("name", Json.String name) ];
+        }
+    | FindArtifact { package; kind; name } ->
+        {
+          method_ = method_find_artifact;
+          params =
+            Jsonrpc.Named
+              [
+                ("package", Json.String package);
+                ("kind", Json.String kind);
+                ("name", Json.String name);
+              ];
+        }
     | FormatFile { file_path; check_only } ->
         {
           method_ = method_format_file;
@@ -1208,6 +1232,29 @@ module TuskProtocol = struct
     | "tusk.getBuildGraph" -> Ok GetBuildGraph
     | "tusk.restart" -> Ok Restart
     | "tusk.shutdown" -> Ok Shutdown
+    | "tusk.findExecutable" -> (
+        match params with
+        | Jsonrpc.Named fields -> (
+            match List.assoc_opt "name" fields with
+            | Some (Json.String name) -> Ok (FindExecutable name)
+            | _ -> Error (Json.String "Missing or invalid 'name' parameter"))
+        | _ -> Error (Json.String "findExecutable requires named parameters"))
+    | "tusk.findArtifact" -> (
+        match params with
+        | Jsonrpc.Named fields -> (
+            match
+              ( List.assoc_opt "package" fields,
+                List.assoc_opt "kind" fields,
+                List.assoc_opt "name" fields )
+            with
+            | Some (Json.String package), Some (Json.String kind),
+              Some (Json.String name) ->
+                Ok (FindArtifact { package; kind; name })
+            | _ ->
+                Error
+                  (Json.String
+                     "Missing or invalid parameters for findArtifact"))
+        | _ -> Error (Json.String "findArtifact requires named parameters"))
     | "tusk.formatFile" -> (
         match params with
         | Jsonrpc.Named fields -> (
@@ -1341,6 +1388,24 @@ module TuskProtocol = struct
             ("session_id", Json.String (Session_id.to_string session_id));
             ("started_at", Json.String timestamp);
           ]
+    | FoundExecutable { package; binary } ->
+        Json.Object
+          [
+            ("type", Json.String "found_executable");
+            ("package", Json.String package);
+            ("binary", Json.String binary);
+          ]
+    | ExecutableNotFound ->
+        Json.Object [ ("type", Json.String "executable_not_found") ]
+    | FoundArtifact { path } ->
+        Json.Object
+          [
+            ("type", Json.String "artifact_found");
+            ("path", Json.String path);
+          ]
+    | ArtifactNotFound { error } ->
+        Json.Object
+          [ ("type", Json.String "artifact_not_found"); ("error", Json.String error) ]
     | CycleDetected { session_id; detected_at; cycle_nodes } ->
         let timestamp = Std.Datetime.to_iso8601 detected_at in
         Json.Object
@@ -1447,6 +1512,27 @@ module TuskProtocol = struct
             let started_at = Std.Datetime.now () in
             (* Will be overridden by server timestamp *)
             Ok (BuildStarted { session_id; started_at })
+        | Some (Json.String "found_executable") -> (
+            let package =
+              match List.assoc_opt "package" fields with
+              | Some (Json.String s) -> s
+              | _ -> ""
+            in
+            let binary =
+              match List.assoc_opt "binary" fields with
+              | Some (Json.String s) -> s
+              | _ -> ""
+            in
+            Ok (FoundExecutable { package; binary }))
+        | Some (Json.String "executable_not_found") -> Ok ExecutableNotFound
+        | Some (Json.String "artifact_found") -> (
+            match List.assoc_opt "path" fields with
+            | Some (Json.String p) -> Ok (FoundArtifact { path = p })
+            | _ -> Error (Json.String "Invalid artifact_found response"))
+        | Some (Json.String "artifact_not_found") -> (
+            match List.assoc_opt "error" fields with
+            | Some (Json.String e) -> Ok (ArtifactNotFound { error = e })
+            | _ -> Error (Json.String "Invalid artifact_not_found response"))
         | Some (Json.String "build_event") ->
             let session_id =
               match List.assoc_opt "session_id" fields with
@@ -2129,6 +2215,37 @@ module Client = struct
         Error
           (format "Error %d: %s" (Jsonrpc.error_code_to_int e.code) e.message)
 
+  (** Find an executable by binary name *)
+  let find_executable t name =
+    match
+      Jsonrpc.Client.call t.client ~method_:method_find_executable
+        ~params:(Jsonrpc.Named [ ("name", Json.String name) ]) ()
+    with
+    | Ok (TuskProtocol.FoundExecutable { package; binary }) ->
+        Ok (Some (package, binary))
+    | Ok TuskProtocol.ExecutableNotFound -> Ok None
+    | Ok _ -> Error "Invalid findExecutable response"
+    | Error e ->
+        Error
+          (format "Error %d: %s" (Jsonrpc.error_code_to_int e.code) e.message)
+
+  (** Find an artifact path *)
+  let find_artifact t ~package ~kind ~name =
+    match
+      Jsonrpc.Client.call t.client ~method_:method_find_artifact
+        ~params:
+          (Jsonrpc.Named
+             [ ("package", Json.String package);
+               ("kind", Json.String kind);
+               ("name", Json.String name) ]) ()
+    with
+    | Ok (TuskProtocol.FoundArtifact { path }) -> Ok path
+    | Ok (TuskProtocol.ArtifactNotFound { error }) -> Error error
+    | Ok _ -> Error "Invalid findArtifact response"
+    | Error e ->
+        Error
+          (format "Error %d: %s" (Jsonrpc.error_code_to_int e.code) e.message)
+
   (** Restart the server *)
   let restart t =
     match
@@ -2447,6 +2564,38 @@ module Server = struct
     (* For now, just reply with success *)
     reply TuskProtocol.RestartAck
 
+  let handle_find_executable ctx reply name =
+    send ctx.server_pid
+      (Tusk_protocol.ServerRequest
+         (Tusk_protocol.FindExecutable { client_pid = self (); name }));
+    let selector = function
+      | Tusk_protocol.ServerResponse Tusk_protocol.ExecutableFound { package; binary } ->
+          `select (`found (package, binary))
+      | Tusk_protocol.ServerResponse Tusk_protocol.ExecutableNotFound ->
+          `select `not_found
+      | _ -> `skip
+    in
+    match receive ~selector () with
+    | `found (package, binary) ->
+        reply (TuskProtocol.FoundExecutable { package; binary })
+    | `not_found -> reply TuskProtocol.ExecutableNotFound
+
+  let handle_find_artifact ctx reply package kind name =
+    send ctx.server_pid
+      (Tusk_protocol.ServerRequest
+         (Tusk_protocol.FindArtifact
+            { client_pid = self (); package; kind; name }));
+    let selector = function
+      | Tusk_protocol.ServerResponse (Tusk_protocol.ArtifactFound { path }) ->
+          `select (`found path)
+      | Tusk_protocol.ServerResponse (Tusk_protocol.ArtifactNotFound { error }) ->
+          `select (`err error)
+      | _ -> `skip
+    in
+    match receive ~selector () with
+    | `found path -> reply (TuskProtocol.FoundArtifact { path = Std.Path.to_string path })
+    | `err error -> reply (TuskProtocol.ArtifactNotFound { error })
+
   let handle_format_file ctx reply file_path check_only =
     (* Send format request to the actual tusk server *)
     match Std.Path.of_string file_path with
@@ -2624,6 +2773,24 @@ module Server = struct
                 match request with
                 | TuskProtocol.GetBuildGraph ->
                     handle_build_graph ctx reply request
+                | _ -> ());
+          };
+          {
+            method_ = method_find_executable;
+            fn =
+              (fun reply request ->
+                match request with
+                | TuskProtocol.FindExecutable name ->
+                    handle_find_executable ctx reply name
+                | _ -> ());
+          };
+          {
+            method_ = method_find_artifact;
+            fn =
+              (fun reply request ->
+                match request with
+                | TuskProtocol.FindArtifact { package; kind; name } ->
+                    handle_find_artifact ctx reply package kind name
                 | _ -> ());
           };
           {
