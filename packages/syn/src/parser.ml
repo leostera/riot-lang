@@ -1360,6 +1360,27 @@ and parse_let_expr parser =
 
   let _ = consume_trivia parser in
 
+  (* Check for function parameters before '=' *)
+  let params = ref [] in
+  while (not (at parser Token.Eq)) && peek parser <> None do
+    (* Check for labeled/optional parameter *)
+    match peek_kind parser with
+    | Some Token.Tilde | Some Token.Question -> (
+        match parse_labeled_or_optional_param parser with
+        | Some param ->
+            params := Ceibo.Green.Node param :: !params;
+            let _ = consume_trivia parser in
+            ()
+        | None -> ())
+    | _ -> (
+        match parse_pattern parser with
+        | Some pat ->
+            params := Ceibo.Green.Node pat :: !params;
+            let _ = consume_trivia parser in
+            ()
+        | None -> ())
+  done;
+
   (* Expect '=' *)
   let eq = expect parser Token.Eq in
 
@@ -1406,6 +1427,27 @@ and parse_let_expr parser =
     in
     
     let _ = consume_trivia parser in
+    
+    (* Check for function parameters before '=' in 'and' binding *)
+    let and_params = ref [] in
+    while (not (at parser Token.Eq)) && peek parser <> None do
+      match peek_kind parser with
+      | Some Token.Tilde | Some Token.Question -> (
+          match parse_labeled_or_optional_param parser with
+          | Some param ->
+              and_params := Ceibo.Green.Node param :: !and_params;
+              let _ = consume_trivia parser in
+              ()
+          | None -> ())
+      | _ -> (
+          match parse_pattern parser with
+          | Some pat ->
+              and_params := Ceibo.Green.Node pat :: !and_params;
+              let _ = consume_trivia parser in
+              ()
+          | None -> ())
+    done;
+    
     let and_eq = expect parser Token.Eq in
     let _ = consume_trivia parser in
     
@@ -1426,7 +1468,11 @@ and parse_let_expr parser =
     in
     
     let _ = consume_trivia parser in
-    and_bindings := and_value :: and_eq :: and_pattern :: and_kw :: !and_bindings
+    
+    (* Build and_binding: and_kw, and_pattern, and_params..., and_eq, and_value *)
+    let and_params_rev = List.rev !and_params in
+    let binding_parts = and_kw :: and_pattern :: (and_params_rev @ [and_eq; and_value]) in
+    and_bindings := (List.rev binding_parts) @ !and_bindings
   done;
 
   (* Expect 'in' *)
@@ -1455,16 +1501,21 @@ and parse_let_expr parser =
   in
 
   let and_bindings_array = Array.of_list (List.rev !and_bindings) in
+  let params_array = Array.of_list (List.rev !params) in
   
   match rec_kw with
   | Some kw ->
-      let base = [| let_kw; kw; pattern; eq; value_expr |] in
-      let with_and = Array.append base and_bindings_array in
+      let base = [| let_kw; kw; pattern |] in
+      let with_params = Array.append base params_array in
+      let with_eq_value = Array.append with_params [| eq; value_expr |] in
+      let with_and = Array.append with_eq_value and_bindings_array in
       let with_in_body = Array.append with_and [| in_kw; body_expr |] in
       Some (make_node ~kind with_in_body)
   | None ->
-      let base = [| let_kw; pattern; eq; value_expr |] in
-      let with_and = Array.append base and_bindings_array in
+      let base = [| let_kw; pattern |] in
+      let with_params = Array.append base params_array in
+      let with_eq_value = Array.append with_params [| eq; value_expr |] in
+      let with_and = Array.append with_eq_value and_bindings_array in
       let with_in_body = Array.append with_and [| in_kw; body_expr |] in
       Some (make_node ~kind with_in_body)
 

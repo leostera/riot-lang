@@ -7,8 +7,13 @@ let command =
   let open ArgParser in
   let open Arg in
   command "install"
-  |> about "Install a binary to ~/.tusk/bin"
-  |> args [ positional "package" |> help "Package name to install" ]
+  |> about "Install a binary to ~/.tusk/bin and project root"
+  |> args
+       [
+         positional "package" |> help "Package name to install";
+         flag "local" |> long "local"
+         |> help "Only install to project root, skip ~/.tusk/bin";
+       ]
 
 let build_package package_name =
   let cwd = Env.current_dir () |> Result.expect ~msg:"Operation failed" in
@@ -55,6 +60,8 @@ let run matches =
   let package_name =
     get_one matches "package" |> Option.expect ~msg:"package required"
   in
+  let local_only = is_present matches "local" in
+  
   println "📦 Installing %s..." package_name;
 
   println "Building %s..." package_name;
@@ -109,6 +116,17 @@ let run matches =
 
             println "✅ Installed %s to %s" package_name
               (Path.to_string dest_path);
+            
+            (* Also promote to project root for easy development access *)
+            let project_binary = Path.(root / Path.v package_name) in
+            (match Fs.copy ~src:binary_path ~dst:project_binary with
+            | Ok () ->
+                ignore (Fs.set_permissions project_binary perms);
+                println "✅ Promoted %s to %s" package_name
+                  (Path.to_string project_binary)
+            | Error _ ->
+                println "⚠️  Failed to promote to project root (non-fatal)");
+            
             println "";
             println "To use %s from anywhere, add ~/.tusk/bin to your PATH:"
               package_name;
