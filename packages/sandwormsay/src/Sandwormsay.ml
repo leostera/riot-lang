@@ -1,3 +1,3 @@
-(** Main entry point for sandwormsay *)
+open Std
 
-let () = print_endline "Hello from sandwormsay"
+let () = println "Hello, World!"

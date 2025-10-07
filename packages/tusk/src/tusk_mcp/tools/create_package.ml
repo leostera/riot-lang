@@ -10,6 +10,8 @@ WHEN TO USE THIS TOOL:
 - When organizing code into separate compilation units
 - When creating a new library or executable package
 
+Remember to always add the package to the top-level tusk.toml [member]s key after its created.
+
 INSTEAD OF:
 - DO NOT manually create directories and files
 - DO NOT manually edit tusk.toml to add packages
@@ -44,8 +46,7 @@ This tool will:
 1. Create ./packages/<name>/ directory
 2. Create src/ subdirectory with basic module structure
 3. Create tusk.toml with proper configuration
-4. Register the package in workspace tusk.toml
-5. Set up dependencies as specified
+4. Set up dependencies as specified
 |}
 
 let tool =

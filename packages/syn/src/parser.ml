@@ -90,8 +90,8 @@ let token_kind_to_syntax_kind = function
   | Token.Ident _ -> Syntax_kind.IDENT_EXPR
   | Token.Plus | Token.Minus | Token.Star | Token.Slash | Token.Percent
   | Token.Eq | Token.Ne | Token.Lt | Token.Gt | Token.LtEq | Token.GtEq
-  | Token.And | Token.Or | Token.ColonColon
-  | Token.Caret | Token.At | Token.ColonEq
+  | Token.And | Token.Or | Token.ColonColon | Token.Caret | Token.At
+  | Token.ColonEq | Token.LeftArrow
   | Token.Keyword Keyword.Mod ->
       Syntax_kind.INFIX_EXPR
   | Token.Bang -> Syntax_kind.PREFIX_EXPR
@@ -229,8 +229,8 @@ let is_constructor_ident name =
 let is_infix_op = function
   | Token.Plus | Token.Minus | Token.Star | Token.Slash | Token.Percent
   | Token.Eq | Token.Ne | Token.Lt | Token.Gt | Token.LtEq | Token.GtEq
-  | Token.And | Token.Or | Token.ColonColon
-  | Token.Caret | Token.At | Token.ColonEq
+  | Token.And | Token.Or | Token.ColonColon | Token.Caret | Token.At
+  | Token.ColonEq | Token.LeftArrow
   | Token.Keyword Keyword.Mod ->
       true
   | _ -> false
@@ -238,7 +238,9 @@ let is_infix_op = function
 let get_precedence = function
   | Token.Or -> 1
   | Token.And -> 2
-  | Token.ColonEq | Token.Eq | Token.Ne | Token.Lt | Token.Gt | Token.LtEq | Token.GtEq -> 3
+  | Token.LeftArrow | Token.ColonEq | Token.Eq | Token.Ne | Token.Lt | Token.Gt
+  | Token.LtEq | Token.GtEq ->
+      3
   | Token.ColonColon -> 4
   | Token.Caret | Token.At | Token.Plus | Token.Minus -> 5
   | Token.Star | Token.Slash | Token.Percent | Token.Keyword Keyword.Mod -> 6
@@ -256,14 +258,71 @@ and parse_expr_bp parser min_bp =
         let _ = consume_trivia parser in
         match peek_kind parser with
         | Some Token.Dot -> (
-            (* Field access - highest precedence (9) *)
-            let field_prec = 9 in
-            if field_prec < min_bp then Some lhs
+            (* Field/array/string access - highest precedence (9) *)
+            let access_prec = 9 in
+            if access_prec < min_bp then Some lhs
             else
               let dot = consume parser in
               let _ = consume_trivia parser in
               match peek_kind parser with
+              | Some (Token.OpenDelim Token.Paren) -> (
+                  (* Array indexing: arr.(i) *)
+                  let open_paren = consume parser in
+                  let _ = consume_trivia parser in
+                  match parse_expr parser with
+                  | Some index ->
+                      let _ = consume_trivia parser in
+                      let close_paren =
+                        expect parser (Token.CloseDelim Token.Paren)
+                      in
+                      let trivia = take_pending_trivia parser in
+                      let children =
+                        [|
+                          Ceibo.Green.Node lhs;
+                          dot;
+                          open_paren;
+                          Ceibo.Green.Node index;
+                          close_paren;
+                        |]
+                      in
+                      let children =
+                        Array.append (Array.of_list trivia) children
+                      in
+                      let access =
+                        make_node ~kind:Syntax_kind.ARRAY_INDEX_EXPR children
+                      in
+                      loop access
+                  | None -> Some lhs)
+              | Some (Token.OpenDelim Token.Bracket) -> (
+                  (* String indexing: s.[i] *)
+                  let open_bracket = consume parser in
+                  let _ = consume_trivia parser in
+                  match parse_expr parser with
+                  | Some index ->
+                      let _ = consume_trivia parser in
+                      let close_bracket =
+                        expect parser (Token.CloseDelim Token.Bracket)
+                      in
+                      let trivia = take_pending_trivia parser in
+                      let children =
+                        [|
+                          Ceibo.Green.Node lhs;
+                          dot;
+                          open_bracket;
+                          Ceibo.Green.Node index;
+                          close_bracket;
+                        |]
+                      in
+                      let children =
+                        Array.append (Array.of_list trivia) children
+                      in
+                      let access =
+                        make_node ~kind:Syntax_kind.STRING_INDEX_EXPR children
+                      in
+                      loop access
+                  | None -> Some lhs)
               | Some (Token.Ident _) ->
+                  (* Field access: record.field *)
                   let field = consume parser in
                   let trivia = take_pending_trivia parser in
                   let children = [| Ceibo.Green.Node lhs; dot; field |] in
@@ -486,8 +545,10 @@ and parse_list_expr parser =
   let open_bracket = consume parser in
   let _ = consume_trivia parser in
 
-  (* Check for empty list [] *)
-  if at parser (Token.CloseDelim Token.Bracket) then
+  (* Check if this is an array [| ... |] or [||] instead of a list *)
+  if at parser Token.Pipe || at parser Token.Or then parse_array_expr parser open_bracket
+    (* Check for empty list [] *)
+  else if at parser (Token.CloseDelim Token.Bracket) then
     let close_bracket = consume parser in
     let children =
       prepend_pending_trivia parser [| open_bracket; close_bracket |]
@@ -679,6 +740,72 @@ and parse_record_field parser =
         let children = [| field_name |] in
         Some (make_node ~kind:Syntax_kind.RECORD_FIELD children)
   | _ -> None
+
+and parse_array_expr parser open_bracket =
+  (* We've already consumed '[' and we're at '|' or '||' *)
+  (* Handle [||] - the lexer treats || as Or token *)
+  if at parser Token.Or then
+    let or_token = consume parser in
+    let _ = consume_trivia parser in
+    let close_bracket = expect parser (Token.CloseDelim Token.Bracket) in
+    let children =
+      prepend_pending_trivia parser
+        [| open_bracket; or_token; close_bracket |]
+    in
+    Some (make_node ~kind:Syntax_kind.ARRAY_EXPR children)
+  else
+    (* Normal case: [| ... |] with '|' tokens *)
+    let open_pipe = consume parser in
+    let _ = consume_trivia parser in
+
+    (* Check for empty array [||] - if second | was separate *)
+    if at parser Token.Pipe then
+    let close_pipe = consume parser in
+    let _ = consume_trivia parser in
+    let close_bracket = expect parser (Token.CloseDelim Token.Bracket) in
+    let children =
+      prepend_pending_trivia parser
+        [| open_bracket; open_pipe; close_pipe; close_bracket |]
+    in
+    Some (make_node ~kind:Syntax_kind.ARRAY_EXPR children)
+  else
+    match parse_expr parser with
+    | Some first_expr ->
+        let _ = consume_trivia parser in
+        (* Array elements are separated by semicolons *)
+        let elements = ref [ Ceibo.Green.Node first_expr ] in
+
+        while at parser Token.Semi do
+          let semi = consume parser in
+          let _ = consume_trivia parser in
+          elements := semi :: !elements;
+
+          (* Allow trailing semicolon *)
+          if not (at parser Token.Pipe) then
+            match parse_expr parser with
+            | Some expr ->
+                elements := Ceibo.Green.Node expr :: !elements;
+                let _ = consume_trivia parser in
+                ()
+            | None -> ()
+        done;
+
+        let close_pipe = expect parser Token.Pipe in
+        let close_bracket = expect parser (Token.CloseDelim Token.Bracket) in
+        let children =
+          Array.of_list (List.rev (close_bracket :: close_pipe :: !elements))
+        in
+        let children = Array.append [| open_bracket; open_pipe |] children in
+        let children = prepend_pending_trivia parser children in
+        Some (make_node ~kind:Syntax_kind.ARRAY_EXPR children)
+    | None ->
+        let close_pipe = expect parser Token.Pipe in
+        let close_bracket = expect parser (Token.CloseDelim Token.Bracket) in
+        let children =
+          prepend_pending_trivia parser
+            [| open_bracket; open_pipe; close_pipe; close_bracket |]
+        in
+        Some (make_node ~kind:Syntax_kind.ARRAY_EXPR children)
 
 and parse_let_expr parser =
   let let_kw = consume parser in

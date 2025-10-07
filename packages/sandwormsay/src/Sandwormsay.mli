@@ -1,1 +1,0 @@
-(** Sandwormsay executable interface *)

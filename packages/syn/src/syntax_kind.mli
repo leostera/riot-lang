@@ -68,6 +68,8 @@ type t =
   | RECORD_EXPR  (** Record: `{ x = 1; y = 2 }` *)
   | RECORD_UPDATE_EXPR  (** Record update: `{ r with x = 3 }` *)
   | FIELD_ACCESS_EXPR  (** Field access: `r.field` *)
+  | ARRAY_INDEX_EXPR  (** Array indexing: `arr.(i)` *)
+  | STRING_INDEX_EXPR  (** String indexing: `s.[i]` *)
   | CONSTRUCTOR_EXPR
       (** Constructor application: `Some 42`, `Node (l, x, r)` *)
   | ASSERT_EXPR  (** Assertion: `assert condition` *)

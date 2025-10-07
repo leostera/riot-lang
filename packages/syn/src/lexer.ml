@@ -329,7 +329,10 @@ let next cursor =
         | Some '-' ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.Arrow; span = Ceibo.Span.make ~start ~end_ }
+            {
+              Token.kind = Token.LeftArrow;
+              span = Ceibo.Span.make ~start ~end_;
+            }
         | Some '>' ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in

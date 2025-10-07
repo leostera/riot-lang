@@ -81,6 +81,7 @@ type token_kind =
   | Comma  (** `,` *)
   | Dot  (** `.` *)
   | Arrow  (** `->` *)
+  | LeftArrow  (** `<-` *)
   | FatArrow  (** `=>` *)
   | ColonColon  (** `::` *)
   | ColonEq  (** `:=` *)

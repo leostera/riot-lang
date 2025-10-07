@@ -46,6 +46,7 @@ type token_kind =
   | Comma
   | Dot
   | Arrow
+  | LeftArrow
   | FatArrow
   | ColonColon
   | ColonEq
@@ -112,6 +113,7 @@ let show_kind = function
   | Comma -> "','"
   | Dot -> "'.'"
   | Arrow -> "'->'"
+  | LeftArrow -> "'<-'"
   | FatArrow -> "'=>'"
   | ColonColon -> "'::'"
   | ColonEq -> "':='"

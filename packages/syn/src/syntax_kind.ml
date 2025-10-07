@@ -39,6 +39,8 @@ type t =
   | RECORD_EXPR (* { field1 = e1; field2 = e2 } *)
   | RECORD_UPDATE_EXPR (* { record with field = e } *)
   | FIELD_ACCESS_EXPR (* record.field *)
+  | ARRAY_INDEX_EXPR (* arr.(i) *)
+  | STRING_INDEX_EXPR (* s.[i] *)
   | CONSTRUCTOR_EXPR (* Some e, Ok value *)
   | ASSERT_EXPR (* assert e *)
   | LAZY_EXPR (* lazy e *)
@@ -124,6 +126,8 @@ let to_string = function
   | RECORD_EXPR -> "RECORD_EXPR"
   | RECORD_UPDATE_EXPR -> "RECORD_UPDATE_EXPR"
   | FIELD_ACCESS_EXPR -> "FIELD_ACCESS_EXPR"
+  | ARRAY_INDEX_EXPR -> "ARRAY_INDEX_EXPR"
+  | STRING_INDEX_EXPR -> "STRING_INDEX_EXPR"
   | CONSTRUCTOR_EXPR -> "CONSTRUCTOR_EXPR"
   | ASSERT_EXPR -> "ASSERT_EXPR"
   | LAZY_EXPR -> "LAZY_EXPR"

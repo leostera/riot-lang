@@ -72,7 +72,8 @@ let execute (client : Server.Tusk_jsonrpc.Client.t) (req : request) : response =
   Log.debug "[FORMAT_CODE TOOL] execute() called";
 
   let result =
-    Server.Tusk_jsonrpc.Client.format_code client ~code:req.code ~file_path:req.file_path
+    Server.Tusk_jsonrpc.Client.format_code client ~code:req.code
+      ~file_path:req.file_path
   in
 
   match result with
