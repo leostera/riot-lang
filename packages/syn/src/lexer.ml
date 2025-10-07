@@ -313,7 +313,10 @@ let next cursor =
         | Some '>' ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.PercentGt; span = Ceibo.Span.make ~start ~end_ }
+            {
+              Token.kind = Token.PercentGt;
+              span = Ceibo.Span.make ~start ~end_;
+            }
         | _ ->
             let end_ = Cursor.position cursor in
             { Token.kind = Token.Percent; span = Ceibo.Span.make ~start ~end_ })
@@ -356,7 +359,10 @@ let next cursor =
         | Some '%' ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.LtPercent; span = Ceibo.Span.make ~start ~end_ }
+            {
+              Token.kind = Token.LtPercent;
+              span = Ceibo.Span.make ~start ~end_;
+            }
         | _ ->
             let end_ = Cursor.position cursor in
             { Token.kind = Token.Lt; span = Ceibo.Span.make ~start ~end_ })

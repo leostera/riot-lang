@@ -29,4 +29,5 @@ val scan : Path.t -> (t, Error.t) result
     loads it *)
 
 val project_id : t -> string
-(** Get a unique project identifier for the workspace by replacing / with - in the root path *)
+(** Get a unique project identifier for the workspace by replacing / with - in
+    the root path *)

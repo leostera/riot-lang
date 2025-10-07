@@ -102,11 +102,11 @@ module Daemon = struct
         let stderr_log = Path.(daemon_path / Path.v "stderr.log") in
 
         let stdout_file =
-          Fs.File.open_write stdout_log
+          Fs.File.open_append stdout_log
           |> Result.expect ~msg:"Failed to open stdout.log"
         in
         let stderr_file =
-          Fs.File.open_write stderr_log
+          Fs.File.open_append stderr_log
           |> Result.expect ~msg:"Failed to open stderr.log"
         in
 

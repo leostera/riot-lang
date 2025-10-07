@@ -1,6 +1,7 @@
 open Std
 
-let sandworm = {|
+let sandworm =
+  {|
      ____________________
     /                    \
    |  %s
@@ -49,7 +50,8 @@ let sandworm = {|
 |}
 
 let print_message msg =
-  let formatted = String.split_on_char '\n' msg
+  let formatted =
+    String.split_on_char '\n' msg
     |> List.map (fun line ->
         let padded = line ^ String.make (max 0 (50 - String.length line)) ' ' in
         String.sub padded 0 (min 50 (String.length padded)))
@@ -62,7 +64,6 @@ let () =
   let message =
     if List.length args = 0 then
       "Bless the Maker and His water.\nBless the coming and going of Him."
-    else
-      String.concat " " args
+    else String.concat " " args
   in
   print_message message
