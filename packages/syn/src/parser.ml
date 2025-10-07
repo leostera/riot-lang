@@ -1064,6 +1064,25 @@ and parse_match_case parser =
     else Ceibo.Green.Node first_pattern
   in
 
+  (* Check for cons pattern (::) *)
+  let _ = consume_trivia parser in
+  let pattern =
+    match pattern with
+    | Ceibo.Green.Node base_pattern ->
+        if at parser Token.ColonColon then
+          let cons_op = consume parser in
+          let _ = consume_trivia parser in
+          
+          match parse_pattern parser with
+          | Some tail_pat ->
+              Ceibo.Green.Node
+                (make_node ~kind:Syntax_kind.CONS_PATTERN
+                   [| Ceibo.Green.Node base_pattern; cons_op; Ceibo.Green.Node tail_pat |])
+          | None -> Ceibo.Green.Node base_pattern
+        else Ceibo.Green.Node base_pattern
+    | other -> other
+  in
+
   let guard =
     if at parser (Token.Keyword Keyword.When) then
       let when_kw = consume parser in
