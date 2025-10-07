@@ -91,6 +91,7 @@ let token_kind_to_syntax_kind = function
   | Token.Plus | Token.Minus | Token.Star | Token.Slash | Token.Percent
   | Token.Eq | Token.Ne | Token.Lt | Token.Gt | Token.LtEq | Token.GtEq
   | Token.And | Token.Or | Token.ColonColon
+  | Token.Caret | Token.At | Token.ColonEq
   | Token.Keyword Keyword.Mod ->
       Syntax_kind.INFIX_EXPR
   | Token.Bang -> Syntax_kind.PREFIX_EXPR
@@ -229,6 +230,7 @@ let is_infix_op = function
   | Token.Plus | Token.Minus | Token.Star | Token.Slash | Token.Percent
   | Token.Eq | Token.Ne | Token.Lt | Token.Gt | Token.LtEq | Token.GtEq
   | Token.And | Token.Or | Token.ColonColon
+  | Token.Caret | Token.At | Token.ColonEq
   | Token.Keyword Keyword.Mod ->
       true
   | _ -> false
@@ -236,9 +238,9 @@ let is_infix_op = function
 let get_precedence = function
   | Token.Or -> 1
   | Token.And -> 2
-  | Token.Eq | Token.Ne | Token.Lt | Token.Gt | Token.LtEq | Token.GtEq -> 3
+  | Token.ColonEq | Token.Eq | Token.Ne | Token.Lt | Token.Gt | Token.LtEq | Token.GtEq -> 3
   | Token.ColonColon -> 4
-  | Token.Plus | Token.Minus -> 5
+  | Token.Caret | Token.At | Token.Plus | Token.Minus -> 5
   | Token.Star | Token.Slash | Token.Percent | Token.Keyword Keyword.Mod -> 6
   | _ -> 0
 
