@@ -363,9 +363,11 @@ and parse_paren_expr parser =
     match parse_expr parser with
     | Some expr ->
         let _ = consume_trivia parser in
-        (* Check if it's a tuple (has comma) or just parenthesized expr *)
+        (* Check if it's a tuple (has comma), sequence (has semicolon), or just parenthesized expr *)
         if at parser Token.Comma then
           parse_tuple_rest parser open_paren expr
+        else if at parser Token.Semi then
+          parse_sequence_rest parser open_paren expr
         else begin
           let close_paren = expect parser (Token.CloseDelim Token.Paren) in
           let children = prepend_pending_trivia parser [| open_paren; Ceibo.Green.Node expr; close_paren |] in
@@ -399,6 +401,28 @@ and parse_tuple_rest parser open_paren first_expr =
   let children = Array.append [| open_paren |] children in
   let children = prepend_pending_trivia parser children in
   Some (make_node ~kind:Syntax_kind.TUPLE_EXPR children)
+
+and parse_sequence_rest parser open_paren first_expr =
+  let elements = ref [Ceibo.Green.Node first_expr] in
+  
+  while at parser Token.Semi do
+    let semi = consume parser in
+    let _ = consume_trivia parser in
+    elements := semi :: !elements;
+    
+    (match parse_expr parser with
+    | Some expr ->
+        elements := Ceibo.Green.Node expr :: !elements;
+        let _ = consume_trivia parser in
+        ()
+    | None -> ())
+  done;
+  
+  let close_paren = expect parser (Token.CloseDelim Token.Paren) in
+  let children = Array.of_list (List.rev (close_paren :: !elements)) in
+  let children = Array.append [| open_paren |] children in
+  let children = prepend_pending_trivia parser children in
+  Some (make_node ~kind:Syntax_kind.SEQUENCE_EXPR children)
 
 and parse_list_expr parser =
   let open_bracket = consume parser in
