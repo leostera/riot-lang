@@ -71,7 +71,8 @@ let token_kind_to_syntax_kind = function
   | Token.Keyword Keyword.Let -> Syntax_kind.LET_BINDING
   | Token.Keyword Keyword.Rec -> Syntax_kind.LET_REC_EXPR
   | Token.Keyword Keyword.In -> Syntax_kind.LET_EXPR
-  | Token.Keyword Keyword.And -> Syntax_kind.LET_EXPR (* 'and' in let bindings *)
+  | Token.Keyword Keyword.And ->
+      Syntax_kind.LET_EXPR (* 'and' in let bindings *)
   | Token.Keyword Keyword.If -> Syntax_kind.IF_EXPR
   | Token.Keyword Keyword.Then | Token.Keyword Keyword.Else ->
       Syntax_kind.IF_EXPR
@@ -1409,7 +1410,7 @@ and parse_let_expr parser =
   while at parser (Token.Keyword Keyword.And) do
     let and_kw = consume parser in
     let _ = consume_trivia parser in
-    
+
     (* Parse pattern *)
     let and_pattern =
       match peek_kind parser with
@@ -1425,9 +1426,9 @@ and parse_let_expr parser =
           Ceibo.Green.Token
             (Ceibo.Green.make_token ~kind:Syntax_kind.MISSING ~text:"" ~width:0)
     in
-    
+
     let _ = consume_trivia parser in
-    
+
     (* Check for function parameters before '=' in 'and' binding *)
     let and_params = ref [] in
     while (not (at parser Token.Eq)) && peek parser <> None do
@@ -1447,10 +1448,10 @@ and parse_let_expr parser =
               ()
           | None -> ())
     done;
-    
+
     let and_eq = expect parser Token.Eq in
     let _ = consume_trivia parser in
-    
+
     (* Parse value *)
     let and_value =
       match parse_expr parser with
@@ -1466,13 +1467,15 @@ and parse_let_expr parser =
           Ceibo.Green.Token
             (Ceibo.Green.make_token ~kind:Syntax_kind.MISSING ~text:"" ~width:0)
     in
-    
+
     let _ = consume_trivia parser in
-    
+
     (* Build and_binding: and_kw, and_pattern, and_params..., and_eq, and_value *)
     let and_params_rev = List.rev !and_params in
-    let binding_parts = and_kw :: and_pattern :: (and_params_rev @ [and_eq; and_value]) in
-    and_bindings := (List.rev binding_parts) @ !and_bindings
+    let binding_parts =
+      and_kw :: and_pattern :: (and_params_rev @ [ and_eq; and_value ])
+    in
+    and_bindings := List.rev binding_parts @ !and_bindings
   done;
 
   (* Expect 'in' *)
@@ -1502,7 +1505,7 @@ and parse_let_expr parser =
 
   let and_bindings_array = Array.of_list (List.rev !and_bindings) in
   let params_array = Array.of_list (List.rev !params) in
-  
+
   match rec_kw with
   | Some kw ->
       let base = [| let_kw; kw; pattern |] in
@@ -1807,6 +1810,8 @@ and parse_pattern parser =
       | None -> None)
   (* Parenthesized pattern or tuple *)
   | Some (Token.OpenDelim Token.Paren) -> parse_paren_pattern parser
+  (* Record pattern *)
+  | Some (Token.OpenDelim Token.Brace) -> parse_record_pattern parser
   (* Polymorphic variant pattern *)
   | Some Token.Backtick -> parse_poly_variant_pattern parser
   | _ -> None
@@ -1898,6 +1903,25 @@ and parse_paren_pattern parser =
       prepend_pending_trivia parser [| open_paren; close_paren |]
     in
     Some (make_node ~kind:Syntax_kind.PAREN_PATTERN children)
+  else if at parser (Token.Keyword Keyword.Lazy) then
+    (* Lazy pattern: (lazy pat) *)
+    let lazy_kw = consume parser in
+    let _ = consume_trivia parser in
+    match parse_pattern parser with
+    | Some pat ->
+        let _ = consume_trivia parser in
+        let close_paren = expect parser (Token.CloseDelim Token.Paren) in
+        let children =
+          prepend_pending_trivia parser
+            [| open_paren; lazy_kw; Ceibo.Green.Node pat; close_paren |]
+        in
+        Some (make_node ~kind:Syntax_kind.LAZY_PATTERN children)
+    | None ->
+        let close_paren = expect parser (Token.CloseDelim Token.Paren) in
+        let children =
+          prepend_pending_trivia parser [| open_paren; lazy_kw; close_paren |]
+        in
+        Some (make_node ~kind:Syntax_kind.LAZY_PATTERN children)
   else
     match parse_pattern parser with
     | Some first_pat ->
@@ -2070,6 +2094,54 @@ and parse_poly_variant_pattern parser =
           (* Missing or invalid tag *)
           let children = prepend_pending_trivia parser [| backtick |] in
           Some (make_node ~kind:Syntax_kind.POLY_VARIANT_PATTERN children))
+
+and parse_record_pattern parser =
+  let open_brace = consume parser in
+  let _ = consume_trivia parser in
+
+  (* Parse field patterns *)
+  let fields = ref [] in
+  
+  let rec loop () =
+    if at parser (Token.CloseDelim Token.Brace) then ()
+    else
+      match peek_kind parser with
+      | Some (Token.Ident _) ->
+          let field_name = consume parser in
+          let _ = consume_trivia parser in
+          
+          (* Check if there's a '=' for field = pattern or just field (punning) *)
+          if at parser Token.Eq then
+            let eq = consume parser in
+            let _ = consume_trivia parser in
+            match parse_pattern parser with
+            | Some pat ->
+                fields := Ceibo.Green.Node pat :: eq :: field_name :: !fields;
+                let _ = consume_trivia parser in
+                if at parser Token.Semi then (
+                  let semi = consume parser in
+                  fields := semi :: !fields;
+                  let _ = consume_trivia parser in
+                  loop ())
+            | None -> ()
+          else (
+            (* Punning: { x } is shorthand for { x = x } *)
+            fields := field_name :: !fields;
+            let _ = consume_trivia parser in
+            if at parser Token.Semi then (
+              let semi = consume parser in
+              fields := semi :: !fields;
+              let _ = consume_trivia parser in
+              loop ()))
+      | _ -> ()
+  in
+  loop ();
+
+  let close_brace = expect parser (Token.CloseDelim Token.Brace) in
+  let children = Array.of_list (List.rev (close_brace :: !fields)) in
+  let children = Array.append [| open_brace |] children in
+  let children = prepend_pending_trivia parser children in
+  Some (make_node ~kind:Syntax_kind.RECORD_PATTERN children)
 
 and parse_match_case_body parser first_pattern =
   let _ = consume_trivia parser in
