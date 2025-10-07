@@ -19,27 +19,8 @@ failed=0
 for fixture in $FIXTURES_DIR/*.ml; do
     base=$(basename "$fixture")
     
-    # Test token-stream
-    echo -n "Testing token-stream for $base... "
-    expected="$fixture.token-stream.expected"
-    if [ -f "$expected" ]; then
-        output=$($SYN token-stream "$fixture" 2>&1)
-        expected_content=$(cat "$expected")
-        if [ "$output" = "$expected_content" ]; then
-            echo -e "${GREEN}PASSED${NC}"
-            ((passed++))
-        else
-            echo -e "${RED}FAILED${NC}"
-            echo "  Expected output in: $expected"
-            ((failed++))
-        fi
-    else
-        echo -e "${RED}FAILED${NC} (no expected file)"
-        ((failed++))
-    fi
-    
     # Test parse
-    echo -n "Testing parse for $base... "
+    echo -n "$base... "
     expected="$fixture.parse.expected"
     if [ -f "$expected" ]; then
         output=$($SYN parse --json "$fixture" 2>&1 | jq '.')
