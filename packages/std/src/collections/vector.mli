@@ -1,46 +1,39 @@
 (** # Collections.Vector - Dynamic arrays
-    
-    A contiguous growable array type with O(1) indexing and amortized O(1) push/pop.
-    Similar to Rust's `Vec`, C++'s `std::vector`, or Java's `ArrayList`.
-    
+
+    A contiguous growable array type with O(1) indexing and amortized O(1)
+    push/pop. Similar to Rust's `Vec`, C++'s `std::vector`, or Java's
+    `ArrayList`.
+
     ## Examples
-    
+
     Basic usage:
-    
-    ```ocaml
-    open Std.Collections
-    
-    let vec = Vector.create () in
-    Vector.push vec 1;
-    Vector.push vec 2;
+
+    ```ocaml open Std.Collections
+
+    let vec = Vector.create () in Vector.push vec 1; Vector.push vec 2;
     Vector.push vec 3;
-    
-    match Vector.pop vec with
-    | Some x -> Printf.printf "Popped: %d\n" x  (* 3 *)
+
+    match Vector.pop vec with | Some x -> Printf.printf "Popped: %d\n" x (* 3 *)
     | None -> ()
-    
-    (* Index access *)
-    match Vector.get vec 0 with
-    | Some x -> Printf.printf "First: %d\n" x
-    | None -> ()
-    ```
-    
+
+    (* Index access *) match Vector.get vec 0 with | Some x -> Printf.printf
+    "First: %d\n" x | None -> () ```
+
     ## When to Use Vector
-    
+
     - Need O(1) indexed access to elements
     - Frequently adding/removing from the end
     - Need a growable array
     - Want cache-friendly iteration
-    
+
     ## Performance Characteristics
-    
+
     - Push (end): O(1) amortized
     - Pop (end): O(1)
     - Insert (middle): O(n)
-    - Remove (middle): O(n)  
+    - Remove (middle): O(n)
     - Index access: O(1)
-    - Iteration: O(n) with good cache locality
-*)
+    - Iteration: O(n) with good cache locality *)
 
 type 'a t
 (** The type of vectors containing elements of type `'a` *)
@@ -49,43 +42,30 @@ type 'a t
 
 val create : unit -> 'a t
 (** Creates a new empty vector.
-    
+
     ## Examples
-    
-    ```ocaml
-    let vec = Vector.create () in
-    assert (Vector.is_empty vec)
-    ```
-*)
+
+    ```ocaml let vec = Vector.create () in assert (Vector.is_empty vec) ``` *)
 
 val with_capacity : int -> 'a t
 (** Creates a new empty vector with specified initial capacity.
-    
-    Pre-allocating capacity can improve performance when the size
-    is known in advance.
-    
+
+    Pre-allocating capacity can improve performance when the size is known in
+    advance.
+
     ## Examples
-    
-    ```ocaml
-    (* Pre-allocate for 1000 elements *)
-    let vec = Vector.with_capacity 1000 in
-    for i = 0 to 999 do
-      Vector.push vec i  (* No reallocation needed *)
-    done
-    ```
-*)
+
+    ```ocaml (* Pre-allocate for 1000 elements *) let vec = Vector.with_capacity
+    1000 in for i = 0 to 999 do Vector.push vec i (* No reallocation needed *)
+    done ``` *)
 
 val of_list : 'a list -> 'a t
 (** Creates a vector from a list of elements.
-    
+
     ## Examples
-    
-    ```ocaml
-    let vec = Vector.of_list [1; 2; 3; 4; 5] in
-    assert (Vector.len vec = 5);
-    assert (Vector.get vec 2 = Some 3)
-    ```
-*)
+
+    ```ocaml let vec = Vector.of_list [1; 2; 3; 4; 5] in assert (Vector.len vec
+    = 5); assert (Vector.get vec 2 = Some 3) ``` *)
 
 (** # Basic Operations *)
 

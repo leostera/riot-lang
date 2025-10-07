@@ -86,8 +86,8 @@ type t =
   | String of string
   | Array of t list
   | Object of (string * t) list
-(** JSON value representation. Supports all standard JSON types:
-    null, booleans, numbers (int/float), strings, arrays, and objects. *)
+      (** JSON value representation. Supports all standard JSON types: null,
+          booleans, numbers (int/float), strings, arrays, and objects. *)
 
 type error =
   | Unterminated_string of { position : int }
@@ -108,7 +108,7 @@ type error =
     }
   | Extra_input_after_value of { position : int }
   | Unknown_error of string
-(** JSON parsing errors with position information for debugging. *)
+      (** JSON parsing errors with position information for debugging. *)
 
 (** {1 Parsing and Serialization} *)
 
@@ -148,179 +148,130 @@ val to_string : t -> string
 
 val error_to_string : error -> string
 (** Converts a parse error to a human-readable error message.
-    
+
     ## Examples
-    
-    ```ocaml
-    match Json.of_string bad_input with
-    | Ok _ -> ()
-    | Error err ->
-        Log.error "JSON parse failed: %s" (Json.error_to_string err)
-    ```
-*)
+
+    ```ocaml match Json.of_string bad_input with | Ok _ -> () | Error err ->
+    Log.error "JSON parse failed: %s" (Json.error_to_string err) ``` *)
 
 (** {1 Constructors} *)
 
 val null : t
 (** Creates a JSON null value.
-    
+
     ## Examples
-    
-    ```ocaml
-    Json.null  (* Null *)
-    Json.to_string Json.null  (* "null" *)
-    ```
-*)
+
+    ```ocaml Json.null (* Null *) Json.to_string Json.null (* "null" *) ``` *)
 
 val bool : bool -> t
 (** Creates a JSON boolean value.
-    
+
     ## Examples
-    
-    ```ocaml
-    Json.bool true  (* Bool true *)
-    Json.bool false  (* Bool false *)
-    ```
+
+    ```ocaml Json.bool true (* Bool true *) Json.bool false (* Bool false *) ```
 *)
 
 val int : int -> t
 (** Creates a JSON integer value.
-    
+
     ## Examples
-    
-    ```ocaml
-    Json.int 42  (* Int 42 *)
-    Json.int (-100)  (* Int (-100) *)
-    ```
-*)
+
+    ```ocaml Json.int 42 (* Int 42 *) Json.int (-100) (* Int (-100) *) ``` *)
 
 val float : float -> t
 (** Creates a JSON floating-point value.
-    
+
     ## Examples
-    
-    ```ocaml
-    Json.float 3.14  (* Float 3.14 *)
-    Json.float (-0.5)  (* Float (-0.5) *)
-    ```
-*)
+
+    ```ocaml Json.float 3.14 (* Float 3.14 *) Json.float (-0.5) (* Float (-0.5)
+    *) ``` *)
 
 val string : string -> t
 (** Creates a JSON string value.
-    
+
     ## Examples
-    
-    ```ocaml
-    Json.string "hello"  (* String "hello" *)
-    Json.to_string (Json.string "test")  (* "\"test\"" *)
-    ```
-*)
+
+    ```ocaml Json.string "hello" (* String "hello" *) Json.to_string
+    (Json.string "test") (* "\"test\"" *) ``` *)
 
 val array : t list -> t
 (** Creates a JSON array from a list of values.
-    
+
     ## Examples
-    
-    ```ocaml
-    Json.array [Json.int 1; Json.int 2; Json.int 3]
-    (* Array [Int 1; Int 2; Int 3] *)
-    
-    Json.array []  (* Array [] *)
-    ```
-*)
+
+    ```ocaml Json.array [Json.int 1; Json.int 2; Json.int 3] (* Array
+    [Int 1; Int 2; Int 3] *)
+
+    Json.array [] (* Array [] *) ``` *)
 
 val obj : (string * t) list -> t
 (** Creates a JSON object from key-value pairs.
-    
+
     ## Examples
-    
-    ```ocaml
-    Json.obj [
-      ("name", Json.string "Alice");
-      ("age", Json.int 30);
-      ("active", Json.bool true)
-    ]
-    (* Object [("name", String "Alice"); ...] *)
-    
-    Json.obj []  (* Object [] - empty object *)
-    ```
-*)
+
+    ```ocaml Json.obj
+    [ ("name", Json.string "Alice"); ("age", Json.int 30); ("active", Json.bool
+     true) ] (* Object [("name", String "Alice"); ...] *)
+
+    Json.obj [] (* Object [] - empty object *) ``` *)
 
 (** {1 Extractors} *)
 
 val get_field : string -> t -> t option
-(** Extracts a field from a JSON object by key name. Returns [None] if
-    the value is not an object or the field doesn't exist.
-    
+(** Extracts a field from a JSON object by key name. Returns [None] if the value
+    is not an object or the field doesn't exist.
+
     ## Examples
-    
-    ```ocaml
-    let json = Json.obj [("x", Json.int 10); ("y", Json.int 20)] in
-    Json.get_field "x" json  (* Some (Int 10) *)
-    Json.get_field "z" json  (* None - field doesn't exist *)
-    
-    Json.get_field "x" (Json.int 5)  (* None - not an object *)
-    ```
-*)
+
+    ```ocaml let json = Json.obj [("x", Json.int 10); ("y", Json.int 20)] in
+    Json.get_field "x" json (* Some (Int 10) *) Json.get_field "z" json (* None
+    \- field doesn't exist *)
+
+    Json.get_field "x" (Json.int 5) (* None - not an object *) ``` *)
 
 val get_string : t -> string option
 (** Extracts a string value. Returns [None] if not a string.
-    
+
     ## Examples
-    
-    ```ocaml
-    Json.get_string (Json.string "hello")  (* Some "hello" *)
-    Json.get_string (Json.int 42)  (* None *)
-    Json.get_string Json.null  (* None *)
-    ```
-*)
+
+    ```ocaml Json.get_string (Json.string "hello") (* Some "hello" *)
+    Json.get_string (Json.int 42) (* None *) Json.get_string Json.null (* None
+    *) ``` *)
 
 val get_int : t -> int option
 (** Extracts an integer value. Returns [None] if not an integer.
-    
+
     ## Examples
-    
-    ```ocaml
-    Json.get_int (Json.int 42)  (* Some 42 *)
-    Json.get_int (Json.float 3.14)  (* None - is a float *)
-    Json.get_int (Json.string "42")  (* None - is a string *)
-    ```
-*)
+
+    ```ocaml Json.get_int (Json.int 42) (* Some 42 *) Json.get_int (Json.float
+    3.14) (* None - is a float *) Json.get_int (Json.string "42") (* None - is a
+    string *) ``` *)
 
 val get_bool : t -> bool option
 (** Extracts a boolean value. Returns [None] if not a boolean.
-    
+
     ## Examples
-    
-    ```ocaml
-    Json.get_bool (Json.bool true)  (* Some true *)
-    Json.get_bool (Json.int 1)  (* None - not a bool *)
-    ```
-*)
+
+    ```ocaml Json.get_bool (Json.bool true) (* Some true *) Json.get_bool
+    (Json.int 1) (* None - not a bool *) ``` *)
 
 val get_array : t -> t list option
 (** Extracts an array as a list of values. Returns [None] if not an array.
-    
+
     ## Examples
-    
-    ```ocaml
-    let json = Json.array [Json.int 1; Json.int 2] in
-    Json.get_array json  (* Some [Int 1; Int 2] *)
-    
-    Json.get_array (Json.string "test")  (* None *)
-    ```
-*)
+
+    ```ocaml let json = Json.array [Json.int 1; Json.int 2] in Json.get_array
+    json (* Some [Int 1; Int 2] *)
+
+    Json.get_array (Json.string "test") (* None *) ``` *)
 
 val get_object : t -> (string * t) list option
-(** Extracts an object as a list of key-value pairs. Returns [None] if
-    not an object.
-    
+(** Extracts an object as a list of key-value pairs. Returns [None] if not an
+    object.
+
     ## Examples
-    
-    ```ocaml
-    let json = Json.obj [("a", Json.int 1)] in
-    Json.get_object json  (* Some [("a", Int 1)] *)
-    
-    Json.get_object (Json.array [])  (* None *)
-    ```
-*)
+
+    ```ocaml let json = Json.obj [("a", Json.int 1)] in Json.get_object json (*
+    Some [("a", Int 1)] *)
+
+    Json.get_object (Json.array []) (* None *) ``` *)

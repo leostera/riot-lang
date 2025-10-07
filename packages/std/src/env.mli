@@ -1,146 +1,111 @@
 (** # Env - Environment and system information
-    
+
     This module provides access to environment variables, command-line
     arguments, and system directories.
-    
+
     ## Examples
-    
+
     Working with environment:
-    
-    ```ocaml
-    open Std
-    
-    (* Get command-line arguments *)
-    let files = List.tl Env.args in  (* Skip program name *)
-    
-    (* Read environment variables *)
-    let port = 
-      Env.var Int ~name:"PORT"
-      |> Option.unwrap_or ~default:8080 in
-    
-    (* Get system directories *)
-    let home = Env.home_dir () |> Option.expect ~msg:"No home dir" in
-    let cwd = Env.current_dir () |> Result.expect ~msg:"Cannot get cwd"
-    ```
-    
+
+    ```ocaml open Std
+
+    (* Get command-line arguments *) let files = List.tl Env.args in (* Skip
+    program name *)
+
+    (* Read environment variables *) let port = Env.var Int ~name:"PORT" |>
+    Option.unwrap_or ~default:8080 in
+
+    (* Get system directories *) let home = Env.home_dir () |> Option.expect
+    ~msg:"No home dir" in let cwd = Env.current_dir () |> Result.expect
+    ~msg:"Cannot get cwd" ```
+
     ## Type-safe Environment Variables
-    
+
     Unlike traditional string-based APIs, this module provides type-safe
-    environment variable access with automatic parsing.
-*)
+    environment variable access with automatic parsing. *)
 
 (** # Command Line *)
 
 val args : string list
 (** Command-line arguments passed to the program.
-    
-    The first element is typically the program name, followed by
-    user-provided arguments.
-    
+
+    The first element is typically the program name, followed by user-provided
+    arguments.
+
     ## Examples
-    
-    ```ocaml
-    (* Get all arguments *)
-    let all_args = Env.args in
-    
-    (* Skip program name *)
-    let user_args = match Env.args with
-      | [] -> []
-      | _::rest -> rest in
-    
-    (* Simple argument parsing *)
-    let verbose = List.mem "--verbose" Env.args in
-    let files = List.filter (fun s -> 
-      not (String.starts_with ~prefix:"-" s)
-    ) (List.tl Env.args)
-    ```
-*)
+
+    ```ocaml (* Get all arguments *) let all_args = Env.args in
+
+    (* Skip program name *) let user_args = match Env.args with | [] -> [] |
+    _::rest -> rest in
+
+    (* Simple argument parsing *) let verbose = List.mem "--verbose" Env.args in
+    let files = List.filter (fun s -> not (String.starts_with ~prefix:"-" s) )
+    (List.tl Env.args) ``` *)
 
 (** # Working Directory *)
 
 val current_dir : unit -> (Path.t, Path.error) Result.t
 (** Returns the current working directory.
-    
+
     ## Examples
-    
-    ```ocaml
-    match Env.current_dir () with
-    | Ok cwd ->
-        println "Working in: %s" (Path.to_string cwd)
-    | Error e ->
-        println "Cannot get cwd: %s" (show_error e)
-    
-    (* Build relative paths *)
-    let config_path =
-      Env.current_dir ()
-      |> Result.map (fun cwd -> cwd / Path.v "config.toml")
-      |> Result.expect ~msg:"Cannot determine config path"
-    ```
-*)
+
+    ```ocaml match Env.current_dir () with | Ok cwd -> println "Working in: %s"
+    (Path.to_string cwd) | Error e -> println "Cannot get cwd: %s" (show_error
+    e)
+
+    (* Build relative paths *) let config_path = Env.current_dir () |>
+    Result.map (fun cwd -> cwd / Path.v "config.toml") |> Result.expect
+    ~msg:"Cannot determine config path" ``` *)
 
 val set_current_dir : Path.t -> (unit, Path.error) Result.t
 (** Changes the current working directory.
-    
+
     ## Examples
-    
-    ```ocaml
-    (* Change to project directory *)
-    Env.set_current_dir (Path.v "/home/user/project")
-    |> Result.expect ~msg:"Cannot change directory";
-    
-    (* Temporary directory change *)
-    let with_dir path f =
-      let original = Env.current_dir () in
-      let _ = Env.set_current_dir path in
-      let result = f () in
-      let _ = match original with
-        | Ok dir -> Env.set_current_dir dir
-        | Error _ -> Ok () in
-      result
-    ```
-    
+
+    ```ocaml (* Change to project directory *) Env.set_current_dir (Path.v
+    "/home/user/project") |> Result.expect ~msg:"Cannot change directory";
+
+    (* Temporary directory change *) let with_dir path f = let original =
+    Env.current_dir () in let _ = Env.set_current_dir path in let result = f ()
+    in let _ = match original with | Ok dir -> Env.set_current_dir dir | Error _
+    -> Ok () in result ```
+
     ## Errors
-    
+
     Returns error if:
     - Directory doesn't exist
     - Permission denied
-    - Path is not a directory
-*)
+    - Path is not a directory *)
 
 val home_dir : unit -> Path.t option
 (** Returns the user's home directory.
-    
+
     ## Examples
-    
-    ```ocaml
-    (* Get home directory *)
-    let home = Env.home_dir () 
-      |> Option.expect ~msg:"Cannot determine home directory" in
-    
-    (* Build config paths *)
-    let config_dir =
-      Env.home_dir ()
-      |> Option.map (fun h -> h / Path.v ".config" / Path.v "myapp")
-      |> Option.unwrap_or ~default:(Path.v "/tmp/myapp")
-    ```
-    
+
+    ```ocaml (* Get home directory *) let home = Env.home_dir () |>
+    Option.expect ~msg:"Cannot determine home directory" in
+
+    (* Build config paths *) let config_dir = Env.home_dir () |> Option.map (fun
+    h -> h / Path.v ".config" / Path.v "myapp") |> Option.unwrap_or
+    ~default:(Path.v "/tmp/myapp") ```
+
     ## Platform Behavior
-    
+
     - Unix/Linux/macOS: Returns `$HOME`
     - Windows: Returns `%USERPROFILE%` or `%HOMEDRIVE%%HOMEPATH%`
-    
-    Returns [`None`] if the home directory cannot be determined.
-*)
+
+    Returns [`None`] if the home directory cannot be determined. *)
 
 (** # Environment Variables *)
 
+(** Type specifications for environment variable parsing *)
 type 't var_type =
   | String : string var_type  (** String values (no parsing) *)
-  | Int : int var_type        (** Integer values *)
-  | Float : float var_type    (** Floating point values *)
-  | Bool : bool var_type      (** Boolean values (true/false, 1/0, yes/no) *)
-  | Char : char var_type      (** Single character values *)
-(** Type specifications for environment variable parsing *)
+  | Int : int var_type  (** Integer values *)
+  | Float : float var_type  (** Floating point values *)
+  | Bool : bool var_type  (** Boolean values (true/false, 1/0, yes/no) *)
+  | Char : char var_type  (** Single character values *)
 
 val var : 't var_type -> name:string -> 't option
 (** Reads and parses a typed environment variable.
@@ -191,61 +156,41 @@ val var : 't var_type -> name:string -> 't option
 
 val set_var : name:string -> value:string -> 't option
 (** Sets an environment variable.
-    
+
     Returns the previous value if it existed.
-    
+
     ## Examples
-    
-    ```ocaml
-    (* Set variables *)
-    let _ = Env.set_var ~name:"DEBUG" ~value:"true" in
-    let _ = Env.set_var ~name:"PORT" ~value:"8080" in
-    
-    (* Save and restore *)
-    let old_path = Env.set_var ~name:"PATH" ~value:new_path in
-    (* ... do work ... *)
-    Option.iter (fun p -> 
-      Env.set_var ~name:"PATH" ~value:p |> ignore
-    ) old_path
-    ```
-*)
+
+    ```ocaml (* Set variables *) let _ = Env.set_var ~name:"DEBUG" ~value:"true"
+    in let _ = Env.set_var ~name:"PORT" ~value:"8080" in
+
+    (* Save and restore *) let old_path = Env.set_var ~name:"PATH"
+    ~value:new_path in (* ... do work ... *) Option.iter (fun p -> Env.set_var
+    ~name:"PATH" ~value:p |> ignore ) old_path ``` *)
 
 val vars : unit -> (string * string) list
 (** Returns all environment variables as key-value pairs.
-    
+
     ## Examples
-    
-    ```ocaml
-    (* List all variables *)
-    Env.vars ()
-    |> List.iter (fun (name, value) ->
-         Printf.printf "%s=%s\n" name value);
-    
-    (* Filter specific variables *)
-    let path_vars =
-      Env.vars ()
-      |> List.filter (fun (name, _) ->
-           String.contains name "PATH")
-    
-    (* Check for required variables *)
-    let check_required names =
-      let env_names = Env.vars () |> List.map fst in
-      List.filter (fun name ->
-        not (List.mem name env_names)
-      ) names
-    ```
-*)
+
+    ```ocaml (* List all variables *) Env.vars () |> List.iter (fun (name,
+    value) -> Printf.printf "%s=%s\n" name value);
+
+    (* Filter specific variables *) let path_vars = Env.vars () |> List.filter
+    (fun (name, _) -> String.contains name "PATH")
+
+    (* Check for required variables *) let check_required names = let env_names
+    = Env.vars () |> List.map fst in List.filter (fun name -> not (List.mem name
+    env_names) ) names ``` *)
 
 (** # Legacy Functions *)
 
 val getenv : string -> (string, [> `EnvVarNotFound of string ]) Result.t
 (** @deprecated Use [`var`] instead.
-    
-    Legacy function for backward compatibility.
-*)
+
+    Legacy function for backward compatibility. *)
 
 val putenv : string -> string -> (unit, 'a) Result.t
 (** @deprecated Use [`set_var`] instead.
-    
-    Legacy function for backward compatibility.
-*)
+
+    Legacy function for backward compatibility. *)

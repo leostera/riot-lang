@@ -1,88 +1,65 @@
 (** # WorkerPool - Controlled parallel execution
-    
-    A worker pool pattern where a fixed number of worker processes execute
-    tasks concurrently. This prevents resource exhaustion from spawning too
-    many processes at once.
-    
+
+    A worker pool pattern where a fixed number of worker processes execute tasks
+    concurrently. This prevents resource exhaustion from spawning too many
+    processes at once.
+
     ## Two Modes of Operation
-    
+
     ### 1. Simple Mode - Parallel Map
-    
+
     Use [SimpleWorkerPool.run] for straightforward parallel processing:
-    
-    ```ocaml
-    open Std
-    
-    (* Process files in parallel with 8 workers *)
-    let files = ["file1.txt"; "file2.txt"; "file3.txt"] in
-    let results = WorkerPool.SimpleWorkerPool.run
-      ~concurrency:8
-      ~tasks:files
-      ~fn:(fun file ->
-        let content = Fs.read (Path.v file) |> Result.unwrap in
-        String.length content
-      )
-      () in
-    
-    (* results: [(0, 100); (1, 250); (2, 180)] - ordered by task index *)
-    ```
-    
+
+    ```ocaml open Std
+
+    (* Process files in parallel with 8 workers *) let files =
+    ["file1.txt"; "file2.txt"; "file3.txt"] in let results =
+    WorkerPool.SimpleWorkerPool.run ~concurrency:8 ~tasks:files ~fn:(fun file ->
+    let content = Fs.read (Path.v file) |> Result.unwrap in String.length
+    content ) () in
+
+    (* results: [(0, 100); (1, 250); (2, 180)] - ordered by task index *) ```
+
     ### 2. Dynamic Mode - Manual Task Assignment
-    
-    Use [DynamicWorkerPool] when tasks are generated dynamically or depend
-    on previous results:
-    
-    ```ocaml
-    open Miniriot
-    
+
+    Use [DynamicWorkerPool] when tasks are generated dynamically or depend on
+    previous results:
+
+    ```ocaml open Miniriot
+
     type Message.t += TaskResult of string * int
-    
-    let pool = WorkerPool.DynamicWorkerPool.start
-      ~concurrency:8
-      ~owner:(self ())
-      ~worker_fn:(fun ~owner ~task ->
-        let result = expensive_computation task in
-        send owner (TaskResult (task, result))
-      )
-      () in
-    
-    (* Dynamically assign tasks as workers become ready *)
-    let rec dispatch_loop remaining_tasks =
-      match receive_any () with
-      | WorkerPool.DynamicWorkerPool.WorkerReady worker ->
-          (match remaining_tasks with
-          | task :: rest ->
-              WorkerPool.DynamicWorkerPool.send_task pool worker task;
-              dispatch_loop rest
-          | [] ->
-              Log.info "All tasks dispatched";
-              collect_results ())
-      | TaskResult (task, result) ->
-          Log.info "Task %s completed: %d" task result;
-          dispatch_loop remaining_tasks
-    in
-    dispatch_loop ["task1"; "task2"; "task3"]
-    ```
-    
+
+    let pool = WorkerPool.DynamicWorkerPool.start ~concurrency:8 ~owner:(self
+    ()) ~worker_fn:(fun ~owner ~task -> let result = expensive_computation task
+    in send owner (TaskResult (task, result)) ) () in
+
+    (* Dynamically assign tasks as workers become ready *) let rec dispatch_loop
+    remaining_tasks = match receive_any () with |
+    WorkerPool.DynamicWorkerPool.WorkerReady worker -> (match remaining_tasks
+    with | task :: rest -> WorkerPool.DynamicWorkerPool.send_task pool worker
+    task; dispatch_loop rest | [] -> Log.info "All tasks dispatched";
+    collect_results ()) | TaskResult (task, result) -> Log.info "Task %s
+    completed: %d" task result; dispatch_loop remaining_tasks in dispatch_loop
+    ["task1"; "task2"; "task3"] ```
+
     ## When to Use WorkerPool
-    
+
     - CPU-bound parallel tasks with controlled concurrency
     - Processing large collections in parallel
     - Preventing resource exhaustion from too many processes
     - Implementing map-reduce patterns
-    
+
     ## When to Use Alternatives
-    
+
     - **I/O-bound tasks**: Use [Task.async] for lightweight async I/O
     - **Single task**: Just use [spawn] directly
     - **Unbounded parallelism OK**: Use [Task.async] or spawn manually
-    
+
     ## Performance Characteristics
-    
+
     - Task distribution: O(1) per task
     - Overhead: Fixed pool of N workers, minimal scheduling overhead
-    - Memory: O(N) for N workers + task queue
-*)
+    - Memory: O(N) for N workers + task queue *)
 
 open Global
 open Miniriot
