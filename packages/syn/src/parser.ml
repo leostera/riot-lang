@@ -79,6 +79,7 @@ let token_kind_to_syntax_kind = function
   | Token.Semi -> Syntax_kind.SEQUENCE_EXPR
   | Token.Comma -> Syntax_kind.TUPLE_EXPR
   | Token.Dot -> Syntax_kind.IDENT_EXPR  (* . can be part of operator identifiers like -. *)
+  | Token.Underscore -> Syntax_kind.WILDCARD_PATTERN
   | Token.Ident _ -> Syntax_kind.IDENT_EXPR
   | Token.Plus | Token.Minus | Token.Star | Token.Slash | Token.Percent
   | Token.Eq | Token.Ne | Token.Lt | Token.Gt | Token.LtEq | Token.GtEq
