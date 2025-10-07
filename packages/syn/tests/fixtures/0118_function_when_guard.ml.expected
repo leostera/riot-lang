@@ -45,7 +45,7 @@
                 "children": [
                   {
                     "type": "token",
-                    "kind": "INFIX_EXPR",
+                    "kind": "MATCH_EXPR",
                     "text": "|",
                     "width": 1
                   },
@@ -116,7 +116,7 @@
                   },
                   {
                     "type": "token",
-                    "kind": "INFIX_EXPR",
+                    "kind": "FUN_EXPR",
                     "text": "->",
                     "width": 2
                   },
@@ -142,7 +142,7 @@
                 "children": [
                   {
                     "type": "token",
-                    "kind": "INFIX_EXPR",
+                    "kind": "MATCH_EXPR",
                     "text": "|",
                     "width": 1
                   },
@@ -153,7 +153,7 @@
                     "children": [
                       {
                         "type": "token",
-                        "kind": "ERROR",
+                        "kind": "WILDCARD_PATTERN",
                         "text": "_",
                         "width": 1
                       }
@@ -161,7 +161,7 @@
                   },
                   {
                     "type": "token",
-                    "kind": "INFIX_EXPR",
+                    "kind": "FUN_EXPR",
                     "text": "->",
                     "width": 2
                   },
