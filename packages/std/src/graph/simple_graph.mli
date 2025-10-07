@@ -1,46 +1,36 @@
 (** # SimpleGraph - Dependency graph with topological sorting
 
-    A simple directed graph implementation focused on dependency tracking
-    and topological sorting. Detects cycles.
+    A simple directed graph implementation focused on dependency tracking and
+    topological sorting. Detects cycles.
 
     ## Examples
 
-    ```ocaml
-    open Std
+    ```ocaml open Std
 
     let graph = Graph.SimpleGraph.make () in
 
-    (* Add nodes with values *)
-    let task_a = Graph.SimpleGraph.add_node graph "Build A" in
-    let task_b = Graph.SimpleGraph.add_node graph "Build B" in
-    let task_c = Graph.SimpleGraph.add_node graph "Build C" in
+    (* Add nodes with values *) let task_a = Graph.SimpleGraph.add_node graph
+    "Build A" in let task_b = Graph.SimpleGraph.add_node graph "Build B" in let
+    task_c = Graph.SimpleGraph.add_node graph "Build C" in
 
-    (* Define dependencies *)
-    Graph.SimpleGraph.add_edge task_c ~depends_on:task_b;
-    Graph.SimpleGraph.add_edge task_b ~depends_on:task_a;
+    (* Define dependencies *) Graph.SimpleGraph.add_edge task_c
+    ~depends_on:task_b; Graph.SimpleGraph.add_edge task_b ~depends_on:task_a;
 
-    (* Get execution order *)
-    let order = Graph.SimpleGraph.topo_sort graph in
+    (* Get execution order *) let order = Graph.SimpleGraph.topo_sort graph in
     (* [task_a; task_b; task_c] *)
 
-    (* Iterate over nodes *)
-    Graph.SimpleGraph.iter graph ~fn:(fun id node ->
-      Log.info "Node %s: %s" (Graph.SimpleGraph.Node_id.to_string id) node.value
-    )
+    (* Iterate over nodes *) Graph.SimpleGraph.iter graph ~fn:(fun id node ->
+    Log.info "Node %s: %s" (Graph.SimpleGraph.Node_id.to_string id) node.value )
     ```
 
     Cycle detection:
 
-    ```ocaml
-    let task_a = Graph.SimpleGraph.add_node graph "A" in
-    let task_b = Graph.SimpleGraph.add_node graph "B" in
-    Graph.SimpleGraph.add_edge task_a ~depends_on:task_b;
-    Graph.SimpleGraph.add_edge task_b ~depends_on:task_a;
+    ```ocaml let task_a = Graph.SimpleGraph.add_node graph "A" in let task_b =
+    Graph.SimpleGraph.add_node graph "B" in Graph.SimpleGraph.add_edge task_a
+    ~depends_on:task_b; Graph.SimpleGraph.add_edge task_b ~depends_on:task_a;
 
-    match Graph.SimpleGraph.topo_sort graph with
-    | sorted -> (* Won't reach here *)
-    | exception (Graph.SimpleGraph.Cycle ids) ->
-        Log.error "Cycle detected!"
+    match Graph.SimpleGraph.topo_sort graph with | sorted -> (* Won't reach here
+    *) | exception (Graph.SimpleGraph.Cycle ids) -> Log.error "Cycle detected!"
     ```
 
     ## Use Cases
@@ -48,8 +38,7 @@
     - Build system dependency resolution
     - Task scheduling with dependencies
     - Module dependency analysis
-    - Any DAG (Directed Acyclic Graph) operations
-*)
+    - Any DAG (Directed Acyclic Graph) operations *)
 
 module Node_id : sig
   type t

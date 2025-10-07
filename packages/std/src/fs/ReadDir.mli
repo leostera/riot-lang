@@ -5,23 +5,14 @@
 
     ## Examples
 
-    ```ocaml
-    open Std
+    ```ocaml open Std
 
-    (* Iterate through directory entries *)
-    let dir = Fs.ReadDir.create (Path.v "src")
-      |> Result.expect ~msg:"Failed to open directory" in
+    (* Iterate through directory entries *) let dir = Fs.ReadDir.create (Path.v
+    "src") |> Result.expect ~msg:"Failed to open directory" in
 
-    let rec process_entries () =
-      match Fs.ReadDir.next dir with
-      | Some path ->
-          Log.info "Found: %s" (Path.to_string path);
-          process_entries ()
-      | None ->
-          Fs.ReadDir.close dir |> ignore
-    in
-    process_entries ()
-    ```
+    let rec process_entries () = match Fs.ReadDir.next dir with | Some path ->
+    Log.info "Found: %s" (Path.to_string path); process_entries () | None ->
+    Fs.ReadDir.close dir |> ignore in process_entries () ```
 
     ## Notes
 
@@ -29,8 +20,7 @@
     - Returns absolute paths (relative to the opened directory)
     - Must call [close] to release resources
 
-    See [Fs.read_dir] for a simpler API that returns all entries at once.
-*)
+    See [Fs.read_dir] for a simpler API that returns all entries at once. *)
 
 open Common
 

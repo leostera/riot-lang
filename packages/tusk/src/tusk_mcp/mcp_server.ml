@@ -11,131 +11,31 @@ type ctx = { client : Tusk_jsonrpc.Client.t }
 
 module TuskMcp = struct
   type tool_request =
-    | Build of { package : string option }
-    | GetWorkspace
-    | GetGraph
-    | GetPackage of { name : string }
-    | FindExecutable of { name : string }
-    | FindArtifact of { package : string; name : string }
+    | Build of Tools.Build.request
+    | GetWorkspace of Tools.Describe_workspace.request
+    | GetGraph of Tools.Get_build_graph.request
+    | GetPackage of Tools.Describe_package.request
+    | FindExecutable of Tools.Find_executable.request
+    | FindArtifact of Tools.Find_artifact.request
+    | CreatePackage of Tools.Create_package.request
+    | CreateModule of Tools.Create_module.request
+    | FormatFile of Tools.Format_file.request
+    | FormatCode of Tools.Format_code.request
 
   type tool_response =
-    | BuildResult of { messages : string list }
-    | WorkspaceInfo of { json : string }
-    | GraphInfo of { json : string }
-    | PackageInfo of { json : string }
-    | ExecutableInfo of { json : string }
-    | ArtifactInfo of { json : string }
+    | BuildResult of Tools.Build.response
+    | WorkspaceResult of Tools.Describe_workspace.response
+    | GraphResult of Tools.Get_build_graph.response
+    | PackageResult of Tools.Describe_package.response
+    | FindExecutableResult of Tools.Find_executable.response
+    | FindArtifactResult of Tools.Find_artifact.response
+    | CreatePackageResult of Tools.Create_package.response
+    | CreateModuleResult of Tools.Create_module.response
+    | FormatFileResult of Tools.Format_file.response
+    | FormatCodeResult of Tools.Format_code.response
     | Error of { message : string }
 
-  let tools =
-    let open Mcp in
-    [
-      {
-        name = "tusk.build";
-        description = Some "Build packages in the workspace";
-        input_schema =
-          Json.Object
-            [
-              ("type", Json.String "object");
-              ( "properties",
-                Json.Object
-                  [
-                    ( "package",
-                      Json.Object
-                        [
-                          ("type", Json.String "string");
-                          ( "description",
-                            Json.String
-                              "Package name to build (optional, builds all if \
-                               not specified)" );
-                        ] );
-                  ] );
-            ];
-      };
-      {
-        name = "tusk.workspace";
-        description = Some "Get workspace configuration and package information";
-        input_schema =
-          Json.Object
-            [ ("type", Json.String "object"); ("properties", Json.Object []) ];
-      };
-      {
-        name = "tusk.graph";
-        description = Some "Get the build dependency graph";
-        input_schema =
-          Json.Object
-            [ ("type", Json.String "object"); ("properties", Json.Object []) ];
-      };
-      {
-        name = "tusk.package";
-        description =
-          Some
-            "Get detailed information about a specific package including \
-             sources";
-        input_schema =
-          Json.Object
-            [
-              ("type", Json.String "object");
-              ( "properties",
-                Json.Object
-                  [
-                    ( "name",
-                      Json.Object
-                        [
-                          ("type", Json.String "string");
-                          ("description", Json.String "Package name to query");
-                        ] );
-                  ] );
-              ("required", Json.Array [ Json.String "name" ]);
-            ];
-      };
-      {
-        name = "tusk.findExecutable";
-        description = Some "Find a binary by name (owner package and binary)";
-        input_schema =
-          Json.Object
-            [
-              ("type", Json.String "object");
-              ( "properties",
-                Json.Object
-                  [
-                    ( "name",
-                      Json.Object
-                        [
-                          ("type", Json.String "string");
-                          ("description", Json.String "Binary name to lookup");
-                        ] );
-                  ] );
-              ("required", Json.Array [ Json.String "name" ]);
-            ];
-      };
-      {
-        name = "tusk.findArtifact";
-        description = Some "Find the artifact path for a built binary";
-        input_schema =
-          Json.Object
-            [
-              ("type", Json.String "object");
-              ( "properties",
-                Json.Object
-                  [
-                    ( "package",
-                      Json.Object
-                        [
-                          ("type", Json.String "string");
-                          ("description", Json.String "Owning package name");
-                        ] );
-                    ( "name",
-                      Json.Object
-                        [
-                          ("type", Json.String "string");
-                          ("description", Json.String "Binary name");
-                        ] );
-                  ] );
-              ("required", Json.Array [ Json.String "package"; Json.String "name" ]);
-            ];
-      };
-    ]
+  let tools = Tools.all_tools ()
 
   let resources =
     let open Mcp in
@@ -213,7 +113,7 @@ module TuskMcp = struct
             in
             let arguments = List.assoc_opt "arguments" fields in
             match name with
-            | "tusk.build" ->
+            | "build" ->
                 let package =
                   match arguments with
                   | Some (Json.Object f) -> (
@@ -223,35 +123,114 @@ module TuskMcp = struct
                   | _ -> None
                 in
                 Ok (CallTool (Build { package }))
-            | "tusk.workspace" -> Ok (CallTool GetWorkspace)
-            | "tusk.graph" -> Ok (CallTool GetGraph)
-            | "tusk.package" -> (
+            | "describeWorkspace" -> Ok (CallTool (GetWorkspace ()))
+            | "getBuildGraph" -> Ok (CallTool (GetGraph ()))
+            | "describePackage" -> (
                 match arguments with
                 | Some (Json.Object f) -> (
                     match List.assoc_opt "name" f with
                     | Some (Json.String pkg_name) ->
                         Ok (CallTool (GetPackage { name = pkg_name }))
                     | _ -> Error (Json.String "Missing 'name' parameter"))
-                | _ -> Error (Json.String "Missing arguments for tusk.package"))
-            | "tusk.findExecutable" -> (
+                | _ ->
+                    Error (Json.String "Missing arguments for describePackage"))
+            | "findExecutable" -> (
                 match arguments with
                 | Some (Json.Object f) -> (
                     match List.assoc_opt "name" f with
                     | Some (Json.String name) ->
                         Ok (CallTool (FindExecutable { name }))
                     | _ -> Error (Json.String "Missing 'name' parameter"))
-                | _ -> Error (Json.String "Missing arguments for tusk.findExecutable"))
-            | "tusk.findArtifact" -> (
+                | _ ->
+                    Error (Json.String "Missing arguments for findExecutable"))
+            | "findArtifact" -> (
                 match arguments with
                 | Some (Json.Object f) -> (
-                    match (List.assoc_opt "package" f, List.assoc_opt "name" f) with
+                    match
+                      (List.assoc_opt "package" f, List.assoc_opt "name" f)
+                    with
                     | Some (Json.String package), Some (Json.String name) ->
                         Ok (CallTool (FindArtifact { package; name }))
                     | _ ->
                         Error
-                          (Json.String
-                             "Missing 'package' or 'name' parameter"))
-                | _ -> Error (Json.String "Missing arguments for tusk.findArtifact"))
+                          (Json.String "Missing 'package' or 'name' parameter"))
+                | _ -> Error (Json.String "Missing arguments for findArtifact"))
+            | "createPackage" -> (
+                match arguments with
+                | Some (Json.Object f) ->
+                    let name =
+                      match List.assoc_opt "name" f with
+                      | Some (Json.String s) -> s
+                      | _ -> ""
+                    in
+                    let deps =
+                      match List.assoc_opt "deps" f with
+                      | Some (Json.Array arr) ->
+                          List.filter_map
+                            (function Json.String s -> Some s | _ -> None)
+                            arr
+                      | _ -> []
+                    in
+                    let is_library =
+                      match List.assoc_opt "is_library" f with
+                      | Some (Json.Bool b) -> b
+                      | _ -> true
+                    in
+                    Ok (CallTool (CreatePackage { name; deps; is_library }))
+                | _ -> Error (Json.String "Missing arguments for createPackage")
+                )
+            | "createModule" -> (
+                match arguments with
+                | Some (Json.Object f) ->
+                    let package =
+                      match List.assoc_opt "package" f with
+                      | Some (Json.String s) -> s
+                      | _ -> ""
+                    in
+                    let module_name =
+                      match List.assoc_opt "module_name" f with
+                      | Some (Json.String s) -> s
+                      | _ -> ""
+                    in
+                    let contents =
+                      match List.assoc_opt "contents" f with
+                      | Some (Json.String s) -> s
+                      | _ -> "open Std\n"
+                    in
+                    Ok
+                      (CallTool
+                         (CreateModule { package; module_name; contents }))
+                | _ -> Error (Json.String "Missing arguments for createModule"))
+            | "formatFile" -> (
+                match arguments with
+                | Some (Json.Object f) ->
+                    let file_path =
+                      match List.assoc_opt "file_path" f with
+                      | Some (Json.String s) -> s
+                      | _ -> ""
+                    in
+                    let check_only =
+                      match List.assoc_opt "check_only" f with
+                      | Some (Json.Bool b) -> b
+                      | _ -> false
+                    in
+                    Ok (CallTool (FormatFile { file_path; check_only }))
+                | _ -> Error (Json.String "Missing arguments for formatFile"))
+            | "formatCode" -> (
+                match arguments with
+                | Some (Json.Object f) ->
+                    let code =
+                      match List.assoc_opt "code" f with
+                      | Some (Json.String s) -> s
+                      | _ -> ""
+                    in
+                    let file_path =
+                      match List.assoc_opt "file_path" f with
+                      | Some (Json.String s) -> Some s
+                      | _ -> None
+                    in
+                    Ok (CallTool (FormatCode { code; file_path }))
+                | _ -> Error (Json.String "Missing arguments for formatCode"))
             | _ -> Error (Json.String (format "Unknown tool: %s" name)))
         | _ -> Error (Json.String "tools/call requires named parameters"))
     | "resources/list" -> Ok ListResources
@@ -269,7 +248,7 @@ module TuskMcp = struct
   let response_to_json = function
     | InitializeResult
         { protocol_version; capabilities; server_info; instructions } ->
-        Json.Object
+        let fields =
           [
             ("protocolVersion", Json.String protocol_version);
             ( "serverInfo",
@@ -278,8 +257,47 @@ module TuskMcp = struct
                   ("name", Json.String server_info.Mcp.name);
                   ("version", Json.String server_info.version);
                 ] );
-            ("capabilities", Json.Object []);
+            ( "capabilities",
+              let caps_fields = [] in
+              let caps_fields =
+                match capabilities.Mcp.tools with
+                | None -> caps_fields
+                | Some _ -> caps_fields @ [ ("tools", Json.Object []) ]
+              in
+              let caps_fields =
+                match capabilities.resources with
+                | None -> caps_fields
+                | Some rc ->
+                    caps_fields
+                    @ [
+                        ( "resources",
+                          Json.Object
+                            [
+                              ( "subscribe",
+                                match rc.subscribe with
+                                | None -> Json.Bool false
+                                | Some b -> Json.Bool b );
+                              ( "listChanged",
+                                match rc.list_changed with
+                                | None -> Json.Bool false
+                                | Some b -> Json.Bool b );
+                            ] );
+                      ]
+              in
+              let caps_fields =
+                match capabilities.prompts with
+                | None -> caps_fields
+                | Some _ -> caps_fields @ [ ("prompts", Json.Object []) ]
+              in
+              Json.Object caps_fields );
           ]
+        in
+        let fields =
+          match instructions with
+          | Some instr -> fields @ [ ("instructions", Json.String instr) ]
+          | None -> fields
+        in
+        Json.Object fields
     | InitializedResult -> Json.Object []
     | ListToolsResult { tools } ->
         Json.Object
@@ -301,47 +319,28 @@ module TuskMcp = struct
           ]
     | CallToolResult resp -> (
         match resp with
-        | BuildResult { messages } ->
-            Json.Object
-              [
-                ( "content",
-                  Json.Array (List.map (fun msg -> Json.String msg) messages) );
-                ("isError", Json.Bool false);
-              ]
-        | WorkspaceInfo { json } ->
-            Json.Object
-              [
-                ("content", Json.Array [ Json.String json ]);
-                ("isError", Json.Bool false);
-              ]
-        | GraphInfo { json } ->
-            Json.Object
-              [
-                ("content", Json.Array [ Json.String json ]);
-                ("isError", Json.Bool false);
-              ]
-        | PackageInfo { json } ->
-            Json.Object
-              [
-                ("content", Json.Array [ Json.String json ]);
-                ("isError", Json.Bool false);
-              ]
-        | ExecutableInfo { json } ->
-            Json.Object
-              [
-                ("content", Json.Array [ Json.String json ]);
-                ("isError", Json.Bool false);
-              ]
-        | ArtifactInfo { json } ->
-            Json.Object
-              [
-                ("content", Json.Array [ Json.String json ]);
-                ("isError", Json.Bool false);
-              ]
+        | BuildResult r -> Tools.Build.response_to_json r
+        | WorkspaceResult r -> Tools.Describe_workspace.response_to_json r
+        | GraphResult r -> Tools.Get_build_graph.response_to_json r
+        | PackageResult r -> Tools.Describe_package.response_to_json r
+        | FindExecutableResult r -> Tools.Find_executable.response_to_json r
+        | FindArtifactResult r -> Tools.Find_artifact.response_to_json r
+        | CreatePackageResult r -> Tools.Create_package.response_to_json r
+        | CreateModuleResult r -> Tools.Create_module.response_to_json r
+        | FormatFileResult r -> Tools.Format_file.response_to_json r
+        | FormatCodeResult r -> Tools.Format_code.response_to_json r
         | Error { message } ->
             Json.Object
               [
-                ("content", Json.Array [ Json.String message ]);
+                ( "content",
+                  Json.Array
+                    [
+                      Json.Object
+                        [
+                          ("type", Json.String "text");
+                          ("text", Json.String message);
+                        ];
+                    ] );
                 ("isError", Json.Bool true);
               ])
     | ListResourcesResult { resources } ->
@@ -374,45 +373,56 @@ end
 let execute_tool (ctx : ctx) (req : TuskMcp.tool_request) :
     TuskMcp.tool_response =
   match req with
-  | TuskMcp.Build { package } ->
-      TuskMcp.Error { message = "Build not implemented yet" }
-  | TuskMcp.GetWorkspace ->
-      TuskMcp.Error { message = "GetWorkspace not implemented yet" }
-  | TuskMcp.GetGraph ->
-      TuskMcp.Error { message = "GetGraph not implemented yet" }
-  | TuskMcp.GetPackage { name } ->
-      TuskMcp.Error { message = "GetPackage not implemented yet" }
-  | TuskMcp.FindExecutable { name } -> (
-      match Server.Tusk_jsonrpc.Client.find_executable ctx.client name with
-      | Ok (Some (package, binary)) ->
-          let json =
-            Json.Object
-              [
-                ("type", Json.String "found_executable");
-                ("package", Json.String package);
-                ("binary", Json.String binary);
-              ]
-            |> Json.to_string
-          in
-          TuskMcp.ExecutableInfo { json }
-      | Ok None ->
-          let json = Json.Object [ ("type", Json.String "executable_not_found") ] |> Json.to_string in
-          TuskMcp.ExecutableInfo { json }
-      | Error msg -> TuskMcp.Error { message = msg })
-  | TuskMcp.FindArtifact { package; name } -> (
-      match Server.Tusk_jsonrpc.Client.find_artifact ctx.client ~package ~kind:"binary" ~name with
-      | Ok path ->
-          let json =
-            Json.Object [ ("type", Json.String "artifact_found"); ("path", Json.String path) ]
-            |> Json.to_string
-          in
-          TuskMcp.ArtifactInfo { json }
-      | Error msg ->
-          let json =
-            Json.Object [ ("type", Json.String "artifact_not_found"); ("error", Json.String msg) ]
-            |> Json.to_string
-          in
-          TuskMcp.ArtifactInfo { json })
+  | TuskMcp.Build build_req ->
+      Log.debug "[EXECUTE_TOOL] Calling Build.execute";
+      let result = Tools.Build.execute ctx.client build_req in
+      Log.debug "[EXECUTE_TOOL] Build.execute returned";
+      TuskMcp.BuildResult result
+  | TuskMcp.GetWorkspace ws_req ->
+      Log.debug "[EXECUTE_TOOL] Calling Describe_workspace.execute";
+      let result = Tools.Describe_workspace.execute ctx.client ws_req in
+      Log.debug "[EXECUTE_TOOL] Describe_workspace.execute returned";
+      TuskMcp.WorkspaceResult result
+  | TuskMcp.GetGraph graph_req ->
+      Log.debug "[EXECUTE_TOOL] Calling Get_build_graph.execute";
+      let result = Tools.Get_build_graph.execute ctx.client graph_req in
+      Log.debug "[EXECUTE_TOOL] Get_build_graph.execute returned";
+      TuskMcp.GraphResult result
+  | TuskMcp.GetPackage pkg_req ->
+      Log.debug "[EXECUTE_TOOL] Calling Describe_package.execute";
+      let result = Tools.Describe_package.execute ctx.client pkg_req in
+      Log.debug "[EXECUTE_TOOL] Describe_package.execute returned";
+      TuskMcp.PackageResult result
+  | TuskMcp.FindExecutable exec_req ->
+      Log.debug "[EXECUTE_TOOL] Calling Find_executable.execute";
+      let result = Tools.Find_executable.execute ctx.client exec_req in
+      Log.debug "[EXECUTE_TOOL] Find_executable.execute returned";
+      TuskMcp.FindExecutableResult result
+  | TuskMcp.FindArtifact artifact_req ->
+      Log.debug "[EXECUTE_TOOL] Calling Find_artifact.execute";
+      let result = Tools.Find_artifact.execute ctx.client artifact_req in
+      Log.debug "[EXECUTE_TOOL] Find_artifact.execute returned";
+      TuskMcp.FindArtifactResult result
+  | TuskMcp.CreatePackage create_pkg_req ->
+      Log.debug "[EXECUTE_TOOL] Calling Create_package.execute";
+      let result = Tools.Create_package.execute ctx.client create_pkg_req in
+      Log.debug "[EXECUTE_TOOL] Create_package.execute returned";
+      TuskMcp.CreatePackageResult result
+  | TuskMcp.CreateModule create_mod_req ->
+      Log.debug "[EXECUTE_TOOL] Calling Create_module.execute";
+      let result = Tools.Create_module.execute ctx.client create_mod_req in
+      Log.debug "[EXECUTE_TOOL] Create_module.execute returned";
+      TuskMcp.CreateModuleResult result
+  | TuskMcp.FormatFile format_file_req ->
+      Log.debug "[EXECUTE_TOOL] Calling Format_file.execute";
+      let result = Tools.Format_file.execute ctx.client format_file_req in
+      Log.debug "[EXECUTE_TOOL] Format_file.execute returned";
+      TuskMcp.FormatFileResult result
+  | TuskMcp.FormatCode format_code_req ->
+      Log.debug "[EXECUTE_TOOL] Calling Format_code.execute";
+      let result = Tools.Format_code.execute ctx.client format_code_req in
+      Log.debug "[EXECUTE_TOOL] Format_code.execute returned";
+      TuskMcp.FormatCodeResult result
 
 let create_server (ctx : ctx) =
   let methods =
@@ -436,8 +446,101 @@ let create_server (ctx : ctx) =
                      server_info = { name = "tusk-mcp"; version = "0.1.0" };
                      instructions =
                        Some
-                         "Tusk MCP server provides tools and resources for \
-                          building OCaml projects";
+                         {|# Tusk MCP Server - OCaml Build System Interface
+
+## CRITICAL RULES - READ FIRST
+
+### ALWAYS Use Tusk Tools Instead of Shell Commands
+**NEVER** use shell commands to inspect or build the workspace. This MCP server provides specialized tools that:
+- Are faster and more accurate than shell commands
+- Return structured data instead of text output
+- Understand the build system's internal state
+- Work correctly with tusk's module system and caching
+
+### DO NOT Use These Commands:
+- `find` → Use `tusk.package` to see package contents
+- `ls` / `tree` → Use `tusk.workspace` to see project structure
+- `grep` → Use `tusk.package` to find source files
+- `dune build` → Use `tusk.build` to compile packages
+- `ocamlc` / `ocamlopt` → NEVER call compilers directly
+- Manual file searches → Use the MCP tools
+
+## How Tusk's Build System Works
+
+### Package Structure
+- Each package lives in `packages/<name>/`
+- Source files go in `packages/<name>/src/`
+- Entry point for binaries: `src/main.ml`
+- Configuration: `packages/<name>/tusk.toml`
+
+### Module Namespacing
+- File `packages/foo/src/bar.ml` creates module `Foo.Bar` (internal name)
+- **NEVER reference namespaced names** like `Std__Crypto__Algo__Sha256`
+- Always use the clean hierarchical name: `Std.Crypto.Algo.Sha256`
+
+### Subdirectories as Libraries
+- Subdirectories in `src/` become sub-libraries
+- Example: `packages/tusk/src/cli/build.ml` → `Tusk.Cli.Build`
+- The build system auto-generates parent modules for subdirectories
+- Files in subdirs are accessible via the parent module (e.g., `Cli.Build`)
+
+### Build System Features
+- Uses content-based caching (builds are incremental)
+- Automatically manages dependencies between packages
+- Compiles only what changed since last build
+
+## Recommended Workflow
+
+### 1. Start Every Task by Understanding the Workspace
+```
+Call tusk.workspace first to get:
+- All packages in the project
+- Their locations and dependencies
+- The complete project structure
+```
+
+### 2. Inspect Specific Packages
+```
+Call tusk.package with {name: "package_name"} to get:
+- All source files in the package
+- Package dependencies
+- Package configuration
+```
+
+### 3. Build Packages
+```
+Call tusk.build with:
+- {package: "name"} → Build specific package + dependencies
+- {} → Build entire workspace
+```
+
+### 4. Find and Run Binaries
+```
+Workflow:
+1. tusk.findExecutable {name: "binary_name"} → Find which package owns it
+2. tusk.build {package: "that_package"} → Build it
+3. tusk.findArtifact {package: "that_package", name: "binary_name"} → Get path
+4. Use the path to run the binary
+```
+
+## Common Mistakes to Avoid
+
+1. **Don't search for files manually** - Use `tusk.package` instead
+2. **Don't call build tools directly** - Use `tusk.build` instead
+3. **Don't assume package locations** - Use `tusk.workspace` to discover them
+4. **Don't reference modules by namespaced names** - Use hierarchical names
+5. **Don't modify package sources to fix build logic** - Build system issues require build system fixes
+
+## Tool Selection Guide
+
+- **tusk.workspace** - Start here! Get complete project overview
+- **tusk.package** - Inspect a specific package's contents
+- **tusk.graph** - Understand package dependencies and build order
+- **tusk.build** - Compile code after making changes
+- **tusk.findExecutable** - Locate which package owns a binary
+- **tusk.findArtifact** - Get filesystem path to a built binary
+
+USE THESE TOOLS EVERY TIME instead of shell commands. They are purpose-built for the tusk workspace and will give you accurate, structured information about the build system's state.|};
                    }));
         };
         {
@@ -484,18 +587,13 @@ let create_server (ctx : ctx) =
         { method_ = "ping"; fn = (fun reply _req -> reply TuskMcp.PingResult) };
         {
           method_ = "shutdown";
-          fn =
-            (fun reply _req ->
-              Log.info "[MCP] Shutdown requested";
-              reply TuskMcp.ShutdownResult);
+          fn = (fun reply _req -> reply TuskMcp.ShutdownResult);
         };
       ]
   in
   Jsonrpc.Server.create ~protocol:(module TuskMcp) ~methods
 
 let start_stdio_server ~client =
-  spawn @@ fun () ->
-  Log.debug "[MCP] stdio server starting";
   let ctx = { client } in
   let mcp_server = create_server ctx in
 
@@ -503,21 +601,22 @@ let start_stdio_server ~client =
 
   let rec server_loop () =
     match Fs.File.read_line stdin_file with
-    | Ok line ->
-        let reply msg = println "%s" msg in
-        Jsonrpc.Server.handle_message mcp_server reply line;
-        server_loop ()
-    | Error _ ->
-        Log.info "[MCP] Connection closed";
-        ()
+    | Ok line -> (
+        try
+          let reply msg = println "%s" msg in
+          Jsonrpc.Server.handle_message mcp_server reply line;
+          server_loop ()
+        with exn ->
+          println "Something went wrong: %s" (Exception.to_string exn);
+          server_loop ())
+    | Error _ -> ()
   in
 
-  Ok (server_loop ())
+  server_loop ()
 
 let start () =
-  Log.set_level Log.Info;
-  Log.info "[MCP] Tusk MCP Server starting...";
-  Log.info "[MCP] Listening on stdin/stdout for JSON-RPC messages";
+  Log.set_log_file (Path.v "/tmp/tusk-mcp.log");
+  Log.set_level Log.Trace;
 
   let cwd =
     Env.current_dir () |> Result.expect ~msg:"Failed to get current directory"

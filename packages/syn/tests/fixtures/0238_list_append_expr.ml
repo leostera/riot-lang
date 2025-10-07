@@ -1,1 +1,1 @@
-let x = l1 @ (l2 @ l3)
+let x = l1 @ l2 @ l3

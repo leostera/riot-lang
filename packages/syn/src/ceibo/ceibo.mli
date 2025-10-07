@@ -168,7 +168,8 @@ module Green : sig
   (** `kind elem` returns the kind identifier. *)
 
   val text : ('kind, 'text) element -> 'text option
-  (** `text elem` returns the text if element is a token, None if it's a node. *)
+  (** `text elem` returns the text if element is a token, None if it's a node.
+  *)
 
   val is_token : ('kind, 'text) element -> bool
   (** `is_token elem` returns true if element is a token. *)

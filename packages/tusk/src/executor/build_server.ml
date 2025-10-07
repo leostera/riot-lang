@@ -153,6 +153,43 @@ let start ~workspace ~toolchain ~workers ~session_id ~client_pid ~target =
         filtered
   in
 
+  (* 3.5. Check if graph is empty (package not found) *)
+  (match target with
+  | Package pkg_name when Build_graph.size target_graph = 0 ->
+      let available =
+        List.map (fun (p : Workspace.package) -> p.name) workspace.packages
+      in
+      Log.error "[BUILD_SERVER] Package '%s' not found in workspace" pkg_name;
+
+      (* Send PackageNotFound response *)
+      send client_pid
+        (ServerResponse
+           (PackageNotFound
+              {
+                session_id;
+                package_name = pkg_name;
+                available_packages = available;
+              }));
+
+      (* Create stats for this failed build *)
+      let build_stats = Tusk_protocol.BuildStats.make () in
+      Tusk_protocol.BuildStats.mark_started build_stats;
+      Tusk_protocol.BuildStats.mark_completed build_stats;
+
+      (* Send build completed event to properly finish the build *)
+      send client_pid
+        (ServerResponse
+           (BuildCompleted
+              {
+                session_id;
+                completed_At = Datetime.now ();
+                stats = build_stats;
+              }));
+
+      (* Exit early *)
+      failwith "Package not found"
+  | _ -> ());
+
   (* Try to sort the graph - if there's a cycle, report it and bail out *)
   let nodes_result =
     try Ok (Build_graph.topological_sort target_graph)

@@ -1,1 +1,4 @@
-let x = object method private m = 1 end
+let x =
+  object
+    method private m = 1
+  end

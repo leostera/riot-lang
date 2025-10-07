@@ -1,1 +1,1 @@
-let x = expr[@attr]
+let x = expr [@attr]

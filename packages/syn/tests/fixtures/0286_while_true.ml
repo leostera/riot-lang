@@ -1,1 +1,4 @@
-let x = while true do f () done
+let x =
+  while true do
+    f ()
+  done

@@ -1,1 +1,2 @@
-let (a, b, c) = (1, 2, 3) in a + b + c
+let a, b, c = (1, 2, 3) in
+a + b + c

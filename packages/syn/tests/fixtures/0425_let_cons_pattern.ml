@@ -1,1 +1,2 @@
-let x :: xs = list in x
+let (x :: xs) = list in
+x

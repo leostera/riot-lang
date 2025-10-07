@@ -1,1 +1,1 @@
-let x = [ref 1; ref 2]
+let x = [ ref 1; ref 2 ]

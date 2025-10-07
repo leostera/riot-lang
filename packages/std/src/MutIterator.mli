@@ -74,15 +74,17 @@
     - Memory-constrained scenarios
 *)
 
+(** Interface that mutable iterators must implement. *)
 module type Intf = sig
   type state
   (** The mutable iterator state *)
-  
+
   type item
   (** The type of items produced *)
 
   val next : state -> item option
-  (** Returns the next item, mutating internal state. Returns None when exhausted. *)
+  (** Returns the next item, mutating internal state. Returns None when
+      exhausted. *)
 
   val size : state -> int
   (** Returns the number of remaining items (may be approximate). *)
@@ -90,74 +92,55 @@ module type Intf = sig
   val clone : state -> state
   (** Creates an independent copy of the iterator state. *)
 end
-(** Interface that mutable iterators must implement. *)
 
 type ('item, 'state) iter =
   (module Intf with type item = 'item and type state = 'state)
 (** First-class module type for mutable iterators. *)
 
-type 'item t = Iter : (('item, 'state) iter * 'state) -> 'item t
-(** A mutable iterator over items of type ['item]. *)
+type 'item t =
+  | Iter : (('item, 'state) iter * 'state) -> 'item t
+      (** A mutable iterator over items of type ['item]. *)
 
 val make : ('item, 'state) iter -> 'state -> 'item t
 (** Creates a mutable iterator from a module and initial state.
-    
+
     ## Examples
-    
-    ```ocaml
-    let iter = MutIterator.make (module MyIter) initial_state
-    ```
-*)
+
+    ```ocaml let iter = MutIterator.make (module MyIter) initial_state ``` *)
 
 val next : 'item t -> 'item option
 (** Returns the next item, mutating the iterator's internal state.
-    
+
     ## Examples
-    
-    ```ocaml
-    match MutIterator.next iter with
-    | Some x -> process x
-    | None -> ()  (* Iterator exhausted *)
-    ```
-*)
+
+    ```ocaml match MutIterator.next iter with | Some x -> process x | None -> ()
+    (* Iterator exhausted *) ``` *)
 
 val size : 'item t -> int
 (** Returns the number of remaining items (may be approximate).
-    
+
     ## Examples
-    
-    ```ocaml
-    let remaining = MutIterator.size iter in
-    ```
-*)
+
+    ```ocaml let remaining = MutIterator.size iter in ``` *)
 
 val clone : 'item t -> 'item t
 (** Creates an independent copy of the iterator.
-    
+
     ## Examples
-    
-    ```ocaml
-    let iter2 = MutIterator.clone iter in
-    (* iter and iter2 can now be advanced independently *)
-    ```
-*)
+
+    ```ocaml let iter2 = MutIterator.clone iter in (* iter and iter2 can now be
+    advanced independently *) ``` *)
 
 val collect : 'item t -> 'item list -> 'item list
 (** Collects remaining items, prepending to the given list.
-    
+
     ## Examples
-    
-    ```ocaml
-    let items = MutIterator.collect iter []
-    ```
-*)
+
+    ```ocaml let items = MutIterator.collect iter [] ``` *)
 
 val to_list : 'item t -> 'item list
 (** Consumes the iterator and collects all items into a list.
-    
+
     ## Examples
-    
-    ```ocaml
-    let items = MutIterator.to_list iter
-    ```
-*)
+
+    ```ocaml let items = MutIterator.to_list iter ``` *)

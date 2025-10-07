@@ -67,128 +67,91 @@ type t
 
 val create : Method.t -> Uri.t -> t
 (** Creates a new HTTP request with the given method and URI.
-    
+
     ## Examples
-    
-    ```ocaml
-    let uri = Uri.of_string "https://example.com" |> Result.unwrap in
-    let req = Request.create Method.Get uri
-    ```
-*)
+
+    ```ocaml let uri = Uri.of_string "https://example.com" |> Result.unwrap in
+    let req = Request.create Method.Get uri ``` *)
 
 (** ## Access *)
 
 val method_ : t -> Method.t
 (** Returns the HTTP method.
-    
+
     ## Examples
-    
-    ```ocaml
-    Request.method_ req  (* Method.Get *)
-    ```
-*)
+
+    ```ocaml Request.method_ req (* Method.Get *) ``` *)
 
 val uri : t -> Uri.t
 (** Returns the request URI.
-    
+
     ## Examples
-    
-    ```ocaml
-    let uri = Request.uri req in
-    Uri.to_string uri  (* "https://example.com/path" *)
-    ```
-*)
+
+    ```ocaml let uri = Request.uri req in Uri.to_string uri (*
+    "https://example.com/path" *) ``` *)
 
 val version : t -> Version.t
 (** Returns the HTTP version (defaults to HTTP/1.1).
-    
+
     ## Examples
-    
-    ```ocaml
-    Request.version req  (* Version.Http11 *)
-    ```
-*)
+
+    ```ocaml Request.version req (* Version.Http11 *) ``` *)
 
 val headers : t -> Header.t
 (** Returns all request headers.
-    
+
     ## Examples
-    
-    ```ocaml
-    let headers = Request.headers req in
-    Header.iter (fun name value ->
-      Printf.printf "%s: %s\n" name value
-    ) headers
-    ```
-*)
+
+    ```ocaml let headers = Request.headers req in Header.iter (fun name value ->
+    Printf.printf "%s: %s\n" name value ) headers ``` *)
 
 val body : t -> string option
 (** Returns the request body if present.
-    
+
     ## Examples
-    
-    ```ocaml
-    match Request.body req with
-    | Some body -> process_body body
-    | None -> ()
-    ```
-*)
+
+    ```ocaml match Request.body req with | Some body -> process_body body | None
+    -> () ``` *)
 
 (** ## Modification *)
 
 val with_method : t -> Method.t -> t
 (** Returns a new request with the given method.
-    
+
     ## Examples
-    
-    ```ocaml
-    Request.with_method req Method.Post
-    ```
-*)
+
+    ```ocaml Request.with_method req Method.Post ``` *)
 
 val with_uri : t -> Uri.t -> t
 (** Returns a new request with the given URI.
-    
+
     ## Examples
-    
-    ```ocaml
-    let new_uri = Uri.of_string "https://api.v2.example.com" |> Result.unwrap in
-    Request.with_uri req new_uri
-    ```
-*)
+
+    ```ocaml let new_uri = Uri.of_string "https://api.v2.example.com" |>
+    Result.unwrap in Request.with_uri req new_uri ``` *)
 
 val with_version : t -> Version.t -> t
 (** Returns a new request with the given HTTP version.
-    
+
     ## Examples
-    
-    ```ocaml
-    Request.with_version req Version.Http2
-    ```
-*)
+
+    ```ocaml Request.with_version req Version.Http2 ``` *)
 
 val with_headers : t -> Header.t -> t
 (** Returns a new request with the given headers (replaces all).
-    
+
     ## Examples
-    
-    ```ocaml
-    let headers = Header.empty
-      |> Header.set "Content-Type" "application/json"
-      |> Header.set "Accept" "application/json" in
-    Request.with_headers req headers
-    ```
-*)
+
+    ```ocaml let headers = Header.empty |> Header.set "Content-Type"
+    "application/json" |> Header.set "Accept" "application/json" in
+    Request.with_headers req headers ``` *)
 
 val with_header : t -> Header.name -> Header.value -> t
 (** Returns a new request with the header set (replaces existing).
-    
+
     ## Examples
-    
-    ```ocaml
-    Request.with_header req "Authorization" "Bearer token"
-    ```
-*)
+
+    ```ocaml Request.with_header req "Authorization" "Bearer token" ``` *)
 
 val with_body : t -> string -> t
 (** Returns a new request with the given body.
@@ -202,58 +165,41 @@ val with_body : t -> string -> t
 
 val without_body : t -> t
 (** Returns a new request without a body.
-    
+
     ## Examples
-    
-    ```ocaml
-    Request.without_body req
-    ```
-*)
+
+    ```ocaml Request.without_body req ``` *)
 
 val add_header : t -> Header.name -> Header.value -> t
 (** Returns a new request with the header added (allows duplicates).
-    
+
     ## Examples
-    
-    ```ocaml
-    req
-    |> Request.add_header "Accept" "text/html"
-    |> Request.add_header "Accept" "application/json"
-    ```
-*)
+
+    ```ocaml req |> Request.add_header "Accept" "text/html" |>
+    Request.add_header "Accept" "application/json" ``` *)
 
 val remove_header : t -> Header.name -> t
 (** Returns a new request with the header removed.
-    
+
     ## Examples
-    
-    ```ocaml
-    Request.remove_header req "X-Debug"
-    ```
-*)
+
+    ```ocaml Request.remove_header req "X-Debug" ``` *)
 
 val get_header : t -> Header.name -> Header.value option
 (** Returns the first value for the given header name.
-    
+
     ## Examples
-    
-    ```ocaml
-    match Request.get_header req "Content-Type" with
-    | Some ct -> Printf.printf "Content-Type: %s\n" ct
-    | None -> ()
-    ```
-*)
+
+    ```ocaml match Request.get_header req "Content-Type" with | Some ct ->
+    Printf.printf "Content-Type: %s\n" ct | None -> () ``` *)
 
 val has_header : t -> Header.name -> bool
 (** Checks if the request has the given header.
-    
+
     ## Examples
-    
-    ```ocaml
-    if Request.has_header req "Authorization" then
-      Log.info "Request is authenticated"
-    ```
-*)
+
+    ```ocaml if Request.has_header req "Authorization" then Log.info "Request is
+    authenticated" ``` *)
 
 (** ## Builder Pattern *)
 
@@ -307,14 +253,11 @@ end
 
 val get : Uri.t -> t
 (** Creates a GET request.
-    
+
     ## Examples
-    
-    ```ocaml
-    let uri = Uri.of_string "https://api.example.com/users" |> Result.unwrap in
-    let req = Request.get uri
-    ```
-*)
+
+    ```ocaml let uri = Uri.of_string "https://api.example.com/users" |>
+    Result.unwrap in let req = Request.get uri ``` *)
 
 val post : Uri.t -> string -> t
 (** Creates a POST request with body.
@@ -341,33 +284,24 @@ val put : Uri.t -> string -> t
 
 val delete : Uri.t -> t
 (** Creates a DELETE request.
-    
+
     ## Examples
-    
-    ```ocaml
-    let req = Request.delete uri
-    ```
-*)
+
+    ```ocaml let req = Request.delete uri ``` *)
 
 val head : Uri.t -> t
 (** Creates a HEAD request (like GET but no body).
-    
+
     ## Examples
-    
-    ```ocaml
-    let req = Request.head uri
-    ```
-*)
+
+    ```ocaml let req = Request.head uri ``` *)
 
 val options : Uri.t -> t
 (** Creates an OPTIONS request (query allowed methods).
-    
+
     ## Examples
-    
-    ```ocaml
-    let req = Request.options uri
-    ```
-*)
+
+    ```ocaml let req = Request.options uri ``` *)
 
 val patch : Uri.t -> string -> t
 (** Creates a PATCH request with body (partial update).

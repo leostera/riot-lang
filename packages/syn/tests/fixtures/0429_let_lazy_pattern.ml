@@ -1,1 +1,2 @@
-let lazy v = computation in v
+let (lazy v) = computation in
+v

@@ -1,47 +1,32 @@
 open Common
 
 (** # Fs.File - File handles for reading and writing
-    
-    File handle type providing low-level file I/O operations with
-    async support through Miniriot. Wraps file descriptors with
-    a safe interface.
-    
+
+    File handle type providing low-level file I/O operations with async support
+    through Miniriot. Wraps file descriptors with a safe interface.
+
     ## Examples
-    
+
     Reading a file:
-    
-    ```ocaml
-    open Std
-    
-    let path = Path.v "data.txt" in
-    match Fs.File.open_read path with
-    | Ok file ->
-        (match Fs.File.read_to_end file with
-        | Ok content ->
-            Log.info "Content: %s" content;
-            Fs.File.close file |> ignore
-        | Error err -> Log.error "Read failed")
-    | Error err -> Log.error "Open failed"
-    ```
-    
+
+    ```ocaml open Std
+
+    let path = Path.v "data.txt" in match Fs.File.open_read path with | Ok file
+    -> (match Fs.File.read_to_end file with | Ok content -> Log.info "Content:
+    %s" content; Fs.File.close file |> ignore | Error err -> Log.error "Read
+    failed") | Error err -> Log.error "Open failed" ```
+
     Writing to a file:
-    
-    ```ocaml
-    let path = Path.v "output.txt" in
-    match Fs.File.create path with
-    | Ok file ->
-        (match Fs.File.write_all file "Hello, World!" with
-        | Ok () ->
-            Fs.File.close file |> ignore
-        | Error err -> Log.error "Write failed")
-    | Error err -> Log.error "Create failed"
-    ```
-    
+
+    ```ocaml let path = Path.v "output.txt" in match Fs.File.create path with |
+    Ok file -> (match Fs.File.write_all file "Hello, World!" with | Ok () ->
+    Fs.File.close file |> ignore | Error err -> Log.error "Write failed") |
+    Error err -> Log.error "Create failed" ```
+
     ## Async I/O
-    
-    All read/write operations use async I/O, suspending the calling
-    process instead of blocking the scheduler.
-*)
+
+    All read/write operations use async I/O, suspending the calling process
+    instead of blocking the scheduler. *)
 
 type t
 (** Opaque file handle for reading and writing files. *)
@@ -85,8 +70,8 @@ val read_line : t -> (string, error) result
 (** ## Writing *)
 
 val write : t -> bytes -> offset:int -> len:int -> (int, error) result
-(** Write bytes from buffer at offset. Returns bytes actually written.
-    Uses async I/O. *)
+(** Write bytes from buffer at offset. Returns bytes actually written. Uses
+    async I/O. *)
 
 val write_all : t -> string -> (unit, error) result
 (** Write entire string to file *)

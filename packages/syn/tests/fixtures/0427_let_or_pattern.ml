@@ -1,1 +1,2 @@
-let (A | B) = variant in 1
+let (A | B) = variant in
+1

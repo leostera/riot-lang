@@ -5,7 +5,6 @@ members = [
   "packages/mcp",
   "packages/miniriot",
   "packages/minitusk",
-  "packages/sandsay",
   "packages/syn",
   "packages/std",
   "packages/tusk",

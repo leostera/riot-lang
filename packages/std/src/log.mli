@@ -72,6 +72,16 @@ val get_level : unit -> level
     %s\n" (match current with | Trace -> "TRACE" | Debug -> "DEBUG" | Info ->
     "INFO" | Warn -> "WARN" | Error -> "ERROR") ``` *)
 
+val set_log_file : Path.t -> unit
+(** Redirect log output to a file instead of stdout.
+
+    Opens the file in append mode, creating it if it doesn't exist.
+
+    ## Examples
+
+    ```ocaml Log.set_log_file (Path.v "/tmp/myapp.log"); Log.info "This goes to
+    the file"; ``` *)
+
 (** # Logging Functions *)
 
 val trace : ('a, unit, string, unit) format4 -> 'a

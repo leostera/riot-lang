@@ -1,1 +1,4 @@
-let x = object inherit c end
+let x =
+  object
+    inherit c
+  end

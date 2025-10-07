@@ -5,28 +5,25 @@
 
     ## Examples
 
-    ```ocaml
-    open Std
+    ```ocaml open Std
 
-    (* Use default hasher directly *)
-    module H = Crypto.DefaultHasher in
-    let hash = H.hash_string "data" in
-    Crypto.Digest.hex hash
+    (* Use default hasher directly *) module H = Crypto.DefaultHasher in let
+    hash = H.hash_string "data" in Crypto.Digest.hex hash
 
-    (* RandomState for HashMap/HashSet - automatic DoS protection *)
-    let random_state = Crypto.RandomState.create () in
-    let hash1 = Crypto.RandomState.hash_with random_state "key1" in
-    let hash2 = Crypto.RandomState.hash_with random_state "key2"
-    (* Each RandomState.create () produces different seeds *)
-    ```
+    (* RandomState for HashMap/HashSet - automatic DoS protection *) let
+    random_state = Crypto.RandomState.create () in let hash1 =
+    Crypto.RandomState.hash_with random_state "key1" in let hash2 =
+    Crypto.RandomState.hash_with random_state "key2" (* Each RandomState.create
+    () produces different seeds *) ```
 
     ## When to Use
 
     - **DefaultHasher**: When you need a hasher but don't care which algorithm
-    - **RandomState**: Internal use by [HashMap] and [HashSet] for DoS resistance
+    - **RandomState**: Internal use by [HashMap] and [HashSet] for DoS
+      resistance
 
-    @see <https://en.wikipedia.org/wiki/Hash_table#Collision_resolution> Hash collision attacks
-*)
+    @see <https://en.wikipedia.org/wiki/Hash_table#Collision_resolution>
+      Hash collision attacks *)
 
 module DefaultHasher : Hasher.Intf
 (** Default hasher using kernel's default hash algorithm. *)

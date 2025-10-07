@@ -1,1 +1,3 @@
-let x = begin y := 1; !y end
+let x =
+  y := 1;
+  !y

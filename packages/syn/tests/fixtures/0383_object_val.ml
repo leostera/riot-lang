@@ -1,1 +1,4 @@
-let x = object val y = 1 end
+let x =
+  object
+    val y = 1
+  end

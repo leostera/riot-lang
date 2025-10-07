@@ -1,1 +1,1 @@
-let x = [`Red; `Blue; `Green]
+let x = [ `Red; `Blue; `Green ]

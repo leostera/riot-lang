@@ -1,1 +1,2 @@
-let (module M) = m in M.f x
+let (module M) = m in
+M.f x

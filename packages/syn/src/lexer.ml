@@ -360,7 +360,10 @@ let next cursor =
             { Token.kind = Token.And; span = Ceibo.Span.make ~start ~end_ }
         | _ ->
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.Ampersand; span = Ceibo.Span.make ~start ~end_ })
+            {
+              Token.kind = Token.Ampersand;
+              span = Ceibo.Span.make ~start ~end_;
+            })
     | Some '|' -> (
         Cursor.advance cursor;
         match Cursor.peek cursor with

@@ -1,1 +1,1 @@
-let x = (`Red : [> `Red])
+let x = (`Red : [> `Red ])

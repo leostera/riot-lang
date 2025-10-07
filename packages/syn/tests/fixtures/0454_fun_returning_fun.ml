@@ -1,1 +1,1 @@
-let x = fun a -> (fun b -> a + b)
+let x = fun a -> fun b -> a + b

@@ -1,1 +1,1 @@
-let x = begin f end y
+let x = f y

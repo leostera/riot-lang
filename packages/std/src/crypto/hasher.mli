@@ -5,31 +5,25 @@
 
     ## Examples
 
-    ```ocaml
-    open Std
+    ```ocaml open Std
 
-    (* Use any algorithm that implements Hasher.Intf *)
-    module H = Crypto.Sha256 in
+    (* Use any algorithm that implements Hasher.Intf *) module H = Crypto.Sha256
+    in
 
-    (* Stateful hashing - update incrementally *)
-    let state = H.create () in
-    let state = H.update state "Part 1" in
-    let state = H.update state "Part 2" in
-    let hash = H.finish state in
-    Crypto.Digest.hex hash
+    (* Stateful hashing - update incrementally *) let state = H.create () in let
+    state = H.update state "Part 1" in let state = H.update state "Part 2" in
+    let hash = H.finish state in Crypto.Digest.hex hash
 
-    (* Direct hashing - one-shot *)
-    let hash = H.hash_string "Hello, World!" in
-    Crypto.Digest.hex hash
-    ```
+    (* Direct hashing - one-shot *) let hash = H.hash_string "Hello, World!" in
+    Crypto.Digest.hex hash ```
 
     ## When to Use
 
-    - **Stateful API** ([create], [update], [finish]): When hashing streaming data
+    - **Stateful API** ([create], [update], [finish]): When hashing streaming
+      data
     - **Direct API** ([hash_string], etc.): When hashing complete values
 
-    See [Crypto] for the default algorithm and convenience functions.
-*)
+    See [Crypto] for the default algorithm and convenience functions. *)
 
 (** Interface that all hash algorithms must implement *)
 module type Intf = sig

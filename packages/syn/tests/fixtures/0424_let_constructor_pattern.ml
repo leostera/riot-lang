@@ -1,1 +1,2 @@
-let Some x = opt in x + 1
+let (Some x) = opt in
+x + 1

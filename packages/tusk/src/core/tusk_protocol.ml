@@ -117,6 +117,11 @@ type response =
     }
   | PackageCreated of { path : string; name : string }
   | PackageCreationError of { error : string }
+  | PackageNotFound of {
+      session_id : Session_id.t;
+      package_name : string;
+      available_packages : string list;
+    }
 
 (** Message types for server communication *)
 type Message.t += ServerRequest of request | ServerResponse of response

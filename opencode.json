@@ -3,7 +3,7 @@
   "mcp": {
     "tusk": {
       "type": "local",
-      "command": ["./target/debug/tusk", "mcp"],
+      "command": ["./tusk", "mcp"],
     },
     "linear": {
       "type": "local",

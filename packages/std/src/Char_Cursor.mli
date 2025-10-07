@@ -2,5 +2,4 @@
 
     Utility for iterating through strings character-by-character.
 
-    Note: Currently not implemented.
-*)
+    Note: Currently not implemented. *)

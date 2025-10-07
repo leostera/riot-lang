@@ -223,9 +223,7 @@ let parse_literal parser =
 (* ========================================================================= *)
 
 let is_constructor_ident name =
-  match String.get name 0 with
-  | 'A' .. 'Z' -> true
-  | _ -> false
+  match String.get name 0 with 'A' .. 'Z' -> true | _ -> false
 
 let is_infix_op = function
   | Token.Plus | Token.Minus | Token.Star | Token.Slash | Token.Percent
@@ -255,6 +253,32 @@ and parse_expr_bp parser min_bp =
       let rec loop lhs =
         let _ = consume_trivia parser in
         match peek_kind parser with
+        | Some Token.Dot -> (
+            (* Field access - highest precedence (9) *)
+            let field_prec = 9 in
+            if field_prec < min_bp then Some lhs
+            else
+              let dot = consume parser in
+              let _ = consume_trivia parser in
+              match peek_kind parser with
+              | Some (Token.Ident _) ->
+                  let field = consume parser in
+                  let trivia = take_pending_trivia parser in
+                  let children = [| Ceibo.Green.Node lhs; dot; field |] in
+                  let children = Array.append (Array.of_list trivia) children in
+                  let access =
+                    make_node ~kind:Syntax_kind.FIELD_ACCESS_EXPR children
+                  in
+                  loop access
+              | _ ->
+                  let span =
+                    match peek parser with
+                    | Some tok -> tok.Token.span
+                    | None -> Ceibo.Span.make ~start:0 ~end_:0
+                  in
+                  report_error parser
+                    (Diagnostic.make_missing_token ~expected:"field name" ~span);
+                  Some lhs)
         | Some op_kind when is_infix_op op_kind -> (
             let prec = get_precedence op_kind in
             if prec < min_bp then Some lhs
@@ -296,6 +320,7 @@ and can_start_primary parser =
   | Some (Token.Literal _)
   | Some (Token.Ident _)
   | Some (Token.OpenDelim Token.Paren)
+  | Some (Token.OpenDelim Token.Brace)
   | Some
       (Token.Keyword
          ( Keyword.True | Keyword.False | Keyword.If | Keyword.Match
@@ -357,6 +382,8 @@ and parse_primary parser =
           | Some (Token.OpenDelim Token.Paren) -> parse_paren_expr parser
           (* List literal *)
           | Some (Token.OpenDelim Token.Bracket) -> parse_list_expr parser
+          (* Record literal *)
+          | Some (Token.OpenDelim Token.Brace) -> parse_record_expr parser
           (* Let expression *)
           | Some (Token.Keyword Keyword.Let) -> parse_let_expr parser
           (* If expression *)
@@ -501,6 +528,155 @@ and parse_list_expr parser =
           (make_error_node parser
              ~kind:(Diagnostic.InvalidSyntax { context = "list expression" })
              ~span)
+
+and parse_record_expr parser =
+  let open_brace = consume parser in
+  let _ = consume_trivia parser in
+
+  (* Check for empty record {} - though this isn't valid OCaml, we'll parse it *)
+  if at parser (Token.CloseDelim Token.Brace) then
+    let close_brace = consume parser in
+    let children =
+      prepend_pending_trivia parser [| open_brace; close_brace |]
+    in
+    Some (make_node ~kind:Syntax_kind.RECORD_EXPR children)
+  else
+    (* Look ahead to determine if this is a record literal or record update *)
+    (* Record literal: { field = value; ... } *)
+    (* Record update: { expr with field = value; ... } *)
+
+    (* Helper to skip trivia and check next non-trivia token *)
+    let rec peek_non_trivia_nth parser n =
+      let rec skip_from pos count =
+        if pos >= Array.length parser.tokens then None
+        else
+          let tok = parser.tokens.(pos) in
+          match tok.Token.kind with
+          | Token.Whitespace | Token.Comment _ | Token.Docstring _ ->
+              skip_from (pos + 1) count
+          | _ ->
+              if count = 0 then Some tok.Token.kind
+              else skip_from (pos + 1) (count - 1)
+      in
+      skip_from parser.position n
+    in
+
+    (* Check if first non-trivia token is identifier followed by = (record literal) *)
+    let is_record_literal =
+      match peek_non_trivia_nth parser 0 with
+      | Some (Token.Ident _) -> peek_non_trivia_nth parser 1 = Some Token.Eq
+      | _ -> false
+    in
+
+    if is_record_literal then (
+      (* Parse as record literal { field = value; ... } *)
+      let fields = ref [] in
+
+      (* Parse first field *)
+      (match parse_record_field parser with
+      | Some field ->
+          fields := Ceibo.Green.Node field :: !fields;
+          let _ = consume_trivia parser in
+
+          (* Parse remaining fields *)
+          while at parser Token.Semi do
+            let semi = consume parser in
+            let _ = consume_trivia parser in
+            fields := semi :: !fields;
+
+            match parse_record_field parser with
+            | Some f ->
+                fields := Ceibo.Green.Node f :: !fields;
+                let _ = consume_trivia parser in
+                ()
+            | None -> ()
+          done
+      | None -> ());
+
+      let close_brace = expect parser (Token.CloseDelim Token.Brace) in
+      let children = Array.of_list (List.rev (close_brace :: !fields)) in
+      let children = Array.append [| open_brace |] children in
+      let children = prepend_pending_trivia parser children in
+      Some (make_node ~kind:Syntax_kind.RECORD_EXPR children))
+    else
+      (* Parse expression first (for record update) *)
+      match parse_expr parser with
+      | Some base_expr ->
+          let _ = consume_trivia parser in
+          if at parser (Token.Keyword Keyword.With) then (
+            (* Record update: { expr with field = value; ... } *)
+            let with_kw = consume parser in
+            let _ = consume_trivia parser in
+
+            let fields = ref [ with_kw; Ceibo.Green.Node base_expr ] in
+
+            (* Parse first field *)
+            (match parse_record_field parser with
+            | Some field ->
+                fields := Ceibo.Green.Node field :: !fields;
+                let _ = consume_trivia parser in
+
+                (* Parse remaining fields *)
+                while at parser Token.Semi do
+                  let semi = consume parser in
+                  let _ = consume_trivia parser in
+                  fields := semi :: !fields;
+
+                  match parse_record_field parser with
+                  | Some field ->
+                      fields := Ceibo.Green.Node field :: !fields;
+                      let _ = consume_trivia parser in
+                      ()
+                  | None -> ()
+                done
+            | None -> ());
+
+            let close_brace = expect parser (Token.CloseDelim Token.Brace) in
+            let children = Array.of_list (List.rev (close_brace :: !fields)) in
+            let children = Array.append [| open_brace |] children in
+            let children = prepend_pending_trivia parser children in
+            Some (make_node ~kind:Syntax_kind.RECORD_UPDATE_EXPR children))
+          else
+            (* Error: expected 'with' in record update *)
+            let span =
+              match peek parser with
+              | Some tok -> tok.Token.span
+              | None -> Ceibo.Span.make ~start:0 ~end_:0
+            in
+            report_error parser
+              (Diagnostic.make_missing_token ~expected:"'with'" ~span);
+            let close_brace = expect parser (Token.CloseDelim Token.Brace) in
+            let children =
+              prepend_pending_trivia parser
+                [| open_brace; Ceibo.Green.Node base_expr; close_brace |]
+            in
+            Some (make_node ~kind:Syntax_kind.RECORD_EXPR children)
+      | None ->
+          let close_brace = expect parser (Token.CloseDelim Token.Brace) in
+          let children =
+            prepend_pending_trivia parser [| open_brace; close_brace |]
+          in
+          Some (make_node ~kind:Syntax_kind.RECORD_EXPR children)
+
+and parse_record_field parser =
+  let _ = consume_trivia parser in
+  match peek_kind parser with
+  | Some (Token.Ident _) ->
+      let field_name = consume parser in
+      let _ = consume_trivia parser in
+      if at parser Token.Eq then
+        let eq = consume parser in
+        let _ = consume_trivia parser in
+        match parse_expr parser with
+        | Some value ->
+            let children = [| field_name; eq; Ceibo.Green.Node value |] in
+            Some (make_node ~kind:Syntax_kind.RECORD_FIELD children)
+        | None -> None
+      else
+        (* Punning: { x } is shorthand for { x = x } *)
+        let children = [| field_name |] in
+        Some (make_node ~kind:Syntax_kind.RECORD_FIELD children)
+  | _ -> None
 
 and parse_let_expr parser =
   let let_kw = consume parser in
@@ -713,119 +889,132 @@ and parse_function_expr parser =
 
   let cases = ref [] in
   (* Handle first case - may or may not have leading | *)
-  if at parser Token.Pipe then (
-    (* Has leading | - use normal match case parsing *)
-    while at parser Token.Pipe do
-      match parse_match_case parser with
-      | Some case -> cases := Ceibo.Green.Node case :: !cases
-      | None -> ()
-    done)
-  else (
-    (* No leading | - parse pattern -> expr directly *)
-    match parse_pattern parser with
-    | Some first_pattern ->
-        let _ = consume_trivia parser in
-        
-        (* Check for tuple pattern (comma) or or-pattern (pipe) *)
-        let base_pattern =
-          if at parser Token.Comma then (
-            (* Tuple pattern *)
-            let patterns = ref [ Ceibo.Green.Node first_pattern ] in
-            while at parser Token.Comma do
-              let comma = consume parser in
-              let _ = consume_trivia parser in
+  (if at parser Token.Pipe then
+     while
+       (* Has leading | - use normal match case parsing *)
+       at parser Token.Pipe
+     do
+       match parse_match_case parser with
+       | Some case -> cases := Ceibo.Green.Node case :: !cases
+       | None -> ()
+     done
+   else
+     (* No leading | - parse pattern -> expr directly *)
+     match parse_pattern parser with
+     | Some first_pattern -> (
+         let _ = consume_trivia parser in
 
-              match parse_pattern parser with
-              | Some pat ->
-                  patterns := Ceibo.Green.Node pat :: comma :: !patterns;
-                  let trivia = consume_trivia parser in
-                  patterns := List.rev_append trivia !patterns
-              | None -> ()
-            done;
-            make_node ~kind:Syntax_kind.TUPLE_PATTERN
-              (Array.of_list (List.rev !patterns)))
-          else if at parser Token.Pipe && not (at parser Token.Arrow) then (
-            (* Or pattern *)
-            let patterns = ref [ Ceibo.Green.Node first_pattern ] in
-            while at parser Token.Pipe && not (at_any parser [ Token.Arrow ]) do
-              let pipe_tok = consume parser in
-              let _ = consume_trivia parser in
+         (* Check for tuple pattern (comma) or or-pattern (pipe) *)
+         let base_pattern =
+           if at parser Token.Comma then (
+             (* Tuple pattern *)
+             let patterns = ref [ Ceibo.Green.Node first_pattern ] in
+             while at parser Token.Comma do
+               let comma = consume parser in
+               let _ = consume_trivia parser in
 
-              match parse_pattern parser with
-              | Some pat ->
-                  patterns := Ceibo.Green.Node pat :: pipe_tok :: !patterns;
-                  let trivia = consume_trivia parser in
-                  patterns := List.rev_append trivia !patterns
-              | None -> ()
-            done;
-            make_node ~kind:Syntax_kind.OR_PATTERN
-              (Array.of_list (List.rev !patterns)))
-          else first_pattern
-        in
-        
-        (* Check for cons pattern (::) *)
-        let _ = consume_trivia parser in
-        let pattern =
-          if at parser Token.ColonColon then
-            let cons_op = consume parser in
-            let _ = consume_trivia parser in
-            
-            match parse_pattern parser with
-            | Some tail_pat ->
-                Ceibo.Green.Node
-                  (make_node ~kind:Syntax_kind.CONS_PATTERN
-                     [| Ceibo.Green.Node base_pattern; cons_op; Ceibo.Green.Node tail_pat |])
-            | None -> Ceibo.Green.Node base_pattern
-          else Ceibo.Green.Node base_pattern
-        in
-        
-        (* Handle guard (when clause) *)
-        let _ = consume_trivia parser in
-        let guard =
-          if at parser (Token.Keyword Keyword.When) then
-            let when_kw = consume parser in
-            let _ = consume_trivia parser in
+               match parse_pattern parser with
+               | Some pat ->
+                   patterns := Ceibo.Green.Node pat :: comma :: !patterns;
+                   let trivia = consume_trivia parser in
+                   patterns := List.rev_append trivia !patterns
+               | None -> ()
+             done;
+             make_node ~kind:Syntax_kind.TUPLE_PATTERN
+               (Array.of_list (List.rev !patterns)))
+           else if at parser Token.Pipe && not (at parser Token.Arrow) then (
+             (* Or pattern *)
+             let patterns = ref [ Ceibo.Green.Node first_pattern ] in
+             while
+               at parser Token.Pipe && not (at_any parser [ Token.Arrow ])
+             do
+               let pipe_tok = consume parser in
+               let _ = consume_trivia parser in
 
-            match parse_expr parser with
-            | Some e ->
-                let _ = consume_trivia parser in
-                Some
-                  (Ceibo.Green.Node
-                     (make_node ~kind:Syntax_kind.PATTERN_GUARD
-                        [| when_kw; Ceibo.Green.Node e |]))
-            | None -> None
-          else None
-        in
-        
-        let arrow =
-          if at parser Token.Arrow then consume parser
-          else
-            let span =
-              match peek parser with
-              | Some tok -> tok.Token.span
-              | None -> Ceibo.Span.make ~start:0 ~end_:0
-            in
-            let err = Diagnostic.make_missing_token ~expected:"'->'" ~span in
-            report_error parser err;
-            Ceibo.Green.Token (Ceibo.Green.make_token ~kind:Syntax_kind.MISSING ~text:"" ~width:0)
-        in
-        let _ = consume_trivia parser in
-        match parse_expr parser with
-        | Some expr ->
-            let case_children = match guard with
-              | Some g -> [| pattern; g; arrow; Ceibo.Green.Node expr |]
-              | None -> [| pattern; arrow; Ceibo.Green.Node expr |]
-            in
-            let first_case = make_node ~kind:Syntax_kind.MATCH_CASE case_children in
-            cases := [ Ceibo.Green.Node first_case ];
-            (* Parse remaining cases with | *)
-            while at parser Token.Pipe do
-              match parse_match_case parser with
-              | Some case -> cases := Ceibo.Green.Node case :: !cases
-              | None -> ()
-            done
-        | None -> ()
-    | None -> ());
+               match parse_pattern parser with
+               | Some pat ->
+                   patterns := Ceibo.Green.Node pat :: pipe_tok :: !patterns;
+                   let trivia = consume_trivia parser in
+                   patterns := List.rev_append trivia !patterns
+               | None -> ()
+             done;
+             make_node ~kind:Syntax_kind.OR_PATTERN
+               (Array.of_list (List.rev !patterns)))
+           else first_pattern
+         in
+
+         (* Check for cons pattern (::) *)
+         let _ = consume_trivia parser in
+         let pattern =
+           if at parser Token.ColonColon then
+             let cons_op = consume parser in
+             let _ = consume_trivia parser in
+
+             match parse_pattern parser with
+             | Some tail_pat ->
+                 Ceibo.Green.Node
+                   (make_node ~kind:Syntax_kind.CONS_PATTERN
+                      [|
+                        Ceibo.Green.Node base_pattern;
+                        cons_op;
+                        Ceibo.Green.Node tail_pat;
+                      |])
+             | None -> Ceibo.Green.Node base_pattern
+           else Ceibo.Green.Node base_pattern
+         in
+
+         (* Handle guard (when clause) *)
+         let _ = consume_trivia parser in
+         let guard =
+           if at parser (Token.Keyword Keyword.When) then
+             let when_kw = consume parser in
+             let _ = consume_trivia parser in
+
+             match parse_expr parser with
+             | Some e ->
+                 let _ = consume_trivia parser in
+                 Some
+                   (Ceibo.Green.Node
+                      (make_node ~kind:Syntax_kind.PATTERN_GUARD
+                         [| when_kw; Ceibo.Green.Node e |]))
+             | None -> None
+           else None
+         in
+
+         let arrow =
+           if at parser Token.Arrow then consume parser
+           else
+             let span =
+               match peek parser with
+               | Some tok -> tok.Token.span
+               | None -> Ceibo.Span.make ~start:0 ~end_:0
+             in
+             let err = Diagnostic.make_missing_token ~expected:"'->'" ~span in
+             report_error parser err;
+             Ceibo.Green.Token
+               (Ceibo.Green.make_token ~kind:Syntax_kind.MISSING ~text:""
+                  ~width:0)
+         in
+         let _ = consume_trivia parser in
+         match parse_expr parser with
+         | Some expr ->
+             let case_children =
+               match guard with
+               | Some g -> [| pattern; g; arrow; Ceibo.Green.Node expr |]
+               | None -> [| pattern; arrow; Ceibo.Green.Node expr |]
+             in
+             let first_case =
+               make_node ~kind:Syntax_kind.MATCH_CASE case_children
+             in
+             cases := [ Ceibo.Green.Node first_case ];
+             (* Parse remaining cases with | *)
+             while at parser Token.Pipe do
+               match parse_match_case parser with
+               | Some case -> cases := Ceibo.Green.Node case :: !cases
+               | None -> ()
+             done
+         | None -> ()
+         | None -> ()));
 
   let children = List.rev !cases in
   let children = prepend_pending_trivia parser (Array.of_list children) in
@@ -898,7 +1087,7 @@ and parse_list_pattern parser =
 and parse_ident_or_constructor_pattern parser =
   let ident = consume parser in
   let _ = consume_trivia parser in
-  
+
   (* Check if this identifier is a constructor (starts with uppercase) *)
   let is_constructor =
     match Ceibo.Green.text ident with
@@ -1091,12 +1280,16 @@ and parse_match_case parser =
         if at parser Token.ColonColon then
           let cons_op = consume parser in
           let _ = consume_trivia parser in
-          
+
           match parse_pattern parser with
           | Some tail_pat ->
               Ceibo.Green.Node
                 (make_node ~kind:Syntax_kind.CONS_PATTERN
-                   [| Ceibo.Green.Node base_pattern; cons_op; Ceibo.Green.Node tail_pat |])
+                   [|
+                     Ceibo.Green.Node base_pattern;
+                     cons_op;
+                     Ceibo.Green.Node tail_pat;
+                   |])
           | None -> Ceibo.Green.Node base_pattern
         else Ceibo.Green.Node base_pattern
     | other -> other

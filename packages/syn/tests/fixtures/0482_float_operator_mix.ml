@@ -1,1 +1,1 @@
-let x = a +. b *. c -. d /. e ** f
+let x = a +. (b *. c) -. (d /. (e ** f))

@@ -59,8 +59,9 @@
     - Any graph visualization with Graphviz
 *)
 
-type graph_style = Directed | Undirected
-(** Graph style - directed (->) or undirected (--). *)
+type graph_style =
+  | Directed
+  | Undirected  (** Graph style - directed (->) or undirected (--). *)
 
 type node = {
   id : string;

@@ -1,95 +1,79 @@
 (** # Net.Http.Version - HTTP protocol versions
-    
+
     HTTP protocol version representation supporting HTTP/0.9 through HTTP/3.
-    
+
     ## Examples
-    
+
     Working with versions:
-    
-    ```ocaml
-    open Std.Net.Http
-    
-    let v1 = Version.Http11 in
-    Version.to_string v1  (* "HTTP/1.1" *)
-    
-    match Version.of_string "HTTP/2" with
-    | Ok v2 -> Version.compare v1 v2  (* < 0, HTTP/1.1 < HTTP/2 *)
-    | Error `InvalidVersion -> ()
-    
-    Version.is_supported Version.Http11  (* true *)
-    Version.is_supported Version.Http3   (* depends on implementation *)
-    ```
-    
+
+    ```ocaml open Std.Net.Http
+
+    let v1 = Version.Http11 in Version.to_string v1 (* "HTTP/1.1" *)
+
+    match Version.of_string "HTTP/2" with | Ok v2 -> Version.compare v1 v2 (* <
+    0, HTTP/1.1 < HTTP/2 *) | Error `InvalidVersion -> ()
+
+    Version.is_supported Version.Http11 (* true *) Version.is_supported
+    Version.Http3 (* depends on implementation *) ```
+
     ## Supported Versions
-    
+
     - HTTP/0.9 - Legacy, rarely used
     - HTTP/1.0 - Basic HTTP
     - HTTP/1.1 - Most common (default)
     - HTTP/2 - Binary protocol with multiplexing
-    - HTTP/3 - QUIC-based protocol
-*)
+    - HTTP/3 - QUIC-based protocol *)
 
-type t = Http09 | Http10 | Http11 | Http2 | Http3
-(** HTTP protocol versions from 0.9 to 3.0. *)
+type t =
+  | Http09
+  | Http10
+  | Http11
+  | Http2
+  | Http3  (** HTTP protocol versions from 0.9 to 3.0. *)
 
 val of_string : string -> (t, [ `InvalidVersion ]) result
 (** Parses an HTTP version string.
-    
+
     ## Examples
-    
-    ```ocaml
-    Version.of_string "HTTP/1.1"  (* Ok Http11 *)
-    Version.of_string "HTTP/2"    (* Ok Http2 *)
-    Version.of_string "HTTP/9.9"  (* Error `InvalidVersion *)
-    ```
-    
+
+    ```ocaml Version.of_string "HTTP/1.1" (* Ok Http11 *) Version.of_string
+    "HTTP/2" (* Ok Http2 *) Version.of_string "HTTP/9.9" (* Error
+    `InvalidVersion *) ```
+
     Accepted formats:
     - "HTTP/0.9", "HTTP/1.0", "HTTP/1.1"
-    - "HTTP/2", "HTTP/3"
-*)
+    - "HTTP/2", "HTTP/3" *)
 
 val to_string : t -> string
 (** Converts HTTP version to standard string representation.
-    
+
     ## Examples
-    
-    ```ocaml
-    Version.to_string Version.Http11  (* "HTTP/1.1" *)
-    Version.to_string Version.Http2   (* "HTTP/2" *)
-    ```
-*)
+
+    ```ocaml Version.to_string Version.Http11 (* "HTTP/1.1" *) Version.to_string
+    Version.Http2 (* "HTTP/2" *) ``` *)
 
 val compare : t -> t -> int
 (** Compares two HTTP versions by their version number.
-    
+
     ## Examples
-    
-    ```ocaml
-    Version.compare Version.Http10 Version.Http11  (* < 0 *)
-    Version.compare Version.Http2 Version.Http11   (* > 0 *)
-    ```
-*)
+
+    ```ocaml Version.compare Version.Http10 Version.Http11 (* < 0 *)
+    Version.compare Version.Http2 Version.Http11 (* > 0 *) ``` *)
 
 val equal : t -> t -> bool
 (** Checks if two HTTP versions are equal.
-    
+
     ## Examples
-    
-    ```ocaml
-    Version.equal Version.Http11 Version.Http11  (* true *)
-    ```
-*)
+
+    ```ocaml Version.equal Version.Http11 Version.Http11 (* true *) ``` *)
 
 val is_supported : t -> bool
 (** Checks if the HTTP version is supported by this implementation.
-    
+
     ## Examples
-    
-    ```ocaml
-    Version.is_supported Version.Http11  (* typically true *)
-    ```
-    
+
+    ```ocaml Version.is_supported Version.Http11 (* typically true *) ```
+
     ## Note
-    
-    Support may vary by platform and build configuration.
-*)
+
+    Support may vary by platform and build configuration. *)

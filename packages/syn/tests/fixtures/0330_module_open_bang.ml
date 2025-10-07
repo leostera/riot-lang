@@ -1,1 +1,1 @@
-let x = M.!(y)
+let x = (M).!(y)

@@ -1,1 +1,1 @@
-let x = Set.Make(String)
+let x = Set.Make String

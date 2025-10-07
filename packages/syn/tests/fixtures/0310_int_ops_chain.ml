@@ -1,1 +1,1 @@
-let x = a + b - c * d / e mod f
+let x = a + b - (c * d / e mod f)

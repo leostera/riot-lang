@@ -1,1 +1,1 @@
-let x = begin 5 end
+let x = 5

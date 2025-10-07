@@ -1,1 +1,4 @@
-type t = ScanWorkspaceError
+type t =
+  | ScanWorkspaceError
+  | WorkspaceTomlParseError of string
+  | WorkspaceTomlWriteError

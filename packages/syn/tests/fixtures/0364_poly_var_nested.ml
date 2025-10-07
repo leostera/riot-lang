@@ -1,1 +1,1 @@
-let x = `Some (`None)
+let x = `Some `None

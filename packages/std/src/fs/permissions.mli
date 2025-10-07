@@ -1,53 +1,44 @@
 (** # Fs.Permissions - File permission bits
-    
-    Unix-style file permissions with owner, group, and other read/write/execute bits.
-    
+
+    Unix-style file permissions with owner, group, and other read/write/execute
+    bits.
+
     ## Examples
-    
+
     Creating permissions:
-    
-    ```ocaml
-    open Std.Fs
-    
-    (* Common permission modes *)
-    let perms = Permissions.read_write in  (* rw-r--r-- / 0644 *)
-    let perms = Permissions.executable in   (* rwxr-xr-x / 0755 *)
-    let perms = Permissions.private_read_write in  (* rw------- / 0600 *)
-    
-    (* From Unix mode *)
-    let perms = Permissions.of_mode 0o755 in
-    Permissions.to_mode perms  (* 0o755 *)
-    ```
-    
+
+    ```ocaml open Std.Fs
+
+    (* Common permission modes *) let perms = Permissions.read_write in (*
+    rw-r--r-- / 0644 *) let perms = Permissions.executable in (* rwxr-xr-x /
+    0755 *) let perms = Permissions.private_read_write in (* rw------- / 0600 *)
+
+    (* From Unix mode *) let perms = Permissions.of_mode 0o755 in
+    Permissions.to_mode perms (* 0o755 *) ```
+
     Checking permissions:
-    
-    ```ocaml
-    if Permissions.user_write perms then
-      Log.info "Owner can write"
-    
-    if Permissions.readonly perms then
-      Log.info "No write permissions anywhere"
+
+    ```ocaml if Permissions.user_write perms then Log.info "Owner can write"
+
+    if Permissions.readonly perms then Log.info "No write permissions anywhere"
     ```
-    
+
     Modifying permissions:
-    
-    ```ocaml
-    (* Make readonly *)
-    let readonly = Permissions.set_readonly perms true in
-    
-    (* Warning: set_readonly false makes world-writable on Unix! *)
-    let writable = Permissions.set_readonly perms false
-    ```
-    
+
+    ```ocaml (* Make readonly *) let readonly = Permissions.set_readonly perms
+    true in
+
+    (* Warning: set_readonly false makes world-writable on Unix! *) let writable
+    = Permissions.set_readonly perms false ```
+
     ## Permission Bits
-    
+
     Unix permissions use 9 bits organized as: `rwxrwxrwx`
     - First 3 bits: owner (user) permissions
     - Middle 3 bits: group permissions
     - Last 3 bits: other (world) permissions
-    
-    Each triple is: read (4), write (2), execute (1)
-*)
+
+    Each triple is: read (4), write (2), execute (1) *)
 
 type t
 (** Unix permission bits for owner, group, and others. *)
@@ -56,66 +47,53 @@ type t
 
 val of_mode : int -> t
 (** Creates permissions from Unix mode bits (octal).
-    
+
     ## Examples
-    
-    ```ocaml
-    Permissions.of_mode 0o644  (* rw-r--r-- *)
-    Permissions.of_mode 0o755  (* rwxr-xr-x *)
-    Permissions.of_mode 0o600  (* rw------- *)
-    ```
-*)
+
+    ```ocaml Permissions.of_mode 0o644 (* rw-r--r-- *) Permissions.of_mode 0o755
+    (* rwxr-xr-x *) Permissions.of_mode 0o600 (* rw------- *) ``` *)
 
 val to_mode : t -> int
 (** Converts to Unix mode bits.
-    
+
     ## Examples
-    
-    ```ocaml
-    let perms = Permissions.read_write in
-    Permissions.to_mode perms  (* 0o644 *)
-    ```
-*)
+
+    ```ocaml let perms = Permissions.read_write in Permissions.to_mode perms (*
+    0o644 *) ``` *)
 
 (** ## Readonly Checks *)
 
 val readonly : t -> bool
 (** Returns [true] if no write bits are set (owner, group, or others).
-    
+
     ## Examples
-    
-    ```ocaml
-    let perms = Permissions.of_mode 0o444 in  (* r--r--r-- *)
-    Permissions.readonly perms  (* true *)
-    
-    let perms = Permissions.of_mode 0o644 in  (* rw-r--r-- *)
-    Permissions.readonly perms  (* false - owner can write *)
-    ```
-    
+
+    ```ocaml let perms = Permissions.of_mode 0o444 in (* r--r--r-- *)
+    Permissions.readonly perms (* true *)
+
+    let perms = Permissions.of_mode 0o644 in (* rw-r--r-- *)
+    Permissions.readonly perms (* false - owner can write *) ```
+
     ## Note
-    
+
     This only checks permission bits. It doesn't consider:
     - ACLs (Access Control Lists)
     - Actual user/group ownership
-    - SELinux/AppArmor policies
-*)
+    - SELinux/AppArmor policies *)
 
 val set_readonly : t -> bool -> t
 (** Sets or clears write permissions for owner, group, and others.
-    
+
     ## Examples
-    
-    ```ocaml
-    let perms = Permissions.of_mode 0o755 in
-    let readonly = Permissions.set_readonly perms true in
-    Permissions.to_mode readonly  (* 0o555 - r-xr-xr-x *)
-    ```
-    
+
+    ```ocaml let perms = Permissions.of_mode 0o755 in let readonly =
+    Permissions.set_readonly perms true in Permissions.to_mode readonly (* 0o555
+    \- r-xr-xr-x *) ```
+
     ## Warning
-    
-    `set_readonly false` makes the file world-writable on Unix!
-    This is rarely what you want. Consider setting specific bits instead.
-*)
+
+    `set_readonly false` makes the file world-writable on Unix! This is rarely
+    what you want. Consider setting specific bits instead. *)
 
 (** ## Permission Bits *)
 
@@ -150,24 +128,20 @@ val other_execute : t -> bool
 
 val read_write : t
 (** `rw-r--r--` (0644) - Owner read/write, group/others read-only.
-    
-    Common for data files that need to be shared but not modified by others.
-*)
+
+    Common for data files that need to be shared but not modified by others. *)
 
 val executable : t
 (** `rwxr-xr-x` (0755) - Owner read/write/execute, group/others read/execute.
-    
-    Common for executable files and directories.
-*)
+
+    Common for executable files and directories. *)
 
 val private_read_write : t
 (** `rw-------` (0600) - Owner read/write only, no access for others.
-    
-    Common for private data files like SSH keys or credentials.
-*)
+
+    Common for private data files like SSH keys or credentials. *)
 
 val private_executable : t
 (** `rwx------` (0700) - Owner read/write/execute only, no access for others.
-    
-    Common for private executables or personal directories.
-*)
+
+    Common for private executables or personal directories. *)

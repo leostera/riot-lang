@@ -118,6 +118,11 @@ module TuskProtocol : sig
       }
     | PackageCreated of { path : string; name : string }
     | PackageCreationError of { error : string }
+    | PackageNotFound of {
+        session_id : Session_id.t;
+        package_name : string;
+        available_packages : string list;
+      }
     | Error of string
 
   include
@@ -165,7 +170,10 @@ module Client : sig
   val build_package : t -> string -> (TuskProtocol.response, string) result
   val build_all : t -> (TuskProtocol.response, string) result
   val find_executable : t -> string -> ((string * string) option, string) result
-  val find_artifact : t -> package:string -> kind:string -> name:string -> (string, string) result
+
+  val find_artifact :
+    t -> package:string -> kind:string -> name:string -> (string, string) result
+
   val restart : t -> (unit, string) result
   val shutdown : t -> (unit, string) result
 
@@ -189,6 +197,20 @@ module Client : sig
     name:string ->
     is_library:bool ->
     (string * string, string) result
+
+  val create_package :
+    t ->
+    name:string ->
+    deps:string list ->
+    is_library:bool ->
+    (string * string list, string) result
+
+  val create_module :
+    t ->
+    package:string ->
+    module_name:string ->
+    contents:string ->
+    (string list, string) result
 
   val close : t -> unit
 end

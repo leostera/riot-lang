@@ -124,6 +124,11 @@ module TuskProtocol = struct
       }
     | PackageCreated of { path : string; name : string }
     | PackageCreationError of { error : string }
+    | PackageNotFound of {
+        session_id : Session_id.t;
+        package_name : string;
+        available_packages : string list;
+      }
     | Error of string
 
   (* Helper to deserialize event kind from JSON *)
@@ -1247,13 +1252,14 @@ module TuskProtocol = struct
                 List.assoc_opt "kind" fields,
                 List.assoc_opt "name" fields )
             with
-            | Some (Json.String package), Some (Json.String kind),
-              Some (Json.String name) ->
+            | ( Some (Json.String package),
+                Some (Json.String kind),
+                Some (Json.String name) ) ->
                 Ok (FindArtifact { package; kind; name })
             | _ ->
                 Error
-                  (Json.String
-                     "Missing or invalid parameters for findArtifact"))
+                  (Json.String "Missing or invalid parameters for findArtifact")
+            )
         | _ -> Error (Json.String "findArtifact requires named parameters"))
     | "tusk.formatFile" -> (
         match params with
@@ -1399,13 +1405,13 @@ module TuskProtocol = struct
         Json.Object [ ("type", Json.String "executable_not_found") ]
     | FoundArtifact { path } ->
         Json.Object
-          [
-            ("type", Json.String "artifact_found");
-            ("path", Json.String path);
-          ]
+          [ ("type", Json.String "artifact_found"); ("path", Json.String path) ]
     | ArtifactNotFound { error } ->
         Json.Object
-          [ ("type", Json.String "artifact_not_found"); ("error", Json.String error) ]
+          [
+            ("type", Json.String "artifact_not_found");
+            ("error", Json.String error);
+          ]
     | CycleDetected { session_id; detected_at; cycle_nodes } ->
         let timestamp = Std.Datetime.to_iso8601 detected_at in
         Json.Object
@@ -1493,6 +1499,16 @@ module TuskProtocol = struct
             ("type", Json.String "package_creation_error");
             ("error", Json.String error);
           ]
+    | PackageNotFound { session_id; package_name; available_packages } ->
+        Json.Object
+          [
+            ("type", Json.String "package_not_found");
+            ("session_id", Json.String (Session_id.to_string session_id));
+            ("package_name", Json.String package_name);
+            ( "available_packages",
+              Json.Array (List.map (fun p -> Json.String p) available_packages)
+            );
+          ]
     | Error msg -> Json.Object [ ("error", Json.String msg) ]
 
   let response_of_json json =
@@ -1512,7 +1528,7 @@ module TuskProtocol = struct
             let started_at = Std.Datetime.now () in
             (* Will be overridden by server timestamp *)
             Ok (BuildStarted { session_id; started_at })
-        | Some (Json.String "found_executable") -> (
+        | Some (Json.String "found_executable") ->
             let package =
               match List.assoc_opt "package" fields with
               | Some (Json.String s) -> s
@@ -1523,7 +1539,7 @@ module TuskProtocol = struct
               | Some (Json.String s) -> s
               | _ -> ""
             in
-            Ok (FoundExecutable { package; binary }))
+            Ok (FoundExecutable { package; binary })
         | Some (Json.String "executable_not_found") -> Ok ExecutableNotFound
         | Some (Json.String "artifact_found") -> (
             match List.assoc_opt "path" fields with
@@ -1705,6 +1721,28 @@ module TuskProtocol = struct
             | Some (Json.String error) -> Ok (PackageCreationError { error })
             | _ -> Error (Json.String "Invalid package_creation_error response")
             )
+        | Some (Json.String "package_not_found") -> (
+            match
+              ( List.assoc_opt "session_id" fields,
+                List.assoc_opt "package_name" fields,
+                List.assoc_opt "available_packages" fields )
+            with
+            | ( Some (Json.String sid),
+                Some (Json.String package_name),
+                Some (Json.Array pkgs) ) ->
+                let available_packages =
+                  List.filter_map
+                    (function Json.String s -> Some s | _ -> None)
+                    pkgs
+                in
+                Ok
+                  (PackageNotFound
+                     {
+                       session_id = Session_id.of_string sid;
+                       package_name;
+                       available_packages;
+                     })
+            | _ -> Error (Json.String "Invalid package_not_found response"))
         | Some (Json.String "format_all_result") -> (
             match
               ( List.assoc_opt "files_formatted" fields,
@@ -2002,6 +2040,28 @@ module Client = struct
         Error
           (format "Error %d: %s" (Jsonrpc.error_code_to_int e.code) e.message)
 
+  (** Create a new package in ./packages/ with dependencies *)
+  let create_package t ~name ~deps ~is_library =
+    (* Create package in ./packages/<name> *)
+    let path = format "packages/%s" name in
+    match new_package t ~path ~name ~is_library with
+    | Ok (created_path, created_name) ->
+        (* TODO: Add dependencies to tusk.toml *)
+        let files =
+          [ format "%s/tusk.toml" created_path; format "%s/src" created_path ]
+        in
+        Ok (created_path, files)
+    | Error e -> Error e
+
+  (** Create a new module file in a package *)
+  let create_module t ~package ~module_name ~contents =
+    (* For now, return an error since we need filesystem access from the server *)
+    Error
+      (format
+         "Module creation not yet implemented. Please create %s.ml in package \
+          '%s' manually"
+         module_name package)
+
   (** Close the client *)
   let close t =
     (* Jsonrpc.Client.close already closes the transport *)
@@ -2103,6 +2163,21 @@ module Client = struct
                       receive_events ()
                   | Ok
                       {
+                        result =
+                          Ok
+                            (TuskProtocol.PackageNotFound
+                               { session_id; package_name; available_packages });
+                        _;
+                      } ->
+                      (* Report package not found as an error and finish build *)
+                      let error_msg =
+                        format "Package '%s' not found. Available: %s"
+                          package_name
+                          (String.concat ", " available_packages)
+                      in
+                      Ok (BuildFinished (Error error_msg))
+                  | Ok
+                      {
                         result = Ok (TuskProtocol.BuildComplete { stats; _ });
                         _;
                       } ->
@@ -2149,6 +2224,15 @@ module Client = struct
                         | Ok (TuskProtocol.PackageCreated _) -> "PackageCreated"
                         | Ok (TuskProtocol.PackageCreationError _) ->
                             "PackageCreationError"
+                        | Ok (TuskProtocol.PackageNotFound _) ->
+                            "PackageNotFound"
+                        | Ok TuskProtocol.ExecutableNotFound ->
+                            "ExecutableNotFound"
+                        | Ok (TuskProtocol.FoundExecutable _) ->
+                            "FoundExecutable"
+                        | Ok (TuskProtocol.FoundArtifact _) -> "FoundArtifact"
+                        | Ok (TuskProtocol.ArtifactNotFound _) ->
+                            "ArtifactNotFound"
                         | Ok (TuskProtocol.Error _) -> "Error"
                         | Error e -> format "JsonRpcError(%s)" e.message
                       in
@@ -2219,7 +2303,8 @@ module Client = struct
   let find_executable t name =
     match
       Jsonrpc.Client.call t.client ~method_:method_find_executable
-        ~params:(Jsonrpc.Named [ ("name", Json.String name) ]) ()
+        ~params:(Jsonrpc.Named [ ("name", Json.String name) ])
+        ()
     with
     | Ok (TuskProtocol.FoundExecutable { package; binary }) ->
         Ok (Some (package, binary))
@@ -2235,9 +2320,12 @@ module Client = struct
       Jsonrpc.Client.call t.client ~method_:method_find_artifact
         ~params:
           (Jsonrpc.Named
-             [ ("package", Json.String package);
+             [
+               ("package", Json.String package);
                ("kind", Json.String kind);
-               ("name", Json.String name) ]) ()
+               ("name", Json.String name);
+             ])
+        ()
     with
     | Ok (TuskProtocol.FoundArtifact { path }) -> Ok path
     | Ok (TuskProtocol.ArtifactNotFound { error }) -> Error error
@@ -2569,7 +2657,8 @@ module Server = struct
       (Tusk_protocol.ServerRequest
          (Tusk_protocol.FindExecutable { client_pid = self (); name }));
     let selector = function
-      | Tusk_protocol.ServerResponse Tusk_protocol.ExecutableFound { package; binary } ->
+      | Tusk_protocol.ServerResponse
+          (Tusk_protocol.ExecutableFound { package; binary }) ->
           `select (`found (package, binary))
       | Tusk_protocol.ServerResponse Tusk_protocol.ExecutableNotFound ->
           `select `not_found
@@ -2588,12 +2677,14 @@ module Server = struct
     let selector = function
       | Tusk_protocol.ServerResponse (Tusk_protocol.ArtifactFound { path }) ->
           `select (`found path)
-      | Tusk_protocol.ServerResponse (Tusk_protocol.ArtifactNotFound { error }) ->
+      | Tusk_protocol.ServerResponse (Tusk_protocol.ArtifactNotFound { error })
+        ->
           `select (`err error)
       | _ -> `skip
     in
     match receive ~selector () with
-    | `found path -> reply (TuskProtocol.FoundArtifact { path = Std.Path.to_string path })
+    | `found path ->
+        reply (TuskProtocol.FoundArtifact { path = Std.Path.to_string path })
     | `err error -> reply (TuskProtocol.ArtifactNotFound { error })
 
   let handle_format_file ctx reply file_path check_only =

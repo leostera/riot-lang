@@ -1,1 +1,4 @@
-let x = object (self) method m = self#n end
+let x =
+  object (self)
+    method m = self#n
+  end

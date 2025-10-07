@@ -1,5 +1,5 @@
 (** # Std - Riot's standard library
-    
+
     A comprehensive standard library providing:
     - Modern error handling with [Result] and [Option]
     - Type-safe filesystem operations with [Path] and [Fs]
@@ -10,32 +10,24 @@
     - Structured logging ([Log])
     - Process management ([Command])
     - Concurrent task execution ([Task], [WorkerPool])
-    
+
     ## Quick Start
-    
-    ```ocaml
-    open Std
-    
-    (* File operations *)
-    let content = Fs.read (Path.v "config.toml")
-      |> Result.expect ~msg:"Config not found" in
-    
-    (* Collections *)
-    let map = Collections.HashMap.create () in
+
+    ```ocaml open Std
+
+    (* File operations *) let content = Fs.read (Path.v "config.toml") |>
+    Result.expect ~msg:"Config not found" in
+
+    (* Collections *) let map = Collections.HashMap.create () in
     Collections.HashMap.insert map "key" "value" |> ignore;
-    
-    (* Logging *)
-    Log.set_level Log.Info;
-    Log.info "Application started"
-    
-    (* Time measurement *)
-    let start = Time.Instant.now () in
-    expensive_operation ();
-    let elapsed = Time.Instant.elapsed start
-    ```
-    
+
+    (* Logging *) Log.set_level Log.Info; Log.info "Application started"
+
+    (* Time measurement *) let start = Time.Instant.now () in
+    expensive_operation (); let elapsed = Time.Instant.elapsed start ```
+
     ## Module Organization
-    
+
     ### Core Types
     - [Result] - Error handling
     - [Option] - Optional values
@@ -44,22 +36,22 @@
     - [List] - Extended list utilities
     - [Buffer] - String building
     - [Char] - Character operations
-    
+
     ### Collections
     - [Collections] - Data structures
-      - [HashMap] - Hash tables
-      - [HashSet] - Unique values
-      - [Vector] - Growable arrays
-      - [Queue] - FIFO queues
-      - [Deque] - Double-ended queues
-    
+    - [HashMap] - Hash tables
+    - [HashSet] - Unique values
+    - [Vector] - Growable arrays
+    - [Queue] - FIFO queues
+    - [Deque] - Double-ended queues
+
     ### Time & Date
     - [Time] - Time utilities
-      - [Duration] - Time spans
-      - [Instant] - Monotonic time
-      - [SystemTime] - Wall-clock time
+    - [Duration] - Time spans
+    - [Instant] - Monotonic time
+    - [SystemTime] - Wall-clock time
     - [Datetime] - Calendar operations
-    
+
     ### I/O & System
     - [Fs] - Filesystem operations
     - [Command] - Process execution
@@ -67,31 +59,30 @@
     - [Log] - Structured logging
     - [Env] - Environment variables
     - [System] - System information
-    
+
     ### Data Formats
     - [Data] - Data parsing/serialization
-      - [Json] - JSON
-      - [Toml] - TOML
-      - [Sexp] - S-expressions
-    
+    - [Json] - JSON
+    - [Toml] - TOML
+    - [Sexp] - S-expressions
+
     ### Networking
     - [Net] - Network I/O
-      - [Http] - HTTP client/server
-      - [Uri] - URL parsing
-    
+    - [Http] - HTTP client/server
+    - [Uri] - URL parsing
+
     ### Utilities
     - [ArgParser] - Command-line arguments
     - [Version] - Semantic versioning
     - [Crypto] - Cryptographic hashing
     - [Graph] - Graph visualization
     - [WorkerPool] - Parallel execution
-    
+
     ### Low-Level
     - [Iterator] - Iteration protocol
     - [MutIterator] - Mutable iteration
     - [Cell] - Mutable cells
-    - [Exception] - Exception handling
-*)
+    - [Exception] - Exception handling *)
 
 module ArgParser = Arg_parser
 (** Command-line argument parsing *)

@@ -201,8 +201,9 @@ and handle_find_executable state client_pid name =
         if pkg.name <> name then false
         else
           let main_ml =
-            Path.(state.workspace.root / pkg.relative_path / Path.v "src"
-                  / Path.v "main.ml")
+            Path.(
+              state.workspace.root / pkg.relative_path / Path.v "src"
+              / Path.v "main.ml")
           in
           match Fs.exists main_ml with Ok true -> true | _ -> false)
       state.workspace.packages
@@ -215,8 +216,8 @@ and handle_find_executable state client_pid name =
   loop state
 
 and handle_find_artifact state client_pid package kind name =
-  Log.debug "Server: handle_find_artifact package=%s kind=%s name=%s" package kind
-    name;
+  Log.debug "Server: handle_find_artifact package=%s kind=%s name=%s" package
+    kind name;
   (* For now we only support binaries *)
   let path =
     Path.(
