@@ -154,7 +154,7 @@ let start ~workspace ~toolchain ~workers ~session_id ~client_pid ~target =
   in
 
   (* 3.5. Check if graph is empty (package not found) *)
-  (match target with
+  match target with
   | Package pkg_name when Build_graph.size target_graph = 0 ->
       let available =
         List.map (fun (p : Workspace.package) -> p.name) workspace.packages
@@ -186,100 +186,102 @@ let start ~workspace ~toolchain ~workers ~session_id ~client_pid ~target =
                 stats = build_stats;
               }));
 
-      (* Exit early *)
-      failwith "Package not found"
-  | _ -> ());
-
-  (* Try to sort the graph - if there's a cycle, report it and bail out *)
-  let nodes_result =
-    try Ok (Build_graph.topological_sort target_graph)
-    with Build_graph.Cycle_detected cycle_nodes -> Error cycle_nodes
-  in
-
-  match nodes_result with
-  | Error cycle_nodes ->
-      Log.debug "Server: Cycle detected involving packages: %s"
-        (String.concat ", " cycle_nodes);
-
-      (* Send cycle detected event to client *)
-      send client_pid
-        (ServerResponse
-           (CycleDetected
-              { session_id; cycle_nodes; detected_at = Datetime.now () }));
-
-      (* Create stats for this failed build *)
-      let build_stats = Tusk_protocol.BuildStats.make () in
-      Tusk_protocol.BuildStats.mark_started build_stats;
-      Tusk_protocol.BuildStats.mark_completed build_stats;
-
-      (* Send build completed event to properly finish the build *)
-      send client_pid
-        (ServerResponse
-           (BuildCompleted
-              {
-                session_id;
-                completed_At = Datetime.now ();
-                stats = build_stats;
-              }));
-
-      (* Exit the build process since we can't proceed *)
+      (* Exit early with Ok result - package not found is a valid response *)
       Ok ()
-  | Ok nodes ->
-      Log.debug "Server: Build starting with %d nodes" (List.length nodes);
-
-      (* Log build started event *)
-      let packages = List.map (fun n -> n.Build_node.package.name) nodes in
-      Log.debug "[BUILD_SERVER] Packages to build: %s"
-        (String.concat ", " packages);
-      let total_modules = 0 in
-      (* TODO: Count actual modules when available *)
-      Tusk_log.build_started ~session_id ~packages ~total_modules ~workers;
-
-      (* Create mutable build stats to track throughout the build *)
-      let build_stats = Tusk_protocol.BuildStats.make () in
-      Tusk_protocol.BuildStats.mark_started build_stats;
-
-      (* Create fresh build_results and build_queue for this build request *)
-      let build_results = Build_results.create () in
-      let build_queue = Build_queue.create build_results in
-
-      (* Queue all nodes and mark them as pending *)
-      List.iter
-        (fun node ->
-          Build_queue.queue build_queue node;
-          Build_results.mark_pending build_results node)
-        nodes;
-      Log.debug "Server: Queued %d packages: %s" (List.length packages)
-        (String.concat ", " packages);
-
-      (* Debug: Check queue state *)
-      let ready, waiting, busy = Build_queue.get_stats build_queue in
-      Log.debug "Server: Queue state - Ready: %d, Waiting: %d, Busy: %d" ready
-        waiting busy;
-
-      (* 4. create a worker pool to execute this build *)
-      Tusk_log.store_creating ~session_id ();
-      let store_start = Time.Instant.now () in
-      let store = Store.create ~workspace in
-      let store_duration =
-        Time.Instant.duration_since ~earlier:store_start (Time.Instant.now ())
-        |> Time.Duration.to_millis
+  | _ -> (
+      (* Try to sort the graph - if there's a cycle, report it and bail out *)
+      let nodes_result =
+        try Ok (Build_graph.topological_sort target_graph)
+        with Build_graph.Cycle_detected cycle_nodes -> Error cycle_nodes
       in
-      Tusk_log.store_created ~session_id ~duration_ms:store_duration;
 
-      Tusk_log.worker_pool_creating ~session_id ~workers;
-      let pool_start = Time.Instant.now () in
-      let _ =
-        Worker_pool.start ~workers ~provider:(self ()) ~build_graph:target_graph
-          ~build_results ~workspace ~store ~worker_fn:Build_worker.main ()
-      in
-      let pool_duration =
-        Time.Instant.duration_since ~earlier:pool_start (Time.Instant.now ())
-        |> Time.Duration.to_millis
-      in
-      Tusk_log.worker_pool_created ~session_id ~workers
-        ~duration_ms:pool_duration;
+      match nodes_result with
+      | Error cycle_nodes ->
+          Log.debug "Server: Cycle detected involving packages: %s"
+            (String.concat ", " cycle_nodes);
 
-      (* 5. enter the build loop *)
-      do_build ~session_id ~client_pid ~build_results ~build_queue ~build_stats
-        ~store
+          (* Send cycle detected event to client *)
+          send client_pid
+            (ServerResponse
+               (CycleDetected
+                  { session_id; cycle_nodes; detected_at = Datetime.now () }));
+
+          (* Create stats for this failed build *)
+          let build_stats = Tusk_protocol.BuildStats.make () in
+          Tusk_protocol.BuildStats.mark_started build_stats;
+          Tusk_protocol.BuildStats.mark_completed build_stats;
+
+          (* Send build completed event to properly finish the build *)
+          send client_pid
+            (ServerResponse
+               (BuildCompleted
+                  {
+                    session_id;
+                    completed_At = Datetime.now ();
+                    stats = build_stats;
+                  }));
+
+          (* Exit the build process since we can't proceed *)
+          Ok ()
+      | Ok nodes ->
+          Log.debug "Server: Build starting with %d nodes" (List.length nodes);
+
+          (* Log build started event *)
+          let packages = List.map (fun n -> n.Build_node.package.name) nodes in
+          Log.debug "[BUILD_SERVER] Packages to build: %s"
+            (String.concat ", " packages);
+          let total_modules = 0 in
+          (* TODO: Count actual modules when available *)
+          Tusk_log.build_started ~session_id ~packages ~total_modules ~workers;
+
+          (* Create mutable build stats to track throughout the build *)
+          let build_stats = Tusk_protocol.BuildStats.make () in
+          Tusk_protocol.BuildStats.mark_started build_stats;
+
+          (* Create fresh build_results and build_queue for this build request *)
+          let build_results = Build_results.create () in
+          let build_queue = Build_queue.create build_results in
+
+          (* Queue all nodes and mark them as pending *)
+          List.iter
+            (fun node ->
+              Build_queue.queue build_queue node;
+              Build_results.mark_pending build_results node)
+            nodes;
+          Log.debug "Server: Queued %d packages: %s" (List.length packages)
+            (String.concat ", " packages);
+
+          (* Debug: Check queue state *)
+          let ready, waiting, busy = Build_queue.get_stats build_queue in
+          Log.debug "Server: Queue state - Ready: %d, Waiting: %d, Busy: %d"
+            ready waiting busy;
+
+          (* 4. create a worker pool to execute this build *)
+          Tusk_log.store_creating ~session_id ();
+          let store_start = Time.Instant.now () in
+          let store = Store.create ~workspace in
+          let store_duration =
+            Time.Instant.duration_since ~earlier:store_start
+              (Time.Instant.now ())
+            |> Time.Duration.to_millis
+          in
+          Tusk_log.store_created ~session_id ~duration_ms:store_duration;
+
+          Tusk_log.worker_pool_creating ~session_id ~workers;
+          let pool_start = Time.Instant.now () in
+          let _ =
+            Worker_pool.start ~workers ~provider:(self ())
+              ~build_graph:target_graph ~build_results ~workspace ~store
+              ~worker_fn:Build_worker.main ()
+          in
+          let pool_duration =
+            Time.Instant.duration_since ~earlier:pool_start
+              (Time.Instant.now ())
+            |> Time.Duration.to_millis
+          in
+          Tusk_log.worker_pool_created ~session_id ~workers
+            ~duration_ms:pool_duration;
+
+          (* 5. enter the build loop *)
+          do_build ~session_id ~client_pid ~build_results ~build_queue
+            ~build_stats ~store)

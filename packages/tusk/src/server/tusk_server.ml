@@ -287,24 +287,26 @@ and handle_new_package state client_pid path name is_library =
 
   (* Create main module files *)
   let main_ml = Path.(src_dir / Path.v (module_name ^ ".ml")) in
-  let main_mli = Path.(src_dir / Path.v (module_name ^ ".mli")) in
 
   let ml_content =
-    if is_library then "(** Main module for " ^ name ^ " library *)\n"
-    else
-      "(** Main entry point for " ^ name
-      ^ " *)\n\nlet () = print_endline \"Hello from " ^ name ^ "\"\n"
-  in
-
-  let mli_content =
     if is_library then
-      "(** " ^ String.capitalize_ascii name ^ " library interface *)\n"
-    else "(** " ^ String.capitalize_ascii name ^ " executable interface *)\n"
+      "open Std\n\n(** Main module for " ^ name ^ " library *)\n"
+    else "open Std\n\nlet () = println \"Hello, World!\"\n"
   in
 
-  (* Write module files *)
+  (* Write .ml file *)
   let _ = Fs.write ml_content main_ml in
-  let _ = Fs.write mli_content main_mli in
+
+  (* Only create .mli for libraries *)
+  let _ =
+    if is_library then
+      let main_mli = Path.(src_dir / Path.v (module_name ^ ".mli")) in
+      let mli_content =
+        "(** " ^ String.capitalize_ascii name ^ " library interface *)\n"
+      in
+      Fs.write mli_content main_mli
+    else Ok ()
+  in
 
   (* Create package tusk.toml *)
   let package_toml = Path.(path / Path.v "tusk.toml") in
@@ -371,9 +373,9 @@ let write_daemon_files ~workspace ~port =
     | None -> failwith "Failed to get home directory"
   in
   let root_str = Path.to_string workspace.Workspace.root in
-  let project_id = format "%08x" (Hashtbl.hash root_str) in
+  let project_id = String.map (fun c -> if c = '/' then '-' else c) root_str in
   let daemon_path =
-    Path.(home / Path.v ".tusk" / Path.v "daemons" / Path.v project_id)
+    Path.(home / Path.v ".tusk" / Path.v "projects" / Path.v project_id)
   in
 
   let _ =
@@ -391,6 +393,7 @@ let write_daemon_files ~workspace ~port =
 
 (** Main server loop *)
 let init ~current_dir ~workers ~port =
+  Log.set_level Log.Debug;
   Log.info "Tusk server initializing...";
   Log.debug "Current dir: %s" (Path.to_string current_dir);
   Log.debug "Workers: %d, Port: %d" workers port;

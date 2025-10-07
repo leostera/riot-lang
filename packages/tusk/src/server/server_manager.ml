@@ -13,10 +13,9 @@ module Daemon = struct
   }
 
   let get_project_id workspace =
-    (* Use workspace root path as a simple project ID *)
+    (* Use workspace root path with / replaced by - as project ID *)
     let root_str = Path.to_string workspace.Workspace.root in
-    (* Hash the path to get a shorter ID *)
-    format "%08x" (Hashtbl.hash root_str)
+    String.map (fun c -> if c = '/' then '-' else c) root_str
 
   let daemon_dir ~workspace =
     let home =
@@ -25,7 +24,7 @@ module Daemon = struct
       | None -> failwith "Failed to get home directory"
     in
     let project_id = get_project_id workspace in
-    Path.(home / Path.v ".tusk" / Path.v "daemons" / Path.v project_id)
+    Path.(home / Path.v ".tusk" / Path.v "projects" / Path.v project_id)
 
   let daemon_exists ~workspace =
     let daemon_path = daemon_dir ~workspace in
@@ -83,7 +82,7 @@ module Daemon = struct
 
   (** Start the daemon process *)
   let of_workspace ~workspace =
-    (* 1. first get the workspace id and check if the right files exist in ~/.tusk/daemons/<project-id> -- if they do, read and return those files *)
+    (* 1. first get the workspace id and check if the right files exist in ~/.tusk/projects/<project-id> -- if they do, read and return those files *)
     match daemon_exists ~workspace with
     | Some daemon -> Ok daemon
     | None -> (
@@ -169,14 +168,7 @@ let ensure_running ~workspace =
         daemon.os_pid;
 
       (* Clean up stale daemon files *)
-      let home =
-        match Env.home_dir () with Some h -> h | None -> failwith "No home"
-      in
-      let root_str = Path.to_string daemon.workspace.Workspace.root in
-      let project_id = format "%08x" (Hashtbl.hash root_str) in
-      let daemon_path =
-        Path.(home / Path.v ".tusk" / Path.v "daemons" / Path.v project_id)
-      in
+      let daemon_path = Daemon.daemon_dir ~workspace:daemon.workspace in
       let pid_file = Path.(daemon_path / Path.v "server.pid") in
       let port_file = Path.(daemon_path / Path.v "server.port") in
       let _ = Fs.remove_file pid_file in

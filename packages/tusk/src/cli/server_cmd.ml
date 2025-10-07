@@ -28,9 +28,9 @@ let get_daemon_info () =
     | None -> failwith "Failed to get home directory"
   in
   let root_str = Path.to_string workspace.Workspace.root in
-  let project_id = format "%08x" (Hashtbl.hash root_str) in
+  let project_id = String.map (fun c -> if c = '/' then '-' else c) root_str in
   let daemon_path =
-    Path.(home / Path.v ".tusk" / Path.v "daemons" / Path.v project_id)
+    Path.(home / Path.v ".tusk" / Path.v "projects" / Path.v project_id)
   in
   let pid_file = Path.(daemon_path / Path.v "server.pid") in
   let port_file = Path.(daemon_path / Path.v "server.port") in
