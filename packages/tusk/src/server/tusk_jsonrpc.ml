@@ -2175,6 +2175,7 @@ module Client = struct
                           package_name
                           (String.concat ", " available_packages)
                       in
+                      callback (BuildFinished (Error error_msg));
                       Ok (BuildFinished (Error error_msg))
                   | Ok
                       {
