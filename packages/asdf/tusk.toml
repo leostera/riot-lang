@@ -1,5 +1,5 @@
 [package]
-name = "sandwormsay"
+name = "asdf"
 version = "0.1.0"
 
 [dependencies]
@@ -7,4 +7,4 @@ std = "*"
 # Add dependencies here
 
 [package.bin]
-main = "sandwormsay"
+main = "asdf"

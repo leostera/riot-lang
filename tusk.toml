@@ -1,11 +1,11 @@
 [workspace]
 members = [
+  "packages/asdf",
   "packages/jsonrpc",
   "packages/kernel",
   "packages/mcp",
   "packages/miniriot",
   "packages/minitusk",
-  "packages/sandwormsay",
   "packages/syn",
   "packages/std",
   "packages/tusk",

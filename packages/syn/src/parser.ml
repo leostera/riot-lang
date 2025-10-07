@@ -85,6 +85,7 @@ let token_kind_to_syntax_kind = function
       Syntax_kind.MATCH_EXPR (* | is part of match/function syntax *)
   | Token.Semi -> Syntax_kind.SEQUENCE_EXPR
   | Token.Comma -> Syntax_kind.TUPLE_EXPR
+  | Token.Colon -> Syntax_kind.TYPED_EXPR
   | Token.Dot ->
       Syntax_kind.IDENT_EXPR (* . can be part of operator identifiers like -. *)
   | Token.Underscore -> Syntax_kind.WILDCARD_PATTERN
@@ -515,10 +516,32 @@ and parse_paren_expr parser =
     match parse_expr parser with
     | Some expr ->
         let _ = consume_trivia parser in
-        (* Check if it's a tuple (has comma), sequence (has semicolon), or just parenthesized expr *)
+        (* Check if it's a tuple (has comma), sequence (has semicolon), type annotation (has colon), or just parenthesized expr *)
         if at parser Token.Comma then parse_tuple_rest parser open_paren expr
         else if at parser Token.Semi then
           parse_sequence_rest parser open_paren expr
+        else if at parser Token.Colon then
+          (* Type annotation: (expr : type) *)
+          let colon = consume parser in
+          let _ = consume_trivia parser in
+          (* For now, just consume tokens until closing paren as the "type" *)
+          (* A proper implementation would parse the type, but we'll keep it simple *)
+          let type_tokens = ref [] in
+          while not (at parser (Token.CloseDelim Token.Paren)) && peek parser <> None do
+            let tok = consume parser in
+            type_tokens := tok :: !type_tokens;
+            let _ = consume_trivia parser in
+            ()
+          done;
+          let close_paren = expect parser (Token.CloseDelim Token.Paren) in
+          let type_elements = Array.of_list (List.rev !type_tokens) in
+          let children = Array.concat [
+            [| open_paren; Ceibo.Green.Node expr; colon |];
+            type_elements;
+            [| close_paren |]
+          ] in
+          let children = prepend_pending_trivia parser children in
+          Some (make_node ~kind:Syntax_kind.TYPED_EXPR children)
         else
           let close_paren = expect parser (Token.CloseDelim Token.Paren) in
           let children =
