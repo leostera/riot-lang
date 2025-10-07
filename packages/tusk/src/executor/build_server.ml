@@ -186,6 +186,9 @@ let start ~workspace ~toolchain ~workers ~session_id ~client_pid ~target =
                 stats = build_stats;
               }));
 
+      (* Give messages time to be delivered before process exits *)
+      Kernel.Time.sleep 0.01;
+
       (* Exit early with Ok result - package not found is a valid response *)
       Ok ()
   | _ -> (
