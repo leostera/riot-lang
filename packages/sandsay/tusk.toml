@@ -1,0 +1,10 @@
+[package]
+name = "sandsay"
+version = "0.1.0"
+
+[[bin]]
+name = "sandsay"
+path = "src/main.ml"
+
+[dependencies]
+std = { path = "../std" }
