@@ -1,11 +1,52 @@
 open Common
 
-(** File handle for reading and writing *)
+(** # Fs.File - File handles for reading and writing
+    
+    File handle type providing low-level file I/O operations with
+    async support through Miniriot. Wraps file descriptors with
+    a safe interface.
+    
+    ## Examples
+    
+    Reading a file:
+    
+    ```ocaml
+    open Std
+    
+    let path = Path.v "data.txt" in
+    match Fs.File.open_read path with
+    | Ok file ->
+        (match Fs.File.read_to_end file with
+        | Ok content ->
+            Log.info "Content: %s" content;
+            Fs.File.close file |> ignore
+        | Error err -> Log.error "Read failed")
+    | Error err -> Log.error "Open failed"
+    ```
+    
+    Writing to a file:
+    
+    ```ocaml
+    let path = Path.v "output.txt" in
+    match Fs.File.create path with
+    | Ok file ->
+        (match Fs.File.write_all file "Hello, World!" with
+        | Ok () ->
+            Fs.File.close file |> ignore
+        | Error err -> Log.error "Write failed")
+    | Error err -> Log.error "Create failed"
+    ```
+    
+    ## Async I/O
+    
+    All read/write operations use async I/O, suspending the calling
+    process instead of blocking the scheduler.
+*)
 
 type t
 (** Opaque file handle for reading and writing files. *)
 
-(** {1 Opening Files} *)
+(** ## Opening Files *)
 
 val create : Path.t -> (t, error) result
 (** Create or truncate file for writing (O_WRONLY | O_CREAT | O_TRUNC) *)
@@ -25,11 +66,11 @@ val open_append : Path.t -> (t, error) result
 val open_read_write : Path.t -> (t, error) result
 (** Open file for reading and writing (O_RDWR) *)
 
-(** {1 Reading} *)
+(** ## Reading *)
 
 val read : t -> bytes -> offset:int -> len:int -> (int, error) result
 (** Read up to len bytes into buffer at offset. Returns bytes actually read.
-    Uses async I/O with Miniriot syscalls. *)
+    Uses async I/O. *)
 
 val read_to_end : t -> (string, error) result
 (** Read all remaining content as string *)
@@ -41,11 +82,11 @@ val read_line : t -> (string, error) result
 (** Read a line from the file, including the newline character if present.
     Returns empty string on EOF. *)
 
-(** {1 Writing} *)
+(** ## Writing *)
 
 val write : t -> bytes -> offset:int -> len:int -> (int, error) result
-(** Write bytes from buffer at offset. Returns bytes actually written. Uses
-    async I/O with Miniriot syscalls. *)
+(** Write bytes from buffer at offset. Returns bytes actually written.
+    Uses async I/O. *)
 
 val write_all : t -> string -> (unit, error) result
 (** Write entire string to file *)
@@ -53,7 +94,7 @@ val write_all : t -> string -> (unit, error) result
 val write_string : t -> string -> (int, error) result
 (** Write string, returns bytes written *)
 
-(** {1 Seeking} *)
+(** ## Seeking *)
 
 val seek : t -> int64 -> (int64, error) result
 (** Seek to absolute position from start of file *)
@@ -70,7 +111,7 @@ val tell : t -> (int64, error) result
 val rewind : t -> (unit, error) result
 (** Seek to beginning of file *)
 
-(** {1 Synchronization} *)
+(** ## Synchronization *)
 
 val sync_all : t -> (unit, error) result
 (** Sync all data and metadata to disk (fsync) *)
@@ -78,7 +119,7 @@ val sync_all : t -> (unit, error) result
 val sync_data : t -> (unit, error) result
 (** Sync data only, not metadata (fdatasync on Linux, fsync elsewhere) *)
 
-(** {1 Metadata & Properties} *)
+(** ## Metadata & Properties *)
 
 val metadata : t -> (Metadata.t, error) result
 (** Get file metadata from handle (fstat) *)
@@ -89,7 +130,7 @@ val set_len : t -> len:int64 -> (unit, error) result
 val set_permissions : t -> permissions:Permissions.t -> (unit, error) result
 (** Change file permissions (fchmod) *)
 
-(** {1 File Locking} *)
+(** ## File Locking *)
 
 val lock_exclusive : t -> (unit, error) result
 (** Acquire exclusive lock, blocking (Unix.lockf F_LOCK) *)
@@ -106,7 +147,7 @@ val try_lock_shared : t -> (bool, error) result
 val unlock : t -> (unit, error) result
 (** Release lock (Unix.lockf F_ULOCK) *)
 
-(** {1 Advanced} *)
+(** ## Advanced *)
 
 val try_clone : t -> (t, error) result
 (** Duplicate file descriptor (dup) *)
@@ -117,7 +158,7 @@ val into_fd : t -> Kernel.Fd.t
 val from_fd : Kernel.Fd.t -> t
 (** Wrap file descriptor as file handle *)
 
-(** {1 Closing} *)
+(** ## Closing *)
 
 val close : t -> (unit, error) result
 (** Close file handle *)

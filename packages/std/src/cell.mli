@@ -1,4 +1,4 @@
-(** Mutable cell types for interior mutability
+(** # Cell - Mutable cell types for interior mutability
 
     This module provides several cell types for different use cases:
 
