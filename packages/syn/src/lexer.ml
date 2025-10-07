@@ -293,18 +293,30 @@ let next cursor =
         | _ ->
             let end_ = Cursor.position cursor in
             { Token.kind = Token.Minus; span = Ceibo.Span.make ~start ~end_ })
-    | Some '*' ->
+    | Some '*' -> (
         Cursor.advance cursor;
-        let end_ = Cursor.position cursor in
-        { Token.kind = Token.Star; span = Ceibo.Span.make ~start ~end_ }
+        match Cursor.peek cursor with
+        | Some '*' ->
+            Cursor.advance cursor;
+            let end_ = Cursor.position cursor in
+            { Token.kind = Token.StarStar; span = Ceibo.Span.make ~start ~end_ }
+        | _ ->
+            let end_ = Cursor.position cursor in
+            { Token.kind = Token.Star; span = Ceibo.Span.make ~start ~end_ })
     | Some '/' ->
         Cursor.advance cursor;
         let end_ = Cursor.position cursor in
         { Token.kind = Token.Slash; span = Ceibo.Span.make ~start ~end_ }
-    | Some '%' ->
+    | Some '%' -> (
         Cursor.advance cursor;
-        let end_ = Cursor.position cursor in
-        { Token.kind = Token.Percent; span = Ceibo.Span.make ~start ~end_ }
+        match Cursor.peek cursor with
+        | Some '>' ->
+            Cursor.advance cursor;
+            let end_ = Cursor.position cursor in
+            { Token.kind = Token.PercentGt; span = Ceibo.Span.make ~start ~end_ }
+        | _ ->
+            let end_ = Cursor.position cursor in
+            { Token.kind = Token.Percent; span = Ceibo.Span.make ~start ~end_ })
     | Some '^' ->
         Cursor.advance cursor;
         let end_ = Cursor.position cursor in
@@ -316,6 +328,10 @@ let next cursor =
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
             { Token.kind = Token.FatArrow; span = Ceibo.Span.make ~start ~end_ }
+        | Some '=' ->
+            Cursor.advance cursor;
+            let end_ = Cursor.position cursor in
+            { Token.kind = Token.EqEq; span = Ceibo.Span.make ~start ~end_ }
         | _ ->
             let end_ = Cursor.position cursor in
             { Token.kind = Token.Eq; span = Ceibo.Span.make ~start ~end_ })
@@ -337,6 +353,10 @@ let next cursor =
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
             { Token.kind = Token.Ne; span = Ceibo.Span.make ~start ~end_ }
+        | Some '%' ->
+            Cursor.advance cursor;
+            let end_ = Cursor.position cursor in
+            { Token.kind = Token.LtPercent; span = Ceibo.Span.make ~start ~end_ }
         | _ ->
             let end_ = Cursor.position cursor in
             { Token.kind = Token.Lt; span = Ceibo.Span.make ~start ~end_ })
@@ -350,10 +370,16 @@ let next cursor =
         | _ ->
             let end_ = Cursor.position cursor in
             { Token.kind = Token.Gt; span = Ceibo.Span.make ~start ~end_ })
-    | Some '!' ->
+    | Some '!' -> (
         Cursor.advance cursor;
-        let end_ = Cursor.position cursor in
-        { Token.kind = Token.Bang; span = Ceibo.Span.make ~start ~end_ }
+        match Cursor.peek cursor with
+        | Some '=' ->
+            Cursor.advance cursor;
+            let end_ = Cursor.position cursor in
+            { Token.kind = Token.BangEq; span = Ceibo.Span.make ~start ~end_ }
+        | _ ->
+            let end_ = Cursor.position cursor in
+            { Token.kind = Token.Bang; span = Ceibo.Span.make ~start ~end_ })
     | Some '&' -> (
         Cursor.advance cursor;
         match Cursor.peek cursor with
@@ -374,6 +400,10 @@ let next cursor =
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
             { Token.kind = Token.Or; span = Ceibo.Span.make ~start ~end_ }
+        | Some '>' ->
+            Cursor.advance cursor;
+            let end_ = Cursor.position cursor in
+            { Token.kind = Token.PipeGt; span = Ceibo.Span.make ~start ~end_ }
         | _ ->
             let end_ = Cursor.position cursor in
             { Token.kind = Token.Pipe; span = Ceibo.Span.make ~start ~end_ })
@@ -410,10 +440,16 @@ let next cursor =
         Cursor.advance cursor;
         let end_ = Cursor.position cursor in
         { Token.kind = Token.Question; span = Ceibo.Span.make ~start ~end_ }
-    | Some '@' ->
+    | Some '@' -> (
         Cursor.advance cursor;
-        let end_ = Cursor.position cursor in
-        { Token.kind = Token.At; span = Ceibo.Span.make ~start ~end_ }
+        match Cursor.peek cursor with
+        | Some '@' ->
+            Cursor.advance cursor;
+            let end_ = Cursor.position cursor in
+            { Token.kind = Token.AtAt; span = Ceibo.Span.make ~start ~end_ }
+        | _ ->
+            let end_ = Cursor.position cursor in
+            { Token.kind = Token.At; span = Ceibo.Span.make ~start ~end_ })
     | Some '#' ->
         Cursor.advance cursor;
         let end_ = Cursor.position cursor in

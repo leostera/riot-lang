@@ -32,6 +32,7 @@ type t =
   | Lsl
   | Lsr
   | Lxor
+  | Lnot
   | Match
   | Method
   | Mod
@@ -90,6 +91,7 @@ let of_string = function
   | "lsl" -> Some Lsl
   | "lsr" -> Some Lsr
   | "lxor" -> Some Lxor
+  | "lnot" -> Some Lnot
   | "match" -> Some Match
   | "method" -> Some Method
   | "mod" -> Some Mod
@@ -149,6 +151,7 @@ let to_string = function
   | Lsl -> "lsl"
   | Lsr -> "lsr"
   | Lxor -> "lxor"
+  | Lnot -> "lnot"
   | Match -> "match"
   | Method -> "method"
   | Mod -> "mod"

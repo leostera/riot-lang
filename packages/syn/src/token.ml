@@ -58,6 +58,13 @@ type token_kind =
   | Pipe
   | Ampersand
   | Underscore
+  | StarStar
+  | EqEq
+  | BangEq
+  | AtAt
+  | PipeGt
+  | PercentGt
+  | LtPercent
   | EOF
   | Unknown of char
 
@@ -125,6 +132,13 @@ let show_kind = function
   | Pipe -> "'|'"
   | Ampersand -> "'&'"
   | Underscore -> "'_'"
+  | StarStar -> "'**'"
+  | EqEq -> "'=='"
+  | BangEq -> "'!='"
+  | AtAt -> "'@@'"
+  | PipeGt -> "'|>'"
+  | PercentGt -> "'%>'"
+  | LtPercent -> "'<%'"
   | Whitespace -> "whitespace"
   | EOF -> "end of file"
   | Unknown c -> format "unknown character '%c'" c

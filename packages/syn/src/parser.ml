@@ -92,9 +92,11 @@ let token_kind_to_syntax_kind = function
   | Token.Eq | Token.Ne | Token.Lt | Token.Gt | Token.LtEq | Token.GtEq
   | Token.And | Token.Or | Token.ColonColon | Token.Caret | Token.At
   | Token.ColonEq | Token.LeftArrow
-  | Token.Keyword Keyword.Mod ->
+  | Token.StarStar | Token.EqEq | Token.BangEq
+  | Token.AtAt | Token.PipeGt | Token.PercentGt | Token.LtPercent
+  | Token.Keyword (Keyword.Mod | Keyword.Land | Keyword.Lor | Keyword.Lxor | Keyword.Lsl | Keyword.Lsr | Keyword.Asr) ->
       Syntax_kind.INFIX_EXPR
-  | Token.Bang -> Syntax_kind.PREFIX_EXPR
+  | Token.Bang | Token.Keyword Keyword.Lnot -> Syntax_kind.PREFIX_EXPR
   | Token.OpenDelim _ | Token.CloseDelim _ -> Syntax_kind.WHITESPACE
   | _ -> Syntax_kind.ERROR (* TODO: Map remaining token kinds *)
 
@@ -229,21 +231,25 @@ let is_constructor_ident name =
 let is_infix_op = function
   | Token.Plus | Token.Minus | Token.Star | Token.Slash | Token.Percent
   | Token.Eq | Token.Ne | Token.Lt | Token.Gt | Token.LtEq | Token.GtEq
-  | Token.And | Token.Or | Token.ColonColon | Token.Caret | Token.At
-  | Token.ColonEq | Token.LeftArrow
-  | Token.Keyword Keyword.Mod ->
+  | Token.And | Token.Or | Token.ColonColon
+  | Token.Caret | Token.At | Token.ColonEq | Token.LeftArrow
+  | Token.StarStar | Token.EqEq | Token.BangEq
+  | Token.AtAt | Token.PipeGt | Token.PercentGt | Token.LtPercent
+  | Token.Keyword (Keyword.Mod | Keyword.Land | Keyword.Lor | Keyword.Lxor | Keyword.Lsl | Keyword.Lsr | Keyword.Asr) ->
       true
   | _ -> false
 
 let get_precedence = function
   | Token.Or -> 1
   | Token.And -> 2
-  | Token.LeftArrow | Token.ColonEq | Token.Eq | Token.Ne | Token.Lt | Token.Gt
-  | Token.LtEq | Token.GtEq ->
-      3
+  | Token.LeftArrow | Token.ColonEq | Token.Eq | Token.Ne | Token.Lt | Token.Gt | Token.LtEq | Token.GtEq | Token.EqEq | Token.BangEq -> 3
   | Token.ColonColon -> 4
   | Token.Caret | Token.At | Token.Plus | Token.Minus -> 5
   | Token.Star | Token.Slash | Token.Percent | Token.Keyword Keyword.Mod -> 6
+  | Token.StarStar -> 7
+  | Token.Keyword (Keyword.Land | Keyword.Lor | Keyword.Lxor) -> 3
+  | Token.Keyword (Keyword.Lsl | Keyword.Lsr | Keyword.Asr) -> 6
+  | Token.AtAt | Token.PipeGt | Token.PercentGt | Token.LtPercent -> 0
   | _ -> 0
 
 let rec parse_expr parser = parse_expr_bp parser 0
@@ -385,7 +391,7 @@ and can_start_primary parser =
   | Some
       (Token.Keyword
          ( Keyword.True | Keyword.False | Keyword.If | Keyword.Match
-         | Keyword.Fun | Keyword.Function ))
+         | Keyword.Fun | Keyword.Function | Keyword.Lnot ))
   | Some Token.Minus
   | Some Token.Bang ->
       true
@@ -422,6 +428,16 @@ and parse_primary parser =
       let _ = consume_trivia parser in
       match parse_expr_bp parser 7 with
       (* Higher precedence for prefix *)
+      | Some operand ->
+          let children =
+            prepend_pending_trivia parser [| op; Ceibo.Green.Node operand |]
+          in
+          Some (make_node ~kind:Syntax_kind.PREFIX_EXPR children)
+      | None -> None)
+  | Some (Token.Keyword Keyword.Lnot) -> (
+      let op = consume parser in
+      let _ = consume_trivia parser in
+      match parse_expr_bp parser 7 with
       | Some operand ->
           let children =
             prepend_pending_trivia parser [| op; Ceibo.Green.Node operand |]

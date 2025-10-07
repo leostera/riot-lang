@@ -45,6 +45,7 @@ type t =
   | Lsl
   | Lsr
   | Lxor
+  | Lnot
   | Match
   | Method
   | Mod
