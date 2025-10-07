@@ -15,12 +15,16 @@ module TuskMcp = struct
     | GetWorkspace
     | GetGraph
     | GetPackage of { name : string }
+    | FindExecutable of { name : string }
+    | FindArtifact of { package : string; name : string }
 
   type tool_response =
     | BuildResult of { messages : string list }
     | WorkspaceInfo of { json : string }
     | GraphInfo of { json : string }
     | PackageInfo of { json : string }
+    | ExecutableInfo of { json : string }
+    | ArtifactInfo of { json : string }
     | Error of { message : string }
 
   let tools =
@@ -83,6 +87,52 @@ module TuskMcp = struct
                         ] );
                   ] );
               ("required", Json.Array [ Json.String "name" ]);
+            ];
+      };
+      {
+        name = "tusk.findExecutable";
+        description = Some "Find a binary by name (owner package and binary)";
+        input_schema =
+          Json.Object
+            [
+              ("type", Json.String "object");
+              ( "properties",
+                Json.Object
+                  [
+                    ( "name",
+                      Json.Object
+                        [
+                          ("type", Json.String "string");
+                          ("description", Json.String "Binary name to lookup");
+                        ] );
+                  ] );
+              ("required", Json.Array [ Json.String "name" ]);
+            ];
+      };
+      {
+        name = "tusk.findArtifact";
+        description = Some "Find the artifact path for a built binary";
+        input_schema =
+          Json.Object
+            [
+              ("type", Json.String "object");
+              ( "properties",
+                Json.Object
+                  [
+                    ( "package",
+                      Json.Object
+                        [
+                          ("type", Json.String "string");
+                          ("description", Json.String "Owning package name");
+                        ] );
+                    ( "name",
+                      Json.Object
+                        [
+                          ("type", Json.String "string");
+                          ("description", Json.String "Binary name");
+                        ] );
+                  ] );
+              ("required", Json.Array [ Json.String "package"; Json.String "name" ]);
             ];
       };
     ]
@@ -183,6 +233,25 @@ module TuskMcp = struct
                         Ok (CallTool (GetPackage { name = pkg_name }))
                     | _ -> Error (Json.String "Missing 'name' parameter"))
                 | _ -> Error (Json.String "Missing arguments for tusk.package"))
+            | "tusk.findExecutable" -> (
+                match arguments with
+                | Some (Json.Object f) -> (
+                    match List.assoc_opt "name" f with
+                    | Some (Json.String name) ->
+                        Ok (CallTool (FindExecutable { name }))
+                    | _ -> Error (Json.String "Missing 'name' parameter"))
+                | _ -> Error (Json.String "Missing arguments for tusk.findExecutable"))
+            | "tusk.findArtifact" -> (
+                match arguments with
+                | Some (Json.Object f) -> (
+                    match (List.assoc_opt "package" f, List.assoc_opt "name" f) with
+                    | Some (Json.String package), Some (Json.String name) ->
+                        Ok (CallTool (FindArtifact { package; name }))
+                    | _ ->
+                        Error
+                          (Json.String
+                             "Missing 'package' or 'name' parameter"))
+                | _ -> Error (Json.String "Missing arguments for tusk.findArtifact"))
             | _ -> Error (Json.String (format "Unknown tool: %s" name)))
         | _ -> Error (Json.String "tools/call requires named parameters"))
     | "resources/list" -> Ok ListResources
@@ -257,6 +326,18 @@ module TuskMcp = struct
                 ("content", Json.Array [ Json.String json ]);
                 ("isError", Json.Bool false);
               ]
+        | ExecutableInfo { json } ->
+            Json.Object
+              [
+                ("content", Json.Array [ Json.String json ]);
+                ("isError", Json.Bool false);
+              ]
+        | ArtifactInfo { json } ->
+            Json.Object
+              [
+                ("content", Json.Array [ Json.String json ]);
+                ("isError", Json.Bool false);
+              ]
         | Error { message } ->
             Json.Object
               [
@@ -301,6 +382,37 @@ let execute_tool (ctx : ctx) (req : TuskMcp.tool_request) :
       TuskMcp.Error { message = "GetGraph not implemented yet" }
   | TuskMcp.GetPackage { name } ->
       TuskMcp.Error { message = "GetPackage not implemented yet" }
+  | TuskMcp.FindExecutable { name } -> (
+      match Server.Tusk_jsonrpc.Client.find_executable ctx.client name with
+      | Ok (Some (package, binary)) ->
+          let json =
+            Json.Object
+              [
+                ("type", Json.String "found_executable");
+                ("package", Json.String package);
+                ("binary", Json.String binary);
+              ]
+            |> Json.to_string
+          in
+          TuskMcp.ExecutableInfo { json }
+      | Ok None ->
+          let json = Json.Object [ ("type", Json.String "executable_not_found") ] |> Json.to_string in
+          TuskMcp.ExecutableInfo { json }
+      | Error msg -> TuskMcp.Error { message = msg })
+  | TuskMcp.FindArtifact { package; name } -> (
+      match Server.Tusk_jsonrpc.Client.find_artifact ctx.client ~package ~kind:"binary" ~name with
+      | Ok path ->
+          let json =
+            Json.Object [ ("type", Json.String "artifact_found"); ("path", Json.String path) ]
+            |> Json.to_string
+          in
+          TuskMcp.ArtifactInfo { json }
+      | Error msg ->
+          let json =
+            Json.Object [ ("type", Json.String "artifact_not_found"); ("error", Json.String msg) ]
+            |> Json.to_string
+          in
+          TuskMcp.ArtifactInfo { json })
 
 let create_server (ctx : ctx) =
   let methods =

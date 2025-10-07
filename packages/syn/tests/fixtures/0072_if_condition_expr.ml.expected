@@ -1,0 +1,125 @@
+{
+  "tree": {
+    "type": "node",
+    "kind": "SOURCE_FILE",
+    "width": 27,
+    "children": [
+      {
+        "type": "node",
+        "kind": "LET_BINDING",
+        "width": 27,
+        "children": [
+          {
+            "type": "token",
+            "kind": "LET_BINDING",
+            "text": "let",
+            "width": 3
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "INFIX_EXPR",
+            "text": "=",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "IF_EXPR",
+            "width": 22,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IF_EXPR",
+                "text": "if",
+                "width": 2
+              },
+              {
+                "type": "node",
+                "kind": "INFIX_EXPR",
+                "width": 3,
+                "children": [
+                  {
+                    "type": "node",
+                    "kind": "INT_LITERAL",
+                    "width": 1,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "INT_LITERAL",
+                        "text": "1",
+                        "width": 1
+                      }
+                    ]
+                  },
+                  {
+                    "type": "token",
+                    "kind": "INFIX_EXPR",
+                    "text": "<",
+                    "width": 1
+                  },
+                  {
+                    "type": "node",
+                    "kind": "INT_LITERAL",
+                    "width": 1,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "INT_LITERAL",
+                        "text": "2",
+                        "width": 1
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "IF_EXPR",
+                "text": "then",
+                "width": 4
+              },
+              {
+                "type": "node",
+                "kind": "STRING_LITERAL",
+                "width": 5,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "STRING_LITERAL",
+                    "text": "\"yes\"",
+                    "width": 5
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "IF_EXPR",
+                "text": "else",
+                "width": 4
+              },
+              {
+                "type": "node",
+                "kind": "STRING_LITERAL",
+                "width": 4,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "STRING_LITERAL",
+                    "text": "\"no\"",
+                    "width": 4
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "diagnostics": []
+}

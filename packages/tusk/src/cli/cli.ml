@@ -59,23 +59,32 @@ let cli =
                 command "build"
                 |> about "Build all or specific package"
                 |> args [ positional "package" |> help "Package to build" ];
-                command "package"
-                |> about "Get package details"
-                |> args [ positional "name" |> help "Package name" ];
-                command "format" |> about "Format a file"
-                |> args [ positional "file" |> help "File to format" ];
-                command "format-check"
-                |> about "Check if file needs formatting"
-                |> args [ positional "file" |> help "File to check" ];
-                command "format-code" |> about "Format code string"
-                |> args
-                     [
-                       positional "code" |> help "Code to format";
-                       positional "hint" |> help "Hint for parsing (optional)";
-                     ];
-                command "restart" |> about "Restart the server";
-                command "shutdown" |> about "Shutdown the server";
-              ];
+                 command "package"
+                 |> about "Get package details"
+                 |> args [ positional "name" |> help "Package name" ];
+                 command "find-executable" |> about "Find binary by name"
+                 |> args [ positional "name" |> help "Binary name" ];
+                 command "find-artifact" |> about "Find artifact path"
+                 |> args
+                      [
+                        positional "package" |> help "Owning package";
+                        positional "name" |> help "Binary name";
+                      ];
+                 command "format" |> about "Format a file"
+                 |> args [ positional "file" |> help "File to format" ];
+                 command "format-check"
+                 |> about "Check if file needs formatting"
+                 |> args [ positional "file" |> help "File to check" ];
+                 command "format-code" |> about "Format code string"
+                 |> args
+                      [
+                        positional "code" |> help "Code to format";
+                        positional "hint" |> help "Hint for parsing (optional)";
+                      ];
+                 command "restart" |> about "Restart the server";
+                 command "shutdown" |> about "Shutdown the server";
+               ];
+
          command "mcp" |> about "Start Model Context Protocol server";
          command "doc" |> about "Generate documentation";
          command "fmt" |> about "Format OCaml code"
