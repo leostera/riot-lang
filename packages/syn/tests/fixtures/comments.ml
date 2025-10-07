@@ -1,8 +1,8 @@
 (* This is a comment *)
 let x = 42
 
-(** This is a docstring *)
 type t = int
+(** This is a docstring *)
 
 (* Multi-line
    comment *)

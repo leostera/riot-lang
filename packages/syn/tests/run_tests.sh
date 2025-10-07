@@ -37,11 +37,11 @@ for fixture in $FIXTURES_DIR/*.ml; do
         echo "SKIPPED (no expected file)"
     fi
     
-    # Test token-tree
-    echo -n "Testing token-tree for $base... "
-    expected="$fixture.token-tree.expected"
+    # Test parse
+    echo -n "Testing parse for $base... "
+    expected="$fixture.parse.expected"
     if [ -f "$expected" ]; then
-        output=$($SYN token-tree "$fixture" 2>&1)
+        output=$($SYN parse --json "$fixture" 2>&1)
         expected_content=$(cat "$expected")
         if [ "$output" = "$expected_content" ]; then
             echo -e "${GREEN}PASSED${NC}"
@@ -49,6 +49,8 @@ for fixture in $FIXTURES_DIR/*.ml; do
         else
             echo -e "${RED}FAILED${NC}"
             echo "  Expected output in: $expected"
+            echo "  Actual output:"
+            echo "$output" | head -20
             ((failed++))
         fi
     else
