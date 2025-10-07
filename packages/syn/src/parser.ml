@@ -90,7 +90,8 @@ let token_kind_to_syntax_kind = function
   | Token.Ident _ -> Syntax_kind.IDENT_EXPR
   | Token.Plus | Token.Minus | Token.Star | Token.Slash | Token.Percent
   | Token.Eq | Token.Ne | Token.Lt | Token.Gt | Token.LtEq | Token.GtEq
-  | Token.And | Token.Or | Token.ColonColon ->
+  | Token.And | Token.Or | Token.ColonColon
+  | Token.Keyword Keyword.Mod ->
       Syntax_kind.INFIX_EXPR
   | Token.Bang -> Syntax_kind.PREFIX_EXPR
   | Token.OpenDelim _ | Token.CloseDelim _ -> Syntax_kind.WHITESPACE
@@ -221,10 +222,16 @@ let parse_literal parser =
 (* EXPRESSIONS *)
 (* ========================================================================= *)
 
+let is_constructor_ident name =
+  match String.get name 0 with
+  | 'A' .. 'Z' -> true
+  | _ -> false
+
 let is_infix_op = function
   | Token.Plus | Token.Minus | Token.Star | Token.Slash | Token.Percent
   | Token.Eq | Token.Ne | Token.Lt | Token.Gt | Token.LtEq | Token.GtEq
-  | Token.And | Token.Or | Token.ColonColon ->
+  | Token.And | Token.Or | Token.ColonColon
+  | Token.Keyword Keyword.Mod ->
       true
   | _ -> false
 
@@ -234,7 +241,7 @@ let get_precedence = function
   | Token.Eq | Token.Ne | Token.Lt | Token.Gt | Token.LtEq | Token.GtEq -> 3
   | Token.ColonColon -> 4
   | Token.Plus | Token.Minus -> 5
-  | Token.Star | Token.Slash | Token.Percent -> 6
+  | Token.Star | Token.Slash | Token.Percent | Token.Keyword Keyword.Mod -> 6
   | _ -> 0
 
 let rec parse_expr parser = parse_expr_bp parser 0
@@ -891,6 +898,14 @@ and parse_list_pattern parser =
 and parse_ident_or_constructor_pattern parser =
   let ident = consume parser in
   let _ = consume_trivia parser in
+  
+  (* Check if this identifier is a constructor (starts with uppercase) *)
+  let is_constructor =
+    match Ceibo.Green.text ident with
+    | Some text when Ceibo.Green.kind ident = Syntax_kind.IDENT_EXPR ->
+        is_constructor_ident text
+    | _ -> false
+  in
 
   if at parser Token.ColonColon then
     let cons_op = consume parser in
@@ -902,7 +917,8 @@ and parse_ident_or_constructor_pattern parser =
           (make_node ~kind:Syntax_kind.CONS_PATTERN
              [| ident; cons_op; Ceibo.Green.Node tail_pat |])
     | None -> Some (make_node ~kind:Syntax_kind.IDENT_PATTERN [| ident |])
-  else
+  else if is_constructor then
+    (* Only try to parse as constructor pattern if identifier is uppercase *)
     match peek_kind parser with
     | Some (Token.Ident _)
     | Some (Token.OpenDelim Token.Paren)
@@ -916,6 +932,9 @@ and parse_ident_or_constructor_pattern parser =
                  [| ident; Ceibo.Green.Node arg_pat |])
         | None -> Some (make_node ~kind:Syntax_kind.IDENT_PATTERN [| ident |]))
     | _ -> Some (make_node ~kind:Syntax_kind.IDENT_PATTERN [| ident |])
+  else
+    (* Lowercase identifier - always treat as simple ident pattern *)
+    Some (make_node ~kind:Syntax_kind.IDENT_PATTERN [| ident |])
 
 and parse_paren_pattern parser =
   let open_paren = consume parser in

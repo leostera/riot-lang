@@ -40,27 +40,27 @@
               },
               {
                 "type": "node",
-                "kind": "CONSTRUCTOR_PATTERN",
-                "width": 4,
+                "kind": "IDENT_PATTERN",
+                "width": 1,
                 "children": [
                   {
                     "type": "token",
                     "kind": "IDENT_EXPR",
                     "text": "f",
                     "width": 1
-                  },
+                  }
+                ]
+              },
+              {
+                "type": "node",
+                "kind": "IDENT_PATTERN",
+                "width": 3,
+                "children": [
                   {
-                    "type": "node",
-                    "kind": "IDENT_PATTERN",
-                    "width": 3,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "IDENT_EXPR",
-                        "text": "opt",
-                        "width": 3
-                      }
-                    ]
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "opt",
+                    "width": 3
                   }
                 ]
               },

@@ -25,6 +25,7 @@ let make_node ~kind ~children =
 
 let width = function Token t -> t.width | Node n -> n.width
 let kind = function Token t -> t.kind | Node n -> n.kind
+let text = function Token t -> Some t.text | Node _ -> None
 let is_token = function Token _ -> true | Node _ -> false
 let is_node = function Token _ -> false | Node _ -> true
 
