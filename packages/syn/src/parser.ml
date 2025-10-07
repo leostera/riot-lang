@@ -73,7 +73,10 @@ let token_kind_to_syntax_kind = function
   | Token.Literal (Token.String _) -> Syntax_kind.STRING_LITERAL
   | Token.Literal (Token.Char _) -> Syntax_kind.CHAR_LITERAL
   | Token.Keyword Keyword.True | Token.Keyword Keyword.False -> Syntax_kind.BOOL_LITERAL
-  | _ -> Syntax_kind.ERROR  (* TODO: Map all token kinds *)
+  | Token.Keyword Keyword.Let -> Syntax_kind.LET_BINDING
+  | Token.Ident _ -> Syntax_kind.IDENT_EXPR
+  | Token.Eq -> Syntax_kind.INFIX_EXPR
+  | _ -> Syntax_kind.ERROR  (* TODO: Map remaining token kinds *)
 
 let token_to_green_token parser tok =
   let text = String.sub parser.source tok.Token.span.start 
@@ -295,17 +298,46 @@ let rec parse_structure_item parser =
   | _ -> None
 
 and parse_let_binding parser =
-  (* TODO: Implement full let binding *)
   let let_kw = consume parser in
   skip_trivia parser;
   
-  (* For now, just consume tokens until semicolon or EOF *)
-  let items = ref [let_kw] in
-  while peek parser <> None && not (at parser Token.Semi) && not (at parser Token.EOF) do
-    items := consume parser :: !items
-  done;
+  (* Parse pattern (for now, just identifier) *)
+  let pattern = match peek_kind parser with
+    | Some (Token.Ident _) -> consume parser
+    | _ -> 
+        let span = match peek parser with
+          | Some tok -> tok.Token.span
+          | None -> Ceibo.Span.make ~start:0 ~end_:0
+        in
+        let err = Diagnostic.make_missing_token ~expected:"identifier" ~span in
+        report_error parser err;
+        Ceibo.Green.Token (Ceibo.Green.make_token ~kind:Syntax_kind.MISSING ~text:"" ~width:0)
+  in
   
-  Some (make_node ~kind:Syntax_kind.LET_BINDING (Array.of_list (List.rev !items)))
+  skip_trivia parser;
+  
+  (* Expect '=' *)
+  let eq = expect parser Token.Eq in
+  
+  skip_trivia parser;
+  
+  (* Parse expression (for now, just literals and identifiers) *)
+  let expr = match parse_expr parser with
+    | Some e -> Ceibo.Green.Node e
+    | None ->
+        let span = match peek parser with
+          | Some tok -> tok.Token.span
+          | None -> Ceibo.Span.make ~start:0 ~end_:0
+        in
+        let err = Diagnostic.make_missing_token ~expected:"expression" ~span in
+        report_error parser err;
+        Ceibo.Green.Token (Ceibo.Green.make_token ~kind:Syntax_kind.MISSING ~text:"" ~width:0)
+  in
+  
+  (* Skip trailing whitespace/newlines *)
+  skip_trivia parser;
+  
+  Some (make_node ~kind:Syntax_kind.LET_BINDING [| let_kw; pattern; eq; expr |])
 
 and parse_open parser =
   let open_kw = consume parser in
