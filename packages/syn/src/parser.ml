@@ -106,6 +106,7 @@ let token_kind_to_syntax_kind = function
   | Token.Backtick -> Syntax_kind.POLY_VARIANT_EXPR
   | Token.Keyword Keyword.Assert -> Syntax_kind.ASSERT_EXPR
   | Token.Keyword Keyword.Lazy -> Syntax_kind.LAZY_EXPR
+  | Token.Keyword Keyword.As -> Syntax_kind.AS_PATTERN
   | Token.Keyword Keyword.For
   | Token.Keyword (Keyword.To | Keyword.Downto)
   | Token.Keyword Keyword.Do
@@ -1849,6 +1850,23 @@ and parse_function_expr parser =
   Some (make_node_list ~kind:Syntax_kind.FUNCTION_EXPR children)
 
 and parse_pattern parser =
+  match parse_base_pattern parser with
+  | Some pat ->
+      let _ = consume_trivia parser in
+      if at parser (Token.Keyword Keyword.As) then
+        let as_kw = consume parser in
+        let _ = consume_trivia parser in
+        match peek_kind parser with
+        | Some (Token.Ident _) ->
+            let ident = consume parser in
+            Some (make_node_list ~kind:Syntax_kind.AS_PATTERN
+              [Ceibo.Green.Node pat; as_kw; ident])
+        | _ -> Some pat
+      else
+        Some pat
+  | None -> None
+
+and parse_base_pattern parser =
   let _ = consume_trivia parser in
 
   match peek_kind parser with
