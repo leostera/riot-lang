@@ -544,6 +544,68 @@ and parse_expr_bp parser min_bp =
                 in
                 loop app
             | None -> Some lhs)
+        | Some (Token.OpenDelim Token.Bracket) -> (
+            (* Could be attribute [@attr] or extension [%ext ...] *)
+            match peek_nth parser 1 with
+            | Some Token.At | Some Token.AtAt | Some Token.Percent as marker -> (
+                let open_bracket = consume parser in
+                let _ = consume_trivia parser in
+                let attr_marker = consume parser in
+                (* @ or @@ or % *)
+                let _ = consume_trivia parser in
+                (* Parse attribute/extension name *)
+                match peek_kind parser with
+                | Some (Token.Ident _) ->
+                    let name = consume parser in
+                    let _ = consume_trivia parser in
+                    (* Collect optional payload until ] *)
+                    let rec collect_payload acc =
+                      if at parser (Token.CloseDelim Token.Bracket) then
+                        List.rev acc
+                      else
+                        let tok = consume parser in
+                        let _ = consume_trivia parser in
+                        collect_payload (tok :: acc)
+                    in
+                    let payload = collect_payload [] in
+                    let close_bracket =
+                      expect parser (Token.CloseDelim Token.Bracket)
+                    in
+                    let children =
+                      [ Ceibo.Green.Node lhs; open_bracket; attr_marker; name ]
+                      @ payload @ [ close_bracket ]
+                    in
+                    (* Determine kind based on marker *)
+                    let kind =
+                      match marker with
+                      | Some Token.Percent -> Syntax_kind.EXTENSION_EXPR
+                      | _ -> Syntax_kind.ATTRIBUTE_EXPR
+                    in
+                    let attributed =
+                      make_node_list ~kind (prepend_pending_trivia parser children)
+                    in
+                    loop attributed
+                | _ ->
+                    (* Not a valid attribute/extension, treat [ as something else *)
+                    Some lhs)
+            | _ ->
+                (* Not an attribute/extension, could be list in function application: f [1;2] *)
+                (* Function application - treat [ as starting a primary (list expr) *)
+                let app_prec = 8 in
+                if app_prec < min_bp then Some lhs
+                else
+                  match parse_primary parser with
+                  | Some rhs ->
+                      let trivia = take_pending_trivia parser in
+                      let children =
+                        [ Ceibo.Green.Node lhs; Ceibo.Green.Node rhs ]
+                      in
+                      let children = trivia @ children in
+                      let app =
+                        make_node_list ~kind:Syntax_kind.APPLY_EXPR children
+                      in
+                      loop app
+                  | None -> Some lhs)
         | Some _ when can_start_primary parser -> (
             (* Function application - juxtaposition *)
             let app_prec = 8 in
@@ -662,7 +724,41 @@ and parse_primary parser =
           (* Parenthesized expression *)
           | Some (Token.OpenDelim Token.Paren) -> parse_paren_expr parser
           (* List literal *)
-          | Some (Token.OpenDelim Token.Bracket) -> parse_list_expr parser
+          | Some (Token.OpenDelim Token.Bracket) -> (
+              (* Could be list [x; y] or extension [%ext ...] *)
+              match peek_nth parser 1 with
+              | Some Token.Percent -> (
+                  (* Extension expression [%ext ...] *)
+                  let open_bracket = consume parser in
+                  let _ = consume_trivia parser in
+                  let percent = consume parser in
+                  let _ = consume_trivia parser in
+                  match peek_kind parser with
+                  | Some (Token.Ident _) ->
+                      let name = consume parser in
+                      let _ = consume_trivia parser in
+                      (* Collect payload until ] *)
+                      let rec collect_payload acc =
+                        if at parser (Token.CloseDelim Token.Bracket) then
+                          List.rev acc
+                        else
+                          let tok = consume parser in
+                          let _ = consume_trivia parser in
+                          collect_payload (tok :: acc)
+                      in
+                      let payload = collect_payload [] in
+                      let close_bracket =
+                        expect parser (Token.CloseDelim Token.Bracket)
+                      in
+                      let children =
+                        [ open_bracket; percent; name ] @ payload
+                        @ [ close_bracket ]
+                      in
+                      Some
+                        (make_node_list ~kind:Syntax_kind.EXTENSION_EXPR
+                           (prepend_pending_trivia parser children))
+                  | _ -> parse_list_expr parser)
+              | _ -> parse_list_expr parser)
           (* Array literal *)
           | Some (Token.OpenDelim Token.Array) -> parse_array_expr parser
           (* Record literal *)

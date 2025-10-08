@@ -50,6 +50,8 @@ type t =
   | TRY_EXPR (* try e with | p1 -> e1 | ... *)
   | TYPED_EXPR (* (e : t) *)
   | COERCE_EXPR (* (e :> t) or (e : t1 :> t2) *)
+  | ATTRIBUTE_EXPR (* e [@attr] or e [@@attr] *)
+  | EXTENSION_EXPR (* [%ext ...] *)
   (* ========================================================================= *)
   (* PATTERNS *)
   (* ========================================================================= *)
@@ -158,6 +160,8 @@ let to_string = function
   | TRY_EXPR -> "TRY_EXPR"
   | TYPED_EXPR -> "TYPED_EXPR"
   | COERCE_EXPR -> "COERCE_EXPR"
+  | ATTRIBUTE_EXPR -> "ATTRIBUTE_EXPR"
+  | EXTENSION_EXPR -> "EXTENSION_EXPR"
   | IDENT_PATTERN -> "IDENT_PATTERN"
   | WILDCARD_PATTERN -> "WILDCARD_PATTERN"
   | LITERAL_PATTERN -> "LITERAL_PATTERN"
