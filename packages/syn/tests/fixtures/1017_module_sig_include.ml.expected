@@ -2,13 +2,19 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 6,
+    "width": 30,
     "children": [
       {
         "type": "node",
-        "kind": "TYPE_DECL",
-        "width": 6,
+        "kind": "MODULE_TYPE_DECL",
+        "width": 30,
         "children": [
+          {
+            "type": "token",
+            "kind": "MODULE_DECL",
+            "text": "module",
+            "width": 6
+          },
           {
             "type": "token",
             "kind": "TYPE_DECL",
@@ -29,9 +35,53 @@
           },
           {
             "type": "node",
-            "kind": "ERROR",
-            "width": 0,
-            "children": []
+            "kind": "SIGNATURE",
+            "width": 18,
+            "children": [
+              {
+                "type": "token",
+                "kind": "SIGNATURE",
+                "text": "sig",
+                "width": 3
+              },
+              {
+                "type": "node",
+                "kind": "INCLUDE_STMT",
+                "width": 12,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "INCLUDE_STMT",
+                    "text": "include",
+                    "width": 7
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "Set",
+                    "width": 3
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": ".",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "S",
+                    "width": 1
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "SIGNATURE",
+                "text": "end",
+                "width": 3
+              }
+            ]
           }
         ]
       }

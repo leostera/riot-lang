@@ -1389,6 +1389,79 @@ and parse_let_expr parser =
   let let_kw = consume parser in
   let _ = consume_trivia parser in
 
+  (* Check for 'let open' or 'let module' *)
+  if at parser (Token.Keyword Keyword.Open) then
+    parse_let_open_expr parser let_kw
+  else if at parser (Token.Keyword Keyword.Module) then
+    parse_let_module_expr parser let_kw
+  else
+    parse_regular_let_expr parser let_kw
+
+and parse_let_open_expr parser let_kw =
+  (* let open Module in expr *)
+  let open_kw = consume parser in
+  let _ = consume_trivia parser in
+  
+  (* Parse module path *)
+  let module_path = parse_identifier parser in
+  let _ = consume_trivia parser in
+  
+  (* Expect 'in' *)
+  let in_kw = expect parser (Token.Keyword Keyword.In) in
+  let _ = consume_trivia parser in
+  
+  (* Parse body expression *)
+  match parse_expr parser with
+  | Some body ->
+      let children =
+        prepend_pending_trivia parser
+          ([ let_kw; open_kw ] @ module_path @ [ in_kw; Ceibo.Green.Node body ])
+      in
+      Some (make_node_list ~kind:Syntax_kind.LET_EXPR children)
+  | None -> None
+
+and parse_let_module_expr parser let_kw =
+  (* let module M = (val m : S) in expr *)
+  let module_kw = consume parser in
+  let _ = consume_trivia parser in
+  
+  (* Parse module name *)
+  let name = consume parser in
+  let _ = consume_trivia parser in
+  
+  (* Expect '=' *)
+  let eq = expect parser Token.Eq in
+  let _ = consume_trivia parser in
+  
+  (* Parse module expression - for now, just consume tokens until 'in' *)
+  let rec consume_until_in acc =
+    if at parser (Token.Keyword Keyword.In) || peek parser = None then
+      List.rev acc
+    else
+      let tok = consume parser in
+      let _ = consume_trivia parser in
+      consume_until_in (tok :: acc)
+  in
+  let module_expr = consume_until_in [] in
+  
+  (* Expect 'in' *)
+  let in_kw = expect parser (Token.Keyword Keyword.In) in
+  let _ = consume_trivia parser in
+  
+  (* Parse body expression *)
+  match parse_expr parser with
+  | Some body ->
+      let children =
+        prepend_pending_trivia parser
+          ([ let_kw; module_kw; name; eq ] @ module_expr @ [ in_kw; Ceibo.Green.Node body ])
+      in
+      Some (make_node_list ~kind:Syntax_kind.LET_EXPR children)
+  | None -> None
+
+and parse_regular_let_expr parser let_kw =
+  (* Regular let binding *)
+  let _ = consume_trivia parser in
+
   (* Check for 'rec' *)
   let is_rec = at parser (Token.Keyword Keyword.Rec) in
   let rec_kw =

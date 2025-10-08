@@ -2,13 +2,19 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 6,
+    "width": 26,
     "children": [
       {
         "type": "node",
-        "kind": "TYPE_DECL",
-        "width": 6,
+        "kind": "MODULE_TYPE_DECL",
+        "width": 26,
         "children": [
+          {
+            "type": "token",
+            "kind": "MODULE_DECL",
+            "text": "module",
+            "width": 6
+          },
           {
             "type": "token",
             "kind": "TYPE_DECL",
@@ -29,9 +35,60 @@
           },
           {
             "type": "node",
-            "kind": "ERROR",
-            "width": 0,
-            "children": []
+            "kind": "SIGNATURE",
+            "width": 14,
+            "children": [
+              {
+                "type": "token",
+                "kind": "SIGNATURE",
+                "text": "sig",
+                "width": 3
+              },
+              {
+                "type": "node",
+                "kind": "VAL_DECL",
+                "width": 8,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "VAL_DECL",
+                    "text": "val",
+                    "width": 3
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "x",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "TYPED_EXPR",
+                    "text": ":",
+                    "width": 1
+                  },
+                  {
+                    "type": "node",
+                    "kind": "TYPE_CONSTR",
+                    "width": 3,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "int",
+                        "width": 3
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "SIGNATURE",
+                "text": "end",
+                "width": 3
+              }
+            ]
           }
         ]
       }

@@ -2,13 +2,19 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 11,
+    "width": 72,
     "children": [
       {
         "type": "node",
-        "kind": "TYPE_DECL",
-        "width": 6,
+        "kind": "MODULE_TYPE_DECL",
+        "width": 72,
         "children": [
+          {
+            "type": "token",
+            "kind": "MODULE_DECL",
+            "text": "module",
+            "width": 6
+          },
           {
             "type": "token",
             "kind": "TYPE_DECL",
@@ -29,55 +35,263 @@
           },
           {
             "type": "node",
-            "kind": "ERROR",
-            "width": 0,
-            "children": []
-          }
-        ]
-      },
-      {
-        "type": "node",
-        "kind": "TYPE_DECL",
-        "width": 5,
-        "children": [
-          {
-            "type": "token",
-            "kind": "TYPE_DECL",
-            "text": "type",
-            "width": 4
-          },
-          {
-            "type": "token",
-            "kind": "IDENT_EXPR",
-            "text": "t",
-            "width": 1
-          },
-          {
-            "type": "token",
-            "kind": "MISSING",
-            "text": "",
-            "width": 0
-          },
-          {
-            "type": "node",
-            "kind": "ERROR",
-            "width": 0,
-            "children": []
+            "kind": "SIGNATURE",
+            "width": 60,
+            "children": [
+              {
+                "type": "token",
+                "kind": "SIGNATURE",
+                "text": "sig",
+                "width": 3
+              },
+              {
+                "type": "node",
+                "kind": "TYPE_DECL",
+                "width": 5,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "TYPE_DECL",
+                    "text": "type",
+                    "width": 4
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "t",
+                    "width": 1
+                  }
+                ]
+              },
+              {
+                "type": "node",
+                "kind": "VAL_DECL",
+                "width": 17,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "VAL_DECL",
+                    "text": "val",
+                    "width": 3
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "create",
+                    "width": 6
+                  },
+                  {
+                    "type": "token",
+                    "kind": "TYPED_EXPR",
+                    "text": ":",
+                    "width": 1
+                  },
+                  {
+                    "type": "node",
+                    "kind": "TYPE_ARROW",
+                    "width": 7,
+                    "children": [
+                      {
+                        "type": "node",
+                        "kind": "TYPE_CONSTR",
+                        "width": 4,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "IDENT_EXPR",
+                            "text": "unit",
+                            "width": 4
+                          }
+                        ]
+                      },
+                      {
+                        "type": "token",
+                        "kind": "FUN_EXPR",
+                        "text": "->",
+                        "width": 2
+                      },
+                      {
+                        "type": "node",
+                        "kind": "TYPE_CONSTR",
+                        "width": 1,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "IDENT_EXPR",
+                            "text": "t",
+                            "width": 1
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "node",
+                "kind": "VAL_DECL",
+                "width": 13,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "VAL_DECL",
+                    "text": "val",
+                    "width": 3
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "get",
+                    "width": 3
+                  },
+                  {
+                    "type": "token",
+                    "kind": "TYPED_EXPR",
+                    "text": ":",
+                    "width": 1
+                  },
+                  {
+                    "type": "node",
+                    "kind": "TYPE_ARROW",
+                    "width": 6,
+                    "children": [
+                      {
+                        "type": "node",
+                        "kind": "TYPE_CONSTR",
+                        "width": 1,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "IDENT_EXPR",
+                            "text": "t",
+                            "width": 1
+                          }
+                        ]
+                      },
+                      {
+                        "type": "token",
+                        "kind": "FUN_EXPR",
+                        "text": "->",
+                        "width": 2
+                      },
+                      {
+                        "type": "node",
+                        "kind": "TYPE_CONSTR",
+                        "width": 3,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "IDENT_EXPR",
+                            "text": "int",
+                            "width": 3
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "node",
+                "kind": "VAL_DECL",
+                "width": 19,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "VAL_DECL",
+                    "text": "val",
+                    "width": 3
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "set",
+                    "width": 3
+                  },
+                  {
+                    "type": "token",
+                    "kind": "TYPED_EXPR",
+                    "text": ":",
+                    "width": 1
+                  },
+                  {
+                    "type": "node",
+                    "kind": "TYPE_ARROW",
+                    "width": 12,
+                    "children": [
+                      {
+                        "type": "node",
+                        "kind": "TYPE_CONSTR",
+                        "width": 1,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "IDENT_EXPR",
+                            "text": "t",
+                            "width": 1
+                          }
+                        ]
+                      },
+                      {
+                        "type": "token",
+                        "kind": "FUN_EXPR",
+                        "text": "->",
+                        "width": 2
+                      },
+                      {
+                        "type": "node",
+                        "kind": "TYPE_ARROW",
+                        "width": 9,
+                        "children": [
+                          {
+                            "type": "node",
+                            "kind": "TYPE_CONSTR",
+                            "width": 3,
+                            "children": [
+                              {
+                                "type": "token",
+                                "kind": "IDENT_EXPR",
+                                "text": "int",
+                                "width": 3
+                              }
+                            ]
+                          },
+                          {
+                            "type": "token",
+                            "kind": "FUN_EXPR",
+                            "text": "->",
+                            "width": 2
+                          },
+                          {
+                            "type": "node",
+                            "kind": "TYPE_CONSTR",
+                            "width": 4,
+                            "children": [
+                              {
+                                "type": "token",
+                                "kind": "IDENT_EXPR",
+                                "text": "unit",
+                                "width": 4
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "SIGNATURE",
+                "text": "end",
+                "width": 3
+              }
+            ]
           }
         ]
       }
     ]
   },
-  "diagnostics": [
-    {
-      "kind": {
-        "type": "missing_token",
-        "expected": "'='"
-      },
-      "span": {
-        "start": 32,
-        "end": 32
-      }
-    }
-  ]
+  "diagnostics": []
 }
