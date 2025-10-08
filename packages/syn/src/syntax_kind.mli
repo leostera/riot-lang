@@ -114,6 +114,7 @@ type t =
   | TYPE_VARIANT_CONSTR  (** Variant constructor in type def: `A | B of int` *)
   | TYPE_RECORD_FIELD  (** Record field in type def: `field: int` *)
   | TYPE_CONSTRAINT  (** Type constraint: `constraint 'a = int` *)
+  | MODULE_TYPE_EXPR  (** Module type expression: `S with type t = int` *)
   (* ===================================================================== *)
   (* TOP-LEVEL DECLARATIONS *)
   (* ===================================================================== *)

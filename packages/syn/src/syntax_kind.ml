@@ -83,6 +83,7 @@ type t =
   | TYPE_VARIANT_CONSTR (* A | B of int *)
   | TYPE_RECORD_FIELD (* field: int *)
   | TYPE_CONSTRAINT (* constraint 'a = int *)
+  | MODULE_TYPE_EXPR (* S | S with type t = int *)
   (* ========================================================================= *)
   (* TOP-LEVEL DECLARATIONS *)
   (* ========================================================================= *)
@@ -181,6 +182,7 @@ let to_string = function
   | TYPE_VARIANT_CONSTR -> "TYPE_VARIANT_CONSTR"
   | TYPE_RECORD_FIELD -> "TYPE_RECORD_FIELD"
   | TYPE_CONSTRAINT -> "TYPE_CONSTRAINT"
+  | MODULE_TYPE_EXPR -> "MODULE_TYPE_EXPR"
   | LET_BINDING -> "LET_BINDING"
   | LET_REC_BINDING -> "LET_REC_BINDING"
   | TYPE_DECL -> "TYPE_DECL"
