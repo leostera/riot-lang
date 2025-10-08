@@ -332,59 +332,126 @@ and parse_expr_bp parser min_bp =
               let _ = consume_trivia parser in
               match peek_kind parser with
               | Some (Token.OpenDelim Token.Paren) -> (
-                  (* Array indexing: arr.(i) *)
-                  let open_paren = consume parser in
-                  let _ = consume_trivia parser in
-                  match parse_expr parser with
-                  | Some index ->
-                      let _ = consume_trivia parser in
-                      let close_paren =
-                        expect parser (Token.CloseDelim Token.Paren)
-                      in
-                      let trivia = take_pending_trivia parser in
-                      let children =
-                        [
-                          Ceibo.Green.Node lhs;
-                          dot;
-                          open_paren;
-                          Ceibo.Green.Node index;
-                          close_paren;
-                        ]
-                      in
-                      let children = trivia @ children in
-                      let access =
-                        make_node_list ~kind:Syntax_kind.ARRAY_INDEX_EXPR
-                          children
-                      in
-                      loop access
-                  | None -> Some lhs)
+                  (* Could be array indexing arr.(i) OR local open Module.(expr) *)
+                  (* Check if lhs is a module identifier (capitalized) *)
+                  let is_module_open =
+                    if Ceibo.Green.kind (Ceibo.Green.Node lhs) = Syntax_kind.IDENT_EXPR then
+                      let children = Ceibo.Green.children lhs in
+                      if Array.length children > 0 then
+                        match Ceibo.Green.text children.(0) with
+                        | Some text ->
+                            String.length text > 0 && Char.uppercase_ascii text.[0] = text.[0]
+                        | None -> false
+                      else false
+                    else false
+                  in
+                  if is_module_open then
+                    (* Local open: Module.(expr) *)
+                    let open_paren = consume parser in
+                    let _ = consume_trivia parser in
+                    match parse_expr parser with
+                    | Some expr ->
+                        let _ = consume_trivia parser in
+                        let close_paren =
+                          expect parser (Token.CloseDelim Token.Paren)
+                        in
+                        let trivia = take_pending_trivia parser in
+                        let children =
+                          [
+                            Ceibo.Green.Node lhs;
+                            dot;
+                            open_paren;
+                            Ceibo.Green.Node expr;
+                            close_paren;
+                          ]
+                        in
+                        let children = trivia @ children in
+                        let local_open =
+                          make_node_list ~kind:Syntax_kind.APPLY_EXPR children
+                        in
+                        loop local_open
+                    | None -> Some lhs
+                  else
+                    (* Array indexing: arr.(i) *)
+                    let open_paren = consume parser in
+                    let _ = consume_trivia parser in
+                    match parse_expr parser with
+                    | Some index ->
+                        let _ = consume_trivia parser in
+                        let close_paren =
+                          expect parser (Token.CloseDelim Token.Paren)
+                        in
+                        let trivia = take_pending_trivia parser in
+                        let children =
+                          [
+                            Ceibo.Green.Node lhs;
+                            dot;
+                            open_paren;
+                            Ceibo.Green.Node index;
+                            close_paren;
+                          ]
+                        in
+                        let children = trivia @ children in
+                        let access =
+                          make_node_list ~kind:Syntax_kind.ARRAY_INDEX_EXPR
+                            children
+                        in
+                        loop access
+                    | None -> Some lhs)
               | Some (Token.OpenDelim Token.Bracket) -> (
-                  (* String indexing: s.[i] *)
-                  let open_bracket = consume parser in
-                  let _ = consume_trivia parser in
-                  match parse_expr parser with
-                  | Some index ->
-                      let _ = consume_trivia parser in
-                      let close_bracket =
-                        expect parser (Token.CloseDelim Token.Bracket)
-                      in
-                      let trivia = take_pending_trivia parser in
-                      let children =
-                        [
-                          Ceibo.Green.Node lhs;
-                          dot;
-                          open_bracket;
-                          Ceibo.Green.Node index;
-                          close_bracket;
-                        ]
-                      in
-                      let children = trivia @ children in
-                      let access =
-                        make_node_list ~kind:Syntax_kind.STRING_INDEX_EXPR
-                          children
-                      in
-                      loop access
-                  | None -> Some lhs)
+                  (* Could be string indexing s.[i] OR local open Module.[...] *)
+                  let is_module_open =
+                    if Ceibo.Green.kind (Ceibo.Green.Node lhs) = Syntax_kind.IDENT_EXPR then
+                      let children = Ceibo.Green.children lhs in
+                      if Array.length children > 0 then
+                        match Ceibo.Green.text children.(0) with
+                        | Some text ->
+                            String.length text > 0 && Char.uppercase_ascii text.[0] = text.[0]
+                        | None -> false
+                      else false
+                    else false
+                  in
+                  if is_module_open then
+                    (* Local open: Module.[...] *)
+                    match parse_list_expr parser with
+                    | Some list_expr ->
+                        let trivia = take_pending_trivia parser in
+                        let children =
+                          [ Ceibo.Green.Node lhs; dot; Ceibo.Green.Node list_expr ]
+                        in
+                        let children = trivia @ children in
+                        let local_open =
+                          make_node_list ~kind:Syntax_kind.APPLY_EXPR children
+                        in
+                        loop local_open
+                    | None -> Some lhs
+                  else
+                    (* String indexing: s.[i] *)
+                    let open_bracket = consume parser in
+                    let _ = consume_trivia parser in
+                    match parse_expr parser with
+                    | Some index ->
+                        let _ = consume_trivia parser in
+                        let close_bracket =
+                          expect parser (Token.CloseDelim Token.Bracket)
+                        in
+                        let trivia = take_pending_trivia parser in
+                        let children =
+                          [
+                            Ceibo.Green.Node lhs;
+                            dot;
+                            open_bracket;
+                            Ceibo.Green.Node index;
+                            close_bracket;
+                          ]
+                        in
+                        let children = trivia @ children in
+                        let access =
+                          make_node_list ~kind:Syntax_kind.STRING_INDEX_EXPR
+                            children
+                        in
+                        loop access
+                    | None -> Some lhs)
               | Some (Token.Ident _) ->
                   (* Field access: record.field *)
                   let field = consume parser in
