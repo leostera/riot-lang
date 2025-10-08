@@ -1781,15 +1781,12 @@ and parse_regular_let_expr parser let_kw =
     else None
   in
 
-  (* Parse pattern - for let expressions, prefer simple identifier *)
+  (* Parse pattern - use parse_pattern to handle all pattern types including underscore *)
   let pattern =
-    match peek_kind parser with
-    | Some (Token.Ident _) ->
-        (* Could be simple ident or start of tuple/complex pattern *)
-        let ident = consume parser in
+    match parse_pattern parser with
+    | Some first_pat -> (
         let _ = consume_trivia parser in
-
-        (* Check if followed by comma (tuple) or other pattern indicators *)
+        (* Check if followed by comma (tuple pattern) *)
         if at parser Token.Comma then
           (* Tuple pattern *)
           let rec parse_tuple_patterns acc =
@@ -1805,30 +1802,20 @@ and parse_regular_let_expr parser let_kw =
                        (Ceibo.Green.Node pat :: comma :: acc))
               | None -> List.rev acc
           in
-          let patterns = parse_tuple_patterns [ ident ] in
+          let patterns = parse_tuple_patterns [ Ceibo.Green.Node first_pat ] in
           Ceibo.Green.Node
             (make_node_list ~kind:Syntax_kind.TUPLE_PATTERN patterns)
         else
-          (* Simple identifier - keep as token, not wrapped *)
-          ident
-    | Some (Token.OpenDelim Token.Paren) -> (
-        (* Complex pattern like (a, b) or (Some x) *)
-        match parse_pattern parser with
-        | Some pat ->
-            let _ = consume_trivia parser in
-            Ceibo.Green.Node pat
-        | None ->
-            let span =
-              match peek parser with
-              | Some tok -> tok.Token.span
-              | None -> Ceibo.Span.make ~start:0 ~end_:0
-            in
-            report_error parser
-              (Diagnostic.make_missing_token ~expected:"pattern" ~span);
-            Ceibo.Green.Token
-              (Ceibo.Green.make_token ~kind:Syntax_kind.MISSING ~text:""
-                 ~width:0))
-    | _ ->
+          (* Unwrap simple IDENT_PATTERN to keep just the token for backward compatibility *)
+          match first_pat with
+          | node
+            when Ceibo.Green.kind (Ceibo.Green.Node node)
+                 = Syntax_kind.IDENT_PATTERN -> (
+              match Ceibo.Green.children node with
+              | [| Ceibo.Green.Token tok |] -> Ceibo.Green.Token tok
+              | _ -> Ceibo.Green.Node first_pat)
+          | _ -> Ceibo.Green.Node first_pat)
+    | None ->
         let span =
           match peek parser with
           | Some tok -> tok.Token.span
@@ -1883,7 +1870,27 @@ and parse_regular_let_expr parser let_kw =
                   let _ = consume_trivia parser in
                   loop (Ceibo.Green.Node param :: acc)
               | None -> List.rev acc)
-          | Some (Token.Ident _)
+          | Some (Token.Ident _) -> (
+              (* Check if this identifier is followed by tokens that suggest it's
+                 an expression (function application) rather than a parameter *)
+              let looks_like_application =
+                match peek_nth parser 1 with
+                | Some (Token.OpenDelim Token.Paren)
+                | Some (Token.OpenDelim Token.Bracket)
+                | Some (Token.OpenDelim Token.Brace)
+                | Some Token.Dot -> true
+                | _ -> false
+              in
+              if looks_like_application then
+                (* This is likely the start of the function body, stop parsing params *)
+                List.rev acc
+              else
+                (* Parse as parameter *)
+                match parse_pattern parser with
+                | Some pat ->
+                    let _ = consume_trivia parser in
+                    loop (Ceibo.Green.Node pat :: acc)
+                | None -> List.rev acc)
           | Some (Token.OpenDelim Token.Paren)
           | Some Token.Underscore
           | Some (Token.Literal _)
@@ -3249,7 +3256,27 @@ and parse_regular_let_binding parser let_kw ?(attributes = []) () =
                     let _ = consume_trivia parser in
                     loop (Ceibo.Green.Node pat :: acc)
                 | None -> List.rev acc)
-          | Some (Token.Ident _)
+          | Some (Token.Ident _) -> (
+              (* Check if this identifier is followed by tokens that suggest it's
+                 an expression (function application) rather than a parameter *)
+              let looks_like_application =
+                match peek_nth parser 1 with
+                | Some (Token.OpenDelim Token.Paren)
+                | Some (Token.OpenDelim Token.Bracket)
+                | Some (Token.OpenDelim Token.Brace)
+                | Some Token.Dot -> true
+                | _ -> false
+              in
+              if looks_like_application then
+                (* This is likely the start of the function body, stop parsing params *)
+                List.rev acc
+              else
+                (* Parse as parameter *)
+                match parse_pattern parser with
+                | Some pat ->
+                    let _ = consume_trivia parser in
+                    loop (Ceibo.Green.Node pat :: acc)
+                | None -> List.rev acc)
           | Some Token.Underscore
           | Some (Token.Literal _)
           | Some (Token.OpenDelim Token.Bracket)
