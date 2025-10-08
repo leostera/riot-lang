@@ -3409,14 +3409,22 @@ and parse_regular_module_decl parser module_kw =
 
   let params = parse_functor_params [] in
 
-  (* Check for optional module type constraint: : S *)
+  (* Check for optional module type constraint: : S or : sig ... end *)
   let constraint_opt =
     if at parser Token.Colon then
       let colon = consume parser in
       let _ = consume_trivia parser in
-      let module_type = parse_identifier parser in
-      let _ = consume_trivia parser in
-      Some ([colon] @ module_type)
+      (* Check if it's an inline signature or a module type reference *)
+      if at parser (Token.OpenDelim Token.SigEnd) then
+        (* Inline signature: : sig ... end *)
+        let signature = parse_signature parser in
+        let _ = consume_trivia parser in
+        Some ([colon; Ceibo.Green.Node signature])
+      else
+        (* Module type reference: : S *)
+        let module_type = parse_identifier parser in
+        let _ = consume_trivia parser in
+        Some ([colon] @ module_type)
     else None
   in
 
