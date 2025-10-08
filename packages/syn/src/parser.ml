@@ -70,6 +70,8 @@ let token_kind_to_syntax_kind = function
       Syntax_kind.BOOL_LITERAL
   | Token.Keyword Keyword.Let -> Syntax_kind.LET_BINDING
   | Token.Keyword Keyword.Type -> Syntax_kind.TYPE_DECL
+  | Token.Keyword Keyword.Val -> Syntax_kind.VAL_DECL
+  | Token.Keyword Keyword.External -> Syntax_kind.EXTERNAL_DECL
   | Token.Keyword Keyword.Rec -> Syntax_kind.LET_REC_EXPR
   | Token.Keyword Keyword.In -> Syntax_kind.LET_EXPR
   | Token.Keyword Keyword.And ->
@@ -2394,6 +2396,8 @@ let rec parse_structure_item parser =
   | Some (Token.Keyword Keyword.Let) -> parse_let_binding parser
   | Some (Token.Keyword Keyword.Type) -> parse_type_decl parser
   | Some (Token.Keyword Keyword.Open) -> parse_open parser
+  | Some (Token.Keyword Keyword.Val) -> parse_val_decl parser
+  | Some (Token.Keyword Keyword.External) -> parse_external_decl parser
   | _ -> None
 
 and parse_let_binding parser =
@@ -2587,14 +2591,15 @@ and parse_type_decl parser =
         parse_record_type parser
     | Some (Token.Ident tag)
       when String.length tag > 0
-           && Char.uppercase_ascii tag.[0] = tag.[0] ->
-        (* Variant type: A | B *)
+           && Char.uppercase_ascii tag.[0] = tag.[0]
+           && peek_nth parser 1 <> Some Token.Dot ->
+        (* Variant type: A | B (but not Module.path) *)
         parse_variant_type parser
     | Some Token.Pipe ->
         (* Variant type starting with |: | A | B *)
         parse_variant_type parser
     | _ ->
-        (* Type expression (alias): int, 'a, int -> string *)
+        (* Type expression (alias): int, 'a, int -> string, Module.t *)
         parse_type_expr parser
   in
 
@@ -2725,9 +2730,19 @@ and parse_type_atomic parser =
         let underscore = consume parser in
         make_node_list ~kind:Syntax_kind.TYPE_VAR [ underscore ]
     | Some (Token.Ident _) ->
-        (* Type constructor: int, string, list *)
-        let name = consume parser in
-        make_node_list ~kind:Syntax_kind.TYPE_CONSTR [ name ]
+        (* Type constructor: int, string, list, or Module.path.t *)
+        let rec parse_module_path acc =
+          let name = consume parser in
+          let _ = consume_trivia parser in
+          (* Check for module path continuation: A.B.t *)
+          if at parser Token.Dot then
+            let dot = consume parser in
+            let _ = consume_trivia parser in
+            parse_module_path (dot :: name :: acc)
+          else List.rev (name :: acc)
+        in
+        let path_parts = parse_module_path [] in
+        make_node_list ~kind:Syntax_kind.TYPE_CONSTR path_parts
     | Some (Token.OpenDelim Token.Bracket) ->
         (* Polymorphic variant type: [ `A | `B ] *)
         parse_poly_variant_type parser
@@ -2979,6 +2994,63 @@ and parse_open parser =
   let path = consume parser in
 
   Some (make_node_list ~kind:Syntax_kind.OPEN_STMT [ open_kw; path ])
+
+and parse_val_decl parser =
+  (* val name : type *)
+  let val_kw = consume parser in
+  let _ = consume_trivia parser in
+
+  (* Parse value name *)
+  let name = consume parser in
+  let _ = consume_trivia parser in
+
+  (* Expect : *)
+  let colon = expect parser Token.Colon in
+  let _ = consume_trivia parser in
+
+  (* Parse type expression *)
+  let type_expr = parse_type_expr parser in
+
+  Some
+    (make_node_list ~kind:Syntax_kind.VAL_DECL
+       [ val_kw; name; colon; Ceibo.Green.Node type_expr ])
+
+and parse_external_decl parser =
+  (* external name : type = "c_name" *)
+  let external_kw = consume parser in
+  let _ = consume_trivia parser in
+
+  (* Parse function name *)
+  let name = consume parser in
+  let _ = consume_trivia parser in
+
+  (* Expect : *)
+  let colon = expect parser Token.Colon in
+  let _ = consume_trivia parser in
+
+  (* Parse type expression *)
+  let type_expr = parse_type_expr parser in
+  let _ = consume_trivia parser in
+
+  (* Expect = *)
+  let eq = expect parser Token.Eq in
+  let _ = consume_trivia parser in
+
+  (* Parse C function names (one or more string literals) *)
+  let rec parse_c_names acc =
+    match peek_kind parser with
+    | Some (Token.Literal (Token.String _)) ->
+        let str = consume parser in
+        let _ = consume_trivia parser in
+        parse_c_names (str :: acc)
+    | _ -> List.rev acc
+  in
+
+  let c_names = parse_c_names [] in
+
+  Some
+    (make_node_list ~kind:Syntax_kind.EXTERNAL_DECL
+       ([ external_kw; name; colon; Ceibo.Green.Node type_expr; eq ] @ c_names))
 
 let parse_source_file parser =
   let rec parse_items acc =

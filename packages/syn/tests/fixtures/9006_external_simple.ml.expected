@@ -2,8 +2,85 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 0,
-    "children": []
+    "width": 43,
+    "children": [
+      {
+        "type": "node",
+        "kind": "EXTERNAL_DECL",
+        "width": 43,
+        "children": [
+          {
+            "type": "token",
+            "kind": "EXTERNAL_DECL",
+            "text": "external",
+            "width": 8
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "sqrt",
+            "width": 4
+          },
+          {
+            "type": "token",
+            "kind": "TYPED_EXPR",
+            "text": ":",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "TYPE_ARROW",
+            "width": 12,
+            "children": [
+              {
+                "type": "node",
+                "kind": "TYPE_CONSTR",
+                "width": 5,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "float",
+                    "width": 5
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "FUN_EXPR",
+                "text": "->",
+                "width": 2
+              },
+              {
+                "type": "node",
+                "kind": "TYPE_CONSTR",
+                "width": 5,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "float",
+                    "width": 5
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "token",
+            "kind": "INFIX_EXPR",
+            "text": "=",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "STRING_LITERAL",
+            "text": "\"caml_sqrt_float\"",
+            "width": 17
+          }
+        ]
+      }
+    ]
   },
   "diagnostics": []
 }

@@ -94,6 +94,7 @@ type t =
   | MODULE_TYPE_DECL (* module type S = sig ... end *)
   | OPEN_STMT (* open Module *)
   | INCLUDE_STMT (* include Module *)
+  | VAL_DECL (* val name : type *)
   | EXTERNAL_DECL (* external name : type = "c_name" *)
   (* ========================================================================= *)
   (* STRUCTURAL ELEMENTS *)
@@ -188,6 +189,7 @@ let to_string = function
   | MODULE_TYPE_DECL -> "MODULE_TYPE_DECL"
   | OPEN_STMT -> "OPEN_STMT"
   | INCLUDE_STMT -> "INCLUDE_STMT"
+  | VAL_DECL -> "VAL_DECL"
   | EXTERNAL_DECL -> "EXTERNAL_DECL"
   | SOURCE_FILE -> "SOURCE_FILE"
   | STRUCTURE -> "STRUCTURE"

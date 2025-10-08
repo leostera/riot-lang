@@ -1,0 +1,66 @@
+{
+  "tree": {
+    "type": "node",
+    "kind": "SOURCE_FILE",
+    "width": 12,
+    "children": [
+      {
+        "type": "node",
+        "kind": "TYPE_DECL",
+        "width": 12,
+        "children": [
+          {
+            "type": "token",
+            "kind": "TYPE_DECL",
+            "text": "type",
+            "width": 4
+          },
+          {
+            "type": "token",
+            "kind": "TYPE_VARIANT_CONSTR",
+            "text": "of",
+            "width": 2
+          },
+          {
+            "type": "token",
+            "kind": "MISSING",
+            "text": "",
+            "width": 0
+          },
+          {
+            "type": "node",
+            "kind": "TYPE_CONSTR",
+            "width": 6,
+            "children": [
+              {
+                "type": "node",
+                "kind": "TYPE_VARIANT_CONSTR",
+                "width": 6,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "Stdlib",
+                    "width": 6
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "kind": {
+        "type": "missing_token",
+        "expected": "'='"
+      },
+      "span": {
+        "start": 23,
+        "end": 23
+      }
+    }
+  ]
+}

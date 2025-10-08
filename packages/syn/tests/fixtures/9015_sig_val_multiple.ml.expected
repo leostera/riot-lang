@@ -2,8 +2,201 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 0,
-    "children": []
+    "width": 51,
+    "children": [
+      {
+        "type": "node",
+        "kind": "VAL_DECL",
+        "width": 17,
+        "children": [
+          {
+            "type": "token",
+            "kind": "VAL_DECL",
+            "text": "val",
+            "width": 3
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "create",
+            "width": 6
+          },
+          {
+            "type": "token",
+            "kind": "TYPED_EXPR",
+            "text": ":",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "TYPE_ARROW",
+            "width": 7,
+            "children": [
+              {
+                "type": "node",
+                "kind": "TYPE_CONSTR",
+                "width": 4,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "unit",
+                    "width": 4
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "FUN_EXPR",
+                "text": "->",
+                "width": 2
+              },
+              {
+                "type": "node",
+                "kind": "TYPE_CONSTR",
+                "width": 1,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "t",
+                    "width": 1
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "VAL_DECL",
+        "width": 18,
+        "children": [
+          {
+            "type": "token",
+            "kind": "VAL_DECL",
+            "text": "val",
+            "width": 3
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "destroy",
+            "width": 7
+          },
+          {
+            "type": "token",
+            "kind": "TYPED_EXPR",
+            "text": ":",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "TYPE_ARROW",
+            "width": 7,
+            "children": [
+              {
+                "type": "node",
+                "kind": "TYPE_CONSTR",
+                "width": 1,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "t",
+                    "width": 1
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "FUN_EXPR",
+                "text": "->",
+                "width": 2
+              },
+              {
+                "type": "node",
+                "kind": "TYPE_CONSTR",
+                "width": 4,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "unit",
+                    "width": 4
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "VAL_DECL",
+        "width": 16,
+        "children": [
+          {
+            "type": "token",
+            "kind": "VAL_DECL",
+            "text": "val",
+            "width": 3
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "get",
+            "width": 3
+          },
+          {
+            "type": "token",
+            "kind": "TYPED_EXPR",
+            "text": ":",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "TYPE_ARROW",
+            "width": 9,
+            "children": [
+              {
+                "type": "node",
+                "kind": "TYPE_CONSTR",
+                "width": 1,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "t",
+                    "width": 1
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "FUN_EXPR",
+                "text": "->",
+                "width": 2
+              },
+              {
+                "type": "node",
+                "kind": "TYPE_CONSTR",
+                "width": 6,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "string",
+                    "width": 6
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
   },
   "diagnostics": []
 }

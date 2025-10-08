@@ -125,6 +125,7 @@ type t =
   | MODULE_TYPE_DECL  (** Module type declaration: `module type S = ...` *)
   | OPEN_STMT  (** Open statement: `open Module` *)
   | INCLUDE_STMT  (** Include statement: `include Module` *)
+  | VAL_DECL  (** Value declaration: `val name : typ` *)
   | EXTERNAL_DECL  (** External declaration: `external name : typ = "c_name"` *)
   (* ===================================================================== *)
   (* STRUCTURAL - Tree organization nodes *)

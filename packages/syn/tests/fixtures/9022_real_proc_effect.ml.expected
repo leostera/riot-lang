@@ -1,0 +1,121 @@
+{
+  "tree": {
+    "type": "node",
+    "kind": "SOURCE_FILE",
+    "width": 22,
+    "children": [
+      {
+        "type": "node",
+        "kind": "TYPE_DECL",
+        "width": 11,
+        "children": [
+          {
+            "type": "token",
+            "kind": "TYPE_DECL",
+            "text": "type",
+            "width": 4
+          },
+          {
+            "type": "token",
+            "kind": "WILDCARD_PATTERN",
+            "text": "_",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "MISSING",
+            "text": "",
+            "width": 0
+          },
+          {
+            "type": "node",
+            "kind": "TYPE_CONSTR",
+            "width": 6,
+            "children": [
+              {
+                "type": "node",
+                "kind": "TYPE_VARIANT_CONSTR",
+                "width": 6,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "Effect",
+                    "width": 6
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "TYPE_DECL",
+        "width": 11,
+        "children": [
+          {
+            "type": "token",
+            "kind": "TYPE_DECL",
+            "text": "type",
+            "width": 4
+          },
+          {
+            "type": "token",
+            "kind": "WILDCARD_PATTERN",
+            "text": "_",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "MISSING",
+            "text": "",
+            "width": 0
+          },
+          {
+            "type": "node",
+            "kind": "TYPE_CONSTR",
+            "width": 6,
+            "children": [
+              {
+                "type": "node",
+                "kind": "TYPE_VARIANT_CONSTR",
+                "width": 6,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "Effect",
+                    "width": 6
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "kind": {
+        "type": "missing_token",
+        "expected": "'='"
+      },
+      "span": {
+        "start": 7,
+        "end": 7
+      }
+    },
+    {
+      "kind": {
+        "type": "missing_token",
+        "expected": "'='"
+      },
+      "span": {
+        "start": 131,
+        "end": 131
+      }
+    }
+  ]
+}

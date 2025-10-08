@@ -2,8 +2,40 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 0,
-    "children": []
+    "width": 9,
+    "children": [
+      {
+        "type": "node",
+        "kind": "VAL_DECL",
+        "width": 9,
+        "children": [
+          {
+            "type": "token",
+            "kind": "VAL_DECL",
+            "text": "val",
+            "width": 3
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "greet",
+            "width": 5
+          },
+          {
+            "type": "token",
+            "kind": "TYPED_EXPR",
+            "text": ":",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "ERROR",
+            "width": 0,
+            "children": []
+          }
+        ]
+      }
+    ]
   },
   "diagnostics": []
 }

@@ -2,49 +2,43 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 17,
+    "width": 6,
     "children": [
       {
         "type": "node",
-        "kind": "EXTERNAL_DECL",
-        "width": 17,
+        "kind": "TYPE_DECL",
+        "width": 6,
         "children": [
           {
             "type": "token",
-            "kind": "EXTERNAL_DECL",
-            "text": "external",
-            "width": 8
-          },
-          {
-            "type": "token",
-            "kind": "IDENT_EXPR",
-            "text": "poll",
+            "kind": "TYPE_DECL",
+            "text": "type",
             "width": 4
           },
           {
             "type": "token",
-            "kind": "TYPED_EXPR",
-            "text": ":",
+            "kind": "WILDCARD_PATTERN",
+            "text": "_",
             "width": 1
-          },
-          {
-            "type": "node",
-            "kind": "TYPE_CONSTR",
-            "width": 4,
-            "children": [
-              {
-                "type": "token",
-                "kind": "IDENT_EXPR",
-                "text": "Unix",
-                "width": 4
-              }
-            ]
           },
           {
             "type": "token",
             "kind": "MISSING",
             "text": "",
             "width": 0
+          },
+          {
+            "type": "node",
+            "kind": "TYPE_CONSTR",
+            "width": 1,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "t",
+                "width": 1
+              }
+            ]
           }
         ]
       }
@@ -57,8 +51,8 @@
         "expected": "'='"
       },
       "span": {
-        "start": 20,
-        "end": 20
+        "start": 7,
+        "end": 7
       }
     }
   ]
