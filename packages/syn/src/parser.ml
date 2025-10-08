@@ -2636,17 +2636,24 @@ and parse_paren_pattern parser =
               let colon = consume parser in
               let _ = consume_trivia parser in
 
-              (* Parse type tokens until closing paren - functional approach *)
-              let rec consume_type_tokens acc =
-                if
-                  at parser (Token.CloseDelim Token.Paren) || peek parser = None
-                then List.rev acc
+              (* Parse type tokens until closing paren, tracking depth for nested parens *)
+              let rec consume_type_tokens depth acc =
+                if peek parser = None then List.rev acc
+                else if at parser (Token.CloseDelim Token.Paren) && depth = 0 then
+                  List.rev acc
                 else
+                  (* Check current token kind before consuming *)
+                  let new_depth =
+                    match peek_kind parser with
+                    | Some (Token.OpenDelim Token.Paren) -> depth + 1
+                    | Some (Token.CloseDelim Token.Paren) -> depth - 1
+                    | _ -> depth
+                  in
                   let tok = consume parser in
                   let _ = consume_trivia parser in
-                  consume_type_tokens (tok :: acc)
+                  consume_type_tokens new_depth (tok :: acc)
               in
-              let type_elements = consume_type_tokens [] in
+              let type_elements = consume_type_tokens 0 [] in
 
               let close_paren = expect parser (Token.CloseDelim Token.Paren) in
               let children =
@@ -3202,20 +3209,27 @@ and parse_regular_let_binding parser let_kw ?(attributes = []) () =
                 (* Check if it's (type ...) for locally abstract types *)
                 peek_nth parser 1 = Some (Token.Keyword Keyword.Type)
               then
-                (* Locally abstract type: (type a) *)
+                (* Locally abstract type: (type a) or (type a b c) *)
                 let open_paren = consume parser in
                 let _ = consume_trivia parser in
                 let type_kw = consume parser in
                 let _ = consume_trivia parser in
-                let type_var = consume parser in
-                let _ = consume_trivia parser in
+                (* Collect all type variables until ) *)
+                let rec collect_type_vars acc =
+                  if at parser (Token.CloseDelim Token.Paren) then List.rev acc
+                  else
+                    let type_var = consume parser in
+                    let _ = consume_trivia parser in
+                    collect_type_vars (type_var :: acc)
+                in
+                let type_vars = collect_type_vars [] in
                 let close_paren =
                   expect parser (Token.CloseDelim Token.Paren)
                 in
                 let _ = consume_trivia parser in
                 let param =
                   make_node_list ~kind:Syntax_kind.TYPE_PARAM
-                    [ open_paren; type_kw; type_var; close_paren ]
+                    ([ open_paren; type_kw ] @ type_vars @ [ close_paren ])
                 in
                 loop (Ceibo.Green.Node param :: acc)
               else
