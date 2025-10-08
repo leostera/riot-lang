@@ -1,0 +1,148 @@
+{
+  "tree": {
+    "type": "node",
+    "kind": "SOURCE_FILE",
+    "width": 13,
+    "children": [
+      {
+        "type": "node",
+        "kind": "LET_BINDING",
+        "width": 8,
+        "children": [
+          {
+            "type": "token",
+            "kind": "LET_BINDING",
+            "text": "let",
+            "width": 3
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "INFIX_EXPR",
+            "text": "=",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "LET_EXPR",
+            "width": 3,
+            "children": [
+              {
+                "type": "token",
+                "kind": "LET_BINDING",
+                "text": "let",
+                "width": 3
+              },
+              {
+                "type": "token",
+                "kind": "MISSING",
+                "text": "",
+                "width": 0
+              },
+              {
+                "type": "token",
+                "kind": "MISSING",
+                "text": "",
+                "width": 0
+              },
+              {
+                "type": "token",
+                "kind": "MISSING",
+                "text": "",
+                "width": 0
+              },
+              {
+                "type": "token",
+                "kind": "MISSING",
+                "text": "",
+                "width": 0
+              },
+              {
+                "type": "token",
+                "kind": "MISSING",
+                "text": "",
+                "width": 0
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "OPEN_STMT",
+        "width": 5,
+        "children": [
+          {
+            "type": "token",
+            "kind": "ERROR",
+            "text": "open",
+            "width": 4
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "width": 1
+          }
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "kind": {
+        "type": "missing_token",
+        "expected": "pattern"
+      },
+      "span": {
+        "start": 14,
+        "end": 18
+      }
+    },
+    {
+      "kind": {
+        "type": "missing_token",
+        "expected": "'='"
+      },
+      "span": {
+        "start": 14,
+        "end": 14
+      }
+    },
+    {
+      "kind": {
+        "type": "missing_token",
+        "expected": "expression"
+      },
+      "span": {
+        "start": 14,
+        "end": 18
+      }
+    },
+    {
+      "kind": {
+        "type": "missing_token",
+        "expected": "keyword"
+      },
+      "span": {
+        "start": 14,
+        "end": 14
+      }
+    },
+    {
+      "kind": {
+        "type": "missing_token",
+        "expected": "expression"
+      },
+      "span": {
+        "start": 14,
+        "end": 18
+      }
+    }
+  ]
+}

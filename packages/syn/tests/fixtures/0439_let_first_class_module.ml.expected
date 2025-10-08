@@ -1,0 +1,72 @@
+{
+  "tree": {
+    "type": "node",
+    "kind": "SOURCE_FILE",
+    "width": 3,
+    "children": [
+      {
+        "type": "node",
+        "kind": "LET_BINDING",
+        "width": 3,
+        "children": [
+          {
+            "type": "token",
+            "kind": "LET_BINDING",
+            "text": "let",
+            "width": 3
+          },
+          {
+            "type": "node",
+            "kind": "ERROR",
+            "width": 0,
+            "children": []
+          },
+          {
+            "type": "token",
+            "kind": "MISSING",
+            "text": "",
+            "width": 0
+          },
+          {
+            "type": "token",
+            "kind": "MISSING",
+            "text": "",
+            "width": 0
+          }
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "kind": {
+        "type": "invalid_syntax",
+        "context": "parenthesized pattern"
+      },
+      "span": {
+        "start": 5,
+        "end": 11
+      }
+    },
+    {
+      "kind": {
+        "type": "missing_token",
+        "expected": "'='"
+      },
+      "span": {
+        "start": 5,
+        "end": 5
+      }
+    },
+    {
+      "kind": {
+        "type": "missing_token",
+        "expected": "expression"
+      },
+      "span": {
+        "start": 5,
+        "end": 11
+      }
+    }
+  ]
+}
