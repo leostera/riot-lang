@@ -98,14 +98,15 @@ type parse_result = {
 
 (** # Parsing *)
 
-val parse : source:string -> Token.t list -> parse_result
-(** `parse ~source tokens` parses a token stream into a syntax tree.
+val parse : source:string -> ?filename:string -> Token.t list -> parse_result
+(** `parse ~source ?filename tokens` parses a token stream into a syntax tree.
     
     This function **never raises exceptions**. It always returns a tree,
     even from malformed input.
     
     Parameters:
     - `source`: The original source code (needed to extract token text)
+    - `filename`: Optional filename to determine if parsing .ml or .mli (defaults to .ml)
     - `tokens`: Token stream from the lexer
     
     Returns:

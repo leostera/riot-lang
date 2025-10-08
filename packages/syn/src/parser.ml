@@ -72,6 +72,9 @@ let token_kind_to_syntax_kind = function
   | Token.Keyword Keyword.Type -> Syntax_kind.TYPE_DECL
   | Token.Keyword Keyword.Val -> Syntax_kind.VAL_DECL
   | Token.Keyword Keyword.External -> Syntax_kind.EXTERNAL_DECL
+  | Token.Keyword Keyword.Module -> Syntax_kind.MODULE_DECL
+  | Token.Keyword Keyword.Include -> Syntax_kind.INCLUDE_STMT
+  | Token.Keyword Keyword.Open -> Syntax_kind.OPEN_STMT
   | Token.Keyword Keyword.Rec -> Syntax_kind.LET_REC_EXPR
   | Token.Keyword Keyword.In -> Syntax_kind.LET_EXPR
   | Token.Keyword Keyword.And ->
@@ -119,7 +122,9 @@ let token_kind_to_syntax_kind = function
       Syntax_kind.FOR_EXPR
   | Token.Keyword Keyword.While -> Syntax_kind.WHILE_EXPR
   | Token.Keyword (Keyword.Begin | Keyword.End) -> Syntax_kind.PAREN_EXPR
+  | Token.Keyword (Keyword.Sig | Keyword.Struct) -> Syntax_kind.WHITESPACE (* Delimiters *)
   | Token.OpenDelim _ | Token.CloseDelim _ -> Syntax_kind.WHITESPACE
+  | Token.Keyword _ -> Syntax_kind.WHITESPACE (* Other keywords default to WHITESPACE *)
   | _ -> Syntax_kind.ERROR (* TODO: Map remaining token kinds *)
 
 let token_to_green_token parser tok =
@@ -2390,14 +2395,15 @@ and parse_match_case_body parser first_pattern =
 (* ========================================================================= *)
 
 let rec parse_structure_item parser =
+  (* For .ml files (implementations): let, type, open, external, module *)
   let _ = consume_trivia parser in
 
   match peek_kind parser with
   | Some (Token.Keyword Keyword.Let) -> parse_let_binding parser
   | Some (Token.Keyword Keyword.Type) -> parse_type_decl parser
   | Some (Token.Keyword Keyword.Open) -> parse_open parser
-  | Some (Token.Keyword Keyword.Val) -> parse_val_decl parser
   | Some (Token.Keyword Keyword.External) -> parse_external_decl parser
+  | Some (Token.Keyword Keyword.Module) -> parse_module_decl parser
   | _ -> None
 
 and parse_let_binding parser =
@@ -2579,40 +2585,56 @@ and parse_type_decl parser =
   let type_name = consume parser in
   let _ = consume_trivia parser in
 
-  (* Expect = *)
-  let eq = expect parser Token.Eq in
-  let _ = consume_trivia parser in
+  (* Check if = is present (for abstract types in signatures, it's optional) *)
+  let has_eq = at parser Token.Eq in
 
-  (* Determine what kind of type definition this is *)
-  let type_body =
-    match peek_kind parser with
-    | Some (Token.OpenDelim Token.Brace) ->
-        (* Record type: { field: int } *)
-        parse_record_type parser
-    | Some (Token.Ident tag)
-      when String.length tag > 0
-           && Char.uppercase_ascii tag.[0] = tag.[0]
-           && peek_nth parser 1 <> Some Token.Dot ->
-        (* Variant type: A | B (but not Module.path) *)
-        parse_variant_type parser
-    | Some Token.Pipe ->
-        (* Variant type starting with |: | A | B *)
-        parse_variant_type parser
-    | _ ->
-        (* Type expression (alias): int, 'a, int -> string, Module.t *)
-        parse_type_expr parser
-  in
+  if has_eq then
+    (* Concrete type definition *)
+    let eq = consume parser in
+    let _ = consume_trivia parser in
 
-  let children =
-    match params with
-    | Some p ->
-        [
-          type_kw; Ceibo.Green.Node p; type_name; eq; Ceibo.Green.Node type_body;
-        ]
-    | None -> [ type_kw; type_name; eq; Ceibo.Green.Node type_body ]
-  in
+    (* Determine what kind of type definition this is *)
+    let type_body =
+      match peek_kind parser with
+      | Some (Token.OpenDelim Token.Brace) ->
+          (* Record type: { field: int } *)
+          parse_record_type parser
+      | Some (Token.Ident tag)
+        when String.length tag > 0
+             && Char.uppercase_ascii tag.[0] = tag.[0]
+             && peek_nth parser 1 <> Some Token.Dot ->
+          (* Variant type: A | B (but not Module.path) *)
+          parse_variant_type parser
+      | Some Token.Pipe ->
+          (* Variant type starting with |: | A | B *)
+          parse_variant_type parser
+      | _ ->
+          (* Type expression (alias): int, 'a, int -> string, Module.t *)
+          parse_type_expr parser
+    in
 
-  Some (make_node_list ~kind:Syntax_kind.TYPE_DECL children)
+    let children =
+      match params with
+      | Some p ->
+          [
+            type_kw;
+            Ceibo.Green.Node p;
+            type_name;
+            eq;
+            Ceibo.Green.Node type_body;
+          ]
+      | None -> [ type_kw; type_name; eq; Ceibo.Green.Node type_body ]
+    in
+
+    Some (make_node_list ~kind:Syntax_kind.TYPE_DECL children)
+  else
+    (* Abstract type (no = present, used in signatures) *)
+    let children =
+      match params with
+      | Some p -> [ type_kw; Ceibo.Green.Node p; type_name ]
+      | None -> [ type_kw; type_name ]
+    in
+    Some (make_node_list ~kind:Syntax_kind.TYPE_DECL children)
 
 and parse_type_params parser =
   (* Handle 'a or ('a, 'b) or no params *)
@@ -2755,7 +2777,7 @@ and parse_type_atomic parser =
         let _ = consume_trivia parser in
         let first = parse_type_expr parser in
         let _ = consume_trivia parser in
-        
+
         (* Check if this is a tuple of type args (comma follows) *)
         if at parser Token.Comma then
           (* Multiple type arguments: (int, string) *)
@@ -2772,7 +2794,8 @@ and parse_type_atomic parser =
           let _ = consume_trivia parser in
           let second = parse_type_expr parser in
           let args =
-            collect_args [ Ceibo.Green.Node second; comma; Ceibo.Green.Node first ]
+            collect_args
+              [ Ceibo.Green.Node second; comma; Ceibo.Green.Node first ]
           in
           let _ = consume_trivia parser in
           let close_paren = expect parser (Token.CloseDelim Token.Paren) in
@@ -2813,8 +2836,7 @@ and parse_variant_type parser =
   let rec parse_constructors acc =
     match peek_kind parser with
     | Some (Token.Ident tag)
-      when String.length tag > 0
-           && Char.uppercase_ascii tag.[0] = tag.[0] ->
+      when String.length tag > 0 && Char.uppercase_ascii tag.[0] = tag.[0] ->
         (* Constructor name *)
         let constructor_name = consume parser in
         let _ = consume_trivia parser in
@@ -3052,7 +3074,107 @@ and parse_external_decl parser =
     (make_node_list ~kind:Syntax_kind.EXTERNAL_DECL
        ([ external_kw; name; colon; Ceibo.Green.Node type_expr; eq ] @ c_names))
 
-let parse_source_file parser =
+and parse_module_decl parser =
+  (* module M = struct ... end  OR  module type S = sig ... end *)
+  let module_kw = consume parser in
+  let _ = consume_trivia parser in
+
+  (* Check if this is a module type declaration *)
+  if at parser (Token.Keyword Keyword.Type) then
+    parse_module_type_decl parser module_kw
+  else
+    (* Regular module declaration - not implemented yet *)
+    None
+
+and parse_module_type_decl parser module_kw =
+  (* module type S = sig ... end *)
+  let type_kw = consume parser in
+  let _ = consume_trivia parser in
+
+  (* Parse module type name *)
+  let name = consume parser in
+  let _ = consume_trivia parser in
+
+  (* Expect = *)
+  let eq = expect parser Token.Eq in
+  let _ = consume_trivia parser in
+
+  (* Parse signature *)
+  let signature = parse_signature parser in
+
+  Some
+    (make_node_list ~kind:Syntax_kind.MODULE_TYPE_DECL
+       [ module_kw; type_kw; name; eq; Ceibo.Green.Node signature ])
+
+and parse_signature parser =
+  (* sig ... end *)
+  let sig_kw = consume parser in
+  (* We know it's 'sig' from caller context *)
+  let _ = consume_trivia parser in
+
+  (* Parse signature items until 'end' *)
+  let rec parse_sig_items acc =
+    if at parser (Token.Keyword Keyword.End) then List.rev acc
+    else
+      match parse_signature_item parser with
+      | Some item ->
+          let _ = consume_trivia parser in
+          parse_sig_items (Ceibo.Green.Node item :: acc)
+      | None ->
+          (* Skip if we can't parse this item *)
+          if at parser (Token.Keyword Keyword.End) || peek parser = None then
+            List.rev acc
+          else (
+            let _ = advance parser in
+            parse_sig_items acc)
+  in
+
+  let items = parse_sig_items [] in
+
+  let _ = consume_trivia parser in
+  let end_kw = consume parser in
+  (* Consume 'end' keyword *)
+
+  let children = prepend_pending_trivia parser ([ sig_kw ] @ items @ [ end_kw ]) in
+  make_node_list ~kind:Syntax_kind.SIGNATURE children
+
+and parse_signature_item parser =
+  (* Signature items: type, val, external, exception, module, etc. *)
+  let _ = consume_trivia parser in
+
+  match peek_kind parser with
+  | Some (Token.Keyword Keyword.Type) -> parse_type_decl parser
+  | Some (Token.Keyword Keyword.Val) -> parse_val_decl parser
+  | Some (Token.Keyword Keyword.External) -> parse_external_decl parser
+  | Some (Token.Keyword Keyword.Include) -> parse_include parser
+  | Some (Token.Keyword Keyword.Module) -> parse_module_decl parser
+  | _ -> None
+
+and parse_include parser =
+  (* include Module *)
+  let include_kw = consume parser in
+  let _ = consume_trivia parser in
+
+  (* Parse module path *)
+  let rec parse_module_path acc =
+    match peek_kind parser with
+    | Some (Token.Ident _) ->
+        let name = consume parser in
+        let _ = consume_trivia parser in
+        if at parser Token.Dot then
+          let dot = consume parser in
+          let _ = consume_trivia parser in
+          parse_module_path (dot :: name :: acc)
+        else List.rev (name :: acc)
+    | _ -> List.rev acc
+  in
+
+  let path = parse_module_path [] in
+
+  Some (make_node_list ~kind:Syntax_kind.INCLUDE_STMT (include_kw :: path))
+
+let parse_implementation parser =
+  (* Parse .ml file (implementation) *)
   let rec parse_items acc =
     if peek parser = None || at parser Token.EOF then List.rev acc
     else
@@ -3068,11 +3190,33 @@ let parse_source_file parser =
 
   make_node_list ~kind:Syntax_kind.SOURCE_FILE items
 
+let parse_interface parser =
+  (* Parse .mli file (interface/signature) *)
+  let rec parse_items acc =
+    if peek parser = None || at parser Token.EOF then List.rev acc
+    else
+      match parse_signature_item parser with
+      | Some item -> parse_items (Ceibo.Green.Node item :: acc)
+      | None ->
+          (* Skip problematic token *)
+          let _ = advance parser in
+          parse_items acc
+  in
+
+  let items = parse_items [] in
+
+  make_node_list ~kind:Syntax_kind.SOURCE_FILE items
+
+let parse_source_file parser filename =
+  (* Determine if this is an interface or implementation based on extension *)
+  if String.ends_with ~suffix:".mli" filename then parse_interface parser
+  else parse_implementation parser
+
 (* ========================================================================= *)
 (* PUBLIC API *)
 (* ========================================================================= *)
 
-let parse ~source tokens =
+let parse ~source ?(filename = "input.ml") tokens =
   let parser = create ~source tokens in
-  let green_tree = parse_source_file parser in
+  let green_tree = parse_source_file parser filename in
   { tree = green_tree; diagnostics = List.rev parser.diagnostics }

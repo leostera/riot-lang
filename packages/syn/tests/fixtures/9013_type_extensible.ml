@@ -1,2 +1,1 @@
-type _ Effect.t +=
-  | Yield : unit Effect.t
+type _ Effect.t += Yield : unit Effect.t

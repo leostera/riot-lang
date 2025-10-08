@@ -29,7 +29,9 @@ let handle_parse sub_matches =
       Log.error "Error reading file %s" file;
       exit 1
   | Ok source ->
-      let result = Parser.parse ~source (Lexer.tokenize source) in
+      let result =
+        Parser.parse ~source ~filename:file (Lexer.tokenize source)
+      in
 
       if json then
         let kind_to_json kind = Data.Json.String (Syntax_kind.to_string kind) in
