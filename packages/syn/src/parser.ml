@@ -2011,7 +2011,25 @@ and parse_paren_pattern parser =
     | Some first_pat ->
         let _ = consume_trivia parser in
 
-        if at parser Token.Comma then
+        if at parser Token.Pipe then
+          (* Or-pattern: (A | B) *)
+          let rec parse_or_patterns acc =
+            if not (at parser Token.Pipe) then List.rev acc
+            else
+              let pipe = consume parser in
+              let _ = consume_trivia parser in
+              match parse_pattern parser with
+              | Some pat ->
+                  let _ = consume_trivia parser in
+                  parse_or_patterns (Ceibo.Green.Node pat :: pipe :: acc)
+              | None -> List.rev acc
+          in
+          let patterns = parse_or_patterns [ Ceibo.Green.Node first_pat ] in
+          let close_paren = expect parser (Token.CloseDelim Token.Paren) in
+          let children = open_paren :: patterns @ [close_paren] in
+          Some (make_node_list ~kind:Syntax_kind.OR_PATTERN children)
+        
+        else if at parser Token.Comma then
           let rec parse_tuple_elements acc =
             if not (at parser Token.Comma) then List.rev acc
             else
