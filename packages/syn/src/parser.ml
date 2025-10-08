@@ -905,11 +905,14 @@ and parse_module_type_expr parser =
           let eq = expect parser Token.Eq in
           let _ = consume_trivia parser in
 
-          (* Parse type expression - consume tokens until 'and' or end of constraints *)
+          (* Parse type expression - consume tokens until 'and', ')' or end of constraints *)
           (* This handles: type t = int, type t = 'a, type t = int -> string, etc. *)
           let rec consume_type_expr acc =
             match peek_kind parser with
-            | Some (Token.Keyword Keyword.And) | None -> List.rev acc
+            | Some (Token.Keyword Keyword.And)
+            | Some (Token.CloseDelim Token.Paren)
+            | None ->
+                List.rev acc
             | _ ->
                 let tok = consume parser in
                 let _ = consume_trivia parser in
@@ -1637,12 +1640,12 @@ and parse_let_expr parser =
 
   (* Check for 'let open' or 'let module' *)
   if at parser (Token.Keyword Keyword.Open) then
-    parse_let_open_expr parser let_kw
+    parse_let_open_expr parser let_kw ()
   else if at parser (Token.Keyword Keyword.Module) then
-    parse_let_module_expr parser let_kw
+    parse_let_module_expr parser let_kw ()
   else parse_regular_let_expr parser let_kw
 
-and parse_let_open_expr parser let_kw =
+and parse_let_open_expr parser let_kw ?(attributes = []) () =
   (* let open Module in expr *)
   let open_kw = consume parser in
   let _ = consume_trivia parser in
@@ -1660,12 +1663,13 @@ and parse_let_open_expr parser let_kw =
   | Some body ->
       let children =
         prepend_pending_trivia parser
-          ([ let_kw; open_kw ] @ module_path @ [ in_kw; Ceibo.Green.Node body ])
+          ([ let_kw ] @ attributes @ [ open_kw ] @ module_path
+         @ [ in_kw; Ceibo.Green.Node body ])
       in
       Some (make_node_list ~kind:Syntax_kind.LET_EXPR children)
   | None -> None
 
-and parse_let_module_expr parser let_kw =
+and parse_let_module_expr parser let_kw ?(attributes = []) () =
   (* let module M = (val m : S) in expr *)
   let module_kw = consume parser in
   let _ = consume_trivia parser in
@@ -1746,7 +1750,7 @@ and parse_let_module_expr parser let_kw =
   | Some body ->
       let children =
         prepend_pending_trivia parser
-          ([ let_kw; module_kw; name; eq ]
+          ([ let_kw ] @ attributes @ [ module_kw; name; eq ]
           @ module_expr
           @ [ in_kw; Ceibo.Green.Node body ])
       in
@@ -2351,8 +2355,7 @@ and parse_base_pattern parser =
       | Some (Token.Literal (Token.Int _ | Token.Float _)) ->
           let number = consume parser in
           Some
-            (make_node_list ~kind:Syntax_kind.LITERAL_PATTERN
-               [ minus; number ])
+            (make_node_list ~kind:Syntax_kind.LITERAL_PATTERN [ minus; number ])
       | _ ->
           (* Not a negative number literal, might be a prefix operator in expression context *)
           (* For now, return None to let error handling kick in *)
@@ -3050,14 +3053,44 @@ and parse_let_binding parser =
   let let_kw = consume parser in
   let _ = consume_trivia parser in
 
+  (* Parse optional attributes: [@inline], [@tailcall], etc. *)
+  let rec parse_attributes acc =
+    if at parser (Token.OpenDelim Token.Bracket) then
+      (* Check if next token is @ (attribute) or @@ (item attribute) *)
+      match peek_nth parser 1 with
+      | Some Token.At -> (
+          let open_bracket = consume parser in
+          let at_token = consume parser in
+          let _ = consume_trivia parser in
+          (* Consume attribute name and any following tokens until ] *)
+          let rec consume_attr_tokens acc =
+            if at parser (Token.CloseDelim Token.Bracket) || peek parser = None
+            then List.rev acc
+            else
+              let tok = consume parser in
+              let _ = consume_trivia parser in
+              consume_attr_tokens (tok :: acc)
+          in
+          let attr_tokens = consume_attr_tokens [] in
+          let close_bracket = expect parser (Token.CloseDelim Token.Bracket) in
+          let _ = consume_trivia parser in
+          parse_attributes
+            (List.rev_append [ open_bracket; at_token ]
+               (attr_tokens @ [ close_bracket ])
+            @ acc))
+      | _ -> List.rev acc
+    else List.rev acc
+  in
+  let attributes = parse_attributes [] in
+
   (* Check for 'let open' or 'let module' at structure level *)
   if at parser (Token.Keyword Keyword.Open) then
-    parse_let_open_expr parser let_kw
+    parse_let_open_expr parser let_kw ~attributes ()
   else if at parser (Token.Keyword Keyword.Module) then
-    parse_let_module_expr parser let_kw
-  else parse_regular_let_binding parser let_kw
+    parse_let_module_expr parser let_kw ~attributes ()
+  else parse_regular_let_binding parser let_kw ~attributes ()
 
-and parse_regular_let_binding parser let_kw =
+and parse_regular_let_binding parser let_kw ?(attributes = []) () =
   let _ = consume_trivia parser in
 
   (* Check for 'rec' *)
@@ -3273,12 +3306,12 @@ and parse_regular_let_binding parser let_kw =
   | Some kw ->
       Some
         (make_node_list ~kind:Syntax_kind.LET_BINDING
-           ([ let_kw; kw; pattern ] @ type_annot_tokens @ params
+           ([ let_kw ] @ attributes @ [ kw; pattern ] @ type_annot_tokens @ params
           @ return_type_annot_tokens @ [ eq; final_expr ]))
   | None ->
       Some
         (make_node_list ~kind:Syntax_kind.LET_BINDING
-           ([ let_kw; pattern ] @ type_annot_tokens @ params
+           ([ let_kw ] @ attributes @ [ pattern ] @ type_annot_tokens @ params
           @ return_type_annot_tokens @ [ eq; final_expr ]))
 
 and parse_type_decl parser =
