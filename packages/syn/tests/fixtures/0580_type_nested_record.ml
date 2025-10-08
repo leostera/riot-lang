@@ -1,1 +1,2 @@
-type t = { a: { b: int; c: string }; d: bool }
+type inner = { b : int; c : string }
+type t = { a : inner; d : bool }

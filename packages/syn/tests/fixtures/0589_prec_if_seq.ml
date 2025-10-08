@@ -1,1 +1,5 @@
-let x = if a then b; c else d
+let x =
+  if a then (
+    b;
+    c)
+  else d

@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 40,
+    "width": 39,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 40,
+        "width": 39,
         "children": [
           {
             "type": "token",
@@ -30,7 +30,7 @@
           {
             "type": "node",
             "kind": "TRY_EXPR",
-            "width": 35,
+            "width": 34,
             "children": [
               {
                 "type": "token",
@@ -41,14 +41,8 @@
               {
                 "type": "node",
                 "kind": "MATCH_CASE",
-                "width": 13,
+                "width": 12,
                 "children": [
-                  {
-                    "type": "token",
-                    "kind": "MATCH_EXPR",
-                    "text": "|",
-                    "width": 1
-                  },
                   {
                     "type": "node",
                     "kind": "IDENT_PATTERN",

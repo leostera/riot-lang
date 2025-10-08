@@ -1,1 +1,1 @@
-let x = begin begin 1 end end
+let x = 1

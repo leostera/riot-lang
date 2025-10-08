@@ -1,1 +1,1 @@
-type 'a point = { x: 'a; y: 'a }
+type 'a point = { x : 'a; y : 'a }

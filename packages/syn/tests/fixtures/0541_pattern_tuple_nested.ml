@@ -1,1 +1,1 @@
-let ((a, b), (c, d)) = x
+let (a, b), (c, d) = x

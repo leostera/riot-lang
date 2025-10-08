@@ -1,1 +1,1 @@
-let x = match lst with | [x; y] -> x + y | _ -> 0
+let x = match lst with [ x; y ] -> x + y | _ -> 0

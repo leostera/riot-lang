@@ -1,1 +1,1 @@
-type t = { x: int }
+type t = { x : int }

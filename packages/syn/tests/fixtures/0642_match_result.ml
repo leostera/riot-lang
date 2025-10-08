@@ -1,1 +1,1 @@
-let x = match res with | Ok v -> v | Error _ -> 0
+let x = match res with Ok v -> v | Error _ -> 0

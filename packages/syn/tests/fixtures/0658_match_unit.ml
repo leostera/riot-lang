@@ -1,1 +1,1 @@
-let x = match u with | () -> 42
+let x = match u with () -> 42

@@ -1,1 +1,1 @@
-let x = match v with | `Point (x, y) -> x + y | _ -> 0
+let x = match v with `Point (x, y) -> x + y | _ -> 0

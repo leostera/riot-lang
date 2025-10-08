@@ -1,1 +1,1 @@
-let x = a + b * c - d / e
+let x = a + (b * c) - (d / e)

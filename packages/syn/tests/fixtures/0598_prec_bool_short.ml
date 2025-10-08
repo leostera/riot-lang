@@ -1,1 +1,1 @@
-let x = a || b && c
+let x = a || (b && c)

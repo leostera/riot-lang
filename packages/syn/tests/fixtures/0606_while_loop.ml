@@ -1,1 +1,4 @@
-let x = while true do print "loop" done
+let x =
+  while true do
+    print "loop"
+  done

@@ -1,1 +1,1 @@
-let x = try risky () with | Failure msg -> 0
+let x = try risky () with Failure msg -> 0

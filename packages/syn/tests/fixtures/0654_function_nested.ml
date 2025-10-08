@@ -1,1 +1,1 @@
-let f = function | Some (Some x) -> x | _ -> 0
+let f = function Some (Some x) -> x | _ -> 0

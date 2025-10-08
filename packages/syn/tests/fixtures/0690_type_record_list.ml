@@ -1,1 +1,1 @@
-type t = { items: int list }
+type t = { items : int list }

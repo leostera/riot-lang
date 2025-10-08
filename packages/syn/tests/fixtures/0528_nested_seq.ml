@@ -1,1 +1,5 @@
-let x = ((a; b); (c; d))
+let x =
+  a;
+  b;
+  c;
+  d

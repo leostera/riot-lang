@@ -1,1 +1,1 @@
-let f = function | 0 -> "zero" | 1 -> "one" | _ -> "other"
+let f = function 0 -> "zero" | 1 -> "one" | _ -> "other"

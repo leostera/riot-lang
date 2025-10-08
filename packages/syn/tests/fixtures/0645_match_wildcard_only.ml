@@ -1,1 +1,1 @@
-let x = match y with | _ -> 42
+let x = match y with _ -> 42
