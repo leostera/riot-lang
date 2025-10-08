@@ -890,13 +890,21 @@ and parse_module_type_expr parser =
           let eq = expect parser Token.Eq in
           let _ = consume_trivia parser in
 
-          (* Parse type expression (for now, just identifiers and basic types) *)
-          let type_expr = parse_identifier parser in
-          let _ = consume_trivia parser in
+          (* Parse type expression - consume tokens until 'and' or end of constraints *)
+          (* This handles: type t = int, type t = 'a, type t = int -> string, etc. *)
+          let rec consume_type_expr acc =
+            match peek_kind parser with
+            | Some (Token.Keyword Keyword.And) | None -> List.rev acc
+            | _ ->
+                let tok = consume parser in
+                let _ = consume_trivia parser in
+                consume_type_expr (tok :: acc)
+          in
+          let type_expr_tokens = consume_type_expr [] in
 
           let constraint_node =
             make_node_list ~kind:Syntax_kind.TYPE_CONSTRAINT
-              ([ type_kw ] @ type_path @ [ eq ] @ type_expr)
+              ([ type_kw ] @ type_path @ [ eq ] @ type_expr_tokens)
           in
 
           (* Check if there's another 'and' constraint *)
@@ -1648,16 +1656,61 @@ and parse_let_module_expr parser let_kw =
   let eq = expect parser Token.Eq in
   let _ = consume_trivia parser in
 
-  (* Parse module expression - for now, just consume tokens until 'in' *)
-  let rec consume_until_in acc =
-    if at parser (Token.Keyword Keyword.In) || peek parser = None then
-      List.rev acc
-    else
-      let tok = consume parser in
+  (* Parse module expression: (val expr : ModType) or other module expression *)
+  let module_expr =
+    if at parser (Token.OpenDelim Token.Paren) then
+      (* Could be (val expr : ModType) *)
+      let open_paren = consume parser in
       let _ = consume_trivia parser in
-      consume_until_in (tok :: acc)
+      
+      if at parser (Token.Keyword Keyword.Val) then
+        (* (val expr : ModType) - unpack first-class module *)
+        let val_kw = consume parser in
+        let _ = consume_trivia parser in
+        
+        (* Parse expression (module value) *)
+        let rec consume_until_colon acc =
+          if at parser Token.Colon || peek parser = None then List.rev acc
+          else
+            let tok = consume parser in
+            let _ = consume_trivia parser in
+            consume_until_colon (tok :: acc)
+        in
+        let expr_tokens = consume_until_colon [] in
+        
+        (* Expect : *)
+        let colon = expect parser Token.Colon in
+        let _ = consume_trivia parser in
+        
+        (* Parse module type expression *)
+        let module_type = parse_module_type_expr parser in
+        let _ = consume_trivia parser in
+        
+        (* Expect ) *)
+        let close_paren = expect parser (Token.CloseDelim Token.Paren) in
+        
+        [ open_paren; val_kw ] @ expr_tokens @ [ colon; Ceibo.Green.Node module_type; close_paren ]
+      else
+        (* Other parenthesized module expression - consume until 'in' *)
+        let rec consume_until_in acc =
+          if at parser (Token.Keyword Keyword.In) || peek parser = None then List.rev acc
+          else
+            let tok = consume parser in
+            let _ = consume_trivia parser in
+            consume_until_in (tok :: acc)
+        in
+        open_paren :: consume_until_in []
+    else
+      (* Module path or other expression - consume tokens until 'in' *)
+      let rec consume_until_in acc =
+        if at parser (Token.Keyword Keyword.In) || peek parser = None then List.rev acc
+        else
+          let tok = consume parser in
+          let _ = consume_trivia parser in
+          consume_until_in (tok :: acc)
+      in
+      consume_until_in []
   in
-  let module_expr = consume_until_in [] in
 
   (* Expect 'in' *)
   let in_kw = expect parser (Token.Keyword Keyword.In) in
@@ -3363,43 +3416,58 @@ and parse_type_atomic parser =
         parse_poly_variant_type parser
     | Some (Token.OpenDelim Token.Paren) ->
         (* Could be:
+           - First-class module type: (module S) or (module S with type t = int)
            - Parenthesized type: (int -> string)
            - Multiple type args: (int, string) result
         *)
         let open_paren = consume parser in
         let _ = consume_trivia parser in
-        let first = parse_type_expr parser in
-        let _ = consume_trivia parser in
-
-        (* Check if this is a tuple of type args (comma follows) *)
-        if at parser Token.Comma then
-          (* Multiple type arguments: (int, string) *)
-          let rec collect_args acc =
-            let _ = consume_trivia parser in
-            if at parser Token.Comma then
-              let comma = consume parser in
-              let _ = consume_trivia parser in
-              let next = parse_type_expr parser in
-              collect_args (Ceibo.Green.Node next :: comma :: acc)
-            else List.rev acc
-          in
-          let comma = consume parser in
+        
+        (* Check for (module ...) first-class module type *)
+        if at parser (Token.Keyword Keyword.Module) then
+          let module_kw = consume parser in
           let _ = consume_trivia parser in
-          let second = parse_type_expr parser in
-          let args =
-            collect_args
-              [ Ceibo.Green.Node second; comma; Ceibo.Green.Node first ]
-          in
+          
+          (* Parse module type expression *)
+          let module_type = parse_module_type_expr parser in
           let _ = consume_trivia parser in
+          
           let close_paren = expect parser (Token.CloseDelim Token.Paren) in
-          (* Return the args tuple - will be used for type application *)
-          make_node_list ~kind:Syntax_kind.TYPE_PARAMS
-            ((open_paren :: args) @ [ close_paren ])
+          make_node_list ~kind:Syntax_kind.TYPE_CONSTR
+            [ open_paren; module_kw; Ceibo.Green.Node module_type; close_paren ]
         else
-          (* Single parenthesized type: (int -> string) *)
-          let close_paren = expect parser (Token.CloseDelim Token.Paren) in
-          make_node_list ~kind:Syntax_kind.TYPE_PAREN
-            [ open_paren; Ceibo.Green.Node first; close_paren ]
+          let first = parse_type_expr parser in
+          let _ = consume_trivia parser in
+
+          (* Check if this is a tuple of type args (comma follows) *)
+          if at parser Token.Comma then
+            (* Multiple type arguments: (int, string) *)
+            let rec collect_args acc =
+              let _ = consume_trivia parser in
+              if at parser Token.Comma then
+                let comma = consume parser in
+                let _ = consume_trivia parser in
+                let next = parse_type_expr parser in
+                collect_args (Ceibo.Green.Node next :: comma :: acc)
+              else List.rev acc
+            in
+            let comma = consume parser in
+            let _ = consume_trivia parser in
+            let second = parse_type_expr parser in
+            let args =
+              collect_args
+                [ Ceibo.Green.Node second; comma; Ceibo.Green.Node first ]
+            in
+            let _ = consume_trivia parser in
+            let close_paren = expect parser (Token.CloseDelim Token.Paren) in
+            (* Return the args tuple - will be used for type application *)
+            make_node_list ~kind:Syntax_kind.TYPE_PARAMS
+              ((open_paren :: args) @ [ close_paren ])
+          else
+            (* Single parenthesized type: (int -> string) *)
+            let close_paren = expect parser (Token.CloseDelim Token.Paren) in
+            make_node_list ~kind:Syntax_kind.TYPE_PAREN
+              [ open_paren; Ceibo.Green.Node first; close_paren ]
     | _ ->
         (* Error: couldn't parse type *)
         make_node_list ~kind:Syntax_kind.ERROR []
