@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 26,
+    "width": 30,
     "children": [
       {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 26,
+        "width": 30,
         "children": [
           {
             "type": "token",
@@ -49,12 +49,12 @@
           {
             "type": "node",
             "kind": "TYPE_CONSTR",
-            "width": 15,
+            "width": 19,
             "children": [
               {
                 "type": "node",
                 "kind": "TYPE_VARIANT_CONSTR",
-                "width": 15,
+                "width": 19,
                 "children": [
                   {
                     "type": "token",
@@ -71,7 +71,7 @@
                   {
                     "type": "node",
                     "kind": "TYPE_TUPLE",
-                    "width": 9,
+                    "width": 13,
                     "children": [
                       {
                         "type": "node",
@@ -101,31 +101,44 @@
                       {
                         "type": "node",
                         "kind": "TYPE_CONSTR",
-                        "width": 6,
+                        "width": 10,
                         "children": [
                           {
                             "type": "node",
-                            "kind": "TYPE_VAR",
-                            "width": 2,
+                            "kind": "TYPE_CONSTR",
+                            "width": 6,
                             "children": [
                               {
-                                "type": "token",
+                                "type": "node",
                                 "kind": "TYPE_VAR",
-                                "text": "'",
-                                "width": 1
+                                "width": 2,
+                                "children": [
+                                  {
+                                    "type": "token",
+                                    "kind": "TYPE_VAR",
+                                    "text": "'",
+                                    "width": 1
+                                  },
+                                  {
+                                    "type": "token",
+                                    "kind": "IDENT_EXPR",
+                                    "text": "a",
+                                    "width": 1
+                                  }
+                                ]
                               },
                               {
                                 "type": "token",
                                 "kind": "IDENT_EXPR",
-                                "text": "a",
-                                "width": 1
+                                "text": "rose",
+                                "width": 4
                               }
                             ]
                           },
                           {
                             "type": "token",
                             "kind": "IDENT_EXPR",
-                            "text": "rose",
+                            "text": "list",
                             "width": 4
                           }
                         ]

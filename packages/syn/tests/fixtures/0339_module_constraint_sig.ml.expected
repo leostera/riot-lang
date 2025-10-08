@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 14,
+    "width": 29,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 5,
+        "width": 29,
         "children": [
           {
             "type": "token",
@@ -29,45 +29,88 @@
           },
           {
             "type": "node",
-            "kind": "ERROR",
-            "width": 0,
-            "children": []
-          }
-        ]
-      },
-      {
-        "type": "node",
-        "kind": "TYPE_DECL",
-        "width": 9,
-        "children": [
-          {
-            "type": "token",
-            "kind": "TYPE_DECL",
-            "text": "type",
-            "width": 4
-          },
-          {
-            "type": "token",
-            "kind": "IDENT_EXPR",
-            "text": "t",
-            "width": 1
-          },
-          {
-            "type": "token",
-            "kind": "INFIX_EXPR",
-            "text": "=",
-            "width": 1
-          },
-          {
-            "type": "node",
-            "kind": "TYPE_CONSTR",
-            "width": 3,
+            "kind": "APPLY_EXPR",
+            "width": 24,
             "children": [
               {
                 "type": "token",
+                "kind": "WHITESPACE",
+                "text": "(",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "MODULE_DECL",
+                "text": "module",
+                "width": 6
+              },
+              {
+                "type": "token",
                 "kind": "IDENT_EXPR",
-                "text": "int",
-                "width": 3
+                "text": "M",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "TYPED_EXPR",
+                "text": ":",
+                "width": 1
+              },
+              {
+                "type": "node",
+                "kind": "MODULE_TYPE_EXPR",
+                "width": 14,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "S",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "MATCH_EXPR",
+                    "text": "with",
+                    "width": 4
+                  },
+                  {
+                    "type": "node",
+                    "kind": "TYPE_CONSTRAINT",
+                    "width": 9,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "TYPE_DECL",
+                        "text": "type",
+                        "width": 4
+                      },
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "t",
+                        "width": 1
+                      },
+                      {
+                        "type": "token",
+                        "kind": "INFIX_EXPR",
+                        "text": "=",
+                        "width": 1
+                      },
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "int",
+                        "width": 3
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": ")",
+                "width": 1
               }
             ]
           }
@@ -75,16 +118,5 @@
       }
     ]
   },
-  "diagnostics": [
-    {
-      "kind": {
-        "type": "invalid_syntax",
-        "context": "parenthesized expression"
-      },
-      "span": {
-        "start": 9,
-        "end": 15
-      }
-    }
-  ]
+  "diagnostics": []
 }

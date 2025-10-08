@@ -98,6 +98,7 @@ let token_kind_to_syntax_kind = function
   | Token.Colon -> Syntax_kind.TYPED_EXPR
   | Token.Dot ->
       Syntax_kind.IDENT_EXPR (* . can be part of operator identifiers like -. *)
+  | Token.DotDot -> Syntax_kind.RANGE_PATTERN (* .. for range patterns *)
   | Token.Underscore -> Syntax_kind.WILDCARD_PATTERN
   | Token.Ident _ -> Syntax_kind.IDENT_EXPR
   | Token.Plus | Token.Minus | Token.Star | Token.Slash | Token.Percent

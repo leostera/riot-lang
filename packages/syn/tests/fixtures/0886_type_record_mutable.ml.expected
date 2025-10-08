@@ -45,7 +45,7 @@
                 "children": [
                   {
                     "type": "token",
-                    "kind": "ERROR",
+                    "kind": "WHITESPACE",
                     "text": "mutable",
                     "width": 7
                   },

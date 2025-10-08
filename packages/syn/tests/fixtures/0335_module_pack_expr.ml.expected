@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 11,
+    "width": 28,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 5,
+        "width": 28,
         "children": [
           {
             "type": "token",
@@ -29,44 +29,61 @@
           },
           {
             "type": "node",
-            "kind": "ERROR",
-            "width": 0,
-            "children": []
-          }
-        ]
-      },
-      {
-        "type": "node",
-        "kind": "LET_BINDING",
-        "width": 6,
-        "children": [
-          {
-            "type": "token",
-            "kind": "LET_BINDING",
-            "text": "let",
-            "width": 3
-          },
-          {
-            "type": "token",
-            "kind": "IDENT_EXPR",
-            "text": "y",
-            "width": 1
-          },
-          {
-            "type": "token",
-            "kind": "INFIX_EXPR",
-            "text": "=",
-            "width": 1
-          },
-          {
-            "type": "node",
-            "kind": "INT_LITERAL",
-            "width": 1,
+            "kind": "APPLY_EXPR",
+            "width": 23,
             "children": [
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "(",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "MODULE_DECL",
+                "text": "module",
+                "width": 6
+              },
+              {
+                "type": "token",
+                "kind": "STRUCTURE",
+                "text": "struct",
+                "width": 6
+              },
+              {
+                "type": "token",
+                "kind": "LET_BINDING",
+                "text": "let",
+                "width": 3
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "y",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "INFIX_EXPR",
+                "text": "=",
+                "width": 1
+              },
               {
                 "type": "token",
                 "kind": "INT_LITERAL",
                 "text": "1",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "STRUCTURE",
+                "text": "end",
+                "width": 3
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": ")",
                 "width": 1
               }
             ]
@@ -75,16 +92,5 @@
       }
     ]
   },
-  "diagnostics": [
-    {
-      "kind": {
-        "type": "invalid_syntax",
-        "context": "parenthesized expression"
-      },
-      "span": {
-        "start": 11,
-        "end": 17
-      }
-    }
-  ]
+  "diagnostics": []
 }

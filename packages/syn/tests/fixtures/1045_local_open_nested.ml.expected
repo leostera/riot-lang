@@ -29,7 +29,7 @@
           },
           {
             "type": "node",
-            "kind": "ARRAY_INDEX_EXPR",
+            "kind": "APPLY_EXPR",
             "width": 15,
             "children": [
               {
@@ -59,7 +59,7 @@
               },
               {
                 "type": "node",
-                "kind": "ARRAY_INDEX_EXPR",
+                "kind": "APPLY_EXPR",
                 "width": 11,
                 "children": [
                   {

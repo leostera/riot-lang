@@ -65,7 +65,7 @@
               },
               {
                 "type": "token",
-                "kind": "ERROR",
+                "kind": "MODULE_DECL",
                 "text": "module",
                 "width": 6
               },

@@ -29,7 +29,7 @@
           },
           {
             "type": "node",
-            "kind": "SIGNATURE",
+            "kind": "MODULE_TYPE_EXPR",
             "width": 14,
             "children": [
               {
@@ -39,42 +39,28 @@
                 "width": 3
               },
               {
-                "type": "node",
+                "type": "token",
                 "kind": "VAL_DECL",
-                "width": 8,
-                "children": [
-                  {
-                    "type": "token",
-                    "kind": "VAL_DECL",
-                    "text": "val",
-                    "width": 3
-                  },
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "x",
-                    "width": 1
-                  },
-                  {
-                    "type": "token",
-                    "kind": "TYPED_EXPR",
-                    "text": ":",
-                    "width": 1
-                  },
-                  {
-                    "type": "node",
-                    "kind": "TYPE_CONSTR",
-                    "width": 3,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "IDENT_EXPR",
-                        "text": "int",
-                        "width": 3
-                      }
-                    ]
-                  }
-                ]
+                "text": "val",
+                "width": 3
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "x",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "TYPED_EXPR",
+                "text": ":",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "int",
+                "width": 3
               },
               {
                 "type": "token",

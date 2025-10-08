@@ -29,7 +29,7 @@
           },
           {
             "type": "node",
-            "kind": "ARRAY_INDEX_EXPR",
+            "kind": "APPLY_EXPR",
             "width": 13,
             "children": [
               {

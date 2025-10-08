@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 65,
+    "width": 62,
     "children": [
       {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 65,
+        "width": 62,
         "children": [
           {
             "type": "token",
@@ -16,10 +16,29 @@
             "width": 4
           },
           {
+            "type": "node",
+            "kind": "TYPE_PARAM",
+            "width": 2,
+            "children": [
+              {
+                "type": "token",
+                "kind": "TYPE_VAR",
+                "text": "'",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "a",
+                "width": 1
+              }
+            ]
+          },
+          {
             "type": "token",
             "kind": "IDENT_EXPR",
-            "text": "person",
-            "width": 6
+            "text": "btree",
+            "width": 5
           },
           {
             "type": "token",
@@ -30,7 +49,7 @@
           {
             "type": "node",
             "kind": "TYPE_CONSTR",
-            "width": 54,
+            "width": 50,
             "children": [
               {
                 "type": "token",
@@ -47,13 +66,26 @@
               {
                 "type": "node",
                 "kind": "TYPE_VARIANT_CONSTR",
-                "width": 30,
+                "width": 5,
                 "children": [
                   {
                     "type": "token",
                     "kind": "IDENT_EXPR",
-                    "text": "Student",
-                    "width": 7
+                    "text": "Empty",
+                    "width": 5
+                  }
+                ]
+              },
+              {
+                "type": "node",
+                "kind": "TYPE_VARIANT_CONSTR",
+                "width": 43,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "Node",
+                    "width": 4
                   },
                   {
                     "type": "token",
@@ -64,7 +96,7 @@
                   {
                     "type": "node",
                     "kind": "TYPE_CONSTR",
-                    "width": 21,
+                    "width": 37,
                     "children": [
                       {
                         "type": "token",
@@ -81,12 +113,56 @@
                       {
                         "type": "node",
                         "kind": "TYPE_RECORD_FIELD",
-                        "width": 11,
+                        "width": 8,
                         "children": [
                           {
                             "type": "token",
                             "kind": "IDENT_EXPR",
-                            "text": "name",
+                            "text": "value",
+                            "width": 5
+                          },
+                          {
+                            "type": "token",
+                            "kind": "TYPED_EXPR",
+                            "text": ":",
+                            "width": 1
+                          },
+                          {
+                            "type": "node",
+                            "kind": "TYPE_VAR",
+                            "width": 2,
+                            "children": [
+                              {
+                                "type": "token",
+                                "kind": "TYPE_VAR",
+                                "text": "'",
+                                "width": 1
+                              },
+                              {
+                                "type": "token",
+                                "kind": "IDENT_EXPR",
+                                "text": "a",
+                                "width": 1
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "token",
+                        "kind": "SEQUENCE_EXPR",
+                        "text": ";",
+                        "width": 1
+                      },
+                      {
+                        "type": "node",
+                        "kind": "TYPE_RECORD_FIELD",
+                        "width": 12,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "IDENT_EXPR",
+                            "text": "left",
                             "width": 4
                           },
                           {
@@ -98,13 +174,32 @@
                           {
                             "type": "node",
                             "kind": "TYPE_CONSTR",
-                            "width": 6,
+                            "width": 7,
                             "children": [
+                              {
+                                "type": "node",
+                                "kind": "TYPE_VAR",
+                                "width": 2,
+                                "children": [
+                                  {
+                                    "type": "token",
+                                    "kind": "TYPE_VAR",
+                                    "text": "'",
+                                    "width": 1
+                                  },
+                                  {
+                                    "type": "token",
+                                    "kind": "IDENT_EXPR",
+                                    "text": "a",
+                                    "width": 1
+                                  }
+                                ]
+                              },
                               {
                                 "type": "token",
                                 "kind": "IDENT_EXPR",
-                                "text": "string",
-                                "width": 6
+                                "text": "btree",
+                                "width": 5
                               }
                             ]
                           }
@@ -113,13 +208,13 @@
                       {
                         "type": "node",
                         "kind": "TYPE_RECORD_FIELD",
-                        "width": 7,
+                        "width": 13,
                         "children": [
                           {
                             "type": "token",
                             "kind": "IDENT_EXPR",
-                            "text": "age",
-                            "width": 3
+                            "text": "right",
+                            "width": 5
                           },
                           {
                             "type": "token",
@@ -130,83 +225,32 @@
                           {
                             "type": "node",
                             "kind": "TYPE_CONSTR",
-                            "width": 3,
+                            "width": 7,
                             "children": [
+                              {
+                                "type": "node",
+                                "kind": "TYPE_VAR",
+                                "width": 2,
+                                "children": [
+                                  {
+                                    "type": "token",
+                                    "kind": "TYPE_VAR",
+                                    "text": "'",
+                                    "width": 1
+                                  },
+                                  {
+                                    "type": "token",
+                                    "kind": "IDENT_EXPR",
+                                    "text": "a",
+                                    "width": 1
+                                  }
+                                ]
+                              },
                               {
                                 "type": "token",
                                 "kind": "IDENT_EXPR",
-                                "text": "int",
-                                "width": 3
-                              }
-                            ]
-                          }
-                        ]
-                      },
-                      {
-                        "type": "token",
-                        "kind": "WHITESPACE",
-                        "text": "}",
-                        "width": 1
-                      }
-                    ]
-                  }
-                ]
-              },
-              {
-                "type": "node",
-                "kind": "TYPE_VARIANT_CONSTR",
-                "width": 22,
-                "children": [
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "Teacher",
-                    "width": 7
-                  },
-                  {
-                    "type": "token",
-                    "kind": "TYPE_VARIANT_CONSTR",
-                    "text": "of",
-                    "width": 2
-                  },
-                  {
-                    "type": "node",
-                    "kind": "TYPE_CONSTR",
-                    "width": 13,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "WHITESPACE",
-                        "text": "{",
-                        "width": 1
-                      },
-                      {
-                        "type": "node",
-                        "kind": "TYPE_RECORD_FIELD",
-                        "width": 11,
-                        "children": [
-                          {
-                            "type": "token",
-                            "kind": "IDENT_EXPR",
-                            "text": "name",
-                            "width": 4
-                          },
-                          {
-                            "type": "token",
-                            "kind": "TYPED_EXPR",
-                            "text": ":",
-                            "width": 1
-                          },
-                          {
-                            "type": "node",
-                            "kind": "TYPE_CONSTR",
-                            "width": 6,
-                            "children": [
-                              {
-                                "type": "token",
-                                "kind": "IDENT_EXPR",
-                                "text": "string",
-                                "width": 6
+                                "text": "btree",
+                                "width": 5
                               }
                             ]
                           }
