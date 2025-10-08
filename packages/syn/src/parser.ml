@@ -2472,6 +2472,47 @@ and parse_let_binding parser =
           (Ceibo.Green.make_token ~kind:Syntax_kind.MISSING ~text:"" ~width:0)
   in
 
+  let _ = consume_trivia parser in
+
+  (* Check if pattern is a simple identifier (function name) *)
+  let is_simple_ident =
+    match pattern with
+    | Ceibo.Green.Token _ -> Ceibo.Green.kind pattern = Syntax_kind.IDENT_EXPR
+    | _ -> false
+  in
+
+  (* Only parse function parameters if:
+     1. Pattern was a simple identifier (function name)
+     2. Next token is NOT '=' (would indicate simple let binding)
+     3. Next token looks like it could start a parameter *)
+  let params =
+    if is_simple_ident && not (at parser Token.Eq) then
+      let rec loop acc =
+        if at parser Token.Eq || peek parser = None then List.rev acc
+        else
+          match peek_kind parser with
+          | Some Token.Tilde | Some Token.Question -> (
+              match parse_labeled_or_optional_param parser with
+              | Some param ->
+                  let _ = consume_trivia parser in
+                  loop (Ceibo.Green.Node param :: acc)
+              | None -> List.rev acc)
+          | Some (Token.Ident _)
+          | Some (Token.OpenDelim Token.Paren)
+          | Some Token.Underscore
+          | Some (Token.Literal _)
+          | Some (Token.OpenDelim Token.Bracket) -> (
+              match parse_pattern parser with
+              | Some pat ->
+                  let _ = consume_trivia parser in
+                  loop (Ceibo.Green.Node pat :: acc)
+              | None -> List.rev acc)
+          | _ -> List.rev acc
+      in
+      loop []
+    else []
+  in
+
   (* Expect '=' *)
   let eq = expect parser Token.Eq in
 
@@ -2496,15 +2537,27 @@ and parse_let_binding parser =
   (* Skip trailing whitespace/newlines *)
   let _ = consume_trivia parser in
 
+  (* If we have params, wrap expr in a fun expression *)
+  let final_expr =
+    if params = [] then expr
+    else
+      let arrow =
+        Ceibo.Green.Token
+          (Ceibo.Green.make_token ~kind:Syntax_kind.FUN_EXPR ~text:"->" ~width:2)
+      in
+      let children = params @ [ arrow; expr ] in
+      Ceibo.Green.Node (make_node_list ~kind:Syntax_kind.FUN_EXPR children)
+  in
+
   match rec_kw with
   | Some kw ->
       Some
         (make_node_list ~kind:Syntax_kind.LET_BINDING
-           [ let_kw; kw; pattern; eq; expr ])
+           [ let_kw; kw; pattern; eq; final_expr ])
   | None ->
       Some
         (make_node_list ~kind:Syntax_kind.LET_BINDING
-           [ let_kw; pattern; eq; expr ])
+           [ let_kw; pattern; eq; final_expr ])
 
 and parse_open parser =
   let open_kw = consume parser in
