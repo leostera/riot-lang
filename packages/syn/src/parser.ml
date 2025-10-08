@@ -3151,27 +3151,78 @@ and parse_signature_item parser =
   | _ -> None
 
 and parse_include parser =
-  (* include Module *)
+  (* include Module  OR  include module type of Module *)
   let include_kw = consume parser in
   let _ = consume_trivia parser in
 
-  (* Parse module path *)
-  let rec parse_module_path acc =
-    match peek_kind parser with
-    | Some (Token.Ident _) ->
-        let name = consume parser in
-        let _ = consume_trivia parser in
-        if at parser Token.Dot then
-          let dot = consume parser in
+  (* Check if this is 'include module type of' *)
+  if at parser (Token.Keyword Keyword.Module) then (
+    (* Might be 'include module type of' *)
+    let module_kw = consume parser in
+    let _ = consume_trivia parser in
+
+    if at parser (Token.Keyword Keyword.Type) then (
+      (* It is 'include module type of' *)
+      let type_kw = consume parser in
+      let _ = consume_trivia parser in
+
+      let of_kw = consume parser in
+      (* Expect 'of' keyword *)
+      let _ = consume_trivia parser in
+
+      (* Parse module path after 'of' *)
+      let rec parse_module_path acc =
+        match peek_kind parser with
+        | Some (Token.Ident _) ->
+            let name = consume parser in
+            let _ = consume_trivia parser in
+            if at parser Token.Dot then
+              let dot = consume parser in
+              let _ = consume_trivia parser in
+              parse_module_path (dot :: name :: acc)
+            else List.rev (name :: acc)
+        | _ -> List.rev acc
+      in
+
+      let path = parse_module_path [] in
+      let children = include_kw :: module_kw :: type_kw :: of_kw :: path in
+      Some (make_node_list ~kind:Syntax_kind.INCLUDE_STMT children))
+    else
+      (* Just 'include module' - treat module as start of path *)
+      let rec parse_module_path acc =
+        match peek_kind parser with
+        | Some (Token.Ident _) ->
+            let name = consume parser in
+            let _ = consume_trivia parser in
+            if at parser Token.Dot then
+              let dot = consume parser in
+              let _ = consume_trivia parser in
+              parse_module_path (dot :: name :: acc)
+            else List.rev (name :: acc)
+        | _ -> List.rev acc
+      in
+
+      let path = parse_module_path [] in
+      let children = include_kw :: module_kw :: path in
+      Some (make_node_list ~kind:Syntax_kind.INCLUDE_STMT children))
+  else
+    (* Simple include: include Module.Path *)
+    let rec parse_module_path acc =
+      match peek_kind parser with
+      | Some (Token.Ident _) ->
+          let name = consume parser in
           let _ = consume_trivia parser in
-          parse_module_path (dot :: name :: acc)
-        else List.rev (name :: acc)
-    | _ -> List.rev acc
-  in
+          if at parser Token.Dot then
+            let dot = consume parser in
+            let _ = consume_trivia parser in
+            parse_module_path (dot :: name :: acc)
+          else List.rev (name :: acc)
+      | _ -> List.rev acc
+    in
 
-  let path = parse_module_path [] in
-
-  Some (make_node_list ~kind:Syntax_kind.INCLUDE_STMT (include_kw :: path))
+    let path = parse_module_path [] in
+    let children = include_kw :: path in
+    Some (make_node_list ~kind:Syntax_kind.INCLUDE_STMT children)
 
 let parse_implementation parser =
   (* Parse .ml file (implementation) *)
