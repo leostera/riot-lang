@@ -3584,17 +3584,17 @@ and parse_type_atomic parser =
 
   (* Check for type application: 'a list, (int, string) result *)
   (* Can be chained: 'a tree list, int option list *)
+  (* Also handles module paths: 'a Queue.t, Message.envelope Queue.t *)
   let rec parse_type_applications current_type =
     match peek_kind parser with
-    | Some (Token.Ident id)
-      when String.length id > 0 && Char.lowercase_ascii id.[0] = id.[0] ->
+    | Some (Token.Ident _) ->
         (* Type application: current_type constructor_name *)
-        (* Only lowercase identifiers are type constructors (not module paths) *)
-        let constructor = consume parser in
+        (* This can be a simple constructor (list, option) or module path (Queue.t, Stdlib.List.t) *)
+        let constructor_path = parse_identifier parser in
         let _ = consume_trivia parser in
         let applied_type =
           make_node_list ~kind:Syntax_kind.TYPE_CONSTR
-            [ Ceibo.Green.Node current_type; constructor ]
+            (Ceibo.Green.Node current_type :: constructor_path)
         in
         (* Check for more applications *)
         parse_type_applications applied_type
