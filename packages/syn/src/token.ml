@@ -94,6 +94,8 @@ let show_kind = function
   | CloseDelim Brace -> "'}'"
   | OpenDelim Bracket -> "'['"
   | CloseDelim Bracket -> "']'"
+  | OpenDelim Array -> "'[|'"
+  | CloseDelim Array -> "'|]'"
   | OpenDelim BeginEnd -> "'begin'"
   | CloseDelim BeginEnd -> "'end'"
   | OpenDelim StructEnd -> "'struct'"

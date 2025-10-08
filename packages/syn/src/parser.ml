@@ -616,6 +616,8 @@ and parse_primary parser =
           | Some (Token.OpenDelim Token.Paren) -> parse_paren_expr parser
           (* List literal *)
           | Some (Token.OpenDelim Token.Bracket) -> parse_list_expr parser
+          (* Array literal *)
+          | Some (Token.OpenDelim Token.Array) -> parse_array_expr parser
           (* Record literal *)
           | Some (Token.OpenDelim Token.Brace) -> parse_record_expr parser
           (* Let expression *)
@@ -1065,10 +1067,8 @@ and parse_list_expr parser =
   let open_bracket = consume parser in
   let _ = consume_trivia parser in
 
-  (* Check if this is an array [ ... ] or [] instead of a list *)
-  if at parser Token.Pipe || at parser Token.Or then
-    parse_array_expr parser open_bracket (* Check for empty list [] *)
-  else if at parser (Token.CloseDelim Token.Bracket) then
+  (* Check for empty list [] *)
+  if at parser (Token.CloseDelim Token.Bracket) then
     let close_bracket = consume parser in
     let children =
       prepend_pending_trivia parser [ open_bracket; close_bracket ]
@@ -1109,6 +1109,55 @@ and parse_list_expr parser =
         Some
           (make_error_node parser
              ~kind:(Diagnostic.InvalidSyntax { context = "list expression" })
+             ~span)
+
+and parse_array_expr parser =
+  let open_array = consume parser in
+  let _ = consume_trivia parser in
+
+  (* Check for empty array [| |] *)
+  if at parser (Token.CloseDelim Token.Array) then
+    let close_array = consume parser in
+    let children = prepend_pending_trivia parser [ open_array; close_array ] in
+    Some (make_node_list ~kind:Syntax_kind.ARRAY_EXPR children)
+  else
+    match parse_expr parser with
+    | Some first_expr ->
+        let _ = consume_trivia parser in
+        (* Array elements are separated by semicolons *)
+        let rec parse_elements acc =
+          if not (at parser Token.Semi) then List.rev acc
+          else
+            let semi = consume parser in
+            let _ = consume_trivia parser in
+            let acc = semi :: acc in
+            (* Allow trailing semicolon *)
+            if at parser (Token.CloseDelim Token.Array) then List.rev acc
+            else
+              match parse_expr parser with
+              | Some expr ->
+                  let _ = consume_trivia parser in
+                  parse_elements (Ceibo.Green.Node expr :: acc)
+              | None -> List.rev acc
+        in
+
+        let elements = parse_elements [ Ceibo.Green.Node first_expr ] in
+
+        let close_array = expect parser (Token.CloseDelim Token.Array) in
+        let children = open_array :: (elements @ [ close_array ]) in
+        let children = prepend_pending_trivia parser children in
+        Some (make_node_list ~kind:Syntax_kind.ARRAY_EXPR children)
+    | None ->
+        let span =
+          match peek parser with
+          | Some tok ->
+              Ceibo.Span.make ~start:tok.Token.span.start
+                ~end_:tok.Token.span.end_
+          | None -> Ceibo.Span.make ~start:0 ~end_:0
+        in
+        Some
+          (make_error_node parser
+             ~kind:(Diagnostic.InvalidSyntax { context = "array expression" })
              ~span)
 
 and parse_record_expr parser =
@@ -1260,72 +1309,6 @@ and parse_record_field parser =
         let children = [ field_name ] in
         Some (make_node_list ~kind:Syntax_kind.RECORD_FIELD children)
   | _ -> None
-
-and parse_array_expr parser open_bracket =
-  (* We've already consumed '[' and we're at '|' or '||' *)
-  (* Handle [] - the lexer treats || as Or token *)
-  if at parser Token.Or then
-    let or_token = consume parser in
-    let _ = consume_trivia parser in
-    let close_bracket = expect parser (Token.CloseDelim Token.Bracket) in
-    let children =
-      prepend_pending_trivia parser [ open_bracket; or_token; close_bracket ]
-    in
-    Some (make_node_list ~kind:Syntax_kind.ARRAY_EXPR children)
-  else
-    (* Normal case: [ ... ] with '|' tokens *)
-    let open_pipe = consume parser in
-    let _ = consume_trivia parser in
-
-    (* Check for empty array [] - if second | was separate *)
-    if at parser Token.Pipe then
-      let close_pipe = consume parser in
-      let _ = consume_trivia parser in
-      let close_bracket = expect parser (Token.CloseDelim Token.Bracket) in
-      let children =
-        prepend_pending_trivia parser
-          [ open_bracket; open_pipe; close_pipe; close_bracket ]
-      in
-      Some (make_node_list ~kind:Syntax_kind.ARRAY_EXPR children)
-    else
-      match parse_expr parser with
-      | Some first_expr ->
-          let _ = consume_trivia parser in
-          (* Array elements are separated by semicolons *)
-          let rec parse_elements acc =
-            if not (at parser Token.Semi) then List.rev acc
-            else
-              let semi = consume parser in
-              let _ = consume_trivia parser in
-              let acc = semi :: acc in
-              (* Allow trailing semicolon *)
-              if at parser Token.Pipe then List.rev acc
-              else
-                match parse_expr parser with
-                | Some expr ->
-                    let _ = consume_trivia parser in
-                    parse_elements (Ceibo.Green.Node expr :: acc)
-                | None -> List.rev acc
-          in
-
-          let elements = parse_elements [ Ceibo.Green.Node first_expr ] in
-
-          let close_pipe = expect parser Token.Pipe in
-          let close_bracket = expect parser (Token.CloseDelim Token.Bracket) in
-          let children =
-            open_bracket :: open_pipe
-            :: (elements @ [ close_pipe; close_bracket ])
-          in
-          let children = prepend_pending_trivia parser children in
-          Some (make_node_list ~kind:Syntax_kind.ARRAY_EXPR children)
-      | None ->
-          let close_pipe = expect parser Token.Pipe in
-          let close_bracket = expect parser (Token.CloseDelim Token.Bracket) in
-          let children =
-            prepend_pending_trivia parser
-              [ open_bracket; open_pipe; close_pipe; close_bracket ]
-          in
-          Some (make_node_list ~kind:Syntax_kind.ARRAY_EXPR children)
 
 and parse_assert_expr parser =
   let assert_kw = consume parser in
@@ -2229,6 +2212,8 @@ and parse_base_pattern parser =
       Some (make_node_list ~kind:Syntax_kind.WILDCARD_PATTERN [ underscore ])
   (* List pattern [] or [a; b; c] *)
   | Some (Token.OpenDelim Token.Bracket) -> parse_list_pattern parser
+  (* Array pattern [| |] or [| a; b; c |] *)
+  | Some (Token.OpenDelim Token.Array) -> parse_array_pattern parser
   (* Identifier or constructor pattern *)
   | Some (Token.Ident _) -> parse_ident_or_constructor_pattern parser
   (* Literal pattern *)
@@ -2300,6 +2285,46 @@ and parse_list_pattern parser =
     let close_bracket = expect parser (Token.CloseDelim Token.Bracket) in
     let children = open_bracket :: (patterns @ [ close_bracket ]) in
     Some (make_node_list ~kind:Syntax_kind.LIST_PATTERN children)
+
+and parse_array_pattern parser =
+  let open_array = consume parser in
+  let comments1 = consume_trivia parser in
+
+  if at parser (Token.CloseDelim Token.Array) then
+    let close_array = consume parser in
+    let children = [ open_array ] @ comments1 @ [ close_array ] in
+    Some (make_node_list ~kind:Syntax_kind.ARRAY_PATTERN children)
+  else
+    let first_pat =
+      match parse_pattern parser with
+      | Some pat -> [ Ceibo.Green.Node pat ]
+      | None -> []
+    in
+
+    let comments2 = consume_trivia parser in
+
+    let rec parse_patterns acc =
+      if not (at parser Token.Semi) then List.rev acc
+      else
+        let semi = consume parser in
+        let comments3 = consume_trivia parser in
+        let acc = List.rev_append comments3 (semi :: acc) in
+        match parse_pattern parser with
+        | Some pat ->
+            let comments4 = consume_trivia parser in
+            parse_patterns
+              (List.rev_append comments4 (Ceibo.Green.Node pat :: acc))
+        | None -> List.rev acc
+    in
+
+    let patterns =
+      parse_patterns
+        (List.rev_append comments2 (first_pat @ List.rev comments1))
+    in
+
+    let close_array = expect parser (Token.CloseDelim Token.Array) in
+    let children = open_array :: (patterns @ [ close_array ]) in
+    Some (make_node_list ~kind:Syntax_kind.ARRAY_PATTERN children)
 
 and parse_ident_or_constructor_pattern parser =
   let ident = consume parser in
