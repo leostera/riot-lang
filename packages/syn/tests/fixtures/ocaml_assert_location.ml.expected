@@ -1,0 +1,99 @@
+{
+  "tree": {
+    "type": "node",
+    "kind": "SOURCE_FILE",
+    "width": 87,
+    "children": [
+      {
+        "type": "node",
+        "kind": "LET_BINDING",
+        "width": 87,
+        "children": [
+          {
+            "type": "token",
+            "kind": "LET_BINDING",
+            "text": "let",
+            "width": 3
+          },
+          {
+            "type": "node",
+            "kind": "PAREN_PATTERN",
+            "width": 70,
+            "children": [
+              {
+                "type": "token",
+                "kind": "COMMENT",
+                "text": "(* TEST_BELOW\n(* Blank lines added here to preserve locations. *)\n*)",
+                "width": 68
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "(",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": ")",
+                "width": 1
+              }
+            ]
+          },
+          {
+            "type": "token",
+            "kind": "INFIX_EXPR",
+            "text": "=",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "PAREN_EXPR",
+            "width": 13,
+            "children": [
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "(",
+                "width": 1
+              },
+              {
+                "type": "node",
+                "kind": "ASSERT_EXPR",
+                "width": 11,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "ASSERT_EXPR",
+                    "text": "assert",
+                    "width": 6
+                  },
+                  {
+                    "type": "node",
+                    "kind": "BOOL_LITERAL",
+                    "width": 5,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "BOOL_LITERAL",
+                        "text": "false",
+                        "width": 5
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": ")",
+                "width": 1
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "diagnostics": []
+}
