@@ -122,9 +122,11 @@ let token_kind_to_syntax_kind = function
       Syntax_kind.FOR_EXPR
   | Token.Keyword Keyword.While -> Syntax_kind.WHILE_EXPR
   | Token.Keyword (Keyword.Begin | Keyword.End) -> Syntax_kind.PAREN_EXPR
-  | Token.Keyword (Keyword.Sig | Keyword.Struct) -> Syntax_kind.WHITESPACE (* Delimiters *)
+  | Token.Keyword (Keyword.Sig | Keyword.Struct) ->
+      Syntax_kind.WHITESPACE (* Delimiters *)
   | Token.OpenDelim _ | Token.CloseDelim _ -> Syntax_kind.WHITESPACE
-  | Token.Keyword _ -> Syntax_kind.WHITESPACE (* Other keywords default to WHITESPACE *)
+  | Token.Keyword _ ->
+      Syntax_kind.WHITESPACE (* Other keywords default to WHITESPACE *)
   | _ -> Syntax_kind.ERROR (* TODO: Map remaining token kinds *)
 
 let token_to_green_token parser tok =
@@ -218,6 +220,32 @@ let expect parser kind =
       (* Create a missing token *)
       Ceibo.Green.Token
         (Ceibo.Green.make_token ~kind:Syntax_kind.MISSING ~text:"" ~width:0)
+
+(* ========================================================================= *)
+(* IDENTIFIER PARSING *)
+(* ========================================================================= *)
+
+let parse_identifier parser =
+  (* Parse a simple identifier or qualified identifier (module path):
+     - Simple: name
+     - Qualified: Module.Name, A.B.C.name
+     Returns a list of tokens: [name] or [Module; .; Name] or [A; .; B; .; C; .; name]
+  *)
+  let first = consume parser in
+  let _ = consume_trivia parser in
+
+  let rec parse_rest acc =
+    if at parser Token.Dot then
+      let dot = consume parser in
+      let _ = consume_trivia parser in
+      let name = consume parser in
+      let _ = consume_trivia parser in
+      parse_rest (name :: dot :: acc)
+    else List.rev acc
+  in
+
+  let rest = parse_rest [] in
+  first :: rest
 
 (* ========================================================================= *)
 (* LITERALS *)
@@ -2598,12 +2626,14 @@ and parse_type_decl parser =
       let children =
         match params with
         | Some p ->
-            type_kw :: Ceibo.Green.Node p :: (type_name_parts @ [ plus; eq; Ceibo.Green.Node type_body ])
-        | None -> type_kw :: (type_name_parts @ [ plus; eq; Ceibo.Green.Node type_body ])
+            type_kw :: Ceibo.Green.Node p
+            :: (type_name_parts @ [ plus; eq; Ceibo.Green.Node type_body ])
+        | None ->
+            type_kw
+            :: (type_name_parts @ [ plus; eq; Ceibo.Green.Node type_body ])
       in
 
       Some (make_node_list ~kind:Syntax_kind.TYPE_DECL children)
-  
   | Some Token.Eq ->
       (* Regular type definition: type t = ... *)
       let eq = consume parser in
@@ -2614,12 +2644,13 @@ and parse_type_decl parser =
       let children =
         match params with
         | Some p ->
-            type_kw :: Ceibo.Green.Node p :: (type_name_parts @ [ eq; Ceibo.Green.Node type_body ])
-        | None -> type_kw :: (type_name_parts @ [ eq; Ceibo.Green.Node type_body ])
+            type_kw :: Ceibo.Green.Node p
+            :: (type_name_parts @ [ eq; Ceibo.Green.Node type_body ])
+        | None ->
+            type_kw :: (type_name_parts @ [ eq; Ceibo.Green.Node type_body ])
       in
 
       Some (make_node_list ~kind:Syntax_kind.TYPE_DECL children)
-  
   | _ ->
       (* Abstract type (no = present, used in signatures): type t *)
       let children =
@@ -2631,22 +2662,7 @@ and parse_type_decl parser =
 
 and parse_type_name parser =
   (* Parse type name, which can be a module path: t or Effect.t or Message.t *)
-  let first_name = consume parser in
-  let _ = consume_trivia parser in
-  
-  let rec parse_rest acc =
-    if at parser Token.Dot then
-      let dot = consume parser in
-      let _ = consume_trivia parser in
-      let name = consume parser in
-      let _ = consume_trivia parser in
-      parse_rest (name :: dot :: acc)
-    else
-      List.rev acc
-  in
-  
-  let rest = parse_rest [] in
-  first_name :: rest
+  parse_identifier parser
 
 and parse_type_decl_body parser =
   (* Determine what kind of type body this is *)
@@ -2789,17 +2805,7 @@ and parse_type_atomic parser =
         make_node_list ~kind:Syntax_kind.TYPE_VAR [ underscore ]
     | Some (Token.Ident _) ->
         (* Type constructor: int, string, list, or Module.path.t *)
-        let rec parse_module_path acc =
-          let name = consume parser in
-          let _ = consume_trivia parser in
-          (* Check for module path continuation: A.B.t *)
-          if at parser Token.Dot then
-            let dot = consume parser in
-            let _ = consume_trivia parser in
-            parse_module_path (dot :: name :: acc)
-          else List.rev (name :: acc)
-        in
-        let path_parts = parse_module_path [] in
+        let path_parts = parse_identifier parser in
         make_node_list ~kind:Syntax_kind.TYPE_CONSTR path_parts
     | Some (Token.OpenDelim Token.Brace) ->
         (* Inline record type: { field: int } *)
@@ -3070,10 +3076,10 @@ and parse_open parser =
   let open_kw = consume parser in
   let _ = consume_trivia parser in
 
-  (* Parse module path *)
-  let path = consume parser in
+  (* Parse module path: Unix, Unix.File, A.B.C *)
+  let path = parse_identifier parser in
 
-  Some (make_node_list ~kind:Syntax_kind.OPEN_STMT [ open_kw; path ])
+  Some (make_node_list ~kind:Syntax_kind.OPEN_STMT (open_kw :: path))
 
 and parse_val_decl parser =
   (* val name : type *)
@@ -3182,9 +3188,9 @@ and parse_signature parser =
           (* Skip if we can't parse this item *)
           if at parser (Token.Keyword Keyword.End) || peek parser = None then
             List.rev acc
-          else (
+          else
             let _ = advance parser in
-            parse_sig_items acc)
+            parse_sig_items acc
   in
 
   let items = parse_sig_items [] in
@@ -3193,7 +3199,9 @@ and parse_signature parser =
   let end_kw = consume parser in
   (* Consume 'end' keyword *)
 
-  let children = prepend_pending_trivia parser ([ sig_kw ] @ items @ [ end_kw ]) in
+  let children =
+    prepend_pending_trivia parser ([ sig_kw ] @ items @ [ end_kw ])
+  in
   make_node_list ~kind:Syntax_kind.SIGNATURE children
 
 and parse_signature_item parser =
@@ -3214,12 +3222,12 @@ and parse_include parser =
   let _ = consume_trivia parser in
 
   (* Check if this is 'include module type of' *)
-  if at parser (Token.Keyword Keyword.Module) then (
+  if at parser (Token.Keyword Keyword.Module) then
     (* Might be 'include module type of' *)
     let module_kw = consume parser in
     let _ = consume_trivia parser in
 
-    if at parser (Token.Keyword Keyword.Type) then (
+    if at parser (Token.Keyword Keyword.Type) then
       (* It is 'include module type of' *)
       let type_kw = consume parser in
       let _ = consume_trivia parser in
@@ -3229,56 +3237,17 @@ and parse_include parser =
       let _ = consume_trivia parser in
 
       (* Parse module path after 'of' *)
-      let rec parse_module_path acc =
-        match peek_kind parser with
-        | Some (Token.Ident _) ->
-            let name = consume parser in
-            let _ = consume_trivia parser in
-            if at parser Token.Dot then
-              let dot = consume parser in
-              let _ = consume_trivia parser in
-              parse_module_path (dot :: name :: acc)
-            else List.rev (name :: acc)
-        | _ -> List.rev acc
-      in
-
-      let path = parse_module_path [] in
+      let path = parse_identifier parser in
       let children = include_kw :: module_kw :: type_kw :: of_kw :: path in
-      Some (make_node_list ~kind:Syntax_kind.INCLUDE_STMT children))
+      Some (make_node_list ~kind:Syntax_kind.INCLUDE_STMT children)
     else
       (* Just 'include module' - treat module as start of path *)
-      let rec parse_module_path acc =
-        match peek_kind parser with
-        | Some (Token.Ident _) ->
-            let name = consume parser in
-            let _ = consume_trivia parser in
-            if at parser Token.Dot then
-              let dot = consume parser in
-              let _ = consume_trivia parser in
-              parse_module_path (dot :: name :: acc)
-            else List.rev (name :: acc)
-        | _ -> List.rev acc
-      in
-
-      let path = parse_module_path [] in
+      let path = parse_identifier parser in
       let children = include_kw :: module_kw :: path in
-      Some (make_node_list ~kind:Syntax_kind.INCLUDE_STMT children))
+      Some (make_node_list ~kind:Syntax_kind.INCLUDE_STMT children)
   else
     (* Simple include: include Module.Path *)
-    let rec parse_module_path acc =
-      match peek_kind parser with
-      | Some (Token.Ident _) ->
-          let name = consume parser in
-          let _ = consume_trivia parser in
-          if at parser Token.Dot then
-            let dot = consume parser in
-            let _ = consume_trivia parser in
-            parse_module_path (dot :: name :: acc)
-          else List.rev (name :: acc)
-      | _ -> List.rev acc
-    in
-
-    let path = parse_module_path [] in
+    let path = parse_identifier parser in
     let children = include_kw :: path in
     Some (make_node_list ~kind:Syntax_kind.INCLUDE_STMT children)
 
