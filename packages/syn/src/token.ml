@@ -12,6 +12,7 @@ type delimiter =
   | Paren
   | Brace
   | Bracket
+  | Array
   | BeginEnd
   | StructEnd
   | SigEnd

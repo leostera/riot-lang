@@ -34,6 +34,7 @@ type delimiter =
   | Paren  (** `(` or `)` *)
   | Brace  (** `{` or `}` *)
   | Bracket  (** `[` or `]` *)
+  | Array  (** `[|` or `|]` *)
   | BeginEnd  (** `begin` / `end` pair *)
   | StructEnd  (** `struct` / `end` pair *)
   | SigEnd  (** `sig` / `end` pair *)

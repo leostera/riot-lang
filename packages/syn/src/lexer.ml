@@ -255,13 +255,22 @@ let next cursor delim_stack =
           Token.kind = Token.CloseDelim Paren;
           span = Ceibo.Span.make ~start ~end_;
         }
-    | Some '[' ->
+    | Some '[' -> (
         Cursor.advance cursor;
-        let end_ = Cursor.position cursor in
-        {
-          Token.kind = Token.OpenDelim Bracket;
-          span = Ceibo.Span.make ~start ~end_;
-        }
+        match Cursor.peek cursor with
+        | Some '|' ->
+            Cursor.advance cursor;
+            let end_ = Cursor.position cursor in
+            {
+              Token.kind = Token.OpenDelim Array;
+              span = Ceibo.Span.make ~start ~end_;
+            }
+        | _ ->
+            let end_ = Cursor.position cursor in
+            {
+              Token.kind = Token.OpenDelim Bracket;
+              span = Ceibo.Span.make ~start ~end_;
+            })
     | Some ']' ->
         Cursor.advance cursor;
         let end_ = Cursor.position cursor in
@@ -414,6 +423,10 @@ let next cursor delim_stack =
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
             { Token.kind = Token.PipeGt; span = Ceibo.Span.make ~start ~end_ }
+        | Some ']' ->
+            Cursor.advance cursor;
+            let end_ = Cursor.position cursor in
+            { Token.kind = Token.CloseDelim Array; span = Ceibo.Span.make ~start ~end_ }
         | _ ->
             let end_ = Cursor.position cursor in
             { Token.kind = Token.Pipe; span = Ceibo.Span.make ~start ~end_ })

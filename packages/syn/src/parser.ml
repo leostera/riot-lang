@@ -2247,6 +2247,18 @@ and parse_base_pattern parser =
   | Some (Token.OpenDelim Token.Brace) -> parse_record_pattern parser
   (* Polymorphic variant pattern *)
   | Some Token.Backtick -> parse_poly_variant_pattern parser
+  (* Exception pattern: exception E or exception E of t *)
+  | Some (Token.Keyword Keyword.Exception) ->
+      let exception_kw = consume parser in
+      let _ = consume_trivia parser in
+      (* Parse the exception constructor pattern *)
+      (match parse_base_pattern parser with
+       | Some pat ->
+           Some
+             (make_node_list ~kind:Syntax_kind.EXCEPTION_PATTERN
+                [ exception_kw; Ceibo.Green.Node pat ])
+       | None ->
+           Some (make_node_list ~kind:Syntax_kind.EXCEPTION_PATTERN [ exception_kw ]))
   | _ -> None
 
 and parse_list_pattern parser =
