@@ -521,6 +521,18 @@ and parse_primary parser =
           in
           Some (make_node_list ~kind:Syntax_kind.PREFIX_EXPR children)
       | None -> None)
+  | Some Token.Tilde when peek_nth parser 1 = Some Token.Minus || peek_nth parser 1 = Some Token.Dot -> (
+      (* Floating-point negation operators: ~- or ~-. *)
+      let tilde = consume parser in
+      let next_tok = consume parser in
+      let _ = consume_trivia parser in
+      match parse_expr_bp parser 7 with
+      | Some operand ->
+          let children =
+            prepend_pending_trivia parser [ tilde; next_tok; Ceibo.Green.Node operand ]
+          in
+          Some (make_node_list ~kind:Syntax_kind.PREFIX_EXPR children)
+      | None -> None)
   | _ -> (
       (* Try to parse a literal *)
       match parse_literal parser with
@@ -567,11 +579,25 @@ and parse_labeled_or_optional_arg parser =
   let _ = consume_trivia parser in
   match peek_kind parser with
   | Some Token.Tilde -> (
-      (* Labeled argument: ~label or ~label:expr *)
-      let tilde = consume parser in
-      let _ = consume_trivia parser in
-      match peek_kind parser with
-      | Some (Token.Ident _) ->
+      (* Check if this is ~- or ~-. (float negation operators) *)
+      if peek_nth parser 1 = Some Token.Minus || peek_nth parser 1 = Some Token.Dot then
+        (* Parse as prefix operator ~- or ~-. *)
+        let tilde = consume parser in
+        let next_tok = consume parser in
+        let _ = consume_trivia parser in
+        match parse_expr_bp parser 7 with
+        | Some operand ->
+            let children =
+              prepend_pending_trivia parser [ tilde; next_tok; Ceibo.Green.Node operand ]
+            in
+            Some (make_node_list ~kind:Syntax_kind.PREFIX_EXPR children)
+        | None -> None
+      else
+        (* Labeled argument: ~label or ~label:expr *)
+        let tilde = consume parser in
+        let _ = consume_trivia parser in
+        match peek_kind parser with
+        | Some (Token.Ident _) ->
           let label = consume parser in
           let _ = consume_trivia parser in
           if at parser Token.Colon then
