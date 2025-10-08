@@ -714,18 +714,17 @@ and parse_paren_expr parser =
           let _ = consume_trivia parser in
           (* For now, just consume tokens until closing paren as the "type" *)
           (* A proper implementation would parse the type, but we'll keep it simple *)
-          let type_tokens = ref [] in
-          while
-            (not (at parser (Token.CloseDelim Token.Paren)))
-            && peek parser <> None
-          do
-            let tok = consume parser in
-            type_tokens := tok :: !type_tokens;
-            let _ = consume_trivia parser in
-            ()
-          done;
+          (* Parse type tokens until closing paren - functional approach *)
+          let rec consume_type_tokens acc =
+            if at parser (Token.CloseDelim Token.Paren) || peek parser = None then
+              List.rev acc
+            else
+              let tok = consume parser in
+              let _ = consume_trivia parser in
+              consume_type_tokens (tok :: acc)
+          in
+          let type_elements = consume_type_tokens [] in
           let close_paren = expect parser (Token.CloseDelim Token.Paren) in
-          let type_elements = (List.rev !type_tokens) in
           let children =
             List.concat
               [
@@ -2028,6 +2027,29 @@ and parse_paren_pattern parser =
           let close_paren = expect parser (Token.CloseDelim Token.Paren) in
           let children = open_paren :: patterns @ [close_paren] in
           Some (make_node_list ~kind:Syntax_kind.OR_PATTERN children)
+        
+        else if at parser Token.Colon then
+          (* Type annotation: (p : type) *)
+          let colon = consume parser in
+          let _ = consume_trivia parser in
+          
+          (* Parse type tokens until closing paren - functional approach *)
+          let rec consume_type_tokens acc =
+            if at parser (Token.CloseDelim Token.Paren) || peek parser = None then
+              List.rev acc
+            else
+              let tok = consume parser in
+              let _ = consume_trivia parser in
+              consume_type_tokens (tok :: acc)
+          in
+          let type_elements = consume_type_tokens [] in
+          
+          let close_paren = expect parser (Token.CloseDelim Token.Paren) in
+          let children = 
+            open_paren :: Ceibo.Green.Node first_pat :: colon :: 
+            type_elements @ [close_paren]
+          in
+          Some (make_node_list ~kind:Syntax_kind.TYPED_PATTERN children)
         
         else if at parser Token.Comma then
           let rec parse_tuple_elements acc =
