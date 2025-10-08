@@ -2343,6 +2343,20 @@ and parse_base_pattern parser =
   | Some (Token.OpenDelim Token.Array) -> parse_array_pattern parser
   (* Identifier or constructor pattern *)
   | Some (Token.Ident _) -> parse_ident_or_constructor_pattern parser
+  (* Negative number pattern: -1, -32700, etc *)
+  | Some Token.Minus -> (
+      let minus = consume parser in
+      let _ = consume_trivia parser in
+      match peek_kind parser with
+      | Some (Token.Literal (Token.Int _ | Token.Float _)) ->
+          let number = consume parser in
+          Some
+            (make_node_list ~kind:Syntax_kind.LITERAL_PATTERN
+               [ minus; number ])
+      | _ ->
+          (* Not a negative number literal, might be a prefix operator in expression context *)
+          (* For now, return None to let error handling kick in *)
+          None)
   (* Literal pattern *)
   | Some (Token.Literal _)
   | Some (Token.Keyword Keyword.True)
