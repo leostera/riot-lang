@@ -94,6 +94,7 @@ type t =
   | RECORD_PATTERN  (** Record pattern: `{ x; y = z }` *)
   | OR_PATTERN  (** Or pattern: `P1 | P2` *)
   | AS_PATTERN  (** As pattern: `pattern as name` *)
+  | RANGE_PATTERN  (** Range pattern: `'a' .. 'z'` or `0 .. 9` *)
   | TYPED_PATTERN  (** Typed pattern: `(pattern : typ)` *)
   | LAZY_PATTERN  (** Lazy pattern: `lazy pattern` *)
   | EXCEPTION_PATTERN  (** Exception pattern: `exception E` *)

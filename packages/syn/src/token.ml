@@ -45,6 +45,7 @@ type token_kind =
   | Semi
   | Comma
   | Dot
+  | DotDot
   | Arrow
   | LeftArrow
   | FatArrow
@@ -121,6 +122,7 @@ let show_kind = function
   | Semi -> "';'"
   | Comma -> "','"
   | Dot -> "'.'"
+  | DotDot -> "'..'"
   | Arrow -> "'->'"
   | LeftArrow -> "'<-'"
   | FatArrow -> "'=>'"

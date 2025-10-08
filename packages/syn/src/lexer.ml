@@ -442,10 +442,16 @@ let next cursor delim_stack =
         Cursor.advance cursor;
         let end_ = Cursor.position cursor in
         { Token.kind = Token.Comma; span = Ceibo.Span.make ~start ~end_ }
-    | Some '.' ->
+    | Some '.' -> (
         Cursor.advance cursor;
-        let end_ = Cursor.position cursor in
-        { Token.kind = Token.Dot; span = Ceibo.Span.make ~start ~end_ }
+        match Cursor.peek cursor with
+        | Some '.' ->
+            Cursor.advance cursor;
+            let end_ = Cursor.position cursor in
+            { Token.kind = Token.DotDot; span = Ceibo.Span.make ~start ~end_ }
+        | _ ->
+            let end_ = Cursor.position cursor in
+            { Token.kind = Token.Dot; span = Ceibo.Span.make ~start ~end_ })
     | Some '?' ->
         Cursor.advance cursor;
         let end_ = Cursor.position cursor in

@@ -64,6 +64,7 @@ type t =
   | RECORD_PATTERN (* { field1; field2 = p } *)
   | OR_PATTERN (* p1 | p2 *)
   | AS_PATTERN (* p as x *)
+  | RANGE_PATTERN (* 'a' .. 'z' *)
   | TYPED_PATTERN (* (p : t) *)
   | LAZY_PATTERN (* lazy p *)
   | EXCEPTION_PATTERN (* exception p *)
@@ -166,6 +167,7 @@ let to_string = function
   | RECORD_PATTERN -> "RECORD_PATTERN"
   | OR_PATTERN -> "OR_PATTERN"
   | AS_PATTERN -> "AS_PATTERN"
+  | RANGE_PATTERN -> "RANGE_PATTERN"
   | TYPED_PATTERN -> "TYPED_PATTERN"
   | LAZY_PATTERN -> "LAZY_PATTERN"
   | EXCEPTION_PATTERN -> "EXCEPTION_PATTERN"

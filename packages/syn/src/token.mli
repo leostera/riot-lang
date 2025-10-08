@@ -80,6 +80,7 @@ type token_kind =
   | Semi  (** `;` *)
   | Comma  (** `,` *)
   | Dot  (** `.` *)
+  | DotDot  (** `..` for range patterns *)
   | Arrow  (** `->` *)
   | LeftArrow  (** `<-` *)
   | FatArrow  (** `=>` *)
