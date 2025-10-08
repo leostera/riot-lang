@@ -2828,6 +2828,17 @@ and parse_record_pattern parser =
     if at parser (Token.CloseDelim Token.Brace) then ()
     else
       match peek_kind parser with
+      | Some Token.Underscore ->
+          (* Wildcard pattern to ignore remaining fields: { x; _ } *)
+          let wildcard = consume parser in
+          fields := wildcard :: !fields;
+          let _ = consume_trivia parser in
+          (* Wildcard should be last, but consume semicolon if present *)
+          if at parser Token.Semi then (
+            let semi = consume parser in
+            fields := semi :: !fields;
+            let _ = consume_trivia parser in
+            ())
       | Some (Token.Ident _) ->
           let field_name = consume parser in
           let _ = consume_trivia parser in
