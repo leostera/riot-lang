@@ -150,7 +150,7 @@ let lex_ident cursor delim_stack token_start =
             (* Match 'end' to the correct closing delimiter based on stack *)
             match delim_stack with
             | d :: _ -> Token.CloseDelim d
-            | [] -> Token.CloseDelim BeginEnd  (* Default fallback *)
+            | [] -> Token.CloseDelim BeginEnd (* Default fallback *)
           else Token.Keyword kw
       | None -> Token.Ident ident
   in
@@ -426,7 +426,10 @@ let next cursor delim_stack =
         | Some ']' ->
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
-            { Token.kind = Token.CloseDelim Array; span = Ceibo.Span.make ~start ~end_ }
+            {
+              Token.kind = Token.CloseDelim Array;
+              span = Ceibo.Span.make ~start ~end_;
+            }
         | _ ->
             let end_ = Cursor.position cursor in
             { Token.kind = Token.Pipe; span = Ceibo.Span.make ~start ~end_ })
@@ -524,13 +527,11 @@ let next cursor delim_stack =
 
 let rec lex_all cursor delim_stack acc =
   let token = next cursor delim_stack in
-  let new_stack = 
+  let new_stack =
     match token.Token.kind with
     | Token.OpenDelim d -> d :: delim_stack
     | Token.CloseDelim _ -> (
-        match delim_stack with
-        | _ :: rest -> rest
-        | [] -> delim_stack)
+        match delim_stack with _ :: rest -> rest | [] -> delim_stack)
     | _ -> delim_stack
   in
   match token.Token.kind with

@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 10,
+    "width": 12,
     "children": [
       {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 10,
+        "width": 12,
         "children": [
           {
             "type": "token",
@@ -29,9 +29,16 @@
           },
           {
             "type": "node",
-            "kind": "ERROR",
-            "width": 0,
-            "children": []
+            "kind": "TYPE_EXTENSIBLE",
+            "width": 2,
+            "children": [
+              {
+                "type": "token",
+                "kind": "RANGE_PATTERN",
+                "text": "..",
+                "width": 2
+              }
+            ]
           }
         ]
       }

@@ -84,27 +84,53 @@
                   {
                     "type": "node",
                     "kind": "MATCH_CASE",
-                    "width": 3,
+                    "width": 19,
                     "children": [
                       {
                         "type": "node",
-                        "kind": "TUPLE_PATTERN",
-                        "width": 3,
+                        "kind": "OR_PATTERN",
+                        "width": 7,
                         "children": [
                           {
                             "type": "node",
-                            "kind": "LITERAL_PATTERN",
-                            "width": 1,
+                            "kind": "TUPLE_PATTERN",
+                            "width": 3,
                             "children": [
                               {
                                 "type": "node",
-                                "kind": "INT_LITERAL",
+                                "kind": "LITERAL_PATTERN",
+                                "width": 1,
+                                "children": [
+                                  {
+                                    "type": "node",
+                                    "kind": "INT_LITERAL",
+                                    "width": 1,
+                                    "children": [
+                                      {
+                                        "type": "token",
+                                        "kind": "INT_LITERAL",
+                                        "text": "0",
+                                        "width": 1
+                                      }
+                                    ]
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "token",
+                                "kind": "TUPLE_EXPR",
+                                "text": ",",
+                                "width": 1
+                              },
+                              {
+                                "type": "node",
+                                "kind": "WILDCARD_PATTERN",
                                 "width": 1,
                                 "children": [
                                   {
                                     "type": "token",
-                                    "kind": "INT_LITERAL",
-                                    "text": "0",
+                                    "kind": "WILDCARD_PATTERN",
+                                    "text": "_",
                                     "width": 1
                                   }
                                 ]
@@ -113,89 +139,51 @@
                           },
                           {
                             "type": "token",
-                            "kind": "TUPLE_EXPR",
-                            "text": ",",
+                            "kind": "MATCH_EXPR",
+                            "text": "|",
                             "width": 1
                           },
                           {
                             "type": "node",
-                            "kind": "WILDCARD_PATTERN",
-                            "width": 1,
-                            "children": [
-                              {
-                                "type": "token",
-                                "kind": "WILDCARD_PATTERN",
-                                "text": "_",
-                                "width": 1
-                              }
-                            ]
-                          }
-                        ]
-                      },
-                      {
-                        "type": "token",
-                        "kind": "MISSING",
-                        "text": "",
-                        "width": 0
-                      },
-                      {
-                        "type": "token",
-                        "kind": "MISSING",
-                        "text": "",
-                        "width": 0
-                      }
-                    ]
-                  },
-                  {
-                    "type": "node",
-                    "kind": "MATCH_CASE",
-                    "width": 16,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "MATCH_EXPR",
-                        "text": "|",
-                        "width": 1
-                      },
-                      {
-                        "type": "node",
-                        "kind": "TUPLE_PATTERN",
-                        "width": 3,
-                        "children": [
-                          {
-                            "type": "node",
-                            "kind": "WILDCARD_PATTERN",
-                            "width": 1,
-                            "children": [
-                              {
-                                "type": "token",
-                                "kind": "WILDCARD_PATTERN",
-                                "text": "_",
-                                "width": 1
-                              }
-                            ]
-                          },
-                          {
-                            "type": "token",
-                            "kind": "TUPLE_EXPR",
-                            "text": ",",
-                            "width": 1
-                          },
-                          {
-                            "type": "node",
-                            "kind": "LITERAL_PATTERN",
-                            "width": 1,
+                            "kind": "TUPLE_PATTERN",
+                            "width": 3,
                             "children": [
                               {
                                 "type": "node",
-                                "kind": "INT_LITERAL",
+                                "kind": "WILDCARD_PATTERN",
                                 "width": 1,
                                 "children": [
                                   {
                                     "type": "token",
-                                    "kind": "INT_LITERAL",
-                                    "text": "0",
+                                    "kind": "WILDCARD_PATTERN",
+                                    "text": "_",
                                     "width": 1
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "token",
+                                "kind": "TUPLE_EXPR",
+                                "text": ",",
+                                "width": 1
+                              },
+                              {
+                                "type": "node",
+                                "kind": "LITERAL_PATTERN",
+                                "width": 1,
+                                "children": [
+                                  {
+                                    "type": "node",
+                                    "kind": "INT_LITERAL",
+                                    "width": 1,
+                                    "children": [
+                                      {
+                                        "type": "token",
+                                        "kind": "INT_LITERAL",
+                                        "text": "0",
+                                        "width": 1
+                                      }
+                                    ]
                                   }
                                 ]
                               }
@@ -277,26 +265,5 @@
       }
     ]
   },
-  "diagnostics": [
-    {
-      "kind": {
-        "type": "missing_token",
-        "expected": "'->'"
-      },
-      "span": {
-        "start": 28,
-        "end": 28
-      }
-    },
-    {
-      "kind": {
-        "type": "missing_token",
-        "expected": "expression"
-      },
-      "span": {
-        "start": 28,
-        "end": 29
-      }
-    }
-  ]
+  "diagnostics": []
 }

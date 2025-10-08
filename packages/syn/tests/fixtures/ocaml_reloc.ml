@@ -16,10 +16,11 @@ let blocks =
     String.sub s a (b - a)
   in
   List.map extract (e.pexp_loc :: e.pexp_loc_stack)
-;;
-[%%expect {|
+
+[%%expect
+{|
 val blocks : string list =
   ["( (* comment *) (( \"contant\" [@attr] )  (* comment *)))";
    "(( \"contant\" [@attr] )  (* comment *))"; "( \"contant\" [@attr] )";
    "\"contant\""]
-|}];;
+|}]

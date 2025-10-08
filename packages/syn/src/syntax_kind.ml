@@ -83,6 +83,7 @@ type t =
   | TYPE_PARAM (* 'a in type params *)
   | TYPE_PARAMS (* ('a, 'b) *)
   | TYPE_VARIANT_CONSTR (* A | B of int *)
+  | TYPE_EXTENSIBLE (* .. for extensible variants *)
   | TYPE_RECORD_FIELD (* field: int *)
   | TYPE_CONSTRAINT (* constraint 'a = int *)
   | MODULE_TYPE_EXPR (* S | S with type t = int *)
@@ -184,6 +185,7 @@ let to_string = function
   | TYPE_PARAM -> "TYPE_PARAM"
   | TYPE_PARAMS -> "TYPE_PARAMS"
   | TYPE_VARIANT_CONSTR -> "TYPE_VARIANT_CONSTR"
+  | TYPE_EXTENSIBLE -> "TYPE_EXTENSIBLE"
   | TYPE_RECORD_FIELD -> "TYPE_RECORD_FIELD"
   | TYPE_CONSTRAINT -> "TYPE_CONSTRAINT"
   | MODULE_TYPE_EXPR -> "MODULE_TYPE_EXPR"

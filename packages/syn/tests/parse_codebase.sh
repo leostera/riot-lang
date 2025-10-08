@@ -40,11 +40,20 @@ for file in $(find packages/ -name "*.ml" -o -name "*.mli" | sort); do
         echo -e "${RED}FAILED${NC} (ERROR/MISSING tokens)"
         ((failed++))
         failed_files+=("$file (parse errors)")
+        # Show the parse output for debugging
+        echo "  Parse output:"
+        echo "$output" | jq -C '.' 2>/dev/null || echo "$output"
+        echo
     # Check for diagnostics
     elif echo "$output" | jq -e '.diagnostics | length > 0' > /dev/null 2>&1; then
-        echo -e "${YELLOW}WARNING${NC} (has diagnostics)"
+        diag_count=$(echo "$output" | jq '.diagnostics | length')
+        echo -e "${YELLOW}WARNING${NC} (has $diag_count diagnostics)"
         ((failed++))
-        failed_files+=("$file (diagnostics)")
+        failed_files+=("$file ($diag_count diagnostics)")
+        # Show the diagnostics
+        echo "  Diagnostics:"
+        echo "$output" | jq -C '.diagnostics' 2>/dev/null || echo "$output"
+        echo
     else
         echo -e "${GREEN}PASSED${NC}"
         ((passed++))

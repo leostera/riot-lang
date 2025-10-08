@@ -8,7 +8,7 @@ serve_locations_while_translati
 
 (* Structures *)
 {%%M.foo| <hello>{x} |}
-{%%M.foo  | <hello>{x} |}
+{%%M.foo| <hello>{x} |}
 {%%M.foo bar| <hello>{|x|} |bar}
 
 (* Signatures *)
@@ -18,17 +18,13 @@ module type S = sig
 end
 
 (* Expressions/Pattern/Types *)
-let {%M.foo| <hello>{x} |}
-  : {%M.foo| <hello>{x} |}
-  = {%M.foo| <hello>{x} |}
-let {%M.foo bar| <hello>{|x|} |bar}
-  : {%M.foo bar| <hello>{|x|} |bar}
-  = {%M.foo bar| <hello>{|x|} |bar}
+let {%M.foo| <hello>{x} |} : {%M.foo| <hello>{x} |} = {%M.foo| <hello>{x} |}
 
-let {%M.foo | <hello>{u|x|u} |}
-  : {%M.foo | <hello>{u|x|u} |}
-  = {%M.foo | <hello>{u|x|u} |}
+let {%M.foo bar| <hello>{|x|} |bar} : {%M.foo bar| <hello>{|x|} |bar} =
+  {%M.foo bar| <hello>{|x|} |bar}
 
+let {%M.foo| <hello>{u|x|u} |} : {%M.foo| <hello>{u|x|u} |} =
+  {%M.foo| <hello>{u|x|u} |}
 
 (* Multiline *)
 {%%M.foo|

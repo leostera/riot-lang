@@ -126,19 +126,4 @@ val parse : source:string -> ?filename:string -> Token.t list -> parse_result
         Printf.eprintf "%s\n" (Diagnostic.to_string d)
       ) diagnostics
     ```
-    
-    # Current Implementation Status
-    
-    The parser is under active development and currently supports:
-    
-    - ✓ Literals (int, float, string, char, bool, unit)
-    - ✓ Basic patterns (wildcard, ident, literal, paren)
-    - ✓ Simple expressions (ident, literals, paren)
-    - ⚠ Let expressions (stub)
-    - ⚠ If/match/fun/function (stubs)
-    - ⚠ Infix operators (planned)
-    - ⚠ Types (planned)
-    - ⚠ Modules (planned)
-    
-    Unsupported constructs will currently produce ERROR nodes with
-    diagnostics. *)
+    *)

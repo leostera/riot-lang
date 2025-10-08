@@ -12,13 +12,17 @@ let handle_token_stream sub_matches =
   | Ok content ->
       let tokens = Lexer.tokenize content in
       if json then
-        let json_tokens = List.map (fun tok -> 
-          Data.Json.obj [
-            ("kind", Data.Json.string (Token.show_kind tok.Token.kind));
-            ("start", Data.Json.int tok.Token.span.start);
-            ("end", Data.Json.int tok.Token.span.end_);
-          ]
-        ) tokens in
+        let json_tokens =
+          List.map
+            (fun tok ->
+              Data.Json.obj
+                [
+                  ("kind", Data.Json.string (Token.show_kind tok.Token.kind));
+                  ("start", Data.Json.int tok.Token.span.start);
+                  ("end", Data.Json.int tok.Token.span.end_);
+                ])
+            tokens
+        in
         println "%s" (Data.Json.to_string (Data.Json.array json_tokens))
       else
         List.iter

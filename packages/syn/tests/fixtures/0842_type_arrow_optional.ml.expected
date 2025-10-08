@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 6,
+    "width": 20,
     "children": [
       {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 6,
+        "width": 20,
         "children": [
           {
             "type": "token",
@@ -29,9 +29,67 @@
           },
           {
             "type": "node",
-            "kind": "ERROR",
-            "width": 0,
-            "children": []
+            "kind": "TYPE_ARROW",
+            "width": 14,
+            "children": [
+              {
+                "type": "node",
+                "kind": "TYPE_PARAM",
+                "width": 6,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "ARGUMENT",
+                    "text": "?",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "x",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "TYPED_EXPR",
+                    "text": ":",
+                    "width": 1
+                  },
+                  {
+                    "type": "node",
+                    "kind": "TYPE_CONSTR",
+                    "width": 3,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "int",
+                        "width": 3
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "FUN_EXPR",
+                "text": "->",
+                "width": 2
+              },
+              {
+                "type": "node",
+                "kind": "TYPE_CONSTR",
+                "width": 6,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "string",
+                    "width": 6
+                  }
+                ]
+              }
+            ]
           }
         ]
       }
