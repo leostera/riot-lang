@@ -35,20 +35,14 @@
               {
                 "type": "token",
                 "kind": "WHITESPACE",
-                "text": "[",
-                "width": 1
-              },
-              {
-                "type": "token",
-                "kind": "INFIX_EXPR",
-                "text": "||",
+                "text": "[|",
                 "width": 2
               },
               {
                 "type": "token",
                 "kind": "WHITESPACE",
-                "text": "]",
-                "width": 1
+                "text": "|]",
+                "width": 2
               }
             ]
           }
