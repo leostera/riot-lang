@@ -481,6 +481,20 @@ and parse_expr_bp parser min_bp =
                         in
                         loop access
                     | None -> Some lhs)
+              | Some (Token.OpenDelim Token.Brace) ->
+                  (* Module-prefixed record: Module.{ field = value } *)
+                  (match parse_record_expr parser with
+                   | Some record_expr ->
+                       let trivia = take_pending_trivia parser in
+                       let children =
+                         [ Ceibo.Green.Node lhs; dot; Ceibo.Green.Node record_expr ]
+                       in
+                       let children = trivia @ children in
+                       let prefixed_record =
+                         make_node_list ~kind:Syntax_kind.APPLY_EXPR children
+                       in
+                       loop prefixed_record
+                   | None -> Some lhs)
               | Some (Token.Ident _) ->
                   (* Field access: record.field *)
                   let field = consume parser in
@@ -992,30 +1006,26 @@ and parse_paren_expr parser =
       in
       Some (make_node_list ~kind:Syntax_kind.APPLY_EXPR children))
     else
-      (* (module M : S) - typed first-class module *)
+      (* (module M : S) or (module M) - first-class module *)
       (* Parse module name *)
       let module_name = consume parser in
       let _ = consume_trivia parser in
 
-      (* Expect : *)
-      let colon = expect parser Token.Colon in
-      let _ = consume_trivia parser in
-
-      (* Parse module type expression (handles 'with type' constraints) *)
-      let module_type = parse_module_type_expr parser in
-      let _ = consume_trivia parser in
+      (* Optional type annotation *)
+      let type_annotation =
+        if at parser Token.Colon then
+          let colon = consume parser in
+          let _ = consume_trivia parser in
+          let module_type = parse_module_type_expr parser in
+          let _ = consume_trivia parser in
+          [ colon; Ceibo.Green.Node module_type ]
+        else []
+      in
 
       let close_paren = expect parser (Token.CloseDelim Token.Paren) in
       let children =
         prepend_pending_trivia parser
-          [
-            open_paren;
-            module_kw;
-            module_name;
-            colon;
-            Ceibo.Green.Node module_type;
-            close_paren;
-          ]
+          ([ open_paren; module_kw; module_name ] @ type_annotation @ [ close_paren ])
       in
       Some (make_node_list ~kind:Syntax_kind.APPLY_EXPR children)
   else
