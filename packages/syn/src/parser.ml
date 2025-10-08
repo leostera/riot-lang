@@ -3243,6 +3243,17 @@ and parse_regular_module_decl parser module_kw =
 
   let params = parse_functor_params [] in
 
+  (* Check for optional module type constraint: : S *)
+  let constraint_opt =
+    if at parser Token.Colon then
+      let colon = consume parser in
+      let _ = consume_trivia parser in
+      let module_type = parse_identifier parser in
+      let _ = consume_trivia parser in
+      Some ([colon] @ module_type)
+    else None
+  in
+
   (* Expect = *)
   let eq = expect parser Token.Eq in
   let _ = consume_trivia parser in
@@ -3284,9 +3295,15 @@ and parse_regular_module_decl parser module_kw =
   in
 
   let children =
-    match params with
-    | [] -> [ module_kw; name; eq; Ceibo.Green.Node module_expr ]
-    | _ -> [ module_kw; name ] @ params @ [ eq; Ceibo.Green.Node module_expr ]
+    let base = match params with
+      | [] -> [ module_kw; name ]
+      | _ -> [ module_kw; name ] @ params
+    in
+    let with_constraint = match constraint_opt with
+      | None -> base
+      | Some constraint_tokens -> base @ constraint_tokens
+    in
+    with_constraint @ [ eq; Ceibo.Green.Node module_expr ]
   in
 
   Some (make_node_list ~kind:Syntax_kind.MODULE_DECL children)
