@@ -17,7 +17,7 @@
           },
           {
             "type": "node",
-            "kind": "TYPED_PATTERN",
+            "kind": "PAREN_PATTERN",
             "width": 7,
             "children": [
               {

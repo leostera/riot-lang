@@ -59,7 +59,7 @@
               {
                 "type": "node",
                 "kind": "MODULE_TYPE_EXPR",
-                "width": 15,
+                "width": 14,
                 "children": [
                   {
                     "type": "token",
@@ -76,7 +76,7 @@
                   {
                     "type": "node",
                     "kind": "TYPE_CONSTRAINT",
-                    "width": 10,
+                    "width": 9,
                     "children": [
                       {
                         "type": "token",
@@ -101,18 +101,6 @@
                         "kind": "IDENT_EXPR",
                         "text": "int",
                         "width": 3
-                      },
-                      {
-                        "type": "token",
-                        "kind": "WHITESPACE",
-                        "text": ")",
-                        "width": 1
-                      },
-                      {
-                        "type": "token",
-                        "kind": "ERROR",
-                        "text": "",
-                        "width": 0
                       }
                     ]
                   }
@@ -120,9 +108,9 @@
               },
               {
                 "type": "token",
-                "kind": "MISSING",
-                "text": "",
-                "width": 0
+                "kind": "WHITESPACE",
+                "text": ")",
+                "width": 1
               }
             ]
           }
@@ -130,16 +118,5 @@
       }
     ]
   },
-  "diagnostics": [
-    {
-      "kind": {
-        "type": "missing_token",
-        "expected": "')'"
-      },
-      "span": {
-        "start": 41,
-        "end": 41
-      }
-    }
-  ]
+  "diagnostics": []
 }

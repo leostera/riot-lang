@@ -16,23 +16,10 @@
             "width": 3
           },
           {
-            "type": "node",
-            "kind": "PAREN_PATTERN",
-            "width": 2,
-            "children": [
-              {
-                "type": "token",
-                "kind": "WHITESPACE",
-                "text": "(",
-                "width": 1
-              },
-              {
-                "type": "token",
-                "kind": "WHITESPACE",
-                "text": ")",
-                "width": 1
-              }
-            ]
+            "type": "token",
+            "kind": "UNIT_LITERAL",
+            "text": "()",
+            "width": 2
           },
           {
             "type": "token",

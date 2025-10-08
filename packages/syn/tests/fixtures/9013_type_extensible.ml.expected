@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 25,
+    "width": 33,
     "children": [
       {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 25,
+        "width": 33,
         "children": [
           {
             "type": "token",
@@ -61,12 +61,12 @@
           {
             "type": "node",
             "kind": "TYPE_CONSTR",
-            "width": 10,
+            "width": 18,
             "children": [
               {
                 "type": "node",
                 "kind": "TYPE_VARIANT_CONSTR",
-                "width": 10,
+                "width": 18,
                 "children": [
                   {
                     "type": "token",
@@ -83,13 +83,38 @@
                   {
                     "type": "node",
                     "kind": "TYPE_CONSTR",
-                    "width": 4,
+                    "width": 12,
                     "children": [
+                      {
+                        "type": "node",
+                        "kind": "TYPE_CONSTR",
+                        "width": 4,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "IDENT_EXPR",
+                            "text": "unit",
+                            "width": 4
+                          }
+                        ]
+                      },
                       {
                         "type": "token",
                         "kind": "IDENT_EXPR",
-                        "text": "unit",
-                        "width": 4
+                        "text": "Effect",
+                        "width": 6
+                      },
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": ".",
+                        "width": 1
+                      },
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "t",
+                        "width": 1
                       }
                     ]
                   }

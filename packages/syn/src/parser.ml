@@ -3127,50 +3127,163 @@ and parse_regular_let_binding parser let_kw ?(attributes = []) () =
     else None
   in
 
-  (* Parse pattern - use parse_pattern and check for tuple afterward *)
+  (* Check for operator name: let ( + ) = ... or let ( let* ) = ... *)
   let pattern =
-    match parse_pattern parser with
-    | Some first_pat -> (
+    if at parser (Token.OpenDelim Token.Paren) then
+      let open_paren = consume parser in
+      let trivia_after_open = consume_trivia parser in
+      
+      (* Check for unit pattern: () *)
+      if at parser (Token.CloseDelim Token.Paren) then
+        let close_paren = consume parser in
         let _ = consume_trivia parser in
-        (* Check if followed by comma (tuple pattern) *)
-        if at parser Token.Comma then
-          (* Tuple pattern *)
-          let rec parse_tuple_patterns acc =
-            if not (at parser Token.Comma) then List.rev acc
-            else
-              let comma = consume parser in
-              let _ = consume_trivia parser in
-              match parse_pattern parser with
-              | Some pat ->
-                  let trivia = consume_trivia parser in
-                  parse_tuple_patterns
-                    (List.rev_append trivia
-                       (Ceibo.Green.Node pat :: comma :: acc))
-              | None -> List.rev acc
-          in
-          let patterns = parse_tuple_patterns [ Ceibo.Green.Node first_pat ] in
-          Ceibo.Green.Node
-            (make_node_list ~kind:Syntax_kind.TUPLE_PATTERN patterns)
-        else
-          (* Unwrap simple IDENT_PATTERN to keep just the token for backward compatibility *)
-          match first_pat with
-          | node
-            when Ceibo.Green.kind (Ceibo.Green.Node node)
-                 = Syntax_kind.IDENT_PATTERN -> (
-              match Ceibo.Green.children node with
-              | [| Ceibo.Green.Token tok |] -> Ceibo.Green.Token tok
-              | _ -> Ceibo.Green.Node first_pat)
-          | _ -> Ceibo.Green.Node first_pat)
-    | None ->
-        let span =
-          match peek parser with
-          | Some tok -> tok.Token.span
-          | None -> Ceibo.Span.make ~start:0 ~end_:0
-        in
-        let err = Diagnostic.make_missing_token ~expected:"pattern" ~span in
-        report_error parser err;
         Ceibo.Green.Token
-          (Ceibo.Green.make_token ~kind:Syntax_kind.MISSING ~text:"" ~width:0)
+          (Ceibo.Green.make_token ~kind:Syntax_kind.UNIT_LITERAL
+             ~text:"()" ~width:2)
+      else
+        (* Check if this is an operator name by looking at the content *)
+        let is_operator_name =
+          match peek_kind parser with
+          (* Simple operators: +, -, *, /, etc. *)
+          | Some (Token.Plus | Token.Minus | Token.Star | Token.Slash | Token.Percent
+                 | Token.StarStar | Token.At | Token.Caret | Token.Pipe | Token.Ampersand
+                 | Token.Lt | Token.Gt | Token.Bang | Token.Question
+                 | Token.Tilde | Token.Colon | Token.Dollar | Token.Hash | Token.Eq) -> true
+          (* Binding operators: let*, and+, etc. *)
+          | Some (Token.Keyword (Keyword.Let | Keyword.And)) -> true
+          (* Index operators start with dot *)
+          | Some Token.Dot -> true
+          | _ -> false
+        in
+
+        if is_operator_name then
+          (* Parse as operator identifier - collect all tokens until ) *)
+          let rec collect_operator_tokens acc =
+            if at parser (Token.CloseDelim Token.Paren) then List.rev acc
+            else
+              let tok = consume parser in
+              let trivia = consume_trivia parser in
+              collect_operator_tokens (List.rev_append trivia (tok :: acc))
+          in
+          let op_tokens = collect_operator_tokens [] in
+          let close_paren = expect parser (Token.CloseDelim Token.Paren) in
+          let all_tokens = [ open_paren ] @ trivia_after_open @ op_tokens @ [ close_paren ] in
+          let children = prepend_pending_trivia parser all_tokens in
+          Ceibo.Green.Token
+            (Ceibo.Green.make_token ~kind:Syntax_kind.IDENT_EXPR
+               ~text:
+                 (String.concat ""
+                    (List.filter_map (fun t -> Ceibo.Green.text t) all_tokens))
+               ~width:
+                 (List.fold_left (fun acc t -> acc + Ceibo.Green.width t) 0 all_tokens))
+        else
+        (* Not an operator - parse the paren as start of a pattern *)
+        (* We've already consumed the open paren and trivia, so parse what's inside *)
+        match parse_pattern parser with
+        | Some inner_pat ->
+            let _ = consume_trivia parser in
+            (* Check if it's a tuple inside parens: (a, b) *)
+            if at parser Token.Comma then
+              (* Tuple pattern inside parens *)
+              let rec parse_tuple_patterns acc =
+                if not (at parser Token.Comma) then List.rev acc
+                else
+                  let comma = consume parser in
+                  let _ = consume_trivia parser in
+                  match parse_pattern parser with
+                  | Some pat ->
+                      let trivia = consume_trivia parser in
+                      parse_tuple_patterns
+                        (List.rev_append trivia
+                           (Ceibo.Green.Node pat :: comma :: acc))
+                  | None -> List.rev acc
+              in
+              let patterns = parse_tuple_patterns [ Ceibo.Green.Node inner_pat ] in
+              let close_paren = expect parser (Token.CloseDelim Token.Paren) in
+              let all_children = [ open_paren ] @ trivia_after_open @ patterns @ [ close_paren ] in
+              let _ = consume_trivia parser in
+              Ceibo.Green.Node (make_node_list ~kind:Syntax_kind.PAREN_PATTERN all_children)
+            else if at parser Token.Colon then
+              (* Type annotation: (x : int) *)
+              let colon = consume parser in
+              let _ = consume_trivia parser in
+              (* Collect type tokens until ) *)
+              let rec collect_type_tokens acc =
+                if at parser (Token.CloseDelim Token.Paren) || peek parser = None then
+                  List.rev acc
+                else
+                  let tok = consume parser in
+                  let _ = consume_trivia parser in
+                  collect_type_tokens (tok :: acc)
+              in
+              let type_tokens = collect_type_tokens [] in
+              let close_paren = expect parser (Token.CloseDelim Token.Paren) in
+              let all_children =
+                [ open_paren ] @ trivia_after_open @ [ Ceibo.Green.Node inner_pat; colon ]
+                @ type_tokens @ [ close_paren ]
+              in
+              let _ = consume_trivia parser in
+              Ceibo.Green.Node (make_node_list ~kind:Syntax_kind.PAREN_PATTERN all_children)
+            else
+              (* Simple parenthesized pattern *)
+              let close_paren = expect parser (Token.CloseDelim Token.Paren) in
+              let _ = consume_trivia parser in
+              Ceibo.Green.Node (make_node_list ~kind:Syntax_kind.PAREN_PATTERN
+                (List.rev_append trivia_after_open [open_paren; Ceibo.Green.Node inner_pat; close_paren]))
+        | None ->
+            let span =
+              match peek parser with
+              | Some tok -> tok.Token.span
+              | None -> Ceibo.Span.make ~start:0 ~end_:0
+            in
+            let err = Diagnostic.make_missing_token ~expected:"pattern" ~span in
+            report_error parser err;
+            Ceibo.Green.Token
+              (Ceibo.Green.make_token ~kind:Syntax_kind.MISSING ~text:"" ~width:0)
+    else
+      (* Not starting with paren - use regular pattern parsing *)
+      match parse_pattern parser with
+      | Some first_pat -> (
+          let _ = consume_trivia parser in
+          (* Check if followed by comma (tuple pattern) *)
+          if at parser Token.Comma then
+            (* Tuple pattern *)
+            let rec parse_tuple_patterns acc =
+              if not (at parser Token.Comma) then List.rev acc
+              else
+                let comma = consume parser in
+                let _ = consume_trivia parser in
+                match parse_pattern parser with
+                | Some pat ->
+                    let trivia = consume_trivia parser in
+                    parse_tuple_patterns
+                      (List.rev_append trivia
+                         (Ceibo.Green.Node pat :: comma :: acc))
+                | None -> List.rev acc
+            in
+            let patterns = parse_tuple_patterns [ Ceibo.Green.Node first_pat ] in
+            Ceibo.Green.Node
+              (make_node_list ~kind:Syntax_kind.TUPLE_PATTERN patterns)
+          else
+            (* Unwrap simple IDENT_PATTERN to keep just the token for backward compatibility *)
+            match first_pat with
+            | node
+              when Ceibo.Green.kind (Ceibo.Green.Node node)
+                   = Syntax_kind.IDENT_PATTERN -> (
+                match Ceibo.Green.children node with
+                | [| Ceibo.Green.Token tok |] -> Ceibo.Green.Token tok
+                | _ -> Ceibo.Green.Node first_pat)
+            | _ -> Ceibo.Green.Node first_pat)
+      | None ->
+          let span =
+            match peek parser with
+            | Some tok -> tok.Token.span
+            | None -> Ceibo.Span.make ~start:0 ~end_:0
+          in
+          let err = Diagnostic.make_missing_token ~expected:"pattern" ~span in
+          report_error parser err;
+          Ceibo.Green.Token
+            (Ceibo.Green.make_token ~kind:Syntax_kind.MISSING ~text:"" ~width:0)
   in
 
   let _ = consume_trivia parser in
