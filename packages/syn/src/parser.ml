@@ -2914,6 +2914,24 @@ and parse_regular_let_binding parser let_kw =
     | _ -> false
   in
 
+  (* Check for optional type annotation: let f : int -> int = ... *)
+  let type_annotation =
+    if is_simple_ident && at parser Token.Colon then
+      let colon = consume parser in
+      let _ = consume_trivia parser in
+      (* Parse type tokens until '=' *)
+      let rec consume_type_tokens acc =
+        if at parser Token.Eq || peek parser = None then List.rev acc
+        else
+          let tok = consume parser in
+          let _ = consume_trivia parser in
+          consume_type_tokens (tok :: acc)
+      in
+      let type_tokens = consume_type_tokens [] in
+      Some ([colon] @ type_tokens)
+    else None
+  in
+
   (* Only parse function parameters if:
      1. Pattern was a simple identifier (function name)
      2. Next token is NOT '=' (would indicate simple let binding)
@@ -3004,15 +3022,21 @@ and parse_regular_let_binding parser let_kw =
       Ceibo.Green.Node (make_node_list ~kind:Syntax_kind.FUN_EXPR children)
   in
 
+  let type_annot_tokens =
+    match type_annotation with
+    | Some tokens -> tokens
+    | None -> []
+  in
+
   match rec_kw with
   | Some kw ->
       Some
         (make_node_list ~kind:Syntax_kind.LET_BINDING
-           [ let_kw; kw; pattern; eq; final_expr ])
+           ([ let_kw; kw; pattern ] @ type_annot_tokens @ [ eq; final_expr ]))
   | None ->
       Some
         (make_node_list ~kind:Syntax_kind.LET_BINDING
-           [ let_kw; pattern; eq; final_expr ])
+           ([ let_kw; pattern ] @ type_annot_tokens @ [ eq; final_expr ]))
 
 and parse_type_decl parser =
   (* type 'a t = ... | type t += ... | type t *)
