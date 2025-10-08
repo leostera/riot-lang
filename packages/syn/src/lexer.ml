@@ -211,6 +211,35 @@ let lex_string cursor token_start =
     span = { start = token_start; end_ };
   }
 
+let lex_quoted_string cursor token_start =
+  (* Skip opening delimiter: brace and pipe *)
+  Cursor.advance cursor;
+  Cursor.advance cursor;
+  let start = Cursor.position cursor in
+  let rec loop () =
+    match Cursor.peek cursor with
+    | None -> (Cursor.slice cursor start (Cursor.position cursor - start), false)
+    | Some '|' -> (
+        Cursor.advance cursor;
+        match Cursor.peek cursor with
+        | Some '}' ->
+            let value =
+              Cursor.slice cursor start (Cursor.position cursor - start - 1)
+            in
+            Cursor.advance cursor;
+            (value, true)
+        | _ -> loop ())
+    | Some _ ->
+        Cursor.advance cursor;
+        loop ()
+  in
+  let value, terminated = loop () in
+  let end_ = Cursor.position cursor in
+  {
+    Token.kind = Token.Literal (String { value; terminated });
+    span = { start = token_start; end_ };
+  }
+
 let lex_char cursor token_start =
   Cursor.advance cursor;
   let kind =
@@ -284,13 +313,16 @@ let next cursor delim_stack =
           Token.kind = Token.CloseDelim Bracket;
           span = Ceibo.Span.make ~start ~end_;
         }
-    | Some '{' ->
-        Cursor.advance cursor;
-        let end_ = Cursor.position cursor in
-        {
-          Token.kind = Token.OpenDelim Brace;
-          span = Ceibo.Span.make ~start ~end_;
-        }
+    | Some '{' -> (
+        match Cursor.peek_n cursor 1 with
+        | Some '|' -> lex_quoted_string cursor start
+        | _ ->
+            Cursor.advance cursor;
+            let end_ = Cursor.position cursor in
+            {
+              Token.kind = Token.OpenDelim Brace;
+              span = Ceibo.Span.make ~start ~end_;
+            })
     | Some '}' ->
         Cursor.advance cursor;
         let end_ = Cursor.position cursor in

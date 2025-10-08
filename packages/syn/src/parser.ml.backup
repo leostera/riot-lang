@@ -1830,24 +1830,6 @@ and parse_regular_let_expr parser let_kw =
     | _ -> false
   in
 
-  (* Check for optional type annotation: let f : int -> int = ... *)
-  let type_annotation =
-    if is_simple_ident && at parser Token.Colon then
-      let colon = consume parser in
-      let _ = consume_trivia parser in
-      (* Parse type tokens until '=' *)
-      let rec consume_type_tokens acc =
-        if at parser Token.Eq || peek parser = None then List.rev acc
-        else
-          let tok = consume parser in
-          let _ = consume_trivia parser in
-          consume_type_tokens (tok :: acc)
-      in
-      let type_tokens = consume_type_tokens [] in
-      Some ([ colon ] @ type_tokens)
-    else None
-  in
-
   (* Only parse function parameters if:
      1. Pattern was a simple identifier (function name)
      2. Next token is NOT '=' (would indicate simple let binding)
@@ -2009,17 +1991,13 @@ and parse_regular_let_expr parser let_kw =
   match rec_kw with
   | Some kw ->
       let children =
-        [ let_kw; kw; pattern ]
-        @ (match type_annotation with Some t -> t | None -> [])
-        @ params @ [ eq; value_expr ] @ and_bindings
+        [ let_kw; kw; pattern ] @ params @ [ eq; value_expr ] @ and_bindings
         @ [ in_kw; body_expr ]
       in
       Some (make_node_list ~kind children)
   | None ->
       let children =
-        [ let_kw; pattern ]
-        @ (match type_annotation with Some t -> t | None -> [])
-        @ params @ [ eq; value_expr ] @ and_bindings
+        [ let_kw; pattern ] @ params @ [ eq; value_expr ] @ and_bindings
         @ [ in_kw; body_expr ]
       in
       Some (make_node_list ~kind children)
@@ -2803,11 +2781,10 @@ and parse_poly_variant_pattern parser =
             prepend_pending_trivia parser [ backtick; tag_token ]
           in
           Some (make_node_list ~kind:Syntax_kind.POLY_VARIANT_PATTERN children)
-      )
-  | _ ->
-      (* Missing or invalid tag *)
-      let children = prepend_pending_trivia parser [ backtick ] in
-      Some (make_node_list ~kind:Syntax_kind.POLY_VARIANT_PATTERN children)
+      | _ ->
+          (* Missing or invalid tag *)
+          let children = prepend_pending_trivia parser [ backtick ] in
+          Some (make_node_list ~kind:Syntax_kind.POLY_VARIANT_PATTERN children))
 
 and parse_record_pattern parser =
   let open_brace = consume parser in
@@ -3173,24 +3150,6 @@ and parse_regular_let_binding parser let_kw =
     else []
   in
 
-  (* Check for return type annotation after parameters: let f (x : int) : int = ... *)
-  let return_type_annotation =
-    if params <> [] && at parser Token.Colon then
-      let colon = consume parser in
-      let _ = consume_trivia parser in
-      (* Parse type tokens until '=' *)
-      let rec consume_type_tokens acc =
-        if at parser Token.Eq || peek parser = None then List.rev acc
-        else
-          let tok = consume parser in
-          let _ = consume_trivia parser in
-          consume_type_tokens (tok :: acc)
-      in
-      let type_tokens = consume_type_tokens [] in
-      Some ([ colon ] @ type_tokens)
-    else None
-  in
-
   (* Expect '=' *)
   let eq = expect parser Token.Eq in
 
@@ -3231,19 +3190,15 @@ and parse_regular_let_binding parser let_kw =
     match type_annotation with Some tokens -> tokens | None -> []
   in
 
-  let return_type_annot_tokens =
-    match return_type_annotation with Some tokens -> tokens | None -> []
-  in
-
   match rec_kw with
   | Some kw ->
       Some
         (make_node_list ~kind:Syntax_kind.LET_BINDING
-           ([ let_kw; kw; pattern ] @ type_annot_tokens @ params @ return_type_annot_tokens @ [ eq; final_expr ]))
+           ([ let_kw; kw; pattern ] @ type_annot_tokens @ [ eq; final_expr ]))
   | None ->
       Some
         (make_node_list ~kind:Syntax_kind.LET_BINDING
-           ([ let_kw; pattern ] @ type_annot_tokens @ params @ return_type_annot_tokens @ [ eq; final_expr ]))
+           ([ let_kw; pattern ] @ type_annot_tokens @ [ eq; final_expr ]))
 
 and parse_type_decl parser =
   (* type 'a t = ... | type t += ... | type t *)
