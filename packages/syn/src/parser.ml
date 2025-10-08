@@ -3252,7 +3252,8 @@ and parse_regular_let_binding parser let_kw ?(attributes = []) () =
           | Some (Token.Ident _)
           | Some Token.Underscore
           | Some (Token.Literal _)
-          | Some (Token.OpenDelim Token.Bracket) -> (
+          | Some (Token.OpenDelim Token.Bracket)
+          | Some (Token.OpenDelim Token.Brace) -> (
               match parse_pattern parser with
               | Some pat ->
                   let _ = consume_trivia parser in
