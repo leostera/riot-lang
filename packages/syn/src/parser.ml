@@ -824,6 +824,36 @@ and parse_paren_expr parser =
     let close_paren = consume parser in
     let children = prepend_pending_trivia parser [ open_paren; close_paren ] in
     Some (make_node_list ~kind:Syntax_kind.UNIT_LITERAL children)
+  (* Check for first-class module pack: (module M : S) *)
+  else if at parser (Token.Keyword Keyword.Module) then
+    let module_kw = consume parser in
+    let _ = consume_trivia parser in
+    
+    (* Parse module name *)
+    let module_name = consume parser in
+    let _ = consume_trivia parser in
+    
+    (* Expect : *)
+    let colon = expect parser Token.Colon in
+    let _ = consume_trivia parser in
+    
+    (* Parse module type - for now, just consume until ) *)
+    let rec consume_until_close acc =
+      if at parser (Token.CloseDelim Token.Paren) || peek parser = None then
+        List.rev acc
+      else
+        let tok = consume parser in
+        let _ = consume_trivia parser in
+        consume_until_close (tok :: acc)
+    in
+    let module_type = consume_until_close [] in
+    
+    let close_paren = expect parser (Token.CloseDelim Token.Paren) in
+    let children =
+      prepend_pending_trivia parser
+        ([ open_paren; module_kw; module_name; colon ] @ module_type @ [ close_paren ])
+    in
+    Some (make_node_list ~kind:Syntax_kind.APPLY_EXPR children)
   else
     match parse_expr parser with
     | Some expr ->
@@ -2210,6 +2240,39 @@ and parse_paren_pattern parser =
           prepend_pending_trivia parser [ open_paren; lazy_kw; close_paren ]
         in
         Some (make_node_list ~kind:Syntax_kind.LAZY_PATTERN children)
+  else if at parser (Token.Keyword Keyword.Module) then
+    (* First-class module pattern: (module M : S) *)
+    let module_kw = consume parser in
+    let _ = consume_trivia parser in
+    
+    (* Parse module name *)
+    let module_name = consume parser in
+    let _ = consume_trivia parser in
+    
+    (* Check for optional type constraint *)
+    let constraint_tokens =
+      if at parser Token.Colon then
+        let colon = consume parser in
+        let _ = consume_trivia parser in
+        (* Consume module type until ) *)
+        let rec consume_until_close acc =
+          if at parser (Token.CloseDelim Token.Paren) || peek parser = None then
+            List.rev acc
+          else
+            let tok = consume parser in
+            let _ = consume_trivia parser in
+            consume_until_close (tok :: acc)
+        in
+        colon :: consume_until_close []
+      else []
+    in
+    
+    let close_paren = expect parser (Token.CloseDelim Token.Paren) in
+    let children =
+      prepend_pending_trivia parser
+        ([ open_paren; module_kw; module_name ] @ constraint_tokens @ [ close_paren ])
+    in
+    Some (make_node_list ~kind:Syntax_kind.PAREN_PATTERN children)
   else
     match parse_pattern parser with
     | Some first_pat ->
@@ -2604,6 +2667,17 @@ let rec parse_structure_item parser =
 
 and parse_let_binding parser =
   let let_kw = consume parser in
+  let _ = consume_trivia parser in
+
+  (* Check for 'let open' or 'let module' at structure level *)
+  if at parser (Token.Keyword Keyword.Open) then
+    parse_let_open_expr parser let_kw
+  else if at parser (Token.Keyword Keyword.Module) then
+    parse_let_module_expr parser let_kw
+  else
+    parse_regular_let_binding parser let_kw
+
+and parse_regular_let_binding parser let_kw =
   let _ = consume_trivia parser in
 
   (* Check for 'rec' *)
