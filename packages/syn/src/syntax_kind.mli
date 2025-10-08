@@ -101,6 +101,7 @@ type t =
   | PAREN_PATTERN  (** Parenthesized pattern: `(pattern)` *)
   | POLY_VARIANT_PATTERN
       (** Polymorphic variant pattern: `` `Tag ``, `` `Tag p `` *)
+  | POLY_VARIANT_TYPE_PATTERN  (** Polymorphic variant type pattern: `#type` *)
   (* ===================================================================== *)
   (* TYPE EXPRESSIONS *)
   (* ===================================================================== *)

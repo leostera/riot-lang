@@ -113,6 +113,7 @@ let token_kind_to_syntax_kind = function
   | Token.Bang | Token.Keyword Keyword.Lnot -> Syntax_kind.PREFIX_EXPR
   | Token.Tilde | Token.Question -> Syntax_kind.ARGUMENT
   | Token.Backtick -> Syntax_kind.POLY_VARIANT_EXPR
+  | Token.Hash -> Syntax_kind.POLY_VARIANT_TYPE_PATTERN
   | Token.Keyword Keyword.Assert -> Syntax_kind.ASSERT_EXPR
   | Token.Keyword Keyword.Lazy -> Syntax_kind.LAZY_EXPR
   | Token.Keyword Keyword.As -> Syntax_kind.AS_PATTERN
@@ -2230,21 +2231,27 @@ and parse_base_pattern parser =
   | Some (Token.OpenDelim Token.Paren) -> parse_paren_pattern parser
   (* Record pattern *)
   | Some (Token.OpenDelim Token.Brace) -> parse_record_pattern parser
-  (* Polymorphic variant pattern *)
-  | Some Token.Backtick -> parse_poly_variant_pattern parser
-  (* Exception pattern: exception E or exception E of t *)
-  | Some (Token.Keyword Keyword.Exception) ->
-      let exception_kw = consume parser in
-      let _ = consume_trivia parser in
-      (* Parse the exception constructor pattern *)
-      (match parse_base_pattern parser with
-       | Some pat ->
-           Some
-             (make_node_list ~kind:Syntax_kind.EXCEPTION_PATTERN
-                [ exception_kw; Ceibo.Green.Node pat ])
-       | None ->
-           Some (make_node_list ~kind:Syntax_kind.EXCEPTION_PATTERN [ exception_kw ]))
-  | _ -> None
+   (* Polymorphic variant pattern *)
+   | Some Token.Backtick -> parse_poly_variant_pattern parser
+   (* Polymorphic variant type pattern: #color *)
+   | Some Token.Hash ->
+       let hash = consume parser in
+       let _ = consume_trivia parser in
+       let type_name = consume parser in
+       Some (make_node_list ~kind:Syntax_kind.POLY_VARIANT_TYPE_PATTERN [ hash; type_name ])
+   (* Exception pattern: exception E or exception E of t *)
+   | Some (Token.Keyword Keyword.Exception) ->
+       let exception_kw = consume parser in
+       let _ = consume_trivia parser in
+       (* Parse the exception constructor pattern *)
+       (match parse_base_pattern parser with
+        | Some pat ->
+            Some
+              (make_node_list ~kind:Syntax_kind.EXCEPTION_PATTERN
+                 [ exception_kw; Ceibo.Green.Node pat ])
+        | None ->
+            Some (make_node_list ~kind:Syntax_kind.EXCEPTION_PATTERN [ exception_kw ]))
+   | _ -> None
 
 and parse_list_pattern parser =
   let open_bracket = consume parser in
@@ -3367,8 +3374,19 @@ and parse_variant_type parser =
   make_node_list ~kind:Syntax_kind.TYPE_CONSTR all_parts
 
 and parse_poly_variant_type parser =
-  (* Parse polymorphic variant type: [ `A | `B of int ] *)
+  (* Parse polymorphic variant type: [ `A | `B of int ] or [> `A ] or [< `A ] *)
   let open_bracket = consume parser in
+  let _ = consume_trivia parser in
+
+  (* Check for open [> or closed [< *)
+  let variance =
+    if at parser Token.Gt then
+      Some (consume parser)
+    else if at parser Token.Lt then
+      Some (consume parser)
+    else None
+  in
+
   let _ = consume_trivia parser in
 
   let rec parse_variants acc =
@@ -3423,8 +3441,13 @@ and parse_poly_variant_type parser =
 
   let close_bracket = expect parser (Token.CloseDelim Token.Bracket) in
 
-  make_node_list ~kind:Syntax_kind.TYPE_POLY_VARIANT
-    ((open_bracket :: variants) @ [ close_bracket ])
+  let children =
+    match variance with
+    | Some var -> (open_bracket :: var :: variants) @ [ close_bracket ]
+    | None -> (open_bracket :: variants) @ [ close_bracket ]
+  in
+
+  make_node_list ~kind:Syntax_kind.TYPE_POLY_VARIANT children
 
 and parse_record_type parser =
   (* Parse record type: { field1: int; field2: string } *)

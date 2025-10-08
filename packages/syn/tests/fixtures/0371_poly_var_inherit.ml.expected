@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 15,
+    "width": 24,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 15,
+        "width": 24,
         "children": [
           {
             "type": "token",
@@ -30,7 +30,7 @@
           {
             "type": "node",
             "kind": "MATCH_EXPR",
-            "width": 10,
+            "width": 19,
             "children": [
               {
                 "type": "token",
@@ -60,25 +60,45 @@
               {
                 "type": "node",
                 "kind": "MATCH_CASE",
-                "width": 0,
+                "width": 9,
                 "children": [
                   {
                     "type": "node",
-                    "kind": "MISSING",
-                    "width": 0,
-                    "children": []
+                    "kind": "POLY_VARIANT_TYPE_PATTERN",
+                    "width": 6,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "POLY_VARIANT_TYPE_PATTERN",
+                        "text": "#",
+                        "width": 1
+                      },
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "color",
+                        "width": 5
+                      }
+                    ]
                   },
                   {
                     "type": "token",
-                    "kind": "MISSING",
-                    "text": "",
-                    "width": 0
+                    "kind": "FUN_EXPR",
+                    "text": "->",
+                    "width": 2
                   },
                   {
-                    "type": "token",
-                    "kind": "MISSING",
-                    "text": "",
-                    "width": 0
+                    "type": "node",
+                    "kind": "INT_LITERAL",
+                    "width": 1,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "INT_LITERAL",
+                        "text": "1",
+                        "width": 1
+                      }
+                    ]
                   }
                 ]
               }
@@ -88,36 +108,5 @@
       }
     ]
   },
-  "diagnostics": [
-    {
-      "kind": {
-        "type": "missing_token",
-        "expected": "pattern"
-      },
-      "span": {
-        "start": 21,
-        "end": 22
-      }
-    },
-    {
-      "kind": {
-        "type": "missing_token",
-        "expected": "'->'"
-      },
-      "span": {
-        "start": 21,
-        "end": 21
-      }
-    },
-    {
-      "kind": {
-        "type": "missing_token",
-        "expected": "expression"
-      },
-      "span": {
-        "start": 21,
-        "end": 22
-      }
-    }
-  ]
+  "diagnostics": []
 }
