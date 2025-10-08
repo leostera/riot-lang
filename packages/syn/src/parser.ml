@@ -2877,9 +2877,16 @@ and parse_variant_type parser =
         let constructor_name = consume parser in
         let _ = consume_trivia parser in
 
-        (* Check for payload: of type *)
+        (* Check for payload: 'of type' or GADT ': type' *)
         let payload =
-          if at parser (Token.Keyword Keyword.Of) then
+          if at parser Token.Colon then
+            (* GADT syntax: Constructor : type *)
+            let colon = consume parser in
+            let _ = consume_trivia parser in
+            let gadt_type = parse_type_expr parser in
+            Some [ colon; Ceibo.Green.Node gadt_type ]
+          else if at parser (Token.Keyword Keyword.Of) then
+            (* Regular syntax: Constructor of type *)
             let of_kw = consume parser in
             let _ = consume_trivia parser in
             let payload_type = parse_type_expr parser in
