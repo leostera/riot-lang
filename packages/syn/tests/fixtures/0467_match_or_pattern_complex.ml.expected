@@ -69,7 +69,7 @@
                     "children": [
                       {
                         "type": "node",
-                        "kind": "OR_PATTERN",
+                        "kind": "PAREN_PATTERN",
                         "width": 7,
                         "children": [
                           {
@@ -81,7 +81,7 @@
                           {
                             "type": "node",
                             "kind": "CONSTRUCTOR_PATTERN",
-                            "width": 2,
+                            "width": 5,
                             "children": [
                               {
                                 "type": "token",
@@ -91,46 +91,53 @@
                               },
                               {
                                 "type": "node",
-                                "kind": "WILDCARD_PATTERN",
-                                "width": 1,
+                                "kind": "OR_PATTERN",
+                                "width": 4,
                                 "children": [
                                   {
-                                    "type": "token",
+                                    "type": "node",
                                     "kind": "WILDCARD_PATTERN",
-                                    "text": "_",
-                                    "width": 1
-                                  }
-                                ]
-                              }
-                            ]
-                          },
-                          {
-                            "type": "token",
-                            "kind": "MATCH_EXPR",
-                            "text": "|",
-                            "width": 1
-                          },
-                          {
-                            "type": "node",
-                            "kind": "CONSTRUCTOR_PATTERN",
-                            "width": 2,
-                            "children": [
-                              {
-                                "type": "token",
-                                "kind": "IDENT_EXPR",
-                                "text": "B",
-                                "width": 1
-                              },
-                              {
-                                "type": "node",
-                                "kind": "WILDCARD_PATTERN",
-                                "width": 1,
-                                "children": [
+                                    "width": 1,
+                                    "children": [
+                                      {
+                                        "type": "token",
+                                        "kind": "WILDCARD_PATTERN",
+                                        "text": "_",
+                                        "width": 1
+                                      }
+                                    ]
+                                  },
                                   {
                                     "type": "token",
-                                    "kind": "WILDCARD_PATTERN",
-                                    "text": "_",
+                                    "kind": "MATCH_EXPR",
+                                    "text": "|",
                                     "width": 1
+                                  },
+                                  {
+                                    "type": "node",
+                                    "kind": "CONSTRUCTOR_PATTERN",
+                                    "width": 2,
+                                    "children": [
+                                      {
+                                        "type": "token",
+                                        "kind": "IDENT_EXPR",
+                                        "text": "B",
+                                        "width": 1
+                                      },
+                                      {
+                                        "type": "node",
+                                        "kind": "WILDCARD_PATTERN",
+                                        "width": 1,
+                                        "children": [
+                                          {
+                                            "type": "token",
+                                            "kind": "WILDCARD_PATTERN",
+                                            "text": "_",
+                                            "width": 1
+                                          }
+                                        ]
+                                      }
+                                    ]
                                   }
                                 ]
                               }

@@ -101,20 +101,20 @@
                     "children": [
                       {
                         "type": "node",
-                        "kind": "OR_PATTERN",
+                        "kind": "CONSTRUCTOR_PATTERN",
                         "width": 10,
                         "children": [
                           {
+                            "type": "token",
+                            "kind": "IDENT_EXPR",
+                            "text": "Some",
+                            "width": 4
+                          },
+                          {
                             "type": "node",
-                            "kind": "CONSTRUCTOR_PATTERN",
-                            "width": 5,
+                            "kind": "OR_PATTERN",
+                            "width": 6,
                             "children": [
-                              {
-                                "type": "token",
-                                "kind": "IDENT_EXPR",
-                                "text": "Some",
-                                "width": 4
-                              },
                               {
                                 "type": "node",
                                 "kind": "WILDCARD_PATTERN",
@@ -127,25 +127,25 @@
                                     "width": 1
                                   }
                                 ]
-                              }
-                            ]
-                          },
-                          {
-                            "type": "token",
-                            "kind": "MATCH_EXPR",
-                            "text": "|",
-                            "width": 1
-                          },
-                          {
-                            "type": "node",
-                            "kind": "IDENT_PATTERN",
-                            "width": 4,
-                            "children": [
+                              },
                               {
                                 "type": "token",
-                                "kind": "IDENT_EXPR",
-                                "text": "None",
-                                "width": 4
+                                "kind": "MATCH_EXPR",
+                                "text": "|",
+                                "width": 1
+                              },
+                              {
+                                "type": "node",
+                                "kind": "IDENT_PATTERN",
+                                "width": 4,
+                                "children": [
+                                  {
+                                    "type": "token",
+                                    "kind": "IDENT_EXPR",
+                                    "text": "None",
+                                    "width": 4
+                                  }
+                                ]
                               }
                             ]
                           }

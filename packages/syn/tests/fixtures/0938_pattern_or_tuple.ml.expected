@@ -101,38 +101,57 @@
                     "children": [
                       {
                         "type": "node",
-                        "kind": "OR_PATTERN",
+                        "kind": "TUPLE_PATTERN",
                         "width": 7,
                         "children": [
                           {
                             "type": "node",
-                            "kind": "TUPLE_PATTERN",
+                            "kind": "LITERAL_PATTERN",
+                            "width": 1,
+                            "children": [
+                              {
+                                "type": "node",
+                                "kind": "INT_LITERAL",
+                                "width": 1,
+                                "children": [
+                                  {
+                                    "type": "token",
+                                    "kind": "INT_LITERAL",
+                                    "text": "0",
+                                    "width": 1
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "type": "token",
+                            "kind": "TUPLE_EXPR",
+                            "text": ",",
+                            "width": 1
+                          },
+                          {
+                            "type": "node",
+                            "kind": "OR_PATTERN",
                             "width": 3,
                             "children": [
                               {
                                 "type": "node",
-                                "kind": "LITERAL_PATTERN",
+                                "kind": "WILDCARD_PATTERN",
                                 "width": 1,
                                 "children": [
                                   {
-                                    "type": "node",
-                                    "kind": "INT_LITERAL",
-                                    "width": 1,
-                                    "children": [
-                                      {
-                                        "type": "token",
-                                        "kind": "INT_LITERAL",
-                                        "text": "0",
-                                        "width": 1
-                                      }
-                                    ]
+                                    "type": "token",
+                                    "kind": "WILDCARD_PATTERN",
+                                    "text": "_",
+                                    "width": 1
                                   }
                                 ]
                               },
                               {
                                 "type": "token",
-                                "kind": "TUPLE_EXPR",
-                                "text": ",",
+                                "kind": "MATCH_EXPR",
+                                "text": "|",
                                 "width": 1
                               },
                               {
@@ -152,51 +171,25 @@
                           },
                           {
                             "type": "token",
-                            "kind": "MATCH_EXPR",
-                            "text": "|",
+                            "kind": "TUPLE_EXPR",
+                            "text": ",",
                             "width": 1
                           },
                           {
                             "type": "node",
-                            "kind": "TUPLE_PATTERN",
-                            "width": 3,
+                            "kind": "LITERAL_PATTERN",
+                            "width": 1,
                             "children": [
                               {
                                 "type": "node",
-                                "kind": "WILDCARD_PATTERN",
+                                "kind": "INT_LITERAL",
                                 "width": 1,
                                 "children": [
                                   {
                                     "type": "token",
-                                    "kind": "WILDCARD_PATTERN",
-                                    "text": "_",
-                                    "width": 1
-                                  }
-                                ]
-                              },
-                              {
-                                "type": "token",
-                                "kind": "TUPLE_EXPR",
-                                "text": ",",
-                                "width": 1
-                              },
-                              {
-                                "type": "node",
-                                "kind": "LITERAL_PATTERN",
-                                "width": 1,
-                                "children": [
-                                  {
-                                    "type": "node",
                                     "kind": "INT_LITERAL",
-                                    "width": 1,
-                                    "children": [
-                                      {
-                                        "type": "token",
-                                        "kind": "INT_LITERAL",
-                                        "text": "0",
-                                        "width": 1
-                                      }
-                                    ]
+                                    "text": "0",
+                                    "width": 1
                                   }
                                 ]
                               }

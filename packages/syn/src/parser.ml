@@ -2433,6 +2433,21 @@ and parse_pattern parser =
               (make_node_list ~kind:Syntax_kind.RANGE_PATTERN
                  [ Ceibo.Green.Node pat; dotdot; Ceibo.Green.Node end_pat ])
         | None -> Some pat
+      else if at parser Token.Pipe then
+        (* OR pattern: A | B | C *)
+        let rec collect_or_patterns acc =
+          if not (at parser Token.Pipe) then List.rev acc
+          else
+            let pipe = consume parser in
+            let _ = consume_trivia parser in
+            match parse_base_pattern parser with
+            | Some p ->
+                let _ = consume_trivia parser in
+                collect_or_patterns (Ceibo.Green.Node p :: pipe :: acc)
+            | None -> List.rev acc
+        in
+        let patterns = collect_or_patterns [ Ceibo.Green.Node pat ] in
+        Some (make_node_list ~kind:Syntax_kind.OR_PATTERN patterns)
       else if at parser (Token.Keyword Keyword.As) then
         let as_kw = consume parser in
         let _ = consume_trivia parser in
