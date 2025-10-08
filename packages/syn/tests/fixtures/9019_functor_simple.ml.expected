@@ -45,10 +45,17 @@
                 "width": 1
               },
               {
-                "type": "token",
-                "kind": "IDENT_EXPR",
-                "text": "S",
-                "width": 1
+                "type": "node",
+                "kind": "MODULE_TYPE_EXPR",
+                "width": 1,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "S",
+                    "width": 1
+                  }
+                ]
               },
               {
                 "type": "token",

@@ -142,7 +142,7 @@ let lex_ident cursor delim_stack token_start =
     if ident = "_" then Token.Underscore
     else
       match Keyword.of_string ident with
-      | Some kw ->
+      | Some kw -> (
           if Keyword.is_opening kw then
             let delim = Token.delimiter_of_keyword kw |> Option.unwrap in
             Token.OpenDelim delim
@@ -154,7 +154,7 @@ let lex_ident cursor delim_stack token_start =
           else
             (* Operator keywords can be used as identifiers in bindings like: let lnot = ... *)
             (* Treat them as identifiers to simplify parsing *)
-            (match kw with
+            match kw with
             | Lnot | Land | Lor | Lxor | Lsl | Lsr | Asr | Mod ->
                 Token.Ident ident
             | _ -> Token.Keyword kw)

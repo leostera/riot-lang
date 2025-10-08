@@ -1,0 +1,307 @@
+{
+  "tree": {
+    "type": "node",
+    "kind": "SOURCE_FILE",
+    "width": 244,
+    "children": [
+      {
+        "type": "node",
+        "kind": "MODULE_TYPE_DECL",
+        "width": 201,
+        "children": [
+          {
+            "type": "token",
+            "kind": "MODULE_DECL",
+            "text": "module",
+            "width": 6
+          },
+          {
+            "type": "token",
+            "kind": "TYPE_DECL",
+            "text": "type",
+            "width": 4
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "S",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "INFIX_EXPR",
+            "text": "=",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "SIGNATURE",
+            "width": 189,
+            "children": [
+              {
+                "type": "token",
+                "kind": "COMMENT",
+                "text": "(* TEST_BELOW\nFiller_text_added_\nto_preserve_locations_while_tran\nslating_from_old_syntax__Filler_\ntext_added_to_pre\nserve_locations_while_translati\n*)",
+                "width": 151
+              },
+              {
+                "type": "token",
+                "kind": "COMMENT",
+                "text": "(* Structures *)",
+                "width": 16
+              },
+              {
+                "type": "token",
+                "kind": "COMMENT",
+                "text": "(* Signatures *)",
+                "width": 16
+              },
+              {
+                "type": "token",
+                "kind": "SIGNATURE",
+                "text": "sig",
+                "width": 3
+              },
+              {
+                "type": "token",
+                "kind": "SIGNATURE",
+                "text": "end",
+                "width": 3
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "LET_BINDING",
+        "width": 35,
+        "children": [
+          {
+            "type": "token",
+            "kind": "LET_BINDING",
+            "text": "let",
+            "width": 3
+          },
+          {
+            "type": "node",
+            "kind": "RECORD_PATTERN",
+            "width": 32,
+            "children": [
+              {
+                "type": "token",
+                "kind": "COMMENT",
+                "text": "(* Expressions/Pattern/Types *)",
+                "width": 31
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "{",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "MISSING",
+                "text": "",
+                "width": 0
+              }
+            ]
+          },
+          {
+            "type": "token",
+            "kind": "MISSING",
+            "text": "",
+            "width": 0
+          },
+          {
+            "type": "token",
+            "kind": "MISSING",
+            "text": "",
+            "width": 0
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "LET_BINDING",
+        "width": 4,
+        "children": [
+          {
+            "type": "token",
+            "kind": "LET_BINDING",
+            "text": "let",
+            "width": 3
+          },
+          {
+            "type": "node",
+            "kind": "RECORD_PATTERN",
+            "width": 1,
+            "children": [
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "{",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "MISSING",
+                "text": "",
+                "width": 0
+              }
+            ]
+          },
+          {
+            "type": "token",
+            "kind": "MISSING",
+            "text": "",
+            "width": 0
+          },
+          {
+            "type": "token",
+            "kind": "MISSING",
+            "text": "",
+            "width": 0
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "LET_BINDING",
+        "width": 4,
+        "children": [
+          {
+            "type": "token",
+            "kind": "LET_BINDING",
+            "text": "let",
+            "width": 3
+          },
+          {
+            "type": "node",
+            "kind": "RECORD_PATTERN",
+            "width": 1,
+            "children": [
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "{",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "MISSING",
+                "text": "",
+                "width": 0
+              }
+            ]
+          },
+          {
+            "type": "token",
+            "kind": "MISSING",
+            "text": "",
+            "width": 0
+          },
+          {
+            "type": "token",
+            "kind": "MISSING",
+            "text": "",
+            "width": 0
+          }
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "kind": {
+        "type": "missing_token",
+        "expected": "'}'"
+      },
+      "span": {
+        "start": 392,
+        "end": 392
+      }
+    },
+    {
+      "kind": {
+        "type": "missing_token",
+        "expected": "'='"
+      },
+      "span": {
+        "start": 392,
+        "end": 392
+      }
+    },
+    {
+      "kind": {
+        "type": "missing_token",
+        "expected": "expression"
+      },
+      "span": {
+        "start": 392,
+        "end": 393
+      }
+    },
+    {
+      "kind": {
+        "type": "missing_token",
+        "expected": "'}'"
+      },
+      "span": {
+        "start": 470,
+        "end": 470
+      }
+    },
+    {
+      "kind": {
+        "type": "missing_token",
+        "expected": "'='"
+      },
+      "span": {
+        "start": 470,
+        "end": 470
+      }
+    },
+    {
+      "kind": {
+        "type": "missing_token",
+        "expected": "expression"
+      },
+      "span": {
+        "start": 470,
+        "end": 471
+      }
+    },
+    {
+      "kind": {
+        "type": "missing_token",
+        "expected": "'}'"
+      },
+      "span": {
+        "start": 577,
+        "end": 577
+      }
+    },
+    {
+      "kind": {
+        "type": "missing_token",
+        "expected": "'='"
+      },
+      "span": {
+        "start": 577,
+        "end": 577
+      }
+    },
+    {
+      "kind": {
+        "type": "missing_token",
+        "expected": "expression"
+      },
+      "span": {
+        "start": 577,
+        "end": 578
+      }
+    }
+  ]
+}

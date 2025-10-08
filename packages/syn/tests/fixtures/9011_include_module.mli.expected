@@ -2,13 +2,25 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 12,
+    "width": 31,
     "children": [
       {
         "type": "node",
-        "kind": "TYPE_DECL",
-        "width": 12,
+        "kind": "INCLUDE_STMT",
+        "width": 31,
         "children": [
+          {
+            "type": "token",
+            "kind": "INCLUDE_STMT",
+            "text": "include",
+            "width": 7
+          },
+          {
+            "type": "token",
+            "kind": "MODULE_DECL",
+            "text": "module",
+            "width": 6
+          },
           {
             "type": "token",
             "kind": "TYPE_DECL",
@@ -23,44 +35,25 @@
           },
           {
             "type": "token",
-            "kind": "MISSING",
-            "text": "",
-            "width": 0
+            "kind": "IDENT_EXPR",
+            "text": "Stdlib",
+            "width": 6
           },
           {
-            "type": "node",
-            "kind": "TYPE_CONSTR",
-            "width": 6,
-            "children": [
-              {
-                "type": "node",
-                "kind": "TYPE_VARIANT_CONSTR",
-                "width": 6,
-                "children": [
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "Stdlib",
-                    "width": 6
-                  }
-                ]
-              }
-            ]
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": ".",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "Array",
+            "width": 5
           }
         ]
       }
     ]
   },
-  "diagnostics": [
-    {
-      "kind": {
-        "type": "missing_token",
-        "expected": "'='"
-      },
-      "span": {
-        "start": 23,
-        "end": 23
-      }
-    }
-  ]
+  "diagnostics": []
 }
