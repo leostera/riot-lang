@@ -2801,6 +2801,9 @@ and parse_type_atomic parser =
         in
         let path_parts = parse_module_path [] in
         make_node_list ~kind:Syntax_kind.TYPE_CONSTR path_parts
+    | Some (Token.OpenDelim Token.Brace) ->
+        (* Inline record type: { field: int } *)
+        parse_record_type parser
     | Some (Token.OpenDelim Token.Bracket) ->
         (* Polymorphic variant type: [ `A | `B ] *)
         parse_poly_variant_type parser
@@ -2851,13 +2854,25 @@ and parse_type_atomic parser =
   let _ = consume_trivia parser in
 
   (* Check for type application: 'a list, (int, string) result *)
-  match peek_kind parser with
-  | Some (Token.Ident _) ->
-      (* Type application: base_type constructor_name *)
-      let constructor = consume parser in
-      make_node_list ~kind:Syntax_kind.TYPE_CONSTR
-        [ Ceibo.Green.Node base_type; constructor ]
-  | _ -> base_type
+  (* Can be chained: 'a tree list, int option list *)
+  let rec parse_type_applications current_type =
+    match peek_kind parser with
+    | Some (Token.Ident id)
+      when String.length id > 0 && Char.lowercase_ascii id.[0] = id.[0] ->
+        (* Type application: current_type constructor_name *)
+        (* Only lowercase identifiers are type constructors (not module paths) *)
+        let constructor = consume parser in
+        let _ = consume_trivia parser in
+        let applied_type =
+          make_node_list ~kind:Syntax_kind.TYPE_CONSTR
+            [ Ceibo.Green.Node current_type; constructor ]
+        in
+        (* Check for more applications *)
+        parse_type_applications applied_type
+    | _ -> current_type
+  in
+
+  parse_type_applications base_type
 
 and parse_variant_type parser =
   (* Parse variant type: A | B | C of int | D of string * bool *)
