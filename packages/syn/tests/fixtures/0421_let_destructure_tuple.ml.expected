@@ -21,10 +21,17 @@
             "width": 5,
             "children": [
               {
-                "type": "token",
-                "kind": "IDENT_EXPR",
-                "text": "a",
-                "width": 1
+                "type": "node",
+                "kind": "IDENT_PATTERN",
+                "width": 1,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "a",
+                    "width": 1
+                  }
+                ]
               },
               {
                 "type": "token",

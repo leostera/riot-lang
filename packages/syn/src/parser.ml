@@ -2327,13 +2327,14 @@ and parse_array_pattern parser =
     Some (make_node_list ~kind:Syntax_kind.ARRAY_PATTERN children)
 
 and parse_ident_or_constructor_pattern parser =
-  let ident = consume parser in
-  let _ = consume_trivia parser in
+  (* Parse identifier or module path (A.B.C) *)
+  let ident_parts = parse_identifier parser in
 
-  (* Check if this identifier is a constructor (starts with uppercase) *)
+  (* Get last identifier in path to check if it's a constructor *)
+  let last_ident = List.hd (List.rev ident_parts) in
   let is_constructor =
-    match Ceibo.Green.text ident with
-    | Some text when Ceibo.Green.kind ident = Syntax_kind.IDENT_EXPR ->
+    match Ceibo.Green.text last_ident with
+    | Some text when Ceibo.Green.kind last_ident = Syntax_kind.IDENT_EXPR ->
         is_constructor_ident text
     | _ -> false
   in
@@ -2346,8 +2347,8 @@ and parse_ident_or_constructor_pattern parser =
     | Some tail_pat ->
         Some
           (make_node_list ~kind:Syntax_kind.CONS_PATTERN
-             [ ident; cons_op; Ceibo.Green.Node tail_pat ])
-    | None -> Some (make_node_list ~kind:Syntax_kind.IDENT_PATTERN [ ident ])
+             (ident_parts @ [ cons_op; Ceibo.Green.Node tail_pat ]))
+    | None -> Some (make_node_list ~kind:Syntax_kind.IDENT_PATTERN ident_parts)
   else if is_constructor then
     (* Only try to parse as constructor pattern if identifier is uppercase *)
     match peek_kind parser with
@@ -2360,13 +2361,13 @@ and parse_ident_or_constructor_pattern parser =
         | Some arg_pat ->
             Some
               (make_node_list ~kind:Syntax_kind.CONSTRUCTOR_PATTERN
-                 [ ident; Ceibo.Green.Node arg_pat ])
+                 (ident_parts @ [ Ceibo.Green.Node arg_pat ]))
         | None ->
-            Some (make_node_list ~kind:Syntax_kind.IDENT_PATTERN [ ident ]))
-    | _ -> Some (make_node_list ~kind:Syntax_kind.IDENT_PATTERN [ ident ])
+            Some (make_node_list ~kind:Syntax_kind.IDENT_PATTERN ident_parts))
+    | _ -> Some (make_node_list ~kind:Syntax_kind.IDENT_PATTERN ident_parts)
   else
     (* Lowercase identifier - always treat as simple ident pattern *)
-    Some (make_node_list ~kind:Syntax_kind.IDENT_PATTERN [ ident ])
+    Some (make_node_list ~kind:Syntax_kind.IDENT_PATTERN ident_parts)
 
 and parse_paren_pattern parser =
   let open_paren = consume parser in
@@ -2839,15 +2840,12 @@ and parse_regular_let_binding parser let_kw =
     else None
   in
 
-  (* Parse pattern - for top-level bindings, prefer simple identifier *)
+  (* Parse pattern - use parse_pattern and check for tuple afterward *)
   let pattern =
-    match peek_kind parser with
-    | Some (Token.Ident _) ->
-        (* Could be simple ident or start of tuple/complex pattern *)
-        let ident = consume parser in
+    match parse_pattern parser with
+    | Some first_pat ->
         let _ = consume_trivia parser in
-
-        (* Check if followed by comma (tuple) or other pattern indicators *)
+        (* Check if followed by comma (tuple pattern) *)
         if at parser Token.Comma then
           (* Tuple pattern *)
           let rec parse_tuple_patterns acc =
@@ -2863,43 +2861,24 @@ and parse_regular_let_binding parser let_kw =
                        (Ceibo.Green.Node pat :: comma :: acc))
               | None -> List.rev acc
           in
-          let patterns = parse_tuple_patterns [ ident ] in
+          let patterns = parse_tuple_patterns [ Ceibo.Green.Node first_pat ] in
           Ceibo.Green.Node
             (make_node_list ~kind:Syntax_kind.TUPLE_PATTERN patterns)
         else
-          (* Simple identifier - keep as token, not wrapped *)
-          ident
-    | Some (Token.OpenDelim Token.Paren)
-    | Some (Token.OpenDelim Token.Brace) (* Record patterns: { x; y } *)
-    | Some (Token.OpenDelim Token.Bracket) (* List patterns: [x; y] *)
-    | Some Token.Underscore (* Wildcard: _ *)
-    | Some (Token.Literal _) (* Literal patterns *)
-    | Some (Token.Keyword Keyword.Lazy) (* Lazy patterns *)
-    | Some Token.Backtick -> (
-        (* Polymorphic variant patterns *)
-        (* Use parse_pattern for all complex pattern forms *)
-        match parse_pattern parser with
-        | Some pat ->
-            let _ = consume_trivia parser in
-            Ceibo.Green.Node pat
-        | None ->
-            let span =
-              match peek parser with
-              | Some tok -> tok.Token.span
-              | None -> Ceibo.Span.make ~start:0 ~end_:0
-            in
-            let err = Diagnostic.make_missing_token ~expected:"pattern" ~span in
-            report_error parser err;
-            Ceibo.Green.Token
-              (Ceibo.Green.make_token ~kind:Syntax_kind.MISSING ~text:""
-                 ~width:0))
-    | _ ->
+          (* Unwrap simple IDENT_PATTERN to keep just the token for backward compatibility *)
+          (match first_pat with
+           | node when Ceibo.Green.kind (Ceibo.Green.Node node) = Syntax_kind.IDENT_PATTERN ->
+               (match Ceibo.Green.children node with
+                | [| Ceibo.Green.Token tok |] -> Ceibo.Green.Token tok
+                | _ -> Ceibo.Green.Node first_pat)
+           | _ -> Ceibo.Green.Node first_pat)
+    | None ->
         let span =
           match peek parser with
           | Some tok -> tok.Token.span
           | None -> Ceibo.Span.make ~start:0 ~end_:0
         in
-        let err = Diagnostic.make_missing_token ~expected:"identifier" ~span in
+        let err = Diagnostic.make_missing_token ~expected:"pattern" ~span in
         report_error parser err;
         Ceibo.Green.Token
           (Ceibo.Green.make_token ~kind:Syntax_kind.MISSING ~text:"" ~width:0)
@@ -2911,7 +2890,12 @@ and parse_regular_let_binding parser let_kw =
   let is_simple_ident =
     match pattern with
     | Ceibo.Green.Token _ -> Ceibo.Green.kind pattern = Syntax_kind.IDENT_EXPR
-    | _ -> false
+    | Ceibo.Green.Node node ->
+        (* Check if it's an IDENT_PATTERN with a single IDENT_EXPR token *)
+        (match Ceibo.Green.children node with
+         | [| Ceibo.Green.Token tok |] ->
+             Ceibo.Green.kind (Ceibo.Green.Token tok) = Syntax_kind.IDENT_EXPR
+         | _ -> false)
   in
 
   (* Check for optional type annotation: let f : int -> int = ... *)
