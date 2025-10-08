@@ -2526,6 +2526,20 @@ and parse_base_pattern parser =
           Some
             (make_node_list ~kind:Syntax_kind.EXCEPTION_PATTERN [ exception_kw ])
       )
+  (* Lazy pattern: lazy p *)
+  | Some (Token.Keyword Keyword.Lazy) -> (
+      let lazy_kw = consume parser in
+      let _ = consume_trivia parser in
+      (* Parse the inner pattern *)
+      match parse_pattern parser with
+      | Some pat ->
+          Some
+            (make_node_list ~kind:Syntax_kind.LAZY_PATTERN
+               [ lazy_kw; Ceibo.Green.Node pat ])
+      | None ->
+          Some
+            (make_node_list ~kind:Syntax_kind.LAZY_PATTERN [ lazy_kw ])
+      )
   | _ -> None
 
 and parse_list_pattern parser =
