@@ -2574,71 +2574,107 @@ and parse_let_binding parser =
            [ let_kw; pattern; eq; final_expr ])
 
 and parse_type_decl parser =
-  (* type 'a t = 'a | type t = A | B | type t = { field: int } *)
+  (* type 'a t = ... | type t += ... | type t *)
   let type_kw = consume parser in
   let _ = consume_trivia parser in
 
-  (* Parse type parameters like 'a or ('a, 'b) *)
+  (* Parse type parameters like 'a, _, or ('a, 'b) *)
   let params = parse_type_params parser in
 
-  (* Parse type name *)
-  let type_name = consume parser in
+  (* Parse type name (can be module path like Effect.t or Message.t) *)
+  let type_name_parts = parse_type_name parser in
+
+  (* Check what comes after the name: +=, =, or nothing *)
+  match peek_kind parser with
+  | Some Token.Plus when peek_nth parser 1 = Some Token.Eq ->
+      (* Extensible type: type t += A | B *)
+      let plus = consume parser in
+      let _ = consume_trivia parser in
+      let eq = consume parser in
+      let _ = consume_trivia parser in
+
+      let type_body = parse_variant_type parser in
+
+      let children =
+        match params with
+        | Some p ->
+            type_kw :: Ceibo.Green.Node p :: (type_name_parts @ [ plus; eq; Ceibo.Green.Node type_body ])
+        | None -> type_kw :: (type_name_parts @ [ plus; eq; Ceibo.Green.Node type_body ])
+      in
+
+      Some (make_node_list ~kind:Syntax_kind.TYPE_DECL children)
+  
+  | Some Token.Eq ->
+      (* Regular type definition: type t = ... *)
+      let eq = consume parser in
+      let _ = consume_trivia parser in
+
+      let type_body = parse_type_decl_body parser in
+
+      let children =
+        match params with
+        | Some p ->
+            type_kw :: Ceibo.Green.Node p :: (type_name_parts @ [ eq; Ceibo.Green.Node type_body ])
+        | None -> type_kw :: (type_name_parts @ [ eq; Ceibo.Green.Node type_body ])
+      in
+
+      Some (make_node_list ~kind:Syntax_kind.TYPE_DECL children)
+  
+  | _ ->
+      (* Abstract type (no = present, used in signatures): type t *)
+      let children =
+        match params with
+        | Some p -> type_kw :: Ceibo.Green.Node p :: type_name_parts
+        | None -> type_kw :: type_name_parts
+      in
+      Some (make_node_list ~kind:Syntax_kind.TYPE_DECL children)
+
+and parse_type_name parser =
+  (* Parse type name, which can be a module path: t or Effect.t or Message.t *)
+  let first_name = consume parser in
   let _ = consume_trivia parser in
+  
+  let rec parse_rest acc =
+    if at parser Token.Dot then
+      let dot = consume parser in
+      let _ = consume_trivia parser in
+      let name = consume parser in
+      let _ = consume_trivia parser in
+      parse_rest (name :: dot :: acc)
+    else
+      List.rev acc
+  in
+  
+  let rest = parse_rest [] in
+  first_name :: rest
 
-  (* Check if = is present (for abstract types in signatures, it's optional) *)
-  let has_eq = at parser Token.Eq in
-
-  if has_eq then
-    (* Concrete type definition *)
-    let eq = consume parser in
-    let _ = consume_trivia parser in
-
-    (* Determine what kind of type definition this is *)
-    let type_body =
-      match peek_kind parser with
-      | Some (Token.OpenDelim Token.Brace) ->
-          (* Record type: { field: int } *)
-          parse_record_type parser
-      | Some (Token.Ident tag)
-        when String.length tag > 0
-             && Char.uppercase_ascii tag.[0] = tag.[0]
-             && peek_nth parser 1 <> Some Token.Dot ->
-          (* Variant type: A | B (but not Module.path) *)
-          parse_variant_type parser
-      | Some Token.Pipe ->
-          (* Variant type starting with |: | A | B *)
-          parse_variant_type parser
-      | _ ->
-          (* Type expression (alias): int, 'a, int -> string, Module.t *)
-          parse_type_expr parser
-    in
-
-    let children =
-      match params with
-      | Some p ->
-          [
-            type_kw;
-            Ceibo.Green.Node p;
-            type_name;
-            eq;
-            Ceibo.Green.Node type_body;
-          ]
-      | None -> [ type_kw; type_name; eq; Ceibo.Green.Node type_body ]
-    in
-
-    Some (make_node_list ~kind:Syntax_kind.TYPE_DECL children)
-  else
-    (* Abstract type (no = present, used in signatures) *)
-    let children =
-      match params with
-      | Some p -> [ type_kw; Ceibo.Green.Node p; type_name ]
-      | None -> [ type_kw; type_name ]
-    in
-    Some (make_node_list ~kind:Syntax_kind.TYPE_DECL children)
+and parse_type_decl_body parser =
+  (* Determine what kind of type body this is *)
+  match peek_kind parser with
+  | Some (Token.OpenDelim Token.Brace) ->
+      (* Record type: { field: int } *)
+      parse_record_type parser
+  | Some (Token.Ident tag)
+    when String.length tag > 0
+         && Char.uppercase_ascii tag.[0] = tag.[0]
+         && peek_nth parser 1 <> Some Token.Dot ->
+      (* Variant type: A | B (but not Module.path) *)
+      parse_variant_type parser
+  | Some Token.Pipe ->
+      (* Variant type starting with |: | A | B *)
+      parse_variant_type parser
+  | _ ->
+      (* Type expression (alias): int, 'a, int -> string, Module.t *)
+      parse_type_expr parser
 
 and parse_type_params parser =
-  (* Handle 'a or ('a, 'b) or no params *)
+  (* Handle 'a or ('a, 'b) or _ or no params *)
   match peek_kind parser with
+  | Some Token.Underscore ->
+      (* Wildcard type parameter: _ *)
+      let underscore = consume parser in
+      let _ = consume_trivia parser in
+      Some (make_node_list ~kind:Syntax_kind.TYPE_PARAM [ underscore ])
   | Some Token.Quote ->
       (* Single type variable: 'a *)
       let quote = consume parser in
