@@ -151,7 +151,13 @@ let lex_ident cursor delim_stack token_start =
             match delim_stack with
             | d :: _ -> Token.CloseDelim d
             | [] -> Token.CloseDelim BeginEnd (* Default fallback *)
-          else Token.Keyword kw
+          else
+            (* Operator keywords can be used as identifiers in bindings like: let lnot = ... *)
+            (* Treat them as identifiers to simplify parsing *)
+            (match kw with
+            | Lnot | Land | Lor | Lxor | Lsl | Lsr | Asr | Mod ->
+                Token.Ident ident
+            | _ -> Token.Keyword kw)
       | None -> Token.Ident ident
   in
   { Token.kind; span = { start = token_start; end_ } }
