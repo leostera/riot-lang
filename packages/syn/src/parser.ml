@@ -122,8 +122,10 @@ let token_kind_to_syntax_kind = function
       Syntax_kind.FOR_EXPR
   | Token.Keyword Keyword.While -> Syntax_kind.WHILE_EXPR
   | Token.Keyword (Keyword.Begin | Keyword.End) -> Syntax_kind.PAREN_EXPR
-  | Token.Keyword (Keyword.Sig | Keyword.Struct) ->
-      Syntax_kind.WHITESPACE (* Delimiters *)
+  | Token.OpenDelim Token.StructEnd | Token.CloseDelim Token.StructEnd ->
+      Syntax_kind.STRUCTURE
+  | Token.OpenDelim Token.SigEnd | Token.CloseDelim Token.SigEnd ->
+      Syntax_kind.SIGNATURE
   | Token.OpenDelim _ | Token.CloseDelim _ -> Syntax_kind.WHITESPACE
   | Token.Keyword _ ->
       Syntax_kind.WHITESPACE (* Other keywords default to WHITESPACE *)
@@ -3147,8 +3149,8 @@ and parse_module_decl parser =
   if at parser (Token.Keyword Keyword.Type) then
     parse_module_type_decl parser module_kw
   else
-    (* Regular module declaration - not implemented yet *)
-    None
+    (* Regular module declaration: module M = ... OR module M (X : S) = ... *)
+    parse_regular_module_decl parser module_kw
 
 and parse_module_type_decl parser module_kw =
   (* module type S = sig ... end *)
@@ -3178,7 +3180,7 @@ and parse_signature parser =
 
   (* Parse signature items until 'end' *)
   let rec parse_sig_items acc =
-    if at parser (Token.Keyword Keyword.End) then List.rev acc
+    if at parser (Token.CloseDelim Token.SigEnd) then List.rev acc
     else
       match parse_signature_item parser with
       | Some item ->
@@ -3186,7 +3188,7 @@ and parse_signature parser =
           parse_sig_items (Ceibo.Green.Node item :: acc)
       | None ->
           (* Skip if we can't parse this item *)
-          if at parser (Token.Keyword Keyword.End) || peek parser = None then
+          if at parser (Token.CloseDelim Token.SigEnd) || peek parser = None then
             List.rev acc
           else
             let _ = advance parser in
@@ -3203,6 +3205,91 @@ and parse_signature parser =
     prepend_pending_trivia parser ([ sig_kw ] @ items @ [ end_kw ])
   in
   make_node_list ~kind:Syntax_kind.SIGNATURE children
+
+and parse_regular_module_decl parser module_kw =
+  (* module M = ... OR module M (X : S) = ... (functor) *)
+  let name = consume parser in
+  let _ = consume_trivia parser in
+
+  (* Check for functor parameters: (X : S) *)
+  let rec parse_functor_params acc =
+    if at parser (Token.OpenDelim Token.Paren) then
+      let open_paren = consume parser in
+      let _ = consume_trivia parser in
+
+      (* Parse parameter name *)
+      let param_name = consume parser in
+      let _ = consume_trivia parser in
+
+      (* Expect : *)
+      let colon = consume parser in
+      let _ = consume_trivia parser in
+
+      (* Parse signature (module type) *)
+      let signature = parse_identifier parser in
+      let _ = consume_trivia parser in
+
+      let close_paren = expect parser (Token.CloseDelim Token.Paren) in
+      let _ = consume_trivia parser in
+
+      let param =
+        make_node_list ~kind:Syntax_kind.TYPE_PARAM
+          ((open_paren :: param_name :: colon :: signature) @ [ close_paren ])
+      in
+
+      parse_functor_params (Ceibo.Green.Node param :: acc)
+    else List.rev acc
+  in
+
+  let params = parse_functor_params [] in
+
+  (* Expect = *)
+  let eq = expect parser Token.Eq in
+  let _ = consume_trivia parser in
+
+  (* Parse module expression (struct...end, or identifier, or functor application) *)
+  let module_expr =
+    match peek_kind parser with
+    | Some (Token.OpenDelim Token.StructEnd) ->
+        (* struct ... end *)
+        let struct_kw = consume parser in
+        let _ = consume_trivia parser in
+
+        (* Parse structure items until 'end' *)
+        let rec parse_struct_items acc =
+          if at parser (Token.CloseDelim Token.StructEnd) then List.rev acc
+          else
+            match parse_structure_item parser with
+            | Some item ->
+                let _ = consume_trivia parser in
+                parse_struct_items (Ceibo.Green.Node item :: acc)
+            | None ->
+                if at parser (Token.CloseDelim Token.StructEnd) || peek parser = None
+                then List.rev acc
+                else
+                  let _ = advance parser in
+                  parse_struct_items acc
+        in
+
+        let items = parse_struct_items [] in
+        let _ = consume_trivia parser in
+        let end_kw = consume parser in
+
+        make_node_list ~kind:Syntax_kind.STRUCTURE
+          ([ struct_kw ] @ items @ [ end_kw ])
+    | _ ->
+        (* Module identifier or functor application: M or F(X) *)
+        let path = parse_identifier parser in
+        make_node_list ~kind:Syntax_kind.IDENT_EXPR path
+  in
+
+  let children =
+    match params with
+    | [] -> [ module_kw; name; eq; Ceibo.Green.Node module_expr ]
+    | _ -> [ module_kw; name ] @ params @ [ eq; Ceibo.Green.Node module_expr ]
+  in
+
+  Some (make_node_list ~kind:Syntax_kind.MODULE_DECL children)
 
 and parse_signature_item parser =
   (* Signature items: type, val, external, exception, module, etc. *)

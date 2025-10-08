@@ -90,15 +90,16 @@ val create : string -> t
 
 (** # Tokenization *)
 
-val next : t -> Token.t
-(** `next lexer` returns the next token from the source.
+val next : t -> Token.delimiter list -> Token.t
+(** `next lexer delim_stack` returns the next token from the source.
 
     Advances the lexer position past the returned token. Returns EOF token when
-    end of source is reached.
+    end of source is reached. The delimiter stack is used to match 'end' keywords
+    to their corresponding opening delimiters (struct, sig, begin, object).
 
     Example: ```ocaml let lexer = Lexer.create source in let tok1 = Lexer.next
-    lexer in (* first token *) let tok2 = Lexer.next lexer in (* second token *)
-    (* ... *) let last = Lexer.next lexer in (* eventually returns EOF *) ``` *)
+    lexer [] in (* first token *) let tok2 = Lexer.next lexer [] in (* second token *)
+    (* ... *) let last = Lexer.next lexer [] in (* eventually returns EOF *) ``` *)
 
 val tokenize : string -> Token.t list
 (** `tokenize source` lexes the entire source into a token list.

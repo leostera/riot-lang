@@ -2,23 +2,23 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 11,
+    "width": 53,
     "children": [
       {
         "type": "node",
-        "kind": "LET_BINDING",
-        "width": 11,
+        "kind": "MODULE_DECL",
+        "width": 53,
         "children": [
           {
             "type": "token",
-            "kind": "LET_BINDING",
-            "text": "let",
-            "width": 3
+            "kind": "MODULE_DECL",
+            "text": "module",
+            "width": 6
           },
           {
             "type": "token",
             "kind": "IDENT_EXPR",
-            "text": "value",
+            "text": "Outer",
             "width": 5
           },
           {
@@ -29,14 +29,102 @@
           },
           {
             "type": "node",
-            "kind": "INT_LITERAL",
-            "width": 2,
+            "kind": "STRUCTURE",
+            "width": 41,
             "children": [
               {
                 "type": "token",
-                "kind": "INT_LITERAL",
-                "text": "42",
-                "width": 2
+                "kind": "STRUCTURE",
+                "text": "struct",
+                "width": 6
+              },
+              {
+                "type": "node",
+                "kind": "MODULE_DECL",
+                "width": 32,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "MODULE_DECL",
+                    "text": "module",
+                    "width": 6
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "Inner",
+                    "width": 5
+                  },
+                  {
+                    "type": "token",
+                    "kind": "INFIX_EXPR",
+                    "text": "=",
+                    "width": 1
+                  },
+                  {
+                    "type": "node",
+                    "kind": "STRUCTURE",
+                    "width": 20,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "STRUCTURE",
+                        "text": "struct",
+                        "width": 6
+                      },
+                      {
+                        "type": "node",
+                        "kind": "LET_BINDING",
+                        "width": 11,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "LET_BINDING",
+                            "text": "let",
+                            "width": 3
+                          },
+                          {
+                            "type": "token",
+                            "kind": "IDENT_EXPR",
+                            "text": "value",
+                            "width": 5
+                          },
+                          {
+                            "type": "token",
+                            "kind": "INFIX_EXPR",
+                            "text": "=",
+                            "width": 1
+                          },
+                          {
+                            "type": "node",
+                            "kind": "INT_LITERAL",
+                            "width": 2,
+                            "children": [
+                              {
+                                "type": "token",
+                                "kind": "INT_LITERAL",
+                                "text": "42",
+                                "width": 2
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "token",
+                        "kind": "STRUCTURE",
+                        "text": "end",
+                        "width": 3
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "STRUCTURE",
+                "text": "end",
+                "width": 3
               }
             ]
           }

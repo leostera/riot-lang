@@ -131,7 +131,7 @@ let lex_comment cursor token_start =
   in
   lex_content 1
 
-let lex_ident cursor token_start =
+let lex_ident cursor delim_stack token_start =
   let start = Cursor.position cursor in
   Cursor.skip_while cursor is_ident_continue;
   let len = Cursor.position cursor - start in
@@ -146,7 +146,11 @@ let lex_ident cursor token_start =
           if Keyword.is_opening kw then
             let delim = Token.delimiter_of_keyword kw |> Option.unwrap in
             Token.OpenDelim delim
-          else if Keyword.is_closing kw then Token.CloseDelim BeginEnd
+          else if Keyword.is_closing kw then
+            (* Match 'end' to the correct closing delimiter based on stack *)
+            match delim_stack with
+            | d :: _ -> Token.CloseDelim d
+            | [] -> Token.CloseDelim BeginEnd  (* Default fallback *)
           else Token.Keyword kw
       | None -> Token.Ident ident
   in
@@ -226,7 +230,7 @@ let lex_char cursor token_start =
   let end_ = Cursor.position cursor in
   { Token.kind; span = { start = token_start; end_ } }
 
-let next cursor =
+let next cursor delim_stack =
   let start = Cursor.position cursor in
   if Cursor.is_eof cursor then
     { Token.kind = Token.EOF; span = { start; end_ = start } }
@@ -493,18 +497,27 @@ let next cursor =
                 }
             | _ -> lex_char cursor start (* Try as char anyway *)))
     | Some c when is_digit c -> lex_number cursor start
-    | Some c when is_ident_start c -> lex_ident cursor start
+    | Some c when is_ident_start c -> lex_ident cursor delim_stack start
     | Some c ->
         Cursor.advance cursor;
         let end_ = Cursor.position cursor in
         { Token.kind = Token.Unknown c; span = Ceibo.Span.make ~start ~end_ }
 
-let rec lex_all cursor acc =
-  let token = next cursor in
+let rec lex_all cursor delim_stack acc =
+  let token = next cursor delim_stack in
+  let new_stack = 
+    match token.Token.kind with
+    | Token.OpenDelim d -> d :: delim_stack
+    | Token.CloseDelim _ -> (
+        match delim_stack with
+        | _ :: rest -> rest
+        | [] -> delim_stack)
+    | _ -> delim_stack
+  in
   match token.Token.kind with
   | Token.EOF -> List.rev (token :: acc)
-  | _ -> lex_all cursor (token :: acc)
+  | _ -> lex_all cursor new_stack (token :: acc)
 
 let tokenize source =
   let cursor = create source in
-  lex_all cursor []
+  lex_all cursor [] []
