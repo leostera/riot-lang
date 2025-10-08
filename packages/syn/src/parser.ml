@@ -69,10 +69,12 @@ let token_kind_to_syntax_kind = function
   | Token.Keyword Keyword.True | Token.Keyword Keyword.False ->
       Syntax_kind.BOOL_LITERAL
   | Token.Keyword Keyword.Let -> Syntax_kind.LET_BINDING
+  | Token.Keyword Keyword.Type -> Syntax_kind.TYPE_DECL
   | Token.Keyword Keyword.Rec -> Syntax_kind.LET_REC_EXPR
   | Token.Keyword Keyword.In -> Syntax_kind.LET_EXPR
   | Token.Keyword Keyword.And ->
       Syntax_kind.LET_EXPR (* 'and' in let bindings *)
+  | Token.Quote -> Syntax_kind.TYPE_VAR
   | Token.Keyword Keyword.If -> Syntax_kind.IF_EXPR
   | Token.Keyword Keyword.Then | Token.Keyword Keyword.Else ->
       Syntax_kind.IF_EXPR
@@ -82,6 +84,7 @@ let token_kind_to_syntax_kind = function
   | Token.Keyword Keyword.Try -> Syntax_kind.TRY_EXPR
   | Token.Keyword Keyword.With -> Syntax_kind.MATCH_EXPR
   | Token.Keyword Keyword.When -> Syntax_kind.MATCH_EXPR
+  | Token.Keyword Keyword.Of -> Syntax_kind.TYPE_VARIANT_CONSTR
   | Token.Arrow -> Syntax_kind.FUN_EXPR (* -> is part of fun/function syntax *)
   | Token.Pipe ->
       Syntax_kind.MATCH_EXPR (* | is part of match/function syntax *)
@@ -2389,6 +2392,7 @@ let rec parse_structure_item parser =
 
   match peek_kind parser with
   | Some (Token.Keyword Keyword.Let) -> parse_let_binding parser
+  | Some (Token.Keyword Keyword.Type) -> parse_type_decl parser
   | Some (Token.Keyword Keyword.Open) -> parse_open parser
   | _ -> None
 
@@ -2558,6 +2562,414 @@ and parse_let_binding parser =
       Some
         (make_node_list ~kind:Syntax_kind.LET_BINDING
            [ let_kw; pattern; eq; final_expr ])
+
+and parse_type_decl parser =
+  (* type 'a t = 'a | type t = A | B | type t = { field: int } *)
+  let type_kw = consume parser in
+  let _ = consume_trivia parser in
+
+  (* Parse type parameters like 'a or ('a, 'b) *)
+  let params = parse_type_params parser in
+
+  (* Parse type name *)
+  let type_name = consume parser in
+  let _ = consume_trivia parser in
+
+  (* Expect = *)
+  let eq = expect parser Token.Eq in
+  let _ = consume_trivia parser in
+
+  (* Determine what kind of type definition this is *)
+  let type_body =
+    match peek_kind parser with
+    | Some (Token.OpenDelim Token.Brace) ->
+        (* Record type: { field: int } *)
+        parse_record_type parser
+    | Some (Token.Ident tag)
+      when String.length tag > 0
+           && Char.uppercase_ascii tag.[0] = tag.[0] ->
+        (* Variant type: A | B *)
+        parse_variant_type parser
+    | Some Token.Pipe ->
+        (* Variant type starting with |: | A | B *)
+        parse_variant_type parser
+    | _ ->
+        (* Type expression (alias): int, 'a, int -> string *)
+        parse_type_expr parser
+  in
+
+  let children =
+    match params with
+    | Some p ->
+        [
+          type_kw; Ceibo.Green.Node p; type_name; eq; Ceibo.Green.Node type_body;
+        ]
+    | None -> [ type_kw; type_name; eq; Ceibo.Green.Node type_body ]
+  in
+
+  Some (make_node_list ~kind:Syntax_kind.TYPE_DECL children)
+
+and parse_type_params parser =
+  (* Handle 'a or ('a, 'b) or no params *)
+  match peek_kind parser with
+  | Some Token.Quote ->
+      (* Single type variable: 'a *)
+      let quote = consume parser in
+      let _ = consume_trivia parser in
+      let name = consume parser in
+      let _ = consume_trivia parser in
+      Some (make_node_list ~kind:Syntax_kind.TYPE_PARAM [ quote; name ])
+  | Some (Token.OpenDelim Token.Paren) ->
+      (* Multiple type variables: ('a, 'b) *)
+      let open_paren = consume parser in
+      let _ = consume_trivia parser in
+
+      let rec parse_param_list acc =
+        match peek_kind parser with
+        | Some Token.Quote ->
+            let quote = consume parser in
+            let _ = consume_trivia parser in
+            let name = consume parser in
+            let _ = consume_trivia parser in
+            let param =
+              make_node_list ~kind:Syntax_kind.TYPE_PARAM [ quote; name ]
+            in
+
+            (* Check for comma *)
+            if at parser Token.Comma then
+              let comma = consume parser in
+              let _ = consume_trivia parser in
+              parse_param_list (Ceibo.Green.Node param :: comma :: acc)
+            else List.rev (Ceibo.Green.Node param :: acc)
+        | _ -> List.rev acc
+      in
+
+      let params = parse_param_list [] in
+      let close_paren = expect parser (Token.CloseDelim Token.Paren) in
+      let _ = consume_trivia parser in
+
+      Some
+        (make_node_list ~kind:Syntax_kind.TYPE_PARAMS
+           ((open_paren :: params) @ [ close_paren ]))
+  | _ -> None
+
+and parse_type_expr parser =
+  (* Type expressions with proper precedence:
+     - Arrow types: int -> string (right-associative, higher precedence)
+     - Tuple types: int * string (left-associative, lower precedence)
+     - Atomic types: int, 'a, (int -> string)
+  *)
+  parse_type_arrow parser
+
+and parse_type_arrow parser =
+  (* Parse arrow types (right-associative): int -> string -> bool *)
+  let left = parse_type_tuple parser in
+  let _ = consume_trivia parser in
+
+  match peek_kind parser with
+  | Some Token.Arrow ->
+      let arrow = consume parser in
+      let _ = consume_trivia parser in
+      let right = parse_type_arrow parser in
+      (* Right-associative recursion *)
+      make_node_list ~kind:Syntax_kind.TYPE_ARROW
+        [ Ceibo.Green.Node left; arrow; Ceibo.Green.Node right ]
+  | _ -> left
+
+and parse_type_tuple parser =
+  (* Parse tuple types (left-associative): int * string * bool *)
+  let first = parse_type_atomic parser in
+  let _ = consume_trivia parser in
+
+  match peek_kind parser with
+  | Some Token.Star ->
+      let rec collect_tuple_parts acc =
+        let _ = consume_trivia parser in
+        match peek_kind parser with
+        | Some Token.Star ->
+            let star = consume parser in
+            let _ = consume_trivia parser in
+            let next = parse_type_atomic parser in
+            collect_tuple_parts (Ceibo.Green.Node next :: star :: acc)
+        | _ -> List.rev acc
+      in
+      let star = consume parser in
+      let _ = consume_trivia parser in
+      let second = parse_type_atomic parser in
+      let parts =
+        collect_tuple_parts
+          [ Ceibo.Green.Node second; star; Ceibo.Green.Node first ]
+      in
+      make_node_list ~kind:Syntax_kind.TYPE_TUPLE parts
+  | _ -> first
+
+and parse_type_atomic parser =
+  (* Parse atomic type expressions with optional type application:
+     - Type variables: 'a
+     - Type constructors: int, string
+     - Type application: 'a list, int option, ('a, 'b) result
+     - Parenthesized types: (int -> string)
+  *)
+  let _ = consume_trivia parser in
+
+  let base_type =
+    match peek_kind parser with
+    | Some Token.Quote ->
+        (* Type variable: 'a *)
+        let quote = consume parser in
+        let _ = consume_trivia parser in
+        let name = consume parser in
+        make_node_list ~kind:Syntax_kind.TYPE_VAR [ quote; name ]
+    | Some Token.Underscore ->
+        (* Wildcard type: _ *)
+        let underscore = consume parser in
+        make_node_list ~kind:Syntax_kind.TYPE_VAR [ underscore ]
+    | Some (Token.Ident _) ->
+        (* Type constructor: int, string, list *)
+        let name = consume parser in
+        make_node_list ~kind:Syntax_kind.TYPE_CONSTR [ name ]
+    | Some (Token.OpenDelim Token.Bracket) ->
+        (* Polymorphic variant type: [ `A | `B ] *)
+        parse_poly_variant_type parser
+    | Some (Token.OpenDelim Token.Paren) ->
+        (* Could be:
+           - Parenthesized type: (int -> string)
+           - Multiple type args: (int, string) result
+        *)
+        let open_paren = consume parser in
+        let _ = consume_trivia parser in
+        let first = parse_type_expr parser in
+        let _ = consume_trivia parser in
+        
+        (* Check if this is a tuple of type args (comma follows) *)
+        if at parser Token.Comma then
+          (* Multiple type arguments: (int, string) *)
+          let rec collect_args acc =
+            let _ = consume_trivia parser in
+            if at parser Token.Comma then
+              let comma = consume parser in
+              let _ = consume_trivia parser in
+              let next = parse_type_expr parser in
+              collect_args (Ceibo.Green.Node next :: comma :: acc)
+            else List.rev acc
+          in
+          let comma = consume parser in
+          let _ = consume_trivia parser in
+          let second = parse_type_expr parser in
+          let args =
+            collect_args [ Ceibo.Green.Node second; comma; Ceibo.Green.Node first ]
+          in
+          let _ = consume_trivia parser in
+          let close_paren = expect parser (Token.CloseDelim Token.Paren) in
+          (* Return the args tuple - will be used for type application *)
+          make_node_list ~kind:Syntax_kind.TYPE_PARAMS
+            ((open_paren :: args) @ [ close_paren ])
+        else
+          (* Single parenthesized type: (int -> string) *)
+          let close_paren = expect parser (Token.CloseDelim Token.Paren) in
+          make_node_list ~kind:Syntax_kind.TYPE_PAREN
+            [ open_paren; Ceibo.Green.Node first; close_paren ]
+    | _ ->
+        (* Error: couldn't parse type *)
+        make_node_list ~kind:Syntax_kind.ERROR []
+  in
+
+  let _ = consume_trivia parser in
+
+  (* Check for type application: 'a list, (int, string) result *)
+  match peek_kind parser with
+  | Some (Token.Ident _) ->
+      (* Type application: base_type constructor_name *)
+      let constructor = consume parser in
+      make_node_list ~kind:Syntax_kind.TYPE_CONSTR
+        [ Ceibo.Green.Node base_type; constructor ]
+  | _ -> base_type
+
+and parse_variant_type parser =
+  (* Parse variant type: A | B | C of int | D of string * bool *)
+  let _ = consume_trivia parser in
+
+  (* Optional leading pipe *)
+  let leading_pipe =
+    if at parser Token.Pipe then Some (consume parser) else None
+  in
+  let _ = consume_trivia parser in
+
+  let rec parse_constructors acc =
+    match peek_kind parser with
+    | Some (Token.Ident tag)
+      when String.length tag > 0
+           && Char.uppercase_ascii tag.[0] = tag.[0] ->
+        (* Constructor name *)
+        let constructor_name = consume parser in
+        let _ = consume_trivia parser in
+
+        (* Check for payload: of type *)
+        let payload =
+          if at parser (Token.Keyword Keyword.Of) then
+            let of_kw = consume parser in
+            let _ = consume_trivia parser in
+            let payload_type = parse_type_expr parser in
+            Some [ of_kw; Ceibo.Green.Node payload_type ]
+          else None
+        in
+
+        let constructor_parts =
+          match payload with
+          | Some parts -> constructor_name :: parts
+          | None -> [ constructor_name ]
+        in
+
+        let constructor =
+          make_node_list ~kind:Syntax_kind.TYPE_VARIANT_CONSTR constructor_parts
+        in
+
+        let _ = consume_trivia parser in
+
+        (* Check for more constructors *)
+        if at parser Token.Pipe then
+          let pipe = consume parser in
+          let _ = consume_trivia parser in
+          parse_constructors (Ceibo.Green.Node constructor :: pipe :: acc)
+        else List.rev (Ceibo.Green.Node constructor :: acc)
+    | _ -> List.rev acc
+  in
+
+  let constructors = parse_constructors [] in
+  let all_parts =
+    match leading_pipe with
+    | Some pipe -> pipe :: constructors
+    | None -> constructors
+  in
+
+  make_node_list ~kind:Syntax_kind.TYPE_CONSTR all_parts
+
+and parse_poly_variant_type parser =
+  (* Parse polymorphic variant type: [ `A | `B of int ] *)
+  let open_bracket = consume parser in
+  let _ = consume_trivia parser in
+
+  let rec parse_variants acc =
+    match peek_kind parser with
+    | Some Token.Backtick ->
+        (* Variant constructor: `A or `B of int *)
+        let backtick = consume parser in
+        let _ = consume_trivia parser in
+
+        (* Constructor name *)
+        let name = consume parser in
+        let _ = consume_trivia parser in
+
+        (* Check for payload: of type *)
+        let payload =
+          if at parser (Token.Keyword Keyword.Of) then
+            let of_kw = consume parser in
+            let _ = consume_trivia parser in
+            let payload_type = parse_type_expr parser in
+            Some [ of_kw; Ceibo.Green.Node payload_type ]
+          else None
+        in
+
+        let variant_parts =
+          match payload with
+          | Some parts -> backtick :: name :: parts
+          | None -> [ backtick; name ]
+        in
+
+        let variant =
+          make_node_list ~kind:Syntax_kind.TYPE_VARIANT_CONSTR variant_parts
+        in
+
+        let _ = consume_trivia parser in
+
+        (* Check for more variants *)
+        if at parser Token.Pipe then
+          let pipe = consume parser in
+          let _ = consume_trivia parser in
+          parse_variants (Ceibo.Green.Node variant :: pipe :: acc)
+        else List.rev (Ceibo.Green.Node variant :: acc)
+    | Some Token.Pipe ->
+        (* Leading pipe *)
+        let pipe = consume parser in
+        let _ = consume_trivia parser in
+        parse_variants (pipe :: acc)
+    | _ -> List.rev acc
+  in
+
+  let variants = parse_variants [] in
+  let _ = consume_trivia parser in
+
+  let close_bracket = expect parser (Token.CloseDelim Token.Bracket) in
+
+  make_node_list ~kind:Syntax_kind.TYPE_POLY_VARIANT
+    ((open_bracket :: variants) @ [ close_bracket ])
+
+and parse_record_type parser =
+  (* Parse record type: { field1: int; field2: string } *)
+  let open_brace = consume parser in
+  let _ = consume_trivia parser in
+
+  let rec parse_fields acc =
+    match peek_kind parser with
+    | Some (Token.Keyword Keyword.Mutable) | Some (Token.Ident _) ->
+        (* Optional mutable keyword *)
+        let mutable_kw =
+          if at parser (Token.Keyword Keyword.Mutable) then
+            let kw = consume parser in
+            let _ = consume_trivia parser in
+            Some kw
+          else None
+        in
+
+        (* Field name *)
+        let field_name = consume parser in
+        let _ = consume_trivia parser in
+
+        (* Expect : *)
+        let colon = expect parser Token.Colon in
+        let _ = consume_trivia parser in
+
+        (* Parse field type *)
+        let field_type = parse_type_expr parser in
+        let _ = consume_trivia parser in
+
+        let field_parts =
+          match mutable_kw with
+          | Some kw -> [ kw; field_name; colon; Ceibo.Green.Node field_type ]
+          | None -> [ field_name; colon; Ceibo.Green.Node field_type ]
+        in
+
+        let field =
+          make_node_list ~kind:Syntax_kind.TYPE_RECORD_FIELD field_parts
+        in
+
+        (* Check for semicolon or more fields *)
+        if at parser Token.Semi then
+          let semi = consume parser in
+          let _ = consume_trivia parser in
+          parse_fields (Ceibo.Green.Node field :: semi :: acc)
+        else List.rev (Ceibo.Green.Node field :: acc)
+    | _ -> List.rev acc
+  in
+
+  let fields = parse_fields [] in
+  let _ = consume_trivia parser in
+
+  (* Optional trailing semicolon *)
+  let trailing_semi =
+    if at parser Token.Semi then Some (consume parser) else None
+  in
+  let _ = consume_trivia parser in
+
+  let close_brace = expect parser (Token.CloseDelim Token.Brace) in
+
+  let all_parts =
+    match trailing_semi with
+    | Some semi -> (open_brace :: fields) @ [ semi; close_brace ]
+    | None -> (open_brace :: fields) @ [ close_brace ]
+  in
+
+  make_node_list ~kind:Syntax_kind.TYPE_CONSTR all_parts
 
 and parse_open parser =
   let open_kw = consume parser in

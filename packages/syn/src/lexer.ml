@@ -473,7 +473,25 @@ let next cursor =
         let end_ = Cursor.position cursor in
         { Token.kind = Token.Dollar; span = Ceibo.Span.make ~start ~end_ }
     | Some '"' -> lex_string cursor start
-    | Some '\'' -> lex_char cursor start
+    | Some '\'' -> (
+        (* Distinguish between char literals and type variable quotes *)
+        (* Char literal: 'a', '\\', etc. followed by closing '
+           Type variable: 'a, 'foo (no closing ' after ident) *)
+        match Cursor.peek_n cursor 2 with
+        | Some '\'' -> lex_char cursor start (* It's a char literal like 'a' *)
+        | _ -> (
+            (* Check if it's an escape like '\\' or '\n' *)
+            match Cursor.peek_n cursor 1 with
+            | Some '\\' -> lex_char cursor start (* Escaped char *)
+            | Some c when is_ident_start c ->
+                (* It's a type variable like 'a or 'foo *)
+                Cursor.advance cursor;
+                let end_ = Cursor.position cursor in
+                {
+                  Token.kind = Token.Quote;
+                  span = Ceibo.Span.make ~start ~end_;
+                }
+            | _ -> lex_char cursor start (* Try as char anyway *)))
     | Some c when is_digit c -> lex_number cursor start
     | Some c when is_ident_start c -> lex_ident cursor start
     | Some c ->

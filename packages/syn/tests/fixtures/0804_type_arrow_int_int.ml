@@ -1,0 +1,1 @@
+type f = int -> int

@@ -70,6 +70,20 @@ type t =
   | PAREN_PATTERN (* (p) *)
   | POLY_VARIANT_PATTERN (* `Tag or `Tag p *)
   (* ========================================================================= *)
+  (* TYPE EXPRESSIONS *)
+  (* ========================================================================= *)
+  | TYPE_VAR (* 'a, 'b *)
+  | TYPE_CONSTR (* int, string, list *)
+  | TYPE_ARROW (* int -> string *)
+  | TYPE_TUPLE (* int * string *)
+  | TYPE_PAREN (* (int -> string) *)
+  | TYPE_POLY_VARIANT (* [`A | `B] *)
+  | TYPE_PARAM (* 'a in type params *)
+  | TYPE_PARAMS (* ('a, 'b) *)
+  | TYPE_VARIANT_CONSTR (* A | B of int *)
+  | TYPE_RECORD_FIELD (* field: int *)
+  | TYPE_CONSTRAINT (* constraint 'a = int *)
+  (* ========================================================================= *)
   (* TOP-LEVEL DECLARATIONS *)
   (* ========================================================================= *)
   | LET_BINDING (* let x = e *)
@@ -155,6 +169,17 @@ let to_string = function
   | EXCEPTION_PATTERN -> "EXCEPTION_PATTERN"
   | PAREN_PATTERN -> "PAREN_PATTERN"
   | POLY_VARIANT_PATTERN -> "POLY_VARIANT_PATTERN"
+  | TYPE_VAR -> "TYPE_VAR"
+  | TYPE_CONSTR -> "TYPE_CONSTR"
+  | TYPE_ARROW -> "TYPE_ARROW"
+  | TYPE_TUPLE -> "TYPE_TUPLE"
+  | TYPE_PAREN -> "TYPE_PAREN"
+  | TYPE_POLY_VARIANT -> "TYPE_POLY_VARIANT"
+  | TYPE_PARAM -> "TYPE_PARAM"
+  | TYPE_PARAMS -> "TYPE_PARAMS"
+  | TYPE_VARIANT_CONSTR -> "TYPE_VARIANT_CONSTR"
+  | TYPE_RECORD_FIELD -> "TYPE_RECORD_FIELD"
+  | TYPE_CONSTRAINT -> "TYPE_CONSTRAINT"
   | LET_BINDING -> "LET_BINDING"
   | LET_REC_BINDING -> "LET_REC_BINDING"
   | TYPE_DECL -> "TYPE_DECL"

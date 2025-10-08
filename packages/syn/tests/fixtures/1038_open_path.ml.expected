@@ -1,0 +1,29 @@
+{
+  "tree": {
+    "type": "node",
+    "kind": "SOURCE_FILE",
+    "width": 8,
+    "children": [
+      {
+        "type": "node",
+        "kind": "OPEN_STMT",
+        "width": 8,
+        "children": [
+          {
+            "type": "token",
+            "kind": "ERROR",
+            "text": "open",
+            "width": 4
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "List",
+            "width": 4
+          }
+        ]
+      }
+    ]
+  },
+  "diagnostics": []
+}

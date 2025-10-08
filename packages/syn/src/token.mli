@@ -94,6 +94,7 @@ type token_kind =
   | Ampersand  (** `&` *)
   | Underscore  (** `_` *)
   | Backtick  (** `` ` `` - polymorphic variant tag *)
+  | Quote  (** `'` - type variable prefix *)
   | StarStar  (** `**` - float power *)
   | EqEq  (** `==` - physical equality *)
   | BangEq  (** `!=` - physical inequality *)
