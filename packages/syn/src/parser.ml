@@ -1240,10 +1240,16 @@ and parse_record_expr parser =
       skip_from parser.position n
     in
 
-    (* Check if first non-trivia token is identifier followed by = (record literal) *)
+    (* Check if first non-trivia token is identifier followed by = or ; or } (record literal) *)
+    (* = means field = value, ; or } means field punning *)
     let is_record_literal =
       match peek_non_trivia_nth parser 0 with
-      | Some (Token.Ident _) -> peek_non_trivia_nth parser 1 = Some Token.Eq
+      | Some (Token.Ident _) ->
+          (match peek_non_trivia_nth parser 1 with
+           | Some Token.Eq -> true  (* field = value *)
+           | Some Token.Semi -> true  (* field; (punning) *)
+           | Some (Token.CloseDelim Token.Brace) -> true  (* field } (punning at end) *)
+           | _ -> false)
       | _ -> false
     in
 
