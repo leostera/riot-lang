@@ -51,33 +51,40 @@
                   },
                   {
                     "type": "node",
-                    "kind": "INT_LITERAL",
-                    "width": 1,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "INT_LITERAL",
-                        "text": "1",
-                        "width": 1
-                      }
-                    ]
-                  },
-                  {
-                    "type": "token",
                     "kind": "SEQUENCE_EXPR",
-                    "text": ";",
-                    "width": 1
-                  },
-                  {
-                    "type": "node",
-                    "kind": "INT_LITERAL",
-                    "width": 1,
+                    "width": 3,
                     "children": [
                       {
-                        "type": "token",
+                        "type": "node",
                         "kind": "INT_LITERAL",
-                        "text": "2",
+                        "width": 1,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "INT_LITERAL",
+                            "text": "1",
+                            "width": 1
+                          }
+                        ]
+                      },
+                      {
+                        "type": "token",
+                        "kind": "SEQUENCE_EXPR",
+                        "text": ";",
                         "width": 1
+                      },
+                      {
+                        "type": "node",
+                        "kind": "INT_LITERAL",
+                        "width": 1,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "INT_LITERAL",
+                            "text": "2",
+                            "width": 1
+                          }
+                        ]
                       }
                     ]
                   },
@@ -108,33 +115,40 @@
                   },
                   {
                     "type": "node",
-                    "kind": "INT_LITERAL",
-                    "width": 1,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "INT_LITERAL",
-                        "text": "3",
-                        "width": 1
-                      }
-                    ]
-                  },
-                  {
-                    "type": "token",
                     "kind": "SEQUENCE_EXPR",
-                    "text": ";",
-                    "width": 1
-                  },
-                  {
-                    "type": "node",
-                    "kind": "INT_LITERAL",
-                    "width": 1,
+                    "width": 3,
                     "children": [
                       {
-                        "type": "token",
+                        "type": "node",
                         "kind": "INT_LITERAL",
-                        "text": "4",
+                        "width": 1,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "INT_LITERAL",
+                            "text": "3",
+                            "width": 1
+                          }
+                        ]
+                      },
+                      {
+                        "type": "token",
+                        "kind": "SEQUENCE_EXPR",
+                        "text": ";",
                         "width": 1
+                      },
+                      {
+                        "type": "node",
+                        "kind": "INT_LITERAL",
+                        "width": 1,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "INT_LITERAL",
+                            "text": "4",
+                            "width": 1
+                          }
+                        ]
                       }
                     ]
                   },

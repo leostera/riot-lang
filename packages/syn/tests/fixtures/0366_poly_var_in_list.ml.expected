@@ -40,70 +40,84 @@
               },
               {
                 "type": "node",
-                "kind": "POLY_VARIANT_EXPR",
-                "width": 4,
-                "children": [
-                  {
-                    "type": "token",
-                    "kind": "POLY_VARIANT_EXPR",
-                    "text": "`",
-                    "width": 1
-                  },
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "Red",
-                    "width": 3
-                  }
-                ]
-              },
-              {
-                "type": "token",
                 "kind": "SEQUENCE_EXPR",
-                "text": ";",
-                "width": 1
-              },
-              {
-                "type": "node",
-                "kind": "POLY_VARIANT_EXPR",
-                "width": 5,
+                "width": 17,
                 "children": [
                   {
-                    "type": "token",
+                    "type": "node",
                     "kind": "POLY_VARIANT_EXPR",
-                    "text": "`",
-                    "width": 1
+                    "width": 4,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "POLY_VARIANT_EXPR",
+                        "text": "`",
+                        "width": 1
+                      },
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "Red",
+                        "width": 3
+                      }
+                    ]
                   },
                   {
                     "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "Blue",
-                    "width": 4
-                  }
-                ]
-              },
-              {
-                "type": "token",
-                "kind": "SEQUENCE_EXPR",
-                "text": ";",
-                "width": 1
-              },
-              {
-                "type": "node",
-                "kind": "POLY_VARIANT_EXPR",
-                "width": 6,
-                "children": [
-                  {
-                    "type": "token",
-                    "kind": "POLY_VARIANT_EXPR",
-                    "text": "`",
+                    "kind": "SEQUENCE_EXPR",
+                    "text": ";",
                     "width": 1
                   },
                   {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "Green",
-                    "width": 5
+                    "type": "node",
+                    "kind": "SEQUENCE_EXPR",
+                    "width": 12,
+                    "children": [
+                      {
+                        "type": "node",
+                        "kind": "POLY_VARIANT_EXPR",
+                        "width": 5,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "POLY_VARIANT_EXPR",
+                            "text": "`",
+                            "width": 1
+                          },
+                          {
+                            "type": "token",
+                            "kind": "IDENT_EXPR",
+                            "text": "Blue",
+                            "width": 4
+                          }
+                        ]
+                      },
+                      {
+                        "type": "token",
+                        "kind": "SEQUENCE_EXPR",
+                        "text": ";",
+                        "width": 1
+                      },
+                      {
+                        "type": "node",
+                        "kind": "POLY_VARIANT_EXPR",
+                        "width": 6,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "POLY_VARIANT_EXPR",
+                            "text": "`",
+                            "width": 1
+                          },
+                          {
+                            "type": "token",
+                            "kind": "IDENT_EXPR",
+                            "text": "Green",
+                            "width": 5
+                          }
+                        ]
+                      }
+                    ]
                   }
                 ]
               },

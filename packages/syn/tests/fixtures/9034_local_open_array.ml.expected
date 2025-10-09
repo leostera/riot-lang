@@ -64,33 +64,40 @@
                   },
                   {
                     "type": "node",
-                    "kind": "IDENT_EXPR",
-                    "width": 5,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "IDENT_EXPR",
-                        "text": "epipe",
-                        "width": 5
-                      }
-                    ]
-                  },
-                  {
-                    "type": "token",
                     "kind": "SEQUENCE_EXPR",
-                    "text": ";",
-                    "width": 1
-                  },
-                  {
-                    "type": "node",
-                    "kind": "IDENT_EXPR",
-                    "width": 6,
+                    "width": 12,
                     "children": [
                       {
-                        "type": "token",
+                        "type": "node",
                         "kind": "IDENT_EXPR",
-                        "text": "enoent",
-                        "width": 6
+                        "width": 5,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "IDENT_EXPR",
+                            "text": "epipe",
+                            "width": 5
+                          }
+                        ]
+                      },
+                      {
+                        "type": "token",
+                        "kind": "SEQUENCE_EXPR",
+                        "text": ";",
+                        "width": 1
+                      },
+                      {
+                        "type": "node",
+                        "kind": "IDENT_EXPR",
+                        "width": 6,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "IDENT_EXPR",
+                            "text": "enoent",
+                            "width": 6
+                          }
+                        ]
                       }
                     ]
                   },
@@ -166,52 +173,66 @@
                   },
                   {
                     "type": "node",
-                    "kind": "IDENT_EXPR",
-                    "width": 1,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "IDENT_EXPR",
-                        "text": "a",
-                        "width": 1
-                      }
-                    ]
-                  },
-                  {
-                    "type": "token",
                     "kind": "SEQUENCE_EXPR",
-                    "text": ";",
-                    "width": 1
-                  },
-                  {
-                    "type": "node",
-                    "kind": "IDENT_EXPR",
-                    "width": 1,
+                    "width": 5,
                     "children": [
                       {
-                        "type": "token",
+                        "type": "node",
                         "kind": "IDENT_EXPR",
-                        "text": "b",
-                        "width": 1
-                      }
-                    ]
-                  },
-                  {
-                    "type": "token",
-                    "kind": "SEQUENCE_EXPR",
-                    "text": ";",
-                    "width": 1
-                  },
-                  {
-                    "type": "node",
-                    "kind": "IDENT_EXPR",
-                    "width": 1,
-                    "children": [
+                        "width": 1,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "IDENT_EXPR",
+                            "text": "a",
+                            "width": 1
+                          }
+                        ]
+                      },
                       {
                         "type": "token",
-                        "kind": "IDENT_EXPR",
-                        "text": "c",
+                        "kind": "SEQUENCE_EXPR",
+                        "text": ";",
                         "width": 1
+                      },
+                      {
+                        "type": "node",
+                        "kind": "SEQUENCE_EXPR",
+                        "width": 3,
+                        "children": [
+                          {
+                            "type": "node",
+                            "kind": "IDENT_EXPR",
+                            "width": 1,
+                            "children": [
+                              {
+                                "type": "token",
+                                "kind": "IDENT_EXPR",
+                                "text": "b",
+                                "width": 1
+                              }
+                            ]
+                          },
+                          {
+                            "type": "token",
+                            "kind": "SEQUENCE_EXPR",
+                            "text": ";",
+                            "width": 1
+                          },
+                          {
+                            "type": "node",
+                            "kind": "IDENT_EXPR",
+                            "width": 1,
+                            "children": [
+                              {
+                                "type": "token",
+                                "kind": "IDENT_EXPR",
+                                "text": "c",
+                                "width": 1
+                              }
+                            ]
+                          }
+                        ]
                       }
                     ]
                   },

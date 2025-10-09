@@ -16,29 +16,10 @@
             "width": 3
           },
           {
-            "type": "node",
-            "kind": "PAREN_PATTERN",
-            "width": 70,
-            "children": [
-              {
-                "type": "token",
-                "kind": "COMMENT",
-                "text": "(* TEST_BELOW\n(* Blank lines added here to preserve locations. *)\n*)",
-                "width": 68
-              },
-              {
-                "type": "token",
-                "kind": "WHITESPACE",
-                "text": "(",
-                "width": 1
-              },
-              {
-                "type": "token",
-                "kind": "WHITESPACE",
-                "text": ")",
-                "width": 1
-              }
-            ]
+            "type": "token",
+            "kind": "UNIT_LITERAL",
+            "text": "()",
+            "width": 2
           },
           {
             "type": "token",
@@ -49,7 +30,7 @@
           {
             "type": "node",
             "kind": "ASSERT_EXPR",
-            "width": 41,
+            "width": 109,
             "children": [
               {
                 "type": "token",
@@ -66,8 +47,14 @@
               {
                 "type": "node",
                 "kind": "BOOL_LITERAL",
-                "width": 5,
+                "width": 73,
                 "children": [
+                  {
+                    "type": "token",
+                    "kind": "COMMENT",
+                    "text": "(* TEST_BELOW\n(* Blank lines added here to preserve locations. *)\n*)",
+                    "width": 68
+                  },
                   {
                     "type": "token",
                     "kind": "BOOL_LITERAL",

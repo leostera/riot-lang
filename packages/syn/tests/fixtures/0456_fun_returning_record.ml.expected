@@ -84,7 +84,7 @@
                   {
                     "type": "node",
                     "kind": "RECORD_FIELD",
-                    "width": 3,
+                    "width": 7,
                     "children": [
                       {
                         "type": "token",
@@ -100,52 +100,66 @@
                       },
                       {
                         "type": "node",
-                        "kind": "IDENT_EXPR",
-                        "width": 1,
+                        "kind": "SEQUENCE_EXPR",
+                        "width": 5,
                         "children": [
                           {
-                            "type": "token",
+                            "type": "node",
                             "kind": "IDENT_EXPR",
-                            "text": "a",
-                            "width": 1
-                          }
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "type": "token",
-                    "kind": "SEQUENCE_EXPR",
-                    "text": ";",
-                    "width": 1
-                  },
-                  {
-                    "type": "node",
-                    "kind": "RECORD_FIELD",
-                    "width": 3,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "IDENT_EXPR",
-                        "text": "y",
-                        "width": 1
-                      },
-                      {
-                        "type": "token",
-                        "kind": "INFIX_EXPR",
-                        "text": "=",
-                        "width": 1
-                      },
-                      {
-                        "type": "node",
-                        "kind": "IDENT_EXPR",
-                        "width": 1,
-                        "children": [
+                            "width": 1,
+                            "children": [
+                              {
+                                "type": "token",
+                                "kind": "IDENT_EXPR",
+                                "text": "a",
+                                "width": 1
+                              }
+                            ]
+                          },
                           {
                             "type": "token",
-                            "kind": "IDENT_EXPR",
-                            "text": "b",
+                            "kind": "SEQUENCE_EXPR",
+                            "text": ";",
                             "width": 1
+                          },
+                          {
+                            "type": "node",
+                            "kind": "INFIX_EXPR",
+                            "width": 3,
+                            "children": [
+                              {
+                                "type": "node",
+                                "kind": "IDENT_EXPR",
+                                "width": 1,
+                                "children": [
+                                  {
+                                    "type": "token",
+                                    "kind": "IDENT_EXPR",
+                                    "text": "y",
+                                    "width": 1
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "token",
+                                "kind": "INFIX_EXPR",
+                                "text": "=",
+                                "width": 1
+                              },
+                              {
+                                "type": "node",
+                                "kind": "IDENT_EXPR",
+                                "width": 1,
+                                "children": [
+                                  {
+                                    "type": "token",
+                                    "kind": "IDENT_EXPR",
+                                    "text": "b",
+                                    "width": 1
+                                  }
+                                ]
+                              }
+                            ]
                           }
                         ]
                       }

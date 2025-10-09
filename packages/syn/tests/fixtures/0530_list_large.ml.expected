@@ -40,185 +40,248 @@
               },
               {
                 "type": "node",
-                "kind": "INT_LITERAL",
-                "width": 1,
-                "children": [
-                  {
-                    "type": "token",
-                    "kind": "INT_LITERAL",
-                    "text": "1",
-                    "width": 1
-                  }
-                ]
-              },
-              {
-                "type": "token",
                 "kind": "SEQUENCE_EXPR",
-                "text": ";",
-                "width": 1
-              },
-              {
-                "type": "node",
-                "kind": "INT_LITERAL",
-                "width": 1,
+                "width": 20,
                 "children": [
                   {
-                    "type": "token",
+                    "type": "node",
                     "kind": "INT_LITERAL",
-                    "text": "2",
+                    "width": 1,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "INT_LITERAL",
+                        "text": "1",
+                        "width": 1
+                      }
+                    ]
+                  },
+                  {
+                    "type": "token",
+                    "kind": "SEQUENCE_EXPR",
+                    "text": ";",
                     "width": 1
-                  }
-                ]
-              },
-              {
-                "type": "token",
-                "kind": "SEQUENCE_EXPR",
-                "text": ";",
-                "width": 1
-              },
-              {
-                "type": "node",
-                "kind": "INT_LITERAL",
-                "width": 1,
-                "children": [
+                  },
                   {
-                    "type": "token",
-                    "kind": "INT_LITERAL",
-                    "text": "3",
-                    "width": 1
-                  }
-                ]
-              },
-              {
-                "type": "token",
-                "kind": "SEQUENCE_EXPR",
-                "text": ";",
-                "width": 1
-              },
-              {
-                "type": "node",
-                "kind": "INT_LITERAL",
-                "width": 1,
-                "children": [
-                  {
-                    "type": "token",
-                    "kind": "INT_LITERAL",
-                    "text": "4",
-                    "width": 1
-                  }
-                ]
-              },
-              {
-                "type": "token",
-                "kind": "SEQUENCE_EXPR",
-                "text": ";",
-                "width": 1
-              },
-              {
-                "type": "node",
-                "kind": "INT_LITERAL",
-                "width": 1,
-                "children": [
-                  {
-                    "type": "token",
-                    "kind": "INT_LITERAL",
-                    "text": "5",
-                    "width": 1
-                  }
-                ]
-              },
-              {
-                "type": "token",
-                "kind": "SEQUENCE_EXPR",
-                "text": ";",
-                "width": 1
-              },
-              {
-                "type": "node",
-                "kind": "INT_LITERAL",
-                "width": 1,
-                "children": [
-                  {
-                    "type": "token",
-                    "kind": "INT_LITERAL",
-                    "text": "6",
-                    "width": 1
-                  }
-                ]
-              },
-              {
-                "type": "token",
-                "kind": "SEQUENCE_EXPR",
-                "text": ";",
-                "width": 1
-              },
-              {
-                "type": "node",
-                "kind": "INT_LITERAL",
-                "width": 1,
-                "children": [
-                  {
-                    "type": "token",
-                    "kind": "INT_LITERAL",
-                    "text": "7",
-                    "width": 1
-                  }
-                ]
-              },
-              {
-                "type": "token",
-                "kind": "SEQUENCE_EXPR",
-                "text": ";",
-                "width": 1
-              },
-              {
-                "type": "node",
-                "kind": "INT_LITERAL",
-                "width": 1,
-                "children": [
-                  {
-                    "type": "token",
-                    "kind": "INT_LITERAL",
-                    "text": "8",
-                    "width": 1
-                  }
-                ]
-              },
-              {
-                "type": "token",
-                "kind": "SEQUENCE_EXPR",
-                "text": ";",
-                "width": 1
-              },
-              {
-                "type": "node",
-                "kind": "INT_LITERAL",
-                "width": 1,
-                "children": [
-                  {
-                    "type": "token",
-                    "kind": "INT_LITERAL",
-                    "text": "9",
-                    "width": 1
-                  }
-                ]
-              },
-              {
-                "type": "token",
-                "kind": "SEQUENCE_EXPR",
-                "text": ";",
-                "width": 1
-              },
-              {
-                "type": "node",
-                "kind": "INT_LITERAL",
-                "width": 2,
-                "children": [
-                  {
-                    "type": "token",
-                    "kind": "INT_LITERAL",
-                    "text": "10",
-                    "width": 2
+                    "type": "node",
+                    "kind": "SEQUENCE_EXPR",
+                    "width": 18,
+                    "children": [
+                      {
+                        "type": "node",
+                        "kind": "INT_LITERAL",
+                        "width": 1,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "INT_LITERAL",
+                            "text": "2",
+                            "width": 1
+                          }
+                        ]
+                      },
+                      {
+                        "type": "token",
+                        "kind": "SEQUENCE_EXPR",
+                        "text": ";",
+                        "width": 1
+                      },
+                      {
+                        "type": "node",
+                        "kind": "SEQUENCE_EXPR",
+                        "width": 16,
+                        "children": [
+                          {
+                            "type": "node",
+                            "kind": "INT_LITERAL",
+                            "width": 1,
+                            "children": [
+                              {
+                                "type": "token",
+                                "kind": "INT_LITERAL",
+                                "text": "3",
+                                "width": 1
+                              }
+                            ]
+                          },
+                          {
+                            "type": "token",
+                            "kind": "SEQUENCE_EXPR",
+                            "text": ";",
+                            "width": 1
+                          },
+                          {
+                            "type": "node",
+                            "kind": "SEQUENCE_EXPR",
+                            "width": 14,
+                            "children": [
+                              {
+                                "type": "node",
+                                "kind": "INT_LITERAL",
+                                "width": 1,
+                                "children": [
+                                  {
+                                    "type": "token",
+                                    "kind": "INT_LITERAL",
+                                    "text": "4",
+                                    "width": 1
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "token",
+                                "kind": "SEQUENCE_EXPR",
+                                "text": ";",
+                                "width": 1
+                              },
+                              {
+                                "type": "node",
+                                "kind": "SEQUENCE_EXPR",
+                                "width": 12,
+                                "children": [
+                                  {
+                                    "type": "node",
+                                    "kind": "INT_LITERAL",
+                                    "width": 1,
+                                    "children": [
+                                      {
+                                        "type": "token",
+                                        "kind": "INT_LITERAL",
+                                        "text": "5",
+                                        "width": 1
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "type": "token",
+                                    "kind": "SEQUENCE_EXPR",
+                                    "text": ";",
+                                    "width": 1
+                                  },
+                                  {
+                                    "type": "node",
+                                    "kind": "SEQUENCE_EXPR",
+                                    "width": 10,
+                                    "children": [
+                                      {
+                                        "type": "node",
+                                        "kind": "INT_LITERAL",
+                                        "width": 1,
+                                        "children": [
+                                          {
+                                            "type": "token",
+                                            "kind": "INT_LITERAL",
+                                            "text": "6",
+                                            "width": 1
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "type": "token",
+                                        "kind": "SEQUENCE_EXPR",
+                                        "text": ";",
+                                        "width": 1
+                                      },
+                                      {
+                                        "type": "node",
+                                        "kind": "SEQUENCE_EXPR",
+                                        "width": 8,
+                                        "children": [
+                                          {
+                                            "type": "node",
+                                            "kind": "INT_LITERAL",
+                                            "width": 1,
+                                            "children": [
+                                              {
+                                                "type": "token",
+                                                "kind": "INT_LITERAL",
+                                                "text": "7",
+                                                "width": 1
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "token",
+                                            "kind": "SEQUENCE_EXPR",
+                                            "text": ";",
+                                            "width": 1
+                                          },
+                                          {
+                                            "type": "node",
+                                            "kind": "SEQUENCE_EXPR",
+                                            "width": 6,
+                                            "children": [
+                                              {
+                                                "type": "node",
+                                                "kind": "INT_LITERAL",
+                                                "width": 1,
+                                                "children": [
+                                                  {
+                                                    "type": "token",
+                                                    "kind": "INT_LITERAL",
+                                                    "text": "8",
+                                                    "width": 1
+                                                  }
+                                                ]
+                                              },
+                                              {
+                                                "type": "token",
+                                                "kind": "SEQUENCE_EXPR",
+                                                "text": ";",
+                                                "width": 1
+                                              },
+                                              {
+                                                "type": "node",
+                                                "kind": "SEQUENCE_EXPR",
+                                                "width": 4,
+                                                "children": [
+                                                  {
+                                                    "type": "node",
+                                                    "kind": "INT_LITERAL",
+                                                    "width": 1,
+                                                    "children": [
+                                                      {
+                                                        "type": "token",
+                                                        "kind": "INT_LITERAL",
+                                                        "text": "9",
+                                                        "width": 1
+                                                      }
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "token",
+                                                    "kind": "SEQUENCE_EXPR",
+                                                    "text": ";",
+                                                    "width": 1
+                                                  },
+                                                  {
+                                                    "type": "node",
+                                                    "kind": "INT_LITERAL",
+                                                    "width": 2,
+                                                    "children": [
+                                                      {
+                                                        "type": "token",
+                                                        "kind": "INT_LITERAL",
+                                                        "text": "10",
+                                                        "width": 2
+                                                      }
+                                                    ]
+                                                  }
+                                                ]
+                                              }
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
                   }
                 ]
               },

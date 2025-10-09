@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 27,
+    "width": 30,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 27,
+        "width": 30,
         "children": [
           {
             "type": "token",
@@ -30,7 +30,7 @@
           {
             "type": "node",
             "kind": "MATCH_EXPR",
-            "width": 22,
+            "width": 25,
             "children": [
               {
                 "type": "token",
@@ -118,7 +118,7 @@
               {
                 "type": "node",
                 "kind": "MATCH_CASE",
-                "width": 6,
+                "width": 9,
                 "children": [
                   {
                     "type": "token",
@@ -147,20 +147,46 @@
                   },
                   {
                     "type": "node",
-                    "kind": "UNIT_LITERAL",
-                    "width": 2,
+                    "kind": "SEQUENCE_EXPR",
+                    "width": 5,
                     "children": [
                       {
-                        "type": "token",
-                        "kind": "WHITESPACE",
-                        "text": "(",
-                        "width": 1
+                        "type": "node",
+                        "kind": "UNIT_LITERAL",
+                        "width": 2,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "WHITESPACE",
+                            "text": "(",
+                            "width": 1
+                          },
+                          {
+                            "type": "token",
+                            "kind": "WHITESPACE",
+                            "text": ")",
+                            "width": 1
+                          }
+                        ]
                       },
                       {
                         "type": "token",
-                        "kind": "WHITESPACE",
-                        "text": ")",
+                        "kind": "SEQUENCE_EXPR",
+                        "text": ";",
                         "width": 1
+                      },
+                      {
+                        "type": "node",
+                        "kind": "INT_LITERAL",
+                        "width": 2,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "INT_LITERAL",
+                            "text": "42",
+                            "width": 2
+                          }
+                        ]
                       }
                     ]
                   }

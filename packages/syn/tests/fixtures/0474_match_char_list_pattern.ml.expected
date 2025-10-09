@@ -51,52 +51,66 @@
                   },
                   {
                     "type": "node",
-                    "kind": "CHAR_LITERAL",
-                    "width": 3,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "CHAR_LITERAL",
-                        "text": "'a'",
-                        "width": 3
-                      }
-                    ]
-                  },
-                  {
-                    "type": "token",
                     "kind": "SEQUENCE_EXPR",
-                    "text": ";",
-                    "width": 1
-                  },
-                  {
-                    "type": "node",
-                    "kind": "CHAR_LITERAL",
-                    "width": 3,
+                    "width": 11,
                     "children": [
                       {
-                        "type": "token",
+                        "type": "node",
                         "kind": "CHAR_LITERAL",
-                        "text": "'b'",
-                        "width": 3
-                      }
-                    ]
-                  },
-                  {
-                    "type": "token",
-                    "kind": "SEQUENCE_EXPR",
-                    "text": ";",
-                    "width": 1
-                  },
-                  {
-                    "type": "node",
-                    "kind": "CHAR_LITERAL",
-                    "width": 3,
-                    "children": [
+                        "width": 3,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "CHAR_LITERAL",
+                            "text": "'a'",
+                            "width": 3
+                          }
+                        ]
+                      },
                       {
                         "type": "token",
-                        "kind": "CHAR_LITERAL",
-                        "text": "'c'",
-                        "width": 3
+                        "kind": "SEQUENCE_EXPR",
+                        "text": ";",
+                        "width": 1
+                      },
+                      {
+                        "type": "node",
+                        "kind": "SEQUENCE_EXPR",
+                        "width": 7,
+                        "children": [
+                          {
+                            "type": "node",
+                            "kind": "CHAR_LITERAL",
+                            "width": 3,
+                            "children": [
+                              {
+                                "type": "token",
+                                "kind": "CHAR_LITERAL",
+                                "text": "'b'",
+                                "width": 3
+                              }
+                            ]
+                          },
+                          {
+                            "type": "token",
+                            "kind": "SEQUENCE_EXPR",
+                            "text": ";",
+                            "width": 1
+                          },
+                          {
+                            "type": "node",
+                            "kind": "CHAR_LITERAL",
+                            "width": 3,
+                            "children": [
+                              {
+                                "type": "token",
+                                "kind": "CHAR_LITERAL",
+                                "text": "'c'",
+                                "width": 3
+                              }
+                            ]
+                          }
+                        ]
                       }
                     ]
                   },

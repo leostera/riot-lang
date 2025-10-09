@@ -30,7 +30,7 @@
           {
             "type": "node",
             "kind": "MODULE_TYPE_EXPR",
-            "width": 40,
+            "width": 14,
             "children": [
               {
                 "type": "token",
@@ -47,7 +47,7 @@
               {
                 "type": "node",
                 "kind": "TYPE_CONSTRAINT",
-                "width": 35,
+                "width": 9,
                 "children": [
                   {
                     "type": "token",
@@ -72,19 +72,33 @@
                     "kind": "IDENT_EXPR",
                     "text": "int",
                     "width": 3
-                  },
-                  {
-                    "type": "token",
-                    "kind": "INFIX_EXPR",
-                    "text": "=",
-                    "width": 1
-                  },
-                  {
-                    "type": "token",
-                    "kind": "STRUCTURE",
-                    "text": "struct",
-                    "width": 6
-                  },
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "token",
+            "kind": "INFIX_EXPR",
+            "text": "=",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "STRUCTURE",
+            "width": 25,
+            "children": [
+              {
+                "type": "token",
+                "kind": "STRUCTURE",
+                "text": "struct",
+                "width": 6
+              },
+              {
+                "type": "node",
+                "kind": "TYPE_DECL",
+                "width": 9,
+                "children": [
                   {
                     "type": "token",
                     "kind": "TYPE_DECL",
@@ -104,11 +118,25 @@
                     "width": 1
                   },
                   {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "int",
-                    "width": 3
-                  },
+                    "type": "node",
+                    "kind": "TYPE_CONSTR",
+                    "width": 3,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "int",
+                        "width": 3
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "node",
+                "kind": "LET_BINDING",
+                "width": 7,
+                "children": [
                   {
                     "type": "token",
                     "kind": "LET_BINDING",
@@ -128,43 +156,25 @@
                     "width": 1
                   },
                   {
-                    "type": "token",
+                    "type": "node",
                     "kind": "INT_LITERAL",
-                    "text": "42",
-                    "width": 2
-                  },
-                  {
-                    "type": "token",
-                    "kind": "STRUCTURE",
-                    "text": "end",
-                    "width": 3
-                  },
-                  {
-                    "type": "token",
-                    "kind": "ERROR",
-                    "text": "",
-                    "width": 0
+                    "width": 2,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "INT_LITERAL",
+                        "text": "42",
+                        "width": 2
+                      }
+                    ]
                   }
                 ]
-              }
-            ]
-          },
-          {
-            "type": "token",
-            "kind": "MISSING",
-            "text": "",
-            "width": 0
-          },
-          {
-            "type": "node",
-            "kind": "IDENT_EXPR",
-            "width": 0,
-            "children": [
+              },
               {
                 "type": "token",
-                "kind": "ERROR",
-                "text": "",
-                "width": 0
+                "kind": "STRUCTURE",
+                "text": "end",
+                "width": 3
               }
             ]
           }
@@ -172,16 +182,5 @@
       }
     ]
   },
-  "diagnostics": [
-    {
-      "kind": {
-        "type": "missing_token",
-        "expected": "'='"
-      },
-      "span": {
-        "start": 73,
-        "end": 73
-      }
-    }
-  ]
+  "diagnostics": []
 }
