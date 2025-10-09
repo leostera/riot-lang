@@ -1310,15 +1310,16 @@ and parse_module_type_expr parser =
                 let tok = consume parser in
                 let _ = consume_trivia parser in
                 consume_type_tokens (tok :: acc) (depth - 1)
-            | Some Token.Underscore
-            | Some Token.Quote
-            | Some (Token.Ident _)
-            | Some Token.Arrow
-            | Some Token.Star
-            | Some (Token.Literal _) ->
-                let tok = consume parser in
-                let _ = consume_trivia parser in
-                consume_type_tokens (tok :: acc) depth
+           | Some Token.Underscore
+           | Some Token.Quote
+           | Some (Token.Ident _)
+           | Some Token.Arrow
+           | Some Token.Star
+           | Some Token.Dot
+           | Some (Token.Literal _) ->
+               let tok = consume parser in
+               let _ = consume_trivia parser in
+               consume_type_tokens (tok :: acc) depth
             | None -> List.rev acc
             | _ ->
                 (* Stop at other tokens *)
