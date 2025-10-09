@@ -5236,56 +5236,54 @@ and parse_record_type parser =
         let colon = expect parser Token.Colon in
         let _ = consume_trivia parser in
 
-        (* Check for explicit type quantification: 'a 'b. type *)
-        let type_vars = ref [] in
-        while peek_kind parser = Some Token.Quote do
-          let quote = consume parser in
-          let _ = consume_trivia parser in
-          match peek_kind parser with
-          | Some (Token.Ident _) ->
-              let var_name = consume parser in
-              let _ = consume_trivia parser in
-              type_vars := var_name :: quote :: !type_vars
-          | _ -> ()
-        done;
-
-        (* Check for the dot after type variables *)
-        let has_dot =
-          !type_vars <> [] && peek_kind parser = Some Token.Dot
-        in
-        let dot_after_vars =
-          if has_dot then
+        (* Check for explicit type quantification: 'a 'b. type
+           We need to look ahead to see if type vars are followed by a dot.
+           Only consume them if they're quantifiers (followed by dot). *)
+        let type_quant_parts, quantifier_dot =
+          (* Try to parse type quantifiers by looking ahead *)
+          let saved_position = parser.position in
+          let temp_vars = ref [] in
+          
+          (* Consume type vars *)
+          while peek_kind parser = Some Token.Quote do
+            let quote = consume parser in
+            let _ = consume_trivia parser in
+            match peek_kind parser with
+            | Some (Token.Ident _) ->
+                let var_name = consume parser in
+                let _ = consume_trivia parser in
+                temp_vars := var_name :: quote :: !temp_vars
+            | _ -> ()
+          done;
+          
+          (* Check if followed by dot *)
+          if !temp_vars <> [] && peek_kind parser = Some Token.Dot then (
+            (* These are quantifiers! Keep them and consume the dot *)
             let dot = consume parser in
             let _ = consume_trivia parser in
-            Some dot
-          else None
+            (List.rev !temp_vars, Some dot))
+          else (
+            (* Not quantifiers - backtrack by resetting position *)
+            parser.position <- saved_position;
+            ([], None))
         in
 
         (* Parse field type *)
-        let field_type =
-          if !type_vars <> [] && not has_dot then
-            (* The type vars we consumed ARE the field type, not quantifiers.
-               Reconstruct the type from the consumed tokens. *)
-            make_node_list ~kind:Syntax_kind.TYPE_VAR (List.rev !type_vars)
-          else
-            (* Either no type vars, or type vars with dot (quantifiers).
-               Parse the actual field type. *)
-            parse_type_expr parser
-        in
+        let field_type = parse_type_expr parser in
         let _ = consume_trivia parser in
 
         let field_parts =
-          let type_quant_parts =
-            match (has_dot, dot_after_vars) with
-            | true, Some dot -> List.rev !type_vars @ [ dot ]
-            | _ -> []
+          let quant_tokens =
+            match quantifier_dot with
+            | Some dot -> type_quant_parts @ [ dot ]
+            | None -> []
           in
           let base_parts =
             match mutable_kw with
             | Some kw -> [ kw; field_name; colon ]
             | None -> [ field_name; colon ]
           in
-          base_parts @ type_quant_parts @ [ Ceibo.Green.Node field_type ]
+          base_parts @ quant_tokens @ [ Ceibo.Green.Node field_type ]
         in
 
         let field =

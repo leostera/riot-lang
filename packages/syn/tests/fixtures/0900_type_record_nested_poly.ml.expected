@@ -81,22 +81,23 @@
                     "width": 1
                   },
                   {
-                    "type": "token",
-                    "kind": "TYPE_VAR",
-                    "text": "'",
-                    "width": 1
-                  },
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "a",
-                    "width": 1
-                  },
-                  {
                     "type": "node",
-                    "kind": "ERROR",
-                    "width": 0,
-                    "children": []
+                    "kind": "TYPE_VAR",
+                    "width": 2,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "TYPE_VAR",
+                        "text": "'",
+                        "width": 1
+                      },
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "a",
+                        "width": 1
+                      }
+                    ]
                   }
                 ]
               },
@@ -118,27 +119,34 @@
                     "width": 1
                   },
                   {
-                    "type": "token",
-                    "kind": "TYPE_VAR",
-                    "text": "'",
-                    "width": 1
-                  },
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "a",
-                    "width": 1
-                  },
-                  {
                     "type": "node",
                     "kind": "TYPE_CONSTR",
-                    "width": 8,
+                    "width": 10,
                     "children": [
                       {
                         "type": "node",
                         "kind": "TYPE_CONSTR",
-                        "width": 4,
+                        "width": 6,
                         "children": [
+                          {
+                            "type": "node",
+                            "kind": "TYPE_VAR",
+                            "width": 2,
+                            "children": [
+                              {
+                                "type": "token",
+                                "kind": "TYPE_VAR",
+                                "text": "'",
+                                "width": 1
+                              },
+                              {
+                                "type": "token",
+                                "kind": "IDENT_EXPR",
+                                "text": "a",
+                                "width": 1
+                              }
+                            ]
+                          },
                           {
                             "type": "token",
                             "kind": "IDENT_EXPR",
