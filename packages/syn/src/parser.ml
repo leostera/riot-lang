@@ -514,6 +514,33 @@ and parse_expr_bp parser min_bp =
                   report_error parser
                     (Diagnostic.make_missing_token ~expected:"field name" ~span);
                   Some lhs)
+        | Some Token.Hash -> (
+            (* Method call: obj#method *)
+            let hash_prec = 9 in
+            (* Same as field access *)
+            if hash_prec < min_bp then Some lhs
+            else
+              let hash = consume parser in
+              let _ = consume_trivia parser in
+              match peek_kind parser with
+              | Some (Token.Ident _) ->
+                  let method_name = consume parser in
+                  let trivia = take_pending_trivia parser in
+                  let children = [ Ceibo.Green.Node lhs; hash; method_name ] in
+                  let children = trivia @ children in
+                  let method_call =
+                    make_node_list ~kind:Syntax_kind.METHOD_CALL_EXPR children
+                  in
+                  loop method_call
+              | _ ->
+                  let span =
+                    match peek parser with
+                    | Some tok -> tok.Token.span
+                    | None -> Ceibo.Span.make ~start:0 ~end_:0
+                  in
+                  report_error parser
+                    (Diagnostic.make_missing_token ~expected:"method name" ~span);
+                  Some lhs)
         | Some op_kind when is_infix_op op_kind -> (
             let prec = get_precedence op_kind in
             if prec < min_bp then Some lhs
@@ -761,8 +788,12 @@ and parse_primary parser =
               | _ -> parse_list_expr parser)
           (* Array literal *)
           | Some (Token.OpenDelim Token.Array) -> parse_array_expr parser
-          (* Record literal *)
-          | Some (Token.OpenDelim Token.Brace) -> parse_record_expr parser
+          (* Record literal or object update *)
+          | Some (Token.OpenDelim Token.Brace) -> (
+              (* Check if this is object update {< ... >} *)
+              if peek_nth parser 1 = Some Token.Lt then
+                parse_object_update_expr parser
+              else parse_record_expr parser)
           (* Let expression *)
           | Some (Token.Keyword Keyword.Let) -> parse_let_expr parser
           (* If expression *)
@@ -786,6 +817,10 @@ and parse_primary parser =
           | Some (Token.Keyword Keyword.Try) -> parse_try_expr parser
           (* Polymorphic variant *)
           | Some Token.Backtick -> parse_poly_variant_expr parser
+          (* Object expression *)
+          | Some (Token.OpenDelim Token.ObjectEnd) -> parse_object_expr parser
+          (* New expression *)
+          | Some (Token.Keyword Keyword.New) -> parse_new_expr parser
           | _ -> None))
 
 and parse_labeled_or_optional_arg parser =
@@ -1738,6 +1773,278 @@ and parse_try_expr parser =
       let children = prepend_pending_trivia parser children in
       Some (make_node_list ~kind:Syntax_kind.TRY_EXPR children)
   | None -> None
+
+and parse_new_expr parser =
+  let new_kw = consume parser in
+  let _ = consume_trivia parser in
+
+  (* Parse class path (might be Module.class_name) *)
+  let rec parse_class_path acc =
+    match peek_kind parser with
+    | Some (Token.Ident _) ->
+        let ident = consume parser in
+        let _ = consume_trivia parser in
+        let acc = ident :: acc in
+        if at parser Token.Dot then
+          let dot = consume parser in
+          let _ = consume_trivia parser in
+          parse_class_path (dot :: acc)
+        else List.rev acc
+    | _ -> List.rev acc
+  in
+
+  let class_path = parse_class_path [] in
+  let children = prepend_pending_trivia parser (new_kw :: class_path) in
+  Some (make_node_list ~kind:Syntax_kind.NEW_EXPR children)
+
+and parse_object_update_expr parser =
+  let open_brace = consume parser in
+  let _ = consume_trivia parser in
+  let lt = consume parser in
+  (* Consume < *)
+  let _ = consume_trivia parser in
+
+  (* Parse field updates: field = value; ... until > *)
+  let rec parse_updates acc =
+    if at parser Token.Gt then List.rev acc
+    else
+      match peek_kind parser with
+      | Some (Token.Ident _) ->
+          let field_name = consume parser in
+          let _ = consume_trivia parser in
+          let eq_and_value =
+            if at parser Token.Eq then
+              let eq = consume parser in
+              let _ = consume_trivia parser in
+              (* Parse with min_bp=4 to avoid consuming > as infix operator *)
+              match parse_expr_bp parser 4 with
+              | Some value ->
+                  let _ = consume_trivia parser in
+                  [ eq; Ceibo.Green.Node value ]
+              | None -> [ eq ]
+            else []
+          in
+          let semi =
+            if at parser Token.Semi then
+              let s = consume parser in
+              let _ = consume_trivia parser in
+              [ s ]
+            else []
+          in
+          parse_updates (List.rev_append semi (List.rev_append eq_and_value (field_name :: acc)))
+      | _ -> List.rev acc
+  in
+
+  let updates = parse_updates [] in
+  let gt = expect parser Token.Gt in
+  let _ = consume_trivia parser in
+  let close_brace = expect parser (Token.CloseDelim Token.Brace) in
+
+  let children =
+    prepend_pending_trivia parser
+      ([ open_brace; lt ] @ updates @ [ gt; close_brace ])
+  in
+  Some (make_node_list ~kind:Syntax_kind.OBJECT_UPDATE_EXPR children)
+
+and parse_object_expr parser =
+  let object_kw = consume parser in
+  let _ = consume_trivia parser in
+
+  (* Check for optional self parameter: object (self) ... end *)
+  let self_param =
+    if at parser (Token.OpenDelim Token.Paren) then
+      let open_paren = consume parser in
+      let _ = consume_trivia parser in
+      let self_ident =
+        match peek_kind parser with
+        | Some (Token.Ident _) ->
+            let ident = consume parser in
+            let _ = consume_trivia parser in
+            [ ident ]
+        | _ -> []
+      in
+      let close_paren = expect parser (Token.CloseDelim Token.Paren) in
+      let _ = consume_trivia parser in
+      [ open_paren ] @ self_ident @ [ close_paren ]
+    else []
+  in
+
+  (* Parse object items until 'end' keyword *)
+  let rec parse_object_items acc =
+    if at parser (Token.CloseDelim Token.ObjectEnd) then List.rev acc
+    else
+      let _ = consume_trivia parser in
+      match peek_kind parser with
+      | Some (Token.CloseDelim Token.ObjectEnd) -> List.rev acc
+      | Some (Token.Keyword Keyword.Method) ->
+          let method_item = parse_object_method parser in
+          parse_object_items (method_item @ acc)
+      | Some (Token.Keyword Keyword.Val) ->
+          let val_item = parse_object_val parser in
+          parse_object_items (val_item @ acc)
+      | Some (Token.Keyword Keyword.Inherit) ->
+          let inherit_item = parse_object_inherit parser in
+          parse_object_items (inherit_item @ acc)
+      | Some (Token.Keyword Keyword.Constraint) ->
+          let constraint_item = parse_object_constraint parser in
+          parse_object_items (constraint_item @ acc)
+      | Some (Token.Keyword Keyword.Initializer) ->
+          let initializer_item = parse_object_initializer parser in
+          parse_object_items (initializer_item @ acc)
+      | _ -> List.rev acc
+  in
+
+  let items = parse_object_items [] in
+  let end_kw = expect parser (Token.CloseDelim Token.ObjectEnd) in
+
+  let children =
+    prepend_pending_trivia parser ([ object_kw ] @ self_param @ items @ [ end_kw ])
+  in
+  Some (make_node_list ~kind:Syntax_kind.OBJECT_EXPR children)
+
+and parse_object_method parser =
+  let method_kw = consume parser in
+  let _ = consume_trivia parser in
+
+  (* Check for private *)
+  let private_kw =
+    if at parser (Token.Keyword Keyword.Private) then
+      let priv = consume parser in
+      let _ = consume_trivia parser in
+      [ priv ]
+    else []
+  in
+
+  (* Parse method name *)
+  let method_name =
+    match peek_kind parser with
+    | Some (Token.Ident _) ->
+        let name = consume parser in
+        let _ = consume_trivia parser in
+        [ name ]
+    | _ -> []
+  in
+
+  (* Consume tokens until = or end/next keyword *)
+  let rec consume_until_eq acc =
+    if at parser Token.Eq || at parser (Token.CloseDelim Token.ObjectEnd)
+       || at parser (Token.Keyword Keyword.Method)
+       || at parser (Token.Keyword Keyword.Val)
+       || at parser (Token.Keyword Keyword.Inherit)
+    then List.rev acc
+    else
+      let tok = consume parser in
+      let _ = consume_trivia parser in
+      consume_until_eq (tok :: acc)
+  in
+
+  let params = consume_until_eq [] in
+
+  (* Parse = and method body *)
+  let eq_and_body =
+    if at parser Token.Eq then
+      let eq = consume parser in
+      let _ = consume_trivia parser in
+      match parse_expr parser with
+      | Some body -> [ eq; Ceibo.Green.Node body ]
+      | None -> [ eq ]
+    else []
+  in
+
+  [ method_kw ] @ private_kw @ method_name @ params @ eq_and_body
+
+and parse_object_val parser =
+  let val_kw = consume parser in
+  let _ = consume_trivia parser in
+
+  (* Check for mutable *)
+  let mutable_kw =
+    if at parser (Token.Keyword Keyword.Mutable) then
+      let mut = consume parser in
+      let _ = consume_trivia parser in
+      [ mut ]
+    else []
+  in
+
+  (* Parse field name *)
+  let field_name =
+    match peek_kind parser with
+    | Some (Token.Ident _) ->
+        let name = consume parser in
+        let _ = consume_trivia parser in
+        [ name ]
+    | _ -> []
+  in
+
+  (* Parse = and value *)
+  let eq_and_value =
+    if at parser Token.Eq then
+      let eq = consume parser in
+      let _ = consume_trivia parser in
+      match parse_expr parser with
+      | Some value -> [ eq; Ceibo.Green.Node value ]
+      | None -> [ eq ]
+    else []
+  in
+
+  [ val_kw ] @ mutable_kw @ field_name @ eq_and_value
+
+and parse_object_inherit parser =
+  let inherit_kw = consume parser in
+  let _ = consume_trivia parser in
+
+  (* Parse class expression (simplified - just consume until end/next keyword) *)
+  let rec consume_class_expr acc =
+    if at parser (Token.CloseDelim Token.ObjectEnd)
+       || at parser (Token.Keyword Keyword.Method)
+       || at parser (Token.Keyword Keyword.Val)
+       || at parser (Token.Keyword Keyword.Inherit)
+       || at parser (Token.Keyword Keyword.Constraint)
+    then List.rev acc
+    else
+      match parse_expr_bp parser 0 with
+      | Some expr ->
+          let _ = consume_trivia parser in
+          List.rev (Ceibo.Green.Node expr :: acc)
+      | None -> List.rev acc
+  in
+
+  let class_expr = consume_class_expr [] in
+  [ inherit_kw ] @ class_expr
+
+and parse_object_constraint parser =
+  let constraint_kw = consume parser in
+  let _ = consume_trivia parser in
+
+  (* Consume tokens until end/next keyword *)
+  let rec consume_until_next acc =
+    if at parser (Token.CloseDelim Token.ObjectEnd)
+       || at parser (Token.Keyword Keyword.Method)
+       || at parser (Token.Keyword Keyword.Val)
+       || at parser (Token.Keyword Keyword.Inherit)
+       || at parser (Token.Keyword Keyword.Constraint)
+    then List.rev acc
+    else
+      let tok = consume parser in
+      let _ = consume_trivia parser in
+      consume_until_next (tok :: acc)
+  in
+
+  let constraint_tokens = consume_until_next [] in
+  [ constraint_kw ] @ constraint_tokens
+
+and parse_object_initializer parser =
+  let initializer_kw = consume parser in
+  let _ = consume_trivia parser in
+
+  (* Parse initializer expression *)
+  let init_expr =
+    match parse_expr parser with
+    | Some expr -> [ Ceibo.Green.Node expr ]
+    | None -> []
+  in
+
+  [ initializer_kw ] @ init_expr
 
 and parse_let_expr parser =
   (* Parse let expression with pattern destructuring support *)

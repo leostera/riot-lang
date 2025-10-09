@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 5,
+    "width": 16,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 5,
+        "width": 16,
         "children": [
           {
             "type": "token",
@@ -28,25 +28,27 @@
             "width": 1
           },
           {
-            "type": "token",
-            "kind": "MISSING",
-            "text": "",
-            "width": 0
+            "type": "node",
+            "kind": "NEW_EXPR",
+            "width": 11,
+            "children": [
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "new",
+                "width": 3
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "my_class",
+                "width": 8
+              }
+            ]
           }
         ]
       }
     ]
   },
-  "diagnostics": [
-    {
-      "kind": {
-        "type": "missing_token",
-        "expected": "expression"
-      },
-      "span": {
-        "start": 8,
-        "end": 11
-      }
-    }
-  ]
+  "diagnostics": []
 }

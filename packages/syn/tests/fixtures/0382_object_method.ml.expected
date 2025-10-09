@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 5,
+    "width": 23,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 5,
+        "width": 23,
         "children": [
           {
             "type": "token",
@@ -28,25 +28,58 @@
             "width": 1
           },
           {
-            "type": "token",
-            "kind": "MISSING",
-            "text": "",
-            "width": 0
+            "type": "node",
+            "kind": "OBJECT_EXPR",
+            "width": 18,
+            "children": [
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "object",
+                "width": 6
+              },
+              {
+                "type": "node",
+                "kind": "INT_LITERAL",
+                "width": 1,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "INT_LITERAL",
+                    "text": "1",
+                    "width": 1
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "INFIX_EXPR",
+                "text": "=",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "m",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "method",
+                "width": 6
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "end",
+                "width": 3
+              }
+            ]
           }
         ]
       }
     ]
   },
-  "diagnostics": [
-    {
-      "kind": {
-        "type": "missing_token",
-        "expected": "expression"
-      },
-      "span": {
-        "start": 10,
-        "end": 16
-      }
-    }
-  ]
+  "diagnostics": []
 }

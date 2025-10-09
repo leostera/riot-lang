@@ -52,6 +52,10 @@ type t =
   | COERCE_EXPR (* (e :> t) or (e : t1 :> t2) *)
   | ATTRIBUTE_EXPR (* e [@attr] or e [@@attr] *)
   | EXTENSION_EXPR (* [%ext ...] *)
+  | OBJECT_EXPR (* object ... end *)
+  | OBJECT_UPDATE_EXPR (* {< field = value >} *)
+  | METHOD_CALL_EXPR (* obj#method *)
+  | NEW_EXPR (* new class_name *)
   (* ========================================================================= *)
   (* PATTERNS *)
   (* ========================================================================= *)
@@ -162,6 +166,10 @@ let to_string = function
   | COERCE_EXPR -> "COERCE_EXPR"
   | ATTRIBUTE_EXPR -> "ATTRIBUTE_EXPR"
   | EXTENSION_EXPR -> "EXTENSION_EXPR"
+  | OBJECT_EXPR -> "OBJECT_EXPR"
+  | OBJECT_UPDATE_EXPR -> "OBJECT_UPDATE_EXPR"
+  | METHOD_CALL_EXPR -> "METHOD_CALL_EXPR"
+  | NEW_EXPR -> "NEW_EXPR"
   | IDENT_PATTERN -> "IDENT_PATTERN"
   | WILDCARD_PATTERN -> "WILDCARD_PATTERN"
   | LITERAL_PATTERN -> "LITERAL_PATTERN"
