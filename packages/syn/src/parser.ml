@@ -2993,7 +2993,9 @@ and parse_ident_or_constructor_pattern parser =
     | Some (Token.OpenDelim Token.Brace)
     | Some Token.Underscore
     | Some (Token.Literal _)
-    | Some (Token.OpenDelim Token.Bracket) -> (
+    | Some (Token.OpenDelim Token.Bracket)
+    | Some (Token.Keyword Keyword.True)
+    | Some (Token.Keyword Keyword.False) -> (
         match parse_pattern parser with
         | Some arg_pat ->
             Some
