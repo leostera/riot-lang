@@ -175,16 +175,10 @@ let make_node_list ~kind children = Ceibo.Green.make_node_list ~kind children
 let consume_trivia parser =
   let rec loop acc =
     match peek parser with
-    | Some tok when tok.Token.kind = Token.Whitespace ->
-        let _ = advance parser in
-        loop acc
-    | Some tok -> (
-        match tok.Token.kind with
-        | Token.Comment _ | Token.Docstring _ ->
-            let comment = consume parser in
-            loop (comment :: acc)
-        | _ -> acc)
-    | None -> acc
+    | Some Token.{ kind = Whitespace | Comment _ | Docstring _ } ->
+        let trivia = consume parser in
+        loop (trivia :: acc)
+    | _ -> acc
   in
   let trivia = loop [] in
   List.rev trivia
@@ -2786,7 +2780,7 @@ and parse_regular_let_expr parser leading_trivia let_kw trivia_after_let =
   let is_simple_ident =
     match pattern with
     | Ceibo.Green.Token _ -> Ceibo.Green.kind pattern = Syntax_kind.IDENT_EXPR
-    | Ceibo.Green.Node _ -> Ceibo.Green.kind pattern = Syntax_kind.IDENT_PATTERN
+    | _ -> false
   in
 
   (* Check for optional type annotation: let f : int -> int = ... *)
@@ -2820,8 +2814,8 @@ and parse_regular_let_expr parser leading_trivia let_kw trivia_after_let =
           | Some Token.Tilde | Some Token.Question -> (
               match parse_labeled_or_optional_param parser with
               | Some param ->
-                  let trivia_after_param = consume_trivia parser in
-                  loop (List.rev_append trivia_after_param (Ceibo.Green.Node param :: acc))
+                  let _ = consume_trivia parser in
+                  loop (Ceibo.Green.Node param :: acc)
               | None -> List.rev acc)
           | Some (Token.Ident _) -> (
               (* Check if this identifier is followed by tokens that suggest it's
@@ -2855,8 +2849,8 @@ and parse_regular_let_expr parser leading_trivia let_kw trivia_after_let =
                 (* Parse as parameter *)
                 match parse_pattern parser with
                 | Some pat ->
-                    let trivia_after_pat = consume_trivia parser in
-                    loop (List.rev_append trivia_after_pat (Ceibo.Green.Node pat :: acc))
+                    let _ = consume_trivia parser in
+                    loop (Ceibo.Green.Node pat :: acc)
                 | None -> List.rev acc)
           | Some (Token.OpenDelim Token.Paren)
           | Some Token.Underscore
@@ -3281,6 +3275,7 @@ and parse_function_expr parser leading_trivia =
                 parse_remaining_cases [ Ceibo.Green.Node first_case ]
               in
               rest_cases
+          | None -> []
           | None -> [])
   in
 
@@ -3325,8 +3320,8 @@ and parse_pattern parser =
                   let ident = consume parser in
                   Some
                     (make_node_list ~kind:Syntax_kind.AS_PATTERN
-                       ([ Ceibo.Green.Node range_pat; as_kw ]
-                       @ trivia_after_as @ [ ident ]))
+                       [ Ceibo.Green.Node range_pat; as_kw ]
+                       @ trivia_after_as @ [ ident ])
               | _ -> Some range_pat
             else Some range_pat
         | None -> Some pat
@@ -4514,7 +4509,12 @@ and parse_regular_let_binding parser let_kw ?(attributes = []) () =
   let is_simple_ident =
     match pattern with
     | Ceibo.Green.Token _ -> Ceibo.Green.kind pattern = Syntax_kind.IDENT_EXPR
-    | Ceibo.Green.Node _ -> Ceibo.Green.kind pattern = Syntax_kind.IDENT_PATTERN
+    | Ceibo.Green.Node node -> (
+        (* Check if it's an IDENT_PATTERN with a single IDENT_EXPR token *)
+        match Ceibo.Green.children node with
+        | [| Ceibo.Green.Token tok |] ->
+            Ceibo.Green.kind (Ceibo.Green.Token tok) = Syntax_kind.IDENT_EXPR
+        | _ -> false)
   in
 
   (* Check for optional type annotation: let f : int -> int = ... *)
