@@ -1152,6 +1152,53 @@ and parse_labeled_or_optional_param parser =
       let tilde = consume parser in
       let _ = consume_trivia parser in
       match peek_kind parser with
+      | Some (Token.OpenDelim Token.Paren) -> (
+          (* Parenthesized labeled parameter: ~(label : type) *)
+          let open_paren = consume parser in
+          let _ = consume_trivia parser in
+          match peek_kind parser with
+          | Some (Token.Ident _) ->
+              let label = consume parser in
+              let _ = consume_trivia parser in
+              if at parser Token.Colon then
+                let colon = consume parser in
+                let _ = consume_trivia parser in
+                (* Consume type tokens until closing paren *)
+                let rec consume_type_tokens acc depth =
+                  match peek_kind parser with
+                  | Some (Token.CloseDelim Token.Paren) when depth = 0 ->
+                      List.rev acc
+                  | Some (Token.OpenDelim Token.Paren) ->
+                      let tok = consume parser in
+                      let _ = consume_trivia parser in
+                      consume_type_tokens (tok :: acc) (depth + 1)
+                  | Some (Token.CloseDelim Token.Paren) ->
+                      let tok = consume parser in
+                      let _ = consume_trivia parser in
+                      consume_type_tokens (tok :: acc) (depth - 1)
+                  | Some _ ->
+                      let tok = consume parser in
+                      let _ = consume_trivia parser in
+                      consume_type_tokens (tok :: acc) depth
+                  | None -> List.rev acc
+                in
+                let type_tokens = consume_type_tokens [] 0 in
+                let _ = consume_trivia parser in
+                let close_paren = expect parser (Token.CloseDelim Token.Paren) in
+                let children =
+                  prepend_pending_trivia parser
+                    ([ tilde; open_paren; label; colon ]
+                    @ type_tokens @ [ close_paren ])
+                in
+                Some (make_node_list ~kind:Syntax_kind.PARAMETER children)
+              else
+                let close_paren = expect parser (Token.CloseDelim Token.Paren) in
+                let children =
+                  prepend_pending_trivia parser
+                    [ tilde; open_paren; label; close_paren ]
+                in
+                Some (make_node_list ~kind:Syntax_kind.PARAMETER children)
+          | _ -> None)
       | Some (Token.Ident _) ->
           let label = consume parser in
           let _ = consume_trivia parser in
