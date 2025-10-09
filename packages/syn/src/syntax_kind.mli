@@ -80,7 +80,8 @@ type t =
   | TRY_EXPR  (** Exception handling: `try expr with ...` *)
   | TYPED_EXPR  (** Type annotation: `(expr : typ)` *)
   | COERCE_EXPR  (** Type coercion: `(expr :> typ)` *)
-  | ATTRIBUTE_EXPR  (** Attribute on expression: `expr [@attr]` or `expr [@@attr]` *)
+  | ATTRIBUTE_EXPR
+      (** Attribute on expression: `expr [@attr]` or `expr [@@attr]` *)
   | EXTENSION_EXPR  (** Extension expression: `[%ext ...]` *)
   | OBJECT_EXPR  (** Object expression: `object ... end` *)
   | OBJECT_UPDATE_EXPR  (** Object update: `{< field = value >}` *)
