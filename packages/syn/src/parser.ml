@@ -3288,7 +3288,9 @@ and parse_ident_or_constructor_pattern parser =
     | Some (Token.Literal _)
     | Some (Token.OpenDelim Token.Bracket)
     | Some (Token.Keyword Keyword.True)
-    | Some (Token.Keyword Keyword.False) -> (
+    | Some (Token.Keyword Keyword.False)
+    | Some Token.Backtick -> (
+        (* Constructor with argument pattern, including polymorphic variants *)
         match parse_pattern parser with
         | Some arg_pat ->
             Some
@@ -4756,10 +4758,31 @@ and parse_type_atomic parser =
             make_node_list ~kind:Syntax_kind.TYPE_PARAMS
               ((open_paren :: args) @ [ close_paren ])
           else
-            (* Single parenthesized type: (int -> string) *)
+            (* Single parenthesized type: (int -> string) or ([> t] as 'a) *)
+            (* Check for 'as' constraint *)
+            let constraint_parts =
+              if at parser (Token.Keyword Keyword.As) then
+                let as_kw = consume parser in
+                let _ = consume_trivia parser in
+                (* Parse the constraint type variable *)
+                let type_var =
+                  if at parser Token.Quote then
+                    let quote = consume parser in
+                    let _ = consume_trivia parser in
+                    let name = consume parser in
+                    make_node_list ~kind:Syntax_kind.TYPE_VAR [ quote; name ]
+                  else
+                    let name = consume parser in
+                    make_node_list ~kind:Syntax_kind.TYPE_VAR [ name ]
+                in
+                let _ = consume_trivia parser in
+                [ as_kw; Ceibo.Green.Node type_var ]
+              else []
+            in
             let close_paren = expect parser (Token.CloseDelim Token.Paren) in
             make_node_list ~kind:Syntax_kind.TYPE_PAREN
-              [ open_paren; Ceibo.Green.Node first; close_paren ]
+              ([ open_paren; Ceibo.Green.Node first ]
+              @ constraint_parts @ [ close_paren ])
     | _ ->
         (* Error: couldn't parse type *)
         make_node_list ~kind:Syntax_kind.ERROR []
@@ -4906,6 +4929,17 @@ and parse_poly_variant_type parser =
           let _ = consume_trivia parser in
           parse_variants (Ceibo.Green.Node variant :: pipe :: acc)
         else List.rev (Ceibo.Green.Node variant :: acc)
+    | Some (Token.Ident _) ->
+        (* Type name reference: [> io_error ] means "io_error and possibly more" *)
+        let type_name = parse_type_atomic parser in
+        let _ = consume_trivia parser in
+
+        (* Check for more types after pipe *)
+        if at parser Token.Pipe then
+          let pipe = consume parser in
+          let _ = consume_trivia parser in
+          parse_variants (Ceibo.Green.Node type_name :: pipe :: acc)
+        else List.rev (Ceibo.Green.Node type_name :: acc)
     | Some Token.Pipe ->
         (* Leading pipe *)
         let pipe = consume parser in
