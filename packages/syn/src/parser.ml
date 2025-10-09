@@ -5236,14 +5236,45 @@ and parse_record_type parser =
         let colon = expect parser Token.Colon in
         let _ = consume_trivia parser in
 
+        (* Check for explicit type quantification: 'a 'b. type *)
+        let type_vars = ref [] in
+        while peek_kind parser = Some Token.Quote do
+          let quote = consume parser in
+          let _ = consume_trivia parser in
+          match peek_kind parser with
+          | Some (Token.Ident _) ->
+              let var_name = consume parser in
+              let _ = consume_trivia parser in
+              type_vars := var_name :: quote :: !type_vars
+          | _ -> ()
+        done;
+
+        (* Check for the dot after type variables *)
+        let dot_after_vars =
+          if !type_vars <> [] && peek_kind parser = Some Token.Dot then
+            let dot = consume parser in
+            let _ = consume_trivia parser in
+            Some dot
+          else None
+        in
+
         (* Parse field type *)
         let field_type = parse_type_expr parser in
         let _ = consume_trivia parser in
 
         let field_parts =
-          match mutable_kw with
-          | Some kw -> [ kw; field_name; colon; Ceibo.Green.Node field_type ]
-          | None -> [ field_name; colon; Ceibo.Green.Node field_type ]
+          let type_quant_parts =
+            match (!type_vars, dot_after_vars) with
+            | [], _ -> []
+            | vars, Some dot -> List.rev vars @ [ dot ]
+            | vars, None -> List.rev vars
+          in
+          let base_parts =
+            match mutable_kw with
+            | Some kw -> [ kw; field_name; colon ]
+            | None -> [ field_name; colon ]
+          in
+          base_parts @ type_quant_parts @ [ Ceibo.Green.Node field_type ]
         in
 
         let field =

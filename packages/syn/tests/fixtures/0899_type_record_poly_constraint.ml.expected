@@ -81,29 +81,22 @@
                     "width": 1
                   },
                   {
+                    "type": "token",
+                    "kind": "TYPE_VAR",
+                    "text": "'",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "a",
+                    "width": 1
+                  },
+                  {
                     "type": "node",
                     "kind": "TYPE_CONSTR",
-                    "width": 6,
+                    "width": 4,
                     "children": [
-                      {
-                        "type": "node",
-                        "kind": "TYPE_VAR",
-                        "width": 2,
-                        "children": [
-                          {
-                            "type": "token",
-                            "kind": "TYPE_VAR",
-                            "text": "'",
-                            "width": 1
-                          },
-                          {
-                            "type": "token",
-                            "kind": "IDENT_EXPR",
-                            "text": "a",
-                            "width": 1
-                          }
-                        ]
-                      },
                       {
                         "type": "token",
                         "kind": "IDENT_EXPR",
