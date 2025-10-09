@@ -1536,15 +1536,22 @@ and parse_record_expr parser =
 
     (* Check if first non-trivia token is identifier followed by = or ; or } (record literal) *)
     (* = means field = value, ; or } means field punning *)
+    (* Also handle qualified field names like Module.field = value *)
     let is_record_literal =
       match peek_non_trivia_nth parser 0 with
-      | Some (Token.Ident _) -> (
-          match peek_non_trivia_nth parser 1 with
-          | Some Token.Eq -> true (* field = value *)
-          | Some Token.Semi -> true (* field; (punning) *)
-          | Some (Token.CloseDelim Token.Brace) ->
-              true (* field } (punning at end) *)
-          | _ -> false)
+      | Some (Token.Ident _) ->
+          (* Skip over potential module path (Ident . Ident . ... . Ident) *)
+          let rec find_after_path n =
+            match peek_non_trivia_nth parser n with
+            | Some Token.Dot ->
+                find_after_path (n + 2) (* Skip . and next ident *)
+            | Some Token.Eq -> true (* field = value *)
+            | Some Token.Semi -> true (* field; (punning) *)
+            | Some (Token.CloseDelim Token.Brace) ->
+                true (* field } (punning at end) *)
+            | _ -> false
+          in
+          find_after_path 1
       | _ -> false
     in
 
@@ -1645,19 +1652,20 @@ and parse_record_field parser =
   let _ = consume_trivia parser in
   match peek_kind parser with
   | Some (Token.Ident _) ->
-      let field_name = consume parser in
+      (* Parse field name - could be qualified like Module.field *)
+      let field_name_parts = parse_identifier parser in
       let _ = consume_trivia parser in
       if at parser Token.Eq then
         let eq = consume parser in
         let _ = consume_trivia parser in
         match parse_expr parser with
         | Some value ->
-            let children = [ field_name; eq; Ceibo.Green.Node value ] in
+            let children = field_name_parts @ [ eq; Ceibo.Green.Node value ] in
             Some (make_node_list ~kind:Syntax_kind.RECORD_FIELD children)
         | None -> None
       else
         (* Punning: { x } is shorthand for { x = x } *)
-        let children = [ field_name ] in
+        let children = field_name_parts in
         Some (make_node_list ~kind:Syntax_kind.RECORD_FIELD children)
   | _ -> None
 
