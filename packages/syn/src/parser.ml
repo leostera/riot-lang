@@ -2143,7 +2143,6 @@ and parse_let_module_expr parser let_kw ?(attributes = []) () =
 
         (* Parse module type expression *)
         let module_type = parse_module_type_expr parser in
-        let _ = consume_trivia parser in
 
         (* Expect ) *)
         let close_paren = expect parser (Token.CloseDelim Token.Paren) in
@@ -2173,6 +2172,8 @@ and parse_let_module_expr parser let_kw ?(attributes = []) () =
       in
       consume_until_in []
   in
+
+  let _ = consume_trivia parser in
 
   (* Expect 'in' *)
   let in_kw = expect parser (Token.Keyword Keyword.In) in
