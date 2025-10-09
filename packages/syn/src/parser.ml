@@ -1308,6 +1308,16 @@ and parse_paren_expr parser =
           @ type_annotation @ [ close_paren ])
       in
       Some (make_node_list ~kind:Syntax_kind.APPLY_EXPR children)
+    (* Check for parenthesized operator: ( + ), ( - ), ( * ), etc. *)
+  else if match peek_kind parser with Some k -> is_infix_op k | None -> false
+  then
+    let op = consume parser in
+    let _ = consume_trivia parser in
+    let close_paren = expect parser (Token.CloseDelim Token.Paren) in
+    let children =
+      prepend_pending_trivia parser [ open_paren; op; close_paren ]
+    in
+    Some (make_node_list ~kind:Syntax_kind.PAREN_EXPR children)
   else
     match parse_expr parser with
     | Some expr ->
