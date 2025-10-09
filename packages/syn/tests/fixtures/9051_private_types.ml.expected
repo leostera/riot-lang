@@ -2,7 +2,7 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 91,
+    "width": 112,
     "children": [
       {
         "type": "node",
@@ -127,7 +127,7 @@
       {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 17,
+        "width": 38,
         "children": [
           {
             "type": "token",
@@ -154,10 +154,10 @@
             "width": 7
           },
           {
-            "type": "node",
-            "kind": "ERROR",
-            "width": 0,
-            "children": []
+            "type": "token",
+            "kind": "COMMENT",
+            "text": "(* Private variant *)",
+            "width": 21
           }
         ]
       },

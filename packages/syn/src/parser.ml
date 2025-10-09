@@ -4800,21 +4800,44 @@ and parse_type_decl parser =
         else (None, [])
       in
 
-      let type_body = parse_type_decl_body parser in
+      (* Check if there's a type body after private, or if it's abstract *)
+      let type_body_opt =
+        match private_kw with
+        | Some _ ->
+            (* After 'private', check if there's actually a type body *)
+            if can_start_type_body parser then
+              Some (parse_type_decl_body parser)
+            else
+              None  (* Abstract private type: type t = private *)
+        | None ->
+            (* No 'private', always parse type body *)
+            Some (parse_type_decl_body parser)
+      in
 
       let children =
-        match (params, private_kw) with
-        | Some p, Some priv ->
+        match (params, private_kw, type_body_opt) with
+        | Some p, Some priv, Some type_body ->
             [ type_kw ] @ trivia_after_type @ [ Ceibo.Green.Node p ]
             @ type_name_parts @ [ eq ] @ trivia_after_eq @ [ priv ] @ trivia_after_private @ [ Ceibo.Green.Node type_body ]
-        | Some p, None ->
+        | Some p, Some priv, None ->
+            [ type_kw ] @ trivia_after_type @ [ Ceibo.Green.Node p ]
+            @ type_name_parts @ [ eq ] @ trivia_after_eq @ [ priv ] @ trivia_after_private
+        | Some p, None, Some type_body ->
             [ type_kw ] @ trivia_after_type @ [ Ceibo.Green.Node p ]
             @ type_name_parts @ [ eq ] @ trivia_after_eq @ [ Ceibo.Green.Node type_body ]
-        | None, Some priv ->
+        | Some p, None, None ->
+            [ type_kw ] @ trivia_after_type @ [ Ceibo.Green.Node p ]
+            @ type_name_parts @ [ eq ] @ trivia_after_eq
+        | None, Some priv, Some type_body ->
             [ type_kw ] @ trivia_after_type
             @ type_name_parts @ [ eq ] @ trivia_after_eq @ [ priv ] @ trivia_after_private @ [ Ceibo.Green.Node type_body ]
-        | None, None ->
+        | None, Some priv, None ->
+            [ type_kw ] @ trivia_after_type
+            @ type_name_parts @ [ eq ] @ trivia_after_eq @ [ priv ] @ trivia_after_private
+        | None, None, Some type_body ->
             [ type_kw ] @ trivia_after_type @ type_name_parts @ [ eq ] @ trivia_after_eq @ [ Ceibo.Green.Node type_body ]
+        | None, None, None ->
+            [ type_kw ] @ trivia_after_type @ type_name_parts @ [ eq ] @ trivia_after_eq
       in
 
       Some (make_node_list ~kind:Syntax_kind.TYPE_DECL children)
@@ -4830,6 +4853,20 @@ and parse_type_decl parser =
 and parse_type_name parser =
   (* Parse type name, which can be a module path: t or Effect.t or Message.t *)
   parse_identifier parser
+
+and can_start_type_body parser =
+  (* Check if the current token can start a type body *)
+  match peek_kind parser with
+  | Some Token.DotDot -> true  (* Extensible variant *)
+  | Some (Token.OpenDelim Token.Brace) -> true  (* Record *)
+  | Some Token.Pipe -> true  (* Variant *)
+  | Some (Token.Ident tag) when String.length tag > 0 && Char.uppercase_ascii tag.[0] = tag.[0] ->
+      peek_nth parser 1 <> Some Token.Dot  (* Variant constructor, not Module.path *)
+  | Some Token.Quote -> true  (* Type variable *)
+  | Some (Token.Ident _) -> true  (* Type name or type constructor *)
+  | Some (Token.OpenDelim Token.Paren) -> true  (* Tuple or parenthesized type *)
+  | Some (Token.OpenDelim Token.Bracket) -> true  (* Polymorphic variant *)
+  | _ -> false
 
 and parse_type_decl_body parser =
   (* Determine what kind of type body this is *)
