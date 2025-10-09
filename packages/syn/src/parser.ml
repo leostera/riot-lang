@@ -2609,15 +2609,28 @@ and parse_regular_let_expr parser let_kw =
               | None -> List.rev acc)
           | Some (Token.Ident _) -> (
               (* Check if this identifier is followed by tokens that suggest it's
-                 an expression (function application) rather than a parameter *)
-              let looks_like_application =
+                  an expression (function application) rather than a parameter *)
+              (* Exception: Module.{...} and Module.(...) are parameters (local open) *)
+              let is_local_open_param =
                 match peek_nth parser 1 with
-                | Some (Token.OpenDelim Token.Paren)
-                | Some (Token.OpenDelim Token.Bracket)
-                | Some (Token.OpenDelim Token.Brace)
-                | Some Token.Dot ->
-                    true
+                | Some Token.Dot -> (
+                    match peek_nth parser 2 with
+                    | Some (Token.OpenDelim Token.Paren)
+                    | Some (Token.OpenDelim Token.Brace) ->
+                        true
+                    | _ -> false)
                 | _ -> false
+              in
+              let looks_like_application =
+                if is_local_open_param then false
+                else
+                  match peek_nth parser 1 with
+                  | Some (Token.OpenDelim Token.Paren)
+                  | Some (Token.OpenDelim Token.Bracket)
+                  | Some (Token.OpenDelim Token.Brace)
+                  | Some Token.Dot ->
+                      true
+                  | _ -> false
               in
               if looks_like_application then
                 (* This is likely the start of the function body, stop parsing params *)
@@ -3291,9 +3304,9 @@ and parse_array_pattern parser =
     Some (make_node_list ~kind:Syntax_kind.ARRAY_PATTERN children)
 
 and parse_ident_or_constructor_pattern parser =
-  (* Check for local module open pattern: Module.(pattern) before parsing identifier *)
-  (* Peek ahead to see if we have Ident . ( which indicates a local open *)
-  let is_local_open =
+  (* Check for local module open pattern: Module.(pattern) or Module.{fields} *)
+  (* Peek ahead to see if we have Ident . ( or Ident . { *)
+  let is_local_open_paren =
     match peek_kind parser with
     | Some (Token.Ident _) -> (
         match peek_nth parser 1 with
@@ -3305,7 +3318,19 @@ and parse_ident_or_constructor_pattern parser =
     | _ -> false
   in
 
-  if is_local_open then
+  let is_local_open_brace =
+    match peek_kind parser with
+    | Some (Token.Ident _) -> (
+        match peek_nth parser 1 with
+        | Some Token.Dot -> (
+            match peek_nth parser 2 with
+            | Some (Token.OpenDelim Token.Brace) -> true
+            | _ -> false)
+        | _ -> false)
+    | _ -> false
+  in
+
+  if is_local_open_paren then
     (* Parse as local open: Module.(pattern) *)
     let module_name = consume parser in
     let _ = consume_trivia parser in
@@ -3322,6 +3347,21 @@ and parse_ident_or_constructor_pattern parser =
              [ module_name; dot; open_paren; Ceibo.Green.Node pat; close_paren ])
     | None ->
         (* Failed to parse pattern - this is an error *)
+        None
+  else if is_local_open_brace then
+    (* Parse as local open with record: Module.{field1; field2} *)
+    let module_name = consume parser in
+    let _ = consume_trivia parser in
+    let dot = consume parser in
+    let _ = consume_trivia parser in
+    (* Now parse the record pattern *)
+    match parse_record_pattern parser with
+    | Some record_pat ->
+        Some
+          (make_node_list ~kind:Syntax_kind.LOCAL_OPEN_PATTERN
+             [ module_name; dot; Ceibo.Green.Node record_pat ])
+    | None ->
+        (* Failed to parse record - this is an error *)
         None
   else
     (* Parse identifier or module path (A.B.C) *)
@@ -4298,15 +4338,28 @@ and parse_regular_let_binding parser let_kw ?(attributes = []) () =
                 | None -> List.rev acc)
           | Some (Token.Ident _) -> (
               (* Check if this identifier is followed by tokens that suggest it's
-                 an expression (function application) rather than a parameter *)
-              let looks_like_application =
+                  an expression (function application) rather than a parameter *)
+              (* Exception: Module.{...} and Module.(...) are parameters (local open) *)
+              let is_local_open_param =
                 match peek_nth parser 1 with
-                | Some (Token.OpenDelim Token.Paren)
-                | Some (Token.OpenDelim Token.Bracket)
-                | Some (Token.OpenDelim Token.Brace)
-                | Some Token.Dot ->
-                    true
+                | Some Token.Dot -> (
+                    match peek_nth parser 2 with
+                    | Some (Token.OpenDelim Token.Paren)
+                    | Some (Token.OpenDelim Token.Brace) ->
+                        true
+                    | _ -> false)
                 | _ -> false
+              in
+              let looks_like_application =
+                if is_local_open_param then false
+                else
+                  match peek_nth parser 1 with
+                  | Some (Token.OpenDelim Token.Paren)
+                  | Some (Token.OpenDelim Token.Bracket)
+                  | Some (Token.OpenDelim Token.Brace)
+                  | Some Token.Dot ->
+                      true
+                  | _ -> false
               in
               if looks_like_application then
                 (* This is likely the start of the function body, stop parsing params *)
