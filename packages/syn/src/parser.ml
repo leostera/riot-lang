@@ -4005,6 +4005,18 @@ and parse_type_params parser =
       let underscore = consume parser in
       let _ = consume_trivia parser in
       Some (make_node_list ~kind:Syntax_kind.TYPE_PARAM [ underscore ])
+  | Some Token.Plus | Some Token.Minus ->
+      (* Variance annotation: +'a or -'a *)
+      let variance = consume parser in
+      let _ = consume_trivia parser in
+      (match peek_kind parser with
+       | Some Token.Quote ->
+           let quote = consume parser in
+           let _ = consume_trivia parser in
+           let name = consume parser in
+           let _ = consume_trivia parser in
+           Some (make_node_list ~kind:Syntax_kind.TYPE_PARAM [ variance; quote; name ])
+       | _ -> None)
   | Some Token.Quote ->
       (* Single type variable: 'a *)
       let quote = consume parser in
@@ -4019,6 +4031,28 @@ and parse_type_params parser =
 
       let rec parse_param_list acc =
         match peek_kind parser with
+        | Some Token.Plus | Some Token.Minus ->
+            (* Variance annotation: +' or -' *)
+            let variance = consume parser in
+            let _ = consume_trivia parser in
+            (match peek_kind parser with
+             | Some Token.Quote ->
+                 let quote = consume parser in
+                 let _ = consume_trivia parser in
+                 let name = consume parser in
+                 let _ = consume_trivia parser in
+                 let param =
+                   make_node_list ~kind:Syntax_kind.TYPE_PARAM
+                     [ variance; quote; name ]
+                 in
+
+                 (* Check for comma *)
+                 if at parser Token.Comma then
+                   let comma = consume parser in
+                   let _ = consume_trivia parser in
+                   parse_param_list (Ceibo.Green.Node param :: comma :: acc)
+                 else List.rev (Ceibo.Green.Node param :: acc)
+             | _ -> List.rev acc)
         | Some Token.Quote ->
             let quote = consume parser in
             let _ = consume_trivia parser in
