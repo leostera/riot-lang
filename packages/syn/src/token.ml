@@ -69,6 +69,10 @@ type token_kind =
   | PipeGt
   | PercentGt
   | LtPercent
+  | PlusDot (* +. *)
+  | MinusDot (* -. *)
+  | StarDot (* *. *)
+  | SlashDot (* /. *)
   | EOF
   | Unknown of char
 
@@ -148,6 +152,10 @@ let show_kind = function
   | PipeGt -> "'|>'"
   | PercentGt -> "'%>'"
   | LtPercent -> "'<%'"
+  | PlusDot -> "'+.'"
+  | MinusDot -> "'-.'"
+  | StarDot -> "'*.'"
+  | SlashDot -> "'/.'"
   | Whitespace -> "whitespace"
   | EOF -> "end of file"
   | Unknown c -> format "unknown character '%c'" c

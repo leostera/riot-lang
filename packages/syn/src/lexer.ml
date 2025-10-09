@@ -14,6 +14,7 @@ let is_ident_continue = function
   | _ -> false
 
 let is_digit = function '0' .. '9' -> true | _ -> false
+let is_digit_or_underscore = function '0' .. '9' | '_' -> true | _ -> false
 
 let lex_whitespace cursor start =
   Cursor.skip_while cursor is_whitespace;
@@ -163,17 +164,36 @@ let lex_ident cursor delim_stack token_start =
   { Token.kind; span = { start = token_start; end_ } }
 
 let lex_number cursor token_start =
-  let num_str = Cursor.take_while cursor is_digit in
+  (* Helper to remove underscores from a string *)
+  let remove_underscores s =
+    let buf = Buffer.create (String.length s) in
+    String.iter (fun c -> if c <> '_' then Buffer.add_char buf c) s;
+    Buffer.contents buf
+  in
+
+  (* Take digits and underscores *)
+  let num_str_raw = Cursor.take_while cursor is_digit_or_underscore in
+  (* Remove underscores for parsing *)
+  let num_str = remove_underscores num_str_raw in
   let end_ = Cursor.position cursor in
   let kind =
     match Cursor.peek cursor with
     | Some '.' -> (
-        Cursor.advance cursor;
-        let frac = Cursor.take_while cursor is_digit in
-        let float_str = num_str ^ "." ^ frac in
-        match float_of_string_opt float_str with
-        | Some f -> Token.Literal (Float f)
-        | None -> Token.Unknown '.')
+        (* Check if next char after dot is a digit (not an operator like -.) *)
+        match Cursor.peek_n cursor 1 with
+        | Some c when is_digit c -> (
+            Cursor.advance cursor;
+            let frac_raw = Cursor.take_while cursor is_digit_or_underscore in
+            let frac = remove_underscores frac_raw in
+            let float_str = num_str ^ "." ^ frac in
+            match float_of_string_opt float_str with
+            | Some f -> Token.Literal (Float f)
+            | None -> Token.Unknown '.')
+        | _ -> (
+            (* Dot is not part of the number - it's an operator or field access *)
+            match int_of_string_opt num_str with
+            | Some i -> Token.Literal (Int i)
+            | None -> Token.Unknown '0'))
     | _ -> (
         match int_of_string_opt num_str with
         | Some i -> Token.Literal (Int i)
@@ -330,10 +350,16 @@ let next cursor delim_stack =
           Token.kind = Token.CloseDelim Brace;
           span = Ceibo.Span.make ~start ~end_;
         }
-    | Some '+' ->
+    | Some '+' -> (
         Cursor.advance cursor;
-        let end_ = Cursor.position cursor in
-        { Token.kind = Token.Plus; span = Ceibo.Span.make ~start ~end_ }
+        match Cursor.peek cursor with
+        | Some '.' ->
+            Cursor.advance cursor;
+            let end_ = Cursor.position cursor in
+            { Token.kind = Token.PlusDot; span = Ceibo.Span.make ~start ~end_ }
+        | _ ->
+            let end_ = Cursor.position cursor in
+            { Token.kind = Token.Plus; span = Ceibo.Span.make ~start ~end_ })
     | Some '-' -> (
         Cursor.advance cursor;
         match Cursor.peek cursor with
@@ -341,6 +367,10 @@ let next cursor delim_stack =
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
             { Token.kind = Token.Arrow; span = Ceibo.Span.make ~start ~end_ }
+        | Some '.' ->
+            Cursor.advance cursor;
+            let end_ = Cursor.position cursor in
+            { Token.kind = Token.MinusDot; span = Ceibo.Span.make ~start ~end_ }
         | _ ->
             let end_ = Cursor.position cursor in
             { Token.kind = Token.Minus; span = Ceibo.Span.make ~start ~end_ })
@@ -351,13 +381,23 @@ let next cursor delim_stack =
             Cursor.advance cursor;
             let end_ = Cursor.position cursor in
             { Token.kind = Token.StarStar; span = Ceibo.Span.make ~start ~end_ }
+        | Some '.' ->
+            Cursor.advance cursor;
+            let end_ = Cursor.position cursor in
+            { Token.kind = Token.StarDot; span = Ceibo.Span.make ~start ~end_ }
         | _ ->
             let end_ = Cursor.position cursor in
             { Token.kind = Token.Star; span = Ceibo.Span.make ~start ~end_ })
-    | Some '/' ->
+    | Some '/' -> (
         Cursor.advance cursor;
-        let end_ = Cursor.position cursor in
-        { Token.kind = Token.Slash; span = Ceibo.Span.make ~start ~end_ }
+        match Cursor.peek cursor with
+        | Some '.' ->
+            Cursor.advance cursor;
+            let end_ = Cursor.position cursor in
+            { Token.kind = Token.SlashDot; span = Ceibo.Span.make ~start ~end_ }
+        | _ ->
+            let end_ = Cursor.position cursor in
+            { Token.kind = Token.Slash; span = Ceibo.Span.make ~start ~end_ })
     | Some '%' -> (
         Cursor.advance cursor;
         match Cursor.peek cursor with

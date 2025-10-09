@@ -57,12 +57,13 @@ let at_any parser kinds =
 (* Check if a token kind represents an operator *)
 let is_operator_token = function
   | Token.Plus | Token.Minus | Token.Star | Token.Slash | Token.Percent
-  | Token.Eq | Token.Ne | Token.Lt | Token.Gt | Token.LtEq | Token.GtEq
-  | Token.And | Token.Or | Token.ColonColon | Token.Caret | Token.At
-  | Token.ColonEq | Token.LeftArrow | Token.StarStar | Token.EqEq | Token.BangEq
-  | Token.AtAt | Token.PipeGt | Token.PercentGt | Token.LtPercent | Token.Bang
-  | Token.Tilde | Token.Question | Token.Pipe | Token.Arrow | Token.Dot
-  | Token.Semi | Token.Comma | Token.Colon | Token.Hash
+  | Token.PlusDot | Token.MinusDot | Token.StarDot | Token.SlashDot | Token.Eq
+  | Token.Ne | Token.Lt | Token.Gt | Token.LtEq | Token.GtEq | Token.And
+  | Token.Or | Token.ColonColon | Token.Caret | Token.At | Token.ColonEq
+  | Token.LeftArrow | Token.StarStar | Token.EqEq | Token.BangEq | Token.AtAt
+  | Token.PipeGt | Token.PercentGt | Token.LtPercent | Token.Bang | Token.Tilde
+  | Token.Question | Token.Pipe | Token.Arrow | Token.Dot | Token.Semi
+  | Token.Comma | Token.Colon | Token.Hash
   | Token.Keyword
       ( Keyword.Mod | Keyword.Land | Keyword.Lor | Keyword.Lxor | Keyword.Lsl
       | Keyword.Lsr | Keyword.Asr | Keyword.Lnot ) ->
@@ -360,10 +361,11 @@ let is_constructor_ident name =
 
 let is_infix_op = function
   | Token.Plus | Token.Minus | Token.Star | Token.Slash | Token.Percent
-  | Token.Eq | Token.Ne | Token.Lt | Token.Gt | Token.LtEq | Token.GtEq
-  | Token.And | Token.Or | Token.ColonColon | Token.Caret | Token.At
-  | Token.ColonEq | Token.LeftArrow | Token.StarStar | Token.EqEq | Token.BangEq
-  | Token.AtAt | Token.PipeGt | Token.PercentGt | Token.LtPercent
+  | Token.PlusDot | Token.MinusDot | Token.StarDot | Token.SlashDot | Token.Eq
+  | Token.Ne | Token.Lt | Token.Gt | Token.LtEq | Token.GtEq | Token.And
+  | Token.Or | Token.ColonColon | Token.Caret | Token.At | Token.ColonEq
+  | Token.LeftArrow | Token.StarStar | Token.EqEq | Token.BangEq | Token.AtAt
+  | Token.PipeGt | Token.PercentGt | Token.LtPercent
   | Token.Keyword
       ( Keyword.Mod | Keyword.Land | Keyword.Lor | Keyword.Lxor | Keyword.Lsl
       | Keyword.Lsr | Keyword.Asr ) ->
@@ -377,8 +379,12 @@ let get_precedence = function
   | Token.LtEq | Token.GtEq | Token.EqEq | Token.BangEq ->
       3
   | Token.ColonColon -> 4
-  | Token.Caret | Token.At | Token.Plus | Token.Minus -> 5
-  | Token.Star | Token.Slash | Token.Percent | Token.Keyword Keyword.Mod -> 6
+  | Token.Caret | Token.At | Token.Plus | Token.Minus | Token.PlusDot
+  | Token.MinusDot ->
+      5
+  | Token.Star | Token.Slash | Token.Percent | Token.StarDot | Token.SlashDot
+  | Token.Keyword Keyword.Mod ->
+      6
   | Token.StarStar -> 7
   | Token.Keyword (Keyword.Land | Keyword.Lor | Keyword.Lxor) -> 3
   | Token.Keyword (Keyword.Lsl | Keyword.Lsr | Keyword.Asr) -> 6
