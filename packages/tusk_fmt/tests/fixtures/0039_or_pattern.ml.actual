@@ -1,0 +1,1 @@
+match   x   with   |   A   |   B   ->   1   |   C   ->   2
