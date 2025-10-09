@@ -107,8 +107,9 @@ type t =
   | EXCEPTION_PATTERN  (** Exception pattern: `exception E` *)
   | PAREN_PATTERN  (** Parenthesized pattern: `(pattern)` *)
   | POLY_VARIANT_PATTERN
-      (** Polymorphic variant pattern: `` `Tag ``, `` `Tag p `` *)
+      (** Polymorphic variant pattern: `` `Tag ``, `` `Tag pattern `` *)
   | POLY_VARIANT_TYPE_PATTERN  (** Polymorphic variant type pattern: `#type` *)
+  | LOCAL_OPEN_PATTERN  (** Local module open pattern: `Module.(pattern)` *)
   (* ===================================================================== *)
   (* TYPE EXPRESSIONS *)
   (* ===================================================================== *)

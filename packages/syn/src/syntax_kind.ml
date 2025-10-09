@@ -77,6 +77,7 @@ type t =
   | PAREN_PATTERN (* (p) *)
   | POLY_VARIANT_PATTERN (* `Tag or `Tag p *)
   | POLY_VARIANT_TYPE_PATTERN (* #type *)
+  | LOCAL_OPEN_PATTERN (* Module.(pattern) *)
   (* ========================================================================= *)
   (* TYPE EXPRESSIONS *)
   (* ========================================================================= *)
@@ -188,6 +189,7 @@ let to_string = function
   | PAREN_PATTERN -> "PAREN_PATTERN"
   | POLY_VARIANT_PATTERN -> "POLY_VARIANT_PATTERN"
   | POLY_VARIANT_TYPE_PATTERN -> "POLY_VARIANT_TYPE_PATTERN"
+  | LOCAL_OPEN_PATTERN -> "LOCAL_OPEN_PATTERN"
   | TYPE_VAR -> "TYPE_VAR"
   | TYPE_CONSTR -> "TYPE_CONSTR"
   | TYPE_ARROW -> "TYPE_ARROW"

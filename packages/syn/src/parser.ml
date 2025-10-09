@@ -3281,52 +3281,86 @@ and parse_array_pattern parser =
     Some (make_node_list ~kind:Syntax_kind.ARRAY_PATTERN children)
 
 and parse_ident_or_constructor_pattern parser =
-  (* Parse identifier or module path (A.B.C) *)
-  let ident_parts = parse_identifier parser in
-
-  (* Get last identifier in path to check if it's a constructor *)
-  let last_ident = List.hd (List.rev ident_parts) in
-  let is_constructor =
-    match Ceibo.Green.text last_ident with
-    | Some text when Ceibo.Green.kind last_ident = Syntax_kind.IDENT_EXPR ->
-        is_constructor_ident text
+  (* Check for local module open pattern: Module.(pattern) before parsing identifier *)
+  (* Peek ahead to see if we have Ident . ( which indicates a local open *)
+  let is_local_open =
+    match peek_kind parser with
+    | Some (Token.Ident _) -> (
+        match peek_nth parser 1 with
+        | Some Token.Dot -> (
+            match peek_nth parser 2 with
+            | Some (Token.OpenDelim Token.Paren) -> true
+            | _ -> false)
+        | _ -> false)
     | _ -> false
   in
 
-  if at parser Token.ColonColon then
-    let cons_op = consume parser in
+  if is_local_open then
+    (* Parse as local open: Module.(pattern) *)
+    let module_name = consume parser in
     let _ = consume_trivia parser in
-
+    let dot = consume parser in
+    let _ = consume_trivia parser in
+    let open_paren = consume parser in
+    let _ = consume_trivia parser in
     match parse_pattern parser with
-    | Some tail_pat ->
+    | Some pat ->
+        let _ = consume_trivia parser in
+        let close_paren = expect parser (Token.CloseDelim Token.Paren) in
         Some
-          (make_node_list ~kind:Syntax_kind.CONS_PATTERN
-             (ident_parts @ [ cons_op; Ceibo.Green.Node tail_pat ]))
-    | None -> Some (make_node_list ~kind:Syntax_kind.IDENT_PATTERN ident_parts)
-  else if is_constructor then
-    (* Only try to parse as constructor pattern if identifier is uppercase *)
-    match peek_kind parser with
-    | Some (Token.Ident _)
-    | Some (Token.OpenDelim Token.Paren)
-    | Some (Token.OpenDelim Token.Brace)
-    | Some Token.Underscore
-    | Some (Token.Literal _)
-    | Some (Token.OpenDelim Token.Bracket)
-    | Some (Token.Keyword Keyword.True)
-    | Some (Token.Keyword Keyword.False)
-    | Some Token.Backtick -> (
-        (* Constructor with argument pattern, including polymorphic variants *)
-        match parse_pattern parser with
-        | Some arg_pat ->
-            Some
-              (make_node_list ~kind:Syntax_kind.CONSTRUCTOR_PATTERN
-                 (ident_parts @ [ Ceibo.Green.Node arg_pat ]))
-        | None ->
-            Some (make_node_list ~kind:Syntax_kind.IDENT_PATTERN ident_parts))
-    | _ -> Some (make_node_list ~kind:Syntax_kind.IDENT_PATTERN ident_parts)
+          (make_node_list ~kind:Syntax_kind.LOCAL_OPEN_PATTERN
+             [ module_name; dot; open_paren; Ceibo.Green.Node pat; close_paren ])
+    | None ->
+        (* Failed to parse pattern - this is an error *)
+        None
   else
-    (* Lowercase identifier - always treat as simple ident pattern *)
-    Some (make_node_list ~kind:Syntax_kind.IDENT_PATTERN ident_parts)
+    (* Parse identifier or module path (A.B.C) *)
+    let ident_parts = parse_identifier parser in
+
+    (* Get last identifier in path to check if it's a constructor *)
+    let last_ident = List.hd (List.rev ident_parts) in
+    let is_constructor =
+      match Ceibo.Green.text last_ident with
+      | Some text when Ceibo.Green.kind last_ident = Syntax_kind.IDENT_EXPR ->
+          is_constructor_ident text
+      | _ -> false
+    in
+
+    if at parser Token.ColonColon then
+      let cons_op = consume parser in
+      let _ = consume_trivia parser in
+
+      match parse_pattern parser with
+      | Some tail_pat ->
+          Some
+            (make_node_list ~kind:Syntax_kind.CONS_PATTERN
+               (ident_parts @ [ cons_op; Ceibo.Green.Node tail_pat ]))
+      | None ->
+          Some (make_node_list ~kind:Syntax_kind.IDENT_PATTERN ident_parts)
+    else if is_constructor then
+      (* Only try to parse as constructor pattern if identifier is uppercase *)
+      match peek_kind parser with
+      | Some (Token.Ident _)
+      | Some (Token.OpenDelim Token.Paren)
+      | Some (Token.OpenDelim Token.Brace)
+      | Some Token.Underscore
+      | Some (Token.Literal _)
+      | Some (Token.OpenDelim Token.Bracket)
+      | Some (Token.Keyword Keyword.True)
+      | Some (Token.Keyword Keyword.False)
+      | Some Token.Backtick -> (
+          (* Constructor with argument pattern, including polymorphic variants *)
+          match parse_pattern parser with
+          | Some arg_pat ->
+              Some
+                (make_node_list ~kind:Syntax_kind.CONSTRUCTOR_PATTERN
+                   (ident_parts @ [ Ceibo.Green.Node arg_pat ]))
+          | None ->
+              Some (make_node_list ~kind:Syntax_kind.IDENT_PATTERN ident_parts))
+      | _ -> Some (make_node_list ~kind:Syntax_kind.IDENT_PATTERN ident_parts)
+    else
+      (* Lowercase identifier - always treat as simple ident pattern *)
+      Some (make_node_list ~kind:Syntax_kind.IDENT_PATTERN ident_parts)
 
 and parse_paren_pattern parser =
   let open_paren = consume parser in
