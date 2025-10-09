@@ -1689,10 +1689,9 @@ and parse_poly_variant_expr parser =
   let backtick = consume parser in
   let _ = consume_trivia parser in
 
-  (* Polymorphic variant tag must be a capitalized identifier *)
+  (* Polymorphic variant tag - can be any identifier (lowercase or uppercase) *)
   match peek_kind parser with
-  | Some (Token.Ident tag)
-    when String.length tag > 0 && Char.uppercase_ascii tag.[0] = tag.[0] ->
+  | Some (Token.Ident _) ->
       let tag_token = consume parser in
       let _ = consume_trivia parser in
       (* Check if there's an argument *)
@@ -3069,16 +3068,34 @@ and parse_pattern parser =
                  [ Ceibo.Green.Node pat; dotdot; Ceibo.Green.Node end_pat ])
         | None -> Some pat
       else if at parser Token.Pipe then
-        (* OR pattern: A | B | C *)
+        (* OR pattern: A | B | C, where alternatives can be ranges, cons, etc. *)
         let rec collect_or_patterns acc =
           if not (at parser Token.Pipe) then List.rev acc
           else
             let pipe = consume parser in
             let _ = consume_trivia parser in
+            (* Parse alternative: could be range like '0' .. '9' or cons pattern *)
             match parse_base_pattern parser with
             | Some p ->
                 let _ = consume_trivia parser in
-                collect_or_patterns (Ceibo.Green.Node p :: pipe :: acc)
+                (* Check if this alternative is a range pattern *)
+                let alternative =
+                  if at parser Token.DotDot then
+                    let dotdot = consume parser in
+                    let _ = consume_trivia parser in
+                    match parse_base_pattern parser with
+                    | Some end_pat ->
+                        Ceibo.Green.Node
+                          (make_node_list ~kind:Syntax_kind.RANGE_PATTERN
+                             [
+                               Ceibo.Green.Node p;
+                               dotdot;
+                               Ceibo.Green.Node end_pat;
+                             ])
+                    | None -> Ceibo.Green.Node p
+                  else Ceibo.Green.Node p
+                in
+                collect_or_patterns (alternative :: pipe :: acc)
             | None -> List.rev acc
         in
         let patterns = collect_or_patterns [ Ceibo.Green.Node pat ] in
@@ -3581,10 +3598,9 @@ and parse_poly_variant_pattern parser =
   let backtick = consume parser in
   let _ = consume_trivia parser in
 
-  (* Polymorphic variant tag must be a capitalized identifier *)
+  (* Polymorphic variant tag - can be any identifier (lowercase or uppercase) *)
   match peek_kind parser with
-  | Some (Token.Ident tag)
-    when String.length tag > 0 && Char.uppercase_ascii tag.[0] = tag.[0] -> (
+  | Some (Token.Ident _) -> (
       let tag_token = consume parser in
       let _ = consume_trivia parser in
       (* Check if there's a pattern argument *)
