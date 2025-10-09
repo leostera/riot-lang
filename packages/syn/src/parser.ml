@@ -2765,7 +2765,17 @@ and parse_pattern parser =
   match parse_base_pattern parser with
   | Some pat ->
       let _ = consume_trivia parser in
-      if at parser Token.DotDot then
+      if at parser Token.ColonColon then
+        (* Cons pattern: a :: b or "x" :: rest *)
+        let cons_op = consume parser in
+        let _ = consume_trivia parser in
+        match parse_pattern parser with
+        | Some tail_pat ->
+            Some
+              (make_node_list ~kind:Syntax_kind.CONS_PATTERN
+                 [ Ceibo.Green.Node pat; cons_op; Ceibo.Green.Node tail_pat ])
+        | None -> Some pat
+      else if at parser Token.DotDot then
         (* Range pattern: 'a' .. 'z' or 0 .. 9 *)
         let dotdot = consume parser in
         let _ = consume_trivia parser in
