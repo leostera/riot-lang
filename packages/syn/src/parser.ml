@@ -5250,8 +5250,11 @@ and parse_record_type parser =
         done;
 
         (* Check for the dot after type variables *)
+        let has_dot =
+          !type_vars <> [] && peek_kind parser = Some Token.Dot
+        in
         let dot_after_vars =
-          if !type_vars <> [] && peek_kind parser = Some Token.Dot then
+          if has_dot then
             let dot = consume parser in
             let _ = consume_trivia parser in
             Some dot
@@ -5259,15 +5262,23 @@ and parse_record_type parser =
         in
 
         (* Parse field type *)
-        let field_type = parse_type_expr parser in
+        let field_type =
+          if !type_vars <> [] && not has_dot then
+            (* The type vars we consumed ARE the field type, not quantifiers.
+               Reconstruct the type from the consumed tokens. *)
+            make_node_list ~kind:Syntax_kind.TYPE_VAR (List.rev !type_vars)
+          else
+            (* Either no type vars, or type vars with dot (quantifiers).
+               Parse the actual field type. *)
+            parse_type_expr parser
+        in
         let _ = consume_trivia parser in
 
         let field_parts =
           let type_quant_parts =
-            match (!type_vars, dot_after_vars) with
-            | [], _ -> []
-            | vars, Some dot -> List.rev vars @ [ dot ]
-            | vars, None -> List.rev vars
+            match (has_dot, dot_after_vars) with
+            | true, Some dot -> List.rev !type_vars @ [ dot ]
+            | _ -> []
           in
           let base_parts =
             match mutable_kw with

@@ -7,10 +7,7 @@ type io_error = [ `Eof | `Timeout | `Connection_closed ]
 type ('ok, 'err) io_result = ('ok, ([> io_error ] as 'err)) result
 
 (* Polymorphic variant patterns *)
-let test = function
-  | `Red -> "red"
-  | `Green -> "green"
-  | `Blue -> "blue"
+let test = function `Red -> "red" | `Green -> "green" | `Blue -> "blue"
 
 (* Constructor with polymorphic variant argument *)
 let handle_result = function
@@ -19,7 +16,4 @@ let handle_result = function
   | Ok x -> "ok"
 
 (* Nested polymorphic variants *)
-let complex = function
-  | Some `Foo -> 1
-  | Some `Bar -> 2
-  | None -> 0
+let complex = function Some `Foo -> 1 | Some `Bar -> 2 | None -> 0

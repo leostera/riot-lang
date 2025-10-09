@@ -11,8 +11,7 @@ let test1 x =
   Ok (a + b)
 
 let test2 x y =
-  let* a = Ok x
-  and* b = Ok y in
+  let* a = Ok x and* b = Ok y in
   Ok (a + b)
 
 let test3 x =
