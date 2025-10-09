@@ -3573,6 +3573,13 @@ and parse_regular_let_binding parser let_kw ?(attributes = []) () =
           (Ceibo.Green.make_token ~kind:Syntax_kind.UNIT_LITERAL
              ~text:"()" ~width:2)
       else
+        (* Check if this is a first-class module pattern: (module M) *)
+        let is_module_pattern =
+          match peek_kind parser with
+          | Some (Token.Keyword Keyword.Module) -> true
+          | _ -> false
+        in
+
         (* Check if this is an operator name by looking at the content *)
         let is_operator_name =
           match peek_kind parser with
@@ -3588,7 +3595,34 @@ and parse_regular_let_binding parser let_kw ?(attributes = []) () =
           | _ -> false
         in
 
-        if is_operator_name then
+        if is_module_pattern then
+          (* First-class module pattern: (module M : S) *)
+          let module_kw = consume parser in
+          let _ = consume_trivia parser in
+          let module_name = consume parser in
+          let _ = consume_trivia parser in
+          (* Check for optional type constraint *)
+          let constraint_nodes =
+            if at parser Token.Colon then
+              let colon = consume parser in
+              let _ = consume_trivia parser in
+              (* Consume tokens until closing paren *)
+              let rec consume_until_close acc =
+                if at parser (Token.CloseDelim Token.Paren) then List.rev acc
+                else
+                  let tok = consume parser in
+                  let _ = consume_trivia parser in
+                  consume_until_close (tok :: acc)
+              in
+              let type_tokens = consume_until_close [] in
+              [ colon ] @ type_tokens
+            else []
+          in
+          let close_paren = expect parser (Token.CloseDelim Token.Paren) in
+          let _ = consume_trivia parser in
+          let all_tokens = [ open_paren ] @ trivia_after_open @ [ module_kw; module_name ] @ constraint_nodes @ [ close_paren ] in
+          Ceibo.Green.Node (make_node_list ~kind:Syntax_kind.PAREN_PATTERN all_tokens)
+        else if is_operator_name then
           (* Parse as operator identifier - collect all tokens until ) *)
           let rec collect_operator_tokens acc =
             if at parser (Token.CloseDelim Token.Paren) then List.rev acc
@@ -3899,17 +3933,58 @@ and parse_regular_let_binding parser let_kw ?(attributes = []) () =
     match return_type_annotation with Some tokens -> tokens | None -> []
   in
 
-  match rec_kw with
-  | Some kw ->
-      Some
-        (make_node_list ~kind:Syntax_kind.LET_BINDING
-           ([ let_kw ] @ attributes @ [ kw; pattern ] @ type_annot_tokens @ params
-          @ return_type_annot_tokens @ [ eq; final_expr ]))
-  | None ->
-      Some
-        (make_node_list ~kind:Syntax_kind.LET_BINDING
-           ([ let_kw ] @ attributes @ [ pattern ] @ type_annot_tokens @ params
-          @ return_type_annot_tokens @ [ eq; final_expr ]))
+  (* Check if this is a let expression (has 'in' keyword) *)
+  if at parser (Token.Keyword Keyword.In) then
+    (* This is a let expression: let x = expr in body *)
+    let in_kw = consume parser in
+    let _ = consume_trivia parser in
+    match parse_expr parser with
+    | Some body ->
+        let kind =
+          match rec_kw with
+          | Some _ -> Syntax_kind.LET_REC_EXPR
+          | None -> Syntax_kind.LET_EXPR
+        in
+        let children =
+          match rec_kw with
+          | Some kw ->
+              [ let_kw ] @ attributes @ [ kw; pattern ] @ type_annot_tokens
+              @ params @ return_type_annot_tokens @ [ eq; final_expr; in_kw; Ceibo.Green.Node body ]
+          | None ->
+              [ let_kw ] @ attributes @ [ pattern ] @ type_annot_tokens @ params
+              @ return_type_annot_tokens @ [ eq; final_expr; in_kw; Ceibo.Green.Node body ]
+        in
+        Some (make_node_list ~kind children)
+    | None ->
+        (* Missing body expression *)
+        let kind =
+          match rec_kw with
+          | Some _ -> Syntax_kind.LET_REC_EXPR
+          | None -> Syntax_kind.LET_EXPR
+        in
+        let children =
+          match rec_kw with
+          | Some kw ->
+              [ let_kw ] @ attributes @ [ kw; pattern ] @ type_annot_tokens
+              @ params @ return_type_annot_tokens @ [ eq; final_expr; in_kw ]
+          | None ->
+              [ let_kw ] @ attributes @ [ pattern ] @ type_annot_tokens @ params
+              @ return_type_annot_tokens @ [ eq; final_expr; in_kw ]
+        in
+        Some (make_node_list ~kind children)
+  else
+    (* This is a let binding: let x = expr *)
+    match rec_kw with
+    | Some kw ->
+        Some
+          (make_node_list ~kind:Syntax_kind.LET_BINDING
+             ([ let_kw ] @ attributes @ [ kw; pattern ] @ type_annot_tokens @ params
+            @ return_type_annot_tokens @ [ eq; final_expr ]))
+    | None ->
+        Some
+          (make_node_list ~kind:Syntax_kind.LET_BINDING
+             ([ let_kw ] @ attributes @ [ pattern ] @ type_annot_tokens @ params
+            @ return_type_annot_tokens @ [ eq; final_expr ]))
 
 and parse_type_decl parser =
   (* type 'a t = ... | type t += ... | type t *)

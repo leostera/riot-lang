@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 14,
+    "width": 20,
     "children": [
       {
         "type": "node",
-        "kind": "LET_BINDING",
-        "width": 14,
+        "kind": "LET_EXPR",
+        "width": 20,
         "children": [
           {
             "type": "token",
@@ -62,6 +62,64 @@
                 "kind": "IDENT_EXPR",
                 "text": "m",
                 "width": 1
+              }
+            ]
+          },
+          {
+            "type": "token",
+            "kind": "LET_EXPR",
+            "text": "in",
+            "width": 2
+          },
+          {
+            "type": "node",
+            "kind": "APPLY_EXPR",
+            "width": 4,
+            "children": [
+              {
+                "type": "node",
+                "kind": "FIELD_ACCESS_EXPR",
+                "width": 3,
+                "children": [
+                  {
+                    "type": "node",
+                    "kind": "IDENT_EXPR",
+                    "width": 1,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "M",
+                        "width": 1
+                      }
+                    ]
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": ".",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "f",
+                    "width": 1
+                  }
+                ]
+              },
+              {
+                "type": "node",
+                "kind": "IDENT_EXPR",
+                "width": 1,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "x",
+                    "width": 1
+                  }
+                ]
               }
             ]
           }

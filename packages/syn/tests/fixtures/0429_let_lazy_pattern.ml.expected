@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 22,
+    "width": 25,
     "children": [
       {
         "type": "node",
-        "kind": "LET_BINDING",
-        "width": 22,
+        "kind": "LET_EXPR",
+        "width": 25,
         "children": [
           {
             "type": "token",
@@ -76,6 +76,25 @@
                 "kind": "IDENT_EXPR",
                 "text": "computation",
                 "width": 11
+              }
+            ]
+          },
+          {
+            "type": "token",
+            "kind": "LET_EXPR",
+            "text": "in",
+            "width": 2
+          },
+          {
+            "type": "node",
+            "kind": "IDENT_EXPR",
+            "width": 1,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "v",
+                "width": 1
               }
             ]
           }
