@@ -2,7 +2,7 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 551,
+    "width": 395,
     "children": [
       {
         "type": "node",
@@ -340,7 +340,7 @@
       {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 55,
+        "width": 89,
         "children": [
           {
             "type": "token",
@@ -357,12 +357,6 @@
                 "type": "token",
                 "kind": "WHITESPACE",
                 "text": "(",
-                "width": 1
-              },
-              {
-                "type": "token",
-                "kind": "TUPLE_EXPR",
-                "text": ",",
                 "width": 1
               },
               {
@@ -383,6 +377,12 @@
                     "width": 2
                   }
                 ]
+              },
+              {
+                "type": "token",
+                "kind": "TUPLE_EXPR",
+                "text": ",",
+                "width": 1
               },
               {
                 "type": "node",
@@ -426,7 +426,7 @@
           {
             "type": "node",
             "kind": "TYPE_CONSTR",
-            "width": 31,
+            "width": 65,
             "children": [
               {
                 "type": "node",
@@ -559,6 +559,12 @@
                 "kind": "IDENT_EXPR",
                 "text": "result",
                 "width": 6
+              },
+              {
+                "type": "token",
+                "kind": "COMMENT",
+                "text": "(* Polymorphic variant patterns *)",
+                "width": 34
               }
             ]
           }
@@ -567,7 +573,7 @@
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 214,
+        "width": 57,
         "children": [
           {
             "type": "token",
@@ -590,14 +596,8 @@
           {
             "type": "node",
             "kind": "FUNCTION_EXPR",
-            "width": 206,
+            "width": 49,
             "children": [
-              {
-                "type": "token",
-                "kind": "COMMENT",
-                "text": "(* Constructor with polymorphic variant argument *)",
-                "width": 51
-              },
               {
                 "type": "token",
                 "kind": "FUNCTION_EXPR",
@@ -607,31 +607,13 @@
               {
                 "type": "node",
                 "kind": "MATCH_CASE",
-                "width": 117,
+                "width": 11,
                 "children": [
                   {
                     "type": "node",
                     "kind": "POLY_VARIANT_PATTERN",
-                    "width": 110,
+                    "width": 4,
                     "children": [
-                      {
-                        "type": "token",
-                        "kind": "COMMENT",
-                        "text": "(* Polymorphic variant type definitions *)",
-                        "width": 42
-                      },
-                      {
-                        "type": "token",
-                        "kind": "COMMENT",
-                        "text": "(* Open and closed variants *)",
-                        "width": 30
-                      },
-                      {
-                        "type": "token",
-                        "kind": "COMMENT",
-                        "text": "(* Polymorphic variant patterns *)",
-                        "width": 34
-                      },
                       {
                         "type": "token",
                         "kind": "POLY_VARIANT_EXPR",
@@ -776,7 +758,7 @@
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 114,
+        "width": 81,
         "children": [
           {
             "type": "token",
@@ -799,14 +781,8 @@
           {
             "type": "node",
             "kind": "FUNCTION_EXPR",
-            "width": 97,
+            "width": 64,
             "children": [
-              {
-                "type": "token",
-                "kind": "COMMENT",
-                "text": "(* Nested polymorphic variants *)",
-                "width": 33
-              },
               {
                 "type": "token",
                 "kind": "FUNCTION_EXPR",

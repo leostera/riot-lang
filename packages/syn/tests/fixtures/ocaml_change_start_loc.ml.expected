@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 1039,
+    "width": 752,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 263,
+        "width": 166,
         "children": [
           {
             "type": "token",
@@ -30,19 +30,13 @@
           {
             "type": "node",
             "kind": "APPLY_EXPR",
-            "width": 251,
+            "width": 154,
             "children": [
               {
                 "type": "node",
                 "kind": "IDENT_EXPR",
-                "width": 103,
+                "width": 6,
                 "children": [
-                  {
-                    "type": "token",
-                    "kind": "COMMENT",
-                    "text": "(* TEST\n flags = \"-I ${ocamlsrcdir}/parsing -I ${ocamlsrcdir}/toplevel\";\n include ocamlcommon;\n*)",
-                    "width": 97
-                  },
                   {
                     "type": "token",
                     "kind": "IDENT_EXPR",
@@ -69,9 +63,15 @@
                     "width": 1
                   },
                   {
+                    "type": "token",
+                    "kind": "COMMENT",
+                    "text": "(* This corresponds to File \"file.ml\", line 100, character 10 *)",
+                    "width": 64
+                  },
+                  {
                     "type": "node",
                     "kind": "RECORD_FIELD",
-                    "width": 145,
+                    "width": 81,
                     "children": [
                       {
                         "type": "token",
@@ -88,19 +88,13 @@
                       {
                         "type": "node",
                         "kind": "SEQUENCE_EXPR",
-                        "width": 135,
+                        "width": 71,
                         "children": [
                           {
                             "type": "node",
                             "kind": "STRING_LITERAL",
-                            "width": 95,
+                            "width": 31,
                             "children": [
-                              {
-                                "type": "token",
-                                "kind": "COMMENT",
-                                "text": "(* This corresponds to File \"file.ml\", line 100, character 10 *)",
-                                "width": 64
-                              },
                               {
                                 "type": "token",
                                 "kind": "STRING_LITERAL",
@@ -277,7 +271,7 @@
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 291,
+        "width": 142,
         "children": [
           {
             "type": "token",
@@ -326,7 +320,7 @@
           {
             "type": "node",
             "kind": "FUN_EXPR",
-            "width": 250,
+            "width": 101,
             "children": [
               {
                 "type": "node",
@@ -363,7 +357,7 @@
               {
                 "type": "node",
                 "kind": "LET_EXPR",
-                "width": 234,
+                "width": 85,
                 "children": [
                   {
                     "type": "token",
@@ -392,30 +386,18 @@
                   {
                     "type": "node",
                     "kind": "INFIX_EXPR",
-                    "width": 219,
+                    "width": 70,
                     "children": [
-                      {
-                        "type": "token",
-                        "kind": "COMMENT",
-                        "text": "(* \"Testing framework\" *)",
-                        "width": 25
-                      },
                       {
                         "type": "node",
                         "kind": "FIELD_ACCESS_EXPR",
-                        "width": 141,
+                        "width": 17,
                         "children": [
                           {
                             "type": "node",
                             "kind": "IDENT_EXPR",
-                            "width": 130,
+                            "width": 6,
                             "children": [
-                              {
-                                "type": "token",
-                                "kind": "COMMENT",
-                                "text": "(* We need to show, that just changing lex_curr_p is not enough.\n   See wrong columns in output for 'Incomplete version'. *)",
-                                "width": 124
-                              },
                               {
                                 "type": "token",
                                 "kind": "IDENT_EXPR",
@@ -563,7 +545,7 @@
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 331,
+        "width": 290,
         "children": [
           {
             "type": "token",
@@ -599,7 +581,7 @@
           {
             "type": "node",
             "kind": "FUN_EXPR",
-            "width": 287,
+            "width": 246,
             "children": [
               {
                 "type": "node",
@@ -623,7 +605,7 @@
               {
                 "type": "node",
                 "kind": "TRY_EXPR",
-                "width": 265,
+                "width": 224,
                 "children": [
                   {
                     "type": "token",
@@ -633,125 +615,8 @@
                   },
                   {
                     "type": "node",
-                    "kind": "MATCH_CASE",
-                    "width": 49,
-                    "children": [
-                      {
-                        "type": "node",
-                        "kind": "IDENT_PATTERN",
-                        "width": 1,
-                        "children": [
-                          {
-                            "type": "token",
-                            "kind": "IDENT_EXPR",
-                            "text": "e",
-                            "width": 1
-                          }
-                        ]
-                      },
-                      {
-                        "type": "token",
-                        "kind": "FUN_EXPR",
-                        "text": "->",
-                        "width": 2
-                      },
-                      {
-                        "type": "node",
-                        "kind": "APPLY_EXPR",
-                        "width": 46,
-                        "children": [
-                          {
-                            "type": "node",
-                            "kind": "FIELD_ACCESS_EXPR",
-                            "width": 45,
-                            "children": [
-                              {
-                                "type": "node",
-                                "kind": "APPLY_EXPR",
-                                "width": 31,
-                                "children": [
-                                  {
-                                    "type": "node",
-                                    "kind": "FIELD_ACCESS_EXPR",
-                                    "width": 25,
-                                    "children": [
-                                      {
-                                        "type": "node",
-                                        "kind": "IDENT_EXPR",
-                                        "width": 8,
-                                        "children": [
-                                          {
-                                            "type": "token",
-                                            "kind": "IDENT_EXPR",
-                                            "text": "Location",
-                                            "width": 8
-                                          }
-                                        ]
-                                      },
-                                      {
-                                        "type": "token",
-                                        "kind": "IDENT_EXPR",
-                                        "text": ".",
-                                        "width": 1
-                                      },
-                                      {
-                                        "type": "token",
-                                        "kind": "IDENT_EXPR",
-                                        "text": "report_exception",
-                                        "width": 16
-                                      }
-                                    ]
-                                  },
-                                  {
-                                    "type": "node",
-                                    "kind": "IDENT_EXPR",
-                                    "width": 6,
-                                    "children": [
-                                      {
-                                        "type": "token",
-                                        "kind": "IDENT_EXPR",
-                                        "text": "Format",
-                                        "width": 6
-                                      }
-                                    ]
-                                  }
-                                ]
-                              },
-                              {
-                                "type": "token",
-                                "kind": "IDENT_EXPR",
-                                "text": ".",
-                                "width": 1
-                              },
-                              {
-                                "type": "token",
-                                "kind": "IDENT_EXPR",
-                                "text": "std_formatter",
-                                "width": 13
-                              }
-                            ]
-                          },
-                          {
-                            "type": "node",
-                            "kind": "IDENT_EXPR",
-                            "width": 1,
-                            "children": [
-                              {
-                                "type": "token",
-                                "kind": "IDENT_EXPR",
-                                "text": "e",
-                                "width": 1
-                              }
-                            ]
-                          }
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "type": "node",
                     "kind": "LET_EXPR",
-                    "width": 209,
+                    "width": 168,
                     "children": [
                       {
                         "type": "token",
@@ -781,7 +646,7 @@
                       {
                         "type": "node",
                         "kind": "LET_EXPR",
-                        "width": 200,
+                        "width": 159,
                         "children": [
                           {
                             "type": "token",
@@ -862,29 +727,23 @@
                           {
                             "type": "node",
                             "kind": "SEQUENCE_EXPR",
-                            "width": 164,
+                            "width": 123,
                             "children": [
                               {
                                 "type": "node",
                                 "kind": "APPLY_EXPR",
-                                "width": 75,
+                                "width": 34,
                                 "children": [
                                   {
                                     "type": "node",
                                     "kind": "APPLY_EXPR",
-                                    "width": 67,
+                                    "width": 26,
                                     "children": [
                                       {
                                         "type": "node",
                                         "kind": "IDENT_EXPR",
-                                        "width": 61,
+                                        "width": 20,
                                         "children": [
-                                          {
-                                            "type": "token",
-                                            "kind": "COMMENT",
-                                            "text": "(* contains error in chars 0-1, line 0 *)",
-                                            "width": 41
-                                          },
                                           {
                                             "type": "token",
                                             "kind": "IDENT_EXPR",
@@ -1013,26 +872,26 @@
                                     "width": 1
                                   },
                                   {
+                                    "type": "token",
+                                    "kind": "COMMENT",
+                                    "text": "(* also testing set_filename *)",
+                                    "width": 31
+                                  },
+                                  {
                                     "type": "node",
                                     "kind": "APPLY_EXPR",
-                                    "width": 53,
+                                    "width": 22,
                                     "children": [
                                       {
                                         "type": "node",
                                         "kind": "FIELD_ACCESS_EXPR",
-                                        "width": 47,
+                                        "width": 16,
                                         "children": [
                                           {
                                             "type": "node",
                                             "kind": "IDENT_EXPR",
-                                            "width": 36,
+                                            "width": 5,
                                             "children": [
-                                              {
-                                                "type": "token",
-                                                "kind": "COMMENT",
-                                                "text": "(* also testing set_filename *)",
-                                                "width": 31
-                                              },
                                               {
                                                 "type": "token",
                                                 "kind": "IDENT_EXPR",
@@ -1108,6 +967,123 @@
                     "kind": "MATCH_EXPR",
                     "text": "with",
                     "width": 4
+                  },
+                  {
+                    "type": "node",
+                    "kind": "MATCH_CASE",
+                    "width": 49,
+                    "children": [
+                      {
+                        "type": "node",
+                        "kind": "IDENT_PATTERN",
+                        "width": 1,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "IDENT_EXPR",
+                            "text": "e",
+                            "width": 1
+                          }
+                        ]
+                      },
+                      {
+                        "type": "token",
+                        "kind": "FUN_EXPR",
+                        "text": "->",
+                        "width": 2
+                      },
+                      {
+                        "type": "node",
+                        "kind": "APPLY_EXPR",
+                        "width": 46,
+                        "children": [
+                          {
+                            "type": "node",
+                            "kind": "FIELD_ACCESS_EXPR",
+                            "width": 45,
+                            "children": [
+                              {
+                                "type": "node",
+                                "kind": "APPLY_EXPR",
+                                "width": 31,
+                                "children": [
+                                  {
+                                    "type": "node",
+                                    "kind": "FIELD_ACCESS_EXPR",
+                                    "width": 25,
+                                    "children": [
+                                      {
+                                        "type": "node",
+                                        "kind": "IDENT_EXPR",
+                                        "width": 8,
+                                        "children": [
+                                          {
+                                            "type": "token",
+                                            "kind": "IDENT_EXPR",
+                                            "text": "Location",
+                                            "width": 8
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "type": "token",
+                                        "kind": "IDENT_EXPR",
+                                        "text": ".",
+                                        "width": 1
+                                      },
+                                      {
+                                        "type": "token",
+                                        "kind": "IDENT_EXPR",
+                                        "text": "report_exception",
+                                        "width": 16
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "type": "node",
+                                    "kind": "IDENT_EXPR",
+                                    "width": 6,
+                                    "children": [
+                                      {
+                                        "type": "token",
+                                        "kind": "IDENT_EXPR",
+                                        "text": "Format",
+                                        "width": 6
+                                      }
+                                    ]
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "token",
+                                "kind": "IDENT_EXPR",
+                                "text": ".",
+                                "width": 1
+                              },
+                              {
+                                "type": "token",
+                                "kind": "IDENT_EXPR",
+                                "text": "std_formatter",
+                                "width": 13
+                              }
+                            ]
+                          },
+                          {
+                            "type": "node",
+                            "kind": "IDENT_EXPR",
+                            "width": 1,
+                            "children": [
+                              {
+                                "type": "token",
+                                "kind": "IDENT_EXPR",
+                                "text": "e",
+                                "width": 1
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
                   }
                 ]
               }

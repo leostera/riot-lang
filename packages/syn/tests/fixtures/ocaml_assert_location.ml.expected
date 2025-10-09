@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 115,
+    "width": 17,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 115,
+        "width": 17,
         "children": [
           {
             "type": "token",
@@ -30,14 +30,8 @@
           {
             "type": "node",
             "kind": "ASSERT_EXPR",
-            "width": 109,
+            "width": 11,
             "children": [
-              {
-                "type": "token",
-                "kind": "COMMENT",
-                "text": "(* TEST\n exit_status = \"2\";\n*)",
-                "width": 30
-              },
               {
                 "type": "token",
                 "kind": "ASSERT_EXPR",
@@ -47,14 +41,8 @@
               {
                 "type": "node",
                 "kind": "BOOL_LITERAL",
-                "width": 73,
+                "width": 5,
                 "children": [
-                  {
-                    "type": "token",
-                    "kind": "COMMENT",
-                    "text": "(* TEST_BELOW\n(* Blank lines added here to preserve locations. *)\n*)",
-                    "width": 68
-                  },
                   {
                     "type": "token",
                     "kind": "BOOL_LITERAL",

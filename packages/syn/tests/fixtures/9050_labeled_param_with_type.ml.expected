@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 456,
+    "width": 168,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 116,
+        "width": 24,
         "children": [
           {
             "type": "token",
@@ -24,14 +24,8 @@
           {
             "type": "node",
             "kind": "PARAMETER",
-            "width": 54,
+            "width": 8,
             "children": [
-              {
-                "type": "token",
-                "kind": "COMMENT",
-                "text": "(* Labeled parameters with type annotations *)",
-                "width": 46
-              },
               {
                 "type": "token",
                 "kind": "ARGUMENT",
@@ -79,19 +73,13 @@
           {
             "type": "node",
             "kind": "FUN_EXPR",
-            "width": 57,
+            "width": 11,
             "children": [
               {
                 "type": "node",
                 "kind": "PARAMETER",
-                "width": 54,
+                "width": 8,
                 "children": [
-                  {
-                    "type": "token",
-                    "kind": "COMMENT",
-                    "text": "(* Labeled parameters with type annotations *)",
-                    "width": 46
-                  },
                   {
                     "type": "token",
                     "kind": "ARGUMENT",
@@ -156,7 +144,7 @@
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 130,
+        "width": 50,
         "children": [
           {
             "type": "token",
@@ -173,14 +161,8 @@
           {
             "type": "node",
             "kind": "PARAMETER",
-            "width": 51,
+            "width": 11,
             "children": [
-              {
-                "type": "token",
-                "kind": "COMMENT",
-                "text": "(* Multiple labeled params with types *)",
-                "width": 40
-              },
               {
                 "type": "token",
                 "kind": "ARGUMENT",
@@ -271,19 +253,13 @@
           {
             "type": "node",
             "kind": "FUN_EXPR",
-            "width": 64,
+            "width": 24,
             "children": [
               {
                 "type": "node",
                 "kind": "PARAMETER",
-                "width": 51,
+                "width": 11,
                 "children": [
-                  {
-                    "type": "token",
-                    "kind": "COMMENT",
-                    "text": "(* Multiple labeled params with types *)",
-                    "width": 40
-                  },
                   {
                     "type": "token",
                     "kind": "ARGUMENT",
@@ -391,7 +367,7 @@
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 104,
+        "width": 52,
         "children": [
           {
             "type": "token",
@@ -408,14 +384,8 @@
           {
             "type": "node",
             "kind": "PARAMETER",
-            "width": 28,
+            "width": 2,
             "children": [
-              {
-                "type": "token",
-                "kind": "COMMENT",
-                "text": "(* Mixed labeled params *)",
-                "width": 26
-              },
               {
                 "type": "token",
                 "kind": "ARGUMENT",
@@ -525,19 +495,13 @@
           {
             "type": "node",
             "kind": "FUN_EXPR",
-            "width": 54,
+            "width": 28,
             "children": [
               {
                 "type": "node",
                 "kind": "PARAMETER",
-                "width": 28,
+                "width": 2,
                 "children": [
-                  {
-                    "type": "token",
-                    "kind": "COMMENT",
-                    "text": "(* Mixed labeled params *)",
-                    "width": 26
-                  },
                   {
                     "type": "token",
                     "kind": "ARGUMENT",
@@ -721,7 +685,7 @@
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 82,
+        "width": 18,
         "children": [
           {
             "type": "token",
@@ -738,14 +702,8 @@
           {
             "type": "node",
             "kind": "PARAMETER",
-            "width": 35,
+            "width": 3,
             "children": [
-              {
-                "type": "token",
-                "kind": "COMMENT",
-                "text": "(* Optional params with types *)",
-                "width": 32
-              },
               {
                 "type": "token",
                 "kind": "ARGUMENT",
@@ -787,19 +745,13 @@
           {
             "type": "node",
             "kind": "FUN_EXPR",
-            "width": 38,
+            "width": 6,
             "children": [
               {
                 "type": "node",
                 "kind": "PARAMETER",
-                "width": 35,
+                "width": 3,
                 "children": [
-                  {
-                    "type": "token",
-                    "kind": "COMMENT",
-                    "text": "(* Optional params with types *)",
-                    "width": 32
-                  },
                   {
                     "type": "token",
                     "kind": "ARGUMENT",

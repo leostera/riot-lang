@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 656,
+    "width": 287,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 98,
+        "width": 23,
         "children": [
           {
             "type": "token",
@@ -30,14 +30,8 @@
           {
             "type": "node",
             "kind": "EXTENSION_EXPR",
-            "width": 83,
+            "width": 8,
             "children": [
-              {
-                "type": "token",
-                "kind": "COMMENT",
-                "text": "(* TEST_BELOW\n(* Blank lines added here to preserve locations. *)\n\n\n\n\n\n\n\n*)",
-                "width": 75
-              },
               {
                 "type": "token",
                 "kind": "WHITESPACE",
@@ -670,7 +664,7 @@
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 333,
+        "width": 39,
         "children": [
           {
             "type": "token",
@@ -735,14 +729,8 @@
           {
             "type": "node",
             "kind": "FUN_EXPR",
-            "width": 302,
+            "width": 8,
             "children": [
-              {
-                "type": "token",
-                "kind": "COMMENT",
-                "text": "(* TEST\n readonly_files = \"illegal_ppx.ml\";\n setup-ocamlc.byte-build-env;\n all_modules = \"illegal_ppx.ml\";\n program = \"ppx.exe\";\n ocamlc.byte with ocamlcommon;\n all_modules = \"broken_invariants.ml\";\n flags = \"-ppx '${ocamlrun} ${test_build_directory_prefix}/ocamlc.byte/ppx.exe'\";\n toplevel;\n*)",
-                "width": 294
-              },
               {
                 "type": "token",
                 "kind": "FUN_EXPR",

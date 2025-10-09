@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 356,
+    "width": 244,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 176,
+        "width": 93,
         "children": [
           {
             "type": "token",
@@ -30,14 +30,8 @@
           {
             "type": "node",
             "kind": "FUNCTION_EXPR",
-            "width": 164,
+            "width": 81,
             "children": [
-              {
-                "type": "token",
-                "kind": "COMMENT",
-                "text": "(* OR combined with range in same pattern *)",
-                "width": 44
-              },
               {
                 "type": "token",
                 "kind": "FUNCTION_EXPR",
@@ -47,7 +41,7 @@
               {
                 "type": "node",
                 "kind": "MATCH_CASE",
-                "width": 57,
+                "width": 18,
                 "children": [
                   {
                     "type": "token",
@@ -58,24 +52,18 @@
                   {
                     "type": "node",
                     "kind": "RANGE_PATTERN",
-                    "width": 47,
+                    "width": 8,
                     "children": [
                       {
                         "type": "node",
                         "kind": "LITERAL_PATTERN",
-                        "width": 42,
+                        "width": 3,
                         "children": [
                           {
                             "type": "node",
                             "kind": "CHAR_LITERAL",
-                            "width": 42,
+                            "width": 3,
                             "children": [
-                              {
-                                "type": "token",
-                                "kind": "COMMENT",
-                                "text": "(* OR patterns with character ranges *)",
-                                "width": 39
-                              },
                               {
                                 "type": "token",
                                 "kind": "CHAR_LITERAL",
@@ -357,7 +345,7 @@
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 87,
+        "width": 58,
         "children": [
           {
             "type": "token",
@@ -380,14 +368,8 @@
           {
             "type": "node",
             "kind": "FUNCTION_EXPR",
-            "width": 68,
+            "width": 39,
             "children": [
-              {
-                "type": "token",
-                "kind": "COMMENT",
-                "text": "(* In constructor patterns *)",
-                "width": 29
-              },
               {
                 "type": "token",
                 "kind": "FUNCTION_EXPR",

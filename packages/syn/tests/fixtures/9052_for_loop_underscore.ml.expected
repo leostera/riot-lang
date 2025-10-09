@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 154,
+    "width": 86,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 90,
+        "width": 42,
         "children": [
           {
             "type": "token",
@@ -30,7 +30,7 @@
           {
             "type": "node",
             "kind": "FOR_EXPR",
-            "width": 84,
+            "width": 36,
             "children": [
               {
                 "type": "token",
@@ -53,14 +53,8 @@
               {
                 "type": "node",
                 "kind": "INT_LITERAL",
-                "width": 49,
+                "width": 1,
                 "children": [
-                  {
-                    "type": "token",
-                    "kind": "COMMENT",
-                    "text": "(* For loops with underscore as loop variable *)",
-                    "width": 48
-                  },
                   {
                     "type": "token",
                     "kind": "INT_LITERAL",
@@ -140,7 +134,7 @@
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 64,
+        "width": 44,
         "children": [
           {
             "type": "token",
@@ -163,7 +157,7 @@
           {
             "type": "node",
             "kind": "FOR_EXPR",
-            "width": 58,
+            "width": 38,
             "children": [
               {
                 "type": "token",
@@ -186,14 +180,8 @@
               {
                 "type": "node",
                 "kind": "INT_LITERAL",
-                "width": 22,
+                "width": 2,
                 "children": [
-                  {
-                    "type": "token",
-                    "kind": "COMMENT",
-                    "text": "(* Downto variant *)",
-                    "width": 20
-                  },
                   {
                     "type": "token",
                     "kind": "INT_LITERAL",

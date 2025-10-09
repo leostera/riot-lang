@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 214,
+    "width": 124,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 88,
+        "width": 42,
         "children": [
           {
             "type": "token",
@@ -30,19 +30,13 @@
           {
             "type": "node",
             "kind": "APPLY_EXPR",
-            "width": 83,
+            "width": 37,
             "children": [
               {
                 "type": "node",
                 "kind": "IDENT_EXPR",
-                "width": 47,
+                "width": 1,
                 "children": [
-                  {
-                    "type": "token",
-                    "kind": "COMMENT",
-                    "text": "(* First-class modules with qualified paths *)",
-                    "width": 46
-                  },
                   {
                     "type": "token",
                     "kind": "IDENT_EXPR",
@@ -138,7 +132,7 @@
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 42,
+        "width": 21,
         "children": [
           {
             "type": "token",
@@ -161,19 +155,13 @@
           {
             "type": "node",
             "kind": "APPLY_EXPR",
-            "width": 37,
+            "width": 16,
             "children": [
               {
                 "type": "node",
                 "kind": "IDENT_EXPR",
-                "width": 22,
+                "width": 1,
                 "children": [
-                  {
-                    "type": "token",
-                    "kind": "COMMENT",
-                    "text": "(* Multiple levels *)",
-                    "width": 21
-                  },
                   {
                     "type": "token",
                     "kind": "IDENT_EXPR",
@@ -256,7 +244,7 @@
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 84,
+        "width": 61,
         "children": [
           {
             "type": "token",
@@ -279,29 +267,23 @@
           {
             "type": "node",
             "kind": "APPLY_EXPR",
-            "width": 74,
+            "width": 51,
             "children": [
               {
                 "type": "node",
                 "kind": "APPLY_EXPR",
-                "width": 72,
+                "width": 49,
                 "children": [
                   {
                     "type": "node",
                     "kind": "FIELD_ACCESS_EXPR",
-                    "width": 36,
+                    "width": 13,
                     "children": [
                       {
                         "type": "node",
                         "kind": "IDENT_EXPR",
-                        "width": 29,
+                        "width": 6,
                         "children": [
-                          {
-                            "type": "token",
-                            "kind": "COMMENT",
-                            "text": "(* In function calls *)",
-                            "width": 23
-                          },
                           {
                             "type": "token",
                             "kind": "IDENT_EXPR",

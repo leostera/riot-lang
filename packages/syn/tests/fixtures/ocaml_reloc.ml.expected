@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 676,
+    "width": 464,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 676,
+        "width": 464,
         "children": [
           {
             "type": "token",
@@ -30,7 +30,7 @@
           {
             "type": "node",
             "kind": "LET_EXPR",
-            "width": 666,
+            "width": 454,
             "children": [
               {
                 "type": "token",
@@ -53,20 +53,8 @@
               {
                 "type": "node",
                 "kind": "STRING_LITERAL",
-                "width": 273,
+                "width": 61,
                 "children": [
-                  {
-                    "type": "token",
-                    "kind": "COMMENT",
-                    "text": "(* TEST\n flags = \"-I ${ocamlsrcdir}/parsing -I ${ocamlsrcdir}/toplevel\";\n include ocamlcommon;\n expect;\n*)",
-                    "width": 106
-                  },
-                  {
-                    "type": "token",
-                    "kind": "COMMENT",
-                    "text": "(* Check that [e.pexp_loc :: e.pexp_loc_stack] includes all\n   intermediate locations of an expression. *)",
-                    "width": 106
-                  },
                   {
                     "type": "token",
                     "kind": "STRING_LITERAL",

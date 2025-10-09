@@ -40,45 +40,6 @@
               },
               {
                 "type": "node",
-                "kind": "MATCH_CASE",
-                "width": 4,
-                "children": [
-                  {
-                    "type": "node",
-                    "kind": "IDENT_PATTERN",
-                    "width": 1,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "IDENT_EXPR",
-                        "text": "E",
-                        "width": 1
-                      }
-                    ]
-                  },
-                  {
-                    "type": "token",
-                    "kind": "FUN_EXPR",
-                    "text": "->",
-                    "width": 2
-                  },
-                  {
-                    "type": "node",
-                    "kind": "INT_LITERAL",
-                    "width": 1,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "INT_LITERAL",
-                        "text": "0",
-                        "width": 1
-                      }
-                    ]
-                  }
-                ]
-              },
-              {
-                "type": "node",
                 "kind": "MATCH_EXPR",
                 "width": 32,
                 "children": [
@@ -251,6 +212,45 @@
                 "kind": "MATCH_EXPR",
                 "text": "with",
                 "width": 4
+              },
+              {
+                "type": "node",
+                "kind": "MATCH_CASE",
+                "width": 4,
+                "children": [
+                  {
+                    "type": "node",
+                    "kind": "IDENT_PATTERN",
+                    "width": 1,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "E",
+                        "width": 1
+                      }
+                    ]
+                  },
+                  {
+                    "type": "token",
+                    "kind": "FUN_EXPR",
+                    "text": "->",
+                    "width": 2
+                  },
+                  {
+                    "type": "node",
+                    "kind": "INT_LITERAL",
+                    "width": 1,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "INT_LITERAL",
+                        "text": "0",
+                        "width": 1
+                      }
+                    ]
+                  }
+                ]
               }
             ]
           }

@@ -517,7 +517,7 @@ and parse_expr_bp parser min_bp =
                           @ [ close_bracket ]
                         in
                         let access =
-                          make_node_list ~kind:Syntax_kind.ARRAY_INDEX_EXPR
+                          make_node_list ~kind:Syntax_kind.STRING_INDEX_EXPR
                             children
                         in
                         loop access

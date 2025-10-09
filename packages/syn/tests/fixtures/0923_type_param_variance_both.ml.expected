@@ -27,12 +27,6 @@
                 "width": 1
               },
               {
-                "type": "token",
-                "kind": "TUPLE_EXPR",
-                "text": ",",
-                "width": 1
-              },
-              {
                 "type": "node",
                 "kind": "TYPE_PARAM",
                 "width": 3,
@@ -56,6 +50,12 @@
                     "width": 1
                   }
                 ]
+              },
+              {
+                "type": "token",
+                "kind": "TUPLE_EXPR",
+                "text": ",",
+                "width": 1
               },
               {
                 "type": "node",

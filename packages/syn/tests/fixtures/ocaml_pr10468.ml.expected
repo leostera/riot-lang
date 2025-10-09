@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 69,
+    "width": 29,
     "children": [
       {
         "type": "node",
         "kind": "MODULE_TYPE_DECL",
-        "width": 69,
+        "width": 29,
         "children": [
           {
             "type": "token",
@@ -36,14 +36,8 @@
           {
             "type": "node",
             "kind": "SIGNATURE",
-            "width": 57,
+            "width": 17,
             "children": [
-              {
-                "type": "token",
-                "kind": "COMMENT",
-                "text": "(* TEST\n flags = \"-dsource\";\n expect;\n*)",
-                "width": 40
-              },
               {
                 "type": "token",
                 "kind": "SIGNATURE",

@@ -40,6 +40,51 @@
               },
               {
                 "type": "node",
+                "kind": "APPLY_EXPR",
+                "width": 7,
+                "children": [
+                  {
+                    "type": "node",
+                    "kind": "IDENT_EXPR",
+                    "width": 5,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "risky",
+                        "width": 5
+                      }
+                    ]
+                  },
+                  {
+                    "type": "node",
+                    "kind": "UNIT_LITERAL",
+                    "width": 2,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": "(",
+                        "width": 1
+                      },
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": ")",
+                        "width": 1
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "MATCH_EXPR",
+                "text": "with",
+                "width": 4
+              },
+              {
+                "type": "node",
                 "kind": "MATCH_CASE",
                 "width": 13,
                 "children": [
@@ -89,51 +134,6 @@
                     ]
                   }
                 ]
-              },
-              {
-                "type": "node",
-                "kind": "APPLY_EXPR",
-                "width": 7,
-                "children": [
-                  {
-                    "type": "node",
-                    "kind": "IDENT_EXPR",
-                    "width": 5,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "IDENT_EXPR",
-                        "text": "risky",
-                        "width": 5
-                      }
-                    ]
-                  },
-                  {
-                    "type": "node",
-                    "kind": "UNIT_LITERAL",
-                    "width": 2,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "WHITESPACE",
-                        "text": "(",
-                        "width": 1
-                      },
-                      {
-                        "type": "token",
-                        "kind": "WHITESPACE",
-                        "text": ")",
-                        "width": 1
-                      }
-                    ]
-                  }
-                ]
-              },
-              {
-                "type": "token",
-                "kind": "MATCH_EXPR",
-                "text": "with",
-                "width": 4
               }
             ]
           }

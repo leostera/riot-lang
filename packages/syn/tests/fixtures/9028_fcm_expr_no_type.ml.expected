@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 127,
+    "width": 61,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 80,
+        "width": 14,
         "children": [
           {
             "type": "token",
@@ -30,14 +30,8 @@
           {
             "type": "node",
             "kind": "APPLY_EXPR",
-            "width": 75,
+            "width": 9,
             "children": [
-              {
-                "type": "token",
-                "kind": "COMMENT",
-                "text": "(* Test: First-class module expressions without type annotation *)",
-                "width": 66
-              },
               {
                 "type": "token",
                 "kind": "WHITESPACE",

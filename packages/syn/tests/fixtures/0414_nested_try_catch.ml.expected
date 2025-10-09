@@ -40,27 +40,14 @@
               },
               {
                 "type": "node",
-                "kind": "MATCH_CASE",
-                "width": 6,
+                "kind": "TRY_EXPR",
+                "width": 15,
                 "children": [
                   {
-                    "type": "node",
-                    "kind": "IDENT_PATTERN",
-                    "width": 2,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "IDENT_EXPR",
-                        "text": "E2",
-                        "width": 2
-                      }
-                    ]
-                  },
-                  {
                     "type": "token",
-                    "kind": "FUN_EXPR",
-                    "text": "->",
-                    "width": 2
+                    "kind": "TRY_EXPR",
+                    "text": "try",
+                    "width": 3
                   },
                   {
                     "type": "node",
@@ -75,7 +62,7 @@
                           {
                             "type": "token",
                             "kind": "IDENT_EXPR",
-                            "text": "h",
+                            "text": "f",
                             "width": 1
                           }
                         ]
@@ -94,19 +81,12 @@
                         ]
                       }
                     ]
-                  }
-                ]
-              },
-              {
-                "type": "node",
-                "kind": "TRY_EXPR",
-                "width": 15,
-                "children": [
+                  },
                   {
                     "type": "token",
-                    "kind": "TRY_EXPR",
-                    "text": "try",
-                    "width": 3
+                    "kind": "MATCH_EXPR",
+                    "text": "with",
+                    "width": 4
                   },
                   {
                     "type": "node",
@@ -166,6 +146,38 @@
                         ]
                       }
                     ]
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "MATCH_EXPR",
+                "text": "with",
+                "width": 4
+              },
+              {
+                "type": "node",
+                "kind": "MATCH_CASE",
+                "width": 6,
+                "children": [
+                  {
+                    "type": "node",
+                    "kind": "IDENT_PATTERN",
+                    "width": 2,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "E2",
+                        "width": 2
+                      }
+                    ]
+                  },
+                  {
+                    "type": "token",
+                    "kind": "FUN_EXPR",
+                    "text": "->",
+                    "width": 2
                   },
                   {
                     "type": "node",
@@ -180,7 +192,7 @@
                           {
                             "type": "token",
                             "kind": "IDENT_EXPR",
-                            "text": "f",
+                            "text": "h",
                             "width": 1
                           }
                         ]
@@ -199,20 +211,8 @@
                         ]
                       }
                     ]
-                  },
-                  {
-                    "type": "token",
-                    "kind": "MATCH_EXPR",
-                    "text": "with",
-                    "width": 4
                   }
                 ]
-              },
-              {
-                "type": "token",
-                "kind": "MATCH_EXPR",
-                "text": "with",
-                "width": 4
               }
             ]
           }

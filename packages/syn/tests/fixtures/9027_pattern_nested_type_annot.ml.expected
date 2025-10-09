@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 232,
+    "width": 166,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 107,
+        "width": 41,
         "children": [
           {
             "type": "token",
@@ -116,7 +116,7 @@
           {
             "type": "node",
             "kind": "FUN_EXPR",
-            "width": 86,
+            "width": 20,
             "children": [
               {
                 "type": "node",
@@ -213,14 +213,8 @@
               {
                 "type": "node",
                 "kind": "UNIT_LITERAL",
-                "width": 68,
+                "width": 2,
                 "children": [
-                  {
-                    "type": "token",
-                    "kind": "COMMENT",
-                    "text": "(* Test: Nested parentheses in type annotations within patterns *)",
-                    "width": 66
-                  },
                   {
                     "type": "token",
                     "kind": "WHITESPACE",
