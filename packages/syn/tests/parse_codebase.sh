@@ -35,9 +35,9 @@ for file in $(find packages/ -name "*.ml" -o -name "*.mli" | sort); do
         continue
     fi
     
-    # Check for ERROR or MISSING tokens in output
-    if echo "$output" | grep -q '"ERROR"' || echo "$output" | grep -q '"MISSING"'; then
-        echo -e "${RED}FAILED${NC} (ERROR/MISSING tokens)"
+    # Check for ERROR or MISSING nodes in parse tree (not just string matches)
+    if echo "$output" | grep -q '"kind": "ERROR"' || echo "$output" | grep -q '"kind": "MISSING"'; then
+        echo -e "${RED}FAILED${NC} (ERROR/MISSING nodes)"
         ((failed++))
         failed_files+=("$file (parse errors)")
     # Check for diagnostics
