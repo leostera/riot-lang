@@ -4047,7 +4047,8 @@ and parse_regular_let_binding parser let_kw ?(attributes = []) () =
           (* Simple operators: +, -, *, /, etc. *)
           | Some
               ( Token.Plus | Token.Minus | Token.Star | Token.Slash
-              | Token.Percent | Token.StarStar | Token.At | Token.Caret
+              | Token.Percent | Token.PlusDot | Token.MinusDot | Token.StarDot
+              | Token.SlashDot | Token.StarStar | Token.At | Token.Caret
               | Token.Pipe | Token.Ampersand | Token.Lt | Token.Gt | Token.Bang
               | Token.Question | Token.Tilde | Token.Colon | Token.Dollar
               | Token.Hash | Token.Eq | Token.And | Token.Or ) ->
