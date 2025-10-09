@@ -118,10 +118,11 @@ let token_kind_to_syntax_kind = function
   | Token.Underscore -> Syntax_kind.WILDCARD_PATTERN
   | Token.Ident _ -> Syntax_kind.IDENT_EXPR
   | Token.Plus | Token.Minus | Token.Star | Token.Slash | Token.Percent
-  | Token.Eq | Token.Ne | Token.Lt | Token.Gt | Token.LtEq | Token.GtEq
-  | Token.And | Token.Or | Token.ColonColon | Token.Caret | Token.At
-  | Token.ColonEq | Token.LeftArrow | Token.StarStar | Token.EqEq | Token.BangEq
-  | Token.AtAt | Token.PipeGt | Token.PercentGt | Token.LtPercent
+  | Token.PlusDot | Token.MinusDot | Token.StarDot | Token.SlashDot | Token.Eq
+  | Token.Ne | Token.Lt | Token.Gt | Token.LtEq | Token.GtEq | Token.And
+  | Token.Or | Token.ColonColon | Token.Caret | Token.At | Token.ColonEq
+  | Token.LeftArrow | Token.StarStar | Token.EqEq | Token.BangEq | Token.AtAt
+  | Token.PipeGt | Token.PercentGt | Token.LtPercent
   | Token.Keyword
       ( Keyword.Mod | Keyword.Land | Keyword.Lor | Keyword.Lxor | Keyword.Lsl
       | Keyword.Lsr | Keyword.Asr ) ->
@@ -1315,8 +1316,23 @@ and parse_paren_expr parser =
       in
       Some (make_node_list ~kind:Syntax_kind.APPLY_EXPR children)
     (* Check for parenthesized operator: ( + ), ( - ), ( * ), etc. *)
-  else if match peek_kind parser with Some k -> is_infix_op k | None -> false
+    (* Only if the operator is immediately followed by ) (possibly with whitespace) *)
+  else if
+    (match peek_kind parser with Some k -> is_infix_op k | None -> false)
+    (* Check if closing paren follows the operator (accounting for whitespace) *)
+    &&
+    (* Save position to restore if this isn't a parenthesized operator *)
+    let saved_pos = parser.position in
+    let _ = consume parser in
+    (* consume the operator *)
+    let _ = consume_trivia parser in
+    (* skip any whitespace *)
+    let is_paren_op = at parser (Token.CloseDelim Token.Paren) in
+    parser.position <- saved_pos;
+    (* restore position *)
+    is_paren_op
   then
+    (* It's a parenthesized operator like ( + ) *)
     let op = consume parser in
     let _ = consume_trivia parser in
     let close_paren = expect parser (Token.CloseDelim Token.Paren) in
