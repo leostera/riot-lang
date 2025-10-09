@@ -481,6 +481,52 @@ and parse_expr_bp parser min_bp =
                         in
                         loop access
                     | None -> Some lhs)
+              | Some (Token.OpenDelim Token.Array) ->
+                  (* Could be local open Module.[|...|] *)
+                  let is_module_open =
+                    if
+                      Ceibo.Green.kind (Ceibo.Green.Node lhs)
+                      = Syntax_kind.IDENT_EXPR
+                    then
+                      let children = Ceibo.Green.children lhs in
+                      if Array.length children > 0 then
+                        match Ceibo.Green.text children.(0) with
+                        | Some text ->
+                            String.length text > 0
+                            && Char.uppercase_ascii text.[0] = text.[0]
+                        | None -> false
+                      else false
+                    else false
+                  in
+                  if is_module_open then
+                    (* Local open: Module.[|...|] *)
+                    match parse_array_expr parser with
+                    | Some array_expr ->
+                        let trivia = take_pending_trivia parser in
+                        let children =
+                          [
+                            Ceibo.Green.Node lhs;
+                            dot;
+                            Ceibo.Green.Node array_expr;
+                          ]
+                        in
+                        let children = trivia @ children in
+                        let local_open =
+                          make_node_list ~kind:Syntax_kind.APPLY_EXPR children
+                        in
+                        loop local_open
+                    | None -> Some lhs
+                  else
+                    (* Not a local open - unexpected token after dot *)
+                    let span =
+                      match peek parser with
+                      | Some tok -> tok.Token.span
+                      | None -> Ceibo.Span.make ~start:0 ~end_:0
+                    in
+                    report_error parser
+                      (Diagnostic.make_missing_token ~expected:"field name"
+                         ~span);
+                    Some lhs
               | Some (Token.OpenDelim Token.Brace) -> (
                   (* Module-prefixed record: Module.{ field = value } *)
                   match parse_record_expr parser with
