@@ -262,18 +262,95 @@ let lex_quoted_string cursor token_start =
 
 let lex_char cursor token_start =
   Cursor.advance cursor;
+
+  let parse_escape_sequence () =
+    Cursor.advance cursor;
+    (* Skip the backslash *)
+    match Cursor.peek cursor with
+    | None -> None
+    | Some 'n' ->
+        Cursor.advance cursor;
+        Some '\n'
+    | Some 't' ->
+        Cursor.advance cursor;
+        Some '\t'
+    | Some 'r' ->
+        Cursor.advance cursor;
+        Some '\r'
+    | Some 'b' ->
+        Cursor.advance cursor;
+        Some '\b'
+    | Some '\\' ->
+        Cursor.advance cursor;
+        Some '\\'
+    | Some '\'' ->
+        Cursor.advance cursor;
+        Some '\''
+    | Some '"' ->
+        Cursor.advance cursor;
+        Some '"'
+    | Some ' ' ->
+        Cursor.advance cursor;
+        Some ' '
+    | Some ('0' .. '9' as c) -> (
+        (* Octal escape: \ddd (3 digits) *)
+        let d1 = Char.code c - Char.code '0' in
+        Cursor.advance cursor;
+        match Cursor.peek cursor with
+        | Some ('0' .. '9' as c2) -> (
+            let d2 = Char.code c2 - Char.code '0' in
+            Cursor.advance cursor;
+            match Cursor.peek cursor with
+            | Some ('0' .. '9' as c3) ->
+                let d3 = Char.code c3 - Char.code '0' in
+                Cursor.advance cursor;
+                let code = (d1 * 64) + (d2 * 8) + d3 in
+                if code <= 255 then Some (Char.chr code) else None
+            | _ -> Some (Char.chr ((d1 * 8) + d2)))
+        | _ -> Some (Char.chr d1))
+    | Some 'x' -> (
+        (* Hex escape: \xhh (2 hex digits) *)
+        Cursor.advance cursor;
+        let hex_to_int c =
+          match c with
+          | '0' .. '9' -> Some (Char.code c - Char.code '0')
+          | 'a' .. 'f' -> Some (Char.code c - Char.code 'a' + 10)
+          | 'A' .. 'F' -> Some (Char.code c - Char.code 'A' + 10)
+          | _ -> None
+        in
+        match Cursor.peek cursor with
+        | Some c1 -> (
+            match hex_to_int c1 with
+            | Some h1 -> (
+                Cursor.advance cursor;
+                match Cursor.peek cursor with
+                | Some c2 -> (
+                    match hex_to_int c2 with
+                    | Some h2 ->
+                        Cursor.advance cursor;
+                        Some (Char.chr ((h1 * 16) + h2))
+                    | None -> None)
+                | None -> None)
+            | None -> None)
+        | None -> None)
+    | Some c ->
+        (* Unknown escape sequence - just take the character *)
+        Cursor.advance cursor;
+        Some c
+  in
+
   let kind =
     match Cursor.peek cursor with
     | None -> Token.Unknown '\''
     | Some '\\' -> (
-        Cursor.advance cursor;
-        let escaped = Cursor.peek cursor in
-        Cursor.advance cursor;
-        match Cursor.peek cursor with
-        | Some '\'' ->
-            Cursor.advance cursor;
-            Token.Literal (Char (Option.unwrap_or ~default:' ' escaped))
-        | _ -> Token.Unknown '\'')
+        match parse_escape_sequence () with
+        | Some char_value -> (
+            match Cursor.peek cursor with
+            | Some '\'' ->
+                Cursor.advance cursor;
+                Token.Literal (Char char_value)
+            | _ -> Token.Unknown '\'')
+        | None -> Token.Unknown '\'')
     | Some c -> (
         Cursor.advance cursor;
         match Cursor.peek cursor with
