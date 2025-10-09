@@ -241,6 +241,62 @@ let expect parser kind =
         (Ceibo.Green.make_token ~kind:Syntax_kind.MISSING ~text:"" ~width:0)
 
 (* ========================================================================= *)
+(* PARSER COMBINATORS *)
+(* ========================================================================= *)
+
+(** Parse a list of elements separated by a specific token. Returns a list of:
+    [element; separator; element; separator; element]
+
+    Example: parse_separated_by Token.Comma parse_expr parser Parses: expr,
+    expr, expr Returns:
+    [Ceibo.Green.Node expr; comma; Ceibo.Green.Node expr; comma;
+     Ceibo.Green.Node expr] *)
+let parse_separated_by separator parse_element parser =
+  let rec loop acc =
+    if not (at parser separator) then List.rev acc
+    else
+      let sep_token = consume parser in
+      let _ = consume_trivia parser in
+      match parse_element parser with
+      | Some elem ->
+          let trivia = consume_trivia parser in
+          loop
+            (List.rev_append trivia (Ceibo.Green.Node elem :: sep_token :: acc))
+      | None -> List.rev acc
+  in
+  loop []
+
+(** Parse a list of elements separated by a separator, including the first
+    element.
+
+    Example: parse_list_of Token.Semi parse_expr parser first_expr Parses:
+    first_expr; expr; expr Returns:
+    [Ceibo.Green.Node first_expr; semi; Ceibo.Green.Node expr; semi;
+     Ceibo.Green.Node expr] *)
+let parse_list_of separator parse_element parser first_elem =
+  let rest = parse_separated_by separator parse_element parser in
+  Ceibo.Green.Node first_elem :: rest
+
+(** Parse zero or more elements separated by a token, collecting them.
+
+    Example: parse_zero_or_more Token.Comma parse_pattern parser Returns: list
+    of all parsed elements (not including separators) *)
+let parse_zero_or_more separator parse_element parser =
+  let rec loop acc =
+    match parse_element parser with
+    | None -> List.rev acc
+    | Some elem ->
+        let _ = consume_trivia parser in
+        let acc = elem :: acc in
+        if at parser separator then
+          let _ = consume parser in
+          let _ = consume_trivia parser in
+          loop acc
+        else List.rev acc
+  in
+  loop []
+
+(* ========================================================================= *)
 (* IDENTIFIER PARSING *)
 (* ========================================================================= *)
 
@@ -591,6 +647,26 @@ and parse_expr_bp parser min_bp =
                   report_error parser
                     (Diagnostic.make_missing_token ~expected:"method name" ~span);
                   Some lhs)
+        | Some Token.Semi -> (
+            (* Sequence expression: e1; e2 - right-associative with lowest precedence *)
+            let prec = 0 in
+            if prec < min_bp then Some lhs
+            else
+              let semi = consume parser in
+              let _ = consume_trivia parser in
+              (* Right-associative: use `prec` not `prec + 1` *)
+              match parse_expr_bp parser prec with
+              | Some rhs ->
+                  let trivia = take_pending_trivia parser in
+                  let children =
+                    [ Ceibo.Green.Node lhs; semi; Ceibo.Green.Node rhs ]
+                  in
+                  let children = trivia @ children in
+                  let seq =
+                    make_node_list ~kind:Syntax_kind.SEQUENCE_EXPR children
+                  in
+                  loop seq
+              | None -> Some lhs)
         | Some op_kind when is_infix_op op_kind -> (
             let prec = get_precedence op_kind in
             if prec < min_bp then Some lhs
@@ -2131,11 +2207,24 @@ and parse_let_expr parser =
   let let_kw = consume parser in
   let _ = consume_trivia parser in
 
-  (* Check for 'let open' or 'let module' *)
-  if at parser (Token.Keyword Keyword.Open) then
+  (* Check for binding operator: let*, let+, etc. *)
+  let is_binding_op =
+    match peek_kind parser with
+    | Some
+        ( Token.Star | Token.Plus | Token.Minus | Token.Ampersand | Token.Pipe
+        | Token.Dollar | Token.Percent | Token.At | Token.Eq ) ->
+        true
+    | _ -> false
+  in
+
+  if is_binding_op then parse_binding_operator_expr parser let_kw
+    (* Check for 'let open' or 'let module' *)
+  else if at parser (Token.Keyword Keyword.Open) then
     parse_let_open_expr parser let_kw ()
   else if at parser (Token.Keyword Keyword.Module) then
     parse_let_module_expr parser let_kw ()
+  else if at parser (Token.Keyword Keyword.Exception) then
+    parse_let_exception_expr parser let_kw ()
   else parse_regular_let_expr parser let_kw
 
 and parse_let_open_expr parser let_kw ?(attributes = []) () =
@@ -2245,6 +2334,154 @@ and parse_let_module_expr parser let_kw ?(attributes = []) () =
       let children =
         prepend_pending_trivia parser
           ([ let_kw ] @ attributes @ [ module_kw; name; eq ] @ module_expr
+          @ [ in_kw; Ceibo.Green.Node body ])
+      in
+      Some (make_node_list ~kind:Syntax_kind.LET_EXPR children)
+  | None -> None
+
+and parse_let_exception_expr parser let_kw ?(attributes = []) () =
+  (* let exception E of type in expr *)
+  let exception_kw = consume parser in
+  let _ = consume_trivia parser in
+
+  (* Parse exception constructor name *)
+  let name = consume parser in
+  let _ = consume_trivia parser in
+
+  (* Parse optional 'of type' clause - consume tokens until 'in' *)
+  let rec consume_until_in acc =
+    if at parser (Token.Keyword Keyword.In) || peek parser = None then
+      List.rev acc
+    else
+      let tok = consume parser in
+      let _ = consume_trivia parser in
+      consume_until_in (tok :: acc)
+  in
+  let type_tokens = consume_until_in [] in
+
+  let _ = consume_trivia parser in
+
+  (* Expect 'in' *)
+  let in_kw = expect parser (Token.Keyword Keyword.In) in
+  let _ = consume_trivia parser in
+
+  (* Parse body expression *)
+  match parse_expr parser with
+  | Some body ->
+      let children =
+        prepend_pending_trivia parser
+          ([ let_kw ] @ attributes @ [ exception_kw; name ] @ type_tokens
+          @ [ in_kw; Ceibo.Green.Node body ])
+      in
+      Some (make_node_list ~kind:Syntax_kind.LET_EXPR children)
+  | None -> None
+
+and parse_binding_operator_expr parser let_kw =
+  (* Binding operator: let* pattern = expr in body *)
+  (* The 'let' keyword has already been consumed *)
+
+  (* Consume the operator symbol: *, +, -, etc. *)
+  let op_token = consume parser in
+  let _ = consume_trivia parser in
+
+  (* Parse pattern *)
+  let pattern =
+    match parse_pattern parser with
+    | Some pat -> Ceibo.Green.Node pat
+    | None ->
+        (* Report error and create placeholder *)
+        let span =
+          match peek parser with
+          | Some tok -> tok.Token.span
+          | None -> Ceibo.Span.make ~start:0 ~end_:0
+        in
+        report_error parser
+          (Diagnostic.make_missing_token ~expected:"pattern" ~span);
+        Ceibo.Green.Token
+          (Ceibo.Green.make_token ~kind:Syntax_kind.IDENT_EXPR ~text:"_"
+             ~width:1)
+  in
+  let _ = consume_trivia parser in
+
+  (* Expect '=' *)
+  let eq = expect parser Token.Eq in
+  let _ = consume_trivia parser in
+
+  (* Parse the RHS expression *)
+  let rhs_expr =
+    match parse_expr parser with
+    | Some expr -> Ceibo.Green.Node expr
+    | None ->
+        let span =
+          match peek parser with
+          | Some tok -> tok.Token.span
+          | None -> Ceibo.Span.make ~start:0 ~end_:0
+        in
+        report_error parser
+          (Diagnostic.make_missing_token ~expected:"expression" ~span);
+        Ceibo.Green.Token
+          (Ceibo.Green.make_token ~kind:Syntax_kind.UNIT_LITERAL ~text:"()"
+             ~width:2)
+  in
+  let _ = consume_trivia parser in
+
+  (* Check for 'and<op>' to parse additional bindings *)
+  let rec parse_and_bindings acc =
+    if at parser (Token.Keyword Keyword.And) then
+      (* Check if next token is an operator *)
+      match peek_nth parser 1 with
+      | Some
+          ( Token.Star | Token.Plus | Token.Minus | Token.Ampersand | Token.Pipe
+          | Token.Dollar | Token.Percent | Token.At | Token.Eq ) ->
+          let and_kw = consume parser in
+          let _ = consume_trivia parser in
+          let and_op = consume parser in
+          let _ = consume_trivia parser in
+
+          (* Parse pattern *)
+          let and_pattern =
+            match parse_pattern parser with
+            | Some pat -> Ceibo.Green.Node pat
+            | None ->
+                Ceibo.Green.Token
+                  (Ceibo.Green.make_token ~kind:Syntax_kind.IDENT_EXPR ~text:"_"
+                     ~width:1)
+          in
+          let _ = consume_trivia parser in
+
+          (* Expect '=' *)
+          let and_eq = expect parser Token.Eq in
+          let _ = consume_trivia parser in
+
+          (* Parse expression *)
+          let and_expr =
+            match parse_expr parser with
+            | Some expr -> Ceibo.Green.Node expr
+            | None ->
+                Ceibo.Green.Token
+                  (Ceibo.Green.make_token ~kind:Syntax_kind.UNIT_LITERAL
+                     ~text:"()" ~width:2)
+          in
+          let _ = consume_trivia parser in
+
+          parse_and_bindings
+            ([ and_kw; and_op; and_pattern; and_eq; and_expr ] @ acc)
+      | _ -> List.rev acc
+    else List.rev acc
+  in
+  let and_bindings = parse_and_bindings [] in
+
+  (* Expect 'in' *)
+  let in_kw = expect parser (Token.Keyword Keyword.In) in
+  let _ = consume_trivia parser in
+
+  (* Parse body expression *)
+  match parse_expr parser with
+  | Some body ->
+      let children =
+        prepend_pending_trivia parser
+          ([ let_kw; op_token; pattern; eq; rhs_expr ]
+          @ and_bindings
           @ [ in_kw; Ceibo.Green.Node body ])
       in
       Some (make_node_list ~kind:Syntax_kind.LET_EXPR children)
@@ -3631,6 +3868,7 @@ and parse_let_binding parser =
   let attributes = parse_attributes [] in
 
   (* Check for 'let open' or 'let module' at structure level *)
+  (* NOTE: 'let exception' is NOT allowed at top level - use 'exception' instead *)
   if at parser (Token.Keyword Keyword.Open) then
     parse_let_open_expr parser let_kw ~attributes ()
   else if at parser (Token.Keyword Keyword.Module) then
@@ -3680,7 +3918,14 @@ and parse_regular_let_binding parser let_kw ?(attributes = []) () =
               | Token.Percent | Token.StarStar | Token.At | Token.Caret
               | Token.Pipe | Token.Ampersand | Token.Lt | Token.Gt | Token.Bang
               | Token.Question | Token.Tilde | Token.Colon | Token.Dollar
-              | Token.Hash | Token.Eq ) ->
+              | Token.Hash | Token.Eq | Token.And | Token.Or ) ->
+              true
+          (* Compound operators: :=, <-, ->, ::, <>, <=, >=, ==, !=, @@, |>, %>, <% *)
+          | Some
+              ( Token.ColonEq | Token.LeftArrow | Token.Arrow | Token.ColonColon
+              | Token.Ne | Token.LtEq | Token.GtEq | Token.EqEq | Token.BangEq
+              | Token.AtAt | Token.PipeGt | Token.PercentGt | Token.LtPercent
+              | Token.FatArrow | Token.DotDot ) ->
               true
           (* Binding operators: let*, and+, etc. *)
           | Some (Token.Keyword (Keyword.Let | Keyword.And)) -> true
@@ -4759,13 +5004,35 @@ and parse_open parser =
   Some (make_node_list ~kind:Syntax_kind.OPEN_STMT (open_kw :: path))
 
 and parse_val_decl parser =
-  (* val name : type *)
+  (* val name : type or val ( op ) : type *)
   let val_kw = consume parser in
   let _ = consume_trivia parser in
 
-  (* Parse value name *)
-  let name = consume parser in
-  let _ = consume_trivia parser in
+  (* Parse value name - could be identifier or operator in parentheses *)
+  let name_tokens =
+    if at parser (Token.OpenDelim Token.Paren) then
+      (* Operator name: ( op ) *)
+      let open_paren = consume parser in
+      let _ = consume_trivia parser in
+
+      (* Collect operator tokens until closing paren *)
+      let rec collect_op_tokens acc =
+        if at parser (Token.CloseDelim Token.Paren) then List.rev acc
+        else
+          let tok = consume parser in
+          let _ = consume_trivia parser in
+          collect_op_tokens (tok :: acc)
+      in
+      let op_tokens = collect_op_tokens [] in
+      let close_paren = consume parser in
+      let _ = consume_trivia parser in
+      [ open_paren ] @ op_tokens @ [ close_paren ]
+    else
+      (* Regular identifier *)
+      let name = consume parser in
+      let _ = consume_trivia parser in
+      [ name ]
+  in
 
   (* Expect : *)
   let colon = expect parser Token.Colon in
@@ -4776,7 +5043,7 @@ and parse_val_decl parser =
 
   Some
     (make_node_list ~kind:Syntax_kind.VAL_DECL
-       [ val_kw; name; colon; Ceibo.Green.Node type_expr ])
+       ([ val_kw ] @ name_tokens @ [ colon; Ceibo.Green.Node type_expr ]))
 
 and parse_external_decl parser =
   (* external name : type = "c_name" *)
