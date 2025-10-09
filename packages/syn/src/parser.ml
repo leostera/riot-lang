@@ -1050,24 +1050,44 @@ and parse_module_type_expr parser =
           let eq = expect parser Token.Eq in
           let _ = consume_trivia parser in
 
-          (* Parse type expression - consume tokens until 'and', ')' or end of constraints *)
-          (* This handles: type t = int, type t = 'a, type t = int -> string, etc. *)
-          let rec consume_type_expr acc =
+          (* Parse type expression - handle simple types and wildcards *)
+          (* This is a simplified parser since we can't call parse_type_expr due to ordering *)
+          let rec consume_type_tokens acc depth =
             match peek_kind parser with
-            | Some (Token.Keyword Keyword.And)
-            | Some (Token.CloseDelim Token.Paren)
+            | Some (Token.Keyword Keyword.And) when depth = 0 ->
+                (* Stop at 'and' when not inside parens *)
+                List.rev acc
+            | Some (Token.CloseDelim Token.Paren) when depth = 0 ->
+                (* Stop at ')' when not inside parens *)
+                List.rev acc
+            | Some (Token.OpenDelim Token.Paren) ->
+                let tok = consume parser in
+                let _ = consume_trivia parser in
+                consume_type_tokens (tok :: acc) (depth + 1)
+            | Some (Token.CloseDelim Token.Paren) ->
+                let tok = consume parser in
+                let _ = consume_trivia parser in
+                consume_type_tokens (tok :: acc) (depth - 1)
+            | Some Token.Underscore
+            | Some Token.Quote
+            | Some (Token.Ident _)
+            | Some Token.Arrow
+            | Some Token.Star
+            | Some (Token.Literal _) ->
+                let tok = consume parser in
+                let _ = consume_trivia parser in
+                consume_type_tokens (tok :: acc) depth
             | None ->
                 List.rev acc
             | _ ->
-                let tok = consume parser in
-                let _ = consume_trivia parser in
-                consume_type_expr (tok :: acc)
+                (* Stop at other tokens *)
+                List.rev acc
           in
-          let type_expr_tokens = consume_type_expr [] in
+          let type_tokens = consume_type_tokens [] 0 in
 
           let constraint_node =
             make_node_list ~kind:Syntax_kind.TYPE_CONSTRAINT
-              ([ type_kw ] @ type_path @ [ eq ] @ type_expr_tokens)
+              ([ type_kw ] @ type_path @ [ eq ] @ type_tokens)
           in
 
           (* Check if there's another 'and' constraint *)
@@ -4214,6 +4234,31 @@ and parse_type_arrow parser =
     | _ ->
         (* Regular type *)
         parse_type_tuple parser
+  in
+  let _ = consume_trivia parser in
+
+  (* Check if we have a labeled parameter without tilde: label:type -> ... *)
+  let left =
+    match peek_kind parser with
+    | Some Token.Colon -> (
+        (* Check if left is a simple identifier (TYPE_CONSTR with single ident) *)
+        let children = Ceibo.Green.children left in
+        if Array.length children = 1 then
+          match children.(0) with
+          | Ceibo.Green.Token _ as label_tok ->
+              (* It's a simple identifier followed by :, reparse as labeled param *)
+              let colon = consume parser in
+              let _ = consume_trivia parser in
+              let typ = parse_type_tuple parser in
+              make_node_list ~kind:Syntax_kind.TYPE_PARAM
+                [ label_tok; colon; Ceibo.Green.Node typ ]
+          | _ ->
+              (* Complex type followed by :, not a labeled param *)
+              left
+        else
+          (* Multiple children, not a simple identifier *)
+          left)
+    | _ -> left
   in
   let _ = consume_trivia parser in
 
