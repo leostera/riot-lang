@@ -880,9 +880,115 @@ and parse_primary parser =
           match peek_kind parser with
           (* Identifier *)
           | Some (Token.Ident _) ->
-              let ident = consume parser in
-              let children = prepend_pending_trivia parser [ ident ] in
-              Some (make_node_list ~kind:Syntax_kind.IDENT_EXPR children)
+              (* Check if this is a module-qualified literal: M.[|...|], M.[...], M.{...}, M.(...) *)
+              (* We need to check BEFORE consuming the identifier *)
+              let ident_text =
+                match peek parser with
+                | Some tok -> (
+                    match tok.Token.kind with
+                    | Token.Ident name -> name
+                    | _ -> "")
+                | None -> ""
+              in
+              let is_capitalized =
+                String.length ident_text > 0
+                && Char.uppercase_ascii ident_text.[0] = ident_text.[0]
+              in
+              let is_module_qualified_literal =
+                is_capitalized
+                && peek_nth parser 1 = Some Token.Dot
+                &&
+                match peek_nth parser 2 with
+                | Some (Token.OpenDelim (Array | Bracket | Brace | Paren)) ->
+                    true
+                | _ -> false
+              in
+              if is_module_qualified_literal then
+                (* Parse Module.[|...|] or Module.[...] or Module.{...} or Module.(...) as a whole *)
+                let ident = consume parser in
+                let _ = consume_trivia parser in
+                let dot = consume parser in
+                let _ = consume_trivia parser in
+                match peek_kind parser with
+                | Some (Token.OpenDelim Token.Array) -> (
+                    match parse_array_expr parser with
+                    | Some array_expr ->
+                        let children =
+                          [ ident; dot; Ceibo.Green.Node array_expr ]
+                        in
+                        Some
+                          (make_node_list ~kind:Syntax_kind.APPLY_EXPR children)
+                    | None ->
+                        let children =
+                          prepend_pending_trivia parser [ ident ]
+                        in
+                        Some
+                          (make_node_list ~kind:Syntax_kind.IDENT_EXPR children)
+                    )
+                | Some (Token.OpenDelim Token.Bracket) -> (
+                    match parse_list_expr parser with
+                    | Some list_expr ->
+                        let children =
+                          [ ident; dot; Ceibo.Green.Node list_expr ]
+                        in
+                        Some
+                          (make_node_list ~kind:Syntax_kind.APPLY_EXPR children)
+                    | None ->
+                        let children =
+                          prepend_pending_trivia parser [ ident ]
+                        in
+                        Some
+                          (make_node_list ~kind:Syntax_kind.IDENT_EXPR children)
+                    )
+                | Some (Token.OpenDelim Token.Brace) -> (
+                    match parse_record_expr parser with
+                    | Some record_expr ->
+                        let children =
+                          [ ident; dot; Ceibo.Green.Node record_expr ]
+                        in
+                        Some
+                          (make_node_list ~kind:Syntax_kind.APPLY_EXPR children)
+                    | None ->
+                        let children =
+                          prepend_pending_trivia parser [ ident ]
+                        in
+                        Some
+                          (make_node_list ~kind:Syntax_kind.IDENT_EXPR children)
+                    )
+                | Some (Token.OpenDelim Token.Paren) -> (
+                    let open_paren = consume parser in
+                    let _ = consume_trivia parser in
+                    match parse_expr parser with
+                    | Some expr ->
+                        let _ = consume_trivia parser in
+                        let close_paren =
+                          expect parser (Token.CloseDelim Token.Paren)
+                        in
+                        let children =
+                          [
+                            ident;
+                            dot;
+                            open_paren;
+                            Ceibo.Green.Node expr;
+                            close_paren;
+                          ]
+                        in
+                        Some
+                          (make_node_list ~kind:Syntax_kind.APPLY_EXPR children)
+                    | None ->
+                        let children =
+                          prepend_pending_trivia parser [ ident ]
+                        in
+                        Some
+                          (make_node_list ~kind:Syntax_kind.IDENT_EXPR children)
+                    )
+                | _ ->
+                    let children = prepend_pending_trivia parser [ ident ] in
+                    Some (make_node_list ~kind:Syntax_kind.IDENT_EXPR children)
+              else
+                let ident = consume parser in
+                let children = prepend_pending_trivia parser [ ident ] in
+                Some (make_node_list ~kind:Syntax_kind.IDENT_EXPR children)
           (* Parenthesized expression *)
           | Some (Token.OpenDelim Token.Paren) -> parse_paren_expr parser
           (* List literal *)
