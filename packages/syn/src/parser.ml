@@ -1447,8 +1447,8 @@ and parse_paren_expr parser =
       Some (make_node_list ~kind:Syntax_kind.APPLY_EXPR children))
     else
       (* (module M : S) or (module M) - first-class module *)
-      (* Parse module name *)
-      let module_name = consume parser in
+      (* Parse module name (can be qualified: A.B.C) *)
+      let module_name_parts = parse_identifier parser in
       let _ = consume_trivia parser in
 
       (* Optional type annotation *)
@@ -1465,7 +1465,7 @@ and parse_paren_expr parser =
       let close_paren = expect parser (Token.CloseDelim Token.Paren) in
       let children =
         prepend_pending_trivia parser
-          ([ open_paren; module_kw; module_name ]
+          ([ open_paren; module_kw ] @ module_name_parts
           @ type_annotation @ [ close_paren ])
       in
       Some (make_node_list ~kind:Syntax_kind.APPLY_EXPR children)
@@ -1915,9 +1915,10 @@ and parse_for_expr parser =
   let _ = consume_trivia parser in
 
   (* Parse: for <ident> = <expr> to/downto <expr> do <expr> done *)
+  (* Loop variable can be an identifier or _ *)
   let ident =
     match peek_kind parser with
-    | Some (Token.Ident _) -> consume parser
+    | Some (Token.Ident _) | Some Token.Underscore -> consume parser
     | _ ->
         let span =
           match peek parser with
@@ -3270,9 +3271,23 @@ and parse_pattern parser =
         let _ = consume_trivia parser in
         match parse_base_pattern parser with
         | Some end_pat ->
-            Some
-              (make_node_list ~kind:Syntax_kind.RANGE_PATTERN
-                 [ Ceibo.Green.Node pat; dotdot; Ceibo.Green.Node end_pat ])
+            let range_pat =
+              make_node_list ~kind:Syntax_kind.RANGE_PATTERN
+                [ Ceibo.Green.Node pat; dotdot; Ceibo.Green.Node end_pat ]
+            in
+            (* Check for 'as' binding after range pattern *)
+            let _ = consume_trivia parser in
+            if at parser (Token.Keyword Keyword.As) then
+              let as_kw = consume parser in
+              let _ = consume_trivia parser in
+              match peek_kind parser with
+              | Some (Token.Ident _) ->
+                  let ident = consume parser in
+                  Some
+                    (make_node_list ~kind:Syntax_kind.AS_PATTERN
+                       [ Ceibo.Green.Node range_pat; as_kw; ident ])
+              | _ -> Some range_pat
+            else Some range_pat
         | None -> Some pat
       else if at parser Token.Pipe then
         (* OR pattern: A | B | C, where alternatives can be ranges, cons, etc. *)
@@ -4718,14 +4733,28 @@ and parse_type_decl parser =
       let eq = consume parser in
       let _ = consume_trivia parser in
 
+      (* Check for 'private' keyword *)
+      let private_kw =
+        if at parser (Token.Keyword Keyword.Private) then
+          let priv = consume parser in
+          let _ = consume_trivia parser in
+          Some priv
+        else None
+      in
+
       let type_body = parse_type_decl_body parser in
 
       let children =
-        match params with
-        | Some p ->
+        match (params, private_kw) with
+        | Some p, Some priv ->
+            type_kw :: Ceibo.Green.Node p
+            :: (type_name_parts @ [ eq; priv; Ceibo.Green.Node type_body ])
+        | Some p, None ->
             type_kw :: Ceibo.Green.Node p
             :: (type_name_parts @ [ eq; Ceibo.Green.Node type_body ])
-        | None ->
+        | None, Some priv ->
+            type_kw :: (type_name_parts @ [ eq; priv; Ceibo.Green.Node type_body ])
+        | None, None ->
             type_kw :: (type_name_parts @ [ eq; Ceibo.Green.Node type_body ])
       in
 
