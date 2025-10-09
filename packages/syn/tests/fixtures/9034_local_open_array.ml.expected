@@ -33,17 +33,10 @@
             "width": 21,
             "children": [
               {
-                "type": "node",
+                "type": "token",
                 "kind": "IDENT_EXPR",
-                "width": 4,
-                "children": [
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "Libc",
-                    "width": 4
-                  }
-                ]
+                "text": "Libc",
+                "width": 4
               },
               {
                 "type": "token",
@@ -142,17 +135,10 @@
             "width": 16,
             "children": [
               {
-                "type": "node",
+                "type": "token",
                 "kind": "IDENT_EXPR",
-                "width": 6,
-                "children": [
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "Module",
-                    "width": 6
-                  }
-                ]
+                "text": "Module",
+                "width": 6
               },
               {
                 "type": "token",

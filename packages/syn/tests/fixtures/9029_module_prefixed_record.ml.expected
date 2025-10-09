@@ -33,23 +33,10 @@
             "width": 57,
             "children": [
               {
-                "type": "node",
+                "type": "token",
                 "kind": "IDENT_EXPR",
-                "width": 47,
-                "children": [
-                  {
-                    "type": "token",
-                    "kind": "COMMENT",
-                    "text": "(* Test: Module-prefixed record expressions *)",
-                    "width": 46
-                  },
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "M",
-                    "width": 1
-                  }
-                ]
+                "text": "M",
+                "width": 1
               },
               {
                 "type": "token",
@@ -60,7 +47,7 @@
               {
                 "type": "node",
                 "kind": "RECORD_EXPR",
-                "width": 9,
+                "width": 55,
                 "children": [
                   {
                     "type": "token",
@@ -71,7 +58,7 @@
                   {
                     "type": "node",
                     "kind": "RECORD_FIELD",
-                    "width": 7,
+                    "width": 53,
                     "children": [
                       {
                         "type": "token",
@@ -88,13 +75,19 @@
                       {
                         "type": "node",
                         "kind": "SEQUENCE_EXPR",
-                        "width": 5,
+                        "width": 51,
                         "children": [
                           {
                             "type": "node",
                             "kind": "INT_LITERAL",
-                            "width": 1,
+                            "width": 47,
                             "children": [
+                              {
+                                "type": "token",
+                                "kind": "COMMENT",
+                                "text": "(* Test: Module-prefixed record expressions *)",
+                                "width": 46
+                              },
                               {
                                 "type": "token",
                                 "kind": "INT_LITERAL",
@@ -193,17 +186,10 @@
             "width": 49,
             "children": [
               {
-                "type": "node",
+                "type": "token",
                 "kind": "IDENT_EXPR",
-                "width": 9,
-                "children": [
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "OsProcess",
-                    "width": 9
-                  }
-                ]
+                "text": "OsProcess",
+                "width": 9
               },
               {
                 "type": "token",
