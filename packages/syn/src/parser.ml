@@ -2534,15 +2534,9 @@ and parse_let_module_expr parser leading_trivia let_kw trivia_after_let
         let val_kw = consume parser in
         let trivia_after_val = consume_trivia parser in
 
-        (* Parse expression (module value) *)
-        let rec consume_until_colon acc =
-          if at parser Token.Colon || peek parser = None then List.rev acc
-          else
-            let tok = consume parser in
-            let trivia_after_tok = consume_trivia parser in
-            consume_until_colon (List.rev_append trivia_after_tok (tok :: acc))
-        in
-        let expr_tokens = consume_until_colon [] in
+        (* Parse expression (module value) - use parse_expr for proper parsing *)
+        let expr_result = parse_expr parser in
+        let trivia_after_expr = consume_trivia parser in
 
         (* Expect : *)
         let colon = expect parser Token.Colon in
@@ -2550,13 +2544,21 @@ and parse_let_module_expr parser leading_trivia let_kw trivia_after_let
 
         (* Parse module type expression *)
         let module_type = parse_module_type_expr parser in
+        let trivia_after_type = consume_trivia parser in
 
         (* Expect ) *)
         let close_paren = expect parser (Token.CloseDelim Token.Paren) in
 
+        let expr_nodes =
+          match expr_result with
+          | Some expr -> [ Ceibo.Green.Node expr ]
+          | None -> []
+        in
+
         [ open_paren ] @ trivia_after_paren @ [ val_kw ] @ trivia_after_val
-        @ expr_tokens @ [ colon ] @ trivia_after_colon
-        @ [ Ceibo.Green.Node module_type; close_paren ]
+        @ expr_nodes @ trivia_after_expr @ [ colon ] @ trivia_after_colon
+        @ [ Ceibo.Green.Node module_type ]
+        @ trivia_after_type @ [ close_paren ]
       else
         (* Other parenthesized module expression - consume until 'in' *)
         let rec consume_until_in acc =

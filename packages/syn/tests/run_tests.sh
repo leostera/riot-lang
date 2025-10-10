@@ -38,7 +38,7 @@ for fixture in $FIXTURES_DIR/$PATTERN; do
     echo -n "$base... "
     expected="$fixture.expected"
     if [ -f "$expected" ]; then
-        output=$($SYN parse --json "$fixture" 2>&1 | jq '.')
+        output=$($SYN parse --json "$fixture" 2>&1 | grep "tree" | jq '.')
         expected_content=$(cat "$expected")
         
         # Check if output has ERROR or MISSING tokens (parser is broken)

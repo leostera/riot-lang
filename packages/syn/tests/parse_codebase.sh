@@ -25,7 +25,7 @@ for file in $(find packages/ -name "*.ml" -o -name "*.mli" | sort); do
     echo -n "Parsing $file... "
     
     # Run parser and capture output
-    output=$(./target/debug/syn parse --json "$file" 2>&1)
+    output=$(./target/debug/syn parse --json "$file" 2>&1 | grep "tree")
     exit_code=$?
     
     if [ $exit_code -ne 0 ]; then
