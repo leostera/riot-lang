@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 17,
+    "width": 18,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 17,
+        "width": 18,
         "children": [
           {
             "type": "token",
@@ -30,13 +30,19 @@
           {
             "type": "node",
             "kind": "ASSERT_EXPR",
-            "width": 11,
+            "width": 12,
             "children": [
               {
                 "type": "token",
                 "kind": "ASSERT_EXPR",
                 "text": "assert",
                 "width": 6
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
               },
               {
                 "type": "node",

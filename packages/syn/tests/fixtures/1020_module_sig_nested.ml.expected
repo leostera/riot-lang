@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 44,
+    "width": 56,
     "children": [
       {
         "type": "node",
         "kind": "MODULE_TYPE_DECL",
-        "width": 44,
+        "width": 56,
         "children": [
           {
             "type": "token",
@@ -36,7 +36,7 @@
           {
             "type": "node",
             "kind": "SIGNATURE",
-            "width": 32,
+            "width": 44,
             "children": [
               {
                 "type": "token",
@@ -45,9 +45,15 @@
                 "width": 3
               },
               {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n  ",
+                "width": 3
+              },
+              {
                 "type": "node",
                 "kind": "MODULE_TYPE_DECL",
-                "width": 26,
+                "width": 34,
                 "children": [
                   {
                     "type": "token",
@@ -76,7 +82,7 @@
                   {
                     "type": "node",
                     "kind": "SIGNATURE",
-                    "width": 14,
+                    "width": 22,
                     "children": [
                       {
                         "type": "token",
@@ -85,9 +91,15 @@
                         "width": 3
                       },
                       {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": "\n    ",
+                        "width": 5
+                      },
+                      {
                         "type": "node",
                         "kind": "VAL_DECL",
-                        "width": 8,
+                        "width": 11,
                         "children": [
                           {
                             "type": "token",
@@ -110,12 +122,18 @@
                           {
                             "type": "node",
                             "kind": "TYPE_CONSTR",
-                            "width": 3,
+                            "width": 6,
                             "children": [
                               {
                                 "type": "token",
                                 "kind": "IDENT_EXPR",
                                 "text": "int",
+                                "width": 3
+                              },
+                              {
+                                "type": "token",
+                                "kind": "WHITESPACE",
+                                "text": "\n  ",
                                 "width": 3
                               }
                             ]
@@ -131,6 +149,12 @@
                     ]
                   }
                 ]
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n",
+                "width": 1
               },
               {
                 "type": "token",

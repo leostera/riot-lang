@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 5,
+    "width": 6,
     "children": [
       {
         "type": "node",
         "kind": "OPEN_STMT",
-        "width": 5,
+        "width": 6,
         "children": [
           {
             "type": "token",
@@ -19,6 +19,12 @@
             "type": "token",
             "kind": "PREFIX_EXPR",
             "text": "!",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
             "width": 1
           }
         ]

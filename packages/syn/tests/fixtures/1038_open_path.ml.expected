@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 12,
+    "width": 13,
     "children": [
       {
         "type": "node",
         "kind": "OPEN_STMT",
-        "width": 12,
+        "width": 13,
         "children": [
           {
             "type": "token",
@@ -32,6 +32,12 @@
             "kind": "IDENT_EXPR",
             "text": "Set",
             "width": 3
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": "\n",
+            "width": 1
           }
         ]
       }

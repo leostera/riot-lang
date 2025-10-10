@@ -83,7 +83,7 @@ let () =
     |> subcommands
          [
            (* token-stream subcommand *)
-           command "token-stream"
+           command "tokenize"
            |> about "Print token stream for a file"
            |> args
                 [
@@ -113,11 +113,8 @@ let () =
       exit 1
   | Ok matches -> (
       match ArgParser.get_subcommand matches with
-      | None ->
-          ArgParser.print_help cmd;
-          exit 1
       | Some ("token-stream", sub_matches) -> handle_token_stream sub_matches
       | Some ("parse", sub_matches) -> handle_parse sub_matches
-      | Some (cmd, _) ->
-          Log.error "Unknown subcommand: %s" cmd;
+      | _ ->
+          ArgParser.print_help cmd;
           exit 1)

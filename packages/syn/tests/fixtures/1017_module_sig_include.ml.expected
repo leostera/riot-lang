@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 30,
+    "width": 34,
     "children": [
       {
         "type": "node",
         "kind": "MODULE_TYPE_DECL",
-        "width": 30,
+        "width": 34,
         "children": [
           {
             "type": "token",
@@ -36,7 +36,7 @@
           {
             "type": "node",
             "kind": "SIGNATURE",
-            "width": 18,
+            "width": 22,
             "children": [
               {
                 "type": "token",
@@ -45,9 +45,15 @@
                 "width": 3
               },
               {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n  ",
+                "width": 3
+              },
+              {
                 "type": "node",
                 "kind": "INCLUDE_STMT",
-                "width": 12,
+                "width": 13,
                 "children": [
                   {
                     "type": "token",
@@ -71,6 +77,12 @@
                     "type": "token",
                     "kind": "IDENT_EXPR",
                     "text": "S",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": "\n",
                     "width": 1
                   }
                 ]

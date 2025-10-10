@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 25,
+    "width": 26,
     "children": [
       {
         "type": "node",
         "kind": "LET_EXPR",
-        "width": 25,
+        "width": 26,
         "children": [
           {
             "type": "token",
@@ -18,7 +18,7 @@
           {
             "type": "node",
             "kind": "PAREN_PATTERN",
-            "width": 7,
+            "width": 8,
             "children": [
               {
                 "type": "token",
@@ -29,13 +29,19 @@
               {
                 "type": "node",
                 "kind": "LAZY_PATTERN",
-                "width": 5,
+                "width": 6,
                 "children": [
                   {
                     "type": "token",
                     "kind": "LAZY_EXPR",
                     "text": "lazy",
                     "width": 4
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
                   },
                   {
                     "type": "node",

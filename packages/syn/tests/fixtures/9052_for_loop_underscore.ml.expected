@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 86,
+    "width": 104,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 42,
+        "width": 51,
         "children": [
           {
             "type": "token",
@@ -30,7 +30,7 @@
           {
             "type": "node",
             "kind": "FOR_EXPR",
-            "width": 36,
+            "width": 45,
             "children": [
               {
                 "type": "token",
@@ -40,14 +40,32 @@
               },
               {
                 "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
+              {
+                "type": "token",
                 "kind": "WILDCARD_PATTERN",
                 "text": "_",
                 "width": 1
               },
               {
                 "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
+              {
+                "type": "token",
                 "kind": "INFIX_EXPR",
                 "text": "=",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
                 "width": 1
               },
               {
@@ -70,6 +88,12 @@
                 "width": 2
               },
               {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
+              {
                 "type": "node",
                 "kind": "INT_LITERAL",
                 "width": 2,
@@ -87,6 +111,12 @@
                 "kind": "FOR_EXPR",
                 "text": "do",
                 "width": 2
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n    ",
+                "width": 5
               },
               {
                 "type": "node",
@@ -134,7 +164,7 @@
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 44,
+        "width": 53,
         "children": [
           {
             "type": "token",
@@ -157,7 +187,7 @@
           {
             "type": "node",
             "kind": "FOR_EXPR",
-            "width": 38,
+            "width": 47,
             "children": [
               {
                 "type": "token",
@@ -167,14 +197,32 @@
               },
               {
                 "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
+              {
+                "type": "token",
                 "kind": "WILDCARD_PATTERN",
                 "text": "_",
                 "width": 1
               },
               {
                 "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
+              {
+                "type": "token",
                 "kind": "INFIX_EXPR",
                 "text": "=",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
                 "width": 1
               },
               {
@@ -197,6 +245,12 @@
                 "width": 6
               },
               {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
+              {
                 "type": "node",
                 "kind": "INT_LITERAL",
                 "width": 1,
@@ -214,6 +268,12 @@
                 "kind": "FOR_EXPR",
                 "text": "do",
                 "width": 2
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n    ",
+                "width": 5
               },
               {
                 "type": "node",

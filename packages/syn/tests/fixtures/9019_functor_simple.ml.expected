@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 34,
+    "width": 38,
     "children": [
       {
         "type": "node",
         "kind": "MODULE_DECL",
-        "width": 34,
+        "width": 38,
         "children": [
           {
             "type": "token",
@@ -74,7 +74,7 @@
           {
             "type": "node",
             "kind": "STRUCTURE",
-            "width": 18,
+            "width": 22,
             "children": [
               {
                 "type": "token",
@@ -85,7 +85,7 @@
               {
                 "type": "node",
                 "kind": "TYPE_DECL",
-                "width": 9,
+                "width": 13,
                 "children": [
                   {
                     "type": "token",
@@ -95,8 +95,20 @@
                   },
                   {
                     "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
                     "kind": "IDENT_EXPR",
                     "text": "t",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
                     "width": 1
                   },
                   {
@@ -106,9 +118,15 @@
                     "width": 1
                   },
                   {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  },
+                  {
                     "type": "node",
                     "kind": "TYPE_CONSTR",
-                    "width": 3,
+                    "width": 4,
                     "children": [
                       {
                         "type": "token",
@@ -126,6 +144,12 @@
                         "type": "token",
                         "kind": "IDENT_EXPR",
                         "text": "t",
+                        "width": 1
+                      },
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": "\n",
                         "width": 1
                       }
                     ]
