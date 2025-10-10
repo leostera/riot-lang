@@ -4510,17 +4510,36 @@ and parse_let_binding parser leading_trivia =
   in
   let attributes, attr_trivia = parse_attributes [] [] in
 
+  (* Check for extension point: let%foo *)
+  let extension, extension_trivia =
+    if at parser Token.Percent then
+      let percent = consume parser in
+      let trivia_after_percent = consume_trivia parser in
+      (* Consume extension name identifier *)
+      let ext_name, ext_name_trivia =
+        match peek_kind parser with
+        | Some (Token.Ident _) ->
+            let name = consume parser in
+            let trivia = consume_trivia parser in
+            ([name], trivia)
+        | _ -> ([], [])
+      in
+      ([percent] @ trivia_after_percent @ ext_name, ext_name_trivia)
+    else ([], [])
+  in
+
   (* Check for 'let open' or 'let module' at structure level *)
   (* NOTE: 'let exception' is NOT allowed at top level - use 'exception' instead *)
   if at parser (Token.Keyword Keyword.Open) then
     parse_let_open_expr parser leading_trivia let_kw
-      (trivia_after_let @ attributes @ attr_trivia)
+      (trivia_after_let @ attributes @ attr_trivia @ extension @ extension_trivia)
       ()
   else if at parser (Token.Keyword Keyword.Module) then
     parse_let_module_expr parser leading_trivia let_kw
-      (trivia_after_let @ attributes @ attr_trivia)
+      (trivia_after_let @ attributes @ attr_trivia @ extension @ extension_trivia)
       ()
-  else parse_regular_let_binding parser let_kw trivia_after_let ~attributes ()
+  else parse_regular_let_binding parser let_kw trivia_after_let 
+      ~attributes:(attributes @ extension @ extension_trivia) ()
 
 and parse_regular_let_binding parser let_kw trivia_after_let ?(attributes = [])
     () =
@@ -5379,7 +5398,7 @@ and parse_type_arrow parser =
   let trivia_after_left = consume_trivia parser in
 
   (* Check if we have a labeled parameter without tilde: label:type -> ... *)
-  let left =
+  let left, trivia_after_left =
     match peek_kind parser with
     | Some Token.Colon ->
         (* Check if left is a simple identifier (TYPE_CONSTR with single ident) *)
@@ -5391,18 +5410,20 @@ and parse_type_arrow parser =
               let colon = consume parser in
               let trivia_after_colon = consume_trivia parser in
               let typ = parse_type_tuple parser in
-              make_node_list ~kind:Syntax_kind.TYPE_PARAM
+              let labeled_param = make_node_list ~kind:Syntax_kind.TYPE_PARAM
                 ([ label_tok ] @ trivia_after_left @ [ colon ]
-               @ trivia_after_colon @ [ Ceibo.Green.Node typ ])
+               @ trivia_after_colon @ [ Ceibo.Green.Node typ ]) in
+              (* We consumed more tokens, so consume trivia again *)
+              let trivia_after_param = consume_trivia parser in
+              (labeled_param, trivia_after_param)
           | _ ->
               (* Complex type followed by :, not a labeled param *)
-              left
+              (left, trivia_after_left)
         else
           (* Multiple children, not a simple identifier *)
-          left
-    | _ -> left
+          (left, trivia_after_left)
+    | _ -> (left, trivia_after_left)
   in
-  let trivia_after_left2 = consume_trivia parser in
 
   match peek_kind parser with
   | Some Token.Arrow ->
@@ -5411,17 +5432,24 @@ and parse_type_arrow parser =
       let right = parse_type_arrow parser in
       (* Right-associative recursion *)
       make_node_list ~kind:Syntax_kind.TYPE_ARROW
-        ([ Ceibo.Green.Node left ] @ trivia_after_left2 @ [ arrow ]
+        (leading_trivia @ [ Ceibo.Green.Node left ] @ trivia_after_left @ [ arrow ]
        @ trivia_after_arrow @ [ Ceibo.Green.Node right ])
-  | _ -> left
+  | _ ->
+      (* No arrow, return left with any leading/trailing trivia *)
+      let has_leading = List.length leading_trivia > 0 in
+      let has_trailing = List.length trivia_after_left > 0 in
+      if has_leading || has_trailing then
+        make_node_list ~kind:(Ceibo.Green.kind (Ceibo.Green.Node left))
+          (leading_trivia @ [ Ceibo.Green.Node left ] @ trivia_after_left)
+      else left
 
 and parse_type_tuple parser =
   (* Parse tuple types (left-associative): int * string * bool *)
   let first = parse_type_atomic parser in
-  let trivia_after_first = consume_trivia parser in
 
   match peek_kind parser with
   | Some Token.Star ->
+      let trivia_after_first = consume_trivia parser in
       let rec collect_tuple_parts acc =
         let trivia_before_star = consume_trivia parser in
         match peek_kind parser with
@@ -5444,7 +5472,9 @@ and parse_type_tuple parser =
           @ [ Ceibo.Green.Node first ])
       in
       make_node_list ~kind:Syntax_kind.TYPE_TUPLE parts
-  | _ -> first
+  | _ ->
+      (* No tuple, don't consume trivia - let the caller handle it *)
+      first
 
 and parse_type_atomic parser =
   (* Parse atomic type expressions with optional type application:
@@ -5577,29 +5607,28 @@ and parse_type_atomic parser =
         make_node_list ~kind:Syntax_kind.ERROR leading_trivia
   in
 
-  let trivia_after_base = consume_trivia parser in
-
   (* Check for type application: 'a list, (int, string) result *)
   (* Can be chained: 'a tree list, int option list *)
   (* Also handles module paths: 'a Queue.t, Message.envelope Queue.t *)
-  let rec parse_type_applications current_type trivia_before =
+  let rec parse_type_applications current_type =
+    (* Only consume trivia if there's actually a type application *)
     match peek_kind parser with
     | Some (Token.Ident _) ->
+        let trivia_before = consume_trivia parser in
         (* Type application: current_type constructor_name *)
         (* This can be a simple constructor (list, option) or module path (Queue.t, Stdlib.List.t) *)
         let constructor_path = parse_identifier parser in
-        let trivia_after_constructor = consume_trivia parser in
         let applied_type =
           make_node_list ~kind:Syntax_kind.TYPE_CONSTR
             ([ Ceibo.Green.Node current_type ]
             @ trivia_before @ constructor_path)
         in
         (* Check for more applications *)
-        parse_type_applications applied_type trivia_after_constructor
+        parse_type_applications applied_type
     | _ -> current_type
   in
 
-  parse_type_applications base_type trivia_after_base
+  parse_type_applications base_type
 
 and parse_variant_type parser =
   (* Parse variant type: A | B | C of int | D of string * bool *)
@@ -5947,12 +5976,14 @@ and parse_val_decl parser =
 
   (* Parse type expression *)
   let type_expr = parse_type_expr parser in
+  let trivia_after_type = consume_trivia parser in
 
   Some
     (make_node_list ~kind:Syntax_kind.VAL_DECL
        ([ val_kw ] @ trivia_after_val @ name_tokens @ trivia_after_name
       @ [ colon ] @ trivia_after_colon
-       @ [ Ceibo.Green.Node type_expr ]))
+       @ [ Ceibo.Green.Node type_expr ]
+       @ trivia_after_type))
 
 and parse_external_decl parser leading_trivia =
   (* external name : type = "c_name" *)
