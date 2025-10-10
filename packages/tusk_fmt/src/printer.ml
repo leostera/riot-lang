@@ -64,11 +64,13 @@ let print_root ~config root =
     match !last_token_text with
     | None -> false
     | Some last_text ->
-        (* No space around . for module paths *)
+        (* No space around . for module paths and indexing *)
         if current_text = "." || last_text = "." then false
+        (* No space after ` for poly variants *)
+        else if last_text = "`" then false
         (* No space after prefix operators *)
         else if is_prefix_operator last_text then false
-          (* Space after opening bracket/brace *)
+          (* Space after opening bracket/brace, except for .[  *)
         else if last_text = "[" || last_text = "{" || last_text = "[|" then true
           (* Space before closing bracket/brace *)
         else if current_text = "]" || current_text = "}" || current_text = "|]"
