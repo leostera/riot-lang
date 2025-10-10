@@ -2075,7 +2075,7 @@
                   {
                     "type": "node",
                     "kind": "APPLY_EXPR",
-                    "width": 57,
+                    "width": 58,
                     "children": [
                       {
                         "type": "node",
@@ -2112,7 +2112,7 @@
                       {
                         "type": "node",
                         "kind": "APPLY_EXPR",
-                        "width": 43,
+                        "width": 44,
                         "children": [
                           {
                             "type": "token",
@@ -2272,6 +2272,12 @@
                             "kind": "PAREN_EXPR",
                             "text": ")",
                             "width": 1
+                          },
+                          {
+                            "type": "token",
+                            "kind": "WHITESPACE",
+                            "text": " ",
+                            "width": 1
                           }
                         ]
                       }
@@ -2280,14 +2286,8 @@
                   {
                     "type": "node",
                     "kind": "IDENT_EXPR",
-                    "width": 4,
+                    "width": 3,
                     "children": [
-                      {
-                        "type": "token",
-                        "kind": "WHITESPACE",
-                        "text": " ",
-                        "width": 1
-                      },
                       {
                         "type": "token",
                         "kind": "IDENT_EXPR",

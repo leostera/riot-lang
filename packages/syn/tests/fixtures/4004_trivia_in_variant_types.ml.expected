@@ -2,13 +2,37 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 612,
+    "width": 688,
     "children": [
       {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 70,
+        "width": 145,
         "children": [
+          {
+            "type": "token",
+            "kind": "COMMENT",
+            "text": "(* Test that trivia is preserved in variant types *)",
+            "width": 52
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": "\n\n",
+            "width": 2
+          },
+          {
+            "type": "token",
+            "kind": "COMMENT",
+            "text": "(* Simple variant *)",
+            "width": 20
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": "\n",
+            "width": 1
+          },
           {
             "type": "token",
             "kind": "TYPE_DECL",
@@ -150,7 +174,7 @@
       {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 107,
+        "width": 110,
         "children": [
           {
             "type": "token",
@@ -185,13 +209,13 @@
           {
             "type": "token",
             "kind": "WHITESPACE",
-            "text": " \n  ",
-            "width": 4
+            "text": "\n  ",
+            "width": 3
           },
           {
             "type": "node",
             "kind": "TYPE_CONSTR",
-            "width": 94,
+            "width": 98,
             "children": [
               {
                 "type": "token",
@@ -220,7 +244,7 @@
               {
                 "type": "node",
                 "kind": "TYPE_VARIANT_CONSTR",
-                "width": 16,
+                "width": 18,
                 "children": [
                   {
                     "type": "token",
@@ -231,8 +255,8 @@
                   {
                     "type": "token",
                     "kind": "WHITESPACE",
-                    "text": " ",
-                    "width": 1
+                    "text": "\n  ",
+                    "width": 3
                   },
                   {
                     "type": "token",
@@ -263,7 +287,7 @@
               {
                 "type": "node",
                 "kind": "TYPE_VARIANT_CONSTR",
-                "width": 17,
+                "width": 19,
                 "children": [
                   {
                     "type": "token",
@@ -274,8 +298,8 @@
                   {
                     "type": "token",
                     "kind": "WHITESPACE",
-                    "text": " ",
-                    "width": 1
+                    "text": "\n  ",
+                    "width": 3
                   },
                   {
                     "type": "token",
@@ -341,7 +365,7 @@
       {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 98,
+        "width": 91,
         "children": [
           {
             "type": "token",
@@ -376,26 +400,14 @@
           {
             "type": "token",
             "kind": "WHITESPACE",
-            "text": " \n  ",
-            "width": 4
+            "text": " ",
+            "width": 1
           },
           {
             "type": "node",
             "kind": "TYPE_CONSTR",
-            "width": 85,
+            "width": 81,
             "children": [
-              {
-                "type": "token",
-                "kind": "MATCH_EXPR",
-                "text": "|",
-                "width": 1
-              },
-              {
-                "type": "token",
-                "kind": "WHITESPACE",
-                "text": " ",
-                "width": 1
-              },
               {
                 "type": "token",
                 "kind": "WHITESPACE",
@@ -411,7 +423,7 @@
               {
                 "type": "node",
                 "kind": "TYPE_VARIANT_CONSTR",
-                "width": 7,
+                "width": 5,
                 "children": [
                   {
                     "type": "token",
@@ -422,8 +434,8 @@
                   {
                     "type": "token",
                     "kind": "WHITESPACE",
-                    "text": "\n  ",
-                    "width": 3
+                    "text": " ",
+                    "width": 1
                   }
                 ]
               },
@@ -520,7 +532,7 @@
       {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 134,
+        "width": 139,
         "children": [
           {
             "type": "token",
@@ -555,13 +567,13 @@
           {
             "type": "token",
             "kind": "WHITESPACE",
-            "text": " \n  ",
-            "width": 4
+            "text": "\n  ",
+            "width": 3
           },
           {
             "type": "node",
             "kind": "TYPE_CONSTR",
-            "width": 121,
+            "width": 127,
             "children": [
               {
                 "type": "token",
@@ -578,7 +590,7 @@
               {
                 "type": "node",
                 "kind": "TYPE_VARIANT_CONSTR",
-                "width": 119,
+                "width": 125,
                 "children": [
                   {
                     "type": "token",
@@ -613,8 +625,8 @@
                   {
                     "type": "token",
                     "kind": "WHITESPACE",
-                    "text": " ",
-                    "width": 1
+                    "text": "\n      ",
+                    "width": 7
                   },
                   {
                     "type": "token",

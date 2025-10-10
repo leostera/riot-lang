@@ -58,47 +58,40 @@
             "width": 12,
             "children": [
               {
-                "type": "node",
-                "kind": "EXTENSION_EXPR",
-                "width": 11,
-                "children": [
-                  {
-                    "type": "token",
-                    "kind": "LIST_EXPR",
-                    "text": "[",
-                    "width": 1
-                  },
-                  {
-                    "type": "token",
-                    "kind": "INFIX_EXPR",
-                    "text": "%",
-                    "width": 1
-                  },
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "ext",
-                    "width": 3
-                  },
-                  {
-                    "type": "token",
-                    "kind": "WHITESPACE",
-                    "text": " ",
-                    "width": 1
-                  },
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "expr",
-                    "width": 4
-                  },
-                  {
-                    "type": "token",
-                    "kind": "LIST_EXPR",
-                    "text": "]",
-                    "width": 1
-                  }
-                ]
+                "type": "token",
+                "kind": "LIST_EXPR",
+                "text": "[",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "INFIX_EXPR",
+                "text": "%",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "ext",
+                "width": 3
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "expr",
+                "width": 4
+              },
+              {
+                "type": "token",
+                "kind": "LIST_EXPR",
+                "text": "]",
+                "width": 1
               },
               {
                 "type": "token",

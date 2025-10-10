@@ -2,13 +2,25 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 199,
+    "width": 231,
     "children": [
       {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 67,
+        "width": 99,
         "children": [
+          {
+            "type": "token",
+            "kind": "COMMENT",
+            "text": "(* Private type declarations *)",
+            "width": 31
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": "\n",
+            "width": 1
+          },
           {
             "type": "token",
             "kind": "TYPE_DECL",

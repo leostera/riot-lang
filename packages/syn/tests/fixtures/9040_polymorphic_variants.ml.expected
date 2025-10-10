@@ -2,13 +2,25 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 606,
+    "width": 649,
     "children": [
       {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 39,
+        "width": 82,
         "children": [
+          {
+            "type": "token",
+            "kind": "COMMENT",
+            "text": "(* Polymorphic variant type definitions *)",
+            "width": 42
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": "\n",
+            "width": 1
+          },
           {
             "type": "token",
             "kind": "TYPE_DECL",
@@ -647,7 +659,7 @@
               {
                 "type": "node",
                 "kind": "TYPE_PARAMS",
-                "width": 30,
+                "width": 31,
                 "children": [
                   {
                     "type": "token",
@@ -797,14 +809,14 @@
                     "kind": "PAREN_EXPR",
                     "text": ")",
                     "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
                   }
                 ]
-              },
-              {
-                "type": "token",
-                "kind": "WHITESPACE",
-                "text": " ",
-                "width": 1
               },
               {
                 "type": "token",

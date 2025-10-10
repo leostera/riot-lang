@@ -2,13 +2,25 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 138,
+    "width": 194,
     "children": [
       {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 89,
+        "width": 144,
         "children": [
+          {
+            "type": "token",
+            "kind": "COMMENT",
+            "text": "(* Test: First-class module type with constraints *)",
+            "width": 52
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": "\n",
+            "width": 1
+          },
           {
             "type": "token",
             "kind": "TYPE_DECL",
@@ -117,7 +129,7 @@
           {
             "type": "node",
             "kind": "TYPE_CONSTR",
-            "width": 60,
+            "width": 62,
             "children": [
               {
                 "type": "token",
@@ -301,6 +313,12 @@
                 "kind": "PAREN_EXPR",
                 "text": ")",
                 "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n\n",
+                "width": 2
               }
             ]
           }
@@ -309,7 +327,7 @@
       {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 49,
+        "width": 50,
         "children": [
           {
             "type": "token",
@@ -350,7 +368,7 @@
           {
             "type": "node",
             "kind": "TYPE_CONSTR",
-            "width": 34,
+            "width": 35,
             "children": [
               {
                 "type": "token",
@@ -454,6 +472,12 @@
                 "type": "token",
                 "kind": "PAREN_EXPR",
                 "text": ")",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n",
                 "width": 1
               }
             ]

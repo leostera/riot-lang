@@ -2,13 +2,37 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 404,
+    "width": 579,
     "children": [
       {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 68,
+        "width": 156,
         "children": [
+          {
+            "type": "token",
+            "kind": "COMMENT",
+            "text": "(* Test that trivia is preserved in type constructors *)",
+            "width": 56
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": "\n\n",
+            "width": 2
+          },
+          {
+            "type": "token",
+            "kind": "COMMENT",
+            "text": "(* Simple type constructor *)",
+            "width": 29
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": "\n",
+            "width": 1
+          },
           {
             "type": "token",
             "kind": "TYPE_DECL",
@@ -232,7 +256,7 @@
               {
                 "type": "node",
                 "kind": "TYPE_PARAMS",
-                "width": 13,
+                "width": 14,
                 "children": [
                   {
                     "type": "token",
@@ -283,14 +307,14 @@
                     "kind": "PAREN_EXPR",
                     "text": ")",
                     "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
                   }
                 ]
-              },
-              {
-                "type": "token",
-                "kind": "WHITESPACE",
-                "text": " ",
-                "width": 1
               },
               {
                 "type": "token",
@@ -335,7 +359,7 @@
       {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 27,
+        "width": 130,
         "children": [
           {
             "type": "token",
@@ -376,38 +400,103 @@
           {
             "type": "node",
             "kind": "TYPE_CONSTR",
-            "width": 17,
+            "width": 120,
             "children": [
               {
-                "type": "node",
-                "kind": "TYPE_VARIANT_CONSTR",
-                "width": 17,
-                "children": [
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "Foo",
-                    "width": 3
-                  },
-                  {
-                    "type": "token",
-                    "kind": "WHITESPACE",
-                    "text": " ",
-                    "width": 1
-                  },
-                  {
-                    "type": "token",
-                    "kind": "COMMENT",
-                    "text": "(* module *)",
-                    "width": 12
-                  },
-                  {
-                    "type": "token",
-                    "kind": "WHITESPACE",
-                    "text": " ",
-                    "width": 1
-                  }
-                ]
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "Foo",
+                "width": 3
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": ".",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "Bar",
+                "width": 3
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": ".",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "t",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "COMMENT",
+                "text": "(* parameter *)",
+                "width": 15
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "COMMENT",
+                "text": "(* Parametric type with comment after param *)",
+                "width": 46
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n\n",
+                "width": 2
+              },
+              {
+                "type": "token",
+                "kind": "COMMENT",
+                "text": "(* submodule *)",
+                "width": 15
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "COMMENT",
+                "text": "(* separator *)",
+                "width": 15
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n\n",
+                "width": 2
+              },
+              {
+                "type": "token",
+                "kind": "COMMENT",
+                "text": "(* module *)",
+                "width": 12
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
               }
             ]
           }
@@ -416,7 +505,7 @@
       {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 77,
+        "width": 61,
         "children": [
           {
             "type": "token",
@@ -433,7 +522,7 @@
           {
             "type": "node",
             "kind": "TYPE_PARAM",
-            "width": 19,
+            "width": 3,
             "children": [
               {
                 "type": "token",
@@ -446,18 +535,6 @@
                 "kind": "IDENT_EXPR",
                 "text": "a",
                 "width": 1
-              },
-              {
-                "type": "token",
-                "kind": "WHITESPACE",
-                "text": " ",
-                "width": 1
-              },
-              {
-                "type": "token",
-                "kind": "COMMENT",
-                "text": "(* parameter *)",
-                "width": 15
               },
               {
                 "type": "token",
@@ -691,7 +768,7 @@
               {
                 "type": "node",
                 "kind": "TYPE_PARAMS",
-                "width": 8,
+                "width": 9,
                 "children": [
                   {
                     "type": "token",
@@ -754,14 +831,14 @@
                     "kind": "PAREN_EXPR",
                     "text": ")",
                     "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
                   }
                 ]
-              },
-              {
-                "type": "token",
-                "kind": "WHITESPACE",
-                "text": " ",
-                "width": 1
               },
               {
                 "type": "token",

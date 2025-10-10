@@ -2,13 +2,19 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 64,
+    "width": 294,
     "children": [
       {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 16,
+        "width": 18,
         "children": [
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": "\n\n",
+            "width": 2
+          },
           {
             "type": "token",
             "kind": "TYPE_DECL",
@@ -94,8 +100,26 @@
       {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 21,
+        "width": 248,
         "children": [
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": "\n",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "COMMENT",
+            "text": "(* Here, \"int #list\" must be understood as a type.\n     Another interpretation would be to understand just \"int\"\n     as a type and view \"#list\" as a toplevel directive.\n     A syntax error would then be reported at \"as\". *)",
+            "width": 224
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": "\n\n",
+            "width": 2
+          },
           {
             "type": "token",
             "kind": "TYPE_DECL",
@@ -219,8 +243,14 @@
       {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 27,
+        "width": 28,
         "children": [
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": "\n",
+            "width": 1
+          },
           {
             "type": "token",
             "kind": "TYPE_DECL",

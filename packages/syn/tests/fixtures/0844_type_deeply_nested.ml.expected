@@ -53,7 +53,7 @@
               {
                 "type": "node",
                 "kind": "TYPE_PARAMS",
-                "width": 35,
+                "width": 36,
                 "children": [
                   {
                     "type": "token",
@@ -199,14 +199,14 @@
                     "kind": "PAREN_EXPR",
                     "text": ")",
                     "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
                   }
                 ]
-              },
-              {
-                "type": "token",
-                "kind": "WHITESPACE",
-                "text": " ",
-                "width": 1
               },
               {
                 "type": "token",

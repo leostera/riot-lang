@@ -2,13 +2,37 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 662,
+    "width": 745,
     "children": [
       {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 64,
+        "width": 147,
         "children": [
+          {
+            "type": "token",
+            "kind": "COMMENT",
+            "text": "(* Test that trivia is preserved in arrow types *)",
+            "width": 50
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": "\n\n",
+            "width": 2
+          },
+          {
+            "type": "token",
+            "kind": "COMMENT",
+            "text": "(* Simple arrow with spaces *)",
+            "width": 30
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": "\n",
+            "width": 1
+          },
           {
             "type": "token",
             "kind": "TYPE_DECL",

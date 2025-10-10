@@ -138,6 +138,8 @@ let token_kind_to_syntax_kind = function
       Syntax_kind.STRUCTURE
   | Token.OpenDelim Token.SigEnd | Token.CloseDelim Token.SigEnd ->
       Syntax_kind.SIGNATURE
+  | Token.OpenDelim Token.ObjectEnd | Token.CloseDelim Token.ObjectEnd ->
+      Syntax_kind.OBJECT_EXPR
   | Token.OpenDelim Token.Paren | Token.CloseDelim Token.Paren ->
       Syntax_kind.PAREN_EXPR
   | Token.OpenDelim Token.Brace | Token.CloseDelim Token.Brace ->
