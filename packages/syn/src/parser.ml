@@ -1593,10 +1593,10 @@ and parse_tuple_rest parser trivia_after_open open_paren trivia_after_first
     parse_elements [ Ceibo.Green.Node first_expr ] trivia_after_first
   in
 
-  let close_paren = expect parser (Token.CloseDelim Token.Paren) in
+  let trivia_before_close, close_paren, trivia_after_close = expect_with_trivia parser (Token.CloseDelim Token.Paren) in
   let children =
     [ open_paren ] @ trivia_after_open @ elements @ elements_trivia
-    @ [ close_paren ]
+    @ trivia_before_close @ [ close_paren ] @ trivia_after_close
   in
   Some (make_node_list ~kind:Syntax_kind.TUPLE_EXPR children)
 
@@ -1622,10 +1622,10 @@ and parse_sequence_rest parser trivia_after_open open_paren trivia_after_first
     parse_elements [ Ceibo.Green.Node first_expr ] trivia_after_first
   in
 
-  let close_paren = expect parser (Token.CloseDelim Token.Paren) in
+  let trivia_before_close, close_paren, trivia_after_close = expect_with_trivia parser (Token.CloseDelim Token.Paren) in
   let children =
     [ open_paren ] @ trivia_after_open @ elements @ elements_trivia
-    @ [ close_paren ]
+    @ trivia_before_close @ [ close_paren ] @ trivia_after_close
   in
   Some (make_node_list ~kind:Syntax_kind.SEQUENCE_EXPR children)
 
@@ -2134,10 +2134,11 @@ and parse_begin_expr parser leading_trivia =
   match parse_expr parser with
   | Some expr ->
       let trivia_after_expr = consume_trivia parser in
-      let end_kw = expect parser (Token.CloseDelim Token.BeginEnd) in
+      let trivia_before_end, end_kw, trivia_after_end = expect_with_trivia parser (Token.CloseDelim Token.BeginEnd) in
       let children =
         leading_trivia @ [ begin_kw ] @ trivia_after_begin
-        @ [ Ceibo.Green.Node expr ] @ trivia_after_expr @ [ end_kw ]
+        @ [ Ceibo.Green.Node expr ] @ trivia_after_expr 
+        @ trivia_before_end @ [ end_kw ] @ trivia_after_end
       in
       Some (make_node_list ~kind:Syntax_kind.PAREN_EXPR children)
   | None -> None
@@ -2284,9 +2285,8 @@ and parse_object_expr parser leading_trivia =
             ([ ident ], trivia_after_ident)
         | _ -> ([], [])
       in
-      let close_paren = expect parser (Token.CloseDelim Token.Paren) in
-      let trivia_after_close = consume_trivia parser in
-      ( [ open_paren ] @ trivia_after_open @ self_ident @ [ close_paren ],
+      let trivia_before_close, close_paren, trivia_after_close = expect_with_trivia parser (Token.CloseDelim Token.Paren) in
+      ( [ open_paren ] @ trivia_after_open @ self_ident @ trivia_before_close @ [ close_paren ],
         ident_trivia @ trivia_after_close )
     else ([], [])
   in
@@ -2320,11 +2320,11 @@ and parse_object_expr parser leading_trivia =
   in
 
   let items, items_trivia = parse_object_items [] [] in
-  let end_kw = expect parser (Token.CloseDelim Token.ObjectEnd) in
+  let trivia_before_end, end_kw, trivia_after_end = expect_with_trivia parser (Token.CloseDelim Token.ObjectEnd) in
 
   let children =
     leading_trivia @ [ object_kw ] @ trivia_after_object @ self_param
-    @ self_trivia @ items @ items_trivia @ [ end_kw ]
+    @ self_trivia @ items @ items_trivia @ trivia_before_end @ [ end_kw ] @ trivia_after_end
   in
   Some (make_node_list ~kind:Syntax_kind.OBJECT_EXPR children)
 
@@ -2569,7 +2569,7 @@ and parse_let_module_expr parser leading_trivia let_kw trivia_after_let
         let trivia_after_type = consume_trivia parser in
 
         (* Expect ) *)
-        let close_paren = expect parser (Token.CloseDelim Token.Paren) in
+        let trivia_before_close, close_paren, trivia_after_close = expect_with_trivia parser (Token.CloseDelim Token.Paren) in
 
         let expr_nodes =
           match expr_result with
@@ -2580,7 +2580,7 @@ and parse_let_module_expr parser leading_trivia let_kw trivia_after_let
         [ open_paren ] @ trivia_after_paren @ [ val_kw ] @ trivia_after_val
         @ expr_nodes @ trivia_after_expr @ [ colon ] @ trivia_after_colon
         @ [ Ceibo.Green.Node module_type ]
-        @ trivia_after_type @ [ close_paren ]
+        @ trivia_after_type @ trivia_before_close @ [ close_paren ] @ trivia_after_close
       else
         (* Other parenthesized module expression - consume until 'in' *)
         let rec consume_until_in acc =
