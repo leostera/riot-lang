@@ -428,14 +428,13 @@ and parse_expr_bp parser min_bp =
                     let trivia_after_open = consume_trivia parser in
                     match parse_expr parser with
                     | Some expr ->
-                        let trivia_before_close = consume_trivia parser in
-                        let close_paren =
-                          expect parser (Token.CloseDelim Token.Paren)
+                        let trivia_before_close, close_paren, trivia_after_close =
+                          expect_with_trivia parser (Token.CloseDelim Token.Paren)
                         in
                         let children =
                           [ Ceibo.Green.Node lhs; dot; open_paren ]
                           @ trivia_after_open @ [ Ceibo.Green.Node expr ]
-                          @ trivia_before_close @ [ close_paren ]
+                          @ trivia_before_close @ [ close_paren ] @ trivia_after_close
                         in
                         let local_open =
                           make_node_list ~kind:Syntax_kind.APPLY_EXPR children
@@ -448,14 +447,13 @@ and parse_expr_bp parser min_bp =
                     let trivia_after_open = consume_trivia parser in
                     match parse_expr parser with
                     | Some index ->
-                        let trivia_before_close = consume_trivia parser in
-                        let close_paren =
-                          expect parser (Token.CloseDelim Token.Paren)
+                        let trivia_before_close, close_paren, trivia_after_close =
+                          expect_with_trivia parser (Token.CloseDelim Token.Paren)
                         in
                         let children =
                           [ Ceibo.Green.Node lhs; dot; open_paren ]
                           @ trivia_after_open @ [ Ceibo.Green.Node index ]
-                          @ trivia_before_close @ [ close_paren ]
+                          @ trivia_before_close @ [ close_paren ] @ trivia_after_close
                         in
                         let access =
                           make_node_list ~kind:Syntax_kind.ARRAY_INDEX_EXPR
@@ -500,18 +498,15 @@ and parse_expr_bp parser min_bp =
                     let trivia_after_open_bracket = consume_trivia parser in
                     match parse_expr parser with
                     | Some index ->
-                        let trivia_before_close_bracket =
-                          consume_trivia parser
-                        in
-                        let close_bracket =
-                          expect parser (Token.CloseDelim Token.Bracket)
+                        let trivia_before_close_bracket, close_bracket, trivia_after_close_bracket =
+                          expect_with_trivia parser (Token.CloseDelim Token.Bracket)
                         in
                         let children =
                           [ Ceibo.Green.Node lhs; dot ]
                           @ trivia_after_dot @ [ open_bracket ]
                           @ trivia_after_open_bracket
                           @ [ Ceibo.Green.Node index ]
-                          @ trivia_before_close_bracket @ [ close_bracket ]
+                          @ trivia_before_close_bracket @ [ close_bracket ] @ trivia_after_close_bracket
                         in
                         let access =
                           make_node_list ~kind:Syntax_kind.STRING_INDEX_EXPR
