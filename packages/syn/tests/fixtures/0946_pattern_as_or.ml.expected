@@ -137,15 +137,9 @@
                     "width": 16,
                     "children": [
                       {
-                        "type": "token",
-                        "kind": "WHITESPACE",
-                        "text": " ",
-                        "width": 1
-                      },
-                      {
                         "type": "node",
                         "kind": "PAREN_PATTERN",
-                        "width": 11,
+                        "width": 12,
                         "children": [
                           {
                             "type": "token",
@@ -260,6 +254,12 @@
                             "type": "token",
                             "kind": "PAREN_EXPR",
                             "text": ")",
+                            "width": 1
+                          },
+                          {
+                            "type": "token",
+                            "kind": "WHITESPACE",
+                            "text": " ",
                             "width": 1
                           }
                         ]

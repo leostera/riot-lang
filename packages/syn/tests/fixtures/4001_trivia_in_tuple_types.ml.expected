@@ -2,7 +2,7 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 390,
+    "width": 422,
     "children": [
       {
         "type": "node",
@@ -589,7 +589,7 @@
       {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 40,
+        "width": 72,
         "children": [
           {
             "type": "token",
@@ -630,12 +630,12 @@
           {
             "type": "node",
             "kind": "TYPE_TUPLE",
-            "width": 30,
+            "width": 62,
             "children": [
               {
                 "type": "node",
                 "kind": "TYPE_PAREN",
-                "width": 14,
+                "width": 26,
                 "children": [
                   {
                     "type": "token",
@@ -699,6 +699,24 @@
                     "kind": "PAREN_EXPR",
                     "text": ")",
                     "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "COMMENT",
+                    "text": "(* pair *)",
+                    "width": 10
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
                   }
                 ]
               },
@@ -717,7 +735,7 @@
               {
                 "type": "node",
                 "kind": "TYPE_PAREN",
-                "width": 14,
+                "width": 34,
                 "children": [
                   {
                     "type": "token",
@@ -780,6 +798,24 @@
                     "type": "token",
                     "kind": "PAREN_EXPR",
                     "text": ")",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "COMMENT",
+                    "text": "(* another pair *)",
+                    "width": 18
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": "\n",
                     "width": 1
                   }
                 ]

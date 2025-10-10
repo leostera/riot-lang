@@ -60,7 +60,7 @@
               {
                 "type": "node",
                 "kind": "PAREN_EXPR",
-                "width": 7,
+                "width": 8,
                 "children": [
                   {
                     "type": "token",
@@ -124,14 +124,14 @@
                     "kind": "PAREN_EXPR",
                     "text": ")",
                     "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
                   }
                 ]
-              },
-              {
-                "type": "token",
-                "kind": "WHITESPACE",
-                "text": " ",
-                "width": 1
               },
               {
                 "type": "token",

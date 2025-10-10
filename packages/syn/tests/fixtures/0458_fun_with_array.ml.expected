@@ -127,7 +127,7 @@
                   {
                     "type": "node",
                     "kind": "ARRAY_INDEX_EXPR",
-                    "width": 7,
+                    "width": 8,
                     "children": [
                       {
                         "type": "node",
@@ -172,14 +172,14 @@
                         "kind": "PAREN_EXPR",
                         "text": ")",
                         "width": 1
+                      },
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": " ",
+                        "width": 1
                       }
                     ]
-                  },
-                  {
-                    "type": "token",
-                    "kind": "WHITESPACE",
-                    "text": " ",
-                    "width": 1
                   },
                   {
                     "type": "token",
@@ -201,7 +201,7 @@
                       {
                         "type": "node",
                         "kind": "ARRAY_INDEX_EXPR",
-                        "width": 7,
+                        "width": 8,
                         "children": [
                           {
                             "type": "node",
@@ -246,14 +246,14 @@
                             "kind": "PAREN_EXPR",
                             "text": ")",
                             "width": 1
+                          },
+                          {
+                            "type": "token",
+                            "kind": "WHITESPACE",
+                            "text": " ",
+                            "width": 1
                           }
                         ]
-                      },
-                      {
-                        "type": "token",
-                        "kind": "WHITESPACE",
-                        "text": " ",
-                        "width": 1
                       },
                       {
                         "type": "token",

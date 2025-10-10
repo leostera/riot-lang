@@ -2,7 +2,7 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 587,
+    "width": 612,
     "children": [
       {
         "type": "node",
@@ -730,7 +730,7 @@
       {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 67,
+        "width": 92,
         "children": [
           {
             "type": "token",
@@ -771,7 +771,7 @@
           {
             "type": "node",
             "kind": "TYPE_POLY_VARIANT",
-            "width": 57,
+            "width": 82,
             "children": [
               {
                 "type": "token",
@@ -918,6 +918,24 @@
                 "type": "token",
                 "kind": "LIST_EXPR",
                 "text": "]",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n\n",
+                "width": 2
+              },
+              {
+                "type": "token",
+                "kind": "COMMENT",
+                "text": "(* GADT with trivia *)",
+                "width": 22
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n",
                 "width": 1
               }
             ]

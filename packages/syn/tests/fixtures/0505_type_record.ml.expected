@@ -7,7 +7,7 @@
       {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 42,
+        "width": 43,
         "children": [
           {
             "type": "token",
@@ -48,7 +48,7 @@
           {
             "type": "node",
             "kind": "TYPE_CONSTR",
-            "width": 28,
+            "width": 29,
             "children": [
               {
                 "type": "token",
@@ -173,16 +173,16 @@
                 "kind": "RECORD_EXPR",
                 "text": "}",
                 "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n",
+                "width": 1
               }
             ]
           }
         ]
-      },
-      {
-        "type": "token",
-        "kind": "WHITESPACE",
-        "text": "\n",
-        "width": 1
       }
     ]
   },

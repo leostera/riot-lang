@@ -149,12 +149,6 @@
                         "width": 1
                       },
                       {
-                        "type": "token",
-                        "kind": "WHITESPACE",
-                        "text": " ",
-                        "width": 1
-                      },
-                      {
                         "type": "node",
                         "kind": "LIST_PATTERN",
                         "width": 2,
@@ -182,7 +176,7 @@
                       {
                         "type": "node",
                         "kind": "LIST_PATTERN",
-                        "width": 4,
+                        "width": 5,
                         "children": [
                           {
                             "type": "token",
@@ -213,6 +207,12 @@
                             "type": "token",
                             "kind": "LIST_EXPR",
                             "text": "]",
+                            "width": 1
+                          },
+                          {
+                            "type": "token",
+                            "kind": "WHITESPACE",
+                            "text": " ",
                             "width": 1
                           }
                         ]

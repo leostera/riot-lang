@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 125,
+    "width": 129,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 22,
+        "width": 23,
         "children": [
           {
             "type": "token",
@@ -43,7 +43,7 @@
           {
             "type": "node",
             "kind": "RECORD_PATTERN",
-            "width": 8,
+            "width": 9,
             "children": [
               {
                 "type": "token",
@@ -91,6 +91,12 @@
                 "type": "token",
                 "kind": "RECORD_EXPR",
                 "text": "}",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
                 "width": 1
               }
             ]
@@ -176,7 +182,7 @@
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 30,
+        "width": 31,
         "children": [
           {
             "type": "token",
@@ -212,7 +218,7 @@
           {
             "type": "node",
             "kind": "RECORD_PATTERN",
-            "width": 16,
+            "width": 17,
             "children": [
               {
                 "type": "token",
@@ -323,6 +329,12 @@
                 "kind": "RECORD_EXPR",
                 "text": "}",
                 "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
               }
             ]
           },
@@ -407,7 +419,7 @@
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 29,
+        "width": 30,
         "children": [
           {
             "type": "token",
@@ -443,7 +455,7 @@
           {
             "type": "node",
             "kind": "RECORD_PATTERN",
-            "width": 16,
+            "width": 17,
             "children": [
               {
                 "type": "token",
@@ -510,6 +522,12 @@
                 "kind": "RECORD_EXPR",
                 "text": "}",
                 "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
               }
             ]
           },
@@ -556,7 +574,7 @@
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 44,
+        "width": 45,
         "children": [
           {
             "type": "token",
@@ -592,7 +610,7 @@
           {
             "type": "node",
             "kind": "RECORD_PATTERN",
-            "width": 23,
+            "width": 24,
             "children": [
               {
                 "type": "token",
@@ -640,6 +658,12 @@
                 "type": "token",
                 "kind": "RECORD_EXPR",
                 "text": "}",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
                 "width": 1
               }
             ]

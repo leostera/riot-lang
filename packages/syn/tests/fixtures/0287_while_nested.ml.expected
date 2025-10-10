@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 64,
+    "width": 65,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 64,
+        "width": 65,
         "children": [
           {
             "type": "token",
@@ -55,12 +55,12 @@
           {
             "type": "node",
             "kind": "WHILE_EXPR",
-            "width": 54,
+            "width": 55,
             "children": [
               {
                 "type": "node",
                 "kind": "WHILE_EXPR",
-                "width": 53,
+                "width": 54,
                 "children": [
                   {
                     "type": "token",
@@ -115,12 +115,12 @@
                   {
                     "type": "node",
                     "kind": "WHILE_EXPR",
-                    "width": 33,
+                    "width": 34,
                     "children": [
                       {
                         "type": "node",
                         "kind": "WHILE_EXPR",
-                        "width": 30,
+                        "width": 31,
                         "children": [
                           {
                             "type": "token",
@@ -175,12 +175,12 @@
                           {
                             "type": "node",
                             "kind": "APPLY_EXPR",
-                            "width": 8,
+                            "width": 9,
                             "children": [
                               {
                                 "type": "node",
                                 "kind": "APPLY_EXPR",
-                                "width": 3,
+                                "width": 4,
                                 "children": [
                                   {
                                     "type": "node",
@@ -198,8 +198,14 @@
                                   {
                                     "type": "node",
                                     "kind": "UNIT_LITERAL",
-                                    "width": 2,
+                                    "width": 3,
                                     "children": [
+                                      {
+                                        "type": "token",
+                                        "kind": "WHITESPACE",
+                                        "text": " ",
+                                        "width": 1
+                                      },
                                       {
                                         "type": "token",
                                         "kind": "PAREN_EXPR",

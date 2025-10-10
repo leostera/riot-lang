@@ -137,15 +137,9 @@
                     "width": 23,
                     "children": [
                       {
-                        "type": "token",
-                        "kind": "WHITESPACE",
-                        "text": " ",
-                        "width": 1
-                      },
-                      {
                         "type": "node",
                         "kind": "RECORD_PATTERN",
-                        "width": 13,
+                        "width": 14,
                         "children": [
                           {
                             "type": "token",
@@ -193,6 +187,12 @@
                             "type": "token",
                             "kind": "RECORD_EXPR",
                             "text": "}",
+                            "width": 1
+                          },
+                          {
+                            "type": "token",
+                            "kind": "WHITESPACE",
+                            "text": " ",
                             "width": 1
                           }
                         ]

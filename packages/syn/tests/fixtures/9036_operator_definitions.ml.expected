@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 150,
+    "width": 156,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 21,
+        "width": 22,
         "children": [
           {
             "type": "token",
@@ -18,8 +18,8 @@
           {
             "type": "token",
             "kind": "IDENT_EXPR",
-            "text": "( ! )",
-            "width": 5
+            "text": "( ! ) ",
+            "width": 6
           },
           {
             "type": "token",
@@ -114,7 +114,7 @@
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 25,
+        "width": 26,
         "children": [
           {
             "type": "token",
@@ -125,8 +125,8 @@
           {
             "type": "token",
             "kind": "IDENT_EXPR",
-            "text": "( := )",
-            "width": 6
+            "text": "( := ) ",
+            "width": 7
           },
           {
             "type": "token",
@@ -246,7 +246,7 @@
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 27,
+        "width": 28,
         "children": [
           {
             "type": "token",
@@ -257,8 +257,8 @@
           {
             "type": "token",
             "kind": "IDENT_EXPR",
-            "text": "( <> )",
-            "width": 6
+            "text": "( <> ) ",
+            "width": 7
           },
           {
             "type": "token",
@@ -372,7 +372,7 @@
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 29,
+        "width": 30,
         "children": [
           {
             "type": "token",
@@ -383,8 +383,8 @@
           {
             "type": "token",
             "kind": "IDENT_EXPR",
-            "text": "( && )",
-            "width": 6
+            "text": "( && ) ",
+            "width": 7
           },
           {
             "type": "token",
@@ -536,7 +536,7 @@
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 29,
+        "width": 30,
         "children": [
           {
             "type": "token",
@@ -547,8 +547,8 @@
           {
             "type": "token",
             "kind": "IDENT_EXPR",
-            "text": "( || )",
-            "width": 6
+            "text": "( || ) ",
+            "width": 7
           },
           {
             "type": "token",
@@ -700,7 +700,7 @@
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 19,
+        "width": 20,
         "children": [
           {
             "type": "token",
@@ -711,8 +711,8 @@
           {
             "type": "token",
             "kind": "IDENT_EXPR",
-            "text": "( |> )",
-            "width": 6
+            "text": "( |> ) ",
+            "width": 7
           },
           {
             "type": "node",

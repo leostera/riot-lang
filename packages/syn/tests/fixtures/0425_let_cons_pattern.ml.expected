@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 23,
+    "width": 24,
     "children": [
       {
         "type": "node",
         "kind": "LET_EXPR",
-        "width": 23,
+        "width": 24,
         "children": [
           {
             "type": "token",
@@ -18,7 +18,7 @@
           {
             "type": "node",
             "kind": "PAREN_PATTERN",
-            "width": 9,
+            "width": 10,
             "children": [
               {
                 "type": "token",
@@ -74,6 +74,12 @@
                 "type": "token",
                 "kind": "PAREN_EXPR",
                 "text": ")",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
                 "width": 1
               }
             ]

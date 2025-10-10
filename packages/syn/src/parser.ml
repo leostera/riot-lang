@@ -688,14 +688,14 @@ and parse_expr_bp parser min_bp =
                         collect_payload (tok :: acc) (trivia @ trivia_acc)
                     in
                     let payload, payload_trivia = collect_payload [] [] in
-                    let close_bracket =
-                      expect parser (Token.CloseDelim Token.Bracket)
+                    let trivia_before_close, close_bracket, trivia_after_close =
+                      expect_with_trivia parser (Token.CloseDelim Token.Bracket)
                     in
                     let children =
                       [ Ceibo.Green.Node lhs; open_bracket ]
                       @ trivia_after_open @ [ attr_marker ]
                       @ trivia_after_marker @ [ name ] @ trivia_after_name
-                      @ payload @ payload_trivia @ [ close_bracket ]
+                      @ payload @ payload_trivia @ trivia_before_close @ [ close_bracket ] @ trivia_after_close
                     in
                     (* Determine kind based on marker *)
                     let kind =
@@ -923,15 +923,14 @@ and parse_primary parser leading_trivia =
                     let trivia_after_open = consume_trivia parser in
                     match parse_expr parser with
                     | Some expr ->
-                        let trivia_before_close = consume_trivia parser in
-                        let close_paren =
-                          expect parser (Token.CloseDelim Token.Paren)
+                        let trivia_before_close, close_paren, trivia_after_close =
+                          expect_with_trivia parser (Token.CloseDelim Token.Paren)
                         in
                         let children =
                           leading_trivia @ [ ident ] @ trivia_after_ident
                           @ [ dot ] @ trivia_after_dot @ [ open_paren ]
                           @ trivia_after_open @ [ Ceibo.Green.Node expr ]
-                          @ trivia_before_close @ [ close_paren ]
+                          @ trivia_before_close @ [ close_paren ] @ trivia_after_close
                         in
                         Some
                           (make_node_list ~kind:Syntax_kind.APPLY_EXPR children)
@@ -973,14 +972,14 @@ and parse_primary parser leading_trivia =
                           collect_payload (tok :: acc) (trivia @ trivia_acc)
                       in
                       let payload, payload_trivia = collect_payload [] [] in
-                      let close_bracket =
-                        expect parser (Token.CloseDelim Token.Bracket)
+                      let trivia_before_close, close_bracket, trivia_after_close =
+                        expect_with_trivia parser (Token.CloseDelim Token.Bracket)
                       in
                       let children =
                         leading_trivia @ [ open_bracket ] @ trivia_after_open
                         @ [ percent ] @ trivia_after_percent @ [ name ]
                         @ trivia_after_name @ payload @ payload_trivia
-                        @ [ close_bracket ]
+                        @ trivia_before_close @ [ close_bracket ] @ trivia_after_close
                       in
                       Some
                         (make_node_list ~kind:Syntax_kind.EXTENSION_EXPR
@@ -1166,26 +1165,25 @@ and parse_labeled_or_optional_param parser =
                   | None -> (List.rev acc, List.rev trivia_acc)
                 in
                 let type_tokens, type_trivia = consume_type_tokens [] [] 0 in
-                let trivia_before_close = consume_trivia parser in
-                let close_paren =
-                  expect parser (Token.CloseDelim Token.Paren)
+                let trivia_before_close, close_paren, trivia_after_close =
+                  expect_with_trivia parser (Token.CloseDelim Token.Paren)
                 in
                 let children =
                   leading_trivia @ [ tilde ] @ trivia_after_tilde
                   @ [ open_paren ] @ trivia_after_open @ [ label ]
                   @ trivia_after_label @ [ colon ] @ trivia_after_colon
                   @ type_tokens @ type_trivia @ trivia_before_close
-                  @ [ close_paren ]
+                  @ [ close_paren ] @ trivia_after_close
                 in
                 Some (make_node_list ~kind:Syntax_kind.PARAMETER children)
               else
-                let close_paren =
-                  expect parser (Token.CloseDelim Token.Paren)
+                let trivia_before_close, close_paren, trivia_after_close =
+                  expect_with_trivia parser (Token.CloseDelim Token.Paren)
                 in
                 let children =
                   leading_trivia @ [ tilde ] @ trivia_after_tilde
                   @ [ open_paren ] @ trivia_after_open @ [ label ]
-                  @ [ close_paren ]
+                  @ trivia_before_close @ [ close_paren ] @ trivia_after_close
                 in
                 Some (make_node_list ~kind:Syntax_kind.PARAMETER children)
           | _ -> None)
@@ -1260,16 +1258,15 @@ and parse_labeled_or_optional_param parser =
                 let trivia_after_eq = consume_trivia parser in
                 match parse_expr parser with
                 | Some default ->
-                    let trivia_before_close = consume_trivia parser in
-                    let close_paren =
-                      expect parser (Token.CloseDelim Token.Paren)
+                    let trivia_before_close, close_paren, trivia_after_close =
+                      expect_with_trivia parser (Token.CloseDelim Token.Paren)
                     in
                     let children =
                       leading_trivia @ [ question ] @ trivia_after_question
                       @ [ open_paren ] @ trivia_after_open @ [ label ]
                       @ trivia_after_label @ [ eq ] @ trivia_after_eq
                       @ [ Ceibo.Green.Node default ]
-                      @ trivia_before_close @ [ close_paren ]
+                      @ trivia_before_close @ [ close_paren ] @ trivia_after_close
                     in
                     Some (make_node_list ~kind:Syntax_kind.PARAMETER children)
                 | None ->
@@ -5364,14 +5361,14 @@ and parse_type_atomic parser =
 
           (* Parse module type expression *)
           let module_type = parse_module_type_expr parser in
-          let trivia_before_close = consume_trivia parser in
-
-          let close_paren = expect parser (Token.CloseDelim Token.Paren) in
+          let trivia_before_close, close_paren, trivia_after_close =
+            expect_with_trivia parser (Token.CloseDelim Token.Paren)
+          in
           make_node_list ~kind:Syntax_kind.TYPE_CONSTR
             (leading_trivia @ [ open_paren ] @ trivia_after_open @ [ module_kw ]
            @ trivia_after_module
             @ [ Ceibo.Green.Node module_type ]
-            @ trivia_before_close @ [ close_paren ])
+            @ trivia_before_close @ [ close_paren ] @ trivia_after_close)
         else
           let first = parse_type_expr parser in
           let trivia_after_first = consume_trivia parser in
@@ -5400,12 +5397,13 @@ and parse_type_atomic parser =
                 @ trivia_after_comma @ [ comma ] @ trivia_after_first
                 @ [ Ceibo.Green.Node first ])
             in
-            let trivia_before_close = consume_trivia parser in
-            let close_paren = expect parser (Token.CloseDelim Token.Paren) in
+            let trivia_before_close, close_paren, trivia_after_close =
+              expect_with_trivia parser (Token.CloseDelim Token.Paren)
+            in
             (* Return the args tuple - will be used for type application *)
             make_node_list ~kind:Syntax_kind.TYPE_PARAMS
               (leading_trivia @ [ open_paren ] @ trivia_after_open @ args
-             @ trivia_before_close @ [ close_paren ])
+             @ trivia_before_close @ [ close_paren ] @ trivia_after_close)
           else
             (* Single parenthesized type: (int -> string) or ([> t] as 'a) *)
             (* Check for 'as' constraint *)

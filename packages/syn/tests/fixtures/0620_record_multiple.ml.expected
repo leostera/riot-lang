@@ -58,14 +58,38 @@
             "width": 42,
             "children": [
               {
-                "type": "node",
+                "type": "token",
                 "kind": "RECORD_EXPR",
-                "width": 41,
+                "text": "{",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
+              {
+                "type": "node",
+                "kind": "RECORD_FIELD",
+                "width": 12,
                 "children": [
                   {
                     "type": "token",
-                    "kind": "RECORD_EXPR",
-                    "text": "{",
+                    "kind": "IDENT_EXPR",
+                    "text": "name",
+                    "width": 4
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "INFIX_EXPR",
+                    "text": "=",
                     "width": 1
                   },
                   {
@@ -76,180 +100,149 @@
                   },
                   {
                     "type": "node",
-                    "kind": "RECORD_FIELD",
-                    "width": 12,
+                    "kind": "STRING_LITERAL",
+                    "width": 5,
                     "children": [
                       {
                         "type": "token",
-                        "kind": "IDENT_EXPR",
-                        "text": "name",
-                        "width": 4
-                      },
-                      {
-                        "type": "token",
-                        "kind": "WHITESPACE",
-                        "text": " ",
-                        "width": 1
-                      },
-                      {
-                        "type": "token",
-                        "kind": "INFIX_EXPR",
-                        "text": "=",
-                        "width": 1
-                      },
-                      {
-                        "type": "token",
-                        "kind": "WHITESPACE",
-                        "text": " ",
-                        "width": 1
-                      },
-                      {
-                        "type": "node",
                         "kind": "STRING_LITERAL",
-                        "width": 5,
-                        "children": [
-                          {
-                            "type": "token",
-                            "kind": "STRING_LITERAL",
-                            "text": "\"Bob\"",
-                            "width": 5
-                          }
-                        ]
+                        "text": "\"Bob\"",
+                        "width": 5
                       }
                     ]
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "SEQUENCE_EXPR",
+                "text": ";",
+                "width": 1
+              },
+              {
+                "type": "node",
+                "kind": "RECORD_FIELD",
+                "width": 9,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
                   },
                   {
                     "type": "token",
-                    "kind": "SEQUENCE_EXPR",
-                    "text": ";",
+                    "kind": "IDENT_EXPR",
+                    "text": "age",
+                    "width": 3
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "INFIX_EXPR",
+                    "text": "=",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
                     "width": 1
                   },
                   {
                     "type": "node",
-                    "kind": "RECORD_FIELD",
-                    "width": 9,
+                    "kind": "INT_LITERAL",
+                    "width": 2,
                     "children": [
                       {
                         "type": "token",
-                        "kind": "WHITESPACE",
-                        "text": " ",
-                        "width": 1
-                      },
-                      {
-                        "type": "token",
-                        "kind": "IDENT_EXPR",
-                        "text": "age",
-                        "width": 3
-                      },
-                      {
-                        "type": "token",
-                        "kind": "WHITESPACE",
-                        "text": " ",
-                        "width": 1
-                      },
-                      {
-                        "type": "token",
-                        "kind": "INFIX_EXPR",
-                        "text": "=",
-                        "width": 1
-                      },
-                      {
-                        "type": "token",
-                        "kind": "WHITESPACE",
-                        "text": " ",
-                        "width": 1
-                      },
-                      {
-                        "type": "node",
                         "kind": "INT_LITERAL",
-                        "width": 2,
-                        "children": [
-                          {
-                            "type": "token",
-                            "kind": "INT_LITERAL",
-                            "text": "30",
-                            "width": 2
-                          }
-                        ]
+                        "text": "30",
+                        "width": 2
                       }
                     ]
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "SEQUENCE_EXPR",
+                "text": ";",
+                "width": 1
+              },
+              {
+                "type": "node",
+                "kind": "RECORD_FIELD",
+                "width": 15,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
                   },
                   {
                     "type": "token",
-                    "kind": "SEQUENCE_EXPR",
-                    "text": ";",
+                    "kind": "IDENT_EXPR",
+                    "text": "active",
+                    "width": 6
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "INFIX_EXPR",
+                    "text": "=",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
                     "width": 1
                   },
                   {
                     "type": "node",
-                    "kind": "RECORD_FIELD",
-                    "width": 15,
+                    "kind": "BOOL_LITERAL",
+                    "width": 5,
                     "children": [
-                      {
-                        "type": "token",
-                        "kind": "WHITESPACE",
-                        "text": " ",
-                        "width": 1
-                      },
-                      {
-                        "type": "token",
-                        "kind": "IDENT_EXPR",
-                        "text": "active",
-                        "width": 6
-                      },
-                      {
-                        "type": "token",
-                        "kind": "WHITESPACE",
-                        "text": " ",
-                        "width": 1
-                      },
-                      {
-                        "type": "token",
-                        "kind": "INFIX_EXPR",
-                        "text": "=",
-                        "width": 1
-                      },
-                      {
-                        "type": "token",
-                        "kind": "WHITESPACE",
-                        "text": " ",
-                        "width": 1
-                      },
                       {
                         "type": "node",
                         "kind": "BOOL_LITERAL",
-                        "width": 5,
+                        "width": 4,
                         "children": [
                           {
-                            "type": "node",
-                            "kind": "BOOL_LITERAL",
-                            "width": 4,
-                            "children": [
-                              {
-                                "type": "token",
-                                "kind": "BOOL_LITERAL",
-                                "text": "true",
-                                "width": 4
-                              }
-                            ]
-                          },
-                          {
                             "type": "token",
-                            "kind": "WHITESPACE",
-                            "text": " ",
-                            "width": 1
+                            "kind": "BOOL_LITERAL",
+                            "text": "true",
+                            "width": 4
                           }
                         ]
+                      },
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": " ",
+                        "width": 1
                       }
                     ]
-                  },
-                  {
-                    "type": "token",
-                    "kind": "RECORD_EXPR",
-                    "text": "}",
-                    "width": 1
                   }
                 ]
+              },
+              {
+                "type": "token",
+                "kind": "RECORD_EXPR",
+                "text": "}",
+                "width": 1
               },
               {
                 "type": "token",

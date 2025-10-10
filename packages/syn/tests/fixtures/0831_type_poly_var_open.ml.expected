@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 21,
+    "width": 22,
     "children": [
       {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 21,
+        "width": 22,
         "children": [
           {
             "type": "token",
@@ -48,7 +48,7 @@
           {
             "type": "node",
             "kind": "TYPE_POLY_VARIANT",
-            "width": 12,
+            "width": 13,
             "children": [
               {
                 "type": "token",
@@ -134,6 +134,12 @@
                 "type": "token",
                 "kind": "LIST_EXPR",
                 "text": "]",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n",
                 "width": 1
               }
             ]
