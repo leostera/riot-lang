@@ -125,6 +125,12 @@
                 "width": 1
               },
               {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
+              {
                 "type": "node",
                 "kind": "MODULE_TYPE_EXPR",
                 "width": 21,
@@ -206,12 +212,6 @@
               },
               {
                 "type": "token",
-                "kind": "WHITESPACE",
-                "text": " ",
-                "width": 1
-              },
-              {
-                "type": "token",
                 "kind": "PAREN_EXPR",
                 "text": ")",
                 "width": 1
@@ -262,67 +262,60 @@
             "children": [
               {
                 "type": "node",
-                "kind": "APPLY_EXPR",
-                "width": 10,
+                "kind": "FIELD_ACCESS_EXPR",
+                "width": 9,
                 "children": [
                   {
                     "type": "node",
-                    "kind": "FIELD_ACCESS_EXPR",
-                    "width": 8,
+                    "kind": "IDENT_EXPR",
+                    "width": 1,
                     "children": [
                       {
-                        "type": "node",
-                        "kind": "IDENT_EXPR",
-                        "width": 1,
-                        "children": [
-                          {
-                            "type": "token",
-                            "kind": "IDENT_EXPR",
-                            "text": "M",
-                            "width": 1
-                          }
-                        ]
-                      },
-                      {
                         "type": "token",
                         "kind": "IDENT_EXPR",
-                        "text": ".",
+                        "text": "M",
                         "width": 1
-                      },
-                      {
-                        "type": "token",
-                        "kind": "IDENT_EXPR",
-                        "text": "return",
-                        "width": 6
                       }
                     ]
                   },
                   {
-                    "type": "node",
+                    "type": "token",
                     "kind": "IDENT_EXPR",
-                    "width": 2,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "WHITESPACE",
-                        "text": " ",
-                        "width": 1
-                      },
-                      {
-                        "type": "token",
-                        "kind": "IDENT_EXPR",
-                        "text": "x",
-                        "width": 1
-                      }
-                    ]
+                    "text": ".",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "return",
+                    "width": 6
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
                   }
                 ]
               },
               {
-                "type": "token",
-                "kind": "WHITESPACE",
-                "text": "\n",
-                "width": 1
+                "type": "node",
+                "kind": "IDENT_EXPR",
+                "width": 2,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "x",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": "\n",
+                    "width": 1
+                  }
+                ]
               }
             ]
           }

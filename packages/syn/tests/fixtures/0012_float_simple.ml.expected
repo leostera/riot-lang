@@ -58,17 +58,10 @@
             "width": 5,
             "children": [
               {
-                "type": "node",
+                "type": "token",
                 "kind": "FLOAT_LITERAL",
-                "width": 4,
-                "children": [
-                  {
-                    "type": "token",
-                    "kind": "FLOAT_LITERAL",
-                    "text": "3.14",
-                    "width": 4
-                  }
-                ]
+                "text": "3.14",
+                "width": 4
               },
               {
                 "type": "token",

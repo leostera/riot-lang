@@ -88,27 +88,27 @@
                       {
                         "type": "node",
                         "kind": "IDENT_EXPR",
-                        "width": 21,
+                        "width": 22,
                         "children": [
                           {
                             "type": "token",
                             "kind": "IDENT_EXPR",
                             "text": "expensive_computation",
                             "width": 21
+                          },
+                          {
+                            "type": "token",
+                            "kind": "WHITESPACE",
+                            "text": " ",
+                            "width": 1
                           }
                         ]
                       },
                       {
                         "type": "node",
                         "kind": "UNIT_LITERAL",
-                        "width": 3,
+                        "width": 2,
                         "children": [
-                          {
-                            "type": "token",
-                            "kind": "WHITESPACE",
-                            "text": " ",
-                            "width": 1
-                          },
                           {
                             "type": "token",
                             "kind": "PAREN_EXPR",

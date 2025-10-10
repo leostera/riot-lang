@@ -7,7 +7,7 @@
       {
         "type": "node",
         "kind": "MODULE_DECL",
-        "width": 58,
+        "width": 59,
         "children": [
           {
             "type": "token",
@@ -146,7 +146,7 @@
           {
             "type": "node",
             "kind": "STRUCTURE",
-            "width": 25,
+            "width": 26,
             "children": [
               {
                 "type": "token",
@@ -227,16 +227,16 @@
                 "kind": "STRUCTURE",
                 "text": "end",
                 "width": 3
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n",
+                "width": 1
               }
             ]
           }
         ]
-      },
-      {
-        "type": "token",
-        "kind": "WHITESPACE",
-        "text": "\n",
-        "width": 1
       }
     ]
   },

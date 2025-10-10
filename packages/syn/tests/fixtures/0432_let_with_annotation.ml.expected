@@ -2,18 +2,24 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 37,
+    "width": 39,
     "children": [
       {
         "type": "node",
         "kind": "LET_EXPR",
-        "width": 37,
+        "width": 39,
         "children": [
           {
             "type": "token",
             "kind": "LET_BINDING",
             "text": "let",
             "width": 3
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
           },
           {
             "type": "node",
@@ -106,17 +112,10 @@
                 "width": 2,
                 "children": [
                   {
-                    "type": "node",
+                    "type": "token",
                     "kind": "INT_LITERAL",
-                    "width": 1,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "INT_LITERAL",
-                        "text": "5",
-                        "width": 1
-                      }
-                    ]
+                    "text": "5",
+                    "width": 1
                   },
                   {
                     "type": "token",
@@ -165,6 +164,12 @@
             "width": 2
           },
           {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": "\n",
+            "width": 1
+          },
+          {
             "type": "node",
             "kind": "TYPED_EXPR",
             "width": 10,
@@ -181,17 +186,10 @@
                 "width": 2,
                 "children": [
                   {
-                    "type": "node",
+                    "type": "token",
                     "kind": "IDENT_EXPR",
-                    "width": 1,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "IDENT_EXPR",
-                        "text": "x",
-                        "width": 1
-                      }
-                    ]
+                    "text": "x",
+                    "width": 1
                   },
                   {
                     "type": "token",

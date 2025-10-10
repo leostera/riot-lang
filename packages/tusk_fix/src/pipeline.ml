@@ -16,9 +16,7 @@ let run pipeline ?filename source =
           ~span:diag.span ~rule_id:"parse_error" ())
   in
   let red_tree = Syn.Ceibo.Red.new_root parse_result.tree in
-  let file_path =
-    Option.unwrap_or ~default:"<stdin>" filename |> Path.v
-  in
+  let file_path = Option.unwrap_or ~default:"<stdin>" filename |> Path.v in
   let ctx = Rule.{ file_path } in
   let lint_diagnostics =
     pipeline.rules

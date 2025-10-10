@@ -144,17 +144,10 @@
             "width": 5,
             "children": [
               {
-                "type": "node",
+                "type": "token",
                 "kind": "IDENT_EXPR",
-                "width": 4,
-                "children": [
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "name",
-                    "width": 4
-                  }
-                ]
+                "text": "name",
+                "width": 4
               },
               {
                 "type": "token",

@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 30,
+    "width": 32,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 30,
+        "width": 32,
         "children": [
           {
             "type": "token",
@@ -55,7 +55,7 @@
           {
             "type": "node",
             "kind": "FUN_EXPR",
-            "width": 22,
+            "width": 24,
             "children": [
               {
                 "type": "token",
@@ -91,7 +91,7 @@
               {
                 "type": "node",
                 "kind": "PARAMETER",
-                "width": 2,
+                "width": 3,
                 "children": [
                   {
                     "type": "token",
@@ -103,6 +103,12 @@
                     "type": "token",
                     "kind": "IDENT_EXPR",
                     "text": "b",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
                     "width": 1
                   }
                 ]
@@ -141,31 +147,31 @@
               {
                 "type": "node",
                 "kind": "INFIX_EXPR",
-                "width": 9,
+                "width": 10,
                 "children": [
                   {
                     "type": "node",
                     "kind": "INFIX_EXPR",
-                    "width": 5,
+                    "width": 6,
                     "children": [
                       {
                         "type": "node",
                         "kind": "IDENT_EXPR",
-                        "width": 1,
+                        "width": 2,
                         "children": [
                           {
                             "type": "token",
                             "kind": "IDENT_EXPR",
                             "text": "a",
                             "width": 1
+                          },
+                          {
+                            "type": "token",
+                            "kind": "WHITESPACE",
+                            "text": " ",
+                            "width": 1
                           }
                         ]
-                      },
-                      {
-                        "type": "token",
-                        "kind": "WHITESPACE",
-                        "text": " ",
-                        "width": 1
                       },
                       {
                         "type": "token",
@@ -182,12 +188,18 @@
                       {
                         "type": "node",
                         "kind": "IDENT_EXPR",
-                        "width": 1,
+                        "width": 2,
                         "children": [
                           {
                             "type": "token",
                             "kind": "IDENT_EXPR",
                             "text": "b",
+                            "width": 1
+                          },
+                          {
+                            "type": "token",
+                            "kind": "WHITESPACE",
+                            "text": " ",
                             "width": 1
                           }
                         ]
@@ -212,17 +224,10 @@
                     "width": 2,
                     "children": [
                       {
-                        "type": "node",
+                        "type": "token",
                         "kind": "IDENT_EXPR",
-                        "width": 1,
-                        "children": [
-                          {
-                            "type": "token",
-                            "kind": "IDENT_EXPR",
-                            "text": "c",
-                            "width": 1
-                          }
-                        ]
+                        "text": "c",
+                        "width": 1
                       },
                       {
                         "type": "token",

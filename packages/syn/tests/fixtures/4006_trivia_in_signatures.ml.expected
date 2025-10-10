@@ -7,7 +7,7 @@
       {
         "type": "node",
         "kind": "MODULE_TYPE_DECL",
-        "width": 496,
+        "width": 513,
         "children": [
           {
             "type": "token",
@@ -60,7 +60,7 @@
           {
             "type": "node",
             "kind": "SIGNATURE",
-            "width": 480,
+            "width": 497,
             "children": [
               {
                 "type": "token",
@@ -499,12 +499,6 @@
                   },
                   {
                     "type": "token",
-                    "kind": "STRING_LITERAL",
-                    "text": "\"caml_add\"",
-                    "width": 10
-                  },
-                  {
-                    "type": "token",
                     "kind": "WHITESPACE",
                     "text": "\n  ",
                     "width": 3
@@ -520,6 +514,12 @@
                     "kind": "WHITESPACE",
                     "text": "\n\n  ",
                     "width": 4
+                  },
+                  {
+                    "type": "token",
+                    "kind": "STRING_LITERAL",
+                    "text": "\"caml_add\"",
+                    "width": 10
                   }
                 ]
               },
@@ -530,15 +530,15 @@
                 "children": [
                   {
                     "type": "token",
-                    "kind": "WHITESPACE",
-                    "text": " ",
-                    "width": 1
-                  },
-                  {
-                    "type": "token",
                     "kind": "MODULE_DECL",
                     "text": "module",
                     "width": 6
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
                   },
                   {
                     "type": "token",
@@ -591,7 +591,7 @@
                   {
                     "type": "node",
                     "kind": "MODULE_TYPE_EXPR",
-                    "width": 28,
+                    "width": 48,
                     "children": [
                       {
                         "type": "token",
@@ -658,26 +658,26 @@
                         "kind": "SIGNATURE",
                         "text": "end",
                         "width": 3
+                      },
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": "\n\n  ",
+                        "width": 4
+                      },
+                      {
+                        "type": "token",
+                        "kind": "COMMENT",
+                        "text": "(* Include *)",
+                        "width": 13
+                      },
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": "\n  ",
+                        "width": 3
                       }
                     ]
-                  },
-                  {
-                    "type": "token",
-                    "kind": "WHITESPACE",
-                    "text": "\n\n  ",
-                    "width": 4
-                  },
-                  {
-                    "type": "token",
-                    "kind": "COMMENT",
-                    "text": "(* Include *)",
-                    "width": 13
-                  },
-                  {
-                    "type": "token",
-                    "kind": "WHITESPACE",
-                    "text": "\n  ",
-                    "width": 3
                   }
                 ]
               },
@@ -791,28 +791,28 @@
                 "kind": "SIGNATURE",
                 "text": "end",
                 "width": 3
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n\n  ",
+                "width": 4
+              },
+              {
+                "type": "token",
+                "kind": "COMMENT",
+                "text": "(* Open *)",
+                "width": 10
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n  ",
+                "width": 3
               }
             ]
           }
         ]
-      },
-      {
-        "type": "token",
-        "kind": "WHITESPACE",
-        "text": "\n  ",
-        "width": 3
-      },
-      {
-        "type": "token",
-        "kind": "COMMENT",
-        "text": "(* Open *)",
-        "width": 10
-      },
-      {
-        "type": "token",
-        "kind": "WHITESPACE",
-        "text": "\n\n  ",
-        "width": 4
       },
       {
         "type": "node",

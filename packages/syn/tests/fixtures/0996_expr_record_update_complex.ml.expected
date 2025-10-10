@@ -75,17 +75,10 @@
                 "width": 6,
                 "children": [
                   {
-                    "type": "node",
+                    "type": "token",
                     "kind": "IDENT_EXPR",
-                    "width": 5,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "IDENT_EXPR",
-                        "text": "state",
-                        "width": 5
-                      }
-                    ]
+                    "text": "state",
+                    "width": 5
                   },
                   {
                     "type": "token",
@@ -144,7 +137,7 @@
                       {
                         "type": "node",
                         "kind": "FIELD_ACCESS_EXPR",
-                        "width": 11,
+                        "width": 12,
                         "children": [
                           {
                             "type": "node",
@@ -170,14 +163,14 @@
                             "kind": "IDENT_EXPR",
                             "text": "count",
                             "width": 5
+                          },
+                          {
+                            "type": "token",
+                            "kind": "WHITESPACE",
+                            "text": " ",
+                            "width": 1
                           }
                         ]
-                      },
-                      {
-                        "type": "token",
-                        "kind": "WHITESPACE",
-                        "text": " ",
-                        "width": 1
                       },
                       {
                         "type": "token",
@@ -249,17 +242,10 @@
                     "width": 6,
                     "children": [
                       {
-                        "type": "node",
+                        "type": "token",
                         "kind": "STRING_LITERAL",
-                        "width": 5,
-                        "children": [
-                          {
-                            "type": "token",
-                            "kind": "STRING_LITERAL",
-                            "text": "\"new\"",
-                            "width": 5
-                          }
-                        ]
+                        "text": "\"new\"",
+                        "width": 5
                       },
                       {
                         "type": "token",

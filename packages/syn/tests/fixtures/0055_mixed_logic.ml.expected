@@ -76,21 +76,21 @@
                       {
                         "type": "node",
                         "kind": "BOOL_LITERAL",
-                        "width": 4,
+                        "width": 5,
                         "children": [
                           {
                             "type": "token",
                             "kind": "BOOL_LITERAL",
                             "text": "true",
                             "width": 4
+                          },
+                          {
+                            "type": "token",
+                            "kind": "WHITESPACE",
+                            "text": " ",
+                            "width": 1
                           }
                         ]
-                      },
-                      {
-                        "type": "token",
-                        "kind": "WHITESPACE",
-                        "text": " ",
-                        "width": 1
                       },
                       {
                         "type": "token",
@@ -151,17 +151,10 @@
                 "width": 5,
                 "children": [
                   {
-                    "type": "node",
+                    "type": "token",
                     "kind": "BOOL_LITERAL",
-                    "width": 4,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "BOOL_LITERAL",
-                        "text": "true",
-                        "width": 4
-                      }
-                    ]
+                    "text": "true",
+                    "width": 4
                   },
                   {
                     "type": "token",

@@ -75,17 +75,10 @@
                 "width": 5,
                 "children": [
                   {
-                    "type": "node",
+                    "type": "token",
                     "kind": "BOOL_LITERAL",
-                    "width": 4,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "BOOL_LITERAL",
-                        "text": "true",
-                        "width": 4
-                      }
-                    ]
+                    "text": "true",
+                    "width": 4
                   },
                   {
                     "type": "token",

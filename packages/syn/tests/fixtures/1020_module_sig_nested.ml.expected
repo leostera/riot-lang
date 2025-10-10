@@ -7,7 +7,7 @@
       {
         "type": "node",
         "kind": "MODULE_TYPE_DECL",
-        "width": 67,
+        "width": 68,
         "children": [
           {
             "type": "token",
@@ -60,7 +60,7 @@
           {
             "type": "node",
             "kind": "SIGNATURE",
-            "width": 51,
+            "width": 52,
             "children": [
               {
                 "type": "token",
@@ -77,7 +77,7 @@
               {
                 "type": "node",
                 "kind": "MODULE_TYPE_DECL",
-                "width": 41,
+                "width": 42,
                 "children": [
                   {
                     "type": "token",
@@ -130,7 +130,7 @@
                   {
                     "type": "node",
                     "kind": "SIGNATURE",
-                    "width": 25,
+                    "width": 26,
                     "children": [
                       {
                         "type": "token",
@@ -211,6 +211,12 @@
                         "kind": "SIGNATURE",
                         "text": "end",
                         "width": 3
+                      },
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": "\n",
+                        "width": 1
                       }
                     ]
                   }
@@ -218,25 +224,19 @@
               },
               {
                 "type": "token",
-                "kind": "WHITESPACE",
-                "text": "\n",
-                "width": 1
-              },
-              {
-                "type": "token",
                 "kind": "SIGNATURE",
                 "text": "end",
                 "width": 3
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n",
+                "width": 1
               }
             ]
           }
         ]
-      },
-      {
-        "type": "token",
-        "kind": "WHITESPACE",
-        "text": "\n",
-        "width": 1
       }
     ]
   },

@@ -53,7 +53,7 @@ let main ~args:argv =
     ArgParser.command "tusk_fix"
     |> ArgParser.about "OCaml linter and fixer"
     |> ArgParser.version "0.1.0"
-     |> ArgParser.args
+    |> ArgParser.args
          [
            ArgParser.Arg.option "format"
            |> ArgParser.Arg.long "format"
@@ -90,12 +90,14 @@ let main ~args:argv =
         | "json" -> Reporter.Json
         | "text" | _ -> Reporter.Text
       in
-      
+
       (* Handle debug red tree mode *)
-      if debug_red_tree then (
+      if debug_red_tree then
         match Fs.is_dir path with
         | Ok true ->
-            Error (Failure "--debug-red-tree requires a single file, not a directory")
+            Error
+              (Failure
+                 "--debug-red-tree requires a single file, not a directory")
         | Ok false | Error _ -> (
             match Fs.read path with
             | Error _ -> Error (Failure "Failed to read file")
@@ -106,7 +108,7 @@ let main ~args:argv =
                 let red_root = Syn.Ceibo.Red.new_root parse_result.tree in
                 let json = Reporter.red_tree_to_json red_root in
                 println "%s" (Data.Json.to_string json);
-                Ok ()))
+                Ok ())
       else
         let files =
           match Fs.is_dir path with
@@ -116,75 +118,75 @@ let main ~args:argv =
         if List.length files = 0 then (
           println "No OCaml files found.";
           Ok ())
-      else
-        let pipeline = Pipeline.default () in
-        let concurrency = min System.available_parallelism 50 in
-        let concurrency = max concurrency 1 in
-        let results =
-          WorkerPool.SimpleWorkerPool.run ~concurrency ~tasks:files
-            ~fn:(fun file -> lint_file pipeline file)
-            ()
-        in
-        let all_diagnostics =
-          List.concat_map
-            (fun (_idx, result) ->
-              List.map
-                (fun diag -> (result.file, result.source, diag))
-                result.diagnostics)
-            results
-        in
-        match format with
-        | Reporter.Text ->
-            let files_table = Collections.HashMap.create () in
-            List.iter
-              (fun (file, source, diag) ->
-                let key = Path.to_string file in
-                match Collections.HashMap.get files_table key with
-                | Some (existing_source, existing_diags) ->
-                    ignore
-                      (Collections.HashMap.insert files_table key
-                         (existing_source, existing_diags @ [ diag ]))
-                | None ->
-                    ignore
-                      (Collections.HashMap.insert files_table key
-                         (source, [ diag ])))
-              all_diagnostics;
-            Collections.HashMap.iter
-              (fun file_str (source, diags) ->
-                let file = Path.v file_str in
-                let grouped = Diagnostic.group_diagnostics diags in
-                List.iter
-                  (fun grouped_diag ->
-                    print "%s"
-                      (Diagnostic.grouped_to_formatted_output ~file ~source
-                         grouped_diag))
-                  grouped)
-              files_table;
-            if List.length all_diagnostics > 0 then
-              Error (Failure "Lint errors found")
-            else Ok ()
-        | Reporter.Json ->
-            let open Data.Json in
-            let json_diagnostics =
-              List.map
-                (fun (file, _source, diag) ->
-                  Object
-                    [
-                      ("file", String (Path.to_string file));
-                      ("diagnostic", Diagnostic.to_json diag);
-                    ])
-                all_diagnostics
-            in
-            let json =
-              Object
-                [
-                  ("diagnostics", Array json_diagnostics);
-                  ("count", Int (List.length all_diagnostics));
-                ]
-            in
-            println "%s" (to_string json);
-            if List.length all_diagnostics > 0 then
-              Error (Failure "Lint errors found")
-            else Ok ())
+        else
+          let pipeline = Pipeline.default () in
+          let concurrency = min System.available_parallelism 50 in
+          let concurrency = max concurrency 1 in
+          let results =
+            WorkerPool.SimpleWorkerPool.run ~concurrency ~tasks:files
+              ~fn:(fun file -> lint_file pipeline file)
+              ()
+          in
+          let all_diagnostics =
+            List.concat_map
+              (fun (_idx, result) ->
+                List.map
+                  (fun diag -> (result.file, result.source, diag))
+                  result.diagnostics)
+              results
+          in
+          match format with
+          | Reporter.Text ->
+              let files_table = Collections.HashMap.create () in
+              List.iter
+                (fun (file, source, diag) ->
+                  let key = Path.to_string file in
+                  match Collections.HashMap.get files_table key with
+                  | Some (existing_source, existing_diags) ->
+                      ignore
+                        (Collections.HashMap.insert files_table key
+                           (existing_source, existing_diags @ [ diag ]))
+                  | None ->
+                      ignore
+                        (Collections.HashMap.insert files_table key
+                           (source, [ diag ])))
+                all_diagnostics;
+              Collections.HashMap.iter
+                (fun file_str (source, diags) ->
+                  let file = Path.v file_str in
+                  let grouped = Diagnostic.group_diagnostics diags in
+                  List.iter
+                    (fun grouped_diag ->
+                      print "%s"
+                        (Diagnostic.grouped_to_formatted_output ~file ~source
+                           grouped_diag))
+                    grouped)
+                files_table;
+              if List.length all_diagnostics > 0 then
+                Error (Failure "Lint errors found")
+              else Ok ()
+          | Reporter.Json ->
+              let open Data.Json in
+              let json_diagnostics =
+                List.map
+                  (fun (file, _source, diag) ->
+                    Object
+                      [
+                        ("file", String (Path.to_string file));
+                        ("diagnostic", Diagnostic.to_json diag);
+                      ])
+                  all_diagnostics
+              in
+              let json =
+                Object
+                  [
+                    ("diagnostics", Array json_diagnostics);
+                    ("count", Int (List.length all_diagnostics));
+                  ]
+              in
+              println "%s" (to_string json);
+              if List.length all_diagnostics > 0 then
+                Error (Failure "Lint errors found")
+              else Ok ())
 
 let () = Miniriot.run ~main ~args:Env.args |> exit

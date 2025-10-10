@@ -66,13 +66,12 @@ let print_root ~config root =
     | Some last_text ->
         (* No space after prefix operators *)
         if is_prefix_operator last_text then false
-        (* Space after opening bracket/brace *)
-        else if (last_text = "[" || last_text = "{" || last_text = "[|") then true
-        (* Space before closing bracket/brace *)
-        else if (current_text = "]" || current_text = "}" || current_text = "|]") then true
-        (* No space after opening paren *)
-        else if last_text = "(" then false
-        (* No space before closing paren *)
+          (* Space after opening bracket/brace *)
+        else if last_text = "[" || last_text = "{" || last_text = "[|" then true
+          (* Space before closing bracket/brace *)
+        else if current_text = "]" || current_text = "}" || current_text = "|]"
+        then true (* No space after opening paren *)
+        else if last_text = "(" then false (* No space before closing paren *)
         else if current_text = ")" then false
         else if is_opening_delimiter current_text then
           if is_keyword last_text || is_operator last_text then true else true
@@ -88,28 +87,28 @@ let print_root ~config root =
 
   let is_actual_whitespace text =
     (* Check if string contains only whitespace characters *)
-    String.for_all
-      (fun c -> c = ' ' || c = '\t' || c = '\n' || c = '\r')
-      text
+    String.for_all (fun c -> c = ' ' || c = '\t' || c = '\n' || c = '\r') text
   in
-  
+
   let rec print_element ~needs_indent elem =
     match elem with
     | Syn.Ceibo.Red.Token tok -> (
         let text = Syn.Ceibo.Red.SyntaxToken.text tok in
         let kind = Syn.Ceibo.Red.SyntaxToken.kind tok in
         match kind with
-        | Syn.SyntaxKind.WHITESPACE -> (
-            (* WORKAROUND: syn parser marks delimiters as WHITESPACE *)
-            (* Only skip actual whitespace characters, not delimiters *)
-            if is_actual_whitespace text then ()
+        | Syn.SyntaxKind.WHITESPACE ->
+            if
+              (* WORKAROUND: syn parser marks delimiters as WHITESPACE *)
+              (* Only skip actual whitespace characters, not delimiters *)
+              is_actual_whitespace text
+            then ()
             else (
-                (* This is a delimiter misclassified as whitespace *)
-                if should_add_space_before text then add_space ();
-                Buffer.add_string buf text;
-                (* Don't save WHITESPACE as last kind - use a synthetic kind *)
-                last_token_kind := None;
-                last_token_text := Some text))
+              (* This is a delimiter misclassified as whitespace *)
+              if should_add_space_before text then add_space ();
+              Buffer.add_string buf text;
+              (* Don't save WHITESPACE as last kind - use a synthetic kind *)
+              last_token_kind := None;
+              last_token_text := Some text)
         | Syn.SyntaxKind.COMMENT | Syn.SyntaxKind.DOCSTRING ->
             if should_add_space_before text then add_space ();
             Buffer.add_string buf text;

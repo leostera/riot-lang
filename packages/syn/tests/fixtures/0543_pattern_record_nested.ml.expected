@@ -162,17 +162,10 @@
             "width": 7,
             "children": [
               {
-                "type": "node",
+                "type": "token",
                 "kind": "IDENT_EXPR",
-                "width": 6,
-                "children": [
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "record",
-                    "width": 6
-                  }
-                ]
+                "text": "record",
+                "width": 6
               },
               {
                 "type": "token",

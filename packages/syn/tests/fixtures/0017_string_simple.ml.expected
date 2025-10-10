@@ -58,17 +58,10 @@
             "width": 14,
             "children": [
               {
-                "type": "node",
+                "type": "token",
                 "kind": "STRING_LITERAL",
-                "width": 13,
-                "children": [
-                  {
-                    "type": "token",
-                    "kind": "STRING_LITERAL",
-                    "text": "\"hello world\"",
-                    "width": 13
-                  }
-                ]
+                "text": "\"hello world\"",
+                "width": 13
               },
               {
                 "type": "token",

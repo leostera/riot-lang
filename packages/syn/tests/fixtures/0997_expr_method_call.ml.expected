@@ -59,35 +59,28 @@
             "children": [
               {
                 "type": "node",
-                "kind": "METHOD_CALL_EXPR",
-                "width": 15,
+                "kind": "IDENT_EXPR",
+                "width": 3,
                 "children": [
                   {
-                    "type": "node",
-                    "kind": "IDENT_EXPR",
-                    "width": 3,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "IDENT_EXPR",
-                        "text": "obj",
-                        "width": 3
-                      }
-                    ]
-                  },
-                  {
-                    "type": "token",
-                    "kind": "POLY_VARIANT_TYPE_PATTERN",
-                    "text": "#",
-                    "width": 1
-                  },
-                  {
                     "type": "token",
                     "kind": "IDENT_EXPR",
-                    "text": "method_name",
-                    "width": 11
+                    "text": "obj",
+                    "width": 3
                   }
                 ]
+              },
+              {
+                "type": "token",
+                "kind": "POLY_VARIANT_TYPE_PATTERN",
+                "text": "#",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "method_name",
+                "width": 11
               },
               {
                 "type": "token",

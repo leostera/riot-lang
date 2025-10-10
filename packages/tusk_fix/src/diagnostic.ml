@@ -166,10 +166,11 @@ let grouped_to_formatted_output ~file ~source grouped =
     [ format "[%s] %s" severity_str grouped.rule_id; ""; grouped.message; "" ]
   in
   (* Sort spans by their start position so diagnostics appear in source order *)
-  let sorted_spans = 
-    List.sort (fun (span_a : Syn.Ceibo.Span.t) (span_b : Syn.Ceibo.Span.t) -> 
-      Int.compare span_a.start span_b.start) 
-    grouped.spans 
+  let sorted_spans =
+    List.sort
+      (fun (span_a : Syn.Ceibo.Span.t) (span_b : Syn.Ceibo.Span.t) ->
+        Int.compare span_a.start span_b.start)
+      grouped.spans
   in
   let snippet_lines =
     List.filter_map

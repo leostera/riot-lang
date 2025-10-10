@@ -60,42 +60,23 @@
               {
                 "type": "node",
                 "kind": "METHOD_CALL_EXPR",
-                "width": 27,
+                "width": 19,
                 "children": [
                   {
                     "type": "node",
                     "kind": "METHOD_CALL_EXPR",
-                    "width": 19,
+                    "width": 11,
                     "children": [
                       {
                         "type": "node",
-                        "kind": "METHOD_CALL_EXPR",
-                        "width": 11,
+                        "kind": "IDENT_EXPR",
+                        "width": 3,
                         "children": [
                           {
-                            "type": "node",
-                            "kind": "IDENT_EXPR",
-                            "width": 3,
-                            "children": [
-                              {
-                                "type": "token",
-                                "kind": "IDENT_EXPR",
-                                "text": "obj",
-                                "width": 3
-                              }
-                            ]
-                          },
-                          {
-                            "type": "token",
-                            "kind": "POLY_VARIANT_TYPE_PATTERN",
-                            "text": "#",
-                            "width": 1
-                          },
-                          {
                             "type": "token",
                             "kind": "IDENT_EXPR",
-                            "text": "method1",
-                            "width": 7
+                            "text": "obj",
+                            "width": 3
                           }
                         ]
                       },
@@ -108,7 +89,7 @@
                       {
                         "type": "token",
                         "kind": "IDENT_EXPR",
-                        "text": "method2",
+                        "text": "method1",
                         "width": 7
                       }
                     ]
@@ -122,10 +103,22 @@
                   {
                     "type": "token",
                     "kind": "IDENT_EXPR",
-                    "text": "method3",
+                    "text": "method2",
                     "width": 7
                   }
                 ]
+              },
+              {
+                "type": "token",
+                "kind": "POLY_VARIANT_TYPE_PATTERN",
+                "text": "#",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "method3",
+                "width": 7
               },
               {
                 "type": "token",

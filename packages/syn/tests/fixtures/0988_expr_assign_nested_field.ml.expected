@@ -41,7 +41,7 @@
               {
                 "type": "node",
                 "kind": "FIELD_ACCESS_EXPR",
-                "width": 14,
+                "width": 15,
                 "children": [
                   {
                     "type": "node",
@@ -86,14 +86,14 @@
                     "kind": "IDENT_EXPR",
                     "text": "value",
                     "width": 5
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
                   }
                 ]
-              },
-              {
-                "type": "token",
-                "kind": "WHITESPACE",
-                "text": " ",
-                "width": 1
               },
               {
                 "type": "token",
@@ -113,17 +113,10 @@
                 "width": 4,
                 "children": [
                   {
-                    "type": "node",
+                    "type": "token",
                     "kind": "INT_LITERAL",
-                    "width": 3,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "INT_LITERAL",
-                        "text": "100",
-                        "width": 3
-                      }
-                    ]
+                    "text": "100",
+                    "width": 3
                   },
                   {
                     "type": "token",

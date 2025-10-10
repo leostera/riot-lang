@@ -58,23 +58,16 @@
             "width": 3,
             "children": [
               {
-                "type": "node",
-                "kind": "UNIT_LITERAL",
-                "width": 2,
-                "children": [
-                  {
-                    "type": "token",
-                    "kind": "PAREN_EXPR",
-                    "text": "(",
-                    "width": 1
-                  },
-                  {
-                    "type": "token",
-                    "kind": "PAREN_EXPR",
-                    "text": ")",
-                    "width": 1
-                  }
-                ]
+                "type": "token",
+                "kind": "PAREN_EXPR",
+                "text": "(",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "PAREN_EXPR",
+                "text": ")",
+                "width": 1
               },
               {
                 "type": "token",

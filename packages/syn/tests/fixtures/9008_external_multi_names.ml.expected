@@ -166,12 +166,6 @@
           },
           {
             "type": "token",
-            "kind": "STRING_LITERAL",
-            "text": "\"unix_poll\"",
-            "width": 11
-          },
-          {
-            "type": "token",
             "kind": "WHITESPACE",
             "text": " ",
             "width": 1
@@ -179,14 +173,20 @@
           {
             "type": "token",
             "kind": "STRING_LITERAL",
-            "text": "\"unix_poll_native\"",
-            "width": 18
+            "text": "\"unix_poll\"",
+            "width": 11
           },
           {
             "type": "token",
             "kind": "WHITESPACE",
             "text": "\n",
             "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "STRING_LITERAL",
+            "text": "\"unix_poll_native\"",
+            "width": 18
           }
         ]
       }

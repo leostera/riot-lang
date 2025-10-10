@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 18,
+    "width": 20,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 18,
+        "width": 20,
         "children": [
           {
             "type": "token",
@@ -55,75 +55,36 @@
           {
             "type": "node",
             "kind": "APPLY_EXPR",
-            "width": 10,
+            "width": 12,
             "children": [
               {
                 "type": "node",
                 "kind": "APPLY_EXPR",
-                "width": 9,
+                "width": 7,
                 "children": [
                   {
                     "type": "node",
-                    "kind": "APPLY_EXPR",
-                    "width": 5,
+                    "kind": "IDENT_EXPR",
+                    "width": 2,
                     "children": [
                       {
-                        "type": "node",
+                        "type": "token",
                         "kind": "IDENT_EXPR",
-                        "width": 1,
-                        "children": [
-                          {
-                            "type": "token",
-                            "kind": "IDENT_EXPR",
-                            "text": "f",
-                            "width": 1
-                          }
-                        ]
+                        "text": "f",
+                        "width": 1
                       },
                       {
-                        "type": "node",
-                        "kind": "ARGUMENT",
-                        "width": 4,
-                        "children": [
-                          {
-                            "type": "token",
-                            "kind": "ARGUMENT",
-                            "text": "~",
-                            "width": 1
-                          },
-                          {
-                            "type": "token",
-                            "kind": "IDENT_EXPR",
-                            "text": "a",
-                            "width": 1
-                          },
-                          {
-                            "type": "token",
-                            "kind": "TYPED_EXPR",
-                            "text": ":",
-                            "width": 1
-                          },
-                          {
-                            "type": "node",
-                            "kind": "INT_LITERAL",
-                            "width": 1,
-                            "children": [
-                              {
-                                "type": "token",
-                                "kind": "INT_LITERAL",
-                                "text": "1",
-                                "width": 1
-                              }
-                            ]
-                          }
-                        ]
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": " ",
+                        "width": 1
                       }
                     ]
                   },
                   {
                     "type": "node",
                     "kind": "ARGUMENT",
-                    "width": 4,
+                    "width": 5,
                     "children": [
                       {
                         "type": "token",
@@ -134,7 +95,7 @@
                       {
                         "type": "token",
                         "kind": "IDENT_EXPR",
-                        "text": "b",
+                        "text": "a",
                         "width": 1
                       },
                       {
@@ -146,12 +107,18 @@
                       {
                         "type": "node",
                         "kind": "INT_LITERAL",
-                        "width": 1,
+                        "width": 2,
                         "children": [
                           {
                             "type": "token",
                             "kind": "INT_LITERAL",
-                            "text": "2",
+                            "text": "1",
+                            "width": 1
+                          },
+                          {
+                            "type": "token",
+                            "kind": "WHITESPACE",
+                            "text": " ",
                             "width": 1
                           }
                         ]
@@ -161,10 +128,48 @@
                 ]
               },
               {
-                "type": "token",
-                "kind": "WHITESPACE",
-                "text": "\n",
-                "width": 1
+                "type": "node",
+                "kind": "ARGUMENT",
+                "width": 5,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "ARGUMENT",
+                    "text": "~",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "b",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "TYPED_EXPR",
+                    "text": ":",
+                    "width": 1
+                  },
+                  {
+                    "type": "node",
+                    "kind": "INT_LITERAL",
+                    "width": 2,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "INT_LITERAL",
+                        "text": "2",
+                        "width": 1
+                      },
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": "\n",
+                        "width": 1
+                      }
+                    ]
+                  }
+                ]
               }
             ]
           }

@@ -116,15 +116,15 @@
           },
           {
             "type": "token",
-            "kind": "STRING_LITERAL",
-            "text": "\"caml_sqrt_float\"",
-            "width": 17
-          },
-          {
-            "type": "token",
             "kind": "WHITESPACE",
             "text": "\n",
             "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "STRING_LITERAL",
+            "text": "\"caml_sqrt_float\"",
+            "width": 17
           }
         ]
       }

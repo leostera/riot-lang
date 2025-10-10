@@ -69,17 +69,10 @@
                 "width": 3,
                 "children": [
                   {
-                    "type": "node",
+                    "type": "token",
                     "kind": "INT_LITERAL",
-                    "width": 2,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "INT_LITERAL",
-                        "text": "42",
-                        "width": 2
-                      }
-                    ]
+                    "text": "42",
+                    "width": 2
                   },
                   {
                     "type": "token",

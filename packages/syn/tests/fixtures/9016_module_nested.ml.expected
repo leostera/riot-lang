@@ -7,7 +7,7 @@
       {
         "type": "node",
         "kind": "MODULE_DECL",
-        "width": 74,
+        "width": 75,
         "children": [
           {
             "type": "token",
@@ -48,7 +48,7 @@
           {
             "type": "node",
             "kind": "STRUCTURE",
-            "width": 59,
+            "width": 60,
             "children": [
               {
                 "type": "token",
@@ -63,15 +63,9 @@
                 "width": 3
               },
               {
-                "type": "token",
-                "kind": "WHITESPACE",
-                "text": "\n",
-                "width": 1
-              },
-              {
                 "type": "node",
                 "kind": "MODULE_DECL",
-                "width": 46,
+                "width": 47,
                 "children": [
                   {
                     "type": "token",
@@ -112,7 +106,7 @@
                   {
                     "type": "node",
                     "kind": "STRUCTURE",
-                    "width": 31,
+                    "width": 32,
                     "children": [
                       {
                         "type": "token",
@@ -180,17 +174,10 @@
                             "width": 5,
                             "children": [
                               {
-                                "type": "node",
+                                "type": "token",
                                 "kind": "INT_LITERAL",
-                                "width": 2,
-                                "children": [
-                                  {
-                                    "type": "token",
-                                    "kind": "INT_LITERAL",
-                                    "text": "42",
-                                    "width": 2
-                                  }
-                                ]
+                                "text": "42",
+                                "width": 2
                               },
                               {
                                 "type": "token",
@@ -207,6 +194,12 @@
                         "kind": "STRUCTURE",
                         "text": "end",
                         "width": 3
+                      },
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": "\n",
+                        "width": 1
                       }
                     ]
                   }
@@ -217,16 +210,16 @@
                 "kind": "STRUCTURE",
                 "text": "end",
                 "width": 3
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n",
+                "width": 1
               }
             ]
           }
         ]
-      },
-      {
-        "type": "token",
-        "kind": "WHITESPACE",
-        "text": "\n",
-        "width": 1
       }
     ]
   },

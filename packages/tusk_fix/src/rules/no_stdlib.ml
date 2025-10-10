@@ -22,20 +22,20 @@ let forbidden_modules =
 
 let check_tree _ctx red_root =
   let diagnostics = ref [] in
-    let open Syn.Ceibo.Red in
-    let open Syn.SyntaxKind in
-    let rec traverse elem =
-      match elem with
-      | Node n ->
-          let kind = SyntaxNode.kind n in
-          (match kind with
-          | OPEN_STMT -> check_open_stmt n
-          | PATH_EXPR -> check_path_expr n
-          | TYPE_CONSTR -> check_type_constr n
-          | _ -> ());
-          Array.iter traverse (SyntaxNode.children n)
-      | Token _ -> ()
-    and check_open_stmt node =
+  let open Syn.Ceibo.Red in
+  let open Syn.SyntaxKind in
+  let rec traverse elem =
+    match elem with
+    | Node n ->
+        let kind = SyntaxNode.kind n in
+        (match kind with
+        | OPEN_STMT -> check_open_stmt n
+        | PATH_EXPR -> check_path_expr n
+        | TYPE_CONSTR -> check_type_constr n
+        | _ -> ());
+        Array.iter traverse (SyntaxNode.children n)
+    | Token _ -> ()
+  and check_open_stmt node =
     Array.iter
       (function
         | Token t ->

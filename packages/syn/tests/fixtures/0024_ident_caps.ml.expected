@@ -58,17 +58,10 @@
             "width": 9,
             "children": [
               {
-                "type": "node",
+                "type": "token",
                 "kind": "IDENT_EXPR",
-                "width": 8,
-                "children": [
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "MyModule",
-                    "width": 8
-                  }
-                ]
+                "text": "MyModule",
+                "width": 8
               },
               {
                 "type": "token",

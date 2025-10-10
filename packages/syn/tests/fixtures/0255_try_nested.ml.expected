@@ -92,17 +92,10 @@
                     "width": 3,
                     "children": [
                       {
-                        "type": "node",
+                        "type": "token",
                         "kind": "IDENT_EXPR",
-                        "width": 2,
-                        "children": [
-                          {
-                            "type": "token",
-                            "kind": "IDENT_EXPR",
-                            "text": "e1",
-                            "width": 2
-                          }
-                        ]
+                        "text": "e1",
+                        "width": 2
                       },
                       {
                         "type": "token",
@@ -166,17 +159,10 @@
                         "width": 3,
                         "children": [
                           {
-                            "type": "node",
+                            "type": "token",
                             "kind": "IDENT_EXPR",
-                            "width": 2,
-                            "children": [
-                              {
-                                "type": "token",
-                                "kind": "IDENT_EXPR",
-                                "text": "e2",
-                                "width": 2
-                              }
-                            ]
+                            "text": "e2",
+                            "width": 2
                           },
                           {
                             "type": "token",
@@ -244,17 +230,10 @@
                     "width": 3,
                     "children": [
                       {
-                        "type": "node",
+                        "type": "token",
                         "kind": "IDENT_EXPR",
-                        "width": 2,
-                        "children": [
-                          {
-                            "type": "token",
-                            "kind": "IDENT_EXPR",
-                            "text": "e3",
-                            "width": 2
-                          }
-                        ]
+                        "text": "e3",
+                        "width": 2
                       },
                       {
                         "type": "token",

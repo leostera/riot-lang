@@ -58,23 +58,16 @@
             "width": 3,
             "children": [
               {
-                "type": "node",
+                "type": "token",
                 "kind": "LIST_EXPR",
-                "width": 2,
-                "children": [
-                  {
-                    "type": "token",
-                    "kind": "LIST_EXPR",
-                    "text": "[",
-                    "width": 1
-                  },
-                  {
-                    "type": "token",
-                    "kind": "LIST_EXPR",
-                    "text": "]",
-                    "width": 1
-                  }
-                ]
+                "text": "[",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "LIST_EXPR",
+                "text": "]",
+                "width": 1
               },
               {
                 "type": "token",

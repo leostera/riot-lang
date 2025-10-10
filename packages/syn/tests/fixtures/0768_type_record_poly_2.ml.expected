@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 42,
+    "width": 44,
     "children": [
       {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 42,
+        "width": 44,
         "children": [
           {
             "type": "token",
@@ -24,7 +24,7 @@
           {
             "type": "node",
             "kind": "TYPE_PARAMS",
-            "width": 8,
+            "width": 9,
             "children": [
               {
                 "type": "token",
@@ -87,6 +87,12 @@
                 "kind": "PAREN_EXPR",
                 "text": ")",
                 "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
               }
             ]
           },
@@ -117,7 +123,7 @@
           {
             "type": "node",
             "kind": "TYPE_CONSTR",
-            "width": 22,
+            "width": 23,
             "children": [
               {
                 "type": "token",
@@ -196,7 +202,7 @@
               {
                 "type": "node",
                 "kind": "TYPE_RECORD_FIELD",
-                "width": 8,
+                "width": 9,
                 "children": [
                   {
                     "type": "token",
@@ -225,7 +231,7 @@
                   {
                     "type": "node",
                     "kind": "TYPE_VAR",
-                    "width": 2,
+                    "width": 3,
                     "children": [
                       {
                         "type": "token",
@@ -237,6 +243,12 @@
                         "type": "token",
                         "kind": "IDENT_EXPR",
                         "text": "b",
+                        "width": 1
+                      },
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": " ",
                         "width": 1
                       }
                     ]

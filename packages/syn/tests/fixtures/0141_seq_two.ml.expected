@@ -65,27 +65,27 @@
                   {
                     "type": "node",
                     "kind": "IDENT_EXPR",
-                    "width": 5,
+                    "width": 6,
                     "children": [
                       {
                         "type": "token",
                         "kind": "IDENT_EXPR",
                         "text": "print",
                         "width": 5
+                      },
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": " ",
+                        "width": 1
                       }
                     ]
                   },
                   {
                     "type": "node",
                     "kind": "STRING_LITERAL",
-                    "width": 8,
+                    "width": 7,
                     "children": [
-                      {
-                        "type": "token",
-                        "kind": "WHITESPACE",
-                        "text": " ",
-                        "width": 1
-                      },
                       {
                         "type": "token",
                         "kind": "STRING_LITERAL",
@@ -114,17 +114,10 @@
                 "width": 3,
                 "children": [
                   {
-                    "type": "node",
+                    "type": "token",
                     "kind": "INT_LITERAL",
-                    "width": 2,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "INT_LITERAL",
-                        "text": "42",
-                        "width": 2
-                      }
-                    ]
+                    "text": "42",
+                    "width": 2
                   },
                   {
                     "type": "token",

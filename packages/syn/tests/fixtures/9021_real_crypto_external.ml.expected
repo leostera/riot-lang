@@ -116,15 +116,15 @@
           },
           {
             "type": "token",
-            "kind": "STRING_LITERAL",
-            "text": "\"kernel_crypto_sha256\"",
-            "width": 22
-          },
-          {
-            "type": "token",
             "kind": "WHITESPACE",
             "text": "\n",
             "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "STRING_LITERAL",
+            "text": "\"kernel_crypto_sha256\"",
+            "width": 22
           }
         ]
       },
@@ -240,15 +240,15 @@
           },
           {
             "type": "token",
-            "kind": "STRING_LITERAL",
-            "text": "\"kernel_crypto_sha512\"",
-            "width": 22
-          },
-          {
-            "type": "token",
             "kind": "WHITESPACE",
             "text": "\n",
             "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "STRING_LITERAL",
+            "text": "\"kernel_crypto_sha512\"",
+            "width": 22
           }
         ]
       },
@@ -364,15 +364,15 @@
           },
           {
             "type": "token",
-            "kind": "STRING_LITERAL",
-            "text": "\"kernel_crypto_simple_hash\"",
-            "width": 27
-          },
-          {
-            "type": "token",
             "kind": "WHITESPACE",
             "text": "\n",
             "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "STRING_LITERAL",
+            "text": "\"kernel_crypto_simple_hash\"",
+            "width": 27
           }
         ]
       }

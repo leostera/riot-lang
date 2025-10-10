@@ -60,42 +60,23 @@
               {
                 "type": "node",
                 "kind": "METHOD_CALL_EXPR",
-                "width": 12,
+                "width": 9,
                 "children": [
                   {
                     "type": "node",
                     "kind": "METHOD_CALL_EXPR",
-                    "width": 9,
+                    "width": 6,
                     "children": [
                       {
                         "type": "node",
-                        "kind": "METHOD_CALL_EXPR",
-                        "width": 6,
+                        "kind": "IDENT_EXPR",
+                        "width": 3,
                         "children": [
                           {
-                            "type": "node",
-                            "kind": "IDENT_EXPR",
-                            "width": 3,
-                            "children": [
-                              {
-                                "type": "token",
-                                "kind": "IDENT_EXPR",
-                                "text": "obj",
-                                "width": 3
-                              }
-                            ]
-                          },
-                          {
-                            "type": "token",
-                            "kind": "POLY_VARIANT_TYPE_PATTERN",
-                            "text": "#",
-                            "width": 1
-                          },
-                          {
                             "type": "token",
                             "kind": "IDENT_EXPR",
-                            "text": "m1",
-                            "width": 2
+                            "text": "obj",
+                            "width": 3
                           }
                         ]
                       },
@@ -108,7 +89,7 @@
                       {
                         "type": "token",
                         "kind": "IDENT_EXPR",
-                        "text": "m2",
+                        "text": "m1",
                         "width": 2
                       }
                     ]
@@ -122,10 +103,22 @@
                   {
                     "type": "token",
                     "kind": "IDENT_EXPR",
-                    "text": "m3",
+                    "text": "m2",
                     "width": 2
                   }
                 ]
+              },
+              {
+                "type": "token",
+                "kind": "POLY_VARIANT_TYPE_PATTERN",
+                "text": "#",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "m3",
+                "width": 2
               },
               {
                 "type": "token",

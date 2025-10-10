@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 31,
+    "width": 32,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 31,
+        "width": 32,
         "children": [
           {
             "type": "token",
@@ -55,31 +55,31 @@
           {
             "type": "node",
             "kind": "INFIX_EXPR",
-            "width": 23,
+            "width": 24,
             "children": [
               {
                 "type": "node",
                 "kind": "INFIX_EXPR",
-                "width": 13,
+                "width": 14,
                 "children": [
                   {
                     "type": "node",
                     "kind": "STRING_LITERAL",
-                    "width": 7,
+                    "width": 8,
                     "children": [
                       {
                         "type": "token",
                         "kind": "STRING_LITERAL",
                         "text": "\"hello\"",
                         "width": 7
+                      },
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": " ",
+                        "width": 1
                       }
                     ]
-                  },
-                  {
-                    "type": "token",
-                    "kind": "WHITESPACE",
-                    "text": " ",
-                    "width": 1
                   },
                   {
                     "type": "token",
@@ -96,13 +96,19 @@
                   {
                     "type": "node",
                     "kind": "STRING_LITERAL",
-                    "width": 3,
+                    "width": 4,
                     "children": [
                       {
                         "type": "token",
                         "kind": "STRING_LITERAL",
                         "text": "\" \"",
                         "width": 3
+                      },
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": " ",
+                        "width": 1
                       }
                     ]
                   }
@@ -126,17 +132,10 @@
                 "width": 8,
                 "children": [
                   {
-                    "type": "node",
+                    "type": "token",
                     "kind": "STRING_LITERAL",
-                    "width": 7,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "STRING_LITERAL",
-                        "text": "\"world\"",
-                        "width": 7
-                      }
-                    ]
+                    "text": "\"world\"",
+                    "width": 7
                   },
                   {
                     "type": "token",

@@ -122,14 +122,8 @@
               {
                 "type": "node",
                 "kind": "RECORD_FIELD",
-                "width": 9,
+                "width": 8,
                 "children": [
-                  {
-                    "type": "token",
-                    "kind": "WHITESPACE",
-                    "text": " ",
-                    "width": 1
-                  },
                   {
                     "type": "token",
                     "kind": "IDENT_EXPR",
@@ -178,14 +172,8 @@
               {
                 "type": "node",
                 "kind": "RECORD_FIELD",
-                "width": 15,
+                "width": 14,
                 "children": [
-                  {
-                    "type": "token",
-                    "kind": "WHITESPACE",
-                    "text": " ",
-                    "width": 1
-                  },
                   {
                     "type": "token",
                     "kind": "IDENT_EXPR",
@@ -216,17 +204,10 @@
                     "width": 5,
                     "children": [
                       {
-                        "type": "node",
+                        "type": "token",
                         "kind": "BOOL_LITERAL",
-                        "width": 4,
-                        "children": [
-                          {
-                            "type": "token",
-                            "kind": "BOOL_LITERAL",
-                            "text": "true",
-                            "width": 4
-                          }
-                        ]
+                        "text": "true",
+                        "width": 4
                       },
                       {
                         "type": "token",
@@ -237,6 +218,18 @@
                     ]
                   }
                 ]
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
               },
               {
                 "type": "token",

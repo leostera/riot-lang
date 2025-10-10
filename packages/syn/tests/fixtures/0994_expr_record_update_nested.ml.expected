@@ -75,17 +75,10 @@
                 "width": 4,
                 "children": [
                   {
-                    "type": "node",
+                    "type": "token",
                     "kind": "IDENT_EXPR",
-                    "width": 3,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "IDENT_EXPR",
-                        "text": "obj",
-                        "width": 3
-                      }
-                    ]
+                    "text": "obj",
+                    "width": 3
                   },
                   {
                     "type": "token",
@@ -160,35 +153,28 @@
                         "children": [
                           {
                             "type": "node",
-                            "kind": "FIELD_ACCESS_EXPR",
-                            "width": 8,
+                            "kind": "IDENT_EXPR",
+                            "width": 3,
                             "children": [
                               {
-                                "type": "node",
-                                "kind": "IDENT_EXPR",
-                                "width": 3,
-                                "children": [
-                                  {
-                                    "type": "token",
-                                    "kind": "IDENT_EXPR",
-                                    "text": "obj",
-                                    "width": 3
-                                  }
-                                ]
-                              },
-                              {
                                 "type": "token",
                                 "kind": "IDENT_EXPR",
-                                "text": ".",
-                                "width": 1
-                              },
-                              {
-                                "type": "token",
-                                "kind": "IDENT_EXPR",
-                                "text": "data",
-                                "width": 4
+                                "text": "obj",
+                                "width": 3
                               }
                             ]
+                          },
+                          {
+                            "type": "token",
+                            "kind": "IDENT_EXPR",
+                            "text": ".",
+                            "width": 1
+                          },
+                          {
+                            "type": "token",
+                            "kind": "IDENT_EXPR",
+                            "text": "data",
+                            "width": 4
                           },
                           {
                             "type": "token",
@@ -245,17 +231,10 @@
                             "width": 3,
                             "children": [
                               {
-                                "type": "node",
+                                "type": "token",
                                 "kind": "INT_LITERAL",
-                                "width": 2,
-                                "children": [
-                                  {
-                                    "type": "token",
-                                    "kind": "INT_LITERAL",
-                                    "text": "42",
-                                    "width": 2
-                                  }
-                                ]
+                                "text": "42",
+                                "width": 2
                               },
                               {
                                 "type": "token",

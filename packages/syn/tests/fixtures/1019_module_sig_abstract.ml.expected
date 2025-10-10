@@ -7,7 +7,7 @@
       {
         "type": "node",
         "kind": "MODULE_TYPE_DECL",
-        "width": 68,
+        "width": 69,
         "children": [
           {
             "type": "token",
@@ -60,7 +60,7 @@
           {
             "type": "node",
             "kind": "SIGNATURE",
-            "width": 52,
+            "width": 53,
             "children": [
               {
                 "type": "token",
@@ -278,16 +278,16 @@
                 "kind": "SIGNATURE",
                 "text": "end",
                 "width": 3
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n",
+                "width": 1
               }
             ]
           }
         ]
-      },
-      {
-        "type": "token",
-        "kind": "WHITESPACE",
-        "text": "\n",
-        "width": 1
       }
     ]
   },

@@ -59,35 +59,28 @@
             "children": [
               {
                 "type": "node",
-                "kind": "FIELD_ACCESS_EXPR",
-                "width": 8,
+                "kind": "IDENT_EXPR",
+                "width": 6,
                 "children": [
                   {
-                    "type": "node",
-                    "kind": "IDENT_EXPR",
-                    "width": 6,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "IDENT_EXPR",
-                        "text": "String",
-                        "width": 6
-                      }
-                    ]
-                  },
-                  {
                     "type": "token",
                     "kind": "IDENT_EXPR",
-                    "text": ".",
-                    "width": 1
-                  },
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "t",
-                    "width": 1
+                    "text": "String",
+                    "width": 6
                   }
                 ]
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": ".",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "t",
+                "width": 1
               },
               {
                 "type": "token",

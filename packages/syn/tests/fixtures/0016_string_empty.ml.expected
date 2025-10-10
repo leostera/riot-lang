@@ -58,17 +58,10 @@
             "width": 3,
             "children": [
               {
-                "type": "node",
+                "type": "token",
                 "kind": "STRING_LITERAL",
-                "width": 2,
-                "children": [
-                  {
-                    "type": "token",
-                    "kind": "STRING_LITERAL",
-                    "text": "\"\"",
-                    "width": 2
-                  }
-                ]
+                "text": "\"\"",
+                "width": 2
               },
               {
                 "type": "token",

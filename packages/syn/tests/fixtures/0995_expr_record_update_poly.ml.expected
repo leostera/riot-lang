@@ -75,17 +75,10 @@
                 "width": 4,
                 "children": [
                   {
-                    "type": "node",
+                    "type": "token",
                     "kind": "IDENT_EXPR",
-                    "width": 3,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "IDENT_EXPR",
-                        "text": "box",
-                        "width": 3
-                      }
-                    ]
+                    "text": "box",
+                    "width": 3
                   },
                   {
                     "type": "token",
@@ -142,17 +135,10 @@
                     "width": 10,
                     "children": [
                       {
-                        "type": "node",
+                        "type": "token",
                         "kind": "IDENT_EXPR",
-                        "width": 9,
-                        "children": [
-                          {
-                            "type": "token",
-                            "kind": "IDENT_EXPR",
-                            "text": "new_value",
-                            "width": 9
-                          }
-                        ]
+                        "text": "new_value",
+                        "width": 9
                       },
                       {
                         "type": "token",

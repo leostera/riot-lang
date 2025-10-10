@@ -60,21 +60,21 @@
               {
                 "type": "node",
                 "kind": "STRING_LITERAL",
-                "width": 3,
+                "width": 4,
                 "children": [
                   {
                     "type": "token",
                     "kind": "STRING_LITERAL",
                     "text": "\"a\"",
                     "width": 3
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
                   }
                 ]
-              },
-              {
-                "type": "token",
-                "kind": "WHITESPACE",
-                "text": " ",
-                "width": 1
               },
               {
                 "type": "token",
@@ -94,17 +94,10 @@
                 "width": 4,
                 "children": [
                   {
-                    "type": "node",
+                    "type": "token",
                     "kind": "STRING_LITERAL",
-                    "width": 3,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "STRING_LITERAL",
-                        "text": "\"b\"",
-                        "width": 3
-                      }
-                    ]
+                    "text": "\"b\"",
+                    "width": 3
                   },
                   {
                     "type": "token",

@@ -59,48 +59,41 @@
             "children": [
               {
                 "type": "node",
-                "kind": "APPLY_EXPR",
-                "width": 5,
+                "kind": "IDENT_EXPR",
+                "width": 4,
                 "children": [
                   {
-                    "type": "node",
+                    "type": "token",
                     "kind": "IDENT_EXPR",
-                    "width": 3,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "IDENT_EXPR",
-                        "text": "ref",
-                        "width": 3
-                      }
-                    ]
+                    "text": "ref",
+                    "width": 3
                   },
                   {
-                    "type": "node",
-                    "kind": "INT_LITERAL",
-                    "width": 2,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "WHITESPACE",
-                        "text": " ",
-                        "width": 1
-                      },
-                      {
-                        "type": "token",
-                        "kind": "INT_LITERAL",
-                        "text": "5",
-                        "width": 1
-                      }
-                    ]
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
                   }
                 ]
               },
               {
-                "type": "token",
-                "kind": "WHITESPACE",
-                "text": "\n",
-                "width": 1
+                "type": "node",
+                "kind": "INT_LITERAL",
+                "width": 2,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "INT_LITERAL",
+                    "text": "5",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": "\n",
+                    "width": 1
+                  }
+                ]
               }
             ]
           }

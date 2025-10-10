@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 37,
+    "width": 38,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 37,
+        "width": 38,
         "children": [
           {
             "type": "token",
@@ -55,13 +55,19 @@
           {
             "type": "node",
             "kind": "IF_EXPR",
-            "width": 29,
+            "width": 30,
             "children": [
               {
                 "type": "token",
                 "kind": "IF_EXPR",
                 "text": "if",
                 "width": 2
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
               },
               {
                 "type": "node",
@@ -71,21 +77,21 @@
                   {
                     "type": "node",
                     "kind": "INT_LITERAL",
-                    "width": 1,
+                    "width": 2,
                     "children": [
                       {
                         "type": "token",
                         "kind": "INT_LITERAL",
                         "text": "1",
                         "width": 1
+                      },
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": " ",
+                        "width": 1
                       }
                     ]
-                  },
-                  {
-                    "type": "token",
-                    "kind": "WHITESPACE",
-                    "text": " ",
-                    "width": 1
                   },
                   {
                     "type": "token",
@@ -105,17 +111,10 @@
                     "width": 2,
                     "children": [
                       {
-                        "type": "node",
+                        "type": "token",
                         "kind": "INT_LITERAL",
-                        "width": 1,
-                        "children": [
-                          {
-                            "type": "token",
-                            "kind": "INT_LITERAL",
-                            "text": "2",
-                            "width": 1
-                          }
-                        ]
+                        "text": "2",
+                        "width": 1
                       },
                       {
                         "type": "token",
@@ -145,17 +144,10 @@
                 "width": 6,
                 "children": [
                   {
-                    "type": "node",
+                    "type": "token",
                     "kind": "STRING_LITERAL",
-                    "width": 5,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "STRING_LITERAL",
-                        "text": "\"yes\"",
-                        "width": 5
-                      }
-                    ]
+                    "text": "\"yes\"",
+                    "width": 5
                   },
                   {
                     "type": "token",
@@ -183,17 +175,10 @@
                 "width": 5,
                 "children": [
                   {
-                    "type": "node",
+                    "type": "token",
                     "kind": "STRING_LITERAL",
-                    "width": 4,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "STRING_LITERAL",
-                        "text": "\"no\"",
-                        "width": 4
-                      }
-                    ]
+                    "text": "\"no\"",
+                    "width": 4
                   },
                   {
                     "type": "token",

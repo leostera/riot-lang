@@ -2,18 +2,24 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 30,
+    "width": 32,
     "children": [
       {
         "type": "node",
         "kind": "LET_EXPR",
-        "width": 30,
+        "width": 32,
         "children": [
           {
             "type": "token",
             "kind": "LET_BINDING",
             "text": "let",
             "width": 3
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
           },
           {
             "type": "node",
@@ -90,17 +96,10 @@
             "width": 12,
             "children": [
               {
-                "type": "node",
+                "type": "token",
                 "kind": "IDENT_EXPR",
-                "width": 11,
-                "children": [
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "computation",
-                    "width": 11
-                  }
-                ]
+                "text": "computation",
+                "width": 11
               },
               {
                 "type": "token",
@@ -117,22 +116,21 @@
             "width": 2
           },
           {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": "\n",
+            "width": 1
+          },
+          {
             "type": "node",
             "kind": "IDENT_EXPR",
             "width": 2,
             "children": [
               {
-                "type": "node",
+                "type": "token",
                 "kind": "IDENT_EXPR",
-                "width": 1,
-                "children": [
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "v",
-                    "width": 1
-                  }
-                ]
+                "text": "v",
+                "width": 1
               },
               {
                 "type": "token",
