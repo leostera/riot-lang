@@ -138,7 +138,17 @@ let token_kind_to_syntax_kind = function
       Syntax_kind.STRUCTURE
   | Token.OpenDelim Token.SigEnd | Token.CloseDelim Token.SigEnd ->
       Syntax_kind.SIGNATURE
-  | Token.OpenDelim _ | Token.CloseDelim _ -> Syntax_kind.WHITESPACE
+  | Token.OpenDelim Token.Paren | Token.CloseDelim Token.Paren ->
+      Syntax_kind.PAREN_EXPR
+  | Token.OpenDelim Token.Brace | Token.CloseDelim Token.Brace ->
+      Syntax_kind.RECORD_EXPR
+  | Token.OpenDelim Token.Bracket | Token.CloseDelim Token.Bracket ->
+      Syntax_kind.LIST_EXPR
+  | Token.OpenDelim Token.Array | Token.CloseDelim Token.Array ->
+      Syntax_kind.ARRAY_EXPR
+  | Token.OpenDelim Token.BeginEnd | Token.CloseDelim Token.BeginEnd ->
+      Syntax_kind.PAREN_EXPR
+  | Token.OpenDelim _ | Token.CloseDelim _ -> Syntax_kind.ERROR
   | Token.Keyword _ ->
       Syntax_kind.WHITESPACE (* Other keywords default to WHITESPACE *)
   | _ -> Syntax_kind.ERROR (* TODO: Map remaining token kinds *)
