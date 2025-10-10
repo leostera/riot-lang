@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 10,
+    "width": 13,
     "children": [
       {
         "type": "node",
         "kind": "MODULE_DECL",
-        "width": 10,
+        "width": 13,
         "children": [
           {
             "type": "token",
@@ -17,14 +17,32 @@
           },
           {
             "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
             "kind": "IDENT_EXPR",
             "text": "M",
             "width": 1
           },
           {
             "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
             "kind": "INFIX_EXPR",
             "text": "=",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
             "width": 1
           },
           {

@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 53,
+    "width": 66,
     "children": [
       {
         "type": "node",
         "kind": "MODULE_DECL",
-        "width": 53,
+        "width": 65,
         "children": [
           {
             "type": "token",
@@ -17,18 +17,30 @@
           },
           {
             "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
             "kind": "IDENT_EXPR",
             "text": "F",
             "width": 1
           },
           {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
             "type": "node",
             "kind": "TYPE_PARAM",
-            "width": 23,
+            "width": 26,
             "children": [
               {
                 "type": "token",
-                "kind": "WHITESPACE",
+                "kind": "PAREN_EXPR",
                 "text": "(",
                 "width": 1
               },
@@ -40,8 +52,20 @@
               },
               {
                 "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
+              {
+                "type": "token",
                 "kind": "TYPED_EXPR",
                 "text": ":",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
                 "width": 1
               },
               {
@@ -126,8 +150,14 @@
               },
               {
                 "type": "token",
-                "kind": "WHITESPACE",
+                "kind": "PAREN_EXPR",
                 "text": ")",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
                 "width": 1
               }
             ]
@@ -139,9 +169,15 @@
             "width": 1
           },
           {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
             "type": "node",
             "kind": "STRUCTURE",
-            "width": 22,
+            "width": 28,
             "children": [
               {
                 "type": "token",
@@ -150,9 +186,15 @@
                 "width": 6
               },
               {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n  ",
+                "width": 3
+              },
+              {
                 "type": "node",
                 "kind": "LET_BINDING",
-                "width": 13,
+                "width": 16,
                 "children": [
                   {
                     "type": "token",
@@ -163,8 +205,14 @@
                   {
                     "type": "node",
                     "kind": "IDENT_PATTERN",
-                    "width": 2,
+                    "width": 3,
                     "children": [
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": " ",
+                        "width": 1
+                      },
                       {
                         "type": "token",
                         "kind": "IDENT_EXPR",
@@ -186,34 +234,53 @@
                     "width": 1
                   },
                   {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  },
+                  {
                     "type": "node",
                     "kind": "FIELD_ACCESS_EXPR",
-                    "width": 7,
+                    "width": 8,
                     "children": [
                       {
                         "type": "node",
-                        "kind": "IDENT_EXPR",
-                        "width": 1,
+                        "kind": "FIELD_ACCESS_EXPR",
+                        "width": 7,
                         "children": [
+                          {
+                            "type": "node",
+                            "kind": "IDENT_EXPR",
+                            "width": 1,
+                            "children": [
+                              {
+                                "type": "token",
+                                "kind": "IDENT_EXPR",
+                                "text": "X",
+                                "width": 1
+                              }
+                            ]
+                          },
                           {
                             "type": "token",
                             "kind": "IDENT_EXPR",
-                            "text": "X",
+                            "text": ".",
                             "width": 1
+                          },
+                          {
+                            "type": "token",
+                            "kind": "IDENT_EXPR",
+                            "text": "value",
+                            "width": 5
                           }
                         ]
                       },
                       {
                         "type": "token",
-                        "kind": "IDENT_EXPR",
-                        "text": ".",
+                        "kind": "WHITESPACE",
+                        "text": "\n",
                         "width": 1
-                      },
-                      {
-                        "type": "token",
-                        "kind": "IDENT_EXPR",
-                        "text": "value",
-                        "width": 5
                       }
                     ]
                   }
@@ -228,6 +295,12 @@
             ]
           }
         ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n",
+        "width": 1
       }
     ]
   },

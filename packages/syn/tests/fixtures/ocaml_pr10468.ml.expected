@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 38,
+    "width": 44,
     "children": [
       {
         "type": "node",
         "kind": "MODULE_TYPE_DECL",
-        "width": 38,
+        "width": 42,
         "children": [
           {
             "type": "token",
@@ -17,9 +17,21 @@
           },
           {
             "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
             "kind": "TYPE_DECL",
             "text": "type",
             "width": 4
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
           },
           {
             "type": "token",
@@ -29,8 +41,20 @@
           },
           {
             "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
             "kind": "INFIX_EXPR",
             "text": "=",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
             "width": 1
           },
           {
@@ -121,6 +145,12 @@
             ]
           }
         ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n\n",
+        "width": 2
       }
     ]
   },

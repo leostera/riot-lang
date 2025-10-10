@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 43,
+    "width": 44,
     "children": [
       {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 43,
+        "width": 44,
         "children": [
           {
             "type": "token",
@@ -28,7 +28,7 @@
             "children": [
               {
                 "type": "token",
-                "kind": "WHITESPACE",
+                "kind": "PAREN_EXPR",
                 "text": "(",
                 "width": 1
               },
@@ -96,7 +96,7 @@
               },
               {
                 "type": "token",
-                "kind": "WHITESPACE",
+                "kind": "PAREN_EXPR",
                 "text": ")",
                 "width": 1
               }
@@ -129,12 +129,12 @@
           {
             "type": "node",
             "kind": "TYPE_TUPLE",
-            "width": 20,
+            "width": 21,
             "children": [
               {
                 "type": "node",
                 "kind": "TYPE_CONSTR",
-                "width": 7,
+                "width": 8,
                 "children": [
                   {
                     "type": "node",
@@ -154,6 +154,12 @@
                         "width": 1
                       }
                     ]
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
                   },
                   {
                     "type": "token",
@@ -188,7 +194,7 @@
                 "children": [
                   {
                     "type": "token",
-                    "kind": "WHITESPACE",
+                    "kind": "PAREN_EXPR",
                     "text": "(",
                     "width": 1
                   },
@@ -245,7 +251,7 @@
                   },
                   {
                     "type": "token",
-                    "kind": "WHITESPACE",
+                    "kind": "PAREN_EXPR",
                     "text": ")",
                     "width": 1
                   }

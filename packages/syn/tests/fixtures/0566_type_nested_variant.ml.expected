@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 35,
+    "width": 40,
     "children": [
       {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 35,
+        "width": 40,
         "children": [
           {
             "type": "token",
@@ -48,8 +48,14 @@
           {
             "type": "node",
             "kind": "TYPE_CONSTR",
-            "width": 26,
+            "width": 31,
             "children": [
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
               {
                 "type": "token",
                 "kind": "MATCH_EXPR",
@@ -59,7 +65,7 @@
               {
                 "type": "node",
                 "kind": "TYPE_VARIANT_CONSTR",
-                "width": 7,
+                "width": 9,
                 "children": [
                   {
                     "type": "token",
@@ -69,9 +75,21 @@
                   },
                   {
                     "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
                     "kind": "TYPE_VARIANT_CONSTR",
                     "text": "of",
                     "width": 2
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
                   },
                   {
                     "type": "node",
@@ -97,7 +115,7 @@
               {
                 "type": "node",
                 "kind": "TYPE_VARIANT_CONSTR",
-                "width": 18,
+                "width": 20,
                 "children": [
                   {
                     "type": "token",
@@ -107,9 +125,21 @@
                   },
                   {
                     "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
                     "kind": "TYPE_VARIANT_CONSTR",
                     "text": "of",
                     "width": 2
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
                   },
                   {
                     "type": "node",
@@ -118,7 +148,7 @@
                     "children": [
                       {
                         "type": "token",
-                        "kind": "WHITESPACE",
+                        "kind": "PAREN_EXPR",
                         "text": "(",
                         "width": 1
                       },
@@ -175,7 +205,7 @@
                       },
                       {
                         "type": "token",
-                        "kind": "WHITESPACE",
+                        "kind": "PAREN_EXPR",
                         "text": ")",
                         "width": 1
                       }

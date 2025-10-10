@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 44,
+    "width": 45,
     "children": [
       {
         "type": "node",
         "kind": "LET_EXPR",
-        "width": 44,
+        "width": 45,
         "children": [
           {
             "type": "token",
@@ -144,31 +144,44 @@
           {
             "type": "node",
             "kind": "FIELD_ACCESS_EXPR",
-            "width": 3,
+            "width": 4,
             "children": [
               {
                 "type": "node",
-                "kind": "IDENT_EXPR",
-                "width": 1,
+                "kind": "FIELD_ACCESS_EXPR",
+                "width": 3,
                 "children": [
+                  {
+                    "type": "node",
+                    "kind": "IDENT_EXPR",
+                    "width": 1,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "M",
+                        "width": 1
+                      }
+                    ]
+                  },
                   {
                     "type": "token",
                     "kind": "IDENT_EXPR",
-                    "text": "M",
+                    "text": ".",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "x",
                     "width": 1
                   }
                 ]
               },
               {
                 "type": "token",
-                "kind": "IDENT_EXPR",
-                "text": ".",
-                "width": 1
-              },
-              {
-                "type": "token",
-                "kind": "IDENT_EXPR",
-                "text": "x",
+                "kind": "WHITESPACE",
+                "text": "\n",
                 "width": 1
               }
             ]

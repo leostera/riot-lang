@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 18,
+    "width": 52,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 18,
+        "width": 52,
         "children": [
           {
             "type": "token",
@@ -28,9 +28,15 @@
             "width": 1
           },
           {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
             "type": "node",
             "kind": "ASSERT_EXPR",
-            "width": 12,
+            "width": 45,
             "children": [
               {
                 "type": "token",
@@ -47,13 +53,38 @@
               {
                 "type": "node",
                 "kind": "BOOL_LITERAL",
-                "width": 5,
+                "width": 38,
                 "children": [
                   {
-                    "type": "token",
+                    "type": "node",
                     "kind": "BOOL_LITERAL",
-                    "text": "false",
-                    "width": 5
+                    "width": 5,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "BOOL_LITERAL",
+                        "text": "false",
+                        "width": 5
+                      }
+                    ]
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": "\n\n",
+                    "width": 2
+                  },
+                  {
+                    "type": "token",
+                    "kind": "COMMENT",
+                    "text": "(* TEST\n exit_status = \"2\";\n*)",
+                    "width": 30
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": "\n",
+                    "width": 1
                   }
                 ]
               }

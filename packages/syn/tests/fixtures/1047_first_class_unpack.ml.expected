@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 37,
+    "width": 38,
     "children": [
       {
         "type": "node",
         "kind": "LET_EXPR",
-        "width": 37,
+        "width": 38,
         "children": [
           {
             "type": "token",
@@ -59,7 +59,7 @@
           },
           {
             "type": "token",
-            "kind": "WHITESPACE",
+            "kind": "PAREN_EXPR",
             "text": "(",
             "width": 1
           },
@@ -76,16 +76,30 @@
             "width": 1
           },
           {
-            "type": "token",
+            "type": "node",
             "kind": "IDENT_EXPR",
-            "text": "m",
-            "width": 1
-          },
-          {
-            "type": "token",
-            "kind": "WHITESPACE",
-            "text": " ",
-            "width": 1
+            "width": 2,
+            "children": [
+              {
+                "type": "node",
+                "kind": "IDENT_EXPR",
+                "width": 1,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "m",
+                    "width": 1
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              }
+            ]
           },
           {
             "type": "token",
@@ -114,7 +128,7 @@
           },
           {
             "type": "token",
-            "kind": "WHITESPACE",
+            "kind": "PAREN_EXPR",
             "text": ")",
             "width": 1
           },
@@ -139,32 +153,45 @@
           {
             "type": "node",
             "kind": "FIELD_ACCESS_EXPR",
-            "width": 7,
+            "width": 8,
             "children": [
               {
                 "type": "node",
-                "kind": "IDENT_EXPR",
-                "width": 1,
+                "kind": "FIELD_ACCESS_EXPR",
+                "width": 7,
                 "children": [
+                  {
+                    "type": "node",
+                    "kind": "IDENT_EXPR",
+                    "width": 1,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "M",
+                        "width": 1
+                      }
+                    ]
+                  },
                   {
                     "type": "token",
                     "kind": "IDENT_EXPR",
-                    "text": "M",
+                    "text": ".",
                     "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "value",
+                    "width": 5
                   }
                 ]
               },
               {
                 "type": "token",
-                "kind": "IDENT_EXPR",
-                "text": ".",
+                "kind": "WHITESPACE",
+                "text": "\n",
                 "width": 1
-              },
-              {
-                "type": "token",
-                "kind": "IDENT_EXPR",
-                "text": "value",
-                "width": 5
               }
             ]
           }

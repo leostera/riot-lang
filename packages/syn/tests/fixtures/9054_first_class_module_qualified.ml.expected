@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 127,
+    "width": 184,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 43,
+        "width": 69,
         "children": [
           {
             "type": "token",
@@ -18,8 +18,14 @@
           {
             "type": "node",
             "kind": "IDENT_PATTERN",
-            "width": 2,
+            "width": 3,
             "children": [
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
               {
                 "type": "token",
                 "kind": "IDENT_EXPR",
@@ -41,307 +47,31 @@
             "width": 1
           },
           {
-            "type": "node",
-            "kind": "APPLY_EXPR",
-            "width": 37,
-            "children": [
-              {
-                "type": "node",
-                "kind": "IDENT_EXPR",
-                "width": 1,
-                "children": [
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "f",
-                    "width": 1
-                  }
-                ]
-              },
-              {
-                "type": "node",
-                "kind": "ARGUMENT",
-                "width": 36,
-                "children": [
-                  {
-                    "type": "token",
-                    "kind": "ARGUMENT",
-                    "text": "~",
-                    "width": 1
-                  },
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "transport",
-                    "width": 9
-                  },
-                  {
-                    "type": "token",
-                    "kind": "TYPED_EXPR",
-                    "text": ":",
-                    "width": 1
-                  },
-                  {
-                    "type": "node",
-                    "kind": "APPLY_EXPR",
-                    "width": 25,
-                    "children": [
-                      {
-                        "type": "token",
-                        "kind": "WHITESPACE",
-                        "text": "(",
-                        "width": 1
-                      },
-                      {
-                        "type": "token",
-                        "kind": "MODULE_DECL",
-                        "text": "module",
-                        "width": 6
-                      },
-                      {
-                        "type": "token",
-                        "kind": "IDENT_EXPR",
-                        "text": "Std",
-                        "width": 3
-                      },
-                      {
-                        "type": "token",
-                        "kind": "IDENT_EXPR",
-                        "text": ".",
-                        "width": 1
-                      },
-                      {
-                        "type": "token",
-                        "kind": "IDENT_EXPR",
-                        "text": "Net",
-                        "width": 3
-                      },
-                      {
-                        "type": "token",
-                        "kind": "IDENT_EXPR",
-                        "text": ".",
-                        "width": 1
-                      },
-                      {
-                        "type": "token",
-                        "kind": "IDENT_EXPR",
-                        "text": "TcpClient",
-                        "width": 9
-                      },
-                      {
-                        "type": "token",
-                        "kind": "WHITESPACE",
-                        "text": ")",
-                        "width": 1
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "type": "node",
-        "kind": "LET_BINDING",
-        "width": 22,
-        "children": [
-          {
             "type": "token",
-            "kind": "LET_BINDING",
-            "text": "let",
-            "width": 3
-          },
-          {
-            "type": "node",
-            "kind": "IDENT_PATTERN",
-            "width": 2,
-            "children": [
-              {
-                "type": "token",
-                "kind": "IDENT_EXPR",
-                "text": "y",
-                "width": 1
-              },
-              {
-                "type": "token",
-                "kind": "WHITESPACE",
-                "text": " ",
-                "width": 1
-              }
-            ]
-          },
-          {
-            "type": "token",
-            "kind": "INFIX_EXPR",
-            "text": "=",
+            "kind": "WHITESPACE",
+            "text": " ",
             "width": 1
           },
           {
             "type": "node",
             "kind": "APPLY_EXPR",
-            "width": 16,
-            "children": [
-              {
-                "type": "node",
-                "kind": "IDENT_EXPR",
-                "width": 1,
-                "children": [
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "g",
-                    "width": 1
-                  }
-                ]
-              },
-              {
-                "type": "node",
-                "kind": "APPLY_EXPR",
-                "width": 15,
-                "children": [
-                  {
-                    "type": "token",
-                    "kind": "WHITESPACE",
-                    "text": "(",
-                    "width": 1
-                  },
-                  {
-                    "type": "token",
-                    "kind": "MODULE_DECL",
-                    "text": "module",
-                    "width": 6
-                  },
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "A",
-                    "width": 1
-                  },
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": ".",
-                    "width": 1
-                  },
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "B",
-                    "width": 1
-                  },
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": ".",
-                    "width": 1
-                  },
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "C",
-                    "width": 1
-                  },
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": ".",
-                    "width": 1
-                  },
-                  {
-                    "type": "token",
-                    "kind": "IDENT_EXPR",
-                    "text": "D",
-                    "width": 1
-                  },
-                  {
-                    "type": "token",
-                    "kind": "WHITESPACE",
-                    "text": ")",
-                    "width": 1
-                  }
-                ]
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "type": "node",
-        "kind": "LET_BINDING",
-        "width": 62,
-        "children": [
-          {
-            "type": "token",
-            "kind": "LET_BINDING",
-            "text": "let",
-            "width": 3
-          },
-          {
-            "type": "node",
-            "kind": "IDENT_PATTERN",
-            "width": 7,
-            "children": [
-              {
-                "type": "token",
-                "kind": "IDENT_EXPR",
-                "text": "result",
-                "width": 6
-              },
-              {
-                "type": "token",
-                "kind": "WHITESPACE",
-                "text": " ",
-                "width": 1
-              }
-            ]
-          },
-          {
-            "type": "token",
-            "kind": "INFIX_EXPR",
-            "text": "=",
-            "width": 1
-          },
-          {
-            "type": "node",
-            "kind": "APPLY_EXPR",
-            "width": 51,
+            "width": 61,
             "children": [
               {
                 "type": "node",
                 "kind": "APPLY_EXPR",
-                "width": 49,
+                "width": 37,
                 "children": [
                   {
                     "type": "node",
-                    "kind": "FIELD_ACCESS_EXPR",
-                    "width": 13,
+                    "kind": "IDENT_EXPR",
+                    "width": 1,
                     "children": [
                       {
-                        "type": "node",
-                        "kind": "IDENT_EXPR",
-                        "width": 6,
-                        "children": [
-                          {
-                            "type": "token",
-                            "kind": "IDENT_EXPR",
-                            "text": "Client",
-                            "width": 6
-                          }
-                        ]
-                      },
-                      {
                         "type": "token",
                         "kind": "IDENT_EXPR",
-                        "text": ".",
+                        "text": "f",
                         "width": 1
-                      },
-                      {
-                        "type": "token",
-                        "kind": "IDENT_EXPR",
-                        "text": "create",
-                        "width": 6
                       }
                     ]
                   },
@@ -375,7 +105,7 @@
                         "children": [
                           {
                             "type": "token",
-                            "kind": "WHITESPACE",
+                            "kind": "PAREN_EXPR",
                             "text": "(",
                             "width": 1
                           },
@@ -417,7 +147,7 @@
                           },
                           {
                             "type": "token",
-                            "kind": "WHITESPACE",
+                            "kind": "PAREN_EXPR",
                             "text": ")",
                             "width": 1
                           }
@@ -428,23 +158,392 @@
                 ]
               },
               {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n\n",
+                "width": 2
+              },
+              {
+                "type": "token",
+                "kind": "COMMENT",
+                "text": "(* Multiple levels *)",
+                "width": 21
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n",
+                "width": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "LET_BINDING",
+        "width": 50,
+        "children": [
+          {
+            "type": "token",
+            "kind": "LET_BINDING",
+            "text": "let",
+            "width": 3
+          },
+          {
+            "type": "node",
+            "kind": "IDENT_PATTERN",
+            "width": 3,
+            "children": [
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "y",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              }
+            ]
+          },
+          {
+            "type": "token",
+            "kind": "INFIX_EXPR",
+            "text": "=",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "APPLY_EXPR",
+            "width": 42,
+            "children": [
+              {
                 "type": "node",
-                "kind": "UNIT_LITERAL",
-                "width": 2,
+                "kind": "APPLY_EXPR",
+                "width": 16,
                 "children": [
                   {
-                    "type": "token",
-                    "kind": "WHITESPACE",
-                    "text": "(",
-                    "width": 1
+                    "type": "node",
+                    "kind": "IDENT_EXPR",
+                    "width": 1,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "g",
+                        "width": 1
+                      }
+                    ]
                   },
                   {
-                    "type": "token",
-                    "kind": "WHITESPACE",
-                    "text": ")",
-                    "width": 1
+                    "type": "node",
+                    "kind": "APPLY_EXPR",
+                    "width": 15,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "PAREN_EXPR",
+                        "text": "(",
+                        "width": 1
+                      },
+                      {
+                        "type": "token",
+                        "kind": "MODULE_DECL",
+                        "text": "module",
+                        "width": 6
+                      },
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "A",
+                        "width": 1
+                      },
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": ".",
+                        "width": 1
+                      },
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "B",
+                        "width": 1
+                      },
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": ".",
+                        "width": 1
+                      },
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "C",
+                        "width": 1
+                      },
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": ".",
+                        "width": 1
+                      },
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "D",
+                        "width": 1
+                      },
+                      {
+                        "type": "token",
+                        "kind": "PAREN_EXPR",
+                        "text": ")",
+                        "width": 1
+                      }
+                    ]
                   }
                 ]
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n\n",
+                "width": 2
+              },
+              {
+                "type": "token",
+                "kind": "COMMENT",
+                "text": "(* In function calls *)",
+                "width": 23
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n",
+                "width": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "LET_BINDING",
+        "width": 65,
+        "children": [
+          {
+            "type": "token",
+            "kind": "LET_BINDING",
+            "text": "let",
+            "width": 3
+          },
+          {
+            "type": "node",
+            "kind": "IDENT_PATTERN",
+            "width": 8,
+            "children": [
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "result",
+                "width": 6
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              }
+            ]
+          },
+          {
+            "type": "token",
+            "kind": "INFIX_EXPR",
+            "text": "=",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "APPLY_EXPR",
+            "width": 52,
+            "children": [
+              {
+                "type": "node",
+                "kind": "APPLY_EXPR",
+                "width": 51,
+                "children": [
+                  {
+                    "type": "node",
+                    "kind": "APPLY_EXPR",
+                    "width": 49,
+                    "children": [
+                      {
+                        "type": "node",
+                        "kind": "FIELD_ACCESS_EXPR",
+                        "width": 13,
+                        "children": [
+                          {
+                            "type": "node",
+                            "kind": "IDENT_EXPR",
+                            "width": 6,
+                            "children": [
+                              {
+                                "type": "token",
+                                "kind": "IDENT_EXPR",
+                                "text": "Client",
+                                "width": 6
+                              }
+                            ]
+                          },
+                          {
+                            "type": "token",
+                            "kind": "IDENT_EXPR",
+                            "text": ".",
+                            "width": 1
+                          },
+                          {
+                            "type": "token",
+                            "kind": "IDENT_EXPR",
+                            "text": "create",
+                            "width": 6
+                          }
+                        ]
+                      },
+                      {
+                        "type": "node",
+                        "kind": "ARGUMENT",
+                        "width": 36,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "ARGUMENT",
+                            "text": "~",
+                            "width": 1
+                          },
+                          {
+                            "type": "token",
+                            "kind": "IDENT_EXPR",
+                            "text": "transport",
+                            "width": 9
+                          },
+                          {
+                            "type": "token",
+                            "kind": "TYPED_EXPR",
+                            "text": ":",
+                            "width": 1
+                          },
+                          {
+                            "type": "node",
+                            "kind": "APPLY_EXPR",
+                            "width": 25,
+                            "children": [
+                              {
+                                "type": "token",
+                                "kind": "PAREN_EXPR",
+                                "text": "(",
+                                "width": 1
+                              },
+                              {
+                                "type": "token",
+                                "kind": "MODULE_DECL",
+                                "text": "module",
+                                "width": 6
+                              },
+                              {
+                                "type": "token",
+                                "kind": "IDENT_EXPR",
+                                "text": "Std",
+                                "width": 3
+                              },
+                              {
+                                "type": "token",
+                                "kind": "IDENT_EXPR",
+                                "text": ".",
+                                "width": 1
+                              },
+                              {
+                                "type": "token",
+                                "kind": "IDENT_EXPR",
+                                "text": "Net",
+                                "width": 3
+                              },
+                              {
+                                "type": "token",
+                                "kind": "IDENT_EXPR",
+                                "text": ".",
+                                "width": 1
+                              },
+                              {
+                                "type": "token",
+                                "kind": "IDENT_EXPR",
+                                "text": "TcpClient",
+                                "width": 9
+                              },
+                              {
+                                "type": "token",
+                                "kind": "PAREN_EXPR",
+                                "text": ")",
+                                "width": 1
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "node",
+                    "kind": "UNIT_LITERAL",
+                    "width": 2,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "PAREN_EXPR",
+                        "text": "(",
+                        "width": 1
+                      },
+                      {
+                        "type": "token",
+                        "kind": "PAREN_EXPR",
+                        "text": ")",
+                        "width": 1
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n",
+                "width": 1
               }
             ]
           }

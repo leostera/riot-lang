@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 46,
+    "width": 51,
     "children": [
       {
         "type": "node",
         "kind": "EXTERNAL_DECL",
-        "width": 46,
+        "width": 51,
         "children": [
           {
             "type": "token",
@@ -17,14 +17,32 @@
           },
           {
             "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
             "kind": "IDENT_EXPR",
             "text": "sqrt",
             "width": 4
           },
           {
             "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
             "kind": "TYPED_EXPR",
             "text": ":",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
             "width": 1
           },
           {
@@ -92,9 +110,21 @@
           },
           {
             "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
             "kind": "STRING_LITERAL",
             "text": "\"caml_sqrt_float\"",
             "width": 17
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": "\n",
+            "width": 1
           }
         ]
       }

@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 49,
+    "width": 59,
     "children": [
       {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 49,
+        "width": 58,
         "children": [
           {
             "type": "token",
@@ -48,12 +48,24 @@
           {
             "type": "node",
             "kind": "TYPE_CONSTR",
-            "width": 35,
+            "width": 44,
             "children": [
               {
                 "type": "token",
-                "kind": "WHITESPACE",
+                "kind": "RECORD_EXPR",
                 "text": "{",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
                 "width": 1
               },
               {
@@ -65,7 +77,7 @@
               {
                 "type": "node",
                 "kind": "TYPE_RECORD_FIELD",
-                "width": 11,
+                "width": 13,
                 "children": [
                   {
                     "type": "token",
@@ -75,8 +87,20 @@
                   },
                   {
                     "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
                     "kind": "TYPED_EXPR",
                     "text": ":",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
                     "width": 1
                   },
                   {
@@ -96,6 +120,12 @@
               },
               {
                 "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
+              {
+                "type": "token",
                 "kind": "SEQUENCE_EXPR",
                 "text": ";",
                 "width": 1
@@ -103,7 +133,7 @@
               {
                 "type": "node",
                 "kind": "TYPE_RECORD_FIELD",
-                "width": 7,
+                "width": 9,
                 "children": [
                   {
                     "type": "token",
@@ -113,8 +143,20 @@
                   },
                   {
                     "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
                     "kind": "TYPED_EXPR",
                     "text": ":",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
                     "width": 1
                   },
                   {
@@ -135,7 +177,7 @@
               {
                 "type": "node",
                 "kind": "TYPE_RECORD_FIELD",
-                "width": 13,
+                "width": 15,
                 "children": [
                   {
                     "type": "token",
@@ -145,8 +187,20 @@
                   },
                   {
                     "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
                     "kind": "TYPED_EXPR",
                     "text": ":",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
                     "width": 1
                   },
                   {
@@ -172,13 +226,19 @@
               },
               {
                 "type": "token",
-                "kind": "WHITESPACE",
+                "kind": "RECORD_EXPR",
                 "text": "}",
                 "width": 1
               }
             ]
           }
         ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n",
+        "width": 1
       }
     ]
   },

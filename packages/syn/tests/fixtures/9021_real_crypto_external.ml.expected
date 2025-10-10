@@ -2,18 +2,24 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 187,
+    "width": 202,
     "children": [
       {
         "type": "node",
         "kind": "EXTERNAL_DECL",
-        "width": 59,
+        "width": 64,
         "children": [
           {
             "type": "token",
             "kind": "EXTERNAL_DECL",
             "text": "external",
             "width": 8
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
           },
           {
             "type": "token",
@@ -23,8 +29,20 @@
           },
           {
             "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
             "kind": "TYPED_EXPR",
             "text": ":",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
             "width": 1
           },
           {
@@ -92,22 +110,40 @@
           },
           {
             "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
             "kind": "STRING_LITERAL",
             "text": "\"kernel_crypto_sha256\"",
             "width": 22
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": "\n",
+            "width": 1
           }
         ]
       },
       {
         "type": "node",
         "kind": "EXTERNAL_DECL",
-        "width": 59,
+        "width": 64,
         "children": [
           {
             "type": "token",
             "kind": "EXTERNAL_DECL",
             "text": "external",
             "width": 8
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
           },
           {
             "type": "token",
@@ -117,8 +153,20 @@
           },
           {
             "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
             "kind": "TYPED_EXPR",
             "text": ":",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
             "width": 1
           },
           {
@@ -186,16 +234,28 @@
           },
           {
             "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
             "kind": "STRING_LITERAL",
             "text": "\"kernel_crypto_sha512\"",
             "width": 22
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": "\n",
+            "width": 1
           }
         ]
       },
       {
         "type": "node",
         "kind": "EXTERNAL_DECL",
-        "width": 69,
+        "width": 74,
         "children": [
           {
             "type": "token",
@@ -205,14 +265,32 @@
           },
           {
             "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
             "kind": "IDENT_EXPR",
             "text": "simple_hash_bytes",
             "width": 17
           },
           {
             "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
             "kind": "TYPED_EXPR",
             "text": ":",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
             "width": 1
           },
           {
@@ -280,9 +358,21 @@
           },
           {
             "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
             "kind": "STRING_LITERAL",
             "text": "\"kernel_crypto_simple_hash\"",
             "width": 27
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": "\n",
+            "width": 1
           }
         ]
       }

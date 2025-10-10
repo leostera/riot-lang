@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 74,
+    "width": 80,
     "children": [
       {
         "type": "node",
         "kind": "EXTERNAL_DECL",
-        "width": 74,
+        "width": 80,
         "children": [
           {
             "type": "token",
@@ -17,14 +17,32 @@
           },
           {
             "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
             "kind": "IDENT_EXPR",
             "text": "poll",
             "width": 4
           },
           {
             "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
             "kind": "TYPED_EXPR",
             "text": ":",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
             "width": 1
           },
           {
@@ -142,15 +160,33 @@
           },
           {
             "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
             "kind": "STRING_LITERAL",
             "text": "\"unix_poll\"",
             "width": 11
           },
           {
             "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
             "kind": "STRING_LITERAL",
             "text": "\"unix_poll_native\"",
             "width": 18
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": "\n",
+            "width": 1
           }
         ]
       }

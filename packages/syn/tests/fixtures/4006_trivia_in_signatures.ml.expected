@@ -2,7 +2,7 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 524,
+    "width": 541,
     "children": [
       {
         "type": "node",
@@ -795,6 +795,24 @@
             ]
           }
         ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n  ",
+        "width": 3
+      },
+      {
+        "type": "token",
+        "kind": "COMMENT",
+        "text": "(* Open *)",
+        "width": 10
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n\n  ",
+        "width": 4
       },
       {
         "type": "node",

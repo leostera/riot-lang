@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 62,
+    "width": 73,
     "children": [
       {
         "type": "node",
         "kind": "MODULE_DECL",
-        "width": 62,
+        "width": 72,
         "children": [
           {
             "type": "token",
@@ -17,14 +17,32 @@
           },
           {
             "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
             "kind": "IDENT_EXPR",
             "text": "M",
             "width": 1
           },
           {
             "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
             "kind": "TYPED_EXPR",
             "text": ":",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
             "width": 1
           },
           {
@@ -120,15 +138,27 @@
             "width": 1
           },
           {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
             "type": "node",
             "kind": "STRUCTURE",
-            "width": 33,
+            "width": 39,
             "children": [
               {
                 "type": "token",
                 "kind": "STRUCTURE",
                 "text": "struct",
                 "width": 6
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n  ",
+                "width": 3
               },
               {
                 "type": "node",
@@ -195,7 +225,7 @@
               {
                 "type": "node",
                 "kind": "LET_BINDING",
-                "width": 8,
+                "width": 11,
                 "children": [
                   {
                     "type": "token",
@@ -206,8 +236,14 @@
                   {
                     "type": "node",
                     "kind": "IDENT_PATTERN",
-                    "width": 2,
+                    "width": 3,
                     "children": [
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": " ",
+                        "width": 1
+                      },
                       {
                         "type": "token",
                         "kind": "IDENT_EXPR",
@@ -229,15 +265,34 @@
                     "width": 1
                   },
                   {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  },
+                  {
                     "type": "node",
                     "kind": "INT_LITERAL",
-                    "width": 2,
+                    "width": 3,
                     "children": [
                       {
-                        "type": "token",
+                        "type": "node",
                         "kind": "INT_LITERAL",
-                        "text": "42",
-                        "width": 2
+                        "width": 2,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "INT_LITERAL",
+                            "text": "42",
+                            "width": 2
+                          }
+                        ]
+                      },
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": "\n",
+                        "width": 1
                       }
                     ]
                   }
@@ -252,6 +307,12 @@
             ]
           }
         ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n",
+        "width": 1
       }
     ]
   },

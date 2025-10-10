@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 51,
+    "width": 68,
     "children": [
       {
         "type": "node",
         "kind": "MODULE_DECL",
-        "width": 51,
+        "width": 67,
         "children": [
           {
             "type": "token",
@@ -17,18 +17,30 @@
           },
           {
             "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
             "kind": "IDENT_EXPR",
             "text": "F",
             "width": 1
           },
           {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
             "type": "node",
             "kind": "TYPE_PARAM",
-            "width": 6,
+            "width": 9,
             "children": [
               {
                 "type": "token",
-                "kind": "WHITESPACE",
+                "kind": "PAREN_EXPR",
                 "text": "(",
                 "width": 1
               },
@@ -40,8 +52,20 @@
               },
               {
                 "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
+              {
+                "type": "token",
                 "kind": "TYPED_EXPR",
                 "text": ":",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
                 "width": 1
               },
               {
@@ -59,8 +83,14 @@
               },
               {
                 "type": "token",
-                "kind": "WHITESPACE",
+                "kind": "PAREN_EXPR",
                 "text": ")",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
                 "width": 1
               }
             ]
@@ -68,11 +98,11 @@
           {
             "type": "node",
             "kind": "TYPE_PARAM",
-            "width": 6,
+            "width": 9,
             "children": [
               {
                 "type": "token",
-                "kind": "WHITESPACE",
+                "kind": "PAREN_EXPR",
                 "text": "(",
                 "width": 1
               },
@@ -84,8 +114,20 @@
               },
               {
                 "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
+              {
+                "type": "token",
                 "kind": "TYPED_EXPR",
                 "text": ":",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
                 "width": 1
               },
               {
@@ -103,8 +145,14 @@
               },
               {
                 "type": "token",
-                "kind": "WHITESPACE",
+                "kind": "PAREN_EXPR",
                 "text": ")",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
                 "width": 1
               }
             ]
@@ -116,9 +164,15 @@
             "width": 1
           },
           {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
             "type": "node",
             "kind": "STRUCTURE",
-            "width": 31,
+            "width": 38,
             "children": [
               {
                 "type": "token",
@@ -127,9 +181,15 @@
                 "width": 6
               },
               {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n  ",
+                "width": 3
+              },
+              {
                 "type": "node",
                 "kind": "LET_BINDING",
-                "width": 22,
+                "width": 26,
                 "children": [
                   {
                     "type": "token",
@@ -140,8 +200,14 @@
                   {
                     "type": "node",
                     "kind": "IDENT_PATTERN",
-                    "width": 2,
+                    "width": 3,
                     "children": [
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": " ",
+                        "width": 1
+                      },
                       {
                         "type": "token",
                         "kind": "IDENT_EXPR",
@@ -163,9 +229,15 @@
                     "width": 1
                   },
                   {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  },
+                  {
                     "type": "node",
                     "kind": "INFIX_EXPR",
-                    "width": 16,
+                    "width": 18,
                     "children": [
                       {
                         "type": "node",
@@ -201,6 +273,12 @@
                       },
                       {
                         "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": " ",
+                        "width": 1
+                      },
+                      {
+                        "type": "token",
                         "kind": "INFIX_EXPR",
                         "text": "+",
                         "width": 1
@@ -214,32 +292,45 @@
                       {
                         "type": "node",
                         "kind": "FIELD_ACCESS_EXPR",
-                        "width": 7,
+                        "width": 8,
                         "children": [
                           {
                             "type": "node",
-                            "kind": "IDENT_EXPR",
-                            "width": 1,
+                            "kind": "FIELD_ACCESS_EXPR",
+                            "width": 7,
                             "children": [
+                              {
+                                "type": "node",
+                                "kind": "IDENT_EXPR",
+                                "width": 1,
+                                "children": [
+                                  {
+                                    "type": "token",
+                                    "kind": "IDENT_EXPR",
+                                    "text": "Y",
+                                    "width": 1
+                                  }
+                                ]
+                              },
                               {
                                 "type": "token",
                                 "kind": "IDENT_EXPR",
-                                "text": "Y",
+                                "text": ".",
                                 "width": 1
+                              },
+                              {
+                                "type": "token",
+                                "kind": "IDENT_EXPR",
+                                "text": "value",
+                                "width": 5
                               }
                             ]
                           },
                           {
                             "type": "token",
-                            "kind": "IDENT_EXPR",
-                            "text": ".",
+                            "kind": "WHITESPACE",
+                            "text": "\n",
                             "width": 1
-                          },
-                          {
-                            "type": "token",
-                            "kind": "IDENT_EXPR",
-                            "text": "value",
-                            "width": 5
                           }
                         ]
                       }
@@ -256,6 +347,12 @@
             ]
           }
         ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n",
+        "width": 1
       }
     ]
   },

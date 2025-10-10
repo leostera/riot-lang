@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 46,
+    "width": 48,
     "children": [
       {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 46,
+        "width": 48,
         "children": [
           {
             "type": "token",
@@ -73,7 +73,7 @@
           {
             "type": "node",
             "kind": "TYPE_ARROW",
-            "width": 29,
+            "width": 31,
             "children": [
               {
                 "type": "node",
@@ -82,7 +82,7 @@
                 "children": [
                   {
                     "type": "token",
-                    "kind": "WHITESPACE",
+                    "kind": "PAREN_EXPR",
                     "text": "(",
                     "width": 1
                   },
@@ -145,7 +145,7 @@
                   },
                   {
                     "type": "token",
-                    "kind": "WHITESPACE",
+                    "kind": "PAREN_EXPR",
                     "text": ")",
                     "width": 1
                   }
@@ -166,12 +166,12 @@
               {
                 "type": "node",
                 "kind": "TYPE_ARROW",
-                "width": 17,
+                "width": 19,
                 "children": [
                   {
                     "type": "node",
                     "kind": "TYPE_CONSTR",
-                    "width": 7,
+                    "width": 8,
                     "children": [
                       {
                         "type": "node",
@@ -191,6 +191,12 @@
                             "width": 1
                           }
                         ]
+                      },
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": " ",
+                        "width": 1
                       },
                       {
                         "type": "token",
@@ -221,7 +227,7 @@
                   {
                     "type": "node",
                     "kind": "TYPE_CONSTR",
-                    "width": 7,
+                    "width": 8,
                     "children": [
                       {
                         "type": "node",
@@ -241,6 +247,12 @@
                             "width": 1
                           }
                         ]
+                      },
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": " ",
+                        "width": 1
                       },
                       {
                         "type": "token",

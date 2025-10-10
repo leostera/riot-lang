@@ -2,7 +2,7 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 363,
+    "width": 521,
     "children": [
       {
         "type": "node",
@@ -52,7 +52,7 @@
             "children": [
               {
                 "type": "token",
-                "kind": "WHITESPACE",
+                "kind": "RECORD_EXPR",
                 "text": "{",
                 "width": 1
               },
@@ -176,13 +176,31 @@
               },
               {
                 "type": "token",
-                "kind": "WHITESPACE",
+                "kind": "RECORD_EXPR",
                 "text": "}",
                 "width": 1
               }
             ]
           }
         ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n",
+        "width": 1
+      },
+      {
+        "type": "token",
+        "kind": "COMMENT",
+        "text": "(* Record with comments on fields *)",
+        "width": 36
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n\n",
+        "width": 2
       },
       {
         "type": "node",
@@ -232,7 +250,7 @@
             "children": [
               {
                 "type": "token",
-                "kind": "WHITESPACE",
+                "kind": "RECORD_EXPR",
                 "text": "{",
                 "width": 1
               },
@@ -380,13 +398,31 @@
               },
               {
                 "type": "token",
-                "kind": "WHITESPACE",
+                "kind": "RECORD_EXPR",
                 "text": "}",
                 "width": 1
               }
             ]
           }
         ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n",
+        "width": 1
+      },
+      {
+        "type": "token",
+        "kind": "COMMENT",
+        "text": "(* Record with inline comments *)",
+        "width": 33
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n\n",
+        "width": 2
       },
       {
         "type": "node",
@@ -436,7 +472,7 @@
             "children": [
               {
                 "type": "token",
-                "kind": "WHITESPACE",
+                "kind": "RECORD_EXPR",
                 "text": "{",
                 "width": 1
               },
@@ -602,13 +638,31 @@
               },
               {
                 "type": "token",
-                "kind": "WHITESPACE",
+                "kind": "RECORD_EXPR",
                 "text": "}",
                 "width": 1
               }
             ]
           }
         ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n",
+        "width": 1
+      },
+      {
+        "type": "token",
+        "kind": "COMMENT",
+        "text": "(* Mutable record with trivia *)",
+        "width": 32
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n\n",
+        "width": 2
       },
       {
         "type": "node",
@@ -658,7 +712,7 @@
             "children": [
               {
                 "type": "token",
-                "kind": "WHITESPACE",
+                "kind": "RECORD_EXPR",
                 "text": "{",
                 "width": 1
               },
@@ -806,13 +860,31 @@
               },
               {
                 "type": "token",
-                "kind": "WHITESPACE",
+                "kind": "RECORD_EXPR",
                 "text": "}",
                 "width": 1
               }
             ]
           }
         ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n",
+        "width": 1
+      },
+      {
+        "type": "token",
+        "kind": "COMMENT",
+        "text": "(* Record with type parameters and trivia *)",
+        "width": 44
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n\n",
+        "width": 2
       },
       {
         "type": "node",
@@ -887,7 +959,7 @@
             "children": [
               {
                 "type": "token",
-                "kind": "WHITESPACE",
+                "kind": "RECORD_EXPR",
                 "text": "{",
                 "width": 1
               },
@@ -1041,13 +1113,19 @@
               },
               {
                 "type": "token",
-                "kind": "WHITESPACE",
+                "kind": "RECORD_EXPR",
                 "text": "}",
                 "width": 1
               }
             ]
           }
         ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n",
+        "width": 1
       }
     ]
   },

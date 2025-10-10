@@ -644,7 +644,7 @@ and parse_expr_bp parser min_bp =
               match parse_expr_bp parser (prec + 1) with
               | Some rhs ->
                   let children =
-                    [ Ceibo.Green.Node lhs; op_tok ]
+                    [ Ceibo.Green.Node lhs ] @ trivia_before_op @ [ op_tok ]
                     @ trivia_after_op @ [ Ceibo.Green.Node rhs ]
                   in
                   let infix =
@@ -1894,7 +1894,8 @@ and parse_record_field parser =
       if at parser Token.Eq then
         let eq = consume parser in
         let trivia_after_eq = consume_trivia parser in
-        match parse_expr parser with
+        (* Parse field value with min_bp=1 to stop at semicolons (precedence 0) *)
+        match parse_expr_bp parser 1 with
         | Some value ->
             let children =
               leading_trivia @ field_name_parts @ trivia_after_field @ [ eq ]

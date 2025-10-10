@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 18,
+    "width": 21,
     "children": [
       {
         "type": "node",
         "kind": "LET_BINDING",
-        "width": 18,
+        "width": 21,
         "children": [
           {
             "type": "token",
@@ -18,8 +18,14 @@
           {
             "type": "node",
             "kind": "IDENT_PATTERN",
-            "width": 2,
+            "width": 3,
             "children": [
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
               {
                 "type": "token",
                 "kind": "IDENT_EXPR",
@@ -41,25 +47,50 @@
             "width": 1
           },
           {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
             "type": "node",
             "kind": "FIELD_ACCESS_EXPR",
-            "width": 12,
+            "width": 13,
             "children": [
               {
                 "type": "node",
                 "kind": "FIELD_ACCESS_EXPR",
-                "width": 8,
+                "width": 12,
                 "children": [
                   {
                     "type": "node",
-                    "kind": "IDENT_EXPR",
-                    "width": 3,
+                    "kind": "FIELD_ACCESS_EXPR",
+                    "width": 8,
                     "children": [
+                      {
+                        "type": "node",
+                        "kind": "IDENT_EXPR",
+                        "width": 3,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "IDENT_EXPR",
+                            "text": "Std",
+                            "width": 3
+                          }
+                        ]
+                      },
                       {
                         "type": "token",
                         "kind": "IDENT_EXPR",
-                        "text": "Std",
-                        "width": 3
+                        "text": ".",
+                        "width": 1
+                      },
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "List",
+                        "width": 4
                       }
                     ]
                   },
@@ -72,22 +103,16 @@
                   {
                     "type": "token",
                     "kind": "IDENT_EXPR",
-                    "text": "List",
-                    "width": 4
+                    "text": "map",
+                    "width": 3
                   }
                 ]
               },
               {
                 "type": "token",
-                "kind": "IDENT_EXPR",
-                "text": ".",
+                "kind": "WHITESPACE",
+                "text": "\n",
                 "width": 1
-              },
-              {
-                "type": "token",
-                "kind": "IDENT_EXPR",
-                "text": "map",
-                "width": 3
               }
             ]
           }

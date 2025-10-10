@@ -2,12 +2,12 @@
   "tree": {
     "type": "node",
     "kind": "SOURCE_FILE",
-    "width": 26,
+    "width": 30,
     "children": [
       {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 26,
+        "width": 29,
         "children": [
           {
             "type": "token",
@@ -48,18 +48,24 @@
           {
             "type": "node",
             "kind": "TYPE_CONSTR",
-            "width": 17,
+            "width": 20,
             "children": [
               {
                 "type": "token",
-                "kind": "WHITESPACE",
+                "kind": "RECORD_EXPR",
                 "text": "{",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
                 "width": 1
               },
               {
                 "type": "node",
                 "kind": "TYPE_RECORD_FIELD",
-                "width": 15,
+                "width": 17,
                 "children": [
                   {
                     "type": "token",
@@ -69,8 +75,20 @@
                   },
                   {
                     "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
                     "kind": "TYPED_EXPR",
                     "text": ":",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
                     "width": 1
                   },
                   {
@@ -115,13 +133,19 @@
               },
               {
                 "type": "token",
-                "kind": "WHITESPACE",
+                "kind": "RECORD_EXPR",
                 "text": "}",
                 "width": 1
               }
             ]
           }
         ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n",
+        "width": 1
       }
     ]
   },
