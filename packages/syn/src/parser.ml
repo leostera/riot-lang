@@ -947,7 +947,7 @@ and parse_primary parser leading_trivia =
                 let children = leading_trivia @ [ ident ] in
                 Some (make_node_list ~kind:Syntax_kind.IDENT_EXPR children)
           (* Parenthesized expression *)
-          | Some (Token.OpenDelim Token.Paren) -> parse_paren_expr parser
+          | Some (Token.OpenDelim Token.Paren) -> parse_paren_expr parser leading_trivia
           (* List literal *)
           | Some (Token.OpenDelim Token.Bracket) -> (
               (* Could be list [x; y] or extension [%ext ...] *)
@@ -1401,14 +1401,14 @@ and parse_module_type_expr parser =
       (* Simple module type reference *)
       make_node_list ~kind:Syntax_kind.MODULE_TYPE_EXPR type_ident
 
-and parse_paren_expr parser =
+and parse_paren_expr parser leading_trivia =
   let open_paren = consume parser in
   let trivia_after_open = consume_trivia parser in
 
   (* Check for unit literal () *)
   if at parser (Token.CloseDelim Token.Paren) then
     let close_paren = consume parser in
-    let children = [ open_paren ] @ trivia_after_open @ [ close_paren ] in
+    let children = leading_trivia @ [ open_paren ] @ trivia_after_open @ [ close_paren ] in
     Some (make_node_list ~kind:Syntax_kind.UNIT_LITERAL children)
     (* Check for first-class module pack: (module M : S) or (module struct ... end) *)
   else if at parser (Token.Keyword Keyword.Module) then
@@ -1451,7 +1451,7 @@ and parse_paren_expr parser =
 
       let close_paren = expect parser (Token.CloseDelim Token.Paren) in
       let children =
-        [ open_paren ] @ trivia_after_open @ [ module_kw ]
+        leading_trivia @ [ open_paren ] @ trivia_after_open @ [ module_kw ]
         @ List.rev !struct_tokens @ List.rev !trivia_tokens @ [ close_paren ]
       in
       Some (make_node_list ~kind:Syntax_kind.APPLY_EXPR children))
@@ -1476,7 +1476,7 @@ and parse_paren_expr parser =
 
       let close_paren = expect parser (Token.CloseDelim Token.Paren) in
       let children =
-        [ open_paren ] @ trivia_after_open @ [ module_kw ] @ trivia_after_module
+        leading_trivia @ [ open_paren ] @ trivia_after_open @ [ module_kw ] @ trivia_after_module
         @ module_name_parts @ trivia_after_name @ type_annotation @ type_trivia
         @ [ close_paren ]
       in
@@ -1503,7 +1503,7 @@ and parse_paren_expr parser =
     let trivia_after_op = consume_trivia parser in
     let close_paren = expect parser (Token.CloseDelim Token.Paren) in
     let children =
-      [ open_paren ] @ trivia_after_open @ [ op ] @ trivia_after_op
+      leading_trivia @ [ open_paren ] @ trivia_after_open @ [ op ] @ trivia_after_op
       @ [ close_paren ]
     in
     Some (make_node_list ~kind:Syntax_kind.PAREN_EXPR children)
@@ -1536,7 +1536,7 @@ and parse_paren_expr parser =
           let type_elements, type_trivia = consume_type_tokens [] [] in
           let close_paren = expect parser (Token.CloseDelim Token.Paren) in
           let children =
-            [ open_paren ] @ trivia_after_open
+            leading_trivia @ [ open_paren ] @ trivia_after_open
             @ [ Ceibo.Green.Node expr; colon ]
             @ trivia_after_colon @ type_elements @ type_trivia @ [ close_paren ]
           in
@@ -1544,7 +1544,7 @@ and parse_paren_expr parser =
         else
           let close_paren = expect parser (Token.CloseDelim Token.Paren) in
           let children =
-            [ open_paren ] @ trivia_after_open @ [ Ceibo.Green.Node expr ]
+            leading_trivia @ [ open_paren ] @ trivia_after_open @ [ Ceibo.Green.Node expr ]
             @ [ close_paren ]
           in
           Some (make_node_list ~kind:Syntax_kind.PAREN_EXPR children)
@@ -4843,6 +4843,9 @@ and parse_regular_let_binding parser let_kw trivia_after_let ?(attributes = []) 
     else None
   in
 
+  (* Consume trivia before '=' *)
+  let trivia_before_eq = consume_trivia parser in
+
   (* Expect '=' *)
   let eq = expect parser Token.Eq in
 
@@ -4926,12 +4929,12 @@ and parse_regular_let_binding parser let_kw trivia_after_let ?(attributes = []) 
         Some
           (make_node_list ~kind:Syntax_kind.LET_BINDING
              ([ let_kw ] @ attributes @ [ kw; pattern ] @ type_annot_tokens
-            @ params @ return_type_annot_tokens @ [ eq ] @ trivia_after_eq @ [ final_expr ] @ trivia_after_expr))
+            @ params @ return_type_annot_tokens @ trivia_before_eq @ [ eq ] @ trivia_after_eq @ [ final_expr ] @ trivia_after_expr))
     | None ->
         Some
           (make_node_list ~kind:Syntax_kind.LET_BINDING
              ([ let_kw ] @ attributes @ [ pattern ] @ type_annot_tokens @ params
-            @ return_type_annot_tokens @ [ eq ] @ trivia_after_eq @ [ final_expr ] @ trivia_after_expr))
+            @ return_type_annot_tokens @ trivia_before_eq @ [ eq ] @ trivia_after_eq @ [ final_expr ] @ trivia_after_expr))
 
 and parse_type_decl parser =
   (* type 'a t = ... | type t += ... | type t *)
