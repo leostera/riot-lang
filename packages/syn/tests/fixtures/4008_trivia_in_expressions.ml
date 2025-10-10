@@ -12,33 +12,43 @@ let f (* name *) x (* param *) = (* body *) x + 1
 
 (* Pattern matching with trivia *)
 let g x =
-  match (* match *) x (* scrutinee *) with (* with *)
-  | (* bar *) 0 (* pattern *) -> (* arrow *) 1 (* result *)
+  match (* match *) x (* scrutinee *) with
+  (* with *)
+  (* bar *)
+  | 0 (* pattern *) -> (* arrow *) 1 (* result *)
   | n (* otherwise *) -> n + 1
 
 (* If-then-else with trivia *)
 let h x =
-  if (* if *) x > 0 (* condition *)
-  then (* then *) 1 (* then branch *)
+  if (* if *) x > 0 (* condition *) then (* then *) 1 (* then branch *)
   else (* else *) -1 (* else branch *)
 
 (* For loop with trivia *)
 let _ =
-  for (* for *) i (* var *) = (* equals *) 0 (* start *)
+  for
+    (* for *) i (* var *) = (* equals *) 0 (* start *)
     to (* direction *) 10 (* end *)
-  do (* do *)
+  do
+    (* do *)
     print_int i (* body *)
-  done (* done *)
+  done
+(* done *)
 
 (* While loop with trivia *)
 let _ =
-  while (* while *) true (* condition *) do (* do *)
+  while (* while *) true (* condition *) do
+    (* do *)
     print_endline "loop" (* body *)
-  done (* done *)
+  done
+(* done *)
 
 (* Try-with with trivia *)
 let _ =
-  try (* try *)
+  try
+    (* try *)
     raise Not_found (* body *)
-  with (* with *)
-  | (* bar *) Not_found (* pattern *) -> (* arrow *) () (* handler *)
+  with
+  (* with *)
+  (* bar *)
+  | Not_found (* pattern *) ->
+    (* arrow *) () (* handler *)

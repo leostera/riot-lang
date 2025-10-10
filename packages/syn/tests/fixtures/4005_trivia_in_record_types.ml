@@ -1,10 +1,7 @@
 (* Test that trivia is preserved in record types *)
 
 (* Simple record *)
-type t1 = {
-  x : int;
-  y : string;
-}
+type t1 = { x : int; y : string }
 
 (* Record with comments on fields *)
 type t2 = {
@@ -15,19 +12,10 @@ type t2 = {
 }
 
 (* Record with inline comments *)
-type t3 = {
-  x (* field *) : (* type *) int (* semicolon *) ;
-  y : string;
-}
+type t3 = { x (* field *) : (* type *) int; (* semicolon *) y : string }
 
 (* Mutable record with trivia *)
-type t4 = {
-  mutable (* makes it mutable *) count : int;
-  name : string;
-}
+type t4 = { mutable (* makes it mutable *) count : int; name : string }
 
 (* Record with type parameters and trivia *)
-type 'a t5 = {
-  value (* the value *) : (* parameter *) 'a;
-  metadata : string;
-}
+type 'a t5 = { value (* the value *) : (* parameter *) 'a; metadata : string }

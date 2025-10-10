@@ -10,10 +10,14 @@ type t2 = (* element type *) int list
 type t3 = (int, string) Hashtbl.t
 
 (* Type constructor with comments between module path *)
-type t4 = Foo (* module *) . (* separator *) Bar (* submodule *) . t
+type t4 = Foo.Bar.t (* module *)
+
+(* separator *)
+(* submodule *)
 
 (* Parametric type with comment after param *)
-type 'a (* parameter *) t5 = 'a list
+(* parameter *)
+type 'a t5 = 'a list
 
 (* Multiple type params with trivia *)
 type ('a (* first *), 'b (* second *)) t6 = ('a, 'b) result
