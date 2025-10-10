@@ -70,7 +70,10 @@ let print_root ~config root =
         else if last_text = "`" then false
         (* No space after prefix operators *)
         else if is_prefix_operator last_text then false
-          (* Space after opening bracket/brace, except for .[  *)
+          (* No space in empty brackets [] or [||] *)
+        else if last_text = "[" && current_text = "]" then false
+        else if last_text = "[|" && current_text = "|]" then false
+          (* Space after opening bracket/brace *)
         else if last_text = "[" || last_text = "{" || last_text = "[|" then true
           (* Space before closing bracket/brace *)
         else if current_text = "]" || current_text = "}" || current_text = "|]"
