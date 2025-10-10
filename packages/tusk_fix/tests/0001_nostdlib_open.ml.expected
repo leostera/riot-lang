@@ -1,0 +1,21 @@
+./packages/tusk_fix/tests/0001_nostdlib_open.ml:
+[[1;33mwarning[0m] no-stdlib
+
+Direct usage of Hashtbl is discouraged. Use Std equivalents instead.
+
+  [1;90m2 |[0m open Hashtbl
+  [1;90m  |[0m   [1;33m^[0m
+
+
+  [1;90m→[0m Replace Hashtbl with Std module
+
+./packages/tusk_fix/tests/0001_nostdlib_open.ml:
+[[1;33mwarning[0m] no-stdlib
+
+Direct usage of Unix is discouraged. Use Std equivalents instead.
+
+  [1;90m1 |[0m open Unix
+  [1;90m  |[0m      [1;33m^[0m
+
+
+  [1;90m→[0m Replace Unix with Std module

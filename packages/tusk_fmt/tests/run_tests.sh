@@ -40,8 +40,9 @@ for fixture in $FIXTURES_DIR/$PATTERN; do
     # Test format
     echo -n "$base... "
     if [ -f "$expected" ]; then
-        # Run formatter and extract just the formatted code (skip the @filename: line)
-        output=$($FMT "$fixture" 2>&1 | tail -n +2)
+        # Run formatter and extract just the formatted code
+        # Skip compilation output, header, and footer - extract only between @filename and Summary
+        output=$($FMT "$fixture" 2>&1 | grep -A 10000 "^@" | grep -B 10000 "^Summary" | grep -v "^@" | grep -v "^Summary" | head -n -2)
         expected_content=$(cat "$expected")
         
         if [ "$output" = "$expected_content" ]; then

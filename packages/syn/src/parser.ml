@@ -3194,9 +3194,7 @@ and parse_fun_expr parser leading_trivia =
 
   let params = parse_params [] in
 
-  let arrow = expect parser Token.Arrow in
-
-  let trivia_after_arrow = consume_trivia parser in
+  let trivia_before_arrow, arrow, trivia_after_arrow = expect_with_trivia parser Token.Arrow in
 
   let body =
     match parse_expr parser with
@@ -3214,8 +3212,8 @@ and parse_fun_expr parser leading_trivia =
   in
 
   let children =
-    leading_trivia @ [ fun_kw ] @ trivia_after_fun @ params @ [ arrow ]
-    @ trivia_after_arrow @ [ body ]
+    leading_trivia @ [ fun_kw ] @ trivia_after_fun @ params 
+    @ trivia_before_arrow @ [ arrow ] @ trivia_after_arrow @ [ body ]
   in
 
   Some (make_node_list ~kind:Syntax_kind.FUN_EXPR children)
@@ -4318,9 +4316,7 @@ and parse_match_case_body parser first_pattern =
     else None
   in
 
-  let arrow = expect parser Token.Arrow in
-
-  let trivia_after_arrow = consume_trivia parser in
+  let trivia_before_arrow, arrow, trivia_after_arrow = expect_with_trivia parser Token.Arrow in
 
   let expr =
     match parse_expr parser with
@@ -4342,10 +4338,10 @@ and parse_match_case_body parser first_pattern =
   let children =
     match guard with
     | Some g ->
-        [ pattern; g; arrow ] @ trivia_after_arrow @ [ expr ]
+        [ pattern; g ] @ trivia_before_arrow @ [ arrow ] @ trivia_after_arrow @ [ expr ]
         @ trivia_after_expr
     | None ->
-        [ pattern; arrow ] @ trivia_after_arrow @ [ expr ] @ trivia_after_expr
+        [ pattern ] @ trivia_before_arrow @ [ arrow ] @ trivia_after_arrow @ [ expr ] @ trivia_after_expr
   in
 
   Some (make_node_list ~kind:Syntax_kind.MATCH_CASE children)

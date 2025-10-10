@@ -1,0 +1,80 @@
+open Std
+
+let rule_id = "no-stdlib"
+let rule_name = "No OCaml Stdlib"
+
+let rule_description =
+  "Detects usage of OCaml's stdlib modules (Stdlib, List, String, etc.) which \
+   should be replaced with Std equivalents"
+
+let forbidden_modules =
+  [
+    "Stdlib";
+    "Pervasives";
+    "Unix";
+    "Sys";
+    "Hashtbl";
+    "Queue";
+    "Stack";
+    "Set";
+    "Map";
+  ]
+
+let check_tree _ctx red_root =
+  let diagnostics = ref [] in
+    let open Syn.Ceibo.Red in
+    let open Syn.SyntaxKind in
+    let rec traverse elem =
+      match elem with
+      | Node n ->
+          let kind = SyntaxNode.kind n in
+          (match kind with
+          | OPEN_STMT -> check_open_stmt n
+          | PATH_EXPR -> check_path_expr n
+          | TYPE_CONSTR -> check_type_constr n
+          | _ -> ());
+          Array.iter traverse (SyntaxNode.children n)
+      | Token _ -> ()
+    and check_open_stmt node =
+    Array.iter
+      (function
+        | Token t ->
+            let kind = SyntaxToken.kind t in
+            let text = SyntaxToken.text t in
+            if kind <> WHITESPACE && List.mem text forbidden_modules then
+              add_diagnostic text (SyntaxToken.span t)
+        | _ -> ())
+      (SyntaxNode.children node)
+  and check_path_expr node =
+    match SyntaxNode.child node 0 with
+    | Some (Token t) ->
+        let text = SyntaxToken.text t in
+        if List.mem text forbidden_modules then
+          add_diagnostic text (SyntaxToken.span t)
+    | _ -> ()
+  and check_type_constr node =
+    match SyntaxNode.child node 0 with
+    | Some (Token t) ->
+        let text = SyntaxToken.text t in
+        if List.mem text forbidden_modules then
+          add_diagnostic text (SyntaxToken.span t)
+    | _ -> ()
+  and add_diagnostic text span =
+    let diag =
+      Diagnostic.make ~severity:Warning
+        ~message:
+          (format
+             "Direct usage of %s is discouraged. Use Std equivalents instead."
+             text)
+        ~span ~rule_id
+        ~suggestion:(format "Replace %s with Std module" text)
+        ()
+    in
+    diagnostics := diag :: !diagnostics
+  in
+  traverse (Node red_root);
+  !diagnostics
+
+let make () =
+  Rule.make ~id:rule_id ~name:rule_name ~description:rule_description
+    ~run:check_tree ()

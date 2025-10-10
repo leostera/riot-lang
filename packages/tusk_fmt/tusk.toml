@@ -1,0 +1,13 @@
+[package]
+name = "tusk_fmt"
+version = "0.1.0"
+
+[[bin]]
+name = "tusk_fmt"
+path = "src/main.ml"
+
+[dependencies]
+std = { path = "../std" }
+syn = { path = "../syn" }
+miniriot = { path = "../miniriot" }
+
