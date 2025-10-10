@@ -54,6 +54,9 @@ let print_root ~config root =
   let last_token_kind = ref None in
   let last_token_text = ref None in
   let prev_token_text = ref None in
+  let in_labeled_arg = ref false in
+  let in_indexing = ref false in
+  let in_record = ref false in
 
   let add_indent () =
     Buffer.add_string buf (indent_string config !indent_level)
@@ -65,10 +68,24 @@ let print_root ~config root =
     match !last_token_text with
     | None -> false
     | Some last_text ->
+        (* Track labeled/optional arg context *)
+        if last_text = "~" || last_text = "?" then in_labeled_arg := true;
+        
+        (* Track record context *)
+        if last_text = "{" then in_record := true
+        else if current_text = "}" then in_record := false;
+        
         (* No space around . for module paths and indexing *)
         if current_text = "." || last_text = "." then false
         (* No space after ` for poly variants *)
         else if last_text = "`" then false
+        (* No space after ~ or ? for labeled/optional args *)
+        else if last_text = "~" || last_text = "?" then false
+        (* No space before/after : in labeled args *)
+        else if !in_labeled_arg && (current_text = ":" || last_text = ":") then
+          (if current_text <> ":" then in_labeled_arg := false; false)
+        (* No space around = in record fields *)
+        else if !in_record && (current_text = "=" || last_text = "=") then false
         (* No space after prefix operators when they come after = or other operators *)
         else if is_prefix_operator last_text then
           (match !prev_token_text with
@@ -79,6 +96,13 @@ let print_root ~config root =
           (* No space in empty brackets [] or [||] *)
         else if last_text = "[" && current_text = "]" then false
         else if last_text = "[|" && current_text = "|]" then false
+          (* Track indexing context when we see .[ *)
+          (* No space after [ when it's for indexing (prev is .) *)
+        else if last_text = "[" && !prev_token_text = Some "." then 
+          (in_indexing := true; false)
+          (* No space before ] when in indexing context *)
+        else if current_text = "]" && !in_indexing then 
+          (in_indexing := false; false)
           (* Space after opening bracket/brace *)
         else if last_text = "[" || last_text = "{" || last_text = "[|" then true
           (* Space before closing bracket/brace *)
