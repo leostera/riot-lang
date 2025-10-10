@@ -376,7 +376,7 @@ let get_precedence = function
   | Token.StarStar -> 7
   | Token.Keyword (Keyword.Land | Keyword.Lor | Keyword.Lxor) -> 3
   | Token.Keyword (Keyword.Lsl | Keyword.Lsr | Keyword.Asr) -> 6
-  | Token.AtAt | Token.PipeGt | Token.PercentGt | Token.LtPercent -> 0
+  | Token.AtAt | Token.PipeGt | Token.PercentGt | Token.LtPercent -> 1
   | _ -> 0
 
 let rec parse_expr parser = parse_expr_bp parser 0
