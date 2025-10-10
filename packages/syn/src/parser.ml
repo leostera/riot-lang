@@ -6202,7 +6202,10 @@ let parse_implementation parser =
     if peek parser = None || at parser Token.EOF then List.rev acc
     else
       match parse_structure_item parser with
-      | Some item -> parse_items (Ceibo.Green.Node item :: acc)
+      | Some item ->
+          (* Consume trailing trivia after each structure item *)
+          let trivia_after_item = consume_trivia parser in
+          parse_items (trivia_after_item @ [ Ceibo.Green.Node item ] @ acc)
       | None ->
           (* Skip problematic token *)
           let _ = advance parser in
@@ -6211,7 +6214,7 @@ let parse_implementation parser =
 
   let items = parse_items [] in
 
-  (* Consume any trailing trivia at end of file *)
+  (* Consume any remaining trailing trivia at end of file *)
   let trailing_trivia = consume_trivia parser in
 
   make_node_list ~kind:Syntax_kind.SOURCE_FILE (items @ trailing_trivia)
@@ -6222,7 +6225,10 @@ let parse_interface parser =
     if peek parser = None || at parser Token.EOF then List.rev acc
     else
       match parse_signature_item parser with
-      | Some item -> parse_items (Ceibo.Green.Node item :: acc)
+      | Some item ->
+          (* Consume trailing trivia after each signature item *)
+          let trivia_after_item = consume_trivia parser in
+          parse_items (trivia_after_item @ [ Ceibo.Green.Node item ] @ acc)
       | None ->
           (* Skip problematic token *)
           let _ = advance parser in
@@ -6231,7 +6237,7 @@ let parse_interface parser =
 
   let items = parse_items [] in
 
-  (* Consume any trailing trivia at end of file *)
+  (* Consume any remaining trailing trivia at end of file *)
   let trailing_trivia = consume_trivia parser in
 
   make_node_list ~kind:Syntax_kind.SOURCE_FILE (items @ trailing_trivia)
