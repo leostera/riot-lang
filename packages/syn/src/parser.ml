@@ -4343,7 +4343,7 @@ and parse_match_case_body parser first_pattern =
 (* ========================================================================= *)
 
 let rec parse_structure_item parser =
-  (* For .ml files (implementations): let, type, open, external, module *)
+  (* For .ml files (implementations): let, type, open, external, module, include *)
   let leading_trivia = consume_trivia parser in
 
   match peek_kind parser with
@@ -4352,6 +4352,7 @@ let rec parse_structure_item parser =
   | Some (Token.Keyword Keyword.Open) -> parse_open parser
   | Some (Token.Keyword Keyword.External) -> parse_external_decl parser
   | Some (Token.Keyword Keyword.Module) -> parse_module_decl_structure parser
+  | Some (Token.Keyword Keyword.Include) -> parse_include parser leading_trivia
   | _ -> None
 
 and parse_let_binding parser leading_trivia =
@@ -6130,8 +6131,7 @@ and parse_regular_module_decl_signature parser module_kw trivia_after_module =
 
 and parse_signature_item parser =
   (* Signature items: type, val, external, exception, module, etc. *)
-  let _leading_trivia = consume_trivia parser in
-  (* Note: leading trivia will be consumed by the individual item parsers *)
+  let leading_trivia = consume_trivia parser in
 
   match peek_kind parser with
   | Some (Token.Keyword Keyword.Type) -> parse_type_decl parser
@@ -6139,10 +6139,10 @@ and parse_signature_item parser =
   | Some (Token.Keyword Keyword.External) -> parse_external_decl parser
   | Some (Token.Keyword Keyword.Module) -> parse_module_decl_signature parser
   | Some (Token.Keyword Keyword.Open) -> parse_open parser
-  | Some (Token.Keyword Keyword.Include) -> parse_include parser
+  | Some (Token.Keyword Keyword.Include) -> parse_include parser leading_trivia
   | _ -> None
 
-and parse_include parser =
+and parse_include parser leading_trivia =
   (* include Module  OR  include module type of Module *)
   let include_kw = consume parser in
   let trivia_after_include = consume_trivia parser in
@@ -6165,7 +6165,7 @@ and parse_include parser =
       (* Parse module path after 'of' *)
       let path = parse_identifier parser in
       let children =
-        [ include_kw ] @ trivia_after_include @ [ module_kw ]
+        leading_trivia @ [ include_kw ] @ trivia_after_include @ [ module_kw ]
         @ trivia_after_module @ [ type_kw ] @ trivia_after_type @ [ of_kw ]
         @ trivia_after_of @ path
       in
@@ -6174,14 +6174,14 @@ and parse_include parser =
       (* Just 'include module' - treat module as start of path *)
       let path = parse_identifier parser in
       let children =
-        [ include_kw ] @ trivia_after_include @ [ module_kw ]
+        leading_trivia @ [ include_kw ] @ trivia_after_include @ [ module_kw ]
         @ trivia_after_module @ path
       in
       Some (make_node_list ~kind:Syntax_kind.INCLUDE_STMT children)
   else
     (* Simple include: include Module.Path *)
     let path = parse_identifier parser in
-    let children = [ include_kw ] @ trivia_after_include @ path in
+    let children = leading_trivia @ [ include_kw ] @ trivia_after_include @ path in
     Some (make_node_list ~kind:Syntax_kind.INCLUDE_STMT children)
 
 let parse_implementation parser =
