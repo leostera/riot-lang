@@ -343,6 +343,23 @@ module Red : sig
     val text : ('kind, 'text) syntax_token -> 'text
     (** `text token` returns the text from the underlying green token. *)
   end
+
+  (** ## Serialization *)
+
+  val to_json :
+    kind_to_json:('kind -> Data.Json.t) ->
+    text_to_json:('text -> Data.Json.t) ->
+    ('kind, 'text) syntax_element ->
+    Data.Json.t
+  (** `to_json ~kind_to_json ~text_to_json elem` serializes a red element to
+      JSON.
+
+      Each red node/token includes its span (start/end offsets) for debugging.
+
+      Example: ```ocaml let kind_to_json kind = Data.Json.String (show_kind
+      kind) in let text_to_json text = Data.Json.String text in let red_root =
+      Red.new_root green_tree in let json = Red.to_json ~kind_to_json
+      ~text_to_json (Red.Node red_root) ``` *)
 end
 
 (** # Builder
