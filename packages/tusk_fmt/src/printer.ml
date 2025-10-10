@@ -53,6 +53,7 @@ let print_root ~config root =
   let indent_level = ref 0 in
   let last_token_kind = ref None in
   let last_token_text = ref None in
+  let prev_token_text = ref None in
 
   let add_indent () =
     Buffer.add_string buf (indent_string config !indent_level)
@@ -68,8 +69,13 @@ let print_root ~config root =
         if current_text = "." || last_text = "." then false
         (* No space after ` for poly variants *)
         else if last_text = "`" then false
-        (* No space after prefix operators *)
-        else if is_prefix_operator last_text then false
+        (* No space after prefix operators when they come after = or other operators *)
+        else if is_prefix_operator last_text then
+          (match !prev_token_text with
+           | Some prev when prev = "=" || is_operator prev || prev = "(" || prev = "[" || prev = "," -> false
+           | _ -> true)
+        (* Space after regular operators *)
+        else if is_operator last_text then true
           (* No space in empty brackets [] or [||] *)
         else if last_text = "[" && current_text = "]" then false
         else if last_text = "[|" && current_text = "|]" then false
@@ -114,16 +120,19 @@ let print_root ~config root =
               if should_add_space_before text then add_space ();
               Buffer.add_string buf text;
               (* Don't save WHITESPACE as last kind - use a synthetic kind *)
+              prev_token_text := !last_token_text;
               last_token_kind := None;
               last_token_text := Some text)
         | Syn.SyntaxKind.COMMENT | Syn.SyntaxKind.DOCSTRING ->
             if should_add_space_before text then add_space ();
             Buffer.add_string buf text;
+            prev_token_text := !last_token_text;
             last_token_kind := Some kind;
             last_token_text := Some text
         | _ ->
             if should_add_space_before text then add_space ();
             Buffer.add_string buf text;
+            prev_token_text := !last_token_text;
             last_token_kind := Some kind;
             last_token_text := Some text)
     | Syn.Ceibo.Red.Node node -> print_node ~needs_indent node
