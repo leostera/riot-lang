@@ -177,3 +177,48 @@ let f (Client { transport_mod; transport; _ }) = transport_mod  (* ✅ Works! *)
 - Fixed common OCaml patterns used throughout the codebase
 - Added regression tests (9055, 9057)
 
+
+## Known Issues
+
+### Multi-Field Record Span Calculation Bug (Pre-existing)
+
+**Issue**: Multi-field records with spaces before `=` in the 2nd+ fields report incorrect tree width (off by 1 byte per affected field).
+
+**Examples**:
+```ocaml
+let x = {a=1;b =2}    (* 19 bytes actual, reports 18 bytes - off by 1 *)
+let x = {a=1;b = 2}   (* 20 bytes actual, reports 19 bytes - off by 1 *)
+let x = {a=1;b=2;c =3} (* off by 1 *)
+let x = {a =1;b =2}   (* off by 2 - one per field with space before = *)
+```
+
+Working correctly:
+```ocaml
+let x = {a=1;b=2}     (* No spaces - correct *)
+let x = {a = 1}       (* Single field - correct *)
+let x = {a=1; b=2}    (* Space after semicolon only - correct *)
+```
+
+**Root Cause**: Unknown - appears to be related to interaction between `parse_identifier` (which consumes and returns trivia) and `parse_record_field` (which also consumes trivia). The first field is correct, but subsequent fields lose the space before `=`.
+
+**Impact**: Tree width calculations are slightly off for multi-field records with certain spacing patterns. Doesn't affect parsing correctness, only span reporting.
+
+**Status**: Needs investigation. Not introduced by recent fixes - was already present.
+
+### Red Tree Span Calculation Bug
+
+**Issue**: The Ceibo Red tree is calculating incorrect absolute spans for tokens. Tokens report positions that don't match their actual location in the source file.
+
+**Example**: 
+- Token `Unix` on line 39 position 2
+- Red tree reports span 1173..1177
+- Actual file position should be around 1215..1219
+
+**Impact**: 
+- Linter carets point to wrong locations
+- Makes it difficult to identify exactly which token has the issue
+
+**Root Cause**: Red tree needs to correctly accumulate widths from Green tree to compute absolute positions. The Green tree is lossless, but the Red tree span calculation has a bug.
+
+**Workaround**: Manually verify line numbers in linter output.
+

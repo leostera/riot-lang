@@ -1796,9 +1796,7 @@ and parse_record_expr parser =
                 (List.rev acc, List.rev trivia_acc)
               else
                 let semi = consume parser in
-                let trivia_after_semi = consume_trivia parser in
                 let acc = semi :: acc in
-                let trivia_acc = trivia_after_semi @ trivia_acc in
                 match parse_record_field parser with
                 | Some f ->
                     let trivia_after_f = consume_trivia parser in
