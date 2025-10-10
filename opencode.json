@@ -4,12 +4,16 @@
     "bash": {
       "git*": "deny",
       "*": "ask",
+      "rg*": "allow",
+      "tusk*": "allow",
+      "./target/debug/tusk*": "deny",
+      "*minitusk*": "deny",
     },
   },
   "mcp": {
     "tusk": {
       "type": "local",
-      "command": ["./tusk", "mcp"],
+      "command": ["tusk", "mcp"],
     },
     "linear": {
       "type": "local",
