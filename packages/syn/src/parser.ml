@@ -3995,9 +3995,11 @@ and parse_record_pattern parser =
             fields := List.rev_append trivia2 !fields;
             ())
       | Some (Token.Ident _) ->
-          let field_name = consume parser in
+          (* Parse field name (can be qualified: Module.field or just field) *)
+          let field_name_parts = parse_identifier parser in
+          fields := List.rev_append field_name_parts !fields;
           let trivia1 = consume_trivia parser in
-          fields := List.rev_append trivia1 (field_name :: !fields);
+          fields := List.rev_append trivia1 !fields;
 
           (* Check if there's a '=' for field = pattern or just field (punning) *)
           if at parser Token.Eq then
