@@ -64,8 +64,10 @@ let print_root ~config root =
     match !last_token_text with
     | None -> false
     | Some last_text ->
+        (* No space around . for module paths *)
+        if current_text = "." || last_text = "." then false
         (* No space after prefix operators *)
-        if is_prefix_operator last_text then false
+        else if is_prefix_operator last_text then false
           (* Space after opening bracket/brace *)
         else if last_text = "[" || last_text = "{" || last_text = "[|" then true
           (* Space before closing bracket/brace *)
@@ -125,8 +127,26 @@ let print_root ~config root =
     let children = Syn.Ceibo.Red.SyntaxNode.children node in
     match kind with
     | Syn.SyntaxKind.SOURCE_FILE | Syn.SyntaxKind.STRUCTURE ->
-        Array.iter
-          (fun child -> print_element ~needs_indent:true child)
+        let prev_kind = ref None in
+        Array.iteri
+          (fun i child ->
+            let current_kind = match child with
+              | Syn.Ceibo.Red.Node n -> Some (Syn.Ceibo.Red.SyntaxNode.kind n)
+              | _ -> None
+            in
+            (* Add blank line between declarations, except between consecutive opens/includes *)
+            if i > 0 then (
+              let skip_blank = match (!prev_kind, current_kind) with
+                | (Some Syn.SyntaxKind.OPEN_STMT, Some Syn.SyntaxKind.OPEN_STMT)
+                | (Some Syn.SyntaxKind.INCLUDE_STMT, Some Syn.SyntaxKind.INCLUDE_STMT)
+                | (Some Syn.SyntaxKind.OPEN_STMT, Some Syn.SyntaxKind.INCLUDE_STMT)
+                | (Some Syn.SyntaxKind.INCLUDE_STMT, Some Syn.SyntaxKind.OPEN_STMT) -> true
+                | _ -> false
+              in
+              if not skip_blank then add_newline ()
+            );
+            prev_kind := current_kind;
+            print_element ~needs_indent:true child)
           children
     | Syn.SyntaxKind.LET_BINDING | Syn.SyntaxKind.LET_REC_BINDING ->
         if needs_indent then add_indent ();
