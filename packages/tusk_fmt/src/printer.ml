@@ -196,6 +196,47 @@ let partition_match_case children =
   in
   go 0 `Start [] []
 
+(**
+   Helper: Extract parts of LET_IN expression
+   
+   Given LET_IN children, split into:
+   - pattern (binding pattern between 'let' and '=')
+   - value (expression between '=' and 'in')
+   - body (expression after 'in')
+   
+   Returns: (pattern_children, value_children, body_children)
+*)
+let partition_let_in children =
+  let rec go i state pattern_acc value_acc body_acc =
+    if i >= Array.length children then
+      (List.rev pattern_acc, List.rev value_acc, List.rev body_acc)
+    else
+      match children.(i) with
+      | Syn.Ceibo.Red.Token tok ->
+          let text = Syn.Ceibo.Red.SyntaxToken.text tok in
+          let kind = Syn.Ceibo.Red.SyntaxToken.kind tok in
+          if kind = Syn.SyntaxKind.WHITESPACE &&
+             String.for_all (fun c -> c = ' ' || c = '\t' || c = '\n' || c = '\r') text
+          then go (i+1) state pattern_acc value_acc body_acc
+          else if text = "let" then
+            go (i+1) `AfterLet pattern_acc value_acc body_acc
+          else if text = "=" then
+            go (i+1) `AfterEq pattern_acc value_acc body_acc
+          else if text = "in" then
+            go (i+1) `AfterIn pattern_acc value_acc body_acc
+          else
+            (match state with
+             | `Start | `AfterLet -> go (i+1) state (children.(i) :: pattern_acc) value_acc body_acc
+             | `AfterEq -> go (i+1) state pattern_acc (children.(i) :: value_acc) body_acc
+             | `AfterIn -> go (i+1) state pattern_acc value_acc (children.(i) :: body_acc))
+      | node ->
+          (match state with
+           | `Start | `AfterLet -> go (i+1) state (children.(i) :: pattern_acc) value_acc body_acc
+           | `AfterEq -> go (i+1) state pattern_acc (children.(i) :: value_acc) body_acc
+           | `AfterIn -> go (i+1) state pattern_acc value_acc (children.(i) :: body_acc))
+  in
+  go 0 `Start [] [] []
+
 let print_root ~config root =
   let buf = Buffer.create 1024 in
   let indent_level = ref 0 in
@@ -333,6 +374,39 @@ let print_root ~config root =
     last_token_text := None
   
   (**
+     Format LET_IN expression with multi-line layout:
+     
+     let <pattern> = <value> in
+     <body>
+  *)
+  and format_let_in_expr ~needs_indent children =
+    let (pattern_children, value_children, body_children) = partition_let_in children in
+    
+    (* Multi-line LET_IN: start on new line *)
+    add_newline ();
+    incr indent_level;
+    add_indent ();
+    
+    (* Print: let <pattern> = <value> in *)
+    Buffer.add_string buf "let ";
+    List.iter (print_element ~needs_indent:false) pattern_children;
+    Buffer.add_string buf " = ";
+    just_added_newline := true;  (* Suppress spacing before value *)
+    List.iter (print_element ~needs_indent:false) value_children;
+    Buffer.add_string buf " in";
+    add_newline ();
+    
+    (* Print body (not indented further - same level as let) *)
+    add_indent ();
+    List.iter (print_element ~needs_indent:false) body_children;
+    
+    decr indent_level;
+    add_newline ();
+    (* Reset token tracking *)
+    last_token_kind := None;
+    last_token_text := None
+  
+  (**
      Format MATCH expression with multi-line layout:
      
      match <scrutinee> with
@@ -432,6 +506,9 @@ let print_root ~config root =
         
     | Syn.SyntaxKind.MATCH_EXPR ->
         format_match_expr ~needs_indent children
+    
+    | Syn.SyntaxKind.LET_EXPR | Syn.SyntaxKind.LET_REC_EXPR ->
+        format_let_in_expr ~needs_indent children
     
     (* Top-level structure *)
     | Syn.SyntaxKind.SOURCE_FILE | Syn.SyntaxKind.STRUCTURE ->
