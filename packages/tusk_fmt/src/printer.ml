@@ -197,6 +197,96 @@ let partition_match_case children =
   go 0 `Start [] []
 
 (**
+   Helper: Check if TYPE_DECL contains variant constructors
+   
+   Look for TYPE_VARIANT_CONSTR nodes OR the presence of | tokens
+   which indicate a variant type
+*)
+let has_variant_constructors children =
+  Array.exists (fun child ->
+    match child with
+    | Syn.Ceibo.Red.Node node ->
+        Syn.Ceibo.Red.SyntaxNode.kind node = Syn.SyntaxKind.TYPE_VARIANT_CONSTR
+    | Syn.Ceibo.Red.Token tok ->
+        (* Also check for | tokens which indicate variants *)
+        Syn.Ceibo.Red.SyntaxToken.text tok = "|"
+    | _ -> false
+  ) children
+
+(**
+   Helper: Extract parts of TYPE_VARIANT declaration
+   
+   Returns: (header_children, variant_constructors)
+   where header is everything before the first constructor
+*)
+let partition_type_variant children =
+  let rec go i header_acc constr_acc =
+    if i >= Array.length children then
+      (List.rev header_acc, List.rev constr_acc)
+    else
+      match children.(i) with
+      | Syn.Ceibo.Red.Node node when 
+          Syn.Ceibo.Red.SyntaxNode.kind node = Syn.SyntaxKind.TYPE_VARIANT_CONSTR ->
+          go (i+1) header_acc (children.(i) :: constr_acc)
+      | Syn.Ceibo.Red.Token tok ->
+          let kind = Syn.Ceibo.Red.SyntaxToken.kind tok in
+          if kind = Syn.SyntaxKind.WHITESPACE &&
+             String.for_all (fun c -> c = ' ' || c = '\t' || c = '\n' || c = '\r') 
+               (Syn.Ceibo.Red.SyntaxToken.text tok)
+          then go (i+1) header_acc constr_acc
+          else if List.length constr_acc = 0 then
+            (* Before first constructor - part of header *)
+            go (i+1) (children.(i) :: header_acc) constr_acc
+          else
+            (* After constructors started - skip pipes between them *)
+            go (i+1) header_acc constr_acc
+      | elem ->
+          if List.length constr_acc = 0 then
+            go (i+1) (elem :: header_acc) constr_acc
+          else
+            go (i+1) header_acc constr_acc
+  in
+  go 0 [] []
+
+(**
+   Helper: Extract parts of TRY expression
+   
+   Given TRY_EXPR children, split into:
+   - body (expression between 'try' and 'with')
+   - cases (list of match cases after 'with')
+*)
+let partition_try_expr children =
+  let rec go i state body_acc cases_acc =
+    if i >= Array.length children then
+      (List.rev body_acc, List.rev cases_acc)
+    else
+      match children.(i) with
+      | Syn.Ceibo.Red.Token tok ->
+          let text = Syn.Ceibo.Red.SyntaxToken.text tok in
+          let kind = Syn.Ceibo.Red.SyntaxToken.kind tok in
+          if kind = Syn.SyntaxKind.WHITESPACE &&
+             String.for_all (fun c -> c = ' ' || c = '\t' || c = '\n' || c = '\r') text
+          then go (i+1) state body_acc cases_acc
+          else if text = "try" then
+            go (i+1) `AfterTry body_acc cases_acc
+          else if text = "with" then
+            go (i+1) `AfterWith body_acc cases_acc
+          else
+            (match state with
+             | `Start | `AfterTry -> go (i+1) state (children.(i) :: body_acc) cases_acc
+             | `AfterWith -> go (i+1) state body_acc cases_acc)
+      | Syn.Ceibo.Red.Node node ->
+          let node_kind = Syn.Ceibo.Red.SyntaxNode.kind node in
+          if node_kind = Syn.SyntaxKind.MATCH_CASE then
+            go (i+1) state body_acc (children.(i) :: cases_acc)
+          else
+            (match state with
+             | `Start | `AfterTry -> go (i+1) state (children.(i) :: body_acc) cases_acc
+             | `AfterWith -> go (i+1) state body_acc cases_acc)
+  in
+  go 0 `Start [] []
+
+(**
    Helper: Extract parts of LET_IN expression
    
    Given LET_IN children, split into:
@@ -237,42 +327,68 @@ let partition_let_in children =
   in
   go 0 `Start [] [] []
 
+(** 
+   Printer context - mutable state passed through formatting functions
+   
+   This avoids global mutable state and makes the printer:
+   - Thread-safe (each call gets its own context)
+   - Testable (can inspect context state)
+   - Composable (can create multiple printers)
+*)
+type printer_ctx = {
+  config: Config.t;
+  buf: Buffer.t;
+  mutable indent_level: int;
+  mutable last_token_kind: Syn.SyntaxKind.t option;
+  mutable last_token_text: string option;
+  mutable prev_token_text: string option;
+  mutable in_labeled_arg: bool;
+  mutable in_indexing: bool;
+  mutable in_record: bool;
+  mutable just_added_newline: bool;
+}
+
+let create_context config = {
+  config;
+  buf = Buffer.create 1024;
+  indent_level = 0;
+  last_token_kind = None;
+  last_token_text = None;
+  prev_token_text = None;
+  in_labeled_arg = false;
+  in_indexing = false;
+  in_record = false;
+  just_added_newline = false;
+}
+
 let print_root ~config root =
-  let buf = Buffer.create 1024 in
-  let indent_level = ref 0 in
-  let last_token_kind = ref None in
-  let last_token_text = ref None in
-  let prev_token_text = ref None in
-  let in_labeled_arg = ref false in
-  let in_indexing = ref false in
-  let in_record = ref false in
-  let just_added_newline = ref false in  (* Track if we just added newline+indent *)
+  let ctx = create_context config in
 
-  let add_indent () =
-    Buffer.add_string buf (indent_string config !indent_level);
-    just_added_newline := true  (* Mark that we just indented *)
+  let add_indent ctx =
+    Buffer.add_string ctx.buf (indent_string ctx.config ctx.indent_level);
+    ctx.just_added_newline <- true
   in
-  let add_newline () = 
-    Buffer.add_char buf '\n';
-    just_added_newline := true  (* Mark that we just added newline *)
+  let add_newline ctx = 
+    Buffer.add_char ctx.buf '\n';
+    ctx.just_added_newline <- true
   in
-  let add_space () = Buffer.add_char buf ' ' in
+  let add_space ctx = Buffer.add_char ctx.buf ' ' in
 
-  let should_add_space_before current_text =
+  let should_add_space_before ctx current_text =
     (* Don't add space right after newline/indent *)
-    if !just_added_newline then (
-      just_added_newline := false;
+    if ctx.just_added_newline then (
+      ctx.just_added_newline <- false;
       false
     ) else
-    match !last_token_text with
+    match ctx.last_token_text with
     | None -> false
     | Some last_text ->
         (* Track labeled/optional arg context *)
-        if last_text = "~" || last_text = "?" then in_labeled_arg := true;
+        if last_text = "~" || last_text = "?" then ctx.in_labeled_arg <- true;
         
         (* Track record context *)
-        if last_text = "{" then in_record := true
-        else if current_text = "}" then in_record := false;
+        if last_text = "{" then ctx.in_record <- true
+        else if current_text = "}" then ctx.in_record <- false;
         
         (* No space around . for module paths and indexing *)
         if current_text = "." || last_text = "." then false
@@ -281,13 +397,13 @@ let print_root ~config root =
         (* No space after ~ or ? for labeled/optional args *)
         else if last_text = "~" || last_text = "?" then false
         (* No space before/after : in labeled args *)
-        else if !in_labeled_arg && (current_text = ":" || last_text = ":") then
-          (if current_text <> ":" then in_labeled_arg := false; false)
+        else if ctx.in_labeled_arg && (current_text = ":" || last_text = ":") then
+          (if current_text <> ":" then ctx.in_labeled_arg <- false; false)
         (* No space around = in record fields *)
-        else if !in_record && (current_text = "=" || last_text = "=") then false
+        else if ctx.in_record && (current_text = "=" || last_text = "=") then false
         (* No space after prefix operators when they come after = or other operators *)
         else if is_prefix_operator last_text then
-          (match !prev_token_text with
+          (match ctx.prev_token_text with
            | Some prev when prev = "=" || is_operator prev || prev = "(" || prev = "[" || prev = "," -> false
            | _ -> true)
         (* Space after regular operators *)
@@ -297,11 +413,11 @@ let print_root ~config root =
         else if last_text = "[|" && current_text = "|]" then false
           (* Track indexing context when we see .[ *)
           (* No space after [ when it's for indexing (prev is .) *)
-        else if last_text = "[" && !prev_token_text = Some "." then 
-          (in_indexing := true; false)
+        else if last_text = "[" && ctx.prev_token_text = Some "." then 
+          (ctx.in_indexing <- true; false)
           (* No space before ] when in indexing context *)
-        else if current_text = "]" && !in_indexing then 
-          (in_indexing := false; false)
+        else if current_text = "]" && ctx.in_indexing then 
+          (ctx.in_indexing <- false; false)
           (* Space after opening bracket/brace *)
         else if last_text = "[" || last_text = "{" || last_text = "[|" then true
           (* Space before closing bracket/brace *)
@@ -334,44 +450,77 @@ let print_root ~config root =
      else
        <else_branch>
   *)
-  let rec format_if_expr ~needs_indent children =
+  let rec format_if_expr ctx ~needs_indent children =
     let (cond_children, then_children, else_children_opt) = partition_if_expr children in
     
     (* Multi-line IF: start on new line, indented from current level *)
-    add_newline ();
-    incr indent_level;  (* Indent the whole if expression *)
-    add_indent ();
+    add_newline ctx;
+    ctx.indent_level <- ctx.indent_level + 1;  (* Indent the whole if expression *)
+    add_indent ctx;
     
     (* Print: if <condition> then *)
-    Buffer.add_string buf "if ";
-    List.iter (print_element ~needs_indent:false) cond_children;
-    Buffer.add_string buf " then";
-    add_newline ();
+    Buffer.add_string ctx.buf "if ";
+    List.iter (print_element ctx ~needs_indent:false) cond_children;
+    Buffer.add_string ctx.buf " then";
+    add_newline ctx;
     
     (* Print then-branch (indented one more level from the if) *)
-    incr indent_level;
-    add_indent ();
-    List.iter (print_element ~needs_indent:false) then_children;
-    decr indent_level;
+    ctx.indent_level <- ctx.indent_level + 1;
+    add_indent ctx;
+    List.iter (print_element ctx ~needs_indent:false) then_children;
+    ctx.indent_level <- ctx.indent_level - 1;
     
     (* Print else-branch if present *)
     (match else_children_opt with
      | Some else_children ->
-         add_newline ();
-         add_indent ();  (* Same level as 'if' *)
-         Buffer.add_string buf "else ";  (* Trailing space after else *)
-         add_newline ();
-         incr indent_level;
-         add_indent ();
-         List.iter (print_element ~needs_indent:false) else_children;
-         decr indent_level
+         add_newline ctx;
+         add_indent ctx;  (* Same level as 'if' *)
+         Buffer.add_string ctx.buf "else ";  (* Trailing space after else *)
+         add_newline ctx;
+         ctx.indent_level <- ctx.indent_level + 1;
+         add_indent ctx;
+         List.iter (print_element ctx ~needs_indent:false) else_children;
+         ctx.indent_level <- ctx.indent_level - 1
      | None -> ());
     
-    decr indent_level;  (* Restore indent level *)
-    add_newline ();
+    ctx.indent_level <- ctx.indent_level - 1;  (* Restore indent level *)
+    add_newline ctx;
     (* Reset token tracking *)
-    last_token_kind := None;
-    last_token_text := None
+    ctx.last_token_kind <- None;
+    ctx.last_token_text <- None
+  
+  (**
+     Format TYPE_VARIANT declaration with multi-line layout:
+     
+     type name =
+       | Constructor1
+       | Constructor2
+  *)
+  and format_type_variant ctx ~needs_indent children =
+    let (header_children, variant_constrs) = partition_type_variant children in
+    
+    (* Print header: type name = *)
+    if needs_indent then add_indent ctx;
+    List.iter (print_element ctx ~needs_indent:false) header_children;
+    add_newline ctx;
+    
+    (* Print each constructor *)
+    ctx.indent_level <- ctx.indent_level + 1;
+    List.iter (fun constr_elem ->
+      match constr_elem with
+      | Syn.Ceibo.Red.Node node ->
+          let constr_children = Syn.Ceibo.Red.SyntaxNode.children node in
+          add_indent ctx;
+          Buffer.add_string ctx.buf "| ";
+          Array.iter (print_element ctx ~needs_indent:false) constr_children;
+          add_newline ctx
+      | _ -> ()
+    ) variant_constrs;
+    ctx.indent_level <- ctx.indent_level - 1;
+    
+    (* Reset token tracking *)
+    ctx.last_token_kind <- None;
+    ctx.last_token_text <- None
   
   (**
      Format LET_IN expression with multi-line layout:
@@ -379,53 +528,64 @@ let print_root ~config root =
      let <pattern> = <value> in
      <body>
   *)
-  and format_let_in_expr ~needs_indent children =
+  and format_let_in_expr ctx ~needs_indent children =
     let (pattern_children, value_children, body_children) = partition_let_in children in
     
     (* Multi-line LET_IN: start on new line *)
-    add_newline ();
-    incr indent_level;
-    add_indent ();
+    add_newline ctx;
+    ctx.indent_level <- ctx.indent_level + 1;
+    add_indent ctx;
     
     (* Print: let <pattern> = <value> in *)
-    Buffer.add_string buf "let ";
-    List.iter (print_element ~needs_indent:false) pattern_children;
-    Buffer.add_string buf " = ";
-    just_added_newline := true;  (* Suppress spacing before value *)
-    List.iter (print_element ~needs_indent:false) value_children;
-    Buffer.add_string buf " in";
-    add_newline ();
+    Buffer.add_string ctx.buf "let ";
+    List.iter (print_element ctx ~needs_indent:false) pattern_children;
+    Buffer.add_string ctx.buf " = ";
+    ctx.just_added_newline <- true;  (* Suppress spacing before value *)
+    List.iter (print_element ctx ~needs_indent:false) value_children;
+    Buffer.add_string ctx.buf " in";
+    add_newline ctx;
     
     (* Print body (not indented further - same level as let) *)
-    add_indent ();
-    List.iter (print_element ~needs_indent:false) body_children;
+    add_indent ctx;
+    List.iter (print_element ctx ~needs_indent:false) body_children;
     
-    decr indent_level;
-    add_newline ();
+    ctx.indent_level <- ctx.indent_level - 1;
+    add_newline ctx;
     (* Reset token tracking *)
-    last_token_kind := None;
-    last_token_text := None
+    ctx.last_token_kind <- None;
+    ctx.last_token_text <- None
   
   (**
-     Format MATCH expression with multi-line layout:
+     Format TRY expression with multi-line layout:
      
-     match <scrutinee> with
-     | <pattern> -> <body>
-     | <pattern> -> <body>
+     try
+       <body>
+     with
+     | <pattern> -> <handler>
   *)
-  and format_match_expr ~needs_indent children =
-    let (scrut_children, case_children) = partition_match_expr children in
+  and format_try_expr ctx ~needs_indent children =
+    let (body_children, case_children) = partition_try_expr children in
     
-    (* Multi-line MATCH: put on new line when part of larger expression *)
-    add_newline ();
-    incr indent_level;
-    add_indent ();
+    (* Multi-line TRY: start on new line *)
+    add_newline ctx;
+    ctx.indent_level <- ctx.indent_level + 1;
+    add_indent ctx;
     
-    (* Print: match <scrutinee> with *)
-    Buffer.add_string buf "match ";
-    List.iter (print_element ~needs_indent:false) scrut_children;
-    Buffer.add_string buf " with";
-    add_newline ();
+    (* Print: try *)
+    Buffer.add_string ctx.buf "try ";
+    add_newline ctx;
+    
+    (* Print body (indented) *)
+    ctx.indent_level <- ctx.indent_level + 1;
+    add_indent ctx;
+    List.iter (print_element ctx ~needs_indent:false) body_children;
+    ctx.indent_level <- ctx.indent_level - 1;
+    add_newline ctx;
+    
+    (* Print: with *)
+    add_indent ctx;
+    Buffer.add_string ctx.buf "with ";
+    add_newline ctx;
     
     (* Print each case *)
     List.iter (fun case_elem ->
@@ -434,23 +594,67 @@ let print_root ~config root =
           let case_children = Syn.Ceibo.Red.SyntaxNode.children node in
           let (pattern, body) = partition_match_case case_children in
           
-          add_indent ();
-          Buffer.add_string buf "| ";
-          List.iter (print_element ~needs_indent:false) pattern;
-          Buffer.add_string buf " -> ";
-          just_added_newline := true;  (* Suppress spacing before body *)
-          List.iter (print_element ~needs_indent:false) body;
-          add_newline ()
+          add_indent ctx;
+          Buffer.add_string ctx.buf "| ";
+          List.iter (print_element ctx ~needs_indent:false) pattern;
+          Buffer.add_string ctx.buf " -> ";
+          ctx.just_added_newline <- true;  (* Suppress spacing before body *)
+          List.iter (print_element ctx ~needs_indent:false) body;
+          add_newline ctx
       | _ -> ()
     ) case_children;
     
-    decr indent_level;
-    add_newline ();
+    ctx.indent_level <- ctx.indent_level - 1;
+    add_newline ctx;
     (* Reset token tracking *)
-    last_token_kind := None;
-    last_token_text := None
+    ctx.last_token_kind <- None;
+    ctx.last_token_text <- None
   
-  and print_element ~needs_indent elem =
+  (**
+     Format MATCH expression with multi-line layout:
+     
+     match <scrutinee> with
+     | <pattern> -> <body>
+     | <pattern> -> <body>
+  *)
+  and format_match_expr ctx ~needs_indent children =
+    let (scrut_children, case_children) = partition_match_expr children in
+    
+    (* Multi-line MATCH: put on new line when part of larger expression *)
+    add_newline ctx;
+    ctx.indent_level <- ctx.indent_level + 1;
+    add_indent ctx;
+    
+    (* Print: match <scrutinee> with *)
+    Buffer.add_string ctx.buf "match ";
+    List.iter (print_element ctx ~needs_indent:false) scrut_children;
+    Buffer.add_string ctx.buf " with";
+    add_newline ctx;
+    
+    (* Print each case *)
+    List.iter (fun case_elem ->
+      match case_elem with
+      | Syn.Ceibo.Red.Node node ->
+          let case_children = Syn.Ceibo.Red.SyntaxNode.children node in
+          let (pattern, body) = partition_match_case case_children in
+          
+          add_indent ctx;
+          Buffer.add_string ctx.buf "| ";
+          List.iter (print_element ctx ~needs_indent:false) pattern;
+          Buffer.add_string ctx.buf " -> ";
+          ctx.just_added_newline <- true;  (* Suppress spacing before body *)
+          List.iter (print_element ctx ~needs_indent:false) body;
+          add_newline ctx
+      | _ -> ()
+    ) case_children;
+    
+    ctx.indent_level <- ctx.indent_level - 1;
+    add_newline ctx;
+    (* Reset token tracking *)
+    ctx.last_token_kind <- None;
+    ctx.last_token_text <- None
+  
+  and print_element ctx ~needs_indent elem =
     match elem with
     | Syn.Ceibo.Red.Token tok -> (
         let text = Syn.Ceibo.Red.SyntaxToken.text tok in
@@ -464,26 +668,26 @@ let print_root ~config root =
             then ()
             else (
               (* This is a delimiter misclassified as whitespace *)
-              if should_add_space_before text then add_space ();
-              Buffer.add_string buf text;
+              if should_add_space_before ctx text then add_space ctx;
+              Buffer.add_string ctx.buf text;
               (* Don't save WHITESPACE as last kind - use a synthetic kind *)
-              prev_token_text := !last_token_text;
-              last_token_kind := None;
-              last_token_text := Some text)
+              ctx.prev_token_text <- ctx.last_token_text;
+              ctx.last_token_kind <- None;
+              ctx.last_token_text <- Some text)
         | Syn.SyntaxKind.COMMENT | Syn.SyntaxKind.DOCSTRING ->
-            if should_add_space_before text then add_space ();
-            Buffer.add_string buf text;
-            prev_token_text := !last_token_text;
-            last_token_kind := Some kind;
-            last_token_text := Some text
+            if should_add_space_before ctx text then add_space ctx;
+            Buffer.add_string ctx.buf text;
+            ctx.prev_token_text <- ctx.last_token_text;
+            ctx.last_token_kind <- Some kind;
+            ctx.last_token_text <- Some text
         | _ ->
-            if should_add_space_before text then add_space ();
-            Buffer.add_string buf text;
-            prev_token_text := !last_token_text;
-            last_token_kind := Some kind;
-            last_token_text := Some text)
-    | Syn.Ceibo.Red.Node node -> print_node ~needs_indent node
-  and print_node ~needs_indent node =
+            if should_add_space_before ctx text then add_space ctx;
+            Buffer.add_string ctx.buf text;
+            ctx.prev_token_text <- ctx.last_token_text;
+            ctx.last_token_kind <- Some kind;
+            ctx.last_token_text <- Some text)
+    | Syn.Ceibo.Red.Node node -> print_node ctx ~needs_indent node
+  and print_node ctx ~needs_indent node =
     let kind = Syn.Ceibo.Red.SyntaxNode.kind node in
     let children = Syn.Ceibo.Red.SyntaxNode.children node in
     
@@ -502,13 +706,16 @@ let print_root ~config root =
     match kind with
     (* Multi-line constructs - use custom formatters *)
     | Syn.SyntaxKind.IF_EXPR ->
-        format_if_expr ~needs_indent children
+        format_if_expr ctx ~needs_indent children
         
     | Syn.SyntaxKind.MATCH_EXPR ->
-        format_match_expr ~needs_indent children
+        format_match_expr ctx ~needs_indent children
+    
+    | Syn.SyntaxKind.TRY_EXPR ->
+        format_try_expr ctx ~needs_indent children
     
     | Syn.SyntaxKind.LET_EXPR | Syn.SyntaxKind.LET_REC_EXPR ->
-        format_let_in_expr ~needs_indent children
+        format_let_in_expr ctx ~needs_indent children
     
     (* Top-level structure *)
     | Syn.SyntaxKind.SOURCE_FILE | Syn.SyntaxKind.STRUCTURE ->
@@ -528,63 +735,69 @@ let print_root ~config root =
                 | (Some Syn.SyntaxKind.INCLUDE_STMT, Some Syn.SyntaxKind.OPEN_STMT) -> true
                 | _ -> false
               in
-              if not skip_blank then add_newline ()
+              if not skip_blank then add_newline ctx
             );
             prev_kind := current_kind;
-            print_element ~needs_indent:true child)
+            print_element ctx ~needs_indent:true child)
           children
           
     (* Simple declarations - single line with token printer *)
     | Syn.SyntaxKind.LET_BINDING | Syn.SyntaxKind.LET_REC_BINDING ->
-        if needs_indent then add_indent ();
+        if needs_indent then add_indent ctx;
         Array.iter
-          (fun child -> print_element ~needs_indent:false child)
+          (fun child -> print_element ctx ~needs_indent:false child)
           children;
-        add_newline ();
-        last_token_kind := None;
-        last_token_text := None
+        add_newline ctx;
+        ctx.last_token_kind <- None;
+        ctx.last_token_text <- None
         
     | Syn.SyntaxKind.TYPE_DECL ->
-        if needs_indent then add_indent ();
-        Array.iter
-          (fun child -> print_element ~needs_indent:false child)
-          children;
-        add_newline ();
-        last_token_kind := None;
-        last_token_text := None
+        (* Check if this is a variant type - if so, use multi-line formatter *)
+        if has_variant_constructors children then
+          format_type_variant ctx ~needs_indent children
+        else (
+          (* Simple type - single line *)
+          if needs_indent then add_indent ctx;
+          Array.iter
+            (fun child -> print_element ctx ~needs_indent:false child)
+            children;
+          add_newline ctx;
+          ctx.last_token_kind <- None;
+          ctx.last_token_text <- None
+        )
         
     | Syn.SyntaxKind.MODULE_DECL | Syn.SyntaxKind.MODULE_TYPE_DECL ->
-        if needs_indent then add_indent ();
+        if needs_indent then add_indent ctx;
         Array.iter
-          (fun child -> print_element ~needs_indent:false child)
+          (fun child -> print_element ctx ~needs_indent:false child)
           children;
-        add_newline ();
-        last_token_kind := None;
-        last_token_text := None
+        add_newline ctx;
+        ctx.last_token_kind <- None;
+        ctx.last_token_text <- None
         
     | Syn.SyntaxKind.OPEN_STMT | Syn.SyntaxKind.INCLUDE_STMT ->
-        if needs_indent then add_indent ();
+        if needs_indent then add_indent ctx;
         Array.iter
-          (fun child -> print_element ~needs_indent:false child)
+          (fun child -> print_element ctx ~needs_indent:false child)
           children;
-        add_newline ();
-        last_token_kind := None;
-        last_token_text := None
+        add_newline ctx;
+        ctx.last_token_kind <- None;
+        ctx.last_token_text <- None
         
     (* Compound expressions - use token printer *)
     | Syn.SyntaxKind.PAREN_EXPR | Syn.SyntaxKind.TUPLE_EXPR
     | Syn.SyntaxKind.LIST_EXPR | Syn.SyntaxKind.ARRAY_EXPR ->
         (* Explicitly print all children including delimiters *)
         Array.iter
-          (fun child -> print_element ~needs_indent:false child)
+          (fun child -> print_element ctx ~needs_indent:false child)
           children
           
     (* Default: use token-based printer *)
     | _ ->
         Array.iter
-          (fun child -> print_element ~needs_indent:false child)
+          (fun child -> print_element ctx ~needs_indent:false child)
           children
   in
 
-  print_element ~needs_indent:false (Syn.Ceibo.Red.Node root);
-  Buffer.contents buf
+  print_element ctx ~needs_indent:false (Syn.Ceibo.Red.Node root);
+  Buffer.contents ctx.buf
