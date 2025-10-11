@@ -461,7 +461,7 @@ let print_root ~config root =
     (* Print: if <condition> then *)
     Buffer.add_string ctx.buf "if ";
     List.iter (print_element ctx ~needs_indent:false) cond_children;
-    Buffer.add_string ctx.buf " then";
+    Buffer.add_string ctx.buf " then";  (* NO trailing space *)
     add_newline ctx;
     
     (* Print then-branch (indented one more level from the if) *)
@@ -542,7 +542,7 @@ let print_root ~config root =
     Buffer.add_string ctx.buf " = ";
     ctx.just_added_newline <- true;  (* Suppress spacing before value *)
     List.iter (print_element ctx ~needs_indent:false) value_children;
-    Buffer.add_string ctx.buf " in";
+    Buffer.add_string ctx.buf " in";  (* NO trailing space *)
     add_newline ctx;
     
     (* Print body (not indented further - same level as let) *)
@@ -572,7 +572,7 @@ let print_root ~config root =
     add_indent ctx;
     
     (* Print: try *)
-    Buffer.add_string ctx.buf "try ";
+    Buffer.add_string ctx.buf "try ";  (* Trailing space *)
     add_newline ctx;
     
     (* Print body (indented) *)
@@ -584,7 +584,7 @@ let print_root ~config root =
     
     (* Print: with *)
     add_indent ctx;
-    Buffer.add_string ctx.buf "with ";
+    Buffer.add_string ctx.buf "with ";  (* Trailing space for TRY *)
     add_newline ctx;
     
     (* Print each case *)
@@ -628,7 +628,7 @@ let print_root ~config root =
     (* Print: match <scrutinee> with *)
     Buffer.add_string ctx.buf "match ";
     List.iter (print_element ctx ~needs_indent:false) scrut_children;
-    Buffer.add_string ctx.buf " with";
+    Buffer.add_string ctx.buf " with";  (* NO trailing space *)
     add_newline ctx;
     
     (* Print each case *)
