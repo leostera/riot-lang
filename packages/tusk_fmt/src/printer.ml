@@ -205,14 +205,24 @@ let print_root ~config root =
   let in_labeled_arg = ref false in
   let in_indexing = ref false in
   let in_record = ref false in
+  let just_added_newline = ref false in  (* Track if we just added newline+indent *)
 
   let add_indent () =
-    Buffer.add_string buf (indent_string config !indent_level)
+    Buffer.add_string buf (indent_string config !indent_level);
+    just_added_newline := true  (* Mark that we just indented *)
   in
-  let add_newline () = Buffer.add_char buf '\n' in
+  let add_newline () = 
+    Buffer.add_char buf '\n';
+    just_added_newline := true  (* Mark that we just added newline *)
+  in
   let add_space () = Buffer.add_char buf ' ' in
 
   let should_add_space_before current_text =
+    (* Don't add space right after newline/indent *)
+    if !just_added_newline then (
+      just_added_newline := false;
+      false
+    ) else
     match !last_token_text with
     | None -> false
     | Some last_text ->
@@ -308,7 +318,7 @@ let print_root ~config root =
      | Some else_children ->
          add_newline ();
          add_indent ();  (* Same level as 'if' *)
-         Buffer.add_string buf "else";
+         Buffer.add_string buf "else ";  (* Trailing space after else *)
          add_newline ();
          incr indent_level;
          add_indent ();
@@ -354,6 +364,7 @@ let print_root ~config root =
           Buffer.add_string buf "| ";
           List.iter (print_element ~needs_indent:false) pattern;
           Buffer.add_string buf " -> ";
+          just_added_newline := true;  (* Suppress spacing before body *)
           List.iter (print_element ~needs_indent:false) body;
           add_newline ()
       | _ -> ()
