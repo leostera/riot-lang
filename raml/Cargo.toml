@@ -1,6 +1,25 @@
 [package]
-name = "raml"
+name = "raml-rt"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+name = "raml_rt"
+path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "raml-rt"
+path = "src/main.rs"
+
+[[bin]]
+name = "test_bytecode"
+path = "examples/test_bytecode.rs"
+
 [dependencies]
+wasm-bindgen = "0.2"
+console_error_panic_hook = "0.1"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+web-sys = { version = "0.3", features = ["console"] }

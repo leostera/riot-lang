@@ -5275,11 +5275,11 @@ and parse_type_arrow parser leading_trivia =
   | Some Token.Arrow ->
       let arrow = consume parser in
       let trivia_after_arrow = consume_trivia parser in
-      let right = parse_type_arrow parser trivia_after_arrow in
-      (* Right-associative recursion *)
-      make_node_list ~kind:Syntax_kind.TYPE_ARROW
-        ([ Ceibo.Green.Node left ] @ trivia_after_left2 @ [ arrow ]
-       @ trivia_after_arrow @ [ Ceibo.Green.Node right ])
+       let right = parse_type_arrow parser trivia_after_arrow in
+       (* Right-associative recursion *)
+       make_node_list ~kind:Syntax_kind.TYPE_ARROW
+         ([ Ceibo.Green.Node left ] @ trivia_after_left2 @ [ arrow ]
+        @ [ Ceibo.Green.Node right ])
   | _ -> left
 
 and parse_type_tuple parser leading_trivia =
@@ -5298,17 +5298,17 @@ and parse_type_tuple parser leading_trivia =
             let next = parse_type_atomic parser trivia_after_star in
             collect_tuple_parts
               (Ceibo.Green.Node next
-              :: (trivia_after_star @ [ star ] @ trivia_before_star @ acc))
+              :: ([ star ] @ trivia_before_star @ acc))
         | _ -> List.rev (trivia_before_star @ acc)
       in
       let star = consume parser in
       let trivia_after_star = consume_trivia parser in
-      let second = parse_type_atomic parser trivia_after_star in
-      let parts =
-        collect_tuple_parts
-          ([ Ceibo.Green.Node second ]
-          @ trivia_after_star @ [ star ] @ trivia_after_first
-          @ [ Ceibo.Green.Node first ])
+       let second = parse_type_atomic parser trivia_after_star in
+       let parts =
+         collect_tuple_parts
+           ([ Ceibo.Green.Node second ]
+           @ [ star ] @ trivia_after_first
+           @ [ Ceibo.Green.Node first ])
       in
       make_node_list ~kind:Syntax_kind.TYPE_TUPLE parts
   | _ -> first

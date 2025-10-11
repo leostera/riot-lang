@@ -744,9 +744,28 @@ let print_root ~config root =
     (* Simple declarations - single line with token printer *)
     | Syn.SyntaxKind.LET_BINDING | Syn.SyntaxKind.LET_REC_BINDING ->
         if needs_indent then add_indent ctx;
-        Array.iter
-          (fun child -> print_element ctx ~needs_indent:false child)
-          children;
+        (* Check if RHS contains multi-line expression that needs trailing space after = *)
+        let has_multiline_rhs = Array.exists (fun child ->
+          match child with
+          | Syn.Ceibo.Red.Node node ->
+              let node_kind = Syn.Ceibo.Red.SyntaxNode.kind node in
+              node_kind = Syn.SyntaxKind.LET_EXPR || 
+              node_kind = Syn.SyntaxKind.LET_REC_EXPR ||
+              node_kind = Syn.SyntaxKind.TRY_EXPR
+          | _ -> false
+        ) children in
+        
+        Array.iteri (fun i child ->
+          print_element ctx ~needs_indent:false child;
+          (* Add trailing space after = if multi-line expression follows *)
+          if has_multiline_rhs && i < Array.length children - 1 then (
+            match child with
+            | Syn.Ceibo.Red.Token tok ->
+                if Syn.Ceibo.Red.SyntaxToken.text tok = "=" then
+                  Buffer.add_char ctx.buf ' '
+            | _ -> ()
+          )
+        ) children;
         add_newline ctx;
         ctx.last_token_kind <- None;
         ctx.last_token_text <- None

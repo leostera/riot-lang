@@ -3,18 +3,19 @@
   "permission": {
     "bash": {
       "git*": "deny",
+      "git add -A": "deny",
+      "git status*": "allow",
+      "git diff*": "allow",
+      "git commit -m *": "allow",
       "*": "ask",
       "rg*": "allow",
+      "tusk clean": "deny",
       "tusk*": "allow",
       "./target/debug/tusk*": "deny",
       "*minitusk*": "deny",
     },
   },
   "mcp": {
-    "tusk": {
-      "type": "local",
-      "command": ["tusk", "mcp"],
-    },
     "linear": {
       "type": "local",
       "command": [

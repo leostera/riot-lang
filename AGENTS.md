@@ -43,18 +43,8 @@
 - if you think you're overcomplicating things, ask me
 - scrutinize my inputs and corrections
 - always go back to the project root after `cd`-ing somewhere
-- never call `ocamlc` directly
+- you will only call `tusk` 
 
-when working on `tusk`:
-- never call `tusk`, only call `./minitusk`
-- NEVER MODIFY OTHER PACKAGE SOURCES TO FIX BUILD LOGIC ERRORS
-- never call `tusk clean`
-
-when working on any other package:
-- always build through `./target/debug/tusk`
-  - and if that's not available then use `./target/bootstrap/tusk`
-  - and if that's not available then use `./minitusk`
-  - and if that's not available then use `./bootstarp.py`
 
 ## Writing OCaml with Tusk
 
