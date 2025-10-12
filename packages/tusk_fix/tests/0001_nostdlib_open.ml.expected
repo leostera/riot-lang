@@ -4,7 +4,7 @@
 Direct usage of Hashtbl is discouraged. Use Std equivalents instead.
 
   [1;90m2 |[0m open Hashtbl
-  [1;90m  |[0m   [1;33m^[0m
+  [1;90m  |[0m      [1;33m^[0m
 
 
   [1;90m→[0m Replace Hashtbl with Std module

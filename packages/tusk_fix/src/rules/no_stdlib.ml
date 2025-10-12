@@ -32,6 +32,7 @@ let check_tree _ctx red_root =
         | OPEN_STMT -> check_open_stmt n
         | PATH_EXPR -> check_path_expr n
         | TYPE_CONSTR -> check_type_constr n
+        | IDENT_EXPR -> check_ident_expr n
         | _ -> ());
         Array.iter traverse (SyntaxNode.children n)
     | Token _ -> ()
@@ -58,6 +59,15 @@ let check_tree _ctx red_root =
         let text = SyntaxToken.text t in
         if List.mem text forbidden_modules then
           add_diagnostic text (SyntaxToken.span t)
+    | _ -> ()
+  and check_ident_expr node =
+    match SyntaxNode.child node 0 with
+    | Some (Token t) ->
+        let text = SyntaxToken.text t in
+        if List.mem text forbidden_modules then
+          add_diagnostic text (SyntaxToken.span t)
+    | Some (Node nested) when SyntaxNode.kind nested = IDENT_EXPR ->
+        check_ident_expr nested
     | _ -> ()
   and add_diagnostic text span =
     let diag =

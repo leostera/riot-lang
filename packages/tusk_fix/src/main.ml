@@ -59,9 +59,6 @@ let main ~args:argv =
            |> ArgParser.Arg.long "format"
            |> ArgParser.Arg.value_name "FORMAT"
            |> ArgParser.Arg.help "Output format (text or json)";
-           ArgParser.Arg.flag "debug-red-tree"
-           |> ArgParser.Arg.long "debug-red-tree"
-           |> ArgParser.Arg.help "Print Red tree as JSON for debugging";
            ArgParser.Arg.positional "path"
            |> ArgParser.Arg.required false
            |> ArgParser.Arg.help
@@ -74,7 +71,6 @@ let main ~args:argv =
       ArgParser.print_help cmd;
       Error (Failure "Argument parsing failed")
   | Ok matches -> (
-      let debug_red_tree = ArgParser.get_flag matches "debug-red-tree" in
       let format_str =
         ArgParser.get_one matches "format" |> Option.unwrap_or ~default:"text"
       in
@@ -90,35 +86,15 @@ let main ~args:argv =
         | "json" -> Reporter.Json
         | "text" | _ -> Reporter.Text
       in
-
-      (* Handle debug red tree mode *)
-      if debug_red_tree then
+      let files =
         match Fs.is_dir path with
-        | Ok true ->
-            Error
-              (Failure
-                 "--debug-red-tree requires a single file, not a directory")
-        | Ok false | Error _ -> (
-            match Fs.read path with
-            | Error _ -> Error (Failure "Failed to read file")
-            | Ok source ->
-                let filename = Path.to_string path in
-                let tokens = Syn.tokenize source in
-                let parse_result = Syn.Parser.parse ~source ~filename tokens in
-                let red_root = Syn.Ceibo.Red.new_root parse_result.tree in
-                let json = Reporter.red_tree_to_json red_root in
-                println "%s" (Data.Json.to_string json);
-                Ok ())
+        | Ok true -> walk_dir path
+        | Ok false | Error _ -> [ path ]
+      in
+      if List.length files = 0 then (
+        println "No OCaml files found.";
+        Ok ())
       else
-        let files =
-          match Fs.is_dir path with
-          | Ok true -> walk_dir path
-          | Ok false | Error _ -> [ path ]
-        in
-        if List.length files = 0 then (
-          println "No OCaml files found.";
-          Ok ())
-        else
           let pipeline = Pipeline.default () in
           let concurrency = min System.available_parallelism 50 in
           let concurrency = max concurrency 1 in

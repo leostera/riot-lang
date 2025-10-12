@@ -34,6 +34,7 @@ let handle_parse sub_matches =
     ArgParser.get_one sub_matches "FILE" |> Option.expect ~msg:"FILE required"
   in
   let json = ArgParser.get_flag sub_matches "json" in
+  let red_tree = ArgParser.get_flag sub_matches "red-tree" in
   match Fs.read (Path.v file) with
   | Error _err ->
       Log.error "Error reading file %s" file;
@@ -47,22 +48,30 @@ let handle_parse sub_matches =
         let kind_to_json kind = Data.Json.String (Syntax_kind.to_string kind) in
         let text_to_json text = Data.Json.String text in
 
-        let tree_json =
-          Ceibo.Green.to_json ~kind_to_json ~text_to_json
-            (Ceibo.Green.Node result.tree)
-        in
+        if red_tree then
+          let red_root = Ceibo.Red.new_root result.tree in
+          let tree_json =
+            Ceibo.Red.to_json ~kind_to_json ~text_to_json
+              (Ceibo.Red.Node red_root)
+          in
+          println "%s" (Data.Json.to_string tree_json)
+        else
+          let tree_json =
+            Ceibo.Green.to_json ~kind_to_json ~text_to_json
+              (Ceibo.Green.Node result.tree)
+          in
 
-        let output =
-          Data.Json.Object
-            [
-              ("tree", tree_json);
-              ( "diagnostics",
-                Data.Json.Array (List.map Diagnostic.to_json result.diagnostics)
-              );
-            ]
-        in
+          let output =
+            Data.Json.Object
+              [
+                ("tree", tree_json);
+                ( "diagnostics",
+                  Data.Json.Array (List.map Diagnostic.to_json result.diagnostics)
+                );
+              ]
+          in
 
-        println "%s" (Data.Json.to_string output)
+          println "%s" (Data.Json.to_string output)
       else if result.diagnostics <> [] then (
         Log.error "Parse errors:";
         List.iter
@@ -92,17 +101,19 @@ let () =
                   |> required true;
                   flag "json" |> long "json" |> help "Output in JSON format";
                 ];
-           (* parse subcommand *)
-           command "parse"
-           |> about "Parse file into Ceibo syntax tree"
-           |> args
-                [
-                  positional "FILE"
-                  |> help "OCaml source file to parse"
-                  |> required true;
-                  flag "json" |> long "json"
-                  |> help "Output syntax tree as JSON";
-                ];
+            (* parse subcommand *)
+            command "parse"
+            |> about "Parse file into Ceibo syntax tree"
+            |> args
+                 [
+                   positional "FILE"
+                   |> help "OCaml source file to parse"
+                   |> required true;
+                   flag "json" |> long "json"
+                   |> help "Output syntax tree as JSON";
+                   flag "red-tree" |> long "red-tree"
+                   |> help "Output red tree (with spans) instead of green tree";
+                 ];
          ]
   in
 
