@@ -5204,7 +5204,7 @@ and parse_type_arrow parser leading_trivia =
               let typ = parse_type_tuple parser trivia_after_colon in
               make_node_list ~kind:Syntax_kind.TYPE_PARAM
                 ([ question ] @ trivia_after_question @ [ label ]
-               @ trivia_after_label @ [ colon ] @ trivia_after_colon
+               @ trivia_after_label @ [ colon ]
                @ [ Ceibo.Green.Node typ ])
             else
               (* Just ?label without type *)
@@ -5226,10 +5226,10 @@ and parse_type_arrow parser leading_trivia =
             if at parser Token.Colon then
               let colon = consume parser in
               let trivia_after_colon = consume_trivia parser in
-              let typ = parse_type_tuple parser trivia_after_colon in
-              make_node_list ~kind:Syntax_kind.TYPE_PARAM
-                ([ tilde ] @ trivia_after_tilde @ [ label ] @ trivia_after_label
-               @ [ colon ] @ trivia_after_colon @ [ Ceibo.Green.Node typ ])
+               let typ = parse_type_tuple parser trivia_after_colon in
+               make_node_list ~kind:Syntax_kind.TYPE_PARAM
+                 ([ tilde ] @ trivia_after_tilde @ [ label ] @ trivia_after_label
+                @ [ colon ] @ [ Ceibo.Green.Node typ ])
             else
               (* Just ~label without type *)
               make_node_list ~kind:Syntax_kind.TYPE_PARAM
@@ -5251,22 +5251,56 @@ and parse_type_arrow parser leading_trivia =
     | Some Token.Colon ->
         (* Check if left is a simple identifier (TYPE_CONSTR with single ident) *)
         let children = Ceibo.Green.children left in
-        if Array.length children = 1 then
-          match children.(0) with
-          | Ceibo.Green.Token _ as label_tok ->
-              (* It's a simple identifier followed by :, reparse as labeled param *)
-              let colon = consume parser in
-              let trivia_after_colon = consume_trivia parser in
-              let typ = parse_type_tuple parser trivia_after_colon in
-              make_node_list ~kind:Syntax_kind.TYPE_PARAM
-                ([ label_tok ] @ trivia_after_left @ [ colon ]
-               @ trivia_after_colon @ [ Ceibo.Green.Node typ ])
-          | _ ->
-              (* Complex type followed by :, not a labeled param *)
-              left
-        else
-          (* Multiple children, not a simple identifier *)
-          left
+        (* Skip leading trivia to find the actual identifier *)
+        let is_trivia_kind kind =
+          match kind with
+          | Syntax_kind.WHITESPACE | Syntax_kind.COMMENT | Syntax_kind.DOCSTRING -> true
+          | _ -> false
+        in
+        let rec find_first_non_trivia idx =
+          if idx >= Array.length children then None
+          else
+            let elem = children.(idx) in
+            let kind = Ceibo.Green.kind elem in
+            if is_trivia_kind kind then
+              find_first_non_trivia (idx + 1)
+            else
+              match elem with
+              | Ceibo.Green.Token _ -> Some (idx, elem)
+              | Ceibo.Green.Node _ -> Some (idx, elem)
+        in
+        (match find_first_non_trivia 0 with
+        | Some (idx, label_elem) -> (
+            match label_elem with
+            | Ceibo.Green.Token _ ->
+                (* Check if there's only one non-trivia token *)
+                let has_more_non_trivia =
+                  let rec check i =
+                    if i >= Array.length children then false
+                    else
+                      let kind = Ceibo.Green.kind children.(i) in
+                      if is_trivia_kind kind then check (i + 1)
+                      else true
+                  in
+                  check (idx + 1)
+                in
+                if not has_more_non_trivia then
+                  (* It's a simple identifier followed by :, reparse as labeled param *)
+                  let colon = consume parser in
+                  let trivia_after_colon = consume_trivia parser in
+                  let typ = parse_type_tuple parser trivia_after_colon in
+                  make_node_list ~kind:Syntax_kind.TYPE_PARAM
+                    ([ label_elem ] @ trivia_after_left @ [ colon ]
+                   @ [ Ceibo.Green.Node typ ])
+                else
+                  (* Multiple non-trivia children, not a simple identifier *)
+                  left
+            | _ ->
+                (* Not a token, must be a node - complex type *)
+                left)
+        | None ->
+            (* No non-trivia children found *)
+            left)
     | _ -> left
   in
   let trivia_after_left2 = consume_trivia parser in
@@ -5386,7 +5420,7 @@ and parse_type_atomic parser leading_trivia =
                 let next = parse_type_expr parser trivia_after_comma in
                 collect_args
                   (Ceibo.Green.Node next
-                  :: (trivia_after_comma @ [ comma ] @ trivia_before_comma @ acc)
+                  :: ([ comma ] @ trivia_before_comma @ acc)
                   )
               else List.rev (trivia_before_comma @ acc)
             in
@@ -5396,7 +5430,7 @@ and parse_type_atomic parser leading_trivia =
             let args =
               collect_args
                 ([ Ceibo.Green.Node second ]
-                @ trivia_after_comma @ [ comma ] @ trivia_after_first
+                @ [ comma ] @ trivia_after_first
                 @ [ Ceibo.Green.Node first ])
             in
             let trivia_before_close, close_paren, trivia_after_close =
@@ -5491,7 +5525,7 @@ and parse_variant_type parser =
             let trivia_after_colon = consume_trivia parser in
             let gadt_type = parse_type_expr parser trivia_after_colon in
             Some
-              (trivia_after_name @ [ colon ] @ trivia_after_colon
+              (trivia_after_name @ [ colon ]
               @ [ Ceibo.Green.Node gadt_type ])
           else if at parser (Token.Keyword Keyword.Of) then
             (* Regular syntax: Constructor of type *)
@@ -5499,7 +5533,7 @@ and parse_variant_type parser =
             let trivia_after_of = consume_trivia parser in
             let payload_type = parse_type_expr parser trivia_after_of in
             Some
-              (trivia_after_name @ [ of_kw ] @ trivia_after_of
+              (trivia_after_name @ [ of_kw ]
               @ [ Ceibo.Green.Node payload_type ])
           else None
         in
@@ -5564,15 +5598,15 @@ and parse_poly_variant_type parser =
         let trivia_after_name = consume_trivia parser in
 
         (* Check for payload: of type *)
-        let payload =
-          if at parser (Token.Keyword Keyword.Of) then
-            let of_kw = consume parser in
-            let trivia_after_of = consume_trivia parser in
-            let payload_type = parse_type_expr parser trivia_after_of in
-            Some
-              (trivia_after_name @ [ of_kw ] @ trivia_after_of
-              @ [ Ceibo.Green.Node payload_type ])
-          else None
+         let payload =
+           if at parser (Token.Keyword Keyword.Of) then
+             let of_kw = consume parser in
+             let trivia_after_of = consume_trivia parser in
+             let payload_type = parse_type_expr parser trivia_after_of in
+             Some
+               (trivia_after_name @ [ of_kw ]
+               @ [ Ceibo.Green.Node payload_type ])
+           else None
         in
 
         let variant_parts =
@@ -5809,7 +5843,7 @@ and parse_val_decl parser =
   Some
     (make_node_list ~kind:Syntax_kind.VAL_DECL
        ([ val_kw ] @ trivia_after_val @ name_tokens @ trivia_after_name
-      @ [ colon ] @ trivia_after_colon
+      @ [ colon ]
        @ [ Ceibo.Green.Node type_expr ]))
 
 and parse_external_decl parser =
@@ -5848,7 +5882,7 @@ and parse_external_decl parser =
   Some
     (make_node_list ~kind:Syntax_kind.EXTERNAL_DECL
        ([ external_kw ] @ trivia_after_external @ [ name ] @ trivia_after_name
-      @ [ colon ] @ trivia_after_colon
+      @ [ colon ]
        @ [ Ceibo.Green.Node type_expr ]
        @ trivia_after_type @ [ eq ] @ trivia_after_eq @ c_names))
 
