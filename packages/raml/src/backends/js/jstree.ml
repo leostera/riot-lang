@@ -1,0 +1,112 @@
+open Std
+
+type js_ident = string
+
+type js_literal =
+  | JsNum of float
+  | JsStr of string
+  | JsBool of bool
+  | JsNull
+  | JsUndefined
+
+type js_unary_op = JsNot | JsNeg | JsTypeof | JsVoid
+
+type js_binary_op =
+  | JsAdd
+  | JsSub
+  | JsMul
+  | JsDiv
+  | JsMod
+  | JsEq
+  | JsNeq
+  | JsStrictEq
+  | JsStrictNeq
+  | JsLt
+  | JsLe
+  | JsGt
+  | JsGe
+  | JsAnd
+  | JsOr
+  | JsBitAnd
+  | JsBitOr
+  | JsBitXor
+  | JsLShift
+  | JsRShift
+  | JsURShift
+
+type js_expr =
+  | JsLit of js_literal
+  | JsId of js_ident
+  | JsArray of js_expr list
+  | JsObj of (string * js_expr) list
+  | JsFun of { name : js_ident option; params : js_ident list; body : js_block }
+  | JsArrow of { params : js_ident list; body : js_arrow_body }
+  | JsCall of { func : js_expr; args : js_expr list }
+  | JsNew of { constructor : js_expr; args : js_expr list }
+  | JsMember of js_expr * string
+  | JsIndex of js_expr * js_expr
+  | JsUnary of js_unary_op * js_expr
+  | JsBinary of js_binary_op * js_expr * js_expr
+  | JsCond of js_expr * js_expr * js_expr
+  | JsAssign of js_expr * js_expr
+  | JsSeq of js_expr list
+
+and js_arrow_body = JsArrowExpr of js_expr | JsArrowBlock of js_block
+
+and js_stmt =
+  | JsExprStmt of js_expr
+  | JsBlock of js_block
+  | JsReturn of js_expr option
+  | JsIf of js_expr * js_stmt * js_stmt option
+  | JsWhile of js_expr * js_stmt
+  | JsFor of {
+      init : js_stmt option;
+      test : js_expr option;
+      update : js_expr option;
+      body : js_stmt;
+    }
+  | JsSwitch of {
+      expr : js_expr;
+      cases : (js_expr * js_stmt list) list;
+      default : js_stmt list option;
+    }
+  | JsBreak
+  | JsContinue
+  | JsThrow of js_expr
+  | JsTry of {
+      body : js_block;
+      catch : (js_ident * js_block) option;
+      finally : js_block option;
+    }
+  | JsVarDecl of js_var_kind * js_ident * js_expr option
+  | JsFunDecl of { name : js_ident; params : js_ident list; body : js_block }
+
+and js_var_kind = JsVar | JsLet | JsConst
+and js_block = js_stmt list
+
+type js_import =
+  | JsImportNamed of (js_ident * js_ident option) list * string
+  | JsImportDefault of js_ident * string
+  | JsImportNamespace of js_ident * string
+
+type js_export =
+  | JsExportNamed of js_ident list
+  | JsExportDefault of js_expr
+  | JsExportStmt of js_stmt
+
+type js_module_item =
+  | JsImport of js_import
+  | JsStatement of js_stmt
+  | JsExport of js_export
+
+type js_module = js_module_item list
+
+let translate_from_jambda _jambda =
+  failwith "Jambda → JsTree translation not yet implemented"
+
+let translate_module_from_jambda _module =
+  failwith "Jambda module → JsTree module translation not yet implemented"
+
+let expr_to_string _expr = "<js-expr>"
+let stmt_to_string _stmt = "<js-stmt>"
+let module_to_string _module = "<js-module>"

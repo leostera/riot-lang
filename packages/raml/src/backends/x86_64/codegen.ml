@@ -1,0 +1,213 @@
+open Std
+module Ir = Lambda.Ir
+module Id = Typechecker.Identifier
+
+type env = { mutable stack_offset : int; bindings : (string, int) Hashtbl.t }
+
+let fresh_label =
+  let counter = ref 0 in
+  fun prefix ->
+    counter := !counter + 1;
+    format "%s_%d" prefix !counter
+
+let rec compile_expr env expr target_reg =
+  match expr with
+  | Ir.Const const -> compile_const env const target_reg
+  | Ir.Var id -> compile_var env id target_reg
+  | Ir.Apply { func; args; _ } -> compile_apply env func args target_reg
+  | Ir.Function _ ->
+      failwith "Nested functions not yet implemented (closures needed)"
+  | Ir.Let { id; value; body; _ } -> compile_let env id value body target_reg
+  | Ir.LetRec _ -> failwith "Recursive bindings not yet implemented"
+  | Ir.Prim (op, args) -> compile_prim env op args target_reg
+  | Ir.IfThenElse (cond, then_, else_opt) ->
+      compile_if env cond then_ else_opt target_reg
+  | Ir.Sequence (e1, e2) ->
+      let instrs1 = compile_expr env e1 Instruction.R10 in
+      let instrs2 = compile_expr env e2 target_reg in
+      instrs1 @ instrs2
+  | Ir.Switch _ -> failwith "Pattern matching not yet implemented"
+  | Ir.StaticCatch _ -> failwith "Static catch not yet implemented"
+  | Ir.StaticRaise _ -> failwith "Static raise not yet implemented"
+  | Ir.While _ -> failwith "While loops not yet implemented"
+  | Ir.For _ -> failwith "For loops not yet implemented"
+
+and compile_const env const target_reg =
+  match const with
+  | Ir.Const_int n -> [ Instruction.MOV (target_reg, Instruction.Imm n) ]
+  | Ir.Const_string _ -> failwith "String constants not yet implemented"
+  | Ir.Const_float _ -> failwith "Float constants not yet implemented"
+  | Ir.Const_block _ -> failwith "Block constants not yet implemented"
+
+and compile_var env id target_reg =
+  let name = Id.name id in
+  match Hashtbl.find_opt env.bindings name with
+  | Some offset ->
+      [
+        Instruction.MOV (target_reg, Reg RBP);
+        Instruction.ADD (target_reg, Imm offset);
+        Instruction.MOV (target_reg, Reg target_reg);
+      ]
+  | None -> failwith (format "Unbound variable: %s" name)
+
+and compile_apply env fn args target_reg =
+  let instrs = ref [] in
+
+  List.iteri
+    (fun i arg ->
+      let arg_reg =
+        match i with
+        | 0 -> Instruction.RDI
+        | 1 -> Instruction.RSI
+        | 2 -> Instruction.RDX
+        | 3 -> Instruction.RCX
+        | 4 -> Instruction.R8
+        | 5 -> Instruction.R9
+        | _ -> failwith "Too many arguments (max 6 for System V ABI)"
+      in
+      instrs := !instrs @ compile_expr env arg arg_reg)
+    args;
+
+  (match fn with
+  | Ir.Var id ->
+      let fn_name = Id.name id in
+      instrs := !instrs @ [ Instruction.CALL fn_name ]
+  | _ ->
+      let fn_instrs = compile_expr env fn Instruction.R10 in
+      instrs := !instrs @ fn_instrs @ [ Instruction.CALL "r10" ]);
+
+  if target_reg <> Instruction.RAX then
+    instrs :=
+      !instrs
+      @ [ Instruction.MOV (target_reg, Instruction.Reg Instruction.RAX) ];
+
+  !instrs
+
+and compile_let env id value body target_reg =
+  let var_name = Id.name id in
+  let value_instrs = compile_expr env value Instruction.R10 in
+
+  env.stack_offset <- env.stack_offset - 8;
+  let offset = env.stack_offset in
+
+  let store_instr = Instruction.MOV (RBP, Reg R10) in
+  Hashtbl.add env.bindings var_name offset;
+
+  let body_instrs = compile_expr env body target_reg in
+
+  value_instrs @ [ store_instr ] @ body_instrs
+
+and compile_prim env op args target_reg =
+  match (op, args) with
+  | Ir.Pint_add, [ a; b ] ->
+      let a_instrs = compile_expr env a target_reg in
+      let b_instrs = compile_expr env b Instruction.R10 in
+      a_instrs @ b_instrs
+      @ [ Instruction.ADD (target_reg, Instruction.Reg Instruction.R10) ]
+  | Ir.Pint_sub, [ a; b ] ->
+      let a_instrs = compile_expr env a target_reg in
+      let b_instrs = compile_expr env b Instruction.R10 in
+      a_instrs @ b_instrs
+      @ [ Instruction.SUB (target_reg, Instruction.Reg Instruction.R10) ]
+  | Ir.Pint_mul, [ a; b ] ->
+      let a_instrs = compile_expr env a target_reg in
+      let b_instrs = compile_expr env b Instruction.R10 in
+      a_instrs @ b_instrs
+      @ [ Instruction.IMUL (target_reg, Instruction.Reg Instruction.R10) ]
+  | Ir.Pint_div, [ a; b ] ->
+      let a_instrs = compile_expr env a Instruction.RAX in
+      let b_instrs = compile_expr env b Instruction.R10 in
+      a_instrs @ b_instrs
+      @ [ Instruction.XOR (RDX, Reg RDX); Instruction.IDIV Instruction.R10 ]
+      @
+      if target_reg <> Instruction.RAX then
+        [ Instruction.MOV (target_reg, Reg RAX) ]
+      else []
+  | Ir.Pint_neg, [ a ] ->
+      let a_instrs = compile_expr env a target_reg in
+      a_instrs @ [ Instruction.NEG target_reg ]
+  | Ir.Pint_lt, [ a; b ] -> compile_comparison env a b target_reg "l"
+  | Ir.Pint_le, [ a; b ] -> compile_comparison env a b target_reg "le"
+  | Ir.Pint_gt, [ a; b ] -> compile_comparison env a b target_reg "g"
+  | Ir.Pint_ge, [ a; b ] -> compile_comparison env a b target_reg "ge"
+  | Ir.Pint_eq, [ a; b ] -> compile_comparison env a b target_reg "e"
+  | Ir.Pint_ne, [ a; b ] -> compile_comparison env a b target_reg "ne"
+  | _ ->
+      failwith (format "Unsupported primitive: %s" (Ir.primitive_to_string op))
+
+and compile_comparison env a b target_reg cond =
+  let a_instrs = compile_expr env a Instruction.R10 in
+  let b_instrs = compile_expr env b Instruction.R11 in
+  let true_label = fresh_label "cmp_true" in
+  let end_label = fresh_label "cmp_end" in
+
+  let jump_instr =
+    match cond with
+    | "l" -> Instruction.JL true_label
+    | "le" -> Instruction.JLE true_label
+    | "g" -> Instruction.JG true_label
+    | "ge" -> Instruction.JGE true_label
+    | "e" -> Instruction.JE true_label
+    | "ne" -> Instruction.JNE true_label
+    | _ -> failwith (format "Unknown condition: %s" cond)
+  in
+
+  a_instrs @ b_instrs
+  @ [
+      Instruction.CMP (Instruction.R10, Instruction.Reg Instruction.R11);
+      jump_instr;
+      Instruction.MOV (target_reg, Instruction.Imm 0);
+      Instruction.JMP end_label;
+      Instruction.LABEL true_label;
+      Instruction.MOV (target_reg, Instruction.Imm 1);
+      Instruction.LABEL end_label;
+    ]
+
+and compile_if env cond then_ else_opt target_reg =
+  let cond_instrs = compile_expr env cond Instruction.R10 in
+  let then_label = fresh_label "if_then" in
+  let else_label = fresh_label "if_else" in
+  let end_label = fresh_label "if_end" in
+
+  let then_instrs = compile_expr env then_ target_reg in
+
+  match else_opt with
+  | Some else_ ->
+      let else_instrs = compile_expr env else_ target_reg in
+      cond_instrs
+      @ [
+          Instruction.CMP (Instruction.R10, Instruction.Imm 0);
+          Instruction.JNE then_label;
+          Instruction.JMP else_label;
+          Instruction.LABEL then_label;
+        ]
+      @ then_instrs
+      @ [ Instruction.JMP end_label; Instruction.LABEL else_label ]
+      @ else_instrs
+      @ [ Instruction.LABEL end_label ]
+  | None ->
+      cond_instrs
+      @ [
+          Instruction.CMP (Instruction.R10, Instruction.Imm 0);
+          Instruction.JNE then_label;
+          Instruction.JMP end_label;
+          Instruction.LABEL then_label;
+        ]
+      @ then_instrs
+      @ [ Instruction.LABEL end_label ]
+
+let compile_expression expr =
+  let env = { stack_offset = 0; bindings = Hashtbl.create 16 } in
+  compile_expr env expr Instruction.RAX
+
+let compile_program expr =
+  let body_instrs = compile_expression expr in
+
+  [
+    Instruction.DIRECTIVE ".globl _main";
+    Instruction.DIRECTIVE ".align 4";
+    Instruction.LABEL "_main";
+  ]
+  @ Instruction.emit_prologue ~stack_size:64
+  @ body_instrs
+  @ Instruction.emit_epilogue ~stack_size:64
