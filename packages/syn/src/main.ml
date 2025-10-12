@@ -66,8 +66,8 @@ let handle_parse sub_matches =
               [
                 ("tree", tree_json);
                 ( "diagnostics",
-                  Data.Json.Array (List.map Diagnostic.to_json result.diagnostics)
-                );
+                  Data.Json.Array
+                    (List.map Diagnostic.to_json result.diagnostics) );
               ]
           in
 
@@ -101,19 +101,19 @@ let () =
                   |> required true;
                   flag "json" |> long "json" |> help "Output in JSON format";
                 ];
-            (* parse subcommand *)
-            command "parse"
-            |> about "Parse file into Ceibo syntax tree"
-            |> args
-                 [
-                   positional "FILE"
-                   |> help "OCaml source file to parse"
-                   |> required true;
-                   flag "json" |> long "json"
-                   |> help "Output syntax tree as JSON";
-                   flag "red-tree" |> long "red-tree"
-                   |> help "Output red tree (with spans) instead of green tree";
-                 ];
+           (* parse subcommand *)
+           command "parse"
+           |> about "Parse file into Ceibo syntax tree"
+           |> args
+                [
+                  positional "FILE"
+                  |> help "OCaml source file to parse"
+                  |> required true;
+                  flag "json" |> long "json"
+                  |> help "Output syntax tree as JSON";
+                  flag "red-tree" |> long "red-tree"
+                  |> help "Output red tree (with spans) instead of green tree";
+                ];
          ]
   in
 
