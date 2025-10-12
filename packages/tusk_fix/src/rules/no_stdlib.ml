@@ -24,6 +24,17 @@ let check_tree _ctx red_root =
   let diagnostics = ref [] in
   let open Syn.Ceibo.Red in
   let open Syn.SyntaxKind in
+  (* Helper: find first non-trivia child *)
+  let first_non_trivia_child node =
+    let children = SyntaxNode.children node in
+    Array.find_opt
+      (function
+        | Token t ->
+            let kind = SyntaxToken.kind t in
+            kind <> WHITESPACE && kind <> COMMENT && kind <> DOCSTRING
+        | Node _ -> true)
+      children
+  in
   let rec traverse elem =
     match elem with
     | Node n ->
@@ -31,8 +42,8 @@ let check_tree _ctx red_root =
         (match kind with
         | OPEN_STMT -> check_open_stmt n
         | PATH_EXPR -> check_path_expr n
-        | TYPE_CONSTR -> check_type_constr n
-        | IDENT_EXPR -> check_ident_expr n
+        (* Skip TYPE_CONSTR - type definitions are often wrappers around stdlib types *)
+        (* | IDENT_EXPR -> check_ident_expr n *)
         | _ -> ());
         Array.iter traverse (SyntaxNode.children n)
     | Token _ -> ()
@@ -42,26 +53,20 @@ let check_tree _ctx red_root =
         | Token t ->
             let kind = SyntaxToken.kind t in
             let text = SyntaxToken.text t in
-            if kind <> WHITESPACE && List.mem text forbidden_modules then
-              add_diagnostic text (SyntaxToken.span t)
+            if kind <> WHITESPACE && kind <> COMMENT && kind <> DOCSTRING
+               && List.mem text forbidden_modules
+            then add_diagnostic text (SyntaxToken.span t)
         | _ -> ())
       (SyntaxNode.children node)
   and check_path_expr node =
-    match SyntaxNode.child node 0 with
-    | Some (Token t) ->
-        let text = SyntaxToken.text t in
-        if List.mem text forbidden_modules then
-          add_diagnostic text (SyntaxToken.span t)
-    | _ -> ()
-  and check_type_constr node =
-    match SyntaxNode.child node 0 with
+    match first_non_trivia_child node with
     | Some (Token t) ->
         let text = SyntaxToken.text t in
         if List.mem text forbidden_modules then
           add_diagnostic text (SyntaxToken.span t)
     | _ -> ()
   and check_ident_expr node =
-    match SyntaxNode.child node 0 with
+    match first_non_trivia_child node with
     | Some (Token t) ->
         let text = SyntaxToken.text t in
         if List.mem text forbidden_modules then

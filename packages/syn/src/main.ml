@@ -124,7 +124,7 @@ let () =
       exit 1
   | Ok matches -> (
       match ArgParser.get_subcommand matches with
-      | Some ("token-stream", sub_matches) -> handle_token_stream sub_matches
+      | Some ("tokenize", sub_matches) -> handle_token_stream sub_matches
       | Some ("parse", sub_matches) -> handle_parse sub_matches
       | _ ->
           ArgParser.print_help cmd;

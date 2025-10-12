@@ -4657,6 +4657,7 @@ and parse_regular_let_binding parser let_kw trivia_after_let ?(attributes = [])
             [ open_paren ] @ trivia_after_open @ [ module_kw ]
             @ trivia_after_module @ [ module_name ] @ trivia_after_name
             @ constraint_nodes @ trivia_before_close @ [ close_paren ]
+            @ trivia_after_close
           in
           Ceibo.Green.Node
             (make_node_list ~kind:Syntax_kind.PAREN_PATTERN all_tokens)
@@ -5350,7 +5351,7 @@ and parse_type_params parser =
       Some
         (make_node_list ~kind:Syntax_kind.TYPE_PARAMS
            ([ open_paren ] @ trivia_after_open @ params @ trivia_before_close
-          @ [ close_paren ]))
+          @ [ close_paren ] @ trivia_after_close))
   | _ -> None
 
 and parse_type_expr parser leading_trivia =
@@ -5675,16 +5676,16 @@ and parse_type_atomic parser leading_trivia =
 
 and parse_variant_type parser =
   (* Parse variant type: A | B | C of int | D of string * bool *)
-  let leading_trivia = consume_trivia parser in
-
+  (* Note: leading trivia should already be consumed by caller *)
+  
   (* Optional leading pipe *)
-  let leading_pipe, leading_pipe_trivia =
+  let leading_pipe, leading_pipe_trivia, trivia_after_pipe =
     if at parser Token.Pipe then
       let before_trivia, tok = consume parser in
-      (Some tok, before_trivia)
-    else (None, [])
+      let trivia_after = consume_trivia parser in
+      (Some tok, before_trivia, trivia_after)
+    else (None, [], [])
   in
-  let trivia_after_pipe = consume_trivia parser in
 
   let rec parse_constructors acc =
     match peek_kind parser with
@@ -5729,11 +5730,10 @@ and parse_variant_type parser =
           let before_trivia, pipe = consume parser in
           let trivia_after_pipe = consume_trivia parser in
           parse_constructors
-            (Ceibo.Green.Node constructor
-            :: (trivia_after_constructor @ [ pipe ] @ trivia_after_pipe @ acc))
+            (trivia_after_pipe @ [ pipe ] @ trivia_after_constructor
+            @ [ Ceibo.Green.Node constructor ] @ acc)
         else
-          List.rev
-            (Ceibo.Green.Node constructor :: (trivia_after_constructor @ acc))
+          List.rev (trivia_after_constructor @ [ Ceibo.Green.Node constructor ] @ acc)
     | _ -> List.rev acc
   in
 
@@ -5741,9 +5741,8 @@ and parse_variant_type parser =
   let all_parts =
     match leading_pipe with
     | Some pipe ->
-        leading_trivia @ leading_pipe_trivia @ [ pipe ] @ trivia_after_pipe
-        @ constructors
-    | None -> leading_trivia @ constructors
+        leading_pipe_trivia @ [ pipe ] @ trivia_after_pipe @ constructors
+    | None -> constructors
   in
 
   make_node_list ~kind:Syntax_kind.TYPE_CONSTR all_parts
@@ -6309,7 +6308,8 @@ and parse_regular_module_decl_signature parser module_kw trivia_after_module =
           ([ open_paren ] @ trivia_after_open @ [ param_name ]
          @ trivia_after_param @ [ colon ] @ trivia_after_colon
           @ [ Ceibo.Green.Node module_type ]
-          @ trivia_after_type @ trivia_before_close @ [ close_paren ])
+          @ trivia_after_type @ trivia_before_close @ [ close_paren ]
+          @ trivia_after_close)
       in
 
       parse_functor_params
