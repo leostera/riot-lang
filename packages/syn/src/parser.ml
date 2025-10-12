@@ -901,23 +901,23 @@ and parse_primary parser leading_trivia =
               in
               if is_module_qualified_literal then
                 (* Parse Module.[|...|] or Module.[...] or Module.{...} or Module.(...) as a whole *)
-                let before_trivia, ident = consume parser in
+                let before_trivia_ident, ident = consume parser in
                 let trivia_after_ident = consume_trivia parser in
-                let before_trivia, dot = consume parser in
+                let before_trivia_dot, dot = consume parser in
                 let trivia_after_dot = consume_trivia parser in
                 match peek_kind parser with
                 | Some (Token.OpenDelim Token.Array) -> (
                     match parse_array_expr parser with
                     | Some array_expr ->
                         let children =
-                          leading_trivia @ [ ident ] @ trivia_after_ident
-                          @ [ dot ] @ trivia_after_dot
+                          leading_trivia @ before_trivia_ident @ [ ident ] @ trivia_after_ident
+                          @ before_trivia_dot @ [ dot ] @ trivia_after_dot
                           @ [ Ceibo.Green.Node array_expr ]
                         in
                         Some
                           (make_node_list ~kind:Syntax_kind.APPLY_EXPR children)
                     | None ->
-                        let children = leading_trivia @ [ ident ] in
+                        let children = leading_trivia @ before_trivia_ident @ [ ident ] in
                         Some
                           (make_node_list ~kind:Syntax_kind.IDENT_EXPR children)
                     )
@@ -925,14 +925,14 @@ and parse_primary parser leading_trivia =
                     match parse_list_expr parser [] with
                     | Some list_expr ->
                         let children =
-                          leading_trivia @ [ ident ] @ trivia_after_ident
-                          @ [ dot ] @ trivia_after_dot
+                          leading_trivia @ before_trivia_ident @ [ ident ] @ trivia_after_ident
+                          @ before_trivia_dot @ [ dot ] @ trivia_after_dot
                           @ [ Ceibo.Green.Node list_expr ]
                         in
                         Some
                           (make_node_list ~kind:Syntax_kind.APPLY_EXPR children)
                     | None ->
-                        let children = leading_trivia @ [ ident ] in
+                        let children = leading_trivia @ before_trivia_ident @ [ ident ] in
                         Some
                           (make_node_list ~kind:Syntax_kind.IDENT_EXPR children)
                     )
@@ -940,19 +940,19 @@ and parse_primary parser leading_trivia =
                     match parse_record_expr parser with
                     | Some record_expr ->
                         let children =
-                          leading_trivia @ [ ident ] @ trivia_after_ident
-                          @ [ dot ] @ trivia_after_dot
+                          leading_trivia @ before_trivia_ident @ [ ident ] @ trivia_after_ident
+                          @ before_trivia_dot @ [ dot ] @ trivia_after_dot
                           @ [ Ceibo.Green.Node record_expr ]
                         in
                         Some
                           (make_node_list ~kind:Syntax_kind.APPLY_EXPR children)
                     | None ->
-                        let children = leading_trivia @ [ ident ] in
+                        let children = leading_trivia @ before_trivia_ident @ [ ident ] in
                         Some
                           (make_node_list ~kind:Syntax_kind.IDENT_EXPR children)
                     )
                 | Some (Token.OpenDelim Token.Paren) -> (
-                    let before_trivia, open_paren = consume parser in
+                    let before_trivia_paren, open_paren = consume parser in
                     let trivia_after_open = consume_trivia parser in
                     match parse_expr parser with
                     | Some expr ->
@@ -962,8 +962,8 @@ and parse_primary parser leading_trivia =
                             (Token.CloseDelim Token.Paren)
                         in
                         let children =
-                          leading_trivia @ [ ident ] @ trivia_after_ident
-                          @ [ dot ] @ trivia_after_dot @ [ open_paren ]
+                          leading_trivia @ before_trivia_ident @ [ ident ] @ trivia_after_ident
+                          @ before_trivia_dot @ [ dot ] @ trivia_after_dot @ before_trivia_paren @ [ open_paren ]
                           @ trivia_after_open @ [ Ceibo.Green.Node expr ]
                           @ trivia_before_close @ [ close_paren ]
                           @ trivia_after_close
@@ -971,16 +971,16 @@ and parse_primary parser leading_trivia =
                         Some
                           (make_node_list ~kind:Syntax_kind.APPLY_EXPR children)
                     | None ->
-                        let children = leading_trivia @ [ ident ] in
+                        let children = leading_trivia @ before_trivia_ident @ [ ident ] in
                         Some
                           (make_node_list ~kind:Syntax_kind.IDENT_EXPR children)
                     )
                 | _ ->
-                    let children = leading_trivia @ [ ident ] in
+                    let children = leading_trivia @ before_trivia_ident @ [ ident ] in
                     Some (make_node_list ~kind:Syntax_kind.IDENT_EXPR children)
               else
                 let before_trivia, ident = consume parser in
-                let children = leading_trivia @ [ ident ] in
+                let children = leading_trivia @ before_trivia @ [ ident ] in
                 Some (make_node_list ~kind:Syntax_kind.IDENT_EXPR children)
           (* Parenthesized expression *)
           | Some (Token.OpenDelim Token.Paren) ->
@@ -6497,8 +6497,16 @@ let parse_implementation parser =
 
   (* Consume any remaining trailing trivia at end of file *)
   let trailing_trivia = consume_trivia parser in
+  
+  (* Consume EOF token if present - NEVER DROP TRIVIA! *)
+  let eof_token = 
+    if at parser Token.EOF then
+      let before_trivia, eof = consume parser in
+      before_trivia @ [ eof ]
+    else []
+  in
 
-  make_node_list ~kind:Syntax_kind.SOURCE_FILE (items @ trailing_trivia)
+  make_node_list ~kind:Syntax_kind.SOURCE_FILE (items @ trailing_trivia @ eof_token)
 
 let parse_interface parser =
   (* Parse .mli file (interface/signature) *)
@@ -6520,8 +6528,16 @@ let parse_interface parser =
 
   (* Consume any remaining trailing trivia at end of file *)
   let trailing_trivia = consume_trivia parser in
+  
+  (* Consume EOF token if present - NEVER DROP TRIVIA! *)
+  let eof_token = 
+    if at parser Token.EOF then
+      let before_trivia, eof = consume parser in
+      before_trivia @ [ eof ]
+    else []
+  in
 
-  make_node_list ~kind:Syntax_kind.SOURCE_FILE (items @ trailing_trivia)
+  make_node_list ~kind:Syntax_kind.SOURCE_FILE (items @ trailing_trivia @ eof_token)
 
 let parse_source_file parser filename =
   (* Determine if this is an interface or implementation based on extension *)
