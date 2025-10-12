@@ -684,7 +684,7 @@ and parse_expr_bp parser min_bp =
               | None -> Some lhs)
         | (Some Token.Tilde | Some Token.Question) when min_bp <= 8 -> (
             (* Labeled or optional argument *)
-            match parse_labeled_or_optional_arg parser with
+            match parse_labeled_or_optional_arg parser trivia_before_op with
             | Some arg ->
                 let children = [ Ceibo.Green.Node lhs; Ceibo.Green.Node arg ] in
                 let app =
@@ -1077,8 +1077,7 @@ and parse_primary parser leading_trivia =
               parse_new_expr parser leading_trivia
           | _ -> None))
 
-and parse_labeled_or_optional_arg parser =
-  let leading_trivia = consume_trivia parser in
+and parse_labeled_or_optional_arg parser leading_trivia =
   match peek_kind parser with
   | Some Token.Tilde -> (
       if
