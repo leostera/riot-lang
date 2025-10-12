@@ -54,8 +54,9 @@ let check_tree _ctx red_root =
         | Token t ->
             let kind = SyntaxToken.kind t in
             let text = SyntaxToken.text t in
-            if kind <> WHITESPACE && kind <> COMMENT && kind <> DOCSTRING
-               && List.mem text forbidden_modules
+            if
+              kind <> WHITESPACE && kind <> COMMENT && kind <> DOCSTRING
+              && List.mem text forbidden_modules
             then add_diagnostic text (SyntaxToken.span t)
         | _ -> ())
       (SyntaxNode.children node)
