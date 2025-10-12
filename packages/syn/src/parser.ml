@@ -1087,77 +1087,77 @@ and parse_labeled_or_optional_arg parser =
         || peek_nth parser 1 = Some Token.Dot
       then
         (* Parse as prefix operator ~- or ~-. *)
-        let before_trivia, tilde = consume parser in
-        let before_trivia, next_tok = consume parser in
+        let before_trivia_tilde, tilde = consume parser in
+        let before_trivia_next, next_tok = consume parser in
         let trivia_after_op = consume_trivia parser in
         match parse_expr_bp parser 7 with
         | Some operand ->
             let children =
-              leading_trivia @ [ tilde; next_tok ] @ trivia_after_op
+              leading_trivia @ before_trivia_tilde @ [ tilde ] @ before_trivia_next @ [ next_tok ] @ trivia_after_op
               @ [ Ceibo.Green.Node operand ]
             in
             Some (make_node_list ~kind:Syntax_kind.PREFIX_EXPR children)
         | None -> None
       else
         (* Labeled argument: ~label or ~label:expr *)
-        let before_trivia, tilde = consume parser in
+        let before_trivia_tilde, tilde = consume parser in
         let trivia_after_tilde = consume_trivia parser in
         match peek_kind parser with
         | Some (Token.Ident _) ->
-            let before_trivia, label = consume parser in
+            let before_trivia_label, label = consume parser in
             let trivia_after_label = consume_trivia parser in
             if at parser Token.Colon then
-              let before_trivia, colon = consume parser in
+              let before_trivia_colon, colon = consume parser in
               let trivia_after_colon = consume_trivia parser in
               match parse_primary parser trivia_after_colon with
               | Some value ->
                   let children =
-                    leading_trivia @ [ tilde ] @ trivia_after_tilde @ [ label ]
-                    @ trivia_after_label @ [ colon ]
+                    leading_trivia @ before_trivia_tilde @ [ tilde ] @ trivia_after_tilde @ before_trivia_label @ [ label ]
+                    @ trivia_after_label @ before_trivia_colon @ [ colon ]
                     @ [ Ceibo.Green.Node value ]
                   in
                   Some (make_node_list ~kind:Syntax_kind.ARGUMENT children)
               | None ->
                   let children =
-                    leading_trivia @ [ tilde ] @ trivia_after_tilde @ [ label ]
+                    leading_trivia @ before_trivia_tilde @ [ tilde ] @ trivia_after_tilde @ before_trivia_label @ [ label ]
                   in
                   Some (make_node_list ~kind:Syntax_kind.ARGUMENT children)
             else
               (* Punning: ~label is shorthand for ~label:label *)
               let children =
-                leading_trivia @ [ tilde ] @ trivia_after_tilde @ [ label ]
+                leading_trivia @ before_trivia_tilde @ [ tilde ] @ trivia_after_tilde @ before_trivia_label @ [ label ]
               in
               Some (make_node_list ~kind:Syntax_kind.ARGUMENT children)
         | _ -> None)
   | Some Token.Question -> (
       (* Optional argument: ?label or ?label:expr *)
-      let before_trivia, question = consume parser in
+      let before_trivia_question, question = consume parser in
       let trivia_after_question = consume_trivia parser in
       match peek_kind parser with
       | Some (Token.Ident _) ->
-          let before_trivia, label = consume parser in
+          let before_trivia_label, label = consume parser in
           let trivia_after_label = consume_trivia parser in
           if at parser Token.Colon then
-            let before_trivia, colon = consume parser in
+            let before_trivia_colon, colon = consume parser in
             let trivia_after_colon = consume_trivia parser in
             match parse_primary parser trivia_after_colon with
             | Some value ->
                 let children =
-                  leading_trivia @ [ question ] @ trivia_after_question
-                  @ [ label ] @ trivia_after_label @ [ colon ]
+                  leading_trivia @ before_trivia_question @ [ question ] @ trivia_after_question
+                  @ before_trivia_label @ [ label ] @ trivia_after_label @ before_trivia_colon @ [ colon ]
                   @ [ Ceibo.Green.Node value ]
                 in
                 Some (make_node_list ~kind:Syntax_kind.ARGUMENT children)
             | None ->
                 let children =
-                  leading_trivia @ [ question ] @ trivia_after_question
-                  @ [ label ]
+                  leading_trivia @ before_trivia_question @ [ question ] @ trivia_after_question
+                  @ before_trivia_label @ [ label ]
                 in
                 Some (make_node_list ~kind:Syntax_kind.ARGUMENT children)
           else
             (* Punning: ?label is shorthand for ?label:label *)
             let children =
-              leading_trivia @ [ question ] @ trivia_after_question @ [ label ]
+              leading_trivia @ before_trivia_question @ [ question ] @ trivia_after_question @ before_trivia_label @ [ label ]
             in
             Some (make_node_list ~kind:Syntax_kind.ARGUMENT children)
       | _ -> None)
