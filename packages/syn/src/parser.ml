@@ -3283,13 +3283,13 @@ and parse_if_expr parser leading_trivia =
 
     Some
       (make_node_list ~kind:Syntax_kind.IF_EXPR
-         ([ if_kw; cond ] @ trivia_after_cond @ [ then_kw ] @ trivia_after_then
+         (leading_trivia @ before_trivia @ [ if_kw ] @ trivia_after_if @ [ cond ] @ trivia_after_cond @ [ then_kw ] @ trivia_after_then
         @ [ then_expr ] @ trivia_after_then_expr @ [ else_kw ]
         @ trivia_after_else @ [ else_expr ]))
   else
     Some
       (make_node_list ~kind:Syntax_kind.IF_EXPR
-         ([ if_kw; cond ] @ trivia_after_cond @ [ then_kw ] @ trivia_after_then
+         (leading_trivia @ before_trivia @ [ if_kw ] @ trivia_after_if @ [ cond ] @ trivia_after_cond @ [ then_kw ] @ trivia_after_then
         @ [ then_expr ] @ trivia_after_then_expr))
 
 and parse_fun_expr parser leading_trivia =
