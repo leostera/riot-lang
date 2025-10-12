@@ -3293,12 +3293,35 @@ and parse_fun_expr parser leading_trivia =
                    (Ceibo.Green.Node param :: acc))
           | None -> List.rev acc)
       | _ -> (
-          match parse_pattern parser with
-          | Some pat ->
+          (* For function parameters, we want trivia as separate tokens between parameters *)
+          (* Parse pattern directly without consuming trivia into it *)
+          match peek_kind parser with
+          | Some Token.Underscore ->
+              (* Wildcard pattern - parse directly *)
+              let before_trivia, underscore = consume parser in
+              let pat = make_node_list ~kind:Syntax_kind.WILDCARD_PATTERN [ underscore ] in
               let trivia_after_pat = consume_trivia parser in
               parse_params
-                (List.rev_append trivia_after_pat (Ceibo.Green.Node pat :: acc))
-          | None -> List.rev acc)
+                (List.rev_append trivia_after_pat
+                   (Ceibo.Green.Node pat :: before_trivia @ acc))
+          | Some (Token.Ident _) ->
+              (* Identifier pattern - parse directly *)
+              let before_trivia, ident = consume parser in
+              let pat = make_node_list ~kind:Syntax_kind.IDENT_PATTERN [ ident ] in
+              let trivia_after_pat = consume_trivia parser in
+              parse_params
+                (List.rev_append trivia_after_pat
+                   (Ceibo.Green.Node pat :: before_trivia @ acc))
+          | _ ->
+              (* Complex pattern - need to use parse_pattern *)
+              let trivia_before_pat = consume_trivia parser in
+              match parse_pattern ~leading_trivia:(Some []) parser with
+              | Some pat ->
+                  let trivia_after_pat = consume_trivia parser in
+                  parse_params
+                    (List.rev_append trivia_after_pat
+                       (Ceibo.Green.Node pat :: trivia_before_pat @ acc))
+              | None -> List.rev acc)
   in
 
   let params = parse_params [] in
