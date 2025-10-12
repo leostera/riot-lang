@@ -2892,8 +2892,7 @@ and parse_binding_operator_expr parser leading_trivia let_kw trivia_after_let =
 
 and parse_regular_let_expr parser leading_trivia let_kw trivia_after_let =
   (* Regular let binding *)
-  let trivia_after_let2 = consume_trivia parser in
-
+  
   (* Check for 'rec' *)
   let is_rec = at parser (Token.Keyword Keyword.Rec) in
   let rec_kw, trivia_after_rec =
@@ -2922,7 +2921,7 @@ and parse_regular_let_expr parser leading_trivia let_kw trivia_after_let =
                   let trivia = consume_trivia parser in
                   parse_tuple_patterns
                     (List.rev_append trivia
-                       (Ceibo.Green.Node pat :: comma :: acc))
+                       (Ceibo.Green.Node pat :: trivia_after_comma @ [ comma ] @ acc))
               | None -> List.rev acc
           in
           let patterns = parse_tuple_patterns [ Ceibo.Green.Node first_pat ] in
@@ -3186,16 +3185,16 @@ and parse_regular_let_expr parser leading_trivia let_kw trivia_after_let =
   match rec_kw with
   | Some kw ->
       let children =
-        [ let_kw; kw; pattern ]
+        [ let_kw ] @ trivia_after_let @ [ kw ] @ trivia_after_rec @ [ pattern ]
         @ (match type_annotation with Some t -> t | None -> [])
-        @ params @ [ eq; value_expr ] @ and_bindings @ [ in_kw; body_expr ]
+        @ params @ [ eq ] @ trivia_after_eq @ [ value_expr ] @ trivia_after_value @ and_bindings @ [ in_kw ] @ trivia_after_in @ [ body_expr ]
       in
       Some (make_node_list ~kind children)
   | None ->
       let children =
-        [ let_kw; pattern ]
+        [ let_kw ] @ trivia_after_let @ [ pattern ]
         @ (match type_annotation with Some t -> t | None -> [])
-        @ params @ [ eq; value_expr ] @ and_bindings @ [ in_kw; body_expr ]
+        @ params @ [ eq ] @ trivia_after_eq @ [ value_expr ] @ trivia_after_value @ and_bindings @ [ in_kw ] @ trivia_after_in @ [ body_expr ]
       in
       Some (make_node_list ~kind children)
 
@@ -4081,9 +4080,8 @@ and parse_paren_pattern parser =
               in
               Some (make_node_list ~kind:Syntax_kind.TYPED_PATTERN children)
             else if at parser Token.Comma then
-              let rec parse_tuple_elements acc trivia_acc =
-                if not (at parser Token.Comma) then
-                  (List.rev acc, List.rev trivia_acc)
+              let rec parse_tuple_elements acc =
+                if not (at parser Token.Comma) then List.rev acc
                 else
                   let before_trivia, comma = consume parser in
                   let trivia_after_comma = consume_trivia parser in
@@ -4091,22 +4089,18 @@ and parse_paren_pattern parser =
                   | Some pat ->
                       let trivia_after_pat = consume_trivia parser in
                       parse_tuple_elements
-                        (Ceibo.Green.Node pat :: comma :: acc)
-                        (trivia_after_pat @ trivia_after_comma @ trivia_acc)
-                  | None -> (List.rev acc, List.rev trivia_acc)
+                        (List.rev_append trivia_after_pat
+                           (Ceibo.Green.Node pat :: trivia_after_comma @ [ comma ] @ acc))
+                  | None -> List.rev acc
               in
 
-              let elements, elements_trivia =
-                parse_tuple_elements
-                  [ Ceibo.Green.Node first_pat ]
-                  trivia_after_first
-              in
+              let elements = parse_tuple_elements (trivia_after_first @ [ Ceibo.Green.Node first_pat ]) in
 
               let trivia_before_close, close_paren, trivia_after_close =
                 expect_with_trivia parser (Token.CloseDelim Token.Paren)
               in
               let children =
-                [ open_paren ] @ trivia_after_open @ elements @ elements_trivia
+                [ open_paren ] @ trivia_after_open @ elements
                 @ trivia_before_close @ [ close_paren ] @ trivia_after_close
               in
               Some (make_node_list ~kind:Syntax_kind.TUPLE_PATTERN children)
