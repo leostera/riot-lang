@@ -1446,8 +1446,9 @@ and parse_paren_expr parser leading_trivia =
   (* Check for unit literal () *)
   if at parser (Token.CloseDelim Token.Paren) then
     let before_trivia, close_paren = consume parser in
+    let trivia_after_close = consume_trivia parser in
     let children =
-      leading_trivia @ [ open_paren ] @ trivia_after_open @ [ close_paren ]
+      leading_trivia @ [ open_paren ] @ trivia_after_open @ [ close_paren ] @ trivia_after_close
     in
     Some (make_node_list ~kind:Syntax_kind.UNIT_LITERAL children)
     (* Check for first-class module pack: (module M : S) or (module struct ... end) *)
@@ -1693,7 +1694,8 @@ and parse_list_expr parser =
   (* Check for empty list [] *)
   if at parser (Token.CloseDelim Token.Bracket) then
     let before_trivia, close_bracket = consume parser in
-    let children = [ open_bracket ] @ trivia_after_open @ [ close_bracket ] in
+    let trivia_after_close = consume_trivia parser in
+    let children = [ open_bracket ] @ trivia_after_open @ [ close_bracket ] @ trivia_after_close in
     Some (make_node_list ~kind:Syntax_kind.LIST_EXPR children)
   else
     match parse_expr parser with
@@ -1748,7 +1750,8 @@ and parse_array_expr parser =
   (* Check for empty array [| |] *)
   if at parser (Token.CloseDelim Token.Array) then
     let before_trivia, close_array = consume parser in
-    let children = [ open_array ] @ trivia_after_open @ [ close_array ] in
+    let trivia_after_close = consume_trivia parser in
+    let children = [ open_array ] @ trivia_after_open @ [ close_array ] @ trivia_after_close in
     Some (make_node_list ~kind:Syntax_kind.ARRAY_EXPR children)
   else
     match parse_expr parser with
@@ -1807,7 +1810,8 @@ and parse_record_expr parser =
   (* Check for empty record {} - though this isn't valid OCaml, we'll parse it *)
   if at parser (Token.CloseDelim Token.Brace) then
     let before_trivia, close_brace = consume parser in
-    let children = [ open_brace ] @ trivia_after_open @ [ close_brace ] in
+    let trivia_after_close = consume_trivia parser in
+    let children = [ open_brace ] @ trivia_after_open @ [ close_brace ] @ trivia_after_close in
     Some (make_node_list ~kind:Syntax_kind.RECORD_EXPR children)
   else
     (* Look ahead to determine if this is a record literal or record update *)
@@ -3694,7 +3698,8 @@ and parse_list_pattern parser =
 
   if at parser (Token.CloseDelim Token.Bracket) then
     let before_trivia, close_bracket = consume parser in
-    let children = [ open_bracket ] @ comments1 @ [ close_bracket ] in
+    let trivia_after_close = consume_trivia parser in
+    let children = [ open_bracket ] @ comments1 @ [ close_bracket ] @ trivia_after_close in
     Some (make_node_list ~kind:Syntax_kind.LIST_PATTERN children)
   else
     let first_pat =
@@ -3740,7 +3745,8 @@ and parse_array_pattern parser =
 
   if at parser (Token.CloseDelim Token.Array) then
     let before_trivia, close_array = consume parser in
-    let children = [ open_array ] @ comments1 @ [ close_array ] in
+    let trivia_after_close = consume_trivia parser in
+    let children = [ open_array ] @ comments1 @ [ close_array ] @ trivia_after_close in
     Some (make_node_list ~kind:Syntax_kind.ARRAY_PATTERN children)
   else
     let first_pat =
@@ -3909,7 +3915,8 @@ and parse_paren_pattern parser =
 
   if at parser (Token.CloseDelim Token.Paren) then
     let before_trivia, close_paren = consume parser in
-    let children = [ open_paren ] @ trivia_after_open @ [ close_paren ] in
+    let trivia_after_close = consume_trivia parser in
+    let children = [ open_paren ] @ trivia_after_open @ [ close_paren ] @ trivia_after_close in
     Some (make_node_list ~kind:Syntax_kind.PAREN_PATTERN children)
   else if at parser (Token.Keyword Keyword.Lazy) then
     (* Lazy pattern: (lazy pat) *)
@@ -4589,9 +4596,9 @@ and parse_regular_let_binding parser let_kw trivia_after_let ?(attributes = [])
       if at parser (Token.CloseDelim Token.Paren) then
         let before_trivia, close_paren = consume parser in
         let trivia_after_close = consume_trivia parser in
-        Ceibo.Green.Token
-          (Ceibo.Green.make_token ~kind:Syntax_kind.UNIT_LITERAL ~text:"()"
-             ~width:2)
+        Ceibo.Green.Node
+          (make_node_list ~kind:Syntax_kind.UNIT_LITERAL
+             ([ open_paren ] @ trivia_after_open @ [ close_paren ] @ trivia_after_close))
       else
         (* Check if this is a first-class module pattern: (module M) *)
         let is_module_pattern =

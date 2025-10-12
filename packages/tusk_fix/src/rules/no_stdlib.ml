@@ -42,6 +42,7 @@ let check_tree _ctx red_root =
         (match kind with
         | OPEN_STMT -> check_open_stmt n
         | PATH_EXPR -> check_path_expr n
+        | FIELD_ACCESS_EXPR -> check_field_access_expr n
         (* Skip TYPE_CONSTR - type definitions are often wrappers around stdlib types *)
         (* | IDENT_EXPR -> check_ident_expr n *)
         | _ -> ());
@@ -64,6 +65,17 @@ let check_tree _ctx red_root =
         let text = SyntaxToken.text t in
         if List.mem text forbidden_modules then
           add_diagnostic text (SyntaxToken.span t)
+    | _ -> ()
+  and check_field_access_expr node =
+    (* Check first child which should be the module name (Hashtbl in Hashtbl.create) *)
+    match first_non_trivia_child node with
+    | Some (Node ident_node) when SyntaxNode.kind ident_node = IDENT_EXPR -> (
+        match first_non_trivia_child ident_node with
+        | Some (Token t) ->
+            let text = SyntaxToken.text t in
+            if List.mem text forbidden_modules then
+              add_diagnostic text (SyntaxToken.span t)
+        | _ -> ())
     | _ -> ()
   and check_ident_expr node =
     match first_non_trivia_child node with
