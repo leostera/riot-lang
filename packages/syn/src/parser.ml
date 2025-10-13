@@ -664,7 +664,10 @@ and parse_expr_bp parser min_bp =
                     make_node_list ~kind:Syntax_kind.SEQUENCE_EXPR children
                   in
                   loop seq
-              | None -> Some lhs)
+              | None ->
+                  (* RHS parsing failed after consuming semicolon - include it with trailing trivia *)
+                  let children = [ Ceibo.Green.Node lhs; semi ] @ trivia_after_semi in
+                  Some (make_node_list ~kind:Syntax_kind.SEQUENCE_EXPR children))
         | Some op_kind when is_infix_op op_kind -> (
             let prec = get_precedence op_kind in
             if prec < min_bp then Some lhs
