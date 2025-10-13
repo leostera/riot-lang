@@ -1,0 +1,5 @@
+[package]
+name = "colors"
+
+[dependencies]
+std = { path = "../std" }
