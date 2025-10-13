@@ -781,10 +781,11 @@ and parse_expr_bp parser min_bp =
             (* Highest precedence *)
             if app_prec < min_bp then Some lhs
             else
-              match parse_primary parser trivia_before_op with
+              match parse_primary parser [] with
               | Some rhs ->
                   let children =
-                    [ Ceibo.Green.Node lhs; Ceibo.Green.Node rhs ]
+                    [ Ceibo.Green.Node lhs ] @ trivia_before_op
+                    @ [ Ceibo.Green.Node rhs ]
                   in
                   let app =
                     make_node_list ~kind:Syntax_kind.APPLY_EXPR children
@@ -1675,32 +1676,29 @@ and parse_paren_expr parser leading_trivia =
 
 and parse_tuple_rest parser trivia_after_open open_paren trivia_after_first
     first_expr =
-  let rec parse_elements acc trivia_acc =
-    if not (at parser Token.Comma) then (List.rev acc, List.rev trivia_acc)
+  let rec parse_elements acc =
+    if not (at parser Token.Comma) then List.rev acc
     else
-      let before_trivia, comma = consume parser in
+      let _before_trivia, comma = consume parser in
       let trivia_after_comma = consume_trivia parser in
-      let acc = comma :: acc in
-      let trivia_acc = trivia_after_comma @ trivia_acc in
+      let acc = trivia_after_comma @ (comma :: acc) in
       match parse_expr parser with
       | Some expr ->
           let trivia_after_expr = consume_trivia parser in
-          parse_elements
-            (Ceibo.Green.Node expr :: acc)
-            (trivia_after_expr @ trivia_acc)
-      | None -> (List.rev acc, List.rev trivia_acc)
+          parse_elements (trivia_after_expr @ (Ceibo.Green.Node expr :: acc))
+      | None -> List.rev acc
   in
 
-  let elements, elements_trivia =
-    parse_elements [ Ceibo.Green.Node first_expr ] trivia_after_first
+  let elements =
+    parse_elements (trivia_after_first @ [ Ceibo.Green.Node first_expr ])
   in
 
   let trivia_before_close, close_paren, trivia_after_close =
     expect_with_trivia parser (Token.CloseDelim Token.Paren)
   in
   let children =
-    [ open_paren ] @ trivia_after_open @ elements @ elements_trivia
-    @ trivia_before_close @ [ close_paren ] @ trivia_after_close
+    [ open_paren ] @ trivia_after_open @ elements @ trivia_before_close
+    @ [ close_paren ] @ trivia_after_close
   in
   Some (make_node_list ~kind:Syntax_kind.TUPLE_EXPR children)
 
