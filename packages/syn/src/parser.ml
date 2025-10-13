@@ -5829,9 +5829,10 @@ and parse_variant_type parser =
             (* Regular syntax: Constructor of type *)
             let before_trivia, of_kw = consume parser in
             let trivia_after_of = consume_trivia parser in
-            let payload_type = parse_type_expr parser trivia_after_of in
+            let payload_type = parse_type_expr parser [] in
             Some
-              (trivia_after_name @ [ of_kw ] @ [ Ceibo.Green.Node payload_type ])
+              (trivia_after_name @ [ of_kw ] @ trivia_after_of
+             @ [ Ceibo.Green.Node payload_type ])
           else None
         in
 
@@ -6068,7 +6069,7 @@ and parse_record_type parser =
           let before_trivia, semi = consume parser in
           let trivia_after_semi = consume_trivia parser in
           parse_fields
-            (Ceibo.Green.Node field :: ([ semi ] @ trivia_after_semi @ acc))
+            (trivia_after_semi @ (semi :: (Ceibo.Green.Node field :: acc)))
         else List.rev (Ceibo.Green.Node field :: acc)
     | _ -> List.rev acc
   in
