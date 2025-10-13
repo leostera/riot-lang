@@ -3608,14 +3608,14 @@ and parse_pattern ?(leading_trivia = None) parser =
       if at parser Token.ColonColon then
         (* Cons pattern: a :: b or "x" :: rest *)
         let trivia_after_pat = consume_trivia parser in
-        let before_trivia, cons_op = consume parser in
+        let trivia_before_cons, cons_op = consume parser in
         let trivia_after_cons = consume_trivia parser in
         match parse_pattern parser with
         | Some tail_pat ->
             Some
               (make_node_list ~kind:Syntax_kind.CONS_PATTERN
-                 (trivia_after_pat
-                 @ [ Ceibo.Green.Node pat; cons_op ]
+                 ([ Ceibo.Green.Node pat ]
+                 @ trivia_after_pat @ trivia_before_cons @ [ cons_op ]
                  @ trivia_after_cons
                  @ [ Ceibo.Green.Node tail_pat ]))
         | None -> Some pat
@@ -3739,7 +3739,7 @@ and parse_base_pattern parser leading_trivia =
   | Some (Token.Literal _)
   | Some (Token.Keyword Keyword.True)
   | Some (Token.Keyword Keyword.False) -> (
-      let leading_trivia = consume_trivia parser in
+      (* Use the leading_trivia passed in, don't re-consume *)
       match parse_literal parser leading_trivia with
       | Some lit ->
           Some
