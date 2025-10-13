@@ -603,7 +603,8 @@ and parse_expr_bp parser min_bp =
                   (* Field access: record.field *)
                   let before_trivia, field = consume parser in
                   let children =
-                    [ Ceibo.Green.Node lhs; dot ] @ trivia_after_dot @ [ field ]
+                    [ Ceibo.Green.Node lhs ] @ trivia_before_op @ [ dot ]
+                    @ trivia_after_dot @ before_trivia @ [ field ]
                   in
                   let access =
                     make_node_list ~kind:Syntax_kind.FIELD_ACCESS_EXPR children
