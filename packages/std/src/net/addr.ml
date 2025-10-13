@@ -1,7 +1,6 @@
 (** Network address handling *)
 
 open Global
-
 include Kernel.Net.Addr
 
 let of_host_and_port ~host ~port =
@@ -24,6 +23,5 @@ let parse s =
           match of_host_and_port ~host ~port with
           | Ok addr -> Ok addr
           | Error `Noop -> Error (`System_error "Failed to parse address")
-          | Error `No_info ->
-              Error (`System_error "No address info available")
+          | Error `No_info -> Error (`System_error "No address info available")
           | Error _ -> Error (`System_error "Address parsing error")))

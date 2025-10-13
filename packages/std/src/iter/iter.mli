@@ -21,44 +21,30 @@
 
     Immutable parsing with {!Cursor}:
 
-    ```ocaml
-    open Std
+    ```ocaml open Std
 
-    let parse_header line =
-      let cursor = Iter.Cursor.create line in
-      match Iter.Cursor.find_char cursor ':' with
-      | None -> Error "Invalid header"
-      | Some offset ->
-          let key = Iter.Cursor.slice cursor 0 offset |> Option.unwrap in
-          let cursor = Iter.Cursor.advance_by cursor (offset + 1) |> Option.unwrap in
-          let (value, _) = Iter.Cursor.take_while cursor (fun c -> c <> '\r') in
-          Ok (String.trim key, String.trim value)
-    ```
+    let parse_header line = let cursor = Iter.Cursor.create line in match
+    Iter.Cursor.find_char cursor ':' with | None -> Error "Invalid header" |
+    Some offset -> let key = Iter.Cursor.slice cursor 0 offset |> Option.unwrap
+    in let cursor = Iter.Cursor.advance_by cursor (offset + 1) |> Option.unwrap
+    in let (value, _) = Iter.Cursor.take_while cursor (fun c -> c <> '\r') in Ok
+    (String.trim key, String.trim value) ```
 
     Efficient parsing with {!MutCursor}:
 
-    ```ocaml
-    let parse_request_line line =
-      let cursor = Iter.MutCursor.create line in
-      let method_ = Iter.MutCursor.take_while cursor (fun c -> c <> ' ') in
-      Iter.MutCursor.advance cursor;
-      let path = Iter.MutCursor.take_while cursor (fun c -> c <> ' ') in
-      Iter.MutCursor.advance cursor;
-      let version = Iter.MutCursor.remaining cursor in
-      (method_, path, version)
-    ```
+    ```ocaml let parse_request_line line = let cursor = Iter.MutCursor.create
+    line in let method_ = Iter.MutCursor.take_while cursor (fun c -> c <> ' ')
+    in Iter.MutCursor.advance cursor; let path = Iter.MutCursor.take_while
+    cursor (fun c -> c <> ' ') in Iter.MutCursor.advance cursor; let version =
+    Iter.MutCursor.remaining cursor in (method_, path, version) ```
 
     ## When to Use What
 
-    | Use Case | Recommendation |
-    |----------|----------------|
-    | Backtracking parsers | {!Cursor} |
-    | Single-pass parsers | {!MutCursor} |
-    | Functional style | {!Cursor}, {!Iterator} |
-    | Performance-critical | {!MutCursor}, {!MutIterator} |
-    | Lazy sequences | {!Iterator}, {!MutIterator} |
-    | String parsing | {!Cursor}, {!MutCursor} |
-*)
+    | Use Case | Recommendation | |----------|----------------| | Backtracking
+    parsers | {!Cursor} | | Single-pass parsers | {!MutCursor} | | Functional
+    style | {!Cursor}, {!Iterator} | | Performance-critical | {!MutCursor},
+    {!MutIterator} | | Lazy sequences | {!Iterator}, {!MutIterator} | | String
+    parsing | {!Cursor}, {!MutCursor} | *)
 
 module Iterator : module type of Iterator
 (** Immutable iterator protocol for lazy sequences *)

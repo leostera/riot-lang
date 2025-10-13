@@ -1,12 +1,11 @@
 open Std
-
 module Connection : module type of Connection
+module WebSocket : module type of Websocket
 
 type error = Connection.error
 type message = Connection.message
 
 val pp_messages : Format.formatter -> message list -> unit
-
 val connect : Net.Uri.t -> (Connection.t, error) result
 
 val request :

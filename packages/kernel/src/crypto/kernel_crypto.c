@@ -13,6 +13,24 @@
 #ifdef __APPLE__
 #include <CommonCrypto/CommonDigest.h>
 
+/* SHA1 implementation using macOS CommonCrypto */
+CAMLprim value kernel_crypto_sha1(value data) {
+    CAMLparam1(data);
+    CAMLlocal1(result);
+
+    unsigned char hash[CC_SHA1_DIGEST_LENGTH];
+    CC_SHA1_CTX ctx;
+
+    CC_SHA1_Init(&ctx);
+    CC_SHA1_Update(&ctx, Bytes_val(data), caml_string_length(data));
+    CC_SHA1_Final(hash, &ctx);
+
+    result = caml_alloc_string(CC_SHA1_DIGEST_LENGTH);
+    memcpy(Bytes_val(result), hash, CC_SHA1_DIGEST_LENGTH);
+
+    CAMLreturn(result);
+}
+
 /* SHA256 implementation using macOS CommonCrypto */
 CAMLprim value kernel_crypto_sha256(value data) {
     CAMLparam1(data);
@@ -52,6 +70,10 @@ CAMLprim value kernel_crypto_sha512(value data) {
 #else
 /* Fallback - just return an error for now */
 /* In production, use OpenSSL or libsodium */
+
+CAMLprim value kernel_crypto_sha1(value data) {
+    caml_failwith("SHA1 not implemented on this platform");
+}
 
 CAMLprim value kernel_crypto_sha256(value data) {
     caml_failwith("SHA256 not implemented on this platform");

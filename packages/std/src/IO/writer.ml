@@ -22,7 +22,8 @@ let of_write_src : type dst err. (dst, err) write -> dst -> (dst, err) t =
 let write : type dst err. (dst, err) t -> buf:string -> (int, err) result =
  fun (Writer ((module W), dst)) ~buf -> W.write dst ~buf
 
-let write_owned_vectored : type dst err. (dst, err) t -> bufs:Iovec.t -> (int, err) result =
+let write_owned_vectored : type dst err.
+    (dst, err) t -> bufs:Iovec.t -> (int, err) result =
  fun (Writer ((module W), dst)) ~bufs -> W.write_owned_vectored dst ~bufs
 
 let flush : type dst err. (dst, err) t -> (unit, err) result =
@@ -40,7 +41,8 @@ let write_all : type dst err. (dst, err) t -> buf:string -> (unit, err) result =
   in
   write_loop buf total
 
-let write_all_vectored : type dst err. (dst, err) t -> bufs:Iovec.t -> (unit, err) result =
+let write_all_vectored : type dst err.
+    (dst, err) t -> bufs:Iovec.t -> (unit, err) result =
  fun (Writer ((module W), dst)) ~bufs ->
   let total = Iovec.length bufs in
   let rec write_loop bufs len =

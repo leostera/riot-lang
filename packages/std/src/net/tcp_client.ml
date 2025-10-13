@@ -17,7 +17,9 @@ let connect ~host ~port =
   | Ok addr -> (
       match Kernel.Net.Tcp_stream.connect addr with
       | Ok (`Connected stream) -> Ok { stream; leftover = "" }
-      | Ok (`In_progress _) -> Error (`System_error "Connection in progress handling not implemented")
+      | Ok (`In_progress _) ->
+          Error
+            (`System_error "Connection in progress handling not implemented")
       | Error _ -> Error (`System_error "Connection failed"))
 
 let send t data =
@@ -26,7 +28,9 @@ let send t data =
   let rec send_all pos =
     if pos >= len then Ok ()
     else
-      match Kernel.Net.Tcp_stream.write t.stream buffer ~pos ~len:(len - pos) with
+      match
+        Kernel.Net.Tcp_stream.write t.stream buffer ~pos ~len:(len - pos)
+      with
       | Ok bytes_written -> send_all (pos + bytes_written)
       | Error e ->
           Error
@@ -58,7 +62,9 @@ let receive t =
 
       (* Read until we get a newline *)
       let rec read_line acc =
-        match Kernel.Net.Tcp_stream.read t.stream buffer ~pos:0 ~len:buffer_size with
+        match
+          Kernel.Net.Tcp_stream.read t.stream buffer ~pos:0 ~len:buffer_size
+        with
         | Ok bytes_read -> (
             let data = Bytes.sub_string buffer 0 bytes_read in
             let full_data = acc ^ data in
@@ -68,9 +74,7 @@ let receive t =
                 (* Found newline, save remainder and return line *)
                 let line = String.sub full_data 0 idx in
                 let remainder_start = idx + 1 in
-                let remainder_len =
-                  String.length full_data - remainder_start
-                in
+                let remainder_len = String.length full_data - remainder_start in
                 t.leftover <-
                   (if remainder_len > 0 then
                      String.sub full_data remainder_start remainder_len

@@ -3,29 +3,21 @@ module String = Stdlib.String
 type t = { source : string; pos : int; length : int }
 
 let create source = { source; pos = 0; length = String.length source }
-
 let source t = t.source
 let position t = t.pos
 let length_remaining t = t.length - t.pos
 let is_eof t = t.pos >= t.length
-
-let peek t = 
-  if is_eof t then None 
-  else Some (String.get t.source t.pos)
+let peek t = if is_eof t then None else Some (String.get t.source t.pos)
 
 let peek_n t n =
   let target = t.pos + n in
-  if target >= t.length then None 
-  else Some (String.get t.source target)
+  if target >= t.length then None else Some (String.get t.source target)
 
-let advance t =
-  if is_eof t then None
-  else Some { t with pos = t.pos + 1 }
+let advance t = if is_eof t then None else Some { t with pos = t.pos + 1 }
 
 let advance_by t n =
   let new_pos = t.pos + n in
-  if new_pos > t.length then None
-  else Some { t with pos = new_pos }
+  if new_pos > t.length then None else Some { t with pos = new_pos }
 
 let take_while t f =
   let start = t.pos in
@@ -62,5 +54,4 @@ let take_n t n =
     Some (taken, { t with pos = t.pos + n })
 
 let remaining t =
-  if is_eof t then ""
-  else String.sub t.source t.pos (t.length - t.pos)
+  if is_eof t then "" else String.sub t.source t.pos (t.length - t.pos)

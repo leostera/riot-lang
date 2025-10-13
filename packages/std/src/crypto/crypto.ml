@@ -13,6 +13,7 @@ module Hasher = Hasher
 module Digest = Digest
 
 (* Algorithm implementations - from algo/ subdirectory *)
+module Sha1 = Algo.Sha1
 module Sha256 = Algo.Sha256
 module Sha512 = Algo.Sha512
 module Md5 = Algo.Md5

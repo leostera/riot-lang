@@ -84,17 +84,22 @@ type t = {
   payload : payload;
 }
 
-let default_flags = {
-  end_stream = false;
-  end_headers = false;
-  padded = false;
-  priority = false;
-  ack = false;
-}
+let default_flags =
+  {
+    end_stream = false;
+    end_headers = false;
+    padded = false;
+    priority = false;
+    ack = false;
+  }
 
-let data ~stream_id ?(end_stream=false) ?pad_length data =
-  let flags = { default_flags with end_stream; padded = Option.is_some pad_length } in
-  let payload_len = String.length data + (match pad_length with Some n -> n + 1 | None -> 0) in
+let data ~stream_id ?(end_stream = false) ?pad_length data =
+  let flags =
+    { default_flags with end_stream; padded = Option.is_some pad_length }
+  in
+  let payload_len =
+    String.length data + match pad_length with Some n -> n + 1 | None -> 0
+  in
   {
     length = payload_len;
     frame_type = Data;
@@ -103,36 +108,42 @@ let data ~stream_id ?(end_stream=false) ?pad_length data =
     payload = DataPayload { data; pad_length };
   }
 
-let headers ~stream_id ?(end_stream=false) ?(end_headers=false) ?pad_length ?priority header_block_fragment =
+let headers ~stream_id ?(end_stream = false) ?(end_headers = false) ?pad_length
+    ?priority header_block_fragment =
   let has_priority = Option.is_some priority in
-  let flags = { 
-    default_flags with 
-    end_stream; 
-    end_headers; 
-    padded = Option.is_some pad_length;
-    priority = has_priority;
-  } in
-  let (stream_dependency, weight, exclusive) = match priority with
+  let flags =
+    {
+      default_flags with
+      end_stream;
+      end_headers;
+      padded = Option.is_some pad_length;
+      priority = has_priority;
+    }
+  in
+  let stream_dependency, weight, exclusive =
+    match priority with
     | Some (dep, excl, w) -> (Some dep, Some w, excl)
     | None -> (None, None, false)
   in
-  let payload_len = 
-    String.length header_block_fragment 
+  let payload_len =
+    String.length header_block_fragment
     + (match pad_length with Some n -> n + 1 | None -> 0)
-    + (if has_priority then 5 else 0)
+    + if has_priority then 5 else 0
   in
   {
     length = payload_len;
     frame_type = Headers;
     flags;
     stream_id;
-    payload = HeadersPayload { 
-      pad_length; 
-      stream_dependency; 
-      weight; 
-      exclusive; 
-      header_block_fragment 
-    };
+    payload =
+      HeadersPayload
+        {
+          pad_length;
+          stream_dependency;
+          weight;
+          exclusive;
+          header_block_fragment;
+        };
   }
 
 let priority ~stream_id ~stream_dependency ~exclusive ~weight =
@@ -153,7 +164,7 @@ let rst_stream ~stream_id error_code =
     payload = RstStreamPayload error_code;
   }
 
-let settings ?(ack=false) settings_list =
+let settings ?(ack = false) settings_list =
   let flags = { default_flags with ack } in
   let length = if ack then 0 else List.length settings_list * 6 in
   {
@@ -164,21 +175,25 @@ let settings ?(ack=false) settings_list =
     payload = SettingsPayload settings_list;
   }
 
-let push_promise ~stream_id ~promised_stream_id ?pad_length header_block_fragment =
+let push_promise ~stream_id ~promised_stream_id ?pad_length
+    header_block_fragment =
   let flags = { default_flags with padded = Option.is_some pad_length } in
-  let payload_len = 
-    4 + String.length header_block_fragment 
-    + (match pad_length with Some n -> n + 1 | None -> 0)
+  let payload_len =
+    4
+    + String.length header_block_fragment
+    + match pad_length with Some n -> n + 1 | None -> 0
   in
   {
     length = payload_len;
     frame_type = PushPromise;
     flags;
     stream_id;
-    payload = PushPromisePayload { pad_length; promised_stream_id; header_block_fragment };
+    payload =
+      PushPromisePayload
+        { pad_length; promised_stream_id; header_block_fragment };
   }
 
-let ping ?(ack=false) opaque_data =
+let ping ?(ack = false) opaque_data =
   if String.length opaque_data <> 8 then
     invalid_arg "ping: opaque_data must be exactly 8 bytes";
   let flags = { default_flags with ack } in
@@ -190,7 +205,7 @@ let ping ?(ack=false) opaque_data =
     payload = PingPayload opaque_data;
   }
 
-let goaway ~last_stream_id ~error_code ?(debug_data="") () =
+let goaway ~last_stream_id ~error_code ?(debug_data = "") () =
   {
     length = 8 + String.length debug_data;
     frame_type = Goaway;
@@ -210,7 +225,7 @@ let window_update ~stream_id increment =
     payload = WindowUpdatePayload increment;
   }
 
-let continuation ~stream_id ?(end_headers=false) header_block_fragment =
+let continuation ~stream_id ?(end_headers = false) header_block_fragment =
   let flags = { default_flags with end_headers } in
   {
     length = String.length header_block_fragment;

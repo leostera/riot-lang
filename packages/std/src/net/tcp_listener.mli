@@ -12,7 +12,8 @@ val bind :
 (** Create and bind a TCP listener. The socket is automatically set to
     non-blocking mode. *)
 
-val accept : t -> (Kernel.Net.Tcp_stream.t * Kernel.Net.Addr.stream_addr, error) result
+val accept :
+  t -> (Kernel.Net.Tcp_stream.t * Kernel.Net.Addr.stream_addr, error) result
 (** Accept a connection. This will suspend the process until a connection is
     available. *)
 

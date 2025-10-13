@@ -31,18 +31,18 @@ val connect : host:string -> port:int -> (t, error) result
 
 val send : t -> string -> (unit, string) result
 (** [send client data] sends the string data to the server. The string should
-    include any necessary delimiters (e.g., newlines). The entire string will
-    be sent before returning. Returns [Error] if the send fails. *)
+    include any necessary delimiters (e.g., newlines). The entire string will be
+    sent before returning. Returns [Error] if the send fails. *)
 
 val receive : t -> (string, string) result
 (** [receive client] reads from the server until a newline character is found,
-    then returns the line (without the newline). If multiple lines were
-    received in a single read, the additional data is buffered internally and
-    will be returned by subsequent calls to [receive].
+    then returns the line (without the newline). If multiple lines were received
+    in a single read, the additional data is buffered internally and will be
+    returned by subsequent calls to [receive].
 
-    This function blocks until a complete line is available or an error
-    occurs. It can be called multiple times to handle streaming responses
-    where each response is newline-delimited. *)
+    This function blocks until a complete line is available or an error occurs.
+    It can be called multiple times to handle streaming responses where each
+    response is newline-delimited. *)
 
 val close : t -> unit
 (** [close client] closes the TCP connection. *)

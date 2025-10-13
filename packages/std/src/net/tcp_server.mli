@@ -1,7 +1,6 @@
 (** TCP server that manages a listener and handles line-based protocols *)
 
 type t
-
 type error = [ `Connection_refused | `Closed | `System_error of string ]
 
 type handler = req:string -> Kernel.Net.Tcp_stream.t -> unit

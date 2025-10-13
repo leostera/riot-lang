@@ -50,6 +50,7 @@ module Digest = Digest
 
 (** ## Algorithms *)
 
+module Sha1 : Hasher.Intf
 module Sha256 : Hasher.Intf
 module Sha512 : Hasher.Intf
 module Md5 : Hasher.Intf

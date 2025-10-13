@@ -1,5 +1,4 @@
 open Iter
-
 include Stdlib.String
 
 module MutIter = struct

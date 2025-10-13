@@ -18,8 +18,7 @@ let write_uint16_be value =
   let b1 = Char.chr (value land 0xFF) in
   String.make 1 b0 ^ String.make 1 b1
 
-let write_uint8 value =
-  String.make 1 (Char.chr (value land 0xFF))
+let write_uint8 value = String.make 1 (Char.chr (value land 0xFF))
 
 let frame_type_to_int = function
   | Frame.Data -> 0x0
@@ -44,7 +43,7 @@ let flags_to_byte frame_type flags =
   byte
 
 let serialize_priority stream_dependency exclusive weight =
-  let dep_with_exclusive = 
+  let dep_with_exclusive =
     if exclusive then stream_dependency lor 0x80000000
     else stream_dependency land 0x7FFFFFFF
   in
@@ -59,18 +58,24 @@ let serialize_data_payload payload =
 
 let serialize_headers_payload payload =
   match payload with
-  | Frame.HeadersPayload { pad_length; stream_dependency; weight; exclusive; header_block_fragment } ->
-      let pad_bytes = match pad_length with
-        | Some pl -> write_uint8 pl
-        | None -> ""
+  | Frame.HeadersPayload
+      {
+        pad_length;
+        stream_dependency;
+        weight;
+        exclusive;
+        header_block_fragment;
+      } ->
+      let pad_bytes =
+        match pad_length with Some pl -> write_uint8 pl | None -> ""
       in
-      let priority_bytes = match (stream_dependency, weight) with
-        | (Some dep, Some w) -> serialize_priority dep exclusive w
+      let priority_bytes =
+        match (stream_dependency, weight) with
+        | Some dep, Some w -> serialize_priority dep exclusive w
         | _ -> ""
       in
-      let padding = match pad_length with
-        | Some pl -> String.make pl '\x00'
-        | None -> ""
+      let padding =
+        match pad_length with Some pl -> String.make pl '\x00' | None -> ""
       in
       pad_bytes ^ priority_bytes ^ header_block_fragment ^ padding
   | _ -> failwith "serialize_headers_payload: expected HeadersPayload"
@@ -89,8 +94,10 @@ let serialize_rst_stream_payload payload =
 
 let serialize_setting = function
   | Frame.HeaderTableSize value -> write_uint16_be 0x1 ^ write_uint32_be value
-  | Frame.EnablePush enabled -> write_uint16_be 0x2 ^ write_uint32_be (if enabled then 1 else 0)
-  | Frame.MaxConcurrentStreams value -> write_uint16_be 0x3 ^ write_uint32_be value
+  | Frame.EnablePush enabled ->
+      write_uint16_be 0x2 ^ write_uint32_be (if enabled then 1 else 0)
+  | Frame.MaxConcurrentStreams value ->
+      write_uint16_be 0x3 ^ write_uint32_be value
   | Frame.InitialWindowSize value -> write_uint16_be 0x4 ^ write_uint32_be value
   | Frame.MaxFrameSize value -> write_uint16_be 0x5 ^ write_uint32_be value
   | Frame.MaxHeaderListSize value -> write_uint16_be 0x6 ^ write_uint32_be value
@@ -103,15 +110,16 @@ let serialize_settings_payload payload =
 
 let serialize_push_promise_payload payload =
   match payload with
-  | Frame.PushPromisePayload { pad_length; promised_stream_id; header_block_fragment } ->
-      let pad_bytes = match pad_length with
-        | Some pl -> write_uint8 pl
-        | None -> ""
+  | Frame.PushPromisePayload
+      { pad_length; promised_stream_id; header_block_fragment } ->
+      let pad_bytes =
+        match pad_length with Some pl -> write_uint8 pl | None -> ""
       in
-      let promised_id_bytes = write_uint32_be (promised_stream_id land 0x7FFFFFFF) in
-      let padding = match pad_length with
-        | Some pl -> String.make pl '\x00'
-        | None -> ""
+      let promised_id_bytes =
+        write_uint32_be (promised_stream_id land 0x7FFFFFFF)
+      in
+      let padding =
+        match pad_length with Some pl -> String.make pl '\x00' | None -> ""
       in
       pad_bytes ^ promised_id_bytes ^ header_block_fragment ^ padding
   | _ -> failwith "serialize_push_promise_payload: expected PushPromisePayload"
@@ -133,7 +141,8 @@ let serialize_window_update_payload payload =
   match payload with
   | Frame.WindowUpdatePayload increment ->
       write_uint32_be (increment land 0x7FFFFFFF)
-  | _ -> failwith "serialize_window_update_payload: expected WindowUpdatePayload"
+  | _ ->
+      failwith "serialize_window_update_payload: expected WindowUpdatePayload"
 
 let serialize_continuation_payload payload =
   match payload with
@@ -160,5 +169,5 @@ let serialize_frame frame =
   let flags_byte = write_uint8 (flags_to_byte frame.frame_type frame.flags) in
   let stream_id_bytes = write_uint32_be (frame.stream_id land 0x7FFFFFFF) in
   let payload_bytes = serialize_payload frame.frame_type frame.payload in
-  
+
   length_bytes ^ type_byte ^ flags_byte ^ stream_id_bytes ^ payload_bytes

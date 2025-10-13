@@ -7,9 +7,7 @@ type t = Kernel.Net.Tcp_listener.t
 type error = [ `Connection_refused | `Closed | `System_error of string ]
 
 let bind ?(reuse_addr = true) ?(reuse_port = false) ?(backlog = 128) addr =
-  match
-    Kernel.Net.Tcp_listener.bind ~reuse_addr ~reuse_port ~backlog addr
-  with
+  match Kernel.Net.Tcp_listener.bind ~reuse_addr ~reuse_port ~backlog addr with
   | Ok t -> Ok t
   | Error
       ( `Noop | `Closed | `Connection_closed | `Eof | `Exn _ | `No_info
@@ -23,8 +21,8 @@ let accept t =
     | Ok (stream, addr) -> Ok (stream, addr)
     | Error `Would_block ->
         (* Would block, register interest and wait - this suspends the process *)
-        Miniriot.syscall ~name:"TcpListener.accept"
-          ~interest:Interest.readable ~source (fun () -> accept_loop ())
+        Miniriot.syscall ~name:"TcpListener.accept" ~interest:Interest.readable
+          ~source (fun () -> accept_loop ())
     | Error
         ( `Noop | `Closed | `Connection_closed | `Eof | `Exn _ | `No_info
         | `Process_down | `Timeout | `IO_error _ ) ->

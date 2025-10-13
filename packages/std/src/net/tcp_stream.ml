@@ -24,9 +24,7 @@ let connect addr =
   connect_loop ()
 
 let read stream buffer ?(pos = 0) ?len () =
-  let len =
-    match len with None -> Bytes.length buffer - pos | Some l -> l
-  in
+  let len = match len with None -> Bytes.length buffer - pos | Some l -> l in
   let source = Kernel.Net.Tcp_stream.to_source stream in
   let rec read_loop () =
     match Kernel.Net.Tcp_stream.read stream buffer ~pos ~len with
@@ -45,9 +43,7 @@ let read stream buffer ?(pos = 0) ?len () =
   read_loop ()
 
 let write stream buffer ?(pos = 0) ?len () =
-  let len =
-    match len with None -> Bytes.length buffer - pos | Some l -> l
-  in
+  let len = match len with None -> Bytes.length buffer - pos | Some l -> l in
   let source = Kernel.Net.Tcp_stream.to_source stream in
   let rec write_loop () =
     match Kernel.Net.Tcp_stream.write stream buffer ~pos ~len with
@@ -75,7 +71,7 @@ let to_reader stream =
       (* Note: timeout parameter ignored for now - Miniriot handles suspension *)
       read t buf ()
 
-    let read_vectored t bufs = 
+    let read_vectored t bufs =
       match Kernel.Net.Tcp_stream.read_vectored t bufs with
       | Ok n -> Ok n
       | Error _ -> Error (`System_error "read_vectored failed")
@@ -89,9 +85,7 @@ let to_writer stream =
 
     let write t ~buf =
       let bytes = Bytes.of_string buf in
-      match write t bytes () with
-      | Ok n -> Ok n
-      | Error e -> Error e
+      match write t bytes () with Ok n -> Ok n | Error e -> Error e
 
     let write_owned_vectored t ~bufs =
       match Kernel.Net.Tcp_stream.write_vectored t bufs with

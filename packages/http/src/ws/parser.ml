@@ -4,7 +4,7 @@
 
 open Std
 
-let (let*) = Result.and_then
+let ( let* ) = Result.and_then
 
 type 'a parse_result =
   | Done of { value : 'a; remaining : string }
