@@ -121,7 +121,8 @@ let token_kind_to_syntax_kind = function
       | Keyword.Lsr | Keyword.Asr ) ->
       Syntax_kind.INFIX_EXPR
   | Token.Bang | Token.Keyword Keyword.Lnot -> Syntax_kind.PREFIX_EXPR
-  | Token.Tilde | Token.Question -> Syntax_kind.ARGUMENT
+  | Token.Tilde -> Syntax_kind.IDENT_EXPR
+  | Token.Question -> Syntax_kind.IDENT_EXPR
   | Token.Backtick -> Syntax_kind.POLY_VARIANT_EXPR
   | Token.Hash -> Syntax_kind.POLY_VARIANT_TYPE_PATTERN
   | Token.Keyword Keyword.Assert -> Syntax_kind.ASSERT_EXPR
@@ -4702,10 +4703,12 @@ and parse_let_binding parser leading_trivia =
     parse_let_module_expr parser leading_trivia let_kw
       (trivia_after_let @ attributes @ attr_trivia)
       ()
-  else parse_regular_let_binding parser let_kw trivia_after_let ~attributes ()
+  else
+    parse_regular_let_binding parser leading_trivia let_kw trivia_after_let
+      ~attributes ()
 
-and parse_regular_let_binding parser let_kw trivia_after_let ?(attributes = [])
-    () =
+and parse_regular_let_binding parser leading_trivia let_kw trivia_after_let
+    ?(attributes = []) () =
   (* Check for 'rec' *)
   let is_rec = at parser (Token.Keyword Keyword.Rec) in
   let rec_kw, trivia_after_rec =
@@ -5197,13 +5200,13 @@ and parse_regular_let_binding parser let_kw trivia_after_let ?(attributes = [])
         let children =
           match rec_kw with
           | Some kw ->
-              [ let_kw ] @ attributes @ [ kw; pattern ] @ type_annot_tokens
-              @ params @ return_type_annot_tokens @ [ eq ] @ trivia_after_eq
-              @ [ final_expr; in_kw; Ceibo.Green.Node body ]
+              leading_trivia @ [ let_kw ] @ attributes @ [ kw; pattern ]
+              @ type_annot_tokens @ params @ return_type_annot_tokens @ [ eq ]
+              @ trivia_after_eq @ [ final_expr; in_kw; Ceibo.Green.Node body ]
           | None ->
-              [ let_kw ] @ attributes @ [ pattern ] @ type_annot_tokens @ params
-              @ return_type_annot_tokens @ [ eq ] @ trivia_after_eq
-              @ [ final_expr; in_kw; Ceibo.Green.Node body ]
+              leading_trivia @ [ let_kw ] @ attributes @ [ pattern ]
+              @ type_annot_tokens @ params @ return_type_annot_tokens @ [ eq ]
+              @ trivia_after_eq @ [ final_expr; in_kw; Ceibo.Green.Node body ]
         in
         Some (make_node_list ~kind children)
     | None ->
@@ -5216,30 +5219,32 @@ and parse_regular_let_binding parser let_kw trivia_after_let ?(attributes = [])
         let children =
           match rec_kw with
           | Some kw ->
-              [ let_kw ] @ attributes @ [ kw; pattern ] @ type_annot_tokens
-              @ params @ return_type_annot_tokens @ [ eq ] @ trivia_after_eq
-              @ [ final_expr; in_kw ]
+              leading_trivia @ [ let_kw ] @ attributes @ [ kw; pattern ]
+              @ type_annot_tokens @ params @ return_type_annot_tokens @ [ eq ]
+              @ trivia_after_eq @ [ final_expr; in_kw ]
           | None ->
-              [ let_kw ] @ attributes @ [ pattern ] @ type_annot_tokens @ params
-              @ return_type_annot_tokens @ [ eq ] @ trivia_after_eq
-              @ [ final_expr; in_kw ]
+              leading_trivia @ [ let_kw ] @ attributes @ [ pattern ]
+              @ type_annot_tokens @ params @ return_type_annot_tokens @ [ eq ]
+              @ trivia_after_eq @ [ final_expr; in_kw ]
         in
         Some (make_node_list ~kind children)
   else
     (* This is a let binding: let x = expr *)
+    (* NOTE: We don't include trivia_after_expr for top-level bindings,
+       because that trivia should be between structure items, not part of this binding *)
     match rec_kw with
     | Some kw ->
         Some
           (make_node_list ~kind:Syntax_kind.LET_BINDING
-             ([ let_kw ] @ attributes @ [ kw; pattern ] @ type_annot_tokens
-            @ params @ return_type_annot_tokens @ trivia_before_eq @ [ eq ]
-            @ trivia_after_eq @ [ final_expr ] @ trivia_after_expr))
+             (leading_trivia @ [ let_kw ] @ attributes @ [ kw; pattern ]
+            @ type_annot_tokens @ params @ return_type_annot_tokens
+            @ trivia_before_eq @ [ eq ] @ trivia_after_eq @ [ final_expr ]))
     | None ->
         Some
           (make_node_list ~kind:Syntax_kind.LET_BINDING
-             ([ let_kw ] @ attributes @ [ pattern ] @ type_annot_tokens @ params
-            @ return_type_annot_tokens @ trivia_before_eq @ [ eq ]
-            @ trivia_after_eq @ [ final_expr ] @ trivia_after_expr))
+             (leading_trivia @ [ let_kw ] @ attributes @ [ pattern ]
+            @ type_annot_tokens @ params @ return_type_annot_tokens
+            @ trivia_before_eq @ [ eq ] @ trivia_after_eq @ [ final_expr ]))
 
 and parse_type_decl parser =
   (* type 'a t = ... | type t += ... | type t *)
@@ -5605,8 +5610,8 @@ and parse_type_arrow parser leading_trivia =
                   let trivia_after_colon = consume_trivia parser in
                   let typ = parse_type_tuple parser trivia_after_colon in
                   make_node_list ~kind:Syntax_kind.TYPE_PARAM
-                    ([ label_elem ] @ trivia_after_left @ before_trivia @ [ colon ]
-                   @ [ Ceibo.Green.Node typ ])
+                    ([ label_elem ] @ trivia_after_left @ before_trivia
+                   @ [ colon ] @ [ Ceibo.Green.Node typ ])
                 else
                   (* Multiple non-trivia children, not a simple identifier *)
                   left
