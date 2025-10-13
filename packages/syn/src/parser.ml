@@ -1985,7 +1985,8 @@ and parse_record_expr parser =
                             (trivia_after_f @ trivia_acc)
                       | None ->
                           (* No field after semicolon, add trivia to accumulator *)
-                          (List.rev acc, List.rev (trivia_after_semi @ trivia_acc))
+                          ( List.rev acc,
+                            List.rev (trivia_after_semi @ trivia_acc) )
                   in
 
                   parse_update_fields [ Ceibo.Green.Node field ]
