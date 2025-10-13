@@ -65,3 +65,39 @@ let write stream buffer ?(pos = 0) ?len () =
   write_loop ()
 
 let close = Kernel.Net.Tcp_stream.close
+
+let to_reader stream =
+  let module Read = struct
+    type nonrec t = t
+    type nonrec err = error
+
+    let read t ?timeout:_ buf =
+      (* Note: timeout parameter ignored for now - Miniriot handles suspension *)
+      read t buf ()
+
+    let read_vectored t bufs = 
+      match Kernel.Net.Tcp_stream.read_vectored t bufs with
+      | Ok n -> Ok n
+      | Error _ -> Error (`System_error "read_vectored failed")
+  end in
+  IO.Reader.of_read_src (module Read) stream
+
+let to_writer stream =
+  let module Write = struct
+    type nonrec t = t
+    type nonrec err = error
+
+    let write t ~buf =
+      let bytes = Bytes.of_string buf in
+      match write t bytes () with
+      | Ok n -> Ok n
+      | Error e -> Error e
+
+    let write_owned_vectored t ~bufs =
+      match Kernel.Net.Tcp_stream.write_vectored t bufs with
+      | Ok n -> Ok n
+      | Error _ -> Error (`System_error "write_vectored failed")
+
+    let flush _t = Ok ()
+  end in
+  IO.Writer.of_write_src (module Write) stream

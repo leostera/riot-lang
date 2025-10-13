@@ -122,8 +122,8 @@ module Fs = Fs
 module Graph = Graph
 (** Graph data structures and visualization *)
 
-module IO = Kernel.IO
-(** Low-level I/O operations *)
+module IO = IO
+(** Generic I/O abstractions - Reader, Writer, and Iovec *)
 
 module Iter = Iter
 (** Iteration and cursor utilities for sequences and parsing *)
