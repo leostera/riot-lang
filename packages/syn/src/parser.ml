@@ -5605,7 +5605,7 @@ and parse_type_arrow parser leading_trivia =
                   let trivia_after_colon = consume_trivia parser in
                   let typ = parse_type_tuple parser trivia_after_colon in
                   make_node_list ~kind:Syntax_kind.TYPE_PARAM
-                    ([ label_elem ] @ trivia_after_left @ [ colon ]
+                    ([ label_elem ] @ trivia_after_left @ before_trivia @ [ colon ]
                    @ [ Ceibo.Green.Node typ ])
                 else
                   (* Multiple non-trivia children, not a simple identifier *)
@@ -6173,7 +6173,7 @@ and parse_val_decl parser =
   Some
     (make_node_list ~kind:Syntax_kind.VAL_DECL
        ([ val_kw ] @ trivia_after_val @ name_tokens @ trivia_after_name
-      @ [ colon ]
+      @ before_trivia @ [ colon ]
        @ [ Ceibo.Green.Node type_expr ]))
 
 and parse_external_decl parser =
