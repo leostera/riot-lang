@@ -56,6 +56,8 @@
     Unix-like systems and Windows, particularly for permissions and symbolic
     links. *)
 
+open Iter
+
 type error = SystemError of string  (** Filesystem error type *)
 
 module Fd = Fd

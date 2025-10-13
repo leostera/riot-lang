@@ -34,6 +34,8 @@
 
     (* Join strings *) let csv = String.concat "," ["a"; "b"; "c"] ``` *)
 
+open Iter
+
 include module type of Stdlib.String
 (** @inline
 

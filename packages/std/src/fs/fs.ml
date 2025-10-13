@@ -1,6 +1,7 @@
 (** Filesystem utilities *)
 
 open Global
+open Iter
 include Common
 module Permissions = Permissions
 module Metadata = Metadata
