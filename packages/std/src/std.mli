@@ -79,8 +79,7 @@
     - [WorkerPool] - Parallel execution
 
     ### Low-Level
-    - [Iterator] - Iteration protocol
-    - [MutIterator] - Mutable iteration
+    - [Iter] - Iteration and cursor utilities
     - [Cell] - Mutable cells
     - [Exception] - Exception handling *)
 
@@ -126,17 +125,14 @@ module Graph = Graph
 module IO = Kernel.IO
 (** Low-level I/O operations *)
 
-module Iterator = Iterator
-(** Iterator protocol for sequences *)
+module Iter = Iter
+(** Iteration and cursor utilities for sequences and parsing *)
 
 module List = List
 (** Extended list utilities *)
 
 module Log = Log
 (** Structured logging *)
-
-module MutIterator = MutIterator
-(** Mutable iterator protocol *)
 
 module Net = Net
 (** Network I/O and protocols *)
