@@ -6557,14 +6557,9 @@ let parse_implementation parser =
           let trivia_after_item = consume_trivia parser in
           parse_items (trivia_after_item @ [ Ceibo.Green.Node item ] @ acc)
       | None ->
-          (* Skip problematic token, but not if it's EOF or trivia *)
-          (match peek_kind parser with
-          | Some Token.EOF | Some Token.Whitespace | Some (Token.Comment _)
-          | Some (Token.Docstring _) | None ->
-              List.rev acc
-          | _ ->
-              let _ = advance parser in
-              parse_items acc)
+          (* If we can't parse an item, consume remaining trivia and return *)
+          let remaining_trivia = consume_trivia parser in
+          List.rev (remaining_trivia @ acc)
   in
 
   let items = parse_items [] in
@@ -6597,14 +6592,9 @@ let parse_interface parser =
           let trivia_after_item = consume_trivia parser in
           parse_items (trivia_after_item @ [ Ceibo.Green.Node item ] @ acc)
       | None ->
-          (* Skip problematic token, but not if it's EOF or trivia *)
-          (match peek_kind parser with
-          | Some Token.EOF | Some Token.Whitespace | Some (Token.Comment _)
-          | Some (Token.Docstring _) | None ->
-              List.rev acc
-          | _ ->
-              let _ = advance parser in
-              parse_items acc)
+          (* If we can't parse an item, consume remaining trivia and return *)
+          let remaining_trivia = consume_trivia parser in
+          List.rev (remaining_trivia @ acc)
   in
 
   let items = parse_items [] in
@@ -6636,5 +6626,3 @@ let parse ~source ?(filename = "input.ml") tokens =
   let parser = create ~source tokens in
   let green_tree = parse_source_file parser filename in
   { tree = green_tree; diagnostics = List.rev parser.diagnostics }
-(* rebuild *)
-(* force rebuild 2 *)
