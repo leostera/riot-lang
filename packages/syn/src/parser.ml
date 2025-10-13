@@ -670,7 +670,15 @@ and parse_expr_bp parser min_bp =
                   Some (make_node_list ~kind:Syntax_kind.SEQUENCE_EXPR children))
         | Some op_kind when is_infix_op op_kind -> (
             let prec = get_precedence op_kind in
-            if prec < min_bp then Some lhs
+            if prec < min_bp then
+              (* Operator precedence too low - treat trivia_before_op as trailing trivia *)
+              if List.length trivia_before_op = 0 then Some lhs
+              else
+                let children = [ Ceibo.Green.Node lhs ] @ trivia_before_op in
+                Some
+                  (make_node_list
+                     ~kind:(Ceibo.Green.kind (Ceibo.Green.Node lhs))
+                     children)
             else
               let before_trivia, op_tok = consume parser in
               let trivia_after_op = consume_trivia parser in
@@ -684,7 +692,13 @@ and parse_expr_bp parser min_bp =
                     make_node_list ~kind:Syntax_kind.INFIX_EXPR children
                   in
                   loop infix
-              | None -> Some lhs)
+              | None ->
+                  (* RHS parsing failed after consuming operator - include it with trivia *)
+                  let children =
+                    [ Ceibo.Green.Node lhs ] @ trivia_before_op @ [ op_tok ]
+                    @ trivia_after_op
+                  in
+                  Some (make_node_list ~kind:Syntax_kind.INFIX_EXPR children))
         | (Some Token.Tilde | Some Token.Question) when min_bp <= 8 -> (
             (* Labeled or optional argument *)
             match parse_labeled_or_optional_arg parser trivia_before_op with
