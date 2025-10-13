@@ -2,6 +2,8 @@
     sorting *)
 
 open Std
+open Std.Iter
+
 open Build_node
 open Model
 

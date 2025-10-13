@@ -387,7 +387,10 @@ let start_tcp_server ~server ~port =
       | Ok bytes_written -> ()
       | Error e ->
           Log.error "Failed to write to stream: %s"
-            (match e with `Closed -> "closed" | `System_error msg -> msg);
+            (match e with
+            | `Closed -> "closed"
+            | `Connection_refused -> "connection refused"
+            | `System_error msg -> msg);
           failwith "network write failed"
     in
     Log.debug "Calling Jsonrpc.Server.handle_message";

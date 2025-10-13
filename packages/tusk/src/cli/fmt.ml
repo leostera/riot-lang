@@ -1,10 +1,11 @@
 open Std
+open Std.Iter
+open Std.ArgParser
+
 open Core
 open Model
-open ArgParser
 
 let command =
-  let open ArgParser in
   let open Arg in
   command "fmt" |> about "Format OCaml code"
   |> args

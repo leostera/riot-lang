@@ -1,6 +1,8 @@
 (** Build planner - plans a build node. *)
 
 open Std
+open Std.Iter
+
 open Model
 
 type skip_reason = DependenciesFailed of string list

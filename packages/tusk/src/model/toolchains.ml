@@ -2,6 +2,7 @@
 
 open Std
 open Std.Data
+open Std.Iter
 
 (* Helper to run shell commands and return (success, output) *)
 let run_command_compat cmd_str =

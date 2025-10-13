@@ -1,0 +1,8 @@
+[package]
+name = "blink"
+version = "0.2.0"
+
+[dependencies]
+std = { path = "../std" }
+miniriot = { path = "../miniriot" }
+http = { path = "../http" }

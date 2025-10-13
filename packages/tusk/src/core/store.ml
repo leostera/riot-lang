@@ -1,4 +1,5 @@
 open Std
+open Std.Iter
 
 open Model
 (** Store - Content-addressable storage for build artifacts **)
