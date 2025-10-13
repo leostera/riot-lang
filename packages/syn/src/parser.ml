@@ -1916,7 +1916,8 @@ and parse_record_expr parser =
       (* Parse as record literal { field = value; ... } *)
       (* Parse fields *)
       let fields, fields_trivia =
-        match parse_record_field parser with
+        let leading_trivia = consume_trivia parser in
+        match parse_record_field parser leading_trivia with
         | Some field ->
             let trivia_after_field = consume_trivia parser in
 
@@ -1926,14 +1927,17 @@ and parse_record_expr parser =
                 (List.rev acc, List.rev trivia_acc)
               else
                 let before_trivia, semi = consume parser in
+                let trivia_after_semi = consume_trivia parser in
                 let acc = semi :: acc in
-                match parse_record_field parser with
+                match parse_record_field parser trivia_after_semi with
                 | Some f ->
                     let trivia_after_f = consume_trivia parser in
                     parse_fields
                       (Ceibo.Green.Node f :: acc)
                       (trivia_after_f @ trivia_acc)
-                | None -> (List.rev acc, List.rev trivia_acc)
+                | None ->
+                    (* No field after semicolon, add trivia to accumulator *)
+                    (List.rev acc, List.rev (trivia_after_semi @ trivia_acc))
             in
 
             parse_fields [ Ceibo.Green.Node field ] trivia_after_field
@@ -1960,7 +1964,8 @@ and parse_record_expr parser =
 
             (* Parse fields *)
             let fields, fields_trivia =
-              match parse_record_field parser with
+              let leading_trivia = consume_trivia parser in
+              match parse_record_field parser leading_trivia with
               | Some field ->
                   let trivia_after_field = consume_trivia parser in
 
@@ -1972,14 +1977,15 @@ and parse_record_expr parser =
                       let before_trivia, semi = consume parser in
                       let trivia_after_semi = consume_trivia parser in
                       let acc = semi :: acc in
-                      let trivia_acc = trivia_after_semi @ trivia_acc in
-                      match parse_record_field parser with
+                      match parse_record_field parser trivia_after_semi with
                       | Some field ->
                           let trivia_after_f = consume_trivia parser in
                           parse_update_fields
                             (Ceibo.Green.Node field :: acc)
                             (trivia_after_f @ trivia_acc)
-                      | None -> (List.rev acc, List.rev trivia_acc)
+                      | None ->
+                          (* No field after semicolon, add trivia to accumulator *)
+                          (List.rev acc, List.rev (trivia_after_semi @ trivia_acc))
                   in
 
                   parse_update_fields [ Ceibo.Green.Node field ]
@@ -2026,8 +2032,7 @@ and parse_record_expr parser =
           in
           Some (make_node_list ~kind:Syntax_kind.RECORD_EXPR children)
 
-and parse_record_field parser =
-  let leading_trivia = consume_trivia parser in
+and parse_record_field parser leading_trivia =
   match peek_kind parser with
   | Some (Token.Ident _) ->
       (* Parse field name - could be qualified like Module.field *)
