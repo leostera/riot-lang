@@ -666,8 +666,11 @@ and parse_expr_bp parser min_bp =
                   loop seq
               | None ->
                   (* RHS parsing failed after consuming semicolon - include it with trailing trivia *)
-                  let children = [ Ceibo.Green.Node lhs; semi ] @ trivia_after_semi in
-                  Some (make_node_list ~kind:Syntax_kind.SEQUENCE_EXPR children))
+                  let children =
+                    [ Ceibo.Green.Node lhs; semi ] @ trivia_after_semi
+                  in
+                  Some (make_node_list ~kind:Syntax_kind.SEQUENCE_EXPR children)
+            )
         | Some op_kind when is_infix_op op_kind -> (
             let prec = get_precedence op_kind in
             if prec < min_bp then
@@ -3614,9 +3617,8 @@ and parse_pattern ?(leading_trivia = None) parser =
         | Some tail_pat ->
             Some
               (make_node_list ~kind:Syntax_kind.CONS_PATTERN
-                 ([ Ceibo.Green.Node pat ]
-                 @ trivia_after_pat @ trivia_before_cons @ [ cons_op ]
-                 @ trivia_after_cons
+                 ([ Ceibo.Green.Node pat ] @ trivia_after_pat
+                @ trivia_before_cons @ [ cons_op ] @ trivia_after_cons
                  @ [ Ceibo.Green.Node tail_pat ]))
         | None -> Some pat
       else if at parser Token.DotDot then
@@ -4629,9 +4631,10 @@ let rec parse_structure_item parser =
   | Some (Token.Keyword Keyword.Type) -> parse_type_decl parser
   | Some (Token.Keyword Keyword.Open) -> parse_open parser
   | Some (Token.Keyword Keyword.External) -> parse_external_decl parser
-  | Some (Token.Keyword Keyword.Module) -> parse_module_decl_structure parser leading_trivia
+  | Some (Token.Keyword Keyword.Module) ->
+      parse_module_decl_structure parser leading_trivia
   | Some (Token.Keyword Keyword.Include) -> parse_include parser leading_trivia
-  | _ -> 
+  | _ ->
       (* Return a dummy node containing the leading trivia so it's not lost *)
       if leading_trivia = [] then None
       else Some (make_node_list ~kind:Syntax_kind.ERROR leading_trivia)
@@ -5876,17 +5879,17 @@ and parse_poly_variant_type parser =
   let trivia_after_open = consume_trivia parser in
 
   (* Check for open [> or closed [< *)
-  let variance, variance_trivia =
+  let variance, variance_trivia, trivia_after_variance =
     if at parser Token.Gt then
       let before_trivia, tok = consume parser in
-      (Some tok, before_trivia)
+      let trivia_after = consume_trivia parser in
+      (Some tok, before_trivia, trivia_after)
     else if at parser Token.Lt then
       let before_trivia, tok = consume parser in
-      (Some tok, before_trivia)
-    else (None, [])
+      let trivia_after = consume_trivia parser in
+      (Some tok, before_trivia, trivia_after)
+    else (None, [], [])
   in
-
-  let trivia_after_variance = consume_trivia parser in
 
   let rec parse_variants acc =
     match peek_kind parser with
@@ -6208,7 +6211,8 @@ and parse_module_decl_structure parser leading_trivia =
     parse_module_type_decl parser leading_trivia module_kw trivia_after_module
   else
     (* Regular module declaration: module M = ... OR module M (X : S) = ... *)
-    parse_regular_module_decl_structure parser leading_trivia module_kw trivia_after_module
+    parse_regular_module_decl_structure parser leading_trivia module_kw
+      trivia_after_module
 
 and parse_module_decl_signature parser leading_trivia =
   (* For .mli files: module M : sig ... end  OR  module type S = sig ... end *)
@@ -6220,7 +6224,8 @@ and parse_module_decl_signature parser leading_trivia =
     parse_module_type_decl parser leading_trivia module_kw trivia_after_module
   else
     (* Module signature: module M : S  OR  module M (X : S) : S *)
-    parse_regular_module_decl_signature parser leading_trivia module_kw trivia_after_module
+    parse_regular_module_decl_signature parser leading_trivia module_kw
+      trivia_after_module
 
 and parse_module_type_decl parser leading_trivia module_kw trivia_after_module =
   (* module type S = sig ... end *)
@@ -6240,8 +6245,9 @@ and parse_module_type_decl parser leading_trivia module_kw trivia_after_module =
 
   Some
     (make_node_list ~kind:Syntax_kind.MODULE_TYPE_DECL
-       (leading_trivia @ [ module_kw ] @ trivia_after_module @ [ type_kw ] @ trivia_after_type
-      @ [ name ] @ trivia_after_name @ [ eq ] @ trivia_after_eq
+       (leading_trivia @ [ module_kw ] @ trivia_after_module @ [ type_kw ]
+      @ trivia_after_type @ [ name ] @ trivia_after_name @ [ eq ]
+      @ trivia_after_eq
        @ [ Ceibo.Green.Node signature ]))
 
 and parse_signature parser =
@@ -6280,7 +6286,8 @@ and parse_signature parser =
   in
   make_node_list ~kind:Syntax_kind.SIGNATURE children
 
-and parse_regular_module_decl_structure parser leading_trivia module_kw trivia_after_module =
+and parse_regular_module_decl_structure parser leading_trivia module_kw
+    trivia_after_module =
   (* For .ml files: module M = ... OR module M (X : S) = ... (functor) *)
   let before_trivia, name = consume parser in
   let trivia_after_name = consume_trivia parser in
@@ -6383,10 +6390,12 @@ and parse_regular_module_decl_structure parser leading_trivia module_kw trivia_a
   let children =
     let base =
       match params with
-      | [] -> leading_trivia @ [ module_kw ] @ trivia_after_module @ [ name ] @ trivia_after_name
+      | [] ->
+          leading_trivia @ [ module_kw ] @ trivia_after_module @ [ name ]
+          @ trivia_after_name
       | _ ->
-          leading_trivia @ [ module_kw ] @ trivia_after_module @ [ name ] @ trivia_after_name
-          @ params
+          leading_trivia @ [ module_kw ] @ trivia_after_module @ [ name ]
+          @ trivia_after_name @ params
     in
     let with_constraint =
       match constraint_opt with
@@ -6399,7 +6408,8 @@ and parse_regular_module_decl_structure parser leading_trivia module_kw trivia_a
 
   Some (make_node_list ~kind:Syntax_kind.MODULE_DECL children)
 
-and parse_regular_module_decl_signature parser leading_trivia module_kw trivia_after_module =
+and parse_regular_module_decl_signature parser leading_trivia module_kw
+    trivia_after_module =
   (* For .mli files: module M : S  OR  module M (X : S) : S *)
   let before_trivia, name = consume parser in
   let trivia_after_name = consume_trivia parser in
@@ -6457,8 +6467,9 @@ and parse_regular_module_decl_signature parser leading_trivia module_kw trivia_a
       let module_type = parse_module_type_expr parser in
       let trivia_after_type = consume_trivia parser in
 
-      leading_trivia @ [ module_kw ] @ trivia_after_module @ [ name ] @ trivia_after_name @ params
-      @ params_trivia @ [ colon ] @ trivia_after_colon
+      leading_trivia @ [ module_kw ] @ trivia_after_module @ [ name ]
+      @ trivia_after_name @ params @ params_trivia @ [ colon ]
+      @ trivia_after_colon
       @ [ Ceibo.Green.Node module_type ]
       @ trivia_after_type
     else if at parser Token.Eq then
@@ -6470,14 +6481,14 @@ and parse_regular_module_decl_signature parser leading_trivia module_kw trivia_a
       let before_trivia, module_id = consume parser in
       let trivia_after_id = consume_trivia parser in
 
-      leading_trivia @ [ module_kw ] @ trivia_after_module @ [ name ] @ trivia_after_name @ params
-      @ params_trivia @ [ eq ] @ trivia_after_eq @ [ module_id ]
-      @ trivia_after_id
+      leading_trivia @ [ module_kw ] @ trivia_after_module @ [ name ]
+      @ trivia_after_name @ params @ params_trivia @ [ eq ] @ trivia_after_eq
+      @ [ module_id ] @ trivia_after_id
     else
       (* Malformed: missing : or = *)
       let before_trivia, missing = expect parser Token.Colon in
-      leading_trivia @ [ module_kw ] @ trivia_after_module @ [ name ] @ trivia_after_name @ params
-      @ params_trivia @ [ missing ]
+      leading_trivia @ [ module_kw ] @ trivia_after_module @ [ name ]
+      @ trivia_after_name @ params @ params_trivia @ [ missing ]
   in
 
   Some (make_node_list ~kind:Syntax_kind.MODULE_DECL children)
@@ -6491,10 +6502,11 @@ and parse_signature_item parser =
   | Some (Token.Keyword Keyword.Type) -> parse_type_decl parser
   | Some (Token.Keyword Keyword.Val) -> parse_val_decl parser
   | Some (Token.Keyword Keyword.External) -> parse_external_decl parser
-  | Some (Token.Keyword Keyword.Module) -> parse_module_decl_signature parser leading_trivia
+  | Some (Token.Keyword Keyword.Module) ->
+      parse_module_decl_signature parser leading_trivia
   | Some (Token.Keyword Keyword.Open) -> parse_open parser
   | Some (Token.Keyword Keyword.Include) -> parse_include parser leading_trivia
-  | _ -> 
+  | _ ->
       (* Return a dummy node containing the leading trivia so it's not lost *)
       if leading_trivia = [] then None
       else Some (make_node_list ~kind:Syntax_kind.ERROR leading_trivia)
@@ -6547,9 +6559,9 @@ let parse_implementation parser =
   (* Parse .ml file (implementation) *)
   (* Consume leading trivia at the beginning of the file *)
   let leading_trivia = consume_trivia parser in
-  
+
   let rec parse_items acc =
-    if peek parser = None || at parser Token.EOF then List.rev acc
+    if peek parser = None then List.rev acc
     else
       match parse_structure_item parser with
       | Some item ->
@@ -6582,9 +6594,9 @@ let parse_interface parser =
   (* Parse .mli file (interface/signature) *)
   (* Consume leading trivia at the beginning of the file *)
   let leading_trivia = consume_trivia parser in
-  
+
   let rec parse_items acc =
-    if peek parser = None || at parser Token.EOF then List.rev acc
+    if peek parser = None then List.rev acc
     else
       match parse_signature_item parser with
       | Some item ->
