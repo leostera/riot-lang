@@ -47,7 +47,7 @@ for file in $(find packages/ -name "*.ml" -o -name "*.mli" | sort); do
     fi
     
     # Generate tokens
-    if ! ./target/debug/syn tokenize --json "$file" > "$tokens_file" 2>/dev/null; then
+    if ! ./target/debug/syn tokenize --json "$file" | grep "{" > "$tokens_file" 2>/dev/null; then
         echo -e "${RED}✗ $file: Failed to tokenize${NC}"
         ((failed++))
         failed_files+=("$file (tokenize failed)")
@@ -59,7 +59,7 @@ for file in $(find packages/ -name "*.ml" -o -name "*.mli" | sort); do
     fi
     
     # Generate green tree
-    if ! ./target/debug/syn parse --json "$file" > "$green_tree_file" 2>/dev/null; then
+    if ! ./target/debug/syn parse --json "$file" | grep "{" > "$green_tree_file" 2>/dev/null; then
         echo -e "${RED}✗ $file: Failed to parse${NC}"
         ((failed++))
         failed_files+=("$file (parse failed)")
@@ -71,7 +71,7 @@ for file in $(find packages/ -name "*.ml" -o -name "*.mli" | sort); do
     fi
     
     # Generate red tree
-    if ! ./target/debug/syn parse --json --red-tree "$file" > "$red_tree_file" 2>/dev/null; then
+    if ! ./target/debug/syn parse --json --red-tree "$file" | grep "{" > "$red_tree_file" 2>/dev/null; then
         echo -e "${RED}✗ $file: Failed to parse red tree${NC}"
         ((failed++))
         failed_files+=("$file (red tree failed)")

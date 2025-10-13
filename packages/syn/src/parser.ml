@@ -1136,6 +1136,7 @@ and parse_labeled_or_optional_arg parser leading_trivia =
                   let children =
                     leading_trivia @ before_trivia_tilde @ [ tilde ]
                     @ trivia_after_tilde @ before_trivia_label @ [ label ]
+                    @ trivia_after_label
                   in
                   Some (make_node_list ~kind:Syntax_kind.ARGUMENT children)
             else
@@ -1143,6 +1144,7 @@ and parse_labeled_or_optional_arg parser leading_trivia =
               let children =
                 leading_trivia @ before_trivia_tilde @ [ tilde ]
                 @ trivia_after_tilde @ before_trivia_label @ [ label ]
+                @ trivia_after_label
               in
               Some (make_node_list ~kind:Syntax_kind.ARGUMENT children)
         | _ -> None)
@@ -1170,6 +1172,7 @@ and parse_labeled_or_optional_arg parser leading_trivia =
                 let children =
                   leading_trivia @ before_trivia_question @ [ question ]
                   @ trivia_after_question @ before_trivia_label @ [ label ]
+                  @ trivia_after_label
                 in
                 Some (make_node_list ~kind:Syntax_kind.ARGUMENT children)
           else
@@ -1177,6 +1180,7 @@ and parse_labeled_or_optional_arg parser leading_trivia =
             let children =
               leading_trivia @ before_trivia_question @ [ question ]
               @ trivia_after_question @ before_trivia_label @ [ label ]
+              @ trivia_after_label
             in
             Some (make_node_list ~kind:Syntax_kind.ARGUMENT children)
       | _ -> None)
@@ -1263,12 +1267,14 @@ and parse_labeled_or_optional_param parser =
             | None ->
                 let children =
                   leading_trivia @ [ tilde ] @ trivia_after_tilde @ [ label ]
+                  @ trivia_after_label
                 in
                 Some (make_node_list ~kind:Syntax_kind.PARAMETER children)
           else
             (* Punning: ~label is parameter named label *)
             let children =
               leading_trivia @ [ tilde ] @ trivia_after_tilde @ [ label ]
+              @ trivia_after_label
             in
             Some (make_node_list ~kind:Syntax_kind.PARAMETER children)
       | _ -> None)
@@ -1295,13 +1301,14 @@ and parse_labeled_or_optional_param parser =
             | None ->
                 let children =
                   leading_trivia @ [ question ] @ trivia_after_question
-                  @ [ label ]
+                  @ [ label ] @ trivia_after_label
                 in
                 Some (make_node_list ~kind:Syntax_kind.PARAMETER children)
           else
             (* Punning: ?label is optional parameter named label *)
             let children =
               leading_trivia @ [ question ] @ trivia_after_question @ [ label ]
+              @ trivia_after_label
             in
             Some (make_node_list ~kind:Syntax_kind.PARAMETER children)
       | Some (Token.OpenDelim Token.Paren) -> (
@@ -6521,6 +6528,9 @@ and parse_include parser leading_trivia =
 
 let parse_implementation parser =
   (* Parse .ml file (implementation) *)
+  (* Consume leading trivia at the beginning of the file *)
+  let leading_trivia = consume_trivia parser in
+  
   let rec parse_items acc =
     if peek parser = None || at parser Token.EOF then List.rev acc
     else
@@ -6554,10 +6564,13 @@ let parse_implementation parser =
   in
 
   make_node_list ~kind:Syntax_kind.SOURCE_FILE
-    (items @ trailing_trivia @ eof_token)
+    (leading_trivia @ items @ trailing_trivia @ eof_token)
 
 let parse_interface parser =
   (* Parse .mli file (interface/signature) *)
+  (* Consume leading trivia at the beginning of the file *)
+  let leading_trivia = consume_trivia parser in
+  
   let rec parse_items acc =
     if peek parser = None || at parser Token.EOF then List.rev acc
     else
@@ -6591,7 +6604,7 @@ let parse_interface parser =
   in
 
   make_node_list ~kind:Syntax_kind.SOURCE_FILE
-    (items @ trailing_trivia @ eof_token)
+    (leading_trivia @ items @ trailing_trivia @ eof_token)
 
 let parse_source_file parser filename =
   (* Determine if this is an interface or implementation based on extension *)
@@ -6607,3 +6620,4 @@ let parse ~source ?(filename = "input.ml") tokens =
   let green_tree = parse_source_file parser filename in
   { tree = green_tree; diagnostics = List.rev parser.diagnostics }
 (* rebuild *)
+(* force rebuild 2 *)
