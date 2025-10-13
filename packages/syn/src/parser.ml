@@ -4612,7 +4612,7 @@ let rec parse_structure_item parser =
   | Some (Token.Keyword Keyword.Type) -> parse_type_decl parser
   | Some (Token.Keyword Keyword.Open) -> parse_open parser
   | Some (Token.Keyword Keyword.External) -> parse_external_decl parser
-  | Some (Token.Keyword Keyword.Module) -> parse_module_decl_structure parser
+  | Some (Token.Keyword Keyword.Module) -> parse_module_decl_structure parser leading_trivia
   | Some (Token.Keyword Keyword.Include) -> parse_include parser leading_trivia
   | _ -> 
       (* Return a dummy node containing the leading trivia so it's not lost *)
@@ -6181,31 +6181,31 @@ and parse_external_decl parser =
        @ [ Ceibo.Green.Node type_expr ]
        @ trivia_after_type @ [ eq ] @ trivia_after_eq @ c_names))
 
-and parse_module_decl_structure parser =
+and parse_module_decl_structure parser leading_trivia =
   (* For .ml files: module M = struct ... end  OR  module type S = sig ... end *)
   let before_trivia, module_kw = consume parser in
   let trivia_after_module = consume_trivia parser in
 
   (* Check if this is a module type declaration *)
   if at parser (Token.Keyword Keyword.Type) then
-    parse_module_type_decl parser module_kw trivia_after_module
+    parse_module_type_decl parser leading_trivia module_kw trivia_after_module
   else
     (* Regular module declaration: module M = ... OR module M (X : S) = ... *)
-    parse_regular_module_decl_structure parser module_kw trivia_after_module
+    parse_regular_module_decl_structure parser leading_trivia module_kw trivia_after_module
 
-and parse_module_decl_signature parser =
+and parse_module_decl_signature parser leading_trivia =
   (* For .mli files: module M : sig ... end  OR  module type S = sig ... end *)
   let before_trivia, module_kw = consume parser in
   let trivia_after_module = consume_trivia parser in
 
   (* Check if this is a module type declaration *)
   if at parser (Token.Keyword Keyword.Type) then
-    parse_module_type_decl parser module_kw trivia_after_module
+    parse_module_type_decl parser leading_trivia module_kw trivia_after_module
   else
     (* Module signature: module M : S  OR  module M (X : S) : S *)
-    parse_regular_module_decl_signature parser module_kw trivia_after_module
+    parse_regular_module_decl_signature parser leading_trivia module_kw trivia_after_module
 
-and parse_module_type_decl parser module_kw trivia_after_module =
+and parse_module_type_decl parser leading_trivia module_kw trivia_after_module =
   (* module type S = sig ... end *)
   let before_trivia, type_kw = consume parser in
   let trivia_after_type = consume_trivia parser in
@@ -6223,7 +6223,7 @@ and parse_module_type_decl parser module_kw trivia_after_module =
 
   Some
     (make_node_list ~kind:Syntax_kind.MODULE_TYPE_DECL
-       ([ module_kw ] @ trivia_after_module @ [ type_kw ] @ trivia_after_type
+       (leading_trivia @ [ module_kw ] @ trivia_after_module @ [ type_kw ] @ trivia_after_type
       @ [ name ] @ trivia_after_name @ [ eq ] @ trivia_after_eq
        @ [ Ceibo.Green.Node signature ]))
 
@@ -6263,7 +6263,7 @@ and parse_signature parser =
   in
   make_node_list ~kind:Syntax_kind.SIGNATURE children
 
-and parse_regular_module_decl_structure parser module_kw trivia_after_module =
+and parse_regular_module_decl_structure parser leading_trivia module_kw trivia_after_module =
   (* For .ml files: module M = ... OR module M (X : S) = ... (functor) *)
   let before_trivia, name = consume parser in
   let trivia_after_name = consume_trivia parser in
@@ -6366,9 +6366,9 @@ and parse_regular_module_decl_structure parser module_kw trivia_after_module =
   let children =
     let base =
       match params with
-      | [] -> [ module_kw ] @ trivia_after_module @ [ name ] @ trivia_after_name
+      | [] -> leading_trivia @ [ module_kw ] @ trivia_after_module @ [ name ] @ trivia_after_name
       | _ ->
-          [ module_kw ] @ trivia_after_module @ [ name ] @ trivia_after_name
+          leading_trivia @ [ module_kw ] @ trivia_after_module @ [ name ] @ trivia_after_name
           @ params
     in
     let with_constraint =
@@ -6382,7 +6382,7 @@ and parse_regular_module_decl_structure parser module_kw trivia_after_module =
 
   Some (make_node_list ~kind:Syntax_kind.MODULE_DECL children)
 
-and parse_regular_module_decl_signature parser module_kw trivia_after_module =
+and parse_regular_module_decl_signature parser leading_trivia module_kw trivia_after_module =
   (* For .mli files: module M : S  OR  module M (X : S) : S *)
   let before_trivia, name = consume parser in
   let trivia_after_name = consume_trivia parser in
@@ -6440,7 +6440,7 @@ and parse_regular_module_decl_signature parser module_kw trivia_after_module =
       let module_type = parse_module_type_expr parser in
       let trivia_after_type = consume_trivia parser in
 
-      trivia_after_module @ [ module_kw; name ] @ trivia_after_name @ params
+      leading_trivia @ [ module_kw ] @ trivia_after_module @ [ name ] @ trivia_after_name @ params
       @ params_trivia @ [ colon ] @ trivia_after_colon
       @ [ Ceibo.Green.Node module_type ]
       @ trivia_after_type
@@ -6453,13 +6453,13 @@ and parse_regular_module_decl_signature parser module_kw trivia_after_module =
       let before_trivia, module_id = consume parser in
       let trivia_after_id = consume_trivia parser in
 
-      trivia_after_module @ [ module_kw; name ] @ trivia_after_name @ params
+      leading_trivia @ [ module_kw ] @ trivia_after_module @ [ name ] @ trivia_after_name @ params
       @ params_trivia @ [ eq ] @ trivia_after_eq @ [ module_id ]
       @ trivia_after_id
     else
       (* Malformed: missing : or = *)
       let before_trivia, missing = expect parser Token.Colon in
-      trivia_after_module @ [ module_kw; name ] @ trivia_after_name @ params
+      leading_trivia @ [ module_kw ] @ trivia_after_module @ [ name ] @ trivia_after_name @ params
       @ params_trivia @ [ missing ]
   in
 
@@ -6474,7 +6474,7 @@ and parse_signature_item parser =
   | Some (Token.Keyword Keyword.Type) -> parse_type_decl parser
   | Some (Token.Keyword Keyword.Val) -> parse_val_decl parser
   | Some (Token.Keyword Keyword.External) -> parse_external_decl parser
-  | Some (Token.Keyword Keyword.Module) -> parse_module_decl_signature parser
+  | Some (Token.Keyword Keyword.Module) -> parse_module_decl_signature parser leading_trivia
   | Some (Token.Keyword Keyword.Open) -> parse_open parser
   | Some (Token.Keyword Keyword.Include) -> parse_include parser leading_trivia
   | _ -> 
