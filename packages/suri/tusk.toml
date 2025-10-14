@@ -1,0 +1,7 @@
+[package]
+name = "suri"
+
+[dependencies]
+std = { path = "../std" }
+miniriot = { path = "../miniriot" }
+http = { path = "../http" }
