@@ -336,7 +336,7 @@ let parse_identifier parser =
   in
 
   let rest = parse_rest [] in
-  first :: (trivia_after_first @ rest)
+  before_trivia @ [ first ] @ trivia_after_first @ rest
 
 (* ========================================================================= *)
 (* LITERALS *)
@@ -5609,9 +5609,13 @@ and parse_type_arrow parser leading_trivia =
                   let before_trivia, colon = consume parser in
                   let trivia_after_colon = consume_trivia parser in
                   let typ = parse_type_tuple parser trivia_after_colon in
+                  (* Extract leading trivia from children (before label_elem) *)
+                  let leading_trivia =
+                    Array.to_list (Array.sub children 0 idx)
+                  in
                   make_node_list ~kind:Syntax_kind.TYPE_PARAM
-                    ([ label_elem ] @ trivia_after_left @ before_trivia
-                   @ [ colon ] @ [ Ceibo.Green.Node typ ])
+                    (leading_trivia @ [ label_elem ] @ trivia_after_left
+                   @ before_trivia @ [ colon ] @ [ Ceibo.Green.Node typ ])
                 else
                   (* Multiple non-trivia children, not a simple identifier *)
                   left
