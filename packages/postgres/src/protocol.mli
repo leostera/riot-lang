@@ -35,6 +35,29 @@ and field = {
   format_code : int;
 }
 
+module TypeOid : sig
+  val bool : int
+  val bytea : int
+  val char : int
+  val int8 : int
+  val int2 : int
+  val int4 : int
+  val text : int
+  val oid : int
+  val json : int
+  val float4 : int
+  val float8 : int
+  val varchar : int
+  val date : int
+  val time : int
+  val timestamp : int
+  val timestamptz : int
+  val interval : int
+  val numeric : int
+  val uuid : int
+  val jsonb : int
+end
+
 module Writer : sig
   val startup_message :
     user:string -> database:string -> application_name:string option -> string

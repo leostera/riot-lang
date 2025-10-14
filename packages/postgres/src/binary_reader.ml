@@ -31,6 +31,54 @@ let read_int16 reader =
     reader.offset <- reader.offset + 2;
     Some ((b1 lsl 8) lor b2)
 
+let read_int64 reader =
+  if remaining reader < 8 then None
+  else
+    let b1 = Int64.of_int (Char.code (Bytes.get reader.bytes reader.offset)) in
+    let b2 =
+      Int64.of_int (Char.code (Bytes.get reader.bytes (reader.offset + 1)))
+    in
+    let b3 =
+      Int64.of_int (Char.code (Bytes.get reader.bytes (reader.offset + 2)))
+    in
+    let b4 =
+      Int64.of_int (Char.code (Bytes.get reader.bytes (reader.offset + 3)))
+    in
+    let b5 =
+      Int64.of_int (Char.code (Bytes.get reader.bytes (reader.offset + 4)))
+    in
+    let b6 =
+      Int64.of_int (Char.code (Bytes.get reader.bytes (reader.offset + 5)))
+    in
+    let b7 =
+      Int64.of_int (Char.code (Bytes.get reader.bytes (reader.offset + 6)))
+    in
+    let b8 =
+      Int64.of_int (Char.code (Bytes.get reader.bytes (reader.offset + 7)))
+    in
+    reader.offset <- reader.offset + 8;
+    let result =
+      Int64.(
+        logor
+          (logor
+             (logor (shift_left b1 56) (shift_left b2 48))
+             (logor (shift_left b3 40) (shift_left b4 32)))
+          (logor
+             (logor (shift_left b5 24) (shift_left b6 16))
+             (logor (shift_left b7 8) b8)))
+    in
+    Some result
+
+let read_float64 reader =
+  match read_int64 reader with
+  | None -> None
+  | Some bits -> Some (Int64.float_of_bits bits)
+
+let read_float32 reader =
+  match read_int32 reader with
+  | None -> None
+  | Some bits -> Some (Int32.float_of_bits (Int32.of_int bits))
+
 let read_string reader =
   let buf = Buffer.create 64 in
   let rec loop () =

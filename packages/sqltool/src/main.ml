@@ -14,13 +14,24 @@ let print_row row =
             match value with
             | Sqlx_driver.Value.Null -> "NULL"
             | Sqlx_driver.Value.Int n -> string_of_int n
+            | Sqlx_driver.Value.Int64 n -> Int64.to_string n
+            | Sqlx_driver.Value.Int16 n -> string_of_int n
             | Sqlx_driver.Value.Float f -> string_of_float f
-            | Sqlx_driver.Value.String s -> Printf.sprintf "\"%s\"" s
+            | Sqlx_driver.Value.String s -> format "\"%s\"" s
             | Sqlx_driver.Value.Bool b -> string_of_bool b
             | Sqlx_driver.Value.Bytes _ -> "<bytes>"
             | Sqlx_driver.Value.Timestamp _t -> "<timestamp>"
+            | Sqlx_driver.Value.TimestampWithTimezone (_, tz, offset) ->
+                format "<timestamp_with_timezone:%s%+d>"
+                  (Datetime.Tz.to_string tz) offset
+            | Sqlx_driver.Value.Date (y, m, d) -> format "%04d-%02d-%02d" y m d
+            | Sqlx_driver.Value.Time (h, min, s, us) ->
+                format "%02d:%02d:%02d.%06d" h min s us
+            | Sqlx_driver.Value.Uuid u -> u
+            | Sqlx_driver.Value.Json j -> j
+            | Sqlx_driver.Value.Numeric n -> n
           in
-          Printf.printf "%s: %s  " field str)
+          print "%s: %s  " field str)
     fields;
   print_endline ""
 
@@ -66,7 +77,9 @@ let run_sqltool matches =
         | Ok pg_config ->
             Log.info "Connecting to PostgreSQL: %s" pg_config.host;
             let pool_config = { Sqlx.Config.default with pool_size = 1 } in
-            Sqlx.connect ~config:pool_config ~driver:(module Postgres.Driver) pg_config)
+            Sqlx.connect ~config:pool_config
+              ~driver:(module Postgres.Driver)
+              pg_config)
     | None, None ->
         Log.error "Must specify either --sqlite or --postgres";
         Error (Sqlx.Connection_failed "No database specified")

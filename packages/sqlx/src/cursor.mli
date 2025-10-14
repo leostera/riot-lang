@@ -8,6 +8,7 @@ val make :
   (module Sqlx_driver.Driver.Intf with type result_set = 'rs) ->
   t
 
+val to_mut_iter : t -> Sqlx_driver.Row.t Std.Iter.MutIterator.t
 val fetch_one : t -> Sqlx_driver.Row.t option
 val fetch_many : t -> int -> Sqlx_driver.Row.t list
 val fetch_all : t -> Sqlx_driver.Row.t list

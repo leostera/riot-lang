@@ -21,58 +21,59 @@ open Std
 
 (* The type of database values *)
 type t =
-  | Null (* SQL NULL value *)
-  | Int of int (* Integer value *)
-  | Float of float (* Floating point value *)
-  | String of string (* Text/VARCHAR value *)
-  | Bool of bool (* Boolean value *)
-  | Bytes of bytes (* Binary data/BLOB value *)
-  | Timestamp of Time.Instant.t (* Timestamp/DateTime value *)
+  | Null
+  | Int of int
+  | Int64 of int64
+  | Int16 of int
+  | Float of float
+  | String of string
+  | Bool of bool
+  | Bytes of bytes
+  | Timestamp of Time.Instant.t
+  | TimestampWithTimezone of Time.Instant.t * Datetime.Tz.t * int
+  | Date of int * int * int
+  | Time of int * int * int * int
+  | Uuid of string
+  | Json of string
+  | Numeric of string
 
 (* ## Constructors *)
 
-(* `null` creates a NULL value *)
 val null : t
-
-(* `int n` creates an integer value *)
 val int : int -> t
-
-(* `string s` creates a string value *)
+val int64 : int64 -> t
+val int16 : int -> t
 val string : string -> t
-
-(* `bool b` creates a boolean value *)
 val bool : bool -> t
-
-(* `float f` creates a floating-point value *)
 val float : float -> t
-
-(* `bytes b` creates a binary data value *)
 val bytes : bytes -> t
-
-(* `timestamp t` creates a timestamp value *)
 val timestamp : Time.Instant.t -> t
+val timestamp_with_timezone : Time.Instant.t -> Datetime.Tz.t -> int -> t
+val date : int -> int -> int -> t
+val time : int -> int -> int -> int -> t
+val uuid : string -> t
+val json : string -> t
+val numeric : string -> t
 
 (* ## Conversions *)
 
-(* `to_int v` extracts an integer from a value, returning `None` if the value is not an integer *)
 val to_int : t -> int option
-
-(* `to_string_value v` extracts a string from a value, returning `None` if the value is not a string *)
+val to_int64 : t -> int64 option
+val to_int16 : t -> int option
 val to_string_value : t -> string option
-
-(* `to_bool v` extracts a boolean from a value, returning `None` if the value is not a boolean *)
 val to_bool : t -> bool option
-
-(* `to_float v` extracts a float from a value, returning `None` if the value is not a float *)
 val to_float : t -> float option
-
-(* `to_bytes v` extracts bytes from a value, returning `None` if the value is not bytes *)
 val to_bytes : t -> bytes option
-
-(* `to_timestamp v` extracts a timestamp from a value, returning `None` if the value is not a timestamp *)
 val to_timestamp : t -> Time.Instant.t option
 
-(* `is_null v` returns `true` if the value is NULL *)
+val to_timestamp_with_timezone :
+  t -> (Time.Instant.t * Datetime.Tz.t * int) option
+
+val to_date : t -> (int * int * int) option
+val to_time : t -> (int * int * int * int) option
+val to_uuid : t -> string option
+val to_json : t -> string option
+val to_numeric : t -> string option
 val is_null : t -> bool
 
 (* ## Utility Functions *)

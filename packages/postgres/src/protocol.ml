@@ -35,6 +35,29 @@ and field = {
   format_code : int;
 }
 
+module TypeOid = struct
+  let bool = 16
+  let bytea = 17
+  let char = 18
+  let int8 = 20
+  let int2 = 21
+  let int4 = 23
+  let text = 25
+  let oid = 26
+  let json = 114
+  let float4 = 700
+  let float8 = 701
+  let varchar = 1043
+  let date = 1082
+  let time = 1083
+  let timestamp = 1114
+  let timestamptz = 1184
+  let interval = 1186
+  let numeric = 1700
+  let uuid = 2950
+  let jsonb = 3802
+end
+
 module Writer = struct
   let write_int32 buf n =
     Buffer.add_char buf (Char.chr ((n lsr 24) land 0xFF));

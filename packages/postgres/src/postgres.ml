@@ -31,14 +31,15 @@ module Config = struct
     | Ok uri
       when Net.Uri.scheme uri = Some "postgresql"
            || Net.Uri.scheme uri = Some "postgres" -> (
-        let hostname = Net.Uri.host uri |> Option.unwrap_or ~default:"localhost" in
+        let hostname =
+          Net.Uri.host uri |> Option.unwrap_or ~default:"localhost"
+        in
         let port = Net.Uri.port uri |> Option.unwrap_or ~default:5432 in
-        
-        let host = 
+
+        let host =
           match Net.Addr.of_host_and_port ~host:hostname ~port with
-          | Ok (`Tcp (resolved_ip, _)) -> 
-              if resolved_ip = "::1" then "127.0.0.1"
-              else resolved_ip
+          | Ok (`Tcp (resolved_ip, _)) ->
+              if resolved_ip = "::1" then "127.0.0.1" else resolved_ip
           | Error _ -> hostname
         in
         let path = Net.Uri.path uri in
@@ -168,7 +169,8 @@ module Driver = struct
           | Error `Connection_refused ->
               Error "Read body error: Connection refused"
           | Error `Closed -> Error "Read body error: Connection closed"
-          | Error (`System_error msg) -> Error (format "Read body error: %s" msg)
+          | Error (`System_error msg) ->
+              Error (format "Read body error: %s" msg)
           | Ok () -> Ok (msg_type, length, body)
         else Ok (msg_type, length, Bytes.create 0)
 
@@ -259,6 +261,41 @@ module Driver = struct
 
   let ping conn = not conn.closed
 
+  let decode_value (field : Protocol.field) (value : string) =
+    match field.type_oid with
+    | oid when oid = Protocol.TypeOid.bool -> (
+        match value with
+        | "t" -> Sqlx_driver.Value.bool true
+        | "f" -> Sqlx_driver.Value.bool false
+        | _ -> Sqlx_driver.Value.string value)
+    | oid when oid = Protocol.TypeOid.int2 -> (
+        match int_of_string_opt value with
+        | Some n -> Sqlx_driver.Value.int16 n
+        | None -> Sqlx_driver.Value.string value)
+    | oid when oid = Protocol.TypeOid.int4 -> (
+        match int_of_string_opt value with
+        | Some n -> Sqlx_driver.Value.int n
+        | None -> Sqlx_driver.Value.string value)
+    | oid when oid = Protocol.TypeOid.int8 -> (
+        match Int64.of_string_opt value with
+        | Some n -> Sqlx_driver.Value.int64 n
+        | None -> Sqlx_driver.Value.string value)
+    | oid when oid = Protocol.TypeOid.float4 || oid = Protocol.TypeOid.float8
+      -> (
+        match float_of_string_opt value with
+        | Some f -> Sqlx_driver.Value.float f
+        | None -> Sqlx_driver.Value.string value)
+    | oid when oid = Protocol.TypeOid.uuid -> Sqlx_driver.Value.uuid value
+    | oid when oid = Protocol.TypeOid.json || oid = Protocol.TypeOid.jsonb ->
+        Sqlx_driver.Value.json value
+    | oid when oid = Protocol.TypeOid.numeric -> Sqlx_driver.Value.numeric value
+    | oid
+      when oid = Protocol.TypeOid.text
+           || oid = Protocol.TypeOid.varchar
+           || oid = Protocol.TypeOid.char ->
+        Sqlx_driver.Value.string value
+    | _ -> Sqlx_driver.Value.string value
+
   let prepare conn sql =
     if conn.closed then Error "Connection is closed"
     else
@@ -281,7 +318,7 @@ module Driver = struct
               let result_set =
                 { rows = Collections.Queue.create (); rows_affected = 0 }
               in
-              let column_names = ref [] in
+              let column_info = ref [] in
               let rec read_query_results () =
                 match read_message stream with
                 | Error e -> Error e
@@ -291,16 +328,16 @@ module Driver = struct
                     in
                     match backend_msg with
                     | Protocol.RowDescription fields ->
-                        column_names :=
-                          List.map (fun f -> f.Protocol.name) fields;
+                        column_info := fields;
                         read_query_results ()
                     | Protocol.DataRow cols ->
                         let row =
-                          if List.length !column_names = List.length cols then
+                          if List.length !column_info = List.length cols then
                             List.map2
-                              (fun name value ->
-                                (name, Sqlx_driver.Value.string value))
-                              !column_names cols
+                              (fun (field : Protocol.field) value ->
+                                let decoded_value = decode_value field value in
+                                (field.name, decoded_value))
+                              !column_info cols
                           else
                             List.mapi
                               (fun i v ->
