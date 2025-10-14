@@ -2,111 +2,43 @@
   {
     "kind": {
       "type": "unexpected_token",
-      "expected": "structure item",
-      "found": "whitespace"
+      "expected": "type variable name",
+      "found": {
+        "kind": "trivia",
+        "text": "(* hello *)"
+      }
     },
     "span": {
-      "start": 4,
-      "end": 5
+      "start": 7,
+      "end": 18,
     }
   },
   {
     "kind": {
       "type": "unexpected_token",
-      "expected": "structure item",
-      "found": "comment"
-    },
-    "span": {
-      "start": 6,
-      "end": 17
-    }
-  },
-  {
-    "kind": {
-      "type": "unexpected_token",
-      "expected": "structure item",
-      "found": "whitespace"
-    },
-    "span": {
-      "start": 18,
-      "end": 20
-    }
-  },
-  {
-    "kind": {
-      "type": "unexpected_token",
-      "expected": "structure item",
-      "found": "whitespace"
-    },
-    "span": {
-      "start": 24,
-      "end": 25
-    }
-  },
-  {
-    "kind": {
-      "type": "unexpected_token",
-      "expected": "structure item",
-      "found": "whitespace"
+      "expected": "type variable name",
+      "found": {
+        "kind": "trivia",
+        "text": " "
+      }
     },
     "span": {
       "start": 26,
-      "end": 27
+      "end": 27,
     }
   },
   {
     "kind": {
       "type": "unexpected_token",
-      "expected": "structure item",
-      "found": "whitespace"
-    },
-    "span": {
-      "start": 28,
-      "end": 30
-    }
-  },
-  {
-    "kind": {
-      "type": "unexpected_token",
-      "expected": "structure item",
-      "found": "whitespace"
-    },
-    "span": {
-      "start": 34,
-      "end": 35
-    }
-  },
-  {
-    "kind": {
-      "type": "unexpected_token",
-      "expected": "structure item",
-      "found": "'''"
+      "expected": "type variable name",
+      "found": {
+        "kind": "token?",
+        "text": "'",
+      }
     },
     "span": {
       "start": 36,
-      "end": 37
-    }
-  },
-  {
-    "kind": {
-      "type": "unexpected_token",
-      "expected": "structure item",
-      "found": "whitespace"
-    },
-    "span": {
-      "start": 37,
       "end": 38
-    }
-  },
-  {
-    "kind": {
-      "type": "unexpected_token",
-      "expected": "structure item",
-      "found": "whitespace"
-    },
-    "span": {
-      "start": 39,
-      "end": 40
     }
   }
 ]

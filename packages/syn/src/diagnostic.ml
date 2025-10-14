@@ -1,9 +1,14 @@
 open Std
 
 (** Structured parse error kinds *)
+type found_token = {
+  kind : string;  (* e.g. "trivia", "keyword", "operator" *)
+  text : string;  (* actual text from source *)
+}
+
 type kind =
   | MissingToken of { expected : string }
-  | UnexpectedToken of { expected : string; found : string }
+  | UnexpectedToken of { expected : string; found : found_token }
   | UnexpectedEof of { expected : string }
   | InvalidSyntax of { context : string }
   | UnclosedDelimiter of { delimiter : string; opened_at : int }
@@ -17,8 +22,9 @@ let make ~kind ~span = { kind; span }
 let missing_token ~expected ~span =
   make ~kind:(MissingToken { expected }) ~span
 
-let unexpected_token ~expected ~found ~span =
-  let found = Token.to_string found in
+let unexpected_token ~expected ~found:token ~text ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text } in
   make ~kind:(UnexpectedToken { expected; found }) ~span
 
 let unexpected_eof ~expected ~span =
@@ -36,7 +42,7 @@ let mismatched_delimiter ~expected ~found ~span =
 let kind_to_message = function
   | MissingToken { expected } -> format "Missing %s" expected
   | UnexpectedToken { expected; found } ->
-      format "Expected %s but found %s" expected found
+      format "Expected %s but found %s: '%s'" expected found.kind found.text
   | UnexpectedEof { expected } ->
       format "Unexpected end of file, expected %s" expected
   | InvalidSyntax { context } -> format "Invalid syntax in %s" context
@@ -63,7 +69,10 @@ let to_json err =
           [
             ("type", String "unexpected_token");
             ("expected", String expected);
-            ("found", String found);
+            ("found", Object [
+              ("kind", String found.kind);
+              ("text", String found.text);
+            ]);
           ]
     | UnexpectedEof { expected } ->
         Object
@@ -89,8 +98,7 @@ let to_json err =
   Object
     [
       ("kind", kind_obj);
-      ( "span",
-        Object [ ("start", Int err.span.start); ("end", Int err.span.end_) ] );
+      ("span", Object [ ("start", Int err.span.start); ("end", Int err.span.end_) ]);
     ]
 
 (* parse_result removed - now in Parser module *)

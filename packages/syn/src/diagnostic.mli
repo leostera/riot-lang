@@ -23,12 +23,17 @@ open Std
 
 (** # Types *)
 
+type found_token = {
+  kind : string;  (** Token kind description like "trivia", "keyword" *)
+  text : string;  (** Actual text from source *)
+}
+
 type kind =
   | MissingToken of { expected : string }
       (** Expected a specific token but found something else or EOF.
 
           Example: Missing `)` in `let x = (1 + 2` *)
-  | UnexpectedToken of { expected : string; found : string }
+  | UnexpectedToken of { expected : string; found : found_token }
       (** Found a token that doesn't fit the current context.
 
           Example: `let x + 1` - `+` is unexpected after identifier *)
@@ -77,11 +82,13 @@ val missing_token : expected:string -> span:Ceibo.Span.t -> t
     ~span:error_span ``` *)
 
 val unexpected_token :
-  expected:string -> found:Token.t -> span:Ceibo.Span.t -> t
+  expected:string -> found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 (** Create an "unexpected token" diagnostic.
 
+    The text parameter is the actual token text from the source.
+
     Example: ```ocaml Diagnostic.unexpected_token ~expected:"identifier"
-    ~found:Token.PLUS ~span:token_span ``` *)
+    ~found:token ~text:"(* hello *)" ~span:token_span ``` *)
 
 val unexpected_eof : expected:string -> span:Ceibo.Span.t -> t
 (** Create an "unexpected end of file" diagnostic.

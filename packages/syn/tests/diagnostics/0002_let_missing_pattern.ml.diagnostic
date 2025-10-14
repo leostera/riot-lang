@@ -3,7 +3,7 @@
     "kind": {
       "type": "unexpected_token",
       "expected": "pattern",
-      "found": "'='"
+      "found": "'==='"
     },
     "span": {
       "start": 4,
