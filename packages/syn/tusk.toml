@@ -4,6 +4,8 @@ version = "0.1.0"
 
 [dependencies]
 std = { path = "../std" }
+tty = { path  ="../tty"} 
+colors = { path ="../colors"}
 
 [[bin]]
 name = "syn"

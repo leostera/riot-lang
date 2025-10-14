@@ -82,6 +82,17 @@ let handle_parse sub_matches =
         let width = Ceibo.Green.width (Ceibo.Green.Node result.tree) in
         Log.info "Tree width: %d bytes" width)
 
+let handle_explain sub_matches =
+  let error_code =
+    ArgParser.get_one sub_matches "ERROR_CODE" |> Option.expect ~msg:"ERROR_CODE required"
+  in
+  match Error.id_of_string error_code with
+  | Some id ->
+      println "%s\n" (Error.explain id)
+  | None ->
+      Log.error "Unknown error code: %s" error_code;
+      exit 1
+
 let () =
   (* Parse command line arguments *)
   let cmd =
@@ -114,6 +125,15 @@ let () =
                   flag "red-tree" |> long "red-tree"
                   |> help "Output red tree (with spans) instead of green tree";
                 ];
+           (* explain subcommand *)
+           command "explain"
+           |> about "Explain an error code"
+           |> args
+                [
+                  positional "ERROR_CODE"
+                  |> help "Error code to explain (e.g., E0001)"
+                  |> required true;
+                ];
          ]
   in
 
@@ -126,6 +146,7 @@ let () =
       match ArgParser.get_subcommand matches with
       | Some ("tokenize", sub_matches) -> handle_token_stream sub_matches
       | Some ("parse", sub_matches) -> handle_parse sub_matches
+      | Some ("explain", sub_matches) -> handle_explain sub_matches
       | _ ->
           ArgParser.print_help cmd;
           exit 1)

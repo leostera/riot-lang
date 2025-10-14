@@ -29,30 +29,25 @@ type found_token = {
 }
 
 type kind =
-  | MissingToken of { expected : string }
-      (** Expected a specific token but found something else or EOF.
+  (* Specific parsing errors with helpful hints *)
+  | MalformedTypeVariable of { found : found_token }
+  | MissingLetBindingPattern of { found : found_token }
+  | MissingLetBindingEquals of { found : found_token }
+  | MissingLetBindingExpr of { found : found_token }
+  | UnexpectedStructureItem of { found : found_token }
+  | UnexpectedSignatureItem of { found : found_token }
+      (** Token found in signature that doesn't start a signature item.
 
-          Example: Missing `)` in `let x = (1 + 2` *)
-  | UnexpectedToken of { expected : string; found : found_token }
-      (** Found a token that doesn't fit the current context.
+          Example: `42` in .mli file - not a valid signature item
 
-          Example: `let x + 1` - `+` is unexpected after identifier *)
-  | UnexpectedEof of { expected : string }
-      (** Reached end of file while expecting more input.
-
-          Example: `let x =` with nothing after `=` *)
-  | InvalidSyntax of { context : string }
-      (** Syntactically invalid construct.
-
-          Example: Malformed pattern, invalid expression form *)
-  | UnclosedDelimiter of { delimiter : string; opened_at : int }
-      (** Opening delimiter without matching closing delimiter.
-
-          Example: `begin ... (* missing end *)` *)
-  | MismatchedDelimiter of { expected : string; found : string }
-      (** Closing delimiter doesn't match opening delimiter.
-
-          Example: `begin ... end)` - `end` expected but `)` found *)
+          Expected: "signature item (e.g., val, type, module)" Hint: Expected a
+          signature item like 'val', 'type', or 'module'. *)
+  | InvalidPattern of { found : found_token }
+  | InvalidExpression of { found : found_token }
+  | InvalidConstant of { found : found_token }
+  | InvalidTypeExpression of { found : found_token }
+  | MissingLetKeyword of { found : found_token }
+  | MissingTypeKeyword of { found : found_token }
 
 type t = { kind : kind; span : Ceibo.Span.t }
 (** A diagnostic with structured error information and source location. *)
@@ -70,53 +65,82 @@ val make : kind:kind -> span:Ceibo.Span.t -> t
     ```
 *)
 
-(** ## Convenience Constructors
+(** ## Diagnostic Constructors
 
-    These helpers create diagnostics for common error types without needing to
-    construct the `kind` variant manually. *)
+    These helpers create specific diagnostic types with helpful hints. *)
 
-val missing_token : expected:string -> span:Ceibo.Span.t -> t
-(** Create a "missing token" diagnostic.
+val malformed_type_variable :
+  found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+(** Create a "malformed type variable" diagnostic.
 
-    Example: ```ocaml Diagnostic.missing_token ~expected:")"
+    Example: ```ocaml Diagnostic.malformed_type_variable ~found:token ~text:" "
     ~span:error_span ``` *)
 
-val unexpected_token :
-  expected:string -> found:Token.t -> text:string -> span:Ceibo.Span.t -> t
-(** Create an "unexpected token" diagnostic.
+val missing_let_binding_pattern :
+  found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+(** Create a "missing let binding pattern" diagnostic.
 
-    The text parameter is the actual token text from the source.
+    Example: ```ocaml Diagnostic.missing_let_binding_pattern ~found:equals_token
+    ~text:"=" ~span:error_span ``` *)
 
-    Example: ```ocaml Diagnostic.unexpected_token ~expected:"identifier"
-    ~found:token ~text:"(* hello *)" ~span:token_span ``` *)
+val missing_let_binding_equals :
+  found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+(** Create a "missing let binding equals" diagnostic.
 
-val unexpected_eof : expected:string -> span:Ceibo.Span.t -> t
-(** Create an "unexpected end of file" diagnostic.
+    Example: ```ocaml Diagnostic.missing_let_binding_equals ~found:int_token
+    ~text:"42" ~span:error_span ``` *)
 
-    Example: ```ocaml Diagnostic.unexpected_eof ~expected:"expression"
-    ~span:eof_span ``` *)
+val missing_let_binding_expr :
+  found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+(** Create a "missing let binding expression" diagnostic.
 
-val invalid_syntax : context:string -> span:Ceibo.Span.t -> t
-(** Create an "invalid syntax" diagnostic.
+    Example: ```ocaml Diagnostic.missing_let_binding_expr ~found:eof_token
+    ~text:"" ~span:error_span ``` *)
 
-    Example: ```ocaml Diagnostic.invalid_syntax ~context:"let binding"
-    ~span:binding_span ``` *)
+val unexpected_structure_item :
+  found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+(** Create an "unexpected structure item" diagnostic.
 
-val unclosed_delimiter :
-  delimiter:string -> opened_at:int -> span:Ceibo.Span.t -> t
-(** Create an "unclosed delimiter" diagnostic.
+    Example: ```ocaml Diagnostic.unexpected_structure_item ~found:token
+    ~text:"42" ~span:error_span ``` *)
 
-    Example: ```ocaml Diagnostic.unclosed_delimiter ~delimiter:"("
-    ~opened_at:start_pos ~span:current_span ``` *)
+val unexpected_signature_item :
+  found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+(** Create an "unexpected signature item" diagnostic.
 
-val mismatched_delimiter :
-  expected:string -> found:string -> span:Ceibo.Span.t -> t
-(** Create a "mismatched delimiter" diagnostic.
+    Example: ```ocaml Diagnostic.unexpected_signature_item ~found:token
+    ~text:"42" ~span:error_span ``` *)
 
-    Example: ```ocaml Diagnostic.mismatched_delimiter ~expected:"end"
-    ~found:")" ~span:delimiter_span ``` *)
+val invalid_pattern : found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+val invalid_expression : found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+val invalid_constant : found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
+val invalid_type_expression :
+  found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
+val missing_let_keyword : found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
+val missing_type_keyword :
+  found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 
 (** # Serialization *)
+
+val error_id : t -> Error.id
+(** `error_id diag` returns the error ID for this diagnostic. *)
+
+val id : t -> string
+(** `id diag` returns the unique error identifier string for this diagnostic. *)
+
+val expected_message : t -> string
+(** `kind_to_expected kind` returns what was expected at this position. *)
+
+val fix_message : t -> string option
+(** `kind_to_fix kind` returns a quick fix suggestion (None if none). *)
+
+val hint_message : t -> string
+(** `kind_to_hint diag` returns a detailed explanation hint. *)
+
+val found_token : t -> found_token
 
 val to_string : t -> string
 (** `to_string diag` converts a diagnostic to a human-readable error message.

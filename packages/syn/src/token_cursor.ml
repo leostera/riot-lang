@@ -14,11 +14,10 @@ let create ~source tokens =
 let position t = t.pos
 let is_eof t = t.pos >= t.length
 
-let eof_token () = 
+let eof_token () =
   { Token.kind = Token.EOF; span = Ceibo.Span.make ~start:0 ~end_:0 }
 
-let peek t = 
-  if is_eof t then eof_token () else t.tokens.(t.pos)
+let peek t = if is_eof t then eof_token () else t.tokens.(t.pos)
 
 let peek_n t n =
   if t.pos + n >= t.length then eof_token () else t.tokens.(t.pos + n)

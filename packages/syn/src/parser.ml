@@ -57,8 +57,7 @@ let current_span parser =
   token.Token.span
 
 (** Get text of a token from source *)
-let token_text parser token =
-  Token_cursor.view parser.cursor token.Token.span
+let token_text parser token = Token_cursor.view parser.cursor token.Token.span
 
 (** Consume a single token WITHOUT consuming trivia after it.
 
@@ -81,31 +80,29 @@ let is_trivia_kind = function
 let consume_trivia parser =
   let rec loop acc =
     let kind = peek_kind parser in
-    if is_trivia_kind kind then begin
+    if is_trivia_kind kind then
       let token = consume parser in
       loop (token :: acc)
-    end else
-      List.rev acc
+    else List.rev acc
   in
   loop []
 
 (** Error recovery: skip tokens until we reach a synchronization point.
-    
-    This helps prevent cascading errors by consuming tokens after an error
-    until we reach a point where parsing can meaningfully continue.
-    
+
+    This helps prevent cascading errors by consuming tokens after an error until
+    we reach a point where parsing can meaningfully continue.
+
     @param parser The parser state
     @param sync_tokens List of token kinds to stop at (but not consume)
     @return List of consumed tokens during recovery *)
 let error_recover_until parser ~sync_tokens =
-  let is_sync_token kind =
-    List.exists (fun sync -> sync = kind) sync_tokens
-  in
+  let is_sync_token kind = List.exists (fun sync -> sync = kind) sync_tokens in
   let rec skip_to_sync acc =
     match peek_kind parser with
     | Token.EOF -> List.rev acc
     | kind when is_sync_token kind -> List.rev acc
-    | Token.Whitespace when String.contains (token_text parser (peek parser)) '\n' ->
+    | Token.Whitespace
+      when String.contains (token_text parser (peek parser)) '\n' ->
         (* Stop at newline but don't consume it *)
         List.rev acc
     | _ ->
@@ -169,11 +166,11 @@ let make_error_node parser ~diagnostic ~consumed_tokens =
     ident *)
 let rec parse_type_variable parser =
   match peek_kind parser with
-  | Token.Quote ->
+  | Token.Quote -> (
       let quote = consume parser in
 
       (* IMMEDIATELY get identifier - NO trivia! *)
-      (match peek_kind parser with
+      match peek_kind parser with
       | Token.Ident _ ->
           let ident = consume parser in
           make_node Syntax_kind.TYPE_VAR
@@ -181,21 +178,19 @@ let rec parse_type_variable parser =
       | found ->
           (* Error: expected identifier after quote *)
           let found_tok = peek parser in
-          let diagnostic = Diagnostic.unexpected_token
-            ~expected:"type variable name"
-            ~found:found_tok
-            ~text:(token_text parser found_tok)
-            ~span:(current_span parser)
+          let diagnostic =
+            Diagnostic.malformed_type_variable ~found:found_tok
+              ~text:(token_text parser found_tok)
+              ~span:(current_span parser)
           in
           make_error_node parser ~diagnostic ~consumed_tokens:[ quote ])
   | found ->
       (* Error: expected quote to start type variable *)
       let found_tok = peek parser in
-      let diagnostic = Diagnostic.unexpected_token
-        ~expected:"type variable"
-        ~found:found_tok
-        ~text:(token_text parser found_tok)
-        ~span:(current_span parser)
+      let diagnostic =
+        Diagnostic.malformed_type_variable ~found:found_tok
+          ~text:(token_text parser found_tok)
+          ~span:(current_span parser)
       in
       make_error_node parser ~diagnostic ~consumed_tokens:[]
 
@@ -214,11 +209,10 @@ and parse_typexpr parser =
   | _ ->
       (* Placeholder: return error for unimplemented *)
       let found_tok = peek parser in
-      let diagnostic = Diagnostic.unexpected_token
-        ~expected:"type expression"
-        ~found:found_tok
-        ~text:(token_text parser found_tok)
-        ~span:(current_span parser)
+      let diagnostic =
+        Diagnostic.invalid_type_expression ~found:found_tok
+          ~text:(token_text parser found_tok)
+          ~span:(current_span parser)
       in
       make_error_node parser ~diagnostic ~consumed_tokens:[]
 
@@ -239,11 +233,10 @@ and parse_pattern parser =
       make_node Syntax_kind.WILDCARD_PATTERN [ make_token parser underscore ]
   | _ ->
       let found_tok = peek parser in
-      let diagnostic = Diagnostic.unexpected_token
-        ~expected:"pattern"
-        ~found:found_tok
-        ~text:(token_text parser found_tok)
-        ~span:(current_span parser)
+      let diagnostic =
+        Diagnostic.invalid_pattern ~found:found_tok
+          ~text:(token_text parser found_tok)
+          ~span:(current_span parser)
       in
       make_error_node parser ~diagnostic ~consumed_tokens:[]
 
@@ -276,11 +269,10 @@ and parse_constant parser =
       make_node Syntax_kind.BOOL_LITERAL [ make_token parser tok ]
   | _ ->
       let found_tok = peek parser in
-      let diagnostic = Diagnostic.unexpected_token
-        ~expected:"constant"
-        ~found:found_tok
-        ~text:(token_text parser found_tok)
-        ~span:(current_span parser)
+      let diagnostic =
+        Diagnostic.invalid_constant ~found:found_tok
+          ~text:(token_text parser found_tok)
+          ~span:(current_span parser)
       in
       make_error_node parser ~diagnostic ~consumed_tokens:[]
 
@@ -296,11 +288,10 @@ and parse_expr parser =
   | Token.Keyword Keyword.Let -> parse_let_binding parser
   | _ ->
       let found_tok = peek parser in
-      let diagnostic = Diagnostic.unexpected_token
-        ~expected:"expression"
-        ~found:found_tok
-        ~text:(token_text parser found_tok)
-        ~span:(current_span parser)
+      let diagnostic =
+        Diagnostic.invalid_expression ~found:found_tok
+          ~text:(token_text parser found_tok)
+          ~span:(current_span parser)
       in
       make_error_node parser ~diagnostic ~consumed_tokens:[]
 
@@ -310,44 +301,42 @@ and parse_let_binding parser =
   | Token.Keyword Keyword.Let ->
       let let_kw = consume parser in
       let trivia_after_let = consume_trivia parser in
-      
+
       let pat = parse_pattern parser in
       let trivia_after_pat = consume_trivia parser in
-      
+
       (* Expect '=' *)
-      let eq_tok = match peek_kind parser with
-        | Token.Eq ->
-            consume parser
+      let eq_tok =
+        match peek_kind parser with
+        | Token.Eq -> consume parser
         | _ ->
             let found_tok = peek parser in
-            let diag = Diagnostic.unexpected_token
-              ~expected:"="
-              ~found:found_tok
-              ~text:(token_text parser found_tok)
-              ~span:(current_span parser)
+            let diag =
+              Diagnostic.missing_let_binding_equals ~found:found_tok
+                ~text:(token_text parser found_tok)
+                ~span:(current_span parser)
             in
             report_diagnostic parser diag;
             consume parser
       in
       let trivia_after_eq = consume_trivia parser in
-      
+
       let expr = parse_expr parser in
-      
+
       make_node Syntax_kind.LET_BINDING
         ([ make_token parser let_kw ]
-         @ tokens_to_green parser trivia_after_let
-         @ [ Ceibo.Green.Node pat ]
-         @ tokens_to_green parser trivia_after_pat
-         @ [ make_token parser eq_tok ]
-         @ tokens_to_green parser trivia_after_eq
-         @ [ Ceibo.Green.Node expr ])
+        @ tokens_to_green parser trivia_after_let
+        @ [ Ceibo.Green.Node pat ]
+        @ tokens_to_green parser trivia_after_pat
+        @ [ make_token parser eq_tok ]
+        @ tokens_to_green parser trivia_after_eq
+        @ [ Ceibo.Green.Node expr ])
   | _ ->
       let found_tok = peek parser in
-      let diagnostic = Diagnostic.unexpected_token
-        ~expected:"let keyword"
-        ~found:found_tok
-        ~text:(token_text parser found_tok)
-        ~span:(current_span parser)
+      let diagnostic =
+        Diagnostic.missing_let_keyword ~found:found_tok
+          ~text:(token_text parser found_tok)
+          ~span:(current_span parser)
       in
       make_error_node parser ~diagnostic ~consumed_tokens:[]
 
@@ -363,38 +352,43 @@ and parse_type_decl parser =
   | Token.Keyword Keyword.Type ->
       let type_kw = consume parser in
       let trivia_after_type = consume_trivia parser in
-      
+
       (* Parse type parameters like 'a *)
       let type_param = parse_typexpr parser in
-      
+
       (* Check if we got an error - if so, skip to synchronization point *)
-      let skipped_tokens = 
+      let skipped_tokens =
         match Ceibo.Green.kind (Ceibo.Green.Node type_param) with
         | Syntax_kind.ERROR ->
             (* After error, skip to where we can meaningfully continue:
                - = (type body definition)
                - keyword (next declaration)
                - newline/EOF (end of incomplete declaration) *)
-            error_recover_until parser ~sync_tokens:[Token.Eq; Token.Keyword Keyword.Let; Token.Keyword Keyword.Type]
+            error_recover_until parser
+              ~sync_tokens:
+                [
+                  Token.Eq;
+                  Token.Keyword Keyword.Let;
+                  Token.Keyword Keyword.Type;
+                ]
         | _ -> []
       in
-      
+
       let trivia_after_param = consume_trivia parser in
-      
+
       (* For now, just wrap what we have *)
       make_node Syntax_kind.TYPE_DECL
         ([ make_token parser type_kw ]
-         @ tokens_to_green parser trivia_after_type
-         @ [ Ceibo.Green.Node type_param ]
-         @ tokens_to_green parser skipped_tokens
-         @ tokens_to_green parser trivia_after_param)
+        @ tokens_to_green parser trivia_after_type
+        @ [ Ceibo.Green.Node type_param ]
+        @ tokens_to_green parser skipped_tokens
+        @ tokens_to_green parser trivia_after_param)
   | _ ->
       let found_tok = peek parser in
-      let diagnostic = Diagnostic.unexpected_token
-        ~expected:"type keyword"
-        ~found:found_tok
-        ~text:(token_text parser found_tok)
-        ~span:(current_span parser)
+      let diagnostic =
+        Diagnostic.missing_type_keyword ~found:found_tok
+          ~text:(token_text parser found_tok)
+          ~span:(current_span parser)
       in
       make_error_node parser ~diagnostic ~consumed_tokens:[]
 
@@ -406,25 +400,21 @@ and parse_structure_item parser =
   | _ ->
       (* Unknown token - consume it and report error to avoid infinite loop *)
       let tok = consume parser in
-      let diagnostic = Diagnostic.unexpected_token
-        ~expected:"structure item"
-        ~found:tok
-        ~text:(token_text parser tok)
-        ~span:(current_span parser)
+      let diagnostic =
+        Diagnostic.unexpected_structure_item ~found:tok
+          ~text:(token_text parser tok) ~span:(current_span parser)
       in
-      make_error_node parser ~diagnostic ~consumed_tokens:[tok]
+      make_error_node parser ~diagnostic ~consumed_tokens:[ tok ]
 
 (** Parse signature item (top-level in .mli files) *)
 and parse_signature_item parser =
   (* Unknown token - consume it and report error to avoid infinite loop *)
   let tok = consume parser in
-  let diagnostic = Diagnostic.unexpected_token
-    ~expected:"signature item"
-    ~found:tok
-    ~text:(token_text parser tok)
-    ~span:(current_span parser)
+  let diagnostic =
+    Diagnostic.unexpected_signature_item ~found:tok
+      ~text:(token_text parser tok) ~span:(current_span parser)
   in
-  make_error_node parser ~diagnostic ~consumed_tokens:[tok]
+  make_error_node parser ~diagnostic ~consumed_tokens:[ tok ]
 
 and parse ~parse_item ~source ~tokens =
   let parser = create ~source tokens in
@@ -436,11 +426,11 @@ and parse ~parse_item ~source ~tokens =
   let rec parse_items acc =
     if is_eof parser then List.rev acc
     else if peek_kind parser = Token.EOF then List.rev acc
-    else begin
+    else
       let item = parse_item parser in
       let trivia = consume_trivia parser in
-      parse_items (Ceibo.Green.Node item :: tokens_to_green parser trivia @ acc)
-    end
+      parse_items
+        ((Ceibo.Green.Node item :: tokens_to_green parser trivia) @ acc)
   in
   let items = parse_items [] in
 
