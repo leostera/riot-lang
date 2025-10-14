@@ -3,7 +3,10 @@
     "kind": {
       "type": "unexpected_token",
       "expected": "=",
-      "found": "integer"
+      "found": {
+        "kind": "integer",
+        "text": "42",
+      }
     },
     "span": {
       "start": 6,
@@ -14,7 +17,10 @@
     "kind": {
       "type": "unexpected_token",
       "expected": "expression",
-      "found": "end of file"
+      "found": {
+        "kind": "end of file",
+        "text": "",
+      }
     },
     "span": {
       "start": 9,

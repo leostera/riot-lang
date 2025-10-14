@@ -3,7 +3,10 @@
     "kind": {
       "type": "unexpected_token",
       "expected": "pattern",
-      "found": "'==='"
+      "found": {
+        "kind": "EQUAL",
+        "text": "="
+      }
     },
     "span": {
       "start": 4,

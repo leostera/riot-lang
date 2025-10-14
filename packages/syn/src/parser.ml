@@ -89,6 +89,31 @@ let consume_trivia parser =
   in
   loop []
 
+(** Error recovery: skip tokens until we reach a synchronization point.
+    
+    This helps prevent cascading errors by consuming tokens after an error
+    until we reach a point where parsing can meaningfully continue.
+    
+    @param parser The parser state
+    @param sync_tokens List of token kinds to stop at (but not consume)
+    @return List of consumed tokens during recovery *)
+let error_recover_until parser ~sync_tokens =
+  let is_sync_token kind =
+    List.exists (fun sync -> sync = kind) sync_tokens
+  in
+  let rec skip_to_sync acc =
+    match peek_kind parser with
+    | Token.EOF -> List.rev acc
+    | kind when is_sync_token kind -> List.rev acc
+    | Token.Whitespace when String.contains (token_text parser (peek parser)) '\n' ->
+        (* Stop at newline but don't consume it *)
+        List.rev acc
+    | _ ->
+        let tok = consume parser in
+        skip_to_sync (tok :: acc)
+  in
+  skip_to_sync []
+
 (** Convert Token.token_kind to Syntax_kind.t
 
     For now, we map all tokens to expression/pattern kinds. TODO: Add proper
@@ -332,10 +357,52 @@ and parse_let_binding parser =
     ============================================================================
 *)
 
+(** Parse type declaration: type 'a t = ... *)
+and parse_type_decl parser =
+  match peek_kind parser with
+  | Token.Keyword Keyword.Type ->
+      let type_kw = consume parser in
+      let trivia_after_type = consume_trivia parser in
+      
+      (* Parse type parameters like 'a *)
+      let type_param = parse_typexpr parser in
+      
+      (* Check if we got an error - if so, skip to synchronization point *)
+      let skipped_tokens = 
+        match Ceibo.Green.kind (Ceibo.Green.Node type_param) with
+        | Syntax_kind.ERROR ->
+            (* After error, skip to where we can meaningfully continue:
+               - = (type body definition)
+               - keyword (next declaration)
+               - newline/EOF (end of incomplete declaration) *)
+            error_recover_until parser ~sync_tokens:[Token.Eq; Token.Keyword Keyword.Let; Token.Keyword Keyword.Type]
+        | _ -> []
+      in
+      
+      let trivia_after_param = consume_trivia parser in
+      
+      (* For now, just wrap what we have *)
+      make_node Syntax_kind.TYPE_DECL
+        ([ make_token parser type_kw ]
+         @ tokens_to_green parser trivia_after_type
+         @ [ Ceibo.Green.Node type_param ]
+         @ tokens_to_green parser skipped_tokens
+         @ tokens_to_green parser trivia_after_param)
+  | _ ->
+      let found_tok = peek parser in
+      let diagnostic = Diagnostic.unexpected_token
+        ~expected:"type keyword"
+        ~found:found_tok
+        ~text:(token_text parser found_tok)
+        ~span:(current_span parser)
+      in
+      make_error_node parser ~diagnostic ~consumed_tokens:[]
+
 (** Parse structure item (top-level in .ml files) *)
 and parse_structure_item parser =
   match peek_kind parser with
   | Token.Keyword Keyword.Let -> parse_let_binding parser
+  | Token.Keyword Keyword.Type -> parse_type_decl parser
   | _ ->
       (* Unknown token - consume it and report error to avoid infinite loop *)
       let tok = consume parser in

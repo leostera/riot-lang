@@ -10,7 +10,7 @@
     },
     "span": {
       "start": 7,
-      "end": 18,
+      "end": 18
     }
   },
   {
@@ -24,7 +24,7 @@
     },
     "span": {
       "start": 26,
-      "end": 27,
+      "end": 27
     }
   },
   {
@@ -33,7 +33,7 @@
       "expected": "type variable name",
       "found": {
         "kind": "token?",
-        "text": "'",
+        "text": "'"
       }
     },
     "span": {

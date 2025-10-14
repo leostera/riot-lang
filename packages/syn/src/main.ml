@@ -75,11 +75,8 @@ let handle_parse sub_matches =
           in
 
           println "%s" (Data.Json.to_string output)
-      else if result.diagnostics <> [] then (
-        Log.error "Parse errors:";
-        List.iter
-          (fun diag -> Log.error "  %s" (Diagnostic.to_string diag))
-          result.diagnostics)
+      else if result.diagnostics <> [] then
+        Diagnostic_reporter.print ~file ~source result.diagnostics
       else (
         Log.info "Parsed successfully";
         let width = Ceibo.Green.width (Ceibo.Green.Node result.tree) in
