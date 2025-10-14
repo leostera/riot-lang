@@ -1,0 +1,11 @@
+[package]
+name = "postgres"
+version = "0.1.0"
+
+[dependencies]
+std = { path = "../std" }
+kernel = { path = "../kernel" }
+sqlx_driver = { path = "../sqlx_driver" }
+# Add dependencies here
+
+

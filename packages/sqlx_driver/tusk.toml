@@ -1,0 +1,9 @@
+[package]
+name = "sqlx_driver"
+version = "0.1.0"
+
+[dependencies]
+std = { path = "../std" }
+# Add dependencies here
+
+

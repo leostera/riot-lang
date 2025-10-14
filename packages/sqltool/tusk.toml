@@ -1,0 +1,15 @@
+[package]
+name = "sqltool"
+version = "0.1.0"
+
+[dependencies]
+std = { path = "../std" }
+miniriot = { path = "../miniriot" }
+sqlx_driver = { path = "../sqlx_driver" }
+sqlx = { path = "../sqlx" }
+postgres = { path = "../postgres" }
+sqlite = { path = "../sqlite" }
+
+[[bin]]
+name = "sqltool"
+path = "src/main.ml"

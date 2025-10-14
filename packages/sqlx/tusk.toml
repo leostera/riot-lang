@@ -1,0 +1,9 @@
+[package]
+name = "sqlx"
+version = "0.1.0"
+
+[dependencies]
+std = { path = "../std" }
+kernel = { path = "../kernel" }
+miniriot = { path = "../miniriot" }
+sqlx_driver = { path = "../sqlx_driver" }
