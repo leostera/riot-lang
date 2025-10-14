@@ -1,4 +1,0 @@
-(library (package stack)
- (name libc)
- (preprocess
-  (pps config_ppx)))

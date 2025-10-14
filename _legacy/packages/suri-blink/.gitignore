@@ -1,8 +1,0 @@
-_build
-_opam
-*.install
-
-# nix ignores
-.direnv
-result
-.envrc

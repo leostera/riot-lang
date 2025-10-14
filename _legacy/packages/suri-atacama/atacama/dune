@@ -1,3 +1,0 @@
-(library (package stack)
- (name atacama)
- (libraries riot telemetry))

@@ -1,4 +1,0 @@
-(library (package stack)
- (name rio)
- (modes :standard)
- (libraries unix))

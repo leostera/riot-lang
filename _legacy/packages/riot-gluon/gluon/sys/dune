@@ -1,3 +1,0 @@
-(library (package stack)
- (name gluon_sys)
- (libraries gluon_common gluon_events rio gluon_sys_unix))

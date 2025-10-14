@@ -1,3 +1,0 @@
-(library (package stack)
- (name tty)
- (libraries uutf unix))

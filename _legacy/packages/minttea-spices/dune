@@ -1,3 +1,0 @@
-(library (package stack)
- (name spices)
- (libraries tty colors str uuseg))

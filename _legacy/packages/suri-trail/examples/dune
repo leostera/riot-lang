@@ -1,5 +1,0 @@
-(executables
- (names hello_world)
- (preprocess
-  (pps bytestring_ppx))
- (libraries trail))

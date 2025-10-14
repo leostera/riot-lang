@@ -1,2 +1,0 @@
-(library (package stack)
- (name colors))

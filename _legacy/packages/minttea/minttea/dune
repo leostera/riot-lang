@@ -1,3 +1,0 @@
-(library (package stack)
- (name minttea)
- (libraries riot tty))

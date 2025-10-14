@@ -1,5 +1,0 @@
-(executable
-  (name common_test)
-  (modules common_test)
-  (preprocess (pps stack.serde_derive))
-  (libraries stack.serde stack.serde_json))

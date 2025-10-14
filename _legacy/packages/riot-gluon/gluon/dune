@@ -1,5 +1,0 @@
-(library (package stack)
- (name gluon)
- (preprocess
-  (pps bytestring_ppx))
- (libraries bytestring rio uri gluon_common gluon_sys libc))

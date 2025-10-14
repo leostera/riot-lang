@@ -1,5 +1,0 @@
-_build
-# nix ignores
-.direnv
-result
-.envrc

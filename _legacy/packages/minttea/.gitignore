@@ -1,8 +1,0 @@
-_build
-_opam
-.DS_Store
-
-# nix ignores
-.direnv
-result
-.envrc

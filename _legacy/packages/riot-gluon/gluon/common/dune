@@ -1,3 +1,0 @@
-(library (package stack)
- (name gluon_common)
- (libraries unix))

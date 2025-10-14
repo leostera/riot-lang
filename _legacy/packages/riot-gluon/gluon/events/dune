@@ -1,3 +1,0 @@
-(library (package stack)
- (name gluon_events)
- (libraries gluon_common))

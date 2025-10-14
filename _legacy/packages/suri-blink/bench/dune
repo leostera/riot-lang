@@ -1,3 +1,0 @@
-(executable
- (name blink_get)
- (libraries blink))

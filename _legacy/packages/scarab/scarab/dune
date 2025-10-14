@@ -1,3 +1,0 @@
-(library (package stack)
- (name scarab)
- (libraries riot leaves minttea))

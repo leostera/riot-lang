@@ -1,3 +1,0 @@
-(tests
- (names collector_test custom_event_test)
- (libraries telemetry))

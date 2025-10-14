@@ -1,4 +1,0 @@
-(library
-  (name test)
-  (preprocess (pps stack.bytestring_ppx))
-  (libraries stack.bytestring))
