@@ -10,6 +10,15 @@ module Parser = Parser
 
 let tokenize source = Lexer.tokenize source
 
-let parse source =
+let parse_interface source =
   let tokens = Lexer.tokenize source in
-  Parser.parse ~source tokens
+  Parser.parse_interface ~source tokens
+
+let parse_implementation source =
+  let tokens = Lexer.tokenize source in
+  Parser.parse_implementation ~source tokens
+
+let parse ~filename source =
+  (* Decide based on file extension *)
+  if String.ends_with ~suffix:".mli" filename then parse_interface source
+  else parse_implementation source

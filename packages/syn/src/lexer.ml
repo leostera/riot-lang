@@ -362,6 +362,14 @@ let lex_char cursor token_start =
   let end_ = Cursor.position cursor in
   { Token.kind; span = { start = token_start; end_ } }
 
+let lex_type_var cursor token_start =
+  (* Type variable: 'ident
+     The quote has already been seen, now consume it and return Quote token.
+     The next call to `next` will lex the identifier. *)
+  Cursor.advance cursor;
+  let end_ = Cursor.position cursor in
+  { Token.kind = Token.Quote; span = { start = token_start; end_ } }
+
 let next cursor delim_stack =
   let start = Cursor.position cursor in
   if Cursor.is_eof cursor then
@@ -654,25 +662,16 @@ let next cursor delim_stack =
         let end_ = Cursor.position cursor in
         { Token.kind = Token.Dollar; span = Ceibo.Span.make ~start ~end_ }
     | Some '"' -> lex_string cursor start
-    | Some '\'' -> (
+    | Some '\'' ->
         (* Distinguish between char literals and type variable quotes *)
         (* Char literal: 'a', '\\', etc. followed by closing '
            Type variable: 'a, 'foo (no closing ' after ident) *)
-        match Cursor.peek_n cursor 2 with
-        | Some '\'' -> lex_char cursor start (* It's a char literal like 'a' *)
-        | _ -> (
-            (* Check if it's an escape like '\\' or '\n' *)
-            match Cursor.peek_n cursor 1 with
-            | Some '\\' -> lex_char cursor start (* Escaped char *)
-            | Some c when is_ident_start c ->
-                (* It's a type variable like 'a or 'foo *)
-                Cursor.advance cursor;
-                let end_ = Cursor.position cursor in
-                {
-                  Token.kind = Token.Quote;
-                  span = Ceibo.Span.make ~start ~end_;
-                }
-            | _ -> lex_char cursor start (* Try as char anyway *)))
+        let is_next_char_escaped = Cursor.peek_n cursor 1 = Some '\\' in
+        let is_single_quoted_char = Cursor.peek_n cursor 2 = Some '\'' in
+
+        if is_next_char_escaped || is_single_quoted_char then
+          lex_char cursor start
+        else lex_type_var cursor start
     | Some c when is_digit c -> lex_number cursor start
     | Some c when is_ident_start c -> lex_ident cursor delim_stack start
     | Some c ->

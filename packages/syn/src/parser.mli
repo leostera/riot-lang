@@ -98,32 +98,8 @@ type parse_result = {
 
 (** # Parsing *)
 
-val parse : source:string -> ?filename:string -> Token.t list -> parse_result
-(** `parse ~source ?filename tokens` parses a token stream into a syntax tree.
-    
-    This function **never raises exceptions**. It always returns a tree,
-    even from malformed input.
-    
-    Parameters:
-    - `source`: The original source code (needed to extract token text)
-    - `filename`: Optional filename to determine if parsing .ml or .mli (defaults to .ml)
-    - `tokens`: Token stream from the lexer
-    
-    Returns:
-    - `tree`: Ceibo green tree (may contain ERROR/MISSING nodes)
-    - `diagnostics`: List of syntax errors found (empty if valid)
-    
-    Example:
-    ```ocaml
-    let source = "let x = 1 + 2" in
-    let tokens = Lexer.tokenize source in
-    let { tree; diagnostics } = Parser.parse ~source tokens in
-    
-    if diagnostics = [] then
-      Printf.printf "Parse successful\n"
-    else
-      List.iter (fun d ->
-        Printf.eprintf "%s\n" (Diagnostic.to_string d)
-      ) diagnostics
-    ```
-    *)
+val parse_interface : source:string -> Token.t list -> parse_result
+(** Parse an interface file (.mli) *)
+
+val parse_implementation : source:string -> Token.t list -> parse_result
+(** Parse an implementation file (.ml) *)

@@ -92,8 +92,20 @@ val tokenize : string -> Token.t list
     Example: ```ocaml let tokens = Syn.tokenize "let x = 42" in (* tokens =
     [Keyword Let; Whitespace; Ident "x"; Whitespace; Eq; ...] *) ``` *)
 
-val parse : string -> Parser.parse_result
-(** `parse source` parses source code into a Ceibo green tree with diagnostics.
+val parse_interface : string -> Parser.parse_result
+(** `parse_interface source` parses .mli source code into a Ceibo green tree
+    with diagnostics. *)
+
+val parse_implementation : string -> Parser.parse_result
+(** `parse_implementation source` parses .ml source code into a Ceibo green tree
+    with diagnostics. *)
+
+val parse : filename:string -> string -> Parser.parse_result
+(** `parse ~filename source` parses source code into a Ceibo green tree with
+    diagnostics.
+
+    Automatically chooses parse_interface or parse_implementation based on
+    filename extension.
 
     This function **never fails**. Even with syntax errors, it returns a tree
     structure with ERROR/MISSING nodes and a list of diagnostics.

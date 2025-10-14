@@ -40,8 +40,11 @@ let handle_parse sub_matches =
       Log.error "Error reading file %s" file;
       exit 1
   | Ok source ->
+      let tokens = Lexer.tokenize source in
       let result =
-        Parser.parse ~source ~filename:file (Lexer.tokenize source)
+        if String.ends_with ~suffix:".mli" file then
+          Parser.parse_interface ~source tokens
+        else Parser.parse_implementation ~source tokens
       in
 
       if json then
