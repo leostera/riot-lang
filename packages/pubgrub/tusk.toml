@@ -1,0 +1,12 @@
+[package]
+name = "pubgrub"
+version = "0.1.0"
+
+[dependencies]
+std = "*"
+
+[[bin]]
+name = "pubgrub"
+path = "src/main.ml"
+
+
