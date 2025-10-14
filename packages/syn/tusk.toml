@@ -7,4 +7,4 @@ std = { path = "../std" }
 
 [[bin]]
 name = "syn"
-main = "main.ml"
+path = "src/main.ml"
