@@ -1,0 +1,24 @@
+[
+  {
+    "kind": {
+      "type": "unexpected_token",
+      "expected": "=",
+      "found": "integer"
+    },
+    "span": {
+      "start": 6,
+      "end": 8
+    }
+  },
+  {
+    "kind": {
+      "type": "unexpected_token",
+      "expected": "expression",
+      "found": "end of file"
+    },
+    "span": {
+      "start": 9,
+      "end": 9
+    }
+  }
+]

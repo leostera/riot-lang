@@ -1,0 +1,13 @@
+[
+  {
+    "kind": {
+      "type": "unexpected_token",
+      "expected": "expression",
+      "found": "end of file"
+    },
+    "span": {
+      "start": 8,
+      "end": 8
+    }
+  }
+]

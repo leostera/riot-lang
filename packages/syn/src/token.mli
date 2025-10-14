@@ -136,3 +136,13 @@ val show_kind : token_kind -> string
     Example: ```ocaml show_kind (Ident "foo") = "identifier" show_kind (Literal
     (Int 42)) = "integer" show_kind Plus = "'+'" show_kind EOF = "end of file"
     ``` *)
+
+val to_string : t -> string
+(** `to_string token` returns a human-readable description of the token.
+    
+    This is a convenience wrapper around `show_kind` that takes a full token.
+    
+    Example: ```ocaml
+    to_string { kind = Ident "foo"; span = ... } = "identifier"
+    to_string { kind = EOF; span = ... } = "end of file"
+    ``` *)

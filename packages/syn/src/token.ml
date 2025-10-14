@@ -159,3 +159,5 @@ let show_kind = function
   | Whitespace -> "whitespace"
   | EOF -> "end of file"
   | Unknown c -> format "unknown character '%c'" c
+
+let to_string token = show_kind token.kind

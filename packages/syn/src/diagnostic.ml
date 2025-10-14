@@ -3,7 +3,7 @@ open Std
 (** Structured parse error kinds *)
 type kind =
   | MissingToken of { expected : string }
-  | UnexpectedToken of { expected : string option; found : string }
+  | UnexpectedToken of { expected : string; found : string }
   | UnexpectedEof of { expected : string }
   | InvalidSyntax of { context : string }
   | UnclosedDelimiter of { delimiter : string; opened_at : int }
@@ -14,30 +14,29 @@ type t = { kind : kind; span : Ceibo.Span.t }
 
 let make ~kind ~span = { kind; span }
 
-let make_missing_token ~expected ~span =
+let missing_token ~expected ~span =
   make ~kind:(MissingToken { expected }) ~span
 
-let make_unexpected_token ~expected ~found ~span =
+let unexpected_token ~expected ~found ~span =
+  let found = Token.to_string found in
   make ~kind:(UnexpectedToken { expected; found }) ~span
 
-let make_unexpected_eof ~expected ~span =
+let unexpected_eof ~expected ~span =
   make ~kind:(UnexpectedEof { expected }) ~span
 
-let make_invalid_syntax ~context ~span =
+let invalid_syntax ~context ~span =
   make ~kind:(InvalidSyntax { context }) ~span
 
-let make_unclosed_delimiter ~delimiter ~opened_at ~span =
+let unclosed_delimiter ~delimiter ~opened_at ~span =
   make ~kind:(UnclosedDelimiter { delimiter; opened_at }) ~span
 
-let make_mismatched_delimiter ~expected ~found ~span =
+let mismatched_delimiter ~expected ~found ~span =
   make ~kind:(MismatchedDelimiter { expected; found }) ~span
 
 let kind_to_message = function
   | MissingToken { expected } -> format "Missing %s" expected
-  | UnexpectedToken { expected = Some exp; found } ->
-      format "Expected %s but found %s" exp found
-  | UnexpectedToken { expected = None; found } ->
-      format "Unexpected token %s" found
+  | UnexpectedToken { expected; found } ->
+      format "Expected %s but found %s" expected found
   | UnexpectedEof { expected } ->
       format "Unexpected end of file, expected %s" expected
   | InvalidSyntax { context } -> format "Invalid syntax in %s" context
@@ -59,15 +58,13 @@ let to_json err =
     | MissingToken { expected } ->
         Object
           [ ("type", String "missing_token"); ("expected", String expected) ]
-    | UnexpectedToken { expected = Some exp; found } ->
+    | UnexpectedToken { expected; found } ->
         Object
           [
             ("type", String "unexpected_token");
-            ("expected", String exp);
+            ("expected", String expected);
             ("found", String found);
           ]
-    | UnexpectedToken { expected = None; found } ->
-        Object [ ("type", String "unexpected_token"); ("found", String found) ]
     | UnexpectedEof { expected } ->
         Object
           [ ("type", String "unexpected_eof"); ("expected", String expected) ]

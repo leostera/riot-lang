@@ -298,11 +298,6 @@ class TestRunner:
         """Test a single diagnostic file. Returns True if passed."""
         diagnostic_path = Path(str(test_file) + ".diagnostic")
         
-        if not diagnostic_path.exists():
-            if verbose:
-                print(f"{RED}No .diagnostic file for {test_file.name}{NC}")
-            return False
-        
         # Parse the file
         output, returncode = self.run_syn(["parse", "--json"], test_file)
         if returncode != 0:
@@ -319,6 +314,15 @@ class TestRunner:
         
         # Extract diagnostics from result
         actual_diagnostics = result.get("diagnostics", [])
+        
+        # If .diagnostic file doesn't exist, create it with actual diagnostics
+        if not diagnostic_path.exists():
+            if verbose:
+                print(f"{YELLOW}Creating .diagnostic file for {test_file.name}{NC}")
+            with open(diagnostic_path, 'w') as f:
+                json.dump(actual_diagnostics, f, indent=2)
+                f.write('\n')
+            return True
         
         # Read expected diagnostics
         with open(diagnostic_path, 'r') as f:

@@ -1,0 +1,13 @@
+[
+  {
+    "kind": {
+      "type": "unexpected_token",
+      "expected": "pattern",
+      "found": "'='"
+    },
+    "span": {
+      "start": 4,
+      "end": 5
+    }
+  }
+]

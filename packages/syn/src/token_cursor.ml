@@ -13,15 +13,20 @@ let create ~source tokens =
 
 let position t = t.pos
 let is_eof t = t.pos >= t.length
-let peek t = if is_eof t then None else Some t.tokens.(t.pos)
+
+let eof_token () = 
+  { Token.kind = Token.EOF; span = Ceibo.Span.make ~start:0 ~end_:0 }
+
+let peek t = 
+  if is_eof t then eof_token () else t.tokens.(t.pos)
 
 let peek_n t n =
-  if t.pos + n >= t.length then None else Some t.tokens.(t.pos + n)
+  if t.pos + n >= t.length then eof_token () else t.tokens.(t.pos + n)
 
 let advance t = if not (is_eof t) then t.pos <- t.pos + 1
 
 let skip_while t f =
-  while (not (is_eof t)) && Option.map f (peek t) = Some true do
+  while (not (is_eof t)) && f (peek t) do
     advance t
   done
 

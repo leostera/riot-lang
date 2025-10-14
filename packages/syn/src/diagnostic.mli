@@ -28,7 +28,7 @@ type kind =
       (** Expected a specific token but found something else or EOF.
 
           Example: Missing `)` in `let x = (1 + 2` *)
-  | UnexpectedToken of { expected : string option; found : string }
+  | UnexpectedToken of { expected : string; found : string }
       (** Found a token that doesn't fit the current context.
 
           Example: `let x + 1` - `+` is unexpected after identifier *)
@@ -70,43 +70,43 @@ val make : kind:kind -> span:Ceibo.Span.t -> t
     These helpers create diagnostics for common error types without needing to
     construct the `kind` variant manually. *)
 
-val make_missing_token : expected:string -> span:Ceibo.Span.t -> t
+val missing_token : expected:string -> span:Ceibo.Span.t -> t
 (** Create a "missing token" diagnostic.
 
-    Example: ```ocaml Diagnostic.make_missing_token ~expected:")"
+    Example: ```ocaml Diagnostic.missing_token ~expected:")"
     ~span:error_span ``` *)
 
-val make_unexpected_token :
-  expected:string option -> found:string -> span:Ceibo.Span.t -> t
+val unexpected_token :
+  expected:string -> found:Token.t -> span:Ceibo.Span.t -> t
 (** Create an "unexpected token" diagnostic.
 
-    Example: ```ocaml Diagnostic.make_unexpected_token ~expected:(Some
-    "identifier") ~found:"+" ~span:token_span ``` *)
+    Example: ```ocaml Diagnostic.unexpected_token ~expected:"identifier"
+    ~found:Token.PLUS ~span:token_span ``` *)
 
-val make_unexpected_eof : expected:string -> span:Ceibo.Span.t -> t
+val unexpected_eof : expected:string -> span:Ceibo.Span.t -> t
 (** Create an "unexpected end of file" diagnostic.
 
-    Example: ```ocaml Diagnostic.make_unexpected_eof ~expected:"expression"
+    Example: ```ocaml Diagnostic.unexpected_eof ~expected:"expression"
     ~span:eof_span ``` *)
 
-val make_invalid_syntax : context:string -> span:Ceibo.Span.t -> t
+val invalid_syntax : context:string -> span:Ceibo.Span.t -> t
 (** Create an "invalid syntax" diagnostic.
 
-    Example: ```ocaml Diagnostic.make_invalid_syntax ~context:"let binding"
+    Example: ```ocaml Diagnostic.invalid_syntax ~context:"let binding"
     ~span:binding_span ``` *)
 
-val make_unclosed_delimiter :
+val unclosed_delimiter :
   delimiter:string -> opened_at:int -> span:Ceibo.Span.t -> t
 (** Create an "unclosed delimiter" diagnostic.
 
-    Example: ```ocaml Diagnostic.make_unclosed_delimiter ~delimiter:"("
+    Example: ```ocaml Diagnostic.unclosed_delimiter ~delimiter:"("
     ~opened_at:start_pos ~span:current_span ``` *)
 
-val make_mismatched_delimiter :
+val mismatched_delimiter :
   expected:string -> found:string -> span:Ceibo.Span.t -> t
 (** Create a "mismatched delimiter" diagnostic.
 
-    Example: ```ocaml Diagnostic.make_mismatched_delimiter ~expected:"end"
+    Example: ```ocaml Diagnostic.mismatched_delimiter ~expected:"end"
     ~found:")" ~span:delimiter_span ``` *)
 
 (** # Serialization *)
