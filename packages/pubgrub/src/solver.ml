@@ -17,6 +17,51 @@ type state = {
 let version_compare a b =
   match Version.compare a b with Lt -> -1 | Eq -> 0 | Gt -> 1
 
+let rebuild_pending old_pending state =
+  (* After backtracking, check the old pending list and see if any packages
+     that were decided are now undecided (removed by backtracking).
+     Also add any new dependencies from decided packages.
+  *)
+  (* First, find packages from dependency incompatibilities *)
+  let pending_map = HashMap.create () in
+  HashMap.iter
+    (fun pkg incompats ->
+      List.iter
+        (fun incompat ->
+          (* Check if this is a dependency incompatibility *)
+          match Incompatibility.as_dependency incompat with
+          | Some (parent_pkg, dep_pkg) ->
+              (* Check if parent is decided/constrained and dep is undecided *)
+              (match Partial_solution.get_constraint state.solution parent_pkg with
+              | `Decided _ | `Constrained _ -> (
+                  match Partial_solution.get_constraint state.solution dep_pkg with
+                  | `Undecided ->
+                      (* Get the range for the dependency *)
+                      (match Incompatibility.get_term incompat dep_pkg with
+                      | Some term when Term.is_positive term ->
+                          let existing_ranges =
+                            match HashMap.get pending_map dep_pkg with
+                            | Some r -> r
+                            | None -> Ranges.full
+                          in
+                          let new_ranges =
+                            Ranges.intersection ~compare_v:version_compare
+                              existing_ranges (Term.ranges term)
+                          in
+                          ignore (HashMap.insert pending_map dep_pkg new_ranges)
+                      | _ -> ())
+                  | _ -> ())
+              | _ -> ())
+          | None -> ())
+        incompats)
+    state.incompatibilities;
+  (* Convert HashMap to list *)
+  let result = ref [] in
+  HashMap.iter
+    (fun pkg ranges -> result := (pkg, ranges) :: !result)
+    pending_map;
+  !result
+
 let add_incompatibility state incompat =
   let terms = Incompatibility.terms incompat in
   List.iter
@@ -93,7 +138,8 @@ let rec unit_propagation root_package root_version state initial_changed =
                         buffer := satisfier_pkg :: !buffer;
                         already_added := satisfier_pkg :: !already_added);
                       check_incompats remaining_incompats
-                  | `Contradicted _ | `Unknown -> check_incompats remaining_incompats)
+                  | `Contradicted _ | `Unknown ->
+                      check_incompats remaining_incompats)
             in
             check_incompats (List.rev incompats))
   in
@@ -120,9 +166,10 @@ and conflict_resolution root_package root_version state incompat =
             let new_solution =
               Partial_solution.backtrack state.solution previous_level
             in
-            let new_state = { state with solution = new_solution } in
-            add_incompatibility new_state current_incompat;
-            Ok new_state
+            let new_state_temp = { state with solution = new_solution } in
+            add_incompatibility new_state_temp current_incompat;
+            (* TODO: Rebuild pending after backtracking - needs more work to avoid infinite loops *)
+            Ok new_state_temp
       | `SameDecisionLevels satisfier_cause ->
           Log.debug "Same decision level, computing prior cause for package %s"
             pkg;
@@ -230,10 +277,12 @@ let solve provider root_package root_version =
                       (Success
                          (Partial_solution.extract_solution state.solution))
                 | (pkg, ranges) :: rest_pending -> (
-                    match Partial_solution.get_constraint state.solution pkg with
+                    match
+                      Partial_solution.get_constraint state.solution pkg
+                    with
                     | `Decided _ | `Constrained _ ->
-                        Log.debug "Package %s already decided/constrained, skipping"
-                          pkg;
+                        Log.debug
+                          "Package %s already decided/constrained, skipping" pkg;
                         solve_loop { state with pending = rest_pending } []
                     | `Undecided -> (
                         Log.debug "Choosing version for package: %s" pkg;
@@ -298,8 +347,12 @@ let solve provider root_package root_version =
                                               all_other_terms_satisfied := false
                                         | `Constrained constrained_ranges ->
                                             (* Check if this term is satisfied given the constraint *)
-                                            let term_ranges = Term.ranges term in
-                                            let is_positive = Term.is_positive term in
+                                            let term_ranges =
+                                              Term.ranges term
+                                            in
+                                            let is_positive =
+                                              Term.is_positive term
+                                            in
                                             let term_is_satisfied =
                                               if is_positive then
                                                 (* Positive: satisfied if constrained ⊆ term_ranges *)
@@ -313,7 +366,8 @@ let solve provider root_package root_version =
                                                   constrained_ranges term_ranges
                                             in
                                             Log.debug
-                                              "        Constrained, term_is_satisfied=%b"
+                                              "        Constrained, \
+                                               term_is_satisfied=%b"
                                               term_is_satisfied;
                                             if not term_is_satisfied then
                                               all_other_terms_satisfied := false))
@@ -374,8 +428,8 @@ let solve provider root_package root_version =
                             Log.debug "  Created no_versions incompatibility";
                             add_incompatibility state no_ver_incompat;
                             Log.debug
-                              "  Added to state, continuing solve_loop with pkg=%s \
-                               in changed list"
+                              "  Added to state, continuing solve_loop with \
+                               pkg=%s in changed list"
                               pkg;
                             (* Continue loop with this package for unit_propagation *)
                             solve_loop
@@ -451,12 +505,14 @@ let solve provider root_package root_version =
                                           "Dependency %s is already constrained"
                                           dep_pkg;
                                         if
-                                          Ranges.is_disjoint ~compare_v:version_compare
+                                          Ranges.is_disjoint
+                                            ~compare_v:version_compare
                                             constrained_ranges dep_ranges
                                         then (
                                           Log.debug
-                                            "  But constrained ranges are disjoint \
-                                             with required range! Impossible!";
+                                            "  But constrained ranges are \
+                                             disjoint with required range! \
+                                             Impossible!";
                                           incompatible_dep := Some dep_incompat);
                                         already_decided_deps :=
                                           dep_pkg :: !already_decided_deps
@@ -466,11 +522,11 @@ let solve provider root_package root_version =
                                 match !incompatible_dep with
                                 | Some incompat -> (
                                     Log.debug
-                                      "Found incompatible dependency, triggering \
-                                       conflict resolution";
+                                      "Found incompatible dependency, \
+                                       triggering conflict resolution";
                                     match
-                                      conflict_resolution root_package root_version
-                                        new_state incompat
+                                      conflict_resolution root_package
+                                        root_version new_state incompat
                                     with
                                     | Error result -> Ok result
                                     | Ok resolved_state ->
@@ -483,7 +539,8 @@ let solve provider root_package root_version =
                                             Partial_solution.get_constraint
                                               new_state.solution dep_pkg
                                           with
-                                          | `Undecided -> (dep_pkg, dep_ranges) :: acc
+                                          | `Undecided ->
+                                              (dep_pkg, dep_ranges) :: acc
                                           | `Decided _ | `Constrained _ -> acc)
                                         rest_pending deps
                                     in
