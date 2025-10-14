@@ -3582,11 +3582,11 @@ and parse_function_expr parser leading_trivia =
               let case_children =
                 match guard with
                 | Some g ->
-                    [ pattern; g ] @ arrow_before_trivia
-                    @ [ arrow; Ceibo.Green.Node expr ]
+                    [ pattern; g ] @ arrow_before_trivia @ [ arrow ]
+                    @ trivia_after_arrow @ [ Ceibo.Green.Node expr ]
                 | None ->
-                    [ pattern ] @ arrow_before_trivia
-                    @ [ arrow; Ceibo.Green.Node expr ]
+                    [ pattern ] @ arrow_before_trivia @ [ arrow ]
+                    @ trivia_after_arrow @ [ Ceibo.Green.Node expr ]
               in
               let first_case =
                 make_node_list ~kind:Syntax_kind.MATCH_CASE case_children
@@ -4643,9 +4643,10 @@ let rec parse_structure_item parser =
 
   match peek_kind parser with
   | Some (Token.Keyword Keyword.Let) -> parse_let_binding parser leading_trivia
-  | Some (Token.Keyword Keyword.Type) -> parse_type_decl parser
-  | Some (Token.Keyword Keyword.Open) -> parse_open parser
-  | Some (Token.Keyword Keyword.External) -> parse_external_decl parser
+  | Some (Token.Keyword Keyword.Type) -> parse_type_decl parser leading_trivia
+  | Some (Token.Keyword Keyword.Open) -> parse_open parser leading_trivia
+  | Some (Token.Keyword Keyword.External) ->
+      parse_external_decl parser leading_trivia
   | Some (Token.Keyword Keyword.Module) ->
       parse_module_decl_structure parser leading_trivia
   | Some (Token.Keyword Keyword.Include) -> parse_include parser leading_trivia
@@ -5202,11 +5203,13 @@ and parse_regular_let_binding parser leading_trivia let_kw trivia_after_let
           | Some kw ->
               leading_trivia @ [ let_kw ] @ attributes @ [ kw; pattern ]
               @ type_annot_tokens @ params @ return_type_annot_tokens @ [ eq ]
-              @ trivia_after_eq @ [ final_expr; in_kw; Ceibo.Green.Node body ]
+              @ trivia_after_eq
+              @ [ final_expr; in_kw; Ceibo.Green.Node body ]
           | None ->
               leading_trivia @ [ let_kw ] @ attributes @ [ pattern ]
               @ type_annot_tokens @ params @ return_type_annot_tokens @ [ eq ]
-              @ trivia_after_eq @ [ final_expr; in_kw; Ceibo.Green.Node body ]
+              @ trivia_after_eq
+              @ [ final_expr; in_kw; Ceibo.Green.Node body ]
         in
         Some (make_node_list ~kind children)
     | None ->
@@ -5246,7 +5249,7 @@ and parse_regular_let_binding parser leading_trivia let_kw trivia_after_let
             @ type_annot_tokens @ params @ return_type_annot_tokens
             @ trivia_before_eq @ [ eq ] @ trivia_after_eq @ [ final_expr ]))
 
-and parse_type_decl parser =
+and parse_type_decl parser leading_trivia =
   (* type 'a t = ... | type t += ... | type t *)
   let before_trivia, type_kw = consume parser in
   let trivia_after_type = consume_trivia parser in
@@ -5271,13 +5274,13 @@ and parse_type_decl parser =
       let children =
         match params with
         | Some p ->
-            [ type_kw ] @ trivia_after_type @ [ Ceibo.Green.Node p ]
-            @ type_name_parts @ [ plus ] @ trivia_after_plus @ [ eq ]
-            @ trivia_after_eq
+            leading_trivia @ [ type_kw ] @ trivia_after_type
+            @ [ Ceibo.Green.Node p ] @ type_name_parts @ [ plus ]
+            @ trivia_after_plus @ [ eq ] @ trivia_after_eq
             @ [ Ceibo.Green.Node type_body ]
         | None ->
-            [ type_kw ] @ trivia_after_type @ type_name_parts @ [ plus ]
-            @ trivia_after_plus @ [ eq ] @ trivia_after_eq
+            leading_trivia @ [ type_kw ] @ trivia_after_type @ type_name_parts
+            @ [ plus ] @ trivia_after_plus @ [ eq ] @ trivia_after_eq
             @ [ Ceibo.Green.Node type_body ]
       in
 
@@ -5312,35 +5315,37 @@ and parse_type_decl parser =
       let children =
         match (params, private_kw, type_body_opt) with
         | Some p, Some priv, Some type_body ->
-            [ type_kw ] @ trivia_after_type @ [ Ceibo.Green.Node p ]
-            @ type_name_parts @ [ eq ] @ trivia_after_eq @ [ priv ]
-            @ trivia_after_private
+            leading_trivia @ [ type_kw ] @ trivia_after_type
+            @ [ Ceibo.Green.Node p ] @ type_name_parts @ [ eq ]
+            @ trivia_after_eq @ [ priv ] @ trivia_after_private
             @ [ Ceibo.Green.Node type_body ]
         | Some p, Some priv, None ->
-            [ type_kw ] @ trivia_after_type @ [ Ceibo.Green.Node p ]
-            @ type_name_parts @ [ eq ] @ trivia_after_eq @ [ priv ]
-            @ trivia_after_private
+            leading_trivia @ [ type_kw ] @ trivia_after_type
+            @ [ Ceibo.Green.Node p ] @ type_name_parts @ [ eq ]
+            @ trivia_after_eq @ [ priv ] @ trivia_after_private
         | Some p, None, Some type_body ->
-            [ type_kw ] @ trivia_after_type @ [ Ceibo.Green.Node p ]
-            @ type_name_parts @ [ eq ] @ trivia_after_eq
+            leading_trivia @ [ type_kw ] @ trivia_after_type
+            @ [ Ceibo.Green.Node p ] @ type_name_parts @ [ eq ]
+            @ trivia_after_eq
             @ [ Ceibo.Green.Node type_body ]
         | Some p, None, None ->
-            [ type_kw ] @ trivia_after_type @ [ Ceibo.Green.Node p ]
-            @ type_name_parts @ [ eq ] @ trivia_after_eq
+            leading_trivia @ [ type_kw ] @ trivia_after_type
+            @ [ Ceibo.Green.Node p ] @ type_name_parts @ [ eq ]
+            @ trivia_after_eq
         | None, Some priv, Some type_body ->
-            [ type_kw ] @ trivia_after_type @ type_name_parts @ [ eq ]
-            @ trivia_after_eq @ [ priv ] @ trivia_after_private
+            leading_trivia @ [ type_kw ] @ trivia_after_type @ type_name_parts
+            @ [ eq ] @ trivia_after_eq @ [ priv ] @ trivia_after_private
             @ [ Ceibo.Green.Node type_body ]
         | None, Some priv, None ->
-            [ type_kw ] @ trivia_after_type @ type_name_parts @ [ eq ]
-            @ trivia_after_eq @ [ priv ] @ trivia_after_private
+            leading_trivia @ [ type_kw ] @ trivia_after_type @ type_name_parts
+            @ [ eq ] @ trivia_after_eq @ [ priv ] @ trivia_after_private
         | None, None, Some type_body ->
-            [ type_kw ] @ trivia_after_type @ type_name_parts @ [ eq ]
-            @ trivia_after_eq
+            leading_trivia @ [ type_kw ] @ trivia_after_type @ type_name_parts
+            @ [ eq ] @ trivia_after_eq
             @ [ Ceibo.Green.Node type_body ]
         | None, None, None ->
-            [ type_kw ] @ trivia_after_type @ type_name_parts @ [ eq ]
-            @ trivia_after_eq
+            leading_trivia @ [ type_kw ] @ trivia_after_type @ type_name_parts
+            @ [ eq ] @ trivia_after_eq
       in
 
       Some (make_node_list ~kind:Syntax_kind.TYPE_DECL children)
@@ -5349,9 +5354,10 @@ and parse_type_decl parser =
       let children =
         match params with
         | Some p ->
-            [ type_kw ] @ trivia_after_type @ [ Ceibo.Green.Node p ]
-            @ type_name_parts
-        | None -> [ type_kw ] @ trivia_after_type @ type_name_parts
+            leading_trivia @ [ type_kw ] @ trivia_after_type
+            @ [ Ceibo.Green.Node p ] @ type_name_parts
+        | None ->
+            leading_trivia @ [ type_kw ] @ trivia_after_type @ type_name_parts
       in
       Some (make_node_list ~kind:Syntax_kind.TYPE_DECL children)
 
@@ -6129,18 +6135,66 @@ and parse_record_type parser =
 
   make_node_list ~kind:Syntax_kind.TYPE_CONSTR all_parts
 
-and parse_open parser =
+and parse_open parser leading_trivia =
   let before_trivia, open_kw = consume parser in
   let trivia_after_open = consume_trivia parser in
 
-  (* Parse module path: Unix, Unix.File, A.B.C *)
-  let path = parse_identifier parser in
+  (* Parse module path: Unix, Unix.File, A.B.C 
+     For open statements, we only consume trivia after INTERMEDIATE components,
+     not after the FINAL component. This way comments/blank lines after the path
+     are left for the next statement's leading_trivia. *)
+  let before_trivia, first = consume parser in
+  let trivia_after_first = consume_trivia parser in
+
+  let rec parse_rest acc found_dot =
+    if at parser Token.Dot then
+      let before_trivia, dot = consume parser in
+      let trivia_after_dot = consume_trivia parser in
+      let before_trivia, name = consume parser in
+      (* Check if there's ANOTHER dot after this name *)
+      if at parser Token.Dot then
+        (* More components coming, consume trivia and continue *)
+        let trivia_after_name = consume_trivia parser in
+        parse_rest
+          (trivia_after_name @ [ name ] @ trivia_after_dot @ [ dot ] @ acc)
+          true
+      else
+        (* This is the LAST component in a multi-component path *)
+        (* Consume only up to first newline *)
+        let trivia = consume_trivia parser in
+        let rec take_first_newline ts =
+          match ts with
+          | (Ceibo.Green.Token _ as tok) :: _
+            when Ceibo.Green.kind tok = Syntax_kind.WHITESPACE
+                 &&
+                 match Ceibo.Green.text tok with
+                 | Some t -> String.contains t '\n'
+                 | None -> false ->
+              [ tok ]
+          | tok :: rest -> tok :: take_first_newline rest
+          | [] -> []
+        in
+        ( List.rev ([ name ] @ trivia_after_dot @ [ dot ] @ acc),
+          take_first_newline trivia,
+          true )
+    else (List.rev acc, [], found_dot)
+  in
+
+  let rest, trailing_trivia, had_dots = parse_rest [] false in
+
+  (* For single-component paths (no dots), include trivia_after_first which has the newline *)
+  (* For multi-component paths, include the trailing_trivia we extracted *)
+  let path =
+    if had_dots then
+      before_trivia @ [ first ] @ trivia_after_first @ rest @ trailing_trivia
+    else before_trivia @ [ first ] @ trivia_after_first @ rest
+  in
 
   Some
     (make_node_list ~kind:Syntax_kind.OPEN_STMT
-       ([ open_kw ] @ trivia_after_open @ path))
+       (leading_trivia @ [ open_kw ] @ trivia_after_open @ path))
 
-and parse_val_decl parser =
+and parse_val_decl parser leading_trivia =
   (* val name : type or val ( op ) : type *)
   let before_trivia, val_kw = consume parser in
   let trivia_after_val = consume_trivia parser in
@@ -6181,11 +6235,11 @@ and parse_val_decl parser =
 
   Some
     (make_node_list ~kind:Syntax_kind.VAL_DECL
-       ([ val_kw ] @ trivia_after_val @ name_tokens @ trivia_after_name
-      @ before_trivia @ [ colon ]
+       (leading_trivia @ [ val_kw ] @ trivia_after_val @ name_tokens
+      @ trivia_after_name @ before_trivia @ [ colon ]
        @ [ Ceibo.Green.Node type_expr ]))
 
-and parse_external_decl parser =
+and parse_external_decl parser leading_trivia =
   (* external name : type = "c_name" *)
   let before_trivia, external_kw = consume parser in
   let trivia_after_external = consume_trivia parser in
@@ -6220,8 +6274,8 @@ and parse_external_decl parser =
 
   Some
     (make_node_list ~kind:Syntax_kind.EXTERNAL_DECL
-       ([ external_kw ] @ trivia_after_external @ [ name ] @ trivia_after_name
-      @ [ colon ]
+       (leading_trivia @ [ external_kw ] @ trivia_after_external @ [ name ]
+      @ trivia_after_name @ [ colon ]
        @ [ Ceibo.Green.Node type_expr ]
        @ trivia_after_type @ [ eq ] @ trivia_after_eq @ c_names))
 
@@ -6523,12 +6577,13 @@ and parse_signature_item parser =
   let leading_trivia = consume_trivia parser in
 
   match peek_kind parser with
-  | Some (Token.Keyword Keyword.Type) -> parse_type_decl parser
-  | Some (Token.Keyword Keyword.Val) -> parse_val_decl parser
-  | Some (Token.Keyword Keyword.External) -> parse_external_decl parser
+  | Some (Token.Keyword Keyword.Type) -> parse_type_decl parser leading_trivia
+  | Some (Token.Keyword Keyword.Val) -> parse_val_decl parser leading_trivia
+  | Some (Token.Keyword Keyword.External) ->
+      parse_external_decl parser leading_trivia
   | Some (Token.Keyword Keyword.Module) ->
       parse_module_decl_signature parser leading_trivia
-  | Some (Token.Keyword Keyword.Open) -> parse_open parser
+  | Some (Token.Keyword Keyword.Open) -> parse_open parser leading_trivia
   | Some (Token.Keyword Keyword.Include) -> parse_include parser leading_trivia
   | _ ->
       (* Return a dummy node containing the leading trivia so it's not lost *)
