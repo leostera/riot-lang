@@ -336,10 +336,13 @@ module Driver = struct
               Protocol.Writer.parse_message ~statement_name:stmt.name
                 ~query:stmt.sql ~param_types:[]
             in
+            let describe_msg =
+              Protocol.Writer.describe_message ~what:'S' ~name:stmt.name
+            in
             let encoded_params = List.map encode_param params in
             let bind_msg =
-              Protocol.Writer.bind_message ~portal_name:"" ~statement_name:stmt.name
-                ~params:encoded_params
+              Protocol.Writer.bind_message ~portal_name:""
+                ~statement_name:stmt.name ~params:encoded_params
             in
             let execute_msg =
               Protocol.Writer.execute_message ~portal_name:"" ~max_rows:0
@@ -348,13 +351,18 @@ module Driver = struct
 
             match
               ( write_message stream parse_msg,
+                write_message stream describe_msg,
                 write_message stream bind_msg,
                 write_message stream execute_msg,
                 write_message stream sync_msg )
             with
-            | Error e, _, _, _ | _, Error e, _, _ | _, _, Error e, _ | _, _, _, Error e ->
+            | Error e, _, _, _, _
+            | _, Error e, _, _, _
+            | _, _, Error e, _, _
+            | _, _, _, Error e, _
+            | _, _, _, _, Error e ->
                 Error e
-            | Ok (), Ok (), Ok (), Ok () ->
+            | Ok (), Ok (), Ok (), Ok (), Ok () ->
                 let result_set =
                   { rows = Collections.Queue.create (); rows_affected = 0 }
                 in
@@ -364,7 +372,8 @@ module Driver = struct
                   | Error e -> Error e
                   | Ok (msg_type, length, body) -> (
                       let backend_msg =
-                        Protocol.Reader.parse_backend_message msg_type length body
+                        Protocol.Reader.parse_backend_message msg_type length
+                          body
                       in
                       match backend_msg with
                       | Protocol.ParseComplete -> read_extended_results ()
@@ -377,7 +386,9 @@ module Driver = struct
                             if List.length !column_info = List.length cols then
                               List.map2
                                 (fun (field : Protocol.field) value ->
-                                  let decoded_value = decode_value field value in
+                                  let decoded_value =
+                                    decode_value field value
+                                  in
                                   (field.name, decoded_value))
                                 !column_info cols
                             else
@@ -407,14 +418,14 @@ module Driver = struct
                           Error (format "Query error: %s" msg)
                       | Protocol.NoticeResponse fields ->
                           let msg =
-                            List.assoc_opt 'M' fields |> Option.unwrap_or ~default:""
+                            List.assoc_opt 'M' fields
+                            |> Option.unwrap_or ~default:""
                           in
                           Log.info "PostgreSQL notice: %s" msg;
                           read_extended_results ()
                       | Protocol.NoData -> read_extended_results ()
                       | Protocol.EmptyQueryResponse -> Ok result_set
-                      | _ ->
-                          read_extended_results ())
+                      | _ -> read_extended_results ())
                 in
                 read_extended_results ()
           else
@@ -422,68 +433,71 @@ module Driver = struct
 
             match write_message stream query_msg with
             | Error e -> Error e
-          | Ok () ->
-              let result_set =
-                { rows = Collections.Queue.create (); rows_affected = 0 }
-              in
-              let column_info = ref [] in
-              let rec read_query_results () =
-                match read_message stream with
-                | Error e -> Error e
-                | Ok (msg_type, length, body) -> (
-                    let backend_msg =
-                      Protocol.Reader.parse_backend_message msg_type length body
-                    in
-                    match backend_msg with
-                    | Protocol.RowDescription fields ->
-                        column_info := fields;
-                        read_query_results ()
-                    | Protocol.DataRow cols ->
-                        let row =
-                          if List.length !column_info = List.length cols then
-                            List.map2
-                              (fun (field : Protocol.field) value ->
-                                let decoded_value = decode_value field value in
-                                (field.name, decoded_value))
-                              !column_info cols
-                          else
-                            List.mapi
-                              (fun i v ->
-                                (format "col_%d" i, Sqlx_driver.Value.string v))
-                              cols
-                        in
-                        Collections.Queue.enqueue result_set.rows row;
-                        read_query_results ()
-                    | Protocol.CommandComplete tag ->
-                        Log.debug "Command complete: %s" tag;
-                        let parts = String.split_on_char ' ' tag in
-                        (match List.rev parts with
-                        | n :: _ -> (
-                            match int_of_string_opt n with
-                            | Some count -> result_set.rows_affected <- count
-                            | None -> ())
-                        | [] -> ());
-                        read_query_results ()
-                    | Protocol.ReadyForQuery _status -> Ok result_set
-                    | Protocol.ErrorResponse fields ->
-                        let msg =
-                          List.assoc_opt 'M' fields
-                          |> Option.unwrap_or ~default:"Unknown error"
-                        in
-                        Error (format "Query error: %s" msg)
-                    | Protocol.NoticeResponse fields ->
-                        let msg =
-                          List.assoc_opt 'M' fields
-                          |> Option.unwrap_or ~default:""
-                        in
-                        Log.info "PostgreSQL notice: %s" msg;
-                        read_query_results ()
-                    | _ ->
-                        Error
-                          (format "Unexpected message during query: %c"
-                             (Char.chr msg_type)))
-              in
-              read_query_results ())
+            | Ok () ->
+                let result_set =
+                  { rows = Collections.Queue.create (); rows_affected = 0 }
+                in
+                let column_info = ref [] in
+                let rec read_query_results () =
+                  match read_message stream with
+                  | Error e -> Error e
+                  | Ok (msg_type, length, body) -> (
+                      let backend_msg =
+                        Protocol.Reader.parse_backend_message msg_type length
+                          body
+                      in
+                      match backend_msg with
+                      | Protocol.RowDescription fields ->
+                          column_info := fields;
+                          read_query_results ()
+                      | Protocol.DataRow cols ->
+                          let row =
+                            if List.length !column_info = List.length cols then
+                              List.map2
+                                (fun (field : Protocol.field) value ->
+                                  let decoded_value =
+                                    decode_value field value
+                                  in
+                                  (field.name, decoded_value))
+                                !column_info cols
+                            else
+                              List.mapi
+                                (fun i v ->
+                                  (format "col_%d" i, Sqlx_driver.Value.string v))
+                                cols
+                          in
+                          Collections.Queue.enqueue result_set.rows row;
+                          read_query_results ()
+                      | Protocol.CommandComplete tag ->
+                          Log.debug "Command complete: %s" tag;
+                          let parts = String.split_on_char ' ' tag in
+                          (match List.rev parts with
+                          | n :: _ -> (
+                              match int_of_string_opt n with
+                              | Some count -> result_set.rows_affected <- count
+                              | None -> ())
+                          | [] -> ());
+                          read_query_results ()
+                      | Protocol.ReadyForQuery _status -> Ok result_set
+                      | Protocol.ErrorResponse fields ->
+                          let msg =
+                            List.assoc_opt 'M' fields
+                            |> Option.unwrap_or ~default:"Unknown error"
+                          in
+                          Error (format "Query error: %s" msg)
+                      | Protocol.NoticeResponse fields ->
+                          let msg =
+                            List.assoc_opt 'M' fields
+                            |> Option.unwrap_or ~default:""
+                          in
+                          Log.info "PostgreSQL notice: %s" msg;
+                          read_query_results ()
+                      | _ ->
+                          Error
+                            (format "Unexpected message during query: %c"
+                               (Char.chr msg_type)))
+                in
+                read_query_results ())
 
   let fetch_row result_set = Collections.Queue.dequeue result_set.rows
   let rows_affected result_set = result_set.rows_affected

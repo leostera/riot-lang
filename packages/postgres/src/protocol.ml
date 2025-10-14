@@ -110,27 +110,20 @@ module Writer = struct
 
   let parse_message ~statement_name ~query ~param_types =
     let buf = Buffer.create 256 in
-    Buffer.add_char buf 'P';
-    let length_pos = Buffer.length buf in
-    write_int32 buf 0;
     write_string buf statement_name;
     write_string buf query;
     write_int16 buf (List.length param_types);
     List.iter (fun oid -> write_int32 buf oid) param_types;
     let content = Buffer.contents buf in
-    let length = String.length content - 1 in
-    let result = Buffer.create (String.length content) in
+    let length = String.length content + 4 in
+    let result = Buffer.create (length + 1) in
     Buffer.add_char result 'P';
     write_int32 result length;
-    Buffer.add_string result
-      (String.sub content (length_pos + 4) (length - 4));
+    Buffer.add_string result content;
     Buffer.contents result
 
   let bind_message ~portal_name ~statement_name ~params =
     let buf = Buffer.create 256 in
-    Buffer.add_char buf 'B';
-    let length_pos = Buffer.length buf in
-    write_int32 buf 0;
     write_string buf portal_name;
     write_string buf statement_name;
     write_int16 buf 0;
@@ -142,12 +135,11 @@ module Writer = struct
       params;
     write_int16 buf 0;
     let content = Buffer.contents buf in
-    let length = String.length content - 1 in
-    let result = Buffer.create (String.length content) in
+    let length = String.length content + 4 in
+    let result = Buffer.create (length + 1) in
     Buffer.add_char result 'B';
     write_int32 result length;
-    Buffer.add_string result
-      (String.sub content (length_pos + 4) (length - 4));
+    Buffer.add_string result content;
     Buffer.contents result
 
   let execute_message ~portal_name ~max_rows =
@@ -374,7 +366,8 @@ module Reader = struct
         let param_count =
           Binary_reader.read_int16 reader
           |> Option.expect
-               ~msg:"Protocol error: expected param_count in ParameterDescription"
+               ~msg:
+                 "Protocol error: expected param_count in ParameterDescription"
         in
         let rec read_oids n acc =
           if n = 0 then List.rev acc
