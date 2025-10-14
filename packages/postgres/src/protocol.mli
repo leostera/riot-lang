@@ -24,6 +24,12 @@ type backend_message =
   | CommandComplete of string
   | ErrorResponse of (char * string) list
   | NoticeResponse of (char * string) list
+  | ParseComplete
+  | BindComplete
+  | CloseComplete
+  | NoData
+  | ParameterDescription of int list
+  | EmptyQueryResponse
 
 and field = {
   name : string;
@@ -63,6 +69,17 @@ module Writer : sig
     user:string -> database:string -> application_name:string option -> string
 
   val query_message : string -> string
+
+  val parse_message :
+    statement_name:string -> query:string -> param_types:int list -> string
+
+  val bind_message :
+    portal_name:string -> statement_name:string -> params:string list -> string
+
+  val execute_message : portal_name:string -> max_rows:int -> string
+  val describe_message : what:char -> name:string -> string
+  val sync_message : unit -> string
+  val close_message : what:char -> name:string -> string
   val terminate_message : unit -> string
 end
 

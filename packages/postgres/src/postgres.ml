@@ -117,7 +117,7 @@ module Driver = struct
     config : config;
     mutable transaction_status : char;
     mutable closed : bool;
-    prepared_statements : (string, statement) Hashtbl.t;
+    prepared_statements : (string, statement) Collections.HashMap.t;
   }
 
   and statement = { name : string; sql : string; conn : connection }
@@ -250,7 +250,7 @@ module Driver = struct
                     config = cfg;
                     transaction_status = 'I';
                     closed = false;
-                    prepared_statements = Hashtbl.create 16;
+                    prepared_statements = Collections.HashMap.create ();
                   }))
 
   let close conn =
@@ -296,24 +296,132 @@ module Driver = struct
         Sqlx_driver.Value.string value
     | _ -> Sqlx_driver.Value.string value
 
+  let encode_param (value : Sqlx_driver.Value.t) =
+    match value with
+    | Null -> ""
+    | Int n -> string_of_int n
+    | Int64 n -> Int64.to_string n
+    | Int16 n -> string_of_int n
+    | Float f -> string_of_float f
+    | String s -> s
+    | Bool true -> "t"
+    | Bool false -> "f"
+    | Bytes b -> Bytes.to_string b
+    | Timestamp _t -> ""
+    | TimestampWithTimezone _ -> ""
+    | Date (y, m, d) -> format "%04d-%02d-%02d" y m d
+    | Time (h, min, s, us) -> format "%02d:%02d:%02d.%06d" h min s us
+    | Uuid u -> u
+    | Json j -> j
+    | Numeric n -> n
+
   let prepare conn sql =
     if conn.closed then Error "Connection is closed"
     else
       let name = format "stmt_%d" (Random.int 1000000) in
       let stmt = { name; sql; conn } in
-      Hashtbl.add conn.prepared_statements name stmt;
+      Collections.HashMap.insert conn.prepared_statements name stmt |> ignore;
       Ok stmt
 
-  let execute stmt _params =
+  let execute stmt params =
     if stmt.conn.closed then Error "Connection is closed"
     else
       match stmt.conn.stream with
       | None -> Error "No active stream"
       | Some stream -> (
-          let query_msg = Protocol.Writer.query_message stmt.sql in
+          let use_extended_protocol = List.length params > 0 in
 
-          match write_message stream query_msg with
-          | Error e -> Error e
+          if use_extended_protocol then
+            let parse_msg =
+              Protocol.Writer.parse_message ~statement_name:stmt.name
+                ~query:stmt.sql ~param_types:[]
+            in
+            let encoded_params = List.map encode_param params in
+            let bind_msg =
+              Protocol.Writer.bind_message ~portal_name:"" ~statement_name:stmt.name
+                ~params:encoded_params
+            in
+            let execute_msg =
+              Protocol.Writer.execute_message ~portal_name:"" ~max_rows:0
+            in
+            let sync_msg = Protocol.Writer.sync_message () in
+
+            match
+              ( write_message stream parse_msg,
+                write_message stream bind_msg,
+                write_message stream execute_msg,
+                write_message stream sync_msg )
+            with
+            | Error e, _, _, _ | _, Error e, _, _ | _, _, Error e, _ | _, _, _, Error e ->
+                Error e
+            | Ok (), Ok (), Ok (), Ok () ->
+                let result_set =
+                  { rows = Collections.Queue.create (); rows_affected = 0 }
+                in
+                let column_info = ref [] in
+                let rec read_extended_results () =
+                  match read_message stream with
+                  | Error e -> Error e
+                  | Ok (msg_type, length, body) -> (
+                      let backend_msg =
+                        Protocol.Reader.parse_backend_message msg_type length body
+                      in
+                      match backend_msg with
+                      | Protocol.ParseComplete -> read_extended_results ()
+                      | Protocol.BindComplete -> read_extended_results ()
+                      | Protocol.RowDescription fields ->
+                          column_info := fields;
+                          read_extended_results ()
+                      | Protocol.DataRow cols ->
+                          let row =
+                            if List.length !column_info = List.length cols then
+                              List.map2
+                                (fun (field : Protocol.field) value ->
+                                  let decoded_value = decode_value field value in
+                                  (field.name, decoded_value))
+                                !column_info cols
+                            else
+                              List.mapi
+                                (fun i v ->
+                                  (format "col_%d" i, Sqlx_driver.Value.string v))
+                                cols
+                          in
+                          Collections.Queue.enqueue result_set.rows row;
+                          read_extended_results ()
+                      | Protocol.CommandComplete tag ->
+                          Log.debug "Command complete: %s" tag;
+                          let parts = String.split_on_char ' ' tag in
+                          (match List.rev parts with
+                          | n :: _ -> (
+                              match int_of_string_opt n with
+                              | Some count -> result_set.rows_affected <- count
+                              | None -> ())
+                          | [] -> ());
+                          read_extended_results ()
+                      | Protocol.ReadyForQuery _status -> Ok result_set
+                      | Protocol.ErrorResponse fields ->
+                          let msg =
+                            List.assoc_opt 'M' fields
+                            |> Option.unwrap_or ~default:"Unknown error"
+                          in
+                          Error (format "Query error: %s" msg)
+                      | Protocol.NoticeResponse fields ->
+                          let msg =
+                            List.assoc_opt 'M' fields |> Option.unwrap_or ~default:""
+                          in
+                          Log.info "PostgreSQL notice: %s" msg;
+                          read_extended_results ()
+                      | Protocol.NoData -> read_extended_results ()
+                      | Protocol.EmptyQueryResponse -> Ok result_set
+                      | _ ->
+                          read_extended_results ())
+                in
+                read_extended_results ()
+          else
+            let query_msg = Protocol.Writer.query_message stmt.sql in
+
+            match write_message stream query_msg with
+            | Error e -> Error e
           | Ok () ->
               let result_set =
                 { rows = Collections.Queue.create (); rows_affected = 0 }

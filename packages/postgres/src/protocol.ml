@@ -24,6 +24,12 @@ type backend_message =
   | CommandComplete of string
   | ErrorResponse of (char * string) list
   | NoticeResponse of (char * string) list
+  | ParseComplete
+  | BindComplete
+  | CloseComplete
+  | NoData
+  | ParameterDescription of int list
+  | EmptyQueryResponse
 
 and field = {
   name : string;
@@ -100,6 +106,78 @@ module Writer = struct
     Buffer.add_char buf 'Q';
     write_int32 buf (String.length sql + 5);
     write_string buf sql;
+    Buffer.contents buf
+
+  let parse_message ~statement_name ~query ~param_types =
+    let buf = Buffer.create 256 in
+    Buffer.add_char buf 'P';
+    let length_pos = Buffer.length buf in
+    write_int32 buf 0;
+    write_string buf statement_name;
+    write_string buf query;
+    write_int16 buf (List.length param_types);
+    List.iter (fun oid -> write_int32 buf oid) param_types;
+    let content = Buffer.contents buf in
+    let length = String.length content - 1 in
+    let result = Buffer.create (String.length content) in
+    Buffer.add_char result 'P';
+    write_int32 result length;
+    Buffer.add_string result
+      (String.sub content (length_pos + 4) (length - 4));
+    Buffer.contents result
+
+  let bind_message ~portal_name ~statement_name ~params =
+    let buf = Buffer.create 256 in
+    Buffer.add_char buf 'B';
+    let length_pos = Buffer.length buf in
+    write_int32 buf 0;
+    write_string buf portal_name;
+    write_string buf statement_name;
+    write_int16 buf 0;
+    write_int16 buf (List.length params);
+    List.iter
+      (fun param ->
+        write_int32 buf (String.length param);
+        Buffer.add_string buf param)
+      params;
+    write_int16 buf 0;
+    let content = Buffer.contents buf in
+    let length = String.length content - 1 in
+    let result = Buffer.create (String.length content) in
+    Buffer.add_char result 'B';
+    write_int32 result length;
+    Buffer.add_string result
+      (String.sub content (length_pos + 4) (length - 4));
+    Buffer.contents result
+
+  let execute_message ~portal_name ~max_rows =
+    let buf = Buffer.create 64 in
+    Buffer.add_char buf 'E';
+    write_int32 buf (String.length portal_name + 1 + 4 + 4);
+    write_string buf portal_name;
+    write_int32 buf max_rows;
+    Buffer.contents buf
+
+  let describe_message ~what ~name =
+    let buf = Buffer.create 64 in
+    Buffer.add_char buf 'D';
+    write_int32 buf (1 + String.length name + 1 + 4);
+    Buffer.add_char buf what;
+    write_string buf name;
+    Buffer.contents buf
+
+  let sync_message () =
+    let buf = Buffer.create 5 in
+    Buffer.add_char buf 'S';
+    write_int32 buf 4;
+    Buffer.contents buf
+
+  let close_message ~what ~name =
+    let buf = Buffer.create 64 in
+    Buffer.add_char buf 'C';
+    write_int32 buf (1 + String.length name + 1 + 4);
+    Buffer.add_char buf what;
+    write_string buf name;
     Buffer.contents buf
 
   let terminate_message () =
@@ -287,5 +365,27 @@ module Reader = struct
         in
         let fields = read_fields [] in
         if msg_char = 'E' then ErrorResponse fields else NoticeResponse fields
+    | '1' -> ParseComplete
+    | '2' -> BindComplete
+    | '3' -> CloseComplete
+    | 'n' -> NoData
+    | 'I' -> EmptyQueryResponse
+    | 't' ->
+        let param_count =
+          Binary_reader.read_int16 reader
+          |> Option.expect
+               ~msg:"Protocol error: expected param_count in ParameterDescription"
+        in
+        let rec read_oids n acc =
+          if n = 0 then List.rev acc
+          else
+            let oid =
+              Binary_reader.read_int32 reader
+              |> Option.expect
+                   ~msg:"Protocol error: expected OID in ParameterDescription"
+            in
+            read_oids (n - 1) (oid :: acc)
+        in
+        ParameterDescription (read_oids param_count [])
     | c -> panic (format "Unknown message type: '%c' (0x%02x)" c msg_type)
 end
