@@ -1,12 +1,15 @@
 [
   {
     "kind": {
-      "type": "unexpected_token",
+      "id": "E0003",
+      "name": "missing-let-binding-equals",
       "expected": "=",
       "found": {
         "kind": "integer",
-        "text": "42",
-      }
+        "text": "42"
+      },
+      "fix": "add = between the pattern and expression",
+      "hint": "Every let binding needs an = between the pattern and the expression."
     },
     "span": {
       "start": 6,
@@ -15,12 +18,14 @@
   },
   {
     "kind": {
-      "type": "unexpected_token",
+      "id": "E0008",
+      "name": "invalid-expression",
       "expected": "expression",
       "found": {
         "kind": "end of file",
-        "text": "",
-      }
+        "text": ""
+      },
+      "hint": "Expected a value, function call, or operator expression."
     },
     "span": {
       "start": 9,

@@ -343,14 +343,26 @@ class TestRunner:
                 print(f"{RED}Invalid JSON in .diagnostic file{NC}")
             return False
         
-        # Compare diagnostics
-        # For now, just check count matches
-        if len(actual_diagnostics) != len(expected_diagnostics):
+        # Compare diagnostics - they must be exactly the same
+        if actual_diagnostics != expected_diagnostics:
             if verbose:
-                print(f"{RED}Expected {len(expected_diagnostics)} diagnostics, got {len(actual_diagnostics)}{NC}")
+                print(f"{RED}Diagnostics don't match{NC}")
+                if len(actual_diagnostics) != len(expected_diagnostics):
+                    print(f"  Expected {len(expected_diagnostics)} diagnostics, got {len(actual_diagnostics)}")
+                else:
+                    print(f"  Diagnostic content differs")
+                    import difflib
+                    expected_str = json.dumps(expected_diagnostics, indent=2)
+                    actual_str = json.dumps(actual_diagnostics, indent=2)
+                    diff = difflib.unified_diff(
+                        expected_str.splitlines(keepends=True),
+                        actual_str.splitlines(keepends=True),
+                        fromfile='expected',
+                        tofile='actual'
+                    )
+                    print(''.join(diff))
             return False
         
-        # TODO: Deep comparison of diagnostic content
         return True
     
     def run_diagnostics(self, filter_pattern: Optional[str] = None) -> Tuple[int, int]:

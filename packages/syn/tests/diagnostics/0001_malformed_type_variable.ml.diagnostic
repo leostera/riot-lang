@@ -1,26 +1,32 @@
 [
   {
     "kind": {
-      "type": "unexpected_token",
-      "expected": "type variable name",
+      "id": "E0001",
+      "name": "malformed-type-variable",
+      "expected": "type variable identifier (e.g., 'a, 'b)",
       "found": {
-        "kind": "trivia",
+        "kind": "comment",
         "text": "(* hello *)"
-      }
+      },
+      "fix": "remove the space or comment between the quote and the variable name",
+      "hint": "Type variables must be written as 'a, 'b, etc. with no space or comments between the quote and name."
     },
     "span": {
-      "start": 7,
-      "end": 18
+      "start": 6,
+      "end": 17
     }
   },
   {
     "kind": {
-      "type": "unexpected_token",
-      "expected": "type variable name",
+      "id": "E0001",
+      "name": "malformed-type-variable",
+      "expected": "type variable identifier (e.g., 'a, 'b)",
       "found": {
-        "kind": "trivia",
+        "kind": "whitespace",
         "text": " "
-      }
+      },
+      "fix": "remove the space or comment between the quote and the variable name",
+      "hint": "Type variables must be written as 'a, 'b, etc. with no space or comments between the quote and name."
     },
     "span": {
       "start": 26,
@@ -29,16 +35,19 @@
   },
   {
     "kind": {
-      "type": "unexpected_token",
-      "expected": "type variable name",
+      "id": "E0001",
+      "name": "malformed-type-variable",
+      "expected": "type variable identifier (e.g., 'a, 'b)",
       "found": {
-        "kind": "token?",
+        "kind": "'",
         "text": "'"
-      }
+      },
+      "fix": "remove the space or comment between the quote and the variable name",
+      "hint": "Type variables must be written as 'a, 'b, etc. with no space or comments between the quote and name."
     },
     "span": {
       "start": 36,
-      "end": 38
+      "end": 37
     }
   }
 ]
