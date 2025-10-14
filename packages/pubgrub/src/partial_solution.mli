@@ -15,6 +15,12 @@ val empty : unit -> t
 val add_decision : t -> package -> version -> t
 val add_derivation : t -> package -> version Ranges.t -> Incompatibility.t -> t
 val get_decision : t -> package -> version option
+
+val get_constraint :
+  t ->
+  package ->
+  [ `Decided of version | `Constrained of version Ranges.t | `Undecided ]
+
 val extract_solution : t -> (package * version) list
 val current_decision_level : t -> decision_level
 val backtrack : t -> decision_level -> t

@@ -867,9 +867,7 @@ let test_ref_avoiding_conflict =
       | Error err -> Error (format "Unexpected error: %s" err))
 
 let test_ref_conflict_resolution =
-  Test.skip
-    "REF: Conflict resolution (from Dart docs) (TODO: backtracking edge case)"
-    (fun () ->
+  Test.case "REF: Conflict resolution (from Dart docs)" (fun () ->
       let provider = Pubgrub.create_offline () in
       Pubgrub.add_package provider "root" (v 1 0 0)
         [ ("foo", Pubgrub.higher_than (v 1 0 0)) ];
@@ -896,10 +894,49 @@ let test_ref_conflict_resolution =
           Error "Expected success but got failure"
       | Error err -> Error (format "Unexpected error: %s" err))
 
+let test_debug_conflict_partial_satisfier =
+  Test.case "DEBUG: Conflict with partial satisfier" (fun () ->
+      let provider = Pubgrub.create_offline () in
+      Pubgrub.add_package provider "root" (v 1 0 0)
+        [
+          ("foo", Pubgrub.between (v 1 0 0) (v 2 0 0));
+          ("target", Pubgrub.between (v 2 0 0) (v 3 0 0));
+        ];
+      Pubgrub.add_package provider "foo" (v 1 1 0)
+        [
+          ("left", Pubgrub.between (v 1 0 0) (v 2 0 0));
+          ("right", Pubgrub.between (v 1 0 0) (v 2 0 0));
+        ];
+      Pubgrub.add_package provider "foo" (v 1 0 0) [];
+      Pubgrub.add_package provider "left" (v 1 0 0)
+        [ ("shared", Pubgrub.higher_than (v 1 0 0)) ];
+      Pubgrub.add_package provider "right" (v 1 0 0)
+        [ ("shared", Pubgrub.strictly_lower_than (v 2 0 0)) ];
+      Pubgrub.add_package provider "shared" (v 1 0 0)
+        [ ("target", Pubgrub.between (v 1 0 0) (v 2 0 0)) ];
+      Pubgrub.add_package provider "shared" (v 2 0 0) [];
+      Pubgrub.add_package provider "target" (v 2 0 0) [];
+      Pubgrub.add_package provider "target" (v 1 0 0) [];
+
+      match Pubgrub.solve (Pubgrub.to_provider provider) "root" (v 1 0 0) with
+      | Ok (Pubgrub.Solver.Success solution) ->
+          let packages =
+            List.map
+              (fun (name, ver) ->
+                format "%s@%s" name (Pubgrub.version_to_string ver))
+              solution
+          in
+          if List.length solution = 3 then Ok ()
+          else
+            Error
+              (format "Expected 3 packages, got %d: %s" (List.length solution)
+                 (String.concat ", " packages))
+      | Ok (Pubgrub.Solver.Failure _) ->
+          Error "Expected success but got failure"
+      | Error err -> Error (format "Unexpected error: %s" err))
+
 let test_ref_conflict_partial_satisfier =
-  Test.skip
-    "REF: Conflict with partial satisfier (TODO: backtracking edge case)"
-    (fun () ->
+  Test.case "REF: Conflict with partial satisfier" (fun () ->
       let provider = Pubgrub.create_offline () in
       Pubgrub.add_package provider "root" (v 1 0 0)
         [
@@ -940,7 +977,7 @@ let test_ref_conflict_partial_satisfier =
       | Error err -> Error (format "Unexpected error: %s" err))
 
 let test_ref_double_choices =
-  Test.skip "REF: Double choices (TODO: complex version selection)" (fun () ->
+  Test.case "REF: Double choices" (fun () ->
       let provider = Pubgrub.create_offline () in
       Pubgrub.add_package provider "a" (v 0 0 0)
         [ ("b", Pubgrub.full); ("c", Pubgrub.full) ];
@@ -988,9 +1025,10 @@ let test_ref_confusing_with_holes =
           Error "Expected failure but got success"
       | Error err -> Error (format "Unexpected error: %s" err))
 
-let () =
+let all_tests =
   let base_tests =
     [
+      test_debug_conflict_partial_satisfier;
       test_empty_root;
       test_single_dependency;
       test_two_dependencies;
@@ -1048,7 +1086,10 @@ let () =
       test_ref_confusing_with_holes;
     ]
   in
-  let all_tests =
-    base_tests @ web_tests @ db_tests @ compiler_tests @ reference_tests
-  in
-  Test.run all_tests
+  base_tests @ web_tests @ db_tests @ compiler_tests @ reference_tests
+
+let () =
+  Miniriot.run
+    ~main:(fun ~args -> Test.Cli.main ~name:"pubgrub" ~tests:all_tests ~args ())
+    ~args:Env.args
+  |> exit
