@@ -4655,6 +4655,8 @@ let rec parse_structure_item parser =
         parse_module_decl_structure parser leading_trivia
     | Some (Token.Keyword Keyword.Include) ->
         parse_include parser leading_trivia
+    | Some (Token.Keyword Keyword.Exception) ->
+        parse_exception_decl parser leading_trivia
     | Some Token.EOF | None ->
         (* At EOF - return None, trivia already consumed *)
         if leading_trivia = [] then None
@@ -5530,7 +5532,7 @@ and parse_type_decl parser leading_trivia =
 and parse_type_and_decls parser =
   let rec parse_and_loop acc =
     let leading_and_trivia = consume_trivia parser in
-    if not (at parser (Token.Keyword Keyword.And)) then 
+    if not (at parser (Token.Keyword Keyword.And)) then
       List.rev (List.rev_append leading_and_trivia acc)
     else
       let before_trivia, and_kw = consume parser in
@@ -6503,6 +6505,37 @@ and parse_external_decl parser leading_trivia =
       @ trivia_after_name @ [ colon ]
        @ [ Ceibo.Green.Node type_expr ]
        @ trivia_after_type @ [ eq ] @ trivia_after_eq @ c_names))
+
+and parse_exception_decl parser leading_trivia =
+  (* exception Name or exception Name of type *)
+  let before_trivia, exception_kw = consume parser in
+  let trivia_after_exception = consume_trivia parser in
+
+  (* Parse exception name (must be capitalized) *)
+  let before_trivia, name = consume parser in
+  let trivia_after_name = consume_trivia parser in
+
+  (* Check for 'of' type *)
+  let of_type =
+    if at parser (Token.Keyword Keyword.Of) then
+      let before_trivia, of_kw = consume parser in
+      let trivia_after_of = consume_trivia parser in
+      let type_expr = parse_type_expr parser trivia_after_of in
+      Some ([ of_kw ] @ [ Ceibo.Green.Node type_expr ])
+    else None
+  in
+
+  let children =
+    match of_type with
+    | Some of_parts ->
+        leading_trivia @ [ exception_kw ] @ trivia_after_exception @ [ name ]
+        @ trivia_after_name @ of_parts
+    | None ->
+        leading_trivia @ [ exception_kw ] @ trivia_after_exception @ [ name ]
+        @ trivia_after_name
+  in
+
+  Some (make_node_list ~kind:Syntax_kind.EXCEPTION_DECL children)
 
 and parse_module_decl_structure parser leading_trivia =
   (* For .ml files: module M = struct ... end  OR  module type S = sig ... end *)
