@@ -6139,56 +6139,8 @@ and parse_open parser leading_trivia =
   let before_trivia, open_kw = consume parser in
   let trivia_after_open = consume_trivia parser in
 
-  (* Parse module path: Unix, Unix.File, A.B.C 
-     For open statements, we only consume trivia after INTERMEDIATE components,
-     not after the FINAL component. This way comments/blank lines after the path
-     are left for the next statement's leading_trivia. *)
-  let before_trivia, first = consume parser in
-  let trivia_after_first = consume_trivia parser in
-
-  let rec parse_rest acc found_dot =
-    if at parser Token.Dot then
-      let before_trivia, dot = consume parser in
-      let trivia_after_dot = consume_trivia parser in
-      let before_trivia, name = consume parser in
-      (* Check if there's ANOTHER dot after this name *)
-      if at parser Token.Dot then
-        (* More components coming, consume trivia and continue *)
-        let trivia_after_name = consume_trivia parser in
-        parse_rest
-          (trivia_after_name @ [ name ] @ trivia_after_dot @ [ dot ] @ acc)
-          true
-      else
-        (* This is the LAST component in a multi-component path *)
-        (* Consume only up to first newline *)
-        let trivia = consume_trivia parser in
-        let rec take_first_newline ts =
-          match ts with
-          | (Ceibo.Green.Token _ as tok) :: _
-            when Ceibo.Green.kind tok = Syntax_kind.WHITESPACE
-                 &&
-                 match Ceibo.Green.text tok with
-                 | Some t -> String.contains t '\n'
-                 | None -> false ->
-              [ tok ]
-          | tok :: rest -> tok :: take_first_newline rest
-          | [] -> []
-        in
-        ( List.rev ([ name ] @ trivia_after_dot @ [ dot ] @ acc),
-          take_first_newline trivia,
-          true )
-    else (List.rev acc, [], found_dot)
-  in
-
-  let rest, trailing_trivia, had_dots = parse_rest [] false in
-
-  (* For single-component paths (no dots), include trivia_after_first which has the newline *)
-  (* For multi-component paths, include the trailing_trivia we extracted *)
-  let path =
-    if had_dots then
-      before_trivia @ [ first ] @ trivia_after_first @ rest @ trailing_trivia
-    else before_trivia @ [ first ] @ trivia_after_first @ rest
-  in
+  (* Parse module path: Unix, Unix.File, A.B.C *)
+  let path = parse_identifier parser in
 
   Some
     (make_node_list ~kind:Syntax_kind.OPEN_STMT
