@@ -24,6 +24,7 @@ module Result = Result
 module String = String
 module System = System
 module Task = Task
+module Test = Test
 module Time = Time
 module Version = Version
 module WorkerPool = Worker_pool

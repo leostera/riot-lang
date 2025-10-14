@@ -1,5 +1,6 @@
 (** # Std - Riot's standard library
 
+
     A comprehensive standard library providing:
     - Modern error handling with [Result] and [Option]
     - Type-safe filesystem operations with [Path] and [Fs]
@@ -154,6 +155,9 @@ module System = System
 
 module Task = Task
 (** Asynchronous task execution *)
+
+module Test = Test
+(** Test framework with TAP output *)
 
 module Time = Time
 (** Time measurement and duration *)
