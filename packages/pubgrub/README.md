@@ -13,7 +13,9 @@ PubGrub efficiently finds sets of packages and versions that satisfy all depende
 - ✅ **Version Ranges**: Express constraints like `>=1.0.0`, `<2.0.0`
 - ✅ **Simple API**: No functors, no complex types - just straightforward OCaml
 - ✅ **Offline Provider**: Test dependencies in-memory
-- 🚧 **Conflict Resolution**: Basic solver implemented, advanced features coming
+- ✅ **Conflict Resolution**: Full PubGrub algorithm with prior cause derivation
+- ✅ **Intelligent Backtracking**: Decision-level tracking with proper backtracking
+- ✅ **Human-Readable Errors**: Derivation tree building and conflict explanation
 
 ## Quick Start
 
@@ -160,25 +162,34 @@ Current implementation is a straightforward breadth-first search that:
 
 ## Status
 
-**Alpha** - Core functionality works but advanced features are still in development.
+**Beta** - Full PubGrub algorithm implemented and tested. Performance optimizations and advanced features coming soon.
 
 ### What's Working ✅
 
-- Version parsing and comparison (via Std.Version)
-- Version range operations (union, intersection, complement)
-- Offline dependency provider
-- Basic solver algorithm
-- Transitive dependency resolution
-- Version constraints
-- Diamond dependencies
+- **Full PubGrub Algorithm**: Complete implementation following the Rust reference
+- **Version Management**: Parsing, comparison, and SemVer support via Std.Version
+- **Version Ranges**: Union, intersection, complement, and containment operations
+- **Conflict Resolution**: Prior cause derivation and intelligent backtracking
+- **Decision Levels**: Proper tracking for efficient backtracking
+- **Unit Propagation**: Automatic constraint propagation during solving
+- **Derivation Trees**: Build trees showing why conflicts occur
+- **Error Reporting**: Human-readable explanations of solving failures
+- **Offline Provider**: In-memory dependency provider for testing
+- **Comprehensive Tests**: 109 tests covering simple to massive dependency graphs
 
 ### TODO 🚧
 
-- Advanced conflict resolution and backtracking
-- Incompatibility learning
-- Human-readable error reporting with derivation trees
-- Performance optimizations
-- Comprehensive test suite
+- **Resolution Statistics**: Track package conflict counts to prioritize decisions for faster solving
+- **Performance Optimizations**:
+  - Small vector/map optimizations for common cases
+  - Arena allocation for incompatibilities
+  - Conflict-based heuristics for decision ordering
+- **Advanced Provider Features**:
+  - Caching dependency provider
+  - Richer offline provider API
+- **Enhanced Error Reporting**:
+  - Report collapsing and cleanup for better readability
+  - Shared incompatibility highlighting
 
 ## Design Philosophy
 
