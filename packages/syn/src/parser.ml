@@ -5445,7 +5445,10 @@ and parse_type_decl parser leading_trivia =
       (* Check for 'and' declarations *)
       let and_decls = parse_type_and_decls parser in
 
-      Some (make_node_list ~kind:Syntax_kind.TYPE_DECL (children @ and_decls))
+      (* Parse trailing attributes like [@@unboxed] *)
+      let attributes = parse_trailing_attributes parser in
+
+      Some (make_node_list ~kind:Syntax_kind.TYPE_DECL (children @ and_decls @ attributes))
   | Some Token.Eq ->
       (* Regular type definition: type t = ... *)
       let before_trivia, eq = consume parser in
@@ -5512,7 +5515,10 @@ and parse_type_decl parser leading_trivia =
       (* Check for 'and' declarations *)
       let and_decls = parse_type_and_decls parser in
 
-      Some (make_node_list ~kind:Syntax_kind.TYPE_DECL (children @ and_decls))
+      (* Parse trailing attributes like [@@unboxed] *)
+      let attributes = parse_trailing_attributes parser in
+
+      Some (make_node_list ~kind:Syntax_kind.TYPE_DECL (children @ and_decls @ attributes))
   | _ ->
       (* Abstract type (no = present, used in signatures): type t *)
       let children =
@@ -5523,11 +5529,14 @@ and parse_type_decl parser leading_trivia =
         | None ->
             leading_trivia @ [ type_kw ] @ trivia_after_type @ type_name_parts
       in
-
+      
       (* Check for 'and' declarations *)
       let and_decls = parse_type_and_decls parser in
-
-      Some (make_node_list ~kind:Syntax_kind.TYPE_DECL (children @ and_decls))
+      
+      (* Parse trailing attributes like [@@unboxed] *)
+      let attributes = parse_trailing_attributes parser in
+      
+      Some (make_node_list ~kind:Syntax_kind.TYPE_DECL (children @ and_decls @ attributes))
 
 and parse_type_and_decls parser =
   let rec parse_and_loop acc =
@@ -5635,6 +5644,42 @@ and parse_type_and_decls parser =
           parse_and_loop (and_children @ acc)
   in
   parse_and_loop []
+
+and parse_trailing_attributes parser =
+  (* Parse trailing attributes like [@attr] [@@attr] *)
+  let rec parse_attrs acc =
+    if at parser (Token.OpenDelim Token.Bracket) then
+      (* Check if it's an attribute: [@ or [@@ *)
+      match peek_nth parser 1 with
+      | Some Token.At | Some Token.AtAt ->
+          let before_trivia, open_bracket = consume parser in
+          let trivia_after_open = consume_trivia parser in
+          let before_trivia, at_token = consume parser in
+          let trivia_after_at = consume_trivia parser in
+          
+          (* Consume tokens until closing ] *)
+          let rec consume_until_close acc_tokens =
+            if at parser (Token.CloseDelim Token.Bracket) || peek parser = None then
+              List.rev acc_tokens
+            else
+              let before_trivia, tok = consume parser in
+              let trivia = consume_trivia parser in
+              consume_until_close (List.rev_append trivia (tok :: acc_tokens))
+          in
+          let attr_tokens = consume_until_close [] in
+          
+          let before_trivia, close_bracket = consume parser in
+          let trivia_after_close = consume_trivia parser in
+          
+          let attr_parts =
+            [ open_bracket ] @ trivia_after_open @ [ at_token ] @ trivia_after_at
+            @ attr_tokens @ [ close_bracket ] @ trivia_after_close
+          in
+          parse_attrs (List.rev_append attr_parts acc)
+      | _ -> List.rev acc
+    else List.rev acc
+  in
+  parse_attrs []
 
 and parse_type_name parser =
   (* Parse type name, which can be a module path: t or Effect.t or Message.t *)
