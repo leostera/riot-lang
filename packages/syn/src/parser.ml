@@ -2835,10 +2835,33 @@ and parse_binding_operator_expr parser leading_trivia let_kw trivia_after_let =
   let before_trivia, op_token = consume parser in
   let trivia_after_op = consume_trivia parser in
 
-  (* Parse pattern *)
+  (* Parse pattern - handle tuple patterns *)
   let pattern =
     match parse_pattern parser with
-    | Some pat -> Ceibo.Green.Node pat
+    | Some first_pat -> (
+        let trivia_after_first_pat = consume_trivia parser in
+        (* Check if followed by comma (tuple pattern) *)
+        if at parser Token.Comma then
+          (* Tuple pattern *)
+          let rec parse_tuple_patterns acc =
+            if not (at parser Token.Comma) then List.rev acc
+            else
+              let before_trivia, comma = consume parser in
+              let trivia_after_comma = consume_trivia parser in
+              match parse_pattern parser with
+              | Some pat ->
+                  let trivia = consume_trivia parser in
+                  parse_tuple_patterns
+                    (List.rev_append trivia
+                       ((Ceibo.Green.Node pat :: trivia_after_comma)
+                       @ [ comma ] @ acc))
+              | None -> List.rev acc
+          in
+          let patterns = parse_tuple_patterns [ Ceibo.Green.Node first_pat ] in
+          Ceibo.Green.Node
+            (make_node_list ~kind:Syntax_kind.TUPLE_PATTERN patterns)
+        else
+          Ceibo.Green.Node first_pat)
     | None ->
         (* Report error and create placeholder *)
         let span =
