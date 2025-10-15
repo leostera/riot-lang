@@ -1,0 +1,15 @@
+--2025-10-11 07:35:17--  https://kcsrk.info/papers/multicore-ocaml20.pdf
+Resolving kcsrk.info (kcsrk.info)... 185.199.108.153, 185.199.109.153, 185.199.111.153, ...
+Connecting to kcsrk.info (kcsrk.info)|185.199.108.153|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 242519 (237K) [application/pdf]
+Saving to: ‘multicore-ocaml20.pdf’
+
+     0K .......... .......... .......... .......... .......... 21% 1.92M 0s
+    50K .......... .......... .......... .......... .......... 42% 7.46M 0s
+   100K .......... .......... .......... .......... .......... 63% 2.83M 0s
+   150K .......... .......... .......... .......... .......... 84% 19.8M 0s
+   200K .......... .......... .......... ......               100% 22.7M=0.05s
+
+2025-10-11 07:35:18 (4.34 MB/s) - ‘multicore-ocaml20.pdf’ saved [242519/242519]
+
