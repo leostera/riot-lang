@@ -32,6 +32,12 @@ type id =
   | E0029_MatchMissingWith
   | E0030_MatchMissingPattern
   | E0031_MatchGuardMissingExpr
+  | E0032_TuplePatternExtraComma
+  | E0033_ConstructorPatternNeedsParens
+  | E0034_ConsPatternMissingHead
+  | E0035_ConsPatternMissingTail
+  | E0036_OrPatternMissing
+  | E0037_OrPatternDouble
 
 val id_to_string : id -> string
 val id_of_string : string -> id option

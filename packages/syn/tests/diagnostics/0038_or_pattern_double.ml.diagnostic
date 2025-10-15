@@ -1,0 +1,146 @@
+[
+  {
+    "kind": {
+      "id": "E0005",
+      "name": "unexpected-structure-item",
+      "expected": "structure item (e.g., let, type, module)",
+      "found": {
+        "kind": "keyword",
+        "text": "match"
+      },
+      "hint": "Structure items are top-level declarations like let, type, or module."
+    },
+    "span": {
+      "start": 5,
+      "end": 6
+    }
+  },
+  {
+    "kind": {
+      "id": "E0005",
+      "name": "unexpected-structure-item",
+      "expected": "structure item (e.g., let, type, module)",
+      "found": {
+        "kind": "identifier",
+        "text": "x"
+      },
+      "hint": "Structure items are top-level declarations like let, type, or module."
+    },
+    "span": {
+      "start": 7,
+      "end": 8
+    }
+  },
+  {
+    "kind": {
+      "id": "E0005",
+      "name": "unexpected-structure-item",
+      "expected": "structure item (e.g., let, type, module)",
+      "found": {
+        "kind": "keyword",
+        "text": "with"
+      },
+      "hint": "Structure items are top-level declarations like let, type, or module."
+    },
+    "span": {
+      "start": 12,
+      "end": 13
+    }
+  },
+  {
+    "kind": {
+      "id": "E0005",
+      "name": "unexpected-structure-item",
+      "expected": "structure item (e.g., let, type, module)",
+      "found": {
+        "kind": "integer",
+        "text": "1"
+      },
+      "hint": "Structure items are top-level declarations like let, type, or module."
+    },
+    "span": {
+      "start": 14,
+      "end": 15
+    }
+  },
+  {
+    "kind": {
+      "id": "E0005",
+      "name": "unexpected-structure-item",
+      "expected": "structure item (e.g., let, type, module)",
+      "found": {
+        "kind": "|",
+        "text": "|"
+      },
+      "hint": "Structure items are top-level declarations like let, type, or module."
+    },
+    "span": {
+      "start": 16,
+      "end": 17
+    }
+  },
+  {
+    "kind": {
+      "id": "E0005",
+      "name": "unexpected-structure-item",
+      "expected": "structure item (e.g., let, type, module)",
+      "found": {
+        "kind": "|",
+        "text": "|"
+      },
+      "hint": "Structure items are top-level declarations like let, type, or module."
+    },
+    "span": {
+      "start": 18,
+      "end": 19
+    }
+  },
+  {
+    "kind": {
+      "id": "E0005",
+      "name": "unexpected-structure-item",
+      "expected": "structure item (e.g., let, type, module)",
+      "found": {
+        "kind": "integer",
+        "text": "2"
+      },
+      "hint": "Structure items are top-level declarations like let, type, or module."
+    },
+    "span": {
+      "start": 20,
+      "end": 21
+    }
+  },
+  {
+    "kind": {
+      "id": "E0005",
+      "name": "unexpected-structure-item",
+      "expected": "structure item (e.g., let, type, module)",
+      "found": {
+        "kind": "->",
+        "text": "->"
+      },
+      "hint": "Structure items are top-level declarations like let, type, or module."
+    },
+    "span": {
+      "start": 23,
+      "end": 24
+    }
+  },
+  {
+    "kind": {
+      "id": "E0005",
+      "name": "unexpected-structure-item",
+      "expected": "structure item (e.g., let, type, module)",
+      "found": {
+        "kind": "string",
+        "text": "\"numbers\""
+      },
+      "hint": "Structure items are top-level declarations like let, type, or module."
+    },
+    "span": {
+      "start": 33,
+      "end": 34
+    }
+  }
+]

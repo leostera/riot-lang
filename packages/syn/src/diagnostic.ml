@@ -43,6 +43,15 @@ type kind =
   | MatchMissingWith of { found : found_token }
   | MatchMissingPattern of { found : found_token }
   | MatchGuardMissingExpr of { found : found_token }
+  | TuplePatternExtraComma of { found : found_token }
+  | ConstructorPatternNeedsParens of {
+      constructor : string;
+      found : found_token;
+    }
+  | ConsPatternMissingHead of { found : found_token }
+  | ConsPatternMissingTail of { found : found_token }
+  | OrPatternMissing of { found : found_token }
+  | OrPatternDouble of { found : found_token }
 
 type t = { kind : kind; span : Ceibo.Span.t }
 (** Parse error information *)
@@ -197,6 +206,36 @@ let match_guard_missing_expr ~found:token ~text ~span =
   let found = { kind = kind_str; text } in
   make ~kind:(MatchGuardMissingExpr { found }) ~span
 
+let tuple_pattern_extra_comma ~found:token ~text ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text } in
+  make ~kind:(TuplePatternExtraComma { found }) ~span
+
+let constructor_pattern_needs_parens ~constructor ~found:token ~text ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text } in
+  make ~kind:(ConstructorPatternNeedsParens { constructor; found }) ~span
+
+let cons_pattern_missing_head ~found:token ~text ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text } in
+  make ~kind:(ConsPatternMissingHead { found }) ~span
+
+let cons_pattern_missing_tail ~found:token ~text ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text } in
+  make ~kind:(ConsPatternMissingTail { found }) ~span
+
+let or_pattern_missing ~found:token ~text ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text } in
+  make ~kind:(OrPatternMissing { found }) ~span
+
+let or_pattern_double ~found:token ~text ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text } in
+  make ~kind:(OrPatternDouble { found }) ~span
+
 let expected_message diag =
   match diag.kind with
   | MalformedTypeVariable _ -> "type variable identifier (e.g., 'a, 'b)"
@@ -240,6 +279,13 @@ let expected_message diag =
   | MatchMissingWith _ -> "with keyword"
   | MatchMissingPattern _ -> "pattern before ->"
   | MatchGuardMissingExpr _ -> "boolean expression after when"
+  | TuplePatternExtraComma _ -> "pattern element (not comma)"
+  | ConstructorPatternNeedsParens { constructor; _ } ->
+      "parentheses around " ^ constructor ^ " arguments"
+  | ConsPatternMissingHead _ -> "pattern before ::"
+  | ConsPatternMissingTail _ -> "pattern after ::"
+  | OrPatternMissing _ -> "pattern (not bare |)"
+  | OrPatternDouble _ -> "pattern between | operators"
 
 let fix_message diag =
   match diag.kind with
@@ -300,6 +346,15 @@ let fix_message diag =
   | MatchMissingWith _ -> Some "add 'with' keyword after the expression"
   | MatchMissingPattern _ -> Some "add a pattern before the '->' arrow"
   | MatchGuardMissingExpr _ -> Some "add a boolean expression after 'when'"
+  | TuplePatternExtraComma _ ->
+      Some "remove the extra comma - tuples need at least two elements"
+  | ConstructorPatternNeedsParens { constructor; _ } ->
+      Some (format "wrap arguments in parentheses: %s (...)" constructor)
+  | ConsPatternMissingHead _ -> Some "add a pattern before the :: operator"
+  | ConsPatternMissingTail _ -> Some "add a pattern after the :: operator"
+  | OrPatternMissing _ -> Some "add patterns on both sides of the | operator"
+  | OrPatternDouble _ ->
+      Some "add a pattern between the | operators or remove one |"
   | _ -> None
 
 let error_id diag =
@@ -335,6 +390,12 @@ let error_id diag =
   | MatchMissingWith _ -> Error.E0029_MatchMissingWith
   | MatchMissingPattern _ -> Error.E0030_MatchMissingPattern
   | MatchGuardMissingExpr _ -> Error.E0031_MatchGuardMissingExpr
+  | TuplePatternExtraComma _ -> Error.E0032_TuplePatternExtraComma
+  | ConstructorPatternNeedsParens _ -> Error.E0033_ConstructorPatternNeedsParens
+  | ConsPatternMissingHead _ -> Error.E0034_ConsPatternMissingHead
+  | ConsPatternMissingTail _ -> Error.E0035_ConsPatternMissingTail
+  | OrPatternMissing _ -> Error.E0036_OrPatternMissing
+  | OrPatternDouble _ -> Error.E0037_OrPatternDouble
 
 let hint_message diag = diag |> error_id |> Error.explain
 let id err = err |> error_id |> Error.id_to_string
@@ -383,6 +444,12 @@ let found_token diag =
   | MatchMissingWith { found } -> found
   | MatchMissingPattern { found } -> found
   | MatchGuardMissingExpr { found } -> found
+  | TuplePatternExtraComma { found } -> found
+  | ConstructorPatternNeedsParens { found; _ } -> found
+  | ConsPatternMissingHead { found } -> found
+  | ConsPatternMissingTail { found } -> found
+  | OrPatternMissing { found } -> found
+  | OrPatternDouble { found } -> found
 
 let main_message diag =
   match diag.kind with

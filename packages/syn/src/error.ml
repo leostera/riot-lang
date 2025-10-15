@@ -32,6 +32,12 @@ type id =
   | E0029_MatchMissingWith
   | E0030_MatchMissingPattern
   | E0031_MatchGuardMissingExpr
+  | E0032_TuplePatternExtraComma
+  | E0033_ConstructorPatternNeedsParens
+  | E0034_ConsPatternMissingHead
+  | E0035_ConsPatternMissingTail
+  | E0036_OrPatternMissing
+  | E0037_OrPatternDouble
 
 let id_to_string = function
   | E0001_MalformedTypeVariable -> "E0001"
@@ -65,6 +71,12 @@ let id_to_string = function
   | E0029_MatchMissingWith -> "E0029"
   | E0030_MatchMissingPattern -> "E0030"
   | E0031_MatchGuardMissingExpr -> "E0031"
+  | E0032_TuplePatternExtraComma -> "E0032"
+  | E0033_ConstructorPatternNeedsParens -> "E0033"
+  | E0034_ConsPatternMissingHead -> "E0034"
+  | E0035_ConsPatternMissingTail -> "E0035"
+  | E0036_OrPatternMissing -> "E0036"
+  | E0037_OrPatternDouble -> "E0037"
 
 let id_of_string = function
   | "E0001" -> Some E0001_MalformedTypeVariable
@@ -98,6 +110,12 @@ let id_of_string = function
   | "E0029" -> Some E0029_MatchMissingWith
   | "E0030" -> Some E0030_MatchMissingPattern
   | "E0031" -> Some E0031_MatchGuardMissingExpr
+  | "E0032" -> Some E0032_TuplePatternExtraComma
+  | "E0033" -> Some E0033_ConstructorPatternNeedsParens
+  | "E0034" -> Some E0034_ConsPatternMissingHead
+  | "E0035" -> Some E0035_ConsPatternMissingTail
+  | "E0036" -> Some E0036_OrPatternMissing
+  | "E0037" -> Some E0037_OrPatternDouble
   | _ -> None
 
 let name = function
@@ -132,6 +150,12 @@ let name = function
   | E0029_MatchMissingWith -> "match-missing-with"
   | E0030_MatchMissingPattern -> "match-missing-pattern"
   | E0031_MatchGuardMissingExpr -> "match-guard-missing-expr"
+  | E0032_TuplePatternExtraComma -> "tuple-pattern-extra-comma"
+  | E0033_ConstructorPatternNeedsParens -> "constructor-pattern-needs-parens"
+  | E0034_ConsPatternMissingHead -> "cons-pattern-missing-head"
+  | E0035_ConsPatternMissingTail -> "cons-pattern-missing-tail"
+  | E0036_OrPatternMissing -> "or-pattern-missing"
+  | E0037_OrPatternDouble -> "or-pattern-double"
 
 let explain = function
   | E0001_MalformedTypeVariable ->
@@ -376,4 +400,103 @@ In OCaml, match guards have the syntax: | pattern when condition -> result
   ```
 
 Fix: add a boolean expression after 'when'.
+|}
+  | E0032_TuplePatternExtraComma ->
+      {|Tuple patterns cannot have leading, trailing, or consecutive commas.
+
+In OCaml, tuple patterns require at least two elements separated by single commas:
+  ```ocaml
+  (* Correct syntax *)
+  let (x, y) = pair
+  let (a, b, c) = triple
+  
+  (* Extra commas *)
+  let (,) = value       (* error: empty tuple with comma *)
+  let (,x) = value      (* error: leading comma *)
+  let (x,) = value      (* error: trailing comma *)
+  let (x,,y) = value    (* error: consecutive commas *)
+  ```
+
+Fix: remove extra commas and ensure at least two patterns.
+|}
+  | E0033_ConstructorPatternNeedsParens ->
+      {|Constructor patterns with multiple arguments need parentheses.
+
+In OCaml, constructors take a single argument. For multiple values, use tuples:
+  ```ocaml
+  (* Correct syntax *)
+  let Some x = opt
+  let Some (x, y) = opt_pair    (* tuple argument *)
+  let Node (left, value, right) = tree
+  
+  (* Incorrect - needs parentheses *)
+  let Some Some x = opt         (* error: use Some (Some x) *)
+  let Node left value right = tree  (* error: use Node (left, value, right) *)
+  ```
+
+Fix: wrap multiple arguments in parentheses to form a tuple.
+|}
+  | E0034_ConsPatternMissingHead ->
+      {|Cons patterns (::) require a head element before the operator.
+
+In OCaml, the cons operator (::) constructs lists with head :: tail:
+  ```ocaml
+  (* Correct syntax *)
+  let x :: xs = list
+  let 1 :: rest = numbers
+  
+  (* Missing head *)
+  let :: xs = list      (* error: nothing before :: *)
+  ```
+
+Fix: add a pattern before the :: operator.
+|}
+  | E0035_ConsPatternMissingTail ->
+      {|Cons patterns (::) require a tail element after the operator.
+
+In OCaml, the cons operator (::) constructs lists with head :: tail:
+  ```ocaml
+  (* Correct syntax *)
+  let x :: xs = list
+  let first :: rest = numbers
+  
+  (* Missing tail *)
+  let x :: = list       (* error: nothing after :: *)
+  ```
+
+Fix: add a pattern after the :: operator.
+|}
+  | E0036_OrPatternMissing ->
+      {|Or-patterns (|) require patterns on both sides of the operator.
+
+In OCaml, or-patterns match multiple alternatives:
+  ```ocaml
+  (* Correct syntax *)
+  match x with
+  | 1 | 2 | 3 -> "small"
+  | _ -> "other"
+  
+  (* Missing pattern *)
+  match x with
+  | 1 | -> "one"        (* error: nothing after | *)
+  | | 2 -> "two"        (* error: nothing before | *)
+  ```
+
+Fix: add patterns on both sides of the | operator.
+|}
+  | E0037_OrPatternDouble ->
+      {|Or-patterns cannot have consecutive | operators without a pattern between them.
+
+In OCaml, or-patterns require a pattern between each | operator:
+  ```ocaml
+  (* Correct syntax *)
+  match x with
+  | 1 | 2 | 3 -> "small"
+  
+  (* Double or *)
+  match x with
+  | 1 | | 3 -> "numbers"  (* error: || without pattern in middle *)
+  ```
+
+Fix: add a pattern between the | operators or remove one |.
 |}

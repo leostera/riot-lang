@@ -71,6 +71,15 @@ type kind =
   | MatchMissingWith of { found : found_token }
   | MatchMissingPattern of { found : found_token }
   | MatchGuardMissingExpr of { found : found_token }
+  | TuplePatternExtraComma of { found : found_token }
+  | ConstructorPatternNeedsParens of {
+      constructor : string;
+      found : found_token;
+    }
+  | ConsPatternMissingHead of { found : found_token }
+  | ConsPatternMissingTail of { found : found_token }
+  | OrPatternMissing of { found : found_token }
+  | OrPatternDouble of { found : found_token }
 
 type t = { kind : kind; span : Ceibo.Span.t }
 (** A diagnostic with structured error information and source location. *)
@@ -199,6 +208,21 @@ val match_missing_pattern :
 
 val match_guard_missing_expr :
   found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
+val tuple_pattern_extra_comma :
+  found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
+val constructor_pattern_needs_parens :
+  constructor:string -> found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
+val cons_pattern_missing_head :
+  found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
+val cons_pattern_missing_tail :
+  found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
+val or_pattern_missing : found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+val or_pattern_double : found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 
 (** # Serialization *)
 

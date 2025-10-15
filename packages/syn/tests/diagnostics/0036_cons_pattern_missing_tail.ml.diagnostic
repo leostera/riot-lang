@@ -1,0 +1,19 @@
+[
+  {
+    "kind": {
+      "id": "E0003",
+      "name": "missing-let-binding-equals",
+      "expected": "=",
+      "found": {
+        "kind": "::",
+        "text": "::"
+      },
+      "fix": "add = between the pattern and expression",
+      "hint": "Every let binding needs an = between the pattern and the expression."
+    },
+    "span": {
+      "start": 5,
+      "end": 5
+    }
+  }
+]
