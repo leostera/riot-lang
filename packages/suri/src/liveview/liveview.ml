@@ -1,6 +1,5 @@
 open Std
 open Miniriot
-
 module Html = Html
 
 module type Component = sig
@@ -17,8 +16,7 @@ type event = Mount | Event of string * string | Patch of string
 let serialize_event event =
   match event with
   | Mount -> Ok {|"Mount"|}
-  | Event (id, data) ->
-      Ok (Format.sprintf {|{"Event":[%S,%S]}|} id data)
+  | Event (id, data) -> Ok (Format.sprintf {|{"Event":[%S,%S]}|} id data)
   | Patch html -> Ok (Format.sprintf {|{"Patch":[%S]}|} html)
 
 let deserialize_event str =
@@ -29,7 +27,9 @@ let deserialize_event str =
       | Error _ -> Error "Failed to parse JSON"
       | Ok json -> (
           match Data.Json.get_field "Event" json with
-          | Some (Data.Json.Array [ Data.Json.String id; Data.Json.String data ]) ->
+          | Some
+              (Data.Json.Array [ Data.Json.String id; Data.Json.String data ])
+            ->
               Ok (Event (id, data))
           | _ -> (
               match Data.Json.get_field "Patch" json with
@@ -76,10 +76,7 @@ module ComponentProcess = struct
                   let _ = Collections.HashMap.insert t.handlers id handler in
                   attrs :=
                     Html.
-                      [
-                        attr "data-lv-event" name;
-                        attr "data-liveview-id" id;
-                      ]
+                      [ attr "data-lv-event" name; attr "data-liveview-id" id ]
                     @ !attrs)
                 handlers;
               !attrs
@@ -110,12 +107,13 @@ module ComponentProcess = struct
         render t html;
         loop { t with state }
 
-  let start_link renderer (type s m) (module C : Component with type state = s and type msg = m) conn =
+  let start_link renderer (type s m)
+      (module C : Component with type state = s and type msg = m) conn =
     (* TODO(@leostera): use spawn_link when process links are implemented in Miniriot *)
     spawn (fun () ->
         loop
           {
-            renderer = renderer;
+            renderer;
             state = C.init conn;
             update = C.update;
             render = C.render;
@@ -161,7 +159,8 @@ module MountHandler (C : Component) = struct
     | _ -> `ok state
 end
 
-let mount (type s m) (module C : Component with type state = s and type msg = m) =
+let mount (type s m) (module C : Component with type state = s and type msg = m)
+    =
   let module M = MountHandler (C) in
   let opts = Channel.Handler.{ do_upgrade = true } in
   (opts, Channel.Handler.make (module M) (Obj.magic 0))

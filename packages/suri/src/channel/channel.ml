@@ -36,7 +36,8 @@ module Handler = struct
     | `push (_, state) -> H ((module I), state)
     | `error (state, _) -> H ((module I), state)
 
-  let init (H ((module I), state)) _conn = `continue (_conn, H ((module I), state))
+  let init (H ((module I), state)) _conn =
+    `continue (_conn, H ((module I), state))
 
   let handle_frame (H ((module I), state)) frame conn =
     match I.handle_frame frame conn state with

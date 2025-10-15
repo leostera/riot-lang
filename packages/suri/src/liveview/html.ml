@@ -48,7 +48,9 @@ let script ?src ?id ?type_ ?(children = []) () =
       tag = "script";
       attrs =
         [
-          Option.map attr_id id; Option.map attr_type type_; Option.map attr_src src;
+          Option.map attr_id id;
+          Option.map attr_type type_;
+          Option.map attr_src src;
         ]
         |> List.filter_map Fun.id;
       children;

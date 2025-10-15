@@ -186,12 +186,12 @@ module type Component = sig
 
   type state
   (** Component state - can be any type that represents your application state.
-      
+
       Keep state as simple as possible. Avoid:
       - Closures or functions in state
       - External resources (file handles, sockets)
       - Circular references
-      
+
       Good state types:
       - Records with primitive fields
       - Lists, options, results
@@ -200,15 +200,10 @@ module type Component = sig
 
   type msg
   (** Message type - all events that can modify component state.
-      
-      Define as a discriminated union with all possible user actions:
-      ```ocaml
-      type msg =
-        | ButtonClicked
-        | InputChanged of string
-        | ItemSelected of int
-        | FormSubmitted
-      ```*)
+
+      Define as a discriminated union with all possible user actions: ```ocaml
+      type msg = | ButtonClicked | InputChanged of string | ItemSelected of int
+      | FormSubmitted ```*)
 
   val init : Middleware.Conn.t -> state
   (** Initialize component state when connection starts.
@@ -242,21 +237,14 @@ module type Component = sig
 
   val render : state:state -> unit -> msg Html.t
   (** Render component state to HTML.
-      
-      This should be a pure function that converts state to HTML.
-      Event handlers in the HTML should produce values of type `msg`.
-      
-      Example:
-      ```ocaml
-      let render ~state () =
-        let open Html in
-        div [
-          h1 [ string state.title ];
-          p [ string state.description ];
-          button ~on_click:(fun _ -> Save) [ string "Save" ] ()
-        ] ()
-      ```
-      
+
+      This should be a pure function that converts state to HTML. Event handlers
+      in the HTML should produce values of type `msg`.
+
+      Example: ```ocaml let render ~state () = let open Html in div
+      [ h1 [ string state.title ]; p [ string state.description ]; button
+       ~on_click:(fun _ -> Save) [ string "Save" ] () ] () ```
+
       Tips:
       - Keep rendering logic simple
       - Extract complex rendering to helper functions
@@ -264,41 +252,42 @@ module type Component = sig
       - Use Html.map_action for nested components *)
 end
 
-type event = Mount | Event of string * string | Patch of string
-(** Internal event types used by LiveView protocol.
-    
-    - Mount: Initial connection established
-    - Event: User interaction from browser
-    - Patch: HTML diff sent from server to client
-    
-    You typically don't need to work with these directly. *)
+type event =
+  | Mount
+  | Event of string * string
+  | Patch of string
+      (** Internal event types used by LiveView protocol.
+
+          - Mount: Initial connection established
+          - Event: User interaction from browser
+          - Patch: HTML diff sent from server to client
+
+          You typically don't need to work with these directly. *)
 
 val serialize_event : event -> (string, string) result
 (** Serialize an event to JSON string (internal use).
-    
+
     Used by the runtime to send events over WebSocket. *)
 
 val deserialize_event : string -> (event, string) result
 (** Deserialize JSON string to event (internal use).
-    
+
     Used by the runtime to parse incoming WebSocket messages. *)
 
 val mount :
   (module Component with type state = 's and type msg = 'm) ->
   Channel.Handler.upgrade_opts * Channel.Handler.t
 (** Mount a LiveView component as a WebSocket handler.
-    
+
     This creates a Channel handler that manages the LiveView lifecycle:
     - Accepts WebSocket connection
     - Initializes component state
     - Routes events to update function
     - Sends HTML patches to client
-    
-    Use this with your web server's WebSocket upgrade:
-    ```ocaml
-    let (upgrade_opts, handler) = LiveView.mount (module Counter) in
-    (* Pass handler to WebSocket upgrade logic *)
-    ```
-    
-    The returned handler can be used with Suri.Channel or integrated
-    with your HTTP server's WebSocket upgrade mechanism. *)
+
+    Use this with your web server's WebSocket upgrade: ```ocaml let
+    (upgrade_opts, handler) = LiveView.mount (module Counter) in (* Pass handler
+    to WebSocket upgrade logic *) ```
+
+    The returned handler can be used with Suri.Channel or integrated with your
+    HTTP server's WebSocket upgrade mechanism. *)
