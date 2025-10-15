@@ -22,17 +22,36 @@ and compile_node source node =
   let children = node.children in
   let children_html = Array.to_list children |> List.map (compile_element source) in
   
+  (* Helper to strip up to 3 leading spaces from children *)
+  let strip_leading_spaces children =
+    (* Strip spaces from the raw token stream *)
+    let rec strip_spaces_from_children remaining_strips = function
+      | [] -> []
+      | (Ceibo.Green.Token tok) :: rest when tok.kind = Syntax_kind.SPACE && remaining_strips > 0 ->
+          strip_spaces_from_children (remaining_strips - 1) rest
+      | children -> children
+    in
+    let stripped_children = strip_spaces_from_children 3 (Array.to_list children) in
+    List.map (compile_element source) stripped_children
+  in
+  
   match kind with
   | Syntax_kind.DOCUMENT ->
       Html.fragment children_html
   | Syntax_kind.PARAGRAPH ->
       Html.element "p" children_html
-  | Syntax_kind.HEADING1 -> Html.element "h1" children_html
-  | Syntax_kind.HEADING2 -> Html.element "h2" children_html
-  | Syntax_kind.HEADING3 -> Html.element "h3" children_html
-  | Syntax_kind.HEADING4 -> Html.element "h4" children_html
-  | Syntax_kind.HEADING5 -> Html.element "h5" children_html
-  | Syntax_kind.HEADING6 -> Html.element "h6" children_html
+  | Syntax_kind.HEADING1 -> 
+      Html.element "h1" (strip_leading_spaces children)
+  | Syntax_kind.HEADING2 -> 
+      Html.element "h2" (strip_leading_spaces children)
+  | Syntax_kind.HEADING3 -> 
+      Html.element "h3" (strip_leading_spaces children)
+  | Syntax_kind.HEADING4 -> 
+      Html.element "h4" (strip_leading_spaces children)
+  | Syntax_kind.HEADING5 -> 
+      Html.element "h5" (strip_leading_spaces children)
+  | Syntax_kind.HEADING6 -> 
+      Html.element "h6" (strip_leading_spaces children)
   | Syntax_kind.TEXT ->
       Html.fragment children_html
   | Syntax_kind.CODE_BLOCK ->

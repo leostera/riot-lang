@@ -278,16 +278,35 @@ and parse_inline parser =
 
 (** Check if next line is a Setext heading underline (=== or ---) *)
 and check_setext_underline parser =
+  (* Skip up to 3 leading spaces *)
+  let rec skip_indent offset spaces =
+    if spaces >= 3 then offset
+    else
+      match peek_n parser offset with
+      | { kind = Syntax_kind.SPACE; _ } -> skip_indent (offset + 1) (spaces + 1)
+      | _ -> offset
+  in
+  
   let rec check_underline char_kind offset count =
+    let rec check_trailing offset =
+      match peek_n parser offset with
+      | { kind = Syntax_kind.SPACE | Syntax_kind.TAB; _ } -> check_trailing (offset + 1)
+      | { kind = Syntax_kind.NEWLINE | Syntax_kind.EOF; _ } -> Some char_kind
+      | _ -> None (* Non-whitespace after underline = invalid *)
+    in
     match peek_n parser offset with
     | { kind; _ } when kind = char_kind -> check_underline char_kind (offset + 1) (count + 1)
-    | { kind = Syntax_kind.SPACE | Syntax_kind.TAB; _ } -> check_underline char_kind (offset + 1) count
+    | { kind = Syntax_kind.SPACE | Syntax_kind.TAB; _ } when count > 0 -> 
+        (* After finding underline chars, skip trailing spaces *)
+        check_trailing (offset + 1)
     | { kind = Syntax_kind.NEWLINE | Syntax_kind.EOF; _ } when count > 0 -> Some char_kind
     | _ -> None
   in
-  match peek_kind parser with
-  | Syntax_kind.EQUAL -> check_underline Syntax_kind.EQUAL 0 0
-  | Syntax_kind.DASH -> check_underline Syntax_kind.DASH 0 0
+  
+  let start_offset = skip_indent 0 0 in
+  match peek_n parser start_offset with
+  | { kind = Syntax_kind.EQUAL; _ } -> check_underline Syntax_kind.EQUAL start_offset 0
+  | { kind = Syntax_kind.DASH; _ } -> check_underline Syntax_kind.DASH start_offset 0
   | _ -> None
 
 (** Parse a paragraph *)
@@ -302,7 +321,7 @@ and parse_paragraph parser =
   | Syntax_kind.EOF ->
       make_node Syntax_kind.PARAGRAPH first_line
   | Syntax_kind.NEWLINE ->
-      advance parser; (* consume newline *)
+      let first_newline = consume parser in (* consume newline *)
       (* Check if next line is a Setext underline *)
       (match check_setext_underline parser with
       | Some Syntax_kind.EQUAL ->
@@ -327,7 +346,7 @@ and parse_paragraph parser =
               (* End of paragraph *)
               make_node Syntax_kind.PARAGRAPH first_line
           | _ ->
-              (* Multi-line paragraph - collect rest *)
+              (* Multi-line paragraph - collect rest, including the first newline *)
               let rec collect_rest acc =
                 match peek_kind parser with
                 | Syntax_kind.EOF -> acc
@@ -345,7 +364,7 @@ and parse_paragraph parser =
                     let inline = parse_inline parser in
                     collect_rest (acc @ inline)
               in
-              let rest = collect_rest [] in
+              let rest = collect_rest [make_token parser first_newline] in
               make_node Syntax_kind.PARAGRAPH (first_line @ rest)))
   | _ ->
       (* Shouldn't happen, but handle it *)
@@ -447,15 +466,15 @@ and check_fenced_code parser =
 
 (** Parse fenced code block *)
 and parse_fenced_code parser fence_char fence_count =
-  (* Consume leading spaces (0-3) *)
+  (* Consume leading spaces (0-3) and track indent level *)
   let rec consume_leading_spaces count =
-    if count >= 3 then ()
+    if count >= 3 then count
     else
       match peek_kind parser with
       | Syntax_kind.SPACE -> advance parser; consume_leading_spaces (count + 1)
-      | _ -> ()
+      | _ -> count
   in
-  consume_leading_spaces 0;
+  let indent_level = consume_leading_spaces 0 in
   
   (* Consume opening fence *)
   for _ = 1 to fence_count do
@@ -471,20 +490,41 @@ and parse_fenced_code parser fence_char fence_count =
   in
   skip_info_string ();
   
-  (* Check if current position is at closing fence *)
+  (* Check if current position is at closing fence (with 0-3 leading spaces) *)
   let is_closing_fence offset =
-    let rec check_fence off count =
-      match peek_n parser off with
-      | { kind; _ } when kind = fence_char -> check_fence (off + 1) (count + 1)
-      | { kind = Syntax_kind.SPACE | Syntax_kind.TAB; _ } -> check_fence (off + 1) count
-      | { kind = Syntax_kind.NEWLINE | Syntax_kind.EOF; _ } -> count >= fence_count
-      | _ -> false
+    (* First count and skip leading spaces *)
+    let rec count_leading_spaces off spaces =
+      if spaces > 3 then (false, off) (* Too many spaces, not a valid closing fence *)
+      else
+        match peek_n parser off with
+        | { kind = Syntax_kind.SPACE; _ } -> count_leading_spaces (off + 1) (spaces + 1)
+        | { kind = Syntax_kind.TAB; _ } -> (false, off) (* Tab means 4+ spaces *)
+        | _ -> (true, off) (* Valid spacing, continue checking *)
     in
-    check_fence offset 0
+    let (valid, fence_start) = count_leading_spaces offset 0 in
+    if not valid then false
+    else
+      let rec check_fence off count =
+        match peek_n parser off with
+        | { kind; _ } when kind = fence_char -> check_fence (off + 1) (count + 1)
+        | { kind = Syntax_kind.SPACE | Syntax_kind.TAB; _ } -> check_fence (off + 1) count
+        | { kind = Syntax_kind.NEWLINE | Syntax_kind.EOF; _ } -> count >= fence_count
+        | _ -> false
+      in
+      check_fence fence_start 0
+  in
+  
+  (* Strip indent from content lines *)
+  let rec strip_line_indent n =
+    if n >= indent_level then ()
+    else
+      match peek_kind parser with
+      | Syntax_kind.SPACE -> advance parser; strip_line_indent (n + 1)
+      | _ -> ()
   in
   
   (* Collect content until closing fence *)
-  let rec collect_content acc =
+  let rec collect_content acc at_line_start =
     match peek_kind parser with
     | Syntax_kind.EOF -> acc
     | Syntax_kind.NEWLINE ->
@@ -503,9 +543,9 @@ and parse_fenced_code parser fence_char fence_count =
           consume_closing ();
           acc
         end else begin
-          (* Not closing fence, include the newline *)
+          (* Not closing fence, include the newline and continue at line start *)
           let tok = consume parser in
-          collect_content (acc @ [make_token parser tok])
+          collect_content (acc @ [make_token parser tok]) true
         end
     | _ when is_closing_fence 0 ->
         (* At closing fence without newline before it *)
@@ -520,11 +560,13 @@ and parse_fenced_code parser fence_char fence_count =
         consume_closing ();
         acc
     | _ ->
+        (* If at line start, strip indent first *)
+        if at_line_start then strip_line_indent 0;
         let tok = consume parser in
-        collect_content (acc @ [make_token parser tok])
+        collect_content (acc @ [make_token parser tok]) false
   in
   
-  let content = collect_content [] in
+  let content = collect_content [] true in
   make_node Syntax_kind.FENCED_CODE_BLOCK content
 
 (** Check if we're at a thematic break (including with 0-3 leading spaces) *)
