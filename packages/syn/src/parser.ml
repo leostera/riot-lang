@@ -166,6 +166,22 @@ let make_error_node parser ~diagnostic ~consumed_tokens =
     ============================================================================
 *)
 
+(** Get operator precedence and associativity.
+    Returns (precedence, is_right_associative).
+    Higher precedence = tighter binding. *)
+let operator_info = function
+  | Token.Or -> Some (1, false)
+  | Token.And -> Some (2, false)
+  | Token.Eq | Token.Ne | Token.Lt | Token.Gt | Token.LtEq | Token.GtEq 
+  | Token.EqEq | Token.BangEq -> Some (3, false)
+  | Token.At | Token.Caret | Token.AtAt -> Some (4, true)
+  | Token.ColonColon -> Some (5, true)
+  | Token.Plus | Token.Minus | Token.PlusDot | Token.MinusDot -> Some (6, false)
+  | Token.Star | Token.Slash | Token.Percent 
+  | Token.StarDot | Token.SlashDot -> Some (7, false)
+  | Token.StarStar -> Some (8, true)
+  | _ -> None
+
 (** Parse type variable: "'" ident
 
     CRITICAL: No trivia allowed between ' and ident! Grammar: typexpr ::= "'"
@@ -456,8 +472,8 @@ and parse_char_literal parser =
       in
       make_error_node parser ~diagnostic ~consumed_tokens:[]
 
-(** Parse expression *)
-and parse_expr parser =
+(** Parse primary expression (no operators) *)
+and parse_primary_expr parser =
   match peek_kind parser with
   | Token.Ident _ ->
       let ident = consume parser in
@@ -487,6 +503,48 @@ and parse_expr parser =
           ~span:(expected_span parser)
       in
       make_error_node parser ~diagnostic ~consumed_tokens:[]
+
+(** Parse binary expression with precedence climbing.
+    This handles expressions like: 1 + 2 * 3, x || y && z, etc. *)
+and parse_binary_expr parser min_prec =
+  (* Parse left side *)
+  let left = parse_primary_expr parser in
+  let trivia_after_left = consume_trivia parser in
+  
+  (* Keep parsing operators while they have higher precedence *)
+  let rec climb left left_trivia =
+    match operator_info (peek_kind parser) with
+    | Some (prec, is_right_assoc) when prec >= min_prec ->
+        let op = consume parser in
+        let trivia_after_op = consume_trivia parser in
+        
+        (* Calculate next minimum precedence *)
+        let next_min_prec = if is_right_assoc then prec else prec + 1 in
+        
+        (* Parse right side recursively *)
+        let right = parse_binary_expr parser next_min_prec in
+        let trivia_after_right = consume_trivia parser in
+        
+        (* Build binary expression node *)
+        let bin_expr = make_node Syntax_kind.INFIX_EXPR
+          (tokens_to_green parser left_trivia
+           @ [Ceibo.Green.Node left]
+           @ tokens_to_green parser trivia_after_op
+           @ [make_token parser op]
+           @ [Ceibo.Green.Node right]) in
+        
+        (* Continue climbing with the new left side *)
+        climb bin_expr trivia_after_right
+    | _ ->
+        (* No more operators, return current expression *)
+        left
+  in
+  
+  climb left trivia_after_left
+
+(** Parse expression (top-level entry point) *)
+and parse_expr parser =
+  parse_binary_expr parser 0
 
 (** Parse parenthesized expression or unit: (expr) or () *)
 and parse_paren_expr parser =
