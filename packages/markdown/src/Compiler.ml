@@ -142,7 +142,10 @@ and compile_node source node =
         ) "" elems
       in
       let href = get_raw_text (Array.to_list node.children) in
-      Html.element "a" ~attrs:[("href", href)] children_html
+      (* Check if this is an email autolink - if so, add mailto: prefix *)
+      let is_email = String.contains href '@' && not (String.contains href ':') in
+      let full_href = if is_email then "mailto:" ^ href else href in
+      Html.element "a" ~attrs:[("href", full_href)] children_html
   | Syntax_kind.IMAGE ->
       (* TODO: Extract src/alt from somewhere *)
       Html.element "img" ~attrs:[("src", ""); ("alt", "")] []

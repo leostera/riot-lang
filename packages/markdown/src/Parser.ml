@@ -395,14 +395,14 @@ and parse_paragraph parser =
 
 (** Check if line starts with 4+ spaces (indented code block) *)
 and check_indented_code parser =
-  let rec count_spaces n =
-    match peek_n parser n with
-    | { kind = Syntax_kind.SPACE; _ } -> count_spaces (n + 1)
-    | { kind = Syntax_kind.TAB; _ } -> count_spaces (n + 4) (* tab = 4 spaces *)
+  let rec count_spaces offset spaces =
+    match peek_n parser offset with
+    | { kind = Syntax_kind.SPACE; _ } -> count_spaces (offset + 1) (spaces + 1)
+    | { kind = Syntax_kind.TAB; _ } -> count_spaces (offset + 1) (spaces + 4) (* tab = 4 spaces *)
     | { kind = Syntax_kind.NEWLINE | Syntax_kind.EOF; _ } -> false (* blank line *)
-    | _ -> n >= 4
+    | _ -> spaces >= 4
   in
-  count_spaces 0
+  count_spaces 0 0
 
 (** Parse indented code block *)
 and parse_indented_code parser =
