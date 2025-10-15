@@ -20,6 +20,12 @@ type kind =
   | InvalidTypeExpression of { found : found_token }
   | MissingLetKeyword of { found : found_token }
   | MissingTypeKeyword of { found : found_token }
+  | MissingTypeName of { found : found_token }
+  | MissingTypeDeclEquals of { found : found_token }
+  | UnclosedDelimiter of { opener : string; found : found_token }
+  | EmptyCharLiteral
+  | MultiCharLiteral of { text : string }
+  | UnclosedCharLiteral of { text : string }
 
 type t = { kind : kind; span : Ceibo.Span.t }
 (** Parse error information *)
@@ -86,6 +92,30 @@ let missing_type_keyword ~found:token ~text ~span =
   let found = { kind = kind_str; text } in
   make ~kind:(MissingTypeKeyword { found }) ~span
 
+let missing_type_name ~found:token ~text ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text } in
+  make ~kind:(MissingTypeName { found }) ~span
+
+let missing_type_decl_equals ~found:token ~text ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text } in
+  make ~kind:(MissingTypeDeclEquals { found }) ~span
+
+let unclosed_delimiter ~opener ~found:token ~text ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text } in
+  make ~kind:(UnclosedDelimiter { opener; found }) ~span
+
+let empty_char_literal ~span =
+  make ~kind:EmptyCharLiteral ~span
+
+let multi_char_literal ~text ~span =
+  make ~kind:(MultiCharLiteral { text }) ~span
+
+let unclosed_char_literal ~text ~span =
+  make ~kind:(UnclosedCharLiteral { text }) ~span
+
 let expected_message diag =
   match diag.kind with
   | MalformedTypeVariable _ -> "type variable identifier (e.g., 'a, 'b)"
@@ -101,6 +131,19 @@ let expected_message diag =
   | InvalidTypeExpression _ -> "type expression"
   | MissingLetKeyword _ -> "let keyword"
   | MissingTypeKeyword _ -> "type keyword"
+  | MissingTypeName _ -> "type name"
+  | MissingTypeDeclEquals _ -> "="
+  | UnclosedDelimiter { opener; _ } -> (
+      match opener with
+      | "(" -> ")"
+      | "begin" -> "end"
+      | "{" -> "}"
+      | "[" -> "]"
+      | "[|" -> "|]"
+      | _ -> "closing delimiter")
+  | EmptyCharLiteral -> "non-empty character literal"
+  | MultiCharLiteral _ -> "single character"
+  | UnclosedCharLiteral _ -> "' (closing quote)"
 
 let fix_message diag =
   match diag.kind with
@@ -110,7 +153,23 @@ let fix_message diag =
       Some "add a variable name, \"_\" (underscore) to ignore it."
   | MissingLetBindingEquals _ -> Some "add = between the pattern and expression"
   | MissingLetBindingExpr _ -> Some "add an expression after the ="
-  | InvalidPattern _ -> Some "add a variable name, \"_\" (underscore) to ignore it."
+  | MissingTypeName _ -> Some "add a type name after the type keyword"
+  | MissingTypeDeclEquals _ ->
+      Some "add = between the type name and type definition"
+  | UnclosedDelimiter { opener; _ } ->
+      Some
+        (match opener with
+        | "(" -> "add ) to close the parenthesis"
+        | "begin" -> "add end to close the begin block"
+        | "{" -> "add } to close the brace"
+        | "[" -> "add ] to close the bracket"
+        | "[|" -> "add |] to close the array"
+        | _ -> "add closing delimiter")
+  | InvalidPattern _ ->
+      Some "add a variable name, \"_\" (underscore) to ignore it."
+  | EmptyCharLiteral -> Some "add a character between the quotes, e.g. 'a'"
+  | MultiCharLiteral _ -> Some "use only one character in the literal"
+  | UnclosedCharLiteral _ -> Some "add a closing ' (quote) after the character"
   | _ -> None
 
 let error_id diag =
@@ -127,9 +186,14 @@ let error_id diag =
   | InvalidTypeExpression _ -> Error.E0010_InvalidTypeExpression
   | MissingLetKeyword _ -> Error.E0011_MissingLetKeyword
   | MissingTypeKeyword _ -> Error.E0012_MissingTypeKeyword
+  | MissingTypeDeclEquals _ -> Error.E0013_MissingTypeDeclEquals
+  | UnclosedDelimiter _ -> Error.E0014_UnclosedDelimiter
+  | MissingTypeName _ -> Error.E0015_MissingTypeName
+  | EmptyCharLiteral -> Error.E0016_EmptyCharLiteral
+  | MultiCharLiteral _ -> Error.E0017_MultiCharLiteral
+  | UnclosedCharLiteral _ -> Error.E0018_UnclosedCharLiteral
 
 let hint_message diag = diag |> error_id |> Error.explain
-
 let id err = err |> error_id |> Error.id_to_string
 
 let to_string err =
@@ -157,6 +221,22 @@ let found_token diag =
   | InvalidTypeExpression { found } -> found
   | MissingLetKeyword { found } -> found
   | MissingTypeKeyword { found } -> found
+  | MissingTypeName { found } -> found
+  | MissingTypeDeclEquals { found } -> found
+  | UnclosedDelimiter { found; _ } -> found
+  | EmptyCharLiteral -> { kind = "char literal"; text = "''" }
+  | MultiCharLiteral { text } -> { kind = "char literal"; text }
+  | UnclosedCharLiteral { text } -> { kind = "char literal"; text }
+
+let main_message diag =
+  match diag.kind with
+  | EmptyCharLiteral -> "empty character literal"
+  | MultiCharLiteral { text } -> format "character literal '%s' contains multiple characters" text
+  | UnclosedCharLiteral { text } -> format "missing ' (quote) after %s" text
+  | _ ->
+      let expected = expected_message diag in
+      let found_kind = (found_token diag).kind in
+      format "expected %s, found %s" expected found_kind
 
 (** Convert diagnostic to JSON for machine consumption *)
 let to_json err =

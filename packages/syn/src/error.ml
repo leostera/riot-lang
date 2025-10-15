@@ -13,6 +13,12 @@ type id =
   | E0010_InvalidTypeExpression
   | E0011_MissingLetKeyword
   | E0012_MissingTypeKeyword
+  | E0013_MissingTypeDeclEquals
+  | E0014_UnclosedDelimiter
+  | E0015_MissingTypeName
+  | E0016_EmptyCharLiteral
+  | E0017_MultiCharLiteral
+  | E0018_UnclosedCharLiteral
 
 let id_to_string = function
   | E0001_MalformedTypeVariable -> "E0001"
@@ -27,6 +33,12 @@ let id_to_string = function
   | E0010_InvalidTypeExpression -> "E0010"
   | E0011_MissingLetKeyword -> "E0011"
   | E0012_MissingTypeKeyword -> "E0012"
+  | E0013_MissingTypeDeclEquals -> "E0013"
+  | E0014_UnclosedDelimiter -> "E0014"
+  | E0015_MissingTypeName -> "E0015"
+  | E0016_EmptyCharLiteral -> "E0016"
+  | E0017_MultiCharLiteral -> "E0017"
+  | E0018_UnclosedCharLiteral -> "E0018"
 
 let id_of_string = function
   | "E0001" -> Some E0001_MalformedTypeVariable
@@ -41,6 +53,12 @@ let id_of_string = function
   | "E0010" -> Some E0010_InvalidTypeExpression
   | "E0011" -> Some E0011_MissingLetKeyword
   | "E0012" -> Some E0012_MissingTypeKeyword
+  | "E0013" -> Some E0013_MissingTypeDeclEquals
+  | "E0014" -> Some E0014_UnclosedDelimiter
+  | "E0015" -> Some E0015_MissingTypeName
+  | "E0016" -> Some E0016_EmptyCharLiteral
+  | "E0017" -> Some E0017_MultiCharLiteral
+  | "E0018" -> Some E0018_UnclosedCharLiteral
   | _ -> None
 
 let name = function
@@ -56,6 +74,12 @@ let name = function
   | E0010_InvalidTypeExpression -> "invalid-type-expression"
   | E0011_MissingLetKeyword -> "missing-let-keyword"
   | E0012_MissingTypeKeyword -> "missing-type-keyword"
+  | E0013_MissingTypeDeclEquals -> "missing-type-decl-equals"
+  | E0014_UnclosedDelimiter -> "unclosed-delimiter"
+  | E0015_MissingTypeName -> "missing-type-name"
+  | E0016_EmptyCharLiteral -> "empty-char-literal"
+  | E0017_MultiCharLiteral -> "multi-char-literal"
+  | E0018_UnclosedCharLiteral -> "unclosed-char-literal"
 
 let explain = function
   | E0001_MalformedTypeVariable ->
@@ -104,4 +128,15 @@ Beware that pattern matching on only one of many possible values will lead to ru
       {|Internal parser error - this is likely a bug in the parser.|}
   | E0012_MissingTypeKeyword ->
       {|Internal parser error - this is likely a bug in the parser.|}
-
+  | E0013_MissingTypeDeclEquals ->
+      {|Type declarations require an = between the type name and its definition.|}
+  | E0014_UnclosedDelimiter ->
+      {|Delimiters like (, [, {, begin must be properly closed with ), ], }, end respectively.|}
+  | E0015_MissingTypeName ->
+      {|Type declarations require a name after the type keyword.|}
+  | E0016_EmptyCharLiteral ->
+      {|Character literals cannot be empty. Use a space character ' ' if you need a space.|}
+  | E0017_MultiCharLiteral ->
+      {|Character literals can only contain a single character. Use a string "..." for multiple characters.|}
+  | E0018_UnclosedCharLiteral ->
+      {|Character literals must be closed with a single quote '.|}

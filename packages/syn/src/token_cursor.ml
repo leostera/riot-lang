@@ -42,3 +42,18 @@ let view t span =
   let start_pos = span.Ceibo.Span.start in
   let end_pos = span.Ceibo.Span.end_ in
   String.sub t.source start_pos (end_pos - start_pos)
+
+(** Get the last consumed non-trivia token. Returns first token if at start. *)
+let last_token t =
+  let rec find_last_non_trivia idx =
+    if idx < 0 then if t.length > 0 then t.tokens.(0) else eof_token ()
+    else
+      let tok = t.tokens.(idx) in
+      match tok.Token.kind with
+      | Token.Whitespace | Token.Comment _ | Token.Docstring _ ->
+          find_last_non_trivia (idx - 1)
+      | _ -> tok
+  in
+  if t.pos > 0 then find_last_non_trivia (t.pos - 1)
+  else if t.length > 0 then t.tokens.(0)
+  else eof_token ()

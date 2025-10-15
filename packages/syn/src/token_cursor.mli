@@ -16,3 +16,6 @@ val slice : t -> int -> int -> Token.t list
 
 val view : t -> Ceibo.Span.t -> string
 (** Get a substring view of the source at the given span *)
+
+val last_token : t -> Token.t
+(** Get the last consumed non-trivia token. Returns first token if at start. *)

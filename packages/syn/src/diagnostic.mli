@@ -48,6 +48,12 @@ type kind =
   | InvalidTypeExpression of { found : found_token }
   | MissingLetKeyword of { found : found_token }
   | MissingTypeKeyword of { found : found_token }
+  | MissingTypeName of { found : found_token }
+  | MissingTypeDeclEquals of { found : found_token }
+  | UnclosedDelimiter of { opener : string; found : found_token }
+  | EmptyCharLiteral
+  | MultiCharLiteral of { text : string }
+  | UnclosedCharLiteral of { text : string }
 
 type t = { kind : kind; span : Ceibo.Span.t }
 (** A diagnostic with structured error information and source location. *)
@@ -123,6 +129,18 @@ val missing_let_keyword : found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 val missing_type_keyword :
   found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 
+val missing_type_name : found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
+val missing_type_decl_equals :
+  found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
+val unclosed_delimiter :
+  opener:string -> found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
+val empty_char_literal : span:Ceibo.Span.t -> t
+val multi_char_literal : text:string -> span:Ceibo.Span.t -> t
+val unclosed_char_literal : text:string -> span:Ceibo.Span.t -> t
+
 (** # Serialization *)
 
 val error_id : t -> Error.id
@@ -139,6 +157,9 @@ val fix_message : t -> string option
 
 val hint_message : t -> string
 (** `kind_to_hint diag` returns a detailed explanation hint. *)
+
+val main_message : t -> string
+(** `main_message diag` returns the main error message for display. *)
 
 val found_token : t -> found_token
 

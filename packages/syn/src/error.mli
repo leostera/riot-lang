@@ -13,6 +13,12 @@ type id =
   | E0010_InvalidTypeExpression
   | E0011_MissingLetKeyword
   | E0012_MissingTypeKeyword
+  | E0013_MissingTypeDeclEquals
+  | E0014_UnclosedDelimiter
+  | E0015_MissingTypeName
+  | E0016_EmptyCharLiteral
+  | E0017_MultiCharLiteral
+  | E0018_UnclosedCharLiteral
 
 val id_to_string : id -> string
 val id_of_string : string -> id option

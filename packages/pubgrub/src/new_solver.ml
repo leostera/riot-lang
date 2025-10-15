@@ -7,6 +7,10 @@ type version = Version.t
 let version_compare a b =
   match Version.compare a b with Lt -> -1 | Eq -> 0 | Gt -> 1
 
+type solve_result =
+  | Success of (package * version) list
+  | Unsat of Incompatibility.t
+
 (* ============================================================================
    Core Data Structures
    ============================================================================ *)
@@ -165,26 +169,35 @@ let add_incompatibility state package incompat =
    Unit Propagation
    ============================================================================ *)
 
-(* Unit propagation can either succeed with a new state, or hit a conflict *)
+(* Unit propagation can either succeed with a new state, trigger conflict resolution, or fail *)
 type propagation_result = 
   | PropagationOk of state
-  | Conflict of Incompatibility.t
+  | NeedConflictResolution of Incompatibility.t
 
 let unit_propagation root_package root_version state changed_packages =
+  Log.debug "Unit propagation called with %d changed packages" (List.length changed_packages);
   let rec process_packages state = function
     | [] -> PropagationOk state
     | pkg :: rest ->
         Log.debug "Unit propagation: processing %s" pkg;
         match HashMap.get state.incompatibilities pkg with
-        | None -> process_packages state rest
+        | None -> 
+            process_packages state rest
         | Some incompats ->
+            Log.debug "  Found %d incompatibilities for %s" (List.length incompats) pkg;
             let rec check_incompats state = function
               | [] -> PropagationOk state
               | incompat :: remaining ->
-                  match Partial_solution.relation state.solution incompat with
+                  let rel = Partial_solution.relation state.solution incompat in
+                  (match rel with
+                   | `Satisfied -> Log.debug "    Relation: SATISFIED → conflict!"
+                   | `AlmostSatisfied _ -> Log.debug "    Relation: ALMOST_SATISFIED"
+                   | `Contradicted _ -> Log.debug "    Relation: CONTRADICTED"
+                   | `Unknown -> Log.debug "    Relation: UNKNOWN");
+                  match rel with
                   | `Satisfied ->
-                      Log.debug "  Incompatibility satisfied, conflict!";
-                      Conflict incompat
+                      Log.info "  CONFLICT: Incompatibility satisfied";
+                      NeedConflictResolution incompat
                   | `AlmostSatisfied satisfier_pkg ->
                       Log.debug "  Almost satisfied, deriving for %s" satisfier_pkg;
                       (* Get the term for this package *)
@@ -208,13 +221,74 @@ let unit_propagation root_package root_version state changed_packages =
                       (* Continue with remaining incompats, then process satisfier_pkg *)
                       (match check_incompats new_state remaining with
                       | PropagationOk state' -> process_packages state' (satisfier_pkg :: rest)
-                      | Conflict _ as err -> err)
+                      | NeedConflictResolution _ as err -> err)
                   | `Contradicted _ | `Unknown ->
                       check_incompats state remaining
             in
             check_incompats state incompats
   in
   process_packages state changed_packages
+
+(* ============================================================================
+   Conflict Resolution
+   ============================================================================ *)
+
+let conflict_resolution root_package root_version state incompat =
+  let rec resolve depth current_incompat =
+    if depth > 10 then
+      panic "NEW conflict_resolution: depth limit exceeded"
+    else if Incompatibility.is_terminal current_incompat root_package root_version then
+      Error (Unsat current_incompat)
+    else
+      (* Check if any term has a satisfier in the solution *)
+      let terms = Incompatibility.terms current_incompat in
+      let has_satisfier = List.exists (fun term ->
+        let pkg = Term.package term in
+        match Partial_solution.get_constraint state.solution pkg with
+        | `Undecided -> false
+        | `Decided _ | `Constrained _ -> true
+      ) terms in
+      
+      if not has_satisfier then (
+        Log.debug "No satisfiers for incompatibility, treating as terminal";
+        Error (Unsat current_incompat)
+      ) else
+      
+      let pkg, search_result =
+        Partial_solution.satisfier_search state.solution current_incompat
+      in
+      match search_result with
+      | `DifferentDecisionLevels previous_level ->
+          Log.debug "Backtracking to decision level %d" previous_level;
+      if previous_level = 0 then (
+        Log.debug "Backtracking to level 0 means no solution exists";
+        Error (Unsat current_incompat))
+          else
+            (* Backtrack the solution *)
+            let new_solution =
+              Partial_solution.backtrack state.solution previous_level
+            in
+            let new_state = { state with solution = new_solution } in
+            
+            (* Add the learned incompatibility *)
+            let terms = Incompatibility.terms current_incompat in
+            List.iter (fun term ->
+              let term_pkg = Term.package term in
+              add_incompatibility new_state term_pkg current_incompat
+            ) terms;
+            
+            (* The magic: compute_pending will automatically reconstruct pending! *)
+            Log.debug "After backtracking, pending will be recomputed automatically";
+            Ok new_state
+            
+      | `SameDecisionLevels satisfier_cause ->
+          Log.debug "Same decision level, computing prior cause for %s" pkg;
+          let prior =
+            Incompatibility.prior_cause current_incompat satisfier_cause pkg
+          in
+          resolve (depth + 1) prior
+  in
+  resolve 0 incompat
 
 (* ============================================================================
    Version Selection
@@ -289,10 +363,6 @@ let choose_version provider state pkg ranges =
    Main Solve Function
    ============================================================================ *)
 
-type solve_result =
-  | Success of (package * version) list
-  | Failure of Incompatibility.t
-
 let solve provider root_package root_version =
   Log.debug "Starting NEW PubGrub solver for %s@%s" root_package
     (Version.to_string root_version);
@@ -343,8 +413,9 @@ let solve provider root_package root_version =
       
       (* Main solve loop *)
       let rec solve_loop state iteration =
-        if iteration > 10000 then
-          panic "NEW solve_loop: too many iterations, likely infinite loop"
+        if iteration > 100 then (
+          Log.error "Iteration limit reached!";
+          Error "Too many iterations - likely infinite loop")
         else
           (* Compute pending from current state *)
           let pending = compute_pending state in
@@ -352,9 +423,13 @@ let solve provider root_package root_version =
           
           (* Unit propagation first *)
           match unit_propagation root_package root_version state [] with
-          | Conflict incompat ->
-              Log.debug "Conflict detected, returning failure";
-              Ok (Failure incompat)
+          | NeedConflictResolution incompat ->
+              Log.debug "Conflict detected, running conflict resolution";
+              (match conflict_resolution root_package root_version state incompat with
+              | Error result -> Ok result
+              | Ok resolved_state -> 
+                  Log.debug "Conflict resolved, continuing";
+                  solve_loop resolved_state (iteration + 1))
           | PropagationOk propagated_state ->
               (* Recompute pending after propagation *)
               let pending = compute_pending propagated_state in
@@ -364,6 +439,76 @@ let solve provider root_package root_version =
                   Log.debug "No more pending packages, solution found";
                   Ok (Success (Partial_solution.extract_solution propagated_state.solution))
               | (pkg, ranges) :: _rest ->
+                  Log.info "Choosing version for pending package %s" pkg;
+                  (* Check if ranges are empty - this means conflicting dependencies *)
+                  if Ranges.is_empty ranges then (
+                    Log.info "🔥 Empty ranges for %s - conflicting dependencies detected" pkg;
+                    (* Find all dependencies that require this package *)
+                    let conflicting_deps = ref [] in
+                    HashMap.iter (fun map_pkg incompats ->
+                      List.iter (fun incompat ->
+                        match Incompatibility.as_dependency incompat with
+                        | Some (parent_pkg, dep_pkg) when dep_pkg = pkg ->
+                            (* This incompatibility is a dependency on pkg *)
+                            Log.debug "  Found dependency: %s -> %s (stored under %s)" 
+                              parent_pkg dep_pkg map_pkg;
+                            conflicting_deps := incompat :: !conflicting_deps
+                        | _ -> ()
+                      ) incompats
+                    ) propagated_state.incompatibilities;
+                    Log.info "Total conflicting deps found: %d" (List.length !conflicting_deps);
+                    
+                    (* Create conflict from these dependencies *)
+                    if List.length !conflicting_deps >= 2 then (
+                      Log.info "Creating conflict incompatibility from dependencies";
+                      (* Create an incompatibility from the first two conflicting dependencies *)
+                      (* These are: "not b@X OR d@Y" and "not c@Z OR d@W" where Y and Z are disjoint *)
+                      (* We want to derive that b@X and c@Z are incompatible *)
+                      let incompat1 = List.hd !conflicting_deps in
+                      let incompat2 = List.hd (List.tl !conflicting_deps) in
+                      
+                      (* Extract parent packages from dependency incompatibilities *)
+                      (* incompat1: "not parent1@v1 OR pkg@r1" *)
+                      (* incompat2: "not parent2@v2 OR pkg@r2" *)
+                      (* We want: "parent1@v1 OR parent2@v2" - at least one must be different *)
+                      (* Actually, we want the negation: "not (parent1@v1 AND parent2@v2)" *)
+                      (* Which in DNF is: "not parent1@v1 OR not parent2@v2" *)
+                      (* But that's what we already have! Just negate the parent terms *)
+                      
+                      let parent1_terms = List.filter (fun t -> 
+                        Term.package t <> pkg
+                      ) (Incompatibility.terms incompat1) in
+                      let parent2_terms = List.filter (fun t ->
+                        Term.package t <> pkg
+                      ) (Incompatibility.terms incompat2) in
+                      
+                      (* Negate the terms to flip their polarity *)
+                      let conflict_terms = 
+                        (List.map Term.negate parent1_terms) @ 
+                        (List.map Term.negate parent2_terms) in
+                      let conflict_incompat = Incompatibility.create_derived 
+                        conflict_terms incompat1 incompat2 None in
+                      
+                      add_incompatibility propagated_state pkg conflict_incompat;
+                      Log.info "Created derived conflict incompatibility";
+                      (match unit_propagation root_package root_version propagated_state [pkg] with
+                      | NeedConflictResolution incompat ->
+                          (match conflict_resolution root_package root_version propagated_state incompat with
+                          | Error result -> Ok result
+                          | Ok resolved_state -> solve_loop resolved_state (iteration + 1))
+                      | PropagationOk new_state -> solve_loop new_state (iteration + 1))
+                    ) else (
+                      (* Fallback to no_versions *)
+                      let no_ver_incompat = Incompatibility.no_versions pkg ranges in
+                      add_incompatibility propagated_state pkg no_ver_incompat;
+                      match unit_propagation root_package root_version propagated_state [pkg] with
+                      | NeedConflictResolution incompat ->
+                          (match conflict_resolution root_package root_version propagated_state incompat with
+                          | Error result -> Ok result
+                          | Ok resolved_state -> solve_loop resolved_state (iteration + 1))
+                      | PropagationOk new_state -> solve_loop new_state (iteration + 1)
+                    )
+                  ) else
                   (* Try to choose a version for the first pending package *)
                   (match choose_version provider propagated_state pkg ranges with
                   | Error err -> Error err
@@ -374,41 +519,53 @@ let solve provider root_package root_version =
                       add_incompatibility propagated_state pkg no_ver_incompat;
                       (* Trigger unit propagation with this package *)
                       (match unit_propagation root_package root_version propagated_state [pkg] with
-                      | Conflict incompat -> Ok (Failure incompat)
+                      | NeedConflictResolution incompat ->
+                          (match conflict_resolution root_package root_version propagated_state incompat with
+                          | Error result -> Ok result
+                          | Ok resolved_state -> solve_loop resolved_state (iteration + 1))
                       | PropagationOk new_state -> solve_loop new_state (iteration + 1))
-                  | Ok (Some ver) ->
-                      (* Add decision *)
-                      let new_solution = 
-                        Partial_solution.add_decision propagated_state.solution pkg ver
-                      in
-                      let new_state = { propagated_state with solution = new_solution } in
-                      
-                      (* Get dependencies for this package *)
-                      (match provider.Provider.get_dependencies pkg ver with
-                      | Error err -> Error err
-                      | Ok (Provider.Unavailable _reason) ->
-                          (* Package unavailable, treat as no version *)
-                          Log.debug "Package %s@%s unavailable" pkg (Version.to_string ver);
-                          solve_loop propagated_state (iteration + 1)
-                      | Ok (Provider.Available pkg_deps) ->
-                          (* Add dependencies to graph *)
-                          let dep_list = List.map (fun (d, r) -> (d, r)) pkg_deps in
-                          let new_dep_graph =
-                            DependencyGraph.add_dependencies
-                              new_state.dependency_graph pkg ver dep_list
-                          in
-                          let new_state = { new_state with dependency_graph = new_dep_graph } in
-                          
-                          (* Add dependency incompatibilities *)
-                          List.iter (fun (dep_pkg, dep_ranges) ->
-                            let dep_incompat =
-                              Incompatibility.from_dependency pkg ver (dep_pkg, dep_ranges)
-                            in
-                            add_incompatibility new_state dep_pkg dep_incompat
-                          ) pkg_deps;
-                          
-                          (* Continue solving with updated state *)
-                          solve_loop new_state (iteration + 1)))
+                   | Ok (Some ver) ->
+                       (* Add decision *)
+                       let new_solution = 
+                         Partial_solution.add_decision propagated_state.solution pkg ver
+                       in
+                       let new_state = { propagated_state with solution = new_solution } in
+                       
+                       (* Get dependencies for this package *)
+                       (match provider.Provider.get_dependencies pkg ver with
+                       | Error err -> Error err
+                       | Ok (Provider.Unavailable _reason) ->
+                           (* Package unavailable, treat as no version *)
+                           Log.debug "Package %s@%s unavailable" pkg (Version.to_string ver);
+                           solve_loop propagated_state (iteration + 1)
+                       | Ok (Provider.Available pkg_deps) ->
+                           (* Add dependencies to graph *)
+                           let dep_list = List.map (fun (d, r) -> (d, r)) pkg_deps in
+                           let new_dep_graph =
+                             DependencyGraph.add_dependencies
+                               new_state.dependency_graph pkg ver dep_list
+                           in
+                           let new_state = { new_state with dependency_graph = new_dep_graph } in
+                           
+                           (* Add dependency incompatibilities *)
+                           let changed_pkgs = ref [pkg] in
+                           List.iter (fun (dep_pkg, dep_ranges) ->
+                             let dep_incompat =
+                               Incompatibility.from_dependency pkg ver (dep_pkg, dep_ranges)
+                             in
+                             add_incompatibility new_state dep_pkg dep_incompat;
+                             changed_pkgs := dep_pkg :: !changed_pkgs
+                           ) pkg_deps;
+                           
+                           (* Run unit propagation to check for conflicts *)
+                           (match unit_propagation root_package root_version new_state !changed_pkgs with
+                           | NeedConflictResolution incompat ->
+                               (match conflict_resolution root_package root_version new_state incompat with
+                               | Error result -> Ok result
+                               | Ok resolved_state -> solve_loop resolved_state (iteration + 1))
+                           | PropagationOk prop_state ->
+                               (* Continue solving with updated state *)
+                               solve_loop prop_state (iteration + 1))))
       in
       
       solve_loop state 0

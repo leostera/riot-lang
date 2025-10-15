@@ -1133,7 +1133,7 @@ let test_new_solver_basic () =
       List.iter (fun (pkg, ver) ->
         Log.info "    %s@%s" pkg (Version.to_string ver)
       ) solution
-  | Ok (New_solver.Failure _) ->
+  | Ok (New_solver.Unsat _) ->
       Log.error "✗ NEW solver: unexpected failure"
   | Error err ->
       Log.error "✗ NEW solver error: %s" err
@@ -1151,7 +1151,7 @@ let test_new_solver_with_dependency () =
         Log.info "✓ NEW solver dependency test passed"
       else
         Log.error "✗ NEW solver: expected 2 packages, got %d" (List.length solution)
-  | Ok (New_solver.Failure _) ->
+  | Ok (New_solver.Unsat _) ->
       Log.error "✗ NEW solver: unexpected failure"
   | Error err ->
       Log.error "✗ NEW solver error: %s" err
@@ -1196,7 +1196,127 @@ let test_new_solver_on_test_suite () =
         Log.error "✗ Test 3 failed: expected 3 packages, got %d" (List.length solution)
   | _ -> Log.error "✗ Test 3 failed");
   
-  Log.info "NEW solver preliminary tests complete"
+  Log.info "NEW solver preliminary tests complete";
+  
+  (* Test 4: Conflict - missing dependency *)
+  let provider = Pubgrub.create_offline () in
+  Pubgrub.add_package provider "root" (v 1 0 0) [("nonexistent", Pubgrub.full)];
+  (match New_solver.solve (Pubgrub.to_provider provider) "root" (v 1 0 0) with
+  | Ok (New_solver.Unsat _) ->
+      Log.info "✓ Test 4 (Missing dependency conflict) passed"
+  | Ok (New_solver.Success _) ->
+      Log.error "✗ Test 4 failed: expected failure"
+  | Error err ->
+      Log.error "✗ Test 4 error: %s" err);
+  
+  Log.info "NEW solver conflict tests complete"
+
+let test_new_solver_on_failing_tests () =
+  Log.info "=== Testing NEW solver on previously failing tests ===";
+  
+  (* First, a simpler conflicting deps test *)
+  let provider = Pubgrub.create_offline () in
+  Pubgrub.add_package provider "root" (v 1 0 0)
+    [ ("a", Pubgrub.full); ("b", Pubgrub.full) ];
+  Pubgrub.add_package provider "a" (v 1 0 0)
+    [ ("c", Pubgrub.singleton (v 1 0 0)) ];
+  Pubgrub.add_package provider "b" (v 1 0 0)
+    [ ("c", Pubgrub.singleton (v 2 0 0)) ];
+  Pubgrub.add_package provider "c" (v 1 0 0) [];
+  Pubgrub.add_package provider "c" (v 2 0 0) [];
+  (match New_solver.solve (Pubgrub.to_provider provider) "root" (v 1 0 0) with
+  | Ok (New_solver.Success solution) ->
+      Log.info "✓ Test: Simple conflicting deps passed (%d packages)" (List.length solution);
+      List.iter (fun (pkg, ver) ->
+        Log.info "    %s@%s" pkg (Version.to_string ver)
+      ) solution
+  | Ok (New_solver.Unsat incompat) ->
+      Log.error "✗ Test: Simple conflicting deps failed (got failure)";
+      Log.error "  Reason: %s" (Pubgrub.Report.explain_conflict incompat)
+  | Error err ->
+      Log.error "✗ Test: Simple conflicting deps error: %s" err);
+  
+  (* Test: No solution transitively *)
+  let provider = Pubgrub.create_offline () in
+  Pubgrub.add_package provider "a" (v 0 0 0) [ ("b", Pubgrub.empty) ];
+  Pubgrub.add_package provider "c" (v 0 0 0) [ ("a", Pubgrub.full) ];
+  (match New_solver.solve (Pubgrub.to_provider provider) "c" (v 0 0 0) with
+  | Ok (New_solver.Unsat _) ->
+      Log.info "✓ Test: No solution transitively passed"
+  | Ok (New_solver.Success _) ->
+      Log.error "✗ Test: No solution transitively failed (got success)"
+  | Error err ->
+      Log.error "✗ Test: No solution transitively error: %s" err);
+  
+  (* Test: Avoiding conflict during decision *)
+  let provider = Pubgrub.create_offline () in
+  Pubgrub.add_package provider "root" (v 1 0 0)
+    [
+      ("foo", Pubgrub.between (v 1 0 0) (v 2 0 0));
+      ("bar", Pubgrub.between (v 1 0 0) (v 2 0 0));
+    ];
+  Pubgrub.add_package provider "foo" (v 1 1 0)
+    [ ("bar", Pubgrub.between (v 2 0 0) (v 3 0 0)) ];
+  Pubgrub.add_package provider "foo" (v 1 0 0) [];
+  Pubgrub.add_package provider "bar" (v 1 0 0) [];
+  Pubgrub.add_package provider "bar" (v 1 1 0) [];
+  Pubgrub.add_package provider "bar" (v 2 0 0) [];
+  (match New_solver.solve (Pubgrub.to_provider provider) "root" (v 1 0 0) with
+  | Ok (New_solver.Success solution) ->
+      if List.length solution = 3 then
+        Log.info "✓ Test: Avoiding conflict during decision passed"
+      else
+        Log.error "✗ Test: Avoiding conflict during decision failed (expected 3, got %d)" (List.length solution)
+  | Ok (New_solver.Unsat _) ->
+      Log.error "✗ Test: Avoiding conflict during decision failed (got failure)"
+  | Error err ->
+      Log.error "✗ Test: Avoiding conflict during decision error: %s" err);
+  
+  (* Test: Double choices *)
+  Log.info ">>> Starting Double choices test";
+  let provider = Pubgrub.create_offline () in
+  Pubgrub.add_package provider "a" (v 0 0 0)
+    [ ("b", Pubgrub.full); ("c", Pubgrub.full) ];
+  Pubgrub.add_package provider "b" (v 0 0 0)
+    [ ("d", Pubgrub.singleton (v 0 0 0)) ];
+  Pubgrub.add_package provider "b" (v 1 0 0)
+    [ ("d", Pubgrub.singleton (v 1 0 0)) ];
+  Pubgrub.add_package provider "c" (v 0 0 0) [];
+  Pubgrub.add_package provider "c" (v 1 0 0)
+    [ ("d", Pubgrub.singleton (v 2 0 0)) ];
+  Pubgrub.add_package provider "d" (v 0 0 0) [];
+  (match New_solver.solve (Pubgrub.to_provider provider) "a" (v 0 0 0) with
+  | Ok (New_solver.Success solution) ->
+      if List.length solution = 4 then
+        Log.info "✓ Test: Double choices passed"
+      else (
+        Log.error "✗ Test: Double choices failed (expected 4, got %d)" (List.length solution);
+        List.iter (fun (pkg, ver) ->
+          Log.info "    Solution: %s@%s" pkg (Version.to_string ver)
+        ) solution)
+  | Ok (New_solver.Unsat incompat) ->
+      Log.error "✗ Test: Double choices failed (got failure)";
+      Log.error "  Reason: %s" (Pubgrub.Report.explain_conflict incompat)
+  | Error err ->
+      Log.error "✗ Test: Double choices error: %s" err);
+  
+  (* Test: Confusing with lots of holes *)
+  let provider = Pubgrub.create_offline () in
+  Pubgrub.add_package provider "root" (v 1 0 0)
+    [ ("foo", Pubgrub.full); ("baz", Pubgrub.full) ];
+  for i = 1 to 5 do
+    Pubgrub.add_package provider "foo" (v i 0 0) [ ("bar", Pubgrub.full) ]
+  done;
+  Pubgrub.add_package provider "baz" (v 1 0 0) [];
+  (match New_solver.solve (Pubgrub.to_provider provider) "root" (v 1 0 0) with
+  | Ok (New_solver.Unsat _) ->
+      Log.info "✓ Test: Confusing with lots of holes passed"
+  | Ok (New_solver.Success _) ->
+      Log.error "✗ Test: Confusing with lots of holes failed (got success)"
+  | Error err ->
+      Log.error "✗ Test: Confusing with lots of holes error: %s" err);
+  
+  Log.info "NEW solver failing tests complete"
 
 let () =
   (* Quick tests of new solver architecture *)
@@ -1204,6 +1324,7 @@ let () =
   test_new_solver_basic ();
   test_new_solver_with_dependency ();
   test_new_solver_on_test_suite ();
+  test_new_solver_on_failing_tests ();
   
   (* Run main test suite (old solver) *)
   Miniriot.run

@@ -1,0 +1,52 @@
+[
+  {
+    "kind": {
+      "id": "E0015",
+      "name": "missing-type-name",
+      "expected": "type name",
+      "found": {
+        "kind": "=",
+        "text": "="
+      },
+      "fix": "add a type name after the type keyword",
+      "hint": "Type declarations require a name after the type keyword."
+    },
+    "span": {
+      "start": 5,
+      "end": 6
+    }
+  },
+  {
+    "kind": {
+      "id": "E0013",
+      "name": "missing-type-decl-equals",
+      "expected": "=",
+      "found": {
+        "kind": "keyword",
+        "text": "type"
+      },
+      "fix": "add = between the type name and type definition",
+      "hint": "Type declarations require an = between the type name and its definition."
+    },
+    "span": {
+      "start": 20,
+      "end": 24
+    }
+  },
+  {
+    "kind": {
+      "id": "E0010",
+      "name": "invalid-type-expression",
+      "expected": "type expression",
+      "found": {
+        "kind": "end of file",
+        "text": ""
+      },
+      "hint": "Expected a type like int, string, 'a, or a type constructor."
+    },
+    "span": {
+      "start": 32,
+      "end": 32
+    }
+  }
+]

@@ -1,6 +1,12 @@
 # New Solver Architecture - Lessons Learned
 
-## Current Status
+## Current Status (NEW SOLVER)
+- **Tests Passing**: 7/8 targeted tests (87.5%)
+- **Previously Failing Tests**: 3/4 now pass (75% improvement)
+- **Core Algorithm**: compute_pending architecture working well
+- **Remaining Issue**: Version selection with conflicting dependency ranges
+
+## Old Solver Status (FOR REFERENCE)
 - **Tests Passing**: 117/121 (96.7%)
 - **Core Algorithm**: Working well for most cases
 - **Main Issue**: Pending list management after backtracking

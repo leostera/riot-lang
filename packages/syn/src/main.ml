@@ -84,11 +84,11 @@ let handle_parse sub_matches =
 
 let handle_explain sub_matches =
   let error_code =
-    ArgParser.get_one sub_matches "ERROR_CODE" |> Option.expect ~msg:"ERROR_CODE required"
+    ArgParser.get_one sub_matches "ERROR_CODE"
+    |> Option.expect ~msg:"ERROR_CODE required"
   in
   match Error.id_of_string error_code with
-  | Some id ->
-      println "%s\n" (Error.explain id)
+  | Some id -> println "%s\n" (Error.explain id)
   | None ->
       Log.error "Unknown error code: %s" error_code;
       exit 1

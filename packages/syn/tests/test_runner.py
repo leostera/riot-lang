@@ -215,21 +215,12 @@ class TestRunner:
         """Test a single fixture file. Returns True if passed."""
         expected_path = Path(str(fixture_path) + ".expected")
         
-        if not expected_path.exists():
-            if verbose:
-                print(f"{RED}No expected file for {fixture_path.name}{NC}")
-            return False
-        
         # Parse the file
         output, returncode = self.run_syn(["parse", "--json"], fixture_path)
         if returncode != 0:
             if verbose:
                 print(f"{RED}Parser failed for {fixture_path.name}{NC}")
             return False
-        
-        # Read expected
-        with open(expected_path, 'r') as f:
-            expected = f.read().strip()
         
         actual = output.strip()
         
@@ -239,15 +230,28 @@ class TestRunner:
                 print(f"{RED}Parser produces ERROR/MISSING tokens{NC}")
             return False
         
-        if '"ERROR"' in expected or '"MISSING"' in expected:
-            if verbose:
-                print(f"{RED}Expected file contains ERROR/MISSING tokens{NC}")
-            return False
-        
         # Check for empty parse tree
         if '"width":0,"children":[]' in actual:
             if verbose:
                 print(f"{RED}Empty parse tree - feature not implemented{NC}")
+            return False
+        
+        # If .expected file doesn't exist, create it with actual output
+        if not expected_path.exists():
+            if verbose:
+                print(f"{YELLOW}Creating .expected file for {fixture_path.name}{NC}")
+            with open(expected_path, 'w') as f:
+                f.write(actual)
+                f.write('\n')
+            return True
+        
+        # Read expected
+        with open(expected_path, 'r') as f:
+            expected = f.read().strip()
+        
+        if '"ERROR"' in expected or '"MISSING"' in expected:
+            if verbose:
+                print(f"{RED}Expected file contains ERROR/MISSING tokens{NC}")
             return False
         
         if '"width":0,"children":[]' in expected:
@@ -314,6 +318,12 @@ class TestRunner:
         
         # Extract diagnostics from result
         actual_diagnostics = result.get("diagnostics", [])
+        
+        # Diagnostic tests MUST have at least one diagnostic
+        if len(actual_diagnostics) == 0:
+            if verbose:
+                print(f"{RED}No diagnostics produced - diagnostic test must produce at least one error{NC}")
+            return False
         
         # If .diagnostic file doesn't exist, create it with actual diagnostics
         if not diagnostic_path.exists():
