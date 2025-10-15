@@ -27,6 +27,7 @@ type id =
   | E0024_UppercaseTypeName
   | E0025_BracketedTypeParameters
   | E0026_ListDoubleSemicolon
+  | E0027_IfMissingThen
 
 let id_to_string = function
   | E0001_MalformedTypeVariable -> "E0001"
@@ -55,6 +56,7 @@ let id_to_string = function
   | E0024_UppercaseTypeName -> "E0024"
   | E0025_BracketedTypeParameters -> "E0025"
   | E0026_ListDoubleSemicolon -> "E0026"
+  | E0027_IfMissingThen -> "E0027"
 
 let id_of_string = function
   | "E0001" -> Some E0001_MalformedTypeVariable
@@ -83,6 +85,7 @@ let id_of_string = function
   | "E0024" -> Some E0024_UppercaseTypeName
   | "E0025" -> Some E0025_BracketedTypeParameters
   | "E0026" -> Some E0026_ListDoubleSemicolon
+  | "E0027" -> Some E0027_IfMissingThen
   | _ -> None
 
 let name = function
@@ -112,6 +115,7 @@ let name = function
   | E0024_UppercaseTypeName -> "uppercase-type-name"
   | E0025_BracketedTypeParameters -> "bracketed-type-parameters"
   | E0026_ListDoubleSemicolon -> "list-double-semicolon"
+  | E0027_IfMissingThen -> "if-missing-then"
 
 let explain = function
   | E0001_MalformedTypeVariable ->
@@ -282,4 +286,20 @@ In OCaml lists, elements are separated by semicolons (;), not commas:
 
 Fix: use a single semicolon (;) between list elements.
 Note: Double semicolons (;;) are used as top-level statement terminators in the REPL, not in lists.
+|}
+  | E0027_IfMissingThen ->
+      {|If-expressions require the 'then' keyword after the condition.
+
+In OCaml, if-expressions have the syntax: if condition then expr1 else expr2
+  ```ocaml
+  (* Correct syntax *)
+  let x = if true then 1 else 2
+  let y = if x > 0 then "positive" else "negative"
+  
+  (* Common mistakes *)
+  let z = if true 1 else 2        (* error: missing 'then' *)
+  let w = if x > 0 "pos" else "neg" (* error: missing 'then' *)
+  ```
+
+Fix: add the 'then' keyword after the condition and before the then-branch.
 |}

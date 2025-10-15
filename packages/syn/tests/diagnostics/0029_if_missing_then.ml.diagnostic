@@ -1,0 +1,19 @@
+[
+  {
+    "kind": {
+      "id": "E0027",
+      "name": "if-missing-then",
+      "expected": "then keyword",
+      "found": {
+        "kind": "keyword",
+        "text": "else"
+      },
+      "fix": "add 'then' keyword after the condition",
+      "hint": "If-expressions require the 'then' keyword after the condition.\n\nIn OCaml, if-expressions have the syntax: if condition then expr1 else expr2\n  ```ocaml\n  (* Correct syntax *)\n  let x = if true then 1 else 2\n  let y = if x > 0 then \"positive\" else \"negative\"\n  \n  (* Common mistakes *)\n  let z = if true 1 else 2        (* error: missing 'then' *)\n  let w = if x > 0 \"pos\" else \"neg\" (* error: missing 'then' *)\n  ```\n\nFix: add the 'then' keyword after the condition and before the then-branch.\n"
+    },
+    "span": {
+      "start": 14,
+      "end": 14
+    }
+  }
+]

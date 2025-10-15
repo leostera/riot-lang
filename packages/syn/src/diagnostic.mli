@@ -62,6 +62,7 @@ type kind =
   | UppercaseTypeName of { text : string; found : found_token }
   | BracketedTypeParameters of { type_name : string; found : found_token }
   | ListDoubleSemicolon of { found : found_token }
+  | IfMissingThen of { found : found_token }
 
 type t = { kind : kind; span : Ceibo.Span.t }
 (** A diagnostic with structured error information and source location. *)
@@ -176,6 +177,9 @@ val bracketed_type_parameters :
   type_name:string -> found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 
 val list_double_semicolon :
+  found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
+val if_missing_then :
   found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 
 (** # Serialization *)

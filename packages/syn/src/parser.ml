@@ -551,6 +551,7 @@ and parse_primary_expr parser =
   | Token.Keyword Keyword.True -> parse_constant parser
   | Token.Keyword Keyword.False -> parse_constant parser
   | Token.Keyword Keyword.Fun -> parse_fun_expr parser
+  | Token.Keyword Keyword.If -> parse_if_expr parser
   | Token.OpenDelim Token.Paren -> parse_paren_expr parser
   | Token.OpenDelim Token.BeginEnd -> parse_begin_end_expr parser
   | Token.OpenDelim Token.Bracket -> parse_list_expr parser
@@ -588,6 +589,7 @@ and can_start_arg_expr parser =
   (* Can start arguments *)
   | Token.Ident _ | Token.Literal _ 
   | Token.Keyword Keyword.True | Token.Keyword Keyword.False
+  | Token.Keyword Keyword.If
   | Token.OpenDelim Token.Paren | Token.OpenDelim Token.BeginEnd 
   | Token.OpenDelim Token.Bracket
   | Token.Quote -> true
@@ -945,6 +947,83 @@ and parse_list_expr parser =
          @ tokens_to_green parser trivia_after_open
          @ elements
          @ close_children)
+  | _ ->
+      let found_tok = peek parser in
+      let diagnostic =
+        Diagnostic.invalid_expression ~found:found_tok
+          ~text:(token_text parser found_tok)
+          ~span:(expected_span parser)
+      in
+      make_error_node parser ~diagnostic ~consumed_tokens:[]
+
+(** Parse if-then-else expression: if cond then e1 else e2 *)
+and parse_if_expr parser =
+  match peek_kind parser with
+  | Token.Keyword Keyword.If ->
+      let if_kw = consume parser in
+      let trivia_after_if = consume_trivia parser in
+      
+      (* Parse condition *)
+      let cond = parse_expr parser in
+      let trivia_after_cond = consume_trivia parser in
+      
+      (* Expect 'then' keyword *)
+      let has_then = peek_kind parser = Token.Keyword Keyword.Then in
+      let then_children, trivia_after_then, then_expr, trivia_after_then_expr =
+        if has_then then
+          let then_kw = consume parser in
+          let trivia_after_then = consume_trivia parser in
+          let then_expr = parse_expr parser in
+          let trivia_after_then_expr = consume_trivia parser in
+          ([make_token parser then_kw], trivia_after_then, then_expr, trivia_after_then_expr)
+        else
+          (* Missing 'then' - report error and skip to 'else' *)
+          let found_tok = peek parser in
+          let diagnostic =
+            Diagnostic.if_missing_then ~found:found_tok
+              ~text:(token_text parser found_tok)
+              ~span:(expected_span parser)
+          in
+          report_diagnostic parser diagnostic;
+          
+          (* Skip tokens until we find 'else' or a stopping point *)
+          let error_tokens = ref [] in
+          while not (peek_kind parser = Token.Keyword Keyword.Else 
+                     || peek_kind parser = Token.Keyword Keyword.In
+                     || peek_kind parser = Token.Semi
+                     || peek_kind parser = Token.EOF) do
+            error_tokens := consume parser :: !error_tokens
+          done;
+          
+          (* Wrap consumed tokens in ERROR node *)
+          let error_children = tokens_to_green parser (List.rev !error_tokens) in
+          let error_node = make_node Syntax_kind.ERROR error_children in
+          ([], [], error_node, [])
+      in
+      
+      (* Optional 'else' keyword and branch *)
+      let else_parts =
+        match peek_kind parser with
+        | Token.Keyword Keyword.Else ->
+            let else_kw = consume parser in
+            let trivia_after_else = consume_trivia parser in
+            let else_expr = parse_expr parser in
+            [make_token parser else_kw]
+            @ tokens_to_green parser trivia_after_else
+            @ [Ceibo.Green.Node else_expr]
+        | _ -> []
+      in
+      
+      make_node Syntax_kind.IF_EXPR
+        ([make_token parser if_kw]
+         @ tokens_to_green parser trivia_after_if
+         @ [Ceibo.Green.Node cond]
+         @ tokens_to_green parser trivia_after_cond
+         @ then_children
+         @ tokens_to_green parser trivia_after_then
+         @ [Ceibo.Green.Node then_expr]
+         @ tokens_to_green parser trivia_after_then_expr
+         @ else_parts)
   | _ ->
       let found_tok = peek parser in
       let diagnostic =
