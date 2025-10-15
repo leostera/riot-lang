@@ -48,11 +48,16 @@ let int_to_frame_type = function
   | _ -> None
 
 let parse_flags frame_type flags_byte =
-  let end_stream = flags_byte land 0x01 <> 0 in
   let end_headers = flags_byte land 0x04 <> 0 in
   let padded = flags_byte land 0x08 <> 0 in
   let priority = flags_byte land 0x20 <> 0 in
-  let ack = flags_byte land 0x01 <> 0 in
+  let bit_0_set = flags_byte land 0x01 <> 0 in
+  let end_stream, ack =
+    match frame_type with
+    | Frame.Settings | Frame.Ping -> (false, bit_0_set)
+    | Frame.Data | Frame.Headers -> (bit_0_set, false)
+    | _ -> (false, false)
+  in
   { Frame.end_stream; end_headers; padded; priority; ack }
 
 let parse_frame_header data =
