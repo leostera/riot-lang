@@ -272,7 +272,13 @@ and parse_autolink parser =
           | _ -> false
         in
         
-        let is_valid_email = String.contains url_text '@' in
+        let is_valid_email = 
+          String.contains url_text '@' &&
+          not (String.contains url_text '\\') &&
+          not (String.contains url_text '<') &&
+          not (String.contains url_text '>') &&
+          not (String.contains url_text ' ')
+        in
         
         if is_valid_uri || is_valid_email then begin
           (* Valid! Now consume the tokens *)
