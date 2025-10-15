@@ -33,7 +33,6 @@ let extract_code_snippet source (span : Ceibo.Span.t) =
 
 (* Extract just the message from a diagnostic, without span info *)
 let diagnostic_message diag = Diagnostic.main_message diag
-
 let format_hint text = text
 
 let format_diagnostic ~source diag =
@@ -61,20 +60,12 @@ let format_diagnostic ~source diag =
       in
       match fix with
       | Some fix ->
-          format
-            "%s %s\n\
-            \  |\n\
-             %d | %s\n\
-            \  | %s %s\n\
-            \  |\n\n\
-             %s %s\n\n\
-             %s"
-            error_label main_msg line_num code_line styled_pointer
-            styled_msg fix_label fix explain_msg
+          format "%s %s\n  |\n%d | %s\n  | %s %s\n  |\n\n%s %s\n\n%s"
+            error_label main_msg line_num code_line styled_pointer styled_msg
+            fix_label fix explain_msg
       | None ->
-          format "%s %s\n  |\n%d | %s\n  | %s %s\n  |\n\n%s"
-            error_label main_msg line_num code_line styled_pointer
-            styled_msg explain_msg)
+          format "%s %s\n  |\n%d | %s\n  | %s %s\n  |\n\n%s" error_label
+            main_msg line_num code_line styled_pointer styled_msg explain_msg)
   | None ->
       panic
         "This is a bug! We couldn't show the error message because we couldn't \

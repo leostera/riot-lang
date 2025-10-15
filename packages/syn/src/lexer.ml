@@ -342,11 +342,6 @@ let lex_char cursor token_start =
   let kind =
     match Cursor.peek cursor with
     | None -> Token.Unknown '\''
-    | Some '\'' ->
-        (* Empty char literal: '' *)
-        (* Consume closing quote and return Unknown to signal error *)
-        Cursor.advance cursor;
-        Token.Unknown '\''
     | Some '\\' -> (
         match parse_escape_sequence () with
         | Some char_value -> (
@@ -668,26 +663,8 @@ let next cursor delim_stack =
         { Token.kind = Token.Dollar; span = Ceibo.Span.make ~start ~end_ }
     | Some '"' -> lex_string cursor start
     | Some '\'' ->
-        (* Distinguish between char literals and type variable quotes *)
-        (* Char literal: 'a', '\\', '', etc. - always has closing ' nearby
-           Type variable: 'a, 'foo - no closing ' *)
-        let next_char = Cursor.peek_n cursor 1 in
-        let char_after_next = Cursor.peek_n cursor 2 in
-        let is_char_literal =
-          match next_char with
-          | None -> true (* ' at EOF - unclosed char literal *)
-          | Some '\'' -> true (* '' - empty char literal (error) *)
-          | Some '\\' -> true (* '\x' - escape sequence *)
-          | Some c when is_ident_start c ->
-              (* Could be 'a' (char) or 'a (type var) *)
-              (* Check if there's a closing quote at position 2 *)
-              char_after_next = Some '\''
-          | Some _ ->
-              (* Non-ident char like space, digit, symbol - likely char literal *)
-              true
-        in
-        if is_char_literal then lex_char cursor start
-        else lex_type_var cursor start
+        (* Always tokenize as Quote - let parser determine if it's a char or type var *)
+        lex_type_var cursor start
     | Some c when is_digit c -> lex_number cursor start
     | Some c when is_ident_start c -> lex_ident cursor delim_stack start
     | Some c ->

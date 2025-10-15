@@ -19,6 +19,7 @@ type id =
   | E0016_EmptyCharLiteral
   | E0017_MultiCharLiteral
   | E0018_UnclosedCharLiteral
+  | E0019_UnclosedTypeParams
 
 val id_to_string : id -> string
 val id_of_string : string -> id option

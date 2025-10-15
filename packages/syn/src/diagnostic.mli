@@ -51,6 +51,7 @@ type kind =
   | MissingTypeName of { found : found_token }
   | MissingTypeDeclEquals of { found : found_token }
   | UnclosedDelimiter of { opener : string; found : found_token }
+  | UnclosedTypeParams of { found : found_token }
   | EmptyCharLiteral
   | MultiCharLiteral of { text : string }
   | UnclosedCharLiteral of { text : string }
@@ -136,6 +137,9 @@ val missing_type_decl_equals :
 
 val unclosed_delimiter :
   opener:string -> found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
+val unclosed_type_params :
+  found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 
 val empty_char_literal : span:Ceibo.Span.t -> t
 val multi_char_literal : text:string -> span:Ceibo.Span.t -> t

@@ -206,6 +206,82 @@ let rec parse_type_variable parser =
     ============================================================================
 *)
 
+(** Parse type parameters: 'a or ('a, 'b, 'c) Returns (type_params_green,
+    trivia_tokens) *)
+and parse_type_params parser =
+  match peek_kind parser with
+  | Token.Quote ->
+      (* Single type parameter: 'a *)
+      let param = parse_typexpr parser in
+      let trivia_tokens = consume_trivia parser in
+      ([ Ceibo.Green.Node param ], trivia_tokens)
+  | Token.OpenDelim Token.Paren -> (
+      (* Multiple type parameters: ('a, 'b, 'c) *)
+      let lparen = consume parser in
+      let trivia_after_lparen = consume_trivia parser in
+
+      (* Parse comma-separated list of type variables *)
+      let rec parse_params acc =
+        match peek_kind parser with
+        | Token.CloseDelim Token.Paren ->
+            (* End of parameter list *)
+            List.rev acc
+        | Token.Quote -> (
+            let param = parse_typexpr parser in
+            let trivia_tokens = consume_trivia parser in
+            let trivia_green = tokens_to_green parser trivia_tokens in
+            (* Check for comma or closing paren *)
+            match peek_kind parser with
+            | Token.Comma ->
+                let comma = consume parser in
+                let trivia2_tokens = consume_trivia parser in
+                let trivia2_green = tokens_to_green parser trivia2_tokens in
+                parse_params
+                  (trivia2_green
+                  @ [ make_token parser comma ]
+                  @ trivia_green @ [ Ceibo.Green.Node param ] @ acc)
+            | Token.CloseDelim Token.Paren ->
+                List.rev (trivia_green @ [ Ceibo.Green.Node param ] @ acc)
+            | _ ->
+                (* Expected comma or ) *)
+                List.rev (trivia_green @ [ Ceibo.Green.Node param ] @ acc))
+        | _ ->
+            (* Invalid token in type params *)
+            List.rev acc
+      in
+
+      let params = parse_params [] in
+      let trivia_before_close = consume_trivia parser in
+
+      (* Expect closing paren *)
+      match peek_kind parser with
+      | Token.CloseDelim Token.Paren ->
+          let rparen = consume parser in
+          let trivia_after_rparen = consume_trivia parser in
+          ( [ make_token parser lparen ]
+            @ tokens_to_green parser trivia_after_lparen
+            @ params
+            @ tokens_to_green parser trivia_before_close
+            @ [ make_token parser rparen ],
+            trivia_after_rparen )
+      | _ ->
+          (* Missing closing paren *)
+          let found_tok = peek parser in
+          let diagnostic =
+            Diagnostic.unclosed_type_params ~found:found_tok
+              ~text:(token_text parser found_tok)
+              ~span:(expected_span parser)
+          in
+          report_diagnostic parser diagnostic;
+          ( [ make_token parser lparen ]
+            @ tokens_to_green parser trivia_after_lparen
+            @ params
+            @ tokens_to_green parser trivia_before_close,
+            [] ))
+  | _ ->
+      (* No type parameters *)
+      ([], [])
+
 (** Parse type expression dispatcher *)
 and parse_typexpr parser =
   match peek_kind parser with
@@ -220,7 +296,7 @@ and parse_typexpr parser =
       let diagnostic =
         Diagnostic.invalid_type_expression ~found:found_tok
           ~text:(token_text parser found_tok)
-          ~span:(current_span parser)
+          ~span:(expected_span parser)
       in
       make_error_node parser ~diagnostic ~consumed_tokens:[]
 
@@ -239,12 +315,21 @@ and parse_pattern parser =
   | Token.Underscore ->
       let underscore = consume parser in
       make_node Syntax_kind.WILDCARD_PATTERN [ make_token parser underscore ]
+  | Token.Keyword _ ->
+      (* Keywords cannot be used as identifiers in patterns *)
+      let kw_tok = consume parser in
+      let diagnostic =
+        Diagnostic.invalid_pattern ~found:kw_tok
+          ~text:(token_text parser kw_tok) ~span:(current_span parser)
+      in
+      make_error_node parser ~diagnostic ~consumed_tokens:[ kw_tok ]
   | _ ->
       let found_tok = peek parser in
+      let exp_span = expected_span parser in
       let diagnostic =
         Diagnostic.invalid_pattern ~found:found_tok
           ~text:(token_text parser found_tok)
-          ~span:(current_span parser)
+          ~span:exp_span
       in
       make_error_node parser ~diagnostic ~consumed_tokens:[]
 
@@ -300,8 +385,10 @@ and parse_char_literal parser =
       | Token.Quote ->
           (* Empty char literal: '' *)
           let closing_quote = consume parser in
-          let span = Ceibo.Span.make ~start:quote.Token.span.start
-                   ~end_:closing_quote.Token.span.end_ in
+          let span =
+            Ceibo.Span.make ~start:quote.Token.span.start
+              ~end_:closing_quote.Token.span.end_
+          in
           let diagnostic = Diagnostic.empty_char_literal ~span in
           make_error_node parser ~diagnostic
             ~consumed_tokens:[ quote; closing_quote ]
@@ -324,9 +411,13 @@ and parse_char_literal parser =
           | Token.Quote ->
               (* 'abc' - multiple characters *)
               let closing_quote = consume parser in
-              let span = Ceibo.Span.make ~start:quote.Token.span.start
-                       ~end_:closing_quote.Token.span.end_ in
-              let diagnostic = Diagnostic.multi_char_literal ~text:ident_text ~span in
+              let span =
+                Ceibo.Span.make ~start:quote.Token.span.start
+                  ~end_:closing_quote.Token.span.end_
+              in
+              let diagnostic =
+                Diagnostic.multi_char_literal ~text:ident_text ~span
+              in
               make_error_node parser ~diagnostic
                 ~consumed_tokens:[ quote; ident; closing_quote ]
           | _ ->
@@ -335,20 +426,25 @@ and parse_char_literal parser =
                 Ceibo.Span.make ~start:quote.Token.span.start
                   ~end_:ident.Token.span.end_
               in
-              let diagnostic = Diagnostic.unclosed_char_literal 
-                ~text:("'" ^ ident_text) ~span in
+              let diagnostic =
+                Diagnostic.unclosed_char_literal ~text:("'" ^ ident_text) ~span
+              in
               make_error_node parser ~diagnostic
                 ~consumed_tokens:[ quote; ident ])
       | Token.EOF ->
           (* ' at EOF *)
-          let diagnostic = Diagnostic.unclosed_char_literal
-              ~text:"'" ~span:(expected_span parser) in
+          let diagnostic =
+            Diagnostic.unclosed_char_literal ~text:"'"
+              ~span:(expected_span parser)
+          in
           make_error_node parser ~diagnostic ~consumed_tokens:[ quote ]
       | _ ->
           (* Some other token - unexpected *)
           let found = peek parser in
-          let diagnostic = Diagnostic.unclosed_char_literal
-              ~text:"'" ~span:(current_span parser) in
+          let diagnostic =
+            Diagnostic.unclosed_char_literal ~text:"'"
+              ~span:(current_span parser)
+          in
           make_error_node parser ~diagnostic ~consumed_tokens:[ quote ])
   | _ ->
       (* Not a quote - shouldn't be called *)
@@ -356,7 +452,7 @@ and parse_char_literal parser =
       let diagnostic =
         Diagnostic.invalid_expression ~found:found_tok
           ~text:(token_text parser found_tok)
-          ~span:(current_span parser)
+          ~span:(expected_span parser)
       in
       make_error_node parser ~diagnostic ~consumed_tokens:[]
 
@@ -378,7 +474,7 @@ and parse_expr parser =
       let tok = consume parser in
       let span = tok.Token.span in
       let text = token_text parser tok in
-      let diagnostic = 
+      let diagnostic =
         if text = "''" then Diagnostic.empty_char_literal ~span
         else Diagnostic.unclosed_char_literal ~text ~span
       in
@@ -388,7 +484,7 @@ and parse_expr parser =
       let diagnostic =
         Diagnostic.invalid_expression ~found:found_tok
           ~text:(token_text parser found_tok)
-          ~span:(current_span parser)
+          ~span:(expected_span parser)
       in
       make_error_node parser ~diagnostic ~consumed_tokens:[]
 
@@ -442,7 +538,7 @@ and parse_paren_expr parser =
       let diagnostic =
         Diagnostic.invalid_expression ~found:found_tok
           ~text:(token_text parser found_tok)
-          ~span:(current_span parser)
+          ~span:(expected_span parser)
       in
       make_error_node parser ~diagnostic ~consumed_tokens:[]
 
@@ -485,7 +581,7 @@ and parse_begin_end_expr parser =
       let diagnostic =
         Diagnostic.invalid_expression ~found:found_tok
           ~text:(token_text parser found_tok)
-          ~span:(current_span parser)
+          ~span:(expected_span parser)
       in
       make_error_node parser ~diagnostic ~consumed_tokens:[]
 
@@ -607,14 +703,22 @@ and parse_type_decl parser =
       let type_kw = consume parser in
       let trivia_after_type = consume_trivia parser in
 
-      (* Try to parse type parameters (e.g., 'a, 'b) - optional *)
+      (* Try to parse type parameters (e.g., 'a or ('a, 'b)) - optional *)
       let type_params, trivia_after_params =
         match peek_kind parser with
-        | Token.Quote ->
-            let param = parse_typexpr parser in
+        | Token.Unknown '\'' ->
+            (* Malformed type variable like ' a or '' *)
+            let tok = consume parser in
+            let diagnostic =
+              Diagnostic.malformed_type_variable ~found:tok
+                ~text:(token_text parser tok) ~span:tok.Token.span
+            in
+            let error_node =
+              make_error_node parser ~diagnostic ~consumed_tokens:[ tok ]
+            in
             let trivia = consume_trivia parser in
-            ([ Ceibo.Green.Node param ], trivia)
-        | _ -> ([], [])
+            ([ Ceibo.Green.Node error_node ], trivia)
+        | _ -> parse_type_params parser
       in
 
       (* Check if type param had error - if so, skip to sync point and return early *)

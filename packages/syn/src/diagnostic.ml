@@ -23,6 +23,7 @@ type kind =
   | MissingTypeName of { found : found_token }
   | MissingTypeDeclEquals of { found : found_token }
   | UnclosedDelimiter of { opener : string; found : found_token }
+  | UnclosedTypeParams of { found : found_token }
   | EmptyCharLiteral
   | MultiCharLiteral of { text : string }
   | UnclosedCharLiteral of { text : string }
@@ -107,14 +108,18 @@ let unclosed_delimiter ~opener ~found:token ~text ~span =
   let found = { kind = kind_str; text } in
   make ~kind:(UnclosedDelimiter { opener; found }) ~span
 
-let empty_char_literal ~span =
-  make ~kind:EmptyCharLiteral ~span
+let empty_char_literal ~span = make ~kind:EmptyCharLiteral ~span
 
 let multi_char_literal ~text ~span =
   make ~kind:(MultiCharLiteral { text }) ~span
 
 let unclosed_char_literal ~text ~span =
   make ~kind:(UnclosedCharLiteral { text }) ~span
+
+let unclosed_type_params ~found:token ~text ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text } in
+  make ~kind:(UnclosedTypeParams { found }) ~span
 
 let expected_message diag =
   match diag.kind with
@@ -128,7 +133,7 @@ let expected_message diag =
   | InvalidPattern _ -> "identifier or pattern"
   | InvalidExpression _ -> "expression"
   | InvalidConstant _ -> "constant (integer, float, string, or char)"
-  | InvalidTypeExpression _ -> "type expression"
+  | InvalidTypeExpression _ -> "type definition"
   | MissingLetKeyword _ -> "let keyword"
   | MissingTypeKeyword _ -> "type keyword"
   | MissingTypeName _ -> "type name"
@@ -141,6 +146,7 @@ let expected_message diag =
       | "[" -> "]"
       | "[|" -> "|]"
       | _ -> "closing delimiter")
+  | UnclosedTypeParams _ -> ")"
   | EmptyCharLiteral -> "non-empty character literal"
   | MultiCharLiteral _ -> "single character"
   | UnclosedCharLiteral _ -> "' (closing quote)"
@@ -165,8 +171,11 @@ let fix_message diag =
         | "[" -> "add ] to close the bracket"
         | "[|" -> "add |] to close the array"
         | _ -> "add closing delimiter")
-  | InvalidPattern _ ->
-      Some "add a variable name, \"_\" (underscore) to ignore it."
+  | UnclosedTypeParams _ -> Some "add ) to close the type parameter list"
+  | InvalidPattern { found } -> (
+      match found.kind with
+      | "keyword" -> Some (format "use a different name like %s_" found.text)
+      | _ -> Some "add a variable name, \"_\" (underscore) to ignore it.")
   | EmptyCharLiteral -> Some "add a character between the quotes, e.g. 'a'"
   | MultiCharLiteral _ -> Some "use only one character in the literal"
   | UnclosedCharLiteral _ -> Some "add a closing ' (quote) after the character"
@@ -192,6 +201,7 @@ let error_id diag =
   | EmptyCharLiteral -> Error.E0016_EmptyCharLiteral
   | MultiCharLiteral _ -> Error.E0017_MultiCharLiteral
   | UnclosedCharLiteral _ -> Error.E0018_UnclosedCharLiteral
+  | UnclosedTypeParams _ -> Error.E0019_UnclosedTypeParams
 
 let hint_message diag = diag |> error_id |> Error.explain
 let id err = err |> error_id |> Error.id_to_string
@@ -224,6 +234,7 @@ let found_token diag =
   | MissingTypeName { found } -> found
   | MissingTypeDeclEquals { found } -> found
   | UnclosedDelimiter { found; _ } -> found
+  | UnclosedTypeParams { found } -> found
   | EmptyCharLiteral -> { kind = "char literal"; text = "''" }
   | MultiCharLiteral { text } -> { kind = "char literal"; text }
   | UnclosedCharLiteral { text } -> { kind = "char literal"; text }
@@ -231,7 +242,8 @@ let found_token diag =
 let main_message diag =
   match diag.kind with
   | EmptyCharLiteral -> "empty character literal"
-  | MultiCharLiteral { text } -> format "character literal '%s' contains multiple characters" text
+  | MultiCharLiteral { text } ->
+      format "character literal '%s' contains multiple characters" text
   | UnclosedCharLiteral { text } -> format "missing ' (quote) after %s" text
   | _ ->
       let expected = expected_message diag in

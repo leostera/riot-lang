@@ -1,18 +1,1 @@
-[
-  {
-    "kind": {
-      "id": "E0008",
-      "name": "invalid-expression",
-      "expected": "expression",
-      "found": {
-        "kind": "'",
-        "text": "'"
-      },
-      "hint": "Expected a value, function call, or operator expression."
-    },
-    "span": {
-      "start": 8,
-      "end": 9
-    }
-  }
-]
+{"tree":{"type":"node","kind":"SOURCE_FILE","width":11,"children":[{"type":"node","kind":"LET_BINDING","width":11,"children":[{"type":"token","kind":"IDENT_EXPR","text":"let","width":3},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"IDENT_PATTERN","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"x","width":1}]},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":"=","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"ERROR","width":2,"children":[{"type":"token","kind":"IDENT_EXPR","text":"''","width":2}]},{"type":"token","kind":"WHITESPACE","text":"\n","width":1}]}]},"diagnostics":[{"kind":{"id":"E0016","name":"empty-char-literal","expected":"non-empty character literal","found":{"kind":"char literal","text":"''"},"fix":"add a character between the quotes, e.g. 'a'","hint":"Character literals cannot be empty. Use a space character ' ' if you need a space."},"span":{"start":8,"end":10}}]}

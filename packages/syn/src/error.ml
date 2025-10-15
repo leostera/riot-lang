@@ -19,6 +19,7 @@ type id =
   | E0016_EmptyCharLiteral
   | E0017_MultiCharLiteral
   | E0018_UnclosedCharLiteral
+  | E0019_UnclosedTypeParams
 
 let id_to_string = function
   | E0001_MalformedTypeVariable -> "E0001"
@@ -39,6 +40,7 @@ let id_to_string = function
   | E0016_EmptyCharLiteral -> "E0016"
   | E0017_MultiCharLiteral -> "E0017"
   | E0018_UnclosedCharLiteral -> "E0018"
+  | E0019_UnclosedTypeParams -> "E0019"
 
 let id_of_string = function
   | "E0001" -> Some E0001_MalformedTypeVariable
@@ -59,6 +61,7 @@ let id_of_string = function
   | "E0016" -> Some E0016_EmptyCharLiteral
   | "E0017" -> Some E0017_MultiCharLiteral
   | "E0018" -> Some E0018_UnclosedCharLiteral
+  | "E0019" -> Some E0019_UnclosedTypeParams
   | _ -> None
 
 let name = function
@@ -80,6 +83,7 @@ let name = function
   | E0016_EmptyCharLiteral -> "empty-char-literal"
   | E0017_MultiCharLiteral -> "multi-char-literal"
   | E0018_UnclosedCharLiteral -> "unclosed-char-literal"
+  | E0019_UnclosedTypeParams -> "unclosed-type-params"
 
 let explain = function
   | E0001_MalformedTypeVariable ->
@@ -140,3 +144,5 @@ Beware that pattern matching on only one of many possible values will lead to ru
       {|Character literals can only contain a single character. Use a string "..." for multiple characters.|}
   | E0018_UnclosedCharLiteral ->
       {|Character literals must be closed with a single quote '.|}
+  | E0019_UnclosedTypeParams ->
+      {|Type parameter lists must be closed with a closing parenthesis ). For example: type ('a, 'b) t = ...|}
