@@ -1,14 +1,9 @@
 open Std
 
 (* Simple cursor for lexing with position tracking *)
-type cursor = {
-  input : string;
-  mutable pos : int;
-  length : int;
-}
+type cursor = { input : string; mutable pos : int; length : int }
 
-let create input = 
-  { input; pos = 0; length = String.length input }
+let create input = { input; pos = 0; length = String.length input }
 
 let peek cursor =
   if cursor.pos >= cursor.length then None
@@ -31,14 +26,16 @@ let take_while cursor f =
 let tokenize input =
   let cursor = create input in
   let tokens = Cell.create [] in
-  
+
   let add_token kind =
-    let span = Ceibo.Span.make ~start:(position cursor) ~end_:(position cursor + 1) in
+    let span =
+      Ceibo.Span.make ~start:(position cursor) ~end_:(position cursor + 1)
+    in
     let token = Token.make kind span in
     Cell.set tokens (token :: Cell.get tokens);
     advance cursor
   in
-  
+
   let add_text_token start =
     let end_pos = position cursor in
     if end_pos > start then
@@ -46,7 +43,7 @@ let tokenize input =
       let token = Token.make Syntax_kind.TEXT_TOKEN span in
       Cell.set tokens (token :: Cell.get tokens)
   in
-  
+
   while position cursor < cursor.length do
     match peek cursor with
     | None -> ()
@@ -74,7 +71,8 @@ let tokenize input =
             let start = position cursor in
             advance cursor;
             match peek cursor with
-            | Some c when String.contains "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~" c ->
+            | Some c when String.contains "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~" c
+              ->
                 advance cursor;
                 let span = Ceibo.Span.make ~start ~end_:(position cursor) in
                 let token = Token.make Syntax_kind.ESCAPED_CHAR span in
@@ -90,28 +88,31 @@ let tokenize input =
         | ':' -> add_token Syntax_kind.COLON
         | '\'' -> add_token Syntax_kind.QUOTE
         | '"' -> add_token Syntax_kind.DOUBLE_QUOTE
-        | '\n' | '\r' -> (
+        | '\n' | '\r' ->
             (* Handle newlines (both \n and \r\n) *)
             let start = position cursor in
             advance cursor;
             if c = '\r' && peek cursor = Some '\n' then advance cursor;
             let span = Ceibo.Span.make ~start ~end_:(position cursor) in
             let token = Token.make Syntax_kind.NEWLINE span in
-            Cell.set tokens (token :: Cell.get tokens))
-        | '0' .. '9' -> (
+            Cell.set tokens (token :: Cell.get tokens)
+        | '0' .. '9' ->
             (* Collect digit as text token *)
             let start = position cursor in
             advance cursor;
             let span = Ceibo.Span.make ~start ~end_:(position cursor) in
             let token = Token.make Syntax_kind.DIGIT span in
-            Cell.set tokens (token :: Cell.get tokens))
+            Cell.set tokens (token :: Cell.get tokens)
         | _ ->
             (* Collect regular text *)
             let start = position cursor in
-            let _text = take_while cursor (fun ch ->
-              not (String.contains "#*_`-+[]()!<>=. \t\\\n\r&|~:'\"0123456789" ch)
-            ) in
+            let _text =
+              take_while cursor (fun ch ->
+                  not
+                    (String.contains "#*_`-+[]()!<>=. \t\\\n\r&|~:'\"0123456789"
+                       ch))
+            in
             add_text_token start)
   done;
-  
+
   List.rev (Cell.get tokens)

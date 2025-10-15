@@ -7,5 +7,4 @@ let parse input =
   let tree = Parser.parse ~source:input tokens in
   tree
 
-let compile tree =
-  Compiler.compile "" tree
+let compile tree = Compiler.compile "" tree

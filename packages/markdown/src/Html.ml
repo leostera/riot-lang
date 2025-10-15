@@ -115,10 +115,8 @@ let rec to_string = function
           format "<%s%s />" name attrs_str
         else if children = [] then
           (* Empty element - add newlines if needed *)
-          if needs_newlines then
-            format "<%s%s>\n</%s>" name attrs_str name
-          else
-            format "<%s%s></%s>" name attrs_str name
+          if needs_newlines then format "<%s%s>\n</%s>" name attrs_str name
+          else format "<%s%s></%s>" name attrs_str name
         else
           let children_str = String.concat "" (List.map to_string children) in
           if needs_newlines then

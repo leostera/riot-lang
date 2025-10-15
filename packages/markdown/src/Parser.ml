@@ -1,13 +1,10 @@
 open Std
 
+type parser = { cursor : Token_cursor.t }
 (** Parser state *)
-type parser = {
-  cursor : Token_cursor.t;
-}
 
 (** Create a new parser from tokens *)
-let create ~source tokens =
-  { cursor = Token_cursor.create ~source tokens }
+let create ~source tokens = { cursor = Token_cursor.create ~source tokens }
 
 (** Get current position in token stream *)
 let position parser = Token_cursor.position parser.cursor
@@ -23,6 +20,39 @@ let peek_kind parser = (peek parser).Token.kind
 
 (** Peek n tokens ahead *)
 let peek_n parser n = Token_cursor.peek_n parser.cursor n
+
+(** Peek ahead and collect tokens until a condition is met, without consuming *)
+let peek_until parser ~stop =
+  let rec collect offset acc =
+    let tok = peek_n parser offset in
+    if stop tok then
+      Some (List.rev acc)
+    else if tok.Token.kind = Syntax_kind.EOF then
+      None
+    else
+      collect (offset + 1) (tok :: acc)
+  in
+  collect 0 []
+
+(** Peek ahead and collect token texts until a condition is met, without consuming *)
+let peek_text_until parser ~stop =
+  match peek_until parser ~stop with
+  | Some tokens -> 
+      Some (String.concat "" (List.map (fun tok -> 
+        Token_cursor.view parser.cursor tok.Token.span
+      ) tokens))
+  | None -> None
+
+(** Peek many tokens ahead (up to n), without consuming *)
+let peek_many parser n =
+  let rec collect offset acc =
+    if offset >= n then List.rev acc
+    else
+      let tok = peek_n parser offset in
+      if tok.Token.kind = Syntax_kind.EOF then List.rev acc
+      else collect (offset + 1) (tok :: acc)
+  in
+  collect 0 []
 
 (** Check if current token matches a specific kind *)
 let at parser kind = peek_kind parser = kind
@@ -74,16 +104,16 @@ and parse_code_span parser =
     | _ -> n
   in
   let open_count = count_opening 0 in
-  
+
   (* Consume opening backticks *)
   for _ = 1 to open_count do
     advance parser
   done;
-  
+
   (* Collect content until we find matching closing backticks *)
   let rec find_closing acc backtick_run =
     match peek_kind parser with
-    | Syntax_kind.EOF -> 
+    | Syntax_kind.EOF ->
         (* No closing backticks found - not a code span *)
         None
     | Syntax_kind.BACKTICK ->
@@ -96,28 +126,32 @@ and parse_code_span parser =
         else if backtick_run > 0 then
           (* Wrong number of backticks - include them in content *)
           let tok = consume parser in
-          let backticks = List.make ~len:backtick_run ~fn:(fun _ -> 
-            Token.make Syntax_kind.BACKTICK (Ceibo.Span.make ~start:0 ~end_:1)
-          ) in
-          find_closing (make_token parser tok :: (List.map (make_token parser) backticks @ acc)) 0
+          let backticks =
+            List.make ~len:backtick_run ~fn:(fun _ ->
+                Token.make Syntax_kind.BACKTICK
+                  (Ceibo.Span.make ~start:0 ~end_:1))
+          in
+          find_closing
+            (make_token parser tok
+            :: (List.map (make_token parser) backticks @ acc))
+            0
         else
           let tok = consume parser in
           find_closing (make_token parser tok :: acc) 0
   in
-  
+
   match find_closing [] 0 with
   | Some content ->
       (* Strip single leading/trailing space if both present *)
-      let content = 
+      let content =
         match content with
-        | [Ceibo.Green.Token tok] ->
+        | [ Ceibo.Green.Token tok ] ->
             let text = tok.text in
             let len = String.length text in
             if len >= 2 && text.[0] = ' ' && text.[len - 1] = ' ' then
               let stripped = String.sub text 1 (len - 2) in
-              [Ceibo.Green.Token { tok with text = stripped }]
-            else
-              content
+              [ Ceibo.Green.Token { tok with text = stripped } ]
+            else content
         | _ -> content
       in
       Some (make_node Syntax_kind.INLINE_CODE content)
@@ -134,21 +168,28 @@ and parse_emphasis parser delim_kind =
     | _ -> n
   in
   let open_count = count_delims 0 in
-  
+
   (* Handle single (emphasis) or double (strong) delimiters *)
-  if open_count >= 1 && open_count <= 2 then begin
+  if open_count >= 1 && open_count <= 2 then
     (* Check that opening delimiter is not followed by whitespace *)
     match peek_n parser open_count with
-    | { kind = Syntax_kind.SPACE | Syntax_kind.TAB | Syntax_kind.NEWLINE | Syntax_kind.EOF; _ } ->
+    | {
+     kind =
+       ( Syntax_kind.SPACE | Syntax_kind.TAB | Syntax_kind.NEWLINE
+       | Syntax_kind.EOF );
+     _;
+    } ->
         None (* can't open emphasis with whitespace after *)
-    | _ ->
+    | _ -> (
         (* Consume opening delimiters *)
         for _ = 1 to open_count do
           advance parser
         done;
-        
-        let node_kind = if open_count = 2 then Syntax_kind.STRONG else Syntax_kind.EMPHASIS in
-        
+
+        let node_kind =
+          if open_count = 2 then Syntax_kind.STRONG else Syntax_kind.EMPHASIS
+        in
+
         (* Collect content until closing delimiters *)
         let rec find_closing acc last_was_space =
           match peek_kind parser with
@@ -156,23 +197,23 @@ and parse_emphasis parser delim_kind =
           | k when k = delim_kind ->
               (* Check if we have enough closing delimiters *)
               let close_count = count_delims 0 in
-              if close_count >= open_count && not last_was_space then begin
+              if close_count >= open_count && not last_was_space then (
                 (* Found valid closing *)
                 for _ = 1 to open_count do
                   advance parser
                 done;
-                Some (List.rev acc)
-              end else begin
+                Some (List.rev acc))
+              else
                 (* Not enough delimiters or preceded by space, include and continue *)
                 let tok = consume parser in
                 find_closing (make_token parser tok :: acc) false
-              end
           | Syntax_kind.SPACE | Syntax_kind.TAB ->
               let tok = consume parser in
               find_closing (make_token parser tok :: acc) true
           | Syntax_kind.BACKTICK -> (
               match parse_code_span parser with
-              | Some code_span -> find_closing (Ceibo.Green.Node code_span :: acc) false
+              | Some code_span ->
+                  find_closing (Ceibo.Green.Node code_span :: acc) false
               | None ->
                   let tok = consume parser in
                   find_closing (make_token parser tok :: acc) false)
@@ -183,56 +224,73 @@ and parse_emphasis parser delim_kind =
               let tok = consume parser in
               find_closing (make_token parser tok :: acc) false
         in
-        
+
         match find_closing [] false with
         | Some content -> Some (make_node node_kind content)
-        | None -> None (* failed to parse emphasis *)
-  end else
-    None
+        | None -> None (* failed to parse emphasis *))
+  else None
 
 (** Parse autolink <url> or <email> *)
 and parse_autolink parser =
-  (* Peek ahead to check if this looks like an autolink *)
-  let rec check_autolink offset =
-    match peek_n parser offset with
-    | { kind = Syntax_kind.GREATER_THAN; _ } when offset > 1 ->
-        (* Found closing >, looks valid *)
-        true
-    | { kind = Syntax_kind.NEWLINE | Syntax_kind.EOF | Syntax_kind.SPACE; _ } ->
-        (* Invalid autolink *)
-        false
-    | { kind = Syntax_kind.LESS_THAN; _ } when offset > 1 ->
-        (* Nested <, invalid *)
-        false
-    | _ when offset > 100 ->
-        (* Too long, give up *)
-        false
-    | _ ->
-        check_autolink (offset + 1)
-  in
-  
-  if not (check_autolink 1) then None
-  else begin
-    advance parser; (* consume < *)
-    
-    (* Collect until > *)
-    let rec collect_url acc =
-      match peek_kind parser with
-      | Syntax_kind.GREATER_THAN ->
-          advance parser; (* consume > *)
-          Some (List.rev acc)
-      | _ ->
-          let tok = consume parser in
-          collect_url (make_token parser tok :: acc)
+  (* Check if we're at < *)
+  if peek_kind parser <> Syntax_kind.LESS_THAN then None
+  else
+    (* Use lookahead to validate BEFORE consuming any tokens *)
+    (* Start peeking from offset 1 (after <) *)
+    let rec collect_url_text offset acc =
+      let tok = peek_n parser offset in
+      match tok.Token.kind with
+      | Syntax_kind.GREATER_THAN -> Some (String.concat "" (List.rev acc))
+      | Syntax_kind.NEWLINE | Syntax_kind.EOF | Syntax_kind.SPACE -> None
+      | Syntax_kind.LESS_THAN when offset > 1 -> None
+      | _ when offset > 100 -> None
+      | _ -> 
+          let text = Token_cursor.view parser.cursor tok.Token.span in
+          collect_url_text (offset + 1) (text :: acc)
     in
     
-    match collect_url [] with
-    | Some url_tokens ->
-        (* Create a LINK node with the URL as both href and text *)
-        Some (make_node Syntax_kind.LINK url_tokens)
-    | None ->
-        None
-  end
+    let url_text_opt = collect_url_text 1 [] in
+    
+    match url_text_opt with
+    | None -> None
+    | Some url_text when String.length url_text = 0 -> None
+    | Some url_text ->
+        (* Validate the URL/email BEFORE consuming *)
+        let is_valid_uri =
+          match String.index_opt url_text ':' with
+          | Some colon_pos when colon_pos > 0 ->
+              let scheme = String.sub url_text 0 colon_pos in
+              let has_path = colon_pos < String.length url_text - 1 in
+              let valid_scheme =
+                String.length scheme >= 2 && String.length scheme <= 32 &&
+                String.for_all (fun c ->
+                  (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+                  (c >= '0' && c <= '9') || c = '+' || c = '-' || c = '.'
+                ) scheme
+              in
+              valid_scheme && has_path
+          | _ -> false
+        in
+        
+        let is_valid_email = String.contains url_text '@' in
+        
+        if is_valid_uri || is_valid_email then begin
+          (* Valid! Now consume the tokens *)
+          advance parser; (* consume < *)
+          let rec collect_url acc =
+            match peek_kind parser with
+            | Syntax_kind.GREATER_THAN ->
+                advance parser;
+                Some (List.rev acc)
+            | _ ->
+                let tok = consume parser in
+                collect_url (make_token parser tok :: acc)
+          in
+          match collect_url [] with
+          | Some url_tokens -> Some (make_node Syntax_kind.LINK url_tokens)
+          | None -> None
+        end else
+          None
 
 (** Parse inline content (simplified for now) *)
 and parse_inline parser =
@@ -242,8 +300,7 @@ and parse_inline parser =
     | Syntax_kind.BACKTICK -> (
         (* Try to parse code span *)
         match parse_code_span parser with
-        | Some code_span ->
-            collect_inline (Ceibo.Green.Node code_span :: acc)
+        | Some code_span -> collect_inline (Ceibo.Green.Node code_span :: acc)
         | None ->
             (* Failed - consume backtick as regular token *)
             let tok = consume parser in
@@ -251,8 +308,7 @@ and parse_inline parser =
     | Syntax_kind.STAR | Syntax_kind.UNDERSCORE -> (
         (* Try to parse emphasis *)
         match parse_emphasis parser (peek_kind parser) with
-        | Some emphasis ->
-            collect_inline (Ceibo.Green.Node emphasis :: acc)
+        | Some emphasis -> collect_inline (Ceibo.Green.Node emphasis :: acc)
         | None ->
             (* Failed - consume delimiter as regular token *)
             let tok = consume parser in
@@ -260,8 +316,7 @@ and parse_inline parser =
     | Syntax_kind.LESS_THAN -> (
         (* Try to parse autolink *)
         match parse_autolink parser with
-        | Some link ->
-            collect_inline (Ceibo.Green.Node link :: acc)
+        | Some link -> collect_inline (Ceibo.Green.Node link :: acc)
         | None ->
             (* Failed - consume < as regular token *)
             let tok = consume parser in
@@ -286,62 +341,71 @@ and check_setext_underline parser =
       | { kind = Syntax_kind.SPACE; _ } -> skip_indent (offset + 1) (spaces + 1)
       | _ -> offset
   in
-  
+
   let rec check_underline char_kind offset count =
     let rec check_trailing offset =
       match peek_n parser offset with
-      | { kind = Syntax_kind.SPACE | Syntax_kind.TAB; _ } -> check_trailing (offset + 1)
+      | { kind = Syntax_kind.SPACE | Syntax_kind.TAB; _ } ->
+          check_trailing (offset + 1)
       | { kind = Syntax_kind.NEWLINE | Syntax_kind.EOF; _ } -> Some char_kind
       | _ -> None (* Non-whitespace after underline = invalid *)
     in
     match peek_n parser offset with
-    | { kind; _ } when kind = char_kind -> check_underline char_kind (offset + 1) (count + 1)
-    | { kind = Syntax_kind.SPACE | Syntax_kind.TAB; _ } when count > 0 -> 
+    | { kind; _ } when kind = char_kind ->
+        check_underline char_kind (offset + 1) (count + 1)
+    | { kind = Syntax_kind.SPACE | Syntax_kind.TAB; _ } when count > 0 ->
         (* After finding underline chars, skip trailing spaces *)
         check_trailing (offset + 1)
-    | { kind = Syntax_kind.NEWLINE | Syntax_kind.EOF; _ } when count > 0 -> Some char_kind
+    | { kind = Syntax_kind.NEWLINE | Syntax_kind.EOF; _ } when count > 0 ->
+        Some char_kind
     | _ -> None
   in
-  
+
   let start_offset = skip_indent 0 0 in
   match peek_n parser start_offset with
-  | { kind = Syntax_kind.EQUAL; _ } -> check_underline Syntax_kind.EQUAL start_offset 0
-  | { kind = Syntax_kind.DASH; _ } -> check_underline Syntax_kind.DASH start_offset 0
+  | { kind = Syntax_kind.EQUAL; _ } ->
+      check_underline Syntax_kind.EQUAL start_offset 0
+  | { kind = Syntax_kind.DASH; _ } ->
+      check_underline Syntax_kind.DASH start_offset 0
   | _ -> None
 
 (** Parse a paragraph *)
 and parse_paragraph parser =
   let start_tok = peek parser in
-  
+
   (* Collect first line of content *)
   let first_line = parse_inline parser in
-  
+
   (* Check if we're at end or if there's a second line *)
   match peek_kind parser with
-  | Syntax_kind.EOF ->
-      make_node Syntax_kind.PARAGRAPH first_line
-  | Syntax_kind.NEWLINE ->
-      let first_newline = consume parser in (* consume newline *)
+  | Syntax_kind.EOF -> make_node Syntax_kind.PARAGRAPH first_line
+  | Syntax_kind.NEWLINE -> (
+      let first_newline = consume parser in
+      (* consume newline *)
       (* Check if next line is a Setext underline *)
-      (match check_setext_underline parser with
+      match check_setext_underline parser with
       | Some Syntax_kind.EQUAL ->
           (* H1 - consume underline *)
-          while peek_kind parser <> Syntax_kind.NEWLINE && not (is_eof parser) do
+          while
+            peek_kind parser <> Syntax_kind.NEWLINE && not (is_eof parser)
+          do
             advance parser
           done;
           if peek_kind parser = Syntax_kind.NEWLINE then advance parser;
           make_node Syntax_kind.HEADING1 first_line
       | Some Syntax_kind.DASH ->
           (* H2 - consume underline *)
-          while peek_kind parser <> Syntax_kind.NEWLINE && not (is_eof parser) do
+          while
+            peek_kind parser <> Syntax_kind.NEWLINE && not (is_eof parser)
+          do
             advance parser
           done;
           if peek_kind parser = Syntax_kind.NEWLINE then advance parser;
           make_node Syntax_kind.HEADING2 first_line
-      | None ->
+      | None -> (
           (* Not a Setext heading, continue as paragraph *)
           (* Check if next is blank line *)
-          (match peek_kind parser with
+          match peek_kind parser with
           | Syntax_kind.NEWLINE | Syntax_kind.EOF ->
               (* End of paragraph *)
               make_node Syntax_kind.PARAGRAPH first_line
@@ -350,9 +414,9 @@ and parse_paragraph parser =
               let rec collect_rest acc =
                 match peek_kind parser with
                 | Syntax_kind.EOF -> acc
-                | Syntax_kind.NEWLINE ->
+                | Syntax_kind.NEWLINE -> (
                     let tok = consume parser in
-                    (match peek_kind parser with
+                    match peek_kind parser with
                     | Syntax_kind.NEWLINE | Syntax_kind.EOF ->
                         (* End of paragraph *)
                         acc
@@ -360,34 +424,42 @@ and parse_paragraph parser =
                         (* Continue paragraph - skip leading spaces *)
                         let rec skip_leading () =
                           match peek_kind parser with
-                          | Syntax_kind.SPACE -> advance parser; skip_leading ()
+                          | Syntax_kind.SPACE ->
+                              advance parser;
+                              skip_leading ()
                           | _ -> ()
                         in
                         skip_leading ();
                         let inline = parse_inline parser in
-                        collect_rest (acc @ [make_token parser tok] @ inline))
+                        collect_rest (acc @ [ make_token parser tok ] @ inline))
                 | _ ->
                     (* Check if current line starts a structure that interrupts paragraphs *)
                     (* ATX headings and thematic breaks can interrupt paragraphs *)
-                    if check_atx_heading parser <> None || check_thematic_break parser <> None then begin
+                    if
+                      check_atx_heading parser <> None
+                      || check_thematic_break parser <> None
+                    then
                       (* Structure interrupts - end paragraph here *)
                       (* Remove trailing newline from acc if present *)
                       match List.rev acc with
-                      | Ceibo.Green.Token { kind = Syntax_kind.NEWLINE; _ } :: rest -> List.rev rest
+                      | Ceibo.Green.Token { kind = Syntax_kind.NEWLINE; _ }
+                        :: rest ->
+                          List.rev rest
                       | _ -> acc
-                    end else begin
+                    else
                       (* Skip leading spaces in paragraph continuations *)
                       let rec skip_paragraph_indent () =
                         match peek_kind parser with
-                        | Syntax_kind.SPACE -> advance parser; skip_paragraph_indent ()
+                        | Syntax_kind.SPACE ->
+                            advance parser;
+                            skip_paragraph_indent ()
                         | _ -> ()
                       in
                       skip_paragraph_indent ();
                       let inline = parse_inline parser in
                       collect_rest (acc @ inline)
-                    end
               in
-              let rest = collect_rest [make_token parser first_newline] in
+              let rest = collect_rest [ make_token parser first_newline ] in
               make_node Syntax_kind.PARAGRAPH (first_line @ rest)))
   | _ ->
       (* Shouldn't happen, but handle it *)
@@ -398,8 +470,10 @@ and check_indented_code parser =
   let rec count_spaces offset spaces =
     match peek_n parser offset with
     | { kind = Syntax_kind.SPACE; _ } -> count_spaces (offset + 1) (spaces + 1)
-    | { kind = Syntax_kind.TAB; _ } -> count_spaces (offset + 1) (spaces + 4) (* tab = 4 spaces *)
-    | { kind = Syntax_kind.NEWLINE | Syntax_kind.EOF; _ } -> spaces >= 4 (* blank line with 4+ spaces can start code block *)
+    | { kind = Syntax_kind.TAB; _ } ->
+        count_spaces (offset + 1) (spaces + 4) (* tab = 4 spaces *)
+    | { kind = Syntax_kind.NEWLINE | Syntax_kind.EOF; _ } ->
+        spaces >= 4 (* blank line with 4+ spaces can start code block *)
     | _ -> spaces >= 4
   in
   count_spaces 0 0
@@ -418,7 +492,7 @@ and parse_indented_code parser =
     in
     check_line 0 0
   in
-  
+
   let rec collect_lines acc =
     match peek_kind parser with
     | Syntax_kind.EOF -> acc
@@ -427,7 +501,7 @@ and parse_indented_code parser =
         let tok = consume parser in
         if check_continue_code () then
           (* Continue - include the newline *)
-          collect_lines (acc @ [make_token parser tok])
+          collect_lines (acc @ [ make_token parser tok ])
         else
           (* Stop - don't include the newline *)
           acc
@@ -437,7 +511,9 @@ and parse_indented_code parser =
           if n >= 4 then ()
           else
             match peek_kind parser with
-            | Syntax_kind.SPACE -> advance parser; strip_indent (n + 1)
+            | Syntax_kind.SPACE ->
+                advance parser;
+                strip_indent (n + 1)
             | Syntax_kind.TAB -> advance parser (* tab counts as 4 spaces *)
             | _ -> ()
         in
@@ -448,7 +524,7 @@ and parse_indented_code parser =
           | Syntax_kind.NEWLINE | Syntax_kind.EOF -> line_acc
           | _ ->
               let tok = consume parser in
-              collect_to_newline (line_acc @ [make_token parser tok])
+              collect_to_newline (line_acc @ [ make_token parser tok ])
         in
         let line_tokens = collect_to_newline [] in
         collect_lines (acc @ line_tokens)
@@ -456,49 +532,61 @@ and parse_indented_code parser =
         (* Shouldn't happen *)
         acc
   in
-  
+
   let content = collect_lines [] in
   (* Strip leading blank lines (only newlines) *)
   let rec strip_leading_blanks = function
-    | Ceibo.Green.Token { kind = Syntax_kind.NEWLINE; _ } :: rest -> strip_leading_blanks rest
+    | Ceibo.Green.Token { kind = Syntax_kind.NEWLINE; _ } :: rest ->
+        strip_leading_blanks rest
     | lst -> lst
   in
   (* Strip trailing blank lines (only newlines) *)
   let rec strip_trailing_blanks = function
     | [] -> []
-    | lst ->
+    | lst -> (
         match List.rev lst with
-        | Ceibo.Green.Token { kind = Syntax_kind.NEWLINE; _ } :: rest -> strip_trailing_blanks (List.rev rest)
-        | _ -> lst
+        | Ceibo.Green.Token { kind = Syntax_kind.NEWLINE; _ } :: rest ->
+            strip_trailing_blanks (List.rev rest)
+        | _ -> lst)
   in
-  let content_clean = content |> strip_leading_blanks |> strip_trailing_blanks in
+  let content_clean =
+    content |> strip_leading_blanks |> strip_trailing_blanks
+  in
   make_node Syntax_kind.CODE_BLOCK content_clean
 
-(** Check if we're at a fenced code block (``` or ~~~) with 0-3 leading spaces *)
+(** Check if we're at a fenced code block (``` or ~~~) with 0-3 leading spaces
+*)
 and check_fenced_code parser =
   (* Skip 0-3 leading spaces *)
   let rec skip_leading_spaces offset count =
     if count >= 3 then offset
     else
       match peek_n parser offset with
-      | { kind = Syntax_kind.SPACE; _ } -> skip_leading_spaces (offset + 1) (count + 1)
-      | { kind = Syntax_kind.TAB; _ } -> offset (* tab would make it indented code *)
+      | { kind = Syntax_kind.SPACE; _ } ->
+          skip_leading_spaces (offset + 1) (count + 1)
+      | { kind = Syntax_kind.TAB; _ } ->
+          offset (* tab would make it indented code *)
       | _ -> offset
   in
   let start_offset = skip_leading_spaces 0 0 in
-  
+
   let rec count_fence_chars char_kind offset =
     match peek_n parser offset with
-    | { kind; _ } when kind = char_kind -> count_fence_chars char_kind (offset + 1)
+    | { kind; _ } when kind = char_kind ->
+        count_fence_chars char_kind (offset + 1)
     | _ -> offset
   in
   match peek_n parser start_offset with
   | { kind = Syntax_kind.BACKTICK; _ } ->
       let count = count_fence_chars Syntax_kind.BACKTICK start_offset in
-      if count - start_offset >= 3 then Some (Syntax_kind.BACKTICK, count - start_offset) else None
+      if count - start_offset >= 3 then
+        Some (Syntax_kind.BACKTICK, count - start_offset)
+      else None
   | { kind = Syntax_kind.TILDE; _ } ->
       let count = count_fence_chars Syntax_kind.TILDE start_offset in
-      if count - start_offset >= 3 then Some (Syntax_kind.TILDE, count - start_offset) else None
+      if count - start_offset >= 3 then
+        Some (Syntax_kind.TILDE, count - start_offset)
+      else None
   | _ -> None
 
 (** Parse fenced code block *)
@@ -508,88 +596,105 @@ and parse_fenced_code parser fence_char fence_count =
     if count >= 3 then count
     else
       match peek_kind parser with
-      | Syntax_kind.SPACE -> advance parser; consume_leading_spaces (count + 1)
+      | Syntax_kind.SPACE ->
+          advance parser;
+          consume_leading_spaces (count + 1)
       | _ -> count
   in
   let indent_level = consume_leading_spaces 0 in
-  
+
   (* Consume opening fence *)
   for _ = 1 to fence_count do
     advance parser
   done;
-  
+
   (* Skip info string (everything until newline) *)
   let rec skip_info_string () =
     match peek_kind parser with
     | Syntax_kind.NEWLINE -> advance parser
     | Syntax_kind.EOF -> ()
-    | _ -> advance parser; skip_info_string ()
+    | _ ->
+        advance parser;
+        skip_info_string ()
   in
   skip_info_string ();
-  
+
   (* Check if current position is at closing fence (with 0-3 leading spaces) *)
   let is_closing_fence offset =
     (* First count and skip leading spaces *)
     let rec count_leading_spaces off spaces =
-      if spaces > 3 then (false, off) (* Too many spaces, not a valid closing fence *)
+      if spaces > 3 then (false, off)
+        (* Too many spaces, not a valid closing fence *)
       else
         match peek_n parser off with
-        | { kind = Syntax_kind.SPACE; _ } -> count_leading_spaces (off + 1) (spaces + 1)
-        | { kind = Syntax_kind.TAB; _ } -> (false, off) (* Tab means 4+ spaces *)
-        | _ -> (true, off) (* Valid spacing, continue checking *)
+        | { kind = Syntax_kind.SPACE; _ } ->
+            count_leading_spaces (off + 1) (spaces + 1)
+        | { kind = Syntax_kind.TAB; _ } ->
+            (false, off) (* Tab means 4+ spaces *)
+        | _ -> (true, off)
+      (* Valid spacing, continue checking *)
     in
-    let (valid, fence_start) = count_leading_spaces offset 0 in
+    let valid, fence_start = count_leading_spaces offset 0 in
     if not valid then false
     else
       let rec check_fence off count =
         match peek_n parser off with
         | { kind; _ } when kind = fence_char -> check_fence (off + 1) (count + 1)
-        | { kind = Syntax_kind.SPACE | Syntax_kind.TAB; _ } -> check_fence (off + 1) count
-        | { kind = Syntax_kind.NEWLINE | Syntax_kind.EOF; _ } -> count >= fence_count
+        | { kind = Syntax_kind.SPACE | Syntax_kind.TAB; _ } ->
+            check_fence (off + 1) count
+        | { kind = Syntax_kind.NEWLINE | Syntax_kind.EOF; _ } ->
+            count >= fence_count
         | _ -> false
       in
       check_fence fence_start 0
   in
-  
+
   (* Strip indent from content lines *)
   let rec strip_line_indent n =
     if n >= indent_level then ()
     else
       match peek_kind parser with
-      | Syntax_kind.SPACE -> advance parser; strip_line_indent (n + 1)
+      | Syntax_kind.SPACE ->
+          advance parser;
+          strip_line_indent (n + 1)
       | _ -> ()
   in
-  
+
   (* Collect content until closing fence *)
   let rec collect_content acc at_line_start =
     match peek_kind parser with
     | Syntax_kind.EOF -> acc
     | Syntax_kind.NEWLINE ->
         (* Peek ahead to see if next line is closing fence *)
-        if is_closing_fence 1 then begin
+        if is_closing_fence 1 then (
           (* Skip the newline and consume the closing fence *)
           advance parser;
           let rec consume_closing () =
             match peek_kind parser with
-            | k when k = fence_char || k = Syntax_kind.SPACE || k = Syntax_kind.TAB ->
-                advance parser; consume_closing ()
+            | k
+              when k = fence_char || k = Syntax_kind.SPACE
+                   || k = Syntax_kind.TAB ->
+                advance parser;
+                consume_closing ()
             | Syntax_kind.NEWLINE -> advance parser
             | Syntax_kind.EOF -> ()
             | _ -> ()
           in
           consume_closing ();
-          acc
-        end else begin
+          acc)
+        else
           (* Not closing fence, include the newline and continue at line start *)
           let tok = consume parser in
-          collect_content (acc @ [make_token parser tok]) true
-        end
+          collect_content (acc @ [ make_token parser tok ]) true
     | _ when is_closing_fence 0 ->
         (* At closing fence without newline before it *)
         let rec consume_closing () =
           match peek_kind parser with
-          | k when k = fence_char || k = Syntax_kind.SPACE || k = Syntax_kind.TAB ->
-              advance parser; consume_closing ()
+          | k
+            when k = fence_char || k = Syntax_kind.SPACE || k = Syntax_kind.TAB
+            ->
+              advance parser;
+              consume_closing ()
           | Syntax_kind.NEWLINE -> advance parser
           | Syntax_kind.EOF -> ()
           | _ -> ()
@@ -600,9 +705,9 @@ and parse_fenced_code parser fence_char fence_count =
         (* If at line start, strip indent first *)
         if at_line_start then strip_line_indent 0;
         let tok = consume parser in
-        collect_content (acc @ [make_token parser tok]) false
+        collect_content (acc @ [ make_token parser tok ]) false
   in
-  
+
   let content = collect_content [] true in
   make_node Syntax_kind.FENCED_CODE_BLOCK content
 
@@ -613,101 +718,117 @@ and check_thematic_break parser =
     if count >= 3 then offset
     else
       match peek_n parser offset with
-      | { kind = Syntax_kind.SPACE; _ } -> skip_leading_spaces (offset + 1) (count + 1)
-      | { kind = Syntax_kind.TAB; _ } -> offset (* tab would make it indented code *)
+      | { kind = Syntax_kind.SPACE; _ } ->
+          skip_leading_spaces (offset + 1) (count + 1)
+      | { kind = Syntax_kind.TAB; _ } ->
+          offset (* tab would make it indented code *)
       | _ -> offset
   in
   let start_offset = skip_leading_spaces 0 0 in
-  
+
   let rec count_chars char_kind offset count spaces_ok =
     let tok = peek_n parser offset in
     match tok.kind with
-    | k when k = char_kind -> count_chars char_kind (offset + 1) (count + 1) spaces_ok
-    | Syntax_kind.SPACE | Syntax_kind.TAB -> count_chars char_kind (offset + 1) count (spaces_ok + 1)
-    | Syntax_kind.NEWLINE | Syntax_kind.EOF -> 
+    | k when k = char_kind ->
+        count_chars char_kind (offset + 1) (count + 1) spaces_ok
+    | Syntax_kind.SPACE | Syntax_kind.TAB ->
+        count_chars char_kind (offset + 1) count (spaces_ok + 1)
+    | Syntax_kind.NEWLINE | Syntax_kind.EOF ->
         if count >= 3 then Some offset else None
     | _ -> None
   in
   match peek_n parser start_offset with
-  | { kind = Syntax_kind.STAR; _ } -> count_chars Syntax_kind.STAR start_offset 0 0
-  | { kind = Syntax_kind.DASH; _ } -> count_chars Syntax_kind.DASH start_offset 0 0
-  | { kind = Syntax_kind.UNDERSCORE; _ } -> count_chars Syntax_kind.UNDERSCORE start_offset 0 0
+  | { kind = Syntax_kind.STAR; _ } ->
+      count_chars Syntax_kind.STAR start_offset 0 0
+  | { kind = Syntax_kind.DASH; _ } ->
+      count_chars Syntax_kind.DASH start_offset 0 0
+  | { kind = Syntax_kind.UNDERSCORE; _ } ->
+      count_chars Syntax_kind.UNDERSCORE start_offset 0 0
   | _ -> None
 
-(** Check if we're at an ATX heading and return the level (with optional 0-3 leading spaces) *)
+(** Check if we're at an ATX heading and return the level (with optional 0-3
+    leading spaces) *)
 and check_atx_heading parser =
   (* Skip 0-3 leading spaces; 4+ spaces or tab means not a heading *)
   let rec skip_leading_spaces offset count =
     if count > 3 then None (* Already saw 4+ spaces *)
     else
       match peek_n parser offset with
-      | { kind = Syntax_kind.SPACE; _ } -> skip_leading_spaces (offset + 1) (count + 1)
-      | { kind = Syntax_kind.TAB; _ } -> None (* Tab would make it indented code *)
+      | { kind = Syntax_kind.SPACE; _ } ->
+          skip_leading_spaces (offset + 1) (count + 1)
+      | { kind = Syntax_kind.TAB; _ } ->
+          None (* Tab would make it indented code *)
       | _ -> Some offset
   in
-  
+
   match skip_leading_spaces 0 0 with
   | None -> None
-  | Some start_offset ->
+  | Some start_offset -> (
       let rec count_hashes offset n =
         if n > 6 then None
         else
           match peek_n parser offset with
           | { kind = Syntax_kind.HASH; _ } -> count_hashes (offset + 1) (n + 1)
-          | { kind = Syntax_kind.SPACE; _ } | { kind = Syntax_kind.TAB; _ } 
-          | { kind = Syntax_kind.NEWLINE; _ } | { kind = Syntax_kind.EOF; _ } ->
+          | { kind = Syntax_kind.SPACE; _ }
+          | { kind = Syntax_kind.TAB; _ }
+          | { kind = Syntax_kind.NEWLINE; _ }
+          | { kind = Syntax_kind.EOF; _ } ->
               if n > 0 && n <= 6 then Some n else None
           | _ -> None
       in
       match peek_n parser start_offset with
       | { kind = Syntax_kind.HASH; _ } -> count_hashes start_offset 0
-      | _ -> None
+      | _ -> None)
 
-(** Strip leading and trailing spaces and optional closing # from heading content *)
+(** Strip leading and trailing spaces and optional closing # from heading
+    content *)
 and strip_heading_whitespace elements =
   (* Strip leading space/tab tokens *)
   let rec strip_leading = function
-    | Ceibo.Green.Token { kind = Syntax_kind.SPACE | Syntax_kind.TAB; _ } :: rest ->
+    | Ceibo.Green.Token { kind = Syntax_kind.SPACE | Syntax_kind.TAB; _ }
+      :: rest ->
         strip_leading rest
     | elements -> elements
   in
-  
+
   (* Strip trailing space/tab tokens *)
   let rec strip_trailing = function
     | [] -> []
-    | elements ->
+    | elements -> (
         match List.rev elements with
-        | Ceibo.Green.Token { kind = Syntax_kind.SPACE | Syntax_kind.TAB; _ } :: rest ->
+        | Ceibo.Green.Token { kind = Syntax_kind.SPACE | Syntax_kind.TAB; _ }
+          :: rest ->
             strip_trailing (List.rev rest)
-        | _ -> elements
+        | _ -> elements)
   in
-  
+
   (* Strip optional closing # sequence (must be preceded by space OR be only hashes) *)
   let rec strip_closing_hashes elements =
     (* Collect trailing hashes *)
     let rec collect_hashes acc = function
       | [] -> (acc, [])
-      | Ceibo.Green.Token { kind = Syntax_kind.HASH; _ } as h :: rest ->
+      | (Ceibo.Green.Token { kind = Syntax_kind.HASH; _ } as h) :: rest ->
           collect_hashes (h :: acc) rest
       | rest -> (acc, rest)
     in
-    let (hashes, after_hashes) = collect_hashes [] (List.rev elements) in
-    
-    if List.length hashes = 0 then elements  (* No hashes to strip *)
+    let hashes, after_hashes = collect_hashes [] (List.rev elements) in
+
+    if List.length hashes = 0 then elements (* No hashes to strip *)
     else
       (* Check what comes before the hashes *)
       match after_hashes with
       | [] ->
           (* Only hashes (possibly with leading spaces) - strip them *)
           []
-      | Ceibo.Green.Token { kind = Syntax_kind.SPACE | Syntax_kind.TAB; _ } :: rest ->
+      | Ceibo.Green.Token { kind = Syntax_kind.SPACE | Syntax_kind.TAB; _ }
+        :: rest ->
           (* Preceded by space - strip hashes and trailing space *)
           List.rev rest |> strip_trailing
       | _ ->
           (* Not preceded by space - keep hashes *)
           elements
   in
-  
+
   elements |> strip_leading |> strip_trailing |> strip_closing_hashes
 
 (** Parse ATX heading *)
@@ -717,33 +838,36 @@ and parse_atx_heading parser level =
     if count >= 3 then ()
     else
       match peek_kind parser with
-      | Syntax_kind.SPACE -> advance parser; consume_leading_spaces (count + 1)
+      | Syntax_kind.SPACE ->
+          advance parser;
+          consume_leading_spaces (count + 1)
       | _ -> ()
   in
   consume_leading_spaces 0;
-  
+
   (* Consume the hashes *)
   for _ = 1 to level do
     advance parser
   done;
-  
+
   (* Skip optional space/tab after hashes *)
   (match peek_kind parser with
   | Syntax_kind.SPACE | Syntax_kind.TAB -> advance parser
   | _ -> ());
-  
+
   (* Parse rest of line as inline content *)
   let inline = parse_inline parser in
-  
+
   (* Strip leading/trailing spaces and closing # *)
   let inline = strip_heading_whitespace inline in
-  
+
   (* Skip trailing newline if present *)
   (match peek_kind parser with
   | Syntax_kind.NEWLINE -> advance parser
   | _ -> ());
-  
-  let kind = match level with
+
+  let kind =
+    match level with
     | 1 -> Syntax_kind.HEADING1
     | 2 -> Syntax_kind.HEADING2
     | 3 -> Syntax_kind.HEADING3
@@ -765,22 +889,37 @@ and check_list_marker parser =
       | _ -> offset
   in
   let start = skip_spaces 0 0 in
-  
+
   (* Check for unordered marker: -, +, or * followed by space/tab/newline/EOF *)
   match peek_n parser start with
-  | { kind = Syntax_kind.DASH; _ } ->
-      (match peek_n parser (start + 1) with
-      | { kind = Syntax_kind.SPACE | Syntax_kind.TAB | Syntax_kind.NEWLINE | Syntax_kind.EOF; _ } -> 
+  | { kind = Syntax_kind.DASH; _ } -> (
+      match peek_n parser (start + 1) with
+      | {
+       kind =
+         ( Syntax_kind.SPACE | Syntax_kind.TAB | Syntax_kind.NEWLINE
+         | Syntax_kind.EOF );
+       _;
+      } ->
           Some (`Dash, start)
       | _ -> None)
-  | { kind = Syntax_kind.PLUS; _ } ->
-      (match peek_n parser (start + 1) with
-      | { kind = Syntax_kind.SPACE | Syntax_kind.TAB | Syntax_kind.NEWLINE | Syntax_kind.EOF; _ } -> 
+  | { kind = Syntax_kind.PLUS; _ } -> (
+      match peek_n parser (start + 1) with
+      | {
+       kind =
+         ( Syntax_kind.SPACE | Syntax_kind.TAB | Syntax_kind.NEWLINE
+         | Syntax_kind.EOF );
+       _;
+      } ->
           Some (`Plus, start)
       | _ -> None)
-  | { kind = Syntax_kind.STAR; _ } ->
-      (match peek_n parser (start + 1) with
-      | { kind = Syntax_kind.SPACE | Syntax_kind.TAB | Syntax_kind.NEWLINE | Syntax_kind.EOF; _ } -> 
+  | { kind = Syntax_kind.STAR; _ } -> (
+      match peek_n parser (start + 1) with
+      | {
+       kind =
+         ( Syntax_kind.SPACE | Syntax_kind.TAB | Syntax_kind.NEWLINE
+         | Syntax_kind.EOF );
+       _;
+      } ->
           Some (`Star, start)
       | _ -> None)
   | { kind = Syntax_kind.DIGIT; _ } ->
@@ -792,18 +931,28 @@ and check_list_marker parser =
           | { kind = Syntax_kind.DIGIT; _ } -> count_digits (offset + 1) (n + 1)
           | _ -> (offset, n)
       in
-      let (after_digits, digit_count) = count_digits (start + 1) 1 in
+      let after_digits, digit_count = count_digits (start + 1) 1 in
       if digit_count > 0 then
         (* Look ahead for . or ) *)
         match peek_n parser after_digits with
-        | { kind = Syntax_kind.DOT; _ } ->
-            (match peek_n parser (after_digits + 1) with
-            | { kind = Syntax_kind.SPACE | Syntax_kind.TAB | Syntax_kind.NEWLINE | Syntax_kind.EOF; _ } ->
+        | { kind = Syntax_kind.DOT; _ } -> (
+            match peek_n parser (after_digits + 1) with
+            | {
+             kind =
+               ( Syntax_kind.SPACE | Syntax_kind.TAB | Syntax_kind.NEWLINE
+               | Syntax_kind.EOF );
+             _;
+            } ->
                 Some (`Dot, start)
             | _ -> None)
-        | { kind = Syntax_kind.RIGHT_PAREN; _ } ->
-            (match peek_n parser (after_digits + 1) with
-            | { kind = Syntax_kind.SPACE | Syntax_kind.TAB | Syntax_kind.NEWLINE | Syntax_kind.EOF; _ } ->
+        | { kind = Syntax_kind.RIGHT_PAREN; _ } -> (
+            match peek_n parser (after_digits + 1) with
+            | {
+             kind =
+               ( Syntax_kind.SPACE | Syntax_kind.TAB | Syntax_kind.NEWLINE
+               | Syntax_kind.EOF );
+             _;
+            } ->
                 Some (`Paren, start)
             | _ -> None)
         | _ -> None
@@ -817,11 +966,11 @@ and parse_list parser marker =
     | Some (m, _) when m = marker ->
         let item = parse_list_item parser in
         collect_items (Ceibo.Green.Node item :: acc)
-    | _ ->
-        List.rev acc
+    | _ -> List.rev acc
   in
   let items = collect_items [] in
-  let kind = match marker with
+  let kind =
+    match marker with
     | `Dash | `Plus | `Star -> Syntax_kind.UNORDERED_LIST
     | `Dot | `Paren -> Syntax_kind.ORDERED_LIST
   in
@@ -833,26 +982,27 @@ and parse_list_item parser =
   let rec skip_to_marker offset =
     match peek_n parser offset with
     | { kind = Syntax_kind.SPACE; _ } -> skip_to_marker (offset + 1)
-    | _ -> 
-        for _ = 1 to offset do advance parser done
+    | _ ->
+        for _ = 1 to offset do
+          advance parser
+        done
   in
   skip_to_marker 0;
-  
+
   (* Consume the marker itself *)
   (match peek_kind parser with
-  | Syntax_kind.DASH | Syntax_kind.PLUS | Syntax_kind.STAR ->
-      advance parser
-  | Syntax_kind.DIGIT ->
+  | Syntax_kind.DASH | Syntax_kind.PLUS | Syntax_kind.STAR -> advance parser
+  | Syntax_kind.DIGIT -> (
       (* Consume all digits *)
       while peek_kind parser = Syntax_kind.DIGIT do
         advance parser
       done;
       (* Consume . or ) *)
-      (match peek_kind parser with
+      match peek_kind parser with
       | Syntax_kind.DOT | Syntax_kind.RIGHT_PAREN -> advance parser
       | _ -> ())
   | _ -> ());
-  
+
   (* Check if there's content or if it's an empty item *)
   let content =
     match peek_kind parser with
@@ -867,12 +1017,12 @@ and parse_list_item parser =
         (* No space after marker - shouldn't happen but handle it *)
         parse_inline parser
   in
-  
+
   (* Consume trailing newline *)
   (match peek_kind parser with
   | Syntax_kind.NEWLINE -> advance parser
   | _ -> ());
-  
+
   make_node Syntax_kind.LIST_ITEM content
 
 (** Check if we're at a block quote (> with 0-3 leading spaces) *)
@@ -897,58 +1047,59 @@ and parse_blockquote parser =
       if count >= 3 then ()
       else
         match peek_kind parser with
-        | Syntax_kind.SPACE -> advance parser; skip_spaces (count + 1)
+        | Syntax_kind.SPACE ->
+            advance parser;
+            skip_spaces (count + 1)
         | _ -> ()
     in
     skip_spaces 0;
     match peek_kind parser with
-    | Syntax_kind.GREATER_THAN ->
+    | Syntax_kind.GREATER_THAN -> (
         advance parser;
         (* Optional space after > *)
-        (match peek_kind parser with
+        match peek_kind parser with
         | Syntax_kind.SPACE -> advance parser
         | _ -> ())
     | _ -> ()
   in
   skip_marker ();
-  
+
   (* Parse blocks inside the quote until we exit *)
   let rec parse_quote_blocks acc =
     if is_eof parser then List.rev acc
     else
       match peek_kind parser with
       | Syntax_kind.EOF -> List.rev acc
-      | Syntax_kind.NEWLINE ->
+      | Syntax_kind.NEWLINE -> (
           (* At start of new line - could be blank or continuation *)
           advance parser;
           if is_eof parser then List.rev acc
-          else if check_blockquote parser then begin
+          else if check_blockquote parser then (
             (* Next line continues quote - strip > and continue *)
             skip_marker ();
-            parse_quote_blocks acc
-          end else begin
+            parse_quote_blocks acc)
+          else
             (* Check for blank line that might precede more quoted content *)
             match peek_kind parser with
             | Syntax_kind.NEWLINE ->
                 advance parser;
-                if check_blockquote parser then begin
+                if check_blockquote parser then (
                   skip_marker ();
-                  parse_quote_blocks acc
-                end else
-                  List.rev acc
+                  parse_quote_blocks acc)
+                else List.rev acc
             | _ ->
                 (* Non-quote line after newline - end of quote *)
-                List.rev acc
-          end
-      | _ ->
+                List.rev acc)
+      | _ -> (
           (* Parse a block within the quote *)
           let block = parse_quote_block parser in
           (* After parsing the block, we might be at: EOF, newline, or continuation line with > *)
           (* The block parser may have consumed the newline, so we might be at > directly *)
           (* Check if we need to strip a continuation marker *)
-          (match peek_kind parser with
+          match peek_kind parser with
           | Syntax_kind.EOF -> parse_quote_blocks (Ceibo.Green.Node block :: acc)
-          | Syntax_kind.NEWLINE -> parse_quote_blocks (Ceibo.Green.Node block :: acc)
+          | Syntax_kind.NEWLINE ->
+              parse_quote_blocks (Ceibo.Green.Node block :: acc)
           | _ when check_blockquote parser ->
               (* We're at a continuation line (>) - strip it and continue *)
               skip_marker ();
@@ -957,7 +1108,7 @@ and parse_blockquote parser =
               (* Not a quote continuation - we're done *)
               List.rev (Ceibo.Green.Node block :: acc))
   in
-  
+
   let children = parse_quote_blocks [] in
   make_node Syntax_kind.BLOCKQUOTE children
 
@@ -971,20 +1122,24 @@ and parse_quote_block parser =
       | None -> parse_paragraph parser)
   | Syntax_kind.BACKTICK | Syntax_kind.TILDE -> (
       match check_fenced_code parser with
-      | Some (fence_char, fence_count) -> parse_fenced_code parser fence_char fence_count
+      | Some (fence_char, fence_count) ->
+          parse_fenced_code parser fence_char fence_count
       | None -> parse_paragraph parser)
   | Syntax_kind.STAR | Syntax_kind.DASH | Syntax_kind.UNDERSCORE -> (
       match check_thematic_break parser with
       | Some token_count ->
-          for _ = 1 to token_count do advance parser done;
-          (match peek_kind parser with Syntax_kind.NEWLINE -> advance parser | _ -> ());
+          for _ = 1 to token_count do
+            advance parser
+          done;
+          (match peek_kind parser with
+          | Syntax_kind.NEWLINE -> advance parser
+          | _ -> ());
           make_node Syntax_kind.THEMATIC_BREAK []
       | None -> parse_paragraph parser)
   | Syntax_kind.GREATER_THAN ->
       (* Nested block quote *)
       parse_blockquote parser
-  | _ ->
-      parse_paragraph parser
+  | _ -> parse_paragraph parser
 
 (** Parse document (top level) *)
 and parse_document parser =
@@ -1017,11 +1172,12 @@ and parse_document parser =
               (* Not a valid heading, treat as paragraph *)
               let para = parse_paragraph parser in
               parse_blocks (Ceibo.Green.Node para :: acc))
-      | Syntax_kind.GREATER_THAN -> (
+      | Syntax_kind.GREATER_THAN ->
           (* Block quote *)
           let quote = parse_blockquote parser in
-          parse_blocks (Ceibo.Green.Node quote :: acc))
-      | Syntax_kind.STAR | Syntax_kind.DASH | Syntax_kind.UNDERSCORE | Syntax_kind.PLUS -> (
+          parse_blocks (Ceibo.Green.Node quote :: acc)
+      | Syntax_kind.STAR | Syntax_kind.DASH | Syntax_kind.UNDERSCORE
+      | Syntax_kind.PLUS -> (
           (* Could be list, thematic break, or paragraph *)
           (* Check thematic break first since it's more specific *)
           match check_thematic_break parser with
@@ -1036,7 +1192,7 @@ and parse_document parser =
               | _ -> ());
               let hr = make_node Syntax_kind.THEMATIC_BREAK [] in
               parse_blocks (Ceibo.Green.Node hr :: acc)
-          | None ->
+          | None -> (
               (* Check if this is a list *)
               match check_list_marker parser with
               | Some (marker, _) ->
@@ -1045,7 +1201,7 @@ and parse_document parser =
               | None ->
                   (* Not a thematic break or list, treat as paragraph *)
                   let para = parse_paragraph parser in
-                  parse_blocks (Ceibo.Green.Node para :: acc))
+                  parse_blocks (Ceibo.Green.Node para :: acc)))
       | Syntax_kind.DIGIT -> (
           (* Could be an ordered list *)
           match check_list_marker parser with
@@ -1057,12 +1213,14 @@ and parse_document parser =
               let para = parse_paragraph parser in
               parse_blocks (Ceibo.Green.Node para :: acc))
       | Syntax_kind.SPACE | Syntax_kind.TAB -> (
-          (* Could be list, block quote, fenced code, indented code, thematic break, or ATX heading with leading spaces *)
-          if check_blockquote parser then begin
+          if
+            (* Could be list, block quote, fenced code, indented code, thematic break, or ATX heading with leading spaces *)
+            check_blockquote parser
+          then
             (* Block quote with leading spaces *)
             let quote = parse_blockquote parser in
             parse_blocks (Ceibo.Green.Node quote :: acc)
-          end else
+          else
             (* Check thematic break before list since patterns can overlap *)
             match check_thematic_break parser with
             | Some token_count ->
@@ -1075,19 +1233,21 @@ and parse_document parser =
                 | _ -> ());
                 let hr = make_node Syntax_kind.THEMATIC_BREAK [] in
                 parse_blocks (Ceibo.Green.Node hr :: acc)
-            | None ->
+            | None -> (
                 match check_list_marker parser with
                 | Some (marker, _) ->
                     (* List with leading spaces *)
                     let list = parse_list parser marker in
                     parse_blocks (Ceibo.Green.Node list :: acc)
-                | None ->
+                | None -> (
                     match check_fenced_code parser with
                     | Some (fence_char, fence_count) ->
                         (* Fenced code block with leading spaces *)
-                        let code = parse_fenced_code parser fence_char fence_count in
+                        let code =
+                          parse_fenced_code parser fence_char fence_count
+                        in
                         parse_blocks (Ceibo.Green.Node code :: acc)
-                    | None ->
+                    | None -> (
                         match check_atx_heading parser with
                         | Some level ->
                             (* ATX heading with leading spaces *)
@@ -1100,13 +1260,13 @@ and parse_document parser =
                         | None ->
                             (* Just a paragraph with leading space *)
                             let para = parse_paragraph parser in
-                            parse_blocks (Ceibo.Green.Node para :: acc))
+                            parse_blocks (Ceibo.Green.Node para :: acc)))))
       | _ ->
           (* Everything else is a paragraph *)
           let para = parse_paragraph parser in
           parse_blocks (Ceibo.Green.Node para :: acc)
   in
-  
+
   let children = parse_blocks [] in
   make_node Syntax_kind.DOCUMENT children
 
