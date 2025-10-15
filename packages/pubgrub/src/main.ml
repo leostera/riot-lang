@@ -1088,7 +1088,124 @@ let all_tests =
   in
   base_tests @ web_tests @ db_tests @ compiler_tests @ reference_tests
 
+let test_new_solver_compute_pending () =
+  Log.info "=== Testing NEW solver compute_pending ===";
+  
+  (* Create a simple state with root decided and one dependency *)
+  let solution = Partial_solution.empty () in
+  let solution = Partial_solution.add_decision solution "root" (v 1 0 0) in
+  
+  let incompats = Collections.HashMap.create () in
+  (* Add root to incompatibilities so it gets found during iteration *)
+  ignore (Collections.HashMap.insert incompats "root" []);
+  
+  let dep_graph = New_solver.DependencyGraph.empty () in
+  let dep_graph = New_solver.DependencyGraph.add_dependencies 
+    dep_graph "root" (v 1 0 0) [("foo", Ranges.full)] in
+  
+  let state = {
+    New_solver.solution;
+    incompatibilities = incompats;
+    dependency_graph = dep_graph;
+  } in
+  
+  let pending = New_solver.compute_pending state in
+  Log.info "Pending list has %d packages" (List.length pending);
+  List.iter (fun (pkg, _) ->
+    Log.info "  - %s" pkg
+  ) pending;
+  
+  if List.length pending = 1 then
+    Log.info "✓ compute_pending test passed"
+  else
+    Log.error "✗ compute_pending test FAILED"
+
+let test_new_solver_basic () =
+  Log.info "=== Testing NEW solver basic solve ===";
+  
+  let provider = Pubgrub.create_offline () in
+  Pubgrub.add_package provider "root" (v 1 0 0) [];
+  
+  match New_solver.solve (Pubgrub.to_provider provider) "root" (v 1 0 0) with
+  | Ok (New_solver.Success solution) ->
+      Log.info "✓ NEW solver basic test passed";
+      Log.info "  Solution has %d packages" (List.length solution);
+      List.iter (fun (pkg, ver) ->
+        Log.info "    %s@%s" pkg (Version.to_string ver)
+      ) solution
+  | Ok (New_solver.Failure _) ->
+      Log.error "✗ NEW solver: unexpected failure"
+  | Error err ->
+      Log.error "✗ NEW solver error: %s" err
+
+let test_new_solver_with_dependency () =
+  Log.info "=== Testing NEW solver with dependency ===";
+  
+  let provider = Pubgrub.create_offline () in
+  Pubgrub.add_package provider "root" (v 1 0 0) [("foo", Pubgrub.full)];
+  Pubgrub.add_package provider "foo" (v 1 0 0) [];
+  
+  match New_solver.solve (Pubgrub.to_provider provider) "root" (v 1 0 0) with
+  | Ok (New_solver.Success solution) ->
+      if List.length solution = 2 then
+        Log.info "✓ NEW solver dependency test passed"
+      else
+        Log.error "✗ NEW solver: expected 2 packages, got %d" (List.length solution)
+  | Ok (New_solver.Failure _) ->
+      Log.error "✗ NEW solver: unexpected failure"
+  | Error err ->
+      Log.error "✗ NEW solver error: %s" err
+
+let test_new_solver_on_test_suite () =
+  Log.info "=== Running first 10 tests with NEW solver ===";
+  
+  (* Test 1: Empty root *)
+  let provider = Pubgrub.create_offline () in
+  Pubgrub.add_package provider "root" (v 1 0 0) [];
+  (match New_solver.solve (Pubgrub.to_provider provider) "root" (v 1 0 0) with
+  | Ok (New_solver.Success solution) ->
+      if List.length solution = 1 then
+        Log.info "✓ Test 1 (Empty root) passed"
+      else
+        Log.error "✗ Test 1 failed: expected 1 package"
+  | _ -> Log.error "✗ Test 1 failed");
+  
+  (* Test 2: Single dependency *)
+  let provider = Pubgrub.create_offline () in
+  Pubgrub.add_package provider "root" (v 1 0 0) [("foo", Pubgrub.full)];
+  Pubgrub.add_package provider "foo" (v 1 0 0) [];
+  (match New_solver.solve (Pubgrub.to_provider provider) "root" (v 1 0 0) with
+  | Ok (New_solver.Success solution) ->
+      if List.length solution = 2 then
+        Log.info "✓ Test 2 (Single dependency) passed"
+      else
+        Log.error "✗ Test 2 failed: expected 2 packages"
+  | _ -> Log.error "✗ Test 2 failed");
+  
+  (* Test 3: Two independent dependencies *)
+  let provider = Pubgrub.create_offline () in
+  Pubgrub.add_package provider "root" (v 1 0 0) 
+    [("foo", Pubgrub.full); ("bar", Pubgrub.full)];
+  Pubgrub.add_package provider "foo" (v 1 0 0) [];
+  Pubgrub.add_package provider "bar" (v 1 0 0) [];
+  (match New_solver.solve (Pubgrub.to_provider provider) "root" (v 1 0 0) with
+  | Ok (New_solver.Success solution) ->
+      if List.length solution = 3 then
+        Log.info "✓ Test 3 (Two independent deps) passed"
+      else
+        Log.error "✗ Test 3 failed: expected 3 packages, got %d" (List.length solution)
+  | _ -> Log.error "✗ Test 3 failed");
+  
+  Log.info "NEW solver preliminary tests complete"
+
 let () =
+  (* Quick tests of new solver architecture *)
+  test_new_solver_compute_pending ();
+  test_new_solver_basic ();
+  test_new_solver_with_dependency ();
+  test_new_solver_on_test_suite ();
+  
+  (* Run main test suite (old solver) *)
   Miniriot.run
     ~main:(fun ~args -> Test.Cli.main ~name:"pubgrub" ~tests:all_tests ~args ())
     ~args:Env.args
