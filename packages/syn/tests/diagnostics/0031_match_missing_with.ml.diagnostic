@@ -1,0 +1,36 @@
+[
+  {
+    "kind": {
+      "id": "E0029",
+      "name": "match-missing-with",
+      "expected": "with keyword",
+      "found": {
+        "kind": "->",
+        "text": "->"
+      },
+      "fix": "add 'with' keyword after the expression",
+      "hint": "Match-expressions require the 'with' keyword after the scrutinee.\n\nIn OCaml, match-expressions have the syntax: match expr with | pattern -> result\n  ```ocaml\n  (* Correct syntax *)\n  let x = match value with 0 -> \"zero\" | _ -> \"other\"\n  \n  (* Missing 'with' *)\n  let y = match value 0 -> \"zero\"  (* error: missing 'with' keyword *)\n  ```\n\nFix: add 'with' keyword after the expression being matched.\n"
+    },
+    "span": {
+      "start": 17,
+      "end": 17
+    }
+  },
+  {
+    "kind": {
+      "id": "E0030",
+      "name": "match-missing-pattern",
+      "expected": "pattern before ->",
+      "found": {
+        "kind": "->",
+        "text": "->"
+      },
+      "fix": "add a pattern before the '->' arrow",
+      "hint": "Match cases require a pattern before the arrow (->).\n\nIn OCaml, each match case has the syntax: | pattern -> result\n  ```ocaml\n  (* Correct syntax *)\n  let x = match n with 0 -> \"zero\" | n -> \"other\"\n  let y = match opt with Some x -> x | None -> 0\n  \n  (* Missing pattern *)\n  let z = match n with -> \"result\"  (* error: missing pattern before '->' *)\n  ```\n\nFix: add a pattern before the '->' arrow.\n"
+    },
+    "span": {
+      "start": 17,
+      "end": 17
+    }
+  }
+]

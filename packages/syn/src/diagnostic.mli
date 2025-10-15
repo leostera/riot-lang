@@ -63,6 +63,10 @@ type kind =
   | BracketedTypeParameters of { type_name : string; found : found_token }
   | ListDoubleSemicolon of { found : found_token }
   | IfMissingThen of { found : found_token }
+  | MatchMissingScrutinee of { found : found_token }
+  | MatchMissingWith of { found : found_token }
+  | MatchMissingPattern of { found : found_token }
+  | MatchGuardMissingExpr of { found : found_token }
 
 type t = { kind : kind; span : Ceibo.Span.t }
 (** A diagnostic with structured error information and source location. *)
@@ -180,6 +184,18 @@ val list_double_semicolon :
   found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 
 val if_missing_then :
+  found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
+val match_missing_scrutinee :
+  found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
+val match_missing_with :
+  found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
+val match_missing_pattern :
+  found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
+val match_guard_missing_expr :
   found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 
 (** # Serialization *)

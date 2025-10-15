@@ -1,0 +1,19 @@
+[
+  {
+    "kind": {
+      "id": "E0031",
+      "name": "match-guard-missing-expr",
+      "expected": "boolean expression after when",
+      "found": {
+        "kind": "->",
+        "text": "->"
+      },
+      "fix": "add a boolean expression after 'when'",
+      "hint": "Match guards require an expression after the 'when' keyword.\n\nIn OCaml, match guards have the syntax: | pattern when condition -> result\n  ```ocaml\n  (* Correct syntax *)\n  let x = match n with x when x > 0 -> \"positive\" | _ -> \"not positive\"\n  \n  (* Missing guard expression *)\n  let y = match n with x when -> \"result\"  (* error: missing condition after 'when' *)\n  ```\n\nFix: add a boolean expression after 'when'.\n"
+    },
+    "span": {
+      "start": 27,
+      "end": 27
+    }
+  }
+]

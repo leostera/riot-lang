@@ -28,6 +28,10 @@ type id =
   | E0025_BracketedTypeParameters
   | E0026_ListDoubleSemicolon
   | E0027_IfMissingThen
+  | E0028_MatchMissingScrutinee
+  | E0029_MatchMissingWith
+  | E0030_MatchMissingPattern
+  | E0031_MatchGuardMissingExpr
 
 val id_to_string : id -> string
 val id_of_string : string -> id option

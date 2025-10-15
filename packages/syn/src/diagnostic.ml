@@ -35,6 +35,10 @@ type kind =
   | BracketedTypeParameters of { type_name : string; found : found_token }
   | ListDoubleSemicolon of { found : found_token }
   | IfMissingThen of { found : found_token }
+  | MatchMissingScrutinee of { found : found_token }
+  | MatchMissingWith of { found : found_token }
+  | MatchMissingPattern of { found : found_token }
+  | MatchGuardMissingExpr of { found : found_token }
 
 type t = { kind : kind; span : Ceibo.Span.t }
 (** Parse error information *)
@@ -169,6 +173,26 @@ let if_missing_then ~found:token ~text ~span =
   let found = { kind = kind_str; text } in
   make ~kind:(IfMissingThen { found }) ~span
 
+let match_missing_scrutinee ~found:token ~text ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text } in
+  make ~kind:(MatchMissingScrutinee { found }) ~span
+
+let match_missing_with ~found:token ~text ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text } in
+  make ~kind:(MatchMissingWith { found }) ~span
+
+let match_missing_pattern ~found:token ~text ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text } in
+  make ~kind:(MatchMissingPattern { found }) ~span
+
+let match_guard_missing_expr ~found:token ~text ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text } in
+  make ~kind:(MatchGuardMissingExpr { found }) ~span
+
 let expected_message diag =
   match diag.kind with
   | MalformedTypeVariable _ -> "type variable identifier (e.g., 'a, 'b)"
@@ -214,6 +238,14 @@ let expected_message diag =
       "single semicolon between list elements"
   | IfMissingThen _ ->
       "then keyword"
+  | MatchMissingScrutinee _ ->
+      "expression to match on"
+  | MatchMissingWith _ ->
+      "with keyword"
+  | MatchMissingPattern _ ->
+      "pattern before ->"
+  | MatchGuardMissingExpr _ ->
+      "boolean expression after when"
 
 let fix_message diag =
   match diag.kind with
@@ -264,6 +296,14 @@ let fix_message diag =
       Some "remove one semicolon - list elements are separated by single semicolons"
   | IfMissingThen _ ->
       Some "add 'then' keyword after the condition"
+  | MatchMissingScrutinee _ ->
+      Some "add an expression after 'match' to specify what to match on"
+  | MatchMissingWith _ ->
+      Some "add 'with' keyword after the expression"
+  | MatchMissingPattern _ ->
+      Some "add a pattern before the '->' arrow"
+  | MatchGuardMissingExpr _ ->
+      Some "add a boolean expression after 'when'"
   | _ -> None
 
 let error_id diag =
@@ -295,6 +335,10 @@ let error_id diag =
   | BracketedTypeParameters _ -> Error.E0025_BracketedTypeParameters
   | ListDoubleSemicolon _ -> Error.E0026_ListDoubleSemicolon
   | IfMissingThen _ -> Error.E0027_IfMissingThen
+  | MatchMissingScrutinee _ -> Error.E0028_MatchMissingScrutinee
+  | MatchMissingWith _ -> Error.E0029_MatchMissingWith
+  | MatchMissingPattern _ -> Error.E0030_MatchMissingPattern
+  | MatchGuardMissingExpr _ -> Error.E0031_MatchGuardMissingExpr
 
 let hint_message diag = diag |> error_id |> Error.explain
 let id err = err |> error_id |> Error.id_to_string
@@ -339,6 +383,10 @@ let found_token diag =
   | BracketedTypeParameters { found } -> found
   | ListDoubleSemicolon { found } -> found
   | IfMissingThen { found } -> found
+  | MatchMissingScrutinee { found } -> found
+  | MatchMissingWith { found } -> found
+  | MatchMissingPattern { found } -> found
+  | MatchGuardMissingExpr { found } -> found
 
 let main_message diag =
   match diag.kind with

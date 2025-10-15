@@ -343,6 +343,24 @@ and parse_pattern parser =
   | Token.Underscore ->
       let underscore = consume parser in
       make_node Syntax_kind.WILDCARD_PATTERN [ make_token parser underscore ]
+  | Token.Literal (Token.Int _) ->
+      let tok = consume parser in
+      make_node Syntax_kind.INT_LITERAL [ make_token parser tok ]
+  | Token.Literal (Token.Float _) ->
+      let tok = consume parser in
+      make_node Syntax_kind.FLOAT_LITERAL [ make_token parser tok ]
+  | Token.Literal (Token.String _) ->
+      let tok = consume parser in
+      make_node Syntax_kind.STRING_LITERAL [ make_token parser tok ]
+  | Token.Literal (Token.Char _) ->
+      let tok = consume parser in
+      make_node Syntax_kind.CHAR_LITERAL [ make_token parser tok ]
+  | Token.Keyword Keyword.True ->
+      let tok = consume parser in
+      make_node Syntax_kind.BOOL_LITERAL [ make_token parser tok ]
+  | Token.Keyword Keyword.False ->
+      let tok = consume parser in
+      make_node Syntax_kind.BOOL_LITERAL [ make_token parser tok ]
   | Token.Keyword _ ->
       (* Keywords cannot be used as identifiers in patterns *)
       let kw_tok = consume parser in
@@ -552,6 +570,7 @@ and parse_primary_expr parser =
   | Token.Keyword Keyword.False -> parse_constant parser
   | Token.Keyword Keyword.Fun -> parse_fun_expr parser
   | Token.Keyword Keyword.If -> parse_if_expr parser
+  | Token.Keyword Keyword.Match -> parse_match_expr parser
   | Token.OpenDelim Token.Paren -> parse_paren_expr parser
   | Token.OpenDelim Token.BeginEnd -> parse_begin_end_expr parser
   | Token.OpenDelim Token.Bracket -> parse_list_expr parser
@@ -589,7 +608,7 @@ and can_start_arg_expr parser =
   (* Can start arguments *)
   | Token.Ident _ | Token.Literal _ 
   | Token.Keyword Keyword.True | Token.Keyword Keyword.False
-  | Token.Keyword Keyword.If
+  | Token.Keyword Keyword.If | Token.Keyword Keyword.Match
   | Token.OpenDelim Token.Paren | Token.OpenDelim Token.BeginEnd 
   | Token.OpenDelim Token.Bracket
   | Token.Quote -> true
@@ -1032,6 +1051,205 @@ and parse_if_expr parser =
           ~span:(expected_span parser)
       in
       make_error_node parser ~diagnostic ~consumed_tokens:[]
+
+(** Parse match expression: match expr with | pattern -> expr | ... *)
+and parse_match_expr parser =
+  match peek_kind parser with
+  | Token.Keyword Keyword.Match ->
+      let match_kw = consume parser in
+      let trivia_after_match = consume_trivia parser in
+      
+      (* Parse scrutinee expression - check if 'with' comes immediately *)
+      let scrutinee, trivia_after_scrutinee =
+        if peek_kind parser = Token.Keyword Keyword.With then
+          (* Missing scrutinee *)
+          let found_tok = peek parser in
+          let diagnostic =
+            Diagnostic.match_missing_scrutinee ~found:found_tok
+              ~text:(token_text parser found_tok)
+              ~span:(expected_span parser)
+          in
+          report_diagnostic parser diagnostic;
+          let error_node = make_node Syntax_kind.ERROR [] in
+          (error_node, [])
+        else
+          let scrut = parse_expr parser in
+          let trivia = consume_trivia parser in
+          (scrut, trivia)
+      in
+      
+      (* Expect 'with' keyword *)
+      let with_children =
+        match peek_kind parser with
+        | Token.Keyword Keyword.With ->
+            let with_kw = consume parser in
+            [make_token parser with_kw]
+        | _ ->
+            let found_tok = peek parser in
+            let diagnostic =
+              Diagnostic.match_missing_with ~found:found_tok
+                ~text:(token_text parser found_tok)
+                ~span:(expected_span parser)
+            in
+            report_diagnostic parser diagnostic;
+            []
+      in
+      
+      let trivia_after_with = consume_trivia parser in
+      
+      (* Parse match cases: | pattern -> expr *)
+      let cases = ref [] in
+      let trivia_parts = ref [] in
+      let rec parse_cases () =
+        match peek_kind parser with
+        | Token.Pipe ->
+            let case = parse_match_case parser in
+            cases := case :: !cases;
+            let trivia = consume_trivia parser in
+            trivia_parts := trivia :: !trivia_parts;
+            parse_cases ()
+        | _ -> ()
+      in
+      
+      (* First case might not have leading pipe *)
+      (match peek_kind parser with
+      | Token.Pipe -> parse_cases ()
+      | _ -> 
+          (* Try to parse a case without pipe *)
+          if peek_kind parser <> Token.EOF 
+             && peek_kind parser <> Token.Keyword Keyword.In
+             && peek_kind parser <> Token.Semi then begin
+            let case = parse_match_case parser in
+            cases := [case];
+            let trivia = consume_trivia parser in
+            trivia_parts := [trivia];
+            parse_cases ()
+          end);
+      
+      (* Interleave cases with trivia *)
+      let case_list = List.rev !cases in
+      let trivia_list = List.rev !trivia_parts in
+      let rec interleave cases trivias acc =
+        match cases, trivias with
+        | [], [] -> List.rev acc
+        | c :: cs, [] -> interleave cs [] (Ceibo.Green.Node c :: acc)
+        | c :: cs, t :: ts -> 
+            interleave cs ts 
+              (List.rev_append (tokens_to_green parser t) (Ceibo.Green.Node c :: acc))
+        | [], _ :: _ -> List.rev acc
+      in
+      let case_elements = interleave case_list trivia_list [] in
+      
+      make_node Syntax_kind.MATCH_EXPR
+        ([make_token parser match_kw]
+         @ tokens_to_green parser trivia_after_match
+         @ [Ceibo.Green.Node scrutinee]
+         @ tokens_to_green parser trivia_after_scrutinee
+         @ with_children
+         @ tokens_to_green parser trivia_after_with
+         @ case_elements)
+  | _ ->
+      let found_tok = peek parser in
+      let diagnostic =
+        Diagnostic.invalid_expression ~found:found_tok
+          ~text:(token_text parser found_tok)
+          ~span:(expected_span parser)
+      in
+      make_error_node parser ~diagnostic ~consumed_tokens:[]
+
+(** Parse a match case: | pattern -> expr or | pattern when guard -> expr *)
+and parse_match_case parser =
+  (* Optional leading pipe *)
+  let pipe_tok =
+    if peek_kind parser = Token.Pipe then
+      let tok = consume parser in
+      [make_token parser tok]
+    else []
+  in
+  
+  let trivia_after_pipe = consume_trivia parser in
+  
+  (* Parse pattern - check if arrow comes immediately *)
+  let pattern, trivia_after_pattern =
+    if peek_kind parser = Token.Arrow then
+      (* Missing pattern *)
+      let found_tok = peek parser in
+      let diagnostic =
+        Diagnostic.match_missing_pattern ~found:found_tok
+          ~text:(token_text parser found_tok)
+          ~span:(expected_span parser)
+      in
+      report_diagnostic parser diagnostic;
+      let error_node = make_node Syntax_kind.ERROR [] in
+      (error_node, [])
+    else
+      let pat = parse_pattern parser in
+      let trivia = consume_trivia parser in
+      (pat, trivia)
+  in
+  
+  (* Optional 'when' guard *)
+  let guard_parts =
+    match peek_kind parser with
+    | Token.Keyword Keyword.When ->
+        let when_kw = consume parser in
+        let trivia_after_when = consume_trivia parser in
+        (* Check if arrow comes immediately after when *)
+        let guard_expr, trivia_after_guard =
+          if peek_kind parser = Token.Arrow then
+            (* Missing guard expression *)
+            let found_tok = peek parser in
+            let diagnostic =
+              Diagnostic.match_guard_missing_expr ~found:found_tok
+                ~text:(token_text parser found_tok)
+                ~span:(expected_span parser)
+            in
+            report_diagnostic parser diagnostic;
+            let error_node = make_node Syntax_kind.ERROR [] in
+            (error_node, [])
+          else
+            let expr = parse_expr parser in
+            let trivia = consume_trivia parser in
+            (expr, trivia)
+        in
+        [make_token parser when_kw]
+        @ tokens_to_green parser trivia_after_when
+        @ [Ceibo.Green.Node guard_expr]
+        @ tokens_to_green parser trivia_after_guard
+    | _ -> []
+  in
+  
+  (* Expect '->' *)
+  let arrow_children =
+    match peek_kind parser with
+    | Token.Arrow ->
+        let arrow = consume parser in
+        [make_token parser arrow]
+    | _ ->
+        let found_tok = peek parser in
+        let diagnostic =
+          Diagnostic.invalid_expression ~found:found_tok
+            ~text:(token_text parser found_tok)
+            ~span:(expected_span parser)
+        in
+        report_diagnostic parser diagnostic;
+        []
+  in
+  
+  let trivia_after_arrow = consume_trivia parser in
+  
+  (* Parse case expression *)
+  let case_expr = parse_expr parser in
+  
+  make_node Syntax_kind.MATCH_CASE
+    (pipe_tok
+     @ tokens_to_green parser trivia_after_pipe
+     @ [Ceibo.Green.Node pattern]
+     @ tokens_to_green parser trivia_after_pattern
+     @ guard_parts
+     @ arrow_children
+     @ tokens_to_green parser trivia_after_arrow
+     @ [Ceibo.Green.Node case_expr])
 
 (** Parse let binding: let pattern = expr *)
 and parse_let_binding parser =

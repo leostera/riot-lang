@@ -28,6 +28,10 @@ type id =
   | E0025_BracketedTypeParameters
   | E0026_ListDoubleSemicolon
   | E0027_IfMissingThen
+  | E0028_MatchMissingScrutinee
+  | E0029_MatchMissingWith
+  | E0030_MatchMissingPattern
+  | E0031_MatchGuardMissingExpr
 
 let id_to_string = function
   | E0001_MalformedTypeVariable -> "E0001"
@@ -57,6 +61,10 @@ let id_to_string = function
   | E0025_BracketedTypeParameters -> "E0025"
   | E0026_ListDoubleSemicolon -> "E0026"
   | E0027_IfMissingThen -> "E0027"
+  | E0028_MatchMissingScrutinee -> "E0028"
+  | E0029_MatchMissingWith -> "E0029"
+  | E0030_MatchMissingPattern -> "E0030"
+  | E0031_MatchGuardMissingExpr -> "E0031"
 
 let id_of_string = function
   | "E0001" -> Some E0001_MalformedTypeVariable
@@ -86,6 +94,10 @@ let id_of_string = function
   | "E0025" -> Some E0025_BracketedTypeParameters
   | "E0026" -> Some E0026_ListDoubleSemicolon
   | "E0027" -> Some E0027_IfMissingThen
+  | "E0028" -> Some E0028_MatchMissingScrutinee
+  | "E0029" -> Some E0029_MatchMissingWith
+  | "E0030" -> Some E0030_MatchMissingPattern
+  | "E0031" -> Some E0031_MatchGuardMissingExpr
   | _ -> None
 
 let name = function
@@ -116,6 +128,10 @@ let name = function
   | E0025_BracketedTypeParameters -> "bracketed-type-parameters"
   | E0026_ListDoubleSemicolon -> "list-double-semicolon"
   | E0027_IfMissingThen -> "if-missing-then"
+  | E0028_MatchMissingScrutinee -> "match-missing-scrutinee"
+  | E0029_MatchMissingWith -> "match-missing-with"
+  | E0030_MatchMissingPattern -> "match-missing-pattern"
+  | E0031_MatchGuardMissingExpr -> "match-guard-missing-expr"
 
 let explain = function
   | E0001_MalformedTypeVariable ->
@@ -302,4 +318,62 @@ In OCaml, if-expressions have the syntax: if condition then expr1 else expr2
   ```
 
 Fix: add the 'then' keyword after the condition and before the then-branch.
+|}
+  | E0028_MatchMissingScrutinee ->
+      {|Match-expressions require an expression to match on (the scrutinee).
+
+In OCaml, match-expressions have the syntax: match expr with | pattern -> result
+  ```ocaml
+  (* Correct syntax *)
+  let x = match value with 0 -> "zero" | _ -> "other"
+  let y = match Some 1 with Some n -> n | None -> 0
+  
+  (* Missing scrutinee *)
+  let z = match with 0 -> "zero"  (* error: missing expression after 'match' *)
+  ```
+
+Fix: add an expression after 'match' and before 'with'.
+|}
+  | E0029_MatchMissingWith ->
+      {|Match-expressions require the 'with' keyword after the scrutinee.
+
+In OCaml, match-expressions have the syntax: match expr with | pattern -> result
+  ```ocaml
+  (* Correct syntax *)
+  let x = match value with 0 -> "zero" | _ -> "other"
+  
+  (* Missing 'with' *)
+  let y = match value 0 -> "zero"  (* error: missing 'with' keyword *)
+  ```
+
+Fix: add 'with' keyword after the expression being matched.
+|}
+  | E0030_MatchMissingPattern ->
+      {|Match cases require a pattern before the arrow (->).
+
+In OCaml, each match case has the syntax: | pattern -> result
+  ```ocaml
+  (* Correct syntax *)
+  let x = match n with 0 -> "zero" | n -> "other"
+  let y = match opt with Some x -> x | None -> 0
+  
+  (* Missing pattern *)
+  let z = match n with -> "result"  (* error: missing pattern before '->' *)
+  ```
+
+Fix: add a pattern before the '->' arrow.
+|}
+  | E0031_MatchGuardMissingExpr ->
+      {|Match guards require an expression after the 'when' keyword.
+
+In OCaml, match guards have the syntax: | pattern when condition -> result
+  ```ocaml
+  (* Correct syntax *)
+  let x = match n with x when x > 0 -> "positive" | _ -> "not positive"
+  
+  (* Missing guard expression *)
+  let y = match n with x when -> "result"  (* error: missing condition after 'when' *)
+  ```
+
+Fix: add a boolean expression after 'when'.
 |}
