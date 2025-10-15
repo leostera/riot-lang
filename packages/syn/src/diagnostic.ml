@@ -27,6 +27,12 @@ type kind =
   | EmptyCharLiteral
   | MultiCharLiteral of { text : string }
   | UnclosedCharLiteral of { text : string }
+  | MissingBinaryOperand of { operator : string; side : string; found : found_token }
+  | ConsecutiveBinaryOperators of { operators : string; found : found_token }
+  | InvalidTypeParameter of { text : string; found : found_token }
+  | UppercaseTypeVariable of { text : string; found : found_token }
+  | UppercaseTypeName of { text : string; found : found_token }
+  | BracketedTypeParameters of { found : found_token }
 
 type t = { kind : kind; span : Ceibo.Span.t }
 (** Parse error information *)
@@ -121,6 +127,36 @@ let unclosed_type_params ~found:token ~text ~span =
   let found = { kind = kind_str; text } in
   make ~kind:(UnclosedTypeParams { found }) ~span
 
+let missing_binary_operand ~operator ~side ~found:token ~text ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text } in
+  make ~kind:(MissingBinaryOperand { operator; side; found }) ~span
+
+let consecutive_binary_operators ~operators ~found:token ~text ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text } in
+  make ~kind:(ConsecutiveBinaryOperators { operators; found }) ~span
+
+let invalid_type_parameter ~text ~found:token ~text_found ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text = text_found } in
+  make ~kind:(InvalidTypeParameter { text; found }) ~span
+
+let uppercase_type_variable ~text ~found:token ~text_found ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text = text_found } in
+  make ~kind:(UppercaseTypeVariable { text; found }) ~span
+
+let uppercase_type_name ~text ~found:token ~text_found ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text = text_found } in
+  make ~kind:(UppercaseTypeName { text; found }) ~span
+
+let bracketed_type_parameters ~found:token ~text ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text } in
+  make ~kind:(BracketedTypeParameters { found }) ~span
+
 let expected_message diag =
   match diag.kind with
   | MalformedTypeVariable _ -> "type variable identifier (e.g., 'a, 'b)"
@@ -150,6 +186,18 @@ let expected_message diag =
   | EmptyCharLiteral -> "non-empty character literal"
   | MultiCharLiteral _ -> "single character"
   | UnclosedCharLiteral _ -> "' (closing quote)"
+  | MissingBinaryOperand { operator; side; _ } ->
+      side ^ " operand for " ^ operator
+  | ConsecutiveBinaryOperators { operators; _ } ->
+      "expression between operators in " ^ operators
+  | InvalidTypeParameter _ ->
+      "valid type parameter"
+  | UppercaseTypeVariable _ ->
+      "lowercase type variable"
+  | UppercaseTypeName _ ->
+      "lowercase type name"
+  | BracketedTypeParameters _ ->
+      "type parameters with ('a, 'b) syntax"
 
 let fix_message diag =
   match diag.kind with
@@ -179,6 +227,23 @@ let fix_message diag =
   | EmptyCharLiteral -> Some "add a character between the quotes, e.g. 'a'"
   | MultiCharLiteral _ -> Some "use only one character in the literal"
   | UnclosedCharLiteral _ -> Some "add a closing ' (quote) after the character"
+  | MissingBinaryOperand { side; _ } -> (
+      match side with
+      | "right" -> Some "add an expression after the operator"
+      | "left" -> Some "add an expression before the operator"
+      | _ -> None)
+  | ConsecutiveBinaryOperators _ ->
+      Some "add an expression between the operators or remove one operator"
+  | InvalidTypeParameter { text; _ } ->
+      if text = "__" then Some "use _ instead of __"
+      else Some "use a valid type parameter like 'a or _"
+  | UppercaseTypeVariable { text; _ } ->
+      Some (format "change %s to %s" text (String.lowercase_ascii text))
+  | UppercaseTypeName { text; _ } ->
+      let lower = String.lowercase_ascii text in
+      Some (format "change %s to %s" text lower)
+  | BracketedTypeParameters _ ->
+      Some "replace < > with ( ) and use lowercase type variables like 'a"
   | _ -> None
 
 let error_id diag =
@@ -202,6 +267,12 @@ let error_id diag =
   | MultiCharLiteral _ -> Error.E0017_MultiCharLiteral
   | UnclosedCharLiteral _ -> Error.E0018_UnclosedCharLiteral
   | UnclosedTypeParams _ -> Error.E0019_UnclosedTypeParams
+  | MissingBinaryOperand _ -> Error.E0020_MissingBinaryOperand
+  | ConsecutiveBinaryOperators _ -> Error.E0021_ConsecutiveBinaryOperators
+  | InvalidTypeParameter _ -> Error.E0022_InvalidTypeParameter
+  | UppercaseTypeVariable _ -> Error.E0023_UppercaseTypeVariable
+  | UppercaseTypeName _ -> Error.E0024_UppercaseTypeName
+  | BracketedTypeParameters _ -> Error.E0025_BracketedTypeParameters
 
 let hint_message diag = diag |> error_id |> Error.explain
 let id err = err |> error_id |> Error.id_to_string
@@ -238,6 +309,12 @@ let found_token diag =
   | EmptyCharLiteral -> { kind = "char literal"; text = "''" }
   | MultiCharLiteral { text } -> { kind = "char literal"; text }
   | UnclosedCharLiteral { text } -> { kind = "char literal"; text }
+  | MissingBinaryOperand { found; _ } -> found
+  | ConsecutiveBinaryOperators { found; _ } -> found
+  | InvalidTypeParameter { found; _ } -> found
+  | UppercaseTypeVariable { found; _ } -> found
+  | UppercaseTypeName { found; _ } -> found
+  | BracketedTypeParameters { found } -> found
 
 let main_message diag =
   match diag.kind with

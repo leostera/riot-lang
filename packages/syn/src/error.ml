@@ -20,6 +20,12 @@ type id =
   | E0017_MultiCharLiteral
   | E0018_UnclosedCharLiteral
   | E0019_UnclosedTypeParams
+  | E0020_MissingBinaryOperand
+  | E0021_ConsecutiveBinaryOperators
+  | E0022_InvalidTypeParameter
+  | E0023_UppercaseTypeVariable
+  | E0024_UppercaseTypeName
+  | E0025_BracketedTypeParameters
 
 let id_to_string = function
   | E0001_MalformedTypeVariable -> "E0001"
@@ -41,6 +47,12 @@ let id_to_string = function
   | E0017_MultiCharLiteral -> "E0017"
   | E0018_UnclosedCharLiteral -> "E0018"
   | E0019_UnclosedTypeParams -> "E0019"
+  | E0020_MissingBinaryOperand -> "E0020"
+  | E0021_ConsecutiveBinaryOperators -> "E0021"
+  | E0022_InvalidTypeParameter -> "E0022"
+  | E0023_UppercaseTypeVariable -> "E0023"
+  | E0024_UppercaseTypeName -> "E0024"
+  | E0025_BracketedTypeParameters -> "E0025"
 
 let id_of_string = function
   | "E0001" -> Some E0001_MalformedTypeVariable
@@ -62,6 +74,12 @@ let id_of_string = function
   | "E0017" -> Some E0017_MultiCharLiteral
   | "E0018" -> Some E0018_UnclosedCharLiteral
   | "E0019" -> Some E0019_UnclosedTypeParams
+  | "E0020" -> Some E0020_MissingBinaryOperand
+  | "E0021" -> Some E0021_ConsecutiveBinaryOperators
+  | "E0022" -> Some E0022_InvalidTypeParameter
+  | "E0023" -> Some E0023_UppercaseTypeVariable
+  | "E0024" -> Some E0024_UppercaseTypeName
+  | "E0025" -> Some E0025_BracketedTypeParameters
   | _ -> None
 
 let name = function
@@ -84,6 +102,12 @@ let name = function
   | E0017_MultiCharLiteral -> "multi-char-literal"
   | E0018_UnclosedCharLiteral -> "unclosed-char-literal"
   | E0019_UnclosedTypeParams -> "unclosed-type-params"
+  | E0020_MissingBinaryOperand -> "missing-binary-operand"
+  | E0021_ConsecutiveBinaryOperators -> "consecutive-binary-operators"
+  | E0022_InvalidTypeParameter -> "invalid-type-parameter"
+  | E0023_UppercaseTypeVariable -> "uppercase-type-variable"
+  | E0024_UppercaseTypeName -> "uppercase-type-name"
+  | E0025_BracketedTypeParameters -> "bracketed-type-parameters"
 
 let explain = function
   | E0001_MalformedTypeVariable ->
@@ -146,3 +170,94 @@ Beware that pattern matching on only one of many possible values will lead to ru
       {|Character literals must be closed with a single quote '.|}
   | E0019_UnclosedTypeParams ->
       {|Type parameter lists must be closed with a closing parenthesis ). For example: type ('a, 'b) t = ...|}
+  | E0020_MissingBinaryOperand ->
+      {|Binary operators like +, -, *, =, etc. require both a left and right operand.
+
+For example:
+  ```ocaml
+  let x = 1 + 2   (* correct *)
+  let y = 1 +     (* missing right operand *)
+  let z = + 2     (* missing left operand *)
+  ```
+
+If you want to create a partially applied operator function, use parentheses:
+  ```ocaml
+  let add_one = (+) 1
+  ```
+|}
+  | E0021_ConsecutiveBinaryOperators ->
+      {|Consecutive binary operators are not allowed. Each operator needs both operands.
+
+For example:
+  ```ocaml
+  let x = 1 + + 2  (* error: consecutive + operators *)
+  let y = 1 + 2    (* correct *)
+  ```
+
+If you intended to write a positive or negative number, attach the sign directly to the number:
+  ```ocaml
+  let x = 1 + (-2)  (* correct: adding negative 2 *)
+  ```
+|}
+  | E0022_InvalidTypeParameter ->
+      {|Type parameters must start with a single quote followed by a lowercase letter.
+
+Valid type parameters:
+  ```ocaml
+  type 'a t           (* correct: single lowercase type variable *)
+  type ('a, 'b) t     (* correct: multiple type variables *)
+  type _ t            (* correct: wildcard type parameter *)
+  ```
+
+Invalid type parameters:
+  ```ocaml
+  type __ t           (* error: use _ instead of __ *)
+  type @ t            (* error: @ is not valid *)
+  type ! t            (* error: ! is not valid *)
+  ```
+|}
+  | E0023_UppercaseTypeVariable ->
+      {|Type variables must use lowercase letters.
+
+Type variables in OCaml always start with a single quote followed by a lowercase identifier:
+  ```ocaml
+  type 'a t           (* correct *)
+  type 'myvar t       (* correct *)
+  type 'A t           (* error: must be lowercase *)
+  type 'MyType t      (* error: must be lowercase *)
+  ```
+
+Fix: change 'A to 'a, or 'MyType to 'my_type
+|}
+  | E0024_UppercaseTypeName ->
+      {|Type names must start with a lowercase letter.
+
+In OCaml, type names use lowercase identifiers:
+  ```ocaml
+  type my_type = ...     (* correct *)
+  type point = ...       (* correct *)
+  type MyType = ...      (* error: must be lowercase *)
+  type Point = ...       (* error: must be lowercase *)
+  ```
+
+Fix: change MyType to my_type or myType
+Note: Uppercase identifiers are reserved for modules and constructors.
+|}
+  | E0025_BracketedTypeParameters ->
+      {|OCaml uses parentheses for type parameters, not angle brackets.
+
+OCaml syntax uses ('a, 'b) style type parameters, not <A, B> like other languages:
+  ```ocaml
+  (* Correct OCaml syntax *)
+  type ('a, 'b) map = ...
+  type 'a list = ...
+  type ('key, 'value) hashtbl = ...
+  
+  (* Common mistakes from other languages *)
+  type <A, B> map = ...        (* error: use ('a, 'b) instead *)
+  type List<T> = ...           (* error: use 'a list instead *)
+  type Map<K, V> = ...         (* error: use ('k, 'v) map instead *)
+  ```
+
+Fix: replace <A, B> with ('a, 'b) and use lowercase type variables.
+|}

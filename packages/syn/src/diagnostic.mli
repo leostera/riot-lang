@@ -55,6 +55,12 @@ type kind =
   | EmptyCharLiteral
   | MultiCharLiteral of { text : string }
   | UnclosedCharLiteral of { text : string }
+  | MissingBinaryOperand of { operator : string; side : string; found : found_token }
+  | ConsecutiveBinaryOperators of { operators : string; found : found_token }
+  | InvalidTypeParameter of { text : string; found : found_token }
+  | UppercaseTypeVariable of { text : string; found : found_token }
+  | UppercaseTypeName of { text : string; found : found_token }
+  | BracketedTypeParameters of { found : found_token }
 
 type t = { kind : kind; span : Ceibo.Span.t }
 (** A diagnostic with structured error information and source location. *)
@@ -144,6 +150,29 @@ val unclosed_type_params :
 val empty_char_literal : span:Ceibo.Span.t -> t
 val multi_char_literal : text:string -> span:Ceibo.Span.t -> t
 val unclosed_char_literal : text:string -> span:Ceibo.Span.t -> t
+
+val missing_binary_operand :
+  operator:string ->
+  side:string ->
+  found:Token.t ->
+  text:string ->
+  span:Ceibo.Span.t ->
+  t
+
+val consecutive_binary_operators :
+  operators:string -> found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
+val invalid_type_parameter :
+  text:string -> found:Token.t -> text_found:string -> span:Ceibo.Span.t -> t
+
+val uppercase_type_variable :
+  text:string -> found:Token.t -> text_found:string -> span:Ceibo.Span.t -> t
+
+val uppercase_type_name :
+  text:string -> found:Token.t -> text_found:string -> span:Ceibo.Span.t -> t
+
+val bracketed_type_parameters :
+  found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 
 (** # Serialization *)
 

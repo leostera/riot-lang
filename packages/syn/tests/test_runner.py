@@ -48,8 +48,11 @@ class TestRunner:
     def run_syn(self, args: List[str], file_path: Path) -> Tuple[str, int]:
         """Run syn command and return (output, returncode)."""
         cmd = [str(self.syn_binary)] + args + [str(file_path)]
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        return result.stdout, result.returncode
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10.0)
+            return result.stdout, result.returncode
+        except subprocess.TimeoutExpired:
+            return f"TIMEOUT: Command exceeded 10 seconds", -1
     
     def run_syn_json(self, args: List[str], file_path: Path) -> Optional[Dict]:
         """Run syn command expecting JSON output."""

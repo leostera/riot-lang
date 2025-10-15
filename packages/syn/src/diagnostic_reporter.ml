@@ -60,11 +60,11 @@ let format_diagnostic ~source diag =
       in
       match fix with
       | Some fix ->
-          format "%s %s\n  |\n%d | %s\n  | %s %s\n  |\n\n%s %s\n\n%s"
+          format "%s %s\n  |\n%d | %s\n  | %s %s\n  |\n\n%s %s\n\n%s\n"
             error_label main_msg line_num code_line styled_pointer styled_msg
             fix_label fix explain_msg
       | None ->
-          format "%s %s\n  |\n%d | %s\n  | %s %s\n  |\n\n%s" error_label
+          format "%s %s\n  |\n%d | %s\n  | %s %s\n  |\n\n%s\n" error_label
             main_msg line_num code_line styled_pointer styled_msg explain_msg)
   | None ->
       panic
