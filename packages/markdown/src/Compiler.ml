@@ -35,23 +35,60 @@ and compile_node source node =
     List.map (compile_element source) stripped_children
   in
   
+  (* Helper to strip trailing spaces from children *)
+  let strip_trailing_spaces children =
+    let rec strip_from_end = function
+      | [] -> []
+      | lst ->
+          match List.rev lst with
+          | (Ceibo.Green.Token tok) :: rest when tok.kind = Syntax_kind.SPACE || tok.kind = Syntax_kind.TAB ->
+              strip_from_end (List.rev rest)
+          | _ -> lst
+    in
+    let stripped_children = strip_from_end (Array.to_list children) in
+    List.map (compile_element source) stripped_children
+  in
+  
+  (* Helper to strip both leading and trailing spaces *)
+  let strip_heading_spaces children =
+    let lst = Array.to_list children in
+    (* Strip leading *)
+    let rec strip_leading remaining = function
+      | [] -> []
+      | (Ceibo.Green.Token tok) :: rest when (tok.kind = Syntax_kind.SPACE) && remaining > 0 ->
+          strip_leading (remaining - 1) rest
+      | lst -> lst
+    in
+    (* Strip trailing *)
+    let rec strip_trailing = function
+      | [] -> []
+      | lst ->
+          match List.rev lst with
+          | (Ceibo.Green.Token tok) :: rest when tok.kind = Syntax_kind.SPACE || tok.kind = Syntax_kind.TAB ->
+              strip_trailing (List.rev rest)
+          | _ -> lst
+    in
+    let result = lst |> strip_leading 3 |> strip_trailing in
+    List.map (compile_element source) result
+  in
+  
   match kind with
   | Syntax_kind.DOCUMENT ->
       Html.fragment children_html
   | Syntax_kind.PARAGRAPH ->
-      Html.element "p" children_html
+      Html.element "p" (strip_leading_spaces children)
   | Syntax_kind.HEADING1 -> 
-      Html.element "h1" (strip_leading_spaces children)
+      Html.element "h1" (strip_heading_spaces children)
   | Syntax_kind.HEADING2 -> 
-      Html.element "h2" (strip_leading_spaces children)
+      Html.element "h2" (strip_heading_spaces children)
   | Syntax_kind.HEADING3 -> 
-      Html.element "h3" (strip_leading_spaces children)
+      Html.element "h3" (strip_heading_spaces children)
   | Syntax_kind.HEADING4 -> 
-      Html.element "h4" (strip_leading_spaces children)
+      Html.element "h4" (strip_heading_spaces children)
   | Syntax_kind.HEADING5 -> 
-      Html.element "h5" (strip_leading_spaces children)
+      Html.element "h5" (strip_heading_spaces children)
   | Syntax_kind.HEADING6 -> 
-      Html.element "h6" (strip_leading_spaces children)
+      Html.element "h6" (strip_heading_spaces children)
   | Syntax_kind.TEXT ->
       Html.fragment children_html
   | Syntax_kind.CODE_BLOCK ->
@@ -70,8 +107,12 @@ and compile_node source node =
   | Syntax_kind.BLOCKQUOTE ->
       Html.element "blockquote" children_html
   | Syntax_kind.LIST ->
-      (* TODO: Determine ordered vs unordered *)
+      (* Generic LIST - shouldn't be used, but fallback to ul *)
       Html.element "ul" children_html
+  | Syntax_kind.UNORDERED_LIST ->
+      Html.element "ul" children_html
+  | Syntax_kind.ORDERED_LIST ->
+      Html.element "ol" children_html
   | Syntax_kind.LIST_ITEM ->
       Html.element "li" children_html
   | Syntax_kind.EMPHASIS ->
