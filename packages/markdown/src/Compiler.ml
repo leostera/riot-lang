@@ -36,8 +36,17 @@ and compile_node source node =
   | Syntax_kind.TEXT ->
       Html.fragment children_html
   | Syntax_kind.CODE_BLOCK ->
-      (* Add trailing newline after code content *)
+      (* Indented code blocks need trailing newline *)
       let code = Html.element "code" (children_html @ [Html.text "\n"]) in
+      Html.element "pre" [ code ]
+  | Syntax_kind.FENCED_CODE_BLOCK ->
+      (* Fenced code blocks need trailing newline if non-empty *)
+      let code = 
+        if List.length children_html = 0 then
+          Html.element "code" []
+        else
+          Html.element "code" (children_html @ [Html.text "\n"]) 
+      in
       Html.element "pre" [ code ]
   | Syntax_kind.BLOCKQUOTE ->
       Html.element "blockquote" children_html
@@ -64,8 +73,15 @@ and compile_node source node =
       in
       Html.element "code" [Html.text stripped]
   | Syntax_kind.LINK ->
-      (* For autolinks, the href is the text content *)
-      let href = Html.to_string (Html.fragment children_html) in
+      (* For autolinks, get raw token text for href (unescape) *)
+      let rec get_raw_text elems =
+        List.fold_left (fun acc elem ->
+          match elem with
+          | Ceibo.Green.Token tok -> acc ^ tok.text
+          | Ceibo.Green.Node n -> acc ^ get_raw_text (Array.to_list n.children)
+        ) "" elems
+      in
+      let href = get_raw_text (Array.to_list node.children) in
       Html.element "a" ~attrs:[("href", href)] children_html
   | Syntax_kind.IMAGE ->
       (* TODO: Extract src/alt from somewhere *)

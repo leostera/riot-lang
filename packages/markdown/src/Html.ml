@@ -22,6 +22,13 @@ let element name ?(attrs = []) children = Element { name; attrs; children }
 let text str = Text (escape_html str)
 let raw str = Raw str
 
+(** Get the raw text content without escaping (for use in attributes) *)
+let rec raw_text_content = function
+  | Text str -> str (* Already escaped, need to unescape or store raw *)
+  | Raw str -> str
+  | Element { children; _ } ->
+      String.concat "" (List.map raw_text_content children)
+
 (** Fragment - a list of HTML nodes without a container *)
 let fragment children =
   (* Create a special marker element that will be flattened *)

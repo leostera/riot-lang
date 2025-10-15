@@ -525,7 +525,7 @@ and parse_fenced_code parser fence_char fence_count =
   in
   
   let content = collect_content [] in
-  make_node Syntax_kind.CODE_BLOCK content
+  make_node Syntax_kind.FENCED_CODE_BLOCK content
 
 (** Check if we're at a thematic break (including with 0-3 leading spaces) *)
 and check_thematic_break parser =
