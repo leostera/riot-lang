@@ -27,7 +27,11 @@ type kind =
   | EmptyCharLiteral
   | MultiCharLiteral of { text : string }
   | UnclosedCharLiteral of { text : string }
-  | MissingBinaryOperand of { operator : string; side : string; found : found_token }
+  | MissingBinaryOperand of {
+      operator : string;
+      side : string;
+      found : found_token;
+    }
   | ConsecutiveBinaryOperators of { operators : string; found : found_token }
   | InvalidTypeParameter of { text : string; found : found_token }
   | UppercaseTypeVariable of { text : string; found : found_token }
@@ -226,26 +230,16 @@ let expected_message diag =
       side ^ " operand for " ^ operator
   | ConsecutiveBinaryOperators { operators; _ } ->
       "expression between operators in " ^ operators
-  | InvalidTypeParameter _ ->
-      "valid type parameter"
-  | UppercaseTypeVariable _ ->
-      "lowercase type variable"
-  | UppercaseTypeName _ ->
-      "lowercase type name"
-  | BracketedTypeParameters _ ->
-      "type parameters with ('a, 'b) syntax"
-  | ListDoubleSemicolon _ ->
-      "single semicolon between list elements"
-  | IfMissingThen _ ->
-      "then keyword"
-  | MatchMissingScrutinee _ ->
-      "expression to match on"
-  | MatchMissingWith _ ->
-      "with keyword"
-  | MatchMissingPattern _ ->
-      "pattern before ->"
-  | MatchGuardMissingExpr _ ->
-      "boolean expression after when"
+  | InvalidTypeParameter _ -> "valid type parameter"
+  | UppercaseTypeVariable _ -> "lowercase type variable"
+  | UppercaseTypeName _ -> "lowercase type name"
+  | BracketedTypeParameters _ -> "type parameters with ('a, 'b) syntax"
+  | ListDoubleSemicolon _ -> "single semicolon between list elements"
+  | IfMissingThen _ -> "then keyword"
+  | MatchMissingScrutinee _ -> "expression to match on"
+  | MatchMissingWith _ -> "with keyword"
+  | MatchMissingPattern _ -> "pattern before ->"
+  | MatchGuardMissingExpr _ -> "boolean expression after when"
 
 let fix_message diag =
   match diag.kind with
@@ -291,19 +285,21 @@ let fix_message diag =
       let lower = String.lowercase_ascii text in
       Some (format "change %s to %s" text lower)
   | BracketedTypeParameters { type_name; _ } ->
-      Some (format "put generics on the left of the type name with parenthesis, like this: ('a, 'b) %s" type_name)
+      Some
+        (format
+           "put generics on the left of the type name with parenthesis, like \
+            this: ('a, 'b) %s"
+           type_name)
   | ListDoubleSemicolon _ ->
-      Some "remove one semicolon - list elements are separated by single semicolons"
-  | IfMissingThen _ ->
-      Some "add 'then' keyword after the condition"
+      Some
+        "remove one semicolon - list elements are separated by single \
+         semicolons"
+  | IfMissingThen _ -> Some "add 'then' keyword after the condition"
   | MatchMissingScrutinee _ ->
       Some "add an expression after 'match' to specify what to match on"
-  | MatchMissingWith _ ->
-      Some "add 'with' keyword after the expression"
-  | MatchMissingPattern _ ->
-      Some "add a pattern before the '->' arrow"
-  | MatchGuardMissingExpr _ ->
-      Some "add a boolean expression after 'when'"
+  | MatchMissingWith _ -> Some "add 'with' keyword after the expression"
+  | MatchMissingPattern _ -> Some "add a pattern before the '->' arrow"
+  | MatchGuardMissingExpr _ -> Some "add a boolean expression after 'when'"
   | _ -> None
 
 let error_id diag =

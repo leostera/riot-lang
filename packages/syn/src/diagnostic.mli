@@ -55,7 +55,11 @@ type kind =
   | EmptyCharLiteral
   | MultiCharLiteral of { text : string }
   | UnclosedCharLiteral of { text : string }
-  | MissingBinaryOperand of { operator : string; side : string; found : found_token }
+  | MissingBinaryOperand of {
+      operator : string;
+      side : string;
+      found : found_token;
+    }
   | ConsecutiveBinaryOperators of { operators : string; found : found_token }
   | InvalidTypeParameter of { text : string; found : found_token }
   | UppercaseTypeVariable of { text : string; found : found_token }
@@ -183,14 +187,12 @@ val bracketed_type_parameters :
 val list_double_semicolon :
   found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 
-val if_missing_then :
-  found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+val if_missing_then : found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 
 val match_missing_scrutinee :
   found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 
-val match_missing_with :
-  found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+val match_missing_with : found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 
 val match_missing_pattern :
   found:Token.t -> text:string -> span:Ceibo.Span.t -> t
