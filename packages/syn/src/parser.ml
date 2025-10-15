@@ -472,7 +472,7 @@ and parse_char_literal parser =
       in
       make_error_node parser ~diagnostic ~consumed_tokens:[]
 
-(** Parse primary expression (no operators) *)
+(** Parse primary expression (no operators, no function application) *)
 and parse_primary_expr parser =
   match peek_kind parser with
   | Token.Ident _ ->
@@ -481,7 +481,6 @@ and parse_primary_expr parser =
   | Token.Literal _ -> parse_constant parser
   | Token.Keyword Keyword.True -> parse_constant parser
   | Token.Keyword Keyword.False -> parse_constant parser
-  | Token.Keyword Keyword.Let -> parse_let_binding parser
   | Token.OpenDelim Token.Paren -> parse_paren_expr parser
   | Token.OpenDelim Token.BeginEnd -> parse_begin_end_expr parser
   | Token.Quote -> parse_char_literal parser
@@ -504,11 +503,48 @@ and parse_primary_expr parser =
       in
       make_error_node parser ~diagnostic ~consumed_tokens:[]
 
+(** Check if current token can start an argument expression.
+    We stop at operators, keywords, and delimiters. *)
+and can_start_arg_expr parser =
+  match peek_kind parser with
+  (* Can start arguments *)
+  | Token.Ident _ | Token.Literal _ 
+  | Token.Keyword Keyword.True | Token.Keyword Keyword.False
+  | Token.OpenDelim Token.Paren | Token.OpenDelim Token.BeginEnd 
+  | Token.Quote -> true
+  (* Cannot - these are operators or other constructs *)
+  | _ -> false
+
+(** Parse function application: f x y z
+    This has higher precedence than binary operators.
+    Grammar: expr ::= expr { argument }+ *)
+and parse_application_expr parser =
+  let func = parse_primary_expr parser in
+  let trivia_after_func = consume_trivia parser in
+  
+  (* Keep parsing arguments while we can *)
+  let rec parse_args func_expr func_trivia =
+    if can_start_arg_expr parser then
+      let arg = parse_primary_expr parser in
+      let trivia_after_arg = consume_trivia parser in
+      (* Build application node: (f arg) *)
+      let app_expr = make_node Syntax_kind.APPLY_EXPR
+        (tokens_to_green parser func_trivia
+         @ [Ceibo.Green.Node func_expr]
+         @ [Ceibo.Green.Node arg]) in
+      (* Continue parsing more arguments: ((f arg1) arg2) ... *)
+      parse_args app_expr trivia_after_arg
+    else
+      func_expr
+  in
+  
+  parse_args func trivia_after_func
+
 (** Parse binary expression with precedence climbing.
     This handles expressions like: 1 + 2 * 3, x || y && z, etc. *)
 and parse_binary_expr parser min_prec =
-  (* Parse left side *)
-  let left = parse_primary_expr parser in
+  (* Parse left side (which may include function application) *)
+  let left = parse_application_expr parser in
   let trivia_after_left = consume_trivia parser in
   
   (* Keep parsing operators while they have higher precedence *)
