@@ -1,0 +1,7 @@
+{
+  "scheme": "mailto",
+  "authority": null,
+  "path": "user@example.com",
+  "query": null,
+  "fragment": null
+}

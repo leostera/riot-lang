@@ -1,0 +1,9 @@
+{
+  "method": "GET",
+  "path": "/search?q=hello+world&lang=en",
+  "version": "HTTP/1.1",
+  "headers": {
+    "Host": "search.example.com"
+  },
+  "body": ""
+}

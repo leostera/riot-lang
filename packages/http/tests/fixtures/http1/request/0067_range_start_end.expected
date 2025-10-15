@@ -1,0 +1,10 @@
+{
+  "method": "GET",
+  "path": "/image.jpg",
+  "version": "HTTP/1.1",
+  "headers": {
+    "Host": "cdn.example.com",
+    "Range": "bytes=0-1023"
+  },
+  "body": ""
+}

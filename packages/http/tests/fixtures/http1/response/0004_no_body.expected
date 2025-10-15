@@ -1,0 +1,9 @@
+{
+  "version": "HTTP/1.1",
+  "status_code": 204,
+  "reason": "No Content",
+  "headers": {
+    "Content-Length": "0"
+  },
+  "body": ""
+}

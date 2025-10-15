@@ -1,0 +1,10 @@
+{
+  "version": "HTTP/1.1",
+  "status_code": 200,
+  "reason": "OK",
+  "headers": {
+    "Content-Type": "text/plain",
+    "Content-Length": "5"
+  },
+  "body": "Hello"
+}

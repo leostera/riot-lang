@@ -1,0 +1,10 @@
+{
+  "method": "TRACE",
+  "path": "/api/debug",
+  "version": "HTTP/1.1",
+  "headers": {
+    "Host": "debug.example.com",
+    "Max-Forwards": "5"
+  },
+  "body": ""
+}

@@ -1,0 +1,1 @@
+https://example.com/api?filter[status]=active&sort=-created_at&page[number]=1&page[size]=25

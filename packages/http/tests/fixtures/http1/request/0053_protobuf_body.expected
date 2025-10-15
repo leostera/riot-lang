@@ -1,0 +1,12 @@
+{
+  "method": "POST",
+  "path": "/rpc",
+  "version": "HTTP/1.1",
+  "headers": {
+    "Host": "grpc.example.com",
+    "Content-Type": "application/grpc+proto",
+    "TE": "trailers",
+    "Content-Length": "20"
+  },
+  "body": "protobuf data here"
+}

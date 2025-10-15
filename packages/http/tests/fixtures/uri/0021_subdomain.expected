@@ -1,0 +1,9 @@
+{
+  "scheme": "https",
+  "authority": "api.staging.example.com",
+  "host": "api.staging.example.com",
+  "port": null,
+  "path": "/v2/users",
+  "query": null,
+  "fragment": null
+}

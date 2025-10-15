@@ -1,0 +1,10 @@
+{
+  "version": "HTTP/1.1",
+  "status_code": 200,
+  "reason": "OK",
+  "headers": {
+    "Funny-head": "yesyes",
+    "Content-Length": "4"
+  },
+  "body": "moo\n"
+}

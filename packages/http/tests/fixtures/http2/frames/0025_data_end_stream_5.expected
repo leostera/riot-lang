@@ -1,0 +1,17 @@
+{
+  "length": 3,
+  "frame_type": "Data",
+  "flags": {
+    "end_stream": true,
+    "end_headers": false,
+    "padded": false,
+    "priority": false,
+    "ack": false
+  },
+  "stream_id": 7,
+  "payload": {
+    "type": "DataPayload",
+    "data": "End",
+    "pad_length": null
+  }
+}

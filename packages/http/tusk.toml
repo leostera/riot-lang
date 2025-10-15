@@ -5,3 +5,7 @@ version = "0.1.0"
 [dependencies]
 std = { path = "../std" }
 miniriot = { path = "../miniriot" }
+
+[[bin]]
+name = "http_tests"
+path = "src/main.ml"

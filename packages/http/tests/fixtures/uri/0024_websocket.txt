@@ -1,0 +1,1 @@
+wss://example.com/socket?token=abc123

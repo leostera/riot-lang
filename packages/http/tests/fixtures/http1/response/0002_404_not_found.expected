@@ -1,0 +1,10 @@
+{
+  "version": "HTTP/1.1",
+  "status_code": 404,
+  "reason": "Not Found",
+  "headers": {
+    "Content-Type": "text/plain",
+    "Content-Length": "9"
+  },
+  "body": "Not Found"
+}

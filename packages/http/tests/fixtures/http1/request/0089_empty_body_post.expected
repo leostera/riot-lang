@@ -1,0 +1,10 @@
+{
+  "method": "POST",
+  "path": "/api/ping",
+  "version": "HTTP/1.1",
+  "headers": {
+    "Host": "api.example.com",
+    "Content-Length": "0"
+  },
+  "body": ""
+}

@@ -1,0 +1,10 @@
+{
+  "method": "GET",
+  "path": "/path",
+  "version": "HTTP/1.1",
+  "headers": {
+    "Host": "example.com",
+    "X-Empty": ""
+  },
+  "body": ""
+}

@@ -1,0 +1,11 @@
+{
+  "version": "HTTP/1.1",
+  "status_code": 503,
+  "reason": "Service Unavailable",
+  "headers": {
+    "Retry-After": "120",
+    "Content-Type": "text/plain",
+    "Content-Length": "30"
+  },
+  "body": "Service temporarily unavailable"
+}

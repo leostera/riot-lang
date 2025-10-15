@@ -1,0 +1,17 @@
+{
+  "length": 11,
+  "frame_type": "Data",
+  "flags": {
+    "end_stream": false,
+    "end_headers": false,
+    "padded": false,
+    "priority": false,
+    "ack": false
+  },
+  "stream_id": 5,
+  "payload": {
+    "type": "DataPayload",
+    "data": "Hello World",
+    "pad_length": null
+  }
+}
