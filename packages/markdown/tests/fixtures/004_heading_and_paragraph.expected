@@ -1,0 +1,5 @@
+Document [0..46]
+  Heading(level=1) [0..8]
+    Text("Title") [0..8]
+  Paragraph [9..46]
+    Text("This is a paragraph under the title.") [9..46]

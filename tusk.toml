@@ -1,16 +1,29 @@
 [workspace]
 members = [
+  "packages/blink",
+  "packages/ceibo",
+  "packages/colors",
+  "packages/http",
   "packages/jsonrpc",
   "packages/kernel",
+  "packages/markdown",
   "packages/mcp",
   "packages/miniriot",
   "packages/minitusk",
+  "packages/postgres",
+  "packages/pubgrub",
   "packages/raml",
-  "packages/syn",
+  "packages/sqlite",
+  "packages/sqltool",
+  "packages/sqlx",
+  "packages/sqlx_driver",
   "packages/std",
+  "packages/suri",
+  "packages/syn",
+  "packages/tty",
   "packages/tusk",
-  "packages/tusk_fmt",
   "packages/tusk_fix",
+  "packages/tusk_fmt",
 ]
 
 [dependencies]

@@ -1,0 +1,6 @@
+Document [0..38]
+  Paragraph [0..38]
+    Text("Check out ") [0..10]
+    Link(url="https://google.com", title=none) [10..37]
+      Text("Google") [11..17]
+    Text(".") [37..38]

@@ -1,0 +1,8 @@
+Document [0..21]
+  BlockQuote [0..10]
+    Paragraph [2..10]
+      Text("Level 1") [2..10]
+  BlockQuote [10..21]
+    BlockQuote [11..21]
+      Paragraph [13..21]
+        Text("Level 2") [13..21]
