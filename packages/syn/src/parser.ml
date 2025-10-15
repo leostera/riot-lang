@@ -980,8 +980,10 @@ and parse_type_decl parser =
               (* Consume the name first *)
               let name_tok = consume parser in
               let lt_tok = consume parser in
+              let type_name = token_text parser name_tok in
               let diagnostic =
                 Diagnostic.bracketed_type_parameters
+                  ~type_name
                   ~found:lt_tok ~text:"<"
                   ~span:(Ceibo.Span.make ~start:lt_tok.Token.span.start
                           ~end_:lt_tok.Token.span.end_)

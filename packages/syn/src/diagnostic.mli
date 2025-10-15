@@ -60,7 +60,7 @@ type kind =
   | InvalidTypeParameter of { text : string; found : found_token }
   | UppercaseTypeVariable of { text : string; found : found_token }
   | UppercaseTypeName of { text : string; found : found_token }
-  | BracketedTypeParameters of { found : found_token }
+  | BracketedTypeParameters of { type_name : string; found : found_token }
 
 type t = { kind : kind; span : Ceibo.Span.t }
 (** A diagnostic with structured error information and source location. *)
@@ -172,7 +172,7 @@ val uppercase_type_name :
   text:string -> found:Token.t -> text_found:string -> span:Ceibo.Span.t -> t
 
 val bracketed_type_parameters :
-  found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+  type_name:string -> found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 
 (** # Serialization *)
 

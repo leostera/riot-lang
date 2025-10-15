@@ -32,7 +32,7 @@ type kind =
   | InvalidTypeParameter of { text : string; found : found_token }
   | UppercaseTypeVariable of { text : string; found : found_token }
   | UppercaseTypeName of { text : string; found : found_token }
-  | BracketedTypeParameters of { found : found_token }
+  | BracketedTypeParameters of { type_name : string; found : found_token }
 
 type t = { kind : kind; span : Ceibo.Span.t }
 (** Parse error information *)
@@ -152,10 +152,10 @@ let uppercase_type_name ~text ~found:token ~text_found ~span =
   let found = { kind = kind_str; text = text_found } in
   make ~kind:(UppercaseTypeName { text; found }) ~span
 
-let bracketed_type_parameters ~found:token ~text ~span =
+let bracketed_type_parameters ~type_name ~found:token ~text ~span =
   let kind_str = Token.to_string token in
   let found = { kind = kind_str; text } in
-  make ~kind:(BracketedTypeParameters { found }) ~span
+  make ~kind:(BracketedTypeParameters { type_name; found }) ~span
 
 let expected_message diag =
   match diag.kind with
@@ -242,8 +242,8 @@ let fix_message diag =
   | UppercaseTypeName { text; _ } ->
       let lower = String.lowercase_ascii text in
       Some (format "change %s to %s" text lower)
-  | BracketedTypeParameters _ ->
-      Some "replace < > with ( ) and use lowercase type variables like 'a"
+  | BracketedTypeParameters { type_name; _ } ->
+      Some (format "put generics on the left of the type name with parenthesis, like this: ('a, 'b) %s" type_name)
   | _ -> None
 
 let error_id diag =
