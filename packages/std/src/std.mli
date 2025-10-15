@@ -1,6 +1,5 @@
 (** # Std - Riot's standard library
 
-
     A comprehensive standard library providing:
     - Modern error handling with [Result] and [Option]
     - Type-safe filesystem operations with [Path] and [Fs]
@@ -66,6 +65,7 @@
     - [Json] - JSON
     - [Toml] - TOML
     - [Sexp] - S-expressions
+    - [Csv] - CSV (Comma-Separated Values)
 
     ### Networking
     - [Net] - Network I/O

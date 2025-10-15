@@ -25,11 +25,11 @@ let run_tests_cmd =
          |> possible_values [ "tap"; "json"; "junit"; "pretty"; "minimal" ];
          flag "shuffle" |> long "shuffle" |> help "Run tests in random order";
          option "concurrency" |> long "concurrency"
-          |> help "Number of concurrent workers"
-          |> default "1";
-          option "pattern" |> long "pattern"
-          |> help "Test name prefix to filter by";
-        ]
+         |> help "Number of concurrent workers"
+         |> default "1";
+         option "pattern" |> long "pattern"
+         |> help "Test name prefix to filter by";
+       ]
 
 let list_tests_cmd = command "list-tests" |> about "List all tests"
 

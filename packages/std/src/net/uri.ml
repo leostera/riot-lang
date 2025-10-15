@@ -143,27 +143,29 @@ let of_string s =
     with _ -> Error InvalidFormat
 
 let to_string url =
-  let parts = [] in
-  let parts =
-    match url.scheme with
-    | None -> parts
-    | Some scheme -> scheme :: ":" :: parts
-  in
-  let parts =
-    match url.authority with
-    | None -> parts
-    | Some authority -> "//" :: authority :: parts
-  in
-  let parts = url.path :: parts in
-  let parts =
-    match url.query with None -> parts | Some query -> "?" :: query :: parts
-  in
-  let parts =
-    match url.fragment with
-    | None -> parts
-    | Some fragment -> "#" :: fragment :: parts
-  in
-  String.concat "" (List.rev parts)
+  let buf = Buffer.create 256 in
+  (match url.scheme with
+  | None -> ()
+  | Some scheme ->
+      Buffer.add_string buf scheme;
+      Buffer.add_char buf ':');
+  (match url.authority with
+  | None -> ()
+  | Some authority ->
+      Buffer.add_string buf "//";
+      Buffer.add_string buf authority);
+  Buffer.add_string buf url.path;
+  (match url.query with
+  | None -> ()
+  | Some query ->
+      Buffer.add_char buf '?';
+      Buffer.add_string buf query);
+  (match url.fragment with
+  | None -> ()
+  | Some fragment ->
+      Buffer.add_char buf '#';
+      Buffer.add_string buf fragment);
+  Buffer.contents buf
 
 (* Component access *)
 let scheme url = url.scheme

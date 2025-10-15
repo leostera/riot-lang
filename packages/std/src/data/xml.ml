@@ -18,7 +18,6 @@ let escape_xml str =
       | '<' -> Buffer.add_string buf "&lt;"
       | '>' -> Buffer.add_string buf "&gt;"
       | '"' -> Buffer.add_string buf "&quot;"
-      | '\'' -> Buffer.add_string buf "&apos;"
       | c -> Buffer.add_char buf c)
     str;
   Buffer.contents buf
@@ -41,7 +40,9 @@ let rec to_string ?(indent = 0) = function
                  (fun (k, v) -> format "%s=\"%s\"" k (escape_xml v))
                  attrs)
       in
-      if children = [] then format "%s<%s%s/>" spaces name attrs_str
+      if children = [] then
+        (* Use explicit closing tags for HTML compatibility *)
+        format "%s<%s%s></%s>" spaces name attrs_str name
       else
         let children_str =
           String.concat "\n"
