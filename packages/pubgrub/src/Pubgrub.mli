@@ -4,7 +4,7 @@ module Term = Term
 module Provider = Provider
 module Incompatibility = Incompatibility
 module Partial_solution = Partial_solution
-module Solver = Solver
+module Solver = New_solver (* SWAPPED TO NEW SOLVER! *)
 module Report = Report
 
 type version = Version.t

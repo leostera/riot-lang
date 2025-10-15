@@ -5,15 +5,15 @@ type version = Version.t
 type decision_level = int
 
 type assignment =
-  | Decision of package * version * decision_level
+  | Decision of package * version * decision_level * int
   | Derivation of
-      package * version Ranges.t * Incompatibility.t * decision_level
+      package * version Ranges.t * Incompatibility.t * decision_level * int
 
 type t
 
 val empty : unit -> t
 val add_decision : t -> package -> version -> t
-val add_derivation : t -> package -> version Ranges.t -> Incompatibility.t -> t
+val add_derivation : t -> package -> Incompatibility.t -> t
 val get_decision : t -> package -> version option
 
 val get_constraint :
