@@ -399,7 +399,7 @@ and check_indented_code parser =
     match peek_n parser offset with
     | { kind = Syntax_kind.SPACE; _ } -> count_spaces (offset + 1) (spaces + 1)
     | { kind = Syntax_kind.TAB; _ } -> count_spaces (offset + 1) (spaces + 4) (* tab = 4 spaces *)
-    | { kind = Syntax_kind.NEWLINE | Syntax_kind.EOF; _ } -> false (* blank line *)
+    | { kind = Syntax_kind.NEWLINE | Syntax_kind.EOF; _ } -> spaces >= 4 (* blank line with 4+ spaces can start code block *)
     | _ -> spaces >= 4
   in
   count_spaces 0 0
@@ -458,7 +458,21 @@ and parse_indented_code parser =
   in
   
   let content = collect_lines [] in
-  make_node Syntax_kind.CODE_BLOCK content
+  (* Strip leading blank lines (only newlines) *)
+  let rec strip_leading_blanks = function
+    | Ceibo.Green.Token { kind = Syntax_kind.NEWLINE; _ } :: rest -> strip_leading_blanks rest
+    | lst -> lst
+  in
+  (* Strip trailing blank lines (only newlines) *)
+  let rec strip_trailing_blanks = function
+    | [] -> []
+    | lst ->
+        match List.rev lst with
+        | Ceibo.Green.Token { kind = Syntax_kind.NEWLINE; _ } :: rest -> strip_trailing_blanks (List.rev rest)
+        | _ -> lst
+  in
+  let content_clean = content |> strip_leading_blanks |> strip_trailing_blanks in
+  make_node Syntax_kind.CODE_BLOCK content_clean
 
 (** Check if we're at a fenced code block (``` or ~~~) with 0-3 leading spaces *)
 and check_fenced_code parser =
