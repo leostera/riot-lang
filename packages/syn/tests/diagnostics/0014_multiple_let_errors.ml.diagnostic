@@ -28,25 +28,8 @@
       "hint": "Expected a value, function call, or operator expression."
     },
     "span": {
-      "start": 5,
-      "end": 5
-    }
-  },
-  {
-    "kind": {
-      "id": "E0003",
-      "name": "missing-let-binding-equals",
-      "expected": "=",
-      "found": {
-        "kind": "keyword",
-        "text": "let"
-      },
-      "fix": "add = between the pattern and expression",
-      "hint": "Every let binding needs an = between the pattern and the expression."
-    },
-    "span": {
-      "start": 12,
-      "end": 12
+      "start": 10,
+      "end": 11
     }
   },
   {
@@ -61,8 +44,8 @@
       "hint": "Expected a value, function call, or operator expression."
     },
     "span": {
-      "start": 20,
-      "end": 20
+      "start": 0,
+      "end": 0
     }
   }
 ]

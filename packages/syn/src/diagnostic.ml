@@ -33,6 +33,7 @@ type kind =
   | UppercaseTypeVariable of { text : string; found : found_token }
   | UppercaseTypeName of { text : string; found : found_token }
   | BracketedTypeParameters of { type_name : string; found : found_token }
+  | ListDoubleSemicolon of { found : found_token }
 
 type t = { kind : kind; span : Ceibo.Span.t }
 (** Parse error information *)
@@ -157,6 +158,11 @@ let bracketed_type_parameters ~type_name ~found:token ~text ~span =
   let found = { kind = kind_str; text } in
   make ~kind:(BracketedTypeParameters { type_name; found }) ~span
 
+let list_double_semicolon ~found:token ~text ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text } in
+  make ~kind:(ListDoubleSemicolon { found }) ~span
+
 let expected_message diag =
   match diag.kind with
   | MalformedTypeVariable _ -> "type variable identifier (e.g., 'a, 'b)"
@@ -198,6 +204,8 @@ let expected_message diag =
       "lowercase type name"
   | BracketedTypeParameters _ ->
       "type parameters with ('a, 'b) syntax"
+  | ListDoubleSemicolon _ ->
+      "single semicolon between list elements"
 
 let fix_message diag =
   match diag.kind with
@@ -244,6 +252,8 @@ let fix_message diag =
       Some (format "change %s to %s" text lower)
   | BracketedTypeParameters { type_name; _ } ->
       Some (format "put generics on the left of the type name with parenthesis, like this: ('a, 'b) %s" type_name)
+  | ListDoubleSemicolon _ ->
+      Some "remove one semicolon - list elements are separated by single semicolons"
   | _ -> None
 
 let error_id diag =
@@ -273,6 +283,7 @@ let error_id diag =
   | UppercaseTypeVariable _ -> Error.E0023_UppercaseTypeVariable
   | UppercaseTypeName _ -> Error.E0024_UppercaseTypeName
   | BracketedTypeParameters _ -> Error.E0025_BracketedTypeParameters
+  | ListDoubleSemicolon _ -> Error.E0026_ListDoubleSemicolon
 
 let hint_message diag = diag |> error_id |> Error.explain
 let id err = err |> error_id |> Error.id_to_string
@@ -315,6 +326,7 @@ let found_token diag =
   | UppercaseTypeVariable { found; _ } -> found
   | UppercaseTypeName { found; _ } -> found
   | BracketedTypeParameters { found } -> found
+  | ListDoubleSemicolon { found } -> found
 
 let main_message diag =
   match diag.kind with

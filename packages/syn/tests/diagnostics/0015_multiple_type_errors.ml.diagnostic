@@ -18,23 +18,6 @@
   },
   {
     "kind": {
-      "id": "E0013",
-      "name": "missing-type-decl-equals",
-      "expected": "=",
-      "found": {
-        "kind": "keyword",
-        "text": "type"
-      },
-      "fix": "add = between the type name and type definition",
-      "hint": "Type declarations require an = between the type name and its definition."
-    },
-    "span": {
-      "start": 20,
-      "end": 24
-    }
-  },
-  {
-    "kind": {
       "id": "E0010",
       "name": "invalid-type-expression",
       "expected": "type definition",

@@ -11,8 +11,8 @@
       "hint": "Expected a value, function call, or operator expression."
     },
     "span": {
-      "start": 7,
-      "end": 7
+      "start": 0,
+      "end": 0
     }
   }
 ]

@@ -566,19 +566,20 @@ and parse_primary_expr parser =
       in
       make_error_node parser ~diagnostic ~consumed_tokens:[ tok ]
   | _ ->
-      let found_tok = peek parser in
+      (* Unexpected token - consume it to avoid infinite loops *)
+      let found_tok = consume parser in
       let found_text = token_text parser found_tok in
       (* Check if it's an operator (missing left operand) *)
       let diagnostic =
-        if Option.is_some (operator_info (peek_kind parser)) then
+        if Option.is_some (operator_info found_tok.Token.kind) then
           Diagnostic.missing_binary_operand ~operator:found_text ~side:"left"
             ~found:found_tok ~text:found_text
-            ~span:(expected_span parser)
+            ~span:(current_span parser)
         else
           Diagnostic.invalid_expression ~found:found_tok
-            ~text:found_text ~span:(expected_span parser)
+            ~text:found_text ~span:(current_span parser)
       in
-      make_error_node parser ~diagnostic ~consumed_tokens:[]
+      make_error_node parser ~diagnostic ~consumed_tokens:[found_tok]
 
 (** Check if current token can start an argument expression.
     We stop at operators, keywords, and delimiters. *)
@@ -859,6 +860,21 @@ and parse_list_expr parser =
         | Token.CloseDelim Token.Bracket | Token.EOF ->
             (* End of list *)
             List.rev acc
+        | Token.Semi ->
+            (* Semicolon without element - this is an error *)
+            let semi = consume parser in
+            let diagnostic =
+              Diagnostic.list_double_semicolon
+                ~found:semi
+                ~text:(token_text parser semi)
+                ~span:semi.Token.span
+            in
+            let error_node = make_error_node parser ~diagnostic ~consumed_tokens:[semi] in
+            let trivia_after = consume_trivia parser in
+            parse_elements
+              (tokens_to_green parser trivia_after
+               @ [Ceibo.Green.Node error_node]
+               @ acc)
         | _ ->
             (* Parse an element *)
             let elem = parse_expr parser in
@@ -869,12 +885,36 @@ and parse_list_expr parser =
                 let trivia_after_elem = consume_trivia parser in
                 let semi = consume parser in
                 let trivia_after_semi = consume_trivia parser in
-                parse_elements
-                  (tokens_to_green parser trivia_after_semi
-                   @ [make_token parser semi]
-                   @ tokens_to_green parser trivia_after_elem
-                   @ [Ceibo.Green.Node elem]
-                   @ acc)
+                
+                (* Check for double semicolon *)
+                (match peek_kind parser with
+                | Token.Semi ->
+                    (* Double semicolon! Report error and consume the second one *)
+                    let second_semi = consume parser in
+                    let diagnostic =
+                      Diagnostic.list_double_semicolon
+                        ~found:second_semi
+                        ~text:(token_text parser second_semi)
+                        ~span:second_semi.Token.span
+                    in
+                    let error_node = make_error_node parser ~diagnostic ~consumed_tokens:[second_semi] in
+                    let trivia_after_error = consume_trivia parser in
+                    parse_elements
+                      (tokens_to_green parser trivia_after_error
+                       @ [Ceibo.Green.Node error_node]
+                       @ tokens_to_green parser trivia_after_semi
+                       @ [make_token parser semi]
+                       @ tokens_to_green parser trivia_after_elem
+                       @ [Ceibo.Green.Node elem]
+                       @ acc)
+                | _ ->
+                    (* Single semicolon, continue normally *)
+                    parse_elements
+                      (tokens_to_green parser trivia_after_semi
+                       @ [make_token parser semi]
+                       @ tokens_to_green parser trivia_after_elem
+                       @ [Ceibo.Green.Node elem]
+                       @ acc))
             | _ ->
                 (* No semicolon - element is complete, recurse to check for bracket *)
                 parse_elements

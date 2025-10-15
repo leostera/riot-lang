@@ -61,6 +61,7 @@ type kind =
   | UppercaseTypeVariable of { text : string; found : found_token }
   | UppercaseTypeName of { text : string; found : found_token }
   | BracketedTypeParameters of { type_name : string; found : found_token }
+  | ListDoubleSemicolon of { found : found_token }
 
 type t = { kind : kind; span : Ceibo.Span.t }
 (** A diagnostic with structured error information and source location. *)
@@ -173,6 +174,9 @@ val uppercase_type_name :
 
 val bracketed_type_parameters :
   type_name:string -> found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
+val list_double_semicolon :
+  found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 
 (** # Serialization *)
 

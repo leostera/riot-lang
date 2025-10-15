@@ -26,6 +26,7 @@ type id =
   | E0023_UppercaseTypeVariable
   | E0024_UppercaseTypeName
   | E0025_BracketedTypeParameters
+  | E0026_ListDoubleSemicolon
 
 let id_to_string = function
   | E0001_MalformedTypeVariable -> "E0001"
@@ -53,6 +54,7 @@ let id_to_string = function
   | E0023_UppercaseTypeVariable -> "E0023"
   | E0024_UppercaseTypeName -> "E0024"
   | E0025_BracketedTypeParameters -> "E0025"
+  | E0026_ListDoubleSemicolon -> "E0026"
 
 let id_of_string = function
   | "E0001" -> Some E0001_MalformedTypeVariable
@@ -80,6 +82,7 @@ let id_of_string = function
   | "E0023" -> Some E0023_UppercaseTypeVariable
   | "E0024" -> Some E0024_UppercaseTypeName
   | "E0025" -> Some E0025_BracketedTypeParameters
+  | "E0026" -> Some E0026_ListDoubleSemicolon
   | _ -> None
 
 let name = function
@@ -108,6 +111,7 @@ let name = function
   | E0023_UppercaseTypeVariable -> "uppercase-type-variable"
   | E0024_UppercaseTypeName -> "uppercase-type-name"
   | E0025_BracketedTypeParameters -> "bracketed-type-parameters"
+  | E0026_ListDoubleSemicolon -> "list-double-semicolon"
 
 let explain = function
   | E0001_MalformedTypeVariable ->
@@ -260,4 +264,22 @@ OCaml syntax uses ('a, 'b) style type parameters, not <A, B> like other language
   ```
 
 Fix: replace <A, B> with ('a, 'b) and use lowercase type variables.
+|}
+  | E0026_ListDoubleSemicolon ->
+      {|List elements must be separated by a single semicolon.
+
+In OCaml lists, elements are separated by semicolons (;), not commas:
+  ```ocaml
+  (* Correct syntax *)
+  let x = [1; 2; 3]
+  let y = ["a"; "b"; "c"]
+  
+  (* Common mistakes *)
+  let z = [1;; 2]      (* error: double semicolon *)
+  let w = [;;]         (* error: empty element with double semicolon *)
+  let v = [;]          (* error: semicolon without elements *)
+  ```
+
+Fix: use a single semicolon (;) between list elements.
+Note: Double semicolons (;;) are used as top-level statement terminators in the REPL, not in lists.
 |}

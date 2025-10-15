@@ -26,6 +26,7 @@ type id =
   | E0023_UppercaseTypeVariable
   | E0024_UppercaseTypeName
   | E0025_BracketedTypeParameters
+  | E0026_ListDoubleSemicolon
 
 val id_to_string : id -> string
 val id_of_string : string -> id option
