@@ -1,1 +1,1 @@
-match x with | -> "empty"
+  let _ = match x with | -> "empty"

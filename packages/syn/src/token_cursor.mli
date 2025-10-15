@@ -2,6 +2,7 @@ type t
 
 val create : source:string -> Token.t list -> t
 val position : t -> int
+val set_position : t -> int -> unit
 val is_eof : t -> bool
 
 (* NOTE: if there are no more tokens you will always get Token.EOF *)

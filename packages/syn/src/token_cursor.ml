@@ -12,6 +12,7 @@ let create ~source tokens =
   { tokens; pos = 0; length = Array.length tokens; source }
 
 let position t = t.pos
+let set_position t pos = t.pos <- pos
 let is_eof t = t.pos >= t.length
 
 let eof_token () =
