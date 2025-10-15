@@ -1,7 +1,11 @@
 open Std
 
 type t =
-  | Element of { name : string; attrs : (string * string) list; children : t list }
+  | Element of {
+      name : string;
+      attrs : (string * string) list;
+      children : t list;
+    }
   | Text of string
   | Raw of string
 
@@ -68,14 +72,40 @@ let rec to_string = function
           "wbr";
         ]
       in
-      let block_elements = ["p"; "h1"; "h2"; "h3"; "h4"; "h5"; "h6"; "pre"; "blockquote"; "ul"; "ol"; "li"; "hr"; "div"; "table"; "tr"; "td"; "th"] in
+      let block_elements =
+        [
+          "p";
+          "h1";
+          "h2";
+          "h3";
+          "h4";
+          "h5";
+          "h6";
+          "pre";
+          "blockquote";
+          "ul";
+          "ol";
+          "li";
+          "hr";
+          "div";
+          "table";
+          "tr";
+          "td";
+          "th";
+        ]
+      in
       let is_block = List.mem name block_elements in
       (* Check if children contain block elements *)
-      let has_block_child = List.exists (function
-        | Element { name = child_name; _ } -> List.mem child_name block_elements
-        | _ -> false
-      ) children in
-      let needs_newlines = match name with
+      let has_block_child =
+        List.exists
+          (function
+            | Element { name = child_name; _ } ->
+                List.mem child_name block_elements
+            | _ -> false)
+          children
+      in
+      let needs_newlines =
+        match name with
         | "ul" | "ol" | "blockquote" -> true
         | "li" -> has_block_child
         | _ -> false
@@ -83,12 +113,16 @@ let rec to_string = function
       let result =
         if List.mem name void_elements && children = [] then
           format "<%s%s />" name attrs_str
-        else if children = [] then format "<%s%s></%s>" name attrs_str name
+        else if children = [] then
+          (* Empty element - add newlines if needed *)
+          if needs_newlines then
+            format "<%s%s>\n</%s>" name attrs_str name
+          else
+            format "<%s%s></%s>" name attrs_str name
         else
           let children_str = String.concat "" (List.map to_string children) in
           if needs_newlines then
             format "<%s%s>\n%s</%s>" name attrs_str children_str name
-          else
-            format "<%s%s>%s</%s>" name attrs_str children_str name
+          else format "<%s%s>%s</%s>" name attrs_str children_str name
       in
       if is_block then result ^ "\n" else result
