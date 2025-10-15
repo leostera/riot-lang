@@ -553,6 +553,7 @@ and parse_primary_expr parser =
   | Token.Keyword Keyword.Fun -> parse_fun_expr parser
   | Token.OpenDelim Token.Paren -> parse_paren_expr parser
   | Token.OpenDelim Token.BeginEnd -> parse_begin_end_expr parser
+  | Token.OpenDelim Token.Bracket -> parse_list_expr parser
   | Token.Quote -> parse_char_literal parser
   | Token.Unknown '\'' ->
       (* Malformed char literal from lexer (e.g., '', 'a) *)
@@ -587,6 +588,7 @@ and can_start_arg_expr parser =
   | Token.Ident _ | Token.Literal _ 
   | Token.Keyword Keyword.True | Token.Keyword Keyword.False
   | Token.OpenDelim Token.Paren | Token.OpenDelim Token.BeginEnd 
+  | Token.OpenDelim Token.Bracket
   | Token.Quote -> true
   (* Cannot - these are operators or other constructs *)
   | _ -> false
@@ -835,6 +837,74 @@ and parse_begin_end_expr parser =
         @ [ Ceibo.Green.Node expr ]
         @ tokens_to_green parser trivia_after_expr
         @ end_children)
+  | _ ->
+      let found_tok = peek parser in
+      let diagnostic =
+        Diagnostic.invalid_expression ~found:found_tok
+          ~text:(token_text parser found_tok)
+          ~span:(expected_span parser)
+      in
+      make_error_node parser ~diagnostic ~consumed_tokens:[]
+
+(** Parse list expression: [1; 2; 3] or [] *)
+and parse_list_expr parser =
+  match peek_kind parser with
+  | Token.OpenDelim Token.Bracket ->
+      let open_bracket = consume parser in
+      let trivia_after_open = consume_trivia parser in
+      
+      (* Parse list elements separated by semicolons *)
+      let rec parse_elements acc =
+        match peek_kind parser with
+        | Token.CloseDelim Token.Bracket | Token.EOF ->
+            (* End of list *)
+            List.rev acc
+        | _ ->
+            (* Parse an element *)
+            let elem = parse_expr parser in
+            
+            (* Check for semicolon or closing bracket BEFORE consuming trivia *)
+            match peek_kind parser with
+            | Token.Semi ->
+                let trivia_after_elem = consume_trivia parser in
+                let semi = consume parser in
+                let trivia_after_semi = consume_trivia parser in
+                parse_elements
+                  (tokens_to_green parser trivia_after_semi
+                   @ [make_token parser semi]
+                   @ tokens_to_green parser trivia_after_elem
+                   @ [Ceibo.Green.Node elem]
+                   @ acc)
+            | _ ->
+                (* No semicolon - element is complete, recurse to check for bracket *)
+                parse_elements
+                  ([Ceibo.Green.Node elem] @ acc)
+      in
+      
+      let elements = parse_elements [] in
+      
+      (* Expect closing bracket *)
+      let close_children =
+        match peek_kind parser with
+        | Token.CloseDelim Token.Bracket ->
+            let close_bracket = consume parser in
+            [make_token parser close_bracket]
+        | _ ->
+            let found_tok = peek parser in
+            let diagnostic =
+              Diagnostic.unclosed_delimiter ~opener:"[" ~found:found_tok
+                ~text:(token_text parser found_tok)
+                ~span:(expected_span parser)
+            in
+            report_diagnostic parser diagnostic;
+            []
+      in
+      
+      make_node Syntax_kind.LIST_EXPR
+        ([make_token parser open_bracket]
+         @ tokens_to_green parser trivia_after_open
+         @ elements
+         @ close_children)
   | _ ->
       let found_tok = peek parser in
       let diagnostic =
