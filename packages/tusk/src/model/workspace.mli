@@ -31,3 +31,7 @@ val scan : Path.t -> (t, Error.t) result
 val project_id : t -> string
 (** Get a unique project identifier for the workspace by replacing / with - in
     the root path *)
+
+val server_port : t -> int
+(** Get a unique port number for the workspace server based on workspace root path.
+    Returns a port in the dynamic/private range (49152-65535) *)

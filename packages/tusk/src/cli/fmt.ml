@@ -1,7 +1,6 @@
 open Std
 open Std.Iter
 open Std.ArgParser
-
 open Core
 open Model
 

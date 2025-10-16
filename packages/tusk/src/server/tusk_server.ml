@@ -428,11 +428,11 @@ let write_daemon_files ~workspace ~port =
   Log.debug "Wrote daemon files: pid=%d, port=%d" pid port
 
 (** Main server loop *)
-let init ~current_dir ~workers ~port =
+let init ~current_dir ~workers =
   Log.set_level Log.Debug;
   Log.info "Tusk server initializing...";
   Log.debug "Current dir: %s" (Path.to_string current_dir);
-  Log.debug "Workers: %d, Port: %d" workers port;
+  Log.debug "Workers: %d" workers;
 
   let server_pid = self () in
   Log.trace "Server PID: %s" (Pid.to_string server_pid);
@@ -444,6 +444,9 @@ let init ~current_dir ~workers ~port =
   in
   Log.info "Workspace scanned successfully: %d packages found"
     (List.length workspace.packages);
+
+  let port = Workspace.server_port workspace in
+  Log.debug "Using workspace-specific port: %d" port;
 
   Log.info "Loading toolchains...";
   let toolchain = Toolchains.ready_toolchains workspace in
@@ -489,8 +492,7 @@ let start () =
         |> Result.expect ~msg:"tusk_server: could not get current dir"
       in
       let workers = Std.System.available_parallelism in
-      let port = 9753 in
-      init ~current_dir ~workers ~port)
+      init ~current_dir ~workers)
 
 (** Start with listener - makes current process become the server *)
 let start_with_listener () =
@@ -502,9 +504,8 @@ let start_with_listener () =
     in
     Log.debug "Got current directory: %s" (Path.to_string current_dir);
     let workers = Std.System.available_parallelism in
-    let port = 9753 in
-    Log.debug "Configuration: workers=%d, port=%d" workers port;
-    init ~current_dir ~workers ~port
+    Log.debug "Configuration: workers=%d" workers;
+    init ~current_dir ~workers
   with
   | Failure msg ->
       Log.error "Server initialization failed: %s" msg;

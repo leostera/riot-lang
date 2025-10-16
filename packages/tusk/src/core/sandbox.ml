@@ -2,7 +2,6 @@
 
 open Std
 open Std.Iter
-
 open Ocaml
 open Model
 

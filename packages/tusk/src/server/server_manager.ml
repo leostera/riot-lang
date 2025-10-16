@@ -19,6 +19,8 @@ module Daemon = struct
       | None -> failwith "Failed to get home directory"
     in
     let project_id = Workspace.project_id workspace in
+    Std.Log.debug "[SERVER_MANAGER] daemon_dir for workspace root=%s project_id=%s"
+      (Path.to_string workspace.root) project_id;
     Path.(home / Path.v ".tusk" / Path.v "projects" / Path.v project_id)
 
   let daemon_exists ~workspace =
@@ -129,8 +131,7 @@ module Daemon = struct
         with
         | Ok process ->
             let pid = System.OsProcess.pid process in
-            let port = 9753 in
-            (* Default port *)
+            let port = Workspace.server_port workspace in
 
             (* File descriptors were consumed by into_fd, no need to close *)
 
@@ -139,23 +140,27 @@ module Daemon = struct
             let _ = Fs.write (string_of_int port) port_file in
 
             (* Give the server more time to start up since it's detached *)
-            Kernel.Time.sleep 0.5;
+            Kernel.Time.sleep 1.0;
 
             Ok { workspace; os_pid = pid; port; host = "127.0.0.1" }
         | Error (`SpawnFailed msg) -> Error Error.ScanWorkspaceError)
 end
 
-let ensure_running ~workspace =
-  Std.Log.debug "ensure_running: Getting daemon for workspace";
+let ensure_running ~(workspace : Workspace.t) =
+  Std.Log.info "ensure_running: Getting daemon for workspace root=%s" 
+    (Path.to_string workspace.root);
   (* 1. Get a daemon for the workspace *)
   let daemon =
     Daemon.of_workspace ~workspace
     |> Result.expect ~msg:"Failed to get daemon info from workspace"
   in
-  Std.Log.debug "ensure_running: Got daemon at %s:%d" daemon.host daemon.port;
+  Std.Log.info "ensure_running: Got daemon at %s:%d (PID %d)" 
+    daemon.host daemon.port daemon.os_pid;
 
   (* 2. Wait for server to be ready *)
   let rec wait_server ~retries ~(daemon : Daemon.t) =
+    Std.Log.info "wait_server: Attempting connection to %s:%d (retries left: %d)" 
+      daemon.host daemon.port retries;
     if retries <= 0 then (
       Std.Log.error "Failed to connect to server after 60 retries";
       Std.Log.warn
@@ -194,7 +199,7 @@ let ensure_running ~workspace =
               (* 50ms *)
               wait_server ~retries:(retries - 1) ~daemon)
       | Error e ->
-          Std.Log.debug "Failed to create client: %s, retrying..." e;
+          Std.Log.info "Failed to create client: %s (retrying in 50ms)" e;
           Kernel.Time.sleep 0.05;
           (* 50ms *)
           wait_server ~retries:(retries - 1) ~daemon

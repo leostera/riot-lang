@@ -121,6 +121,19 @@ let parse_package_toml toml_path =
           in
           (name, []))
 
+(** Check if a tusk.toml file contains a [workspace] section *)
+let is_workspace_toml toml_path =
+  Log.debug "[WORKSPACE] Checking if %s is a workspace root" toml_path;
+  match Toml.parse_file toml_path with
+  | Ok (Toml.Table items) ->
+      let has_workspace = List.assoc_opt "workspace" items <> None in
+      Log.debug "[WORKSPACE] %s %s a workspace root" toml_path
+        (if has_workspace then "IS" else "IS NOT");
+      has_workspace
+  | _ ->
+      Log.debug "[WORKSPACE] Failed to parse %s" toml_path;
+      false
+
 (** Scan a directory for a tusk.toml file *)
 let find_tusk_toml dir =
   let dir_path = Path.v dir in
@@ -136,6 +149,35 @@ let find_tusk_toml dir =
   | Error (Fs.SystemError msg) ->
       Log.debug "[WORKSPACE] Error checking for tusk.toml: %s" msg;
       None
+
+(** Find workspace root by walking up directory tree *)
+let rec find_workspace_root start_dir =
+  Log.debug "[WORKSPACE] Searching for workspace root from: %s"
+    (Path.to_string start_dir);
+  let tusk_toml = Path.(start_dir / Path.v "tusk.toml") in
+  match Fs.exists tusk_toml with
+  | Ok true ->
+      let toml_path_str = Path.to_string tusk_toml in
+      if is_workspace_toml toml_path_str then (
+        Log.debug "[WORKSPACE] Found workspace root at: %s"
+          (Path.to_string start_dir);
+        Some start_dir)
+      else (
+        (* Found package tusk.toml, keep walking up *)
+        Log.debug "[WORKSPACE] Found package toml, walking up...";
+        match Path.parent start_dir with
+        | Some parent when parent <> start_dir -> find_workspace_root parent
+        | _ ->
+            Log.debug "[WORKSPACE] Reached filesystem root, no workspace found";
+            None)
+  | Ok false | Error _ -> (
+      (* No tusk.toml, keep walking up *)
+      Log.debug "[WORKSPACE] No tusk.toml here, walking up...";
+      match Path.parent start_dir with
+      | Some parent when parent <> start_dir -> find_workspace_root parent
+      | _ ->
+          Log.debug "[WORKSPACE] Reached filesystem root, no workspace found";
+          None)
 
 (** Scan workspace starting from root directory *)
 let scan_internal ~root =
@@ -199,13 +241,20 @@ let scan_internal ~root =
 
 (** Public interface functions *)
 let scan path =
-  let root_str = Path.to_string path in
-  Log.debug "[WORKSPACE] scan() called with path: %s" root_str;
+  Log.debug "[WORKSPACE] scan() called with path: %s" (Path.to_string path);
   try
-    let workspace = scan_internal ~root:root_str in
-    Log.debug "[WORKSPACE] scan() succeeded with %d packages"
-      (List.length workspace.packages);
-    Ok workspace
+    (* Find workspace root by walking up directory tree *)
+    match find_workspace_root path with
+    | Some workspace_root ->
+        let root_str = Path.to_string workspace_root in
+        Log.debug "[WORKSPACE] Using workspace root: %s" root_str;
+        let workspace = scan_internal ~root:root_str in
+        Log.debug "[WORKSPACE] scan() succeeded with %d packages"
+          (List.length workspace.packages);
+        Ok workspace
+    | None ->
+        Log.debug "[WORKSPACE] No workspace root found";
+        Error Error.ScanWorkspaceError
   with exn ->
     Log.debug "[WORKSPACE] scan() failed with exception: %s"
       (Exception.to_string exn);
@@ -216,6 +265,12 @@ let load ~root = scan root
 let project_id workspace =
   let root_str = Path.to_string workspace.root in
   String.map (fun c -> if c = '/' then '-' else c) root_str
+
+let server_port workspace =
+  let root_str = Path.to_string workspace.root in
+  let hash = Hashtbl.hash root_str in
+  let port_range = 65535 - 49152 in
+  49152 + (abs hash mod port_range)
 
 (** Tests submodule *)
 module Tests = struct
