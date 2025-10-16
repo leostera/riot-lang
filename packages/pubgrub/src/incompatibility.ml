@@ -50,6 +50,9 @@ let get_term incompat pkg =
   let all_terms = terms incompat in
   List.find_opt (fun term -> Term.package term = pkg) all_terms
 
+let version_compare a b =
+  match Version.compare a b with Lt -> -1 | Eq -> 0 | Gt -> 1
+
 let is_terminal incompat root_pkg root_ver =
   match incompat with
   | External { terms = []; _ } | Derived { terms = []; _ } ->
@@ -58,10 +61,11 @@ let is_terminal incompat root_pkg root_ver =
   | External { terms = [ term ]; cause = NotRoot (pkg, ver) } ->
       pkg = root_pkg && ver = root_ver && Term.is_positive term
       && Term.package term = root_pkg
+  | Derived { terms = [ term ]; _ } ->
+      (* Derived incompatibility with only root term is terminal *)
+      Term.package term = root_pkg && Term.is_positive term
+      && Ranges.contains ~compare_v:version_compare (Term.ranges term) root_ver
   | _ -> false
-
-let version_compare a b =
-  match Version.compare a b with Lt -> -1 | Eq -> 0 | Gt -> 1
 
 let ranges_equal ~compare_v r1 r2 =
   Ranges.subset_of ~compare_v r1 r2 && Ranges.subset_of ~compare_v r2 r1

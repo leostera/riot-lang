@@ -339,7 +339,13 @@ let unit_propagation root_package root_version state changed_packages =
                   Ok state
               | incompat :: remaining -> (
                   let incompat_terms = Incompatibility.terms incompat in
-                  Log.info "    🔍 Checking incomp with %d terms" (List.length incompat_terms);
+                  let terms_str = String.concat ", " 
+                    (List.map (fun t -> 
+                      format "%s@%s%s" 
+                        (Term.package t) 
+                        "ranges"
+                        (if Term.is_positive t then "" else "(neg)")) incompat_terms) in
+                  Log.info "    🔍 Checking incomp [%s]" terms_str;
                   (* Skip incompatibilities that are already contradicted *)
                   match HashMap.get state.contradicted incompat with
                   | Some _ ->
@@ -391,8 +397,9 @@ let unit_propagation root_package root_version state changed_packages =
                               let new_state =
                                 { state with solution = new_solution }
                               in
-                              (* Continue processing this package since we added a derivation *)
-                              process_packages new_state (resolved_pkg :: rest))
+                              (* After backtracking, return to solve loop to pick next package *)
+                              Log.info "🔄 Returning from unit_propagation after conflict resolution";
+                              Ok new_state)
                        | `AlmostSatisfied satisfier_pkg -> (
                           Log.info
                             "  🎯 Almost satisfied, deriving constraint for %s"
