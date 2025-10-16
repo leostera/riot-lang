@@ -10,6 +10,7 @@
     - [Vector] - Growable array with O(1) indexed access
     - [Deque] - Double-ended queue for efficient push/pop at both ends
     - [Queue] - FIFO queue for sequential processing
+    - [Heap] - Binary heap for priority queue operations
 
     ## Quick Start
 
@@ -31,7 +32,7 @@
 
     | Need | Use | |------|-----| | Key-value lookups | [HashMap] | | Unique
     values | [HashSet] | | Indexed access | [Vector] | | Push/pop at both ends |
-    [Deque] | | FIFO processing | [Queue] | | Small ordered collection | [List]
+    [Deque] | | FIFO processing | [Queue] | | Priority queue | [Heap] | | Small ordered collection | [List]
     | *)
 
 module HashMap = Hashmap
@@ -48,3 +49,6 @@ module Deque = Deque
 
 module Vector = Vector
 (** Growable array with O(1) indexed access. See [Vector]. *)
+
+module Heap = Heap
+(** Binary heap for priority queue operations. See [Heap]. *)

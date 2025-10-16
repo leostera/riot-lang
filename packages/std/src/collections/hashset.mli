@@ -195,6 +195,18 @@ val iter : ('a -> unit) -> 'a t -> unit
 
     - Time: O(n) *)
 
+val to_mut_iter : 'a t -> 'a Iter.MutIterator.t
+(** Returns a mutable iterator over the set's elements.
+    
+    ## Examples
+    
+    ```ocaml
+    let set = HashSet.of_list [1; 2; 3] in
+    let iter = HashSet.to_mut_iter set in
+    Iter.MutIterator.to_list iter  (* [1; 2; 3] - order not guaranteed *)
+    ```
+*)
+
 val fold : ('a -> 'acc -> 'acc) -> 'a t -> 'acc -> 'acc
 (** Folds over all elements in the set. The iteration order is unspecified.
 

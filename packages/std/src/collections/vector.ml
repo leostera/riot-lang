@@ -143,3 +143,21 @@ let of_list elements =
   let vector = with_capacity (List.length elements) in
   List.iter (push vector) elements;
   vector
+
+let to_mut_iter : type item. item t -> item Iter.MutIterator.t = fun vector ->
+  let module VecIter = struct
+    type state = { vec : item t; mutable pos : int }
+    type nonrec item = item
+
+    let next state =
+      if state.pos >= state.vec.length then None
+      else
+        let item = state.vec.data.(state.pos) in
+        state.pos <- state.pos + 1;
+        Some item
+
+    let size state = max 0 (state.vec.length - state.pos)
+
+    let clone state = { vec = state.vec; pos = state.pos }
+  end in
+  Iter.MutIterator.make (module VecIter) { VecIter.vec = vector; pos = 0 }

@@ -32,6 +32,7 @@
     - [Result] - Error handling
     - [Option] - Optional values
     - [Path] - Type-safe filesystem paths
+    - [UUID] - Universally unique identifiers
     - [String] - UTF-8 strings
     - [List] - Extended list utilities
     - [Buffer] - String building
@@ -66,6 +67,10 @@
     - [Toml] - TOML
     - [Sexp] - S-expressions
     - [Csv] - CSV (Comma-Separated Values)
+    - [Base16] - Hexadecimal encoding
+    - [Base32] - Base32 encoding
+    - [Base64] - Base64 encoding
+    - [Base85] - Ascii85 encoding
 
     ### Networking
     - [Net] - Network I/O
@@ -161,6 +166,9 @@ module Test = Test
 
 module Time = Time
 (** Time measurement and duration *)
+
+module UUID = Uuid
+(** Universally unique identifiers *)
 
 module Version = Version
 (** Semantic versioning *)

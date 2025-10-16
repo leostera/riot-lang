@@ -26,6 +26,7 @@ module System = System
 module Task = Task
 module Test = Test
 module Time = Time
+module UUID = Uuid
 module Version = Version
 module WorkerPool = Worker_pool
 

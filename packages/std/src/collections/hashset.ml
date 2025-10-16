@@ -65,3 +65,22 @@ let is_superset set1 set2 = is_subset set2 set1
 
 let is_disjoint set1 set2 =
   Hashtbl.fold (fun elem _ acc -> acc && not (Hashtbl.mem set2 elem)) set1 true
+
+let to_mut_iter : type item. item t -> item Iter.MutIterator.t = fun set ->
+  let module SetIter = struct
+    type state = { items : item list; mutable pos : int }
+    type nonrec item = item
+
+    let next state =
+      if state.pos >= List.length state.items then None
+      else
+        let item = List.nth state.items state.pos in
+        state.pos <- state.pos + 1;
+        Some item
+
+    let size state = max 0 (List.length state.items - state.pos)
+
+    let clone state = { items = state.items; pos = state.pos }
+  end in
+  let items = to_list set in
+  Iter.MutIterator.make (module SetIter) { SetIter.items; pos = 0 }

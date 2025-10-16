@@ -115,6 +115,21 @@ val fold : ('a -> 'acc -> 'acc) -> 'a t -> 'acc -> 'acc
 val to_list : 'a t -> 'a list
 (** [to_list vector] returns all elements as a list *)
 
+val to_mut_iter : 'a t -> 'a Iter.MutIterator.t
+(** Returns a mutable iterator over the vector's elements.
+    
+    ## Examples
+    
+    ```ocaml
+    let vec = Vector.of_list [1; 2; 3; 4; 5] in
+    let iter = Vector.to_mut_iter vec in
+    
+    match Iter.MutIterator.next iter with
+    | Some x -> (* 1 *)
+    | None -> ()
+    ```
+*)
+
 (** {1 Additional Operations} *)
 
 val contains : 'a t -> 'a -> bool
