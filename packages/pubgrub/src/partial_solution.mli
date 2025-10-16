@@ -22,6 +22,12 @@ val get_constraint :
   [ `Decided of version | `Constrained of version Ranges.t | `Undecided ]
 
 val extract_solution : t -> (package * version) list
+
+val pick_highest_priority_pkg :
+  t ->
+  (package -> version Ranges.t -> int) ->
+  (package * version Ranges.t) option
+
 val current_decision_level : t -> decision_level
 val backtrack : t -> decision_level -> t
 

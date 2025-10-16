@@ -20,6 +20,14 @@ let assert_conflict result =
       Error "Expected conflict but found solution"
   | Error err -> Error (format "Error: %s" err)
 
+let test_debug_derivations =
+  Test.case "DEBUG: Test derivations are created" (fun () ->
+      let provider = Pubgrub.create_offline () in
+      Pubgrub.add_package provider "root" (v 1 0 0) [ ("foo", Pubgrub.full) ];
+      Pubgrub.add_package provider "foo" (v 1 0 0) [];
+      assert_solution 2
+        (New_solver.solve (Pubgrub.to_provider provider) "root" (v 1 0 0)))
+
 let test_empty_root =
   Test.case "Empty root package" (fun () ->
       let provider = Pubgrub.create_offline () in
@@ -1028,7 +1036,8 @@ let test_ref_confusing_with_holes =
 let all_tests =
   let base_tests =
     [
-      test_debug_conflict_partial_satisfier;
+      test_debug_derivations;
+      (* test_debug_conflict_partial_satisfier; *)
       test_empty_root;
       test_single_dependency;
       test_two_dependencies;

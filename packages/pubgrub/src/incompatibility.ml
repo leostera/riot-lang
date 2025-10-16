@@ -32,12 +32,12 @@ let no_versions pkg ranges =
   create_external [ term ] (NoVersions (pkg, ranges))
 
 let from_dependency pkg ver (dep_pkg, dep_ranges) =
-  let parent_term = Term.negative pkg (Ranges.singleton ver) in
+  let parent_term = Term.positive pkg (Ranges.singleton ver) in
   if Ranges.is_empty dep_ranges then
     create_external [ parent_term ]
       (FromDependency (pkg, ver, dep_pkg, dep_ranges))
   else
-    let dep_term = Term.positive dep_pkg dep_ranges in
+    let dep_term = Term.negative dep_pkg dep_ranges in
     create_external [ parent_term; dep_term ]
       (FromDependency (pkg, ver, dep_pkg, dep_ranges))
 
@@ -92,11 +92,13 @@ let merge_dependents incompat1 incompat2 =
 let prior_cause incompat satisfier_cause package =
   let incompat_terms = terms incompat in
   let satisfier_terms = terms satisfier_cause in
-  Log.info "prior_cause: incompat has %d terms, satisfier has %d terms, package=%s" 
-    (List.length incompat_terms) (List.length satisfier_terms) package;
+  Log.info
+    "prior_cause: incompat has %d terms, satisfier has %d terms, package=%s"
+    (List.length incompat_terms)
+    (List.length satisfier_terms)
+    package;
   match incompat with
   | External _ | Derived _ ->
-
       (* Find the term for the package in both incompatibilities and merge them *)
       let incompat_term =
         List.find_opt (fun t -> Term.package t = package) incompat_terms
@@ -150,9 +152,9 @@ let prior_cause incompat satisfier_cause package =
           merged_other_terms @ remaining_satisfier_terms
         else (merged_term :: merged_other_terms) @ remaining_satisfier_terms
       in
-      
+
       Log.info "prior_cause: all_terms has %d terms" (List.length all_terms);
-      
+
       (* Even if all_terms is empty, create a derived incompatibility *)
       (* An empty incompatibility is terminal (fundamental contradiction) *)
       create_derived all_terms incompat satisfier_cause None
