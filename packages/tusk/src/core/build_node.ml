@@ -31,7 +31,7 @@ type source = { file : Path.t; kind : source_kind }
 
 type t = {
   toolchain : Toolchains.toolchain;
-  package : Workspace.package;
+  package : Package.t;
   srcs : source list;
   mutable deps : Node_id.t list; (* Now stores IDs, not nodes *)
   mutable spec : spec;

@@ -19,8 +19,10 @@ module Daemon = struct
       | None -> failwith "Failed to get home directory"
     in
     let project_id = Workspace.project_id workspace in
-    Std.Log.debug "[SERVER_MANAGER] daemon_dir for workspace root=%s project_id=%s"
-      (Path.to_string workspace.root) project_id;
+    Std.Log.debug
+      "[SERVER_MANAGER] daemon_dir for workspace root=%s project_id=%s"
+      (Path.to_string workspace.root)
+      project_id;
     Path.(home / Path.v ".tusk" / Path.v "projects" / Path.v project_id)
 
   let daemon_exists ~workspace =
@@ -147,19 +149,20 @@ module Daemon = struct
 end
 
 let ensure_running ~(workspace : Workspace.t) =
-  Std.Log.info "ensure_running: Getting daemon for workspace root=%s" 
+  Std.Log.info "ensure_running: Getting daemon for workspace root=%s"
     (Path.to_string workspace.root);
   (* 1. Get a daemon for the workspace *)
   let daemon =
     Daemon.of_workspace ~workspace
     |> Result.expect ~msg:"Failed to get daemon info from workspace"
   in
-  Std.Log.info "ensure_running: Got daemon at %s:%d (PID %d)" 
-    daemon.host daemon.port daemon.os_pid;
+  Std.Log.info "ensure_running: Got daemon at %s:%d (PID %d)" daemon.host
+    daemon.port daemon.os_pid;
 
   (* 2. Wait for server to be ready *)
   let rec wait_server ~retries ~(daemon : Daemon.t) =
-    Std.Log.info "wait_server: Attempting connection to %s:%d (retries left: %d)" 
+    Std.Log.info
+      "wait_server: Attempting connection to %s:%d (retries left: %d)"
       daemon.host daemon.port retries;
     if retries <= 0 then (
       Std.Log.error "Failed to connect to server after 60 retries";

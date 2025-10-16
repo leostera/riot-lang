@@ -2577,13 +2577,13 @@ module Server = struct
         (* Convert to JSON-RPC response with full details *)
         let packages =
           List.map
-            (fun (pkg : Workspace.package) ->
+            (fun (pkg : Package.t) ->
               {
                 WireProtocol.name = pkg.name;
                 path = Std.Path.to_string pkg.path;
                 dependencies =
                   List.map
-                    (fun (dep : Workspace.dependency) -> dep.name)
+                    (fun (dep : Package.dependency) -> dep.name)
                     pkg.dependencies;
               })
             workspace.packages
@@ -2619,11 +2619,11 @@ module Server = struct
         (* Convert to JSON-RPC response *)
         let package_info =
           {
-            WireProtocol.name = package.Workspace.name;
+            WireProtocol.name = package.Package.name;
             path = Std.Path.to_string package.path;
             dependencies =
               List.map
-                (fun (dep : Workspace.dependency) -> dep.name)
+                (fun (dep : Package.dependency) -> dep.name)
                 package.dependencies;
           }
         in

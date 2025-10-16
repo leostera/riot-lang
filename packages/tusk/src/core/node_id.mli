@@ -4,7 +4,7 @@ open Model
 type t
 (** Abstract node identifier type *)
 
-val of_package : Workspace.package -> t
+val of_package : Package.t -> t
 (** Create a node ID from a package *)
 
 val to_string : t -> string

@@ -1,266 +1,57 @@
-(** Workspace module - handles scanning and discovering packages in a workspace
-*)
+(** Workspace - TOML parsing for workspace manifests *)
 
 open Std
 open Std.Data
 
-type dependency = { name : string; version : string }
+(** Types *)
 
-type package = {
-  name : string;
-  path : Path.t;
-  relative_path : Path.t;
-  dependencies : dependency list;
-}
+type t = { root : Path.t; target_dir_root : Path.t; packages : Package.t list }
 
-type t = { root : Path.t; target_dir_root : Path.t; packages : package list }
+(** Workspace TOML parsing *)
 
-(** Hash a package into a hasher *)
-module Package = struct
-  let hash (type state) (module H : Crypto.Hasher.Intf with type state = state)
-      (hasher : state) (pkg : package) =
-    H.write_string hasher pkg.name;
-    (* Sort dependencies by name for deterministic hashing *)
-    let sorted_deps =
-      List.sort
-        (fun (a : dependency) (b : dependency) -> String.compare a.name b.name)
-        pkg.dependencies
-    in
-    List.iter
-      (fun (dep : dependency) -> H.write_string hasher dep.name)
-      sorted_deps
-end
+type manifest = { members : string list; dependencies : Package.dependency list }
 
-(** Parse workspace members from a workspace TOML file *)
-let parse_workspace_toml toml_path =
-  Log.debug "[WORKSPACE] Parsing workspace TOML: %s" toml_path;
-  match Toml.parse_file toml_path with
-  | Error err ->
-      Log.debug "[WORKSPACE] TOML parse error: %s" (Toml.error_to_string err);
-      []
-  | Ok toml -> (
-      Log.debug "[WORKSPACE] TOML parsed successfully";
+let parse_dependency (name : string) (value : Toml.value) : Package.dependency =
+  match value with
+  | Toml.Table attrs -> (
+      match List.assoc_opt "path" attrs with
+      | Some (Toml.String path_str) -> { name; source = Path (Path.v path_str) }
+      | _ -> { name; source = Workspace })
+  | _ -> { name; source = Workspace }
 
-      (* Pattern match directly on the nested structure *)
-      match toml with
-      | Toml.Table items -> (
-          Log.debug "[WORKSPACE] TOML has %d top-level sections:"
-            (List.length items);
-          List.iter (fun (key, _) -> Log.debug "[WORKSPACE]   - %s" key) items;
+let parse_dependencies (items : (string * Toml.value) list) :
+    Package.dependency list =
+  List.map (fun (name, value) -> parse_dependency name value) items
 
-          (* Look for workspace.members *)
-          match List.assoc_opt "workspace" items with
-          | Some (Toml.Table workspace_items) -> (
-              Log.debug "[WORKSPACE] Found workspace section";
-              match List.assoc_opt "members" workspace_items with
-              | Some (Toml.Array members) ->
-                  let member_strings =
-                    List.filter_map Toml.get_string members
-                  in
-                  Log.debug "[WORKSPACE] Found %d members"
-                    (List.length member_strings);
-                  member_strings
-              | _ ->
-                  Log.debug "[WORKSPACE] No members array in workspace section";
-                  [])
-          | _ ->
-              Log.debug "[WORKSPACE] No workspace section found";
-              [])
-      | _ ->
-          Log.debug "[WORKSPACE] TOML is not a table";
-          [])
+let parse_members (toml : Toml.value) : string list =
+  match toml with
+  | Toml.Table items -> (
+      match List.assoc_opt "workspace" items with
+      | Some (Toml.Table workspace_items) -> (
+          match List.assoc_opt "members" workspace_items with
+          | Some (Toml.Array members) -> List.filter_map Toml.get_string members
+          | _ -> [])
+      | _ -> [])
+  | _ -> []
 
-(** Parse package dependencies from a package TOML file *)
-let parse_package_toml toml_path =
-  match Toml.parse_file toml_path with
-  | Error err ->
-      Log.debug "[WORKSPACE] Failed to parse package TOML %s: %s" toml_path
-        (Toml.error_to_string err);
-      let path_obj = Path.v toml_path in
-      let dir = Path.parent path_obj in
-      let name =
-        match dir with Some d -> Path.basename d | None -> "unknown"
-      in
-      (name, [])
-  | Ok toml -> (
-      match toml with
-      | Toml.Table items ->
-          (* Get package name from package.name *)
-          let name =
-            match List.assoc_opt "package" items with
-            | Some (Toml.Table pkg_items) -> (
-                match List.assoc_opt "name" pkg_items with
-                | Some (Toml.String n) -> n
-                | _ -> (
-                    let path_obj = Path.v toml_path in
-                    let dir = Path.parent path_obj in
-                    match dir with
-                    | Some d -> Path.basename d
-                    | None -> "unknown"))
-            | _ -> (
-                let path_obj = Path.v toml_path in
-                let dir = Path.parent path_obj in
-                match dir with Some d -> Path.basename d | None -> "unknown")
-          in
+let parse_workspace_dependencies (toml : Toml.value) : Package.dependency list =
+  Log.debug "[WORKSPACE] parse_workspacE_dependencies has items: %s" (Toml.to_string toml);
+  match toml with
+  | Toml.Table items -> (
+      match List.assoc_opt "dependencies" items with
+      | Some (Toml.Table dep_items) -> parse_dependencies dep_items
+      | _ -> [])
+  | _ -> []
 
-          (* Get dependencies - just the keys from the dependencies section *)
-          let deps =
-            match List.assoc_opt "dependencies" items with
-            | Some (Toml.Table dep_items) -> List.map fst dep_items
-            | _ -> []
-          in
+let manifest_from_toml (toml : Toml.value) : (manifest, string) result =
+  let members = parse_members toml in
+  let dependencies = parse_workspace_dependencies toml in
+  Ok { members; dependencies }
 
-          Log.debug "[WORKSPACE] Package '%s' has %d dependencies: [%s]" name
-            (List.length deps) (String.concat ", " deps);
-          (name, deps)
-      | _ ->
-          let path_obj = Path.v toml_path in
-          let dir = Path.parent path_obj in
-          let name =
-            match dir with Some d -> Path.basename d | None -> "unknown"
-          in
-          (name, []))
+let make ~root ~packages : t =
+  { root; target_dir_root = Path.(root / Path.v "target"); packages }
 
-(** Check if a tusk.toml file contains a [workspace] section *)
-let is_workspace_toml toml_path =
-  Log.debug "[WORKSPACE] Checking if %s is a workspace root" toml_path;
-  match Toml.parse_file toml_path with
-  | Ok (Toml.Table items) ->
-      let has_workspace = List.assoc_opt "workspace" items <> None in
-      Log.debug "[WORKSPACE] %s %s a workspace root" toml_path
-        (if has_workspace then "IS" else "IS NOT");
-      has_workspace
-  | _ ->
-      Log.debug "[WORKSPACE] Failed to parse %s" toml_path;
-      false
-
-(** Scan a directory for a tusk.toml file *)
-let find_tusk_toml dir =
-  let dir_path = Path.v dir in
-  let path = Path.(dir_path / Path.v "tusk.toml") in
-  Log.debug "[WORKSPACE] Looking for tusk.toml at: %s" (Path.to_string path);
-  match Std.Fs.exists path with
-  | Ok true ->
-      Log.debug "[WORKSPACE] Found tusk.toml";
-      Some (Path.to_string path)
-  | Ok false ->
-      Log.debug "[WORKSPACE] tusk.toml does not exist";
-      None
-  | Error (Fs.SystemError msg) ->
-      Log.debug "[WORKSPACE] Error checking for tusk.toml: %s" msg;
-      None
-
-(** Find workspace root by walking up directory tree *)
-let rec find_workspace_root start_dir =
-  Log.debug "[WORKSPACE] Searching for workspace root from: %s"
-    (Path.to_string start_dir);
-  let tusk_toml = Path.(start_dir / Path.v "tusk.toml") in
-  match Fs.exists tusk_toml with
-  | Ok true ->
-      let toml_path_str = Path.to_string tusk_toml in
-      if is_workspace_toml toml_path_str then (
-        Log.debug "[WORKSPACE] Found workspace root at: %s"
-          (Path.to_string start_dir);
-        Some start_dir)
-      else (
-        (* Found package tusk.toml, keep walking up *)
-        Log.debug "[WORKSPACE] Found package toml, walking up...";
-        match Path.parent start_dir with
-        | Some parent when parent <> start_dir -> find_workspace_root parent
-        | _ ->
-            Log.debug "[WORKSPACE] Reached filesystem root, no workspace found";
-            None)
-  | Ok false | Error _ -> (
-      (* No tusk.toml, keep walking up *)
-      Log.debug "[WORKSPACE] No tusk.toml here, walking up...";
-      match Path.parent start_dir with
-      | Some parent when parent <> start_dir -> find_workspace_root parent
-      | _ ->
-          Log.debug "[WORKSPACE] Reached filesystem root, no workspace found";
-          None)
-
-(** Scan workspace starting from root directory *)
-let scan_internal ~root =
-  Log.debug "[WORKSPACE] Scanning workspace from root: %s" root;
-  match find_tusk_toml root with
-  | None ->
-      Log.debug "[WORKSPACE] No tusk.toml found in %s" root;
-      println "Error: No tusk.toml found in %s" root;
-      {
-        root = Path.v root;
-        target_dir_root = Path.(Path.v root / Path.v "target");
-        packages = [];
-      }
-  | Some workspace_toml ->
-      Log.debug "[WORKSPACE] Found workspace tusk.toml: %s" workspace_toml;
-      (* Parse workspace members *)
-      let members = parse_workspace_toml workspace_toml in
-      Log.debug "[WORKSPACE] Parsed %d workspace members: [%s]"
-        (List.length members)
-        (String.concat ", " members);
-
-      (* Scan each member package *)
-      let packages =
-        List.filter_map
-          (fun member ->
-            Log.debug "[WORKSPACE] Scanning member: %s" member;
-            let member_path =
-              Path.to_string Path.(Path.v root / Path.v member)
-            in
-            Log.debug "[WORKSPACE]   Member path: %s" member_path;
-            match find_tusk_toml member_path with
-            | None ->
-                Log.debug "[WORKSPACE]   No tusk.toml found for member %s"
-                  member;
-                println "Warning: No tusk.toml found for member %s" member;
-                None
-            | Some package_toml ->
-                Log.debug "[WORKSPACE]   Found package tusk.toml: %s"
-                  package_toml;
-                let name, deps = parse_package_toml package_toml in
-                Log.debug "[WORKSPACE]   Package name: %s, deps: [%s]" name
-                  (String.concat ", " deps);
-                Some
-                  {
-                    name;
-                    path = Path.v member_path;
-                    relative_path = Path.v member;
-                    dependencies =
-                      List.map (fun d -> { name = d; version = "" }) deps;
-                  })
-          members
-      in
-
-      Log.debug "[WORKSPACE] Scan complete: found %d packages"
-        (List.length packages);
-      {
-        root = Path.v root;
-        target_dir_root = Path.(Path.v root / Path.v "target");
-        packages;
-      }
-
-(** Public interface functions *)
-let scan path =
-  Log.debug "[WORKSPACE] scan() called with path: %s" (Path.to_string path);
-  try
-    (* Find workspace root by walking up directory tree *)
-    match find_workspace_root path with
-    | Some workspace_root ->
-        let root_str = Path.to_string workspace_root in
-        Log.debug "[WORKSPACE] Using workspace root: %s" root_str;
-        let workspace = scan_internal ~root:root_str in
-        Log.debug "[WORKSPACE] scan() succeeded with %d packages"
-          (List.length workspace.packages);
-        Ok workspace
-    | None ->
-        Log.debug "[WORKSPACE] No workspace root found";
-        Error Error.ScanWorkspaceError
-  with exn ->
-    Log.debug "[WORKSPACE] scan() failed with exception: %s"
-      (Exception.to_string exn);
-    Error Error.ScanWorkspaceError
-
-let load ~root = scan root
+(** Utility functions *)
 
 let project_id workspace =
   let root_str = Path.to_string workspace.root in
@@ -272,30 +63,6 @@ let server_port workspace =
   let port_range = 65535 - 49152 in
   49152 + (abs hash mod port_range)
 
-(** Tests submodule *)
 module Tests = struct
-  let test_scan_finds_workspace_toml () : (unit, string) result =
-    (* Test that scan correctly locates workspace.toml *)
-    Ok ()
-    [@test]
-
-  let test_workspace_parses_member_packages () : (unit, string) result =
-    (* Test that all members are discovered and parsed *)
-    Ok ()
-    [@test]
-
-  let test_package_dependencies_parsed_correctly () : (unit, string) result =
-    (* Test that package dependencies are extracted from tusk.toml *)
-    Ok ()
-    [@test]
-
-  let test_relative_paths_computed_correctly () : (unit, string) result =
-    (* Test that package relative paths are correct *)
-    Ok ()
-    [@test]
-
-  let test_single_package_mode_without_workspace_toml () : (unit, string) result
-      =
-    (* Test that single tusk.toml without workspace.toml works *)
-    Ok ()
+  let test_parse_workspace_toml () : (unit, string) result = Ok () [@test]
 end [@test]

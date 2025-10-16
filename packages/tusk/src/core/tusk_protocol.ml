@@ -105,7 +105,7 @@ type response =
       toolchain : Toolchains.toolchain;
     }
   | PackageInfo of {
-      package : Workspace.package;
+      package : Package.t;
       sources : Path.t list;
       dependencies : Build_node.t list;
     }

@@ -78,14 +78,10 @@ let plan_node ~graph ~node ~build_results ~workspace ~session_id ~sandbox () =
           let hasher = Sha256.create () in
 
           (* Hash 0: Package metadata *)
-          Workspace.Package.hash (module Sha256) hasher node.package;
+          Package.hash (module Sha256) hasher node.package;
 
           (* Hash 1: Source file contents *)
-          let src_dir =
-            Path.(
-              workspace.root / Path.v "packages" / Path.v node.package.name
-              / Path.v "src")
-          in
+          let src_dir = Path.(node.package.path / Path.v "src") in
           let rec hash_source_files dir =
             match Fs.read_dir dir with
             | Error _ -> ()

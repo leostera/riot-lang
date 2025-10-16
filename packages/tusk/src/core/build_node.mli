@@ -36,7 +36,7 @@ type source = {
 
 type t = {
   toolchain : Toolchains.toolchain;
-  package : Workspace.package;
+  package : Package.t;
   srcs : source list;
   mutable deps : Node_id.t list; (* Dependencies as node IDs *)
   mutable spec : spec;

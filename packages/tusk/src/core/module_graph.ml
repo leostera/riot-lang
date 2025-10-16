@@ -30,7 +30,7 @@ let file_to_string file =
 type dep = { file : file; mutable open_modules : dep G.node list; kind : kind }
 
 type t = {
-  package : Workspace.package;
+  package : Package.t;
   toolchain : Toolchains.toolchain;
   namespace : Namespace.t;
   workspace : Workspace.t;
@@ -867,7 +867,7 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
       List.exists
         (fun dep_node ->
           List.exists
-            (fun (dep : Workspace.dependency) -> dep.name = "unix")
+            (fun (dep : Package.dependency) -> dep.name = "unix")
             dep_node.Build_node.package.dependencies)
         sorted_deps
     in

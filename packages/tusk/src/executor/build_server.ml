@@ -157,7 +157,7 @@ let start ~workspace ~toolchain ~workers ~session_id ~client_pid ~target =
   match target with
   | Package pkg_name when Build_graph.size target_graph = 0 ->
       let available =
-        List.map (fun (p : Workspace.package) -> p.name) workspace.packages
+        List.map (fun (p : Package.t) -> p.name) workspace.packages
       in
       Log.error "[BUILD_SERVER] Package '%s' not found in workspace" pkg_name;
 

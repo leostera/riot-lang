@@ -46,7 +46,7 @@ let collect_ocaml_files workspace =
           entry_list
   in
   List.concat_map
-    (fun (pkg : Workspace.package) ->
+    (fun (pkg : Package.t) ->
       walk_dir Path.(workspace.Workspace.root / pkg.path))
     workspace.packages
 

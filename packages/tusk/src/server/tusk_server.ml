@@ -124,7 +124,7 @@ and handle_get_package_info state client_pid package_name =
   (* Find the package in the workspace *)
   let package_opt =
     List.find_opt
-      (fun (pkg : Workspace.package) -> pkg.name = package_name)
+      (fun (pkg : Package.t) -> pkg.name = package_name)
       state.workspace.packages
   in
 
@@ -197,7 +197,7 @@ and handle_find_executable state client_pid name =
   Log.debug "Server: handle_find_executable %s" name;
   let found =
     List.find_opt
-      (fun (pkg : Workspace.package) ->
+      (fun (pkg : Package.t) ->
         if pkg.name <> name then false
         else
           let main_ml =

@@ -1,37 +1,17 @@
 open Std
 
-type dependency = { name : string; version : string }
+type t = { root : Path.t; target_dir_root : Path.t; packages : Package.t list }
 
-(* The manifest of a single package in a workspace *)
-type package = {
-  name : string;
-  path : Path.t;
-  relative_path : Path.t;
-  dependencies : dependency list;
-}
+type manifest = { members : string list; dependencies : Package.dependency list }
 
-(* The manifest of a workspace *)
-type t = { root : Path.t; target_dir_root : Path.t; packages : package list }
+val manifest_from_toml : Std.Data.Toml.value -> (manifest, string) result
 
-module Package : sig
-  val hash :
-    (module Std.Crypto.Hasher.Intf with type state = 'state) ->
-    'state ->
-    package ->
-    unit
-end
-
-val load : root:Path.t -> (t, Error.t) result
-(** Load a workspace starting at [root]. *)
-
-val scan : Path.t -> (t, Error.t) result
-(** Scans a directory and its parents until it finds a workspace root, then
-    loads it *)
+val make : root:Path.t -> packages:Package.t list -> t
 
 val project_id : t -> string
 (** Get a unique project identifier for the workspace by replacing / with - in
     the root path *)
 
 val server_port : t -> int
-(** Get a unique port number for the workspace server based on workspace root path.
-    Returns a port in the dynamic/private range (49152-65535) *)
+(** Get a unique port number for the workspace server based on workspace root
+    path. Returns a port in the dynamic/private range (49152-65535) *)

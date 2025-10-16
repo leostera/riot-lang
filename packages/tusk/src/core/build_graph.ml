@@ -26,12 +26,12 @@ let get_node t node_id =
            (Node_id.to_string node_id))
 
 (** Create a build graph from a workspace *)
-let create workspace toolchain =
+let create (workspace: Workspace.t) toolchain =
   let nodes = Hashtbl.create 16 in
 
   (* First, collect source files for each package *)
   let get_sources package =
-    let pkg_path = package.Workspace.path in
+    let pkg_path = package.Package.path in
     let src_dir_candidate = Path.(pkg_path / Path.v "src") in
     let src_dir =
       match Fs.exists src_dir_candidate with
@@ -104,7 +104,7 @@ let create workspace toolchain =
                               let full_path = Std.Path.to_string path in
                               let src_dir =
                                 Path.to_string
-                                  Path.(package.Workspace.path / Path.v "src")
+                                  Path.(package.Package.path / Path.v "src")
                               in
 
                               if
@@ -157,13 +157,12 @@ let create workspace toolchain =
                             let namespaced_name =
                               (* Build the full namespace including package and any folder structure *)
                               let full_namespace =
-                                String.capitalize_ascii package.Workspace.name
+                                String.capitalize_ascii package.Package.name
                                 :: namespace
                               in
                               (* Get relative path and extract folder structure *)
                               let src_dir =
-                                Std.Path.to_string package.Workspace.path
-                                ^ "/src"
+                                Std.Path.to_string package.Package.path ^ "/src"
                               in
                               let full_path = Std.Path.to_string path in
                               let relative_path =
@@ -235,23 +234,23 @@ let create workspace toolchain =
           spec = Unplanned;
         }
       in
-      Hashtbl.add nodes package.Workspace.name node)
-    workspace.Workspace.packages;
+      Hashtbl.add nodes package.Package.name node)
+    workspace.packages;
 
   (* Second pass: link dependencies *)
   List.iter
     (fun package ->
-      match Hashtbl.find_opt nodes package.Workspace.name with
+      match Hashtbl.find_opt nodes package.Package.name with
       | None -> ()
       | Some node ->
           let dep_ids =
             List.filter_map
-              (fun (dep : Workspace.dependency) ->
+              (fun (dep : Package.dependency) ->
                 (* Skip self-references *)
-                if dep.Workspace.name = package.Workspace.name then None
+                if dep.Package.name = package.Package.name then None
                 else
                   (* Just store the ID, not the node *)
-                  match Hashtbl.find_opt nodes dep.Workspace.name with
+                  match Hashtbl.find_opt nodes dep.Package.name with
                   | Some dep_node ->
                       Some (Node_id.of_package dep_node.Build_node.package)
                   | None -> None)

@@ -228,7 +228,7 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
   (* Copy unix.cmxa if needed - it's not in our Store *)
   (if
      List.exists
-       (fun (dep : Workspace.dependency) -> dep.name = "unix")
+       (fun (dep : Package.dependency) -> dep.name = "unix")
        sandbox.node.package.dependencies
    then
      let toolchain_path =
