@@ -11,7 +11,7 @@ type error = [ `Connection_refused | `Closed | `System_error of string ]
 let read_line (stream : Kernel.Net.Tcp_stream.t) =
   let buffer = Bytes.create 4096 in
   let rec loop acc =
-    match Kernel.Net.Tcp_stream.read stream buffer with
+    match Tcp_stream.read stream buffer () with
     | Error _ -> Error "Failed to read from stream"
     | Ok 0 -> Error "Connection closed"
     | Ok n -> (
@@ -41,7 +41,7 @@ let rec accept_loop t =
                   connection_loop ()
               | Error _ ->
                   (* Connection closed, clean up *)
-                  Kernel.Net.Tcp_stream.close stream;
+                  Tcp_stream.close stream;
                   Ok ()
             in
             connection_loop ())

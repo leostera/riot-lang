@@ -15,12 +15,9 @@ let connect ~host ~port =
   | Error `No_info -> Error (`System_error "No address info available")
   | Error _ -> Error (`System_error "Address resolution error")
   | Ok addr -> (
-      match Kernel.Net.Tcp_stream.connect addr with
-      | Ok (`Connected stream) -> Ok { stream; leftover = "" }
-      | Ok (`In_progress _) ->
-          Error
-            (`System_error "Connection in progress handling not implemented")
-      | Error _ -> Error (`System_error "Connection failed"))
+      match Tcp_stream.connect addr with
+      | Ok stream -> Ok { stream; leftover = "" }
+      | Error e -> Error e)
 
 let send t data =
   let buffer = Bytes.of_string data in
@@ -28,9 +25,7 @@ let send t data =
   let rec send_all pos =
     if pos >= len then Ok ()
     else
-      match
-        Kernel.Net.Tcp_stream.write t.stream buffer ~pos ~len:(len - pos)
-      with
+      match Tcp_stream.write t.stream buffer ~pos ~len:(len - pos) () with
       | Ok bytes_written -> send_all (pos + bytes_written)
       | Error e ->
           Error
@@ -62,9 +57,7 @@ let receive t =
 
       (* Read until we get a newline *)
       let rec read_line acc =
-        match
-          Kernel.Net.Tcp_stream.read t.stream buffer ~pos:0 ~len:buffer_size
-        with
+        match Tcp_stream.read t.stream buffer ~pos:0 ~len:buffer_size () with
         | Ok bytes_read -> (
             let data = Bytes.sub_string buffer 0 bytes_read in
             let full_data = acc ^ data in
@@ -95,4 +88,4 @@ let receive t =
       in
       read_line t.leftover
 
-let close t = Kernel.Net.Tcp_stream.close t.stream
+let close t = Tcp_stream.close t.stream
