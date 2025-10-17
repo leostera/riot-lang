@@ -433,56 +433,54 @@ let from_dep_graph (dep_graph : Dep_graph.t) : build_plan =
       outputs := Filename.concat sandbox_dir archive_name :: !outputs)
   in
 
-  (* Check if we have a main.ml file - if so, add binary creation *)
+  (* Compile and link binaries from Package.binaries *)
   let () =
-    let has_main = ref false in
-    let main_cmo = ref "" in
-    Dep_graph.iter
-      (fun node ->
-        match node.value with
-        | { kind = Dep_graph.ML mod_; file = Concrete path; _ } ->
-            if Filename.basename path = "main.ml" then (
-              has_main := true;
-              main_cmo := Dep_graph.Module.namespaced_name mod_ ^ ".cmo")
-        | _ -> ())
-      dep_graph;
-
-    if !has_main then (
-      (* Create a simple executable linking main.cmo with the archive *)
-      let package_name_str =
-        Dep_graph.Module_name.to_string dep_graph.package_name
+    let package_name_str = Dep_graph.Module_name.to_string dep_graph.package_name in
+    let archive_name = Dep_graph.Module_name.cma dep_graph.package_name in
+    let dependencies = Dep_graph.get_dependencies dep_graph in
+    
+    List.iter (fun (binary : Package.binary) ->
+      Printf.printf "  Building binary: %s from %s\n" binary.name binary.path;
+      
+      (* Copy the binary source *)
+      actions := CopyFile { src = binary.path; dst = binary.path } :: !actions;
+      
+      (* Compile it with -open Package to access library modules *)
+      let binary_basename = Filename.basename binary.path in
+      let binary_cmo = Filename.chop_extension binary_basename ^ ".cmo" in
+      
+      let compile_binary =
+        CompileImplementation {
+          sandbox_dir;
+          src_file = binary.path;
+          output = binary_cmo;
+          includes = [];
+          opens = [package_name_str];
+          is_aliases = false;
+        }
       in
-      (* Use lowercase for the binary name *)
-      let binary_name = String.lowercase_ascii package_name_str in
-      let archive_name = Dep_graph.Module_name.cma dep_graph.package_name in
-      Printf.printf "  Adding binary creation for %s (found main.ml)\n"
-        binary_name;
-
-      (* Get the package's dependencies in topological order *)
-      let dependencies = Dep_graph.get_dependencies dep_graph in
-      Printf.printf "  Dependencies for %s: [%s]\n" binary_name
-        (String.concat "; " dependencies);
-
-      (* Create executable linking main.cmo with the package's archive *)
+      actions := compile_binary :: !actions;
+      
+      (* Link the binary with the package archive *)
       let link_action =
-        CreateExecutable
-          {
-            sandbox_dir;
-            exe_name = binary_name;
-            main_module = !main_cmo;
-            archive = archive_name;
-            dependencies;
-          }
+        CreateExecutable {
+          sandbox_dir;
+          exe_name = binary.name;
+          main_module = binary_cmo;
+          archive = archive_name;
+          dependencies;
+        }
       in
       actions := link_action :: !actions;
-
-      (* Add action to make it executable *)
+      
+      (* Make it executable *)
       let chmod_action =
-        SetPermissions { path = binary_name; executable = true }
+        SetPermissions { path = binary.name; executable = true }
       in
       actions := chmod_action :: !actions;
-
-      outputs := Filename.concat sandbox_dir binary_name :: !outputs)
+      
+      outputs := Filename.concat sandbox_dir binary.name :: !outputs
+    ) (Package.binaries dep_graph.package)
   in
 
   {

@@ -275,11 +275,12 @@ type t = {
   registry : Module_registry.t;
   build_results : Build_results.t;
   package_name : Module_name.t;
+  package : Package.t;
 }
 
 let root_node = { file = Concrete ""; open_modules = []; kind = Root }
 
-let make ~root ~package_name ~build_results =
+let make ~root ~package ~build_results =
   let src_root = Filename.concat root Const.src_dir in
   let file_tree = File_scanner.walk ~root:src_root in
   {
@@ -287,9 +288,10 @@ let make ~root ~package_name ~build_results =
     src_root;
     file_tree;
     graph = Graph.make ();
-    package_name = Module_name.of_string package_name;
+    package_name = Module_name.of_string package.Package.name;
     registry = Module_registry.create ();
     build_results;
+    package;
   }
 
 let to_dot dep_graph =
@@ -530,6 +532,21 @@ and handle_ocaml_module ~t ~ctx file =
   let { ns; aliases; parent_impl; parent_intf } = ctx in
 
   let mod_ = Module.of_path ~ns file.path in
+  
+  (* Skip binary modules - they will be compiled separately *)
+  let is_binary = List.exists
+    (fun (bin : Package.binary) -> 
+      let bin_basename = Filename.basename bin.path in
+      let file_basename = Filename.basename file.path in
+      bin_basename = file_basename)
+    (Package.binaries t.package)
+  in
+  
+  if is_binary then (
+    Printf.printf "[DEBUG] Skipping binary module: %s\n" file.path;
+    ()
+  ) else (
+  
   let node = Ocaml_module.make_node mod_ aliases |> Graph.add_node t.graph in
   (* printf "Handling OCamml module %S (or %S) at %s\n"
     (Module.module_name mod_ |> Module_name.to_string)
@@ -574,6 +591,7 @@ and handle_ocaml_module ~t ~ctx file =
   List.iter
     (fun aliases_node -> Graph.add_edge node ~depends_on:aliases_node)
     aliases
+  )
 
 and handle_library ~t ~ctx { path; name; children } =
   let { ns; aliases; parent_impl; parent_intf } = ctx in
@@ -697,7 +715,29 @@ and handle_library ~t ~ctx { path; name; children } =
       children_without_lib_files
   in
 
-  let child_modules = file_modules @ dir_modules in
+  (* Filter out binary modules from child_modules so they don't get included in the library interface *)
+  Printf.printf "[DEBUG] File modules:\n";
+  List.iter (fun m -> Printf.printf "  - %s\n" (Module.path m)) file_modules;
+  
+  let is_binary_module mod_ =
+    let mod_path = Module.path mod_ in
+    List.exists
+      (fun (bin : Package.binary) -> 
+        let bin_basename = Filename.basename bin.path in
+        let mod_basename = Filename.basename mod_path in
+        let matches = mod_path = bin.path || mod_basename = bin_basename in
+        if matches then
+          Printf.printf "[DEBUG] MATCHED: %s == %s (basename: %s == %s)\n" 
+            mod_path bin.path mod_basename bin_basename;
+        matches)
+      (Package.binaries t.package)
+  in
+  
+  let library_modules = List.filter (fun m -> not (is_binary_module m)) (file_modules @ dir_modules) in
+  Printf.printf "[DEBUG] After filtering: %d modules (was %d)\n" 
+    (List.length library_modules) (List.length (file_modules @ dir_modules));
+
+  let child_modules = library_modules in
   (* First we create the top-level aliases module *)
   let aliases_node =
     let node = Alias_module.make_node ns child_modules in
@@ -853,9 +893,9 @@ let get_dependencies t =
     (fun name -> name <> Module_name.to_string t.package_name)
     all_packages
 
-let scan ~root ~package_name ~build_results =
-  printf "Scanning package %S from %s\n" package_name root;
-  let t = make ~root ~package_name ~build_results in
+let scan ~root ~package ~build_results =
+  printf "Scanning package %S from %s\n" package.Package.name root;
+  let t = make ~root ~package ~build_results in
 
   scan_from_root t;
   wire_deps t;
