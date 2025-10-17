@@ -293,6 +293,9 @@ and handle_library ~t ~ctx dir name children =
   (* Parse children to separate files from subdirectories *)
   (* IMPORTANT: Exclude the library interface files themselves (name.ml and name.mli) *)
   (* to avoid creating self-loops: lib.ml -> lib.ml *)
+  (* Compare module names, not file names, to handle Pkg.ml vs pkg.ml *)
+  let library_module_name = Module_name.of_string name |> Module_name.to_string in
+  
   (* IMPORTANT: Exclude binary modules from the library interface *)
   (* Binary paths are stored as ABSOLUTE (e.g., /full/path/packages/tusk/src/main.ml) *)
   (* File paths during scanning are RELATIVE to package root (e.g., src/main.ml) *)
@@ -321,15 +324,23 @@ and handle_library ~t ~ctx dir name children =
     List.filter_map
       (fun (n, e) ->
         match e with
-        | `File (p, (".ml" | ".mli"))
-          when n <> name ^ ".ml" && n <> name ^ ".mli" ->
-            let is_bin = is_binary_module p in
-            if is_bin then
-              Log.debug "[MODULE_GRAPH] Filtered out binary from library: %s" (Path.to_string p);
-            if not is_bin then
-              Some (Module.make ~namespace:ns ~filename:p)
-            else
+        | `File (p, (".ml" | ".mli")) ->
+            (* Compare module names, not file names *)
+            (* n is already a string basename, just remove extension *)
+            let file_module_name = 
+              Filename.remove_extension n |> Module_name.of_string |> Module_name.to_string
+            in
+            if file_module_name = library_module_name then
+              (* This is the library interface file itself - skip it *)
               None
+            else
+              let is_bin = is_binary_module p in
+              if is_bin then
+                Log.debug "[MODULE_GRAPH] Filtered out binary from library: %s" (Path.to_string p);
+              if not is_bin then
+                Some (Module.make ~namespace:ns ~filename:p)
+              else
+                None
         | _ -> None)
       children
   in
@@ -364,7 +375,14 @@ and handle_library ~t ~ctx dir name children =
     List.find_map
       (fun (n, e) ->
         match e with
-        | `File (p, ".ml") when n = name ^ ".ml" -> Some p
+        | `File (p, ".ml") ->
+            (* n is already a string basename, just remove extension *)
+            let file_module_name = 
+              Filename.remove_extension n |> Module_name.of_string |> Module_name.to_string
+            in
+            if file_module_name = library_module_name then
+              Some p
+            else None
         | _ -> None)
       children
   in
@@ -373,7 +391,14 @@ and handle_library ~t ~ctx dir name children =
     List.find_map
       (fun (n, e) ->
         match e with
-        | `File (p, ".mli") when n = name ^ ".mli" -> Some p
+        | `File (p, ".mli") ->
+            (* n is already a string basename, just remove extension *)
+            let file_module_name = 
+              Filename.remove_extension n |> Module_name.of_string |> Module_name.to_string
+            in
+            if file_module_name = library_module_name then
+              Some p
+            else None
         | _ -> None)
       children
   in
@@ -387,7 +412,12 @@ and handle_library ~t ~ctx dir name children =
 
   let children_without_lib =
     List.filter (fun (n, _) -> 
-      let keep = n <> name ^ ".ml" && n <> name ^ ".mli" in
+      (* Compare module names, not file names *)
+      (* n is already a string basename, just remove extension *)
+      let file_module_name = 
+        Filename.remove_extension n |> Module_name.of_string |> Module_name.to_string
+      in
+      let keep = file_module_name <> library_module_name in
       if not keep then
         Log.debug "[MODULE_GRAPH] Filtering out library interface file: %s from library %s" n name;
       keep) children
