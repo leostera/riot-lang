@@ -1,3 +1,4 @@
+open Syn
 open Std
 
 let handle_token_stream sub_matches =
@@ -48,7 +49,7 @@ let handle_parse sub_matches =
       in
 
       if json then
-        let kind_to_json kind = Data.Json.String (Syntax_kind.to_string kind) in
+        let kind_to_json kind = Data.Json.String (SyntaxKind.to_string kind) in
         let text_to_json text = Data.Json.String text in
 
         if red_tree then
@@ -76,7 +77,7 @@ let handle_parse sub_matches =
 
           println "%s" (Data.Json.to_string output)
       else if result.diagnostics <> [] then
-        Diagnostic_reporter.print ~file ~source result.diagnostics
+        DiagnosticReporter.print ~file ~source result.diagnostics
       else (
         Log.info "Parsed successfully";
         let width = Ceibo.Green.width (Ceibo.Green.Node result.tree) in

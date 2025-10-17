@@ -60,6 +60,8 @@ open Std
 module Ceibo : module type of Ceibo
 (** Red-green syntax tree library. See `Ceibo` module documentation. *)
 
+module Error : module type of Error
+
 module Token : module type of Token
 (** Token types and utilities. *)
 
@@ -77,6 +79,8 @@ module SyntaxKind : module type of Syntax_kind
 
 module Diagnostic : module type of Diagnostic
 (** Structured parse error types. *)
+
+module DiagnosticReporter : module type of Diagnostic_reporter
 
 module Parser : module type of Parser
 (** OCaml parser that produces Ceibo trees. *)

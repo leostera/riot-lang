@@ -1,5 +1,6 @@
 open Std
 module Ceibo = Ceibo
+module Error = Error
 module Token = Token
 module Keyword = Keyword
 module Cursor = Cursor
@@ -7,6 +8,7 @@ module Lexer = Lexer
 module SyntaxKind = Syntax_kind
 module Diagnostic = Diagnostic
 module Parser = Parser
+module DiagnosticReporter = Diagnostic_reporter
 
 let tokenize source = Lexer.tokenize source
 
