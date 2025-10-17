@@ -928,18 +928,15 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
       Log.debug "[MODULE_GRAPH] Compiling binary module from: %s" 
         (Path.to_string binary.path);
       
-      (* Compile the binary implementation with access to the package library *)
-      (* The binary needs to open the package namespace to access library modules *)
-      let package_module_name = String.capitalize_ascii t.package.name in
-      let open_flags = [Ocamlc.Open package_module_name] in
-      
+      (* Compile the binary implementation *)
+      (* The binary accesses library modules via the package interface (e.g., Tusk.Cli) *)
       let compile_binary_action =
         Actions.CompileImplementation
           {
             source = binary.path;
             output = binary_cmx;
             includes = [ Path.v "." ];
-            flags = open_flags;
+            flags = [];
           }
       in
       actions := compile_binary_action :: !actions;
