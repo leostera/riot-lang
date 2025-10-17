@@ -8,11 +8,14 @@ open Std.Data
 type dependency_source = Workspace | Path of Path.t
 type dependency = { name : string; source : dependency_source }
 
+type binary = { name : string; path : Path.t }
+
 type t = {
   name : string;
   path : Path.t;
   relative_path : Path.t;
   dependencies : dependency list;
+  binaries : binary list;
 }
 
 (** Hashing *)
@@ -73,6 +76,50 @@ let parse_dependencies (items : (string * Toml.value) list)
     (fun (name, value) -> parse_dependency name value ~workspace_deps)
     items
 
+let parse_binary (value : Toml.value) ~(package_path : Path.t) :
+    (binary, string) result =
+  match value with
+  | Toml.Table items -> (
+      match
+        (List.assoc_opt "name" items, List.assoc_opt "path" items)
+      with
+      | Some (Toml.String name), Some (Toml.String path_str) ->
+          let bin_path = Path.(package_path / Path.v path_str) in
+          Ok { name; path = bin_path }
+      | Some (Toml.String _), None ->
+          Error "Binary entry missing required 'path' field"
+      | None, Some (Toml.String _) ->
+          Error "Binary entry missing required 'name' field"
+      | Some (Toml.String _), Some _ ->
+          Error "Binary 'path' field must be a string"
+      | Some _, _ -> Error "Binary 'name' field must be a string"
+      | None, None ->
+          Error "Binary entry missing required 'name' and 'path' fields")
+  | _ -> Error "Binary entry must be a table"
+
+let parse_binaries (items : (string * Toml.value) list)
+    ~(package_path : Path.t) : (binary list, string) result =
+  Log.debug "[PACKAGE] parse_binaries called with %d top-level items" (List.length items);
+  List.iter (fun (k, _) -> Log.debug "[PACKAGE]   key: %s" k) items;
+  match List.assoc_opt "bin" items with
+  | None -> 
+      Log.debug "[PACKAGE] No 'bin' key found";
+      Ok []
+  | Some (Toml.Array bin_entries) ->
+      let results = List.map (parse_binary ~package_path) bin_entries in
+      let errors =
+        List.filter_map
+          (fun r -> match r with Error e -> Some e | Ok _ -> None)
+          results
+      in
+      if errors <> [] then Error (String.concat "; " errors)
+      else
+        Ok
+          (List.filter_map
+             (fun r -> match r with Ok b -> Some b | Error _ -> None)
+             results)
+  | Some _ -> Error "[[bin]] must be an array of tables"
+
 let from_toml (toml : Toml.value) ~(workspace_deps : dependency list)
     ~(path : Path.t) ~(relative_path : Path.t) : (t, string) result =
   match toml with
@@ -85,7 +132,17 @@ let from_toml (toml : Toml.value) ~(workspace_deps : dependency list)
             parse_dependencies dep_items ~workspace_deps
         | _ -> []
       in
-      Ok { name; path; relative_path; dependencies }
+      let binaries =
+        match parse_binaries items ~package_path:path with
+        | Ok bins ->
+            Log.debug "[PACKAGE] Parsed %d binaries for package %s"
+              (List.length bins) name;
+            bins
+        | Error msg ->
+            Log.warn "[PACKAGE] Failed to parse binaries for %s: %s" name msg;
+            []
+      in
+      Ok { name; path; relative_path; dependencies; binaries }
   | _ -> Error "TOML is not a table"
 
 module Tests = struct

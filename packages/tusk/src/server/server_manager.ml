@@ -19,7 +19,7 @@ module Daemon = struct
       | None -> failwith "Failed to get home directory"
     in
     let project_id = Workspace.project_id workspace in
-    Std.Log.debug
+    Log.debug
       "[SERVER_MANAGER] daemon_dir for workspace root=%s project_id=%s"
       (Path.to_string workspace.root)
       project_id;
@@ -30,12 +30,12 @@ module Daemon = struct
     let pid_file = Path.(daemon_path / Path.v "server.pid") in
     let port_file = Path.(daemon_path / Path.v "server.port") in
 
-    Std.Log.debug "Checking for daemon files at %s" (Path.to_string daemon_path);
+    Log.debug "Checking for daemon files at %s" (Path.to_string daemon_path);
 
     (* Check if daemon files exist and process is running *)
     match (Fs.exists pid_file, Fs.exists port_file) with
     | Ok true, Ok true ->
-        Std.Log.debug "Found daemon files, reading PID and port";
+        Log.debug "Found daemon files, reading PID and port";
         (* Read the PID and port *)
         let pid_content =
           Fs.read_to_string pid_file
@@ -48,19 +48,19 @@ module Daemon = struct
         let pid = int_of_string (String.trim pid_content) in
         let port = int_of_string (String.trim port_content) in
 
-        Std.Log.debug "Found daemon: pid=%d, port=%d" pid port;
+        Log.debug "Found daemon: pid=%d, port=%d" pid port;
 
         (* Check if server is actually running by trying to connect *)
-        Std.Log.debug "Attempting to connect to 127.0.0.1:%d" port;
+        Log.debug "Attempting to connect to 127.0.0.1:%d" port;
         let is_server_running =
-          match Std.Net.TcpClient.connect ~host:"127.0.0.1" ~port with
+          match Net.TcpClient.connect ~host:"127.0.0.1" ~port with
           | Ok stream ->
               (* Connection successful - server is running *)
-              Std.Log.debug "Successfully connected to server";
-              let _ = Std.Net.TcpClient.close stream in
+              Log.debug "Successfully connected to server";
+              let _ = Net.TcpClient.close stream in
               true
           | Error e ->
-              Std.Log.debug "Failed to connect: %s"
+              Log.debug "Failed to connect: %s"
                 (match e with
                 | `Connection_refused -> "connection refused"
                 | `Closed -> "connection closed"
@@ -71,12 +71,12 @@ module Daemon = struct
           Some { workspace; os_pid = pid; port; host = "127.0.0.1" }
         else (
           (* Server not responding, clean up daemon files *)
-          Std.Log.debug "Server not responding, cleaning up daemon files";
+          Log.debug "Server not responding, cleaning up daemon files";
           let _ = Fs.remove_file pid_file in
           let _ = Fs.remove_file port_file in
           None)
     | _ ->
-        Std.Log.debug "Daemon files not found";
+        Log.debug "Daemon files not found";
         None
 
   (** Start the daemon process *)
@@ -149,24 +149,24 @@ module Daemon = struct
 end
 
 let ensure_running ~(workspace : Workspace.t) =
-  Std.Log.info "ensure_running: Getting daemon for workspace root=%s"
+  Log.debug "ensure_running: Getting daemon for workspace root=%s"
     (Path.to_string workspace.root);
   (* 1. Get a daemon for the workspace *)
   let daemon =
     Daemon.of_workspace ~workspace
     |> Result.expect ~msg:"Failed to get daemon info from workspace"
   in
-  Std.Log.info "ensure_running: Got daemon at %s:%d (PID %d)" daemon.host
+  Log.debug "ensure_running: Got daemon at %s:%d (PID %d)" daemon.host
     daemon.port daemon.os_pid;
 
   (* 2. Wait for server to be ready *)
   let rec wait_server ~retries ~(daemon : Daemon.t) =
-    Std.Log.info
+    Log.debug
       "wait_server: Attempting connection to %s:%d (retries left: %d)"
       daemon.host daemon.port retries;
     if retries <= 0 then (
-      Std.Log.error "Failed to connect to server after 60 retries";
-      Std.Log.warn
+      Log.error "Failed to connect to server after 60 retries";
+      Log.warn
         "Server (PID %d) not responding, cleaning up and restarting..."
         daemon.os_pid;
 
@@ -180,29 +180,29 @@ let ensure_running ~(workspace : Workspace.t) =
       (* Try to start a new daemon *)
       match Daemon.of_workspace ~workspace:daemon.workspace with
       | Ok new_daemon ->
-          Std.Log.info "Started new server (PID %d), retrying connection..."
+          println "Started new tusk server (PID %d)..."
             new_daemon.os_pid;
           wait_server ~retries:60 ~daemon:new_daemon
       | Error e ->
-          Std.Log.error "Failed to restart server";
+          Log.error "Failed to restart server";
           Error e)
     else
       match Tusk_jsonrpc.Client.create ~host:daemon.host ~port:daemon.port with
       | Ok client -> (
-          Std.Log.debug "Created client, testing with ping";
+          Log.debug "Created client, testing with ping";
           (* Try to ping to make sure it's really ready *)
           match Tusk_jsonrpc.Client.ping client with
           | Ok _ ->
-              Std.Log.debug "Ping successful!";
+              Log.debug "Ping successful!";
               Ok client
           | Error e ->
-              Std.Log.debug "Ping failed: %s, retrying..." e;
+              Log.debug "Ping failed: %s, retrying..." e;
               Tusk_jsonrpc.Client.close client;
               Kernel.Time.sleep 0.05;
               (* 50ms *)
               wait_server ~retries:(retries - 1) ~daemon)
       | Error e ->
-          Std.Log.info "Failed to create client: %s (retrying in 50ms)" e;
+          Log.info "Failed to create client: %s (retrying in 50ms)" e;
           Kernel.Time.sleep 0.05;
           (* 50ms *)
           wait_server ~retries:(retries - 1) ~daemon

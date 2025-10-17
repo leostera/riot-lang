@@ -334,7 +334,6 @@ and handle_library ~t ~ctx dir name children =
   let has_library_interface_ml = library_interface_ml_path <> None in
   let has_library_interface_mli = library_interface_mli_path <> None in
 
-  (* Filter out library interface files from children *)
   let children_without_lib =
     List.filter (fun (n, _) -> n <> name ^ ".ml" && n <> name ^ ".mli") children
   in
@@ -828,70 +827,83 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
     (* Native compilation produces both .cmxa and .a files *)
     outputs := library_name :: static_lib_name :: !outputs);
 
-  (* Check if package has main.ml and create executable *)
-  let has_main =
-    List.exists
-      (fun (node : dep G.node) ->
-        match node.value.file with
-        | Concrete path ->
-            let basename = Path.basename path in
-            basename = "main.ml"
-        | _ -> false)
-      sorted_nodes
-  in
-  if has_main then (
-    Log.debug "[MODULE_GRAPH] Found main.ml - creating executable";
-    let binary_name = Path.v t.package.name in
+  (* Create executables for binaries declared in [[bin]] *)
+  Log.debug "[MODULE_GRAPH] Package has %d binaries to build"
+    (List.length t.package.binaries);
+  List.iter
+    (fun (binary : Package.binary) ->
+      Log.debug "[MODULE_GRAPH] Creating executable: %s from %s" binary.name
+        (Path.to_string binary.path);
 
-    (* Get topologically sorted dependencies *)
-    let sorted_deps =
-      Build_graph.filter_for_package build_graph t.package.name
-      |> Build_graph.topological_sort
-    in
+      (* Compile the binary's source file *)
+      let binary_mod = Module.make ~namespace:Namespace.empty ~filename:binary.path in
+      let binary_cmx = Module.cmx binary_mod in
+      
+      Log.debug "[MODULE_GRAPH] Compiling binary module from: %s" 
+        (Path.to_string binary.path);
+      
+      let compile_binary_action =
+        Actions.CompileImplementation
+          {
+            source = binary.path;
+            output = binary_cmx;
+            includes = [ Path.v "." ];
+            flags = [];
+          }
+      in
+      actions := compile_binary_action :: !actions;
 
-    (* Get dependency .cmxa files in topological order *)
-    let dep_libraries =
-      List.filter_map
-        (fun dep_node ->
-          let dep_pkg_name = dep_node.Build_node.package.name in
-          (* Skip unix (handled separately) and skip ourselves *)
-          if dep_pkg_name = "unix" || dep_pkg_name = t.package.name then None
-          else
-            let dep_name = Module_name.of_string dep_pkg_name in
-            Some (Module_name.cmxa dep_name))
-        sorted_deps
-    in
+      (* Get topologically sorted dependencies *)
+      let sorted_deps =
+        Build_graph.filter_for_package build_graph t.package.name
+        |> Build_graph.topological_sort
+      in
 
-    (* Check if we or any of our dependencies need unix *)
-    let has_unix_dep =
-      List.exists
-        (fun dep_node ->
-          List.exists
-            (fun (dep : Package.dependency) -> dep.name = "unix")
-            dep_node.Build_node.package.dependencies)
-        sorted_deps
-    in
-    let includes =
-      if has_unix_dep then Path.[ v "."; v "+unix" ] else Path.[ v "." ]
-    in
+      (* Get dependency .cmxa files in topological order *)
+      let dep_libraries =
+        List.filter_map
+          (fun dep_node ->
+            let dep_pkg_name = dep_node.Build_node.package.name in
+            (* Skip unix (handled separately) and skip ourselves *)
+            if dep_pkg_name = "unix" || dep_pkg_name = t.package.name then None
+            else
+              let dep_name = Module_name.of_string dep_pkg_name in
+              Some (Module_name.cmxa dep_name))
+          sorted_deps
+      in
 
-    (* Libraries: unix first (if needed), then topologically sorted deps, then our library *)
-    let libraries =
-      (if has_unix_dep then Path.[ v "unix.cmxa" ] else [])
-      @ dep_libraries @ [ library_name ]
-    in
+      (* Check if we or any of our dependencies need unix *)
+      let has_unix_dep =
+        List.exists
+          (fun dep_node ->
+            List.exists
+              (fun (dep : Package.dependency) -> dep.name = "unix")
+              dep_node.Build_node.package.dependencies)
+          sorted_deps
+      in
+      let includes =
+        if has_unix_dep then Path.[ v "."; v "+unix" ] else Path.[ v "." ]
+      in
 
-    let exe_action =
-      Actions.CreateExecutable
-        {
-          output = binary_name;
-          objects = List.rev !cmx_files;
-          libraries;
-          includes;
-        }
-    in
-    actions := exe_action :: !actions;
-    outputs := binary_name :: !outputs);
+      (* Libraries: unix first (if needed), then topologically sorted deps, then our library *)
+      let libraries =
+        (if has_unix_dep then Path.[ v "unix.cmxa" ] else [])
+        @ dep_libraries @ [ library_name ]
+      in
+
+      let binary_output = Path.v binary.name in
+      let exe_action =
+        Actions.CreateExecutable
+          {
+            output = binary_output;
+            objects = [ binary_cmx ];
+            libraries;
+            includes;
+          }
+      in
+      actions := exe_action :: !actions;
+      outputs := binary_output :: !outputs)
+    t.package.binaries;
 
   let outputs = List.rev !outputs in
 

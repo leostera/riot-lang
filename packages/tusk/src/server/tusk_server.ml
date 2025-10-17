@@ -142,6 +142,7 @@ and handle_get_package_info state client_pid package_name =
                     path = Path.of_string "" |> Result.unwrap;
                     relative_path = Path.of_string "" |> Result.unwrap;
                     dependencies = [];
+                    binaries = [];
                   };
                 sources = [];
                 dependencies = [];
@@ -196,16 +197,12 @@ and handle_get_build_graph state client_pid =
 and handle_find_executable state client_pid name =
   Log.debug "Server: handle_find_executable %s" name;
   let found =
-    List.find_opt
+    List.find_map
       (fun (pkg : Package.t) ->
-        if pkg.name <> name then false
-        else
-          let main_ml =
-            Path.(
-              state.workspace.root / pkg.relative_path / Path.v "src"
-              / Path.v "main.ml")
-          in
-          match Fs.exists main_ml with Ok true -> true | _ -> false)
+        List.find_opt
+          (fun (bin : Package.binary) -> bin.name = name)
+          pkg.binaries
+        |> Option.map (fun _ -> pkg))
       state.workspace.packages
   in
   (match found with
