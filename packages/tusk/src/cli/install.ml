@@ -101,11 +101,15 @@ let run matches =
 
         (* Always promote to project root *)
         let project_binary = Path.(root / Path.v package_name) in
-        (match Fs.copy ~src:binary_path ~dst:project_binary with
-        | Ok () ->
-            ignore (Fs.set_permissions project_binary perms);
-            println "✅ Promoted %s to %s" package_name
-              (Path.to_string project_binary)
+        let tmp_project_binary = Path.v (Path.to_string project_binary ^ ".tmp") in
+        (match Fs.copy ~src:binary_path ~dst:tmp_project_binary with
+        | Ok () -> (
+            ignore (Fs.set_permissions tmp_project_binary perms);
+            match Fs.rename ~src:tmp_project_binary ~dst:project_binary with
+            | Ok () ->
+                println "✅ Promoted %s to %s" package_name
+                  (Path.to_string project_binary)
+            | Error _ -> println "⚠️  Failed to promote to project root")
         | Error _ -> println "⚠️  Failed to promote to project root");
 
         (* If not --local, also install to ~/.tusk/bin *)
@@ -124,15 +128,21 @@ let run matches =
            in
 
            let dest_path = Path.(tusk_bin_dir / Path.v package_name) in
-           match Fs.copy ~src:binary_path ~dst:dest_path with
-           | Ok () ->
-               ignore (Fs.set_permissions dest_path perms);
-               println "✅ Installed %s to %s" package_name
-                 (Path.to_string dest_path);
-               println "";
-               println "To use %s from anywhere, add ~/.tusk/bin to your PATH:"
-                 package_name;
-               println "  export PATH='$HOME/.tusk/bin:$PATH'"
+           let tmp_dest_path = Path.v (Path.to_string dest_path ^ ".tmp") in
+           match Fs.copy ~src:binary_path ~dst:tmp_dest_path with
+           | Ok () -> (
+               ignore (Fs.set_permissions tmp_dest_path perms);
+               match Fs.rename ~src:tmp_dest_path ~dst:dest_path with
+               | Ok () ->
+                   println "✅ Installed %s to %s" package_name
+                     (Path.to_string dest_path);
+                   println "";
+                   println
+                     "To use %s from anywhere, add ~/.tusk/bin to your PATH:"
+                     package_name;
+                   println "  export PATH='$HOME/.tusk/bin:$PATH'"
+               | Error _ ->
+                   println "⚠️  Failed to install to ~/.tusk/bin (non-fatal)")
            | Error _ ->
                println "⚠️  Failed to install to ~/.tusk/bin (non-fatal)");
 

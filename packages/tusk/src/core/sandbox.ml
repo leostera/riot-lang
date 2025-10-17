@@ -394,25 +394,33 @@ let run_actions ~sandbox ~store ~build_graph ~build_results ~node ~session_id =
                  (Path.to_string src_path));
 
           let dst_path = Path.(sandbox.target_dir / output_file) in
-          let _ = Fs.copy ~src:src_path ~dst:dst_path in
-          (* Make executable files executable *)
-          (if not (String.contains (Path.to_string output_file) '.') then
-             let _ =
-               Fs.set_permissions dst_path (Fs.Permissions.of_mode 0o755)
-             in
-             (* Also promote executable to target/<profile>/<name> *)
-             let profile_dir =
-               Path.(sandbox.root / Path.v "target" / Path.v "debug")
-             in
-             let promoted_dst_path = Path.(profile_dir / output_file) in
-             let _ = Fs.copy ~src:src_path ~dst:promoted_dst_path in
-             let _ =
-               Fs.set_permissions promoted_dst_path
-                 (Fs.Permissions.of_mode 0o755)
-             in
-             Log.debug "[Sandbox] Promoted executable %s to %s"
-               (Path.to_string output_file)
-               (Path.to_string promoted_dst_path));
+          let is_executable =
+            not (String.contains (Path.to_string output_file) '.')
+          in
+          if is_executable then (
+            let tmp_dst = Path.v (Path.to_string dst_path ^ ".tmp") in
+            let _ = Fs.copy ~src:src_path ~dst:tmp_dst in
+            let _ =
+              Fs.set_permissions tmp_dst (Fs.Permissions.of_mode 0o755)
+            in
+            let _ = Fs.rename ~src:tmp_dst ~dst:dst_path in
+            (* Also promote executable to target/<profile>/<name> *)
+            let profile_dir =
+              Path.(sandbox.root / Path.v "target" / Path.v "debug")
+            in
+            let promoted_dst_path = Path.(profile_dir / output_file) in
+            let tmp_promoted = Path.v (Path.to_string promoted_dst_path ^ ".tmp") in
+            let _ = Fs.copy ~src:src_path ~dst:tmp_promoted in
+            let _ =
+              Fs.set_permissions tmp_promoted (Fs.Permissions.of_mode 0o755)
+            in
+            let _ = Fs.rename ~src:tmp_promoted ~dst:promoted_dst_path in
+            Log.debug "[Sandbox] Promoted executable %s to %s"
+              (Path.to_string output_file)
+              (Path.to_string promoted_dst_path))
+          else
+            let _ = Fs.copy ~src:src_path ~dst:dst_path in
+            ();
           Log.debug "[Sandbox] Copied %s to target" (Path.to_string output_file))
         outputs;
       Ok outputs
