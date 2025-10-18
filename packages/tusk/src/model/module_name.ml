@@ -6,14 +6,18 @@ type t = { filename : Path.t; namespace : Namespace.t; name : string }
 
 let make ~filename ~namespace ~name = { filename; namespace; name }
 
+let sanitize_name name =
+  String.map (fun c -> if c = '-' then '_' else c) name
+
 let of_filename ?(namespace = Namespace.empty) filename =
   let name =
-    Path.remove_extension filename |> Path.basename |> String.capitalize_ascii
+    Path.remove_extension filename |> Path.basename |> sanitize_name
+    |> String.capitalize_ascii
   in
   { filename; namespace; name }
 
 let of_string ?(namespace = Namespace.empty) s =
-  let name = String.capitalize_ascii s in
+  let name = sanitize_name s |> String.capitalize_ascii in
   let filename =
     Path.of_string s
     |> Result.expect ~msg:(format "Expected '%s' to be a valid Path" s)
@@ -22,7 +26,8 @@ let of_string ?(namespace = Namespace.empty) s =
 
 let of_path path =
   let name =
-    Path.remove_extension path |> Path.basename |> String.capitalize_ascii
+    Path.remove_extension path |> Path.basename |> sanitize_name
+    |> String.capitalize_ascii
   in
   { filename = path; namespace = Namespace.empty; name }
 
