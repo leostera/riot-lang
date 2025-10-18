@@ -252,37 +252,17 @@ let create_library ~toolchain ~cwd ~includes ~output objects =
 let create_executable ~toolchain ~cwd ~includes ~output ~libs objects =
   (* Include current directory *)
   let includes_with_dot = Path.v "." :: includes in
-  let output_str = Path.to_string output in
-  let tmp_output = Path.v (output_str ^ ".tmp") in
-  match
-    run ~toolchain ~cwd ~includes:includes_with_dot ~libs
-      ~output:(Some tmp_output) ~mode:Executable
-      (List.map Path.to_string objects)
-  with
-  | Success msg -> (
-      match Fs.rename ~src:tmp_output ~dst:output with
-      | Ok () -> Success msg
-      | Error (Fs.SystemError err) ->
-          Failed (format "Failed to rename executable: %s" err))
-  | Failed msg -> Failed msg
+  run ~toolchain ~cwd ~includes:includes_with_dot ~libs ~output:(Some output)
+    ~mode:Executable
+    (List.map Path.to_string objects)
 
 (** Create a custom executable (with C stubs) *)
 let create_custom_executable ~toolchain ~cwd ~includes ~output ~libs objects =
   (* Include current directory *)
   let includes_with_dot = Path.v "." :: includes in
-  let output_str = Path.to_string output in
-  let tmp_output = Path.v (output_str ^ ".tmp") in
-  match
-    run ~toolchain ~cwd ~includes:includes_with_dot ~libs
-      ~output:(Some tmp_output) ~mode:CustomExe
-      (List.map Path.to_string objects)
-  with
-  | Success msg -> (
-      match Fs.rename ~src:tmp_output ~dst:output with
-      | Ok () -> Success msg
-      | Error (Fs.SystemError err) ->
-          Failed (format "Failed to rename executable: %s" err))
-  | Failed msg -> Failed msg
+  run ~toolchain ~cwd ~includes:includes_with_dot ~libs ~output:(Some output)
+    ~mode:CustomExe
+    (List.map Path.to_string objects)
 
 (** Helper to check if compilation succeeded *)
 let is_success = function Success _ -> true | Failed _ -> false

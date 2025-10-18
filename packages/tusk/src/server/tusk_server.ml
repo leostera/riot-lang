@@ -196,10 +196,6 @@ and handle_get_build_graph state client_pid =
 
 and handle_find_executable state client_pid name =
   Log.debug "Server: handle_find_executable %s" name;
-  let workspace =
-    Workspace_manager.scan state.workspace.root
-    |> Result.expect ~msg:"Failed to rescan workspace"
-  in
   let found =
     List.find_map
       (fun (pkg : Package.t) ->
@@ -207,20 +203,14 @@ and handle_find_executable state client_pid name =
           (fun (bin : Package.binary) -> bin.name = name)
           pkg.binaries
         |> Option.map (fun _ -> pkg))
-      workspace.packages
-  in
-  let new_state =
-    if found <> None then
-      let build_graph = Build_graph.create workspace state.toolchain in
-      { state with workspace; build_graph }
-    else state
+      state.workspace.packages
   in
   (match found with
   | Some pkg ->
       send client_pid
         (ServerResponse (ExecutableFound { package = pkg.name; binary = name }))
   | None -> send client_pid (ServerResponse ExecutableNotFound));
-  loop new_state
+  loop state
 
 and handle_find_artifact state client_pid package kind name =
   Log.debug "Server: handle_find_artifact package=%s kind=%s name=%s" package
@@ -374,16 +364,9 @@ and handle_new_package state client_pid path name is_library =
 and handle_build state client_pid target session_id =
   Log.debug "Server: handle_build called for target: %s"
     (match target with All -> "All" | Package p -> format "Package(%s)" p);
-  let workspace =
-    Workspace_manager.scan state.workspace.root
-    |> Result.expect ~msg:"Failed to rescan workspace"
-  in
-  let build_graph = Build_graph.create workspace state.toolchain in
-  let new_state = { state with workspace; build_graph } in
-  Build_server.start ~workspace:new_state.workspace
-    ~toolchain:new_state.toolchain ~workers:new_state.workers ~session_id
-    ~client_pid ~target;
-  loop new_state
+  Build_server.start ~workspace:state.workspace ~toolchain:state.toolchain
+    ~workers:state.workers ~session_id ~client_pid ~target;
+  loop state
 
 let start_tcp_server ~server ~port =
   spawn @@ fun () ->

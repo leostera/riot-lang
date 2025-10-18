@@ -10,7 +10,7 @@ let command =
   |> about "Install a binary to ~/.tusk/bin and project root"
   |> args
        [
-         positional "package" |> help "Package name to install";
+         positional "package" |> help "Binary name to install";
          flag "local" |> long "local"
          |> help "Only install to project root, skip ~/.tusk/bin";
        ]
@@ -57,93 +57,105 @@ let build_package package_name =
 
 let run matches =
   let open ArgParser in
-  let package_name =
-    get_one matches "package" |> Option.expect ~msg:"package required"
+  let binary_name =
+    get_one matches "package" |> Option.expect ~msg:"binary name required"
   in
   let local_only = get_flag matches "local" in
 
-  println "📦 Installing %s..." package_name;
+  println "📦 Installing %s..." binary_name;
 
-  println "Building %s..." package_name;
-  if not (build_package package_name) then (
-    println "\n❌ Failed to build %s, nothing was installed" package_name;
-    Error (Failure (format "Failed to build %s" package_name)))
-  else
-    let root = Env.current_dir () |> Result.expect ~msg:"Failed to get cwd" in
-    let possible_binary_paths =
-      [
-        Path.(root / Path.v "target/bootstrap" / Path.v package_name);
-        Path.(
-          root
-          / Path.v "target/bootstrap/out"
-          / Path.v (package_name ^ "/" ^ package_name));
-        Path.(root / Path.v "target/debug" / Path.v package_name);
-        Path.(
-          root / Path.v "target/debug/out"
-          / Path.v (package_name ^ "/" ^ package_name));
-        Path.(
-          root / Path.v "target/debug/out"
-          / Path.v ("packages/" ^ package_name ^ "/" ^ package_name));
-      ]
-    in
+  (* First, find which package contains this binary *)
+  let cwd = Env.current_dir () |> Result.expect ~msg:"Failed to get cwd" in
+  let workspace =
+    Workspace_manager.scan cwd |> Result.expect ~msg:"Failed to scan workspace"
+  in
+  let client =
+    Server.Server_manager.ensure_running ~workspace
+    |> Result.expect ~msg:"Failed to start or connect to tusk server"
+  in
 
-    match
-      List.find_opt
-        (fun path -> Fs.exists path |> Result.unwrap_or ~default:false)
-        possible_binary_paths
-    with
-    | None ->
-        println "❌ Binary for %s not found after build" package_name;
-        println "Note: Only packages with main.ml produce installable binaries";
-        Error (Failure (format "Binary not found for %s" package_name))
-    | Some binary_path ->
-        let perms = Fs.Permissions.executable in
+  match Server.Tusk_jsonrpc.Client.find_executable client binary_name with
+  | Ok (Some (package_name, _binary)) -> (
+      Server.Tusk_jsonrpc.Client.close client;
+      println "Building %s (from package %s)..." binary_name package_name;
+      if not (build_package package_name) then (
+        println "\n❌ Failed to build %s, nothing was installed" binary_name;
+        Error (Failure (format "Failed to build %s" binary_name)))
+      else
+        let root = Env.current_dir () |> Result.expect ~msg:"Failed to get cwd" in
+        let possible_binary_paths =
+          [
+            Path.(root / Path.v "target/bootstrap" / Path.v binary_name);
+            Path.(
+              root
+              / Path.v "target/bootstrap/out"
+              / Path.v (package_name ^ "/" ^ binary_name));
+            Path.(root / Path.v "target/debug" / Path.v binary_name);
+            Path.(
+              root / Path.v "target/debug/out"
+              / Path.v (package_name ^ "/" ^ binary_name));
+            Path.(
+              root / Path.v "target/debug/out"
+              / Path.v ("packages/" ^ package_name ^ "/" ^ binary_name));
+          ]
+        in
 
-        (* Always promote to project root *)
-        let project_binary = Path.(root / Path.v package_name) in
-        let tmp_project_binary = Path.v (Path.to_string project_binary ^ ".tmp") in
-        (match Fs.copy ~src:binary_path ~dst:tmp_project_binary with
-        | Ok () -> (
-            ignore (Fs.set_permissions tmp_project_binary perms);
-            match Fs.rename ~src:tmp_project_binary ~dst:project_binary with
+        match
+          List.find_opt
+            (fun path -> Fs.exists path |> Result.unwrap_or ~default:false)
+            possible_binary_paths
+        with
+        | None ->
+            println "❌ Binary %s not found after build" binary_name;
+            println "Note: Only packages with binaries in [[bin]] can be installed";
+            Error (Failure (format "Binary not found: %s" binary_name))
+        | Some binary_path ->
+            let perms = Fs.Permissions.executable in
+
+            (* Always promote to project root *)
+            let project_binary = Path.(root / Path.v binary_name) in
+            (match Fs.copy ~src:binary_path ~dst:project_binary with
             | Ok () ->
-                println "✅ Promoted %s to %s" package_name
+                ignore (Fs.set_permissions project_binary perms);
+                println "✅ Promoted %s to %s" binary_name
                   (Path.to_string project_binary)
-            | Error _ -> println "⚠️  Failed to promote to project root")
-        | Error _ -> println "⚠️  Failed to promote to project root");
+            | Error _ -> println "⚠️  Failed to promote to project root");
 
-        (* If not --local, also install to ~/.tusk/bin *)
-        (if not local_only then
-           let home =
-             match Env.home_dir () with
-             | Some h -> h
-             | None ->
-                 println "⚠️  HOME not set, skipping global install";
-                 Path.v "/tmp"
-           in
-           let tusk_bin_dir = Path.(home / Path.v ".tusk/bin") in
-           let _ =
-             Fs.create_dir_all tusk_bin_dir
-             |> Result.expect ~msg:"Failed to create ~/.tusk/bin"
-           in
+            (* If not --local, also install to ~/.tusk/bin *)
+            (if not local_only then
+               let home =
+                 match Env.home_dir () with
+                 | Some h -> h
+                 | None ->
+                     println "⚠️  HOME not set, skipping global install";
+                     Path.v "/tmp"
+               in
+               let tusk_bin_dir = Path.(home / Path.v ".tusk/bin") in
+               let _ =
+                 Fs.create_dir_all tusk_bin_dir
+                 |> Result.expect ~msg:"Failed to create ~/.tusk/bin"
+               in
 
-           let dest_path = Path.(tusk_bin_dir / Path.v package_name) in
-           let tmp_dest_path = Path.v (Path.to_string dest_path ^ ".tmp") in
-           match Fs.copy ~src:binary_path ~dst:tmp_dest_path with
-           | Ok () -> (
-               ignore (Fs.set_permissions tmp_dest_path perms);
-               match Fs.rename ~src:tmp_dest_path ~dst:dest_path with
+               let dest_path = Path.(tusk_bin_dir / Path.v binary_name) in
+               match Fs.copy ~src:binary_path ~dst:dest_path with
                | Ok () ->
-                   println "✅ Installed %s to %s" package_name
+                   ignore (Fs.set_permissions dest_path perms);
+                   println "✅ Installed %s to %s" binary_name
                      (Path.to_string dest_path);
                    println "";
-                   println
-                     "To use %s from anywhere, add ~/.tusk/bin to your PATH:"
-                     package_name;
+                   println "To use %s from anywhere, add ~/.tusk/bin to your PATH:"
+                     binary_name;
                    println "  export PATH='$HOME/.tusk/bin:$PATH'"
                | Error _ ->
-                   println "⚠️  Failed to install to ~/.tusk/bin (non-fatal)")
-           | Error _ ->
-               println "⚠️  Failed to install to ~/.tusk/bin (non-fatal)");
+                   println "⚠️  Failed to install to ~/.tusk/bin (non-fatal)");
 
-        Ok ()
+            Ok ())
+  | Ok None ->
+      Server.Tusk_jsonrpc.Client.close client;
+      println "❌ Binary '%s' not found in workspace" binary_name;
+      println "Note: Make sure the binary is declared in a [[bin]] section";
+      Error (Failure (format "Binary not found: %s" binary_name))
+  | Error msg ->
+      Server.Tusk_jsonrpc.Client.close client;
+      println "❌ Error: %s" msg;
+      Error (Failure msg)

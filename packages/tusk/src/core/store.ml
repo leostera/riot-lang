@@ -80,35 +80,14 @@ let promote_from_store store hash target_dir =
                 (* Only copy if it's a file, not directory *)
                 (match Fs.is_file src with
                 | Ok true ->
-                    let is_executable =
-                      not (String.contains (Path.to_string file_path) '.')
+                    let _ =
+                      Fs.copy ~src ~dst
+                      |> Result.expect
+                           ~msg:
+                             (format "Failed to copy file: %s -> %s"
+                                (Path.to_string src) (Path.to_string dst))
                     in
-                    if is_executable then
-                      let tmp_dst = Path.v (Path.to_string dst ^ ".tmp") in
-                      let _ =
-                        Fs.copy ~src ~dst:tmp_dst
-                        |> Result.expect
-                             ~msg:
-                               (format "Failed to copy file: %s -> %s"
-                                  (Path.to_string src) (Path.to_string tmp_dst))
-                      in
-                      let _ =
-                        Fs.rename ~src:tmp_dst ~dst
-                        |> Result.expect
-                             ~msg:
-                               (format "Failed to rename file: %s -> %s"
-                                  (Path.to_string tmp_dst) (Path.to_string dst))
-                      in
-                      ()
-                    else
-                      let _ =
-                        Fs.copy ~src ~dst
-                        |> Result.expect
-                             ~msg:
-                               (format "Failed to copy file: %s -> %s"
-                                  (Path.to_string src) (Path.to_string dst))
-                      in
-                      ()
+                    ()
                 | _ -> ());
                 copy_files ()
           in
