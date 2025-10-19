@@ -1,0 +1,12 @@
+[package]
+name = "tusk-store"
+version = "0.1.0"
+
+[package.lib]
+path = "src/Tusk_store.ml"
+
+[dependencies]
+std = "*"
+tusk-model = "*"
+
+

@@ -1,0 +1,36 @@
+[package]
+name = "tusk-planner"
+version = "0.1.0"
+
+[package.lib]
+path = "src/Tusk_planner.ml"
+
+[dependencies]
+std = "*"
+miniriot = "*"
+tusk-model = "*"
+tusk-ocaml = "*"
+
+# [[bin]]
+# name = "binary-tests"
+# path = "tests/binary_tests.ml"
+
+# [[bin]]
+# name = "graph-builder-tests"
+# path = "tests/graph_builder_tests.ml"
+
+# [[bin]]
+# name = "scanner-tests"
+# path = "tests/scanner_tests.ml"
+
+# [[bin]]
+# name = "planner-tests"
+# path = "tests/planner_tests.ml"
+
+[[bin]]
+name = "new-planner-tests"
+path = "tests/new_planner_tests.ml"
+
+[[bin]]
+name = "edge-case-tests"
+path = "tests/edge_case_tests.ml"

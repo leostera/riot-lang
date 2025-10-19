@@ -1,0 +1,15 @@
+[package]
+name = "tusk-executor"
+version = "0.1.0"
+
+[package.lib]
+path = "src/TuskExecutor.ml"
+
+[dependencies]
+std = "*"
+miniriot = "*"
+tusk-model = "*"
+tusk-planner = "*"
+tusk-ocaml = "*"
+
+

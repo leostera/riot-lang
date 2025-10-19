@@ -1,0 +1,10 @@
+[package]
+name = "tusk-core"
+version = "0.1.0"
+
+[dependencies]
+std = "*"
+tusk-model = "*"
+tusk-store = "*"
+tusk-planner = "*"
+tusk-executor = "*"
