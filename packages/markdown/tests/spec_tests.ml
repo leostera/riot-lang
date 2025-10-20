@@ -1,5 +1,6 @@
 open Std
 open Std.Data
+open Markdown
 
 let read_file path =
   match Fs.read (Path.v path) with
@@ -75,6 +76,5 @@ let () =
     ~main:(fun ~args ->
       let spec_tests = load_spec_tests () in
       let tests = List.map spec_test spec_tests in
-      Test.Cli.main ~name:"markdown" ~tests ~args ())
+      Test.Cli.main ~name:"markdown" ~tests ~args)
     ~args:Env.args
-  |> exit

@@ -14,6 +14,12 @@ let rec compile_element source elem =
       | _ -> Html.text tok.text)
   | Ceibo.Green.Node node -> compile_node source node
 
+(** Compile element but keep backslashes (for code spans) *)
+and compile_element_literal source elem =
+  match elem with
+  | Ceibo.Green.Token tok -> Html.text tok.text
+  | Ceibo.Green.Node node -> compile_node source node
+
 and compile_node source node =
   let kind = node.kind in
   let children = node.children in
@@ -48,7 +54,7 @@ and compile_node source node =
       | lst -> lst
     in
     let after_leading = strip_leading 3 (Array.to_list children) in
-    
+
     (* Process spaces before newlines and trailing spaces *)
     let rec process_line_breaks acc = function
       | [] -> List.rev acc
@@ -57,8 +63,9 @@ and compile_node source node =
              && newline.kind = Syntax_kind.NEWLINE ->
           (* Backslash before newline - hard line break *)
           process_line_breaks
-            (Ceibo.Green.Node (Ceibo.Green.make_node Syntax_kind.HARD_BREAK [||])
-             :: acc)
+            (Ceibo.Green.Node
+               (Ceibo.Green.make_node Syntax_kind.HARD_BREAK [||])
+            :: acc)
             rest
       | Ceibo.Green.Token space :: Ceibo.Green.Token newline :: rest
         when space.kind = Syntax_kind.SPACE
@@ -66,42 +73,48 @@ and compile_node source node =
           (* Single space before newline - strip it (soft line break) *)
           process_line_breaks (Ceibo.Green.Token newline :: acc) rest
       | Ceibo.Green.Token space1 :: Ceibo.Green.Token space2 :: rest
-        when space1.kind = Syntax_kind.SPACE
-             && space2.kind = Syntax_kind.SPACE ->
+        when space1.kind = Syntax_kind.SPACE && space2.kind = Syntax_kind.SPACE
+        ->
           (* Two spaces - consume any additional spaces and check for newline *)
           let rec consume_spaces_before_newline collected remaining =
             match remaining with
             | Ceibo.Green.Token tok :: rest when tok.kind = Syntax_kind.SPACE ->
                 consume_spaces_before_newline (collected + 1) rest
-            | Ceibo.Green.Token tok :: rest when tok.kind = Syntax_kind.NEWLINE ->
+            | Ceibo.Green.Token tok :: rest when tok.kind = Syntax_kind.NEWLINE
+              ->
                 (* Found newline after spaces - this is a hard break *)
                 (true, collected, rest)
             | _ ->
                 (* No newline found, not a hard break *)
                 (false, collected, remaining)
           in
-          let is_hard_break, total_spaces, after = consume_spaces_before_newline 2 rest in
+          let is_hard_break, total_spaces, after =
+            consume_spaces_before_newline 2 rest
+          in
           if is_hard_break && total_spaces >= 2 then
             (* Hard line break - don't include any of the spaces *)
             process_line_breaks
               (Ceibo.Green.Node
                  (Ceibo.Green.make_node Syntax_kind.HARD_BREAK [||])
-               :: acc)
+              :: acc)
               after
           else
             (* Not a hard break, keep the first space and continue *)
-            process_line_breaks (Ceibo.Green.Token space1 :: acc) (Ceibo.Green.Token space2 :: rest)
+            process_line_breaks
+              (Ceibo.Green.Token space1 :: acc)
+              (Ceibo.Green.Token space2 :: rest)
       | item :: rest -> process_line_breaks (item :: acc) rest
     in
     let after_breaks = process_line_breaks [] after_leading in
-    
+
     (* Strip trailing spaces, tabs, and newlines *)
     let rec strip_trailing = function
       | [] -> []
       | lst -> (
           match List.rev lst with
           | Ceibo.Green.Token tok :: rest
-            when tok.kind = Syntax_kind.SPACE || tok.kind = Syntax_kind.TAB
+            when tok.kind = Syntax_kind.SPACE
+                 || tok.kind = Syntax_kind.TAB
                  || tok.kind = Syntax_kind.NEWLINE ->
               strip_trailing (List.rev rest)
           | _ -> lst)
@@ -152,7 +165,8 @@ and compile_node source node =
 
   match kind with
   | Syntax_kind.DOCUMENT -> Html.fragment children_html
-  | Syntax_kind.PARAGRAPH -> Html.element "p" (process_paragraph_content children)
+  | Syntax_kind.PARAGRAPH ->
+      Html.element "p" (process_paragraph_content children)
   | Syntax_kind.HEADING1 -> Html.element "h1" (strip_heading_spaces children)
   | Syntax_kind.HEADING2 -> Html.element "h2" (strip_heading_spaces children)
   | Syntax_kind.HEADING3 -> Html.element "h3" (strip_heading_spaces children)
@@ -161,8 +175,11 @@ and compile_node source node =
   | Syntax_kind.HEADING6 -> Html.element "h6" (strip_heading_spaces children)
   | Syntax_kind.TEXT -> Html.fragment children_html
   | Syntax_kind.CODE_BLOCK ->
-      (* Indented code blocks need trailing newline *)
-      let code = Html.element "code" (children_html @ [ Html.text "\n" ]) in
+      (* Indented code blocks - compile literally (keep backslashes) *)
+      let literal_html =
+        Array.to_list children |> List.map (compile_element_literal source)
+      in
+      let code = Html.element "code" (literal_html @ [ Html.text "\n" ]) in
       Html.element "pre" [ code ]
   | Syntax_kind.FENCED_CODE_BLOCK ->
       (* Extract info string if present (first child is INFO_STRING node) *)
@@ -177,8 +194,7 @@ and compile_node source node =
                   get_text_tokens (tok.text :: acc) rest
               | Ceibo.Green.Node n :: rest ->
                   let inner_text =
-                    get_text_tokens []
-                      (Array.to_list n.children)
+                    get_text_tokens [] (Array.to_list n.children)
                   in
                   get_text_tokens (inner_text :: acc) rest
             in
@@ -194,10 +210,12 @@ and compile_node source node =
             (lang, rest)
         | lst -> (None, lst)
       in
-      
-      (* Compile content children *)
-      let content_html = List.map (compile_element source) content_children in
-      
+
+      (* Compile content children literally (keep backslashes) *)
+      let content_html =
+        List.map (compile_element_literal source) content_children
+      in
+
       (* Check if we need to add trailing newline *)
       let needs_newline =
         match List.rev content_children with
@@ -205,7 +223,7 @@ and compile_node source node =
         | _ :: _ -> true
         | [] -> false
       in
-      
+
       (* Build code element with optional class attribute *)
       let code_attrs =
         match info_string with
@@ -231,8 +249,12 @@ and compile_node source node =
   | Syntax_kind.EMPHASIS -> Html.element "em" children_html
   | Syntax_kind.STRONG -> Html.element "strong" children_html
   | Syntax_kind.INLINE_CODE ->
+      (* Compile children literally (keep backslashes) *)
+      let literal_html =
+        Array.to_list children |> List.map (compile_element_literal source)
+      in
       (* Convert line endings to spaces *)
-      let text = Html.to_string (Html.fragment children_html) in
+      let text = Html.to_string (Html.fragment literal_html) in
       let with_spaces =
         String.map (fun c -> if c = '\n' || c = '\r' then ' ' else c) text
       in
@@ -245,7 +267,7 @@ and compile_node source node =
       in
       Html.element "code" [ Html.text stripped ]
   | Syntax_kind.LINK ->
-      (* For autolinks, get raw token text for href (unescape) *)
+      (* For autolinks, get raw token text for href and display *)
       let rec get_raw_text elems =
         List.fold_left
           (fun acc elem ->
@@ -256,12 +278,38 @@ and compile_node source node =
           "" elems
       in
       let href = get_raw_text (Array.to_list node.children) in
+
+      (* Percent-encode special characters in href *)
+      let percent_encode str =
+        let buf = Buffer.create (String.length str * 2) in
+        String.iter
+          (fun c ->
+            match c with
+            | '\\' -> Buffer.add_string buf "%5C"
+            | '[' -> Buffer.add_string buf "%5B"
+            | ']' -> Buffer.add_string buf "%5D"
+            | '<' -> Buffer.add_string buf "%3C"
+            | '>' -> Buffer.add_string buf "%3E"
+            | ' ' -> Buffer.add_string buf "%20"
+            | c -> Buffer.add_char buf c)
+          str;
+        Buffer.contents buf
+      in
+
+      let encoded_href = percent_encode href in
+
       (* Check if this is an email autolink - if so, add mailto: prefix *)
       let is_email =
         String.contains href '@' && not (String.contains href ':')
       in
-      let full_href = if is_email then "mailto:" ^ href else href in
-      Html.element "a" ~attrs:[ ("href", full_href) ] children_html
+      let full_href =
+        if is_email then "mailto:" ^ encoded_href else encoded_href
+      in
+      (* Compile children literally to preserve backslashes in display text *)
+      let display_html =
+        Array.to_list children |> List.map (compile_element_literal source)
+      in
+      Html.element "a" ~attrs:[ ("href", full_href) ] display_html
   | Syntax_kind.IMAGE ->
       (* TODO: Extract src/alt from somewhere *)
       Html.element "img" ~attrs:[ ("src", ""); ("alt", "") ] []

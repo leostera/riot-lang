@@ -136,8 +136,7 @@ and parse_code_span parser =
         match peek_kind parser with
         | Syntax_kind.EOF ->
             (* Reached EOF - return what we have *)
-            if backtick_run = open_count then List.rev acc
-            else List.rev acc
+            if backtick_run = open_count then List.rev acc else List.rev acc
         | Syntax_kind.BACKTICK ->
             let tok = consume parser in
             collect_content acc (backtick_run + 1)
@@ -261,6 +260,16 @@ and parse_autolink parser =
       let tok = peek_n parser offset in
       match tok.Token.kind with
       | Syntax_kind.GREATER_THAN -> Some (String.concat "" (List.rev acc))
+      | Syntax_kind.ESCAPED_CHAR ->
+          (* Check if this is \> which should close the autolink *)
+          let text = Token_cursor.view parser.cursor tok.Token.span in
+          if text = "\\>" then
+            (* In autolinks, backslash escapes don't work, so \> is \ + > *)
+            (* Include the backslash in URL, > closes the link *)
+            Some (String.concat "" (List.rev ("\\" :: acc)))
+          else
+            (* Regular escaped char, include in URL *)
+            collect_url_text (offset + 1) (text :: acc)
       | Syntax_kind.NEWLINE | Syntax_kind.EOF | Syntax_kind.SPACE -> None
       | Syntax_kind.LESS_THAN when offset > 1 -> None
       | _ when offset > 100 -> None
@@ -313,6 +322,28 @@ and parse_autolink parser =
             | Syntax_kind.GREATER_THAN ->
                 advance parser;
                 Some (List.rev acc)
+            | Syntax_kind.ESCAPED_CHAR ->
+                let tok = peek parser in
+                let text = Token_cursor.view parser.cursor tok.Token.span in
+                if text = "\\>" then (
+                  (* In autolinks, \> is \ + > (no escaping) *)
+                  (* Create a token for just the backslash *)
+                  let backslash_tok =
+                    {
+                      tok with
+                      Token.kind = Syntax_kind.BACKSLASH;
+                      Token.span =
+                        Ceibo.Span.make ~start:tok.Token.span.start
+                          ~end_:(tok.Token.span.start + 1);
+                    }
+                  in
+                  advance parser;
+                  (* consume the \> token *)
+                  Some (List.rev (make_token parser backslash_tok :: acc)))
+                else
+                  (* Regular escaped char - include in URL *)
+                  let tok = consume parser in
+                  collect_url (make_token parser tok :: acc)
             | _ ->
                 let tok = consume parser in
                 collect_url (make_token parser tok :: acc)
@@ -400,7 +431,7 @@ and check_setext_underline parser =
   | _ -> None
 
 (** Parse a paragraph *)
-and parse_paragraph parser =
+and parse_paragraph ?(in_blockquote = false) parser =
   let start_tok = peek parser in
 
   (* Collect first line of content *)
@@ -449,7 +480,8 @@ and parse_paragraph parser =
                     (* Check if next line is blank (empty or only whitespace) *)
                     let rec is_blank_line offset =
                       match peek_n parser offset with
-                      | { kind = Syntax_kind.NEWLINE | Syntax_kind.EOF; _ } -> true
+                      | { kind = Syntax_kind.NEWLINE | Syntax_kind.EOF; _ } ->
+                          true
                       | { kind = Syntax_kind.SPACE | Syntax_kind.TAB; _ } ->
                           is_blank_line (offset + 1)
                       | _ -> false
@@ -458,11 +490,12 @@ and parse_paragraph parser =
                     | Syntax_kind.NEWLINE | Syntax_kind.EOF ->
                         (* End of paragraph *)
                         acc
-                    | Syntax_kind.SPACE | Syntax_kind.TAB when is_blank_line 0 ->
+                    | (Syntax_kind.SPACE | Syntax_kind.TAB) when is_blank_line 0
+                      ->
                         (* Next line is blank (only whitespace) - end paragraph *)
                         acc
                     | _ ->
-                        (* Continue paragraph - skip leading spaces *)
+                        (* Continue paragraph - skip leading spaces and blockquote markers *)
                         let rec skip_leading () =
                           match peek_kind parser with
                           | Syntax_kind.SPACE ->
@@ -471,6 +504,17 @@ and parse_paragraph parser =
                           | _ -> ()
                         in
                         skip_leading ();
+
+                        (* Always skip > marker if present (blockquote continuation) *)
+                        (match peek_kind parser with
+                        | Syntax_kind.GREATER_THAN -> (
+                            advance parser;
+                            (* Optional space after > *)
+                            match peek_kind parser with
+                            | Syntax_kind.SPACE -> advance parser
+                            | _ -> ())
+                        | _ -> ());
+
                         let inline = parse_inline parser in
                         collect_rest (acc @ [ make_token parser tok ] @ inline))
                 | _ ->
@@ -497,6 +541,18 @@ and parse_paragraph parser =
                         | _ -> ()
                       in
                       skip_paragraph_indent ();
+
+                      (* If in blockquote, skip > marker and optional space *)
+                      (if in_blockquote then
+                         match peek_kind parser with
+                         | Syntax_kind.GREATER_THAN -> (
+                             advance parser;
+                             (* Optional space after > *)
+                             match peek_kind parser with
+                             | Syntax_kind.SPACE -> advance parser
+                             | _ -> ())
+                         | _ -> ());
+
                       let inline = parse_inline parser in
                       collect_rest (acc @ inline)
               in
@@ -665,7 +721,7 @@ and parse_fenced_code parser fence_char fence_count =
         advance parser;
         acc
     | Syntax_kind.EOF -> acc
-    | Syntax_kind.SPACE | Syntax_kind.TAB when List.length acc = 0 ->
+    | (Syntax_kind.SPACE | Syntax_kind.TAB) when List.length acc = 0 ->
         (* Skip leading spaces *)
         advance parser;
         collect_info_string acc
@@ -674,7 +730,7 @@ and parse_fenced_code parser fence_char fence_count =
         collect_info_string (acc @ [ make_token parser tok ])
   in
   let info_string_tokens = collect_info_string [] in
-  
+
   (* Trim trailing spaces from info string *)
   let rec trim_trailing_spaces = function
     | [] -> []
@@ -761,8 +817,8 @@ and parse_fenced_code parser fence_char fence_count =
           let rec consume_closing () =
             match peek_kind parser with
             | k
-              when k = fence_char || k = Syntax_kind.SPACE || k = Syntax_kind.TAB
-              ->
+              when k = fence_char || k = Syntax_kind.SPACE
+                   || k = Syntax_kind.TAB ->
                 advance parser;
                 consume_closing ()
             | Syntax_kind.NEWLINE -> advance parser
@@ -779,7 +835,7 @@ and parse_fenced_code parser fence_char fence_count =
   in
 
   let content = collect_content [] true in
-  
+
   (* Add info string as first child if present *)
   let all_children =
     if List.length info_tokens = 0 then content
@@ -1199,12 +1255,12 @@ and parse_quote_block parser =
   | Syntax_kind.HASH -> (
       match check_atx_heading parser with
       | Some level -> parse_atx_heading parser level
-      | None -> parse_paragraph parser)
+      | None -> parse_paragraph ~in_blockquote:true parser)
   | Syntax_kind.BACKTICK | Syntax_kind.TILDE -> (
       match check_fenced_code parser with
       | Some (fence_char, fence_count) ->
           parse_fenced_code parser fence_char fence_count
-      | None -> parse_paragraph parser)
+      | None -> parse_paragraph ~in_blockquote:true parser)
   | Syntax_kind.STAR | Syntax_kind.DASH | Syntax_kind.UNDERSCORE -> (
       match check_thematic_break parser with
       | Some token_count ->
@@ -1215,11 +1271,11 @@ and parse_quote_block parser =
           | Syntax_kind.NEWLINE -> advance parser
           | _ -> ());
           make_node Syntax_kind.THEMATIC_BREAK []
-      | None -> parse_paragraph parser)
+      | None -> parse_paragraph ~in_blockquote:true parser)
   | Syntax_kind.GREATER_THAN ->
       (* Nested block quote *)
       parse_blockquote parser
-  | _ -> parse_paragraph parser
+  | _ -> parse_paragraph ~in_blockquote:true parser
 
 (** Parse document (top level) *)
 and parse_document parser =

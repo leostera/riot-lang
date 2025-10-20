@@ -1,4 +1,5 @@
 open Std
+module Html : module type of Html
 
 type t = (Syntax_kind.t, string) Ceibo.Green.node
 
