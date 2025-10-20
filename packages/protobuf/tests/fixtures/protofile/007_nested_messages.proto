@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package test.nested;
+
+message Outer {
+  message Inner {
+    message DeepInner {
+      string value = 1;
+    }
+    DeepInner deep = 1;
+    int32 id = 2;
+  }
+  Inner inner = 1;
+  string name = 2;
+}

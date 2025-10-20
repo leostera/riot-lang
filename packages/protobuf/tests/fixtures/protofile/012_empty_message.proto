@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package test.empty;
+
+message EmptyMessage {
+}
+
+message AnotherEmpty {}

@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package test.options;
+
+message WithOptions {
+  string deprecated_field = 1 [deprecated = true];
+  int32 packed_field = 2 [packed = true];
+  string custom = 3 [json_name = "customName"];
+  bytes data = 4 [deprecated = false, packed = false];
+}

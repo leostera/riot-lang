@@ -1,0 +1,5 @@
+syntax = "proto3";
+package test.repeated;
+message Repeatedfloat {
+  repeated float values = 1;
+}

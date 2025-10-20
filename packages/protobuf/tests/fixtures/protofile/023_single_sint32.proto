@@ -1,0 +1,5 @@
+syntax = "proto3";
+package test.single;
+message Singlesint32 {
+  sint32 value = 1;
+}

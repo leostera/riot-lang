@@ -1,0 +1,1 @@
+{"edition":null,"package":"test.empty","imports":[],"definitions":[{"type":"message","visibility":null,"name":"EmptyMessage","elements":[]},{"type":"message","visibility":null,"name":"AnotherEmpty","elements":[]}]}

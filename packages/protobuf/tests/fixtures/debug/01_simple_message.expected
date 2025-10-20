@@ -1,0 +1,19 @@
+{
+  "fields": [
+    {
+      "type": "scalar",
+      "name": "name",
+      "value": "John Doe"
+    },
+    {
+      "type": "scalar",
+      "name": "age",
+      "value": 30
+    },
+    {
+      "type": "scalar",
+      "name": "email",
+      "value": "john@example.com"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+syntax = "proto3";
+package test.complex251;
+import "google/protobuf/timestamp.proto";
+enum Status {
+  UNSPECIFIED = 0;
+  ACTIVE = 1;
+}
+message Complex251 {
+  string name = 1;
+  repeated int32 ids = 2;
+  map<string, string> meta = 3;
+  oneof data {
+    string text = 4;
+    int32 number = 5;
+  }
+  Status status = 6;
+}

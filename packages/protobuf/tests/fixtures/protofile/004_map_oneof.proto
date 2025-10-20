@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package example;
+
+message Config {
+  map<string, string> settings = 1;
+  
+  oneof value {
+    string str_value = 2;
+    int32 int_value = 3;
+    bool bool_value = 4;
+  }
+}

@@ -1,0 +1,13 @@
+[package]
+name = "protobuf"
+version = "0.1.0"
+
+[dependencies]
+std = "*"
+miniriot = "*"
+
+[[bin]]
+name = "parser_tests"
+path = "tests/parser_tests.ml"
+
+

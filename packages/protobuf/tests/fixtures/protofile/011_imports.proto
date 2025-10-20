@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package test.imports;
+
+import "google/protobuf/timestamp.proto";
+import public "google/protobuf/duration.proto";
+import weak "google/protobuf/empty.proto";
+
+message WithImports {
+  string name = 1;
+}

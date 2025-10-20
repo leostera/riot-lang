@@ -1,0 +1,1 @@
+{"edition":null,"package":"test.single","imports":[],"definitions":[{"type":"message","visibility":null,"name":"Singlesint64","elements":[{"type":"field","label":null,"field_type":"sint64","name":"value","number":1,"options":[]}]}]}

@@ -1,0 +1,14 @@
+syntax = "proto3";
+package test.many;
+message Fields10 {
+  string field_1 = 1;
+  string field_2 = 2;
+  string field_3 = 3;
+  string field_4 = 4;
+  string field_5 = 5;
+  string field_6 = 6;
+  string field_7 = 7;
+  string field_8 = 8;
+  string field_9 = 9;
+  string field_10 = 10;
+}

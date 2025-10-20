@@ -1,0 +1,11 @@
+{
+  "records": [
+    {
+      "field_number": 2,
+      "value": {
+        "type": "len",
+        "value": "testing"
+      }
+    }
+  ]
+}

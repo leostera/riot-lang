@@ -1,0 +1,5 @@
+syntax = "proto3";
+package test.repeated;
+message Repeatedint64 {
+  repeated int64 values = 1;
+}

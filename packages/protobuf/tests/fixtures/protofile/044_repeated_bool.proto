@@ -1,0 +1,5 @@
+syntax = "proto3";
+package test.repeated;
+message Repeatedbool {
+  repeated bool values = 1;
+}

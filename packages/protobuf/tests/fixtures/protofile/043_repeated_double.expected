@@ -1,0 +1,1 @@
+{"edition":null,"package":"test.repeated","imports":[],"definitions":[{"type":"message","visibility":null,"name":"Repeateddouble","elements":[{"type":"field","label":"repeated","field_type":"double","name":"values","number":1,"options":[]}]}]}

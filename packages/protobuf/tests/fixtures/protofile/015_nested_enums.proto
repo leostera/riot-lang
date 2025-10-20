@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package test.nested_enums;
+
+message Container {
+  enum Status {
+    STATUS_UNSPECIFIED = 0;
+    STATUS_PENDING = 1;
+    STATUS_COMPLETE = 2;
+  }
+  
+  enum Type {
+    TYPE_UNSPECIFIED = 0;
+    TYPE_A = 1;
+    TYPE_B = 2;
+  }
+  
+  string name = 1;
+}

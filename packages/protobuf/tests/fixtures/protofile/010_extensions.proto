@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package test.extensions;
+
+message WithExtensions {
+  string name = 1;
+  extensions 100 to 199;
+  extensions 1000 to max;
+}

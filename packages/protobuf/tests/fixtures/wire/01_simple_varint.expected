@@ -1,0 +1,11 @@
+{
+  "records": [
+    {
+      "field_number": 1,
+      "value": {
+        "type": "varint",
+        "value": 150
+      }
+    }
+  ]
+}

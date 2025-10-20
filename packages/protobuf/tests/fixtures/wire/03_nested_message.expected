@@ -1,0 +1,19 @@
+{
+  "records": [
+    {
+      "field_number": 3,
+      "value": {
+        "type": "message",
+        "records": [
+          {
+            "field_number": 1,
+            "value": {
+              "type": "varint",
+              "value": 150
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

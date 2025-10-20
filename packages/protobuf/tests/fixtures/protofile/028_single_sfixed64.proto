@@ -1,0 +1,5 @@
+syntax = "proto3";
+package test.single;
+message Singlesfixed64 {
+  sfixed64 value = 1;
+}
