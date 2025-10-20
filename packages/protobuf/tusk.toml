@@ -3,8 +3,8 @@ name = "protobuf"
 version = "0.1.0"
 
 [dependencies]
-std = "*"
-miniriot = "*"
+std = { path = "../std" }
+miniriot = { path = "../miniriot" }
 
 [[bin]]
 name = "parser_tests"

@@ -1,3 +1,4 @@
+open Lol
 open Std
 
 let () =
@@ -33,9 +34,9 @@ let () =
       match ArgParser.get_subcommand matches with
       | Some ("csv", csv_matches) -> (
           match ArgParser.get_subcommand csv_matches with
-          | Some ("to-json-stream", sub_matches) ->
+          | Some ("to-json-stream", sub_matches) -> (
               let input = ArgParser.get_path sub_matches "input" in
-              (match input with
+              match input with
               | Some path -> Csv_cmd.to_json_stream path
               | None ->
                   Log.error "Input file required";

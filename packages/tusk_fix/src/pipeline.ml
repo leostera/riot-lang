@@ -7,7 +7,7 @@ let make ~rules () = { rules }
 
 let run pipeline ?filename source =
   let tokens = Syn.tokenize source in
-  let parse_result = Syn.Parser.parse ~source ?filename tokens in
+  let parse_result = Syn.Parser.parse_implementation ~source tokens in
   let parse_diagnostics =
     parse_result.diagnostics
     |> List.map (fun diag ->

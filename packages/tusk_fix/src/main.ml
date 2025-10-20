@@ -1,4 +1,5 @@
 open Std
+open Std.Iter
 
 let rec walk_dir dir =
   match Fs.read_dir dir with

@@ -203,12 +203,23 @@ let partition_match_case children =
    which indicate a variant type
 *)
 let has_variant_constructors children =
+  (* Look for | tokens OR TYPE_VARIANT_CONSTR nodes - these indicate variants *)
+  (* Also check inside nodes (one level deep) for | tokens *)
   Array.exists (fun child ->
     match child with
     | Syn.Ceibo.Red.Node node ->
-        Syn.Ceibo.Red.SyntaxNode.kind node = Syn.SyntaxKind.TYPE_VARIANT_CONSTR
+        let kind = Syn.Ceibo.Red.SyntaxNode.kind node in
+        if kind = Syn.SyntaxKind.TYPE_VARIANT_CONSTR then
+          true
+        else
+          (* Check if this node contains | tokens (for parsed variants) *)
+          let node_children = Syn.Ceibo.Red.SyntaxNode.children node in
+          Array.exists (fun node_child ->
+            match node_child with
+            | Syn.Ceibo.Red.Token tok -> Syn.Ceibo.Red.SyntaxToken.text tok = "|"
+            | _ -> false
+          ) node_children
     | Syn.Ceibo.Red.Token tok ->
-        (* Also check for | tokens which indicate variants *)
         Syn.Ceibo.Red.SyntaxToken.text tok = "|"
     | _ -> false
   ) children
@@ -346,6 +357,7 @@ type printer_ctx = {
   mutable in_indexing: bool;
   mutable in_record: bool;
   mutable just_added_newline: bool;
+  mutable in_collection: bool; (* Inside list/array - don't format sequences multi-line *)
 }
 
 let create_context config = {
@@ -359,6 +371,7 @@ let create_context config = {
   in_indexing = false;
   in_record = false;
   just_added_newline = false;
+  in_collection = false;
 }
 
 let print_root ~config root =
@@ -394,6 +407,8 @@ let print_root ~config root =
         if current_text = "." || last_text = "." then false
         (* No space after ` for poly variants *)
         else if last_text = "`" then false
+        (* No space after ' for type variables *)
+        else if last_text = "'" then false
         (* No space after ~ or ? for labeled/optional args *)
         else if last_text = "~" || last_text = "?" then false
         (* No space before/after : in labeled args *)
@@ -443,6 +458,69 @@ let print_root ~config root =
   in
 
   (**
+     Format SEQUENCE expression with multi-line layout:
+     
+     expr1;
+     expr2;
+     expr3
+  *)
+  let rec format_sequence_expr ctx ~needs_indent children =
+    (* Collect expressions between semicolons *)
+    let exprs = ref [] in
+    let current_expr = ref [] in
+    
+    Array.iter (fun child ->
+      match child with
+      | Syn.Ceibo.Red.Token tok ->
+          let text = Syn.Ceibo.Red.SyntaxToken.text tok in
+          let kind = Syn.Ceibo.Red.SyntaxToken.kind tok in
+          (* Skip pure whitespace *)
+          if kind = Syn.SyntaxKind.WHITESPACE && 
+             String.for_all (fun c -> c = ' ' || c = '\t' || c = '\n' || c = '\r') text
+          then ()
+          else if text = ";" then (
+            (* End of expression *)
+            if !current_expr <> [] then (
+              exprs := (List.rev !current_expr) :: !exprs;
+              current_expr := []
+            )
+          ) else
+            current_expr := child :: !current_expr
+      | _ ->
+          current_expr := child :: !current_expr
+    ) children;
+    
+    (* Add last expression if any *)
+    if !current_expr <> [] then
+      exprs := (List.rev !current_expr) :: !exprs;
+    
+    let exprs = List.rev !exprs in
+    
+    (* Format as multi-line if multiple expressions AND not inside collection *)
+    if List.length exprs > 1 && not ctx.in_collection then (
+      (* Multi-line sequence *)
+      add_newline ctx;
+      ctx.indent_level <- ctx.indent_level + 1;
+      List.iteri (fun i expr_children ->
+        add_indent ctx;
+        List.iter (print_element ctx ~needs_indent:false) expr_children;
+        if i < List.length exprs - 1 then
+          Buffer.add_char ctx.buf ';';
+        add_newline ctx
+      ) exprs;
+      ctx.indent_level <- ctx.indent_level - 1;
+      ctx.last_token_kind <- None;
+      ctx.last_token_text <- None
+    ) else (
+      (* Single expression or inside collection - inline with semicolons *)
+      List.iteri (fun i expr_children ->
+        List.iter (print_element ctx ~needs_indent:false) expr_children;
+        if i < List.length exprs - 1 then
+          Buffer.add_string ctx.buf "; "
+      ) exprs
+    )
+  
+  (**
      Format IF expression with multi-line layout:
      
      if <condition> then
@@ -450,7 +528,7 @@ let print_root ~config root =
      else
        <else_branch>
   *)
-  let rec format_if_expr ctx ~needs_indent children =
+  and format_if_expr ctx ~needs_indent children =
     let (cond_children, then_children, else_children_opt) = partition_if_expr children in
     
     (* Multi-line IF: start on new line, indented from current level *)
@@ -497,26 +575,125 @@ let print_root ~config root =
        | Constructor2
   *)
   and format_type_variant ctx ~needs_indent children =
-    let (header_children, variant_constrs) = partition_type_variant children in
-    
-    (* Print header: type name = *)
+    (* Simple streaming approach: add newline before each | *)
     if needs_indent then add_indent ctx;
-    List.iter (print_element ctx ~needs_indent:false) header_children;
-    add_newline ctx;
     
-    (* Print each constructor *)
-    ctx.indent_level <- ctx.indent_level + 1;
-    List.iter (fun constr_elem ->
-      match constr_elem with
+    let found_eq = ref false in
+    let seen_first_content = ref false in
+    
+    Array.iter (fun child ->
+      match child with
+      | Syn.Ceibo.Red.Token tok ->
+          let text = Syn.Ceibo.Red.SyntaxToken.text tok in
+          let kind = Syn.Ceibo.Red.SyntaxToken.kind tok in
+          (* Skip pure whitespace *)
+          if kind = Syn.SyntaxKind.WHITESPACE && 
+             String.for_all (fun c -> c = ' ' || c = '\t' || c = '\n' || c = '\r') text
+          then ()
+          else if text = "=" then (
+            found_eq := true;
+            print_element ctx ~needs_indent:false child;
+            add_newline ctx;
+            ctx.indent_level <- ctx.indent_level + 1
+          ) else if text = "|" && !found_eq then (
+            (* New constructor *)
+            if !seen_first_content then add_newline ctx;
+            add_indent ctx;
+            Buffer.add_string ctx.buf "| ";
+            seen_first_content := true
+          )           else if not !found_eq then
+            print_element ctx ~needs_indent:false child
+          else (
+            (* Constructor content after = *)
+            if not !seen_first_content then (
+              (* First constructor without leading | *)
+              add_indent ctx;
+              Buffer.add_string ctx.buf "| ";
+              seen_first_content := true
+            );
+            print_element ctx ~needs_indent:false child
+          )
       | Syn.Ceibo.Red.Node node ->
-          let constr_children = Syn.Ceibo.Red.SyntaxNode.children node in
-          add_indent ctx;
-          Buffer.add_string ctx.buf "| ";
-          Array.iter (print_element ctx ~needs_indent:false) constr_children;
-          add_newline ctx
-      | _ -> ()
-    ) variant_constrs;
-    ctx.indent_level <- ctx.indent_level - 1;
+          if not !found_eq then
+            print_element ctx ~needs_indent:false child
+          else (
+            (* Node after = - this contains the variant constructors! *)
+            (* Recursively process its children instead of printing the node as-is *)
+            let node_children = Syn.Ceibo.Red.SyntaxNode.children node in
+            let prev_was_nested_node = ref false in
+            Array.iter (fun node_child ->
+              match node_child with
+              | Syn.Ceibo.Red.Token tok ->
+                  let text = Syn.Ceibo.Red.SyntaxToken.text tok in
+                  let kind = Syn.Ceibo.Red.SyntaxToken.kind tok in
+                  if kind = Syn.SyntaxKind.WHITESPACE && 
+                     String.for_all (fun c -> c = ' ' || c = '\t' || c = '\n' || c = '\r') text
+                  then ()
+                  else if text = "|" then (
+                    prev_was_nested_node := false; (* Reset - we saw a separator *)
+                    if !seen_first_content then add_newline ctx;
+                    add_indent ctx;
+                    Buffer.add_string ctx.buf "| ";
+                    seen_first_content := true
+                  ) else (
+                    prev_was_nested_node := false;
+                    if not !seen_first_content then (
+                      add_indent ctx;
+                      Buffer.add_string ctx.buf "| ";
+                      seen_first_content := true
+                    );
+                    print_element ctx ~needs_indent:false node_child
+                  )
+              | Syn.Ceibo.Red.Node nested_node ->
+                  (* Nested node inside variant structure - recursively process it *)
+                  (* If previous was also a nested node, we need a | separator *)
+                  if !prev_was_nested_node then (
+                    add_newline ctx;
+                    add_indent ctx;
+                    Buffer.add_string ctx.buf "| "
+                  );
+                  prev_was_nested_node := true;
+                  
+                  let nested_children = Syn.Ceibo.Red.SyntaxNode.children nested_node in
+                  Array.iter (fun nested_child ->
+                    match nested_child with
+                    | Syn.Ceibo.Red.Token tok ->
+                        let text = Syn.Ceibo.Red.SyntaxToken.text tok in
+                        let kind = Syn.Ceibo.Red.SyntaxToken.kind tok in
+                        if kind = Syn.SyntaxKind.WHITESPACE && 
+                           String.for_all (fun c -> c = ' ' || c = '\t' || c = '\n' || c = '\r') text
+                        then ()
+                        else if text = "|" then (
+                          (* New constructor inside nested node *)
+                          if !seen_first_content then add_newline ctx;
+                          add_indent ctx;
+                          Buffer.add_string ctx.buf "| ";
+                          seen_first_content := true
+                        ) else (
+                          if not !seen_first_content then (
+                            add_indent ctx;
+                            Buffer.add_string ctx.buf "| ";
+                            seen_first_content := true
+                          );
+                          print_element ctx ~needs_indent:false nested_child
+                        )
+                    | _ ->
+                        if not !seen_first_content then (
+                          add_indent ctx;
+                          Buffer.add_string ctx.buf "| ";
+                          seen_first_content := true
+                        );
+                        print_element ctx ~needs_indent:false nested_child
+                  ) nested_children
+            ) node_children
+          )
+    ) children;
+    
+    if !found_eq then (
+      add_newline ctx;
+      ctx.indent_level <- ctx.indent_level - 1
+    );
+    add_newline ctx;
     
     (* Reset token tracking *)
     ctx.last_token_kind <- None;
@@ -717,6 +894,15 @@ let print_root ~config root =
     | Syn.SyntaxKind.LET_EXPR | Syn.SyntaxKind.LET_REC_EXPR ->
         format_let_in_expr ctx ~needs_indent children
     
+    | Syn.SyntaxKind.SEQUENCE_EXPR ->
+        (* Only format multi-line if not inside collection *)
+        if not ctx.in_collection then
+          format_sequence_expr ctx ~needs_indent children
+        else (
+          (* Inside collection - use default inline formatting *)
+          Array.iter (fun child -> print_element ctx ~needs_indent:false child) children
+        )
+    
     (* Top-level structure *)
     | Syn.SyntaxKind.SOURCE_FILE | Syn.SyntaxKind.STRUCTURE ->
         let prev_kind = ref None in
@@ -752,6 +938,7 @@ let print_root ~config root =
               node_kind = Syn.SyntaxKind.LET_EXPR || 
               node_kind = Syn.SyntaxKind.LET_REC_EXPR ||
               node_kind = Syn.SyntaxKind.TRY_EXPR
+              (* Note: SEQUENCE_EXPR deliberately NOT included - test 0019 doesn't want trailing space *)
           | _ -> false
         ) children in
         
@@ -804,12 +991,20 @@ let print_root ~config root =
         ctx.last_token_text <- None
         
     (* Compound expressions - use token printer *)
-    | Syn.SyntaxKind.PAREN_EXPR | Syn.SyntaxKind.TUPLE_EXPR
-    | Syn.SyntaxKind.LIST_EXPR | Syn.SyntaxKind.ARRAY_EXPR ->
+    | Syn.SyntaxKind.PAREN_EXPR | Syn.SyntaxKind.TUPLE_EXPR ->
         (* Explicitly print all children including delimiters *)
         Array.iter
           (fun child -> print_element ctx ~needs_indent:false child)
           children
+    
+    | Syn.SyntaxKind.LIST_EXPR | Syn.SyntaxKind.ARRAY_EXPR ->
+        (* Inside collections, sequences should stay inline *)
+        let old_in_collection = ctx.in_collection in
+        ctx.in_collection <- true;
+        Array.iter
+          (fun child -> print_element ctx ~needs_indent:false child)
+          children;
+        ctx.in_collection <- old_in_collection
           
     (* Default: use token-based printer *)
     | _ ->

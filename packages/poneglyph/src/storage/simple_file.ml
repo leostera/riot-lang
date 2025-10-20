@@ -1,0 +1,207 @@
+open Std
+open Model
+
+type t = { mem : Inmemory.t; mutable filename : string option }
+
+let create () = { mem = Inmemory.create (); filename = None }
+
+let create_with_file filename =
+  { mem = Inmemory.create (); filename = Some filename }
+
+let escape_json_string s =
+  let buffer = Buffer.create (String.length s) in
+  String.iter
+    (fun c ->
+      match c with
+      | '"' -> Buffer.add_string buffer "\\\""
+      | '\\' -> Buffer.add_string buffer "\\\\"
+      | '\n' -> Buffer.add_string buffer "\\n"
+      | '\r' -> Buffer.add_string buffer "\\r"
+      | '\t' -> Buffer.add_string buffer "\\t"
+      | c -> Buffer.add_char buffer c)
+    s;
+  Buffer.contents buffer
+
+let fact_to_json (fact : Fact.t) =
+  let value_str =
+    match fact.value with
+    | Fact.String s -> format "{\"String\":\"%s\"}" (escape_json_string s)
+    | Fact.Int i -> format "{\"Int\":%d}" i
+    | Fact.Bool b -> format "{\"Bool\":%s}" (string_of_bool b)
+    | Fact.Float f -> format "{\"Float\":%f}" f
+    | Fact.Uri u -> format "{\"Uri\":\"%s\"}" (Uri.to_string u)
+    | Fact.DateTime dt ->
+        format "{\"DateTime\":\"%f\"}" (Datetime.to_timestamp dt)
+  in
+  format
+    "{\"e\":\"%s\",\"a\":\"%s\",\"v\":%s,\"fact_uri\":\"%s\",\"stated_at\":\"%f\",\"tx_id\":%d,\"retracted\":%s}"
+    (Uri.to_string fact.entity)
+    (Uri.to_string fact.attribute)
+    value_str
+    (Uri.to_string fact.fact_uri)
+    (Datetime.to_timestamp fact.stated_at)
+    fact.tx_id
+    (string_of_bool fact.retracted)
+
+let json_to_fact line =
+  (* Very simple JSON parser - just enough for our needs *)
+  let extract_string key line =
+    let pattern = format "\"%s\":\"" key in
+    match String.split_on_char '"' line with
+    | _ ->
+        let start_idx = String.index line '"' in
+        let rec find_key idx =
+          if idx >= String.length line then panic ("Key not found: " ^ key)
+          else if String.sub line idx (String.length pattern) = pattern then
+            let value_start = idx + String.length pattern in
+            let rec find_end i =
+              if i >= String.length line then panic "Unterminated string"
+              else if String.get line i = '"' && String.get line (i - 1) <> '\\'
+              then i
+              else find_end (i + 1)
+            in
+            let value_end = find_end value_start in
+            String.sub line value_start (value_end - value_start)
+          else find_key (idx + 1)
+        in
+        find_key 0
+  in
+  let extract_int key line =
+    let pattern = format "\"%s\":" key in
+    let idx = String.index line '"' in
+    let rec find_key i =
+      if i >= String.length line then panic ("Key not found: " ^ key)
+      else if String.sub line i (String.length pattern) = pattern then
+        let value_start = i + String.length pattern in
+        let rec find_end j =
+          if j >= String.length line then panic "Number not found"
+          else
+            match String.get line j with
+            | '0' .. '9' | '-' -> find_end (j + 1)
+            | _ -> j
+        in
+        let value_end = find_end value_start in
+        int_of_string (String.sub line value_start (value_end - value_start))
+      else find_key (i + 1)
+    in
+    find_key idx
+  in
+  let extract_bool key line =
+    let pattern = format "\"%s\":true" key in
+    let rec contains_substr s sub =
+      let len_s = String.length s in
+      let len_sub = String.length sub in
+      let rec check_at i =
+        if i + len_sub > len_s then false
+        else if String.sub s i len_sub = sub then true
+        else check_at (i + 1)
+      in
+      check_at 0
+    in
+    contains_substr line pattern
+  in
+
+  let entity = Uri.of_string (extract_string "e" line) in
+  let attribute = Uri.of_string (extract_string "a" line) in
+  let fact_uri = Uri.of_string (extract_string "fact_uri" line) in
+  let stated_at_ts = float_of_string (extract_string "stated_at" line) in
+  let stated_at = Datetime.from_unix_time stated_at_ts in
+  let tx_id = extract_int "tx_id" line in
+  let retracted = extract_bool "retracted" line in
+
+  (* Parse value - find the "v":{...} part *)
+  let contains_substr s sub =
+    let len_s = String.length s in
+    let len_sub = String.length sub in
+    let rec check_at i =
+      if i + len_sub > len_s then false
+      else if String.sub s i len_sub = sub then true
+      else check_at (i + 1)
+    in
+    check_at 0
+  in
+  let value =
+    if contains_substr line "\"String\"" then
+      Fact.String (extract_string "String" line)
+    else if contains_substr line "\"Int\"" then
+      Fact.Int (extract_int "Int" line)
+    else if contains_substr line "\"Bool\"" then
+      Fact.Bool (extract_bool "Bool" line)
+    else if contains_substr line "\"Float\"" then
+      Fact.Float (float_of_string (extract_string "Float" line))
+    else if contains_substr line "\"Uri\"" then
+      Fact.Uri (Uri.of_string (extract_string "Uri" line))
+    else if contains_substr line "\"DateTime\"" then
+      let ts = float_of_string (extract_string "DateTime" line) in
+      Fact.DateTime (Datetime.from_unix_time ts)
+    else panic "Unknown value type"
+  in
+
+  { Fact.fact_uri; entity; attribute; value; stated_at; tx_id; retracted }
+
+let load filename =
+  let path = Path.v filename in
+  match Fs.exists path with
+  | Ok false | Error _ -> { mem = Inmemory.create (); filename = Some filename }
+  | Ok true ->
+      let content = match Fs.read path with Ok s -> s | Error _ -> "" in
+      let lines = String.split_on_char '\n' content in
+      let facts =
+        List.filter_map
+          (fun line ->
+            if String.trim line = "" then None
+            else try Some (json_to_fact line) with _ -> None)
+          lines
+      in
+      let mem = Inmemory.with_facts (Inmemory.create ()) facts in
+      { mem; filename = Some filename }
+
+let save _store _filename = ()
+
+let state store facts =
+  let tx_id = Inmemory.state store.mem facts in
+  (match store.filename with
+  | Some filename ->
+      let lines = List.map fact_to_json facts in
+      let content = String.concat "\n" lines ^ "\n" in
+      let path = Path.v filename in
+      let file =
+        Fs.File.open_append path
+        |> Result.expect ~msg:("Failed to open " ^ filename)
+      in
+      Fs.File.write_all file content
+      |> Result.expect ~msg:("Failed to append to " ^ filename);
+      Fs.File.close file |> ignore
+  | None -> ());
+  tx_id
+
+let retract store ~fact_uri =
+  Inmemory.retract store.mem ~fact_uri;
+  match store.filename with
+  | Some filename ->
+      (* After retraction, get the fact again to get its updated state *)
+      let all_facts = Inmemory.get_all_facts store.mem ~entity:fact_uri in
+      let retracted_fact =
+        List.find_opt (fun f -> Uri.equal f.Fact.fact_uri fact_uri) all_facts
+        |> Option.expect ~msg:"Fact not found"
+      in
+      let line = fact_to_json retracted_fact ^ "\n" in
+      let path = Path.v filename in
+      let file =
+        Fs.File.open_append path
+        |> Result.expect ~msg:("Failed to open " ^ filename)
+      in
+      Fs.File.write_all file line
+      |> Result.expect ~msg:("Failed to append to " ^ filename);
+      Fs.File.close file |> ignore
+  | None -> ()
+
+let get store ~entity ~attr = Inmemory.get store.mem ~entity ~attr
+let get_all_facts store ~entity = Inmemory.get_all_facts store.mem ~entity
+
+let get_current_facts store ~entity =
+  Inmemory.get_current_facts store.mem ~entity
+
+let exists store entity = Inmemory.exists store.mem entity
+let get_kind store entity = Inmemory.get_kind store.mem entity
+let list_schemas store = Inmemory.list_schemas store.mem

@@ -3,7 +3,8 @@ name = "grpc"
 version = "0.1.0"
 
 [dependencies]
-std = "*"
-# Add dependencies here
+std = { path = "../std" }
+http = { path = "../http" }
+protobuf = { path = "../protobuf" }
 
 

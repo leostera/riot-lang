@@ -1,4 +1,5 @@
 open Std
+open Std.Iter
 
 type format_status =
   | Success of { file : Path.t; changed : bool }
@@ -36,7 +37,8 @@ let format_file write quiet file_path =
     match Fs.read file_path with
     | Error (Fs.SystemError err) -> Failed { file = file_path; error = err }
     | Ok source -> (
-        let parse_result = Syn.parse source in
+        let tokens = Syn.tokenize source in
+        let parse_result = Syn.Parser.parse_implementation ~source tokens in
         match parse_result.diagnostics with
         | [] ->
             let formatted = Formatter.format parse_result.tree in
@@ -59,7 +61,8 @@ let format_file write quiet file_path =
       println "@%s:" (Path.to_string file);
       match Fs.read file_path with
       | Ok source ->
-          let parse_result = Syn.parse source in
+          let tokens = Syn.tokenize source in
+          let parse_result = Syn.Parser.parse_implementation ~source tokens in
           let formatted = Formatter.format parse_result.tree in
           println "%s" formatted
       | Error _ -> ())

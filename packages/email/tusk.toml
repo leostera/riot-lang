@@ -3,9 +3,9 @@ name = "email"
 version = "0.1.0"
 
 [dependencies]
-std = "*"
-miniriot = "*"
-mime = "*"
+std = { path = "../std" }
+miniriot = { path = "../miniriot" }
+mime = { path = "../mime" }
 
 [[bin]]
 name = "mbox"
