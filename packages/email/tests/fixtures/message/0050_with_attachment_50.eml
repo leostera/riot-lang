@@ -1,0 +1,17 @@
+From: sender@example.com
+To: recipient@example.com
+Subject: Attachment 50
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="mix50"
+Date: Mon, 1 Jan 2024 12:00:00 +0000
+
+--mix50
+Content-Type: text/plain
+
+See attachment
+--mix50
+Content-Type: application/pdf; name="doc50.pdf"
+Content-Disposition: attachment; filename="doc50.pdf"
+
+PDF content
+--mix50--

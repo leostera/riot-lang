@@ -1,0 +1,11 @@
+{
+  "mailboxes": [
+    {
+      "name": "Folder49",
+      "delimiter": "/",
+      "flags": [
+        "\\Subscribed"
+      ]
+    }
+  ]
+}

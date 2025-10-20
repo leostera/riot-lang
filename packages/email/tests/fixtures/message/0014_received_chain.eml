@@ -1,0 +1,8 @@
+Received: from mail1.example.com by mail2.example.com
+Received: from mail2.example.com by mail3.example.com
+From: sender@example.com
+To: recipient@example.com
+Subject: Email Trail
+Date: Mon, 1 Jan 2024 12:00:00 +0000
+
+Traceable

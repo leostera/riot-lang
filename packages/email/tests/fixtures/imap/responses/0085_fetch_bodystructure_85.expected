@@ -1,0 +1,8 @@
+{
+  "message": 85,
+  "bodystructure": {
+    "type": "TEXT",
+    "subtype": "PLAIN",
+    "encoding": "7BIT"
+  }
+}

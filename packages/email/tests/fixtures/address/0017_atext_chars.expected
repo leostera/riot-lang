@@ -1,0 +1,6 @@
+{
+  "display_name": null,
+  "local_part": "!#$%&'*+-/=?^_`{|}~",
+  "domain": "example.com",
+  "address": "!#$%&'*+-/=?^_`{|}~@example.com"
+}

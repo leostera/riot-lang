@@ -1,0 +1,4 @@
+* 1 FETCH (UID 100 FLAGS (\Seen))
+* 2 FETCH (UID 101 FLAGS (\Answered))
+* 3 FETCH (UID 102 FLAGS ())
+a008 OK FETCH completed

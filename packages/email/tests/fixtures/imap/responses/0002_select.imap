@@ -1,0 +1,7 @@
+* FLAGS (\Answered \Flagged \Deleted \Seen \Draft)
+* 172 EXISTS
+* 1 RECENT
+* OK [UNSEEN 12] Message 12 is first unseen
+* OK [UIDVALIDITY 3857529045] UIDs valid
+* OK [UIDNEXT 4392] Predicted next UID
+a002 OK [READ-WRITE] SELECT completed

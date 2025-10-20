@@ -1,0 +1,16 @@
+From: Outlook User <outlook@example.com>
+To: user@example.com
+Subject: Outlook Test 83
+Date: Mon, 1 Jan 2024 12:00:00 +0000
+Content-Type: multipart/alternative; boundary="outlook83"
+MIME-Version: 1.0
+
+--outlook83
+Content-Type: text/plain
+
+Outlook text 83
+--outlook83
+Content-Type: text/html
+
+<div>Outlook HTML 83</div>
+--outlook83--

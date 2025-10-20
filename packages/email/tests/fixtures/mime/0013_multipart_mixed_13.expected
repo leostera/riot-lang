@@ -1,0 +1,16 @@
+{
+  "headers": {
+    "Content-Type": "multipart/mixed; boundary=\"boundary13\"",
+    "MIME-Version": "1.0"
+  },
+  "parts": [
+    {
+      "type": "text/plain",
+      "body": "Part 1\n"
+    },
+    {
+      "type": "text/html",
+      "body": "<p>Part 2</p>\n"
+    }
+  ]
+}

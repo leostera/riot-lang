@@ -1,0 +1,10 @@
+{
+  "headers": {
+    "Content-Type": "application/octet-stream; name=\"file12.bin\"",
+    "Content-Disposition": "attachment; filename=\"file12.bin\""
+  },
+  "attachment": {
+    "name": "file12.bin",
+    "type": "application/octet-stream"
+  }
+}

@@ -1,0 +1,8 @@
+From: "Newsletter" <newsletter@company.com>
+To: user@example.com
+Subject: Weekly Update 57
+List-Unsubscribe: <mailto:unsub@company.com>
+Date: Mon, 1 Jan 2024 12:00:00 +0000
+Content-Type: text/html
+
+<html><body>Newsletter content 57</body></html>

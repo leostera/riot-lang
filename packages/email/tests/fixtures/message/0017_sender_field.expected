@@ -1,0 +1,7 @@
+{
+  "headers": {
+    "From": "group@example.com",
+    "Sender": "actual-sender@example.com"
+  },
+  "body": "Sent on behalf\n"
+}

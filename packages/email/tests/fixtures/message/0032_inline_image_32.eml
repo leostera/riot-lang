@@ -1,0 +1,17 @@
+From: sender@example.com
+To: recipient@example.com
+Subject: Image 32
+MIME-Version: 1.0
+Content-Type: multipart/related; boundary="rel32"
+Date: Mon, 1 Jan 2024 12:00:00 +0000
+
+--rel32
+Content-Type: text/html
+
+<img src="cid:img32">
+--rel32
+Content-Type: image/png
+Content-ID: <img32>
+
+PNG data
+--rel32--

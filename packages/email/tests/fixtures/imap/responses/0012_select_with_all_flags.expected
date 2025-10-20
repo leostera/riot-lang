@@ -1,0 +1,15 @@
+{
+  "flags": [
+    "\\Answered",
+    "\\Flagged",
+    "\\Deleted",
+    "\\Seen",
+    "\\Draft",
+    "$Forwarded",
+    "$MDNSent"
+  ],
+  "exists": 42,
+  "recent": 3,
+  "uidvalidity": 1234567890,
+  "uidnext": 43
+}

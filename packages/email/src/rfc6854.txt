@@ -1,0 +1,1833 @@
+
+<!DOCTYPE html>
+
+
+
+
+
+
+
+<html data-bs-theme="auto" lang="en">
+    <head>
+        
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>
+            
+                RFC 6854 - Update to Internet Message Format to Allow Group Syntax in the &quot;From:&quot; and &quot;Sender:&quot; Header Fields
+            
+        </title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link href="https://static.ietf.org/fonts/inter/import.css" rel="stylesheet">
+        <link href="https://static.ietf.org/fonts/noto-sans-mono/import.css" rel="stylesheet">
+        
+            <link rel="stylesheet" href="https://static.ietf.org/dt/12.50.0/ietf/css/document_html_referenced.css">
+            
+            <script type="module" crossorigin="" src="https://static.ietf.org/dt/12.50.0/assets/embedded-6f807ad8.js"></script>
+<link href="https://static.ietf.org/dt/12.50.0/assets/create-pinia-singleton-fc7ed88d.js" type="text/javascript" crossorigin="anonymous" rel="modulepreload" as="script" />
+<link href="https://static.ietf.org/dt/12.50.0/assets/Scrollbar-f5da132c.js" type="text/javascript" crossorigin="anonymous" rel="modulepreload" as="script" />
+            <script src="https://static.ietf.org/dt/12.50.0/ietf/js/document_html.js"></script>
+            <script src="https://static.ietf.org/dt/12.50.0/ietf/js/theme.js"></script>
+        
+        <link rel="alternate" type="application/atom+xml" title="Document changes" href="/feed/document-changes/rfc6854/">
+        <meta name="description"
+            
+                content="Update to Internet Message Format to Allow Group Syntax in the &quot;From:&quot; and &quot;Sender:&quot; Header Fields (RFC 6854, )"
+            >
+        
+
+<link rel="apple-touch-icon"
+      sizes="180x180"
+      href="https://static.ietf.org/dt/12.50.0/ietf/images/ietf-logo-nor-180.png">
+<link rel="icon"
+      sizes="32x32"
+      href="https://static.ietf.org/dt/12.50.0/ietf/images/ietf-logo-nor-32.png">
+<link rel="icon"
+      sizes="16x16"
+      href="https://static.ietf.org/dt/12.50.0/ietf/images/ietf-logo-nor-16.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="mask-icon"
+      href="https://static.ietf.org/dt/12.50.0/ietf/images/ietf-logo-nor-mask.svg"
+      color="#ffffff">
+<meta name="msapplication-TileColor"
+      content="#ffffff">
+<meta name="theme-color"
+      content="#ffffff">
+        
+
+
+
+
+<meta property="og:title" content="RFC 6854: Update to Internet Message Format to Allow Group Syntax in the &quot;From:&quot; and &quot;Sender:&quot; Header Fields">
+<meta property="og:url" content="https://datatracker.ietf.org/doc/html/rfc6854.txt">
+<link rel="canonical" href="https://datatracker.ietf.org/doc/html/rfc6854.txt">
+<meta property="og:site_name" content="IETF Datatracker">
+<meta property="og:description" content="The Internet Message Format (RFC 5322) allows &quot;group&quot; syntax in some email header fields, such as &quot;To:&quot; and &quot;CC:&quot;, but not in &quot;From:&quot; or &quot;Sender:&quot;. This document updates RFC 5322 to relax that restriction, allowing group syntax in those latter fields, as well as in &quot;Resent-From:&quot; and &quot;Resent-Sender:&quot;, in certain situations.">
+<meta property="og:type" content="article">
+
+<meta property="og:image" content="https://static.ietf.org/dt/12.50.0/ietf/images/ietf-logo-card.png">
+<meta property="og:image:alt" content="Logo of the IETF">
+<meta property="article:section" content="IETF - Internet Engineering Task Force">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+
+<meta property="article:author" content="Barry Leiba">
+
+
+
+        
+        <style>
+            
+            .diff-form .select2-selection__rendered {
+                direction: rtl;
+                text-align: left;
+            }
+        </style>
+    </head>
+    <body>
+        
+        <noscript><iframe class="status" title="Site status" src="/status/latest"></iframe></noscript>
+<div class="vue-embed" data-component="Status"></div>
+        <div class="btn-toolbar sidebar-toolbar position-fixed top-0 end-0 m-2 m-lg-3 d-print-none">
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary btn-sm me-1 dropdown-toggle d-flex align-items-center"
+                    id="bd-theme" type="button" aria-expanded="false" data-bs-toggle="dropdown"
+                    aria-label="Toggle theme">
+                        <i class="theme-icon-active bi bi-circle-half"></i>
+                </button>
+
+                <ul class="dropdown-menu" aria-labelledby="bd-theme">
+                    <li>
+                        <button type="button" class="dropdown-item d-flex align-items-center"
+                            data-bs-theme-value="light" aria-pressed="false">
+                            <i class="me-2 opacity-50 theme-icon bi bi-sun-fill"></i>
+                            Light<i class="bi bi-check2 ms-auto d-none"></i>
+                        </button>
+                    </li>
+                    <li>
+                        <button type="button" class="dropdown-item d-flex align-items-center"
+                            data-bs-theme-value="dark" aria-pressed="false">
+                            <i class="me-2 opacity-50 theme-icon bi bi-moon-stars-fill"></i>
+                            Dark<i class="bi bi-check2 ms-auto d-none"></i>
+                        </button>
+                    </li>
+                    <li>
+                        <button type="button" class="dropdown-item d-flex align-items-center active"
+                            data-bs-theme-value="auto" aria-pressed="true">
+                            <i class="me-2 opacity-50 theme-icon bi bi-circle-half"></i>
+                            Auto<i class="bi bi-check2 ms-auto d-none"></i>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            <button class="btn btn-outline-secondary btn-sm sidebar-toggle"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#sidebar"
+                    aria-expanded="true"
+                    aria-controls="sidebar"
+                    aria-label="Toggle metadata sidebar"
+                    title="Toggle metadata sidebar">
+            <i class="bi bi-arrow-bar-left sidebar-shown"></i>
+            <i class="bi bi-arrow-bar-right sidebar-collapsed"></i>
+            </button>
+        </div>
+        <nav class="navbar bg-light-subtle px-1 fixed-top d-print-none d-md-none">
+            <a class="nav-link ps-1"
+               href="/doc/rfc6854/">
+                
+                    RFC 6854
+                
+                <br class="d-sm-none">
+
+                <span class="ms-sm-3 badge rounded-pill badge-ps">
+                    
+                        Proposed Standard
+                    
+                </span>
+            </a>
+            <button class="navbar-toggler p-1"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#docinfo-collapse"
+                    aria-controls="docinfo-collapse"
+                    aria-expanded="false"
+                    aria-label="Show document information">
+                <span class="navbar-toggler-icon small"></span>
+            </button>
+            <div class="navbar-nav navbar-nav-scroll overscroll-none collapse pt-1" id="docinfo-collapse">
+                <div class="bg-light-subtle p-0">
+                    <table class="table table-sm table-borderless small">
+                        <tbody class="meta align-top">
+                            <tr>
+                                <th scope="row"></th>
+                                <th scope="row">Title</th>
+                                <td class="edit"></td>
+                                <td>Update to Internet Message Format to Allow Group Syntax in the &quot;From:&quot; and &quot;Sender:&quot; Header Fields</td>
+                            </tr>
+                        </tbody>
+                        
+
+
+
+
+
+
+
+<tbody class="meta align-top ">
+    <tr>
+        <th scope="row">Document</th>
+        <th scope="row">Document type</th>
+        <td class="edit"></td>
+        <td>
+            
+
+
+
+
+
+<span class="text-success">RFC
+    
+    - Proposed Standard
+    
+</span>
+
+            
+                
+                    <br>March 2013
+                
+                <br>
+                
+                
+                    <a class="btn btn-sm btn-warning"
+                       title="Click to report an error in the document."
+                       href="https://www.rfc-editor.org/errata.php#reportnew"
+                       target="_blank">
+                        Report errata
+                    </a>
+                
+                
+                
+                
+                
+                <div>Updates <a href="/doc/html/rfc5322" title="Internet Message Format">RFC 5322</a></div>
+                
+                
+                
+                    <div>
+                        Was
+                        <a href="/doc/draft-leiba-5322upd-from-group/09/">draft-leiba-5322upd-from-group</a>
+                        (individual in app area)
+                    </div>
+                
+            
+            
+            
+                
+
+
+
+
+    
+
+
+            
+        </td>
+    </tr>
+    
+        <tr>
+            <td></td>
+            <th scope="row">Select version</th>
+            <td class="edit"></td>
+            <td>
+                
+
+
+
+    <ul class="revision-list pagination pagination-sm text-center flex-wrap my-0">
+        
+            
+            
+                
+                    <li class="page-item">
+                        <a class="page-link"
+                        href="/doc/html/draft-leiba-5322upd-from-group-00"
+                        rel="nofollow">
+                            00
+                        </a>
+                    </li>
+                
+                    <li class="page-item">
+                        <a class="page-link"
+                        href="/doc/html/draft-leiba-5322upd-from-group-01"
+                        rel="nofollow">
+                            01
+                        </a>
+                    </li>
+                
+                    <li class="page-item">
+                        <a class="page-link"
+                        href="/doc/html/draft-leiba-5322upd-from-group-02"
+                        rel="nofollow">
+                            02
+                        </a>
+                    </li>
+                
+                    <li class="page-item">
+                        <a class="page-link"
+                        href="/doc/html/draft-leiba-5322upd-from-group-03"
+                        rel="nofollow">
+                            03
+                        </a>
+                    </li>
+                
+                    <li class="page-item">
+                        <a class="page-link"
+                        href="/doc/html/draft-leiba-5322upd-from-group-04"
+                        rel="nofollow">
+                            04
+                        </a>
+                    </li>
+                
+                    <li class="page-item">
+                        <a class="page-link"
+                        href="/doc/html/draft-leiba-5322upd-from-group-05"
+                        rel="nofollow">
+                            05
+                        </a>
+                    </li>
+                
+                    <li class="page-item">
+                        <a class="page-link"
+                        href="/doc/html/draft-leiba-5322upd-from-group-06"
+                        rel="nofollow">
+                            06
+                        </a>
+                    </li>
+                
+                    <li class="page-item">
+                        <a class="page-link"
+                        href="/doc/html/draft-leiba-5322upd-from-group-07"
+                        rel="nofollow">
+                            07
+                        </a>
+                    </li>
+                
+                    <li class="page-item">
+                        <a class="page-link"
+                        href="/doc/html/draft-leiba-5322upd-from-group-08"
+                        rel="nofollow">
+                            08
+                        </a>
+                    </li>
+                
+                    <li class="page-item">
+                        <a class="page-link"
+                        href="/doc/html/draft-leiba-5322upd-from-group-09"
+                        rel="nofollow">
+                            09
+                        </a>
+                    </li>
+                
+            
+            
+            <li class="page-item rfc active">
+                <a class="page-link"
+                href="/doc/html/rfc6854">
+                    RFC 6854
+                </a>
+            </li>
+        
+    </ul>
+
+            </td>
+        </tr>
+        
+            <tr>
+                <td></td>
+                <th scope="row">Compare versions</th>
+                <td class="edit"></td>
+                <td>
+                    
+
+
+
+<form class="form-horizontal diff-form"
+      action="https://author-tools.ietf.org/iddiff"
+      method="get"
+      target="_blank">
+
+            <select class="form-select form-select-sm mb-1 select2-field"
+                    data-max-entries="1"
+                    data-width="resolve"
+                    data-allow-clear="false"
+                    data-minimum-input-length="0"
+                    aria-label="From revision"
+                    name="url1">
+                
+                    <option value="rfc6854">
+                        RFC 6854
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-09" selected>
+                        draft-leiba-5322upd-from-group-09
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-08">
+                        draft-leiba-5322upd-from-group-08
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-07">
+                        draft-leiba-5322upd-from-group-07
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-06">
+                        draft-leiba-5322upd-from-group-06
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-05">
+                        draft-leiba-5322upd-from-group-05
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-04">
+                        draft-leiba-5322upd-from-group-04
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-03">
+                        draft-leiba-5322upd-from-group-03
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-02">
+                        draft-leiba-5322upd-from-group-02
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-01">
+                        draft-leiba-5322upd-from-group-01
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-00">
+                        draft-leiba-5322upd-from-group-00
+                        
+                    </option>
+                
+                
+            </select>
+
+            <select class="form-select form-select-sm mb-1 select2-field"
+                    data-max-entries="1"
+                    data-width="resolve"
+                    data-allow-clear="false"
+                    data-minimum-input-length="0"
+                    aria-label="To revision"
+                    name="url2">
+                
+                    <option value="rfc6854" selected>
+                        RFC 6854
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-09">
+                        draft-leiba-5322upd-from-group-09
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-08">
+                        draft-leiba-5322upd-from-group-08
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-07">
+                        draft-leiba-5322upd-from-group-07
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-06">
+                        draft-leiba-5322upd-from-group-06
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-05">
+                        draft-leiba-5322upd-from-group-05
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-04">
+                        draft-leiba-5322upd-from-group-04
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-03">
+                        draft-leiba-5322upd-from-group-03
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-02">
+                        draft-leiba-5322upd-from-group-02
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-01">
+                        draft-leiba-5322upd-from-group-01
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-00">
+                        draft-leiba-5322upd-from-group-00
+                        
+                    </option>
+                
+                
+            </select>
+
+            <button type="submit"
+                    class="btn btn-primary btn-sm"
+                    value="--html"
+                    name="difftype">
+                Side-by-side
+            </button>
+            
+            <button type="submit"
+                    class="btn btn-primary btn-sm"
+                    value="--hwdiff"
+                    name="difftype">
+                Inline
+            </button>
+
+</form>
+                </td>
+            </tr>
+        
+    
+    <tr>
+        <td></td>
+        <th scope="row">Author</th>
+        <td class="edit">
+            
+        </td>
+        <td>
+            
+            
+                <span ><a 
+           title="Datatracker profile of Barry Leiba"
+            href="/person/barryleiba@gmail.com" >Barry Leiba</a> <a 
+               href="mailto:barryleiba%40gmail.com"
+               aria-label="Compose email to barryleiba@gmail.com"
+               title="Compose email to barryleiba@gmail.com">
+                <i class="bi bi-envelope"></i></a></span>
+            
+            
+                <br>
+                <a class="btn btn-primary btn-sm mt-1" href="mailto:rfc6854@ietf.org?subject=rfc6854" title="Send email to the document authors">Email authors</a>
+            
+        </td>
+    </tr>
+    
+    
+    <tr>
+        <td></td>
+        <th scope="row">
+            RFC stream
+        </th>
+        <td class="edit">
+            
+        </td>
+        <td >
+            
+                
+                
+                    
+                        
+
+
+
+<img alt="IETF Logo"
+     class="d-lm-none w-25 mt-1"
+     
+     
+        
+             src="https://static.ietf.org/dt/12.50.0/ietf/images/ietf-logo-nor-white.svg"
+        
+     
+     >
+
+<img alt="IETF Logo"
+     class="d-dm-none w-25 mt-1"
+     
+     
+        
+             src="https://static.ietf.org/dt/12.50.0/ietf/images/ietf-logo-nor.svg"
+        
+     
+     >
+                    
+                
+                
+            
+        </td>
+    </tr>
+    
+    <tr>
+        <td></td>
+        <th scope="row">
+            Other formats
+        </th>
+        <td class="edit">
+        </td>
+        <td>
+            
+                
+    <div class="buttonlist">
+    
+        
+        <a class="btn btn-primary btn-sm"
+          
+          target="_blank"
+          href="https://www.rfc-editor.org/rfc/rfc6854.txt">
+            
+                <i class="bi bi-file-text"></i> txt
+            
+        </a>
+        
+    
+        
+        <a class="btn btn-primary btn-sm"
+          
+          target="_blank"
+          href="https://www.rfc-editor.org/rfc/rfc6854.html">
+            
+                <i class="bi bi-file-code"></i> html
+            
+        </a>
+        
+    
+        
+        <a class="btn btn-primary btn-sm"
+          
+            download="rfc6854.pdf"
+          
+         
+          target="_blank"
+          href="https://www.rfc-editor.org/rfc/pdfrfc/rfc6854.txt.pdf">
+            
+                <i class="bi bi-file-pdf"></i> pdf
+            
+        </a>
+        
+    
+        
+    
+        
+        <a class="btn btn-primary btn-sm"
+          
+          target="_blank"
+          href="/doc/rfc6854/bibtex/">
+            
+                <i class="bi bi-file-ruled"></i> bibtex
+            
+        </a>
+        
+    
+</div>
+
+            
+        </td>
+    </tr>
+    
+    
+        
+    
+</tbody>
+                        <tr>
+                            <th scope="row"></th>
+                            <th scope="row"></th>
+                            <td class="edit"></td>
+                            <td>
+                                <a class="btn btn-sm btn-warning mb-3"
+                                target="_blank"
+                                href="https://github.com/ietf-tools/datatracker/issues/new/choose">
+                                    Report a bug
+                                    <i class="bi bi-bug"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </nav>
+        <div class="row g-0">
+            <div class="col-md-9 d-flex justify-content-center lh-sm"
+                 data-bs-spy="scroll"
+                 data-bs-target="#toc-nav"
+                 data-bs-smooth-scroll="true"
+                 tabindex="0"
+                 id="content">
+                
+                    <div class="rfcmarkup">
+                        <br class="noprint">
+                        <!-- [html-validate-disable-block attr-quotes, void-style, element-permitted-content, heading-level -- FIXME: rfcmarkup/rfc2html generates HTML with issues] -->
+                        <div class="rfcmarkup"><pre>Internet Engineering Task Force (IETF)                          B. Leiba
+Request for Comments: 6854                           Huawei Technologies
+Updates: <a href="/doc/html/rfc5322">5322</a>                                                 March 2013
+Category: Standards Track
+ISSN: 2070-1721
+
+
+       <span class="h1">Update to Internet Message Format to Allow Group Syntax in</span>
+                <span class="h1">the &quot;From:&quot; and &quot;Sender:&quot; Header Fields</span>
+
+Abstract
+
+   The Internet Message Format (<a href="/doc/html/rfc5322">RFC 5322</a>) allows &quot;group&quot; syntax in some
+   email header fields, such as &quot;To:&quot; and &quot;CC:&quot;, but not in &quot;From:&quot; or
+   &quot;Sender:&quot;.  This document updates <a href="/doc/html/rfc5322">RFC 5322</a> to relax that restriction,
+   allowing group syntax in those latter fields, as well as in
+   &quot;Resent-From:&quot; and &quot;Resent-Sender:&quot;, in certain situations.
+
+Status of This Memo
+
+   This is an Internet Standards Track document.
+
+   This document is a product of the Internet Engineering Task Force
+   (IETF).  It represents the consensus of the IETF community.  It has
+   received public review and has been approved for publication by the
+   Internet Engineering Steering Group (IESG).  Further information on
+   Internet Standards is available in <a href="/doc/html/rfc5741#section-2">Section&nbsp;2 of RFC 5741</a>.
+
+   Information about the current status of this document, any errata,
+   and how to provide feedback on it may be obtained at
+   <a href="http://www.rfc-editor.org/info/rfc6854">http://www.rfc-editor.org/info/rfc6854</a>.
+
+Copyright Notice
+
+   Copyright (c) 2013 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to <a href="/doc/html/bcp78">BCP 78</a> and the IETF Trust&#x27;s Legal
+   Provisions Relating to IETF Documents
+   (<a href="http://trustee.ietf.org/license-info">http://trustee.ietf.org/license-info</a>) in effect on the date of
+   publication of this document.  Please review these documents
+   carefully, as they describe your rights and restrictions with respect
+   to this document.  Code Components extracted from this document must
+   include Simplified BSD License text as described in Section 4.e of
+   the Trust Legal Provisions and are provided without warranty as
+   described in the Simplified BSD License.
+
+
+
+
+
+<span class="grey">Leiba                        Standards Track                    [Page 1]</span></pre>
+<hr class='noprint'/><!--NewPage--><pre class='newpage'><span id="page-2" ></span>
+<span class="grey"><a href="/doc/html/rfc6854">RFC 6854</a>          Group Syntax in &quot;From:&quot; and &quot;Sender:&quot;       March 2013</span>
+
+
+Table of Contents
+
+   <a href="#section-1">1</a>.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . . . <a href="#page-2">2</a>
+     <a href="#section-1.1">1.1</a>.  Notational Conventions  . . . . . . . . . . . . . . . . . . <a href="#page-3">3</a>
+       <a href="#section-1.1.1">1.1.1</a>.  Requirements Notation . . . . . . . . . . . . . . . . . <a href="#page-3">3</a>
+       <a href="#section-1.1.2">1.1.2</a>.  Syntactic Notation  . . . . . . . . . . . . . . . . . . <a href="#page-3">3</a>
+   <a href="#section-2">2</a>.  Allowing Group Syntax in &quot;From:&quot; and &quot;Sender:&quot;  . . . . . . . . <a href="#page-3">3</a>
+     2.1.  Replacement of <a href="/doc/html/rfc5322#section-3.6.2">RFC 5322, Section&nbsp;3.6.2</a>. Originator Fields . 4
+     <a href="#section-2.2">2.2</a>.  Update to <a href="/doc/html/rfc5322#section-3.6.6">RFC 5322, Section&nbsp;3.6.6</a>. Resent Fields  . . . . . <a href="#page-5">5</a>
+   <a href="#section-3">3</a>.  Applicability Statement . . . . . . . . . . . . . . . . . . . . <a href="#page-6">6</a>
+   <a href="#section-4">4</a>.  Examples  . . . . . . . . . . . . . . . . . . . . . . . . . . . <a href="#page-6">6</a>
+   <a href="#section-5">5</a>.  Security Considerations . . . . . . . . . . . . . . . . . . . . <a href="#page-7">7</a>
+   <a href="#section-6">6</a>.  IANA Considerations . . . . . . . . . . . . . . . . . . . . . . <a href="#page-8">8</a>
+   <a href="#section-7">7</a>.  References  . . . . . . . . . . . . . . . . . . . . . . . . . . <a href="#page-9">9</a>
+     <a href="#section-7.1">7.1</a>.  Normative References  . . . . . . . . . . . . . . . . . . . <a href="#page-9">9</a>
+     <a href="#section-7.2">7.2</a>.  Informative References  . . . . . . . . . . . . . . . . . . <a href="#page-9">9</a>
+
+<span class="h2"><a class="selflink" id="section-1" href="#section-1">1</a>.  Introduction</span>
+
+   The Internet Message Format, as far back as <a href="/doc/html/rfc822">RFC 822</a> [<a href="/doc/html/rfc0822" title="&quot;Standard for the format of ARPA Internet text messages&quot;">RFC0822</a>], has
+   always required a usable address to appear in the &quot;From:&quot; header
+   field of messages in order to allow replies to be sent.  To this end,
+   the syntax of messages, up to and including the current specification
+   [<a href="/doc/html/rfc5322" title="&quot;Internet Message Format&quot;">RFC5322</a>], has required the use of the mailbox address form in the
+   originator (&quot;From:&quot; and &quot;Sender:&quot;) fields of messages and has
+   specifically forbidden the use of the group address form, which
+   permits an empty list of addresses (that is, an address list with no
+   address included that might be used for a reply).
+
+   However, the use cases for the &quot;From:&quot; field have evolved.  There are
+   numerous instances of automated systems that wish to send email but
+   cannot handle replies, and a &quot;From:&quot; field with no usable addresses
+   would be extremely useful for that purpose.  More recently, work with
+   internationalized email addresses [<a href="/doc/html/rfc6530" title="&quot;Overview and Framework for Internationalized Email&quot;">RFC6530</a>] creates a real need to
+   take a message with an internationalized email address and hand it to
+   an older client that would have no ability to reply to such an
+   address but might still wish to display the contents of the message.
+   The group construct provides an existing syntax for unusable
+   addresses (using the empty list of addresses) and also allows for a
+   text label that describes the originator.  For example:
+
+      From: Automated System:;
+
+   A review of many current email programs finds that all reviewed
+   clients will properly display a message with group syntax in the
+   &quot;From:&quot; field.  At worst, such programs generate an error message
+   when an attempt is made to reply to such a message.  No other
+   interoperability problems have been discovered.
+
+
+
+<span class="grey">Leiba                        Standards Track                    [Page 2]</span></pre>
+<hr class='noprint'/><!--NewPage--><pre class='newpage'><span id="page-3" ></span>
+<span class="grey"><a href="/doc/html/rfc6854">RFC 6854</a>          Group Syntax in &quot;From:&quot; and &quot;Sender:&quot;       March 2013</span>
+
+
+   This document therefore updates the Internet Message Format
+   specification [<a href="/doc/html/rfc5322" title="&quot;Internet Message Format&quot;">RFC5322</a>] to relax that restriction, allowing group
+   syntax to be used in the originator (&quot;From:&quot; and &quot;Sender:&quot;) fields,
+   as well as in their corresponding resent (&quot;Resent-From:&quot; and
+   &quot;Resent-Sender:&quot;) fields.  This change permits empty groups, as
+   described above, and also permits named groups of mailboxes (groups
+   with non-empty lists of addresses; see <a href="#section-4">Section 4</a>).  Nevertheless,
+   this document recommends against the general use of group syntax in
+   these fields at this time (see <a href="#section-3">Section 3</a>).
+
+<span class="h3"><a class="selflink" id="section-1.1" href="#section-1.1">1.1</a>.  Notational Conventions</span>
+
+   The notational conventions here are the same as those in <a href="/doc/html/rfc5322">RFC 5322</a>,
+   and the following two subsections are copied directly from that
+   document.
+
+<span class="h4"><a class="selflink" id="section-1.1.1" href="#section-1.1.1">1.1.1</a>.  Requirements Notation</span>
+
+   This document occasionally uses terms that appear in capital letters.
+   When the terms &quot;MUST&quot;, &quot;SHOULD&quot;, &quot;RECOMMENDED&quot;, &quot;MUST NOT&quot;, &quot;SHOULD
+   NOT&quot;, and &quot;MAY&quot; appear capitalized, they are being used to indicate
+   particular requirements of this specification.  A discussion of the
+   meanings of these terms appears in the Key Words document [<a href="/doc/html/rfc2119" title="&quot;Key words for use in RFCs to Indicate Requirement Levels&quot;">RFC2119</a>].
+
+<span class="h4"><a class="selflink" id="section-1.1.2" href="#section-1.1.2">1.1.2</a>.  Syntactic Notation</span>
+
+   This specification uses the Augmented Backus-Naur Form (ABNF)
+   [<a href="/doc/html/rfc5234" title="&quot;Augmented BNF for Syntax Specifications: ABNF&quot;">RFC5234</a>] notation for the formal definitions of the syntax of
+   messages.  Characters will be specified either by a decimal value
+   (e.g., the value %d65 for uppercase A and %d97 for lowercase A) or by
+   a case-insensitive literal value enclosed in quotation marks (e.g.,
+   &quot;A&quot; for either uppercase or lowercase A).
+
+<span class="h2"><a class="selflink" id="section-2" href="#section-2">2</a>.  Allowing Group Syntax in &quot;From:&quot; and &quot;Sender:&quot;</span>
+
+   <a href="/doc/html/rfc5322#section-3.6.2">Section&nbsp;3.6.2 of RFC 5322</a> defines the &quot;From:&quot; header field as
+   containing a &lt;mailbox-list&gt; syntax element.  This specification
+   changes that definition to use the &lt;address-list&gt; syntax element, as
+   is used in other fields, such as &quot;To:&quot;, &quot;CC:&quot;, and &quot;Reply-To:&quot;.  This
+   specification also changes the definition of the &quot;Sender:&quot; header
+   field from the &lt;mailbox&gt; syntax element to the &lt;address&gt; syntax
+   element.  While the &lt;address&gt; element includes the &lt;mailbox&gt; element
+   already, we have chosen to specify both in the updated syntax as a
+   way of highlighting the limited use intended for the change (see
+   <a href="#section-3">Section 3</a>).
+
+
+
+
+
+
+<span class="grey">Leiba                        Standards Track                    [Page 3]</span></pre>
+<hr class='noprint'/><!--NewPage--><pre class='newpage'><span id="page-4" ></span>
+<span class="grey"><a href="/doc/html/rfc6854">RFC 6854</a>          Group Syntax in &quot;From:&quot; and &quot;Sender:&quot;       March 2013</span>
+
+
+   <a href="#section-2.1">Section 2.1</a> below is a full replacement for Section 3.6.2 of <a href="/doc/html/rfc5322">RFC</a>
+   <a href="/doc/html/rfc5322">5322</a>, containing the new syntax as well as a new description of the
+   semantics for the &quot;From:&quot; and &quot;Sender:&quot; fields.  <a href="#section-2.2">Section 2.2</a> below is
+   a replacement of only the ABNF syntax for the &quot;Resent-From:&quot; and
+   &quot;Resent-Sender:&quot; fields in <a href="/doc/html/rfc5322#section-3.6.6">Section&nbsp;3.6.6 of RFC 5322</a>; the rest of the
+   syntax as well as the descriptive text of <a href="/doc/html/rfc5322#section-3.6.6">Section&nbsp;3.6.6 of RFC 5322</a>
+   remains unchanged.
+
+   [The text in the following section is not consistent within itself
+   nor with the rest of this document in how it refers to message header
+   fields, sometimes putting the field name in quotation marks and
+   sometimes not, sometimes capitalizing the field name and sometimes
+   not, and sometimes including the final colon and sometimes not.
+   Because minimizing changes to the original text is more important, in
+   this case, than attaining consistency, the text in <a href="#section-2.1">Section 2.1</a>, as
+   well as that in Sections <a href="#section-1.1.1">1.1.1</a> and <a href="#section-1.1.2">1.1.2</a> above, is left as it was in
+   <a href="/doc/html/rfc5322">RFC 5322</a>.]
+
+<span class="h3"><a class="selflink" id="section-2.1" href="#section-2.1">2.1</a>.  Replacement of <a href="/doc/html/rfc5322#section-3.6.2">RFC 5322, Section&nbsp;3.6.2</a>. Originator Fields</span>
+
+   The originator fields of a message consist of the from field, the
+   sender field (when applicable), and optionally the reply-to field.
+   The from field consists of the field name &quot;From&quot; and a
+   comma-separated list of one or more addresses (either mailbox or
+   group syntax).  If the from field contains more than one mailbox
+   specification (including all mailboxes included in any groups), then
+   the sender field, containing the field name &quot;Sender&quot; and a single
+   address, MUST appear in the message.  The from field and the sender
+   field SHOULD NOT use group syntax; rather, the from field SHOULD use
+   only the mailbox-list syntax and the sender field SHOULD use only
+   mailbox syntax (see <a href="/doc/html/rfc6854#section-3">RFC 6854, Section&nbsp;3</a>).  If the sender field uses
+   group syntax, the group MUST NOT contain more than one mailbox.  In
+   either case, an optional reply-to field MAY also be included, which
+   contains the field name &quot;Reply-To&quot; and a comma-separated list of one
+   or more addresses.
+
+   from = &quot;From:&quot; (mailbox-list / address-list) CRLF
+
+   sender = &quot;Sender:&quot; (mailbox / address) CRLF
+
+   reply-to = &quot;Reply-To:&quot; address-list CRLF
+
+   The originator fields indicate the mailbox(es) of the source of the
+   message.  The &quot;From:&quot; field specifies the author(s) of the message,
+   that is, the mailbox(es) of the person(s) or system(s) responsible
+   for the writing of the message.  The &quot;Sender:&quot; field specifies the
+   mailbox of the agent responsible for the actual transmission of the
+   message.  For example, if a secretary were to send a message for
+
+
+
+<span class="grey">Leiba                        Standards Track                    [Page 4]</span></pre>
+<hr class='noprint'/><!--NewPage--><pre class='newpage'><span id="page-5" ></span>
+<span class="grey"><a href="/doc/html/rfc6854">RFC 6854</a>          Group Syntax in &quot;From:&quot; and &quot;Sender:&quot;       March 2013</span>
+
+
+   another person, the mailbox of the secretary would appear in the
+   &quot;Sender:&quot; field and the mailbox of the actual author would appear in
+   the &quot;From:&quot; field.  If the originator of the message can be indicated
+   by a single mailbox and the author and transmitter are identical, the
+   &quot;Sender:&quot; field SHOULD NOT be used.  Otherwise, both fields SHOULD
+   appear.
+
+      Note: The transmitter information is always present.  The absence
+      of the &quot;Sender:&quot; field is sometimes mistakenly taken to mean that
+      the agent responsible for transmission of the message has not been
+      specified.  This absence merely means that the transmitter is
+      identical to the author and is therefore not redundantly placed
+      into the &quot;Sender:&quot; field.
+
+   The originator fields also provide the information required when
+   replying to a message.  When the &quot;Reply-To:&quot; field is present, it
+   indicates the address(es) to which the author of the message suggests
+   that replies be sent.  In the absence of the &quot;Reply-To:&quot; field,
+   replies SHOULD by default be sent to the mailbox(es) specified in the
+   &quot;From:&quot; field unless otherwise specified by the person composing the
+   reply.
+
+   In all cases, the &quot;From:&quot; field SHOULD NOT contain any mailbox that
+   does not belong to the author(s) of the message.  See also <a href="/doc/html/rfc5322#section-3.6.3">Section</a>
+   <a href="/doc/html/rfc5322#section-3.6.3">3.6.3 of RFC 5322</a> [<a href="/doc/html/rfc5322" title="&quot;Internet Message Format&quot;">RFC5322</a>] for more information on forming the
+   destination addresses for a reply.
+
+<span class="h3"><a class="selflink" id="section-2.2" href="#section-2.2">2.2</a>.  Update to <a href="/doc/html/rfc5322#section-3.6.6">RFC 5322, Section&nbsp;3.6.6</a>. Resent Fields</span>
+
+   This section updates <a href="/doc/html/rfc5322#section-3.6.6">RFC 5322, Section&nbsp;3.6.6</a>, to allow groups (via
+   the address-list ABNF production) in the &quot;Resent-From:&quot; and
+   &quot;Resent-Sender:&quot; fields, to parallel the change to &quot;From:&quot; and
+   &quot;Sender:&quot; above.  The ABNF for these fields is changed as follows:
+
+   resent-from = &quot;Resent-From:&quot; (mailbox-list / address-list) CRLF
+
+   resent-sender = &quot;Resent-Sender:&quot; (mailbox / address) CRLF
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<span class="grey">Leiba                        Standards Track                    [Page 5]</span></pre>
+<hr class='noprint'/><!--NewPage--><pre class='newpage'><span id="page-6" ></span>
+<span class="grey"><a href="/doc/html/rfc6854">RFC 6854</a>          Group Syntax in &quot;From:&quot; and &quot;Sender:&quot;       March 2013</span>
+
+
+<span class="h2"><a class="selflink" id="section-3" href="#section-3">3</a>.  Applicability Statement</span>
+
+   Mailbox syntax is the normal syntax to use in the &quot;From:&quot; and
+   &quot;Sender:&quot; header fields; the address syntax defined in <a href="#section-2.1">Section 2.1</a>,
+   which allows the specification of a group, is only for Limited Use
+   (see <a href="/doc/html/rfc2026">RFC 2026</a> <a href="/doc/html/rfc2026#section-3.3">[RFC2026], Section&nbsp;3.3</a>, item (d)) for the reasons
+   described below.
+
+   Many Internet email procedures and much software assumes that the
+   addresses in the &quot;From:&quot; and &quot;Sender:&quot; fields can be replied to and
+   are suitable for use in organizing and filtering mail.  The use of
+   groups instead of mailboxes can disrupt these uses.  Consequently,
+   while this specification legitimizes the use of groups, it does so
+   only to enable circumstances when that use is necessary.  Because the
+   use of this mechanism is new, it is important that its use be limited
+   to these circumstances and that it be used with caution.  In
+   particular, user agents SHOULD NOT permit the use of groups in those
+   fields in outgoing messages.
+
+<span class="h2"><a class="selflink" id="section-4" href="#section-4">4</a>.  Examples</span>
+
+   First, consider an email message that is sent by an automated nightly
+   monitor program, to which replies should not be sent.  Such messages
+   commonly include a valid, replyable address that will discard any
+   replies that are sent to it, but recipients who do reply might be
+   unaware that their replies will be discarded.  If the message is
+   instead presented as follows, the recipients&#x27; email clients will not
+   allow them to reply in the first place:
+
+      From: Nightly Monitor Robot:;
+
+   Second, consider an email message that is meant to be &quot;from&quot; the two
+   managing partners of a business, Ben and Carol, and that is sent by
+   their assistant, Dave.  This message could always have been presented
+   this way:
+
+      From: ben@example.com,carol@example.com
+      Sender: dave@example.com
+
+   This change allows it to be represented this way:
+
+      From: Managing Partners:ben@example.com,carol@example.com;
+      Sender: dave@example.com
+
+
+
+
+
+
+
+
+<span class="grey">Leiba                        Standards Track                    [Page 6]</span></pre>
+<hr class='noprint'/><!--NewPage--><pre class='newpage'><span id="page-7" ></span>
+<span class="grey"><a href="/doc/html/rfc6854">RFC 6854</a>          Group Syntax in &quot;From:&quot; and &quot;Sender:&quot;       March 2013</span>
+
+
+<span class="h2"><a class="selflink" id="section-5" href="#section-5">5</a>.  Security Considerations</span>
+
+   See the Internet Message Format specification [<a href="/doc/html/rfc5322" title="&quot;Internet Message Format&quot;">RFC5322</a>] for general
+   discussion of security considerations related to the formatting of
+   email messages.
+
+   The &quot;From:&quot; address is special, in that most user agents display this
+   address, or the &quot;friendly&quot; text associated with it, to the end user,
+   and label it so as to identify it as the origin of the message (as
+   implied in <a href="/doc/html/rfc5322#section-3.6.2">Section&nbsp;3.6.2 of RFC 5322</a>).  Group syntax in the &quot;From:&quot;
+   header field can be used to hide the identity of the message
+   originator.  It is just as easy to use a fabricated &quot;From:&quot; address
+   to accomplish the same thing, so allowing groups in this field does
+   not exacerbate the security problem.
+
+   Some protocols attempt to validate the originator address by matching
+   the &quot;From:&quot; address to a particular verified domain (for one such
+   protocol, see the Author Domain Signing Practices (ADSP) document
+   [<a href="/doc/html/rfc5617" title="&quot;DomainKeys Identified Mail (DKIM) Author Domain Signing Practices (ADSP)&quot;">RFC5617</a>]).  Such protocols will not be applicable to messages that
+   lack an actual email address (whether real or fake) in the &quot;From:&quot;
+   field.  Local policy will determine how such messages are handled,
+   and senders, therefore, need to be aware that using groups in the
+   &quot;From:&quot; might adversely affect deliverability of the message.
+
+   Because groups have previously not been allowed in the &quot;From:&quot; and
+   &quot;Sender:&quot; header fields, it is possible that some implementations
+   that conform to <a href="/doc/html/rfc5322">RFC 5322</a> might not be prepared to handle the group
+   syntax, and, indeed, might not even recognize that group syntax is
+   being used.  Of those implementations, some subset might, when
+   presented with group syntax in those header fields, behave in a way
+   that is exploitable by an attacker.  It is deemed unlikely that this
+   will be a serious problem in practice: address field parsing is
+   generally an integral component of implementations, and address field
+   parsers are required to understand group syntax.  In addition, if any
+   implementations should be exploitable through this mechanism, it is
+   already possible for attackers to do it by violating <a href="/doc/html/rfc5322">RFC 5322</a>.  Other
+   violations of <a href="/doc/html/rfc5322">RFC 5322</a> are commonly used by malefactors.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<span class="grey">Leiba                        Standards Track                    [Page 7]</span></pre>
+<hr class='noprint'/><!--NewPage--><pre class='newpage'><span id="page-8" ></span>
+<span class="grey"><a href="/doc/html/rfc6854">RFC 6854</a>          Group Syntax in &quot;From:&quot; and &quot;Sender:&quot;       March 2013</span>
+
+
+<span class="h2"><a class="selflink" id="section-6" href="#section-6">6</a>.  IANA Considerations</span>
+
+   IANA has updated the &quot;Permanent Message Header Field Names&quot; registry
+   to include this document as a reference as follows:
+
+   OLD
+   +----------------+--------+------------+--------------------------+
+   |  From          |  mail  |  standard  |  [<a href="/doc/html/rfc5322" title="&quot;Internet Message Format&quot;">RFC5322</a>]               |
+   +----------------+--------+------------+--------------------------+
+
+   +----------------+--------+------------+--------------------------+
+   |  Sender        |  mail  |  standard  |  [<a href="/doc/html/rfc5322" title="&quot;Internet Message Format&quot;">RFC5322</a>]               |
+   +----------------+--------+------------+--------------------------+
+
+   +----------------+--------+------------+--------------------------+
+   |  Resent-From   |  mail  |  standard  |  [<a href="/doc/html/rfc5322" title="&quot;Internet Message Format&quot;">RFC5322</a>]               |
+   +----------------+--------+------------+--------------------------+
+
+   +----------------+--------+------------+--------------------------+
+   |  Resent-Sender |  mail  |  standard  |  [<a href="/doc/html/rfc5322" title="&quot;Internet Message Format&quot;">RFC5322</a>]               |
+   +----------------+--------+------------+--------------------------+
+
+   NEW
+   +----------------+--------+------------+--------------------------+
+   |  From          |  mail  |  standard  |  [<a href="/doc/html/rfc5322" title="&quot;Internet Message Format&quot;">RFC5322</a>] [<a href="/doc/html/rfc6854">RFC6854</a>]     |
+   +----------------+--------+------------+--------------------------+
+
+   +----------------+--------+------------+--------------------------+
+   |  Sender        |  mail  |  standard  |  [<a href="/doc/html/rfc5322" title="&quot;Internet Message Format&quot;">RFC5322</a>] [<a href="/doc/html/rfc6854">RFC6854</a>]     |
+   +----------------+--------+------------+--------------------------+
+
+   +----------------+--------+------------+--------------------------+
+   |  Resent-From   |  mail  |  standard  |  [<a href="/doc/html/rfc5322" title="&quot;Internet Message Format&quot;">RFC5322</a>] [<a href="/doc/html/rfc6854">RFC6854</a>]     |
+   +----------------+--------+------------+--------------------------+
+
+   +----------------+--------+------------+--------------------------+
+   |  Resent-Sender |  mail  |  standard  |  [<a href="/doc/html/rfc5322" title="&quot;Internet Message Format&quot;">RFC5322</a>] [<a href="/doc/html/rfc6854">RFC6854</a>]     |
+   +----------------+--------+------------+--------------------------+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<span class="grey">Leiba                        Standards Track                    [Page 8]</span></pre>
+<hr class='noprint'/><!--NewPage--><pre class='newpage'><span id="page-9" ></span>
+<span class="grey"><a href="/doc/html/rfc6854">RFC 6854</a>          Group Syntax in &quot;From:&quot; and &quot;Sender:&quot;       March 2013</span>
+
+
+<span class="h2"><a class="selflink" id="section-7" href="#section-7">7</a>.  References</span>
+
+<span class="h3"><a class="selflink" id="section-7.1" href="#section-7.1">7.1</a>.  Normative References</span>
+
+   [<a id="ref-RFC2026">RFC2026</a>]  Bradner, S., &quot;The Internet Standards Process -- Revision
+              3&quot;, <a href="/doc/html/bcp9">BCP 9</a>, <a href="/doc/html/rfc2026">RFC 2026</a>, October 1996.
+
+   [<a id="ref-RFC2119">RFC2119</a>]  Bradner, S., &quot;Key words for use in RFCs to Indicate
+              Requirement Levels&quot;, <a href="/doc/html/bcp14">BCP 14</a>, <a href="/doc/html/rfc2119">RFC 2119</a>, March 1997.
+
+   [<a id="ref-RFC5234">RFC5234</a>]  Crocker, D. and P. Overell, &quot;Augmented BNF for Syntax
+              Specifications: ABNF&quot;, STD 68, <a href="/doc/html/rfc5234">RFC 5234</a>, January 2008.
+
+   [<a id="ref-RFC5322">RFC5322</a>]  Resnick, P., Ed., &quot;Internet Message Format&quot;, <a href="/doc/html/rfc5322">RFC 5322</a>,
+              October 2008.
+
+<span class="h3"><a class="selflink" id="section-7.2" href="#section-7.2">7.2</a>.  Informative References</span>
+
+   [<a id="ref-RFC0822">RFC0822</a>]  Crocker, D., &quot;Standard for the format of ARPA Internet
+              text messages&quot;, STD 11, <a href="/doc/html/rfc822">RFC 822</a>, August 1982.
+
+   [<a id="ref-RFC5617">RFC5617</a>]  Allman, E., Fenton, J., Delany, M., and J. Levine,
+              &quot;DomainKeys Identified Mail (DKIM) Author Domain Signing
+              Practices (ADSP)&quot;, <a href="/doc/html/rfc5617">RFC 5617</a>, August 2009.
+
+   [<a id="ref-RFC6530">RFC6530</a>]  Klensin, J. and Y. Ko, &quot;Overview and Framework for
+              Internationalized Email&quot;, <a href="/doc/html/rfc6530">RFC 6530</a>, February 2012.
+
+Author&#x27;s Address
+
+   Barry Leiba
+   Huawei Technologies
+
+   Phone: +1 646 827 0648
+   EMail: barryleiba@computer.org
+   URI:   <a href="http://internetmessagingtechnology.org/">http://internetmessagingtechnology.org/</a>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Leiba                        Standards Track                    [Page 9]
+</pre></div>
+                    </div>
+                
+            </div>
+            <div class="d-print-none col-md-3 bg-light-subtle collapse show" id="sidebar">
+                <div class="position-fixed border-start sidebar overflow-scroll overscroll-none no-scrollbar">
+                    <div class="d-flex flex-column vh-100 pt-2 pt-lg-3 ps-3 pl-md-2 pl-lg-3">
+                        <div>
+                            <a class="btn btn-primary btn-sm" href="/doc/rfc6854/">Datatracker</a>
+                            <p class="fw-bold pt-2">
+                                
+                                    RFC 6854
+                                
+                                <br>
+                                
+
+
+
+
+
+<span class="text-success">RFC
+    
+    - Proposed Standard
+    
+</span>
+
+                            </p>
+                        </div>
+                        
+                        <ul class="nav nav-tabs nav-fill small me-2" role="tablist">
+                            <li class="nav-item" role="presentation" title="Document information">
+                                <button class="nav-link px-2"
+                                        id="docinfo-tab"
+                                        data-bs-toggle="tab"
+                                        data-bs-target="#docinfo-tab-pane"
+                                        type="button"
+                                        role="tab"
+                                        aria-controls="docinfo-tab-pane"
+                                        aria-selected="true">
+                                    <i class="bi bi-info-circle"></i><span class="d-none d-md-block d-xl-inline ms-xl-1">Info</span>
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation" title="Table of contents">
+                                <button class="nav-link px-2"
+                                        id="toc-tab"
+                                        data-bs-toggle="tab"
+                                        data-bs-target="#toc-tab-pane"
+                                        type="button"
+                                        role="tab"
+                                        aria-controls="toc-tab-pane"
+                                        aria-selected="false">
+                                    <i class="bi bi-list-ol"></i><span class="d-none d-md-block d-xl-inline ms-xl-1">Contents</span>
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation" title="Preferences">
+                                <button class="nav-link px-2"
+                                        id="pref-tab"
+                                        data-bs-toggle="tab"
+                                        data-bs-target="#pref-tab-pane"
+                                        type="button"
+                                        role="tab"
+                                        aria-controls="pref-tab-pane"
+                                        aria-selected="false">
+                                    <i class="bi bi-gear"></i><span class="d-none d-md-block d-xl-inline ms-xl-1">Prefs</span>
+                                </button>
+                            </li>
+                        </ul>
+                        <div class="overflow-auto tab-content pt-2 me-2">
+                            <div class="tab-pane"
+                                 id="docinfo-tab-pane"
+                                 role="tabpanel"
+                                 aria-labelledby="docinfo-tab"
+                                 tabindex="0">
+                                <table class="table table-sm table-borderless">
+                                    
+
+
+
+
+
+
+
+<tbody class="meta align-top ">
+    <tr>
+        <th scope="row">Document</th>
+        <th scope="row">Document type</th>
+        <td class="edit"></td>
+        <td>
+            
+
+
+
+
+
+<span class="text-success">RFC
+    
+    - Proposed Standard
+    
+</span>
+
+            
+                
+                    <br>March 2013
+                
+                <br>
+                
+                
+                    <a class="btn btn-sm btn-warning"
+                       title="Click to report an error in the document."
+                       href="https://www.rfc-editor.org/errata.php#reportnew"
+                       target="_blank">
+                        Report errata
+                    </a>
+                
+                
+                
+                
+                
+                <div>Updates <a href="/doc/html/rfc5322" title="Internet Message Format">RFC 5322</a></div>
+                
+                
+                
+                    <div>
+                        Was
+                        <a href="/doc/draft-leiba-5322upd-from-group/09/">draft-leiba-5322upd-from-group</a>
+                        (individual in app area)
+                    </div>
+                
+            
+            
+            
+                
+
+
+
+
+    
+
+
+            
+        </td>
+    </tr>
+    
+        <tr>
+            <td></td>
+            <th scope="row">Select version</th>
+            <td class="edit"></td>
+            <td>
+                
+
+
+
+    <ul class="revision-list pagination pagination-sm text-center flex-wrap my-0">
+        
+            
+            
+                
+                    <li class="page-item">
+                        <a class="page-link"
+                        href="/doc/html/draft-leiba-5322upd-from-group-00"
+                        rel="nofollow">
+                            00
+                        </a>
+                    </li>
+                
+                    <li class="page-item">
+                        <a class="page-link"
+                        href="/doc/html/draft-leiba-5322upd-from-group-01"
+                        rel="nofollow">
+                            01
+                        </a>
+                    </li>
+                
+                    <li class="page-item">
+                        <a class="page-link"
+                        href="/doc/html/draft-leiba-5322upd-from-group-02"
+                        rel="nofollow">
+                            02
+                        </a>
+                    </li>
+                
+                    <li class="page-item">
+                        <a class="page-link"
+                        href="/doc/html/draft-leiba-5322upd-from-group-03"
+                        rel="nofollow">
+                            03
+                        </a>
+                    </li>
+                
+                    <li class="page-item">
+                        <a class="page-link"
+                        href="/doc/html/draft-leiba-5322upd-from-group-04"
+                        rel="nofollow">
+                            04
+                        </a>
+                    </li>
+                
+                    <li class="page-item">
+                        <a class="page-link"
+                        href="/doc/html/draft-leiba-5322upd-from-group-05"
+                        rel="nofollow">
+                            05
+                        </a>
+                    </li>
+                
+                    <li class="page-item">
+                        <a class="page-link"
+                        href="/doc/html/draft-leiba-5322upd-from-group-06"
+                        rel="nofollow">
+                            06
+                        </a>
+                    </li>
+                
+                    <li class="page-item">
+                        <a class="page-link"
+                        href="/doc/html/draft-leiba-5322upd-from-group-07"
+                        rel="nofollow">
+                            07
+                        </a>
+                    </li>
+                
+                    <li class="page-item">
+                        <a class="page-link"
+                        href="/doc/html/draft-leiba-5322upd-from-group-08"
+                        rel="nofollow">
+                            08
+                        </a>
+                    </li>
+                
+                    <li class="page-item">
+                        <a class="page-link"
+                        href="/doc/html/draft-leiba-5322upd-from-group-09"
+                        rel="nofollow">
+                            09
+                        </a>
+                    </li>
+                
+            
+            
+            <li class="page-item rfc active">
+                <a class="page-link"
+                href="/doc/html/rfc6854">
+                    RFC 6854
+                </a>
+            </li>
+        
+    </ul>
+
+            </td>
+        </tr>
+        
+            <tr>
+                <td></td>
+                <th scope="row">Compare versions</th>
+                <td class="edit"></td>
+                <td>
+                    
+
+
+
+<form class="form-horizontal diff-form"
+      action="https://author-tools.ietf.org/iddiff"
+      method="get"
+      target="_blank">
+
+            <select class="form-select form-select-sm mb-1 select2-field"
+                    data-max-entries="1"
+                    data-width="resolve"
+                    data-allow-clear="false"
+                    data-minimum-input-length="0"
+                    aria-label="From revision"
+                    name="url1">
+                
+                    <option value="rfc6854">
+                        RFC 6854
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-09" selected>
+                        draft-leiba-5322upd-from-group-09
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-08">
+                        draft-leiba-5322upd-from-group-08
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-07">
+                        draft-leiba-5322upd-from-group-07
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-06">
+                        draft-leiba-5322upd-from-group-06
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-05">
+                        draft-leiba-5322upd-from-group-05
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-04">
+                        draft-leiba-5322upd-from-group-04
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-03">
+                        draft-leiba-5322upd-from-group-03
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-02">
+                        draft-leiba-5322upd-from-group-02
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-01">
+                        draft-leiba-5322upd-from-group-01
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-00">
+                        draft-leiba-5322upd-from-group-00
+                        
+                    </option>
+                
+                
+            </select>
+
+            <select class="form-select form-select-sm mb-1 select2-field"
+                    data-max-entries="1"
+                    data-width="resolve"
+                    data-allow-clear="false"
+                    data-minimum-input-length="0"
+                    aria-label="To revision"
+                    name="url2">
+                
+                    <option value="rfc6854" selected>
+                        RFC 6854
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-09">
+                        draft-leiba-5322upd-from-group-09
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-08">
+                        draft-leiba-5322upd-from-group-08
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-07">
+                        draft-leiba-5322upd-from-group-07
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-06">
+                        draft-leiba-5322upd-from-group-06
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-05">
+                        draft-leiba-5322upd-from-group-05
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-04">
+                        draft-leiba-5322upd-from-group-04
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-03">
+                        draft-leiba-5322upd-from-group-03
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-02">
+                        draft-leiba-5322upd-from-group-02
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-01">
+                        draft-leiba-5322upd-from-group-01
+                        
+                    </option>
+                
+                    <option value="draft-leiba-5322upd-from-group-00">
+                        draft-leiba-5322upd-from-group-00
+                        
+                    </option>
+                
+                
+            </select>
+
+            <button type="submit"
+                    class="btn btn-primary btn-sm"
+                    value="--html"
+                    name="difftype">
+                Side-by-side
+            </button>
+            
+            <button type="submit"
+                    class="btn btn-primary btn-sm"
+                    value="--hwdiff"
+                    name="difftype">
+                Inline
+            </button>
+
+</form>
+                </td>
+            </tr>
+        
+    
+    <tr>
+        <td></td>
+        <th scope="row">Author</th>
+        <td class="edit">
+            
+        </td>
+        <td>
+            
+            
+                <span ><a 
+           title="Datatracker profile of Barry Leiba"
+            href="/person/barryleiba@gmail.com" >Barry Leiba</a> <a 
+               href="mailto:barryleiba%40gmail.com"
+               aria-label="Compose email to barryleiba@gmail.com"
+               title="Compose email to barryleiba@gmail.com">
+                <i class="bi bi-envelope"></i></a></span>
+            
+            
+                <br>
+                <a class="btn btn-primary btn-sm mt-1" href="mailto:rfc6854@ietf.org?subject=rfc6854" title="Send email to the document authors">Email authors</a>
+            
+        </td>
+    </tr>
+    
+    
+    <tr>
+        <td></td>
+        <th scope="row">
+            RFC stream
+        </th>
+        <td class="edit">
+            
+        </td>
+        <td >
+            
+                
+                
+                    
+                        
+
+
+
+<img alt="IETF Logo"
+     class="d-lm-none w-25 mt-1"
+     
+     
+        
+             src="https://static.ietf.org/dt/12.50.0/ietf/images/ietf-logo-nor-white.svg"
+        
+     
+     >
+
+<img alt="IETF Logo"
+     class="d-dm-none w-25 mt-1"
+     
+     
+        
+             src="https://static.ietf.org/dt/12.50.0/ietf/images/ietf-logo-nor.svg"
+        
+     
+     >
+                    
+                
+                
+            
+        </td>
+    </tr>
+    
+    <tr>
+        <td></td>
+        <th scope="row">
+            Other formats
+        </th>
+        <td class="edit">
+        </td>
+        <td>
+            
+                
+    <div class="buttonlist">
+    
+        
+        <a class="btn btn-primary btn-sm"
+          
+          target="_blank"
+          href="https://www.rfc-editor.org/rfc/rfc6854.txt">
+            
+                <i class="bi bi-file-text"></i> txt
+            
+        </a>
+        
+    
+        
+        <a class="btn btn-primary btn-sm"
+          
+          target="_blank"
+          href="https://www.rfc-editor.org/rfc/rfc6854.html">
+            
+                <i class="bi bi-file-code"></i> html
+            
+        </a>
+        
+    
+        
+        <a class="btn btn-primary btn-sm"
+          
+            download="rfc6854.pdf"
+          
+         
+          target="_blank"
+          href="https://www.rfc-editor.org/rfc/pdfrfc/rfc6854.txt.pdf">
+            
+                <i class="bi bi-file-pdf"></i> pdf
+            
+        </a>
+        
+    
+        
+    
+        
+        <a class="btn btn-primary btn-sm"
+          
+          target="_blank"
+          href="/doc/rfc6854/bibtex/">
+            
+                <i class="bi bi-file-ruled"></i> bibtex
+            
+        </a>
+        
+    
+</div>
+
+            
+        </td>
+    </tr>
+    
+    
+        
+    
+</tbody>
+                                </table>
+                                <a class="btn btn-sm btn-warning mb-3"
+                                target="_blank"
+                                href="https://github.com/ietf-tools/datatracker/issues/new/choose">
+                                    Report a datatracker bug
+                                    <i class="bi bi-bug"></i>
+                                </a>
+                            </div>
+                            <div class="tab-pane mb-5"
+                                 id="toc-tab-pane"
+                                 role="tabpanel"
+                                 aria-labelledby="toc-tab"
+                                 tabindex="0">
+                                <nav class="nav nav-pills flex-column small" id="toc-nav">
+                                </nav>
+                            </div>
+                            <div class="tab-pane mb-5 small"
+                                 id="pref-tab-pane"
+                                 role="tabpanel"
+                                 aria-labelledby="pref-tab"
+                                 tabindex="0">
+                                <label class="form-label fw-bold mb-2">Show sidebar by default</label>
+                                <div class="btn-group-vertical btn-group-sm d-flex" role="group">
+                                    <input type="radio" class="btn-check" name="sidebar" id="on-radio">
+                                    <label class="btn btn-outline-primary" for="on-radio">Yes</label>
+                                    <input type="radio" class="btn-check" name="sidebar" id="off-radio">
+                                    <label class="btn btn-outline-primary" for="off-radio">No</label>
+                                </div>
+                                <label class="form-label fw-bold mt-4 mb-2">Tab to show by default</label>
+                                <div class="btn-group-vertical btn-group-sm d-flex" role="group">
+                                    <input type="radio" class="btn-check" name="deftab" id="docinfo-radio">
+                                    <label class="btn btn-outline-primary" for="docinfo-radio">
+                                        <i class="bi bi-info-circle me-1"></i>Info
+                                    </label>
+                                    <input type="radio" class="btn-check" name="deftab" id="toc-radio">
+                                    <label class="btn btn-outline-primary" for="toc-radio">
+                                        <i class="bi bi-list-ol me-1"></i>Contents
+                                    </label>
+                                </div>
+                                <label class="form-label fw-bold mt-4 mb-2">HTMLization configuration</label>
+                                <div class="btn-group-vertical btn-group-sm d-flex" role="group">
+                                    <input type="radio" class="btn-check" name="htmlconf" id="txt-radio">
+                                    <label class="btn btn-outline-primary" for="txt-radio" title="This is the traditional HTMLization method.">
+                                        <i class="bi bi-badge-sd me-1"></i>HTMLize the plaintext
+                                    </label>
+                                    <input type="radio" class="btn-check" name="htmlconf" id="html-radio">
+                                    <label class="btn btn-outline-primary" for="html-radio" title="This is the modern HTMLization method.">
+                                        <i class="bi bi-badge-hd me-1"></i>Plaintextify the HTML
+                                    </label>
+                                </div>
+                                <label class="form-label fw-bold mt-4 mb-2" for="ptsize">Maximum font size</label>
+                                <input type="range" class="form-range" min="7" max="16" id="ptsize" oninput="ptdemo.value = ptsize.value">
+                                <label class="form-label fw-bold mt-4 mb-2">Page dependencies</label>
+                                <div class="btn-group-vertical btn-group-sm d-flex" role="group">
+                                    <input type="radio" class="btn-check" name="pagedeps" id="inline-radio">
+                                    <label class="btn btn-outline-primary" for="inline-radio" title="Generate larger, standalone web pages that do not require network access to render.">
+                                        <i class="bi bi-box me-1"></i>Inline
+                                    </label>
+                                    <input type="radio" class="btn-check" name="pagedeps" id="reference-radio">
+                                    <label class="btn btn-outline-primary" for="reference-radio" title="Generate regular web pages that require network access to render.">
+                                        <i class="bi bi-link-45deg me-1"></i>Reference
+                                    </label>
+                                </div>
+                                <label class="form-label fw-bold mt-4 mb-2">Citation links</label>
+                                <div class="btn-group-vertical btn-group-sm d-flex" role="group">
+                                    <input type="radio" class="btn-check" name="reflinks" id="refsection-radio">
+                                    <label class="btn btn-outline-primary" for="refsection-radio" title="Citation links go to the reference section.">
+                                        <i class="bi bi-arrow-clockwise"></i> Go to reference section
+                                    </label>
+                                    <input type="radio" class="btn-check" name="reflinks" id="citation-radio">
+                                    <label class="btn btn-outline-primary" for="citation-radio" title="Citation links go directly to the cited document.">
+                                        <i class="bi bi-link-45deg me-1"></i>Go to linked document
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+<script>
+  var _paq = window._paq || [];
+  
+  _paq.push(['disableCookies']);
+  _paq.push(['trackPageView']);
+  _paq.push(['enableLinkTracking']);
+  (function() {
+    var u="//analytics.ietf.org/";
+    _paq.push(['setTrackerUrl', u+'matomo.php']);
+    _paq.push(['setSiteId', 7]);
+    var d=document, g=d.createElement('script'), s=d.getElementsByTagName('script')[0];
+    g.type='text/javascript'; g.async=true; g.defer=true; g.src=u+'matomo.js'; s.parentNode.insertBefore(g,s);
+  })();
+</script>
+<noscript><p><img src="//analytics.ietf.org/matomo.php?idsite=7" style="border:0;" alt="" /></p></noscript>
+
+    </body>
+</html>

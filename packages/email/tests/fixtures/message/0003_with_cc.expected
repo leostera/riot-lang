@@ -1,0 +1,10 @@
+{
+  "headers": {
+    "From": "sender@example.com",
+    "To": "recipient@example.com",
+    "Cc": "cc@example.com",
+    "Subject": "Test",
+    "Date": "Mon, 1 Jan 2024 12:00:00 +0000"
+  },
+  "body": "Body\n"
+}

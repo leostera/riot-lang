@@ -1,0 +1,17 @@
+From: sender@example.com
+To: recipient@example.com
+Subject: Image 28
+MIME-Version: 1.0
+Content-Type: multipart/related; boundary="rel28"
+Date: Mon, 1 Jan 2024 12:00:00 +0000
+
+--rel28
+Content-Type: text/html
+
+<img src="cid:img28">
+--rel28
+Content-Type: image/png
+Content-ID: <img28>
+
+PNG data
+--rel28--

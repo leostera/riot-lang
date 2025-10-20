@@ -1,0 +1,6 @@
+{
+  "headers": {
+    "Content-Transfer-Encoding": "base64"
+  },
+  "body": "Hello World"
+}

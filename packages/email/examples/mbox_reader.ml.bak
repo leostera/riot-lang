@@ -1,0 +1,196 @@
+open Std
+open Email
+
+type filter =
+  | All
+  | HasAttachment
+  | From of string
+  | Subject of string
+
+let parse_filter str =
+  if str = "" then All
+  else if str = "has:attachment" then HasAttachment
+  else if String.starts_with ~prefix:"from:" str then
+    From (String.sub str 5 (String.length str - 5))
+  else if String.starts_with ~prefix:"subject:" str then
+    Subject (String.sub str 8 (String.length str - 8))
+  else All
+
+let matches_filter filter msg =
+  match filter with
+  | All -> true
+  | HasAttachment ->
+      String.contains msg.Mbox.content "Content-Disposition: attachment"
+  | From addr -> String.contains msg.Mbox.content (format "From: %s" addr)
+  | Subject subj -> String.contains msg.Mbox.content (format "Subject: %s" subj)
+
+let export_message export_dir index msg =
+  let filename = format "%04d.eml" index in
+  let filepath = Path.join export_dir (Path.v filename) in
+  
+  match Fs.File.create filepath with
+  | Error _ ->
+      println "Error: failed to create %s" (Path.to_string filepath);
+      Error ()
+  | Ok file ->
+      let content = format "%s\n\n%s" msg.Mbox.separator msg.Mbox.content in
+      match Fs.File.write_all file content with
+      | Error _ ->
+          println "Error: failed to write to %s" (Path.to_string filepath);
+          let _ = Fs.File.close file in
+          Error ()
+      | Ok () ->
+          let _ = Fs.File.close file in
+          Ok ()
+
+let list_messages mbox_path =
+  match Fs.File.open_read mbox_path with
+  | Error _ ->
+      println "Error opening file: %s" (Path.to_string mbox_path);
+      exit 1
+  | Ok file -> (
+      match Mbox.of_file file with
+      | Error e ->
+          println "Error: %s" e;
+          exit 1
+      | Ok mbox ->
+          let iter = Mbox.into_mut_iter mbox in
+          let count = Cell.create 0 in
+
+          let rec process () =
+            match Iter.MutIterator.next iter with
+            | None -> ()
+            | Some msg ->
+                Cell.update count (fun n -> n + 1);
+                println "\n=== Message %d ===" (Cell.get count);
+                println "Separator: %s" msg.separator;
+
+                (match msg.envelope_from with
+                | Some addr -> println "From: %s" addr
+                | None -> ());
+
+                (match msg.envelope_date with
+                | Some date -> println "Date: %s" date
+                | None -> ());
+
+                println "Content length: %d bytes" (String.length msg.content);
+                println "--- Content ---";
+                println "%s" msg.content;
+                process ()
+          in
+          process ();
+          println "\nTotal messages: %d" (Cell.get count);
+          let _ = Fs.File.close file in
+          Ok ())
+
+let export_messages mbox_path export_dir filter_str =
+  let filter = parse_filter filter_str in
+  
+  match Fs.create_dir_all export_dir with
+  | Error _ ->
+      println "Error: failed to create export directory %s" (Path.to_string export_dir);
+      exit 1
+  | Ok () -> (
+      match Fs.File.open_read mbox_path with
+      | Error _ ->
+          println "Error opening file: %s" (Path.to_string mbox_path);
+          exit 1
+      | Ok file -> (
+          match Mbox.of_file file with
+          | Error e ->
+              println "Error: %s" e;
+              exit 1
+          | Ok mbox ->
+              let iter = Mbox.into_mut_iter mbox in
+              let count = Cell.create 0 in
+              let exported = Cell.create 0 in
+
+              let rec process () =
+                match Iter.MutIterator.next iter with
+                | None -> ()
+                | Some msg ->
+                    Cell.update count (fun n -> n + 1);
+                    
+                    if matches_filter filter msg then (
+                      println "Exporting message %d..." (Cell.get count);
+                      match export_message export_dir (Cell.get count) msg with
+                      | Ok () -> Cell.update exported (fun n -> n + 1)
+                      | Error () -> ());
+                    
+                    process ()
+              in
+              process ();
+              println "\nProcessed: %d messages" (Cell.get count);
+              println "Exported: %d messages" (Cell.get exported);
+              let _ = Fs.File.close file in
+              Ok ()))
+
+let () =
+  Miniriot.run ~main:(fun ~args:_ ->
+    let export_cmd =
+      ArgParser.command "export"
+      |> ArgParser.about "Export emails from MBOX file"
+      |> ArgParser.args [
+           ArgParser.Arg.positional "mbox_file"
+           |> ArgParser.Arg.required true
+           |> ArgParser.Arg.help "Path to MBOX file";
+           
+           ArgParser.Arg.positional "export_dir"
+           |> ArgParser.Arg.required true
+           |> ArgParser.Arg.help "Directory to export emails to";
+           
+           ArgParser.Arg.option "filter"
+           |> ArgParser.Arg.long "filter"
+           |> ArgParser.Arg.value_name "FILTER"
+           |> ArgParser.Arg.help "Filter expression (e.g., has:attachment, from:alice@example.com, subject:test)";
+         ]
+    in
+
+    let cmd =
+      ArgParser.command "mbox_reader"
+      |> ArgParser.about "Stream-process large MBOX files"
+      |> ArgParser.version "0.1.0"
+      |> ArgParser.subcommands [ export_cmd ]
+      |> ArgParser.args [
+           ArgParser.Arg.positional "mbox_file"
+           |> ArgParser.Arg.help "Path to MBOX file (for listing)";
+         ]
+    in
+
+    let matches =
+      match ArgParser.get_matches cmd Env.args with
+      | Error _ ->
+          ArgParser.print_help cmd;
+          exit 1
+      | Ok m -> m
+    in
+
+    match ArgParser.get_subcommand matches with
+    | Some ("export", sub_matches) ->
+        let mbox_path =
+          match ArgParser.get_one sub_matches "mbox_file" with
+          | None ->
+              println "Error: mbox_file is required";
+              exit 1
+          | Some p -> Path.v p
+        in
+        let export_dir =
+          match ArgParser.get_one sub_matches "export_dir" with
+          | None ->
+              println "Error: export_dir is required";
+              exit 1
+          | Some p -> Path.v p
+        in
+        let filter = Option.value ~default:"" (ArgParser.get_one sub_matches "filter") in
+        export_messages mbox_path export_dir filter
+    | _ ->
+        let path =
+          match ArgParser.get_one matches "mbox_file" with
+          | None ->
+              ArgParser.print_help cmd;
+              exit 1
+          | Some p -> Path.v p
+        in
+        list_messages path
+  ) ~args:Env.args
+  |> exit

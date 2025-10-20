@@ -1,0 +1,11 @@
+Delivered-To: user@example.com
+Received: from mail.example.com
+From: "Gmail User" <gmail@example.com>
+To: user@example.com
+Subject: Gmail Test 19
+Message-ID: <CABc19@mail.gmail.com>
+Date: Mon, 1 Jan 2024 12:00:00 +0000
+MIME-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+
+Gmail message body 19

@@ -1,0 +1,4 @@
+* LIST () "/" "INBOX"
+* LIST (\Noselect) "/" "Drafts"
+* LIST () "/" "Sent"
+a004 OK LIST completed

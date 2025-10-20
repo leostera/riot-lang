@@ -1,0 +1,9 @@
+{
+  "flags": ["\\Answered", "\\Flagged", "\\Deleted", "\\Seen", "\\Draft"],
+  "exists": 172,
+  "recent": 1,
+  "unseen": 12,
+  "uid_validity": 3857529045,
+  "uid_next": 4392,
+  "read_write": true
+}

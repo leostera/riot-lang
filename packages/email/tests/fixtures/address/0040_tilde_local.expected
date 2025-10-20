@@ -1,0 +1,6 @@
+{
+  "display_name": null,
+  "local_part": "user~test",
+  "domain": "example.com",
+  "address": "user~test@example.com"
+}

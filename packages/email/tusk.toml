@@ -1,0 +1,16 @@
+[package]
+name = "email"
+version = "0.1.0"
+
+[dependencies]
+std = "*"
+miniriot = "*"
+mime = "*"
+
+[[bin]]
+name = "mbox"
+path = "examples/mbox_reader.ml"
+
+[[bin]]
+name = "parser_tests"
+path = "tests/parser_tests.ml"

@@ -1,0 +1,11 @@
+From: calendar@example.com
+To: user@example.com
+Subject: Meeting Invitation 52
+Content-Type: text/calendar; method=REQUEST
+Date: Mon, 1 Jan 2024 12:00:00 +0000
+
+BEGIN:VCALENDAR
+BEGIN:VEVENT
+SUMMARY:Meeting 52
+END:VEVENT
+END:VCALENDAR

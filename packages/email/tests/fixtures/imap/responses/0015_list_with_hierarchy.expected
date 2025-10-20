@@ -1,0 +1,24 @@
+{
+  "mailboxes": [
+    {
+      "name": "INBOX",
+      "delimiter": "/",
+      "flags": []
+    },
+    {
+      "name": "INBOX/Work",
+      "delimiter": "/",
+      "flags": []
+    },
+    {
+      "name": "INBOX/Personal",
+      "delimiter": "/",
+      "flags": []
+    },
+    {
+      "name": "INBOX/Archive",
+      "delimiter": "/",
+      "flags": []
+    }
+  ]
+}

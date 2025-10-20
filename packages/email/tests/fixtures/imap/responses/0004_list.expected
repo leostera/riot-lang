@@ -1,0 +1,19 @@
+{
+  "mailboxes": [
+    {
+      "name": "INBOX",
+      "delimiter": "/",
+      "flags": []
+    },
+    {
+      "name": "Drafts",
+      "delimiter": "/",
+      "flags": ["\\Noselect"]
+    },
+    {
+      "name": "Sent",
+      "delimiter": "/",
+      "flags": []
+    }
+  ]
+}

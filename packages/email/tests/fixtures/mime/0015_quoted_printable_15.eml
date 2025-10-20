@@ -1,0 +1,7 @@
+From: sender@example.com
+To: recipient@example.com
+Subject: Test
+Content-Transfer-Encoding: quoted-printable
+Date: Mon, 1 Jan 2024 12:00:00 +0000
+
+Hello=20World=

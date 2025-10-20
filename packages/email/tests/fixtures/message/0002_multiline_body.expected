@@ -1,0 +1,9 @@
+{
+  "headers": {
+    "From": "sender@example.com",
+    "To": "recipient@example.com",
+    "Subject": "Multiline Test",
+    "Date": "Mon, 1 Jan 2024 12:00:00 +0000"
+  },
+  "body": "This is line one.\nThis is line two.\nThis is line three.\n"
+}

@@ -1,0 +1,16 @@
+From: billing@company.com
+To: user@example.com
+Subject: Invoice 71
+Content-Type: multipart/mixed; boundary="inv71"
+Date: Mon, 1 Jan 2024 12:00:00 +0000
+
+--inv71
+Content-Type: text/plain
+
+Please find invoice attached
+--inv71
+Content-Type: application/pdf; name="invoice71.pdf"
+Content-Disposition: attachment
+
+PDF data
+--inv71--

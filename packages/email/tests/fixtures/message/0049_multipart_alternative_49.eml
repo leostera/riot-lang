@@ -1,0 +1,16 @@
+From: sender@example.com
+To: recipient@example.com
+Subject: Test 49
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="alt49"
+Date: Mon, 1 Jan 2024 12:00:00 +0000
+
+--alt49
+Content-Type: text/plain
+
+Plain text version 49
+--alt49
+Content-Type: text/html
+
+<p>HTML version 49</p>
+--alt49--

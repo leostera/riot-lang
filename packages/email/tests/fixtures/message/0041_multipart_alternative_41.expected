@@ -1,0 +1,16 @@
+{
+  "headers": {
+    "MIME-Version": "1.0",
+    "Content-Type": "multipart/alternative; boundary=\"alt41\""
+  },
+  "parts": [
+    {
+      "type": "text/plain",
+      "body": "Plain text version 41\n"
+    },
+    {
+      "type": "text/html",
+      "body": "<p>HTML version 41</p>\n"
+    }
+  ]
+}

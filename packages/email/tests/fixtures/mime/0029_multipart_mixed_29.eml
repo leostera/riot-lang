@@ -1,0 +1,16 @@
+From: sender@example.com
+To: recipient@example.com
+Subject: Test
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="boundary29"
+Date: Mon, 1 Jan 2024 12:00:00 +0000
+
+--boundary29
+Content-Type: text/plain
+
+Part 1
+--boundary29
+Content-Type: text/html
+
+<p>Part 2</p>
+--boundary29--

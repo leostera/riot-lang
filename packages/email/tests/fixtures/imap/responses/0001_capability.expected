@@ -1,0 +1,8 @@
+{
+  "capabilities": [
+    "IMAP4rev1",
+    "STARTTLS",
+    "AUTH=PLAIN",
+    "AUTH=LOGIN"
+  ]
+}

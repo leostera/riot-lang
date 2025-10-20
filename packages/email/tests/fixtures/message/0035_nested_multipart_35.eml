@@ -1,0 +1,24 @@
+From: sender@example.com
+To: recipient@example.com
+Subject: Nested 35
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="outer35"
+Date: Mon, 1 Jan 2024 12:00:00 +0000
+
+--outer35
+Content-Type: multipart/alternative; boundary="inner35"
+
+--inner35
+Content-Type: text/plain
+
+Text
+--inner35
+Content-Type: text/html
+
+<p>HTML</p>
+--inner35--
+--outer35
+Content-Type: application/pdf
+
+PDF
+--outer35--

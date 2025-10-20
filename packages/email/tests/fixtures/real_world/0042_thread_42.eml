@@ -1,0 +1,8 @@
+From: user1@example.com
+To: user2@example.com
+Subject: Re: Discussion 42
+In-Reply-To: <thread42.1@example.com>
+References: <thread42.0@example.com> <thread42.1@example.com>
+Date: Mon, 1 Jan 2024 12:00:00 +0000
+
+Reply in thread 42

@@ -1,0 +1,10 @@
+{
+  "capabilities": [
+    "IMAP4rev1",
+    "IDLE",
+    "NAMESPACE",
+    "ID",
+    "UIDPLUS",
+    "CHILDREN"
+  ]
+}

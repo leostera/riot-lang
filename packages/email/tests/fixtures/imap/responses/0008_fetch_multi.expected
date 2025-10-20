@@ -1,0 +1,23 @@
+{
+  "messages": [
+    {
+      "message": 1,
+      "uid": 100,
+      "flags": [
+        "\\Seen"
+      ]
+    },
+    {
+      "message": 2,
+      "uid": 101,
+      "flags": [
+        "\\Answered"
+      ]
+    },
+    {
+      "message": 3,
+      "uid": 102,
+      "flags": []
+    }
+  ]
+}
