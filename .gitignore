@@ -1,3 +1,5 @@
+3rdparty
+generated
 *.install
 *.bin
 _build
@@ -25,3 +27,8 @@ run_tusk.sh
 
 /llm
 .tmp
+
+
+# Added by cargo
+
+/target

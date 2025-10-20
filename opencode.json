@@ -2,17 +2,15 @@
   "$schema": "https://opencode.ai/config.json",
   "permission": {
     "bash": {
+      "*": "allow",
+      "tusk*": "allow",
       "git*": "deny",
-      "git add -A": "deny",
+      "git add*": "deny",
+      "git commit *": "deny",
       "git status*": "allow",
       "git diff*": "allow",
-      "git commit -m *": "allow",
-      "*": "ask",
-      "rg*": "allow",
-      "tusk clean": "deny",
-      "tusk*": "allow",
-      "./target/debug/tusk*": "deny",
-      "*minitusk*": "deny",
+      "git log*": "allow",
+      "rm -rf*": "ask",
     },
   },
   "mcp": {

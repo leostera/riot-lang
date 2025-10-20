@@ -1,5 +1,10 @@
 [workspace]
 members = [
-  "native/raml-ffi", "native/raml-kernel",
+  "native/example-lib",
+  "native/raml-bindgen",
+  "native/raml-core",
+  "native/raml-derive",
+  "native/raml-ffi",
+  "native/raml-kernel",
   "native/raml-rt",
 ] 
