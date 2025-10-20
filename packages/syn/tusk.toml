@@ -10,7 +10,3 @@ colors = { path ="../colors"}
 [[bin]]
 name = "syn"
 path = "src/main.ml"
-
-[[bin]]
-name = "syn-test"
-path = "src/a_test.ml"
