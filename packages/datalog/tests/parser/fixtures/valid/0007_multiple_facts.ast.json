@@ -1,0 +1,35 @@
+{
+  "type": "program",
+  "items": [
+    {
+      "type": "fact",
+      "predicate": "a",
+      "args": [
+        {
+          "type": "integer",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "type": "fact",
+      "predicate": "b",
+      "args": [
+        {
+          "type": "integer",
+          "value": 2
+        }
+      ]
+    },
+    {
+      "type": "fact",
+      "predicate": "c",
+      "args": [
+        {
+          "type": "integer",
+          "value": 3
+        }
+      ]
+    }
+  ]
+}

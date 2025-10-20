@@ -1,0 +1,5 @@
+% Test: large_int
+% Number: 0040
+
+big(9999999).
+big(-9999999).

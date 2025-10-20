@@ -1,0 +1,25 @@
+{
+  "facts": [
+    {
+      "predicate": "pair",
+      "args": [
+        12,
+        12
+      ]
+    },
+    {
+      "predicate": "pair",
+      "args": [
+        13,
+        14
+      ]
+    }
+  ],
+  "query": "same(X,Y)",
+  "result": [
+    {
+      "X": 12,
+      "Y": 12
+    }
+  ]
+}

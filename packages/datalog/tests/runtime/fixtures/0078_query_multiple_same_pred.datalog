@@ -1,0 +1,8 @@
+% Test: query_multiple_same_pred
+% Number: 0078
+
+p(1).
+p(2).
+p(3).
+p(4).
+p(5).

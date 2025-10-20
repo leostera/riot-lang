@@ -1,0 +1,22 @@
+{
+  "facts": [
+    {
+      "predicate": "num",
+      "args": [
+        45
+      ]
+    },
+    {
+      "predicate": "num",
+      "args": [
+        55
+      ]
+    }
+  ],
+  "query": "in_range(X)",
+  "result": [
+    {
+      "X": 45
+    }
+  ]
+}

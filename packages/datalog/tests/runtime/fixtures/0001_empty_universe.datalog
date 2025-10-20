@@ -1,0 +1,5 @@
+% Test: Empty universe
+% Description: An empty database with no facts
+% Expected: Empty result set
+
+% No facts defined

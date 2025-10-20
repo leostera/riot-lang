@@ -1,0 +1,16 @@
+{
+  "facts": [
+    {"predicate": "parent", "args": ["alice", "bob"]},
+    {"predicate": "parent", "args": ["bob", "charlie"]},
+    {"predicate": "parent", "args": ["charlie", "dave"]},
+    {"predicate": "age", "args": ["alice", 60]},
+    {"predicate": "age", "args": ["bob", 40]},
+    {"predicate": "age", "args": ["charlie", 20]}
+  ],
+  "query": "parent(X, Y), age(X, A)",
+  "result": [
+    {"X": "alice", "Y": "bob", "A": 60},
+    {"X": "bob", "Y": "charlie", "A": 40},
+    {"X": "charlie", "Y": "dave", "A": 20}
+  ]
+}

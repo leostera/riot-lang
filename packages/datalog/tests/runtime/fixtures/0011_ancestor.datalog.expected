@@ -1,0 +1,33 @@
+{
+  "facts": [
+    {"predicate": "parent", "args": ["alice", "bob"]},
+    {"predicate": "parent", "args": ["alice", "carol"]},
+    {"predicate": "parent", "args": ["bob", "dave"]},
+    {"predicate": "parent", "args": ["bob", "eve"]},
+    {"predicate": "parent", "args": ["carol", "frank"]}
+  ],
+  "rules": [
+    {
+      "head": {"predicate": "ancestor", "args": ["X", "Y"]},
+      "body": [{"predicate": "parent", "args": ["X", "Y"]}]
+    },
+    {
+      "head": {"predicate": "ancestor", "args": ["X", "Z"]},
+      "body": [
+        {"predicate": "parent", "args": ["X", "Y"]},
+        {"predicate": "ancestor", "args": ["Y", "Z"]}
+      ]
+    }
+  ],
+  "query": "ancestor(X, Y)",
+  "result": [
+    {"X": "alice", "Y": "bob"},
+    {"X": "alice", "Y": "carol"},
+    {"X": "alice", "Y": "dave"},
+    {"X": "alice", "Y": "eve"},
+    {"X": "alice", "Y": "frank"},
+    {"X": "bob", "Y": "dave"},
+    {"X": "bob", "Y": "eve"},
+    {"X": "carol", "Y": "frank"}
+  ]
+}

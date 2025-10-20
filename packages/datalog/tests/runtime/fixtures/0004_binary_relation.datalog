@@ -1,0 +1,7 @@
+% Test: Binary relation (edges)
+% Description: Facts with two arguments representing relationships
+% Expected: Query relationships between entities
+
+edge("a", "b").
+edge("b", "c").
+edge("c", "d").

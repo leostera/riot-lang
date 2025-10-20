@@ -1,0 +1,25 @@
+{
+  "facts": [
+    {
+      "predicate": "parent",
+      "args": [
+        "p4",
+        "c4"
+      ]
+    },
+    {
+      "predicate": "parent",
+      "args": [
+        "c4",
+        "g4"
+      ]
+    }
+  ],
+  "query": "grandparent(X,Y)",
+  "result": [
+    {
+      "X": "p4",
+      "Y": "g4"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "facts": [
+    {
+      "predicate": "sym",
+      "args": [
+        "!@#"
+      ]
+    },
+    {
+      "predicate": "sym",
+      "args": [
+        "$%^"
+      ]
+    }
+  ],
+  "query": "sym(X)",
+  "result": [
+    {
+      "X": "!@#"
+    },
+    {
+      "X": "$%^"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "facts": [
+    {"predicate": "edge", "args": ["a", "b"]},
+    {"predicate": "edge", "args": ["b", "c"]},
+    {"predicate": "edge", "args": ["c", "d"]}
+  ],
+  "query": "edge(X, Y)",
+  "result": [
+    {"X": "a", "Y": "b"},
+    {"X": "b", "Y": "c"},
+    {"X": "c", "Y": "d"}
+  ]
+}

@@ -1,0 +1,5 @@
+% Test: 0014_strings_only
+
+word("hello").
+word("world").
+word("datalog").

@@ -1,0 +1,6 @@
+% Test: query_negative_numbers
+% Number: 0091
+
+num(-5).
+num(-10).
+num(0).

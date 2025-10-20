@@ -1,0 +1,29 @@
+{
+  "facts": [
+    {
+      "predicate": "pair",
+      "args": [
+        "a",
+        1
+      ]
+    },
+    {
+      "predicate": "pair",
+      "args": [
+        "b",
+        2
+      ]
+    }
+  ],
+  "query": "pair(X, Y)",
+  "result": [
+    {
+      "X": "a",
+      "Y": 1
+    },
+    {
+      "X": "b",
+      "Y": 2
+    }
+  ]
+}

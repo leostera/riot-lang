@@ -1,0 +1,5 @@
+% Test: three_variables
+% Number: 0062
+
+triple(1, 2, 3).
+triple(4, 5, 6).

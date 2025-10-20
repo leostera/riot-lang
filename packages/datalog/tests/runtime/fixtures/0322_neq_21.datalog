@@ -1,0 +1,5 @@
+% Test #0322: neq_21
+
+val(22).
+val(23).
+diff(X,Y) :- val(X), val(Y), X != Y.

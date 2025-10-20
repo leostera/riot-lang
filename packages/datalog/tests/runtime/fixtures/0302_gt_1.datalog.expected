@@ -1,0 +1,22 @@
+{
+  "facts": [
+    {
+      "predicate": "val",
+      "args": [
+        2
+      ]
+    },
+    {
+      "predicate": "val",
+      "args": [
+        7
+      ]
+    }
+  ],
+  "query": "large(X)",
+  "result": [
+    {
+      "X": 7
+    }
+  ]
+}

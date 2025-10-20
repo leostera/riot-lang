@@ -1,0 +1,5 @@
+% Test: query_no_match_constant
+% Number: 0058
+
+r(1, 2).
+r(3, 4).

@@ -1,0 +1,1 @@
+large(X) :- value(X), X > 100.

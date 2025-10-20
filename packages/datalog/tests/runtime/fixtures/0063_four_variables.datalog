@@ -1,0 +1,4 @@
+% Test: four_variables
+% Number: 0063
+
+quad(1, 2, 3, 4).

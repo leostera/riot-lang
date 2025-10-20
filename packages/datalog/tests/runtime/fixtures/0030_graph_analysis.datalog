@@ -1,0 +1,24 @@
+% Test: Graph analysis with multiple derived relations
+% Description: Complex graph queries - paths, cycles, components
+% Expected: Multiple computed graph properties
+
+% Graph edges
+edge(1, 2).
+edge(2, 3).
+edge(3, 1).
+edge(3, 4).
+edge(4, 5).
+edge(5, 4).
+
+% Path exists between nodes
+path(X, Y) :- edge(X, Y).
+path(X, Z) :- edge(X, Y), path(Y, Z).
+
+% Node has outgoing edge
+has_outgoing(X) :- edge(X, _).
+
+% Node has incoming edge
+has_incoming(X) :- edge(_, X).
+
+% Find cycles (node can reach itself)
+in_cycle(X) :- path(X, X).

@@ -1,0 +1,5 @@
+% Test: query_duplicate_results
+% Number: 0093
+
+dup(1).
+dup(1).

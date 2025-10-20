@@ -1,0 +1,1 @@
+symmetric(X, Y) :- rel(X, Y), X = Y.

@@ -1,0 +1,14 @@
+% Test: Stratified negation
+% Description: Rules with negation to find non-relationships
+% Expected: Pairs that are NOT connected
+
+node(1).
+node(2).
+node(3).
+node(4).
+
+edge(1, 2).
+edge(2, 3).
+
+% Find nodes that are NOT directly connected
+not_connected(X, Y) :- node(X), node(Y), !edge(X, Y), X != Y.

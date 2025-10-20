@@ -1,0 +1,4 @@
+% Test: long_string
+% Number: 0039
+
+text("this_is_a_very_long_string_value_that_goes_on_and_on").

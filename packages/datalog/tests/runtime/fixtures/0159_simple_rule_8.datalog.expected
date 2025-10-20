@@ -1,0 +1,16 @@
+{
+  "facts": [
+    {
+      "predicate": "fact",
+      "args": [
+        8
+      ]
+    }
+  ],
+  "query": "derived(X)",
+  "result": [
+    {
+      "X": 8
+    }
+  ]
+}

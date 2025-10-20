@@ -1,0 +1,26 @@
+{
+  "facts": [
+    {
+      "predicate": "val",
+      "args": [
+        10
+      ]
+    },
+    {
+      "predicate": "val",
+      "args": [
+        20
+      ]
+    },
+    {
+      "predicate": "val",
+      "args": [
+        30
+      ]
+    }
+  ],
+  "query": "val(20)",
+  "result": [
+    {}
+  ]
+}

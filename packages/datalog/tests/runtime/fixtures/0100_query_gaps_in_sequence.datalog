@@ -1,0 +1,7 @@
+% Test: query_gaps_in_sequence
+% Number: 0100
+
+gap(1).
+gap(3).
+gap(5).
+gap(7).

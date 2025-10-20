@@ -1,0 +1,25 @@
+{
+  "facts": [
+    {
+      "predicate": "text",
+      "args": [
+        "the quick brown fox"
+      ]
+    },
+    {
+      "predicate": "text",
+      "args": [
+        "jumps over"
+      ]
+    }
+  ],
+  "query": "text(X)",
+  "result": [
+    {
+      "X": "the quick brown fox"
+    },
+    {
+      "X": "jumps over"
+    }
+  ]
+}

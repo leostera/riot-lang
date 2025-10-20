@@ -1,0 +1,7 @@
+% Test: Multiple unrelated facts
+% Description: Multiple facts of the same predicate
+% Expected: All facts should be queryable
+
+person("alice").
+person("bob").
+person("charlie").

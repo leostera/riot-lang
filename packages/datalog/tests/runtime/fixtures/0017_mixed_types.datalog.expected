@@ -1,0 +1,40 @@
+{
+  "facts": [
+    {
+      "predicate": "mixed",
+      "args": [
+        1,
+        "one"
+      ]
+    },
+    {
+      "predicate": "mixed",
+      "args": [
+        2,
+        "two"
+      ]
+    },
+    {
+      "predicate": "mixed",
+      "args": [
+        3,
+        "three"
+      ]
+    }
+  ],
+  "query": "mixed(X, Y)",
+  "result": [
+    {
+      "X": 1,
+      "Y": "one"
+    },
+    {
+      "X": 2,
+      "Y": "two"
+    },
+    {
+      "X": 3,
+      "Y": "three"
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "facts": [
+    {
+      "predicate": "edge",
+      "args": [
+        7,
+        8
+      ]
+    },
+    {
+      "predicate": "edge",
+      "args": [
+        8,
+        9
+      ]
+    },
+    {
+      "predicate": "edge",
+      "args": [
+        9,
+        10
+      ]
+    },
+    {
+      "predicate": "edge",
+      "args": [
+        10,
+        11
+      ]
+    },
+    {
+      "predicate": "edge",
+      "args": [
+        11,
+        12
+      ]
+    }
+  ],
+  "query": "path(X,Y)",
+  "result": [
+    {
+      "X": 7,
+      "Y": 12
+    }
+  ]
+}

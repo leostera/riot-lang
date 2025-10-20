@@ -1,0 +1,37 @@
+{
+  "facts": [
+    {
+      "predicate": "data",
+      "args": [
+        1,
+        "a",
+        2,
+        "b"
+      ]
+    },
+    {
+      "predicate": "data",
+      "args": [
+        3,
+        "c",
+        4,
+        "d"
+      ]
+    }
+  ],
+  "query": "data(A, B, C, D)",
+  "result": [
+    {
+      "A": 1,
+      "B": "a",
+      "C": 2,
+      "D": "b"
+    },
+    {
+      "A": 3,
+      "B": "c",
+      "C": 4,
+      "D": "d"
+    }
+  ]
+}

@@ -1,0 +1,187 @@
+{
+  "facts": [
+    {
+      "predicate": "item",
+      "args": [
+        0
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        1
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        2
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        3
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        4
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        5
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        6
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        7
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        8
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        9
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        10
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        11
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        12
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        13
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        14
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        15
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        16
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        17
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        18
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        19
+      ]
+    }
+  ],
+  "query": "item(X)",
+  "result": [
+    {
+      "X": 0
+    },
+    {
+      "X": 1
+    },
+    {
+      "X": 2
+    },
+    {
+      "X": 3
+    },
+    {
+      "X": 4
+    },
+    {
+      "X": 5
+    },
+    {
+      "X": 6
+    },
+    {
+      "X": 7
+    },
+    {
+      "X": 8
+    },
+    {
+      "X": 9
+    },
+    {
+      "X": 10
+    },
+    {
+      "X": 11
+    },
+    {
+      "X": 12
+    },
+    {
+      "X": 13
+    },
+    {
+      "X": 14
+    },
+    {
+      "X": 15
+    },
+    {
+      "X": 16
+    },
+    {
+      "X": 17
+    },
+    {
+      "X": 18
+    },
+    {
+      "X": 19
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+% Test #0481: path_30
+
+in_dir('/root', '/root/file30').
+file(F) :- in_dir(_, F).

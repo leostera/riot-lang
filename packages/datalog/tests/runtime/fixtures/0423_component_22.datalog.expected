@@ -1,0 +1,18 @@
+{
+  "facts": [
+    {
+      "predicate": "edge",
+      "args": [
+        22,
+        23
+      ]
+    }
+  ],
+  "query": "conn(X,Y)",
+  "result": [
+    {
+      "X": 22,
+      "Y": 23
+    }
+  ]
+}

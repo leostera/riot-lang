@@ -1,0 +1,16 @@
+{
+  "facts": [
+    {
+      "predicate": "text",
+      "args": [
+        "this_is_a_very_long_string_value_that_goes_on_and_on"
+      ]
+    }
+  ],
+  "query": "text(X)",
+  "result": [
+    {
+      "X": "this_is_a_very_long_string_value_that_goes_on_and_on"
+    }
+  ]
+}

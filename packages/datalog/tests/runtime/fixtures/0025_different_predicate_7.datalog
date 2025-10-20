@@ -1,0 +1,11 @@
+% Test: different_predicate_7
+% Number: 0025
+
+pred0("value0").
+pred1("value1").
+pred2("value2").
+pred3("value3").
+pred4("value4").
+pred5("value5").
+pred6("value6").
+pred7("value7").

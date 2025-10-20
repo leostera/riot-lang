@@ -1,0 +1,16 @@
+{
+  "facts": [
+    {
+      "predicate": "item",
+      "args": [
+        0
+      ]
+    }
+  ],
+  "query": "item(X)",
+  "result": [
+    {
+      "X": 0
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+% Test: Transitive closure (reachability)
+% Description: Classic recursive Datalog example - compute transitive closure
+% Expected: All reachable pairs in the graph
+
+edge(1, 2).
+edge(2, 3).
+edge(3, 4).
+edge(2, 5).
+
+% Base case: direct edges are reachable
+reachable(X, Y) :- edge(X, Y).
+
+% Recursive case: transitive reachability
+reachable(X, Z) :- edge(X, Y), reachable(Y, Z).

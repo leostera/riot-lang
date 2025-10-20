@@ -1,0 +1,4 @@
+% Test: query_wrong_arity
+% Number: 0074
+
+binary(1, 2).

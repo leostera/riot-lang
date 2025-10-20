@@ -1,0 +1,907 @@
+{
+  "facts": [
+    {
+      "predicate": "fact",
+      "args": [
+        0
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        1
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        2
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        3
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        4
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        5
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        6
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        7
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        8
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        9
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        10
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        11
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        12
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        13
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        14
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        15
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        16
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        17
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        18
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        19
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        20
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        21
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        22
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        23
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        24
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        25
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        26
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        27
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        28
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        29
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        30
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        31
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        32
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        33
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        34
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        35
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        36
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        37
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        38
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        39
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        40
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        41
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        42
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        43
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        44
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        45
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        46
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        47
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        48
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        49
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        50
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        51
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        52
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        53
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        54
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        55
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        56
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        57
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        58
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        59
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        60
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        61
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        62
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        63
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        64
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        65
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        66
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        67
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        68
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        69
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        70
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        71
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        72
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        73
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        74
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        75
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        76
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        77
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        78
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        79
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        80
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        81
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        82
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        83
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        84
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        85
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        86
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        87
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        88
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        89
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        90
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        91
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        92
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        93
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        94
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        95
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        96
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        97
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        98
+      ]
+    },
+    {
+      "predicate": "fact",
+      "args": [
+        99
+      ]
+    }
+  ],
+  "query": "derived(X)",
+  "result": [
+    {
+      "X": 0
+    },
+    {
+      "X": 1
+    },
+    {
+      "X": 2
+    },
+    {
+      "X": 3
+    },
+    {
+      "X": 4
+    },
+    {
+      "X": 5
+    },
+    {
+      "X": 6
+    },
+    {
+      "X": 7
+    },
+    {
+      "X": 8
+    },
+    {
+      "X": 9
+    },
+    {
+      "X": 10
+    },
+    {
+      "X": 11
+    },
+    {
+      "X": 12
+    },
+    {
+      "X": 13
+    },
+    {
+      "X": 14
+    },
+    {
+      "X": 15
+    },
+    {
+      "X": 16
+    },
+    {
+      "X": 17
+    },
+    {
+      "X": 18
+    },
+    {
+      "X": 19
+    },
+    {
+      "X": 20
+    },
+    {
+      "X": 21
+    },
+    {
+      "X": 22
+    },
+    {
+      "X": 23
+    },
+    {
+      "X": 24
+    },
+    {
+      "X": 25
+    },
+    {
+      "X": 26
+    },
+    {
+      "X": 27
+    },
+    {
+      "X": 28
+    },
+    {
+      "X": 29
+    },
+    {
+      "X": 30
+    },
+    {
+      "X": 31
+    },
+    {
+      "X": 32
+    },
+    {
+      "X": 33
+    },
+    {
+      "X": 34
+    },
+    {
+      "X": 35
+    },
+    {
+      "X": 36
+    },
+    {
+      "X": 37
+    },
+    {
+      "X": 38
+    },
+    {
+      "X": 39
+    },
+    {
+      "X": 40
+    },
+    {
+      "X": 41
+    },
+    {
+      "X": 42
+    },
+    {
+      "X": 43
+    },
+    {
+      "X": 44
+    },
+    {
+      "X": 45
+    },
+    {
+      "X": 46
+    },
+    {
+      "X": 47
+    },
+    {
+      "X": 48
+    },
+    {
+      "X": 49
+    },
+    {
+      "X": 50
+    },
+    {
+      "X": 51
+    },
+    {
+      "X": 52
+    },
+    {
+      "X": 53
+    },
+    {
+      "X": 54
+    },
+    {
+      "X": 55
+    },
+    {
+      "X": 56
+    },
+    {
+      "X": 57
+    },
+    {
+      "X": 58
+    },
+    {
+      "X": 59
+    },
+    {
+      "X": 60
+    },
+    {
+      "X": 61
+    },
+    {
+      "X": 62
+    },
+    {
+      "X": 63
+    },
+    {
+      "X": 64
+    },
+    {
+      "X": 65
+    },
+    {
+      "X": 66
+    },
+    {
+      "X": 67
+    },
+    {
+      "X": 68
+    },
+    {
+      "X": 69
+    },
+    {
+      "X": 70
+    },
+    {
+      "X": 71
+    },
+    {
+      "X": 72
+    },
+    {
+      "X": 73
+    },
+    {
+      "X": 74
+    },
+    {
+      "X": 75
+    },
+    {
+      "X": 76
+    },
+    {
+      "X": 77
+    },
+    {
+      "X": 78
+    },
+    {
+      "X": 79
+    },
+    {
+      "X": 80
+    },
+    {
+      "X": 81
+    },
+    {
+      "X": 82
+    },
+    {
+      "X": 83
+    },
+    {
+      "X": 84
+    },
+    {
+      "X": 85
+    },
+    {
+      "X": 86
+    },
+    {
+      "X": 87
+    },
+    {
+      "X": 88
+    },
+    {
+      "X": 89
+    },
+    {
+      "X": 90
+    },
+    {
+      "X": 91
+    },
+    {
+      "X": 92
+    },
+    {
+      "X": 93
+    },
+    {
+      "X": 94
+    },
+    {
+      "X": 95
+    },
+    {
+      "X": 96
+    },
+    {
+      "X": 97
+    },
+    {
+      "X": 98
+    },
+    {
+      "X": 99
+    }
+  ]
+}

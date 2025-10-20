@@ -1,0 +1,22 @@
+{
+  "facts": [
+    {
+      "predicate": "dup",
+      "args": [
+        1
+      ]
+    },
+    {
+      "predicate": "dup",
+      "args": [
+        1
+      ]
+    }
+  ],
+  "query": "dup(X)",
+  "result": [
+    {
+      "X": 1
+    }
+  ]
+}

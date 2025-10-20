@@ -1,0 +1,5 @@
+% Test #0168: multi_body_rule_17
+
+a(17).
+b(17).
+c(X) :- a(X), b(X).

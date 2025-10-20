@@ -1,0 +1,29 @@
+{
+  "facts": [
+    {
+      "predicate": "sparse",
+      "args": [
+        1,
+        100
+      ]
+    },
+    {
+      "predicate": "sparse",
+      "args": [
+        2,
+        200
+      ]
+    }
+  ],
+  "query": "sparse(X, Y)",
+  "result": [
+    {
+      "X": 1,
+      "Y": 100
+    },
+    {
+      "X": 2,
+      "Y": 200
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "errors": [
+    {
+      "type": "syntax_error",
+      "message": "Unknown operator '==='",
+      "span": {
+        "start": 13,
+        "end": 16
+      },
+      "help": "Did you mean '='?",
+      "severity": "error"
+    }
+  ]
+}

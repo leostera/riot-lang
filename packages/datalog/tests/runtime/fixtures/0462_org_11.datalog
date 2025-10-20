@@ -1,0 +1,4 @@
+% Test #0462: org_11
+
+manages('boss11', 'emp11').
+reports_to(X,Y) :- manages(Y,X).

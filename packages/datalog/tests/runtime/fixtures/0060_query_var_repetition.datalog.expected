@@ -1,0 +1,34 @@
+{
+  "facts": [
+    {
+      "predicate": "r",
+      "args": [
+        1,
+        1
+      ]
+    },
+    {
+      "predicate": "r",
+      "args": [
+        2,
+        2
+      ]
+    },
+    {
+      "predicate": "r",
+      "args": [
+        1,
+        2
+      ]
+    }
+  ],
+  "query": "r(X, X)",
+  "result": [
+    {
+      "X": 1
+    },
+    {
+      "X": 2
+    }
+  ]
+}

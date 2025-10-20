@@ -1,0 +1,5 @@
+% Test #0301: gt_0
+
+val(1).
+val(6).
+large(X) :- val(X), X > 3.

@@ -1,0 +1,25 @@
+{
+  "facts": [
+    {
+      "predicate": "str",
+      "args": [
+        ""
+      ]
+    },
+    {
+      "predicate": "str",
+      "args": [
+        "a"
+      ]
+    }
+  ],
+  "query": "str(X)",
+  "result": [
+    {
+      "X": ""
+    },
+    {
+      "X": "a"
+    }
+  ]
+}

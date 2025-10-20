@@ -1,0 +1,34 @@
+{
+  "facts": [
+    {"predicate": "person", "args": ["alice", 25, "engineer"]},
+    {"predicate": "person", "args": ["bob", 30, "doctor"]},
+    {"predicate": "person", "args": ["charlie", 25, "engineer"]},
+    {"predicate": "person", "args": ["diana", 35, "lawyer"]}
+  ],
+  "rules": [
+    {
+      "head": {"predicate": "engineer", "args": ["Name"]},
+      "body": [{"predicate": "person", "args": ["Name", "_", "engineer"]}]
+    },
+    {
+      "head": {"predicate": "age_25", "args": ["Name"]},
+      "body": [{"predicate": "person", "args": ["Name", 25, "_"]}]
+    }
+  ],
+  "queries": [
+    {
+      "query": "engineer(X)",
+      "result": [
+        {"X": "alice"},
+        {"X": "charlie"}
+      ]
+    },
+    {
+      "query": "age_25(X)",
+      "result": [
+        {"X": "alice"},
+        {"X": "charlie"}
+      ]
+    }
+  ]
+}

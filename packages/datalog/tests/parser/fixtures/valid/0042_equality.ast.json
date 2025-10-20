@@ -1,0 +1,51 @@
+{
+  "type": "program",
+  "items": [
+    {
+      "type": "rule",
+      "head": {
+        "predicate": "symmetric",
+        "args": [
+          {
+            "type": "variable",
+            "name": "X"
+          },
+          {
+            "type": "variable",
+            "name": "Y"
+          }
+        ]
+      },
+      "body": [
+        {
+          "type": "atom",
+          "predicate": "rel",
+          "args": [
+            {
+              "type": "variable",
+              "name": "X"
+            },
+            {
+              "type": "variable",
+              "name": "Y"
+            }
+          ]
+        },
+        {
+          "type": "builtin",
+          "op": "=",
+          "args": [
+            {
+              "type": "variable",
+              "name": "X"
+            },
+            {
+              "type": "variable",
+              "name": "Y"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

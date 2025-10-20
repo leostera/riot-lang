@@ -1,0 +1,6 @@
+% Test #0437: reach_36
+
+edge(36,37).
+edge(37,38).
+reach(X,Y) :- edge(X,Y).
+reach(X,Z) :- reach(X,Y), edge(Y,Z).

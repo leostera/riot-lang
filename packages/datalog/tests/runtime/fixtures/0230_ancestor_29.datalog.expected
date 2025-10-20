@@ -1,0 +1,33 @@
+{
+  "facts": [
+    {
+      "predicate": "parent",
+      "args": [
+        29,
+        30
+      ]
+    },
+    {
+      "predicate": "parent",
+      "args": [
+        30,
+        31
+      ]
+    }
+  ],
+  "query": "anc(X,Y)",
+  "result": [
+    {
+      "X": 29,
+      "Y": 30
+    },
+    {
+      "X": 29,
+      "Y": 31
+    },
+    {
+      "X": 30,
+      "Y": 31
+    }
+  ]
+}

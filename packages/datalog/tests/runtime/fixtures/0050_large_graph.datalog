@@ -1,0 +1,30 @@
+% Test: Larger graph for performance testing
+% Description: A larger graph to test performance characteristics
+% Expected: Transitive closure over 20 nodes
+
+% Linear chain
+edge(1, 2).
+edge(2, 3).
+edge(3, 4).
+edge(4, 5).
+edge(5, 6).
+edge(6, 7).
+edge(7, 8).
+edge(8, 9).
+edge(9, 10).
+edge(10, 11).
+edge(11, 12).
+edge(12, 13).
+edge(13, 14).
+edge(14, 15).
+
+% Some cross-edges
+edge(1, 5).
+edge(5, 10).
+edge(10, 15).
+edge(3, 8).
+edge(8, 13).
+
+% Reachability
+path(X, Y) :- edge(X, Y).
+path(X, Z) :- edge(X, Y), path(Y, Z).

@@ -1,0 +1,62 @@
+{
+  "facts": [
+    {"predicate": "person", "args": ["alice", 30]},
+    {"predicate": "person", "args": ["bob", 25]},
+    {"predicate": "person", "args": ["charlie", 35]},
+    {"predicate": "person", "args": ["diana", 28]},
+    {"predicate": "works_at", "args": ["alice", "techcorp"]},
+    {"predicate": "works_at", "args": ["bob", "techcorp"]},
+    {"predicate": "works_at", "args": ["charlie", "medcorp"]},
+    {"predicate": "works_at", "args": ["diana", "lawfirm"]},
+    {"predicate": "manages", "args": ["alice", "bob"]},
+    {"predicate": "manages", "args": ["charlie", "diana"]}
+  ],
+  "rules": [
+    {
+      "head": {"predicate": "colleague", "args": ["X", "Y"]},
+      "body": [
+        {"predicate": "works_at", "args": ["X", "C"]},
+        {"predicate": "works_at", "args": ["Y", "C"]},
+        {"predicate": "!=", "args": ["X", "Y"]}
+      ]
+    },
+    {
+      "head": {"predicate": "senior", "args": ["X", "Y"]},
+      "body": [
+        {"predicate": "manages", "args": ["X", "Y"]},
+        {"predicate": "person", "args": ["X", "AgeX"]},
+        {"predicate": "person", "args": ["Y", "AgeY"]},
+        {"predicate": ">", "args": ["AgeX", "AgeY"]}
+      ]
+    },
+    {
+      "head": {"predicate": "mentor", "args": ["X", "Y"]},
+      "body": [
+        {"predicate": "senior", "args": ["X", "Y"]},
+        {"predicate": "colleague", "args": ["X", "Y"]}
+      ]
+    }
+  ],
+  "queries": [
+    {
+      "query": "colleague(X, Y)",
+      "result": [
+        {"X": "alice", "Y": "bob"},
+        {"X": "bob", "Y": "alice"}
+      ]
+    },
+    {
+      "query": "senior(X, Y)",
+      "result": [
+        {"X": "alice", "Y": "bob"},
+        {"X": "charlie", "Y": "diana"}
+      ]
+    },
+    {
+      "query": "mentor(X, Y)",
+      "result": [
+        {"X": "alice", "Y": "bob"}
+      ]
+    }
+  ]
+}

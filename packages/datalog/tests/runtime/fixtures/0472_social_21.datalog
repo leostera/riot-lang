@@ -1,0 +1,4 @@
+% Test #0472: social_21
+
+follows('u21', 'u22').
+follower(X,Y) :- follows(X,Y).

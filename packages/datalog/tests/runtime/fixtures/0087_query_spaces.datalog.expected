@@ -1,0 +1,25 @@
+{
+  "facts": [
+    {
+      "predicate": "phrase",
+      "args": [
+        "hello world"
+      ]
+    },
+    {
+      "predicate": "phrase",
+      "args": [
+        "foo bar"
+      ]
+    }
+  ],
+  "query": "phrase(X)",
+  "result": [
+    {
+      "X": "hello world"
+    },
+    {
+      "X": "foo bar"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+% Test: Simple rule derivation
+% Description: Define a rule that derives new facts
+% Expected: Derived facts should be queryable
+
+edge("a", "b").
+edge("b", "c").
+
+% Rule: If there's an edge from X to Y, then X is connected to Y
+connected(X, Y) :- edge(X, Y).

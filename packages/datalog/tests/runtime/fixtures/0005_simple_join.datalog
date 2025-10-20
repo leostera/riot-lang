@@ -1,0 +1,11 @@
+% Test: Simple two-way join
+% Description: Join two predicates on a shared variable
+% Expected: Find entities that satisfy both predicates
+
+parent("alice", "bob").
+parent("bob", "charlie").
+parent("charlie", "dave").
+
+age("alice", 60).
+age("bob", 40).
+age("charlie", 20).

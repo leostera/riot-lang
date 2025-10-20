@@ -1,0 +1,18 @@
+{
+  "facts": [
+    {
+      "predicate": "follows",
+      "args": [
+        "u29",
+        "u30"
+      ]
+    }
+  ],
+  "query": "follower(X,Y)",
+  "result": [
+    {
+      "X": "u29",
+      "Y": "u30"
+    }
+  ]
+}

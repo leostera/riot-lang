@@ -1,0 +1,13 @@
+{
+  "facts": [
+    {
+      "predicate": "binary",
+      "args": [
+        1,
+        2
+      ]
+    }
+  ],
+  "query": "binary(X)",
+  "result": []
+}

@@ -1,0 +1,22 @@
+{
+  "facts": [
+    {
+      "predicate": "r",
+      "args": [
+        1,
+        2
+      ]
+    },
+    {
+      "predicate": "r",
+      "args": [
+        3,
+        4
+      ]
+    }
+  ],
+  "query": "r(_, _)",
+  "result": [
+    {}
+  ]
+}

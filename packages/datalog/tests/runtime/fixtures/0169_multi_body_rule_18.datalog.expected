@@ -1,0 +1,22 @@
+{
+  "facts": [
+    {
+      "predicate": "a",
+      "args": [
+        18
+      ]
+    },
+    {
+      "predicate": "b",
+      "args": [
+        18
+      ]
+    }
+  ],
+  "query": "c(X)",
+  "result": [
+    {
+      "X": 18
+    }
+  ]
+}

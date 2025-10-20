@@ -1,0 +1,20 @@
+{
+  "facts": [
+    {
+      "predicate": "name",
+      "args": [
+        "alice"
+      ]
+    },
+    {
+      "predicate": "name",
+      "args": [
+        "bob"
+      ]
+    }
+  ],
+  "query": "name(\"alice\")",
+  "result": [
+    {}
+  ]
+}

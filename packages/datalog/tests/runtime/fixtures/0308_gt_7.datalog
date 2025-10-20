@@ -1,0 +1,5 @@
+% Test #0308: gt_7
+
+val(8).
+val(13).
+large(X) :- val(X), X > 10.

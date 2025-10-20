@@ -1,0 +1,13 @@
+{
+  "errors": [
+    {
+      "type": "syntax_error",
+      "message": "Predicate name cannot be empty",
+      "span": {
+        "start": 0,
+        "end": 1
+      },
+      "severity": "error"
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+% Test: query_empty_string
+% Number: 0083
+
+val("").
+val("a").

@@ -1,0 +1,31 @@
+{
+  "facts": [
+    {
+      "predicate": "a",
+      "args": [
+        0
+      ]
+    },
+    {
+      "predicate": "b",
+      "args": [
+        0,
+        1
+      ]
+    },
+    {
+      "predicate": "c",
+      "args": [
+        1,
+        2
+      ]
+    }
+  ],
+  "query": "d(X,Z)",
+  "result": [
+    {
+      "X": 0,
+      "Z": 2
+    }
+  ]
+}

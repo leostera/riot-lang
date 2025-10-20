@@ -1,0 +1,97 @@
+{
+  "facts": [
+    {
+      "predicate": "item",
+      "args": [
+        0
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        1
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        2
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        3
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        4
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        5
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        6
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        7
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        8
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        9
+      ]
+    }
+  ],
+  "query": "item(X)",
+  "result": [
+    {
+      "X": 0
+    },
+    {
+      "X": 1
+    },
+    {
+      "X": 2
+    },
+    {
+      "X": 3
+    },
+    {
+      "X": 4
+    },
+    {
+      "X": 5
+    },
+    {
+      "X": 6
+    },
+    {
+      "X": 7
+    },
+    {
+      "X": 8
+    },
+    {
+      "X": 9
+    }
+  ]
+}

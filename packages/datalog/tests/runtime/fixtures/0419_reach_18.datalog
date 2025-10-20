@@ -1,0 +1,6 @@
+% Test #0419: reach_18
+
+edge(18,19).
+edge(19,20).
+reach(X,Y) :- edge(X,Y).
+reach(X,Z) :- reach(X,Y), edge(Y,Z).

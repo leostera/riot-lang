@@ -1,0 +1,17 @@
+% Test: Same generation
+% Description: Multiple recursive rules computing relationships
+% Expected: People in the same generation (cousins, siblings, etc)
+
+parent("grandpa", "parent1").
+parent("grandpa", "parent2").
+parent("parent1", "child1").
+parent("parent1", "child2").
+parent("parent2", "child3").
+parent("parent2", "child4").
+
+% Siblings share a parent
+sibling(X, Y) :- parent(P, X), parent(P, Y), X != Y.
+
+% Same generation: siblings or children of same-generation parents
+same_gen(X, Y) :- sibling(X, Y).
+same_gen(X, Y) :- parent(P1, X), parent(P2, Y), same_gen(P1, P2), X != Y.

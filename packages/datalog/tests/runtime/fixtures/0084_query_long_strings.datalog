@@ -1,0 +1,5 @@
+% Test: query_long_strings
+% Number: 0084
+
+text("the quick brown fox").
+text("jumps over").

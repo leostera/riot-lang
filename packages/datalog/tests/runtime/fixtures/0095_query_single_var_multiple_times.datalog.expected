@@ -1,0 +1,27 @@
+{
+  "facts": [
+    {
+      "predicate": "eq",
+      "args": [
+        1,
+        1
+      ]
+    },
+    {
+      "predicate": "eq",
+      "args": [
+        2,
+        2
+      ]
+    }
+  ],
+  "query": "eq(X, X)",
+  "result": [
+    {
+      "X": 1
+    },
+    {
+      "X": 2
+    }
+  ]
+}

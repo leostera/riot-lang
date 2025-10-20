@@ -1,0 +1,5 @@
+% Test #0316: eq_15
+
+pair(16,16).
+pair(17,18).
+same(X,Y) :- pair(X,Y), X = Y.

@@ -1,0 +1,34 @@
+{
+  "facts": [
+    {
+      "predicate": "e",
+      "args": [
+        42,
+        43
+      ]
+    },
+    {
+      "predicate": "e",
+      "args": [
+        43,
+        44
+      ]
+    },
+    {
+      "predicate": "e",
+      "args": [
+        44,
+        45
+      ]
+    }
+  ],
+  "query": "e(A,B), e(B,C), e(C,D)",
+  "result": [
+    {
+      "A": 42,
+      "B": 43,
+      "C": 44,
+      "D": 45
+    }
+  ]
+}

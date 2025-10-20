@@ -1,0 +1,5 @@
+% Test #0432: component_31
+
+edge(31,32).
+conn(X,Y) :- edge(X,Y).
+conn(X,Z) :- conn(X,Y), edge(Y,Z).

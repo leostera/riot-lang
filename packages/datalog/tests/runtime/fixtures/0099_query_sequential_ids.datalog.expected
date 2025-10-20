@@ -1,0 +1,97 @@
+{
+  "facts": [
+    {
+      "predicate": "id",
+      "args": [
+        0
+      ]
+    },
+    {
+      "predicate": "id",
+      "args": [
+        1
+      ]
+    },
+    {
+      "predicate": "id",
+      "args": [
+        2
+      ]
+    },
+    {
+      "predicate": "id",
+      "args": [
+        3
+      ]
+    },
+    {
+      "predicate": "id",
+      "args": [
+        4
+      ]
+    },
+    {
+      "predicate": "id",
+      "args": [
+        5
+      ]
+    },
+    {
+      "predicate": "id",
+      "args": [
+        6
+      ]
+    },
+    {
+      "predicate": "id",
+      "args": [
+        7
+      ]
+    },
+    {
+      "predicate": "id",
+      "args": [
+        8
+      ]
+    },
+    {
+      "predicate": "id",
+      "args": [
+        9
+      ]
+    }
+  ],
+  "query": "id(X)",
+  "result": [
+    {
+      "X": 0
+    },
+    {
+      "X": 1
+    },
+    {
+      "X": 2
+    },
+    {
+      "X": 3
+    },
+    {
+      "X": 4
+    },
+    {
+      "X": 5
+    },
+    {
+      "X": 6
+    },
+    {
+      "X": 7
+    },
+    {
+      "X": 8
+    },
+    {
+      "X": 9
+    }
+  ]
+}

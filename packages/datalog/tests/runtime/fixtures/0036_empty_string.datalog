@@ -1,0 +1,5 @@
+% Test: empty_string
+% Number: 0036
+
+str("").
+str("a").

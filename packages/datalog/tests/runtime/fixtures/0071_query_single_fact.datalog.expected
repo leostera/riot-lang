@@ -1,0 +1,16 @@
+{
+  "facts": [
+    {
+      "predicate": "single",
+      "args": [
+        42
+      ]
+    }
+  ],
+  "query": "single(X)",
+  "result": [
+    {
+      "X": 42
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "facts": [
+    {
+      "predicate": "person",
+      "args": [
+        "alice",
+        30,
+        "engineer"
+      ]
+    },
+    {
+      "predicate": "person",
+      "args": [
+        "bob",
+        25,
+        "doctor"
+      ]
+    }
+  ],
+  "query": "person(X, Y, Z)",
+  "result": [
+    {
+      "X": "alice",
+      "Y": 30,
+      "Z": "engineer"
+    },
+    {
+      "X": "bob",
+      "Y": 25,
+      "Z": "doctor"
+    }
+  ]
+}

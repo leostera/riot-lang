@@ -1,0 +1,28 @@
+{
+  "facts": [
+    {
+      "predicate": "item",
+      "args": [
+        39
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        40
+      ]
+    },
+    {
+      "predicate": "selected",
+      "args": [
+        39
+      ]
+    }
+  ],
+  "query": "not_selected(X)",
+  "result": [
+    {
+      "X": 40
+    }
+  ]
+}

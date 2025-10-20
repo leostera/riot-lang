@@ -1,0 +1,29 @@
+{
+  "facts": [
+    {
+      "predicate": "word",
+      "args": [
+        "hello",
+        "world"
+      ]
+    },
+    {
+      "predicate": "word",
+      "args": [
+        "foo",
+        "bar"
+      ]
+    }
+  ],
+  "query": "word(X, Y)",
+  "result": [
+    {
+      "X": "hello",
+      "Y": "world"
+    },
+    {
+      "X": "foo",
+      "Y": "bar"
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+% Test: query_wrong_predicate
+% Number: 0073
+
+exists(1).

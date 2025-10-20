@@ -1,0 +1,7 @@
+% Test: chain_relation
+% Number: 0043
+
+next(1, 2).
+next(2, 3).
+next(3, 4).
+next(4, 5).

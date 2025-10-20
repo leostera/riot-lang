@@ -1,0 +1,5 @@
+% Test #0199: chain_rule_48
+
+r1(48,49).
+r2(X,Y) :- r1(X,Y).
+r3(X,Y) :- r2(X,Y).

@@ -1,0 +1,5 @@
+% Test: query_sparse_data
+% Number: 0098
+
+sparse(1, 100).
+sparse(2, 200).

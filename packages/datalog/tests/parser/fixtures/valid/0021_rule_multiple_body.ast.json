@@ -1,0 +1,51 @@
+{
+  "type": "program",
+  "items": [
+    {
+      "type": "rule",
+      "head": {
+        "predicate": "ancestor",
+        "args": [
+          {
+            "type": "variable",
+            "name": "X"
+          },
+          {
+            "type": "variable",
+            "name": "Z"
+          }
+        ]
+      },
+      "body": [
+        {
+          "type": "atom",
+          "predicate": "parent",
+          "args": [
+            {
+              "type": "variable",
+              "name": "X"
+            },
+            {
+              "type": "variable",
+              "name": "Y"
+            }
+          ]
+        },
+        {
+          "type": "atom",
+          "predicate": "parent",
+          "args": [
+            {
+              "type": "variable",
+              "name": "Y"
+            },
+            {
+              "type": "variable",
+              "name": "Z"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

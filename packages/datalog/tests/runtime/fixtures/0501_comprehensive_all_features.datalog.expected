@@ -1,0 +1,72 @@
+{
+  "facts": [
+    {
+      "predicate": "node",
+      "args": [
+        1
+      ]
+    },
+    {
+      "predicate": "node",
+      "args": [
+        2
+      ]
+    },
+    {
+      "predicate": "node",
+      "args": [
+        3
+      ]
+    },
+    {
+      "predicate": "edge",
+      "args": [
+        1,
+        2
+      ]
+    },
+    {
+      "predicate": "edge",
+      "args": [
+        2,
+        3
+      ]
+    },
+    {
+      "predicate": "value",
+      "args": [
+        1,
+        10
+      ]
+    },
+    {
+      "predicate": "value",
+      "args": [
+        2,
+        20
+      ]
+    },
+    {
+      "predicate": "value",
+      "args": [
+        3,
+        30
+      ]
+    }
+  ],
+  "query": "connected(X, Y)",
+  "result": [
+    {
+      "X": 1,
+      "Y": 2
+    },
+    {
+      "X": 1,
+      "Y": 3
+    },
+    {
+      "X": 2,
+      "Y": 3
+    }
+  ]
+}

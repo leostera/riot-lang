@@ -1,0 +1,4 @@
+% Test #0491: access_40
+
+has_role('user40', 'admin').
+can_access(U,R) :- has_role(U,R).

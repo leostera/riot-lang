@@ -1,0 +1,5 @@
+% Test #0337: range_36
+
+num(37).
+num(47).
+in_range(X) :- num(X), X >= 37, X <= 42.

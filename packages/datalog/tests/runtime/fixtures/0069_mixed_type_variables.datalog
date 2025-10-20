@@ -1,0 +1,5 @@
+% Test: mixed_type_variables
+% Number: 0069
+
+data(1, "a").
+data(2, "b").

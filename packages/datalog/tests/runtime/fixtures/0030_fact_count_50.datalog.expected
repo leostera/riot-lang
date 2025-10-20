@@ -1,0 +1,457 @@
+{
+  "facts": [
+    {
+      "predicate": "item",
+      "args": [
+        0
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        1
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        2
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        3
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        4
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        5
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        6
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        7
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        8
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        9
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        10
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        11
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        12
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        13
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        14
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        15
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        16
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        17
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        18
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        19
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        20
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        21
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        22
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        23
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        24
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        25
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        26
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        27
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        28
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        29
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        30
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        31
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        32
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        33
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        34
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        35
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        36
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        37
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        38
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        39
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        40
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        41
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        42
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        43
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        44
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        45
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        46
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        47
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        48
+      ]
+    },
+    {
+      "predicate": "item",
+      "args": [
+        49
+      ]
+    }
+  ],
+  "query": "item(X)",
+  "result": [
+    {
+      "X": 0
+    },
+    {
+      "X": 1
+    },
+    {
+      "X": 2
+    },
+    {
+      "X": 3
+    },
+    {
+      "X": 4
+    },
+    {
+      "X": 5
+    },
+    {
+      "X": 6
+    },
+    {
+      "X": 7
+    },
+    {
+      "X": 8
+    },
+    {
+      "X": 9
+    },
+    {
+      "X": 10
+    },
+    {
+      "X": 11
+    },
+    {
+      "X": 12
+    },
+    {
+      "X": 13
+    },
+    {
+      "X": 14
+    },
+    {
+      "X": 15
+    },
+    {
+      "X": 16
+    },
+    {
+      "X": 17
+    },
+    {
+      "X": 18
+    },
+    {
+      "X": 19
+    },
+    {
+      "X": 20
+    },
+    {
+      "X": 21
+    },
+    {
+      "X": 22
+    },
+    {
+      "X": 23
+    },
+    {
+      "X": 24
+    },
+    {
+      "X": 25
+    },
+    {
+      "X": 26
+    },
+    {
+      "X": 27
+    },
+    {
+      "X": 28
+    },
+    {
+      "X": 29
+    },
+    {
+      "X": 30
+    },
+    {
+      "X": 31
+    },
+    {
+      "X": 32
+    },
+    {
+      "X": 33
+    },
+    {
+      "X": 34
+    },
+    {
+      "X": 35
+    },
+    {
+      "X": 36
+    },
+    {
+      "X": 37
+    },
+    {
+      "X": 38
+    },
+    {
+      "X": 39
+    },
+    {
+      "X": 40
+    },
+    {
+      "X": 41
+    },
+    {
+      "X": 42
+    },
+    {
+      "X": 43
+    },
+    {
+      "X": 44
+    },
+    {
+      "X": 45
+    },
+    {
+      "X": 46
+    },
+    {
+      "X": 47
+    },
+    {
+      "X": 48
+    },
+    {
+      "X": 49
+    }
+  ]
+}

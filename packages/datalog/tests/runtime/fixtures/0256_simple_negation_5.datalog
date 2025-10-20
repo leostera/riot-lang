@@ -1,0 +1,6 @@
+% Test #0256: simple_negation_5
+
+node(5).
+node(6).
+edge(5,6).
+not_edge(X,Y) :- node(X), node(Y), !edge(X,Y).

@@ -1,0 +1,38 @@
+{
+  "facts": [
+    {
+      "predicate": "node",
+      "args": [
+        9
+      ]
+    },
+    {
+      "predicate": "node",
+      "args": [
+        10
+      ]
+    },
+    {
+      "predicate": "edge",
+      "args": [
+        9,
+        10
+      ]
+    }
+  ],
+  "query": "not_edge(X,Y)",
+  "result": [
+    {
+      "X": 10,
+      "Y": 9
+    },
+    {
+      "X": 10,
+      "Y": 10
+    },
+    {
+      "X": 9,
+      "Y": 9
+    }
+  ]
+}

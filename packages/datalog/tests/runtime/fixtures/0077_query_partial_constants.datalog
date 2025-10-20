@@ -1,0 +1,5 @@
+% Test: query_partial_constants
+% Number: 0077
+
+r(1, 2, 3).
+r(1, 4, 5).

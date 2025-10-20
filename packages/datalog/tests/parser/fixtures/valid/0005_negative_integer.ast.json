@@ -1,0 +1,15 @@
+{
+  "type": "program",
+  "items": [
+    {
+      "type": "fact",
+      "predicate": "value",
+      "args": [
+        {
+          "type": "integer",
+          "value": -42
+        }
+      ]
+    }
+  ]
+}

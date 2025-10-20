@@ -1,0 +1,27 @@
+{
+  "facts": [
+    {
+      "predicate": "e",
+      "args": [
+        14,
+        15
+      ]
+    },
+    {
+      "predicate": "e",
+      "args": [
+        15,
+        14
+      ]
+    }
+  ],
+  "query": "cyc(X)",
+  "result": [
+    {
+      "X": 14
+    },
+    {
+      "X": 15
+    }
+  ]
+}

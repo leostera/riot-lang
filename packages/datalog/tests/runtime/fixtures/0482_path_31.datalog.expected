@@ -1,0 +1,17 @@
+{
+  "facts": [
+    {
+      "predicate": "in_dir",
+      "args": [
+        "/root",
+        "/root/file31"
+      ]
+    }
+  ],
+  "query": "file(F)",
+  "result": [
+    {
+      "F": "/root/file31"
+    }
+  ]
+}

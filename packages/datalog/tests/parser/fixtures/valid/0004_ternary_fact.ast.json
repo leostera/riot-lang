@@ -1,0 +1,23 @@
+{
+  "type": "program",
+  "items": [
+    {
+      "type": "fact",
+      "predicate": "person",
+      "args": [
+        {
+          "type": "string",
+          "value": "alice"
+        },
+        {
+          "type": "integer",
+          "value": 30
+        },
+        {
+          "type": "string",
+          "value": "engineer"
+        }
+      ]
+    }
+  ]
+}

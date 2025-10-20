@@ -1,0 +1,4 @@
+% Test #0162: simple_rule_11
+
+fact(11).
+derived(X) :- fact(X).

@@ -1,0 +1,18 @@
+{
+  "facts": [
+    {
+      "predicate": "manages",
+      "args": [
+        "boss13",
+        "emp13"
+      ]
+    }
+  ],
+  "query": "reports_to(X,Y)",
+  "result": [
+    {
+      "X": "emp13",
+      "Y": "boss13"
+    }
+  ]
+}

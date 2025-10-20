@@ -1,0 +1,6 @@
+% Test #0241: ancestor_40
+
+parent(40,41).
+parent(41,42).
+anc(X,Y) :- parent(X,Y).
+anc(X,Z) :- parent(X,Y), anc(Y,Z).

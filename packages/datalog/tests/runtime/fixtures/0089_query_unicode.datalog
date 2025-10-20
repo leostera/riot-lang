@@ -1,0 +1,5 @@
+% Test: query_unicode
+% Number: 0089
+
+char("α").
+char("β").

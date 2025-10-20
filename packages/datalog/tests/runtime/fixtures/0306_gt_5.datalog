@@ -1,0 +1,5 @@
+% Test #0306: gt_5
+
+val(6).
+val(11).
+large(X) :- val(X), X > 8.

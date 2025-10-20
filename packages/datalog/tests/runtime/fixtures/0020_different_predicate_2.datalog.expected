@@ -1,0 +1,28 @@
+{
+  "facts": [
+    {
+      "predicate": "pred0",
+      "args": [
+        "value0"
+      ]
+    },
+    {
+      "predicate": "pred1",
+      "args": [
+        "value1"
+      ]
+    },
+    {
+      "predicate": "pred2",
+      "args": [
+        "value2"
+      ]
+    }
+  ],
+  "query": "pred0(X)",
+  "result": [
+    {
+      "X": "value0"
+    }
+  ]
+}

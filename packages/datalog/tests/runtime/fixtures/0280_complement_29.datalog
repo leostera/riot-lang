@@ -1,0 +1,6 @@
+% Test #0280: complement_29
+
+item(29).
+item(30).
+selected(29).
+not_selected(X) :- item(X), !selected(X).

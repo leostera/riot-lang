@@ -1,0 +1,4 @@
+% Test: query_nested_structure_simulation
+% Number: 0097
+
+tree(1, 2, 3, 4).

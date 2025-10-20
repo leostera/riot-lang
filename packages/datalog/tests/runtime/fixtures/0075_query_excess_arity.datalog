@@ -1,0 +1,4 @@
+% Test: query_excess_arity
+% Number: 0075
+
+unary(1).

@@ -1,0 +1,19 @@
+{
+  "type": "program",
+  "items": [
+    {
+      "type": "comment",
+      "text": " This is a comment"
+    },
+    {
+      "type": "fact",
+      "predicate": "fact",
+      "args": [
+        {
+          "type": "integer",
+          "value": 1
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "facts": [
+    {
+      "predicate": "code",
+      "args": [
+        "123"
+      ]
+    },
+    {
+      "predicate": "code",
+      "args": [
+        "456"
+      ]
+    }
+  ],
+  "query": "code(X)",
+  "result": [
+    {
+      "X": "123"
+    },
+    {
+      "X": "456"
+    }
+  ]
+}

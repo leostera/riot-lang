@@ -1,0 +1,5 @@
+% Test #0452: family_1
+
+parent('p1', 'c1').
+parent('c1', 'g1').
+grandparent(X,Z) :- parent(X,Y), parent(Y,Z).

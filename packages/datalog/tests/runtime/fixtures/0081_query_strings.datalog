@@ -1,0 +1,5 @@
+% Test: query_strings
+% Number: 0081
+
+name("alice").
+name("bob").

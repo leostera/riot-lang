@@ -1,0 +1,14 @@
+{
+  "errors": [
+    {
+      "type": "syntax_error",
+      "message": "Variables must start with uppercase letter",
+      "span": {
+        "start": 5,
+        "end": 6
+      },
+      "help": "Change 'x' to 'X'",
+      "severity": "error"
+    }
+  ]
+}

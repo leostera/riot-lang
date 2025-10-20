@@ -1,0 +1,18 @@
+{
+  "facts": [
+    {
+      "predicate": "has_role",
+      "args": [
+        "user45",
+        "admin"
+      ]
+    }
+  ],
+  "query": "can_access(U,R)",
+  "result": [
+    {
+      "U": "user45",
+      "R": "admin"
+    }
+  ]
+}

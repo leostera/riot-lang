@@ -1,0 +1,12 @@
+{
+  "facts": [
+    {
+      "predicate": "nothing",
+      "args": [
+        1
+      ]
+    }
+  ],
+  "query": "nothing(X), nothing(Y), X != Y",
+  "result": []
+}

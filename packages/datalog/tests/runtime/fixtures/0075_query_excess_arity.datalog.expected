@@ -1,0 +1,12 @@
+{
+  "facts": [
+    {
+      "predicate": "unary",
+      "args": [
+        1
+      ]
+    }
+  ],
+  "query": "unary(X, Y)",
+  "result": []
+}

@@ -1,0 +1,27 @@
+{
+  "facts": [
+    {
+      "predicate": "val",
+      "args": [
+        22
+      ]
+    },
+    {
+      "predicate": "val",
+      "args": [
+        23
+      ]
+    }
+  ],
+  "query": "diff(X,Y)",
+  "result": [
+    {
+      "X": 22,
+      "Y": 23
+    },
+    {
+      "X": 23,
+      "Y": 22
+    }
+  ]
+}

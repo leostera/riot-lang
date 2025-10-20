@@ -1,0 +1,12 @@
+{
+  "facts": [
+    {
+      "predicate": "exists",
+      "args": [
+        1
+      ]
+    }
+  ],
+  "query": "missing(X)",
+  "result": []
+}

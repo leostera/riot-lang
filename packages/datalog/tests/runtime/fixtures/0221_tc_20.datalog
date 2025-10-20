@@ -1,0 +1,9 @@
+% Test #0221: tc_20
+
+edge(20,21).
+edge(21,22).
+edge(22,23).
+edge(23,24).
+edge(24,25).
+path(X,Y) :- edge(X,Y).
+path(X,Z) :- edge(X,Y), path(Y,Z).

@@ -1,0 +1,15 @@
+{
+  "type": "program",
+  "items": [
+    {
+      "type": "fact",
+      "predicate": "text",
+      "args": [
+        {
+          "type": "string",
+          "value": "Hello \u4e16\u754c \ud83c\udf0d"
+        }
+      ]
+    }
+  ]
+}
