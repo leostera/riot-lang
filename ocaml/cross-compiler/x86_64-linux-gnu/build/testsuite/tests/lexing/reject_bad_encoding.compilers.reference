@@ -1,5 +1,0 @@
-Line 4, characters 8-10:
-4 | let x = ÿa.x;;
-            ^^
-Error: Invalid encoding of identifier ÿa.
-
