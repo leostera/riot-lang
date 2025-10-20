@@ -1,3 +1,4 @@
+open Http
 open Std
 open Std.Data
 
@@ -822,6 +823,5 @@ let () =
         request_tests @ response_tests @ uri_tests @ http2_tests @ ws_tests
       in
 
-      Test.Cli.main ~name:"http" ~tests:all_tests ~args ())
+      Test.Cli.main ~name:"http" ~tests:all_tests ~args)
     ~args:Env.args
-  |> exit

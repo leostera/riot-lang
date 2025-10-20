@@ -7,5 +7,5 @@ std = { path = "../std" }
 miniriot = { path = "../miniriot" }
 
 [[bin]]
-name = "http_tests"
-path = "src/main.ml"
+name = "parser_tests"
+path = "tests/parser_tests.ml"
