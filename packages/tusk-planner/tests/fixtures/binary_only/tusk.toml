@@ -1,0 +1,7 @@
+[package]
+name = "binary_only"
+version = "0.1.0"
+
+[[bin]]
+name = "main"
+path = "src/main.ml"

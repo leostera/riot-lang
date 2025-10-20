@@ -9,28 +9,12 @@ path = "src/Tusk_planner.ml"
 std = "*"
 miniriot = "*"
 tusk-model = "*"
-tusk-ocaml = "*"
-
-# [[bin]]
-# name = "binary-tests"
-# path = "tests/binary_tests.ml"
-
-# [[bin]]
-# name = "graph-builder-tests"
-# path = "tests/graph_builder_tests.ml"
-
-# [[bin]]
-# name = "scanner-tests"
-# path = "tests/scanner_tests.ml"
-
-# [[bin]]
-# name = "planner-tests"
-# path = "tests/planner_tests.ml"
+tusk-toolchain = "*"
 
 [[bin]]
-name = "new-planner-tests"
-path = "tests/new_planner_tests.ml"
+name = "scanner-tests"
+path = "tests/scanner_tests.ml"
 
 [[bin]]
-name = "edge-case-tests"
-path = "tests/edge_case_tests.ml"
+name = "planner-tests"
+path = "tests/planner_tests.ml"

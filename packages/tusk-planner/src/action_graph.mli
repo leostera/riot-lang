@@ -24,7 +24,7 @@ val hash_action_node : t -> Action_node.t -> Crypto.hash
 
 val from_module_graph : 
   package:Package.t ->
-  toolchain:Toolchains.toolchain ->
+  toolchain:Tusk_toolchain.t ->
   Module_node.t G.t -> 
   t * Path.t list
 (** Map a module graph to an action graph and collect all outputs.
@@ -44,5 +44,14 @@ val add_node : t -> Action_node.action_spec -> Action_node.t
 val add_dependency : t -> Action_node.t -> depends_on:Action_node.t -> unit
 val topo_sort : t -> Action_node.t list
 val nodes : t -> Action_node.t list
+(** Returns all nodes in deterministic topological order *)
 val graph : t -> Action_node.action_spec G.t
 val to_action_list : t -> Action.t list
+val to_json : t -> Data.Json.t
+(** Convert action graph to JSON with sorted nodes for deterministic output *)
+
+val from_json : Data.Json.t -> (t, string) Result.t
+(** Reconstruct action graph from JSON for comparison *)
+
+val equal : t -> t -> bool
+(** Compare two action graphs structurally by comparing topologically sorted nodes *)

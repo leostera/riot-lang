@@ -15,17 +15,14 @@ let template (modules : Module.t list) =
     |> List.sort_uniq (fun (n1, _) (n2, _) -> String.compare n1 n2)
   in
   let body =
-    List.map
-      (fun (name, ns) -> format "module %s = %s" name ns)
-      unique_modules
+    List.map (fun (name, ns) -> format "module %s = %s" name ns) unique_modules
   in
   String.concat "\n" (header :: body)
 
 let make_node (ns : Namespace.t) (modules : Module.t list) =
   let ns_prefix = Namespace.to_string ns in
   let filename =
-    if ns_prefix = "" then "Aliases.ml-gen"
-    else ns_prefix ^ "__Aliases.ml-gen"
+    if ns_prefix = "" then "Aliases.ml-gen" else ns_prefix ^ "__Aliases.ml-gen"
   in
   let path = Path.v filename in
   let mod_ = Module.make ~namespace:Namespace.empty ~filename:path in

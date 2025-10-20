@@ -1,4 +1,5 @@
 open Std
+
 open Tusk_model
 (** OCamldep wrapper - handles dependency analysis *)
 
@@ -165,7 +166,8 @@ let batch_deps ~toolchain ~cwd ~files ~package_namespace =
                     |> List.map String.trim
                     |> List.filter (fun s -> s <> "")
                     |> List.map (fun modname ->
-                        Module_name.of_string ~namespace:package_namespace modname)
+                        Module_name.of_string ~namespace:package_namespace
+                          modname)
                 in
                 Some (file, dep_list)
             | _ -> None)

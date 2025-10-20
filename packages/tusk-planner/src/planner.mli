@@ -1,17 +1,16 @@
-(** Build Planner - Orchestrates build graph creation, wiring, and action generation
-    
-    This module provides a high-level interface for planning package builds:
-    1. Creates module dependency graph from source files
-    2. Wires dependencies using ocamldep
-    3. Generates action graph for parallel execution
-*)
+(** Build Planner - Orchestrates build graph creation, wiring, and action
+    generation
+
+    This module provides a high-level interface for planning package builds: 1.
+    Creates module dependency graph from source files 2. Wires dependencies
+    using ocamldep 3. Generates action graph for parallel execution *)
 
 open Std
 open Tusk_model
 
 type plan_input = {
   package : Package.t;
-  toolchain : Toolchains.toolchain;
+  toolchain : Tusk_toolchain.t;
   workspace : Workspace.t;
   planning_root : Path.t;
   dependencies : Dependency.t list;

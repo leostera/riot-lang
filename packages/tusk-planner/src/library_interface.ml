@@ -1,6 +1,5 @@
 open Std
 open Tusk_model
-
 module G = Std.Graph.SimpleGraph
 
 let template (children : Module.t list) =

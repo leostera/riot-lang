@@ -1,16 +1,15 @@
 open Std
 
 (** Module Scanner - Recursively scans directories for source files
-    
-    This module provides type-safe directory scanning that:
-    1. Tags files by type (ML, MLI, C, H) instead of using string extensions
-    2. Sorts entries for deterministic compilation order
-    3. Returns paths relative to the source directory
-    
+
+    This module provides type-safe directory scanning that: 1. Tags files by
+    type (ML, MLI, C, H) instead of using string extensions 2. Sorts entries for
+    deterministic compilation order 3. Returns paths relative to the source
+    directory
+
     The sorting order ensures:
     - .mli files come before .ml files (interfaces must be compiled first)
-    - Directories come last (allows processing files before descending)
-*)
+    - Directories come last (allows processing files before descending) *)
 
 type entry =
   | ML of string * Path.t
@@ -21,17 +20,13 @@ type entry =
   | Dir of string * Path.t * entry list
 
 (** Compare entries for sorting.
-    
-    Sort order:
-    1. MLI files first (must compile interfaces before implementations)
-    2. ML files second
-    3. C and H files
-    4. Other files
-    5. Directories last
-    
-    This ensures proper OCaml compilation order and allows processing
-    all files in a directory before descending into subdirectories.
-*)
+
+    Sort order: 1. MLI files first (must compile interfaces before
+    implementations) 2. ML files second 3. C and H files 4. Other files 5.
+    Directories last
+
+    This ensures proper OCaml compilation order and allows processing all files
+    in a directory before descending into subdirectories. *)
 let compare_entries e1 e2 =
   match (e1, e2) with
   | MLI _, ML _ -> -1
@@ -41,20 +36,19 @@ let compare_entries e1 e2 =
   | _ -> 0
 
 (** Recursively scan a directory and build a hierarchical entry list.
-    
+
     Parameters:
     - from_dir: Absolute path to scan (e.g., /abs/path/project/src)
     - rel_path: Relative path for entries (e.g., src)
-    
+
     The function maintains two paths:
     - from_dir: Used for filesystem operations (absolute)
     - rel_path: Stored in entries (relative to package root)
-    
-    This allows the rest of the build system to work with relative paths
-    while filesystem operations use absolute paths.
-    
-    Returns entries sorted by type (MLI, ML, C, H, Other, Dir).
-*)
+
+    This allows the rest of the build system to work with relative paths while
+    filesystem operations use absolute paths.
+
+    Returns entries sorted by type (MLI, ML, C, H, Other, Dir). *)
 let rec scan_directory ~from_dir ~rel_path =
   match Fs.read_dir from_dir with
   | Error _ -> []
@@ -86,14 +80,11 @@ let rec scan_directory ~from_dir ~rel_path =
       List.sort compare_entries scanned
 
 (** Scan a source directory relative to project root.
-    
-    Example:
-      root = /home/user/project
-      source_dir = src
-      
-    This scans /home/user/project/src and returns entries with paths
-    like "src/main.ml", "src/utils/helper.ml" (relative to project root).
-*)
+
+    Example: root = /home/user/project source_dir = src
+
+    This scans /home/user/project/src and returns entries with paths like
+    "src/main.ml", "src/utils/helper.ml" (relative to project root). *)
 let scan ~root ~source_dir =
   let dir = Path.(root / source_dir) in
   scan_directory ~from_dir:dir ~rel_path:source_dir

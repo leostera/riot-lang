@@ -1,25 +1,24 @@
 open Std
 open Tusk_model
-open Tusk_ocaml
 
 type t =
   | CompileInterface of {
       source : Path.t;
       output : Path.t;
       includes : Path.t list;
-      flags : Ocamlc.compiler_flag list;
+      flags : Tusk_toolchain.Ocamlc.compiler_flag list;
     }
   | CompileImplementation of {
       source : Path.t;
       output : Path.t;
       includes : Path.t list;
-      flags : Ocamlc.compiler_flag list;
+      flags : Tusk_toolchain.Ocamlc.compiler_flag list;
     }
   | GenerateInterface of {
       source : Path.t;
       output : Path.t;
       includes : Path.t list;
-      flags : Ocamlc.compiler_flag list;
+      flags : Tusk_toolchain.Ocamlc.compiler_flag list;
     }
   | CompileC of { source : Path.t; output : Path.t }
   | CreateLibrary of {
@@ -37,3 +36,6 @@ type t =
   | WriteFile of { destination : Path.t; content : string }
 
 val to_string : t -> string
+val to_json : t -> Data.Json.t
+val from_json : Data.Json.t -> (t, string) Result.t
+val equal : t -> t -> bool

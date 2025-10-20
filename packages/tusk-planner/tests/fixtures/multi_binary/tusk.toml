@@ -1,0 +1,11 @@
+[package]
+name = "multi_binary"
+version = "0.1.0"
+
+[[bin]]
+name = "cli"
+path = "src/cli.ml"
+
+[[bin]]
+name = "server"
+path = "src/server.ml"

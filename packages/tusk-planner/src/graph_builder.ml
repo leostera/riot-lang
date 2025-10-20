@@ -1,38 +1,37 @@
 (** Graph Builder - Constructs module dependency graphs for OCaml packages
-    
+
     This module implements the core build graph construction algorithm that:
-    
-    1. SCANNING PHASE: Recursively scans source directories to build a forest of nodes
-       - Creates nodes for ML/MLI/C/H files
-       - Generates library interface modules for directories
-       - Creates alias modules for namespace flattening
-       - Adds structural edges (parent-child, ML->MLI, library dependencies)
-    
+
+    1. SCANNING PHASE: Recursively scans source directories to build a forest of
+    nodes
+    - Creates nodes for ML/MLI/C/H files
+    - Generates library interface modules for directories
+    - Creates alias modules for namespace flattening
+    - Adds structural edges (parent-child, ML->MLI, library dependencies)
+
     2. WIRING PHASE: Runs ocamldep to discover module-level dependencies
-       - Collects all concrete ML/MLI files from the graph
-       - Executes ocamldep in batch mode for performance
-       - Adds dependency edges based on `open` statements and module references
-       - Skips MLI -> ML edges (interfaces shouldn't depend on implementations)
-    
+    - Collects all concrete ML/MLI files from the graph
+    - Executes ocamldep in batch mode for performance
+    - Adds dependency edges based on `open` statements and module references
+    - Skips MLI -> ML edges (interfaces shouldn't depend on implementations)
+
     Key edge cases handled:
     - Binary sources must be excluded from library compilation
-    - Library interface files (foo/foo.ml) must not be included in their own children
+    - Library interface files (foo/foo.ml) must not be included in their own
+      children
     - Subdirectories create virtual modules if no corresponding file exists
     - Namespace management for nested libraries
     - Cycle prevention between library interfaces and sublibraries
     - MLI files cannot depend on ML files (enforced during wiring)
-    
+
     The algorithm is a port of minitusk's dep_graph.ml with full support for:
     - Namespacing (Foo__Bar__Baz)
     - Directory-based libraries
     - Recursive sublibraries
-    - Generated vs concrete library interface modules
-*)
+    - Generated vs concrete library interface modules *)
 
 open Std
 open Tusk_model
-open Tusk_ocaml
-
 module G = Std.Graph.SimpleGraph
 
 type config = {
@@ -40,7 +39,7 @@ type config = {
   source_dir : Path.t;
   namespace : string;
   package : Package.t;
-  toolchain : Toolchains.toolchain;
+  toolchain : Tusk_toolchain.t;
   workspace : Workspace.t;
 }
 
@@ -51,20 +50,21 @@ type t = {
   entries : Module_scanner.entry list;
 }
 
-(** Scan context passed through recursive directory traversal.
-    
-    Fields:
-    - ns: Current namespace (e.g., [] for top-level, ["Foo"; "Bar"] for Foo/Bar/)
-    - parent_intf: Library interface node that interface files should depend on
-    - parent_impl: Library implementation node that implementation files should depend on
-    - aliases: Alias modules in scope that all files should open
-*)
 type scan_ctx = {
   ns : Namespace.t;
   parent_intf : Module_node.t G.node;
   parent_impl : Module_node.t G.node;
   aliases : Module_node.t G.node list;
 }
+(** Scan context passed through recursive directory traversal.
+
+    Fields:
+    - ns: Current namespace (e.g., [] for top-level, ["Foo"; "Bar"] for
+      Foo/Bar/)
+    - parent_intf: Library interface node that interface files should depend on
+    - parent_impl: Library implementation node that implementation files should
+      depend on
+    - aliases: Alias modules in scope that all files should open *)
 
 let make_relative ~base ~path =
   let base_str = Path.to_string base in
@@ -76,30 +76,29 @@ let make_relative ~base ~path =
   else path
 
 (** Check if a path is a binary source file.
-    
-    Binary paths are stored as ABSOLUTE in Package.binary, while scanned
-    paths are RELATIVE to package root. We must normalize both before comparing.
-*)
+
+    Binary paths are stored as ABSOLUTE in Package.binary, while scanned paths
+    are RELATIVE to package root. We must normalize both before comparing. *)
 let is_binary config path =
   let bin_rel = make_relative ~base:config.package.path ~path in
   List.exists
     (fun (bin : Package.binary) ->
-      let bin_abs_rel = make_relative ~base:config.package.path ~path:bin.path in
+      let bin_abs_rel =
+        make_relative ~base:config.package.path ~path:bin.path
+      in
       Path.equal path bin_rel && Path.equal bin_rel bin_abs_rel)
     config.package.binaries
 
 (** Recursively scan directory entries and build graph nodes.
-    
-    Processing order (entries are pre-sorted by Module_scanner):
-    1. MLI files (interfaces must compile before implementations)
-    2. ML files (but binaries are handled separately)
-    3. C files (compiled to .o objects)
-    4. H files (headers, no compilation needed)
-    5. Directories (create library interface modules, descend recursively)
-    
-    Binary detection uses a guard pattern to separate binary handling
-    from regular module handling, keeping each function focused.
-*)
+
+    Processing order (entries are pre-sorted by Module_scanner): 1. MLI files
+    (interfaces must compile before implementations) 2. ML files (but binaries
+    are handled separately) 3. C files (compiled to .o objects) 4. H files
+    (headers, no compilation needed) 5. Directories (create library interface
+    modules, descend recursively)
+
+    Binary detection uses a guard pattern to separate binary handling from
+    regular module handling, keeping each function focused. *)
 let rec do_scan ~t ~ctx entries =
   match entries with
   | [] -> ()
@@ -117,8 +116,7 @@ let rec do_scan ~t ~ctx entries =
       | Module_scanner.H (_, path) ->
           handle_h_file ~t ~ctx path;
           do_scan ~t ~ctx rest
-      | Module_scanner.Other _ ->
-          do_scan ~t ~ctx rest
+      | Module_scanner.Other _ -> do_scan ~t ~ctx rest
       | Module_scanner.Dir (name, path, children) ->
           handle_library ~t ~ctx path name children;
           do_scan ~t ~ctx rest)
@@ -136,23 +134,20 @@ and handle_h_file ~t ~ctx path =
   G.add_edge parent_impl ~depends_on:h_node
 
 (** Handle a binary source file.
-    
+
     Binaries are compiled separately from the library, so we do nothing during
     the library scan phase. Binary compilation will be handled later during
-    action generation.
-*)
+    action generation. *)
 and handle_ocaml_binary ~t ~ctx:_ _path = ()
 
 (** Handle a regular OCaml module file (.ml or .mli).
-    
-    Creates a graph node and adds structural edges:
-    1. ML implementation -> corresponding MLI interface (if it exists)
-    2. Module -> parent library interface
-    3. Module -> alias modules in scope (for namespace flattening)
-    
+
+    Creates a graph node and adds structural edges: 1. ML implementation ->
+    corresponding MLI interface (if it exists) 2. Module -> parent library
+    interface 3. Module -> alias modules in scope (for namespace flattening)
+
     The registry tracks modules by name so we can later find the corresponding
-    .mli when processing a .ml file.
-*)
+    .mli when processing a .ml file. *)
 and handle_ocaml_module ~t ~ctx path =
   let { ns; aliases; parent_impl; parent_intf } = ctx in
 
@@ -178,8 +173,8 @@ and handle_ocaml_module ~t ~ctx path =
             let intf_node = G.get_node t.graph intf_node_id in
             match intf_node.value.kind with
             | MLI intf_mod
-              when Module.module_name intf_mod |> Module_name.to_string = mod_name
-              ->
+              when Module.module_name intf_mod
+                   |> Module_name.to_string = mod_name ->
                 G.add_edge node ~depends_on:intf_node
             | _ -> ())
           node_ids
@@ -192,51 +187,50 @@ and handle_ocaml_module ~t ~ctx path =
     | `implementation -> parent_impl
   in
   G.add_edge parent ~depends_on:node;
-  List.iter (fun aliases_node -> G.add_edge node ~depends_on:aliases_node) aliases
+  List.iter
+    (fun aliases_node -> G.add_edge node ~depends_on:aliases_node)
+    aliases
 
 (** Handle a directory as a library.
-    
+
     This is the most complex part of the build graph construction. A directory
     becomes a library with the following structure:
-    
+
     Given directory "foo/" with children [bar.ml, baz.ml, qux/]:
-    
+
     1. Library interface modules (foo.ml, foo.mli):
-       - May be concrete (user-written) or generated (auto-created)
-       - Generated content: "module Bar = Foo__Bar\nmodule Baz = Foo__Baz\n..."
-    
+    - May be concrete (user-written) or generated (auto-created)
+    - Generated content: "module Bar = Foo__Bar\nmodule Baz = Foo__Baz\n..."
+
     2. Alias module (Foo__Aliases.ml):
-       - Flattens namespace: "module Bar = Foo__Bar"
-       - All files in this library implicitly open this
-    
+    - Flattens namespace: "module Bar = Foo__Bar"
+    - All files in this library implicitly open this
+
     3. Child modules in new namespace:
-       - bar.ml becomes Foo__Bar
-       - baz.ml becomes Foo__Baz
-       - qux/ becomes a nested library (recursive)
-    
+    - bar.ml becomes Foo__Bar
+    - baz.ml becomes Foo__Baz
+    - qux/ becomes a nested library (recursive)
+
     Edge structure:
     - foo.ml depends on foo.mli, Foo__Aliases, and all children
     - foo.mli depends on Foo__Aliases and children
     - All children depend on Foo__Aliases (implicit open)
     - Parent library depends on foo.ml/foo.mli
-    
+
     Cycle prevention:
     - Concrete foo.ml only depends on child FILES, not subdirectories
-    - Generated foo.ml depends on everything (safe because it's explicit)
-*)
+    - Generated foo.ml depends on everything (safe because it's explicit) *)
 and handle_library ~t ~ctx dir name children =
   let { ns; aliases; parent_impl; parent_intf } = ctx in
 
   let lib_module_name = Module_name.of_string ~namespace:ns name in
   let intf_file = Module_name.canonical_mli lib_module_name in
   let impl_file = Module_name.canonical_ml lib_module_name in
-  
+
   let intf_mod = Module.make ~namespace:ns ~filename:intf_file in
   let impl_mod = Module.make ~namespace:ns ~filename:impl_file in
 
-  let ns =
-    Namespace.append ns (Module_name.to_string lib_module_name)
-  in
+  let ns = Namespace.append ns (Module_name.to_string lib_module_name) in
 
   let lib_def =
     Library_definition.from_entries ~namespace:ns ~library_name:name
@@ -328,36 +322,39 @@ let scan_sources t (sources : Module_scanner.entry list) =
   handle_library ~t ~ctx t.config.source_dir t.config.package.name sources
 
 let create config =
-  let entries = Module_scanner.scan ~root:config.root ~source_dir:config.source_dir in
+  let entries =
+    Module_scanner.scan ~root:config.root ~source_dir:config.source_dir
+  in
   let graph = G.make () in
   let registry = Module_registry.create () in
 
   let t = { config; graph; registry; entries } in
-  
+
   scan_sources t entries;
 
   t
 
 (** Wire module dependencies using ocamldep.
-    
+
     This function implements Phase 2 of graph construction by analyzing source
     files with ocamldep to discover which modules reference which other modules
     (via `open` statements, direct module references, etc.).
-    
-    Algorithm:
-    1. Collect all concrete ML/MLI nodes (skip generated files and non-OCaml files)
-    2. Run ocamldep in batch mode on all collected files (single process call)
-    3. Build hashtable for O(1) lookup of dependencies by file path
-    4. For each file's dependencies, add graph edges to the referenced modules
-    5. Skip MLI -> ML edges (interface files shouldn't depend on implementations)
-    
-    Performance: Uses batch ocamldep call instead of per-file calls for 10-100x speedup.
-    
+
+    Algorithm: 1. Collect all concrete ML/MLI nodes (skip generated files and
+    non-OCaml files) 2. Run ocamldep in batch mode on all collected files
+    (single process call) 3. Build hashtable for O(1) lookup of dependencies by
+    file path 4. For each file's dependencies, add graph edges to the referenced
+    modules 5. Skip MLI -> ML edges (interface files shouldn't depend on
+    implementations)
+
+    Performance: Uses batch ocamldep call instead of per-file calls for 10-100x
+    speedup.
+
     Edge cases:
     - Generated files are excluded (they have no `open` statements to analyze)
     - Missing dependencies are silently skipped (external modules, stdlib)
-    - MLI -> ML dependencies are filtered out to maintain proper compilation order
-*)
+    - MLI -> ML dependencies are filtered out to maintain proper compilation
+      order *)
 let wire_dependencies t sandbox_dir =
   let all_nodes = G.map t.graph ~fn:(fun (node_id, node) -> (node_id, node)) in
 
@@ -377,8 +374,9 @@ let wire_dependencies t sandbox_dir =
   let files = List.map (fun (path, _) -> path) files_with_nodes in
 
   let namespace = Namespace.of_string t.config.namespace in
+  let ocamldep = Tusk_toolchain.ocamldep t.config.toolchain in
   let file_deps_map =
-    Ocamldep.batch_deps ~toolchain:t.config.toolchain ~cwd:sandbox_dir ~files
+    Tusk_toolchain.Ocamldep.batch_deps ocamldep ~cwd:sandbox_dir ~files
       ~package_namespace:namespace
   in
 
@@ -403,7 +401,9 @@ let wire_dependencies t sandbox_dir =
         (fun dep_mod_name ->
           let dep_name = Module_name.to_string dep_mod_name in
           try
-            let dep_node_ids = Module_registry.get_by_name t.registry dep_name in
+            let dep_node_ids =
+              Module_registry.get_by_name t.registry dep_name
+            in
             List.iter
               (fun dep_node_id ->
                 let dep_node = G.get_node t.graph dep_node_id in
@@ -418,24 +418,23 @@ let wire_dependencies t sandbox_dir =
 let add_library_node t ~name ~includes =
   let lib_node_value = Module_node.make_library ~name ~includes in
   let lib_node = G.add_node t.graph lib_node_value in
-  
+
   G.iter t.graph ~fn:(fun _node_id node ->
-    match node.value.kind with
-    | Module_node.ML _ | Module_node.MLI _ | Module_node.C ->
-        G.add_edge lib_node ~depends_on:node
-    | _ -> ()
-  )
+      match node.value.kind with
+      | Module_node.ML _ | Module_node.MLI _ | Module_node.C ->
+          G.add_edge lib_node ~depends_on:node
+      | _ -> ())
 
 let add_binary_node t ~name ~source ~libraries ~includes =
-  let bin_node_value = Module_node.make_binary ~name ~source ~libraries ~includes in
+  let bin_node_value =
+    Module_node.make_binary ~name ~source ~libraries ~includes
+  in
   let bin_node = G.add_node t.graph bin_node_value in
-  
+
   G.iter t.graph ~fn:(fun _node_id node ->
-    match node.value.kind with
-    | Module_node.Library _ ->
-        G.add_edge bin_node ~depends_on:node
-    | _ -> ()
-  )
+      match node.value.kind with
+      | Module_node.Library _ -> G.add_edge bin_node ~depends_on:node
+      | _ -> ())
 
 let graph t = t.graph
 let registry t = t.registry

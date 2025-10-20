@@ -10,6 +10,6 @@ std = "*"
 miniriot = "*"
 tusk-model = "*"
 tusk-planner = "*"
-tusk-ocaml = "*"
+tusk-toolchain = "*"
 
 

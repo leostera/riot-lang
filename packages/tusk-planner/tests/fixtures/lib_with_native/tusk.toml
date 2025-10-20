@@ -1,0 +1,5 @@
+[package]
+name = "lib_with_native"
+version = "0.1.0"
+
+[lib]
