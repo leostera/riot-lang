@@ -116,6 +116,9 @@ module Data = Data
 module Datetime = Datetime
 (** Calendar date and time operations *)
 
+module Diff = Diff
+(** Difference computation for data structures *)
+
 module Env = Env
 (** Environment variables and system info *)
 

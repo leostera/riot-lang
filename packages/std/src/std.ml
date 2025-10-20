@@ -9,6 +9,7 @@ module Command = Command
 module Crypto = Crypto
 module Data = Data
 module Datetime = Datetime
+module Diff = Diff
 module Env = Env
 module Exception = Exception
 module Fs = Fs

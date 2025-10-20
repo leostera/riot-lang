@@ -275,3 +275,42 @@ val get_object : t -> (string * t) list option
     Some [("a", Int 1)] *)
 
     Json.get_object (Json.array []) (* None *) ``` *)
+
+(** {1 Diffing} *)
+
+val diff : t -> t -> t Diff.change list
+(** Computes deep differences between two JSON values.
+
+    Recursively compares nested structures and returns a list of all differences
+    with their paths. Each diff includes:
+    - The path to the difference (e.g., ["user"; "address"; "city"])
+    - The type of change (Added, Removed, or Changed)
+
+    ## Examples
+
+    ```ocaml (* Primitive diff *) Json.diff (Json.int 1) (Json.int 2) (*
+    [{ path = []; change = Changed (Int 1, Int 2) }] *)
+
+    (* Object diff *) let o1 = Json.obj [("a", Json.int 1); ("b", Json.int 2)]
+    in let o2 = Json.obj
+    [("a", Json.int 1); ("b", Json.int 3); ("c", Json.int 4)] in Json.diff o1 o2
+    (*
+    [ { path = ["b"]; change = Changed (Int 2, Int 3) }; { path = ["c"]; change
+     = Added (Int 4) } ] *)
+
+    (* Nested object diff *) let o1 = Json.obj
+    [("user", Json.obj [("age", Json.int 30)])] in let o2 = Json.obj
+    [("user", Json.obj [("age", Json.int 31)])] in Json.diff o1 o2 (*
+    [{ path = ["user"; "age"]; change = Changed (Int 30, Int 31) }] *)
+
+    (* Array diff *) let a1 = Json.array [Json.int 1; Json.int 2; Json.int 3] in
+    let a2 = Json.array [Json.int 1; Json.int 99; Json.int 3] in Json.diff a1 a2
+    (* [{ path = ["1"]; change = Changed (Int 2, Int 99) }] *) ```
+
+    ## Filtering Results
+
+    Use {!Diff} helper functions to filter results:
+
+    ```ocaml let diff = Json.diff o1 o2 in let additions = Diff.additions diff
+    in let removals = Diff.removals diff in let changes = Diff.changes diff in
+    let user_changes = Diff.at_path ["user"] diff ``` *)

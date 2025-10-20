@@ -209,24 +209,24 @@ val write :
     ~headers ~data (Path.v "output.tsv") |> Result.unwrap ``` *)
 
 val to_string :
-  ?config:config -> ?headers:string list -> data:string list list -> string
+  ?config:config -> ?headers:string list -> string list list -> string
 (** Serializes CSV rows to a string. Fields containing delimiters, quotes, or
     newlines are automatically quoted.
 
     ## Examples
 
-    ```ocaml Csv.to_string ~data:[["a"; "b"]; ["c"; "d"]] (* "a,b\nc,d\n" *)
+    ```ocaml Csv.to_string [["a"; "b"]; ["c"; "d"]] (* "a,b\nc,d\n" *)
 
-    Csv.to_string ~data:[["quoted,field"; "normal"]] (*
+    Csv.to_string [["quoted,field"; "normal"]] (*
     "\"quoted,field\",normal\n" *) ```
 
     With headers:
 
     ```ocaml let headers = ["col1"; "col2"] in let data =
-    [["a"; "b"]; ["c"; "d"]] in Csv.to_string ~headers ~data (*
+    [["a"; "b"]; ["c"; "d"]] in Csv.to_string ~headers data (*
     "col1,col2\na,b\nc,d\n" *) ```
 
     With custom config:
 
     ```ocaml let config = Csv.config ~delimiter:';' () in Csv.to_string ~config
-    ~headers ~data (* "col1;col2\na;b\nc;d\n" *) ``` *)
+    ~headers data (* "col1;col2\na;b\nc;d\n" *) ``` *)

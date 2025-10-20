@@ -326,3 +326,62 @@ let get_int = function Int i -> Some i | _ -> None
 let get_bool = function Bool b -> Some b | _ -> None
 let get_array = function Array a -> Some a | _ -> None
 let get_object = function Object o -> Some o | _ -> None
+
+let rec diff a b =
+  let rec diff_at_path path a b =
+    match (a, b) with
+    | Null, Null -> []
+    | Bool x, Bool y when x = y -> []
+    | Int x, Int y when x = y -> []
+    | Float x, Float y when x = y -> []
+    | String x, String y when x = y -> []
+    | Array xs, Array ys -> diff_arrays path xs ys
+    | Object xs, Object ys -> diff_objects path xs ys
+    | _ -> [ { Diff.path; kind = Diff.Changed (a, b) } ]
+  and diff_arrays path xs ys =
+    let max_len = max (List.length xs) (List.length ys) in
+    let rec loop acc idx =
+      if idx >= max_len then List.rev acc
+      else
+        let x_opt = try Some (List.nth xs idx) with _ -> None in
+        let y_opt = try Some (List.nth ys idx) with _ -> None in
+        let idx_path = path @ [ Diff.Index idx ] in
+        match (x_opt, y_opt) with
+        | Some x, Some y ->
+            let diffs = diff_at_path idx_path x y in
+            loop (List.rev_append diffs acc) (idx + 1)
+        | Some x, None ->
+            let diff = { Diff.path = idx_path; kind = Diff.Removed x } in
+            loop (diff :: acc) (idx + 1)
+        | None, Some y ->
+            let diff = { Diff.path = idx_path; kind = Diff.Added y } in
+            loop (diff :: acc) (idx + 1)
+        | None, None -> loop acc (idx + 1)
+    in
+    loop [] 0
+  and diff_objects path xs ys =
+    let all_keys =
+      let xs_keys = List.map fst xs in
+      let ys_keys = List.map fst ys in
+      List.sort_uniq String.compare (xs_keys @ ys_keys)
+    in
+    let rec loop acc keys =
+      match keys with
+      | [] -> List.rev acc
+      | key :: rest ->
+          let x_opt = List.assoc_opt key xs in
+          let y_opt = List.assoc_opt key ys in
+          let key_path = path @ [ Diff.Key key ] in
+          let new_diffs =
+            match (x_opt, y_opt) with
+            | Some x, Some y -> diff_at_path key_path x y
+            | Some x, None ->
+                [ { Diff.path = key_path; kind = Diff.Removed x } ]
+            | None, Some y -> [ { Diff.path = key_path; kind = Diff.Added y } ]
+            | None, None -> []
+          in
+          loop (List.rev_append new_diffs acc) rest
+    in
+    loop [] all_keys
+  in
+  diff_at_path [] a b

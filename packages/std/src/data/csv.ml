@@ -157,7 +157,7 @@ let read ?(config = default_config) path =
   let content = Fs.read path |> Result.unwrap in
   of_string ~config content
 
-let to_string ?(config = default_config) ?headers ~data =
+let to_string ?(config = default_config) ?headers data =
   let needs_quoting field =
     String.contains field config.delimiter
     || String.contains field config.quote
@@ -193,5 +193,5 @@ let to_string ?(config = default_config) ?headers ~data =
   Buffer.contents buffer
 
 let write ?(config = default_config) ?headers ~data path =
-  let content = to_string ~config ?headers ~data in
+  let content = to_string ~config ?headers data in
   Fs.write content path
