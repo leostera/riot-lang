@@ -125,3 +125,17 @@ let topo_sort graph =
 
 let iter graph ~fn = Hashtbl.iter fn graph.nodes
 let map graph ~fn = Hashtbl.to_seq graph.nodes |> List.of_seq |> List.map fn
+
+let reachable_from graph start_nodes =
+  let visited = Hashtbl.create (Hashtbl.length graph.nodes) in
+
+  let rec visit node_id =
+    if not (Hashtbl.mem visited node_id) then (
+      Hashtbl.add visited node_id ();
+      let node = Hashtbl.find graph.nodes node_id in
+      List.iter visit node.deps)
+  in
+
+  List.iter (fun node -> visit node.id) start_nodes;
+
+  Hashtbl.fold (fun node_id () acc -> node_id :: acc) visited []

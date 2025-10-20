@@ -6,26 +6,20 @@ type 'a t = {
   compare : 'a -> 'a -> int;
 }
 
-let create_with ~compare () =
-  { data = [||]; size = 0; compare }
-
+let create_with ~compare () = { data = [||]; size = 0; compare }
 let create () = create_with ~compare ()
-
 let create_max () = create_with ~compare:(fun a b -> compare b a) ()
-
 let size heap = heap.size
-
 let is_empty heap = heap.size = 0
-
 let clear heap = heap.size <- 0
 
 let ensure_capacity heap =
   let len = Array.length heap.data in
-  if heap.size >= len then
+  if heap.size >= len then (
     let new_len = if len = 0 then 8 else len * 2 in
     let new_data = Array.make new_len heap.data.(0) in
     Array.blit heap.data 0 new_data 0 heap.size;
-    heap.data <- new_data
+    heap.data <- new_data)
 
 let parent i = (i - 1) / 2
 let left i = (2 * i) + 1
@@ -48,10 +42,14 @@ let rec sift_down heap i =
   let r = right i in
   let smallest = cell i in
 
-  if l < heap.size && heap.compare heap.data.(l) heap.data.(Cell.get smallest) < 0
+  if
+    l < heap.size
+    && heap.compare heap.data.(l) heap.data.(Cell.get smallest) < 0
   then Cell.set smallest l;
 
-  if r < heap.size && heap.compare heap.data.(r) heap.data.(Cell.get smallest) < 0
+  if
+    r < heap.size
+    && heap.compare heap.data.(r) heap.data.(Cell.get smallest) < 0
   then Cell.set smallest r;
 
   if Cell.get smallest <> i then (
@@ -59,22 +57,15 @@ let rec sift_down heap i =
     sift_down heap (Cell.get smallest))
 
 let push heap value =
-  if heap.size = 0 then
-    heap.data <- Array.make 8 value
-  else
-    ensure_capacity heap;
-  
+  if heap.size = 0 then heap.data <- Array.make 8 value
+  else ensure_capacity heap;
+
   heap.data.(heap.size) <- value;
   sift_up heap heap.size;
   heap.size <- heap.size + 1
 
-let peek heap =
-  if heap.size = 0 then None
-  else Some heap.data.(0)
-
-let peek_exn heap =
-  if heap.size = 0 then raise Not_found
-  else heap.data.(0)
+let peek heap = if heap.size = 0 then None else Some heap.data.(0)
+let peek_exn heap = if heap.size = 0 then raise Not_found else heap.data.(0)
 
 let pop heap =
   if heap.size = 0 then None
@@ -86,10 +77,7 @@ let pop heap =
       sift_down heap 0);
     Some result
 
-let pop_exn heap =
-  match pop heap with
-  | Some v -> v
-  | None -> raise Not_found
+let pop_exn heap = match pop heap with Some v -> v | None -> raise Not_found
 
 let heapify heap =
   for i = (heap.size / 2) - 1 downto 0 do
@@ -123,9 +111,7 @@ let to_list_unordered heap =
 
 let iter f heap =
   while heap.size > 0 do
-    match pop heap with
-    | Some x -> f x
-    | None -> ()
+    match pop heap with Some x -> f x | None -> ()
   done
 
 let fold f acc heap =
@@ -137,13 +123,13 @@ let fold f acc heap =
   done;
   Cell.get result
 
-let to_mut_iter : type item. item t -> item Iter.MutIterator.t = fun heap  ->
+let to_mut_iter : type item. item t -> item Iter.MutIterator.t =
+ fun heap ->
   let module HeapIter = struct
     type state = item t
     type nonrec item = item
 
     let next state = pop state
-
     let size state = state.size
 
     let clone state =

@@ -328,13 +328,9 @@ val and_modify : ('k, 'v) t -> 'k -> ('v -> 'v) -> unit
 
 val to_mut_iter : ('k, 'v) t -> ('k * 'v) Iter.MutIterator.t
 (** Returns a mutable iterator over the map's key-value pairs.
-    
+
     ## Examples
-    
-    ```ocaml
-    let map = HashMap.create () in
-    HashMap.insert map "a" 1 |> ignore;
-    HashMap.insert map "b" 2 |> ignore;
-    let iter = HashMap.to_mut_iter map in
-    ```
-*)
+
+    ```ocaml let map = HashMap.create () in HashMap.insert map "a" 1 |> ignore;
+    HashMap.insert map "b" 2 |> ignore; let iter = HashMap.to_mut_iter map in
+    ``` *)

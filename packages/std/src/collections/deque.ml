@@ -193,19 +193,18 @@ let of_list elements =
   List.iter (push_back deque) elements;
   deque
 
-let to_mut_iter : type v. v t -> v Iter.MutIterator.t = fun deque ->
+let to_mut_iter : type v. v t -> v Iter.MutIterator.t =
+ fun deque ->
   let module DequeIter = struct
     type state = v t
     type item = v
 
     let next deque = pop_front deque
-
     let size deque = len deque
 
-    let clone deque = 
+    let clone deque =
       let deque2 = with_capacity (len deque) in
       iter (push_back deque2) deque;
       deque2
-
   end in
-  Iter.MutIterator.make (module DequeIter) deque 
+  Iter.MutIterator.make (module DequeIter) deque

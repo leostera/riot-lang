@@ -13,8 +13,8 @@
 
     [server] host = "localhost" port = 8080 *)
 
-    match Toml.parse_file "config.toml" with | Ok root -> (* Extract simple
-    values *) let name = Toml.get_string root |> Option.unwrap in
+    match Toml.parse "config.toml" with | Ok root -> (* Extract simple values *)
+    let name = Toml.get_string root |> Option.unwrap in
 
     (* Navigate to nested tables *) let server = Toml.get_table root |>
     Option.and_then (List.assoc_opt "server") |> Option.and_then Toml.get_table
@@ -78,13 +78,13 @@ type error =
 
 (** {1 Parsing} *)
 
-val parse_file : string -> (value, error) result
-(** Parses a TOML file and returns the root table.
+val parse : string -> (value, error) result
+(** Parses a string into TOML and returns the root table.
     
     ## Examples
     
     ```ocaml
-    match Toml.parse_file "config.toml" with
+    match Toml.parse "<toml ...>" with
     | Ok root ->
         (* Extract configuration *)
         ()
@@ -110,7 +110,7 @@ val error_to_string : error -> string
 
     ## Examples
 
-    ```ocaml match Toml.parse_file "bad.toml" with | Ok _ -> () | Error err ->
+    ```ocaml match Toml.parse "bad.toml" with | Ok _ -> () | Error err ->
     Printf.printf "Error: %s\n" (Toml.error_to_string err) ``` *)
 
 (** {1 Extractors} *)
@@ -145,3 +145,12 @@ val get_table : value -> (string * value) list option
     specific field *) (match List.assoc_opt "server" fields with | Some
     server_table -> (* process server config *) | None -> Log.warn "No server
     config") | None -> () ``` *)
+
+val to_string : ?indent:int -> value -> string
+(** Converts a TOML value to a string representation for debugging.
+
+    ## Examples
+
+    ```ocaml let toml = Toml.Table
+    [("name", Toml.String "my-app");  ("debug", Toml.Bool true)] in
+    Printf.printf "%s\n" (Toml.to_string toml) ``` *)

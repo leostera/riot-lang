@@ -12,7 +12,6 @@ module Cli : sig
   val main :
     name:string ->
     tests:test_case list ->
-    ?args:string list ->
-    unit ->
-    (unit, exn) result
+    args:string list ->
+    (unit, Miniriot.Process.exit_reason) result
 end

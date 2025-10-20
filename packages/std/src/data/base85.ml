@@ -1,20 +1,25 @@
 let encode_bytes bytes =
   let len = Bytes.length bytes in
-  let result = Buffer.create ((len * 5 + 3) / 4) in
+  let result = Buffer.create (((len * 5) + 3) / 4) in
 
   let rec encode_block i =
     if i >= len then ()
     else
       let remaining = len - i in
       let b0 = Char.code (Bytes.get bytes i) in
-      let b1 = if remaining > 1 then Char.code (Bytes.get bytes (i + 1)) else 0 in
-      let b2 = if remaining > 2 then Char.code (Bytes.get bytes (i + 2)) else 0 in
-      let b3 = if remaining > 3 then Char.code (Bytes.get bytes (i + 3)) else 0 in
+      let b1 =
+        if remaining > 1 then Char.code (Bytes.get bytes (i + 1)) else 0
+      in
+      let b2 =
+        if remaining > 2 then Char.code (Bytes.get bytes (i + 2)) else 0
+      in
+      let b3 =
+        if remaining > 3 then Char.code (Bytes.get bytes (i + 3)) else 0
+      in
 
       let value = (b0 lsl 24) lor (b1 lsl 16) lor (b2 lsl 8) lor b3 in
 
-      if remaining >= 4 && value = 0 then
-        Buffer.add_char result 'z'
+      if remaining >= 4 && value = 0 then Buffer.add_char result 'z'
       else
         let chars_to_output =
           if remaining = 1 then 2
@@ -24,23 +29,18 @@ let encode_bytes bytes =
         in
 
         let c0 = value / 52200625 in
-        let c1 = (value / 614125) mod 85 in
-        let c2 = (value / 7225) mod 85 in
-        let c3 = (value / 85) mod 85 in
+        let c1 = value / 614125 mod 85 in
+        let c2 = value / 7225 mod 85 in
+        let c3 = value / 85 mod 85 in
         let c4 = value mod 85 in
 
-        if chars_to_output >= 1 then
-          Buffer.add_char result (Char.chr (c0 + 33));
-        if chars_to_output >= 2 then
-          Buffer.add_char result (Char.chr (c1 + 33));
-        if chars_to_output >= 3 then
-          Buffer.add_char result (Char.chr (c2 + 33));
-        if chars_to_output >= 4 then
-          Buffer.add_char result (Char.chr (c3 + 33));
-        if chars_to_output >= 5 then
-          Buffer.add_char result (Char.chr (c4 + 33));
+        if chars_to_output >= 1 then Buffer.add_char result (Char.chr (c0 + 33));
+        if chars_to_output >= 2 then Buffer.add_char result (Char.chr (c1 + 33));
+        if chars_to_output >= 3 then Buffer.add_char result (Char.chr (c2 + 33));
+        if chars_to_output >= 4 then Buffer.add_char result (Char.chr (c3 + 33));
+        if chars_to_output >= 5 then Buffer.add_char result (Char.chr (c4 + 33));
 
-      encode_block (i + 4)
+        encode_block (i + 4)
   in
   encode_block 0;
   Buffer.contents result
@@ -64,7 +64,7 @@ let decode_char c =
 let decode_bytes str =
   let str = strip_delimiters str in
   let len = String.length str in
-  let result = Buffer.create ((len * 4) / 5) in
+  let result = Buffer.create (len * 4 / 5) in
   let cursor = ref 0 in
 
   let rec decode_group () =
@@ -87,13 +87,13 @@ let decode_bytes str =
         let count = ref 0 in
         while !cursor < len && !count < 5 do
           let c = str.[!cursor] in
-          if c <> ' ' && c <> '\n' && c <> '\r' && c <> '\t' then (
+          if c <> ' ' && c <> '\n' && c <> '\r' && c <> '\t' then
             match decode_char c with
             | Some v ->
                 chars := v :: !chars;
                 incr count;
                 incr cursor
-            | None -> cursor := len)
+            | None -> cursor := len
           else incr cursor
         done;
 

@@ -71,7 +71,6 @@
     - API request/correlation IDs
     - Session tokens
     - Resource identifiers
-*)
 
 type t
 (** The type for UUIDs (128 bits / 16 bytes). *)
@@ -338,4 +337,6 @@ val time : t -> Time.Duration.t option
     | None ->
         (* not a v7 UUID *)
     ```
+*)
+
 *)

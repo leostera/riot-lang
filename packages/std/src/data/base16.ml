@@ -13,7 +13,6 @@ let encode_bytes_with table bytes =
 
 let encode_bytes bytes = encode_bytes_with hex_upper bytes
 let encode_bytes_lower bytes = encode_bytes_with hex_lower bytes
-
 let encode str = encode_bytes (Bytes.unsafe_of_string str)
 let encode_lower str = encode_bytes_lower (Bytes.unsafe_of_string str)
 

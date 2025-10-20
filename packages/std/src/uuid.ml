@@ -1,4 +1,5 @@
 open Global
+module Int32 = Kernel.Int32
 
 (*
    TODO: This module currently uses pure OCaml implementations for UUID 
@@ -16,11 +17,10 @@ open Global
    
    The current implementation is based on uuidm and works correctly but
    should not be considered production-ready for security-critical uses.
-*)
 
 type t = string
 
-let md5 = Digest.string
+let md5 s = Crypto.Md5.hash_string s |> Crypto.Digest.bytes |> Bytes.to_string
 
 let sha_1 s =
   let sha_1_pad s =
@@ -32,11 +32,11 @@ let sha_1 s =
     Bytes.blit_string s 0 m 0 len;
     Bytes.fill m len (mlen - len) '\x00';
     Bytes.set m len '\x80';
-    if Sys.word_size > 32 then (
-      Bytes.set_uint8 m (mlen - 8) (blen lsr 56 land 0xFF);
-      Bytes.set_uint8 m (mlen - 7) (blen lsr 48 land 0xFF);
-      Bytes.set_uint8 m (mlen - 6) (blen lsr 40 land 0xFF);
-      Bytes.set_uint8 m (mlen - 5) (blen lsr 32 land 0xFF));
+    (* Always write 64-bit length for SHA-1 *)
+    Bytes.set_uint8 m (mlen - 8) (blen lsr 56 land 0xFF);
+    Bytes.set_uint8 m (mlen - 7) (blen lsr 48 land 0xFF);
+    Bytes.set_uint8 m (mlen - 6) (blen lsr 40 land 0xFF);
+    Bytes.set_uint8 m (mlen - 5) (blen lsr 32 land 0xFF);
     Bytes.set_uint8 m (mlen - 4) (blen lsr 24 land 0xFF);
     Bytes.set_uint8 m (mlen - 3) (blen lsr 16 land 0xFF);
     Bytes.set_uint8 m (mlen - 2) (blen lsr 8 land 0xFF);
@@ -48,7 +48,7 @@ let sha_1 s =
   let ( lxor ) = Int32.logxor in
   let ( land ) = Int32.logand in
   let ( ++ ) = Int32.add in
-  let lnot = Int32.lognot in
+  let ( lnot ) = Int32.lognot in
   let sl = Int32.shift_left in
   let cls n x = sl x n lor Int32.shift_right_logical x (32 - n) in
   let m = sha_1_pad s in
@@ -297,3 +297,5 @@ let to_string_nodash ?(upper = false) u =
     (fun c -> if c <> '-' then Buffer.add_char without_dashes c)
     s;
   Buffer.contents without_dashes
+
+*)

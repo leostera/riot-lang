@@ -32,8 +32,8 @@
 
     | Need | Use | |------|-----| | Key-value lookups | [HashMap] | | Unique
     values | [HashSet] | | Indexed access | [Vector] | | Push/pop at both ends |
-    [Deque] | | FIFO processing | [Queue] | | Priority queue | [Heap] | | Small ordered collection | [List]
-    | *)
+    [Deque] | | FIFO processing | [Queue] | | Priority queue | [Heap] | | Small
+    ordered collection | [List] | *)
 
 module HashMap = Hashmap
 (** Hash table with O(1) average-case operations. See [HashMap]. *)

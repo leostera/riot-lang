@@ -333,11 +333,8 @@ val split_off : 'a t -> int -> 'a t
 
 val to_mut_iter : 'a t -> 'a Iter.MutIterator.t
 (** Returns a mutable iterator over the deque's elements from front to back.
-    
+
     ## Examples
-    
-    ```ocaml
-    let deque = Deque.of_list [1; 2; 3] in
-    let iter = Deque.to_mut_iter deque in
-    ```
-*)
+
+    ```ocaml let deque = Deque.of_list [1; 2; 3] in let iter = Deque.to_mut_iter
+    deque in ``` *)

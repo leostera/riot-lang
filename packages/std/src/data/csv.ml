@@ -66,9 +66,9 @@ let of_string ?(config = default_config) str =
               raise_error
                 (Unterminated_quote
                    { line = Cell.get line; column = Cell.get column })
-          | Some c when c = config.escape ->
+          | Some c when c = config.escape -> (
               advance ();
-              (match peek () with
+              match peek () with
               | Some next_c when next_c = config.quote ->
                   Buffer.add_char buffer config.quote;
                   advance ();
@@ -149,10 +149,8 @@ let of_string ?(config = default_config) str =
       | exn -> Some (Error (Unknown_error (Exception.to_string exn)))
 
     let size () = 0
-
     let clone () = ()
   end in
-
   Iter.MutIterator.make (module CsvIter) ()
 
 let read ?(config = default_config) path =
@@ -163,12 +161,11 @@ let to_string ?(config = default_config) ?headers ~data =
   let needs_quoting field =
     String.contains field config.delimiter
     || String.contains field config.quote
-    || String.contains field '\n'
-    || String.contains field '\r'
+    || String.contains field '\n' || String.contains field '\r'
   in
 
   let escape_field field =
-    if needs_quoting field then
+    if needs_quoting field then (
       let buffer = Buffer.create (String.length field + 2) in
       Buffer.add_char buffer config.quote;
       String.iter
@@ -179,7 +176,7 @@ let to_string ?(config = default_config) ?headers ~data =
           else Buffer.add_char buffer c)
         field;
       Buffer.add_char buffer config.quote;
-      Buffer.contents buffer
+      Buffer.contents buffer)
     else field
   in
 

@@ -88,5 +88,9 @@ val map : 'a t -> fn:(Node_id.t * 'a node -> 'b) -> 'b list
 val topo_sort : 'a t -> 'a node list
 (** Topological sort. Raises [Cycle] if graph has cycles. *)
 
+val reachable_from : 'a t -> 'a node list -> Node_id.t list
+(** Compute all nodes reachable from the given start nodes by following
+    dependency edges. Returns a list of node IDs that can be reached. *)
+
 exception Cycle of Node_id.t list
 (** Raised when topological sort encounters a cycle. *)

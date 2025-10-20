@@ -94,16 +94,16 @@ let of_list elements =
   List.iter (enqueue queue) elements;
   queue
 
-let to_mut_iter : type item. item t -> item Iter.MutIterator.t = fun queue  ->
+let to_mut_iter : type item. item t -> item Iter.MutIterator.t =
+ fun queue ->
   let module QueueIter = struct
     type state = item t
     type nonrec item = item
 
     let next queue = dequeue queue
-
     let size queue = len queue
 
-    let clone queue = 
+    let clone queue =
       let queue2 = with_capacity (len queue) in
       iter (enqueue queue2) queue;
       queue2

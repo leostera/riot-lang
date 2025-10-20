@@ -33,7 +33,7 @@ let run_tests_cmd =
 
 let list_tests_cmd = command "list-tests" |> about "List all tests"
 
-let main ~name ~tests ?(args = Env.args) () =
+let main ~name ~tests ~args =
   let cmd =
     command name
     |> about (format "Test runner for %S" name)

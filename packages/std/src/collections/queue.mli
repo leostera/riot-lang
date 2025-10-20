@@ -233,11 +233,8 @@ val append : 'a t -> 'a t -> unit
 
 val to_mut_iter : 'a t -> 'a Iter.MutIterator.t
 (** Returns a mutable iterator over the queue's elements in FIFO order.
-    
+
     ## Examples
-    
-    ```ocaml
-    let queue = Queue.of_list [1; 2; 3] in
-    let iter = Queue.to_mut_iter queue in
-    ```
-*)
+
+    ```ocaml let queue = Queue.of_list [1; 2; 3] in let iter = Queue.to_mut_iter
+    queue in ``` *)

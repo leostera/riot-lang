@@ -51,7 +51,8 @@ let and_modify map key f =
       Hashtbl.replace map key new_value
   | None -> ()
 
-let to_mut_iter : type k v. (k, v) t -> (k * v) Iter.MutIterator.t = fun map ->
+let to_mut_iter : type k v. (k, v) t -> (k * v) Iter.MutIterator.t =
+ fun map ->
   let module MapIter = struct
     type state = { items : (k * v) list; mutable pos : int }
     type item = k * v
@@ -64,7 +65,6 @@ let to_mut_iter : type k v. (k, v) t -> (k * v) Iter.MutIterator.t = fun map ->
         Some item
 
     let size state = max 0 (List.length state.items - state.pos)
-
     let clone state = { items = state.items; pos = state.pos }
   end in
   let items = to_list map in

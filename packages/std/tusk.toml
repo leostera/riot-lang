@@ -5,3 +5,7 @@ version = "0.1.0"
 [dependencies]
 miniriot = { path = "../miniriot" }
 kernel = { path = "../kernel" }
+
+[[bin]]
+name = "csv_tool"
+path = "examples/csv_tool.ml"
