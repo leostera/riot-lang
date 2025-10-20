@@ -6,3 +6,15 @@ version = "0.2.0"
 std = { path = "../std" }
 miniriot = { path = "../miniriot" }
 http = { path = "../http" }
+
+[[bin]]
+name = "simple_get"
+path = "examples/simple_get.ml"
+
+[[bin]]
+name = "streaming"
+path = "examples/streaming.ml"
+
+[[bin]]
+name = "integration_tests"
+path = "tests/integration_tests.ml"

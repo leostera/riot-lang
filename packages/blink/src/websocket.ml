@@ -27,7 +27,8 @@ let compute_accept_key key =
   let magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11" in
   let concat = key ^ magic in
   let hash = Crypto.Sha1.hash_string concat in
-  Data.Base64.encode hash
+  let hash_bytes = Kernel.Crypto.Hash.to_bytes hash in
+  Data.Base64.encode (Bytes.to_string hash_bytes)
 
 let connect uri =
   let host = Net.Uri.host uri |> Option.unwrap_or ~default:"localhost" in
