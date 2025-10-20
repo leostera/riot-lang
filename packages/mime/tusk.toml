@@ -1,0 +1,13 @@
+[package]
+name = "mime"
+version = "0.1.0"
+
+[dependencies]
+std = { path = "../std" }
+miniriot = { path = "../miniriot" }
+
+[[bin]]
+name = "rfc2231_tests"
+path = "tests/rfc2231_tests.ml"
+
+
