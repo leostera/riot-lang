@@ -12,9 +12,7 @@ let build_package ~build_results pkg_name pkg_path =
   let pkg = Package.read pkg_path in
 
   (* Create dependency graph for the package, passing build_results for cross-package deps *)
-  let dep_graph =
-    Dep_graph.scan ~root:pkg_path ~package:pkg ~build_results
-  in
+  let dep_graph = Dep_graph.scan ~root:pkg_path ~package:pkg ~build_results in
 
   File_scanner.print_tree dep_graph.file_tree;
 

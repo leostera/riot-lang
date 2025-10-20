@@ -532,66 +532,65 @@ and handle_ocaml_module ~t ~ctx file =
   let { ns; aliases; parent_impl; parent_intf } = ctx in
 
   let mod_ = Module.of_path ~ns file.path in
-  
+
   (* Skip binary modules - they will be compiled separately *)
-  let is_binary = List.exists
-    (fun (bin : Package.binary) -> 
-      let bin_basename = Filename.basename bin.path in
-      let file_basename = Filename.basename file.path in
-      bin_basename = file_basename)
-    (Package.binaries t.package)
+  let is_binary =
+    List.exists
+      (fun (bin : Package.binary) ->
+        let bin_basename = Filename.basename bin.path in
+        let file_basename = Filename.basename file.path in
+        bin_basename = file_basename)
+      (Package.binaries t.package)
   in
-  
+
   if is_binary then (
     Printf.printf "[DEBUG] Skipping binary module: %s\n" file.path;
-    ()
-  ) else (
-  
-  let node = Ocaml_module.make_node mod_ aliases |> Graph.add_node t.graph in
-  (* printf "Handling OCamml module %S (or %S) at %s\n"
+    ())
+  else
+    let node = Ocaml_module.make_node mod_ aliases |> Graph.add_node t.graph in
+    (* printf "Handling OCamml module %S (or %S) at %s\n"
     (Module.module_name mod_ |> Module_name.to_string)
     (Module.namespaced_name mod_)
     file.path;
 *)
 
-  Module_registry.register t.registry mod_ node.id;
+    Module_registry.register t.registry mod_ node.id;
 
-  (* If this is an implementation file, check if we have a corresponding interface *)
-  (match Module.kind mod_ with
-  | `implementation -> (
-      (* Try to find the interface node in the registry *)
-      let mod_name = Module.module_name mod_ in
-      try
-        let node_ids = Module_registry.get_by_name t.registry mod_name in
-        List.iter
-          (fun intf_node_id ->
-            let intf_node = Graph.get_node t.graph intf_node_id in
-            (* Check if it's actually an interface *)
-            match intf_node.value.kind with
-            | MLI intf_mod when Module.module_name intf_mod = mod_name ->
-                (* Add edge from implementation to interface *)
-                Graph.add_edge node ~depends_on:intf_node
-            (*
+    (* If this is an implementation file, check if we have a corresponding interface *)
+    (match Module.kind mod_ with
+    | `implementation -> (
+        (* Try to find the interface node in the registry *)
+        let mod_name = Module.module_name mod_ in
+        try
+          let node_ids = Module_registry.get_by_name t.registry mod_name in
+          List.iter
+            (fun intf_node_id ->
+              let intf_node = Graph.get_node t.graph intf_node_id in
+              (* Check if it's actually an interface *)
+              match intf_node.value.kind with
+              | MLI intf_mod when Module.module_name intf_mod = mod_name ->
+                  (* Add edge from implementation to interface *)
+                  Graph.add_edge node ~depends_on:intf_node
+              (*
               printf "  Added edge from %s.ml to %s.mli\n"
                 (Module_name.to_string mod_name)
                 (Module_name.to_string mod_name)
                   *)
-            | _ -> ())
-          node_ids
-      with Not_found -> ())
-  | `interface -> ());
+              | _ -> ())
+            node_ids
+        with Not_found -> ())
+    | `interface -> ());
 
-  let parent =
-    match Module.kind mod_ with
-    | `interface -> parent_intf
-    | `implementation -> parent_impl
-  in
-  Graph.add_edge parent ~depends_on:node;
+    let parent =
+      match Module.kind mod_ with
+      | `interface -> parent_intf
+      | `implementation -> parent_impl
+    in
+    Graph.add_edge parent ~depends_on:node;
 
-  List.iter
-    (fun aliases_node -> Graph.add_edge node ~depends_on:aliases_node)
-    aliases
-  )
+    List.iter
+      (fun aliases_node -> Graph.add_edge node ~depends_on:aliases_node)
+      aliases
 
 and handle_library ~t ~ctx { path; name; children } =
   let { ns; aliases; parent_impl; parent_intf } = ctx in
@@ -718,24 +717,27 @@ and handle_library ~t ~ctx { path; name; children } =
   (* Filter out binary modules from child_modules so they don't get included in the library interface *)
   Printf.printf "[DEBUG] File modules:\n";
   List.iter (fun m -> Printf.printf "  - %s\n" (Module.path m)) file_modules;
-  
+
   let is_binary_module mod_ =
     let mod_path = Module.path mod_ in
     List.exists
-      (fun (bin : Package.binary) -> 
+      (fun (bin : Package.binary) ->
         let bin_basename = Filename.basename bin.path in
         let mod_basename = Filename.basename mod_path in
         let matches = mod_path = bin.path || mod_basename = bin_basename in
         if matches then
-          Printf.printf "[DEBUG] MATCHED: %s == %s (basename: %s == %s)\n" 
+          Printf.printf "[DEBUG] MATCHED: %s == %s (basename: %s == %s)\n"
             mod_path bin.path mod_basename bin_basename;
         matches)
       (Package.binaries t.package)
   in
-  
-  let library_modules = List.filter (fun m -> not (is_binary_module m)) (file_modules @ dir_modules) in
-  Printf.printf "[DEBUG] After filtering: %d modules (was %d)\n" 
-    (List.length library_modules) (List.length (file_modules @ dir_modules));
+
+  let library_modules =
+    List.filter (fun m -> not (is_binary_module m)) (file_modules @ dir_modules)
+  in
+  Printf.printf "[DEBUG] After filtering: %d modules (was %d)\n"
+    (List.length library_modules)
+    (List.length (file_modules @ dir_modules));
 
   let child_modules = library_modules in
   (* First we create the top-level aliases module *)

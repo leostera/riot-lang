@@ -154,7 +154,7 @@ let parse content =
           | Some c -> parse_items ())
       (* Allow newlines between items *)
     in
-     parse_items ()
+    parse_items ()
   (* Parse an inline table { key = value, ... } *)
   and parse_inline_table () =
     let start_pos = !pos in
@@ -166,27 +166,48 @@ let parse content =
     advance ();
     (* skip { *)
     skip_ws ();
-    
+
     let items = ref [] in
     let rec parse_items () =
       skip_ws ();
       if at_end () then
-        raise (Parse_exception (Parse_error { position = start_pos; context = "inline table"; reason = "unterminated" }));
+        raise
+          (Parse_exception
+             (Parse_error
+                {
+                  position = start_pos;
+                  context = "inline table";
+                  reason = "unterminated";
+                }));
       match current_char () with
       | '}' ->
           advance ();
           Table (List.rev !items)
-      | _ ->
+      | _ -> (
           (* Parse key = value *)
           let key_start = !pos in
-          while (not (at_end ())) && current_char () <> '=' && current_char () <> '}' do
+          while
+            (not (at_end ()))
+            && current_char () <> '='
+            && current_char () <> '}'
+          do
             advance ()
           done;
-          let key = String.trim (String.sub content key_start (!pos - key_start)) in
+          let key =
+            String.trim (String.sub content key_start (!pos - key_start))
+          in
           skip_ws ();
           if at_end () || current_char () <> '=' then
-            raise (Parse_exception (Parse_error { position = !pos; context = "inline table"; reason = "expected =" }));
-          advance (); (* skip = *)
+            raise
+              (Parse_exception
+                 (Parse_error
+                    {
+                      position = !pos;
+                      context = "inline table";
+                      reason = "expected =";
+                    }));
+          advance ();
+          (* skip = *)
           skip_ws ();
           let value = parse_value () in
           items := (key, value) :: !items;
@@ -199,7 +220,14 @@ let parse content =
               advance ();
               Table (List.rev !items)
           | _ ->
-              raise (Parse_exception (Parse_error { position = !pos; context = "inline table"; reason = "expected , or }" }))
+              raise
+                (Parse_exception
+                   (Parse_error
+                      {
+                        position = !pos;
+                        context = "inline table";
+                        reason = "expected , or }";
+                      })))
     in
     parse_items ()
   (* Parse a value *)
@@ -271,8 +299,9 @@ let parse content =
 
     let name = String.trim (String.sub content start (!pos - start)) in
     advance ();
+
     (* skip first ] *)
-    
+
     (* If array of tables, expect another ] *)
     if is_array then (
       skip_ws ();
@@ -280,9 +309,13 @@ let parse content =
         raise
           (Parse_exception
              (Parse_error
-                { position = !pos; context = "array section"; reason = "expected ]]" }));
+                {
+                  position = !pos;
+                  context = "array section";
+                  reason = "expected ]]";
+                }));
       advance ());
-    
+
     skip_to_eol ();
     (name, is_array)
   in
@@ -291,7 +324,8 @@ let parse content =
   let sections = ref [] in
   let current_section = ref None in
   let current_items = ref [] in
-  let array_sections = ref [] in (* Track [[name]] sections *)
+  let array_sections = ref [] in
+  (* Track [[name]] sections *)
 
   try
     while not (at_end ()) do
@@ -306,16 +340,17 @@ let parse content =
               sections := { name; items = List.rev !current_items } :: !sections
           | Some (name, true) ->
               (* Array section - add current items as a table to the array *)
-              let existing = 
-                try List.assoc name !array_sections 
-                with Not_found -> []
+              let existing =
+                try List.assoc name !array_sections with Not_found -> []
               in
-              array_sections := (name, Table (List.rev !current_items) :: existing) :: 
-                (List.remove_assoc name !array_sections)
+              array_sections :=
+                (name, Table (List.rev !current_items) :: existing)
+                :: List.remove_assoc name !array_sections
           | None ->
               (* Save top-level items with empty section name *)
               if List.length !current_items > 0 then
-                sections := { name = ""; items = List.rev !current_items } :: !sections);
+                sections :=
+                  { name = ""; items = List.rev !current_items } :: !sections);
 
           let section_name, is_array = parse_section_header () in
           current_section := Some (section_name, is_array);
@@ -347,16 +382,17 @@ let parse content =
           sections := { name; items = List.rev !current_items } :: !sections
       | Some (name, true) ->
           (* Array section - add current items as final table *)
-          let existing = 
-            try List.assoc name !array_sections 
-            with Not_found -> []
+          let existing =
+            try List.assoc name !array_sections with Not_found -> []
           in
-          array_sections := (name, Table (List.rev !current_items) :: existing) :: 
-            (List.remove_assoc name !array_sections)
+          array_sections :=
+            (name, Table (List.rev !current_items) :: existing)
+            :: List.remove_assoc name !array_sections
       | None ->
           (* Save top-level items with empty section name *)
           if List.length !current_items > 0 then
-            sections := { name = ""; items = List.rev !current_items } :: !sections);
+            sections :=
+              { name = ""; items = List.rev !current_items } :: !sections);
 
       let all_sections = List.rev !sections in
 
@@ -372,15 +408,14 @@ let parse content =
               (section.name, Table section.items) :: acc)
           [] all_sections
       in
-      
+
       (* Add array sections as arrays *)
       let items_with_arrays =
         List.fold_left
-          (fun acc (name, tables) ->
-            (name, Array (List.rev tables)) :: acc)
+          (fun acc (name, tables) -> (name, Array (List.rev tables)) :: acc)
           items !array_sections
       in
-      
+
       Ok (Table (List.rev items_with_arrays))
   | Parse_exception err -> Error err
   | exn ->
@@ -396,7 +431,4 @@ let parse content =
 let get_string = function String s -> Some s | _ -> None
 let get_array = function Array items -> Some items | _ -> None
 let get_table = function Table items -> Some items | _ -> None
-
-let find key items = 
-  try Some (List.assoc key items)
-  with Not_found -> None
+let find key items = try Some (List.assoc key items) with Not_found -> None

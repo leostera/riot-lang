@@ -435,52 +435,57 @@ let from_dep_graph (dep_graph : Dep_graph.t) : build_plan =
 
   (* Compile and link binaries from Package.binaries *)
   let () =
-    let package_name_str = Dep_graph.Module_name.to_string dep_graph.package_name in
+    let package_name_str =
+      Dep_graph.Module_name.to_string dep_graph.package_name
+    in
     let archive_name = Dep_graph.Module_name.cma dep_graph.package_name in
     let dependencies = Dep_graph.get_dependencies dep_graph in
-    
-    List.iter (fun (binary : Package.binary) ->
-      Printf.printf "  Building binary: %s from %s\n" binary.name binary.path;
-      
-      (* Copy the binary source *)
-      actions := CopyFile { src = binary.path; dst = binary.path } :: !actions;
-      
-      (* Compile it with -open Package to access library modules *)
-      let binary_basename = Filename.basename binary.path in
-      let binary_cmo = Filename.chop_extension binary_basename ^ ".cmo" in
-      
-      let compile_binary =
-        CompileImplementation {
-          sandbox_dir;
-          src_file = binary.path;
-          output = binary_cmo;
-          includes = [];
-          opens = [package_name_str];
-          is_aliases = false;
-        }
-      in
-      actions := compile_binary :: !actions;
-      
-      (* Link the binary with the package archive *)
-      let link_action =
-        CreateExecutable {
-          sandbox_dir;
-          exe_name = binary.name;
-          main_module = binary_cmo;
-          archive = archive_name;
-          dependencies;
-        }
-      in
-      actions := link_action :: !actions;
-      
-      (* Make it executable *)
-      let chmod_action =
-        SetPermissions { path = binary.name; executable = true }
-      in
-      actions := chmod_action :: !actions;
-      
-      outputs := Filename.concat sandbox_dir binary.name :: !outputs
-    ) (Package.binaries dep_graph.package)
+
+    List.iter
+      (fun (binary : Package.binary) ->
+        Printf.printf "  Building binary: %s from %s\n" binary.name binary.path;
+
+        (* Copy the binary source *)
+        actions := CopyFile { src = binary.path; dst = binary.path } :: !actions;
+
+        (* Compile it with -open Package to access library modules *)
+        let binary_basename = Filename.basename binary.path in
+        let binary_cmo = Filename.chop_extension binary_basename ^ ".cmo" in
+
+        let compile_binary =
+          CompileImplementation
+            {
+              sandbox_dir;
+              src_file = binary.path;
+              output = binary_cmo;
+              includes = [];
+              opens = [ package_name_str ];
+              is_aliases = false;
+            }
+        in
+        actions := compile_binary :: !actions;
+
+        (* Link the binary with the package archive *)
+        let link_action =
+          CreateExecutable
+            {
+              sandbox_dir;
+              exe_name = binary.name;
+              main_module = binary_cmo;
+              archive = archive_name;
+              dependencies;
+            }
+        in
+        actions := link_action :: !actions;
+
+        (* Make it executable *)
+        let chmod_action =
+          SetPermissions { path = binary.name; executable = true }
+        in
+        actions := chmod_action :: !actions;
+
+        outputs := Filename.concat sandbox_dir binary.name :: !outputs)
+      (Package.binaries dep_graph.package)
   in
 
   {
