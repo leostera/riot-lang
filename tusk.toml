@@ -24,7 +24,6 @@ members = [
   "packages/std",
   "packages/suri",
   "packages/syn",
-  "packages/toml",
   "packages/tty",
   "packages/tusk",
   "packages/tusk-core",
