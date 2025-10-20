@@ -523,7 +523,9 @@ mod tests {
         let mut reader = MarshalReader::new(data);
         let value = reader.read_value().unwrap();
         
-        // OCaml int encoding: (42 << 1) | 1 = 85
-        assert_eq!(value.as_int(), 85);
+        match value {
+            MarshalValue::Int(n) => assert_eq!(n, 85),
+            _ => panic!("Expected Int, got {:?}", value),
+        }
     }
 }

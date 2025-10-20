@@ -1,14 +1,39 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+//! # raml-ffi
+//!
+//! High-level FFI interface for Rust⟷OCaml interop.
+//!
+//! This crate re-exports everything from `raml-core` and provides
+//! `#[derive(Value)]` for automatic conversion of Rust types to OCaml values.
+//!
+//! ## Quick Start
+//!
+//! ```
+//! use raml_ffi::prelude::*;
+//!
+//! let v = Value::int(42);
+//! assert_eq!(v.as_int(), 42);
+//! ```
+//!
+//! ## Derive Macro
+//!
+//! ```ignore
+//! use raml_ffi::prelude::*;
+//!
+//! #[derive(Value)]
+//! struct Point {
+//!     x: i32,
+//!     y: i32,
+//! }
+//!
+//! let point = Point { x: 10, y: 20 };
+//! let val: Value = point.into();
+//! let point2: Point = val.try_into()?;
+//! ```
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+pub use raml_core::*;
+pub use raml_derive::Value;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+pub mod prelude {
+    pub use raml_core::prelude::*;
+    pub use raml_derive::Value;
 }

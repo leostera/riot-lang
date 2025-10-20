@@ -21,6 +21,7 @@ name = "load_cmo"
 path = "examples/load_cmo.rs"
 
 [dependencies]
+raml-core = { path = "../raml-core" }
 wasm-bindgen = "0.2"
 console_error_panic_hook = "0.1"
 

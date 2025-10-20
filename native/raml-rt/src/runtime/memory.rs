@@ -34,7 +34,7 @@
 /// - Collect the old generation slowly and infrequently
 /// - Achieve good performance with minimal pause times
 
-use crate::value::{Block, BlockHeader, GcColor, Value};
+use crate::value::{Block, BlockHeader, GcColor, Value, Tag};
 use super::{Result, Error};
 use super::gc::GarbageCollector;
 use std::alloc::{alloc, dealloc, Layout};
