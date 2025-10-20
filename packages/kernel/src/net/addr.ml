@@ -47,11 +47,31 @@ let get_info host service =
   let info = Unix.getaddrinfo host service [] in
   Ok (List.filter_map of_addr_info info)
 
+let is_ip_address host =
+  (* Simple check: if it only contains digits, dots, and colons, it's likely an IP *)
+  let is_ip_char c = (c >= '0' && c <= '9') || c = '.' || c = ':' in
+  String.length host > 0
+  && String.fold_left (fun acc c -> acc && is_ip_char c) true host
+
 let of_host_and_port ~host ~port =
-  match get_info host (Int.to_string port) with
-  | Ok (ip :: _) -> Ok ip
-  | Ok [] -> Error `No_info
-  | Error err -> Error err
+  (* Fast path: if host looks like an IP address, try to use it directly *)
+  if is_ip_address host then
+    (* Validate it's actually a valid IP by trying to parse it *)
+    try
+      let _ = Unix.inet_addr_of_string host in
+      Ok (tcp host port)
+    with _ -> (
+      (* Invalid IP format, fall back to DNS *)
+      match get_info host (Int.to_string port) with
+      | Ok (ip :: _) -> Ok ip
+      | Ok [] -> Error `No_info
+      | Error err -> Error err)
+  else
+    (* Hostname, need DNS resolution *)
+    match get_info host (Int.to_string port) with
+    | Ok (ip :: _) -> Ok ip
+    | Ok [] -> Error `No_info
+    | Error err -> Error err
 
 let get_info (`Tcp (host, port)) = get_info host (Int.to_string port)
 let ip (`Tcp (ip, _)) = ip

@@ -22,6 +22,7 @@ module List = List
 module Hashtbl = Hashtbl
 module Type = Type
 module Atomic = Atomic
+module Int32 = Int32
 module Int64 = Int64
 module Obj = Obj
 module String = String
