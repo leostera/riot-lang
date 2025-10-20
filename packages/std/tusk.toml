@@ -9,3 +9,7 @@ kernel = { path = "../kernel" }
 [[bin]]
 name = "csv_tool"
 path = "examples/csv_tool.ml"
+
+[[bin]]
+name = "std_data_toml_tests"
+path = "tests/std_data_toml_tests.ml"
