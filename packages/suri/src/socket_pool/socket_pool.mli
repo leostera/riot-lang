@@ -84,6 +84,7 @@ module Transport : module type of Transport
 (** Transport layer - see {!Transport} *)
 
 val start_link :
+  host:string ->
   port:int ->
   ?acceptors:int ->
   ?buffer_size:int ->

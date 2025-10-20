@@ -5,7 +5,8 @@ name = "suri"
 std = { path = "../std" }
 miniriot = { path = "../miniriot" }
 http = { path = "../http" }
+blink = { path = "../blink" }
 
 [[bin]]
-name = "suri_tests"
-path = "src/main.ml"
+name = "integration_tests"
+path = "tests/integration_tests.ml"

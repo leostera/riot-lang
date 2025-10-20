@@ -5,7 +5,9 @@
 
     ## Example
 
-    ```ocaml open Suri.WebServer
+    ```ocaml
+
+    open Suri.WebServer
 
     let handler conn req = let uri = Request.uri req in let method_ =
     Request.method_ req in Log.info "%s %s" (Net.Http.Method.to_string method_)
@@ -13,7 +15,9 @@
 
     let () = let config = Config.make () in let handler_state = Http1.make
     ~config ~handler () in SocketPool.start_link ~port:8080 ~handler:(module
-    Http1) ~initial_state:handler_state ``` *)
+    Http1) ~initial_state:handler_state
+
+    ``` *)
 
 module Config = Config
 (** Server configuration *)

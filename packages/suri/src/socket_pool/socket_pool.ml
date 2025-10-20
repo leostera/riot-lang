@@ -3,11 +3,11 @@ module Connection = Connection
 module Handler = Handler
 module Transport = Transport
 
-let start_link ~port ?(acceptors = 100) ?(buffer_size = 4096)
+let start_link ~host ~port ?(acceptors = 100) ?(buffer_size = 4096)
     ?(transport = Transport.tcp ()) (type s e)
     (handler : (module Handler.Intf with type state = s and type error = e))
     (initial_ctx : s) =
-  match Net.Addr.of_host_and_port ~host:"0.0.0.0" ~port with
+  match Net.Addr.of_host_and_port ~host ~port with
   | Error _ -> Error `Bind_error
   | Ok addr -> (
       match Net.TcpListener.bind ~reuse_addr:true ~reuse_port:false addr with
