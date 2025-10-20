@@ -1,5 +1,4 @@
 open Std
-
 module Identifier = Identifier
 module Location = Location
 module ModulePath = ModulePath

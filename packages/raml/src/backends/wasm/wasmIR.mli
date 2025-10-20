@@ -103,8 +103,7 @@ type wasm_instr =
       else_ : wasm_instr list option;
     }  (** If-then-else: pop condition, execute branch *)
   | Br of string  (** Unconditional branch to label *)
-  | BrIf of string
-      (** Conditional branch: pop condition, branch if non-zero *)
+  | BrIf of string  (** Conditional branch: pop condition, branch if non-zero *)
   | BrTable of { labels : string list; default : string }
       (** Switch: pop index, branch to labels[index] or default *)
   | Return  (** Return from function *)

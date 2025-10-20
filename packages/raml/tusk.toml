@@ -4,21 +4,8 @@ version = "0.1.0"
 
 [dependencies]
 std = { path = "../std" }
-# syn = { path = "../syn" }  # Temporarily disabled - has compilation error
+syn = { path = "../syn" }
 
 [[bin]]
 name = "raml"
-main = "main.ml"
-
-# Tests temporarily disabled - need to expose TypeChecker module properly
-# [[bin]]
-# name = "test_types"
-# main = "tests/test_types.ml"
-# 
-# [[bin]]
-# name = "test_ident"
-# main = "tests/test_ident.ml"
-# 
-# [[bin]]
-# name = "test_type_checker"
-# main = "tests/test_type_checker.ml"
+path = "src/main.ml"

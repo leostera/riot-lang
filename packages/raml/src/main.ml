@@ -1,4 +1,5 @@
 open Std
+open Raml
 
 (** RAML CLI - Type checker and compiler.
 
@@ -157,6 +158,32 @@ and case_to_json case =
   ]
 *)
 
+let handle_check sub_matches =
+  let file =
+    ArgParser.get_one sub_matches "FILE" |> Option.expect ~msg:"FILE required"
+  in
+  let verbose = ArgParser.get_flag sub_matches "verbose" in
+
+  match Fs.read (Path.v file) with
+  | Error _err ->
+      Log.error "Failed to read file: %s" file;
+      exit 1
+  | Ok source -> (
+      match Typechecker.Checker.typecheck source with
+      | Ok result ->
+          Log.info "✅ Type checking successful for %s" file;
+          if verbose then (
+            Log.info "";
+            Log.info "Expression type: %s"
+              (Typechecker.Types.type_expr_to_string result.tree.exp_type);
+            if result.diagnostics <> [] then (
+              Log.info "";
+              Log.info "Diagnostics:";
+              List.iter (fun msg -> Log.info "  - %s" msg) result.diagnostics))
+      | Error msg ->
+          Log.error "❌ Type checking failed: %s" msg;
+          exit 1)
+
 let handle_lambda sub_matches =
   let file =
     ArgParser.get_one sub_matches "FILE" |> Option.expect ~msg:"FILE required"
@@ -253,7 +280,8 @@ let handle_compile sub_matches =
         Log.info "Compiling source file: %s" path;
 
         (* Step 1: Read source file *)
-        let source = match Fs.read (Path.v path) with
+        let source =
+          match Fs.read (Path.v path) with
           | Ok content -> content
           | Error _err ->
               Log.error "Failed to read file: %s" path;
@@ -276,9 +304,11 @@ let handle_compile sub_matches =
 
         (* Step 4: Translate TypedTree → Lambda IR *)
         let ctx = Lambda.TranslateCore.create_context () in
-        let lambda_expr = Lambda.TranslateCore.translate_expression ctx typed_expr in
+        let lambda_expr =
+          Lambda.TranslateCore.translate_expression ctx typed_expr
+        in
         Log.info "✅ Translation to Lambda IR successful";
-        
+
         lambda_expr
     | None ->
         (* Test mode: use hardcoded expression *)
@@ -363,7 +393,7 @@ let handle_compile sub_matches =
           exit 1)
   | Some ("wasm32-unknown-unknown" | "wasm-unknown-unknown" | "wasm") -> (
       Log.info "Compiling for target: wasm32-unknown-unknown (WebAssembly)";
-      
+
       match Backends.Wasm.Compile.compile_lambda_to_wasm expr output_path with
       | Ok () ->
           let wat_path = Path.v (Path.to_string output_path ^ ".wat") in
@@ -374,14 +404,15 @@ let handle_compile sub_matches =
           Log.info "  - %s (text format)" (Path.to_string wat_path);
           Log.info "";
           Log.info "Run with Node.js:";
-          Log.info "  node --experimental-wasm-modules %s" (Path.to_string output_path);
+          Log.info "  node --experimental-wasm-modules %s"
+            (Path.to_string output_path);
           Log.info "";
           Log.info "Or in browser:";
-          Log.info "  WebAssembly.instantiateStreaming(fetch('%s'))" (Path.to_string output_path)
+          Log.info "  WebAssembly.instantiateStreaming(fetch('%s'))"
+            (Path.to_string output_path)
       | Error msg ->
           Log.error "❌ Compilation failed: %s" msg;
           exit 1)
-  
   | Some target_str ->
       Log.error "Unsupported target: %s" target_str;
       Log.info "";
@@ -414,6 +445,16 @@ let main ~args =
          "RAML - Riot Advanced Meta Language (OCaml type checker & compiler)"
     |> subcommands
          [
+           command "check"
+           |> about "Type check a file and report errors"
+           |> args
+                [
+                  positional "FILE"
+                  |> help "OCaml source file to type check"
+                  |> required true;
+                  flag "verbose" |> short 'v' |> long "verbose"
+                  |> help "Show detailed type information";
+                ];
            command "typed-tree"
            |> about "Type check file and output typed AST"
            |> args
@@ -455,6 +496,9 @@ let main ~args =
       exit 1
   | Ok matches -> (
       match ArgParser.get_subcommand matches with
+      | Some ("check", sub_matches) ->
+          handle_check sub_matches;
+          Ok ()
       | Some ("typed-tree", sub_matches) ->
           handle_typed_tree sub_matches;
           Ok ()
@@ -468,4 +512,4 @@ let main ~args =
           ArgParser.print_help cmd;
           exit 1)
 
-let () = exit (Miniriot.run ~main ~args:Env.args)
+let () = Miniriot.run ~main ~args:Env.args

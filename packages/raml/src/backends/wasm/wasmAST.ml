@@ -22,7 +22,8 @@ let wasm_const_to_wat = function
 
 let wasm_binop_to_wat ty op =
   let ty_str = wasm_type_to_wat ty in
-  let op_str = match op with
+  let op_str =
+    match op with
     | WasmIR.Add -> "add"
     | WasmIR.Sub -> "sub"
     | WasmIR.Mul -> "mul"
@@ -52,9 +53,12 @@ let wasm_binop_to_wat ty op =
 let rec wasm_instr_to_wat instr =
   match instr with
   | WasmIR.Const c -> wasm_const_to_wat c
-  | WasmIR.GetLocal id -> format "local.get $%s" (Typechecker.Identifier.name id)
-  | WasmIR.SetLocal id -> format "local.set $%s" (Typechecker.Identifier.name id)
-  | WasmIR.TeeLocal id -> format "local.tee $%s" (Typechecker.Identifier.name id)
+  | WasmIR.GetLocal id ->
+      format "local.get $%s" (Typechecker.Identifier.name id)
+  | WasmIR.SetLocal id ->
+      format "local.set $%s" (Typechecker.Identifier.name id)
+  | WasmIR.TeeLocal id ->
+      format "local.tee $%s" (Typechecker.Identifier.name id)
   | WasmIR.GetGlobal name -> format "global.get $%s" name
   | WasmIR.SetGlobal name -> format "global.set $%s" name
   | WasmIR.BinOp (ty, op) -> wasm_binop_to_wat ty op
@@ -63,71 +67,88 @@ let rec wasm_instr_to_wat instr =
   | WasmIR.Drop -> "drop"
   | WasmIR.Block { label; body; _ } ->
       let label_str = format "$%s " label in
-      let body_str = List.map wasm_instr_to_wat body |> String.concat "\n    " in
+      let body_str =
+        List.map wasm_instr_to_wat body |> String.concat "\n    "
+      in
       format "(block %s\n    %s\n  )" label_str body_str
   | WasmIR.Loop { label; body } ->
       let label_str = format "$%s " label in
-      let body_str = List.map wasm_instr_to_wat body |> String.concat "\n    " in
+      let body_str =
+        List.map wasm_instr_to_wat body |> String.concat "\n    "
+      in
       format "(loop %s\n    %s\n  )" label_str body_str
-  | WasmIR.If { then_; else_; _ } ->
-      let then_body = List.map wasm_instr_to_wat then_ |> String.concat "\n    " in
-      begin match else_ with
+  | WasmIR.If { then_; else_; _ } -> (
+      let then_body =
+        List.map wasm_instr_to_wat then_ |> String.concat "\n    "
+      in
+      match else_ with
       | None -> format "(if (then\n    %s\n  ))" then_body
       | Some else_instrs ->
-          let else_body = List.map wasm_instr_to_wat else_instrs |> String.concat "\n    " in
-          format "(if (then\n    %s\n  ) (else\n    %s\n  ))" then_body else_body
-      end
+          let else_body =
+            List.map wasm_instr_to_wat else_instrs |> String.concat "\n    "
+          in
+          format "(if (then\n    %s\n  ) (else\n    %s\n  ))" then_body
+            else_body)
   | _ -> ";; <unimplemented instr>"
 
 let wasm_func_to_wat (func : WasmIR.wasm_func) =
-  let params_str = 
-    List.map (fun ty ->
-      format "(param %s)" (wasm_type_to_wat ty)
-    ) func.func_type.params
+  let params_str =
+    List.map
+      (fun ty -> format "(param %s)" (wasm_type_to_wat ty))
+      func.func_type.params
     |> String.concat " "
   in
-  
+
   let results_str =
-    List.map (fun ty -> format "(result %s)" (wasm_type_to_wat ty)) func.func_type.results
+    List.map
+      (fun ty -> format "(result %s)" (wasm_type_to_wat ty))
+      func.func_type.results
     |> String.concat " "
   in
-  
+
   let locals_str =
-    List.map (fun (id, ty) ->
-      format "(local $%s %s)" (Typechecker.Identifier.name id) (wasm_type_to_wat ty)
-    ) func.locals
+    List.map
+      (fun (id, ty) ->
+        format "(local $%s %s)"
+          (Typechecker.Identifier.name id)
+          (wasm_type_to_wat ty))
+      func.locals
     |> String.concat "\n    "
   in
-  
+
   let body_str =
-    List.map wasm_instr_to_wat func.body
-    |> String.concat "\n    "
+    List.map wasm_instr_to_wat func.body |> String.concat "\n    "
   in
-  
-  format "(func $%s %s %s\n    %s\n    %s\n  )"
-    func.name
+
+  format "(func $%s %s %s\n    %s\n    %s\n  )" func.name
     (if params_str = "" then "" else params_str)
     (if results_str = "" then "" else results_str)
     (if locals_str = "" then "" else locals_str)
     body_str
 
 let to_wat (module_ : WasmIR.wasm_module) : string =
-  let funcs_wat = List.map wasm_func_to_wat module_.funcs |> String.concat "\n\n  " in
-  
-  let memory_wat = match module_.memory with
+  let funcs_wat =
+    List.map wasm_func_to_wat module_.funcs |> String.concat "\n\n  "
+  in
+
+  let memory_wat =
+    match module_.memory with
     | Some pages -> format "(memory %d)" pages
     | None -> ""
   in
-  
-  let exports_wat = List.map (fun (name, export_desc) ->
-    match export_desc with
-    | WasmIR.ExportFunc fname -> format "(export \"%s\" (func $%s))" name fname
-    | WasmIR.ExportGlobal gname -> format "(export \"%s\" (global $%s))" name gname
-    | WasmIR.ExportMemory -> format "(export \"%s\" (memory 0))" name
-    | WasmIR.ExportTable -> format "(export \"%s\" (table 0))" name
-  ) module_.exports |> String.concat "\n  " in
-  
-  format "(module\n  %s\n\n  %s\n\n  %s\n)"
-    memory_wat
-    funcs_wat
-    exports_wat
+
+  let exports_wat =
+    List.map
+      (fun (name, export_desc) ->
+        match export_desc with
+        | WasmIR.ExportFunc fname ->
+            format "(export \"%s\" (func $%s))" name fname
+        | WasmIR.ExportGlobal gname ->
+            format "(export \"%s\" (global $%s))" name gname
+        | WasmIR.ExportMemory -> format "(export \"%s\" (memory 0))" name
+        | WasmIR.ExportTable -> format "(export \"%s\" (table 0))" name)
+      module_.exports
+    |> String.concat "\n  "
+  in
+
+  format "(module\n  %s\n\n  %s\n\n  %s\n)" memory_wat funcs_wat exports_wat

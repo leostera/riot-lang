@@ -1,23 +1,19 @@
 open Std
-
 module Identifier = Typechecker.Identifier
 
 type byte_vec = int list
 
-let wasm_magic = [0x00; 0x61; 0x73; 0x6d]
-let wasm_version = [0x01; 0x00; 0x00; 0x00]
+let wasm_magic = [ 0x00; 0x61; 0x73; 0x6d ]
+let wasm_version = [ 0x01; 0x00; 0x00; 0x00 ]
 
 let encode_u32_leb128 n =
   let rec loop acc n =
     let byte = n land 0x7F in
     let rest = n lsr 7 in
-    if rest = 0 then
-      List.rev (byte :: acc)
-    else
-      loop ((byte lor 0x80) :: acc) rest
+    if rest = 0 then List.rev (byte :: acc)
+    else loop ((byte lor 0x80) :: acc) rest
   in
-  if n < 0 then failwith "encode_u32_leb128: negative number"
-  else loop [] n
+  if n < 0 then failwith "encode_u32_leb128: negative number" else loop [] n
 
 let encode_s32_leb128 n =
   let rec loop acc n =
@@ -26,8 +22,7 @@ let encode_s32_leb128 n =
     let sign_bit = (byte lsr 6) land 1 in
     if (rest = 0 && sign_bit = 0) || (rest = -1 && sign_bit = 1) then
       List.rev (byte :: acc)
-    else
-      loop ((byte lor 0x80) :: acc) rest
+    else loop ((byte lor 0x80) :: acc) rest
   in
   loop [] n
 
@@ -38,8 +33,7 @@ let encode_s64_leb128 n =
     let sign_bit = (byte lsr 6) land 1 in
     if (rest = 0L && sign_bit = 0) || (rest = -1L && sign_bit = 1) then
       List.rev (byte :: acc)
-    else
-      loop ((byte lor 0x80) :: acc) rest
+    else loop ((byte lor 0x80) :: acc) rest
   in
   loop [] n
 
@@ -74,89 +68,95 @@ let encode_name str =
   encode_u32_leb128 (String.length str) @ bytes
 
 let encode_valtype = function
-  | WasmIR.I32 -> [0x7F]
-  | WasmIR.I64 -> [0x7E]
-  | WasmIR.F32 -> [0x7D]
-  | WasmIR.F64 -> [0x7C]
-  | WasmIR.FuncRef -> [0x70]
-  | WasmIR.AnyRef -> [0x6F]
+  | WasmIR.I32 -> [ 0x7F ]
+  | WasmIR.I64 -> [ 0x7E ]
+  | WasmIR.F32 -> [ 0x7D ]
+  | WasmIR.F64 -> [ 0x7C ]
+  | WasmIR.FuncRef -> [ 0x70 ]
+  | WasmIR.AnyRef -> [ 0x6F ]
 
 let encode_functype ft =
-  [0x60] @
-  encode_vec encode_valtype ft.WasmIR.params @
-  encode_vec encode_valtype ft.WasmIR.results
+  [ 0x60 ]
+  @ encode_vec encode_valtype ft.WasmIR.params
+  @ encode_vec encode_valtype ft.WasmIR.results
 
 let encode_section_with_content section_id content =
   if content = [] then []
   else
     let size = encode_u32_leb128 (List.length content) in
-    [section_id] @ size @ content
+    [ section_id ] @ size @ content
 
 let rec encode_instr locals_map = function
   | WasmIR.Const (WasmIR.ConstI32 i) ->
-      [0x41] @ encode_s32_leb128 (Int32.to_int i)
-  | WasmIR.Const (WasmIR.ConstI64 i) ->
-      [0x42] @ encode_s64_leb128 i
-  | WasmIR.Const (WasmIR.ConstF32 f) ->
-      [0x43] @ encode_f32 f
-  | WasmIR.Const (WasmIR.ConstF64 f) ->
-      [0x44] @ encode_f64 f
+      [ 0x41 ] @ encode_s32_leb128 (Int32.to_int i)
+  | WasmIR.Const (WasmIR.ConstI64 i) -> [ 0x42 ] @ encode_s64_leb128 i
+  | WasmIR.Const (WasmIR.ConstF32 f) -> [ 0x43 ] @ encode_f32 f
+  | WasmIR.Const (WasmIR.ConstF64 f) -> [ 0x44 ] @ encode_f64 f
   | WasmIR.GetLocal id ->
-      let idx = Collections.HashMap.get locals_map id |> Option.unwrap_or ~default:0 in
-      [0x20] @ encode_u32_leb128 idx
+      let idx =
+        Collections.HashMap.get locals_map id |> Option.unwrap_or ~default:0
+      in
+      [ 0x20 ] @ encode_u32_leb128 idx
   | WasmIR.SetLocal id ->
-      let idx = Collections.HashMap.get locals_map id |> Option.unwrap_or ~default:0 in
-      [0x21] @ encode_u32_leb128 idx
+      let idx =
+        Collections.HashMap.get locals_map id |> Option.unwrap_or ~default:0
+      in
+      [ 0x21 ] @ encode_u32_leb128 idx
   | WasmIR.TeeLocal id ->
-      let idx = Collections.HashMap.get locals_map id |> Option.unwrap_or ~default:0 in
-      [0x22] @ encode_u32_leb128 idx
-  | WasmIR.BinOp (I32, Add) -> [0x6A]
-  | WasmIR.BinOp (I32, Sub) -> [0x6B]
-  | WasmIR.BinOp (I32, Mul) -> [0x6C]
-  | WasmIR.BinOp (I32, Div_s) -> [0x6D]
-  | WasmIR.BinOp (I32, Rem_s) -> [0x6F]
-  | WasmIR.BinOp (I64, Add) -> [0x7C]
-  | WasmIR.BinOp (I64, Sub) -> [0x7D]
-  | WasmIR.BinOp (I64, Mul) -> [0x7E]
-  | WasmIR.BinOp (I64, Div_s) -> [0x7F]
-  | WasmIR.Return -> [0x0F]
-  | WasmIR.Drop -> [0x1A]
-  | WasmIR.Call name ->
-      [0x10] @ encode_u32_leb128 0
+      let idx =
+        Collections.HashMap.get locals_map id |> Option.unwrap_or ~default:0
+      in
+      [ 0x22 ] @ encode_u32_leb128 idx
+  | WasmIR.BinOp (I32, Add) -> [ 0x6A ]
+  | WasmIR.BinOp (I32, Sub) -> [ 0x6B ]
+  | WasmIR.BinOp (I32, Mul) -> [ 0x6C ]
+  | WasmIR.BinOp (I32, Div_s) -> [ 0x6D ]
+  | WasmIR.BinOp (I32, Rem_s) -> [ 0x6F ]
+  | WasmIR.BinOp (I64, Add) -> [ 0x7C ]
+  | WasmIR.BinOp (I64, Sub) -> [ 0x7D ]
+  | WasmIR.BinOp (I64, Mul) -> [ 0x7E ]
+  | WasmIR.BinOp (I64, Div_s) -> [ 0x7F ]
+  | WasmIR.Return -> [ 0x0F ]
+  | WasmIR.Drop -> [ 0x1A ]
+  | WasmIR.Call name -> [ 0x10 ] @ encode_u32_leb128 0
   | _ -> []
 
 let encode_expr locals_map instrs =
-  List.concat (List.map (encode_instr locals_map) instrs) @ [0x0B]
+  List.concat (List.map (encode_instr locals_map) instrs) @ [ 0x0B ]
 
 let encode_func_body func =
   let locals_map = Collections.HashMap.create () in
-  let _ = List.mapi (fun i (id, _ty) ->
-    Collections.HashMap.insert locals_map id i
-  ) func.WasmIR.locals in
-  
-  let locals_encoded = encode_vec (fun (_id, ty) ->
-    encode_u32_leb128 1 @ encode_valtype ty
-  ) func.WasmIR.locals in
-  
+  let _ =
+    List.mapi
+      (fun i (id, _ty) -> Collections.HashMap.insert locals_map id i)
+      func.WasmIR.locals
+  in
+
+  let locals_encoded =
+    encode_vec
+      (fun (_id, ty) -> encode_u32_leb128 1 @ encode_valtype ty)
+      func.WasmIR.locals
+  in
+
   let code = locals_encoded @ encode_expr locals_map func.WasmIR.body in
   encode_u32_leb128 (List.length code) @ code
 
 let encode_limits min max_opt =
   match max_opt with
-  | None -> [0x00] @ encode_u32_leb128 min
-  | Some max -> [0x01] @ encode_u32_leb128 min @ encode_u32_leb128 max
+  | None -> [ 0x00 ] @ encode_u32_leb128 min
+  | Some max -> [ 0x01 ] @ encode_u32_leb128 min @ encode_u32_leb128 max
 
-let encode_memtype pages =
-  encode_limits pages None
+let encode_memtype pages = encode_limits pages None
 
 let encode_export name export_desc =
-  let (kind, idx) = match export_desc with
+  let kind, idx =
+    match export_desc with
     | WasmIR.ExportFunc _fname -> (0x00, 0)
     | WasmIR.ExportGlobal _gname -> (0x03, 0)
     | WasmIR.ExportMemory -> (0x02, 0)
     | WasmIR.ExportTable -> (0x01, 0)
   in
-  encode_name name @ [kind] @ encode_u32_leb128 idx
+  encode_name name @ [ kind ] @ encode_u32_leb128 idx
 
 let encode_type_section types =
   let content = encode_vec encode_functype types in
@@ -171,11 +171,13 @@ let encode_memory_section mem_opt =
   match mem_opt with
   | None -> []
   | Some pages ->
-      let content = encode_vec encode_memtype [pages] in
+      let content = encode_vec encode_memtype [ pages ] in
       encode_section_with_content 0x05 content
 
 let encode_export_section exports =
-  let content = encode_vec (fun (name, desc) -> encode_export name desc) exports in
+  let content =
+    encode_vec (fun (name, desc) -> encode_export name desc) exports
+  in
   encode_section_with_content 0x07 content
 
 let encode_code_section funcs =
@@ -183,13 +185,12 @@ let encode_code_section funcs =
   encode_section_with_content 0x0A content
 
 let encode_module (module_ : WasmIR.wasm_module) : byte_vec =
-  wasm_magic @
-  wasm_version @
-  encode_type_section module_.types @
-  encode_function_section module_.funcs @
-  encode_memory_section module_.memory @
-  encode_export_section module_.exports @
-  encode_code_section module_.funcs
+  wasm_magic @ wasm_version
+  @ encode_type_section module_.types
+  @ encode_function_section module_.funcs
+  @ encode_memory_section module_.memory
+  @ encode_export_section module_.exports
+  @ encode_code_section module_.funcs
 
 let write_binary output_path module_ =
   let bytes = encode_module module_ in
