@@ -6,7 +6,11 @@ version = "0.1.0"
 std = { path = "../std" }
 
 [[bin]]
-name = "pubgrub"
-path = "src/main.ml"
+name = "simple"
+path = "examples/simple.ml"
+
+[[bin]]
+name = "solver_tests"
+path = "tests/solver_tests.ml"
 
 

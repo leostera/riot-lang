@@ -63,7 +63,8 @@ let is_terminal incompat root_pkg root_ver =
       && Term.package term = root_pkg
   | Derived { terms = [ term ]; _ } ->
       (* Derived incompatibility with only root term is terminal *)
-      Term.package term = root_pkg && Term.is_positive term
+      Term.package term = root_pkg
+      && Term.is_positive term
       && Ranges.contains ~compare_v:version_compare (Term.ranges term) root_ver
   | _ -> false
 
@@ -101,6 +102,20 @@ let prior_cause incompat satisfier_cause package =
     (List.length incompat_terms)
     (List.length satisfier_terms)
     package;
+  Log.info "  incompat terms:";
+  List.iter
+    (fun t ->
+      Log.info "    %s%s"
+        (if Term.is_positive t then "" else "NOT ")
+        (Term.package t))
+    incompat_terms;
+  Log.info "  satisfier_cause terms:";
+  List.iter
+    (fun t ->
+      Log.info "    %s%s"
+        (if Term.is_positive t then "" else "NOT ")
+        (Term.package t))
+    satisfier_terms;
   match incompat with
   | External _ | Derived _ ->
       (* Find the term for the package in both incompatibilities and merge them *)

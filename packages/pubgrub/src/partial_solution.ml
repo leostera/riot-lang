@@ -264,7 +264,9 @@ let satisfier_search solution incompat =
       | [] -> None
       | Decision (p, ver, level, gidx) :: _ when p = pkg ->
           (* Check if decision satisfies the term *)
-          let in_range = Ranges.contains ~compare_v:version_compare term_ranges ver in
+          let in_range =
+            Ranges.contains ~compare_v:version_compare term_ranges ver
+          in
           let satisfies =
             (is_positive && in_range) || ((not is_positive) && not in_range)
           in

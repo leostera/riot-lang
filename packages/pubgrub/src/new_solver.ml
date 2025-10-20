@@ -289,8 +289,16 @@ let rec conflict_resolution root_package root_version state incompat =
                 add_incompatibility state term_pkg current_incompat)
               (Incompatibility.terms current_incompat);
 
-          Log.info "📚 Learned incompatibility, backtracked to level %d"
-            previous_level;
+          let terms = Incompatibility.terms current_incompat in
+          Log.info
+            "📚 Learned incompatibility with %d terms, backtracked to level %d"
+            (List.length terms) previous_level;
+          List.iter
+            (fun t ->
+              Log.info "    Term: %s%s"
+                (if Term.is_positive t then "" else "NOT ")
+                (Term.package t))
+            terms;
           (* Return the package, root cause, and backtracked solution *)
           Ok (pkg, current_incompat, new_solution)
       | `SameDecisionLevels satisfier_cause ->
@@ -330,7 +338,7 @@ let unit_propagation root_package root_version state changed_packages =
         | None ->
             Log.info "🔄 No incompatibilities for %s, skipping" pkg;
             process_packages state rest
-        | Some incompats ->
+        | Some incompats -> (
             Log.info "  💡 Found %d incompatibilities for %s"
               (List.length incompats) pkg;
             let rec check_incompats state = function
@@ -339,12 +347,14 @@ let unit_propagation root_package root_version state changed_packages =
                   Ok state
               | incompat :: remaining -> (
                   let incompat_terms = Incompatibility.terms incompat in
-                  let terms_str = String.concat ", " 
-                    (List.map (fun t -> 
-                      format "%s@%s%s" 
-                        (Term.package t) 
-                        "ranges"
-                        (if Term.is_positive t then "" else "(neg)")) incompat_terms) in
+                  let terms_str =
+                    String.concat ", "
+                      (List.map
+                         (fun t ->
+                           format "%s@%s%s" (Term.package t) "ranges"
+                             (if Term.is_positive t then "" else "(neg)"))
+                         incompat_terms)
+                  in
                   Log.info "    🔍 Checking incomp [%s]" terms_str;
                   (* Skip incompatibilities that are already contradicted *)
                   match HashMap.get state.contradicted incompat with
@@ -386,6 +396,14 @@ let unit_propagation root_package root_version state changed_packages =
                                 Partial_solution.add_derivation
                                   backtracked_solution resolved_pkg root_cause
                               in
+
+                              (* Add the root_cause to incompatibilities so choose_version can see it *)
+                              List.iter
+                                (fun term ->
+                                  let term_pkg = Term.package term in
+                                  add_incompatibility state term_pkg root_cause)
+                                (Incompatibility.terms root_cause);
+
                               (* Mark the root cause as contradicted at current decision level *)
                               let current_level =
                                 Partial_solution.current_decision_level
@@ -398,13 +416,17 @@ let unit_propagation root_package root_version state changed_packages =
                                 { state with solution = new_solution }
                               in
                               (* After backtracking, return to solve loop to pick next package *)
-                              Log.info "🔄 Returning from unit_propagation after conflict resolution";
+                              Log.info
+                                "🔄 Returning from unit_propagation after \
+                                 conflict resolution";
                               Ok new_state)
-                       | `AlmostSatisfied satisfier_pkg -> (
+                      | `AlmostSatisfied satisfier_pkg -> (
                           Log.info
                             "  🎯 Almost satisfied, deriving constraint for %s"
                             satisfier_pkg;
-                          Log.info "  📋 Remaining incompats: %d, remaining packages: %d"
+                          Log.info
+                            "  📋 Remaining incompats: %d, remaining packages: \
+                             %d"
                             (List.length remaining) (List.length rest);
                           (* RUST: Just add derivation with the incompatibility *)
                           (* add_derivation will negate the term to get the derived ranges *)
@@ -423,8 +445,8 @@ let unit_propagation root_package root_version state changed_packages =
                             { state with solution = new_solution }
                           in
                           (* Continue with remaining incompats, then process satisfier_pkg *)
-                          Log.info "  ⏭️  Continuing: satisfier=%s, rest=%s" satisfier_pkg
-                            (String.concat "," rest);
+                          Log.info "  ⏭️  Continuing: satisfier=%s, rest=%s"
+                            satisfier_pkg (String.concat "," rest);
                           match check_incompats new_state remaining with
                           | Ok state' ->
                               Log.info "  ✅ check_incompats OK, processing [%s]"
@@ -434,21 +456,15 @@ let unit_propagation root_package root_version state changed_packages =
                               Log.error "  ❌ check_incompats ERROR";
                               err)
                       | `Contradicted _ ->
-                          (* Mark as contradicted so we don't check it again *)
-                          let current_level =
-                            Partial_solution.current_decision_level
-                              state.solution
-                          in
-                          ignore
-                            (HashMap.insert state.contradicted incompat
-                               current_level);
+                          (* Don't mark Contradicted incomps - they should be re-checked each time *)
+                          (* This is important after backtracking when the solution changes *)
                           check_incompats state remaining
                       | `Unknown -> check_incompats state remaining))
             in
             (* After checking all incompats for this package, continue with remaining packages *)
             match check_incompats state incompats with
             | Ok state' -> process_packages state' rest
-            | Error _ as err -> err)
+            | Error _ as err -> err))
   in
   process_packages state changed_packages
 
@@ -648,7 +664,9 @@ let solve provider root_package root_version =
 
           (* Run initial unit propagation on all root dependencies to create derivations *)
           let state =
-            match unit_propagation root_package root_version state !dep_packages with
+            match
+              unit_propagation root_package root_version state !dep_packages
+            with
             | Ok state -> state
             | Error _ -> state
           in
@@ -815,14 +833,19 @@ let solve provider root_package root_version =
                                         Incompatibility.from_dependency pkg ver
                                           (dep_pkg, dep_ranges)
                                       in
-                                      Log.info "📦 Added dependency incompatibility for %s" dep_pkg;
+                                      Log.info
+                                        "📦 Added dependency incompatibility \
+                                         for %s"
+                                        dep_pkg;
                                       add_incompatibility new_state dep_pkg
                                         dep_incompat;
                                       affected_packages :=
                                         dep_pkg :: !affected_packages)
                                     pkg_deps;
 
-                                  Log.info "🔄 Added %d dependency incompatibilities: %s"
+                                  Log.info
+                                    "🔄 Added %d dependency incompatibilities: \
+                                     %s"
                                     (List.length !affected_packages)
                                     (String.concat ", " !affected_packages);
 
@@ -843,12 +866,14 @@ let solve provider root_package root_version =
                                         | first :: _ -> first
                                         | [] -> pkg
                                       in
-                                      solve_loop propagated_state (iteration + 1)
-                                        next_to_check))))))
+                                      solve_loop propagated_state
+                                        (iteration + 1) next_to_check))))))
           in
 
           (* Start loop with first dependency package, or root if no deps *)
           let initial_next =
-            match deps with first_dep :: _ -> fst first_dep | [] -> root_package
+            match deps with
+            | first_dep :: _ -> fst first_dep
+            | [] -> root_package
           in
           solve_loop state 0 initial_next)

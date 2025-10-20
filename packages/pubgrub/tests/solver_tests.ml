@@ -26,7 +26,7 @@ let test_debug_derivations =
       Pubgrub.add_package provider "root" (v 1 0 0) [ ("foo", Pubgrub.full) ];
       Pubgrub.add_package provider "foo" (v 1 0 0) [];
       assert_solution 2
-        (New_solver.solve (Pubgrub.to_provider provider) "root" (v 1 0 0)))
+        (Pubgrub.Solver.solve (Pubgrub.to_provider provider) "root" (v 1 0 0)))
 
 let test_empty_root =
   Test.case "Empty root package" (fun () ->
@@ -1340,16 +1340,6 @@ let run_all_tests_with_new_solver () =
 *)
 
 let () =
-  (* Quick tests of new solver architecture - COMMENTED OUT during swap *)
-  (* test_new_solver_compute_pending ();
-  test_new_solver_basic ();
-  test_new_solver_with_dependency ();
-  test_new_solver_on_test_suite ();
-  test_new_solver_on_failing_tests (); *)
-  Log.info "=== RUNNING WITH NEW SOLVER ===";
-
-  (* Run main test suite (NOW USING NEW SOLVER!) *)
   Miniriot.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"pubgrub" ~tests:all_tests ~args ())
+    ~main:(fun ~args -> Test.Cli.main ~name:"pubgrub" ~tests:all_tests ~args)
     ~args:Env.args
-  |> exit
