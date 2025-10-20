@@ -5,14 +5,12 @@ open Std
 type t = { filename : Path.t; namespace : Namespace.t; name : string }
 
 let make ~filename ~namespace ~name = { filename; namespace; name }
-
-let sanitize_name name =
-  String.map (fun c -> if c = '-' then '_' else c) name
+let sanitize_name name = String.map (fun c -> if c = '-' then '_' else c) name
 
 let of_filename ?(namespace = Namespace.empty) filename =
   let name =
-    Path.remove_extension filename |> Path.basename |> sanitize_name
-    |> String.capitalize_ascii
+    Path.remove_extension filename
+    |> Path.basename |> sanitize_name |> String.capitalize_ascii
   in
   { filename; namespace; name }
 

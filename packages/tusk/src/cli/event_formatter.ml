@@ -26,4 +26,47 @@ let format (event : Event.t) =
           (float_of_int duration_ms /. 1000.0)
       else
         format "   \027[1;31mFailed\027[0m with %d errors" (List.length failed)
-  | _ -> ""
+  | CycleDetected { packages } ->
+      let cycle_str = String.concat " → " packages in
+      format
+        "\n\
+         \027[1;31merror:\027[0m circular dependency detected\n\n\
+         The following packages form a dependency cycle:\n\
+        \  %s → %s\n\n\
+         Please remove one of these dependencies to break the cycle.\n"
+        cycle_str (List.hd packages)
+  | BuildGraphCreated _ -> ""
+  | BuildGraphCreating -> ""
+  | BuildStarted _ -> ""
+  | CacheStored _ -> ""
+  | CompilingImplementation _ -> ""
+  | CompilingInterface _ -> ""
+  | ComputingHash _ -> ""
+  | CopyingFile _ -> ""
+  | CreatingDirectory _ -> ""
+  | DependencyMissing _ -> ""
+  | DependencySatisfied _ -> ""
+  | HashComputed _ -> ""
+  | LinkingExecutable _ -> ""
+  | LinkingLibrary _ -> ""
+  | McpToolCall _ -> ""
+  | QueuePackage _ -> ""
+  | QueueStats _ -> ""
+  | RpcRequestReceived _ -> ""
+  | RpcResponseSent _ -> ""
+  | ServerRestarted _ -> ""
+  | ServerScanning _ -> ""
+  | ServerShutdown -> ""
+  | ServerStarted _ -> ""
+  | WorkerAssigned _ -> ""
+  | WorkerIdle _ -> ""
+  | WorkerPoolStarted _ -> ""
+  | WorkerStarted _ -> ""
+  | StoreCreating -> ""
+  | StoreCreated _ -> ""
+  | WorkerPoolCreating _ -> ""
+  | WorkerPoolCreated _ -> ""
+  | WorkspaceEmpty -> ""
+  | WorkspaceScanning -> ""
+  | WorkspaceScanned _ -> ""
+  | WritingFile _ -> ""

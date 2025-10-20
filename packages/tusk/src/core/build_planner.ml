@@ -80,8 +80,9 @@ let plan_node ~graph ~node ~build_results ~workspace ~session_id ~sandbox () =
           (* Hash 0: Package metadata *)
           Package.hash (module Sha256) hasher node.package;
 
-          (* Hash 1: Source file contents *)
+          (* Hash 1: Source file contents from src/ directory *)
           let src_dir = Path.(node.package.path / Path.v "src") in
+          let tests_dir = Path.(node.package.path / Path.v "tests") in
           let rec hash_source_files dir =
             match Fs.read_dir dir with
             | Error _ -> ()
@@ -110,6 +111,21 @@ let plan_node ~graph ~node ~build_results ~workspace ~session_id ~sandbox () =
                   sorted_files
           in
           hash_source_files src_dir;
+          hash_source_files tests_dir;
+
+          (* Hash 1.5: Binary source files *)
+          let sorted_binaries =
+            List.sort
+              (fun (a : Package.binary) (b : Package.binary) ->
+                String.compare (Path.to_string a.path) (Path.to_string b.path))
+              node.package.binaries
+          in
+          List.iter
+            (fun (binary : Package.binary) ->
+              match Fs.read_to_string binary.path with
+              | Ok content -> Sha256.write_string hasher content
+              | Error _ -> ())
+            sorted_binaries;
 
           (* Hash 2: All actions with full parameters *)
           Actions.hash_actions (module Sha256) hasher actions;

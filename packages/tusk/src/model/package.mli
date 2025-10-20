@@ -2,7 +2,6 @@ open Std
 
 type dependency_source = Workspace | Path of Path.t
 type dependency = { name : string; source : dependency_source }
-
 type binary = { name : string; path : Path.t }
 
 type t = {

@@ -7,7 +7,6 @@ open Std.Data
 
 type dependency_source = Workspace | Path of Path.t
 type dependency = { name : string; source : dependency_source }
-
 type binary = { name : string; path : Path.t }
 
 type t = {
@@ -80,9 +79,7 @@ let parse_binary (value : Toml.value) ~(package_path : Path.t) :
     (binary, string) result =
   match value with
   | Toml.Table items -> (
-      match
-        (List.assoc_opt "name" items, List.assoc_opt "path" items)
-      with
+      match (List.assoc_opt "name" items, List.assoc_opt "path" items) with
       | Some (Toml.String name), Some (Toml.String path_str) ->
           let bin_path = Path.(package_path / Path.v path_str) in
           Ok { name; path = bin_path }
@@ -97,12 +94,13 @@ let parse_binary (value : Toml.value) ~(package_path : Path.t) :
           Error "Binary entry missing required 'name' and 'path' fields")
   | _ -> Error "Binary entry must be a table"
 
-let parse_binaries (items : (string * Toml.value) list)
-    ~(package_path : Path.t) : (binary list, string) result =
-  Log.debug "[PACKAGE] parse_binaries called with %d top-level items" (List.length items);
+let parse_binaries (items : (string * Toml.value) list) ~(package_path : Path.t)
+    : (binary list, string) result =
+  Log.debug "[PACKAGE] parse_binaries called with %d top-level items"
+    (List.length items);
   List.iter (fun (k, _) -> Log.debug "[PACKAGE]   key: %s" k) items;
   match List.assoc_opt "bin" items with
-  | None -> 
+  | None ->
       Log.debug "[PACKAGE] No 'bin' key found";
       Ok []
   | Some (Toml.Array bin_entries) ->

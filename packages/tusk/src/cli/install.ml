@@ -82,7 +82,9 @@ let run matches =
         println "\n❌ Failed to build %s, nothing was installed" binary_name;
         Error (Failure (format "Failed to build %s" binary_name)))
       else
-        let root = Env.current_dir () |> Result.expect ~msg:"Failed to get cwd" in
+        let root =
+          Env.current_dir () |> Result.expect ~msg:"Failed to get cwd"
+        in
         let possible_binary_paths =
           [
             Path.(root / Path.v "target/bootstrap" / Path.v binary_name);
@@ -107,7 +109,8 @@ let run matches =
         with
         | None ->
             println "❌ Binary %s not found after build" binary_name;
-            println "Note: Only packages with binaries in [[bin]] can be installed";
+            println
+              "Note: Only packages with binaries in [[bin]] can be installed";
             Error (Failure (format "Binary not found: %s" binary_name))
         | Some binary_path ->
             let perms = Fs.Permissions.executable in
@@ -143,7 +146,8 @@ let run matches =
                    println "✅ Installed %s to %s" binary_name
                      (Path.to_string dest_path);
                    println "";
-                   println "To use %s from anywhere, add ~/.tusk/bin to your PATH:"
+                   println
+                     "To use %s from anywhere, add ~/.tusk/bin to your PATH:"
                      binary_name;
                    println "  export PATH='$HOME/.tusk/bin:$PATH'"
                | Error _ ->

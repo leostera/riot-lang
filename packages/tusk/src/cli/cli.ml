@@ -22,6 +22,7 @@ let cli =
          Rpc.command;
          Run.command;
          Server_cmd.command;
+         Test_cmd.command;
          command "doc" |> about "Generate documentation";
          command "lsp" |> about "Start OCaml LSP server";
          command "version" |> about "Show tusk version";
@@ -48,6 +49,7 @@ let main ~args:argv =
       | Some ("server", server_matches) -> Server_cmd.run server_matches
       | Some ("rpc", rpc_matches) -> Rpc.run rpc_matches
       | Some ("mcp", mcp_matches) -> Mcp_cmd.run mcp_matches
+      | Some ("test", test_matches) -> Test_cmd.run test_matches
       | Some ("doc", _) ->
           println "doc command not yet implemented";
           Ok ()

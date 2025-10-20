@@ -226,54 +226,53 @@ and handle_ocaml_module ~t ~ctx path =
 
   (* Skip binary modules - they will be compiled separately *)
   let path_str = Path.to_string path in
-  let is_binary = List.exists
-    (fun (bin : Package.binary) -> 
-      let bin_str = Path.to_string bin.path in
-      let bin_basename = Filename.basename bin_str in
-      let file_basename = Filename.basename path_str in
-      bin_basename = file_basename)
-    t.package.binaries
+  let is_binary =
+    List.exists
+      (fun (bin : Package.binary) ->
+        let bin_str = Path.to_string bin.path in
+        let bin_basename = Filename.basename bin_str in
+        let file_basename = Filename.basename path_str in
+        bin_basename = file_basename)
+      t.package.binaries
   in
-  
+
   if is_binary then (
     Log.debug "[MODULE_GRAPH] Skipping binary module: %s" path_str;
-    ()
-  ) else (
+    ())
+  else
+    let mod_ = Module.make ~namespace:ns ~filename:path in
+    let node = Ocaml_module.make_node mod_ aliases |> G.add_node t.graph in
 
-  let mod_ = Module.make ~namespace:ns ~filename:path in
-  let node = Ocaml_module.make_node mod_ aliases |> G.add_node t.graph in
+    Module_registry.register t.registry mod_ node.id;
 
-  Module_registry.register t.registry mod_ node.id;
+    (* If implementation, check for corresponding interface *)
+    (match Module.kind mod_ with
+    | `implementation -> (
+        let mod_name = Module.module_name mod_ |> Module_name.to_string in
+        try
+          let node_ids = Module_registry.get_by_name t.registry mod_name in
+          List.iter
+            (fun intf_node_id ->
+              let intf_node = G.get_node t.graph intf_node_id in
+              match intf_node.value.kind with
+              | MLI intf_mod
+                when Module.module_name intf_mod
+                     |> Module_name.to_string = mod_name ->
+                  G.add_edge node ~depends_on:intf_node
+              | _ -> ())
+            node_ids
+        with Not_found -> ())
+    | `interface -> ());
 
-  (* If implementation, check for corresponding interface *)
-  (match Module.kind mod_ with
-  | `implementation -> (
-      let mod_name = Module.module_name mod_ |> Module_name.to_string in
-      try
-        let node_ids = Module_registry.get_by_name t.registry mod_name in
-        List.iter
-          (fun intf_node_id ->
-            let intf_node = G.get_node t.graph intf_node_id in
-            match intf_node.value.kind with
-            | MLI intf_mod
-              when Module.module_name intf_mod
-                   |> Module_name.to_string = mod_name ->
-                G.add_edge node ~depends_on:intf_node
-            | _ -> ())
-          node_ids
-      with Not_found -> ())
-  | `interface -> ());
-
-  let parent =
-    match Module.kind mod_ with
-    | `interface -> parent_intf
-    | `implementation -> parent_impl
-  in
-  G.add_edge parent ~depends_on:node;
-  List.iter
-    (fun aliases_node -> G.add_edge node ~depends_on:aliases_node)
-    aliases
-  )
+    let parent =
+      match Module.kind mod_ with
+      | `interface -> parent_intf
+      | `implementation -> parent_impl
+    in
+    G.add_edge parent ~depends_on:node;
+    List.iter
+      (fun aliases_node -> G.add_edge node ~depends_on:aliases_node)
+      aliases
 
 and handle_library ~t ~ctx dir name children =
   let { ns; aliases; parent_impl; parent_intf } = ctx in
@@ -294,8 +293,10 @@ and handle_library ~t ~ctx dir name children =
   (* IMPORTANT: Exclude the library interface files themselves (name.ml and name.mli) *)
   (* to avoid creating self-loops: lib.ml -> lib.ml *)
   (* Compare module names, not file names, to handle Pkg.ml vs pkg.ml *)
-  let library_module_name = Module_name.of_string name |> Module_name.to_string in
-  
+  let library_module_name =
+    Module_name.of_string name |> Module_name.to_string
+  in
+
   (* IMPORTANT: Exclude binary modules from the library interface *)
   (* Binary paths are stored as ABSOLUTE (e.g., /full/path/packages/tusk/src/main.ml) *)
   (* File paths during scanning are RELATIVE to package root (e.g., src/main.ml) *)
@@ -303,23 +304,25 @@ and handle_library ~t ~ctx dir name children =
   let is_binary_module p =
     let p_str = Path.to_string p in
     List.exists
-      (fun (bin : Package.binary) -> 
+      (fun (bin : Package.binary) ->
         let bin_abs = Path.to_string bin.path in
         let pkg_abs = Path.to_string t.package.path in
         (* Make binary path relative by removing package prefix *)
-        let bin_rel = 
+        let bin_rel =
           if String.starts_with ~prefix:(pkg_abs ^ "/") bin_abs then
-            String.sub bin_abs (String.length pkg_abs + 1) 
+            String.sub bin_abs
+              (String.length pkg_abs + 1)
               (String.length bin_abs - String.length pkg_abs - 1)
           else bin_abs
         in
         let matches = p_str = bin_rel in
-        Log.debug "[MODULE_GRAPH] Comparing: file=%s bin_abs=%s bin_rel=%s matches=%b" 
+        Log.debug
+          "[MODULE_GRAPH] Comparing: file=%s bin_abs=%s bin_rel=%s matches=%b"
           p_str bin_abs bin_rel matches;
         matches)
       t.package.binaries
   in
-  
+
   let child_files =
     List.filter_map
       (fun (n, e) ->
@@ -327,8 +330,9 @@ and handle_library ~t ~ctx dir name children =
         | `File (p, (".ml" | ".mli")) ->
             (* Compare module names, not file names *)
             (* n is already a string basename, just remove extension *)
-            let file_module_name = 
-              Filename.remove_extension n |> Module_name.of_string |> Module_name.to_string
+            let file_module_name =
+              Filename.remove_extension n
+              |> Module_name.of_string |> Module_name.to_string
             in
             if file_module_name = library_module_name then
               (* This is the library interface file itself - skip it *)
@@ -336,11 +340,10 @@ and handle_library ~t ~ctx dir name children =
             else
               let is_bin = is_binary_module p in
               if is_bin then
-                Log.debug "[MODULE_GRAPH] Filtered out binary from library: %s" (Path.to_string p);
-              if not is_bin then
-                Some (Module.make ~namespace:ns ~filename:p)
-              else
-                None
+                Log.debug "[MODULE_GRAPH] Filtered out binary from library: %s"
+                  (Path.to_string p);
+              if not is_bin then Some (Module.make ~namespace:ns ~filename:p)
+              else None
         | _ -> None)
       children
   in
@@ -377,12 +380,11 @@ and handle_library ~t ~ctx dir name children =
         match e with
         | `File (p, ".ml") ->
             (* n is already a string basename, just remove extension *)
-            let file_module_name = 
-              Filename.remove_extension n |> Module_name.of_string |> Module_name.to_string
+            let file_module_name =
+              Filename.remove_extension n
+              |> Module_name.of_string |> Module_name.to_string
             in
-            if file_module_name = library_module_name then
-              Some p
-            else None
+            if file_module_name = library_module_name then Some p else None
         | _ -> None)
       children
   in
@@ -393,34 +395,40 @@ and handle_library ~t ~ctx dir name children =
         match e with
         | `File (p, ".mli") ->
             (* n is already a string basename, just remove extension *)
-            let file_module_name = 
-              Filename.remove_extension n |> Module_name.of_string |> Module_name.to_string
+            let file_module_name =
+              Filename.remove_extension n
+              |> Module_name.of_string |> Module_name.to_string
             in
-            if file_module_name = library_module_name then
-              Some p
-            else None
+            if file_module_name = library_module_name then Some p else None
         | _ -> None)
       children
   in
 
   let has_library_interface_ml = library_interface_ml_path <> None in
   let has_library_interface_mli = library_interface_mli_path <> None in
-  
+
   if has_library_interface_ml || has_library_interface_mli then
-    Log.debug "[MODULE_GRAPH] Library %s has concrete interface files: ml=%b mli=%b" 
+    Log.debug
+      "[MODULE_GRAPH] Library %s has concrete interface files: ml=%b mli=%b"
       name has_library_interface_ml has_library_interface_mli;
 
   let children_without_lib =
-    List.filter (fun (n, _) -> 
-      (* Compare module names, not file names *)
-      (* n is already a string basename, just remove extension *)
-      let file_module_name = 
-        Filename.remove_extension n |> Module_name.of_string |> Module_name.to_string
-      in
-      let keep = file_module_name <> library_module_name in
-      if not keep then
-        Log.debug "[MODULE_GRAPH] Filtering out library interface file: %s from library %s" n name;
-      keep) children
+    List.filter
+      (fun (n, _) ->
+        (* Compare module names, not file names *)
+        (* n is already a string basename, just remove extension *)
+        let file_module_name =
+          Filename.remove_extension n
+          |> Module_name.of_string |> Module_name.to_string
+        in
+        let keep = file_module_name <> library_module_name in
+        if not keep then
+          Log.debug
+            "[MODULE_GRAPH] Filtering out library interface file: %s from \
+             library %s"
+            n name;
+        keep)
+      children
   in
 
   (* Create aliases module *)
@@ -501,8 +509,9 @@ and handle_library ~t ~ctx dir name children =
       (* Generated library interface - depend on all children including subdirectories *)
       child_modules
   in
-  
-  Log.debug "[MODULE_GRAPH] Library %s has %d child modules for interface deps:" name
+
+  Log.debug "[MODULE_GRAPH] Library %s has %d child modules for interface deps:"
+    name
     (List.length deps_for_library_interface);
   List.iter
     (fun m ->
@@ -738,8 +747,7 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
   (* Helper to check if a file path is a binary source *)
   let is_binary_source path =
     List.exists
-      (fun (bin : Package.binary) ->
-        Path.equal bin.path path)
+      (fun (bin : Package.binary) -> Path.equal bin.path path)
       t.package.binaries
   in
 
@@ -752,8 +760,9 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
         | Generated _ -> true)
       sorted_nodes
   in
-  
-  Log.debug "[MODULE_GRAPH] Filtered %d binary sources, %d library modules remain"
+
+  Log.debug
+    "[MODULE_GRAPH] Filtered %d binary sources, %d library modules remain"
     (List.length sorted_nodes - List.length library_nodes)
     (List.length library_nodes);
 
@@ -952,12 +961,14 @@ let generate_actions (t : t) (node : Build_node.t) (build_graph : Build_graph.t)
         (Path.to_string binary.path);
 
       (* Compile the binary's source file *)
-      let binary_mod = Module.make ~namespace:Namespace.empty ~filename:binary.path in
+      let binary_mod =
+        Module.make ~namespace:Namespace.empty ~filename:binary.path
+      in
       let binary_cmx = Module.cmx binary_mod in
-      
-      Log.debug "[MODULE_GRAPH] Compiling binary module from: %s" 
+
+      Log.debug "[MODULE_GRAPH] Compiling binary module from: %s"
         (Path.to_string binary.path);
-      
+
       (* Compile the binary implementation *)
       (* The binary accesses library modules via the package interface (e.g., Tusk.Cli) *)
       let compile_binary_action =

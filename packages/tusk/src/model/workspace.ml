@@ -9,7 +9,10 @@ type t = { root : Path.t; target_dir_root : Path.t; packages : Package.t list }
 
 (** Workspace TOML parsing *)
 
-type manifest = { members : string list; dependencies : Package.dependency list }
+type manifest = {
+  members : string list;
+  dependencies : Package.dependency list;
+}
 
 let parse_dependency (name : string) (value : Toml.value) : Package.dependency =
   match value with
@@ -35,7 +38,8 @@ let parse_members (toml : Toml.value) : string list =
   | _ -> []
 
 let parse_workspace_dependencies (toml : Toml.value) : Package.dependency list =
-  Log.debug "[WORKSPACE] parse_workspacE_dependencies has items: %s" (Toml.to_string toml);
+  Log.debug "[WORKSPACE] parse_workspacE_dependencies has items: %s"
+    (Toml.to_string toml);
   match toml with
   | Toml.Table items -> (
       match List.assoc_opt "dependencies" items with

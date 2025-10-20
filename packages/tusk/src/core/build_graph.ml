@@ -26,7 +26,7 @@ let get_node t node_id =
            (Node_id.to_string node_id))
 
 (** Create a build graph from a workspace *)
-let create (workspace: Workspace.t) toolchain =
+let create (workspace : Workspace.t) toolchain =
   let nodes = Hashtbl.create 16 in
 
   (* First, collect source files for each package *)

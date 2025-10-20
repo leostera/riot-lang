@@ -121,8 +121,8 @@ module Consolidate = struct
                     Log.debug "[WORKSPACE] Loaded package: %s" pkg.name;
                     Some pkg
                 | Error msg ->
-                    Log.error "[WORKSPACE] Failed to parse package %s: %s" member
-                      msg;
+                    Log.error "[WORKSPACE] Failed to parse package %s: %s"
+                      member msg;
                     None)))
     | _ ->
         Log.error "[WORKSPACE] No tusk.toml found for member: %s" member;
@@ -182,7 +182,9 @@ module Consolidate = struct
                                 | Workspace -> dep
                                 | Path rel_path ->
                                     (* Resolve relative to this package's directory, then relative to workspace root *)
-                                    let resolved_path = Path.(abs_path / rel_path) in
+                                    let resolved_path =
+                                      Path.(abs_path / rel_path)
+                                    in
                                     { dep with source = Path resolved_path })
                               pkg.dependencies
                           in

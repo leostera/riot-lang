@@ -19,8 +19,7 @@ module Daemon = struct
       | None -> failwith "Failed to get home directory"
     in
     let project_id = Workspace.project_id workspace in
-    Log.debug
-      "[SERVER_MANAGER] daemon_dir for workspace root=%s project_id=%s"
+    Log.debug "[SERVER_MANAGER] daemon_dir for workspace root=%s project_id=%s"
       (Path.to_string workspace.root)
       project_id;
     Path.(home / Path.v ".tusk" / Path.v "projects" / Path.v project_id)
@@ -161,13 +160,11 @@ let ensure_running ~(workspace : Workspace.t) =
 
   (* 2. Wait for server to be ready *)
   let rec wait_server ~retries ~(daemon : Daemon.t) =
-    Log.debug
-      "wait_server: Attempting connection to %s:%d (retries left: %d)"
+    Log.debug "wait_server: Attempting connection to %s:%d (retries left: %d)"
       daemon.host daemon.port retries;
     if retries <= 0 then (
       Log.error "Failed to connect to server after 60 retries";
-      Log.warn
-        "Server (PID %d) not responding, cleaning up and restarting..."
+      Log.warn "Server (PID %d) not responding, cleaning up and restarting..."
         daemon.os_pid;
 
       (* Clean up stale daemon files *)
@@ -180,8 +177,7 @@ let ensure_running ~(workspace : Workspace.t) =
       (* Try to start a new daemon *)
       match Daemon.of_workspace ~workspace:daemon.workspace with
       | Ok new_daemon ->
-          println "Started new tusk server (PID %d)..."
-            new_daemon.os_pid;
+          println "Started new tusk server (PID %d)..." new_daemon.os_pid;
           wait_server ~retries:60 ~daemon:new_daemon
       | Error e ->
           Log.error "Failed to restart server";
