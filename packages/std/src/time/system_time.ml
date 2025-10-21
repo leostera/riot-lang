@@ -58,3 +58,7 @@ let compare a b =
 let equal a b = compare a b = 0
 let min a b = if compare a b <= 0 then a else b
 let max a b = if compare a b >= 0 then a else b
+
+(* Unix timestamp conversion *)
+let to_unix_timestamp t = t.secs
+let from_unix_timestamp secs = { secs; nanos = 0 }

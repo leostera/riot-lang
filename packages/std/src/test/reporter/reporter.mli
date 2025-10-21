@@ -1,3 +1,5 @@
+type suite_info = Intf.suite_info
+
 module type Intf = Intf.Intf
 
 module JUnit = Reporter_junit

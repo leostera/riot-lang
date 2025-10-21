@@ -192,3 +192,20 @@ val max : t -> t -> t
     ## Examples
 
     ```ocaml let latest = SystemTime.max time1 time2 ``` *)
+
+(** {1 Unix Timestamp Conversion} *)
+
+val to_unix_timestamp : t -> int
+(** Converts a system time to a Unix timestamp (seconds since epoch).
+
+    ## Examples
+
+    ```ocaml let now = SystemTime.now () in let timestamp =
+    SystemTime.to_unix_timestamp now ``` *)
+
+val from_unix_timestamp : int -> t
+(** Creates a system time from a Unix timestamp (seconds since epoch).
+
+    ## Examples
+
+    ```ocaml let time = SystemTime.from_unix_timestamp 1234567890 ``` *)

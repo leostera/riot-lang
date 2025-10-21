@@ -14,8 +14,7 @@ let test_encode_empty () =
 let test_encode_bytes () =
   let bytes = Bytes.of_string "test" in
   let encoded = Base32.encode_bytes bytes in
-  if String.length encoded > 0 then Ok ()
-  else Error "Bytes encoding failed"
+  if String.length encoded > 0 then Ok () else Error "Bytes encoding failed"
 
 let test_decode_simple () =
   match Base32.decode "JBSWY3DP" with
@@ -47,16 +46,18 @@ let test_padding () =
   if String.contains encoded '=' then Ok ()
   else Error "Short strings should have padding"
 
-let tests = Test.[
-  case "encode simple" test_encode_simple;
-  case "encode empty" test_encode_empty;
-  case "encode bytes" test_encode_bytes;
-  case "decode simple" test_decode_simple;
-  case "decode invalid char" test_decode_invalid_char;
-  case "roundtrip" test_roundtrip;
-  case "binary roundtrip" test_roundtrip_binary;
-  case "padding" test_padding;
-]
+let tests =
+  Test.
+    [
+      case "encode simple" test_encode_simple;
+      case "encode empty" test_encode_empty;
+      case "encode bytes" test_encode_bytes;
+      case "decode simple" test_decode_simple;
+      case "decode invalid char" test_decode_invalid_char;
+      case "roundtrip" test_roundtrip;
+      case "binary roundtrip" test_roundtrip_binary;
+      case "padding" test_padding;
+    ]
 
 let () =
   Miniriot.run

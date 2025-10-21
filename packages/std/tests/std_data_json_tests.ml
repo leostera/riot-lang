@@ -23,7 +23,7 @@ let test_parse_integer () =
 
 let test_parse_negative_integer () =
   match Json.of_string "-123" with
-  | Ok (Json.Int (-123)) -> Ok ()
+  | Ok (Json.Int -123) -> Ok ()
   | _ -> Error "Failed to parse negative integer"
 
 let test_parse_float () =
@@ -58,12 +58,12 @@ let test_parse_empty_array () =
 
 let test_parse_array_with_numbers () =
   match Json.of_string "[1, 2, 3]" with
-  | Ok (Json.Array [Json.Int 1; Json.Int 2; Json.Int 3]) -> Ok ()
+  | Ok (Json.Array [ Json.Int 1; Json.Int 2; Json.Int 3 ]) -> Ok ()
   | _ -> Error "Failed to parse array with numbers"
 
 let test_parse_nested_array () =
   match Json.of_string "[[1, 2], [3, 4]]" with
-  | Ok (Json.Array [Json.Array _; Json.Array _]) -> Ok ()
+  | Ok (Json.Array [ Json.Array _; Json.Array _ ]) -> Ok ()
   | _ -> Error "Failed to parse nested array"
 
 let test_parse_empty_object () =
@@ -73,7 +73,7 @@ let test_parse_empty_object () =
 
 let test_parse_simple_object () =
   match Json.of_string {|{"name": "Alice"}|} with
-  | Ok (Json.Object [("name", Json.String "Alice")]) -> Ok ()
+  | Ok (Json.Object [ ("name", Json.String "Alice") ]) -> Ok ()
   | _ -> Error "Failed to parse simple object"
 
 let test_parse_object_multiple_fields () =
@@ -83,12 +83,12 @@ let test_parse_object_multiple_fields () =
 
 let test_parse_nested_object () =
   match Json.of_string {|{"user": {"name": "Alice"}}|} with
-  | Ok (Json.Object [("user", Json.Object _)]) -> Ok ()
+  | Ok (Json.Object [ ("user", Json.Object _) ]) -> Ok ()
   | _ -> Error "Failed to parse nested object"
 
 let test_parse_object_with_array () =
   match Json.of_string {|{"tags": ["foo", "bar"]}|} with
-  | Ok (Json.Object [("tags", Json.Array _)]) -> Ok ()
+  | Ok (Json.Object [ ("tags", Json.Array _) ]) -> Ok ()
   | _ -> Error "Failed to parse object with array"
 
 let test_parse_whitespace () =
@@ -113,28 +113,31 @@ let test_serialize_string () =
   else Error "Failed to serialize string"
 
 let test_serialize_array () =
-  let json = Json.array [Json.int 1; Json.int 2] in
+  let json = Json.array [ Json.int 1; Json.int 2 ] in
   if Json.to_string json = "[1,2]" then Ok ()
   else Error "Failed to serialize array"
 
 let test_serialize_object () =
-  let json = Json.obj [("a", Json.int 1)] in
+  let json = Json.obj [ ("a", Json.int 1) ] in
   if Json.to_string json = {|{"a":1}|} then Ok ()
   else Error "Failed to serialize object"
 
 let test_roundtrip () =
-  let original = Json.obj [
-    ("name", Json.string "Alice");
-    ("age", Json.int 30);
-    ("active", Json.bool true)
-  ] in
+  let original =
+    Json.obj
+      [
+        ("name", Json.string "Alice");
+        ("age", Json.int 30);
+        ("active", Json.bool true);
+      ]
+  in
   let serialized = Json.to_string original in
   match Json.of_string serialized with
   | Ok parsed when parsed = original -> Ok ()
   | _ -> Error "Roundtrip failed"
 
 let test_get_field () =
-  let json = Json.obj [("key", Json.string "value")] in
+  let json = Json.obj [ ("key", Json.string "value") ] in
   match Json.get_field "key" json with
   | Some (Json.String "value") -> Ok ()
   | _ -> Error "Failed to get field"
@@ -150,43 +153,45 @@ let test_get_int () =
   | _ -> Error "Failed to get int"
 
 let test_get_array () =
-  let json = Json.array [Json.int 1; Json.int 2] in
+  let json = Json.array [ Json.int 1; Json.int 2 ] in
   match Json.get_array json with
-  | Some [Json.Int 1; Json.Int 2] -> Ok ()
+  | Some [ Json.Int 1; Json.Int 2 ] -> Ok ()
   | _ -> Error "Failed to get array"
 
-let tests = Test.[
-  case "parse null" test_parse_null;
-  case "parse true" test_parse_true;
-  case "parse false" test_parse_false;
-  case "parse integer" test_parse_integer;
-  case "parse negative integer" test_parse_negative_integer;
-  case "parse float" test_parse_float;
-  case "parse scientific notation" test_parse_scientific_notation;
-  case "parse simple string" test_parse_simple_string;
-  case "parse string with escapes" test_parse_string_with_escapes;
-  case "parse empty string" test_parse_empty_string;
-  case "parse empty array" test_parse_empty_array;
-  case "parse array with numbers" test_parse_array_with_numbers;
-  case "parse nested array" test_parse_nested_array;
-  case "parse empty object" test_parse_empty_object;
-  case "parse simple object" test_parse_simple_object;
-  case "parse object with multiple fields" test_parse_object_multiple_fields;
-  case "parse nested object" test_parse_nested_object;
-  case "parse object with array" test_parse_object_with_array;
-  case "parse with whitespace" test_parse_whitespace;
-  case "serialize null" test_serialize_null;
-  case "serialize bool" test_serialize_bool;
-  case "serialize int" test_serialize_int;
-  case "serialize string" test_serialize_string;
-  case "serialize array" test_serialize_array;
-  case "serialize object" test_serialize_object;
-  case "roundtrip" test_roundtrip;
-  case "get field" test_get_field;
-  case "get string" test_get_string;
-  case "get int" test_get_int;
-  case "get array" test_get_array;
-]
+let tests =
+  Test.
+    [
+      case "parse null" test_parse_null;
+      case "parse true" test_parse_true;
+      case "parse false" test_parse_false;
+      case "parse integer" test_parse_integer;
+      case "parse negative integer" test_parse_negative_integer;
+      case "parse float" test_parse_float;
+      case "parse scientific notation" test_parse_scientific_notation;
+      case "parse simple string" test_parse_simple_string;
+      case "parse string with escapes" test_parse_string_with_escapes;
+      case "parse empty string" test_parse_empty_string;
+      case "parse empty array" test_parse_empty_array;
+      case "parse array with numbers" test_parse_array_with_numbers;
+      case "parse nested array" test_parse_nested_array;
+      case "parse empty object" test_parse_empty_object;
+      case "parse simple object" test_parse_simple_object;
+      case "parse object with multiple fields" test_parse_object_multiple_fields;
+      case "parse nested object" test_parse_nested_object;
+      case "parse object with array" test_parse_object_with_array;
+      case "parse with whitespace" test_parse_whitespace;
+      case "serialize null" test_serialize_null;
+      case "serialize bool" test_serialize_bool;
+      case "serialize int" test_serialize_int;
+      case "serialize string" test_serialize_string;
+      case "serialize array" test_serialize_array;
+      case "serialize object" test_serialize_object;
+      case "roundtrip" test_roundtrip;
+      case "get field" test_get_field;
+      case "get string" test_get_string;
+      case "get int" test_get_int;
+      case "get array" test_get_array;
+    ]
 
 let () =
   Miniriot.run

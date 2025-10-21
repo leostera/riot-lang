@@ -67,20 +67,22 @@ let test_roundtrip_binary () =
   | Ok decoded when decoded = original -> Ok ()
   | _ -> Error "Binary roundtrip failed"
 
-let tests = Test.[
-  case "encode simple" test_encode_simple;
-  case "encode empty" test_encode_empty;
-  case "encode bytes" test_encode_bytes;
-  case "encode lowercase" test_encode_lower;
-  case "encode special chars" test_encode_special_chars;
-  case "decode simple" test_decode_simple;
-  case "decode lowercase" test_decode_lowercase;
-  case "decode mixed case" test_decode_mixed_case;
-  case "decode invalid char" test_decode_invalid_char;
-  case "decode odd length" test_decode_odd_length;
-  case "roundtrip" test_roundtrip;
-  case "binary roundtrip" test_roundtrip_binary;
-]
+let tests =
+  Test.
+    [
+      case "encode simple" test_encode_simple;
+      case "encode empty" test_encode_empty;
+      case "encode bytes" test_encode_bytes;
+      case "encode lowercase" test_encode_lower;
+      case "encode special chars" test_encode_special_chars;
+      case "decode simple" test_decode_simple;
+      case "decode lowercase" test_decode_lowercase;
+      case "decode mixed case" test_decode_mixed_case;
+      case "decode invalid char" test_decode_invalid_char;
+      case "decode odd length" test_decode_odd_length;
+      case "roundtrip" test_roundtrip;
+      case "binary roundtrip" test_roundtrip_binary;
+    ]
 
 let () =
   Miniriot.run

@@ -217,8 +217,8 @@ val to_string :
 
     ```ocaml Csv.to_string [["a"; "b"]; ["c"; "d"]] (* "a,b\nc,d\n" *)
 
-    Csv.to_string [["quoted,field"; "normal"]] (*
-    "\"quoted,field\",normal\n" *) ```
+    Csv.to_string [["quoted,field"; "normal"]] (* "\"quoted,field\",normal\n" *)
+    ```
 
     With headers:
 

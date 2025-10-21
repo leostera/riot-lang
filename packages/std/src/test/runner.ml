@@ -8,6 +8,7 @@ type config = {
   reporter : (module Reporter.Intf);
   mode : mode;
   target : target;
+  suite_info : Reporter.suite_info;
 }
 
 type run_summary = Test_result.summary
@@ -67,7 +68,7 @@ let run_tests ~config tests =
   in
 
   let module R = (val config.reporter : Reporter.Intf) in
-  R.init (List.length tests_to_run);
+  R.init config.suite_info (List.length tests_to_run);
 
   let results =
     List.mapi

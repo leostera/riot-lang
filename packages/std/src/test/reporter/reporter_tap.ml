@@ -1,6 +1,6 @@
 open Global
 
-let init total =
+let init (_suite : Intf.suite_info) total =
   println "TAP version 14";
   println "1..%d" total
 

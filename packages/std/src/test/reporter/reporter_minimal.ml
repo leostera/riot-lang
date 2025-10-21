@@ -1,6 +1,6 @@
 open Global
 
-let init _total = ()
+let init (_suite : Intf.suite_info) _total = ()
 
 let on_result _idx (result : Test_result.t) =
   match result.result with

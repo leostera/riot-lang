@@ -90,7 +90,8 @@ let test_diff_array_element_changed =
   let a2 = Json.array [ Json.int 1; Json.int 99; Json.int 3 ] in
   let diff = Json.diff a1 a2 in
   match diff with
-  | [ { path = [ Index 1 ]; kind = Changed (Json.Int 2, Json.Int 99) } ] -> Ok ()
+  | [ { path = [ Index 1 ]; kind = Changed (Json.Int 2, Json.Int 99) } ] ->
+      Ok ()
   | _ ->
       Error
         (format "Expected change at index 1, got %d diffs" (List.length diff))
@@ -136,7 +137,9 @@ let test_diff_nested_arrays =
   in
   let diff = Json.diff a1 a2 in
   match diff with
-  | [ { path = [ Index 1; Index 1 ]; kind = Changed (Json.Int 4, Json.Int 99) } ] ->
+  | [
+   { path = [ Index 1; Index 1 ]; kind = Changed (Json.Int 4, Json.Int 99) };
+  ] ->
       Ok ()
   | _ ->
       Error
@@ -184,7 +187,8 @@ let test_diff_object_field_changed =
   let o2 = Json.obj [ ("name", Json.string "Alice"); ("age", Json.int 31) ] in
   let diff = Json.diff o1 o2 in
   match diff with
-  | [ { path = [ Key "age" ]; kind = Changed (Json.Int 30, Json.Int 31) } ] -> Ok ()
+  | [ { path = [ Key "age" ]; kind = Changed (Json.Int 30, Json.Int 31) } ] ->
+      Ok ()
   | _ ->
       Error
         (format "Expected change in age field, got %d diffs" (List.length diff))

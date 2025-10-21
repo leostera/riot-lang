@@ -33,7 +33,12 @@ let run_tests_cmd =
 
 let list_tests_cmd = command "list-tests" |> about "List all tests"
 
+let get_suite_info name : Reporter.suite_info =
+  let binary_path = List.hd Env.args in
+  { name; source_file = None; binary_path = Some binary_path }
+
 let main ~name ~tests ~args =
+  let suite_info = get_suite_info name in
   let cmd =
     command name
     |> about (format "Test runner for %S" name)
@@ -68,7 +73,9 @@ let main ~name ~tests ~args =
               let mode =
                 if shuffle then Runner.Shuffle else Runner.Sequential
               in
-              let config = Runner.{ concurrency; reporter; mode; target } in
+              let config =
+                Runner.{ concurrency; reporter; mode; target; suite_info }
+              in
 
               let summary = Runner.run_tests ~config tests in
               if summary.failed > 0 then exit 1;
@@ -77,7 +84,13 @@ let main ~name ~tests ~args =
           let reporter = (module Reporter.Pretty : Reporter.Intf) in
           let config =
             Runner.
-              { concurrency = 1; reporter; mode = Sequential; target = All }
+              {
+                concurrency = 1;
+                reporter;
+                mode = Sequential;
+                target = All;
+                suite_info;
+              }
           in
           let summary = Runner.run_tests ~config tests in
           if summary.failed > 0 then exit 1;

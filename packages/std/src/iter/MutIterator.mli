@@ -97,9 +97,8 @@ type ('item, 'state) iter =
   (module Intf with type item = 'item and type state = 'state)
 (** First-class module type for mutable iterators. *)
 
-type 'item t =
-  | Iter : (('item, 'state) iter * 'state) -> 'item t
-      (** A mutable iterator over items of type ['item]. *)
+type 'item t
+(** A mutable iterator over items of type ['item]. *)
 
 val make : ('item, 'state) iter -> 'state -> 'item t
 (** Creates a mutable iterator from a module and initial state.
