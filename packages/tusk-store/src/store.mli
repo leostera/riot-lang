@@ -20,7 +20,7 @@ val create : workspace:Workspace.t -> t
 
 val get : t -> Std.Crypto.hash -> Artifact.t option
 (** Check if we have cached artifacts for this hash. Returns Some artifact if
-    cached, None if not. *)
+    cached, None if not. The artifact contains the list of files. *)
 
 val save :
   t ->
@@ -34,18 +34,10 @@ val save :
 
 (** {1 Artifact Operations} *)
 
-val promote : t -> Artifact.t -> target_dir:Std.Path.t -> (unit, error) result
-(** Promote cached artifacts to the target directory *)
+val promote :
+  t -> Std.Crypto.hash -> target_dir:Std.Path.t -> (unit, error) result
+(** Promote cached artifacts to the target directory. Returns error if hash not
+    found. *)
 
 val exists : t -> Std.Crypto.hash -> bool
-(** Check if Artifact.ts for a given hash exist in the store *)
-
-val list_artifacts : t -> Std.Crypto.hash -> string list
-(** List all files stored for a given hash *)
-
-val promote_from_store : t -> Std.Crypto.hash -> Std.Path.t -> bool
-(** Promote Artifact.ts directly from store by hash to target directory. Returns
-    true if successful, false otherwise. *)
-
-val get_hash_dir : t -> Std.Crypto.hash -> Std.Path.t
-(** Get the directory path for a given hash in the store *)
+(** Check if artifacts for a given hash exist in the store *)

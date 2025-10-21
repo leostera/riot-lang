@@ -6,7 +6,7 @@ open Std.Data
 type version = V0
 
 type file_entry = {
-  path : string;
+  path : Path.t;
   hash : string; (* SHA512 hash of the file *)
   size : int;
 }
@@ -15,7 +15,7 @@ type t = {
   version : version;
   package : string;
   build_hash : string; (* The build hash *)
-  timestamp : float; (* Unix timestamp *)
+  timestamp : Time.SystemTime.t;
   files : file_entry list;
 }
 
@@ -26,7 +26,7 @@ let to_json manifest : Data.Json.t =
   let file_entry_to_json entry =
     Data.Json.Object
       [
-        ("path", Data.Json.String entry.path);
+        ("path", Data.Json.String (Path.to_string entry.path));
         ("hash", Data.Json.String entry.hash);
         ("size", Data.Json.Int entry.size);
       ]
@@ -37,7 +37,8 @@ let to_json manifest : Data.Json.t =
       ("version", Data.Json.String (version_to_string manifest.version));
       ("package", Data.Json.String manifest.package);
       ("build_hash", Data.Json.String manifest.build_hash);
-      ("timestamp", Data.Json.Float manifest.timestamp);
+      ( "timestamp",
+        Data.Json.Int (Time.SystemTime.to_unix_timestamp manifest.timestamp) );
       ("files", Data.Json.Array (List.map file_entry_to_json manifest.files));
     ]
 
@@ -70,8 +71,7 @@ let of_json json =
 
         let timestamp =
           match get_field "timestamp" with
-          | Some (Float t) -> Ok t
-          | Some (Int i) -> Ok (float_of_int i)
+          | Some (Int t) -> Ok (Time.SystemTime.from_unix_timestamp t)
           | _ -> Error "Invalid or missing timestamp"
         in
 
@@ -89,7 +89,7 @@ let of_json json =
                         get_entry_field "size" )
                     with
                     | Some (String path), Some (String hash), Some (Int size) ->
-                        Ok { path; hash; size }
+                        Ok { path = Path.v path; hash; size }
                     | _ -> Error "Invalid file entry")
                 | _ -> Error "File entry must be an object"
               in
@@ -143,14 +143,14 @@ let load ~path =
 
 (** Create a manifest for stored files *)
 let create ~package ~build_hash ~files =
-  let timestamp = Datetime.to_timestamp (Datetime.now ()) in
+  let timestamp = Time.SystemTime.now () in
   let file_entries =
     List.map
       (fun (path, size) ->
         (* Calculate hash of the file *)
         let file = Std.Fs.read_to_string path |> Result.unwrap in
         let hash = Std.Crypto.(Sha512.hash_string file |> Digest.hex) in
-        { path = Std.Path.basename path; hash; size })
+        { path = Path.v (Std.Path.basename path); hash; size })
       files
   in
   { version = V0; package; build_hash; timestamp; files = file_entries }

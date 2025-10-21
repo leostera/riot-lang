@@ -3,13 +3,13 @@
 open Std
 
 type version = V0
-type file_entry = { path : string; hash : string; size : int }
+type file_entry = { path : Path.t; hash : string; size : int }
 
 type t = {
   version : version;
   package : string;
   build_hash : string;
-  timestamp : float; (* Unix timestamp *)
+  timestamp : Std.Time.SystemTime.t;
   files : file_entry list;
 }
 

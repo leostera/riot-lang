@@ -1,1 +1,1 @@
-type t = { hash : Std.Crypto.hash; files : string list }
+type t = { hash : Std.Crypto.hash; files : Std.Path.t list }

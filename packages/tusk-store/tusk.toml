@@ -8,5 +8,10 @@ path = "src/Tusk_store.ml"
 [dependencies]
 std = "*"
 tusk-model = "*"
+miniriot = "*"
+
+[[bin]]
+name = "store_tests"
+path = "tests/store_tests.ml"
 
 
