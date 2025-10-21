@@ -241,70 +241,85 @@ and handle_library ~t ~ctx dir name children =
   let child_modules = Library_definition.child_modules lib_def in
   let children_without_lib = Library_definition.children_without_lib lib_def in
 
-  let aliases_node =
-    let node = Alias_module.make_node ns child_modules in
-    G.add_node t.graph node
+  (* Skip creating library interface nodes for libraries with no OCaml content at all.
+     We still create them if:
+     - There are child modules, OR
+     - There are concrete library interface files (lib.ml/lib.mli exist)
+  *)
+  let has_ocaml_content =
+    child_modules <> []
+    || Library_definition.has_concrete_ml lib_def
+    || Library_definition.has_concrete_mli lib_def
   in
 
-  let lib_aliases =
-    if Namespace.is_empty ns then [ aliases_node ]
-    else aliases @ [ aliases_node ]
-  in
-
-  let intf_node =
-    let intf =
-      Library_interface.make_node intf_mod child_modules lib_aliases
-        ~exists:(Library_definition.has_concrete_mli lib_def)
-        ~actual_path:(Library_definition.concrete_mli_path lib_def)
+  if not has_ocaml_content then
+    (* No OCaml content, but still need to scan children for nested directories *)
+    do_scan ~t ~ctx children_without_lib
+  else
+    let aliases_node =
+      let node = Alias_module.make_node ns child_modules in
+      G.add_node t.graph node
     in
-    G.add_node t.graph intf
-  in
-  Module_registry.register t.registry intf_mod intf_node.id;
 
-  let impl_node =
-    let impl =
-      Library_interface.make_node impl_mod child_modules lib_aliases
-        ~exists:(Library_definition.has_concrete_ml lib_def)
-        ~actual_path:(Library_definition.concrete_ml_path lib_def)
+    let lib_aliases =
+      if Namespace.is_empty ns then [ aliases_node ]
+      else aliases @ [ aliases_node ]
     in
-    G.add_node t.graph impl
-  in
-  Module_registry.register t.registry impl_mod impl_node.id;
 
-  G.add_edge intf_node ~depends_on:aliases_node;
-  G.add_edge impl_node ~depends_on:aliases_node;
-  G.add_edge impl_node ~depends_on:intf_node;
+    let intf_node =
+      let intf =
+        Library_interface.make_node intf_mod child_modules lib_aliases
+          ~exists:(Library_definition.has_concrete_mli lib_def)
+          ~actual_path:(Library_definition.concrete_mli_path lib_def)
+      in
+      G.add_node t.graph intf
+    in
+    Module_registry.register t.registry intf_mod intf_node.id;
 
-  let ctx =
-    {
-      ns;
-      aliases = aliases @ [ aliases_node ];
-      parent_impl = impl_node;
-      parent_intf = intf_node;
-    }
-  in
+    let impl_node =
+      let impl =
+        Library_interface.make_node impl_mod child_modules lib_aliases
+          ~exists:(Library_definition.has_concrete_ml lib_def)
+          ~actual_path:(Library_definition.concrete_ml_path lib_def)
+      in
+      G.add_node t.graph impl
+    in
+    Module_registry.register t.registry impl_mod impl_node.id;
 
-  do_scan ~t ~ctx children_without_lib;
+    G.add_edge intf_node ~depends_on:aliases_node;
+    G.add_edge impl_node ~depends_on:aliases_node;
+    G.add_edge impl_node ~depends_on:intf_node;
 
-  let deps_for_library_interface =
-    Library_definition.deps_for_library_interface lib_def
-  in
+    let ctx =
+      {
+        ns;
+        aliases = aliases @ [ aliases_node ];
+        parent_impl = impl_node;
+        parent_intf = intf_node;
+      }
+    in
 
-  List.iter
-    (fun child_mod ->
-      try
-        let child_node_ids =
-          Module_registry.get_by_name t.registry
-            (Module.module_name child_mod |> Module_name.to_string)
-        in
-        List.iter
-          (fun child_node_id ->
-            let child_node = G.get_node t.graph child_node_id in
-            G.add_edge intf_node ~depends_on:child_node;
-            G.add_edge impl_node ~depends_on:child_node)
-          child_node_ids
-      with Not_found -> ())
-    deps_for_library_interface
+    do_scan ~t ~ctx children_without_lib;
+
+    let deps_for_library_interface =
+      Library_definition.deps_for_library_interface lib_def
+    in
+
+    List.iter
+      (fun child_mod ->
+        try
+          let child_node_ids =
+            Module_registry.get_by_name t.registry
+              (Module.module_name child_mod |> Module_name.to_string)
+          in
+          List.iter
+            (fun child_node_id ->
+              let child_node = G.get_node t.graph child_node_id in
+              G.add_edge intf_node ~depends_on:child_node;
+              G.add_edge impl_node ~depends_on:child_node)
+            child_node_ids
+        with Not_found -> ())
+      deps_for_library_interface
 
 let scan_sources t (sources : Module_scanner.entry list) =
   let root_node = Module_node.make_root () in
@@ -375,21 +390,30 @@ let wire_dependencies t sandbox_dir =
 
   let namespace = Namespace.of_string t.config.namespace in
   let ocamldep = Tusk_toolchain.ocamldep t.config.toolchain in
-  let file_deps_map =
-    Tusk_toolchain.Ocamldep.batch_deps ocamldep ~cwd:sandbox_dir ~files
-      ~package_namespace:namespace
+
+  (* ocamldep is run with cwd=sandbox_dir, so we only need basenames *)
+  let files_relative_to_cwd =
+    List.map (fun file -> Path.basename file |> Path.v) files
   in
 
-  let deps_table = Hashtbl.create (List.length file_deps_map) in
+  let file_deps_map =
+    Tusk_toolchain.Ocamldep.batch_deps ocamldep ~cwd:sandbox_dir
+      ~files:files_relative_to_cwd ~package_namespace:namespace
+  in
+
+  (* Build mapping from basename -> deps *)
+  let deps_by_basename = Hashtbl.create (List.length file_deps_map) in
   List.iter
-    (fun (file, deps) -> Hashtbl.add deps_table (Path.to_string file) deps)
+    (fun (file, deps) ->
+      Hashtbl.add deps_by_basename (Path.to_string file) deps)
     file_deps_map;
 
+  (* Match original paths to deps by basename *)
   let deps =
     List.filter_map
       (fun (path, node) ->
-        let path_str = Path.to_string path in
-        match Hashtbl.find_opt deps_table path_str with
+        let basename_str = Path.basename path in
+        match Hashtbl.find_opt deps_by_basename basename_str with
         | Some deps -> Some (node, deps)
         | None -> Some (node, []))
       files_with_nodes
@@ -419,6 +443,9 @@ let add_library_node t ~name ~includes =
   let lib_node_value = Module_node.make_library ~name ~includes in
   let lib_node = G.add_node t.graph lib_node_value in
 
+  (* Library archive depends on ALL ML/MLI/C modules.
+     Unreachable modules will be filtered later in action_graph.ml based on
+     what the library interface actually references. *)
   G.iter t.graph ~fn:(fun _node_id node ->
       match node.value.kind with
       | Module_node.ML _ | Module_node.MLI _ | Module_node.C ->

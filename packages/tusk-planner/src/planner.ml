@@ -3,7 +3,6 @@
 
 open Std
 open Tusk_model
-open Tusk_ocaml
 module G = Graph.SimpleGraph
 
 type plan_input = {

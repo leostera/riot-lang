@@ -6,15 +6,27 @@ version = "0.1.0"
 path = "src/Tusk_planner.ml"
 
 [dependencies]
-std = "*"
-miniriot = "*"
-tusk-model = "*"
-tusk-toolchain = "*"
+std = { path = "../std" }
+miniriot = { path = "../miniriot" }
+tusk-model = { path = "../tusk-model" }
+tusk-toolchain = { path = "../tusk-toolchain" }
 
 [[bin]]
-name = "scanner-tests"
-path = "tests/scanner_tests.ml"
+name = "module-scanner-tests"
+path = "tests/module_scanner_tests.ml"
 
 [[bin]]
-name = "planner-tests"
-path = "tests/planner_tests.ml"
+name = "dependency-resolution-tests"
+path = "tests/dependency_resolution_tests.ml"
+
+[[bin]]
+name = "action-graph-tests"
+path = "tests/action_graph_tests.ml"
+
+[[bin]]
+name = "package-planning-tests"
+path = "tests/package_planning_tests.ml"
+
+[[bin]]
+name = "workspace-planning-tests"
+path = "tests/workspace_planning_tests.ml"
