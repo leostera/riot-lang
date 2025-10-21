@@ -11,5 +11,12 @@ miniriot = "*"
 tusk-model = "*"
 tusk-planner = "*"
 tusk-toolchain = "*"
+tusk-store = "*"
 
+[[bin]]
+name = "executor_tests"
+path = "tests/executor_tests.ml"
 
+[[bin]]
+name = "caching_tests"
+path = "tests/caching_tests.ml"

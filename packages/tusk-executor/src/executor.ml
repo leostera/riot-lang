@@ -26,47 +26,50 @@ let deps_satisfied completed (node : Action_node.t) =
 
 let execute_actions toolchain execution_root actions =
   let ocamlc = Tusk_toolchain.ocamlc toolchain in
-  List.iter
-    (fun action ->
-      let result =
-        match action with
-        | Action.CompileInterface { source; output; includes; flags } ->
-            Tusk_toolchain.Ocamlc.compile_interface ocamlc ~cwd:execution_root
-              ~includes ~flags ~output source
-        | Action.CompileImplementation { source; output; includes; flags } ->
-            Tusk_toolchain.Ocamlc.compile_impl ocamlc ~cwd:execution_root
-              ~includes ~flags ~output source
-        | Action.GenerateInterface { source; output; includes; flags } ->
-            Tusk_toolchain.Ocamlc.generate_interface ocamlc ~cwd:execution_root
-              ~includes ~flags ~output source
-        | Action.CompileC { source; output } ->
-            Tusk_toolchain.Ocamlc.compile_c ocamlc ~cwd:execution_root
-              ~includes:[] ~output source
-        | Action.CreateLibrary { output; objects; includes } ->
-            Tusk_toolchain.Ocamlc.create_library ocamlc ~cwd:execution_root
-              ~includes ~output objects
-        | Action.CreateExecutable { output; objects; libraries; includes } ->
-            Tusk_toolchain.Ocamlc.create_executable ocamlc ~cwd:execution_root
-              ~includes ~libs:libraries ~output objects
-        | Action.CopyFile { source; destination } -> (
-            match Fs.copy ~src:source ~dst:destination with
-            | Ok () -> Tusk_toolchain.Ocamlc.Success "Copied"
-            | Error _ ->
-                Tusk_toolchain.Ocamlc.Failed
-                  (format "Copy failed: %s -> %s" (Path.to_string source)
-                     (Path.to_string destination)))
-        | Action.WriteFile { destination; content } -> (
-            match Fs.write content destination with
-            | Ok () -> Tusk_toolchain.Ocamlc.Success "Written"
-            | Error _ ->
-                Tusk_toolchain.Ocamlc.Failed
-                  (format "Write failed: %s" (Path.to_string destination)))
-      in
-      match result with
-      | Tusk_toolchain.Ocamlc.Success _ -> ()
-      | Tusk_toolchain.Ocamlc.Failed err ->
-          panic (format "Action failed: %s\n%s" (Action.to_string action) err))
-    actions
+  let rec execute_next = function
+    | [] -> ()
+    | action :: rest -> (
+        let result =
+          match action with
+          | Action.CompileInterface { source; output; includes; flags } ->
+              Tusk_toolchain.Ocamlc.compile_interface ocamlc ~cwd:execution_root
+                ~includes ~flags ~output source
+          | Action.CompileImplementation { source; output; includes; flags } ->
+              Tusk_toolchain.Ocamlc.compile_impl ocamlc ~cwd:execution_root
+                ~includes ~flags ~output source
+          | Action.GenerateInterface { source; output; includes; flags } ->
+              Tusk_toolchain.Ocamlc.generate_interface ocamlc
+                ~cwd:execution_root ~includes ~flags ~output source
+          | Action.CompileC { source; output } ->
+              Tusk_toolchain.Ocamlc.compile_c ocamlc ~cwd:execution_root
+                ~includes:[] ~output source
+          | Action.CreateLibrary { output; objects; includes } ->
+              Tusk_toolchain.Ocamlc.create_library ocamlc ~cwd:execution_root
+                ~includes ~output objects
+          | Action.CreateExecutable { output; objects; libraries; includes } ->
+              Tusk_toolchain.Ocamlc.create_executable ocamlc ~cwd:execution_root
+                ~includes ~libs:libraries ~output objects
+          | Action.CopyFile { source; destination } -> (
+              match Fs.copy ~src:source ~dst:destination with
+              | Ok () -> Tusk_toolchain.Ocamlc.Success "Copied"
+              | Error _ ->
+                  Tusk_toolchain.Ocamlc.Failed
+                    (format "Copy failed: %s -> %s" (Path.to_string source)
+                       (Path.to_string destination)))
+          | Action.WriteFile { destination; content } -> (
+              match Fs.write content destination with
+              | Ok () -> Tusk_toolchain.Ocamlc.Success "Written"
+              | Error _ ->
+                  Tusk_toolchain.Ocamlc.Failed
+                    (format "Write failed: %s" (Path.to_string destination)))
+        in
+        match result with
+        | Tusk_toolchain.Ocamlc.Success _ -> execute_next rest
+        | Tusk_toolchain.Ocamlc.Failed err ->
+            panic (format "Action failed: %s\n%s" (Action.to_string action) err)
+        )
+  in
+  execute_next actions
 
 let verify_outputs outputs =
   List.iter
@@ -86,6 +89,10 @@ let execute_node toolchain execution_root (node : Action_node.t) =
   let duration_ms =
     Time.Instant.duration_since ~earlier:start (Time.Instant.now ())
     |> Time.Duration.to_millis
+  in
+
+  let duration =
+    Time.Instant.duration_since ~earlier:start (Time.Instant.now ())
   in
 
   { node_id = node.id; status = `Built; duration_ms; error = None }
