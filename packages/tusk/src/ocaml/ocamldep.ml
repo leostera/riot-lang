@@ -14,7 +14,7 @@ let sort ~toolchain ~cwd ~files =
         files_str
     in
 
-    Log.debug "  $ %s" cmd;
+    Log.trace "  $ %s" cmd;
 
     let sorted_str =
       let command = Command.make ~args:[ "-c"; cmd ] "sh" in
@@ -26,7 +26,7 @@ let sort ~toolchain ~cwd ~files =
       | Error _ -> ""
     in
 
-    Log.debug "  [ocamldep] Result: %s" sorted_str;
+    Log.trace "  [ocamldep] Result: %s" sorted_str;
 
     if sorted_str = "" then files (* Return original list if ocamldep fails *)
     else
@@ -45,7 +45,7 @@ let deps ~toolchain ~cwd ~file ~package_namespace =
       file_str
   in
 
-  Log.debug "[OCAMLDEP] Running for %s: %s" file_str cmd;
+  Log.trace "[OCAMLDEP] Running for %s: %s" file_str cmd;
 
   let deps_str =
     let command = Command.make ~args:[ "-c"; cmd ] "sh" in
@@ -54,18 +54,18 @@ let deps ~toolchain ~cwd ~file ~package_namespace =
         match String.split_on_char '\n' output.Command.stdout with
         | line :: _ ->
             let trimmed = String.trim line in
-            Log.debug "[OCAMLDEP] Result for %s: %s" file_str trimmed;
+            Log.trace "[OCAMLDEP] Result for %s: %s" file_str trimmed;
             trimmed
         | [] ->
-            Log.debug "[OCAMLDEP] Empty output for %s" file_str;
+            Log.trace "[OCAMLDEP] Empty output for %s" file_str;
             "")
     | Error _err ->
-        Log.debug "[OCAMLDEP] Error for %s" file_str;
+        Log.trace "[OCAMLDEP] Error for %s" file_str;
         ""
   in
 
   if deps_str = "" then (
-    Log.debug "[OCAMLDEP] No deps for %s" file_str;
+    Log.trace "[OCAMLDEP] No deps for %s" file_str;
     [])
   else
     (* Output format: "file.ml: Module1 Module2 Module3" *)
@@ -73,7 +73,7 @@ let deps ~toolchain ~cwd ~file ~package_namespace =
     | [ _; deps_part ] ->
         let deps = String.trim deps_part in
         if deps = "" then (
-          Log.debug "[OCAMLDEP] Empty deps part for %s" file_str;
+          Log.trace "[OCAMLDEP] Empty deps part for %s" file_str;
           [])
         else
           let result =
@@ -83,11 +83,11 @@ let deps ~toolchain ~cwd ~file ~package_namespace =
                 (* Convert string module name to Module_name.t with proper namespace *)
                 Model.Module_name.of_string ~namespace:package_namespace modname)
           in
-          Log.debug "[OCAMLDEP] Parsed %d deps for %s: %s" (List.length result)
+          Log.trace "[OCAMLDEP] Parsed %d deps for %s: %s" (List.length result)
             file_str deps;
           result
     | _ ->
-        Log.debug "[OCAMLDEP] Failed to parse deps for %s: %s" file_str deps_str;
+        Log.trace "[OCAMLDEP] Failed to parse deps for %s: %s" file_str deps_str;
         []
 
 (** Get dependencies for a single file with optional flags - returns
@@ -139,7 +139,7 @@ let batch_deps ~toolchain ~cwd ~files ~package_namespace =
         files_str
     in
 
-    Log.debug "[OCAMLDEP] Batch running for %d files" (List.length files);
+    Log.trace "[OCAMLDEP] Batch running for %d files" (List.length files);
 
     let output =
       let command = Command.make ~args:[ "-c"; cmd ] "sh" in

@@ -72,41 +72,59 @@ let run matches =
     | None -> println "Hint: Test binaries should end in '_tests' or '-tests'");
     Ok ())
   else
+    (* Group test binaries by package *)
+    let tests_by_package =
+      List.fold_left
+        (fun acc (pkg, test_name) ->
+          let existing = Hashtbl.find_opt acc pkg |> Option.unwrap_or ~default:[] in
+          Hashtbl.replace acc pkg (test_name :: existing);
+          acc)
+        (Hashtbl.create 16)
+        test_binaries
+    in
+
     let total = List.length test_binaries in
     let failed = ref 0 in
     let passed = ref 0 in
 
-    List.iter
-      (fun (pkg, test_name) ->
+    (* Build each package once, then run all its tests *)
+    Hashtbl.iter
+      (fun pkg test_names ->
+        println "";
+        println "Building package '%s'..." pkg;
         match Build.build_command (Some pkg) with
-        | Ok () -> (
-            match
-              Server.Tusk_jsonrpc.Client.find_artifact client ~package:pkg
-                ~kind:"binary" ~name:test_name
-            with
-            | Ok path -> (
-                let test_args =
-                  match extra_args with
-                  | [] -> [ "run-tests" ]
-                  | _ -> "run-tests" :: extra_args
-                in
-                let cmd = Command.make path ~args:test_args in
-                println "";
-                println "Running %s/%s..." pkg test_name;
-                println "";
-                match Command.status cmd with
-                | Ok 0 -> incr passed
-                | Ok _code -> incr failed
-                | Error (Command.SystemError msg) ->
+        | Ok () ->
+            List.iter
+              (fun test_name ->
+                match
+                  Server.Tusk_jsonrpc.Client.find_artifact client ~package:pkg
+                    ~kind:"binary" ~name:test_name
+                with
+                | Ok path -> (
+                    let test_args =
+                      match extra_args with
+                      | [] -> [ "run-tests" ]
+                      | _ -> "run-tests" :: extra_args
+                    in
+                    let cmd = Command.make path ~args:test_args in
+                    println "";
+                    println "Running %s/%s..." pkg test_name;
+                    println "";
+                    match Command.status cmd with
+                    | Ok 0 -> incr passed
+                    | Ok _code -> incr failed
+                    | Error (Command.SystemError msg) ->
+                        println "error: %s" msg;
+                        incr failed)
+                | Error msg ->
                     println "error: %s" msg;
                     incr failed)
-            | Error msg ->
-                println "error: %s" msg;
-                incr failed)
+              test_names
         | Error _ ->
             println "error: build failed for package '%s'" pkg;
-            incr failed)
-      test_binaries;
+            (* Mark all tests in this package as failed *)
+            failed := !failed + List.length test_names)
+      tests_by_package;
 
     Server.Tusk_jsonrpc.Client.close client;
 
