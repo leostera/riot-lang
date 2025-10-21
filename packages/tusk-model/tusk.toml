@@ -4,3 +4,8 @@ version = "0.1.0"
 
 [dependencies]
 std = "*"
+miniriot = "*"
+
+[[bin]]
+name = "model_tests"
+path = "tests/model_tests.ml"
