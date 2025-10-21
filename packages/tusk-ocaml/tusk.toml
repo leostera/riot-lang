@@ -1,7 +1,0 @@
-[package]
-name = "tusk-ocaml"
-version = "0.1.0"
-
-[dependencies]
-std = "*"
-tusk-model = "*"
