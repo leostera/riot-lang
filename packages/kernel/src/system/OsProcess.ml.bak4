@@ -44,8 +44,8 @@ let spawn ~program ~args ?(env = []) ?cwd ~stdio () =
           (null_fd, None, null_fd, None)
       | `Inherit -> (Unix.stdout, None, Unix.stdout, None)
       | `Pipe ->
-          let read_fd, write_fd = Unix.pipe () in
-          (write_fd, Some read_fd, write_fd, Some read_fd)
+          let pipe = Fd.pipe () in
+          (Fd.to_unix pipe.write_fd, Some (Fd.to_unix pipe.read_fd), Fd.to_unix pipe.write_fd, Some (Fd.to_unix pipe.read_fd))
       | `File fd -> (Fd.to_unix fd, None, Fd.to_unix fd, None)
     in
 
@@ -57,8 +57,8 @@ let spawn ~program ~args ?(env = []) ?cwd ~stdio () =
           (null_fd, None, null_fd, None)
       | `Inherit -> (Unix.stderr, None, Unix.stderr, None)
       | `Pipe ->
-          let read_fd, write_fd = Unix.pipe () in
-          (write_fd, Some read_fd, write_fd, Some read_fd)
+          let pipe = Fd.pipe () in
+          (Fd.to_unix pipe.write_fd, Some (Fd.to_unix pipe.read_fd), Fd.to_unix pipe.write_fd, Some (Fd.to_unix pipe.read_fd))
       | `Redirect_to_stdout -> (stdout_child, None, stdout_child, None)
       | `File fd -> (Fd.to_unix fd, None, Fd.to_unix fd, None)
     in

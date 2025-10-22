@@ -31,8 +31,8 @@ let spawn ~program ~args ?(env = []) ?cwd ~stdio () =
           (null_fd, None, null_fd, None)
       | `Inherit -> (Unix.stdin, None, Unix.stdin, None)
       | `Pipe ->
-          let read_fd, write_fd = Unix.pipe () in
-          (read_fd, Some write_fd, read_fd, Some write_fd)
+          let pipe = Fd.pipe () in
+          (Fd.to_unix pipe.read_fd, Some (Fd.to_unix pipe.write_fd), Fd.to_unix pipe.read_fd, Some pipe.write_fd)
       | `File fd -> (Fd.to_unix fd, None, Fd.to_unix fd, None)
     in
 
@@ -41,11 +41,11 @@ let spawn ~program ~args ?(env = []) ?cwd ~stdio () =
       match stdio.stdout with
       | `Null ->
           let null_fd = Unix.openfile "/dev/null" [ Unix.O_WRONLY ] 0 in
-          (null_fd, None, null_fd, None)
+          (Fd.to_unix null_fd, None, Fd.to_unix null_fd, None)
       | `Inherit -> (Unix.stdout, None, Unix.stdout, None)
       | `Pipe ->
-          let read_fd, write_fd = Unix.pipe () in
-          (write_fd, Some read_fd, write_fd, Some read_fd)
+          let pipe = Fd.pipe () in
+          (Fd.to_unix pipe.write_fd, Some pipe.read_fd, Fd.to_unix pipe.write_fd, Some pipe.read_fd)
       | `File fd -> (Fd.to_unix fd, None, Fd.to_unix fd, None)
     in
 
@@ -54,11 +54,11 @@ let spawn ~program ~args ?(env = []) ?cwd ~stdio () =
       match stdio.stderr with
       | `Null ->
           let null_fd = Unix.openfile "/dev/null" [ Unix.O_WRONLY ] 0 in
-          (null_fd, None, null_fd, None)
+          (Fd.to_unix null_fd, None, Fd.to_unix null_fd, None)
       | `Inherit -> (Unix.stderr, None, Unix.stderr, None)
       | `Pipe ->
-          let read_fd, write_fd = Unix.pipe () in
-          (write_fd, Some read_fd, write_fd, Some read_fd)
+          let pipe = Fd.pipe () in
+          (Fd.to_unix pipe.write_fd, Some pipe.read_fd, Fd.to_unix pipe.write_fd, Some pipe.read_fd)
       | `Redirect_to_stdout -> (stdout_child, None, stdout_child, None)
       | `File fd -> (Fd.to_unix fd, None, Fd.to_unix fd, None)
     in

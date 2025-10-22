@@ -1,14 +1,5 @@
 open Async
 
-type open_flag =
-  | ReadOnly
-  | WriteOnly
-  | ReadWrite
-  | Create
-  | Truncate
-  | Append
-  | Exclusive
-
 type seek_command = SeekSet | SeekCur | SeekEnd
 
 type lock_command =
@@ -17,18 +8,6 @@ type lock_command =
   | TryLockExclusive
   | TryLockShared
   | Unlock
-
-let open_flags_to_unix flags =
-  List.map
-    (function
-      | ReadOnly -> Unix.O_RDONLY
-      | WriteOnly -> Unix.O_WRONLY
-      | ReadWrite -> Unix.O_RDWR
-      | Create -> Unix.O_CREAT
-      | Truncate -> Unix.O_TRUNC
-      | Append -> Unix.O_APPEND
-      | Exclusive -> Unix.O_EXCL)
-    flags
 
 let seek_command_to_unix = function
   | SeekSet -> Unix.SEEK_SET
@@ -49,7 +28,7 @@ module Metadata = struct
 
   let dev s = s.Unix.st_dev
   let ino s = s.Unix.st_ino
-  let kind s = s.Unix.st_kind
+  let kind s = IO.file_kind_of_unix s.Unix.st_kind
   let perm s = s.Unix.st_perm
   let nlink s = s.Unix.st_nlink
   let uid s = s.Unix.st_uid
@@ -66,27 +45,30 @@ let close = Fd.close
 
 let read fd ?(pos = 0) ?len buf =
   let len = Option.value len ~default:(Bytes.length buf - 1) in
-  syscall @@ fun () -> Ok (UnixLabels.read fd ~buf ~pos ~len)
+  syscall @@ fun () -> Ok (UnixLabels.read (Fd.to_unix fd) ~buf ~pos ~len)
 
 let write fd ?(pos = 0) ?len buf =
   let len = Option.value len ~default:(Bytes.length buf - 1) in
-  syscall @@ fun () -> Ok (UnixLabels.write fd ~buf ~pos ~len)
+  syscall @@ fun () -> Ok (UnixLabels.write (Fd.to_unix fd) ~buf ~pos ~len)
 
 external std_sys_readv : Unix.file_descr -> Iovec.t -> int = "kernel_unix_readv"
 
-let read_vectored fd iov = syscall @@ fun () -> Ok (std_sys_readv fd iov)
+let read_vectored fd iov =
+  syscall @@ fun () -> Ok (std_sys_readv (Fd.to_unix fd) iov)
 
 external std_sys_writev : Unix.file_descr -> Iovec.t -> int
   = "kernel_unix_writev"
 
-let write_vectored fd iov = syscall @@ fun () -> Ok (std_sys_writev fd iov)
+let write_vectored fd iov =
+  syscall @@ fun () -> Ok (std_sys_writev (Fd.to_unix fd) iov)
 
 external std_sys_sendfile :
   Unix.file_descr -> Unix.file_descr -> int -> int -> int
   = "kernel_unix_sendfile"
 
 let sendfile fd ~file ~off ~len =
-  syscall @@ fun () -> Ok (std_sys_sendfile file fd off len)
+  syscall @@ fun () ->
+  Ok (std_sys_sendfile (Fd.to_unix file) (Fd.to_unix fd) off len)
 
 let readdir path =
   syscall @@ fun () ->
@@ -135,26 +117,31 @@ let mkdirp path perm =
 let copy_file src dst =
   syscall @@ fun () ->
   try
-    let ic = open_in_bin src in
-    let oc = open_out_bin dst in
+    let src_fd = Fd.open_file src [ Fd.OpenFlags.ReadOnly ] 0 in
+    let dst_fd =
+      Fd.open_file dst
+        [ Fd.OpenFlags.WriteOnly; Fd.OpenFlags.Create; Fd.OpenFlags.Truncate ]
+        0o644
+    in
     let buf_size = 65536 in
-    (* 64KB buffer *)
     let buf = Bytes.create buf_size in
     let rec copy () =
-      match input ic buf 0 buf_size with
+      match Unix.read (Fd.to_unix src_fd) buf 0 buf_size with
       | 0 -> ()
       | n ->
-          output oc buf 0 n;
+          let _ = Unix.write (Fd.to_unix dst_fd) buf 0 n in
           copy ()
     in
     Fun.protect
       ~finally:(fun () ->
-        close_in_noerr ic;
-        close_out_noerr oc)
+        Fd.close src_fd;
+        Fd.close dst_fd)
       (fun () ->
         copy ();
         Ok ())
-  with e -> Error (`Exn e)
+  with
+  | Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
+  | e -> Error (`Exn e)
 
 let is_directory path =
   syscall @@ fun () -> try Ok (Sys.is_directory path) with e -> Error (`Exn e)
@@ -205,24 +192,6 @@ let chdir path =
     Ok ()
   with e -> Error (`Exn e)
 
-let opendir path =
-  syscall @@ fun () ->
-  try Ok (Unix.opendir path)
-  with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
-
-let readdir_handle handle =
-  syscall @@ fun () ->
-  try Ok (Unix.readdir handle) with
-  | End_of_file -> Error `Eof
-  | Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
-
-let closedir handle =
-  syscall @@ fun () ->
-  try
-    Unix.closedir handle;
-    Ok ()
-  with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
-
 let is_regular_file path =
   syscall @@ fun () ->
   try
@@ -255,14 +224,9 @@ let readlink path =
   try Ok (Unix.readlink path)
   with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
 
-let open_file path flags perm =
-  syscall @@ fun () ->
-  try Ok (Unix.openfile path (open_flags_to_unix flags) perm)
-  with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
-
 let fstat fd =
   syscall @@ fun () ->
-  try Ok (Unix.fstat fd)
+  try Ok (Unix.fstat (Fd.to_unix fd))
   with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
 
 let lstat path =
@@ -272,46 +236,47 @@ let lstat path =
 
 let lseek fd pos whence =
   syscall @@ fun () ->
-  try Ok (Unix.LargeFile.lseek fd pos (seek_command_to_unix whence))
+  try
+    Ok (Unix.LargeFile.lseek (Fd.to_unix fd) pos (seek_command_to_unix whence))
   with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
 
 let ftruncate fd len =
   syscall @@ fun () ->
   try
-    Unix.LargeFile.ftruncate fd len;
+    Unix.LargeFile.ftruncate (Fd.to_unix fd) len;
     Ok ()
   with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
 
 let fchmod fd perm =
   syscall @@ fun () ->
   try
-    Unix.fchmod fd perm;
+    Unix.fchmod (Fd.to_unix fd) perm;
     Ok ()
   with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
 
 let fsync fd =
   syscall @@ fun () ->
   try
-    Unix.fsync fd;
+    Unix.fsync (Fd.to_unix fd);
     Ok ()
   with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
 
 let dup fd =
   syscall @@ fun () ->
-  try Ok (Unix.dup fd)
+  try Ok (Fd.of_unix (Unix.dup (Fd.to_unix fd)))
   with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
 
 let lockf fd cmd len =
   syscall @@ fun () ->
   try
-    Unix.lockf fd (lock_command_to_unix cmd) len;
+    Unix.lockf (Fd.to_unix fd) (lock_command_to_unix cmd) len;
     Ok ()
   with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
 
 let close_fd fd =
   syscall @@ fun () ->
   try
-    Unix.close fd;
+    Unix.close (Fd.to_unix fd);
     Ok ()
   with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
 

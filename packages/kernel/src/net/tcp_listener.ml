@@ -10,19 +10,17 @@ let bind ?(reuse_addr = true) ?(reuse_port = true) ?(backlog = 128) addr =
   let sock_domain = Addr.to_domain addr in
   let sock_type, sock_addr = Addr.to_unix addr in
   let fd = Socket.make sock_domain sock_type in
-  Unix.setsockopt fd Unix.SO_REUSEADDR reuse_addr;
-  Unix.setsockopt fd Unix.SO_REUSEPORT reuse_port;
-  Unix.bind fd sock_addr;
-  Unix.listen fd backlog;
+  Unix.setsockopt (Fd.to_unix fd) Unix.SO_REUSEADDR reuse_addr;
+  Unix.setsockopt (Fd.to_unix fd) Unix.SO_REUSEPORT reuse_port;
+  Unix.bind (Fd.to_unix fd) sock_addr;
+  Unix.listen (Fd.to_unix fd) backlog;
   Ok fd
 
 let accept fd =
   syscall @@ fun () ->
-  let raw_fd, client_addr = Unix.accept ~cloexec:true fd in
-  Unix.set_nonblock raw_fd;
-  Unix.setsockopt raw_fd Unix.TCP_NODELAY true;
+  let raw_fd, client_addr = Unix.accept ~cloexec:true (Fd.to_unix fd) in
   let addr = Addr.of_unix client_addr in
-  let stream = Tcp_stream.of_fd (Fd.make raw_fd) in
+  let stream = Tcp_stream.of_fd (Fd.of_unix raw_fd) in
   Ok (stream, addr)
 
 let to_source t =

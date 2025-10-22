@@ -1,5 +1,3 @@
-type dir_handle = Unix.dir_handle
-
 type error =
   | Permission_denied
   | No_such_file_or_directory
@@ -216,6 +214,6 @@ let file_kind_to_unix = function
   | Fifo -> Unix.S_FIFO
   | Socket -> Unix.S_SOCK
 
-let stdin = Unix.stdin
-let stdout = Unix.stdout
-let stderr = Unix.stderr
+let stdin = Fd.make_blocking Unix.stdin
+let stdout = Fd.make_blocking Unix.stdout
+let stderr = Fd.make_blocking Unix.stderr

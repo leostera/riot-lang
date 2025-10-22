@@ -1,5 +1,3 @@
-type dir_handle = Unix.dir_handle
-
 type error =
   | Permission_denied
   | No_such_file_or_directory
