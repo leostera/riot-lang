@@ -7,5 +7,6 @@ type test_case = Test_case.t
 
 let case = Test_case.case
 let skip = Test_case.skip
+let todo = Test_case.todo
 
 include Assertions

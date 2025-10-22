@@ -11,34 +11,55 @@ let ensure_open t =
 
 let open_with_flags path flags mode =
   let path_str = Path.to_string path in
-  match Kernel.Fs.File.open_file path_str flags mode with
-  | Ok fd -> Ok { fd; closed = false }
-  | Error e -> Error (SystemError (kernel_error_to_string e))
+  try
+    let fd = Kernel.Fd.open_file path_str flags mode in
+    Ok { fd; closed = false }
+  with
+  | Unix.Unix_error (e, _, _) ->
+      Error
+        (SystemError
+           (format "Failed to open %s: %s" path_str (Unix.error_message e)))
+  | e ->
+      Error
+        (SystemError
+           (format "Failed to open %s: %s" path_str (Exception.to_string e)))
 
 let create path =
   open_with_flags path
-    [ Kernel.Fs.File.WriteOnly; Kernel.Fs.File.Create; Kernel.Fs.File.Truncate ]
+    [
+      Kernel.Fd.OpenFlags.WriteOnly;
+      Kernel.Fd.OpenFlags.Create;
+      Kernel.Fd.OpenFlags.Truncate;
+    ]
     0o644
 
 let create_new path =
   open_with_flags path
     [
-      Kernel.Fs.File.WriteOnly; Kernel.Fs.File.Create; Kernel.Fs.File.Exclusive;
+      Kernel.Fd.OpenFlags.WriteOnly;
+      Kernel.Fd.OpenFlags.Create;
+      Kernel.Fd.OpenFlags.Exclusive;
     ]
     0o644
 
-let open_read path = open_with_flags path [ Kernel.Fs.File.ReadOnly ] 0o644
+let open_read path = open_with_flags path [ Kernel.Fd.OpenFlags.ReadOnly ] 0o644
 
 let open_write path =
-  open_with_flags path [ Kernel.Fs.File.WriteOnly; Kernel.Fs.File.Create ] 0o644
+  open_with_flags path
+    [ Kernel.Fd.OpenFlags.WriteOnly; Kernel.Fd.OpenFlags.Create ]
+    0o644
 
 let open_append path =
   open_with_flags path
-    [ Kernel.Fs.File.WriteOnly; Kernel.Fs.File.Append; Kernel.Fs.File.Create ]
+    [
+      Kernel.Fd.OpenFlags.WriteOnly;
+      Kernel.Fd.OpenFlags.Append;
+      Kernel.Fd.OpenFlags.Create;
+    ]
     0o644
 
 let open_read_write path =
-  open_with_flags path [ Kernel.Fs.File.ReadWrite ] 0o644
+  open_with_flags path [ Kernel.Fd.OpenFlags.ReadWrite ] 0o644
 
 (* Reading - with async/Miniriot support *)
 

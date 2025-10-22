@@ -65,13 +65,18 @@ open Global
 open Miniriot
 
 module DynamicWorkerPool : sig
-  type 'task t
-  (** A pool of worker processes that execute tasks of type ['task]. *)
+  type 'task t = { coordinator_pid : Pid.t; task_ref : 'task Ref.t }
+  (** A pool of worker processes that execute tasks of type ['task]. The
+      [task_ref] field is a phantom type witness used for type-safe pattern
+      matching on [WorkerReady] messages. *)
 
   type 'task worker
   (** An opaque handle to a worker that processes tasks of type ['task]. Can
       only be used with [send_task]. Type safety prevents sending wrong task
       types. *)
+
+  val get_worker_task_ref : 'task worker -> 'task Ref.t
+  (** Get the task_ref from a worker for type equality checking. *)
 
   (** {1 Advanced Mode - Dynamic Task Assignment} *)
 

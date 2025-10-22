@@ -20,17 +20,6 @@ let rmdir path =
   let path_str = Path.to_string path in
   Kernel.Fs.File.rmdir path_str |> convert_kernel_result
 
-let opendir path =
-  let path_str = Path.to_string path in
-  Kernel.Fs.File.opendir path_str |> convert_kernel_result
-
-let readdir_handle handle =
-  match Kernel.Fs.File.readdir_handle handle with
-  | Error `Eof -> Error (SystemError "End of directory")
-  | result -> convert_kernel_result result
-
-let closedir handle = Kernel.Fs.File.closedir handle |> convert_kernel_result
-
 (** Clean API implementations following the FIXME guidelines *)
 
 let canonicalize path =
@@ -157,20 +146,25 @@ let set_permissions path perm =
 
 let write content path =
   let path_str = Path.to_string path in
-  let open Kernel.Fs.File in
-  match open_file path_str [ WriteOnly; Create; Truncate ] 0o644 with
-  | Error e -> Error (SystemError (kernel_error_to_string e))
-  | Ok fd -> (
-      let buf = Bytes.of_string content in
-      let len = Bytes.length buf in
-      match write fd buf ~len with
-      | Error e ->
-          let _ = close_fd fd in
-          Error (SystemError (kernel_error_to_string e))
-      | Ok _ -> (
-          match close_fd fd with
-          | Ok () -> Ok ()
-          | Error e -> Error (SystemError (kernel_error_to_string e))))
+  let fd =
+    Kernel.Fd.open_file path_str
+      [
+        Kernel.Fd.OpenFlags.WriteOnly;
+        Kernel.Fd.OpenFlags.Create;
+        Kernel.Fd.OpenFlags.Truncate;
+      ]
+      0o644
+  in
+  let buf = Bytes.of_string content in
+  let len = Bytes.length buf in
+  match Kernel.Fs.File.write fd buf ~len with
+  | Error e ->
+      let _ = Kernel.Fs.File.close_fd fd in
+      Error (SystemError (kernel_error_to_string e))
+  | Ok _ -> (
+      match Kernel.Fs.File.close_fd fd with
+      | Ok () -> Ok ()
+      | Error e -> Error (SystemError (kernel_error_to_string e)))
 
 let read_link path =
   let path_str = Path.to_string path in
@@ -240,11 +234,11 @@ let rec mkdirp path =
 
 let rec remove_dir path =
   let path_str = Path.to_string path in
-  match Kernel.Fs.File.opendir path_str with
+  match Kernel.Fs.ReadDir.open_ path_str with
   | Error e -> Error (SystemError (kernel_error_to_string e))
   | Ok handle -> (
       let rec process_entries () =
-        match Kernel.Fs.File.readdir_handle handle with
+        match Kernel.Fs.ReadDir.read handle with
         | Error `Eof -> Ok ()
         | Error e -> Error (SystemError (kernel_error_to_string e))
         | Ok file when file = "." || file = ".." -> process_entries ()
@@ -266,10 +260,10 @@ let rec remove_dir path =
       in
       match process_entries () with
       | Error e ->
-          let _ = Kernel.Fs.File.closedir handle in
+          let _ = Kernel.Fs.ReadDir.close handle in
           Error e
       | Ok () -> (
-          match Kernel.Fs.File.closedir handle with
+          match Kernel.Fs.ReadDir.close handle with
           | Error e -> Error (SystemError (kernel_error_to_string e))
           | Ok () -> Kernel.Fs.File.rmdir path_str |> convert_kernel_result))
 

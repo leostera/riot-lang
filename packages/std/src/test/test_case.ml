@@ -5,3 +5,4 @@ type t = { name : string; fn : unit -> (unit, string) result; skip : bool }
 
 let case name fn = { name; fn; skip = false }
 let skip name fn = { name; fn; skip = true }
+let todo name = { name; fn = (fun () -> Result.Error "todo"); skip = false }

@@ -30,3 +30,6 @@ let start : type task.
 let send_task (t : 'task t) (worker : 'task worker) (task : 'task) : unit =
   let task = Task.make task t.task_ref in
   send worker.pid (ToWorker (Task task))
+
+(** Get the task_ref from a worker for type equality checking *)
+let get_worker_task_ref (worker : 'task worker) : 'task Ref.t = worker.task_ref
