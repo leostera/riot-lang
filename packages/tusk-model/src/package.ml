@@ -22,20 +22,6 @@ type t = {
   test_modules : test_module list;
 }
 
-(** Hashing *)
-
-let hash (type state) (module H : Crypto.Hasher.Intf with type state = state)
-    (hasher : state) (pkg : t) =
-  H.write_string hasher pkg.name;
-  let sorted_deps =
-    List.sort
-      (fun (a : dependency) (b : dependency) -> String.compare a.name b.name)
-      pkg.dependencies
-  in
-  List.iter
-    (fun (dep : dependency) -> H.write_string hasher dep.name)
-    sorted_deps
-
 (** Package TOML parsing *)
 
 let parse_name (items : (string * Toml.value) list) (fallback : string) : string
@@ -220,13 +206,3 @@ let from_toml (toml : Toml.value) ~(workspace_deps : dependency list)
           test_modules;
         }
   | _ -> Error "TOML is not a table"
-
-module Tests = struct
-  let test_parse_package_toml () : (unit, string) result = Ok () [@test]
-
-  let test_parse_dependencies_with_workspace_true () : (unit, string) result =
-    Ok () [@test]
-
-  let test_parse_dependencies_with_path () : (unit, string) result =
-    Ok () [@test]
-end [@test]

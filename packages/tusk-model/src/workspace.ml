@@ -10,7 +10,7 @@ type t = { root : Path.t; target_dir_root : Path.t; packages : Package.t list }
 (** Workspace TOML parsing *)
 
 type manifest = {
-  members : string list;
+  members : Path.t list;
   dependencies : Package.dependency list;
 }
 
@@ -26,13 +26,16 @@ let parse_dependencies (items : (string * Toml.value) list) :
     Package.dependency list =
   List.map (fun (name, value) -> parse_dependency name value) items
 
-let parse_members (toml : Toml.value) : string list =
+let parse_members (toml : Toml.value) : Path.t list =
   match toml with
   | Toml.Table items -> (
       match List.assoc_opt "workspace" items with
       | Some (Toml.Table workspace_items) -> (
           match List.assoc_opt "members" workspace_items with
-          | Some (Toml.Array members) -> List.filter_map Toml.get_string members
+          | Some (Toml.Array members) ->
+              List.filter_map
+                (fun m -> Option.map Path.v (Toml.get_string m))
+                members
           | _ -> [])
       | _ -> [])
   | _ -> []
@@ -47,10 +50,12 @@ let parse_workspace_dependencies (toml : Toml.value) : Package.dependency list =
       | _ -> [])
   | _ -> []
 
-let manifest_from_toml (toml : Toml.value) : (manifest, string) result =
+let of_toml (toml : Toml.value) : (manifest, string) result =
   let members = parse_members toml in
   let dependencies = parse_workspace_dependencies toml in
   Ok { members; dependencies }
+
+let manifest_from_toml = of_toml [@@deprecated "Use of_toml instead"]
 
 let make ~root ~packages : t =
   { root; target_dir_root = Path.(root / Path.v "target"); packages }

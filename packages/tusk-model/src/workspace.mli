@@ -3,11 +3,15 @@ open Std
 type t = { root : Path.t; target_dir_root : Path.t; packages : Package.t list }
 
 type manifest = {
-  members : string list;
+  members : Path.t list;
   dependencies : Package.dependency list;
 }
 
+val of_toml : Std.Data.Toml.value -> (manifest, string) result
+
 val manifest_from_toml : Std.Data.Toml.value -> (manifest, string) result
+[@@deprecated "Use of_toml instead"]
+
 val make : root:Path.t -> packages:Package.t list -> t
 
 val project_id : t -> string

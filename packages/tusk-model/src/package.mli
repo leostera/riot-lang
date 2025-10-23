@@ -17,12 +17,6 @@ type t = {
   test_modules : test_module list;
 }
 
-val hash :
-  (module Std.Crypto.Hasher.Intf with type state = 'state) ->
-  'state ->
-  t ->
-  unit
-
 val from_toml :
   Std.Data.Toml.value ->
   workspace_deps:dependency list ->
