@@ -69,3 +69,7 @@ path = "tests/std_diff_hashmap_tests.ml"
 [[bin]]
 name = "std_diff_vector_tests"
 path = "tests/std_diff_vector_tests.ml"
+
+[[bin]]
+name = "std_telemetry_tests"
+path = "tests/std_telemetry_tests.ml"

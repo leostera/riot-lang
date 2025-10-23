@@ -60,7 +60,7 @@ end
 type 'value node = {
   id : Node_id.t;
   mutable deps : Node_id.t list;
-  value : 'value;
+  mutable value : 'value;
 }
 (** Graph node with value and dependencies. *)
 

@@ -164,6 +164,9 @@ module System = System
 module Task = Task
 (** Asynchronous task execution *)
 
+module Telemetry = Telemetry
+(** Telemetry framework *)
+
 module Test = Test
 (** Test framework with TAP output *)
 

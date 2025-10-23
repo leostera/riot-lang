@@ -25,6 +25,7 @@ module Result = Result
 module String = String
 module System = System
 module Task = Task
+module Telemetry = Telemetry
 module Test = Test
 module Time = Time
 module UUID = Uuid

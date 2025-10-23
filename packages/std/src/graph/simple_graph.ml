@@ -1,3 +1,5 @@
+open Global
+
 module Node_id : sig
   type t
 
@@ -8,10 +10,10 @@ module Node_id : sig
 end = struct
   type t = int
 
-  let counter = ref 0
+  let counter = cell 0
 
   let next () =
-    incr counter;
+    Cell.incr counter;
     !counter
 
   let eq = ( = )
@@ -22,7 +24,7 @@ end
 type 'value node = {
   id : Node_id.t;
   mutable deps : Node_id.t list;
-  value : 'value;
+  mutable value : 'value;
 }
 
 type 'value t = { nodes : (Node_id.t, 'value node) Hashtbl.t }
@@ -89,14 +91,14 @@ let topo_sort graph =
   List.iter (fun id -> Queue.add id queue) initial_nodes;
 
   (* Process queue *)
-  let sorted = ref [] in
-  let processed = ref 0 in
+  let sorted = cell [] in
+  let processed = cell 0 in
 
   while not (Queue.is_empty queue) do
     let id = Queue.take queue in
     let node = Hashtbl.find graph.nodes id in
     sorted := node :: !sorted;
-    incr processed;
+    Cell.incr processed;
 
     (* Decrease in-degree of nodes that depend on this one *)
     let rev_deps =
@@ -116,7 +118,7 @@ let topo_sort graph =
   (* Check for cycles *)
   if !processed <> Hashtbl.length graph.nodes then (
     (* Find nodes that are part of cycles (those with in-degree > 0) *)
-    let cycle_nodes = ref [] in
+    let cycle_nodes = cell [] in
     Hashtbl.iter
       (fun id count -> if count > 0 then cycle_nodes := id :: !cycle_nodes)
       in_degree;

@@ -99,11 +99,11 @@ let rec to_string = function
 (** Parse JSON from string *)
 let of_string str =
   let len = String.length str in
-  let pos = ref 0 in
+  let pos = cell 0 in
 
   let peek () = if !pos < len then Some str.[!pos] else None in
 
-  let advance () = incr pos in
+  let advance () = pos := !pos + 1 in
 
   let rec skip_whitespace () =
     if !pos >= len then ()
@@ -152,7 +152,7 @@ let of_string str =
 
   let parse_number () =
     let start = !pos in
-    let is_float = ref false in
+    let is_float = cell false in
     while
       !pos < len
       &&

@@ -32,10 +32,14 @@ val create : 'a -> 'a t
 val get : 'a t -> 'a
 (** Get the current value of the cell *)
 
+val ( ! ) : 'a t -> 'a
+
 (** {1 Writing} *)
 
 val set : 'a t -> 'a -> unit
 (** Set the cell to a new value *)
+
+val ( := ) : 'a t -> 'a -> unit
 
 (** {1 Updating} *)
 
@@ -61,6 +65,9 @@ val compare_and_swap : 'a t -> 'a -> 'a -> bool
 
 val equal : 'a t -> 'a t -> bool
 (** Check if two cells contain equal values *)
+
+val incr : int t -> unit
+val decr : int t -> unit
 
 (** {1 OnceCell} *)
 

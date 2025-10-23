@@ -235,7 +235,7 @@ module Csexp = struct
 
     let peek () = if !pos < len then Some str.[!pos] else None in
 
-    let advance () = incr pos in
+    let advance () = Cell.incr pos in
 
     let parse_number () =
       let buffer = Buffer.create 4 in

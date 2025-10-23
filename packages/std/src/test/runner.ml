@@ -32,34 +32,29 @@ let shuffle_list lst =
   done;
   Array.to_list arr
 
-let run_single_test reporter idx (test : Test_case.t) =
+let run_single_test reporter index (test : Test_case.t) =
+  let name = test.name in
   let result =
-    if test.skip then
-      {
-        Test_result.index = idx;
-        name = test.name;
-        result = Test_result.Skipped;
-      }
+    if test.skip then Test_result.{ index; name; result = Skipped }
     else
       match test.fn () with
-      | Ok () ->
-          {
-            Test_result.index = idx;
-            name = test.name;
-            result = Test_result.Passed;
-          }
-      | Error msg ->
-          {
-            Test_result.index = idx;
-            name = test.name;
-            result = Test_result.Failed msg;
-          }
+      | exception exn ->
+          let result =
+            let exn = Exception.to_string exn in
+            let bt = Exception.get_backtrace () in
+            let reason = format "%s\n\n%s" exn bt in
+            Test_result.Failed reason
+          in
+          Test_result.{ index; name; result }
+      | Error msg -> Test_result.{ index; name; result = Failed msg }
+      | Ok () -> Test_result.{ index; name; result = Passed }
   in
   let module R = (val reporter : Reporter.Intf) in
-  R.on_result idx result;
+  R.on_result index result;
   result
 
 let run_tests ~config tests =
+  Exception.record_backtrace true;
   let filtered_tests = filter_tests config.target tests in
   let tests_to_run =
     match config.mode with

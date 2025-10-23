@@ -9,11 +9,19 @@ let create value = { value }
 (* Reading *)
 let get cell = cell.value
 
+(* Operators for ref-like syntax *)
+let ( ! ) = get
+
 (* Writing *)
 let set cell x = cell.value <- x
 
+(* Operators for ref-like syntax *)
+let ( := ) = set
+
 (* Updating *)
 let update cell f = cell.value <- f cell.value
+let incr cell = cell.value <- cell.value + 1
+let decr cell = cell.value <- cell.value - 1
 
 let replace cell new_value =
   let old_value = cell.value in

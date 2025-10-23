@@ -39,7 +39,7 @@ let parse content =
 
   let at_end () = !pos >= len in
   let peek () = if at_end () then None else Some content.[!pos] in
-  let advance () = if not (at_end ()) then incr pos in
+  let advance () = if not (at_end ()) then Cell.incr pos in
   let current_char () = if at_end () then '\000' else content.[!pos] in
 
   (* Skip whitespace (spaces, tabs) but NOT newlines *)

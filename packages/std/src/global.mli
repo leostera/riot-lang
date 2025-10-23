@@ -43,6 +43,10 @@ val panic : string -> 'a
     - Invariant violations
     - Programmer errors (use assertions instead when possible) *)
 
+val ( ! ) : 'a Cell.t -> 'a
+val ( := ) : 'a Cell.t -> 'a -> unit
+val ref : 'a -> 'a Cell.t
+
 val cell : 'a -> 'a Cell.t
 (** Creates a mutable cell containing the given value.
 

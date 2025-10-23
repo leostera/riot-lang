@@ -1,3 +1,5 @@
+open Global
+
 let encode_bytes bytes =
   let len = Bytes.length bytes in
   let result = Buffer.create (((len * 5) + 3) / 4) in
@@ -65,7 +67,7 @@ let decode_bytes str =
   let str = strip_delimiters str in
   let len = String.length str in
   let result = Buffer.create (len * 4 / 5) in
-  let cursor = ref 0 in
+  let cursor = cell 0 in
 
   let rec decode_group () =
     if !cursor >= len then Ok (Buffer.contents result |> Bytes.unsafe_of_string)
@@ -76,25 +78,25 @@ let decode_bytes str =
         Buffer.add_char result '\x00';
         Buffer.add_char result '\x00';
         Buffer.add_char result '\x00';
-        incr cursor;
+        Cell.incr cursor;
         decode_group ())
       else if c = ' ' || c = '\n' || c = '\r' || c = '\t' then (
-        incr cursor;
+        Cell.incr cursor;
         decode_group ())
       else
         let start = !cursor in
-        let chars = ref [] in
-        let count = ref 0 in
+        let chars = cell [] in
+        let count = cell 0 in
         while !cursor < len && !count < 5 do
           let c = str.[!cursor] in
           if c <> ' ' && c <> '\n' && c <> '\r' && c <> '\t' then
             match decode_char c with
             | Some v ->
                 chars := v :: !chars;
-                incr count;
-                incr cursor
+                Cell.incr count;
+                Cell.incr cursor
             | None -> cursor := len
-          else incr cursor
+          else Cell.incr cursor
         done;
 
         if !count = 0 then Ok (Buffer.contents result |> Bytes.unsafe_of_string)
