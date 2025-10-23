@@ -1,0 +1,8 @@
+[package]
+name = "lib-main"
+
+[lib]
+modules = ["Lib_main"]
+
+[dependencies]
+lib-ext = { path = "../external-deps/lib-ext" }

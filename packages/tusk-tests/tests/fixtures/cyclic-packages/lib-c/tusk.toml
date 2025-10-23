@@ -1,0 +1,8 @@
+[package]
+name = "lib-c"
+
+[lib]
+modules = ["Lib_c"]
+
+[dependencies]
+lib-d = {}

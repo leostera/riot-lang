@@ -1,0 +1,21 @@
+[package]
+name = "tusk-tests"
+version = "0.1.0"
+
+[dependencies]
+kernel = { path = "../kernel" }
+std = { path = "../std" }
+miniriot = { path = "../miniriot" }
+tusk-model = { path = "../tusk-model" }
+tusk-toolchain = { path = "../tusk-toolchain" }
+tusk-planner = { path = "../tusk-planner" }
+tusk-store = { path = "../tusk-store" }
+tusk-executor = { path = "../tusk-executor" }
+
+[[bin]]
+name = "integration_caching_tests"
+path = "tests/integration_caching_tests.ml"
+
+[[bin]]
+name = "telemetry_integration_tests"
+path = "tests/telemetry_integration_tests.ml"

@@ -1,0 +1,8 @@
+[package]
+name = "lib-b"
+
+[library]
+path = "src"
+
+[dependencies]
+lib-a = {}

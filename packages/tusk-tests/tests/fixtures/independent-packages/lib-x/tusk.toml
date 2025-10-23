@@ -1,0 +1,5 @@
+[package]
+name = "lib-x"
+
+[lib]
+modules = ["Lib_x"]

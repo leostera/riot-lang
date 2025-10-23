@@ -1,0 +1,6 @@
+[package]
+name = "multi-module"
+version = "0.1.0"
+
+[library]
+path = "src"

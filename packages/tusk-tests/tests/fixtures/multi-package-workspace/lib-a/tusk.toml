@@ -1,0 +1,5 @@
+[package]
+name = "lib-a"
+
+[library]
+path = "src"
