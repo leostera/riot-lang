@@ -1,5 +1,6 @@
 open Std
 module Error = Error
+module Event = Event
 module Module_name = Module_name
 module Module = Module
 module Namespace = Namespace
@@ -8,4 +9,5 @@ module Workspace = Workspace
 module Workspace_manager = Workspace_manager
 module Node_id = Node_id
 module Session_id = Session_id
+module Toolchain_config = Toolchain_config
 module Worker_id = Worker_id
