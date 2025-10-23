@@ -21,6 +21,7 @@ module Log = Log
 module Net = Net
 module Option = Option
 module Path = Path
+module Ref = Ref
 module Result = Result
 module String = String
 module System = System

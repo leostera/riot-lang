@@ -58,35 +58,55 @@ module Server = struct
     let state = { handlers = HashMap.create () } in
     loop state
 
-  let pid = cell Pid.zero
-
-  let start () =
-    if Pid.equal !pid Pid.zero then (
-      let server_pid = spawn (fun () -> init ()) in
-      pid := server_pid;
-      server_pid)
-    else !pid
+  let start () = spawn init
 end
 
-let start = Server.start
-let emit event = send (Cell.get Server.pid) Server.(Telemetry (Emit event))
+let pid : Pid.t option Cell.t = cell None
+
+let start () =
+  match !pid with
+  | None ->
+      let server_pid = Server.start () in
+      pid := Some server_pid;
+      server_pid
+  | Some pid -> pid
+
+let emit event =
+  match !pid with
+  | None -> ()
+  | Some pid -> send pid Server.(Telemetry (Emit event))
 
 let attach id fn =
-  send (Cell.get Server.pid) Server.(Telemetry (AttachHandler { id; fn }))
+  match !pid with
+  | None -> ()
+  | Some pid -> send pid Server.(Telemetry (AttachHandler { id; fn }))
 
-let detach id = send (Cell.get Server.pid) Server.(Telemetry (DetachHandler id))
-let detach_all () = send (Cell.get Server.pid) Server.(Telemetry DetachAll)
+let detach id =
+  match !pid with
+  | None -> ()
+  | Some pid -> send pid Server.(Telemetry (DetachHandler id))
+
+let detach_all () =
+  match !pid with
+  | None -> ()
+  | Some pid -> send pid Server.(Telemetry DetachAll)
 
 let list_handlers () =
-  send (Cell.get Server.pid) Server.(Telemetry (ListHandlers (self ())));
-  let selector msg =
-    match msg with Server.HandlerList ids -> `select ids | _ -> `skip
-  in
-  receive ~selector ()
+  match !pid with
+  | None -> []
+  | Some pid ->
+      send pid Server.(Telemetry (ListHandlers (self ())));
+      let selector msg =
+        match msg with Server.HandlerList ids -> `select ids | _ -> `skip
+      in
+      receive ~selector ()
 
 let stop () =
-  send (Cell.get Server.pid) Server.(Telemetry (Stop (self ())));
-  let selector msg =
-    match msg with Server.Stopped -> `select () | _ -> `skip
-  in
-  receive ~selector ()
+  match !pid with
+  | None -> ()
+  | Some pid ->
+      send pid Server.(Telemetry (Stop (self ())));
+      let selector msg =
+        match msg with Server.Stopped -> `select () | _ -> `skip
+      in
+      receive ~selector ()

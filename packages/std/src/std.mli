@@ -152,6 +152,9 @@ module Option = Option
 module Path = Path
 (** Type-safe filesystem paths *)
 
+module Ref = Ref
+(** Unique, opaque, type-witnessing references *)
+
 module Result = Result
 (** Error handling with Result type *)
 
