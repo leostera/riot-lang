@@ -8,7 +8,7 @@ let toolchain =
 
 let make_test_input root_path library =
   let package_name = Path.basename root_path in
-  Tusk_planner.Planner.
+  Tusk_planner.Module_planner.
     {
       package =
         Package.
@@ -42,7 +42,7 @@ let test_single_module_library_compiles_source =
       let lib_path = Path.(fixture_path / Path.v "src/single_module_lib.ml") in
       let input = make_test_input fixture_path (Some { path = lib_path }) in
 
-      match Tusk_planner.Planner.plan_node input with
+      match Tusk_planner.Module_planner.plan_node input with
       | Error err ->
           Error (format "Planning failed: %s" (Planning_error.to_string err))
       | Ok { action_graph; _ } ->
@@ -73,7 +73,7 @@ let test_single_module_library_has_objects =
       let lib_path = Path.(fixture_path / Path.v "src/single_module_lib.ml") in
       let input = make_test_input fixture_path (Some { path = lib_path }) in
 
-      match Tusk_planner.Planner.plan_node input with
+      match Tusk_planner.Module_planner.plan_node input with
       | Error err ->
           Error (format "Planning failed: %s" (Planning_error.to_string err))
       | Ok { action_graph; _ } -> (
@@ -115,7 +115,7 @@ let test_multi_module_library_compiles_all =
       let lib_path = Path.(fixture_path / Path.v "src/multi_module_lib.ml") in
       let input = make_test_input fixture_path (Some { path = lib_path }) in
 
-      match Tusk_planner.Planner.plan_node input with
+      match Tusk_planner.Module_planner.plan_node input with
       | Error err ->
           Error (format "Planning failed: %s" (Planning_error.to_string err))
       | Ok { action_graph; _ } ->
@@ -155,7 +155,7 @@ let test_multi_module_library_includes_all_objects =
       let lib_path = Path.(fixture_path / Path.v "src/multi_module_lib.ml") in
       let input = make_test_input fixture_path (Some { path = lib_path }) in
 
-      match Tusk_planner.Planner.plan_node input with
+      match Tusk_planner.Module_planner.plan_node input with
       | Error err ->
           Error (format "Planning failed: %s" (Planning_error.to_string err))
       | Ok { action_graph; _ } -> (
@@ -203,7 +203,7 @@ let test_empty_library_still_creates_archive =
       let lib_path = Path.(fixture_path / Path.v "src/empty_lib.ml") in
       let input = make_test_input fixture_path (Some { path = lib_path }) in
 
-      match Tusk_planner.Planner.plan_node input with
+      match Tusk_planner.Module_planner.plan_node input with
       | Error err ->
           Error (format "Planning failed: %s" (Planning_error.to_string err))
       | Ok { action_graph; _ } ->
@@ -228,7 +228,7 @@ let test_library_archive_has_correct_extension =
       let lib_path = Path.(fixture_path / Path.v "src/single_module_lib.ml") in
       let input = make_test_input fixture_path (Some { path = lib_path }) in
 
-      match Tusk_planner.Planner.plan_node input with
+      match Tusk_planner.Module_planner.plan_node input with
       | Error err ->
           Error (format "Planning failed: %s" (Planning_error.to_string err))
       | Ok { action_graph; _ } -> (
@@ -238,8 +238,10 @@ let test_library_archive_has_correct_extension =
             List.find_map
               (fun action ->
                 match action with
-                | Action.CreateLibrary { output; _ } ->
-                    Some (Path.to_string output)
+                | Action.CreateLibrary { outputs; _ } -> (
+                    match outputs with
+                    | output :: _ -> Some (Path.to_string output)
+                    | [] -> None)
                 | _ -> None)
               actions
           in
@@ -259,7 +261,7 @@ let test_binary_only_no_library_node =
       in
       let input = make_test_input fixture_path None in
 
-      match Tusk_planner.Planner.plan_node input with
+      match Tusk_planner.Module_planner.plan_node input with
       | Error err ->
           Error (format "Planning failed: %s" (Planning_error.to_string err))
       | Ok { action_graph; _ } ->
@@ -286,7 +288,7 @@ let test_binary_only_has_executable =
       in
       let package_name = Path.basename fixture_path in
       let input =
-        Tusk_planner.Planner.
+        Tusk_planner.Module_planner.
           {
             package =
               Package.
@@ -313,7 +315,7 @@ let test_binary_only_has_executable =
           }
       in
 
-      match Tusk_planner.Planner.plan_node input with
+      match Tusk_planner.Module_planner.plan_node input with
       | Error err ->
           Error (format "Planning failed: %s" (Planning_error.to_string err))
       | Ok { action_graph; _ } ->
@@ -342,7 +344,7 @@ let test_binary_executable_has_correct_name =
       in
       let package_name = Path.basename fixture_path in
       let input =
-        Tusk_planner.Planner.
+        Tusk_planner.Module_planner.
           {
             package =
               Package.
@@ -369,7 +371,7 @@ let test_binary_executable_has_correct_name =
           }
       in
 
-      match Tusk_planner.Planner.plan_node input with
+      match Tusk_planner.Module_planner.plan_node input with
       | Error err ->
           Error (format "Planning failed: %s" (Planning_error.to_string err))
       | Ok { action_graph; _ } -> (
@@ -379,8 +381,10 @@ let test_binary_executable_has_correct_name =
             List.find_map
               (fun action ->
                 match action with
-                | Action.CreateExecutable { output; _ } ->
-                    Some (Path.to_string output)
+                | Action.CreateExecutable { outputs; _ } -> (
+                    match outputs with
+                    | output :: _ -> Some (Path.to_string output)
+                    | [] -> None)
                 | _ -> None)
               actions
           in
@@ -402,7 +406,7 @@ let test_lib_and_binary_has_both =
       in
       let package_name = Path.basename fixture_path in
       let input =
-        Tusk_planner.Planner.
+        Tusk_planner.Module_planner.
           {
             package =
               Package.
@@ -429,7 +433,7 @@ let test_lib_and_binary_has_both =
           }
       in
 
-      match Tusk_planner.Planner.plan_node input with
+      match Tusk_planner.Module_planner.plan_node input with
       | Error err ->
           Error (format "Planning failed: %s" (Planning_error.to_string err))
       | Ok { action_graph; _ } ->
@@ -470,7 +474,7 @@ let test_multiple_binaries_all_created =
       in
       let package_name = Path.basename fixture_path in
       let input =
-        Tusk_planner.Planner.
+        Tusk_planner.Module_planner.
           {
             package =
               Package.
@@ -497,7 +501,7 @@ let test_multiple_binaries_all_created =
           }
       in
 
-      match Tusk_planner.Planner.plan_node input with
+      match Tusk_planner.Module_planner.plan_node input with
       | Error err ->
           Error (format "Planning failed: %s" (Planning_error.to_string err))
       | Ok { action_graph; _ } ->
@@ -507,8 +511,10 @@ let test_multiple_binaries_all_created =
             List.filter_map
               (fun action ->
                 match action with
-                | Action.CreateExecutable { output; _ } ->
-                    Some (Path.to_string output)
+                | Action.CreateExecutable { outputs; _ } -> (
+                    match outputs with
+                    | output :: _ -> Some (Path.to_string output)
+                    | [] -> None)
                 | _ -> None)
               actions
           in
@@ -539,7 +545,7 @@ let test_native_folder_objects_in_library =
       let lib_path = Path.(fixture_path / Path.v "src/lib_with_native.ml") in
       let input = make_test_input fixture_path (Some { path = lib_path }) in
 
-      match Tusk_planner.Planner.plan_node input with
+      match Tusk_planner.Module_planner.plan_node input with
       | Error err ->
           Error (format "Planning failed: %s" (Planning_error.to_string err))
       | Ok { action_graph; _ } -> (

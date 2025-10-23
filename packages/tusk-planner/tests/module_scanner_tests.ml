@@ -8,7 +8,7 @@ let toolchain =
   Tusk_toolchain.init () |> Result.expect ~msg:"Failed to initialize toolchain"
 
 let make_graph_config root_path source_dir =
-  Graph_builder.
+  Module_graph.
     {
       root = root_path;
       source_dir;
@@ -37,7 +37,7 @@ let make_graph_config root_path source_dir =
 
 let make_test_input root_path =
   let package_name = Path.basename root_path in
-  Tusk_planner.Planner.
+  Tusk_planner.Module_planner.
     {
       package =
         Package.
@@ -70,7 +70,7 @@ let test_scan_simple_fixture =
           (Path.v "packages/tusk-planner/tests/fixtures/simple")
           (Path.v "src")
       in
-      let graph = Graph_builder.create config in
+      let graph = Module_graph.create config in
       if List.length graph.entries > 0 then Ok ()
       else Error "No entries scanned")
 
@@ -80,7 +80,7 @@ let test_scan_sublibrary_fixture =
         Path.v "packages/tusk-planner/tests/fixtures/sublibrary"
       in
       let config = make_graph_config fixture_root (Path.v ".") in
-      let graph = Graph_builder.create config in
+      let graph = Module_graph.create config in
       if List.length graph.entries > 0 then Ok ()
       else Error "No entries scanned")
 
@@ -91,7 +91,7 @@ let test_single_with_interface =
       in
       let input = make_test_input root in
 
-      match Tusk_planner.Planner.plan_node input with
+      match Tusk_planner.Module_planner.plan_node input with
       | Ok { module_graph; action_graph } ->
           let actions = Action_graph.to_action_list action_graph in
           let module_count = List.length (G.topo_sort module_graph) in
@@ -118,7 +118,7 @@ let test_mli_only_module =
       let lib_path = Path.(fixture_path / Path.v "src/mli_only.ml") in
       let package_name = Path.basename fixture_path in
       let input =
-        Tusk_planner.Planner.
+        Tusk_planner.Module_planner.
           {
             package =
               Package.
@@ -145,7 +145,7 @@ let test_mli_only_module =
           }
       in
 
-      match Tusk_planner.Planner.plan_node input with
+      match Tusk_planner.Module_planner.plan_node input with
       | Error err ->
           Error (format "Planning failed: %s" (Planning_error.to_string err))
       | Ok { action_graph; _ } ->
@@ -173,7 +173,7 @@ let test_ml_only_module =
       let lib_path = Path.(fixture_path / Path.v "src/ml_only.ml") in
       let package_name = Path.basename fixture_path in
       let input =
-        Tusk_planner.Planner.
+        Tusk_planner.Module_planner.
           {
             package =
               Package.
@@ -200,7 +200,7 @@ let test_ml_only_module =
           }
       in
 
-      match Tusk_planner.Planner.plan_node input with
+      match Tusk_planner.Module_planner.plan_node input with
       | Error err ->
           Error (format "Planning failed: %s" (Planning_error.to_string err))
       | Ok { action_graph; _ } ->
@@ -227,7 +227,7 @@ let test_mixed_interfaces =
       in
       let input = make_test_input root in
 
-      match Tusk_planner.Planner.plan_node input with
+      match Tusk_planner.Module_planner.plan_node input with
       | Ok { module_graph; _ } ->
           let nodes = G.topo_sort module_graph in
           if List.length nodes = 0 then Error "Expected at least one node"
@@ -240,7 +240,7 @@ let test_c_file_scanning =
       let root = Path.v "packages/tusk-planner/tests/fixtures/c-stubs" in
       let input = make_test_input root in
 
-      match Tusk_planner.Planner.plan_node input with
+      match Tusk_planner.Module_planner.plan_node input with
       | Ok { module_graph; action_graph } ->
           let module_nodes = G.topo_sort module_graph in
           let c_nodes =
@@ -277,7 +277,7 @@ let test_native_folder_c_files =
       let lib_path = Path.(fixture_path / Path.v "src/lib_with_native.ml") in
       let package_name = Path.basename fixture_path in
       let input =
-        Tusk_planner.Planner.
+        Tusk_planner.Module_planner.
           {
             package =
               Package.
@@ -304,7 +304,7 @@ let test_native_folder_c_files =
           }
       in
 
-      match Tusk_planner.Planner.plan_node input with
+      match Tusk_planner.Module_planner.plan_node input with
       | Error err ->
           Error (format "Planning failed: %s" (Planning_error.to_string err))
       | Ok { action_graph; _ } ->
@@ -342,7 +342,7 @@ let test_native_folder_isolated_from_src =
       let lib_path = Path.(fixture_path / Path.v "src/lib_with_native.ml") in
       let package_name = Path.basename fixture_path in
       let input =
-        Tusk_planner.Planner.
+        Tusk_planner.Module_planner.
           {
             package =
               Package.
@@ -369,7 +369,7 @@ let test_native_folder_isolated_from_src =
           }
       in
 
-      match Tusk_planner.Planner.plan_node input with
+      match Tusk_planner.Module_planner.plan_node input with
       | Error err ->
           Error (format "Planning failed: %s" (Planning_error.to_string err))
       | Ok { action_graph; _ } ->
@@ -404,7 +404,7 @@ let test_subdirectory_creates_sublibrary =
       let lib_path = Path.(fixture_path / Path.v "src/lib_with_subdir.ml") in
       let package_name = Path.basename fixture_path in
       let input =
-        Tusk_planner.Planner.
+        Tusk_planner.Module_planner.
           {
             package =
               Package.
@@ -431,7 +431,7 @@ let test_subdirectory_creates_sublibrary =
           }
       in
 
-      match Tusk_planner.Planner.plan_node input with
+      match Tusk_planner.Module_planner.plan_node input with
       | Error err ->
           Error (format "Planning failed: %s" (Planning_error.to_string err))
       | Ok { action_graph; _ } ->
@@ -462,7 +462,7 @@ let test_subdirectory_compiles_helper =
       let lib_path = Path.(fixture_path / Path.v "src/lib_with_subdir.ml") in
       let package_name = Path.basename fixture_path in
       let input =
-        Tusk_planner.Planner.
+        Tusk_planner.Module_planner.
           {
             package =
               Package.
@@ -489,7 +489,7 @@ let test_subdirectory_compiles_helper =
           }
       in
 
-      match Tusk_planner.Planner.plan_node input with
+      match Tusk_planner.Module_planner.plan_node input with
       | Error err ->
           Error (format "Planning failed: %s" (Planning_error.to_string err))
       | Ok { action_graph; _ } ->
@@ -517,7 +517,7 @@ let test_nested_subdirs_all_wrappers =
       let lib_path = Path.(fixture_path / Path.v "src/nested_subdirs.ml") in
       let package_name = Path.basename fixture_path in
       let input =
-        Tusk_planner.Planner.
+        Tusk_planner.Module_planner.
           {
             package =
               Package.
@@ -544,7 +544,7 @@ let test_nested_subdirs_all_wrappers =
           }
       in
 
-      match Tusk_planner.Planner.plan_node input with
+      match Tusk_planner.Module_planner.plan_node input with
       | Error err ->
           Error (format "Planning failed: %s" (Planning_error.to_string err))
       | Ok { action_graph; _ } ->
@@ -590,7 +590,7 @@ let test_unreachable_module_still_compiled =
       in
       let package_name = Path.basename fixture_path in
       let input =
-        Tusk_planner.Planner.
+        Tusk_planner.Module_planner.
           {
             package =
               Package.
@@ -617,7 +617,7 @@ let test_unreachable_module_still_compiled =
           }
       in
 
-      match Tusk_planner.Planner.plan_node input with
+      match Tusk_planner.Module_planner.plan_node input with
       | Error err ->
           Error (format "Planning failed: %s" (Planning_error.to_string err))
       | Ok { action_graph; _ } ->

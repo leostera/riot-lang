@@ -17,6 +17,7 @@ type plan_input = {
 }
 
 type plan_result = {
+  sources : Path.t list;
   module_graph : Module_node.t Graph.SimpleGraph.t;
   action_graph : Action_graph.t;
 }

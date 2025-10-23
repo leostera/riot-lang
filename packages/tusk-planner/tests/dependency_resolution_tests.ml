@@ -9,7 +9,7 @@ let toolchain =
 
 let make_test_input root_path =
   let package_name = Path.basename root_path in
-  Tusk_planner.Planner.
+  Tusk_planner.Module_planner.
     {
       package =
         Package.
@@ -42,7 +42,7 @@ let test_linear_dependency =
       in
       let input = make_test_input root in
 
-      match Tusk_planner.Planner.plan_node input with
+      match Tusk_planner.Module_planner.plan_node input with
       | Ok { module_graph; action_graph } ->
           let actions = Action_graph.to_action_list action_graph in
           let nodes = G.topo_sort module_graph in
@@ -67,7 +67,7 @@ let test_diamond_dependency =
       in
       let input = make_test_input root in
 
-      match Tusk_planner.Planner.plan_node input with
+      match Tusk_planner.Module_planner.plan_node input with
       | Ok { module_graph; _ } ->
           let nodes = G.topo_sort module_graph in
           if List.length nodes = 0 then
@@ -84,7 +84,7 @@ let test_circular_dependency_detected =
       let lib_path = Path.(fixture_path / Path.v "src/circular_deps.ml") in
       let package_name = Path.basename fixture_path in
       let input =
-        Tusk_planner.Planner.
+        Tusk_planner.Module_planner.
           {
             package =
               Package.
@@ -111,7 +111,7 @@ let test_circular_dependency_detected =
           }
       in
 
-      match Tusk_planner.Planner.plan_node input with
+      match Tusk_planner.Module_planner.plan_node input with
       | Ok _ -> Error "Expected CyclicDependency error for circular dependency"
       | Error (Planning_error.CyclicDependency { cycle }) ->
           if List.length cycle > 0 then Ok ()
@@ -129,7 +129,7 @@ let test_module_dependencies_correct_order =
       let lib_path = Path.(fixture_path / Path.v "src/lib_with_deps.ml") in
       let package_name = Path.basename fixture_path in
       let input =
-        Tusk_planner.Planner.
+        Tusk_planner.Module_planner.
           {
             package =
               Package.
@@ -156,7 +156,7 @@ let test_module_dependencies_correct_order =
           }
       in
 
-      match Tusk_planner.Planner.plan_node input with
+      match Tusk_planner.Module_planner.plan_node input with
       | Error err ->
           Error (format "Planning failed: %s" (Planning_error.to_string err))
       | Ok { action_graph; _ } -> (
@@ -191,7 +191,7 @@ let test_complex_multi_module =
       in
       let input = make_test_input root in
 
-      match Tusk_planner.Planner.plan_node input with
+      match Tusk_planner.Module_planner.plan_node input with
       | Ok { module_graph; action_graph } ->
           let nodes = G.topo_sort module_graph in
           let actions = Action_graph.to_action_list action_graph in

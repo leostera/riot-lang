@@ -445,12 +445,21 @@ let add_library_node t ~name ~includes =
 
   (* Library archive depends on ALL ML/MLI/C modules.
      Unreachable modules will be filtered later in action_graph.ml based on
-     what the library interface actually references. *)
-  G.iter t.graph ~fn:(fun _node_id node ->
+     what the library interface actually references.
+     
+     IMPORTANT: We iterate over topologically sorted nodes to preserve dependency order.
+     This ensures that when we later collect objects from node.deps, they're in the
+     correct order for linking. *)
+  let sorted_nodes = G.topo_sort t.graph in
+  (* Add edges in REVERSE topological order because add_edge prepends to deps list.
+     This ensures lib_node.deps ends up in correct topological order. *)
+  List.iter
+    (fun (node : Module_node.t G.node) ->
       match node.value.kind with
       | Module_node.ML _ | Module_node.MLI _ | Module_node.C ->
           G.add_edge lib_node ~depends_on:node
       | _ -> ())
+    (List.rev sorted_nodes)
 
 let add_binary_node t ~name ~source ~libraries ~includes =
   let bin_node_value =

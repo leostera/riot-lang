@@ -3,11 +3,44 @@ open Tusk_model
 
 type t
 
+type package_node =
+  | Unplanned of Package.t
+  | Planned of {
+      package : Package.t;
+      module_graph : Module_node.t Graph.SimpleGraph.t;
+      action_graph : Action_graph.t;
+      hash : Std.Crypto.hash;
+    }
+
 exception Cycle_detected of string list
 
 val create : Workspace.t -> t
 (** Create a package dependency graph from a workspace. Each package becomes a
-    node, edges represent dependencies. *)
+    node, edges represent dependencies. All nodes start as Unplanned. *)
+
+val get_package : package_node -> Package.t
+(** Extract the Package.t from a package_node *)
+
+val is_planned : package_node -> bool
+(** Check if a package node has been planned *)
+
+val get_hash : package_node -> Std.Crypto.hash option
+(** Get the hash of a planned package node, or None if unplanned *)
+
+val get_dependency_hashes : t -> Package.t -> Std.Crypto.hash list
+(** Get hashes of all direct dependencies that have been planned *)
+
+val get_unplanned_dependencies : t -> Package.t -> Package.t list
+(** Get all direct dependencies that have not been planned yet *)
+
+val mark_planned :
+  t ->
+  Package.t ->
+  module_graph:Module_node.t Graph.SimpleGraph.t ->
+  action_graph:Action_graph.t ->
+  hash:Std.Crypto.hash ->
+  unit
+(** Mark a package as planned with its module graph, action graph, and hash *)
 
 val size : t -> int
 (** Return the number of packages in the graph *)

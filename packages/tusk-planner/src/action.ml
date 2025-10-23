@@ -4,30 +4,30 @@ open Tusk_model
 type t =
   | CompileInterface of {
       source : Path.t;
-      output : Path.t;
+      outputs : Path.t list;
       includes : Path.t list;
       flags : Tusk_toolchain.Ocamlc.compiler_flag list;
     }
   | CompileImplementation of {
       source : Path.t;
-      output : Path.t;
+      outputs : Path.t list;
       includes : Path.t list;
       flags : Tusk_toolchain.Ocamlc.compiler_flag list;
     }
   | GenerateInterface of {
       source : Path.t;
-      output : Path.t;
+      outputs : Path.t list;
       includes : Path.t list;
       flags : Tusk_toolchain.Ocamlc.compiler_flag list;
     }
-  | CompileC of { source : Path.t; output : Path.t }
+  | CompileC of { source : Path.t; outputs : Path.t list }
   | CreateLibrary of {
-      output : Path.t;
+      outputs : Path.t list;
       objects : Path.t list;
       includes : Path.t list;
     }
   | CreateExecutable of {
-      output : Path.t;
+      outputs : Path.t list;
       objects : Path.t list;
       libraries : Path.t list;
       includes : Path.t list;
@@ -36,30 +36,35 @@ type t =
   | WriteFile of { destination : Path.t; content : string }
 
 let to_string = function
-  | CompileInterface { source; output; includes; flags } ->
+  | CompileInterface { source; outputs; includes; flags } ->
       format "CompileInterface(%s->%s,includes=%s,flags=%s)"
-        (Path.to_string source) (Path.to_string output)
+        (Path.to_string source)
+        (String.concat "," (List.map Path.to_string outputs))
         (String.concat "," (List.map Path.to_string includes))
         (String.concat " " (Tusk_toolchain.Ocamlc.flags_to_string flags))
-  | CompileImplementation { source; output; includes; flags } ->
+  | CompileImplementation { source; outputs; includes; flags } ->
       format "CompileImplementation(%s->%s,includes=%s,flags=%s)"
-        (Path.to_string source) (Path.to_string output)
+        (Path.to_string source)
+        (String.concat "," (List.map Path.to_string outputs))
         (String.concat "," (List.map Path.to_string includes))
         (String.concat " " (Tusk_toolchain.Ocamlc.flags_to_string flags))
-  | GenerateInterface { source; output; includes; flags } ->
+  | GenerateInterface { source; outputs; includes; flags } ->
       format "GenerateInterface(%s->%s,includes=%s,flags=%s)"
-        (Path.to_string source) (Path.to_string output)
+        (Path.to_string source)
+        (String.concat "," (List.map Path.to_string outputs))
         (String.concat "," (List.map Path.to_string includes))
         (String.concat " " (Tusk_toolchain.Ocamlc.flags_to_string flags))
-  | CompileC { source; output } ->
-      format "CompileC(%s->%s)" (Path.to_string source) (Path.to_string output)
-  | CreateLibrary { output; objects; includes } ->
-      format "CreateLibrary(%s,objects=%s,includes=%s)" (Path.to_string output)
+  | CompileC { source; outputs } ->
+      format "CompileC(%s->%s)" (Path.to_string source)
+        (String.concat "," (List.map Path.to_string outputs))
+  | CreateLibrary { outputs; objects; includes } ->
+      format "CreateLibrary(%s,objects=%s,includes=%s)"
+        (String.concat "," (List.map Path.to_string outputs))
         (String.concat "," (List.map Path.to_string objects))
         (String.concat "," (List.map Path.to_string includes))
-  | CreateExecutable { output; objects; libraries; includes } ->
+  | CreateExecutable { outputs; objects; libraries; includes } ->
       format "CreateExecutable(%s,objects=%s,libraries=%s,includes=%s)"
-        (Path.to_string output)
+        (String.concat "," (List.map Path.to_string outputs))
         (String.concat "," (List.map Path.to_string objects))
         (String.concat "," (List.map Path.to_string libraries))
         (String.concat "," (List.map Path.to_string includes))
@@ -74,63 +79,69 @@ let to_string = function
 let to_json action =
   let open Data.Json in
   match action with
-  | CompileInterface { source; output; includes; flags } ->
+  | CompileInterface { source; outputs; includes; flags } ->
       obj
         [
           ("type", string "CompileInterface");
           ("source", string (Path.to_string source));
-          ("output", string (Path.to_string output));
+          ( "outputs",
+            array (List.map (fun p -> string (Path.to_string p)) outputs) );
           ( "includes",
             array (List.map (fun p -> string (Path.to_string p)) includes) );
           ( "flags",
             array
               (List.map string (Tusk_toolchain.Ocamlc.flags_to_string flags)) );
         ]
-  | CompileImplementation { source; output; includes; flags } ->
+  | CompileImplementation { source; outputs; includes; flags } ->
       obj
         [
           ("type", string "CompileImplementation");
           ("source", string (Path.to_string source));
-          ("output", string (Path.to_string output));
+          ( "outputs",
+            array (List.map (fun p -> string (Path.to_string p)) outputs) );
           ( "includes",
             array (List.map (fun p -> string (Path.to_string p)) includes) );
           ( "flags",
             array
               (List.map string (Tusk_toolchain.Ocamlc.flags_to_string flags)) );
         ]
-  | GenerateInterface { source; output; includes; flags } ->
+  | GenerateInterface { source; outputs; includes; flags } ->
       obj
         [
           ("type", string "GenerateInterface");
           ("source", string (Path.to_string source));
-          ("output", string (Path.to_string output));
+          ( "outputs",
+            array (List.map (fun p -> string (Path.to_string p)) outputs) );
           ( "includes",
             array (List.map (fun p -> string (Path.to_string p)) includes) );
           ( "flags",
             array
               (List.map string (Tusk_toolchain.Ocamlc.flags_to_string flags)) );
         ]
-  | CompileC { source; output } ->
+  | CompileC { source; outputs } ->
       obj
         [
           ("type", string "CompileC");
           ("source", string (Path.to_string source));
-          ("output", string (Path.to_string output));
+          ( "outputs",
+            array (List.map (fun p -> string (Path.to_string p)) outputs) );
         ]
-  | CreateLibrary { output; objects; includes } ->
+  | CreateLibrary { outputs; objects; includes } ->
       obj
         [
           ("type", string "CreateLibrary");
-          ("output", string (Path.to_string output));
+          ( "outputs",
+            array (List.map (fun p -> string (Path.to_string p)) outputs) );
           ( "objects",
             array (List.map (fun p -> string (Path.to_string p)) objects) );
           ( "includes",
             array (List.map (fun p -> string (Path.to_string p)) includes) );
         ]
-  | CreateExecutable { output; objects; libraries; includes } ->
+  | CreateExecutable { outputs; objects; libraries; includes } ->
       obj
         [
-          ("output", string (Path.to_string output));
+          ( "outputs",
+            array (List.map (fun p -> string (Path.to_string p)) outputs) );
           ("type", string "CreateExecutable");
           ( "objects",
             array (List.map (fun p -> string (Path.to_string p)) objects) );
@@ -156,66 +167,69 @@ let to_json action =
 
 let from_json json =
   let open Data.Json in
+  let parse_outputs json =
+    match get_field "outputs" json with
+    | Some (Array arr) ->
+        Some
+          (List.filter_map
+             (function String s -> Some (Path.v s) | _ -> None)
+             arr)
+    | _ -> None
+  in
   match get_field "type" json with
   | None -> Error "Missing type field"
   | Some (String "CompileInterface") -> (
-      match (get_field "source" json, get_field "output" json) with
-      | Some (String src), Some (String out) ->
+      match (get_field "source" json, parse_outputs json) with
+      | Some (String src), Some outs ->
           Ok
             (CompileInterface
                {
                  source = Path.v src;
-                 output = Path.v out;
+                 outputs = outs;
                  includes = [];
                  flags = [];
                })
       | _ -> Error "Invalid CompileInterface")
   | Some (String "CompileImplementation") -> (
-      match (get_field "source" json, get_field "output" json) with
-      | Some (String src), Some (String out) ->
+      match (get_field "source" json, parse_outputs json) with
+      | Some (String src), Some outs ->
           Ok
             (CompileImplementation
                {
                  source = Path.v src;
-                 output = Path.v out;
+                 outputs = outs;
                  includes = [];
                  flags = [];
                })
       | _ -> Error "Invalid CompileImplementation")
   | Some (String "GenerateInterface") -> (
-      match (get_field "source" json, get_field "output" json) with
-      | Some (String src), Some (String out) ->
+      match (get_field "source" json, parse_outputs json) with
+      | Some (String src), Some outs ->
           Ok
             (GenerateInterface
                {
                  source = Path.v src;
-                 output = Path.v out;
+                 outputs = outs;
                  includes = [];
                  flags = [];
                })
       | _ -> Error "Invalid GenerateInterface")
   | Some (String "CompileC") -> (
-      match (get_field "source" json, get_field "output" json) with
-      | Some (String src), Some (String out) ->
-          Ok (CompileC { source = Path.v src; output = Path.v out })
+      match (get_field "source" json, parse_outputs json) with
+      | Some (String src), Some outs ->
+          Ok (CompileC { source = Path.v src; outputs = outs })
       | _ -> Error "Invalid CompileC")
   | Some (String "CreateLibrary") -> (
-      match get_field "output" json with
-      | Some (String out) ->
-          Ok
-            (CreateLibrary { output = Path.v out; objects = []; includes = [] })
+      match parse_outputs json with
+      | Some outs ->
+          Ok (CreateLibrary { outputs = outs; objects = []; includes = [] })
       | _ -> Error "Invalid CreateLibrary")
   | Some (String "CreateExecutable") -> (
-      match get_field "output" json with
-      | Some (String out) ->
+      match parse_outputs json with
+      | Some outs ->
           Ok
             (CreateExecutable
-               {
-                 output = Path.v out;
-                 objects = [];
-                 libraries = [];
-                 includes = [];
-               })
+               { outputs = outs; objects = []; libraries = []; includes = [] })
       | _ -> Error "Invalid CreateExecutable")
   | Some (String "CopyFile") -> (
       match (get_field "source" json, get_field "destination" json) with
@@ -234,27 +248,28 @@ let equal a1 a2 =
   match (a1, a2) with
   | CompileInterface r1, CompileInterface r2 ->
       Path.equal r1.source r2.source
-      && Path.equal r1.output r2.output
+      && List.for_all2 Path.equal r1.outputs r2.outputs
       && List.for_all2 Path.equal r1.includes r2.includes
       && r1.flags = r2.flags
   | CompileImplementation r1, CompileImplementation r2 ->
       Path.equal r1.source r2.source
-      && Path.equal r1.output r2.output
+      && List.for_all2 Path.equal r1.outputs r2.outputs
       && List.for_all2 Path.equal r1.includes r2.includes
       && r1.flags = r2.flags
   | GenerateInterface r1, GenerateInterface r2 ->
       Path.equal r1.source r2.source
-      && Path.equal r1.output r2.output
+      && List.for_all2 Path.equal r1.outputs r2.outputs
       && List.for_all2 Path.equal r1.includes r2.includes
       && r1.flags = r2.flags
   | CompileC r1, CompileC r2 ->
-      Path.equal r1.source r2.source && Path.equal r1.output r2.output
+      Path.equal r1.source r2.source
+      && List.for_all2 Path.equal r1.outputs r2.outputs
   | CreateLibrary r1, CreateLibrary r2 ->
-      Path.equal r1.output r2.output
+      List.for_all2 Path.equal r1.outputs r2.outputs
       && List.for_all2 Path.equal r1.objects r2.objects
       && List.for_all2 Path.equal r1.includes r2.includes
   | CreateExecutable r1, CreateExecutable r2 ->
-      Path.equal r1.output r2.output
+      List.for_all2 Path.equal r1.outputs r2.outputs
       && List.for_all2 Path.equal r1.objects r2.objects
       && List.for_all2 Path.equal r1.libraries r2.libraries
       && List.for_all2 Path.equal r1.includes r2.includes
@@ -264,3 +279,23 @@ let equal a1 a2 =
       Path.equal r1.destination r2.destination
       && String.equal r1.content r2.content
   | _ -> false
+
+let outputs = function
+  | CompileInterface { outputs; _ } -> outputs
+  | CompileImplementation { outputs; _ } -> outputs
+  | GenerateInterface { outputs; _ } -> outputs
+  | CompileC { outputs; _ } -> outputs
+  | CreateLibrary { outputs; _ } -> outputs
+  | CreateExecutable { outputs; _ } -> outputs
+  | CopyFile { destination; _ } -> [ destination ]
+  | WriteFile { destination; _ } -> [ destination ]
+
+let kind = function
+  | CompileInterface _ -> "CompileInterface"
+  | CompileImplementation _ -> "CompileImplementation"
+  | GenerateInterface _ -> "GenerateInterface"
+  | CompileC _ -> "CompileC"
+  | CreateLibrary _ -> "CreateLibrary"
+  | CreateExecutable _ -> "CreateExecutable"
+  | CopyFile _ -> "CopyFile"
+  | WriteFile _ -> "WriteFile"

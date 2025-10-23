@@ -5,6 +5,9 @@ module G = Std.Graph.SimpleGraph
 
 type t
 
+val create : unit -> t
+(** Create an empty action graph *)
+
 val hash_action_node : t -> Action_node.t -> Crypto.hash
 (** Compute content-based hash of an action node as part of a Merkle graph.
     

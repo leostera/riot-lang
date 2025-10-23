@@ -5,10 +5,31 @@ module G = Graph.SimpleGraph
 
 exception Cycle_detected of string list
 
+type package_node =
+  | Unplanned of Package.t
+  | Planned of {
+      package : Package.t;
+      module_graph : Module_node.t G.t;
+      action_graph : Action_graph.t;
+      hash : Std.Crypto.hash;
+    }
+
 type t = {
-  graph : Package.t G.t;
-  name_to_node : (string, Package.t G.node) HashMap.t;
+  graph : package_node G.t;
+  name_to_node : (string, package_node G.node) HashMap.t;
 }
+
+let get_package = function
+  | Unplanned pkg -> pkg
+  | Planned { package; _ } -> package
+
+let is_planned = function Unplanned _ -> false | Planned _ -> true
+let get_hash = function Unplanned _ -> None | Planned { hash; _ } -> Some hash
+
+let get_planned_data = function
+  | Unplanned _ -> None
+  | Planned { package; module_graph; action_graph; hash } ->
+      Some (package, module_graph, action_graph, hash)
 
 let create (workspace : Workspace.t) =
   let graph = G.make () in
@@ -16,7 +37,7 @@ let create (workspace : Workspace.t) =
 
   List.iter
     (fun (pkg : Package.t) ->
-      let node = G.add_node graph pkg in
+      let node = G.add_node graph (Unplanned pkg) in
       let _ = HashMap.insert name_to_node pkg.name node in
       ())
     workspace.packages;
@@ -36,12 +57,18 @@ let create (workspace : Workspace.t) =
 
   { graph; name_to_node }
 
+let mark_planned pg (package : Package.t) ~module_graph ~action_graph ~hash =
+  match HashMap.get pg.name_to_node package.name with
+  | None -> ()
+  | Some node ->
+      node.value <- Planned { package; module_graph; action_graph; hash }
+
 let size pg = HashMap.len pg.name_to_node
-let packages pg = G.map pg.graph ~fn:(fun (_id, node) -> node.value)
+let packages pg = G.map pg.graph ~fn:(fun (_id, node) -> get_package node.value)
 
 let find_package pg name =
   match HashMap.get pg.name_to_node name with
-  | Some node -> Some node.value
+  | Some node -> Some (get_package node.value)
   | None -> None
 
 let get_dependencies pg (pkg : Package.t) =
@@ -50,7 +77,34 @@ let get_dependencies pg (pkg : Package.t) =
   | Some node ->
       List.filter_map
         (fun dep_id ->
-          try Some (G.get_node pg.graph dep_id).value with _ -> None)
+          try Some (get_package (G.get_node pg.graph dep_id).value)
+          with _ -> None)
+        node.deps
+
+let get_dependency_hashes pg (pkg : Package.t) =
+  match HashMap.get pg.name_to_node pkg.name with
+  | None -> []
+  | Some node ->
+      List.filter_map
+        (fun dep_id ->
+          try
+            let dep_node = G.get_node pg.graph dep_id in
+            get_hash dep_node.value
+          with _ -> None)
+        node.deps
+
+let get_unplanned_dependencies pg (pkg : Package.t) =
+  match HashMap.get pg.name_to_node pkg.name with
+  | None -> []
+  | Some node ->
+      List.filter_map
+        (fun dep_id ->
+          try
+            let dep_node = G.get_node pg.graph dep_id in
+            if not (is_planned dep_node.value) then
+              Some (get_package dep_node.value)
+            else None
+          with _ -> None)
         node.deps
 
 let filter_for_package pg pkg_name =
@@ -70,24 +124,23 @@ let filter_for_package pg pkg_name =
 
       G.iter pg.graph ~fn:(fun id node ->
           if HashSet.contains reachable_set id then
+            let pkg = get_package node.value in
             let new_node = G.add_node filtered_graph node.value in
-            let _ =
-              HashMap.insert filtered_name_to_node node.value.name new_node
-            in
+            let _ = HashMap.insert filtered_name_to_node pkg.name new_node in
             ());
 
       G.iter pg.graph ~fn:(fun id node ->
           if HashSet.contains reachable_set id then
-            match HashMap.get filtered_name_to_node node.value.name with
+            let pkg = get_package node.value in
+            match HashMap.get filtered_name_to_node pkg.name with
             | None -> ()
             | Some new_node ->
                 List.iter
                   (fun dep_id ->
                     if HashSet.contains reachable_set dep_id then
                       let dep_node = G.get_node pg.graph dep_id in
-                      match
-                        HashMap.get filtered_name_to_node dep_node.value.name
-                      with
+                      let dep_pkg = get_package dep_node.value in
+                      match HashMap.get filtered_name_to_node dep_pkg.name with
                       | Some new_dep_node ->
                           G.add_edge new_node ~depends_on:new_dep_node
                       | None -> ())
@@ -98,14 +151,16 @@ let filter_for_package pg pkg_name =
 let topological_sort pg =
   try
     let sorted_nodes = G.topo_sort pg.graph in
-    List.map (fun (node : Package.t G.node) -> node.value) sorted_nodes
+    List.map
+      (fun (node : package_node G.node) -> get_package node.value)
+      sorted_nodes
   with G.Cycle node_ids ->
     let names =
       List.filter_map
         (fun id ->
           try
-            let node : Package.t G.node = G.get_node pg.graph id in
-            Some node.value.name
+            let node : package_node G.node = G.get_node pg.graph id in
+            Some (get_package node.value).name
           with _ -> None)
         node_ids
     in

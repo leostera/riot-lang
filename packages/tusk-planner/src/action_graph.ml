@@ -39,7 +39,7 @@ let module_to_actions ~get_dep_outputs (module_node : Module_node.t)
         Action.CompileInterface
           {
             source = path;
-            output = cmi_output;
+            outputs;
             includes = [ Path.v "." ];
             flags = opens open_modules;
           }
@@ -55,7 +55,7 @@ let module_to_actions ~get_dep_outputs (module_node : Module_node.t)
         Action.CompileImplementation
           {
             source = path;
-            output = cmx_output;
+            outputs;
             includes = [ Path.v "." ];
             flags = opens open_modules;
           }
@@ -77,18 +77,14 @@ let module_to_actions ~get_dep_outputs (module_node : Module_node.t)
       in
       let flags =
         if is_alias_file then
-          Tusk_toolchain.Ocamlc.NoAliasDeps :: opens open_modules
+          Tusk_toolchain.Ocamlc.Impl path :: Tusk_toolchain.Ocamlc.NoAliasDeps
+          :: opens open_modules
         else opens open_modules
       in
 
       let compile_action =
         Action.CompileImplementation
-          {
-            source = path;
-            output = cmx_output;
-            includes = [ Path.v "." ];
-            flags;
-          }
+          { source = path; outputs; includes = [ Path.v "." ]; flags }
       in
       ([ write_action; compile_action ], outputs, sources)
   | { kind = MLI mod_; file = Generated { path; contents }; open_modules; _ } ->
@@ -104,7 +100,7 @@ let module_to_actions ~get_dep_outputs (module_node : Module_node.t)
         Action.CompileInterface
           {
             source = path;
-            output = cmi_output;
+            outputs;
             includes = [ Path.v "." ];
             flags = opens open_modules;
           }
@@ -117,7 +113,7 @@ let module_to_actions ~get_dep_outputs (module_node : Module_node.t)
       let output_name = Path.basename obj_file |> Path.v in
       let outputs = [ output_name ] in
       let sources = [ path ] in
-      let compile = Action.CompileC { source = path; output = output_name } in
+      let compile = Action.CompileC { source = path; outputs } in
       ([ compile ], outputs, sources)
   | { kind = C; file = Generated _; _ }
   | { kind = H; _ }
@@ -141,13 +137,9 @@ let module_to_actions ~get_dep_outputs (module_node : Module_node.t)
                 | _ -> false)
               dep_outputs)
           deps
-        |> List.sort (fun a b ->
-            String.compare (Path.to_string a) (Path.to_string b))
       in
 
-      let create_lib =
-        Action.CreateLibrary { output = library_name; objects; includes }
-      in
+      let create_lib = Action.CreateLibrary { outputs; objects; includes } in
       ([ create_lib ], outputs, sources)
   | { kind = Binary { name; source; libraries; includes }; _ } ->
       let binary_mod =
@@ -158,14 +150,19 @@ let module_to_actions ~get_dep_outputs (module_node : Module_node.t)
 
       let compile_action =
         Action.CompileImplementation
-          { source; output = binary_cmx; includes = [ Path.v "." ]; flags = [] }
+          {
+            source;
+            outputs = [ binary_cmx ];
+            includes = [ Path.v "." ];
+            flags = [];
+          }
       in
 
       let binary_output = Path.v name in
       let link_action =
         Action.CreateExecutable
           {
-            output = binary_output;
+            outputs = [ binary_output ];
             objects = [ binary_cmx ];
             libraries;
             includes;

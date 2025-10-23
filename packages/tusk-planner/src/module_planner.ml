@@ -14,6 +14,7 @@ type plan_input = {
 }
 
 type plan_result = {
+  sources : Path.t list;
   module_graph : Module_node.t G.t;
   action_graph : Action_graph.t;
 }
@@ -22,7 +23,7 @@ let plan_node input =
   let namespace = String.capitalize_ascii input.package.name in
 
   let config =
-    Graph_builder.
+    Module_graph.
       {
         root = input.package.path;
         source_dir = input.planning_root;
@@ -34,7 +35,7 @@ let plan_node input =
   in
 
   try
-    let graph_builder = Graph_builder.create config in
+    let graph_builder = Module_graph.create config in
 
     let native_dir = Path.v "native" in
     let native_path = Path.(input.package.path / native_dir) in
@@ -58,17 +59,17 @@ let plan_node input =
     | _ -> ());
 
     let sandbox_dir = Path.(input.package.path / input.planning_root) in
-    Graph_builder.wire_dependencies graph_builder sandbox_dir;
+    Module_graph.wire_dependencies graph_builder sandbox_dir;
 
     (match input.package.library with
     | Some _lib ->
-        Graph_builder.add_library_node graph_builder ~name:input.package.name
+        Module_graph.add_library_node graph_builder ~name:input.package.name
           ~includes:[]
     | None -> ());
 
     List.iter
       (fun (bin : Package.binary) ->
-        Graph_builder.add_binary_node graph_builder ~name:bin.name
+        Module_graph.add_binary_node graph_builder ~name:bin.name
           ~source:bin.path ~libraries:[] ~includes:[])
       input.package.binaries;
 
@@ -89,7 +90,7 @@ let plan_node input =
     | Some _test_lib ->
         let test_namespace = namespace ^ "Tests" in
         let test_config =
-          Graph_builder.
+          Module_graph.
             {
               root = input.package.path;
               source_dir = Path.v "tests";
@@ -99,9 +100,9 @@ let plan_node input =
               workspace = input.workspace;
             }
         in
-        let test_graph_builder = Graph_builder.create test_config in
+        let test_graph_builder = Module_graph.create test_config in
         let test_sandbox_dir = Path.(input.package.path / Path.v "tests") in
-        Graph_builder.wire_dependencies test_graph_builder test_sandbox_dir;
+        Module_graph.wire_dependencies test_graph_builder test_sandbox_dir;
 
         let test_nodes =
           G.map test_graph_builder.graph ~fn:(fun (node_id, node) -> node.value)
@@ -118,12 +119,12 @@ let plan_node input =
             | _ -> ())
           test_nodes;
 
-        Graph_builder.add_library_node test_graph_builder
+        Module_graph.add_library_node test_graph_builder
           ~name:(input.package.name ^ "_tests")
           ~includes:[]
     | None -> ());
 
-    let module_graph = Graph_builder.graph graph_builder in
+    let module_graph = Module_graph.graph graph_builder in
 
     let sorted_modules = G.topo_sort module_graph in
 
@@ -132,7 +133,20 @@ let plan_node input =
         ~toolchain:input.toolchain module_graph
     in
 
-    Ok { module_graph; action_graph }
+    let sources =
+      module_graph |> G.topo_sort
+      |> List.filter_map (fun (node : Module_node.t G.node) ->
+          match node.value.file with
+          | Concrete path when Path.to_string path <> "" ->
+              let abs_path =
+                if Path.is_absolute path then path
+                else Path.(input.package.path / path)
+              in
+              Some abs_path
+          | _ -> None)
+    in
+
+    Ok { sources; module_graph; action_graph }
   with
   | G.Cycle cycle_ids ->
       let cycle = List.map G.Node_id.to_string cycle_ids in

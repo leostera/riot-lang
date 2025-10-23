@@ -9,7 +9,7 @@ let toolchain =
 
 let make_test_input root_path =
   let package_name = Path.basename root_path in
-  Tusk_planner.Planner.
+  Tusk_planner.Module_planner.
     {
       package =
         Package.
@@ -40,7 +40,7 @@ let test_planner_generates_actions =
       let root = Path.v "packages/tusk-planner/tests/fixtures/simple" in
 
       let input =
-        Tusk_planner.Planner.
+        Tusk_planner.Module_planner.
           {
             package =
               Package.
@@ -67,7 +67,7 @@ let test_planner_generates_actions =
           }
       in
 
-      match Tusk_planner.Planner.plan_node input with
+      match Tusk_planner.Module_planner.plan_node input with
       | Ok { action_graph; _ } ->
           let actions = Action_graph.to_action_list action_graph in
           if List.length actions > 0 then Ok ()
@@ -84,7 +84,7 @@ let test_action_graph_is_dag =
       in
       let input = make_test_input root in
 
-      match Tusk_planner.Planner.plan_node input with
+      match Tusk_planner.Module_planner.plan_node input with
       | Ok { action_graph; _ } ->
           let _ = Action_graph.topo_sort action_graph in
           Ok ()
@@ -98,7 +98,7 @@ let test_topological_order_maintained =
       in
       let input = make_test_input root in
 
-      match Tusk_planner.Planner.plan_node input with
+      match Tusk_planner.Module_planner.plan_node input with
       | Ok { module_graph; _ } ->
           let _ = G.topo_sort module_graph in
           Ok ()
@@ -112,7 +112,7 @@ let test_no_duplicate_actions =
       in
       let input = make_test_input root in
 
-      match Tusk_planner.Planner.plan_node input with
+      match Tusk_planner.Module_planner.plan_node input with
       | Ok { action_graph; _ } ->
           let actions = Action_graph.to_action_list action_graph in
           let action_strs = List.map Action.to_string actions in
@@ -135,7 +135,7 @@ let test_deterministic_action_order =
       let lib_path = Path.(fixture_path / Path.v "src/multi_module_lib.ml") in
       let package_name = Path.basename fixture_path in
       let input =
-        Tusk_planner.Planner.
+        Tusk_planner.Module_planner.
           {
             package =
               Package.
@@ -163,7 +163,7 @@ let test_deterministic_action_order =
       in
 
       let get_action_hashes () =
-        match Tusk_planner.Planner.plan_node input with
+        match Tusk_planner.Module_planner.plan_node input with
         | Error err ->
             Error (format "Planning failed: %s" (Planning_error.to_string err))
         | Ok { action_graph; _ } ->
@@ -186,7 +186,7 @@ let test_action_nodes_have_hashes =
       in
       let input = make_test_input root in
 
-      match Tusk_planner.Planner.plan_node input with
+      match Tusk_planner.Module_planner.plan_node input with
       | Ok { action_graph; _ } ->
           let nodes = Action_graph.nodes action_graph in
           if List.length nodes = 0 then
@@ -214,7 +214,7 @@ let test_hashes_are_unique =
       in
       let input = make_test_input root in
 
-      match Tusk_planner.Planner.plan_node input with
+      match Tusk_planner.Module_planner.plan_node input with
       | Ok { action_graph; _ } ->
           let nodes = Action_graph.nodes action_graph in
           let hashes =
@@ -260,8 +260,8 @@ let test_hashes_include_package_name =
       in
 
       match
-        ( Tusk_planner.Planner.plan_node input1,
-          Tusk_planner.Planner.plan_node input2 )
+        ( Tusk_planner.Module_planner.plan_node input1,
+          Tusk_planner.Module_planner.plan_node input2 )
       with
       | Ok { action_graph = ag1; _ }, Ok { action_graph = ag2; _ } ->
           let nodes1 = Action_graph.nodes ag1 in
@@ -291,8 +291,8 @@ let test_hash_stable_across_runs =
       let input = make_test_input root in
 
       match
-        ( Tusk_planner.Planner.plan_node input,
-          Tusk_planner.Planner.plan_node input )
+        ( Tusk_planner.Module_planner.plan_node input,
+          Tusk_planner.Module_planner.plan_node input )
       with
       | Ok { action_graph = ag1; _ }, Ok { action_graph = ag2; _ } ->
           let nodes1 = Action_graph.nodes ag1 in
@@ -337,7 +337,7 @@ let test_dependency_hash_propagation =
       in
       let input = make_test_input root in
 
-      match Tusk_planner.Planner.plan_node input with
+      match Tusk_planner.Module_planner.plan_node input with
       | Ok { action_graph; _ } ->
           let nodes = Action_graph.nodes action_graph in
           if List.length nodes < 2 then
