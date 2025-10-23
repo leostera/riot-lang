@@ -17,7 +17,13 @@ let plan_package ~workspace ~toolchain ~package =
   let planning_root = Path.v "src" in
   let dependencies = [] in
   let plan_input =
-    { Module_planner.package; toolchain; workspace; planning_root; dependencies }
+    {
+      Module_planner.package;
+      toolchain;
+      workspace;
+      planning_root;
+      dependencies;
+    }
   in
   Module_planner.plan_node plan_input
 

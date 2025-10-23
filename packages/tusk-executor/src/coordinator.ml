@@ -3,7 +3,7 @@ open Std.Collections
 open Miniriot
 open Tusk_model
 open Tusk_planner
-module Ref = Std__Ref
+open Telemetry_events
 
 type workspace_result = {
   results : Package_builder.build_result list;
@@ -25,8 +25,7 @@ let build_workspace ~workspace ~toolchain ~store ~target ~concurrency =
       let package_graph = plan.package_graph in
 
       Telemetry.emit
-        Telemetry_events.(
-          WorkspaceStarted { target; package_count = List.length packages });
+        (WorkspaceStarted { target; package_count = List.length packages });
 
       Log.info "Building %d packages with %d workers" (List.length packages)
         concurrency;
@@ -105,26 +104,32 @@ let build_workspace ~workspace ~toolchain ~store ~target ~concurrency =
                   in
 
                   (match result.status with
-                  | Cached _ | Built _ ->
+                  | Cached _ ->
                       Telemetry.emit
-                        Telemetry_events.(
-                          BuildCompleted
-                            {
-                              package = result.package.Package.name;
-                              target;
-                              cached;
-                              duration = result.duration;
-                            })
+                        (BuildCompleted
+                           {
+                             package = result.package;
+                             target;
+                             status = `Cached;
+                             duration = result.duration;
+                           })
+                  | Built _ ->
+                      Telemetry.emit
+                        (BuildCompleted
+                           {
+                             package = result.package;
+                             target;
+                             status = `Fresh;
+                             duration = result.duration;
+                           })
                   | Failed err ->
                       Telemetry.emit
-                        Telemetry_events.(
-                          BuildFailed
-                            {
-                              package = result.package.Package.name;
-                              target;
-                              error =
-                                Package_builder.package_error_to_string err;
-                            }));
+                        (BuildFailed
+                           {
+                             package = result.package;
+                             target;
+                             error = Package_builder.package_error_to_string err;
+                           }));
 
                   Log.info "Package %s: %s (%dms)" result.package.Package.name
                     status_str
@@ -173,15 +178,14 @@ let build_workspace ~workspace ~toolchain ~store ~target ~concurrency =
           in
 
           Telemetry.emit
-            Telemetry_events.(
-              WorkspaceCompleted
-                {
-                  target;
-                  total_duration;
-                  cached_count;
-                  built_count;
-                  failed_count;
-                });
+            (WorkspaceCompleted
+               {
+                 target;
+                 total_duration;
+                 cached_count;
+                 built_count;
+                 failed_count;
+               });
 
           Ok
             { results; total_duration; cached_count; built_count; failed_count }

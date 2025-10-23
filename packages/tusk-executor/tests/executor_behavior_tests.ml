@@ -178,12 +178,23 @@ let test_dependent_actions_not_executed_on_failure () =
                 ~store toolchain ~concurrency:2
             in
             let completed = HashMap.to_list result.completed in
+            let skipped_count =
+              List.filter
+                (fun (_, r) ->
+                  match r.Tusk_executor.Action_executor.status with
+                  | Skipped -> true
+                  | _ -> false)
+                completed
+              |> List.length
+            in
 
-            if List.length completed = 1 then Ok ()
+            if List.length completed = 2 && skipped_count = 1 then Ok ()
             else
               Error
-                (format "Expected 1 completed (only failed node), got %d"
-                   (List.length completed))))
+                (format
+                   "Expected 2 completed (1 failed, 1 skipped), got %d (%d \
+                    skipped)"
+                   (List.length completed) skipped_count)))
   with
   | Ok (Ok ()) -> Ok ()
   | Ok (Error e) -> Error e

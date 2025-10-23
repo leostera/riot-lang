@@ -84,18 +84,13 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
       Log.info "Package %s: hash=%s" package.Package.name
         (Std.Crypto.Digest.hex package_hash);
 
+      Telemetry.emit
+        Telemetry_events.(
+          BuildStarted { package; target = Workspace_planner.Package package.name });
+
       match Tusk_store.Store.get store package_hash with
       | Some artifact ->
           Log.info "Package %s: CACHE HIT - skipping execution" package.name;
-
-          Telemetry.emit
-            Telemetry_events.(
-              CacheHit
-                {
-                  package = package.name;
-                  action_kind = "package";
-                  hash = Std.Crypto.Digest.hex package_hash;
-                });
 
           let _ =
             Tusk_store.Store.promote store package_hash ~target_dir
@@ -109,19 +104,19 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
           let duration =
             Time.Instant.duration_since ~earlier:start (Time.Instant.now ())
           in
+          Telemetry.emit
+            Telemetry_events.(
+              BuildCompleted
+                {
+                  package;
+                  target = Workspace_planner.Package package.name;
+                  status = `Cached;
+                  duration;
+                });
           { package; status = Cached artifact; duration }
       | None -> (
           Log.info "Package %s: CACHE MISS - executing action graph"
             package.name;
-
-          Telemetry.emit
-            Telemetry_events.(
-              CacheMiss
-                {
-                  package = package.name;
-                  action_kind = "package";
-                  hash = Std.Crypto.Digest.hex package_hash;
-                });
           Log.info "Package %s: executing action graph with %d nodes"
             package.name
             (List.length (Action_graph.nodes action_graph));
@@ -154,15 +149,14 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
               let duration =
                 Time.Instant.duration_since ~earlier:start (Time.Instant.now ())
               in
+              let error = format "Exception: %s" (Printexc.to_string exn) in
+              Telemetry.emit
+                Telemetry_events.(
+                  BuildFailed
+                    { package; target = Workspace_planner.Package package.name; error });
               {
                 package;
-                status =
-                  Failed
-                    (ExecutionFailed
-                       {
-                         message =
-                           format "Exception: %s" (Printexc.to_string exn);
-                       });
+                status = Failed (ExecutionFailed { message = error });
                 duration;
               }
           | artifact ->
@@ -177,4 +171,13 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
               let duration =
                 Time.Instant.duration_since ~earlier:start (Time.Instant.now ())
               in
+              Telemetry.emit
+                Telemetry_events.(
+                  BuildCompleted
+                    {
+                      package;
+                      target = Workspace_planner.Package package.name;
+                      status = `Fresh;
+                      duration;
+                    });
               { package; status = Built artifact; duration }))

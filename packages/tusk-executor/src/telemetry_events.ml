@@ -1,29 +1,47 @@
 open Std
 open Tusk_model
 open Tusk_planner
+open Tusk_store
 
 type Telemetry.event +=
-  | BuildStarted of { package : string; target : build_target }
+  | BuildStarted of { package : Package.t; target : Workspace_planner.target }
   | BuildCompleted of {
-      package : string;
-      target : build_target;
-      cached : bool;
+      package : Package.t;
+      target : Workspace_planner.target;
+      status : [ `Fresh | `Cached ];
       duration : Time.Duration.t;
     }
-  | BuildFailed of { package : string; target : build_target; error : string }
-  | ActionStarted of { package : string; action_kind : string }
+  | BuildFailed of {
+      package : Package.t;
+      target : Workspace_planner.target;
+      error : string;
+    }
+  | ActionStarted of { package : Package.t; action : Action_node.t }
   | ActionCompleted of {
-      package : string;
-      action_kind : string;
-      cached : bool;
+      package : Package.t;
+      action : Action_node.t;
+      artifact : Artifact.t;
+      status : [ `Fresh | `Cached ];
       duration : Time.Duration.t;
     }
-  | ActionFailed of { package : string; action_kind : string; error : string }
-  | CacheHit of { package : string; action_kind : string; hash : string }
-  | CacheMiss of { package : string; action_kind : string; hash : string }
-  | WorkspaceStarted of { target : build_target; package_count : int }
+  | ActionFailed of {
+      package : Package.t;
+      action : Action_node.t;
+      error : string;
+    }
+  | CacheHit of {
+      package : Package.t;
+      action : Action_node.t;
+      hash : Crypto.hash;
+    }
+  | CacheMiss of {
+      package : Package.t;
+      action : Action_node.t;
+      hash : Crypto.hash;
+    }
+  | WorkspaceStarted of { target : Workspace_planner.target; package_count : int }
   | WorkspaceCompleted of {
-      target : build_target;
+      target : Workspace_planner.target;
       total_duration : Time.Duration.t;
       cached_count : int;
       built_count : int;

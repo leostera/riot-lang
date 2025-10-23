@@ -150,8 +150,10 @@ let test_deps_satisfied_all_built () =
           completed_at = now;
         }
   in
-  let result = Tusk_executor.Action_executor.deps_satisfied completed node3 in
-  if result then Ok () else Error "Expected deps_satisfied to return true"
+  let result = Tusk_executor.Action_executor.check_dependencies completed node3 in
+  match result with
+  | AllDepsBuilt -> Ok ()
+  | _ -> Error "Expected AllDepsBuilt"
 
 let test_deps_satisfied_missing_dep () =
   let graph = G.make () in
@@ -173,8 +175,10 @@ let test_deps_satisfied_missing_dep () =
           completed_at = now;
         }
   in
-  let result = Tusk_executor.Action_executor.deps_satisfied completed node3 in
-  if not result then Ok () else Error "Expected deps_satisfied to return false"
+  let result = Tusk_executor.Action_executor.check_dependencies completed node3 in
+  match result with
+  | SomeDepsNotReady { missing } when List.length missing = 1 -> Ok ()
+  | _ -> Error "Expected SomeDepsNotReady with 1 missing dep"
 
 let test_deps_satisfied_failed_dep () =
   let graph = G.make () in
@@ -194,8 +198,10 @@ let test_deps_satisfied_failed_dep () =
           completed_at = now;
         }
   in
-  let result = Tusk_executor.Action_executor.deps_satisfied completed node2 in
-  if not result then Ok () else Error "Expected deps_satisfied to return false"
+  let result = Tusk_executor.Action_executor.check_dependencies completed node2 in
+  match result with
+  | SomeDepsFailed { failed } when List.length failed = 1 -> Ok ()
+  | _ -> Error "Expected SomeDepsFailed with 1 failed dep"
 
 let test_execute_actions_write_file () =
   match
