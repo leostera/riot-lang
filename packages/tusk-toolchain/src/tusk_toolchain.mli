@@ -6,22 +6,19 @@ type source = Version of string | Path of Path.t | Url of Net.Uri.t
 
 module Ocamldep = Ocamldep
 module Ocamlc = Ocamlc
+module Ocamlformat = Ocamlformat
 
 type t
 (** Toolchain type. Prefer using init() to get a validated instance. *)
 
 val default_ocaml_version : string
 
-val init : unit -> (t, string) result
-(** Initialize and return the default OCaml toolchain.
+val init : config:Tusk_model.Toolchain_config.t -> (t, string) result
+(** Initialize and return the OCaml toolchain for the given config.
 
-    This checks if the toolchain binaries exist and are executable:
-    - ocamlc.opt
-    - ocamlopt.opt
-    - ocamldep.opt
-
-    If not found, attempts to use the ./ocaml/compiler directory if available,
-    otherwise returns an error.
+    This: 1. Uses the provided toolchain config 2. Checks if the toolchain
+    binaries exist and are executable 3. If not found, attempts to use
+    ./ocaml/compiler directory if available
 
     Returns Ok toolchain if ready, Error msg otherwise. *)
 
@@ -43,6 +40,7 @@ val check_health : t -> (unit, string) result
 val ocamlc : t -> Ocamlc.t
 val ocamlopt_path : t -> Path.t
 val ocamldep : t -> Ocamldep.t
+val ocamlformat : t -> Ocamlformat.t
 
 val hash : t -> Crypto.hash
 (** Compute a hash of the toolchain for cache invalidation *)

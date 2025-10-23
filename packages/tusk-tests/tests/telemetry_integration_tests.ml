@@ -1,9 +1,10 @@
 open Std
+open Tusk_model
 open Tusk_executor
 
 let test_telemetry_events_are_emitted =
   Test.case "telemetry events are emitted" @@ fun () ->
-  let _telemetry_pid = Telemetry.Server.start () in
+  let _telemetry_pid = Telemetry.start () in
 
   let events = ref [] in
   Telemetry.attach "test-collector" (fun event -> events := event :: !events);
@@ -13,13 +14,25 @@ let test_telemetry_events_are_emitted =
       WorkspaceStarted
         { target = Tusk_planner.Workspace_planner.All; package_count = 2 });
 
+  let test_package =
+    {
+      Package.name = "test-pkg";
+      path = Path.of_string "." |> Result.expect ~msg:"invalid path";
+      relative_path = Path.of_string "." |> Result.expect ~msg:"invalid path";
+      dependencies = [];
+      binaries = [];
+      library = None;
+      test_library = None;
+      test_modules = [];
+    }
+  in
   Telemetry.emit
     Telemetry_events.(
       BuildCompleted
         {
-          package = "test-pkg";
+          package = test_package;
           target = Tusk_planner.Workspace_planner.All;
-          cached = false;
+          status = `Fresh;
           duration = Time.Duration.from_millis 100;
         });
 

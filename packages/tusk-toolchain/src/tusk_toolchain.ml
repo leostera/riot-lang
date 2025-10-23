@@ -12,6 +12,7 @@ type source = Version of string | Path of Path.t | Url of Net.Uri.t
 
 module Ocamldep = Ocamldep
 module Ocamlc = Ocamlc
+module Ocamlformat = Ocamlformat
 
 type t = {
   version : string;
@@ -19,6 +20,7 @@ type t = {
   ocamlc : Ocamlc.t;
   ocamlopt : Path.t;
   ocamldep : Ocamldep.t;
+  ocamlformat : Ocamlformat.t;
 }
 
 let default_ocaml_version = "5.3.0"
@@ -44,11 +46,13 @@ let make_toolchain version source =
     ocamlc = Ocamlc.make (bin_path "ocamlopt.opt");
     ocamlopt = bin_path "ocamlopt.opt";
     ocamldep = Ocamldep.make (bin_path "ocamldep.opt");
+    ocamlformat = Ocamlformat.make (bin_path "ocamlformat");
   }
 
 let ocamlc t = t.ocamlc
 let ocamlopt_path t = t.ocamlopt
 let ocamldep t = t.ocamldep
+let ocamlformat t = t.ocamlformat
 
 let check_binaries_exist toolchain =
   let ocamlc_path = Ocamlc.path toolchain.ocamlc in
@@ -71,9 +75,14 @@ let check_binaries_exist toolchain =
   | _, _, Error (Fs.SystemError msg) ->
       Error (format "Failed to check binaries: %s" msg)
 
-let init () =
-  let version = default_ocaml_version in
-  let source = Version version in
+let init ~config =
+  let version = config.Tusk_model.Toolchain_config.version in
+  let source =
+    match config.source with
+    | Tusk_model.Toolchain_config.Version v -> Version v
+    | Tusk_model.Toolchain_config.Path p -> Path p
+    | Tusk_model.Toolchain_config.Url u -> Url u
+  in
   let toolchain = make_toolchain version source in
   let toolchain_path = get_toolchain_path version in
   let bin_dir = Path.(toolchain_path / Path.v "bin") in
@@ -128,7 +137,10 @@ let init () =
                (Path.to_string toolchain_path)))
 
 let ensure_default_toolchain () =
-  match init () with Ok _ -> Ok () | Error msg -> Error msg
+  let default_config = Tusk_model.Toolchain_config.default in
+  match init ~config:default_config with
+  | Ok _ -> Ok ()
+  | Error msg -> Error msg
 
 let check_health toolchain =
   match check_binaries_exist toolchain with
@@ -157,4 +169,6 @@ let hash t =
   Crypto.Sha256.write_string hasher (Path.to_string (Ocamlc.path t.ocamlc));
   Crypto.Sha256.write_string hasher (Path.to_string t.ocamlopt);
   Crypto.Sha256.write_string hasher (Path.to_string (Ocamldep.path t.ocamldep));
+  Crypto.Sha256.write_string hasher
+    (Path.to_string (Ocamlformat.path t.ocamlformat));
   Crypto.Sha256.finish hasher

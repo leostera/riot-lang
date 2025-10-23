@@ -1,18 +1,11 @@
 open Std
+open Miniriot
 open Tusk_model
+module Protocol = Protocol
+module Server_manager = Server_manager
 
 type t
-
-val start :
-  workspace:Workspace.t ->
-  toolchain:Tusk_toolchain.t ->
-  store:Tusk_store.Store.t ->
-  concurrency:int ->
-  t
-
-val shutdown : t -> unit
-
-type build_request = BuildAll | BuildPackage of string
+type build_request = Protocol.target
 
 type build_event =
   | Started of { session_id : string; started_at : Time.Instant.t }
@@ -33,5 +26,23 @@ type build_event =
   | Failed of { session_id : string; error : string }
   | CycleDetected of { cycle : string list }
 
+type server_config = {
+  workspace : Workspace.t;
+  toolchain : Tusk_toolchain.t;
+  store : Tusk_store.Store.t;
+  concurrency : int;
+}
+
+val start :
+  workspace:Workspace.t ->
+  toolchain:Tusk_toolchain.t ->
+  store:Tusk_store.Store.t ->
+  concurrency:int ->
+  t
+
+val shutdown : t -> unit
+
 val build :
   t -> build_request -> on_event:(build_event -> unit) -> (unit, string) result
+
+val start_with_listener : unit -> (unit, exn) result

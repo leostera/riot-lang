@@ -72,7 +72,7 @@ let load_test_workspace test_dir =
 let test_simple_library_builds () =
   try
     let test_toolchain =
-      Tusk_toolchain.init ()
+      Tusk_toolchain.init ~config:Tusk_model.Toolchain_config.default
       |> Result.expect ~msg:"Failed to initialize test toolchain"
     in
     let test_dir = setup_test_workspace "simple-library" "simple-library" in
@@ -101,7 +101,7 @@ let test_simple_library_builds () =
 let test_package_cache_hit () =
   try
     let test_toolchain =
-      Tusk_toolchain.init ()
+      Tusk_toolchain.init ~config:Tusk_model.Toolchain_config.default
       |> Result.expect ~msg:"Failed to initialize test toolchain"
     in
     let test_dir = setup_test_workspace "cache-hit" "simple-library" in
@@ -144,7 +144,7 @@ let test_package_cache_hit () =
 let test_package_cache_miss_on_source_change () =
   try
     let test_toolchain =
-      Tusk_toolchain.init ()
+      Tusk_toolchain.init ~config:Tusk_model.Toolchain_config.default
       |> Result.expect ~msg:"Failed to initialize test toolchain"
     in
     let test_dir = setup_test_workspace "cache-miss" "simple-library" in
@@ -201,7 +201,7 @@ let test_package_cache_miss_on_source_change () =
 let test_multi_module_builds () =
   try
     let test_toolchain =
-      Tusk_toolchain.init ()
+      Tusk_toolchain.init ~config:Tusk_model.Toolchain_config.default
       |> Result.expect ~msg:"Failed to initialize test toolchain"
     in
     let test_dir = setup_test_workspace "multi-module" "multi-module" in
@@ -230,7 +230,7 @@ let test_multi_module_builds () =
 let test_multi_package_workspace () =
   try
     let test_toolchain =
-      Tusk_toolchain.init ()
+      Tusk_toolchain.init ~config:Tusk_model.Toolchain_config.default
       |> Result.expect ~msg:"Failed to initialize test toolchain"
     in
     let test_dir =
@@ -277,7 +277,7 @@ let test_multi_package_workspace () =
 let test_multi_package_dependency_order () =
   try
     let test_toolchain =
-      Tusk_toolchain.init ()
+      Tusk_toolchain.init ~config:Tusk_model.Toolchain_config.default
       |> Result.expect ~msg:"Failed to initialize test toolchain"
     in
     let test_dir =
@@ -344,7 +344,7 @@ let test_multi_package_dependency_order () =
 let test_multi_package_parallel_build () =
   try
     let test_toolchain =
-      Tusk_toolchain.init ()
+      Tusk_toolchain.init ~config:Tusk_model.Toolchain_config.default
       |> Result.expect ~msg:"Failed to initialize test toolchain"
     in
     let test_dir =
@@ -407,7 +407,7 @@ let test_multi_package_parallel_build () =
 let test_workspace_without_packages () =
   try
     let test_toolchain =
-      Tusk_toolchain.init ()
+      Tusk_toolchain.init ~config:Tusk_model.Toolchain_config.default
       |> Result.expect ~msg:"Failed to initialize test toolchain"
     in
     let test_dir = setup_test_workspace "empty-workspace" "empty-workspace" in
@@ -422,7 +422,7 @@ let test_workspace_without_packages () =
 let test_workspace_with_independent_packages () =
   try
     let test_toolchain =
-      Tusk_toolchain.init ()
+      Tusk_toolchain.init ~config:Tusk_model.Toolchain_config.default
       |> Result.expect ~msg:"Failed to initialize test toolchain"
     in
     let test_dir =
@@ -468,7 +468,7 @@ let test_workspace_with_independent_packages () =
 let test_workspace_with_cycle () =
   try
     let test_toolchain =
-      Tusk_toolchain.init ()
+      Tusk_toolchain.init ~config:Tusk_model.Toolchain_config.default
       |> Result.expect ~msg:"Failed to initialize test toolchain"
     in
     let test_dir = setup_test_workspace "cyclic-packages" "cyclic-packages" in
@@ -489,7 +489,7 @@ let test_workspace_with_cycle () =
 let test_workspace_with_path_dependencies () =
   try
     let test_toolchain =
-      Tusk_toolchain.init ()
+      Tusk_toolchain.init ~config:Tusk_model.Toolchain_config.default
       |> Result.expect ~msg:"Failed to initialize test toolchain"
     in
     let test_dir =

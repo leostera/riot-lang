@@ -1,0 +1,13 @@
+[package]
+name = "tusk-client"
+version = "0.0.1"
+
+[lib]
+path = "src/Tusk_client.ml"
+
+[dependencies]
+jsonrpc = { path = "../jsonrpc" }
+miniriot = { path = "../miniriot" }
+std = { path = "../std" }
+tusk-model = { path = "../tusk-model" }
+tusk-protocol = { path = "../tusk-protocol" }

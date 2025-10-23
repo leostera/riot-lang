@@ -50,7 +50,7 @@ let test_fresh_build_no_cache () =
         let package = make_package tmpdir "test-pkg" "let x = 42" in
         let workspace = make_test_workspace tmpdir [ package ] in
         let toolchain =
-          Tusk_toolchain.init ()
+          Tusk_toolchain.init ~config:Tusk_model.Toolchain_config.default
           |> Result.expect ~msg:"Failed to initialize toolchain"
         in
         let store = Tusk_store.Store.create ~workspace in
@@ -81,7 +81,7 @@ let test_second_build_full_cache () =
         let package = make_package tmpdir "test-pkg" "let x = 42" in
         let workspace = make_test_workspace tmpdir [ package ] in
         let toolchain =
-          Tusk_toolchain.init ()
+          Tusk_toolchain.init ~config:Tusk_model.Toolchain_config.default
           |> Result.expect ~msg:"Failed to initialize toolchain"
         in
         let store = Tusk_store.Store.create ~workspace in

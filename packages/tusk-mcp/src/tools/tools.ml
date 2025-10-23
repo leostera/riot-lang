@@ -1,0 +1,24 @@
+module Build = Build
+module Create_module = Create_module
+module Create_package = Create_package
+module Describe_package = Describe_package
+module Describe_workspace = Describe_workspace
+module Find_artifact = Find_artifact
+module Find_executable = Find_executable
+module Format_code = Format_code
+module Format_file = Format_file
+module Get_build_graph = Get_build_graph
+
+let all_tools () =
+  [
+    Build.tool;
+    Describe_workspace.tool;
+    Get_build_graph.tool;
+    Describe_package.tool;
+    Find_executable.tool;
+    Find_artifact.tool;
+    Create_package.tool;
+    Create_module.tool;
+    Format_file.tool;
+    Format_code.tool;
+  ]

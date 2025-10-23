@@ -51,7 +51,7 @@ let test_server_starts_and_shuts_down () =
     Fs.with_tempdir ~prefix:"server_test" (fun tmpdir ->
         let workspace = make_test_workspace tmpdir in
         let toolchain =
-          Tusk_toolchain.init ()
+          Tusk_toolchain.init ~config:Tusk_model.Toolchain_config.default
           |> Result.expect ~msg:"Failed to initialize toolchain"
         in
         let store = Tusk_store.Store.create ~workspace in
@@ -79,7 +79,7 @@ let test_cache_hit_using_package_builder () =
             }
         in
         let toolchain =
-          Tusk_toolchain.init ()
+          Tusk_toolchain.init ~config:Tusk_model.Toolchain_config.default
           |> Result.expect ~msg:"Failed to initialize toolchain"
         in
         let store = Tusk_store.Store.create ~workspace in
@@ -146,7 +146,7 @@ let test_cache_invalidation_on_source_change () =
               }
           in
           let toolchain =
-            Tusk_toolchain.init ()
+            Tusk_toolchain.init ~config:Tusk_model.Toolchain_config.default
             |> Result.expect ~msg:"Failed to initialize toolchain"
           in
           let store = Tusk_store.Store.create ~workspace in
@@ -206,7 +206,7 @@ let test_telemetry_events_during_build () =
             }
         in
         let toolchain =
-          Tusk_toolchain.init ()
+          Tusk_toolchain.init ~config:Tusk_model.Toolchain_config.default
           |> Result.expect ~msg:"Failed to initialize toolchain"
         in
         let store = Tusk_store.Store.create ~workspace in
@@ -216,8 +216,8 @@ let test_telemetry_events_during_build () =
         in
 
         let _build_result =
-          Tusk_server.build server Tusk_server.BuildAll ~on_event:(fun _ev ->
-              ())
+          Tusk_server.build server Tusk_server.Protocol.All
+            ~on_event:(fun _ev -> ())
         in
 
         yield ();

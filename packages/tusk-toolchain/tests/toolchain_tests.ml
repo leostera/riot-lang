@@ -2,13 +2,14 @@ open Std
 open Miniriot
 
 let test_init_toolchain () =
-  match Tusk_toolchain.init () with
+  let config = Tusk_model.Toolchain_config.default in
+  match Tusk_toolchain.init ~config with
   | Ok _toolchain -> Ok ()
   | Error msg -> Error (format "Failed to init toolchain: %s" msg)
 
 let test_check_toolchain_health () =
-  (* Init returns a validated toolchain *)
-  match Tusk_toolchain.init () with
+  let config = Tusk_model.Toolchain_config.default in
+  match Tusk_toolchain.init ~config with
   | Error msg -> Error (format "Setup failed: %s" msg)
   | Ok toolchain -> (
       (* Check health *)
@@ -17,7 +18,8 @@ let test_check_toolchain_health () =
       | Error msg -> Error (format "Health check failed: %s" msg))
 
 let test_toolchain_binaries_exist () =
-  match Tusk_toolchain.init () with
+  let config = Tusk_model.Toolchain_config.default in
+  match Tusk_toolchain.init ~config with
   | Error msg -> Error (format "Setup failed: %s" msg)
   | Ok toolchain -> (
       let ocamlc =
