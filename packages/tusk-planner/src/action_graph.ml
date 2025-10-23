@@ -315,7 +315,8 @@ let from_json json =
                                 }
                             in
                             let toolchain =
-                              Tusk_toolchain.init ()
+                              Tusk_toolchain.init
+                                ~config:Tusk_model.Toolchain_config.default
                               |> Result.expect
                                    ~msg:"Failed to initialize toolchain"
                             in

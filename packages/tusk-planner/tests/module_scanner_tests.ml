@@ -5,7 +5,8 @@ open Tusk_planner
 open Tusk_model
 
 let toolchain =
-  Tusk_toolchain.init () |> Result.expect ~msg:"Failed to initialize toolchain"
+  Tusk_toolchain.init ~config:Tusk_model.Toolchain_config.default
+  |> Result.expect ~msg:"Failed to initialize toolchain"
 
 let make_graph_config root_path source_dir =
   Module_graph.
