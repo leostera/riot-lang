@@ -294,8 +294,8 @@ let run_loop t =
     step_process t proc
   done;
 
-  (* Poll for I/O events when run queue is empty *)
-  if not t.stop then poll_io t;
+  (* Poll for I/O events when run queue is empty and we have processes *)
+  if not t.stop && Pid_table.length t.processes > 0 then poll_io t;
 
   Trace.trace "Run loop done"
 

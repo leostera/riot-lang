@@ -3,9 +3,6 @@
 type t
 (** Opaque process identifier *)
 
-val zero : t
-(* The zero pid *)
-
 val main : t
 (** The PID of the main process *)
 
