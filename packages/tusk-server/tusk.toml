@@ -1,0 +1,29 @@
+[package]
+name = "tusk-server"
+version = "0.0.1"
+
+[lib]
+path = "src/tusk_server.ml"
+
+[dependencies]
+jsonrpc = { path = "../jsonrpc" }
+mcp = { path = "../mcp" }
+miniriot = { path = "../miniriot" }
+std = { path = "../std" }
+tusk-model = { path = "../tusk-model" }
+tusk-executor = { path = "../tusk-executor" }
+tusk-planner = { path = "../tusk-planner" }
+tusk-store = { path = "../tusk-store" }
+tusk-toolchain = { path = "../tusk-toolchain" }
+
+[[bin]]
+name = "server_tests"
+path = "tests/server_tests.ml"
+
+[[bin]]
+name = "cache_tests"
+path = "tests/cache_tests.ml"
+
+[[bin]]
+name = "concurrent_tests"
+path = "tests/concurrent_tests.ml"
