@@ -1,7 +1,8 @@
 type t = int
 
-let counter = ref (-1)
-let main = 0
+let counter = ref 1
+let zero = 0
+let main = 1
 
 let next () =
   incr counter;
