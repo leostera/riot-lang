@@ -491,3 +491,99 @@ let to_json err =
     ]
 
 (* parse_result removed - now in Parser module *)
+
+let from_json json =
+  let open Data.Json in
+  match json with
+  | Object fields -> (
+      let kind_json = List.assoc_opt "kind" fields in
+      let span_json = List.assoc_opt "span" fields in
+      match (kind_json, span_json) with
+      | Some (Object kind_fields), Some (Object span_fields) -> (
+          let id_opt =
+            Option.and_then (List.assoc_opt "id" kind_fields) (function
+              | String s -> Some s
+              | _ -> None)
+          in
+          let found_obj = List.assoc_opt "found" kind_fields in
+          let found =
+            match found_obj with
+            | Some (Object found_fields) ->
+                let kind =
+                  Option.and_then (List.assoc_opt "kind" found_fields) (function
+                    | String s -> Some s
+                    | _ -> None)
+                  |> Option.unwrap_or ~default:""
+                in
+                let text =
+                  Option.and_then (List.assoc_opt "text" found_fields) (function
+                    | String s -> Some s
+                    | _ -> None)
+                  |> Option.unwrap_or ~default:""
+                in
+                { kind; text }
+            | _ -> { kind = ""; text = "" }
+          in
+          let start =
+            Option.and_then (List.assoc_opt "start" span_fields) (function
+              | Int n -> Some n
+              | _ -> None)
+            |> Option.unwrap_or ~default:0
+          in
+          let end_ =
+            Option.and_then (List.assoc_opt "end" span_fields) (function
+              | Int n -> Some n
+              | _ -> None)
+            |> Option.unwrap_or ~default:0
+          in
+          let span = Ceibo.Span.make ~start ~end_ in
+          match id_opt with
+          | Some id ->
+              let kind =
+                match id with
+                | "E0001" -> MalformedTypeVariable { found }
+                | "E0002" -> MissingLetBindingPattern { found }
+                | "E0003" -> MissingLetBindingEquals { found }
+                | "E0004" -> MissingLetBindingExpr { found }
+                | "E0005" -> UnexpectedStructureItem { found }
+                | "E0006" -> UnexpectedSignatureItem { found }
+                | "E0007" -> InvalidPattern { found }
+                | "E0008" -> InvalidExpression { found }
+                | "E0009" -> InvalidConstant { found }
+                | "E0010" -> InvalidTypeExpression { found }
+                | "E0011" -> MissingLetKeyword { found }
+                | "E0012" -> MissingTypeKeyword { found }
+                | "E0013" -> MissingTypeName { found }
+                | "E0014" -> UnclosedDelimiter { opener = ""; found }
+                | "E0015" -> EmptyCharLiteral
+                | "E0016" -> MultiCharLiteral { text = found.text }
+                | "E0017" -> UnclosedCharLiteral { text = found.text }
+                | "E0018" -> UnclosedTypeParams { found }
+                | "E0019" ->
+                    MissingBinaryOperand { operator = ""; side = ""; found }
+                | "E0020" ->
+                    ConsecutiveBinaryOperators { operators = ""; found }
+                | "E0021" -> InvalidTypeParameter { text = found.text; found }
+                | "E0022" -> UppercaseTypeVariable { text = found.text; found }
+                | "E0023" -> UppercaseTypeName { text = found.text; found }
+                | "E0024" -> BracketedTypeParameters { type_name = ""; found }
+                | "E0025" -> ListDoubleSemicolon { found }
+                | "E0026" -> MissingTypeDeclEquals { found }
+                | "E0027" -> IfMissingThen { found }
+                | "E0028" -> MatchMissingScrutinee { found }
+                | "E0029" -> MatchMissingWith { found }
+                | "E0030" -> MatchMissingPattern { found }
+                | "E0031" -> MatchGuardMissingExpr { found }
+                | "E0032" -> TuplePatternExtraComma { found }
+                | "E0033" ->
+                    ConstructorPatternNeedsParens { constructor = ""; found }
+                | "E0034" -> ConsPatternMissingHead { found }
+                | "E0035" -> ConsPatternMissingTail { found }
+                | "E0036" -> OrPatternMissing { found }
+                | "E0037" -> OrPatternDouble { found }
+                | _ -> InvalidExpression { found }
+              in
+              Ok { kind; span }
+          | None -> Error "Missing 'id' field in diagnostic kind")
+      | _ -> Error "Invalid diagnostic JSON structure")
+  | _ -> Error "Expected JSON object for diagnostic"

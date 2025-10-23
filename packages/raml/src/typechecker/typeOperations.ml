@@ -73,7 +73,7 @@ let rec iter_type_expr f ty =
         (* Count how many type variables are in a type *)
         let count = ref 0 in
         iter_type_expr 
-          (fun t -> match t.desc with Variable _ -> incr count | _ -> ())
+          (fun t -> match t.desc with Variable _ -> Cell.incr count | _ -> ())
           my_type;
         !count
       ]}

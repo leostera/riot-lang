@@ -26,15 +26,20 @@ members = [
   "packages/syn",
   "packages/tty",
   "packages/tusk",
-  "packages/tusk-core",
+  "packages/tusk-cli",
+  "packages/tusk-client",
   "packages/tusk-executor",
+  "packages/tusk-mcp",
   "packages/tusk-model",
   "packages/tusk-planner",
+  "packages/tusk-protocol",
+  "packages/tusk-server",
   "packages/tusk-store",
+  "packages/tusk-tests",
   "packages/tusk-toolchain",
   # "packages/poneglyph",
-  # "packages/tusk_fix",
-  # "packages/tusk_fmt",
+  # "packages/tusk-fix",
+  # "packages/tusk-fmt",
 ]
 
 [dependencies]

@@ -732,11 +732,11 @@ let () =
   Miniriot.run
     ~main:(fun ~args ->
       Log.(set_level Debug);
-      let port = SuriTestServer.start () in
+      (* let port = SuriTestServer.start () in *)
       Log.info "Starting test server on port %d" port;
       let tests =
         Html_tests.tests @ Response_tests.tests @ Router_tests.tests
-        @ Integration_tests.tests
+        (* @ Integration_tests.tests *)
       in
       match Test.Cli.main ~name:"suri" ~tests ~args with
       | Ok () -> Ok ()

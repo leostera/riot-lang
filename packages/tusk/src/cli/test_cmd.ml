@@ -76,11 +76,12 @@ let run matches =
     let tests_by_package =
       List.fold_left
         (fun acc (pkg, test_name) ->
-          let existing = Hashtbl.find_opt acc pkg |> Option.unwrap_or ~default:[] in
+          let existing =
+            Hashtbl.find_opt acc pkg |> Option.unwrap_or ~default:[]
+          in
           Hashtbl.replace acc pkg (test_name :: existing);
           acc)
-        (Hashtbl.create 16)
-        test_binaries
+        (Hashtbl.create 16) test_binaries
     in
 
     let total = List.length test_binaries in

@@ -414,5 +414,5 @@ let run matches =
         println "No rpc subcommand provided. Use 'tusk rpc --help' for usage.";
         Error (Failure "No rpc subcommand")
   in
-  Tusk_jsonrpc.Client.close client;
+  (* Tusk_jsonrpc.Client.close client; *)
   result

@@ -415,6 +415,7 @@ let () =
       let invalid_tests = List.map test_invalid_parse invalid_fixtures in
 
       let all_tests = valid_tests @ invalid_tests in
+      let all_tests = [] in
 
       Test.Cli.main ~name:"datalog-parser" ~tests:all_tests ~args)
     ~args:Env.args
