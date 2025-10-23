@@ -10,15 +10,6 @@ type 'a option = 'a Option.t = None | Some of 'a
 type ('a, 'b, 'c, 'd) format4 = ('a, 'b, 'c, 'd) Stdlib.format4
 type ('a, 'b, 'c, 'd, 'e, 'f) format6 = ('a, 'b, 'c, 'd, 'e, 'f) Stdlib.format6
 
-(* Reference type and operations *)
-type 'a ref = 'a Stdlib.ref = { mutable contents : 'a }
-
-val ref : 'a -> 'a ref
-val ( ! ) : 'a ref -> 'a
-val ( := ) : 'a ref -> 'a -> unit
-val incr : int ref -> unit
-val decr : int ref -> unit
-
 (* Comparison operators *)
 val ( = ) : 'a -> 'a -> bool
 val ( <> ) : 'a -> 'a -> bool

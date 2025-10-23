@@ -66,6 +66,9 @@ external std_sys_sendfile :
   Unix.file_descr -> Unix.file_descr -> int -> int -> int
   = "kernel_unix_sendfile"
 
+external std_sys_copy_file : Unix.file_descr -> Unix.file_descr -> unit
+  = "kernel_unix_copy_file"
+
 let sendfile fd ~file ~off ~len =
   syscall @@ fun () ->
   Ok (std_sys_sendfile (Fd.to_unix file) (Fd.to_unix fd) off len)
@@ -123,21 +126,12 @@ let copy_file src dst =
         [ Fd.OpenFlags.WriteOnly; Fd.OpenFlags.Create; Fd.OpenFlags.Truncate ]
         0o644
     in
-    let buf_size = 65536 in
-    let buf = Bytes.create buf_size in
-    let rec copy () =
-      match Unix.read (Fd.to_unix src_fd) buf 0 buf_size with
-      | 0 -> ()
-      | n ->
-          let _ = Unix.write (Fd.to_unix dst_fd) buf 0 n in
-          copy ()
-    in
     Fun.protect
       ~finally:(fun () ->
         Fd.close src_fd;
         Fd.close dst_fd)
       (fun () ->
-        copy ();
+        std_sys_copy_file (Fd.to_unix src_fd) (Fd.to_unix dst_fd);
         Ok ())
   with
   | Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))

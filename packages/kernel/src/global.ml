@@ -19,15 +19,6 @@ let print fmt = Printf.ksprintf (fun s -> Printf.printf "%s%!" s) fmt
 (** Print to stdout with newline and flush *)
 let println fmt = Printf.ksprintf (fun s -> Printf.printf "%s\n%!" s) fmt
 
-(* Reference type and operations *)
-type 'a ref = 'a Stdlib.ref = { mutable contents : 'a }
-
-let ref = Stdlib.ref
-let ( ! ) = Stdlib.( ! )
-let ( := ) = Stdlib.( := )
-let incr = Stdlib.incr
-let decr = Stdlib.decr
-
 (* Comparison operators *)
 let ( = ) = Stdlib.( = )
 let ( <> ) = Stdlib.( <> )

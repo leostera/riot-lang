@@ -12,14 +12,21 @@
 #if defined(__linux__) && !defined(__GLIBC__)
 
 #include <sys/sendfile.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include "syscall.h"
 
 #elif defined(__linux__) && defined(__GLIBC__)
 
 #include <sys/sendfile.h>
+#include <sys/stat.h>
 #include <fcntl.h>
+#include <unistd.h>
 
 #elif __APPLE__
+
+#include <copyfile.h>
+#include <unistd.h>
 
 #endif
 
@@ -106,4 +113,40 @@ CAMLprim value kernel_unix_writev(value v_fd, value v_bufs) {
   if (r < 0) uerror("writev", Nothing);
 
   CAMLreturn(Val_long(r));
+}
+
+CAMLprim value kernel_unix_copy_file(value v_src_fd, value v_dst_fd) {
+  CAMLparam2(v_src_fd, v_dst_fd);
+  int src_fd = Int_val(v_src_fd);
+  int dst_fd = Int_val(v_dst_fd);
+  int ret = -1;
+
+#ifdef __APPLE__
+  /* Use fcopyfile on macOS for efficient copying */
+  caml_enter_blocking_section();
+  ret = fcopyfile(src_fd, dst_fd, NULL, COPYFILE_DATA);
+  caml_leave_blocking_section();
+  if (ret < 0) uerror("fcopyfile", Nothing);
+#else
+  /* Use copy_file_range on Linux */
+  struct stat st;
+  if (fstat(src_fd, &st) < 0) uerror("fstat", Nothing);
+  
+  off_t offset = 0;
+  size_t remaining = st.st_size;
+  
+  caml_enter_blocking_section();
+  while (remaining > 0) {
+    ssize_t copied = copy_file_range(src_fd, &offset, dst_fd, NULL, remaining, 0);
+    if (copied < 0) {
+      caml_leave_blocking_section();
+      uerror("copy_file_range", Nothing);
+    }
+    if (copied == 0) break;  /* EOF */
+    remaining -= copied;
+  }
+  caml_leave_blocking_section();
+#endif
+
+  CAMLreturn(Val_unit);
 }
