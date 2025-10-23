@@ -39,7 +39,10 @@ type Telemetry.event +=
       action : Action_node.t;
       hash : Crypto.hash;
     }
-  | WorkspaceStarted of { target : Workspace_planner.target; package_count : int }
+  | WorkspaceStarted of {
+      target : Workspace_planner.target;
+      package_count : int;
+    }
   | WorkspaceCompleted of {
       target : Workspace_planner.target;
       total_duration : Time.Duration.t;

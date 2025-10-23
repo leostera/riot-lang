@@ -2,7 +2,7 @@ open Std
 module Test = Std.Test
 
 let test_toolchain =
-  Tusk_toolchain.init ()
+  Tusk_toolchain.init ~config:Tusk_model.Toolchain_config.default
   |> Result.expect ~msg:"Failed to initialize test toolchain"
 
 let test_collect_source_files () =

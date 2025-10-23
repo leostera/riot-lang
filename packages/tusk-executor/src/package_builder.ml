@@ -86,7 +86,8 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
 
       Telemetry.emit
         Telemetry_events.(
-          BuildStarted { package; target = Workspace_planner.Package package.name });
+          BuildStarted
+            { package; target = Workspace_planner.Package package.name });
 
       match Tusk_store.Store.get store package_hash with
       | Some artifact ->
@@ -153,7 +154,11 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
               Telemetry.emit
                 Telemetry_events.(
                   BuildFailed
-                    { package; target = Workspace_planner.Package package.name; error });
+                    {
+                      package;
+                      target = Workspace_planner.Package package.name;
+                      error;
+                    });
               {
                 package;
                 status = Failed (ExecutionFailed { message = error });

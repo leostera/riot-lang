@@ -4,7 +4,7 @@ module Test = Std.Test
 
 let test_toolchain =
   lazy
-    (Tusk_toolchain.init ()
+    (Tusk_toolchain.init ~config:Tusk_model.Toolchain_config.default
     |> Result.expect ~msg:"Failed to initialize test toolchain")
 
 let make_test_workspace tmpdir =

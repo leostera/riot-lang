@@ -1,7 +1,6 @@
 open Std
 open Std.Collections
 open Std.Time
-
 open Miniriot
 open Tusk_planner
 open Tusk_store
@@ -172,7 +171,8 @@ let verify_outputs outputs =
   in
   if List.length missing > 0 then Error missing else Ok ()
 
-let execute_node ~completed ~store toolchain sandbox_dir (node : Action_node.t) =
+let execute_node ~completed ~store toolchain sandbox_dir (node : Action_node.t)
+    =
   let start = Instant.now () in
   Log.info "Worker %s: Checking deps for node %s"
     (Pid.to_string (self ()))
@@ -202,7 +202,7 @@ let execute_node ~completed ~store toolchain sandbox_dir (node : Action_node.t) 
         (Failure
            (format "Node %s has unready deps - coordinator should not dispatch"
               (G.Node_id.to_string node.id)))
-  | AllDepsBuilt ->
+  | AllDepsBuilt -> (
       Log.info "Worker %s: STARTING node %s execution"
         (Pid.to_string (self ()))
         (G.Node_id.to_string node.id);
@@ -217,13 +217,19 @@ let execute_node ~completed ~store toolchain sandbox_dir (node : Action_node.t) 
           (String.concat ";" (List.map Crypto.Digest.hex action_hashes))
       in
 
-      (match Store.get store combined_hash with
+      match Store.get store combined_hash with
       | Some _artifact -> (
           Log.info "Action node %s: CACHE HIT - promoting outputs"
             (G.Node_id.to_string node.id);
 
           Telemetry.emit
-            Telemetry_events.(CacheHit { package = node.value.package; action = node; hash = combined_hash });
+            Telemetry_events.(
+              CacheHit
+                {
+                  package = node.value.package;
+                  action = node;
+                  hash = combined_hash;
+                });
 
           let promote_result =
             Store.promote store combined_hash ~target_dir:sandbox_dir
@@ -252,9 +258,16 @@ let execute_node ~completed ~store toolchain sandbox_dir (node : Action_node.t) 
             (G.Node_id.to_string node.id);
 
           Telemetry.emit
-            Telemetry_events.(CacheMiss { package = node.value.package; action = node; hash = combined_hash });
+            Telemetry_events.(
+              CacheMiss
+                {
+                  package = node.value.package;
+                  action = node;
+                  hash = combined_hash;
+                });
           Telemetry.emit
-            Telemetry_events.(ActionStarted { package = node.value.package; action = node });
+            Telemetry_events.(
+              ActionStarted { package = node.value.package; action = node });
 
           (* Copy source files into sandbox *)
           let copy_result =
@@ -300,7 +313,13 @@ let execute_node ~completed ~store toolchain sandbox_dir (node : Action_node.t) 
                   in
 
                   Telemetry.emit
-                    Telemetry_events.(ActionFailed { package = node.value.package; action = node; error = msg });
+                    Telemetry_events.(
+                      ActionFailed
+                        {
+                          package = node.value.package;
+                          action = node;
+                          error = msg;
+                        });
 
                   {
                     node_id = node.id;
@@ -356,7 +375,10 @@ let execute_node ~completed ~store toolchain sandbox_dir (node : Action_node.t) 
                           })))))
 
 type Message.t +=
-  | Task of { task : task; completed : (G.Node_id.t, execution_result) HashMap.t }
+  | Task of {
+      task : task;
+      completed : (G.Node_id.t, execution_result) HashMap.t;
+    }
   | WorkerReady of Pid.t
 
 let worker_loop ~owner ~store toolchain ~sandbox_dir () =
@@ -372,7 +394,8 @@ let worker_loop ~owner ~store toolchain ~sandbox_dir () =
           (G.Node_id.to_string task.id);
         match
           Fun.protect
-            (fun () -> execute_node ~completed ~store toolchain sandbox_dir task)
+            (fun () ->
+              execute_node ~completed ~store toolchain sandbox_dir task)
             ~finally:(fun () -> ())
         with
         | result ->
@@ -448,7 +471,7 @@ let execute ~action_graph ~sandbox ~store toolchain ~concurrency =
       match receive_any () with
       | WorkerReady worker -> (
           let pending_list = Cell.get pending in
-          
+
           (* Check for tasks that should be skipped due to failed deps *)
           let skippable_tasks =
             List.filter
@@ -458,7 +481,7 @@ let execute ~action_graph ~sandbox ~store toolchain ~concurrency =
                 | _ -> false)
               pending_list
           in
-          
+
           (* Mark skippable tasks as skipped immediately *)
           List.iter
             (fun (skip_node : Action_node.t) ->
@@ -476,7 +499,7 @@ let execute ~action_graph ~sandbox ~store toolchain ~concurrency =
               Log.info "Action node %s: Skipped (failed dependencies)"
                 (G.Node_id.to_string skip_node.id))
             skippable_tasks;
-          
+
           (* Remove skipped tasks from pending *)
           let pending_list =
             List.filter
@@ -488,7 +511,7 @@ let execute ~action_graph ~sandbox ~store toolchain ~concurrency =
               pending_list
           in
           Cell.set pending pending_list;
-          
+
           (* Now check for ready tasks *)
           let ready_tasks =
             List.filter
@@ -531,8 +554,7 @@ let execute ~action_graph ~sandbox ~store toolchain ~concurrency =
               Log.error "Action dependencies failed: %s"
                 (String.concat ", "
                    (List.map (fun id -> G.Node_id.to_string id) failed))
-          | Skipped ->
-              Log.warn "Action skipped due to failed dependencies"
+          | Skipped -> Log.warn "Action skipped due to failed dependencies"
           | _ -> ());
           coordinator_loop ()
       | _ -> coordinator_loop ())
