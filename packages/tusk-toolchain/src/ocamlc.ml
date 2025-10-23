@@ -265,35 +265,3 @@ let is_success = function Success _ -> true | Failed _ -> false
 
 (** Helper to get output message *)
 let get_output = function Success msg | Failed msg -> msg
-
-(** Tests submodule *)
-module Tests = struct
-  let test_compile_interface_generates_cmi () =
-    (* Test that .mli compilation produces .cmi file *)
-    Success "Test passed"
-    [@test]
-
-  let test_compile_impl_generates_cmx () =
-    (* Test that .ml compilation produces .cmx file *)
-    Success "Test passed"
-    [@test]
-
-  let test_create_library_bundles_objects () =
-    (* Test that .cmxa creation includes all object files *)
-    Success "Test passed"
-    [@test]
-
-  let test_create_executable_links_dependencies () =
-    (* Test that executable links with all required libraries *)
-    Success "Test passed"
-    [@test]
-
-  let test_custom_executable_handles_c_stubs () =
-    (* Test that custom executables properly link C stubs *)
-    Success "Test passed"
-    [@test]
-
-  let test_include_paths_passed_correctly () =
-    (* Test that -I flags are properly constructed *)
-    Success "Test passed"
-end [@test]

@@ -41,7 +41,7 @@ let make_toolchain version source =
   {
     version;
     source;
-    ocamlc = Ocamlc.make (bin_path "ocamlc.opt");
+    ocamlc = Ocamlc.make (bin_path "ocamlopt.opt");
     ocamlopt = bin_path "ocamlopt.opt";
     ocamldep = Ocamldep.make (bin_path "ocamldep.opt");
   }
