@@ -4,7 +4,7 @@ type dependency_source = Workspace | Path of Path.t
 type dependency = { name : string; source : dependency_source }
 type binary = { name : string; path : Path.t }
 type library = { path : Path.t }
-type test_module = { name : string; path : Path.t }
+type sources = { src : Path.t list; native : Path.t list; tests : Path.t list }
 
 type t = {
   name : string;
@@ -13,8 +13,7 @@ type t = {
   dependencies : dependency list;
   binaries : binary list;
   library : library option;
-  test_library : library option;
-  test_modules : test_module list;
+  sources : sources;
 }
 
 val from_toml :
@@ -23,3 +22,5 @@ val from_toml :
   path:Path.t ->
   relative_path:Path.t ->
   (t, string) result
+
+val to_json : t -> Std.Data.Json.t

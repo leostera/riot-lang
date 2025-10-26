@@ -9,3 +9,6 @@ path = "src/tusk_protocol.ml"
 jsonrpc = { path = "../jsonrpc" }
 std = { path = "../std" }
 tusk-model = { path = "../tusk-model" }
+tusk-planner = { path = "../tusk-planner" }
+tusk-store = { path = "../tusk-store" }
+tusk-executor = { path = "../tusk-executor" }

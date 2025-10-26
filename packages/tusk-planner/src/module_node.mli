@@ -9,6 +9,7 @@ type kind =
   | H
   | Other of string
   | Root
+  | Native of { files : Path.t list }
   | Library of { name : string; includes : Path.t list }
   | Binary of {
       name : string;
@@ -24,12 +25,14 @@ type file =
 type t = { file : file; mutable open_modules : t G.node list; kind : kind }
 
 val file_to_string : file -> string
+val kind_to_string : kind -> string
 val make_ml : Module.t -> file -> t
 val make_mli : Module.t -> file -> t
 val make_c : Path.t -> t
 val make_h : Path.t -> t
 val make_root : unit -> t
 val make_library : name:string -> includes:Path.t list -> t
+val make_native : files:Path.t list -> t
 
 val make_binary :
   name:string ->

@@ -67,6 +67,8 @@ type t
 (** A point in wall-clock time from the system's real-time clock. Can be used
     for timestamps but may not be monotonic. *)
 
+val epoch : t
+
 (** {1 Creation} *)
 
 val now : unit -> t
@@ -89,6 +91,8 @@ val now : unit -> t
     This can go backwards if the system clock is adjusted. *)
 
 (** {1 Duration Operations} *)
+
+val duration_since_epoch : unit -> Duration.t
 
 val duration_since : earlier:t -> t -> Duration.t
 (** Returns the time elapsed from [earlier] to the given time.
@@ -209,3 +213,20 @@ val from_unix_timestamp : int -> t
     ## Examples
 
     ```ocaml let time = SystemTime.from_unix_timestamp 1234567890 ``` *)
+
+val duration_since_epoch : unit -> Duration.t
+(** Returns the duration since the Unix epoch (January 1, 1970 00:00:00 UTC).
+
+    This provides nanosecond-precision time since epoch, useful for unique
+    identifiers and high-resolution timestamps.
+
+    ## Examples
+
+    ```ocaml let nanos_since_epoch = SystemTime.duration_since_epoch () |>
+    Duration.to_nanos in Log.info "Nanoseconds since epoch: %Ld"
+    nanos_since_epoch ```
+
+    ## Note
+
+    Subject to system clock adjustments. The value may jump backwards if the
+    system clock is adjusted. *)

@@ -8,7 +8,10 @@ let disable_trace () = Trace.disable ()
 
 type Message.t += Exit
 
-let run ~main ~args = Scheduler.run ~main:(fun () -> main ~args) |> exit
+let run ~main ~args =
+  Kernel.Exception.record_backtrace true;
+  Scheduler.run ~main:(fun () -> main ~args) |> exit
+
 let shutdown ~status = Scheduler.shutdown (Scheduler.get_scheduler ()) ~status
 let spawn fn = Scheduler.spawn (Scheduler.get_scheduler ()) fn
 let self () = Scheduler.self ()

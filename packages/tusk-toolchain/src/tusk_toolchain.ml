@@ -26,13 +26,7 @@ type t = {
 let default_ocaml_version = "5.3.0"
 
 let toolchain_base_dir =
-  let home =
-    match Env.home_dir () with
-    | Some path -> path
-    | None ->
-        Env.current_dir () |> Result.expect ~msg:"Failed to get current dir"
-  in
-  Path.(home / Path.v ".tusk" / Path.v "toolchains")
+  Path.(Tusk_model.Tusk_dirs.dot_tusk / Path.v "toolchains")
 
 let get_toolchain_path version = Path.(toolchain_base_dir / Path.v version)
 

@@ -1981,6 +1981,19 @@ module Client = struct
     transport : Std.Net.TcpClient.t;
   }
 
+  let jsonrpc_error_to_string = function
+    | Jsonrpc.ParseError { parse_error; _ } ->
+        format "Parse error: %s" parse_error
+    | Jsonrpc.InvalidRequest { reason; _ } ->
+        format "Invalid request: %s" reason
+    | Jsonrpc.MethodNotFound { method_name } ->
+        format "Method not found: %s" method_name
+    | Jsonrpc.InvalidParams { reason; _ } -> format "Invalid params: %s" reason
+    | Jsonrpc.InternalError { details; _ } ->
+        format "Internal error: %s" details
+    | Jsonrpc.UnknownServerError { code; message; _ } ->
+        format "Server error %d: %s" code message
+
   (** Build request type *)
   type build_request = BuildPackage of string | BuildAll
 
@@ -2030,9 +2043,7 @@ module Client = struct
         Ok (files_formatted, files_failed, errors)
     | Ok (WireProtocol.FormatError { error }) -> Error error
     | Ok _ -> Error "Invalid format all response"
-    | Error e ->
-        Error
-          (format "Error %d: %s" (Jsonrpc.error_code_to_int e.code) e.message)
+    | Error e -> Error (jsonrpc_error_to_string e)
 
   (** Create a new package *)
   let new_package t ~path ~name ~is_library =
@@ -2050,9 +2061,7 @@ module Client = struct
     | Ok (WireProtocol.PackageCreated { path; name }) -> Ok (path, name)
     | Ok (WireProtocol.PackageCreationError { error }) -> Error error
     | Ok _ -> Error "Invalid package creation response"
-    | Error e ->
-        Error
-          (format "Error %d: %s" (Jsonrpc.error_code_to_int e.code) e.message)
+    | Error e -> Error (jsonrpc_error_to_string e)
 
   (** Create a new package in ./packages/ with dependencies *)
   let create_package t ~name ~deps ~is_library =
@@ -2088,9 +2097,7 @@ module Client = struct
         ()
     with
     | Ok _ -> Ok ()
-    | Error e ->
-        Error
-          (format "Error %d: %s" (Jsonrpc.error_code_to_int e.code) e.message)
+    | Error e -> Error (jsonrpc_error_to_string e)
 
   (** Get workspace configuration *)
   let get_workspace_config t =
@@ -2100,9 +2107,7 @@ module Client = struct
     with
     | Ok (WireProtocol.WorkspaceConfig config) -> Ok config
     | Ok _ -> Error "Invalid workspace config response"
-    | Error e ->
-        Error
-          (format "Error %d: %s" (Jsonrpc.error_code_to_int e.code) e.message)
+    | Error e -> Error (jsonrpc_error_to_string e)
 
   (** Get package information *)
   let get_package_info t package_name =
@@ -2113,9 +2118,7 @@ module Client = struct
     with
     | Ok (WireProtocol.PackageInfo detail) -> Ok detail
     | Ok _ -> Error "Invalid package info response"
-    | Error e ->
-        Error
-          (format "Error %d: %s" (Jsonrpc.error_code_to_int e.code) e.message)
+    | Error e -> Error (jsonrpc_error_to_string e)
 
   (** Get build graph *)
   let get_build_graph t =
@@ -2125,9 +2128,7 @@ module Client = struct
     with
     | Ok (WireProtocol.BuildGraph graph) -> Ok graph
     | Ok _ -> Error "Invalid build graph response"
-    | Error e ->
-        Error
-          (format "Error %d: %s" (Jsonrpc.error_code_to_int e.code) e.message)
+    | Error e -> Error (jsonrpc_error_to_string e)
 
   (** Build with streaming support *)
   let build_streaming t request callback =
@@ -2139,14 +2140,18 @@ module Client = struct
 
     (* Send the typed build request - this starts a streaming response *)
     match Jsonrpc.Client.send_request t.client typed_request with
-    | Error e -> Error (format "Failed to send request: %s" e)
+    | Error e ->
+        Error (format "Failed to send request: %s" (jsonrpc_error_to_string e))
     | Ok () -> (
         (* Receive the first response *)
         match Jsonrpc.Client.receive_response t.client with
-        | Error e -> Error (format "Failed to receive response: %s" e)
+        | Error e ->
+            Error
+              (format "Failed to receive response: %s"
+                 (jsonrpc_error_to_string e))
         | Ok response -> (
-            match response.Jsonrpc.result with
-            | Ok (WireProtocol.BuildStarted { session_id; started_at = _ }) ->
+            match response.result with
+            | WireProtocol.BuildStarted { session_id; started_at = _ } ->
                 (* Got BuildStarted *)
                 callback (BuildStarted session_id);
 
@@ -2156,7 +2161,7 @@ module Client = struct
                   | Ok
                       {
                         result =
-                          Ok (WireProtocol.BuildEvent { session_id = _; event });
+                          WireProtocol.BuildEvent { session_id = _; event };
                         _;
                       } ->
                       callback (BuildEvent event);
@@ -2164,9 +2169,7 @@ module Client = struct
                   | Ok
                       {
                         result =
-                          Ok
-                            (WireProtocol.CycleDetected
-                               { session_id; cycle_nodes });
+                          WireProtocol.CycleDetected { session_id; cycle_nodes };
                         _;
                       } ->
                       (* Report cycle detected as a log event *)
@@ -2178,9 +2181,8 @@ module Client = struct
                   | Ok
                       {
                         result =
-                          Ok
-                            (WireProtocol.PackageNotFound
-                               { session_id; package_name; available_packages });
+                          WireProtocol.PackageNotFound
+                            { session_id; package_name; available_packages };
                         _;
                       } ->
                       (* Report package not found as an error and finish build *)
@@ -2191,11 +2193,8 @@ module Client = struct
                       in
                       callback (BuildFinished (Error error_msg));
                       Ok (BuildFinished (Error error_msg))
-                  | Ok
-                      {
-                        result = Ok (WireProtocol.BuildComplete { stats; _ });
-                        _;
-                      } ->
+                  | Ok { result = WireProtocol.BuildComplete { stats; _ }; _ }
+                    ->
                       if stats.packages_failed > 0 then
                         Ok
                           (BuildFinished
@@ -2206,60 +2205,27 @@ module Client = struct
                   | Ok
                       {
                         result =
-                          Ok (WireProtocol.BuildFailed { session_id; error; _ });
+                          WireProtocol.BuildFailed { session_id; stats; _ };
                         _;
                       } ->
-                      Ok (BuildFinished (Error error))
-                  | Ok { result = Ok (WireProtocol.Error msg); _ } ->
-                      (* Got a general error response *)
-                      Error (format "Server error: %s" msg)
-                  | Ok { result = Error err; _ } ->
-                      Ok (BuildFinished (Error err.message))
-                  | Error e -> Error (format "Failed to receive event: %s" e)
-                  | Ok resp ->
-                      (* Debug: print what response type we got *)
-                      let resp_type =
-                        match resp.result with
-                        | Ok WireProtocol.Pong -> "Pong"
-                        | Ok (WireProtocol.BuildGraph _) -> "BuildGraph"
-                        | Ok (WireProtocol.WorkspaceConfig _) ->
-                            "WorkspaceConfig"
-                        | Ok (WireProtocol.PackageInfo _) -> "PackageInfo"
-                        | Ok (WireProtocol.BuildStarted _) -> "BuildStarted"
-                        | Ok (WireProtocol.BuildEvent _) -> "BuildEvent"
-                        | Ok (WireProtocol.CycleDetected _) -> "CycleDetected"
-                        | Ok (WireProtocol.BuildComplete _) -> "BuildComplete"
-                        | Ok (WireProtocol.BuildFailed _) -> "BuildFailed"
-                        | Ok WireProtocol.ShutdownAck -> "ShutdownAck"
-                        | Ok WireProtocol.RestartAck -> "RestartAck"
-                        | Ok (WireProtocol.FormatResult _) -> "FormatResult"
-                        | Ok (WireProtocol.FormatError _) -> "FormatError"
-                        | Ok (WireProtocol.FormatAllResult _) ->
-                            "FormatAllResult"
-                        | Ok (WireProtocol.PackageCreated _) -> "PackageCreated"
-                        | Ok (WireProtocol.PackageCreationError _) ->
-                            "PackageCreationError"
-                        | Ok (WireProtocol.PackageNotFound _) ->
-                            "PackageNotFound"
-                        | Ok WireProtocol.ExecutableNotFound ->
-                            "ExecutableNotFound"
-                        | Ok (WireProtocol.ExecutableFound _) ->
-                            "ExecutableFound"
-                        | Ok (WireProtocol.ArtifactFound _) -> "ArtifactFound"
-                        | Ok (WireProtocol.ArtifactNotFound _) ->
-                            "ArtifactNotFound"
-                        | Ok (WireProtocol.Error _) -> "Error"
-                        | Error e -> format "JsonRpcError(%s)" e.message
+                      let error =
+                        format "%d packages failed" stats.packages_failed
                       in
-                      Log.debug
-                        "[CLIENT] Unexpected response in receive_events: %s"
-                        resp_type;
+                      Ok (BuildFinished (Error error))
+                  | Ok { result = WireProtocol.Error msg; _ } ->
+                      (* Got a general error response *)
+                      Ok (BuildFinished (Error msg))
+                  | Error e ->
+                      Error
+                        (format "Failed to receive event: %s"
+                           (jsonrpc_error_to_string e))
+                  | Ok resp ->
+                      Log.debug "[CLIENT] Unexpected response in receive_events";
                       Error "Unexpected response type"
                 in
                 receive_events ()
-            | Ok
-                (WireProtocol.BuildComplete
-                   { session_id; completed_at = _; stats }) ->
+            | WireProtocol.BuildComplete
+                { session_id; completed_at = _; stats; _ } ->
                 (* Check if build actually succeeded *)
                 if stats.packages_failed > 0 then
                   Ok
@@ -2268,17 +2234,11 @@ module Client = struct
                           (format "%d packages failed to build"
                              stats.packages_failed)))
                 else Ok (BuildFinished (Ok ()))
-            | Ok (WireProtocol.BuildFailed { session_id; error; _ }) ->
-                (* Direct error *)
+            | WireProtocol.BuildFailed { session_id; stats; _ } ->
+                let error = format "%d packages failed" stats.packages_failed in
                 Ok (BuildFinished (Error error))
-            | Ok (WireProtocol.Error msg) ->
-                (* Other error *)
-                Ok (BuildFinished (Error msg))
-            | Error err ->
-                Error (format "Build request failed: %s" err.Jsonrpc.message)
-            | Ok resp ->
-                (* Log unexpected response for debugging *)
-                Error "Unexpected response type"))
+            | WireProtocol.Error msg -> Ok (BuildFinished (Error msg))
+            | resp -> Error "Unexpected response type"))
 
   (** Shutdown the server *)
   let shutdown t =
@@ -2287,9 +2247,7 @@ module Client = struct
         ~params:Jsonrpc.NoParams ()
     with
     | Ok _ -> Ok ()
-    | Error e ->
-        Error
-          (format "Error %d: %s" (Jsonrpc.error_code_to_int e.code) e.message)
+    | Error e -> Error (jsonrpc_error_to_string e)
 
   (** Build a specific package *)
   let build_package t package =
@@ -2299,9 +2257,7 @@ module Client = struct
         ()
     with
     | Ok response -> Ok response
-    | Error e ->
-        Error
-          (format "Error %d: %s" (Jsonrpc.error_code_to_int e.code) e.message)
+    | Error e -> Error (jsonrpc_error_to_string e)
 
   (** Build all packages *)
   let build_all t =
@@ -2310,9 +2266,7 @@ module Client = struct
         ~params:Jsonrpc.NoParams ()
     with
     | Ok response -> Ok response
-    | Error e ->
-        Error
-          (format "Error %d: %s" (Jsonrpc.error_code_to_int e.code) e.message)
+    | Error e -> Error (jsonrpc_error_to_string e)
 
   (** Find an executable by binary name *)
   let find_executable t name =
@@ -2325,9 +2279,7 @@ module Client = struct
         Ok (Some (package, binary))
     | Ok WireProtocol.ExecutableNotFound -> Ok None
     | Ok _ -> Error "Invalid findExecutable response"
-    | Error e ->
-        Error
-          (format "Error %d: %s" (Jsonrpc.error_code_to_int e.code) e.message)
+    | Error e -> Error (jsonrpc_error_to_string e)
 
   (** Find an artifact path *)
   let find_artifact t ~package ~kind ~name =
@@ -2345,9 +2297,7 @@ module Client = struct
     | Ok (WireProtocol.ArtifactFound { path }) -> Ok path
     | Ok (WireProtocol.ArtifactNotFound { error }) -> Error error
     | Ok _ -> Error "Invalid findArtifact response"
-    | Error e ->
-        Error
-          (format "Error %d: %s" (Jsonrpc.error_code_to_int e.code) e.message)
+    | Error e -> Error (jsonrpc_error_to_string e)
 
   (** Restart the server *)
   let restart t =
@@ -2356,9 +2306,7 @@ module Client = struct
         ~params:Jsonrpc.NoParams ()
     with
     | Ok _ -> Ok ()
-    | Error e ->
-        Error
-          (format "Error %d: %s" (Jsonrpc.error_code_to_int e.code) e.message)
+    | Error e -> Error (jsonrpc_error_to_string e)
 
   (** Format a file with ocamlformat *)
   let format_file t ~file_path ~check_only =
@@ -2376,9 +2324,7 @@ module Client = struct
         Ok (formatted_code, changed)
     | Ok (WireProtocol.FormatError { error }) -> Error error
     | Ok _ -> Error "Invalid format response"
-    | Error e ->
-        Error
-          (format "Error %d: %s" (Jsonrpc.error_code_to_int e.code) e.message)
+    | Error e -> Error (jsonrpc_error_to_string e)
 
   (** Format code string with ocamlformat *)
   let format_code t ~code ~file_path =
@@ -2396,9 +2342,7 @@ module Client = struct
         Ok (formatted_code, changed)
     | Ok (WireProtocol.FormatError { error }) -> Error error
     | Ok _ -> Error "Invalid format response"
-    | Error e ->
-        Error
-          (format "Error %d: %s" (Jsonrpc.error_code_to_int e.code) e.message)
+    | Error e -> Error (jsonrpc_error_to_string e)
 end
 
 (** Server module for Tusk RPC *)

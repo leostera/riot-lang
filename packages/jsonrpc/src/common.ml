@@ -19,45 +19,17 @@ type request = {
   id : id option;
 }
 
-type error_code =
-  | ParseError
-  | InvalidRequest
-  | MethodNotFound
-  | InvalidParams
-  | InternalError
-  | ServerError of int
-  | ApplicationError of int
+type error =
+  | ParseError of { raw_input : string; parse_error : string }
+  | InvalidRequest of { request_json : Json.t; reason : string }
+  | MethodNotFound of { method_name : string }
+  | InvalidParams of { method_name : string; params : params; reason : string }
+  | InternalError of { context : string; details : string }
+  | UnknownServerError of { code : int; message : string; data : Json.t option }
 
-type error = { code : error_code; message : string; data : Json.t option }
-
-type 'res response = {
-  jsonrpc : string;
-  result : ('res, error) result;
-  id : id;
-}
-
+type 'res response = { jsonrpc : string; result : 'res; id : id }
 type batch_request = request list
 type 'res batch_response = 'res response list
-
-(** Convert error code to integer *)
-let error_code_to_int = function
-  | ParseError -> -32700
-  | InvalidRequest -> -32600
-  | MethodNotFound -> -32601
-  | InvalidParams -> -32602
-  | InternalError -> -32603
-  | ServerError n -> n (* Should be -32000 to -32099 *)
-  | ApplicationError n -> n
-
-(** Convert integer to error code *)
-let int_to_error_code = function
-  | -32700 -> ParseError
-  | -32600 -> InvalidRequest
-  | -32601 -> MethodNotFound
-  | -32602 -> InvalidParams
-  | -32603 -> InternalError
-  | n when n >= -32099 && n <= -32000 -> ServerError n
-  | n -> ApplicationError n
 
 (** Convert ID to JSON *)
 let id_to_json = function
@@ -84,30 +56,6 @@ let params_of_json = function
   | Json.Object pairs -> Ok (Named pairs)
   | Json.Null -> Ok NoParams
   | _ -> Error "Invalid params type"
-
-(** Convert error to JSON *)
-let error_to_json err =
-  let fields =
-    [
-      ("code", Json.Int (error_code_to_int err.code));
-      ("message", Json.String err.message);
-    ]
-  in
-  let fields =
-    match err.data with Some d -> ("data", d) :: fields | None -> fields
-  in
-  Json.Object fields
-
-(** Convert JSON to error *)
-let error_of_json json =
-  match json with
-  | Json.Object fields -> (
-      match (List.assoc_opt "code" fields, List.assoc_opt "message" fields) with
-      | Some (Json.Int code), Some (Json.String message) ->
-          let data = List.assoc_opt "data" fields in
-          Ok { code = int_to_error_code code; message; data }
-      | _ -> Error "Invalid error object: missing or invalid code/message")
-  | _ -> Error "Error must be an object"
 
 (** Convert request to JSON *)
 let request_to_json (req : request) =
@@ -176,14 +124,7 @@ let request ~method_ ?params ?id () =
 (** Create a successful response with result *)
 let result res ~id = { jsonrpc = version; result = Ok res; id }
 
-(** Create an error response *)
-let error_response ~error ~id = { jsonrpc = version; result = Error error; id }
-
-let ok ?(id = Null) res = { jsonrpc = version; result = Ok res; id }
-let error ?(id = Null) err = { jsonrpc = version; result = Error err; id }
-
-(** Helper to make an error object *)
-let make_error ~code ~message ?data () = { code; message; data }
+let ok ?(id = Null) res = { jsonrpc = version; result = res; id }
 
 (** Helper to make a notification (request without id) *)
 let notification ~method_ ?params () =

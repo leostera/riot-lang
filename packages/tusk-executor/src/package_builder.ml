@@ -1,26 +1,108 @@
 open Std
+open Std.Collections
+open Std.Time
 open Tusk_model
 open Tusk_planner
+open Telemetry_events
 
 type package_error =
   | PlanningFailed of Planning_error.t
   | ExecutionFailed of { message : string }
+  | ActionFailed of Action_executor.action_error
 
 let package_error_to_string = function
   | PlanningFailed err ->
       format "Planning failed: %s" (Planning_error.to_string err)
   | ExecutionFailed { message } -> format "Execution failed: %s" message
+  | ActionFailed err -> (
+      match err with
+      | Action_executor.ExecutionFailed { message } ->
+          format "Action failed: %s" message
+      | Action_executor.OutputsNotCreated { missing } ->
+          format "Outputs not created: %s"
+            (String.concat ", " (List.map Path.to_string missing))
+      | Action_executor.DependenciesFailed { failed } ->
+          format "Dependencies failed: %d actions" (List.length failed))
+
+let package_error_to_json = function
+  | PlanningFailed planning_err ->
+      Std.Data.Json.Object
+        [
+          ("type", Std.Data.Json.String "planning_failed");
+          ("error", Tusk_planner.Planning_error.to_json planning_err);
+        ]
+  | ExecutionFailed { message } ->
+      Std.Data.Json.Object
+        [
+          ("type", Std.Data.Json.String "execution_failed");
+          ("message", Std.Data.Json.String message);
+        ]
+  | ActionFailed err -> (
+      match err with
+      | Action_executor.ExecutionFailed { message } ->
+          Std.Data.Json.Object
+            [
+              ("type", Std.Data.Json.String "action_failed");
+              ("message", Std.Data.Json.String message);
+            ]
+      | Action_executor.OutputsNotCreated { missing } ->
+          Std.Data.Json.Object
+            [
+              ("type", Std.Data.Json.String "outputs_not_created");
+              ( "missing",
+                Std.Data.Json.Array
+                  (List.map
+                     (fun p -> Std.Data.Json.String (Path.to_string p))
+                     missing) );
+            ]
+      | Action_executor.DependenciesFailed { failed } ->
+          Std.Data.Json.Object
+            [
+              ("type", Std.Data.Json.String "dependencies_failed");
+              ( "failed_count",
+                Std.Data.Json.String (Int.to_string (List.length failed)) );
+            ])
 
 type build_status =
   | Cached of Tusk_store.Artifact.t
   | Built of Tusk_store.Artifact.t
   | Failed of package_error
 
+let build_status_to_json = function
+  | Cached artifact ->
+      Std.Data.Json.Object
+        [
+          ("type", Std.Data.Json.String "cached");
+          ("artifact", Tusk_store.Artifact.to_json artifact);
+        ]
+  | Built artifact ->
+      Std.Data.Json.Object
+        [
+          ("type", Std.Data.Json.String "built");
+          ("artifact", Tusk_store.Artifact.to_json artifact);
+        ]
+  | Failed err ->
+      Std.Data.Json.Object
+        [
+          ("type", Std.Data.Json.String "failed");
+          ("error", package_error_to_json err);
+        ]
+
 type build_result = {
   package : Package.t;
   status : build_status;
-  duration : Time.Duration.t;
+  duration : Duration.t;
 }
+
+let build_result_to_json result =
+  Std.Data.Json.Object
+    [
+      ("package", Package.to_json result.package);
+      ("status", build_status_to_json result.status);
+      ( "duration_ms",
+        Std.Data.Json.Int
+          (int_of_float (Duration.to_secs_float result.duration *. 1000.0)) );
+    ]
 
 let collect_source_files package =
   let src_dir = Path.(package.Package.path / Path.v "src") in
@@ -46,28 +128,25 @@ let collect_source_files package =
         all_files
 
 let build ~workspace ~toolchain ~store ~package_graph ~package =
-  let start = Time.Instant.now () in
+  let start = Instant.now () in
   let target_dir =
     Path.(
-      workspace.Workspace.root / Path.v "target" / Path.v "debug"
+      workspace.Workspace.root / Path.v "target" / Path.v "debug" / Path.v "out"
       / Path.v package.Package.name)
   in
 
   Log.info "Package %s: computing content hash with dependencies"
     package.Package.name;
   match
-    Package_planner.plan_package ~workspace ~toolchain ~package_graph ~package
+    Tusk_planner.plan_package_with_graph ~workspace ~toolchain ~package_graph
+      ~package
   with
   | Error err ->
-      let duration =
-        Time.Instant.duration_since ~earlier:start (Time.Instant.now ())
-      in
+      let duration = Instant.duration_since ~earlier:start (Instant.now ()) in
       { package; status = Failed (PlanningFailed err); duration }
   | Ok (MissingDependencies { missing; _ }) ->
       let missing_names = List.map (fun p -> p.Package.name) missing in
-      let duration =
-        Time.Instant.duration_since ~earlier:start (Time.Instant.now ())
-      in
+      let duration = Instant.duration_since ~earlier:start (Instant.now ()) in
       {
         package;
         status =
@@ -85,9 +164,8 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
         (Std.Crypto.Digest.hex package_hash);
 
       Telemetry.emit
-        Telemetry_events.(
-          BuildStarted
-            { package; target = Workspace_planner.Package package.name });
+        (BuildStarted
+           { package; target = Workspace_planner.Package package.name });
 
       match Tusk_store.Store.get store package_hash with
       | Some artifact ->
@@ -103,17 +181,16 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
           Package_graph.mark_planned package_graph package ~module_graph
             ~action_graph ~hash:package_hash;
           let duration =
-            Time.Instant.duration_since ~earlier:start (Time.Instant.now ())
+            Instant.duration_since ~earlier:start (Instant.now ())
           in
           Telemetry.emit
-            Telemetry_events.(
-              BuildCompleted
-                {
-                  package;
-                  target = Workspace_planner.Package package.name;
-                  status = `Cached;
-                  duration;
-                });
+            (BuildCompleted
+               {
+                 package;
+                 target = Workspace_planner.Package package.name;
+                 status = `Cached;
+                 duration;
+               });
           { package; status = Cached artifact; duration }
       | None -> (
           Log.info "Package %s: CACHE MISS - executing action graph"
@@ -122,49 +199,77 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
             package.name
             (List.length (Action_graph.nodes action_graph));
 
-          let inputs = collect_source_files package in
+          let inputs =
+            List.concat
+              [
+                package.sources.src;
+                package.sources.native;
+                package.sources.tests;
+              ]
+          in
           let outputs =
             List.concat_map
               (fun (node : Action_node.t) -> node.value.outs)
               (Action_graph.nodes action_graph)
           in
 
-          match
-            Fun.protect
-              (fun () ->
-                Sandbox.with_sandbox ~workspace ~inputs
-                  ~expected_outputs:outputs (fun sandbox ->
-                    let sandbox_dir = Sandbox.get_dir sandbox in
-                    Action_executor.execute ~action_graph ~sandbox ~store
-                      toolchain ~concurrency:4;
+          let do_build sandbox =
+            let sandbox_dir = Sandbox.get_dir sandbox in
+            let exec_result =
+              Action_executor.execute ~action_graph ~sandbox ~store toolchain
+                ~concurrency:4
+            in
 
-                    Tusk_store.Store.save store ~package:package.name
-                      ~hash:package_hash ~sandbox_dir ~outs:outputs
-                    |> Result.expect
-                         ~msg:
-                           (format "Failed to save artifacts for %s"
-                              package.name)))
-              ~finally:(fun () -> ())
+            (* Check if any actions failed *)
+            let failed_actions =
+              HashMap.to_list exec_result.completed
+              |> List.filter_map (fun (_id, result) ->
+                  match result.Action_executor.status with
+                  | Action_executor.Failed err -> Some err
+                  | _ -> None)
+            in
+
+            match failed_actions with
+            | first_error :: _ -> Error (ActionFailed first_error)
+            | [] -> (
+                (* All actions succeeded, save the artifacts *)
+                match
+                  Tusk_store.Store.save store ~package:package.name
+                    ~hash:package_hash ~sandbox_dir ~outs:outputs
+                with
+                | Ok artifact -> Ok artifact
+                | Error msg ->
+                    Error
+                      (ExecutionFailed
+                         {
+                           message =
+                             format "Failed to save artifacts for %s: %s"
+                               package.name msg;
+                         }))
+          in
+
+          match
+            Sandbox.with_sandbox ~workspace ~package ~inputs
+              ~expected_outputs:outputs do_build
           with
           | exception exn ->
               let duration =
-                Time.Instant.duration_since ~earlier:start (Time.Instant.now ())
+                Instant.duration_since ~earlier:start (Instant.now ())
               in
               let error = format "Exception: %s" (Printexc.to_string exn) in
               Telemetry.emit
-                Telemetry_events.(
-                  BuildFailed
-                    {
-                      package;
-                      target = Workspace_planner.Package package.name;
-                      error;
-                    });
+                (BuildFailed
+                   {
+                     package;
+                     target = Workspace_planner.Package package.name;
+                     error;
+                   });
               {
                 package;
                 status = Failed (ExecutionFailed { message = error });
                 duration;
               }
-          | artifact ->
+          | Ok artifact ->
               Tusk_store.Store.promote store package_hash ~target_dir
               |> Result.expect
                    ~msg:
@@ -174,15 +279,27 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
                 ~action_graph ~hash:package_hash;
 
               let duration =
-                Time.Instant.duration_since ~earlier:start (Time.Instant.now ())
+                Instant.duration_since ~earlier:start (Instant.now ())
               in
               Telemetry.emit
-                Telemetry_events.(
-                  BuildCompleted
-                    {
-                      package;
-                      target = Workspace_planner.Package package.name;
-                      status = `Fresh;
-                      duration;
-                    });
-              { package; status = Built artifact; duration }))
+                (BuildCompleted
+                   {
+                     package;
+                     target = Workspace_planner.Package package.name;
+                     status = `Fresh;
+                     duration;
+                   });
+              { package; status = Built artifact; duration }
+          | Error err ->
+              let duration =
+                Instant.duration_since ~earlier:start (Instant.now ())
+              in
+              let error = package_error_to_string err in
+              Telemetry.emit
+                (BuildFailed
+                   {
+                     package;
+                     target = Workspace_planner.Package package.name;
+                     error;
+                   });
+              { package; status = Failed err; duration }))

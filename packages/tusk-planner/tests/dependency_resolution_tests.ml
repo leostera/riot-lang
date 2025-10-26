@@ -21,8 +21,7 @@ let make_test_input root_path =
             dependencies = [];
             binaries = [];
             library = None;
-            test_library = None;
-            test_modules = [];
+            sources = { src = []; native = []; tests = [] };
           };
       toolchain;
       workspace =
@@ -96,8 +95,7 @@ let test_circular_dependency_detected =
                   dependencies = [];
                   binaries = [];
                   library = Some { path = lib_path };
-                  test_library = None;
-                  test_modules = [];
+                  sources = { src = []; native = []; tests = [] };
                 };
             toolchain;
             workspace =
@@ -141,8 +139,7 @@ let test_module_dependencies_correct_order =
                   dependencies = [];
                   binaries = [];
                   library = Some { path = lib_path };
-                  test_library = None;
-                  test_modules = [];
+                  sources = { src = []; native = []; tests = [] };
                 };
             toolchain;
             workspace =

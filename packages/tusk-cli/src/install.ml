@@ -7,12 +7,12 @@ let command =
   let open ArgParser in
   let open Arg in
   command "install"
-  |> about "Install a binary to ~/.tusk/bin and project root"
+  |> about "Install a binary to ~/.tusk2/bin and project root"
   |> args
        [
          positional "package" |> help "Binary name to install";
          flag "local" |> long "local"
-         |> help "Only install to project root, skip ~/.tusk/bin";
+         |> help "Only install to project root, skip ~/.tusk2/bin";
        ]
 
 let build_package package_name =
@@ -29,27 +29,14 @@ let build_package package_name =
       Tusk_client.build_streaming client (Tusk_client.BuildPackage package_name)
         (function
         | Tusk_client.BuildStarted session_id -> ()
-        | Tusk_client.BuildEvent event ->
-            let should_display =
-              match event.kind with
-              | CacheHit { package; _ } | CacheMiss { package; _ } ->
-                  if Hashtbl.mem displayed_packages package then false
-                  else (
-                    Hashtbl.add displayed_packages package ();
-                    true)
-              | PackageComplete { package; success; errors; _ } ->
-                  success = false && errors <> []
-              | _ -> true
-            in
-            if should_display then
-              let formatted = Event_formatter.format event in
-              if formatted <> "" then println "%s" formatted
-        | Tusk_client.BuildFinished _ -> ())
+        | Tusk_client.BuildEvent _event -> ()
+        | Tusk_client.BuildCompleted _ -> ()
+        | Tusk_client.BuildFailed _ -> ())
     in
     Tusk_client.close client;
     match result with
-    | Ok (Tusk_client.BuildFinished (Ok ())) -> true
-    | Ok (Tusk_client.BuildFinished (Error _)) -> false
+    | Ok (Tusk_client.BuildCompleted _) -> true
+    | Ok (Tusk_client.BuildFailed _) -> false
     | Ok (Tusk_client.BuildStarted _ | Tusk_client.BuildEvent _) -> false
     | Error _ -> false
 
@@ -122,19 +109,14 @@ let run matches =
                   (Path.to_string project_binary)
             | Error _ -> println "⚠️  Failed to promote to project root");
 
-            (* If not --local, also install to ~/.tusk/bin *)
+            (* If not --local, also install to ~/.tusk2/bin *)
             (if not local_only then
-               let home =
-                 match Env.home_dir () with
-                 | Some h -> h
-                 | None ->
-                     println "⚠️  HOME not set, skipping global install";
-                     Path.v "/tmp"
+               let tusk_bin_dir =
+                 Path.(Tusk_model.Tusk_dirs.dot_tusk / Path.v "bin")
                in
-               let tusk_bin_dir = Path.(home / Path.v ".tusk/bin") in
                let _ =
                  Fs.create_dir_all tusk_bin_dir
-                 |> Result.expect ~msg:"Failed to create ~/.tusk/bin"
+                 |> Result.expect ~msg:"Failed to create ~/.tusk2/bin"
                in
 
                let dest_path = Path.(tusk_bin_dir / Path.v binary_name) in
@@ -145,11 +127,11 @@ let run matches =
                      (Path.to_string dest_path);
                    println "";
                    println
-                     "To use %s from anywhere, add ~/.tusk/bin to your PATH:"
+                     "To use %s from anywhere, add ~/.tusk2/bin to your PATH:"
                      binary_name;
-                   println "  export PATH='$HOME/.tusk/bin:$PATH'"
+                   println "  export PATH='$HOME/.tusk2/bin:$PATH'"
                | Error _ ->
-                   println "⚠️  Failed to install to ~/.tusk/bin (non-fatal)");
+                   println "⚠️  Failed to install to ~/.tusk2/bin (non-fatal)");
 
             Ok ())
   | Ok None ->

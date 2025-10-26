@@ -22,15 +22,7 @@ let get_daemon_info () =
   let workspace =
     Workspace_manager.scan cwd |> Result.expect ~msg:"Failed to scan workspace"
   in
-  let home =
-    match Env.home_dir () with
-    | Some h -> h
-    | None -> failwith "Failed to get home directory"
-  in
-  let project_id = Workspace.project_id workspace in
-  let daemon_path =
-    Path.(home / Path.v ".tusk" / Path.v "projects" / Path.v project_id)
-  in
+  let daemon_path = Tusk_model.Tusk_dirs.project_dir workspace in
   let pid_file = Path.(daemon_path / Path.v "server.pid") in
   let port_file = Path.(daemon_path / Path.v "server.port") in
   (workspace, daemon_path, pid_file, port_file)

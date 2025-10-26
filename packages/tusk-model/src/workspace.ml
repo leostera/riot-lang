@@ -70,7 +70,7 @@ let server_port workspace =
   let root_str = Path.to_string workspace.root in
   let hash = Hashtbl.hash root_str in
   let port_range = 65535 - 49152 in
-  49152 + (abs hash mod port_range)
+  50152 + (abs hash mod port_range)
 
 module Tests = struct
   let test_parse_workspace_toml () : (unit, string) result = Ok () [@test]

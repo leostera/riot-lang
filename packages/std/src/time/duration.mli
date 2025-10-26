@@ -187,7 +187,7 @@ val to_micros : t -> int
 
     ```ocaml Duration.from_millis 1 |> Duration.to_micros (* 1000 *) ``` *)
 
-val to_nanos : t -> int
+val to_nanos : t -> int64
 (** Converts to total nanoseconds.
 
     ## Examples

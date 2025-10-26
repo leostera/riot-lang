@@ -1,6 +1,8 @@
 type timespec = { secs : int; nanos : int }
 type t = timespec
 
+let epoch = { secs = 0; nanos = 0 }
+
 (* Creation *)
 let now () =
   let time = Kernel.Time.gettimeofday () in
@@ -62,3 +64,7 @@ let max a b = if compare a b >= 0 then a else b
 (* Unix timestamp conversion *)
 let to_unix_timestamp t = t.secs
 let from_unix_timestamp secs = { secs; nanos = 0 }
+
+let duration_since_epoch () =
+  let t = now () in
+  Duration.make ~secs:t.secs ~nanos:t.nanos

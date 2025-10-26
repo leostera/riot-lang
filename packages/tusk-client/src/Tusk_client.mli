@@ -4,21 +4,43 @@ open Tusk_protocol
 
 type t
 
+type error =
+  | JsonrpcError of Jsonrpc.error
+  | PackageNotFound of {
+      package_name : string;
+      available_packages : string list;
+    }
+  | UnexpectedEvent of { event : WireProtocol.response; reason : string }
+
+val jsonrpc_error_to_string : Jsonrpc.error -> string
+
 type streaming_event =
   | BuildStarted of Session_id.t
-  | BuildEvent of Event.t
-  | BuildFinished of (unit, string) result
+  | BuildEvent of Telemetry.event
+  | BuildCompleted of {
+      session_id : Session_id.t;
+      completed_at : Datetime.t;
+      stats : WireProtocol.build_stats;
+      results : WireProtocol.build_result list;
+    }
+  | BuildFailed of {
+      session_id : Session_id.t;
+      failed_at : Datetime.t;
+      stats : WireProtocol.build_stats;
+      built : WireProtocol.build_result list;
+      errors : WireProtocol.build_result list;
+    }
 
 (** Build request type *)
-type build_request = BuildPackage of string | BuildAll
+type build_target = BuildPackage of string | BuildAll
 
 val create : host:string -> port:int -> (t, string) result
 
 val build_streaming :
   t ->
-  build_request ->
+  build_target ->
   (streaming_event -> unit) ->
-  (streaming_event, string) result
+  (streaming_event, error) result
 
 val ping : t -> (unit, string) result
 val get_build_graph : t -> (WireProtocol.build_graph_response, string) result
@@ -27,8 +49,6 @@ val get_workspace_config : t -> (WireProtocol.workspace_config, string) result
 val get_package_info :
   t -> string -> (WireProtocol.package_detail, string) result
 
-val build_package : t -> string -> (WireProtocol.response, string) result
-val build_all : t -> (WireProtocol.response, string) result
 val find_executable : t -> string -> ((string * string) option, string) result
 
 val find_artifact :

@@ -2,9 +2,6 @@
 name = "tusk-cli"
 version = "0.0.1"
 
-[lib]
-path = "src/tusk_cli.ml"
-
 [[bin]]
 name = "tusk-cli"
 path = "src/main.ml"

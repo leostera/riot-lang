@@ -20,8 +20,7 @@ let make_test_input root_path library =
             dependencies = [];
             binaries = [];
             library;
-            test_library = None;
-            test_modules = [];
+            sources = { src = []; native = []; tests = [] };
           };
       toolchain;
       workspace =
@@ -300,8 +299,7 @@ let test_binary_only_has_executable =
                   dependencies = [];
                   binaries = [ bin ];
                   library = None;
-                  test_library = None;
-                  test_modules = [];
+                  sources = { src = []; native = []; tests = [] };
                 };
             toolchain;
             workspace =
@@ -356,8 +354,7 @@ let test_binary_executable_has_correct_name =
                   dependencies = [];
                   binaries = [ bin ];
                   library = None;
-                  test_library = None;
-                  test_modules = [];
+                  sources = { src = []; native = []; tests = [] };
                 };
             toolchain;
             workspace =
@@ -418,8 +415,7 @@ let test_lib_and_binary_has_both =
                   dependencies = [];
                   binaries = [ bin ];
                   library = Some { path = lib_path };
-                  test_library = None;
-                  test_modules = [];
+                  sources = { src = []; native = []; tests = [] };
                 };
             toolchain;
             workspace =
@@ -486,8 +482,7 @@ let test_multiple_binaries_all_created =
                   dependencies = [];
                   binaries = [ cli_bin; server_bin ];
                   library = None;
-                  test_library = None;
-                  test_modules = [];
+                  sources = { src = []; native = []; tests = [] };
                 };
             toolchain;
             workspace =

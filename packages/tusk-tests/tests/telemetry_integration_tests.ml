@@ -22,8 +22,7 @@ let test_telemetry_events_are_emitted =
       dependencies = [];
       binaries = [];
       library = None;
-      test_library = None;
-      test_modules = [];
+      sources = { src = []; native = []; tests = [] };
     }
   in
   Telemetry.emit

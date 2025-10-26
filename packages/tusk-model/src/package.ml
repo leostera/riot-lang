@@ -9,7 +9,7 @@ type dependency_source = Workspace | Path of Path.t
 type dependency = { name : string; source : dependency_source }
 type binary = { name : string; path : Path.t }
 type library = { path : Path.t }
-type test_module = { name : string; path : Path.t }
+type sources = { src : Path.t list; native : Path.t list; tests : Path.t list }
 
 type t = {
   name : string;
@@ -18,8 +18,7 @@ type t = {
   dependencies : dependency list;
   binaries : binary list;
   library : library option;
-  test_library : library option;
-  test_modules : test_module list;
+  sources : sources;
 }
 
 (** Package TOML parsing *)
@@ -127,32 +126,39 @@ let parse_library (items : (string * Toml.value) list) ~(package_path : Path.t)
       | Some _ -> Error "Library 'path' field must be a string")
   | Some _ -> Error "[lib] must be a table"
 
-let parse_test_library (items : (string * Toml.value) list)
-    ~(package_path : Path.t) ~(package_name : string) :
-    (library option, string) result =
-  let tests_dir = Path.(package_path / Path.v "tests") in
-  match Fs.is_dir tests_dir with
-  | Ok true ->
-      let test_lib_path =
-        Path.(tests_dir / Path.v (format "%s_tests.ml" package_name))
-      in
-      Ok (Some { path = test_lib_path })
-  | _ -> Ok None
-
-let scan_test_modules ~(package_path : Path.t) : test_module list =
-  let tests_dir = Path.(package_path / Path.v "tests") in
-  match Fs.read_dir tests_dir with
-  | Error _ -> []
-  | Ok iter ->
-      let entries = Std.Iter.MutIterator.to_list iter in
-      List.filter_map
-        (fun entry ->
-          let name = Path.basename entry in
-          if String.ends_with ~suffix:"_tests.ml" name then
-            let module_name = String.sub name 0 (String.length name - 3) in
-            Some { name = module_name; path = Path.(Path.v "tests" / entry) }
-          else None)
-        entries
+let scan_sources ~(package_path : Path.t) : sources =
+  let rec scan_dir_recursive ~from_dir ~rel_path =
+    match Fs.read_dir from_dir with
+    | Error _ -> []
+    | Ok iter ->
+        let entries = Std.Iter.MutIterator.to_list iter in
+        List.concat_map
+          (fun filename ->
+            let abs_path = Path.(from_dir / filename) in
+            let rel_path_full = Path.(rel_path / filename) in
+            match Fs.is_dir abs_path with
+            | Ok true ->
+                scan_dir_recursive ~from_dir:abs_path ~rel_path:rel_path_full
+            | Ok false -> [ rel_path_full ]
+            | Error _ -> [])
+          entries
+  in
+  let src_files =
+    scan_dir_recursive
+      ~from_dir:Path.(package_path / Path.v "src")
+      ~rel_path:(Path.v "src")
+  in
+  let test_files =
+    scan_dir_recursive
+      ~from_dir:Path.(package_path / Path.v "tests")
+      ~rel_path:(Path.v "tests")
+  in
+  let native_files =
+    scan_dir_recursive
+      ~from_dir:Path.(package_path / Path.v "native")
+      ~rel_path:(Path.v "native")
+  in
+  { src = src_files; tests = test_files; native = native_files }
 
 let from_toml (toml : Toml.value) ~(workspace_deps : dependency list)
     ~(path : Path.t) ~(relative_path : Path.t) : (t, string) result =
@@ -183,26 +189,13 @@ let from_toml (toml : Toml.value) ~(workspace_deps : dependency list)
             Log.warn "[PACKAGE] Failed to parse library for %s: %s" name msg;
             None
       in
-      let test_library =
-        match
-          parse_test_library items ~package_path:path ~package_name:name
-        with
-        | Ok lib -> lib
-        | Error msg ->
-            Log.warn "[PACKAGE] Failed to parse test library for %s: %s" name
-              msg;
-            None
-      in
-      let test_modules = scan_test_modules ~package_path:path in
-      Ok
-        {
-          name;
-          path;
-          relative_path;
-          dependencies;
-          binaries;
-          library;
-          test_library;
-          test_modules;
-        }
+      let sources = scan_sources ~package_path:path in
+      Ok { name; path; relative_path; dependencies; binaries; library; sources }
   | _ -> Error "TOML is not a table"
+
+let to_json (pkg : t) : Json.t =
+  Json.Object
+    [
+      ("name", Json.String pkg.name);
+      ("path", Json.String (Path.to_string pkg.path));
+    ]

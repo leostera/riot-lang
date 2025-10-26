@@ -32,8 +32,7 @@ let make_package tmpdir name content =
       dependencies = [];
       binaries = [];
       library = Some { path = Path.v "src/lib.ml" };
-      test_library = None;
-      test_modules = [];
+      sources = { src = []; native = []; tests = [] };
     }
 
 type Message.t += BuildComplete of (string * (unit, string) result)

@@ -11,8 +11,7 @@ let make_package ~name ~deps =
         List.map (fun dep_name -> { name = dep_name; source = Workspace }) deps;
       binaries = [];
       library = None;
-      test_library = None;
-      test_modules = [];
+      sources = { src = []; native = []; tests = [] };
     }
 
 let make_workspace packages =

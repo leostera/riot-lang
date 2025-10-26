@@ -23,8 +23,7 @@ let make_graph_config root_path source_dir =
             dependencies = [];
             binaries = [];
             library = None;
-            test_library = None;
-            test_modules = [];
+            sources = { src = []; native = []; tests = [] };
           };
       toolchain;
       workspace =
@@ -49,8 +48,7 @@ let make_test_input root_path =
             dependencies = [];
             binaries = [];
             library = None;
-            test_library = None;
-            test_modules = [];
+            sources = { src = []; native = []; tests = [] };
           };
       toolchain;
       workspace =
@@ -72,7 +70,7 @@ let test_scan_simple_fixture =
           (Path.v "src")
       in
       let graph = Module_graph.create config in
-      if List.length graph.entries > 0 then Ok ()
+      if List.length (Module_graph.entries graph) > 0 then Ok ()
       else Error "No entries scanned")
 
 let test_scan_sublibrary_fixture =
@@ -82,7 +80,7 @@ let test_scan_sublibrary_fixture =
       in
       let config = make_graph_config fixture_root (Path.v ".") in
       let graph = Module_graph.create config in
-      if List.length graph.entries > 0 then Ok ()
+      if List.length (Module_graph.entries graph) > 0 then Ok ()
       else Error "No entries scanned")
 
 let test_single_with_interface =
@@ -130,8 +128,7 @@ let test_mli_only_module =
                   dependencies = [];
                   binaries = [];
                   library = Some { path = lib_path };
-                  test_library = None;
-                  test_modules = [];
+                  sources = { src = []; native = []; tests = [] };
                 };
             toolchain;
             workspace =
@@ -185,8 +182,7 @@ let test_ml_only_module =
                   dependencies = [];
                   binaries = [];
                   library = Some { path = lib_path };
-                  test_library = None;
-                  test_modules = [];
+                  sources = { src = []; native = []; tests = [] };
                 };
             toolchain;
             workspace =
@@ -289,8 +285,7 @@ let test_native_folder_c_files =
                   dependencies = [];
                   binaries = [];
                   library = Some { path = lib_path };
-                  test_library = None;
-                  test_modules = [];
+                  sources = { src = []; native = []; tests = [] };
                 };
             toolchain;
             workspace =
@@ -354,8 +349,7 @@ let test_native_folder_isolated_from_src =
                   dependencies = [];
                   binaries = [];
                   library = Some { path = lib_path };
-                  test_library = None;
-                  test_modules = [];
+                  sources = { src = []; native = []; tests = [] };
                 };
             toolchain;
             workspace =
@@ -416,8 +410,7 @@ let test_subdirectory_creates_sublibrary =
                   dependencies = [];
                   binaries = [];
                   library = Some { path = lib_path };
-                  test_library = None;
-                  test_modules = [];
+                  sources = { src = []; native = []; tests = [] };
                 };
             toolchain;
             workspace =
@@ -474,8 +467,7 @@ let test_subdirectory_compiles_helper =
                   dependencies = [];
                   binaries = [];
                   library = Some { path = lib_path };
-                  test_library = None;
-                  test_modules = [];
+                  sources = { src = []; native = []; tests = [] };
                 };
             toolchain;
             workspace =
@@ -529,8 +521,7 @@ let test_nested_subdirs_all_wrappers =
                   dependencies = [];
                   binaries = [];
                   library = Some { path = lib_path };
-                  test_library = None;
-                  test_modules = [];
+                  sources = { src = []; native = []; tests = [] };
                 };
             toolchain;
             workspace =
@@ -602,8 +593,7 @@ let test_unreachable_module_still_compiled =
                   dependencies = [];
                   binaries = [];
                   library = Some { path = lib_path };
-                  test_library = None;
-                  test_modules = [];
+                  sources = { src = []; native = []; tests = [] };
                 };
             toolchain;
             workspace =

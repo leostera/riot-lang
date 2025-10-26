@@ -30,3 +30,7 @@ path = "tests/package_planning_tests.ml"
 [[bin]]
 name = "workspace-planning-tests"
 path = "tests/workspace_planning_tests.ml"
+
+[[bin]]
+name = "debug-graph"
+path = "src/debug_graph.ml"

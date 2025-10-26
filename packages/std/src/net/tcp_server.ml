@@ -27,9 +27,14 @@ let read_line (stream : Kernel.Net.Tcp_stream.t) =
   loop ""
 
 let rec accept_loop t =
+  (* Note: Can't use Log module here as it's not available in Global *)
+  (* println "[TCP_SERVER] Awaiting next connection..."; *)
   match Tcp_listener.accept t.listener with
-  | Error e -> Error e
+  | Error e ->
+      (* println "[TCP_SERVER] accept() failed, server stopping"; *)
+      Error e
   | Ok (stream, _client_addr) ->
+      (* println "[TCP_SERVER] Connection accepted, spawning handler"; *)
       let _connection_pid =
         Miniriot.spawn (fun () ->
             (* Read lines in a loop using the read_line helper *)
@@ -38,9 +43,11 @@ let rec accept_loop t =
               | Ok req ->
                   (* Call handler with request string and stream *)
                   t.handler ~req stream;
+                  (* println "[TCP_SERVER] Handler returned, reading next line on same connection"; *)
                   connection_loop ()
               | Error _ ->
                   (* Connection closed, clean up *)
+                  (* println "[TCP_SERVER] Connection closed, cleaning up"; *)
                   Tcp_stream.close stream;
                   Ok ()
             in

@@ -75,13 +75,29 @@ module WireProtocol : sig
     cache_misses : int;
   }
 
+  type package_error =
+    | PlanningFailed of Tusk_planner.Planning_error.t
+    | ExecutionFailed of { message : string }
+    | ActionFailed of Tusk_executor.Action_executor.action_error
+
+  type build_status =
+    | Cached of Tusk_store.Artifact.t
+    | Built of Tusk_store.Artifact.t
+    | Failed of package_error
+
+  type build_result = {
+    package : Package.t;
+    status : build_status;
+    duration : Std.Time.Duration.t;
+  }
+
   type response =
     | Pong
     | BuildGraph of build_graph_response
     | WorkspaceConfig of workspace_config
     | PackageInfo of package_detail
     | BuildStarted of { session_id : Session_id.t; started_at : Datetime.t }
-    | BuildEvent of { session_id : Session_id.t; event : Event.t }
+    | BuildEvent of { session_id : Session_id.t; event : Telemetry.event }
     | CycleDetected of {
         session_id : Session_id.t;
         detected_at : Datetime.t;
@@ -91,12 +107,14 @@ module WireProtocol : sig
         session_id : Session_id.t;
         completed_at : Datetime.t;
         stats : build_stats;
+        results : build_result list;
       }
     | BuildFailed of {
         session_id : Session_id.t;
         failed_at : Datetime.t;
         stats : build_stats;
-        error : string;
+        built : build_result list;
+        errors : build_result list;
       }
     | ExecutableFound of { package : string; binary : string }
     | ExecutableNotFound

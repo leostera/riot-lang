@@ -61,3 +61,6 @@ val find_package : t -> string -> Package.t option
 
 val get_dependencies : t -> Package.t -> Package.t list
 (** Get direct dependencies of a package *)
+
+val iter_nodes : t -> fn:(package_node Graph.SimpleGraph.node -> unit) -> unit
+(** Iterate over all nodes in the graph *)

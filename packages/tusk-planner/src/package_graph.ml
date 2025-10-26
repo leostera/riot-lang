@@ -165,3 +165,5 @@ let topological_sort pg =
         node_ids
     in
     raise (Cycle_detected names)
+
+let iter_nodes pg ~fn = G.iter pg.graph ~fn:(fun _id node -> fn node)

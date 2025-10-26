@@ -81,10 +81,19 @@ type request =
 type response =
   | Pong
   | BuildStarted of { session_id : Session_id.t; started_at : Datetime.t }
+  | BuildEvent of { session_id : Session_id.t; event : Telemetry.event }
   | BuildCompleted of {
       session_id : Session_id.t;
-      completed_At : Datetime.t;
+      completed_at : Datetime.t;
       stats : BuildStats.t;
+      results : Tusk_executor.Package_builder.build_result list;
+    }
+  | BuildFailed of {
+      session_id : Session_id.t;
+      failed_at : Datetime.t;
+      stats : BuildStats.t;
+      built : Tusk_executor.Package_builder.build_result list;
+      errors : Tusk_executor.Package_builder.build_result list;
     }
   | CycleDetected of {
       session_id : Session_id.t;

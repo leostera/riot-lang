@@ -35,7 +35,7 @@ let receive_raw_response (Client { transport_mod; transport; _ }) =
   T.receive transport
 
 let send_request (type req res) (Client c as client : (req, res) t)
-    (request : req) =
+    (request : req) : (unit, Common.error) result =
   let module P =
     (val c.protocol_mod
         : Common.ApplicationProtocol with type request = req
@@ -49,21 +49,27 @@ let send_request (type req res) (Client c as client : (req, res) t)
   in
   let json = Common.request_to_json jsonrpc_req in
   let str = Json.to_string json in
-  send_raw_request client str
+  match send_raw_request client str with
+  | Ok () -> Ok ()
+  | Error e ->
+      Error (Common.InternalError { context = "send_request"; details = e })
 
 let receive_response (type req res) (Client c as client : (req, res) t) :
-    (res Common.response, string) result =
+    (res Common.response, Common.error) result =
   let module P =
     (val c.protocol_mod
         : Common.ApplicationProtocol with type request = req
          and type response = res)
   in
   match receive_raw_response client with
-  | Error e -> Error e
+  | Error e ->
+      Error (Common.InternalError { context = "receive_response"; details = e })
   | Ok str -> (
       match Json.of_string str with
       | Error e ->
-          Error (format "JSON parse error: %s" (Json.error_to_string e))
+          Error
+            (Common.ParseError
+               { raw_input = str; parse_error = Json.error_to_string e })
       | Ok json -> (
           match json with
           | Json.Object fields -> (
@@ -73,21 +79,30 @@ let receive_response (type req res) (Client c as client : (req, res) t) :
               | Some (Json.String "2.0"), Some id_json -> (
                   match Common.id_of_json id_json with
                   | Ok id -> (
-                      let error =
-                        match List.assoc_opt "error" fields with
-                        | None -> Ok None
-                        | Some e -> (
-                            match Common.error_of_json e with
-                            | Ok err -> Ok (Some err)
-                            | Error msg -> Error msg)
-                      in
-                      match error with
-                      | Ok (Some error) ->
-                          (* Error response *)
-                          Ok
-                            { Common.jsonrpc = "2.0"; result = Error error; id }
-                      | Ok None -> (
-                          (* Success response - parse result *)
+                      match List.assoc_opt "error" fields with
+                      | Some (Json.Object err_fields) ->
+                          let code =
+                            match List.assoc_opt "code" err_fields with
+                            | Some (Json.Int c) -> c
+                            | _ -> -1
+                          in
+                          let message =
+                            match List.assoc_opt "message" err_fields with
+                            | Some (Json.String m) -> m
+                            | _ -> "Unknown error"
+                          in
+                          let data = List.assoc_opt "data" err_fields in
+                          Error
+                            (Common.UnknownServerError { code; message; data })
+                      | Some err_json ->
+                          Error
+                            (Common.UnknownServerError
+                               {
+                                 code = -1;
+                                 message = "Invalid error format";
+                                 data = Some err_json;
+                               })
+                      | None -> (
                           match List.assoc_opt "result" fields with
                           | Some result_json -> (
                               match P.response_of_json result_json with
@@ -95,22 +110,50 @@ let receive_response (type req res) (Client c as client : (req, res) t) :
                                   Ok
                                     {
                                       Common.jsonrpc = "2.0";
-                                      result = Ok parsed_result;
+                                      result = parsed_result;
                                       id;
                                     }
                               | Error err_json ->
                                   Error
-                                    (format "Failed to parse result: %s"
-                                       (Json.to_string err_json)))
+                                    (Common.InternalError
+                                       {
+                                         context = "parse_response_result";
+                                         details =
+                                           format "Failed to parse result: %s"
+                                             (Json.to_string err_json);
+                                       }))
                           | None ->
-                              Error "Response missing both result and error")
-                      | Error e -> Error e)
-                  | Error e -> Error e)
-              | _ -> Error "Invalid response: missing jsonrpc or id field")
-          | _ -> Error "Response must be an object"))
+                              Error
+                                (Common.InvalidRequest
+                                   {
+                                     request_json = json;
+                                     reason =
+                                       "Response missing both result and error";
+                                   })))
+                  | Error e ->
+                      Error
+                        (Common.InvalidRequest
+                           {
+                             request_json = json;
+                             reason = format "Invalid ID: %s" e;
+                           }))
+              | _ ->
+                  Error
+                    (Common.InvalidRequest
+                       {
+                         request_json = json;
+                         reason = "Missing jsonrpc or id field";
+                       }))
+          | _ ->
+              Error
+                (Common.InvalidRequest
+                   {
+                     request_json = json;
+                     reason = "Response must be an object";
+                   })))
 
-let call (type req res) (client : (req, res) t) ~method_ ?params () =
-  (* This is a simplified call that doesn't use the protocol's request type *)
+let call (type req res) (client : (req, res) t) ~method_ ?params () :
+    (res, Common.error) result =
   let (Client c) = client in
   let module P =
     (val c.protocol_mod
@@ -128,64 +171,88 @@ let call (type req res) (client : (req, res) t) ~method_ ?params () =
   let str = Json.to_string json in
   match send_raw_request client str with
   | Error e ->
-      Error (Common.make_error ~code:Common.InternalError ~message:e ())
+      Error (Common.InternalError { context = "call_send"; details = e })
   | Ok () -> (
       match receive_raw_response client with
       | Error e ->
-          Error (Common.make_error ~code:Common.InternalError ~message:e ())
+          Error (Common.InternalError { context = "call_receive"; details = e })
       | Ok str -> (
           match Json.of_string str with
           | Error e ->
               Error
-                (Common.make_error ~code:Common.ParseError
-                   ~message:(Json.error_to_string e) ())
+                (Common.ParseError
+                   { raw_input = str; parse_error = Json.error_to_string e })
           | Ok json -> (
               match json with
               | Json.Object fields -> (
                   match List.assoc_opt "error" fields with
-                  | Some err_json -> (
-                      match Common.error_of_json err_json with
-                      | Ok err -> Error err
-                      | Error e ->
-                          Error
-                            (Common.make_error ~code:Common.ParseError
-                               ~message:e ()))
+                  | Some (Json.Object err_fields) ->
+                      let code =
+                        match List.assoc_opt "code" err_fields with
+                        | Some (Json.Int c) -> c
+                        | _ -> -1
+                      in
+                      let message =
+                        match List.assoc_opt "message" err_fields with
+                        | Some (Json.String m) -> m
+                        | _ -> "Unknown error"
+                      in
+                      let data = List.assoc_opt "data" err_fields in
+                      Error (Common.UnknownServerError { code; message; data })
+                  | Some err_json ->
+                      Error
+                        (Common.UnknownServerError
+                           {
+                             code = -1;
+                             message = "Invalid error format";
+                             data = Some err_json;
+                           })
                   | None -> (
                       match List.assoc_opt "result" fields with
                       | Some result_json -> (
-                          (* Parse the result through the protocol *)
                           match P.response_of_json result_json with
                           | Ok parsed_result -> Ok parsed_result
                           | Error err_json ->
                               Error
-                                (Common.make_error ~code:Common.ParseError
-                                   ~message:
-                                     (format "Failed to parse result: %s"
-                                        (Json.to_string err_json))
-                                   ()))
+                                (Common.InternalError
+                                   {
+                                     context = "call_parse_result";
+                                     details =
+                                       format "Failed to parse result: %s"
+                                         (Json.to_string err_json);
+                                   }))
                       | None ->
                           Error
-                            (Common.make_error ~code:Common.InternalError
-                               ~message:"Response missing result" ())))
+                            (Common.InvalidRequest
+                               {
+                                 request_json = json;
+                                 reason = "Response missing result";
+                               })))
               | _ ->
                   Error
-                    (Common.make_error ~code:Common.ParseError
-                       ~message:"Response must be an object" ()))))
+                    (Common.InvalidRequest
+                       {
+                         request_json = json;
+                         reason = "Response must be an object";
+                       }))))
 
-let notify (type req res) (client : (req, res) t) ~method_ ?params () =
+let notify (type req res) (client : (req, res) t) ~method_ ?params () :
+    (unit, Common.error) result =
   let jsonrpc_req = Common.notification ~method_ ?params () in
   let json = Common.request_to_json jsonrpc_req in
   let str = Json.to_string json in
-  send_raw_request client str
+  match send_raw_request client str with
+  | Ok () -> Ok ()
+  | Error e -> Error (Common.InternalError { context = "notify"; details = e })
 
-let call_batch (type req res) (client : (req, res) t) (requests : req list) =
+let call_batch (type req res) (client : (req, res) t) (requests : req list) :
+    (res Common.response list, Common.error) result =
   let (Client c) = client in
   let module P =
     (val c.protocol_mod
         : Common.ApplicationProtocol with type request = req
          and type response = res)
   in
-  (* Convert each request to JSON-RPC format *)
   let jsonrpc_requests =
     List.map
       (fun req ->
@@ -196,23 +263,26 @@ let call_batch (type req res) (client : (req, res) t) (requests : req list) =
       requests
   in
 
-  (* Send batch request *)
   let json_array =
     Json.Array (List.map Common.request_to_json jsonrpc_requests)
   in
   let str = Json.to_string json_array in
   match send_raw_request client str with
-  | Error e -> Error e
+  | Error e ->
+      Error (Common.InternalError { context = "call_batch_send"; details = e })
   | Ok () -> (
-      (* Receive batch response *)
       match receive_raw_response client with
-      | Error e -> Error e
+      | Error e ->
+          Error
+            (Common.InternalError
+               { context = "call_batch_receive"; details = e })
       | Ok str -> (
           match Json.of_string str with
           | Error e ->
-              Error (format "JSON parse error: %s" (Json.error_to_string e))
+              Error
+                (Common.ParseError
+                   { raw_input = str; parse_error = Json.error_to_string e })
           | Ok (Json.Array responses) -> (
-              (* Parse each response *)
               let parsed_responses =
                 List.fold_left
                   (fun acc json_resp ->
@@ -228,55 +298,77 @@ let call_batch (type req res) (client : (req, res) t) (requests : req list) =
                             | Some (Json.String "2.0"), Some id_json -> (
                                 match Common.id_of_json id_json with
                                 | Ok id -> (
-                                    let error =
-                                      match List.assoc_opt "error" fields with
-                                      | None -> Ok None
-                                      | Some e -> (
-                                          match Common.error_of_json e with
-                                          | Ok err -> Ok (Some err)
-                                          | Error msg -> Error msg)
-                                    in
-                                    match error with
-                                    | Ok (Some error) ->
-                                        Ok
-                                          ({
-                                             Common.jsonrpc = "2.0";
-                                             result = Error error;
-                                             id;
-                                           }
-                                          :: responses)
-                                    | Ok None -> (
+                                    match List.assoc_opt "result" fields with
+                                    | Some result_json -> (
                                         match
-                                          List.assoc_opt "result" fields
+                                          P.response_of_json result_json
                                         with
-                                        | Some result_json -> (
-                                            match
-                                              P.response_of_json result_json
-                                            with
-                                            | Ok parsed_result ->
-                                                Ok
-                                                  ({
-                                                     Common.jsonrpc = "2.0";
-                                                     result = Ok parsed_result;
-                                                     id;
-                                                   }
-                                                  :: responses)
-                                            | Error _ ->
-                                                Error "Failed to parse result")
-                                        | None ->
+                                        | Ok parsed_result ->
+                                            Ok
+                                              ({
+                                                 Common.jsonrpc = "2.0";
+                                                 result = parsed_result;
+                                                 id;
+                                               }
+                                              :: responses)
+                                        | Error err_json ->
                                             Error
-                                              "Response missing both result \
-                                               and error")
-                                    | Error e -> Error e)
-                                | Error e -> Error e)
-                            | _ -> Error "Invalid response in batch")
-                        | _ -> Error "Batch response item must be an object"))
+                                              (Common.InternalError
+                                                 {
+                                                   context =
+                                                     "call_batch_parse_result";
+                                                   details =
+                                                     format
+                                                       "Failed to parse \
+                                                        result: %s"
+                                                       (Json.to_string err_json);
+                                                 }))
+                                    | None ->
+                                        Error
+                                          (Common.InvalidRequest
+                                             {
+                                               request_json = json_resp;
+                                               reason =
+                                                 "Response missing result";
+                                             }))
+                                | Error e ->
+                                    Error
+                                      (Common.InvalidRequest
+                                         {
+                                           request_json = json_resp;
+                                           reason = format "Invalid ID: %s" e;
+                                         }))
+                            | _ ->
+                                Error
+                                  (Common.InvalidRequest
+                                     {
+                                       request_json = json_resp;
+                                       reason = "Invalid response in batch";
+                                     }))
+                        | _ ->
+                            Error
+                              (Common.InvalidRequest
+                                 {
+                                   request_json = json_resp;
+                                   reason =
+                                     "Batch response item must be an object";
+                                 })))
                   (Ok []) responses
               in
               match parsed_responses with
               | Ok responses -> Ok (List.rev responses)
               | Error e -> Error e)
-          | _ -> Error "Batch response must be an array"))
+          | Ok json ->
+              Error
+                (Common.InvalidRequest
+                   {
+                     request_json = json;
+                     reason = "Batch response must be an array";
+                   })
+          | Error e ->
+              Error
+                (Common.ParseError
+                   { raw_input = str; parse_error = Json.error_to_string e })))
 
 let close (Client { transport_mod; transport; _ }) =
   let module T = (val transport_mod : Transport with type t = _) in

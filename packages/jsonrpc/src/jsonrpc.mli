@@ -41,30 +41,30 @@ type request = {
 (** JSON-RPC 2.0 Request - represents both regular requests and notifications *)
 
 (** Standard JSON-RPC 2.0 error codes *)
-type error_code =
-  | ParseError  (** -32700: Invalid JSON was received *)
-  | InvalidRequest  (** -32600: JSON is not a valid Request object *)
-  | MethodNotFound  (** -32601: Method does not exist *)
-  | InvalidParams  (** -32602: Invalid method parameters *)
-  | InternalError  (** -32603: Internal JSON-RPC error *)
-  | ServerError of int
-      (** -32000 to -32099: Reserved for implementation-defined server errors *)
-  | ApplicationError of int  (** Application-specific error codes *)
-
-type error = {
-  code : error_code;  (** Error code *)
-  message : string;  (** Human-readable error message *)
-  data : Json.t option;  (** Additional error information *)
-}
-(** JSON-RPC 2.0 Error object *)
+type error =
+  | ParseError of { raw_input : string; parse_error : string }
+      (** Client failed to parse JSON or JSON-RPC structure *)
+  | InvalidRequest of { request_json : Json.t; reason : string }
+      (** Received malformed JSON-RPC request/response *)
+  | MethodNotFound of { method_name : string }  (** Method does not exist *)
+  | InvalidParams of { method_name : string; params : params; reason : string }
+      (** Invalid method parameters *)
+  | InternalError of { context : string; details : string }
+      (** Internal client error (transport, serialization, etc.) *)
+  | UnknownServerError of { code : int; message : string; data : Json.t option }
+      (** Server returned a JSON-RPC error object that couldn't be parsed into a
+          typed response variant *)
+(** Client-side errors with rich context information. Includes
+    UnknownServerError for when the server sends a JSON-RPC error that we don't
+    have a typed response variant for. *)
 
 type 'res response = {
   jsonrpc : string;  (** Must be "2.0" *)
-  result : ('res, error) result;  (** Success value or error *)
+  result : 'res;  (** Response value from server *)
   id : id;  (** ID matching the request *)
 }
-(** JSON-RPC 2.0 Response - parameterized by result type. Uses OCaml's result
-    type to ensure exactly one of success or error. *)
+(** JSON-RPC 2.0 Response - contains the server's response. Server errors are
+    part of the response type (as variants), not Error results. *)
 
 type batch_request = request list
 (** Batch request - multiple requests sent as array *)
@@ -78,12 +78,6 @@ val request_to_json : request -> Json.t
 val request_of_json : Json.t -> (request, string) result
 (** Parse a request from JSON, returns error message on failure *)
 
-val error_to_json : error -> Json.t
-(** Convert an error to JSON representation *)
-
-val error_of_json : Json.t -> (error, string) result
-(** Parse an error from JSON, returns error message on failure *)
-
 val id_to_json : id -> Json.t
 (** Convert an ID to JSON representation *)
 
@@ -94,18 +88,8 @@ val request : method_:string -> ?params:params -> ?id:id -> unit -> request
 (** Create a request with the given method, optional parameters, and optional ID
 *)
 
-val error : code:error_code -> message:string -> ?data:Json.t -> unit -> error
-(** Create an error with the given code, message, and optional additional data
-*)
-
 val notification : method_:string -> ?params:params -> unit -> request
 (** Create a notification (request with no ID) *)
-
-val error_code_to_int : error_code -> int
-(** Convert error code to its integer representation *)
-
-val int_to_error_code : int -> error_code
-(** Convert integer to error code (application-defined for unknown codes) *)
 
 val is_notification : request -> bool
 (** Check if a request is a notification (has no ID) *)
@@ -149,21 +133,17 @@ val is_notification : request -> bool
     ]} *)
 
 val ok : ?id:id -> 'res -> 'res response
-(** Create a successful response with an optional ID (defaults to Null) *)
-
-val error : ?id:id -> error -> 'res response
-(** Create an error response with an optional ID (defaults to Null) *)
-
-val make_error :
-  code:error_code -> message:string -> ?data:Json.t -> unit -> error
-(** Create an error object with code, message and optional data *)
+(** Create a response with an optional ID (defaults to Null) *)
 
 module type ApplicationProtocol = sig
   type request
   (** Application-specific request type *)
 
   type response
-  (** Application-specific response type *)
+  (** Application-specific response type. This should include all possible
+      server states including errors (e.g., NotFound, BuildFailed, etc.) as
+      variants. These are not "errors" in the RPC sense - they're valid
+      responses from the server. *)
 
   val response_to_json : response -> Json.t
   (** Convert typed response to JSON for transmission *)
@@ -222,30 +202,34 @@ module Client : sig
     ?params:params ->
     unit ->
     ('res, error) result
-  (** Send a raw JSON-RPC request and wait for response. Returns the raw JSON
-      result or an error. For typed calls, use send_request/receive_response
-      instead. *)
+  (** Send a raw JSON-RPC request and wait for response.
+      - Ok(response): Server successfully processed the request and returned a
+        response
+      - Error(error): Client-side failure (network, parsing, etc.)
+
+      Note: Server errors/failures are part of the response type, not Error
+      results. *)
 
   val notify :
     ('req, 'res) t ->
     method_:string ->
     ?params:params ->
     unit ->
-    (unit, string) result
+    (unit, error) result
   (** Send a notification (no response expected). Notifications are
       fire-and-forget - the server will not send a response. *)
 
   val call_batch :
-    ('req, 'res) t -> 'req list -> ('res response list, string) result
+    ('req, 'res) t -> 'req list -> ('res response list, error) result
   (** Send a batch of typed requests and receive batch response. All requests
       are sent together and responses are returned together. Useful for reducing
       round-trip latency. *)
 
-  val send_request : ('req, 'res) t -> 'req -> (unit, string) result
+  val send_request : ('req, 'res) t -> 'req -> (unit, error) result
   (** Send a typed request without waiting for response. Use with
       receive_response for streaming or async patterns. *)
 
-  val receive_response : ('req, 'res) t -> ('res response, string) result
+  val receive_response : ('req, 'res) t -> ('res response, error) result
   (** Receive and parse a typed response. Use after send_request to complete the
       request/response cycle. *)
 

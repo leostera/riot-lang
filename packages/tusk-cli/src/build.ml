@@ -1,5 +1,5 @@
 open Std
-open Tusk_model
+open Std.Collections
 open Tusk_model
 open Tusk_server
 
@@ -33,37 +33,44 @@ let build_command package_opt =
     | Some pkg -> Tusk_client.BuildPackage pkg
     | None -> Tusk_client.BuildAll
   in
-  let displayed_packages = Hashtbl.create 32 in
+  let displayed_packages = HashMap.create () in
   let result =
     Tusk_client.build_streaming client request (fun event ->
         match event with
         | Tusk_client.BuildStarted session_id -> ()
-        | Tusk_client.BuildEvent event ->
-            let should_display =
-              match event.kind with
-              | CacheHit { package; _ } | CacheMiss { package; _ } ->
-                  if Hashtbl.mem displayed_packages package then false
-                  else (
-                    Hashtbl.add displayed_packages package ();
-                    true)
-              | PackageComplete { package; _ } -> (
-                  match event.kind with
-                  | PackageComplete { success = false; _ } -> true
-                  | _ -> false)
-              | _ -> true
-            in
-            if should_display then
-              let formatted = Event_formatter.format event in
-              if formatted <> "" then println "%s" formatted
-        | Tusk_client.BuildFinished _ -> ())
+        | Tusk_client.BuildEvent _event -> ()
+        | Tusk_client.BuildCompleted _ -> ()
+        | Tusk_client.BuildFailed _ -> ())
     |> Result.expect ~msg:"Build failed"
   in
   Tusk_client.close client;
 
   match result with
-  | Tusk_client.BuildFinished (Ok ()) -> Ok ()
-  | Tusk_client.BuildFinished (Error msg) ->
-      println "error: build failed: %s" msg;
+  | Tusk_client.BuildCompleted _ -> Ok ()
+  | Tusk_client.BuildFailed { errors; stats; _ } ->
+      (match errors with
+      | [] ->
+          println "error: build failed: %d packages failed"
+            stats.packages_failed
+      | errs ->
+          println "error: build failed: %d packages failed" (List.length errs);
+          List.iter
+            (fun (r : Tusk_protocol.WireProtocol.build_result) ->
+              match r.status with
+              | Tusk_protocol.WireProtocol.Failed err ->
+                  let error_msg =
+                    match err with
+                    | Tusk_protocol.WireProtocol.PlanningFailed planning_err ->
+                        Tusk_planner.Planning_error.to_string planning_err
+                    | Tusk_protocol.WireProtocol.ExecutionFailed { message } ->
+                        message
+                    | Tusk_protocol.WireProtocol.ActionFailed action_err ->
+                        Tusk_executor.Package_builder.package_error_to_string
+                          (Tusk_executor.Package_builder.ActionFailed action_err)
+                  in
+                  println "  %s: %s" r.package.name error_msg
+              | _ -> ())
+            errs);
       Error (Failure "Build failed")
   | Tusk_client.BuildStarted _ | Tusk_client.BuildEvent _ ->
       Error (Failure "Unexpected response from server")

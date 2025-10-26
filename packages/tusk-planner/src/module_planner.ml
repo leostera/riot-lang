@@ -37,26 +37,12 @@ let plan_node input =
   try
     let graph_builder = Module_graph.create config in
 
-    let native_dir = Path.v "native" in
-    let native_path = Path.(input.package.path / native_dir) in
-    (match Fs.is_dir native_path with
-    | Ok true ->
-        let native_entries =
-          Module_scanner.scan ~root:input.package.path ~source_dir:native_dir
-        in
-        List.iter
-          (fun entry ->
-            match entry with
-            | Module_scanner.C (name, path) ->
-                let c_node =
-                  Module_node.
-                    { file = Concrete path; open_modules = []; kind = C }
-                in
-                let _ = G.add_node graph_builder.graph c_node in
-                ()
-            | _ -> ())
-          native_entries
-    | _ -> ());
+    (match input.package.sources.native with
+    | [] -> ()
+    | files ->
+        let native_node = Module_node.make_native ~files in
+        let _ = G.add_node (Module_graph.graph graph_builder) native_node in
+        ());
 
     let sandbox_dir = Path.(input.package.path / input.planning_root) in
     Module_graph.wire_dependencies graph_builder sandbox_dir;
@@ -77,7 +63,7 @@ let plan_node input =
       match input.package.library with
       | Some _lib ->
           let result = ref None in
-          G.iter graph_builder.graph ~fn:(fun node_id node ->
+          G.iter (Module_graph.graph graph_builder) ~fn:(fun node_id node ->
               match node.value.Module_node.kind with
               | Module_node.Library _ when !result = None ->
                   result := Some node_id
@@ -85,44 +71,6 @@ let plan_node input =
           !result
       | None -> None
     in
-
-    (match input.package.test_library with
-    | Some _test_lib ->
-        let test_namespace = namespace ^ "Tests" in
-        let test_config =
-          Module_graph.
-            {
-              root = input.package.path;
-              source_dir = Path.v "tests";
-              namespace = test_namespace;
-              package = input.package;
-              toolchain = input.toolchain;
-              workspace = input.workspace;
-            }
-        in
-        let test_graph_builder = Module_graph.create test_config in
-        let test_sandbox_dir = Path.(input.package.path / Path.v "tests") in
-        Module_graph.wire_dependencies test_graph_builder test_sandbox_dir;
-
-        let test_nodes =
-          G.map test_graph_builder.graph ~fn:(fun (node_id, node) -> node.value)
-        in
-        List.iter
-          (fun test_node ->
-            let test_node_added = G.add_node graph_builder.graph test_node in
-            match (main_library_node_id, test_node.kind) with
-            | Some lib_node_id, (Module_node.ML _ | Module_node.MLI _) ->
-                let main_lib_node =
-                  G.get_node graph_builder.graph lib_node_id
-                in
-                G.add_edge test_node_added ~depends_on:main_lib_node
-            | _ -> ())
-          test_nodes;
-
-        Module_graph.add_library_node test_graph_builder
-          ~name:(input.package.name ^ "_tests")
-          ~includes:[]
-    | None -> ());
 
     let module_graph = Module_graph.graph graph_builder in
 
@@ -135,15 +83,23 @@ let plan_node input =
 
     let sources =
       module_graph |> G.topo_sort
-      |> List.filter_map (fun (node : Module_node.t G.node) ->
-          match node.value.file with
-          | Concrete path when Path.to_string path <> "" ->
-              let abs_path =
-                if Path.is_absolute path then path
-                else Path.(input.package.path / path)
-              in
-              Some abs_path
-          | _ -> None)
+      |> List.concat_map (fun (node : Module_node.t G.node) ->
+          match node.value.kind with
+          | Native { files } ->
+              List.map
+                (fun path ->
+                  if Path.is_absolute path then path
+                  else Path.(input.package.path / path))
+                files
+          | _ -> (
+              match node.value.file with
+              | Concrete path when Path.to_string path <> "" ->
+                  let abs_path =
+                    if Path.is_absolute path then path
+                    else Path.(input.package.path / path)
+                  in
+                  [ abs_path ]
+              | _ -> []))
     in
 
     Ok { sources; module_graph; action_graph }

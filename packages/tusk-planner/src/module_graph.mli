@@ -11,12 +11,7 @@ type config = {
   workspace : Workspace.t;
 }
 
-type t = {
-  config : config;
-  graph : Module_node.t G.t;
-  registry : Module_registry.t;
-  entries : Module_scanner.entry list;
-}
+type t
 
 val create : config -> t
 val wire_dependencies : t -> Path.t -> unit
@@ -32,3 +27,4 @@ val add_binary_node :
 
 val graph : t -> Module_node.t G.t
 val registry : t -> Module_registry.t
+val entries : t -> Module_scanner.entry list

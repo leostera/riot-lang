@@ -77,46 +77,63 @@ let execute (client : Tusk_client.t) (req : request) : response =
   in
   Log.debug "[BUILD TOOL] Created build request, calling build_streaming";
   let messages = ref [] in
-  let has_error = ref false in
   let result =
     Tusk_client.build_streaming client build_request (function
       | Tusk_client.BuildStarted _ ->
           Log.debug "[BUILD TOOL] BuildStarted callback";
           messages := !messages @ [ "Build started" ]
-      | Tusk_client.BuildEvent event ->
-          Log.debug "[BUILD TOOL] BuildEvent callback";
-          let msg =
-            match event.kind with
-            | CacheHit { package; _ } -> format "Compiling %s (cached)" package
-            | CacheMiss { package; _ } -> format "Compiling %s" package
-            | PackageComplete { package; success; errors; _ } ->
-                if success then format "✓ %s built successfully" package
-                else
-                  let error_msgs = List.map (fun e -> e.Event.raw) errors in
-                  format "✗ %s failed: %s" package
-                    (String.concat "; " error_msgs)
-            | _ -> ""
+      | Tusk_client.BuildEvent _event ->
+          Log.debug
+            "[BUILD TOOL] BuildEvent callback (telemetry events not yet \
+             processed)"
+      | Tusk_client.BuildCompleted { stats; _ } ->
+          Log.debug "[BUILD TOOL] BuildCompleted callback";
+          messages :=
+            !messages
+            @ [
+                format
+                  "Build completed successfully (%d packages built, %d from \
+                   cache)"
+                  stats.packages_built stats.cache_hits;
+              ]
+      | Tusk_client.BuildFailed { errors; stats; _ } ->
+          Log.debug "[BUILD TOOL] BuildFailed callback";
+          let failed_packages =
+            List.map
+              (fun (r : Tusk_protocol.WireProtocol.build_result) ->
+                r.package.name)
+              errors
           in
-          if msg <> "" then messages := !messages @ [ msg ]
-      | Tusk_client.BuildFinished (Ok ()) ->
-          Log.debug "[BUILD TOOL] BuildFinished Ok callback";
-          messages := !messages @ [ "Build completed successfully" ]
-      | Tusk_client.BuildFinished (Error msg) ->
-          Log.debug "[BUILD TOOL] BuildFinished Error callback";
-          has_error := true;
-          messages := !messages @ [ format "Build failed: %s" msg ])
+          messages :=
+            !messages
+            @ [
+                format "Build failed: %s (%d packages built, %d failed)"
+                  (String.concat ", " failed_packages)
+                  stats.packages_built stats.packages_failed;
+              ])
   in
   Log.debug "[BUILD TOOL] build_streaming returned, processing result";
   match result with
-  | Ok _ when !has_error ->
-      Log.debug "[BUILD TOOL] returning Error from messages";
-      Error (String.concat "\n" !messages)
-  | Ok _ ->
+  | Ok (Tusk_client.BuildCompleted _) ->
       Log.debug "[BUILD TOOL] returning BuildResult";
       BuildResult { messages = !messages }
-  | Error msg ->
-      Log.debug "[BUILD TOOL] returning Error: %s" msg;
-      Error msg
+  | Ok (Tusk_client.BuildFailed _) ->
+      Log.debug "[BUILD TOOL] returning Error from BuildFailed";
+      Error (String.concat "\n" !messages)
+  | Error e ->
+      Log.debug "[BUILD TOOL] returning Error from client error";
+      let error_msg =
+        match e with
+        | Tusk_client.JsonrpcError je -> Tusk_client.jsonrpc_error_to_string je
+        | Tusk_client.PackageNotFound { package_name; available_packages } ->
+            format "Package not found: %s (available: %s)" package_name
+              (String.concat ", " available_packages)
+        | Tusk_client.UnexpectedEvent { reason; _ } -> reason
+      in
+      Error error_msg
+  | Ok _ ->
+      Log.debug "[BUILD TOOL] Unexpected final event, returning messages";
+      BuildResult { messages = !messages }
 
 let response_to_json = function
   | BuildResult { messages } ->

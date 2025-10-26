@@ -42,7 +42,11 @@ let to_secs_float t =
 
 let to_millis t = (t.secs * 1000) + (t.nanos / 1_000_000)
 let to_micros t = (t.secs * 1_000_000) + (t.nanos / 1_000)
-let to_nanos t = (t.secs * 1_000_000_000) + t.nanos
+
+let to_nanos t =
+  Int64.add
+    (Int64.mul (Int64.of_int t.secs) 1_000_000_000L)
+    (Int64.of_int t.nanos)
 
 (* Subsecond components *)
 let subsec_millis t = t.nanos / 1_000_000

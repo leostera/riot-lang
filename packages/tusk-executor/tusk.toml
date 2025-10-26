@@ -2,9 +2,6 @@
 name = "tusk-executor"
 version = "0.1.0"
 
-[package.lib]
-path = "src/TuskExecutor.ml"
-
 [dependencies]
 std = "*"
 miniriot = "*"
@@ -12,27 +9,3 @@ tusk-model = "*"
 tusk-planner = "*"
 tusk-toolchain = "*"
 tusk-store = "*"
-
-[[bin]]
-name = "sandbox_tests"
-path = "tests/sandbox_tests.ml"
-
-[[bin]]
-name = "action_executor_tests"
-path = "tests/action_executor_tests.ml"
-
-[[bin]]
-name = "package_builder_tests"
-path = "tests/package_builder_tests.ml"
-
-[[bin]]
-name = "caching_tests"
-path = "tests/caching_tests.ml"
-
-[[bin]]
-name = "integration_caching_tests"
-path = "tests/integration_caching_tests.ml"
-
-[[bin]]
-name = "executor_behavior_tests"
-path = "tests/executor_behavior_tests.ml"

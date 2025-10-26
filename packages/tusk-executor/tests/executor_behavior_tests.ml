@@ -25,8 +25,7 @@ let make_test_package () =
       dependencies = [];
       binaries = [];
       library = None;
-      test_library = None;
-      test_modules = [];
+      sources = { src = []; native = []; tests = [] };
     }
 
 let make_action_spec ?(actions = []) ?(outs = []) ?(srcs = []) () =

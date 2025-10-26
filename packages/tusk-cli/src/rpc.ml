@@ -267,16 +267,65 @@ let handle_build client sub_matches =
             ]
         in
         println "%s" (Json.to_string json)
-    | Tusk_client.BuildEvent event ->
-        let json = Event.to_json event in
-        println "%s" (Json.to_string json)
-    | Tusk_client.BuildFinished result ->
+    | Tusk_client.BuildEvent event -> (
+        match Tusk_executor.Telemetry_events.to_json event with
+        | Some json -> println "%s" (Json.to_string json)
+        | None -> ())
+    | Tusk_client.BuildCompleted { stats; _ } ->
         let json =
-          match result with
-          | Ok () -> Json.Object [ ("type", Json.String "success") ]
-          | Error msg ->
-              Json.Object
-                [ ("type", Json.String "error"); ("message", Json.String msg) ]
+          Json.Object
+            [
+              ("type", Json.String "success");
+              ("packages_built", Json.Int stats.packages_built);
+              ("cache_hits", Json.Int stats.cache_hits);
+            ]
+        in
+        println "%s" (Json.to_string json)
+    | Tusk_client.BuildFailed { errors; stats; _ } ->
+        let error_details =
+          List.filter_map
+            (fun (r : Tusk_protocol.WireProtocol.build_result) ->
+              match r.status with
+              | Tusk_protocol.WireProtocol.Failed err ->
+                  let error_msg =
+                    match err with
+                    | Tusk_protocol.WireProtocol.PlanningFailed planning_err ->
+                        Tusk_planner.Planning_error.to_string planning_err
+                    | Tusk_protocol.WireProtocol.ExecutionFailed { message } ->
+                        message
+                    | Tusk_protocol.WireProtocol.ActionFailed action_err -> (
+                        match action_err with
+                        | Tusk_executor.Action_executor.ExecutionFailed
+                            { message } ->
+                            message
+                        | Tusk_executor.Action_executor.OutputsNotCreated
+                            { missing } ->
+                            format "Outputs not created: %s"
+                              (String.concat ", "
+                                 (List.map Path.to_string missing))
+                        | Tusk_executor.Action_executor.DependenciesFailed
+                            { failed } ->
+                            format "Dependencies failed: %d actions"
+                              (List.length failed))
+                  in
+                  Some
+                    (Json.Object
+                       [
+                         ("package", Json.String r.package.name);
+                         ("error", Json.String error_msg);
+                       ])
+              | _ -> None)
+            errors
+        in
+        let json =
+          Json.Object
+            [
+              ("type", Json.String "error");
+              ("message", Json.String "Build failed");
+              ("packages_built", Json.Int stats.packages_built);
+              ("packages_failed", Json.Int stats.packages_failed);
+              ("errors", Json.Array error_details);
+            ]
         in
         println "%s" (Json.to_string json)
   in
@@ -284,12 +333,20 @@ let handle_build client sub_matches =
   match result with
   | Ok _ -> Ok ()
   | Error e ->
+      let error_msg =
+        match e with
+        | Tusk_client.JsonrpcError je -> Tusk_client.jsonrpc_error_to_string je
+        | Tusk_client.PackageNotFound { package_name; available_packages } ->
+            format "Package not found: %s (available: %s)" package_name
+              (String.concat ", " available_packages)
+        | Tusk_client.UnexpectedEvent { reason; _ } -> reason
+      in
       let response =
         Json.Object
-          [ ("type", Json.String "Error"); ("message", Json.String e) ]
+          [ ("type", Json.String "Error"); ("message", Json.String error_msg) ]
       in
       println "%s" (Json.to_string response);
-      Error (Failure e)
+      Error (Failure error_msg)
 
 let handle_restart client _sub_matches =
   let result = Tusk_client.restart client in

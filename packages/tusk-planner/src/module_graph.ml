@@ -110,28 +110,10 @@ let rec do_scan ~t ~ctx entries =
       | Module_scanner.ML (_, path) | Module_scanner.MLI (_, path) ->
           handle_ocaml_module ~t ~ctx path;
           do_scan ~t ~ctx rest
-      | Module_scanner.C (_, path) ->
-          handle_c_file ~t ~ctx path;
-          do_scan ~t ~ctx rest
-      | Module_scanner.H (_, path) ->
-          handle_h_file ~t ~ctx path;
-          do_scan ~t ~ctx rest
       | Module_scanner.Other _ -> do_scan ~t ~ctx rest
       | Module_scanner.Dir (name, path, children) ->
           handle_library ~t ~ctx path name children;
           do_scan ~t ~ctx rest)
-
-and handle_c_file ~t ~ctx path =
-  let { parent_impl; _ } = ctx in
-  let node = Module_node.make_c path in
-  let c_node = G.add_node t.graph node in
-  G.add_edge parent_impl ~depends_on:c_node
-
-and handle_h_file ~t ~ctx path =
-  let { parent_impl; _ } = ctx in
-  let node = Module_node.make_h path in
-  let h_node = G.add_node t.graph node in
-  G.add_edge parent_impl ~depends_on:h_node
 
 (** Handle a binary source file.
 
@@ -223,14 +205,17 @@ and handle_ocaml_module ~t ~ctx path =
 and handle_library ~t ~ctx dir name children =
   let { ns; aliases; parent_impl; parent_intf } = ctx in
 
-  let lib_module_name = Module_name.of_string ~namespace:ns name in
+  let lib_module_name = Module_name.of_string name in
   let intf_file = Module_name.canonical_mli lib_module_name in
   let impl_file = Module_name.canonical_ml lib_module_name in
 
   let intf_mod = Module.make ~namespace:ns ~filename:intf_file in
   let impl_mod = Module.make ~namespace:ns ~filename:impl_file in
 
-  let ns = Namespace.append ns (Module_name.to_string lib_module_name) in
+  let ns =
+    let namespaced_lib = Module.module_name impl_mod in
+    Namespace.append ns (Module_name.to_string namespaced_lib)
+  in
 
   let lib_def =
     Library_definition.from_entries ~namespace:ns ~library_name:name
@@ -371,7 +356,25 @@ let create config =
     - MLI -> ML dependencies are filtered out to maintain proper compilation
       order *)
 let wire_dependencies t sandbox_dir =
+  Log.info "[MODULE_GRAPH] wire_dependencies starting for %s" t.config.namespace;
   let all_nodes = G.map t.graph ~fn:(fun (node_id, node) -> (node_id, node)) in
+  Log.info "[MODULE_GRAPH] G.map returned %d nodes" (List.length all_nodes);
+
+  (* Sort nodes by ID to ensure deterministic ordering - G.map uses Hashtbl.to_seq which is non-deterministic *)
+  let sorted_nodes =
+    List.sort
+      (fun (id1, _) (id2, _) ->
+        Int.compare (G.Node_id.to_int id1) (G.Node_id.to_int id2))
+      all_nodes
+  in
+  Log.info "[MODULE_GRAPH] Sorted %d nodes by ID" (List.length sorted_nodes);
+  List.iteri
+    (fun i (node_id, (node : Module_node.t G.node)) ->
+      if i < 10 then
+        Log.debug "[MODULE_GRAPH]   sorted_node #%d: id=%s kind=%s" i
+          (G.Node_id.to_string node_id)
+          (Module_node.kind_to_string node.value.Module_node.kind))
+    sorted_nodes;
 
   let files_with_nodes =
     List.filter_map
@@ -383,7 +386,7 @@ let wire_dependencies t sandbox_dir =
             | Module_node.Concrete path -> Some (path, node)
             | Module_node.Generated _ -> None)
         | _ -> None)
-      all_nodes
+      sorted_nodes
   in
 
   let files = List.map (fun (path, _) -> path) files_with_nodes in
@@ -391,9 +394,23 @@ let wire_dependencies t sandbox_dir =
   let namespace = Namespace.of_string t.config.namespace in
   let ocamldep = Tusk_toolchain.ocamldep t.config.toolchain in
 
-  (* ocamldep is run with cwd=sandbox_dir, so we only need basenames *)
+  (* ocamldep is run with cwd=sandbox_dir, so paths need to be relative to source_dir *)
+  (* Sort files deterministically to ensure consistent hashing *)
+  let sorted_files =
+    List.sort
+      (fun a b -> String.compare (Path.to_string a) (Path.to_string b))
+      files
+  in
+  let source_dir_prefix = Path.to_string t.config.source_dir ^ "/" in
   let files_relative_to_cwd =
-    List.map (fun file -> Path.basename file |> Path.v) files
+    List.map
+      (fun file ->
+        let file_str = Path.to_string file in
+        if String.starts_with ~prefix:source_dir_prefix file_str then
+          let len = String.length source_dir_prefix in
+          Path.v (String.sub file_str len (String.length file_str - len))
+        else Path.basename file |> Path.v)
+      sorted_files
   in
 
   let file_deps_map =
@@ -401,20 +418,54 @@ let wire_dependencies t sandbox_dir =
       ~files:files_relative_to_cwd ~package_namespace:namespace
   in
 
-  (* Build mapping from basename -> deps *)
-  let deps_by_basename = Hashtbl.create (List.length file_deps_map) in
+  (* Build mapping from relative path -> raw deps (module names as strings) *)
+  let deps_by_path = Hashtbl.create (List.length file_deps_map) in
   List.iter
     (fun (file, deps) ->
-      Hashtbl.add deps_by_basename (Path.to_string file) deps)
+      (* Convert Module_name.t back to plain strings *)
+      let dep_strs = List.map Module_name.to_string deps in
+      Hashtbl.add deps_by_path (Path.to_string file) dep_strs)
     file_deps_map;
 
-  (* Match original paths to deps by basename *)
+  (* Match files to deps and resolve module names using the file's own namespace *)
   let deps =
     List.filter_map
       (fun (path, node) ->
-        let basename_str = Path.basename path in
-        match Hashtbl.find_opt deps_by_basename basename_str with
-        | Some deps -> Some (node, deps)
+        (* Get the relative path that was passed to ocamldep *)
+        let file_str = Path.to_string path in
+        let rel_path =
+          if String.starts_with ~prefix:source_dir_prefix file_str then
+            let len = String.length source_dir_prefix in
+            String.sub file_str len (String.length file_str - len)
+          else Path.basename path
+        in
+
+        match Hashtbl.find_opt deps_by_path rel_path with
+        | Some dep_names ->
+            (* Get the namespace for this file from its directory *)
+            let file_dir =
+              match Path.parent (Path.v rel_path) with
+              | Some p -> Path.to_string p
+              | None -> "."
+            in
+            let subdir_parts =
+              if file_dir = "." then []
+              else
+                String.split_on_char '/' file_dir
+                |> List.map String.capitalize_ascii
+            in
+            let file_namespace =
+              List.fold_left Namespace.append namespace subdir_parts
+            in
+
+            (* Convert dep names to Module_name.t using the file's namespace *)
+            let resolved_deps =
+              List.map
+                (fun modname ->
+                  Module_name.of_string ~namespace:file_namespace modname)
+                dep_names
+            in
+            Some (node, resolved_deps)
         | None -> Some (node, []))
       files_with_nodes
   in
@@ -456,7 +507,8 @@ let add_library_node t ~name ~includes =
   List.iter
     (fun (node : Module_node.t G.node) ->
       match node.value.kind with
-      | Module_node.ML _ | Module_node.MLI _ | Module_node.C ->
+      | Module_node.ML _ | Module_node.MLI _ | Module_node.C
+      | Module_node.Native _ ->
           G.add_edge lib_node ~depends_on:node
       | _ -> ())
     (List.rev sorted_nodes)
@@ -474,3 +526,4 @@ let add_binary_node t ~name ~source ~libraries ~includes =
 
 let graph t = t.graph
 let registry t = t.registry
+let entries t = t.entries

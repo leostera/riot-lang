@@ -9,6 +9,7 @@ type kind =
   | H
   | Other of string
   | Root
+  | Native of { files : Path.t list }
   | Library of { name : string; includes : Path.t list }
   | Binary of {
       name : string;
@@ -43,6 +44,13 @@ let make_library ~name ~includes =
     kind = Library { name; includes };
   }
 
+let make_native ~files =
+  {
+    file = Concrete (Path.v "native");
+    open_modules = [];
+    kind = Native { files };
+  }
+
 let make_binary ~name ~source ~libraries ~includes =
   {
     file = Concrete source;
@@ -51,3 +59,15 @@ let make_binary ~name ~source ~libraries ~includes =
   }
 
 let set_open_modules t modules = t.open_modules <- modules
+
+let kind_to_string = function
+  | ML mod_ -> format "ML(%s)" (Module.module_name mod_ |> Module_name.to_string)
+  | MLI mod_ ->
+      format "MLI(%s)" (Module.module_name mod_ |> Module_name.to_string)
+  | C -> "C"
+  | H -> "H"
+  | Other s -> format "Other(%s)" s
+  | Root -> "Root"
+  | Native { files } -> format "Native(%d files)" (List.length files)
+  | Library { name; _ } -> format "Library(%s)" name
+  | Binary { name; _ } -> format "Binary(%s)" name

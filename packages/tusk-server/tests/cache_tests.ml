@@ -40,8 +40,7 @@ let make_package tmpdir name content =
       dependencies = [];
       binaries = [];
       library = Some { path = Path.v "src/lib.ml" };
-      test_library = None;
-      test_modules = [];
+      sources = { src = []; native = []; tests = [] };
     }
 
 let test_fresh_build_no_cache () =

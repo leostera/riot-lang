@@ -38,8 +38,7 @@ let test_collect_source_files () =
               dependencies = [];
               binaries = [];
               library = None;
-              test_library = None;
-              test_modules = [];
+              sources = { src = []; native = []; tests = [] };
             }
         in
 
@@ -88,8 +87,7 @@ let test_build_result_status_variants () =
         dependencies = [];
         binaries = [];
         library = None;
-        test_library = None;
-        test_modules = [];
+        sources = { src = []; native = []; tests = [] };
       }
   in
 

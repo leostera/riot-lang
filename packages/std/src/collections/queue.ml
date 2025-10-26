@@ -16,7 +16,8 @@ let enqueue queue value =
   match queue.back with
   | None ->
       queue.front <- Some new_node;
-      queue.back <- Some new_node
+      queue.back <- Some new_node;
+      queue.length <- queue.length + 1
   | Some back_node ->
       back_node.next <- Some new_node;
       queue.back <- Some new_node;

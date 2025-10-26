@@ -106,15 +106,35 @@ let module_to_actions ~get_dep_outputs (module_node : Module_node.t)
           }
       in
       ([ write_action; compile_action ], outputs, sources)
-  | { kind = C; file = Concrete path; _ } ->
-      let obj_file =
-        Path.remove_extension path |> Path.add_extension ~ext:"o"
+  | { kind = Native { files }; _ } ->
+      let c_files =
+        List.filter
+          (fun path -> String.ends_with ~suffix:".c" (Path.to_string path))
+          files
       in
-      let output_name = Path.basename obj_file |> Path.v in
-      let outputs = [ output_name ] in
-      let sources = [ path ] in
-      let compile = Action.CompileC { source = path; outputs } in
-      ([ compile ], outputs, sources)
+
+      let actions =
+        List.map
+          (fun c_file ->
+            let obj_file =
+              Path.remove_extension c_file |> Path.add_extension ~ext:"o"
+            in
+            let output_name = Path.basename obj_file |> Path.v in
+            Action.CompileC { source = c_file; outputs = [ output_name ] })
+          c_files
+      in
+
+      let outputs =
+        List.map
+          (fun c_file ->
+            let obj_file =
+              Path.remove_extension c_file |> Path.add_extension ~ext:"o"
+            in
+            Path.basename obj_file |> Path.v)
+          c_files
+      in
+
+      (actions, outputs, files)
   | { kind = C; file = Generated _; _ }
   | { kind = H; _ }
   | { kind = Root; _ }
@@ -172,6 +192,8 @@ let module_to_actions ~get_dep_outputs (module_node : Module_node.t)
 
 let from_module_graph ~package ~toolchain (module_graph : Module_node.t G.t) :
     t * Path.t list =
+  Log.info "[ACTION_GRAPH] from_module_graph starting for package: %s"
+    package.Package.name;
   let action_graph = create () in
   let node_mapping = HashMap.create () in
   let action_spec_hashes = HashMap.create () in
@@ -179,6 +201,14 @@ let from_module_graph ~package ~toolchain (module_graph : Module_node.t G.t) :
   let all_outputs = Cell.create [] in
 
   let sorted_modules = G.topo_sort module_graph in
+  Log.info "[ACTION_GRAPH] Topologically sorted %d modules"
+    (List.length sorted_modules);
+  List.iteri
+    (fun i (node : Module_node.t G.node) ->
+      Log.debug "[ACTION_GRAPH] Topo order #%d: node_id=%s kind=%s" i
+        (G.Node_id.to_string node.id)
+        (Module_node.kind_to_string node.value.Module_node.kind))
+    sorted_modules;
 
   let get_dep_hash dep_id =
     match HashMap.get action_spec_hashes dep_id with
@@ -196,24 +226,40 @@ let from_module_graph ~package ~toolchain (module_graph : Module_node.t G.t) :
 
   List.iter
     (fun (module_node : Module_node.t G.node) ->
+      Log.debug "[ACTION_GRAPH] Processing module_node id=%s kind=%s deps=[%s]"
+        (G.Node_id.to_string module_node.id)
+        (Module_node.kind_to_string module_node.value.kind)
+        (String.concat ", " (List.map G.Node_id.to_string module_node.deps));
+
       let actions, outputs, sources =
         module_to_actions ~get_dep_outputs module_node.value module_node.deps
       in
+
+      Log.debug "[ACTION_GRAPH]   -> %d actions, %d outputs, %d sources"
+        (List.length actions) (List.length outputs) (List.length sources);
+      Log.debug "[ACTION_GRAPH]   -> outputs: [%s]"
+        (String.concat ", " (List.map Path.to_string outputs));
+
       let _ = HashMap.insert node_outputs module_node.id outputs in
-      if actions = [] then
+      if actions = [] then (
         let placeholder_hash =
           Crypto.hash_string
             (format "no-actions:%s" (G.Node_id.to_string module_node.id))
         in
+        Log.debug "[ACTION_GRAPH]   -> placeholder hash: %s"
+          (Crypto.Digest.hex placeholder_hash);
         let _ =
           HashMap.insert action_spec_hashes module_node.id placeholder_hash
         in
-        ()
+        ())
       else
         let action_spec =
           Action_node.make ~actions ~outs:outputs ~srcs:sources ~package
             ~toolchain ~dependency_hashes:get_dep_hash ~deps:module_node.deps
         in
+        Log.info "[ACTION_GRAPH]   -> action_spec hash: %s"
+          (Crypto.Digest.hex action_spec.hash);
+
         let action_node = add_node action_graph action_spec in
 
         List.iter
@@ -310,8 +356,8 @@ let from_json json =
                                   dependencies = [];
                                   binaries = [];
                                   library = None;
-                                  test_library = None;
-                                  test_modules = [];
+                                  sources =
+                                    { src = []; native = []; tests = [] };
                                 }
                             in
                             let toolchain =

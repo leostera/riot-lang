@@ -99,13 +99,35 @@ module WireProtocol = struct
     cache_misses : int;
   }
 
+  type package_error = Tusk_executor.Package_builder.package_error =
+    | PlanningFailed of Tusk_planner.Planning_error.t
+    | ExecutionFailed of { message : string }
+    | ActionFailed of Tusk_executor.Action_executor.action_error
+
+  type build_status = Tusk_executor.Package_builder.build_status =
+    | Cached of Tusk_store.Artifact.t
+    | Built of Tusk_store.Artifact.t
+    | Failed of package_error
+
+  type build_result = Tusk_executor.Package_builder.build_result = {
+    package : Package.t;
+    status : build_status;
+    duration : Std.Time.Duration.t;
+  }
+
+  let package_error_to_json =
+    Tusk_executor.Package_builder.package_error_to_json
+
+  let build_status_to_json = Tusk_executor.Package_builder.build_status_to_json
+  let build_result_to_json = Tusk_executor.Package_builder.build_result_to_json
+
   type response =
     | Pong
     | BuildGraph of build_graph_response
     | WorkspaceConfig of workspace_config
     | PackageInfo of package_detail
     | BuildStarted of { session_id : Session_id.t; started_at : Std.Datetime.t }
-    | BuildEvent of { session_id : Session_id.t; event : Event.t }
+    | BuildEvent of { session_id : Session_id.t; event : Std.Telemetry.event }
     | CycleDetected of {
         session_id : Session_id.t;
         detected_at : Std.Datetime.t;
@@ -115,12 +137,14 @@ module WireProtocol = struct
         session_id : Session_id.t;
         completed_at : Std.Datetime.t;
         stats : build_stats;
+        results : build_result list;
       }
     | BuildFailed of {
         session_id : Session_id.t;
         failed_at : Std.Datetime.t;
         stats : build_stats;
-        error : string;
+        built : build_result list;
+        errors : build_result list;
       }
     | ExecutableFound of { package : string; binary : string }
     | ExecutableNotFound
@@ -1435,20 +1459,29 @@ module WireProtocol = struct
             ( "cycle_nodes",
               Json.Array (List.map (fun s -> Json.String s) cycle_nodes) );
           ]
-    | BuildEvent { session_id; event } ->
-        Json.Object
-          [
-            ("type", Json.String "build_event");
-            ("session_id", Json.String (Session_id.to_string session_id));
-            ("event_data", Event.to_json event);
-          ]
-    | BuildComplete { session_id; completed_at; stats } ->
+    | BuildEvent { session_id; event } -> (
+        match Tusk_executor.Telemetry_events.to_json event with
+        | Some event_json ->
+            Json.Object
+              [
+                ("type", Json.String "build_event");
+                ("session_id", Json.String (Session_id.to_string session_id));
+                ("event_data", event_json);
+              ]
+        | None ->
+            Json.Object
+              [
+                ("type", Json.String "build_event_skipped");
+                ("session_id", Json.String (Session_id.to_string session_id));
+              ])
+    | BuildComplete { session_id; completed_at; stats; results } ->
         let timestamp = Std.Datetime.to_iso8601 completed_at in
         Json.Object
           [
             ("type", Json.String "build_complete");
             ("session_id", Json.String (Session_id.to_string session_id));
             ("completed_at", Json.String timestamp);
+            ("results", Json.Array (List.map build_result_to_json results));
             ("duration_ms", Json.Int stats.duration_ms);
             ("packages_built", Json.Int stats.packages_built);
             ("packages_failed", Json.Int stats.packages_failed);
@@ -1456,14 +1489,15 @@ module WireProtocol = struct
             ("cache_hits", Json.Int stats.cache_hits);
             ("cache_misses", Json.Int stats.cache_misses);
           ]
-    | BuildFailed { session_id; failed_at; stats; error } ->
+    | BuildFailed { session_id; failed_at; stats; built; errors } ->
         let timestamp = Std.Datetime.to_iso8601 failed_at in
         Json.Object
           [
             ("type", Json.String "build_failed");
             ("session_id", Json.String (Session_id.to_string session_id));
             ("failed_at", Json.String timestamp);
-            ("error", Json.String error);
+            ("built", Json.Array (List.map build_result_to_json built));
+            ("errors", Json.Array (List.map build_result_to_json errors));
             ("duration_ms", Json.Int stats.duration_ms);
             ("packages_built", Json.Int stats.packages_built);
             ("packages_failed", Json.Int stats.packages_failed);
@@ -1562,23 +1596,14 @@ module WireProtocol = struct
             match List.assoc_opt "error" fields with
             | Some (Json.String e) -> Ok (ArtifactNotFound { error = e })
             | _ -> Error (Json.String "Invalid artifact_not_found response"))
-        | Some (Json.String "build_event") ->
-            let session_id =
-              match List.assoc_opt "session_id" fields with
-              | Some (Json.String s) -> Session_id.of_string s
-              | _ -> Session_id.make ()
-            in
-            (* Parse the event from event_data field *)
-            let event =
-              match List.assoc_opt "event_data" fields with
-              | Some event_json -> (
-                  match Event.from_json event_json with
-                  | Ok evt -> evt
-                  | Error err ->
-                      failwith (format "Failed to parse event_data: %s" err))
-              | None -> failwith "Missing event_data field in BuildEvent"
-            in
-            Ok (BuildEvent { session_id; event })
+        | Some (Json.String "build_event")
+        | Some (Json.String "build_event_skipped") ->
+            (* BuildEvents can't be fully deserialized on the client side because they contain
+               rich types (Package.t, Action_node.t) that require full workspace context.
+               We skip them gracefully - the build still completes without them. *)
+            Error
+              (Json.String
+                 "BuildEvent skipped (contains non-serializable types)")
         | Some (Json.String "cycle_detected") ->
             let session_id =
               match List.assoc_opt "session_id" fields with
@@ -1648,12 +1673,24 @@ module WireProtocol = struct
                        cache_hits;
                        cache_misses;
                      };
+                   results = [];
                  })
         | Some (Json.String "build_failed") ->
-            let error =
-              match List.assoc_opt "error" fields with
-              | Some (Json.String s) -> s
-              | _ -> "Unknown error"
+            let built_packages =
+              match List.assoc_opt "built_packages" fields with
+              | Some (Json.Array arr) ->
+                  List.filter_map
+                    (function Json.String s -> Some s | _ -> None)
+                    arr
+              | _ -> []
+            in
+            let failed_packages =
+              match List.assoc_opt "failed_packages" fields with
+              | Some (Json.Array arr) ->
+                  List.filter_map
+                    (function Json.String s -> Some s | _ -> None)
+                    arr
+              | _ -> []
             in
             let duration_ms =
               match List.assoc_opt "duration_ms" fields with
@@ -1706,7 +1743,8 @@ module WireProtocol = struct
                        cache_hits;
                        cache_misses;
                      };
-                   error;
+                   built = [];
+                   errors = [];
                  })
         | Some (Json.String "shutdown_ack") -> Ok ShutdownAck
         | Some (Json.String "restart_ack") -> Ok RestartAck

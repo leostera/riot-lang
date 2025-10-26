@@ -21,8 +21,7 @@ let make_test_input root_path =
             dependencies = [];
             binaries = [];
             library = None;
-            test_library = None;
-            test_modules = [];
+            sources = { src = []; native = []; tests = [] };
           };
       toolchain;
       workspace =
@@ -52,8 +51,7 @@ let test_planner_generates_actions =
                   dependencies = [];
                   binaries = [];
                   library = None;
-                  test_library = None;
-                  test_modules = [];
+                  sources = { src = []; native = []; tests = [] };
                 };
             toolchain;
             workspace =
@@ -147,8 +145,7 @@ let test_deterministic_action_order =
                   dependencies = [];
                   binaries = [];
                   library = Some { path = lib_path };
-                  test_library = None;
-                  test_modules = [];
+                  sources = { src = []; native = []; tests = [] };
                 };
             toolchain;
             workspace =
