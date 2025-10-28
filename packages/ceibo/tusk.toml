@@ -2,5 +2,8 @@
 name = "ceibo"
 version = "0.1.0"
 
+[lib]
+path = "src/ceibo.ml"
+
 [dependencies]
 std = { path = "../std" }

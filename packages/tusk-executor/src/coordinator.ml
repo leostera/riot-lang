@@ -107,9 +107,6 @@ let build_workspace ~workspace ~toolchain ~store ~target ~concurrency =
               | `TaskCompleted result ->
                   Build_queue.mark_completed queue result;
 
-                  let cached =
-                    match result.status with Cached _ -> true | _ -> false
-                  in
                   let status_str =
                     match result.status with
                     | Cached _ -> "cached"
@@ -117,34 +114,7 @@ let build_workspace ~workspace ~toolchain ~store ~target ~concurrency =
                     | Failed _ -> "failed"
                   in
 
-                  (match result.status with
-                  | Cached _ ->
-                      Telemetry.emit
-                        (BuildCompleted
-                           {
-                             package = result.package;
-                             target;
-                             status = `Cached;
-                             duration = result.duration;
-                           })
-                  | Built _ ->
-                      Telemetry.emit
-                        (BuildCompleted
-                           {
-                             package = result.package;
-                             target;
-                             status = `Fresh;
-                             duration = result.duration;
-                           })
-                  | Failed err ->
-                      Telemetry.emit
-                        (BuildFailed
-                           {
-                             package = result.package;
-                             target;
-                             error = Package_builder.package_error_to_string err;
-                           }));
-
+                  (* Don't emit BuildCompleted/BuildFailed here - package_builder already emits them *)
                   Log.info "Package %s: %s (%dms)" result.package.Package.name
                     status_str
                     (Time.Duration.to_millis result.duration);

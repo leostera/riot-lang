@@ -2,6 +2,9 @@
 name = "http"
 version = "0.1.0"
 
+[lib]
+path = "src/http.ml"
+
 [dependencies]
 std = { path = "../std" }
 miniriot = { path = "../miniriot" }

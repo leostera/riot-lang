@@ -2,6 +2,9 @@
 name = "mime"
 version = "0.1.0"
 
+[lib]
+path = "src/mime.ml"
+
 [dependencies]
 std = { path = "../std" }
 miniriot = { path = "../miniriot" }

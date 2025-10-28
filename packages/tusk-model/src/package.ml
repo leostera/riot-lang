@@ -196,8 +196,124 @@ let from_toml (toml : Toml.value) ~(workspace_deps : dependency list)
   | _ -> Error "TOML is not a table"
 
 let to_json (pkg : t) : Json.t =
+  let dependencies_json =
+    Json.Array
+      (List.map
+         (fun (dep : dependency) ->
+           Json.Object
+             [
+               ("name", Json.String dep.name);
+               ( "source",
+                 match dep.source with
+                 | Workspace -> Json.String "workspace"
+                 | Path p -> Json.String (Path.to_string p) );
+             ])
+         pkg.dependencies)
+  in
+  let binaries_json =
+    Json.Array
+      (List.map
+         (fun (bin : binary) ->
+           Json.Object
+             [
+               ("name", Json.String bin.name);
+               ("path", Json.String (Path.to_string bin.path));
+             ])
+         pkg.binaries)
+  in
+  let library_json =
+    match pkg.library with
+    | Some lib ->
+        Json.Object [ ("path", Json.String (Path.to_string lib.path)) ]
+    | None -> Json.Null
+  in
   Json.Object
     [
       ("name", Json.String pkg.name);
       ("path", Json.String (Path.to_string pkg.path));
+      ("relative_path", Json.String (Path.to_string pkg.relative_path));
+      ("dependencies", dependencies_json);
+      ("binaries", binaries_json);
+      ("library", library_json);
     ]
+
+let from_json (json : Json.t) : (t, string) result =
+  match json with
+  | Json.Object fields -> (
+      match
+        ( List.assoc_opt "name" fields,
+          List.assoc_opt "path" fields,
+          List.assoc_opt "relative_path" fields )
+      with
+      | ( Some (Json.String name),
+          Some (Json.String path_str),
+          Some (Json.String rel_path_str) ) ->
+          let path = Path.of_string path_str |> Result.unwrap in
+          let relative_path = Path.of_string rel_path_str |> Result.unwrap in
+
+          let dependencies =
+            match List.assoc_opt "dependencies" fields with
+            | Some (Json.Array deps) ->
+                List.filter_map
+                  (function
+                    | Json.Object dep_fields -> (
+                        match
+                          ( List.assoc_opt "name" dep_fields,
+                            List.assoc_opt "source" dep_fields )
+                        with
+                        | ( Some (Json.String dep_name),
+                            Some (Json.String "workspace") ) ->
+                            Some { name = dep_name; source = Workspace }
+                        | ( Some (Json.String dep_name),
+                            Some (Json.String source_path) ) ->
+                            Some
+                              {
+                                name = dep_name;
+                                source = Path (Path.v source_path);
+                              }
+                        | _ -> None)
+                    | _ -> None)
+                  deps
+            | _ -> []
+          in
+
+          let binaries =
+            match List.assoc_opt "binaries" fields with
+            | Some (Json.Array bins) ->
+                List.filter_map
+                  (function
+                    | Json.Object bin_fields -> (
+                        match
+                          ( List.assoc_opt "name" bin_fields,
+                            List.assoc_opt "path" bin_fields )
+                        with
+                        | ( Some (Json.String bin_name),
+                            Some (Json.String bin_path) ) ->
+                            Some { name = bin_name; path = Path.v bin_path }
+                        | _ -> None)
+                    | _ -> None)
+                  bins
+            | _ -> []
+          in
+
+          let library =
+            match List.assoc_opt "library" fields with
+            | Some (Json.Object lib_fields) -> (
+                match List.assoc_opt "path" lib_fields with
+                | Some (Json.String lib_path) -> Some { path = Path.v lib_path }
+                | _ -> None)
+            | _ -> None
+          in
+
+          Ok
+            {
+              name;
+              path;
+              relative_path;
+              dependencies;
+              binaries;
+              library;
+              sources = { src = []; native = []; tests = [] };
+            }
+      | _ -> Error "Invalid package JSON")
+  | _ -> Error "Package must be a JSON object"

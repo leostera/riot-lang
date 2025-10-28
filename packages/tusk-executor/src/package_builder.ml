@@ -143,20 +143,40 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
   with
   | Error err ->
       let duration = Instant.duration_since ~earlier:start (Instant.now ()) in
+      (* Don't mark as Failed in graph - planning errors don't have a hash *)
       { package; status = Failed (PlanningFailed err); duration }
   | Ok (MissingDependencies { missing; _ }) ->
       let missing_names = List.map (fun p -> p.Package.name) missing in
       let duration = Instant.duration_since ~earlier:start (Instant.now ()) in
+      let error =
+        format "Missing dependencies: %s" (String.concat ", " missing_names)
+      in
+      (* Don't mark as Failed - this is a transient planning state *)
+      {
+        package;
+        status = Failed (ExecutionFailed { message = error });
+        duration;
+      }
+  | Ok (FailedDependencies { failed; _ }) ->
+      let failed_names = List.map (fun p -> p.Package.name) failed in
+      let duration = Instant.duration_since ~earlier:start (Instant.now ()) in
+      let reason = format "needs %s" (String.concat ", " failed_names) in
+      Log.info "Package %s: SKIPPED (%s)" package.name reason;
+
+      (* Mark as Skipped in graph so dependents see it as failed *)
+      (match Tusk_planner.Package_graph.get_node package_graph package with
+      | Some node ->
+          node.value <- Tusk_planner.Package_graph.Skipped { package; reason }
+      | None -> ());
+
+      Telemetry.emit
+        (BuildSkipped
+           { package; target = Workspace_planner.Package package.name; reason });
+
       {
         package;
         status =
-          Failed
-            (ExecutionFailed
-               {
-                 message =
-                   format "Missing dependencies: %s"
-                     (String.concat ", " missing_names);
-               });
+          Failed (ExecutionFailed { message = format "Skipped (%s)" reason });
         duration;
       }
   | Ok (Planned { module_graph; action_graph; hash = package_hash; depset; _ })
@@ -214,6 +234,14 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
           Log.info "Package %s: executing action graph with %d nodes"
             package.name
             (List.length (Action_graph.nodes action_graph));
+
+          (* Mark as Planned in package graph *)
+          (match Tusk_planner.Package_graph.get_node package_graph package with
+          | Some node ->
+              node.value <-
+                Tusk_planner.Package_graph.Planned
+                  { package; module_graph; action_graph; hash = package_hash }
+          | None -> ());
 
           let inputs =
             List.concat
@@ -273,6 +301,15 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
                 Instant.duration_since ~earlier:start (Instant.now ())
               in
               let error = format "Exception: %s" (Printexc.to_string exn) in
+              (* Mark as Failed in package graph *)
+              (match
+                 Tusk_planner.Package_graph.get_node package_graph package
+               with
+              | Some node ->
+                  node.value <-
+                    Tusk_planner.Package_graph.Failed
+                      { package; hash = package_hash; error }
+              | None -> ());
               Telemetry.emit
                 (BuildFailed
                    {
@@ -326,6 +363,15 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
                 Instant.duration_since ~earlier:start (Instant.now ())
               in
               let error = package_error_to_string err in
+              (* Mark as Failed in package graph *)
+              (match
+                 Tusk_planner.Package_graph.get_node package_graph package
+               with
+              | Some node ->
+                  node.value <-
+                    Tusk_planner.Package_graph.Failed
+                      { package; hash = package_hash; error }
+              | None -> ());
               Telemetry.emit
                 (BuildFailed
                    {

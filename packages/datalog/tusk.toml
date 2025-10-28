@@ -2,6 +2,9 @@
 name = "datalog"
 version = "0.1.0"
 
+[lib]
+path = "src/datalog.ml"
+
 [dependencies]
 std = { path = "../std" }
 ceibo = { path = "../ceibo" }

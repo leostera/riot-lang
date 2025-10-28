@@ -1596,14 +1596,31 @@ module WireProtocol = struct
             match List.assoc_opt "error" fields with
             | Some (Json.String e) -> Ok (ArtifactNotFound { error = e })
             | _ -> Error (Json.String "Invalid artifact_not_found response"))
-        | Some (Json.String "build_event")
+        | Some (Json.String "build_event") -> (
+            (* Deserialize the event using Telemetry_events.from_json *)
+            match List.assoc_opt "event_data" fields with
+            | Some event_json -> (
+                match Tusk_executor.Telemetry_events.from_json event_json with
+                | Ok event ->
+                    let session_id =
+                      match List.assoc_opt "session_id" fields with
+                      | Some (Json.String s) -> Session_id.of_string s
+                      | _ -> Session_id.make ()
+                    in
+                    Ok (BuildEvent { session_id; event })
+                | Error err ->
+                    (* Skip events that can't be deserialized (like Action events) *)
+                    Log.debug "[PROTOCOL] Skipping BuildEvent: %s"
+                      (match err with
+                      | Json.String s -> s
+                      | _ -> "unknown error");
+                    Error
+                      (Json.String "BuildEvent skipped (deserialization failed)")
+                )
+            | None -> Error (Json.String "BuildEvent missing event_data field"))
         | Some (Json.String "build_event_skipped") ->
-            (* BuildEvents can't be fully deserialized on the client side because they contain
-               rich types (Package.t, Action_node.t) that require full workspace context.
-               We skip them gracefully - the build still completes without them. *)
-            Error
-              (Json.String
-                 "BuildEvent skipped (contains non-serializable types)")
+            (* Server explicitly skipped this event *)
+            Error (Json.String "BuildEvent skipped by server")
         | Some (Json.String "cycle_detected") ->
             let session_id =
               match List.assoc_opt "session_id" fields with

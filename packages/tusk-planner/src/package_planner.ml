@@ -36,6 +36,9 @@ let check_dependencies_built ~package_graph ~package =
     | Package_graph.Failed _ ->
         (* Dependency failed to build *)
         failed := pkg :: !failed
+    | Package_graph.Skipped _ ->
+        (* Dependency was skipped - treat as failed *)
+        failed := pkg :: !failed
     | Package_graph.Built { package; artifact; depset = dep_depset; hash; _ } ->
         let dep = Dependency.{ package; artifact; depset = dep_depset; hash } in
         Vector.push depset dep

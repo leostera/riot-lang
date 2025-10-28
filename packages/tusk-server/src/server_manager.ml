@@ -20,7 +20,7 @@ let ensure_running ~(workspace : Workspace.t) =
     Log.debug "wait_server: Attempting connection to %s:%d (retries left: %d)"
       daemon.host daemon.port retries;
     if retries <= 0 then (
-      Log.error "Failed to connect to server after 60 retries";
+      Log.error "Failed to connect to server after 10 retries";
       Log.warn "Server (PID %d) not responding, cleaning up and restarting..."
         daemon.os_pid;
 
@@ -35,7 +35,7 @@ let ensure_running ~(workspace : Workspace.t) =
       match Daemon.of_workspace ~workspace:daemon.workspace with
       | Ok new_daemon ->
           println "Started new tusk server (PID %d)..." new_daemon.os_pid;
-          wait_server ~retries:60 ~daemon:new_daemon
+          wait_server ~retries:10 ~daemon:new_daemon
       | Error e ->
           Log.error "Failed to restart server";
           Error e)
@@ -60,4 +60,4 @@ let ensure_running ~(workspace : Workspace.t) =
           (* 50ms *)
           wait_server ~retries:(retries - 1) ~daemon
   in
-  wait_server ~retries:60 ~daemon (* Wait up to 3 seconds *)
+  wait_server ~retries:10 ~daemon (* Wait up to 0.5 seconds *)

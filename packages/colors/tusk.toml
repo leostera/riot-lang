@@ -1,5 +1,8 @@
 [package]
 name = "colors"
 
+[lib]
+path = "src/colors.ml"
+
 [dependencies]
 std = { path = "../std" }

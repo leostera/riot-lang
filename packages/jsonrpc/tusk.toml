@@ -2,5 +2,8 @@
 name = "jsonrpc"
 version = "0.1.0"
 
+[lib]
+path = "src/jsonrpc.ml"
+
 [dependencies]
 std = { path = "../std" }

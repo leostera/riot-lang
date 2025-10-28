@@ -1564,22 +1564,8 @@ module WireProtocol = struct
             | Some (Json.String e) -> Ok (ArtifactNotFound { error = e })
             | _ -> Error (Json.String "Invalid artifact_not_found response"))
         | Some (Json.String "build_event") ->
-            let session_id =
-              match List.assoc_opt "session_id" fields with
-              | Some (Json.String s) -> Session_id.of_string s
-              | _ -> Session_id.make ()
-            in
-            (* Parse the event from event_data field *)
-            let event =
-              match List.assoc_opt "event_data" fields with
-              | Some event_json -> (
-                  match Event.from_json event_json with
-                  | Ok evt -> evt
-                  | Error err ->
-                      failwith (format "Failed to parse event_data: %s" err))
-              | None -> failwith "Missing event_data field in BuildEvent"
-            in
-            Ok (BuildEvent { session_id; event })
+            (* Skip build events - new server sends Telemetry events we can't parse *)
+            Error (Json.String "BuildEvent skipped (legacy client)")
         | Some (Json.String "cycle_detected") ->
             let session_id =
               match List.assoc_opt "session_id" fields with

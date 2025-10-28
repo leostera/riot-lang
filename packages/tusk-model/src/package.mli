@@ -26,3 +26,4 @@ val from_toml :
   (t, string) result
 
 val to_json : t -> Std.Data.Json.t
+val from_json : Std.Data.Json.t -> (t, string) result

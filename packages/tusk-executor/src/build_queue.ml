@@ -45,7 +45,10 @@ let dependencies_satisfied t (node : package_node) =
           true)
         else
           match HashMap.get t.completed dep.name with
-          | Some { status = Package_builder.Built _ | Cached _; _ } ->
+          | Some { status = Package_builder.Built _ | Cached _ | Failed _; _ }
+            ->
+              (* Dependency is done (built, cached, failed, or skipped) - dispatch package to worker.
+                 The worker/planner will handle marking it as skipped if deps failed. *)
               Log.debug "[BUILD_QUEUE]   %s -> SATISFIED" dep.name;
               true
           | _ ->

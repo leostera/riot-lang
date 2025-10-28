@@ -80,7 +80,7 @@ let run_action ocamlc sandbox_dir action =
       Tusk_toolchain.Ocamlc.create_library ocamlc ~cwd:sandbox_dir
         ~includes:abs_includes ~output:abs_output abs_objects
   | Action.CreateExecutable
-      { outputs = output :: _; objects; libraries; includes } ->
+      { outputs = output :: _; objects; libraries; includes } -> (
       Log.debug
         "[ACTION_EXECUTOR] CreateExecutable: output=%s, %d objects, %d \
          libraries: [%s]"
@@ -107,9 +107,19 @@ let run_action ocamlc sandbox_dir action =
       let abs_includes = List.map (Path.join sandbox_dir) includes in
       Log.debug "[ACTION_EXECUTOR] Absolute libraries: [%s]"
         (String.concat ", " (List.map Path.to_string abs_libraries));
-      Tusk_toolchain.Ocamlc.create_executable ocamlc ~cwd:sandbox_dir
-        ~includes:abs_includes ~libs:abs_libraries ~output:abs_output
-        abs_objects
+      let result =
+        Tusk_toolchain.Ocamlc.create_executable ocamlc ~cwd:sandbox_dir
+          ~includes:abs_includes ~libs:abs_libraries ~output:abs_output
+          abs_objects
+      in
+      match result with
+      | Tusk_toolchain.Ocamlc.Success _ ->
+          (* Make the executable file executable *)
+          let _ =
+            Fs.set_permissions abs_output (Fs.Permissions.of_mode 0o755)
+          in
+          result
+      | _ -> result)
   | Action.CompileInterface { outputs = []; _ }
   | Action.CompileImplementation { outputs = []; _ }
   | Action.GenerateInterface { outputs = []; _ }

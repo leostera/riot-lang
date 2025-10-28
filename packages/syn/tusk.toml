@@ -2,6 +2,9 @@
 name = "syn"
 version = "0.1.0"
 
+[lib]
+path = "src/syn.ml"
+
 [dependencies]
 std = { path = "../std" }
 tty = { path  ="../tty"} 

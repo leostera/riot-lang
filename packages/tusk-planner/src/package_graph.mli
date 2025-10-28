@@ -22,6 +22,7 @@ type package_node =
       depset : Dependency.t list;
     }
   | Failed of { package : Package.t; hash : Std.Crypto.hash; error : string }
+  | Skipped of { package : Package.t; reason : string }
 
 exception Cycle_detected of string list
 

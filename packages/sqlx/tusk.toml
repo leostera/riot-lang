@@ -2,6 +2,9 @@
 name = "sqlx"
 version = "0.1.0"
 
+[lib]
+path = "src/sqlx.ml"
+
 # TODO: Enable when dev-dependencies are implemented
 # [[bin]]
 # name = "sqltool"

@@ -1,6 +1,9 @@
 [package]
 name = "suri"
 
+[lib]
+path = "src/suri.ml"
+
 [dependencies]
 std = { path = "../std" }
 miniriot = { path = "../miniriot" }

@@ -1,72 +1,65 @@
 open Std
-open Tusk_model
+open Std.Collections
+open Tusk_executor
 
-(** Format an event for cargo-style output *)
-let format (event : Event.t) =
-  match event.kind with
-  | PackageStarted { package = _ } ->
-      "" (* Don't show on start - wait for cache status *)
-  | PackageComplete { package; success; errors; _ } ->
-      if success then "" (* Already shown as "Compiling" *)
-      else if errors = [] then ""
-        (* Skipped due to dependency failure, don't show *)
-      else format "   \027[1;31mFailed\027[0m %s" package
-  | PackageSkipped _ -> "" (* Don't show skipped packages *)
-  | CacheHit { package; _ } ->
-      format "   \027[1;32mCompiling\027[0m %s \027[1;90m(cached)\027[0m"
-        package
-  | CacheMiss { package; _ } ->
-      format "   \027[1;32mCompiling\027[0m %s" package
-  | CompileError { package = _; error } ->
-      (* Just display the raw compiler output for best fidelity *)
-      error.raw
-  | BuildComplete { duration_ms; succeeded; failed; _ } ->
-      if List.length failed = 0 then
-        format "   \027[1;32mFinished\027[0m in %.2fs"
-          (float_of_int duration_ms /. 1000.0)
+(** Format a telemetry event for cargo-style output. Uses displayed_packages
+    HashSet to track what we've already shown. *)
+let format ~displayed_packages (event : Telemetry.event) =
+  match event with
+  (* Build lifecycle events *)
+  | Telemetry_events.BuildStarted { package; _ } ->
+      (* Show package starting to build *)
+      if HashSet.contains displayed_packages package.name then ""
       else
-        format "   \027[1;31mFailed\027[0m with %d errors" (List.length failed)
-  | CycleDetected { packages } ->
-      let cycle_str = String.concat " → " packages in
-      format
-        "\n\
-         \027[1;31merror:\027[0m circular dependency detected\n\n\
-         The following packages form a dependency cycle:\n\
-        \  %s → %s\n\n\
-         Please remove one of these dependencies to break the cycle.\n"
-        cycle_str (List.hd packages)
-  | BuildGraphCreated _ -> ""
-  | BuildGraphCreating -> ""
-  | BuildStarted _ -> ""
-  | CacheStored _ -> ""
-  | CompilingImplementation _ -> ""
-  | CompilingInterface _ -> ""
-  | ComputingHash _ -> ""
-  | CopyingFile _ -> ""
-  | CreatingDirectory _ -> ""
-  | DependencyMissing _ -> ""
-  | DependencySatisfied _ -> ""
-  | HashComputed _ -> ""
-  | LinkingExecutable _ -> ""
-  | LinkingLibrary _ -> ""
-  | McpToolCall _ -> ""
-  | QueuePackage _ -> ""
-  | QueueStats _ -> ""
-  | RpcRequestReceived _ -> ""
-  | RpcResponseSent _ -> ""
-  | ServerRestarted _ -> ""
-  | ServerScanning _ -> ""
-  | ServerShutdown -> ""
-  | ServerStarted _ -> ""
-  | WorkerAssigned _ -> ""
-  | WorkerIdle _ -> ""
-  | WorkerPoolStarted _ -> ""
-  | WorkerStarted _ -> ""
-  | StoreCreating -> ""
-  | StoreCreated _ -> ""
-  | WorkerPoolCreating _ -> ""
-  | WorkerPoolCreated _ -> ""
-  | WorkspaceEmpty -> ""
-  | WorkspaceScanning -> ""
-  | WorkspaceScanned _ -> ""
-  | WritingFile _ -> ""
+        let _ = HashSet.insert displayed_packages package.name in
+        format "   \027[1;32mCompiling\027[0m %s" package.name
+  | Telemetry_events.BuildCompleted { package; status; duration; _ } -> (
+      (* If we already showed it as BuildStarted, don't show again *)
+      (* But if cached and not shown yet, show with (cached) *)
+      match status with
+      | `Cached ->
+          if HashSet.contains displayed_packages package.name then ""
+          else
+            let _ = HashSet.insert displayed_packages package.name in
+            format "   \027[1;32mCompiling\027[0m %s \027[1;90m(cached)\027[0m"
+              package.name
+      | `Fresh -> "")
+  | Telemetry_events.BuildFailed { package; error; _ } ->
+      format "   \027[1;31mFailed\027[0m %s\n%s" package.name error
+  | Telemetry_events.BuildSkipped { package; reason; _ } ->
+      format "   \027[1;33mSkipped\027[0m %s (%s)" package.name reason
+  (* Cache events - these are action-level, not commonly emitted *)
+  | Telemetry_events.CacheHit { package; _ } ->
+      (* Only show if we haven't displayed this package yet *)
+      if HashSet.contains displayed_packages package.name then ""
+      else
+        let _ = HashSet.insert displayed_packages package.name in
+        format "   \027[1;32mCompiling\027[0m %s \027[1;90m(cached)\027[0m"
+          package.name
+  | Telemetry_events.CacheMiss { package; _ } ->
+      (* Only show if we haven't displayed this package yet *)
+      if HashSet.contains displayed_packages package.name then ""
+      else
+        let _ = HashSet.insert displayed_packages package.name in
+        format "   \027[1;32mCompiling\027[0m %s" package.name
+  (* Action events - mostly silent, let package-level events show *)
+  | Telemetry_events.ActionStarted _ -> ""
+  | Telemetry_events.ActionCompleted _ -> ""
+  | Telemetry_events.ActionFailed _ ->
+      (* Don't show - BuildFailed will show the error *)
+      ""
+  (* Workspace events *)
+  | Telemetry_events.WorkspaceStarted _ -> ""
+  | Telemetry_events.WorkspaceCompleted
+      { total_duration; cached_count; built_count; failed_count; _ } ->
+      if failed_count = 0 then
+        let total_secs =
+          float_of_int (Time.Duration.to_millis total_duration) /. 1000.0
+        in
+        format "   \027[1;32mFinished\027[0m in %.2fs (%d built, %d cached)"
+          total_secs built_count cached_count
+      else
+        format "   \027[1;31mFailed\027[0m with %d errors (%d built, %d cached)"
+          failed_count built_count cached_count
+  (* Catch-all for unknown or future telemetry events *)
+  | _ -> ""

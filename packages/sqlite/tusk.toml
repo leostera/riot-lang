@@ -2,6 +2,9 @@
 name = "sqlite"
 version = "0.1.0"
 
+[lib]
+path = "src/sqlite.ml"
+
 [dependencies]
 std = { path = "../std" }
 sqlx_driver = { path = "../sqlx_driver" }

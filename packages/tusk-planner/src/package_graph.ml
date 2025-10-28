@@ -26,6 +26,7 @@ type package_node =
       depset : Dependency.t list;
     }
   | Failed of { package : Package.t; hash : Std.Crypto.hash; error : string }
+  | Skipped of { package : Package.t; reason : string }
 
 type t = {
   graph : package_node G.t;
@@ -37,18 +38,21 @@ let get_package = function
   | Planned { package; _ } -> package
   | Built { package; _ } -> package
   | Failed { package; _ } -> package
+  | Skipped { package; _ } -> package
 
 let is_planned = function
   | Unplanned _ -> false
   | Planned _ -> true
   | Built _ -> true
   | Failed _ -> true
+  | Skipped _ -> true
 
 let get_hash = function
   | Unplanned _ -> None
   | Planned { hash; _ } -> Some hash
   | Built { hash; _ } -> Some hash
   | Failed { hash; _ } -> Some hash
+  | Skipped _ -> None
 
 let get_planned_data = function
   | Unplanned _ -> None

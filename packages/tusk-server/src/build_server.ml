@@ -36,7 +36,6 @@ let init ~workspace ~toolchain ~store ~concurrency ~session_id ~client_pid
       ~target:planner_target ~concurrency
   in
 
-  Telemetry.detach handler_name;
   Log.debug "Build worker finished, sending result to client";
   (match result with
   | Ok workspace_result ->
@@ -114,6 +113,7 @@ let init ~workspace ~toolchain ~store ~concurrency ~session_id ~client_pid
                     detected_at = Datetime.now ();
                   }))));
 
+  Telemetry.detach handler_name;
   Log.debug "Build worker exiting";
   Ok ()
 

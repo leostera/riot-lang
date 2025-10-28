@@ -2,6 +2,9 @@
 name = "blink"
 version = "0.2.0"
 
+[lib]
+path = "src/blink.ml"
+
 [dependencies]
 std = { path = "../std" }
 miniriot = { path = "../miniriot" }

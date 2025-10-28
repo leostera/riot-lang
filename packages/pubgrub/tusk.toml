@@ -2,6 +2,9 @@
 name = "pubgrub"
 version = "0.1.0"
 
+[lib]
+path = "src/pubgrub.ml"
+
 [dependencies]
 std = { path = "../std" }
 
