@@ -260,8 +260,8 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
           let do_build sandbox =
             let sandbox_dir = Sandbox.get_dir sandbox in
             let exec_result =
-              Action_executor.execute ~action_graph ~sandbox ~store toolchain
-                ~concurrency:4
+              Parallel_action_executor.execute ~action_graph ~sandbox ~store
+                toolchain ~concurrency:System.available_parallelism
             in
 
             (* Check if any actions failed *)

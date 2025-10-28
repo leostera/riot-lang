@@ -238,3 +238,18 @@ val to_mut_iter : 'a t -> 'a Iter.MutIterator.t
 
     ```ocaml let queue = Queue.of_list [1; 2; 3] in let iter = Queue.to_mut_iter
     queue in ``` *)
+
+val transfer : src:'a t -> dst:'a t -> unit
+(** Efficiently transfers all elements from [src] to the back of [dst]. After
+    this operation, [src] is empty. This is more efficient than [append] as it
+    directly manipulates internal pointers rather than re-enqueueing elements.
+
+    ## Examples
+
+    ```ocaml let src = Queue.of_list [3; 4; 5] in let dst = Queue.of_list [1; 2]
+    in Queue.transfer ~src ~dst; (* src: [] *) (* dst: [1, 2, 3, 4, 5] *) ```
+
+    ## Complexity
+
+    - Time: O(1)
+    - Space: O(1) *)

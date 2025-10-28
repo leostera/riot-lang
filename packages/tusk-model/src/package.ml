@@ -88,13 +88,8 @@ let parse_binary (value : Toml.value) ~(package_path : Path.t) :
 
 let parse_binaries (items : (string * Toml.value) list) ~(package_path : Path.t)
     : (binary list, string) result =
-  Log.debug "[PACKAGE] parse_binaries called with %d top-level items"
-    (List.length items);
-  List.iter (fun (k, _) -> Log.debug "[PACKAGE]   key: %s" k) items;
   match List.assoc_opt "bin" items with
-  | None ->
-      Log.debug "[PACKAGE] No 'bin' key found";
-      Ok []
+  | None -> Ok []
   | Some (Toml.Array bin_entries) ->
       let results = List.map (parse_binary ~package_path) bin_entries in
       let errors =
@@ -176,10 +171,7 @@ let from_toml (toml : Toml.value) ~(workspace_deps : dependency list)
       in
       let binaries =
         match parse_binaries items ~package_path:path with
-        | Ok bins ->
-            Log.debug "[PACKAGE] Parsed %d binaries for package %s"
-              (List.length bins) name;
-            bins
+        | Ok bins -> bins
         | Error msg ->
             Log.warn "[PACKAGE] Failed to parse binaries for %s: %s" name msg;
             []

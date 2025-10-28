@@ -81,11 +81,6 @@ let run_action ocamlc sandbox_dir action =
         ~includes:abs_includes ~output:abs_output abs_objects
   | Action.CreateExecutable
       { outputs = output :: _; objects; libraries; includes } -> (
-      Log.debug
-        "[ACTION_EXECUTOR] CreateExecutable: output=%s, %d objects, %d \
-         libraries: [%s]"
-        (Path.to_string output) (List.length objects) (List.length libraries)
-        (String.concat ", " (List.map Path.to_string libraries));
       let abs_output = Path.join sandbox_dir output in
       let abs_objects = List.map (Path.join sandbox_dir) objects in
 
@@ -96,12 +91,9 @@ let run_action ocamlc sandbox_dir action =
       let abs_includes =
         List.map
           (fun inc ->
-            if Path.is_absolute inc then inc
-            else Path.join sandbox_dir inc)
+            if Path.is_absolute inc then inc else Path.join sandbox_dir inc)
           includes
       in
-      Log.debug "[ACTION_EXECUTOR] Absolute libraries: [%s]"
-        (String.concat ", " (List.map Path.to_string abs_libraries));
       let result =
         Tusk_toolchain.Ocamlc.create_executable ocamlc ~cwd:sandbox_dir
           ~includes:abs_includes ~libs:abs_libraries ~output:abs_output
@@ -133,13 +125,8 @@ let run_action ocamlc sandbox_dir action =
                (Path.to_string destination)))
   | Action.WriteFile { destination; content } -> (
       let dest_path = Path.join sandbox_dir destination in
-      Log.debug "WriteFile: writing to %s (%d bytes)" (Path.to_string dest_path)
-        (String.length content);
       match Fs.write content dest_path with
-      | Ok () ->
-          Log.debug "WriteFile: success - file written to %s"
-            (Path.to_string dest_path);
-          Tusk_toolchain.Ocamlc.Success "Written"
+      | Ok () -> Tusk_toolchain.Ocamlc.Success "Written"
       | Error (SystemError msg) ->
           Log.error "WriteFile: failed - %s" msg;
           Tusk_toolchain.Ocamlc.Failed
@@ -150,7 +137,6 @@ let execute_actions toolchain sandbox_dir actions =
   let rec execute_next = function
     | [] -> Ok ()
     | action :: rest -> (
-        Log.debug "Executing action: %s" (Action.to_string action);
         let result = run_action ocamlc sandbox_dir action in
         match result with
         | Tusk_toolchain.Ocamlc.Success _ -> execute_next rest

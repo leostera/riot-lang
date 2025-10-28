@@ -15,9 +15,96 @@ type workspace_result = {
 
 type Message.t += TaskCompleted of Package_builder.build_result
 
+type coordinator_state = {
+  packages : Package.t list;
+  queue : Build_queue.t;
+  pool : Build_queue.package_node WorkerPool.DynamicWorkerPool.t;
+  task_ref : Build_queue.package_node Ref.t;
+}
+
+let rec loop state =
+  let selector msg =
+    let open WorkerPool in
+    match msg with
+    | TaskCompleted result -> `select (`TaskCompleted result)
+    | DynamicWorkerPool.WorkerReady worker -> (
+        let worker_ref = DynamicWorkerPool.get_worker_task_ref worker in
+        match Ref.type_equal state.task_ref worker_ref with
+        | Some Type.Equal ->
+            `select
+              (`WorkerReady
+                 (worker
+                   : Build_queue.package_node
+                     WorkerPool.DynamicWorkerPool.worker))
+        | None -> `skip)
+    | _ -> `skip
+  in
+
+  if
+    Build_queue.is_complete state.queue
+      ~total_packages:(List.length state.packages)
+  then handle_build_completed state
+  else
+    match receive ~selector () with
+    | `WorkerReady worker -> handle_worker_ready state worker
+    | `TaskCompleted result -> handle_task_completed state result
+
+and handle_task_completed state result =
+  Build_queue.mark_completed state.queue result;
+
+  (* Don't emit BuildCompleted/BuildFailed here - package_builder already emits them *)
+  Log.info "Package %s: %s (%dms)" result.package.Package.name
+    (match result.status with
+    | Cached _ -> "cached"
+    | Built _ -> "built"
+    | Failed _ -> "failed")
+    (Time.Duration.to_millis result.duration);
+
+  loop state
+
+and handle_worker_ready state worker =
+  match Build_queue.next state.queue with
+  | None -> loop state
+  | Some node ->
+      WorkerPool.DynamicWorkerPool.send_task state.pool worker node;
+      loop state
+
+and handle_build_completed state =
+  let _, _, _, completed, succeeded, failed = Build_queue.stats state.queue in
+  Log.info
+    "Workspace build: all done, completed=%d succeeded=%d failed=%d total=%d"
+    completed succeeded failed
+    (List.length state.packages);
+  ()
+
+let init ~workspace ~toolchain ~store ~package_graph ~packages ~concurrency =
+  let queue = Build_queue.create () in
+
+  (* Queue all package nodes BEFORE starting pool *)
+  Package_graph.iter_nodes package_graph ~fn:(fun node ->
+      Build_queue.queue queue node);
+
+  let pool : Build_queue.package_node WorkerPool.DynamicWorkerPool.t =
+    WorkerPool.DynamicWorkerPool.start ~concurrency ~owner:(self ())
+      ~worker_fn:(fun ~owner ~task ->
+        let (node : Build_queue.package_node) = task in
+        let package = Package_graph.get_package node.value in
+        let result =
+          Package_builder.build ~workspace ~toolchain ~store ~package_graph
+            ~package
+        in
+        send owner (TaskCompleted result))
+      ()
+  in
+
+  let task_ref = pool.task_ref in
+  let state = { packages; queue; pool; task_ref } in
+
+  loop state;
+  state
+
 let build_workspace ~workspace ~toolchain ~store ~target ~concurrency =
   let start = Time.Instant.now () in
-  Log.debug "Starting workspace build";
 
   match Tusk_planner.plan_workspace ~workspace ~target with
   | Error err -> Error err
@@ -33,99 +120,18 @@ let build_workspace ~workspace ~toolchain ~store ~target ~concurrency =
           Error (Workspace_planner.CycleDetected { cycle })
       | nodes ->
           let packages = List.map Package_graph.get_package nodes in
-          let queue = Build_queue.create () in
 
-          (* Queue all package nodes BEFORE starting pool *)
-          Package_graph.iter_nodes package_graph ~fn:(fun node ->
-              Build_queue.queue queue node);
-
-          let pool : Build_queue.package_node WorkerPool.DynamicWorkerPool.t =
-            WorkerPool.DynamicWorkerPool.start ~concurrency ~owner:(self ())
-              ~worker_fn:(fun ~owner ~task ->
-                let (node : Build_queue.package_node) = task in
-                let package = Package_graph.get_package node.value in
-                let result =
-                  Package_builder.build ~workspace ~toolchain ~store
-                    ~package_graph ~package
-                in
-                send owner (TaskCompleted result))
-              ()
+          (* Run coordinator to completion of the build *)
+          let state =
+            init ~workspace ~toolchain ~store ~package_graph ~packages
+              ~concurrency
           in
 
-          let task_ref = pool.task_ref in
-
-          let selector msg =
-            match msg with
-            | WorkerPool.DynamicWorkerPool.WorkerReady worker -> (
-                let worker_ref =
-                  WorkerPool.DynamicWorkerPool.get_worker_task_ref worker
-                in
-                match Ref.type_equal task_ref worker_ref with
-                | Some Type.Equal ->
-                    `select
-                      (`WorkerReady
-                         (worker
-                           : Build_queue.package_node
-                             WorkerPool.DynamicWorkerPool.worker))
-                | None -> `skip)
-            | TaskCompleted result -> `select (`TaskCompleted result)
-            | _ -> `skip
-          in
-
-          let rec dispatch_loop () =
-            if
-              Build_queue.is_complete queue
-                ~total_packages:(List.length packages)
-            then (
-              let _, _, _, completed, succeeded, failed =
-                Build_queue.stats queue
-              in
-              Log.info
-                "Workspace build: all done, completed=%d succeeded=%d \
-                 failed=%d total=%d"
-                completed succeeded failed (List.length packages);
-              ())
-            else
-              match receive ~selector () with
-              | `WorkerReady worker -> (
-                  match Build_queue.next queue with
-                  | None ->
-                      let ready, waiting, busy, _, _, _ =
-                        Build_queue.stats queue
-                      in
-                      Log.debug
-                        "No work available for worker (ready=%d waiting=%d \
-                         busy=%d)"
-                        ready waiting busy;
-                      dispatch_loop ()
-                  | Some node ->
-                      let package = Package_graph.get_package node.value in
-                      Log.debug "Dispatching package %s to worker"
-                        package.Package.name;
-                      WorkerPool.DynamicWorkerPool.send_task pool worker node;
-                      dispatch_loop ())
-              | `TaskCompleted result ->
-                  Build_queue.mark_completed queue result;
-
-                  let status_str =
-                    match result.status with
-                    | Cached _ -> "cached"
-                    | Built _ -> "built"
-                    | Failed _ -> "failed"
-                  in
-
-                  (* Don't emit BuildCompleted/BuildFailed here - package_builder already emits them *)
-                  Log.info "Package %s: %s (%dms)" result.package.Package.name
-                    status_str
-                    (Time.Duration.to_millis result.duration);
-                  dispatch_loop ()
-          in
-
-          dispatch_loop ();
-
+          (* Collect results *)
           let results =
             List.filter_map
-              (fun (pkg : Package.t) -> Build_queue.get_result queue pkg.name)
+              (fun (pkg : Package.t) ->
+                Build_queue.get_result state.queue pkg.name)
               packages
           in
 

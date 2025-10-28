@@ -28,7 +28,27 @@ let create ~workspace ~package_name =
 
 let get_dir t = t.dir
 
-(* Removed copy_deps - dependencies now accessed via cache with -I flags *)
+let copy_object_files ~store ~sandbox ~package ~depset =
+  List.iter
+    (fun dep ->
+      let abs_paths =
+        Tusk_store.Store.get_artifact_paths store
+          dep.Tusk_planner.Dependency.artifact
+      in
+      let o_files =
+        List.filter
+          (fun path -> String.ends_with ~suffix:".o" (Path.to_string path))
+          abs_paths
+      in
+      List.iter
+        (fun abs_path ->
+          let dest = Path.(sandbox.dir / v (Path.basename abs_path)) in
+          Fs.copy ~src:abs_path ~dst:dest
+          |> Result.expect
+               ~msg:
+                 (format "Failed to copy .o file %s" (Path.to_string abs_path)))
+        o_files)
+    depset
 
 let copy_inputs ~sandbox ~package ~inputs =
   List.iter
@@ -52,11 +72,6 @@ let copy_inputs ~sandbox ~package ~inputs =
                 (Path.to_string dest)))
     inputs
 
-let verify_outputs ~sandbox ~expected_outputs = ()
-(* NOTE: Verification disabled because cache hits promote to target without 
-     populating sandbox, causing false failures. The store's save/promote 
-     logic already validates outputs exist. *)
-
 let cleanup sandbox =
   let _ = Fs.remove_dir_all sandbox.dir in
   ()
@@ -66,6 +81,6 @@ let with_sandbox ~workspace ~package ~inputs ~depset ~store ~expected_outputs f
   let sandbox = create ~workspace ~package_name:package.Package.name in
   (* No longer copy dependencies - they're accessed via -I flags pointing to cache *)
   copy_inputs ~sandbox ~package ~inputs;
+  copy_object_files ~store ~sandbox ~package ~depset;
   let result = f sandbox in
-  verify_outputs ~sandbox ~expected_outputs;
   result

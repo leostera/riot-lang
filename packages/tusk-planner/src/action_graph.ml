@@ -85,7 +85,12 @@ let module_to_actions ~package ~dep_includes ~get_dep_outputs
 
       let compile_action =
         Action.CompileImplementation
-          { source = path; outputs; includes = Path.v "." :: dep_includes; flags }
+          {
+            source = path;
+            outputs;
+            includes = Path.v "." :: dep_includes;
+            flags;
+          }
       in
       ([ write_action; compile_action ], outputs, sources)
   | { kind = MLI mod_; file = Generated { path; contents }; open_modules; _ } ->
@@ -160,26 +165,14 @@ let module_to_actions ~package ~dep_includes ~get_dep_outputs
           deps
       in
 
-      Log.debug
-        "[ACTION_GRAPH] CreateLibrary for %s: %d dependencies, %d objects" name
-        (List.length deps) (List.length objects);
-      if List.length objects > 0 then
-        Log.debug "[ACTION_GRAPH] CreateLibrary first 5 objects: %s"
-          (String.concat ", "
-             (List.map Path.to_string
-                (let rec take n lst =
-                   match (n, lst) with
-                   | 0, _ | _, [] -> []
-                   | n, x :: xs -> x :: take (n - 1) xs
-                 in
-                 take 5 objects)));
+      Log.debug "[ACTION_GRAPH] CreateLibrary for %s: %d objects" name
+        (List.length objects);
 
       let create_lib = Action.CreateLibrary { outputs; objects; includes } in
       ([ create_lib ], outputs, sources)
   | { kind = Binary { name; source; libraries; includes }; _ } ->
-      Log.debug "[ACTION_GRAPH] Creating binary %s with %d libraries: [%s]" name
-        (List.length libraries)
-        (String.concat ", " (List.map Path.to_string libraries));
+      Log.debug "[ACTION_GRAPH] Creating binary %s with %d libraries" name
+        (List.length libraries);
       let binary_mod =
         Module.make ~namespace:Namespace.empty ~filename:source
       in
@@ -220,9 +213,8 @@ let from_module_graph ~package ~toolchain ~store ~depset
         Tusk_store.Store.get_artifact_dir store dep.artifact)
       depset
   in
-  Log.info "[ACTION_GRAPH] Dependency includes (%d): [%s]"
-    (List.length dep_includes)
-    (String.concat ", " (List.map Path.to_string dep_includes));
+  Log.debug "[ACTION_GRAPH] Using %d dependency includes"
+    (List.length dep_includes);
 
   let action_graph = create () in
   let node_mapping = HashMap.create () in
@@ -233,12 +225,6 @@ let from_module_graph ~package ~toolchain ~store ~depset
   let sorted_modules = G.topo_sort module_graph in
   Log.info "[ACTION_GRAPH] Topologically sorted %d modules"
     (List.length sorted_modules);
-  List.iteri
-    (fun i (node : Module_node.t G.node) ->
-      Log.debug "[ACTION_GRAPH] Topo order #%d: node_id=%s kind=%s" i
-        (G.Node_id.to_string node.id)
-        (Module_node.kind_to_string node.value.Module_node.kind))
-    sorted_modules;
 
   let get_dep_hash dep_id =
     match HashMap.get action_spec_hashes dep_id with
@@ -256,40 +242,26 @@ let from_module_graph ~package ~toolchain ~store ~depset
 
   List.iter
     (fun (module_node : Module_node.t G.node) ->
-      Log.debug "[ACTION_GRAPH] Processing module_node id=%s kind=%s deps=[%s]"
-        (G.Node_id.to_string module_node.id)
-        (Module_node.kind_to_string module_node.value.kind)
-        (String.concat ", " (List.map G.Node_id.to_string module_node.deps));
-
       let actions, outputs, sources =
         module_to_actions ~package ~dep_includes ~get_dep_outputs
           module_node.value module_node.deps
       in
 
-      Log.debug "[ACTION_GRAPH]   -> %d actions, %d outputs, %d sources"
-        (List.length actions) (List.length outputs) (List.length sources);
-      Log.debug "[ACTION_GRAPH]   -> outputs: [%s]"
-        (String.concat ", " (List.map Path.to_string outputs));
-
       let _ = HashMap.insert node_outputs module_node.id outputs in
-      if actions = [] then (
+      if actions = [] then
         let placeholder_hash =
           Crypto.hash_string
             (format "no-actions:%s" (G.Node_id.to_string module_node.id))
         in
-        Log.debug "[ACTION_GRAPH]   -> placeholder hash: %s"
-          (Crypto.Digest.hex placeholder_hash);
         let _ =
           HashMap.insert action_spec_hashes module_node.id placeholder_hash
         in
-        ())
+        ()
       else
         let action_spec =
           Action_node.make ~actions ~outs:outputs ~srcs:sources ~package
             ~toolchain ~dependency_hashes:get_dep_hash ~deps:module_node.deps
         in
-        Log.info "[ACTION_GRAPH]   -> action_spec hash: %s"
-          (Crypto.Digest.hex action_spec.hash);
 
         let action_node = add_node action_graph action_spec in
 

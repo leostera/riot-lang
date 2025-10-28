@@ -90,6 +90,26 @@ let append queue1 queue2 =
   iter (enqueue queue1) queue2;
   clear queue2
 
+let transfer ~src ~dst =
+  match src.front with
+  | None -> ()
+  | Some _ ->
+      (match dst.back with
+      | None ->
+          (* dst is empty, just move everything *)
+          dst.front <- src.front;
+          dst.back <- src.back;
+          dst.length <- src.length
+      | Some back_node ->
+          (* dst has items, append src to the end *)
+          back_node.next <- src.front;
+          dst.back <- src.back;
+          dst.length <- dst.length + src.length);
+      (* Clear src queue *)
+      src.front <- None;
+      src.back <- None;
+      src.length <- 0
+
 let of_list elements =
   let queue = create () in
   List.iter (enqueue queue) elements;

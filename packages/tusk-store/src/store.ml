@@ -81,7 +81,6 @@ let promote store hash ~target_dir =
 
 (** Store artifacts from sandbox to content-addressable store *)
 let store_artifacts store ~package hash sandbox_dir declared_outputs =
-  Log.debug "[Store] store_artifacts called for package %s" package;
   let hash_dir = get_hash_dir store hash in
 
   Fs.create_dir_all hash_dir
@@ -122,10 +121,8 @@ let store_artifacts store ~package hash sandbox_dir declared_outputs =
       ~files:(List.rev stored_files_with_sizes)
   in
   let manifest_path = Path.(hash_dir / Path.v "manifest.json") in
-  Log.debug "[Store] Saving manifest to %s" (Path.to_string manifest_path);
   Manifest.save manifest ~path:manifest_path
   |> Result.expect ~msg:"Failed to save manifest";
-  Log.debug "[Store] Manifest saved successfully";
 
   (* Return artifact witness with just the filenames *)
   let stored_files =
@@ -180,4 +177,5 @@ let get_artifact_paths store artifact =
     Artifact.(artifact.files)
 
 (** Get the cache directory containing an artifact's files *)
-let get_artifact_dir store artifact = get_hash_dir store Artifact.(artifact.hash)
+let get_artifact_dir store artifact =
+  get_hash_dir store Artifact.(artifact.hash)

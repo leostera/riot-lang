@@ -55,11 +55,6 @@ let plan_node input =
     | None -> ());
 
     (* Use depset directly - it's already in correct topological order from check_dependencies_built *)
-    Log.debug "[MODULE_PLANNER] Package %s has %d transitive dependencies: [%s]"
-      input.package.name (List.length input.depset)
-      (String.concat ", "
-         (List.map (fun (d : Dependency.t) -> d.package.name) input.depset));
-
     let all_deps = input.depset in
 
     (* Check if any package (including our own) needs unix *)
@@ -82,11 +77,7 @@ let plan_node input =
           (* Build libraries list: unix (if needed), dependencies, then our library *)
           let unix_lib = if needs_unix then [ Path.v "unix.cmxa" ] else [] in
           let dep_libs = List.map Dependency.library_cmxa all_deps in
-          let result = unix_lib @ dep_libs @ [ lib_name ] in
-          Log.debug "[MODULE_PLANNER] binary_libraries for %s (%d libs): [%s]"
-            input.package.name (List.length result)
-            (String.concat ", " (List.map Path.to_string result));
-          result
+          unix_lib @ dep_libs @ [ lib_name ]
       | None -> []
     in
 
@@ -103,18 +94,8 @@ let plan_node input =
       unix_includes @ dep_cache_dirs
     in
 
-    Log.debug
-      "[MODULE_PLANNER] Adding %d binaries with libraries: [%s], includes: [%s]"
-      (List.length input.package.binaries)
-      (String.concat ", " (List.map Path.to_string binary_libraries))
-      (String.concat ", " (List.map Path.to_string binary_includes));
     List.iter
       (fun (bin : Package.binary) ->
-        Log.debug
-          "[MODULE_PLANNER] Adding binary: %s with %d libraries, %d includes"
-          bin.name
-          (List.length binary_libraries)
-          (List.length binary_includes);
         Module_graph.add_binary_node graph_builder ~name:bin.name
           ~source:bin.path ~libraries:binary_libraries ~includes:binary_includes)
       input.package.binaries;

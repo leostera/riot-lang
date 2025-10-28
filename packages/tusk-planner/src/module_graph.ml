@@ -356,9 +356,7 @@ let create config =
     - MLI -> ML dependencies are filtered out to maintain proper compilation
       order *)
 let wire_dependencies t sandbox_dir =
-  Log.info "[MODULE_GRAPH] wire_dependencies starting for %s" t.config.namespace;
   let all_nodes = G.map t.graph ~fn:(fun (node_id, node) -> (node_id, node)) in
-  Log.info "[MODULE_GRAPH] G.map returned %d nodes" (List.length all_nodes);
 
   (* Sort nodes by ID to ensure deterministic ordering - G.map uses Hashtbl.to_seq which is non-deterministic *)
   let sorted_nodes =
@@ -367,14 +365,6 @@ let wire_dependencies t sandbox_dir =
         Int.compare (G.Node_id.to_int id1) (G.Node_id.to_int id2))
       all_nodes
   in
-  Log.info "[MODULE_GRAPH] Sorted %d nodes by ID" (List.length sorted_nodes);
-  List.iteri
-    (fun i (node_id, (node : Module_node.t G.node)) ->
-      if i < 10 then
-        Log.debug "[MODULE_GRAPH]   sorted_node #%d: id=%s kind=%s" i
-          (G.Node_id.to_string node_id)
-          (Module_node.kind_to_string node.value.Module_node.kind))
-    sorted_nodes;
 
   let files_with_nodes =
     List.filter_map

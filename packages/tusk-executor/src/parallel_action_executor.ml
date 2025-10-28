@@ -26,7 +26,6 @@ type execution_result = Action_queue.execution_result = {
 }
 
 type t = { completed : (G.Node_id.t, execution_result) HashMap.t }
-
 type Message.t += ActionCompleted of execution_result
 
 let make_flags_absolute sandbox_dir flags =
@@ -44,14 +43,15 @@ let run_action ocamlc sandbox_dir action =
     ->
       let abs_source = Path.join sandbox_dir source in
       let abs_output = Path.join sandbox_dir output in
-      
+
       (* Includes can be absolute (cache dirs), relative (sandbox dir), or special (+unix) *)
       let abs_includes =
         List.map
           (fun inc ->
             let inc_str = Path.to_string inc in
             if Path.is_absolute inc then inc
-            else if String.starts_with ~prefix:"+" inc_str then inc (* Keep +unix, +threads as-is *)
+            else if String.starts_with ~prefix:"+" inc_str then inc
+              (* Keep +unix, +threads as-is *)
             else Path.join sandbox_dir inc)
           includes
       in
@@ -62,7 +62,7 @@ let run_action ocamlc sandbox_dir action =
       { source; outputs = output :: _; includes; flags } ->
       let abs_source = Path.join sandbox_dir source in
       let abs_output = Path.join sandbox_dir output in
-      
+
       (* Includes can be absolute (cache dirs), relative (sandbox dir), or special (+unix) *)
       let abs_includes =
         List.map
@@ -80,7 +80,7 @@ let run_action ocamlc sandbox_dir action =
     ->
       let abs_source = Path.join sandbox_dir source in
       let abs_output = Path.join sandbox_dir output in
-      
+
       (* Includes can be absolute (cache dirs), relative (sandbox dir), or special (+unix) *)
       let abs_includes =
         List.map
@@ -110,7 +110,7 @@ let run_action ocamlc sandbox_dir action =
       (* Keep objects as relative paths (basenames) since they're in cwd (sandbox_dir).
          This ensures the .cmxa doesn't bake in absolute paths to .o files. *)
       let rel_objects = objects in
-      
+
       (* Includes can be absolute (cache dirs), relative (sandbox dir), or special (+unix) *)
       let abs_includes =
         List.map
@@ -146,7 +146,7 @@ let run_action ocamlc sandbox_dir action =
             else Path.join sandbox_dir inc)
           includes
       in
-      
+
       Log.debug "[ACTION_EXECUTOR] Absolute libraries: [%s]"
         (String.concat ", " (List.map Path.to_string abs_libraries));
       let result =
@@ -171,9 +171,8 @@ let run_action ocamlc sandbox_dir action =
       Tusk_toolchain.Ocamlc.Failed "Action has no outputs"
   | Action.CopyFile { source; destination } -> (
       (* Source can be absolute (from cache) or relative (from sandbox) *)
-      let src_path = 
-        if Path.is_absolute source then source 
-        else Path.join sandbox_dir source 
+      let src_path =
+        if Path.is_absolute source then source else Path.join sandbox_dir source
       in
       let dst_path = Path.join sandbox_dir destination in
       match Fs.copy ~src:src_path ~dst:dst_path with
@@ -337,7 +336,9 @@ let execute ~action_graph ~sandbox ~store:_ toolchain ~concurrency =
     WorkerPool.DynamicWorkerPool.start ~concurrency ~owner:(self ())
       ~worker_fn:(fun ~owner ~task ->
         let (node : Action_node.t) = task in
-        let result = execute_node ~completed:queue.completed toolchain sandbox_dir node in
+        let result =
+          execute_node ~completed:queue.completed toolchain sandbox_dir node
+        in
         send owner (ActionCompleted result))
       ()
   in
@@ -354,9 +355,7 @@ let execute ~action_graph ~sandbox ~store:_ toolchain ~concurrency =
         | Some Type.Equal ->
             `select
               (`WorkerReady
-                 (worker
-                   : Action_node.t
-                     WorkerPool.DynamicWorkerPool.worker))
+                 (worker : Action_node.t WorkerPool.DynamicWorkerPool.worker))
         | None -> `skip)
     | ActionCompleted result -> `select (`ActionCompleted result)
     | _ -> `skip
