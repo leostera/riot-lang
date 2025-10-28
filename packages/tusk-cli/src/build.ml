@@ -34,11 +34,33 @@ let build_command package_opt =
     | None -> Tusk_client.BuildAll
   in
   let displayed_packages = HashSet.create () in
+
+  (* Track build stats as events arrive *)
+  let start_time = Time.Instant.now () in
+  let built_count = ref 0 in
+  let cached_count = ref 0 in
+  let failed_count = ref 0 in
+  let skipped_count = ref 0 in
+
   let result =
     Tusk_client.build_streaming client request (fun event ->
         match event with
         | Tusk_client.BuildStarted session_id -> ()
         | Tusk_client.BuildEvent event ->
+            (* Track stats from events *)
+            (match event with
+            | Tusk_executor.Telemetry_events.BuildCompleted
+                { status = `Fresh; _ } ->
+                built_count := !built_count + 1
+            | Tusk_executor.Telemetry_events.BuildCompleted
+                { status = `Cached; _ } ->
+                cached_count := !cached_count + 1
+            | Tusk_executor.Telemetry_events.BuildFailed _ ->
+                failed_count := !failed_count + 1
+            | Tusk_executor.Telemetry_events.BuildSkipped _ ->
+                skipped_count := !skipped_count + 1
+            | _ -> ());
+
             let msg = Event_formatter.format ~displayed_packages event in
             if msg <> "" then println "%s" msg
         | Tusk_client.BuildCompleted _ -> ()
@@ -47,21 +69,28 @@ let build_command package_opt =
   in
   Tusk_client.close client;
 
+  (* Print final summary line *)
+  let duration =
+    Time.Instant.duration_since ~earlier:start_time (Time.Instant.now ())
+  in
+  let duration_secs = Time.Duration.to_secs_float duration in
+
+  if !failed_count = 0 && !skipped_count = 0 then
+    println "   \027[1;32mFinished\027[0m in %.2fs (%d built, %d cached)"
+      duration_secs !built_count !cached_count
+  else if !failed_count > 0 then
+    println
+      "   \027[1;31mFinished\027[0m in %.2fs (%d built, %d cached, %d failed, \
+       %d skipped)"
+      duration_secs !built_count !cached_count !failed_count !skipped_count
+  else
+    println
+      "   \027[1;33mFinished\027[0m in %.2fs (%d built, %d cached, %d skipped)"
+      duration_secs !built_count !cached_count !skipped_count;
+
   match result with
   | Tusk_client.BuildCompleted _ -> Ok ()
-  | Tusk_client.BuildFailed { errors; stats; _ } ->
-      (* Get names of failed packages *)
-      let failed_packages =
-        List.filter_map
-          (fun (r : Tusk_protocol.WireProtocol.build_result) ->
-            match r.status with
-            | Tusk_protocol.WireProtocol.Failed _ -> Some r.package.name
-            | _ -> None)
-          errors
-      in
-
-      (* Don't print redundant error - failures were already shown during build *)
-      Error (Failure "Build failed")
+  | Tusk_client.BuildFailed _ -> Error (Failure "Build failed")
   | Tusk_client.BuildStarted _ | Tusk_client.BuildEvent _ ->
       Error (Failure "Unexpected response from server")
 

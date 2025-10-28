@@ -158,16 +158,6 @@ let build_workspace ~workspace ~toolchain ~store ~target ~concurrency =
             Time.Instant.duration_since ~earlier:start (Time.Instant.now ())
           in
 
-          Telemetry.emit
-            (WorkspaceCompleted
-               {
-                 target;
-                 total_duration;
-                 cached_count;
-                 built_count;
-                 failed_count;
-               });
-
           Ok
             { results; total_duration; cached_count; built_count; failed_count }
       )
