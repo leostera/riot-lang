@@ -171,3 +171,10 @@ let save store ~package ~hash ~sandbox_dir ~outs =
 (** Promote cached artifacts to target directory *)
 let promote_artifact store artifact ~target_dir =
   promote store Artifact.(artifact.hash) target_dir
+
+(** Get absolute paths to artifact files in immutable cache *)
+let get_artifact_paths store artifact =
+  let hash_dir = get_hash_dir store Artifact.(artifact.hash) in
+  List.map
+    (fun rel_path -> Path.(hash_dir / rel_path))
+    Artifact.(artifact.files)

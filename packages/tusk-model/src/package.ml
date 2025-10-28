@@ -21,6 +21,8 @@ type t = {
   sources : sources;
 }
 
+let equal a b = a.name = b.name && a.path = b.path
+
 (** Package TOML parsing *)
 
 let parse_name (items : (string * Toml.value) list) (fallback : string) : string
@@ -71,7 +73,7 @@ let parse_binary (value : Toml.value) ~(package_path : Path.t) :
   | Toml.Table items -> (
       match (List.assoc_opt "name" items, List.assoc_opt "path" items) with
       | Some (Toml.String name), Some (Toml.String path_str) ->
-          let bin_path = Path.(package_path / Path.v path_str) in
+          let bin_path = Path.v path_str in
           Ok { name; path = bin_path }
       | Some (Toml.String _), None ->
           Error "Binary entry missing required 'path' field"

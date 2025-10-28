@@ -1,10 +1,19 @@
 (** Dependency information for build planning
 
-    Represents a package dependency with its library path for linking. *)
+    Represents a package dependency with its artifact and transitive
+    dependencies. *)
 
 open Std
+open Std.Collections
 open Tusk_model
+open Tusk_store
 
-type t = { package : Package.t; library_path : Path.t }
+type t = {
+  package : Package.t;
+  artifact : Artifact.t;
+  depset : t list;
+  hash : Crypto.hash;
+}
 
-val make : package:Package.t -> library_path:Path.t -> t
+val library_cmxa : t -> Path.t
+(** Extract the .cmxa library file path from a dependency's artifact *)

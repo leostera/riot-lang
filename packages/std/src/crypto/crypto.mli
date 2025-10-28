@@ -42,6 +42,8 @@ type hash = Kernel.Crypto.hash
 
 (** ## Modules *)
 
+module Hash = Kernel.Crypto.Hash
+
 module Hasher = Hasher
 (** Hasher interface and utilities *)
 

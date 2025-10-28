@@ -42,6 +42,8 @@ let plan_workspace ~workspace ~target =
 
       match sorted_packages with
       | Error e -> Error e
-      | Ok packages -> Ok { packages; package_graph = graph; workspace })
+      | Ok nodes ->
+          let packages = List.map Package_graph.get_package nodes in
+          Ok { packages; package_graph = graph; workspace })
 
 let packages_in_plan plan = plan.packages

@@ -41,3 +41,8 @@ val promote :
 
 val exists : t -> Std.Crypto.hash -> bool
 (** Check if artifacts for a given hash exist in the store *)
+
+val get_artifact_paths : t -> Artifact.t -> Std.Path.t list
+(** Get absolute paths to artifact files in the store's cache. These paths point
+    to the immutable content-addressed storage and are guaranteed to exist. Use
+    this instead of relying on target/debug/out which may be cleaned. *)

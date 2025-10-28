@@ -15,15 +15,9 @@ let plan_package_with_graph ~workspace ~toolchain ~package_graph ~package =
 
 let plan_package ~workspace ~toolchain ~package =
   let planning_root = Path.v "src" in
-  let dependencies = [] in
+  let depset = [] in
   let plan_input =
-    {
-      Module_planner.package;
-      toolchain;
-      workspace;
-      planning_root;
-      dependencies;
-    }
+    { Module_planner.package; toolchain; workspace; planning_root; depset }
   in
   Module_planner.plan_node plan_input
 

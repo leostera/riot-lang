@@ -2,6 +2,9 @@
 name = "kernel"
 version = "0.0.1"
 
+[lib]
+path = "src/kernel.ml"
+
 [dependencies]
 stdlib = "*"
 unix = "*"

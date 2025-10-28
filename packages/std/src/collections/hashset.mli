@@ -20,8 +20,8 @@
     HashSet.insert set "cherry" |> ignore;
     
     (* Check membership *)
-    HashSet.contains set "apple"  (* true *)
-    HashSet.contains set "grape"  (* false *)
+    HashSet.contains set "apple";  (* true *)
+    HashSet.contains set "grape";  (* false *)
     
     (* Get size *)
     HashSet.len set  (* 3 *)
@@ -99,7 +99,7 @@ val of_list : 'a list -> 'a t
 
     ## Examples
 
-    ```ocaml let set = HashSet.of_list [1; 2; 2; 3; 3; 3] in HashSet.len set (*
+    ```ocaml let set = HashSet.of_list [1; 2; 2; 3; 3; 3] in HashSet.len set; (*
     3 - duplicates removed *) HashSet.to_list set (* [1; 2; 3] - order
     unspecified *) ``` *)
 
@@ -111,7 +111,7 @@ val insert : 'a t -> 'a -> bool
 
     ## Examples
 
-    ```ocaml let set = HashSet.create () in HashSet.insert set "new" (* true -
+    ```ocaml let set = HashSet.create () in HashSet.insert set "new"; (* true -
     newly added *) HashSet.insert set "new" (* false - already exists *) ```
 
     ## Complexity
@@ -125,8 +125,8 @@ val remove : 'a t -> 'a -> bool
 
     ## Examples
 
-    ```ocaml let set = HashSet.of_list [1; 2; 3] in HashSet.remove set 2 (* true
-    *) HashSet.remove set 5 (* false - not in set *) ```
+    ```ocaml let set = HashSet.of_list [1; 2; 3] in HashSet.remove set 2; (*
+    true *) HashSet.remove set 5 (* false - not in set *) ```
 
     ## Complexity
 
@@ -138,7 +138,7 @@ val contains : 'a t -> 'a -> bool
     ## Examples
 
     ```ocaml let set = HashSet.of_list ["a"; "b"; "c"] in HashSet.contains set
-    "b" (* true *) HashSet.contains set "z" (* false *) ```
+    "b"; (* true *) HashSet.contains set "z" (* false *) ```
 
     ## Complexity
 
@@ -160,7 +160,7 @@ val is_empty : 'a t -> bool
 
     ## Examples
 
-    ```ocaml let set = HashSet.create () in HashSet.is_empty set (* true *)
+    ```ocaml let set = HashSet.create () in HashSet.is_empty set; (* true *)
     HashSet.insert set 1 |> ignore; HashSet.is_empty set (* false *) ```
 
     ## Complexity
@@ -182,14 +182,14 @@ val clear : 'a t -> unit
 
 (** {1 Iteration} *)
 
-val iter : ('a -> unit) -> 'a t -> unit
-(** Applies function [f] to each element in the set. The iteration order is
+val iter : 'a t -> fn:('a -> unit) -> unit
+(** Applies function [fn] to each element in the set. The iteration order is
     unspecified and may change between runs.
 
     ## Examples
 
-    ```ocaml let set = HashSet.of_list [1; 2; 3] in HashSet.iter (fun x ->
-    Printf.printf "%d " x) set (* Prints: 1 2 3 (order not guaranteed) *) ```
+    ```ocaml let set = HashSet.of_list [1; 2; 3] in HashSet.iter set ~fn:(fun x
+    -> Printf.printf "%d " x) (* Prints: 1 2 3 (order not guaranteed) *) ```
 
     ## Complexity
 
@@ -204,13 +204,13 @@ val to_mut_iter : 'a t -> 'a Iter.MutIterator.t
     HashSet.to_mut_iter set in Iter.MutIterator.to_list iter (* [1; 2; 3] -
     order not guaranteed *) ``` *)
 
-val fold : ('a -> 'acc -> 'acc) -> 'a t -> 'acc -> 'acc
+val fold : 'a t -> init:'acc -> fn:('acc -> 'a -> 'acc) -> 'acc
 (** Folds over all elements in the set. The iteration order is unspecified.
 
     ## Examples
 
     ```ocaml let set = HashSet.of_list [1; 2; 3; 4] in let sum = HashSet.fold
-    (fun x acc -> x + acc) set 0 in (* sum = 10 *) ```
+    set ~init:0 ~fn:(fun acc x -> acc + x) in (* sum = 10 *) ```
 
     ## Complexity
 

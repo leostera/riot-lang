@@ -1,6 +1,7 @@
 (** Package Planner - Plans individual packages with dependency-aware hashing *)
 
 open Std
+open Std.Collections
 open Tusk_model
 
 type plan_result =
@@ -9,17 +10,46 @@ type plan_result =
       module_graph : Module_node.t Graph.SimpleGraph.t;
       action_graph : Action_graph.t;
       hash : Std.Crypto.hash;
+      depset : Dependency.t list;
     }
   | MissingDependencies of { package : Package.t; missing : Package.t list }
+  | FailedDependencies of { package : Package.t; failed : Package.t list }
 
-let check_dependencies_planned ~package_graph ~package =
-  let missing =
-    Package_graph.get_unplanned_dependencies package_graph package
+type check_deps_error = Missing of Package.t list | Failed of Package.t list
+
+let check_dependencies_built ~package_graph ~package =
+  let deps = Package_graph.get_dependencies package_graph package in
+
+  let depset : Dependency.t vec = vec [] in
+  let unplanned = ref [] in
+  let failed = ref [] in
+
+  let process_node node =
+    let pkg = Package_graph.get_package node in
+    match node with
+    | Package_graph.Unplanned _ ->
+        (* Not yet planned - unplanned dependency *)
+        unplanned := pkg :: !unplanned
+    | Package_graph.Planned _ ->
+        (* Planned but not built yet - treat as unplanned *)
+        unplanned := pkg :: !unplanned
+    | Package_graph.Failed _ ->
+        (* Dependency failed to build *)
+        failed := pkg :: !failed
+    | Package_graph.Built { package; artifact; depset = dep_depset; hash; _ } ->
+        let dep = Dependency.{ package; artifact; depset = dep_depset; hash } in
+        Vector.push depset dep
   in
-  if missing = [] then Ok () else Error missing
 
-let compute_hash ~package ~sources ~module_graph ~action_graph
-    ~dependency_hashes ~workspace =
+  List.iter process_node deps;
+
+  (* Check the sets in order: failed takes precedence *)
+  if !failed <> [] then Error (Failed !failed)
+  else if !unplanned <> [] then Error (Missing !unplanned)
+  else Ok (Vector.to_list depset)
+
+let compute_hash ~package ~sources ~module_graph ~action_graph ~depset
+    ~workspace =
   let module H = Std.Crypto.Sha256 in
   let state = H.create () in
 
@@ -99,19 +129,24 @@ let compute_hash ~package ~sources ~module_graph ~action_graph
       H.write state (Kernel.Crypto.Hash.to_bytes node.value.hash))
     action_nodes;
 
-  let sorted_dep_hashes =
-    List.sort Kernel.Crypto.Hash.compare dependency_hashes
+  (* Hash all dependency hashes from the depset *)
+  let dep_hashes =
+    depset
+    |> List.map (fun (dep : Dependency.t) -> dep.hash)
+    |> List.sort Std.Crypto.Hash.compare
   in
   List.iter
     (fun hash -> H.write state (Kernel.Crypto.Hash.to_bytes hash))
-    sorted_dep_hashes;
+    dep_hashes;
 
   H.finish state
 
 let plan_package ~workspace ~toolchain ~package_graph ~package =
-  match check_dependencies_planned ~package_graph ~package with
-  | Error missing -> Ok (MissingDependencies { package; missing })
-  | Ok () -> (
+  match check_dependencies_built ~package_graph ~package with
+  | Error (Failed failed) -> Ok (FailedDependencies { package; failed })
+  | Error (Missing missing) -> Ok (MissingDependencies { package; missing })
+  | Ok depset -> (
+      (* Get dependencies in correct topological order from package graph *)
       let plan_input =
         Module_planner.
           {
@@ -119,20 +154,16 @@ let plan_package ~workspace ~toolchain ~package_graph ~package =
             toolchain;
             workspace;
             planning_root = Path.v "src";
-            dependencies = [];
+            depset;
           }
       in
 
       match Module_planner.plan_node plan_input with
       | Error err -> Error err
       | Ok { sources; module_graph; action_graph } ->
-          let dependency_hashes =
-            Package_graph.get_dependency_hashes package_graph package
-          in
-
           let hash =
-            compute_hash ~package ~sources ~module_graph ~action_graph
-              ~dependency_hashes ~workspace
+            compute_hash ~package ~sources ~module_graph ~action_graph ~depset
+              ~workspace
           in
 
-          Ok (Planned { package; module_graph; action_graph; hash }))
+          Ok (Planned { package; module_graph; action_graph; hash; depset }))

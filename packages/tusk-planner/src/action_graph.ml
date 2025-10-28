@@ -27,7 +27,7 @@ let opens mods =
       | _ -> None)
     mods
 
-let module_to_actions ~get_dep_outputs (module_node : Module_node.t)
+let module_to_actions ~package ~get_dep_outputs (module_node : Module_node.t)
     (deps : G.Node_id.t list) : Action.t list * Path.t list * Path.t list =
   match module_node with
   | { kind = MLI mod_; file = Concrete path; open_modules; _ } ->
@@ -159,9 +159,26 @@ let module_to_actions ~get_dep_outputs (module_node : Module_node.t)
           deps
       in
 
+      Log.debug
+        "[ACTION_GRAPH] CreateLibrary for %s: %d dependencies, %d objects" name
+        (List.length deps) (List.length objects);
+      if List.length objects > 0 then
+        Log.debug "[ACTION_GRAPH] CreateLibrary first 5 objects: %s"
+          (String.concat ", "
+             (List.map Path.to_string
+                (let rec take n lst =
+                   match (n, lst) with
+                   | 0, _ | _, [] -> []
+                   | n, x :: xs -> x :: take (n - 1) xs
+                 in
+                 take 5 objects)));
+
       let create_lib = Action.CreateLibrary { outputs; objects; includes } in
       ([ create_lib ], outputs, sources)
   | { kind = Binary { name; source; libraries; includes }; _ } ->
+      Log.debug "[ACTION_GRAPH] Creating binary %s with %d libraries: [%s]" name
+        (List.length libraries)
+        (String.concat ", " (List.map Path.to_string libraries));
       let binary_mod =
         Module.make ~namespace:Namespace.empty ~filename:source
       in
@@ -190,10 +207,25 @@ let module_to_actions ~get_dep_outputs (module_node : Module_node.t)
       in
       ([ compile_action; link_action ], [ binary_output ], sources)
 
-let from_module_graph ~package ~toolchain (module_graph : Module_node.t G.t) :
-    t * Path.t list =
+let from_module_graph ~package ~toolchain ~depset
+    (module_graph : Module_node.t G.t) : t * Path.t list =
   Log.info "[ACTION_GRAPH] from_module_graph starting for package: %s"
     package.Package.name;
+
+  (* Extract dependency cache include paths - no file copying needed! *)
+  let dep_includes =
+    List.map
+      (fun (dep : Dependency.t) ->
+        (* Hash gives us the cache directory name *)
+        Path.(
+          v "target" / v "debug" / v "cache"
+          / v (Std.Crypto.Digest.hex dep.hash)))
+      depset
+  in
+  Log.info "[ACTION_GRAPH] Dependency includes (%d): [%s]"
+    (List.length dep_includes)
+    (String.concat ", " (List.map Path.to_string dep_includes));
+
   let action_graph = create () in
   let node_mapping = HashMap.create () in
   let action_spec_hashes = HashMap.create () in
@@ -232,7 +264,8 @@ let from_module_graph ~package ~toolchain (module_graph : Module_node.t G.t) :
         (String.concat ", " (List.map G.Node_id.to_string module_node.deps));
 
       let actions, outputs, sources =
-        module_to_actions ~get_dep_outputs module_node.value module_node.deps
+        module_to_actions ~package ~get_dep_outputs module_node.value
+          module_node.deps
       in
 
       Log.debug "[ACTION_GRAPH]   -> %d actions, %d outputs, %d sources"

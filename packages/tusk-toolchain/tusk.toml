@@ -2,7 +2,7 @@
 name = "tusk-toolchain"
 version = "0.1.0"
 
-[package.lib]
+[lib]
 path = "src/tusk_toolchain.ml"
 
 [dependencies]

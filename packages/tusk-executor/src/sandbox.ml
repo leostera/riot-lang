@@ -28,6 +28,23 @@ let create ~workspace ~package_name =
 
 let get_dir t = t.dir
 
+let copy_deps ~sandbox ~store depset =
+  List.iter
+    (fun dep ->
+      let abs_paths =
+        Tusk_store.Store.get_artifact_paths store
+          dep.Tusk_planner.Dependency.artifact
+      in
+      List.iter
+        (fun abs_path ->
+          let dest = Path.(sandbox.dir / v (Path.basename abs_path)) in
+          Fs.copy ~src:abs_path ~dst:dest
+          |> Result.expect
+               ~msg:
+                 (format "Failed to copy dep file %s" (Path.to_string abs_path)))
+        abs_paths)
+    depset
+
 let copy_inputs ~sandbox ~package ~inputs =
   List.iter
     (fun rel_path ->
@@ -59,8 +76,10 @@ let cleanup sandbox =
   let _ = Fs.remove_dir_all sandbox.dir in
   ()
 
-let with_sandbox ~workspace ~package ~inputs ~expected_outputs f =
+let with_sandbox ~workspace ~package ~inputs ~depset ~store ~expected_outputs f
+    =
   let sandbox = create ~workspace ~package_name:package.Package.name in
+  copy_deps ~sandbox ~store depset;
   copy_inputs ~sandbox ~package ~inputs;
   let result = f sandbox in
   verify_outputs ~sandbox ~expected_outputs;

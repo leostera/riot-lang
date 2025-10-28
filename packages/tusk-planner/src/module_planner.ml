@@ -10,7 +10,7 @@ type plan_input = {
   toolchain : Tusk_toolchain.t;
   workspace : Workspace.t;
   planning_root : Path.t;
-  dependencies : Dependency.t list;
+  depset : Dependency.t list;
 }
 
 type plan_result = {
@@ -53,10 +53,58 @@ let plan_node input =
           ~includes:[]
     | None -> ());
 
+    (* Use depset directly - it's already in correct topological order from check_dependencies_built *)
+    Log.debug "[MODULE_PLANNER] Package %s has %d transitive dependencies: [%s]"
+      input.package.name (List.length input.depset)
+      (String.concat ", "
+         (List.map (fun (d : Dependency.t) -> d.package.name) input.depset));
+
+    let all_deps = input.depset in
+
+    (* Check if any package (including our own) needs unix *)
+    let needs_unix =
+      let check_pkg (pkg : Package.t) =
+        List.exists
+          (fun (d : Package.dependency) -> d.name = "unix")
+          pkg.dependencies
+      in
+      check_pkg input.package
+      || List.exists
+           (fun (dep : Dependency.t) -> check_pkg dep.package)
+           all_deps
+    in
+
+    let binary_libraries =
+      match input.package.library with
+      | Some _ ->
+          let lib_name = Module_name.(of_string input.package.name |> cmxa) in
+          (* Build libraries list: unix (if needed), dependencies, then our library *)
+          let unix_lib = if needs_unix then [ Path.v "unix.cmxa" ] else [] in
+          let dep_libs = List.map Dependency.library_cmxa all_deps in
+          let result = unix_lib @ dep_libs @ [ lib_name ] in
+          Log.debug "[MODULE_PLANNER] binary_libraries for %s (%d libs): [%s]"
+            input.package.name (List.length result)
+            (String.concat ", " (List.map Path.to_string result));
+          result
+      | None -> []
+    in
+
+    let binary_includes = if needs_unix then [ Path.v "+unix" ] else [] in
+
+    Log.debug
+      "[MODULE_PLANNER] Adding %d binaries with libraries: [%s], includes: [%s]"
+      (List.length input.package.binaries)
+      (String.concat ", " (List.map Path.to_string binary_libraries))
+      (String.concat ", " (List.map Path.to_string binary_includes));
     List.iter
       (fun (bin : Package.binary) ->
+        Log.debug
+          "[MODULE_PLANNER] Adding binary: %s with %d libraries, %d includes"
+          bin.name
+          (List.length binary_libraries)
+          (List.length binary_includes);
         Module_graph.add_binary_node graph_builder ~name:bin.name
-          ~source:bin.path ~libraries:[] ~includes:[])
+          ~source:bin.path ~libraries:binary_libraries ~includes:binary_includes)
       input.package.binaries;
 
     let main_library_node_id : G.Node_id.t option =
@@ -78,7 +126,7 @@ let plan_node input =
 
     let action_graph, _outputs =
       Action_graph.from_module_graph ~package:input.package
-        ~toolchain:input.toolchain module_graph
+        ~toolchain:input.toolchain ~depset:input.depset module_graph
     in
 
     let sources =

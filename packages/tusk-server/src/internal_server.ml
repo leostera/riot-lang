@@ -127,8 +127,11 @@ and handle_get_package_info state client_pid package_name =
                 dependencies = [];
               }))
   | Some package ->
-      let dependencies =
+      let dep_nodes =
         Tusk_planner.Package_graph.get_dependencies state.package_graph package
+      in
+      let dependencies =
+        List.map Tusk_planner.Package_graph.get_package dep_nodes
       in
       let all_sources =
         List.concat
@@ -144,7 +147,8 @@ and handle_get_package_info state client_pid package_name =
 and handle_get_build_graph state client_pid =
   Log.debug "Server: Received GetBuildGraph from %s" (Pid.to_string client_pid);
   let sorted_packages =
-    Tusk_planner.Package_graph.topological_sort state.package_graph
+    Tusk_planner.Package_graph.(
+      topological_sort state.package_graph |> List.map get_package)
   in
   send client_pid
     (Protocol.ServerResponse (Protocol.BuildGraph { nodes = sorted_packages }));

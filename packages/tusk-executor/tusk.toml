@@ -2,6 +2,9 @@
 name = "tusk-executor"
 version = "0.1.0"
 
+[lib]
+path = "src/tusk_executor.ml"
+
 [dependencies]
 std = "*"
 miniriot = "*"

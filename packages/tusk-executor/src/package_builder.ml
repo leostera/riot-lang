@@ -159,7 +159,8 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
                });
         duration;
       }
-  | Ok (Planned { module_graph; action_graph; hash = package_hash; _ }) -> (
+  | Ok (Planned { module_graph; action_graph; hash = package_hash; depset; _ })
+    -> (
       Log.info "Package %s: hash=%s" package.Package.name
         (Std.Crypto.Digest.hex package_hash);
 
@@ -178,8 +179,23 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
                    (format "Failed to promote cached artifacts for %s"
                       package.name)
           in
-          Package_graph.mark_planned package_graph package ~module_graph
-            ~action_graph ~hash:package_hash;
+
+          (* Mark as Built with Cached status *)
+          (match Tusk_planner.Package_graph.get_node package_graph package with
+          | Some node ->
+              node.value <-
+                Tusk_planner.Package_graph.Built
+                  {
+                    package;
+                    module_graph;
+                    action_graph;
+                    hash = package_hash;
+                    artifact;
+                    status = Tusk_planner.Package_graph.Cached;
+                    depset;
+                  }
+          | None -> ());
+
           let duration =
             Instant.duration_since ~earlier:start (Instant.now ())
           in
@@ -249,7 +265,7 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
           in
 
           match
-            Sandbox.with_sandbox ~workspace ~package ~inputs
+            Sandbox.with_sandbox ~workspace ~package ~inputs ~depset ~store
               ~expected_outputs:outputs do_build
           with
           | exception exn ->
@@ -275,8 +291,23 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
                    ~msg:
                      (format "Failed to promote artifacts for %s" package.name);
 
-              Package_graph.mark_planned package_graph package ~module_graph
-                ~action_graph ~hash:package_hash;
+              (* Mark as Built with Fresh status *)
+              (match
+                 Tusk_planner.Package_graph.get_node package_graph package
+               with
+              | Some node ->
+                  node.value <-
+                    Tusk_planner.Package_graph.Built
+                      {
+                        package;
+                        module_graph;
+                        action_graph;
+                        hash = package_hash;
+                        artifact;
+                        status = Tusk_planner.Package_graph.Fresh;
+                        depset;
+                      }
+              | None -> ());
 
               let duration =
                 Instant.duration_since ~earlier:start (Instant.now ())

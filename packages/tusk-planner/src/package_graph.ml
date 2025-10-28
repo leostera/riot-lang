@@ -1,9 +1,12 @@
 open Std
 open Std.Collections
 open Tusk_model
+open Tusk_store
 module G = Graph.SimpleGraph
 
 exception Cycle_detected of string list
+
+type build_status = Cached | Fresh
 
 type package_node =
   | Unplanned of Package.t
@@ -13,6 +16,16 @@ type package_node =
       action_graph : Action_graph.t;
       hash : Std.Crypto.hash;
     }
+  | Built of {
+      package : Package.t;
+      module_graph : Module_node.t G.t;
+      action_graph : Action_graph.t;
+      hash : Std.Crypto.hash;
+      artifact : Artifact.t;
+      status : build_status;
+      depset : Dependency.t list;
+    }
+  | Failed of { package : Package.t; hash : Std.Crypto.hash; error : string }
 
 type t = {
   graph : package_node G.t;
@@ -22,14 +35,28 @@ type t = {
 let get_package = function
   | Unplanned pkg -> pkg
   | Planned { package; _ } -> package
+  | Built { package; _ } -> package
+  | Failed { package; _ } -> package
 
-let is_planned = function Unplanned _ -> false | Planned _ -> true
-let get_hash = function Unplanned _ -> None | Planned { hash; _ } -> Some hash
+let is_planned = function
+  | Unplanned _ -> false
+  | Planned _ -> true
+  | Built _ -> true
+  | Failed _ -> true
+
+let get_hash = function
+  | Unplanned _ -> None
+  | Planned { hash; _ } -> Some hash
+  | Built { hash; _ } -> Some hash
+  | Failed { hash; _ } -> Some hash
 
 let get_planned_data = function
   | Unplanned _ -> None
   | Planned { package; module_graph; action_graph; hash } ->
       Some (package, module_graph, action_graph, hash)
+  | Built { package; module_graph; action_graph; hash; _ } ->
+      Some (package, module_graph, action_graph, hash)
+  | Failed _ -> None
 
 let create (workspace : Workspace.t) =
   let graph = G.make () in
@@ -57,6 +84,8 @@ let create (workspace : Workspace.t) =
 
   { graph; name_to_node }
 
+let get_node pg package = HashMap.get pg.name_to_node package.Package.name
+
 let mark_planned pg (package : Package.t) ~module_graph ~action_graph ~hash =
   match HashMap.get pg.name_to_node package.name with
   | None -> ()
@@ -70,42 +99,6 @@ let find_package pg name =
   match HashMap.get pg.name_to_node name with
   | Some node -> Some (get_package node.value)
   | None -> None
-
-let get_dependencies pg (pkg : Package.t) =
-  match HashMap.get pg.name_to_node pkg.name with
-  | None -> []
-  | Some node ->
-      List.filter_map
-        (fun dep_id ->
-          try Some (get_package (G.get_node pg.graph dep_id).value)
-          with _ -> None)
-        node.deps
-
-let get_dependency_hashes pg (pkg : Package.t) =
-  match HashMap.get pg.name_to_node pkg.name with
-  | None -> []
-  | Some node ->
-      List.filter_map
-        (fun dep_id ->
-          try
-            let dep_node = G.get_node pg.graph dep_id in
-            get_hash dep_node.value
-          with _ -> None)
-        node.deps
-
-let get_unplanned_dependencies pg (pkg : Package.t) =
-  match HashMap.get pg.name_to_node pkg.name with
-  | None -> []
-  | Some node ->
-      List.filter_map
-        (fun dep_id ->
-          try
-            let dep_node = G.get_node pg.graph dep_id in
-            if not (is_planned dep_node.value) then
-              Some (get_package dep_node.value)
-            else None
-          with _ -> None)
-        node.deps
 
 let filter_for_package pg pkg_name =
   match HashMap.get pg.name_to_node pkg_name with
@@ -151,9 +144,7 @@ let filter_for_package pg pkg_name =
 let topological_sort pg =
   try
     let sorted_nodes = G.topo_sort pg.graph in
-    List.map
-      (fun (node : package_node G.node) -> get_package node.value)
-      sorted_nodes
+    List.map (fun (node : package_node G.node) -> node.value) sorted_nodes
   with G.Cycle node_ids ->
     let names =
       List.filter_map
@@ -165,5 +156,18 @@ let topological_sort pg =
         node_ids
     in
     raise (Cycle_detected names)
+
+let get_dependencies graph (package : Package.t) =
+  let filtered_graph = filter_for_package graph package.name in
+  topological_sort filtered_graph
+  |> List.filter_map (fun node ->
+      let pkg = get_package node in
+      if Package.equal pkg package then None else Some node)
+
+let get_unplanned_dependencies pg (pkg : Package.t) =
+  let deps = get_dependencies pg pkg in
+  List.filter_map
+    (fun dep -> if not (is_planned dep) then Some (get_package dep) else None)
+    deps
 
 let iter_nodes pg ~fn = G.iter pg.graph ~fn:(fun _id node -> fn node)

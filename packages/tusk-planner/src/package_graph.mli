@@ -2,6 +2,7 @@ open Std
 open Tusk_model
 
 type t
+type build_status = Cached | Fresh
 
 type package_node =
   | Unplanned of Package.t
@@ -11,6 +12,16 @@ type package_node =
       action_graph : Action_graph.t;
       hash : Std.Crypto.hash;
     }
+  | Built of {
+      package : Package.t;
+      module_graph : Module_node.t Graph.SimpleGraph.t;
+      action_graph : Action_graph.t;
+      hash : Std.Crypto.hash;
+      artifact : Tusk_store.Artifact.t;
+      status : build_status;
+      depset : Dependency.t list;
+    }
+  | Failed of { package : Package.t; hash : Std.Crypto.hash; error : string }
 
 exception Cycle_detected of string list
 
@@ -26,9 +37,6 @@ val is_planned : package_node -> bool
 
 val get_hash : package_node -> Std.Crypto.hash option
 (** Get the hash of a planned package node, or None if unplanned *)
-
-val get_dependency_hashes : t -> Package.t -> Std.Crypto.hash list
-(** Get hashes of all direct dependencies that have been planned *)
 
 val get_unplanned_dependencies : t -> Package.t -> Package.t list
 (** Get all direct dependencies that have not been planned yet *)
@@ -49,7 +57,7 @@ val filter_for_package : t -> string -> t
 (** Filter the graph to only include the specified package and its transitive
     dependencies. Returns an empty graph if package not found. *)
 
-val topological_sort : t -> Package.t list
+val topological_sort : t -> package_node list
 (** Return packages in topological order (dependencies before dependents).
     Raises Cycle_detected if there are circular dependencies. *)
 
@@ -59,8 +67,11 @@ val packages : t -> Package.t list
 val find_package : t -> string -> Package.t option
 (** Find a package by name *)
 
-val get_dependencies : t -> Package.t -> Package.t list
-(** Get direct dependencies of a package *)
+val get_node : t -> Package.t -> package_node Graph.SimpleGraph.node option
+(** Get the graph node for a package *)
+
+val get_dependencies : t -> Package.t -> package_node list
+(** Get direct dependency package_node values of a package *)
 
 val iter_nodes : t -> fn:(package_node Graph.SimpleGraph.node -> unit) -> unit
 (** Iterate over all nodes in the graph *)

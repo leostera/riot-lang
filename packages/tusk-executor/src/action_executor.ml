@@ -81,10 +81,32 @@ let run_action ocamlc sandbox_dir action =
         ~includes:abs_includes ~output:abs_output abs_objects
   | Action.CreateExecutable
       { outputs = output :: _; objects; libraries; includes } ->
+      Log.debug
+        "[ACTION_EXECUTOR] CreateExecutable: output=%s, %d objects, %d \
+         libraries: [%s]"
+        (Path.to_string output) (List.length objects) (List.length libraries)
+        (String.concat ", " (List.map Path.to_string libraries));
       let abs_output = Path.join sandbox_dir output in
       let abs_objects = List.map (Path.join sandbox_dir) objects in
-      let abs_libraries = List.map (Path.join sandbox_dir) libraries in
+
+      (* Handle libraries: system libraries stay as-is, user libraries become absolute *)
+      let abs_libraries =
+        List.map
+          (fun lib ->
+            let lib_str = Path.to_string lib in
+            (* System libraries (unix, threads, etc.) are found via +xxx includes *)
+            if
+              lib_str = "unix.cmxa" || lib_str = "threads.cmxa"
+              || lib_str = "dynlink.cmxa"
+            then lib (* Keep system libs as-is *)
+            else Path.join sandbox_dir lib)
+            (* Make user libs absolute to sandbox *)
+          libraries
+      in
+
       let abs_includes = List.map (Path.join sandbox_dir) includes in
+      Log.debug "[ACTION_EXECUTOR] Absolute libraries: [%s]"
+        (String.concat ", " (List.map Path.to_string abs_libraries));
       Tusk_toolchain.Ocamlc.create_executable ocamlc ~cwd:sandbox_dir
         ~includes:abs_includes ~libs:abs_libraries ~output:abs_output
         abs_objects

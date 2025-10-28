@@ -13,7 +13,7 @@ type plan_input = {
   toolchain : Tusk_toolchain.t;
   workspace : Workspace.t;
   planning_root : Path.t;
-  dependencies : Dependency.t list;
+  depset : Dependency.t list;
 }
 
 type plan_result = {

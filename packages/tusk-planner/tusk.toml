@@ -2,13 +2,14 @@
 name = "tusk-planner"
 version = "0.1.0"
 
-[package.lib]
+[lib]
 path = "src/Tusk_planner.ml"
 
 [dependencies]
 std = { path = "../std" }
 miniriot = { path = "../miniriot" }
 tusk-model = { path = "../tusk-model" }
+tusk-store = { path = "../tusk-store" }
 tusk-toolchain = { path = "../tusk-toolchain" }
 
 [[bin]]

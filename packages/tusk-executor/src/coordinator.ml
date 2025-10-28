@@ -31,7 +31,8 @@ let build_workspace ~workspace ~toolchain ~store ~target ~concurrency =
       match Package_graph.topological_sort package_graph with
       | exception Package_graph.Cycle_detected cycle ->
           Error (Workspace_planner.CycleDetected { cycle })
-      | packages ->
+      | nodes ->
+          let packages = List.map Package_graph.get_package nodes in
           let queue = Build_queue.create () in
 
           (* Queue all package nodes BEFORE starting pool *)

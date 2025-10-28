@@ -16,6 +16,8 @@ type t = {
   sources : sources;
 }
 
+val equal : t -> t -> bool
+
 val from_toml :
   Std.Data.Toml.value ->
   workspace_deps:dependency list ->

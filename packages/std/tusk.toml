@@ -2,6 +2,9 @@
 name = "std"
 version = "0.1.0"
 
+[lib]
+path = "./src/std.ml"
+
 [dependencies]
 miniriot = { path = "../miniriot" }
 kernel = { path = "../kernel" }

@@ -52,3 +52,15 @@ module Vector = Vector
 
 module Heap = Heap
 (** Binary heap for priority queue operations. See [Heap]. *)
+
+type 'v vec = 'v Vector.t
+
+val vec : 'v list -> 'v vec
+
+type ('k, 'v) map = ('k, 'v) HashMap.t
+
+val map : ('k * 'v) list -> ('k, 'v) map
+
+type 'v set = 'v HashSet.t
+
+val set : 'v list -> 'v set

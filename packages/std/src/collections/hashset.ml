@@ -22,8 +22,8 @@ let contains set value = Hashtbl.mem set value
 let len set = Hashtbl.length set
 let is_empty set = Hashtbl.length set = 0
 let clear set = Hashtbl.clear set
-let iter f set = Hashtbl.iter (fun elem _ -> f elem) set
-let fold f set acc = Hashtbl.fold (fun elem _ acc -> f elem acc) set acc
+let iter set ~fn = Hashtbl.iter (fun elem _ -> fn elem) set
+let fold set ~init ~fn = Hashtbl.fold (fun elem _ acc -> fn acc elem) set init
 let to_list set = Hashtbl.fold (fun elem _ acc -> elem :: acc) set []
 
 let union set1 set2 =
