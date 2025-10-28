@@ -10,14 +10,22 @@ type package_plan_result = Package_planner.plan_result
 let plan_workspace ~workspace ~target =
   Workspace_planner.plan_workspace ~workspace ~target
 
-let plan_package_with_graph ~workspace ~toolchain ~package_graph ~package =
-  Package_planner.plan_package ~workspace ~toolchain ~package_graph ~package
+let plan_package_with_graph ~workspace ~toolchain ~store ~package_graph ~package =
+  Package_planner.plan_package ~workspace ~toolchain ~store ~package_graph ~package
 
 let plan_package ~workspace ~toolchain ~package =
   let planning_root = Path.v "src" in
   let depset = [] in
+  let store = Tusk_store.Store.create ~workspace in
   let plan_input =
-    { Module_planner.package; toolchain; workspace; planning_root; depset }
+    {
+      Module_planner.package;
+      toolchain;
+      workspace;
+      planning_root;
+      depset;
+      store;
+    }
   in
   Module_planner.plan_node plan_input
 

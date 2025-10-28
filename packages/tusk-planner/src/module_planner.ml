@@ -11,6 +11,7 @@ type plan_input = {
   workspace : Workspace.t;
   planning_root : Path.t;
   depset : Dependency.t list;
+  store : Tusk_store.Store.t;
 }
 
 type plan_result = {
@@ -89,7 +90,18 @@ let plan_node input =
       | None -> []
     in
 
-    let binary_includes = if needs_unix then [ Path.v "+unix" ] else [] in
+    (* Add cache directories from dependencies to includes *)
+    let dep_cache_dirs =
+      List.map
+        (fun (dep : Dependency.t) ->
+          Tusk_store.Store.get_artifact_dir input.store dep.artifact)
+        all_deps
+    in
+
+    let binary_includes =
+      let unix_includes = if needs_unix then [ Path.v "+unix" ] else [] in
+      unix_includes @ dep_cache_dirs
+    in
 
     Log.debug
       "[MODULE_PLANNER] Adding %d binaries with libraries: [%s], includes: [%s]"
@@ -126,7 +138,8 @@ let plan_node input =
 
     let action_graph, _outputs =
       Action_graph.from_module_graph ~package:input.package
-        ~toolchain:input.toolchain ~depset:input.depset module_graph
+        ~toolchain:input.toolchain ~store:input.store ~depset:input.depset
+        module_graph
     in
 
     let sources =

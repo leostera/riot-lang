@@ -89,22 +89,17 @@ let run_action ocamlc sandbox_dir action =
       let abs_output = Path.join sandbox_dir output in
       let abs_objects = List.map (Path.join sandbox_dir) objects in
 
-      (* Handle libraries: system libraries stay as-is, user libraries become absolute *)
-      let abs_libraries =
-        List.map
-          (fun lib ->
-            let lib_str = Path.to_string lib in
-            (* System libraries (unix, threads, etc.) are found via +xxx includes *)
-            if
-              lib_str = "unix.cmxa" || lib_str = "threads.cmxa"
-              || lib_str = "dynlink.cmxa"
-            then lib (* Keep system libs as-is *)
-            else Path.join sandbox_dir lib)
-            (* Make user libs absolute to sandbox *)
-          libraries
-      in
+      (* Libraries are now found via -I includes pointing to cache, keep as filenames *)
+      let abs_libraries = libraries in
 
-      let abs_includes = List.map (Path.join sandbox_dir) includes in
+      (* Includes can be absolute (cache dirs) or relative (sandbox dir) - make relative ones absolute *)
+      let abs_includes =
+        List.map
+          (fun inc ->
+            if Path.is_absolute inc then inc
+            else Path.join sandbox_dir inc)
+          includes
+      in
       Log.debug "[ACTION_EXECUTOR] Absolute libraries: [%s]"
         (String.concat ", " (List.map Path.to_string abs_libraries));
       let result =

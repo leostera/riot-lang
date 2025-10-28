@@ -138,8 +138,8 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
   Log.info "Package %s: computing content hash with dependencies"
     package.Package.name;
   match
-    Tusk_planner.plan_package_with_graph ~workspace ~toolchain ~package_graph
-      ~package
+    Tusk_planner.plan_package_with_graph ~workspace ~toolchain ~store
+      ~package_graph ~package
   with
   | Error err ->
       let duration = Instant.duration_since ~earlier:start (Instant.now ()) in

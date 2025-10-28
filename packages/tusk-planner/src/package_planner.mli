@@ -17,6 +17,7 @@ type plan_result =
 val plan_package :
   workspace:Workspace.t ->
   toolchain:Tusk_toolchain.t ->
+  store:Tusk_store.Store.t ->
   package_graph:Package_graph.t ->
   package:Package.t ->
   (plan_result, Planning_error.t) result

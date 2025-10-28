@@ -19,6 +19,7 @@ val plan_workspace :
 val plan_package_with_graph :
   workspace:Workspace.t ->
   toolchain:Tusk_toolchain.t ->
+  store:Tusk_store.Store.t ->
   package_graph:Package_graph.t ->
   package:Package.t ->
   (package_plan_result, Planning_error.t) result

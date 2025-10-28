@@ -28,6 +28,7 @@ val hash_action_node : t -> Action_node.t -> Crypto.hash
 val from_module_graph : 
   package:Package.t ->
   toolchain:Tusk_toolchain.t ->
+  store:Tusk_store.Store.t ->
   depset:Dependency.t list ->
   Module_node.t G.t -> 
   t * Path.t list

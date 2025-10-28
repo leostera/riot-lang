@@ -52,9 +52,10 @@ let main ~args =
     |> Result.expect ~msg:"Could not init toolchain"
   in
 
+  let store = Tusk_store.Store.create ~workspace in
   let package_graph = Tusk_planner.Package_graph.create workspace in
   let result =
-    Tusk_planner.Package_planner.plan_package ~workspace ~toolchain
+    Tusk_planner.Package_planner.plan_package ~workspace ~toolchain ~store
       ~package_graph ~package
     |> Result.expect ~msg:"Planning failed"
   in

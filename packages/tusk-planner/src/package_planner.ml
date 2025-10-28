@@ -144,7 +144,7 @@ let compute_hash ~package ~sources ~module_graph ~action_graph ~depset
 
   H.finish state
 
-let plan_package ~workspace ~toolchain ~package_graph ~package =
+let plan_package ~workspace ~toolchain ~store ~package_graph ~package =
   match check_dependencies_built ~package_graph ~package with
   | Error (Failed failed) -> Ok (FailedDependencies { package; failed })
   | Error (Missing missing) -> Ok (MissingDependencies { package; missing })
@@ -158,6 +158,7 @@ let plan_package ~workspace ~toolchain ~package_graph ~package =
             workspace;
             planning_root = Path.v "src";
             depset;
+            store;
           }
       in
 

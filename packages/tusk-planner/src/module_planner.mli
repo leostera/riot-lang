@@ -14,6 +14,7 @@ type plan_input = {
   workspace : Workspace.t;
   planning_root : Path.t;
   depset : Dependency.t list;
+  store : Tusk_store.Store.t;
 }
 
 type plan_result = {

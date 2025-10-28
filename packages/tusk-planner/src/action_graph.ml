@@ -27,8 +27,9 @@ let opens mods =
       | _ -> None)
     mods
 
-let module_to_actions ~package ~get_dep_outputs (module_node : Module_node.t)
-    (deps : G.Node_id.t list) : Action.t list * Path.t list * Path.t list =
+let module_to_actions ~package ~dep_includes ~get_dep_outputs
+    (module_node : Module_node.t) (deps : G.Node_id.t list) :
+    Action.t list * Path.t list * Path.t list =
   match module_node with
   | { kind = MLI mod_; file = Concrete path; open_modules; _ } ->
       let cmi_output = Module.cmi mod_ in
@@ -40,7 +41,7 @@ let module_to_actions ~package ~get_dep_outputs (module_node : Module_node.t)
           {
             source = path;
             outputs;
-            includes = [ Path.v "." ];
+            includes = Path.v "." :: dep_includes;
             flags = opens open_modules;
           }
       in
@@ -56,7 +57,7 @@ let module_to_actions ~package ~get_dep_outputs (module_node : Module_node.t)
           {
             source = path;
             outputs;
-            includes = [ Path.v "." ];
+            includes = Path.v "." :: dep_includes;
             flags = opens open_modules;
           }
       in
@@ -84,7 +85,7 @@ let module_to_actions ~package ~get_dep_outputs (module_node : Module_node.t)
 
       let compile_action =
         Action.CompileImplementation
-          { source = path; outputs; includes = [ Path.v "." ]; flags }
+          { source = path; outputs; includes = Path.v "." :: dep_includes; flags }
       in
       ([ write_action; compile_action ], outputs, sources)
   | { kind = MLI mod_; file = Generated { path; contents }; open_modules; _ } ->
@@ -101,7 +102,7 @@ let module_to_actions ~package ~get_dep_outputs (module_node : Module_node.t)
           {
             source = path;
             outputs;
-            includes = [ Path.v "." ];
+            includes = Path.v "." :: dep_includes;
             flags = opens open_modules;
           }
       in
@@ -190,7 +191,7 @@ let module_to_actions ~package ~get_dep_outputs (module_node : Module_node.t)
           {
             source;
             outputs = [ binary_cmx ];
-            includes = [ Path.v "." ];
+            includes = Path.v "." :: dep_includes;
             flags = [];
           }
       in
@@ -207,7 +208,7 @@ let module_to_actions ~package ~get_dep_outputs (module_node : Module_node.t)
       in
       ([ compile_action; link_action ], [ binary_output ], sources)
 
-let from_module_graph ~package ~toolchain ~depset
+let from_module_graph ~package ~toolchain ~store ~depset
     (module_graph : Module_node.t G.t) : t * Path.t list =
   Log.info "[ACTION_GRAPH] from_module_graph starting for package: %s"
     package.Package.name;
@@ -216,10 +217,7 @@ let from_module_graph ~package ~toolchain ~depset
   let dep_includes =
     List.map
       (fun (dep : Dependency.t) ->
-        (* Hash gives us the cache directory name *)
-        Path.(
-          v "target" / v "debug" / v "cache"
-          / v (Std.Crypto.Digest.hex dep.hash)))
+        Tusk_store.Store.get_artifact_dir store dep.artifact)
       depset
   in
   Log.info "[ACTION_GRAPH] Dependency includes (%d): [%s]"
@@ -264,8 +262,8 @@ let from_module_graph ~package ~toolchain ~depset
         (String.concat ", " (List.map G.Node_id.to_string module_node.deps));
 
       let actions, outputs, sources =
-        module_to_actions ~package ~get_dep_outputs module_node.value
-          module_node.deps
+        module_to_actions ~package ~dep_includes ~get_dep_outputs
+          module_node.value module_node.deps
       in
 
       Log.debug "[ACTION_GRAPH]   -> %d actions, %d outputs, %d sources"

@@ -46,3 +46,7 @@ val get_artifact_paths : t -> Artifact.t -> Std.Path.t list
 (** Get absolute paths to artifact files in the store's cache. These paths point
     to the immutable content-addressed storage and are guaranteed to exist. Use
     this instead of relying on target/debug/out which may be cleaned. *)
+
+val get_artifact_dir : t -> Artifact.t -> Std.Path.t
+(** Get the cache directory containing an artifact's files. Returns the absolute
+    path to the directory in immutable storage where the artifact is stored. *)

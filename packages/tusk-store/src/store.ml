@@ -178,3 +178,6 @@ let get_artifact_paths store artifact =
   List.map
     (fun rel_path -> Path.(hash_dir / rel_path))
     Artifact.(artifact.files)
+
+(** Get the cache directory containing an artifact's files *)
+let get_artifact_dir store artifact = get_hash_dir store Artifact.(artifact.hash)
