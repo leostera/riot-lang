@@ -25,9 +25,9 @@ let format ~displayed_packages (event : Telemetry.event) =
               package.name
       | `Fresh -> "")
   | Telemetry_events.BuildFailed { package; error; _ } ->
-      format "   \027[1;31mFailed\027[0m %s\n%s" package.name error
+      format "      \027[1;31mFailed\027[0m %s\n%s" package.name error
   | Telemetry_events.BuildSkipped { package; reason; _ } ->
-      format "   \027[1;33mSkipped\027[0m %s (%s)" package.name reason
+      format "     \027[1;33mSkipped\027[0m %s (%s)" package.name reason
   (* Cache events - these are action-level, not commonly emitted *)
   | Telemetry_events.CacheHit { package; _ } ->
       (* Only show if we haven't displayed this package yet *)

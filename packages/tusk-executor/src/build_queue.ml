@@ -166,15 +166,7 @@ let mark_completed t result =
   let pkg_name = result.Package_builder.package.name in
   let _ = HashMap.remove t.busy_tasks pkg_name in
   let _ = HashMap.insert t.completed pkg_name result in
-
-  let rec transfer () =
-    match Queue.dequeue t.later_queue with
-    | None -> ()
-    | Some node ->
-        Queue.enqueue t.ready_queue node;
-        transfer ()
-  in
-  transfer ()
+  ()
 
 let mark_failed t (node : package_node) ~error =
   let pkg = Package_graph.get_package node.value in
