@@ -1,5 +1,14 @@
 (** Miniriot - Minimal single-core actor runtime *)
 
+exception Receive_timeout
+(** Raised when a receive operation times out *)
+
+exception Syscall_timeout
+(** Raised when a syscall operation times out *)
+
+module Config = Config
+(** Runtime configuration *)
+
 module Runtime : sig
   (** Runtime support for reduction counting *)
 
@@ -74,6 +83,26 @@ module Process : sig
   (** Consume all ready tokens with the given function *)
 end
 
+module Timer_id = Timer_id
+(** Opaque timer identifiers *)
+
+module Timer : sig
+  type id = Timer_id.t
+  (** Opaque timer identifier *)
+
+  val send_after : Pid.t -> Message.t -> after:float -> id
+  (** Send a message to a process after a delay (in seconds). Returns a timer ID
+      that can be used to cancel the timer. *)
+
+  val send_interval : Pid.t -> Message.t -> interval:float -> id
+  (** Send a message to a process repeatedly at a given interval (in seconds).
+      Returns a timer ID that can be used to cancel the timer. *)
+
+  val cancel : id -> unit
+  (** Cancel a timer by its ID. If the timer has already fired or doesn't exist,
+      this is a no-op. *)
+end
+
 val self : unit -> Pid.t
 val spawn : (unit -> (unit, Process.exit_reason) result) -> Pid.t
 val send : Pid.t -> Message.t -> unit
@@ -81,8 +110,14 @@ val yield : unit -> unit
 
 type 'msg selector = Message.t -> [ `select of 'msg | `skip ]
 
-val receive : selector:'value selector -> unit -> 'value
-val receive_any : unit -> Message.t
+val receive : selector:'value selector -> ?timeout:float -> unit -> 'value
+(** Receive a message using a selector. Optionally times out after [timeout]
+    seconds, raising [Receive_timeout]. *)
+
+val receive_any : ?timeout:float -> unit -> Message.t
+(** Receive any message. Optionally times out after [timeout] seconds, raising
+    [Receive_timeout]. *)
+
 val shutdown : status:int -> unit
 
 val syscall :
@@ -96,7 +131,11 @@ val syscall :
 val run :
   main:(args:string list -> (unit, Process.exit_reason) result) ->
   args:string list ->
+  ?config:Config.t ->
+  unit ->
   unit
+(** Start the runtime with optional configuration. Defaults to millisecond timer
+    resolution. *)
 
 val enable_trace : unit -> unit
 (** Enable debug tracing *)

@@ -24,6 +24,8 @@ type t = {
   save_queue : Mailbox.t;
   mutable read_save_queue : bool;
   mutable ready_tokens : (Async.Token.t * Async.Source.t) list;
+  mutable receive_timeout : Timer_id.t option;
+  mutable syscall_timeout : Timer_id.t option;
 }
 
 let make fn =
@@ -37,6 +39,8 @@ let make fn =
     save_queue = Mailbox.create ();
     read_save_queue = false;
     ready_tokens = [];
+    receive_timeout = None;
+    syscall_timeout = None;
   }
 
 let init t =
@@ -103,6 +107,14 @@ let get_ready_token t =
 let consume_ready_tokens t f =
   List.iter f t.ready_tokens;
   t.ready_tokens <- []
+
+(* Timer timeout management *)
+let set_receive_timeout t timer_id = t.receive_timeout <- Some timer_id
+let clear_receive_timeout t = t.receive_timeout <- None
+let receive_timeout t = t.receive_timeout
+let set_syscall_timeout t timer_id = t.syscall_timeout <- Some timer_id
+let clear_syscall_timeout t = t.syscall_timeout <- None
+let syscall_timeout t = t.syscall_timeout
 
 let pp ppf t =
   Format.fprintf ppf "Process %a { state = %s; messages = %d }" Pid.pp t.pid

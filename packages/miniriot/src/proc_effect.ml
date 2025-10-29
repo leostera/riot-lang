@@ -1,13 +1,14 @@
+(* Timeout type for blocking operations *)
+type timeout = [ `infinity | `after of float ]
+
 type _ Effect.t +=
   | Receive : {
       selector : Message.t -> [ `select of 'msg | `skip ];
+      timeout : timeout;
     }
       -> 'msg Effect.t
 
 type _ Effect.t += Yield : unit Effect.t
-
-(* Timeout type for syscalls *)
-type timeout = [ `infinity | `after of float ]
 
 (* I/O Effects *)
 type _ Effect.t +=

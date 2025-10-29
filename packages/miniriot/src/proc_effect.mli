@@ -6,9 +6,11 @@ type timeout = [ `infinity | `after of float ]
 type _ Effect.t +=
   | Receive : {
       selector : Message.t -> [ `select of 'msg | `skip ];
+      timeout : timeout;
     }
       -> 'msg Effect.t
-        (** Effect for receiving messages with a selector *)
+        (** Effect for receiving messages with a selector and optional timeout
+        *)
 
 type _ Effect.t +=
   | Yield : unit Effect.t  (** Effect for yielding control to the scheduler *)

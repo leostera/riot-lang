@@ -18,6 +18,19 @@ val send : Pid.t -> Message.t -> unit
 val shutdown : t -> status:int -> unit
 (** Shutdown the scheduler with given exit status *)
 
-val run : main:(unit -> (unit, Process.exit_reason) result) -> int
-(** Run the scheduler with the given main function. Returns exit status. Can
-    only be called once per process. *)
+val run :
+  config:Config.t -> main:(unit -> (unit, Process.exit_reason) result) -> int
+(** Run the scheduler with the given configuration and main function. Returns
+    exit status. Can only be called once per process. *)
+
+val add_timer :
+  t ->
+  now:int64 ->
+  duration_nanos:int64 ->
+  mode:Timer.mode ->
+  action:Timer.action ->
+  Timer.id
+(** Add a timer to the scheduler's timer wheel *)
+
+val cancel_timer : t -> Timer.id -> unit
+(** Cancel a timer in the scheduler's timer wheel *)

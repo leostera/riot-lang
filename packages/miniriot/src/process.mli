@@ -108,5 +108,23 @@ val consume_ready_tokens :
   t -> (Kernel.Async.Token.t * Kernel.Async.Source.t -> unit) -> unit
 (** Consume all ready I/O tokens with a function *)
 
+val set_receive_timeout : t -> Timer_id.t -> unit
+(** Set the receive timeout timer ID for this process *)
+
+val clear_receive_timeout : t -> unit
+(** Clear the receive timeout timer *)
+
+val receive_timeout : t -> Timer_id.t option
+(** Get the current receive timeout timer ID, if any *)
+
+val set_syscall_timeout : t -> Timer_id.t -> unit
+(** Set the syscall timeout timer ID for this process *)
+
+val clear_syscall_timeout : t -> unit
+(** Clear the syscall timeout timer *)
+
+val syscall_timeout : t -> Timer_id.t option
+(** Get the current syscall timeout timer ID, if any *)
+
 val pp : Format.formatter -> t -> unit
 (** Pretty-print process information *)

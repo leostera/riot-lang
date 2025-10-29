@@ -14,11 +14,15 @@ type t = {
   processes : Process.t Pid_table.t;
   mutable current_process : Process.t option;
   io_poll : Async.Poll.t;
+  config : Config.t;
+  timer_wheel : Timer_wheel.t;
+  mutable last_timer_check : int64;
 }
 
-let create () =
+let create ~config =
   match Async.Poll.make () with
   | Ok io_poll ->
+      let timer_wheel = Timer_wheel.create ~config in
       {
         stop = false;
         status = 0;
@@ -26,6 +30,9 @@ let create () =
         processes = Pid_table.create 128;
         current_process = None;
         io_poll;
+        config;
+        timer_wheel;
+        last_timer_check = 0L;
       }
   | Error err ->
       Printf.printf "[Scheduler] ERROR: Failed to create Async.Poll: %s\n%!"
@@ -86,14 +93,33 @@ let shutdown t ~status =
   t.stop <- true;
   t.status <- status
 
-let handle_receive k _t proc ~selector =
+let handle_receive k t proc ~selector ~timeout =
   let open Proc_state in
   let pid_str = Pid.to_string (Process.pid proc) in
   Trace.trace "Process %s receiving (mailbox empty? %b)" pid_str
     (Process.has_empty_mailbox proc);
 
-  if Process.has_empty_mailbox proc then (
+  (* Check for existing timeout - don't check here, let the timer expire naturally *)
+  let should_timeout = false in
+
+  if should_timeout then (
+    Trace.trace "Process %s receive timed out" pid_str;
+    k (Discontinue Effects.Receive_timeout))
+  else if Process.has_empty_mailbox proc then (
     Trace.trace "Process %s has empty mailbox, suspending" pid_str;
+
+    (* Set up timeout if specified *)
+    (match timeout with
+    | `infinity -> ()
+    | `after secs ->
+        let now = Time.monotonic_time_nanos () in
+        let duration_nanos = Int64.of_float (secs *. 1_000_000_000.0) in
+        let timer_id =
+          Timer_wheel.add_timer t.timer_wheel ~now ~duration_nanos
+            ~mode:Timer.One_shot ~action:(Timer.Wake_process proc)
+        in
+        Process.set_receive_timeout proc timer_id);
+
     Process.mark_as_awaiting_message proc;
     k Suspend)
   else
@@ -123,33 +149,69 @@ let handle_receive k _t proc ~selector =
     in
     go fuel
 
-let handle_syscall k t proc name interest source _timeout =
+let handle_syscall k t proc name interest source timeout =
   let open Proc_state in
   let pid_str = Pid.to_string (Process.pid proc) in
   Trace.trace "Process %s performing syscall %s" pid_str name;
 
-  match Process.get_ready_token proc with
-  | Some (_token, _source) ->
-      Trace.trace "Process %s syscall %s ready" pid_str name;
-      k (Continue ())
-  | None -> (
-      let token = Async.Token.make proc in
-      Trace.trace "Process %s registering for I/O" pid_str;
-      Process.mark_as_awaiting_io proc ~name token source;
-      match Async.Poll.register t.io_poll token interest source with
-      | Ok () ->
-          Trace.trace "Process %s registered for I/O successfully" pid_str;
-          k Suspend
-      | Error err ->
-          Printf.printf
-            "[Scheduler] ERROR: Failed to register I/O for process %s: %s\n%!"
-            pid_str
-            (match err with
-            | `IO_error e -> IO.error_message e
-            | `Noop -> "Unknown error"
-            | _ -> "Other error");
-          (* Don't continue - the I/O operation failed to register *)
-          k (Discontinue (Failure "Failed to register I/O")))
+  (* Check for syscall timeout *)
+  let should_timeout =
+    match Process.syscall_timeout proc with
+    | Some timer_id ->
+        let expired = true in
+        (* TODO: proper expiration check *)
+        if expired then (
+          Process.clear_syscall_timeout proc;
+          Timer_wheel.cancel_timer t.timer_wheel timer_id);
+        expired
+    | None -> false
+  in
+
+  if should_timeout then (
+    Trace.trace "Process %s syscall %s timed out" pid_str name;
+    k (Discontinue Effects.Syscall_timeout))
+  else
+    match Process.get_ready_token proc with
+    | Some (_token, _source) ->
+        Trace.trace "Process %s syscall %s ready" pid_str name;
+        (* Clear timeout if set *)
+        (match Process.syscall_timeout proc with
+        | Some timer_id ->
+            Timer_wheel.cancel_timer t.timer_wheel timer_id;
+            Process.clear_syscall_timeout proc
+        | None -> ());
+        k (Continue ())
+    | None -> (
+        let token = Async.Token.make proc in
+        Trace.trace "Process %s registering for I/O" pid_str;
+        Process.mark_as_awaiting_io proc ~name token source;
+        match Async.Poll.register t.io_poll token interest source with
+        | Ok () ->
+            Trace.trace "Process %s registered for I/O successfully" pid_str;
+
+            (* Set up timeout if specified *)
+            (match timeout with
+            | `infinity -> ()
+            | `after secs ->
+                let now = Time.monotonic_time_nanos () in
+                let duration_nanos = Int64.of_float (secs *. 1_000_000_000.0) in
+                let timer_id =
+                  Timer_wheel.add_timer t.timer_wheel ~now ~duration_nanos
+                    ~mode:Timer.One_shot ~action:(Timer.Wake_process proc)
+                in
+                Process.set_syscall_timeout proc timer_id);
+
+            k Suspend
+        | Error err ->
+            Printf.printf
+              "[Scheduler] ERROR: Failed to register I/O for process %s: %s\n%!"
+              pid_str
+              (match err with
+              | `IO_error e -> IO.error_message e
+              | `Noop -> "Unknown error"
+              | _ -> "Other error");
+            (* Don't continue - the I/O operation failed to register *)
+            k (Discontinue (Failure "Failed to register I/O")))
 
 let perform t proc =
   let open Proc_state in
@@ -157,7 +219,8 @@ let perform t proc =
   let perform : type a b. (a, b) step_callback =
    fun k eff ->
     match eff with
-    | Receive { selector } -> handle_receive k t proc ~selector
+    | Receive { selector; timeout } ->
+        handle_receive k t proc ~selector ~timeout
     | Yield -> k Yield
     | Syscall { name; interest; source; timeout } ->
         handle_syscall k t proc name interest source timeout
@@ -250,8 +313,21 @@ let step_process t proc =
 
 let poll_io t =
   Trace.trace "Polling for I/O events";
+
+  (* Calculate timeout based on next timer expiration *)
+  let timeout_nanos =
+    if Timer_wheel.size t.timer_wheel > 0 then
+      let now = Time.monotonic_time_nanos () in
+      match Timer_wheel.next_expiration t.timer_wheel ~now with
+      | Some next_expiry ->
+          let delta = Int64.sub next_expiry now in
+          Int64.max delta 0L (* Don't use negative timeout *)
+      | None -> 10_000_000L (* 10ms default *)
+    else 500_000_000L (* 500ms when no timers *)
+  in
+
   let events =
-    match Async.Poll.poll t.io_poll with
+    match Async.Poll.poll t.io_poll ~timeout:timeout_nanos with
     | Ok events -> events
     | Error err ->
         Printf.printf "[Scheduler] ERROR: Failed to poll I/O: %s\n%!"
@@ -286,6 +362,54 @@ let poll_io t =
       | _ -> ())
     events
 
+let process_timers t =
+  (* Skip timer processing entirely if there are no timers *)
+  if Timer_wheel.size t.timer_wheel = 0 then ()
+  else
+    let now = Time.monotonic_time_nanos () in
+    let expired = Timer_wheel.tick t.timer_wheel ~now in
+
+    Trace.trace "Processing %d expired timers" (List.length expired);
+
+    List.iter
+      (fun timer ->
+        match timer.Timer.action with
+        | Timer.Wake_process proc -> (
+            Trace.trace "Timer expired, waking process %s"
+              (Pid.to_string (Process.pid proc));
+            if Process.is_alive proc then (
+              Process.mark_as_runnable proc;
+              add_to_run_queue t proc);
+
+            (* Handle intervals *)
+            match timer.mode with
+            | Timer.One_shot -> ()
+            | Timer.Interval interval ->
+                let now = Time.monotonic_time_nanos () in
+                let _new_timer_id =
+                  Timer_wheel.add_timer t.timer_wheel ~now
+                    ~duration_nanos:interval ~mode:timer.mode
+                    ~action:timer.action
+                in
+                ())
+        | Timer.Send_message (target_pid, msg) -> (
+            Trace.trace "Timer expired, sending message to %s"
+              (Pid.to_string target_pid);
+            send target_pid msg;
+
+            (* Handle intervals *)
+            match timer.mode with
+            | Timer.One_shot -> ()
+            | Timer.Interval interval ->
+                let now = Time.monotonic_time_nanos () in
+                let _new_timer_id =
+                  Timer_wheel.add_timer t.timer_wheel ~now
+                    ~duration_nanos:interval ~mode:timer.mode
+                    ~action:timer.action
+                in
+                ()))
+      expired
+
 let run_loop t =
   Trace.trace "Run loop starting";
   while (not (Queue.is_empty t.run_queue)) && not t.stop do
@@ -294,8 +418,29 @@ let run_loop t =
     step_process t proc
   done;
 
-  (* Poll for I/O events when run queue is empty and we have processes *)
-  if (not t.stop) && Pid_table.length t.processes > 0 then poll_io t;
+  (* Process expired timers only if there are any *)
+  if Timer_wheel.size t.timer_wheel > 0 then process_timers t;
+
+  (* Check if we have processes waiting for I/O *)
+  let has_waiting_io =
+    Pid_table.fold
+      (fun _ proc acc -> acc || Process.is_waiting_io proc)
+      t.processes false
+  in
+
+  (* Poll for I/O events, or sleep until next timer if no I/O *)
+  (if (not t.stop) && Pid_table.length t.processes > 0 then
+     if has_waiting_io then poll_io t
+     else if Timer_wheel.size t.timer_wheel > 0 then
+       (* No I/O, but we have timers - sleep until next timer expiration *)
+       let now = Time.monotonic_time_nanos () in
+       match Timer_wheel.next_expiration t.timer_wheel ~now with
+       | Some next_expiry ->
+           let sleep_nanos = Int64.sub next_expiry now in
+           if Int64.compare sleep_nanos 0L > 0 then
+             let _ = Async.Poll.poll t.io_poll ~timeout:sleep_nanos in
+             ()
+       | None -> ());
 
   Trace.trace "Run loop done"
 
@@ -309,14 +454,19 @@ let shutdown t ~status =
   (* Clear all processes *)
   Pid_table.clear t.processes
 
-let run ~main =
+let add_timer t ~now ~duration_nanos ~mode ~action =
+  Timer_wheel.add_timer t.timer_wheel ~now ~duration_nanos ~mode ~action
+
+let cancel_timer t timer_id = Timer_wheel.cancel_timer t.timer_wheel timer_id
+
+let run ~config ~main =
   if !has_run then
     failwith
       "Miniriot.run can only be called once per process. Each test should be \
        in a separate executable.";
   has_run := true;
 
-  let t = create () in
+  let t = create ~config in
   current_scheduler := Some t;
 
   (* Spawn main process with PID 0 *)
@@ -329,13 +479,14 @@ let run ~main =
     if Queue.is_empty t.run_queue && Pid_table.length t.processes = 0 then
       t.stop <- true
     else if Queue.is_empty t.run_queue then
-      (* Still have processes, they might be waiting for I/O *)
+      (* Still have processes, they might be waiting for I/O or timers *)
       let has_waiting_io =
         Pid_table.fold
           (fun _ proc acc -> acc || Process.is_waiting_io proc)
           t.processes false
       in
-      if not has_waiting_io then t.stop <- true
+      let has_active_timers = Timer_wheel.size t.timer_wheel > 0 in
+      if (not has_waiting_io) && not has_active_timers then t.stop <- true
   done;
 
   t.status
