@@ -6,7 +6,7 @@ version = "0.0.1"
 path = "src/tusk_cli.ml"
 
 [[bin]]
-name = "tusk-cli"
+name = "tusk"
 path = "src/main.ml"
 
 [dependencies]

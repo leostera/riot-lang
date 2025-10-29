@@ -7,12 +7,12 @@ let command =
   let open ArgParser in
   let open Arg in
   command "install"
-  |> about "Install a binary to ~/.tusk2/bin and project root"
+  |> about "Install a binary to ~/.tusk/bin and project root"
   |> args
        [
          positional "package" |> help "Binary name to install";
          flag "local" |> long "local"
-         |> help "Only install to project root, skip ~/.tusk2/bin";
+         |> help "Only install to project root, skip ~/.tusk/bin";
        ]
 
 let build_package package_name =
@@ -109,14 +109,14 @@ let run matches =
                   (Path.to_string project_binary)
             | Error _ -> println "⚠️  Failed to promote to project root");
 
-            (* If not --local, also install to ~/.tusk2/bin *)
+            (* If not --local, also install to ~/.tusk/bin *)
             (if not local_only then
                let tusk_bin_dir =
                  Path.(Tusk_model.Tusk_dirs.dot_tusk / Path.v "bin")
                in
                let _ =
                  Fs.create_dir_all tusk_bin_dir
-                 |> Result.expect ~msg:"Failed to create ~/.tusk2/bin"
+                 |> Result.expect ~msg:"Failed to create ~/.tusk/bin"
                in
 
                let dest_path = Path.(tusk_bin_dir / Path.v binary_name) in
@@ -127,11 +127,11 @@ let run matches =
                      (Path.to_string dest_path);
                    println "";
                    println
-                     "To use %s from anywhere, add ~/.tusk2/bin to your PATH:"
+                     "To use %s from anywhere, add ~/.tusk/bin to your PATH:"
                      binary_name;
-                   println "  export PATH='$HOME/.tusk2/bin:$PATH'"
+                   println "  export PATH='$HOME/.tusk/bin:$PATH'"
                | Error _ ->
-                   println "⚠️  Failed to install to ~/.tusk2/bin (non-fatal)");
+                   println "⚠️  Failed to install to ~/.tusk/bin (non-fatal)");
 
             Ok ())
   | Ok None ->

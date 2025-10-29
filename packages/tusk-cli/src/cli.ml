@@ -43,7 +43,7 @@ let main ~args:argv =
   Std.Log.set_level Info;
   let _ = Std.Telemetry.start () in
 
-  (* Ensure ~/.tusk2 directories exist *)
+  (* Ensure ~/.tusk directories exist *)
   let _ = Tusk_model.Tusk_dirs.ensure_created () in
 
   match get_matches cli argv with

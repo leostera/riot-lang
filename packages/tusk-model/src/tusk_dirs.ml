@@ -6,7 +6,7 @@ let dot_tusk =
     | Some h -> h
     | None -> failwith "Failed to get home directory"
   in
-  Path.(home / Path.v ".tusk2")
+  Path.(home / Path.v ".tusk")
 
 let toolchains_dir toolchain_config =
   let version = toolchain_config.Toolchain_config.version in
