@@ -29,4 +29,4 @@ let tests =
 let () =
   Miniriot.run
     ~main:(fun ~args -> Test.Cli.main ~name:"vector-diff" ~tests ~args)
-    ~args:Env.args
+    ~args:Env.args ()

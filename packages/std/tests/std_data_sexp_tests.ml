@@ -160,4 +160,4 @@ let tests =
 let () =
   Miniriot.run
     ~main:(fun ~args -> Test.Cli.main ~name:"sexp" ~tests ~args)
-    ~args:Env.args
+    ~args:Env.args ()

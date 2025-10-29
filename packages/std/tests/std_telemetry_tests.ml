@@ -136,4 +136,4 @@ let tests =
     test_handler_exception_isolation;
   ]
 
-let () = Miniriot.run ~main:(Test.Cli.main ~name ~tests) ~args:Env.args
+let () = Miniriot.run ~main:(Test.Cli.main ~name ~tests) ~args:Env.args ()

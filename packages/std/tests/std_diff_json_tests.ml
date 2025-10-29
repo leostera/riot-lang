@@ -420,4 +420,4 @@ let () =
         ]
       in
       Test.Cli.main ~name:"json-diff" ~tests:all_tests ~args)
-    ~args:Env.args
+    ~args:Env.args ()

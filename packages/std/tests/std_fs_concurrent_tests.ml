@@ -226,22 +226,26 @@ let test_concurrent_file_writes_do_yield () =
   | Ok (Error e) -> Error e
   | Error _ -> Error "Tempdir creation failed"
 
-let () =
-  Miniriot.run ~rnd:false @@ fun () ->
-  let open Lol in
-  let results =
-    [
-      ( "Concurrent Fs.write (expect sequential)",
-        test_concurrent_writes_block () );
-      ( "Concurrent File.write_all (expect concurrent)",
-        test_concurrent_file_writes_do_yield () );
-    ]
+let main ~args:_ =
+  let () =
+    let open Lol in
+    let results =
+      [
+        ( "Concurrent Fs.write (expect sequential)",
+          test_concurrent_writes_block () );
+        ( "Concurrent File.write_all (expect concurrent)",
+          test_concurrent_file_writes_do_yield () );
+      ]
+    in
+
+    results
+    |> List.iter (fun (name, result) ->
+        match result with
+        | Ok msg -> Log.info "[PASS] %s: %s" name msg
+        | Error msg -> Log.error "[FAIL] %s: %s" name msg);
+
+    Process.sleep 0.1
   in
+  Ok ()
 
-  results
-  |> List.iter (fun (name, result) ->
-      match result with
-      | Ok msg -> Log.info "[PASS] %s: %s" name msg
-      | Error msg -> Log.error "[FAIL] %s: %s" name msg);
-
-  Process.sleep 0.1
+let () = Miniriot.run ~main ~args:Env.args ()
