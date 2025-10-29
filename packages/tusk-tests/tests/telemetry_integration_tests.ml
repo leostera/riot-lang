@@ -60,4 +60,4 @@ let test_telemetry_events_are_emitted =
 
 let tests = [ test_telemetry_events_are_emitted ]
 let name = "Telemetry Integration Tests"
-let () = Miniriot.run ~main:(Test.Cli.main ~name ~tests) ~args:Env.args
+let () = Miniriot.run ~main:(Test.Cli.main ~name ~tests) ~args:Env.args ()

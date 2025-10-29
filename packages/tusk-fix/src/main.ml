@@ -166,4 +166,4 @@ let main ~args:argv =
               Error (Failure "Lint errors found")
             else Ok ())
 
-let () = Miniriot.run ~main ~args:Env.args |> exit
+let () = Miniriot.run ~main ~args:Env.args ()

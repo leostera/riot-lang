@@ -32,7 +32,7 @@ let init ~workspace ~toolchain ~store ~concurrency ~session_id ~client_pid
 
   Log.debug "Build worker calling Coordinator.build_workspace";
   let result =
-    Coordinator.build_workspace ~workspace ~toolchain ~store
+    Coordinator2.build_workspace ~workspace ~toolchain ~store
       ~target:planner_target ~concurrency
   in
 

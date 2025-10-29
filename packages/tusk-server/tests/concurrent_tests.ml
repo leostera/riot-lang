@@ -327,4 +327,4 @@ let tests =
   ]
 
 let name = "Concurrent Build Tests"
-let () = Miniriot.run ~main:(Test.Cli.main ~name ~tests) ~args:Env.args
+let () = Miniriot.run ~main:(Test.Cli.main ~name ~tests) ~args:Env.args ()

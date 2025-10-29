@@ -88,4 +88,4 @@ let main ~args =
       println "%s" (Json.to_string module_json);
       Ok ()
 
-let () = Miniriot.run ~main ~args:Env.args
+let () = Miniriot.run ~main ~args:Env.args ()

@@ -45,7 +45,8 @@ let rec loop state =
       ~total_packages:(List.length state.packages)
   then handle_build_completed state
   else
-    match receive ~selector () with
+    match receive ~timeout:0.010 ~selector () with
+    | exception Receive_timeout -> loop state
     | `WorkerReady worker -> handle_worker_ready state worker
     | `TaskCompleted result -> handle_task_completed state result
 
@@ -64,7 +65,13 @@ and handle_task_completed state result =
 
 and handle_worker_ready state worker =
   match Build_queue.next state.queue with
-  | None -> loop state
+  | None ->
+      (* No work available yet - retry after a short delay *)
+      let _timer_ref =
+        Timer.send_after (self ())
+          (WorkerPool.DynamicWorkerPool.WorkerReady worker) ~after:0.1
+      in
+      loop state
   | Some node ->
       WorkerPool.DynamicWorkerPool.send_task state.pool worker node;
       loop state

@@ -72,7 +72,7 @@ let create ~node ~(workspace : Workspace.t) =
   let nanos = Time.Instant.elapsed now |> Time.Duration.to_nanos in
   let sandbox_id =
     format "%08x"
-      (Hashtbl.hash (node.Build_node.package.name ^ string_of_int nanos))
+      (Hashtbl.hash (node.Build_node.package.name ^ Int64.to_string nanos))
   in
   let sandbox_dir = Path.(debug_dir / Path.v "sandbox" / Path.v sandbox_id) in
 
