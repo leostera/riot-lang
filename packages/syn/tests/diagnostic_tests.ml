@@ -98,4 +98,4 @@ let () =
           diagnostics
       in
       Test.Cli.main ~name:"syn-diagnostics" ~tests ~args)
-    ~args:Env.args
+    ~args:Env.args ()

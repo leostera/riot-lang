@@ -824,4 +824,4 @@ let () =
       in
 
       Test.Cli.main ~name:"http" ~tests:all_tests ~args)
-    ~args:Env.args
+    ~args:Env.args ()

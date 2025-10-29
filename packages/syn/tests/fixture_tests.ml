@@ -72,4 +72,4 @@ let () =
           fixtures
       in
       Test.Cli.main ~name:"syn-fixtures" ~tests ~args)
-    ~args:Env.args
+    ~args:Env.args ()

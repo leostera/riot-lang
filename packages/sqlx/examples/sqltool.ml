@@ -145,4 +145,4 @@ let main ~args:_ =
   | Ok () -> Ok ()
   | Error () -> Error (Failure "sqltool failed")
 
-let () = Miniriot.run ~main ~args:Env.args
+let () = Miniriot.run ~main ~args:Env.args ()

@@ -512,4 +512,4 @@ let main ~args =
           ArgParser.print_help cmd;
           exit 1)
 
-let () = Miniriot.run ~main ~args:Env.args
+let () = Miniriot.run ~main ~args:Env.args ()

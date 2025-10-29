@@ -418,4 +418,4 @@ let () =
       let all_tests = [] in
 
       Test.Cli.main ~name:"datalog-parser" ~tests:all_tests ~args)
-    ~args:Env.args
+    ~args:Env.args ()

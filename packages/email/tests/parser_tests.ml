@@ -381,4 +381,4 @@ let () =
       in
 
       Test.Cli.main ~name:"email" ~tests:all_tests ~args:Env.args)
-    ~args:Env.args
+    ~args:Env.args ()

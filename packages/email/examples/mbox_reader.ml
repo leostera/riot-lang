@@ -364,4 +364,4 @@ let () =
             | Some p -> Path.v p
           in
           list_messages path)
-    ~args:Env.args
+    ~args:Env.args ()

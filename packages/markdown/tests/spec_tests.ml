@@ -77,4 +77,4 @@ let () =
       let spec_tests = load_spec_tests () in
       let tests = List.map spec_test spec_tests in
       Test.Cli.main ~name:"markdown" ~tests ~args)
-    ~args:Env.args
+    ~args:Env.args ()
