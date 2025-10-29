@@ -17,4 +17,7 @@ external localtime : float -> tm = "caml_kernel_localtime"
 external gmtime : float -> tm = "caml_kernel_gmtime"
 external mktime : tm -> float * tm = "caml_kernel_mktime"
 
+external monotonic_time_nanos : unit -> int64
+  = "caml_kernel_monotonic_time_nanos"
+
 let sleep = Unix.sleepf

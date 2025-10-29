@@ -26,5 +26,10 @@ val mktime : tm -> float * tm
 (** Convert broken-down time to Unix timestamp. Returns (timestamp,
     normalized_tm) *)
 
+val monotonic_time_nanos : unit -> int64
+(** Get monotonic time in nanoseconds. This clock is immune to system clock
+    adjustments and is suitable for measuring elapsed time. Uses CLOCK_MONOTONIC
+    on Linux, mach_absolute_time on macOS. *)
+
 val sleep : float -> unit
 (** Sleep for the specified number of seconds *)
