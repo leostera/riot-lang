@@ -35,6 +35,90 @@ type t =
   | CopyFile of { source : Path.t; destination : Path.t }
   | WriteFile of { destination : Path.t; content : string }
 
+(** Compute a deterministic content-based hash of an action.
+
+    This hash is used for caching and must be deterministic regardless of:
+    - Order of includes in the list
+    - Order of objects in the list
+    - Order of libraries in the list
+    - Order of outputs in the list
+    - Order of flags in the list
+
+    All list fields are sorted before hashing to ensure determinism. *)
+let hash action =
+  let open Crypto in
+  let hasher = Sha256.create () in
+
+  (* Helper to write a sorted list of paths *)
+  let write_sorted_paths hasher paths =
+    let sorted =
+      List.sort
+        (fun a b -> String.compare (Path.to_string a) (Path.to_string b))
+        paths
+    in
+    List.iter
+      (fun path -> Sha256.write_string hasher (Path.to_string path))
+      sorted
+  in
+
+  (* Helper to write sorted flags - use flags_to_string which returns string list *)
+  let write_sorted_flags hasher flags =
+    let flag_strings = Tusk_toolchain.Ocamlc.flags_to_string flags in
+    let sorted = List.sort String.compare flag_strings in
+    List.iter (fun s -> Sha256.write_string hasher s) sorted
+  in
+
+  match action with
+  | CompileInterface { source; outputs; includes; flags } ->
+      Sha256.write_string hasher "CompileInterface";
+      Sha256.write_string hasher (Path.to_string source);
+      write_sorted_paths hasher outputs;
+      write_sorted_paths hasher includes;
+      write_sorted_flags hasher flags;
+      Sha256.finish hasher
+  | CompileImplementation { source; outputs; includes; flags } ->
+      Sha256.write_string hasher "CompileImplementation";
+      Sha256.write_string hasher (Path.to_string source);
+      write_sorted_paths hasher outputs;
+      write_sorted_paths hasher includes;
+      write_sorted_flags hasher flags;
+      Sha256.finish hasher
+  | GenerateInterface { source; outputs; includes; flags } ->
+      Sha256.write_string hasher "GenerateInterface";
+      Sha256.write_string hasher (Path.to_string source);
+      write_sorted_paths hasher outputs;
+      write_sorted_paths hasher includes;
+      write_sorted_flags hasher flags;
+      Sha256.finish hasher
+  | CompileC { source; outputs } ->
+      Sha256.write_string hasher "CompileC";
+      Sha256.write_string hasher (Path.to_string source);
+      write_sorted_paths hasher outputs;
+      Sha256.finish hasher
+  | CreateLibrary { outputs; objects; includes } ->
+      Sha256.write_string hasher "CreateLibrary";
+      write_sorted_paths hasher outputs;
+      write_sorted_paths hasher objects;
+      write_sorted_paths hasher includes;
+      Sha256.finish hasher
+  | CreateExecutable { outputs; objects; libraries; includes } ->
+      Sha256.write_string hasher "CreateExecutable";
+      write_sorted_paths hasher outputs;
+      write_sorted_paths hasher objects;
+      write_sorted_paths hasher libraries;
+      write_sorted_paths hasher includes;
+      Sha256.finish hasher
+  | CopyFile { source; destination } ->
+      Sha256.write_string hasher "CopyFile";
+      Sha256.write_string hasher (Path.to_string source);
+      Sha256.write_string hasher (Path.to_string destination);
+      Sha256.finish hasher
+  | WriteFile { destination; content } ->
+      Sha256.write_string hasher "WriteFile";
+      Sha256.write_string hasher (Path.to_string destination);
+      Sha256.write_string hasher content;
+      Sha256.finish hasher
+
 let to_string = function
   | CompileInterface { source; outputs; includes; flags } ->
       format "CompileInterface(%s->%s,includes=%s,flags=%s)"

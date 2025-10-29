@@ -31,12 +31,17 @@ let make ~actions ~outs ~srcs ~(package : Package.t) ~toolchain
 
   let sorted_actions =
     List.sort
-      (fun a b -> String.compare (Action.to_string a) (Action.to_string b))
+      (fun a b ->
+        let hash_a = Action.hash a in
+        let hash_b = Action.hash b in
+        Crypto.Hash.compare hash_a hash_b)
       actions
   in
 
   List.iter
-    (fun action -> Sha256.write_string hasher (Action.to_string action))
+    (fun action ->
+      let action_hash = Action.hash action in
+      Sha256.write hasher (Digest.bytes action_hash))
     sorted_actions;
 
   let sorted_srcs =

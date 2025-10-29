@@ -35,6 +35,7 @@ type t =
   | CopyFile of { source : Path.t; destination : Path.t }
   | WriteFile of { destination : Path.t; content : string }
 
+val hash : t -> Std.Crypto.hash
 val to_string : t -> string
 val to_json : t -> Data.Json.t
 val from_json : Data.Json.t -> (t, string) Result.t
