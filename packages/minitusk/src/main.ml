@@ -60,6 +60,15 @@ let () =
   build_package ~build_results "std" "packages/std";
   build_package ~build_results "jsonrpc" "packages/jsonrpc";
   build_package ~build_results "mcp" "packages/mcp";
-  build_package ~build_results "tusk" "packages/tusk";
+  build_package ~build_results "tusk-model" "packages/tusk-model";
+  build_package ~build_results "tusk-store" "packages/tusk-store";
+  build_package ~build_results "tusk-toolchain" "packages/tusk-toolchain";
+  build_package ~build_results "tusk-planner" "packages/tusk-planner";
+  build_package ~build_results "tusk-executor" "packages/tusk-executor";
+  build_package ~build_results "tusk-protocol" "packages/tusk-protocol";
+  build_package ~build_results "tusk-client" "packages/tusk-client";
+  build_package ~build_results "tusk-server" "packages/tusk-server";
+  build_package ~build_results "tusk-mcp" "packages/tusk-mcp";
+  build_package ~build_results "tusk-cli" "packages/tusk-cli";
 
   Printf.printf "\n=== Build complete! ===\n"
