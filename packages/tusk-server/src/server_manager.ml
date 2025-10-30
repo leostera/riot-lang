@@ -20,7 +20,7 @@ let ensure_running ~(workspace : Workspace.t) =
     Log.debug "wait_server: Attempting connection to %s:%d (retries left: %d)"
       daemon.host daemon.port retries;
     if retries <= 0 then (
-      Log.error "Failed to connect to server after 10 retries";
+      Log.warn "Failed to connect to server after 10 retries";
       Log.warn "Server (PID %d) not responding, cleaning up and restarting..."
         daemon.os_pid;
 

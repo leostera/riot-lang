@@ -7,13 +7,13 @@ module Find_artifact = Find_artifact
 module Find_executable = Find_executable
 module Format_code = Format_code
 module Format_file = Format_file
-module Get_build_graph = Get_build_graph
+module Get_package_graph = Get_package_graph
 
 let all_tools () =
   [
     Build.tool;
     Describe_workspace.tool;
-    Get_build_graph.tool;
+    Get_package_graph.tool;
     Describe_package.tool;
     Find_executable.tool;
     Find_artifact.tool;

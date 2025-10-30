@@ -2,7 +2,7 @@ open Std
 open Tusk_model
 
 val method_ping : string
-val method_get_build_graph : string
+val method_get_package_graph : string
 val method_get_workspace_config : string
 val method_get_package_info : string
 val method_build_package : string
@@ -27,7 +27,7 @@ module WireProtocol : sig
     deps : string list;
   }
 
-  type build_graph_response = { nodes : build_node list }
+  type package_graph_response = { nodes : build_node list }
 
   type package_info = {
     name : string;
@@ -52,7 +52,7 @@ module WireProtocol : sig
 
   type request =
     | Ping
-    | GetBuildGraph
+    | GetPackageGraph
     | GetWorkspaceConfig
     | GetPackageInfo of string
     | BuildPackage of string
@@ -93,7 +93,7 @@ module WireProtocol : sig
 
   type response =
     | Pong
-    | BuildGraph of build_graph_response
+    | PackageGraph of package_graph_response
     | WorkspaceConfig of workspace_config
     | PackageInfo of package_detail
     | BuildStarted of { session_id : Session_id.t; started_at : Datetime.t }

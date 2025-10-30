@@ -2,7 +2,7 @@ open Std
 open Std.Data
 
 let description =
-  {|Get the build dependency graph showing relationships between all packages. Returns the complete dependency tree with build status for each package.
+  {|Get the package dependency graph showing relationships between all packages. Returns the complete dependency tree with build status for each package.
 
 WHEN TO USE THIS TOOL:
 - When you need to understand package dependencies
@@ -43,13 +43,13 @@ let tool =
     Json.Object
       [ ("type", Json.String "object"); ("properties", Json.Object []) ]
   in
-  { name = "getBuildGraph"; description = Some description; input_schema }
+  { name = "getPackageGraph"; description = Some description; input_schema }
 
 type request = unit
 type response = GraphInfo of { json : string } | Error of string
 
 let execute (client : Tusk_client.t) (_ : request) : response =
-  match Tusk_client.get_build_graph client with
+  match Tusk_client.get_package_graph client with
   | Ok response ->
       let json =
         Json.Object

@@ -3,76 +3,8 @@ name = "std"
 version = "0.1.0"
 
 [lib]
-path = "./src/std.ml"
+path = "src/std.ml"
 
 [dependencies]
 miniriot = { path = "../miniriot" }
 kernel = { path = "../kernel" }
-
-[[bin]]
-name = "csv_tool"
-path = "examples/csv_tool.ml"
-
-[[bin]]
-name = "std_data_toml_tests"
-path = "tests/std_data_toml_tests.ml"
-
-[[bin]]
-name = "std_diff_tests"
-path = "tests/std_diff_tests.ml"
-
-[[bin]]
-name = "std_diff_json_tests"
-path = "tests/std_diff_json_tests.ml"
-
-[[bin]]
-name = "std_data_json_tests"
-path = "tests/std_data_json_tests.ml"
-
-[[bin]]
-name = "std_data_sexp_tests"
-path = "tests/std_data_sexp_tests.ml"
-
-[[bin]]
-name = "std_data_xml_tests"
-path = "tests/std_data_xml_tests.ml"
-
-[[bin]]
-name = "std_data_csv_tests"
-path = "tests/std_data_csv_tests.ml"
-
-[[bin]]
-name = "std_data_base16_tests"
-path = "tests/std_data_base16_tests.ml"
-
-[[bin]]
-name = "std_data_base32_tests"
-path = "tests/std_data_base32_tests.ml"
-
-[[bin]]
-name = "std_data_base64_tests"
-path = "tests/std_data_base64_tests.ml"
-
-[[bin]]
-name = "std_data_base85_tests"
-path = "tests/std_data_base85_tests.ml"
-
-[[bin]]
-name = "std_diff_string_tests"
-path = "tests/std_diff_string_tests.ml"
-
-[[bin]]
-name = "std_diff_list_tests"
-path = "tests/std_diff_list_tests.ml"
-
-[[bin]]
-name = "std_diff_hashmap_tests"
-path = "tests/std_diff_hashmap_tests.ml"
-
-[[bin]]
-name = "std_diff_vector_tests"
-path = "tests/std_diff_vector_tests.ml"
-
-[[bin]]
-name = "std_telemetry_tests"
-path = "tests/std_telemetry_tests.ml"

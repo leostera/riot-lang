@@ -11,6 +11,7 @@ type workspace_result = {
   cached_count : int;
   built_count : int;
   failed_count : int;
+  package_graph : Package_graph.t;
 }
 
 (* Message types - simplified unidirectional flow *)
@@ -30,6 +31,7 @@ type coordinator_state = {
   all_workers : Pid.t list;
   total_packages : int;
   completed_count : int ref;
+  package_graph : Package_graph.t;
 }
 
 (* Worker implementation - purely reactive, no WorkerReady *)
@@ -142,6 +144,7 @@ and handle_build_completed state =
     cached_count = !cached;
     built_count = !succeeded;
     failed_count = !failed;
+    package_graph = state.package_graph;
   }
 
 (* Initialize and start the build *)
@@ -174,6 +177,7 @@ let init ~workspace ~toolchain ~store ~package_graph ~packages ~concurrency =
       all_workers = workers;
       total_packages = List.length packages;
       completed_count = ref 0;
+      package_graph;
     }
   in
 

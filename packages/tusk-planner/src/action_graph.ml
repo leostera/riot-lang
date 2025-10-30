@@ -165,14 +165,9 @@ let module_to_actions ~package ~dep_includes ~get_dep_outputs
           deps
       in
 
-      Log.debug "[ACTION_GRAPH] CreateLibrary for %s: %d objects" name
-        (List.length objects);
-
       let create_lib = Action.CreateLibrary { outputs; objects; includes } in
       ([ create_lib ], outputs, sources)
   | { kind = Binary { name; source; libraries; includes }; _ } ->
-      Log.debug "[ACTION_GRAPH] Creating binary %s with %d libraries" name
-        (List.length libraries);
       let binary_mod =
         Module.make ~namespace:Namespace.empty ~filename:source
       in
@@ -203,9 +198,6 @@ let module_to_actions ~package ~dep_includes ~get_dep_outputs
 
 let from_module_graph ~package ~toolchain ~store ~depset
     (module_graph : Module_node.t G.t) : t * Path.t list =
-  Log.info "[ACTION_GRAPH] from_module_graph starting for package: %s"
-    package.Package.name;
-
   (* Extract dependency cache include paths - no file copying needed! *)
   let dep_includes =
     List.map
@@ -213,8 +205,6 @@ let from_module_graph ~package ~toolchain ~store ~depset
         Tusk_store.Store.get_artifact_dir store dep.artifact)
       depset
   in
-  Log.debug "[ACTION_GRAPH] Using %d dependency includes"
-    (List.length dep_includes);
 
   let action_graph = create () in
   let node_mapping = HashMap.create () in
@@ -223,8 +213,6 @@ let from_module_graph ~package ~toolchain ~store ~depset
   let all_outputs = Cell.create [] in
 
   let sorted_modules = G.topo_sort module_graph in
-  Log.info "[ACTION_GRAPH] Topologically sorted %d modules"
-    (List.length sorted_modules);
 
   let get_dep_hash dep_id =
     match HashMap.get action_spec_hashes dep_id with

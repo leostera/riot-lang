@@ -4,6 +4,9 @@ open Std
 open Miniriot
 open Tusk_model
 
+(** Internal messages for server-to-server communication *)
+type Message.t += UpdatePackageGraph of Tusk_planner.Package_graph.t
+
 type server_state = {
   workspace : Workspace.t;
   toolchain : Tusk_toolchain.t;
@@ -15,47 +18,53 @@ type server_state = {
 (** Main server loop - handle all incoming requests *)
 let rec loop state =
   let selector msg =
-    match msg with Protocol.ServerRequest req -> `select req | _ -> `skip
+    match msg with
+    | Protocol.ServerRequest req -> `select (`Request req)
+    | UpdatePackageGraph pg -> `select (`UpdateGraph pg)
+    | _ -> `skip
   in
 
   Log.info "[INTERNAL_SERVER] Server loop ready, awaiting next request...";
   match receive ~selector () with
-  | Protocol.Ping { client_pid } ->
+  | `UpdateGraph package_graph ->
+      Log.info "[INTERNAL_SERVER] Received updated package graph from build worker";
+      loop { state with package_graph }
+  | `Request (Protocol.Ping { client_pid }) ->
       Log.debug "Server loop received: Ping";
       handle_ping state client_pid
-  | Protocol.Build { client_pid; target; session_id } ->
+  | `Request (Protocol.Build { client_pid; target; session_id }) ->
       Log.debug "Server loop received: Build";
       handle_build state client_pid target session_id
-  | Protocol.ScanWorkspace { client_pid; current_dir } ->
+  | `Request (Protocol.ScanWorkspace { client_pid; current_dir }) ->
       Log.debug "Server loop received: ScanWorkspace";
       handle_scan_workspace state client_pid current_dir
-  | Protocol.GetWorkspaceConfig { client_pid } ->
+  | `Request (Protocol.GetWorkspaceConfig { client_pid }) ->
       Log.debug "Server loop received: GetWorkspaceConfig";
       handle_get_workspace_config state client_pid
-  | Protocol.GetPackageInfo { client_pid; package_name } ->
+  | `Request (Protocol.GetPackageInfo { client_pid; package_name }) ->
       Log.debug "Server loop received: GetPackageInfo";
       handle_get_package_info state client_pid package_name
-  | Protocol.GetBuildGraph { client_pid } ->
-      Log.debug "Server loop received: GetBuildGraph";
-      handle_get_build_graph state client_pid
-  | Protocol.FindExecutable { client_pid; name } ->
+  | `Request (Protocol.GetPackageGraph { client_pid }) ->
+      Log.debug "Server loop received: GetPackageGraph";
+      handle_get_package_graph state client_pid
+  | `Request (Protocol.FindExecutable { client_pid; name }) ->
       Log.debug "Server loop received: FindExecutable(%s)" name;
       handle_find_executable state client_pid name
-  | Protocol.FindArtifact { client_pid; package; kind; name } ->
+  | `Request (Protocol.FindArtifact { client_pid; package; kind; name }) ->
       Log.debug
         "Server loop received: FindArtifact(package=%s, kind=%s, name=%s)"
         package kind name;
       handle_find_artifact state client_pid package kind name
-  | Protocol.FormatFile { client_pid; file_path; check_only } ->
+  | `Request (Protocol.FormatFile { client_pid; file_path; check_only }) ->
       Log.debug "Server loop received: FormatFile";
       handle_format_file state client_pid file_path check_only
-  | Protocol.FormatCode { client_pid; code; file_path } ->
+  | `Request (Protocol.FormatCode { client_pid; code; file_path }) ->
       Log.debug "Server loop received: FormatCode";
       handle_format_code state client_pid code file_path
-  | Protocol.FormatAll { client_pid; mode } ->
+  | `Request (Protocol.FormatAll { client_pid; mode }) ->
       Log.debug "Server loop received: FormatAll";
       handle_format_all state client_pid mode
-  | Protocol.NewPackage { client_pid; path; name; is_library } ->
+  | `Request (Protocol.NewPackage { client_pid; path; name; is_library }) ->
       Log.debug "Server loop received: NewPackage";
       handle_new_package state client_pid path name is_library
 
@@ -143,15 +152,15 @@ and handle_get_package_info state client_pid package_name =
               { package; sources = all_sources; dependencies })));
   loop state
 
-(** Handler for getting the build graph *)
-and handle_get_build_graph state client_pid =
-  Log.debug "Server: Received GetBuildGraph from %s" (Pid.to_string client_pid);
+(** Handler for getting the package graph *)
+and handle_get_package_graph state client_pid =
+  Log.debug "Server: Received GetPackageGraph from %s" (Pid.to_string client_pid);
   let sorted_packages =
     Tusk_planner.Package_graph.(
       topological_sort state.package_graph |> List.map get_package)
   in
   send client_pid
-    (Protocol.ServerResponse (Protocol.BuildGraph { nodes = sorted_packages }));
+    (Protocol.ServerResponse (Protocol.PackageGraph { nodes = sorted_packages }));
   loop state
 
 and handle_find_executable state client_pid name =
@@ -175,26 +184,84 @@ and handle_find_executable state client_pid name =
   loop state
 
 and handle_find_artifact state client_pid package kind name =
-  Log.debug "Server: handle_find_artifact package=%s kind=%s name=%s" package
+  Log.info "Server: handle_find_artifact package=%s kind=%s name=%s" package
     kind name;
-  let path =
-    Path.(
-      state.workspace.root / Path.v "target" / Path.v "debug" / Path.v "out"
-      / Path.v "packages" / Path.v package / Path.v name)
+  
+  (* Find the package in the workspace *)
+  let pkg_opt =
+    List.find_opt
+      (fun (p : Package.t) -> p.name = package)
+      state.workspace.packages
   in
   let response =
-    match Fs.exists path with
-    | Ok true ->
-        Log.debug "Server: Artifact found at %s" (Path.to_string path);
-        Protocol.ServerResponse (Protocol.ArtifactFound { path })
-    | Ok false | Error _ ->
-        Log.debug "Server: Artifact not found at %s" (Path.to_string path);
+    match pkg_opt with
+    | None ->
+        Log.info "Server: Package '%s' not found in workspace" package;
         Protocol.ServerResponse
           (Protocol.ArtifactNotFound
-             {
-               error =
-                 format "Artifact '%s' not found in package '%s'" name package;
-             })
+             { error = format "Package '%s' not found" package })
+    | Some pkg -> (
+        (* Look up package node in the graph to get its hash *)
+        let package_node_opt =
+          Tusk_planner.Package_graph.get_package_node state.package_graph pkg
+        in
+        match package_node_opt with
+        | None ->
+            Log.info "Server: Package '%s' not found in package graph" package;
+            Protocol.ServerResponse
+              (Protocol.ArtifactNotFound
+                 { error = format "Package '%s' not in build graph" package })
+        | Some package_node -> (
+            let hash_opt =
+              Tusk_planner.Package_graph.get_hash package_node
+            in
+            match hash_opt with
+            | None ->
+                Log.info "Server: Package '%s' has no hash (not built)" package;
+                Protocol.ServerResponse
+                  (Protocol.ArtifactNotFound
+                     { error = format "Package '%s' has not been built" package })
+            | Some hash -> (
+                (* Get the artifact from the store using package hash *)
+                match Tusk_store.Store.get state.store hash with
+                | None ->
+                    Log.info "Server: No artifact found for package '%s' hash %s"
+                      package (Std.Crypto.Digest.hex hash);
+                    Protocol.ServerResponse
+                      (Protocol.ArtifactNotFound
+                         { error =
+                             format "Package '%s' has not been built" package
+                         })
+                | Some artifact ->
+                    (* Find the binary file in the artifact *)
+                    let binary_path =
+                      List.find_opt
+                        (fun file_path ->
+                          let basename = Path.basename file_path in
+                          basename = name)
+                        artifact.Tusk_store.Artifact.files
+                    in
+                    (match binary_path with
+                    | Some file_path ->
+                        let artifact_dir =
+                          Tusk_store.Store.get_artifact_dir state.store artifact
+                        in
+                        let full_path = Path.(artifact_dir / file_path) in
+                        Log.info "Server: Artifact found at %s"
+                          (Path.to_string full_path);
+                        Protocol.ServerResponse
+                          (Protocol.ArtifactFound { path = full_path })
+                    | None ->
+                        Log.info
+                          "Server: Artifact '%s' not found in package '%s' files"
+                          name package;
+                        Protocol.ServerResponse
+                          (Protocol.ArtifactNotFound
+                             {
+                               error =
+                                 format "Artifact '%s' not found in package '%s'"
+                                   name package;
+                             })))))
   in
   Log.debug "Server: Sending response";
   send client_pid response;
@@ -343,9 +410,10 @@ and handle_build state client_pid target session_id =
     | Protocol.All -> "All"
     | Protocol.Package p -> format "Package(%s)" p);
 
+  let server_pid = self () in
   Build_server.start ~workspace:state.workspace ~toolchain:state.toolchain
     ~store:state.store ~concurrency:state.concurrency ~session_id ~client_pid
-    ~target;
+    ~server_pid ~target;
 
   Log.info "[INTERNAL_SERVER] Build worker spawned, continuing server loop";
   loop state

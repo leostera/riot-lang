@@ -213,7 +213,7 @@ let handle_package client sub_matches =
       Error (Failure e)
 
 let handle_graph client _sub_matches =
-  let result = Tusk_client.get_build_graph client in
+  let result = Tusk_client.get_package_graph client in
   match result with
   | Ok response ->
       let nodes_json =
@@ -235,7 +235,7 @@ let handle_graph client _sub_matches =
       let json =
         Json.Object
           [
-            ("type", Json.String "build_graph"); ("nodes", Json.Array nodes_json);
+            ("type", Json.String "package_graph"); ("nodes", Json.Array nodes_json);
           ]
       in
       println "%s" (Json.to_string json);

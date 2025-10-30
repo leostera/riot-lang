@@ -1,10 +1,11 @@
 open Std
 open Miniriot
+module Web_config = Config  (* Local Config module in web_server/ *)
 
 type handler = Socket_pool.Connection.t -> Request.t -> Response.t
 
 type state = {
-  config : Config.t;
+  config : Web_config.t;
   handler : handler;
   is_keep_alive : bool;
   requests_processed : int;

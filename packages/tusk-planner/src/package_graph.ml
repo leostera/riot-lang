@@ -104,6 +104,11 @@ let find_package pg name =
   | Some node -> Some (get_package node.value)
   | None -> None
 
+let get_package_node pg package =
+  match get_node pg package with
+  | Some node -> Some node.value
+  | None -> None
+
 let filter_for_package pg pkg_name =
   match HashMap.get pg.name_to_node pkg_name with
   | None -> { graph = G.make (); name_to_node = HashMap.create () }

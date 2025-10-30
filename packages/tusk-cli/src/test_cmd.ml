@@ -40,15 +40,25 @@ let run matches =
   let packages =
     match package_filter with
     | Some pkg_name ->
+        println "[DEBUG] Filtering for package: %s" pkg_name;
+        println "[DEBUG] Workspace has %d packages" (List.length workspace.packages);
         List.filter
           (fun (pkg : Package.t) -> String.equal pkg.name pkg_name)
           workspace.packages
     | None -> workspace.packages
   in
 
+  println "[DEBUG] Found %d packages to test" (List.length packages);
+
   let test_binaries =
     List.concat_map
       (fun (pkg : Package.t) ->
+        println "[DEBUG] Package '%s' has %d binaries" pkg.name
+          (List.length pkg.binaries);
+        List.iter
+          (fun (bin : Package.binary) ->
+            println "[DEBUG]   - %s" bin.name)
+          pkg.binaries;
         List.filter_map
           (fun (bin : Package.binary) ->
             if

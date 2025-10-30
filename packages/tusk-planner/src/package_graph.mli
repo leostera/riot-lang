@@ -71,6 +71,9 @@ val find_package : t -> string -> Package.t option
 val get_node : t -> Package.t -> package_node Graph.SimpleGraph.node option
 (** Get the graph node for a package *)
 
+val get_package_node : t -> Package.t -> package_node option
+(** Get the package_node value for a package *)
+
 val get_dependencies : t -> Package.t -> package_node list
 (** Get direct dependency package_node values of a package *)
 

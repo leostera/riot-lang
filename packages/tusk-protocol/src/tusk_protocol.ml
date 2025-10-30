@@ -7,7 +7,7 @@ open Tusk_model
 (** Method names *)
 let method_ping = "tusk.ping"
 
-let method_get_build_graph = "tusk.getBuildGraph"
+let method_get_package_graph = "tusk.getPackageGraph"
 let method_get_workspace_config = "tusk.getWorkspaceConfig"
 let method_get_package_info = "tusk.getPackageInfo"
 let method_build_package = "tusk.buildPackage"
@@ -51,7 +51,7 @@ module WireProtocol = struct
     deps : string list;
   }
 
-  type build_graph_response = { nodes : build_node list }
+  type package_graph_response = { nodes : build_node list }
 
   type package_info = {
     name : string;
@@ -76,7 +76,7 @@ module WireProtocol = struct
 
   type request =
     | Ping
-    | GetBuildGraph
+    | GetPackageGraph
     | GetWorkspaceConfig
     | GetPackageInfo of string
     | BuildPackage of string
@@ -123,7 +123,7 @@ module WireProtocol = struct
 
   type response =
     | Pong
-    | BuildGraph of build_graph_response
+    | PackageGraph of package_graph_response
     | WorkspaceConfig of workspace_config
     | PackageInfo of package_detail
     | BuildStarted of { session_id : Session_id.t; started_at : Std.Datetime.t }
@@ -1183,7 +1183,7 @@ module WireProtocol = struct
           method_ = method_get_package_info;
           params = Jsonrpc.Named [ ("package", Json.String pkg) ];
         }
-    | GetBuildGraph -> { method_ = method_get_build_graph; params = NoParams }
+    | GetPackageGraph -> { method_ = method_get_package_graph; params = NoParams }
     | BuildPackage pkg ->
         { method_ = method_build_package; params = build_package_params pkg }
     | BuildAll -> { method_ = method_build_all; params = NoParams }
@@ -1271,7 +1271,7 @@ module WireProtocol = struct
             | Some (Json.String pkg) -> Ok (GetPackageInfo pkg)
             | _ -> Error (Json.String "Missing or invalid 'package' parameter"))
         | _ -> Error (Json.String "GetPackageInfo requires named parameters"))
-    | "tusk.getBuildGraph" -> Ok GetBuildGraph
+    | "tusk.getPackageGraph" -> Ok GetPackageGraph
     | "tusk.restart" -> Ok Restart
     | "tusk.shutdown" -> Ok Shutdown
     | "tusk.findExecutable" -> (
@@ -1404,7 +1404,7 @@ module WireProtocol = struct
                    config.packages) );
             ("total_packages", Json.Int config.total_packages);
           ]
-    | BuildGraph graph ->
+    | PackageGraph graph ->
         Json.Object
           [
             ( "nodes",
@@ -2018,7 +2018,7 @@ module WireProtocol = struct
                                 arr
                           | _ -> []
                         in
-                        Ok (BuildGraph { nodes })
+                        Ok (PackageGraph { nodes })
                     | _ -> (
                         match List.assoc_opt "error" fields with
                         | Some (Json.String msg) -> Ok (Error msg)

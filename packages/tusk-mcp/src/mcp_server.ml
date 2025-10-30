@@ -11,7 +11,7 @@ module TuskMcp = struct
   type tool_request =
     | Build of Tools.Build.request
     | GetWorkspace of Tools.Describe_workspace.request
-    | GetGraph of Tools.Get_build_graph.request
+    | GetGraph of Tools.Get_package_graph.request
     | GetPackage of Tools.Describe_package.request
     | FindExecutable of Tools.Find_executable.request
     | FindArtifact of Tools.Find_artifact.request
@@ -23,7 +23,7 @@ module TuskMcp = struct
   type tool_response =
     | BuildResult of Tools.Build.response
     | WorkspaceResult of Tools.Describe_workspace.response
-    | GraphResult of Tools.Get_build_graph.response
+    | GraphResult of Tools.Get_package_graph.response
     | PackageResult of Tools.Describe_package.response
     | FindExecutableResult of Tools.Find_executable.response
     | FindArtifactResult of Tools.Find_artifact.response
@@ -122,7 +122,7 @@ module TuskMcp = struct
                 in
                 Ok (CallTool (Build { package }))
             | "describeWorkspace" -> Ok (CallTool (GetWorkspace ()))
-            | "getBuildGraph" -> Ok (CallTool (GetGraph ()))
+            | "getPackageGraph" -> Ok (CallTool (GetGraph ()))
             | "describePackage" -> (
                 match arguments with
                 | Some (Json.Object f) -> (
@@ -319,7 +319,7 @@ module TuskMcp = struct
         match resp with
         | BuildResult r -> Tools.Build.response_to_json r
         | WorkspaceResult r -> Tools.Describe_workspace.response_to_json r
-        | GraphResult r -> Tools.Get_build_graph.response_to_json r
+        | GraphResult r -> Tools.Get_package_graph.response_to_json r
         | PackageResult r -> Tools.Describe_package.response_to_json r
         | FindExecutableResult r -> Tools.Find_executable.response_to_json r
         | FindArtifactResult r -> Tools.Find_artifact.response_to_json r
@@ -382,9 +382,9 @@ let execute_tool (ctx : ctx) (req : TuskMcp.tool_request) :
       Log.debug "[EXECUTE_TOOL] Describe_workspace.execute returned";
       TuskMcp.WorkspaceResult result
   | TuskMcp.GetGraph graph_req ->
-      Log.debug "[EXECUTE_TOOL] Calling Get_build_graph.execute";
-      let result = Tools.Get_build_graph.execute ctx.client graph_req in
-      Log.debug "[EXECUTE_TOOL] Get_build_graph.execute returned";
+      Log.debug "[EXECUTE_TOOL] Calling Get_package_graph.execute";
+      let result = Tools.Get_package_graph.execute ctx.client graph_req in
+      Log.debug "[EXECUTE_TOOL] Get_package_graph.execute returned";
       TuskMcp.GraphResult result
   | TuskMcp.GetPackage pkg_req ->
       Log.debug "[EXECUTE_TOOL] Calling Describe_package.execute";

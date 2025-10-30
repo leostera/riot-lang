@@ -10,7 +10,7 @@ val start :
   session_id:Session_id.t ->
   client_pid:Miniriot.Pid.t ->
   target:Protocol.target ->
-  unit
+  
 (** Start a build in a spawned worker process. This function returns immediately
     after spawning the worker. The worker will send results directly to the
     client_pid. *)

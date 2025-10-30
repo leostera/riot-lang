@@ -149,12 +149,11 @@ let execute_actions toolchain sandbox_dir actions =
   let rec execute_next = function
     | [] -> Ok ()
     | action :: rest -> (
-        Log.debug "Executing action: %s" (Action.to_string action);
         let result = run_action ocamlc sandbox_dir action in
         match result with
         | Tusk_toolchain.Ocamlc.Success _ -> execute_next rest
         | Tusk_toolchain.Ocamlc.Failed err ->
-            Error (format "Action failed: %s\n%s" (Action.to_string action) err)
+            Error err
         )
   in
   execute_next actions
@@ -180,8 +179,6 @@ let execute_node ~completed toolchain sandbox_dir (node : Action_node.t) =
   let start = Instant.now () in
 
   if has_failed_dependencies completed node then (
-    Log.info "Action node %s: Skipped (failed dependencies)"
-      (G.Node_id.to_string node.id);
     let now = Instant.now () in
     {
       node_id = node.id;
@@ -191,8 +188,6 @@ let execute_node ~completed toolchain sandbox_dir (node : Action_node.t) =
       completed_at = now;
     })
   else (
-    Log.info "Starting node %s execution" (G.Node_id.to_string node.id);
-
     let actions = node.value.actions in
     let outputs = node.value.outs in
     let sources = node.value.srcs in

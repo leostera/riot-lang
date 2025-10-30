@@ -1,6 +1,10 @@
+type counter = { mutable last: int }
+let incr c = c.last <- c.last + 1
+let (!) c = c.last
+
 type t = int
 
-let counter = ref (-1)
+let counter = { last = -1 }
 let main = 0
 
 let next () =

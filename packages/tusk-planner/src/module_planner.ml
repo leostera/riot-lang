@@ -91,7 +91,9 @@ let plan_node input =
 
     let binary_includes =
       let unix_includes = if needs_unix then [ Path.v "+unix" ] else [] in
-      unix_includes @ dep_cache_dirs
+      (* Include current package directory so binaries can access the library *)
+      let own_package_dir = [ Path.v "." ] in
+      unix_includes @ own_package_dir @ dep_cache_dirs
     in
 
     List.iter

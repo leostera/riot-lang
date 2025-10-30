@@ -43,7 +43,7 @@ val build_streaming :
   (streaming_event, error) result
 
 val ping : t -> (unit, string) result
-val get_build_graph : t -> (WireProtocol.build_graph_response, string) result
+val get_package_graph : t -> (WireProtocol.package_graph_response, string) result
 val get_workspace_config : t -> (WireProtocol.workspace_config, string) result
 
 val get_package_info :

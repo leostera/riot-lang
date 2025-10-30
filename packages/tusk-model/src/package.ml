@@ -81,7 +81,9 @@ let parse_binary (value : Toml.value) ~(package_path : Path.t) :
           Error "Binary entry missing required 'name' field"
       | Some (Toml.String _), Some _ ->
           Error "Binary 'path' field must be a string"
-      | Some _, _ -> Error "Binary 'name' field must be a string"
+      | Some _, Some _ -> Error "Binary 'name' field must be a string"
+      | Some _, None -> Error "Binary 'name' field must be a string"
+      | None, Some _ -> Error "Binary 'path' field must be a string"
       | None, None ->
           Error "Binary entry missing required 'name' and 'path' fields")
   | _ -> Error "Binary entry must be a table"
@@ -108,7 +110,14 @@ let parse_binaries (items : (string * Toml.value) list) ~(package_path : Path.t)
 let parse_library (items : (string * Toml.value) list) ~(package_path : Path.t)
     ~(package_name : string) : (library option, string) result =
   match List.assoc_opt "lib" items with
-  | None -> Ok None
+  | None ->
+      (* Autodiscover: if src/<package_name>.ml exists, use it as library *)
+      let default_lib_path =
+        Path.(package_path / Path.v "src" / Path.v (format "%s.ml" package_name))
+      in
+      (match Fs.exists default_lib_path with
+      | Ok true -> Ok (Some { path = default_lib_path })
+      | Ok false | Error _ -> Ok None)
   | Some (Toml.Table lib_items) -> (
       match List.assoc_opt "path" lib_items with
       | Some (Toml.String path_str) ->
@@ -157,6 +166,25 @@ let scan_sources ~(package_path : Path.t) : sources =
   in
   { src = src_files; tests = test_files; native = native_files }
 
+(** Autodiscover test binaries from test files ending in _tests.ml or -tests.ml *)
+let autodiscover_test_binaries (sources : sources) ~(package_path : Path.t) :
+    binary list =
+  List.filter_map
+    (fun test_file ->
+      let filename = Path.basename test_file in
+      if
+        String.ends_with ~suffix:"_tests.ml" filename
+        || String.ends_with ~suffix:"-tests.ml" filename
+      then
+        let binary_name =
+          Path.remove_extension (Path.v filename) |> Path.to_string
+        in
+        (* test_file is already relative to package (e.g., tests/foo_tests.ml) *)
+        let binary_path = test_file in
+        Some { name = binary_name; path = binary_path }
+      else None)
+    sources.tests
+
 let from_toml (toml : Toml.value) ~(workspace_deps : dependency list)
     ~(path : Path.t) ~(relative_path : Path.t) : (t, string) result =
   match toml with
@@ -184,7 +212,21 @@ let from_toml (toml : Toml.value) ~(workspace_deps : dependency list)
             None
       in
       let sources = scan_sources ~package_path:path in
-      Ok { name; path; relative_path; dependencies; binaries; library; sources }
+      (* Autodiscover test binaries from test files *)
+      let test_binaries = autodiscover_test_binaries sources ~package_path:path in
+      Log.debug "[PACKAGE] %s: discovered %d test binaries from %d test files"
+        name (List.length test_binaries) (List.length sources.tests);
+      let all_binaries = binaries @ test_binaries in
+      Ok
+        {
+          name;
+          path;
+          relative_path;
+          dependencies;
+          binaries = all_binaries;
+          library;
+          sources;
+        }
   | _ -> Error "TOML is not a table"
 
 let to_json (pkg : t) : Json.t =

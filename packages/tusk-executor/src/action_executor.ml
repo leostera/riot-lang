@@ -141,7 +141,7 @@ let execute_actions toolchain sandbox_dir actions =
         match result with
         | Tusk_toolchain.Ocamlc.Success _ -> execute_next rest
         | Tusk_toolchain.Ocamlc.Failed err ->
-            Error (format "Action failed: %s\n%s" (Action.to_string action) err)
+            Error err
         )
   in
   execute_next actions
@@ -178,8 +178,6 @@ let execute_node ~completed toolchain sandbox_dir (node : Action_node.t) =
       completed_at = now;
     })
   else (
-    Log.info "Starting node %s execution" (G.Node_id.to_string node.id);
-
     let actions = node.value.actions in
     let outputs = node.value.outs in
     let sources = node.value.srcs in

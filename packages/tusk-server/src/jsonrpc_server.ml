@@ -74,6 +74,286 @@ module Server = struct
     | exception e ->
         Log.error "[JSONRPC] handle_ping exception: %s" (Printexc.to_string e)
 
+  let handle_get_workspace_config ctx reply _request =
+    Log.info "[JSONRPC] >>> handle_get_workspace_config called";
+    send ctx.server_pid
+      (Protocol.ServerRequest
+         (Protocol.GetWorkspaceConfig { client_pid = self () }));
+    let selector msg =
+      match msg with
+      | Protocol.ServerResponse (Protocol.WorkspaceConfig _) -> `select msg
+      | _ -> `skip
+    in
+    match receive ~selector () with
+    | Protocol.ServerResponse (Protocol.WorkspaceConfig { workspace; toolchain })
+      ->
+        Log.info "[JSONRPC] <<< WorkspaceConfig received";
+        (* Get toolchain info from workspace config *)
+        let toolchain_config = Tusk_model.Toolchain_config.from_workspace workspace in
+        let toolchain_path = Tusk_model.Tusk_dirs.toolchains_dir toolchain_config in
+        let wire_config : WireProtocol.workspace_config =
+          {
+            workspace_root = Path.to_string workspace.root;
+            target_dir = Path.to_string workspace.target_dir_root;
+            toolchain = toolchain_config.version;
+            toolchain_path = Path.to_string toolchain_path;
+            packages =
+              List.map
+                (fun (pkg : Package.t) ->
+                  {
+                    WireProtocol.name = pkg.name;
+                    path = Path.to_string pkg.path;
+                    dependencies = List.map (fun (dep : Package.dependency) -> dep.name) pkg.dependencies;
+                  })
+                workspace.packages;
+            total_packages = List.length workspace.packages;
+          }
+        in
+        reply (WireProtocol.WorkspaceConfig wire_config)
+    | _ ->
+        Log.error "[JSONRPC] Unexpected response for GetWorkspaceConfig";
+        reply (WireProtocol.Error "Unexpected response")
+
+  let handle_get_package_info ctx reply request =
+    match request with
+    | WireProtocol.GetPackageInfo package_name ->
+        Log.info "[JSONRPC] >>> handle_get_package_info called (package=%s)"
+          package_name;
+        send ctx.server_pid
+          (Protocol.ServerRequest
+             (Protocol.GetPackageInfo { client_pid = self (); package_name }));
+        let selector msg =
+          match msg with
+          | Protocol.ServerResponse (Protocol.PackageInfo _) -> `select msg
+          | _ -> `skip
+        in
+        (match receive ~selector () with
+        | Protocol.ServerResponse (Protocol.PackageInfo { package; sources }) ->
+            Log.info "[JSONRPC] <<< PackageInfo received";
+            let dep_names = List.map (fun (dep : Package.dependency) -> dep.name) package.dependencies in
+            let wire_info : WireProtocol.package_detail =
+              {
+                package =
+                  {
+                    WireProtocol.name = package.name;
+                    path = Path.to_string package.path;
+                    dependencies = dep_names;
+                  };
+                sources = List.map Path.to_string sources;
+                dependency_names = dep_names;
+              }
+            in
+            reply (WireProtocol.PackageInfo wire_info)
+        | _ ->
+            Log.error "[JSONRPC] Unexpected response for GetPackageInfo";
+            reply (WireProtocol.Error "Unexpected response"))
+    | _ ->
+        Log.error "[JSONRPC] handle_get_package_info called with wrong request type"
+
+  let handle_get_package_graph ctx reply _request =
+    Log.info "[JSONRPC] >>> handle_get_package_graph called";
+    send ctx.server_pid
+      (Protocol.ServerRequest (Protocol.GetPackageGraph { client_pid = self () }));
+    let selector msg =
+      match msg with
+      | Protocol.ServerResponse (Protocol.PackageGraph _) -> `select msg
+      | _ -> `skip
+    in
+    match receive ~selector () with
+    | Protocol.ServerResponse (Protocol.PackageGraph { nodes }) ->
+        Log.info "[JSONRPC] <<< PackageGraph received (%d nodes)" (List.length nodes);
+        let wire_nodes =
+          List.map
+            (fun (pkg : Package.t) ->
+              let deps = List.map (fun (dep : Package.dependency) -> dep.name) pkg.dependencies in
+              {
+                WireProtocol.package_name = pkg.name;
+                src_dir = Path.to_string pkg.path;
+                out_dir = ""; (* TODO: compute output dir *)
+                status = "pending";
+                deps;
+              })
+            nodes
+        in
+        reply (WireProtocol.PackageGraph { nodes = wire_nodes })
+    | _ ->
+        Log.error "[JSONRPC] Unexpected response for GetPackageGraph";
+        reply (WireProtocol.Error "Unexpected response")
+
+  let handle_find_executable ctx reply request =
+    match request with
+    | WireProtocol.FindExecutable name ->
+        Log.info "[JSONRPC] >>> handle_find_executable called (name=%s)" name;
+        send ctx.server_pid
+          (Protocol.ServerRequest
+             (Protocol.FindExecutable { client_pid = self (); name }));
+        Log.debug "[JSONRPC]     Awaiting ExecutableFound/ExecutableNotFound...";
+        let selector msg =
+          match msg with
+          | Protocol.ServerResponse (Protocol.ExecutableFound _)
+          | Protocol.ServerResponse Protocol.ExecutableNotFound ->
+              `select msg
+          | _ -> `skip
+        in
+        (match receive ~selector () with
+        | Protocol.ServerResponse (Protocol.ExecutableFound { package; binary })
+          ->
+            Log.info "[JSONRPC] <<< ExecutableFound: package=%s binary=%s" package
+              binary;
+            reply (WireProtocol.ExecutableFound { package; binary })
+        | Protocol.ServerResponse Protocol.ExecutableNotFound ->
+            Log.info "[JSONRPC] <<< ExecutableNotFound";
+            reply WireProtocol.ExecutableNotFound
+        | _ ->
+            Log.error "[JSONRPC] Unexpected response for FindExecutable";
+            reply (WireProtocol.Error "Unexpected response"))
+    | _ ->
+        Log.error "[JSONRPC] handle_find_executable called with wrong request type"
+
+  let handle_find_artifact ctx reply request =
+    match request with
+    | WireProtocol.FindArtifact { package; kind; name } ->
+        Log.info "[JSONRPC] >>> handle_find_artifact called (package=%s, name=%s)"
+          package name;
+        send ctx.server_pid
+          (Protocol.ServerRequest
+             (Protocol.FindArtifact
+                { client_pid = self (); package; kind; name }));
+        let selector msg =
+          match msg with
+          | Protocol.ServerResponse (Protocol.ArtifactFound _)
+          | Protocol.ServerResponse (Protocol.ArtifactNotFound _) ->
+              `select msg
+          | _ -> `skip
+        in
+        (match receive ~selector () with
+        | Protocol.ServerResponse (Protocol.ArtifactFound { path }) ->
+            Log.info "[JSONRPC] <<< ArtifactFound: %s" (Path.to_string path);
+            reply (WireProtocol.ArtifactFound { path = Path.to_string path })
+        | Protocol.ServerResponse (Protocol.ArtifactNotFound { error }) ->
+            Log.info "[JSONRPC] <<< ArtifactNotFound: %s" error;
+            reply (WireProtocol.ArtifactNotFound { error })
+        | _ ->
+            Log.error "[JSONRPC] Unexpected response for FindArtifact";
+            reply (WireProtocol.Error "Unexpected response"))
+    | _ ->
+        Log.error "[JSONRPC] handle_find_artifact called with wrong request type"
+
+  let handle_format_file ctx reply request =
+    match request with
+    | WireProtocol.FormatFile { file_path; check_only } ->
+        Log.info "[JSONRPC] >>> handle_format_file called (file=%s)" file_path;
+        let file_path_obj = Path.of_string file_path |> Result.expect ~msg:"Invalid file path" in
+        send ctx.server_pid
+          (Protocol.ServerRequest
+             (Protocol.FormatFile
+                { client_pid = self (); file_path = file_path_obj; check_only }));
+        let selector msg =
+          match msg with
+          | Protocol.ServerResponse (Protocol.FormatResult _)
+          | Protocol.ServerResponse (Protocol.FormatError _) ->
+              `select msg
+          | _ -> `skip
+        in
+        (match receive ~selector () with
+        | Protocol.ServerResponse
+            (Protocol.FormatResult { formatted_code; changed }) ->
+            Log.info "[JSONRPC] <<< FormatResult (changed=%b)" changed;
+            reply (WireProtocol.FormatResult { formatted_code; changed })
+        | Protocol.ServerResponse (Protocol.FormatError { error }) ->
+            Log.info "[JSONRPC] <<< FormatError: %s" error;
+            reply (WireProtocol.FormatError { error })
+        | _ ->
+            Log.error "[JSONRPC] Unexpected response for FormatFile";
+            reply (WireProtocol.Error "Unexpected response"))
+    | _ ->
+        Log.error "[JSONRPC] handle_format_file called with wrong request type"
+
+  let handle_format_code ctx reply request =
+    match request with
+    | WireProtocol.FormatCode { code; file_path } ->
+        Log.info "[JSONRPC] >>> handle_format_code called";
+        let file_path_obj = Option.map (fun p -> Path.of_string p |> Result.expect ~msg:"Invalid file path") file_path in
+        send ctx.server_pid
+          (Protocol.ServerRequest
+             (Protocol.FormatCode { client_pid = self (); code; file_path = file_path_obj }));
+        let selector msg =
+          match msg with
+          | Protocol.ServerResponse (Protocol.FormatResult _)
+          | Protocol.ServerResponse (Protocol.FormatError _) ->
+              `select msg
+          | _ -> `skip
+        in
+        (match receive ~selector () with
+        | Protocol.ServerResponse
+            (Protocol.FormatResult { formatted_code; changed }) ->
+            Log.info "[JSONRPC] <<< FormatResult (changed=%b)" changed;
+            reply (WireProtocol.FormatResult { formatted_code; changed })
+        | Protocol.ServerResponse (Protocol.FormatError { error }) ->
+            Log.info "[JSONRPC] <<< FormatError: %s" error;
+            reply (WireProtocol.FormatError { error })
+        | _ ->
+            Log.error "[JSONRPC] Unexpected response for FormatCode";
+            reply (WireProtocol.Error "Unexpected response"))
+    | _ ->
+        Log.error "[JSONRPC] handle_format_code called with wrong request type"
+
+  let handle_format_all ctx reply request =
+    match request with
+    | WireProtocol.FormatAll { mode } ->
+        Log.info "[JSONRPC] >>> handle_format_all called";
+        send ctx.server_pid
+          (Protocol.ServerRequest
+             (Protocol.FormatAll { client_pid = self (); mode }));
+        let selector msg =
+          match msg with
+          | Protocol.ServerResponse (Protocol.FormatAllResult _) -> `select msg
+          | _ -> `skip
+        in
+        (match receive ~selector () with
+        | Protocol.ServerResponse
+            (Protocol.FormatAllResult { files_formatted; files_failed; errors })
+          ->
+            Log.info "[JSONRPC] <<< FormatAllResult (formatted=%d, failed=%d)"
+              files_formatted files_failed;
+            reply
+              (WireProtocol.FormatAllResult
+                 { files_formatted; files_failed; errors })
+        | _ ->
+            Log.error "[JSONRPC] Unexpected response for FormatAll";
+            reply (WireProtocol.Error "Unexpected response"))
+    | _ ->
+        Log.error "[JSONRPC] handle_format_all called with wrong request type"
+
+  let handle_new_package ctx reply request =
+    match request with
+    | WireProtocol.NewPackage { path; name; is_library } ->
+        Log.info "[JSONRPC] >>> handle_new_package called (name=%s)" name;
+        let path_obj = Path.of_string path |> Result.expect ~msg:"Invalid path" in
+        send ctx.server_pid
+          (Protocol.ServerRequest
+             (Protocol.NewPackage
+                { client_pid = self (); path = path_obj; name; is_library }));
+        let selector msg =
+          match msg with
+          | Protocol.ServerResponse (Protocol.PackageCreated _)
+          | Protocol.ServerResponse (Protocol.PackageCreationError _) ->
+              `select msg
+          | _ -> `skip
+        in
+        (match receive ~selector () with
+        | Protocol.ServerResponse (Protocol.PackageCreated { path; name }) ->
+            Log.info "[JSONRPC] <<< PackageCreated: %s" name;
+            reply (WireProtocol.PackageCreated { path; name })
+        | Protocol.ServerResponse (Protocol.PackageCreationError { error }) ->
+            Log.info "[JSONRPC] <<< PackageCreationError: %s" error;
+            reply (WireProtocol.PackageCreationError { error })
+        | _ ->
+            Log.error "[JSONRPC] Unexpected response for NewPackage";
+            reply (WireProtocol.Error "Unexpected response"))
+    | _ ->
+        Log.error "[JSONRPC] handle_new_package called with wrong request type"
+
   let handle_build ctx reply request =
     let target_str =
       match request with
@@ -221,6 +501,83 @@ module Server = struct
               (fun reply request ->
                 match request with
                 | WireProtocol.Ping -> handle_ping ctx reply request
+                | _ -> ());
+          };
+          {
+            method_ = Tusk_protocol.method_get_workspace_config;
+            fn =
+              (fun reply request ->
+                match request with
+                | WireProtocol.GetWorkspaceConfig ->
+                    handle_get_workspace_config ctx reply request
+                | _ -> ());
+          };
+          {
+            method_ = Tusk_protocol.method_get_package_info;
+            fn =
+              (fun reply request ->
+                match request with
+                | WireProtocol.GetPackageInfo _ ->
+                    handle_get_package_info ctx reply request
+                | _ -> ());
+          };
+          {
+            method_ = Tusk_protocol.method_get_package_graph;
+            fn =
+              (fun reply request ->
+                match request with
+                | WireProtocol.GetPackageGraph ->
+                    handle_get_package_graph ctx reply request
+                | _ -> ());
+          };
+          {
+            method_ = Tusk_protocol.method_find_executable;
+            fn =
+              (fun reply request ->
+                match request with
+                | WireProtocol.FindExecutable _ ->
+                    handle_find_executable ctx reply request
+                | _ -> ());
+          };
+          {
+            method_ = Tusk_protocol.method_find_artifact;
+            fn =
+              (fun reply request ->
+                match request with
+                | WireProtocol.FindArtifact _ ->
+                    handle_find_artifact ctx reply request
+                | _ -> ());
+          };
+          {
+            method_ = Tusk_protocol.method_format_file;
+            fn =
+              (fun reply request ->
+                match request with
+                | WireProtocol.FormatFile _ -> handle_format_file ctx reply request
+                | _ -> ());
+          };
+          {
+            method_ = Tusk_protocol.method_format_code;
+            fn =
+              (fun reply request ->
+                match request with
+                | WireProtocol.FormatCode _ -> handle_format_code ctx reply request
+                | _ -> ());
+          };
+          {
+            method_ = Tusk_protocol.method_format_all;
+            fn =
+              (fun reply request ->
+                match request with
+                | WireProtocol.FormatAll _ -> handle_format_all ctx reply request
+                | _ -> ());
+          };
+          {
+            method_ = Tusk_protocol.method_new_package;
+            fn =
+              (fun reply request ->
+                match request with
+                | WireProtocol.NewPackage _ -> handle_new_package ctx reply request
                 | _ -> ());
           };
           {

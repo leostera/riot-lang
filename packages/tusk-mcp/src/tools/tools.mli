@@ -7,6 +7,6 @@ module Find_artifact = Find_artifact
 module Find_executable = Find_executable
 module Format_code = Format_code
 module Format_file = Format_file
-module Get_build_graph = Get_build_graph
+module Get_package_graph = Get_package_graph
 
 val all_tools : unit -> Mcp.tool list

@@ -30,7 +30,7 @@ type request =
   | ScanWorkspace of { client_pid : Pid.t; current_dir : Path.t }
   | GetWorkspaceConfig of { client_pid : Pid.t }
   | GetPackageInfo of { client_pid : Pid.t; package_name : string }
-  | GetBuildGraph of { client_pid : Pid.t }
+  | GetPackageGraph of { client_pid : Pid.t }
   | FindExecutable of { client_pid : Pid.t; name : string }
   | FindArtifact of {
       client_pid : Pid.t;
@@ -81,7 +81,7 @@ type response =
       sources : Path.t list;
       dependencies : Package.t list;
     }
-  | BuildGraph of { nodes : Package.t list }
+  | PackageGraph of { nodes : Package.t list }
   | ExecutableFound of { package : string; binary : string }
   | ExecutableNotFound
   | ArtifactFound of { path : Path.t }

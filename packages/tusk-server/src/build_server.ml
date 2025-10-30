@@ -6,7 +6,7 @@ open Tusk_model
 open Tusk_executor
 
 let init ~workspace ~toolchain ~store ~concurrency ~session_id ~client_pid
-    ~target =
+    ~server_pid ~target =
   Log.debug "Build worker started for session %s"
     (Session_id.to_string session_id);
 
@@ -55,7 +55,7 @@ let init ~workspace ~toolchain ~store ~concurrency ~session_id ~client_pid
 
       Protocol.BuildStats.mark_completed stats;
 
-      if workspace_result.failed_count > 0 then
+      if workspace_result.failed_count > 0 then (
         let errors =
           List.filter
             (fun (result : Package_builder.build_result) ->
@@ -81,8 +81,11 @@ let init ~workspace ~toolchain ~store ~concurrency ~session_id ~client_pid
                   stats;
                   built;
                   errors;
-                }))
-      else
+                }));
+        (* Send updated package graph back to internal server even on failure *)
+        send server_pid
+          (Internal_server.UpdatePackageGraph workspace_result.package_graph))
+      else (
         send client_pid
           (Protocol.ServerResponse
              (Protocol.BuildCompleted
@@ -91,7 +94,10 @@ let init ~workspace ~toolchain ~store ~concurrency ~session_id ~client_pid
                   completed_at = Datetime.now ();
                   stats;
                   results = workspace_result.results;
-                }))
+                }));
+        (* Send updated package graph back to internal server *)
+        send server_pid
+          (Internal_server.UpdatePackageGraph workspace_result.package_graph))
   | Error err -> (
       match err with
       | Tusk_planner.Workspace_planner.PackageNotFound { name; available } ->
@@ -119,10 +125,10 @@ let init ~workspace ~toolchain ~store ~concurrency ~session_id ~client_pid
 
 (** Start a build in a spawned worker process *)
 let start ~workspace ~toolchain ~store ~concurrency ~session_id ~client_pid
-    ~target =
+    ~server_pid ~target =
   let _ =
     spawn (fun () ->
         init ~workspace ~toolchain ~store ~concurrency ~session_id ~client_pid
-          ~target)
+          ~server_pid ~target)
   in
   ()
