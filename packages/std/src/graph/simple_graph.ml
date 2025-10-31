@@ -42,9 +42,6 @@ let get_node t node_id = Hashtbl.find t.nodes node_id
 (** Add a dependency edge between two nodes *)
 let add_edge node ~depends_on = node.deps <- depends_on.id :: node.deps
 
-exception Cycle of Node_id.t list
-(** Exception raised when a cycle is detected *)
-
 (** Topological sort using Kahn's algorithm *)
 let topo_sort graph =
   (* Create in-degree table *)
@@ -117,13 +114,59 @@ let topo_sort graph =
 
   (* Check for cycles *)
   if !processed <> Hashtbl.length graph.nodes then (
-    (* Find nodes that are part of cycles (those with in-degree > 0) *)
-    let cycle_nodes = cell [] in
-    Hashtbl.iter
-      (fun id count -> if count > 0 then cycle_nodes := id :: !cycle_nodes)
-      in_degree;
-    raise (Cycle !cycle_nodes))
-  else List.rev !sorted
+    (* Find actual cycle using DFS from a node involved in the cycle *)
+    let find_cycle () =
+      (* Find any node with in-degree > 0 (it's in a cycle) *)
+      let start_node =
+        Hashtbl.fold
+          (fun id count acc ->
+            match acc with Some _ -> acc | None -> if count > 0 then Some id else None)
+          in_degree None
+      in
+      match start_node with
+      | None -> []  (* No cycle found, shouldn't happen *)
+      | Some start_id ->
+          (* DFS to find cycle path *)
+          let visited = Hashtbl.create (Hashtbl.length graph.nodes) in
+          let rec_stack = Hashtbl.create (Hashtbl.length graph.nodes) in
+          
+          let rec dfs node_id path =
+            if Hashtbl.mem rec_stack node_id then
+              (* Found back edge to node_id. 
+                 Path is [newest, ..., node_id] (reversed order)
+                 We want cycle: [node_id, ..., newest, node_id] *)
+              let rec extract_cycle acc = function
+                | [] -> acc
+                | id :: rest ->
+                    if Node_id.eq id node_id then 
+                      (* Found start, return [node_id] ++ acc ++ [node_id] *)
+                      node_id :: (List.rev acc) @ [ node_id ]
+                    else extract_cycle (id :: acc) rest
+              in
+              Some (extract_cycle [] path)
+            else if Hashtbl.mem visited node_id then None
+            else (
+              Hashtbl.add visited node_id ();
+              Hashtbl.add rec_stack node_id ();
+              let node = Hashtbl.find graph.nodes node_id in
+              let result =
+                List.fold_left
+                  (fun acc dep_id ->
+                    match acc with
+                    | Some _ -> acc
+                    | None -> dfs dep_id (node_id :: path))
+                  None node.deps
+              in
+              Hashtbl.remove rec_stack node_id;
+              result)
+          in
+          
+          match dfs start_id [] with
+          | Some cycle -> cycle
+          | None -> [ start_id ]  (* Fallback *)
+    in
+    Error (find_cycle ()))
+  else Ok (List.rev !sorted)
 
 let iter graph ~fn = Hashtbl.iter fn graph.nodes
 let map graph ~fn = Hashtbl.to_seq graph.nodes |> List.of_seq |> List.map fn

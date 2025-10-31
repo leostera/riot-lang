@@ -1,5 +1,5 @@
 open Std
-open Miniriot
+
 module Html = Html
 
 module type Component = sig

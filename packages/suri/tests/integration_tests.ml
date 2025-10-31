@@ -1,7 +1,7 @@
 open Std
 open Std.Net
 open Std.Collections
-open Miniriot
+
 open Suri
 
 let host = "127.0.0.1"

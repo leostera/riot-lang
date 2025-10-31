@@ -16,7 +16,7 @@ Lightweight, streaming HTTP client built on Riot's process model with support fo
 
 ```ocaml
 open Std
-open Miniriot
+
 
 let () = start ~apps:[] @@ fun () ->
   let open Result.Syntax in

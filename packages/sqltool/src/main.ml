@@ -1,5 +1,5 @@
 open Std
-open Miniriot
+
 
 type db_type = Sqlite | Postgres
 

@@ -29,8 +29,10 @@
     Graph.SimpleGraph.add_node graph "B" in Graph.SimpleGraph.add_edge task_a
     ~depends_on:task_b; Graph.SimpleGraph.add_edge task_b ~depends_on:task_a;
 
-    match Graph.SimpleGraph.topo_sort graph with | sorted -> (* Won't reach here
-    *) | exception (Graph.SimpleGraph.Cycle ids) -> Log.error "Cycle detected!"
+    match Graph.SimpleGraph.topo_sort graph with 
+    | Ok sorted -> (* process sorted nodes *)
+    | Error ids -> Log.error "Cycle detected with nodes: %s" 
+        (String.concat ", " (List.map Graph.SimpleGraph.Node_id.to_string ids))
     ```
 
     ## Use Cases
@@ -85,12 +87,9 @@ val iter : 'a t -> fn:(Node_id.t -> 'a node -> unit) -> unit
 val map : 'a t -> fn:(Node_id.t * 'a node -> 'b) -> 'b list
 (** Map over all nodes. *)
 
-val topo_sort : 'a t -> 'a node list
-(** Topological sort. Raises [Cycle] if graph has cycles. *)
+val topo_sort : 'a t -> ('a node list, Node_id.t list) result
+(** Topological sort. Returns Ok with sorted nodes, or Error with cycle node IDs if graph has cycles. *)
 
 val reachable_from : 'a t -> 'a node list -> Node_id.t list
-(** Compute all nodes reachable from the given start nodes by following
+(** Get all nodes reachable from a given starting set through their
     dependency edges. Returns a list of node IDs that can be reached. *)
-
-exception Cycle of Node_id.t list
-(** Raised when topological sort encounters a cycle. *)

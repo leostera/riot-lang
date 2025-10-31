@@ -22,7 +22,7 @@
 
     ```ocaml
     open Std
-    open Miniriot
+    
     open Suri
 
     module Echo_handler = struct

@@ -1,5 +1,5 @@
 open Std
-open Miniriot
+
 open Sqlx
 
 module MockDriver : Driver.Intf = struct

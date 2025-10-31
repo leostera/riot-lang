@@ -1,5 +1,5 @@
 open Std
-open Miniriot
+
 module Web_config = Config  (* Local Config module in web_server/ *)
 
 type handler = Socket_pool.Connection.t -> Request.t -> Response.t

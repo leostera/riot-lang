@@ -115,7 +115,7 @@ end
 #### 2.1 Connection Module (`connection.ml`)
 
 ```ocaml
-open Miniriot
+
 
 type driver_connection = 
   | Postgres of Postgres_driver.connection
@@ -166,7 +166,7 @@ let connection_process config driver =
 #### 2.2 Connection Pool (`pool.ml`)
 
 ```ocaml
-open Miniriot
+
 
 type config = {
   driver : (module Driver.Intf);

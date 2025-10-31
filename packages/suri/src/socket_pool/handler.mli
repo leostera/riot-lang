@@ -4,7 +4,7 @@
     key feature is the ability to switch handlers mid-connection via the
     [Switch] result, enabling protocol upgrades (e.g., HTTP → WebSocket). *)
 
-open Miniriot
+
 
 module rec R : sig
   type t =

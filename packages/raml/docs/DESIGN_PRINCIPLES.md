@@ -73,7 +73,7 @@ let optimize_lambda expr =
 
 ```ocaml
 (* Each process/actor has its own state - isolated by design *)
-open Miniriot
+
 
 type worker_state = {
   module_cache: (string, typed_module) Collections.HashMap.t;

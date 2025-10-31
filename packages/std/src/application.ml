@@ -55,9 +55,8 @@ let build_dep_graph apps =
 let start_applications apps =
   let graph = build_dep_graph apps in
   match Graph.SimpleGraph.topo_sort graph with
-  | exception (Graph.SimpleGraph.Cycle _ids) ->
-      Error (Failure "Circular dependency detected in applications")
-  | sorted_nodes ->
+  | Error _ids -> Error (Failure "Circular dependency detected in applications")
+  | Ok sorted_nodes ->
       let started = Collections.Vector.create () in
       let rec start_all = function
         | [] -> Ok (Collections.Vector.to_list started)
