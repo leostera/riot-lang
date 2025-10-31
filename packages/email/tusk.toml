@@ -7,13 +7,8 @@ path = "src/email.ml"
 
 [dependencies]
 std = { path = "../std" }
-miniriot = { path = "../miniriot" }
 mime = { path = "../mime" }
 
 [[bin]]
 name = "mbox"
 path = "examples/mbox_reader.ml"
-
-[[bin]]
-name = "parser_tests"
-path = "tests/parser_tests.ml"

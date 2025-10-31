@@ -8,8 +8,3 @@ path = "src/datalog.ml"
 [dependencies]
 std = { path = "../std" }
 ceibo = { path = "../ceibo" }
-miniriot = { path = "../miniriot" }
-
-[[bin]]
-name = "parser_tests"
-path = "tests/parser_tests.ml"

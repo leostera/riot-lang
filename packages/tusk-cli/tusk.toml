@@ -12,7 +12,6 @@ path = "src/main.ml"
 [dependencies]
 jsonrpc = { path = "../jsonrpc" }
 mcp = { path = "../mcp" }
-miniriot = { path = "../miniriot" }
 std = { path = "../std" }
 tusk-mcp = { path = "../tusk-mcp" }
 tusk-client = { path = "../tusk-client" }

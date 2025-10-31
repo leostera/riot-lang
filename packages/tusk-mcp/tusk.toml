@@ -8,7 +8,6 @@ path = "src/tusk_mcp.ml"
 [dependencies]
 jsonrpc = { path = "../jsonrpc" }
 mcp = { path = "../mcp" }
-miniriot = { path = "../miniriot" }
 std = { path = "../std" }
 tusk-client = { path = "../tusk-client" }
 tusk-model = { path = "../tusk-model" }

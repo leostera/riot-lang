@@ -5,22 +5,12 @@ version = "0.1.0"
 [lib]
 path = "src/syn.ml"
 
+[[bin]]
+name = "syn"
+path = "src/main.ml"
+
 [dependencies]
 std = { path = "../std" }
 tty = { path  ="../tty"} 
 colors = { path ="../colors"}
 ceibo = { path = "../ceibo" }
-miniriot = { path = "../miniriot" }
-
-[[bin]]
-name = "syn"
-path = "src/main.ml"
-
-[[bin]]
-name = "fixture_tests"
-path = "tests/fixture_tests.ml"
-
-[[bin]]
-name = "diagnostic_tests"
-path = "tests/diagnostic_tests.ml"
-

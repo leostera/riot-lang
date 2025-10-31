@@ -7,7 +7,6 @@ path = "src/Tusk_client.ml"
 
 [dependencies]
 jsonrpc = { path = "../jsonrpc" }
-miniriot = { path = "../miniriot" }
 std = { path = "../std" }
 tusk-model = { path = "../tusk-model" }
 tusk-protocol = { path = "../tusk-protocol" }

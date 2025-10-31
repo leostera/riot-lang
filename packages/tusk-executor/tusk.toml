@@ -7,7 +7,6 @@ path = "src/tusk_executor.ml"
 
 [dependencies]
 std = "*"
-miniriot = "*"
 tusk-model = "*"
 tusk-planner = "*"
 tusk-toolchain = "*"

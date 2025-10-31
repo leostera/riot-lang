@@ -5,15 +5,9 @@ version = "0.1.0"
 [lib]
 path = "src/sqlx.ml"
 
-# TODO: Enable when dev-dependencies are implemented
-# [[bin]]
-# name = "sqltool"
-# path = "examples/sqltool.ml"
-
 [dependencies]
 std = { path = "../std" }
 kernel = { path = "../kernel" }
-miniriot = { path = "../miniriot" }
 sqlx_driver = { path = "../sqlx_driver" }
 
 # TODO: Use these for sqltool example when dev-dependencies are implemented

@@ -7,8 +7,3 @@ path = "src/tusk_model.ml"
 
 [dependencies]
 std = "*"
-miniriot = "*"
-
-[[bin]]
-name = "model_tests"
-path = "tests/model_tests.ml"

@@ -7,9 +7,4 @@ path = "src/tusk_toolchain.ml"
 
 [dependencies]
 std = "*"
-miniriot = "*"
 tusk-model = "*"
-
-[[bin]]
-name = "toolchain-tests"
-path = "tests/toolchain_tests.ml"

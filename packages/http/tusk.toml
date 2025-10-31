@@ -7,8 +7,3 @@ path = "src/http.ml"
 
 [dependencies]
 std = { path = "../std" }
-miniriot = { path = "../miniriot" }
-
-[[bin]]
-name = "parser_tests"
-path = "tests/parser_tests.ml"

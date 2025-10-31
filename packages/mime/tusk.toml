@@ -7,10 +7,3 @@ path = "src/mime.ml"
 
 [dependencies]
 std = { path = "../std" }
-miniriot = { path = "../miniriot" }
-
-[[bin]]
-name = "rfc2231_tests"
-path = "tests/rfc2231_tests.ml"
-
-

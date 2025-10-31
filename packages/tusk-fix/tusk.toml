@@ -9,5 +9,3 @@ path = "src/main.ml"
 [dependencies]
 std = { path = "../std" }
 syn = { path = "../syn" }
-miniriot = { path = "../miniriot" }
-
