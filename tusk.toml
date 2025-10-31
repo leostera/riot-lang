@@ -36,7 +36,6 @@ members = [
   "packages/tusk-store",
   "packages/tusk-tests",
   "packages/tusk-toolchain",
-  "packages/timer-test",
   # "packages/poneglyph",
   # "packages/tusk-fix",
   # "packages/tusk-fmt",
