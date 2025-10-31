@@ -127,7 +127,7 @@ and handle_get_package_info state client_pid package_name =
                     dependencies = [];
                     binaries = [];
                     library = None;
-                    sources = { src = []; native = []; tests = [] };
+                    sources = { src = []; native = []; tests = []; examples = [] };
                   };
                 sources = [];
                 dependencies = [];

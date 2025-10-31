@@ -9,7 +9,7 @@ type dependency_source = Workspace | Path of Path.t
 type dependency = { name : string; source : dependency_source }
 type binary = { name : string; path : Path.t }
 type library = { path : Path.t }
-type sources = { src : Path.t list; native : Path.t list; tests : Path.t list }
+type sources = { src : Path.t list; native : Path.t list; tests : Path.t list; examples: Path.t list }
 
 type t = {
   name : string;
@@ -164,7 +164,12 @@ let scan_sources ~(package_path : Path.t) : sources =
       ~from_dir:Path.(package_path / Path.v "native")
       ~rel_path:(Path.v "native")
   in
-  { src = src_files; tests = test_files; native = native_files }
+  let example_files =
+    scan_dir_recursive
+      ~from_dir:Path.(package_path / Path.v "examples")
+      ~rel_path:(Path.v "examples")
+  in
+  { src = src_files; tests = test_files; native = native_files; examples = example_files }
 
 (** Autodiscover test binaries from test files ending in _tests.ml or -tests.ml *)
 let autodiscover_test_binaries (sources : sources) ~(package_path : Path.t) :
@@ -184,6 +189,21 @@ let autodiscover_test_binaries (sources : sources) ~(package_path : Path.t) :
         Some { name = binary_name; path = binary_path }
       else None)
     sources.tests
+
+(** Autodiscover example binaries from any .ml file in examples/ directory *)
+let autodiscover_example_binaries (sources : sources) ~(package_path : Path.t) :
+    binary list =
+  List.filter_map
+    (fun example_file ->
+      let filename = Path.basename example_file in
+      if String.ends_with ~suffix:".ml" filename then
+        let binary_name =
+          Path.remove_extension (Path.v filename) |> Path.to_string
+        in
+        (* example_file is already relative to package (e.g., examples/sqltool.ml) *)
+        Some { name = binary_name; path = example_file }
+      else None)
+    sources.examples
 
 let from_toml (toml : Toml.value) ~(workspace_deps : dependency list)
     ~(path : Path.t) ~(relative_path : Path.t) : (t, string) result =
@@ -216,7 +236,11 @@ let from_toml (toml : Toml.value) ~(workspace_deps : dependency list)
       let test_binaries = autodiscover_test_binaries sources ~package_path:path in
       Log.debug "[PACKAGE] %s: discovered %d test binaries from %d test files"
         name (List.length test_binaries) (List.length sources.tests);
-      let all_binaries = binaries @ test_binaries in
+      (* Autodiscover example binaries from examples directory *)
+      let example_binaries = autodiscover_example_binaries sources ~package_path:path in
+      Log.debug "[PACKAGE] %s: discovered %d example binaries from %d example files"
+        name (List.length example_binaries) (List.length sources.examples);
+      let all_binaries = binaries @ test_binaries @ example_binaries in
       Ok
         {
           name;
@@ -347,7 +371,7 @@ let from_json (json : Json.t) : (t, string) result =
               dependencies;
               binaries;
               library;
-              sources = { src = []; native = []; tests = [] };
+              sources = { src = []; native = []; tests = []; examples = [] };
             }
       | _ -> Error "Invalid package JSON")
   | _ -> Error "Package must be a JSON object"

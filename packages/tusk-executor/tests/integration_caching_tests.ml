@@ -34,7 +34,7 @@ let make_simple_package tmpdir name =
       dependencies = [];
       binaries = [];
       library = Some { path = Path.v "src/lib.ml" };
-      sources = { src = []; native = []; tests = [] };
+      sources = { src = []; native = []; tests = []; examples = [] };
     }
 
 let test_package_cache_hit_skips_planning () =

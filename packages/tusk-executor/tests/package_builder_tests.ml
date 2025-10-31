@@ -38,7 +38,7 @@ let test_collect_source_files () =
               dependencies = [];
               binaries = [];
               library = None;
-              sources = { src = []; native = []; tests = [] };
+              sources = { src = []; native = []; tests = []; examples = [] };
             }
         in
 
@@ -87,7 +87,7 @@ let test_build_result_status_variants () =
         dependencies = [];
         binaries = [];
         library = None;
-        sources = { src = []; native = []; tests = [] };
+        sources = { src = []; native = []; tests = []; examples = [] };
       }
   in
 

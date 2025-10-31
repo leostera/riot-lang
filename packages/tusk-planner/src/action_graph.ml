@@ -360,7 +360,7 @@ let from_json json =
                                   binaries = [];
                                   library = None;
                                   sources =
-                                    { src = []; native = []; tests = [] };
+                                    { src = []; native = []; tests = []; examples = [] };
                                 }
                             in
                             let toolchain =
