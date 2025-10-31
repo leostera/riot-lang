@@ -3,6 +3,22 @@
 type exit_reason = exn
 (** Reasons why a process might exit *)
 
+type monitor_ref
+(** Opaque reference to a monitor *)
+
+type flag = TrapExit of bool
+(** Process flags *)
+
+module Messages : sig
+  type Message.t +=
+    | EXIT of { from : Pid.t; reason : (unit, exit_reason) result }
+    | DOWN of {
+        ref : monitor_ref;
+        pid : Pid.t;
+        reason : (unit, exit_reason) result;
+      }
+end
+
 type state = private
   | Uninitialized
   | Runnable
@@ -14,7 +30,7 @@ type state = private
     }
   | Running
   | Exited of (unit, exit_reason) result
-  | Finalized  (** Process state - tracks current status in scheduler *)
+  | Finalized(** Process state - tracks current status in scheduler *)
 
 type t
 (** Opaque process type *)
@@ -128,3 +144,46 @@ val syscall_timeout : t -> Timer_id.t option
 
 val pp : Format.formatter -> t -> unit
 (** Pretty-print process information *)
+
+(** {1 Process Flags} *)
+
+val set_flags : t -> flag list -> unit
+(** Set process flags *)
+
+val get_trap_exit : t -> bool
+(** Get current trap_exit flag *)
+
+(** {1 Process Links and Monitors} *)
+
+val link : t -> Pid.t -> unit
+(** Create bidirectional link between this process and target *)
+
+val unlink : t -> Pid.t -> unit
+(** Remove bidirectional link *)
+
+val monitor : t -> Pid.t -> monitor_ref
+(** Monitor a process. Returns reference for later demonitor *)
+
+val demonitor : t -> monitor_ref -> unit
+(** Remove a monitor *)
+
+val get_links : t -> Pid.t list
+(** Get list of linked processes *)
+
+val get_monitors : t -> (monitor_ref * Pid.t) list
+(** Get list of monitors we've created *)
+
+val get_monitored_by : t -> (Pid.t * monitor_ref) list
+(** Get list of processes monitoring us *)
+
+val add_monitored_by : t -> Pid.t -> monitor_ref -> unit
+(** Add a process to the monitored_by list (internal use) *)
+
+val remove_monitored_by : t -> Pid.t -> monitor_ref -> unit
+(** Remove a process from the monitored_by list (internal use) *)
+
+val is_linked : t -> Pid.t -> bool
+(** Check if linked to a process *)
+
+val is_monitoring : t -> Pid.t -> bool
+(** Check if monitoring a process *)

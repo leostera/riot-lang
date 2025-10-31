@@ -1,14 +1,65 @@
 module Runtime = Runtime
 module Pid = Pid
 module Message = Message
-module Process = Process
+module Proc = Process
 module Config = Config
-module Timer_id = Timer_id
 
-let enable_trace () = Trace.enable ()
-let disable_trace () = Trace.disable ()
+module Process = struct
+  include Proc
 
-type Message.t += Exit
+  type exit_reason = Proc.exit_reason
+  type flag = Proc.flag = TrapExit of bool
+
+  include Proc.Messages
+
+  module Monitor = struct
+    type t = Proc.monitor_ref
+  end
+
+  let set_flags flags =
+    let t = Scheduler.get_scheduler () in
+    let current = Scheduler.get_current_process t in
+    Proc.set_flags current flags
+
+  let link pid =
+    let t = Scheduler.get_scheduler () in
+    let current = Scheduler.get_current_process t in
+    match Scheduler.get_process t pid with
+    | None ->
+        failwith
+          (Kernel.format "Cannot link to non-existent process %s"
+             (Pid.to_string pid))
+    | Some target ->
+        Proc.link current pid;
+        Proc.link target (Proc.pid current)
+
+  let unlink pid =
+    let t = Scheduler.get_scheduler () in
+    let current = Scheduler.get_current_process t in
+    match Scheduler.get_process t pid with
+    | None -> ()
+    | Some target ->
+        Proc.unlink current pid;
+        Proc.unlink target (Proc.pid current)
+
+  let monitor pid =
+    let t = Scheduler.get_scheduler () in
+    let current = Scheduler.get_current_process t in
+    match Scheduler.get_process t pid with
+    | None ->
+        failwith
+          (Kernel.format "Cannot monitor non-existent process %s"
+             (Pid.to_string pid))
+    | Some target ->
+        let ref = Proc.monitor current pid in
+        Proc.add_monitored_by target (Proc.pid current) ref;
+        ref
+
+  let demonitor ref =
+    let t = Scheduler.get_scheduler () in
+    let current = Scheduler.get_current_process t in
+    Proc.demonitor current ref
+end
 
 let run ~main ~args ?config () =
   let config = Option.value config ~default:Config.default in
@@ -17,6 +68,12 @@ let run ~main ~args ?config () =
 
 let shutdown ~status = Scheduler.shutdown (Scheduler.get_scheduler ()) ~status
 let spawn fn = Scheduler.spawn (Scheduler.get_scheduler ()) fn
+
+let spawn_link fn =
+  let pid = spawn fn in
+  Process.link pid;
+  pid
+
 let self () = Scheduler.self ()
 let send pid msg = Scheduler.send pid msg
 
@@ -48,3 +105,8 @@ module Timer = struct
 end
 
 include Effects
+
+module Timer_id = Timer_id
+
+let enable_trace () = ()  (* TODO: implement tracing *)
+let disable_trace () = ()  (* TODO: implement tracing *)

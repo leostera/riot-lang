@@ -1,5 +1,14 @@
 open Kernel
 
+(* Local message type extensions for scheduler *)
+type Message.t +=
+  | EXIT of { from : Pid.t; reason : (unit, Process.exit_reason) result }
+  | DOWN of {
+      ref : Process.monitor_ref;
+      pid : Pid.t;
+      reason : (unit, Process.exit_reason) result;
+    }
+
 module Pid_table = Hashtbl.Make (struct
   type t = Pid.t
 
@@ -58,15 +67,11 @@ let get_scheduler () =
   | None -> failwith "No scheduler running"
   | Some s -> s
 
-let add_to_run_queue t proc =
-  Trace.trace "Adding process %s to run queue"
-    (Pid.to_string (Process.pid proc));
-  Queue.push proc t.run_queue
+let add_to_run_queue t proc = Queue.push proc t.run_queue
 
 let spawn t fn =
   let proc = Process.make fn in
   let pid = Process.pid proc in
-  Trace.trace "Spawning process %s" (Pid.to_string pid);
   Pid_table.add t.processes pid proc;
   add_to_run_queue t proc;
   pid
@@ -79,34 +84,35 @@ let self () =
 
 let send pid msg =
   let t = get_scheduler () in
-  Trace.trace "Sending message to %s" (Pid.to_string pid);
   match Pid_table.find_opt t.processes pid with
-  | None -> Trace.trace "Process %s not found!" (Pid.to_string pid)
+  | None -> ()
   | Some proc ->
       let was_waiting = Process.is_waiting proc in
       Process.send_message proc msg;
-      if was_waiting then (
-        Trace.trace "Process %s was waiting, now runnable" (Pid.to_string pid);
-        add_to_run_queue t proc)
+      if was_waiting then add_to_run_queue t proc
 
 let shutdown t ~status =
   t.stop <- true;
   t.status <- status
 
+let get_current_process t =
+  match t.current_process with
+  | None -> failwith "No process currently running"
+  | Some proc -> proc
+
+let get_process t pid = Pid_table.find_opt t.processes pid
+
 let handle_receive k t proc ~selector ~timeout =
   let open Proc_state in
   let pid_str = Pid.to_string (Process.pid proc) in
-  Trace.trace "Process %s receiving (mailbox empty? %b)" pid_str
     (Process.has_empty_mailbox proc);
 
   (* Check for existing timeout - don't check here, let the timer expire naturally *)
   let should_timeout = false in
 
   if should_timeout then (
-    Trace.trace "Process %s receive timed out" pid_str;
-    k (Discontinue Effects.Receive_timeout))
+    k (Discontinue Effects.Exception.Receive_timeout))
   else if Process.has_empty_mailbox proc then (
-    Trace.trace "Process %s has empty mailbox, suspending" pid_str;
 
     (* Set up timeout if specified *)
     (match timeout with
@@ -124,26 +130,19 @@ let handle_receive k t proc ~selector ~timeout =
     k Suspend)
   else
     let fuel = Process.message_count proc in
-    Trace.trace "Process %s has %d messages" pid_str fuel;
     let rec go fuel =
       if fuel = 0 then (
-        Trace.trace "Process %s out of fuel, delaying" pid_str;
         k Delay)
       else
         match Process.next_message proc with
         | None ->
-            Trace.trace "Process %s no more messages, switching to save queue"
-              pid_str;
             Process.read_save_queue proc;
             k Delay
         | Some msg -> (
-            Trace.trace "Process %s got message" pid_str;
             match selector Message.(msg.msg) with
             | `select msg ->
-                Trace.trace "Process %s selected message" pid_str;
                 k (Continue msg)
             | `skip ->
-                Trace.trace "Process %s skipped message" pid_str;
                 Process.add_to_save_queue proc msg;
                 go (fuel - 1))
     in
@@ -152,7 +151,6 @@ let handle_receive k t proc ~selector ~timeout =
 let handle_syscall k t proc name interest source timeout =
   let open Proc_state in
   let pid_str = Pid.to_string (Process.pid proc) in
-  Trace.trace "Process %s performing syscall %s" pid_str name;
 
   (* Check for syscall timeout *)
   let should_timeout =
@@ -168,12 +166,10 @@ let handle_syscall k t proc name interest source timeout =
   in
 
   if should_timeout then (
-    Trace.trace "Process %s syscall %s timed out" pid_str name;
-    k (Discontinue Effects.Syscall_timeout))
+    k (Discontinue Effects.Exception.Syscall_timeout))
   else
     match Process.get_ready_token proc with
     | Some (_token, _source) ->
-        Trace.trace "Process %s syscall %s ready" pid_str name;
         (* Clear timeout if set *)
         (match Process.syscall_timeout proc with
         | Some timer_id ->
@@ -183,11 +179,9 @@ let handle_syscall k t proc name interest source timeout =
         k (Continue ())
     | None -> (
         let token = Async.Token.make proc in
-        Trace.trace "Process %s registering for I/O" pid_str;
         Process.mark_as_awaiting_io proc ~name token source;
         match Async.Poll.register t.io_poll token interest source with
         | Ok () ->
-            Trace.trace "Process %s registered for I/O successfully" pid_str;
 
             (* Set up timeout if specified *)
             (match timeout with
@@ -229,6 +223,48 @@ let perform t proc =
   { perform }
 
 let handle_exit_proc t proc reason =
+  let exit_reason = reason in
+
+  (* 1. Send DOWN messages to all monitors *)
+  List.iter
+    (fun (monitor_pid, monitor_ref) ->
+      match Pid_table.find_opt t.processes monitor_pid with
+      | Some monitor_proc ->
+          let down_msg =
+            DOWN { ref = monitor_ref; pid = Process.pid proc; reason = exit_reason }
+          in
+          Process.send_message monitor_proc down_msg;
+          if Process.is_waiting monitor_proc then add_to_run_queue t monitor_proc
+      | None -> ())
+    (Process.get_monitored_by proc);
+
+  (* 2. Send EXIT to all linked processes *)
+  List.iter
+    (fun linked_pid ->
+      match Pid_table.find_opt t.processes linked_pid with
+      | Some linked_proc -> (
+          let exit_msg =
+            EXIT { from = Process.pid proc; reason = exit_reason }
+          in
+
+          if Process.get_trap_exit linked_proc then (
+            (* trap_exit = true: convert to message *)
+            Process.send_message linked_proc exit_msg;
+            if Process.is_waiting linked_proc then add_to_run_queue t linked_proc)
+          else
+            (* trap_exit = false: kill the linked process on abnormal exit *)
+            match exit_reason with
+            | Ok () ->
+                (* Normal exit doesn't kill links *)
+                ()
+            | Error exn ->
+                (* Abnormal exit kills the link *)
+                Process.mark_as_exited linked_proc (Error exn);
+                add_to_run_queue t linked_proc)
+      | None -> ())
+    (Process.get_links proc);
+
+  (* 3. Clean up the dying process *)
   if Process.is_main proc then (
     let status = match reason with Ok () -> 0 | Error _ -> 1 in
     shutdown t ~status;
@@ -246,6 +282,10 @@ let handle_exit_proc t proc reason =
 
     Pid_table.remove t.processes (Process.pid proc);
     Process.mark_as_finalized proc)
+  else (
+    (* Non-main process: just finalize *)
+    Pid_table.remove t.processes (Process.pid proc);
+    Process.mark_as_finalized proc)
 
 let handle_wait_proc t proc =
   if Process.has_messages proc then (
@@ -254,7 +294,6 @@ let handle_wait_proc t proc =
 
 let handle_run_proc t proc =
   let pid_str = Pid.to_string (Process.pid proc) in
-  Trace.trace "Running process %s" pid_str;
   Process.mark_as_running proc;
   t.current_process <- Some proc;
   let perform = perform t proc in
@@ -272,7 +311,6 @@ let handle_run_proc t proc =
   Process.set_cont proc cont;
   match cont with
   | Proc_state.Finished (Ok reason) ->
-      Trace.trace "Process %s finished with reason" pid_str;
       Process.mark_as_exited proc reason;
       add_to_run_queue t proc
   | Proc_state.Finished (Error exn) ->
@@ -281,17 +319,12 @@ let handle_run_proc t proc =
         pid_str (Exception.to_string exn);
       Printf.printf "[Scheduler] Backtrace:\n%s\n%!"
         (Exception.raw_backtrace_to_string (Exception.get_raw_backtrace ()));
-      Trace.trace "Process %s finished with exception: %s" pid_str
-        (Exception.to_string exn);
       Process.mark_as_exited proc (Error exn);
       add_to_run_queue t proc
-  | _ when Process.is_waiting proc ->
-      Trace.trace "Process %s is waiting" pid_str
+  | _ when Process.is_waiting proc -> ()
   | Proc_state.Suspended _ ->
-      Trace.trace "Process %s suspended, re-queueing" pid_str;
       add_to_run_queue t proc
   | Proc_state.Unhandled _ ->
-      Trace.trace "Process %s unhandled, re-queueing" pid_str;
       add_to_run_queue t proc
 
 let handle_init_proc t proc =
@@ -312,7 +345,6 @@ let step_process t proc =
   | Running | Runnable -> handle_run_proc t proc
 
 let poll_io t =
-  Trace.trace "Polling for I/O events";
 
   (* Calculate timeout based on next timer expiration *)
   let timeout_nanos =
@@ -341,7 +373,6 @@ let poll_io t =
     (fun event ->
       let token = Async.Event.token event in
       let proc : Process.t = Async.Token.unsafe_to_value token in
-      Trace.trace "I/O ready for process %s" (Pid.to_string (Process.pid proc));
       match Process.state proc with
       | Waiting_io { source; _ } ->
           (match Async.Poll.deregister t.io_poll source with
@@ -369,14 +400,11 @@ let process_timers t =
     let now = Time.monotonic_time_nanos () in
     let expired = Timer_wheel.tick t.timer_wheel ~now in
 
-    Trace.trace "Processing %d expired timers" (List.length expired);
 
     List.iter
       (fun timer ->
         match timer.Timer.action with
         | Timer.Wake_process proc -> (
-            Trace.trace "Timer expired, waking process %s"
-              (Pid.to_string (Process.pid proc));
             if Process.is_alive proc then (
               Process.mark_as_runnable proc;
               add_to_run_queue t proc);
@@ -393,8 +421,6 @@ let process_timers t =
                 in
                 ())
         | Timer.Send_message (target_pid, msg) -> (
-            Trace.trace "Timer expired, sending message to %s"
-              (Pid.to_string target_pid);
             send target_pid msg;
 
             (* Handle intervals *)
@@ -411,10 +437,8 @@ let process_timers t =
       expired
 
 let run_loop t =
-  Trace.trace "Run loop starting";
   while (not (Queue.is_empty t.run_queue)) && not t.stop do
     let proc = Queue.pop t.run_queue in
-    Trace.trace "Stepping process %s" (Pid.to_string (Process.pid proc));
     step_process t proc
   done;
 
@@ -440,12 +464,9 @@ let run_loop t =
            if Int64.compare sleep_nanos 0L > 0 then
              let _ = Async.Poll.poll t.io_poll ~timeout:sleep_nanos in
              ()
-       | None -> ());
-
-  Trace.trace "Run loop done"
+        | None -> ())
 
 let shutdown t ~status =
-  Trace.trace "Shutting down scheduler with status %d" status;
   (* Mark scheduler to stop *)
   t.stop <- true;
   t.status <- status;

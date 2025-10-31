@@ -1,5 +1,7 @@
-exception Receive_timeout
-exception Syscall_timeout
+module Exception = struct
+  exception Receive_timeout
+  exception Syscall_timeout
+end
 
 let yield () = Effect.perform Proc_effect.Yield
 

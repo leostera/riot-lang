@@ -4,7 +4,7 @@
     workers. *)
 
 open Global
-open Miniriot
+
 open Types
 
 type ('task, 'result) state = {

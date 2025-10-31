@@ -2,6 +2,20 @@ open Kernel
 
 type exit_reason = exn
 
+type monitor_ref = Monitor_ref of int
+
+type flag = TrapExit of bool
+
+module Messages = struct
+  type Message.t +=
+    | EXIT of { from : Pid.t; reason : (unit, exit_reason) result }
+    | DOWN of {
+        ref : monitor_ref;
+        pid : Pid.t;
+        reason : (unit, exit_reason) result;
+      }
+end
+
 type state =
   | Uninitialized
   | Runnable
@@ -26,7 +40,19 @@ type t = {
   mutable ready_tokens : (Async.Token.t * Async.Source.t) list;
   mutable receive_timeout : Timer_id.t option;
   mutable syscall_timeout : Timer_id.t option;
+  (* Process links and monitors *)
+  mutable links : Pid.t list;
+  mutable monitors : (monitor_ref * Pid.t) list;
+  mutable monitored_by : (Pid.t * monitor_ref) list;
+  mutable trap_exit : bool;
 }
+
+let monitor_ref_counter = ref 0
+
+let make_monitor_ref () =
+  let id = !monitor_ref_counter in
+  monitor_ref_counter := id + 1;
+  Monitor_ref id
 
 let make fn =
   let pid = Pid.next () in
@@ -41,6 +67,10 @@ let make fn =
     ready_tokens = [];
     receive_timeout = None;
     syscall_timeout = None;
+    links = [];
+    monitors = [];
+    monitored_by = [];
+    trap_exit = false;
   }
 
 let init t =
@@ -127,3 +157,51 @@ let pp ppf t =
     | Exited _ -> "Exited"
     | Finalized -> "Finalized")
     (message_count t)
+
+(* Process links and monitors *)
+let link proc target_pid =
+  if not (List.mem target_pid proc.links) then
+    proc.links <- target_pid :: proc.links
+
+let unlink proc target_pid =
+  proc.links <- List.filter (fun pid -> not (Pid.equal pid target_pid)) proc.links
+
+let monitor proc target_pid =
+  let ref = make_monitor_ref () in
+  proc.monitors <- (ref, target_pid) :: proc.monitors;
+  ref
+
+let demonitor proc ref =
+  proc.monitors <-
+    List.filter
+      (fun (r, _) ->
+        match (ref, r) with Monitor_ref id1, Monitor_ref id2 -> id1 <> id2)
+      proc.monitors
+
+let set_flags proc flags =
+  List.iter
+    (fun flag -> match flag with TrapExit value -> proc.trap_exit <- value)
+    flags
+
+let get_trap_exit proc = proc.trap_exit
+let get_links proc = proc.links
+let get_monitors proc = proc.monitors
+let get_monitored_by proc = proc.monitored_by
+
+let add_monitored_by proc monitor_pid ref =
+  proc.monitored_by <- (monitor_pid, ref) :: proc.monitored_by
+
+let remove_monitored_by proc monitor_pid ref =
+  proc.monitored_by <-
+    List.filter
+      (fun (pid, r) ->
+        not
+          (Pid.equal pid monitor_pid
+          &&
+          match (ref, r) with Monitor_ref id1, Monitor_ref id2 -> id1 = id2))
+      proc.monitored_by
+
+let is_linked proc pid = List.mem pid proc.links
+
+let is_monitoring proc pid =
+  List.exists (fun (_, monitored_pid) -> Pid.equal pid monitored_pid) proc.monitors

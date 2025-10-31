@@ -1,10 +1,12 @@
 (** Miniriot - Minimal single-core actor runtime *)
 
-exception Receive_timeout
-(** Raised when a receive operation times out *)
+module Exception : sig
+  exception Receive_timeout
+  (** Raised when a receive operation times out *)
 
-exception Syscall_timeout
-(** Raised when a syscall operation times out *)
+  exception Syscall_timeout
+  (** Raised when a syscall operation times out *)
+end
 
 module Config = Config
 (** Runtime configuration *)
@@ -31,6 +33,16 @@ module Process : sig
   (** Process management *)
 
   type exit_reason = exn
+  
+  type monitor_ref
+
+  type Message.t +=
+    | EXIT of { from : Pid.t; reason : (unit, exit_reason) result }
+    | DOWN of {
+        ref : monitor_ref;
+        pid : Pid.t;
+        reason : (unit, exit_reason) result;
+      }
 
   type state = private
     | Uninitialized
@@ -81,6 +93,23 @@ module Process : sig
   val consume_ready_tokens :
     t -> (Kernel.Async.Token.t * Kernel.Async.Source.t -> unit) -> unit
   (** Consume all ready tokens with the given function *)
+
+  module Monitor : sig
+    type t = monitor_ref
+    (** Monitor reference *)
+  end
+
+  val link : Pid.t -> unit
+  (** Link the current process to another process *)
+
+  val unlink : Pid.t -> unit
+  (** Unlink the current process from another process *)
+
+  val monitor : Pid.t -> Monitor.t
+  (** Monitor another process *)
+
+  val demonitor : Monitor.t -> unit
+  (** Stop monitoring a process *)
 end
 
 module Timer_id = Timer_id
@@ -105,6 +134,7 @@ end
 
 val self : unit -> Pid.t
 val spawn : (unit -> (unit, Process.exit_reason) result) -> Pid.t
+val spawn_link : (unit -> (unit, Process.exit_reason) result) -> Pid.t
 val send : Pid.t -> Message.t -> unit
 val yield : unit -> unit
 

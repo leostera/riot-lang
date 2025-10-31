@@ -25,7 +25,7 @@
     Use [DynamicWorkerPool] when tasks are generated dynamically or depend on
     previous results:
 
-    ```ocaml open Miniriot
+    ```ocaml 
 
     type Message.t += TaskResult of string * int
 
@@ -62,7 +62,7 @@
     - Memory: O(N) for N workers + task queue *)
 
 open Global
-open Miniriot
+
 
 module DynamicWorkerPool : sig
   type 'task t = { coordinator_pid : Pid.t; task_ref : 'task Ref.t }

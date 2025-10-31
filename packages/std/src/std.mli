@@ -28,6 +28,11 @@
 
     ## Module Organization
 
+    ### Process Management (OTP Patterns)
+    - [Agent] - Simple state wrapper
+    - [GenServer] - Generic server behavior
+    - [Supervisor] - Process supervision
+
     ### Core Types
     - [Result] - Error handling
     - [Option] - Optional values
@@ -89,6 +94,9 @@
     - [Cell] - Mutable cells
     - [Exception] - Exception handling *)
 
+module Agent = Agent
+(** Simple state wrapper for concurrent access *)
+
 module ArgParser = Arg_parser
 (** Command-line argument parsing *)
 
@@ -128,6 +136,9 @@ module Exception = Exception
 module Fs = Fs
 (** Filesystem operations *)
 
+(* module GenServer = Gen_server *)
+(** Generic server behavior with type-safe functor API - V1 has existential escape issues *)
+
 module Graph = Graph
 (** Graph data structures and visualization *)
 
@@ -160,6 +171,9 @@ module Result = Result
 
 module String = String
 (** UTF-8 string operations *)
+
+module Supervisor = Supervisor
+(** OTP-style process supervision *)
 
 module System = System
 (** System information and operations *)
@@ -205,3 +219,61 @@ val todo : string -> 'a
 
 val unimplemented : unit -> 'a
 (** Mark code as unimplemented - panics when called *)
+
+(** {1 Process Management} *)
+
+module Pid = Pid
+(** Process identifiers *)
+
+module Message = Message
+(** Extensible message type for actor communication *)
+
+module Process = Process
+(** Process state and operations *)
+
+exception Receive_timeout
+(** Raised when a receive operation times out *)
+
+exception Syscall_timeout
+(** Raised when a syscall operation times out *)
+
+type 'msg selector = 'msg Miniriot.selector
+(** Message selector type *)
+
+val self : unit -> Pid.t
+(** Get the PID of the currently running process *)
+
+val spawn : (unit -> (unit, Process.exit_reason) result) -> Pid.t
+(** Spawn a new process *)
+
+val spawn_link : (unit -> (unit, Process.exit_reason) result) -> Pid.t
+(** Spawn a new process linked to the current process *)
+
+val send : Pid.t -> Message.t -> unit
+(** Send a message to a process *)
+
+val receive : selector:'value selector -> ?timeout:float -> unit -> 'value
+(** Receive a message using a selector *)
+
+val receive_any : ?timeout:float -> unit -> Message.t
+(** Receive any message *)
+
+val yield : unit -> unit
+(** Yield control to the scheduler *)
+
+val shutdown : status:int -> unit
+(** Shutdown the runtime with the given exit status *)
+
+module Timer = Timer
+(** Timer operations *)
+
+(** {1 Application Management} *)
+
+module Application = Application
+(** Application supervision with dependency resolution *)
+
+val start : apps:Application.t list -> unit
+(** Start the runtime with applications.
+    Applications are started in dependency order.
+    
+    Uses [Miniriot.run] under the hood. *)

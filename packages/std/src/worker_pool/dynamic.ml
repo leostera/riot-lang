@@ -4,7 +4,7 @@
     assign work. *)
 
 open Global
-open Miniriot
+
 open Types
 
 type nonrec 'task worker = 'task worker

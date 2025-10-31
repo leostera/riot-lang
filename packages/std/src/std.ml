@@ -1,5 +1,7 @@
 (** Standard library extensions and utilities *)
 
+module Agent = Agent
+module Application = Application
 module ArgParser = Arg_parser
 module Buffer = Buffer
 module Cell = Cell
@@ -18,20 +20,43 @@ module IO = IO
 module Iter = Iter
 module List = List
 module Log = Log
+module Message = Message
 module Net = Net
 module Option = Option
 module Path = Path
+module Pid = Pid
+module Process = Process
 module Ref = Ref
 module Result = Result
 module String = String
+module Supervisor = Supervisor
 module System = System
 module Task = Task
 module Telemetry = Telemetry
 module Test = Test
 module Time = Time
+module Timer = Timer
 module UUID = Uuid
 module Version = Version
 module WorkerPool = Worker_pool
 
 (* Include all the globals *)
 include Global
+
+(* Application startup *)
+let start ~apps =
+  let config = Miniriot.Config.default in
+  let main ~args:_ =
+    match Application.start_applications apps with
+    | Ok _app_pids ->
+        (* Keep system running indefinitely *)
+        let rec keep_alive () =
+          Miniriot.receive_any () |> ignore;
+          keep_alive ()
+        in
+        keep_alive ();
+        Ok ()
+    | Error e -> 
+        Error e
+  in
+  Miniriot.run ~config ~main ~args:[] ()

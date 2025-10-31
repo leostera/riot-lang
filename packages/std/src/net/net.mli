@@ -8,7 +8,7 @@
 
     TCP client:
 
-    ```ocaml open Std open Miniriot
+    ```ocaml open Std 
 
     let client_process () = let addr = Net.Addr.of_host_and_port
     ~host:"example.com" ~port:80 |> Result.expect ~msg:"Invalid address" in

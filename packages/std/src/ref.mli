@@ -107,13 +107,17 @@ val type_equal : 'a t -> 'b t -> ('a, 'b) Type.eq option
 
     ## Examples
 
-    ```ocaml let ref1 : int Ref.t = Ref.make () in let ref2 : string Ref.t =
-    Ref.make () in
+    ```ocaml 
+    let ref1 : int Ref.t = Ref.make () in 
+    let ref2 : string Ref.t = Ref.make () in
 
-    match Ref.type_equal ref1 ref1 with | Some Type.Eq -> (* proved int = int *)
+    match Ref.type_equal ref1 ref2 with 
+    | Some Type.Eq -> (* proved int = string -- dangerous! *)
     | None -> ()
 
-    Ref.type_equal ref1 ref2 (* None - different refs *) ``` *)
+    Ref.type_equal ref1 ref2 (* None - different refs *)
+    ```
+*)
 
 val cast : 'a t -> 'b t -> 'a -> 'b option
 (** Attempts to cast a value from type ['a] to type ['b] if the references are

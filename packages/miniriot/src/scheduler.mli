@@ -34,3 +34,9 @@ val add_timer :
 
 val cancel_timer : t -> Timer.id -> unit
 (** Cancel a timer in the scheduler's timer wheel *)
+
+val get_current_process : t -> Process.t
+(** Get the currently running process *)
+
+val get_process : t -> Pid.t -> Process.t option
+(** Get a process by PID. Returns None if process not found. *)

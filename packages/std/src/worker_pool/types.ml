@@ -1,5 +1,5 @@
 open Global
-open Miniriot
+
 
 type 'task worker = { pid : Pid.t; task_ref : 'task Ref.t }
 

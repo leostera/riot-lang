@@ -1,10 +1,12 @@
 (** Process effects for cooperative scheduling *)
 
+module Exception : sig
 exception Receive_timeout
 (** Raised when a receive operation times out *)
 
 exception Syscall_timeout
 (** Raised when a syscall operation times out *)
+end
 
 val yield : unit -> unit
 (** Yield control to the scheduler, allowing other processes to run *)
