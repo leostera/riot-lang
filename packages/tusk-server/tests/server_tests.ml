@@ -1,5 +1,5 @@
 open Std
-open Miniriot
+
 module Test = Std.Test
 
 let make_test_workspace tmpdir =

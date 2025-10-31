@@ -1,5 +1,5 @@
 open Std
-open Miniriot
+
 open Tusk_model
 
 (** JSON-RPC bridge between external clients and internal tusk server.
@@ -12,7 +12,7 @@ open Tusk_model
 module WireProtocol = Tusk_protocol.WireProtocol
 
 module Server = struct
-  open Miniriot
+  
 
   type ctx = { server_pid : Pid.t }
 
@@ -45,8 +45,12 @@ module Server = struct
                 WireProtocol.PlanningFailed planning_err
             | Tusk_executor.Package_builder.ExecutionFailed { message } ->
                 WireProtocol.ExecutionFailed { message }
-            | Tusk_executor.Package_builder.ActionFailed action_err ->
-                WireProtocol.ActionFailed action_err
+            | Tusk_executor.Package_builder.ActionExecutionFailed { message } ->
+                WireProtocol.ActionExecutionFailed { message }
+            | Tusk_executor.Package_builder.ActionOutputsNotCreated { missing } ->
+                WireProtocol.ActionOutputsNotCreated { missing }
+            | Tusk_executor.Package_builder.ActionDependenciesFailed { failed } ->
+                WireProtocol.ActionDependenciesFailed { failed }
           in
           WireProtocol.Failed wire_err
     in

@@ -30,6 +30,11 @@ type streaming_event =
       built : WireProtocol.build_result list;
       errors : WireProtocol.build_result list;
     }
+  | CycleDetected of {
+      session_id : Session_id.t;
+      detected_at : Datetime.t;
+      cycle_nodes : string list;
+    }
 
 (** Build request type *)
 type build_target = BuildPackage of string | BuildAll

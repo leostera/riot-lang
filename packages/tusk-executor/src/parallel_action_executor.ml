@@ -1,7 +1,7 @@
 open Std
 open Std.Collections
 open Std.Time
-open Miniriot
+
 open Tusk_planner
 open Tusk_store
 module G = Graph.SimpleGraph
@@ -157,10 +157,12 @@ let run_action ocamlc sandbox_dir action =
       match result with
       | Tusk_toolchain.Ocamlc.Success _ ->
           (* Make the executable file executable *)
-          let _ =
-            Fs.set_permissions abs_output (Fs.Permissions.of_mode 0o755)
-          in
-          result
+          (match Fs.set_permissions abs_output (Fs.Permissions.of_mode 0o755) with
+          | Ok () -> result
+          | Error (SystemError msg) ->
+              Log.warn "Failed to set executable permissions on %s: %s"
+                (Path.to_string abs_output) msg;
+              result)
       | _ -> result)
   | Action.CompileInterface { outputs = []; _ }
   | Action.CompileImplementation { outputs = []; _ }

@@ -78,7 +78,9 @@ module WireProtocol : sig
   type package_error =
     | PlanningFailed of Tusk_planner.Planning_error.t
     | ExecutionFailed of { message : string }
-    | ActionFailed of Tusk_executor.Action_executor.action_error
+    | ActionExecutionFailed of { message : string }
+    | ActionOutputsNotCreated of { missing : Path.t list }
+    | ActionDependenciesFailed of { failed : Graph.SimpleGraph.Node_id.t list }
 
   type build_status =
     | Cached of Tusk_store.Artifact.t

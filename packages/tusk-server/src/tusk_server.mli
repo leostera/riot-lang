@@ -1,4 +1,5 @@
-open Miniriot
+open Std
+
 module Internal_server = Internal_server
 module Jsonrpc_server = Jsonrpc_server
 module Protocol = Protocol

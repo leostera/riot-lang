@@ -1,7 +1,7 @@
 (** Build server - Handles build execution in a spawned process *)
 
 open Std
-open Miniriot
+
 open Tusk_model
 open Tusk_executor
 
@@ -84,7 +84,7 @@ let init ~workspace ~toolchain ~store ~concurrency ~session_id ~client_pid
                 }));
         (* Send updated package graph back to internal server even on failure *)
         send server_pid
-          (Internal_server.UpdatePackageGraph workspace_result.package_graph))
+          (Protocol.UpdatePackageGraph workspace_result.package_graph))
       else (
         send client_pid
           (Protocol.ServerResponse
@@ -97,7 +97,7 @@ let init ~workspace ~toolchain ~store ~concurrency ~session_id ~client_pid
                 }));
         (* Send updated package graph back to internal server *)
         send server_pid
-          (Internal_server.UpdatePackageGraph workspace_result.package_graph))
+          (Protocol.UpdatePackageGraph workspace_result.package_graph))
   | Error err -> (
       match err with
       | Tusk_planner.Workspace_planner.PackageNotFound { name; available } ->

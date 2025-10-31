@@ -59,7 +59,7 @@ match Jsonrpc.Client.call client
 
 ```ocaml
 open Tusk_protocol
-open Miniriot
+
 
 (* Handle wire protocol requests *)
 let handle_wire_request wire_req client_pid = 

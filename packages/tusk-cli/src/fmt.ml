@@ -2,7 +2,6 @@ open Std
 open Std.Iter
 open Std.ArgParser
 open Tusk_model
-open Tusk_model
 
 let command =
   let open Arg in

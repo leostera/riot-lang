@@ -25,7 +25,27 @@ let format ~displayed_packages (event : Telemetry.event) =
               package.name
       | `Fresh -> "")
   | Telemetry_events.BuildFailed { package; error; _ } ->
-      format "      \027[1;31mFailed\027[0m %s\n%s" package.name error
+      let error_msg =
+        match error with
+        | Telemetry_events.PlanningFailed planning_err -> (
+            match planning_err with
+            | Tusk_planner.Planning_error.CyclicDependency { cycle } ->
+                format "Cyclic dependency detected:\n         %s"
+                  (String.concat " ->\n         " cycle)
+            | _ ->
+                format "Planning failed: %s"
+                  (Tusk_planner.Planning_error.to_string planning_err))
+        | Telemetry_events.ExecutionFailed { message } ->
+            format "Execution failed: %s" message
+        | Telemetry_events.ActionExecutionFailed { message } ->
+            format "Action failed: %s" message
+        | Telemetry_events.ActionOutputsNotCreated { missing } ->
+            format "Expected outputs not created: %s"
+              (String.concat ", " (List.map Path.to_string missing))
+        | Telemetry_events.ActionDependenciesFailed { failed } ->
+            format "Dependencies failed: %d actions" (List.length failed)
+      in
+      format "      \027[1;31mFailed\027[0m %s\n%s" package.name error_msg
   | Telemetry_events.BuildSkipped { package; reason; _ } ->
       format "     \027[1;33mSkipped\027[0m %s (%s)" package.name reason
   (* Cache events - these are action-level, not commonly emitted *)

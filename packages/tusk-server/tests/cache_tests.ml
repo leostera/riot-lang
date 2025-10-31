@@ -1,5 +1,5 @@
 open Std
-open Miniriot
+
 module Test = Std.Test
 
 let make_test_workspace tmpdir packages =
@@ -69,7 +69,10 @@ let test_fresh_build_no_cache () =
               (format "Build failed: %s"
                  (match err with
                  | PlanningFailed _ -> "planning"
-                 | ExecutionFailed { message } -> message)))
+                 | ExecutionFailed { message } -> message
+                 | ActionExecutionFailed { message } -> message
+                 | ActionOutputsNotCreated _ -> "outputs not created"
+                 | ActionDependenciesFailed _ -> "dependencies failed")))
   with
   | Ok r -> r
   | Error _ -> Error "Tempdir creation failed"

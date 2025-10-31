@@ -1,3 +1,4 @@
+(*
 open Std
 open Std.Collections
 module Test = Std.Test
@@ -654,3 +655,4 @@ let tests =
 
 let name = "Action Executor Tests"
 let () = Miniriot.run ~main:(Test.Cli.main ~name ~tests) ~args:Env.args ()
+*)

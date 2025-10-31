@@ -151,20 +151,20 @@ let filter_for_package pg pkg_name =
       { graph = filtered_graph; name_to_node = filtered_name_to_node }
 
 let topological_sort pg =
-  try
-    let sorted_nodes = G.topo_sort pg.graph in
-    List.map (fun (node : package_node G.node) -> node.value) sorted_nodes
-  with G.Cycle node_ids ->
-    let names =
-      List.filter_map
-        (fun id ->
-          try
-            let node : package_node G.node = G.get_node pg.graph id in
-            Some (get_package node.value).name
-          with _ -> None)
-        node_ids
-    in
-    raise (Cycle_detected names)
+  match G.topo_sort pg.graph with
+  | Ok sorted_nodes ->
+      List.map (fun (node : package_node G.node) -> node.value) sorted_nodes
+  | Error node_ids ->
+      let names =
+        List.filter_map
+          (fun id ->
+            try
+              let node : package_node G.node = G.get_node pg.graph id in
+              Some (get_package node.value).name
+            with _ -> None)
+          node_ids
+      in
+      raise (Cycle_detected names)
 
 let get_dependencies graph (package : Package.t) =
   let filtered_graph = filter_for_package graph package.name in

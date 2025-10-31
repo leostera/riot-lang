@@ -491,7 +491,13 @@ let add_library_node t ~name ~includes =
      IMPORTANT: We iterate over topologically sorted nodes to preserve dependency order.
      This ensures that when we later collect objects from node.deps, they're in the
      correct order for linking. *)
-  let sorted_nodes = G.topo_sort t.graph in
+  let sorted_nodes =
+    match G.topo_sort t.graph with
+    | Ok sorted -> sorted
+    | Error _cycle_ids ->
+        (* Cycle will be caught later in module planning *)
+        []
+  in
   (* Add edges in REVERSE topological order because add_edge prepends to deps list.
      This ensures lib_node.deps ends up in correct topological order. *)
   List.iter

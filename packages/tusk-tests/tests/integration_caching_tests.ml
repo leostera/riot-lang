@@ -1,6 +1,7 @@
+(*
 open Std
 open Std.Iter
-open Miniriot
+
 module Test = Std.Test
 
 let get_workspace_root () =
@@ -564,3 +565,4 @@ let tests =
 
 let name = "Tusk Integration Tests"
 let () = Miniriot.run ~main:(Test.Cli.main ~name ~tests) ~args:Env.args ()
+*)

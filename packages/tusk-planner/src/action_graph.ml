@@ -8,7 +8,13 @@ type t = { graph : Action_node.action_spec G.t }
 let create () = { graph = G.make () }
 let add_node t node_value = G.add_node t.graph node_value
 let add_dependency t node ~depends_on = G.add_edge node ~depends_on
-let topo_sort t = G.topo_sort t.graph
+let topo_sort t =
+  match G.topo_sort t.graph with
+  | Ok sorted -> sorted
+  | Error _cycle_ids ->
+      (* Should never happen - cycles caught in module planning *)
+      panic "Unexpected cycle in action graph"
+
 let nodes t = topo_sort t
 let graph t = t.graph
 
@@ -212,7 +218,13 @@ let from_module_graph ~package ~toolchain ~store ~depset
   let node_outputs = HashMap.create () in
   let all_outputs = Cell.create [] in
 
-  let sorted_modules = G.topo_sort module_graph in
+  let sorted_modules =
+    match G.topo_sort module_graph with
+    | Ok sorted -> sorted
+    | Error _cycle_ids ->
+        (* Cycle should have been caught earlier in module planning *)
+        panic "Unexpected cycle in action graph - should have been caught in module planning"
+  in
 
   let get_dep_hash dep_id =
     match HashMap.get action_spec_hashes dep_id with

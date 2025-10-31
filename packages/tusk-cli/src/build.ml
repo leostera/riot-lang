@@ -64,7 +64,10 @@ let build_command package_opt =
             let msg = Event_formatter.format ~displayed_packages event in
             if msg <> "" then println "%s" msg
         | Tusk_client.BuildCompleted _ -> ()
-        | Tusk_client.BuildFailed _ -> ())
+        | Tusk_client.BuildFailed _ -> ()
+        | Tusk_client.CycleDetected { cycle_nodes; _ } ->
+            println "      \027[1;31mError\027[0m: Cyclic dependency detected:";
+            println "         %s" (String.concat " ->\n         " cycle_nodes))
     |> Result.expect ~msg:"Build failed"
   in
   Tusk_client.close client;
@@ -91,6 +94,7 @@ let build_command package_opt =
   match result with
   | Tusk_client.BuildCompleted _ -> Ok ()
   | Tusk_client.BuildFailed _ -> Error (Failure "Build failed")
+  | Tusk_client.CycleDetected _ -> Error (Failure "Cyclic dependency detected")
   | Tusk_client.BuildStarted _ | Tusk_client.BuildEvent _ ->
       Error (Failure "Unexpected response from server")
 

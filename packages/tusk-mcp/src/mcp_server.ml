@@ -2,7 +2,7 @@
 
 open Std
 open Std.Data
-open Miniriot
+
 open Tusk_model
 
 type ctx = { client : Tusk_client.t }
@@ -605,7 +605,7 @@ let start_stdio_server ~client =
           Jsonrpc.Server.handle_message mcp_server reply line;
           server_loop ()
         with exn ->
-          println "Something went wrong: %s" (Exception.to_string exn);
+          println "Something went wrong: %s" (Printexc.to_string exn);
           server_loop ())
     | Error _ -> ()
   in

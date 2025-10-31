@@ -117,38 +117,53 @@ let plan_node input =
 
     let module_graph = Module_graph.graph graph_builder in
 
-    let sorted_modules = G.topo_sort module_graph in
+    (match G.topo_sort module_graph with
+    | Error cycle_ids ->
+        let cycle =
+          List.map
+            (fun node_id ->
+              let node = G.get_node module_graph node_id in
+              match node.value.kind with
+              | Module_node.ML m | Module_node.MLI m ->
+                  Module.module_name m |> Module_name.to_string
+              | Module_node.Library { name; _ } -> format "Library(%s)" name
+              | Module_node.Binary { name; _ } -> format "Binary(%s)" name
+              | Module_node.Native _ -> "Native"
+              | Module_node.C -> "C"
+              | Module_node.H -> "H"
+              | Module_node.Root -> "Root"
+              | Module_node.Other s -> format "Other(%s)" s)
+            cycle_ids
+          |> List.rev  (* Reverse to show A -> B means A uses/opens B *)
+        in
+        Error (Planning_error.CyclicDependency { cycle })
+    | Ok sorted_modules -> (
+        let action_graph, _outputs =
+          Action_graph.from_module_graph ~package:input.package
+            ~toolchain:input.toolchain ~store:input.store ~depset:input.depset
+            module_graph
+        in
 
-    let action_graph, _outputs =
-      Action_graph.from_module_graph ~package:input.package
-        ~toolchain:input.toolchain ~store:input.store ~depset:input.depset
-        module_graph
-    in
+        let sources =
+          sorted_modules
+          |> List.concat_map (fun (node : Module_node.t G.node) ->
+              match node.value.kind with
+              | Native { files } ->
+                  List.map
+                    (fun path ->
+                      if Path.is_absolute path then path
+                      else Path.(input.package.path / path))
+                    files
+              | _ -> (
+                  match node.value.file with
+                  | Concrete path when Path.to_string path <> "" ->
+                      let abs_path =
+                        if Path.is_absolute path then path
+                        else Path.(input.package.path / path)
+                      in
+                      [ abs_path ]
+                  | _ -> []))
+        in
 
-    let sources =
-      module_graph |> G.topo_sort
-      |> List.concat_map (fun (node : Module_node.t G.node) ->
-          match node.value.kind with
-          | Native { files } ->
-              List.map
-                (fun path ->
-                  if Path.is_absolute path then path
-                  else Path.(input.package.path / path))
-                files
-          | _ -> (
-              match node.value.file with
-              | Concrete path when Path.to_string path <> "" ->
-                  let abs_path =
-                    if Path.is_absolute path then path
-                    else Path.(input.package.path / path)
-                  in
-                  [ abs_path ]
-              | _ -> []))
-    in
-
-    Ok { sources; module_graph; action_graph }
-  with
-  | G.Cycle cycle_ids ->
-      let cycle = List.map G.Node_id.to_string cycle_ids in
-      Error (Planning_error.CyclicDependency { cycle })
-  | exn -> Error (Planning_error.Exception { exn })
+        Ok { sources; module_graph; action_graph }))
+  with exn -> Error (Planning_error.Exception { exn })

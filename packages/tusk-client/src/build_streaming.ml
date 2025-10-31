@@ -1,6 +1,6 @@
 open Std
 open Std.Data
-open Miniriot
+
 open Tusk_model
 open Tusk_protocol
 open Client
@@ -22,6 +22,11 @@ type streaming_event =
       stats : WireProtocol.build_stats;
       built : WireProtocol.build_result list;
       errors : WireProtocol.build_result list;
+    }
+  | CycleDetected of {
+      session_id : Session_id.t;
+      detected_at : Datetime.t;
+      cycle_nodes : string list;
     }
 
 let rec handle_streaming_events t session_id callback =
@@ -56,6 +61,10 @@ and handle_response t session_id callback response =
       let final_event =
         BuildFailed { session_id; failed_at; stats; built; errors }
       in
+      callback final_event;
+      Ok final_event
+  | WireProtocol.CycleDetected { session_id; detected_at; cycle_nodes } ->
+      let final_event = CycleDetected { session_id; detected_at; cycle_nodes } in
       callback final_event;
       Ok final_event
   | event ->

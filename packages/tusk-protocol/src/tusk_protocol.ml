@@ -102,7 +102,9 @@ module WireProtocol = struct
   type package_error = Tusk_executor.Package_builder.package_error =
     | PlanningFailed of Tusk_planner.Planning_error.t
     | ExecutionFailed of { message : string }
-    | ActionFailed of Tusk_executor.Action_executor.action_error
+    | ActionExecutionFailed of { message : string }
+    | ActionOutputsNotCreated of { missing : Path.t list }
+    | ActionDependenciesFailed of { failed : Graph.SimpleGraph.Node_id.t list }
 
   type build_status = Tusk_executor.Package_builder.build_status =
     | Cached of Tusk_store.Artifact.t

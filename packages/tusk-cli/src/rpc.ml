@@ -293,20 +293,14 @@ let handle_build client sub_matches =
                         Tusk_planner.Planning_error.to_string planning_err
                     | Tusk_protocol.WireProtocol.ExecutionFailed { message } ->
                         message
-                    | Tusk_protocol.WireProtocol.ActionFailed action_err -> (
-                        match action_err with
-                        | Tusk_executor.Action_executor.ExecutionFailed
-                            { message } ->
-                            message
-                        | Tusk_executor.Action_executor.OutputsNotCreated
-                            { missing } ->
-                            format "Outputs not created: %s"
-                              (String.concat ", "
-                                 (List.map Path.to_string missing))
-                        | Tusk_executor.Action_executor.DependenciesFailed
-                            { failed } ->
-                            format "Dependencies failed: %d actions"
-                              (List.length failed))
+                    | Tusk_protocol.WireProtocol.ActionExecutionFailed { message } ->
+                        message
+                    | Tusk_protocol.WireProtocol.ActionOutputsNotCreated { missing } ->
+                        format "Outputs not created: %s"
+                          (String.concat ", " (List.map Path.to_string missing))
+                    | Tusk_protocol.WireProtocol.ActionDependenciesFailed { failed } ->
+                        format "Dependencies failed: %d actions"
+                          (List.length failed)
                   in
                   Some
                     (Json.Object

@@ -1,5 +1,5 @@
 open Std
-open Miniriot
+
 open Tusk_model
 
 type target = All | Package of string
@@ -127,4 +127,7 @@ type response =
     }
 
 (** Message types for server communication *)
-type Message.t += ServerRequest of request | ServerResponse of response
+type Message.t +=
+  | ServerRequest of request
+  | ServerResponse of response
+  | UpdatePackageGraph of Tusk_planner.Package_graph.t

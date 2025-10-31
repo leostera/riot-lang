@@ -1,11 +1,8 @@
 (** Internal server - Main server loop for handling requests *)
 
 open Std
-open Miniriot
-open Tusk_model
 
-(** Internal messages for server-to-server communication *)
-type Message.t += UpdatePackageGraph of Tusk_planner.Package_graph.t
+open Tusk_model
 
 type server_state = {
   workspace : Workspace.t;
@@ -20,7 +17,7 @@ let rec loop state =
   let selector msg =
     match msg with
     | Protocol.ServerRequest req -> `select (`Request req)
-    | UpdatePackageGraph pg -> `select (`UpdateGraph pg)
+    | Protocol.UpdatePackageGraph pg -> `select (`UpdateGraph pg)
     | _ -> `skip
   in
 
@@ -410,13 +407,22 @@ and handle_build state client_pid target session_id =
     | Protocol.All -> "All"
     | Protocol.Package p -> format "Package(%s)" p);
 
+  (* Rescan workspace to pick up any tusk.toml changes *)
+  let workspace =
+    Workspace_manager.scan state.workspace.root
+    |> Result.expect ~msg:"tusk_server: workspace scan failed"
+  in
+  let package_graph = Tusk_planner.Package_graph.create workspace in
+  let updated_state = { state with workspace; package_graph } in
+
   let server_pid = self () in
-  Build_server.start ~workspace:state.workspace ~toolchain:state.toolchain
-    ~store:state.store ~concurrency:state.concurrency ~session_id ~client_pid
-    ~server_pid ~target;
+  Build_server.start ~workspace:updated_state.workspace
+    ~toolchain:updated_state.toolchain ~store:updated_state.store
+    ~concurrency:updated_state.concurrency ~session_id ~client_pid ~server_pid
+    ~target;
 
   Log.info "[INTERNAL_SERVER] Build worker spawned, continuing server loop";
-  loop state
+  loop updated_state
 
 let write_daemon_files ~workspace ~port =
   let home =
@@ -501,5 +507,5 @@ let start_with_listener () =
     Log.info "Tusk server entering main loop";
     loop state
   with exn ->
-    Log.error "Server initialization failed: %s" (Exception.to_string exn);
+    Log.error "Server initialization failed: %s" (Printexc.to_string exn);
     Error exn

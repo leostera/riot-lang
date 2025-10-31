@@ -3,6 +3,14 @@ open Tusk_model
 open Tusk_planner
 open Tusk_store
 
+(** Error types for package builds *)
+type package_error =
+  | PlanningFailed of Planning_error.t
+  | ExecutionFailed of { message : string }
+  | ActionExecutionFailed of { message : string }
+  | ActionOutputsNotCreated of { missing : Path.t list }
+  | ActionDependenciesFailed of { failed : Graph.SimpleGraph.Node_id.t list }
+
 type Telemetry.event +=
   | BuildStarted of { package : Package.t; target : Workspace_planner.target }
   | BuildCompleted of {
@@ -14,7 +22,7 @@ type Telemetry.event +=
   | BuildFailed of {
       package : Package.t;
       target : Workspace_planner.target;
-      error : string;
+      error : package_error;
     }
   | BuildSkipped of {
       package : Package.t;
@@ -86,6 +94,43 @@ let to_json : Telemetry.event -> Data.Json.t option = function
              ("duration_ms", Data.Json.Int (Time.Duration.to_millis duration));
            ])
   | BuildFailed { package; target; error } ->
+      let error_json =
+        match error with
+        | PlanningFailed planning_err ->
+            Data.Json.Object
+              [
+                ("type", Data.Json.String "planning_failed");
+                ("error", Planning_error.to_json planning_err);
+              ]
+        | ExecutionFailed { message } ->
+            Data.Json.Object
+              [
+                ("type", Data.Json.String "execution_failed");
+                ("message", Data.Json.String message);
+              ]
+        | ActionExecutionFailed { message } ->
+            Data.Json.Object
+              [
+                ("type", Data.Json.String "action_failed");
+                ("message", Data.Json.String message);
+              ]
+        | ActionOutputsNotCreated { missing } ->
+            Data.Json.Object
+              [
+                ("type", Data.Json.String "outputs_not_created");
+                ( "missing",
+                  Data.Json.Array
+                    (List.map (fun p -> Data.Json.String (Path.to_string p)) missing)
+                );
+              ]
+        | ActionDependenciesFailed { failed } ->
+            Data.Json.Object
+              [
+                ("type", Data.Json.String "dependencies_failed");
+                ( "failed_count",
+                  Data.Json.String (Int.to_string (List.length failed)) );
+              ]
+      in
       Some
         (Data.Json.Object
            [
@@ -96,7 +141,7 @@ let to_json : Telemetry.event -> Data.Json.t option = function
                  (match target with
                  | Workspace_planner.All -> "all"
                  | Workspace_planner.Package pkg -> pkg) );
-             ("error", Data.Json.String error);
+             ("error", error_json);
            ])
   | BuildSkipped { package; target; reason } ->
       Some
@@ -253,7 +298,7 @@ let from_json (json : Data.Json.t) : (Telemetry.event, Data.Json.t) result =
           with
           | ( Some package_json,
               Some (Data.Json.String target_str),
-              Some (Data.Json.String error) ) -> (
+              Some error_json ) -> (
               match Package.from_json package_json with
               | Ok package ->
                   let target =
@@ -261,7 +306,139 @@ let from_json (json : Data.Json.t) : (Telemetry.event, Data.Json.t) result =
                     | "all" -> Workspace_planner.All
                     | pkg -> Workspace_planner.Package pkg
                   in
-                  Ok (BuildFailed { package; target; error })
+                  (* Deserialize structured error *)
+                  let error_result =
+                    match error_json with
+                    | Data.Json.Object error_fields -> (
+                        match List.assoc_opt "type" error_fields with
+                        | Some (Data.Json.String "planning_failed") -> (
+                            (* For planning errors, try to deserialize from the nested error field *)
+                            match List.assoc_opt "error" error_fields with
+                            | Some (Data.Json.Object planning_fields) -> (
+                                match List.assoc_opt "type" planning_fields with
+                                | Some (Data.Json.String "cyclic_dependency") -> (
+                                    match List.assoc_opt "cycle" planning_fields with
+                                    | Some (Data.Json.Array arr) ->
+                                        let cycle =
+                                          List.filter_map
+                                            (function
+                                              | Data.Json.String s -> Some s
+                                              | _ -> None)
+                                            arr
+                                        in
+                                        Ok
+                                          (PlanningFailed
+                                             (Planning_error.CyclicDependency { cycle }))
+                                    | _ ->
+                                        Ok
+                                          (ExecutionFailed
+                                             {
+                                               message = "Planning failed: cyclic dependency";
+                                             }))
+                                | Some (Data.Json.String "scan_failed") -> (
+                                    match
+                                      ( List.assoc_opt "path" planning_fields,
+                                        List.assoc_opt "reason" planning_fields )
+                                    with
+                                    | ( Some (Data.Json.String path),
+                                        Some (Data.Json.String reason) ) ->
+                                        Ok
+                                          (PlanningFailed
+                                             (Planning_error.ScanFailed
+                                                { path = Path.v path; reason }))
+                                    | _ ->
+                                        Ok
+                                          (ExecutionFailed
+                                             { message = "Planning failed: scan failed" }))
+                                | Some (Data.Json.String "dependency_analysis_failed") -> (
+                                    match List.assoc_opt "reason" planning_fields with
+                                    | Some (Data.Json.String reason) ->
+                                        Ok
+                                          (PlanningFailed
+                                             (Planning_error.DependencyAnalysisFailed
+                                                { reason }))
+                                    | _ ->
+                                        Ok
+                                          (ExecutionFailed
+                                             {
+                                               message =
+                                                 "Planning failed: dependency analysis failed";
+                                             }))
+                                | Some (Data.Json.String "graph_build_failed") -> (
+                                    match List.assoc_opt "reason" planning_fields with
+                                    | Some (Data.Json.String reason) ->
+                                        Ok
+                                          (PlanningFailed
+                                             (Planning_error.GraphBuildFailed { reason }))
+                                    | _ ->
+                                        Ok
+                                          (ExecutionFailed
+                                             {
+                                               message = "Planning failed: graph build failed";
+                                             }))
+                                | Some (Data.Json.String "exception") -> (
+                                    match List.assoc_opt "message" planning_fields with
+                                    | Some (Data.Json.String msg) ->
+                                        Ok
+                                          (PlanningFailed
+                                             (Planning_error.Exception
+                                                { exn = Failure msg }))
+                                    | _ ->
+                                        Ok
+                                          (ExecutionFailed
+                                             { message = "Planning failed: exception" }))
+                                | _ ->
+                                    Ok
+                                      (ExecutionFailed
+                                         {
+                                           message =
+                                             "Planning failed: unknown planning error";
+                                         }))
+                            | _ ->
+                                Ok
+                                  (ExecutionFailed
+                                     { message = "Planning failed: missing error details" }))
+                        | Some (Data.Json.String "execution_failed") -> (
+                            match List.assoc_opt "message" error_fields with
+                            | Some (Data.Json.String msg) ->
+                                Ok (ExecutionFailed { message = msg })
+                            | _ ->
+                                Ok
+                                  (ExecutionFailed
+                                     { message = "Execution failed: missing message" }))
+                        | Some (Data.Json.String "action_failed") -> (
+                            match List.assoc_opt "message" error_fields with
+                            | Some (Data.Json.String msg) ->
+                                Ok (ActionExecutionFailed { message = msg })
+                            | _ ->
+                                Ok
+                                  (ExecutionFailed
+                                     { message = "Action failed: missing message" }))
+                        | Some (Data.Json.String "outputs_not_created") -> (
+                            match List.assoc_opt "missing" error_fields with
+                            | Some (Data.Json.Array arr) ->
+                                let missing =
+                                  List.filter_map
+                                    (function
+                                      | Data.Json.String s -> Some (Path.v s)
+                                      | _ -> None)
+                                    arr
+                                in
+                                Ok (ActionOutputsNotCreated { missing })
+                            | _ ->
+                                Ok
+                                  (ExecutionFailed
+                                     { message = "Outputs not created: missing list" }))
+                        | Some (Data.Json.String "dependencies_failed") ->
+                            Ok (ActionDependenciesFailed { failed = [] })
+                            (* Can't reconstruct node IDs from JSON *)
+                        | _ ->
+                            Ok (ExecutionFailed { message = "Unknown error type" }))
+                    | _ -> Ok (ExecutionFailed { message = "Invalid error format" })
+                  in
+                  (match error_result with
+                  | Ok error -> Ok (BuildFailed { package; target; error })
+                  | Error e -> Error e)
               | Error e -> Error (Data.Json.String e))
           | _ -> Error (Data.Json.String "Invalid BuildFailed event"))
       | Some (Data.Json.String "BuildSkipped") -> (

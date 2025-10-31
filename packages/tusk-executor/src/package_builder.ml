@@ -5,24 +5,31 @@ open Tusk_model
 open Tusk_planner
 open Telemetry_events
 
-type package_error =
-  | PlanningFailed of Planning_error.t
+type package_error = Telemetry_events.package_error =
+  | PlanningFailed of Tusk_planner.Planning_error.t
   | ExecutionFailed of { message : string }
-  | ActionFailed of Action_executor.action_error
+  | ActionExecutionFailed of { message : string }
+  | ActionOutputsNotCreated of { missing : Path.t list }
+  | ActionDependenciesFailed of { failed : Graph.SimpleGraph.Node_id.t list }
+
+let convert_action_error = function
+  | Action_executor.ExecutionFailed { message } ->
+      Telemetry_events.ActionExecutionFailed { message }
+  | Action_executor.OutputsNotCreated { missing } ->
+      Telemetry_events.ActionOutputsNotCreated { missing }
+  | Action_executor.DependenciesFailed { failed } ->
+      Telemetry_events.ActionDependenciesFailed { failed }
 
 let package_error_to_string = function
   | PlanningFailed err ->
       format "Planning failed: %s" (Planning_error.to_string err)
   | ExecutionFailed { message } -> format "Execution failed: %s" message
-  | ActionFailed err -> (
-      match err with
-      | Action_executor.ExecutionFailed { message } ->
-          format "Action failed: %s" message
-      | Action_executor.OutputsNotCreated { missing } ->
-          format "Outputs not created: %s"
-            (String.concat ", " (List.map Path.to_string missing))
-      | Action_executor.DependenciesFailed { failed } ->
-          format "Dependencies failed: %d actions" (List.length failed))
+  | ActionExecutionFailed { message } -> format "Action failed: %s" message
+  | ActionOutputsNotCreated { missing } ->
+      format "Outputs not created: %s"
+        (String.concat ", " (List.map Path.to_string missing))
+  | ActionDependenciesFailed { failed } ->
+      format "Dependencies failed: %d actions" (List.length failed)
 
 let package_error_to_json = function
   | PlanningFailed planning_err ->
@@ -37,31 +44,28 @@ let package_error_to_json = function
           ("type", Std.Data.Json.String "execution_failed");
           ("message", Std.Data.Json.String message);
         ]
-  | ActionFailed err -> (
-      match err with
-      | Action_executor.ExecutionFailed { message } ->
-          Std.Data.Json.Object
-            [
-              ("type", Std.Data.Json.String "action_failed");
-              ("message", Std.Data.Json.String message);
-            ]
-      | Action_executor.OutputsNotCreated { missing } ->
-          Std.Data.Json.Object
-            [
-              ("type", Std.Data.Json.String "outputs_not_created");
-              ( "missing",
-                Std.Data.Json.Array
-                  (List.map
-                     (fun p -> Std.Data.Json.String (Path.to_string p))
-                     missing) );
-            ]
-      | Action_executor.DependenciesFailed { failed } ->
-          Std.Data.Json.Object
-            [
-              ("type", Std.Data.Json.String "dependencies_failed");
-              ( "failed_count",
-                Std.Data.Json.String (Int.to_string (List.length failed)) );
-            ])
+  | ActionExecutionFailed { message } ->
+      Std.Data.Json.Object
+        [
+          ("type", Std.Data.Json.String "action_failed");
+          ("message", Std.Data.Json.String message);
+        ]
+  | ActionOutputsNotCreated { missing } ->
+      Std.Data.Json.Object
+        [
+          ("type", Std.Data.Json.String "outputs_not_created");
+          ( "missing",
+            Std.Data.Json.Array
+              (List.map (fun p -> Std.Data.Json.String (Path.to_string p)) missing)
+          );
+        ]
+  | ActionDependenciesFailed { failed } ->
+      Std.Data.Json.Object
+        [
+          ("type", Std.Data.Json.String "dependencies_failed");
+          ( "failed_count",
+            Std.Data.Json.String (Int.to_string (List.length failed)) );
+        ]
 
 type build_status =
   | Cached of Tusk_store.Artifact.t
@@ -144,6 +148,13 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
   | Error err ->
       let duration = Instant.duration_since ~earlier:start (Instant.now ()) in
       (* Don't mark as Failed in graph - planning errors don't have a hash *)
+      Telemetry.emit
+        (BuildFailed
+           {
+             package;
+             target = Workspace_planner.Package package.name;
+             error = PlanningFailed err;
+           });
       { package; status = Failed (PlanningFailed err); duration }
   | Ok (MissingDependencies { missing; _ }) ->
       let missing_names = List.map (fun p -> p.Package.name) missing in
@@ -152,11 +163,15 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
         format "Missing dependencies: %s" (String.concat ", " missing_names)
       in
       (* Don't mark as Failed - this is a transient planning state *)
-      {
-        package;
-        status = Failed (ExecutionFailed { message = error });
-        duration;
-      }
+      let error_variant = ExecutionFailed { message = error } in
+      Telemetry.emit
+        (BuildFailed
+           {
+             package;
+             target = Workspace_planner.Package package.name;
+             error = error_variant;
+           });
+      { package; status = Failed error_variant; duration }
   | Ok (FailedDependencies { failed; _ }) ->
       let failed_names = List.map (fun p -> p.Package.name) failed in
       let duration = Instant.duration_since ~earlier:start (Instant.now ()) in
@@ -274,7 +289,7 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
             in
 
             match failed_actions with
-            | first_error :: _ -> Error (ActionFailed first_error)
+            | first_error :: _ -> Error (convert_action_error first_error)
             | [] -> (
                 (* All actions succeeded, save the artifacts *)
                 match
@@ -300,7 +315,8 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
               let duration =
                 Instant.duration_since ~earlier:start (Instant.now ())
               in
-              let error = format "Exception: %s" (Printexc.to_string exn) in
+              let error_msg = format "Exception: %s" (Printexc.to_string exn) in
+              let error = ExecutionFailed { message = error_msg } in
               (* Mark as Failed in package graph *)
               (match
                  Tusk_planner.Package_graph.get_node package_graph package
@@ -308,7 +324,7 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
               | Some node ->
                   node.value <-
                     Tusk_planner.Package_graph.Failed
-                      { package; hash = package_hash; error }
+                      { package; hash = package_hash; error = error_msg }
               | None -> ());
               Telemetry.emit
                 (BuildFailed
@@ -317,11 +333,7 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
                      target = Workspace_planner.Package package.name;
                      error;
                    });
-              {
-                package;
-                status = Failed (ExecutionFailed { message = error });
-                duration;
-              }
+              { package; status = Failed error; duration }
           | Ok artifact ->
               Tusk_store.Store.promote store package_hash ~target_dir
               |> Result.expect
@@ -362,7 +374,7 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
               let duration =
                 Instant.duration_since ~earlier:start (Instant.now ())
               in
-              let error = package_error_to_string err in
+              let error_str = package_error_to_string err in
               (* Mark as Failed in package graph *)
               (match
                  Tusk_planner.Package_graph.get_node package_graph package
@@ -370,13 +382,13 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
               | Some node ->
                   node.value <-
                     Tusk_planner.Package_graph.Failed
-                      { package; hash = package_hash; error }
+                      { package; hash = package_hash; error = error_str }
               | None -> ());
               Telemetry.emit
                 (BuildFailed
                    {
                      package;
                      target = Workspace_planner.Package package.name;
-                     error;
+                     error = err;
                    });
               { package; status = Failed err; duration }))

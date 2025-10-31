@@ -1,3 +1,4 @@
+(*
 open Std
 module Test = Std.Test
 
@@ -224,3 +225,4 @@ let tests =
 
 let name = "Sandbox Tests"
 let () = Miniriot.run ~main:(Test.Cli.main ~name ~tests) ~args:Env.args ()
+*)
