@@ -19,6 +19,11 @@ let print fmt = Printf.ksprintf (fun s -> Printf.printf "%s%!" s) fmt
 (** Print to stdout with newline and flush *)
 let println fmt = Printf.ksprintf (fun s -> Printf.printf "%s\n%!" s) fmt
 
+(** Panic with a message and backtrace *)
+let panic msg =
+  let exception Panic of string in
+  raise (Panic msg)
+
 (* Comparison operators *)
 let ( = ) = Stdlib.( = )
 let ( <> ) = Stdlib.( <> )

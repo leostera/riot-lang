@@ -117,14 +117,21 @@ let mkdirp path perm =
   | Ok _ -> Ok ()
   | Error e -> Error e
 
+let stat path =
+  syscall @@ fun () ->
+  try Ok (Unix.stat path)
+  with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
+
 let copy_file src dst =
   syscall @@ fun () ->
   try
+    let src_perms = Unix.(stat src).st_perm in
+
     let src_fd = Fd.open_file src [ Fd.OpenFlags.ReadOnly ] 0 in
     let dst_fd =
       Fd.open_file dst
         [ Fd.OpenFlags.WriteOnly; Fd.OpenFlags.Create; Fd.OpenFlags.Truncate ]
-        0o644
+        src_perms
     in
     Fun.protect
       ~finally:(fun () ->
@@ -142,11 +149,6 @@ let is_directory path =
 
 let file_exists path =
   syscall @@ fun () -> try Ok (Sys.file_exists path) with e -> Error (`Exn e)
-
-let stat path =
-  syscall @@ fun () ->
-  try Ok (Unix.stat path)
-  with Unix.Unix_error (e, _, _) -> Error (`IO_error (IO.error_of_unix e))
 
 let chmod path perm =
   syscall @@ fun () ->
