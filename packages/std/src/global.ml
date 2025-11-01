@@ -1,4 +1,4 @@
-(** Re-export core helpers from Kernel *)
+(** Re-export core helpers from Kernel - print/println are now async-safe *)
 let format = Kernel.format
 let print = Kernel.print
 let println = Kernel.println
@@ -7,10 +7,7 @@ exception Deprecated
 
 let failwith = Deprecated
 
-(** Panic with message - backtrace will be captured by process exception handler *)
-let panic msg =
-  let exception Panic of string in
-  raise (Panic msg)
+include Panic
 
 (** Create a mutable cell *)
 let cell x = Cell.create x

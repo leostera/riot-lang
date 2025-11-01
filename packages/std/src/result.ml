@@ -1,4 +1,4 @@
-open Global
+open Panic
 (** Result type for error handling *)
 
 type ('a, 'e) t = ('a, 'e) Stdlib.result = Ok of 'a | Error of 'e

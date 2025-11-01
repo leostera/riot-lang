@@ -1,7 +1,5 @@
 (** Writer abstraction for writable destinations *)
 
-open Global
-
 let ( let* ) = Result.and_then
 
 module type Write = sig

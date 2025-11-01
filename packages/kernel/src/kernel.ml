@@ -10,30 +10,26 @@ module System = System
 module Time = Time
 
 (* Core types and modules for nostdlib packages *)
-module Global = Global
-module Format = Format
-module Effect = Effect
-module Printf = Printf
-module Exception = Printexc
-module Int = Int
-module Queue = Queue
-module Option = Option
-module List = List
-module Hashtbl = Hashtbl
-module Type = Type
+module Array = Array
 module Atomic = Atomic
-module Int32 = Int32
-module Int64 = Int64
-module Obj = Obj
-module String = String
 module Buffer = Buffer
 module Bytes = Bytes
-module Seq = Seq
-module Uchar = Uchar
-module Array = Array
-module Filename = Filename
+module Effect = Effect
+module Exception = Printexc
 module Fun = Fun
+module Hashtbl = Hashtbl
+module Int = Int
+module Int32 = Int32
+module Int64 = Int64
+module List = List
+module Obj = Obj
+module Option = Option
+module Queue = Queue
 module Random = Random
+module Seq = Seq
+module String = String
+module Type = Type
+module Uchar = Uchar
 
 (* Re-export global types and functions at top level for convenience *)
 include Global

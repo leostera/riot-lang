@@ -92,6 +92,9 @@ val stdin : Kernel.Fd.t
 val stdout : Kernel.Fd.t
 (** Standard output file descriptor *)
 
+val stdout_writer : (Kernel.Fd.t, Kernel.Async.io_error) Writer.t
+(** Standard output file descriptor *)
+
 val stderr : Kernel.Fd.t
 (** Standard error file descriptor *)
 

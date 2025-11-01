@@ -315,9 +315,9 @@ let handle_run_proc t proc =
       add_to_run_queue t proc
   | Proc_state.Finished (Error { exn; backtrace }) ->
       (* Always print exception details and backtrace *)
-      Printf.printf "[Scheduler] Process %s finished with exception: %s\n%!"
+      print "[Scheduler] Process %s finished with exception: %s\n"
         pid_str (Exception.to_string exn);
-      Printf.printf "[Scheduler] Backtrace:\n%s\n%!"
+      print "[Scheduler] Backtrace:\n%s\n"
         (Exception.raw_backtrace_to_string backtrace);
       Process.mark_as_exited proc (Error exn);
       add_to_run_queue t proc
@@ -353,7 +353,8 @@ let poll_io t =
       match Timer_wheel.next_expiration t.timer_wheel ~now with
       | Some next_expiry ->
           let delta = Int64.sub next_expiry now in
-          Int64.max delta 0L (* Don't use negative timeout *)
+          (* If timer already expired, use 1ms minimum to prevent busy-wait *)
+          if Int64.compare delta 0L <= 0 then 1_000_000L else delta
       | None -> 10_000_000L (* 10ms default *)
     else 500_000_000L (* 500ms when no timers *)
   in
@@ -362,7 +363,7 @@ let poll_io t =
     match Async.Poll.poll t.io_poll ~timeout:timeout_nanos with
     | Ok events -> events
     | Error err ->
-        Printf.printf "[Scheduler] ERROR: Failed to poll I/O: %s\n%!"
+        print "[Scheduler] ERROR: Failed to poll I/O: %s\n"
           (match err with
           | `IO_error e -> IO.error_message e
           | `Noop -> "Unknown error"
@@ -374,22 +375,20 @@ let poll_io t =
       let token = Async.Event.token event in
       let proc : Process.t = Async.Token.unsafe_to_value token in
       match Process.state proc with
-      | Waiting_io { source; _ } ->
-          (match Async.Poll.deregister t.io_poll source with
-          | Ok () -> ()
-          | Error err ->
-              Printf.printf
-                "[Scheduler] WARN: Failed to deregister I/O for process %s: %s\n\
-                 %!"
-                (Pid.to_string (Process.pid proc))
-                (match err with
-                | `IO_error e -> IO.error_message e
-                | `Noop -> "Unknown error"
-                | _ -> "Other error"));
-          if Process.is_alive proc then (
-            Process.add_ready_token proc token source;
-            Process.mark_as_runnable proc;
-            add_to_run_queue t proc)
+       | Waiting_io { source; _ } ->
+           (match Async.Poll.deregister t.io_poll source with
+           | Ok () -> ()
+           | Error err ->
+               print "[Scheduler] WARN: Failed to deregister I/O for process %s: %s\n"
+                 (Pid.to_string (Process.pid proc))
+                 (match err with
+                 | `IO_error e -> IO.error_message e
+                 | `Noop -> "Unknown error"
+                 | _ -> "Other error"));
+           if Process.is_alive proc then (
+             Process.add_ready_token proc token source;
+             Process.mark_as_runnable proc;
+             add_to_run_queue t proc)
       | _ -> ())
     events
 
@@ -455,16 +454,17 @@ let run_loop t =
   (* Poll for I/O events, or sleep until next timer if no I/O *)
   (if (not t.stop) && Pid_table.length t.processes > 0 then
      if has_waiting_io then poll_io t
-     else if Timer_wheel.size t.timer_wheel > 0 then
+     else if Timer_wheel.size t.timer_wheel > 0 then (
        (* No I/O, but we have timers - sleep until next timer expiration *)
        let now = Time.monotonic_time_nanos () in
        match Timer_wheel.next_expiration t.timer_wheel ~now with
        | Some next_expiry ->
            let sleep_nanos = Int64.sub next_expiry now in
-           if Int64.compare sleep_nanos 0L > 0 then
-             let _ = Async.Poll.poll t.io_poll ~timeout:sleep_nanos in
-             ()
-        | None -> ())
+           (* If timer already expired, sleep for 1ms to let time advance *)
+           let sleep_nanos = if Int64.compare sleep_nanos 0L <= 0 then 1_000_000L else sleep_nanos in
+           let _ = Async.Poll.poll t.io_poll ~timeout:sleep_nanos in
+           ()
+        | None -> ()))
 
 let shutdown t ~status =
   (* Mark scheduler to stop *)

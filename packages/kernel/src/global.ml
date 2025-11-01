@@ -13,11 +13,24 @@ type ('a, 'b, 'c, 'd, 'e, 'f) format6 = ('a, 'b, 'c, 'd, 'e, 'f) Stdlib.format6
 (** Format string helper *)
 let format = Printf.sprintf
 
-(** Print to stdout with flush *)
-let print fmt = Printf.ksprintf (fun s -> Printf.printf "%s%!" s) fmt
+(** Async-safe write to stdout using Fs.File.write which handles Would_block *)
+let write_stdout str =
+  let bytes = Bytes.of_string str in
+  let len = String.length str in
+  let rec write_all offset remaining =
+    if remaining = 0 then ()
+    else
+      match Fs.File.write IO.stdout ~pos:offset ~len:remaining bytes with
+      | Ok n -> write_all (offset + n) (remaining - n)
+      | Error _ -> ()  (* Silently ignore errors to prevent crashes *)
+  in
+  write_all 0 len
 
-(** Print to stdout with newline and flush *)
-let println fmt = Printf.ksprintf (fun s -> Printf.printf "%s\n%!" s) fmt
+(** Async-safe print to stdout - never raises Sys_blocked_io *)
+let print fmt = Printf.ksprintf write_stdout fmt
+
+(** Async-safe print to stdout with newline - never raises Sys_blocked_io *)
+let println fmt = Printf.ksprintf (fun s -> write_stdout (s ^ "\n")) fmt
 
 (** Panic with a message and backtrace *)
 let panic msg =
