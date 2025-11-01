@@ -1,7 +1,9 @@
 module Color : module type of Color
 module Escape_seq : module type of Escape_seq
+module Input : module type of Input
 module Profile : module type of Profile
 module Size : module type of Size
 module Stdin : module type of Stdin
 module Style : module type of Style
 module Terminal : module type of Terminal
+module Terminal_control : module type of Terminal_control

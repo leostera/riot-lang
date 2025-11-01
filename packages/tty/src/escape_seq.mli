@@ -239,3 +239,27 @@ val start_bracketed_paste_seq : unit -> unit
 
 val end_bracketed_paste_seq : unit -> unit
 (** Marker for end of paste *)
+
+(** {1 String Utilities} *)
+
+val strip : string -> string
+(** [strip str] removes all ANSI escape sequences from [str].
+    
+    Returns the string with all ESC[ sequences removed, leaving only
+    the visible text content.
+    
+    {[
+      let colored = "\x1b[31mRed Text\x1b[0m" in
+      strip colored  (* Returns "Red Text" *)
+    ]} *)
+
+val width : string -> int
+(** [width str] calculates the display width of [str] ignoring ANSI codes.
+    
+    Returns the number of visible characters, not counting escape sequences.
+    This is useful for text layout and alignment.
+    
+    {[
+      let styled = "\x1b[1;32mBold Green\x1b[0m" in
+      width styled  (* Returns 10, not 24 *)
+    ]} *)
