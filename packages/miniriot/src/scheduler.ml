@@ -313,12 +313,12 @@ let handle_run_proc t proc =
   | Proc_state.Finished (Ok reason) ->
       Process.mark_as_exited proc reason;
       add_to_run_queue t proc
-  | Proc_state.Finished (Error exn) ->
-      (* Always print exception details, not just when tracing is enabled *)
+  | Proc_state.Finished (Error { exn; backtrace }) ->
+      (* Always print exception details and backtrace *)
       Printf.printf "[Scheduler] Process %s finished with exception: %s\n%!"
         pid_str (Exception.to_string exn);
       Printf.printf "[Scheduler] Backtrace:\n%s\n%!"
-        (Exception.raw_backtrace_to_string (Exception.get_raw_backtrace ()));
+        (Exception.raw_backtrace_to_string backtrace);
       Process.mark_as_exited proc (Error exn);
       add_to_run_queue t proc
   | _ when Process.is_waiting proc -> ()

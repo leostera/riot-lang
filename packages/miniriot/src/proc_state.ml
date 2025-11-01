@@ -4,8 +4,13 @@ exception Unwind
 
 type ('a, 'b) continuation = ('a, 'b) Effect.Shallow.continuation
 
+type error_info = {
+  exn : exn;
+  backtrace : Exception.raw_backtrace;
+}
+
 type 'a t =
-  | Finished of ('a, exn) result
+  | Finished of ('a, error_info) result
   | Suspended : ('a, 'b) continuation * 'a Effect.t -> 'b t
   | Unhandled : ('a, 'b) continuation * 'a -> 'b t
 
@@ -26,7 +31,7 @@ type perform = { perform : 'a 'b. ('a, 'b) step_callback } [@@unboxed]
 let pp fmt t =
   match t with
   | Finished (Ok _) -> Format.fprintf fmt "Finished(Ok _)"
-  | Finished (Error exn) ->
+  | Finished (Error { exn; _ }) ->
       Format.fprintf fmt "Finished(Error %s)" (Exception.to_string exn)
   | Suspended (_, _) -> Format.fprintf fmt "Suspended"
   | Unhandled (_, _) -> Format.fprintf fmt "Unhandled"
@@ -36,7 +41,11 @@ let suspended_with k e = Suspended (k, e)
 
 let handler_continue =
   let retc signal = finished (Ok signal) in
-  let exnc exn = finished (Error exn) in
+  let exnc exn = 
+    (* Capture exception backtrace while still in fiber, before crossing effect boundary *)
+    let backtrace = Exception.get_raw_backtrace () in
+    finished (Error { exn; backtrace })
+  in
   let effc : type c. c Effect.t -> ((c, 'a) continuation -> 'b) option =
    fun e -> Some (fun k -> suspended_with k e)
   in

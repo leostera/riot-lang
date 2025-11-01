@@ -2,8 +2,13 @@ exception Unwind
 
 type ('a, 'b) continuation
 
+type error_info = {
+  exn : exn;
+  backtrace : Kernel.Exception.raw_backtrace;
+}
+
 type 'a t =
-  | Finished of ('a, exn) result
+  | Finished of ('a, error_info) result
   | Suspended : ('a, 'b) continuation * 'a Effect.t -> 'b t
   | Unhandled : ('a, 'b) continuation * 'a -> 'b t
 
