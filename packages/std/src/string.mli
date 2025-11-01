@@ -126,3 +126,192 @@ val into_iter : string -> Uchar.t Iterator.t
 
     Invalid UTF-8 sequences are replaced with U+FFFD (�). For strict UTF-8
     validation, check bytes before iteration. *)
+
+(** # Unicode-Aware Operations *)
+
+val width : string -> int
+(** Calculate display width for monospace fonts/terminals.
+
+    Accounts for:
+    - Wide characters (CJK): width 2
+    - Emoji: width 2
+    - Combining marks: width 0
+    - Control characters: width 0
+    - Regular characters: width 1
+
+    ## Examples
+
+    ```ocaml
+    String.width "hello"      (* = 5 *)
+    String.width "你好"        (* = 4, each CJK char is width 2 *)
+    String.width "Hello 👋"   (* = 8: 6 for "Hello " + 2 for emoji *)
+    ```
+
+    This is essential for proper text alignment in terminals. *)
+
+val rune_count : string -> int
+(** Count Unicode code points (runes) in the string.
+
+    ## Examples
+
+    ```ocaml
+    String.rune_count "hello"       (* = 5 *)
+    String.rune_count "café"        (* = 4 *)
+    String.rune_count "👋"          (* = 1 *)
+    String.rune_count "👨‍👩‍👧‍👦"     (* = 7: base + joiners + others *)
+    ```
+
+    Note: This counts code points, not user-perceived characters.
+    Use `grapheme_count` for user-perceived character count. *)
+
+val grapheme_count : string -> int
+(** Count user-perceived characters (grapheme clusters).
+
+    ## Examples
+
+    ```ocaml
+    String.grapheme_count "hello"       (* = 5 *)
+    String.grapheme_count "café"        (* = 4 *)
+    String.grapheme_count "👋"          (* = 1 *)
+    String.grapheme_count "👨‍👩‍👧‍👦"     (* = 1: family emoji is one grapheme *)
+    String.grapheme_count "🏳️‍🌈"       (* = 1: rainbow flag is one grapheme *)
+    ```
+
+    This gives the count users would expect when counting "characters". *)
+
+val truncate_width : width:int -> ?tail:string -> string -> string
+(** Truncate string to fit within display width.
+
+    ## Parameters
+
+    - `width`: Maximum display width
+    - `tail`: String to append if truncated (default: "...")
+
+    ## Examples
+
+    ```ocaml
+    String.truncate_width ~width:10 "Hello World"
+    (* = "Hello W..." *)
+
+    String.truncate_width ~width:10 ~tail:"…" "Hello 世界"
+    (* = "Hello 世…" - CJK chars are width 2 *)
+
+    String.truncate_width ~width:10 "Short"
+    (* = "Short" - no truncation needed *)
+    ```
+
+    Useful for fitting text in fixed-width terminal columns. *)
+
+val pad_left : width:int -> char -> string -> string
+(** Pad string on the left to reach display width.
+
+    ## Examples
+
+    ```ocaml
+    String.pad_left ~width:10 ' ' "Hello"
+    (* = "     Hello" *)
+
+    String.pad_left ~width:10 '0' "42"
+    (* = "00000000042" *)
+    ```
+
+    Uses display width, so handles wide characters correctly. *)
+
+val pad_right : width:int -> char -> string -> string
+(** Pad string on the right to reach display width.
+
+    ## Examples
+
+    ```ocaml
+    String.pad_right ~width:10 ' ' "Hello"
+    (* = "Hello     " *)
+    ```
+
+    Uses display width, so handles wide characters correctly. *)
+
+val pad_center : width:int -> char -> string -> string
+(** Pad string on both sides to center within display width.
+
+    ## Examples
+
+    ```ocaml
+    String.pad_center ~width:10 ' ' "Hi"
+    (* = "    Hi    " *)
+    ```
+
+    If padding is uneven, adds extra space on the right. *)
+
+val into_grapheme_iter : string -> Unicode.Grapheme.t Iterator.t
+(** Creates an iterator over grapheme clusters.
+
+    ## Examples
+
+    ```ocaml
+    String.into_grapheme_iter "Hello 👨‍👩‍👧‍👦"
+    |> Iterator.count  (* = 7: 6 regular chars + 1 family emoji *)
+    ```
+
+    Iterates over user-perceived characters, not code points. *)
+
+val into_grapheme_mut_iter : string -> Unicode.Grapheme.t MutIterator.t
+(** Creates a mutable iterator over grapheme clusters.
+
+    Similar to `into_grapheme_iter` but returns a mutable iterator. *)
+
+val word_boundaries : string -> int list
+(** Find byte positions of word boundaries.
+
+    ## Examples
+
+    ```ocaml
+    String.word_boundaries "Hello world"
+    (* = [5; 11] - after "Hello" and "world" *)
+    ```
+
+    Uses simplified word boundary detection. *)
+
+val split_words : string -> string list
+(** Split string into words.
+
+    ## Examples
+
+    ```ocaml
+    String.split_words "Hello world"
+    (* = ["Hello"; "world"] *)
+    ```
+
+    Uses simplified word boundary detection. *)
+
+val line_breaks : string -> (int * Unicode.line_break) list
+(** Find line break opportunities.
+
+    Returns list of (position, break_type) where:
+    - `Must_break`: Line must break (newline)
+    - `Can_break`: Line may break (word boundary)
+    - `Dont_break`: Line must not break
+
+    ## Examples
+
+    ```ocaml
+    String.line_breaks "Hello\nworld"
+    (* = [(5, Must_break); (11, Dont_break)] *)
+    ```
+
+    Useful for text wrapping and line breaking. *)
+
+val wrap : width:int -> string -> string list
+(** Wrap text to fit within display width.
+
+    ## Examples
+
+    ```ocaml
+    String.wrap ~width:10 "Hello beautiful world"
+    (* = ["Hello"; "beautiful"; "world"] *)
+    ```
+
+    Breaks at word boundaries when possible. *)
+
+val wrap_words : width:int -> string -> string list
+(** Wrap text at word boundaries to fit within display width.
+
+    Similar to `wrap` but ensures words aren't broken. *)

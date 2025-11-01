@@ -36,6 +36,7 @@ module Telemetry = Telemetry
 module Test = Test
 module Time = Time
 module Timer = Timer
+module Unicode = Unicode
 module UUID = Uuid
 module Version = Version
 module WorkerPool = Worker_pool

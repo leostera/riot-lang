@@ -190,6 +190,9 @@ module Test = Test
 module Time = Time
 (** Time measurement and duration *)
 
+module Unicode = Unicode
+(** Unicode text processing (runes, graphemes, width, segmentation) *)
+
 module UUID = Uuid
 (** Universally unique identifiers *)
 
