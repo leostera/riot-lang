@@ -43,3 +43,5 @@ let open_file path flags perm =
 let pipe () =
   let read_fd, write_fd = Unix.pipe () in
   { read_fd = of_unix read_fd; write_fd = of_unix write_fd }
+
+let is_tty fd = Unix.isatty fd

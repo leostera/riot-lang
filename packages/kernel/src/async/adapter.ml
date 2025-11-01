@@ -63,7 +63,11 @@ module Selector = struct
 
   let register t ~fd ~token ~interest =
     let token = Token.unsafe_to_int token in
-    let flags = Libc.(ev_clear lor ev_receipt lor ev_add) in
+    (* Use level-triggered mode (EV_ENABLE) for TTYs, edge-triggered (EV_CLEAR) for others *)
+    let flags =
+      if Fd.is_tty fd then Libc.(ev_enable lor ev_receipt lor ev_add)
+      else Libc.(ev_clear lor ev_receipt lor ev_add)
+    in
     let changes = ref [] in
 
     (if Interest.is_writable interest then
@@ -79,7 +83,11 @@ module Selector = struct
 
   let reregister t ~fd ~token ~interest =
     let token = Token.unsafe_to_int token in
-    let flags = Libc.(ev_clear lor ev_receipt) in
+    (* Use level-triggered mode (EV_ENABLE) for TTYs, edge-triggered (EV_CLEAR) for others *)
+    let flags =
+      if Fd.is_tty fd then Libc.(ev_enable lor ev_receipt)
+      else Libc.(ev_clear lor ev_receipt)
+    in
 
     let write_flags =
       if Interest.is_writable interest then Libc.(flags lor ev_add)

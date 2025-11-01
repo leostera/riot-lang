@@ -21,6 +21,7 @@ val close : t -> unit
 val equal : t -> t -> bool
 val to_string : t -> string
 val open_file : string -> OpenFlags.t list -> int -> t
+val is_tty : t -> bool
 
 type pipe = { read_fd : t; write_fd : t }
 
