@@ -1,0 +1,233 @@
+open Std
+
+type echo_mode = Normal | Password | None
+
+type t = {
+  value : string;
+  cursor_pos : int;
+  prompt : string;
+  placeholder : string;
+  width : int;
+  char_limit : int;
+  echo_mode : echo_mode;
+  echo_char : char;
+  focused : bool;
+  validator : (string -> (unit, string) result) option;
+  validation_error : string option;
+  offset : int;  (* Horizontal scroll offset for wide content *)
+}
+
+let make () =
+  {
+    value = "";
+    cursor_pos = 0;
+    prompt = "";
+    placeholder = "";
+    width = 0;  (* 0 = unlimited *)
+    char_limit = 0;  (* 0 = unlimited *)
+    echo_mode = Normal;
+    echo_char = '*';
+    focused = false;
+    validator = None;
+    validation_error = None;
+    offset = 0;
+  }
+
+let value t = t.value
+let is_empty t = t.value = ""
+let cursor_position t = t.cursor_pos
+let is_focused t = t.focused
+let is_valid t = Option.is_none t.validation_error
+let validation_error t = t.validation_error
+
+let validate t =
+  match t.validator with
+  | None -> { t with validation_error = None }
+  | Some validator ->
+      (match validator t.value with
+      | Ok () -> { t with validation_error = None }
+      | Error msg -> { t with validation_error = Some msg })
+
+let set_value t str =
+  let value = 
+    if t.char_limit > 0 && String.length str > t.char_limit then
+      String.sub str 0 t.char_limit
+    else str
+  in
+  let cursor_pos = String.length value in
+  validate { t with value; cursor_pos; offset = 0 }
+
+let clear t = set_value t ""
+
+let set_prompt t prompt = { t with prompt }
+let set_placeholder t placeholder = { t with placeholder }
+
+let set_width t width = { t with width = Int.max 0 width }
+let set_char_limit t char_limit = { t with char_limit = Int.max 0 char_limit }
+
+let set_echo_mode t echo_mode = { t with echo_mode }
+let set_echo_char t echo_char = { t with echo_char }
+
+let focus t = { t with focused = true }
+let blur t = { t with focused = false }
+
+let set_validator t validator = validate { t with validator }
+
+let set_cursor_position t pos =
+  let clamped = Int.max 0 (Int.min pos (String.length t.value)) in
+  { t with cursor_pos = clamped }
+
+(* Helper: insert text at cursor *)
+let insert_at_cursor t text =
+  let before = String.sub t.value 0 t.cursor_pos in
+  let after = String.sub t.value t.cursor_pos (String.length t.value - t.cursor_pos) in
+  let new_value = before ^ text ^ after in
+  
+  (* Check char limit *)
+  let new_value = 
+    if t.char_limit > 0 && String.length new_value > t.char_limit then
+      before
+    else new_value
+  in
+  
+  let new_cursor = Int.min (t.cursor_pos + String.length text) (String.length new_value) in
+  validate { t with value = new_value; cursor_pos = new_cursor }
+
+(* Helper: delete character before cursor *)
+let delete_char_backward t =
+  if t.cursor_pos = 0 then t
+  else
+    let before = String.sub t.value 0 (t.cursor_pos - 1) in
+    let after = String.sub t.value t.cursor_pos (String.length t.value - t.cursor_pos) in
+    validate { t with value = before ^ after; cursor_pos = t.cursor_pos - 1 }
+
+(* Helper: delete character after cursor *)
+let delete_char_forward t =
+  if t.cursor_pos >= String.length t.value then t
+  else
+    let before = String.sub t.value 0 t.cursor_pos in
+    let after = String.sub t.value (t.cursor_pos + 1) (String.length t.value - t.cursor_pos - 1) in
+    validate { t with value = before ^ after }
+
+(* Helper: clear before cursor *)
+let clear_before_cursor t =
+  let after = String.sub t.value t.cursor_pos (String.length t.value - t.cursor_pos) in
+  validate { t with value = after; cursor_pos = 0 }
+
+(* Helper: clear after cursor *)
+let clear_after_cursor t =
+  let before = String.sub t.value 0 t.cursor_pos in
+  validate { t with value = before }
+
+(* Helper: delete word backward *)
+let delete_word_backward t =
+  if t.cursor_pos = 0 then t
+  else
+    (* Find start of current word *)
+    let rec find_word_start pos =
+      if pos = 0 then 0
+      else if t.value.[pos - 1] = ' ' then pos
+      else find_word_start (pos - 1)
+    in
+    let word_start = find_word_start t.cursor_pos in
+    let before = String.sub t.value 0 word_start in
+    let after = String.sub t.value t.cursor_pos (String.length t.value - t.cursor_pos) in
+    validate { t with value = before ^ after; cursor_pos = word_start }
+
+let handle_paste t text =
+  if not t.focused then t
+  else insert_at_cursor t text
+
+let handle_key t (key : Event.key) modifier =
+  if not t.focused then t
+  else
+    match (key : Event.key) with
+    (* Movement *)
+    | Event.Left ->
+        set_cursor_position t (t.cursor_pos - 1)
+    | Event.Right ->
+        set_cursor_position t (t.cursor_pos + 1)
+    | Event.Home ->
+        set_cursor_position t 0
+    | Event.End ->
+        set_cursor_position t (String.length t.value)
+    
+    (* Deletion *)
+    | Event.Backspace when modifier = Event.No_modifier ->
+        delete_char_backward t
+    | Event.Delete when modifier = Event.No_modifier ->
+        delete_char_forward t
+    | Event.Backspace when modifier = Event.Ctrl || modifier = Event.Alt ->
+        delete_word_backward t
+    | Event.Key "u" when modifier = Event.Ctrl ->
+        clear_before_cursor t
+    | Event.Key "k" when modifier = Event.Ctrl ->
+        clear_after_cursor t
+    | Event.Key "w" when modifier = Event.Ctrl ->
+        delete_word_backward t
+    | Event.Key "d" when modifier = Event.Ctrl ->
+        delete_char_forward t
+    | Event.Key "h" when modifier = Event.Ctrl ->
+        delete_char_backward t
+    
+    (* Cursor movement (Emacs style) *)
+    | Event.Key "a" when modifier = Event.Ctrl ->
+        set_cursor_position t 0
+    | Event.Key "e" when modifier = Event.Ctrl ->
+        set_cursor_position t (String.length t.value)
+    | Event.Key "b" when modifier = Event.Ctrl ->
+        set_cursor_position t (t.cursor_pos - 1)
+    | Event.Key "f" when modifier = Event.Ctrl ->
+        set_cursor_position t (t.cursor_pos + 1)
+    
+    (* Character input *)
+    | Event.Key s when modifier = Event.No_modifier && String.length s = 1 ->
+        insert_at_cursor t s
+    | Event.Key s when modifier = Event.Shift && String.length s = 1 ->
+        insert_at_cursor t s
+    | Event.Space ->
+        insert_at_cursor t " "
+    
+    | _ -> t
+
+let view t =
+  let content =
+    if String.length t.value = 0 && not t.focused then
+      (* Show placeholder *)
+      t.placeholder
+    else
+      (* Show actual value with echo mode *)
+      match t.echo_mode with
+      | Normal -> t.value
+      | Password -> String.make (String.length t.value) t.echo_char
+      | None -> ""
+  in
+  
+  (* Handle width limiting / horizontal scrolling *)
+  let visible_content =
+    if t.width > 0 && String.length content > t.width then
+      (* Calculate offset to keep cursor visible *)
+      let offset =
+        if t.cursor_pos < t.offset then t.cursor_pos
+        else if t.cursor_pos >= t.offset + t.width then t.cursor_pos - t.width + 1
+        else t.offset
+      in
+      String.sub content offset (Int.min t.width (String.length content - offset))
+    else content
+  in
+  
+  (* Add cursor if focused *)
+  let with_cursor =
+    if t.focused then
+      let cursor_visual_pos = Int.min t.cursor_pos (String.length visible_content) in
+      if cursor_visual_pos >= String.length visible_content then
+        visible_content ^ "█"
+      else
+        let before = String.sub visible_content 0 cursor_visual_pos in
+        let at_cursor = String.sub visible_content cursor_visual_pos 1 in
+        let after = String.sub visible_content (cursor_visual_pos + 1) (String.length visible_content - cursor_visual_pos - 1) in
+        before ^ "\027[7m" ^ at_cursor ^ "\027[0m" ^ after
+    else visible_content
+  in
+  
+  t.prompt ^ with_cursor

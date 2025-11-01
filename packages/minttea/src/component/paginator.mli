@@ -1,0 +1,25 @@
+type style = Dots | Numerals
+
+type t
+
+val make :
+  ?style:style ->
+  ?page:int ->
+  ?per_page:int ->
+  ?total_pages:int ->
+  ?active_dot:string ->
+  ?inactive_dot:string ->
+  ?numerals_format:(int -> int -> string, unit, string) format ->
+  ?text_style:Style.style ->
+  unit ->
+  t
+
+val set_total_pages : t -> int -> t * int
+val get_slice_bounds : t -> int -> int * int
+val items_on_page : t -> int -> int
+val on_last_page : t -> bool
+val on_first_page : t -> bool
+val prev_page : t -> t
+val next_page : t -> t
+val update : t -> Event.t -> t
+val view : t -> string

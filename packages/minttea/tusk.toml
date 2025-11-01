@@ -1,0 +1,15 @@
+[package]
+name = "minttea"
+version = "0.1.0"
+
+[lib]
+path = "src/minttea.ml"
+
+[dependencies]
+std = "*"
+tty = "*"
+colors = "*"
+
+[[bin]]
+name = "hello_world"
+path = "examples/001_hello_world.ml"
