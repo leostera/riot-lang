@@ -7,11 +7,9 @@ exception Deprecated
 
 let failwith = Deprecated
 
-(** Panic with backtrace - enhances Kernel.panic with backtrace info *)
+(** Panic with message - backtrace will be captured by process exception handler *)
 let panic msg =
   let exception Panic of string in
-  let bt = Exception.get_backtrace () in
-  let msg = format "%s\nBacktrace: %s" msg bt in
   raise (Panic msg)
 
 (** Create a mutable cell *)
