@@ -117,20 +117,22 @@ let stats queue =
   let completed = HashMap.len queue.completed in
 
   let failed =
-    HashMap.fold
-      (fun _ result acc ->
-        match result.Package_builder.status with
-        | Failed _ -> acc + 1
-        | _ -> acc)
-      queue.completed 0
+    queue.completed
+    |> HashMap.into_iter
+    |> Iter.Iterator.filter ~fn:(fun (_, result) ->
+           match result.Package_builder.status with
+           | Failed _ -> true
+           | _ -> false)
+    |> Iter.Iterator.count
   in
   let succeeded =
-    HashMap.fold
-      (fun _ result acc ->
-        match result.Package_builder.status with
-        | Built _ | Cached _ -> acc + 1
-        | _ -> acc)
-      queue.completed 0
+    queue.completed
+    |> HashMap.into_iter
+    |> Iter.Iterator.filter ~fn:(fun (_, result) ->
+           match result.Package_builder.status with
+           | Built _ | Cached _ -> true
+           | _ -> false)
+    |> Iter.Iterator.count
   in
 
   (ready, waiting, busy, completed, succeeded, failed)
@@ -144,6 +146,7 @@ let is_complete t ~total_packages =
 let get_result queue pkg_name = HashMap.get queue.completed pkg_name
 
 let get_all_results queue =
-  let results = ref [] in
-  HashMap.iter (fun _key value -> results := value :: !results) queue.completed;
-  !results
+  queue.completed
+  |> HashMap.into_iter
+  |> Iter.Iterator.map ~fn:(fun (_, value) -> value)
+  |> Iter.Iterator.to_list

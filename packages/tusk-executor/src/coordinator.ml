@@ -69,7 +69,7 @@ and handle_worker_ready state worker =
       (* No work available yet - retry after a short delay *)
       let _timer_ref =
         Timer.send_after (self ())
-          (WorkerPool.DynamicWorkerPool.WorkerReady worker) ~after:0.1
+          (WorkerPool.DynamicWorkerPool.WorkerReady worker) ~after:(Time.Duration.from_secs_float 0.1)
       in
       loop state
   | Some node ->

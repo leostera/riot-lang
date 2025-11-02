@@ -111,9 +111,9 @@ let run_action ocamlc sandbox_dir action =
           (* Make the executable file executable *)
           (match Fs.set_permissions abs_output (Fs.Permissions.of_mode 0o755) with
           | Ok () -> ()
-          | Error (SystemError msg) ->
+          | Error err ->
               Log.warn "Failed to set executable permissions on %s: %s"
-                (Path.to_string abs_output) msg);
+                (Path.to_string abs_output) (IO.error_message err));
           result
       | _ -> result)
   | Action.CompileInterface { outputs = []; _ }
@@ -141,7 +141,8 @@ let run_action ocamlc sandbox_dir action =
           Log.debug "WriteFile: success - file written to %s"
             (Path.to_string dest_path);
           Tusk_toolchain.Ocamlc.Success "Written"
-      | Error (SystemError msg) ->
+      | Error err ->
+          let msg = IO.error_message err in
           Log.error "WriteFile: failed - %s" msg;
           Tusk_toolchain.Ocamlc.Failed
             (format "Write failed: %s - %s" (Path.to_string destination) msg))
@@ -219,7 +220,8 @@ let execute_node ~completed toolchain sandbox_dir (node : Action_node.t) =
     let duration = Instant.duration_since ~earlier:start completed_at in
 
     match copy_result with
-    | Error (SystemError msg) ->
+    | Error err ->
+        let msg = IO.error_message err in
         {
           node_id = node.id;
           status =
@@ -306,16 +308,18 @@ let execute ~action_graph ~sandbox ~store:_ toolchain ~concurrency:_ =
     sorted_nodes;
 
   let succeeded =
-    HashMap.fold
-      (fun _ result acc ->
-        match result.status with Cached _ | Executed -> acc + 1 | _ -> acc)
-      completed 0
+    completed
+    |> HashMap.into_iter
+    |> Iter.Iterator.filter ~fn:(fun (_, result) ->
+           match result.status with Cached _ | Executed -> true | _ -> false)
+    |> Iter.Iterator.count
   in
   let failed =
-    HashMap.fold
-      (fun _ result acc ->
-        match result.status with Failed _ | Skipped -> acc + 1 | _ -> acc)
-      completed 0
+    completed
+    |> HashMap.into_iter
+    |> Iter.Iterator.filter ~fn:(fun (_, result) ->
+           match result.status with Failed _ | Skipped -> true | _ -> false)
+    |> Iter.Iterator.count
   in
 
   Log.info

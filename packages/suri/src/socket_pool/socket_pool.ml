@@ -1,4 +1,6 @@
 open Std
+open Std.Collections
+
 module Connection = Connection
 module Handler = Handler
 module Transport = Transport

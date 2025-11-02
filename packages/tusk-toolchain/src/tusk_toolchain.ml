@@ -64,10 +64,10 @@ let check_binaries_exist toolchain =
         (format "ocamlopt not found at %s" (Path.to_string toolchain.ocamlopt))
   | _, _, Ok false ->
       Error (format "ocamldep not found at %s" (Path.to_string ocamldep_path))
-  | Error (Fs.SystemError msg), _, _
-  | _, Error (Fs.SystemError msg), _
-  | _, _, Error (Fs.SystemError msg) ->
-      Error (format "Failed to check binaries: %s" msg)
+  | Error err, _, _
+  | _, Error err, _
+  | _, _, Error err ->
+      Error (format "Failed to check binaries: %s" (IO.error_message err))
 
 let init ~config =
   let version = config.Tusk_model.Toolchain_config.version in
@@ -116,12 +116,12 @@ let init ~config =
               in
               match Fs.symlink ~src:abs_local ~dst:toolchain_path with
               | Ok () -> Ok toolchain
-              | Error (Fs.SystemError msg) ->
+              | Error err ->
                   Error
                     (format
                        "Failed to create toolchain symlink from %s to %s: %s"
                        (Path.to_string toolchain_path)
-                       (Path.to_string abs_local) msg)))
+                       (Path.to_string abs_local) (IO.error_message err))))
       | _ ->
           Error
             (format

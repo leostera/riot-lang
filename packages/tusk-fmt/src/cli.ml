@@ -35,7 +35,7 @@ let collect_ocaml_files root = walk_dir root
 let format_file write quiet file_path =
   let result =
     match Fs.read file_path with
-    | Error (Fs.SystemError err) -> Failed { file = file_path; error = err }
+    | Error err -> Failed { file = file_path; error = IO.error_message err }
     | Ok source -> (
         let tokens = Syn.tokenize source in
         let parse_result = Syn.Parser.parse_implementation ~source tokens in
@@ -46,8 +46,8 @@ let format_file write quiet file_path =
             if write && changed then
               match Fs.write formatted file_path with
               | Ok () -> Success { file = file_path; changed }
-              | Error (Fs.SystemError err) ->
-                  Failed { file = file_path; error = err }
+              | Error err ->
+                  Failed { file = file_path; error = IO.error_message err }
             else Success { file = file_path; changed }
         | diagnostics ->
             let errors =
@@ -113,8 +113,8 @@ let main ~args:argv =
         Error (Failure "Invalid flags"))
       else
         match Fs.exists root with
-        | Error (Fs.SystemError err) ->
-            Log.error "Failed to access %s: %s" (Path.to_string root) err;
+        | Error err ->
+            Log.error "Failed to access %s: %s" (Path.to_string root) (IO.error_message err);
             Error (Failure "Path does not exist")
         | Ok false ->
             Log.error "Path does not exist: %s" (Path.to_string root);

@@ -1,5 +1,4 @@
 open Std
-open Raml
 
 (** RAML CLI - Type checker and compiler.
 

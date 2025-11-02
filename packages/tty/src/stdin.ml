@@ -4,15 +4,18 @@ open Std
 let stdin_fd = Kernel.Fd.to_unix Kernel.IO.stdin
 
 let set_raw_mode () =
-  let termios = Unix.tcgetattr stdin_fd in
-  let new_termios =
-    Unix.
-      { termios with c_icanon = false; c_echo = false; c_vmin = 1; c_vtime = 0 }
-  in
-  Unix.tcsetattr stdin_fd TCSANOW new_termios;
-  (* Set stdin to non-blocking for async I/O *)
-  Unix.set_nonblock stdin_fd;
-  termios
+  if not (Unix.isatty stdin_fd) then
+    raise (Unix.Unix_error (Unix.ENOTTY, "tcgetattr", "stdin is not a TTY"))
+  else
+    let termios = Unix.tcgetattr stdin_fd in
+    let new_termios =
+      Unix.
+        { termios with c_icanon = false; c_echo = false; c_vmin = 1; c_vtime = 0 }
+    in
+    Unix.tcsetattr stdin_fd TCSANOW new_termios;
+    (* Set stdin to non-blocking for async I/O *)
+    Unix.set_nonblock stdin_fd;
+    termios
 
 let restore_mode termios = 
   Unix.clear_nonblock stdin_fd;

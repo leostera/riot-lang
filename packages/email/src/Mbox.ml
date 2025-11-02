@@ -1,6 +1,8 @@
 open Std
 open Std.Iter
 
+module Message = Message
+
 type entry = {
   envelope_from : string Option.t;
   envelope_date : string Option.t;

@@ -52,8 +52,8 @@ let format_file t ~file_path ~check_only =
           (* In inplace mode, we need to read the file to get formatted content *)
           match Fs.read file_path with
           | Ok content -> Formatted { code = content; changed = true }
-          | Error (Fs.SystemError err) ->
-              Error (format "Failed to read formatted file: %s" err))
+          | Error err ->
+              Error (format "Failed to read formatted file: %s" (IO.error_message err)))
     | Ok output ->
         let error_msg =
           if String.length output.Command.stderr > 0 then
@@ -80,8 +80,8 @@ let format_code t ~code ~file_path =
 
   let temp_file_path = Path.of_string temp_file |> Result.unwrap in
   match Fs.write code temp_file_path with
-  | Error (Fs.SystemError err) ->
-      Error (format "Failed to write temp file: %s" err)
+  | Error err ->
+      Error (format "Failed to write temp file: %s" (IO.error_message err))
   | Ok () ->
       let result =
         let ocamlformat_bin = Path.to_string t in

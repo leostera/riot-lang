@@ -171,16 +171,18 @@ let stats t =
   let completed = HashMap.len t.completed in
 
   let failed =
-    HashMap.fold
-      (fun _ result acc ->
-        match result.status with Failed _ | Skipped -> acc + 1 | _ -> acc)
-      t.completed 0
+    t.completed
+    |> HashMap.into_iter
+    |> Iter.Iterator.filter ~fn:(fun (_, result) ->
+           match result.status with Failed _ | Skipped -> true | _ -> false)
+    |> Iter.Iterator.count
   in
   let succeeded =
-    HashMap.fold
-      (fun _ result acc ->
-        match result.status with Cached _ | Executed -> acc + 1 | _ -> acc)
-      t.completed 0
+    t.completed
+    |> HashMap.into_iter
+    |> Iter.Iterator.filter ~fn:(fun (_, result) ->
+           match result.status with Cached _ | Executed -> true | _ -> false)
+    |> Iter.Iterator.count
   in
 
   (ready, later, busy, completed, succeeded, failed)

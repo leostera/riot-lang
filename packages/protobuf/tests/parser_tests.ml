@@ -132,8 +132,8 @@ let generate_expected_files () =
       let expected_file = base_dir ^ "/" ^ base ^ ".expected" in
 
       match Fs.read proto_path with
-      | Error (Fs.SystemError err) ->
-          Format.printf "Error reading %s: %s@." proto_str err
+      | Error err ->
+          Format.printf "Error reading %s: %s@." proto_str (IO.error_message err)
       | Ok content -> (
           match Protobuf.ProtofileFormat.parse content with
           | Error err ->

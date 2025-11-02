@@ -88,7 +88,10 @@ let compute_input_hash ~package ~depset ~workspace =
 
   (* Source file contents - use files from package.sources, no scanning! *)
   let all_source_files =
-    package.sources.src @ package.sources.native @ package.sources.tests
+    package.sources.src 
+    @ package.sources.native 
+    @ package.sources.tests
+    @ package.sources.examples
   in
   let sorted_files =
     List.sort

@@ -225,8 +225,8 @@ let generate_interface t ~cwd ~includes ~flags ~output source =
         match Fs.write out.Command.stdout output with
         | Ok _ ->
             Success (format "Generated interface %s" (Path.to_string output))
-        | Error (Fs.SystemError msg) ->
-            Failed (format "Failed to write %s: %s" (Path.to_string output) msg)
+        | Error err ->
+            Failed (format "Failed to write %s: %s" (Path.to_string output) (IO.error_message err))
       else
         (* Include stderr in the error message for debugging *)
         Failed

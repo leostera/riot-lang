@@ -1,4 +1,5 @@
 open Std
+open Std.Collections
 
 type parser = { cursor : Token_cursor.t }
 (** Parser state *)

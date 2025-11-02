@@ -128,17 +128,17 @@ let main ~args:argv =
                       (Collections.HashMap.insert files_table key
                          (source, [ diag ])))
               all_diagnostics;
-            Collections.HashMap.iter
-              (fun file_str (source, diags) ->
-                let file = Path.v file_str in
-                let grouped = Diagnostic.group_diagnostics diags in
-                List.iter
-                  (fun grouped_diag ->
-                    print "%s"
-                      (Diagnostic.grouped_to_formatted_output ~file ~source
-                         grouped_diag))
-                  grouped)
-              files_table;
+            files_table
+            |> Collections.HashMap.into_iter
+            |> Iter.Iterator.for_each ~fn:(fun (file_str, (source, diags)) ->
+                   let file = Path.v file_str in
+                   let grouped = Diagnostic.group_diagnostics diags in
+                   List.iter
+                     (fun grouped_diag ->
+                       print "%s"
+                         (Diagnostic.grouped_to_formatted_output ~file ~source
+                            grouped_diag))
+                     grouped);
             if List.length all_diagnostics > 0 then
               Error (Failure "Lint errors found")
             else Ok ()

@@ -45,18 +45,7 @@ let create ~config =
       }
   | Error err ->
       Printf.printf "[Scheduler] ERROR: Failed to create Async.Poll: %s\n%!"
-        (match err with
-        | `System_error s -> s
-        | `Noop -> "Unknown error"
-        | `IO_error e -> IO.error_message e
-        | `Closed -> "Closed"
-        | `Connection_closed -> "Connection closed"
-        | `Eof -> "End of file"
-        | `Exn e -> Exception.to_string e
-        | `No_info -> "No info"
-        | `Process_down -> "Process down"
-        | `Timeout -> "Timeout"
-        | `Would_block -> "Would block");
+        (IO.error_message err);
       failwith "Failed to create I/O polling system"
 
 let current_scheduler = ref None
@@ -200,10 +189,7 @@ let handle_syscall k t proc name interest source timeout =
             Printf.printf
               "[Scheduler] ERROR: Failed to register I/O for process %s: %s\n%!"
               pid_str
-              (match err with
-              | `IO_error e -> IO.error_message e
-              | `Noop -> "Unknown error"
-              | _ -> "Other error");
+              (IO.error_message err);
             (* Don't continue - the I/O operation failed to register *)
             k (Discontinue (Failure "Failed to register I/O")))
 
@@ -275,10 +261,7 @@ let handle_exit_proc t proc reason =
         | Ok () -> ()
         | Error err ->
             Printf.printf "[Scheduler] WARN: Failed to deregister I/O: %s\n%!"
-              (match err with
-              | `IO_error e -> IO.error_message e
-              | `Noop -> "Unknown error"
-              | _ -> "Other error"));
+              (IO.error_message err));
 
     Pid_table.remove t.processes (Process.pid proc);
     Process.mark_as_finalized proc)
@@ -364,10 +347,7 @@ let poll_io t =
     | Ok events -> events
     | Error err ->
         print "[Scheduler] ERROR: Failed to poll I/O: %s\n"
-          (match err with
-          | `IO_error e -> IO.error_message e
-          | `Noop -> "Unknown error"
-          | _ -> "Other error");
+          (IO.error_message err);
         []
   in
   List.iter
@@ -376,15 +356,12 @@ let poll_io t =
       let proc : Process.t = Async.Token.unsafe_to_value token in
       match Process.state proc with
        | Waiting_io { source; _ } ->
-           (match Async.Poll.deregister t.io_poll source with
-           | Ok () -> ()
-           | Error err ->
-               print "[Scheduler] WARN: Failed to deregister I/O for process %s: %s\n"
-                 (Pid.to_string (Process.pid proc))
-                 (match err with
-                 | `IO_error e -> IO.error_message e
-                 | `Noop -> "Unknown error"
-                 | _ -> "Other error"));
+            (match Async.Poll.deregister t.io_poll source with
+            | Ok () -> ()
+            | Error err ->
+                print "[Scheduler] WARN: Failed to deregister I/O for process %s: %s\n"
+                  (Pid.to_string (Process.pid proc))
+                  (IO.error_message err));
            if Process.is_alive proc then (
              Process.add_ready_token proc token source;
              Process.mark_as_runnable proc;
