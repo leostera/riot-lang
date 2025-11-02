@@ -1,30 +1,20 @@
 (* Don't open Std here to avoid conflict with Std.Command *)
-
 type Std.Message.t += | ProgramDone
 
-(* Core modules *)
-module Timer = Timer_ref
+module App = App
+module Command = Command
+module Component = Component
 module Config = Config
 module Event = Event
-module Command = Command
-module App = App
 module Program = Program
-
-(* Styles and utilities *)
 module Style = Style
-module Layout = Style.Layout
 
-(* Components *)
-module Component = Component
-
-let config ?(render_mode = `clear) ?(fps = 60) () = Config.make ~render_mode ~fps ()
-
+let config = Config.make
 let app = App.make
 
 let run ?(config = config ()) initial_model app =
   let prog = Program.make ~app ~config in
-  Program.run prog initial_model;
-  Std.Log.trace "terminating"
+  Program.run prog initial_model |> Std.Result.expect ~msg:"Program failed"
 
 let start ?(config = config ()) app initial_model =
   let main ~args:_ =
@@ -46,4 +36,5 @@ let start ?(config = config ()) app initial_model =
     in
     wait ()
   in
-  Miniriot.run ~main ~args:[] ()
+  let _ = Miniriot.run ~main ~args:[] () in
+  ()

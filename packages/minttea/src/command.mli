@@ -25,7 +25,7 @@ type t =
   | Batch of t list  (** Execute commands concurrently *)
   | Sequence of t list  (** Execute commands sequentially *)
   | Seq of t list  (** @deprecated Use Batch or Sequence *)
-  | Set_timer of Timer_ref.t * float
+  | Set_timer of { ref : Timer.id Ref.t ; duration : Time.Duration.t }
   | Query_window_size  (** Query terminal window size - responds with WindowSize message *)
 
 (** Helper functions *)
@@ -36,7 +36,7 @@ val batch : t list -> t
 val sequence : t list -> t
 (** Create a sequence command that executes in order *)
 
-val timer : after:float -> Timer_ref.t * t
+val timer : after:Time.Duration.t -> Timer.id Ref.t * t
 (** Create a timer command with a new timer reference *)
 
 val query_window_size : t

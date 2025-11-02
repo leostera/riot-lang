@@ -54,10 +54,18 @@ let start () =
   spawn (fun () ->
     Log.trace "[IO_LOOP] IO loop process started\n%!";
     send parent (IoStarted (self ()));
-    let termios = Stdin.setup () in
-    Log.trace "[IO_LOOP] Stdin setup complete, entering main loop\n%!";
-    loop parent;
-    Log.trace "[IO_LOOP] Loop exited\n%!";
-    Stdin.shutdown termios;
-    Ok ()
+    match Stdin.setup () with
+    | termios ->
+        Log.trace "[IO_LOOP] Stdin setup complete, entering main loop\n%!";
+        loop parent;
+        Log.trace "[IO_LOOP] Loop exited\n%!";
+        Stdin.shutdown termios;
+        Ok ()
+    | exception Unix.Unix_error (Unix.ENOTTY, _, _) ->
+        Log.trace "[IO_LOOP] Stdin is not a TTY, skipping input handling\n%!";
+        (* Just exit - no input will be processed but output still works *)
+        Ok ()
+    | exception Unix.Unix_error (Unix.ENODEV, _, _) ->
+        Log.trace "[IO_LOOP] No TTY device available, skipping input handling\n%!";
+        Ok ()
   )

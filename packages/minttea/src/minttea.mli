@@ -1,33 +1,30 @@
 (** Minttea - Elm-style terminal UI framework
     
+
     Build interactive terminal applications using the Model-View-Update pattern.
 
 *)
 
 open Std
 
-(** Timer references for unique timer identification *)
-module Timer : sig
-  type t
-  val equal : t -> t -> bool
-end
-
 (** Configuration *)
 module Config : sig
+  type render_mode = Clear | Persist
+
   type t = {
-    render_mode : [ `clear | `persist ];
+    render_mode : render_mode;
     fps : int;
   }
 
   val make :
-    ?render_mode:[ `clear | `persist ] ->
+    ?render_mode:render_mode ->
     ?fps:int ->
     unit ->
     t
 end
 
 val config :
-  ?render_mode:[ `clear | `persist ] ->
+  ?render_mode:Config.render_mode ->
   ?fps:int ->
   unit ->
   Config.t
@@ -83,7 +80,7 @@ module Event : sig
     | KeyDown of key * modifier
     | Mouse of mouse_event
     | Resize of window_size
-    | Timer of Timer.t
+    | Timer of Timer.id Ref.t
     | Frame of Time.Instant.t
     | Paste of string
     | Focus_gained
@@ -116,12 +113,12 @@ module Command : sig
     | Batch of t list
     | Sequence of t list
     | Seq of t list
-    | Set_timer of Timer.t * float
+    | Set_timer of { ref : Timer.id Ref.t; duration : Time.Duration.t }
     | Query_window_size
 
   val batch : t list -> t
   val sequence : t list -> t
-  val timer : after:float -> Timer.t * t
+  val timer : after:Time.Duration.t -> Timer.id Ref.t * t
   val query_window_size : t
 end
 

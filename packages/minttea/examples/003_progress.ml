@@ -1,0 +1,79 @@
+open Std
+open Minttea
+open Minttea.Component
+
+(* Model: contains a progress bar and completion state *)
+type model = {
+  progress : Progress.t;
+  waiting_to_quit : bool;
+}
+
+(* Initialize with a progress bar and start a timer *)
+let init model =
+  let _timer, cmd = Command.timer ~after:(Time.Duration.from_secs_float 0.1) in
+  cmd
+
+(* Update: handle timer events to increment progress *)
+let update event model =
+  match event with
+  | Event.KeyDown (Event.Key "q", _) 
+  | Event.KeyDown (Event.Key "Q", _)
+  | Event.KeyDown (Event.Escape, _) 
+  | Event.KeyDown (Event.Key "c", Event.Ctrl) ->
+      (model, Command.Quit)
+  
+  | Event.Timer _timer ->
+      if model.waiting_to_quit then
+        (* Delay is over, now quit *)
+        (model, Command.Quit)
+      else
+        let progress = Progress.increment model.progress 0.02 in
+        if Progress.is_finished progress then
+          (* Progress complete, wait 1 second before quitting *)
+          let _timer, cmd = Command.timer ~after:(Time.Duration.from_secs_float 1.0) in
+          ({ progress; waiting_to_quit = true }, cmd)
+        else
+          (* Continue incrementing *)
+          let _timer, cmd = Command.timer ~after:(Time.Duration.from_secs_float 0.1) in
+          ({ progress; waiting_to_quit = false }, cmd)
+  
+  | _ -> (model, Command.Noop)
+
+(* View: render the progress bar *)
+let view model =
+  let progress_view = Progress.view model.progress in
+  let title = 
+    Style.(default
+    |> fg (color "#00FFFF")
+    |> bold true
+    |> render)
+    "Downloading..."
+  in
+  
+  let instructions = 
+    if model.waiting_to_quit then
+      "\n\nCompleted! Exiting..."
+    else
+      "\n\nPress 'q' or Ctrl+C to quit"
+  in
+  
+  title ^ "\n" ^ progress_view ^ instructions
+
+(* Create the app *)
+let app = App.make ~init ~update ~view ()
+
+(* Initial model with a progress bar *)
+let initial_model = 
+  {
+    progress = Progress.make 
+      ~percent:0.0
+      ~width:40
+      ~show_percentage:true
+      ~color:(`Gradient (Style.color "#FF00FF", Style.color "#00FFFF"))
+      ();
+    waiting_to_quit = false;
+  }
+
+(* Run it *)
+let config = Minttea.config ()
+let () = Minttea.start ~config app initial_model

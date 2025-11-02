@@ -11,5 +11,25 @@ tty = "*"
 colors = "*"
 
 [[bin]]
-name = "hello_world"
+name = "001_hello_world"
 path = "examples/001_hello_world.ml"
+
+[[bin]]
+name = "002_spinner"
+path = "examples/002_spinner.ml"
+
+[[bin]]
+name = "003_progress"
+path = "examples/003_progress.ml"
+
+[[bin]]
+name = "004_simple_timer"
+path = "examples/004_simple_timer.ml"
+
+[[bin]]
+name = "005_progress_debug"
+path = "examples/005_progress_debug.ml"
+
+[[bin]]
+name = "006_timer_test"
+path = "examples/006_timer_test.ml"

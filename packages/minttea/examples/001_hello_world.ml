@@ -2,7 +2,6 @@ open Std
 open Minttea
 
 (* Model: Just a simple message *)
-
 type model = string
 
 (* Initialize: Takes initial model, returns command *)

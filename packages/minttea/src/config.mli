@@ -1,13 +1,15 @@
 (** Application configuration *)
 
+type render_mode = Clear | Persist
+
 type t = {
-  render_mode : [ `clear | `persist ];
+  render_mode : render_mode;
   fps : int;
 }
 (** Configuration for the terminal application *)
 
 val make :
-  ?render_mode:[ `clear | `persist ] ->
+  ?render_mode:render_mode ->
   ?fps:int ->
   unit ->
   t

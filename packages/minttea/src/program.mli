@@ -2,7 +2,7 @@ open Std
 
 (** Main program runtime for Minttea applications *)
 
-type Message.t += Timer of Timer_ref.t
+type Message.t += Timer of Timer.id Ref.t
 (** Program message types *)
 
 type 'model t

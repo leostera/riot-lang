@@ -19,14 +19,14 @@ type t =
   | Batch of t list
   | Sequence of t list
   | Seq of t list
-  | Set_timer of Timer_ref.t * float
+  | Set_timer of { ref : Timer.id Ref.t; duration : Time.Duration.t }
   | Query_window_size
 
 let batch cmds = Batch cmds
 let sequence cmds = Sequence cmds
 
 let timer ~after =
-  let ref = Timer_ref.make () in
-  (ref, Set_timer (ref, after))
+  let ref = Ref.make () in
+  (ref, Set_timer { ref; duration = after })
 
 let query_window_size = Query_window_size

@@ -22,6 +22,7 @@ type Message.t +=
   | Disable_focus_tracking
   | Set_window_title of string
   | RendererStarted of Pid.t
+  | ShutdownComplete
 (** Renderer message types *)
 
 val start : config:Config.t -> unit -> t

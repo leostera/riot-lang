@@ -75,12 +75,15 @@ type t =
   | KeyDown of key * modifier
   | Mouse of mouse_event
   | Resize of window_size
-  | Timer of Timer_ref.t
+  | Timer of Timer.id Ref.t
   | Frame of Time.Instant.t
   | Paste of string  (** Bracketed paste content *)
   | Focus_gained
   | Focus_lost
   | Custom of Message.t
+
+val to_string : t -> string
+(** Convert an event to a human-readable string *)
 
 val pp : Format.formatter -> t -> unit
 (** Pretty print an event *)

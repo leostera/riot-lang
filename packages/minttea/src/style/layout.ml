@@ -1,4 +1,5 @@
 open Std
+open Std.Collections
 open Util
 
 (* Join strings horizontally with alignment *)

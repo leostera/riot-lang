@@ -18,7 +18,7 @@ type Message.t +=
   | Disable_focus_tracking
   | Set_window_title of string
   | RendererStarted of Pid.t
-  | RendererStopped
+  | ShutdownComplete
 
 type t = Pid.t
 
@@ -27,7 +27,7 @@ type state = {
   ticker : Timer.id;
   width : int;
   height : int;
-  render_mode : [ `clear | `persist ];
+  render_mode : Config.render_mode;
   mutable buffer : string;
   mutable last_render : string;
   mutable lines_rendered : int;
@@ -46,8 +46,19 @@ let lines state = state.buffer |> String.split_on_char '\n'
 let rec loop state =
   match receive_any () with
   | Shutdown ->
-      flush state;
-      restore state
+      (* Make stdout blocking temporarily for shutdown to avoid Sys_blocked_io *)
+      (try Unix.clear_nonblock Unix.stdout with _ -> ());
+      
+      (* Flush any pending buffer content first, without clearing previous lines *)
+      (try 
+        if not (is_empty state) then (
+          (* Print the buffer directly without clearing, since this is the final output *)
+          print "%s\n%!" state.buffer;
+          state.buffer <- ""
+        )
+        with Sys_blocked_io -> ());
+      (try restore state with Sys_blocked_io -> ());
+      send state.runner ShutdownComplete
   | Tick ->
       tick state;
       loop state
@@ -87,17 +98,29 @@ let rec loop state =
   | _ -> loop state
 
 and restore t =
-  if t.cursor_visibility = `hidden then Tty.Escape_seq.show_cursor_seq ();
+  let output = Buffer.create 64 in
+  
+  if t.cursor_visibility = `hidden then 
+    Buffer.add_string output "\x1b[?25h"; (* show cursor *)
+  
   if t.mouse_enabled then (
     (* Disable mouse SGR mode *)
-    print "\x1b[?1006l%!";
+    Buffer.add_string output "\x1b[?1006l";
     (* Disable mouse tracking *)
     match t.mouse_mode with
-    | Some Cell_motion -> print "\x1b[?1002l%!"
-    | Some All_motion -> print "\x1b[?1003l%!"
+    | Some Cell_motion -> Buffer.add_string output "\x1b[?1002l"
+    | Some All_motion -> Buffer.add_string output "\x1b[?1003l"
     | None -> ());
-  if t.bracketed_paste_enabled then print "\x1b[?2004l%!";
-  if t.focus_tracking_enabled then print "\x1b[?1004l%!"
+  
+  if t.bracketed_paste_enabled then 
+    Buffer.add_string output "\x1b[?2004l";
+  
+  if t.focus_tracking_enabled then 
+    Buffer.add_string output "\x1b[?1004l";
+  
+  (* Single print with flush *)
+  if Buffer.length output > 0 then
+    print "%s%!" (Buffer.contents output)
 
 and tick t =
   let now = Time.Instant.now () in
@@ -108,18 +131,27 @@ and flush t =
   let new_lines = lines t in
   let new_lines_this_flush = List.length new_lines in
 
+  (* Build entire output as a string, then print once *)
+  let output = Buffer.create 256 in
+  
   (* clean last rendered lines *)
-  if t.render_mode = `clear && t.lines_rendered > 0 then
+  if t.render_mode = Config.Clear && t.lines_rendered > 0 then
     for _i = 1 to t.lines_rendered - 1 do
-      Terminal.clear_line ();
-      Terminal.cursor_up 1
+      Buffer.add_string output "\x1b[2K";  (* clear line *)
+      Buffer.add_string output "\x1b[1A";  (* cursor up *)
     done;
 
-  (* reset screen if its on alt *)
-  print "%s%!" t.buffer;
+  (* Add the actual buffer content *)
+  Buffer.add_string output t.buffer;
 
-  if t.is_altscreen_active then Terminal.move_cursor new_lines_this_flush 0
-  else Terminal.cursor_back t.width;
+  (* Move cursor back to start *)
+  if t.is_altscreen_active then
+    Buffer.add_string output (format "\x1b[%d;%dH" new_lines_this_flush 0)
+  else
+    Buffer.add_string output (format "\x1b[%dD" t.width);
+
+  (* Single print with flush at the end *)
+  print "%s%!" (Buffer.contents output);
 
   (* update state *)
   t.last_render <- t.buffer;
@@ -212,7 +244,7 @@ let start ~config () =
     send parent (RendererStarted (self ()));
     let Config.{ render_mode; fps } = config in
     let ticker =
-      Timer.send_interval (self ()) Tick ~interval:(fps_to_secs fps)
+      Timer.send_interval (self ()) Tick ~interval:(Time.Duration.from_secs_float (fps_to_secs fps))
     in
     loop
       {

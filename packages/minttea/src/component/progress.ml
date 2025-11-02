@@ -1,4 +1,5 @@
 open Std
+open Std.Collections
 
 type t = {
   color : [ `Plain of Style.color | `Gradient of Style.color array ];

@@ -2,9 +2,8 @@ module Cmd = Command
 open Std
 
 type Message.t += 
-  | Timer of Timer_ref.t
-  | RendererStopped
-  | IoStopped
+  | Timer of Timer.id Ref.t
+  | ShutdownComplete
 
 type 'model t = { app : 'model App.t; config : Config.t }
 
@@ -71,8 +70,8 @@ let run t initial_model =
     | Batch cmds -> List.exists handle_cmd cmds
     | Sequence cmds -> List.exists handle_cmd cmds
     | Seq cmds -> List.exists handle_cmd cmds
-    | Set_timer (ref, after_secs) ->
-        let _ = Timer.send_after (self ()) (Timer ref) ~after:after_secs in
+    | Set_timer { ref; duration } ->
+        let _ = Timer.send_after (self ()) (Timer ref) ~after:duration in
         false
     | Query_window_size -> false
   in
@@ -85,48 +84,48 @@ let run t initial_model =
     Log.trace "Quit during initialization";
     Ok ()
   ) else (
-  Renderer.render renderer (t.app.view initial_model);
+    let initial_view = t.app.view initial_model in
+    Renderer.render renderer initial_view;
 
-  (* Shutdown helper *)
-  let shutdown () =
-    Log.trace "Shutting down Minttea";
-    Renderer.show_cursor renderer;
-    Renderer.exit_alt_screen renderer;
-    Renderer.shutdown renderer;
-    send io Io_loop.Shutdown;
-    (* Give children a moment to process shutdown before main exits *)
-    Unix.sleepf 0.1
-  in
+    (* Shutdown helper - initiates shutdown and waits for renderer *)
+    let shutdown () =
+      Log.trace "Shutting down Minttea";
+      Renderer.show_cursor renderer;
+      Renderer.exit_alt_screen renderer;
+      Renderer.shutdown renderer;
+      send io Io_loop.Shutdown;
 
-  (* Main event loop *)
-  let rec loop model =
-      let selector = function
-        | Io_loop.Input event -> `select (`Event event)
-        | Timer ref -> `select (`Timer ref)
-        | _ -> `skip
+      (* Wait for renderer to acknowledge shutdown *)
+      let rec wait_for_renderer () =
+        match receive_any () with
+        | Renderer.ShutdownComplete ->
+          Log.trace "Renderer shutdown complete"
+        | _ -> wait_for_renderer ()
       in
-      
-      match receive ~selector () with
-      | `Timer ref ->
-          Log.trace "[Program] Received Timer event";
-          let model, cmd = t.app.update (Event.Timer ref) model in
-          if handle_cmd cmd then shutdown ()
-          else (
-            Renderer.render renderer (t.app.view model);
-            loop model
-          )
-      | `Event event ->
-          let event_str = Format.asprintf "%a" Event.pp event in
-          Log.trace "[Program] Received Event: %s" event_str;
-          let model, cmd = t.app.update event model in
-          if handle_cmd cmd then shutdown ()
-          else (
-            Renderer.render renderer (t.app.view model);
-            loop model
-          )
+      wait_for_renderer ()
     in
-    
-    loop initial_model;
+
+    (* Main event loop *)
+    let rec loop model last_view =
+      let selector msg = match msg with
+        | Io_loop.Input event -> `select event
+        | Timer ref -> `select (Event.Timer ref)
+        | ShutdownComplete -> `skip  (* Handled in shutdown sequence *)
+        | other -> `select (Event.Custom other)  (* User custom messages *)
+      in
+
+      let event = receive ~selector () in
+      let model, cmd = t.app.update event model in
+      let new_view = t.app.view model in
+      (* Render if view changed *)
+      if new_view <> last_view then
+        Renderer.render renderer new_view;
+      (* Handle command after rendering *)
+      if handle_cmd cmd then shutdown ()
+      else loop model new_view
+    in
+
+    loop initial_model initial_view;
     Log.trace "Program finished";
     Ok ()
   )

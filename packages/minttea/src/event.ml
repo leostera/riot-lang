@@ -87,19 +87,19 @@ type t =
   | KeyDown of key * modifier
   | Mouse of mouse_event
   | Resize of window_size
-  | Timer of Timer_ref.t
+  | Timer of Timer.id Ref.t
   | Frame of Time.Instant.t
   | Paste of string
   | Focus_gained
   | Focus_lost
   | Custom of Message.t
 
-let pp fmt = function
+let to_string = function
   | KeyDown (key, mod_) ->
       let mod_str = modifier_to_string mod_ in
       let key_str = key_to_string key in
-      if mod_str = "" then Format.fprintf fmt "KeyDown(%s)" key_str
-      else Format.fprintf fmt "KeyDown(%s+%s)" mod_str key_str
+      if mod_str = "" then format "KeyDown(%s)" key_str
+      else format "KeyDown(%s+%s)" mod_str key_str
   | Mouse { button; event_type; x; y; _ } ->
       let btn =
         match button with
@@ -115,18 +115,20 @@ let pp fmt = function
         | Release -> "release"
         | Motion -> "motion"
       in
-      Format.fprintf fmt "Mouse(%s,%s,x=%d,y=%d)" btn evt x y
+      format "Mouse(%s,%s,x=%d,y=%d)" btn evt x y
   | Resize { width; height } ->
-      Format.fprintf fmt "Resize(w=%d,h=%d)" width height
-  | Timer _ref -> Format.fprintf fmt "Timer(...)"
-  | Frame _instant -> Format.fprintf fmt "Frame(...)"
+      format "Resize(w=%d,h=%d)" width height
+  | Timer _ref -> "Timer(...)"
+  | Frame _instant -> "Frame(...)"
   | Paste content ->
       let preview =
         if String.length content > 20 then
           String.sub content 0 17 ^ "..."
         else content
       in
-      Format.fprintf fmt "Paste(%S)" preview
-  | Focus_gained -> Format.fprintf fmt "FocusGained"
-  | Focus_lost -> Format.fprintf fmt "FocusLost"
-  | Custom _msg -> Format.fprintf fmt "Custom"
+      format "Paste(%S)" preview
+  | Focus_gained -> "FocusGained"
+  | Focus_lost -> "FocusLost"
+  | Custom _msg -> "Custom"
+
+let pp fmt event = Format.fprintf fmt "%s" (to_string event)
