@@ -29,6 +29,64 @@
     ```ocaml let counter = cell 0 in Cell.set counter 1; Cell.get counter (* 1
     *) ``` *)
 
+(** {1 Collection Types and Constructors} *)
+
+type 'a vec = 'a Kernel.vec
+(** Vector type alias - dynamically-sized array *)
+
+type 'a queue = 'a Kernel.queue
+(** Queue type alias - FIFO queue *)
+
+type 'a set = 'a Kernel.set
+(** Set type alias - hash-based set *)
+
+type ('k, 'v) map = ('k, 'v) Kernel.map
+(** Map type alias - hash-based map *)
+
+val vec : 'a list -> 'a vec
+(** Create a vector from a list.
+    
+    ## Examples
+    
+    ```ocaml
+    let v: int vec = vec [1; 2; 3] in
+    (* v is a Vector.t containing [1; 2; 3] *)
+    ```
+*)
+
+val queue : 'a list -> 'a queue
+(** Create a queue from a list.
+    
+    ## Examples
+    
+    ```ocaml
+    let q: int queue = queue [1; 2; 3] in
+    (* q is a Queue.t containing [1; 2; 3] *)
+    ```
+*)
+
+val set : 'a list -> 'a set
+(** Create a set from a list.
+    
+    ## Examples
+    
+    ```ocaml
+    let s: int set = set [1; 2; 3] in
+    (* s is a HashSet.t containing {1, 2, 3} *)
+    ```
+*)
+
+val map : ('k * 'v) list -> ('k, 'v) map
+(** Create a map from a list of key-value pairs.
+    
+    ## Examples
+    
+    ```ocaml
+    let m: (string, int) map = map [("a", 1); ("b", 2)] in
+    (* m is a HashMap.t containing {"a" -> 1, "b" -> 2} *)
+    ```
+*)
+
 val panic : string -> 'a
 (** Raises a panic exception with the given message. Program terminates unless
     caught.

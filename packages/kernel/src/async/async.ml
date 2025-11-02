@@ -1,5 +1,4 @@
 include Common
-module Iovec = Iovec
 module Token = Token
 module Fd = Fd
 module Interest = Interest

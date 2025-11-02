@@ -39,7 +39,6 @@
     - [Path] - Type-safe filesystem paths
     - [UUID] - Universally unique identifiers
     - [String] - UTF-8 strings
-    - [List] - Extended list utilities
     - [Buffer] - String building
     - [Char] - Character operations
 
@@ -100,9 +99,6 @@ module Agent = Agent
 module ArgParser = Arg_parser
 (** Command-line argument parsing *)
 
-module Buffer = Buffer
-(** Growable string buffers *)
-
 module Cell = Cell
 (** Mutable cells for interior mutability *)
 
@@ -148,9 +144,6 @@ module IO = IO
 module Iter = Iter
 (** Iteration and cursor utilities for sequences and parsing *)
 
-module List = List
-(** Extended list utilities *)
-
 module Log = Log
 (** Structured logging *)
 
@@ -174,6 +167,9 @@ module String = String
 
 module Supervisor = Supervisor
 (** OTP-style process supervision *)
+
+module Sync = Sync
+(** Synchronization primitives *)
 
 module System = System
 (** System information and operations *)
@@ -222,6 +218,32 @@ val todo : string -> 'a
 
 val unimplemented : unit -> 'a
 (** Mark code as unimplemented - panics when called *)
+
+(** {1 Collection Type Aliases} *)
+
+type 'a vec = 'a Collections.Vector.t
+(** Vector type alias - dynamically-sized array. Use [vec] to create from a list. *)
+
+type 'a queue = 'a Collections.Queue.t
+(** Queue type alias - FIFO queue. Use [queue] to create from a list. *)
+
+type 'a set = 'a Collections.HashSet.t
+(** Set type alias - hash-based set. Use [set] to create from a list. *)
+
+type ('k, 'v) map = ('k, 'v) Collections.HashMap.t
+(** Map type alias - hash-based map. Use [map] to create from a list of pairs. *)
+
+val vec : 'a list -> 'a vec
+(** Create a vector from a list. Example: [let v = vec [1; 2; 3]] *)
+
+val queue : 'a list -> 'a queue
+(** Create a queue from a list. Example: [let q = queue [1; 2; 3]] *)
+
+val set : 'a list -> 'a set
+(** Create a set from a list. Example: [let s = set [1; 2; 3]] *)
+
+val map : ('k * 'v) list -> ('k, 'v) map
+(** Create a map from a list of key-value pairs. Example: [let m = map [("a", 1); ("b", 2)]] *)
 
 (** {1 Process Management} *)
 

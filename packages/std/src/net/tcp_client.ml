@@ -11,9 +11,7 @@ type error = [ `Connection_refused | `Closed | `System_error of string ]
 
 let connect ~host ~port =
   match Kernel.Net.Addr.of_host_and_port ~host ~port with
-  | Error `Noop -> Error (`System_error "Failed to resolve address")
-  | Error `No_info -> Error (`System_error "No address info available")
-  | Error _ -> Error (`System_error "Address resolution error")
+  | Error err -> Error (`System_error (IO.error_message err))
   | Ok addr -> (
       match Tcp_stream.connect addr with
       | Ok stream -> Ok { stream; leftover = "" }

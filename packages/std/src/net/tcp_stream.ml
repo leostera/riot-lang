@@ -15,9 +15,7 @@ let connect addr =
         let source = Kernel.Net.Tcp_stream.to_source stream in
         Miniriot.syscall ~name:"TcpStream.connect" ~interest:Interest.writable
           ~source (fun () -> Ok stream)
-    | Error
-        ( `Noop | `Closed | `Connection_closed | `Eof | `Exn _ | `No_info
-        | `Process_down | `Timeout | `IO_error _ | `Would_block ) ->
+    | Error _err ->
         (* Connection refused or error *)
         Error `Connection_refused
   in
@@ -30,13 +28,11 @@ let read stream buffer ?(pos = 0) ?len () =
     match Kernel.Net.Tcp_stream.read stream buffer ~pos ~len with
     | Ok 0 -> Error `Closed (* EOF *)
     | Ok bytes_read -> Ok bytes_read
-    | Error `Would_block ->
+    | Error IO.Operation_would_block ->
         (* Would block, register interest and wait - this suspends the process *)
         Miniriot.syscall ~name:"TcpStream.read" ~interest:Interest.readable
           ~source (fun () -> read_loop ())
-    | Error
-        ( `Noop | `Closed | `Connection_closed | `Eof | `Exn _ | `No_info
-        | `Process_down | `Timeout | `IO_error _ ) ->
+    | Error _err ->
         (* Some other error *)
         Error (`System_error "Read failed")
   in
@@ -48,13 +44,11 @@ let write stream buffer ?(pos = 0) ?len () =
   let rec write_loop () =
     match Kernel.Net.Tcp_stream.write stream buffer ~pos ~len with
     | Ok bytes_written -> Ok bytes_written
-    | Error `Would_block ->
+    | Error IO.Operation_would_block ->
         (* Would block, register interest and wait - this suspends the process *)
         Miniriot.syscall ~name:"TcpStream.write" ~interest:Interest.writable
           ~source (fun () -> write_loop ())
-    | Error
-        ( `Noop | `Closed | `Connection_closed | `Eof | `Exn _ | `No_info
-        | `Process_down | `Timeout | `IO_error _ ) ->
+    | Error _err ->
         (* Some other error *)
         Error (`System_error "Write failed")
   in

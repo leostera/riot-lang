@@ -1,36 +1,4 @@
-type io_error =
-  [ `Connection_closed
-  | `Exn of exn
-  | `No_info
-  | `IO_error of IO.error
-  | `Noop
-  | `Eof
-  | `Closed
-  | `Process_down
-  | `Timeout
-  | `Would_block ]
-
-type ('ok, 'err) io_result = ('ok, ([> io_error ] as 'err)) Stdlib.result
-
-val pp_err : Format.formatter -> [< io_error ] -> unit
-
-val syscall :
-  (unit -> ('a, ([> io_error ] as 'b)) io_result) -> ('a, 'b) io_result
-
-module Iovec : sig
-  type iov = { ba : bytes; off : int; len : int }
-  type t = iov array
-
-  val with_capacity : int -> t
-  val create : ?count:int -> size:int -> unit -> t
-  val sub : ?pos:int -> len:int -> t -> t
-  val length : t -> int
-  val iter : t -> (iov -> unit) -> unit
-  val of_bytes : bytes -> t
-  val from_string : string -> t
-  val from_buffer : Buffer.t -> t
-  val into_string : t -> string
-end
+val syscall : (unit -> 'a IO.io_result) -> 'a IO.io_result
 
 module Token : sig
   type t
@@ -83,29 +51,29 @@ module Adapter : sig
     type t
 
     val name : string
-    val make : unit -> (t, [> `Noop ]) io_result
+    val make : unit -> (t, IO.error) result
 
     val select :
       ?timeout:int64 ->
       ?max_events:int ->
       t ->
-      (Event.t list, [> `Noop ]) io_result
+      (Event.t list, IO.error) result
 
     val register :
       t ->
       fd:Fd.t ->
       token:Token.t ->
       interest:Interest.t ->
-      (unit, [> `Noop ]) io_result
+      unit IO.io_result
 
     val reregister :
       t ->
       fd:Fd.t ->
       token:Token.t ->
       interest:Interest.t ->
-      (unit, [> `Noop ]) io_result
+      unit IO.io_result
 
-    val deregister : t -> fd:Fd.t -> (unit, [> `Noop ]) io_result
+    val deregister : t -> fd:Fd.t -> unit IO.io_result
   end
 
   module Event : sig
@@ -117,26 +85,26 @@ module Source : sig
   module type Intf = sig
     type t
 
-    val deregister : t -> Adapter.Selector.t -> (unit, [> `Noop ]) io_result
+    val deregister : t -> Adapter.Selector.t -> unit IO.io_result
 
     val register :
       t ->
       Adapter.Selector.t ->
       Token.t ->
       Interest.t ->
-      (unit, [> `Noop ]) io_result
+      unit IO.io_result
 
     val reregister :
       t ->
       Adapter.Selector.t ->
       Token.t ->
       Interest.t ->
-      (unit, [> `Noop ]) io_result
+      unit IO.io_result
   end
 
   type t = S : ((module Intf with type t = 'state) * 'state) -> t
 
-  val deregister : t -> Adapter.Selector.t -> (unit, [> `Noop ]) io_result
+  val deregister : t -> Adapter.Selector.t -> unit IO.io_result
   val make : (module Intf with type t = 'a) -> 'a -> t
 
   val register :
@@ -144,32 +112,32 @@ module Source : sig
     Adapter.Selector.t ->
     Token.t ->
     Interest.t ->
-    (unit, [> `Noop ]) io_result
+    unit IO.io_result
 
   val reregister :
     t ->
     Adapter.Selector.t ->
     Token.t ->
     Interest.t ->
-    (unit, [> `Noop ]) io_result
+    unit IO.io_result
 end
 
 module Poll : sig
   type t
 
-  val make : unit -> (t, [> `Noop ]) io_result
+  val make : unit -> (t, IO.error) result
 
   val poll :
     ?max_events:int ->
     ?timeout:int64 ->
     t ->
-    (Event.t list, [> `Noop ]) io_result
+    (Event.t list, IO.error) result
 
   val register :
-    t -> Token.t -> Interest.t -> Source.t -> (unit, [> `Noop ]) io_result
+    t -> Token.t -> Interest.t -> Source.t -> unit IO.io_result
 
   val reregister :
-    t -> Token.t -> Interest.t -> Source.t -> (unit, [> `Noop ]) io_result
+    t -> Token.t -> Interest.t -> Source.t -> unit IO.io_result
 
-  val deregister : t -> Source.t -> (unit, [> `Noop ]) io_result
+  val deregister : t -> Source.t -> unit IO.io_result
 end

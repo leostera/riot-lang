@@ -6,19 +6,13 @@ let current_dir () =
   match Kernel.Fs.File.getcwd () with
   | Ok cwd -> Path.of_string cwd
   | Error e ->
-      Error
-        (Path.SystemError
-           (Kernel.Async.pp_err Format.str_formatter e;
-            Format.flush_str_formatter ()))
+      Error (Path.SystemError (Kernel.IO.error_message e))
 
 let set_current_dir path =
   match Kernel.Fs.File.chdir (Path.to_string path) with
   | Ok () -> Ok ()
   | Error e ->
-      Error
-        (Path.SystemError
-           (Kernel.Async.pp_err Format.str_formatter e;
-            Format.flush_str_formatter ()))
+      Error (Path.SystemError (Kernel.IO.error_message e))
 
 let home_dir () =
   try
@@ -66,16 +60,3 @@ let vars () =
           let name = String.sub s 0 idx in
           let value = String.sub s (idx + 1) (String.length s - idx - 1) in
           Some (name, value))
-
-(* Legacy functions for compatibility *)
-let home () = home_dir ()
-
-let getenv key =
-  try Ok (Kernel.Env.getenv_exn key)
-  with Not_found -> Error (`EnvVarNotFound key)
-
-let putenv key value =
-  Kernel.Env.putenv key value;
-  Ok ()
-
-let get_home () = home_dir ()

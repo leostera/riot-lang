@@ -3,21 +3,21 @@ open Common
 module type Intf = sig
   type t
 
-  val deregister : t -> Adapter.Selector.t -> (unit, [> `Noop ]) io_result
+  val deregister : t -> Adapter.Selector.t -> (unit, IO.error) result
 
   val register :
     t ->
     Adapter.Selector.t ->
     Token.t ->
     Interest.t ->
-    (unit, [> `Noop ]) io_result
+    (unit, IO.error) result
 
   val reregister :
     t ->
     Adapter.Selector.t ->
     Token.t ->
     Interest.t ->
-    (unit, [> `Noop ]) io_result
+    (unit, IO.error) result
 end
 
 type t = S : ((module Intf with type t = 'state) * 'state) -> t

@@ -1,4 +1,5 @@
 open Common
+open IO
 
 (** # Fs.File - File handles for reading and writing
 

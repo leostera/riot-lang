@@ -107,7 +107,11 @@ let to_list heap =
   List.rev (Cell.get result)
 
 let to_list_unordered heap =
-  List.make ~len:heap.size ~fn:(fun i -> heap.data.(i))
+  let result = cell [] in
+  for i = heap.size - 1 downto 0 do
+    Cell.set result (heap.data.(i) :: Cell.get result)
+  done;
+  Cell.get result
 
 let iter f heap =
   while heap.size > 0 do
@@ -122,6 +126,22 @@ let fold f acc heap =
     | None -> ()
   done;
   Cell.get result
+
+let into_iter : type item. item t -> item Iter.Iterator.t =
+ fun heap ->
+  let module HeapIter = struct
+    type state = item t
+    type nonrec item = item
+
+    let next state =
+      match pop state with
+      | None -> (None, state)
+      | Some value -> (Some value, state)
+
+    let size state = state.size
+  end in
+  let heap_copy = { data = Array.copy heap.data; size = heap.size; compare = heap.compare } in
+  Iter.Iterator.make (module HeapIter) heap_copy
 
 let to_mut_iter : type item. item t -> item Iter.MutIterator.t =
  fun heap ->

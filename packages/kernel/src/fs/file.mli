@@ -1,3 +1,5 @@
+  open IO
+
 type seek_command = SeekSet | SeekCur | SeekEnd
 
 type lock_command =
@@ -37,67 +39,67 @@ val read :
   ?pos:int ->
   ?len:int ->
   bytes ->
-  (int, [> Async.io_error ]) Async.io_result
+  (int, error) result
 
 val write :
   t ->
   ?pos:int ->
   ?len:int ->
   bytes ->
-  (int, [> Async.io_error ]) Async.io_result
+  (int, error) result
 
 val read_vectored :
-  t -> Async.Iovec.t -> (int, [> Async.io_error ]) Async.io_result
+  t -> Iovec.t -> (int, error) result
 
 val write_vectored :
-  t -> Async.Iovec.t -> (int, [> Async.io_error ]) Async.io_result
+  t -> Iovec.t -> (int, error) result
 
 val sendfile :
   t ->
   file:Fd.t ->
   off:int ->
   len:int ->
-  (int, [> Async.io_error ]) Async.io_result
+  (int, error) result
 
-val readdir : string -> (string list, [> Async.io_error ]) Async.io_result
-val mkdir : string -> int -> (unit, [> Async.io_error ]) Async.io_result
-val mkdirp : string -> int -> (unit, [> Async.io_error ]) Async.io_result
-val copy_file : string -> string -> (unit, [> Async.io_error ]) Async.io_result
-val is_directory : string -> (bool, [> Async.io_error ]) Async.io_result
-val file_exists : string -> (bool, [> Async.io_error ]) Async.io_result
-val stat : string -> (Metadata.t, [> Async.io_error ]) Async.io_result
-val chmod : string -> int -> (unit, [> Async.io_error ]) Async.io_result
-val symlink : string -> string -> (unit, [> Async.io_error ]) Async.io_result
-val rmdir : string -> (unit, [> Async.io_error ]) Async.io_result
-val remove : string -> (unit, [> Async.io_error ]) Async.io_result
-val getcwd : unit -> (string, [> Async.io_error ]) Async.io_result
-val chdir : string -> (unit, [> Async.io_error ]) Async.io_result
-val is_regular_file : string -> (bool, [> Async.io_error ]) Async.io_result
-val realpath : string -> (string, [> Async.io_error ]) Async.io_result
-val link : string -> string -> (unit, [> Async.io_error ]) Async.io_result
-val rename : string -> string -> (unit, [> Async.io_error ]) Async.io_result
-val readlink : string -> (string, [> Async.io_error ]) Async.io_result
-val fstat : t -> (Metadata.t, [> Async.io_error ]) Async.io_result
-val lstat : string -> (Metadata.t, [> Async.io_error ]) Async.io_result
+val readdir : string -> (string list, error) result
+val mkdir : string -> int -> (unit, error) result
+val mkdirp : string -> int -> (unit, error) result
+val copy_file : string -> string -> (unit, error) result
+val is_directory : string -> (bool, error) result
+val file_exists : string -> (bool, error) result
+val stat : string -> (Metadata.t, error) result
+val chmod : string -> int -> (unit, error) result
+val symlink : string -> string -> (unit, error) result
+val rmdir : string -> (unit, error) result
+val remove : string -> (unit, error) result
+val getcwd : unit -> (string, error) result
+val chdir : string -> (unit, error) result
+val is_regular_file : string -> (bool, error) result
+val realpath : string -> (string, error) result
+val link : string -> string -> (unit, error) result
+val rename : string -> string -> (unit, error) result
+val readlink : string -> (string, error) result
+val fstat : t -> (Metadata.t, error) result
+val lstat : string -> (Metadata.t, error) result
 
 val lseek :
-  t -> int64 -> seek_command -> (int64, [> Async.io_error ]) Async.io_result
+  t -> int64 -> seek_command -> (int64, error) result
 
-val ftruncate : t -> int64 -> (unit, [> Async.io_error ]) Async.io_result
-val fchmod : t -> int -> (unit, [> Async.io_error ]) Async.io_result
-val fsync : t -> (unit, [> Async.io_error ]) Async.io_result
-val dup : t -> (t, [> Async.io_error ]) Async.io_result
+val ftruncate : t -> int64 -> (unit, error) result
+val fchmod : t -> int -> (unit, error) result
+val fsync : t -> (unit, error) result
+val dup : t -> (t, error) result
 
 val lockf :
-  t -> lock_command -> int -> (unit, [> Async.io_error ]) Async.io_result
+  t -> lock_command -> int -> (unit, error) result
 
-val close_fd : t -> (unit, [> Async.io_error ]) Async.io_result
-val get_temp_dir : unit -> (string, [> Async.io_error ]) Async.io_result
+val close_fd : t -> (unit, error) result
+val get_temp_dir : unit -> (string, error) result
 
 val temp_dir :
   ?temp_dir:string ->
   string ->
   string ->
-  (string, [> Async.io_error ]) Async.io_result
+  (string, error) result
 
 val to_source : t -> Async.Source.t

@@ -5,7 +5,7 @@ type t = { fd : Kernel.Fd.t; mutable closed : bool }
 
 (* Helper to check if file is closed *)
 let ensure_open t =
-  if t.closed then Error (SystemError "File is closed") else Ok ()
+  if t.closed then Error (IO.Unknown_error "File is closed") else Ok ()
 
 (* Opening files *)
 
@@ -17,11 +17,11 @@ let open_with_flags path flags mode =
   with
   | Unix.Unix_error (e, _, _) ->
       Error
-        (SystemError
+        (IO.Unknown_error
            (format "Failed to open %s: %s" path_str (Unix.error_message e)))
   | e ->
       Error
-        (SystemError
+        (IO.Unknown_error
            (format "Failed to open %s: %s" path_str (Exception.to_string e)))
 
 let create path =
@@ -71,10 +71,10 @@ let read t buffer ~offset ~len =
       let rec read_loop () =
         match Kernel.Fs.File.read t.fd buffer ~pos:offset ~len with
         | Ok bytes_read -> Ok bytes_read
-        | Error `Would_block ->
+        | Error IO.Operation_would_block ->
             Miniriot.syscall ~name:"File.read"
               ~interest:Kernel.Async.Interest.readable ~source read_loop
-        | Error e -> Error (SystemError (kernel_error_to_string e))
+        | Error e -> Error e
       in
       read_loop ()
 
@@ -100,7 +100,7 @@ let read_exact t buffer ~offset ~len =
     if remaining = 0 then Ok ()
     else
       match read t buffer ~offset:pos ~len:remaining with
-      | Ok 0 -> Error (SystemError "Unexpected EOF")
+      | Ok 0 -> Error (IO.Unknown_error "Unexpected EOF")
       | Ok n -> read_loop (pos + n) (remaining - n)
       | Error e -> Error e
   in
@@ -119,7 +119,7 @@ let read_line t =
             let c = Bytes.get chunk 0 in
             Buffer.add_char buf c;
             if c = '\n' then Ok (Buffer.contents buf) else read_until_newline ()
-        | Ok _ -> Error (SystemError "Unexpected read result")
+        | Ok _ -> Error (IO.Unknown_error "Unexpected read result")
         | Error e -> Error e
       in
       read_until_newline ()
@@ -134,10 +134,10 @@ let write t buffer ~offset ~len =
       let rec write_loop () =
         match Kernel.Fs.File.write t.fd buffer ~pos:offset ~len with
         | Ok bytes_written -> Ok bytes_written
-        | Error `Would_block ->
+        | Error IO.Operation_would_block ->
             Miniriot.syscall ~name:"File.write"
               ~interest:Kernel.Async.Interest.writable ~source write_loop
-        | Error e -> Error (SystemError (kernel_error_to_string e))
+        | Error e -> Error e
       in
       write_loop ()
 
@@ -247,10 +247,10 @@ let try_lock_exclusive t =
   | Ok () -> (
       match Kernel.Fs.File.lockf t.fd Kernel.Fs.File.TryLockExclusive 0 with
       | Ok () -> Ok true
-      | Error (`IO_error e) when e = Kernel.IO.Resource_unavailable_try_again ->
+      | Error e when e = Kernel.IO.Resource_unavailable_try_again ->
           Ok false
-      | Error (`IO_error e) when e = Kernel.IO.Permission_denied -> Ok false
-      | Error e -> Error (SystemError (kernel_error_to_string e)))
+      | Error e when e = Kernel.IO.Permission_denied -> Ok false
+      | Error e -> Error e)
 
 let try_lock_shared t =
   match ensure_open t with
@@ -258,10 +258,10 @@ let try_lock_shared t =
   | Ok () -> (
       match Kernel.Fs.File.lockf t.fd Kernel.Fs.File.TryLockShared 0 with
       | Ok () -> Ok true
-      | Error (`IO_error e) when e = Kernel.IO.Resource_unavailable_try_again ->
+      | Error e when e = Kernel.IO.Resource_unavailable_try_again ->
           Ok false
-      | Error (`IO_error e) when e = Kernel.IO.Permission_denied -> Ok false
-      | Error e -> Error (SystemError (kernel_error_to_string e)))
+      | Error e when e = Kernel.IO.Permission_denied -> Ok false
+      | Error e -> Error e)
 
 let unlock t =
   match ensure_open t with
@@ -289,4 +289,4 @@ let close t =
     try
       t.closed <- true;
       Kernel.Fs.File.close_fd t.fd |> convert_kernel_result
-    with e -> Error (SystemError (Exception.to_string e))
+    with e -> Error (IO.Unknown_error (Exception.to_string e))

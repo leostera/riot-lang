@@ -331,6 +331,26 @@ val split_off : 'a t -> int -> 'a t
     - Time: O(n) where n = len - index
     - Space: O(n) *)
 
+val into_iter : 'a t -> 'a Iter.Iterator.t
+(** Converts this deque into an immutable iterator over its elements from front to back.
+
+    ## Examples
+
+    ```ocaml
+    let deque = Deque.of_list [1; 2; 3; 4; 5] in
+    deque
+    |> Deque.into_iter
+    |> Iterator.map ~fn:(fun x -> x * 2)
+    |> Iterator.filter ~fn:(fun x -> x > 5)
+    |> Iterator.collect
+    (* [6; 8; 10] *)
+    ```
+
+    ## Complexity
+
+    - Time: O(1) to create iterator
+    - Space: O(1) *)
+
 val to_mut_iter : 'a t -> 'a Iter.MutIterator.t
 (** Returns a mutable iterator over the deque's elements from front to back.
 

@@ -1,21 +1,9 @@
 open Kernel
 
-type error = SystemError of string
+type error = Kernel.IO.error
 
-(** Helper to convert Kernel.IO errors to our error type *)
-let kernel_error_to_string = function
-  | `Noop -> "No operation"
-  | `Eof -> "End of file"
-  | `Timeout -> "Timeout"
-  | `Process_down -> "Process down"
-  | `Closed -> "Closed"
-  | `Connection_closed -> "Connection closed"
-  | `Exn exn -> Exception.to_string exn
-  | `No_info -> "No info"
-  | `Would_block -> "Would block"
-  | `IO_error err -> Kernel.IO.error_message err
-  | _ -> "Unknown error"
+(** Convert error to human-readable message *)
+let error_message err = Kernel.IO.error_message err
 
-let convert_kernel_result = function
-  | Ok v -> Ok v
-  | Error e -> Error (SystemError (kernel_error_to_string e))
+(** Convert kernel result (currently a no-op since types match) *)
+let convert_kernel_result result = result

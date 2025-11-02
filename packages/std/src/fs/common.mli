@@ -8,8 +8,9 @@
 
     ```ocaml open Std
 
-    match Fs.read (Path.v "config.json") with | Ok content -> process content |
-    Error (Fs.Common.SystemError msg) -> Log.error "Filesystem error: %s" msg
+    match Fs.read (Path.v "config.json") with 
+    | Ok content -> process content 
+    | Error err -> Log.error "Filesystem error: %s" (Fs.Common.error_message err)
     ```
 
     ## When to Use
@@ -18,32 +19,10 @@
     values returned by [Fs] functions and use [Result.expect] or pattern
     matching for error handling. *)
 
-type error = SystemError of string  (** Filesystem error type. *)
+type error = Kernel.IO.error  (** Filesystem error type - preserves structured error info. *)
 
-val kernel_error_to_string :
-  [> `Closed
-  | `Connection_closed
-  | `Eof
-  | `Exn of exn
-  | `No_info
-  | `Noop
-  | `Process_down
-  | `Timeout
-  | `IO_error of Kernel.IO.error
-  | `Would_block ] ->
-  string
+val error_message : error -> string
+(** Convert a filesystem error to a human-readable message. *)
 
-val convert_kernel_result :
-  ( 'a,
-    [> `Closed
-    | `Connection_closed
-    | `Eof
-    | `Exn of exn
-    | `No_info
-    | `Noop
-    | `Process_down
-    | `Timeout
-    | `IO_error of Kernel.IO.error
-    | `Would_block ] )
-  result ->
-  ('a, error) result
+val convert_kernel_result : ('a, Kernel.IO.error) result -> ('a, error) result
+(** Convert a kernel result to a filesystem result (currently a no-op since types match). *)

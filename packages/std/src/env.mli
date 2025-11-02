@@ -182,15 +182,3 @@ val vars : unit -> (string * string) list
     (* Check for required variables *) let check_required names = let env_names
     = Env.vars () |> List.map fst in List.filter (fun name -> not (List.mem name
     env_names) ) names ``` *)
-
-(** # Legacy Functions *)
-
-val getenv : string -> (string, [> `EnvVarNotFound of string ]) Result.t
-(** @deprecated Use [`var`] instead.
-
-    Legacy function for backward compatibility. *)
-
-val putenv : string -> string -> (unit, 'a) Result.t
-(** @deprecated Use [`set_var`] instead.
-
-    Legacy function for backward compatibility. *)

@@ -3,6 +3,17 @@ let format = Kernel.format
 let print = Kernel.print
 let println = Kernel.println
 
+(** Collection type aliases and constructors from Kernel *)
+type 'a vec = 'a Kernel.vec
+type 'a queue = 'a Kernel.queue
+type 'a set = 'a Kernel.set
+type ('k, 'v) map = ('k, 'v) Kernel.map
+
+let vec = Kernel.vec
+let queue = Kernel.queue
+let set = Kernel.set
+let map = Kernel.map
+
 exception Deprecated
 
 let failwith = Deprecated

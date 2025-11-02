@@ -46,8 +46,8 @@
     ## Error Handling
 
     All operations return `Result.t` for explicit error handling. Never throws
-    exceptions for I/O errors. Common error conditions include:
-    - `SystemError` for permission denied, file not found, disk full, etc.
+    exceptions for I/O errors. Common error conditions include permission denied, 
+    file not found, disk full, etc. All errors are typed using {!Kernel.IO.error}.
 
     ## Platform-specific behavior
 
@@ -58,7 +58,7 @@
 
 open Iter
 
-type error = SystemError of string  (** Filesystem error type *)
+type error = Kernel.IO.error  (** Filesystem error type - preserves structured error info *)
 
 module Fd = Fd
 (** File descriptor module *)
@@ -394,7 +394,7 @@ val remove_dir_all : Path.t -> (unit, error) Result.t
     Result.unwrap_or ~default:() (* Ignore if doesn't exist *)
 
     (* Safe cleanup with confirmation *) let cleanup_if_safe dir = if not
-    (Path.is_absolute dir) then Fs.remove_dir_all dir else Error (SystemError
+    (Path.is_absolute dir) then Fs.remove_dir_all dir else Error (IO.Unknown_error
     "Won't delete absolute paths") ```
 
     ## Errors

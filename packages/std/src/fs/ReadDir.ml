@@ -10,7 +10,7 @@ type item = Path.t
 let create path =
   let path_str = Path.to_string path in
   match Kernel.Fs.ReadDir.open_ path_str with
-  | Error e -> Error (SystemError (kernel_error_to_string e))
+  | Error e -> Error e
   | Ok handle -> Ok { path; handle; closed = false }
 
 let close t =
@@ -19,7 +19,7 @@ let close t =
     try
       Kernel.Fs.ReadDir.close t.handle |> ignore;
       Ok ()
-    with e -> Error (SystemError (Exception.to_string e)))
+    with e -> Error (IO.Unknown_error (Exception.to_string e)))
   else Ok ()
 
 let rec next t =

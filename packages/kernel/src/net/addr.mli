@@ -17,10 +17,10 @@ val to_string : 'a -> 'a
 val of_addr_info : Unix.addr_info -> stream_addr option
 
 val of_host_and_port :
-  host:string -> port:int -> (stream_addr, [> Async.io_error ]) Async.io_result
+  host:string -> port:int -> (stream_addr, IO.error) result
 
 val get_info :
-  stream_addr -> (stream_addr list, [> Async.io_error ]) Async.io_result
+  stream_addr -> (stream_addr list, IO.error) result
 
 val ip : stream_addr -> tcp_addr
 val port : stream_addr -> int

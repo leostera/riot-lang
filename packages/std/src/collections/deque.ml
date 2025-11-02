@@ -193,6 +193,21 @@ let of_list elements =
   List.iter (push_back deque) elements;
   deque
 
+let into_iter : type v. v t -> v Iter.Iterator.t =
+ fun deque ->
+  let module DequeIter = struct
+    type state = { deque : v t; idx : int }
+    type nonrec item = v
+
+    let next state =
+      match get state.deque state.idx with
+      | None -> (None, state)
+      | Some value -> (Some value, { state with idx = state.idx + 1 })
+
+    let size state = max 0 (len state.deque - state.idx)
+  end in
+  Iter.Iterator.make (module DequeIter) { deque; idx = 0 }
+
 let to_mut_iter : type v. v t -> v Iter.MutIterator.t =
  fun deque ->
   let module DequeIter = struct

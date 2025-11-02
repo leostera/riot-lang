@@ -46,14 +46,4 @@
     {!MutIterator} | | Lazy sequences | {!Iterator}, {!MutIterator} | | String
     parsing | {!Cursor}, {!MutCursor} | *)
 
-module Iterator : module type of Iterator
-(** Immutable iterator protocol for lazy sequences *)
-
-module MutIterator : module type of MutIterator
-(** Mutable iterator protocol for efficient iteration *)
-
-module Cursor : module type of Cursor
-(** Immutable string cursor for backtrackable parsing *)
-
-module MutCursor : module type of Mut_cursor
-(** Mutable string cursor for efficient single-pass parsing *)
+include module type of Kernel.Iter

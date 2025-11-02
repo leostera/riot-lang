@@ -15,7 +15,7 @@ let format = Printf.sprintf
 
 (** Async-safe write to stdout using Fs.File.write which handles Would_block *)
 let write_stdout str =
-  let bytes = Bytes.of_string str in
+  let bytes = Bytes.unsafe_of_string str in
   let len = String.length str in
   let rec write_all offset remaining =
     if remaining = 0 then ()

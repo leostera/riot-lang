@@ -35,32 +35,12 @@
     [Deque] | | FIFO processing | [Queue] | | Priority queue | [Heap] | | Small
     ordered collection | [List] | *)
 
-module HashMap = Hashmap
-(** Hash table with O(1) average-case operations. See [HashMap]. *)
+(* Re-export kernel collections *)
+include module type of Kernel.Collections
 
-module HashSet = Hashset
-(** Hash set for storing unique values. See [HashSet]. *)
-
-module Queue = Queue
-(** FIFO queue for sequential task processing. See [Queue]. *)
-
+(* Std-specific collections *)
 module Deque = Deque
 (** Double-ended queue for efficient operations at both ends. See [Deque]. *)
 
-module Vector = Vector
-(** Growable array with O(1) indexed access. See [Vector]. *)
-
 module Heap = Heap
 (** Binary heap for priority queue operations. See [Heap]. *)
-
-type 'v vec = 'v Vector.t
-
-val vec : 'v list -> 'v vec
-
-type ('k, 'v) map = ('k, 'v) HashMap.t
-
-val map : ('k * 'v) list -> ('k, 'v) map
-
-type 'v set = 'v HashSet.t
-
-val set : 'v list -> 'v set

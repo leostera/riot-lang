@@ -64,13 +64,13 @@ let of_host_and_port ~host ~port =
       (* Invalid IP format, fall back to DNS *)
       match get_info host (Int.to_string port) with
       | Ok (ip :: _) -> Ok ip
-      | Ok [] -> Error `No_info
+      | Ok [] -> Error (IO.Unknown_error "No address info found")
       | Error err -> Error err)
   else
     (* Hostname, need DNS resolution *)
     match get_info host (Int.to_string port) with
     | Ok (ip :: _) -> Ok ip
-    | Ok [] -> Error `No_info
+    | Ok [] -> Error (IO.Unknown_error "No address info found")
     | Error err -> Error err
 
 let get_info (`Tcp (host, port)) = get_info host (Int.to_string port)

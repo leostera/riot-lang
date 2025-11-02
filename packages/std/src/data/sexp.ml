@@ -205,7 +205,7 @@ let parse_file filename =
   | Ok path -> (
       match Fs.read_to_string path with
       | Ok content -> parse_many content
-      | Error (Fs.SystemError msg) -> Error ("File error: " ^ msg))
+      | Error err -> Error ("File error: " ^ IO.error_message err))
 
 (** Write S-expression to a file *)
 let to_file filename sexp =
@@ -214,7 +214,7 @@ let to_file filename sexp =
   | Ok path -> (
       match Fs.write (to_string sexp ^ "\n") path with
       | Ok () -> Ok ()
-      | Error (Fs.SystemError msg) -> Error ("File error: " ^ msg))
+      | Error err -> Error ("File error: " ^ IO.error_message err))
 
 (** Canonical S-expressions (Csexp) module *)
 module Csexp = struct

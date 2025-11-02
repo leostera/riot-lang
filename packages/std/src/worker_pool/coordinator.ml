@@ -36,8 +36,13 @@ let init ~owner ~concurrency ~worker_fn ~task_ref =
 
   (* Spawn N workers *)
   let worker_pids =
-    List.make ~len:concurrency ~fn:(fun _ ->
-        Worker.start ~coordinator ~owner ~worker_fn ~task_ref)
+    let rec spawn_n acc n =
+      if n = 0 then List.rev acc
+      else
+        let pid = Worker.start ~coordinator ~owner ~worker_fn ~task_ref in
+        spawn_n (pid :: acc) (n - 1)
+    in
+    spawn_n [] concurrency
   in
 
   let worker_handles = List.map (fun pid -> { pid; task_ref }) worker_pids in

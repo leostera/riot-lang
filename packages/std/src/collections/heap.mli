@@ -219,6 +219,27 @@ val fold : ('b -> 'a -> 'b) -> 'b -> 'a t -> 'b
     ```ocaml let heap = Heap.of_list [1; 2; 3] in Heap.fold (fun acc x -> acc +
     x) 0 heap (* 6 *) ``` *)
 
+val into_iter : 'a t -> 'a Iter.Iterator.t
+(** Converts this heap into an immutable iterator over its elements in priority order.
+    Creates a copy of the heap, so the original is unchanged.
+
+    ## Examples
+
+    ```ocaml
+    let heap = Heap.of_list [5; 2; 8; 1; 9] in
+    heap
+    |> Heap.into_iter
+    |> Iterator.filter ~fn:(fun x -> x > 2)
+    |> Iterator.collect
+    (* [5; 8; 9] - in sorted order, filtered *)
+    (* Original heap is unchanged *)
+    ```
+
+    ## Complexity
+
+    - Time: O(n) to copy heap
+    - Space: O(n) for the copy *)
+
 val to_mut_iter : 'a t -> 'a Iter.MutIterator.t
 (** Returns a mutable iterator over the heap's elements in priority order. Note:
     This consumes the heap as you iterate.
