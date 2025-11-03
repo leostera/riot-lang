@@ -29,7 +29,7 @@ let run matches =
   let cwd =
     Env.current_dir () |> Result.expect ~msg:"Failed to get current directory"
   in
-  let workspace =
+  let (workspace, _load_errors) =
     Workspace_manager.scan cwd |> Result.expect ~msg:"Failed to scan workspace"
   in
   let client =

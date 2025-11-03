@@ -30,6 +30,11 @@ type streaming_event =
       built : WireProtocol.build_result list;
       errors : WireProtocol.build_result list;
     }
+  | PlanningFailed of {
+      session_id : Session_id.t;
+      failed_at : Datetime.t;
+      reason : string;
+    }
   | CycleDetected of {
       session_id : Session_id.t;
       detected_at : Datetime.t;

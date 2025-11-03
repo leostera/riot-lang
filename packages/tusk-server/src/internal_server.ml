@@ -10,6 +10,7 @@ type server_state = {
   store : Tusk_store.Store.t;
   concurrency : int;
   package_graph : Tusk_planner.Package_graph.t;
+  load_errors : Workspace_manager.load_error list;
 }
 
 (** Main server loop - handle all incoming requests *)
@@ -25,7 +26,7 @@ let rec loop state =
   match receive ~selector () with
   | `UpdateGraph package_graph ->
       Log.info "[INTERNAL_SERVER] Received updated package graph from build worker";
-      loop { state with package_graph }
+      loop { state with package_graph; load_errors = [] }
   | `Request (Protocol.Ping { client_pid }) ->
       Log.debug "Server loop received: Ping";
       handle_ping state client_pid
@@ -74,12 +75,20 @@ and handle_ping state client_pid =
 
 (** Handler for scan workspace message *)
 and handle_scan_workspace state client_pid current_dir =
-  let workspace =
+  let (workspace, load_errors) =
     Workspace_manager.scan current_dir
     |> Result.expect ~msg:"tusk_server: workspace scan failed"
   in
-  let package_graph = Tusk_planner.Package_graph.create workspace in
-  let new_state = { state with workspace; package_graph } in
+  let package_graph = 
+    match Tusk_planner.Package_graph.create workspace with
+    | Ok graph -> graph
+    | Error _ -> 
+        (* Create empty graph as fallback *)
+        Tusk_planner.Package_graph.create 
+          (Workspace.make ~root:workspace.root ~packages:[]) 
+        |> Result.unwrap
+  in
+  let new_state = { state with workspace; package_graph; load_errors } in
   send client_pid
     (Protocol.ServerResponse
        (Protocol.BuildCompleted
@@ -370,7 +379,7 @@ and handle_new_package state client_pid path name is_library =
       with
       | Ok (), Ok (), Ok () ->
           Log.debug "Server: Rescanning workspace after package creation";
-          let updated_workspace =
+          let (updated_workspace, updated_load_errors) =
             Workspace_manager.scan state.workspace.root
             |> Result.expect
                  ~msg:"Failed to rescan workspace after package creation"
@@ -380,12 +389,14 @@ and handle_new_package state client_pid path name is_library =
 
           let updated_package_graph =
             Tusk_planner.Package_graph.create updated_workspace
+            |> Result.expect ~msg:"Failed to create package graph after rescan"
           in
           let updated_state =
             {
               state with
               workspace = updated_workspace;
               package_graph = updated_package_graph;
+              load_errors = updated_load_errors;
             }
           in
 
@@ -408,15 +419,19 @@ and handle_build state client_pid target session_id =
     | Protocol.Package p -> format "Package(%s)" p);
 
   (* Rescan workspace to pick up any tusk.toml changes *)
-  let workspace =
+  let (workspace, load_errors) =
     Workspace_manager.scan state.workspace.root
     |> Result.expect ~msg:"tusk_server: workspace scan failed"
   in
-  let package_graph = Tusk_planner.Package_graph.create workspace in
-  let updated_state = { state with workspace; package_graph } in
+  let package_graph = 
+    Tusk_planner.Package_graph.create workspace 
+    |> Result.unwrap_or ~default:(Tusk_planner.Package_graph.create 
+        (Workspace.make ~root:workspace.root ~packages:[]) |> Result.unwrap)
+  in
+  let updated_state = { state with workspace; package_graph; load_errors } in
 
   let server_pid = self () in
-  Build_server.start ~workspace:updated_state.workspace
+  Build_server.start ~workspace:updated_state.workspace ~load_errors:updated_state.load_errors
     ~toolchain:updated_state.toolchain ~store:updated_state.store
     ~concurrency:updated_state.concurrency ~session_id ~client_pid ~server_pid
     ~target;
@@ -462,10 +477,16 @@ let start_with_listener () =
     Log.trace "Server PID: %s" (Pid.to_string server_pid);
 
     Log.info "Scanning workspace...";
-    let workspace =
+    let (workspace, load_errors) =
       Workspace_manager.scan current_dir
       |> Result.expect ~msg:"tusk_server: workspace scan failed"
     in
+    if List.length load_errors > 0 then (
+      Log.warn "Workspace loaded with %d package load errors:" (List.length load_errors);
+      List.iter (fun err ->
+        Log.warn "  %s" (Workspace_manager.load_error_to_string err)
+      ) load_errors
+    );
     Log.info "Workspace scanned successfully: %d packages found"
       (List.length workspace.packages);
 
@@ -489,7 +510,20 @@ let start_with_listener () =
 
     write_daemon_files ~workspace ~port;
 
-    let package_graph = Tusk_planner.Package_graph.create workspace in
+    let package_graph = 
+      match Tusk_planner.Package_graph.create workspace with
+      | Ok graph -> graph
+      | Error (Tusk_planner.Package_graph.MissingPackages { missing }) ->
+          Log.warn "Package graph has missing dependencies at startup:";
+          List.iter (fun { Tusk_planner.Package_graph.package; dependency } ->
+            Log.warn "  %s requires: %s" package dependency
+          ) missing;
+          Log.warn "Build operations will report this error to clients.";
+          (* Create an empty graph - actual build will fail with proper error *)
+          Tusk_planner.Package_graph.create 
+            (Workspace.make ~root:workspace.root ~packages:[])
+          |> Result.unwrap
+    in
     let state =
       {
         workspace;
@@ -497,6 +531,7 @@ let start_with_listener () =
         store;
         concurrency = System.available_parallelism;
         package_graph;
+        load_errors;
       }
     in
 

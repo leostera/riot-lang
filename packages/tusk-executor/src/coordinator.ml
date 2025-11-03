@@ -113,7 +113,7 @@ let init ~workspace ~toolchain ~store ~package_graph ~packages ~concurrency =
 let build_workspace ~workspace ~toolchain ~store ~target ~concurrency =
   let start = Time.Instant.now () in
 
-  match Tusk_planner.plan_workspace ~workspace ~target with
+  match Tusk_planner.plan_workspace ~workspace ~target ~load_errors:[] with
   | Error err -> Error err
   | Ok { packages; package_graph; _ } -> (
       Telemetry.emit

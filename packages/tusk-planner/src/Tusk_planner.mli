@@ -12,6 +12,7 @@ type package_plan_result = Package_planner.plan_result
 val plan_workspace :
   workspace:Workspace.t ->
   target:build_target ->
+  load_errors:Workspace_manager.load_error list ->
   (workspace_plan_result, plan_error) result
 (** Plan the workspace - returns ordered packages to build and package graph.
     Does NOT plan module/action graphs - that's done on-demand per package. *)

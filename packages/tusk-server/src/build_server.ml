@@ -1,11 +1,13 @@
 (** Build server - Handles build execution in a spawned process *)
 
 open Std
+open Std.Collections
+open Std.Iter
 
 open Tusk_model
 open Tusk_executor
 
-let init ~workspace ~toolchain ~store ~concurrency ~session_id ~client_pid
+let init ~workspace ~load_errors ~toolchain ~store ~concurrency ~session_id ~client_pid
     ~server_pid ~target =
   Log.debug "Build worker started for session %s"
     (Session_id.to_string session_id);
@@ -30,14 +32,30 @@ let init ~workspace ~toolchain ~store ~concurrency ~session_id ~client_pid
   let stats = Protocol.BuildStats.make () in
   Protocol.BuildStats.mark_started stats;
 
-  Log.debug "Build worker calling Coordinator.build_workspace";
-  let result =
-    Coordinator2.build_workspace ~workspace ~toolchain ~store
-      ~target:planner_target ~concurrency
-  in
+  (* Check for package load errors first *)
+  if List.length load_errors > 0 then (
+    let error_msg = 
+      load_errors
+      |> List.map Workspace_manager.load_error_to_string
+      |> String.concat "\n"
+    in
+    send client_pid
+      (Protocol.ServerResponse
+         (Protocol.PlanningFailed
+            {
+              session_id;
+              failed_at = Datetime.now ();
+              reason = format "Could not load external packages:\n%s" error_msg;
+            }))
+  ) else (
+    Log.debug "Build worker calling Coordinator.build_workspace";
+    let result =
+      Coordinator2.build_workspace ~workspace ~toolchain ~store
+        ~target:planner_target ~concurrency
+    in
 
-  Log.debug "Build worker finished, sending result to client";
-  (match result with
+    Log.debug "Build worker finished, sending result to client";
+    match result with
   | Ok workspace_result ->
       Protocol.BuildStats.set_total_modules stats
         (List.length workspace_result.results);
@@ -117,18 +135,71 @@ let init ~workspace ~toolchain ~store ~concurrency ~session_id ~client_pid
                     session_id;
                     cycle_nodes = cycle;
                     detected_at = Datetime.now ();
-                  }))));
+                  }))
+      | Tusk_planner.Workspace_planner.MissingDependencies { missing } ->
+          Log.error "Planning failed: Missing dependencies";
+          List.iter (fun { Tusk_planner.Package_graph.package; dependency } ->
+            Log.error "  %s requires: %s" package dependency
+          ) missing;
+          
+          (* Group missing deps by package for cleaner error messages *)
+          let grouped = HashMap.create () in
+          List.iter (fun { Tusk_planner.Package_graph.package; dependency } ->
+            match HashMap.get grouped package with
+            | None -> let _ = HashMap.insert grouped package [dependency] in ()
+            | Some deps -> let _ = HashMap.insert grouped package (dependency :: deps) in ()
+          ) missing;
+          
+          let error_msg = 
+            grouped
+            |> HashMap.into_iter
+            |> Iterator.map ~fn:(fun (pkg, deps) ->
+                format "  • %s requires: %s" pkg (String.concat ", " (List.rev deps)))
+            |> Iterator.to_list
+            |> String.concat "\n"
+          in
+          
+          send client_pid
+            (Protocol.ServerResponse
+               (Protocol.PlanningFailed
+                  {
+                    session_id;
+                    failed_at = Datetime.now ();
+                    reason = format "Missing dependencies:\n%s" error_msg;
+                  }))
+      | Tusk_planner.Workspace_planner.PackageLoadFailed { errors } ->
+          Log.error "Planning failed: Could not load external packages";
+          List.iter (fun err ->
+            Log.error "  %s" (Workspace_manager.load_error_to_string err)
+          ) errors;
+          
+          let error_msg = 
+            errors
+            |> List.map Workspace_manager.load_error_to_string
+            |> String.concat "\n  "
+          in
+          
+          send client_pid
+            (Protocol.ServerResponse
+               (Protocol.PlanningFailed
+                  {
+                    session_id;
+                    failed_at = Datetime.now ();
+                    reason = format "Could not load external packages:\n  %s" error_msg;
+                  }))
+    )
+  );
 
   Telemetry.detach handler_name;
   Log.debug "Build worker exiting";
   Ok ()
 
 (** Start a build in a spawned worker process *)
-let start ~workspace ~toolchain ~store ~concurrency ~session_id ~client_pid
+let start ~workspace ~load_errors ~toolchain ~store ~concurrency ~session_id ~client_pid
     ~server_pid ~target =
   let _ =
     spawn (fun () ->
-        init ~workspace ~toolchain ~store ~concurrency ~session_id ~client_pid
+        init ~workspace ~load_errors ~toolchain ~store ~concurrency ~session_id ~client_pid
           ~server_pid ~target)
   in
   ()

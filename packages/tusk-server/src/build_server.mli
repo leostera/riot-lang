@@ -3,13 +3,14 @@
 open Tusk_model
 
 val start :
-  workspace:Workspace.t ->
+  workspace:Tusk_model.Workspace.t ->
+  load_errors:Tusk_model.Workspace_manager.load_error list ->
   toolchain:Tusk_toolchain.t ->
   store:Tusk_store.Store.t ->
   concurrency:int ->
-  session_id:Session_id.t ->
-  client_pid:Miniriot.Pid.t ->
-  server_pid:Miniriot.Pid.t ->
+  session_id:Tusk_model.Session_id.t ->
+  client_pid:Std.Pid.t ->
+  server_pid:Std.Pid.t ->
   target:Protocol.target ->
   unit
 (** Start a build in a spawned worker process. This function returns immediately

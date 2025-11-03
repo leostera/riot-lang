@@ -7,8 +7,8 @@ type workspace_plan_result = Workspace_planner.package_plan
 type module_plan_result = Module_planner.plan_result
 type package_plan_result = Package_planner.plan_result
 
-let plan_workspace ~workspace ~target =
-  Workspace_planner.plan_workspace ~workspace ~target
+let plan_workspace ~workspace ~target ~load_errors =
+  Workspace_planner.plan_workspace ~workspace ~target ~load_errors
 
 let plan_package_with_graph ~workspace ~toolchain ~store ~package_graph ~package
     =

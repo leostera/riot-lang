@@ -112,11 +112,16 @@ module WireProtocol : sig
         results : build_result list;
       }
     | BuildFailed of {
-        session_id : Session_id.t;
-        failed_at : Datetime.t;
+        session_id : Tusk_model.Session_id.t;
+        failed_at : Std.Datetime.t;
         stats : build_stats;
         built : build_result list;
         errors : build_result list;
+      }
+    | PlanningFailed of {
+        session_id : Tusk_model.Session_id.t;
+        failed_at : Std.Datetime.t;
+        reason : string;
       }
     | ExecutableFound of { package : string; binary : string }
     | ExecutableNotFound

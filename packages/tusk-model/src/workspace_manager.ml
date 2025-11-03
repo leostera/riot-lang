@@ -2,6 +2,25 @@ open Std
 
 let tusk_toml = Path.v "tusk.toml"
 
+type load_error =
+  | PackageNotFound of {
+      dependant : string option; (* None for workspace-level deps *)
+      package : string;
+      path : string;
+    }
+  | PackageTomlReadFailed of {
+      package : string;
+      path : string;
+    }
+  | PackageTomlParseFailed of {
+      package : string;
+      path : string;
+    }
+  | PackageFromTomlFailed of {
+      package : string;
+      path : string;
+    }
+
 let rec find_workspace_root (start_dir : Path.t) : Path.t option =
   let tusk_toml = Path.(start_dir / tusk_toml) in
   match Fs.exists tusk_toml with
@@ -46,22 +65,27 @@ let load_member_package (workspace_root : Path.t) (member : string)
   | _ -> None
 
 let rec load_external_package (workspace_root : Path.t)
-    (dep : Package.dependency) ~(seen : string list ref) : Package.t list =
+    (dep : Package.dependency) ~(seen : string list ref) 
+    ~(workspace_deps : Package.dependency list) ~(dependant : string option) 
+    : (Package.t list * load_error list) =
   match dep.source with
-  | Package.Workspace -> []
+  | Package.Workspace -> ([], [])
   | Package.Path dep_path ->
-      if List.mem dep.name !seen then []
+      if List.mem dep.name !seen then ([], [])
       else (
         seen := dep.name :: !seen;
         let abs_path = Path.(workspace_root / dep_path) in
         let toml_path = Path.(abs_path / tusk_toml) in
+        let path_str = Path.to_string dep_path in
         match Fs.exists toml_path with
         | Ok true -> (
             match Fs.read_to_string toml_path with
-            | Error _ -> []
+            | Error _ -> 
+                ([], [PackageTomlReadFailed { package = dep.name; path = path_str }])
             | Ok content -> (
                 match Data.Toml.parse content with
-                | Error _ -> []
+                | Error _ -> 
+                    ([], [PackageTomlParseFailed { package = dep.name; path = path_str }])
                 | Ok toml -> (
                     let rel_path =
                       let abs_str = Path.to_string abs_path in
@@ -74,7 +98,7 @@ let rec load_external_package (workspace_root : Path.t)
                     in
                     let relative_path = Path.v rel_path in
                     match
-                      Package.from_toml toml ~workspace_deps:[] ~path:abs_path
+                      Package.from_toml toml ~workspace_deps ~path:abs_path
                         ~relative_path
                     with
                     | Ok pkg ->
@@ -93,17 +117,22 @@ let rec load_external_package (workspace_root : Path.t)
                                   })
                             pkg.dependencies
                         in
-                        let transitive =
-                          List.concat_map
-                            (load_external_package workspace_root ~seen)
+                        let transitive_results =
+                          List.map
+                            (load_external_package workspace_root ~seen ~workspace_deps 
+                              ~dependant:(Some pkg.name))
                             transitive_deps
                         in
-                        pkg :: transitive
-                    | Error _ -> [])))
-        | _ -> [])
+                        let transitive_pkgs = List.concat_map fst transitive_results in
+                        let transitive_errs = List.concat_map snd transitive_results in
+                        (pkg :: transitive_pkgs, transitive_errs)
+                    | Error _ -> 
+                        ([], [PackageFromTomlFailed { package = dep.name; path = path_str }]))))
+        | _ -> 
+            ([], [PackageNotFound { dependant; package = dep.name; path = path_str }]))
 
 let build_workspace (workspace_root : Path.t)
-    (workspace_manifest : Workspace.manifest) : Workspace.t =
+    (workspace_manifest : Workspace.manifest) : (Workspace.t * load_error list) =
   let member_packages =
     List.filter_map
       (fun member ->
@@ -113,19 +142,36 @@ let build_workspace (workspace_root : Path.t)
   in
 
   let seen = ref (List.map (fun (p : Package.t) -> p.name) member_packages) in
-  let external_packages =
+  
+  (* Load workspace-level dependencies first *)
+  let workspace_results =
+    List.map
+      (load_external_package workspace_root ~seen 
+        ~workspace_deps:workspace_manifest.dependencies ~dependant:None)
+      workspace_manifest.dependencies
+  in
+  let workspace_packages = List.concat_map fst workspace_results in
+  let workspace_errors = List.concat_map snd workspace_results in
+  
+  (* Then load any additional dependencies from member packages *)
+  let external_results =
     List.concat_map
       (fun (pkg : Package.t) ->
-        List.concat_map
-          (load_external_package workspace_root ~seen)
+        List.map
+          (load_external_package workspace_root ~seen 
+            ~workspace_deps:workspace_manifest.dependencies 
+            ~dependant:(Some pkg.name))
           pkg.dependencies)
       member_packages
   in
+  let external_packages = List.concat_map fst external_results in
+  let external_errors = List.concat_map snd external_results in
 
-  let all_packages = member_packages @ external_packages in
-  Workspace.make ~root:workspace_root ~packages:all_packages
+  let all_packages = member_packages @ workspace_packages @ external_packages in
+  let all_errors = workspace_errors @ external_errors in
+  (Workspace.make ~root:workspace_root ~packages:all_packages, all_errors)
 
-let scan (path : Path.t) : (Workspace.t, string) result =
+let scan (path : Path.t) : ((Workspace.t * load_error list), string) result =
   try
     match find_workspace_root path with
     | None -> Error "No workspace root found"
@@ -144,10 +190,24 @@ let scan (path : Path.t) : (Workspace.t, string) result =
                 | Error msg ->
                     Error (format "Failed to parse workspace manifest: %s" msg)
                 | Ok workspace_manifest ->
-                    let workspace =
+                    let (workspace, errors) =
                       build_workspace workspace_root workspace_manifest
                     in
-                    Ok workspace)))
+                    Ok (workspace, errors))))
   with exn -> Error (format "Scan failed: %s" (Exception.to_string exn))
 
 let load ~root = scan root
+
+let load_error_to_string = function
+  | PackageNotFound { dependant; package; path } ->
+      let dep_str = match dependant with
+        | None -> "workspace"
+        | Some name -> format "package '%s'" name
+      in
+      format "%s: could not find tusk.toml for '%s' at path %s" dep_str package path
+  | PackageTomlReadFailed { package; path } ->
+      format "package '%s': failed to read tusk.toml at path %s" package path
+  | PackageTomlParseFailed { package; path } ->
+      format "package '%s': failed to parse tusk.toml at path %s" package path
+  | PackageFromTomlFailed { package; path } ->
+      format "package '%s': failed to load from tusk.toml at path %s" package path

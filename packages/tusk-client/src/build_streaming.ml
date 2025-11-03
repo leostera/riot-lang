@@ -23,6 +23,11 @@ type streaming_event =
       built : WireProtocol.build_result list;
       errors : WireProtocol.build_result list;
     }
+  | PlanningFailed of {
+      session_id : Session_id.t;
+      failed_at : Datetime.t;
+      reason : string;
+    }
   | CycleDetected of {
       session_id : Session_id.t;
       detected_at : Datetime.t;
@@ -61,6 +66,10 @@ and handle_response t session_id callback response =
       let final_event =
         BuildFailed { session_id; failed_at; stats; built; errors }
       in
+      callback final_event;
+      Ok final_event
+  | WireProtocol.PlanningFailed { session_id; failed_at; reason } ->
+      let final_event = PlanningFailed { session_id; failed_at; reason } in
       callback final_event;
       Ok final_event
   | WireProtocol.CycleDetected { session_id; detected_at; cycle_nodes } ->

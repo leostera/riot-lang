@@ -6,6 +6,14 @@ module G = Graph.SimpleGraph
 
 exception Cycle_detected of string list
 
+type missing_dependency = {
+  package : string;
+  dependency : string;
+}
+
+type create_error = 
+  | MissingPackages of { missing : missing_dependency list }
+
 type build_status = Cached | Fresh
 
 type package_node =
@@ -62,9 +70,17 @@ let get_planned_data = function
       Some (package, module_graph, action_graph, hash)
   | Failed _ -> None
 
-let create (workspace : Workspace.t) =
+let is_well_known_package name =
+  (* OCaml standard library packages that are distributed with OCaml *)
+  match name with
+  | "unix" | "stdlib" | "threads" | "str" | "bigarray" | "dynlink" 
+  | "compiler-libs" | "graphics" -> true
+  | _ -> false
+
+let create (workspace : Workspace.t) : (t, create_error) result =
   let graph = G.make () in
   let name_to_node = HashMap.create () in
+  let missing = vec[] in
 
   List.iter
     (fun (pkg : Package.t) ->
@@ -82,11 +98,17 @@ let create (workspace : Workspace.t) =
             (fun (dep : Package.dependency) ->
               match HashMap.get name_to_node dep.name with
               | Some dep_node -> G.add_edge pkg_node ~depends_on:dep_node
-              | None -> ())
+              | None -> 
+                  (* Skip well-known OCaml stdlib packages *)
+                  if not (is_well_known_package dep.name) then
+                    Vector.push missing { package = pkg.name; dependency = dep.name })
             pkg.dependencies)
     workspace.packages;
 
-  { graph; name_to_node }
+  if Vector.len missing > 0 then
+    Error (MissingPackages { missing = Vector.to_list missing })
+  else
+    Ok { graph; name_to_node }
 
 let get_node pg package = HashMap.get pg.name_to_node package.Package.name
 

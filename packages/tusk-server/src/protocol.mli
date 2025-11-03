@@ -70,6 +70,11 @@ type response =
       built : Tusk_executor.Package_builder.build_result list;
       errors : Tusk_executor.Package_builder.build_result list;
     }
+  | PlanningFailed of {
+      session_id : Session_id.t;
+      failed_at : Datetime.t;
+      reason : string;
+    }
   | CycleDetected of {
       session_id : Session_id.t;
       cycle_nodes : string list;

@@ -64,7 +64,9 @@ let test_cache_hit_using_package_builder () =
           |> Result.expect ~msg:"Failed to initialize toolchain"
         in
         let store = Tusk_store.Store.create ~workspace in
-        let package_graph = Tusk_planner.Package_graph.create workspace in
+        let package_graph = 
+          Tusk_planner.Package_graph.create workspace |> Result.unwrap
+        in
 
         let first_build =
           Tusk_executor.Package_builder.build ~workspace ~toolchain ~store
@@ -131,7 +133,9 @@ let test_cache_invalidation_on_source_change () =
             |> Result.expect ~msg:"Failed to initialize toolchain"
           in
           let store = Tusk_store.Store.create ~workspace in
-          let package_graph = Tusk_planner.Package_graph.create workspace in
+          let package_graph = 
+            Tusk_planner.Package_graph.create workspace |> Result.unwrap
+          in
 
           let first_build =
             Tusk_executor.Package_builder.build ~workspace ~toolchain ~store
@@ -154,7 +158,7 @@ let test_cache_invalidation_on_source_change () =
               }
           in
           let updated_package_graph =
-            Tusk_planner.Package_graph.create updated_workspace
+            Tusk_planner.Package_graph.create updated_workspace |> Result.unwrap
           in
 
           let second_build =

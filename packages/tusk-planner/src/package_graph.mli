@@ -26,9 +26,20 @@ type package_node =
 
 exception Cycle_detected of string list
 
-val create : Workspace.t -> t
+type missing_dependency = {
+  package : string;
+  dependency : string;
+}
+
+type create_error = 
+  | MissingPackages of { missing : missing_dependency list }
+
+val create : Workspace.t -> (t, create_error) result
 (** Create a package dependency graph from a workspace. Each package becomes a
-    node, edges represent dependencies. All nodes start as Unplanned. *)
+    node, edges represent dependencies. All nodes start as Unplanned.
+    
+    Returns Error(MissingPackages) if any package depends on packages that are
+    not in the workspace. *)
 
 val get_package : package_node -> Package.t
 (** Extract the Package.t from a package_node *)

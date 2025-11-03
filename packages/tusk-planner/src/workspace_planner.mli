@@ -15,9 +15,11 @@ type package_plan = {
 type plan_error =
   | PackageNotFound of { name : string; available : string list }
   | CycleDetected of { cycle : string list }
+  | MissingDependencies of { missing : Package_graph.missing_dependency list }
+  | PackageLoadFailed of { errors : Workspace_manager.load_error list }
 
 val plan_workspace :
-  workspace:Workspace.t -> target:target -> (package_plan, plan_error) result
+  workspace:Workspace.t -> target:target -> load_errors:Workspace_manager.load_error list -> (package_plan, plan_error) result
 (** Plan the workspace build:
 
     1. Build package dependency graph from workspace 2. Filter to target (All or

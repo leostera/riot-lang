@@ -32,24 +32,22 @@ module Server = struct
   (** Convert internal build_result to WireProtocol build_result *)
   let convert_build_result (result : Tusk_executor.Package_builder.build_result)
       : WireProtocol.build_result =
-    let status =
+    (* WireProtocol types are aliases, cast through constructors *)
+    let status : WireProtocol.build_status =
       match result.status with
-      | Tusk_executor.Package_builder.Cached artifact ->
-          WireProtocol.Cached artifact
-      | Tusk_executor.Package_builder.Built artifact ->
-          WireProtocol.Built artifact
+      | Tusk_executor.Package_builder.Cached artifact -> WireProtocol.Cached artifact
+      | Tusk_executor.Package_builder.Built artifact -> WireProtocol.Built artifact
       | Tusk_executor.Package_builder.Failed err ->
-          let wire_err =
+          let wire_err : WireProtocol.package_error =
             match err with
-            | Tusk_executor.Package_builder.PlanningFailed planning_err ->
-                WireProtocol.PlanningFailed planning_err
-            | Tusk_executor.Package_builder.ExecutionFailed { message } ->
+            | Tusk_executor.Package_builder.PlanningFailed e -> WireProtocol.PlanningFailed e
+            | Tusk_executor.Package_builder.ExecutionFailed { message } -> 
                 WireProtocol.ExecutionFailed { message }
-            | Tusk_executor.Package_builder.ActionExecutionFailed { message } ->
+            | Tusk_executor.Package_builder.ActionExecutionFailed { message } -> 
                 WireProtocol.ActionExecutionFailed { message }
-            | Tusk_executor.Package_builder.ActionOutputsNotCreated { missing } ->
+            | Tusk_executor.Package_builder.ActionOutputsNotCreated { missing } -> 
                 WireProtocol.ActionOutputsNotCreated { missing }
-            | Tusk_executor.Package_builder.ActionDependenciesFailed { failed } ->
+            | Tusk_executor.Package_builder.ActionDependenciesFailed { failed } -> 
                 WireProtocol.ActionDependenciesFailed { failed }
           in
           WireProtocol.Failed wire_err
@@ -465,6 +463,11 @@ module Server = struct
                      built = wire_built;
                      errors = wire_errors;
                    });
+              ()
+          | Protocol.ServerResponse
+              (Protocol.PlanningFailed { session_id; failed_at; reason }) ->
+              Log.warn "[JSONRPC] <<< Planning failed: %s" reason;
+              reply (WireProtocol.PlanningFailed { session_id; failed_at; reason });
               ()
           | Protocol.ServerResponse
               (Protocol.PackageNotFound

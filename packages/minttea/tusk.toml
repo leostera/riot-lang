@@ -6,9 +6,9 @@ version = "0.1.0"
 path = "src/minttea.ml"
 
 [dependencies]
-std = "*"
-tty = "*"
-colors = "*"
+std = { path = "../std" }
+tty = { path = "../tty" }
+colors = { path ="../colors" }
 
 [[bin]]
 name = "001_hello_world"

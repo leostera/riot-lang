@@ -148,6 +148,11 @@ module WireProtocol = struct
         built : build_result list;
         errors : build_result list;
       }
+    | PlanningFailed of {
+        session_id : Session_id.t;
+        failed_at : Std.Datetime.t;
+        reason : string;
+      }
     | ExecutableFound of { package : string; binary : string }
     | ExecutableNotFound
     | ArtifactFound of { path : string }
@@ -1507,6 +1512,15 @@ module WireProtocol = struct
             ("cache_hits", Json.Int stats.cache_hits);
             ("cache_misses", Json.Int stats.cache_misses);
           ]
+    | PlanningFailed { session_id; failed_at; reason } ->
+        let timestamp = Std.Datetime.to_iso8601 failed_at in
+        Json.Object
+          [
+            ("type", Json.String "planning_failed");
+            ("session_id", Json.String (Session_id.to_string session_id));
+            ("failed_at", Json.String timestamp);
+            ("reason", Json.String reason);
+          ]
     | ShutdownAck -> Json.Object [ ("type", Json.String "shutdown_ack") ]
     | RestartAck -> Json.Object [ ("type", Json.String "restart_ack") ]
     | FormatResult { formatted_code; changed } ->
@@ -1765,6 +1779,19 @@ module WireProtocol = struct
                    built = [];
                    errors = [];
                  })
+        | Some (Json.String "planning_failed") ->
+            let session_id =
+              match List.assoc_opt "session_id" fields with
+              | Some (Json.String s) -> Session_id.of_string s
+              | _ -> Session_id.make ()
+            in
+            let reason =
+              match List.assoc_opt "reason" fields with
+              | Some (Json.String s) -> s
+              | _ -> "Unknown planning error"
+            in
+            let failed_at = Std.Datetime.now () in
+            Ok (PlanningFailed { session_id; failed_at; reason })
         | Some (Json.String "shutdown_ack") -> Ok ShutdownAck
         | Some (Json.String "restart_ack") -> Ok RestartAck
         | Some (Json.String "format_result") -> (

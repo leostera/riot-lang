@@ -17,7 +17,7 @@ let command =
 
 let build_package package_name =
   let cwd = Env.current_dir () |> Result.expect ~msg:"Operation failed" in
-  let workspace =
+  let (workspace, _load_errors) =
     Workspace_manager.scan cwd |> Result.expect ~msg:"Operation failed"
   in
   let client_result = Tusk_server.Server_manager.ensure_running ~workspace in
@@ -51,7 +51,7 @@ let run matches =
 
   (* First, find which package contains this binary *)
   let cwd = Env.current_dir () |> Result.expect ~msg:"Failed to get cwd" in
-  let workspace =
+  let (workspace, _load_errors) =
     Workspace_manager.scan cwd |> Result.expect ~msg:"Failed to scan workspace"
   in
   let client =

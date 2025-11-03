@@ -67,7 +67,7 @@ let setup_test_workspace test_name fixture_name =
   pkg_dir
 
 let load_test_workspace test_dir =
-  Tusk_model.Workspace_manager.scan test_dir
+  (let (ws, _) = Tusk_model.Workspace_manager.scan test_dir in ws)
   |> Result.expect ~msg:"Failed to load workspace"
 
 let test_simple_library_builds () =
