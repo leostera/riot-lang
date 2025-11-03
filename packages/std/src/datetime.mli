@@ -160,3 +160,86 @@ val to_iso8601 : t -> string
     - Storing dates in databases
     - API responses
     - Interoperability with other systems *)
+
+(** {1 Parsing} *)
+
+type error =
+  | Invalid_format of string
+      (** The input string doesn't match expected ISO 8601 format *)
+  | Invalid_date of string
+      (** Date components are invalid (e.g., February 30th) *)
+  | Invalid_time of string
+      (** Time components are invalid (e.g., 25:00:00) *)
+  | Invalid_timezone of string
+      (** Timezone offset is malformed *)
+(** Errors that can occur when parsing datetime strings. *)
+
+val parse : string -> (t, error) result
+(** Parses an ISO 8601 datetime string into a DateTime.
+
+    This function has full parity with Elixir's DateTime.from_iso8601/2 parser.
+
+    ## Examples
+
+    ```ocaml (* UTC datetime with microseconds *)
+    match DateTime.parse "2025-08-27T14:07:31.426822Z" with
+    | Ok dt -> Printf.printf "Year: %d\n" dt.year
+    | Error err -> Printf.printf "Parse error: %s\n" (match err with
+        | Invalid_format msg -> "Invalid format: " ^ msg
+        | Invalid_date msg -> "Invalid date: " ^ msg
+        | Invalid_time msg -> "Invalid time: " ^ msg
+        | Invalid_timezone msg -> "Invalid timezone: " ^ msg)
+
+    (* Datetime with timezone offset *)
+    let dt = DateTime.parse "2025-08-27T14:07:31+05:30" |> Result.unwrap in
+    (* dt.time_zone = Tz.Local, dt.utc_offset = 19800 *)
+
+    (* Space as separator *)
+    let dt = DateTime.parse "2025-08-27 14:07:31Z" |> Result.unwrap in
+
+    (* Basic format (no separators) *)
+    let dt = DateTime.parse "20250827T140731Z" |> Result.unwrap in
+
+    (* Comma as decimal separator *)
+    let dt = DateTime.parse "2025-08-27T14:07:31,426Z" |> Result.unwrap in
+
+    (* Negative year *)
+    let dt = DateTime.parse "-2015-08-27T14:07:31Z" |> Result.unwrap in
+    (* dt.year = -2015 *) ```
+
+    ## Supported Formats
+
+    The function supports both **extended** and **basic** ISO 8601 formats:
+
+    ### Extended Format (with separators):
+    - `YYYY-MM-DDTHH:MM:SSZ` (UTC)
+    - `YYYY-MM-DD HH:MM:SSZ` (space separator)
+    - `YYYY-MM-DDTHH:MM:SS±HH:MM` (with timezone offset)
+    - `YYYY-MM-DDTHH:MM:SS.ssssssZ` (with microseconds, dot separator)
+    - `YYYY-MM-DDTHH:MM:SS,ssssssZ` (with microseconds, comma separator)
+    - `-YYYY-MM-DDTHH:MM:SSZ` (negative year)
+    - `+YYYY-MM-DDTHH:MM:SSZ` (explicit positive year)
+
+    ### Basic Format (no separators):
+    - `YYYYMMDDTHHMMSSZ` (UTC)
+    - `YYYYMMDD HHMMSSZ` (space separator)
+    - `YYYYMMDDTHHMMSS±HHMM` (with timezone offset)
+    - `YYYYMMDDTHHMMSS.ssssssZ` (with microseconds)
+    - `-YYYYMMDDTHHMMSSZ` (negative year)
+
+    ## Format Details
+
+    - **Date separators**: Extended format uses `-`, basic format uses none
+    - **Time separators**: Extended format uses `:`, basic format uses none
+    - **Datetime separator**: Either `T` or space (` `)
+    - **Decimal separator**: Either `.` or `,` for fractional seconds
+    - **Timezone**: `Z` for UTC, or `±HH:MM` / `±HHMM` for offsets
+    - **Microseconds**: Up to 6 decimal places supported
+
+    ## Notes
+
+    - Timezone offsets are converted to seconds and stored in utc_offset
+    - Missing microseconds default to 0
+    - The resulting datetime uses Tz.Local for offset times, Tz.Etc_UTC for "Z"
+    - Leap year validation is performed for negative years
+    - Compatible with Elixir's DateTime.from_iso8601/2 parser *)
