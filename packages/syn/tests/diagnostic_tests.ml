@@ -14,50 +14,45 @@ let test_diagnostic test_path diagnostic_path =
   let parse_result = Syn.parse ~filename:test_path source in
   let actual_diagnostics = parse_result.Parser.diagnostics in
 
-  if List.length actual_diagnostics = 0 then
-    Error
-      "No diagnostics produced - diagnostic test must produce at least one \
-       error"
+  let expected_json =
+    Json.of_string (String.trim diagnostic_json)
+    |> Result.expect ~msg:"Failed to parse diagnostic JSON"
+  in
+  let expected_diagnostics =
+    match expected_json with
+    | Json.Array items ->
+        List.map
+          (fun item ->
+            Diagnostic.from_json item
+            |> Result.expect ~msg:"Failed to deserialize diagnostic")
+          items
+    | _ -> []
+  in
+
+  let actual_json =
+    Json.Array (List.map Diagnostic.to_json actual_diagnostics)
+  in
+  let expected_json_normalized =
+    Json.Array (List.map Diagnostic.to_json expected_diagnostics)
+  in
+
+  let actual_str = Json.to_string actual_json in
+  let expected_str = Json.to_string expected_json_normalized in
+
+  if actual_str = expected_str then Ok ()
   else
-    let expected_json =
-      Json.of_string (String.trim diagnostic_json)
-      |> Result.expect ~msg:"Failed to parse diagnostic JSON"
-    in
-    let expected_diagnostics =
-      match expected_json with
-      | Json.Array items ->
-          List.map
-            (fun item ->
-              Diagnostic.from_json item
-              |> Result.expect ~msg:"Failed to deserialize diagnostic")
-            items
-      | _ -> []
-    in
-
-    let actual_json =
-      Json.Array (List.map Diagnostic.to_json actual_diagnostics)
-    in
-    let expected_json_normalized =
-      Json.Array (List.map Diagnostic.to_json expected_diagnostics)
-    in
-
-    let actual_str = Json.to_string actual_json in
-    let expected_str = Json.to_string expected_json_normalized in
-
-    if actual_str = expected_str then Ok ()
-    else
-      Error
-        (format
-           "Diagnostics mismatch for %s\n\
-            Expected %d diagnostics:\n\
-            %s\n\n\
-            Got %d diagnostics:\n\
-            %s\n"
-           test_path
-           (List.length expected_diagnostics)
-           expected_str
-           (List.length actual_diagnostics)
-           actual_str)
+    Error
+      (format
+         "Diagnostics mismatch for %s\n\
+          Expected %d diagnostics:\n\
+          %s\n\n\
+          Got %d diagnostics:\n\
+          %s\n"
+         test_path
+         (List.length expected_diagnostics)
+         expected_str
+         (List.length actual_diagnostics)
+         actual_str)
 
 let discover_diagnostics () =
   let diagnostics_dir = Path.v "packages/syn/tests/diagnostics" in

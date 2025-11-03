@@ -28,6 +28,9 @@ type t =
   | IF_EXPR (* if c then e1 else e2 *)
   | MATCH_EXPR (* match e with ... *)
   | FUN_EXPR (* fun x -> e *)
+  | LABELED_PARAM (* ~label or ~label:pattern *)
+  | OPTIONAL_PARAM (* ?label or ?label:pattern *)
+  | OPTIONAL_PARAM_DEFAULT (* ?(label = expr) *)
   | FUNCTION_EXPR (* function | p1 -> e1 | ... *)
   | LET_EXPR (* let x = e1 in e2 *)
   | LET_REC_EXPR (* let rec f x = e1 in e2 *)
@@ -143,6 +146,9 @@ let to_string = function
   | IF_EXPR -> "IF_EXPR"
   | MATCH_EXPR -> "MATCH_EXPR"
   | FUN_EXPR -> "FUN_EXPR"
+  | LABELED_PARAM -> "LABELED_PARAM"
+  | OPTIONAL_PARAM -> "OPTIONAL_PARAM"
+  | OPTIONAL_PARAM_DEFAULT -> "OPTIONAL_PARAM_DEFAULT"
   | FUNCTION_EXPR -> "FUNCTION_EXPR"
   | LET_EXPR -> "LET_EXPR"
   | LET_REC_EXPR -> "LET_REC_EXPR"
@@ -243,6 +249,9 @@ let from_string = function
   | "IF_EXPR" -> Some IF_EXPR
   | "MATCH_EXPR" -> Some MATCH_EXPR
   | "FUN_EXPR" -> Some FUN_EXPR
+  | "LABELED_PARAM" -> Some LABELED_PARAM
+  | "OPTIONAL_PARAM" -> Some OPTIONAL_PARAM
+  | "OPTIONAL_PARAM_DEFAULT" -> Some OPTIONAL_PARAM_DEFAULT
   | "FUNCTION_EXPR" -> Some FUNCTION_EXPR
   | "LET_EXPR" -> Some LET_EXPR
   | "LET_REC_EXPR" -> Some LET_REC_EXPR

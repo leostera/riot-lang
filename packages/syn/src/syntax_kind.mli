@@ -56,6 +56,9 @@ type t =
   | IF_EXPR  (** If expression: `if cond then e1 else e2` *)
   | MATCH_EXPR  (** Match expression: `match x with ...` *)
   | FUN_EXPR  (** Anonymous function: `fun x -> x + 1` *)
+  | LABELED_PARAM  (** Labeled parameter: `~label` or `~label:pattern` *)
+  | OPTIONAL_PARAM  (** Optional parameter: `?label` or `?label:pattern` *)
+  | OPTIONAL_PARAM_DEFAULT  (** Optional with default: `?(label = expr)` *)
   | FUNCTION_EXPR
       (** Function with pattern matching: `function | P1 -> e1 | P2 -> e2` *)
   | LET_EXPR  (** Let expression: `let x = 1 in x + 2` *)
