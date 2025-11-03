@@ -103,9 +103,9 @@ let status t =
   | Exited out -> Ok out.status
   | Running _ -> Error (SystemError "Command is already running")
   | Pending -> (
-      (* Build stdio config to inherit stdout and stderr (don't capture) *)
+      (* Build stdio config to inherit stdin, stdout and stderr (don't capture) *)
       let stdio =
-        OsProcess.{ stdin = `Null; stdout = `Inherit; stderr = `Inherit }
+        OsProcess.{ stdin = `Inherit; stdout = `Inherit; stderr = `Inherit }
       in
 
       (* Spawn the process *)
