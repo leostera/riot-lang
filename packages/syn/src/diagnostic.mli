@@ -80,6 +80,9 @@ type kind =
   | ConsPatternMissingTail of { found : found_token }
   | OrPatternMissing of { found : found_token }
   | OrPatternDouble of { found : found_token }
+  | MutableFieldMissingName of { found : found_token }
+  | RecordFieldMissingColon of { field_name : string; found : found_token }
+  | RecordFieldMissingType of { field_name : string; found : found_token }
 
 type t = { kind : kind; span : Ceibo.Span.t }
 (** A diagnostic with structured error information and source location. *)
@@ -223,6 +226,15 @@ val cons_pattern_missing_tail :
 
 val or_pattern_missing : found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 val or_pattern_double : found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
+val mutable_field_missing_name :
+  found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
+val record_field_missing_colon :
+  field_name:string -> found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
+val record_field_missing_type :
+  field_name:string -> found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 
 (** # Serialization *)
 

@@ -23,6 +23,8 @@ type t =
   | IDENT_EXPR
   | PATH_EXPR (* Module.path.to.value *)
   | APPLY_EXPR (* f x y *)
+  | LABELED_ARG (* ~label or ~label:value in function call *)
+  | OPTIONAL_ARG (* ?label or ?label:value in function call *)
   | INFIX_EXPR (* x + y *)
   | PREFIX_EXPR (* -x, !ref *)
   | IF_EXPR (* if c then e1 else e2 *)
@@ -44,6 +46,7 @@ type t =
   | FIELD_ACCESS_EXPR (* record.field *)
   | ARRAY_INDEX_EXPR (* arr.(i) *)
   | STRING_INDEX_EXPR (* s.[i] *)
+  | ASSIGN_EXPR (* field <- value, arr.(i) <- value *)
   | CONSTRUCTOR_EXPR (* Some e, Ok value *)
   | POLY_VARIANT_EXPR (* `Tag or `Tag value *)
   | ASSERT_EXPR (* assert e *)
@@ -90,10 +93,12 @@ type t =
   | TYPE_TUPLE (* int * string *)
   | TYPE_PAREN (* (int -> string) *)
   | TYPE_POLY_VARIANT (* [`A | `B] *)
+  | POLY_VARIANT_TAG (* `A or `A of int *)
   | TYPE_PARAM (* 'a in type params *)
   | TYPE_PARAMS (* ('a, 'b) *)
   | TYPE_VARIANT_CONSTR (* A | B of int *)
   | TYPE_EXTENSIBLE (* .. for extensible variants *)
+  | TYPE_RECORD (* { field1: int; field2: string } *)
   | TYPE_RECORD_FIELD (* field: int *)
   | TYPE_CONSTRAINT (* constraint 'a = int *)
   | MODULE_TYPE_EXPR (* S | S with type t = int *)
@@ -141,6 +146,8 @@ let to_string = function
   | IDENT_EXPR -> "IDENT_EXPR"
   | PATH_EXPR -> "PATH_EXPR"
   | APPLY_EXPR -> "APPLY_EXPR"
+  | LABELED_ARG -> "LABELED_ARG"
+  | OPTIONAL_ARG -> "OPTIONAL_ARG"
   | INFIX_EXPR -> "INFIX_EXPR"
   | PREFIX_EXPR -> "PREFIX_EXPR"
   | IF_EXPR -> "IF_EXPR"
@@ -162,6 +169,7 @@ let to_string = function
   | FIELD_ACCESS_EXPR -> "FIELD_ACCESS_EXPR"
   | ARRAY_INDEX_EXPR -> "ARRAY_INDEX_EXPR"
   | STRING_INDEX_EXPR -> "STRING_INDEX_EXPR"
+  | ASSIGN_EXPR -> "ASSIGN_EXPR"
   | CONSTRUCTOR_EXPR -> "CONSTRUCTOR_EXPR"
   | POLY_VARIANT_EXPR -> "POLY_VARIANT_EXPR"
   | ASSERT_EXPR -> "ASSERT_EXPR"
@@ -202,10 +210,12 @@ let to_string = function
   | TYPE_TUPLE -> "TYPE_TUPLE"
   | TYPE_PAREN -> "TYPE_PAREN"
   | TYPE_POLY_VARIANT -> "TYPE_POLY_VARIANT"
+  | POLY_VARIANT_TAG -> "POLY_VARIANT_TAG"
   | TYPE_PARAM -> "TYPE_PARAM"
   | TYPE_PARAMS -> "TYPE_PARAMS"
   | TYPE_VARIANT_CONSTR -> "TYPE_VARIANT_CONSTR"
   | TYPE_EXTENSIBLE -> "TYPE_EXTENSIBLE"
+  | TYPE_RECORD -> "TYPE_RECORD"
   | TYPE_RECORD_FIELD -> "TYPE_RECORD_FIELD"
   | TYPE_CONSTRAINT -> "TYPE_CONSTRAINT"
   | MODULE_TYPE_EXPR -> "MODULE_TYPE_EXPR"
@@ -244,6 +254,8 @@ let from_string = function
   | "IDENT_EXPR" -> Some IDENT_EXPR
   | "PATH_EXPR" -> Some PATH_EXPR
   | "APPLY_EXPR" -> Some APPLY_EXPR
+  | "LABELED_ARG" -> Some LABELED_ARG
+  | "OPTIONAL_ARG" -> Some OPTIONAL_ARG
   | "INFIX_EXPR" -> Some INFIX_EXPR
   | "PREFIX_EXPR" -> Some PREFIX_EXPR
   | "IF_EXPR" -> Some IF_EXPR
@@ -265,6 +277,7 @@ let from_string = function
   | "FIELD_ACCESS_EXPR" -> Some FIELD_ACCESS_EXPR
   | "ARRAY_INDEX_EXPR" -> Some ARRAY_INDEX_EXPR
   | "STRING_INDEX_EXPR" -> Some STRING_INDEX_EXPR
+  | "ASSIGN_EXPR" -> Some ASSIGN_EXPR
   | "CONSTRUCTOR_EXPR" -> Some CONSTRUCTOR_EXPR
   | "POLY_VARIANT_EXPR" -> Some POLY_VARIANT_EXPR
   | "ASSERT_EXPR" -> Some ASSERT_EXPR
@@ -305,10 +318,12 @@ let from_string = function
   | "TYPE_TUPLE" -> Some TYPE_TUPLE
   | "TYPE_PAREN" -> Some TYPE_PAREN
   | "TYPE_POLY_VARIANT" -> Some TYPE_POLY_VARIANT
+  | "POLY_VARIANT_TAG" -> Some POLY_VARIANT_TAG
   | "TYPE_PARAM" -> Some TYPE_PARAM
   | "TYPE_PARAMS" -> Some TYPE_PARAMS
   | "TYPE_VARIANT_CONSTR" -> Some TYPE_VARIANT_CONSTR
   | "TYPE_EXTENSIBLE" -> Some TYPE_EXTENSIBLE
+  | "TYPE_RECORD" -> Some TYPE_RECORD
   | "TYPE_RECORD_FIELD" -> Some TYPE_RECORD_FIELD
   | "TYPE_CONSTRAINT" -> Some TYPE_CONSTRAINT
   | "MODULE_TYPE_EXPR" -> Some MODULE_TYPE_EXPR

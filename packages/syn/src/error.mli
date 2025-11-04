@@ -38,6 +38,9 @@ type id =
   | E0035_ConsPatternMissingTail
   | E0036_OrPatternMissing
   | E0037_OrPatternDouble
+  | E0038_MutableFieldMissingName
+  | E0039_RecordFieldMissingColon
+  | E0040_RecordFieldMissingType
 
 val id_to_string : id -> string
 val id_of_string : string -> id option

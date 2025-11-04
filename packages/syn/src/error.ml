@@ -38,6 +38,9 @@ type id =
   | E0035_ConsPatternMissingTail
   | E0036_OrPatternMissing
   | E0037_OrPatternDouble
+  | E0038_MutableFieldMissingName
+  | E0039_RecordFieldMissingColon
+  | E0040_RecordFieldMissingType
 
 let id_to_string = function
   | E0001_MalformedTypeVariable -> "E0001"
@@ -77,6 +80,9 @@ let id_to_string = function
   | E0035_ConsPatternMissingTail -> "E0035"
   | E0036_OrPatternMissing -> "E0036"
   | E0037_OrPatternDouble -> "E0037"
+  | E0038_MutableFieldMissingName -> "E0038"
+  | E0039_RecordFieldMissingColon -> "E0039"
+  | E0040_RecordFieldMissingType -> "E0040"
 
 let id_of_string = function
   | "E0001" -> Some E0001_MalformedTypeVariable
@@ -116,6 +122,9 @@ let id_of_string = function
   | "E0035" -> Some E0035_ConsPatternMissingTail
   | "E0036" -> Some E0036_OrPatternMissing
   | "E0037" -> Some E0037_OrPatternDouble
+  | "E0038" -> Some E0038_MutableFieldMissingName
+  | "E0039" -> Some E0039_RecordFieldMissingColon
+  | "E0040" -> Some E0040_RecordFieldMissingType
   | _ -> None
 
 let name = function
@@ -156,6 +165,9 @@ let name = function
   | E0035_ConsPatternMissingTail -> "cons-pattern-missing-tail"
   | E0036_OrPatternMissing -> "or-pattern-missing"
   | E0037_OrPatternDouble -> "or-pattern-double"
+  | E0038_MutableFieldMissingName -> "mutable-field-missing-name"
+  | E0039_RecordFieldMissingColon -> "record-field-missing-colon"
+  | E0040_RecordFieldMissingType -> "record-field-missing-type"
 
 let explain = function
   | E0001_MalformedTypeVariable ->
@@ -499,4 +511,34 @@ In OCaml, or-patterns require a pattern between each | operator:
   ```
 
 Fix: add a pattern between the | operators or remove one |.
+|}
+  | E0038_MutableFieldMissingName ->
+      {|Record fields declared as mutable must have a field name.
+
+In OCaml, mutable record fields are declared as:
+  ```ocaml
+  type counter = { mutable count : int }
+  ```
+
+The 'mutable' keyword must be followed by a field name.
+|}
+  | E0039_RecordFieldMissingColon ->
+      {|Record field declarations require a colon followed by a type.
+
+In OCaml, record fields are declared as:
+  ```ocaml
+  type person = { name : string; age : int }
+  ```
+
+Each field name must be followed by a colon and then the field's type.
+|}
+  | E0040_RecordFieldMissingType ->
+      {|Record field declarations require a type after the colon.
+
+In OCaml, record fields are declared as:
+  ```ocaml
+  type person = { name : string; age : int }
+  ```
+
+After the colon, you must specify the type for the field.
 |}

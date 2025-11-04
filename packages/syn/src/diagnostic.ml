@@ -52,6 +52,9 @@ type kind =
   | ConsPatternMissingTail of { found : found_token }
   | OrPatternMissing of { found : found_token }
   | OrPatternDouble of { found : found_token }
+  | MutableFieldMissingName of { found : found_token }
+  | RecordFieldMissingColon of { field_name : string; found : found_token }
+  | RecordFieldMissingType of { field_name : string; found : found_token }
 
 type t = { kind : kind; span : Ceibo.Span.t }
 (** Parse error information *)
@@ -236,6 +239,21 @@ let or_pattern_double ~found:token ~text ~span =
   let found = { kind = kind_str; text } in
   make ~kind:(OrPatternDouble { found }) ~span
 
+let mutable_field_missing_name ~found:token ~text ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text } in
+  make ~kind:(MutableFieldMissingName { found }) ~span
+
+let record_field_missing_colon ~field_name ~found:token ~text ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text } in
+  make ~kind:(RecordFieldMissingColon { field_name; found }) ~span
+
+let record_field_missing_type ~field_name ~found:token ~text ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text } in
+  make ~kind:(RecordFieldMissingType { field_name; found }) ~span
+
 let expected_message diag =
   match diag.kind with
   | MalformedTypeVariable _ -> "type variable identifier (e.g., 'a, 'b)"
@@ -286,6 +304,11 @@ let expected_message diag =
   | ConsPatternMissingTail _ -> "pattern after ::"
   | OrPatternMissing _ -> "pattern (not bare |)"
   | OrPatternDouble _ -> "pattern between | operators"
+  | MutableFieldMissingName _ -> "field name after mutable"
+  | RecordFieldMissingColon { field_name; _ } ->
+      "colon after field name '" ^ field_name ^ "'"
+  | RecordFieldMissingType { field_name; _ } ->
+      "type definition for field '" ^ field_name ^ "'"
 
 let fix_message diag =
   match diag.kind with
@@ -355,6 +378,12 @@ let fix_message diag =
   | OrPatternMissing _ -> Some "add patterns on both sides of the | operator"
   | OrPatternDouble _ ->
       Some "add a pattern between the | operators or remove one |"
+  | MutableFieldMissingName _ ->
+      Some "add a field name after the 'mutable' keyword"
+  | RecordFieldMissingColon { field_name; _ } ->
+      Some (format "add a colon after field name '%s'" field_name)
+  | RecordFieldMissingType { field_name; _ } ->
+      Some (format "add a type definition after the colon for field '%s'" field_name)
   | _ -> None
 
 let error_id diag =
@@ -396,6 +425,9 @@ let error_id diag =
   | ConsPatternMissingTail _ -> Error.E0035_ConsPatternMissingTail
   | OrPatternMissing _ -> Error.E0036_OrPatternMissing
   | OrPatternDouble _ -> Error.E0037_OrPatternDouble
+  | MutableFieldMissingName _ -> Error.E0038_MutableFieldMissingName
+  | RecordFieldMissingColon _ -> Error.E0039_RecordFieldMissingColon
+  | RecordFieldMissingType _ -> Error.E0040_RecordFieldMissingType
 
 let hint_message diag = diag |> error_id |> Error.explain
 let id err = err |> error_id |> Error.id_to_string
@@ -450,6 +482,9 @@ let found_token diag =
   | ConsPatternMissingTail { found } -> found
   | OrPatternMissing { found } -> found
   | OrPatternDouble { found } -> found
+  | MutableFieldMissingName { found } -> found
+  | RecordFieldMissingColon { found; _ } -> found
+  | RecordFieldMissingType { found; _ } -> found
 
 let main_message diag =
   match diag.kind with
