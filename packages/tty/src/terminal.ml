@@ -11,3 +11,8 @@ let cursor_back x = Escape_seq.cursor_back_seq x ()
 let enter_alt_screen () = Escape_seq.alt_screen_seq ()
 let exit_alt_screen () = Escape_seq.exit_alt_screen_seq ()
 let move_cursor x y = Escape_seq.cursor_position_seq x y ()
+
+let size () =
+  match Size.get () with
+  | Ok { rows; cols } -> Ok (cols, rows)  (* Return (width, height) *)
+  | Error err -> Error err

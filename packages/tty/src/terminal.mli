@@ -92,3 +92,18 @@ val move_cursor : int -> int -> unit
 (** [move_cursor row col] positions the cursor at the specified location.
 
     Row and column are 1-based (top-left is [1, 1]). *)
+
+val size : unit -> (int * int, [ `System_error of string ]) result
+(** [size ()] returns the current terminal dimensions as [(width, height)].
+
+    Returns (columns, rows) for compatibility with common conventions.
+    Returns Error if terminal size cannot be determined (e.g. not a TTY).
+    
+    Example:
+    {[
+      match Terminal.size () with
+      | Ok (width, height) -> 
+          Printf.printf "Terminal is %d×%d\n" width height
+      | Error (`System_error msg) ->
+          Printf.eprintf "Error: %s\n" msg
+    ]} *)
