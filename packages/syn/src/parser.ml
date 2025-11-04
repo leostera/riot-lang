@@ -1061,17 +1061,45 @@ and parse_primary_pattern parser =
       let text = token_text parser ident in
       (* Check if this is a constructor (uppercase) or variable (lowercase) *)
       if String.length text > 0 && Char.uppercase_ascii text.[0] = text.[0] then
-        (* Constructor pattern - check if followed by argument *)
-        let trivia = consume_trivia parser in
+        (* Constructor - may have module path: Module.Submodule.Constructor *)
+        (* Collect module path segments: Ident . Ident . ... *)
+        let rec collect_path_segments acc acc_trivia =
+          let trivia_after = consume_trivia parser in
+          match peek_kind parser with
+          | Token.Dot ->
+              (* Check if this is a module path by looking ahead *)
+              let dot = consume parser in
+              let trivia_after_dot = consume_trivia parser in
+              (match peek_kind parser with
+              | Token.Ident _ ->
+                  let next_ident = consume parser in
+                  (* Add the accumulated elements plus dot and next identifier *)
+                  collect_path_segments
+                    (acc @ [ make_token parser dot ] @ tokens_to_green parser trivia_after_dot @ [ make_token parser next_ident ])
+                    trivia_after_dot
+              | _ ->
+                  (* Not a module path, just a dot (shouldn't happen in pattern) *)
+                  (* Return what we have so far *)
+                  (acc, trivia_after))
+          | _ ->
+              (* No more path segments *)
+              (acc, trivia_after)
+        in
+        
+        let path_segments, trivia_after_path = 
+          collect_path_segments [ make_token parser ident ] [] 
+        in
+        
+        (* Check if followed by argument pattern *)
         if can_start_pattern_arg parser then
           let arg = parse_primary_pattern parser in
           make_node Syntax_kind.CONSTRUCTOR_PATTERN
-            ([ make_token parser ident ]
-            @ tokens_to_green parser trivia
+            (path_segments
+            @ tokens_to_green parser trivia_after_path
             @ [ Ceibo.Green.Node arg ])
         else
           make_node Syntax_kind.CONSTRUCTOR_PATTERN
-            ([ make_token parser ident ] @ tokens_to_green parser trivia)
+            (path_segments @ tokens_to_green parser trivia_after_path)
       else make_node Syntax_kind.IDENT_PATTERN [ make_token parser ident ]
   | Token.OpenDelim Token.Paren -> parse_paren_pattern parser
   | Token.OpenDelim Token.Bracket -> parse_list_pattern parser
@@ -3575,9 +3603,63 @@ and parse_let_in_expr parser =
       let let_kw = consume parser in
       let trivia_after_let = consume_trivia parser in
 
+      (* Check for optional 'rec' keyword *)
+      let rec_kw, trivia_after_rec, is_recursive =
+        match peek_kind parser with
+        | Token.Keyword Keyword.Rec ->
+            let rec_tok = consume parser in
+            let trivia = consume_trivia parser in
+            (Some rec_tok, trivia, true)
+        | _ -> (None, [], false)
+      in
+
       (* Parse pattern *)
       let pattern = parse_pattern parser in
       let trivia_after_pattern = consume_trivia parser in
+
+      (* Check if this is function syntax: let f x y = expr or let rec f x y = expr *)
+      (* If next token is not = and can start a pattern, collect parameters *)
+      let params = ref [] in
+      let params_trivia = ref [] in
+      let rec collect_params () =
+        match peek_kind parser with
+        | Token.Tilde ->
+            let param = parse_labeled_param parser in
+            params := param :: !params;
+            let trivia = consume_trivia parser in
+            params_trivia := trivia :: !params_trivia;
+            collect_params ()
+        | Token.Question ->
+            let param = parse_optional_param parser in
+            params := param :: !params;
+            let trivia = consume_trivia parser in
+            params_trivia := trivia :: !params_trivia;
+            collect_params ()
+        | Token.Eq ->
+            ()
+        | _ when can_start_pattern parser ->
+            let param = parse_pattern parser in
+            params := param :: !params;
+            let trivia = consume_trivia parser in
+            params_trivia := trivia :: !params_trivia;
+            collect_params ()
+        | _ ->
+            ()
+      in
+      collect_params ();
+
+      (* Build parameter nodes *)
+      let param_nodes =
+        List.rev !params
+        |> List.mapi (fun i param ->
+               let trivia =
+                 if i < List.length !params_trivia then
+                   List.nth (List.rev !params_trivia) i
+                 else []
+               in
+               tokens_to_green parser trivia @ [ Ceibo.Green.Node param ])
+        |> List.flatten
+      in
 
       (* Expect '=' *)
       let eq_children =
@@ -3624,11 +3706,23 @@ and parse_let_in_expr parser =
       (* Parse body expression *)
       let body_expr = parse_expr parser in
 
-      make_node Syntax_kind.LET_EXPR
+      (* Build rec keyword children if present *)
+      let rec_children =
+        match rec_kw with
+        | Some tok -> [ make_token parser tok ] @ tokens_to_green parser trivia_after_rec
+        | None -> []
+      in
+
+      (* Choose syntax kind based on whether it's recursive *)
+      let syntax_kind = if is_recursive then Syntax_kind.LET_REC_EXPR else Syntax_kind.LET_EXPR in
+
+      make_node syntax_kind
         ([ make_token parser let_kw ]
         @ tokens_to_green parser trivia_after_let
+        @ rec_children
         @ [ Ceibo.Green.Node pattern ]
         @ tokens_to_green parser trivia_after_pattern
+        @ param_nodes
         @ eq_children
         @ tokens_to_green parser trivia_after_eq
         @ [ Ceibo.Green.Node bound_expr ]
