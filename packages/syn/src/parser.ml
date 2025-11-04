@@ -1901,6 +1901,15 @@ and parse_fun_expr parser =
 (** Parse primary expression (no operators, no function application) *)
 and parse_primary_expr parser =
   match peek_kind parser with
+  (* Prefix operators: -, -., !, +, +., ~, ? *)
+  | Token.Minus | Token.MinusDot | Token.Bang | Token.Plus | Token.PlusDot ->
+      let op = consume parser in
+      let trivia_after_op = consume_trivia parser in
+      let operand = parse_primary_expr parser in
+      make_node Syntax_kind.PREFIX_EXPR
+        ([ make_token parser op ]
+        @ tokens_to_green parser trivia_after_op
+        @ [ Ceibo.Green.Node operand ])
   | Token.Ident _ ->
       let ident = consume parser in
       make_node Syntax_kind.IDENT_EXPR [ make_token parser ident ]
