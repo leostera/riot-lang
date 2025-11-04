@@ -93,6 +93,8 @@ type t =
   | OBJECT_UPDATE_EXPR  (** Object update: `{< field = value >}` *)
   | METHOD_CALL_EXPR  (** Method call: `obj#method` *)
   | NEW_EXPR  (** Object instantiation: `new class_name` *)
+  | LOCAL_OPEN_EXPR  (** Local open: `let open Module in expr` *)
+  | LET_MODULE_EXPR  (** Let module: `let module M = ... in expr` *)
   (* ===================================================================== *)
   (* PATTERNS *)
   (* ===================================================================== *)

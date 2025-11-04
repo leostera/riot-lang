@@ -3603,17 +3603,173 @@ and parse_let_in_expr parser =
       let let_kw = consume parser in
       let trivia_after_let = consume_trivia parser in
 
-      (* Check for optional 'rec' keyword *)
-      let rec_kw, trivia_after_rec, is_recursive =
-        match peek_kind parser with
-        | Token.Keyword Keyword.Rec ->
-            let rec_tok = consume parser in
-            let trivia = consume_trivia parser in
-            (Some rec_tok, trivia, true)
-        | _ -> (None, [], false)
-      in
+      (* Check for 'open' keyword - let open Module in expr *)
+      (match peek_kind parser with
+      | Token.Keyword Keyword.Open ->
+          let open_kw = consume parser in
+          let trivia_after_open = consume_trivia parser in
+          
+          (* Parse module path *)
+          let rec parse_module_path acc =
+            match peek_kind parser with
+            | Token.Ident _ ->
+                let ident = consume parser in
+                let new_acc = acc @ [ make_token parser ident ] in
+                let trivia_after_ident = consume_trivia parser in
+                (* Check for dot continuation *)
+                (match peek_kind parser with
+                | Token.Dot ->
+                    let dot = consume parser in
+                    let trivia_after_dot = consume_trivia parser in
+                    parse_module_path (new_acc @ [ make_token parser dot ] @ tokens_to_green parser trivia_after_dot)
+                | _ ->
+                    (new_acc, trivia_after_ident))
+            | _ ->
+                let found_tok = peek parser in
+                let diagnostic =
+                  Diagnostic.invalid_expression ~found:found_tok
+                    ~text:(token_text parser found_tok)
+                    ~span:(expected_span parser)
+                in
+                report_diagnostic parser diagnostic;
+                ([], [])
+          in
+          
+          let module_path, trivia_after_module = parse_module_path [] in
+          
+          (* Expect 'in' keyword *)
+          let in_kw, trivia_after_in =
+            match peek_kind parser with
+            | Token.Keyword Keyword.In ->
+                let in_tok = consume parser in
+                let trivia = consume_trivia parser in
+                (Some in_tok, trivia)
+            | _ ->
+                let found_tok = peek parser in
+                let diagnostic =
+                  Diagnostic.invalid_expression ~found:found_tok
+                    ~text:(token_text parser found_tok)
+                    ~span:(expected_span parser)
+                in
+                report_diagnostic parser diagnostic;
+                (None, [])
+          in
+          
+          (* Parse body expression *)
+          let body_expr = parse_expr parser in
+          
+          let in_children = match in_kw with
+            | Some tok -> [ make_token parser tok ] @ tokens_to_green parser trivia_after_in
+            | None -> []
+          in
+          
+          make_node Syntax_kind.LOCAL_OPEN_EXPR
+            ([ make_token parser let_kw ]
+            @ tokens_to_green parser trivia_after_let
+            @ [ make_token parser open_kw ]
+            @ tokens_to_green parser trivia_after_open
+            @ module_path
+            @ tokens_to_green parser trivia_after_module
+            @ in_children
+            @ [ Ceibo.Green.Node body_expr ])
+      | Token.Keyword Keyword.Module ->
+          (* let module M = module_expr in expr *)
+          let module_kw = consume parser in
+          let trivia_after_module_kw = consume_trivia parser in
+          
+          (* Parse module name (must be capitalized) *)
+          let module_name =
+            match peek_kind parser with
+            | Token.Ident _ ->
+                let ident = consume parser in
+                make_token parser ident
+            | _ ->
+                let found_tok = peek parser in
+                let diagnostic =
+                  Diagnostic.invalid_expression ~found:found_tok
+                    ~text:(token_text parser found_tok)
+                    ~span:(expected_span parser)
+                in
+                report_diagnostic parser diagnostic;
+                make_token parser found_tok
+          in
+          let trivia_after_name = consume_trivia parser in
+          
+          (* Expect '=' *)
+          let eq_tok =
+            match peek_kind parser with
+            | Token.Eq ->
+                let eq = consume parser in
+                Some (make_token parser eq)
+            | _ ->
+                let found_tok = peek parser in
+                let diagnostic =
+                  Diagnostic.invalid_expression ~found:found_tok
+                    ~text:(token_text parser found_tok)
+                    ~span:(expected_span parser)
+                in
+                report_diagnostic parser diagnostic;
+                None
+          in
+          let trivia_after_eq = consume_trivia parser in
+          
+          (* Parse module expression - for now, just parse as an expression
+             This is simplified - proper module expressions are complex *)
+          let module_expr = parse_expr parser in
+          let trivia_after_module_expr = consume_trivia parser in
+          
+          (* Expect 'in' keyword *)
+          let in_kw =
+            match peek_kind parser with
+            | Token.Keyword Keyword.In ->
+                let in_tok = consume parser in
+                Some (make_token parser in_tok)
+            | _ ->
+                let found_tok = peek parser in
+                let diagnostic =
+                  Diagnostic.invalid_expression ~found:found_tok
+                    ~text:(token_text parser found_tok)
+                    ~span:(expected_span parser)
+                in
+                report_diagnostic parser diagnostic;
+                None
+          in
+          let trivia_after_in = consume_trivia parser in
+          
+          (* Parse body expression *)
+          let body_expr = parse_expr parser in
+          
+          let eq_children = match eq_tok with | Some t -> [t] | None -> [] in
+          let in_children = match in_kw with | Some t -> [t] | None -> [] in
+          
+          make_node Syntax_kind.LET_MODULE_EXPR
+            ([ make_token parser let_kw ]
+            @ tokens_to_green parser trivia_after_let
+            @ [ make_token parser module_kw ]
+            @ tokens_to_green parser trivia_after_module_kw
+            @ [ module_name ]
+            @ tokens_to_green parser trivia_after_name
+            @ eq_children
+            @ tokens_to_green parser trivia_after_eq
+            @ [ Ceibo.Green.Node module_expr ]
+            @ tokens_to_green parser trivia_after_module_expr
+            @ in_children
+            @ tokens_to_green parser trivia_after_in
+            @ [ Ceibo.Green.Node body_expr ])
+      | _ ->
+          (* Regular let binding: let [rec] pattern params = expr in body *)
+          
+          (* Check for optional 'rec' keyword *)
+          let rec_kw, trivia_after_rec, is_recursive =
+            match peek_kind parser with
+            | Token.Keyword Keyword.Rec ->
+                let rec_tok = consume parser in
+                let trivia = consume_trivia parser in
+                (Some rec_tok, trivia, true)
+            | _ -> (None, [], false)
+          in
 
-      (* Parse pattern *)
+          (* Parse pattern *)
       let pattern = parse_pattern parser in
       let trivia_after_pattern = consume_trivia parser in
 
@@ -3729,7 +3885,7 @@ and parse_let_in_expr parser =
         @ tokens_to_green parser trivia_after_bound
         @ in_children
         @ tokens_to_green parser trivia_after_in
-        @ [ Ceibo.Green.Node body_expr ])
+        @ [ Ceibo.Green.Node body_expr ]))
   | _ ->
       let found_tok = peek parser in
       let diagnostic =

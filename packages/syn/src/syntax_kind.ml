@@ -62,6 +62,8 @@ type t =
   | OBJECT_UPDATE_EXPR (* {< field = value >} *)
   | METHOD_CALL_EXPR (* obj#method *)
   | NEW_EXPR (* new class_name *)
+  | LOCAL_OPEN_EXPR (* let open Module in expr *)
+  | LET_MODULE_EXPR (* let module M = ... in expr *)
   (* ========================================================================= *)
   (* PATTERNS *)
   (* ========================================================================= *)
@@ -185,6 +187,8 @@ let to_string = function
   | OBJECT_UPDATE_EXPR -> "OBJECT_UPDATE_EXPR"
   | METHOD_CALL_EXPR -> "METHOD_CALL_EXPR"
   | NEW_EXPR -> "NEW_EXPR"
+  | LOCAL_OPEN_EXPR -> "LOCAL_OPEN_EXPR"
+  | LET_MODULE_EXPR -> "LET_MODULE_EXPR"
   | IDENT_PATTERN -> "IDENT_PATTERN"
   | WILDCARD_PATTERN -> "WILDCARD_PATTERN"
   | LITERAL_PATTERN -> "LITERAL_PATTERN"
@@ -293,6 +297,8 @@ let from_string = function
   | "OBJECT_UPDATE_EXPR" -> Some OBJECT_UPDATE_EXPR
   | "METHOD_CALL_EXPR" -> Some METHOD_CALL_EXPR
   | "NEW_EXPR" -> Some NEW_EXPR
+  | "LOCAL_OPEN_EXPR" -> Some LOCAL_OPEN_EXPR
+  | "LET_MODULE_EXPR" -> Some LET_MODULE_EXPR
   | "IDENT_PATTERN" -> Some IDENT_PATTERN
   | "WILDCARD_PATTERN" -> Some WILDCARD_PATTERN
   | "LITERAL_PATTERN" -> Some LITERAL_PATTERN
