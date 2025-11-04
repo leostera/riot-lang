@@ -13,6 +13,6 @@ val make :
 
 val is_finished : t -> bool
 val reset : t -> t
-val set_progress : t -> float -> t
-val increment : t -> float -> t
+val set_progress : t -> progress:float -> t
+val increment : t -> delta:float -> t
 val view : t -> string

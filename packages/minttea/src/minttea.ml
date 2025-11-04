@@ -14,14 +14,16 @@ let app = App.make
 
 let run ?(config = config ()) initial_model app =
   let prog = Program.make ~app ~config in
-  Program.run prog initial_model |> Std.Result.expect ~msg:"Program failed"
+  Program.run prog initial_model
+  |> Std.Result.map_err (fun reason -> Failure reason)
 
 let start ?(config = config ()) app initial_model =
   let main ~args:_ =
     let open Std in
     let main_pid = self () in
     let _prog_pid = spawn (fun () ->
-      run ~config initial_model app;
+      run ~config initial_model app
+      |> Std.Result.expect ~msg:"Program failed";
       Log.trace "program finished";
       send main_pid ProgramDone;
       Ok ()

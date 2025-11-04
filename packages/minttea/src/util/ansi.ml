@@ -39,53 +39,8 @@ let pad_center ~width:target_width c str =
     String.make left_pad c ^ str ^ String.make right_pad c
 
 (* Truncate with ellipsis, preserving ANSI codes *)
-let truncate ~width:target_width ?(ellipsis = "…") str =
-  let ellipsis_width = String.length ellipsis in
-  if width str <= target_width then str
-  else
-    (* This is a simplified version - full implementation would:
-       1. Parse ANSI codes
-       2. Track visible characters
-       3. Cut at the right position
-       4. Restore ANSI state after ellipsis
-       
-       For now, we do a basic version: *)
-    let stripped = strip str in
-    if String.length stripped <= target_width then str
-    else
-      let target_len = target_width - ellipsis_width in
-      if target_len < 0 then ellipsis
-      else
-        (* Extract formatting from original *)
-        let open_codes = ref [] in
-        let close_code = "\027[0m" in
-        
-        (* Simple approach: take first target_len chars of stripped version
-           and try to preserve any formatting at the start *)
-        let result = String.sub stripped 0 target_len ^ ellipsis in
-        
-        (* If original started with ANSI codes, try to preserve them *)
-        if String.length str > 0 && str.[0] = '\027' then
-          (* Find first non-ANSI character position *)
-          let rec find_start i =
-            if i >= String.length str then i
-            else if str.[i] = '\027' then
-              (* Skip to end of escape sequence *)
-              let rec skip_escape j =
-                if j >= String.length str then j
-                else if (str.[j] >= 'A' && str.[j] <= 'Z') 
-                     || (str.[j] >= 'a' && str.[j] <= 'z') then
-                  find_start (j + 1)
-                else skip_escape (j + 1)
-              in
-              skip_escape (i + 1)
-            else i
-          in
-          let code_end = find_start 0 in
-          if code_end > 0 then
-            String.sub str 0 code_end ^ result ^ close_code
-          else result
-        else result
+let truncate ~width ?ellipsis:tail str =
+  String.truncate_width ~width ?tail str
 
 (* Helper to check if string contains substring *)
 let contains_substring haystack needle =

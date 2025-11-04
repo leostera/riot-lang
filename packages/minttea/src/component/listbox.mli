@@ -64,22 +64,22 @@ val make : ?render:('a -> string) -> 'a list -> 'a t
 
 (** ## Configuration *)
 
-val set_height : 'a t -> int -> 'a t
+val set_height : 'a t -> height:int -> 'a t
 (** `set_height list h` sets the visible height (number of items shown).
     
     Set to 0 for unlimited height (show all items). *)
 
-val set_width : 'a t -> int -> 'a t
+val set_width : 'a t -> width:int -> 'a t
 (** `set_width list w` sets the display width (for line wrapping/truncation).
     
     Set to 0 for unlimited width. *)
 
-val set_cursor_char : 'a t -> string -> 'a t
+val set_cursor_char : 'a t -> char:string -> 'a t
 (** `set_cursor_char list char` sets the character shown before selected item.
     
     Default: "> " *)
 
-val set_filter_enabled : 'a t -> bool -> 'a t
+val set_filter_enabled : 'a t -> enabled:bool -> 'a t
 (** `set_filter_enabled list enabled` enables or disables filtering.
     
     When enabled, pressing '/' enters filter mode. *)
@@ -92,7 +92,7 @@ val items : 'a t -> 'a list
 val visible_items : 'a t -> 'a list
 (** `visible_items list` returns currently visible items (after filtering). *)
 
-val set_items : 'a t -> 'a list -> 'a t
+val set_items : 'a t -> items:'a list -> 'a t
 (** `set_items list items` replaces all items. Resets selection to first item. *)
 
 val selected_item : 'a t -> 'a option
@@ -125,7 +125,7 @@ val select_last : 'a t -> 'a t
 val filter_query : 'a t -> string
 (** `filter_query list` returns the current filter query string. *)
 
-val set_filter : 'a t -> string -> 'a t
+val set_filter : 'a t -> filter:string -> 'a t
 (** `set_filter list query` applies a filter query.
     
     Filters items by substring match on rendered text.

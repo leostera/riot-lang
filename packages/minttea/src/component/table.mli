@@ -84,20 +84,20 @@ val make : column list -> row list -> t
 
 (** ## Configuration *)
 
-val set_height : t -> int -> t
+val set_height : t -> height:int -> t
 (** `set_height table h` sets the visible height (number of rows shown).
     
     Set to 0 for unlimited height. Header is not counted in height. *)
 
-val set_width : t -> int -> t
+val set_width : t -> width:int -> t
 (** `set_width table w` sets the total table width.
     
     Columns will be sized according to their individual widths. *)
 
-val set_show_header : t -> bool -> t
+val set_show_header : t -> show:bool -> t
 (** `set_show_header table show` controls header visibility. Default: true *)
 
-val set_cursor_char : t -> string -> t
+val set_cursor_char : t -> char:string -> t
 (** `set_cursor_char table char` sets the selection indicator. Default: "> " *)
 
 (** ## Data *)
@@ -108,10 +108,10 @@ val columns : t -> column list
 val rows : t -> row list
 (** `rows table` returns all rows. *)
 
-val set_columns : t -> column list -> t
+val set_columns : t -> columns:column list -> t
 (** `set_columns table cols` updates column definitions. *)
 
-val set_rows : t -> row list -> t
+val set_rows : t -> rows:row list -> t
 (** `set_rows table rows` replaces all rows. Resets selection to first row. *)
 
 (** ## Selection *)

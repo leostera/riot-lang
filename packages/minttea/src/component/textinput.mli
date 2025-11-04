@@ -73,7 +73,7 @@ val make : unit -> t
 val value : t -> string
 (** `value input` returns the current input value. *)
 
-val set_value : t -> string -> t
+val set_value : t -> value:string -> t
 (** `set_value input str` sets the input value and moves cursor to end. *)
 
 val clear : t -> t
@@ -84,33 +84,33 @@ val is_empty : t -> bool
 
 (** ## Display *)
 
-val set_prompt : t -> string -> t
+val set_prompt : t -> prompt:string -> t
 (** `set_prompt input prompt` sets the text shown before the input (e.g. "> "). *)
 
-val set_placeholder : t -> string -> t
+val set_placeholder : t -> placeholder:string -> t
 (** `set_placeholder input text` sets the text shown when input is empty. *)
 
-val set_width : t -> int -> t
+val set_width : t -> width:int -> t
 (** `set_width input width` sets the maximum display width.
     
     Input acts as a horizontally scrolling viewport if text exceeds width.
     Set to 0 for unlimited width. *)
 
-val set_char_limit : t -> int -> t
+val set_char_limit : t -> limit:int -> t
 (** `set_char_limit input limit` sets the maximum number of characters.
     
     Prevents typing beyond this limit. Set to 0 for unlimited. *)
 
 (** ## Echo Mode *)
 
-val set_echo_mode : t -> echo_mode -> t
+val set_echo_mode : t -> mode:echo_mode -> t
 (** `set_echo_mode input mode` controls how text is displayed.
     
     - Normal: show actual text
     - Password: show echo character for each char
     - None: show nothing (useful for hidden password entry) *)
 
-val set_echo_char : t -> char -> t
+val set_echo_char : t -> char:char -> t
 (** `set_echo_char input c` sets the character used in Password mode (default: '*'). *)
 
 (** ## Focus *)
@@ -129,12 +129,12 @@ val is_focused : t -> bool
 val cursor_position : t -> int
 (** `cursor_position input` returns the cursor position (0-based index). *)
 
-val set_cursor_position : t -> int -> t
+val set_cursor_position : t -> pos:int -> t
 (** `set_cursor_position input pos` moves cursor to position (clamped to valid range). *)
 
 (** ## Validation *)
 
-val set_validator : t -> (string -> (unit, string) result) option -> t
+val set_validator : t -> validator:(string -> (unit, string) result) option -> t
 (** `set_validator input validator` sets an optional validation function.
     
     The validator is called after each edit. If it returns `Error msg`,

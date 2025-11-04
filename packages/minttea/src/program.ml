@@ -76,15 +76,32 @@ let run t initial_model =
     | Query_window_size -> false
   in
 
+  (* Send initial window size before initializing app *)
+  let width, height = 
+    match Tty.Terminal.size () with
+    | Ok (w, h) -> 
+        Log.trace "Initial terminal size: %dx%d" w h;
+        (w, h)
+    | Error _ -> 
+        Log.trace "Could not detect terminal size, using default 80x24";
+        (80, 24)
+  in
+  
+  (* Call app init with initial resize event to give it proper dimensions *)
+  let model_with_size, size_cmd = t.app.update 
+    (Event.Resize { width; height }) 
+    initial_model in
+  let _ = handle_cmd size_cmd in
+  
   (* Initialize app *)
-  let init_cmd = t.app.init initial_model in
+  let init_cmd = t.app.init model_with_size in
   let should_quit = handle_cmd init_cmd in
 
   if should_quit then (
     Log.trace "Quit during initialization";
     Ok ()
   ) else (
-    let initial_view = t.app.view initial_model in
+    let initial_view = t.app.view model_with_size in
     Renderer.render renderer initial_view;
 
     (* Shutdown helper - initiates shutdown and waits for renderer *)
@@ -125,7 +142,7 @@ let run t initial_model =
       else loop model new_view
     in
 
-    loop initial_model initial_view;
+    loop model_with_size initial_view;
     Log.trace "Program finished";
     Ok ()
   )

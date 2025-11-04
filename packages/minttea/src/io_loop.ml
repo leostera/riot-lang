@@ -54,6 +54,20 @@ let start () =
   spawn (fun () ->
     Log.trace "[IO_LOOP] IO loop process started\n%!";
     send parent (IoStarted (self ()));
+    
+    (* Set up SIGWINCH handler for terminal resize *)
+    (* SIGWINCH is signal 28 on macOS/Linux *)
+    let sigwinch = 28 in
+    let sigwinch_handler _signum =
+      Log.trace "[IO_LOOP] SIGWINCH received - terminal resized\n%!";
+      match Tty.Terminal.size () with
+      | Ok (width, height) ->
+          send parent (Input (Event.Resize { width; height }))
+      | Error _ ->
+          Log.trace "[IO_LOOP] Could not get terminal size after resize"
+    in
+    let _ = Sys.set_signal sigwinch (Sys.Signal_handle sigwinch_handler) in
+    
     match Stdin.setup () with
     | termios ->
         Log.trace "[IO_LOOP] Stdin setup complete, entering main loop\n%!";

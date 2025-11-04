@@ -233,7 +233,7 @@ val app :
   'model App.t
 (** Create a new application *)
 
-val run : ?config:Config.t -> 'model -> 'model App.t -> unit
+val run : ?config:Config.t -> 'model -> 'model App.t -> (unit, Process.exit_reason) result
 (** Run the application *)
 
 val start : ?config:Config.t -> 'model App.t -> 'model -> unit

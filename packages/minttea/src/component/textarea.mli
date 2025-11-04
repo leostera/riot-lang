@@ -94,7 +94,7 @@ val length : t -> int
 
 (** ## Content Modification} *)
 
-val set_value : t -> string -> t
+val set_value : t -> value:string -> t
 (** [set_value textarea text] replaces all content. Moves cursor to end. *)
 
 val insert_string : t -> string -> t
@@ -116,35 +116,35 @@ val reset : t -> t
 
 (** ## Display Configuration} *)
 
-val set_width : t -> int -> t
+val set_width : t -> width:int -> t
 (** [set_width textarea w] sets the display width in columns. *)
 
-val set_height : t -> int -> t
+val set_height : t -> height:int -> t
 (** [set_height textarea h] sets the visible height in rows. *)
 
-val set_placeholder : t -> string -> t
+val set_placeholder : t -> placeholder:string -> t
 (** [set_placeholder textarea text] sets text shown when empty and unfocused. *)
 
-val set_prompt : t -> string -> t
+val set_prompt : t -> prompt:string -> t
 (** [set_prompt textarea text] sets prefix shown on each line (e.g. "> ").
     
     Set to "" to disable. *)
 
-val set_show_line_numbers : t -> bool -> t
+val set_show_line_numbers : t -> show:bool -> t
 (** [set_show_line_numbers textarea show] enables/disables line numbers. *)
 
-val set_end_of_buffer_char : t -> char -> t
+val set_end_of_buffer_char : t -> char:char -> t
 (** [set_end_of_buffer_char textarea c] sets char shown on empty lines at end.
     
     Set to ' ' to hide. Default: '~' *)
 
-val set_char_limit : t -> int -> t
+val set_char_limit : t -> limit:int -> t
 (** [set_char_limit textarea limit] sets max total characters. 0 = unlimited. *)
 
-val set_max_height : t -> int -> t
+val set_max_height : t -> max_height:int -> t
 (** [set_max_height textarea h] sets maximum height. 0 = unlimited. *)
 
-val set_max_width : t -> int -> t
+val set_max_width : t -> max_width:int -> t
 (** [set_max_width textarea w] sets maximum width. 0 = unlimited. *)
 
 (** ## Cursor Position} *)
@@ -152,7 +152,7 @@ val set_max_width : t -> int -> t
 val cursor_position : t -> int * int
 (** [cursor_position textarea] returns (row, col) of cursor (0-based). *)
 
-val set_cursor : t -> int -> t
+val set_cursor : t -> pos:int -> t
 (** [set_cursor textarea col] sets cursor column on current row (clamped). *)
 
 val cursor_start : t -> t

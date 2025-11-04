@@ -86,7 +86,7 @@ let clamp_col t row col =
 let clamp_row t row =
   max 0 (min row (Vector.length t.lines - 1))
 
-let set_cursor t col =
+let set_cursor t ~pos:col =
   let col = clamp_col t t.row col in
   { t with col; last_char_offset = col }
 
@@ -241,7 +241,7 @@ let insert_string t s =
   in
   insert_chars t chars
 
-let set_value t s =
+let set_value t ~value:s =
   let t = { t with lines = Vector.of_list [[]]; row = 0; col = 0; last_char_offset = 0 } in
   insert_string t s
 
@@ -370,15 +370,15 @@ let capitalize_word_right t =
     t
 
 (* Configuration *)
-let set_width t w = { t with width = max 1 w }
-let set_height t h = { t with height = max 1 h }
-let set_placeholder t p = { t with placeholder = p }
-let set_prompt t p = { t with prompt = p }
-let set_show_line_numbers t show = { t with show_line_numbers = show }
-let set_end_of_buffer_char t c = { t with end_of_buffer_char = c }
-let set_char_limit t limit = { t with char_limit = max 0 limit }
-let set_max_height t h = { t with max_height = max 0 h }
-let set_max_width t w = { t with max_width = max 0 w }
+let set_width t ~width:w = { t with width = max 1 w }
+let set_height t ~height:h = { t with height = max 1 h }
+let set_placeholder t ~placeholder:p = { t with placeholder = p }
+let set_prompt t ~prompt:p = { t with prompt = p }
+let set_show_line_numbers t ~show = { t with show_line_numbers = show }
+let set_end_of_buffer_char t ~char:c = { t with end_of_buffer_char = c }
+let set_char_limit t ~limit = { t with char_limit = max 0 limit }
+let set_max_height t ~max_height:h = { t with max_height = max 0 h }
+let set_max_width t ~max_width:w = { t with max_width = max 0 w }
 
 (* Focus *)
 let focus t = { t with focused = true }

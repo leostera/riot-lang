@@ -33,10 +33,10 @@ let make ?(render = default_render) items =
     scroll_offset = 0;
   }
 
-let set_height t h = { t with height = max 0 h }
-let set_width t w = { t with width = max 0 w }
-let set_cursor_char t c = { t with cursor_char = c }
-let set_filter_enabled t enabled = { t with filter_enabled = enabled }
+let set_height t ~height:h = { t with height = max 0 h }
+let set_width t ~width:w = { t with width = max 0 w }
+let set_cursor_char t ~char:c = { t with cursor_char = c }
+let set_filter_enabled t ~enabled = { t with filter_enabled = enabled }
 
 let items t = t.all_items
 let visible_items t = t.filtered_items
@@ -61,7 +61,7 @@ let clamp_selection t =
     let selected = max 0 (min (len - 1) t.selected) in
     { t with selected }
 
-let set_items t items =
+let set_items t ~items =
   { t with 
     all_items = items; 
     filtered_items = items;
@@ -102,7 +102,7 @@ let apply_filter t query =
     { t with filtered_items = filtered; filter_query = query }
     |> clamp_selection
 
-let set_filter t query = apply_filter t query
+let set_filter t ~filter:query = apply_filter t query
 
 let clear_filter t = 
   { t with filter_query = ""; filtered_items = t.all_items; filtering_active = false }

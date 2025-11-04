@@ -32,17 +32,17 @@ let make columns rows =
     cursor_char = "> ";
   }
 
-let set_height t h = { t with height = max 0 h }
-let set_width t w = { t with width = max 0 w }
-let set_show_header t show = { t with show_header = show }
-let set_cursor_char t c = { t with cursor_char = c }
+let set_height t ~height:h = { t with height = max 0 h }
+let set_width t ~width:w = { t with width = max 0 w }
+let set_show_header t ~show = { t with show_header = show }
+let set_cursor_char t ~char:c = { t with cursor_char = c }
 
 let columns t = t.columns
 let rows t = t.rows
 
-let set_columns t cols = { t with columns = cols }
+let set_columns t ~columns:cols = { t with columns = cols }
 
-let set_rows t rows =
+let set_rows t ~rows =
   let cursor = if t.cursor >= List.length rows then max 0 (List.length rows - 1) else t.cursor in
   { t with rows; cursor }
 

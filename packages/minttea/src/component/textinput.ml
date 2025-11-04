@@ -48,7 +48,7 @@ let validate t =
       | Ok () -> { t with validation_error = None }
       | Error msg -> { t with validation_error = Some msg })
 
-let set_value t str =
+let set_value t ~value:str =
   let value = 
     if t.char_limit > 0 && String.length str > t.char_limit then
       String.sub str 0 t.char_limit
@@ -57,23 +57,23 @@ let set_value t str =
   let cursor_pos = String.length value in
   validate { t with value; cursor_pos; offset = 0 }
 
-let clear t = set_value t ""
+let clear t = set_value t ~value:""
 
-let set_prompt t prompt = { t with prompt }
-let set_placeholder t placeholder = { t with placeholder }
+let set_prompt t ~prompt = { t with prompt }
+let set_placeholder t ~placeholder = { t with placeholder }
 
-let set_width t width = { t with width = Int.max 0 width }
-let set_char_limit t char_limit = { t with char_limit = Int.max 0 char_limit }
+let set_width t ~width = { t with width = Int.max 0 width }
+let set_char_limit t ~limit:char_limit = { t with char_limit = Int.max 0 char_limit }
 
-let set_echo_mode t echo_mode = { t with echo_mode }
-let set_echo_char t echo_char = { t with echo_char }
+let set_echo_mode t ~mode:echo_mode = { t with echo_mode }
+let set_echo_char t ~char:echo_char = { t with echo_char }
 
 let focus t = { t with focused = true }
 let blur t = { t with focused = false }
 
-let set_validator t validator = validate { t with validator }
+let set_validator t ~validator = validate { t with validator }
 
-let set_cursor_position t pos =
+let set_cursor_position t ~pos =
   let clamped = Int.max 0 (Int.min pos (String.length t.value)) in
   { t with cursor_pos = clamped }
 
@@ -144,13 +144,13 @@ let handle_key t (key : Event.key) modifier =
     match (key : Event.key) with
     (* Movement *)
     | Event.Left ->
-        set_cursor_position t (t.cursor_pos - 1)
+        set_cursor_position t ~pos:(t.cursor_pos - 1)
     | Event.Right ->
-        set_cursor_position t (t.cursor_pos + 1)
+        set_cursor_position t ~pos:(t.cursor_pos + 1)
     | Event.Home ->
-        set_cursor_position t 0
+        set_cursor_position t ~pos:0
     | Event.End ->
-        set_cursor_position t (String.length t.value)
+        set_cursor_position t ~pos:(String.length t.value)
     
     (* Deletion *)
     | Event.Backspace when modifier = Event.No_modifier ->
@@ -172,13 +172,13 @@ let handle_key t (key : Event.key) modifier =
     
     (* Cursor movement (Emacs style) *)
     | Event.Key "a" when modifier = Event.Ctrl ->
-        set_cursor_position t 0
+        set_cursor_position t ~pos:0
     | Event.Key "e" when modifier = Event.Ctrl ->
-        set_cursor_position t (String.length t.value)
+        set_cursor_position t ~pos:(String.length t.value)
     | Event.Key "b" when modifier = Event.Ctrl ->
-        set_cursor_position t (t.cursor_pos - 1)
+        set_cursor_position t ~pos:(t.cursor_pos - 1)
     | Event.Key "f" when modifier = Event.Ctrl ->
-        set_cursor_position t (t.cursor_pos + 1)
+        set_cursor_position t ~pos:(t.cursor_pos + 1)
     
     (* Character input *)
     | Event.Key s when modifier = Event.No_modifier && String.length s = 1 ->

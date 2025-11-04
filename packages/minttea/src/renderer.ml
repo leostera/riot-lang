@@ -53,7 +53,7 @@ let rec loop state =
       (try 
         if not (is_empty state) then (
           (* Print the buffer directly without clearing, since this is the final output *)
-          print "%s\n%!" state.buffer;
+          print "%s%!" state.buffer;
           state.buffer <- ""
         )
         with Sys_blocked_io -> ());
@@ -134,12 +134,18 @@ and flush t =
   (* Build entire output as a string, then print once *)
   let output = Buffer.create 256 in
   
-  (* clean last rendered lines *)
-  if t.render_mode = Config.Clear && t.lines_rendered > 0 then
-    for _i = 1 to t.lines_rendered - 1 do
-      Buffer.add_string output "\x1b[2K";  (* clear line *)
-      Buffer.add_string output "\x1b[1A";  (* cursor up *)
-    done;
+  (* Clean last rendered content *)
+  if t.render_mode = Config.Clear then (
+    if t.is_altscreen_active then
+      (* In altscreen: move to home and clear entire screen *)
+      Buffer.add_string output "\x1b[H\x1b[2J"
+    else if t.lines_rendered > 0 then
+      (* Normal mode: clear previous lines *)
+      for _i = 1 to t.lines_rendered do
+        Buffer.add_string output "\x1b[2K";  (* clear line *)
+        Buffer.add_string output "\x1b[1A";  (* cursor up *)
+      done
+  );
 
   (* Add the actual buffer content *)
   Buffer.add_string output t.buffer;
@@ -158,14 +164,15 @@ and flush t =
   t.lines_rendered <- new_lines_this_flush;
   t.buffer <- ""
 
-and handle_render t output = t.buffer <- output ^ "\n"
+and handle_render t output = t.buffer <- output
 
 and handle_enter_alt_screen t =
   if t.is_altscreen_active then ()
   else (
     t.is_altscreen_active <- true;
     Terminal.enter_alt_screen ();
-    Terminal.clear ();
+    (* Use explicit clear sequence for altscreen: home + clear entire screen *)
+    print "\x1b[H\x1b[2J%!";
     t.last_render <- "")
 
 and handle_exit_alt_screen t =
@@ -246,13 +253,19 @@ let start ~config () =
     let ticker =
       Timer.send_interval (self ()) Tick ~interval:(Time.Duration.from_secs_float (fps_to_secs fps))
     in
+    (* Get actual terminal size *)
+    let width, height = 
+      match Tty.Terminal.size () with
+      | Ok (w, h) -> (w, h)
+      | Error _ -> (80, 24)  (* Fallback if not a TTY *)
+    in
     loop
       {
         runner = parent;
         ticker;
         buffer = "";
-        width = 0;
-        height = 0;
+        width;
+        height;
         last_render = "";
         is_altscreen_active = false;
         lines_rendered = 0;

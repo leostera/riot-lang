@@ -13,7 +13,7 @@ type t = {
   text_style : Style.style;
 }
 
-let set_total_pages t items =
+let set_total_pages t ~total:items =
   if items < 1 then (t, t.total_pages)
   else
     let n = items / t.per_page in

@@ -43,6 +43,11 @@ open Std
 type t
 (** A viewport instance *)
 
+type wrap_mode = [ `None | `Soft ]
+(** Text wrapping mode:
+    - `` `None`` - No wrapping, lines can exceed viewport width
+    - `` `Soft`` - Soft wrap at word boundaries to fit viewport width *)
+
 (** ## Creation *)
 
 val make : width:int -> height:int -> t
@@ -52,8 +57,8 @@ val make : width:int -> height:int -> t
 
 (** ## Content Management *)
 
-val set_content : t -> string -> t
-(** `set_content viewport content` sets the content to display.
+val set_content : t -> content:string -> t
+(** `set_content viewport ~content` sets the content to display.
     
     Content is split into lines. If current scroll position is past
     the new content's end, viewport scrolls to bottom. *)
@@ -69,11 +74,11 @@ val visible_lines : t -> int
 
 (** ## Dimensions *)
 
-val set_width : t -> int -> t
-(** `set_width viewport width` changes the viewport width. *)
+val set_width : t -> width:int -> t
+(** `set_width viewport ~width` changes the viewport width. *)
 
-val set_height : t -> int -> t
-(** `set_height viewport height` changes the viewport height. *)
+val set_height : t -> height:int -> t
+(** `set_height viewport ~height` changes the viewport height. *)
 
 val width : t -> int
 (** `width viewport` returns the current width. *)
@@ -81,23 +86,42 @@ val width : t -> int
 val height : t -> int
 (** `height viewport` returns the current height. *)
 
+(** ## Text Wrapping *)
+
+val set_wrap_mode : t -> mode:wrap_mode -> t
+(** `set_wrap_mode viewport ~mode` sets the text wrapping mode.
+    
+    - `` `None`` - Lines are not wrapped (default)
+    - `` `Soft`` - Lines are word-wrapped to fit viewport width
+    
+    Example:
+    ```ocaml
+    let viewport = Viewport.make ~width:40 ~height:10
+      |> Viewport.set_wrap_mode ~mode:`Soft
+      |> Viewport.set_content ~content:"Very long message that exceeds width"
+    (* Content will automatically wrap at word boundaries *)
+    ``` *)
+
+val wrap_mode : t -> wrap_mode
+(** `wrap_mode viewport` returns the current wrap mode. *)
+
 (** ## Scrolling *)
 
 val y_offset : t -> int
 (** `y_offset viewport` returns the current vertical scroll position (0-based). *)
 
-val set_y_offset : t -> int -> t
-(** `set_y_offset viewport offset` sets the vertical scroll position.
+val set_y_offset : t -> offset:int -> t
+(** `set_y_offset viewport ~offset` sets the vertical scroll position.
     
     Automatically clamped to valid range `[0, max_offset]`. *)
 
-val scroll_up : t -> int -> t
-(** `scroll_up viewport lines` scrolls up by the given number of lines.
+val scroll_up : t -> lines:int -> t
+(** `scroll_up viewport ~lines` scrolls up by the given number of lines.
     
     Returns viewport unchanged if already at top. *)
 
-val scroll_down : t -> int -> t
-(** `scroll_down viewport lines` scrolls down by the given number of lines.
+val scroll_down : t -> lines:int -> t
+(** `scroll_down viewport ~lines` scrolls down by the given number of lines.
     
     Returns viewport unchanged if already at bottom. *)
 
@@ -136,11 +160,11 @@ val scroll_percent : t -> float
 
 (** ## Mouse Support *)
 
-val set_mouse_wheel_enabled : t -> bool -> t
-(** `set_mouse_wheel_enabled viewport enabled` enables/disables mouse wheel scrolling. *)
+val set_mouse_wheel_enabled : t -> enabled:bool -> t
+(** `set_mouse_wheel_enabled viewport ~enabled` enables/disables mouse wheel scrolling. *)
 
-val set_mouse_wheel_delta : t -> int -> t
-(** `set_mouse_wheel_delta viewport lines` sets lines per mouse wheel notch (default: 3). *)
+val set_mouse_wheel_delta : t -> delta:int -> t
+(** `set_mouse_wheel_delta viewport ~delta` sets lines per mouse wheel notch (default: 3). *)
 
 (** ## Rendering *)
 

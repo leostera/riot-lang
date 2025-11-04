@@ -14,7 +14,7 @@ val make :
   unit ->
   t
 
-val set_total_pages : t -> int -> t * int
+val set_total_pages : t -> total:int -> t * int
 val get_slice_bounds : t -> int -> int * int
 val items_on_page : t -> int -> int
 val on_last_page : t -> bool
