@@ -329,13 +329,51 @@ let rec parse_type_variable parser =
     ============================================================================
 *)
 
+(** Parse a single type parameter: [ext-variance] "'" ident
+    
+    ext-variance ::= variance [injectivity] | injectivity [variance]
+    variance ::= "+" | "-"
+    injectivity ::= "!"
+*)
+and parse_type_param parser =
+  (* Parse optional variance and injectivity annotations *)
+  let variance_token = ref None in
+  let injectivity_token = ref None in
+  
+  (* First, try to parse variance or injectivity *)
+  let rec parse_annotations () =
+    match peek_kind parser with
+    | Token.Plus when !variance_token = None ->
+        variance_token := Some (consume parser);
+        parse_annotations ()
+    | Token.Minus when !variance_token = None ->
+        variance_token := Some (consume parser);
+        parse_annotations ()
+    | Token.Bang when !injectivity_token = None ->
+        injectivity_token := Some (consume parser);
+        parse_annotations ()
+    | _ -> ()
+  in
+  parse_annotations ();
+  
+  (* Now parse the type variable: ' ident *)
+  let type_var = parse_type_variable parser in
+  
+  (* Build the TYPE_PARAM node with optional variance/injectivity *)
+  let children =
+    (match !variance_token with Some tok -> [ make_token parser tok ] | None -> [])
+    @ (match !injectivity_token with Some tok -> [ make_token parser tok ] | None -> [])
+    @ [ Ceibo.Green.Node type_var ]
+  in
+  make_node Syntax_kind.TYPE_PARAM children
+
 (** Parse type parameters: 'a or ('a, 'b, 'c) Returns (type_params_green,
     trivia_tokens) *)
 and parse_type_params parser =
   match peek_kind parser with
-  | Token.Quote ->
-      (* Single type parameter: 'a *)
-      let param = parse_typexpr parser in
+  | Token.Quote | Token.Plus | Token.Minus | Token.Bang ->
+      (* Single type parameter: 'a, +'a, -'a, !'a *)
+      let param = parse_type_param parser in
       let trivia_tokens = consume_trivia parser in
       ([ Ceibo.Green.Node param ], trivia_tokens)
   | Token.OpenDelim Token.Paren -> (
@@ -343,14 +381,14 @@ and parse_type_params parser =
       let lparen = consume parser in
       let trivia_after_lparen = consume_trivia parser in
 
-      (* Parse comma-separated list of type variables *)
+      (* Parse comma-separated list of type parameters *)
       let rec parse_params acc =
         match peek_kind parser with
         | Token.CloseDelim Token.Paren ->
             (* End of parameter list *)
             List.rev acc
-        | Token.Quote -> (
-            let param = parse_typexpr parser in
+        | Token.Quote | Token.Plus | Token.Minus | Token.Bang -> (
+            let param = parse_type_param parser in
             let trivia_tokens = consume_trivia parser in
             let trivia_green = tokens_to_green parser trivia_tokens in
             (* Check for comma or closing paren *)
@@ -480,12 +518,30 @@ and parse_parametric_type parser =
   
   match peek_kind parser with
   | Token.Ident _ ->
-      (* This might be: 'a list or int list *)
-      let constr = consume parser in
+      (* This might be: 'a list or int Module.t *)
+      (* Parse module path for the type constructor *)
+      let rec parse_type_path acc =
+        match peek_kind parser with
+        | Token.Ident _ ->
+            let ident = consume parser in
+            let trivia = consume_trivia parser in
+            let new_acc = acc @ [ make_token parser ident ] @ tokens_to_green parser trivia in
+            
+            (* Check for dot (module path) *)
+            if peek_kind parser = Token.Dot then
+              let dot = consume parser in
+              let trivia2 = consume_trivia parser in
+              parse_type_path (new_acc @ [ make_token parser dot ] @ tokens_to_green parser trivia2)
+            else
+              new_acc
+        | _ -> acc
+      in
+      
+      let constr_path = parse_type_path [] in
       make_node Syntax_kind.TYPE_CONSTR
         ([ Ceibo.Green.Node primary ]
         @ tokens_to_green parser trivia_after_primary
-        @ [ make_token parser constr ])
+        @ constr_path)
   | _ ->
       (* Just a primary type *)
       primary
@@ -495,9 +551,26 @@ and parse_primary_type parser =
   match peek_kind parser with
   | Token.Quote -> parse_type_variable parser
   | Token.Ident _ ->
-      (* Type constructor name: int, string, list, etc. *)
-      let ident = consume parser in
-      make_node Syntax_kind.TYPE_CONSTR [ make_token parser ident ]
+      (* Type constructor name: int, string, list, Module.t, Module.Sub.t, etc. *)
+      let rec parse_type_path acc =
+        match peek_kind parser with
+        | Token.Ident _ ->
+            let ident = consume parser in
+            let trivia = consume_trivia parser in
+            let new_acc = acc @ [ make_token parser ident ] @ tokens_to_green parser trivia in
+            
+            (* Check for dot (module path) *)
+            if peek_kind parser = Token.Dot then
+              let dot = consume parser in
+              let trivia2 = consume_trivia parser in
+              parse_type_path (new_acc @ [ make_token parser dot ] @ tokens_to_green parser trivia2)
+            else
+              new_acc
+        | _ -> acc
+      in
+      
+      let path = parse_type_path [] in
+      make_node Syntax_kind.TYPE_CONSTR path
   | Token.OpenDelim Token.Bracket ->
       (* Polymorphic variant type *)
       parse_poly_variant_type parser
@@ -886,7 +959,7 @@ and parse_pattern parser = parse_or_pattern parser
 
 (** Parse or-pattern: p1 | p2 | p3 *)
 and parse_or_pattern parser =
-  let first_pat = parse_as_pattern parser in
+  let first_pat = parse_tuple_pattern_or_as parser in
 
   (* Speculatively consume trivia to check for pipe *)
   let saved_pos = Token_cursor.position parser.cursor in
@@ -951,6 +1024,40 @@ and parse_or_pattern parser =
     (* No pipe - restore position to before trivia *)
     Token_cursor.set_position parser.cursor saved_pos;
     first_pat)
+
+(** Parse tuple pattern without parentheses: a, b, c *)
+and parse_tuple_pattern_or_as parser =
+  let first_pat = parse_as_pattern parser in
+  let trivia_after_first = consume_trivia parser in
+  
+  (* Check if followed by comma (tuple without parens) *)
+  if peek_kind parser = Token.Comma then
+    (* Parse rest of tuple elements *)
+    let rec parse_tuple_rest acc =
+      match peek_kind parser with
+      | Token.Comma ->
+          let comma = consume parser in
+          let trivia_after_comma = consume_trivia parser in
+          let pat = parse_as_pattern parser in
+          let trivia_after_pat = consume_trivia parser in
+          parse_tuple_rest
+            (tokens_to_green parser trivia_after_pat
+            @ [ Ceibo.Green.Node pat ]
+            @ tokens_to_green parser trivia_after_comma
+            @ [ make_token parser comma ]
+            @ acc)
+      | _ -> List.rev acc
+    in
+    
+    let rest = parse_tuple_rest [] in
+    
+    make_node Syntax_kind.TUPLE_PATTERN
+      ([ Ceibo.Green.Node first_pat ]
+      @ tokens_to_green parser trivia_after_first
+      @ rest)
+  else
+    (* Not a tuple, just return the pattern *)
+    first_pat
 
 (** Parse as-pattern: p as x *)
 and parse_as_pattern parser =
@@ -4069,9 +4176,160 @@ and parse_let_binding parser =
 
 (** *
     ============================================================================
-    * TOP-LEVEL PARSING *
+    * GRAMMAR SECTION 6: TOP-LEVEL DECLARATIONS *
     ============================================================================
 *)
+
+(** Parse variant constructor declaration: A | B of int * string
+    
+    constr-decl ::= (constr-name | "[]" | "(:)") ["of" constr-args]
+    constr-args ::= typexpr { "*" typexpr }
+*)
+and parse_variant_constr parser =
+  (* Parse constructor name *)
+  let constr_name =
+    match peek_kind parser with
+    | Token.Ident name when String.length name > 0 && 
+                            (String.get name 0 >= 'A' && String.get name 0 <= 'Z') ->
+        let ident = consume parser in
+        make_node Syntax_kind.IDENT_EXPR [ make_token parser ident ]
+    | Token.OpenDelim Token.Bracket ->
+        (* Special constructor: [] *)
+        let open_bracket = consume parser in
+        let close_bracket =
+          expect parser (Token.CloseDelim Token.Bracket) (fun found ->
+            Diagnostic.unclosed_delimiter ~opener:"]" ~found
+              ~text:(token_text parser found)
+              ~span:(expected_span parser))
+        in
+        make_node Syntax_kind.IDENT_EXPR
+          [ make_token parser open_bracket; make_token parser close_bracket ]
+    | Token.OpenDelim Token.Paren ->
+        (* Special constructor: (:) - parse manually since it's unusual *)
+        let open_paren = consume parser in
+        (match peek_kind parser with
+        | Token.Colon ->
+            let colon = consume parser in
+            (match peek_kind parser with
+            | Token.CloseDelim Token.Paren ->
+                let close_paren = consume parser in
+                make_node Syntax_kind.IDENT_EXPR
+                  [ make_token parser open_paren; make_token parser colon; make_token parser close_paren ]
+            | _ ->
+                let found_tok = peek parser in
+                let diagnostic =
+                  Diagnostic.unclosed_delimiter ~opener:")" ~found:found_tok
+                    ~text:(token_text parser found_tok)
+                    ~span:(expected_span parser)
+                in
+                make_error_node parser ~diagnostic ~consumed_tokens:[ open_paren ])
+        | _ ->
+            let found_tok = peek parser in
+            let diagnostic =
+              Diagnostic.invalid_expression ~found:found_tok
+                ~text:(token_text parser found_tok)
+                ~span:(current_span parser)
+            in
+            make_error_node parser ~diagnostic ~consumed_tokens:[ open_paren ])
+    | _ ->
+        let found_tok = peek parser in
+        let diagnostic =
+          Diagnostic.invalid_expression ~found:found_tok
+            ~text:(token_text parser found_tok)
+            ~span:(current_span parser)
+        in
+        make_error_node parser ~diagnostic ~consumed_tokens:[]
+  in
+  
+  let trivia_after_name = consume_trivia parser in
+  
+  (* Check for optional "of" clause *)
+  let of_clause_children =
+    match peek_kind parser with
+    | Token.Keyword Keyword.Of ->
+        let of_kw = consume parser in
+        let trivia_after_of = consume_trivia parser in
+        
+        (* Parse constructor arguments: type1 * type2 * type3 *)
+        let first_arg = parse_typexpr parser in
+        let trivia_after_first = consume_trivia parser in
+        
+        (* Collect additional arguments separated by * *)
+        let rec parse_args acc =
+          match peek_kind parser with
+          | Token.Star ->
+              let star = consume parser in
+              let trivia_after_star = consume_trivia parser in
+              let arg = parse_typexpr parser in
+              let trivia_after_arg = consume_trivia parser in
+              parse_args
+                (tokens_to_green parser trivia_after_arg
+                @ [ Ceibo.Green.Node arg ]
+                @ tokens_to_green parser trivia_after_star
+                @ [ make_token parser star ]
+                @ acc)
+          | _ -> List.rev acc
+        in
+        
+        let additional_args = parse_args [] in
+        
+        [ make_token parser of_kw ]
+        @ tokens_to_green parser trivia_after_of
+        @ [ Ceibo.Green.Node first_arg ]
+        @ tokens_to_green parser trivia_after_first
+        @ additional_args
+    | _ -> []
+  in
+  
+  make_node Syntax_kind.TYPE_VARIANT_CONSTR
+    ([ Ceibo.Green.Node constr_name ]
+    @ tokens_to_green parser trivia_after_name
+    @ of_clause_children)
+
+(** Parse variant type representation: ["|"] A | B of int | C
+    
+    type-representation ::= "=" ["|"] constr-decl { "|" constr-decl }
+    
+    Returns list of green children (including | tokens and constructors)
+*)
+and parse_variant_representation parser =
+  (* Optional leading | *)
+  let leading_pipe_children =
+    match peek_kind parser with
+    | Token.Pipe ->
+        let pipe = consume parser in
+        let trivia = consume_trivia parser in
+        [ make_token parser pipe ] @ tokens_to_green parser trivia
+    | _ -> []
+  in
+  
+  (* Parse first constructor *)
+  let first_constr = parse_variant_constr parser in
+  let trivia_after_first = consume_trivia parser in
+  
+  (* Parse additional constructors: | A | B | C *)
+  let rec parse_constrs acc =
+    match peek_kind parser with
+    | Token.Pipe ->
+        let pipe = consume parser in
+        let trivia_after_pipe = consume_trivia parser in
+        let constr = parse_variant_constr parser in
+        let trivia_after_constr = consume_trivia parser in
+        parse_constrs
+          (tokens_to_green parser trivia_after_constr
+          @ [ Ceibo.Green.Node constr ]
+          @ tokens_to_green parser trivia_after_pipe
+          @ [ make_token parser pipe ]
+          @ acc)
+    | _ -> List.rev acc
+  in
+  
+  let additional_constrs = parse_constrs [] in
+  
+  leading_pipe_children
+  @ [ Ceibo.Green.Node first_constr ]
+  @ tokens_to_green parser trivia_after_first
+  @ additional_constrs
 
 (** Parse type declaration: type [type_params] name = typexpr *)
 and parse_type_decl parser =
@@ -4163,8 +4421,7 @@ and parse_type_decl parser =
                 else
                   (* Single _ is not a type param in this position, it's probably the type name *)
                   ([], [])
-            | Token.At | Token.Bang | Token.Caret
-            | Token.OpenDelim Token.Bracket ->
+            | Token.At | Token.Caret | Token.OpenDelim Token.Bracket ->
                 (* Invalid type parameter characters *)
                 let tok = consume parser in
                 let text = token_text parser tok in
@@ -4334,9 +4591,99 @@ and parse_type_decl parser =
               in
               make_node Syntax_kind.TYPE_DECL children
             else
-              (* Have =, continue parsing type expression *)
+              (* Have =, parse type-information (type-equation + optional type-representation) *)
               let trivia_after_eq = consume_trivia parser in
-              let type_expr = parse_typexpr parser in
+              
+              (* Check if this is a variant/record definition (starts with | or {) *)
+              (* OR if it starts with uppercase Ident (variant constructor) *)
+              (* OR if it's a type equation followed by a variant/record *)
+              let type_info_children =
+                match peek_kind parser with
+                | Token.Pipe ->
+                    (* Direct variant: type t = | A | B *)
+                    parse_variant_representation parser
+                | Token.OpenDelim Token.Brace ->
+                    (* Direct record: type t = { ... } *)
+                    let record = parse_record_type parser in
+                    [ Ceibo.Green.Node record ]
+                | Token.Ident name when String.length name > 0 && 
+                                        (String.get name 0 >= 'A' && String.get name 0 <= 'Z') ->
+                    (* Starts with uppercase identifier - need to disambiguate *)
+                    (* Strategy: speculatively parse as type expr, then check what follows *)
+                    let saved_pos = Token_cursor.position parser.cursor in
+                    let type_expr = parse_typexpr parser in
+                    let trivia_after_expr = consume_trivia parser in
+                    
+                    (* After parsing type expr, check if this is actually a variant *)
+                    (match peek_kind parser with
+                    | Token.Pipe ->
+                        (* Followed by |, check if type_expr is just a single identifier *)
+                        (* If so, backtrack and parse as variant *)
+                        let current_pos = Token_cursor.position parser.cursor in
+                        (* Type expr consumed how many tokens? If just 1, it's likely a variant *)
+                        if current_pos - saved_pos <= 1 then (
+                          (* Only consumed the identifier, this is a variant *)
+                          Token_cursor.set_position parser.cursor saved_pos;
+                          parse_variant_representation parser
+                        ) else
+                          (* Consumed more, likely a parametric type, not a variant *)
+                          [ Ceibo.Green.Node type_expr ]
+                    | Token.Keyword Keyword.Of when Token_cursor.position parser.cursor - saved_pos <= 1 ->
+                        (* Followed by 'of' and only consumed 1 token - definitely variant *)
+                        Token_cursor.set_position parser.cursor saved_pos;
+                        parse_variant_representation parser
+                    | Token.Eq ->
+                        (* Second = means: type t = alias = | A | B *)
+                        let eq2 = consume parser in
+                        let trivia_after_eq2 = consume_trivia parser in
+                        let representation =
+                          match peek_kind parser with
+                          | Token.Pipe | Token.Ident _ ->
+                              parse_variant_representation parser
+                          | Token.OpenDelim Token.Brace ->
+                              let record = parse_record_type parser in
+                              [ Ceibo.Green.Node record ]
+                          | _ ->
+                              []
+                        in
+                        [ Ceibo.Green.Node type_expr ]
+                        @ tokens_to_green parser trivia_after_expr
+                        @ [ make_token parser eq2 ]
+                        @ tokens_to_green parser trivia_after_eq2
+                        @ representation
+                    | _ ->
+                        (* Just type equation, no representation *)
+                        [ Ceibo.Green.Node type_expr ])
+                | _ ->
+                    (* Parse type equation first *)
+                    let type_expr = parse_typexpr parser in
+                    let trivia_after_expr = consume_trivia parser in
+                    
+                    (* Check for optional type-representation after type equation *)
+                    match peek_kind parser with
+                    | Token.Eq ->
+                        (* Second = means: type t = alias = | A | B *)
+                        let eq2 = consume parser in
+                        let trivia_after_eq2 = consume_trivia parser in
+                        let representation =
+                          match peek_kind parser with
+                          | Token.Pipe | Token.Ident _ ->
+                              parse_variant_representation parser
+                          | Token.OpenDelim Token.Brace ->
+                              let record = parse_record_type parser in
+                              [ Ceibo.Green.Node record ]
+                          | _ ->
+                              []
+                        in
+                        [ Ceibo.Green.Node type_expr ]
+                        @ tokens_to_green parser trivia_after_expr
+                        @ [ make_token parser eq2 ]
+                        @ tokens_to_green parser trivia_after_eq2
+                        @ representation
+                    | _ ->
+                        (* Just type equation, no representation *)
+                        [ Ceibo.Green.Node type_expr ]
+              in
 
               make_node Syntax_kind.TYPE_DECL
                 ([ make_token parser type_kw ]
@@ -4351,7 +4698,7 @@ and parse_type_decl parser =
                 @ tokens_to_green parser trivia_after_bracket
                 @ eq_children
                 @ tokens_to_green parser trivia_after_eq
-                @ [ Ceibo.Green.Node type_expr ])
+                @ type_info_children)
       | _ ->
           let found_tok = peek parser in
           let diagnostic =
@@ -4705,32 +5052,45 @@ and parse_open_stmt parser =
     @ tokens_to_green parser trivia_after_open
     @ module_path)
 
-(** Parse include statement: include Module *)
+(** Parse include statement: include Module or include Module.Submodule *)
 and parse_include_stmt parser =
   (* Consume 'include' keyword *)
   let include_kw = consume parser in
   let trivia_after_include = consume_trivia parser in
 
-  (* Parse module expression (for now, just identifier or module path) *)
-  let module_expr =
+  (* Parse module path (same as open statement: e.g., List or Std.List) *)
+  let rec parse_module_path () =
     match peek_kind parser with
     | Token.Ident _ ->
         let ident = consume parser in
-        make_node Syntax_kind.IDENT_EXPR [ make_token parser ident ]
+        let trivia = consume_trivia parser in
+        
+        (* Check for dot (qualified path) *)
+        if peek_kind parser = Token.Dot then
+          let dot = consume parser in
+          let trivia2 = consume_trivia parser in
+          let rest = parse_module_path () in
+          (make_token parser ident :: tokens_to_green parser trivia
+           @ [ make_token parser dot ] @ tokens_to_green parser trivia2 @ rest)
+        else
+          [ make_token parser ident ] @ tokens_to_green parser trivia
     | _ ->
         let found = peek parser in
         let diagnostic =
           Diagnostic.invalid_expression ~found ~text:(token_text parser found)
             ~span:(expected_span parser)
         in
-        make_error_node parser ~diagnostic ~consumed_tokens:[ found ]
+        report_diagnostic parser diagnostic;
+        [ make_token parser found ]
   in
+  
+  let module_path = parse_module_path () in
 
   (* Build INCLUDE_STMT node *)
   make_node Syntax_kind.INCLUDE_STMT
     ([ make_token parser include_kw ]
     @ tokens_to_green parser trivia_after_include
-    @ [ Ceibo.Green.Node module_expr ])
+    @ module_path)
 
 (** Parse structure item (top-level in .ml files) *)
 and parse_structure_item parser =
@@ -4752,14 +5112,79 @@ and parse_structure_item parser =
       make_error_node parser ~diagnostic ~consumed_tokens:[ tok ]
 
 (** Parse signature item (top-level in .mli files) *)
-and parse_signature_item parser =
-  (* Unknown token - consume it and report error to avoid infinite loop *)
-  let tok = consume parser in
-  let diagnostic =
-    Diagnostic.unexpected_signature_item ~found:tok
-      ~text:(token_text parser tok) ~span:(current_span parser)
+(** Parse val declaration: val name : type *)
+and parse_val_decl parser =
+  (* Consume 'val' keyword *)
+  let val_kw = consume parser in
+  let trivia_after_val = consume_trivia parser in
+  
+  (* Parse value name *)
+  let value_name =
+    match peek_kind parser with
+    | Token.Ident _ ->
+        let ident = consume parser in
+        make_node Syntax_kind.IDENT_EXPR [ make_token parser ident ]
+    | _ ->
+        let found = peek parser in
+        let diagnostic =
+          Diagnostic.invalid_expression ~found ~text:(token_text parser found)
+            ~span:(current_span parser)
+        in
+        make_error_node parser ~diagnostic ~consumed_tokens:[]
   in
-  make_error_node parser ~diagnostic ~consumed_tokens:[ tok ]
+  
+  let trivia_after_name = consume_trivia parser in
+  
+  (* Expect colon *)
+  let colon =
+    match peek_kind parser with
+    | Token.Colon ->
+        let tok = consume parser in
+        make_token parser tok
+    | _ ->
+        let found = peek parser in
+        let diagnostic =
+          Diagnostic.invalid_expression ~found ~text:(token_text parser found)
+            ~span:(expected_span parser)
+        in
+        report_diagnostic parser diagnostic;
+        let missing = make_error_node parser ~diagnostic ~consumed_tokens:[] in
+        Ceibo.Green.Node missing
+  in
+  
+  let trivia_after_colon = consume_trivia parser in
+  
+  (* Parse type expression *)
+  let type_expr = parse_typexpr parser in
+  
+  (* Build VAL_DECL node *)
+  make_node Syntax_kind.VAL_DECL
+    ([ make_token parser val_kw ]
+    @ tokens_to_green parser trivia_after_val
+    @ [ Ceibo.Green.Node value_name ]
+    @ tokens_to_green parser trivia_after_name
+    @ [ colon ]
+    @ tokens_to_green parser trivia_after_colon
+    @ [ Ceibo.Green.Node type_expr ])
+
+(** Parse signature item (top-level in .mli files) *)
+and parse_signature_item parser =
+  match peek_kind parser with
+  | Token.Keyword Keyword.Val -> parse_val_decl parser
+  | Token.Keyword Keyword.Type -> parse_type_decl parser
+  | Token.Keyword Keyword.Module -> parse_module_decl parser
+  | Token.Keyword Keyword.External -> parse_external_decl parser
+  | Token.Keyword Keyword.Exception -> parse_exception_decl parser
+  | Token.Keyword Keyword.Open -> parse_open_stmt parser
+  | Token.Keyword Keyword.Include -> parse_include_stmt parser
+  | _ ->
+      (* Unknown token - consume it and report error to avoid infinite loop *)
+      let tok = consume parser in
+      let diagnostic =
+        Diagnostic.unexpected_signature_item ~found:tok
+          ~text:(token_text parser tok) ~span:(current_span parser)
+      in
+      make_error_node parser ~diagnostic ~consumed_tokens:[ tok ]
 
 and parse ~parse_item ~source ~tokens =
   let parser = create ~source tokens in
