@@ -4,7 +4,8 @@ open Tty
 type mouse_mode = Cell_motion | All_motion
 
 type Message.t +=
-  | Render of string
+  | Render of Element.t
+  | Resize of { width : int; height : int }
   | Enter_alt_screen
   | Exit_alt_screen
   | Tick
@@ -23,10 +24,11 @@ type Message.t +=
 type t = Pid.t
 
 type state = {
+  tty: Tty.t;
   runner : Pid.t;
   ticker : Timer.id;
-  width : int;
-  height : int;
+  mutable width : int;
+  mutable height : int;
   render_mode : Config.render_mode;
   mutable buffer : string;
   mutable last_render : string;
@@ -37,6 +39,7 @@ type state = {
   mutable mouse_mode : mouse_mode option;
   mutable bracketed_paste_enabled : bool;
   mutable focus_tracking_enabled : bool;
+  mutable first_render : bool;
 }
 
 let is_empty state = String.length state.buffer = 0
@@ -62,8 +65,12 @@ let rec loop state =
   | Tick ->
       tick state;
       loop state
-  | Render output ->
-      handle_render state output;
+  | Render element ->
+      handle_render_element state element;
+      loop state
+  | Resize { width; height } ->
+      state.width <- width;
+      state.height <- height;
       loop state
   | Set_cursor_visibility cursor ->
       handle_set_cursor_visibility cursor state;
@@ -136,9 +143,11 @@ and flush t =
   
   (* Clean last rendered content *)
   if t.render_mode = Config.Clear then (
-    if t.is_altscreen_active then
-      (* In altscreen: move to home and clear entire screen *)
-      Buffer.add_string output "\x1b[H\x1b[2J"
+    if t.is_altscreen_active then begin
+      (* In altscreen: just go home and overwrite - don't clear! *)
+      (* Following the "overwrite, don't clear" principle from terminal rendering best practices *)
+      Buffer.add_string output "\x1b[H"      (* Move cursor to home *)
+    end
     else if t.lines_rendered > 0 then
       (* Normal mode: clear previous lines *)
       for _i = 1 to t.lines_rendered do
@@ -149,13 +158,7 @@ and flush t =
 
   (* Add the actual buffer content *)
   Buffer.add_string output t.buffer;
-
-  (* Move cursor back to start *)
-  if t.is_altscreen_active then
-    Buffer.add_string output (format "\x1b[%d;%dH" new_lines_this_flush 0)
-  else
-    Buffer.add_string output (format "\x1b[%dD" t.width);
-
+  
   (* Single print with flush at the end *)
   print "%s%!" (Buffer.contents output);
 
@@ -164,77 +167,96 @@ and flush t =
   t.lines_rendered <- new_lines_this_flush;
   t.buffer <- ""
 
-and handle_render t output = t.buffer <- output
+and handle_render_element t element =
+  (* On first render, re-detect terminal size to ensure we have the correct dimensions *)
+  if t.first_render then begin
+    t.first_render <- false;
+    let size = Tty.size t.tty in
+    if size.cols <> t.width || size.rows <> t.height then begin
+      t.width <- size.cols;
+      t.height <- size.rows;
+      (* Notify program about the actual size *)
+      send t.runner (Io_loop.Input (Event.Resize { width = size.cols; height = size.rows }))
+    end
+  end;
+  
+  (* Render element to ANSI string *)
+  let output = Render.Pipeline.to_string element ~width:t.width ~height:t.height in
+  t.buffer <- output
 
 and handle_enter_alt_screen t =
   if t.is_altscreen_active then ()
   else (
     t.is_altscreen_active <- true;
-    Terminal.enter_alt_screen ();
-    (* Use explicit clear sequence for altscreen: home + clear entire screen *)
-    print "\x1b[H\x1b[2J%!";
-    t.last_render <- "")
+    (* Proper alt screen sequence order: enter, clear, home *)
+    Tty.enter_alt_screen t.tty;
+    Tty.clear t.tty;
+    print "\x1b[r%!";              (* Reset scroll region to full screen *)
+    
+    (* Give terminal a moment to process the alt screen transition *)
+    Unix.sleepf 0.1;
+    
+    t.last_render <- "";
+    
+    (* Re-detect terminal size after entering alt screen *)
+    let size = Tty.size t.tty in
+    if size.cols <> t.width || size.rows <> t.height then begin
+      t.width <- size.cols;
+      t.height <- size.rows;
+      (* Notify program about size change *)
+      send t.runner (Io_loop.Input (Event.Resize { width = size.cols; height = size.rows }))
+    end
+  )
 
 and handle_exit_alt_screen t =
   if not t.is_altscreen_active then ()
   else (
     t.is_altscreen_active <- false;
-    Terminal.exit_alt_screen ();
+    Tty.exit_alt_screen t.tty;
     t.last_render <- "")
 
 and handle_set_cursor_visibility cursor t =
   if t.cursor_visibility = cursor then ()
   else (
     (match cursor with
-    | `hidden -> Tty.Escape_seq.hide_cursor_seq ()
-    | `visible -> Tty.Escape_seq.show_cursor_seq ());
+    | `hidden -> Tty.hide_cursor t.tty
+    | `visible -> Tty.show_cursor t.tty);
     t.cursor_visibility <- cursor)
 
 and handle_enable_mouse t mode =
   if not t.mouse_enabled then (
-    (* Enable mouse SGR mode (1006) for better coordinate reporting *)
-    print "\x1b[?1006h%!";
-    (* Set the tracking mode *)
-    (match mode with
-    | Cell_motion ->
-        (* Button event tracking + motion while button pressed (1002) *)
-        print "\x1b[?1002h%!"
-    | All_motion ->
-        (* All motion tracking (1003) *)
-        print "\x1b[?1003h%!");
+    let tty_mode = match mode with
+      | Cell_motion -> Tty.CellMotion
+      | All_motion -> Tty.AllMotion
+    in
+    Tty.enable_mouse t.tty tty_mode;
     t.mouse_enabled <- true;
     t.mouse_mode <- Some mode)
 
 and handle_disable_mouse t =
   if t.mouse_enabled then (
-    (* Disable mouse SGR mode *)
-    print "\x1b[?1006l%!";
-    (* Disable mouse tracking *)
-    (match t.mouse_mode with
-    | Some Cell_motion -> print "\x1b[?1002l%!"
-    | Some All_motion -> print "\x1b[?1003l%!"
-    | None -> ());
+    Tty.disable_mouse t.tty;
     t.mouse_enabled <- false;
     t.mouse_mode <- None)
 
 and handle_enable_bracketed_paste t =
   if not t.bracketed_paste_enabled then (
-    print "\x1b[?2004h%!";
+    Tty.enable_bracketed_paste t.tty;
     t.bracketed_paste_enabled <- true)
 
 and handle_disable_bracketed_paste t =
   if t.bracketed_paste_enabled then (
-    print "\x1b[?2004l%!";
+    Tty.disable_bracketed_paste t.tty;
     t.bracketed_paste_enabled <- false)
 
 and handle_enable_focus_tracking t =
   if not t.focus_tracking_enabled then (
-    print "\x1b[?1004h%!";
+    Tty.enable_focus_tracking t.tty;
     t.focus_tracking_enabled <- true)
 
 and handle_disable_focus_tracking t =
   if t.focus_tracking_enabled then (
-    print "\x1b[?1004l%!";
+    Tty.disable_focus_tracking t.tty;
     t.focus_tracking_enabled <- false)
 
 and handle_set_window_title title =
@@ -245,22 +267,20 @@ let max_fps = 120
 let cap fps = Int.max 1 (Int.min fps max_fps) |> Int.to_float
 let fps_to_secs fps = 1. /. cap fps
 
-let start ~config () =
+let start ~config ~tty () =
   let parent = self () in
   spawn (fun () ->
     send parent (RendererStarted (self ()));
-    let Config.{ render_mode; fps } = config in
+    let Config.{ render_mode; fps; initial_width; initial_height } = config in
+    
     let ticker =
       Timer.send_interval (self ()) Tick ~interval:(Time.Duration.from_secs_float (fps_to_secs fps))
     in
-    (* Get actual terminal size *)
-    let width, height = 
-      match Tty.Terminal.size () with
-      | Ok (w, h) -> (w, h)
-      | Error _ -> (80, 24)  (* Fallback if not a TTY *)
-    in
+    (* Use the initial size from config (detected in the parent process) *)
+    let width, height = (initial_width, initial_height) in
     loop
       {
+        tty;
         runner = parent;
         ticker;
         buffer = "";
@@ -275,11 +295,13 @@ let start ~config () =
         mouse_mode = None;
         bracketed_paste_enabled = false;
         focus_tracking_enabled = false;
+        first_render = true;
       };
     Ok ()
   )
 
-let render pid output = send pid (Render output)
+let render pid element = send pid (Render element)
+let resize pid ~width ~height = send pid (Resize { width; height })
 let enter_alt_screen pid = send pid Enter_alt_screen
 let exit_alt_screen pid = send pid Exit_alt_screen
 let shutdown pid = send pid Shutdown

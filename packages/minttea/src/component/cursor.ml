@@ -2,7 +2,7 @@ open Std
 
 type t = {
   (* cursor style -- defaults to inverted default *)
-  style : Style.style;
+  style : Style.t;
   (* whether cursor is visible/active *)
   focus : bool;
   (* whether cursor should blink *)

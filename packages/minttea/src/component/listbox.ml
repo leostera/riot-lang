@@ -16,7 +16,7 @@ type 'a t = {
 
 let default_render x = 
   (* Try to convert to string - this is a simple default *)
-  Printf.sprintf "%s" (Obj.magic x : string)
+  format "%s" (Obj.magic x : string)
 
 let make ?(render = default_render) items =
   {

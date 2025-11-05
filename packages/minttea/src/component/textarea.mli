@@ -35,7 +35,7 @@
 
       let view model =
         Textarea.view model.editor ^ "\n\n" ^
-        Printf.sprintf "Line %d, Col %d | %d lines"
+        format "Line %d, Col %d | %d lines"
           (fst (Textarea.cursor_position model.editor) + 1)
           (snd (Textarea.cursor_position model.editor) + 1)
           (Textarea.line_count model.editor)

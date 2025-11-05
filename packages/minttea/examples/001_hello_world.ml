@@ -4,8 +4,8 @@ open Minttea
 (* Model: Just a simple message *)
 type model = string
 
-(* Initialize: Takes initial model, returns command *)
-let init _model = Command.Noop
+(* Initialize: Takes initial model, returns updated model and command *)
+let init model = (model, Command.Noop)
 
 (* Update: Handle keyboard events *)
 let update event model =
@@ -19,16 +19,16 @@ let update event model =
 
 (* View: Render the message *)
 let view model =
-  let styled_message = 
-    Style.(default
-    |> fg (color "#00FFFF")  (* Cyan *)
-    |> bold true
-    |> padding_top 1
-    |> padding_left 2
-    |> render)
-  in
-  
-  styled_message model ^ "\n\nPress 'q' to quit"
+  Element.column [
+    Element.text 
+      ~style:(Style.default
+        |> Style.fg (Style.color "#00FFFF")  (* Cyan *)
+        |> Style.bold true
+        |> Style.padding_top 1
+        |> Style.padding_left 2)
+      model;
+    Element.text "\n\nPress 'q' to quit";
+  ]
 
 (* Create the app *)
 let app = App.make ~init ~update ~view ()

@@ -14,11 +14,15 @@ module Config : sig
   type t = {
     render_mode : render_mode;
     fps : int;
+    initial_width : int;
+    initial_height : int;
   }
 
   val make :
     ?render_mode:render_mode ->
     ?fps:int ->
+    ?initial_width:int ->
+    ?initial_height:int ->
     unit ->
     t
 end
@@ -26,6 +30,8 @@ end
 val config :
   ?render_mode:Config.render_mode ->
   ?fps:int ->
+  ?initial_width:int ->
+  ?initial_height:int ->
   unit ->
   Config.t
 (** Create a configuration with optional parameters *)
@@ -122,103 +128,23 @@ module Command : sig
   val query_window_size : t
 end
 
+(** Declarative layout system *)
+module Element : module type of Element
+
+(** Rendering pipeline *)
+module Render = Render
+
 (** Styles module for terminal text styling *)
-module Style : sig
-(** Layout composition utilities *)
-module Layout : sig
-  val join_horizontal : pos:[`Top | `Center | `Bottom] -> string list -> string
-  (** Place strings side-by-side horizontally *)
-
-  val join_vertical : pos:[`Left | `Center | `Right] -> string list -> string
-  (** Stack strings vertically *)
-
-  val place : 
-    width:int -> 
-    height:int -> 
-    h_pos:float -> 
-    v_pos:float -> 
-    string -> 
-    string
-  (** Position string within a box using fractional coordinates *)
-end
-
-  type color = Tty.Color.t = private
-    | RGB of int * int * int
-    | ANSI of int
-    | ANSI256 of int
-    | No_color
-
-  val color : ?profile:Tty.Profile.t -> string -> color
-  val gradient : start:color -> finish:color -> steps:int -> color array
-
-  module Border : sig
-    type t
-
-    val make :
-      ?top:string ->
-      ?left:string ->
-      ?bottom:string ->
-      ?right:string ->
-      ?top_left:string ->
-      ?top_right:string ->
-      ?bottom_left:string ->
-      ?bottom_right:string ->
-      ?middle_left:string ->
-      ?middle_right:string ->
-      ?middle:string ->
-      ?middle_top:string ->
-      ?middle_bottom:string ->
-      unit ->
-      t
-
-    val normal : t
-    val rounded : t
-    val block : t
-    val outer_half_block : t
-    val inner_half_block : t
-    val thick : t
-    val double : t
-    val hidden : t
-  end
-
-  type style
-
-  val default : style
-  val bg : color -> style -> style
-  val blink : bool -> style -> style
-  val bold : bool -> style -> style
-  val faint : bool -> style -> style
-  val fg : color -> style -> style
-  val height : int -> style -> style
-  val italic : bool -> style -> style
-  val margin_bottom : int -> style -> style
-  val margin_left : int -> style -> style
-  val margin_right : int -> style -> style
-  val margin_top : int -> style -> style
-  val max_height : int -> style -> style
-  val max_width : int -> style -> style
-  val padding_bottom : int -> style -> style
-  val padding_left : int -> style -> style
-  val padding_right : int -> style -> style
-  val padding_top : int -> style -> style
-  val reverse : bool -> style -> style
-  val strikethrough : bool -> style -> style
-  val underline : bool -> style -> style
-  val width : int option -> style -> style
-  val border : Border.t -> style -> style
-  val align_horizontal : [`Left | `Center | `Right] -> style -> style
-  val align_vertical : [`Top | `Center | `Bottom] -> style -> style
-  val render : style -> string -> string
-end
+module Style = Style
 
 (** Application definition *)
 module App : sig
   type 'model t
 
   val make :
-    init:('model -> Command.t) ->
+    init:('model -> 'model * Command.t) ->
     update:(Event.t -> 'model -> 'model * Command.t) ->
-    view:('model -> string) ->
+    view:('model -> Element.t) ->
     unit ->
     'model t
 end
@@ -226,9 +152,9 @@ end
 module Component = Component
 
 val app :
-  init:('model -> Command.t) ->
+  init:('model -> 'model * Command.t) ->
   update:(Event.t -> 'model -> 'model * Command.t) ->
-  view:('model -> string) ->
+  view:('model -> Element.t) ->
   unit ->
   'model App.t
 (** Create a new application *)

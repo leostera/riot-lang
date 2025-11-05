@@ -5,9 +5,9 @@ open Minttea
 type model = { count : int }
 
 (* Initialize and start a timer *)
-let init _model =
+let init model =
   let _timer, cmd = Command.timer ~after:(Time.Duration.from_secs_float 0.5) in
-  cmd
+  (model, cmd)
 
 (* Update: increment counter on timer, quit after 5 *)
 let update event model =
@@ -28,17 +28,16 @@ let update event model =
 
 (* View: show the counter *)
 let view model =
-  let message = 
-    Style.(default
-    |> fg (color "#00FFFF")
-    |> bold true
-    |> padding_top 1
-    |> padding_left 2
-    |> render)
-    (format "Count: %d" model.count)
-  in
-  
-  message ^ "\n\nWill quit after 5 ticks (press 'q' to quit early)"
+  Element.column [
+    Element.text 
+      ~style:(Style.default
+        |> Style.fg (Style.color "#00FFFF")
+        |> Style.bold true
+        |> Style.padding_top 1
+        |> Style.padding_left 2)
+      (format "Count: %d" model.count);
+    Element.text "\n\nWill quit after 5 ticks (press 'q' to quit early)";
+  ]
 
 (* Create the app *)
 let app = App.make ~init ~update ~view ()

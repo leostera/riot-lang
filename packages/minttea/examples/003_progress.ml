@@ -11,7 +11,7 @@ type model = {
 (* Initialize with a progress bar and start a timer *)
 let init model =
   let _timer, cmd = Command.timer ~after:(Time.Duration.from_secs_float 0.1) in
-  cmd
+  (model, cmd)
 
 (* Update: handle timer events to increment progress *)
 let update event model =
@@ -42,22 +42,22 @@ let update event model =
 (* View: render the progress bar *)
 let view model =
   let progress_view = Progress.view model.progress in
-  let title = 
-    Style.(default
-    |> fg (color "#00FFFF")
-    |> bold true
-    |> render)
-    "Downloading..."
-  in
-  
   let instructions = 
     if model.waiting_to_quit then
-      "\n\nCompleted! Exiting..."
+      "Completed! Exiting..."
     else
-      "\n\nPress 'q' or Ctrl+C to quit"
+      "Press 'q' or Ctrl+C to quit"
   in
   
-  title ^ "\n" ^ progress_view ^ instructions
+  Element.column [
+    Element.text 
+      ~style:(Style.default
+        |> Style.fg (Style.color "#00FFFF")
+        |> Style.bold true)
+      "Downloading...";
+    Element.text progress_view;
+    Element.text instructions;
+  ]
 
 (* Create the app *)
 let app = App.make ~init ~update ~view ()

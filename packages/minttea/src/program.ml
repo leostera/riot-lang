@@ -10,21 +10,37 @@ type 'model t = { app : 'model App.t; config : Config.t }
 let make ~app ~config = { app; config }
 
 let run t initial_model =
-  (* Start renderer *)
-  let renderer_pid = Renderer.start ~config:t.config () in
-  
-  (* Wait for renderer to be ready *)
-  let renderer = 
-    let selector = function
-      | Renderer.RendererStarted pid -> `select pid
-      | _ -> `skip
-    in
-    receive ~selector ()
+  (* Create TTY once - will be shared by both io_loop and renderer *)
+  let tty = match Tty.make_raw () with
+    | Ok t -> t
+    | Error NoTtyConnected -> 
+        Log.error "[PROGRAM] Failed to create TTY: Not a TTY";
+        failwith "Not a TTY"
+    | Error (SystemError (IO.Unknown_error msg)) ->
+        Log.error "[PROGRAM] Failed to create TTY: %s" msg;
+        failwith msg
   in
   
-  (* Start IO loop *)
+  (* Start renderer with TTY handle *)
+  let renderer_pid = Renderer.start ~config:t.config ~tty () in
+  
+  (* Wait for renderer to be ready and capture any early Resize event *)
+  let renderer, initial_model = 
+    let rec wait_for_renderer model = 
+      match receive_any () with
+      | Renderer.RendererStarted pid -> (pid, model)
+      | Io_loop.Input (Event.Resize { width; height }) ->
+          (* Update model with size before init *)
+          let updated_model, _ = t.app.update (Event.Resize { width; height }) model in
+          wait_for_renderer updated_model
+      | _ -> wait_for_renderer model
+    in
+    wait_for_renderer initial_model
+  in
+  
+  (* Start IO loop with TTY handle *)
   Log.trace "[Program] Starting IO loop...\n%!";
-  let io_pid = Io_loop.start () in
+  let io_pid = Io_loop.start ~tty () in
   Log.trace "[Program] IO loop spawned as %s\n%!" (Pid.to_string io_pid);
   
   (* Wait for IO to be ready *)
@@ -39,7 +55,6 @@ let run t initial_model =
     receive ~selector ()
   in
   Log.trace "[Program] IO is ready: %s\n%!" (Pid.to_string io);
-  
   Log.trace "Minttea started: renderer=%s io=%s" 
     (Pid.to_string renderer) (Pid.to_string io);
 
@@ -52,7 +67,8 @@ let run t initial_model =
     | Noop -> false
     | Hide_cursor -> Renderer.hide_cursor renderer; false
     | Show_cursor -> Renderer.show_cursor renderer; false
-    | Enter_alt_screen -> Renderer.enter_alt_screen renderer; false
+    | Enter_alt_screen -> 
+        Renderer.enter_alt_screen renderer; false
     | Exit_alt_screen -> Renderer.exit_alt_screen renderer; false
     | Enable_mouse mode -> 
         let renderer_mode = match mode with
@@ -76,35 +92,6 @@ let run t initial_model =
     | Query_window_size -> false
   in
 
-  (* Send initial window size before initializing app *)
-  let width, height = 
-    match Tty.Terminal.size () with
-    | Ok (w, h) -> 
-        Log.trace "Initial terminal size: %dx%d" w h;
-        (w, h)
-    | Error _ -> 
-        Log.trace "Could not detect terminal size, using default 80x24";
-        (80, 24)
-  in
-  
-  (* Call app init with initial resize event to give it proper dimensions *)
-  let model_with_size, size_cmd = t.app.update 
-    (Event.Resize { width; height }) 
-    initial_model in
-  let _ = handle_cmd size_cmd in
-  
-  (* Initialize app *)
-  let init_cmd = t.app.init model_with_size in
-  let should_quit = handle_cmd init_cmd in
-
-  if should_quit then (
-    Log.trace "Quit during initialization";
-    Ok ()
-  ) else (
-    let initial_view = t.app.view model_with_size in
-    Renderer.render renderer initial_view;
-
-    (* Shutdown helper - initiates shutdown and waits for renderer *)
     let shutdown () =
       Log.trace "Shutting down Minttea";
       Renderer.show_cursor renderer;
@@ -121,7 +108,9 @@ let run t initial_model =
       in
       wait_for_renderer ()
     in
-
+  
+  (* Initialize app with initial model - size will be updated by renderer *)
+  let model, init_cmd = t.app.init initial_model in
     (* Main event loop *)
     let rec loop model last_view =
       let selector msg = match msg with
@@ -132,17 +121,31 @@ let run t initial_model =
       in
 
       let event = receive ~selector () in
+      
+      (* Forward resize events to renderer *)
+      (match event with
+      | Event.Resize { width; height } ->
+          Renderer.resize renderer ~width ~height
+      | _ -> ());
+      
       let model, cmd = t.app.update event model in
-      let new_view = t.app.view model in
-      (* Render if view changed *)
-      if new_view <> last_view then
-        Renderer.render renderer new_view;
+      let view = t.app.view model in
+      (* Only render if view changed *)
+      if view <> last_view then begin
+        Log.debug "[PROGRAM] View changed, sending render to renderer";
+        Renderer.render renderer view
+      end;
       (* Handle command after rendering *)
       if handle_cmd cmd then shutdown ()
-      else loop model new_view
+      else loop model view
     in
 
-    loop model_with_size initial_view;
+    let initial_view = t.app.view model in
+    Log.debug "[PROGRAM] Sending initial render";
+    Renderer.render renderer initial_view;
+
+    let _should_quit = handle_cmd init_cmd in
+
+    loop model initial_view;
     Log.trace "Program finished";
     Ok ()
-  )

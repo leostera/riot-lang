@@ -1,22 +1,3 @@
-(** Layout composition utilities *)
-module Layout : sig
-  val join_horizontal : pos:[`Top | `Center | `Bottom] -> string list -> string
-  (** Place strings side-by-side horizontally *)
-
-  val join_vertical : pos:[`Left | `Center | `Right] -> string list -> string
-  (** Stack strings vertically *)
-
-  val place : 
-    width:int -> 
-    height:int -> 
-    h_pos:float -> 
-    v_pos:float -> 
-    string -> 
-    string
-  (** Position string within a box using fractional coordinates *)
-end
-
-
 type color = Tty.Color.t = private
   | RGB of int * int * int
   | ANSI of int
@@ -56,34 +37,86 @@ module Border : sig
   val hidden : t
 end
 
-type style
+(** Size specification for layout system *)
+type size =
+  | Auto              (** Measure content, use intrinsic size *)
+  | Fixed of int      (** Explicit size in cells *)
+  | Flex of float     (** Flexible unit, shares remaining space *)
 
-val default : style
-val bg : color -> style -> style
-val blink : bool -> style -> style
-val bold : bool -> style -> style
-val faint : bool -> style -> style
-val fg : color -> style -> style
-val height : int -> style -> style
-val italic : bool -> style -> style
-val margin_bottom : int -> style -> style
-val margin_left : int -> style -> style
-val margin_right : int -> style -> style
-val margin_top : int -> style -> style
-val max_height : int -> style -> style
-val max_width : int -> style -> style
-val padding_bottom : int -> style -> style
-val padding_left : int -> style -> style
-val padding_right : int -> style -> style
-val padding_top : int -> style -> style
-val reverse : bool -> style -> style
-val strikethrough : bool -> style -> style
-val underline : bool -> style -> style
-val width : int option -> style -> style
-val border : Border.t -> style -> style
+(** Overflow behavior *)
+type overflow =
+  | Visible           (** Don't clip (default) *)
+  | Hidden            (** Clip content that exceeds bounds *)
+  | Scroll            (** Future: scrollable (not implemented yet) *)
 
-val align_horizontal : [`Left | `Center | `Right] -> style -> style
-(** [align_horizontal pos style] sets horizontal text alignment.
+(** Constraints for Auto/Flex sizing *)
+type constraints = {
+  min_width : int option;
+  max_width : int option;
+  min_height : int option;
+  max_height : int option;
+}
+
+type t
+
+val default : t
+val bg : color -> t -> t
+val blink : bool -> t -> t
+val bold : bool -> t -> t
+val faint : bool -> t -> t
+val fg : color -> t -> t
+val italic : bool -> t -> t
+val margin_bottom : int -> t -> t
+val margin_left : int -> t -> t
+val margin_right : int -> t -> t
+val margin_top : int -> t -> t
+val padding_bottom : int -> t -> t
+val padding_left : int -> t -> t
+val padding_right : int -> t -> t
+val padding_top : int -> t -> t
+val reverse : bool -> t -> t
+val strikethrough : bool -> t -> t
+val underline : bool -> t -> t
+val border : Border.t -> t -> t
+
+(** Legacy size API - kept for compatibility *)
+val height : int -> t -> t
+val width : int option -> t -> t
+val max_height : int -> t -> t
+val max_width : int -> t -> t
+
+(** New size API - preferred for layout system *)
+val width_auto : t -> t
+(** Set width to Auto (intrinsic/content size) *)
+
+val width_fixed : int -> t -> t
+(** Set width to a fixed size in cells *)
+
+val width_flex : float -> t -> t
+(** Set width to flex with given weight (e.g. 1.0 for equal sharing) *)
+
+val height_auto : t -> t
+(** Set height to Auto (intrinsic/content size) *)
+
+val height_fixed : int -> t -> t
+(** Set height to a fixed size in cells *)
+
+val height_flex : float -> t -> t
+(** Set height to flex with given weight (e.g. 1.0 for equal sharing) *)
+
+(** Constraint API *)
+val min_width : int -> t -> t
+(** Set minimum width constraint *)
+
+val min_height : int -> t -> t
+(** Set minimum height constraint *)
+
+(** Overflow API *)
+val overflow : overflow -> t -> t
+(** Set overflow behavior (Visible, Hidden, or Scroll) *)
+
+val align_horizontal : [`Left | `Center | `Right] -> t -> t
+(** [align_horizontal pos t] sets horizontal text alignment.
     
     Only applies when [width] is set. Text will be padded to reach the target width.
     
@@ -93,16 +126,16 @@ val align_horizontal : [`Left | `Center | `Right] -> style -> style
     
     Example:
     ```ocaml
-    let style = default 
+    let t = default 
       |> width (Some 20) 
       |> align_horizontal `Center
       |> fg (color "cyan") in
-    render style "Hello"
+    render t "Hello"
     (* Renders:      Hello       *)
     ``` *)
 
-val align_vertical : [`Top | `Center | `Bottom] -> style -> style
-(** `align_vertical pos style` sets vertical text alignment.
+val align_vertical : [`Top | `Center | `Bottom] -> t -> t
+(** `align_vertical pos t` sets vertical text alignment.
     
     Only applies when `height` is set. Content will be padded with empty lines.
     
@@ -112,23 +145,23 @@ val align_vertical : [`Top | `Center | `Bottom] -> style -> style
     
     Example:
     ```ocaml
-    let style = default 
+    let t = default 
       |> height 5 
       |> align_vertical `Center
       |> border Border.rounded in
-    render style "Middle"
+    render t "Middle"
     (* Renders centered in 5-line box *)
     ``` *)
 
-val render : style -> string -> string
-(** `render style text` applies the style to text and returns formatted string.
+val render : t -> string -> string
+(** `render t text` applies the t to text and returns formatted string.
     
     Processing order: padding, horizontal alignment, vertical alignment,
     text formatting (colors, bold, etc), borders, margins, max constraints
     
     Example:
     ```ocaml
-    let styled = default
+    let td = default
       |> fg (color "green")
       |> bg (color "black")
       |> bold true
@@ -136,5 +169,22 @@ val render : style -> string -> string
       |> padding_right 2
       |> border Border.rounded
       |> render in
-    styled "Hello World"
+    td "Hello World"
     ``` *)
+
+(** Accessors for layout system *)
+val get_padding_left : t -> int
+val get_padding_right : t -> int
+val get_padding_top : t -> int
+val get_padding_bottom : t -> int
+val get_width : t -> size
+val get_height : t -> size
+
+(** Accessors for rendering system *)
+val get_foreground : t -> color option
+val get_background : t -> color option
+val get_bold : t -> bool
+val get_italic : t -> bool
+val get_underline : t -> bool
+val get_strikethrough : t -> bool
+val get_reverse : t -> bool

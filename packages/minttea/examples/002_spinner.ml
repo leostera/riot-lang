@@ -5,7 +5,7 @@ open Minttea
 type model = { spinner : Minttea.Component.Sprite.t }
 
 (* Initialize with a spinner *)
-let init _model = Command.Noop
+let init model = (model, Command.Noop)
 
 (* Update: handle keyboard events and frame updates *)
 let update event model =
@@ -26,16 +26,16 @@ let update event model =
 (* View: render the spinner with some text *)
 let view model =
   let spinner_view = Minttea.Component.Sprite.view model.spinner in
-  let styled_message = 
-    Style.(default
-    |> fg (color "#00FFFF")
-    |> bold true
-    |> padding_top 1
-    |> padding_left 2
-    |> render)
-  in
-  
-  styled_message (spinner_view ^ " Loading...") ^ "\n\nPress 'q' or Ctrl+C to quit"
+  Element.column [
+    Element.text 
+      ~style:(Style.default
+        |> Style.fg (Style.color "#00FFFF")
+        |> Style.bold true
+        |> Style.padding_top 1
+        |> Style.padding_left 2)
+      (spinner_view ^ " Loading...");
+    Element.text "\n\nPress 'q' or Ctrl+C to quit";
+  ]
 
 (* Create the app *)
 let app = App.make ~init ~update ~view ()

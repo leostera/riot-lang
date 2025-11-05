@@ -4,6 +4,12 @@ open Tty
 
 type t = Pid.t
 
+type state = {
+  parent: Pid.t;
+  sigwinch_handler: int -> unit;
+  termios: Tty.t;
+}
+
 type Message.t += 
   | Input of Event.t
   | IoStarted of Pid.t
@@ -21,18 +27,18 @@ let translate key =
   | "\n" -> Enter
   | key -> Key key
 
-let rec loop runner =
+let rec loop state =
   (* Read from stdin - will suspend process until data available *)
-  match Stdin.read_utf8 () with
-  | `Read key ->
+  match Tty.read_utf8 state.termios with
+  | Read key ->
       Log.trace "[IO_LOOP] READ KEY: %S\n%!" key;
       let msg =
         match key with
         | "\027" -> (
-            match Stdin.read_utf8 () with
-            | `Read "[" -> (
-                match Stdin.read_utf8 () with
-                | `Read key -> KeyDown (translate ("\027[" ^ key), No_modifier)
+            match Tty.read_utf8 state.termios with
+            | Read "[" -> (
+                match Tty.read_utf8 state.termios with
+                | Read key -> KeyDown (translate ("\027[" ^ key), No_modifier)
                 | _ -> KeyDown (translate key, No_modifier))
             | _ -> KeyDown (translate key, No_modifier))
         | "\n" -> KeyDown (translate key, No_modifier)
@@ -43,43 +49,33 @@ let rec loop runner =
             KeyDown (translate key, Ctrl)
         | key -> KeyDown (translate key, No_modifier)
       in
-      send runner (Input msg);
-      loop runner
-  | `End -> ()
-  | `Malformed _err -> loop runner
+      send state.parent (Input msg);
+      loop state
+  | End -> ()
+  | Malformed _err -> loop state
+  | Retry -> loop state
 
-let start () =
-  let parent = self () in
+let sigwinch_handler tty parent _signum =
+  Log.trace "[IO_LOOP] SIGWINCH received - terminal resized\n%!";
+  let size = Tty.size tty in
+  send parent (Input (Event.Resize { width = size.cols; height = size.rows }))
+
+let init ~parent ~tty = 
   Log.trace "[IO_LOOP] Starting IO loop, parent=%s\n%!" (Pid.to_string parent);
-  spawn (fun () ->
-    Log.trace "[IO_LOOP] IO loop process started\n%!";
-    send parent (IoStarted (self ()));
-    
-    (* Set up SIGWINCH handler for terminal resize *)
-    (* SIGWINCH is signal 28 on macOS/Linux *)
+  let state = { parent; termios = tty; sigwinch_handler = sigwinch_handler tty parent } in
+
+  (* Set up SIGWINCH handler for terminal resize *)
+  (* SIGWINCH is signal 28 on macOS/Linux *)
+  let _ = 
     let sigwinch = 28 in
-    let sigwinch_handler _signum =
-      Log.trace "[IO_LOOP] SIGWINCH received - terminal resized\n%!";
-      match Tty.Terminal.size () with
-      | Ok (width, height) ->
-          send parent (Input (Event.Resize { width; height }))
-      | Error _ ->
-          Log.trace "[IO_LOOP] Could not get terminal size after resize"
-    in
-    let _ = Sys.set_signal sigwinch (Sys.Signal_handle sigwinch_handler) in
-    
-    match Stdin.setup () with
-    | termios ->
-        Log.trace "[IO_LOOP] Stdin setup complete, entering main loop\n%!";
-        loop parent;
-        Log.trace "[IO_LOOP] Loop exited\n%!";
-        Stdin.shutdown termios;
-        Ok ()
-    | exception Unix.Unix_error (Unix.ENOTTY, _, _) ->
-        Log.trace "[IO_LOOP] Stdin is not a TTY, skipping input handling\n%!";
-        (* Just exit - no input will be processed but output still works *)
-        Ok ()
-    | exception Unix.Unix_error (Unix.ENODEV, _, _) ->
-        Log.trace "[IO_LOOP] No TTY device available, skipping input handling\n%!";
-        Ok ()
-  )
+    Sys.set_signal sigwinch (Sys.Signal_handle state.sigwinch_handler) 
+  in
+
+  send state.parent (IoStarted (self ()));
+
+  loop state;
+  Ok ()
+
+let start ~tty () =
+  let parent = self () in
+  spawn (fun () -> init ~parent ~tty)

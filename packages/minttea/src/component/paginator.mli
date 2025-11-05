@@ -10,7 +10,7 @@ val make :
   ?active_dot:string ->
   ?inactive_dot:string ->
   ?numerals_format:(int -> int -> string, unit, string) format ->
-  ?text_style:Style.style ->
+  ?text_style:Style.t ->
   unit ->
   t
 

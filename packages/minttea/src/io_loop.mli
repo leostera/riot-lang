@@ -11,6 +11,7 @@ type Message.t +=
   | Shutdown
 (** Message types *)
 
-val start : unit -> t
-(** Start an IO loop process. Sends IoStarted message to parent. 
-    Handles non-TTY environments gracefully. *)
+val start : tty:Tty.t -> unit -> t
+(** Start an IO loop process with a TTY handle. Sends IoStarted message to parent.
+    
+    @param tty The TTY handle to use for reading input *)

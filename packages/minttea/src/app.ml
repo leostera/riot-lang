@@ -1,7 +1,7 @@
 type 'model t = {
-  init : 'model -> Command.t;
+  init : 'model -> 'model * Command.t;
   update : Event.t -> 'model -> 'model * Command.t;
-  view : 'model -> string;
+  view : 'model -> Element.t;
 }
 
 let make ~init ~update ~view () = { init; update; view }

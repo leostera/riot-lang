@@ -8,7 +8,8 @@ type t = Pid.t
 type mouse_mode = Cell_motion | All_motion
 
 type Message.t +=
-  | Render of string
+  | Render of Element.t
+  | Resize of { width : int; height : int }
   | Enter_alt_screen
   | Exit_alt_screen
   | Tick
@@ -25,11 +26,17 @@ type Message.t +=
   | ShutdownComplete
 (** Renderer message types *)
 
-val start : config:Config.t -> unit -> t
-(** Start a renderer process. Sends RendererStarted message to parent. *)
+val start : config:Config.t -> tty:Tty.t -> unit -> t
+(** Start a renderer process with a TTY handle. Sends RendererStarted message to parent.
+    
+    @param config Renderer configuration
+    @param tty The TTY handle to use for output *)
 
-val render : t -> string -> unit
-(** Send output to be rendered *)
+val render : t -> Element.t -> unit
+(** Send an element to be rendered *)
+
+val resize : t -> width:int -> height:int -> unit
+(** Update renderer dimensions *)
 
 val enter_alt_screen : t -> unit
 (** Enter alternate screen mode *)

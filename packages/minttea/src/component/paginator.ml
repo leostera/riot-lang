@@ -10,7 +10,7 @@ type t = {
   active_dot : string;
   inactive_dot : string;
   numerals_format : (int -> int -> string, unit, string) format;
-  text_style : Style.style;
+  text_style : Style.t;
 }
 
 let set_total_pages t ~total:items =

@@ -37,7 +37,7 @@
 
     let render_item ~selected item =
       let prefix = if selected then "> " else "  " in
-      Printf.sprintf "%s%s (%d)" prefix item.name item.count
+      format "%s%s (%d)" prefix item.name item.count
 
     let items = [
       { name = "Tasks"; count = 5 };
