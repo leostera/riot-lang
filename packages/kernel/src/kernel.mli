@@ -12,6 +12,7 @@ module Option = Option
 module Result = Result
 module Sync = Sync
 module System = System
+module Terminal = Terminal
 module Time = Time
 
 (* Core types and modules for nostdlib packages *)
