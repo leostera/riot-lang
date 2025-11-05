@@ -9,8 +9,8 @@ let command =
   command "build" |> about "Build packages"
   |> args
        [
-         option "package" |> short 'p' |> long "package"
-         |> help "Build only the specified package";
+         positional "package" |> required false
+         |> help "Package to build (or omit to build all packages)";
        ]
 
 let build_command package_opt =

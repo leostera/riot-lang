@@ -6,15 +6,17 @@ open ArgParser
 let command =
   let open ArgParser in
   let open Arg in
-  command "test" |> about "Run tests" |> ArgParser.allow_trailing_args
+  command "test" |> about "Run tests with optional pattern matching"
+  |> ArgParser.allow_trailing_args
   |> args
        [
          positional "pattern" |> required false
          |> help
-              "Test pattern (format: [package][:test_prefix], e.g., \
-               'tty:basic_', 'parser_'). Omit to run all tests.";
+              "Test pattern: 'prefix' runs all tests starting with prefix, \
+               'pkg:prefix' runs package-scoped tests. Examples: 'parser_', \
+               'tty:api_'. Omit to run all tests.";
          option "package" |> short 'p' |> long "package"
-         |> help "Run tests only from this package (deprecated, use positional)";
+         |> help "Run tests from specific package (deprecated, use pattern)";
          flag "verbose" |> short 'v' |> long "verbose"
          |> help "Enable verbose output for tests"
          |> count;

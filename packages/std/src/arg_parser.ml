@@ -274,9 +274,31 @@ and print_help cmd =
       if arg.required then Buffer.add_string usage_buf (format " <%s>" arg.name)
       else Buffer.add_string usage_buf (format " [%s]" arg.name))
     positionals;
+  if cmd.allow_trailing then Buffer.add_string usage_buf " [-- ARGS...]";
   if List.length cmd.subcommands > 0 then
     Buffer.add_string usage_buf " [COMMAND]";
   println "%s" (Buffer.contents usage_buf);
+
+  (* Arguments section (positionals) *)
+  if List.length positionals > 0 then (
+    println "\nArguments:";
+    let max_arg_width : int =
+      List.fold_left
+        (fun (acc : int) (arg : unit arg) -> max acc (String.length arg.name))
+        0
+        positionals
+    in
+    List.iter
+      (fun (arg : unit arg) ->
+        let arg_str =
+          if arg.required then format "<%s>" arg.name
+          else format "[%s]" arg.name
+        in
+        let padding_len = max 2 (max_arg_width - String.length arg.name + 4) in
+        let padding = String.make padding_len ' ' in
+        let help_str = match arg.help with Some h -> h | None -> "" in
+        println "  %s%s%s" arg_str padding help_str)
+      positionals);
 
   (* Options section *)
   if List.length options > 0 then (

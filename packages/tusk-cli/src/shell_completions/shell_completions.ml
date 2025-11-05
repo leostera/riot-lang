@@ -82,17 +82,12 @@ _tusk() {
             fi
             ;;
         build)
-            _arguments \
-                '(-p --package)'{-p,--package}'[Build specific package]:package:->packages' \
-                '(-v --verbose)'{-v,--verbose}'[Verbose output]'
-            
-            case $state in
-                packages)
-                    local -a packages
-                    packages=(${(f)"$(tusk completions --packages 2>/dev/null)"})
-                    _describe 'package' packages
-                    ;;
-            esac
+            # Check if we're completing the package name (position 3)
+            if [[ $CURRENT -eq 3 ]]; then
+                local -a packages
+                packages=(${(f)"$(tusk completions --packages 2>/dev/null)"})
+                compadd -a packages
+            fi
             ;;
         test)
             # Check if we're completing the test pattern (position 3)

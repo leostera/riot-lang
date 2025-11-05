@@ -10,17 +10,13 @@ let command =
   |> args
        [
          positional "name" |> help "Binary name to run (format: [package:]binary)";
-         option "binary" |> short 'b' |> long "binary"
-         |> help "Specify which binary to run (format: [package:]binary)";
+         trailing "-- [args]..." |> help "Arguments to pass to the binary";
          flag "verbose" |> short 'v' |> long "verbose"
          |> help "Enable verbose output for run"
          |> count;
        ]
 
-let pick_name matches =
-  match get_one matches "name" with
-  | Some n -> Some n
-  | None -> get_one matches "binary"
+let pick_name matches = get_one matches "name"
 
 let trailing_args matches =
   let args = ArgParser.trailing_args matches in
