@@ -1,0 +1,80 @@
+open Std
+open Tusk_model
+
+let command =
+  let open ArgParser in
+  let open Arg in
+  command "completions"
+  |> about "Generate shell completions or list completion data"
+  |> args
+       [
+         option "shell" |> long "shell"
+         |> possible_values [ "bash"; "zsh"; "fish" ]
+         |> help "Generate completion script for shell (zsh, bash, fish)";
+         flag "packages" |> long "packages"
+         |> help "List available packages in current workspace";
+         flag "binaries" |> long "binaries"
+         |> help
+              "List available binaries in current workspace (format: \
+               binary:package)";
+         flag "tests" |> long "tests"
+         |> help
+              "List available test binaries in current workspace (format: \
+               test:package)";
+       ]
+
+let run matches =
+  (* Save reference to command before opening ArgParser *)
+  let completions_command = command in
+  let open ArgParser in
+
+  (* Check if generating full script *)
+  match get_one matches "shell" with
+  | Some shell_str -> (
+      match Shell_completions.shell_from_string shell_str with
+      | None ->
+          println "Error: Unknown shell '%s'" shell_str;
+          println "Supported shells: bash, zsh, fish";
+          Error (Failure (format "unknown shell: %s" shell_str))
+      | Some shell ->
+          let script = Shell_completions.generate_script shell in
+          print_string script;
+          Ok ())
+  | None ->
+      (* Dynamic completion helpers - need workspace context *)
+      let has_packages = get_flag matches "packages" in
+      let has_binaries = get_flag matches "binaries" in
+      let has_tests = get_flag matches "tests" in
+
+      if not (has_packages || has_binaries || has_tests) then
+        (* Use ArgParser to print help instead of manual *)
+        let () = print_help completions_command in
+        Ok ()
+      else
+        (* Try to load workspace, but fail silently if not in one *)
+        let cwd =
+          Env.current_dir ()
+          |> Result.expect ~msg:"Failed to get current directory"
+        in
+
+        match Workspace_manager.scan cwd with
+        | Error _ ->
+            (* Not in a workspace or scan failed - silently succeed *)
+            Ok ()
+        | Ok (workspace, _load_errors) ->
+            if has_packages then
+              List.iter
+                (fun pkg -> Std.println "%s" pkg)
+                (Shell_completions.list_packages workspace);
+
+            if has_binaries then
+              List.iter
+                (fun bin -> Std.println "%s" bin)
+                (Shell_completions.list_binaries workspace);
+
+            if has_tests then
+              List.iter
+                (fun test -> Std.println "%s" test)
+                (Shell_completions.list_tests workspace);
+
+            Ok ()

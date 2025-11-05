@@ -9,8 +9,12 @@ let command =
   command "test" |> about "Run tests" |> ArgParser.allow_trailing_args
   |> args
        [
+         positional "pattern" |> required false
+         |> help
+              "Test pattern (format: [package][:test_prefix], e.g., \
+               'tty:basic_', 'parser_'). Omit to run all tests.";
          option "package" |> short 'p' |> long "package"
-         |> help "Run tests only from this package";
+         |> help "Run tests only from this package (deprecated, use positional)";
          flag "verbose" |> short 'v' |> long "verbose"
          |> help "Enable verbose output for tests"
          |> count;
@@ -21,10 +25,13 @@ let trailing_args matches =
   match args with "--" :: rest -> rest | _ -> args
 
 let run matches =
-  let package_filter = ArgParser.get_one matches "package" in
   let extra_args = trailing_args matches in
   let verbose = ArgParser.get_count matches "verbose" in
   let _ = verbose in
+
+  (* Parse pattern: [pkg][:test_prefix] *)
+  let pattern = ArgParser.get_one matches "pattern" in
+  let legacy_package = ArgParser.get_one matches "package" in
 
   let cwd =
     Env.current_dir () |> Result.expect ~msg:"Failed to get current directory"
@@ -37,34 +44,42 @@ let run matches =
     |> Result.expect ~msg:"Failed to start or connect to tusk server"
   in
 
+  (* Parse pattern: [pkg]:test_prefix or pkg:test_prefix *)
+  let (package_filter, test_prefix) =
+    match (pattern, legacy_package) with
+    | (Some p, _) -> (
+        match String.split_on_char ':' p with
+        | [ pkg; prefix ] -> (Some pkg, Some prefix)
+        | [ single ] -> (None, Some single) (* Treat as test prefix across all packages *)
+        | _ -> (None, None))
+    | (None, Some pkg) -> (Some pkg, None)
+    | (None, None) -> (None, None)
+  in
+
   let packages =
     match package_filter with
     | Some pkg_name ->
-        println "[DEBUG] Filtering for package: %s" pkg_name;
-        println "[DEBUG] Workspace has %d packages" (List.length workspace.packages);
         List.filter
           (fun (pkg : Package.t) -> String.equal pkg.name pkg_name)
           workspace.packages
     | None -> workspace.packages
   in
 
-  println "[DEBUG] Found %d packages to test" (List.length packages);
-
   let test_binaries =
     List.concat_map
       (fun (pkg : Package.t) ->
-        println "[DEBUG] Package '%s' has %d binaries" pkg.name
-          (List.length pkg.binaries);
-        List.iter
-          (fun (bin : Package.binary) ->
-            println "[DEBUG]   - %s" bin.name)
-          pkg.binaries;
         List.filter_map
           (fun (bin : Package.binary) ->
-            if
+            let is_test =
               String.ends_with ~suffix:"_tests" bin.name
               || String.ends_with ~suffix:"-tests" bin.name
-            then Some (pkg.name, bin.name)
+            in
+            let matches_prefix =
+              match test_prefix with
+              | None -> true
+              | Some prefix -> String.starts_with ~prefix bin.name
+            in
+            if is_test && matches_prefix then Some (pkg.name, bin.name)
             else None)
           pkg.binaries)
       packages
@@ -73,13 +88,16 @@ let run matches =
   if List.length test_binaries = 0 then (
     Tusk_client.close client;
     println "No test binaries found";
-    (match package_filter with
-    | Some pkg ->
+    (match (package_filter, test_prefix) with
+    | (Some pkg, Some prefix) ->
+        println "Hint: No tests matching '%s:*%s*' found" pkg prefix
+    | (Some pkg, None) ->
         println
           "Hint: Make sure package '%s' has binaries ending in '_tests' or \
            '-tests'"
           pkg
-    | None -> println "Hint: Test binaries should end in '_tests' or '-tests'");
+    | (None, Some prefix) -> println "Hint: No tests matching '*%s*' found" prefix
+    | (None, None) -> println "Hint: Test binaries should end in '_tests' or '-tests'");
     Ok ())
   else
     (* Group test binaries by package *)

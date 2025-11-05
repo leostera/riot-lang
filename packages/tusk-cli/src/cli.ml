@@ -15,6 +15,7 @@ let cli =
        [
          Build.command;
          Clean.command;
+         Completions.command;
          (* Fmt.command; *)
          (* TODO: Replace with tusk-fmt package *)
          Install.command;
@@ -58,6 +59,8 @@ let main ~args:argv =
       | Some ("build", build_matches) -> Build.run build_matches
       | Some ("run", run_matches) -> Run.run run_matches
       | Some ("clean", clean_matches) -> Clean.run clean_matches
+      | Some ("completions", completions_matches) ->
+          Completions.run completions_matches
       | Some ("new", new_matches) -> New.run new_matches
       | Some ("install", install_matches) -> Install.run install_matches
       | Some ("server", server_matches) -> Server_cmd.run server_matches
