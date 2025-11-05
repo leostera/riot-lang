@@ -15,18 +15,18 @@ let to_unix_when = function
   | Drain -> Unix.TCSADRAIN
   | Flush -> Unix.TCSAFLUSH
 
-let get_attributes fd = Unix.tcgetattr fd
+let get_attributes fd = Unix.tcgetattr (Fd.to_unix fd)
 
 let set_attributes fd when_apply attrs =
-  Unix.tcsetattr fd (to_unix_when when_apply) attrs
+  Unix.tcsetattr (Fd.to_unix fd) (to_unix_when when_apply) attrs
 
-let is_tty fd = Unix.isatty fd
+let is_tty fd = Unix.isatty (Fd.to_unix fd)
 
 external get_terminal_size : Unix.file_descr -> int * int = "caml_get_terminal_size"
 
 let get_size fd =
   try
-    let (cols, rows) = get_terminal_size fd in
+    let (cols, rows) = get_terminal_size (Fd.to_unix fd) in
     Ok (cols, rows)
   with
   | Failure msg -> Error (`System_error msg)
