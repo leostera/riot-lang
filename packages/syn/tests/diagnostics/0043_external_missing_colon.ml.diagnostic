@@ -1,1 +1,18 @@
-[{"kind":{"id":"E0008","name":"invalid-expression","expected":"expression","found":{"kind":"identifier","text":"float"},"hint":"Expected a value, function call, or operator expression."},"span":{"start":13,"end":13}}]
+[
+  {
+    "kind": {
+      "id": "E0008",
+      "name": "invalid-expression",
+      "expected": "expression",
+      "found": {
+        "kind": "identifier",
+        "text": "float"
+      },
+      "hint": "Expected a value, function call, or operator expression."
+    },
+    "span": {
+      "start": 13,
+      "end": 13
+    }
+  }
+]

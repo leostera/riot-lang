@@ -1075,6 +1075,9 @@ and parse_or_pattern parser =
   if peek_kind parser = Token.Pipe then
     (* Parse remaining patterns after | *)
     let rec parse_pipe_patterns acc_patterns acc_pipes_trivia =
+      (* Consume trivia before checking for next pipe *)
+      let trivia_before_pipe = consume_trivia parser in
+      
       if peek_kind parser = Token.Pipe then
         let pipe = consume parser in
         let trivia_after_pipe = consume_trivia parser in
@@ -1104,9 +1107,11 @@ and parse_or_pattern parser =
             make_node Syntax_kind.ERROR []
         in
 
-        (* Collect pipe token and trivia as green elements *)
+        (* Collect trivia before pipe, pipe token, and trivia after pipe as green elements *)
         let pipe_trivia_green =
-          [ make_token parser pipe ] @ tokens_to_green parser trivia_after_pipe
+          tokens_to_green parser trivia_before_pipe
+          @ [ make_token parser pipe ]
+          @ tokens_to_green parser trivia_after_pipe
         in
         
         parse_pipe_patterns (pat :: acc_patterns)

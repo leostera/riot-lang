@@ -1,1 +1,18 @@
-[{"kind":{"id":"E0010","name":"invalid-type-expression","expected":"type definition","found":{"kind":"end of file","text":""},"hint":"Expected a type like int, string, 'a, or a type constructor."},"span":{"start":10,"end":10}}]
+[
+  {
+    "kind": {
+      "id": "E0010",
+      "name": "invalid-type-expression",
+      "expected": "type definition",
+      "found": {
+        "kind": "end of file",
+        "text": ""
+      },
+      "hint": "Expected a type like int, string, 'a, or a type constructor."
+    },
+    "span": {
+      "start": 10,
+      "end": 10
+    }
+  }
+]
