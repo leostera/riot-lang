@@ -15,7 +15,10 @@ type mode = Terminal.mode =
   | Immediate
 
 type t = Terminal.t = {
-  fd : Unix.file_descr;
+  fd : Kernel.Fd.t;  (* Primary TTY fd - used for termios operations *)
+  stdin : Kernel.Fd.t;  (* Input file descriptor *)
+  stdout : Kernel.Fd.t;  (* Output file descriptor *)
+  stderr : Kernel.Fd.t;  (* Error output file descriptor *)
   original_attrs : Kernel.Terminal.termios;
   mutable size : size;
   mutable mode : mode;
@@ -26,37 +29,38 @@ let open_tty () =
   try
     match Fs.File.open_read_write (Path.v "/dev/tty") with
     | Ok file ->
-        let fd = Fs.File.into_fd file |> Kernel.Fd.to_unix in
+        let fd = Fs.File.into_fd file in
         if Kernel.Terminal.is_tty fd then Ok fd
         else (
-          Unix.close fd;
+          Kernel.Fd.close fd;
           Error NoTtyConnected
         )
     | Error _ ->
         (* Fallback to stdin *)
-        let fd = Kernel.Fd.to_unix IO.stdin in
-        if Kernel.Terminal.is_tty fd then Ok fd
+        if Kernel.Terminal.is_tty IO.stdin then Ok IO.stdin
         else Error NoTtyConnected
   with
   | Unix.Unix_error (err, _, _) -> Error (SystemError (IO.Unknown_error (Unix.error_message err)))
   | e -> Error (SystemError (IO.Unknown_error (Printexc.to_string e)))
 
-let make ?fd ?size ?(mode = LineBuffered) () =
-  (* If fd is provided, use it; otherwise try to open TTY *)
-  let fd_result = match fd with
-    | Some f -> Ok (Kernel.Fd.to_unix f)
-    | None -> open_tty ()
+let make ?fd ?stdin ?stdout ?stderr ?size ?(mode = LineBuffered) () =
+  (* If fd is provided, use it; otherwise try to open TTY if we're not in fake mode *)
+  let is_fake_tty = stdin <> None || stdout <> None || stderr <> None in
+  let fd_result = match fd, is_fake_tty with
+    | Some f, _ -> Ok f
+    | None, true -> Ok IO.stdin (* Fake TTY - use stdin as dummy fd *)
+    | None, false -> open_tty ()
   in
   
   match fd_result with
   | Error e -> Error e
-  | Ok unix_fd ->
+  | Ok tty_fd ->
       try
-        let is_real_tty = Kernel.Terminal.is_tty unix_fd in
+        let is_real_tty = Kernel.Terminal.is_tty tty_fd in
         
         (* Get termios only if this is a real TTY *)
         let original_attrs = 
-          if is_real_tty then Unix.tcgetattr unix_fd
+          if is_real_tty then Kernel.Terminal.get_attributes tty_fd
           else Unix.{
             c_ignbrk = false; c_brkint = false; c_ignpar = false; c_parmrk = false;
             c_inpck = false; c_istrip = false; c_inlcr = false; c_igncr = false;
@@ -74,7 +78,7 @@ let make ?fd ?size ?(mode = LineBuffered) () =
         let detected_size = match size with
           | Some s -> s
           | None when is_real_tty -> (
-              match Kernel.Terminal.get_size unix_fd with
+              match Kernel.Terminal.get_size tty_fd with
               | Ok (cols, rows) -> { rows; cols }
               | Error _ -> { rows = 24; cols = 80 }
             )
@@ -82,7 +86,10 @@ let make ?fd ?size ?(mode = LineBuffered) () =
         in
         
         let t = {
-          fd = unix_fd;
+          fd = tty_fd;
+          stdin = Option.unwrap_or ~default:IO.stdin stdin;
+          stdout = Option.unwrap_or ~default:IO.stdout stdout;
+          stderr = Option.unwrap_or ~default:IO.stderr stderr;
           original_attrs;
           size = detected_size;
           mode = LineBuffered;
@@ -98,7 +105,7 @@ let make ?fd ?size ?(mode = LineBuffered) () =
                 c_icrnl = false;     (* Don't map CR→NL *)
               }
             in
-            Kernel.Terminal.set_attributes unix_fd Kernel.Terminal.Now new_attrs;
+            Kernel.Terminal.set_attributes tty_fd Kernel.Terminal.Now new_attrs;
             t.mode <- Immediate
         | Immediate, false ->
             (* Fake TTY - just set the mode without termios *)
@@ -108,10 +115,10 @@ let make ?fd ?size ?(mode = LineBuffered) () =
         Ok t
       with
       | Unix.Unix_error (err, _, _) ->
-          (match fd with None -> Unix.close unix_fd | Some _ -> ());
+          (match fd with None -> Kernel.Fd.close tty_fd | Some _ -> ());
           Error (SystemError (IO.Unknown_error (Unix.error_message err)))
       | e ->
-          (match fd with None -> Unix.close unix_fd | Some _ -> ());
+          (match fd with None -> Kernel.Fd.close tty_fd | Some _ -> ());
           Error (SystemError (IO.Unknown_error (Printexc.to_string e)))
 
 (* Convenience function for creating immediate mode TTY *)
@@ -143,7 +150,7 @@ let set_normal t =
 
 let restore t =
   set_normal t;
-  Unix.close t.fd
+  Kernel.Fd.close t.fd
 
 let size t = t.size
 
@@ -157,7 +164,7 @@ let refresh_size t =
       t.size <- { rows; cols }
   | Error _ -> ()
 
-let fd t = Kernel.Fd.of_unix t.fd
+let fd t = t.fd
 
 (** Read result type *)
 type read = 
@@ -174,8 +181,8 @@ let utf8_char_length first_byte =
   else if first_byte land 0xF8 = 0xF0 then 4
   else 0
 
-let read_utf8 _t =
-  let file = Fs.File.from_fd IO.stdin in
+let read_utf8 t =
+  let file = Fs.File.from_fd t.stdin in
   let bytes = Bytes.create 4 in
   match Fs.File.read file bytes ~offset:0 ~len:1 with
   | Ok 0 -> End

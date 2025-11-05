@@ -4,7 +4,7 @@ open Std
 let capture_output f =
   let pipe = Kernel.Fd.pipe () in
   let tty = Tty.make 
-    ~fd:pipe.write_fd 
+    ~stdout:pipe.write_fd 
     ~size:{rows=24; cols=80} 
     () 
     |> Result.unwrap

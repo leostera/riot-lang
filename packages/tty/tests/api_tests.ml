@@ -53,7 +53,7 @@ let test_cursor_operations () =
   (* Test that cursor operations compile and take tty parameter *)
   (* Use a fake TTY to avoid interfering with test output *)
   let pipe = Kernel.Fd.pipe () in
-  match Tty.make ~fd:pipe.write_fd ~size:{rows=24; cols=80} () with
+  match Tty.make ~stdout:pipe.write_fd ~size:{rows=24; cols=80} () with
   | Error e -> Error (format "Failed to create fake TTY: %s" (match e with Tty.NoTtyConnected -> "NoTtyConnected" | Tty.SystemError _ -> "SystemError"))
   | Ok tty ->
       try
@@ -69,7 +69,7 @@ let test_screen_operations () =
   (* Test that screen operations compile and take tty parameter *)
   (* Use a fake TTY to avoid interfering with test output *)
   let pipe = Kernel.Fd.pipe () in
-  match Tty.make ~fd:pipe.write_fd ~size:{rows=24; cols=80} () with
+  match Tty.make ~stdout:pipe.write_fd ~size:{rows=24; cols=80} () with
   | Error e -> Error (format "Failed to create fake TTY: %s" (match e with Tty.NoTtyConnected -> "NoTtyConnected" | Tty.SystemError _ -> "SystemError"))
   | Ok tty ->
       try

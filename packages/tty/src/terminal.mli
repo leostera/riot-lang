@@ -18,13 +18,16 @@ type mode =
 
 (** Terminal handle - internal representation *)
 type t = {
-  fd : Unix.file_descr;
+  fd : Kernel.Fd.t;  (** Primary TTY fd - used for termios operations *)
+  stdin : Kernel.Fd.t;  (** Input file descriptor *)
+  stdout : Kernel.Fd.t;  (** Output file descriptor *)
+  stderr : Kernel.Fd.t;  (** Error output file descriptor *)
   original_attrs : Kernel.Terminal.termios;
   mutable size : size;
   mutable mode : mode;
 }
 
-val write_to_fd : Unix.file_descr -> string -> unit
+val write_to_fd : Kernel.Fd.t -> string -> unit
 (** [write_to_fd fd str] writes a string to a file descriptor.
     Handles partial writes automatically. *)
 

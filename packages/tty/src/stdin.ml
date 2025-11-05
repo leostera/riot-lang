@@ -50,15 +50,19 @@ let set_raw_mode () =
   (* Use TCSANOW for immediate effect, not TCSAFLUSH which discards unread input *)
   Unix.tcsetattr tty_fd Unix.TCSANOW new_termios;
   Terminal.{ 
-    fd = tty_fd; 
+    fd = Kernel.Fd.of_unix tty_fd; 
+    stdin = IO.stdin;
+    stdout = IO.stdout;
+    stderr = IO.stderr;
     original_attrs = termios;
     size = { rows = 24; cols = 80 }; (* Default, will be updated if needed *)
     mode = Immediate;
   }
 
 let restore_mode terminal = 
-  Unix.tcsetattr terminal.Terminal.fd Unix.TCSANOW terminal.Terminal.original_attrs;
-  Unix.close terminal.Terminal.fd
+  let unix_fd = Kernel.Fd.to_unix terminal.Terminal.fd in
+  Unix.tcsetattr unix_fd Unix.TCSANOW terminal.Terminal.original_attrs;
+  Unix.close unix_fd
 
 let utf8_char_length first_byte =
   if first_byte land 0x80 = 0 then 1

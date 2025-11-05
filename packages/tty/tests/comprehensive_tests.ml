@@ -15,7 +15,7 @@ open Std
 let capture_output f =
   let pipe = Kernel.Fd.pipe () in
   let tty = Tty.make 
-    ~fd:pipe.write_fd 
+    ~stdout:pipe.write_fd 
     ~size:{rows=24; cols=80} 
     () 
     |> Result.unwrap
@@ -34,7 +34,7 @@ let capture_output f =
 (** Helper to create a fake TTY with custom size *)
 let make_fake_tty ~rows ~cols =
   let pipe = Kernel.Fd.pipe () in
-  Tty.make ~fd:pipe.write_fd ~size:{rows; cols} () |> Result.unwrap
+  Tty.make ~stdout:pipe.write_fd ~size:{rows; cols} () |> Result.unwrap
 
 (** ## Cursor Visibility Tests *)
 

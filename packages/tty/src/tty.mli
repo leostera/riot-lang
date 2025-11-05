@@ -75,13 +75,19 @@ type t = Terminal.t
 
 val make : 
   ?fd:Kernel.Fd.t ->
+  ?stdin:Kernel.Fd.t ->
+  ?stdout:Kernel.Fd.t ->
+  ?stderr:Kernel.Fd.t ->
   ?size:size ->
   ?mode:mode ->
   unit -> (t, error) result
 (** Create a terminal handle with optional parameters.
     
     Parameters:
-    - [fd]: File descriptor to use (default: opens /dev/tty or stdin)
+    - [fd]: File descriptor to use for termios operations (default: opens /dev/tty or stdin)
+    - [stdin]: Input file descriptor (default: IO.stdin)
+    - [stdout]: Output file descriptor (default: IO.stdout)
+    - [stderr]: Error output file descriptor (default: IO.stderr)
     - [size]: Terminal dimensions (default: auto-detect or 80x24)
     - [mode]: Terminal mode (default: LineBuffered)
     
@@ -101,17 +107,38 @@ val make :
       | Error _ -> (* ... *)
     ]}
     
-    Create fake TTY for testing:
+    Create fake TTY for testing with custom I/O:
     {[
-      let read_fd, write_fd = Pipe.create () in
+      let input_read, input_write = Pipe.create () in
+      let output_read, output_write = Pipe.create () in
+      
+      (* Write test input *)
+      let file = Fs.File.from_fd input_write in
+      Fs.File.write file (Bytes.of_string "hello") ~offset:0 ~len:5 |> ignore;
+      
+      (* Create TTY with custom stdin/stdout *)
       let tty = Tty.make 
-        ~fd:write_fd
+        ~stdin:input_read
+        ~stdout:output_write
         ~size:{rows=24; cols=80}
         () 
         |> Result.expect
       in
-      (* Now all Tty operations write to write_fd *)
-      (* Read from read_fd to verify output *)
+      
+      (* Read input from the custom stdin *)
+      match Tty.read_utf8 tty with
+      | Read str -> assert (str = "h")
+      | _ -> assert false
+      
+      (* Verify output written to custom stdout *)
+      Tty.clear tty;
+      let buffer = Bytes.create 256 in
+      let out_file = Fs.File.from_fd output_read in
+      match Fs.File.read out_file buffer ~offset:0 ~len:256 with
+      | Ok n -> 
+          let output = Bytes.sub_string buffer 0 n in
+          assert (output = "\x1b[2J\x1b[1;1H")
+      | Error _ -> ()
     ]} *)
 
 val make_raw : unit -> (t, error) result
