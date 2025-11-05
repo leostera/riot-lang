@@ -2,6 +2,8 @@
 let format = Kernel.format
 let print = Kernel.print
 let println = Kernel.println
+let eprint = Kernel.eprint
+let eprintln = Kernel.eprintln
 
 (** Collection type aliases and constructors from Kernel *)
 type 'a vec = 'a Kernel.vec

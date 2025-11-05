@@ -21,4 +21,4 @@
 
     See [Fs.File] for the high-level file API. *)
 
-type t = Kernel.Fd.t
+include module type of Kernel.Fd

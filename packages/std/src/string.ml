@@ -64,7 +64,7 @@ let grapheme_count s =
   in
   count 0 0
 
-let truncate_width ~width:target_width ?(tail = "...") s =
+let truncate_width ~width:target_width ?(tail = "…") s =
   let s_width = width s in
   if s_width <= target_width then s
   else

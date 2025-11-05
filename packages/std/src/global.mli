@@ -140,6 +140,22 @@ val println : ('a, unit, string, unit) format4 -> 'a
     ```ocaml println "Operation complete" (* Output: Operation complete\n *) ```
 *)
 
+val eprint : ('a, unit, string, unit) format4 -> 'a
+(** Prints to stderr with immediate flush (no newline).
+
+    ## Examples
+
+    ```ocaml eprint "Debug: processing item" (* Output to stderr: Debug: processing item *) ```
+*)
+
+val eprintln : ('a, unit, string, unit) format4 -> 'a
+(** Prints to stderr with newline and immediate flush.
+
+    ## Examples
+
+    ```ocaml eprintln "Error: file not found" (* Output to stderr: Error: file not found\n *) ```
+*)
+
 val todo : string -> 'a
 (** Marks code as TODO, panicking with the given message when called.
 

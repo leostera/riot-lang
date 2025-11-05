@@ -1,1 +1,1 @@
-type t = Kernel.Fd.t
+include Kernel.Fd
