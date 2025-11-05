@@ -240,6 +240,30 @@ val start_bracketed_paste_seq : unit -> unit
 val end_bracketed_paste_seq : unit -> unit
 (** Marker for end of paste *)
 
+(** {1 Focus Tracking} *)
+
+val enable_focus_events_seq : unit -> unit
+(** Enable focus tracking (terminal will send events on focus in/out) *)
+
+val disable_focus_events_seq : unit -> unit
+(** Disable focus tracking *)
+
+(** {1 Kitty Keyboard Protocol} *)
+
+val enable_kitty_keyboard_seq : unit -> unit
+(** Enable Kitty keyboard protocol for enhanced key input *)
+
+val disable_kitty_keyboard_seq : unit -> unit
+(** Disable Kitty keyboard protocol *)
+
+(** {1 Synchronized Output} *)
+
+val begin_sync_seq : unit -> unit
+(** Begin synchronized output (reduces screen flicker) *)
+
+val end_sync_seq : unit -> unit
+(** End synchronized output *)
+
 (** {1 String Utilities} *)
 
 val strip : string -> string

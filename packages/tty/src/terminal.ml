@@ -1,18 +1,41 @@
 open Std
 
-let clear () =
-  Escape_seq.erase_display_seq 2 ();
-  Escape_seq.cursor_position_seq 1 1 ()
+(** Terminal dimensions *)
+type size = {
+  rows : int;
+  cols : int;
+}
 
-let clear_line () = Escape_seq.erase_entire_line_seq ()
-let cursor_down x = Escape_seq.cursor_down_seq x ()
-let cursor_up x = Escape_seq.cursor_up_seq x ()
-let cursor_back x = Escape_seq.cursor_back_seq x ()
-let enter_alt_screen () = Escape_seq.alt_screen_seq ()
-let exit_alt_screen () = Escape_seq.exit_alt_screen_seq ()
-let move_cursor x y = Escape_seq.cursor_position_seq x y ()
+(** Error types *)
+type error = 
+  | NoTtyConnected
+  | SystemError of IO.error
 
-let size () =
-  match Size.get () with
-  | Ok { rows; cols } -> Ok (cols, rows)  (* Return (width, height) *)
-  | Error err -> Error err
+(** Terminal mode *)
+type mode = 
+  | LineBuffered
+  | Immediate
+
+(** Terminal handle *)
+type t = {
+  fd : Unix.file_descr;
+  original_attrs : Kernel.Terminal.termios;
+  mutable size : size;
+  mutable mode : mode;
+}
+
+(* Helper to write to file descriptor *)
+let write_to_fd fd str =
+  let bytes = Bytes.of_string str in
+  let len = String.length str in
+  let rec write_loop offset remaining =
+    if remaining = 0 then ()
+    else
+      let written = Unix.write fd bytes offset remaining in
+      write_loop (offset + written) (remaining - written)
+  in
+  write_loop 0 len
+
+(* Helper to write escape sequence *)
+let write_escape t code =
+  write_to_fd t.fd (Escape_seq.csi ^ code)

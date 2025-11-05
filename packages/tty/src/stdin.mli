@@ -54,24 +54,35 @@ val read_utf8 :
     - [`End] - End of input stream
     - [`Malformed reason] - Invalid UTF-8 sequence with error description
 
-    This function should be called after {!setup} has configured stdin for raw
+    This function should be called after {!make_raw} has configured stdin for raw
     non-blocking mode. It properly handles UTF-8 multi-byte sequences by
     detecting character boundaries. *)
 
-val setup : unit -> Unix.terminal_io
-(** [setup ()] configures stdin for non-blocking raw input mode.
+val make_raw : unit -> Terminal.t
+(** [make_raw ()] configures the terminal (via /dev/tty) for immediate raw input.
 
-    Returns the original terminal settings which must be passed to {!shutdown}
+    Returns a tuple of (tty_fd, original_settings) which must be passed to {!restore}
     to restore normal terminal behavior. In raw mode:
-    - Input is available immediately without waiting for newline
-    - Control characters are not interpreted (no Ctrl+C handling, etc.)
-    - Echo is disabled
+    - Input is available immediately without waiting for newline (no canonical mode)
+    - Echo is disabled (typed characters don't appear on screen)
+    - CR/NL mapping is disabled (carriage return keys work correctly)
+    
+    This uses a minimal termios configuration (only 3 flags changed) proven to work
+    reliably across all terminals. The implementation follows notcurses' approach,
+    preserving the terminal's existing configuration for output processing, which
+    is critical for ANSI escape sequence rendering.
+    
+    The function opens /dev/tty directly to ensure terminal settings apply to both
+    stdin and stdout. Always call {!restore} before program exit to restore the terminal.
+    
+    {b Implementation note:} Despite the name "raw mode", this is technically "cbreak mode".
+    It disables canonical input and echo but preserves output processing and the
+    terminal's character configuration, which is what TUI applications need. *)
 
-    Always call {!shutdown} before program exit to restore the terminal. *)
-
-val shutdown : Unix.terminal_io -> unit
-(** [shutdown settings] restores the terminal to its original configuration.
-
-    [settings] must be the value returned by {!setup}. This should always be
+val restore : Terminal.t -> unit
+(** [restore (tty_fd, settings)] restores the terminal to its original configuration
+    and closes the tty file descriptor.
+    
+    The argument must be the tuple returned by {!make_raw}. This should always be
     called before program exit, even in error cases, to prevent leaving the
     terminal in an unusable state. *)

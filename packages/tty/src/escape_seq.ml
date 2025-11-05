@@ -12,26 +12,26 @@ let cross_out_seq = "9"
 let overline_seq = "53"
 let foreground_seq = "38"
 let background_seq = "48"
-let escape code () = Printf.printf "%s%s%!" csi code
+let escape code () = print "%s%s%!" csi code
 
 (* Cursor positioning. *)
-let cursor_up_seq x = escape (Printf.sprintf "%dA" x)
-let cursor_down_seq x = escape (Printf.sprintf "%dB" x)
-let cursor_forward_seq x = escape (Printf.sprintf "%dC" x)
-let cursor_back_seq x = escape (Printf.sprintf "%dD" x)
-let cursor_next_line_seq x = escape (Printf.sprintf "%dE" x)
-let cursor_previous_line_seq x = escape (Printf.sprintf "%dF" x)
-let cursor_horizontal_seq x = escape (Printf.sprintf "%dG" x)
-let cursor_position_seq x y = escape (Printf.sprintf "%d;%dH" x y)
-let erase_display_seq x = escape (Printf.sprintf "%dJ" x)
-let erase_line_seq x = escape (Printf.sprintf "%dK" x)
-let scroll_up_seq x = escape (Printf.sprintf "%dS" x)
-let scroll_down_seq x = escape (Printf.sprintf "%dT" x)
+let cursor_up_seq x = escape (format "%dA" x)
+let cursor_down_seq x = escape (format "%dB" x)
+let cursor_forward_seq x = escape (format "%dC" x)
+let cursor_back_seq x = escape (format "%dD" x)
+let cursor_next_line_seq x = escape (format "%dE" x)
+let cursor_previous_line_seq x = escape (format "%dF" x)
+let cursor_horizontal_seq x = escape (format "%dG" x)
+let cursor_position_seq x y = escape (format "%d;%dH" x y)
+let erase_display_seq x = escape (format "%dJ" x)
+let erase_line_seq x = escape (format "%dK" x)
+let scroll_up_seq x = escape (format "%dS" x)
+let scroll_down_seq x = escape (format "%dT" x)
 let save_cursor_position_seq = escape "s"
 let restore_cursor_position_seq = escape "u"
-let change_scrolling_region_seq x y = escape (Printf.sprintf "%d;%dr" x y)
-let insert_line_seq x = escape (Printf.sprintf "%dL" x)
-let delete_line_seq x = escape (Printf.sprintf "%dM" x)
+let change_scrolling_region_seq x y = escape (format "%d;%dr" x y)
+let insert_line_seq x = escape (format "%dL" x)
+let delete_line_seq x = escape (format "%dM" x)
 
 (* Explicit values for EraseLineSeq. *)
 let erase_line_right_seq = escape "0K"
@@ -66,11 +66,23 @@ let disable_bracketed_paste_seq = escape "?2004l"
 let start_bracketed_paste_seq = escape "200~"
 let end_bracketed_paste_seq = escape "201~"
 
+(* Focus tracking. *)
+let enable_focus_events_seq = escape "?1004h"
+let disable_focus_events_seq = escape "?1004l"
+
+(* Kitty keyboard protocol. *)
+let enable_kitty_keyboard_seq = escape ">1u"
+let disable_kitty_keyboard_seq = escape "<u"
+
+(* Synchronized output (reduces flicker). *)
+let begin_sync_seq = escape "?2026h"
+let end_sync_seq = escape "?2026l"
+
 (* Session. *)
-let set_window_title_seq s = escape (Printf.sprintf "2;%s" s)
-let set_foreground_color_seq s = escape (Printf.sprintf "10;%s" s)
-let set_background_color_seq s = escape (Printf.sprintf "11;%s" s)
-let set_cursor_color_seq s = escape (Printf.sprintf "12;%s" s)
+let set_window_title_seq s = escape (format "2;%s" s)
+let set_foreground_color_seq s = escape (format "10;%s" s)
+let set_background_color_seq s = escape (format "11;%s" s)
+let set_cursor_color_seq s = escape (format "12;%s" s)
 let show_cursor_seq = escape "?25h"
 let hide_cursor_seq = escape "?25l"
 

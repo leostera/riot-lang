@@ -1,13 +1,11 @@
 open Std
 
 (* Synchronized updates *)
-let begin_synchronized_update () =
-  print_string "\x1b[?2026h";
-  flush stdout
+let begin_synchronized_update t =
+  Terminal.write_escape t "?2026h"
 
-let end_synchronized_update () =
-  print_string "\x1b[?2026l";
-  flush stdout
+let end_synchronized_update t =
+  Terminal.write_escape t "?2026l"
 
 (* Cursor styles *)
 type cursor_style =
@@ -19,28 +17,25 @@ type cursor_style =
   | BlinkingBar
   | SteadyBar
 
-let set_cursor_style style =
-  let seq =
+let set_cursor_style t style =
+  let code =
     match style with
-    | DefaultUserShape -> "\x1b[0 q"
-    | BlinkingBlock -> "\x1b[1 q"
-    | SteadyBlock -> "\x1b[2 q"
-    | BlinkingUnderScore -> "\x1b[3 q"
-    | SteadyUnderScore -> "\x1b[4 q"
-    | BlinkingBar -> "\x1b[5 q"
-    | SteadyBar -> "\x1b[6 q"
+    | DefaultUserShape -> "0 q"
+    | BlinkingBlock -> "1 q"
+    | SteadyBlock -> "2 q"
+    | BlinkingUnderScore -> "3 q"
+    | SteadyUnderScore -> "4 q"
+    | BlinkingBar -> "5 q"
+    | SteadyBar -> "6 q"
   in
-  print_string seq;
-  flush stdout
+  Terminal.write_escape t code
 
 (* Line wrapping *)
-let enable_line_wrap () =
-  print_string "\x1b[?7h";
-  flush stdout
+let enable_line_wrap t =
+  Terminal.write_escape t "?7h"
 
-let disable_line_wrap () =
-  print_string "\x1b[?7l";
-  flush stdout
+let disable_line_wrap t =
+  Terminal.write_escape t "?7l"
 
 (* Window size *)
 type window_size = {
@@ -50,18 +45,12 @@ type window_size = {
   height_px : int;
 }
 
-let window_size () =
-  match Size.get () with
-  | Ok size ->
-      { rows = size.rows; columns = size.cols; width_px = 0; height_px = 0 }
-  | Error _ ->
-      (* Fallback to 80x24 if size query fails *)
-      { rows = 24; columns = 80; width_px = 0; height_px = 0 }
+let window_size t =
+  let size = Terminal.(t.size) in
+  { rows = size.rows; columns = size.cols; width_px = 0; height_px = 0 }
 
-(* Raw mode check - track state via global ref *)
-let raw_mode_enabled = ref false
-
-let is_raw_mode_enabled () = !raw_mode_enabled
-
-(* Hook into Terminal module's raw mode functions *)
-(* This would require modifying terminal.ml to call our tracking functions *)
+(* Raw mode check *)
+let is_raw_mode_enabled t =
+  match Terminal.(t.mode) with
+  | Terminal.Immediate -> true
+  | Terminal.LineBuffered -> false
