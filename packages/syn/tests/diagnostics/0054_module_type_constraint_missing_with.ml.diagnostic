@@ -1,0 +1,35 @@
+[
+  {
+    "kind": {
+      "id": "E0014",
+      "name": "unclosed-delimiter",
+      "expected": "closing delimiter",
+      "found": {
+        "kind": "keyword",
+        "text": "type"
+      },
+      "fix": "add closing delimiter",
+      "hint": "Delimiters like (, [, {, begin must be properly closed with ), ], }, end respectively."
+    },
+    "span": {
+      "start": 18,
+      "end": 18
+    }
+  },
+  {
+    "kind": {
+      "id": "E0005",
+      "name": "unexpected-structure-item",
+      "expected": "structure item (e.g., let, type, module)",
+      "found": {
+        "kind": ")",
+        "text": ")"
+      },
+      "hint": "Structure items are top-level declarations like let, type, or module."
+    },
+    "span": {
+      "start": 32,
+      "end": 33
+    }
+  }
+]

@@ -1,0 +1,18 @@
+[
+  {
+    "kind": {
+      "id": "E0008",
+      "name": "invalid-expression",
+      "expected": "expression",
+      "found": {
+        "kind": "end of file",
+        "text": ""
+      },
+      "hint": "Expected a value, function call, or operator expression."
+    },
+    "span": {
+      "start": 0,
+      "end": 0
+    }
+  }
+]

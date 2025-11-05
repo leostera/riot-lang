@@ -64,6 +64,8 @@ type t =
   | NEW_EXPR (* new class_name *)
   | LOCAL_OPEN_EXPR (* let open Module in expr *)
   | LET_MODULE_EXPR (* let module M = ... in expr *)
+  | FIRST_CLASS_MODULE_EXPR (* (module M) or (module M : S) *)
+  | MODULE_PATH (* A.B.C module path *)
   (* ========================================================================= *)
   (* PATTERNS *)
   (* ========================================================================= *)
@@ -104,6 +106,8 @@ type t =
   | TYPE_RECORD_FIELD (* field: int *)
   | TYPE_CONSTRAINT (* constraint 'a = int *)
   | MODULE_TYPE_EXPR (* S | S with type t = int *)
+  | FIRST_CLASS_MODULE_TYPE (* (module S) or (module S with type t = int) *)
+  | MODULE_TYPE_PATH (* Module.Type for type annotations *)
   (* ========================================================================= *)
   (* TOP-LEVEL DECLARATIONS *)
   (* ========================================================================= *)
@@ -189,6 +193,8 @@ let to_string = function
   | NEW_EXPR -> "NEW_EXPR"
   | LOCAL_OPEN_EXPR -> "LOCAL_OPEN_EXPR"
   | LET_MODULE_EXPR -> "LET_MODULE_EXPR"
+  | FIRST_CLASS_MODULE_EXPR -> "FIRST_CLASS_MODULE_EXPR"
+  | MODULE_PATH -> "MODULE_PATH"
   | IDENT_PATTERN -> "IDENT_PATTERN"
   | WILDCARD_PATTERN -> "WILDCARD_PATTERN"
   | LITERAL_PATTERN -> "LITERAL_PATTERN"
@@ -223,6 +229,8 @@ let to_string = function
   | TYPE_RECORD_FIELD -> "TYPE_RECORD_FIELD"
   | TYPE_CONSTRAINT -> "TYPE_CONSTRAINT"
   | MODULE_TYPE_EXPR -> "MODULE_TYPE_EXPR"
+  | FIRST_CLASS_MODULE_TYPE -> "FIRST_CLASS_MODULE_TYPE"
+  | MODULE_TYPE_PATH -> "MODULE_TYPE_PATH"
   | LET_BINDING -> "LET_BINDING"
   | LET_REC_BINDING -> "LET_REC_BINDING"
   | TYPE_DECL -> "TYPE_DECL"
