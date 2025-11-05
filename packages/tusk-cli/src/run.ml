@@ -61,6 +61,7 @@ let run matches =
               with
               | Ok path -> (
                   Tusk_client.close client;
+                  println "     \027[1;32mRunning\027[0m %s" name;
                   let cmd = Command.make path ~args:extra in
                   match Command.status cmd with
                   | Ok 0 -> Ok ()
