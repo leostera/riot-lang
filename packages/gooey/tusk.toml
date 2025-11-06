@@ -1,0 +1,23 @@
+[package]
+name = "gooey"
+version = "0.1.0"
+
+[lib]
+path = "src/gooey.ml"
+
+[dependencies]
+std = { path = "../std" }
+tty = { path = "../tty" }
+colors = { path = "../colors" }
+
+[[bin]]
+name = "terminal_demo"
+path = "examples/terminal_demo.ml"
+
+[[bin]]
+name = "simple_render"
+path = "examples/simple_render.ml"
+
+
+
+
