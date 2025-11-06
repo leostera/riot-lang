@@ -5,147 +5,130 @@ type Message.t +=
   | Timer of Timer.id Ref.t
   | ShutdownComplete
 
-type 'model t = { app : 'model App.t; config : Config.t }
+type 'model state = { app: 'model App.t; config: Config.t; renderer: Renderer.t; io: Io_loop.t; model: 'model; tty: Tty.t }
 
-let make ~app ~config = { app; config }
+type control_flow = Halt | Continue
 
-let run t initial_model =
+let selector msg = match msg with
+  | Io_loop.Input event -> `select event
+  | Timer ref -> `select (Event.Timer ref)
+  | other -> `select (Event.Custom other)  (* User custom messages *)
+  
+let rec loop state =
+  Log.trace "[PROGRAM] Waiting for event...";
+  let event = receive ~selector () in
+  Log.trace "[PROGRAM] Received event";
+  forward_event event state;
+  
+  let model, cmd = state.app.update event state.model in
+  let state = { state with model } in
+
+  let view = state.app.view model in
+  Renderer.render state.renderer view;
+
+  (* Handle command after rendering *)
+  match handle_cmd cmd state with
+  | Halt -> handle_shutdown state
+  | Continue -> loop state
+
+and forward_event event state =
+  (* Forward resize events to renderer *)
+  (match event with
+  | Event.Resize { width; height } ->
+      Renderer.resize state.renderer ~width ~height
+  | _ -> ());
+
+and handle_cmd cmd state = 
+  match cmd with
+  | Quit -> Halt
+  | Noop -> Continue
+  | HideCursor ->
+      Renderer.hide_cursor state.renderer;
+      Continue 
+  | ShowCursor ->
+      Renderer.show_cursor state.renderer;
+      Continue 
+  | EnterAltScreen ->
+      Renderer.enter_alt_screen state.renderer;
+      Continue 
+  | ExitAltScreen ->
+      Renderer.exit_alt_screen state.renderer;
+      Continue 
+  | EnableMouse mode -> 
+      let renderer_mode = match mode with
+        | Cell_motion -> Renderer.Cell_motion
+        | All_motion -> Renderer.All_motion
+      in
+      Renderer.enable_mouse state.renderer renderer_mode;
+      Continue
+  | DisableMouse ->
+      Renderer.disable_mouse state.renderer;
+      Continue
+  | EnableBracketedPaste ->
+      Renderer.enable_bracketed_paste state.renderer;
+      Continue
+  | DisableBracketedPaste ->
+      Renderer.disable_bracketed_paste state.renderer;
+      Continue
+  | EnableFocusTracking ->
+      Renderer.enable_focus_tracking state.renderer;
+      Continue
+  | DisableFocusTracking ->
+      Renderer.disable_focus_tracking state.renderer;
+      Continue
+  | SetWindowTitle title ->
+      Renderer.set_window_title state.renderer title;
+      Continue
+  | SetTimer { ref; duration } ->
+      let _ = Timer.send_after (self ()) (Timer ref) ~after:duration in
+      Continue
+  | Seq [] -> Continue
+  | Seq (cmd :: rest) -> 
+    match handle_cmd cmd state with
+    | Halt -> Halt
+    | Continue -> handle_cmd (Seq rest) state
+
+and handle_shutdown state =
+  Log.trace "Shutting down Minttea";
+  Renderer.show_cursor state.renderer;
+  Renderer.exit_alt_screen state.renderer;
+  Renderer.shutdown state.renderer;
+  Io_loop.shutdown state.io;
+  Ok ()
+
+
+
+let init state =
+  (* Initialize app with initial model - size will be updated by renderer *)
+  let model, init_cmd = state.app.init state.model in
+  let state = { state with model } in
+
+  (* Handle init command BEFORE first render *)
+  let should_quit = handle_cmd init_cmd state in
+
+  let initial_view = state.app.view state.model in
+  Renderer.render state.renderer initial_view;
+
+  match should_quit with
+  | Halt -> Ok ()
+  | Continue -> loop state
+
+let run ~app ~config ~initial_model =
   (* Create TTY once - will be shared by both io_loop and renderer *)
   let tty = match Tty.make_raw () with
-    | Ok t -> t
+    | Ok tty -> tty
     | Error NoTtyConnected -> 
         Log.error "[PROGRAM] Failed to create TTY: Not a TTY";
-        failwith "Not a TTY"
+        panic "Not a TTY"
     | Error (SystemError (IO.Unknown_error msg)) ->
         Log.error "[PROGRAM] Failed to create TTY: %s" msg;
-        failwith msg
+        panic msg
   in
   
-  (* Start renderer with TTY handle *)
-  let renderer_pid = Renderer.start ~config:t.config ~tty () in
-  
-  (* Wait for renderer to be ready and capture any early Resize event *)
-  let renderer, initial_model = 
-    let rec wait_for_renderer model = 
-      match receive_any () with
-      | Renderer.RendererStarted pid -> (pid, model)
-      | Io_loop.Input (Event.Resize { width; height }) ->
-          (* Update model with size before init *)
-          let updated_model, _ = t.app.update (Event.Resize { width; height }) model in
-          wait_for_renderer updated_model
-      | _ -> wait_for_renderer model
-    in
-    wait_for_renderer initial_model
-  in
-  
-  (* Start IO loop with TTY handle *)
-  Log.trace "[Program] Starting IO loop...\n%!";
-  let io_pid = Io_loop.start ~tty () in
-  Log.trace "[Program] IO loop spawned as %s\n%!" (Pid.to_string io_pid);
-  
-  (* Wait for IO to be ready *)
-  Log.trace "[Program] Waiting for IoStarted message...\n%!";
-  let io = 
-    let selector = function
-      | Io_loop.IoStarted pid -> 
-          Log.trace "[Program] Received IoStarted from %s\n%!" (Pid.to_string pid);
-          `select pid
-      | _ -> `skip
-    in
-    receive ~selector ()
-  in
-  Log.trace "[Program] IO is ready: %s\n%!" (Pid.to_string io);
-  Log.trace "Minttea started: renderer=%s io=%s" 
-    (Pid.to_string renderer) (Pid.to_string io);
+  let renderer = Renderer.start ~config ~tty () in
+  let io = Io_loop.start ~tty () in
+  Log.trace "Minttea started: renderer=%s io=%s" (Pid.to_string renderer) (Pid.to_string io);
 
-  (* Handle commands by sending messages to renderer. Returns true if should quit. *)
-  let rec handle_cmd cmd =
-    match (cmd : Cmd.t) with
-    | Quit -> 
-        Log.trace "[Program] Command.Quit received! Returning true to shutdown";
-        true
-    | Noop -> false
-    | Hide_cursor -> Renderer.hide_cursor renderer; false
-    | Show_cursor -> Renderer.show_cursor renderer; false
-    | Enter_alt_screen -> 
-        Renderer.enter_alt_screen renderer; false
-    | Exit_alt_screen -> Renderer.exit_alt_screen renderer; false
-    | Enable_mouse mode -> 
-        let renderer_mode = match mode with
-          | Cell_motion -> Renderer.Cell_motion
-          | All_motion -> Renderer.All_motion
-        in
-        Renderer.enable_mouse renderer renderer_mode;
-        false
-    | Disable_mouse -> Renderer.disable_mouse renderer; false
-    | Enable_bracketed_paste -> Renderer.enable_bracketed_paste renderer; false
-    | Disable_bracketed_paste -> Renderer.disable_bracketed_paste renderer; false
-    | Enable_focus_tracking -> Renderer.enable_focus_tracking renderer; false
-    | Disable_focus_tracking -> Renderer.disable_focus_tracking renderer; false
-    | Set_window_title title -> Renderer.set_window_title renderer title; false
-    | Batch cmds -> List.exists handle_cmd cmds
-    | Sequence cmds -> List.exists handle_cmd cmds
-    | Seq cmds -> List.exists handle_cmd cmds
-    | Set_timer { ref; duration } ->
-        let _ = Timer.send_after (self ()) (Timer ref) ~after:duration in
-        false
-    | Query_window_size -> false
-  in
+  let state = { io; renderer; tty; app; config; model=initial_model } in
+  init state
 
-    let shutdown () =
-      Log.trace "Shutting down Minttea";
-      Renderer.show_cursor renderer;
-      Renderer.exit_alt_screen renderer;
-      Renderer.shutdown renderer;
-      send io Io_loop.Shutdown;
-
-      (* Wait for renderer to acknowledge shutdown *)
-      let rec wait_for_renderer () =
-        match receive_any () with
-        | Renderer.ShutdownComplete ->
-          Log.trace "Renderer shutdown complete"
-        | _ -> wait_for_renderer ()
-      in
-      wait_for_renderer ()
-    in
-  
-  (* Initialize app with initial model - size will be updated by renderer *)
-  let model, init_cmd = t.app.init initial_model in
-    (* Main event loop *)
-    let rec loop model last_view =
-      let selector msg = match msg with
-        | Io_loop.Input event -> `select event
-        | Timer ref -> `select (Event.Timer ref)
-        | ShutdownComplete -> `skip  (* Handled in shutdown sequence *)
-        | other -> `select (Event.Custom other)  (* User custom messages *)
-      in
-
-      let event = receive ~selector () in
-      
-      (* Forward resize events to renderer *)
-      (match event with
-      | Event.Resize { width; height } ->
-          Renderer.resize renderer ~width ~height
-      | _ -> ());
-      
-      let model, cmd = t.app.update event model in
-      let view = t.app.view model in
-      (* Only render if view changed *)
-      if view <> last_view then begin
-        Log.debug "[PROGRAM] View changed, sending render to renderer";
-        Renderer.render renderer view
-      end;
-      (* Handle command after rendering *)
-      if handle_cmd cmd then shutdown ()
-      else loop model view
-    in
-
-    let initial_view = t.app.view model in
-    Log.debug "[PROGRAM] Sending initial render";
-    Renderer.render renderer initial_view;
-
-    let _should_quit = handle_cmd init_cmd in
-
-    loop model initial_view;
-    Log.trace "Program finished";
-    Ok ()

@@ -2,7 +2,7 @@ open Std
 open Minttea
 
 (* Model: contains a spinner sprite *)
-type model = { spinner : Minttea.Component.Sprite.t }
+type model = { spinner : Component.Sprite.t }
 
 (* Initialize with a spinner *)
 let init model = (model, Command.Noop)
@@ -18,14 +18,14 @@ let update event model =
   
   | Event.Frame now ->
       (* Update spinner animation *)
-      let spinner = Minttea.Component.Sprite.update ~now model.spinner in
+      let spinner = Component.Sprite.update ~now model.spinner in
       ({ spinner }, Command.Noop)
   
   | _ -> (model, Command.Noop)
 
 (* View: render the spinner with some text *)
 let view model =
-  let spinner_view = Minttea.Component.Sprite.view model.spinner in
+  let spinner_view = Component.Sprite.view model.spinner in
   Element.column [
     Element.text 
       ~style:(Style.default
@@ -42,7 +42,7 @@ let app = App.make ~init ~update ~view ()
 
 (* Initial model with a dot spinner *)
 let initial_model = 
-  { spinner = Minttea.Component.Spinner.dot }
+  { spinner = Component.Spinner.dot }
 
 (* Run it *)
-let () = Minttea.start app initial_model
+let () = start app initial_model

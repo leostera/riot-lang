@@ -1,4 +1,5 @@
 open Std
+open Std.Sync
 
 type style = Dots | Numerals
 

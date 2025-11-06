@@ -60,6 +60,7 @@ type constraints = {
 type t
 
 val default : t
+val equal : t -> t -> bool
 val bg : color -> t -> t
 val blink : bool -> t -> t
 val bold : bool -> t -> t

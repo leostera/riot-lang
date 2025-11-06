@@ -140,25 +140,25 @@ let handle_key t (key : Event.key) modifier =
         stop_filtering t
     | Event.Enter ->
         stop_filtering t
-    | Event.Backspace when modifier = Event.No_modifier ->
+    | Event.Backspace when modifier = Event.NoModifier ->
         let query = t.filter_query in
         let len = String.length query in
         if len > 0 then
           let new_query = String.sub query 0 (len - 1) in
           apply_filter t new_query |> fun t -> { t with filtering_active = true }
         else t
-    | Event.Key s when modifier = Event.No_modifier && String.length s = 1 ->
+    | Event.Key s when modifier = Event.NoModifier && String.length s = 1 ->
         let new_query = t.filter_query ^ s in
         apply_filter t new_query |> fun t -> { t with filtering_active = true }
     | _ -> t
   else
     (* Normal navigation mode *)
     match (key : Event.key) with
-    | Event.Up | Event.Key "k" when modifier = Event.No_modifier ->
+    | Event.Up | Event.Key "k" when modifier = Event.NoModifier ->
         select_prev t
-    | Event.Down | Event.Key "j" when modifier = Event.No_modifier ->
+    | Event.Down | Event.Key "j" when modifier = Event.NoModifier ->
         select_next t
-    | Event.Key "g" when modifier = Event.No_modifier ->
+    | Event.Key "g" when modifier = Event.NoModifier ->
         select_first t
     | Event.Key "G" when modifier = Event.Shift ->
         select_last t
@@ -166,7 +166,7 @@ let handle_key t (key : Event.key) modifier =
         select_first t
     | Event.End ->
         select_last t
-    | Event.Key "/" when modifier = Event.No_modifier && t.filter_enabled ->
+    | Event.Key "/" when modifier = Event.NoModifier && t.filter_enabled ->
         start_filtering t
     | Event.Escape when t.filter_query <> "" ->
         clear_filter t

@@ -1,4 +1,5 @@
 open Std
+open Std.Sync
 open Std.Collections
 
 type color = Tty.Color.t = private
@@ -62,6 +63,9 @@ type t = {
   overflow : overflow;
   constraints : constraints;
 }
+
+(* Structural equality for styles *)
+let equal (a : t) (b : t) : bool = a = b
 
 let default =
   {
@@ -232,7 +236,7 @@ let do_render t str =
         (if t.faint then [ Faint ] else []);
         (if t.italic then [ Italic ] else []);
         (if t.reverse then [ Reverse ] else []);
-        (if t.strikethrough then [ Cross_out ] else []);
+        (if t.strikethrough then [ CrossOut ] else []);
         (if t.underline then [ Underline ] else []);
         (match t.foreground with
         | Some color when Tty.Color.is_no_color color -> []

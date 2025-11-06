@@ -4,7 +4,7 @@ open Std
 
 type model = { counter : int }
 
-let init model = (model, Minttea.Command.Enter_alt_screen)
+let init model = (model, Minttea.Command.EnterAltScreen)
 
 let update event model =
   match event with

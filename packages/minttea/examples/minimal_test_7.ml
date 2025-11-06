@@ -173,7 +173,7 @@ let main ~args:_ =
       text_content)
   in
   
-  let ansi_output = Minttea.Render.Pipeline.to_string element ~width:cols ~height:rows in
+  let ansi_output = Minttea.Render.Pipeline.to_string element ~width:cols ~height:rows ~mode:Minttea.Render.Ansi_emitter.ContentFit in
   
   (* Debug: check output size *)
   let newline_count = String.fold_left (fun acc c -> if c = '\n' then acc + 1 else acc) 0 ansi_output in

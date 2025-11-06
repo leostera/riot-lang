@@ -2,19 +2,19 @@
 
 type render_mode = Clear | Persist
 
+type output_target = Stdout | Stderr
+
 type t = {
   render_mode : render_mode;
   fps : int;
-  initial_width : int;
-  initial_height : int;
+  output : output_target;
 }
 (** Configuration for the terminal application *)
 
 val make :
   ?render_mode:render_mode ->
   ?fps:int ->
-  ?initial_width:int ->
-  ?initial_height:int ->
+  ?output:output_target ->
   unit ->
   t
 (** Create a configuration with optional parameters.
@@ -22,5 +22,4 @@ val make :
     Defaults:
     - render_mode: [`clear]
     - fps: 60
-    - initial_width: 80
-    - initial_height: 24 *)
+    - output: Stdout *)

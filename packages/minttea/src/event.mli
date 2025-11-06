@@ -4,14 +4,14 @@ open Std
 
 (** Keyboard modifiers *)
 type modifier =
-  | No_modifier
+  | NoModifier
   | Ctrl
   | Alt
   | Shift
-  | Ctrl_alt
-  | Ctrl_shift
-  | Alt_shift
-  | Ctrl_alt_shift
+  | CtrlAlt
+  | CtrlShift
+  | AltShift
+  | CtrlAltShift
 
 (** Keyboard keys *)
 type key =
@@ -28,8 +28,8 @@ type key =
   | Insert
   | Home
   | End
-  | Page_up
-  | Page_down
+  | PageUp
+  | PageDown
   | F of int  (** Function keys F1-F12 *)
   | Key of string  (** Any other character(s) *)
 
@@ -44,8 +44,8 @@ type mouse_button =
   | Left
   | Middle
   | Right
-  | Wheel_up
-  | Wheel_down
+  | WheelUp
+  | WheelDown
 
 (** Mouse event type *)
 type mouse_event_type =
@@ -78,12 +78,9 @@ type t =
   | Timer of Timer.id Ref.t
   | Frame of Time.Instant.t
   | Paste of string  (** Bracketed paste content *)
-  | Focus_gained
-  | Focus_lost
+  | FocusGained
+  | FocusLost
   | Custom of Message.t
 
 val to_string : t -> string
 (** Convert an event to a human-readable string *)
-
-val pp : Format.formatter -> t -> unit
-(** Pretty print an event *)

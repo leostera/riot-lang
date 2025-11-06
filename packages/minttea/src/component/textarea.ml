@@ -408,21 +408,21 @@ let handle_key t (key : Event.key) modifier =
     let open Event in
     let t = match (key : Event.key), modifier with
       (* Navigation *)
-      | Up, No_modifier | Key "p", Ctrl -> move_up t
-      | Down, No_modifier | Key "n", Ctrl -> move_down t
-      | Left, No_modifier | Key "b", Ctrl -> move_left t
-      | Right, No_modifier | Key "f", Ctrl -> move_right t
+      | Up, NoModifier | Key "p", Ctrl -> move_up t
+      | Down, NoModifier | Key "n", Ctrl -> move_down t
+      | Left, NoModifier | Key "b", Ctrl -> move_left t
+      | Right, NoModifier | Key "f", Ctrl -> move_right t
       | Left, Alt | Key "b", Alt -> word_left t
       | Right, Alt | Key "f", Alt -> word_right t
-      | Home, No_modifier | Key "a", Ctrl -> cursor_start t
-      | End, No_modifier | Key "e", Ctrl -> cursor_end t
+      | Home, NoModifier | Key "a", Ctrl -> cursor_start t
+      | End, NoModifier | Key "e", Ctrl -> cursor_end t
       | Home, Ctrl -> goto_start t
       | End, Ctrl -> goto_end t
       
       (* Editing *)
-      | Enter, No_modifier | Key "m", Ctrl -> insert_newline t
-      | Backspace, No_modifier | Key "h", Ctrl -> delete_char_before t
-      | Delete, No_modifier | Key "d", Ctrl -> delete_char_after t
+      | Enter, NoModifier | Key "m", Ctrl -> insert_newline t
+      | Backspace, NoModifier | Key "h", Ctrl -> delete_char_before t
+      | Delete, NoModifier | Key "d", Ctrl -> delete_char_after t
       | Key "k", Ctrl -> delete_after_cursor t
       | Key "u", Ctrl -> delete_before_cursor t
       | Backspace, Alt | Key "w", Ctrl -> delete_word_left t
@@ -435,7 +435,7 @@ let handle_key t (key : Event.key) modifier =
       | Key "c", Alt -> capitalize_word_right t
       
       (* Character input *)
-      | Key s, No_modifier when String.length s = 1 ->
+      | Key s, NoModifier when String.length s = 1 ->
           insert_char t s.[0]
       | Key s, Shift when String.length s = 1 ->
           insert_char t s.[0]

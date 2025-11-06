@@ -9,7 +9,7 @@ type format =
   | Underline
   | Blink
   | Reverse
-  | Cross_out
+  | CrossOut
   | Overline
   | Foreground of Color.t
   | Background of Color.t
@@ -23,7 +23,7 @@ let to_string fmt =
   | Underline -> Escape_seq.underline_seq
   | Blink -> Escape_seq.blink_seq
   | Reverse -> Escape_seq.reverse_seq
-  | Cross_out -> Escape_seq.cross_out_seq
+  | CrossOut -> Escape_seq.cross_out_seq
   | Overline -> Escape_seq.overline_seq
   | Foreground color ->
       Escape_seq.foreground_seq ^ ";" ^ Color.to_escape_seq ~mode:`fg color

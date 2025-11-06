@@ -153,9 +153,9 @@ let handle_key t (key : Event.key) modifier =
         set_cursor_position t ~pos:(String.length t.value)
     
     (* Deletion *)
-    | Event.Backspace when modifier = Event.No_modifier ->
+    | Event.Backspace when modifier = Event.NoModifier ->
         delete_char_backward t
-    | Event.Delete when modifier = Event.No_modifier ->
+    | Event.Delete when modifier = Event.NoModifier ->
         delete_char_forward t
     | Event.Backspace when modifier = Event.Ctrl || modifier = Event.Alt ->
         delete_word_backward t
@@ -181,7 +181,7 @@ let handle_key t (key : Event.key) modifier =
         set_cursor_position t ~pos:(t.cursor_pos + 1)
     
     (* Character input *)
-    | Event.Key s when modifier = Event.No_modifier && String.length s = 1 ->
+    | Event.Key s when modifier = Event.NoModifier && String.length s = 1 ->
         insert_at_cursor t s
     | Event.Key s when modifier = Event.Shift && String.length s = 1 ->
         insert_at_cursor t s

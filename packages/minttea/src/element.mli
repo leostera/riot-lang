@@ -67,14 +67,23 @@
     4. **Auto for intrinsic** - Measures content automatically
     5. **Simple algorithm** - One-pass layout, no constraint solver *)
 
+(** Position specification for layers *)
+type position =
+  | Relative  (* Normal flow positioning *)
+  | Absolute of int * int  (* Absolute positioning at (x, y) *)
+
 (** Core element type - represents a node in the layout tree *)
 type t =
   | Text of Style.t * string
   | Box of Style.t * t
   | Row of Style.t * t list
   | Column of Style.t * t list
+  | Layer of Style.t * position * t list  (* Stack elements with positioning *)
   | Spacer of Style.t
-  | Empty of Style.t
+  | Empty
+
+(** Structural equality for elements *)
+val equal : t -> t -> bool
 
 (** ## Basic Elements *)
 
@@ -103,14 +112,14 @@ val box : ?style:Style.t -> t -> t
       (text "Boxed content")
     ``` *)
 
-val empty : ?style:Style.t -> unit -> t
+val empty : t
 (** Create an empty element (renders as nothing).
     
     Useful as a placeholder or conditional element.
     
     Example:
     ```ocaml
-    if show_sidebar then sidebar else empty ()
+    if show_sidebar then sidebar else empty
     ``` *)
 
 (** ## Container Elements *)
@@ -142,6 +151,26 @@ val column : ?style:Style.t -> t list -> t
       text ~style:(Style.default |> Style.height_fixed 3) "Header";
       text ~style:(Style.default |> Style.height_flex 1.0) "Content grows";
       text ~style:(Style.default |> Style.height_fixed 1) "Footer";
+    ]
+    ``` *)
+
+val layer : ?style:Style.t -> ?pos:position -> t list -> t
+(** Stack children with optional absolute positioning.
+    
+    Layers allow you to position elements absolutely or stack them with z-indexing.
+    Each child in the layer gets its own z-index (later children appear on top).
+    
+    Example:
+    ```ocaml
+    (* Absolute positioning *)
+    layer ~pos:(Absolute (10, 5)) [
+      text ~style:(Style.default |> Style.bg (Style.color "blue")) "  "
+    ]
+    
+    (* Stacking multiple elements *)
+    layer [
+      text "Background";
+      layer ~pos:(Absolute (5, 2)) [text "Overlay"];
     ]
     ``` *)
 

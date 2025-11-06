@@ -39,7 +39,7 @@ let main ~args:_ =
   in
   
   (* 4. Use Minttea.Render.Pipeline to convert Element to ANSI string *)
-  let ansi_output = Minttea.Render.Pipeline.to_string element ~width:cols ~height:rows in
+  let ansi_output = Minttea.Render.Pipeline.to_string element ~width:cols ~height:rows ~mode:Minttea.Render.Ansi_emitter.ContentFit in
   
   (* 5. Spawn async renderer to print output (like minimal_test_5) *)
   let parent = self () in

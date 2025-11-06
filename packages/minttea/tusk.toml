@@ -9,3 +9,15 @@ path = "src/minttea.ml"
 std = { path = "../std" }
 tty = { path = "../tty" }
 colors = { path ="../colors" }
+
+[tests.ansi_ast_test]
+path = "tests/ansi_ast_test.ml"
+
+[tests.perf_test]
+path = "tests/perf_test.ml"
+
+[examples.010_performance_demo]
+path = "examples/010_performance_demo.ml"
+
+[examples.moving_box]
+path = "examples/moving_box.ml"

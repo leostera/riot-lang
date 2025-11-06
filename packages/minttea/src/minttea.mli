@@ -10,19 +10,19 @@ open Std
 (** Configuration *)
 module Config : sig
   type render_mode = Clear | Persist
+  
+  type output_target = Stdout | Stderr
 
   type t = {
     render_mode : render_mode;
     fps : int;
-    initial_width : int;
-    initial_height : int;
+    output : output_target;
   }
 
   val make :
     ?render_mode:render_mode ->
     ?fps:int ->
-    ?initial_width:int ->
-    ?initial_height:int ->
+    ?output:output_target ->
     unit ->
     t
 end
@@ -30,8 +30,7 @@ end
 val config :
   ?render_mode:Config.render_mode ->
   ?fps:int ->
-  ?initial_width:int ->
-  ?initial_height:int ->
+  ?output:Config.output_target ->
   unit ->
   Config.t
 (** Create a configuration with optional parameters *)
@@ -39,14 +38,14 @@ val config :
 (** Terminal events *)
 module Event : sig
   type modifier =
-    | No_modifier
+    | NoModifier
     | Ctrl
     | Alt
     | Shift
-    | Ctrl_alt
-    | Ctrl_shift
-    | Alt_shift
-    | Ctrl_alt_shift
+    | CtrlAlt
+    | CtrlShift
+    | AltShift
+    | CtrlAltShift
 
   type key =
     | Up
@@ -62,12 +61,12 @@ module Event : sig
     | Insert
     | Home
     | End
-    | Page_up
-    | Page_down
+    | PageUp
+    | PageDown
     | F of int
     | Key of string
 
-  type mouse_button = Left | Middle | Right | Wheel_up | Wheel_down
+  type mouse_button = Left | Middle | Right | WheelUp | WheelDown
   type mouse_event_type = Click | Release | Motion
 
   type mouse_event = {
@@ -89,13 +88,12 @@ module Event : sig
     | Timer of Timer.id Ref.t
     | Frame of Time.Instant.t
     | Paste of string
-    | Focus_gained
-    | Focus_lost
+    | FocusGained
+    | FocusLost
     | Custom of Message.t
 
   val key_to_string : key -> string
   val modifier_to_string : modifier -> string
-  val pp : Format.formatter -> t -> unit
 end
 
 (** Terminal commands *)
@@ -105,27 +103,21 @@ module Command : sig
   type t =
     | Noop
     | Quit
-    | Hide_cursor
-    | Show_cursor
-    | Exit_alt_screen
-    | Enter_alt_screen
-    | Enable_mouse of mouse_mode
-    | Disable_mouse
-    | Enable_bracketed_paste
-    | Disable_bracketed_paste
-    | Enable_focus_tracking
-    | Disable_focus_tracking
-    | Set_window_title of string
-    | Batch of t list
-    | Sequence of t list
+    | HideCursor
+    | ShowCursor
+    | ExitAltScreen
+    | EnterAltScreen
+    | EnableMouse of mouse_mode
+    | DisableMouse
+    | EnableBracketedPaste
+    | DisableBracketedPaste
+    | EnableFocusTracking
+    | DisableFocusTracking
+    | SetWindowTitle of string
     | Seq of t list
-    | Set_timer of { ref : Timer.id Ref.t; duration : Time.Duration.t }
-    | Query_window_size
+    | SetTimer of { ref : Timer.id Ref.t; duration : Time.Duration.t }
 
-  val batch : t list -> t
-  val sequence : t list -> t
   val timer : after:Time.Duration.t -> Timer.id Ref.t * t
-  val query_window_size : t
 end
 
 (** Declarative layout system *)

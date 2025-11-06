@@ -118,11 +118,15 @@ let paint_text_node matrix node =
           reverse = style.reverse;
         } in
         
+        let cells_painted = ref 0 in
         for y = paint_y to paint_y + paint_h - 1 do
           for x = paint_x to paint_x + paint_w - 1 do
             Matrix.set matrix ~x ~y cell;
+            cells_painted := !cells_painted + 1;
           done;
         done;
+        Log.debug "[PAINTER] Painted %d cells (expected %d = %dx%d)" 
+          !cells_painted (paint_w * paint_h) paint_w paint_h;
       end
   | Scene.Container { style = None; _ } ->
       (* Containers without style don't paint anything *)

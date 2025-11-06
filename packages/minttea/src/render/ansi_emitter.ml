@@ -1,5 +1,7 @@
 open Std
 
+type render_mode = Fullscreen | ContentFit
+
 (** Convert Tty.Color.t to ANSI foreground escape code *)
 let color_to_fg_ansi color =
   match color with
@@ -56,17 +58,46 @@ let cell_to_ansi cell prev_cell =
   
   Buffer.contents buf
 
+(** Find the last row that contains non-empty content *)
+let find_last_used_row matrix =
+  let rec check_row row =
+    if row < 0 then 0  (* All rows empty, return 0 to emit at least one line *)
+    else
+      (* Check if this row has any non-empty cells *)
+      let has_content = ref false in
+      for col = 0 to matrix.Matrix.width - 1 do
+        let cell = matrix.cells.(row).(col) in
+        if cell.char <> " " || cell.fg <> None || cell.bg <> None then
+          has_content := true
+      done;
+      if !has_content then row + 1  (* Return row count (0-indexed row + 1) *)
+      else check_row (row - 1)
+  in
+  check_row (matrix.height - 1)
+
 (** Emit full matrix to ANSI string *)
-let emit matrix =
+let emit matrix ~mode =
   let buf = Buffer.create (matrix.Matrix.width * matrix.Matrix.height * 2) in
   
   (* NOTE: Do NOT emit \x1b[H here - the caller is responsible for positioning.
      Emitting it here causes issues when multiple processes are printing because
      it moves the cursor back to home mid-render. *)
   
+  (* Determine how many rows to emit based on mode *)
+  let rows_to_emit = match mode with
+    | Fullscreen -> 
+        Log.debug "[ANSI_EMITTER] Fullscreen mode: emitting all %d rows" matrix.Matrix.height;
+        matrix.Matrix.height
+    | ContentFit -> 
+        let last_used_row = find_last_used_row matrix in
+        Log.debug "[ANSI_EMITTER] ContentFit mode: emitting %d rows (last_used=%d)" 
+          (Int.max 1 last_used_row) last_used_row;
+        Int.max 1 last_used_row  (* Emit at least 1 row *)
+  in
+  
   let prev_cell = ref Matrix.empty_cell in
   
-  for row = 0 to matrix.height - 1 do
+  for row = 0 to rows_to_emit - 1 do
     for col = 0 to matrix.width - 1 do
       let cell = matrix.cells.(row).(col) in
       
@@ -81,8 +112,11 @@ let emit matrix =
       prev_cell := cell;
     done;
     
+    (* Clear to end of line to remove any leftover content from previous render *)
+    Buffer.add_string buf "\x1b[K";  (* EraseLineRight *)
+    
     (* Newline at end of each row (except last) *)
-    if row < matrix.height - 1 then
+    if row < rows_to_emit - 1 then
       Buffer.add_string buf "\r\n";
   done;
   
@@ -92,10 +126,10 @@ let emit matrix =
   Buffer.contents buf
 
 (** Emit only differences between two matrices *)
-let emit_diff ~old ~new_ =
+let emit_diff ~old ~new_ ~mode =
   if old.Matrix.width <> new_.Matrix.width || old.Matrix.height <> new_.Matrix.height then
     (* Sizes differ, do full re-render *)
-    emit new_
+    emit new_ ~mode
   else
     let buf = Buffer.create 1024 in
     let prev_cell = ref Matrix.empty_cell in

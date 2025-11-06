@@ -51,7 +51,7 @@ let main ~args:_ =
       text_content)
   in
   
-  let ansi_output = Minttea.Render.Pipeline.to_string element ~width:cols ~height:rows in
+  let ansi_output = Minttea.Render.Pipeline.to_string element ~width:cols ~height:rows ~mode:Minttea.Render.Ansi_emitter.ContentFit in
   eprintln "[MAIN] Generated %d bytes" (String.length ansi_output);
   
   (* 5. Spawn IO process for keyboard input *)

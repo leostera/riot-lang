@@ -88,21 +88,21 @@ let handle_key t (key : Event.key) modifier =
     let half_page = page_size / 2 in
     
     match (key : Event.key) with
-    | Up | Key "k" when modifier = No_modifier ->
+    | Up | Key "k" when modifier = NoModifier ->
         move_up t 1
-    | Down | Key "j" when modifier = No_modifier ->
+    | Down | Key "j" when modifier = NoModifier ->
         move_down t 1
-    | Page_up | Key "b" when modifier = No_modifier ->
+    | PageUp | Key "b" when modifier = NoModifier ->
         move_up t page_size
-    | Page_down | Key "f" when modifier = No_modifier ->
+    | PageDown | Key "f" when modifier = NoModifier ->
         move_down t page_size
     | Space ->
         move_down t page_size
-    | Key "u" when modifier = Ctrl || modifier = No_modifier ->
+    | Key "u" when modifier = Ctrl || modifier = NoModifier ->
         move_up t half_page
-    | Key "d" when modifier = Ctrl || modifier = No_modifier ->
+    | Key "d" when modifier = Ctrl || modifier = NoModifier ->
         move_down t half_page
-    | Home | Key "g" when modifier = No_modifier ->
+    | Home | Key "g" when modifier = NoModifier ->
         goto_top t
     | End | Key "G" when modifier = Shift ->
         goto_bottom t

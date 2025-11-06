@@ -3,17 +3,17 @@ open Minttea
 
 (* Example 006: Basic blue box with white text and padding *)
 
-type model = { width : int; height : int }
+type model = { debug_width : int; debug_height : int }
 
 let init model = 
   (model, Command.Seq [
-    Command.Enter_alt_screen;
-    Command.Hide_cursor;
+    Command.EnterAltScreen;
+    Command.HideCursor;
   ])
 
 let update event model =
   match event with
-  | Event.Resize { width; height } -> ({ width; height }, Command.Noop)
+  | Event.Resize { width; height } -> ({ debug_width=width; debug_height=width }, Command.Noop)
   | Event.KeyDown (Key "q", _)
   | Event.KeyDown (Escape, _) -> (model, Command.Quit)
   | _ -> (model, Command.Noop)
@@ -23,7 +23,7 @@ let view model =
   let open Element in
   
   let text = 
-    let str = format "Terminal: %dx%d | Press 'q' to quit" model.width model.height in
+    let str = format "Terminal: %dx%d | Press 'q' to quit" model.debug_width model.debug_height in
     let style = Style.(default |> fg (color "#FFFFFF")) in
     text ~style str
   in
@@ -44,4 +44,4 @@ let view model =
 let app = app ~init ~update ~view ()
 let () = 
   Std.Log.(set_level Error);
-  start ~config:(config ()) app { width = 0; height = 0 }
+  start ~config:(config ()) app { debug_width = 0; debug_height = 0 }

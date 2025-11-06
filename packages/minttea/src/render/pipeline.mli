@@ -9,5 +9,7 @@ open Std
     2. Flatten: Scene graph → flat list
     3. Paint: Scene → Matrix
     4. Emit: Matrix → ANSI string
+    
+    @param mode Fullscreen emits full matrix height, ContentFit only emits rows with content.
 *)
-val to_string : Element.t -> width:int -> height:int -> string
+val to_string : Element.t -> width:int -> height:int -> mode:Ansi_emitter.render_mode -> string

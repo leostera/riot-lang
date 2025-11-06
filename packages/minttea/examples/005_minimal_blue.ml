@@ -5,7 +5,7 @@ open Std
 type model = { width : int; height : int }
 
 let init model = 
-  (model, Minttea.Command.Enter_alt_screen)
+  (model, Minttea.Command.EnterAltScreen)
 
 let update event model =
   match event with
@@ -31,4 +31,7 @@ let view model =
 
 let app = Minttea.app ~init ~update ~view ()
 let () = 
+  Log.(set_log_file Path.(v "./stdout.log"));
+  Log.(set_level Trace);
   Minttea.start ~config:(Minttea.config ()) app { width = 0; height = 0 }
+

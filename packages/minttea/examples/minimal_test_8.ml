@@ -42,7 +42,7 @@ let main ~args:_ =
   
   (* 4. Generate ANSI output *)
   eprintln "[MAIN] Generating ANSI output";
-  let ansi_output = Minttea.Render.Pipeline.to_string element ~width:cols ~height:rows in
+  let ansi_output = Minttea.Render.Pipeline.to_string element ~width:cols ~height:rows ~mode:Minttea.Render.Ansi_emitter.ContentFit in
   let newline_count = String.fold_left (fun acc c -> if c = '\n' then acc + 1 else acc) 0 ansi_output in
   eprintln "[MAIN] Generated %d bytes, %d newlines" (String.length ansi_output) newline_count;
   

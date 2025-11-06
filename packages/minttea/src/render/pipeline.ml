@@ -3,7 +3,7 @@
 open Std
 
 (** Pure function: Element + dimensions → ANSI string *)
-let to_string element ~width ~height =
+let to_string element ~width ~height ~mode =
   (* Phase 1: Layout - convert Element tree to Scene graph *)
   let ctx = Layout.{ x = 0; y = 0; available_width = width; available_height = height } in
   let scene = Layout.to_scene element ctx in
@@ -16,4 +16,4 @@ let to_string element ~width ~height =
   Painter.paint ~matrix ~scene:flattened;
   
   (* Phase 4: Emit *)
-  Ansi_emitter.emit matrix
+  Ansi_emitter.emit matrix ~mode

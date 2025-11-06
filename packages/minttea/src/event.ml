@@ -1,14 +1,14 @@
 open Std
 
 type modifier =
-  | No_modifier
+  | NoModifier
   | Ctrl
   | Alt
   | Shift
-  | Ctrl_alt
-  | Ctrl_shift
-  | Alt_shift
-  | Ctrl_alt_shift
+  | CtrlAlt
+  | CtrlShift
+  | AltShift
+  | CtrlAltShift
 
 type key =
   | Up
@@ -24,8 +24,8 @@ type key =
   | Insert
   | Home
   | End
-  | Page_up
-  | Page_down
+  | PageUp
+  | PageDown
   | F of int
   | Key of string
 
@@ -44,27 +44,27 @@ let key_to_string key =
   | Insert -> "insert"
   | Home -> "home"
   | End -> "end"
-  | Page_up -> "pgup"
-  | Page_down -> "pgdn"
+  | PageUp -> "pgup"
+  | PageDown -> "pgdn"
   | F n -> Format.sprintf "f%d" n
   | Key key -> key
 
 let modifier_to_string = function
-  | No_modifier -> ""
+  | NoModifier -> ""
   | Ctrl -> "ctrl"
   | Alt -> "alt"
   | Shift -> "shift"
-  | Ctrl_alt -> "ctrl+alt"
-  | Ctrl_shift -> "ctrl+shift"
-  | Alt_shift -> "alt+shift"
-  | Ctrl_alt_shift -> "ctrl+alt+shift"
+  | CtrlAlt -> "ctrl+alt"
+  | CtrlShift -> "ctrl+shift"
+  | AltShift -> "alt+shift"
+  | CtrlAltShift -> "ctrl+alt+shift"
 
 type mouse_button =
   | Left
   | Middle
   | Right
-  | Wheel_up
-  | Wheel_down
+  | WheelUp
+  | WheelDown
 
 type mouse_event_type =
   | Click
@@ -90,8 +90,8 @@ type t =
   | Timer of Timer.id Ref.t
   | Frame of Time.Instant.t
   | Paste of string
-  | Focus_gained
-  | Focus_lost
+  | FocusGained
+  | FocusLost
   | Custom of Message.t
 
 let to_string = function
@@ -106,8 +106,8 @@ let to_string = function
         | Left -> "left"
         | Middle -> "middle"
         | Right -> "right"
-        | Wheel_up -> "wheel_up"
-        | Wheel_down -> "wheel_down"
+        | WheelUp -> "wheel_up"
+        | WheelDown -> "wheel_down"
       in
       let evt =
         match event_type with
@@ -127,8 +127,6 @@ let to_string = function
         else content
       in
       format "Paste(%S)" preview
-  | Focus_gained -> "FocusGained"
-  | Focus_lost -> "FocusLost"
+  | FocusGained -> "FocusGained"
+  | FocusLost -> "FocusLost"
   | Custom _msg -> "Custom"
-
-let pp fmt event = Format.fprintf fmt "%s" (to_string event)
