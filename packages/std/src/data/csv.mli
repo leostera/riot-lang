@@ -39,8 +39,8 @@
     in
 
     let rec count_rows () = match Iter.MutIterator.next iter with | Some (Ok
-    _row) -> Cell.set count (Cell.get count + 1); count_rows () | Some (Error _)
-    -> Cell.get count | None -> Cell.get count in
+    _row) -> Sync.Cell.set count (Sync.Cell.get count + 1); count_rows () | Some (Error _)
+    -> Sync.Cell.get count | None -> Sync.Cell.get count in
 
     println "Total rows: %d" (count_rows ()) ```
 

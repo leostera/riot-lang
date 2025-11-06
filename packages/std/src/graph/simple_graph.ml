@@ -1,4 +1,5 @@
 open Global
+open Sync
 
 module Node_id : sig
   type t

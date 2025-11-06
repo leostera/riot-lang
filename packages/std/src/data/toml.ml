@@ -1,4 +1,5 @@
 open Global
+open Sync
 
 type value =
   | String of string

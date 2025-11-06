@@ -1,4 +1,5 @@
 open Global
+open Sync
 
 let table = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
 

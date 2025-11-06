@@ -1,4 +1,5 @@
 open Global
+open Sync
 
 (* # Supervisor - OTP-style process supervision *)
 

@@ -23,14 +23,14 @@ let failwith = Deprecated
 include Panic
 
 (** Create a mutable cell *)
-let cell x = Cell.create x
+let cell x = Sync.Cell.create x
 
 let ref = cell
 
 (** Cell operators for ref-like syntax *)
-let ( ! ) = Cell.get
+let ( ! ) = Sync.Cell.get
 
-let ( := ) = Cell.set
+let ( := ) = Sync.Cell.set
 
 let todo msg = panic (format "TODO: %s" msg)
 let unimplemented () = panic "unimplemented"

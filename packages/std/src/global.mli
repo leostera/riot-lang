@@ -26,7 +26,7 @@
 
     Mutable cells:
 
-    ```ocaml let counter = cell 0 in Cell.set counter 1; Cell.get counter (* 1
+    ```ocaml let counter = cell 0 in Sync.Cell.set counter 1; Sync.Cell.get counter (* 1
     *) ``` *)
 
 (** {1 Collection Types and Constructors} *)
@@ -101,21 +101,21 @@ val panic : string -> 'a
     - Invariant violations
     - Programmer errors (use assertions instead when possible) *)
 
-val ( ! ) : 'a Cell.t -> 'a
-val ( := ) : 'a Cell.t -> 'a -> unit
-val ref : 'a -> 'a Cell.t
+val ( ! ) : 'a Sync.Cell.t -> 'a
+val ( := ) : 'a Sync.Cell.t -> 'a -> unit
+val ref : 'a -> 'a Sync.Cell.t
 
-val cell : 'a -> 'a Cell.t
+val cell : 'a -> 'a Sync.Cell.t
 (** Creates a mutable cell containing the given value.
 
     ## Examples
 
-    ```ocaml let counter = cell 0 in Cell.update counter (fun n -> n + 1);
-    Cell.get counter (* 1 *) ```
+    ```ocaml let counter = cell 0 in Sync.Cell.update counter (fun n -> n + 1);
+    Sync.Cell.get counter (* 1 *) ```
 
     ## See Also
 
-    - [Cell] for full cell API *)
+    - [Sync.Cell] for full cell API *)
 
 val format : ('a, unit, string, string) format4 -> 'a
 (** Formats a string using Printf-style formatting.

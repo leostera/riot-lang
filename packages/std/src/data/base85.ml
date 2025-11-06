@@ -1,4 +1,5 @@
 open Global
+open Sync
 
 let encode_bytes bytes =
   let len = Bytes.length bytes in

@@ -1,4 +1,5 @@
 open Global
+open Sync
 
 type level = Trace | Debug | Info | Warn | Error
 

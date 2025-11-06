@@ -99,9 +99,6 @@ module Agent = Agent
 module ArgParser = Arg_parser
 (** Command-line argument parsing *)
 
-module Cell = Cell
-(** Mutable cells for interior mutability *)
-
 module Char = Char
 (** Character operations *)
 
@@ -201,7 +198,7 @@ module WorkerPool = Worker_pool
 val panic : string -> 'a
 (** Panic with a message - raises an uncatchable exception *)
 
-val cell : 'a -> 'a Cell.t
+val cell : 'a -> 'a Sync.Cell.t
 (** Create a mutable cell with the given value *)
 
 val format : ('a, unit, string, string) format4 -> 'a

@@ -1,4 +1,5 @@
 open Global
+open Sync
 module Int32 = Kernel.Int32
 
 (*

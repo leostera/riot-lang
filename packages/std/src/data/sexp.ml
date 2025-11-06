@@ -1,4 +1,5 @@
 open Global
+open Sync
 (** S-expression parsing and printing library *)
 
 (** S-expression type *)

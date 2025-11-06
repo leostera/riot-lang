@@ -1,4 +1,5 @@
 open Global
+open Sync
 
 type 'a t = {
   mutable data : 'a array;

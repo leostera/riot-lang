@@ -1,4 +1,5 @@
 open Global
+open Sync
 
 type row = string list
 type t = row list

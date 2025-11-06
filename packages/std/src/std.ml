@@ -3,7 +3,6 @@
 module Agent = Agent
 module Application = Application
 module ArgParser = Arg_parser
-module Cell = Cell
 module Char = Char
 module Collections = Collections
 module Command = Command

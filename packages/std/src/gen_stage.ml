@@ -1,5 +1,5 @@
 open Global
-
+open Sync
 
 (* # GenStage - Demand-driven data processing with back-pressure
 
