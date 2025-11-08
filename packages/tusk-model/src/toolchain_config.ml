@@ -1,4 +1,6 @@
 open Std
+  open Std.Data
+  open Std.Collections
 
 type source = Version of string | Path of Path.t | Url of Net.Uri.t
 type t = { version : string; source : source }
@@ -28,17 +30,17 @@ let from_workspace workspace =
                       { version = v; source = Version v }
                   | Some (Data.Toml.Table version_items) -> (
                       match List.assoc_opt "path" version_items with
-                      | Some (Data.Toml.String path_str) ->
-                          let source_path =
-                            Path.of_string path_str |> Result.unwrap
-                          in
-                          let version_name =
-                            format "%s-local" (Path.basename source_path)
-                          in
-                          { version = version_name; source = Path source_path }
+                      | Some (Data.Toml.String path_str) -> (
+                          match Path.of_string path_str with
+                          | Ok source_path ->
+                              let version_name =
+                                Path.basename source_path ^ "-local"
+                              in
+                              { version = version_name; source = Path source_path }
+                          | Error _ -> default)
                       | _ -> (
                           match List.assoc_opt "url" version_items with
-                          | Some (Data.Toml.String url_str) ->
+                          | Some (Data.Toml.String url_str) -> (
                               let version_name =
                                 if String.contains url_str '/' then
                                   let parts =
@@ -51,10 +53,9 @@ let from_workspace workspace =
                                   else last
                                 else "custom"
                               in
-                              let uri =
-                                Net.Uri.of_string url_str |> Result.unwrap
-                              in
-                              { version = version_name; source = Url uri }
+                              match Net.Uri.of_string url_str with
+                              | Ok uri -> { version = version_name; source = Url uri }
+                              | Error _ -> default)
                           | _ -> default))
                   | _ -> default)
               | _ -> default)

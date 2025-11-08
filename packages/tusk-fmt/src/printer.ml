@@ -413,7 +413,7 @@ let print_root ~config root =
         else if last_text = "~" || last_text = "?" then false
         (* No space before/after : in labeled args *)
         else if ctx.in_labeled_arg && (current_text = ":" || last_text = ":") then
-          (if current_text <> ":" then ctx.in_labeled_arg <- false; false)
+          (if current_text != ":" then ctx.in_labeled_arg <- false; false)
         (* No space around = in record fields *)
         else if ctx.in_record && (current_text = "=" || last_text = "=") then false
         (* No space after prefix operators when they come after = or other operators *)
@@ -480,7 +480,7 @@ let print_root ~config root =
           then ()
           else if text = ";" then (
             (* End of expression *)
-            if !current_expr <> [] then (
+            if !current_expr != [] then (
               exprs := (List.rev !current_expr) :: !exprs;
               current_expr := []
             )
@@ -491,7 +491,7 @@ let print_root ~config root =
     ) children;
     
     (* Add last expression if any *)
-    if !current_expr <> [] then
+    if !current_expr != [] then
       exprs := (List.rev !current_expr) :: !exprs;
     
     let exprs = List.rev !exprs in

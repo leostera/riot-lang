@@ -31,16 +31,16 @@ let format_file t ~file_path ~check_only =
   let file_str = Path.to_string file_path in
 
   if not (Fs.exists file_path |> Result.unwrap_or ~default:false) then
-    Error (format "File not found: %s" file_str)
+    Error ("File not found: " ^ file_str)
   else if
     not
-      (String.ends_with ~suffix:".ml" file_str
-      || String.ends_with ~suffix:".mli" file_str)
-  then Error (format "Not an OCaml file: %s" file_str)
+      (file_str |> String.ends_with ~suffix:".ml"
+      || file_str |> String.ends_with ~suffix:".mli")
+  then Error ("Not an OCaml file: " ^ file_str)
   else
     let check_flag = if check_only then "--check" else "--inplace" in
     let ocamlformat_bin = Path.to_string t in
-    let cmd_str = format "%s %s %s" ocamlformat_bin check_flag file_str in
+    let cmd_str = ocamlformat_bin ^ " " ^ check_flag ^ " " ^ file_str in
     let cmd = Command.make ~args:[ "-c"; cmd_str ] "sh" in
 
     match Command.output cmd with
@@ -53,13 +53,12 @@ let format_file t ~file_path ~check_only =
           match Fs.read file_path with
           | Ok content -> Formatted { code = content; changed = true }
           | Error err ->
-              Error (format "Failed to read formatted file: %s" (IO.error_message err)))
+              Error ("Failed to read formatted file: " ^ IO.error_message err))
     | Ok output ->
         let error_msg =
           if String.length output.Command.stderr > 0 then
-            format "ocamlformat failed with status %d: %s" output.Command.status
-              (String.trim output.Command.stderr)
-          else format "ocamlformat failed with status %d" output.Command.status
+            "ocamlformat failed with status " ^ Int.to_string output.Command.status ^ ": " ^ output.Command.stderr
+          else "ocamlformat failed with status " ^ Int.to_string output.Command.status
         in
         Error error_msg
     | Error (Command.SystemError msg) -> Error msg
@@ -75,19 +74,20 @@ let format_code t ~code ~file_path =
   in
 
   let temp_file =
-    format "/tmp/tusk_format_%d%s" (System.OsProcess.current_pid ()) extension
+    "/tmp/tusk_format_" ^ Int.to_string (System.OsProcess.current_pid ()) ^ extension
   in
 
-  let temp_file_path = Path.of_string temp_file |> Result.unwrap in
+  match Path.of_string temp_file with
+  | Error _ -> Error "Failed to create temp file path"
+  | Ok temp_file_path -> (
   match Fs.write code temp_file_path with
   | Error err ->
-      Error (format "Failed to write temp file: %s" (IO.error_message err))
+      Error ("Failed to write temp file: " ^ IO.error_message err)
   | Ok () ->
       let result =
         let ocamlformat_bin = Path.to_string t in
         let cmd_str =
-          format "%s --enable-outside-detected-project %s" ocamlformat_bin
-            temp_file
+          ocamlformat_bin ^ " --enable-outside-detected-project " ^ temp_file
         in
         let cmd = Command.make ~args:[ "-c"; cmd_str ] "sh" in
         match Command.output cmd with
@@ -101,9 +101,9 @@ let format_code t ~code ~file_path =
             Formatted { code = output.Command.stdout; changed }
         | Ok output ->
             Error
-              (format "ocamlformat failed with status %d" output.Command.status)
+              ("ocamlformat failed with status " ^ Int.to_string output.Command.status)
         | Error (Command.SystemError msg) -> Error msg
       in
       (* Clean up temp file *)
       let _ = Fs.remove_file temp_file_path in
-      result
+      result)

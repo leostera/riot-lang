@@ -61,13 +61,13 @@ let make_binary ~name ~source ~libraries ~includes =
 let set_open_modules t modules = t.open_modules <- modules
 
 let kind_to_string = function
-  | ML mod_ -> format "ML(%s)" (Module.module_name mod_ |> Module_name.to_string)
+  | ML mod_ -> "ML(" ^ (Module.module_name mod_ |> Module_name.to_string) ^ ")"
   | MLI mod_ ->
-      format "MLI(%s)" (Module.module_name mod_ |> Module_name.to_string)
+      "MLI(" ^ (Module.module_name mod_ |> Module_name.to_string) ^ ")"
   | C -> "C"
   | H -> "H"
-  | Other s -> format "Other(%s)" s
+  | Other s -> "Other(" ^ s ^ ")"
   | Root -> "Root"
-  | Native { files } -> format "Native(%d files)" (List.length files)
-  | Library { name; _ } -> format "Library(%s)" name
-  | Binary { name; _ } -> format "Binary(%s)" name
+  | Native { files } -> "Native(" ^ Int.to_string (List.length files) ^ " files)"
+  | Library { name; _ } -> "Library(" ^ name ^ ")"
+  | Binary { name; _ } -> "Binary(" ^ name ^ ")"

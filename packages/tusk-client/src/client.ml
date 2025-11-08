@@ -19,14 +19,14 @@ type error =
 
 let jsonrpc_error_to_string = function
   | Jsonrpc.ParseError { parse_error; _ } ->
-      format "Parse error: %s" parse_error
-  | Jsonrpc.InvalidRequest { reason; _ } -> format "Invalid request: %s" reason
+      "Parse error: " ^ parse_error ^ ""
+  | Jsonrpc.InvalidRequest { reason; _ } -> "Invalid request: " ^ reason ^ ""
   | Jsonrpc.MethodNotFound { method_name } ->
-      format "Method not found: %s" method_name
-  | Jsonrpc.InvalidParams { reason; _ } -> format "Invalid params: %s" reason
-  | Jsonrpc.InternalError { details; _ } -> format "Internal error: %s" details
+      "Method not found: " ^ method_name ^ ""
+  | Jsonrpc.InvalidParams { reason; _ } -> "Invalid params: " ^ reason ^ ""
+  | Jsonrpc.InternalError { details; _ } -> "Internal error: " ^ details ^ ""
   | Jsonrpc.UnknownServerError { code; message; _ } ->
-      format "Server error %d: %s" code message
+      "Server error " ^ Int.to_string code ^ ": " ^ message
 
 (** Create a new Tusk RPC client *)
 let create ~host ~port =
@@ -45,9 +45,9 @@ let create ~host ~port =
         match e with
         | `Connection_refused -> "Connection refused"
         | `Closed -> "Connection closed"
-        | `System_error msg -> format "System error: %s" msg
+        | `System_error msg -> "System error: " ^ msg ^ ""
       in
-      Error (format "Failed to connect to server: %s" error_msg)
+      Error ("Failed to connect to server: " ^ error_msg)
 
 (** Close the client *)
 let close t =

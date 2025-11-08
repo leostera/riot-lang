@@ -2,6 +2,7 @@
 
 open Std
 open Std.Data
+open Std.Collections
 
 type version = V0
 
@@ -145,12 +146,14 @@ let load ~path =
 let create ~package ~build_hash ~files =
   let timestamp = Time.SystemTime.now () in
   let file_entries =
-    List.map
+    List.filter_map
       (fun (path, size) ->
         (* Calculate hash of the file *)
-        let file = Std.Fs.read_to_string path |> Result.unwrap in
-        let hash = Std.Crypto.(Sha512.hash_string file |> Digest.hex) in
-        { path = Path.v (Std.Path.basename path); hash; size })
+        match Std.Fs.read_to_string path with
+        | Ok file ->
+            let hash = Std.Crypto.(Sha512.hash_string file |> Digest.hex) in
+            Some { path = Path.v (Std.Path.basename path); hash; size }
+        | Error _ -> None)
       files
   in
   { version = V0; package; build_hash; timestamp; files = file_entries }

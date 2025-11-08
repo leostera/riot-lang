@@ -126,13 +126,13 @@ let plan_node input =
               match node.value.kind with
               | Module_node.ML m | Module_node.MLI m ->
                   Module.module_name m |> Module_name.to_string
-              | Module_node.Library { name; _ } -> format "Library(%s)" name
-              | Module_node.Binary { name; _ } -> format "Binary(%s)" name
+              | Module_node.Library { name; _ } -> "Library(" ^ name ^ ")"
+              | Module_node.Binary { name; _ } -> "Binary(" ^ name ^ ")"
               | Module_node.Native _ -> "Native"
               | Module_node.C -> "C"
               | Module_node.H -> "H"
               | Module_node.Root -> "Root"
-              | Module_node.Other s -> format "Other(%s)" s)
+              | Module_node.Other s -> "Other(" ^ s ^ ")")
             cycle_ids
           |> List.rev  (* Reverse to show A -> B means A uses/opens B *)
         in
@@ -156,7 +156,7 @@ let plan_node input =
                     files
               | _ -> (
                   match node.value.file with
-                  | Concrete path when Path.to_string path <> "" ->
+                  | Concrete path when Path.to_string path != "" ->
                       let abs_path =
                         if Path.is_absolute path then path
                         else Path.(input.package.path / path)

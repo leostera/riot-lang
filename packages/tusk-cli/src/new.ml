@@ -18,7 +18,10 @@ let run matches =
   let path = get_one matches "path" |> Option.expect ~msg:"path required" in
   let is_library = if get_flag matches "bin" then false else true in
 
-  let path_obj = Path.of_string path |> Result.unwrap in
+  let path_obj = match Path.of_string path with
+    | Ok p -> p
+    | Error _ -> Path.v path
+  in
   let name = Path.basename path_obj in
 
   let cwd =

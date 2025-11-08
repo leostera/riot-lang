@@ -34,7 +34,7 @@ let compute_input_hash ~package ~depset ~workspace =
   let module H = Std.Crypto.Sha256 in
   let state = H.create () in
 
-  H.write_string state (format "package:%s\n" package.Package.name);
+  H.write_string state ("package:" ^ package.Package.name ^ "\n");
 
   (* Dependencies metadata *)
   let sorted_deps =
@@ -45,7 +45,7 @@ let compute_input_hash ~package ~depset ~workspace =
   in
   List.iter
     (fun (dep : Package.dependency) ->
-      H.write_string state (format "dep:%s\n" dep.name);
+      H.write_string state ("dep:" ^ dep.name ^ "\n");
       match dep.source with
       | Package.Workspace -> (
           H.write_string state "dep_source:workspace\n";
@@ -56,14 +56,14 @@ let compute_input_hash ~package ~depset ~workspace =
           with
           | Some dep_pkg -> (
               H.write_string state
-                (format "dep_ws_path:%s\n" (Path.to_string dep_pkg.path));
+                ("dep_ws_path:" ^ Path.to_string dep_pkg.path ^ "\n");
               match dep_pkg.library with
               | Some _ -> H.write_string state "dep_has_lib:true\n"
               | None -> H.write_string state "dep_has_lib:false\n")
           | None -> ())
       | Package.Path path ->
           H.write_string state
-            (format "dep_source:path:%s\n" (Path.to_string path)))
+            ("dep_source:path:" ^ Path.to_string path ^ "\n"))
     sorted_deps;
 
   (* Binaries metadata *)
@@ -75,15 +75,15 @@ let compute_input_hash ~package ~depset ~workspace =
   in
   List.iter
     (fun (bin : Package.binary) ->
-      H.write_string state (format "bin:%s\n" bin.name);
-      H.write_string state (format "bin_path:%s\n" (Path.to_string bin.path)))
+      H.write_string state ("bin:" ^ bin.name ^ "\n");
+      H.write_string state ("bin_path:" ^ Path.to_string bin.path ^ "\n"))
     sorted_bins;
 
   (* Library metadata *)
   (match package.library with
   | Some lib ->
       H.write_string state "lib:true\n";
-      H.write_string state (format "lib_path:%s\n" (Path.to_string lib.path))
+      H.write_string state ("lib_path:" ^ Path.to_string lib.path ^ "\n")
   | None -> H.write_string state "lib:false\n");
 
   (* Source file contents - use files from package.sources, no scanning! *)
@@ -107,12 +107,12 @@ let compute_input_hash ~package ~depset ~workspace =
       let path_str = Path.to_string file_path in
       match Fs.read abs_path with
       | Ok content ->
-          H.write_string state (format "file:%s\n" path_str);
+          H.write_string state ("file:" ^ path_str ^ "\n");
           H.write_string state content;
           H.write_string state "\n"
       | Error _ ->
           (* File read error - include path only *)
-          H.write_string state (format "file:%s\n" path_str))
+          H.write_string state ("file:" ^ path_str ^ "\n"))
     sorted_files;
 
   (* Dependency hashes *)
@@ -157,8 +157,8 @@ let check_dependencies_built ~package_graph ~package =
   List.iter process_node deps;
 
   (* Check the sets in order: failed takes precedence *)
-  if !failed <> [] then Error (Failed !failed)
-  else if !unplanned <> [] then Error (Missing !unplanned)
+  if !failed != [] then Error (Failed !failed)
+  else if !unplanned != [] then Error (Missing !unplanned)
   else Ok (Vector.to_list depset)
 
 let compute_hash ~package ~sources ~module_graph ~action_graph ~depset
@@ -166,7 +166,7 @@ let compute_hash ~package ~sources ~module_graph ~action_graph ~depset
   let module H = Std.Crypto.Sha256 in
   let state = H.create () in
 
-  H.write_string state (format "package:%s\n" package.Package.name);
+  H.write_string state ("package:" ^ package.Package.name ^ "\n");
 
   let sorted_deps =
     List.sort
@@ -176,7 +176,7 @@ let compute_hash ~package ~sources ~module_graph ~action_graph ~depset
   in
   List.iter
     (fun (dep : Package.dependency) ->
-      H.write_string state (format "dep:%s\n" dep.name);
+      H.write_string state ("dep:" ^ dep.name ^ "\n");
       match dep.source with
       | Package.Workspace -> (
           H.write_string state "dep_source:workspace\n";
@@ -188,14 +188,14 @@ let compute_hash ~package ~sources ~module_graph ~action_graph ~depset
           with
           | Some dep_pkg -> (
               H.write_string state
-                (format "dep_ws_path:%s\n" (Path.to_string dep_pkg.path));
+                ("dep_ws_path:" ^ Path.to_string dep_pkg.path ^ "\n");
               match dep_pkg.library with
               | Some _ -> H.write_string state "dep_has_lib:true\n"
               | None -> H.write_string state "dep_has_lib:false\n")
           | None -> ())
       | Package.Path path ->
           H.write_string state
-            (format "dep_source:path:%s\n" (Path.to_string path)))
+            ("dep_source:path:" ^ Path.to_string path ^ "\n"))
     sorted_deps;
 
   let sorted_bins =
@@ -206,14 +206,14 @@ let compute_hash ~package ~sources ~module_graph ~action_graph ~depset
   in
   List.iter
     (fun (bin : Package.binary) ->
-      H.write_string state (format "bin:%s\n" bin.name);
-      H.write_string state (format "bin_path:%s\n" (Path.to_string bin.path)))
+      H.write_string state ("bin:" ^ bin.name ^ "\n");
+      H.write_string state ("bin_path:" ^ Path.to_string bin.path ^ "\n"))
     sorted_bins;
 
   (match package.library with
   | Some lib ->
       H.write_string state "lib:true\n";
-      H.write_string state (format "lib_path:%s\n" (Path.to_string lib.path))
+      H.write_string state ("lib_path:" ^ Path.to_string lib.path ^ "\n")
   | None -> H.write_string state "lib:false\n");
 
   let sorted_files =
@@ -228,10 +228,10 @@ let compute_hash ~package ~sources ~module_graph ~action_graph ~depset
         Fs.read file_path
         |> Result.expect
              ~msg:
-               (format "could not read file %s while hashing package %s"
+               ("could not read file " ^ Path.to_string file_path ^ " while hashing package " ^
                   path_str package.name)
       in
-      H.write_string state (format "file:%s\n" path_str);
+      H.write_string state ("file:" ^ path_str ^ "\n");
       H.write_string state content;
       H.write_string state "\n")
     sorted_files;

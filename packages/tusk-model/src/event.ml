@@ -1,6 +1,6 @@
 open Std
-
 open Std.Data
+  open Std.Collections
 (** Event system for tusk - pure data types for events *)
 
 (** Strip ANSI escape codes from a string *)
@@ -176,95 +176,92 @@ let name = function
 (** Get human-readable display message *)
 let display = function
   | BuildStarted { packages; _ } ->
-      format "Build started for %d packages" (List.length packages)
+      "Build started for " ^ Int.to_string (List.length packages) ^ " packages"
   | BuildComplete { duration_ms; succeeded; failed; _ } ->
-      format "Build completed in %dms (%d succeeded, %d failed)" duration_ms
-        (List.length succeeded) (List.length failed)
-  | PackageStarted { package } -> format "Building %s..." package
+      "Build completed in " ^ Int.to_string duration_ms ^ "ms (" ^ Int.to_string (List.length succeeded) ^ " succeeded, " ^ Int.to_string (List.length failed) ^ " failed)"
+  | PackageStarted { package } -> "Building " ^ package ^ "..."
   | PackageComplete { package; success; duration_ms; _ } ->
-      if success then format "✓ Built %s in %dms" package duration_ms
-      else format "✗ Failed to build %s" package
+      if success then "✓ Built " ^ package ^ " in " ^ Int.to_string duration_ms ^ "ms"
+      else "✗ Failed to build " ^ package
   | PackageSkipped { package; reason } ->
       let reason_str =
         match reason with
         | DependenciesFailed deps ->
-            format "dependencies failed: %s" (String.concat ", " deps)
+            "dependencies failed: " ^ String.concat ", " deps
       in
-      format "⊘ Skipped %s (%s)" package reason_str
+      "⊘ Skipped " ^ package ^ " (" ^ reason_str ^ ")"
   | CompileError { package; error } ->
       let col_start, _ = error.span in
-      format "Error in %s [%s:%d:%d]: %s" package error.file error.line
-        col_start
-        (match error.kind with
+      let kind_msg = match error.kind with
         | SyntaxError -> "Syntax error"
         | TypeError { description } -> description
-        | UnboundValue { name } -> format "Unbound value %s" name
-        | UnboundModule { name } -> format "Unbound module %s" name
-        | FileNotFound { filename } -> format "Cannot find file %s" filename
-        | OtherError { message } -> message)
+        | UnboundValue { name } -> "Unbound value " ^ name
+        | UnboundModule { name } -> "Unbound module " ^ name
+        | FileNotFound { filename } -> "Cannot find file " ^ filename
+        | OtherError { message } -> message
+      in
+      "Error in " ^ package ^ " [" ^ error.file ^ ":" ^ Int.to_string error.line ^ ":" ^ Int.to_string col_start ^ "]: " ^ kind_msg
   | CycleDetected { packages } ->
-      format "Circular dependency detected: %s" (String.concat " -> " packages)
-  | CacheHit { package; _ } -> format "Cached %s" package
-  | CacheMiss { package; _ } -> format "Cache miss for %s" package
+      "Circular dependency detected: " ^ String.concat " -> " packages
+  | CacheHit { package; _ } -> "Cached " ^ package
+  | CacheMiss { package; _ } -> "Cache miss for " ^ package
   | CacheStored { package; artifacts; _ } ->
-      format "Cached %s (%d artifacts)" package (List.length artifacts)
+      "Cached " ^ package ^ " (" ^ Int.to_string (List.length artifacts) ^ " artifacts)"
   | WorkerPoolStarted { workers } ->
-      format "Started worker pool with %d workers" workers
+      "Started worker pool with " ^ Int.to_string workers ^ " workers"
   | WorkerStarted { worker_id } ->
-      format "Worker %s started" (Worker_id.to_string worker_id)
+      "Worker " ^ Worker_id.to_string worker_id ^ " started"
   | WorkerAssigned { worker_id; package } ->
-      format "Worker %s assigned to %s" (Worker_id.to_string worker_id) package
+      "Worker " ^ Worker_id.to_string worker_id ^ " assigned to " ^ package
   | WorkerIdle { worker_id } ->
-      format "Worker %s idle" (Worker_id.to_string worker_id)
-  | ServerStarted { pid } -> format "Server started (pid: %s)" pid
-  | ServerScanning { root } -> format "Scanning workspace: %s" root
+      "Worker " ^ Worker_id.to_string worker_id ^ " idle"
+  | ServerStarted { pid } -> "Server started (pid: " ^ pid ^ ")"
+  | ServerScanning { root } -> "Scanning workspace: " ^ root
   | ServerRestarted { packages; toolchain } ->
-      format "Server restarted with %d packages (toolchain: %s)" packages
-        toolchain
+      "Server restarted with " ^ Int.to_string packages ^ " packages (toolchain: " ^ toolchain ^ ")"
   | WorkspaceEmpty -> "No packages found in workspace"
   | WorkspaceScanning -> "Scanning workspace..."
   | WorkspaceScanned { packages; duration_ms } ->
-      format "Scanned workspace: %d packages in %dms" packages duration_ms
+      "Scanned workspace: " ^ Int.to_string packages ^ " packages in " ^ Int.to_string duration_ms ^ "ms"
   | BuildGraphCreating -> "Creating build graph..."
   | BuildGraphCreated { nodes; duration_ms } ->
-      format "Created build graph: %d nodes in %dms" nodes duration_ms
+      "Created build graph: " ^ Int.to_string nodes ^ " nodes in " ^ Int.to_string duration_ms ^ "ms"
   | ServerShutdown -> "Server shutting down"
   | QueuePackage { package; queue_type } ->
       let typ =
         match queue_type with `Ready -> "ready" | `Waiting -> "waiting"
       in
-      format "Queued %s (%s)" package typ
+      "Queued " ^ package ^ " (" ^ typ ^ ")"
   | QueueStats { ready; waiting; busy } ->
-      format "Queue: %d ready, %d waiting, %d busy" ready waiting busy
+      "Queue: " ^ Int.to_string ready ^ " ready, " ^ Int.to_string waiting ^ " waiting, " ^ Int.to_string busy ^ " busy"
   | DependencyMissing { package; missing } ->
-      format "%s waiting for: %s" package (String.concat ", " missing)
+      package ^ " waiting for: " ^ String.concat ", " missing
   | DependencySatisfied { package } ->
-      format "%s dependencies satisfied" package
+      package ^ " dependencies satisfied"
   | CompilingInterface { package; file } ->
-      format "[%s] Compiling interface %s" package file
+      "[" ^ package ^ "] Compiling interface " ^ file
   | CompilingImplementation { package; file } ->
-      format "[%s] Compiling %s" package file
+      "[" ^ package ^ "] Compiling " ^ file
   | LinkingLibrary { package; output } ->
-      format "[%s] Linking library %s" package output
+      "[" ^ package ^ "] Linking library " ^ output
   | LinkingExecutable { package; output } ->
-      format "[%s] Linking executable %s" package output
-  | ComputingHash { package } -> format "Computing hash for %s" package
-  | HashComputed { package; hash } -> format "Hash for %s: %s" package hash
-  | CopyingFile { source; dest } -> format "Copying %s -> %s" source dest
-  | WritingFile { path } -> format "Writing %s" path
-  | CreatingDirectory { path } -> format "Creating directory %s" path
+      "[" ^ package ^ "] Linking executable " ^ output
+  | ComputingHash { package } -> "Computing hash for " ^ package
+  | HashComputed { package; hash } -> "Hash for " ^ package ^ ": " ^ hash
+  | CopyingFile { source; dest } -> "Copying " ^ source ^ " -> " ^ dest
+  | WritingFile { path } -> "Writing " ^ path
+  | CreatingDirectory { path } -> "Creating directory " ^ path
   | RpcRequestReceived { request_type; _ } ->
-      format "RPC request: %s" request_type
+      "RPC request: " ^ request_type
   | RpcResponseSent { result } ->
-      format "RPC response sent (success: %b)"
-        (match result with Ok _ -> true | Error _ -> false)
-  | McpToolCall { tool; _ } -> format "MCP tool call: %s" tool
+      "RPC response sent (success: " ^ Bool.to_string (match result with Ok _ -> true | Error _ -> false) ^ ")"
+  | McpToolCall { tool; _ } -> "MCP tool call: " ^ tool
   | StoreCreating -> "Creating build cache store"
-  | StoreCreated { duration_ms } -> format "Store created in %dms" duration_ms
+  | StoreCreated { duration_ms } -> "Store created in " ^ Int.to_string duration_ms ^ "ms"
   | WorkerPoolCreating { workers } ->
-      format "Creating worker pool with %d workers" workers
+      "Creating worker pool with " ^ Int.to_string workers ^ " workers"
   | WorkerPoolCreated { workers; duration_ms } ->
-      format "Worker pool created with %d workers in %dms" workers duration_ms
+      "Worker pool created with " ^ Int.to_string workers ^ " workers in " ^ Int.to_string duration_ms ^ "ms"
 
 (** Convert to human-readable string with timestamp *)
 let to_string event =
@@ -278,8 +275,8 @@ let to_string event =
     | Trace -> "[TRACE]"
   in
   let msg = display event.kind in
-  if level_str = "" then format "[%s] %s" timestamp msg
-  else format "[%s] %s %s" timestamp level_str msg
+  if level_str = "" then "[" ^ timestamp ^ "] " ^ msg
+  else "[" ^ timestamp ^ "] " ^ level_str ^ " " ^ msg
 
 (** Convert kind to JSON *)
 let kind_to_json = function
@@ -346,9 +343,9 @@ let kind_to_json = function
         match error.kind with
         | SyntaxError -> "Syntax error"
         | TypeError { description } -> strip_ansi_codes description
-        | UnboundValue { name } -> format "Unbound value %s" name
-        | UnboundModule { name } -> format "Unbound module %s" name
-        | FileNotFound { filename } -> format "Cannot find file %s" filename
+        | UnboundValue { name } -> "Unbound value " ^ name
+        | UnboundModule { name } -> "Unbound module " ^ name
+        | FileNotFound { filename } -> "Cannot find file " ^ filename
         | OtherError { message } -> strip_ansi_codes message
       in
       Json.Object

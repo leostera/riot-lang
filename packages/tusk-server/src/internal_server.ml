@@ -84,9 +84,9 @@ and handle_scan_workspace state client_pid current_dir =
     | Ok graph -> graph
     | Error _ -> 
         (* Create empty graph as fallback *)
-        Tusk_planner.Package_graph.create 
-          (Workspace.make ~root:workspace.root ~packages:[]) 
-        |> Result.unwrap
+        (match Workspace.make ~root:workspace.root ~packages:[] with
+        | Ok ws -> Tusk_planner.Package_graph.create ws |> Result.expect ~msg:"Failed to create empty package graph"
+        | Error _ -> panic "Failed to create empty workspace")
   in
   let new_state = { state with workspace; package_graph; load_errors } in
   send client_pid
@@ -131,8 +131,8 @@ and handle_get_package_info state client_pid package_name =
                 package =
                   {
                     name = package_name;
-                    path = Path.of_string "" |> Result.unwrap;
-                    relative_path = Path.of_string "" |> Result.unwrap;
+                    path = Path.of_string "" |> Result.expect ~msg:"Failed to create empty path";
+                    relative_path = Path.of_string "" |> Result.expect ~msg:"Failed to create empty relative path";
                     dependencies = [];
                     binaries = [];
                     library = None;
@@ -205,7 +205,7 @@ and handle_find_artifact state client_pid package kind name =
         Log.info "Server: Package '%s' not found in workspace" package;
         Protocol.ServerResponse
           (Protocol.ArtifactNotFound
-             { error = format "Package '%s' not found" package })
+             { error = "Package '" ^ package ^ "' not found" })
     | Some pkg -> (
         (* Look up package node in the graph to get its hash *)
         let package_node_opt =
@@ -216,7 +216,7 @@ and handle_find_artifact state client_pid package kind name =
             Log.info "Server: Package '%s' not found in package graph" package;
             Protocol.ServerResponse
               (Protocol.ArtifactNotFound
-                 { error = format "Package '%s' not in build graph" package })
+                 { error = "Package '" ^ package ^ "' not in build graph" })
         | Some package_node -> (
             let hash_opt =
               Tusk_planner.Package_graph.get_hash package_node
@@ -226,7 +226,7 @@ and handle_find_artifact state client_pid package kind name =
                 Log.info "Server: Package '%s' has no hash (not built)" package;
                 Protocol.ServerResponse
                   (Protocol.ArtifactNotFound
-                     { error = format "Package '%s' has not been built" package })
+                     { error = "Package '" ^ package ^ "' has not been built" })
             | Some hash -> (
                 (* Get the artifact from the store using package hash *)
                 match Tusk_store.Store.get state.store hash with
@@ -236,7 +236,7 @@ and handle_find_artifact state client_pid package kind name =
                     Protocol.ServerResponse
                       (Protocol.ArtifactNotFound
                          { error =
-                             format "Package '%s' has not been built" package
+                             "Package '" ^ package ^ "' has not been built"
                          })
                 | Some artifact ->
                     (* Find the binary file in the artifact *)
@@ -265,8 +265,7 @@ and handle_find_artifact state client_pid package kind name =
                           (Protocol.ArtifactNotFound
                              {
                                error =
-                                 format "Artifact '%s' not found in package '%s'"
-                                   name package;
+                                 "Artifact '" ^ name ^ "' not found in package '" ^ package ^ "'";
                              })))))
   in
   Log.debug "Server: Sending response";
@@ -416,7 +415,7 @@ and handle_build state client_pid target session_id =
   Log.debug "Server: handle_build called for target: %s"
     (match target with
     | Protocol.All -> "All"
-    | Protocol.Package p -> format "Package(%s)" p);
+    | Protocol.Package p -> "Package(" ^ p ^ ")");
 
   (* Rescan workspace to pick up any tusk.toml changes *)
   let (workspace, load_errors) =
@@ -424,9 +423,12 @@ and handle_build state client_pid target session_id =
     |> Result.expect ~msg:"tusk_server: workspace scan failed"
   in
   let package_graph = 
-    Tusk_planner.Package_graph.create workspace 
-    |> Result.unwrap_or ~default:(Tusk_planner.Package_graph.create 
-        (Workspace.make ~root:workspace.root ~packages:[]) |> Result.unwrap)
+    match Tusk_planner.Package_graph.create workspace with
+    | Ok graph -> graph
+    | Error _ -> 
+        (match Workspace.make ~root:workspace.root ~packages:[] with
+        | Ok ws -> Tusk_planner.Package_graph.create ws |> Result.expect ~msg:"Failed to create empty package graph"
+        | Error _ -> panic "Failed to create empty workspace")
   in
   let updated_state = { state with workspace; package_graph; load_errors } in
 
@@ -443,7 +445,7 @@ let write_daemon_files ~workspace ~port =
   let home =
     match Env.home_dir () with
     | Some h -> h
-    | None -> failwith "Failed to get home directory"
+    | None -> panic "Failed to get home directory"
   in
   let project_id = Workspace.project_id workspace in
   let daemon_path =
@@ -459,8 +461,8 @@ let write_daemon_files ~workspace ~port =
   let pid_file = Path.(daemon_path / Path.v "server.pid") in
   let port_file = Path.(daemon_path / Path.v "server.port") in
 
-  let _ = Fs.write (string_of_int pid) pid_file in
-  let _ = Fs.write (string_of_int port) port_file in
+  let _ = Fs.write (Int.to_string pid) pid_file in
+  let _ = Fs.write (Int.to_string port) port_file in
   Log.debug "Wrote daemon files: pid=%d, port=%d" pid port
 
 let start_with_listener () =
@@ -520,9 +522,9 @@ let start_with_listener () =
           ) missing;
           Log.warn "Build operations will report this error to clients.";
           (* Create an empty graph - actual build will fail with proper error *)
-          Tusk_planner.Package_graph.create 
-            (Workspace.make ~root:workspace.root ~packages:[])
-          |> Result.unwrap
+          (match Workspace.make ~root:workspace.root ~packages:[] with
+          | Ok ws -> Tusk_planner.Package_graph.create ws |> Result.expect ~msg:"Failed to create empty package graph"
+          | Error _ -> panic "Failed to create empty workspace")
     in
     let state =
       {

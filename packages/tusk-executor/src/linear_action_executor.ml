@@ -130,7 +130,7 @@ let run_action ocamlc sandbox_dir action =
       | Ok () -> Tusk_toolchain.Ocamlc.Success "Copied"
       | Error _ ->
           Tusk_toolchain.Ocamlc.Failed
-            (format "Copy failed: %s -> %s" (Path.to_string source)
+            ("Copy failed: " ^ Path.to_string source ^ " -> " ^
                (Path.to_string destination)))
   | Action.WriteFile { destination; content } -> (
       let dest_path = Path.join sandbox_dir destination in
@@ -145,7 +145,7 @@ let run_action ocamlc sandbox_dir action =
           let msg = IO.error_message err in
           Log.error "WriteFile: failed - %s" msg;
           Tusk_toolchain.Ocamlc.Failed
-            (format "Write failed: %s - %s" (Path.to_string destination) msg))
+            ("Write failed: " ^ Path.to_string destination ^ " - " ^ msg))
 
 let execute_actions toolchain sandbox_dir actions =
   let ocamlc = Tusk_toolchain.ocamlc toolchain in
@@ -227,7 +227,7 @@ let execute_node ~completed toolchain sandbox_dir (node : Action_node.t) =
           status =
             Failed
               (ExecutionFailed
-                 { message = format "Failed to copy sources: %s" msg });
+                 { message = "Failed to copy sources: " ^ msg });
           duration;
           started_at = start;
           completed_at;

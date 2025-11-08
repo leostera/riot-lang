@@ -107,7 +107,7 @@ let execute (client : Tusk_client.t) (req : request) : response =
           messages :=
             !messages
             @ [
-                format "Build failed: %s (%d packages built, %d failed)"
+                "Build failed: " ^ err_msg ^ " (" ^ Int.to_string (List.length results - List.length failed) ^ " packages built, " ^ Int.to_string (List.length failed) ^ " failed)"
                   (String.concat ", " failed_packages)
                   stats.packages_built stats.packages_failed;
               ])
@@ -126,7 +126,7 @@ let execute (client : Tusk_client.t) (req : request) : response =
         match e with
         | Tusk_client.JsonrpcError je -> Tusk_client.jsonrpc_error_to_string je
         | Tusk_client.PackageNotFound { package_name; available_packages } ->
-            format "Package not found: %s (available: %s)" package_name
+            "Package not found: %s (available: " ^ package_name ^ ")"
               (String.concat ", " available_packages)
         | Tusk_client.UnexpectedEvent { reason; _ } -> reason
       in

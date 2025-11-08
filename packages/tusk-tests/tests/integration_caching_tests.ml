@@ -241,7 +241,7 @@ let test_multi_package_workspace () =
     let store = Tusk_store.Store.create ~workspace in
     let package_graph = Tusk_planner.Package_graph.create workspace in
 
-    if List.length workspace.packages <> 2 then
+    if List.length workspace.packages != 2 then
       Error
         (format "Expected 2 packages, got %d" (List.length workspace.packages))
     else
@@ -300,7 +300,7 @@ let test_multi_package_dependency_order () =
         match lib_b with
         | None -> Error "lib-b not found in workspace"
         | Some lib_b_pkg -> (
-            if List.length lib_b_pkg.dependencies <> 1 then
+            if List.length lib_b_pkg.dependencies != 1 then
               Error
                 (format "Expected lib-b to have 1 dependency, got %d"
                    (List.length lib_b_pkg.dependencies))

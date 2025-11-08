@@ -116,7 +116,7 @@ let test_hash_action_different () =
   in
   let hash1 = Tusk_executor.Action_executor.hash_action action1 in
   let hash2 = Tusk_executor.Action_executor.hash_action action2 in
-  if Crypto.Digest.hex hash1 <> Crypto.Digest.hex hash2 then Ok ()
+  if Crypto.Digest.hex hash1 != Crypto.Digest.hex hash2 then Ok ()
   else Error "Expected different actions to have different hashes"
 
 let test_deps_satisfied_all_built () =
@@ -231,7 +231,7 @@ let test_execute_actions_write_file () =
                   else Error "Content mismatch"
               | Error _ -> Error "Failed to read output"
             else Error "Output file not created"
-        | Error msg -> Error (format "execute_actions failed: %s" msg))
+        | Error msg -> Error ("execute_actions failed: " ^ msg))
   with
   | Ok r -> r
   | Error _ -> Error "Tempdir creation failed"
@@ -259,7 +259,7 @@ let test_execute_actions_copy_file () =
         | Ok () ->
             if Fs.exists abs_dst |> Result.unwrap_or ~default:false then Ok ()
             else Error "Destination file not created"
-        | Error msg -> Error (format "execute_actions failed: %s" msg))
+        | Error msg -> Error ("execute_actions failed: " ^ msg))
   with
   | Ok r -> r
   | Error _ -> Error "Tempdir creation failed"
@@ -333,7 +333,7 @@ let test_empty_graph_early_exit () =
             then Ok ()
             else
               Error
-                (format "Expected 0 completed in <100ms, got %d in %dms"
+                ("Expected 0 completed in <100ms, got " ^ Int.to_string
                    completed_count
                    (Time.Duration.to_millis duration))))
   with

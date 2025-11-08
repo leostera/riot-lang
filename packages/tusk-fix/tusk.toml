@@ -1,9 +1,9 @@
 [package]
-name = "tusk_fix"
+name = "tusk-fix"
 version = "0.1.0"
 
 [[bin]]
-name = "tusk_fix"
+name = "tusk-fix"
 path = "src/main.ml"
 
 [dependencies]

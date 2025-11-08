@@ -52,7 +52,7 @@ let daemon_exists ~workspace =
               (match e with
               | `Connection_refused -> "connection refused"
               | `Closed -> "connection closed"
-              | `System_error msg -> format "system error: %s" msg);
+              | `System_error msg -> "system error: " ^ msg);
             false
       in
       if is_server_running then
@@ -122,8 +122,8 @@ let of_workspace ~workspace =
           (* File descriptors were consumed by into_fd, no need to close *)
 
           (* Write PID and port files *)
-          let _ = Fs.write (string_of_int pid) pid_file in
-          let _ = Fs.write (string_of_int port) port_file in
+          let _ = Fs.write (Int.to_string pid) pid_file in
+          let _ = Fs.write (Int.to_string port) port_file in
 
           (* Give the server more time to start up since it's detached *)
           Kernel.Time.sleep 1.0;

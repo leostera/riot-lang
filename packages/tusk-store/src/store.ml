@@ -1,5 +1,6 @@
 open Std
 open Std.Iter
+open Std.Collections
 
 open Tusk_model
 (** Store - Content-addressable storage for build artifacts **)
@@ -17,8 +18,7 @@ let create ~(workspace : Workspace.t) =
   Fs.create_dir_all store_dir
   |> Result.expect
        ~msg:
-         (format "Failed to create store directory: %s"
-            (Path.to_string store_dir));
+         ("Failed to create store directory: " ^ Path.to_string store_dir);
   { root_dir = store_dir }
 
 (** Get the path for a given hash in the store *)
@@ -38,15 +38,13 @@ let promote store hash ~target_dir =
       Fs.create_dir_all target_dir
       |> Result.expect
            ~msg:
-             (format "Failed to create target directory: %s"
-                (Path.to_string target_dir));
+             ("Failed to create target directory: " ^ Path.to_string target_dir);
 
       let reader =
         Fs.read_dir hash_dir
         |> Result.expect
              ~msg:
-               (format "Failed to read hash directory: %s"
-                  (Path.to_string hash_dir))
+               ("Failed to read hash directory: " ^ Path.to_string hash_dir)
       in
       let rec copy_files () =
         match MutIterator.next reader with
@@ -62,22 +60,19 @@ let promote store hash ~target_dir =
                   Fs.copy ~src ~dst
                   |> Result.expect
                        ~msg:
-                         (format "Failed to copy file: %s -> %s"
-                            (Path.to_string src) (Path.to_string dst));
+                         ("Failed to copy file: " ^ Path.to_string src ^ " -> " ^ Path.to_string dst);
                   copy_files ()
               | Ok false -> copy_files ()
               | Error _ ->
                   panic
-                    (format "Failed to check if %s is a file"
-                       (Path.to_string src)))
+                    ("Failed to check if " ^ Path.to_string src ^ " is a file"))
       in
       copy_files ();
       Ok ()
   | Ok false -> Error "Hash not found in store"
   | Error _ ->
       panic
-        (format "Failed to check if hash directory exists: %s"
-           (Path.to_string hash_dir))
+        ("Failed to check if hash directory exists: " ^ Path.to_string hash_dir)
 
 (** Store artifacts from sandbox to content-addressable store *)
 let store_artifacts store ~package hash sandbox_dir declared_outputs =
@@ -86,7 +81,7 @@ let store_artifacts store ~package hash sandbox_dir declared_outputs =
   Fs.create_dir_all hash_dir
   |> Result.expect
        ~msg:
-         (format "Failed to create hash directory: %s" (Path.to_string hash_dir));
+         ("Failed to create hash directory: " ^ Path.to_string hash_dir);
 
   (* Copy declared outputs to store and track what was actually stored *)
   let stored_files_with_sizes =
@@ -99,14 +94,12 @@ let store_artifacts store ~package hash sandbox_dir declared_outputs =
             Fs.copy ~src ~dst
             |> Result.expect
                  ~msg:
-                   (format "Failed to store artifact: %s -> %s"
-                      (Path.to_string src) (Path.to_string dst));
+                   ("Failed to store artifact: " ^ Path.to_string src ^ " -> " ^ Path.to_string dst);
             let size =
               Fs.metadata dst
               |> Result.expect
                    ~msg:
-                     (format "Failed to get metadata for %s"
-                        (Path.to_string dst))
+                     ("Failed to get metadata for " ^ Path.to_string dst)
               |> Fs.Metadata.len
             in
             (dst, size) :: acc
@@ -157,7 +150,7 @@ let save store ~package ~hash ~sandbox_dir ~outs =
         let out_str = Path.to_string out_path in
         if String.starts_with ~prefix:sandbox_str out_str then
           let relative_start = sandbox_len + 1 in
-          Stdlib.String.sub out_str relative_start
+          String.sub out_str relative_start
             (String.length out_str - relative_start)
         else Path.basename out_path)
       outs

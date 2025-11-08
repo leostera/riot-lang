@@ -58,16 +58,16 @@ let check_binaries_exist toolchain =
   with
   | Ok true, Ok true, Ok true -> Ok ()
   | Ok false, _, _ ->
-      Error (format "ocamlc not found at %s" (Path.to_string ocamlc_path))
+      Error ("ocamlc not found at " ^ Path.to_string ocamlc_path)
   | _, Ok false, _ ->
       Error
-        (format "ocamlopt not found at %s" (Path.to_string toolchain.ocamlopt))
+        ("ocamlopt not found at " ^ Path.to_string toolchain.ocamlopt)
   | _, _, Ok false ->
-      Error (format "ocamldep not found at %s" (Path.to_string ocamldep_path))
+      Error ("ocamldep not found at " ^ Path.to_string ocamldep_path)
   | Error err, _, _
   | _, Error err, _
   | _, _, Error err ->
-      Error (format "Failed to check binaries: %s" (IO.error_message err))
+      Error ("Failed to check binaries: " ^ IO.error_message err)
 
 let init ~config =
   let version = config.Tusk_model.Toolchain_config.version in
@@ -88,8 +88,7 @@ let init ~config =
       | Ok () -> Ok toolchain
       | Error _ ->
           Error
-            (format "Toolchain at %s is incomplete"
-               (Path.to_string toolchain_path)))
+            ("Toolchain at " ^ Path.to_string toolchain_path ^ " is incomplete"))
   | _ -> (
       (* Try to use ./ocaml/compiler if it exists *)
       let local_compiler = Path.v "./ocaml/compiler" in
@@ -152,10 +151,9 @@ let check_health toolchain =
           Ok ()
       | Ok output ->
           Error
-            (format "ocamlc exists but failed: exit code %d"
-               output.Command.status)
+            ("ocamlc exists but failed: exit code " ^ Int.to_string output.Command.status)
       | Error (Command.SystemError msg) ->
-          Error (format "ocamlc health check failed: %s" msg))
+          Error ("ocamlc health check failed: " ^ msg))
 
 let hash t =
   let hasher = Crypto.Sha256.create () in

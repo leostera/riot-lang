@@ -17,7 +17,7 @@ let init ~workspace ~load_errors ~toolchain ~store ~concurrency ~session_id ~cli
        (Protocol.BuildStarted { session_id; started_at = Datetime.now () }));
 
   let handler_name =
-    format "build-worker-%s" (Session_id.to_string session_id)
+    "build-worker-" ^ Session_id.to_string session_id
   in
   Telemetry.attach handler_name (fun event ->
       send client_pid
@@ -45,7 +45,7 @@ let init ~workspace ~load_errors ~toolchain ~store ~concurrency ~session_id ~cli
             {
               session_id;
               failed_at = Datetime.now ();
-              reason = format "Could not load external packages:\n%s" error_msg;
+              reason = "Could not load external packages:\n" ^ error_msg;
             }))
   ) else (
     Log.debug "Build worker calling Coordinator.build_workspace";
@@ -154,7 +154,7 @@ let init ~workspace ~load_errors ~toolchain ~store ~concurrency ~session_id ~cli
             grouped
             |> HashMap.into_iter
             |> Iterator.map ~fn:(fun (pkg, deps) ->
-                format "  • %s requires: %s" pkg (String.concat ", " (List.rev deps)))
+                "  • " ^ pkg ^ " requires: " ^ String.concat ", " (List.rev deps))
             |> Iterator.to_list
             |> String.concat "\n"
           in
@@ -165,7 +165,7 @@ let init ~workspace ~load_errors ~toolchain ~store ~concurrency ~session_id ~cli
                   {
                     session_id;
                     failed_at = Datetime.now ();
-                    reason = format "Missing dependencies:\n%s" error_msg;
+                    reason = "Missing dependencies:\n" ^ error_msg;
                   }))
       | Tusk_planner.Workspace_planner.PackageLoadFailed { errors } ->
           Log.error "Planning failed: Could not load external packages";
@@ -185,7 +185,7 @@ let init ~workspace ~load_errors ~toolchain ~store ~concurrency ~session_id ~cli
                   {
                     session_id;
                     failed_at = Datetime.now ();
-                    reason = format "Could not load external packages:\n  %s" error_msg;
+                    reason = "Could not load external packages:\n  " ^ error_msg;
                   }))
     )
   );

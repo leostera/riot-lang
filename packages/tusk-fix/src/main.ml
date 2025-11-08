@@ -41,7 +41,7 @@ let lint_file pipeline file_path =
         let result = Pipeline.run pipeline ~filename source in
         { file = file_path; source; diagnostics = result.diagnostics }
       with exn ->
-        let error_msg = format "Parser error: %s" (Printexc.to_string exn) in
+        let error_msg = "Parser error: " ^ Printexc.to_string exn in
         let diag =
           Diagnostic.make ~severity:Error ~message:error_msg
             ~span:(Syn.Ceibo.Span.make ~start:0 ~end_:0)

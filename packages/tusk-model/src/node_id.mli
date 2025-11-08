@@ -15,5 +15,3 @@ val compare : t -> t -> int
 val equal : t -> t -> bool
 (** Check if two node IDs are equal *)
 
-val pp : Format.formatter -> t -> unit
-(** Pretty printer for node IDs *)

@@ -66,9 +66,7 @@ let test_empty_graph_completes_immediately () =
             then Ok ()
             else
               Error
-                (format "Expected 0 completed in <100ms, got %d in %dms"
-                   completed_count
-                   (Time.Duration.to_millis duration))))
+                ("Expected 0 completed in <100ms, got " ^ Int.to_string completed_count ^ " in " ^ Int.to_string (Time.Duration.to_millis duration) ^ "ms")))
   with
   | Ok (Ok ()) -> Ok ()
   | Ok (Error e) -> Error e
@@ -122,7 +120,7 @@ let test_independent_actions_continue_on_failure () =
             if List.length completed = 2 then Ok ()
             else
               Error
-                (format "Expected 2 completed, got %d" (List.length completed))))
+                ("Expected 2 completed, got " ^ Int.to_string (List.length completed))))
   with
   | Ok (Ok ()) -> Ok ()
   | Ok (Error e) -> Error e
@@ -256,7 +254,7 @@ let test_parallel_execution_timing () =
             if List.length completed = 4 then Ok ()
             else
               Error
-                (format "Expected 4 completed, got %d" (List.length completed))))
+                ("Expected 4 completed, got " ^ Int.to_string (List.length completed))))
   with
   | Ok (Ok ()) -> Ok ()
   | Ok (Error e) -> Error e

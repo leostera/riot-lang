@@ -22,14 +22,14 @@ let convert_action_error = function
 
 let package_error_to_string = function
   | PlanningFailed err ->
-      format "Planning failed: %s" (Planning_error.to_string err)
-  | ExecutionFailed { message } -> format "Execution failed: %s" message
-  | ActionExecutionFailed { message } -> format "Action failed: %s" message
+      "Planning failed: " ^ Planning_error.to_string err
+  | ExecutionFailed { message } -> "Execution failed: " ^ message ^ ""
+  | ActionExecutionFailed { message } -> "Action failed: " ^ message ^ ""
   | ActionOutputsNotCreated { missing } ->
-      format "Outputs not created: %s"
+      "Outputs not created: " ^
         (String.concat ", " (List.map Path.to_string missing))
   | ActionDependenciesFailed { failed } ->
-      format "Dependencies failed: %d actions" (List.length failed)
+      "Dependencies failed: " ^ Int.to_string (List.length failed) ^ " actions"
 
 let package_error_to_json = function
   | PlanningFailed planning_err ->
@@ -160,7 +160,7 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
       let missing_names = List.map (fun p -> p.Package.name) missing in
       let duration = Instant.duration_since ~earlier:start (Instant.now ()) in
       let error =
-        format "Missing dependencies: %s" (String.concat ", " missing_names)
+        "Missing dependencies: " ^ String.concat ", " missing_names
       in
       (* Don't mark as Failed - this is a transient planning state *)
       let error_variant = ExecutionFailed { message = error } in
@@ -175,7 +175,7 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
   | Ok (FailedDependencies { failed; _ }) ->
       let failed_names = List.map (fun p -> p.Package.name) failed in
       let duration = Instant.duration_since ~earlier:start (Instant.now ()) in
-      let reason = format "needs %s" (String.concat ", " failed_names) in
+      let reason = "needs " ^ String.concat ", " failed_names in
       Log.info "Package %s: SKIPPED (%s)" package.name reason;
 
       (* Mark as Skipped in graph so dependents see it as failed *)
@@ -191,7 +191,7 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
       {
         package;
         status =
-          Failed (ExecutionFailed { message = format "Skipped (%s)" reason });
+          Failed (ExecutionFailed { message = "Skipped (" ^ reason ^ ")" });
         duration;
       }
   | Ok (Planned { module_graph; action_graph; hash = package_hash; depset; _ })
@@ -211,7 +211,7 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
             Tusk_store.Store.promote store package_hash ~target_dir
             |> Result.expect
                  ~msg:
-                   (format "Failed to promote cached artifacts for %s"
+                   ("Failed to promote cached artifacts for " ^
                       package.name)
           in
 
@@ -302,7 +302,7 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
                       (ExecutionFailed
                          {
                            message =
-                             format "Failed to save artifacts for %s: %s"
+                             "Failed to save artifacts for " ^ package.name ^ ": " ^
                                package.name msg;
                          }))
           in
@@ -315,7 +315,7 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
               let duration =
                 Instant.duration_since ~earlier:start (Instant.now ())
               in
-              let error_msg = format "Exception: %s" (Printexc.to_string exn) in
+              let error_msg = "Exception: " ^ Printexc.to_string exn in
               let error = ExecutionFailed { message = error_msg } in
               (* Mark as Failed in package graph *)
               (match
@@ -338,7 +338,7 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
               Tusk_store.Store.promote store package_hash ~target_dir
               |> Result.expect
                    ~msg:
-                     (format "Failed to promote artifacts for %s" package.name);
+                     ("Failed to promote artifacts for " ^ package.name);
 
               (* Mark as Built with Fresh status *)
               (match

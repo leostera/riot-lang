@@ -516,7 +516,7 @@ let from_json (json : Data.Json.t) : (Telemetry.event, Data.Json.t) result =
                "Action events require Action_node.t (not serializable)")
       | Some (Data.Json.String typ) ->
           Error
-            (Data.Json.String (format "Unknown telemetry event type: %s" typ))
+            (Data.Json.String ("Unknown telemetry event type: " ^ typ))
       | None ->
           Error (Data.Json.String "Missing 'type' field in telemetry event")
       | _ -> Error (Data.Json.String "Invalid 'type' field in telemetry event"))

@@ -1,4 +1,7 @@
 open Std
+open Std.Collections
+  open Std.Sync
+  open Std.Sync.Cell
 
 let tusk_toml = Path.v "tusk.toml"
 
@@ -30,17 +33,17 @@ let rec find_workspace_root (start_dir : Path.t) : Path.t option =
       | Ok content -> (
           match Data.Toml.parse content with
           | Ok (Data.Toml.Table items) -> (
-              let has_workspace = List.assoc_opt "workspace" items <> None in
+              let has_workspace = List.assoc_opt "workspace" items != None in
               if has_workspace then Some start_dir
               else
                 match Path.parent start_dir with
-                | Some parent when parent <> start_dir ->
+                | Some parent when parent != start_dir ->
                     find_workspace_root parent
                 | _ -> None)
           | _ -> None))
   | Ok false | Error _ -> (
       match Path.parent start_dir with
-      | Some parent when parent <> start_dir -> find_workspace_root parent
+      | Some parent when parent != start_dir -> find_workspace_root parent
       | _ -> None)
 
 let load_member_package (workspace_root : Path.t) (member : string)
@@ -65,7 +68,7 @@ let load_member_package (workspace_root : Path.t) (member : string)
   | _ -> None
 
 let rec load_external_package (workspace_root : Path.t)
-    (dep : Package.dependency) ~(seen : string list ref) 
+    (dep : Package.dependency) ~(seen : string list Cell.t) 
     ~(workspace_deps : Package.dependency list) ~(dependant : string option) 
     : (Package.t list * load_error list) =
   match dep.source with
@@ -141,7 +144,7 @@ let build_workspace (workspace_root : Path.t)
       workspace_manifest.members
   in
 
-  let seen = ref (List.map (fun (p : Package.t) -> p.name) member_packages) in
+  let seen = Cell.create (List.map (fun (p : Package.t) -> p.name) member_packages) in
   
   (* Load workspace-level dependencies first *)
   let workspace_results =
@@ -183,18 +186,17 @@ let scan (path : Path.t) : ((Workspace.t * load_error list), string) result =
             match Data.Toml.parse content with
             | Error err ->
                 Error
-                  (format "Failed to parse workspace TOML: %s"
-                     (Data.Toml.error_to_string err))
+                  ("Failed to parse workspace TOML: " ^ Data.Toml.error_to_string err)
             | Ok toml -> (
                 match Workspace.manifest_from_toml toml with
                 | Error msg ->
-                    Error (format "Failed to parse workspace manifest: %s" msg)
+                    Error ("Failed to parse workspace manifest: " ^ msg)
                 | Ok workspace_manifest ->
                     let (workspace, errors) =
                       build_workspace workspace_root workspace_manifest
                     in
                     Ok (workspace, errors))))
-  with exn -> Error (format "Scan failed: %s" (Exception.to_string exn))
+  with exn -> Error ("Scan failed: " ^ Exception.to_string exn)
 
 let load ~root = scan root
 
@@ -202,12 +204,12 @@ let load_error_to_string = function
   | PackageNotFound { dependant; package; path } ->
       let dep_str = match dependant with
         | None -> "workspace"
-        | Some name -> format "package '%s'" name
+        | Some name -> "package '" ^ name ^ "'"
       in
-      format "%s: could not find tusk.toml for '%s' at path %s" dep_str package path
+      dep_str ^ ": could not find tusk.toml for '" ^ package ^ "' at path " ^ path
   | PackageTomlReadFailed { package; path } ->
-      format "package '%s': failed to read tusk.toml at path %s" package path
+      "package '" ^ package ^ "': failed to read tusk.toml at path " ^ path
   | PackageTomlParseFailed { package; path } ->
-      format "package '%s': failed to parse tusk.toml at path %s" package path
+      "package '" ^ package ^ "': failed to parse tusk.toml at path " ^ path
   | PackageFromTomlFailed { package; path } ->
-      format "package '%s': failed to load from tusk.toml at path %s" package path
+      "package '" ^ package ^ "': failed to load from tusk.toml at path " ^ path

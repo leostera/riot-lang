@@ -65,7 +65,7 @@ let run matches =
       println "Building %s (from package %s)..." binary_name package_name;
       if not (build_package package_name) then (
         println "\n❌ Failed to build %s, nothing was installed" binary_name;
-        Error (Failure (format "Failed to build %s" binary_name)))
+        Error (Failure ("Failed to build " ^ binary_name)))
       else
         let root =
           Env.current_dir () |> Result.expect ~msg:"Failed to get cwd"
@@ -96,7 +96,7 @@ let run matches =
             println "❌ Binary %s not found after build" binary_name;
             println
               "Note: Only packages with binaries in [[bin]] can be installed";
-            Error (Failure (format "Binary not found: %s" binary_name))
+            Error (Failure ("Binary not found: " ^ binary_name))
         | Some binary_path ->
             let perms = Fs.Permissions.executable in
 
@@ -138,7 +138,7 @@ let run matches =
       Tusk_client.close client;
       println "❌ Binary '%s' not found in workspace" binary_name;
       println "Note: Make sure the binary is declared in a [[bin]] section";
-      Error (Failure (format "Binary not found: %s" binary_name))
+      Error (Failure ("Binary not found: " ^ binary_name))
   | Error msg ->
       Tusk_client.close client;
       println "❌ Error: %s" msg;

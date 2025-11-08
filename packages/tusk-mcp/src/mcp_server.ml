@@ -229,7 +229,7 @@ module TuskMcp = struct
                     in
                     Ok (CallTool (FormatCode { code; file_path }))
                 | _ -> Error (Json.String "Missing arguments for formatCode"))
-            | _ -> Error (Json.String (format "Unknown tool: %s" name)))
+            | _ -> Error (Json.String ("Unknown tool: " ^ name)))
         | _ -> Error (Json.String "tools/call requires named parameters"))
     | "resources/list" -> Ok ListResources
     | "resources/read" -> (
@@ -241,7 +241,7 @@ module TuskMcp = struct
         | _ -> Error (Json.String "resources/read requires named parameters"))
     | "ping" -> Ok Ping
     | "shutdown" -> Ok Shutdown
-    | _ -> Error (Json.String (format "Unknown method: %s" method_))
+    | _ -> Error (Json.String ("Unknown method: " ^ method_))
 
   let response_to_json = function
     | InitializeResult

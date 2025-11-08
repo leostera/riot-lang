@@ -9,14 +9,14 @@ type t =
 
 let to_string = function
   | CyclicDependency { cycle } ->
-      format "Cyclic dependency detected: %s" (String.concat " -> " cycle)
+      "Cyclic dependency detected: " ^ String.concat " -> " cycle
   | ScanFailed { path; reason } ->
-      format "Failed to scan %s: %s" (Path.to_string path) reason
+      "Failed to scan " ^ Path.to_string path ^ ": " ^ reason
   | DependencyAnalysisFailed { reason } ->
-      format "Dependency analysis failed: %s" reason
-  | GraphBuildFailed { reason } -> format "Graph build failed: %s" reason
-  | Exception { exn } ->
-      format "Unexpected exception: %s" (Printexc.to_string exn)
+      "Dependency analysis failed: " ^ reason
+  | GraphBuildFailed { reason } -> "Graph build failed: " ^ reason
+  | UnexpectedException exn ->
+      "Unexpected exception: " ^ Printexc.to_string exn
 
 let to_json = function
   | CyclicDependency { cycle } ->

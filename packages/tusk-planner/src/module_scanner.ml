@@ -46,7 +46,7 @@ let compare_entries e1 e2 =
     | Dir _ -> 5
   in
   match (get_priority e1, get_priority e2) with
-  | p1, p2 when p1 <> p2 -> Int.compare p1 p2
+  | p1, p2 when p1 != p2 -> Int.compare p1 p2
   | _ -> String.compare (get_name e1) (get_name e2)
 
 (** Recursively scan a directory and build a hierarchical entry list.

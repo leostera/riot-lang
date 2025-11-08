@@ -12,7 +12,7 @@ let format ~displayed_packages (event : Telemetry.event) =
       if HashSet.contains displayed_packages package.name then ""
       else
         let _ = HashSet.insert displayed_packages package.name in
-        format "   \027[1;32mCompiling\027[0m %s" package.name
+        "   \027[1;32mCompiling\027[0m " ^ package.name
   | Telemetry_events.BuildCompleted { package; status; duration; _ } -> (
       (* If we already showed it as BuildStarted, don't show again *)
       (* But if cached and not shown yet, show with (cached) *)
@@ -21,8 +21,7 @@ let format ~displayed_packages (event : Telemetry.event) =
           if HashSet.contains displayed_packages package.name then ""
           else
             let _ = HashSet.insert displayed_packages package.name in
-            format "   \027[1;32mCompiling\027[0m %s \027[1;90m(cached)\027[0m"
-              package.name
+            "   \027[1;32mCompiling\027[0m " ^ package.name ^ " \027[1;90m(cached)\027[0m"
       | `Fresh -> "")
   | Telemetry_events.BuildFailed { package; error; _ } ->
       let error_msg =
@@ -30,38 +29,37 @@ let format ~displayed_packages (event : Telemetry.event) =
         | Telemetry_events.PlanningFailed planning_err -> (
             match planning_err with
             | Tusk_planner.Planning_error.CyclicDependency { cycle } ->
-                format "Cyclic dependency detected:\n         %s"
-                  (String.concat " ->\n         " cycle)
+                "Cyclic dependency detected:\n         " ^
+                  String.concat " ->\n         " cycle
             | _ ->
-                format "Planning failed: %s"
-                  (Tusk_planner.Planning_error.to_string planning_err))
+                "Planning failed: " ^
+                  Tusk_planner.Planning_error.to_string planning_err)
         | Telemetry_events.ExecutionFailed { message } ->
-            format "Execution failed: %s" message
+            "Execution failed: " ^ message
         | Telemetry_events.ActionExecutionFailed { message } ->
-            format "Action failed: %s" message
+            "Action failed: " ^ message
         | Telemetry_events.ActionOutputsNotCreated { missing } ->
-            format "Expected outputs not created: %s"
-              (String.concat ", " (List.map Path.to_string missing))
+            "Expected outputs not created: " ^
+              String.concat ", " (List.map Path.to_string missing)
         | Telemetry_events.ActionDependenciesFailed { failed } ->
-            format "Dependencies failed: %d actions" (List.length failed)
+            "Dependencies failed: " ^ Int.to_string (List.length failed) ^ " actions"
       in
-      format "      \027[1;31mFailed\027[0m %s\n%s" package.name error_msg
+      "      \027[1;31mFailed\027[0m " ^ package.name ^ "\n" ^ error_msg
   | Telemetry_events.BuildSkipped { package; reason; _ } ->
-      format "     \027[1;33mSkipped\027[0m %s (%s)" package.name reason
+      "     \027[1;33mSkipped\027[0m " ^ package.name ^ " (" ^ reason ^ ")"
   (* Cache events - these are action-level, not commonly emitted *)
   | Telemetry_events.CacheHit { package; _ } ->
       (* Only show if we haven't displayed this package yet *)
       if HashSet.contains displayed_packages package.name then ""
       else
         let _ = HashSet.insert displayed_packages package.name in
-        format "   \027[1;32mCompiling\027[0m %s \027[1;90m(cached)\027[0m"
-          package.name
+        "   \027[1;32mCompiling\027[0m " ^ package.name ^ " \027[1;90m(cached)\027[0m"
   | Telemetry_events.CacheMiss { package; _ } ->
       (* Only show if we haven't displayed this package yet *)
       if HashSet.contains displayed_packages package.name then ""
       else
         let _ = HashSet.insert displayed_packages package.name in
-        format "   \027[1;32mCompiling\027[0m %s" package.name
+        "   \027[1;32mCompiling\027[0m " ^ package.name
   (* Action events - mostly silent, let package-level events show *)
   | Telemetry_events.ActionStarted _ -> ""
   | Telemetry_events.ActionCompleted _ -> ""
@@ -74,12 +72,12 @@ let format ~displayed_packages (event : Telemetry.event) =
       { total_duration; cached_count; built_count; failed_count; _ } ->
       if failed_count = 0 then
         let total_secs =
-          float_of_int (Time.Duration.to_millis total_duration) /. 1000.0
+          Float.of_int (Time.Duration.to_millis total_duration) /. 1000.0
         in
-        format "   \027[1;32mFinished\027[0m in %.2fs (%d built, %d cached)"
-          total_secs built_count cached_count
+        "   \027[1;32mFinished\027[0m in " ^ Float.to_string total_secs ^ "s (" ^ 
+          Int.to_string built_count ^ " built, " ^ Int.to_string cached_count ^ " cached)"
       else
-        format "   \027[1;31mFailed\027[0m with %d errors (%d built, %d cached)"
-          failed_count built_count cached_count
+        "   \027[1;31mFailed\027[0m with " ^ Int.to_string failed_count ^ " errors (" ^ 
+          Int.to_string built_count ^ " built, " ^ Int.to_string cached_count ^ " cached)"
   (* Catch-all for unknown or future telemetry events *)
   | _ -> ""

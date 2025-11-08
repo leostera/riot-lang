@@ -1,4 +1,5 @@
 open Std
+open Std.Collections
 open Tusk_model
 
 (** OCaml compiler command generation and execution *)
@@ -11,8 +12,8 @@ let path t = t
 (** Helper to run a command in a specific directory without using Process cwd
     This avoids "Too many open files" errors from excessive getcwd() calls *)
 let run_in_dir ~cwd ~env cmd_str =
-  let cmd_with_cd = format "cd %s && %s" (Path.to_string cwd) cmd_str in
-  Log.debug "  $ %s" cmd_with_cd;
+  let cmd_with_cd = "cd " ^ Path.to_string cwd ^ " && " ^ cmd_str in
+  Log.debug ("  $ "^ cmd_with_cd);
   Command.make ~env ~args:[ "-c"; cmd_with_cd ] "sh"
 
 (** Compiler warnings that can be suppressed *)
@@ -112,7 +113,7 @@ let run t ~cwd ?(includes = []) ?(libs = []) ?(output = None) ?(mode = Compile)
       libs_str;
       sources_str;
     ]
-    |> List.filter (fun s -> s <> "") (* Remove empty strings *)
+    |> List.filter (fun s -> s != "") (* Remove empty strings *)
     |> String.concat " "
   in
 
@@ -124,7 +125,7 @@ let run t ~cwd ?(includes = []) ?(libs = []) ?(output = None) ?(mode = Compile)
   | Ok output when output.Command.status = 0 -> Success output.Command.stdout
   | Ok output ->
       Failed
-        (format "Command failed with status %d: %s" output.Command.status
+        ("Command failed with status " ^ Int.to_string output.Command.status ^ ": " ^
            output.Command.stderr)
   | Error (Command.SystemError msg) -> Failed msg
 
@@ -135,7 +136,7 @@ let compile_interface t ~cwd ~includes ~flags ~output source =
 
   (* Interface compilation uses ocamlc (same for bytecode and native) *)
   (* If we have flags, we need to build command parts directly *)
-  if flags <> [] then
+  if flags != [] then
     let flag_args = flags_to_string flags in
     (* Check if we have an -impl flag - if so, don't add source at the end *)
     let has_impl_flag =
@@ -157,7 +158,7 @@ let compile_interface t ~cwd ~includes ~flags ~output source =
     | Ok output when output.Command.status = 0 -> Success output.Command.stdout
     | Ok output ->
         Failed
-          (format "Command failed with status %d: %s" output.Command.status
+          ("Command failed with status " ^ Int.to_string output.Command.status ^ ": " ^
              output.Command.stderr)
     | Error (Command.SystemError msg) -> Failed msg
   else
@@ -170,7 +171,7 @@ let compile_impl t ~cwd ~includes ~flags ~output source =
   let includes_with_dot = Path.v "." :: includes in
 
   (* If we have flags, we need to build command parts directly *)
-  if flags <> [] then
+  if flags != [] then
     let flag_args = flags_to_string flags in
     (* Check if we have an -impl flag - if so, don't add source at the end *)
     let has_impl_flag =
@@ -192,7 +193,7 @@ let compile_impl t ~cwd ~includes ~flags ~output source =
     | Ok output when output.Command.status = 0 -> Success output.Command.stdout
     | Ok output ->
         Failed
-          (format "Command failed with status %d: %s" output.Command.status
+          ("Command failed with status " ^ Int.to_string output.Command.status ^ ": " ^
              output.Command.stderr)
     | Error (Command.SystemError msg) -> Failed msg
   else
@@ -224,13 +225,13 @@ let generate_interface t ~cwd ~includes ~flags ~output source =
         (* Write the stdout (inferred interface) to the output file *)
         match Fs.write out.Command.stdout output with
         | Ok _ ->
-            Success (format "Generated interface %s" (Path.to_string output))
+            Success ("Generated interface " ^ Path.to_string output)
         | Error err ->
-            Failed (format "Failed to write %s: %s" (Path.to_string output) (IO.error_message err))
+            Failed ("Failed to write " ^ Path.to_string output ^ ": " ^ IO.error_message err)
       else
         (* Include stderr in the error message for debugging *)
         Failed
-          (format "ocamlc -i failed with exit code %d: %s" out.Command.status
+          ("ocamlc -i failed with exit code " ^ Int.to_string out.Command.status ^ ": " ^
              out.Command.stderr)
   | Error (Command.SystemError msg) -> Failed msg
 

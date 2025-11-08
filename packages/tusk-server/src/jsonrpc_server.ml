@@ -359,7 +359,7 @@ module Server = struct
   let handle_build ctx reply request =
     let target_str =
       match request with
-      | WireProtocol.BuildPackage pkg -> format "BuildPackage(%s)" pkg
+      | WireProtocol.BuildPackage pkg -> "BuildPackage(" ^ pkg ^ ")"
       | WireProtocol.BuildAll -> "BuildAll"
       | _ -> "Unknown"
     in

@@ -29,27 +29,33 @@ let to_string diag =
   let severity_str = severity_to_string diag.severity in
   let span_str = Syn.Ceibo.Span.to_string diag.span in
   let base_msg =
-    format "[%s] %s at %s (%s)" severity_str diag.message span_str diag.rule_id
+    "[" ^ severity_str ^ "] " ^ diag.message ^ " at " ^ span_str ^ " (" ^ diag.rule_id ^ ")"
   in
   match diag.suggestion with
   | None -> base_msg
-  | Some sugg -> format "%s\n  Suggestion: %s" base_msg sugg
+  | Some sugg -> base_msg ^ "\n  Suggestion: " ^ sugg
 
 let to_colored_string diag =
   let severity_str = severity_to_colored_string diag.severity in
   let span_str = Syn.Ceibo.Span.to_string diag.span in
   let lines =
     [
-      format "[%s] %s" severity_str diag.rule_id;
+      "[" ^ severity_str ^ "] " ^ diag.rule_id;
+      "";
+      "  at " ^ span_str;
       "";
       diag.message;
-      format "  at %s" span_str;
     ]
   in
   let lines =
     match diag.suggestion with
     | None -> lines
-    | Some sugg -> lines @ [ ""; format "  \027[1;90m→\027[0m %s" sugg ]
+    | Some sugg -> lines @ [ ""; "  \027[1;90m→\027[0m " ^ sugg ]
+  in
+  let lines =
+    match diag.suggestion with
+    | None -> lines
+    | Some sugg -> lines @ [ ""; "  \027[1;90m→\027[0m " ^ sugg ]
   in
   String.concat "\n" lines
 
@@ -74,10 +80,10 @@ let extract_code_snippet source (span : Syn.Ceibo.Span.t) =
   else None
 
 let to_formatted_output ~file ~source diag =
-  let header = format "%s:" (Path.to_string file) in
-  let severity_str = severity_to_colored_string diag.severity in
+  let header = Path.to_string file ^ ":" in
+  let severity_str = severity_to_string diag.severity in
   let basic_info =
-    [ format "[%s] %s" severity_str diag.rule_id; ""; diag.message ]
+    [ "[" ^ severity_str ^ "] " ^ diag.rule_id; ""; diag.message ]
   in
   let lines_with_snippet =
     match extract_code_snippet source diag.span with
@@ -85,115 +91,16 @@ let to_formatted_output ~file ~source diag =
         basic_info
         @ [
             "";
-            format "  \027[1;90m%d |\027[0m %s" line_num code_line;
-            format "  \027[1;90m%s |\027[0m %s"
-              (String.make (String.length (string_of_int line_num)) ' ')
-              pointer_line;
+            "  \027[1;90m" ^ Int.to_string line_num ^ " |\027[0m " ^ code_line;
+            "  \027[1;90m" ^ String.make (String.length (string_of_int line_num)) ' ' ^ " |\027[0m " ^ pointer_line;
           ]
     | None ->
-        basic_info @ [ format "  at %s" (Syn.Ceibo.Span.to_string diag.span) ]
+        basic_info @ [ "  at " ^ Syn.Ceibo.Span.to_string diag.span ]
   in
   let lines_with_suggestion =
     match diag.suggestion with
     | None -> lines_with_snippet
     | Some sugg ->
-        lines_with_snippet @ [ ""; format "  \027[1;90m→\027[0m %s" sugg ]
+        lines_with_snippet @ [ ""; "  \027[1;90m→\027[0m " ^ sugg ]
   in
-  format "%s\n%s\n\n" header (String.concat "\n" lines_with_suggestion)
-
-let to_json diag =
-  let open Data.Json in
-  let fields =
-    [
-      ("severity", String (severity_to_string diag.severity));
-      ("message", String diag.message);
-      ( "span",
-        Object [ ("start", Int diag.span.start); ("end", Int diag.span.end_) ]
-      );
-      ("rule_id", String diag.rule_id);
-    ]
-  in
-  let fields =
-    match diag.suggestion with
-    | None -> fields
-    | Some sugg -> fields @ [ ("suggestion", String sugg) ]
-  in
-  Object fields
-
-let severity diag = diag.severity
-let message diag = diag.message
-let span diag = diag.span
-let rule_id diag = diag.rule_id
-let suggestion diag = diag.suggestion
-
-type grouped = {
-  severity : severity;
-  message : string;
-  spans : Syn.Ceibo.Span.t list;
-  rule_id : string;
-  suggestion : string option;
-}
-
-let group_diagnostics diagnostics =
-  let table = Collections.HashMap.create () in
-  List.iter
-    (fun (diag : t) ->
-      let key = format "%s:%s" diag.rule_id diag.message in
-      match Collections.HashMap.get table key with
-      | Some existing ->
-          let updated =
-            { existing with spans = existing.spans @ [ diag.span ] }
-          in
-          ignore (Collections.HashMap.insert table key updated)
-      | None ->
-          let grouped =
-            {
-              severity = diag.severity;
-              message = diag.message;
-              spans = [ diag.span ];
-              rule_id = diag.rule_id;
-              suggestion = diag.suggestion;
-            }
-          in
-          ignore (Collections.HashMap.insert table key grouped))
-    diagnostics;
-  Collections.HashMap.to_list table |> List.map snd
-
-let grouped_to_formatted_output ~file ~source grouped =
-  let header = format "%s:" (Path.to_string file) in
-  let severity_str = severity_to_colored_string grouped.severity in
-  let basic_info =
-    [ format "[%s] %s" severity_str grouped.rule_id; ""; grouped.message; "" ]
-  in
-  (* Sort spans by their start position so diagnostics appear in source order *)
-  let sorted_spans =
-    List.sort
-      (fun (span_a : Syn.Ceibo.Span.t) (span_b : Syn.Ceibo.Span.t) ->
-        Int.compare span_a.start span_b.start)
-      grouped.spans
-  in
-  let snippet_lines =
-    List.filter_map
-      (fun span ->
-        match extract_code_snippet source span with
-        | Some (code_line, pointer_line, line_num) ->
-            Some
-              [
-                format "  \027[1;90m%d |\027[0m %s" line_num code_line;
-                format "  \027[1;90m%s |\027[0m %s"
-                  (String.make (String.length (string_of_int line_num)) ' ')
-                  pointer_line;
-                "";
-              ]
-        | None -> None)
-      sorted_spans
-    |> List.flatten
-  in
-  let lines_with_snippets = basic_info @ snippet_lines in
-  let lines_with_suggestion =
-    match grouped.suggestion with
-    | None -> lines_with_snippets
-    | Some sugg ->
-        lines_with_snippets @ [ ""; format "  \027[1;90m→\027[0m %s" sugg ]
-  in
-  format "%s\n%s\n\n" header (String.concat "\n" lines_with_suggestion)
+  header ^ "\n" ^ String.concat "\n" lines_with_suggestion ^ "\n\n"

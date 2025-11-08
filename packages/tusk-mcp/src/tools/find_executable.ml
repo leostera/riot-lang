@@ -82,7 +82,7 @@ let execute (client : Tusk_client.t) (req : request) : response =
             ("found", Json.Bool false);
             ( "message",
               Json.String
-                (format "Binary '%s' not found in any package" req.name) );
+                ("Binary '" ^ req.name ^ "' not found in any package") );
           ]
         |> Json.to_string
       in

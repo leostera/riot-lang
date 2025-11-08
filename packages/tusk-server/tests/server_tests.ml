@@ -170,7 +170,7 @@ let test_cache_invalidation_on_source_change () =
           check_cache_invalidation_results first_build second_build)
     in
     match result with Ok r -> r | Error _ -> Error "Tempdir creation failed"
-  with exn -> Error (format "Exception in test: %s" (Printexc.to_string exn))
+  with exn -> Error ("Exception in test: " ^ Printexc.to_string exn)
 
 let test_telemetry_events_during_build () = Ok ()
 

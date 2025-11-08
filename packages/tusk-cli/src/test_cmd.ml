@@ -92,13 +92,12 @@ let run matches =
     println "No test binaries found";
     (match (package_filter, test_prefix) with
     | (Some pkg, Some prefix) ->
-        println "Hint: No tests matching '%s:*%s*' found" pkg prefix
+        println ("Hint: No tests matching '" ^ pkg ^ ":*" ^ prefix ^ "*' found")
     | (Some pkg, None) ->
         println
-          "Hint: Make sure package '%s' has binaries ending in '_tests' or \
-           '-tests'"
-          pkg
-    | (None, Some prefix) -> println "Hint: No tests matching '*%s*' found" prefix
+          ("Hint: Make sure package '" ^ pkg ^ "' has binaries ending in '_tests' or \
+           '-tests'")
+    | (None, Some prefix) -> println ("Hint: No tests matching '*" ^ prefix ^ "*' found")
     | (None, None) -> println "Hint: Test binaries should end in '_tests' or '-tests'");
     Ok ())
   else
@@ -122,7 +121,7 @@ let run matches =
     Hashtbl.iter
       (fun pkg test_names ->
         println "";
-        println "Building package '%s'..." pkg;
+        println ("Building package '" ^ pkg ^ "'...");
         match Build.build_command (Some pkg) with
         | Ok () ->
             List.iter
@@ -139,20 +138,20 @@ let run matches =
                     in
                     let cmd = Command.make path ~args:test_args in
                     println "";
-                    println "Running %s/%s..." pkg test_name;
+                    println ("Running " ^ pkg ^ "/" ^ test_name ^ "...");
                     println "";
                     match Command.status cmd with
                     | Ok 0 -> incr passed
                     | Ok _code -> incr failed
                     | Error (Command.SystemError msg) ->
-                        println "error: %s" msg;
+                        println ("error: " ^ msg);
                         incr failed)
                 | Error msg ->
-                    println "error: %s" msg;
+                    println ("error: " ^ msg);
                     incr failed)
               test_names
         | Error _ ->
-            println "error: build failed for package '%s'" pkg;
+            println ("error: build failed for package '" ^ pkg ^ "'");
             (* Mark all tests in this package as failed *)
             failed := !failed + List.length test_names)
       tests_by_package;
@@ -161,10 +160,10 @@ let run matches =
 
     println "";
     println "Test Summary:";
-    println "  Total test suites: %d" total;
-    println "  Passed: %d" !passed;
-    println "  Failed: %d" !failed;
+    println ("  Total test suites: " ^ Int.to_string total);
+    println ("  Passed: " ^ Int.to_string !passed);
+    println ("  Failed: " ^ Int.to_string !failed);
 
     if !failed > 0 then
-      Error (Failure (format "%d test suite(s) failed" !failed))
+      Error (Failure (Int.to_string !failed ^ " test suite(s) failed"))
     else Ok ()

@@ -17,5 +17,5 @@ let library_cmxa (dep : t) : Path.t =
     dep.artifact.files
   |> Option.expect
        ~msg:
-         (format "No .cmxa file found in artifact for package %s"
+         ("No .cmxa file found in artifact for package " ^
             dep.package.name)

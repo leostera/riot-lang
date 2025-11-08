@@ -36,7 +36,7 @@ List.iter (fun (node : action_node G.node) ->
       (* Verify outputs were created *)
       List.iter (fun output ->
         if not (Fs.exists (Path.(sandbox_dir / output))) then
-          failwith (format "Expected output not created: %s" (Path.to_string output))
+          panic (format "Expected output not created: %s" (Path.to_string output))
       ) node.value.outputs;
       
       (* Store in cache *)

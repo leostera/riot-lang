@@ -58,7 +58,7 @@ let run matches =
       | Ok (Some (pkg, _binary)) -> (
           (* If pkg_filter specified, verify it matches *)
           match pkg_filter with
-          | Some expected_pkg when expected_pkg <> pkg ->
+          | Some expected_pkg when expected_pkg != pkg ->
               Tusk_client.close client;
               println "error: binary '%s' not found in package '%s'" bin_name
                 expected_pkg;
@@ -78,7 +78,7 @@ let run matches =
                       | Ok 0 -> Ok ()
                       | Ok code ->
                           println "error: process exited with %d" code;
-                          Error (Failure (format "process exited with %d" code))
+                          Error (Failure ("process exited with " ^ Int.to_string code))
                       | Error (Command.SystemError msg) ->
                           println "error: %s" msg;
                           Error (Failure msg))

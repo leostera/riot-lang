@@ -1,5 +1,6 @@
 open Std
 open Std.Data
+  open Std.Collections
 
 type t = { hash : Std.Crypto.hash; files : Std.Path.t list }
 

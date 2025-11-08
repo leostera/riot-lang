@@ -26,12 +26,12 @@ let new_package t ~path ~name ~is_library =
 (** Create a new package in ./packages/ with dependencies *)
 let create_package t ~name ~deps ~is_library =
   (* Create package in ./packages/<name> *)
-  let path = format "packages/%s" name in
+  let path = "packages/" ^ name in
   match new_package t ~path ~name ~is_library with
   | Ok (created_path, created_name) ->
       (* TODO: Add dependencies to tusk.toml *)
       let files =
-        [ format "%s/tusk.toml" created_path; format "%s/src" created_path ]
+        [ created_path ^ "/tusk.toml"; created_path ^ "/src" ]
       in
       Ok (created_path, files)
   | Error e -> Error e

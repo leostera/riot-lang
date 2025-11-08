@@ -47,7 +47,7 @@ let test_simple_file_caching () =
         | Ok artifact ->
             if Tusk_store.Store.exists store hash then Ok ()
             else Error "Artifact not found in store after save"
-        | Error e -> Error (format "Save failed: %s" e))
+        | Error e -> Error ("Save failed: " ^ e))
   with
   | Ok r -> r
   | Error _ -> Error "Tempdir creation failed"
@@ -128,7 +128,7 @@ let test_cache_promotion_workflow () =
                 then Ok ()
                 else Error "Promoted content mismatch"
             | _ -> Error "Promoted files not found")
-        | Error e -> Error (format "Promotion failed: %s" e))
+        | Error e -> Error ("Promotion failed: " ^ e))
   with
   | Ok r -> r
   | Error _ -> Error "Tempdir creation failed"

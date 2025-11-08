@@ -160,8 +160,8 @@ let from_entries ~namespace ~library_name ~package_path ~binaries children =
       children
   in
 
-  let has_concrete_ml = concrete_ml_path <> None in
-  let has_concrete_mli = concrete_mli_path <> None in
+  let has_concrete_ml = concrete_ml_path != None in
+  let has_concrete_mli = concrete_mli_path != None in
 
   let children_without_lib =
     List.filter
@@ -172,7 +172,7 @@ let from_entries ~namespace ~library_name ~package_path ~binaries children =
               Filename.remove_extension n
               |> Module_name.of_string |> Module_name.to_string
             in
-            file_module_name <> library_module_name
+            file_module_name != library_module_name
         | _ -> true)
       children
   in

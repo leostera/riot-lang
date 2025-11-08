@@ -15,7 +15,7 @@ let template (modules : Module.t list) =
     |> List.sort_uniq (fun (n1, _) (n2, _) -> String.compare n1 n2)
   in
   let body =
-    List.map (fun (name, ns) -> format "module %s = %s" name ns) unique_modules
+    List.map (fun (name, ns) -> "module " ^ name ^ " = " ^ ns) unique_modules
   in
   String.concat "\n" (header :: body)
 

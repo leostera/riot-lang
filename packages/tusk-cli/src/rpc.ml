@@ -296,10 +296,10 @@ let handle_build client sub_matches =
                     | Tusk_protocol.WireProtocol.ActionExecutionFailed { message } ->
                         message
                     | Tusk_protocol.WireProtocol.ActionOutputsNotCreated { missing } ->
-                        format "Outputs not created: %s"
+                        "Outputs not created: " ^
                           (String.concat ", " (List.map Path.to_string missing))
                     | Tusk_protocol.WireProtocol.ActionDependenciesFailed { failed } ->
-                        format "Dependencies failed: %d actions"
+                        "Dependencies failed: " ^ Int.to_string
                           (List.length failed)
                   in
                   Some
@@ -331,7 +331,7 @@ let handle_build client sub_matches =
         match e with
         | Tusk_client.JsonrpcError je -> Tusk_client.jsonrpc_error_to_string je
         | Tusk_client.PackageNotFound { package_name; available_packages } ->
-            format "Package not found: %s (available: %s)" package_name
+            "Package not found: %s (available: " ^ package_name ^ ")"
               (String.concat ", " available_packages)
         | Tusk_client.UnexpectedEvent { reason; _ } -> reason
       in
@@ -460,7 +460,7 @@ let run matches =
     | Some ("json", sub_matches) -> handle_json client sub_matches
     | Some (cmd, _) ->
         println "Unknown rpc command: %s" cmd;
-        Error (Failure (format "Unknown rpc command: %s" cmd))
+        Error (Failure ("Unknown rpc command: " ^ cmd))
     | None ->
         println "No rpc subcommand provided. Use 'tusk rpc --help' for usage.";
         Error (Failure "No rpc subcommand")

@@ -74,4 +74,4 @@ let main ~args:argv =
       | None -> Ok ()
       | Some (cmd, _) ->
           ArgParser.print_error (ArgParser.UnknownSubcommand cmd);
-          Error (Failure (format "Unknown command: %s" cmd)))
+          Error (Failure ("Unknown command: " ^ cmd)))

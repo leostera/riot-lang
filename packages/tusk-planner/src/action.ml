@@ -121,44 +121,21 @@ let hash action =
 
 let to_string = function
   | CompileInterface { source; outputs; includes; flags } ->
-      format "CompileInterface(%s->%s,includes=%s,flags=%s)"
-        (Path.to_string source)
-        (String.concat "," (List.map Path.to_string outputs))
-        (String.concat "," (List.map Path.to_string includes))
-        (String.concat " " (Tusk_toolchain.Ocamlc.flags_to_string flags))
+      "CompileInterface(" ^ Path.to_string source ^ "->" ^ String.concat "," (List.map Path.to_string outputs) ^ ",includes=" ^ String.concat "," (List.map Path.to_string includes) ^ ",flags=" ^ String.concat " " (Tusk_toolchain.Ocamlc.flags_to_string flags) ^ ")"
   | CompileImplementation { source; outputs; includes; flags } ->
-      format "CompileImplementation(%s->%s,includes=%s,flags=%s)"
-        (Path.to_string source)
-        (String.concat "," (List.map Path.to_string outputs))
-        (String.concat "," (List.map Path.to_string includes))
-        (String.concat " " (Tusk_toolchain.Ocamlc.flags_to_string flags))
+      "CompileImplementation(" ^ Path.to_string source ^ "->" ^ String.concat "," (List.map Path.to_string outputs) ^ ",includes=" ^ String.concat "," (List.map Path.to_string includes) ^ ",flags=" ^ String.concat " " (Tusk_toolchain.Ocamlc.flags_to_string flags) ^ ")"
   | GenerateInterface { source; outputs; includes; flags } ->
-      format "GenerateInterface(%s->%s,includes=%s,flags=%s)"
-        (Path.to_string source)
-        (String.concat "," (List.map Path.to_string outputs))
-        (String.concat "," (List.map Path.to_string includes))
-        (String.concat " " (Tusk_toolchain.Ocamlc.flags_to_string flags))
+      "GenerateInterface(" ^ Path.to_string source ^ "->" ^ String.concat "," (List.map Path.to_string outputs) ^ ",includes=" ^ String.concat "," (List.map Path.to_string includes) ^ ",flags=" ^ String.concat " " (Tusk_toolchain.Ocamlc.flags_to_string flags) ^ ")"
   | CompileC { source; outputs } ->
-      format "CompileC(%s->%s)" (Path.to_string source)
-        (String.concat "," (List.map Path.to_string outputs))
+      "CompileC(" ^ Path.to_string source ^ "->" ^ String.concat "," (List.map Path.to_string outputs) ^ ")"
   | CreateLibrary { outputs; objects; includes } ->
-      format "CreateLibrary(%s,objects=%s,includes=%s)"
-        (String.concat "," (List.map Path.to_string outputs))
-        (String.concat "," (List.map Path.to_string objects))
-        (String.concat "," (List.map Path.to_string includes))
+      "CreateLibrary(" ^ String.concat "," (List.map Path.to_string outputs) ^ ",objects=" ^ String.concat "," (List.map Path.to_string objects) ^ ",includes=" ^ String.concat "," (List.map Path.to_string includes) ^ ")"
   | CreateExecutable { outputs; objects; libraries; includes } ->
-      format "CreateExecutable(%s,objects=%s,libraries=%s,includes=%s)"
-        (String.concat "," (List.map Path.to_string outputs))
-        (String.concat "," (List.map Path.to_string objects))
-        (String.concat "," (List.map Path.to_string libraries))
-        (String.concat "," (List.map Path.to_string includes))
+      "CreateExecutable(" ^ String.concat "," (List.map Path.to_string outputs) ^ ",objects=" ^ String.concat "," (List.map Path.to_string objects) ^ ",libraries=" ^ String.concat "," (List.map Path.to_string libraries) ^ ",includes=" ^ String.concat "," (List.map Path.to_string includes) ^ ")"
   | CopyFile { source; destination } ->
-      format "CopyFile(%s->%s)" (Path.to_string source)
-        (Path.to_string destination)
+      "CopyFile(" ^ Path.to_string source ^ "->" ^ Path.to_string destination ^ ")"
   | WriteFile { destination; content } ->
-      format "WriteFile(%s,%d bytes)"
-        (Path.to_string destination)
-        (String.length content)
+      "WriteFile(" ^ Path.to_string destination ^ "," ^ Int.to_string (String.length content) ^ " bytes)"
 
 let to_json action =
   let open Data.Json in

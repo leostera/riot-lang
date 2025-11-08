@@ -29,7 +29,7 @@ let list_binaries (workspace : Tusk_model.Workspace.t) =
             String.ends_with ~suffix:"_tests" bin.name
             || String.ends_with ~suffix:"-tests" bin.name
           then None
-          else Some (format "%s:%s" pkg.name bin.name))
+          else Some (pkg.name ^ ":" ^ bin.name))
         pkg.binaries)
   |> List.sort_uniq String.compare
 
@@ -42,7 +42,7 @@ let list_tests (workspace : Tusk_model.Workspace.t) =
           if
             String.ends_with ~suffix:"_tests" bin.name
             || String.ends_with ~suffix:"-tests" bin.name
-          then Some (format "%s:%s" pkg.name bin.name)
+          then Some (pkg.name ^ ":" ^ bin.name)
           else None)
         pkg.binaries)
   |> List.sort_uniq String.compare

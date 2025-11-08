@@ -1,4 +1,5 @@
 open Std
+open Std.Collections
 open Tusk_model
 
 (** OCamldep wrapper - handles dependency analysis *)
@@ -14,11 +15,10 @@ let sort t ~cwd ~files =
     let ocamldep = Path.to_string t in
     let files_str = String.concat " " (List.map Path.to_string files) in
     let cmd =
-      format "cd %s && %s -sort %s 2>/dev/null" (Path.to_string cwd) ocamldep
-        files_str
+      "cd " ^ Path.to_string cwd ^ " && " ^ ocamldep ^ " -sort " ^ files_str ^ " 2>/dev/null"
     in
 
-    Log.trace "  $ %s" cmd;
+    Log.trace @@ "  $ " ^ cmd;
 
     let sorted_str =
       let command = Command.make ~args:[ "-c"; cmd ] "sh" in
@@ -30,7 +30,7 @@ let sort t ~cwd ~files =
       | Error _ -> ""
     in
 
-    Log.trace "  [ocamldep] Result: %s" sorted_str;
+    Log.trace @@ "  [ocamldep] Result: " ^ sorted_str;
 
     if sorted_str = "" then files (* Return original list if ocamldep fails *)
     else
@@ -44,11 +44,10 @@ let deps t ~cwd ~file ~package_namespace =
   let ocamldep = Path.to_string t in
   let file_str = Path.to_string file in
   let cmd =
-    format "cd %s && %s -modules %s 2>/dev/null" (Path.to_string cwd) ocamldep
-      file_str
+    "cd " ^ Path.to_string cwd ^ " && " ^ ocamldep ^ " -modules " ^ file_str ^ " 2>/dev/null"
   in
 
-  Log.trace "[OCAMLDEP] Running for %s: %s" file_str cmd;
+  Log.trace @@ "[OCAMLDEP] Running for " ^ file_str ^": "^ cmd;
 
   let deps_str =
     let command = Command.make ~args:[ "-c"; cmd ] "sh" in
@@ -57,18 +56,18 @@ let deps t ~cwd ~file ~package_namespace =
         match String.split_on_char '\n' output.Command.stdout with
         | line :: _ ->
             let trimmed = String.trim line in
-            Log.trace "[OCAMLDEP] Result for %s: %s" file_str trimmed;
+            Log.trace ("[OCAMLDEP] Result for " ^ file_str ^ ": " ^ trimmed);
             trimmed
         | [] ->
-            Log.trace "[OCAMLDEP] Empty output for %s" file_str;
+            Log.trace ("[OCAMLDEP] Empty output for " ^ file_str);
             "")
     | Error _err ->
-        Log.trace "[OCAMLDEP] Error for %s" file_str;
+        Log.trace ("[OCAMLDEP] Error for " ^ file_str);
         ""
   in
 
   if deps_str = "" then (
-    Log.trace "[OCAMLDEP] No deps for %s" file_str;
+    Log.trace ("[OCAMLDEP] No deps for " ^ file_str);
     [])
   else
     (* Output format: "file.ml: Module1 Module2 Module3" *)
@@ -100,8 +99,7 @@ let deps_with_flags t ~cwd ~file ~flags ~package_namespace =
   let file_str = Path.to_string file in
   (* Always include current directory so ocamldep can find .cmi files *)
   let cmd =
-    format "cd %s && %s -I . %s -modules %s 2>/dev/null" (Path.to_string cwd)
-      ocamldep flags_str file_str
+    "cd " ^ Path.to_string cwd ^ " && " ^ ocamldep ^ " -I . " ^ flags_str ^ " -modules " ^ file_str ^ " 2>/dev/null"
   in
 
   let deps_str =
@@ -136,7 +134,7 @@ let batch_deps t ~cwd ~files ~package_namespace =
     let ocamldep = Path.to_string t in
     let files_str = String.concat " " (List.map Path.to_string files) in
     let cmd =
-      format "cd %s && %s -modules %s" (Path.to_string cwd) ocamldep files_str
+      "cd " ^ Path.to_string cwd ^ " && " ^ ocamldep ^ " -modules " ^ files_str
     in
 
     Log.trace "[OCAMLDEP] Batch running for %d files" (List.length files);
@@ -171,7 +169,7 @@ let batch_deps t ~cwd ~files ~package_namespace =
                   else
                     String.split_on_char ' ' deps
                     |> List.map String.trim
-                    |> List.filter (fun s -> s <> "")
+                    |> List.filter (fun s -> s != "")
                     |> List.map (fun modname ->
                         Module_name.of_string ~namespace:package_namespace
                           modname)

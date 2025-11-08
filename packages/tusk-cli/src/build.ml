@@ -62,7 +62,7 @@ let build_command package_opt =
             | _ -> ());
 
             let msg = Event_formatter.format ~displayed_packages event in
-            if msg <> "" then println "%s" msg
+            if msg != "" then println msg
         | Tusk_client.BuildCompleted _ -> ()
         | Tusk_client.BuildFailed { errors; _ } ->
             (* Track failed packages *)
@@ -72,29 +72,29 @@ let build_command package_opt =
               match error.status with
               | Tusk_protocol.WireProtocol.Failed (Tusk_protocol.WireProtocol.ExecutionFailed { message }) ->
                   println "";
-                  println "\027[1;31mError\027[0m: %s" message
+                  println ("\027[1;31mError\027[0m: " ^ message)
               | Tusk_protocol.WireProtocol.Failed (Tusk_protocol.WireProtocol.PlanningFailed _) ->
                   println "";
-                  println "\027[1;31mError\027[0m: Planning failed for %s" error.package.name
+                  println ("\027[1;31mError\027[0m: Planning failed for " ^ error.package.name)
               | Tusk_protocol.WireProtocol.Failed (Tusk_protocol.WireProtocol.ActionExecutionFailed { message }) ->
                   println "";
-                  println "\027[1;31mError\027[0m: Action execution failed for %s: %s" error.package.name message
+                  println ("\027[1;31mError\027[0m: Action execution failed for " ^ error.package.name ^ ": " ^ message)
               | Tusk_protocol.WireProtocol.Failed (Tusk_protocol.WireProtocol.ActionOutputsNotCreated { missing }) ->
                   println "";
-                  println "\027[1;31mError\027[0m: Action outputs not created for %s" error.package.name
+                  println ("\027[1;31mError\027[0m: Action outputs not created for " ^ error.package.name)
               | Tusk_protocol.WireProtocol.Failed (Tusk_protocol.WireProtocol.ActionDependenciesFailed _) ->
                   println "";
-                  println "\027[1;31mError\027[0m: Action dependencies failed for %s" error.package.name
+                  println ("\027[1;31mError\027[0m: Action dependencies failed for " ^ error.package.name)
               | _ -> ()
             ) errors
         | Tusk_client.PlanningFailed { reason; _ } ->
             (* Planning failed before build started - this is a fatal error *)
             println "";
-            println "\027[1;31mPlanning Failed\027[0m: %s" reason;
+            println ("\027[1;31mPlanning Failed\027[0m: " ^ reason);
             failed_count := !failed_count + 1
         | Tusk_client.CycleDetected { cycle_nodes; _ } ->
             println "      \027[1;31mError\027[0m: Cyclic dependency detected:";
-            println "         %s" (String.concat " ->\n         " cycle_nodes))
+            println ("         " ^ String.concat " ->\n         " cycle_nodes))
   in
   
   let final_event = match result with
@@ -102,16 +102,16 @@ let build_command package_opt =
       Tusk_client.close client;
       (match err with
       | Tusk_client.JsonrpcError json_err ->
-          println "\027[1;31mError\027[0m: %s" (Tusk_client.jsonrpc_error_to_string json_err);
+          println ("\027[1;31mError\027[0m: " ^ Tusk_client.jsonrpc_error_to_string json_err);
           exit 1
       | Tusk_client.PackageNotFound { package_name; available_packages } ->
-          println "\027[1;31mError\027[0m: Package '%s' not found" package_name;
+          println ("\027[1;31mError\027[0m: Package '" ^ package_name ^ "' not found");
           println "";
           println "Available packages:";
-          List.iter (fun pkg -> println "  • %s" pkg) available_packages;
+          List.iter (fun pkg -> println ("  • " ^ pkg)) available_packages;
           exit 1
       | Tusk_client.UnexpectedEvent { reason; _ } ->
-          println "\027[1;31mError\027[0m: %s" reason;
+          println ("\027[1;31mError\027[0m: " ^ reason);
           exit 1)
   | Ok event ->
       Tusk_client.close client;
@@ -125,8 +125,8 @@ let build_command package_opt =
   let duration_secs = Time.Duration.to_secs_float duration in
 
   if !failed_count = 0 && !skipped_count = 0 then
-    println "    \027[1;32mFinished\027[0m in %.2fs (%d built, %d cached)"
-      duration_secs !built_count !cached_count
+    println ("    \027[1;32mFinished\027[0m in " ^ Float.to_string duration_secs ^ "s (" ^ 
+      Int.to_string !built_count ^ " built, " ^ Int.to_string !cached_count ^ " cached)")
   else if !failed_count > 0 then
     println
       "    \027[1;31mFinished\027[0m in %.2fs (%d built, %d cached, %d failed, \

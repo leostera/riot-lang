@@ -1,5 +1,6 @@
 (** Event system for tusk - pure data types for events *)
 
+open Std
 open Std.Data
 
 val strip_ansi_codes : string -> string

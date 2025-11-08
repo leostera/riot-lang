@@ -95,8 +95,8 @@ let execute (client : Tusk_client.t) (req : request) : response =
 let response_to_json = function
   | FormatResult { formatted_code; changed; file_path } ->
       let message =
-        if changed then format "File '%s' was formatted" file_path
-        else format "File '%s' is already formatted correctly" file_path
+        if changed then "File '" ^ file_path ^ "' was formatted"
+        else "File '" ^ file_path ^ "' is already formatted correctly"
       in
       Json.Object
         [

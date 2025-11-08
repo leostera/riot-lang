@@ -100,7 +100,7 @@ let execute (client : Tusk_client.t) (req : request) : response =
             ("found", Json.Bool false);
             ( "message",
               Json.String
-                (format "Binary '%s' in package '%s' not found: %s" req.name
+                ("Binary '" ^ req.name ^ "' in package '" ^
                    req.package msg) );
             ( "hint",
               Json.String

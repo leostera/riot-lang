@@ -35,7 +35,7 @@ let run matches =
       | None ->
           println "Error: Unknown shell '%s'" shell_str;
           println "Supported shells: bash, zsh, fish";
-          Error (Failure (format "unknown shell: %s" shell_str))
+          Error (Failure ("unknown shell: " ^ shell_str))
       | Some shell ->
           let script = Shell_completions.generate_script shell in
           print_string script;

@@ -4,7 +4,7 @@ let dot_tusk =
   let home =
     match Env.home_dir () with
     | Some h -> h
-    | None -> failwith "Failed to get home directory"
+    | None -> panic "Failed to get home directory"
   in
   Path.(home / Path.v ".tusk")
 

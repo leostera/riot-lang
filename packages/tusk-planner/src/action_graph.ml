@@ -1,4 +1,5 @@
 open Std
+open Std.Sync
 open Std.Collections
 open Tusk_model
 module G = Std.Graph.SimpleGraph
@@ -33,6 +34,20 @@ let opens mods =
       | _ -> None)
     mods
 
+(** Determine compiler flags for stdlib handling based on package dependencies *)
+let stdlib_flags (package : Package.t) =
+  (* Check if this package has stdlib as a dependency *)
+  let has_stdlib_dep = 
+    List.exists (fun (dep : Package.dependency) -> dep.name = "stdlib") 
+      package.dependencies
+  in
+  (* Always add -nopervasives to prevent automatic opening of Stdlib *)
+  (* Add -nostdlib only if package doesn't depend on stdlib *)
+  if has_stdlib_dep then
+    [ Tusk_toolchain.Ocamlc.NoPervasives ]
+  else
+    [ Tusk_toolchain.Ocamlc.NoPervasives; Tusk_toolchain.Ocamlc.NoStdlib ]
+
 let module_to_actions ~package ~dep_includes ~get_dep_outputs
     (module_node : Module_node.t) (deps : G.Node_id.t list) :
     Action.t list * Path.t list * Path.t list =
@@ -48,7 +63,7 @@ let module_to_actions ~package ~dep_includes ~get_dep_outputs
             source = path;
             outputs;
             includes = Path.v "." :: dep_includes;
-            flags = opens open_modules;
+            flags = stdlib_flags package @ opens open_modules;
           }
       in
       ([ compile ], outputs, sources)
@@ -64,7 +79,7 @@ let module_to_actions ~package ~dep_includes ~get_dep_outputs
             source = path;
             outputs;
             includes = Path.v "." :: dep_includes;
-            flags = opens open_modules;
+            flags = stdlib_flags package @ opens open_modules;
           }
       in
       ([ compile ], outputs, sources)
@@ -84,9 +99,11 @@ let module_to_actions ~package ~dep_includes ~get_dep_outputs
       in
       let flags =
         if is_alias_file then
-          Tusk_toolchain.Ocamlc.Impl path :: Tusk_toolchain.Ocamlc.NoAliasDeps
-          :: opens open_modules
-        else opens open_modules
+          stdlib_flags package 
+          @ (Tusk_toolchain.Ocamlc.Impl path :: Tusk_toolchain.Ocamlc.NoAliasDeps
+             :: opens open_modules)
+        else 
+          stdlib_flags package @ opens open_modules
       in
 
       let compile_action =
@@ -114,7 +131,7 @@ let module_to_actions ~package ~dep_includes ~get_dep_outputs
             source = path;
             outputs;
             includes = Path.v "." :: dep_includes;
-            flags = opens open_modules;
+            flags = stdlib_flags package @ opens open_modules;
           }
       in
       ([ write_action; compile_action ], outputs, sources)
@@ -186,7 +203,7 @@ let module_to_actions ~package ~dep_includes ~get_dep_outputs
             source;
             outputs = [ binary_cmx ];
             includes = Path.v "." :: dep_includes;
-            flags = [];
+            flags = stdlib_flags package;
           }
       in
 
@@ -251,7 +268,7 @@ let from_module_graph ~package ~toolchain ~store ~depset
       if actions = [] then
         let placeholder_hash =
           Crypto.hash_string
-            (format "no-actions:%s" (G.Node_id.to_string module_node.id))
+            ("no-actions:" ^ G.Node_id.to_string module_node.id)
         in
         let _ =
           HashMap.insert action_spec_hashes module_node.id placeholder_hash

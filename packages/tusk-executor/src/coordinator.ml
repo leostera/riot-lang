@@ -45,7 +45,7 @@ let rec loop state =
       ~total_packages:(List.length state.packages)
   then handle_build_completed state
   else
-    match receive ~timeout:0.010 ~selector () with
+    match receive ~timeout:(Time.Duration.from_secs_float 0.010) ~selector () with
     | exception Receive_timeout -> loop state
     | `WorkerReady worker -> handle_worker_ready state worker
     | `TaskCompleted result -> handle_task_completed state result

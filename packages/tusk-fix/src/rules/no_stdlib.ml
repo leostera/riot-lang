@@ -31,7 +31,7 @@ let check_tree _ctx red_root =
       (function
         | Token t ->
             let kind = SyntaxToken.kind t in
-            kind <> WHITESPACE && kind <> COMMENT && kind <> DOCSTRING
+            kind != WHITESPACE && kind != COMMENT && kind != DOCSTRING
         | Node _ -> true)
       children
   in
@@ -55,7 +55,7 @@ let check_tree _ctx red_root =
             let kind = SyntaxToken.kind t in
             let text = SyntaxToken.text t in
             if
-              kind <> WHITESPACE && kind <> COMMENT && kind <> DOCSTRING
+              kind != WHITESPACE && kind != COMMENT && kind != DOCSTRING
               && List.mem text forbidden_modules
             then add_diagnostic text (SyntaxToken.span t)
         | _ -> ())
@@ -95,7 +95,7 @@ let check_tree _ctx red_root =
              "Direct usage of %s is discouraged. Use Std equivalents instead."
              text)
         ~span ~rule_id
-        ~suggestion:(format "Replace %s with Std module" text)
+        ~suggestion:("Replace " ^ text ^ " with Std module")
         ()
     in
     diagnostics := diag :: !diagnostics

@@ -1,3 +1,6 @@
+open Std
+open Std.Data
+open Std.Collections
 open Tusk_model
 
 (** Content-addressable storage for build artifacts *)

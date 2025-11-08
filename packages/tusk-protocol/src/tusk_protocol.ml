@@ -859,12 +859,12 @@ module WireProtocol = struct
                                     | Event.SyntaxError -> "Syntax error"
                                     | Event.TypeError { description } ->
                                         description
-                                    | Event.UnboundValue { name } ->
-                                        format "Unbound value %s" name
-                                    | Event.UnboundModule { name } ->
-                                        format "Unbound module %s" name
-                                    | Event.FileNotFound { filename } ->
-                                        format "Cannot find file %s" filename
+                                     | Event.UnboundValue { name } ->
+                                         "Unbound value " ^ name
+                                     | Event.UnboundModule { name } ->
+                                         "Unbound module " ^ name
+                                     | Event.FileNotFound { filename } ->
+                                         "Cannot find file " ^ filename
                                     | Event.OtherError { message } -> message
                                   in
                                   Json.Object
@@ -918,12 +918,12 @@ module WireProtocol = struct
                        match e.Event.kind with
                        | Event.SyntaxError -> "Syntax error"
                        | Event.TypeError { description } -> description
-                       | Event.UnboundValue { name } ->
-                           format "Unbound value %s" name
-                       | Event.UnboundModule { name } ->
-                           format "Unbound module %s" name
-                       | Event.FileNotFound { filename } ->
-                           format "Cannot find file %s" filename
+                        | Event.UnboundValue { name } ->
+                            "Unbound value " ^ name
+                        | Event.UnboundModule { name } ->
+                            "Unbound module " ^ name
+                        | Event.FileNotFound { filename } ->
+                            "Cannot find file " ^ filename
                        | Event.OtherError { message } -> message
                      in
                      Json.Object
@@ -953,10 +953,10 @@ module WireProtocol = struct
           match error.kind with
           | Event.SyntaxError -> "Syntax error"
           | Event.TypeError { description } -> description
-          | Event.UnboundValue { name } -> format "Unbound value %s" name
-          | Event.UnboundModule { name } -> format "Unbound module %s" name
-          | Event.FileNotFound { filename } ->
-              format "Cannot find file %s" filename
+           | Event.UnboundValue { name } -> "Unbound value " ^ name
+           | Event.UnboundModule { name } -> "Unbound module " ^ name
+           | Event.FileNotFound { filename } ->
+               "Cannot find file " ^ filename
           | Event.OtherError { message } -> message
         in
         Json.Object

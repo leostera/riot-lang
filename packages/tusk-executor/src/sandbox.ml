@@ -10,7 +10,7 @@ let sandbox_id ~package_name =
   let hash = Crypto.hash_int64 nanos in
   let hex = Crypto.Digest.hex hash in
   let truncated_hash = String.sub hex 0 8 in
-  let id = format "%s-%s" package_name truncated_hash in
+  let id = package_name ^ "-" ^ truncated_hash in
   Path.v id
 
 let create ~workspace ~package_name =
@@ -22,7 +22,7 @@ let create ~workspace ~package_name =
   Fs.create_dir_all sandbox_dir
   |> Result.expect
        ~msg:
-         (format "Failed to create sandbox dir: %s"
+         ("Failed to create sandbox dir: " ^
             (Path.to_string sandbox_dir));
   { dir = sandbox_dir; workspace }
 
@@ -46,7 +46,7 @@ let copy_object_files ~store ~sandbox ~package ~depset =
           Fs.copy ~src:abs_path ~dst:dest
           |> Result.expect
                ~msg:
-                 (format "Failed to copy .o file %s" (Path.to_string abs_path)))
+                 ("Failed to copy .o file " ^ Path.to_string abs_path))
         o_files)
     depset
 
@@ -63,12 +63,12 @@ let copy_inputs ~sandbox ~package ~inputs =
       Fs.create_dir_all dest_parent
       |> Result.expect
            ~msg:
-             (format "Failed to create parent dir: %s"
+             ("Failed to create parent dir: " ^
                 (Path.to_string dest_parent));
       Fs.copy ~src ~dst:dest
       |> Result.expect
            ~msg:
-             (format "Failed to copy input %s to %s" (Path.to_string src)
+             ("Failed to copy input " ^ Path.to_string src ^ " to " ^
                 (Path.to_string dest)))
     inputs
 

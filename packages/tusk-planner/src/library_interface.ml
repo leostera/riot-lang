@@ -14,7 +14,7 @@ let template (children : Module.t list) =
   in
   let body =
     List.map
-      (fun (simple, qualified) -> format "module %s = %s" simple qualified)
+      (fun (simple, qualified) -> "module " ^ simple ^ " = " ^ qualified)
       unique_modules
   in
   String.concat "\n" (header :: body)

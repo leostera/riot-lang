@@ -1,7 +1,9 @@
 (** Workspace - TOML parsing for workspace manifests *)
 
 open Std
+open Std.Collections
 open Std.Data
+open Std.IO
 
 (** Types *)
 
@@ -41,8 +43,7 @@ let parse_members (toml : Toml.value) : Path.t list =
   | _ -> []
 
 let parse_workspace_dependencies (toml : Toml.value) : Package.dependency list =
-  Log.debug "[WORKSPACE] parse_workspacE_dependencies has items: %s"
-    (Toml.to_string toml);
+  Log.debug ("[WORKSPACE] parse_workspacE_dependencies has items: " ^ Toml.to_string toml);
   match toml with
   | Toml.Table items -> (
       match List.assoc_opt "dependencies" items with
@@ -68,9 +69,10 @@ let project_id workspace =
 
 let server_port workspace =
   let root_str = Path.to_string workspace.root in
-  let hash = Hashtbl.hash root_str in
+  let hash = Std.Crypto.hash_string root_str in
+  let hash_int = Std.Crypto.Digest.to_int hash in
   let port_range = 65535 - 49152 in
-  50152 + (abs hash mod port_range)
+  50152 + (abs hash_int mod port_range)
 
 module Tests = struct
   let test_parse_workspace_toml () : (unit, string) result = Ok () [@test]

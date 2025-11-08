@@ -176,5 +176,5 @@ let run fmt_matches =
       if unchanged_count > 0 then
         println "  %d files already formatted" unchanged_count;
       if failed_count > 0 then
-        Error (Failure (format "%d files failed to format" failed_count))
+        Error (Failure (Int.to_string failed_count ^ " files failed to format"))
       else Ok ())

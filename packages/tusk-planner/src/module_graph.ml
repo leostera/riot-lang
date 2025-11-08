@@ -232,7 +232,7 @@ and handle_library ~t ~ctx dir name children =
      - There are concrete library interface files (lib.ml/lib.mli exist)
   *)
   let has_ocaml_content =
-    child_modules <> []
+    child_modules != []
     || Library_definition.has_concrete_ml lib_def
     || Library_definition.has_concrete_mli lib_def
   in

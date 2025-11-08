@@ -2,6 +2,7 @@
 
 open Std
 open Std.Data
+open Std.Collections
 
 (** Types *)
 
@@ -11,11 +12,22 @@ type binary = { name : string; path : Path.t }
 type library = { path : Path.t }
 type sources = { src : Path.t list; native : Path.t list; tests : Path.t list; examples: Path.t list }
 
+type foreign_dependency = {
+  name : string;
+  path : Path.t;
+  build_cmd : string list;
+  clean_cmd : string list option;
+  test_cmd : string list option;
+  outputs : Path.t list;
+  env : (string * string) list;
+}
+
 type t = {
   name : string;
   path : Path.t;
   relative_path : Path.t;
   dependencies : dependency list;
+  foreign_dependencies : foreign_dependency list;
   binaries : binary list;
   library : library option;
   sources : sources;
@@ -41,11 +53,8 @@ let resolve_workspace_dependency (name : string)
   with
   | Some dep -> dep
   | None ->
-      failwith
-        (format
-           "Dependency '%s' with { workspace = true } not found in workspace \
-            dependencies"
-           name)
+      panic
+        ("Dependency '" ^ name ^ "' with { workspace = true } not found in workspace dependencies")
 
 let parse_dependency (name : string) (value : Toml.value)
     ~(workspace_deps : dependency list) : dependency =
@@ -66,6 +75,74 @@ let parse_dependencies (items : (string * Toml.value) list)
   List.map
     (fun (name, value) -> parse_dependency name value ~workspace_deps)
     items
+
+let parse_foreign_dependency (name : string) (value : Toml.value)
+    ~(package_path : Path.t) : (foreign_dependency, string) result =
+  match value with
+  | Toml.Table attrs -> (
+      let get_string key =
+        match List.assoc_opt key attrs with
+        | Some (Toml.String s) -> Ok s
+        | Some _ -> Error ("Foreign dependency '" ^ name ^ "': '" ^ key ^ "' must be a string")
+        | None -> Error ("Foreign dependency '" ^ name ^ "': missing required field '" ^ key ^ "'")
+      in
+      let get_string_list key =
+        match List.assoc_opt key attrs with
+        | Some (Toml.Array arr) ->
+            let strings = List.filter_map
+              (function Toml.String s -> Some s | _ -> None) arr in
+            if List.length strings = List.length arr then Ok strings
+            else Error ("Foreign dependency '" ^ name ^ "': '" ^ key ^ "' must be an array of strings")
+        | Some _ -> Error ("Foreign dependency '" ^ name ^ "': '" ^ key ^ "' must be an array")
+        | None -> Error ("Foreign dependency '" ^ name ^ "': missing required field '" ^ key ^ "'")
+      in
+      let get_string_list_opt key =
+        match List.assoc_opt key attrs with
+        | Some (Toml.Array arr) ->
+            let strings = List.filter_map
+              (function Toml.String s -> Some s | _ -> None) arr in
+            if List.length strings = List.length arr then Some strings
+            else None
+        | _ -> None
+      in
+      let get_env () =
+        match List.assoc_opt "env" attrs with
+        | Some (Toml.Table env_items) ->
+            List.filter_map (fun (k, v) ->
+              match v with
+              | Toml.String s -> Some (k, s)
+              | _ -> None
+            ) env_items
+        | _ -> []
+      in
+      
+      match get_string "path", get_string_list "build_cmd", get_string_list "outputs" with
+      | Ok path_str, Ok build_cmd, Ok outputs ->
+          let dep_path = Path.(package_path / v path_str) in
+          let output_paths = List.map (fun s -> Path.(dep_path / v s)) outputs in
+          let clean_cmd = get_string_list_opt "clean_cmd" in
+          let test_cmd = get_string_list_opt "test_cmd" in
+          let env = get_env () in
+          Ok { name; path = dep_path; build_cmd; clean_cmd; test_cmd; outputs = output_paths; env }
+      | Error e, _, _ -> Error e
+      | _, Error e, _ -> Error e
+      | _, _, Error e -> Error e)
+  | _ -> Error ("Foreign dependency '" ^ name ^ "' must be a table")
+
+let parse_foreign_dependencies (items : (string * Toml.value) list)
+    ~(package_path : Path.t) : (foreign_dependency list, string) result =
+  match List.assoc_opt "foreign-dependencies" items with
+  | None -> Ok []
+  | Some (Toml.Table deps) ->
+      let results = List.map (fun (name, value) ->
+        parse_foreign_dependency name value ~package_path
+      ) deps in
+      let errors = List.filter_map
+        (fun r -> match r with Error e -> Some e | Ok _ -> None) results in
+      if errors != [] then Error (String.concat "; " errors)
+      else Ok (List.filter_map
+        (fun r -> match r with Ok d -> Some d | Error _ -> None) results)
+  | Some _ -> Error "[foreign-dependencies] must be a table"
 
 let parse_binary (value : Toml.value) ~(package_path : Path.t) :
     (binary, string) result =
@@ -99,7 +176,7 @@ let parse_binaries (items : (string * Toml.value) list) ~(package_path : Path.t)
           (fun r -> match r with Error e -> Some e | Ok _ -> None)
           results
       in
-      if errors <> [] then Error (String.concat "; " errors)
+      if errors != [] then Error (String.concat "; " errors)
       else
         Ok
           (List.filter_map
@@ -113,7 +190,7 @@ let parse_library (items : (string * Toml.value) list) ~(package_path : Path.t)
   | None ->
       (* Autodiscover: if src/<package_name>.ml exists, use it as library *)
       let default_lib_path =
-        Path.(package_path / Path.v "src" / Path.v (format "%s.ml" package_name))
+        Path.(package_path / Path.v "src" / Path.v (package_name ^ ".ml"))
       in
       (match Fs.exists default_lib_path with
       | Ok true -> Ok (Some { path = default_lib_path })
@@ -126,7 +203,7 @@ let parse_library (items : (string * Toml.value) list) ~(package_path : Path.t)
       | None ->
           let default_path =
             Path.(
-              package_path / Path.v "src" / Path.v (format "%s.ml" package_name))
+              package_path / Path.v "src" / Path.v (package_name ^ ".ml"))
           in
           Ok (Some { path = default_path })
       | Some _ -> Error "Library 'path' field must be a string")
@@ -221,25 +298,30 @@ let from_toml (toml : Toml.value) ~(workspace_deps : dependency list)
         match parse_binaries items ~package_path:path with
         | Ok bins -> bins
         | Error msg ->
-            Log.warn "[PACKAGE] Failed to parse binaries for %s: %s" name msg;
+            Log.warn ("[PACKAGE] Failed to parse binaries for " ^ name ^ ": " ^ msg);
             []
       in
       let library =
         match parse_library items ~package_path:path ~package_name:name with
         | Ok lib -> lib
         | Error msg ->
-            Log.warn "[PACKAGE] Failed to parse library for %s: %s" name msg;
+            Log.warn ("[PACKAGE] Failed to parse library for " ^ name ^ ": " ^ msg);
             None
       in
+      let foreign =
+        match parse_foreign_dependencies items ~package_path:path with
+        | Ok deps -> deps
+        | Error msg ->
+            Log.warn ("[PACKAGE] Failed to parse foreign dependencies for " ^ name ^ ": " ^ msg);
+            []
+      in
       let sources = scan_sources ~package_path:path in
-      (* Autodiscover test binaries from test files *)
       let test_binaries = autodiscover_test_binaries sources ~package_path:path in
-      Log.debug "[PACKAGE] %s: discovered %d test binaries from %d test files"
-        name (List.length test_binaries) (List.length sources.tests);
-      (* Autodiscover example binaries from examples directory *)
-      let example_binaries = autodiscover_example_binaries sources ~package_path:path in
-      Log.debug "[PACKAGE] %s: discovered %d example binaries from %d example files"
-        name (List.length example_binaries) (List.length sources.examples);
+      let example_binaries =
+        autodiscover_example_binaries sources ~package_path:path
+      in
+      Log.debug ("[PACKAGE] " ^ name ^ ": discovered " ^ Int.to_string (List.length test_binaries) ^ " test binaries from " ^ Int.to_string (List.length sources.tests) ^ " test files");
+      Log.debug ("[PACKAGE] " ^ name ^ ": discovered " ^ Int.to_string (List.length example_binaries) ^ " example binaries from " ^ Int.to_string (List.length sources.examples) ^ " example files");
       let all_binaries = binaries @ test_binaries @ example_binaries in
       Ok
         {
@@ -247,6 +329,7 @@ let from_toml (toml : Toml.value) ~(workspace_deps : dependency list)
           path;
           relative_path;
           dependencies;
+          foreign_dependencies = foreign;
           binaries = all_binaries;
           library;
           sources;
@@ -305,9 +388,9 @@ let from_json (json : Json.t) : (t, string) result =
       with
       | ( Some (Json.String name),
           Some (Json.String path_str),
-          Some (Json.String rel_path_str) ) ->
-          let path = Path.of_string path_str |> Result.unwrap in
-          let relative_path = Path.of_string rel_path_str |> Result.unwrap in
+          Some (Json.String rel_path_str) ) -> (
+          match Path.of_string path_str, Path.of_string rel_path_str with
+          | Ok path, Ok relative_path ->
 
           let dependencies =
             match List.assoc_opt "dependencies" fields with
@@ -369,9 +452,12 @@ let from_json (json : Json.t) : (t, string) result =
               path;
               relative_path;
               dependencies;
+              foreign_dependencies = [];
               binaries;
               library;
               sources = { src = []; native = []; tests = []; examples = [] };
             }
+          | Error _, _ -> Error ("Invalid path in package JSON: " ^ path_str)
+          | _, Error _ -> Error ("Invalid relative_path in package JSON: " ^ rel_path_str))
       | _ -> Error "Invalid package JSON")
   | _ -> Error "Package must be a JSON object"
