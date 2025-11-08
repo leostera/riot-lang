@@ -25,6 +25,10 @@
     - Surrogates and complex pairs
     - All Unicode line break classes
 *)
+open Global
+open Collections
+module String = Kernel.String
+module Uchar = Kernel.Uchar
 
 (** Line break opportunity type *)
 type break_opportunity =
@@ -186,17 +190,17 @@ let get_break_opportunity ~prev_class ~curr_class =
 (** Find all line break opportunities in a string
     Returns (position, opportunity_type) pairs *)
 let find_line_breaks s =
-  let len = Stdlib.String.length s in
+  let len = String.length s in
   if len = 0 then []
   else
     let rec scan pos prev_class acc =
-      if pos >= len then Stdlib.List.rev acc
+      if pos >= len then List.rev acc
       else
         (* Decode current rune *)
-        let decode = Stdlib.String.get_utf_8_uchar s pos in
+        let decode = String.get_utf_8_uchar s pos in
         if not (Uchar.utf_decode_is_valid decode) then
           (* Invalid UTF-8 - treat as break opportunity *)
-          Stdlib.List.rev ((pos, Can_break) :: acc)
+          List.rev ((pos, Can_break) :: acc)
         else
           let rune = Uchar.utf_decode_uchar decode in
           let rune_len = Uchar.utf_decode_length decode in
@@ -217,7 +221,7 @@ let find_line_breaks s =
     in
     
     (* Start scanning from first character *)
-    let first_decode = Stdlib.String.get_utf_8_uchar s 0 in
+    let first_decode = String.get_utf_8_uchar s 0 in
     if not (Uchar.utf_decode_is_valid first_decode) then []
     else
       let first_rune = Uchar.utf_decode_uchar first_decode in
@@ -230,21 +234,21 @@ let find_line_breaks s =
 let wrap_lines ~width s =
   if width <= 0 then []
   else
-    let len = Stdlib.String.length s in
+    let len = String.length s in
     let breaks = find_line_breaks s in
     
     let rec wrap_text pos current_width line_start lines breaks =
       if pos >= len then
         (* Add final line if any *)
         if line_start < len then
-          Stdlib.List.rev (Stdlib.String.sub s line_start (len - line_start) :: lines)
+          List.rev (String.sub s line_start (len - line_start) :: lines)
         else
-          Stdlib.List.rev lines
+          List.rev lines
       else
         (* Decode current rune *)
-        let decode = Stdlib.String.get_utf_8_uchar s pos in
+        let decode = String.get_utf_8_uchar s pos in
         if not (Uchar.utf_decode_is_valid decode) then
-          Stdlib.List.rev lines
+          List.rev lines
         else
           let rune = Uchar.utf_decode_uchar decode in
           let rune_len = Uchar.utf_decode_length decode in
@@ -256,12 +260,12 @@ let wrap_lines ~width s =
           
           if is_newline then
             (* Mandatory break - add line and continue *)
-            let line = Stdlib.String.sub s line_start (pos - line_start) in
+            let line = String.sub s line_start (pos - line_start) in
             wrap_text (pos + rune_len) 0 (pos + rune_len) (line :: lines) breaks
           else if new_width > width then
             (* Line too long - find last break opportunity *)
             let last_break = 
-              Stdlib.List.fold_left (fun acc (break_pos, _) ->
+              List.fold_left (fun acc (break_pos, _) ->
                 if break_pos > line_start && break_pos < pos then Some break_pos
                 else acc
               ) None breaks
@@ -269,11 +273,11 @@ let wrap_lines ~width s =
             match last_break with
             | Some break_pos ->
                 (* Break at last opportunity *)
-                let line = Stdlib.String.sub s line_start (break_pos - line_start) in
+                let line = String.sub s line_start (break_pos - line_start) in
                 wrap_text break_pos 0 break_pos (line :: lines) breaks
             | None ->
                 (* No break opportunity - force break here *)
-                let line = Stdlib.String.sub s line_start (pos - line_start) in
+                let line = String.sub s line_start (pos - line_start) in
                 wrap_text pos 0 pos (line :: lines) breaks
           else
             (* Continue on same line *)

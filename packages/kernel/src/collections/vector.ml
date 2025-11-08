@@ -1,3 +1,5 @@
+open Global0
+
 type 'a t = { mutable data : 'a array; mutable length : int }
 
 let create () = { data = [||]; length = 0 }
@@ -38,11 +40,11 @@ let get vector index =
   if index >= 0 && index < vector.length then Some vector.data.(index) else None
 
 let set vector index value =
-  if index < 0 || index >= vector.length then invalid_arg "Index out of bounds"
+  if index < 0 || index >= vector.length then panic "Index out of bounds"
   else vector.data.(index) <- value
 
 let insert vector index value =
-  if index < 0 || index > vector.length then invalid_arg "Index out of bounds"
+  if index < 0 || index > vector.length then panic "Index out of bounds"
   else (
     ensure_capacity vector (vector.length + 1);
     for i = vector.length downto index + 1 do
@@ -68,27 +70,6 @@ let iter f vector =
     f vector.data.(i)
   done
 
-let fold f vector acc =
-  let result = ref acc in
-  for i = 0 to vector.length - 1 do
-    result := f vector.data.(i) !result
-  done;
-  !result
-
-let to_list vector =
-  let result = ref [] in
-  for i = vector.length - 1 downto 0 do
-    result := vector.data.(i) :: !result
-  done;
-  !result
-
-let contains vector value =
-  let found = ref false in
-  for i = 0 to vector.length - 1 do
-    if vector.data.(i) = value then found := true
-  done;
-  !found
-
 let append vector1 vector2 =
   for i = 0 to vector2.length - 1 do
     push vector1 vector2.data.(i)
@@ -96,7 +77,7 @@ let append vector1 vector2 =
   vector2.length <- 0
 
 let split_off vector index =
-  if index < 0 || index > vector.length then invalid_arg "Index out of bounds"
+  if index < 0 || index > vector.length then panic "Index out of bounds"
   else
     let new_vector = create () in
     let elements_to_move = vector.length - index in

@@ -1,4 +1,5 @@
 open Global
+open Collections
 
 let init (_suite : Intf.suite_info) _total = ()
 let on_result _idx _result = ()
@@ -33,5 +34,5 @@ let finalize (summary : Test_result.summary) =
       testcases
   in
 
-  println "%s" declaration;
-  println "%s" (to_string testsuite)
+  println declaration;
+  println (to_string testsuite)

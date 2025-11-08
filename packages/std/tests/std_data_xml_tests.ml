@@ -1,5 +1,6 @@
 open Std
-module Xml = Std.Data.Xml
+open Std.Data
+open Std.Collections
 
 let test_create_element () =
   let elem = Xml.element "div" [] in
@@ -43,7 +44,7 @@ let test_serialize_simple_element () =
   let elem = Xml.element "div" [] in
   let str = Xml.to_string elem in
   if str = "<div></div>" then Ok ()
-  else Error (format "Unexpected serialization: %s" str)
+  else Error ("Unexpected serialization: " ^ str)
 
 let test_serialize_element_with_attrs () =
   let elem = Xml.element "div" ~attrs:[ ("id", "test") ] [] in
@@ -59,7 +60,7 @@ let test_serialize_with_children () =
   let elem = Xml.element "p" [ Xml.text "content" ] in
   let str = Xml.to_string elem in
   if str = "<p>content</p>" then Ok ()
-  else Error (format "Unexpected serialization: %s" str)
+  else Error ("Unexpected serialization: " ^ str)
 
 let test_serialize_nested () =
   let inner = Xml.element "span" [ Xml.text "text" ] in

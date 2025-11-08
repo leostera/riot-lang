@@ -1,4 +1,7 @@
 open Common
+open Collections
+  open Sync
+  open Sync.Cell
 
 type kevent
 type kqueue = Fd.t
@@ -68,7 +71,7 @@ module Selector = struct
       if Fd.is_tty fd then Libc.(ev_enable lor ev_receipt lor ev_add)
       else Libc.(ev_clear lor ev_receipt lor ev_add)
     in
-    let changes = ref [] in
+    let changes = Cell.create [] in
 
     (if Interest.is_writable interest then
        let kevent = Kevent.make fd ~filter:Libc.evfilt_write ~flags ~token in

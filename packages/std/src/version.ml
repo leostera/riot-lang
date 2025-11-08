@@ -1,4 +1,5 @@
 open Global
+open Collections
 
 type pre_release_segment = Numeric of int | Alphanumeric of string
 
@@ -127,7 +128,7 @@ let pre_release_segment_to_string = function
   | Alphanumeric s -> s
 
 let to_string v =
-  let base = format "%d.%d.%d" v.major v.minor v.patch in
+  let base = string_of_int v.major ^ "." ^ string_of_int v.minor ^ "." ^ string_of_int v.patch in
   let with_pre =
     match v.pre with
     | [] -> base
@@ -218,7 +219,7 @@ let matches (op, req_version) test_version =
   let cmp = compare test_version req_version in
   match op with
   | ReqEq -> cmp = Eq
-  | ReqNeq -> cmp <> Eq
+  | ReqNeq -> cmp != Eq
   | ReqGt -> cmp = Gt
   | ReqGte -> cmp = Gt || cmp = Eq
   | ReqLt -> cmp = Lt

@@ -1,3 +1,8 @@
+open Global0
+open Collections
+open Sync
+open Sync.Cell
+
 type iov = { ba : bytes; off : int; len : int }
 type t = iov array
 
@@ -11,7 +16,7 @@ let create ?(count = 1) ~size () =
 let with_capacity size = create ~size ()
 
 let sub ?(pos = 0) ~len t =
-  let curr = ref 0 in
+  let curr = Cell.create 0 in
   t |> Array.to_list
   |> List.filter_map (fun iov ->
       if !curr + iov.len < pos then (

@@ -1,6 +1,9 @@
 (* Auto-generated from Go's unicode/tables.go - DO NOT EDIT *)
 (* Unicode Version: 15.0.0 *)
 
+open Global
+  open Collections
+
 (** Range of 16-bit Unicode code points *)
 type range16 = {
   lo : int;      (** Start of range *)

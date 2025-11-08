@@ -1,4 +1,5 @@
 open Std
+open Std.Collections
 
 (* ===== Rune Width Tests ===== *)
 
@@ -6,14 +7,14 @@ let test_rune_width_ascii () =
   match Unicode.Utf8.decode_rune "A" 0 with
   | Some (r, _) ->
       if Unicode.Rune.width r = 1 then Ok ()
-      else Error (format "Expected width 1 for 'A', got %d" (Unicode.Rune.width r))
+      else Error ("Expected width 1 for 'A', got " ^ Int.to_string (Unicode.Rune.width r))
   | None -> Error "Failed to decode 'A'"
 
 let test_rune_width_cjk () =
   match Unicode.Utf8.decode_rune "一" 0 with
   | Some (r, _) ->
       if Unicode.Rune.width r = 2 then Ok ()
-      else Error (format "Expected width 2 for '一', got %d" (Unicode.Rune.width r))
+      else Error ("Expected width 2 for '一', got " ^ Int.to_string (Unicode.Rune.width r))
   | None -> Error "Failed to decode '一'"
 
 let test_rune_width_combining () =
@@ -21,14 +22,14 @@ let test_rune_width_combining () =
   match Unicode.Utf8.decode_rune "́" 0 with
   | Some (r, _) ->
       if Unicode.Rune.width r = 0 then Ok ()
-      else Error (format "Expected width 0 for combining acute, got %d" (Unicode.Rune.width r))
+      else Error ("Expected width 0 for combining acute, got " ^ Int.to_string (Unicode.Rune.width r))
   | None -> Error "Failed to decode combining accent"
 
 let test_rune_width_emoji () =
   match Unicode.Utf8.decode_rune "👍" 0 with
   | Some (r, _) ->
       if Unicode.Rune.width r = 2 then Ok ()
-      else Error (format "Expected width 2 for '👍', got %d" (Unicode.Rune.width r))
+      else Error ("Expected width 2 for '👍', got " ^ Int.to_string (Unicode.Rune.width r))
   | None -> Error "Failed to decode '👍'"
 
 let test_rune_width_zwj () =
@@ -36,68 +37,68 @@ let test_rune_width_zwj () =
   match Unicode.Utf8.decode_rune "‍" 0 with
   | Some (r, _) ->
       if Unicode.Rune.width r = 0 then Ok ()
-      else Error (format "Expected width 0 for ZWJ, got %d" (Unicode.Rune.width r))
+      else Error ("Expected width 0 for ZWJ, got " ^ Int.to_string (Unicode.Rune.width r))
   | None -> Error "Failed to decode ZWJ"
 
 let test_rune_width_fullwidth () =
   match Unicode.Utf8.decode_rune "Ａ" 0 with
   | Some (r, _) ->
       if Unicode.Rune.width r = 2 then Ok ()
-      else Error (format "Expected width 2 for 'Ａ', got %d" (Unicode.Rune.width r))
+      else Error ("Expected width 2 for 'Ａ', got " ^ Int.to_string (Unicode.Rune.width r))
   | None -> Error "Failed to decode 'Ａ'"
 
 (* ===== String Width Tests ===== *)
 
 let test_string_width_ascii () =
   if String.width "Hello" = 5 then Ok ()
-  else Error (format "Expected width 5, got %d" (String.width "Hello"))
+  else Error ("Expected width 5, got " ^ Int.to_string (String.width "Hello"))
 
 let test_string_width_cjk () =
   if String.width "你好" = 4 then Ok ()
-  else Error (format "Expected width 4, got %d" (String.width "你好"))
+  else Error ("Expected width 4, got " ^ Int.to_string (String.width "你好"))
 
 let test_string_width_mixed () =
   let width = String.width "Hi世界" in
   if width = 6 then Ok ()  (* 2 + 4 *)
-  else Error (format "Expected width 6, got %d" width)
+  else Error ("Expected width 6, got " ^ Int.to_string width)
 
 let test_string_width_emoji () =
   if String.width "👍" = 2 then Ok ()
-  else Error (format "Expected width 2, got %d" (String.width "👍"))
+  else Error ("Expected width 2, got " ^ Int.to_string (String.width "👍"))
 
 let test_string_width_combining () =
   (* "e" + combining acute = "é" *)
   if String.width "é" = 1 then Ok ()
-  else Error (format "Expected width 1, got %d" (String.width "é"))
+  else Error ("Expected width 1, got " ^ Int.to_string (String.width "é"))
 
 (* ===== Grapheme Count Tests ===== *)
 
 let test_grapheme_count_ascii () =
   if String.grapheme_count "Hello" = 5 then Ok ()
-  else Error (format "Expected 5 graphemes, got %d" (String.grapheme_count "Hello"))
+  else Error ("Expected 5 graphemes, got " ^ Int.to_string (String.grapheme_count "Hello"))
 
 let test_grapheme_count_cjk () =
   if String.grapheme_count "你好" = 2 then Ok ()
-  else Error (format "Expected 2 graphemes, got %d" (String.grapheme_count "你好"))
+  else Error ("Expected 2 graphemes, got " ^ Int.to_string (String.grapheme_count "你好"))
 
 let test_grapheme_count_emoji_with_modifier () =
   (* Thumbs up with skin tone should be 1 grapheme *)
   if String.grapheme_count "👍🏻" = 1 then Ok ()
-  else Error (format "Expected 1 grapheme, got %d" (String.grapheme_count "👍🏻"))
+  else Error ("Expected 1 grapheme, got " ^ Int.to_string (String.grapheme_count "👍🏻"))
 
 (* ===== Rune Count Tests ===== *)
 
 let test_rune_count_ascii () =
   if String.rune_count "Hello" = 5 then Ok ()
-  else Error (format "Expected 5 runes, got %d" (String.rune_count "Hello"))
+  else Error ("Expected 5 runes, got " ^ Int.to_string (String.rune_count "Hello"))
 
 let test_rune_count_cjk () =
   if String.rune_count "你好" = 2 then Ok ()
-  else Error (format "Expected 2 runes, got %d" (String.rune_count "你好"))
+  else Error ("Expected 2 runes, got " ^ Int.to_string (String.rune_count "你好"))
 
 let test_rune_count_emoji () =
   if String.rune_count "👍" = 1 then Ok ()
-  else Error (format "Expected 1 rune, got %d" (String.rune_count "👍"))
+  else Error ("Expected 1 rune, got " ^ Int.to_string (String.rune_count "👍"))
 
 (* ===== UTF-8 Tests ===== *)
 
@@ -110,7 +111,15 @@ let test_utf8_decode () =
   | Some (r, next_pos) ->
       let code = Unicode.Rune.to_int r in
       if code = 0x48 && next_pos = 1 then Ok ()
-      else Error (format "Expected U+0048 at pos 1, got U+%04X at pos %d" code next_pos)
+      else 
+        let code_hex = 
+          let hex_chars = "0123456789ABCDEF" in
+          let rec to_hex n acc len =
+            if len = 0 then acc
+            else to_hex (n / 16) (String.make 1 (String.get hex_chars (n mod 16)) ^ acc) (len - 1)
+          in "U+" ^ to_hex code "" 4
+        in
+        Error ("Expected U+0048 at pos 1, got " ^ code_hex ^ " at pos " ^ Int.to_string next_pos)
   | None -> Error "Failed to decode valid UTF-8"
 
 let test_utf8_encode () =
@@ -118,7 +127,7 @@ let test_utf8_encode () =
   | Some (r, _) ->
       let encoded = Unicode.Utf8.encode_rune r in
       if encoded = "一" then Ok ()
-      else Error (format "Expected '一', got '%s'" encoded)
+      else Error ("Expected '一', got '" ^ encoded ^ "'")
   | None -> Error "Failed to decode '一'"
 
 (* ===== Rune Conversion Tests ===== *)
@@ -128,7 +137,7 @@ let test_rune_of_int_valid () =
   | Some r ->
       let s = Unicode.Rune.to_string r in
       if s = "A" then Ok ()
-      else Error (format "Expected 'A', got '%s'" s)
+      else Error ("Expected 'A', got '" ^ s ^ "'")
   | None -> Error "Valid code point should succeed"
 
 let test_rune_of_int_invalid () =
@@ -140,7 +149,16 @@ let test_rune_to_int () =
   match Unicode.Utf8.decode_rune "👍" 0 with
   | Some (r, _) ->
       if Unicode.Rune.to_int r = 0x1F44D then Ok ()
-      else Error (format "Expected 0x1F44D for '👍', got 0x%X" (Unicode.Rune.to_int r))
+      else 
+        let code = Unicode.Rune.to_int r in
+        let code_hex = 
+          let hex_chars = "0123456789ABCDEF" in
+          let rec to_hex n acc =
+            if n = 0 then if acc = "" then "0" else acc
+            else to_hex (n / 16) (String.make 1 (String.get hex_chars (n mod 16)) ^ acc)
+          in to_hex code ""
+        in
+        Error ("Expected 0x1F44D for '👍', got 0x" ^ code_hex)
   | None -> Error "Failed to decode '👍'"
 
 (* ===== Word Boundary Tests ===== *)
@@ -153,7 +171,7 @@ let test_word_boundaries_simple () =
 let test_word_split_simple () =
   let words = String.split_words "Hello world" in
   if List.length words >= 2 then Ok ()
-  else Error (format "Expected at least 2 words, got %d" (List.length words))
+  else Error ("Expected at least 2 words, got " ^ Int.to_string (List.length words))
 
 let test_word_split_contractions () =
   let words = String.split_words "don't" in
@@ -171,14 +189,14 @@ let test_next_word_start () =
   let text = "Hello world" in
   let next = Unicode.Segmentation.find_next_word_start text 0 in
   if next > 0 && next < String.length text then Ok ()
-  else Error (format "Expected word start between 0 and %d, got %d" (String.length text) next)
+  else Error ("Expected word start between 0 and " ^ Int.to_string (String.length text) ^ ", got " ^ Int.to_string next)
 
 let test_prev_word_start () =
   let text = "Hello world" in
   let len = String.length text in
   let prev = Unicode.Segmentation.find_prev_word_start text len in
   if prev >= 0 && prev < len then Ok ()
-  else Error (format "Expected word start between 0 and %d, got %d" len prev)
+  else Error ("Expected word start between 0 and " ^ Int.to_string len ^ ", got " ^ Int.to_string prev)
 
 (* ===== Line Breaking Tests ===== *)
 
@@ -195,12 +213,12 @@ let test_line_breaks_space () =
 let test_wrap_lines_simple () =
   let lines = Unicode.Segmentation.wrap_lines ~width:10 "Hello world" in
   if List.length lines >= 2 then Ok ()
-  else Error (format "Expected at least 2 lines when wrapping to width 10, got %d" (List.length lines))
+  else Error ("Expected at least 2 lines when wrapping to width 10, got " ^ Int.to_string (List.length lines))
 
 let test_wrap_lines_short () =
   let lines = Unicode.Segmentation.wrap_lines ~width:100 "Hello" in
   if List.length lines = 1 then Ok ()
-  else Error (format "Expected 1 line for short text, got %d" (List.length lines))
+  else Error ("Expected 1 line for short text, got " ^ Int.to_string (List.length lines))
 
 let test_wrap_lines_cjk () =
   let text = "你好世界" in  (* Width 8 *)
@@ -226,14 +244,14 @@ let test_string_truncate_width () =
   let truncated = String.truncate_width ~width:5 s in
   let w = String.width truncated in
   if w <= 5 then Ok ()
-  else Error (format "Truncated string should have width <= 5, got %d" w)
+  else Error ("Truncated string should have width <= 5, got " ^ Int.to_string w)
 
 let test_string_truncate_width_cjk () =
   let s = "你好世界" in  (* Width 8 *)
   let truncated = String.truncate_width ~width:5 s in
   let w = String.width truncated in
   if w <= 5 then Ok ()
-  else Error (format "Truncated CJK string should have width <= 5, got %d" w)
+  else Error ("Truncated CJK string should have width <= 5, got " ^ Int.to_string w)
 
 (* ===== East Asian Width Configuration Tests ===== *)
 
@@ -281,7 +299,7 @@ let test_rune_case_conversion () =
       let upper = Unicode.Rune.to_upper lower in
       let upper_str = Unicode.Rune.to_string upper in
       if upper_str = "A" then Ok ()
-      else Error (format "Expected 'A' from to_upper('a'), got '%s'" upper_str)
+      else Error ("Expected 'A' from to_upper('a'), got '" ^ upper_str ^ "'")
   | None -> Error "Failed to decode 'a'"
 
 (* ===== Extended Character Classification Tests ===== *)
@@ -441,7 +459,15 @@ let test_max_unicode_code_point () =
   | Some r ->
       let code = Unicode.Rune.to_int r in
       if code = 0x10FFFF then Ok ()
-      else Error (format "Expected U+10FFFF, got U+%X" code)
+      else 
+        let code_hex = 
+          let hex_chars = "0123456789ABCDEF" in
+          let rec to_hex n acc =
+            if n = 0 then if acc = "" then "0" else acc
+            else to_hex (n / 16) (String.make 1 (String.get hex_chars (n mod 16)) ^ acc)
+          in to_hex code ""
+        in
+        Error ("Expected U+10FFFF, got U+" ^ code_hex)
   | None -> Error "Maximum Unicode code point should be valid"
 
 (* ===== Round-Trip Tests ===== *)
@@ -478,7 +504,7 @@ let test_utf8_encode_decode_roundtrip () =
   | Some (r, _) ->
       let encoded = Unicode.Utf8.encode_rune r in
       if encoded = "世" then Ok ()
-      else Error (format "Expected '世', got '%s'" encoded)
+      else Error ("Expected '世', got '" ^ encoded ^ "'")
   | None -> Error "Failed to decode 世"
 
 let test_rune_to_int_of_int_roundtrip () =
@@ -487,7 +513,15 @@ let test_rune_to_int_of_int_roundtrip () =
   | Some r ->
       let code2 = Unicode.Rune.to_int r in
       if code = code2 then Ok ()
-      else Error (format "Expected U+%X, got U+%X" code code2)
+      else 
+        let hex_chars = "0123456789ABCDEF" in
+        let to_hex n = 
+          let rec helper n acc =
+            if n = 0 then if acc = "" then "0" else acc
+            else helper (n / 16) (String.make 1 (String.get hex_chars (n mod 16)) ^ acc)
+          in helper n ""
+        in
+        Error ("Expected U+" ^ to_hex code ^ ", got U+" ^ to_hex code2)
   | None -> Error "Failed to create rune from valid code point"
 
 let test_ascii_roundtrip_regression () =
@@ -510,7 +544,13 @@ let test_greek_case_conversion () =
       let upper = Unicode.Rune.to_upper lower in
       let upper_code = Unicode.Rune.to_int upper in
       if upper_code = 0x0391 then Ok ()  (* Α *)
-      else Error (format "Expected U+0391 (Α), got U+%04X" upper_code)
+      else 
+        let hex_chars = "0123456789ABCDEF" in
+        let rec to_hex n acc len =
+          if len = 0 then acc
+          else to_hex (n / 16) (String.make 1 (String.get hex_chars (n mod 16)) ^ acc) (len - 1)
+        in
+        Error ("Expected U+0391 (Α), got U+" ^ to_hex upper_code "" 4)
   | None -> Error "Failed to decode Greek α"
 
 let test_cyrillic_case_conversion () =
@@ -519,7 +559,13 @@ let test_cyrillic_case_conversion () =
       let upper = Unicode.Rune.to_upper lower in
       let upper_code = Unicode.Rune.to_int upper in
       if upper_code = 0x0410 then Ok ()  (* А *)
-      else Error (format "Expected U+0410 (А), got U+%04X" upper_code)
+      else 
+        let hex_chars = "0123456789ABCDEF" in
+        let rec to_hex n acc len =
+          if len = 0 then acc
+          else to_hex (n / 16) (String.make 1 (String.get hex_chars (n mod 16)) ^ acc) (len - 1)
+        in
+        Error ("Expected U+0410 (А), got U+" ^ to_hex upper_code "" 4)
   | None -> Error "Failed to decode Cyrillic а"
 
 let test_greek_uppercase_to_lowercase () =
@@ -528,7 +574,13 @@ let test_greek_uppercase_to_lowercase () =
       let lower = Unicode.Rune.to_lower upper in
       let lower_code = Unicode.Rune.to_int lower in
       if lower_code = 0x03B1 then Ok ()  (* α *)
-      else Error (format "Expected U+03B1 (α), got U+%04X" lower_code)
+      else 
+        let hex_chars = "0123456789ABCDEF" in
+        let rec to_hex n acc len =
+          if len = 0 then acc
+          else to_hex (n / 16) (String.make 1 (String.get hex_chars (n mod 16)) ^ acc) (len - 1)
+        in
+        Error ("Expected U+03B1 (α), got U+" ^ to_hex lower_code "" 4)
   | None -> Error "Failed to decode Greek Α"
 
 let test_latin_extended_uppercase () =
@@ -538,7 +590,13 @@ let test_latin_extended_uppercase () =
       let lower = Unicode.Rune.to_lower upper in
       let lower_code = Unicode.Rune.to_int lower in
       if lower_code = 0x0101 then Ok ()  (* ā *)
-      else Error (format "Expected U+0101 (ā), got U+%04X" lower_code)
+      else 
+        let hex_chars = "0123456789ABCDEF" in
+        let rec to_hex n acc len =
+          if len = 0 then acc
+          else to_hex (n / 16) (String.make 1 (String.get hex_chars (n mod 16)) ^ acc) (len - 1)
+        in
+        Error ("Expected U+0101 (ā), got U+" ^ to_hex lower_code "" 4)
   | None -> Error "Failed to decode Ā"
 
 (* ===== Integration Tests ===== *)

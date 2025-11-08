@@ -1,3 +1,5 @@
+open Global0
+
 module type Intf = sig
   type state
   type item
@@ -29,7 +31,7 @@ let[@inline] size : type item. item t -> int =
 let rec collect t acc =
   match next t with
   | Some item, t -> collect t (item :: acc)
-  | None, _ -> List.rev acc
+  | None, _ -> Stdlib.List.rev acc
 
 let to_list t = collect t []
 

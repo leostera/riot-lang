@@ -1,3 +1,5 @@
+open Global
+
 (** # Net.Uri - URL/URI parsing and manipulation
 
     URL and URI parsing with support for all standard components: scheme,

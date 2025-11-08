@@ -1,7 +1,7 @@
+open Global0
 (** Basic mutable cell *)
 
-type 'a cell = { mutable value : 'a }
-type 'a t = 'a cell
+type 'a t = 'a cell = { mutable value : 'a }
 
 (* Creation *)
 let create value = { value }

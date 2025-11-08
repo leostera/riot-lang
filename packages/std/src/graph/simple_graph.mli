@@ -1,3 +1,5 @@
+open Global
+
 (** # SimpleGraph - Dependency graph with topological sorting
 
     A simple directed graph implementation focused on dependency tracking and
@@ -75,8 +77,8 @@ val make : unit -> 'a t
 val add_node : 'a t -> 'a -> 'a node
 (** Add a node with the given value. *)
 
-val get_node : 'a t -> Node_id.t -> 'a node
-(** Retrieve a node by ID. *)
+val get_node : 'a t -> Node_id.t -> 'a node option
+(** Retrieve a node by ID. Returns None if not found. *)
 
 val add_edge : 'a node -> depends_on:'b node -> unit
 (** Add a dependency edge (from depends on to). *)

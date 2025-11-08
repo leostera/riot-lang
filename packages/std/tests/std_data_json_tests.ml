@@ -1,5 +1,6 @@
 open Std
-module Json = Std.Data.Json
+open Std.Data
+open Std.Collections
 
 let test_parse_null () =
   match Json.of_string "null" with

@@ -99,6 +99,8 @@
 
 (** {1 Stage Types} *)
 
+open Global
+
 type from = {
   pid : Pid.t;
   subscription_ref : unit Ref.t;

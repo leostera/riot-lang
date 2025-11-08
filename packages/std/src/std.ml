@@ -3,6 +3,7 @@
 module Agent = Agent
 module Application = Application
 module ArgParser = Arg_parser
+module Bool = Bool
 module Char = Char
 module Collections = Collections
 module Command = Command
@@ -15,6 +16,9 @@ module Exception = Exception
 module Fs = Fs
 module Graph = Graph
 module IO = IO
+module Int = Int
+module Int32 = Int32
+module Int64 = Int64
 module Iter = Iter
 module Log = Log
 module Message = Message
@@ -23,6 +27,8 @@ module Option = Option
 module Path = Path
 module Pid = Pid
 module Process = Process
+module Ptr = Ptr
+module Random = Random
 module Ref = Ref
 module Result = Result
 module String = String
@@ -39,7 +45,7 @@ module Unicode = Unicode
 module Version = Version
 module WorkerPool = Worker_pool
 
-(* Include all the globals *)
+(* Include std's Global module which re-exports from Kernel *)
 include Global
 
 (* Application startup *)

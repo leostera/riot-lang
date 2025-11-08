@@ -1,4 +1,5 @@
 (** Process mailbox for message passing *)
+open  Kernel
 
 type t
 (** Opaque mailbox type containing queued messages *)

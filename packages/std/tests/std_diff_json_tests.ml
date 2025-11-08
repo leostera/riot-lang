@@ -1,5 +1,6 @@
 open Std
 open Std.Data
+open Std.Collections
 
 (* bring Diff types into scope *)
 open Diff
@@ -94,7 +95,7 @@ let test_diff_array_element_changed =
       Ok ()
   | _ ->
       Error
-        (format "Expected change at index 1, got %d diffs" (List.length diff))
+        ("Expected change at index 1, got " ^ Int.to_string (List.length diff) ^ " diffs")
 
 let test_diff_array_shorter =
   Test.case "diff array with removed elements" @@ fun () ->
@@ -143,8 +144,7 @@ let test_diff_nested_arrays =
       Ok ()
   | _ ->
       Error
-        (format "Expected nested change at [1][1], got %d diffs"
-           (List.length diff))
+        ("Expected nested change at [1][1], got " ^ Int.to_string (List.length diff) ^ " diffs")
 
 let test_diff_empty_objects =
   Test.case "diff empty objects" @@ fun () ->
@@ -168,7 +168,7 @@ let test_diff_object_field_added =
   match added with
   | [ { path = [ Key "age" ]; kind = Added (Json.Int 30) } ] -> Ok ()
   | _ ->
-      Error (format "Expected 1 addition at 'age', got %d" (List.length added))
+      Error ("Expected 1 addition at 'age', got " ^ Int.to_string (List.length added))
 
 let test_diff_object_field_removed =
   Test.case "diff object with removed field" @@ fun () ->
@@ -179,7 +179,7 @@ let test_diff_object_field_removed =
   match removed with
   | [ { path = [ Key "age" ]; kind = Removed (Json.Int 30) } ] -> Ok ()
   | _ ->
-      Error (format "Expected 1 removal at 'age', got %d" (List.length removed))
+      Error ("Expected 1 removal at 'age', got " ^ Int.to_string (List.length removed))
 
 let test_diff_object_field_changed =
   Test.case "diff object with changed field" @@ fun () ->
@@ -191,7 +191,7 @@ let test_diff_object_field_changed =
       Ok ()
   | _ ->
       Error
-        (format "Expected change in age field, got %d diffs" (List.length diff))
+        ("Expected change in age field, got " ^ Int.to_string (List.length diff) ^ " diffs")
 
 let test_diff_object_multiple_changes =
   Test.case "diff object with multiple changes" @@ fun () ->
@@ -205,8 +205,8 @@ let test_diff_object_multiple_changes =
   if List.length diff = 3 then Ok ()
   else
     Error
-      (format "Expected 3 differences (1 changed, 1 removed, 1 added), got %d"
-         (List.length diff))
+      ("Expected 3 differences (1 changed, 1 removed, 1 added), got " ^
+         Int.to_string (List.length diff))
 
 let test_diff_nested_objects =
   Test.case "diff deeply nested objects" @@ fun () ->
@@ -249,8 +249,7 @@ let test_diff_nested_objects =
       Ok ()
   | _ ->
       Error
-        (format "Expected nested change at user.address.city, got %d diffs"
-           (List.length diff))
+        ("Expected nested change at user.address.city, got " ^ Int.to_string (List.length diff) ^ " diffs")
 
 let test_diff_object_with_array =
   Test.case "diff object containing arrays" @@ fun () ->
@@ -271,8 +270,7 @@ let test_diff_object_with_array =
       Ok ()
   | _ ->
       Error
-        (format "Expected change in tags array at index 1, got %d diffs"
-           (List.length diff))
+        ("Expected change in tags array at index 1, got " ^ Int.to_string (List.length diff) ^ " diffs")
 
 let test_diff_complex_nested_structure =
   Test.case "diff complex deeply nested structure" @@ fun () ->
@@ -349,8 +347,10 @@ let test_json_diff_with_helpers =
   then Ok ()
   else
     Error
-      (format "Expected 1 add, 1 remove, 1 change; got %d, %d, %d"
-         (List.length added) (List.length removed) (List.length changed))
+      ("Expected 1 add, 1 remove, 1 change; got " ^
+         Int.to_string (List.length added) ^ ", " ^
+         Int.to_string (List.length removed) ^ ", " ^
+         Int.to_string (List.length changed))
 
 let test_json_at_path =
   Test.case "filter JSON diffs by path" @@ fun () ->
@@ -376,9 +376,9 @@ let test_json_at_path =
     Ok ()
   else
     Error
-      (format "Expected 1 change for each path, got %d and %d"
-         (List.length user_name_changes)
-         (List.length user_age_changes))
+      ("Expected 1 change for each path, got " ^
+         Int.to_string (List.length user_name_changes) ^ " and " ^
+         Int.to_string (List.length user_age_changes))
 
 let () =
   Miniriot.run

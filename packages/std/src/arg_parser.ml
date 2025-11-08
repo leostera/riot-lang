@@ -1,4 +1,6 @@
 open Global
+open IO
+open Collections
 
 let ( let* ) = Result.and_then
 
@@ -32,8 +34,8 @@ type command = {
 
 type matches = {
   command_name : string;
-  values : (string, string list) Hashtbl.t;
-  flags : (string, int) Hashtbl.t;
+  values : (string, string list) HashMap.t;
+  flags : (string, int) HashMap.t;
   mutable subcommand : (string * matches) option;
   mutable trailing_args : string list;
 }
@@ -116,8 +118,8 @@ let allow_trailing_args cmd = { cmd with allow_trailing = true }
 let create_matches name =
   {
     command_name = name;
-    values = Hashtbl.create 16;
-    flags = Hashtbl.create 16;
+    values = HashMap.create () ;
+    flags = HashMap.create () ;
     subcommand = None;
     trailing_args = [];
   }
@@ -131,7 +133,7 @@ let rec get_matches cmd args =
         (fun arg ->
           arg.required
           &&
-          match Hashtbl.find_opt matches.values arg.name with
+          match HashMap.get matches.values arg.name with
           | None -> true
           | Some [] -> true
           | Some _ -> false)
@@ -139,7 +141,7 @@ let rec get_matches cmd args =
     in
     match missing with
     | Some arg ->
-        println "Missing required argument: %s" arg.name;
+        println ("Missing required argument: " ^ arg.name);
         println "";
         print_help cmd;
         exit 1
@@ -157,7 +159,7 @@ let rec get_matches cmd args =
         print_help cmd;
         exit 0
     | "--version" :: _ when Option.is_some cmd.version ->
-        println "%s" (Option.unwrap cmd.version);
+        println (Option.unwrap cmd.version);
         exit 0
     | arg_str :: rest when String.starts_with ~prefix:"--" arg_str -> (
         let name = String.sub arg_str 2 (String.length arg_str - 2) in
@@ -191,26 +193,26 @@ let rec get_matches cmd args =
   and parse_long_arg arg name rest =
     match arg.action with
     | SetTrue ->
-        Hashtbl.replace matches.flags name 1;
+        let _ = HashMap.insert matches.flags name 1 in
         parse_args rest
     | Count ->
         let count =
-          Hashtbl.find_opt matches.flags name |> Option.unwrap_or ~default:0
+          HashMap.get matches.flags name |> Option.unwrap_or ~default:0
         in
-        Hashtbl.replace matches.flags name (count + 1);
+        let _ = HashMap.insert matches.flags name (count + 1) in
         parse_args rest
     | Set | Append -> (
         match rest with
         | [] -> Error (InvalidValue (name, "missing value"))
         | value :: rest' ->
             let current =
-              Hashtbl.find_opt matches.values name
+              HashMap.get matches.values name
               |> Option.unwrap_or ~default:[]
             in
-            Hashtbl.replace matches.values name (current @ [ value ]);
+            let _ = HashMap.insert matches.values name (current @ [ value ]) in
             parse_args rest')
     | SetFalse ->
-        Hashtbl.replace matches.flags name 0;
+        let _ = HashMap.insert matches.flags name 0 in
         parse_args rest
   and parse_short_arg arg c rest = parse_long_arg arg arg.name rest
   and parse_positional pos_args =
@@ -224,7 +226,7 @@ let rec get_matches cmd args =
     let unfilled_positionals : unit arg list =
       List.filter
         (fun (positional_arg : unit arg) ->
-          let current = Hashtbl.find_opt matches.values positional_arg.name in
+          let current = HashMap.get matches.values positional_arg.name in
           match current with
           | None -> true
           | Some [] -> true
@@ -235,10 +237,10 @@ let rec get_matches cmd args =
     | [], _ -> Error (UnknownArgument (List.hd pos_args))
     | arg :: _, value :: rest ->
         let current =
-          Hashtbl.find_opt matches.values arg.name
+          HashMap.get matches.values arg.name
           |> Option.unwrap_or ~default:[]
         in
-        Hashtbl.replace matches.values arg.name (current @ [ value ]);
+        let _ = HashMap.insert matches.values arg.name (current @ [ value ]) in
         parse_args rest
     | arg :: _, [] when arg.required -> Error (MissingRequired arg.name)
     | _, [] -> validate_required ()
@@ -254,30 +256,30 @@ and find_arg_by_short cmd short_char =
 and print_help cmd =
   (* Title/about on first line *)
   (match cmd.about with
-  | Some a -> println "%s\n" a
-  | None -> println "%s\n" cmd.name);
+  | Some a -> println (a ^ "\n")
+  | None -> println (cmd.name ^ "\n"));
 
   (* Separate positional args from options *)
   let positionals =
     List.filter (fun arg -> arg.short = None && arg.long = None) cmd.args
   in
   let options =
-    List.filter (fun arg -> arg.short <> None || arg.long <> None) cmd.args
+    List.filter (fun arg -> arg.short != None || arg.long != None) cmd.args
   in
 
   (* Usage section *)
   let usage_buf = Buffer.create 128 in
-  Buffer.add_string usage_buf (format "Usage: %s" cmd.name);
+  Buffer.add_string usage_buf ("Usage: " ^ cmd.name);
   if List.length options > 0 then Buffer.add_string usage_buf " [OPTIONS]";
   List.iter
     (fun arg ->
-      if arg.required then Buffer.add_string usage_buf (format " <%s>" arg.name)
-      else Buffer.add_string usage_buf (format " [%s]" arg.name))
+      if arg.required then Buffer.add_string usage_buf (" <" ^ arg.name ^ ">")
+      else Buffer.add_string usage_buf (" [" ^ arg.name ^ "]"))
     positionals;
   if cmd.allow_trailing then Buffer.add_string usage_buf " [-- ARGS...]";
   if List.length cmd.subcommands > 0 then
     Buffer.add_string usage_buf " [COMMAND]";
-  println "%s" (Buffer.contents usage_buf);
+  println (Buffer.contents usage_buf);
 
   (* Arguments section (positionals) *)
   if List.length positionals > 0 then (
@@ -291,13 +293,13 @@ and print_help cmd =
     List.iter
       (fun (arg : unit arg) ->
         let arg_str =
-          if arg.required then format "<%s>" arg.name
-          else format "[%s]" arg.name
+          if arg.required then "<" ^ arg.name ^ ">"
+          else "[" ^ arg.name ^ "]"
         in
         let padding_len = max 2 (max_arg_width - String.length arg.name + 4) in
         let padding = String.make padding_len ' ' in
         let help_str = match arg.help with Some h -> h | None -> "" in
-        println "  %s%s%s" arg_str padding help_str)
+        println ("  " ^ arg_str ^ padding ^ help_str))
       positionals);
 
   (* Options section *)
@@ -317,16 +319,16 @@ and print_help cmd =
     List.iter
       (fun arg ->
         let short_str =
-          match arg.short with Some c -> format "-%c, " c | None -> "    "
+          match arg.short with Some c -> "-" ^ String.make 1 c ^ ", " | None -> "    "
         in
         let long_str =
-          match arg.long with Some l -> format "--%s" l | None -> ""
+          match arg.long with Some l -> "--" ^ l | None -> ""
         in
         let opt_str = short_str ^ long_str in
         let padding_len = max 2 (max_opt_width - String.length opt_str + 2) in
         let padding = String.make padding_len ' ' in
         let help_str = match arg.help with Some h -> h | None -> "" in
-        println "  %s%s%s" opt_str padding help_str)
+        println ("  " ^ opt_str ^ padding ^ help_str))
       options);
 
   (* Commands section *)
@@ -347,25 +349,24 @@ and print_help cmd =
           String.make (max_name_len - String.length sub.name + 4) ' '
         in
         let about_str = match sub.about with Some a -> a | None -> "" in
-        println "    %s%s%s" sub.name padding about_str)
+        println ("    " ^ sub.name ^ padding ^ about_str))
       sorted_subs;
     println
-      "\nSee '%s <command> --help' for more information on a specific command."
-      cmd.name)
+      ("\nSee '" ^ cmd.name ^ " <command> --help' for more information on a specific command."))
 
 let get_one matches name =
-  match Hashtbl.find_opt matches.values name with
+  match HashMap.get matches.values name with
   | Some (v :: _) -> Some v
   | _ -> None
 
 let get_flag matches name =
-  Hashtbl.find_opt matches.flags name |> Option.unwrap_or ~default:0 > 0
+  HashMap.get matches.flags name |> Option.unwrap_or ~default:0 > 0
 
 let get_count matches name =
-  Hashtbl.find_opt matches.flags name |> Option.unwrap_or ~default:0
+  HashMap.get matches.flags name |> Option.unwrap_or ~default:0
 
 let get_many matches name =
-  Hashtbl.find_opt matches.values name |> Option.unwrap_or ~default:[]
+  HashMap.get matches.values name |> Option.unwrap_or ~default:[]
 
 let get_int matches name =
   match get_one matches name with Some s -> int_of_string_opt s | None -> None
@@ -394,24 +395,24 @@ let subcommand_matches matches name =
 let trailing_args matches = matches.trailing_args
 
 let error_message = function
-  | UnknownArgument arg -> format "Unknown argument: %s" arg
-  | MissingRequired name -> format "Missing required argument: %s" name
-  | InvalidValue (name, msg) -> format "Invalid value for %s: %s" name msg
-  | UnknownSubcommand name -> format "Unknown subcommand: %s" name
+  | UnknownArgument arg -> "Unknown argument: " ^ arg
+  | MissingRequired name -> "Missing required argument: " ^ name
+  | InvalidValue (name, msg) -> "Invalid value for " ^ name ^ ": " ^ msg
+  | UnknownSubcommand name -> "Unknown subcommand: " ^ name
   | MissingSubcommand -> "Missing subcommand"
-  | ConflictingArguments (a, b) -> format "Conflicting arguments: %s and %s" a b
-  | TooManyValues name -> format "Too many values for: %s" name
-  | TooFewValues name -> format "Too few values for: %s" name
+  | ConflictingArguments (a, b) -> "Conflicting arguments: " ^ a ^ " and " ^ b
+  | TooManyValues name -> "Too many values for: " ^ name
+  | TooFewValues name -> "Too few values for: " ^ name
 
-let print_error err = println "error: %s" (error_message err)
+let print_error err = println ("error: " ^ error_message err)
 
 let usage_string cmd =
   let buf = Buffer.create 256 in
-  Buffer.add_string buf (format "Usage: %s" cmd.name);
+  Buffer.add_string buf ("Usage: " ^ cmd.name);
 
   (* Add options if any *)
   let has_options =
-    List.exists (fun arg -> arg.short <> None || arg.long <> None) cmd.args
+    List.exists (fun arg -> arg.short != None || arg.long != None) cmd.args
   in
   if has_options then Buffer.add_string buf " [OPTIONS]";
 
@@ -421,8 +422,8 @@ let usage_string cmd =
   in
   List.iter
     (fun arg ->
-      if arg.required then Buffer.add_string buf (format " <%s>" arg.name)
-      else Buffer.add_string buf (format " [%s]" arg.name))
+      if arg.required then Buffer.add_string buf (" <" ^ arg.name ^ ">")
+      else Buffer.add_string buf (" [" ^ arg.name ^ "]"))
     positionals;
 
   (* Add subcommands indicator *)
@@ -430,4 +431,4 @@ let usage_string cmd =
 
   Buffer.contents buf
 
-let print_usage cmd = println "%s" (usage_string cmd)
+let print_usage cmd = println (usage_string cmd)

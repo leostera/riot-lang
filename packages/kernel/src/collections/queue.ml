@@ -1,3 +1,5 @@
+open Global0
+
 type 'a node = { value : 'a; mutable next : 'a node option }
 
 type 'a t = {
@@ -11,7 +13,7 @@ let with_capacity _ = create ()
 let len queue = queue.length
 let is_empty queue = queue.length = 0
 
-let enqueue queue value =
+let push queue value =
   let new_node = { value; next = None } in
   match queue.back with
   | None ->
@@ -23,7 +25,7 @@ let enqueue queue value =
       queue.back <- Some new_node;
       queue.length <- queue.length + 1
 
-let dequeue queue =
+let pop queue =
   match queue.front with
   | None -> None
   | Some front_node ->
@@ -53,41 +55,31 @@ let iter f queue =
   loop queue.front
 
 let fold f queue acc =
-  let result = ref acc in
-  let rec loop node =
+  let rec loop node acc =
     match node with
-    | None -> ()
-    | Some n ->
-        result := f n.value !result;
-        loop n.next
+    | None -> acc
+    | Some n -> loop n.next (f n.value acc)
   in
-  loop queue.front;
-  !result
+  loop queue.front acc
 
 let to_list queue =
-  let result = ref [] in
-  let rec loop node =
+  let rec loop node acc =
     match node with
-    | None -> ()
-    | Some n ->
-        result := n.value :: !result;
-        loop n.next
+    | None -> acc
+    | Some n -> loop n.next (n.value :: acc)
   in
-  loop queue.front;
-  List.rev !result
+  loop queue.front []
 
 let contains queue value =
-  let found = ref false in
-  let rec loop node =
+  let rec loop node acc =
     match node with
-    | None -> ()
-    | Some n -> if n.value = value then found := true else loop n.next
+    | None -> acc
+    | Some n -> loop n.next ( n.value = value )
   in
-  loop queue.front;
-  !found
+  loop queue.front false
 
 let append queue1 queue2 =
-  iter (enqueue queue1) queue2;
+  iter (push queue1) queue2;
   clear queue2
 
 let transfer ~src ~dst =
@@ -112,7 +104,7 @@ let transfer ~src ~dst =
 
 let of_list elements =
   let queue = create () in
-  List.iter (enqueue queue) elements;
+  List.iter (push queue) elements;
   queue
 
 let into_iter : type item. item t -> item Iter.Iterator.t =
@@ -138,12 +130,12 @@ let to_mut_iter : type item. item t -> item Iter.MutIterator.t =
     type state = item t
     type nonrec item = item
 
-    let next queue = dequeue queue
+    let next queue = pop queue
     let size queue = len queue
 
     let clone queue =
       let queue2 = with_capacity (len queue) in
-      iter (enqueue queue2) queue;
+      iter (push queue2) queue;
       queue2
   end in
   Iter.MutIterator.make (module QueueIter) queue

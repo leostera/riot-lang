@@ -1,5 +1,7 @@
+open Global
+open Collections
 open Iter
-include Stdlib.String
+include Kernel.String
 
 module MutIter = struct
   type state = { source : string; mutable current_pos : int }
@@ -44,12 +46,12 @@ let width s =
   (* Calculate display width by summing rune widths *)
   into_iter s
   |> Iterator.to_list
-  |> Stdlib.List.fold_left (fun acc rune ->
+  |> List.fold_left (fun acc rune ->
       acc + Unicode.Rune.width rune
     ) 0
 
 let rune_count s =
-  into_iter s |> Iterator.to_list |> Stdlib.List.length
+  into_iter s |> Iterator.to_list |> List.length
 
 let grapheme_count s =
   (* Count grapheme clusters *)
@@ -68,7 +70,7 @@ let truncate_width ~width:target_width ?(tail = "…") s =
   let s_width = width s in
   if s_width <= target_width then s
   else
-    let tail_width = Stdlib.String.length tail in (* Simplified: assume ASCII tail *)
+    let tail_width = length tail in (* Simplified: assume ASCII tail *)
     let max_width = target_width - tail_width in
     if max_width <= 0 then tail
     else
@@ -173,7 +175,7 @@ let line_breaks s = Unicode.Segmentation.find_line_breaks s
 
 let wrap ~width:_ s =
   (* Simplified: split on whitespace *)
-  split_on_char ' ' s |> List.filter (fun w -> w <> "")
+  split_on_char ' ' s |> List.filter (fun w -> w != "")
 
 let wrap_words ~width:target_width s =
   let words = split_words s in
@@ -196,86 +198,3 @@ let wrap_words ~width:target_width s =
           trim current_line :: build_lines word word_width rest
   in
   build_lines "" 0 words
-
-(*
-module Tests = struct
-  let%test "empty iterator has size 0" =
-    let iter = into_iter "" in
-    Iterator.size iter = 0
-  ;;
-
-  let%test "iterator has size 3" =
-    let iter = into_iter "abc" in
-    Iterator.size iter = 3
-  ;;
-
-  let%test "iterator size decreases" =
-    let iter = into_iter "abc" in
-    let _next, iter = Iterator.next iter in
-    Iterator.size iter = 2
-  ;;
-
-  let%test "iterator size reaches zero" =
-    let iter = into_iter "abc" in
-    let _next, iter = Iterator.next iter in
-    let _next, iter = Iterator.next iter in
-    let _next, iter = Iterator.next iter in
-    Iterator.size iter = 0
-  ;;
-
-  let next iter =
-    let item, state = Iterator.next iter in
-    Option.get item, state
-  ;;
-
-  let%test "iterator returns None after its exhausted" =
-    let iter = into_iter "abc" in
-    let a, iter = Iterator.next iter in
-    let b, iter = Iterator.next iter in
-    let c, iter = Iterator.next iter in
-    let r1, iter = Iterator.next iter in
-    let r2, iter = Iterator.next iter in
-    let r3, _ = Iterator.next iter in
-    a != None && b != None && c != None && r1 = None && r2 = None && r3 = None
-  ;;
-
-  let%test "iterator returns different items" =
-    let iter = into_iter "abc" in
-    let a, iter = next iter in
-    let b, iter = next iter in
-    let c, _iter = next iter in
-    Uchar.(equal a (of_char 'a') && equal b (of_char 'b') && equal c (of_char 'c'))
-  ;;
-
-  let%test "iterates over latin9 characters correctly" =
-    let iter = into_iter "Élégant" in
-    let rec validate_sequence chars iter =
-      match chars with
-      | [] -> true
-      | expected :: chars ->
-        (* Printf.printf "expecting: %d\n%!" (Uchar.to_int expected); *)
-        let actual, iter = next iter in
-        let result = Uchar.(equal actual expected) in
-        (* Printf.printf *)
-        (*   "%d == %d -> %b\n%!" *)
-        (*   (Uchar.to_int actual) *)
-        (*   (Uchar.to_int expected) *)
-        (*   result; *)
-        result && validate_sequence chars iter
-    in
-    validate_sequence
-      Uchar.
-        [ of_char 'E'
-        ; of_int 0x0301
-        ; of_char 'l'
-        ; of_char 'e'
-        ; of_int 0x0301
-        ; of_char 'g'
-        ; of_char 'a'
-        ; of_char 'n'
-        ; of_char 't'
-        ]
-      iter
-  ;;
-end
-*)

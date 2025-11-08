@@ -38,6 +38,3 @@ val should_fire : t -> now:int64 -> bool
 
 val reschedule : t -> now:int64 -> unit
 (** Reschedule interval timer for next firing *)
-
-val pp : Format.formatter -> t -> unit
-(** Pretty-print a timer *)

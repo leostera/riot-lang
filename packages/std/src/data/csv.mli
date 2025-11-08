@@ -1,3 +1,5 @@
+open Global
+
 (** # Data.CSV - CSV parsing and serialization
 
     A CSV (Comma-Separated Values) parser and serializer for reading and writing

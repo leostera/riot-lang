@@ -1,3 +1,6 @@
+
+open Global0
+open Collections
 open Async
 
 type 't raw_addr = string
@@ -25,10 +28,7 @@ let to_domain addr = match addr with `Tcp (_host, _) -> Unix.PF_INET
 let of_unix sockaddr =
   match sockaddr with
   | Unix.ADDR_INET (host, port) -> tcp (Ipaddr.of_unix host) port
-  | Unix.ADDR_UNIX addr -> failwith ("unsupported unix addresses: " ^ addr)
-
-let pp ppf (addr : stream_addr) =
-  match addr with `Tcp (host, port) -> Format.fprintf ppf "%s:%d" host port
+  | Unix.ADDR_UNIX addr -> panic ("unsupported unix addresses: " ^ addr)
 
 let to_string t = t
 

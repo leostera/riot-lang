@@ -5,7 +5,7 @@ type Message.t += Tick of int
 let main ~args:_ =
   let my_pid = self () in
 
-  Printf.printf "Setting up 5 timers with different delays...\n%!";
+  println "Setting up 5 timers with different delays...";
 
   (* Set up 5 timers with different delays *)
   let _ = Timer.send_after my_pid (Tick 1) ~after:0.05 in
@@ -20,7 +20,7 @@ let main ~args:_ =
     else
       match receive_any () with
       | Tick i ->
-          Printf.printf "  Received Tick %d\n%!" i;
+          println ("  Received Tick " ^ string_of_int i);
           collect (n - 1) (i :: acc)
       | _ -> collect n acc
   in
@@ -28,10 +28,10 @@ let main ~args:_ =
   let ticks = collect 5 [] in
 
   if ticks = [ 1; 2; 3; 4; 5 ] then
-    Printf.printf "✓ All timers fired in order!\n%!"
+    println "✓ All timers fired in order!"
   else
-    Printf.printf "✗ Timers fired out of order: %s\n%!"
-      (String.concat ", " (List.map string_of_int ticks));
+    println ("✗ Timers fired out of order: " ^
+      String.concat ", " (List.map string_of_int ticks));
 
   Ok ()
 

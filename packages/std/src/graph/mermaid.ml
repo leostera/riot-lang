@@ -1,4 +1,5 @@
 open Global
+open Collections
 (** Mermaid diagram format generation *)
 
 type direction = TD | TB | BT | RL | LR
@@ -45,49 +46,51 @@ let direction_to_string = function
   | LR -> "LR"
 
 let format_node node =
-  match node.shape with
-  | Rectangle -> format "  %s[\"%s\"]" node.id node.label
-  | Round -> format "  %s(\"%s\")" node.id node.label
-  | Stadium -> format "  %s([\"%s\"])" node.id node.label
-  | Subroutine -> format "  %s[[\"%s\"]]" node.id node.label
-  | Cylindrical -> format "  %s[(\"%s\")]" node.id node.label
-  | Circle -> format "  %s((\"%s\"))" node.id node.label
-  | Diamond -> format "  %s{\"%s\"}" node.id node.label
-  | Hexagon -> format "  %s{{\"%s\"}}" node.id node.label
-  | Parallelogram -> format "  %s[/\"%s\"/]" node.id node.label
-  | Trapezoid -> format "  %s[\\\"%s\"/]" node.id node.label
+    let open_bracket, close_bracket = match node.shape with
+  | Rectangle -> "[", "]"
+  | Round -> "(", ")"
+  | Stadium -> "([","])"
+  | Subroutine -> "[[", "]]"
+  | Cylindrical -> "[(", ")]"
+  | Circle -> "((", "))"
+  | Diamond -> "{","}"
+  | Hexagon -> "{{","}}"
+  | Parallelogram -> "[/", "/]"
+  | Trapezoid -> "[\\", "/]"
+in
+  "  " ^ node.id ^ open_bracket ^ "\"" ^ node.label  ^ "\""  ^ close_bracket
 
 let format_edge edge =
   let arrow =
     match edge.style with Solid -> "-->" | Dotted -> "-.->" | Thick -> "==>"
   in
   match edge.label with
-  | None -> format "  %s %s %s" edge.from_node arrow edge.to_node
+  | None -> "  " ^ edge.from_node ^ " " ^ arrow ^ " " ^ edge.to_node
   | Some label ->
-      format "  %s %s|%s| %s" edge.from_node arrow label edge.to_node
+      "  " ^ edge.from_node ^ " " ^ arrow ^ "|" ^ label ^ "| " ^ edge.to_node
 
 let to_string t =
-  let buffer = Buffer.create 1024 in
+  let buffer = IO.Buffer.create 1024 in
 
   (* Add graph direction *)
-  Buffer.add_string buffer
-    (format "graph %s\n" (direction_to_string t.direction));
+  IO.Buffer.add_string buffer
+    ("graph " ^ direction_to_string t.direction ^ "\n");
 
   (* Add nodes *)
   List.iter
     (fun node ->
-      Buffer.add_string buffer (format_node node);
-      Buffer.add_string buffer "\n")
+      IO.Buffer.add_string buffer (format_node node);
+      IO.Buffer.add_string buffer "\n")
     (List.rev t.nodes);
 
   (* Add blank line if we have both nodes and edges *)
-  if t.nodes <> [] && t.edges <> [] then Buffer.add_string buffer "\n";
+  if t.nodes != [] && t.edges != [] then IO.Buffer.add_string buffer "\n";
 
   (* Add edges *)
   List.iter
     (fun edge ->
-      Buffer.add_string buffer (format_edge edge);
-      Buffer.add_string buffer "\n")
+      IO.Buffer.add_string buffer (format_edge edge);
+      IO.Buffer.add_string buffer "\n")
     (List.rev t.edges);
 
-  Buffer.contents buffer
+  IO.Buffer.contents buffer

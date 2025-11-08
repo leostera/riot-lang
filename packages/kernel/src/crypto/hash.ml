@@ -1,4 +1,5 @@
 (** Core hash type and operations *)
+open IO
 
 type t = bytes
 

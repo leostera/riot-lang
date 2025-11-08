@@ -1,6 +1,7 @@
 (** TCP stream for connected sockets *)
 
 open Global
+open IO
 open Kernel.Async
 
 type t = Kernel.Net.Tcp_stream.t

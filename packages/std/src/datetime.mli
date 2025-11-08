@@ -73,6 +73,8 @@ end
 
 (** {1 Types} *)
 
+open Global
+
 type t = {
   microseconds : int * int;
       (** Microseconds and precision, e.g. (426822, 6) means 426822 microseconds

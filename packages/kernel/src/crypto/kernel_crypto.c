@@ -67,6 +67,24 @@ CAMLprim value kernel_crypto_sha512(value data) {
     CAMLreturn(result);
 }
 
+/* MD5 implementation using macOS CommonCrypto */
+CAMLprim value kernel_crypto_md5(value data) {
+    CAMLparam1(data);
+    CAMLlocal1(result);
+
+    unsigned char hash[CC_MD5_DIGEST_LENGTH];
+    CC_MD5_CTX ctx;
+
+    CC_MD5_Init(&ctx);
+    CC_MD5_Update(&ctx, Bytes_val(data), caml_string_length(data));
+    CC_MD5_Final(hash, &ctx);
+
+    result = caml_alloc_string(CC_MD5_DIGEST_LENGTH);
+    memcpy(Bytes_val(result), hash, CC_MD5_DIGEST_LENGTH);
+
+    CAMLreturn(result);
+}
+
 #else
 /* Fallback - just return an error for now */
 /* In production, use OpenSSL or libsodium */
@@ -81,6 +99,10 @@ CAMLprim value kernel_crypto_sha256(value data) {
 
 CAMLprim value kernel_crypto_sha512(value data) {
     caml_failwith("SHA512 not implemented on this platform");
+}
+
+CAMLprim value kernel_crypto_md5(value data) {
+    caml_failwith("MD5 not implemented on this platform");
 }
 
 #endif

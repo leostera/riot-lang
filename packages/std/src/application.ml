@@ -1,7 +1,9 @@
 open Global
+open Collections
+  open Iter
 
 
-(** Application - Supervision tree management with dependency resolution *)
+(** Application - Supervision tree management with dependency resolution 
 
 module rec R : sig
   module type Spec = sig
@@ -19,8 +21,14 @@ end = struct
   end
 end
 include R
+*)
 
-type t = (module Spec)
+type t = {
+  name: string;
+  deps: t list;
+  start: unit -> (Pid.t, exn) result;
+  stop: Pid.t -> unit
+}
 
 (* Build dependency graph using SimpleGraph *)
 let build_dep_graph apps =
@@ -28,26 +36,25 @@ let build_dep_graph apps =
   
   (* Build a mapping from app to node using the graph itself *)
   let rec add_nodes_and_deps app visited_apps =
-    let (module M : Spec) = app in
     
     (* Check if we already processed this app *)
-    match Collections.HashMap.get visited_apps M.name with
+    match HashMap.get visited_apps app.name with
     | Some node -> node
     | None ->
         (* Add the node for this app *)
         let node = Graph.SimpleGraph.add_node graph app in
-        let _ = Collections.HashMap.insert visited_apps M.name node in
+        let _ = HashMap.insert visited_apps app.name node in
         
         (* Recursively add dependencies and create edges *)
         List.iter (fun dep ->
           let dep_node = add_nodes_and_deps dep visited_apps in
           Graph.SimpleGraph.add_edge node ~depends_on:dep_node
-        ) M.deps;
+        ) app.deps;
         
         node
   in
   
-  let visited_apps = Collections.HashMap.create () in
+  let visited_apps = HashMap.create () in
   List.iter (fun app -> ignore (add_nodes_and_deps app visited_apps)) apps;
   graph
 
@@ -57,21 +64,19 @@ let start_applications apps =
   match Graph.SimpleGraph.topo_sort graph with
   | Error _ids -> Error (Failure "Circular dependency detected in applications")
   | Ok sorted_nodes ->
-      let started = Collections.Vector.create () in
+      let started = Vector.create () in
       let rec start_all = function
-        | [] -> Ok (Collections.Vector.to_list started)
+        | [] -> Ok (Vector.into_iter started |> Iterator.to_list)
         | node :: rest ->
             let app = node.Graph.SimpleGraph.value in
-            let (module M : Spec) = app in
-            (match M.start () with
+            (match app.start () with
              | Ok pid ->
-                 Collections.Vector.push started (M.name, pid, app);
+                 Vector.push started (app.name, pid, app);
                  start_all rest
              | Error e ->
                  (* Rollback: stop all started apps in reverse order *)
-                 Collections.Vector.iter (fun (_, pid, a) ->
-                   let (module A : Spec) = a in
-                   A.stop pid
+                 Vector.iter (fun (_, pid, a) ->
+                   a.stop pid
                  ) started;
                  Error e)
       in

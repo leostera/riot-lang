@@ -4,6 +4,7 @@
     workers. *)
 
 open Global
+open Collections
 
 open Types
 
@@ -53,7 +54,7 @@ let rec loop : type task res.
       state.tasks_in_flight <- state.tasks_in_flight - 1;
       loop state
   | `WorkerReady worker -> (
-      match Queue.take_opt state.task_queue with
+      match Queue.pop state.task_queue with
       | Some task ->
           state.tasks_in_flight <- state.tasks_in_flight + 1;
           Dynamic.send_task state.pool worker task;
@@ -79,7 +80,7 @@ let init ~owner ~concurrency ~tasks ~result_ref ~fn () =
   (* Start dynamic pool with indexed tasks *)
   let indexed_tasks = List.mapi (fun idx task -> (idx, task)) tasks in
   let task_queue = Queue.create () in
-  List.iter (fun t -> Queue.add t task_queue) indexed_tasks;
+  List.iter (fun t -> Queue.push task_queue t) indexed_tasks;
   let results = [] in
 
   let pool = Dynamic.start ~concurrency ~owner:dispatcher_self ~worker_fn () in

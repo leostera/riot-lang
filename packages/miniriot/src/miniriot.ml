@@ -1,3 +1,5 @@
+open Kernel
+
 module Runtime = Runtime
 module Pid = Pid
 module Message = Message
@@ -26,9 +28,9 @@ module Process = struct
     let current = Scheduler.get_current_process t in
     match Scheduler.get_process t pid with
     | None ->
-        failwith
-          (Kernel.format "Cannot link to non-existent process %s"
-             (Pid.to_string pid))
+        panic
+          ("Cannot link to non-existent process "
+             ^ (Pid.to_string pid))
     | Some target ->
         Proc.link current pid;
         Proc.link target (Proc.pid current)
@@ -47,9 +49,9 @@ module Process = struct
     let current = Scheduler.get_current_process t in
     match Scheduler.get_process t pid with
     | None ->
-        failwith
-          (Kernel.format "Cannot monitor non-existent process %s"
-             (Pid.to_string pid))
+        panic
+          ("Cannot monitor non-existent processs "
+             ^ (Pid.to_string pid))
     | Some target ->
         let ref = Proc.monitor current pid in
         Proc.add_monitored_by target (Proc.pid current) ref;
@@ -62,7 +64,7 @@ module Process = struct
 end
 
 let run ~main ~args ?config () =
-  let config = Option.value config ~default:Config.default in
+  let config = Option.unwrap_or config ~default:Config.default in
   Kernel.Exception.record_backtrace true;
   Scheduler.run ~config ~main:(fun () -> main ~args) |> exit
 

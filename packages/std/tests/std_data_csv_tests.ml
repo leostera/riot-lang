@@ -1,5 +1,6 @@
 open Std
-module Csv = Std.Data.Csv
+open Std.Data
+open Std.Collections
 
 let test_parse_simple_row () =
   let iter = Csv.of_string "a,b,c" in
@@ -88,7 +89,7 @@ let test_serialize_simple_row () =
   let row = [ "a"; "b"; "c" ] in
   let str = Csv.to_string [ row ] in
   if String.contains str 'a' && String.contains str 'b' then Ok ()
-  else Error (format "Unexpected serialization: %s" str)
+  else Error ("Unexpected serialization: " ^ str)
 
 let test_serialize_with_comma () =
   let row = [ "a,b"; "c" ] in

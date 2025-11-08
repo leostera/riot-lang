@@ -1,91 +1,96 @@
 (** Word Navigation Example - Demonstrates Ctrl+Arrow style navigation *)
 
 open Std
+open Std.Collections
 
 let () =
-  print_endline "=== Word Navigation Example ===\n";
+  println "=== Word Navigation Example ===\n";
   
   (* Example 1: Basic English text *)
-  print_endline "1. Basic English text:";
+  println "1. Basic English text:";
   let s1 = "Hello world, how are you?" in
-  Printf.printf "   Text: %s\n" s1;
+  println ("   Text: " ^ s1);
   let boundaries = String.word_boundaries s1 in
-  Printf.printf "   Word boundaries at byte positions: [%s]\n"
-    (String.concat "; " (List.map string_of_int boundaries));
+  println ("   Word boundaries at byte positions: [" ^
+    String.concat "; " (List.map Int.to_string boundaries) ^ "]");
   let words = String.split_words s1 in
-  Printf.printf "   Words: [%s]\n\n"
-    (String.concat "; " (List.map (fun w -> "\"" ^ w ^ "\"") words));
+  println ("   Words: [" ^
+    String.concat "; " (List.map (fun w -> "\"" ^ w ^ "\"") words) ^ "]\n");
   
   (* Example 2: Contractions *)
-  print_endline "2. Contractions (don't split apostrophes):";
+  println "2. Contractions (don't split apostrophes):";
   let s2 = "don't it's can't" in
-  Printf.printf "   Text: %s\n" s2;
+  println ("   Text: " ^ s2);
   let words2 = String.split_words s2 in
-  Printf.printf "   Words: [%s]\n\n"
-    (String.concat "; " (List.map (fun w -> "\"" ^ w ^ "\"") words2));
+  println ("   Words: [" ^
+    String.concat "; " (List.map (fun w -> "\"" ^ w ^ "\"") words2) ^ "]\n");
   
   (* Example 3: snake_case identifiers *)
-  print_endline "3. Programming identifiers (keep underscores):";
+  println "3. Programming identifiers (keep underscores):";
   let s3 = "hello_world foo_bar_baz" in
-  Printf.printf "   Text: %s\n" s3;
+  println ("   Text: " ^ s3);
   let words3 = String.split_words s3 in
-  Printf.printf "   Words: [%s]\n\n"
-    (String.concat "; " (List.map (fun w -> "\"" ^ w ^ "\"") words3));
+  println ("   Words: [" ^
+    String.concat "; " (List.map (fun w -> "\"" ^ w ^ "\"") words3) ^ "]\n");
   
   (* Example 4: Numbers and hex codes *)
-  print_endline "4. Numbers (don't break letters and numbers):";
+  println "4. Numbers (don't break letters and numbers):";
   let s4 = "123 abc123 0xDEADBEEF" in
-  Printf.printf "   Text: %s\n" s4;
+  println ("   Text: " ^ s4);
   let words4 = String.split_words s4 in
-  Printf.printf "   Words: [%s]\n\n"
-    (String.concat "; " (List.map (fun w -> "\"" ^ w ^ "\"") words4));
+  println ("   Words: [" ^
+    String.concat "; " (List.map (fun w -> "\"" ^ w ^ "\"") words4) ^ "]\n");
   
   (* Example 5: CJK text (each character is a word) *)
-  print_endline "5. CJK text (each character is typically a word):";
+  println "5. CJK text (each character is typically a word):";
   let s5 = "你好世界" in
-  Printf.printf "   Text: %s\n" s5;
+  println ("   Text: " ^ s5);
   let words5 = String.split_words s5 in
-  Printf.printf "   Words: [%s]\n" 
-    (String.concat "; " (List.map (fun w -> "\"" ^ w ^ "\"") words5));
-  Printf.printf "   (Each CJK character is treated as a separate word)\n\n";
+  println ("   Words: [" ^ 
+    String.concat "; " (List.map (fun w -> "\"" ^ w ^ "\"") words5) ^ "]");
+  println "   (Each CJK character is treated as a separate word)\n";
   
   (* Example 6: Mixed content *)
-  print_endline "6. Mixed content:";
+  println "6. Mixed content:";
   let s6 = "Hello 世界! foo_bar 123" in
-  Printf.printf "   Text: %s\n" s6;
+  println ("   Text: " ^ s6);
   let words6 = String.split_words s6 in
-  Printf.printf "   Words: [%s]\n\n"
-    (String.concat "; " (List.map (fun w -> "\"" ^ w ^ "\"") words6));
+  println ("   Words: [" ^
+    String.concat "; " (List.map (fun w -> "\"" ^ w ^ "\"") words6) ^ "]\n");
   
   (* Example 7: Simulating Ctrl+Right navigation *)
-  print_endline "7. Simulating Ctrl+Right arrow navigation:";
+  println "7. Simulating Ctrl+Right arrow navigation:";
   let text = "The quick brown fox" in
-  Printf.printf "   Text: \"%s\"\n" text;
-  Printf.printf "   Cursor positions for Ctrl+Right from start:\n";
+  println ("   Text: \"" ^ text ^ "\"");
+  println "   Cursor positions for Ctrl+Right from start:";
   let rec show_navigation pos =
     if pos >= String.length text then ()
     else
       let next = Unicode.Segmentation.find_next_word_start text pos in
       let word_part = String.sub text pos (min (next - pos) (String.length text - pos)) in
-      Printf.printf "     Position %2d -> %2d: \"%s\"\n" pos next word_part;
+      let pos_str = if pos < 10 then " " ^ Int.to_string pos else Int.to_string pos in
+      let next_str = if next < 10 then " " ^ Int.to_string next else Int.to_string next in
+      println ("     Position " ^ pos_str ^ " -> " ^ next_str ^ ": \"" ^ word_part ^ "\"");
       show_navigation next
   in
   show_navigation 0;
-  print_endline "";
+  println "";
   
   (* Example 8: Simulating Ctrl+Left navigation *)
-  print_endline "8. Simulating Ctrl+Left arrow navigation:";
-  Printf.printf "   Text: \"%s\"\n" text;
-  Printf.printf "   Cursor positions for Ctrl+Left from end:\n";
+  println "8. Simulating Ctrl+Left arrow navigation:";
+  println ("   Text: \"" ^ text ^ "\"");
+  println "   Cursor positions for Ctrl+Left from end:";
   let rec show_back_navigation pos =
     if pos <= 0 then ()
     else
       let prev = Unicode.Segmentation.find_prev_word_start text pos in
       let word_part = String.sub text prev (pos - prev) in
-      Printf.printf "     Position %2d -> %2d: \"%s\"\n" pos prev word_part;
+      let pos_str = if pos < 10 then " " ^ Int.to_string pos else Int.to_string pos in
+      let prev_str = if prev < 10 then " " ^ Int.to_string prev else Int.to_string prev in
+      println ("     Position " ^ pos_str ^ " -> " ^ prev_str ^ ": \"" ^ word_part ^ "\"");
       show_back_navigation prev
   in
   show_back_navigation (String.length text);
-  print_endline "";
+  println "";
   
-  print_endline "Word navigation example completed!"
+  println "Word navigation example completed!"

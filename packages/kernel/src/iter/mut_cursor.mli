@@ -15,6 +15,9 @@
     Use [MutCursor] for efficient single-pass parsing. For backtracking, use
     [Cursor]. *)
 
+
+open Global0
+
 type t
 
 val create : string -> t

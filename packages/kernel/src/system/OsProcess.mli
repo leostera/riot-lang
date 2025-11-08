@@ -1,3 +1,5 @@
+open Global0
+
 type t
 (** A running OS process handle *)
 

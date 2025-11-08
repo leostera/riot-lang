@@ -1,5 +1,6 @@
 open Std
-module Toml = Std.Data.Toml
+open Std.Data
+open Std.Collections
 
 (* Helper to extract string from value *)
 let get_string = function Toml.String s -> Some s | _ -> None
@@ -27,7 +28,7 @@ let test_quoted_string_with_escapes =
   | Ok (Toml.Table items) -> (
       match get_string (List.assoc "text" items) with
       | Some s when String.contains s '\n' && String.contains s '\t' -> Ok ()
-      | Some s -> Error (format "String escapes not handled: %s" s)
+      | Some s -> Error ("String escapes not handled: " ^ s)
       | None -> Error "Expected string")
   | _ -> Error "Parse failed"
 
@@ -60,7 +61,7 @@ let test_bare_string =
   | Ok (Toml.Table items) -> (
       match get_string (List.assoc "version" items) with
       | Some "1.0.0" -> Ok ()
-      | Some s -> Error (format "Got '%s', expected '1.0.0'" s)
+      | Some s -> Error ("Got '" ^ s ^ "', expected '1.0.0'")
       | None -> Error "Expected string")
   | _ -> Error "Parse failed"
 
@@ -73,7 +74,7 @@ let test_simple_array =
   | Ok (Toml.Table items) -> (
       match get_array (List.assoc "numbers" items) with
       | Some arr when List.length arr = 3 -> Ok ()
-      | Some arr -> Error (format "Expected 3 items, got %d" (List.length arr))
+      | Some arr -> Error ("Expected 3 items, got " ^ Int.to_string (List.length arr))
       | None -> Error "Expected array")
   | _ -> Error "Parse failed"
 
@@ -97,7 +98,7 @@ let test_empty_array =
       match get_array (List.assoc "empty" items) with
       | Some [] -> Ok ()
       | Some arr ->
-          Error (format "Expected empty array, got %d items" (List.length arr))
+          Error ("Expected empty array, got " ^ Int.to_string (List.length arr) ^ " items")
       | None -> Error "Expected array")
   | _ -> Error "Parse failed"
 
@@ -128,7 +129,7 @@ std = { path = "../std" }
           | Some std_attrs -> (
               match get_string (List.assoc "path" std_attrs) with
               | Some "../std" -> Ok ()
-              | Some s -> Error (format "Wrong path: %s" s)
+              | Some s -> Error ("Wrong path: " ^ s)
               | None -> Error "Missing path")
           | None -> Error "std is not a table")
       | None -> Error "dependencies is not a table")
@@ -148,7 +149,7 @@ miniriot = { path = "../miniriot" }
   | Ok (Toml.Table sections) -> (
       match get_table (List.assoc "dependencies" sections) with
       | Some deps when List.length deps = 3 -> Ok ()
-      | Some deps -> Error (format "Expected 3 deps, got %d" (List.length deps))
+      | Some deps -> Error ("Expected 3 deps, got " ^ Int.to_string (List.length deps))
       | None -> Error "dependencies is not a table")
   | _ -> Error "Parse failed"
 
@@ -167,7 +168,7 @@ let test_inline_table_multiple_keys =
           | Some "John", Some "30", Some "NYC" -> Ok ()
           | _ -> Error "Values don't match")
       | Some attrs ->
-          Error (format "Expected 3 keys, got %d" (List.length attrs))
+          Error ("Expected 3 keys, got " ^ Int.to_string (List.length attrs))
       | None -> Error "person is not a table")
   | _ -> Error "Parse failed"
 
@@ -216,7 +217,7 @@ version = "1.0.0"
   | Ok (Toml.Table sections) -> (
       match get_table (List.assoc "package" sections) with
       | Some pkg when List.length pkg = 2 -> Ok ()
-      | Some pkg -> Error (format "Expected 2 keys, got %d" (List.length pkg))
+      | Some pkg -> Error ("Expected 2 keys, got " ^ Int.to_string (List.length pkg))
       | None -> Error "package is not a table")
   | _ -> Error "Parse failed"
 
@@ -234,7 +235,7 @@ std = { path = "../std" }
   match Toml.parse input with
   | Ok (Toml.Table sections) when List.length sections = 2 -> Ok ()
   | Ok (Toml.Table sections) ->
-      Error (format "Expected 2 sections, got %d" (List.length sections))
+      Error ("Expected 2 sections, got " ^ Int.to_string (List.length sections))
   | _ -> Error "Parse failed"
 
 let test_nested_section_names =
@@ -280,17 +281,16 @@ path = "src/server.ml"
                   | Some "tusk", Some "src/main.ml" -> Ok ()
                   | Some n, Some p ->
                       Error
-                        (format "First binary values wrong: name=%s path=%s" n p)
+                        ("First binary values wrong: name=" ^ n ^ " path=" ^ p)
                   | _ -> Error "Missing name or path in first binary")
               | _ ->
-                  Error
-                    (format "Expected array of 2 tables, got something else"))
+                  Error "Expected array of 2 tables, got something else")
           | Some bins ->
-              Error (format "Expected 2 bins, got %d" (List.length bins))
+              Error ("Expected 2 bins, got " ^ Int.to_string (List.length bins))
           | None -> Error "bin value is not an array")
       | None -> Error "bin key not found in parsed TOML")
   | Ok _ -> Error "Expected Table at top level"
-  | Error err -> Error (format "Parse failed: %s" (Toml.error_to_string err))
+  | Error err -> Error ("Parse failed: " ^ (Toml.error_to_string err))
 
 let test_array_of_tables_empty =
   Test.case "parse empty array of tables" @@ fun () ->
@@ -321,7 +321,7 @@ tasty = true
         when List.length f1 = 3 && List.length f2 = 3 ->
           Ok ()
       | Some arr ->
-          Error (format "Array structure wrong: %d items" (List.length arr))
+          Error ("Array structure wrong: " ^ Int.to_string (List.length arr) ^ " items")
       | None -> Error "fruits is not an array")
   | _ -> Error "Parse failed"
 
@@ -411,7 +411,7 @@ version = "1.0"
   match Toml.parse input with
   | Ok (Toml.Table items) when List.length items = 2 -> Ok ()
   | Ok (Toml.Table items) ->
-      Error (format "Expected 2 items, got %d" (List.length items))
+      Error ("Expected 2 items, got " ^ Int.to_string (List.length items))
   | _ -> Error "Parse failed"
 
 (* === EDGE CASE TESTS === *)
@@ -423,7 +423,7 @@ let test_empty_string =
   | Ok (Toml.Table items) -> (
       match get_string (List.assoc "text" items) with
       | Some "" -> Ok ()
-      | Some s -> Error (format "Expected empty string, got '%s'" s)
+      | Some s -> Error ("Expected empty string, got '" ^ s ^ "'")
       | None -> Error "Expected string")
   | _ -> Error "Parse failed"
 
@@ -435,7 +435,7 @@ let test_empty_inline_table =
       match get_table (List.assoc "empty" items) with
       | Some [] -> Ok ()
       | Some t ->
-          Error (format "Expected empty table, got %d items" (List.length t))
+          Error ("Expected empty table, got " ^ Int.to_string (List.length t) ^ " items")
       | None -> Error "Expected table")
   | _ -> Error "Parse failed"
 
@@ -445,7 +445,7 @@ let test_empty_document =
   match Toml.parse input with
   | Ok (Toml.Table []) -> Ok ()
   | Ok (Toml.Table items) ->
-      Error (format "Expected empty, got %d items" (List.length items))
+      Error ("Expected empty, got " ^ Int.to_string (List.length items) ^ " items")
   | _ -> Error "Parse failed"
 
 let test_only_comments =
@@ -458,7 +458,7 @@ let test_only_comments =
   match Toml.parse input with
   | Ok (Toml.Table []) -> Ok ()
   | Ok (Toml.Table items) ->
-      Error (format "Expected empty, got %d items" (List.length items))
+      Error ("Expected empty, got " ^ Int.to_string (List.length items) ^ " items")
   | _ -> Error "Parse failed"
 
 (* === COMPLEX REAL-WORLD TESTS === *)
@@ -486,11 +486,11 @@ std = { path = "../std" }
       match List.assoc_opt "bin" sections with
       | Some (Toml.Array bins) when List.length bins = 1 -> Ok ()
       | Some (Toml.Array bins) ->
-          Error (format "Expected 1 bin, got %d" (List.length bins))
+          Error ("Expected 1 bin, got " ^ Int.to_string (List.length bins))
       | Some _ -> Error "bin is not an array"
       | None -> Error "No bin section found in tusk.toml")
   | Ok _ -> Error "Expected Table at top level"
-  | Error err -> Error (format "Parse error: %s" (Toml.error_to_string err))
+  | Error err -> Error ("Parse error: " ^ (Toml.error_to_string err))
 
 let test_typical_package_toml =
   Test.case "parse typical package.toml" @@ fun () ->
@@ -512,7 +512,7 @@ kernel = { path = "../kernel" }
   match Toml.parse input with
   | Ok (Toml.Table sections) when List.length sections = 3 -> Ok ()
   | Ok (Toml.Table sections) ->
-      Error (format "Expected 3 sections, got %d" (List.length sections))
+      Error ("Expected 3 sections, got " ^ Int.to_string (List.length sections))
   | _ -> Error "Parse failed"
 
 let test_workspace_toml =
@@ -534,7 +534,7 @@ kernel = { path = "../riot/packages/kernel" }
           match get_array (List.assoc "members" ws) with
           | Some members when List.length members = 3 -> Ok ()
           | Some members ->
-              Error (format "Expected 3 members, got %d" (List.length members))
+              Error ("Expected 3 members, got " ^ Int.to_string (List.length members))
           | None -> Error "members is not an array")
       | None -> Error "workspace is not a table")
   | _ -> Error "Parse failed"
@@ -551,7 +551,7 @@ d = "4"
   match Toml.parse input with
   | Ok (Toml.Table items) when List.length items = 2 -> Ok ()
   | Ok (Toml.Table items) ->
-      Error (format "Expected 2 items, got %d" (List.length items))
+      Error ("Expected 2 items, got " ^ Int.to_string (List.length items))
   | _ -> Error "Parse failed"
 
 (* === ERROR HANDLING TESTS === *)
@@ -597,7 +597,7 @@ port = "9090"
       | Some cfg -> (
           match get_string (List.assoc "port" cfg) with
           | Some "9090" -> Ok ()
-          | Some p -> Error (format "Expected last value '9090', got '%s'" p)
+          | Some p -> Error ("Expected last value '9090', got '" ^ p ^ "'")
           | None -> Error "Missing port")
       | None -> Error "config is not a table")
   | _ -> Error "Parse failed"

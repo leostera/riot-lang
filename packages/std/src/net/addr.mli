@@ -1,3 +1,5 @@
+open Global
+
 (** Network address handling *)
 
 type 't raw_addr = 't Kernel.Net.Addr.raw_addr

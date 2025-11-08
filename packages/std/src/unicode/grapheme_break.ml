@@ -1,3 +1,4 @@
+  open Global
 (** Grapheme break properties - simplified implementation for common cases
     
     This is a simplified implementation focused on the most critical grapheme

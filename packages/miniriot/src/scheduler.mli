@@ -1,4 +1,5 @@
 (** Process scheduler for Miniriot *)
+open Kernel
 
 type t
 (** Opaque scheduler type *)

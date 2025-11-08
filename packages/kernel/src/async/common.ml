@@ -1,5 +1,6 @@
-let ( let* ) = fun x f -> match x with Ok v -> f v | Error e -> Error e
-let log = Format.printf
+include Global0
+
+let ( let* ) = Result.and_then
 
 (* Async now uses IO.error for all I/O errors *)
 

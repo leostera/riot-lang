@@ -1,3 +1,5 @@
+open Global
+
 (** # Data.Json - JSON parsing and serialization
     
     A simple JSON library for parsing, generating, and manipulating JSON data.

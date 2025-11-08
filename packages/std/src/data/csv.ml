@@ -1,5 +1,8 @@
 open Global
 open Sync
+open Sync.Cell
+  open IO
+  open Collections
 
 type row = string list
 type t = row list
@@ -19,11 +22,11 @@ type error =
 
 let error_to_string = function
   | Unterminated_quote { line; column } ->
-      format "Unterminated quote at line %d, column %d" line column
+      "Unterminated quote at line " ^ string_of_int line ^ ", column " ^ string_of_int column
   | Invalid_escape_sequence { line; column } ->
-      format "Invalid escape sequence at line %d, column %d" line column
+      "Invalid escape sequence at line " ^ string_of_int line ^ ", column " ^ string_of_int column
   | Empty_input -> "Empty CSV input"
-  | Unknown_error msg -> format "Unknown error: %s" msg
+  | Unknown_error msg -> "Unknown error: " ^ msg
 
 let default_config =
   { delimiter = ','; quote = '"'; escape = '"'; trim_fields = false }
@@ -34,8 +37,8 @@ let config ?(delimiter = ',') ?(quote = '"') ?(escape = '"')
 
 let of_string ?(config = default_config) str =
   let cursor = Iter.MutCursor.create str in
-  let line = cell 1 in
-  let column = cell 1 in
+  let line = Cell.create 1 in
+  let column = Cell.create 1 in
 
   let peek () = Iter.MutCursor.peek cursor in
 
@@ -43,11 +46,11 @@ let of_string ?(config = default_config) str =
     match peek () with
     | Some '\n' ->
         Iter.MutCursor.advance cursor;
-        Cell.set line (Cell.get line + 1);
-        Cell.set column 1
+      line := (!line + 1);
+      column := 1
     | Some _ ->
         Iter.MutCursor.advance cursor;
-        Cell.set column (Cell.get column + 1)
+      column :=  (!column + 1)
     | None -> ()
   in
 
@@ -66,7 +69,7 @@ let of_string ?(config = default_config) str =
           | None ->
               raise_error
                 (Unterminated_quote
-                   { line = Cell.get line; column = Cell.get column })
+                   { line = !line; column = !column })
           | Some c when c = config.escape -> (
               advance ();
               match peek () with
@@ -81,7 +84,7 @@ let of_string ?(config = default_config) str =
               | None ->
                   raise_error
                     (Unterminated_quote
-                       { line = Cell.get line; column = Cell.get column })
+                       { line = !line; column = !column })
               | _ ->
                   Buffer.add_char buffer c;
                   loop ())
@@ -97,7 +100,7 @@ let of_string ?(config = default_config) str =
     | _ ->
         let field =
           Iter.MutCursor.take_while cursor (fun c ->
-              c <> config.delimiter && c <> '\n' && c <> '\r')
+              c != config.delimiter && c != '\n' && c != '\r')
         in
         trim field
   in

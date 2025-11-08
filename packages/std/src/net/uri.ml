@@ -1,3 +1,7 @@
+  open Global
+    open IO
+    open Collections
+
 type error =
   | InvalidScheme
   | InvalidAuthority
@@ -326,7 +330,7 @@ module Builder = struct
 end
 
 (* Utilities *)
-let is_absolute url = url.scheme <> None
+let is_absolute url = url.scheme != None
 let is_relative url = url.scheme = None
 
 let join base relative_path =

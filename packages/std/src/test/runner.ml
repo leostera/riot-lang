@@ -1,4 +1,5 @@
 open Global
+open Collections
 
 type mode = Sequential | Shuffle
 type target = All | FilterByPrefix of string
@@ -25,7 +26,7 @@ let shuffle_list lst =
   let arr = Array.of_list lst in
   let len = Array.length arr in
   for i = len - 1 downto 1 do
-    let j = Random.int (i + 1) in
+    let j = Kernel.Random.int (i + 1) in
     let temp = arr.(i) in
     arr.(i) <- arr.(j);
     arr.(j) <- temp
@@ -42,7 +43,7 @@ let run_single_test reporter index (test : Test_case.t) =
           let result =
             let exn = Exception.to_string exn in
             let bt = Exception.get_backtrace () in
-            let reason = format "%s\n\n%s" exn bt in
+            let reason = exn ^ "\n\n" ^ bt in
             Test_result.Failed reason
           in
           Test_result.{ index; name; result }

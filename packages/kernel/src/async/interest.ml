@@ -1,3 +1,5 @@
+open Global0
+
 type t = Non_zero_int.t
 
 let readable = 0b0001

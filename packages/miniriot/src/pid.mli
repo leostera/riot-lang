@@ -15,8 +15,5 @@ val equal : t -> t -> bool
 val compare : t -> t -> int
 (** Compare PIDs for ordering *)
 
-val pp : Format.formatter -> t -> unit
-(** Pretty-print a PID *)
-
 val to_string : t -> string
 (** Convert PID to string representation *)

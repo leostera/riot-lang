@@ -1,5 +1,7 @@
 open Global
 open Sync
+open IO
+open Collections
 
 let encode_bytes bytes =
   let len = Bytes.length bytes in
@@ -90,7 +92,7 @@ let decode_bytes str =
         let count = cell 0 in
         while !cursor < len && !count < 5 do
           let c = str.[!cursor] in
-          if c <> ' ' && c <> '\n' && c <> '\r' && c <> '\t' then
+          if c != ' ' && c != '\n' && c != '\r' && c != '\t' then
             match decode_char c with
             | Some v ->
                 chars := v :: !chars;

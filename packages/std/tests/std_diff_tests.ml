@@ -1,4 +1,6 @@
 open Std
+open Std.Data
+open Std.Collections
 
 let test_path_component_key =
   Test.case "create Key path component" @@ fun () ->
@@ -93,7 +95,7 @@ let test_additions_filter =
   ] ->
       Ok ()
   | _ ->
-      Error (format "Expected 2 specific additions, got %d" (List.length added))
+      Error ("Expected 2 specific additions, got " ^ Int.to_string (List.length added))
 
 let test_removals_filter =
   Test.case "removals filters only Removed changes" @@ fun () ->
@@ -113,7 +115,7 @@ let test_removals_filter =
       Ok ()
   | _ ->
       Error
-        (format "Expected 2 specific removals, got %d" (List.length removed))
+        ("Expected 2 specific removals, got " ^ Int.to_string (List.length removed))
 
 let test_changes_filter =
   Test.case "changes filters only Changed changes" @@ fun () ->
@@ -133,7 +135,7 @@ let test_changes_filter =
   ] ->
       Ok ()
   | _ ->
-      Error (format "Expected 2 specific changes, got %d" (List.length changed))
+      Error ("Expected 2 specific changes, got " ^ Int.to_string (List.length changed))
 
 let test_at_path_exact_match =
   Test.case "at_path with exact match" @@ fun () ->
@@ -161,8 +163,8 @@ let test_at_path_exact_match =
       Ok ()
   | _ ->
       Error
-        (format "Expected 1 match at user.name, got %d"
-           (List.length at_user_name))
+        ("Expected 1 match at user.name, got " ^
+           Int.to_string (List.length at_user_name))
 
 let test_at_path_no_match =
   Test.case "at_path with no match" @@ fun () ->

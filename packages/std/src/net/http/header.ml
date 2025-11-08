@@ -1,3 +1,6 @@
+  open Global
+  open Collections
+
 type name = string
 type value = string
 type t = (name * value) list
@@ -12,7 +15,7 @@ let set headers name value =
     List.filter
       (fun (n, _) ->
         String.compare (String.lowercase_ascii n) (String.lowercase_ascii name)
-        <> 0)
+        != 0)
       headers
   in
   (name, value) :: filtered
@@ -40,7 +43,7 @@ let get_all headers name =
 let remove headers name =
   let normalized = normalize_name name in
   List.filter
-    (fun (n, _) -> String.compare (normalize_name n) normalized <> 0)
+    (fun (n, _) -> String.compare (normalize_name n) normalized != 0)
     headers
 
 let has headers name =

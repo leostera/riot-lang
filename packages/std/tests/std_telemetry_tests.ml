@@ -1,4 +1,5 @@
 open Std
+open Std.Collections
 
 type Telemetry.event += TestEvent of { value : int }
 type Telemetry.event += AnotherEvent of { name : string }
@@ -24,8 +25,8 @@ let test_emit_and_receive =
   | [ 99; 42 ] -> Ok ()
   | _ ->
       Error
-        (Printf.sprintf "Expected [99; 42], got %s"
-           (String.concat ", " (List.map string_of_int !received)))
+        ("Expected [99; 42], got " ^
+           String.concat ", " (List.map string_of_int !received))
 
 let test_multiple_handlers =
   Test.case "telemetry: multiple handlers" @@ fun () ->
@@ -104,8 +105,8 @@ let test_pattern_matching =
   if !test_count = 2 && !another_count = 1 then Ok ()
   else
     Error
-      (Printf.sprintf "Expected test=2, another=1, got test=%d, another=%d"
-         !test_count !another_count)
+      ("Expected test=2, another=1, got test=" ^ string_of_int !test_count ^
+         ", another=" ^ string_of_int !another_count)
 
 let test_handler_exception_isolation =
   Test.case "telemetry: exception isolation" @@ fun () ->
@@ -114,7 +115,7 @@ let test_handler_exception_isolation =
 
   let good_handler_called = ref false in
 
-  Telemetry.attach "bad-handler" (fun _ -> failwith "boom");
+  Telemetry.attach "bad-handler" (fun _ -> panic "boom");
   Telemetry.attach "good-handler" (fun _ -> good_handler_called := true);
 
   Telemetry.emit (TestEvent { value = 1 });

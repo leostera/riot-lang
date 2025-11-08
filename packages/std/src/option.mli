@@ -72,6 +72,19 @@ val none : 'a t
 
 (** # Querying *)
 
+val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
+(** Returns `true` if two options are equal using the provided equality function.
+    
+    ## Examples
+    
+    ```ocaml
+    let eq = Option.equal Int.equal in
+    assert (eq (Some 5) (Some 5));
+    assert (not (eq (Some 5) (Some 10)));
+    assert (not (eq (Some 5) None));
+    assert (eq None None)
+    ``` *)
+
 val is_some : 'a t -> bool
 (** Returns `true` if the option is a [`Some`] value.
 

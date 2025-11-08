@@ -39,9 +39,7 @@ let rec next t =
     with End_of_file ->
       close t
       |> Result.expect
-           ~msg:
-             (Format.sprintf "Could not close ReadDir.t for %S"
-                (Path.to_string t.path));
+           ~msg:("Could not close ReadDir.t for " ^ Path.to_string t.path);
       None
 
 (* MutIterator.Intf implementation *)

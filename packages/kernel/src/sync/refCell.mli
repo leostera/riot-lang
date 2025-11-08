@@ -39,6 +39,7 @@
       | Error msg ->
           Printf.printf "Cannot borrow: %s\n" msg
     ]} *)
+open Types
 
 type 'a t
 (** A mutable cell with runtime borrow checking *)

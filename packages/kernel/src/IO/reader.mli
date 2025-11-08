@@ -38,6 +38,9 @@
       | Error e -> handle_error e
     ]} *)
 
+
+open Global0
+
 module type Read = sig
   (** Interface that readable sources must implement.
 

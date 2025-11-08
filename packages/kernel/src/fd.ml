@@ -1,3 +1,6 @@
+open Global0
+open Collections
+
 type t = Unix.file_descr
 type pipe = { read_fd : t; write_fd : t }
 
@@ -32,7 +35,9 @@ let of_unix fd =
   fd
 
 let make_blocking fd = fd
-let to_string t = Format.sprintf "Fd(%d)" (Obj.magic t)
+
+let set_blocking fd =
+  Unix.clear_nonblock fd
 let close t = Unix.close t
 let equal a b = Int.equal (Obj.magic a) (Obj.magic b)
 

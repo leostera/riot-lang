@@ -1,9 +1,14 @@
 (** MD5 cryptographic hash implementation (legacy, not secure) *)
 
-type state = { mutable buffer : Buffer.t }
+open Global
 
-let create () = { buffer = Buffer.create 128 }
-let write state bytes = Buffer.add_bytes state.buffer bytes
+module Bytes = IO.Bytes
+module List = Collections.List
+module Array = Collections.Array
+type state = { mutable buffer : IO.Buffer.t }
+
+let create () = { buffer = IO.Buffer.create 128 }
+let write state bytes = IO.Buffer.add_bytes state.buffer bytes
 let write_string state s = write state (Bytes.unsafe_of_string s)
 
 let write_unit state () =
@@ -41,9 +46,8 @@ let write_array writer state arr =
   Array.iter (writer state) arr
 
 let finish state =
-  let data = Buffer.contents state.buffer in
-  let digest = Stdlib.Digest.string data in
-  Kernel.Crypto.Hash.of_bytes (Bytes.of_string digest)
+  let data = IO.Buffer.contents state.buffer in
+  Kernel.Crypto.FFI.md5 data
 
 (* Convenience functions *)
 let hash_string s =

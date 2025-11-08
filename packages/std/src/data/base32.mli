@@ -34,6 +34,8 @@
     Uses standard Base32 alphabet: A-Z (26 letters) + 2-7 (6 digits) = 32 chars.
     Padding with '=' to make output length a multiple of 8. *)
 
+open Global
+
 val encode : string -> string
 (** Encodes a string to Base32.
 

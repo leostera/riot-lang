@@ -1,3 +1,5 @@
+open Global
+
 (** # Data.Toml - TOML configuration file parser
 
     A TOML (Tom's Obvious Minimal Language) parser for configuration files.

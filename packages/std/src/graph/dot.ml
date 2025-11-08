@@ -1,4 +1,5 @@
 open Global
+  open Collections
 (** DOT graph format generation for Graphviz *)
 
 type graph_style = Directed | Undirected
@@ -51,16 +52,16 @@ let format_attrs attrs =
   if attrs = [] then ""
   else
     let attr_strs =
-      List.map (fun (k, v) -> format "%s=\"%s\"" k (escape_string v)) attrs
+      List.map (fun (k, v) -> k ^ "=\"" ^ escape_string v ^ "\"") attrs
     in
-    format " [%s]" (String.concat ", " attr_strs)
+    " [" ^ String.concat ", " attr_strs ^ "]"
 
 let format_node (node : node) =
   let label_attr =
     match node.label with Some l -> [ ("label", l) ] | None -> []
   in
   let all_attrs = label_attr @ node.attrs in
-  format "  \"%s\"%s;" (escape_string node.id) (format_attrs all_attrs)
+  "  \"" ^ escape_string node.id ^ "\"" ^ format_attrs all_attrs ^ ";"
 
 let format_edge style edge =
   let arrow = match style with Directed -> "->" | Undirected -> "--" in
@@ -68,11 +69,7 @@ let format_edge style edge =
     match edge.label with Some l -> [ ("label", l) ] | None -> []
   in
   let all_attrs = label_attr @ edge.attrs in
-  format "  \"%s\" %s \"%s\"%s;"
-    (escape_string edge.from_node)
-    arrow
-    (escape_string edge.to_node)
-    (format_attrs all_attrs)
+  "  \"" ^ escape_string edge.from_node ^ "\" " ^ arrow ^ " \"" ^ escape_string edge.to_node ^ "\"" ^ format_attrs all_attrs ^ ";"
 
 let to_string t =
   let graph_type =
@@ -82,7 +79,7 @@ let to_string t =
     if t.graph_attrs = [] then ""
     else
       List.map
-        (fun (k, v) -> format "  %s=\"%s\";\n" k (escape_string v))
+        (fun (k, v) -> "  " ^ k ^ "=\"" ^ escape_string v ^ "\";\n")
         t.graph_attrs
       |> String.concat ""
   in
@@ -90,7 +87,7 @@ let to_string t =
   let edge_strs =
     List.rev_map (format_edge t.style) t.edges |> String.concat "\n"
   in
-  format "%s %s {\n%s%s%s%s}\n" graph_type t.name graph_attr_str
-    (if node_strs = "" then "" else node_strs ^ "\n")
-    (if node_strs <> "" && edge_strs <> "" then "\n" else "")
-    edge_strs
+  graph_type ^ " " ^ t.name ^ " {\n" ^ graph_attr_str ^
+    (if node_strs = "" then "" else node_strs ^ "\n") ^
+    (if node_strs != "" && edge_strs != "" then "\n" else "") ^
+    edge_strs ^ "}\n"

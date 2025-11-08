@@ -1,5 +1,8 @@
+
 open Global
+open Collections
 open Sync
+open Sync.Cell
 
 module Node_id : sig
   type t
@@ -11,7 +14,7 @@ module Node_id : sig
 end = struct
   type t = int
 
-  let counter = cell 0
+  let counter = Cell.create 0
 
   let next () =
     Cell.incr counter;
@@ -28,17 +31,17 @@ type 'value node = {
   mutable value : 'value;
 }
 
-type 'value t = { nodes : (Node_id.t, 'value node) Hashtbl.t }
+type 'value t = { nodes : (Node_id.t, 'value node) HashMap.t }
 
-let make () = { nodes = Hashtbl.create 100 }
+let make () = { nodes = HashMap.with_capacity 100 }
 
 let add_node graph value =
   let id = Node_id.next () in
   let node = { id; deps = []; value } in
-  Hashtbl.add graph.nodes id node;
+  let _ = HashMap.insert graph.nodes id node in
   node
 
-let get_node t node_id = Hashtbl.find t.nodes node_id
+let get_node t node_id = HashMap.get t.nodes node_id
 
 (** Add a dependency edge between two nodes *)
 let add_edge node ~depends_on = node.deps <- depends_on.id :: node.deps
@@ -46,16 +49,17 @@ let add_edge node ~depends_on = node.deps <- depends_on.id :: node.deps
 (** Topological sort using Kahn's algorithm *)
 let topo_sort graph =
   (* Create in-degree table *)
-  let in_degree = Hashtbl.create (Hashtbl.length graph.nodes) in
+  let in_degree = HashMap.with_capacity (HashMap.len graph.nodes) in
 
   (* Create reverse dependency map: for each node, track who depends on it *)
-  let reverse_deps = Hashtbl.create (Hashtbl.length graph.nodes) in
+  let reverse_deps = HashMap.with_capacity (HashMap.len graph.nodes) in
 
   (* Initialize all nodes with in-degree 0 and empty reverse deps *)
-  Hashtbl.iter
+  HashMap.iter
     (fun id _ ->
-      Hashtbl.add in_degree id 0;
-      Hashtbl.add reverse_deps id [])
+      let _ = HashMap.insert in_degree id 0 in
+      let _ = HashMap.insert reverse_deps id [] in
+      ())
     graph.nodes;
 
   (* Calculate in-degrees and reverse dependencies *)
@@ -64,62 +68,64 @@ let topo_sort graph =
      - A has an incoming edge FROM B (A's in-degree increases)
      - B has A as a reverse dependency (when B is processed, A's in-degree decreases)
   *)
-  Hashtbl.iter
+  HashMap.iter
     (fun my_id node ->
       (* For each dependency I have, I have an incoming edge from it *)
       let my_in_degree = List.length node.deps in
-      Hashtbl.replace in_degree my_id my_in_degree;
+      let _ = HashMap.insert in_degree my_id my_in_degree in
 
       (* Also track reverse dependencies *)
       List.iter
         (fun dep_id ->
-          let current_rev_deps = Hashtbl.find reverse_deps dep_id in
-          Hashtbl.replace reverse_deps dep_id (my_id :: current_rev_deps))
+          let current_rev_deps = HashMap.get reverse_deps dep_id |> Option.unwrap_or ~default:[] in
+          let _ = HashMap.insert reverse_deps dep_id (my_id :: current_rev_deps) in
+          ())
         node.deps)
     graph.nodes;
 
   (* Find nodes with no incoming edges *)
   let queue = Queue.create () in
   let initial_nodes =
-    Hashtbl.fold
+    HashMap.fold
       (fun id count acc -> if count = 0 then id :: acc else acc)
       in_degree []
     |> List.sort (fun a b -> Int.compare (Node_id.to_int a) (Node_id.to_int b))
   in
-  List.iter (fun id -> Queue.add id queue) initial_nodes;
+  List.iter (fun id -> Queue.push queue id) initial_nodes;
 
   (* Process queue *)
   let sorted = cell [] in
   let processed = cell 0 in
 
   while not (Queue.is_empty queue) do
-    let id = Queue.take queue in
-    let node = Hashtbl.find graph.nodes id in
+    let id = Queue.pop queue |> Option.unwrap in
+    let node = HashMap.get graph.nodes id |> Option.unwrap in
     sorted := node :: !sorted;
     Cell.incr processed;
 
     (* Decrease in-degree of nodes that depend on this one *)
     let rev_deps =
-      Hashtbl.find reverse_deps id
+      HashMap.get reverse_deps id
+      |> Option.unwrap_or ~default:[]
       |> List.sort (fun a b ->
           Int.compare (Node_id.to_int a) (Node_id.to_int b))
     in
     List.iter
       (fun dependent_id ->
-        let count = Hashtbl.find in_degree dependent_id in
+        let count = HashMap.get in_degree dependent_id |> Option.unwrap in
         let new_count = count - 1 in
-        Hashtbl.replace in_degree dependent_id new_count;
-        if new_count = 0 then Queue.add dependent_id queue)
+        let _ = HashMap.insert in_degree dependent_id new_count in
+        if new_count = 0 then Queue.push queue dependent_id)
       rev_deps
   done;
 
   (* Check for cycles *)
-  if !processed <> Hashtbl.length graph.nodes then (
+  if !processed != HashMap.len graph.nodes then (
     (* Find actual cycle using DFS from a node involved in the cycle *)
     let find_cycle () =
       (* Find any node with in-degree > 0 (it's in a cycle) *)
       let start_node =
-        Hashtbl.fold
+        HashMap.fold
           (fun id count acc ->
             match acc with Some _ -> acc | None -> if count > 0 then Some id else None)
           in_degree None
@@ -128,11 +134,11 @@ let topo_sort graph =
       | None -> []  (* No cycle found, shouldn't happen *)
       | Some start_id ->
           (* DFS to find cycle path *)
-          let visited = Hashtbl.create (Hashtbl.length graph.nodes) in
-          let rec_stack = Hashtbl.create (Hashtbl.length graph.nodes) in
+          let visited = HashMap.with_capacity (HashMap.len graph.nodes) in
+          let rec_stack = HashMap.with_capacity (HashMap.len graph.nodes) in
           
           let rec dfs node_id path =
-            if Hashtbl.mem rec_stack node_id then
+            if HashMap.contains_key rec_stack node_id then
               (* Found back edge to node_id. 
                  Path is [newest, ..., node_id] (reversed order)
                  We want cycle: [node_id, ..., newest, node_id] *)
@@ -145,11 +151,11 @@ let topo_sort graph =
                     else extract_cycle (id :: acc) rest
               in
               Some (extract_cycle [] path)
-            else if Hashtbl.mem visited node_id then None
+            else if HashMap.contains_key visited node_id then None
             else (
-              Hashtbl.add visited node_id ();
-              Hashtbl.add rec_stack node_id ();
-              let node = Hashtbl.find graph.nodes node_id in
+              let _ = HashMap.insert visited node_id () in
+              let _ = HashMap.insert rec_stack node_id () in
+              let node = HashMap.get graph.nodes node_id |> Option.unwrap in
               let result =
                 List.fold_left
                   (fun acc dep_id ->
@@ -158,7 +164,7 @@ let topo_sort graph =
                     | None -> dfs dep_id (node_id :: path))
                   None node.deps
               in
-              Hashtbl.remove rec_stack node_id;
+              let _ = HashMap.remove rec_stack node_id in
               result)
           in
           
@@ -169,19 +175,19 @@ let topo_sort graph =
     Error (find_cycle ()))
   else Ok (List.rev !sorted)
 
-let iter graph ~fn = Hashtbl.iter fn graph.nodes
-let map graph ~fn = Hashtbl.to_seq graph.nodes |> List.of_seq |> List.map fn
+let iter graph ~fn = HashMap.iter fn graph.nodes
+let map graph ~fn = HashMap.to_list graph.nodes |> List.map fn
 
 let reachable_from graph start_nodes =
-  let visited = Hashtbl.create (Hashtbl.length graph.nodes) in
+  let visited = HashMap.with_capacity (HashMap.len graph.nodes) in
 
   let rec visit node_id =
-    if not (Hashtbl.mem visited node_id) then (
-      Hashtbl.add visited node_id ();
-      let node = Hashtbl.find graph.nodes node_id in
+    if not (HashMap.contains_key visited node_id) then (
+      let _ = HashMap.insert visited node_id () in
+      let node = HashMap.get graph.nodes node_id |> Option.unwrap in
       List.iter visit node.deps)
   in
 
   List.iter (fun node -> visit node.id) start_nodes;
 
-  Hashtbl.fold (fun node_id () acc -> node_id :: acc) visited []
+  HashMap.fold (fun node_id () acc -> node_id :: acc) visited []

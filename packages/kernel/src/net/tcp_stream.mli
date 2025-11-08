@@ -1,10 +1,10 @@
+open Global0
 open IO
 
 type t
 type connect_result = [ `Connected of t | `In_progress of t ]
 
 val of_fd : Fd.t -> t
-val to_string : t -> string
 val close : t -> unit
 
 val connect :

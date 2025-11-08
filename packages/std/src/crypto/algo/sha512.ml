@@ -1,9 +1,15 @@
 (** SHA512 hash algorithm *)
 
-type state = { mutable buffer : Buffer.t }
+open Global
 
-let create () = { buffer = Buffer.create 512 }
-let write state bytes = Buffer.add_bytes state.buffer bytes
+module Bytes = IO.Bytes
+module List = Collections.List
+module Array = Collections.Array
+
+type state = { mutable buffer : IO.Buffer.t }
+
+let create () = { buffer = IO.Buffer.create 512 }
+let write state bytes = IO.Buffer.add_bytes state.buffer bytes
 let write_string state s = write state (Bytes.unsafe_of_string s)
 
 let write_unit state () =
@@ -43,7 +49,7 @@ let write_array writer state arr =
   Array.iter (writer state) arr
 
 let finish state =
-  let data = Buffer.to_bytes state.buffer in
+  let data = IO.Buffer.to_bytes state.buffer in
   Kernel.Crypto.FFI.sha512 (Bytes.unsafe_to_string data)
 
 (* Convenience functions *)

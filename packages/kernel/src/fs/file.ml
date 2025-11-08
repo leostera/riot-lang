@@ -1,4 +1,8 @@
+open Global0
+open Collections
 open IO
+
+module Sys = Stdlib.Sys
 
 type seek_command = SeekSet | SeekCur | SeekEnd
 
@@ -40,7 +44,6 @@ module Metadata = struct
   let ctime s = s.Unix.st_ctime
 end
 
-let to_string = Fd.to_string
 let close = Fd.close
 
 (* Use Async.syscall which now returns IO.error directly *)
@@ -75,9 +78,6 @@ external std_sys_copy_file : Unix.file_descr -> Unix.file_descr -> unit
 let sendfile fd ~file ~off ~len =
   syscall @@ fun () -> Ok (std_sys_sendfile (Fd.to_unix file) (Fd.to_unix fd) off len)
 
-let readdir path =
-  syscall @@ fun () -> Ok (Array.to_list (Sys.readdir path))
-
 let mkdir path perm =
   syscall @@ fun () -> Ok (Unix.mkdir path perm)
 
@@ -86,9 +86,10 @@ let mkdirp path perm =
   (* Split path into components, handling absolute paths *)
   let components =
     let parts = String.split_on_char '/' path in
+    let is_not_empty s = match s with "" -> false | _ -> true in
     match parts with
-    | "" :: rest -> "/" :: List.filter (fun s -> s <> "") rest
-    | parts -> List.filter (fun s -> s <> "") parts
+    | "" :: rest -> "/" :: List.filter is_not_empty rest
+    | parts -> List.filter is_not_empty parts
   in
   (* Create each directory component incrementally *)
   let rec create_dirs current_path = function
@@ -198,10 +199,35 @@ let close_fd fd =
   syscall @@ fun () -> Ok (Unix.close (Fd.to_unix fd))
 
 let get_temp_dir () =
-  syscall @@ fun () -> Ok (Filename.get_temp_dir_name ())
+  syscall @@ fun () -> 
+    try Ok (Sys.getenv "TMPDIR") with Not_found ->
+    try Ok (Sys.getenv "TEMP") with Not_found ->
+    try Ok (Sys.getenv "TMP") with Not_found ->
+    Ok "/tmp"
 
-let temp_dir ?(temp_dir = Filename.get_temp_dir_name ()) prefix suffix =
-  syscall @@ fun () -> Ok (Filename.temp_dir ~temp_dir prefix suffix)
+let temp_dir ?temp_dir prefix suffix =
+  let base_dir = match temp_dir with
+    | Some d -> d
+    | None -> 
+        try Sys.getenv "TMPDIR" with Not_found ->
+        try Sys.getenv "TEMP" with Not_found ->
+        try Sys.getenv "TMP" with Not_found ->
+        "/tmp"
+  in
+  (* Generate a unique directory name *)
+  let rec try_create attempt =
+    if attempt > 1000 then
+      panic "Could not create temporary directory after 1000 attempts"
+    else
+      let random_suffix = Stdlib.Random.int 0xFFFFFF in
+      let dir_name = base_dir ^ "/" ^ prefix ^ string_of_int random_suffix ^ suffix in
+      try
+        Unix.mkdir dir_name 0o700;
+        dir_name
+      with
+      | Unix.Unix_error (Unix.EEXIST, _, _) -> try_create (attempt + 1)
+  in
+  syscall @@ fun () -> Ok (try_create 0)
 
 let to_source t =
   let module Src = struct

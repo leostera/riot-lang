@@ -1,3 +1,5 @@
+open Global
+
 val main :
   name:string ->
   tests:Test_case.t list ->

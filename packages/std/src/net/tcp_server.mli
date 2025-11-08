@@ -1,3 +1,5 @@
+open Global
+
 (** TCP server that manages a listener and handles line-based protocols *)
 
 type t

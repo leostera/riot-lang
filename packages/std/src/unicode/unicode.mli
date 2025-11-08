@@ -39,7 +39,7 @@
 (** {1 Rune - Unicode Code Points} *)
 
 module Rune : sig
-  type t = Uchar.t
+  type t = Kernel.Uchar.t
   (** A Unicode code point (scalar value).
       
       Valid range: U+0000 to U+10FFFF, excluding surrogates. *)

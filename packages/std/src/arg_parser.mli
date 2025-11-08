@@ -82,6 +82,8 @@
     For simple scripts, manual argv parsing might be sufficient.
 *)
 
+open Global
+
 type action =
   | Set
   | SetTrue

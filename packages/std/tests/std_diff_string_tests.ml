@@ -1,4 +1,6 @@
 open Std
+open Std.Data
+open Std.Collections
 
 let test_diff_identical_strings () = Error "todo"
 let test_diff_different_strings () = Error "todo"

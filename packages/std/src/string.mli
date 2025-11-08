@@ -36,7 +36,7 @@
 
 open Iter
 
-include module type of Stdlib.String
+include module type of Kernel.String
 (** @inline
 
     Includes all standard library String functions:
@@ -71,9 +71,12 @@ include module type of Stdlib.String
     - [`compare`] - Lexicographic comparison
     - [`equal`] - Equality check
 
+    ## Iteration
+    - [`into_mut_iter`, `into_iter`] - Iterator for bytes
+    - [`into_grapheme_iter`, `into_grapheme_mut_iter`] - Iterator for UTF8 Runes
+
     ## Conversion
     - [`to_bytes`], [`of_bytes`] - Bytes conversion
-    - [`to_seq`], [`to_seqi`], [`of_seq`] - Sequence conversion
 
     ## Creation
     - [`make`] - Create string of repeated character

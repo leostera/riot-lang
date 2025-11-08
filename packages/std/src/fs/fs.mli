@@ -592,7 +592,7 @@ val with_tempdir : ?prefix:string -> (Path.t -> 'a) -> ('a, error) Result.t
 
     (* Cleanup happens even on failure *) let safe_operation () =
     Fs.with_tempdir (fun tmp -> Fs.write "data" (tmp / Path.v "file.txt") |>
-    Result.unwrap; failwith "Something went wrong" (* tmp still gets cleaned up
+    Result.unwrap; panic "Something went wrong" (* tmp still gets cleaned up
     *) ) ```
 
     - `prefix`: Optional prefix for directory name (default: "tmp")

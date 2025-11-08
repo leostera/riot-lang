@@ -1,3 +1,5 @@
+open Global
+
 type test_case
 
 val case : string -> (unit -> (unit, string) result) -> test_case

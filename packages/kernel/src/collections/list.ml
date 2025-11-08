@@ -1,3 +1,5 @@
+open Global0
+
 include Stdlib.List
 
 let make ~len ~fn =

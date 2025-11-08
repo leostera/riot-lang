@@ -1,5 +1,7 @@
 (** TCP stream for connected sockets *)
 
+open Global
+
 type t = Kernel.Net.Tcp_stream.t
 type error = [ `Connection_refused | `Closed | `System_error of string ]
 
@@ -48,7 +50,7 @@ val to_writer : t -> (t, error) IO.Writer.t
       let writer = Net.TcpStream.to_writer stream in
 
       match IO.write_all writer ~buf:"Hello, world!\n" with
-      | Ok () -> print_endline "Data sent"
+      | Ok () -> println "Data sent"
       | Error `Closed -> handle_closed ()
       | Error (`System_error msg) -> handle_error msg
     ]} *)

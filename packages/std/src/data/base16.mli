@@ -31,6 +31,8 @@
     - Network protocols (MAC addresses)
     - Debugging binary data *)
 
+open Global
+
 val encode : string -> string
 (** Encodes a string to uppercase hexadecimal.
 

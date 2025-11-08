@@ -1,10 +1,12 @@
 open Std
-module Base32 = Std.Data.Base32
+  open Std.Data
+  open Std.Collections
+  open Std.IO
 
 let test_encode_simple () =
   let encoded = Base32.encode "Hello" in
   if encoded = "JBSWY3DP" then Ok ()
-  else Error (format "Expected 'JBSWY3DP', got '%s'" encoded)
+  else Error ("Expected 'JBSWY3DP', got '" ^ encoded ^ "'")
 
 let test_encode_empty () =
   let encoded = Base32.encode "" in
@@ -19,7 +21,7 @@ let test_encode_bytes () =
 let test_decode_simple () =
   match Base32.decode "JBSWY3DP" with
   | Ok "Hello" -> Ok ()
-  | Ok s -> Error (format "Expected 'Hello', got '%s'" s)
+  | Ok s -> Error ("Expected 'Hello', got '" ^ s ^ "'")
   | Error _ -> Error "Decode failed"
 
 let test_decode_invalid_char () =

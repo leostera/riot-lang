@@ -1,5 +1,6 @@
 open Global
 open Sync
+open Kernel.Collections
 
 type 'a t = {
   mutable data : 'a array;
@@ -41,7 +42,7 @@ let rec sift_up heap i =
 let rec sift_down heap i =
   let l = left i in
   let r = right i in
-  let smallest = cell i in
+  let smallest = Cell.create i in
 
   if
     l < heap.size
@@ -53,9 +54,10 @@ let rec sift_down heap i =
     && heap.compare heap.data.(r) heap.data.(Cell.get smallest) < 0
   then Cell.set smallest r;
 
-  if Cell.get smallest <> i then (
-    swap heap i (Cell.get smallest);
-    sift_down heap (Cell.get smallest))
+  let smallest_val = Cell.get smallest in
+  if smallest_val != i then (
+    swap heap i smallest_val;
+    sift_down heap smallest_val)
 
 let push heap value =
   if heap.size = 0 then heap.data <- Array.make 8 value
@@ -99,7 +101,7 @@ let of_list_with ~compare list =
 let of_list list = of_list_with ~compare list
 
 let to_list heap =
-  let result = cell [] in
+  let result = Cell.create [] in
   while heap.size > 0 do
     match pop heap with
     | Some x -> Cell.set result (x :: Cell.get result)
@@ -108,7 +110,7 @@ let to_list heap =
   List.rev (Cell.get result)
 
 let to_list_unordered heap =
-  let result = cell [] in
+  let result = Cell.create [] in
   for i = heap.size - 1 downto 0 do
     Cell.set result (heap.data.(i) :: Cell.get result)
   done;
@@ -120,7 +122,7 @@ let iter f heap =
   done
 
 let fold f acc heap =
-  let result = cell acc in
+  let result = Cell.create acc in
   while heap.size > 0 do
     match pop heap with
     | Some x -> Cell.set result (f (Cell.get result) x)

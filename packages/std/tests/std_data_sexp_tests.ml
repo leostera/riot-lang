@@ -1,5 +1,7 @@
 open Std
-module Sexp = Std.Data.Sexp
+open Std.Data
+open Std.Result
+open Std.Collections
 
 let test_parse_atom () =
   match Sexp.of_string "hello" with

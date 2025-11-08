@@ -1,3 +1,5 @@
+open Kernel
+
 module Exception = struct
   exception Receive_timeout
   exception Syscall_timeout
@@ -21,10 +23,6 @@ let receive ~selector ?timeout () =
   Effect.perform (Proc_effect.Receive { selector; timeout })
 
 let exit () = Ok ()
-
-let sleep _milliseconds =
-  (* For now, just yield - proper timer-based sleep will be added later *)
-  yield ()
 
 let syscall ?timeout ~name ~interest ~source cb =
   let timeout =

@@ -1,3 +1,4 @@
+open Kernel
 (** Process effects for communication and I/O *)
 
 type timeout = [ `infinity | `after of float ]

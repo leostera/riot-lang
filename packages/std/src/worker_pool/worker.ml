@@ -1,5 +1,4 @@
 open Global
-
 open Types
 
 type 'task state = {

@@ -1,6 +1,8 @@
 (** Environment utilities *)
+open Global
+  open Collections
 
-let args = Array.to_list (Kernel.System.argv ()) |> List.tl
+let args = Array.to_list (Kernel.System.argv ())
 
 let current_dir () =
   match Kernel.Fs.File.getcwd () with

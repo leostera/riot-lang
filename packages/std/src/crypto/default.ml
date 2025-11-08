@@ -1,4 +1,8 @@
 (** Default hasher and random state for HashMap/HashSet *)
+  open Global
+  open IO
+  open Collections
+
 
 (** Default hasher using kernel's default hash algorithm *)
 module DefaultHasher = struct
@@ -107,7 +111,7 @@ module RandomState = struct
 
   let create () =
     (* In production, these should be truly random *)
-    { seed1 = Random.int64 Int64.max_int; seed2 = Random.int64 Int64.max_int }
+    { seed1 = Kernel.Random.int64 Kernel.Int64.max_int; seed2 = Kernel.Random.int64 Kernel.Int64.max_int }
 
   (** Hash with this random state for DoS resistance *)
   let hash_with_seed state data seed1 seed2 =

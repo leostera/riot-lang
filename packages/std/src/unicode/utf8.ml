@@ -1,9 +1,13 @@
+open Global
+module String = Kernel.String
+module Uchar = Kernel.Uchar
+
 (** UTF-8 encoding/decoding *)
 
 let decode_rune s pos =
-  if pos < 0 || pos >= Stdlib.String.length s then None
+  if pos < 0 || pos >= String.length s then None
   else
-    let decode = Stdlib.String.get_utf_8_uchar s pos in
+    let decode = String.get_utf_8_uchar s pos in
     if Uchar.utf_decode_is_valid decode then
       let r = Uchar.utf_decode_uchar decode in
       let len = Uchar.utf_decode_length decode in
@@ -15,9 +19,9 @@ let encode_rune = Rune.to_string
 
 let is_valid s =
   let rec check pos =
-    if pos >= Stdlib.String.length s then true
+    if pos >= String.length s then true
     else
-      let decode = Stdlib.String.get_utf_8_uchar s pos in
+      let decode = String.get_utf_8_uchar s pos in
       if Uchar.utf_decode_is_valid decode then
         let len = Uchar.utf_decode_length decode in
         check (pos + len)

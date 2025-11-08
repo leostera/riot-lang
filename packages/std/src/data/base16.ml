@@ -1,3 +1,6 @@
+open Global
+open IO
+
 let hex_upper = "0123456789ABCDEF"
 let hex_lower = "0123456789abcdef"
 
@@ -25,7 +28,7 @@ let decode_char c =
 
 let decode_bytes str =
   let len = String.length str in
-  if len mod 2 <> 0 then Error `Invalid_base16
+  if len mod 2 != 0 then Error `Invalid_base16
   else
     let result = Bytes.create (len / 2) in
     let rec decode_pair i =

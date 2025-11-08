@@ -22,6 +22,7 @@
 
     See [Fs.read_dir] for a simpler API that returns all entries at once. *)
 
+open Global
 open Common
 
 type t

@@ -1,3 +1,5 @@
+open Global
+
 type suite_info = {
   name : string;
   source_file : string option;

@@ -1,5 +1,7 @@
 (** A cell that can only be set once *)
 
+open Global0
+
 type 'a t = 'a option Cell.t
 
 let create () = Cell.create None

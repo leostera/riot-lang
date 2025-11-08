@@ -1,3 +1,5 @@
+open Global
+
 type t = Kernel.Fs.File.Metadata.t
 
 let file_type t =

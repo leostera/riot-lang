@@ -1,3 +1,5 @@
+open Global0
+open Collections
 (** Async-friendly OS process spawning and management *)
 
 type status = Running | Exited of int | Signaled of int | Stopped of int
@@ -65,13 +67,13 @@ let spawn ~program ~args ?(env = []) ?cwd ~stdio () =
 
     (* Build environment array *)
     let env_array =
-      if env = [] then Unix.environment ()
+      if env = [] then unix__environment ()
       else
-        let base_env = Array.to_list (Unix.environment ()) in
+        let base_env = Array.to_list (unix__environment ()) in
         let env_list =
           List.fold_left
             (fun acc (k, v) ->
-              let kv = Printf.sprintf "%s=%s" k v in
+              let kv = k ^ "=" ^ v in
               let without_key =
                 List.filter
                   (fun s -> not (String.starts_with ~prefix:(k ^ "=") s))
@@ -118,7 +120,7 @@ let spawn ~program ~args ?(env = []) ?cwd ~stdio () =
   | Unix.Unix_error (err, fn, arg) ->
       Error
         (`SpawnFailed
-           (Printf.sprintf "%s: %s(%s)" (Unix.error_message err) fn arg))
+           (Unix.error_message err ^ ": " ^ fn ^ "(" ^ arg ^ ")"))
   | exn -> Error (`SpawnFailed (Printexc.to_string exn))
 
 let try_wait t =

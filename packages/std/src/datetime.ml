@@ -1,6 +1,18 @@
 open Global
 (** Date and time utilities *)
 
+(* Helper to format integer with zero padding *)
+let pad2 n = if n < 10 then "0" ^ string_of_int n else string_of_int n
+let pad3 n = 
+  if n < 10 then "00" ^ string_of_int n 
+  else if n < 100 then "0" ^ string_of_int n 
+  else string_of_int n
+let pad4 n =
+  if n < 10 then "000" ^ string_of_int n
+  else if n < 100 then "00" ^ string_of_int n
+  else if n < 1000 then "0" ^ string_of_int n
+  else string_of_int n
+
 module Tz = struct
   type t = Etc_UTC | Local
 
@@ -113,10 +125,11 @@ let to_iso8601 t =
           let hours = abs t.utc_offset / 3600 in
           let mins = abs t.utc_offset mod 3600 / 60 in
           let sign = if t.utc_offset >= 0 then "+" else "-" in
-          format "%s%02d:%02d" sign hours mins
+          sign ^ pad2 hours ^ ":" ^ pad2 mins
   in
-  format "%04d-%02d-%02dT%02d:%02d:%02d.%03d%s" t.year t.month t.day t.hour
-    t.minute t.second millis tz_suffix
+  pad4 t.year ^ "-" ^ pad2 t.month ^ "-" ^ pad2 t.day ^ "T" ^ 
+  pad2 t.hour ^ ":" ^ pad2 t.minute ^ ":" ^ pad2 t.second ^ "." ^ 
+  pad3 millis ^ tz_suffix
 
 type error =
   | Invalid_format of string
@@ -162,10 +175,10 @@ module Parser = struct
     if is_extended then
       (* YYYY-MM-DD *)
       let* year = parse_4digits s pos in
-      if pos + 4 >= String.length s || s.[pos + 4] <> '-' then None
+      if pos + 4 >= String.length s || s.[pos + 4] != '-' then None
       else
         let* month = parse_2digits s (pos + 5) in
-        if pos + 7 >= String.length s || s.[pos + 7] <> '-' then None
+        if pos + 7 >= String.length s || s.[pos + 7] != '-' then None
         else
           let* day = parse_2digits s (pos + 8) in
           Some (year, month, day, pos + 10)
@@ -181,10 +194,10 @@ module Parser = struct
     if is_extended then
       (* HH:MM:SS *)
       let* hour = parse_2digits s pos in
-      if pos + 2 >= String.length s || s.[pos + 2] <> ':' then None
+      if pos + 2 >= String.length s || s.[pos + 2] != ':' then None
       else
         let* minute = parse_2digits s (pos + 3) in
-        if pos + 5 >= String.length s || s.[pos + 5] <> ':' then None
+        if pos + 5 >= String.length s || s.[pos + 5] != ':' then None
         else
           let* second = parse_2digits s (pos + 6) in
           Some (hour, minute, second, pos + 8)
@@ -198,7 +211,7 @@ module Parser = struct
   (* Parse microseconds (fractional seconds) *)
   let parse_microseconds s pos =
     let len = String.length s in
-    if pos >= len || (s.[pos] <> '.' && s.[pos] <> ',') then
+    if pos >= len || (s.[pos] != '.' && s.[pos] != ',') then
       ((0, 0), pos)
     else
       let start = pos + 1 in
@@ -243,9 +256,9 @@ module Parser = struct
           let offset = sign * ((h * 3600) + (m * 60)) in
           (Tz.Local, offset, end_pos)
       | Some (h, _, _) when h < 0 || h > 23 ->
-          raise (Failure (format "Invalid timezone hour: %d" h))
+          raise (Failure ("Invalid timezone hour: " ^ string_of_int h))
       | Some (_, m, _) when m < 0 || m > 59 ->
-          raise (Failure (format "Invalid timezone minute: %d" m))
+          raise (Failure ("Invalid timezone minute: " ^ string_of_int m))
       | _ -> raise (Failure "Invalid timezone format")
     else
       raise (Failure "Invalid timezone format")
@@ -253,32 +266,32 @@ module Parser = struct
   (* Validate date components *)
   let validate_date year month day =
     if month < 1 || month > 12 then
-      Error (Invalid_date (format "Invalid month: %d" month))
+      Error (Invalid_date ("Invalid month: " ^ string_of_int month))
     else if day < 1 || day > 31 then
-      Error (Invalid_date (format "Invalid day: %d" day))
+      Error (Invalid_date ("Invalid day: " ^ string_of_int day))
     else
       let max_days =
         match month with
         | 2 ->
             let abs_year = abs year in
-            if (abs_year mod 4 = 0 && abs_year mod 100 <> 0) || abs_year mod 400 = 0 then 29
+            if (abs_year mod 4 = 0 && abs_year mod 100 != 0) || abs_year mod 400 = 0 then 29
             else 28
         | 4 | 6 | 9 | 11 -> 30
         | _ -> 31
       in
       if day > max_days then
-        Error (Invalid_date (format "Invalid day %d for month %d" day month))
+        Error (Invalid_date ("Invalid day " ^ string_of_int day ^ " for month " ^ string_of_int month))
       else
         Ok ()
 
   (* Validate time components *)
   let validate_time hour minute second =
     if hour < 0 || hour > 23 then
-      Error (Invalid_time (format "Invalid hour: %d" hour))
+      Error (Invalid_time ("Invalid hour: " ^ string_of_int hour))
     else if minute < 0 || minute > 59 then
-      Error (Invalid_time (format "Invalid minute: %d" minute))
+      Error (Invalid_time ("Invalid minute: " ^ string_of_int minute))
     else if second < 0 || second > 59 then
-      Error (Invalid_time (format "Invalid second: %d" second))
+      Error (Invalid_time ("Invalid second: " ^ string_of_int second))
     else
       Ok ()
 end
@@ -314,7 +327,7 @@ let parse s =
           (* Parse datetime separator (T or space) *)
           if pos >= len then
             Error (Invalid_format "Missing time component")
-          else if s.[pos] <> 'T' && s.[pos] <> ' ' then
+          else if s.[pos] != 'T' && s.[pos] != ' ' then
             Error (Invalid_format "Expected 'T' or ' ' separator")
           else
             let pos = pos + 1 in

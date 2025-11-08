@@ -1,6 +1,8 @@
 (** Simple JSON library for RPC communication *)
 
 open Global
+  open IO
+  open Collections
 
 type t =
   | Null
@@ -33,38 +35,38 @@ type error =
 
 let error_to_string = function
   | Unterminated_string { position } ->
-      format "Unterminated string at position %d" position
+      "Unterminated string at position " ^ string_of_int position
   | Invalid_literal { expected; position; found } ->
-      format "Invalid literal at position %d: expected '%s' but found '%s'"
-        position expected found
+      "Invalid literal at position " ^ string_of_int
+        position ^ ": expected '" ^ expected ^ "' but found '" ^ found ^ "'"
   | Invalid_number { position; text } ->
-      format "Invalid number format at position %d: '%s'" position text
+      "Invalid number format at position " ^ string_of_int position ^ ": '" ^ text ^ "'"
   | Expected_comma_or_bracket { kind; position; found } ->
       let found_str =
-        match found with Some c -> format "'%c'" c | None -> "end of input"
+        match found with Some c -> String.make 1 c | None -> "end of input"
       in
-      format "Expected ',' or closing bracket in %s at position %d, found %s"
-        kind position found_str
+      "Expected ',' or closing bracket in " ^
+        kind ^ " at position " ^ string_of_int position ^ ", found " ^ found_str
   | Expected_string_key { position; found } ->
       let found_str =
-        match found with Some c -> format "'%c'" c | None -> "end of input"
+        match found with Some c -> String.make 1 c | None -> "end of input"
       in
-      format "Expected string key in object at position %d, found %s" position
+      "Expected string key in object at position " ^ string_of_int position ^ ", found " ^
         found_str
   | Expected_colon { position; found } ->
       let found_str =
-        match found with Some c -> format "'%c'" c | None -> "end of input"
+        match found with Some c -> String.make 1 c | None -> "end of input"
       in
-      format "Expected ':' after object key at position %d, found %s" position
+      "Expected ':' after object key at position " ^ string_of_int position ^ ", found " ^
         found_str
   | Unexpected_end_of_input { expected } ->
-      format "Unexpected end of input while parsing %s" expected
+      "Unexpected end of input while parsing " ^ expected
   | Unexpected_character { position; character; expected } ->
-      format "Unexpected character '%c' at position %d (expected %s)" character
-        position expected
+      "Unexpected character '" ^ String.make 1 character ^
+        "' at position " ^ string_of_int position ^ " (expected " ^ expected ^ ")"
   | Extra_input_after_value { position } ->
-      format "Extra input after JSON value at position %d" position
-  | Unknown_error msg -> format "Unknown error: %s" msg
+      "Extra input after JSON value at position " ^ string_of_int position
+  | Unknown_error msg -> "Unknown error: " ^ msg
 
 (** Escape a string for JSON *)
 let escape_string s =
@@ -86,13 +88,13 @@ let rec to_string = function
   | Bool b -> if b then "true" else "false"
   | Int i -> string_of_int i
   | Float f -> string_of_float f
-  | String s -> format "\"%s\"" (escape_string s)
+  | String s -> "\"" ^ escape_string s ^ "\""
   | Array items -> "[" ^ String.concat "," (List.map to_string items) ^ "]"
   | Object fields ->
       "{"
       ^ String.concat ","
           (List.map
-             (fun (k, v) -> format "\"%s\":%s" (escape_string k) (to_string v))
+             (fun (k, v) -> "\"" ^ escape_string k ^ "\":" ^ to_string v)
              fields)
       ^ "}"
 

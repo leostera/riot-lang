@@ -4,10 +4,9 @@
     assign work. *)
 
 open Global
-
 open Types
 
-type nonrec 'task worker = 'task worker
+type 'task worker = 'task Types.worker
 type 'task t = { coordinator_pid : Pid.t; task_ref : 'task Ref.t }
 
 include PublicMessages

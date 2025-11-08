@@ -1,3 +1,5 @@
+open Global
+
 (** # Data.Base85 - Base85 (Ascii85) encoding and decoding
     
     Base85 encoding converts binary data to ASCII text using 85 printable 

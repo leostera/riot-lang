@@ -1,3 +1,6 @@
+open Global
+open Collections
+
 type path_component = Key of string | Index of int
 type path = path_component list
 

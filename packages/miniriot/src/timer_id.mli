@@ -11,6 +11,3 @@ val equal : t -> t -> bool
 
 val compare : t -> t -> int
 (** Compare two timer IDs *)
-
-val pp : Format.formatter -> t -> unit
-(** Pretty-print a timer ID *)

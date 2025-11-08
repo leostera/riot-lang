@@ -1,3 +1,4 @@
+open Global0
 open Async
 
 type t = Unix.dir_handle

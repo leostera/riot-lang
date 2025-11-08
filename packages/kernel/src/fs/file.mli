@@ -1,3 +1,4 @@
+open Global0
   open IO
 
 type seek_command = SeekSet | SeekCur | SeekEnd
@@ -31,7 +32,6 @@ module Metadata : sig
   val ctime : t -> float
 end
 
-val to_string : t -> string
 val close : t -> unit
 
 val read :
@@ -61,7 +61,6 @@ val sendfile :
   len:int ->
   (int, error) result
 
-val readdir : string -> (string list, error) result
 val mkdir : string -> int -> (unit, error) result
 val mkdirp : string -> int -> (unit, error) result
 val copy_file : string -> string -> (unit, error) result

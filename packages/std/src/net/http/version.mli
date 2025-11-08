@@ -24,6 +24,8 @@
     - HTTP/2 - Binary protocol with multiplexing
     - HTTP/3 - QUIC-based protocol *)
 
+open Global
+
 type t =
   | Http09
   | Http10

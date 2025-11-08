@@ -1,3 +1,5 @@
+open Global0
+
 val syscall : (unit -> 'a IO.io_result) -> 'a IO.io_result
 
 module Token : sig
@@ -6,7 +8,6 @@ module Token : sig
   val hash : t -> int
   val equal : ?eq:('a -> 'a -> bool) -> t -> t -> bool
   val make : 'value -> t
-  val pp : Format.formatter -> t -> unit
   val unsafe_to_value : t -> 'value
 end
 

@@ -1,7 +1,9 @@
+open Global
+open Sync
+
 type 'a t = Ref of int64 [@@unboxed]
 
 let __current__ = Atomic.make 0L
-let pp ppf (Ref pid) = Format.fprintf ppf "#Ref<%s>" (Int64.to_string pid)
 
 let rec make () =
   let last = Atomic.get __current__ in
@@ -13,7 +15,7 @@ let equal (Ref a) (Ref b) = Int64.equal a b
 let type_equal : type a b. a t -> b t -> (a, b) Type.eq option =
  fun a b ->
   match (a, b) with
-  | Ref a', Ref b' when Int64.equal a' b' -> Some (Obj.magic Type.Equal)
+  | Ref a', Ref b' when Int64.equal a' b' -> Some (Kernel.dangerous_unsafe_cast Type.Equal)
   | _ -> None
 
 let cast (type a b) (Type.Equal : (a, b) Type.eq) (a : a) : b = a

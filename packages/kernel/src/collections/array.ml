@@ -1,3 +1,5 @@
+open Global0
+
 include Stdlib.Array
 
 let into_iter : type item. item array -> item Iter.Iterator.t =

@@ -1,5 +1,6 @@
 open Global
 open Sync
+open Collections
 
 (* # Supervisor - OTP-style process supervision *)
 
@@ -24,7 +25,7 @@ type restart =
 
 type shutdown =
   | BrutalKill
-  | Timeout of float
+  | Timeout of Time.Duration.t
   | Infinity
 
 (** {1 Child Types} *)
@@ -44,7 +45,7 @@ type child_spec = {
   significant : bool;
 }
 
-let child_spec ~id ~start ?(restart = Permanent) ?(shutdown = Timeout 5.0)
+let child_spec ~id ~start ?(restart = Permanent) ?(shutdown = Timeout (Time.Duration.from_secs 5))
     ?(child_type = Worker) ?(significant = false) () =
   { id; start; restart; shutdown; child_type; significant }
 
@@ -69,7 +70,7 @@ type supervisor_state = {
   strategy : strategy;
   intensity : intensity;
   children : child_state list Cell.t;
-  restarts : (float * string) list Cell.t;  (* (timestamp, child_id) *)
+  restarts : (Time.Instant.t * string) list Cell.t;  (* (timestamp, child_id) *)
 }
 
 (** {1 Public Types for Messages} *)
@@ -106,10 +107,6 @@ type Message.t +=
   | Supervisor_stop of { reply_to : Pid.t }
   | Supervisor_stop_reply
 
-(** {1 Helper Functions} *)
-
-let now () = Unix.gettimeofday ()
-
 let start_child spec =
   try
     let pid = spec.start () in
@@ -140,16 +137,15 @@ let terminate_child_process (child_state : child_state) =
           send pid (Process.EXIT { from = self (); reason = Error (Failure "shutdown") }))
 
 let add_restart state child_id =
-  let timestamp = now () in
+  let timestamp = Time.Instant.now () in
   let restarts = Cell.get state.restarts in
   Cell.set state.restarts ((timestamp, child_id) :: restarts)
 
 let prune_old_restarts state =
-  let current_time = now () in
-  let window_seconds = Time.Duration.to_secs_float state.intensity.window in
-  let cutoff = current_time -. window_seconds in
+  let current_time = Time.Instant.now () in
+  let cutoff = Time.Instant.sub current_time state.intensity.window in
   let restarts = Cell.get state.restarts in
-  let recent = List.filter (fun (ts, _) -> ts >= cutoff) restarts in
+  let recent = List.filter (fun (ts, _) -> Time.Instant.compare ts cutoff >= 0) restarts in
   Cell.set state.restarts recent
 
 let check_intensity state =
@@ -257,7 +253,7 @@ let handle_child_exit state child_id reason =
   in
   
   if is_significant then
-    Error (Failure (format "Significant child %s terminated" child_id))
+    Error (Failure ("Significant child " ^ child_id ^ " terminated"))
   else (
     (* Apply restart strategy *)
     (match state.strategy with
@@ -321,16 +317,16 @@ let handle_delete_child state reply_to id =
     match child_opt with
     | None ->
         send reply_to (Supervisor_delete_child_reply {
-          result = Error (format "Child not found: %s" id)
+          result = Error ("Child not found: " ^ id)
         });
         Ok ()
     | Some child when Option.is_some child.pid ->
         send reply_to (Supervisor_delete_child_reply {
-          result = Error (format "Child is still running: %s" id)
+          result = Error ("Child is still running: " ^ id)
         });
         Ok ()
     | Some _child ->
-        let updated = List.filter (fun c -> c.spec.id <> id) children in
+        let updated = List.filter (fun c -> c.spec.id != id) children in
         Cell.set state.children updated;
         send reply_to (Supervisor_delete_child_reply { result = Ok () });
         Ok ()
@@ -349,12 +345,12 @@ let handle_restart_child state reply_to id =
     match child_opt with
     | None ->
         send reply_to (Supervisor_restart_child_reply {
-          result = Error (format "Child not found: %s" id)
+          result = Error ("Child not found: " ^ id)
         });
         Ok ()
     | Some child when Option.is_some child.pid ->
         send reply_to (Supervisor_restart_child_reply {
-          result = Error (format "Child already running: %s" id)
+          result = Error ("Child already running: " ^ id)
         });
         Ok ()
     | Some child ->
@@ -370,7 +366,7 @@ let handle_restart_child state reply_to id =
             Ok ()
         | None ->
             send reply_to (Supervisor_restart_child_reply {
-              result = Error (format "Failed to start child: %s" id)
+              result = Error ("Failed to start child: " ^ id)
             });
             Ok ())
   )
@@ -388,7 +384,7 @@ let handle_terminate_child state reply_to id =
     match child_opt with
     | None ->
         send reply_to (Supervisor_terminate_child_reply {
-          result = Error (format "Child not found: %s" id)
+          result = Error ("Child not found: " ^ id)
         });
         Ok ()
     | Some child ->
@@ -440,7 +436,7 @@ let rec loop state =
           | Ok () -> loop state
           | Error exn -> Error exn)
       | None ->
-          (* Unknown child, ignore *)
+          (* UnkTime.Instant.nown child, ignore *)
           loop state)
   
   | Supervisor_which_children { reply_to } ->
@@ -584,8 +580,8 @@ module Dynamic = struct
   type dynamic_state = {
     intensity : intensity;
     max_children : int option;
-    children : (Pid.t, dynamic_child) Hashtbl.t;
-    restarts : (float * Pid.t) list Cell.t;
+    children : (Pid.t, dynamic_child) HashMap.t;
+    restarts : (Time.Instant.t * Pid.t) list Cell.t;
   }
 
   type Message.t +=
@@ -616,24 +612,23 @@ module Dynamic = struct
     
     match receive ~selector () with
     | Process.DOWN { pid; reason; _ } ->
-        (match Hashtbl.find_opt state.children pid with
+        (match HashMap.get state.children pid with
         | None -> dynamic_loop state
         | Some child ->
-            Hashtbl.remove state.children pid;
+            let _ = HashMap.remove state.children pid in
             
             if should_restart { id = ""; start = (fun () -> pid); restart = child.restart;
                                 shutdown = child.shutdown; child_type = Worker;
                                 significant = false } reason then (
               (* Add restart record *)
-              let timestamp = now () in
+              let timestamp = Time.Instant.now () in
               let restarts = Cell.get state.restarts in
               Cell.set state.restarts ((timestamp, pid) :: restarts);
               
               (* Check intensity *)
-              let current_time = now () in
-  let window_seconds = Time.Duration.to_secs_float state.intensity.window in
-              let cutoff = current_time -. window_seconds in
-              let recent = List.filter (fun (ts, _) -> ts >= cutoff) (Cell.get state.restarts) in
+              let current_time = Time.Instant.now () in
+              let cutoff = Time.Instant.sub current_time state.intensity.window in
+              let recent = List.filter (fun (ts, _) -> Time.Instant.compare ts cutoff >= 0) (Cell.get state.restarts) in
               Cell.set state.restarts recent;
               
               if List.length recent > state.intensity.max_restarts then
@@ -645,7 +640,7 @@ module Dynamic = struct
     
     | Dynamic_start_child { reply_to; start; restart; shutdown } ->
         (match state.max_children with
-        | Some max when Hashtbl.length state.children >= max ->
+        | Some max when HashMap.len state.children >= max ->
             send reply_to (Dynamic_start_child_reply {
               result = Error "max_children_reached"
             });
@@ -654,7 +649,7 @@ module Dynamic = struct
             (try
               let pid = start () in
               let monitor = Process.monitor pid in
-              Hashtbl.add state.children pid { pid; monitor; restart; shutdown };
+              let _ = HashMap.insert state.children pid { pid; monitor; restart; shutdown } in
               send reply_to (Dynamic_start_child_reply { result = Ok pid });
               dynamic_loop state
             with exn ->
@@ -664,7 +659,7 @@ module Dynamic = struct
               dynamic_loop state))
     
     | Dynamic_terminate_child { reply_to; pid } ->
-        (match Hashtbl.find_opt state.children pid with
+        (match HashMap.get state.children pid with
         | None ->
             send reply_to (Dynamic_terminate_child_reply {
               result = Error "not_found"
@@ -672,19 +667,19 @@ module Dynamic = struct
             dynamic_loop state
         | Some child ->
             Process.demonitor child.monitor;
-            Hashtbl.remove state.children pid;
+            let _ = HashMap.remove state.children pid in
             (* TODO: Actually terminate the child based on shutdown spec *)
             send pid (Process.EXIT { from = self (); reason = Error (Failure "shutdown") });
             send reply_to (Dynamic_terminate_child_reply { result = Ok () });
             dynamic_loop state)
     
     | Dynamic_which_children { reply_to } ->
-        let pids = Hashtbl.fold (fun pid _ acc -> pid :: acc) state.children [] in
+        let pids = HashMap.fold (fun pid _ acc -> pid :: acc) state.children [] in
         send reply_to (Dynamic_which_children_reply { children = pids });
         dynamic_loop state
     
     | Dynamic_count_children { reply_to } ->
-        let total = Hashtbl.length state.children in
+        let total = HashMap.len state.children in
         send reply_to (Dynamic_count_children_reply {
           count = { specs = total; active = total; supervisors = 0; workers = total }
         });
@@ -704,7 +699,7 @@ module Dynamic = struct
     let state = {
       intensity;
       max_children;
-      children = Hashtbl.create 16;
+      children = HashMap.with_capacity 16;
       restarts = cell [];
     } in
     
@@ -716,7 +711,7 @@ module Dynamic = struct
   let start ?intensity ?max_children () =
     spawn (init_dynamic intensity max_children)
 
-  let start_child supervisor ~start ?(restart = Permanent) ?(shutdown = Timeout 5.0) () =
+  let start_child supervisor ~start ?(restart = Permanent) ?(shutdown = Timeout (Time.Duration.from_secs 5)) () =
     send supervisor (Dynamic_start_child { reply_to = self (); start; restart; shutdown });
     let selector msg =
       match msg with

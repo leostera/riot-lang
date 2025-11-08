@@ -1,4 +1,5 @@
 (** Process effects for cooperative scheduling *)
+open Kernel
 
 module Exception : sig
 exception Receive_timeout
@@ -23,9 +24,6 @@ val receive : selector:'a selector -> ?timeout:float -> unit -> 'a
 
 val exit : unit -> (unit, Process.exit_reason) result
 (** Exit the current process normally *)
-
-val sleep : int -> unit
-(** Sleep for the specified duration (currently just yields) *)
 
 val syscall :
   ?timeout:float ->

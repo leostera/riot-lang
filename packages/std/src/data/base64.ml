@@ -1,3 +1,6 @@
+open Global
+  open IO
+
 let table = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
 let encode_bytes bytes =
@@ -51,7 +54,7 @@ let decode_char c =
 
 let decode str =
   let len = String.length str in
-  if len mod 4 <> 0 then Error `Invalid_base64
+  if len mod 4 != 0 then Error `Invalid_base64
   else
     let result = Buffer.create (len / 4 * 3) in
 
@@ -70,8 +73,8 @@ let decode str =
             let b3 = ((c3 land 0x03) lsl 6) lor c4 in
 
             Buffer.add_char result (Char.chr b1);
-            if str.[i + 2] <> '=' then Buffer.add_char result (Char.chr b2);
-            if str.[i + 3] <> '=' then Buffer.add_char result (Char.chr b3);
+            if str.[i + 2] != '=' then Buffer.add_char result (Char.chr b2);
+            if str.[i + 3] != '=' then Buffer.add_char result (Char.chr b3);
             decode_block (i + 4)
         | _ -> Error `Invalid_base64
     in

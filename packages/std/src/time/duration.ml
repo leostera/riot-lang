@@ -1,3 +1,5 @@
+open Kernel
+
 type timespec = { secs : int; nanos : int }
 type t = timespec
 
@@ -91,7 +93,7 @@ let mul t factor =
     { secs = Int64.to_int final_secs; nanos = Int64.to_int final_nanos }
 
 let div t divisor =
-  if divisor <= 0 then invalid_arg "Division by zero or negative number"
+  if divisor <= 0 then panic "Division by zero or negative number"
   else
     let total_nanos =
       Int64.add
@@ -154,7 +156,7 @@ let mul_f64 t factor =
     { secs; nanos }
 
 let div_f64 t divisor =
-  if divisor <= 0.0 then invalid_arg "Division by zero or negative number"
+  if divisor <= 0.0 then panic "Division by zero or negative number"
   else
     let total_nanos_f =
       (float_of_int t.secs *. 1_000_000_000.0) +. float_of_int t.nanos

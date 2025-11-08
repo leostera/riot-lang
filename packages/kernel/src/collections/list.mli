@@ -1,3 +1,5 @@
+open Global0
+
 include module type of Stdlib.List
 
 val make : len:int -> fn:(int -> 'a) -> 'a list

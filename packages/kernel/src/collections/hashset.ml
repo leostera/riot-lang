@@ -1,3 +1,5 @@
+open Global0
+
 type 'a t = ('a, unit) Hashtbl.t
 
 let create () = Hashtbl.create 16

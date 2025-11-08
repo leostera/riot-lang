@@ -10,8 +10,8 @@ let main ~args:_ =
 
   let msg = receive_any () in
   (match msg with
-  | Ping -> Printf.printf "✓ Test 1 passed: Received Ping after delay\n%!"
-  | _ -> Printf.printf "✗ Test 1 failed: Expected Ping\n%!");
+  | Ping -> println "✓ Test 1 passed: Received Ping after delay"
+  | _ -> println "✗ Test 1 failed: Expected Ping");
 
   (* Test 2: receive timeout works *)
   (try
@@ -20,9 +20,9 @@ let main ~args:_ =
          ~selector:(function Timeout_test -> `select () | _ -> `skip)
          ~timeout:0.05 ()
      in
-     Printf.printf "✗ Test 2 failed: Should have timed out\n%!"
+     println "✗ Test 2 failed: Should have timed out"
    with Receive_timeout ->
-     Printf.printf "✓ Test 2 passed: Receive timed out as expected\n%!");
+     println "✓ Test 2 passed: Receive timed out as expected");
 
   (* Test 3: Timer cancellation *)
   let timer_id = Timer.send_after my_pid Timeout_test ~after:1.0 in
@@ -34,10 +34,9 @@ let main ~args:_ =
          ~selector:(function Timeout_test -> `select () | _ -> `skip)
          ~timeout:0.1 ()
      in
-     Printf.printf
-       "✗ Test 3 failed: Should have timed out (timer was cancelled)\n%!"
+     println "✗ Test 3 failed: Should have timed out (timer was cancelled)"
    with Receive_timeout ->
-     Printf.printf "✓ Test 3 passed: Cancelled timer didn't fire\n%!");
+     println "✓ Test 3 passed: Cancelled timer didn't fire");
 
   Ok ()
 

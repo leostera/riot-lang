@@ -1,6 +1,6 @@
+open Global0
 type t
 
-val to_string : t -> string
 val close : t -> unit
 
 val bind :

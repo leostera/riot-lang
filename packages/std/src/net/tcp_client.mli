@@ -20,6 +20,8 @@
       | Error e -> ...
     ]} *)
 
+open Global
+
 type t
 (** The client connection type. Contains the TCP stream and internal buffers. *)
 

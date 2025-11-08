@@ -49,6 +49,7 @@
     OCaml's `option` is a regular variant type with two constructors. It has no
     runtime overhead compared to manually checking for null or special values.
 *)
+open Global0
 
 type 'a t = 'a option =
   | None
@@ -71,6 +72,19 @@ val none : 'a t
     ```ocaml let x : int option = Option.none in assert (x = None) ``` *)
 
 (** # Querying *)
+
+val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
+(** Returns `true` if two options are equal using the provided equality function.
+    
+    ## Examples
+    
+    ```ocaml
+    let eq = Option.equal Int.equal in
+    assert (eq (Some 5) (Some 5));
+    assert (not (eq (Some 5) (Some 10)));
+    assert (not (eq (Some 5) None));
+    assert (eq None None)
+    ``` *)
 
 val is_some : 'a t -> bool
 (** Returns `true` if the option is a [`Some`] value.
@@ -245,23 +259,6 @@ val xor : 'a t -> 'a t -> 'a t
     let x = None in let y = None in assert (Option.xor x y = None) ``` *)
 
 (** # Extracting values *)
-
-val get : 'a t -> 'a
-(** Returns the contained [`Some`] value, raises [Invalid_argument] on [`None`].
-    
-    This is for compatibility with [Stdlib.Option.get]. Prefer {!unwrap} or {!expect}
-    in new code for better error messages.
-    
-    ## Examples
-    
-    ```ocaml
-    let x = Some "air" in
-    assert (Option.get x = "air")
-    
-    (* This will raise Invalid_argument: *)
-    let y = None in
-    Option.get y (* raises Invalid_argument "Option.get" *)
-    ``` *)
 
 val unwrap : 'a t -> 'a
 (** Returns the contained [`Some`] value, consuming the option.

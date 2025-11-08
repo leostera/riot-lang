@@ -18,6 +18,9 @@
       let cfg = OnceCell.get_or_init config (fun () -> default_config ())
     ]} *)
 
+
+open Global0
+
 type 'a t
 (** A cell that holds an optional value and can only be set once *)
 

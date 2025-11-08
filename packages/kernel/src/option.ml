@@ -1,3 +1,5 @@
+open Global0
+
 (** Option type utilities *)
 
 type 'a t = 'a option = None | Some of 'a
@@ -7,6 +9,12 @@ let some x = Some x
 let none = None
 
 (* Querying *)
+let equal eq opt1 opt2 =
+  match (opt1, opt2) with
+  | None, None -> true
+  | Some x, Some y -> eq x y
+  | _ -> false
+
 let is_some = function Some _ -> true | None -> false
 let is_none = function Some _ -> false | None -> true
 let is_some_and f = function Some x -> f x | None -> false
@@ -31,15 +39,9 @@ let xor opt1 opt2 =
   | _ -> None
 
 (* Extracting values *)
-let get = function
-  | Some x -> x
-  | None -> invalid_arg "Option.get"
-
 let unwrap = function
   | Some x -> x
-  | None ->
-      let exception Panic of string in
-      raise (Panic "called Option.unwrap on a None value")
+  | None -> (panic "called Option.unwrap on a None value")
 
 let unwrap_or ~default = function Some x -> x | None -> default
 let unwrap_or_default ~default = function Some x -> x | None -> default ()
@@ -98,7 +100,7 @@ let unzip = function Some (x, y) -> (Some x, Some y) | None -> (None, None)
 (* Collecting *)
 let all options =
   let rec go acc = function
-    | [] -> Some (List.rev acc)
+    | [] -> Some (Stdlib.List.rev acc)
     | Some x :: rest -> go (x :: acc) rest
     | None :: _ -> None
   in

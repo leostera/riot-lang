@@ -11,21 +11,21 @@
 
     let queue = Queue.create () in
 
-    (* Add items *) Queue.enqueue queue "first"; Queue.enqueue queue "second";
-    Queue.enqueue queue "third";
+    (* Add items *) Queue.push queue "first"; Queue.push queue "second";
+    Queue.push queue "third";
 
-    (* Remove in FIFO order *) Queue.dequeue queue (* Some "first" *)
-    Queue.dequeue queue (* Some "second" *) Queue.dequeue queue (* Some "third"
-    *) Queue.dequeue queue (* None - empty *) ```
+    (* Remove in FIFO order *) Queue.pop queue (* Some "first" *)
+    Queue.pop queue (* Some "second" *) Queue.pop queue (* Some "third"
+    *) Queue.pop queue (* None - empty *) ```
 
     Processing tasks in order:
 
     ```ocaml let task_queue = Queue.create () in
 
-    (* Add tasks *) List.iter (Queue.enqueue task_queue)
+    (* Add tasks *) List.iter (Queue.push task_queue)
     [ "process_file_1.txt"; "process_file_2.txt"; "process_file_3.txt" ];
 
-    (* Process tasks in order *) let rec process_tasks () = match Queue.dequeue
+    (* Process tasks in order *) let rec process_tasks () = match Queue.pop
     task_queue with | Some task -> handle_task task; process_tasks () | None ->
     Log.info "All tasks complete" in process_tasks () ```
 
@@ -70,7 +70,7 @@ val with_capacity : int -> 'a t
 
     ## Examples
 
-    ```ocaml let queue = Queue.with_capacity 1000 in (* Can enqueue ~1000 items
+    ```ocaml let queue = Queue.with_capacity 1000 in (* Can push ~1000 items
     without reallocation *) ``` *)
 
 val of_list : 'a list -> 'a t
@@ -79,8 +79,8 @@ val of_list : 'a list -> 'a t
 
     ## Examples
 
-    ```ocaml let queue = Queue.of_list [1; 2; 3] in Queue.dequeue queue (* Some
-    1 *) Queue.dequeue queue (* Some 2 *) ```
+    ```ocaml let queue = Queue.of_list [1; 2; 3] in Queue.pop queue (* Some
+    1 *) Queue.pop queue (* Some 2 *) ```
 
     ## Complexity
 
@@ -89,29 +89,29 @@ val of_list : 'a list -> 'a t
 
 (** {1 Basic Operations} *)
 
-val enqueue : 'a t -> 'a -> unit
+val push : 'a t -> 'a -> unit
 (** Adds an element to the back of the queue.
 
     ## Examples
 
-    ```ocaml let queue = Queue.create () in Queue.enqueue queue "first";
-    Queue.enqueue queue "second"; (* queue: ["first", "second"] - front to back
+    ```ocaml let queue = Queue.create () in Queue.push queue "first";
+    Queue.push queue "second"; (* queue: ["first", "second"] - front to back
     *) ```
 
     ## Complexity
 
     - Time: O(1) amortized *)
 
-val dequeue : 'a t -> 'a option
+val pop : 'a t -> 'a option
 (** Removes and returns the front element. Returns [Some element] if the queue
     is not empty, [None] otherwise.
 
     ## Examples
 
-    ```ocaml let queue = Queue.of_list [1; 2; 3] in Queue.dequeue queue (* Some
-    1 *) Queue.dequeue queue (* Some 2 *)
+    ```ocaml let queue = Queue.of_list [1; 2; 3] in Queue.pop queue (* Some
+    1 *) Queue.pop queue (* Some 2 *)
 
-    let empty = Queue.create () in Queue.dequeue empty (* None *) ```
+    let empty = Queue.create () in Queue.pop empty (* None *) ```
 
     ## Complexity
 
@@ -146,7 +146,7 @@ val is_empty : 'a t -> bool
     ## Examples
 
     ```ocaml let queue = Queue.create () in Queue.is_empty queue (* true *)
-    Queue.enqueue queue 1; Queue.is_empty queue (* false *) ```
+    Queue.push queue 1; Queue.is_empty queue (* false *) ```
 
     ## Complexity
 
@@ -196,7 +196,7 @@ val to_list : 'a t -> 'a list
 
     ## Examples
 
-    ```ocaml let queue = Queue.of_list [1; 2; 3] in Queue.enqueue queue 4;
+    ```ocaml let queue = Queue.of_list [1; 2; 3] in Queue.push queue 4;
     Queue.to_list queue (* [1; 2; 3; 4] *) ```
 
     ## Complexity
@@ -262,7 +262,7 @@ val to_mut_iter : 'a t -> 'a Iter.MutIterator.t
 val transfer : src:'a t -> dst:'a t -> unit
 (** Efficiently transfers all elements from [src] to the back of [dst]. After
     this operation, [src] is empty. This is more efficient than [append] as it
-    directly manipulates internal pointers rather than re-enqueueing elements.
+    directly manipulates internal pointers rather than re-pushing elements.
 
     ## Examples
 

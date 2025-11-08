@@ -1,4 +1,5 @@
 open Global
+open Collections
 (** Path manipulation module - Type-safe filesystem paths *)
 
 type t = string (* Internal representation - always valid UTF-8 *)
@@ -8,7 +9,8 @@ type error =
   | SystemInvalidUtf8 of { syscall : string; path : string }
   | SystemError of string
 
-let is_absolute path = not (Filename.is_relative path)
+let is_absolute path =
+  String.length path > 0 && path.[0] = '/'
 
 let is_valid_utf8 s =
   try
@@ -22,18 +24,18 @@ let is_valid_utf8 s =
         else if c < 0xC0 then false (* Invalid start byte *)
         else if c < 0xE0 then (* 2-byte sequence *)
           if i + 1 >= len then false
-          else if Char.code s.[i + 1] land 0xC0 <> 0x80 then false
+          else if Char.code s.[i + 1] land 0xC0 != 0x80 then false
           else check (i + 2)
         else if c < 0xF0 then (* 3-byte sequence *)
           if i + 2 >= len then false
-          else if Char.code s.[i + 1] land 0xC0 <> 0x80 then false
-          else if Char.code s.[i + 2] land 0xC0 <> 0x80 then false
+          else if Char.code s.[i + 1] land 0xC0 != 0x80 then false
+          else if Char.code s.[i + 2] land 0xC0 != 0x80 then false
           else check (i + 3)
         else if c < 0xF8 then (* 4-byte sequence *)
           if i + 3 >= len then false
-          else if Char.code s.[i + 1] land 0xC0 <> 0x80 then false
-          else if Char.code s.[i + 2] land 0xC0 <> 0x80 then false
-          else if Char.code s.[i + 3] land 0xC0 <> 0x80 then false
+          else if Char.code s.[i + 1] land 0xC0 != 0x80 then false
+          else if Char.code s.[i + 2] land 0xC0 != 0x80 then false
+          else if Char.code s.[i + 3] land 0xC0 != 0x80 then false
           else check (i + 4)
         else false (* Invalid UTF-8 *)
     in
@@ -44,7 +46,7 @@ let of_string s =
   if is_valid_utf8 s then Result.ok s else Result.err (InvalidUtf8 { path = s })
 
 let v path =
-  of_string path |> Result.expect ~msg:(format "Invalid string path %S" path)
+  of_string path |> Result.expect ~msg:("Invalid string path " ^ path)
 
 let to_string t = t
 
@@ -56,28 +58,86 @@ let join base path =
 
 let ( / ) = join
 
+let dirname path =
+  if path = "" then "."
+  else if path = "/" then "/"
+  else
+    (* Find the last slash *)
+    let rec find_last_slash i last_slash =
+      if i < 0 then last_slash
+      else if path.[i] = '/' then find_last_slash (i - 1) (Some i)
+      else find_last_slash (i - 1) last_slash
+    in
+    match find_last_slash (String.length path - 1) None with
+    | None -> "."
+    | Some 0 -> "/"
+    | Some i ->
+        let dir = String.sub path 0 i in
+        if dir = "" then "/" else dir
+
 let parent path =
-  match Filename.dirname path with
+  match dirname path with
   | "." when path = "." -> None
   | ".." -> Some "../.."
   | "/" when path = "/" -> None
   | dir -> Some dir
 
-let basename = Filename.basename
-let dirname = Filename.dirname
+let basename path =
+  if path = "" then ""
+  else if path = "/" then "/"
+  else
+    (* Remove trailing slashes first *)
+    let len = String.length path in
+    let rec find_end i =
+      if i < 0 then 0
+      else if path.[i] != '/' then i + 1
+      else find_end (i - 1)
+    in
+    let end_pos = find_end (len - 1) in
+    if end_pos = 0 then "/"
+    else
+      (* Find the last slash before the end *)
+      let rec find_last_slash i =
+        if i < 0 then 0
+        else if path.[i] = '/' then i + 1
+        else find_last_slash (i - 1)
+      in
+      let start = find_last_slash (end_pos - 1) in
+      String.sub path start (end_pos - start)
 
 let extension path =
-  match Filename.extension path with "" -> None | ext -> Some ext
+  let base = basename path in
+  let len = String.length base in
+  let rec find_dot i =
+    if i < 1 then None  (* Don't consider leading dot *)
+    else if base.[i] = '.' then Some i
+    else find_dot (i - 1)
+  in
+  match find_dot (len - 1) with
+  | None -> None
+  | Some i -> Some (String.sub base i (len - i))
 
-let remove_extension = Filename.remove_extension
+let remove_extension path =
+  let base = basename path in
+  let dir = dirname path in
+  let len = String.length base in
+  let rec find_dot i =
+    if i < 1 then len  (* Don't consider leading dot *)
+    else if base.[i] = '.' then i
+    else find_dot (i - 1)
+  in
+  let base_without_ext = String.sub base 0 (find_dot (len - 1)) in
+  if dir = "." then base_without_ext
+  else if dir = "/" then "/" ^ base_without_ext
+  else dir ^ "/" ^ base_without_ext
 
 let add_extension path ~ext =
   let ext =
-    if String.length ext > 0 && ext.[0] <> '.' then "." ^ ext else ext
+    if String.length ext > 0 && ext.[0] != '.' then "." ^ ext else ext
   in
   remove_extension path ^ ext
 
-let is_relative = Filename.is_relative
+let is_relative path = not (is_absolute path)
 
 let components t =
   if t = "" then []
@@ -111,7 +171,7 @@ let rec normalize path =
   in
   let normalized = process [] parts in
   let result = String.concat "/" normalized in
-  if is_absolute path && result <> "" then "/" ^ result
+  if is_absolute path && result != "" then "/" ^ result
   else if result = "" then "."
   else result
 
@@ -142,15 +202,13 @@ let strip_prefix path ~prefix =
         (* Ran out of path before consuming prefix *)
         Result.err
           (SystemError
-             (format "Path %s does not start with prefix %s" (to_string path)
-                (to_string prefix)))
+             ("Path " ^ to_string path ^ " does not start with prefix " ^ to_string prefix))
     | p :: path_rest, pre :: prefix_rest ->
         if to_string p = to_string pre then consume path_rest prefix_rest
         else
           Result.err
             (SystemError
-               (format "Path %s does not start with prefix %s" (to_string path)
-                  (to_string prefix)))
+               ("Path " ^ to_string path ^ " does not start with prefix " ^ to_string prefix))
   in
 
   match consume path_components prefix_components with
@@ -162,5 +220,3 @@ let strip_prefix path ~prefix =
       in
       Result.ok result
   | Error e -> Result.err e
-
-let pp fmt path = Format.pp_print_string fmt (to_string path)

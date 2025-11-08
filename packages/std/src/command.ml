@@ -1,3 +1,4 @@
+open Global
 open Kernel.System
 
 module Stdio = struct
@@ -33,8 +34,7 @@ type t = {
 (** Command - OS process spawning and management *)
 
 let make ?cwd ?(env = []) ?(args = []) cmd =
-  let cwd_str = Option.map Path.to_string cwd in
-  { cmd; args; env; cwd = cwd_str; state = Pending }
+  { cmd; args; env; cwd; state = Pending }
 
 let output t =
   match t.state with

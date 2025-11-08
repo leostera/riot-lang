@@ -1,3 +1,5 @@
+open Global
+open Collections
 (** Width tables - ported from go-runewidth
     https://github.com/mattn/go-runewidth
     
@@ -179,7 +181,7 @@ let in_table (tbl : table) (c : int) : bool =
     if low > high then false
     else
       let mid = (low + high) / 2 in
-      let (range_start, range_end) = Array.unsafe_get tbl mid in
+      let (range_start, range_end) = array__unsafe_get tbl mid in
       if c < range_start then
         search low (mid - 1)
       else if c > range_end then

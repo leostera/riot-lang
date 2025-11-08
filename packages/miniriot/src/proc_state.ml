@@ -1,4 +1,6 @@
 open Kernel
+open Kernel.Sync
+open Kernel.Sync.Cell
 
 exception Unwind
 
@@ -27,14 +29,6 @@ type 'a step =
 
 type ('a, 'b) step_callback = ('a step -> 'b t) -> 'a Effect.t -> 'b t
 type perform = { perform : 'a 'b. ('a, 'b) step_callback } [@@unboxed]
-
-let pp fmt t =
-  match t with
-  | Finished (Ok _) -> Format.fprintf fmt "Finished(Ok _)"
-  | Finished (Error { exn; _ }) ->
-      Format.fprintf fmt "Finished(Error %s)" (Exception.to_string exn)
-  | Suspended (_, _) -> Format.fprintf fmt "Suspended"
-  | Unhandled (_, _) -> Format.fprintf fmt "Unhandled"
 
 let finished x = Finished x
 let suspended_with k e = Suspended (k, e)
@@ -66,8 +60,8 @@ let run : type a. reductions:int -> perform:perform -> a t -> a t option =
  fun ~reductions ~perform t ->
   let exception Yield of a t in
   let exception Unwind in
-  let reductions = ref reductions in
-  let t = ref t in
+  let reductions = Cell.create reductions in
+  let t = Cell.create t in
   try
     while true do
       if !reductions = 0 then raise_notrace (Yield !t);

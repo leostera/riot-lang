@@ -1,4 +1,5 @@
 (** Reader abstraction for readable sources *)
+  open Global0
 
 module type Read = sig
   type t

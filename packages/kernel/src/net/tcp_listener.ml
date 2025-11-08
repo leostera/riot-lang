@@ -1,8 +1,8 @@
+open Global0
 open Async
 
 type t = Socket.listen_socket
 
-let to_string = Socket.to_string
 let close = Socket.close
 
 let bind ?(reuse_addr = true) ?(reuse_port = true) ?(backlog = 128) addr =

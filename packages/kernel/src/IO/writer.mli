@@ -1,3 +1,5 @@
+open Global0
+
 (** {1 Writer}
 
     Generic abstraction for writable data destinations.

@@ -1,10 +1,11 @@
 open Std
-module Base16 = Std.Data.Base16
+open Std.Data
+open Std.IO
 
 let test_encode_simple () =
   let encoded = Base16.encode "Hi" in
   if encoded = "4869" then Ok ()
-  else Error (format "Expected '4869', got '%s'" encoded)
+  else Error ("Expected '4869', got '" ^ encoded ^ "'")
 
 let test_encode_empty () =
   let encoded = Base16.encode "" in
@@ -15,22 +16,22 @@ let test_encode_bytes () =
   let bytes = Bytes.of_string "test" in
   let encoded = Base16.encode_bytes bytes in
   if encoded = "74657374" then Ok ()
-  else Error (format "Expected '74657374', got '%s'" encoded)
+  else Error ("Expected '74657374', got '" ^ encoded ^ "'")
 
 let test_encode_lower () =
   let encoded = Base16.encode_lower "\xAB\xCD" in
   if encoded = "abcd" then Ok ()
-  else Error (format "Expected 'abcd', got '%s'" encoded)
+  else Error ("Expected 'abcd', got '" ^ encoded ^ "'")
 
 let test_encode_special_chars () =
   let encoded = Base16.encode "\x00\xFF" in
   if encoded = "00FF" then Ok ()
-  else Error (format "Expected '00FF', got '%s'" encoded)
+  else Error ("Expected '00FF', got '" ^ encoded ^ "'")
 
 let test_decode_simple () =
   match Base16.decode "4869" with
   | Ok "Hi" -> Ok ()
-  | Ok s -> Error (format "Expected 'Hi', got '%s'" s)
+  | Ok s -> Error ("Expected 'Hi', got '" ^ s ^ "'")
   | Error _ -> Error "Decode failed"
 
 let test_decode_lowercase () =

@@ -1,6 +1,9 @@
 (* Auto-generated from Go's unicode/tables.go CaseRanges - DO NOT EDIT *)
 (* Unicode Version: 15.0.0 *)
 
+open Global
+open Collections
+
 (** Case range with deltas for case conversion *)
 type case_delta =
   | Delta of int  (** Simple delta to add *)

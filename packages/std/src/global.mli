@@ -29,6 +29,45 @@
     ```ocaml let counter = cell 0 in Sync.Cell.set counter 1; Sync.Cell.get counter (* 1
     *) ``` *)
 
+include module type of Kernel.Types
+include module type of Kernel.Global
+
+(** {1 Process Management} *)
+
+exception Receive_timeout
+exception Syscall_timeout
+type 'msg selector = 'msg Miniriot.selector
+
+val self : unit -> Miniriot.Pid.t
+(** Get the PID of the currently running process *)
+
+val spawn : (unit -> (unit, Miniriot.Process.exit_reason) Kernel.result) -> Miniriot.Pid.t
+(** Spawn a new process *)
+
+val spawn_link : (unit -> (unit, Miniriot.Process.exit_reason) Kernel.result) -> Miniriot.Pid.t
+(** Spawn a new process linked to the current process *)
+
+val send : Miniriot.Pid.t -> Miniriot.Message.t -> unit
+(** Send a message to a process *)
+
+val receive : selector:'value Miniriot.selector -> ?timeout:Time.Duration.t -> unit -> 'value
+(** Receive a message using a selector *)
+
+val receive_any : ?timeout:Time.Duration.t -> unit -> Miniriot.Message.t
+(** Receive any message *)
+
+val sleep : Time.Duration.t -> unit
+(** Sleeps the current process for at least the specified duration *)
+
+val yield : unit -> unit
+(** Yield control to the scheduler *)
+
+val shutdown : status:int -> unit
+(** Shutdown the runtime with the given exit status *)
+
+
+open Kernel
+
 (** {1 Collection Types and Constructors} *)
 
 type 'a vec = 'a Kernel.vec
@@ -117,22 +156,14 @@ val cell : 'a -> 'a Sync.Cell.t
 
     - [Sync.Cell] for full cell API *)
 
-val format : ('a, unit, string, string) format4 -> 'a
-(** Formats a string using Printf-style formatting.
-
-    ## Examples
-
-    ```ocaml let msg = format "Hello, %s! You have %d messages." "Alice" 5 in (*
-    "Hello, Alice! You have 5 messages." *) ``` *)
-
-val print : ('a, unit, string, unit) format4 -> 'a
+val print : string -> unit
 (** Prints to stdout with immediate flush (no newline).
 
     ## Examples
 
     ```ocaml print "Processing..." (* Output: Processing... *) ``` *)
 
-val println : ('a, unit, string, unit) format4 -> 'a
+val println : string -> unit
 (** Prints to stdout with newline and immediate flush.
 
     ## Examples
@@ -140,7 +171,7 @@ val println : ('a, unit, string, unit) format4 -> 'a
     ```ocaml println "Operation complete" (* Output: Operation complete\n *) ```
 *)
 
-val eprint : ('a, unit, string, unit) format4 -> 'a
+val eprint : string -> unit
 (** Prints to stderr with immediate flush (no newline).
 
     ## Examples
@@ -148,7 +179,7 @@ val eprint : ('a, unit, string, unit) format4 -> 'a
     ```ocaml eprint "Debug: processing item" (* Output to stderr: Debug: processing item *) ```
 *)
 
-val eprintln : ('a, unit, string, unit) format4 -> 'a
+val eprintln : string -> unit
 (** Prints to stderr with newline and immediate flush.
 
     ## Examples
@@ -175,33 +206,3 @@ val unimplemented : unit -> 'a
     ## Examples
 
     ```ocaml let complex_algorithm () = unimplemented () ``` *)
-
-(** {1 Process Management} *)
-
-exception Receive_timeout
-exception Syscall_timeout
-type 'msg selector = 'msg Miniriot.selector
-
-val self : unit -> Miniriot.Pid.t
-(** Get the PID of the currently running process *)
-
-val spawn : (unit -> (unit, Miniriot.Process.exit_reason) result) -> Miniriot.Pid.t
-(** Spawn a new process *)
-
-val spawn_link : (unit -> (unit, Miniriot.Process.exit_reason) result) -> Miniriot.Pid.t
-(** Spawn a new process linked to the current process *)
-
-val send : Miniriot.Pid.t -> Miniriot.Message.t -> unit
-(** Send a message to a process *)
-
-val receive : selector:'value Miniriot.selector -> ?timeout:float -> unit -> 'value
-(** Receive a message using a selector *)
-
-val receive_any : ?timeout:float -> unit -> Miniriot.Message.t
-(** Receive any message *)
-
-val yield : unit -> unit
-(** Yield control to the scheduler *)
-
-val shutdown : status:int -> unit
-(** Shutdown the runtime with the given exit status *)

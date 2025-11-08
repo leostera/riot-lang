@@ -274,7 +274,7 @@ val to_list : ('k, 'v) t -> ('k * 'v) list
 
     Provides efficient in-place updates without multiple lookups. *)
 type ('k, 'v) entry =
-  | Occupied of 'v ref  (** Key exists with mutable reference to value *)
+  | Occupied of 'v (** Key exists with reference to value *)
   | Vacant  (** Key does not exist *)
 
 val entry : ('k, 'v) t -> 'k -> ('k, 'v) entry

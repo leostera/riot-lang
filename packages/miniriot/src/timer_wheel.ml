@@ -1,4 +1,7 @@
 open Kernel
+open Kernel.Collections
+open Kernel.Sync
+open Kernel.Sync.Cell
 
 (* Simple timing wheel implementation
    
@@ -12,12 +15,12 @@ open Kernel
 type t = {
   config : Config.t;
   slots : Timer.t list array;
-  overflow : Timer.t list ref;
+  overflow : Timer.t list Cell.t;
   num_slots : int;
   slot_duration : int64;
   mutable current_time : int64;
   mutable current_slot : int;
-  timers_by_id : (Timer_id.t, Timer.t) Hashtbl.t;
+  timers_by_id : (Timer_id.t, Timer.t) HashMap.t;
 }
 
 let create ~config =
@@ -30,12 +33,12 @@ let create ~config =
   {
     config;
     slots = Array.make num_slots [];
-    overflow = ref [];
+    overflow = Cell.create [];
     num_slots;
     slot_duration;
     current_time = now;
     current_slot = 0;
-    timers_by_id = Hashtbl.create 128;
+    timers_by_id = HashMap.create ();
   }
 
 let calculate_slot t expires_at =
@@ -57,7 +60,7 @@ let calculate_slot t expires_at =
 
 let add_timer t ~now ~duration_nanos ~mode ~action =
   let timer = Timer.make ~now ~duration_nanos ~mode ~action in
-  Hashtbl.add t.timers_by_id timer.id timer;
+  HashMap.insert t.timers_by_id timer.id timer;
 
   (match calculate_slot t timer.Timer.expires_at with
   | Some slot -> t.slots.(slot) <- timer :: t.slots.(slot)
@@ -66,10 +69,10 @@ let add_timer t ~now ~duration_nanos ~mode ~action =
   timer.id
 
 let cancel_timer t timer_id =
-  match Hashtbl.find_opt t.timers_by_id timer_id with
+  match HashMap.get t.timers_by_id timer_id with
   | Some timer ->
       Timer.cancel timer;
-      Hashtbl.remove t.timers_by_id timer_id
+      HashMap.remove t.timers_by_id timer_id |> ignore
   | None -> ()
 
 let tick t ~now =
@@ -77,7 +80,7 @@ let tick t ~now =
     (* Time went backwards? Should never happen with monotonic clock *)
     []
   else
-    let expired = ref [] in
+    let expired = Cell.create  [] in
 
     (* Calculate which slot corresponds to 'now' *)
     let ticks_elapsed =
@@ -96,10 +99,10 @@ let tick t ~now =
       List.iter
         (fun timer ->
           if Timer.is_cancelled timer then
-            Hashtbl.remove t.timers_by_id timer.id
+            HashMap.remove t.timers_by_id timer.id |> ignore
           else if Timer.should_fire timer ~now then (
             expired := timer :: !expired;
-            Hashtbl.remove t.timers_by_id timer.id)
+            HashMap.remove t.timers_by_id timer.id |> ignore)
           else
             (* Timer not yet expired - re-insert *)
             match calculate_slot t timer.Timer.expires_at with
@@ -109,13 +112,17 @@ let tick t ~now =
     done;
 
     (* Check overflow list for timers that now fit in the wheel *)
-    let still_overflow = ref [] in
+    let still_overflow = Cell.create [] in
     List.iter
       (fun timer ->
-        if Timer.is_cancelled timer then Hashtbl.remove t.timers_by_id timer.id
+        if Timer.is_cancelled timer then 
+          HashMap.remove t.timers_by_id timer.id
+          |> ignore
         else if Timer.should_fire timer ~now then (
           expired := timer :: !expired;
-          Hashtbl.remove t.timers_by_id timer.id)
+          HashMap.remove t.timers_by_id timer.id
+            |> ignore
+        )
         else
           match calculate_slot t timer.Timer.expires_at with
           | Some slot -> t.slots.(slot) <- timer :: t.slots.(slot)
@@ -130,9 +137,9 @@ let tick t ~now =
 
 let next_expiration t ~now =
   let _unused = now in
-  let min_expiration = ref None in
+  let min_expiration = Cell.create None in
 
-  Hashtbl.iter
+  HashMap.iter
     (fun _id timer ->
       if not (Timer.is_cancelled timer) then
         match !min_expiration with
@@ -144,4 +151,4 @@ let next_expiration t ~now =
 
   !min_expiration
 
-let size t = Hashtbl.length t.timers_by_id
+let size t = HashMap.len t.timers_by_id

@@ -1,5 +1,7 @@
 (** A cell with runtime borrow checking *)
 
+open Global0
+
 type borrow_state =
   | Available
   | Borrowed of int (* count of immutable borrows *)
@@ -44,17 +46,19 @@ let borrow_mut cell =
   | BorrowedMut -> raise (BorrowMutError "Already mutably borrowed")
 
 let get_mut cell =
-  if cell.state <> BorrowedMut then
-    raise (BorrowMutError "Not mutably borrowed");
-  cell.value
+  match cell.state with
+  | BorrowedMut -> cell.value
+  | _ -> raise (BorrowMutError "Not mutably borrowed")
 
 let set_mut cell value =
-  if cell.state <> BorrowedMut then
-    raise (BorrowMutError "Not mutably borrowed");
-  cell.value <- value
+  match cell.state with
+  | BorrowedMut -> cell.value <- value
+  | _ -> raise (BorrowMutError "Not mutably borrowed")
 
 let release_borrow_mut cell =
-  if cell.state = BorrowedMut then cell.state <- Available
+  match cell.state with
+  | BorrowedMut -> cell.state <- Available
+  | _ -> ()
 
 (* Safe accessors with automatic borrow management *)
 let with_borrow cell f =

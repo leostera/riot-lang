@@ -1,3 +1,5 @@
+open Global
+
 (** # Data.Sexp - S-expression parsing and printing
 
     A library for working with S-expressions (symbolic expressions), a simple
@@ -35,7 +37,7 @@
      Sexp.list [Sexp.atom "credentials"; Sexp.list [Sexp.atom "user"; Sexp.atom
      "admin"]; Sexp.list [Sexp.atom "password"; Sexp.atom "secret"] ] ] in
 
-    print_endline (Sexp.pretty_print complex) (* Prints with indentation:
+    println (Sexp.pretty_print complex) (* Prints with indentation:
     (database (host localhost) (credentials (user admin) (password secret))) *)
     ```
 

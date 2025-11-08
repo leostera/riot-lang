@@ -6,6 +6,7 @@ type hash = Hash.t
 module Hash = Hash
 
 module FFI : sig
+  val md5 : string -> hash
   val sha1 : string -> hash
   val sha256 : string -> hash
   val sha512 : string -> hash

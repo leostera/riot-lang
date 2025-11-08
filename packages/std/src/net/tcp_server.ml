@@ -1,6 +1,7 @@
 (** TCP server that manages a listener and handles line-based protocols *)
 
 open Global
+open IO
 
 type handler = req:string -> Kernel.Net.Tcp_stream.t -> unit
 (** Handler receives request string and stream for responses *)
@@ -60,6 +61,9 @@ let listen ?(reuse_addr = true) ?(reuse_port = false) ?(backlog = 128) addr
   match Tcp_listener.bind ~reuse_addr ~reuse_port ~backlog addr with
   | Error e -> Error e
   | Ok listener ->
-      Fun.protect
-        ~finally:(fun () -> Tcp_listener.close listener)
-        (fun () -> accept_loop { listener; handler })
+      let result = 
+        try accept_loop { listener; handler }
+        with _ -> Error `Closed
+      in
+      Tcp_listener.close listener;
+      result

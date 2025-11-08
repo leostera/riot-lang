@@ -1,4 +1,7 @@
 open Kernel
+open Kernel.Sync
+open Kernel.Sync.Cell
+open Kernel.Collections
 
 type exit_reason = exn
 
@@ -47,7 +50,7 @@ type t = {
   mutable trap_exit : bool;
 }
 
-let monitor_ref_counter = ref 0
+let monitor_ref_counter = Cell.create 0
 
 let make_monitor_ref () =
   let id = !monitor_ref_counter in
@@ -74,7 +77,7 @@ let make fn =
   }
 
 let init t =
-  let fn = Option.get t.fn in
+  let fn = Option.unwrap t.fn in
   t.cont <- Some (Proc_state.make fn Proc_effect.Yield);
   t.fn <- None;
   t.state <- Runnable
@@ -99,7 +102,7 @@ let mark_as_runnable t = if is_alive t then t.state <- Runnable
 let mark_as_awaiting_message t = if is_alive t then t.state <- Waiting_message
 let mark_as_exited t reason = if not (is_exited t) then t.state <- Exited reason
 let mark_as_finalized t = t.state <- Finalized
-let cont t = Option.get t.cont
+let cont t = Option.unwrap t.cont
 let set_cont t c = t.cont <- Some c
 
 let next_message t =
@@ -146,18 +149,6 @@ let set_syscall_timeout t timer_id = t.syscall_timeout <- Some timer_id
 let clear_syscall_timeout t = t.syscall_timeout <- None
 let syscall_timeout t = t.syscall_timeout
 
-let pp ppf t =
-  Format.fprintf ppf "Process %a { state = %s; messages = %d }" Pid.pp t.pid
-    (match t.state with
-    | Uninitialized -> "Uninitialized"
-    | Runnable -> "Runnable"
-    | Waiting_message -> "Waiting_message"
-    | Waiting_io { name; _ } -> format "Waiting_io(%s)" name
-    | Running -> "Running"
-    | Exited _ -> "Exited"
-    | Finalized -> "Finalized")
-    (message_count t)
-
 (* Process links and monitors *)
 let link proc target_pid =
   if not (List.mem target_pid proc.links) then
@@ -175,7 +166,8 @@ let demonitor proc ref =
   proc.monitors <-
     List.filter
       (fun (r, _) ->
-        match (ref, r) with Monitor_ref id1, Monitor_ref id2 -> id1 <> id2)
+        match (ref, r) with 
+        | Monitor_ref id1, Monitor_ref id2 -> id1 != id2)
       proc.monitors
 
 let set_flags proc flags =

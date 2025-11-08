@@ -1,5 +1,7 @@
+open Global0
+
 type ('k, 'v) t = ('k, 'v) Hashtbl.t
-type ('k, 'v) entry = Occupied of 'v ref | Vacant
+type ('k, 'v) entry = Occupied of 'v | Vacant
 
 let create () = Hashtbl.create 16
 let with_capacity capacity = Hashtbl.create capacity
@@ -34,7 +36,7 @@ let to_list map = Hashtbl.fold (fun k v acc -> (k, v) :: acc) map []
 let entry map key =
   try
     let value = Hashtbl.find map key in
-    Occupied (ref value)
+    Occupied value
   with Not_found -> Vacant
 
 let or_insert map key default =

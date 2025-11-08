@@ -1,4 +1,5 @@
 (** Miniriot - Minimal single-core actor runtime *)
+open Kernel
 
 module Exception : sig
   exception Receive_timeout

@@ -9,5 +9,4 @@ let equal ?eq a b =
   | Some f -> f (unsafe_to_value a) (unsafe_to_value b)
   | None -> Int.equal (unsafe_to_int a) (unsafe_to_int b)
 
-let pp fmt t = Format.fprintf fmt "Token(%d)" (unsafe_to_int t)
 let make (x : 'whatever) : t = Obj.magic x

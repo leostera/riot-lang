@@ -348,14 +348,3 @@ val strip_prefix : t -> prefix:t -> (t, error) Result.t
 
     (* Make paths relative to a base directory *) let make_relative ~base path =
     Path.strip_prefix path ~prefix:base |> Result.unwrap_or ~default:path ``` *)
-
-val pp : Format.formatter -> t -> unit
-(** Pretty-prints a path for debugging.
-
-    ## Examples
-
-    ```ocaml let path = Path.v "/home/user" in Format.printf "Path: %a\n"
-    Path.pp path;
-
-    (* In error messages *) Format.eprintf "Cannot read file: %a\n" Path.pp path
-    ``` *)

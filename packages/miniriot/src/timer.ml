@@ -39,15 +39,3 @@ let reschedule t ~now =
   | Interval interval ->
       t.started_at <- now;
       t.expires_at <- Int64.add now interval
-
-let pp fmt t =
-  let mode_str =
-    match t.mode with
-    | One_shot -> "one_shot"
-    | Interval i -> Format.sprintf "interval(%Ld)" i
-  in
-  let status_str =
-    match t.status with `pending -> "pending" | `cancelled -> "cancelled"
-  in
-  Format.fprintf fmt "Timer { id=%a; mode=%s; expires_at=%Ld; status=%s }"
-    Timer_id.pp t.id mode_str t.expires_at status_str

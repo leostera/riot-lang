@@ -1,5 +1,7 @@
 (** TCP listener for accepting connections *)
 
+open Global
+
 type t
 type error = [ `Connection_refused | `Closed | `System_error of string ]
 

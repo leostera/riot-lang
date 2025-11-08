@@ -2,7 +2,11 @@
 
 open Global
 open Iter
+open IO
+open Collections
+
 include Common
+
 module Permissions = Permissions
 module Metadata = Metadata
 module ReadDir = ReadDir
@@ -301,21 +305,55 @@ let read path =
 let read_file = read
 let write_file path content = write content path
 
+(** Get system temp directory *)
+let get_temp_dir () =
+  (* Try TMPDIR, TEMP, TMP environment variables, fallback to /tmp *)
+  match Env.var String ~name:"TMPDIR" with
+  | Some dir when dir != "" -> dir
+  | _ -> (
+      match Env.var String ~name:"TEMP" with
+      | Some dir when dir != "" -> dir
+      | _ -> (
+          match Env.var String ~name:"TMP" with
+          | Some dir when dir != "" -> dir
+          | _ -> "/tmp"))
+
+(** Create a unique temporary directory name *)
+let make_temp_dir_name temp_base prefix =
+  let pid = Kernel.System.OsProcess.current_pid () in
+  let random_suffix = Kernel.Random.bits () land 0xFFFFFF in
+  (* Convert to 6-digit hex string with leading zeros *)
+  let hex_suffix =
+    let hex_chars = "0123456789abcdef" in
+    let s = Bytes.create 6 in
+    let n = ref random_suffix in
+    for i = 5 downto 0 do
+      Bytes.set s i hex_chars.[!n land 0xf];
+      n := !n lsr 4
+    done;
+    Bytes.to_string s
+  in
+  let dir_name = prefix ^ string_of_int pid ^ "_" ^ hex_suffix in
+  temp_base ^ "/" ^ dir_name
+
 (** Create a temporary directory, run a function with it, then clean it up *)
 let with_tempdir ?(prefix = "tmp") fn =
   try
-    let temp_base = Filename.get_temp_dir_name () in
-    let temp_name = Filename.temp_dir ~temp_dir:temp_base prefix "" in
+    let temp_base = get_temp_dir () in
+    let temp_name = make_temp_dir_name temp_base prefix in
     match Path.of_string temp_name with
     | Error _ -> Error (IO.Unknown_error "Failed to create temp directory")
-    | Ok temp_path ->
-        let result =
-          try Ok (fn temp_path)
-          with e -> Error (IO.Unknown_error (Exception.to_string e))
-        in
-        (* Clean up the temp directory *)
-        let _ = remove_dir_all temp_path in
-        result
+    | Ok temp_path -> (
+        match create_dir temp_path with
+        | Error e -> Error e
+        | Ok () ->
+            let result =
+              try Ok (fn temp_path)
+              with e -> Error (IO.Unknown_error (Exception.to_string e))
+            in
+            (* Clean up the temp directory *)
+            let _ = remove_dir_all temp_path in
+            result)
   with e -> Error (IO.Unknown_error (Exception.to_string e))
 
 (** Walk directory tree and call function on each path *)

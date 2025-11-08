@@ -1,3 +1,5 @@
+  open Global0
+
 type 't raw_addr = string
 type tcp_addr = [ `v4 | `v6 ] raw_addr
 type stream_addr = [ `Tcp of tcp_addr * int ]
@@ -12,7 +14,6 @@ val tcp : string -> int -> stream_addr
 val to_unix : stream_addr -> Unix.socket_type * Unix.sockaddr
 val to_domain : stream_addr -> Unix.socket_domain
 val of_unix : Unix.sockaddr -> stream_addr
-val pp : Format.formatter -> stream_addr -> unit
 val to_string : 'a -> 'a
 val of_addr_info : Unix.addr_info -> stream_addr option
 

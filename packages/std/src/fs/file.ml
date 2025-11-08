@@ -1,4 +1,5 @@
 open Global
+open IO
 open Common
 
 type t = { fd : Kernel.Fd.t; mutable closed : bool }
@@ -15,14 +16,10 @@ let open_with_flags path flags mode =
     let fd = Kernel.Fd.open_file path_str flags mode in
     Ok { fd; closed = false }
   with
-  | Unix.Unix_error (e, _, _) ->
-      Error
-        (IO.Unknown_error
-           (format "Failed to open %s: %s" path_str (Unix.error_message e)))
   | e ->
       Error
         (IO.Unknown_error
-           (format "Failed to open %s: %s" path_str (Exception.to_string e)))
+           ("Failed to open " ^ path_str ^ ": " ^ Exception.to_string e))
 
 let create path =
   open_with_flags path
@@ -142,11 +139,11 @@ let write t buffer ~offset ~len =
       write_loop ()
 
 let write_string t str =
-  let buffer = Bytes.of_string str in
+  let buffer = Bytes.unsafe_of_string str in
   write t buffer ~offset:0 ~len:(String.length str)
 
 let write_all t str =
-  let buffer = Bytes.of_string str in
+  let buffer = Bytes.unsafe_of_string str in
   let len = String.length str in
   let rec write_loop pos remaining =
     if remaining = 0 then Ok ()

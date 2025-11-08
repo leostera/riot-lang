@@ -35,6 +35,9 @@
 (** # Types *)
 
 (** Log severity levels, from least to most severe *)
+
+open Global
+
 type level =
   | Trace  (** Most detailed debugging information *)
   | Debug  (** Debugging messages *)
@@ -84,7 +87,7 @@ val set_log_file : Path.t -> unit
 
 (** # Logging Functions *)
 
-val trace : ('a, unit, string, unit) format4 -> 'a
+val trace : string -> unit
 (** Logs a trace message (most detailed level).
 
     Use for very detailed debugging information that's usually too verbose for
@@ -92,21 +95,21 @@ val trace : ('a, unit, string, unit) format4 -> 'a
 
     ## Examples
 
-    ```ocaml Log.trace "Entering function with args: x=%d, y=%d" x y; Log.trace
-    "Cache lookup for key: %s" key; Log.trace "SQL query: %s" query_string ```
+    ```ocaml Log.trace "Entering function with args"; Log.trace
+    "Cache lookup for key"; Log.trace "SQL query" ```
 *)
 
-val debug : ('a, unit, string, unit) format4 -> 'a
+val debug : string -> unit
 (** Logs a debug message.
 
     Use for information useful during development and debugging.
 
     ## Examples
 
-    ```ocaml Log.debug "Processing request: %s" request_id; Log.debug "Cache hit
-    rate: %.2f%%" hit_rate; Log.debug "Connecting to %s:%d" host port ``` *)
+    ```ocaml Log.debug "Processing request"; Log.debug "Cache hit
+    rate"; Log.debug "Connecting to host" ``` *)
 
-val info : ('a, unit, string, unit) format4 -> 'a
+val info : string -> unit
 (** Logs an informational message.
 
     Use for general informational messages about normal operation. This is the
@@ -114,11 +117,11 @@ val info : ('a, unit, string, unit) format4 -> 'a
 
     ## Examples
 
-    ```ocaml Log.info "Server listening on port %d" port; Log.info "Processing
-    batch of %d items" count; Log.info "Database migration completed"; Log.info
-    "User %s logged in" username ``` *)
+    ```ocaml Log.info "Server listening on port"; Log.info "Processing
+    batch of items"; Log.info "Database migration completed"; Log.info
+    "User logged in" ``` *)
 
-val warn : ('a, unit, string, unit) format4 -> 'a
+val warn : string -> unit
 (** Logs a warning message.
 
     Use for potentially problematic situations that don't prevent operation but
@@ -126,12 +129,12 @@ val warn : ('a, unit, string, unit) format4 -> 'a
 
     ## Examples
 
-    ```ocaml Log.warn "Deprecated API endpoint called: %s" endpoint; Log.warn
-    "High memory usage: %d MB" memory_mb; Log.warn "Retry attempt %d of %d"
-    attempt max_retries; Log.warn "Slow query: %dms for %s" duration query ```
+    ```ocaml Log.warn "Deprecated API endpoint called"; Log.warn
+    "High memory usage"; Log.warn "Retry attempt"
+     Log.warn "Slow query" ```
 *)
 
-val error : ('a, unit, string, unit) format4 -> 'a
+val error : string -> unit
 (** Logs an error message.
 
     Use for error conditions that require attention but don't crash the

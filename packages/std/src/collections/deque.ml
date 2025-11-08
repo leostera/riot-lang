@@ -1,3 +1,7 @@
+open Global
+open Sync
+open Kernel.Collections
+
 type 'a t = {
   mutable data : 'a option array;
   mutable front : int;
@@ -77,7 +81,7 @@ let get deque index =
     deque.data.(actual_index)
 
 let insert deque index value =
-  if index < 0 || index > deque.size then invalid_arg "Index out of bounds"
+  if index < 0 || index > deque.size then panic "Index out of bounds"
   else if index = 0 then push_front deque value
   else if index = deque.size then push_back deque value
   else if index <= deque.size / 2 then (
@@ -141,41 +145,41 @@ let iter f deque =
   done
 
 let fold f deque acc =
-  let result = ref acc in
+  let result = Cell.create acc in
   for i = 0 to deque.size - 1 do
     let index = (deque.front + i) mod Array.length deque.data in
     match deque.data.(index) with
-    | Some value -> result := f value !result
+    | Some value -> Cell.set result (f value (Cell.get result))
     | None -> ()
   done;
-  !result
+  Cell.get result
 
 let to_list deque =
-  let result = ref [] in
+  let result = Cell.create [] in
   for i = deque.size - 1 downto 0 do
     let index = (deque.front + i) mod Array.length deque.data in
     match deque.data.(index) with
-    | Some value -> result := value :: !result
+    | Some value -> Cell.set result (value :: Cell.get result)
     | None -> ()
   done;
-  !result
+  Cell.get result
 
 let contains deque value =
-  let found = ref false in
+  let found = Cell.create false in
   for i = 0 to deque.size - 1 do
     let index = (deque.front + i) mod Array.length deque.data in
     match deque.data.(index) with
-    | Some v when v = value -> found := true
+    | Some v when v = value -> Cell.set found true
     | _ -> ()
   done;
-  !found
+  Cell.get found
 
 let append deque1 deque2 =
   iter (push_back deque1) deque2;
   clear deque2
 
 let split_off deque index =
-  if index < 0 || index > deque.size then invalid_arg "Index out of bounds"
+  if index < 0 || index > deque.size then panic "Index out of bounds"
   else
     let new_deque = create () in
     let elements_to_move = deque.size - index in

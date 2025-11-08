@@ -1,3 +1,5 @@
+open Global0
+
 module type Intf = sig
   type state
   type item
@@ -33,7 +35,7 @@ let clone : type item. item t -> item t =
 let rec collect t acc =
   match next t with
   | Some item -> collect t (item :: acc)
-  | None -> List.rev acc
+  | None -> Stdlib.List.rev acc
 
 let to_list t = collect t []
 

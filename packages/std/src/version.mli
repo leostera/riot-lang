@@ -85,6 +85,8 @@
 
 (** {1 Types} *)
 
+open Global
+
 type pre_release_segment =
   | Numeric of int
   | Alphanumeric of string

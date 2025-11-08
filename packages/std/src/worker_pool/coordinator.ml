@@ -1,11 +1,11 @@
 open Global
-
+open Collections
 open Types
 
 type 'task state = {
   owner : Pid.t;
   idle_workers : Pid.t Queue.t;
-  busy_workers : (Pid.t, unit) Hashtbl.t;
+  busy_workers : (Pid.t, unit) HashMap.t;
   pending_tasks : Task.t Queue.t;
   all_workers : Pid.t list;
   task_ref : 'task Ref.t;
@@ -26,9 +26,9 @@ let rec loop : type task. task state -> (unit, Process.exit_reason) result =
 and handle_worker_ready : type task.
     task state -> task worker -> (unit, Process.exit_reason) result =
  fun state worker ->
-  Hashtbl.remove state.busy_workers worker.pid;
+  let _ = HashMap.remove state.busy_workers worker.pid in
   send state.owner PublicMessages.(WorkerReady worker);
-  Queue.add worker.pid state.idle_workers;
+  Queue.push state.idle_workers worker.pid;
   loop state
 
 let init ~owner ~concurrency ~worker_fn ~task_ref =
@@ -52,7 +52,7 @@ let init ~owner ~concurrency ~worker_fn ~task_ref =
     {
       owner;
       idle_workers = Queue.create ();
-      busy_workers = Hashtbl.create concurrency;
+      busy_workers = HashMap.create ();
       pending_tasks = Queue.create ();
       all_workers = worker_pids;
       task_ref;
@@ -60,7 +60,7 @@ let init ~owner ~concurrency ~worker_fn ~task_ref =
   in
 
   (* Mark all as idle *)
-  List.iter (fun pid -> Queue.add pid state.idle_workers) worker_pids;
+  List.iter (fun pid -> Queue.push state.idle_workers pid) worker_pids;
 
   (* All workers start idle - send WorkerReady for each *)
   List.iter

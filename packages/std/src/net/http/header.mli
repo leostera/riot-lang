@@ -45,6 +45,8 @@
     media_type = "application/json" *) (* params = [("charset", "utf-8")] *) |
     Error `InvalidContentType -> () ``` *)
 
+open Global
+
 type name = string
 (** Header name (case-insensitive) *)
 

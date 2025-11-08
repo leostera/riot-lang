@@ -15,16 +15,22 @@ module System = System
 module Terminal = Terminal
 module Time = Time
 
+module Types = Types
+module Global = Global
+
 (* Core types and modules for nostdlib packages *)
 module Effect = Effect
 module Exception = Printexc
 module Fun = Fun
+module Char = Char
+module Bool = Bool
 module Int = Int
 module Int32 = Int32
 module Int64 = Int64
 module String = String
 module Type = Type
 module Uchar = Uchar
+module Random = Random
 
 (* Re-export global types and functions at top level for convenience *)
 include module type of Global
@@ -40,3 +46,5 @@ val vec : 'a list -> 'a vec
 val queue : 'a list -> 'a queue
 val set : 'a list -> 'a set
 val map : ('k * 'v) list -> ('k, 'v) map
+
+val dangerous_unsafe_cast : 'a -> 'b

@@ -72,6 +72,8 @@
     - Session tokens
     - Resource identifiers
 
+open Global
+
 type t
 (** The type for UUIDs (128 bits / 16 bytes). *)
 

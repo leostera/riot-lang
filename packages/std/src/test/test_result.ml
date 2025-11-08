@@ -1,3 +1,6 @@
+open Global
+open Collections
+
 type single_result = Passed | Failed of string | Skipped
 type t = { index : int; name : string; result : single_result }
 

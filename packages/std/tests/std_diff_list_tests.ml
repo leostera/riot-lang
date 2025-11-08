@@ -1,4 +1,6 @@
 open Std
+open Std.Data
+open Std.Collections
 
 let test_diff_identical_lists () = Error "todo"
 let test_diff_empty_lists () = Error "todo"

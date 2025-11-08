@@ -3,6 +3,8 @@
     This module wraps Unix terminal operations with meaningful names
     and provides a clean abstraction over termios. *)
 
+open Global0
+
 type termios = Unix.terminal_io
 
 type when_to_apply =

@@ -1,4 +1,7 @@
 (** Rune - Unicode code points *)
+open Global
+open IO
+module Uchar = Kernel.Uchar
 
 type t = Uchar.t
 

@@ -74,6 +74,7 @@
       IO.read reader buf
       IO.write_all writer ~buf:"data"
     ]} *)
+  open Global0
 
 (** {2 Error Handling} *)
 

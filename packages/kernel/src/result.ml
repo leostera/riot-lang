@@ -1,10 +1,7 @@
+open Global0
 (** Result type for error handling *)
 
-type ('a, 'e) t = ('a, 'e) Stdlib.result = Ok of 'a | Error of 'e
-
-let panic msg =
-  let exception Panic of string in
-  raise (Panic msg)
+type ('a, 'e) t = ('a, 'e) result = Ok of 'a | Error of 'e
 
 (* Constructors *)
 let ok x = Ok x
@@ -75,7 +72,7 @@ let flatten = function Ok r -> r | Error e -> Error e
 (* Collecting *)
 let all results =
   let rec go acc = function
-    | [] -> Ok (List.rev acc)
+    | [] -> Ok (Stdlib.List.rev acc)
     | Ok x :: rest -> go (x :: acc) rest
     | Error e :: _ -> Error e
   in

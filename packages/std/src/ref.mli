@@ -1,3 +1,5 @@
+open Global
+
 (** # Ref - Unique type identifiers
     
     References with unique identifiers for type-safe runtime type checking
@@ -93,15 +95,7 @@ val equal : 'a t -> 'b t -> bool
 
     Ref.equal ref1 ref1 (* true *) Ref.equal ref1 ref2 (* false *) ``` *)
 
-val pp : Format.formatter -> 'a t -> unit
-(** Pretty-prints a reference, showing its unique ID.
-
-    ## Examples
-
-    ```ocaml let ref = Ref.make () in Format.printf "Ref: %a\n" Ref.pp ref (*
-    Prints: Ref: <unique_id> *) ``` *)
-
-val type_equal : 'a t -> 'b t -> ('a, 'b) Type.eq option
+val type_equal : 'a t -> 'b t -> ('a, 'b) Kernel.Type.eq option
 (** Checks if two references are equal and, if so, returns a type equality
     witness proving that ['a] and ['b] are the same type.
 

@@ -1,4 +1,5 @@
 open Global
+open Collections
 
 let init (_suite : Intf.suite_info) _total = ()
 let on_result _idx _result = ()
@@ -37,4 +38,4 @@ let finalize (summary : Test_result.summary) =
     obj [ ("tests", array test_results); ("summary", summary_json) ]
   in
 
-  println "%s" (to_string output)
+  println (to_string output)

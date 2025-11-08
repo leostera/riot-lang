@@ -1,4 +1,8 @@
 (** Grapheme clusters - user-perceived characters *)
+open Global
+module String = Kernel.String
+module List = Kernel.Collections.List
+module Uchar = Kernel.Uchar
 
 type t = Rune.t list
 
@@ -17,7 +21,7 @@ let first s =
   if s = "" then None
   else
     (* Decode first rune *)
-    let decode = Stdlib.String.get_utf_8_uchar s 0 in
+    let decode = String.get_utf_8_uchar s 0 in
     if not (Uchar.utf_decode_is_valid decode) then None
     else
       let first_rune = Uchar.utf_decode_uchar decode in
@@ -25,14 +29,14 @@ let first s =
       
       (* Build the grapheme cluster by consuming runes that shouldn't break *)
       let rec consume_cluster pos cluster prev_prop has_zwj =
-        if pos >= Stdlib.String.length s then
+        if pos >= String.length s then
           (* End of string - return what we have *)
-          (Stdlib.List.rev cluster, "")
+          (List.rev cluster, "")
         else
-          let decode = Stdlib.String.get_utf_8_uchar s pos in
+          let decode = String.get_utf_8_uchar s pos in
           if not (Uchar.utf_decode_is_valid decode) then
             (* Invalid UTF-8 - stop here *)
-            (Stdlib.List.rev cluster, Stdlib.String.sub s pos (Stdlib.String.length s - pos))
+            (List.rev cluster, String.sub s pos (String.length s - pos))
           else
             let curr_rune = Uchar.utf_decode_uchar decode in
             let curr_len = Uchar.utf_decode_length decode in
@@ -42,8 +46,8 @@ let first s =
             (* Check if we should break *)
             if Grapheme_break.should_break ~prev_prop ~curr_prop ~has_zwj then
               (* Break here - return cluster and rest *)
-              let rest = Stdlib.String.sub s pos (Stdlib.String.length s - pos) in
-              (Stdlib.List.rev cluster, rest)
+              let rest = String.sub s pos (String.length s - pos) in
+              (List.rev cluster, rest)
             else
               (* Don't break - add to cluster and continue *)
               let new_has_zwj = has_zwj || (curr_code = 0x200D) in
@@ -72,11 +76,11 @@ let width grapheme =
   | [] -> 0
   | runes ->
       (* Get the width of the first (base) character *)
-      let base_width = Rune.width (Stdlib.List.hd runes) in
+      let base_width = Rune.width (List.hd runes) in
       
       (* For graphemes with extending characters, use base width *)
       (* This handles combining marks and emoji modifiers correctly *)
       base_width
 
 let to_string grapheme =
-  Stdlib.String.concat "" (Stdlib.List.map Rune.to_string grapheme)
+  String.concat "" (List.map Rune.to_string grapheme)

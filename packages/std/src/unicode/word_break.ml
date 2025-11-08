@@ -18,6 +18,11 @@
     - Some edge cases in UAX #29
 *)
 
+open Global
+open Collections
+module String = Kernel.String
+module Uchar = Kernel.Uchar
+
 (** Word break property - simplified *)
 type word_property =
   | Letter          (** Letters (including Latin, Greek, Cyrillic, CJK) *)
@@ -34,7 +39,7 @@ let is_letter_extended c =
   (c >= 0x41 && c <= 0x5A) ||  (* A-Z *)
   (c >= 0x61 && c <= 0x7A) ||  (* a-z *)
   (* Latin-1 Supplement *)
-  (c >= 0xC0 && c <= 0xFF && c <> 0xD7 && c <> 0xF7) ||
+  (c >= 0xC0 && c <= 0xFF && c != 0xD7 && c != 0xF7) ||
   (* Latin Extended-A *)
   (c >= 0x0100 && c <= 0x017F) ||
   (* Latin Extended-B *)
@@ -142,17 +147,17 @@ let should_break_word ~prev_prop ~curr_prop ~next_prop =
 (** Find all word boundaries in a string
     Returns byte positions where word breaks occur *)
 let find_word_boundaries s =
-  let len = Stdlib.String.length s in
+  let len = String.length s in
   if len = 0 then []
   else
     let rec scan pos prev_prop acc =
-      if pos >= len then Stdlib.List.rev acc
+      if pos >= len then List.rev acc
       else
         (* Decode current rune *)
-        let decode = Stdlib.String.get_utf_8_uchar s pos in
+        let decode = String.get_utf_8_uchar s pos in
         if not (Uchar.utf_decode_is_valid decode) then
           (* Invalid UTF-8, treat as boundary *)
-          Stdlib.List.rev (pos :: acc)
+          List.rev (pos :: acc)
         else
           let rune = Uchar.utf_decode_uchar decode in
           let rune_len = Uchar.utf_decode_length decode in
@@ -164,7 +169,7 @@ let find_word_boundaries s =
             let next_pos = pos + rune_len in
             if next_pos >= len then None
             else
-              let next_decode = Stdlib.String.get_utf_8_uchar s next_pos in
+              let next_decode = String.get_utf_8_uchar s next_pos in
               if Uchar.utf_decode_is_valid next_decode then
                 let next_rune = Uchar.utf_decode_uchar next_decode in
                 let next_code = Rune.to_int next_rune in
@@ -181,7 +186,7 @@ let find_word_boundaries s =
     in
     
     (* Start scanning from position 0 *)
-    let first_decode = Stdlib.String.get_utf_8_uchar s 0 in
+    let first_decode = String.get_utf_8_uchar s 0 in
     if not (Uchar.utf_decode_is_valid first_decode) then []
     else
       let first_rune = Uchar.utf_decode_uchar first_decode in
@@ -192,14 +197,14 @@ let find_word_boundaries s =
 (** Find the start of the next word from position pos *)
 let find_next_word_start s pos =
   let boundaries = find_word_boundaries s in
-  match Stdlib.List.find_opt (fun b -> b > pos) boundaries with
+  match List.find_opt (fun b -> b > pos) boundaries with
   | Some boundary -> boundary
-  | None -> Stdlib.String.length s
+  | None -> String.length s
 
 (** Find the start of the previous word from position pos *)
 let find_prev_word_start s pos =
   let boundaries = find_word_boundaries s in
-  let before = Stdlib.List.filter (fun b -> b < pos) boundaries in
-  match Stdlib.List.rev before with
+  let before = List.filter (fun b -> b < pos) boundaries in
+  match List.rev before with
   | last :: _ -> last
   | [] -> 0

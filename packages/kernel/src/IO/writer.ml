@@ -1,4 +1,5 @@
 (** Writer abstraction for writable destinations *)
+  open Global0
 
 let ( let* ) = Result.and_then
 

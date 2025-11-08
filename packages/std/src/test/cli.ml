@@ -1,8 +1,9 @@
 open Global
+open Collections
 open Arg_parser
 
 let list_tests tests =
-  List.iter (fun (test : Test_case.t) -> println "%s" test.name) tests;
+  List.iter (fun (test : Test_case.t) -> println test.name) tests;
   Ok ()
 
 let parse_format_to_reporter = function
@@ -11,7 +12,7 @@ let parse_format_to_reporter = function
   | "junit" -> Ok (module Reporter.JUnit : Reporter.Intf)
   | "pretty" -> Ok (module Reporter.Pretty : Reporter.Intf)
   | "minimal" -> Ok (module Reporter.Minimal : Reporter.Intf)
-  | other -> Error (format "Unknown format: %s" other)
+  | other -> Error ("Unknown format: " ^ other)
 
 let run_tests_cmd =
   let open Arg in
@@ -41,7 +42,7 @@ let main ~name ~tests ~args =
   let suite_info = get_suite_info name in
   let cmd =
     command name
-    |> about (format "Test runner for %S" name)
+    |> about ("Test runner for " ^ name)
     |> subcommands [ list_tests_cmd; run_tests_cmd ]
   in
 
@@ -58,7 +59,7 @@ let main ~name ~tests ~args =
           in
           match parse_format_to_reporter format_str with
           | Error msg ->
-              println "Error: %s" msg;
+              println ("Error: " ^ msg);
               Error (Failure msg)
           | Ok reporter ->
               let shuffle = get_flag sub_matches "shuffle" in

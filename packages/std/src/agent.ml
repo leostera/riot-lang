@@ -1,6 +1,5 @@
 open Global
 
-
 (** Agent - Lightweight parametric state server
     
     Simple API without functors:

@@ -52,6 +52,8 @@
 *)
 
 
+open Global
+
 type t
 (** A supervisor process *)
 
@@ -84,8 +86,8 @@ type restart =
 type shutdown =
   | BrutalKill
       (** Terminate immediately with no cleanup *)
-  | Timeout of float
-      (** Wait N seconds for graceful shutdown, then kill *)
+  | Timeout of Time.Duration.t
+      (** Wait for duration for graceful shutdown, then kill *)
   | Infinity
       (** Wait forever for graceful shutdown (use for supervisors) *)
 

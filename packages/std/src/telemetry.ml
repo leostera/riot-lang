@@ -1,7 +1,4 @@
-
 open Global
-open Sync
-open Collections
 
 type event = ..
 
@@ -11,6 +8,10 @@ type event +=
 
 type handler_id = string
 type handler = { id : handler_id; fn : event -> unit }
+
+open Kernel
+open Sync
+open Collections
 
 module Server = struct
   type state = { handlers : (handler_id, handler) HashMap.t }

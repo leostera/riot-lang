@@ -1,3 +1,5 @@
+open Global
+
 type t = Http09 | Http10 | Http11 | Http2 | Http3
 
 let of_string = function

@@ -1,5 +1,7 @@
 (** Digest functions for converting hashes to various formats *)
 
+open Global
+open IO
 open Kernel.Crypto
 
 (** Convert hash to hexadecimal string *)
@@ -8,7 +10,12 @@ let hex hash =
   let len = Bytes.length bytes in
   let buf = Buffer.create (len * 2) in
   for i = 0 to len - 1 do
-    Printf.bprintf buf "%02x" (Bytes.get bytes i |> Char.code)
+    let byte = Bytes.get bytes i |> Char.code in
+    let hi = byte lsr 4 in
+    let lo = byte land 0x0f in
+    let hex_char n = if n < 10 then Char.chr (48 + n) else Char.chr (87 + n) in
+    Buffer.add_char buf (hex_char hi);
+    Buffer.add_char buf (hex_char lo)
   done;
   Buffer.contents buf
 

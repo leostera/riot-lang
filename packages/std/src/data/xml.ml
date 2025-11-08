@@ -1,4 +1,6 @@
 open Global
+  open IO
+  open Collections
 
 type t =
   | Element of {
@@ -28,7 +30,7 @@ let cdata str = CData str
 
 let rec to_string ?(indent = 0) = function
   | Text str -> str
-  | CData str -> format "<![CDATA[%s]]>" str
+  | CData str -> "<![CDATA[" ^ str ^ "]]>"
   | Element { name; attrs; children } ->
       let spaces = String.make (indent * 2) ' ' in
       let attrs_str =
@@ -37,18 +39,17 @@ let rec to_string ?(indent = 0) = function
           " "
           ^ String.concat " "
               (List.map
-                 (fun (k, v) -> format "%s=\"%s\"" k (escape_xml v))
+                 (fun (k, v) -> k ^ "=\"" ^ escape_xml v ^ "\"")
                  attrs)
       in
       if children = [] then
         (* Use explicit closing tags for HTML compatibility *)
-        format "%s<%s%s></%s>" spaces name attrs_str name
+        spaces ^ "<" ^ name ^ attrs_str ^ "></" ^ name ^ ">"
       else
         let children_str =
           String.concat "\n"
             (List.map (to_string ~indent:(indent + 1)) children)
         in
-        format "%s<%s%s>\n%s\n%s</%s>" spaces name attrs_str children_str spaces
-          name
+        spaces ^ "<" ^ name ^ attrs_str ^ ">\n" ^ children_str ^ "\n" ^ spaces ^ "</" ^ name ^ ">"
 
 let declaration = {|<?xml version="1.0" encoding="UTF-8"?>|}

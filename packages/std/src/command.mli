@@ -36,6 +36,8 @@
 
 (** # Types *)
 
+open Global
+
 type status = int
 (** Process exit status code.
 
@@ -64,7 +66,7 @@ type error =
 (** # Building Commands *)
 
 val make :
-  ?cwd:Path.t -> ?env:(string * string) list -> ?args:string list -> string -> t
+  ?cwd:string -> ?env:(string * string) list -> ?args:string list -> string -> t
 (** Creates a new command configuration.
 
     ## Parameters

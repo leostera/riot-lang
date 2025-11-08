@@ -141,6 +141,11 @@ module IO = IO
 module Iter = Iter
 (** Iteration and cursor utilities for sequences and parsing *)
 
+module Bool = Bool
+module Int = Int
+module Int32 = Int32
+module Int64 = Int64
+
 module Log = Log
 (** Structured logging *)
 
@@ -152,6 +157,11 @@ module Option = Option
 
 module Path = Path
 (** Type-safe filesystem paths *)
+
+module Ptr = Ptr
+(** Physical equality and pointer-related operations *)
+
+module Random = Random
 
 module Ref = Ref
 (** Unique, opaque, type-witnessing references *)
@@ -195,25 +205,24 @@ module Version = Version
 module WorkerPool = Worker_pool
 (** Parallel execution with worker pools *)
 
+include module type of Global
+
 val panic : string -> 'a
 (** Panic with a message - raises an uncatchable exception *)
 
 val cell : 'a -> 'a Sync.Cell.t
 (** Create a mutable cell with the given value *)
 
-val format : ('a, unit, string, string) format4 -> 'a
-(** Format string helper - alias for format *)
-
-val print : ('a, unit, string, unit) format4 -> 'a
+val print : string -> unit
 (** Print to stdout with immediate flush *)
 
-val println : ('a, unit, string, unit) format4 -> 'a
+val println : string -> unit
 (** Print to stdout with newline and immediate flush *)
 
-val eprint : ('a, unit, string, unit) format4 -> 'a
+val eprint : string -> unit
 (** Print to stderr with immediate flush *)
 
-val eprintln : ('a, unit, string, unit) format4 -> 'a
+val eprintln : string -> unit
 (** Print to stderr with newline and immediate flush *)
 
 val todo : string -> 'a
@@ -271,20 +280,23 @@ type 'msg selector = 'msg Miniriot.selector
 val self : unit -> Pid.t
 (** Get the PID of the currently running process *)
 
-val spawn : (unit -> (unit, Process.exit_reason) result) -> Pid.t
+val spawn : (unit -> (unit, Process.exit_reason) Kernel.result) -> Pid.t
 (** Spawn a new process *)
 
-val spawn_link : (unit -> (unit, Process.exit_reason) result) -> Pid.t
+val spawn_link : (unit -> (unit, Process.exit_reason) Kernel.result) -> Pid.t
 (** Spawn a new process linked to the current process *)
 
 val send : Pid.t -> Message.t -> unit
 (** Send a message to a process *)
 
-val receive : selector:'value selector -> ?timeout:float -> unit -> 'value
+val receive : selector:'value selector -> ?timeout:Time.Duration.t -> unit -> 'value
 (** Receive a message using a selector *)
 
-val receive_any : ?timeout:float -> unit -> Message.t
+val receive_any : ?timeout:Time.Duration.t -> unit -> Message.t
 (** Receive any message *)
+
+val sleep : Time.Duration.t -> unit
+(** Sleeps the current process for at least the specified duration *)
 
 val yield : unit -> unit
 (** Yield control to the scheduler *)

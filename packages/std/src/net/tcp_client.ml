@@ -1,6 +1,7 @@
 (** TCP client for line-based protocols *)
 
 open Global
+  open IO
 
 type t = {
   stream : Kernel.Net.Tcp_stream.t;
@@ -27,7 +28,7 @@ let send t data =
       | Ok bytes_written -> send_all (pos + bytes_written)
       | Error e ->
           Error
-            (format "Send failed: %s"
+            ("Send failed: " ^
                (match e with
                | `Closed -> "connection closed"
                | `System_error s -> s

@@ -1,4 +1,5 @@
 (** Process management and lifecycle *)
+open Kernel
 
 type exit_reason = exn
 (** Reasons why a process might exit *)
@@ -141,9 +142,6 @@ val clear_syscall_timeout : t -> unit
 
 val syscall_timeout : t -> Timer_id.t option
 (** Get the current syscall timeout timer ID, if any *)
-
-val pp : Format.formatter -> t -> unit
-(** Pretty-print process information *)
 
 (** {1 Process Flags} *)
 

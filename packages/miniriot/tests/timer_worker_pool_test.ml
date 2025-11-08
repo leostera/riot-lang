@@ -11,20 +11,20 @@ let worker coordinator =
           ~selector:(function Task n -> `select n | _ -> `skip)
           ~timeout:0.5 ()
       in
-      Printf.printf "  Worker: Processing task %d\n%!" task;
+      println ("  Worker: Processing task " ^ string_of_int task);
       Process.sleep 0.1;
       send coordinator (TaskComplete task);
       send coordinator WorkerReady;
       loop ()
     with Receive_timeout ->
-      Printf.printf "  Worker: Timeout, sending ready signal\n%!";
+      println "  Worker: Timeout, sending ready signal";
       send coordinator WorkerReady;
       loop ()
   in
   loop ()
 
 let main ~args:_ =
-  Printf.printf "Testing worker pool with timeout...\n%!";
+  println "Testing worker pool with timeout...";
 
   let coord_pid = self () in
   let worker_pid = spawn (fun () -> worker coord_pid) in
@@ -35,7 +35,7 @@ let main ~args:_ =
       ~selector:(function WorkerReady -> `select () | _ -> `skip)
       ~timeout:1.0 ()
   in
-  Printf.printf "✓ Worker sent initial ready signal via timeout\n%!";
+  println "✓ Worker sent initial ready signal via timeout";
 
   (* Send a task *)
   send worker_pid (Task 42);
@@ -46,7 +46,7 @@ let main ~args:_ =
       ~selector:(function TaskComplete n -> `select n | _ -> `skip)
       ~timeout:1.0 ()
   in
-  Printf.printf "✓ Task completed: %d\n%!" result;
+  println ("✓ Task completed: " ^ string_of_int result);
 
   (* Wait for ready signal after task *)
   let _ =
@@ -54,7 +54,7 @@ let main ~args:_ =
       ~selector:(function WorkerReady -> `select () | _ -> `skip)
       ~timeout:1.0 ()
   in
-  Printf.printf "✓ Worker sent ready signal after task\n%!";
+  println "✓ Worker sent ready signal after task";
 
   (* Don't send any more tasks, wait for timeout-based ready signal *)
   let _ =
@@ -62,9 +62,9 @@ let main ~args:_ =
       ~selector:(function WorkerReady -> `select () | _ -> `skip)
       ~timeout:1.0 ()
   in
-  Printf.printf "✓ Worker sent another ready signal via timeout (heartbeat)\n%!";
+  println "✓ Worker sent another ready signal via timeout (heartbeat)";
 
-  Printf.printf "\n✓ All tests passed! Worker pool timeout mechanism works!\n%!";
+  println "\n✓ All tests passed! Worker pool timeout mechanism works!";
 
   Ok ()
 

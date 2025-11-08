@@ -1,4 +1,7 @@
 open Kernel
+open Kernel.Collections
+open Kernel.Sync
+open Kernel.Sync.Cell
 
 (* Local message type extensions for scheduler *)
 type Message.t +=
@@ -9,18 +12,11 @@ type Message.t +=
       reason : (unit, Process.exit_reason) result;
     }
 
-module Pid_table = Hashtbl.Make (struct
-  type t = Pid.t
-
-  let equal = Pid.equal
-  let hash = Hashtbl.hash
-end)
-
 type t = {
   mutable stop : bool;
   mutable status : int;
   run_queue : Process.t Queue.t;
-  processes : Process.t Pid_table.t;
+  processes : (Pid.t, Process.t) HashMap.t;
   mutable current_process : Process.t option;
   io_poll : Async.Poll.t;
   config : Config.t;
@@ -36,7 +32,7 @@ let create ~config =
         stop = false;
         status = 0;
         run_queue = Queue.create ();
-        processes = Pid_table.create 128;
+        processes = HashMap.with_capacity 128;
         current_process = None;
         io_poll;
         config;
@@ -44,36 +40,36 @@ let create ~config =
         last_timer_check = 0L;
       }
   | Error err ->
-      Printf.printf "[Scheduler] ERROR: Failed to create Async.Poll: %s\n%!"
-        (IO.error_message err);
-      failwith "Failed to create I/O polling system"
+      eprintln ("[Scheduler] ERROR: Failed to create Async.Poll: " ^
+        (IO.error_message err));
+      panic "Failed to create I/O polling system"
 
-let current_scheduler = ref None
-let has_run = ref false
+let current_scheduler = Cell.create None
+let has_run = Cell.create false
 
 let get_scheduler () =
   match !current_scheduler with
-  | None -> failwith "No scheduler running"
+  | None -> panic "No scheduler running"
   | Some s -> s
 
-let add_to_run_queue t proc = Queue.push proc t.run_queue
+let add_to_run_queue t proc = Queue.push t.run_queue proc
 
 let spawn t fn =
   let proc = Process.make fn in
   let pid = Process.pid proc in
-  Pid_table.add t.processes pid proc;
+  HashMap.insert t.processes pid proc;
   add_to_run_queue t proc;
   pid
 
 let self () =
   let t = get_scheduler () in
   match t.current_process with
-  | None -> failwith "No process running"
+  | None -> panic "No process running"
   | Some proc -> Process.pid proc
 
 let send pid msg =
   let t = get_scheduler () in
-  match Pid_table.find_opt t.processes pid with
+  match HashMap.get t.processes pid with
   | None -> ()
   | Some proc ->
       let was_waiting = Process.is_waiting proc in
@@ -86,10 +82,10 @@ let shutdown t ~status =
 
 let get_current_process t =
   match t.current_process with
-  | None -> failwith "No process currently running"
+  | None -> panic "No process currently running"
   | Some proc -> proc
 
-let get_process t pid = Pid_table.find_opt t.processes pid
+let get_process t pid = HashMap.get t.processes pid
 
 let handle_receive k t proc ~selector ~timeout =
   let open Proc_state in
@@ -186,10 +182,10 @@ let handle_syscall k t proc name interest source timeout =
 
             k Suspend
         | Error err ->
-            Printf.printf
-              "[Scheduler] ERROR: Failed to register I/O for process %s: %s\n%!"
-              pid_str
-              (IO.error_message err);
+            eprintln
+              ("[Scheduler] ERROR: Failed to register I/O for process " ^
+              pid_str ^": "^
+              (IO.error_message err));
             (* Don't continue - the I/O operation failed to register *)
             k (Discontinue (Failure "Failed to register I/O")))
 
@@ -214,7 +210,7 @@ let handle_exit_proc t proc reason =
   (* 1. Send DOWN messages to all monitors *)
   List.iter
     (fun (monitor_pid, monitor_ref) ->
-      match Pid_table.find_opt t.processes monitor_pid with
+      match HashMap.get t.processes monitor_pid with
       | Some monitor_proc ->
           let down_msg =
             DOWN { ref = monitor_ref; pid = Process.pid proc; reason = exit_reason }
@@ -227,7 +223,7 @@ let handle_exit_proc t proc reason =
   (* 2. Send EXIT to all linked processes *)
   List.iter
     (fun linked_pid ->
-      match Pid_table.find_opt t.processes linked_pid with
+      match HashMap.get t.processes linked_pid with
       | Some linked_proc -> (
           let exit_msg =
             EXIT { from = Process.pid proc; reason = exit_reason }
@@ -260,14 +256,14 @@ let handle_exit_proc t proc reason =
         match Async.Poll.deregister t.io_poll source with
         | Ok () -> ()
         | Error err ->
-            Printf.printf "[Scheduler] WARN: Failed to deregister I/O: %s\n%!"
-              (IO.error_message err));
+            eprintln ("[Scheduler] WARN: Failed to deregister I/O: "^
+              (IO.error_message err)));
 
-    Pid_table.remove t.processes (Process.pid proc);
+    HashMap.remove t.processes (Process.pid proc);
     Process.mark_as_finalized proc)
   else (
     (* Non-main process: just finalize *)
-    Pid_table.remove t.processes (Process.pid proc);
+    HashMap.remove t.processes (Process.pid proc);
     Process.mark_as_finalized proc)
 
 let handle_wait_proc t proc =
@@ -284,12 +280,9 @@ let handle_run_proc t proc =
     match Proc_state.run ~reductions:100 ~perform (Process.cont proc) with
     | Some cont -> cont
     | None ->
-        Printf.printf
-          "[Scheduler] ERROR: Proc_state.run returned None for process %s\n%!"
-          pid_str;
-        Printf.printf
-          "[Scheduler] This should never happen - investigating...\n%!";
-        failwith "Proc_state.run returned None"
+        eprintln ("[Scheduler] ERROR: Proc_state.run returned None for process "^ pid_str);
+        eprintln "[Scheduler] This should never happen - investigating...";
+        panic "Proc_state.run returned None"
   in
   Process.set_cont proc cont;
   match cont with
@@ -298,10 +291,10 @@ let handle_run_proc t proc =
       add_to_run_queue t proc
   | Proc_state.Finished (Error { exn; backtrace }) ->
       (* Always print exception details and backtrace *)
-      print "[Scheduler] Process %s finished with exception: %s\n"
-        pid_str (Exception.to_string exn);
-      print "[Scheduler] Backtrace:\n%s\n"
-        (Exception.raw_backtrace_to_string backtrace);
+      eprintln ("[Scheduler] Process " ^ pid_str ^ " finished with exception: " ^
+        (Exception.to_string exn));
+      eprintln "[Scheduler] Backtrace:";
+      eprintln (Exception.raw_backtrace_to_string backtrace);
       Process.mark_as_exited proc (Error exn);
       add_to_run_queue t proc
   | _ when Process.is_waiting proc -> ()
@@ -321,7 +314,7 @@ let handle_wait_io_proc _t _proc =
 let step_process t proc =
   match Process.state proc with
   | Uninitialized -> handle_init_proc t proc
-  | Finalized -> failwith "finalized processes should never be stepped on"
+  | Finalized -> panic "finalized processes should never be stepped on"
   | Waiting_message -> handle_wait_proc t proc
   | Waiting_io _ -> handle_wait_io_proc t proc
   | Exited reason -> handle_exit_proc t proc reason
@@ -346,8 +339,8 @@ let poll_io t =
     match Async.Poll.poll t.io_poll ~timeout:timeout_nanos with
     | Ok events -> events
     | Error err ->
-        print "[Scheduler] ERROR: Failed to poll I/O: %s\n"
-          (IO.error_message err);
+        eprintln ("[Scheduler] ERROR: Failed to poll I/O: " ^
+          (IO.error_message err));
         []
   in
   List.iter
@@ -359,9 +352,9 @@ let poll_io t =
             (match Async.Poll.deregister t.io_poll source with
             | Ok () -> ()
             | Error err ->
-                print "[Scheduler] WARN: Failed to deregister I/O for process %s: %s\n"
-                  (Pid.to_string (Process.pid proc))
-                  (IO.error_message err));
+                eprintln ("[Scheduler] WARN: Failed to deregister I/O for process "^
+                  (Pid.to_string (Process.pid proc)) ^": "^
+                  (IO.error_message err)));
            if Process.is_alive proc then (
              Process.add_ready_token proc token source;
              Process.mark_as_runnable proc;
@@ -414,8 +407,9 @@ let process_timers t =
 
 let run_loop t =
   while (not (Queue.is_empty t.run_queue)) && not t.stop do
-    let proc = Queue.pop t.run_queue in
-    step_process t proc
+    match Queue.pop t.run_queue with
+  | Some proc -> step_process t proc
+  | None -> ()
   done;
 
   (* Process expired timers only if there are any *)
@@ -423,13 +417,13 @@ let run_loop t =
 
   (* Check if we have processes waiting for I/O *)
   let has_waiting_io =
-    Pid_table.fold
+    HashMap.fold
       (fun _ proc acc -> acc || Process.is_waiting_io proc)
       t.processes false
   in
 
   (* Poll for I/O events, or sleep until next timer if no I/O *)
-  (if (not t.stop) && Pid_table.length t.processes > 0 then
+  (if (not t.stop) && HashMap.len t.processes > 0 then
      if has_waiting_io then poll_io t
      else if Timer_wheel.size t.timer_wheel > 0 then (
        (* No I/O, but we have timers - sleep until next timer expiration *)
@@ -450,7 +444,7 @@ let shutdown t ~status =
   (* Clear the run queue *)
   Queue.clear t.run_queue;
   (* Clear all processes *)
-  Pid_table.clear t.processes
+  HashMap.clear t.processes
 
 let add_timer t ~now ~duration_nanos ~mode ~action =
   Timer_wheel.add_timer t.timer_wheel ~now ~duration_nanos ~mode ~action
@@ -459,7 +453,7 @@ let cancel_timer t timer_id = Timer_wheel.cancel_timer t.timer_wheel timer_id
 
 let run ~config ~main =
   if !has_run then
-    failwith
+    panic
       "Miniriot.run can only be called once per process. Each test should be \
        in a separate executable.";
   has_run := true;
@@ -474,12 +468,12 @@ let run ~config ~main =
   while not t.stop do
     run_loop t;
     (* If no processes are running and none are waiting for I/O, we're done *)
-    if Queue.is_empty t.run_queue && Pid_table.length t.processes = 0 then
+    if Queue.is_empty t.run_queue && HashMap.len t.processes = 0 then
       t.stop <- true
     else if Queue.is_empty t.run_queue then
       (* Still have processes, they might be waiting for I/O or timers *)
       let has_waiting_io =
-        Pid_table.fold
+        HashMap.fold
           (fun _ proc acc -> acc || Process.is_waiting_io proc)
           t.processes false
       in

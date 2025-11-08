@@ -41,6 +41,8 @@
     - CPU-bound parallel computations
     - Running multiple independent operations concurrently *)
 
+open Global
+
 type 'a t
 (** The type of an asynchronous task that will produce a value of type `'a` *)
 
@@ -68,7 +70,7 @@ val async : (unit -> 'a) -> 'a t
     If the function raises an exception, it's captured and returned as [`Error`]
     when the task is awaited.
 
-    ```ocaml let failing_task = Task.async (fun () -> failwith "Something went
+    ```ocaml let failing_task = Task.async (fun () -> panic "Something went
     wrong" ) in
 
     match Task.await failing_task with | Ok _ -> assert false | Error exn ->

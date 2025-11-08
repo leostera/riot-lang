@@ -1,5 +1,39 @@
+include Kernel.Types
+include Kernel.Global
+
+(** Process management globals *)
+include Miniriot.Exception
+
+type 'msg selector = 'msg Miniriot.selector
+
+let self = Miniriot.self
+
+let spawn = Miniriot.spawn
+
+let spawn_link = Miniriot.spawn_link
+
+let send = Miniriot.send
+
+let receive ~selector ?timeout () = 
+  let timeout = Option.map Time.Duration.to_secs_float timeout in
+  Miniriot.receive ~selector ?timeout ()
+  
+let receive_any ?timeout () =
+  let timeout = Option.map Time.Duration.to_secs_float timeout in
+  Miniriot.receive_any ?timeout ()
+
+let sleep timeout =
+  let selector _msg = `skip in
+  receive ~selector ~timeout ()
+
+
+let yield = Miniriot.yield
+
+let shutdown = Miniriot.shutdown
+
+open Kernel
+
 (** Re-export core helpers from Kernel - print/println are now async-safe *)
-let format = Kernel.format
 let print = Kernel.print
 let println = Kernel.println
 let eprint = Kernel.eprint
@@ -16,34 +50,21 @@ let queue = Kernel.queue
 let set = Kernel.set
 let map = Kernel.map
 
-exception Deprecated
-
-let failwith = Deprecated
-
-include Panic
+(** Panic with a message and backtrace *)
+let panic msg =
+  let exception Panic of string in
+  Kernel.raise (Panic msg)
 
 (** Create a mutable cell *)
-let cell x = Sync.Cell.create x
+let cell x = Kernel.Sync.Cell.create x
 
 let ref = cell
 
 (** Cell operators for ref-like syntax *)
-let ( ! ) = Sync.Cell.get
+let ( ! ) = Kernel.Sync.Cell.get
 
-let ( := ) = Sync.Cell.set
+let ( := ) = Kernel.Sync.Cell.set
 
-let todo msg = panic (format "TODO: %s" msg)
+let todo msg = panic ("TODO: " ^ msg)
 let unimplemented () = panic "unimplemented"
 
-(** Process management globals *)
-include Miniriot.Exception
-
-type 'msg selector = 'msg Miniriot.selector
-let self = Process.self
-let spawn = Process.spawn
-let spawn_link = Process.spawn_link
-let send = Miniriot.send
-let receive = Miniriot.receive
-let receive_any = Miniriot.receive_any
-let yield = Miniriot.yield
-let shutdown = Miniriot.shutdown

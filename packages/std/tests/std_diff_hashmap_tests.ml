@@ -1,4 +1,6 @@
 open Std
+open Std.Data
+open Std.Collections
 
 let test_diff_identical_hashmaps () = Error "todo"
 let test_diff_empty_hashmaps () = Error "todo"

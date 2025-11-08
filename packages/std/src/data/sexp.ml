@@ -1,5 +1,8 @@
 open Global
-open Sync
+open Collections
+  open IO
+  open Sync
+  open Sync.Cell
 (** S-expression parsing and printing library *)
 
 (** S-expression type *)
@@ -16,20 +19,18 @@ let rec to_string = function
         String.contains s ' ' || String.contains s '(' || String.contains s ')'
         || String.contains s '"' || String.contains s '\n'
         || String.contains s '\t'
-      then format "\"%s\"" (String.escaped s)
+      then "\"" ^ String.escaped s ^ "\""
       else s
   | List elems -> "(" ^ String.concat " " (List.map to_string elems) ^ ")"
 
 (** Pretty print S-expression *)
 let rec pp_sexp indent = function
-  | Atom s -> format "%s%s" indent (to_string (Atom s))
-  | List [] -> format "%s()" indent
-  | List [ single ] -> format "%s(%s)" indent (to_string single)
+  | Atom s -> indent ^ to_string (Atom s)
+  | List [] -> indent ^ "()"
+  | List [ single ] -> indent ^ "(" ^ to_string single ^ ")"
   | List elems ->
       let indent_next = indent ^ "  " in
-      format "%s(\n%s\n%s)" indent
-        (String.concat "\n" (List.map (pp_sexp indent_next) elems))
-        indent
+      indent ^ "(\n" ^ String.concat "\n" (List.map (pp_sexp indent_next) elems) ^ "\n" ^ indent ^ ")"
 
 let pretty_print sexp = pp_sexp "" sexp
 
@@ -223,16 +224,16 @@ module Csexp = struct
   let rec to_string = function
     | Atom s ->
         (* Format: <length>:<string> *)
-        format "%d:%s" (String.length s) s
+        string_of_int (String.length s) ^ ":" ^ s
     | List elems ->
         (* Format: (<elem1><elem2>...) *)
         let contents = String.concat "" (List.map to_string elems) in
-        format "(%s)" contents
+        "(" ^ contents ^ ")"
 
   (** Parse canonical S-expression from string *)
   let of_string str =
     let len = String.length str in
-    let pos = ref 0 in
+    let pos = Cell.create 0 in
 
     let peek () = if !pos < len then Some str.[!pos] else None in
 
@@ -275,7 +276,7 @@ module Csexp = struct
               advance ();
               Atom (parse_atom_content n)
           | _ -> raise (Parse_error "Expected ':' after atom length"))
-      | Some c -> raise (Parse_error (format "Unexpected character '%c'" c))
+      | Some c -> raise (Parse_error ("Unexpected character '" ^ String.make 1 c ^ "'"))
     and parse_list () =
       let rec loop acc =
         match peek () with
@@ -290,7 +291,7 @@ module Csexp = struct
         | Some c ->
             raise
               (Parse_error
-                 (format "Unexpected character '%c' in list at pos %d" c !pos))
+                 ("Unexpected character '" ^ String.make 1 c ^ "' in list at pos " ^ string_of_int !pos))
       in
       loop []
     in

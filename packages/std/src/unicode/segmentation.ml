@@ -1,4 +1,7 @@
 (** Text segmentation - word, sentence, and line break detection *)
+  open Global
+  open Collections
+module String = Kernel.String
 
 (** Word boundary detection using simplified UAX #29 *)
 let find_word_boundaries s =
@@ -15,8 +18,8 @@ let find_prev_word_start s pos =
 let find_sentence_boundaries s =
   (* Simplified: break on . ! ? *)
   let rec find pos acc =
-    if pos >= Stdlib.String.length s then Stdlib.List.rev acc
-    else if Stdlib.List.mem (Stdlib.String.get s pos) ['.'; '!'; '?'] then
+    if pos >= String.length s then List.rev acc
+    else if List.mem (String.get s pos) ['.'; '!'; '?'] then
       find (pos + 1) ((pos + 1) :: acc)
     else find (pos + 1) acc
   in

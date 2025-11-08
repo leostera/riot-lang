@@ -109,12 +109,6 @@ val clear : 'a t -> unit
 val iter : ('a -> unit) -> 'a t -> unit
 (** [iter f vector] applies function [f] to each element *)
 
-val fold : ('a -> 'acc -> 'acc) -> 'a t -> 'acc -> 'acc
-(** [fold f vector acc] folds over all elements *)
-
-val to_list : 'a t -> 'a list
-(** [to_list vector] returns all elements as a list *)
-
 val to_mut_iter : 'a t -> 'a Iter.MutIterator.t
 (** Returns a mutable iterator over the vector's elements.
 
@@ -127,9 +121,6 @@ val to_mut_iter : 'a t -> 'a Iter.MutIterator.t
 *)
 
 (** {1 Additional Operations} *)
-
-val contains : 'a t -> 'a -> bool
-(** [contains vector value] returns [true] if the value exists in the vector *)
 
 val append : 'a t -> 'a t -> unit
 (** [append vector1 vector2] moves all elements from [vector2] into [vector1] *)

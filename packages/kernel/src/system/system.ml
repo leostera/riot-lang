@@ -1,4 +1,6 @@
 (** System-level operations for Kernel *)
+open Global0
+module Sys = Stdlib.Sys
 
 (** Host triplet module *)
 module Host = struct
@@ -10,8 +12,11 @@ module Host = struct
   }
 
   let to_string t =
-    let base = Printf.sprintf "%s-%s-%s" t.architecture t.vendor t.os in
-    match t.abi with Some abi when abi <> "" -> base ^ "-" ^ abi | _ -> base
+    let base = t.architecture ^ "-" ^ t.vendor ^ "-" ^ t.os in
+    match t.abi with 
+    | Some "" -> base
+    | Some abi -> base ^ "-" ^ abi 
+    | None -> base
 
   let current =
     let arch = Host_stubs.get_arch () in
@@ -25,7 +30,7 @@ end
 (** Get the host triplet from C FFI *)
 let host_triplet = Host.current
 
-let available_parallelism = Domain.recommended_domain_count ()
+let available_parallelism = domain__recommended_domain_count ()
 let os_type = Sys.os_type
 let unix = Sys.unix
 let win32 = Sys.win32
@@ -38,11 +43,6 @@ let max_array_length = Sys.max_array_length
 let max_floatarray_length = Sys.max_floatarray_length
 let runtime_variant () = Sys.runtime_variant ()
 let runtime_parameters () = Sys.runtime_parameters ()
-
-type signal_behavior = Sys.signal_behavior =
-  | Signal_default
-  | Signal_ignore
-  | Signal_handle of (int -> unit)
 
 let signal signum handler =
   let old_handler = Sys.signal signum (Sys.Signal_handle handler) in

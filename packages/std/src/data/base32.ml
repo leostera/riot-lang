@@ -1,5 +1,6 @@
 open Global
-open Sync
+  open IO
+  open Sync
 
 let table = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
 
@@ -67,7 +68,7 @@ let decode_char c =
 
 let decode_bytes str =
   let len = String.length str in
-  if len mod 8 <> 0 then Error `Invalid_base32
+  if len mod 8 != 0 then Error `Invalid_base32
   else
     let output_len = len / 8 * 5 in
     let result = Bytes.create output_len in
@@ -92,22 +93,22 @@ let decode_bytes str =
             Bytes.set result !output_pos (Char.chr b0);
             Cell.incr output_pos;
 
-            if str.[i + 2] <> '=' then (
+            if str.[i + 2] != '=' then (
               let b1 = ((c1 land 0x03) lsl 6) lor (c2 lsl 1) lor (c3 lsr 4) in
               Bytes.set result !output_pos (Char.chr b1);
               Cell.incr output_pos);
 
-            if str.[i + 4] <> '=' then (
+            if str.[i + 4] != '=' then (
               let b2 = ((c3 land 0x0F) lsl 4) lor (c4 lsr 1) in
               Bytes.set result !output_pos (Char.chr b2);
               Cell.incr output_pos);
 
-            if str.[i + 5] <> '=' then (
+            if str.[i + 5] != '=' then (
               let b3 = ((c4 land 0x01) lsl 7) lor (c5 lsl 2) lor (c6 lsr 3) in
               Bytes.set result !output_pos (Char.chr b3);
               Cell.incr output_pos);
 
-            if str.[i + 7] <> '=' then (
+            if str.[i + 7] != '=' then (
               let b4 = ((c6 land 0x07) lsl 5) lor c7 in
               Bytes.set result !output_pos (Char.chr b4);
               Cell.incr output_pos);

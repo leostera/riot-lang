@@ -1,4 +1,4 @@
-module String = Stdlib.String
+open Global0
 
 type t = { source : string; mutable pos : int; length : int }
 
