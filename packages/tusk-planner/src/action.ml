@@ -1,4 +1,5 @@
 open Std
+open Std.Collections
 open Tusk_model
 
 type t =

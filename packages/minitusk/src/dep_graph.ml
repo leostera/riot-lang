@@ -12,6 +12,8 @@ end = struct
   type t = string
 
   let of_string str =
+    (* Replace hyphens with underscores for valid OCaml module names *)
+    let str = String.map (fun c -> if c = '-' then '_' else c) str in
     (* Uppercase first character only, preserve rest *)
     if String.length str > 0 then
       let first_char = Char.uppercase_ascii str.[0] in

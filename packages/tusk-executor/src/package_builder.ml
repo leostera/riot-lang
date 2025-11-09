@@ -13,11 +13,11 @@ type package_error = Telemetry_events.package_error =
   | ActionDependenciesFailed of { failed : Graph.SimpleGraph.Node_id.t list }
 
 let convert_action_error = function
-  | Action_executor.ExecutionFailed { message } ->
+  | Parallel_action_executor.ExecutionFailed { message } ->
       Telemetry_events.ActionExecutionFailed { message }
-  | Action_executor.OutputsNotCreated { missing } ->
+  | Parallel_action_executor.OutputsNotCreated { missing } ->
       Telemetry_events.ActionOutputsNotCreated { missing }
-  | Action_executor.DependenciesFailed { failed } ->
+  | Parallel_action_executor.DependenciesFailed { failed } ->
       Telemetry_events.ActionDependenciesFailed { failed }
 
 let package_error_to_string = function
@@ -139,8 +139,9 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
       / Path.v package.Package.name)
   in
 
-  Log.info "Package %s: computing content hash with dependencies"
-    package.Package.name;
+  Log.info
+    ("Package " ^ package.Package.name
+    ^ ": computing content hash with dependencies");
   match
     Tusk_planner.plan_package_with_graph ~workspace ~toolchain ~store
       ~package_graph ~package
@@ -176,7 +177,7 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
       let failed_names = List.map (fun p -> p.Package.name) failed in
       let duration = Instant.duration_since ~earlier:start (Instant.now ()) in
       let reason = "needs " ^ String.concat ", " failed_names in
-      Log.info "Package %s: SKIPPED (%s)" package.name reason;
+      Log.info ("Package " ^ package.name ^ ": SKIPPED (" ^ reason ^ ")");
 
       (* Mark as Skipped in graph so dependents see it as failed *)
       (match Tusk_planner.Package_graph.get_node package_graph package with
@@ -196,8 +197,9 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
       }
   | Ok (Planned { module_graph; action_graph; hash = package_hash; depset; _ })
     -> (
-      Log.info "Package %s: hash=%s" package.Package.name
-        (Std.Crypto.Digest.hex package_hash);
+      Log.info
+        ("Package " ^ package.Package.name ^ ": hash="
+        ^ Std.Crypto.Digest.hex package_hash);
 
       Telemetry.emit
         (BuildStarted
@@ -205,7 +207,8 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
 
       match Tusk_store.Store.get store package_hash with
       | Some artifact ->
-          Log.info "Package %s: CACHE HIT - skipping execution" package.name;
+          Log.info
+            ("Package " ^ package.name ^ ": CACHE HIT - skipping execution");
 
           let _ =
             Tusk_store.Store.promote store package_hash ~target_dir
@@ -244,11 +247,12 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
                });
           { package; status = Cached artifact; duration }
       | None -> (
-          Log.info "Package %s: CACHE MISS - executing action graph"
-            package.name;
-          Log.info "Package %s: executing action graph with %d nodes"
-            package.name
-            (List.length (Action_graph.nodes action_graph));
+          Log.info
+            ("Package " ^ package.name ^ ": CACHE MISS - executing action graph");
+          Log.info
+            ("Package " ^ package.name ^ ": executing action graph with "
+            ^ Int.to_string (List.length (Action_graph.nodes action_graph))
+            ^ " nodes");
 
           (* Mark as Planned in package graph *)
           (match Tusk_planner.Package_graph.get_node package_graph package with
@@ -283,8 +287,8 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
             let failed_actions =
               HashMap.to_list exec_result.completed
               |> List.filter_map (fun (_id, result) ->
-                  match result.Action_executor.status with
-                  | Action_executor.Failed err -> Some err
+                  match result.Parallel_action_executor.status with
+                  | Parallel_action_executor.Failed err -> Some err
                   | _ -> None)
             in
 
@@ -303,7 +307,7 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
                          {
                            message =
                              "Failed to save artifacts for " ^ package.name ^ ": " ^
-                               package.name msg;
+                               msg;
                          }))
           in
 
@@ -315,7 +319,7 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
               let duration =
                 Instant.duration_since ~earlier:start (Instant.now ())
               in
-              let error_msg = "Exception: " ^ Printexc.to_string exn in
+              let error_msg = "Exception: " ^ Exception.to_string exn in
               let error = ExecutionFailed { message = error_msg } in
               (* Mark as Failed in package graph *)
               (match

@@ -1,5 +1,7 @@
 open Std
 open Std.Collections
+open Std.Sync
+open Std.Sync.Cell
 
 open Tusk_model
 open Tusk_planner
@@ -27,10 +29,10 @@ type coordinator_state = {
   packages : Package.t list;
   queue : Build_queue.t;
   idle_workers : Pid.t Queue.t;
-  busy_workers : (Pid.t, Build_queue.package_node) Hashtbl.t;
+  busy_workers : (Pid.t, Build_queue.package_node) HashMap.t;
   all_workers : Pid.t list;
   total_packages : int;
-  completed_count : int ref;
+  mutable completed_count : int;
   package_graph : Package_graph.t;
 }
 
@@ -56,19 +58,19 @@ let rec worker_loop ~coordinator ~workspace ~toolchain ~store ~package_graph =
 
 (* Try to assign all available work to idle workers *)
 let rec drain_work_queue state =
-  match Queue.dequeue state.idle_workers with
+  match Queue.pop state.idle_workers with
   | None -> () (* No idle workers *)
   | Some worker_pid -> (
       match Build_queue.next state.queue with
       | None ->
           (* No work available, put worker back *)
-          Queue.enqueue state.idle_workers worker_pid
+          Queue.push state.idle_workers worker_pid
       | Some node ->
           (* Assign work *)
           (* Log.debug "Assigning %s to worker %a" 
             (Package_graph.get_package node.value).Package.name
             Pid.pp worker_pid; *)
-          Hashtbl.add state.busy_workers worker_pid node;
+          let _ = HashMap.insert state.busy_workers worker_pid node in
           send worker_pid (AssignTask node);
 
           (* Continue trying to assign more work *)
@@ -80,7 +82,7 @@ let rec coordinator_loop state =
   drain_work_queue state;
 
   (* Step 2: Check if we're done *)
-  if !(state.completed_count) = state.total_packages then
+  if state.completed_count = state.total_packages then
     handle_build_completed state
   else
     (* Step 3: Wait for a worker to complete *)
@@ -91,19 +93,20 @@ and wait_for_completion state =
   | TaskCompleted { worker_pid; result } ->
       (* Update build queue *)
       Build_queue.mark_completed state.queue result;
-      incr state.completed_count;
+      state.completed_count <- state.completed_count + 1;
 
       (* Log the result *)
-      Log.info "Package %s: %s (%dms)" result.package.Package.name
-        (match result.status with
-        | Cached _ -> "cached"
-        | Built _ -> "built"
-        | Failed _ -> "failed")
-        (Time.Duration.to_millis result.duration);
+      Log.info
+        ("Package " ^ result.package.Package.name ^ ": "
+        ^ (match result.status with
+          | Cached _ -> "cached"
+          | Built _ -> "built"
+          | Failed _ -> "failed")
+        ^ " (" ^ Int.to_string (Time.Duration.to_millis result.duration) ^ "ms)");
 
       (* Move worker from busy to idle *)
-      Hashtbl.remove state.busy_workers worker_pid;
-      Queue.enqueue state.idle_workers worker_pid;
+      let _ = HashMap.remove state.busy_workers worker_pid in
+      Queue.push state.idle_workers worker_pid;
 
       (* CRITICAL: New work may now be available due to this completion *)
       (* Loop back to drain_work_queue which will assign it *)
@@ -123,15 +126,17 @@ and handle_build_completed state =
       match Build_queue.get_result state.queue pkg.Package.name with
       | Some result -> (
           match result.Package_builder.status with
-          | Cached _ -> incr cached
-          | Built _ -> incr succeeded
-          | Failed _ -> incr failed)
+          | Cached _ -> cached := !cached + 1
+          | Built _ -> succeeded := !succeeded + 1
+          | Failed _ -> failed := !failed + 1)
       | None -> ())
     state.packages;
 
   Log.info
-    "Workspace build: all done, completed=%d succeeded=%d failed=%d total=%d"
-    !(state.completed_count) !succeeded !failed state.total_packages;
+    ("Workspace build: all done, completed="
+    ^ Int.to_string state.completed_count
+    ^ " succeeded=" ^ Int.to_string !succeeded ^ " failed="
+    ^ Int.to_string !failed ^ " total=" ^ Int.to_string state.total_packages);
 
   (* Return results *)
   {
@@ -166,17 +171,17 @@ let init ~workspace ~toolchain ~store ~package_graph ~packages ~concurrency =
 
   (* Initialize coordinator state *)
   let idle_workers = Queue.create () in
-  List.iter (fun w -> Queue.enqueue idle_workers w) workers;
+  List.iter (fun w -> Queue.push idle_workers w) workers;
 
   let state =
     {
       packages;
       queue;
       idle_workers;
-      busy_workers = Hashtbl.create concurrency;
+      busy_workers = HashMap.create ();
       all_workers = workers;
       total_packages = List.length packages;
-      completed_count = ref 0;
+      completed_count = 0;
       package_graph;
     }
   in
@@ -194,8 +199,9 @@ let build_workspace ~workspace ~toolchain ~store ~target ~concurrency =
       Telemetry.emit
         (WorkspaceStarted { target; package_count = List.length packages });
 
-      Log.info "Building %d packages with %d workers" (List.length packages)
-        concurrency;
+      Log.info
+        ("Building " ^ Int.to_string (List.length packages)
+        ^ " packages with " ^ Int.to_string concurrency ^ " workers");
 
       match Package_graph.topological_sort package_graph with
       | exception Package_graph.Cycle_detected cycle ->

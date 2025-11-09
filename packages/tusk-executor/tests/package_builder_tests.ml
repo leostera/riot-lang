@@ -1,4 +1,5 @@
 open Std
+open Std.Collections
 module Test = Std.Test
 
 let test_toolchain =
@@ -36,6 +37,7 @@ let test_collect_source_files () =
               path = tmpdir;
               relative_path = Path.v ".";
               dependencies = [];
+              foreign_dependencies = [];
               binaries = [];
               library = None;
               sources = { src = []; native = []; tests = []; examples = [] };
@@ -68,11 +70,12 @@ let test_collect_source_files () =
         if has_ml && has_mli && has_c && (not has_txt) && count = 3 then Ok ()
         else
           Error
-            (format
-               "Expected exactly .ml, .mli, .c files. Got %d files: has_ml=%b \
-                has_mli=%b has_c=%b has_txt=%b. Files: %s"
-               count has_ml has_mli has_c has_txt
-               (String.concat ", " (List.map (fun p -> Path.basename p) files))))
+            ("Expected exactly .ml, .mli, .c files. Got "
+            ^ Int.to_string count ^ " files: has_ml="
+            ^ Bool.to_string has_ml ^ " has_mli=" ^ Bool.to_string has_mli
+            ^ " has_c=" ^ Bool.to_string has_c ^ " has_txt="
+            ^ Bool.to_string has_txt ^ ". Files: "
+            ^ String.concat ", " (List.map (fun p -> Path.basename p) files)))
   with
   | Ok r -> r
   | Error _ -> Error "Tempdir creation failed"
@@ -85,6 +88,7 @@ let test_build_result_status_variants () =
         path = Path.v ".";
         relative_path = Path.v ".";
         dependencies = [];
+        foreign_dependencies = [];
         binaries = [];
         library = None;
         sources = { src = []; native = []; tests = []; examples = [] };

@@ -374,6 +374,7 @@ let from_json json =
                                   path = Path.v ".";
                                   relative_path = Path.v ".";
                                   dependencies = [];
+                                  foreign_dependencies = [];
                                   binaries = [];
                                   library = None;
                                   sources =

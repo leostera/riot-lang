@@ -33,12 +33,12 @@ let run matches =
   | Some shell_str -> (
       match Shell_completions.shell_from_string shell_str with
       | None ->
-          println "Error: Unknown shell '%s'" shell_str;
+          println ("Error: Unknown shell '" ^ shell_str ^ "'");
           println "Supported shells: bash, zsh, fish";
           Error (Failure ("unknown shell: " ^ shell_str))
       | Some shell ->
           let script = Shell_completions.generate_script shell in
-          print_string script;
+          print script;
           Ok ())
   | None ->
       (* Dynamic completion helpers - need workspace context *)
@@ -64,17 +64,17 @@ let run matches =
         | Ok (workspace, _load_errors) ->
             if has_packages then
               List.iter
-                (fun pkg -> Std.println "%s" pkg)
+                (fun pkg -> println pkg)
                 (Shell_completions.list_packages workspace);
 
             if has_binaries then
               List.iter
-                (fun bin -> Std.println "%s" bin)
+                (fun bin -> println bin)
                 (Shell_completions.list_binaries workspace);
 
             if has_tests then
               List.iter
-                (fun test -> Std.println "%s" test)
+                (fun test -> println test)
                 (Shell_completions.list_tests workspace);
 
             Ok ()

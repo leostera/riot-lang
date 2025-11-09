@@ -91,7 +91,7 @@ let execute (client : Tusk_client.t) (_ : request) : response =
       Log.debug "[WORKSPACE TOOL] returning WorkspaceInfo";
       WorkspaceInfo { json }
   | Error msg ->
-      Log.error "[WORKSPACE TOOL] RPC error: %s" msg;
+      Log.error ("[WORKSPACE TOOL] RPC error: " ^ msg);
       Error msg
 
 let response_to_json = function

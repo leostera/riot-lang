@@ -68,10 +68,10 @@ let handle_ping client _sub_matches =
   match result with
   | Ok () ->
       let json = Json.Object [ ("type", Json.String "pong") ] in
-      println "%s" (Json.to_string json);
+      println (Json.to_string json);
       Ok ()
   | Error e ->
-      println "Error: %s" e;
+      println ("Error: " ^ e);
       Error (Failure e)
 
 let handle_workspace client _sub_matches =
@@ -109,10 +109,10 @@ let handle_workspace client _sub_matches =
               Json.Int config.Tusk_protocol.WireProtocol.total_packages );
           ]
       in
-      println "%s" (Json.to_string json);
+      println (Json.to_string json);
       Ok ()
   | Error e ->
-      println "Error: %s" e;
+      println ("Error: " ^ e);
       Error (Failure e)
 
 let handle_find_executable client sub_matches =
@@ -129,14 +129,14 @@ let handle_find_executable client sub_matches =
             ("binary", Json.String binary);
           ]
       in
-      println "%s" (Json.to_string json);
+      println (Json.to_string json);
       Ok ()
   | Ok None ->
       let json = Json.Object [ ("type", Json.String "executable_not_found") ] in
-      println "%s" (Json.to_string json);
+      println (Json.to_string json);
       Ok ()
   | Error e ->
-      println "Error: %s" e;
+      println ("Error: " ^ e);
       Error (Failure e)
 
 let handle_find_artifact client sub_matches =
@@ -154,7 +154,7 @@ let handle_find_artifact client sub_matches =
         Json.Object
           [ ("type", Json.String "artifact_found"); ("path", Json.String path) ]
       in
-      println "%s" (Json.to_string json);
+      println (Json.to_string json);
       Ok ()
   | Error e ->
       let json =
@@ -163,7 +163,7 @@ let handle_find_artifact client sub_matches =
             ("type", Json.String "artifact_not_found"); ("error", Json.String e);
           ]
       in
-      println "%s" (Json.to_string json);
+      println (Json.to_string json);
       Error (Failure e)
 
 let handle_package client sub_matches =
@@ -206,10 +206,10 @@ let handle_package client sub_matches =
                    detail.Tusk_protocol.WireProtocol.dependency_names) );
           ]
       in
-      println "%s" (Json.to_string json);
+      println (Json.to_string json);
       Ok ()
   | Error e ->
-      println "Error: %s" e;
+      println ("Error: " ^ e);
       Error (Failure e)
 
 let handle_graph client _sub_matches =
@@ -238,10 +238,10 @@ let handle_graph client _sub_matches =
             ("type", Json.String "package_graph"); ("nodes", Json.Array nodes_json);
           ]
       in
-      println "%s" (Json.to_string json);
+      println (Json.to_string json);
       Ok ()
   | Error e ->
-      println "Error: %s" e;
+      println ("Error: " ^ e);
       Error (Failure e)
 
 let handle_build client sub_matches =
@@ -266,10 +266,10 @@ let handle_build client sub_matches =
               ("session_id", Json.String (Session_id.to_string sid));
             ]
         in
-        println "%s" (Json.to_string json)
+        println (Json.to_string json)
     | Tusk_client.BuildEvent event -> (
         match Tusk_executor.Telemetry_events.to_json event with
-        | Some json -> println "%s" (Json.to_string json)
+        | Some json -> println (Json.to_string json)
         | None -> ())
     | Tusk_client.BuildCompleted { stats; _ } ->
         let json =
@@ -280,7 +280,7 @@ let handle_build client sub_matches =
               ("cache_hits", Json.Int stats.cache_hits);
             ]
         in
-        println "%s" (Json.to_string json)
+        println (Json.to_string json)
     | Tusk_client.BuildFailed { errors; stats; _ } ->
         let error_details =
           List.filter_map
@@ -321,7 +321,27 @@ let handle_build client sub_matches =
               ("errors", Json.Array error_details);
             ]
         in
-        println "%s" (Json.to_string json)
+        println (Json.to_string json)
+    | Tusk_client.PlanningFailed { reason; _ } ->
+        let json =
+          Json.Object
+            [
+              ("type", Json.String "error");
+              ("message", Json.String ("Planning failed: " ^ reason));
+            ]
+        in
+        println (Json.to_string json)
+    | Tusk_client.CycleDetected { cycle_nodes; _ } ->
+        let json =
+          Json.Object
+            [
+              ("type", Json.String "error");
+              ("message",
+               Json.String
+                 ("Cycle detected: " ^ String.concat " -> " cycle_nodes));
+            ]
+        in
+        println (Json.to_string json)
   in
   let result = Tusk_client.build_streaming client request callback in
   match result with
@@ -331,15 +351,16 @@ let handle_build client sub_matches =
         match e with
         | Tusk_client.JsonrpcError je -> Tusk_client.jsonrpc_error_to_string je
         | Tusk_client.PackageNotFound { package_name; available_packages } ->
-            "Package not found: %s (available: " ^ package_name ^ ")"
-              (String.concat ", " available_packages)
+            "Package not found: " ^ package_name ^ " (available: "
+            ^ String.concat ", " available_packages
+            ^ ")"
         | Tusk_client.UnexpectedEvent { reason; _ } -> reason
       in
       let response =
         Json.Object
           [ ("type", Json.String "Error"); ("message", Json.String error_msg) ]
       in
-      println "%s" (Json.to_string response);
+      println (Json.to_string response);
       Error (Failure error_msg)
 
 let handle_restart client _sub_matches =
@@ -347,10 +368,10 @@ let handle_restart client _sub_matches =
   match result with
   | Ok () ->
       let json = Json.Object [ ("type", Json.String "restarted") ] in
-      println "%s" (Json.to_string json);
+      println (Json.to_string json);
       Ok ()
   | Error e ->
-      println "Error: %s" e;
+      println ("Error: " ^ e);
       Error (Failure e)
 
 let handle_shutdown client _sub_matches =
@@ -358,10 +379,10 @@ let handle_shutdown client _sub_matches =
   match result with
   | Ok () ->
       let json = Json.Object [ ("type", Json.String "shutdown") ] in
-      println "%s" (Json.to_string json);
+      println (Json.to_string json);
       Ok ()
   | Error e ->
-      println "Error: %s" e;
+      println ("Error: " ^ e);
       Error (Failure e)
 
 let handle_format client sub_matches =
@@ -380,10 +401,10 @@ let handle_format client sub_matches =
             ("changed", Json.Bool changed);
           ]
       in
-      println "%s" (Json.to_string json);
+      println (Json.to_string json);
       Ok ()
   | Error e ->
-      println "Error: %s" e;
+      println ("Error: " ^ e);
       Error (Failure e)
 
 let handle_format_check client sub_matches =
@@ -401,10 +422,10 @@ let handle_format_check client sub_matches =
             ("needs_formatting", Json.Bool changed);
           ]
       in
-      println "%s" (Json.to_string json);
+      println (Json.to_string json);
       Ok ()
   | Error e ->
-      println "Error: %s" e;
+      println ("Error: " ^ e);
       Error (Failure e)
 
 let handle_format_code client sub_matches =
@@ -422,10 +443,10 @@ let handle_format_code client sub_matches =
             ("changed", Json.Bool changed);
           ]
       in
-      println "%s" (Json.to_string json);
+      println (Json.to_string json);
       Ok ()
   | Error e ->
-      println "Error: %s" e;
+      println ("Error: " ^ e);
       Error (Failure e)
 
 let handle_json _client sub_matches =
@@ -434,7 +455,7 @@ let handle_json _client sub_matches =
     get_one sub_matches "json" |> Option.expect ~msg:"json required"
   in
   println "Error: json command not yet implemented";
-  println "Would send: %s" json_str;
+  println ("Would send: " ^ json_str);
   Error (Failure "Not implemented")
 
 let run matches =
@@ -459,7 +480,7 @@ let run matches =
     | Some ("format-code", sub_matches) -> handle_format_code client sub_matches
     | Some ("json", sub_matches) -> handle_json client sub_matches
     | Some (cmd, _) ->
-        println "Unknown rpc command: %s" cmd;
+        println ("Unknown rpc command: " ^ cmd);
         Error (Failure ("Unknown rpc command: " ^ cmd))
     | None ->
         println "No rpc subcommand provided. Use 'tusk rpc --help' for usage.";

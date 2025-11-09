@@ -74,9 +74,11 @@ let format_file workspace toolchain check_only quiet file_path =
   (* Always print failures, print successes unless quiet *)
   (match result with
   | Failed _ ->
-      println "%s %s" status_char (relative_to_workspace workspace file_path)
+      println
+        (status_char ^ " " ^ relative_to_workspace workspace file_path)
   | Success _ when not quiet ->
-      println "%s %s" status_char (relative_to_workspace workspace file_path)
+      println
+        (status_char ^ " " ^ relative_to_workspace workspace file_path)
   | Success _ -> ());
   result
 
@@ -109,7 +111,9 @@ let run fmt_matches =
     let concurrency = min System.available_parallelism 50 in
     let concurrency = max concurrency 1 in
 
-    println "Found %d files, using %d workers" file_count concurrency;
+    println
+      ("Found " ^ Int.to_string file_count ^ " files, using "
+      ^ Int.to_string concurrency ^ " workers");
     println "";
 
     let results =
@@ -144,37 +148,43 @@ let run fmt_matches =
     let failed_count = List.length failures in
 
     if failed_count > 0 then (
-      println "\027[1;31mFailed to format %d files:\027[0m" failed_count;
+      println
+        ("\027[1;31mFailed to format " ^ Int.to_string failed_count
+        ^ " files:\027[0m");
       println "";
       List.iter
         (fun (file, error) ->
-          println "  \027[1;31m✗\027[0m %s"
-            (relative_to_workspace workspace file);
-          println "    %s" error;
+          println
+            ("  \027[1;31m✗\027[0m " ^ relative_to_workspace workspace file);
+          println ("    " ^ error);
           println "")
         failures;
       println "");
 
     if check_only then
       if changed_count > 0 then (
-        println "\027[1;33m%d files need formatting:\027[0m" changed_count;
+        println
+          ("\027[1;33m" ^ Int.to_string changed_count
+          ^ " files need formatting:\027[0m");
         List.iter
           (fun (file, changed) ->
             if changed then
-              println "  • %s" (relative_to_workspace workspace file))
+              println ("  • " ^ relative_to_workspace workspace file))
           successes;
         println "";
         println "Run 'tusk fmt' to format these files.";
         Error (Failure "Files need formatting"))
       else (
         println "\027[1;32m✓ All files are formatted correctly\027[0m";
-        println "  %d files checked" file_count;
+        println ("  " ^ Int.to_string file_count ^ " files checked");
         Ok ())
     else (
       println "\027[1;32m✓ Formatting complete\027[0m";
-      if changed_count > 0 then println "  %d files formatted" changed_count;
+      if changed_count > 0 then
+        println ("  " ^ Int.to_string changed_count ^ " files formatted");
       if unchanged_count > 0 then
-        println "  %d files already formatted" unchanged_count;
+        println
+          ("  " ^ Int.to_string unchanged_count ^ " files already formatted");
       if failed_count > 0 then
         Error (Failure (Int.to_string failed_count ^ " files failed to format"))
       else Ok ())

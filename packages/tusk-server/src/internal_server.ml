@@ -46,12 +46,12 @@ let rec loop state =
       Log.debug "Server loop received: GetPackageGraph";
       handle_get_package_graph state client_pid
   | `Request (Protocol.FindExecutable { client_pid; name }) ->
-      Log.debug "Server loop received: FindExecutable(%s)" name;
+      Log.debug ("Server loop received: FindExecutable(" ^ name ^ ")");
       handle_find_executable state client_pid name
   | `Request (Protocol.FindArtifact { client_pid; package; kind; name }) ->
       Log.debug
-        "Server loop received: FindArtifact(package=%s, kind=%s, name=%s)"
-        package kind name;
+        ("Server loop received: FindArtifact(package=" ^ package ^ ", kind="
+        ^ kind ^ ", name=" ^ name ^ ")");
       handle_find_artifact state client_pid package kind name
   | `Request (Protocol.FormatFile { client_pid; file_path; check_only }) ->
       Log.debug "Server loop received: FormatFile";
@@ -68,7 +68,8 @@ let rec loop state =
 
 (** Handler for ping message *)
 and handle_ping state client_pid =
-  Log.debug "handle_ping: Received Ping from %s" (Pid.to_string client_pid);
+  Log.debug
+    ("handle_ping: Received Ping from " ^ Pid.to_string client_pid);
   send client_pid (Protocol.ServerResponse Protocol.Pong);
   Log.debug "handle_ping: Pong sent, continuing loop";
   loop state
@@ -84,9 +85,8 @@ and handle_scan_workspace state client_pid current_dir =
     | Ok graph -> graph
     | Error _ -> 
         (* Create empty graph as fallback *)
-        (match Workspace.make ~root:workspace.root ~packages:[] with
-        | Ok ws -> Tusk_planner.Package_graph.create ws |> Result.expect ~msg:"Failed to create empty package graph"
-        | Error _ -> panic "Failed to create empty workspace")
+        let ws = Workspace.make ~root:workspace.root ~packages:[] in
+        Tusk_planner.Package_graph.create ws |> Result.expect ~msg:"Failed to create empty package graph"
   in
   let new_state = { state with workspace; package_graph; load_errors } in
   send client_pid
@@ -102,8 +102,8 @@ and handle_scan_workspace state client_pid current_dir =
 
 (** Handler for getting workspace configuration *)
 and handle_get_workspace_config state client_pid =
-  Log.debug "Server: Received GetWorkspaceConfig from %s"
-    (Pid.to_string client_pid);
+  Log.debug
+    ("Server: Received GetWorkspaceConfig from " ^ Pid.to_string client_pid);
   send client_pid
     (Protocol.ServerResponse
        (Protocol.WorkspaceConfig
@@ -112,8 +112,9 @@ and handle_get_workspace_config state client_pid =
 
 (** Handler for getting package information *)
 and handle_get_package_info state client_pid package_name =
-  Log.debug "Server: Received GetPackageInfo for %s from %s" package_name
-    (Pid.to_string client_pid);
+  Log.debug
+    ("Server: Received GetPackageInfo for " ^ package_name ^ " from "
+    ^ Pid.to_string client_pid);
 
   let package_opt =
     List.find_opt
@@ -123,7 +124,7 @@ and handle_get_package_info state client_pid package_name =
 
   (match package_opt with
   | None ->
-      Log.debug "Server: Package %s not found" package_name;
+      Log.debug ("Server: Package " ^ package_name ^ " not found");
       send client_pid
         (Protocol.ServerResponse
            (Protocol.PackageInfo
@@ -134,6 +135,7 @@ and handle_get_package_info state client_pid package_name =
                     path = Path.of_string "" |> Result.expect ~msg:"Failed to create empty path";
                     relative_path = Path.of_string "" |> Result.expect ~msg:"Failed to create empty relative path";
                     dependencies = [];
+                    foreign_dependencies = [];
                     binaries = [];
                     library = None;
                     sources = { src = []; native = []; tests = []; examples = [] };
@@ -160,7 +162,8 @@ and handle_get_package_info state client_pid package_name =
 
 (** Handler for getting the package graph *)
 and handle_get_package_graph state client_pid =
-  Log.debug "Server: Received GetPackageGraph from %s" (Pid.to_string client_pid);
+  Log.debug
+    ("Server: Received GetPackageGraph from " ^ Pid.to_string client_pid);
   let sorted_packages =
     Tusk_planner.Package_graph.(
       topological_sort state.package_graph |> List.map get_package)
@@ -170,7 +173,7 @@ and handle_get_package_graph state client_pid =
   loop state
 
 and handle_find_executable state client_pid name =
-  Log.debug "Server: handle_find_executable %s" name;
+  Log.debug ("Server: handle_find_executable " ^ name);
   let found =
     List.find_map
       (fun (pkg : Package.t) ->
@@ -190,8 +193,9 @@ and handle_find_executable state client_pid name =
   loop state
 
 and handle_find_artifact state client_pid package kind name =
-  Log.info "Server: handle_find_artifact package=%s kind=%s name=%s" package
-    kind name;
+  Log.info
+    ("Server: handle_find_artifact package=" ^ package ^ " kind=" ^ kind
+    ^ " name=" ^ name);
   
   (* Find the package in the workspace *)
   let pkg_opt =
@@ -202,7 +206,7 @@ and handle_find_artifact state client_pid package kind name =
   let response =
     match pkg_opt with
     | None ->
-        Log.info "Server: Package '%s' not found in workspace" package;
+        Log.info ("Server: Package '" ^ package ^ "' not found in workspace");
         Protocol.ServerResponse
           (Protocol.ArtifactNotFound
              { error = "Package '" ^ package ^ "' not found" })
@@ -213,7 +217,8 @@ and handle_find_artifact state client_pid package kind name =
         in
         match package_node_opt with
         | None ->
-            Log.info "Server: Package '%s' not found in package graph" package;
+            Log.info
+              ("Server: Package '" ^ package ^ "' not found in package graph");
             Protocol.ServerResponse
               (Protocol.ArtifactNotFound
                  { error = "Package '" ^ package ^ "' not in build graph" })
@@ -223,7 +228,8 @@ and handle_find_artifact state client_pid package kind name =
             in
             match hash_opt with
             | None ->
-                Log.info "Server: Package '%s' has no hash (not built)" package;
+                Log.info
+                  ("Server: Package '" ^ package ^ "' has no hash (not built)");
                 Protocol.ServerResponse
                   (Protocol.ArtifactNotFound
                      { error = "Package '" ^ package ^ "' has not been built" })
@@ -231,8 +237,9 @@ and handle_find_artifact state client_pid package kind name =
                 (* Get the artifact from the store using package hash *)
                 match Tusk_store.Store.get state.store hash with
                 | None ->
-                    Log.info "Server: No artifact found for package '%s' hash %s"
-                      package (Std.Crypto.Digest.hex hash);
+                    Log.info
+                      ("Server: No artifact found for package '" ^ package
+                      ^ "' hash " ^ Std.Crypto.Digest.hex hash);
                     Protocol.ServerResponse
                       (Protocol.ArtifactNotFound
                          { error =
@@ -253,14 +260,15 @@ and handle_find_artifact state client_pid package kind name =
                           Tusk_store.Store.get_artifact_dir state.store artifact
                         in
                         let full_path = Path.(artifact_dir / file_path) in
-                        Log.info "Server: Artifact found at %s"
-                          (Path.to_string full_path);
+                        Log.info
+                          ("Server: Artifact found at "
+                          ^ Path.to_string full_path);
                         Protocol.ServerResponse
                           (Protocol.ArtifactFound { path = full_path })
                     | None ->
                         Log.info
-                          "Server: Artifact '%s' not found in package '%s' files"
-                          name package;
+                          ("Server: Artifact '" ^ name
+                          ^ "' not found in package '" ^ package ^ "' files");
                         Protocol.ServerResponse
                           (Protocol.ArtifactNotFound
                              {
@@ -274,8 +282,10 @@ and handle_find_artifact state client_pid package kind name =
   loop state
 
 and handle_format_file state client_pid file_path check_only =
-  Log.debug "Server: Received FormatFile from %s for %s (check_only=%b)"
-    (Pid.to_string client_pid) (Path.to_string file_path) check_only;
+  Log.debug
+    ("Server: Received FormatFile from " ^ Pid.to_string client_pid ^ " for "
+    ^ Path.to_string file_path ^ " (check_only=" ^ Bool.to_string check_only
+    ^ ")");
 
   let ocamlformat = Tusk_toolchain.ocamlformat state.toolchain in
   let response =
@@ -291,7 +301,8 @@ and handle_format_file state client_pid file_path check_only =
   loop state
 
 and handle_format_code state client_pid code file_path =
-  Log.debug "Server: Received FormatCode from %s" (Pid.to_string client_pid);
+  Log.debug
+    ("Server: Received FormatCode from " ^ Pid.to_string client_pid);
 
   let ocamlformat = Tusk_toolchain.ocamlformat state.toolchain in
   let response =
@@ -307,9 +318,9 @@ and handle_format_code state client_pid code file_path =
   loop state
 
 and handle_format_all state client_pid mode =
-  Log.debug "Server: Received FormatAll from %s (mode=%s)"
-    (Pid.to_string client_pid)
-    (match mode with `check -> "check" | `write -> "write");
+  Log.debug
+    ("Server: Received FormatAll from " ^ Pid.to_string client_pid ^ " (mode="
+    ^ (match mode with `check -> "check" | `write -> "write") ^ ")");
 
   send client_pid
     (Protocol.ServerResponse
@@ -318,8 +329,9 @@ and handle_format_all state client_pid mode =
   loop state
 
 and handle_new_package state client_pid path name is_library =
-  Log.debug "Server: Received NewPackage from %s for %s at %s"
-    (Pid.to_string client_pid) name (Path.to_string path);
+  Log.debug
+    ("Server: Received NewPackage from " ^ Pid.to_string client_pid ^ " for "
+    ^ name ^ " at " ^ Path.to_string path);
 
   let src_dir = Path.(path / Path.v "src") in
 
@@ -353,16 +365,10 @@ and handle_new_package state client_pid path name is_library =
 
       let package_toml = Path.(path / Path.v "tusk.toml") in
       let toml_content =
-        format
-          "[package]\n\
-           name = \"%s\"\n\
-           version = \"0.1.0\"\n\n\
-           [dependencies]\n\
-           std = \"*\"\n\
-           # Add dependencies here\n\n\
-           %s\n"
-          name
-          (if is_library then "" else "[package.bin]\nmain = \"" ^ name ^ "\"")
+        "[package]\nname = \"" ^ name
+        ^ "\"\nversion = \"0.1.0\"\n\n[dependencies]\nstd = \"*\"\n# Add dependencies here\n\n"
+        ^ (if is_library then "" else "[package.bin]\nmain = \"" ^ name ^ "\"")
+        ^ "\n"
       in
 
       let write_mli =
@@ -383,8 +389,10 @@ and handle_new_package state client_pid path name is_library =
             |> Result.expect
                  ~msg:"Failed to rescan workspace after package creation"
           in
-          Log.debug "Server: Workspace rescanned, found %d packages"
-            (List.length updated_workspace.packages);
+          Log.debug
+            ("Server: Workspace rescanned, found "
+            ^ Int.to_string (List.length updated_workspace.packages)
+            ^ " packages");
 
           let updated_package_graph =
             Tusk_planner.Package_graph.create updated_workspace
@@ -412,10 +420,11 @@ and handle_new_package state client_pid path name is_library =
 
 (** Handler for build message - spawns worker and continues loop immediately *)
 and handle_build state client_pid target session_id =
-  Log.debug "Server: handle_build called for target: %s"
-    (match target with
-    | Protocol.All -> "All"
-    | Protocol.Package p -> "Package(" ^ p ^ ")");
+  Log.debug
+    ("Server: handle_build called for target: "
+    ^ (match target with
+      | Protocol.All -> "All"
+      | Protocol.Package p -> "Package(" ^ p ^ ")"));
 
   (* Rescan workspace to pick up any tusk.toml changes *)
   let (workspace, load_errors) =
@@ -426,9 +435,8 @@ and handle_build state client_pid target session_id =
     match Tusk_planner.Package_graph.create workspace with
     | Ok graph -> graph
     | Error _ -> 
-        (match Workspace.make ~root:workspace.root ~packages:[] with
-        | Ok ws -> Tusk_planner.Package_graph.create ws |> Result.expect ~msg:"Failed to create empty package graph"
-        | Error _ -> panic "Failed to create empty workspace")
+        let ws = Workspace.make ~root:workspace.root ~packages:[] in
+        Tusk_planner.Package_graph.create ws |> Result.expect ~msg:"Failed to create empty package graph"
   in
   let updated_state = { state with workspace; package_graph; load_errors } in
 
@@ -463,7 +471,9 @@ let write_daemon_files ~workspace ~port =
 
   let _ = Fs.write (Int.to_string pid) pid_file in
   let _ = Fs.write (Int.to_string port) port_file in
-  Log.debug "Wrote daemon files: pid=%d, port=%d" pid port
+  Log.debug
+    ("Wrote daemon files: pid=" ^ Int.to_string pid ^ ", port="
+    ^ Int.to_string port)
 
 let start_with_listener () =
   try
@@ -473,10 +483,10 @@ let start_with_listener () =
       Env.current_dir ()
       |> Result.expect ~msg:"tusk_server: could not get current dir"
     in
-    Log.debug "Got current directory: %s" (Path.to_string current_dir);
+    Log.debug ("Got current directory: " ^ Path.to_string current_dir);
 
     let server_pid = self () in
-    Log.trace "Server PID: %s" (Pid.to_string server_pid);
+    Log.trace ("Server PID: " ^ Pid.to_string server_pid);
 
     Log.info "Scanning workspace...";
     let (workspace, load_errors) =
@@ -484,16 +494,19 @@ let start_with_listener () =
       |> Result.expect ~msg:"tusk_server: workspace scan failed"
     in
     if List.length load_errors > 0 then (
-      Log.warn "Workspace loaded with %d package load errors:" (List.length load_errors);
+      Log.warn
+        ("Workspace loaded with " ^ Int.to_string (List.length load_errors)
+        ^ " package load errors:");
       List.iter (fun err ->
-        Log.warn "  %s" (Workspace_manager.load_error_to_string err)
+        Log.warn ("  " ^ Workspace_manager.load_error_to_string err)
       ) load_errors
     );
-    Log.info "Workspace scanned successfully: %d packages found"
-      (List.length workspace.packages);
+    Log.info
+      ("Workspace scanned successfully: "
+      ^ Int.to_string (List.length workspace.packages) ^ " packages found");
 
     let port = Workspace.server_port workspace in
-    Log.debug "Using workspace-specific port: %d" port;
+    Log.debug ("Using workspace-specific port: " ^ Int.to_string port);
 
     Log.info "Ensuring Tusk directories exist...";
     let _ = Tusk_model.Tusk_dirs.ensure_created () in
@@ -518,13 +531,12 @@ let start_with_listener () =
       | Error (Tusk_planner.Package_graph.MissingPackages { missing }) ->
           Log.warn "Package graph has missing dependencies at startup:";
           List.iter (fun { Tusk_planner.Package_graph.package; dependency } ->
-            Log.warn "  %s requires: %s" package dependency
+            Log.warn ("  " ^ package ^ " requires: " ^ dependency)
           ) missing;
           Log.warn "Build operations will report this error to clients.";
           (* Create an empty graph - actual build will fail with proper error *)
-          (match Workspace.make ~root:workspace.root ~packages:[] with
-          | Ok ws -> Tusk_planner.Package_graph.create ws |> Result.expect ~msg:"Failed to create empty package graph"
-          | Error _ -> panic "Failed to create empty workspace")
+          let ws = Workspace.make ~root:workspace.root ~packages:[] in
+          Tusk_planner.Package_graph.create ws |> Result.expect ~msg:"Failed to create empty package graph"
     in
     let state =
       {
@@ -537,12 +549,12 @@ let start_with_listener () =
       }
     in
 
-    Log.info "Starting JSON-RPC server on port %d..." port;
+    Log.info ("Starting JSON-RPC server on port " ^ Int.to_string port ^ "...");
     let _ = Jsonrpc_server.start_tcp_server ~server:server_pid ~port in
     Log.info "JSON-RPC server started successfully";
 
     Log.info "Tusk server entering main loop";
     loop state
   with exn ->
-    Log.error "Server initialization failed: %s" (Printexc.to_string exn);
+    Log.error ("Server initialization failed: " ^ Exception.to_string exn);
     Error exn

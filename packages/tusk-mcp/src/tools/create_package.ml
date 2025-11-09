@@ -97,7 +97,7 @@ type response =
   | Error of string
 
 let execute (client : Tusk_client.t) (req : request) : response =
-  Log.debug "[CREATE_PACKAGE TOOL] execute() called with name: %s" req.name;
+  Log.debug ("[CREATE_PACKAGE TOOL] execute() called with name: " ^ req.name);
 
   let result =
     Tusk_client.create_package client ~name:req.name ~deps:req.deps
@@ -109,7 +109,7 @@ let execute (client : Tusk_client.t) (req : request) : response =
       Log.debug "[CREATE_PACKAGE TOOL] Package created successfully";
       CreatePackageResult { path; name = req.name; files_created = files }
   | Error msg ->
-      Log.error "[CREATE_PACKAGE TOOL] Error: %s" msg;
+      Log.error ("[CREATE_PACKAGE TOOL] Error: " ^ msg);
       Error msg
 
 let response_to_json = function
@@ -124,10 +124,9 @@ let response_to_json = function
                     ("type", Json.String "text");
                     ( "text",
                       Json.String
-                        (format
-                           "Created package '%s' at %s\n\nFiles created:\n%s"
-                           name path
-                           (String.concat "\n" files_created)) );
+                        ("Created package '" ^ name ^ "' at " ^ path
+                        ^ "\n\nFiles created:\n"
+                        ^ String.concat "\n" files_created) );
                   ];
               ] );
           ("isError", Json.Bool false);

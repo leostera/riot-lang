@@ -34,7 +34,7 @@ let handle_start _matches =
       match Fs.read_to_string pid_file with
       | Ok pid_str ->
           let pid = int_of_string (String.trim pid_str) in
-          println "Server is already running (PID %d)" pid;
+          println ("Server is already running (PID " ^ Int.to_string pid ^ ")");
           Ok ()
       | Error _ ->
           println "Error: Failed to read PID file";
@@ -56,7 +56,7 @@ let handle_stop _matches =
       match Fs.read_to_string pid_file with
       | Ok pid_str ->
           let pid = int_of_string (String.trim pid_str) in
-          println "Stopping server process (PID %d)..." pid;
+          println ("Stopping server process (PID " ^ Int.to_string pid ^ ")...");
           let _ = Fs.remove_file pid_file in
           let _ = Fs.remove_file port_file in
           println "Server stopped (daemon files removed)";
@@ -78,7 +78,7 @@ let handle_kill _matches =
       match Fs.read_to_string pid_file with
       | Ok pid_str ->
           let pid = int_of_string (String.trim pid_str) in
-          println "Stopping server process (PID %d)..." pid;
+          println ("Stopping server process (PID " ^ Int.to_string pid ^ ")...");
           let _ = Fs.remove_file pid_file in
           let _ = Fs.remove_file port_file in
           println "Cleaned up daemon files";
@@ -106,9 +106,9 @@ let handle_status _matches =
           let port = int_of_string (String.trim port_str) in
 
           println "Server status:";
-          println "  PID:  %d" pid;
-          println "  Port: %d" port;
-          println "  Logs: %s" (Path.to_string daemon_path);
+          println ("  PID:  " ^ Int.to_string pid);
+          println ("  Port: " ^ Int.to_string port);
+          println ("  Logs: " ^ Path.to_string daemon_path);
 
           match Std.Net.TcpClient.connect ~host:"127.0.0.1" ~port with
           | Ok stream ->
@@ -146,7 +146,7 @@ let run matches =
   | Some "foreground" -> handle_foreground matches
   | None -> handle_foreground matches
   | Some action ->
-      println "Unknown server subcommand: %s" action;
+      println ("Unknown server subcommand: " ^ action);
       println "Available subcommands:";
       println "  tusk server            - Start server in foreground";
       println "  tusk server start      - Start server in background";

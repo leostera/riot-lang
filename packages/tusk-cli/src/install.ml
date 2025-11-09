@@ -1,4 +1,5 @@
 open Std
+open Std.Collections
 open Tusk_model
 open Tusk_model
 open Tusk_server
@@ -24,20 +25,23 @@ let build_package package_name =
   if Result.is_error client_result then false
   else
     let client = client_result |> Result.expect ~msg:"Operation failed" in
-    let displayed_packages = Hashtbl.create 32 in
+    let displayed_packages = HashMap.create () in
     let result =
       Tusk_client.build_streaming client (Tusk_client.BuildPackage package_name)
         (function
         | Tusk_client.BuildStarted session_id -> ()
         | Tusk_client.BuildEvent _event -> ()
         | Tusk_client.BuildCompleted _ -> ()
-        | Tusk_client.BuildFailed _ -> ())
+        | Tusk_client.BuildFailed _ -> ()
+        | Tusk_client.PlanningFailed _ -> ()
+        | Tusk_client.CycleDetected _ -> ())
     in
     Tusk_client.close client;
     match result with
     | Ok (Tusk_client.BuildCompleted _) -> true
     | Ok (Tusk_client.BuildFailed _) -> false
     | Ok (Tusk_client.BuildStarted _ | Tusk_client.BuildEvent _) -> false
+    | Ok (Tusk_client.PlanningFailed _ | Tusk_client.CycleDetected _) -> false
     | Error _ -> false
 
 let run matches =
@@ -47,7 +51,7 @@ let run matches =
   in
   let local_only = get_flag matches "local" in
 
-  println "📦 Installing %s..." binary_name;
+  println ("📦 Installing " ^ binary_name ^ "...");
 
   (* First, find which package contains this binary *)
   let cwd = Env.current_dir () |> Result.expect ~msg:"Failed to get cwd" in
@@ -62,9 +66,11 @@ let run matches =
   match Tusk_client.find_executable client binary_name with
   | Ok (Some (package_name, _binary)) -> (
       Tusk_client.close client;
-      println "Building %s (from package %s)..." binary_name package_name;
+      println
+        ("Building " ^ binary_name ^ " (from package " ^ package_name ^ ")...");
       if not (build_package package_name) then (
-        println "\n❌ Failed to build %s, nothing was installed" binary_name;
+        println
+          ("\n❌ Failed to build " ^ binary_name ^ ", nothing was installed");
         Error (Failure ("Failed to build " ^ binary_name)))
       else
         let root =
@@ -93,7 +99,7 @@ let run matches =
             possible_binary_paths
         with
         | None ->
-            println "❌ Binary %s not found after build" binary_name;
+            println ("❌ Binary " ^ binary_name ^ " not found after build");
             println
               "Note: Only packages with binaries in [[bin]] can be installed";
             Error (Failure ("Binary not found: " ^ binary_name))
@@ -105,8 +111,9 @@ let run matches =
             (match Fs.copy ~src:binary_path ~dst:project_binary with
             | Ok () ->
                 ignore (Fs.set_permissions project_binary perms);
-                println "✅ Promoted %s to %s" binary_name
-                  (Path.to_string project_binary)
+                println
+                  ("✅ Promoted " ^ binary_name ^ " to "
+                  ^ Path.to_string project_binary)
             | Error _ -> println "⚠️  Failed to promote to project root");
 
             (* If not --local, also install to ~/.tusk/bin *)
@@ -123,12 +130,13 @@ let run matches =
                match Fs.copy ~src:binary_path ~dst:dest_path with
                | Ok () ->
                    ignore (Fs.set_permissions dest_path perms);
-                   println "✅ Installed %s to %s" binary_name
-                     (Path.to_string dest_path);
+                   println
+                     ("✅ Installed " ^ binary_name ^ " to "
+                     ^ Path.to_string dest_path);
                    println "";
                    println
-                     "To use %s from anywhere, add ~/.tusk/bin to your PATH:"
-                     binary_name;
+                     ("To use " ^ binary_name
+                     ^ " from anywhere, add ~/.tusk/bin to your PATH:");
                    println "  export PATH='$HOME/.tusk/bin:$PATH'"
                | Error _ ->
                    println "⚠️  Failed to install to ~/.tusk/bin (non-fatal)");
@@ -136,10 +144,10 @@ let run matches =
             Ok ())
   | Ok None ->
       Tusk_client.close client;
-      println "❌ Binary '%s' not found in workspace" binary_name;
+      println ("❌ Binary '" ^ binary_name ^ "' not found in workspace");
       println "Note: Make sure the binary is declared in a [[bin]] section";
       Error (Failure ("Binary not found: " ^ binary_name))
   | Error msg ->
       Tusk_client.close client;
-      println "❌ Error: %s" msg;
+      println ("❌ Error: " ^ msg);
       Error (Failure msg)

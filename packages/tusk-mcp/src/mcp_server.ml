@@ -601,11 +601,11 @@ let start_stdio_server ~client =
     match Fs.File.read_line stdin_file with
     | Ok line -> (
         try
-          let reply msg = println "%s" msg in
+          let reply msg = println msg in
           Jsonrpc.Server.handle_message mcp_server reply line;
           server_loop ()
         with exn ->
-          println "Something went wrong: %s" (Printexc.to_string exn);
+          println ("Something went wrong: " ^ Exception.to_string exn);
           server_loop ())
     | Error _ -> ()
   in

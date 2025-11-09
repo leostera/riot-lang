@@ -1,4 +1,5 @@
 open Std
+open Std.Collections
 open Tusk_model
 open Tusk_planner
 open Tusk_store

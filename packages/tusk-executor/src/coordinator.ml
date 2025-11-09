@@ -1,5 +1,6 @@
 open Std
 open Std.Collections
+open Std.Type
 
 open Tusk_model
 open Tusk_planner
@@ -54,12 +55,13 @@ and handle_task_completed state result =
   Build_queue.mark_completed state.queue result;
 
   (* Don't emit BuildCompleted/BuildFailed here - package_builder already emits them *)
-  Log.info "Package %s: %s (%dms)" result.package.Package.name
-    (match result.status with
-    | Cached _ -> "cached"
-    | Built _ -> "built"
-    | Failed _ -> "failed")
-    (Time.Duration.to_millis result.duration);
+  Log.info
+    ("Package " ^ result.package.Package.name ^ ": "
+    ^ (match result.status with
+      | Cached _ -> "cached"
+      | Built _ -> "built"
+      | Failed _ -> "failed")
+    ^ " (" ^ Int.to_string (Time.Duration.to_millis result.duration) ^ "ms)");
 
   loop state
 
@@ -79,9 +81,10 @@ and handle_worker_ready state worker =
 and handle_build_completed state =
   let _, _, _, completed, succeeded, failed = Build_queue.stats state.queue in
   Log.info
-    "Workspace build: all done, completed=%d succeeded=%d failed=%d total=%d"
-    completed succeeded failed
-    (List.length state.packages);
+    ("Workspace build: all done, completed=" ^ Int.to_string completed
+    ^ " succeeded=" ^ Int.to_string succeeded ^ " failed="
+    ^ Int.to_string failed ^ " total="
+    ^ Int.to_string (List.length state.packages));
   ()
 
 let init ~workspace ~toolchain ~store ~package_graph ~packages ~concurrency =
@@ -119,8 +122,9 @@ let build_workspace ~workspace ~toolchain ~store ~target ~concurrency =
       Telemetry.emit
         (WorkspaceStarted { target; package_count = List.length packages });
 
-      Log.info "Building %d packages with %d workers" (List.length packages)
-        concurrency;
+      Log.info
+        ("Building " ^ Int.to_string (List.length packages)
+        ^ " packages with " ^ Int.to_string concurrency ^ " workers");
 
       match Package_graph.topological_sort package_graph with
       | exception Package_graph.Cycle_detected cycle ->

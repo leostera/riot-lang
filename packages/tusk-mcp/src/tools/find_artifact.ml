@@ -100,8 +100,8 @@ let execute (client : Tusk_client.t) (req : request) : response =
             ("found", Json.Bool false);
             ( "message",
               Json.String
-                ("Binary '" ^ req.name ^ "' in package '" ^
-                   req.package msg) );
+                ("Binary '" ^ req.name ^ "' in package '" ^ req.package
+                ^ "' not found: " ^ msg) );
             ( "hint",
               Json.String
                 "The binary may not have been built yet. Try running \

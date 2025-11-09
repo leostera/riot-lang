@@ -55,21 +55,21 @@ let queue t (node : package_node) =
       if Option.is_some (HashMap.get t.busy_tasks pkg_name) then ()
       else if is_in_queue t.ready_queue node.id then ()
       else if is_in_queue t.later_queue node.id then ()
-      else Queue.enqueue t.ready_queue node
+      else Queue.push t.ready_queue node
 
 let requeue_with_deps t (node : package_node) ~(deps : package_node list) =
   let pkg_name = get_package_name node in
   let _ = HashMap.remove t.busy_tasks pkg_name in
   if not (is_in_queue t.later_queue node.id) then
-    Queue.enqueue t.later_queue node;
+    Queue.push t.later_queue node;
   List.iter (fun dep -> queue t dep) deps
 
 let next t =
   let rec find_ready checked =
-    match Queue.dequeue t.ready_queue with
+    match Queue.pop t.ready_queue with
     | None ->
         (* Ready queue exhausted, move checked items to later queue *)
-        List.iter (fun node -> Queue.enqueue t.later_queue node) checked;
+        List.iter (fun node -> Queue.push t.later_queue node) checked;
         (* Transfer later to ready and try again if we haven't checked anything yet *)
         if checked = [] && not (Queue.is_empty t.later_queue) then (
           Queue.transfer ~src:t.later_queue ~dst:t.ready_queue;
@@ -78,7 +78,7 @@ let next t =
     | Some node ->
         if dependencies_satisfied t node then (
           (* Dependencies satisfied, return this node *)
-          List.iter (fun n -> Queue.enqueue t.ready_queue n) checked;
+          List.iter (fun n -> Queue.push t.ready_queue n) checked;
           let pkg_name = get_package_name node in
           let _ = HashMap.insert t.busy_tasks pkg_name node in
           Some node)

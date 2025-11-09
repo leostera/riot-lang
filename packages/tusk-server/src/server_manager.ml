@@ -5,24 +5,29 @@ open Tusk_model
     background *)
 
 let ensure_running ~(workspace : Workspace.t) =
-  Log.debug "ensure_running: Getting daemon for workspace root=%s"
-    (Path.to_string workspace.root);
+  Log.debug
+    ("ensure_running: Getting daemon for workspace root="
+    ^ Path.to_string workspace.root);
   (* 1. Get a daemon for the workspace *)
   let daemon =
     Daemon.of_workspace ~workspace
     |> Result.expect ~msg:"Failed to get daemon info from workspace"
   in
-  Log.debug "ensure_running: Got daemon at %s:%d (PID %d)" daemon.host
-    daemon.port daemon.os_pid;
+  Log.debug
+    ("ensure_running: Got daemon at " ^ daemon.host ^ ":"
+    ^ Int.to_string daemon.port ^ " (PID " ^ Int.to_string daemon.os_pid ^ ")");
 
   (* 2. Wait for server to be ready *)
   let rec wait_server ~retries ~(daemon : Daemon.t) =
-    Log.debug "wait_server: Attempting connection to %s:%d (retries left: %d)"
-      daemon.host daemon.port retries;
+    Log.debug
+      ("wait_server: Attempting connection to " ^ daemon.host ^ ":"
+      ^ Int.to_string daemon.port ^ " (retries left: "
+      ^ Int.to_string retries ^ ")");
     if retries <= 0 then (
       Log.warn "Failed to connect to server after 10 retries";
-      Log.warn "Server (PID %d) not responding, cleaning up and restarting..."
-        daemon.os_pid;
+      Log.warn
+        ("Server (PID " ^ Int.to_string daemon.os_pid
+        ^ ") not responding, cleaning up and restarting...");
 
       (* Clean up stale daemon files *)
       let daemon_path = Daemon.daemon_dir ~workspace:daemon.workspace in
@@ -34,7 +39,9 @@ let ensure_running ~(workspace : Workspace.t) =
       (* Try to start a new daemon *)
       match Daemon.of_workspace ~workspace:daemon.workspace with
       | Ok new_daemon ->
-          println "Started new tusk server (PID %d)..." new_daemon.os_pid;
+          println
+            ("Started new tusk server (PID " ^ Int.to_string new_daemon.os_pid
+            ^ ")...");
           wait_server ~retries:10 ~daemon:new_daemon
       | Error e ->
           Log.error "Failed to restart server";
@@ -49,13 +56,13 @@ let ensure_running ~(workspace : Workspace.t) =
               Log.debug "Ping successful!";
               Ok client
           | Error e ->
-              Log.debug "Ping failed: %s, retrying..." e;
+              Log.debug ("Ping failed: " ^ e ^ ", retrying...");
               Tusk_client.close client;
               Kernel.Time.sleep 0.05;
               (* 50ms *)
               wait_server ~retries:(retries - 1) ~daemon)
       | Error e ->
-          Log.info "Failed to create client: %s (retrying in 50ms)" e;
+          Log.info ("Failed to create client: " ^ e ^ " (retrying in 50ms)");
           Kernel.Time.sleep 0.05;
           (* 50ms *)
           wait_server ~retries:(retries - 1) ~daemon

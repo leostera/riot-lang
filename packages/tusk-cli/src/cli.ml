@@ -38,24 +38,23 @@ let set_verbosity verbose =
   | 2 -> Log.(set_level Debug)
   | _ -> Log.(set_level Trace)
 
-let main ~args:argv =
-  let open ArgParser in
+let main ~args =
   (* Using Std.Log and Std.Telemetry instead of custom Tusk_log *)
   Std.Log.set_level Info;
   let _ = Std.Telemetry.start () in
 
   (* Ensure ~/.tusk directories exist *)
-  let _ = Tusk_model.Tusk_dirs.ensure_created () in
+  Tusk_model.Tusk_dirs.ensure_created () |> Result.expect ~msg:"Could not create tusk dirs";
 
-  match get_matches cli argv with
+  match ArgParser.get_matches cli args with
   | Error err ->
-      print_error err;
+      ArgParser.print_error err;
       Error (Failure "Argument parsing failed")
   | Ok matches -> (
-      let verbose = get_count matches "verbose" in
+      let verbose = ArgParser.get_count matches "verbose" in
       set_verbosity verbose;
 
-      match get_subcommand matches with
+      match ArgParser.get_subcommand matches with
       | Some ("build", build_matches) -> Build.run build_matches
       | Some ("run", run_matches) -> Run.run run_matches
       | Some ("clean", clean_matches) -> Clean.run clean_matches

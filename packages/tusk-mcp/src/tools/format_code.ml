@@ -77,10 +77,12 @@ let execute (client : Tusk_client.t) (req : request) : response =
 
   match result with
   | Ok (formatted_code, changed) ->
-      Log.debug "[FORMAT_CODE TOOL] Formatting completed, changed: %b" changed;
+      Log.debug
+        ("[FORMAT_CODE TOOL] Formatting completed, changed: "
+        ^ Bool.to_string changed);
       FormatResult { formatted_code; changed }
   | Error msg ->
-      Log.error "[FORMAT_CODE TOOL] Error: %s" msg;
+      Log.error ("[FORMAT_CODE TOOL] Error: " ^ msg);
       Error msg
 
 let response_to_json = function

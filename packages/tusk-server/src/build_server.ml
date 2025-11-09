@@ -9,8 +9,8 @@ open Tusk_executor
 
 let init ~workspace ~load_errors ~toolchain ~store ~concurrency ~session_id ~client_pid
     ~server_pid ~target =
-  Log.debug "Build worker started for session %s"
-    (Session_id.to_string session_id);
+  Log.debug
+    ("Build worker started for session " ^ Session_id.to_string session_id);
 
   send client_pid
     (Protocol.ServerResponse
@@ -139,7 +139,7 @@ let init ~workspace ~load_errors ~toolchain ~store ~concurrency ~session_id ~cli
       | Tusk_planner.Workspace_planner.MissingDependencies { missing } ->
           Log.error "Planning failed: Missing dependencies";
           List.iter (fun { Tusk_planner.Package_graph.package; dependency } ->
-            Log.error "  %s requires: %s" package dependency
+            Log.error ("  " ^ package ^ " requires: " ^ dependency)
           ) missing;
           
           (* Group missing deps by package for cleaner error messages *)
@@ -170,7 +170,7 @@ let init ~workspace ~load_errors ~toolchain ~store ~concurrency ~session_id ~cli
       | Tusk_planner.Workspace_planner.PackageLoadFailed { errors } ->
           Log.error "Planning failed: Could not load external packages";
           List.iter (fun err ->
-            Log.error "  %s" (Workspace_manager.load_error_to_string err)
+            Log.error ("  " ^ Workspace_manager.load_error_to_string err)
           ) errors;
           
           let error_msg = 

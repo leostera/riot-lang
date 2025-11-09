@@ -105,8 +105,9 @@ let run_action ocamlc sandbox_dir action =
           (match Fs.set_permissions abs_output (Fs.Permissions.of_mode 0o755) with
           | Ok () -> result
           | Error err ->
-              Log.warn "Failed to set executable permissions on %s: %s"
-                (Path.to_string abs_output) (IO.error_message err);
+              Log.warn
+                ("Failed to set executable permissions on "
+                ^ Path.to_string abs_output ^ ": " ^ IO.error_message err);
               result)
       | _ -> result)
   | Action.CompileInterface { outputs = []; _ }
@@ -131,7 +132,7 @@ let run_action ocamlc sandbox_dir action =
       | Ok () -> Tusk_toolchain.Ocamlc.Success "Written"
       | Error err ->
           let msg = IO.error_message err in
-          Log.error "WriteFile: failed - %s" msg;
+          Log.error ("WriteFile: failed - " ^ msg);
           Tusk_toolchain.Ocamlc.Failed
             ("Write failed: " ^ Path.to_string destination ^ " - " ^ msg))
 
@@ -170,8 +171,9 @@ let execute_node ~completed toolchain sandbox_dir (node : Action_node.t) =
   let start = Instant.now () in
 
   if has_failed_dependencies completed node then (
-    Log.info "Action node %s: Skipped (failed dependencies)"
-      (G.Node_id.to_string node.id);
+    Log.info
+      ("Action node " ^ G.Node_id.to_string node.id
+      ^ ": Skipped (failed dependencies)");
     let now = Instant.now () in
     {
       node_id = node.id;
@@ -262,8 +264,9 @@ let execute ~action_graph ~sandbox ~store:_ toolchain ~concurrency:_ =
   let sorted_nodes = Action_graph.nodes action_graph in
   let total_nodes = List.length sorted_nodes in
 
-  Log.info "Starting action executor (sequential, no caching): total_nodes=%d"
-    total_nodes;
+  Log.info
+    ("Starting action executor (sequential, no caching): total_nodes="
+    ^ Int.to_string total_nodes);
 
   let completed = HashMap.create () in
 
@@ -279,20 +282,23 @@ let execute ~action_graph ~sandbox ~store:_ toolchain ~concurrency:_ =
         | Failed _ -> "failed"
         | Skipped -> "skipped"
       in
-      Log.info "Action node %s completed: %s (%dms)"
-        (G.Node_id.to_string result.node_id)
-        status_str
-        (Duration.to_millis result.duration);
+      Log.info
+        ("Action node " ^ G.Node_id.to_string result.node_id ^ " completed: "
+        ^ status_str ^ " ("
+        ^ Int.to_string (Duration.to_millis result.duration)
+        ^ "ms)");
 
       match result.status with
       | Failed (ExecutionFailed { message }) ->
-          Log.error "Action failed: %s" message
+          Log.error ("Action failed: " ^ message)
       | Failed (OutputsNotCreated { missing }) ->
-          Log.error "Expected outputs not created: %s"
-            (String.concat ", " (List.map Path.to_string missing))
+          Log.error
+            ("Expected outputs not created: "
+            ^ String.concat ", " (List.map Path.to_string missing))
       | Failed (DependenciesFailed { failed }) ->
-          Log.error "Action dependencies failed: %s"
-            (String.concat ", " (List.map G.Node_id.to_string failed))
+          Log.error
+            ("Action dependencies failed: "
+            ^ String.concat ", " (List.map G.Node_id.to_string failed))
       | Skipped -> Log.warn "Action skipped due to failed dependencies"
       | _ -> ())
     sorted_nodes;
@@ -313,7 +319,9 @@ let execute ~action_graph ~sandbox ~store:_ toolchain ~concurrency:_ =
   in
 
   Log.info
-    "Action executor: all done, completed=%d succeeded=%d failed=%d total=%d"
-    (HashMap.len completed) succeeded failed total_nodes;
+    ("Action executor: all done, completed="
+    ^ Int.to_string (HashMap.len completed)
+    ^ " succeeded=" ^ Int.to_string succeeded ^ " failed="
+    ^ Int.to_string failed ^ " total=" ^ Int.to_string total_nodes);
 
   { completed }

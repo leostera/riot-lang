@@ -142,9 +142,11 @@ module Iter = Iter
 (** Iteration and cursor utilities for sequences and parsing *)
 
 module Bool = Bool
+module Float = Float
 module Int = Int
 module Int32 = Int32
 module Int64 = Int64
+module List = Collections.List
 
 module Log = Log
 (** Structured logging *)
@@ -180,6 +182,10 @@ module Sync = Sync
 
 module System = System
 (** System information and operations *)
+
+
+module Type = Type
+(** Type-level utilities *)
 
 module Task = Task
 (** Asynchronous task execution *)

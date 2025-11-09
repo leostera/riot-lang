@@ -1,4 +1,5 @@
 open Std
+open Std.Collections
 open Tusk_model
 
 (** Library Definition - Analyzes directory contents to determine library
@@ -98,7 +99,7 @@ let from_entries ~namespace ~library_name ~package_path ~binaries children =
         match e with
         | Module_scanner.ML (n, p) | Module_scanner.MLI (n, p) ->
             let file_module_name =
-              Filename.remove_extension n
+              Path.remove_extension (Path.v n) |> Path.to_string
               |> Module_name.of_string |> Module_name.to_string
             in
             if file_module_name = library_module_name then None
@@ -138,7 +139,7 @@ let from_entries ~namespace ~library_name ~package_path ~binaries children =
         match e with
         | Module_scanner.ML (n, p) ->
             let file_module_name =
-              Filename.remove_extension n
+              Path.remove_extension (Path.v n) |> Path.to_string
               |> Module_name.of_string |> Module_name.to_string
             in
             if file_module_name = library_module_name then Some p else None
@@ -152,7 +153,7 @@ let from_entries ~namespace ~library_name ~package_path ~binaries children =
         match e with
         | Module_scanner.MLI (n, p) ->
             let file_module_name =
-              Filename.remove_extension n
+              Path.remove_extension (Path.v n) |> Path.to_string
               |> Module_name.of_string |> Module_name.to_string
             in
             if file_module_name = library_module_name then Some p else None
@@ -169,7 +170,7 @@ let from_entries ~namespace ~library_name ~package_path ~binaries children =
         match e with
         | Module_scanner.ML (n, _) | Module_scanner.MLI (n, _) ->
             let file_module_name =
-              Filename.remove_extension n
+              Path.remove_extension (Path.v n) |> Path.to_string
               |> Module_name.of_string |> Module_name.to_string
             in
             file_module_name != library_module_name

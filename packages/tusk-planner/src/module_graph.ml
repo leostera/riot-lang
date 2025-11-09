@@ -31,6 +31,7 @@
     - Generated vs concrete library interface modules *)
 
 open Std
+open Std.Collections
 open Tusk_model
 module G = Std.Graph.SimpleGraph
 
@@ -110,6 +111,9 @@ let rec do_scan ~t ~ctx entries =
       | Module_scanner.ML (_, path) | Module_scanner.MLI (_, path) ->
           handle_ocaml_module ~t ~ctx path;
           do_scan ~t ~ctx rest
+      | Module_scanner.C (_, _) | Module_scanner.H (_, _) ->
+          (* C and H files are handled separately in action_graph.ml *)
+          do_scan ~t ~ctx rest
       | Module_scanner.Other _ -> do_scan ~t ~ctx rest
       | Module_scanner.Dir (name, path, children) ->
           handle_library ~t ~ctx path name children;
@@ -152,13 +156,15 @@ and handle_ocaml_module ~t ~ctx path =
         let node_ids = Module_registry.get_by_name t.registry mod_name in
         List.iter
           (fun intf_node_id ->
-            let intf_node = G.get_node t.graph intf_node_id in
-            match intf_node.value.kind with
-            | MLI intf_mod
-              when Module.module_name intf_mod
-                   |> Module_name.to_string = mod_name ->
-                G.add_edge node ~depends_on:intf_node
-            | _ -> ())
+            match G.get_node t.graph intf_node_id with
+            | Some intf_node -> (
+                match intf_node.value.kind with
+                | MLI intf_mod
+                  when Module.module_name intf_mod
+                       |> Module_name.to_string = mod_name ->
+                    G.add_edge node ~depends_on:intf_node
+                | _ -> ())
+            | None -> ())
           node_ids
       with Not_found -> ())
   | `interface -> ());
@@ -299,9 +305,11 @@ and handle_library ~t ~ctx dir name children =
           in
           List.iter
             (fun child_node_id ->
-              let child_node = G.get_node t.graph child_node_id in
-              G.add_edge intf_node ~depends_on:child_node;
-              G.add_edge impl_node ~depends_on:child_node)
+              match G.get_node t.graph child_node_id with
+              | Some child_node ->
+                  G.add_edge intf_node ~depends_on:child_node;
+                  G.add_edge impl_node ~depends_on:child_node
+              | None -> ())
             child_node_ids
         with Not_found -> ())
       deps_for_library_interface
@@ -409,12 +417,13 @@ let wire_dependencies t sandbox_dir =
   in
 
   (* Build mapping from relative path -> raw deps (module names as strings) *)
-  let deps_by_path = Hashtbl.create (List.length file_deps_map) in
+  let deps_by_path = HashMap.with_capacity (List.length file_deps_map) in
   List.iter
     (fun (file, deps) ->
       (* Convert Module_name.t back to plain strings *)
       let dep_strs = List.map Module_name.to_string deps in
-      Hashtbl.add deps_by_path (Path.to_string file) dep_strs)
+      let _ = HashMap.insert deps_by_path (Path.to_string file) dep_strs in
+      ())
     file_deps_map;
 
   (* Match files to deps and resolve module names using the file's own namespace *)
@@ -430,7 +439,7 @@ let wire_dependencies t sandbox_dir =
           else Path.basename path
         in
 
-        match Hashtbl.find_opt deps_by_path rel_path with
+        match HashMap.get deps_by_path rel_path with
         | Some dep_names ->
             (* Get the namespace for this file from its directory *)
             let file_dir =
@@ -471,10 +480,12 @@ let wire_dependencies t sandbox_dir =
             in
             List.iter
               (fun dep_node_id ->
-                let dep_node = G.get_node t.graph dep_node_id in
-                match (node.value.kind, dep_node.value.kind) with
+                match G.get_node t.graph dep_node_id with
+                | None -> ()
+                 | Some dep_node ->
+                (match (node.value.kind, dep_node.value.kind) with
                 | Module_node.MLI _, Module_node.ML _ -> ()
-                | _ -> G.add_edge node ~depends_on:dep_node)
+                | _ -> G.add_edge node ~depends_on:dep_node))
               dep_node_ids
           with Not_found -> ())
         module_deps)

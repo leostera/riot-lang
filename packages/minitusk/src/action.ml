@@ -119,13 +119,10 @@ let execute_action ~project_root ~package_name action =
   | CompileInterface { sandbox_dir; src_file; output; includes; opens } -> (
       (* Build flags for open modules *)
       let base_flags = List.map (fun m -> Ocaml_platform.Open m) opens in
-      (* For non-kernel packages: add -nopervasives -nostdlib and open Kernel *)
+      (* For non-kernel packages: add -nopervasives -nostdlib *)
       let flags =
         if package_name = "Kernel" then base_flags
-        else
-          [ Ocaml_platform.Open "Kernel" ]
-          @ base_flags
-          @ [ Ocaml_platform.NoPervasives; Ocaml_platform.NoStdlib ]
+        else base_flags @ [ Ocaml_platform.NoPervasives; Ocaml_platform.NoStdlib ]
       in
       (* Now we're in sandbox_dir, so use relative paths *)
       match
@@ -141,16 +138,13 @@ let execute_action ~project_root ~package_name action =
       (* Now we're in sandbox_dir, so use relative paths *)
       (* Build flags for open modules *)
       let base_flags = List.map (fun m -> Ocaml_platform.Open m) opens in
-      (* For non-kernel packages: add -nopervasives -nostdlib and open Kernel *)
-      let kernel_open =
-        if package_name = "Kernel" then [] else [ Ocaml_platform.Open "Kernel" ]
-      in
+      (* For non-kernel packages: add -nopervasives -nostdlib *)
       let stdlib_flags =
         if package_name = "Kernel" then []
         else [ Ocaml_platform.NoPervasives; Ocaml_platform.NoStdlib ]
       in
       let flags =
-        kernel_open @ base_flags @ stdlib_flags
+        base_flags @ stdlib_flags
         @ Ocaml_platform.[ Impl src_file ]
         @ if is_aliases then Ocaml_platform.[ NoAliasDeps ] else []
       in

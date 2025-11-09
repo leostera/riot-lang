@@ -117,17 +117,16 @@ let init ~config =
               | Ok () -> Ok toolchain
               | Error err ->
                   Error
-                    (format
-                       "Failed to create toolchain symlink from %s to %s: %s"
-                       (Path.to_string toolchain_path)
-                       (Path.to_string abs_local) (IO.error_message err))))
+                    ("Failed to create toolchain symlink from " ^ 
+                     Path.to_string toolchain_path ^ " to " ^
+                     Path.to_string abs_local ^ ": " ^
+                     IO.error_message err)))
       | _ ->
           Error
-            (format
-               "Toolchain not found at %s and ./ocaml/compiler doesn't exist.\n\n\
-                To bootstrap the toolchain, run:\n\
-               \  ./ocaml/build-compiler.sh"
-               (Path.to_string toolchain_path)))
+            ("Toolchain not found at " ^ Path.to_string toolchain_path ^ 
+             " and ./ocaml/compiler doesn't exist.\n\n\
+              To bootstrap the toolchain, run:\n\
+             \  ./ocaml/build-compiler.sh"))
 
 let ensure_default_toolchain () =
   let default_config = Tusk_model.Toolchain_config.default in
@@ -146,8 +145,8 @@ let check_health toolchain =
       in
       match Command.output cmd with
       | Ok output when output.Command.status = 0 ->
-          Log.debug "Toolchain healthy: ocamlc version = %s"
-            (String.trim output.Command.stdout);
+          Log.debug ("Toolchain healthy: ocamlc version = " ^
+            String.trim output.Command.stdout);
           Ok ()
       | Ok output ->
           Error

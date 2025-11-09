@@ -1,4 +1,5 @@
 open Std
+open Std.Collections
 
 (** Module Scanner - Recursively scans directories for source files
 

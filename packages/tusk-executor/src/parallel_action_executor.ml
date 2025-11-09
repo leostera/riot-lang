@@ -1,6 +1,7 @@
 open Std
 open Std.Collections
 open Std.Time
+open Std.Type
 
 open Tusk_planner
 open Tusk_store
@@ -126,10 +127,14 @@ let run_action ocamlc sandbox_dir action =
   | Action.CreateExecutable
       { outputs = output :: _; objects; libraries; includes } -> (
       Log.debug
-        "[ACTION_EXECUTOR] CreateExecutable: output=%s, %d objects, %d \
-         libraries: [%s]"
-        (Path.to_string output) (List.length objects) (List.length libraries)
-        (String.concat ", " (List.map Path.to_string libraries));
+        ("[ACTION_EXECUTOR] CreateExecutable: output="
+        ^ Path.to_string output ^ ", "
+        ^ Int.to_string (List.length objects)
+        ^ " objects, "
+        ^ Int.to_string (List.length libraries)
+        ^ " libraries: ["
+        ^ String.concat ", " (List.map Path.to_string libraries)
+        ^ "]");
       let abs_output = Path.join sandbox_dir output in
       let abs_objects = List.map (Path.join sandbox_dir) objects in
 
@@ -147,8 +152,10 @@ let run_action ocamlc sandbox_dir action =
           includes
       in
 
-      Log.debug "[ACTION_EXECUTOR] Absolute libraries: [%s]"
-        (String.concat ", " (List.map Path.to_string abs_libraries));
+      Log.debug
+        ("[ACTION_EXECUTOR] Absolute libraries: ["
+        ^ String.concat ", " (List.map Path.to_string abs_libraries)
+        ^ "]");
       let result =
         Tusk_toolchain.Ocamlc.create_executable ocamlc ~cwd:sandbox_dir
           ~includes:abs_includes ~libs:abs_libraries ~output:abs_output
@@ -160,8 +167,9 @@ let run_action ocamlc sandbox_dir action =
           (match Fs.set_permissions abs_output (Fs.Permissions.of_mode 0o755) with
           | Ok () -> result
           | Error err ->
-              Log.warn "Failed to set executable permissions on %s: %s"
-                (Path.to_string abs_output) (IO.error_message err);
+              Log.warn
+                ("Failed to set executable permissions on "
+                ^ Path.to_string abs_output ^ ": " ^ IO.error_message err);
               result)
       | _ -> result)
   | Action.CompileInterface { outputs = []; _ }
@@ -185,16 +193,18 @@ let run_action ocamlc sandbox_dir action =
                (Path.to_string destination)))
   | Action.WriteFile { destination; content } -> (
       let dest_path = Path.join sandbox_dir destination in
-      Log.debug "WriteFile: writing to %s (%d bytes)" (Path.to_string dest_path)
-        (String.length content);
+      Log.debug
+        ("WriteFile: writing to " ^ Path.to_string dest_path ^ " ("
+        ^ Int.to_string (String.length content)
+        ^ " bytes)");
       match Fs.write content dest_path with
       | Ok () ->
-          Log.debug "WriteFile: success - file written to %s"
-            (Path.to_string dest_path);
+          Log.debug
+            ("WriteFile: success - file written to " ^ Path.to_string dest_path);
           Tusk_toolchain.Ocamlc.Success "Written"
       | Error err ->
           let msg = IO.error_message err in
-          Log.error "WriteFile: failed - %s" msg;
+          Log.error ("WriteFile: failed - " ^ msg);
           Tusk_toolchain.Ocamlc.Failed
             ("Write failed: " ^ Path.to_string destination ^ " - " ^ msg))
 
@@ -324,8 +334,9 @@ let execute ~action_graph ~sandbox ~store:_ toolchain ~concurrency =
   let sorted_nodes = Action_graph.nodes action_graph in
   let total_nodes = List.length sorted_nodes in
 
-  Log.info "Starting parallel action executor: total_nodes=%d concurrency=%d"
-    total_nodes concurrency;
+  Log.info
+    ("Starting parallel action executor: total_nodes="
+    ^ Int.to_string total_nodes ^ " concurrency=" ^ Int.to_string concurrency);
 
   let queue = Action_queue.create () in
 
@@ -365,9 +376,10 @@ let execute ~action_graph ~sandbox ~store:_ toolchain ~concurrency =
     if Action_queue.is_complete queue ~total_nodes then (
       let _, _, _, completed, succeeded, failed = Action_queue.stats queue in
       Log.info
-        "Action executor: all done, completed=%d succeeded=%d failed=%d \
-         total=%d"
-        completed succeeded failed total_nodes;
+        ("Action executor: all done, completed="
+        ^ Int.to_string completed
+        ^ " succeeded=" ^ Int.to_string succeeded ^ " failed="
+        ^ Int.to_string failed ^ " total=" ^ Int.to_string total_nodes);
       ())
     else
       match receive ~selector () with
@@ -376,12 +388,14 @@ let execute ~action_graph ~sandbox ~store:_ toolchain ~concurrency =
           | None ->
               let ready, waiting, busy, _, _, _ = Action_queue.stats queue in
               Log.debug
-                "No work available for worker (ready=%d waiting=%d busy=%d)"
-                ready waiting busy;
+                ("No work available for worker (ready="
+                ^ Int.to_string ready ^ " waiting=" ^ Int.to_string waiting
+                ^ " busy=" ^ Int.to_string busy ^ ")");
               dispatch_loop ()
           | Some node ->
-              Log.debug "Dispatching action node %s to worker"
-                (G.Node_id.to_string node.id);
+              Log.debug
+                ("Dispatching action node " ^ G.Node_id.to_string node.id
+                ^ " to worker");
               WorkerPool.DynamicWorkerPool.send_task pool worker node;
               dispatch_loop ())
       | `ActionCompleted result ->
@@ -395,20 +409,23 @@ let execute ~action_graph ~sandbox ~store:_ toolchain ~concurrency =
             | Skipped -> "skipped"
           in
 
-          Log.info "Action node %s completed: %s (%dms)"
-            (G.Node_id.to_string result.node_id)
-            status_str
-            (Duration.to_millis result.duration);
+          Log.info
+            ("Action node " ^ G.Node_id.to_string result.node_id
+            ^ " completed: " ^ status_str ^ " ("
+            ^ Int.to_string (Duration.to_millis result.duration)
+            ^ "ms)");
 
           (match result.status with
           | Failed (ExecutionFailed { message }) ->
-              Log.error "Action failed: %s" message
+              Log.error ("Action failed: " ^ message)
           | Failed (OutputsNotCreated { missing }) ->
-              Log.error "Expected outputs not created: %s"
-                (String.concat ", " (List.map Path.to_string missing))
+              Log.error
+                ("Expected outputs not created: "
+                ^ String.concat ", " (List.map Path.to_string missing))
           | Failed (DependenciesFailed { failed }) ->
-              Log.error "Action dependencies failed: %s"
-                (String.concat ", " (List.map G.Node_id.to_string failed))
+              Log.error
+                ("Action dependencies failed: "
+                ^ String.concat ", " (List.map G.Node_id.to_string failed))
           | Skipped -> Log.warn "Action skipped due to failed dependencies"
           | _ -> ());
 

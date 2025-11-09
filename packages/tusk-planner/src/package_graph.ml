@@ -1,5 +1,6 @@
 open Std
 open Std.Collections
+open Std.Iter
 open Tusk_model
 open Tusk_store
 module G = Graph.SimpleGraph
@@ -106,7 +107,7 @@ let create (workspace : Workspace.t) : (t, create_error) result =
     workspace.packages;
 
   if Vector.len missing > 0 then
-    Error (MissingPackages { missing = Vector.to_list missing })
+    Error (MissingPackages { missing = Vector.into_iter missing |> Iterator.to_list })
   else
     Ok { graph; name_to_node }
 
@@ -162,11 +163,13 @@ let filter_for_package pg pkg_name =
                 List.iter
                   (fun dep_id ->
                     if HashSet.contains reachable_set dep_id then
-                      let dep_node = G.get_node pg.graph dep_id in
-                      let dep_pkg = get_package dep_node.value in
-                      match HashMap.get filtered_name_to_node dep_pkg.name with
-                      | Some new_dep_node ->
-                          G.add_edge new_node ~depends_on:new_dep_node
+                      match G.get_node pg.graph dep_id with
+                      | Some dep_node ->
+                          let dep_pkg = get_package dep_node.value in
+                          (match HashMap.get filtered_name_to_node dep_pkg.name with
+                          | Some new_dep_node ->
+                              G.add_edge new_node ~depends_on:new_dep_node
+                          | None -> ())
                       | None -> ())
                   node.deps);
 
@@ -180,10 +183,9 @@ let topological_sort pg =
       let names =
         List.filter_map
           (fun id ->
-            try
-              let node : package_node G.node = G.get_node pg.graph id in
-              Some (get_package node.value).name
-            with _ -> None)
+            match G.get_node pg.graph id with
+            | Some node -> Some (get_package node.value).name
+            | None -> None)
           node_ids
       in
       raise (Cycle_detected names)

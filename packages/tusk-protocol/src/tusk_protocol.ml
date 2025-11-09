@@ -1626,10 +1626,11 @@ module WireProtocol = struct
                     Ok (BuildEvent { session_id; event })
                 | Error err ->
                     (* Skip events that can't be deserialized (like Action events) *)
-                    Log.debug "[PROTOCOL] Skipping BuildEvent: %s"
-                      (match err with
-                      | Json.String s -> s
-                      | _ -> "unknown error");
+                    Log.debug
+                      ("[PROTOCOL] Skipping BuildEvent: "
+                      ^ (match err with
+                        | Json.String s -> s
+                        | _ -> "unknown error"));
                     Error
                       (Json.String "BuildEvent skipped (deserialization failed)")
                 )

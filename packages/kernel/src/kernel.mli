@@ -22,6 +22,7 @@ module Global = Global
 module Effect = Effect
 module Exception = Printexc
 module Fun = Fun
+module Float = Float
 module Char = Char
 module Bool = Bool
 module Int = Int

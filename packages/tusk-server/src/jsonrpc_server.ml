@@ -1,4 +1,5 @@
 open Std
+open Std.IO
 
 open Tusk_model
 
@@ -59,8 +60,9 @@ module Server = struct
     }
 
   let handle_ping ctx reply _request =
-    Log.info "[JSONRPC] >>> handle_ping called (client_pid=%s)"
-      (Pid.to_string (self ()));
+    Log.info
+      ("[JSONRPC] >>> handle_ping called (client_pid="
+      ^ Pid.to_string (self ()) ^ ")");
     send ctx.server_pid
       (Protocol.ServerRequest (Protocol.Ping { client_pid = self () }));
     Log.debug "[JSONRPC]     Sent Ping to server, awaiting Pong...";
@@ -74,7 +76,8 @@ module Server = struct
         Log.info "[JSONRPC] <<< handle_ping responding with Pong";
         reply WireProtocol.Pong
     | exception e ->
-        Log.error "[JSONRPC] handle_ping exception: %s" (Printexc.to_string e)
+        Log.error
+          ("[JSONRPC] handle_ping exception: " ^ Exception.to_string e)
 
   let handle_get_workspace_config ctx reply _request =
     Log.info "[JSONRPC] >>> handle_get_workspace_config called";
@@ -119,8 +122,9 @@ module Server = struct
   let handle_get_package_info ctx reply request =
     match request with
     | WireProtocol.GetPackageInfo package_name ->
-        Log.info "[JSONRPC] >>> handle_get_package_info called (package=%s)"
-          package_name;
+        Log.info
+          ("[JSONRPC] >>> handle_get_package_info called (package="
+          ^ package_name ^ ")");
         send ctx.server_pid
           (Protocol.ServerRequest
              (Protocol.GetPackageInfo { client_pid = self (); package_name }));
@@ -163,7 +167,9 @@ module Server = struct
     in
     match receive ~selector () with
     | Protocol.ServerResponse (Protocol.PackageGraph { nodes }) ->
-        Log.info "[JSONRPC] <<< PackageGraph received (%d nodes)" (List.length nodes);
+        Log.info
+          ("[JSONRPC] <<< PackageGraph received ("
+          ^ Int.to_string (List.length nodes) ^ " nodes)");
         let wire_nodes =
           List.map
             (fun (pkg : Package.t) ->
@@ -185,7 +191,8 @@ module Server = struct
   let handle_find_executable ctx reply request =
     match request with
     | WireProtocol.FindExecutable name ->
-        Log.info "[JSONRPC] >>> handle_find_executable called (name=%s)" name;
+        Log.info
+          ("[JSONRPC] >>> handle_find_executable called (name=" ^ name ^ ")");
         send ctx.server_pid
           (Protocol.ServerRequest
              (Protocol.FindExecutable { client_pid = self (); name }));
@@ -200,8 +207,9 @@ module Server = struct
         (match receive ~selector () with
         | Protocol.ServerResponse (Protocol.ExecutableFound { package; binary })
           ->
-            Log.info "[JSONRPC] <<< ExecutableFound: package=%s binary=%s" package
-              binary;
+            Log.info
+              ("[JSONRPC] <<< ExecutableFound: package=" ^ package ^ " binary="
+              ^ binary);
             reply (WireProtocol.ExecutableFound { package; binary })
         | Protocol.ServerResponse Protocol.ExecutableNotFound ->
             Log.info "[JSONRPC] <<< ExecutableNotFound";
@@ -215,8 +223,9 @@ module Server = struct
   let handle_find_artifact ctx reply request =
     match request with
     | WireProtocol.FindArtifact { package; kind; name } ->
-        Log.info "[JSONRPC] >>> handle_find_artifact called (package=%s, name=%s)"
-          package name;
+        Log.info
+          ("[JSONRPC] >>> handle_find_artifact called (package=" ^ package
+          ^ ", name=" ^ name ^ ")");
         send ctx.server_pid
           (Protocol.ServerRequest
              (Protocol.FindArtifact
@@ -230,10 +239,10 @@ module Server = struct
         in
         (match receive ~selector () with
         | Protocol.ServerResponse (Protocol.ArtifactFound { path }) ->
-            Log.info "[JSONRPC] <<< ArtifactFound: %s" (Path.to_string path);
+            Log.info ("[JSONRPC] <<< ArtifactFound: " ^ Path.to_string path);
             reply (WireProtocol.ArtifactFound { path = Path.to_string path })
         | Protocol.ServerResponse (Protocol.ArtifactNotFound { error }) ->
-            Log.info "[JSONRPC] <<< ArtifactNotFound: %s" error;
+            Log.info ("[JSONRPC] <<< ArtifactNotFound: " ^ error);
             reply (WireProtocol.ArtifactNotFound { error })
         | _ ->
             Log.error "[JSONRPC] Unexpected response for FindArtifact";
@@ -244,7 +253,8 @@ module Server = struct
   let handle_format_file ctx reply request =
     match request with
     | WireProtocol.FormatFile { file_path; check_only } ->
-        Log.info "[JSONRPC] >>> handle_format_file called (file=%s)" file_path;
+        Log.info
+          ("[JSONRPC] >>> handle_format_file called (file=" ^ file_path ^ ")");
         let file_path_obj = Path.of_string file_path |> Result.expect ~msg:"Invalid file path" in
         send ctx.server_pid
           (Protocol.ServerRequest
@@ -260,10 +270,12 @@ module Server = struct
         (match receive ~selector () with
         | Protocol.ServerResponse
             (Protocol.FormatResult { formatted_code; changed }) ->
-            Log.info "[JSONRPC] <<< FormatResult (changed=%b)" changed;
+            Log.info
+              ("[JSONRPC] <<< FormatResult (changed=" ^ Bool.to_string changed
+              ^ ")");
             reply (WireProtocol.FormatResult { formatted_code; changed })
         | Protocol.ServerResponse (Protocol.FormatError { error }) ->
-            Log.info "[JSONRPC] <<< FormatError: %s" error;
+            Log.info ("[JSONRPC] <<< FormatError: " ^ error);
             reply (WireProtocol.FormatError { error })
         | _ ->
             Log.error "[JSONRPC] Unexpected response for FormatFile";
@@ -289,10 +301,12 @@ module Server = struct
         (match receive ~selector () with
         | Protocol.ServerResponse
             (Protocol.FormatResult { formatted_code; changed }) ->
-            Log.info "[JSONRPC] <<< FormatResult (changed=%b)" changed;
+            Log.info
+              ("[JSONRPC] <<< FormatResult (changed=" ^ Bool.to_string changed
+              ^ ")");
             reply (WireProtocol.FormatResult { formatted_code; changed })
         | Protocol.ServerResponse (Protocol.FormatError { error }) ->
-            Log.info "[JSONRPC] <<< FormatError: %s" error;
+            Log.info ("[JSONRPC] <<< FormatError: " ^ error);
             reply (WireProtocol.FormatError { error })
         | _ ->
             Log.error "[JSONRPC] Unexpected response for FormatCode";
@@ -316,8 +330,10 @@ module Server = struct
         | Protocol.ServerResponse
             (Protocol.FormatAllResult { files_formatted; files_failed; errors })
           ->
-            Log.info "[JSONRPC] <<< FormatAllResult (formatted=%d, failed=%d)"
-              files_formatted files_failed;
+            Log.info
+              ("[JSONRPC] <<< FormatAllResult (formatted="
+              ^ Int.to_string files_formatted ^ ", failed="
+              ^ Int.to_string files_failed ^ ")");
             reply
               (WireProtocol.FormatAllResult
                  { files_formatted; files_failed; errors })
@@ -330,7 +346,8 @@ module Server = struct
   let handle_new_package ctx reply request =
     match request with
     | WireProtocol.NewPackage { path; name; is_library } ->
-        Log.info "[JSONRPC] >>> handle_new_package called (name=%s)" name;
+        Log.info
+          ("[JSONRPC] >>> handle_new_package called (name=" ^ name ^ ")");
         let path_obj = Path.of_string path |> Result.expect ~msg:"Invalid path" in
         send ctx.server_pid
           (Protocol.ServerRequest
@@ -345,10 +362,10 @@ module Server = struct
         in
         (match receive ~selector () with
         | Protocol.ServerResponse (Protocol.PackageCreated { path; name }) ->
-            Log.info "[JSONRPC] <<< PackageCreated: %s" name;
+            Log.info ("[JSONRPC] <<< PackageCreated: " ^ name);
             reply (WireProtocol.PackageCreated { path; name })
         | Protocol.ServerResponse (Protocol.PackageCreationError { error }) ->
-            Log.info "[JSONRPC] <<< PackageCreationError: %s" error;
+            Log.info ("[JSONRPC] <<< PackageCreationError: " ^ error);
             reply (WireProtocol.PackageCreationError { error })
         | _ ->
             Log.error "[JSONRPC] Unexpected response for NewPackage";
@@ -363,9 +380,9 @@ module Server = struct
       | WireProtocol.BuildAll -> "BuildAll"
       | _ -> "Unknown"
     in
-    Log.info "[JSONRPC] >>> handle_build called (client_pid=%s, target=%s)"
-      (Pid.to_string (self ()))
-      target_str;
+    Log.info
+      ("[JSONRPC] >>> handle_build called (client_pid="
+      ^ Pid.to_string (self ()) ^ ", target=" ^ target_str ^ ")");
     let session_id = Session_id.make () in
 
     (* Convert WireProtocol request to internal Protocol *)
@@ -377,8 +394,9 @@ module Server = struct
     in
 
     (* Send build request to internal server *)
-    Log.debug "[JSONRPC]     Sending Build request to server (session_id=%s)..."
-      (Session_id.to_string session_id);
+    Log.debug
+      ("[JSONRPC]     Sending Build request to server (session_id="
+      ^ Session_id.to_string session_id ^ "...)...");
     send ctx.server_pid
       (Protocol.ServerRequest
          (Protocol.Build { client_pid = self (); target; session_id }));
@@ -416,8 +434,9 @@ module Server = struct
               (Protocol.BuildCompleted
                  { session_id; completed_at; stats; results }) ->
               let wire_results = List.map convert_build_result results in
-              Log.info "[JSONRPC] <<< Build completed: %d packages"
-                (List.length results);
+              Log.info
+                ("[JSONRPC] <<< Build completed: "
+                ^ Int.to_string (List.length results) ^ " packages");
               reply
                 (WireProtocol.BuildComplete
                    {
@@ -438,9 +457,10 @@ module Server = struct
                     r.package.name)
                   errors
               in
-              Log.warn "[JSONRPC] <<< Build failed: %d packages failed: %s"
-                (List.length errors)
-                (String.concat ", " failed_package_names);
+              Log.warn
+                ("[JSONRPC] <<< Build failed: "
+                ^ Int.to_string (List.length errors) ^ " packages failed: "
+                ^ String.concat ", " failed_package_names);
               (* Log detailed error information *)
               List.iter
                 (fun (r : Tusk_executor.Package_builder.build_result) ->
@@ -450,8 +470,9 @@ module Server = struct
                         Tusk_executor.Package_builder.package_error_to_string
                           err
                       in
-                      Log.error "[JSONRPC] Package %s failed: %s" r.package.name
-                        error_msg
+                      Log.error
+                        ("[JSONRPC] Package " ^ r.package.name ^ " failed: "
+                        ^ error_msg)
                   | _ -> ())
                 errors;
               reply
@@ -466,13 +487,13 @@ module Server = struct
               ()
           | Protocol.ServerResponse
               (Protocol.PlanningFailed { session_id; failed_at; reason }) ->
-              Log.warn "[JSONRPC] <<< Planning failed: %s" reason;
+              Log.warn ("[JSONRPC] <<< Planning failed: " ^ reason);
               reply (WireProtocol.PlanningFailed { session_id; failed_at; reason });
               ()
           | Protocol.ServerResponse
               (Protocol.PackageNotFound
                  { session_id; package_name; available_packages }) ->
-              Log.warn "[JSONRPC] <<< Package not found: %s" package_name;
+              Log.warn ("[JSONRPC] <<< Package not found: " ^ package_name);
               reply
                 (WireProtocol.PackageNotFound
                    { session_id; package_name; available_packages });
@@ -612,7 +633,7 @@ end
 let start_tcp_server ~server ~port =
   spawn (fun () ->
       let addr = Net.Addr.tcp Net.Addr.loopback port in
-      Log.debug "TCP server binding to 127.0.0.1:%d" port;
+      Log.debug ("TCP server binding to 127.0.0.1:" ^ Int.to_string port);
 
       (* Create JSON-RPC server *)
       let jsonrpc_server = Server.create server in
@@ -620,7 +641,7 @@ let start_tcp_server ~server ~port =
       (* TCP handler - runs in spawned process from TcpServer *)
       let handler ~req stream =
         Log.debug "TCP server received connection";
-        Log.debug "Request: %s" req;
+        Log.debug ("Request: " ^ req);
         let reply msg =
           let bytes = Bytes.of_string (msg ^ "\n") in
           match
@@ -628,11 +649,12 @@ let start_tcp_server ~server ~port =
           with
           | Ok _bytes_written -> ()
           | Error e ->
-              Log.error "Failed to write to stream: %s"
-                (match e with
-                | `Closed -> "closed"
-                | `Connection_refused -> "connection refused"
-                | `System_error msg -> msg)
+              Log.error
+                ("Failed to write to stream: "
+                ^ (match e with
+                  | `Closed -> "closed"
+                  | `Connection_refused -> "connection refused"
+                  | `System_error msg -> msg))
         in
         Log.debug "Calling Jsonrpc.Server.handle_message";
         Jsonrpc.Server.handle_message jsonrpc_server reply req;

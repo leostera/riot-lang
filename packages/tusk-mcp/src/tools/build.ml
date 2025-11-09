@@ -68,8 +68,9 @@ type request = { package : string option }
 type response = BuildResult of { messages : string list } | Error of string
 
 let execute (client : Tusk_client.t) (req : request) : response =
-  Log.debug "[BUILD TOOL] execute() called with package: %s"
-    (Option.unwrap_or req.package ~default:"<all>");
+  Log.debug
+    ("[BUILD TOOL] execute() called with package: "
+    ^ Option.unwrap_or req.package ~default:"<all>");
   let build_request =
     match req.package with
     | Some pkg -> Tusk_client.BuildPackage pkg
@@ -91,10 +92,11 @@ let execute (client : Tusk_client.t) (req : request) : response =
           messages :=
             !messages
             @ [
-                format
-                  "Build completed successfully (%d packages built, %d from \
-                   cache)"
-                  stats.packages_built stats.cache_hits;
+                "Build completed successfully ("
+                ^ Int.to_string stats.packages_built
+                ^ " packages built, "
+                ^ Int.to_string stats.cache_hits
+                ^ " from cache)";
               ]
       | Tusk_client.BuildFailed { errors; stats; _ } ->
           Log.debug "[BUILD TOOL] BuildFailed callback";
@@ -107,9 +109,13 @@ let execute (client : Tusk_client.t) (req : request) : response =
           messages :=
             !messages
             @ [
-                "Build failed: " ^ err_msg ^ " (" ^ Int.to_string (List.length results - List.length failed) ^ " packages built, " ^ Int.to_string (List.length failed) ^ " failed)"
-                  (String.concat ", " failed_packages)
-                  stats.packages_built stats.packages_failed;
+                "Build failed - packages: "
+                ^ String.concat ", " failed_packages
+                ^ " ("
+                ^ Int.to_string stats.packages_built
+                ^ " packages built, "
+                ^ Int.to_string stats.packages_failed
+                ^ " failed)";
               ])
   in
   Log.debug "[BUILD TOOL] build_streaming returned, processing result";
@@ -126,8 +132,9 @@ let execute (client : Tusk_client.t) (req : request) : response =
         match e with
         | Tusk_client.JsonrpcError je -> Tusk_client.jsonrpc_error_to_string je
         | Tusk_client.PackageNotFound { package_name; available_packages } ->
-            "Package not found: %s (available: " ^ package_name ^ ")"
-              (String.concat ", " available_packages)
+            "Package not found: " ^ package_name ^ " (available: "
+            ^ String.concat ", " available_packages
+            ^ ")"
         | Tusk_client.UnexpectedEvent { reason; _ } -> reason
       in
       Error error_msg

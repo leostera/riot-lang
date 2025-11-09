@@ -1,4 +1,5 @@
 open Std
+open Std.Collections
 
 type t =
   | CyclicDependency of { cycle : string list }
@@ -15,8 +16,8 @@ let to_string = function
   | DependencyAnalysisFailed { reason } ->
       "Dependency analysis failed: " ^ reason
   | GraphBuildFailed { reason } -> "Graph build failed: " ^ reason
-  | UnexpectedException exn ->
-      "Unexpected exception: " ^ Printexc.to_string exn
+  | Exception { exn } ->
+      "Unexpected exception: " ^ Exception.to_string exn
 
 let to_json = function
   | CyclicDependency { cycle } ->
@@ -48,5 +49,5 @@ let to_json = function
       Data.Json.obj
         [
           ("type", Data.Json.string "exception");
-          ("message", Data.Json.string (Printexc.to_string exn));
+          ("message", Data.Json.string (Exception.to_string exn));
         ]

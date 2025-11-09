@@ -62,18 +62,15 @@ let dirname path =
   if path = "" then "."
   else if path = "/" then "/"
   else
-    (* Find the last slash *)
-    let rec find_last_slash i last_slash =
-      if i < 0 then last_slash
-      else if path.[i] = '/' then find_last_slash (i - 1) (Some i)
-      else find_last_slash (i - 1) last_slash
+    (* Split by separator, drop last element, rejoin by separator *)
+    let parts = String.split_on_char '/' path in
+    let without_last = 
+      match List.rev parts with
+      | [] -> []
+      | _ :: rest -> List.rev rest
     in
-    match find_last_slash (String.length path - 1) None with
-    | None -> "."
-    | Some 0 -> "/"
-    | Some i ->
-        let dir = String.sub path 0 i in
-        if dir = "" then "/" else dir
+    let result = String.concat "/" without_last in
+    if result = "" then "." else result
 
 let parent path =
   match dirname path with
@@ -86,24 +83,11 @@ let basename path =
   if path = "" then ""
   else if path = "/" then "/"
   else
-    (* Remove trailing slashes first *)
-    let len = String.length path in
-    let rec find_end i =
-      if i < 0 then 0
-      else if path.[i] != '/' then i + 1
-      else find_end (i - 1)
-    in
-    let end_pos = find_end (len - 1) in
-    if end_pos = 0 then "/"
-    else
-      (* Find the last slash before the end *)
-      let rec find_last_slash i =
-        if i < 0 then 0
-        else if path.[i] = '/' then i + 1
-        else find_last_slash (i - 1)
-      in
-      let start = find_last_slash (end_pos - 1) in
-      String.sub path start (end_pos - start)
+    (* Split by separator, return last element *)
+    let parts = String.split_on_char '/' path in
+    match List.rev parts with
+    | [] -> ""
+    | last :: _ -> if last = "" then "/" else last
 
 let extension path =
   let base = basename path in

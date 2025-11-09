@@ -124,7 +124,7 @@ let create_matches name =
     trailing_args = [];
   }
 
-let rec get_matches cmd args =
+let rec get_matches_internal cmd args =
   let matches = create_matches cmd.name in
   let validate_required () =
     (* Check that all required args have values *)
@@ -184,7 +184,7 @@ let rec get_matches cmd args =
     | subcmd :: rest -> (
         match List.find_opt (fun sub -> sub.name = subcmd) cmd.subcommands with
         | Some sub ->
-            let* sub_matches = get_matches sub rest in
+            let* sub_matches = get_matches_internal sub rest in
             matches.subcommand <- Some (subcmd, sub_matches);
             Ok matches
         | None ->
@@ -353,6 +353,11 @@ and print_help cmd =
       sorted_subs;
     println
       ("\nSee '" ^ cmd.name ^ " <command> --help' for more information on a specific command."))
+
+let get_matches cmd args =
+  match args with
+  | [] -> get_matches_internal cmd []
+  | _ :: rest -> get_matches_internal cmd rest
 
 let get_one matches name =
   match HashMap.get matches.values name with

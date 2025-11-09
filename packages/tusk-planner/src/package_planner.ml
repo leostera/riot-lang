@@ -2,6 +2,7 @@
 
 open Std
 open Std.Collections
+open Std.Iter
 open Tusk_model
 module G = Std.Graph.SimpleGraph
 
@@ -159,7 +160,7 @@ let check_dependencies_built ~package_graph ~package =
   (* Check the sets in order: failed takes precedence *)
   if !failed != [] then Error (Failed !failed)
   else if !unplanned != [] then Error (Missing !unplanned)
-  else Ok (Vector.to_list depset)
+  else Ok (Vector.into_iter depset |> Iterator.to_list)
 
 let compute_hash ~package ~sources ~module_graph ~action_graph ~depset
     ~workspace =
@@ -228,8 +229,8 @@ let compute_hash ~package ~sources ~module_graph ~action_graph ~depset
         Fs.read file_path
         |> Result.expect
              ~msg:
-               ("could not read file " ^ Path.to_string file_path ^ " while hashing package " ^
-                  path_str package.name)
+               ("could not read file " ^ path_str ^ " while hashing package " ^
+                  package.name)
       in
       H.write_string state ("file:" ^ path_str ^ "\n");
       H.write_string state content;
@@ -265,9 +266,8 @@ let plan_package ~workspace ~toolchain ~store ~package_graph ~package =
       if Tusk_store.Store.exists store input_hash then (
         (* Cache hit! Skip expensive planning *)
         Log.info
-          "Package %s: fast path (input hash exists in cache, skipping \
-           ocamldep)"
-          package.name;
+          ("Package " ^ package.name ^ ": fast path (input hash exists in cache, skipping \
+           ocamldep)");
         Ok
           (Planned
              {
@@ -279,8 +279,7 @@ let plan_package ~workspace ~toolchain ~store ~package_graph ~package =
              }))
       else (
         (* Cache miss - do full planning *)
-        Log.info "Package %s: slow path (computing full hash with ocamldep)"
-          package.name;
+        Log.info ("Package " ^ package.name ^ ": slow path (computing full hash with ocamldep)");
 
         let plan_input =
           Module_planner.

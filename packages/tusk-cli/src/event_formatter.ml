@@ -74,7 +74,11 @@ let format ~displayed_packages (event : Telemetry.event) =
         let total_secs =
           Float.of_int (Time.Duration.to_millis total_duration) /. 1000.0
         in
-        "   \027[1;32mFinished\027[0m in " ^ Float.to_string total_secs ^ "s (" ^ 
+        let formatted_secs = 
+          let rounded = Float.round (total_secs *. 100.0) /. 100.0 in
+          Float.to_string rounded
+        in
+        "   \027[1;32mFinished\027[0m in " ^ formatted_secs ^ "s (" ^ 
           Int.to_string built_count ^ " built, " ^ Int.to_string cached_count ^ " cached)"
       else
         "   \027[1;31mFailed\027[0m with " ^ Int.to_string failed_count ^ " errors (" ^ 

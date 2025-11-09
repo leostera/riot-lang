@@ -2,6 +2,7 @@
     generation *)
 
 open Std
+open Std.Collections
 open Tusk_model
 module G = Graph.SimpleGraph
 
@@ -120,19 +121,21 @@ let plan_node input =
     (match G.topo_sort module_graph with
     | Error cycle_ids ->
         let cycle =
-          List.map
+          List.filter_map
             (fun node_id ->
-              let node = G.get_node module_graph node_id in
-              match node.value.kind with
-              | Module_node.ML m | Module_node.MLI m ->
-                  Module.module_name m |> Module_name.to_string
-              | Module_node.Library { name; _ } -> "Library(" ^ name ^ ")"
-              | Module_node.Binary { name; _ } -> "Binary(" ^ name ^ ")"
-              | Module_node.Native _ -> "Native"
-              | Module_node.C -> "C"
-              | Module_node.H -> "H"
-              | Module_node.Root -> "Root"
-              | Module_node.Other s -> "Other(" ^ s ^ ")")
+              match G.get_node module_graph node_id with
+              | None -> None
+              | Some node ->
+                  Some (match node.value.kind with
+                  | Module_node.ML m | Module_node.MLI m ->
+                      Module.module_name m |> Module_name.to_string
+                  | Module_node.Library { name; _ } -> "Library(" ^ name ^ ")"
+                  | Module_node.Binary { name; _ } -> "Binary(" ^ name ^ ")"
+                  | Module_node.Native _ -> "Native"
+                  | Module_node.C -> "C"
+                  | Module_node.H -> "H"
+                  | Module_node.Root -> "Root"
+                  | Module_node.Other s -> "Other(" ^ s ^ ")"))
             cycle_ids
           |> List.rev  (* Reverse to show A -> B means A uses/opens B *)
         in

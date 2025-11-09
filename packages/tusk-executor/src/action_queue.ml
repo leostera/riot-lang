@@ -71,7 +71,7 @@ let queue t (node : action_node) =
       if Option.is_some (HashMap.get t.busy_tasks node.id) then ()
       else if is_in_queue t.ready_queue node.id then ()
       else if is_in_queue t.later_queue node.id then ()
-      else Queue.enqueue t.ready_queue node
+      else Queue.push t.ready_queue node
 
 let requeue_with_deps t (node : action_node)
     ~(missing_deps : Graph.SimpleGraph.Node_id.t list)
@@ -79,7 +79,7 @@ let requeue_with_deps t (node : action_node)
   let _ = HashMap.remove t.busy_tasks node.id in
 
   if not (is_in_queue t.later_queue node.id) then
-    Queue.enqueue t.later_queue node;
+    Queue.push t.later_queue node;
 
   List.iter
     (fun dep_id ->
@@ -90,25 +90,27 @@ let requeue_with_deps t (node : action_node)
       with
       | Some dep_node -> queue t dep_node
       | None ->
-          Log.warn "Action queue: dependency %s not found in graph"
-            (Graph.SimpleGraph.Node_id.to_string dep_id))
+          Log.warn
+            ("Action queue: dependency "
+            ^ Graph.SimpleGraph.Node_id.to_string dep_id
+            ^ " not found in graph"))
     missing_deps
 
 let next t =
   if Queue.is_empty t.ready_queue && not (Queue.is_empty t.later_queue) then (
     let rec transfer () =
-      match Queue.dequeue t.later_queue with
+      match Queue.pop t.later_queue with
       | None -> ()
       | Some node ->
-          Queue.enqueue t.ready_queue node;
+          Queue.push t.ready_queue node;
           transfer ()
     in
     transfer ());
 
   let rec find_ready checked =
-    match Queue.dequeue t.ready_queue with
+    match Queue.pop t.ready_queue with
     | None ->
-        List.iter (fun node -> Queue.enqueue t.later_queue node) checked;
+        List.iter (fun node -> Queue.push t.later_queue node) checked;
         None
     | Some node ->
         if has_failed_dependencies t node then (
@@ -124,10 +126,10 @@ let next t =
           in
           let _ = HashMap.insert t.completed node.id skip_result in
 
-          List.iter (fun n -> Queue.enqueue t.ready_queue n) checked;
+          List.iter (fun n -> Queue.push t.ready_queue n) checked;
           find_ready [])
         else if dependencies_satisfied t node then (
-          List.iter (fun n -> Queue.enqueue t.ready_queue n) checked;
+          List.iter (fun n -> Queue.push t.ready_queue n) checked;
           let _ = HashMap.insert t.busy_tasks node.id node in
           Some node)
         else find_ready (node :: checked)
@@ -139,10 +141,10 @@ let mark_completed t result =
   let _ = HashMap.insert t.completed result.node_id result in
 
   let rec transfer () =
-    match Queue.dequeue t.later_queue with
+    match Queue.pop t.later_queue with
     | None -> ()
     | Some node ->
-        Queue.enqueue t.ready_queue node;
+        Queue.push t.ready_queue node;
         transfer ()
   in
   transfer ()

@@ -60,8 +60,9 @@ let run matches =
           match pkg_filter with
           | Some expected_pkg when expected_pkg != pkg ->
               Tusk_client.close client;
-              println "error: binary '%s' not found in package '%s'" bin_name
-                expected_pkg;
+              println
+                ("error: binary '" ^ bin_name ^ "' not found in package '"
+                ^ expected_pkg ^ "'");
               Error (Failure "binary not found in specified package")
           | _ -> (
               match Build.build_command (Some pkg) with
@@ -72,29 +73,31 @@ let run matches =
                   with
                   | Ok path -> (
                       Tusk_client.close client;
-                      println "     \027[1;32mRunning\027[0m %s:%s" pkg bin_name;
+                      println
+                        ("     \027[1;32mRunning\027[0m " ^ pkg ^ ":" ^ bin_name);
                       let cmd = Command.make path ~args:extra in
                       match Command.status cmd with
                       | Ok 0 -> Ok ()
                       | Ok code ->
-                          println "error: process exited with %d" code;
+                          println
+                            ("error: process exited with " ^ Int.to_string code);
                           Error (Failure ("process exited with " ^ Int.to_string code))
                       | Error (Command.SystemError msg) ->
-                          println "error: %s" msg;
+                          println ("error: " ^ msg);
                           Error (Failure msg))
                   | Error msg ->
                       Tusk_client.close client;
-                      println "error: %s" msg;
+                      println ("error: " ^ msg);
                       Error (Failure msg))
               | Error _ ->
-                  println "error: build failed for package '%s'" pkg;
+                  println ("error: build failed for package '" ^ pkg ^ "'");
                   Tusk_client.close client;
                   Error (Failure "build failed")))
       | Ok None ->
           Tusk_client.close client;
-          println "error: binary '%s' not found" name;
+          println ("error: binary '" ^ name ^ "' not found");
           Error (Failure "binary not found")
       | Error msg ->
           Tusk_client.close client;
-          println "error: %s" msg;
+          println ("error: " ^ msg);
           Error (Failure msg))

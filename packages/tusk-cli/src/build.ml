@@ -129,13 +129,15 @@ let build_command package_opt =
       Int.to_string !built_count ^ " built, " ^ Int.to_string !cached_count ^ " cached)")
   else if !failed_count > 0 then
     println
-      "    \027[1;31mFinished\027[0m in %.2fs (%d built, %d cached, %d failed, \
-       %d skipped)"
-      duration_secs !built_count !cached_count !failed_count !skipped_count
+      ("    \027[1;31mFinished\027[0m in " ^ Float.to_string duration_secs ^ "s ("
+      ^ Int.to_string !built_count ^ " built, " ^ Int.to_string !cached_count
+      ^ " cached, " ^ Int.to_string !failed_count ^ " failed, "
+      ^ Int.to_string !skipped_count ^ " skipped)")
   else
     println
-      "    \027[1;33mFinished\027[0m in %.2fs (%d built, %d cached, %d skipped)"
-      duration_secs !built_count !cached_count !skipped_count;
+      ("    \027[1;33mFinished\027[0m in " ^ Float.to_string duration_secs ^ "s ("
+      ^ Int.to_string !built_count ^ " built, " ^ Int.to_string !cached_count
+      ^ " cached, " ^ Int.to_string !skipped_count ^ " skipped)");
 
   match final_event with
   | Tusk_client.BuildCompleted _ -> Ok ()

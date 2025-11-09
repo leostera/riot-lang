@@ -22,13 +22,8 @@ let make_simple_package tmpdir name =
 
   let tusk_file = Path.(pkg_dir / Path.v "tusk.toml") in
   let tusk_content =
-    format
-      "[package]\n\
-       name = \"%s\"\n\
-       version = \"0.0.1\"\n\n\
-       [lib]\n\
-       path = \"src/lib.ml\"\n"
-      name
+    "[package]\nname = \"" ^ name
+    ^ "\"\nversion = \"0.0.1\"\n\n[lib]\npath = \"src/lib.ml\"\n"
   in
   let _ =
     Fs.write tusk_content tusk_file |> Result.expect ~msg:"Write tusk.toml"
@@ -40,6 +35,7 @@ let make_simple_package tmpdir name =
       path = pkg_dir;
       relative_path = Path.v name;
       dependencies = [];
+      foreign_dependencies = [];
       binaries = [];
       library = Some { path = Path.v "src/lib.ml" };
       sources = { src = []; native = []; tests = []; examples = [] };
@@ -85,16 +81,22 @@ let test_cache_hit_using_package_builder () =
             | Built _ -> Error "Expected cache hit on second build"
             | Failed err ->
                 Error
-                  (format "Second build failed: %s"
-                     (match err with
-                     | PlanningFailed _ -> "planning"
-                     | ExecutionFailed { message } -> message)))
+                  ("Second build failed: "
+                  ^ (match err with
+                    | PlanningFailed _ -> "planning"
+                    | ExecutionFailed { message } -> message
+                    | ActionExecutionFailed { message } -> message
+                    | ActionOutputsNotCreated _ -> "outputs not created"
+                    | ActionDependenciesFailed _ -> "dependencies failed")))
         | Failed err ->
             Error
-              (format "First build failed: %s"
-                 (match err with
-                 | PlanningFailed _ -> "planning"
-                 | ExecutionFailed { message } -> message))
+              ("First build failed: "
+              ^ (match err with
+                | PlanningFailed _ -> "planning"
+                | ExecutionFailed { message } -> message
+                | ActionExecutionFailed { message } -> message
+                | ActionOutputsNotCreated _ -> "outputs not created"
+                | ActionDependenciesFailed _ -> "dependencies failed"))
         | Cached _ -> Error "First build should not be cached")
   with
   | Ok r -> r
@@ -105,15 +107,18 @@ let check_cache_invalidation_results first_build second_build =
     match err with
     | Tusk_executor.Package_builder.PlanningFailed _ -> "planning"
     | Tusk_executor.Package_builder.ExecutionFailed { message } -> message
+    | Tusk_executor.Package_builder.ActionExecutionFailed { message } -> message
+    | Tusk_executor.Package_builder.ActionOutputsNotCreated _ -> "outputs not created"
+    | Tusk_executor.Package_builder.ActionDependenciesFailed _ -> "dependencies failed"
   in
   match first_build.Tusk_executor.Package_builder.status with
-  | Failed err -> Error (format "First build failed: %s" (error_msg err))
+  | Failed err -> Error ("First build failed: " ^ error_msg err)
   | Built _ | Cached _ -> (
       match second_build.Tusk_executor.Package_builder.status with
       | Built _ -> Ok ()
       | Cached _ ->
           Error "Expected cache miss after source change, got cache hit"
-      | Failed err -> Error (format "Second build failed: %s" (error_msg err)))
+      | Failed err -> Error ("Second build failed: " ^ error_msg err))
 
 let test_cache_invalidation_on_source_change () =
   try
@@ -170,7 +175,7 @@ let test_cache_invalidation_on_source_change () =
           check_cache_invalidation_results first_build second_build)
     in
     match result with Ok r -> r | Error _ -> Error "Tempdir creation failed"
-  with exn -> Error ("Exception in test: " ^ Printexc.to_string exn)
+  with exn -> Error ("Exception in test: " ^ Exception.to_string exn)
 
 let test_telemetry_events_during_build () = Ok ()
 

@@ -1,16 +1,17 @@
 open Std
+open Std.Collections
 open Tusk_model
 module G = Std.Graph.SimpleGraph
 
-type t = (string, G.Node_id.t list) Hashtbl.t
+type t = (string, G.Node_id.t list) HashMap.t
 
-let create () = Hashtbl.create 32
+let create () = HashMap.create ()
 
 let register t mod_ node_id =
   let name = Module.module_name mod_ |> Module_name.to_string in
-  match Hashtbl.find_opt t name with
-  | None -> Hashtbl.add t name [ node_id ]
-  | Some ids -> Hashtbl.replace t name (node_id :: ids)
+  match HashMap.get t name with
+  | None -> let _ = HashMap.insert t name [ node_id ] in ()
+  | Some ids -> let _ = HashMap.insert t name (node_id :: ids) in ()
 
 let get_by_name t name =
-  match Hashtbl.find_opt t name with None -> raise Not_found | Some ids -> ids
+  match HashMap.get t name with None -> raise Not_found | Some ids -> ids

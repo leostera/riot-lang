@@ -1,4 +1,6 @@
 open Std
+open Std.Collections
+open Std.Sync.Cell
 open Tusk_model
 open Tusk_model
 open ArgParser
@@ -106,11 +108,11 @@ let run matches =
       List.fold_left
         (fun acc (pkg, test_name) ->
           let existing =
-            Hashtbl.find_opt acc pkg |> Option.unwrap_or ~default:[]
+            HashMap.get acc pkg |> Option.unwrap_or ~default:[]
           in
-          Hashtbl.replace acc pkg (test_name :: existing);
+          let _ = HashMap.insert acc pkg (test_name :: existing) in
           acc)
-        (Hashtbl.create 16) test_binaries
+        (HashMap.create ()) test_binaries
     in
 
     let total = List.length test_binaries in
@@ -118,7 +120,7 @@ let run matches =
     let passed = ref 0 in
 
     (* Build each package once, then run all its tests *)
-    Hashtbl.iter
+    HashMap.iter
       (fun pkg test_names ->
         println "";
         println ("Building package '" ^ pkg ^ "'...");

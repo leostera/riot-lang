@@ -76,8 +76,8 @@ type response =
 
 let execute (client : Tusk_client.t) (req : request) : response =
   Log.debug
-    "[FORMAT_FILE TOOL] execute() called with file_path: %s, check_only: %b"
-    req.file_path req.check_only;
+    ("[FORMAT_FILE TOOL] execute() called with file_path: " ^ req.file_path
+    ^ ", check_only: " ^ Bool.to_string req.check_only);
 
   let result =
     Tusk_client.format_file client ~file_path:req.file_path
@@ -86,10 +86,12 @@ let execute (client : Tusk_client.t) (req : request) : response =
 
   match result with
   | Ok (formatted_code, changed) ->
-      Log.debug "[FORMAT_FILE TOOL] Formatting completed, changed: %b" changed;
+      Log.debug
+        ("[FORMAT_FILE TOOL] Formatting completed, changed: "
+        ^ Bool.to_string changed);
       FormatResult { formatted_code; changed; file_path = req.file_path }
   | Error msg ->
-      Log.error "[FORMAT_FILE TOOL] Error: %s" msg;
+      Log.error ("[FORMAT_FILE TOOL] Error: " ^ msg);
       Error msg
 
 let response_to_json = function

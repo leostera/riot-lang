@@ -9,8 +9,9 @@ type t = {
 }
 
 let daemon_dir ~workspace =
-  Log.debug "[SERVER_MANAGER] daemon_dir for workspace project_id=%s"
-    (Workspace.project_id workspace);
+  Log.debug
+    ("[SERVER_MANAGER] daemon_dir for workspace project_id="
+    ^ Workspace.project_id workspace);
   Tusk_model.Tusk_dirs.project_dir workspace
 
 let daemon_exists ~workspace =
@@ -18,7 +19,7 @@ let daemon_exists ~workspace =
   let pid_file = Path.(daemon_path / Path.v "server.pid") in
   let port_file = Path.(daemon_path / Path.v "server.port") in
 
-  Log.debug "Checking for daemon files at %s" (Path.to_string daemon_path);
+  Log.debug ("Checking for daemon files at " ^ Path.to_string daemon_path);
 
   (* Check if daemon files exist and process is running *)
   match (Fs.exists pid_file, Fs.exists port_file) with
@@ -36,10 +37,12 @@ let daemon_exists ~workspace =
       let pid = int_of_string (String.trim pid_content) in
       let port = int_of_string (String.trim port_content) in
 
-      Log.debug "Found daemon: pid=%d, port=%d" pid port;
+      Log.debug
+        ("Found daemon: pid=" ^ Int.to_string pid ^ ", port="
+        ^ Int.to_string port);
 
       (* Check if server is actually running by trying to connect *)
-      Log.debug "Attempting to connect to 127.0.0.1:%d" port;
+      Log.debug ("Attempting to connect to 127.0.0.1:" ^ Int.to_string port);
       let is_server_running =
         match Net.TcpClient.connect ~host:"127.0.0.1" ~port with
         | Ok stream ->
@@ -48,11 +51,12 @@ let daemon_exists ~workspace =
             let _ = Net.TcpClient.close stream in
             true
         | Error e ->
-            Log.debug "Failed to connect: %s"
-              (match e with
-              | `Connection_refused -> "connection refused"
-              | `Closed -> "connection closed"
-              | `System_error msg -> "system error: " ^ msg);
+            Log.debug
+              ("Failed to connect: "
+              ^ (match e with
+                | `Connection_refused -> "connection refused"
+                | `Closed -> "connection closed"
+                | `System_error msg -> "system error: " ^ msg));
             false
       in
       if is_server_running then

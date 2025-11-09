@@ -36,7 +36,8 @@ let run matches =
   | Ok client -> (
       match Tusk_client.new_package client ~path ~name ~is_library with
       | Ok (created_path, created_name) ->
-          println "Package '%s' created at '%s'" created_name created_path;
+          println
+            ("Package '" ^ created_name ^ "' created at '" ^ created_path ^ "'");
           Ok ()
       | Error e -> Error (Failure ("Package creation failed: " ^ e)))
   | Error _e -> Error (Failure "Failed to connect to server")

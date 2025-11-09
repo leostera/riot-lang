@@ -75,7 +75,7 @@ let deps t ~cwd ~file ~package_namespace =
     | [ _; deps_part ] ->
         let deps = String.trim deps_part in
         if deps = "" then (
-          Log.trace "[OCAMLDEP] Empty deps part for %s" file_str;
+          Log.trace ("[OCAMLDEP] Empty deps part for " ^ file_str);
           [])
         else
           let result =
@@ -84,11 +84,10 @@ let deps t ~cwd ~file ~package_namespace =
             |> List.map (fun modname ->
                 Module_name.of_string ~namespace:package_namespace modname)
           in
-          Log.trace "[OCAMLDEP] Parsed %d deps for %s: %s" (List.length result)
-            file_str deps;
+          Log.trace ("[OCAMLDEP] Parsed " ^ Int.to_string (List.length result) ^ " deps for " ^ file_str ^ ": " ^ deps);
           result
     | _ ->
-        Log.trace "[OCAMLDEP] Failed to parse deps for %s: %s" file_str deps_str;
+        Log.trace ("[OCAMLDEP] Failed to parse deps for " ^ file_str ^ ": " ^ deps_str);
         []
 
 (** Get dependencies for a single file with optional flags - returns
@@ -137,17 +136,17 @@ let batch_deps t ~cwd ~files ~package_namespace =
       "cd " ^ Path.to_string cwd ^ " && " ^ ocamldep ^ " -modules " ^ files_str
     in
 
-    Log.trace "[OCAMLDEP] Batch running for %d files" (List.length files);
-    println "[OCAMLDEP] CMD: %s" cmd;
+    Log.trace ("[OCAMLDEP] Batch running for " ^ Int.to_string (List.length files) ^ " files");
+    println ("[OCAMLDEP] CMD: " ^ cmd);
 
     let output =
       let command = Command.make ~args:[ "-c"; cmd ] "sh" in
       match Command.output command with
       | Ok output ->
-          println "[OCAMLDEP] OUTPUT: '%s'" output.Command.stdout;
+          println ("[OCAMLDEP] OUTPUT: '" ^ output.Command.stdout ^ "'");
           output.Command.stdout
       | Error (Command.SystemError msg) ->
-          println "[OCAMLDEP] ERROR: %s" msg;
+          println ("[OCAMLDEP] ERROR: " ^ msg);
           ""
     in
 

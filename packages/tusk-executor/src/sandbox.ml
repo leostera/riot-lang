@@ -1,4 +1,5 @@
 open Std
+open Std.Collections
 open Tusk_model
 
 type t = { dir : Path.t; workspace : Workspace.t }
@@ -60,11 +61,16 @@ let copy_inputs ~sandbox ~package ~inputs =
       in
       let dest = Path.(sandbox.dir / rel_path) in
       let dest_parent = Path.dirname dest in
+      Log.debug ("copy_inputs: rel_path=" ^ Path.to_string rel_path);
+      Log.debug ("copy_inputs: dest=" ^ Path.to_string dest);
+      Log.debug ("copy_inputs: dest_parent=" ^ Path.to_string dest_parent);
+      Log.debug ("copy_inputs: dest_parent exists before create_dir_all=" ^ Bool.to_string (Path.exists dest_parent));
       Fs.create_dir_all dest_parent
       |> Result.expect
            ~msg:
              ("Failed to create parent dir: " ^
                 (Path.to_string dest_parent));
+      Log.debug ("copy_inputs: dest_parent exists after create_dir_all=" ^ Bool.to_string (Path.exists dest_parent));
       Fs.copy ~src ~dst:dest
       |> Result.expect
            ~msg:
