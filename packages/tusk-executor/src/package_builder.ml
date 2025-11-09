@@ -134,9 +134,7 @@ let collect_source_files package =
 let build ~workspace ~toolchain ~store ~package_graph ~package =
   let start = Instant.now () in
   let target_dir =
-    Path.(
-      workspace.Workspace.root / Path.v "target" / Path.v "debug" / Path.v "out"
-      / Path.v package.Package.name)
+    Path.(Tusk_model.Tusk_dirs.out_dir ~workspace_root:workspace.Workspace.root / Path.v package.Package.name)
   in
 
   Log.info

@@ -9,9 +9,6 @@ type manifest = {
 
 val of_toml : Std.Data.Toml.value -> (manifest, string) result
 
-val manifest_from_toml : Std.Data.Toml.value -> (manifest, string) result
-[@@deprecated "Use of_toml instead"]
-
 val make : root:Path.t -> packages:Package.t list -> t
 
 val project_id : t -> string

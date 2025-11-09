@@ -116,6 +116,45 @@ let compute_input_hash ~package ~depset ~workspace =
           H.write_string state ("file:" ^ path_str ^ "\n"))
     sorted_files;
 
+  (* Foreign dependency sources *)
+  let sorted_foreign_deps =
+    List.sort
+      (fun (a : Package.foreign_dependency) (b : Package.foreign_dependency) ->
+        String.compare a.name b.name)
+      package.foreign_dependencies
+  in
+  Log.info ("[HASH] Package " ^ package.name ^ " has " ^ Int.to_string (List.length sorted_foreign_deps) ^ " foreign dependencies");
+  
+  List.iter
+    (fun (fdep : Package.foreign_dependency) ->
+      Log.info ("[HASH] Hashing foreign dependency: " ^ fdep.name ^ " with " ^ Int.to_string (List.length fdep.inputs) ^ " input files");
+      H.write_string state ("foreign_dep:" ^ fdep.name ^ "\n");
+      H.write_string state ("foreign_dep_path:" ^ Path.to_string fdep.path ^ "\n");
+      H.write_string state ("foreign_dep_build_cmd:" ^ String.concat " " fdep.build_cmd ^ "\n");
+      
+      (* Hash all input files (already scanned during package parsing) *)
+      let sorted_inputs =
+        List.sort
+          (fun a b -> String.compare (Path.to_string a) (Path.to_string b))
+          fdep.inputs
+      in
+      
+      List.iter
+        (fun input_path ->
+          (* Input paths are relative to the foreign dependency directory *)
+          let abs_path = Path.(fdep.path / input_path) in
+          match Fs.read abs_path with
+          | Ok content ->
+              Log.debug ("[HASH] Hashing foreign input: " ^ Path.to_string input_path ^ " (" ^ Int.to_string (String.length content) ^ " bytes)");
+              H.write_string state ("foreign_input:" ^ Path.to_string input_path ^ "\n");
+              H.write_string state content;
+              H.write_string state "\n"
+          | Error err ->
+              Log.warn ("[HASH] Failed to read foreign input " ^ Path.to_string abs_path ^ ": " ^ IO.error_message err);
+              H.write_string state ("foreign_input:" ^ Path.to_string input_path ^ "\n"))
+        sorted_inputs)
+    sorted_foreign_deps;
+
   (* Dependency hashes *)
   let dep_hashes =
     depset
@@ -296,6 +335,50 @@ let plan_package ~workspace ~toolchain ~store ~package_graph ~package =
         match Module_planner.plan_node plan_input with
         | Error err -> Error err
         | Ok { sources; module_graph; action_graph } ->
+            (* Add foreign dependency build actions and make all other nodes depend on them *)
+            let foreign_nodes = List.map (fun (fdep : Package.foreign_dependency) ->
+              Log.info ("[PACKAGE_PLANNER] Adding foreign dependency: " ^ fdep.name ^ " with " ^ Int.to_string (List.length fdep.inputs) ^ " input files");
+              let foreign_action = Action.BuildForeignDependency {
+                name = fdep.name;
+                path = fdep.path;
+                build_cmd = fdep.build_cmd;
+                outputs = fdep.outputs;
+                env = fdep.env;
+              } in
+              let foreign_node = Action_node.make
+                ~actions:[foreign_action]
+                ~outs:fdep.outputs
+                ~srcs:[]  (* Foreign inputs are NOT copied to sandbox - they stay in their directory *)
+                ~package
+                ~toolchain
+                ~dependency_hashes:(fun _ -> Crypto.hash_string "")
+                ~deps:[]
+              in
+              Action_graph.add_node action_graph foreign_node
+            ) package.foreign_dependencies in
+            
+            (* Make all existing nodes depend on foreign dependency nodes *)
+            if List.length foreign_nodes > 0 then (
+              let foreign_node_ids = List.map (fun (node : Action_node.t) -> node.id) foreign_nodes in
+              Log.info ("[PACKAGE_PLANNER] Making all action nodes depend on " ^ Int.to_string (List.length foreign_nodes) ^ " foreign dependencies");
+              let all_nodes = Action_graph.nodes action_graph in
+              Log.info ("[PACKAGE_PLANNER] Total action nodes (including foreign): " ^ Int.to_string (List.length all_nodes));
+              
+              let dep_count = ref 0 in
+              List.iter (fun (node : Action_node.t) ->
+                (* Skip foreign dependency nodes themselves *)
+                let is_foreign_node = List.mem node.id foreign_node_ids in
+                if not is_foreign_node then (
+                  (* Make this node depend on all foreign nodes *)
+                  List.iter (fun foreign_node ->
+                    Action_graph.add_dependency action_graph node ~depends_on:foreign_node;
+                    dep_count := !dep_count + 1
+                  ) foreign_nodes
+                )
+              ) all_nodes;
+              Log.info ("[PACKAGE_PLANNER] Added " ^ Int.to_string !dep_count ^ " dependency edges to foreign nodes")
+            );
+
             (* Use input_hash as the package hash - it's deterministic and sufficient *)
             Ok
               (Planned

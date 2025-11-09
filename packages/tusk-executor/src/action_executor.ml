@@ -80,7 +80,7 @@ let run_action ocamlc sandbox_dir action =
       Tusk_toolchain.Ocamlc.create_library ocamlc ~cwd:sandbox_dir
         ~includes:abs_includes ~output:abs_output abs_objects
   | Action.CreateExecutable
-      { outputs = output :: _; objects; libraries; includes } -> (
+      { outputs = output :: _; objects; libraries; includes; cclibs } -> (
       let abs_output = Path.join sandbox_dir output in
       let abs_objects = List.map (Path.join sandbox_dir) objects in
 
@@ -94,9 +94,13 @@ let run_action ocamlc sandbox_dir action =
             if Path.is_absolute inc then inc else Path.join sandbox_dir inc)
           includes
       in
+      
+      (* Foreign cclibs are absolute paths, keep them as-is *)
+      let abs_cclibs = cclibs in
+      
       let result =
         Tusk_toolchain.Ocamlc.create_executable ocamlc ~cwd:sandbox_dir
-          ~includes:abs_includes ~libs:abs_libraries ~output:abs_output
+          ~includes:abs_includes ~libs:abs_libraries ~cclibs:abs_cclibs ~output:abs_output
           abs_objects
       in
       match result with
@@ -135,6 +139,50 @@ let run_action ocamlc sandbox_dir action =
           Log.error ("WriteFile: failed - " ^ msg);
           Tusk_toolchain.Ocamlc.Failed
             ("Write failed: " ^ Path.to_string destination ^ " - " ^ msg))
+  | Action.BuildForeignDependency { name; path; build_cmd; outputs; env } -> (
+      (* Execute foreign build command in the foreign package directory *)
+      Log.info ("Building foreign dependency: " ^ name ^ " at " ^ Path.to_string path);
+      
+      match build_cmd with
+      | [] -> Tusk_toolchain.Ocamlc.Failed "BuildForeignDependency: empty build_cmd"
+      | cmd_name :: cmd_args ->
+          Log.debug ("Executing: " ^ String.concat " " build_cmd ^ " in " ^ Path.to_string path);
+          
+          (* Execute the build command in the foreign directory *)
+          let cmd = Command.make ~cwd:(Path.to_string path) ~env ~args:cmd_args cmd_name in
+          match Command.output cmd with
+          | Ok output when output.Command.status = 0 ->
+              Log.debug ("Foreign build succeeded: " ^ name);
+              if String.length output.Command.stdout > 0 then 
+                Log.debug ("stdout: " ^ output.Command.stdout);
+              
+              (* Verify that all expected outputs were created *)
+              let abs_outputs = List.map (Path.join path) outputs in
+              let missing = List.filter (fun out ->
+                match Fs.exists out with
+                | Ok true -> false
+                | Ok false | Error _ -> true
+              ) abs_outputs in
+              
+              if List.length missing > 0 then
+                Tusk_toolchain.Ocamlc.Failed 
+                  ("Foreign build succeeded but outputs not created: " ^ 
+                   String.concat ", " (List.map Path.to_string missing))
+              else
+                Tusk_toolchain.Ocamlc.Success ("Built foreign dependency: " ^ name)
+          | Ok output ->
+              Log.error ("Foreign build failed: " ^ name ^ " - exit code " ^ 
+                        Int.to_string output.Command.status);
+              if String.length output.Command.stderr > 0 then 
+                Log.error ("stderr: " ^ output.Command.stderr);
+              Tusk_toolchain.Ocamlc.Failed 
+                ("Foreign build failed: " ^ name ^ " - exit code " ^ 
+                 Int.to_string output.Command.status)
+          | Error (Command.SystemError msg) ->
+              Log.error ("Failed to execute foreign build: " ^ msg);
+              Tusk_toolchain.Ocamlc.Failed 
+                ("Failed to execute foreign build command: " ^ msg)
+      )
 
 let execute_actions toolchain sandbox_dir actions =
   let ocamlc = Tusk_toolchain.ocamlc toolchain in

@@ -207,6 +207,15 @@ let module_to_actions ~package ~dep_includes ~get_dep_outputs
           }
       in
 
+      (* Collect foreign library outputs for linking *)
+      let cclibs =
+        List.concat_map
+          (fun (fdep : Package.foreign_dependency) ->
+            (* Make foreign outputs absolute by joining with foreign dep path and normalizing *)
+            List.map (fun out -> Path.normalize (Path.join fdep.path out)) fdep.outputs)
+          package.foreign_dependencies
+      in
+
       let binary_output = Path.v name in
       let link_action =
         Action.CreateExecutable
@@ -215,6 +224,7 @@ let module_to_actions ~package ~dep_includes ~get_dep_outputs
             objects = [ binary_cmx ];
             libraries;
             includes;
+            cclibs;
           }
       in
       ([ compile_action; link_action ], [ binary_output ], sources)

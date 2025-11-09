@@ -188,7 +188,7 @@ let scan (path : Path.t) : ((Workspace.t * load_error list), string) result =
                 Error
                   ("Failed to parse workspace TOML: " ^ Data.Toml.error_to_string err)
             | Ok toml -> (
-                match Workspace.manifest_from_toml toml with
+                match Workspace.of_toml toml with
                 | Error msg ->
                     Error ("Failed to parse workspace manifest: " ^ msg)
                 | Ok workspace_manifest ->

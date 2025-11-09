@@ -76,19 +76,20 @@ let run matches =
         let root =
           Env.current_dir () |> Result.expect ~msg:"Failed to get cwd"
         in
+        let build_root = Tusk_model.Tusk_dirs.build_dir_root ~workspace_root:root in
+        let debug_out = Tusk_model.Tusk_dirs.out_dir ~workspace_root:root in
         let possible_binary_paths =
           [
-            Path.(root / Path.v "target/bootstrap" / Path.v binary_name);
+            Path.(build_root / Path.v "bootstrap" / Path.v binary_name);
             Path.(
-              root
-              / Path.v "target/bootstrap/out"
+              build_root / Path.v "bootstrap/out"
               / Path.v (package_name ^ "/" ^ binary_name));
-            Path.(root / Path.v "target/debug" / Path.v binary_name);
+            Path.(build_root / Path.v "debug" / Path.v binary_name);
             Path.(
-              root / Path.v "target/debug/out"
+              debug_out
               / Path.v (package_name ^ "/" ^ binary_name));
             Path.(
-              root / Path.v "target/debug/out"
+              debug_out
               / Path.v ("packages/" ^ package_name ^ "/" ^ binary_name));
           ]
         in

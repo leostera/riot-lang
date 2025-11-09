@@ -9,6 +9,7 @@ type sources = { src : Path.t list; native : Path.t list; tests : Path.t list; e
 type foreign_dependency = {
   name : string;
   path : Path.t;
+  inputs : Path.t list;
   build_cmd : string list;
   clean_cmd : string list option;
   test_cmd : string list option;

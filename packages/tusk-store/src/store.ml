@@ -12,9 +12,7 @@ type error = string
 
 (** Create a new store for the given workspace *)
 let create ~(workspace : Workspace.t) =
-  let store_dir =
-    Path.(workspace.root / Path.v "target" / Path.v "debug" / Path.v "cache")
-  in
+  let store_dir = Tusk_dirs.cache_dir ~workspace_root:workspace.root in
   Fs.create_dir_all store_dir
   |> Result.expect
        ~msg:

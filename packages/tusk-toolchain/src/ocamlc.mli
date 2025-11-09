@@ -55,6 +55,7 @@ val run :
   cwd:Path.t ->
   ?includes:Path.t list ->
   ?libs:Path.t list ->
+  ?cclibs:Path.t list ->
   ?output:Path.t option ->
   ?mode:mode ->
   ?verbose:bool ->
@@ -62,12 +63,13 @@ val run :
   result
 (** Build and run an ocamlc command.
 
-    [run ~toolchain ?includes ?libs ?output ?mode ?verbose sources] executes the
+    [run ~toolchain ?includes ?libs ?cclibs ?output ?mode ?verbose sources] executes the
     OCaml compiler with the given configuration.
 
     @param toolchain The OCaml toolchain to use
     @param includes List of include directories (default: [])
     @param libs List of library files to link (default: [])
+    @param cclibs List of foreign C/Rust libraries to link with -cclib (default: [])
     @param output Output file path (default: None)
     @param mode Compilation mode (default: Compile)
     @param verbose Enable verbose output (default: false)
@@ -133,10 +135,12 @@ val create_executable :
   includes:Path.t list ->
   output:Path.t ->
   libs:Path.t list ->
+  ?cclibs:Path.t list ->
   Path.t list ->
   result
 (** Create an executable from object files and libraries. The current directory
-    is automatically included. *)
+    is automatically included. The optional cclibs parameter specifies foreign
+    C/Rust libraries to link with -cclib flags. *)
 
 val create_custom_executable :
   t ->

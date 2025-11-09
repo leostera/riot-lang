@@ -125,7 +125,7 @@ let run_action ocamlc sandbox_dir action =
       Tusk_toolchain.Ocamlc.create_library ocamlc ~cwd:sandbox_dir
         ~includes:abs_includes ~output:abs_output rel_objects
   | Action.CreateExecutable
-      { outputs = output :: _; objects; libraries; includes } -> (
+      { outputs = output :: _; objects; libraries; includes; cclibs } -> (
       Log.debug
         ("[ACTION_EXECUTOR] CreateExecutable: output="
         ^ Path.to_string output ^ ", "
@@ -151,6 +151,9 @@ let run_action ocamlc sandbox_dir action =
             else Path.join sandbox_dir inc)
           includes
       in
+      
+      (* Foreign cclibs are absolute paths, keep them as-is *)
+      let abs_cclibs = cclibs in
 
       Log.debug
         ("[ACTION_EXECUTOR] Absolute libraries: ["
@@ -158,7 +161,7 @@ let run_action ocamlc sandbox_dir action =
         ^ "]");
       let result =
         Tusk_toolchain.Ocamlc.create_executable ocamlc ~cwd:sandbox_dir
-          ~includes:abs_includes ~libs:abs_libraries ~output:abs_output
+          ~includes:abs_includes ~libs:abs_libraries ~cclibs:abs_cclibs ~output:abs_output
           abs_objects
       in
       match result with
@@ -207,6 +210,53 @@ let run_action ocamlc sandbox_dir action =
           Log.error ("WriteFile: failed - " ^ msg);
           Tusk_toolchain.Ocamlc.Failed
             ("Write failed: " ^ Path.to_string destination ^ " - " ^ msg))
+  | Action.BuildForeignDependency { name; path; build_cmd; outputs; env } -> (
+      (* Execute foreign build command in the foreign package directory *)
+      let build_cmd_str = String.concat " " build_cmd in
+      (* Print a Cargo-style "Compiling" message for foreign builds *)
+      Log.info ("   \027[1;32mCompiling\027[0m " ^ name ^ " (" ^ build_cmd_str ^ ")");
+      
+      match build_cmd with
+      | [] -> Tusk_toolchain.Ocamlc.Failed "BuildForeignDependency: empty build_cmd"
+      | cmd_name :: cmd_args ->
+          let normalized_path = Path.normalize path in
+          Log.debug ("Executing: " ^ build_cmd_str ^ " in " ^ Path.to_string normalized_path);
+          
+          (* Execute the build command in the foreign directory *)
+          let cmd = Command.make ~cwd:(Path.to_string normalized_path) ~env ~args:cmd_args cmd_name in
+          match Command.output cmd with
+          | Ok output when output.Command.status = 0 ->
+              Log.debug ("Foreign build succeeded: " ^ name);
+              if String.length output.Command.stdout > 0 then 
+                Log.debug ("stdout: " ^ output.Command.stdout);
+              
+              (* Verify that all expected outputs were created *)
+              let abs_outputs = List.map (fun out -> Path.normalize (Path.join path out)) outputs in
+              let missing = List.filter (fun out ->
+                match Fs.exists out with
+                | Ok true -> false
+                | Ok false | Error _ -> true
+              ) abs_outputs in
+              
+              if List.length missing > 0 then
+                Tusk_toolchain.Ocamlc.Failed 
+                  ("Foreign build succeeded but outputs not created: " ^ 
+                   String.concat ", " (List.map Path.to_string missing))
+              else
+                Tusk_toolchain.Ocamlc.Success ("Built foreign dependency: " ^ name)
+          | Ok output ->
+              Log.error ("Foreign build failed: " ^ name ^ " - exit code " ^ 
+                        Int.to_string output.Command.status);
+              if String.length output.Command.stderr > 0 then 
+                Log.error ("stderr: " ^ output.Command.stderr);
+              Tusk_toolchain.Ocamlc.Failed 
+                ("Foreign build failed: " ^ name ^ " - exit code " ^ 
+                 Int.to_string output.Command.status)
+          | Error (Command.SystemError msg) ->
+              Log.error ("Failed to execute foreign build: " ^ msg);
+              Tusk_toolchain.Ocamlc.Failed 
+                ("Failed to execute foreign build command: " ^ msg)
+      )
 
 let execute_actions toolchain sandbox_dir actions =
   let ocamlc = Tusk_toolchain.ocamlc toolchain in
@@ -270,6 +320,7 @@ let execute_node ~completed toolchain sandbox_dir (node : Action_node.t) =
               let pkg_dir = node.value.package.path in
               let abs_src = Path.join pkg_dir src_path in
               let abs_dst = Path.join sandbox_dir src_path in
+              Log.debug ("[EXECUTOR] Copying source: " ^ Path.to_string src_path ^ " from " ^ Path.to_string abs_src);
               (match Path.parent abs_dst with
               | Some dst_dir -> (
                   match Fs.create_dir_all dst_dir with Ok () | Error _ -> ())
@@ -310,24 +361,43 @@ let execute_node ~completed toolchain sandbox_dir (node : Action_node.t) =
               completed_at;
             }
         | Ok () -> (
-            let abs_outputs = List.map (Path.join sandbox_dir) outputs in
-            match verify_outputs abs_outputs with
-            | Error missing ->
-                {
-                  node_id = node.id;
-                  status = Failed (OutputsNotCreated { missing });
-                  duration;
-                  started_at = start;
-                  completed_at;
-                }
-            | Ok () ->
-                {
-                  node_id = node.id;
-                  status = Executed;
-                  duration;
-                  started_at = start;
-                  completed_at;
-                })))
+            (* Foreign dependencies verify their own outputs, so skip verification for those *)
+            let needs_output_verification = 
+              List.exists (fun action ->
+                match action with
+                | Action.BuildForeignDependency _ -> false
+                | _ -> true
+              ) actions
+            in
+            
+            if not needs_output_verification then
+              (* All actions are foreign dependencies, skip output verification *)
+              {
+                node_id = node.id;
+                status = Executed;
+                duration;
+                started_at = start;
+                completed_at;
+              }
+            else (
+              let abs_outputs = List.map (Path.join sandbox_dir) outputs in
+              match verify_outputs abs_outputs with
+              | Error missing ->
+                  {
+                    node_id = node.id;
+                    status = Failed (OutputsNotCreated { missing });
+                    duration;
+                    started_at = start;
+                    completed_at;
+                  }
+              | Ok () ->
+                  {
+                    node_id = node.id;
+                    status = Executed;
+                    duration;
+                    started_at = start;
+                    completed_at;
+                  }))))
 
 let execute ~action_graph ~sandbox ~store:_ toolchain ~concurrency =
   let sandbox_dir = Sandbox.get_dir sandbox in

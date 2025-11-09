@@ -16,9 +16,7 @@ let sandbox_id ~package_name =
 
 let create ~workspace ~package_name =
   let sandbox_dir =
-    Path.(
-      workspace.Workspace.root / v "target" / v "debug" / v "sandbox"
-      / sandbox_id ~package_name)
+    Path.(Tusk_model.Tusk_dirs.sandbox_dir ~workspace_root:workspace.Workspace.root / sandbox_id ~package_name)
   in
   Fs.create_dir_all sandbox_dir
   |> Result.expect

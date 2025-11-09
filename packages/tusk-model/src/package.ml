@@ -15,6 +15,7 @@ type sources = { src : Path.t list; native : Path.t list; tests : Path.t list; e
 type foreign_dependency = {
   name : string;
   path : Path.t;
+  inputs : Path.t list;
   build_cmd : string list;
   clean_cmd : string list option;
   test_cmd : string list option;
@@ -119,11 +120,62 @@ let parse_foreign_dependency (name : string) (value : Toml.value)
       match get_string "path", get_string_list "build_cmd", get_string_list "outputs" with
       | Ok path_str, Ok build_cmd, Ok outputs ->
           let dep_path = Path.(package_path / v path_str) in
-          let output_paths = List.map (fun s -> Path.(dep_path / v s)) outputs in
+          let output_paths = List.map Path.v outputs in
           let clean_cmd = get_string_list_opt "clean_cmd" in
           let test_cmd = get_string_list_opt "test_cmd" in
           let env = get_env () in
-          Ok { name; path = dep_path; build_cmd; clean_cmd; test_cmd; outputs = output_paths; env }
+          
+          (* Scan for foreign dependency source files *)
+          let scan_foreign_inputs foreign_path =
+            let rec scan_recursive ~from_dir ~rel_path ~exclude_dirs =
+              match Fs.read_dir from_dir with
+              | Error _ -> []
+              | Ok iter ->
+                  let entries = Std.Iter.MutIterator.to_list iter in
+                  List.concat_map
+                    (fun entry ->
+                      let abs_path = Path.(from_dir / entry) in
+                      let rel_path_full = Path.(rel_path / entry) in
+                      let entry_name = Path.basename abs_path in
+                      
+                      (* Skip hidden files and build artifact directories *)
+                      let should_skip = 
+                        String.starts_with ~prefix:"." entry_name ||
+                        List.mem entry_name exclude_dirs
+                      in
+                      
+                      if should_skip then []
+                      else
+                        match Fs.is_dir abs_path with
+                        | Ok true -> 
+                            scan_recursive ~from_dir:abs_path ~rel_path:rel_path_full ~exclude_dirs
+                        | Ok false ->
+                            (* Only include source files and build configs *)
+                            let should_include = 
+                              String.ends_with ~suffix:".rs" entry_name ||
+                              String.ends_with ~suffix:".c" entry_name ||
+                              String.ends_with ~suffix:".h" entry_name ||
+                              String.ends_with ~suffix:".cpp" entry_name ||
+                              String.ends_with ~suffix:".hpp" entry_name ||
+                              entry_name = "Cargo.toml" ||
+                              entry_name = "Cargo.lock" ||
+                              entry_name = "build.rs" ||
+                              entry_name = "CMakeLists.txt" ||
+                              entry_name = "Makefile"
+                            in
+                            if should_include then [ rel_path_full ]
+                            else []
+                        | Error _ -> [])
+                    entries
+            in
+            let exclude_dirs = ["target"; "_build"; "build"; "dist"; "node_modules"] in
+            scan_recursive ~from_dir:foreign_path ~rel_path:(Path.v ".") ~exclude_dirs
+          in
+          
+          let inputs = scan_foreign_inputs dep_path in
+          Log.info ("[PACKAGE] Foreign dependency '" ^ name ^ "' found " ^ Int.to_string (List.length inputs) ^ " input files");
+          
+          Ok { name; path = dep_path; inputs; build_cmd; clean_cmd; test_cmd; outputs = output_paths; env }
       | Error e, _, _ -> Error e
       | _, Error e, _ -> Error e
       | _, _, Error e -> Error e)
@@ -131,18 +183,48 @@ let parse_foreign_dependency (name : string) (value : Toml.value)
 
 let parse_foreign_dependencies (items : (string * Toml.value) list)
     ~(package_path : Path.t) : (foreign_dependency list, string) result =
-  match List.assoc_opt "foreign-dependencies" items with
-  | None -> Ok []
+  Log.debug ("[PACKAGE] parse_foreign_dependencies: checking for 'foreign-dependencies' key");
+  Log.debug ("[PACKAGE] Available keys: " ^ String.concat ", " (List.map fst items));
+  
+  (* Collect all keys that start with "foreign-dependencies." *)
+  let foreign_dep_items = List.filter_map (fun (key, value) ->
+    if String.starts_with ~prefix:"foreign-dependencies." key then
+      (* Extract the dependency name after "foreign-dependencies." *)
+      let prefix_len = String.length "foreign-dependencies." in
+      let dep_name = String.sub key prefix_len (String.length key - prefix_len) in
+      Some (dep_name, value)
+    else None
+  ) items in
+  
+  if List.length foreign_dep_items > 0 then
+    Log.debug ("[PACKAGE] Found " ^ Int.to_string (List.length foreign_dep_items) ^ " foreign dependencies via dotted keys");
+  
+  (* Also check for standard nested table format *)
+  let nested_deps = match List.assoc_opt "foreign-dependencies" items with
   | Some (Toml.Table deps) ->
-      let results = List.map (fun (name, value) ->
-        parse_foreign_dependency name value ~package_path
-      ) deps in
-      let errors = List.filter_map
-        (fun r -> match r with Error e -> Some e | Ok _ -> None) results in
-      if errors != [] then Error (String.concat "; " errors)
-      else Ok (List.filter_map
-        (fun r -> match r with Ok d -> Some d | Error _ -> None) results)
-  | Some _ -> Error "[foreign-dependencies] must be a table"
+      Log.debug ("[PACKAGE] Found foreign-dependencies table with " ^ Int.to_string (List.length deps) ^ " entries");
+      deps
+  | Some _ ->
+      Log.warn ("[PACKAGE] foreign-dependencies exists but is not a table");
+      []
+  | None ->
+      Log.debug ("[PACKAGE] No 'foreign-dependencies' table found");
+      []
+  in
+  
+  (* Combine both sources *)
+  let all_deps = foreign_dep_items @ nested_deps in
+  
+  if all_deps = [] then Ok []
+  else
+    let results = List.map (fun (name, value) ->
+      parse_foreign_dependency name value ~package_path
+    ) all_deps in
+    let errors = List.filter_map
+      (fun r -> match r with Error e -> Some e | Ok _ -> None) results in
+    if errors != [] then Error (String.concat "; " errors)
+    else Ok (List.filter_map
+      (fun r -> match r with Ok d -> Some d | Error _ -> None) results)
 
 let parse_binary (value : Toml.value) ~(package_path : Path.t) :
     (binary, string) result =

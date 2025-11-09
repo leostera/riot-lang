@@ -32,9 +32,17 @@ type t =
       objects : Path.t list;
       libraries : Path.t list;
       includes : Path.t list;
+      cclibs : Path.t list;  (* Foreign C/Rust libraries to link with -cclib *)
     }
   | CopyFile of { source : Path.t; destination : Path.t }
   | WriteFile of { destination : Path.t; content : string }
+  | BuildForeignDependency of {
+      name : string;
+      path : Path.t;
+      build_cmd : string list;
+      outputs : Path.t list;
+      env : (string * string) list;
+    }
 
 (** Compute a deterministic content-based hash of an action.
 
@@ -102,12 +110,13 @@ let hash action =
       write_sorted_paths hasher objects;
       write_sorted_paths hasher includes;
       Sha256.finish hasher
-  | CreateExecutable { outputs; objects; libraries; includes } ->
+  | CreateExecutable { outputs; objects; libraries; includes; cclibs } ->
       Sha256.write_string hasher "CreateExecutable";
       write_sorted_paths hasher outputs;
       write_sorted_paths hasher objects;
       write_sorted_paths hasher libraries;
       write_sorted_paths hasher includes;
+      write_sorted_paths hasher cclibs;
       Sha256.finish hasher
   | CopyFile { source; destination } ->
       Sha256.write_string hasher "CopyFile";
@@ -118,6 +127,16 @@ let hash action =
       Sha256.write_string hasher "WriteFile";
       Sha256.write_string hasher (Path.to_string destination);
       Sha256.write_string hasher content;
+      Sha256.finish hasher
+  | BuildForeignDependency { name; path; build_cmd; outputs; env } ->
+      Sha256.write_string hasher "BuildForeignDependency";
+      Sha256.write_string hasher name;
+      Sha256.write_string hasher (Path.to_string path);
+      let sorted_cmd = List.sort String.compare build_cmd in
+      List.iter (Sha256.write_string hasher) sorted_cmd;
+      write_sorted_paths hasher outputs;
+      let sorted_env = List.sort (fun (k1, _) (k2, _) -> String.compare k1 k2) env in
+      List.iter (fun (k, v) -> Sha256.write_string hasher (k ^ "=" ^ v)) sorted_env;
       Sha256.finish hasher
 
 let to_string = function
@@ -131,12 +150,14 @@ let to_string = function
       "CompileC(" ^ Path.to_string source ^ "->" ^ String.concat "," (List.map Path.to_string outputs) ^ ")"
   | CreateLibrary { outputs; objects; includes } ->
       "CreateLibrary(" ^ String.concat "," (List.map Path.to_string outputs) ^ ",objects=" ^ String.concat "," (List.map Path.to_string objects) ^ ",includes=" ^ String.concat "," (List.map Path.to_string includes) ^ ")"
-  | CreateExecutable { outputs; objects; libraries; includes } ->
-      "CreateExecutable(" ^ String.concat "," (List.map Path.to_string outputs) ^ ",objects=" ^ String.concat "," (List.map Path.to_string objects) ^ ",libraries=" ^ String.concat "," (List.map Path.to_string libraries) ^ ",includes=" ^ String.concat "," (List.map Path.to_string includes) ^ ")"
+  | CreateExecutable { outputs; objects; libraries; includes; cclibs } ->
+      "CreateExecutable(" ^ String.concat "," (List.map Path.to_string outputs) ^ ",objects=" ^ String.concat "," (List.map Path.to_string objects) ^ ",libraries=" ^ String.concat "," (List.map Path.to_string libraries) ^ ",includes=" ^ String.concat "," (List.map Path.to_string includes) ^ ",cclibs=" ^ String.concat "," (List.map Path.to_string cclibs) ^ ")"
   | CopyFile { source; destination } ->
       "CopyFile(" ^ Path.to_string source ^ "->" ^ Path.to_string destination ^ ")"
   | WriteFile { destination; content } ->
       "WriteFile(" ^ Path.to_string destination ^ "," ^ Int.to_string (String.length content) ^ " bytes)"
+  | BuildForeignDependency { name; path; build_cmd; outputs; _ } ->
+      "BuildForeignDependency(" ^ name ^ ",path=" ^ Path.to_string path ^ ",cmd=" ^ String.concat " " build_cmd ^ ",outputs=" ^ String.concat "," (List.map Path.to_string outputs) ^ ")"
 
 let to_json action =
   let open Data.Json in
@@ -199,7 +220,7 @@ let to_json action =
           ( "includes",
             array (List.map (fun p -> string (Path.to_string p)) includes) );
         ]
-  | CreateExecutable { outputs; objects; libraries; includes } ->
+  | CreateExecutable { outputs; objects; libraries; includes; cclibs } ->
       obj
         [
           ( "outputs",
@@ -211,6 +232,8 @@ let to_json action =
             array (List.map (fun p -> string (Path.to_string p)) libraries) );
           ( "includes",
             array (List.map (fun p -> string (Path.to_string p)) includes) );
+          ( "cclibs",
+            array (List.map (fun p -> string (Path.to_string p)) cclibs) );
         ]
   | CopyFile { source; destination } ->
       obj
@@ -225,6 +248,16 @@ let to_json action =
           ("type", string "WriteFile");
           ("destination", string (Path.to_string destination));
           ("content", string content);
+        ]
+  | BuildForeignDependency { name; path; build_cmd; outputs; env } ->
+      obj
+        [
+          ("type", string "BuildForeignDependency");
+          ("name", string name);
+          ("path", string (Path.to_string path));
+          ("build_cmd", array (List.map string build_cmd));
+          ("outputs", array (List.map (fun p -> string (Path.to_string p)) outputs));
+          ("env", obj (List.map (fun (k, v) -> (k, string v)) env));
         ]
 
 let from_json json =
@@ -291,7 +324,7 @@ let from_json json =
       | Some outs ->
           Ok
             (CreateExecutable
-               { outputs = outs; objects = []; libraries = []; includes = [] })
+               { outputs = outs; objects = []; libraries = []; includes = []; cclibs = [] })
       | _ -> Error "Invalid CreateExecutable")
   | Some (String "CopyFile") -> (
       match (get_field "source" json, get_field "destination" json) with
@@ -303,6 +336,26 @@ let from_json json =
       | Some (String dst), Some (String content) ->
           Ok (WriteFile { destination = Path.v dst; content })
       | _ -> Error "Invalid WriteFile")
+  | Some (String "BuildForeignDependency") -> (
+      let parse_build_cmd json =
+        match get_field "build_cmd" json with
+        | Some (Array arr) ->
+            Some (List.filter_map (function String s -> Some s | _ -> None) arr)
+        | _ -> None
+      in
+      let parse_env json =
+        match get_field "env" json with
+        | Some (Object fields) ->
+            List.filter_map
+              (fun (k, v) -> match v with String s -> Some (k, s) | _ -> None)
+              fields
+        | _ -> []
+      in
+      match (get_field "name" json, get_field "path" json, parse_build_cmd json, parse_outputs json) with
+      | Some (String name), Some (String path), Some build_cmd, Some outs ->
+          let env = parse_env json in
+          Ok (BuildForeignDependency { name; path = Path.v path; build_cmd; outputs = outs; env })
+      | _ -> Error "Invalid BuildForeignDependency")
   | Some _ -> Error "Unknown action type"
   | None -> Error "type must be string"
 
@@ -335,11 +388,18 @@ let equal a1 a2 =
       && List.for_all2 Path.equal r1.objects r2.objects
       && List.for_all2 Path.equal r1.libraries r2.libraries
       && List.for_all2 Path.equal r1.includes r2.includes
+      && List.for_all2 Path.equal r1.cclibs r2.cclibs
   | CopyFile r1, CopyFile r2 ->
       Path.equal r1.source r2.source && Path.equal r1.destination r2.destination
   | WriteFile r1, WriteFile r2 ->
       Path.equal r1.destination r2.destination
       && String.equal r1.content r2.content
+  | BuildForeignDependency r1, BuildForeignDependency r2 ->
+      r1.name = r2.name
+      && Path.equal r1.path r2.path
+      && r1.build_cmd = r2.build_cmd
+      && List.for_all2 Path.equal r1.outputs r2.outputs
+      && r1.env = r2.env
   | _ -> false
 
 let outputs = function
@@ -351,6 +411,7 @@ let outputs = function
   | CreateExecutable { outputs; _ } -> outputs
   | CopyFile { destination; _ } -> [ destination ]
   | WriteFile { destination; _ } -> [ destination ]
+  | BuildForeignDependency { outputs; _ } -> outputs
 
 let kind = function
   | CompileInterface _ -> "CompileInterface"
@@ -361,3 +422,4 @@ let kind = function
   | CreateExecutable _ -> "CreateExecutable"
   | CopyFile _ -> "CopyFile"
   | WriteFile _ -> "WriteFile"
+  | BuildForeignDependency _ -> "BuildForeignDependency"

@@ -1,0 +1,18 @@
+[package]
+name = "hello-foreign"
+version = "0.1.0"
+
+[lib]
+path = "src/hello_foreign.ml"
+
+[[bin]]
+name = "hello"
+path = "src/hello.ml"
+
+[dependencies]
+std = { path = "../std" }
+
+[foreign-dependencies.hello-rust]
+path = "../../native/hello-rust"
+build_cmd = ["cargo", "build", "--release"]
+outputs = ["../../target/release/libhello_rust.a"]

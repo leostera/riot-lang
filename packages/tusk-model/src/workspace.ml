@@ -59,7 +59,9 @@ let of_toml (toml : Toml.value) : (manifest, string) result =
 let manifest_from_toml = of_toml [@@deprecated "Use of_toml instead"]
 
 let make ~root ~packages : t =
-  { root; target_dir_root = Path.(root / Path.v "target"); packages }
+  (* Note: Hardcoded to avoid circular dependency with Tusk_dirs.
+     Keep in sync with Tusk_dirs.build_dir_name *)
+  { root; target_dir_root = Path.(root / Path.v "_build"); packages }
 
 (** Utility functions *)
 

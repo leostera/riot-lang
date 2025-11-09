@@ -22,3 +22,24 @@ let ensure_created () =
   let _ = Fs.create_dir_all Path.(dot_tusk / Path.v "toolchains") in
   let _ = Fs.create_dir_all Path.(dot_tusk / Path.v "bin") in
   Ok ()
+
+(** Build directory configuration - single source of truth *)
+let build_dir_name = "_build"
+
+(* Note: The following functions don't reference Workspace type to avoid circular dependency.
+   They use the workspace root path directly. *)
+
+let build_dir_root ~workspace_root =
+  Path.(workspace_root / Path.v build_dir_name)
+
+let debug_dir ~workspace_root =
+  Path.(build_dir_root ~workspace_root / Path.v "debug")
+
+let cache_dir ~workspace_root =
+  Path.(debug_dir ~workspace_root / Path.v "cache")
+
+let out_dir ~workspace_root =
+  Path.(debug_dir ~workspace_root / Path.v "out")
+
+let sandbox_dir ~workspace_root =
+  Path.(debug_dir ~workspace_root / Path.v "sandbox")
