@@ -12,6 +12,22 @@ type binary = { name : string; path : Path.t }
 type library = { path : Path.t }
 type sources = { src : Path.t list; native : Path.t list; tests : Path.t list; examples: Path.t list }
 
+type target_platform = string  (* "macos", "linux", "windows", etc. *)
+
+(** Re-export types from Profile *)
+type 'a override = 'a Profile.override
+type profile_override = Profile.profile_override
+
+(** Target-specific override - can override any profile field for a specific platform *)
+type target_override = {
+  profile_override : Profile.profile_override option;  (* Profile fields that can be overridden *)
+}
+
+type compiler_config = { 
+  profile_overrides : (string * profile_override) list;  (* "debug" -> override, "release" -> override *)
+  target_overrides : (target_platform * target_override) list;  (* "macos" -> override, etc. *)
+}
+
 type foreign_dependency = {
   name : string;
   path : Path.t;
@@ -32,6 +48,7 @@ type t = {
   binaries : binary list;
   library : library option;
   sources : sources;
+  compiler : compiler_config;
 }
 
 let equal a b = a.name = b.name && a.path = b.path
@@ -291,6 +308,36 @@ let parse_library (items : (string * Toml.value) list) ~(package_path : Path.t)
       | Some _ -> Error "Library 'path' field must be a string")
   | Some _ -> Error "[lib] must be a table"
 
+let parse_compiler_config (items : (string * Toml.value) list) : compiler_config =
+  (* Parse [profile.debug] and [profile.release] sections *)
+  let profile_overrides =
+    match List.assoc_opt "profile" items with
+    | Some (Toml.Table profile_table) ->
+        List.filter_map (fun (profile_name, value) ->
+          match value with
+          | Toml.Table profile_items ->
+              Some (profile_name, Profile.override_from_toml profile_items)
+          | _ -> None
+        ) profile_table
+    | _ -> []
+  in
+  
+  (* Parse [target.macos], [target.linux], etc. sections *)
+  let target_overrides =
+    match List.assoc_opt "target" items with
+    | Some (Toml.Table target_table) ->
+        List.filter_map (fun (platform, value) ->
+          match value with
+          | Toml.Table platform_items ->
+              let profile_override = Profile.override_from_toml platform_items in
+              Some (platform, { profile_override = Some profile_override })
+          | _ -> None
+        ) target_table
+    | _ -> []
+  in
+  
+  { profile_overrides; target_overrides }
+
 let scan_sources ~(package_path : Path.t) : sources =
   let rec scan_dir_recursive ~from_dir ~rel_path =
     match Fs.read_dir from_dir with
@@ -398,6 +445,7 @@ let from_toml (toml : Toml.value) ~(workspace_deps : dependency list)
             []
       in
       let sources = scan_sources ~package_path:path in
+      let compiler = parse_compiler_config items in
       let test_binaries = autodiscover_test_binaries sources ~package_path:path in
       let example_binaries =
         autodiscover_example_binaries sources ~package_path:path
@@ -415,6 +463,7 @@ let from_toml (toml : Toml.value) ~(workspace_deps : dependency list)
           binaries = all_binaries;
           library;
           sources;
+          compiler;
         }
   | _ -> Error "TOML is not a table"
 
@@ -538,8 +587,152 @@ let from_json (json : Json.t) : (t, string) result =
               binaries;
               library;
               sources = { src = []; native = []; tests = []; examples = [] };
+              compiler = { profile_overrides = []; target_overrides = [] };
             }
           | Error _, _ -> Error ("Invalid path in package JSON: " ^ path_str)
           | _, Error _ -> Error ("Invalid relative_path in package JSON: " ^ rel_path_str))
       | _ -> Error "Invalid package JSON")
   | _ -> Error "Package must be a JSON object"
+
+(** Hash package metadata into a hasher state *)
+let hash state (pkg : t) =
+  let module H = Crypto.Sha256 in
+  H.write_string state pkg.name;
+  
+  (* Dependencies metadata *)
+  let sorted_deps =
+    List.sort (fun (a : dependency) (b : dependency) -> String.compare a.name b.name) pkg.dependencies
+  in
+  List.iter (fun (dep : dependency) ->
+    H.write_string state dep.name;
+    match dep.source with
+    | Workspace -> H.write_string state "workspace"
+    | Path path -> H.write_string state (Path.to_string path)
+  ) sorted_deps;
+  
+  (* Binaries metadata *)
+  let sorted_bins =
+    List.sort (fun (a : binary) (b : binary) -> String.compare a.name b.name) pkg.binaries
+  in
+  List.iter (fun (bin : binary) ->
+    H.write_string state bin.name;
+    H.write_string state (Path.to_string bin.path)
+  ) sorted_bins;
+  
+  (* Library metadata *)
+  (match pkg.library with
+  | Some lib ->
+      H.write_string state "true";
+      H.write_string state (Path.to_string lib.path)
+  | None -> H.write_string state "false");
+  
+  (* Compiler configuration - profile and target overrides *)
+  let hash_override (override : profile_override) =
+    (match override.kind with
+    | Inherit -> H.write_string state "inherit"
+    | Override kind -> H.write_string state (match kind with Ocaml_compiler.Bytecode -> "bytecode" | Native -> "native"));
+    (match override.inline with
+    | Inherit -> H.write_string state "inherit"
+    | Override (Some n) -> H.write_string state (Int.to_string n)
+    | Override None -> H.write_string state "none");
+    (match override.no_assert with
+    | Inherit -> H.write_string state "inherit"
+    | Override b -> H.write_string state (Bool.to_string b));
+    (match override.compact with
+    | Inherit -> H.write_string state "inherit"
+    | Override b -> H.write_string state (Bool.to_string b));
+    (match override.unsafe with
+    | Inherit -> H.write_string state "inherit"
+    | Override b -> H.write_string state (Bool.to_string b));
+    (match override.no_alias_deps with
+    | Inherit -> H.write_string state "inherit"
+    | Override b -> H.write_string state (Bool.to_string b));
+    (match override.open_modules with
+    | Inherit -> H.write_string state "inherit"
+    | Override mods -> List.iter (H.write_string state) mods);
+    (match override.cc_flags with
+    | Inherit -> H.write_string state "inherit"
+    | Override flags -> List.iter (H.write_string state) flags);
+    (match override.ocamlc_flags with
+    | Inherit -> H.write_string state "inherit"
+    | Override flags -> List.iter (H.write_string state) flags);
+  in
+  
+  let sorted_profile_overrides =
+    List.sort (fun (a, _) (b, _) -> String.compare a b) pkg.compiler.profile_overrides
+  in
+  List.iter (fun (profile_name, override : string * profile_override) ->
+    H.write_string state profile_name;
+    hash_override override
+  ) sorted_profile_overrides;
+
+  let sorted_target_overrides =
+    List.sort (fun (a, _) (b, _) -> String.compare a b) pkg.compiler.target_overrides
+  in
+  List.iter (fun (platform_name, target : string * target_override) ->
+    H.write_string state platform_name;
+    (match target.profile_override with
+    | Some override -> hash_override override
+    | None -> H.write_string state "none");
+  ) sorted_target_overrides;
+  
+  (* Source file contents *)
+  let all_source_files =
+    pkg.sources.src 
+    @ pkg.sources.native 
+    @ pkg.sources.tests
+    @ pkg.sources.examples
+  in
+  let sorted_files =
+    List.sort
+      (fun a b -> String.compare (Path.to_string a) (Path.to_string b))
+      all_source_files
+  in
+  List.iter
+    (fun file_path ->
+      let abs_path =
+        if Path.is_absolute file_path then file_path
+        else Path.(pkg.path / file_path)
+      in
+      let path_str = Path.to_string file_path in
+      match Fs.read abs_path with
+      | Ok content ->
+          H.write_string state path_str;
+          H.write_string state content
+      | Error _ ->
+          (* File read error - include path only *)
+          H.write_string state path_str)
+    sorted_files;
+  
+  (* Foreign dependency sources *)
+  let sorted_foreign_deps =
+    List.sort
+      (fun (a : foreign_dependency) (b : foreign_dependency) ->
+        String.compare a.name b.name)
+      pkg.foreign_dependencies
+  in
+  
+  List.iter
+    (fun (fdep : foreign_dependency) ->
+      H.write_string state fdep.name;
+      H.write_string state (Path.to_string fdep.path);
+      List.iter (H.write_string state) fdep.build_cmd;
+      
+      (* Hash all input files *)
+      let sorted_inputs =
+        List.sort
+          (fun a b -> String.compare (Path.to_string a) (Path.to_string b))
+          fdep.inputs
+      in
+      
+      List.iter
+        (fun input_path ->
+          let abs_path = Path.(fdep.path / input_path) in
+          match Fs.read abs_path with
+          | Ok content ->
+              H.write_string state (Path.to_string input_path);
+              H.write_string state content
+          | Error _ ->
+              H.write_string state (Path.to_string input_path))
+        sorted_inputs)
+    sorted_foreign_deps

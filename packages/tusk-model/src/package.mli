@@ -6,6 +6,23 @@ type binary = { name : string; path : Path.t }
 type library = { path : Path.t }
 type sources = { src : Path.t list; native : Path.t list; tests : Path.t list; examples : Path.t list }
 
+type target_platform = string  (* "macos", "linux", "windows", etc. *)
+
+(** Re-export from Profile for convenience *)
+type 'a override = 'a Profile.override
+
+type profile_override = Profile.profile_override
+
+(** Target-specific override *)
+type target_override = {
+  profile_override : Profile.profile_override option;
+}
+
+type compiler_config = { 
+  profile_overrides : (string * profile_override) list;
+  target_overrides : (target_platform * target_override) list;
+}
+
 type foreign_dependency = {
   name : string;
   path : Path.t;
@@ -26,6 +43,7 @@ type t = {
   binaries : binary list;
   library : library option;
   sources : sources;
+  compiler : compiler_config;
 }
 
 val equal : t -> t -> bool
@@ -39,3 +57,6 @@ val from_toml :
 
 val to_json : t -> Std.Data.Json.t
 val from_json : Std.Data.Json.t -> (t, string) result
+
+(** Hash package metadata into a Sha256 hasher state *)
+val hash : Crypto.Sha256.state -> t -> unit

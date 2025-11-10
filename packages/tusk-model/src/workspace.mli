@@ -1,15 +1,26 @@
 open Std
 
-type t = { root : Path.t; target_dir_root : Path.t; packages : Package.t list }
+type t = {
+  root : Path.t;
+  target_dir_root : Path.t;
+  packages : Package.t list;
+  profile_overrides : (string * Package.profile_override) list;
+}
 
 type manifest = {
   members : Path.t list;
   dependencies : Package.dependency list;
+  profile_overrides : (string * Package.profile_override) list;
 }
 
 val of_toml : Std.Data.Toml.value -> (manifest, string) result
 
-val make : root:Path.t -> packages:Package.t list -> t
+val make :
+  root:Path.t ->
+  packages:Package.t list ->
+  ?profile_overrides:(string * Package.profile_override) list ->
+  unit ->
+  t
 
 val project_id : t -> string
 (** Get a unique project identifier for the workspace by replacing / with - in

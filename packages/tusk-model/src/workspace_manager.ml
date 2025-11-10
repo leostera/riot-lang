@@ -172,7 +172,8 @@ let build_workspace (workspace_root : Path.t)
 
   let all_packages = member_packages @ workspace_packages @ external_packages in
   let all_errors = workspace_errors @ external_errors in
-  (Workspace.make ~root:workspace_root ~packages:all_packages, all_errors)
+  (Workspace.make ~root:workspace_root ~packages:all_packages 
+    ~profile_overrides:workspace_manifest.profile_overrides (), all_errors)
 
 let scan (path : Path.t) : ((Workspace.t * load_error list), string) result =
   try

@@ -7,13 +7,19 @@ open Std.IO
 
 (** Types *)
 
-type t = { root : Path.t; target_dir_root : Path.t; packages : Package.t list }
+type t = {
+  root : Path.t;
+  target_dir_root : Path.t;
+  packages : Package.t list;
+  profile_overrides : (string * Package.profile_override) list;
+}
 
 (** Workspace TOML parsing *)
 
 type manifest = {
   members : Path.t list;
   dependencies : Package.dependency list;
+  profile_overrides : (string * Package.profile_override) list;
 }
 
 let parse_dependency (name : string) (value : Toml.value) : Package.dependency =
@@ -51,17 +57,46 @@ let parse_workspace_dependencies (toml : Toml.value) : Package.dependency list =
       | _ -> [])
   | _ -> []
 
+let parse_profile_overrides (toml : Toml.value) : (string * Profile.profile_override) list =
+  Log.debug "[WORKSPACE] parse_profile_overrides called";
+  match toml with
+  | Toml.Table items -> (
+      Log.debug ("[WORKSPACE] Looking for [profile] in TOML with " ^ Int.to_string (List.length items) ^ " top-level keys");
+      Log.debug ("[WORKSPACE] Top-level keys: " ^ String.concat ", " (List.map fst items));
+      match List.assoc_opt "profile" items with
+      | Some (Toml.Table profile_items) ->
+          Log.debug ("[WORKSPACE] Found [profile] section with " ^ Int.to_string (List.length profile_items) ^ " profiles");
+          let result = List.filter_map (fun (profile_name, value) ->
+            Log.debug ("[WORKSPACE] Parsing profile: " ^ profile_name);
+            match value with
+            | Toml.Table profile_table ->
+                Log.debug ("[WORKSPACE] Profile " ^ profile_name ^ " has " ^ Int.to_string (List.length profile_table) ^ " fields");
+                Some (profile_name, Profile.override_from_toml profile_table)
+            | _ -> 
+                Log.debug ("[WORKSPACE] Profile " ^ profile_name ^ " is not a table, skipping");
+                None
+          ) profile_items in
+          Log.debug ("[WORKSPACE] Parsed " ^ Int.to_string (List.length result) ^ " profile overrides");
+          result
+      | _ -> 
+          Log.debug "[WORKSPACE] No [profile] section found in TOML";
+          [])
+  | _ -> 
+      Log.debug "[WORKSPACE] TOML root is not a table";
+      []
+
 let of_toml (toml : Toml.value) : (manifest, string) result =
   let members = parse_members toml in
   let dependencies = parse_workspace_dependencies toml in
-  Ok { members; dependencies }
+  let profile_overrides = parse_profile_overrides toml in
+  Ok { members; dependencies; profile_overrides }
 
 let manifest_from_toml = of_toml [@@deprecated "Use of_toml instead"]
 
-let make ~root ~packages : t =
+let make ~root ~packages ?(profile_overrides = []) () : t =
   (* Note: Hardcoded to avoid circular dependency with Tusk_dirs.
      Keep in sync with Tusk_dirs.build_dir_name *)
-  { root; target_dir_root = Path.(root / Path.v "_build"); packages }
+  { root; target_dir_root = Path.(root / Path.v "_build"); packages; profile_overrides }
 
 (** Utility functions *)
 
