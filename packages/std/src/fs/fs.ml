@@ -12,6 +12,7 @@ module Metadata = Metadata
 module ReadDir = ReadDir
 module File = File
 module Fd = Fd
+module FileWatcher = File_watcher
 
 (** Basic filesystem operations - defined first as they're used by other
     functions *)

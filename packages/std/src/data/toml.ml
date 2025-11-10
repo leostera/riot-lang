@@ -405,6 +405,24 @@ let parse content =
       let all_sections = List.rev !sections in
       Log.trace ("[TOML] Successfully parsed " ^ Int.to_string (List.length all_sections) ^ " sections and " ^ Int.to_string (List.length !array_sections) ^ " array sections");
 
+      (* Helper to insert a dotted key path into nested tables *)
+      let rec insert_nested_table path value acc =
+        match path with
+        | [] -> acc
+        | [key] -> (key, value) :: acc
+        | key :: rest ->
+            (* Check if this key already exists in acc *)
+            let existing_table = 
+              match List.assoc_opt key acc with
+              | Some (Table items) -> items
+              | _ -> []
+            in
+            let updated_table = insert_nested_table rest value existing_table in
+            (* Replace or add the key with updated nested table *)
+            let acc_without_key = List.filter (fun (k, _) -> not (String.equal k key)) acc in
+            (key, Table updated_table) :: acc_without_key
+      in
+
       (* Convert sections to nested tables *)
       let items =
         List.fold_left
@@ -413,8 +431,9 @@ let parse content =
               (* Top-level items *)
               section.items @ acc
             else
-              (* Create nested table for section *)
-              (section.name, Table section.items) :: acc)
+              (* Split dotted section names (e.g., "profile.debug" -> ["profile"; "debug"]) *)
+              let path = String.split_on_char '.' section.name in
+              insert_nested_table path (Table section.items) acc)
           [] all_sections
       in
 

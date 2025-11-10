@@ -5,6 +5,10 @@ version = "0.1.0"
 [lib]
 path = "src/std.ml"
 
+[[bin]]
+name = "file_watcher_example"
+path = "examples/file_watcher_example.ml"
+
 [dependencies]
 miniriot = { path = "../miniriot" }
 kernel = { path = "../kernel" }

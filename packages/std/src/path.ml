@@ -155,7 +155,7 @@ let rec normalize path =
   in
   let normalized = process [] parts in
   let result = String.concat "/" normalized in
-  if is_absolute path && result != "" then "/" ^ result
+  if is_absolute path && result != "" && not (String.starts_with ~prefix:"/" result) then "/" ^ result
   else if result = "" then "."
   else result
 
