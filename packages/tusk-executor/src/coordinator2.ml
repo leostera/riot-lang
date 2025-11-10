@@ -37,24 +37,24 @@ type coordinator_state = {
 }
 
 (* Worker implementation - purely reactive, no WorkerReady *)
-let rec worker_loop ~coordinator ~workspace ~toolchain ~store ~package_graph =
+let rec worker_loop ~coordinator ~workspace ~toolchain ~store ~package_graph ~build_ctx =
   match receive_any () with
   | AssignTask node ->
       (* Execute the build *)
       let package = Package_graph.get_package node.value in
       let result =
         Package_builder.build ~workspace ~toolchain ~store ~package_graph
-          ~package
+          ~package ~build_ctx
       in
 
       (* Report completion *)
       send coordinator (TaskCompleted { worker_pid = self (); result });
 
       (* Continue waiting for work *)
-      worker_loop ~coordinator ~workspace ~toolchain ~store ~package_graph
+      worker_loop ~coordinator ~workspace ~toolchain ~store ~package_graph ~build_ctx
   | _ ->
       (* Ignore other messages *)
-      worker_loop ~coordinator ~workspace ~toolchain ~store ~package_graph
+      worker_loop ~coordinator ~workspace ~toolchain ~store ~package_graph ~build_ctx
 
 (* Try to assign all available work to idle workers *)
 let rec drain_work_queue state =
@@ -153,7 +153,7 @@ and handle_build_completed state =
   }
 
 (* Initialize and start the build *)
-let init ~workspace ~toolchain ~store ~package_graph ~packages ~concurrency =
+let init ~workspace ~toolchain ~store ~package_graph ~packages ~concurrency ~build_ctx =
   let coordinator_pid = self () in
 
   (* Create build queue *)
@@ -166,7 +166,7 @@ let init ~workspace ~toolchain ~store ~package_graph ~packages ~concurrency =
     List.make ~len:concurrency ~fn:(fun _ ->
         spawn (fun () ->
             worker_loop ~coordinator:coordinator_pid ~workspace ~toolchain
-              ~store ~package_graph))
+              ~store ~package_graph ~build_ctx))
   in
 
   (* Initialize coordinator state *)
@@ -190,7 +190,7 @@ let init ~workspace ~toolchain ~store ~package_graph ~packages ~concurrency =
   coordinator_loop state
 
 (* Public API - same interface as original coordinator *)
-let build_workspace ~workspace ~toolchain ~store ~target ~concurrency =
+let build_workspace ~workspace ~toolchain ~store ~target ~concurrency ~build_ctx =
   let start = Time.Instant.now () in
 
   match Tusk_planner.plan_workspace ~workspace ~target ~load_errors:[] with
@@ -212,7 +212,7 @@ let build_workspace ~workspace ~toolchain ~store ~target ~concurrency =
           (* Run coordinator to completion *)
           let result =
             init ~workspace ~toolchain ~store ~package_graph ~packages
-              ~concurrency
+              ~concurrency ~build_ctx
           in
 
           (* Calculate total duration *)

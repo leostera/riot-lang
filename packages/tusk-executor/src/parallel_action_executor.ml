@@ -125,7 +125,7 @@ let run_action ocamlc sandbox_dir action =
       Tusk_toolchain.Ocamlc.create_library ocamlc ~cwd:sandbox_dir
         ~includes:abs_includes ~output:abs_output rel_objects
   | Action.CreateExecutable
-      { outputs = output :: _; objects; libraries; includes; cclibs } -> (
+      { outputs = output :: _; objects; libraries; includes; cclibs; ccflags } -> (
       Log.debug
         ("[ACTION_EXECUTOR] CreateExecutable: output="
         ^ Path.to_string output ^ ", "
@@ -134,6 +134,10 @@ let run_action ocamlc sandbox_dir action =
         ^ Int.to_string (List.length libraries)
         ^ " libraries: ["
         ^ String.concat ", " (List.map Path.to_string libraries)
+        ^ "], cclibs: ["
+        ^ String.concat ", " (List.map Path.to_string cclibs)
+        ^ "], ccflags: ["
+        ^ String.concat ", " ccflags
         ^ "]");
       let abs_output = Path.join sandbox_dir output in
       let abs_objects = List.map (Path.join sandbox_dir) objects in
@@ -161,8 +165,8 @@ let run_action ocamlc sandbox_dir action =
         ^ "]");
       let result =
         Tusk_toolchain.Ocamlc.create_executable ocamlc ~cwd:sandbox_dir
-          ~includes:abs_includes ~libs:abs_libraries ~cclibs:abs_cclibs ~output:abs_output
-          abs_objects
+          ~includes:abs_includes ~libs:abs_libraries ~cclibs:abs_cclibs ~ccflags
+          ~output:abs_output abs_objects
       in
       match result with
       | Tusk_toolchain.Ocamlc.Success _ ->

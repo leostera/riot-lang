@@ -70,6 +70,7 @@ let get_planned_data = function
   | Built { package; module_graph; action_graph; hash; _ } ->
       Some (package, module_graph, action_graph, hash)
   | Failed _ -> None
+  | Skipped _ -> None
 
 let is_well_known_package name =
   (* OCaml standard library packages that are distributed with OCaml *)

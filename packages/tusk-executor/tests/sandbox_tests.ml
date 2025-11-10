@@ -11,6 +11,7 @@ let test_with_sandbox_copies_inputs () =
               root = tmpdir;
               target_dir_root = Path.(tmpdir / Path.v "target");
               packages = [];
+              profile_overrides = [];
             }
         in
         let input1 = Path.(tmpdir / Path.v "input1.txt") in
@@ -55,6 +56,7 @@ let test_with_sandbox_verifies_outputs () =
               root = tmpdir;
               target_dir_root = Path.(tmpdir / Path.v "target");
               packages = [];
+              profile_overrides = [];
             }
         in
         let output1 = Path.v "output1.txt" in
@@ -86,6 +88,7 @@ let test_with_sandbox_fails_on_missing_output () =
               root = tmpdir;
               target_dir_root = Path.(tmpdir / Path.v "target");
               packages = [];
+              profile_overrides = [];
             }
         in
         let output = Path.v "missing.txt" in
@@ -110,6 +113,7 @@ let test_with_sandbox_cleans_up () =
               root = tmpdir;
               target_dir_root = Path.(tmpdir / Path.v "target");
               packages = [];
+              profile_overrides = [];
             }
         in
         let sandbox_ref = Cell.create None in
@@ -141,6 +145,7 @@ let test_with_sandbox_empty_inputs_outputs () =
               root = tmpdir;
               target_dir_root = Path.(tmpdir / Path.v "target");
               packages = [];
+              profile_overrides = [];
             }
         in
         Tusk_executor.Sandbox.with_sandbox ~workspace ~inputs:[]
@@ -161,6 +166,7 @@ let test_with_sandbox_nested_input_paths () =
               root = tmpdir;
               target_dir_root = Path.(tmpdir / Path.v "target");
               packages = [];
+              profile_overrides = [];
             }
         in
         let nested_dir = Path.(tmpdir / Path.v "nested" / Path.v "deep") in
@@ -196,6 +202,7 @@ let test_sandbox_get_dir_returns_valid_path () =
               root = tmpdir;
               target_dir_root = Path.(tmpdir / Path.v "target");
               packages = [];
+              profile_overrides = [];
             }
         in
         Tusk_executor.Sandbox.with_sandbox ~workspace ~inputs:[]

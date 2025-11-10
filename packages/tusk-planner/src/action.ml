@@ -33,6 +33,7 @@ type t =
       libraries : Path.t list;
       includes : Path.t list;
       cclibs : Path.t list;  (* Foreign C/Rust libraries to link with -cclib *)
+      ccflags : string list;  (* Additional C compiler/linker flags like -framework *)
     }
   | CopyFile of { source : Path.t; destination : Path.t }
   | WriteFile of { destination : Path.t; content : string }
@@ -110,13 +111,14 @@ let hash action =
       write_sorted_paths hasher objects;
       write_sorted_paths hasher includes;
       Sha256.finish hasher
-  | CreateExecutable { outputs; objects; libraries; includes; cclibs } ->
+  | CreateExecutable { outputs; objects; libraries; includes; cclibs; ccflags } ->
       Sha256.write_string hasher "CreateExecutable";
       write_sorted_paths hasher outputs;
       write_sorted_paths hasher objects;
       write_sorted_paths hasher libraries;
       write_sorted_paths hasher includes;
       write_sorted_paths hasher cclibs;
+      List.iter (Sha256.write_string hasher) (List.sort String.compare ccflags);
       Sha256.finish hasher
   | CopyFile { source; destination } ->
       Sha256.write_string hasher "CopyFile";
@@ -150,8 +152,8 @@ let to_string = function
       "CompileC(" ^ Path.to_string source ^ "->" ^ String.concat "," (List.map Path.to_string outputs) ^ ")"
   | CreateLibrary { outputs; objects; includes } ->
       "CreateLibrary(" ^ String.concat "," (List.map Path.to_string outputs) ^ ",objects=" ^ String.concat "," (List.map Path.to_string objects) ^ ",includes=" ^ String.concat "," (List.map Path.to_string includes) ^ ")"
-  | CreateExecutable { outputs; objects; libraries; includes; cclibs } ->
-      "CreateExecutable(" ^ String.concat "," (List.map Path.to_string outputs) ^ ",objects=" ^ String.concat "," (List.map Path.to_string objects) ^ ",libraries=" ^ String.concat "," (List.map Path.to_string libraries) ^ ",includes=" ^ String.concat "," (List.map Path.to_string includes) ^ ",cclibs=" ^ String.concat "," (List.map Path.to_string cclibs) ^ ")"
+  | CreateExecutable { outputs; objects; libraries; includes; cclibs; ccflags } ->
+      "CreateExecutable(" ^ String.concat "," (List.map Path.to_string outputs) ^ ",objects=" ^ String.concat "," (List.map Path.to_string objects) ^ ",libraries=" ^ String.concat "," (List.map Path.to_string libraries) ^ ",includes=" ^ String.concat "," (List.map Path.to_string includes) ^ ",cclibs=" ^ String.concat "," (List.map Path.to_string cclibs) ^ ",ccflags=" ^ String.concat " " ccflags ^ ")"
   | CopyFile { source; destination } ->
       "CopyFile(" ^ Path.to_string source ^ "->" ^ Path.to_string destination ^ ")"
   | WriteFile { destination; content } ->
@@ -220,7 +222,7 @@ let to_json action =
           ( "includes",
             array (List.map (fun p -> string (Path.to_string p)) includes) );
         ]
-  | CreateExecutable { outputs; objects; libraries; includes; cclibs } ->
+  | CreateExecutable { outputs; objects; libraries; includes; cclibs; ccflags } ->
       obj
         [
           ( "outputs",
@@ -234,6 +236,8 @@ let to_json action =
             array (List.map (fun p -> string (Path.to_string p)) includes) );
           ( "cclibs",
             array (List.map (fun p -> string (Path.to_string p)) cclibs) );
+          ( "ccflags",
+            array (List.map string ccflags) );
         ]
   | CopyFile { source; destination } ->
       obj
@@ -324,7 +328,7 @@ let from_json json =
       | Some outs ->
           Ok
             (CreateExecutable
-               { outputs = outs; objects = []; libraries = []; includes = []; cclibs = [] })
+               { outputs = outs; objects = []; libraries = []; includes = []; cclibs = []; ccflags = [] })
       | _ -> Error "Invalid CreateExecutable")
   | Some (String "CopyFile") -> (
       match (get_field "source" json, get_field "destination" json) with
@@ -389,6 +393,7 @@ let equal a1 a2 =
       && List.for_all2 Path.equal r1.libraries r2.libraries
       && List.for_all2 Path.equal r1.includes r2.includes
       && List.for_all2 Path.equal r1.cclibs r2.cclibs
+      && List.for_all2 String.equal r1.ccflags r2.ccflags
   | CopyFile r1, CopyFile r2 ->
       Path.equal r1.source r2.source && Path.equal r1.destination r2.destination
   | WriteFile r1, WriteFile r2 ->

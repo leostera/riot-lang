@@ -85,7 +85,7 @@ and handle_scan_workspace state client_pid current_dir =
     | Ok graph -> graph
     | Error _ -> 
         (* Create empty graph as fallback *)
-        let ws = Workspace.make ~root:workspace.root ~packages:[] in
+        let ws = Workspace.make ~root:workspace.root ~packages:[] () in
         Tusk_planner.Package_graph.create ws |> Result.expect ~msg:"Failed to create empty package graph"
   in
   let new_state = { state with workspace; package_graph; load_errors } in
@@ -139,6 +139,7 @@ and handle_get_package_info state client_pid package_name =
                     binaries = [];
                     library = None;
                     sources = { src = []; native = []; tests = []; examples = [] };
+                    compiler = { profile_overrides = []; target_overrides = [] };
                   };
                 sources = [];
                 dependencies = [];
@@ -435,7 +436,7 @@ and handle_build state client_pid target session_id =
     match Tusk_planner.Package_graph.create workspace with
     | Ok graph -> graph
     | Error _ -> 
-        let ws = Workspace.make ~root:workspace.root ~packages:[] in
+        let ws = Workspace.make ~root:workspace.root ~packages:[] () in
         Tusk_planner.Package_graph.create ws |> Result.expect ~msg:"Failed to create empty package graph"
   in
   let updated_state = { state with workspace; package_graph; load_errors } in
@@ -535,7 +536,7 @@ let start_with_listener () =
           ) missing;
           Log.warn "Build operations will report this error to clients.";
           (* Create an empty graph - actual build will fail with proper error *)
-          let ws = Workspace.make ~root:workspace.root ~packages:[] in
+          let ws = Workspace.make ~root:workspace.root ~packages:[] () in
           Tusk_planner.Package_graph.create ws |> Result.expect ~msg:"Failed to create empty package graph"
     in
     let state =

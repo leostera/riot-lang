@@ -23,6 +23,7 @@ val plan_package_with_graph :
   store:Tusk_store.Store.t ->
   package_graph:Package_graph.t ->
   package:Package.t ->
+  build_ctx:Build_ctx.t ->
   (package_plan_result, Planning_error.t) result
 (** Plan a single package with dependency-aware hashing. Checks if all
     dependencies are planned first. Returns MissingDependencies if deps not

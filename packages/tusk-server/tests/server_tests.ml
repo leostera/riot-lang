@@ -2,12 +2,17 @@ open Std
 
 module Test = Std.Test
 
+let make_test_build_ctx () =
+  let session_id = Tusk_model.Session_id.make () in
+  Tusk_model.Build_ctx.make ~session_id ~profile:Tusk_model.Profile.debug ()
+
 let make_test_workspace tmpdir =
   Tusk_model.Workspace.
     {
       root = tmpdir;
       target_dir_root = Path.(tmpdir / Path.v "target");
       packages = [];
+      profile_overrides = [];
     }
 
 let make_simple_package tmpdir name =
@@ -39,6 +44,7 @@ let make_simple_package tmpdir name =
       binaries = [];
       library = Some { path = Path.v "src/lib.ml" };
       sources = { src = []; native = []; tests = []; examples = [] };
+      compiler = { profile_overrides = []; target_overrides = [] };
     }
 
 let test_server_starts_and_shuts_down () = Ok ()
@@ -53,6 +59,7 @@ let test_cache_hit_using_package_builder () =
               root = tmpdir;
               target_dir_root = Path.(tmpdir / Path.v "target");
               packages = [ package ];
+              profile_overrides = [];
             }
         in
         let toolchain =
@@ -66,6 +73,7 @@ let test_cache_hit_using_package_builder () =
 
         let first_build =
           Tusk_executor.Package_builder.build ~workspace ~toolchain ~store
+            ~build_ctx:(make_test_build_ctx ())
             ~package_graph ~package
         in
 
@@ -73,6 +81,7 @@ let test_cache_hit_using_package_builder () =
         | Built _ -> (
             let second_build =
               Tusk_executor.Package_builder.build ~workspace ~toolchain ~store
+            ~build_ctx:(make_test_build_ctx ())
                 ~package_graph ~package
             in
 
@@ -131,6 +140,7 @@ let test_cache_invalidation_on_source_change () =
                 root = tmpdir;
                 target_dir_root = Path.(tmpdir / Path.v "target");
                 packages = [ package ];
+                profile_overrides = [];
               }
           in
           let toolchain =
@@ -144,6 +154,7 @@ let test_cache_invalidation_on_source_change () =
 
           let first_build =
             Tusk_executor.Package_builder.build ~workspace ~toolchain ~store
+            ~build_ctx:(make_test_build_ctx ())
               ~package_graph ~package
           in
 
@@ -160,6 +171,7 @@ let test_cache_invalidation_on_source_change () =
                 root = tmpdir;
                 target_dir_root = Path.(tmpdir / Path.v "target");
                 packages = [ updated_package ];
+                profile_overrides = [];
               }
           in
           let updated_package_graph =
@@ -168,6 +180,7 @@ let test_cache_invalidation_on_source_change () =
 
           let second_build =
             Tusk_executor.Package_builder.build ~workspace:updated_workspace
+                      ~build_ctx:(make_test_build_ctx ())
               ~toolchain ~store ~package_graph:updated_package_graph
               ~package:updated_package
           in

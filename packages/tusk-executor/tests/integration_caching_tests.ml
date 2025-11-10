@@ -1,6 +1,10 @@
 (*
 open Std
 
+
+let make_test_build_ctx () =
+  let session_id = Tusk_model.Session_id.create () in
+  Tusk_model.Build_ctx.make ~session_id ~profile:Tusk_model.Profile.debug ()
 module Test = Std.Test
 
 let test_toolchain =
@@ -14,6 +18,7 @@ let make_test_workspace tmpdir =
       root = tmpdir;
       target_dir_root = Path.(tmpdir / Path.v "target");
       packages = [];
+      profile_overrides = [];
     }
 
 let make_simple_package tmpdir name =
@@ -32,9 +37,11 @@ let make_simple_package tmpdir name =
       path = pkg_dir;
       relative_path = Path.v name;
       dependencies = [];
+      foreign_dependencies = [];
       binaries = [];
       library = Some { path = Path.v "src/lib.ml" };
       sources = { src = []; native = []; tests = []; examples = [] };
+      compiler = { profile_overrides = []; target_overrides = [] };
     }
 
 let test_package_cache_hit_skips_planning () =
@@ -48,6 +55,7 @@ let test_package_cache_hit_skips_planning () =
 
         let first_build =
           Tusk_executor.Package_builder.build ~workspace ~toolchain ~store
+            ~build_ctx:(make_test_build_ctx ())
             ~package_graph ~package
         in
 
@@ -55,6 +63,7 @@ let test_package_cache_hit_skips_planning () =
         | Built artifact -> (
             let second_build =
               Tusk_executor.Package_builder.build ~workspace ~toolchain ~store
+            ~build_ctx:(make_test_build_ctx ())
                 ~package_graph ~package
             in
 
@@ -94,6 +103,7 @@ let test_package_cache_miss_on_source_change () =
 
         let first_build =
           Tusk_executor.Package_builder.build ~workspace ~toolchain ~store
+            ~build_ctx:(make_test_build_ctx ())
             ~package_graph ~package
         in
 
@@ -107,6 +117,7 @@ let test_package_cache_miss_on_source_change () =
 
         let second_build =
           Tusk_executor.Package_builder.build ~workspace ~toolchain ~store
+            ~build_ctx:(make_test_build_ctx ())
             ~package_graph ~package:package_modified
         in
 

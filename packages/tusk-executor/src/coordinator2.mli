@@ -32,4 +32,5 @@ val build_workspace :
   store:Tusk_store.Store.t ->
   target:Workspace_planner.target ->
   concurrency:int ->
+  build_ctx:Build_ctx.t ->
   (workspace_result, Workspace_planner.plan_error) result

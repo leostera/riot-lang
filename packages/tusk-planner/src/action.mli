@@ -32,6 +32,7 @@ type t =
       libraries : Path.t list;
       includes : Path.t list;
       cclibs : Path.t list;  (* Foreign C/Rust libraries to link with -cclib *)
+      ccflags : string list;  (* Additional C compiler/linker flags like -framework *)
     }
   | CopyFile of { source : Path.t; destination : Path.t }
   | WriteFile of { destination : Path.t; content : string }

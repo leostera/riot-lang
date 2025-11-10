@@ -2,12 +2,17 @@ open Std
 
 module Test = Std.Test
 
+let make_test_build_ctx () =
+  let session_id = Tusk_model.Session_id.make () in
+  Tusk_model.Build_ctx.make ~session_id ~profile:Tusk_model.Profile.debug ()
+
 let make_test_workspace tmpdir packages =
   Tusk_model.Workspace.
     {
       root = tmpdir;
       target_dir_root = Path.(tmpdir / Path.v "target");
       packages;
+      profile_overrides = [];
     }
 
 let make_package tmpdir name content =
@@ -37,6 +42,7 @@ let make_package tmpdir name content =
       binaries = [];
       library = Some { path = Path.v "src/lib.ml" };
       sources = { src = []; native = []; tests = []; examples = [] };
+      compiler = { profile_overrides = []; target_overrides = [] };
     }
 
 let test_fresh_build_no_cache () =
@@ -54,7 +60,7 @@ let test_fresh_build_no_cache () =
         in
 
         let build =
-          Tusk_executor.Package_builder.build ~workspace ~toolchain ~store
+          Tusk_executor.Package_builder.build ~workspace ~toolchain ~store ~build_ctx:(make_test_build_ctx ())
             ~package_graph ~package
         in
 
@@ -90,14 +96,14 @@ let test_second_build_full_cache () =
         in
 
         let first_build =
-          Tusk_executor.Package_builder.build ~workspace ~toolchain ~store
+          Tusk_executor.Package_builder.build ~workspace ~toolchain ~store ~build_ctx:(make_test_build_ctx ())
             ~package_graph ~package
         in
 
         match first_build.status with
         | Built _ -> (
             let second_build =
-              Tusk_executor.Package_builder.build ~workspace ~toolchain ~store
+              Tusk_executor.Package_builder.build ~workspace ~toolchain ~store ~build_ctx:(make_test_build_ctx ())
                 ~package_graph ~package
             in
 

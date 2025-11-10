@@ -41,6 +41,7 @@ let test_collect_source_files () =
               binaries = [];
               library = None;
               sources = { src = []; native = []; tests = []; examples = [] };
+              compiler = { profile_overrides = []; target_overrides = [] };
             }
         in
 
@@ -92,6 +93,7 @@ let test_build_result_status_variants () =
         binaries = [];
         library = None;
         sources = { src = []; native = []; tests = []; examples = [] };
+        compiler = { profile_overrides = []; target_overrides = [] };
       }
   in
 

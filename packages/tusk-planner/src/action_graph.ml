@@ -48,7 +48,7 @@ let stdlib_flags (package : Package.t) =
   else
     [ Tusk_toolchain.Ocamlc.NoPervasives; Tusk_toolchain.Ocamlc.NoStdlib ]
 
-let module_to_actions ~package ~dep_includes ~get_dep_outputs
+let module_to_actions ~package ~dep_includes ~get_dep_outputs ~depset
     (module_node : Module_node.t) (deps : G.Node_id.t list) :
     Action.t list * Path.t list * Path.t list =
   match module_node with
@@ -217,6 +217,58 @@ let module_to_actions ~package ~dep_includes ~get_dep_outputs
       in
 
       let binary_output = Path.v name in
+      
+      (* Select platform-specific compiler flags *)
+      let current_platform = Platform.current_string () in
+      
+      (* Current package's cc_flags *)
+      let current_ccflags = 
+        match List.assoc_opt current_platform package.compiler.target_overrides with
+        | Some target_override -> (
+            match target_override.profile_override with
+            | Some override -> (
+                match override.cc_flags with
+                | Profile.Override flags -> flags
+                | Inherit -> [])
+            | None -> [])
+        | None -> []
+      in
+      
+      (* Collect cc_flags from all dependencies transitively *)
+      let dep_ccflags = 
+        List.concat_map (fun (dep : Dependency.t) ->
+          Log.debug ("[ACTION_GRAPH] Checking cc_flags for dependency: " ^ dep.package.name);
+          match List.assoc_opt current_platform dep.package.compiler.target_overrides with
+          | Some target_override -> (
+              Log.debug ("[ACTION_GRAPH] Found target_override for " ^ dep.package.name);
+              match target_override.profile_override with
+              | Some override -> (
+                  Log.debug ("[ACTION_GRAPH] Found profile_override for " ^ dep.package.name);
+                  match override.cc_flags with
+                  | Profile.Override flags -> 
+                      Log.debug ("[ACTION_GRAPH] Got cc_flags from " ^ dep.package.name ^ ": " ^ String.concat ", " flags);
+                      flags
+                  | Inherit -> 
+                      Log.debug ("[ACTION_GRAPH] cc_flags are Inherit for " ^ dep.package.name);
+                      [])
+              | None -> 
+                  Log.debug ("[ACTION_GRAPH] No profile_override for " ^ dep.package.name);
+                  [])
+          | None -> 
+              Log.debug ("[ACTION_GRAPH] No target_override for " ^ dep.package.name ^ " on platform " ^ current_platform);
+              []
+        ) depset
+      in
+      
+      Log.debug ("[ACTION_GRAPH] Current package cc_flags: " ^ String.concat ", " current_ccflags);
+      Log.debug ("[ACTION_GRAPH] Dependency cc_flags: " ^ String.concat ", " dep_ccflags);
+      
+      (* Combine cc_flags - don't deduplicate as order and pairing matters *)
+      (* For example: -framework CoreFoundation must stay together *)
+      let ccflags = current_ccflags @ dep_ccflags in
+      
+      Log.debug ("[ACTION_GRAPH] Final cc_flags for linking " ^ name ^ ": " ^ String.concat " " ccflags);
+      
       let link_action =
         Action.CreateExecutable
           {
@@ -225,6 +277,7 @@ let module_to_actions ~package ~dep_includes ~get_dep_outputs
             libraries;
             includes;
             cclibs;
+            ccflags;
           }
       in
       ([ compile_action; link_action ], [ binary_output ], sources)
@@ -270,7 +323,7 @@ let from_module_graph ~package ~toolchain ~store ~depset
   List.iter
     (fun (module_node : Module_node.t G.node) ->
       let actions, outputs, sources =
-        module_to_actions ~package ~dep_includes ~get_dep_outputs
+        module_to_actions ~package ~dep_includes ~get_dep_outputs ~depset
           module_node.value module_node.deps
       in
 
@@ -389,6 +442,7 @@ let from_json json =
                                   library = None;
                                   sources =
                                     { src = []; native = []; tests = []; examples = [] };
+                                  compiler = { profile_overrides = []; target_overrides = [] };
                                 }
                             in
                             let toolchain =

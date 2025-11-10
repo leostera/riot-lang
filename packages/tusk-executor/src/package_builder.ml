@@ -131,7 +131,7 @@ let collect_source_files package =
           else None)
         all_files
 
-let build ~workspace ~toolchain ~store ~package_graph ~package =
+let build ~workspace ~toolchain ~store ~package_graph ~package ~build_ctx =
   let start = Instant.now () in
   let target_dir =
     Path.(Tusk_model.Tusk_dirs.out_dir ~workspace_root:workspace.Workspace.root / Path.v package.Package.name)
@@ -142,7 +142,7 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
     ^ ": computing content hash with dependencies");
   match
     Tusk_planner.plan_package_with_graph ~workspace ~toolchain ~store
-      ~package_graph ~package
+      ~package_graph ~package ~build_ctx
   with
   | Error err ->
       let duration = Instant.duration_since ~earlier:start (Instant.now ()) in
@@ -193,7 +193,7 @@ let build ~workspace ~toolchain ~store ~package_graph ~package =
           Failed (ExecutionFailed { message = "Skipped (" ^ reason ^ ")" });
         duration;
       }
-  | Ok (Planned { module_graph; action_graph; hash = package_hash; depset; _ })
+  | Ok (Planned { hash = package_hash; depset; module_graph; action_graph })
     -> (
       Log.info
         ("Package " ^ package.Package.name ^ ": hash="

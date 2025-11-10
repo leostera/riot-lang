@@ -72,7 +72,7 @@ let flags_to_string flags =
     [] flags
 
 (** Build and run an ocamlc command *)
-let run t ~cwd ?(includes = []) ?(libs = []) ?(cclibs = []) ?(output = None) ?(mode = Compile)
+let run t ~cwd ?(includes = []) ?(libs = []) ?(cclibs = []) ?(ccflags = []) ?(output = None) ?(mode = Compile)
     ?(verbose = false) sources =
   let ocamlc = base_command t in
 
@@ -108,6 +108,13 @@ let run t ~cwd ?(includes = []) ?(libs = []) ?(cclibs = []) ?(output = None) ?(m
     else ""
   in
 
+  (* Join additional C compiler flags with -ccopt *)
+  let ccflags_str =
+    if List.length ccflags > 0 then
+      String.concat " " (List.map (fun flag -> "-ccopt \"" ^ flag ^ "\"") ccflags)
+    else ""
+  in
+
   (* Build the complete command *)
   let cmd_parts =
     [
@@ -119,6 +126,7 @@ let run t ~cwd ?(includes = []) ?(libs = []) ?(cclibs = []) ?(output = None) ?(m
       output_flag;
       libs_str;
       cclibs_str;
+      ccflags_str;
       sources_str;
     ]
     |> List.filter (fun s -> s != "") (* Remove empty strings *)
@@ -254,10 +262,10 @@ let create_library t ~cwd ~includes ~output objects =
     (List.map Path.to_string objects)
 
 (** Create an executable from object files and libraries *)
-let create_executable t ~cwd ~includes ~output ~libs ?(cclibs = []) objects =
+let create_executable t ~cwd ~includes ~output ~libs ?(cclibs = []) ?(ccflags = []) objects =
   (* Include current directory *)
   let includes_with_dot = Path.v "." :: includes in
-  run t ~cwd ~includes:includes_with_dot ~libs ~cclibs ~output:(Some output)
+  run t ~cwd ~includes:includes_with_dot ~libs ~cclibs ~ccflags ~output:(Some output)
     ~mode:Executable
     (List.map Path.to_string objects)
 

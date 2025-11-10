@@ -20,6 +20,7 @@ val plan_package :
   store:Tusk_store.Store.t ->
   package_graph:Package_graph.t ->
   package:Package.t ->
+  build_ctx:Build_ctx.t ->
   (plan_result, Planning_error.t) result
 (** Plan a package:
 

@@ -14,6 +14,7 @@ let make_test_workspace tmpdir =
       root = tmpdir;
       target_dir_root = Path.(tmpdir / Path.v "target");
       packages = [];
+      profile_overrides = [];
     }
 
 let make_test_package () =
@@ -23,9 +24,11 @@ let make_test_package () =
       path = Path.v ".";
       relative_path = Path.v ".";
       dependencies = [];
+      foreign_dependencies = [];
       binaries = [];
       library = None;
       sources = { src = []; native = []; tests = []; examples = [] };
+      compiler = { profile_overrides = []; target_overrides = [] };
     }
 
 let make_action_spec ?(actions = []) ?(outs = []) ?(srcs = []) () =

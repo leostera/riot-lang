@@ -80,7 +80,7 @@ let run_action ocamlc sandbox_dir action =
       Tusk_toolchain.Ocamlc.create_library ocamlc ~cwd:sandbox_dir
         ~includes:abs_includes ~output:abs_output abs_objects
   | Action.CreateExecutable
-      { outputs = output :: _; objects; libraries; includes } -> (
+      { outputs = output :: _; objects; libraries; includes; cclibs; ccflags } -> (
       Log.debug
         ("[ACTION_EXECUTOR] CreateExecutable: output="
         ^ Path.to_string output ^ ", "
@@ -89,12 +89,21 @@ let run_action ocamlc sandbox_dir action =
         ^ Int.to_string (List.length libraries)
         ^ " libraries: ["
         ^ String.concat ", " (List.map Path.to_string libraries)
+        ^ "], cclibs: ["
+        ^ String.concat ", " (List.map Path.to_string cclibs)
+        ^ "], ccflags: ["
+        ^ String.concat ", " ccflags
         ^ "]");
       let abs_output = Path.join sandbox_dir output in
       let abs_objects = List.map (Path.join sandbox_dir) objects in
 
       (* Libraries are now found via -I includes pointing to cache, keep as filenames *)
       let abs_libraries = libraries in
+
+      (* cclibs need to be made absolute *)
+      let abs_cclibs = List.map (fun lib -> 
+        if Path.is_absolute lib then lib else Path.join sandbox_dir lib
+      ) cclibs in
 
       (* Includes can be absolute (cache dirs) or relative (sandbox dir) - make relative ones absolute *)
       let abs_includes =
@@ -109,8 +118,8 @@ let run_action ocamlc sandbox_dir action =
         ^ "]");
       let result =
         Tusk_toolchain.Ocamlc.create_executable ocamlc ~cwd:sandbox_dir
-          ~includes:abs_includes ~libs:abs_libraries ~output:abs_output
-          abs_objects
+          ~includes:abs_includes ~libs:abs_libraries ~cclibs:abs_cclibs ~ccflags
+          ~output:abs_output abs_objects
       in
       match result with
       | Tusk_toolchain.Ocamlc.Success _ ->

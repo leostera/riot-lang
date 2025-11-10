@@ -8,6 +8,7 @@ let make_test_workspace tmpdir =
       root = tmpdir;
       target_dir_root = Path.(tmpdir / Path.v "target");
       packages = [];
+      profile_overrides = [];
     }
 
 let test_cache_store_creation () =

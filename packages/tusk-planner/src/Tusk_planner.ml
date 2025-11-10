@@ -10,10 +10,10 @@ type package_plan_result = Package_planner.plan_result
 let plan_workspace ~workspace ~target ~load_errors =
   Workspace_planner.plan_workspace ~workspace ~target ~load_errors
 
-let plan_package_with_graph ~workspace ~toolchain ~store ~package_graph ~package
+let plan_package_with_graph ~workspace ~toolchain ~store ~package_graph ~package ~build_ctx
     =
   Package_planner.plan_package ~workspace ~toolchain ~store ~package_graph
-    ~package
+    ~package ~build_ctx
 
 let plan_package ~workspace ~toolchain ~package =
   let planning_root = Path.v "src" in

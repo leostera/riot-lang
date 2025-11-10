@@ -87,7 +87,7 @@ and handle_build_completed state =
     ^ Int.to_string (List.length state.packages));
   ()
 
-let init ~workspace ~toolchain ~store ~package_graph ~packages ~concurrency =
+let init ~workspace ~toolchain ~store ~package_graph ~packages ~concurrency ~build_ctx =
   let queue = Build_queue.create () in
 
   (* Queue all package nodes BEFORE starting pool *)
@@ -101,7 +101,7 @@ let init ~workspace ~toolchain ~store ~package_graph ~packages ~concurrency =
         let package = Package_graph.get_package node.value in
         let result =
           Package_builder.build ~workspace ~toolchain ~store ~package_graph
-            ~package
+            ~package ~build_ctx
         in
         send owner (TaskCompleted result))
       ()
@@ -113,7 +113,7 @@ let init ~workspace ~toolchain ~store ~package_graph ~packages ~concurrency =
   loop state;
   state
 
-let build_workspace ~workspace ~toolchain ~store ~target ~concurrency =
+let build_workspace ~workspace ~toolchain ~store ~target ~concurrency ~build_ctx =
   let start = Time.Instant.now () in
 
   match Tusk_planner.plan_workspace ~workspace ~target ~load_errors:[] with
@@ -135,7 +135,7 @@ let build_workspace ~workspace ~toolchain ~store ~target ~concurrency =
           (* Run coordinator to completion of the build *)
           let state =
             init ~workspace ~toolchain ~store ~package_graph ~packages
-              ~concurrency
+              ~concurrency ~build_ctx
           in
 
           (* Collect results *)

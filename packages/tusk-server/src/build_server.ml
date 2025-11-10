@@ -7,7 +7,7 @@ open Std.Iter
 open Tusk_model
 open Tusk_executor
 
-let init ~workspace ~load_errors ~toolchain ~store ~concurrency ~session_id ~client_pid
+let init ~(workspace : Workspace.t) ~load_errors ~toolchain ~store ~concurrency ~session_id ~client_pid
     ~server_pid ~target =
   Log.debug
     ("Build worker started for session " ^ Session_id.to_string session_id);
@@ -49,9 +49,15 @@ let init ~workspace ~load_errors ~toolchain ~store ~concurrency ~session_id ~cli
             }))
   ) else (
     Log.debug "Build worker calling Coordinator.build_workspace";
+    
+    (* Create build context: start with debug profile, apply workspace overrides *)
+    let profile = Profile.(apply_overrides debug workspace.profile_overrides) in
+    Log.debug ("Build started with profile " ^ (Data.Json.to_string (Profile.to_json profile)));
+    let build_ctx = Build_ctx.make ~session_id ~profile () in
+    
     let result =
       Coordinator2.build_workspace ~workspace ~toolchain ~store
-        ~target:planner_target ~concurrency
+        ~target:planner_target ~concurrency ~build_ctx
     in
 
     Log.debug "Build worker finished, sending result to client";

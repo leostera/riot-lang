@@ -2,6 +2,10 @@ open Std
 
 module Test = Std.Test
 
+let make_test_build_ctx () =
+  let session_id = Tusk_model.Session_id.make () in
+  Tusk_model.Build_ctx.make ~session_id ~profile:Tusk_model.Profile.debug ()
+
 let make_package tmpdir name content =
   let pkg_dir = Path.(tmpdir / Path.v name) in
   let src_dir = Path.(pkg_dir / Path.v "src") in
@@ -29,6 +33,7 @@ let make_package tmpdir name content =
       binaries = [];
       library = Some { path = Path.v "src/lib.ml" };
       sources = { src = []; native = []; tests = []; examples = [] };
+      compiler = { profile_overrides = []; target_overrides = [] };
     }
 
 type Message.t += BuildComplete of (string * (unit, string) result)
@@ -47,6 +52,7 @@ let test_concurrent_builds_different_packages () =
               root = tmpdir;
               target_dir_root = Path.(tmpdir / Path.v "target");
               packages = [ pkg1; pkg2 ];
+              profile_overrides = [];
             }
         in
         let toolchain =
@@ -62,6 +68,7 @@ let test_concurrent_builds_different_packages () =
           spawn (fun () ->
               let result =
                 Tusk_executor.Package_builder.build ~workspace ~toolchain ~store
+            ~build_ctx:(make_test_build_ctx ())
                   ~package_graph ~package:pkg1
               in
               let status =
@@ -84,6 +91,7 @@ let test_concurrent_builds_different_packages () =
           spawn (fun () ->
               let result =
                 Tusk_executor.Package_builder.build ~workspace ~toolchain ~store
+            ~build_ctx:(make_test_build_ctx ())
                   ~package_graph ~package:pkg2
               in
               let status =
@@ -135,6 +143,7 @@ let test_concurrent_builds_same_package () =
               root = tmpdir;
               target_dir_root = Path.(tmpdir / Path.v "target");
               packages = [ package ];
+              profile_overrides = [];
             }
         in
         let toolchain =
@@ -150,6 +159,7 @@ let test_concurrent_builds_same_package () =
           spawn (fun () ->
               let result =
                 Tusk_executor.Package_builder.build ~workspace ~toolchain ~store
+            ~build_ctx:(make_test_build_ctx ())
                   ~package_graph ~package
               in
               let status =
@@ -172,6 +182,7 @@ let test_concurrent_builds_same_package () =
           spawn (fun () ->
               let result =
                 Tusk_executor.Package_builder.build ~workspace ~toolchain ~store
+            ~build_ctx:(make_test_build_ctx ())
                   ~package_graph ~package
               in
               let status =
@@ -218,6 +229,7 @@ let test_concurrent_builds_with_shared_cache () =
               root = tmpdir;
               target_dir_root = Path.(tmpdir / Path.v "target");
               packages = [ package ];
+              profile_overrides = [];
             }
         in
         let toolchain =
@@ -229,6 +241,7 @@ let test_concurrent_builds_with_shared_cache () =
 
         let first_build =
           Tusk_executor.Package_builder.build ~workspace ~toolchain ~store
+            ~build_ctx:(make_test_build_ctx ())
             ~package_graph ~package
         in
 
@@ -240,7 +253,8 @@ let test_concurrent_builds_with_shared_cache () =
               spawn (fun () ->
                   let result =
                     Tusk_executor.Package_builder.build ~workspace ~toolchain
-                      ~store ~package_graph ~package
+                      ~store ~build_ctx:(make_test_build_ctx ())
+                      ~package_graph ~package
                   in
                   let cached =
                     match result.status with
@@ -269,7 +283,8 @@ let test_concurrent_builds_with_shared_cache () =
               spawn (fun () ->
                   let result =
                     Tusk_executor.Package_builder.build ~workspace ~toolchain
-                      ~store ~package_graph ~package
+                      ~store ~build_ctx:(make_test_build_ctx ())
+                      ~package_graph ~package
                   in
                   let cached =
                     match result.status with

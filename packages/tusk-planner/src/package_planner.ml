@@ -9,7 +9,7 @@ module G = Std.Graph.SimpleGraph
 type plan_result =
   | Planned of {
       package : Package.t;
-      module_graph : Module_node.t Graph.SimpleGraph.t;
+      module_graph : Module_node.t G.t;
       action_graph : Action_graph.t;
       hash : Std.Crypto.hash;
       depset : Dependency.t list;
@@ -21,23 +21,29 @@ type check_deps_error = Missing of Package.t list | Failed of Package.t list
 
 (** Compute input hash - fast path that doesn't require ocamldep.
 
-    This hash depends only on:
-    - Package metadata (name, deps, binaries, library)
-    - Source file contents
-    - Dependency hashes
+    This hash includes:
+    - Build context (host/target platform, session ID, resolved profile)
+    - Package metadata (via Package.hash: name, deps, binaries, library, compiler config, 
+      source files, foreign dependencies)
+    - Workspace-specific dependency details (paths, library presence)
+    - Dependency hashes (for transitive invalidation)
 
     It does NOT depend on:
     - Module graph (requires ocamldep)
     - Action graph (derived from module graph)
 
     If input_hash hasn't changed, we know the full hash is the same! *)
-let compute_input_hash ~package ~depset ~workspace =
+let compute_input_hash ~package ~depset ~workspace ~profile ~build_ctx =
   let module H = Std.Crypto.Sha256 in
   let state = H.create () in
 
-  H.write_string state ("package:" ^ package.Package.name ^ "\n");
-
-  (* Dependencies metadata *)
+  (* Build context (includes resolved profile) *)
+  Build_ctx.hash state build_ctx;
+  
+  (* Package metadata (includes compiler config overrides) *)
+  Package.hash state package;
+  
+  (* Add workspace-specific dependency info not captured in package metadata *)
   let sorted_deps =
     List.sort
       (fun (a : Package.dependency) (b : Package.dependency) ->
@@ -46,114 +52,22 @@ let compute_input_hash ~package ~depset ~workspace =
   in
   List.iter
     (fun (dep : Package.dependency) ->
-      H.write_string state ("dep:" ^ dep.name ^ "\n");
+      (* Package.hash already includes dep name and source, we just add workspace-specific details *)
       match dep.source with
       | Package.Workspace -> (
-          H.write_string state "dep_source:workspace\n";
           match
             List.find_opt
               (fun (p : Package.t) -> p.name = dep.name)
               workspace.Workspace.packages
           with
           | Some dep_pkg -> (
-              H.write_string state
-                ("dep_ws_path:" ^ Path.to_string dep_pkg.path ^ "\n");
+              H.write_string state (Path.to_string dep_pkg.path);
               match dep_pkg.library with
-              | Some _ -> H.write_string state "dep_has_lib:true\n"
-              | None -> H.write_string state "dep_has_lib:false\n")
+              | Some _ -> H.write_string state "true"
+              | None -> H.write_string state "false")
           | None -> ())
-      | Package.Path path ->
-          H.write_string state
-            ("dep_source:path:" ^ Path.to_string path ^ "\n"))
+      | Package.Path _ -> ())
     sorted_deps;
-
-  (* Binaries metadata *)
-  let sorted_bins =
-    List.sort
-      (fun (a : Package.binary) (b : Package.binary) ->
-        String.compare a.name b.name)
-      package.binaries
-  in
-  List.iter
-    (fun (bin : Package.binary) ->
-      H.write_string state ("bin:" ^ bin.name ^ "\n");
-      H.write_string state ("bin_path:" ^ Path.to_string bin.path ^ "\n"))
-    sorted_bins;
-
-  (* Library metadata *)
-  (match package.library with
-  | Some lib ->
-      H.write_string state "lib:true\n";
-      H.write_string state ("lib_path:" ^ Path.to_string lib.path ^ "\n")
-  | None -> H.write_string state "lib:false\n");
-
-  (* Source file contents - use files from package.sources, no scanning! *)
-  let all_source_files =
-    package.sources.src 
-    @ package.sources.native 
-    @ package.sources.tests
-    @ package.sources.examples
-  in
-  let sorted_files =
-    List.sort
-      (fun a b -> String.compare (Path.to_string a) (Path.to_string b))
-      all_source_files
-  in
-  List.iter
-    (fun file_path ->
-      let abs_path =
-        if Path.is_absolute file_path then file_path
-        else Path.(package.path / file_path)
-      in
-      let path_str = Path.to_string file_path in
-      match Fs.read abs_path with
-      | Ok content ->
-          H.write_string state ("file:" ^ path_str ^ "\n");
-          H.write_string state content;
-          H.write_string state "\n"
-      | Error _ ->
-          (* File read error - include path only *)
-          H.write_string state ("file:" ^ path_str ^ "\n"))
-    sorted_files;
-
-  (* Foreign dependency sources *)
-  let sorted_foreign_deps =
-    List.sort
-      (fun (a : Package.foreign_dependency) (b : Package.foreign_dependency) ->
-        String.compare a.name b.name)
-      package.foreign_dependencies
-  in
-  Log.info ("[HASH] Package " ^ package.name ^ " has " ^ Int.to_string (List.length sorted_foreign_deps) ^ " foreign dependencies");
-  
-  List.iter
-    (fun (fdep : Package.foreign_dependency) ->
-      Log.info ("[HASH] Hashing foreign dependency: " ^ fdep.name ^ " with " ^ Int.to_string (List.length fdep.inputs) ^ " input files");
-      H.write_string state ("foreign_dep:" ^ fdep.name ^ "\n");
-      H.write_string state ("foreign_dep_path:" ^ Path.to_string fdep.path ^ "\n");
-      H.write_string state ("foreign_dep_build_cmd:" ^ String.concat " " fdep.build_cmd ^ "\n");
-      
-      (* Hash all input files (already scanned during package parsing) *)
-      let sorted_inputs =
-        List.sort
-          (fun a b -> String.compare (Path.to_string a) (Path.to_string b))
-          fdep.inputs
-      in
-      
-      List.iter
-        (fun input_path ->
-          (* Input paths are relative to the foreign dependency directory *)
-          let abs_path = Path.(fdep.path / input_path) in
-          match Fs.read abs_path with
-          | Ok content ->
-              Log.debug ("[HASH] Hashing foreign input: " ^ Path.to_string input_path ^ " (" ^ Int.to_string (String.length content) ^ " bytes)");
-              H.write_string state ("foreign_input:" ^ Path.to_string input_path ^ "\n");
-              H.write_string state content;
-              H.write_string state "\n"
-          | Error err ->
-              Log.warn ("[HASH] Failed to read foreign input " ^ Path.to_string abs_path ^ ": " ^ IO.error_message err);
-              H.write_string state ("foreign_input:" ^ Path.to_string input_path ^ "\n"))
-        sorted_inputs)
-    sorted_foreign_deps;
 
   (* Dependency hashes *)
   let dep_hashes =
@@ -201,109 +115,31 @@ let check_dependencies_built ~package_graph ~package =
   else if !unplanned != [] then Error (Missing !unplanned)
   else Ok (Vector.into_iter depset |> Iterator.to_list)
 
-let compute_hash ~package ~sources ~module_graph ~action_graph ~depset
-    ~workspace =
-  let module H = Std.Crypto.Sha256 in
-  let state = H.create () in
-
-  H.write_string state ("package:" ^ package.Package.name ^ "\n");
-
-  let sorted_deps =
-    List.sort
-      (fun (a : Package.dependency) (b : Package.dependency) ->
-        String.compare a.name b.name)
-      package.dependencies
-  in
-  List.iter
-    (fun (dep : Package.dependency) ->
-      H.write_string state ("dep:" ^ dep.name ^ "\n");
-      match dep.source with
-      | Package.Workspace -> (
-          H.write_string state "dep_source:workspace\n";
-          (* Include info from workspace about this dependency *)
-          match
-            List.find_opt
-              (fun (p : Package.t) -> p.name = dep.name)
-              workspace.Workspace.packages
-          with
-          | Some dep_pkg -> (
-              H.write_string state
-                ("dep_ws_path:" ^ Path.to_string dep_pkg.path ^ "\n");
-              match dep_pkg.library with
-              | Some _ -> H.write_string state "dep_has_lib:true\n"
-              | None -> H.write_string state "dep_has_lib:false\n")
-          | None -> ())
-      | Package.Path path ->
-          H.write_string state
-            ("dep_source:path:" ^ Path.to_string path ^ "\n"))
-    sorted_deps;
-
-  let sorted_bins =
-    List.sort
-      (fun (a : Package.binary) (b : Package.binary) ->
-        String.compare a.name b.name)
-      package.binaries
-  in
-  List.iter
-    (fun (bin : Package.binary) ->
-      H.write_string state ("bin:" ^ bin.name ^ "\n");
-      H.write_string state ("bin_path:" ^ Path.to_string bin.path ^ "\n"))
-    sorted_bins;
-
-  (match package.library with
-  | Some lib ->
-      H.write_string state "lib:true\n";
-      H.write_string state ("lib_path:" ^ Path.to_string lib.path ^ "\n")
-  | None -> H.write_string state "lib:false\n");
-
-  let sorted_files =
-    List.sort
-      (fun a b -> String.compare (Path.to_string a) (Path.to_string b))
-      sources
-  in
-  List.iter
-    (fun file_path ->
-      let path_str = Path.to_string file_path in
-      let content =
-        Fs.read file_path
-        |> Result.expect
-             ~msg:
-               ("could not read file " ^ path_str ^ " while hashing package " ^
-                  package.name)
-      in
-      H.write_string state ("file:" ^ path_str ^ "\n");
-      H.write_string state content;
-      H.write_string state "\n")
-    sorted_files;
-
-  let action_nodes = Action_graph.nodes action_graph in
-  List.iter
-    (fun (node : Action_node.t) ->
-      H.write state (Kernel.Crypto.Hash.to_bytes node.value.hash))
-    action_nodes;
-
-  (* Hash all dependency hashes from the depset *)
-  let dep_hashes =
-    depset
-    |> List.map (fun (dep : Dependency.t) -> dep.hash)
-    |> List.sort Std.Crypto.Hash.compare
-  in
-  List.iter
-    (fun hash -> H.write state (Kernel.Crypto.Hash.to_bytes hash))
-    dep_hashes;
-
-  H.finish state
-
-let plan_package ~workspace ~toolchain ~store ~package_graph ~package =
+let plan_package ~workspace ~toolchain ~store ~package_graph ~package ~build_ctx =
   match check_dependencies_built ~package_graph ~package with
   | Error (Failed failed) -> Ok (FailedDependencies { package; failed })
   | Error (Missing missing) -> Ok (MissingDependencies { package; missing })
   | Ok depset ->
-      (* FAST PATH: Compute input hash and check if it exists in store *)
-      let input_hash = compute_input_hash ~package ~depset ~workspace in
+      (* Resolve profile for this package *)
+      let base_profile = build_ctx.Build_ctx.profile in
+      
+      (* Apply package-level profile overrides based on current profile name *)
+      (* Then apply target-specific overrides *)
+      let profile = 
+        let profile = Profile.apply_overrides base_profile package.compiler.profile_overrides in
+        let target_platform = Build_ctx.target_platform_name build_ctx in
+        match List.assoc_opt target_platform package.compiler.target_overrides with
+        | Some target_override -> (
+            match target_override.profile_override with
+            | Some override -> Profile.apply_override profile override
+            | None -> profile)
+        | None -> profile
+      in
+      
+      let input_hash = compute_input_hash ~package ~depset ~workspace ~profile ~build_ctx in
 
       if Tusk_store.Store.exists store input_hash then (
-        (* Cache hit! Skip expensive planning *)
+        (* Cache hit! Skip expensive planning - use dummy graphs *)
         Log.info
           ("Package " ^ package.name ^ ": fast path (input hash exists in cache, skipping \
            ocamldep)");
@@ -384,8 +220,8 @@ let plan_package ~workspace ~toolchain ~store ~package_graph ~package =
               (Planned
                  {
                    package;
-                   module_graph;
-                   action_graph;
+                    module_graph;
+                    action_graph;
                    hash = input_hash;
                    depset;
                  }))

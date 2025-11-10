@@ -59,7 +59,7 @@ let create_client () =
     Workspace_manager.find_workspace_root cwd
     |> Option.expect ~msg:"Not in a tusk workspace"
   in
-  let workspace = Workspace.make ~root:workspace_root ~packages:[] in
+  let workspace = Workspace.make ~root:workspace_root ~packages:[] () in
   Tusk_server.Server_manager.ensure_running ~workspace
   |> Result.expect ~msg:"Failed to connect to server"
 
