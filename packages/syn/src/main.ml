@@ -8,7 +8,7 @@ let handle_token_stream sub_matches =
   let json = ArgParser.get_flag sub_matches "json" in
   match Fs.read (Path.v file) with
   | Error _err ->
-      Log.error "Error reading file %s" file;
+      Log.error ("Error reading file " ^ file);
       exit 1
   | Ok content ->
       let tokens = Lexer.tokenize content in
@@ -24,10 +24,10 @@ let handle_token_stream sub_matches =
                 ])
             tokens
         in
-        println "%s" (Data.Json.to_string (Data.Json.array json_tokens))
+        println (Data.Json.to_string (Data.Json.array json_tokens))
       else
         List.iter
-          (fun tok -> println "%s" (Token.show_kind tok.Token.kind))
+          (fun tok -> println (Token.show_kind tok.Token.kind))
           tokens
 
 let handle_parse sub_matches =
@@ -38,7 +38,7 @@ let handle_parse sub_matches =
   let red_tree = ArgParser.get_flag sub_matches "red-tree" in
   match Fs.read (Path.v file) with
   | Error _err ->
-      Log.error "Error reading file %s" file;
+      Log.error ("Error reading file " ^ file);
       exit 1
   | Ok source ->
       let tokens = Lexer.tokenize source in
@@ -58,7 +58,7 @@ let handle_parse sub_matches =
             Ceibo.Red.to_json ~kind_to_json ~text_to_json
               (Ceibo.Red.Node red_root)
           in
-          println "%s" (Data.Json.to_string tree_json)
+          println (Data.Json.to_string tree_json)
         else
           let tree_json =
             Ceibo.Green.to_json ~kind_to_json ~text_to_json
@@ -75,13 +75,13 @@ let handle_parse sub_matches =
               ]
           in
 
-          println "%s" (Data.Json.to_string output)
-      else if result.diagnostics <> [] then
+          println (Data.Json.to_string output)
+      else if result.diagnostics != [] then
         DiagnosticReporter.print ~file ~source result.diagnostics
       else (
         Log.info "Parsed successfully";
         let width = Ceibo.Green.width (Ceibo.Green.Node result.tree) in
-        Log.info "Tree width: %d bytes" width)
+        Log.info ("Tree width: " ^ Int.to_string width ^ " bytes"))
 
 let handle_explain sub_matches =
   let error_code =
@@ -89,9 +89,9 @@ let handle_explain sub_matches =
     |> Option.expect ~msg:"ERROR_CODE required"
   in
   match Error.id_of_string error_code with
-  | Some id -> println "%s\n" (Error.explain id)
+  | Some id -> println (Error.explain id ^ "\n")
   | None ->
-      Log.error "Unknown error code: %s" error_code;
+      Log.error ("Unknown error code: " ^ error_code);
       exit 1
 
 let () =

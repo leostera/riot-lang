@@ -1,6 +1,9 @@
 open Std
+open Std.IO
 
 let csi = "\x1b["
+
+(* Text attributes - these are just the codes without CSI *)
 let reset_seq = "0"
 let bold_seq = "1"
 let faint_seq = "2"
@@ -12,33 +15,35 @@ let cross_out_seq = "9"
 let overline_seq = "53"
 let foreground_seq = "38"
 let background_seq = "48"
-let escape code () = print "%s%s%!" csi code
 
-(* Cursor positioning. *)
-let cursor_up_seq x = escape (format "%dA" x)
-let cursor_down_seq x = escape (format "%dB" x)
-let cursor_forward_seq x = escape (format "%dC" x)
-let cursor_back_seq x = escape (format "%dD" x)
-let cursor_next_line_seq x = escape (format "%dE" x)
-let cursor_previous_line_seq x = escape (format "%dF" x)
-let cursor_horizontal_seq x = escape (format "%dG" x)
-let cursor_position_seq x y = escape (format "%d;%dH" x y)
-let erase_display_seq x = escape (format "%dJ" x)
-let erase_line_seq x = escape (format "%dK" x)
-let scroll_up_seq x = escape (format "%dS" x)
-let scroll_down_seq x = escape (format "%dT" x)
+(* Helper to build escape sequences - now returns string instead of printing *)
+let escape code = csi ^ code
+
+(* Cursor positioning - all return strings *)
+let cursor_up_seq x = escape (Int.to_string x ^ "A")
+let cursor_down_seq x = escape (Int.to_string x ^ "B")
+let cursor_forward_seq x = escape (Int.to_string x ^ "C")
+let cursor_back_seq x = escape (Int.to_string x ^ "D")
+let cursor_next_line_seq x = escape (Int.to_string x ^ "E")
+let cursor_previous_line_seq x = escape (Int.to_string x ^ "F")
+let cursor_horizontal_seq x = escape (Int.to_string x ^ "G")
+let cursor_position_seq x y = escape (Int.to_string x ^ ";" ^ Int.to_string y ^ "H")
+let erase_display_seq x = escape (Int.to_string x ^ "J")
+let erase_line_seq x = escape (Int.to_string x ^ "K")
+let scroll_up_seq x = escape (Int.to_string x ^ "S")
+let scroll_down_seq x = escape (Int.to_string x ^ "T")
 let save_cursor_position_seq = escape "s"
 let restore_cursor_position_seq = escape "u"
-let change_scrolling_region_seq x y = escape (format "%d;%dr" x y)
-let insert_line_seq x = escape (format "%dL" x)
-let delete_line_seq x = escape (format "%dM" x)
+let change_scrolling_region_seq x y = escape (Int.to_string x ^ ";" ^ Int.to_string y ^ "r")
+let insert_line_seq x = escape (Int.to_string x ^ "L")
+let delete_line_seq x = escape (Int.to_string x ^ "M")
 
-(* Explicit values for EraseLineSeq. *)
+(* Explicit values for EraseLineSeq *)
 let erase_line_right_seq = escape "0K"
 let erase_line_left_seq = escape "1K"
 let erase_entire_line_seq = escape "2K"
 
-(* Mouse. *)
+(* Mouse - all return strings *)
 let enable_mouse_press_seq = escape "?9h"
 let disable_mouse_press_seq = escape "?9l"
 let enable_mouse_seq = escape "?1000h"
@@ -54,35 +59,36 @@ let disable_mouse_extended_mode_seq = escape "?1006l"
 let enable_mouse_pixels_mode_seq = escape "?1016h"
 let disable_mouse_pixels_mode_seq = escape "?1016l"
 
-(* Screen. *)
+(* Screen - all return strings *)
 let restore_screen_seq = escape "?47l"
 let save_screen_seq = escape "?47h"
 let alt_screen_seq = escape "?1049h"
 let exit_alt_screen_seq = escape "?1049l"
+let reset_scroll_region_seq = escape "r"
 
-(* Bracketed paste. *)
+(* Bracketed paste - all return strings *)
 let enable_bracketed_paste_seq = escape "?2004h"
 let disable_bracketed_paste_seq = escape "?2004l"
 let start_bracketed_paste_seq = escape "200~"
 let end_bracketed_paste_seq = escape "201~"
 
-(* Focus tracking. *)
+(* Focus tracking - all return strings *)
 let enable_focus_events_seq = escape "?1004h"
 let disable_focus_events_seq = escape "?1004l"
 
-(* Kitty keyboard protocol. *)
+(* Kitty keyboard protocol - all return strings *)
 let enable_kitty_keyboard_seq = escape ">1u"
 let disable_kitty_keyboard_seq = escape "<u"
 
-(* Synchronized output (reduces flicker). *)
+(* Synchronized output (reduces flicker) - all return strings *)
 let begin_sync_seq = escape "?2026h"
 let end_sync_seq = escape "?2026l"
 
-(* Session. *)
-let set_window_title_seq s = escape (format "2;%s" s)
-let set_foreground_color_seq s = escape (format "10;%s" s)
-let set_background_color_seq s = escape (format "11;%s" s)
-let set_cursor_color_seq s = escape (format "12;%s" s)
+(* Session - all return strings *)
+let set_window_title_seq s = escape ("2;" ^ s)
+let set_foreground_color_seq s = escape ("10;" ^ s)
+let set_background_color_seq s = escape ("11;" ^ s)
+let set_cursor_color_seq s = escape ("12;" ^ s)
 let show_cursor_seq = escape "?25h"
 let hide_cursor_seq = escape "?25l"
 

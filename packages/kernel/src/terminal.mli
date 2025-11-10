@@ -5,8 +5,8 @@
 
 open Global0
 
-type termios = Unix.terminal_io
-(** Terminal I/O settings *)
+type termios
+(** Terminal I/O settings - abstract wrapper around Unix.terminal_io *)
 
 type when_to_apply =
   | Now     (** Apply immediately (TCSANOW) *)
@@ -31,3 +31,10 @@ val get_size : Fd.t -> (int * int, [> `System_error of string]) result
 (** Get terminal size as [(cols, rows)].
     
     Uses the [caml_get_terminal_size] C primitive via ioctl. *)
+
+val make_raw_mode : termios -> termios
+(** Create raw mode terminal settings from existing termios.
+    Disables echo, canonical mode, and CR/NL mapping. *)
+
+val default_termios : unit -> termios
+(** Create a default termios structure with all flags disabled. *)

@@ -1,99 +1,93 @@
-(** TTY - Complete terminal control and input handling with testable design.
-    
-    All terminal operations take a {!t} handle, making it easy to:
-    - Pass terminal configuration throughout your application
-    - Create fake terminals for testing with custom buffers
-    - Verify ANSI escape sequences in tests
-    
-    {1 Quick Start}
-    
-    {[
-      open Std
-      
-      let () =
-        match Tty.make ~mode:Immediate () with
-        | Error _ -> eprintln "Not a terminal"
-        | Ok tty ->
-            Tty.enter_alt_screen tty;
-            Tty.hide_cursor tty;
-            
-            let size = Tty.size tty in
-            println "Terminal: %dx%d" size.cols size.rows;
-            
-            (* ... your TUI app ... *)
-            
-            Tty.show_cursor tty;
-            Tty.exit_alt_screen tty;
-            Tty.restore tty
-    ]}
-    
-    {1 Testing with Fake TTY}
-    
-    {[
-      open Std
-      
-      (* Create a pipe for capturing output *)
-      let read_fd, write_fd = Pipe.create () in
-      let tty = Tty.make 
-        ~fd:write_fd 
-        ~size:{rows=24; cols=80} 
-        () 
-        |> Result.expect
-      in
-      
-      Tty.clear tty;
-      
-      (* Read the output from the pipe *)
-      let file = Fs.File.from_fd read_fd in
-      let buffer = Bytes.create 256 in
-      match Fs.File.read file buffer ~offset:0 ~len:256 with
-      | Ok n -> 
-          let output = Bytes.sub_string buffer 0 n in
-          assert (output = "\x1b[2J\x1b[1;1H")
-      | Error _ -> ()
-    ]} *)
 open Std
 
-type size = Terminal.size = {
-  rows : int;  (** Terminal height in rows *)
-  cols : int;  (** Terminal width in columns *)
+(** Terminal control and raw mode utilities.
+
+    This module provides terminal state management and input reading.
+    For escape sequences to control the terminal, use {!Escape_seq}.
+    
+    The TTY module is responsible for:
+    - Managing terminal state (raw mode vs line-buffered)
+    - Reading input from the terminal
+    - Detecting terminal size
+    
+    It does NOT write output - all output should go to stdout using
+    the escape sequences from {!Escape_seq}.
+
+    {1 Example: Basic TTY Usage}
+
+    {[
+      open Tty
+
+      (* Create TTY in raw mode *)
+      let tty = match Tty.make_raw () with
+        | Ok t -> t
+        | Error _ -> panic "Failed to open TTY"
+      in
+      
+      (* Get terminal size *)
+      let size = Tty.size tty in
+      Printf.printf "Terminal is %dx%d\n" size.cols size.rows;
+      
+      (* Read input *)
+      match Tty.read tty with
+      | Ok data -> Printf.printf "Read: %s\n" data
+      | Error _ -> ()
+      
+      (* Restore terminal on exit *)
+      Tty.restore tty
+    ]} *)
+
+(** {1 Modules} *)
+
+module Escape_seq = Escape_seq
+(** Re-export the Escape_seq module for pure ANSI escape sequences *)
+
+module Color = Color
+(** Re-export the Color module *)
+
+module Profile = Profile
+(** Re-export the Profile module *)
+
+(** {1 Types} *)
+
+type size = {
+  rows : int;
+  cols : int;
 }
 (** Terminal dimensions *)
 
-type error = Terminal.error =
-  | NoTtyConnected              (** Not connected to a terminal *)
-  | SystemError of Std.IO.error
-(** Error types *)
+type error =
+  | NoTtyConnected
+  | SystemError of IO.error
+(** Error types for TTY operations *)
 
-type mode = Terminal.mode =
-  | LineBuffered  (** Line-buffered, echoed input (default) *)
-  | Immediate     (** Immediate, non-echoed input (cbreak mode) *)
-(** Terminal mode *)
+type mode =
+  | LineBuffered
+  | Immediate
+(** Terminal input modes:
+    - [LineBuffered]: Input is line-buffered (normal mode)
+    - [Immediate]: Input is available immediately (raw/cbreak mode) *)
 
-type t = Terminal.t
-(** Terminal handle *)
+type t
+(** Abstract terminal handle *)
 
-val make : 
-  ?fd:Kernel.Fd.t ->
-  ?stdin:Kernel.Fd.t ->
-  ?stdout:Kernel.Fd.t ->
-  ?stderr:Kernel.Fd.t ->
-  ?size:size ->
-  ?mode:mode ->
-  unit -> (t, error) result
-(** Create a terminal handle with optional parameters.
+(** {1 Creation and Management} *)
+
+val make : ?fd:Kernel.Fd.t -> ?stdin:Kernel.Fd.t -> ?stdout:Kernel.Fd.t -> 
+           ?stderr:Kernel.Fd.t -> ?size:size -> ?mode:mode -> 
+           unit -> (t, error) result
+(** [make ?fd ?stdin ?stdout ?stderr ?size ?mode ()] creates a new terminal handle.
+
+    - [fd]: TTY file descriptor (defaults to opening /dev/tty)
+    - [stdin]: Input file descriptor (defaults to Unix.stdin in non-blocking mode)
+    - [stdout]: Output file descriptor (defaults to fd)
+    - [stderr]: Error file descriptor (defaults to Unix.stderr)
+    - [size]: Terminal size (auto-detected if not provided)
+    - [mode]: Input mode (defaults to LineBuffered)
     
-    Parameters:
-    - [fd]: File descriptor to use for termios operations (default: opens /dev/tty or stdin)
-    - [stdin]: Input file descriptor (default: IO.stdin)
-    - [stdout]: Output file descriptor (default: IO.stdout)
-    - [stderr]: Error output file descriptor (default: IO.stderr)
-    - [size]: Terminal dimensions (default: auto-detect or 80x24)
-    - [mode]: Terminal mode (default: LineBuffered)
+    {b Common usage:}
     
-    Examples:
-    
-    Basic usage - auto-detect everything:
+    Create a normal terminal (for line-based input):
     {[
       match Tty.make () with
       | Ok tty -> (* ... *)
@@ -125,164 +119,89 @@ val make :
         |> Result.expect
       in
       
-      (* Read input from the custom stdin *)
-      match Tty.read_utf8 tty with
-      | Read str -> assert (str = "h")
-      | _ -> assert false
-      
-      (* Verify output written to custom stdout *)
-      Tty.clear tty;
-      let buffer = Bytes.create 256 in
-      let out_file = Fs.File.from_fd output_read in
-      match Fs.File.read out_file buffer ~offset:0 ~len:256 with
-      | Ok n -> 
-          let output = Bytes.sub_string buffer 0 n in
-          assert (output = "\x1b[2J\x1b[1;1H")
-      | Error _ -> ()
+      (* ... use tty for testing ... *)
     ]} *)
 
 val make_raw : unit -> (t, error) result
-(** Convenience function: [make ~mode:Raw ()]
+(** [make_raw ()] creates a terminal in raw/cbreak mode.
+    Convenience function equivalent to [make ~mode:Immediate ()].
     
     Creates terminal in raw/cbreak mode for TUI applications. *)
 
-(** {1 Terminal State Management} *)
+(** {1 Terminal Properties} *)
 
-val restore : t -> unit
-(** Restore terminal to original state and close file descriptor. *)
+val size : t -> size
+(** Get current terminal size. The size is cached and may not reflect
+    real-time changes. Use {!refresh_size} to update. *)
+
+val refresh_size : t -> unit
+(** Refresh the cached terminal size by querying the terminal. *)
+
+val mode : t -> mode
+(** Get current terminal input mode. *)
+
+val is_tty : Kernel.Fd.t -> bool
+(** Check if a file descriptor is connected to a terminal. *)
+
+(** {1 Terminal State} *)
 
 val set_raw : t -> unit
 (** Switch terminal to raw mode (immediate, non-echoed input). *)
 
-val set_normal : t -> unit
-(** Switch terminal to normal mode (line-buffered, echoed input). *)
+val set_line_buffered : t -> unit
+(** Switch terminal to line-buffered mode (normal terminal behavior). *)
+
+val restore : t -> unit
+(** Restore terminal to its original state when the TTY was created. *)
 
 val suspend : t -> unit
 (** Suspend terminal (SIGSTOP). Restores normal mode first if in raw mode. *)
 
-(** {1 Terminal Information} *)
+val resume : t -> unit
+(** Resume terminal after suspension, restoring previous mode. *)
 
-val size : t -> size
-(** Get current terminal dimensions. *)
+(** {1 Input Operations} *)
 
-val width : t -> int
-(** Get terminal width in columns. *)
+type read = 
+  | Read of string 
+  | End 
+  | Malformed of string 
+  | Retry
+(** Result type for low-level UTF-8 reading *)
 
-val height : t -> int
-(** Get terminal height in rows. *)
+val read_utf8 : t -> read
+(** Low-level UTF-8 character reading. Used by io_loop for character-by-character input. *)
 
-val refresh_size : t -> unit
-(** Re-detect terminal size and update cached value. *)
-
-val fd : t -> Kernel.Fd.t
-(** Get underlying file descriptor. *)
-
-(** {1 Input} *)
-
-type read = | Read of string | End | Malformed of string | Retry
-
-val read_utf8 : t -> read 
-(** Read a UTF-8 character from terminal.
+val read : t -> (string, IO.error) result
+(** Read available input from the terminal.
     
-    Returns:
-    - [Read str] - Successfully read UTF-8 character
-    - [End] - EOF reached
-    - [Malformed msg] - Invalid UTF-8 sequence
-    - [Retry] - Should retry (e.g., EINTR) *)
-
-(** {1 Cursor Control} *)
-
-val show_cursor : t -> unit
-(** Make cursor visible. *)
-
-val hide_cursor : t -> unit
-(** Make cursor invisible. *)
-
-val move_cursor : t -> row:int -> col:int -> unit
-(** Move cursor to position (1-based). *)
-
-val cursor_up : t -> int -> unit
-(** Move cursor up n rows. *)
-
-val cursor_down : t -> int -> unit
-(** Move cursor down n rows. *)
-
-val cursor_forward : t -> int -> unit
-(** Move cursor forward (right) n columns. *)
-
-val cursor_back : t -> int -> unit
-(** Move cursor back (left) n columns. *)
-
-(** {1 Screen Management} *)
-
-val clear : t -> unit
-(** Clear entire screen and move cursor to home (1,1). *)
-
-val clear_line : t -> unit
-(** Clear entire current line. *)
-
-val clear_to_end_of_line : t -> unit
-(** Clear from cursor to end of line. *)
-
-val clear_to_start_of_line : t -> unit
-(** Clear from cursor to start of line. *)
-
-val enter_alt_screen : t -> unit
-(** Enter alternate screen buffer. *)
-
-val exit_alt_screen : t -> unit
-(** Exit alternate screen buffer. *)
-
-(** {1 Mouse Support} *)
-
-type mouse_mode =
-  | Press           (** Mouse button press only *)
-  | PressAndRelease   (** Press and release events *)
-  | CellMotion     (** Motion when button held *)
-  | AllMotion      (** All motion events *)
-(** Mouse tracking modes *)
-
-val enable_mouse : t -> ?extended:bool -> ?pixels:bool -> mouse_mode -> unit
-(** Enable mouse event tracking.
+    - In [LineBuffered] mode: blocks until a full line is available
+    - In [Immediate] mode: returns immediately with available data
     
-    - [extended]: Use SGR extended mode (supports larger terminals) - default true
-    - [pixels]: Use pixel-level coordinates - default false *)
+    The returned string may contain escape sequences for special keys. *)
 
-val disable_mouse : t -> unit
-(** Disable all mouse tracking. *)
+val read_line : t -> (string, IO.error) result
+(** Read a complete line from the terminal.
+    Blocks until a newline is received. The returned string includes the newline. *)
 
-(** {1 Enhanced Features} *)
+(** {1 Utility} *)
 
-val enable_bracketed_paste : t -> unit
-(** Enable bracketed paste mode (paste events wrapped with markers). *)
+val to_string : t -> string
+(** Convert terminal to string for debugging. Displays terminal properties. *)
 
-val disable_bracketed_paste : t -> unit
-(** Disable bracketed paste mode. *)
+val equal : t -> t -> bool
+(** Structural equality for terminal handles. *)
 
-val enable_focus_tracking : t -> unit
-(** Enable focus in/out event tracking. *)
+val stdin_fd : unit -> Kernel.Fd.t
+(** Get the file descriptor for standard input (non-blocking). *)
 
-val disable_focus_tracking : t -> unit
-(** Disable focus tracking. *)
+val stdout_fd : unit -> Kernel.Fd.t
+(** Get the file descriptor for standard output. *)
 
-val enable_kitty_keyboard : t -> unit
-(** Enable Kitty keyboard protocol for enhanced key input. *)
+val stderr_fd : unit -> Kernel.Fd.t
+(** Get the file descriptor for standard error. *)
 
-val disable_kitty_keyboard : t -> unit
-(** Disable Kitty keyboard protocol. *)
-
-val begin_sync : t -> unit
-(** Begin synchronized output (reduces flicker). *)
-
-val end_sync : t -> unit
-(** End synchronized output. *)
-
-(** {1 Re-exported Modules} *)
-
-module Color : module type of Color
-module Escape_seq : module type of Escape_seq
-module Profile : module type of Profile
-module Style : module type of Style
-module Size : module type of Size
-module Input : module type of Input
-module Terminal_control : module type of Terminal_control
+module Style = Style
+module Size = Size
+module Input = Input
+module Terminal_control = Terminal_control

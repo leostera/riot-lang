@@ -1,68 +1,41 @@
 open Std
+open Std.IO
 
 (* Open /dev/tty directly for terminal control, like notcurses/bubbletea do.
    This is the controlling terminal device and is used for both input and output. *)
 let get_tty_fd () =
   try
-    let fd = Unix.openfile "/dev/tty" [Unix.O_RDWR] 0o666 in
-    if not (Unix.isatty fd) then (
-      Unix.close fd;
-      raise (Unix.Unix_error (Unix.ENOTTY, "get_tty_fd", "/dev/tty is not a TTY"))
-    );
+    let fd = Kernel.Fd.open_file "/dev/tty" [Kernel.Fd.OpenFlags.ReadWrite] 0o666 in
+    if not (Kernel.Terminal.is_tty fd) then
+      panic "/dev/tty is not a TTY";
     fd
   with
-  | Unix.Unix_error _ as e ->
+  | Failure _ ->
       (* Fallback to stdin if /dev/tty doesn't work *)
-      let fd = Kernel.Fd.to_unix Kernel.IO.stdin in
-      if not (Unix.isatty fd) then
-        raise (Unix.Unix_error (Unix.ENOTTY, "get_tty_fd", "neither /dev/tty nor stdin is a TTY"));
+      let fd = Kernel.IO.stdin in
+      if not (Kernel.Terminal.is_tty fd) then
+        panic "neither /dev/tty nor stdin is a TTY";
       fd
 
 let set_raw_mode () =
   let tty_fd = get_tty_fd () in
-  let termios = Unix.tcgetattr tty_fd in
-  
-  (* Minimal "raw mode" configuration following notcurses' cbreak_mode approach:
-     Only change 3 termios flags, leave everything else untouched.
-     
-     This is proven to work reliably across all terminals because it inherits
-     the terminal's existing working configuration for output processing, character
-     size, parity, etc. See notcurses termdesc.c:cbreak_mode() for reference.
-     
-     Note: Despite the name "raw mode", this is technically "cbreak mode" - it
-     disables canonical mode and echo, but preserves signal handling and output
-     processing, which is what TUI applications actually need. *)
-  let new_termios =
-    Unix.{ termios with 
-      (* Local flags: disable echo and canonical mode ONLY *)
-      c_echo = false;    (* Don't echo input characters to screen *)
-      c_icanon = false;  (* Immediate input availability, no line buffering *)
-      
-      (* Input flags: disable CR to NL mapping ONLY *)
-      c_icrnl = false;   (* Don't map Ctrl+M (carriage return) to Ctrl+J (newline) *)
-      
-      (* Everything else UNTOUCHED: output processing (c_opost), character size
-         (c_csize), parity (c_parenb), control characters (c_vmin, c_vtime), etc.
-         are all inherited from the terminal's existing configuration, which is
-         already set up correctly for ANSI escape sequence rendering. *)
-    }
-  in
-  (* Use TCSANOW for immediate effect, not TCSAFLUSH which discards unread input *)
-  Unix.tcsetattr tty_fd Unix.TCSANOW new_termios;
+  let termios = Kernel.Terminal.get_attributes tty_fd in
+  let new_termios = Kernel.Terminal.make_raw_mode termios in
+  Kernel.Terminal.set_attributes tty_fd Kernel.Terminal.Now new_termios;
   Terminal.{ 
-    fd = Kernel.Fd.of_unix tty_fd; 
-    stdin = IO.stdin;
+    fd = tty_fd;
+    input = Terminal.SingleFd IO.stdin;
     stdout = IO.stdout;
     stderr = IO.stderr;
     original_attrs = termios;
     size = { rows = 24; cols = 80 }; (* Default, will be updated if needed *)
     mode = Immediate;
+    input_buffer = None;
+    data_buffer = None;
   }
 
 let restore_mode terminal = 
-  let unix_fd = Kernel.Fd.to_unix terminal.Terminal.fd in
-  Unix.tcsetattr unix_fd Unix.TCSANOW terminal.Terminal.original_attrs;
-  Unix.close unix_fd
+  Kernel.Terminal.set_attributes terminal.Terminal.fd Kernel.Terminal.Now terminal.Terminal.original_attrs
 
 let utf8_char_length first_byte =
   if first_byte land 0x80 = 0 then 1

@@ -9,9 +9,9 @@ let rec string_contains ~sub_str = function
 type t = No_color | ANSI | ANSI256 | True_color
 
 let from_env () =
-  let term = Sys.getenv_opt "TERM" in
-  let color_term = Sys.getenv_opt "COLORTERM" in
-  let term_program = Sys.getenv_opt "TERM_PROGRAM" in
+  let term = Kernel.Env.getenv "TERM" in
+  let color_term = Kernel.Env.getenv "COLORTERM" in
+  let term_program = Kernel.Env.getenv "TERM_PROGRAM" in
 
   let is_screen =
     match term with

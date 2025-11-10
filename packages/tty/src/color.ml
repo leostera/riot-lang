@@ -4,9 +4,9 @@ type t = RGB of int * int * int | ANSI of int | ANSI256 of int | No_color
 
 let to_string t =
   match t with
-  | RGB (r, g, b) -> format "RGB(%d,%d,%d)" r g b
-  | ANSI i -> format "ANSI(%d)" i
-  | ANSI256 i -> format "ANSI256(%d)" i
+  | RGB (r, g, b) -> "RGB(" ^ Int.to_string r ^ "," ^ Int.to_string g ^ "," ^ Int.to_string b ^ ")"
+  | ANSI i -> "ANSI(" ^ Int.to_string i ^ ")"
+  | ANSI256 i -> "ANSI256(" ^ Int.to_string i ^ ")"
   | No_color -> "No_color"
 
 exception Invalid_color of string
@@ -14,9 +14,8 @@ exception Invalid_color_param of string
 exception Invalid_color_num of string * int
 
 let to_255 str =
-  match Stdlib.int_of_string_opt ("0x" ^ str) with
-  | None -> raise (Invalid_color_param str)
-  | Some c -> c
+  try Int.of_string ("0x" ^ str)
+  with Failure _ -> raise (Invalid_color_param str)
 
 let rgb r g b = RGB (to_255 r, to_255 g, to_255 b)
 
@@ -35,19 +34,19 @@ let of_rgb (r, g, b) = RGB (cap_rgb r, cap_rgb g, cap_rgb b)
 let make str =
   if String.starts_with ~prefix:"#" str then rgb str
   else
-    match Stdlib.int_of_string_opt str with
-    | None -> raise (Invalid_color str)
-    | Some i when i < 16 -> ansi i
-    | Some i -> ansi256 i
+    try
+      let i = Int.of_string str in
+      if i < 16 then ansi i else ansi256 i
+    with Failure _ -> raise (Invalid_color str)
 
 let to_escape_seq ~mode t =
   match t with
-  | RGB (r, g, b) -> Format.sprintf "2;%d;%d;%d" r g b
+  | RGB (r, g, b) -> "2;" ^ Int.to_string r ^ ";" ^ Int.to_string g ^ ";" ^ Int.to_string b
   | ANSI c ->
       let bg_mod x = if mode = `bg then x + 10 else x in
       let c = if c < 8 then bg_mod c + 30 else bg_mod (c - 8) + 90 in
       Int.to_string c
-  | ANSI256 c -> Format.sprintf "5;%d" c
+  | ANSI256 c -> "5;" ^ Int.to_string c
   | No_color -> ""
 
 let is_no_color t = t = No_color

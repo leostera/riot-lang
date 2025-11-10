@@ -191,8 +191,5 @@ val button_to_string : mouse_button -> string
 
 (** {1 Event Formatting} *)
 
-val pp_event : Format.formatter -> event -> unit
-(** Pretty-print an event for debugging. *)
-
 val event_to_string : event -> string
 (** [event_to_string event] converts an event to a readable string. *)

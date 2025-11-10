@@ -1,4 +1,6 @@
 open Std
+open Std.Sync
+open Std.Collections
 
 (** New Parser Implementation
 
@@ -509,42 +511,50 @@ and parse_tuple_type parser =
     Token_cursor.set_position parser.cursor saved_pos;
     first)
 
-(** Parse parametric type: t list, 'a option, ('a, 'b) map *)
+(** Parse parametric type: t list, 'a option, ('a, 'b) map
+    Handles chains like: int list option -> ((int list) option) *)
 and parse_parametric_type parser =
+  let rec parse_with_arg arg_type =
+    (* Check if followed by type constructor (for parametric types) *)
+    let trivia_after_arg = consume_trivia parser in
+    
+    match peek_kind parser with
+    | Token.Ident _ ->
+        (* This might be: 'a list or int Module.t *)
+        (* Parse module path for the type constructor *)
+        let rec parse_type_path acc =
+          match peek_kind parser with
+          | Token.Ident _ ->
+              let ident = consume parser in
+              let trivia = consume_trivia parser in
+              let new_acc = acc @ [ make_token parser ident ] @ tokens_to_green parser trivia in
+              
+              (* Check for dot (module path) *)
+              if peek_kind parser = Token.Dot then
+                let dot = consume parser in
+                let trivia2 = consume_trivia parser in
+                parse_type_path (new_acc @ [ make_token parser dot ] @ tokens_to_green parser trivia2)
+              else
+                new_acc
+          | _ -> acc
+        in
+        
+        let constr_path = parse_type_path [] in
+        let applied_type = 
+          make_node Syntax_kind.TYPE_CONSTR
+            ([ Ceibo.Green.Node arg_type ]
+            @ tokens_to_green parser trivia_after_arg
+            @ constr_path)
+        in
+        (* Recursively check for more applications (e.g., int list option) *)
+        parse_with_arg applied_type
+    | _ ->
+        (* No more constructors *)
+        arg_type
+  in
+  
   let primary = parse_primary_type parser in
-  
-  (* Check if followed by type constructor (for parametric types) *)
-  let trivia_after_primary = consume_trivia parser in
-  
-  match peek_kind parser with
-  | Token.Ident _ ->
-      (* This might be: 'a list or int Module.t *)
-      (* Parse module path for the type constructor *)
-      let rec parse_type_path acc =
-        match peek_kind parser with
-        | Token.Ident _ ->
-            let ident = consume parser in
-            let trivia = consume_trivia parser in
-            let new_acc = acc @ [ make_token parser ident ] @ tokens_to_green parser trivia in
-            
-            (* Check for dot (module path) *)
-            if peek_kind parser = Token.Dot then
-              let dot = consume parser in
-              let trivia2 = consume_trivia parser in
-              parse_type_path (new_acc @ [ make_token parser dot ] @ tokens_to_green parser trivia2)
-            else
-              new_acc
-        | _ -> acc
-      in
-      
-      let constr_path = parse_type_path [] in
-      make_node Syntax_kind.TYPE_CONSTR
-        ([ Ceibo.Green.Node primary ]
-        @ tokens_to_green parser trivia_after_primary
-        @ constr_path)
-  | _ ->
-      (* Just a primary type *)
-      primary
+  parse_with_arg primary
 
 (** Parse primary type: type variable, type constructor, or parenthesized type *)
 and parse_primary_type parser =
@@ -685,23 +695,64 @@ and parse_primary_type parser =
             @ constraint_children
             @ [ make_token parser close_paren ])
       | _ ->
-          (* Parse type expression inside *)
-          let inner = parse_typexpr parser in
-          let trivia_before_close = consume_trivia parser in
+          (* Parse type expression inside - could be single type or tuple of type arguments *)
+          let first_type = parse_typexpr parser in
+          let trivia_after_first = consume_trivia parser in
           
-          let close_paren =
-            expect parser (Token.CloseDelim Token.Paren) (fun found ->
-                Diagnostic.unclosed_delimiter ~opener:")" ~found
-                  ~text:(token_text parser found)
-                  ~span:(expected_span parser))
-          in
-          
-          make_node Syntax_kind.TYPE_CONSTR
-            ([ make_token parser open_paren ]
-            @ tokens_to_green parser trivia_after_open
-            @ [ Ceibo.Green.Node inner ]
-            @ tokens_to_green parser trivia_before_close
-            @ [ make_token parser close_paren ]))
+          (* Check if this is a tuple of type arguments (comma-separated) *)
+          if peek_kind parser = Token.Comma then
+            (* Parse comma-separated type arguments: (int, string, bool) *)
+            let rec parse_type_args acc =
+              if peek_kind parser = Token.Comma then
+                let comma = consume parser in
+                let trivia_after_comma = consume_trivia parser in
+                let next_type = parse_typexpr parser in
+                let trivia_after_type = consume_trivia parser in
+                
+                parse_type_args
+                  (acc
+                  @ [ make_token parser comma ]
+                  @ tokens_to_green parser trivia_after_comma
+                  @ [ Ceibo.Green.Node next_type ]
+                  @ tokens_to_green parser trivia_after_type)
+              else
+                acc
+            in
+            
+            let rest_args = parse_type_args [] in
+            let trivia_before_close = consume_trivia parser in
+            
+            let close_paren =
+              expect parser (Token.CloseDelim Token.Paren) (fun found ->
+                  Diagnostic.unclosed_delimiter ~opener:")" ~found
+                    ~text:(token_text parser found)
+                    ~span:(expected_span parser))
+            in
+            
+            (* Return tuple of type arguments *)
+            make_node Syntax_kind.TYPE_TUPLE
+              ([ make_token parser open_paren ]
+              @ tokens_to_green parser trivia_after_open
+              @ [ Ceibo.Green.Node first_type ]
+              @ tokens_to_green parser trivia_after_first
+              @ rest_args
+              @ tokens_to_green parser trivia_before_close
+              @ [ make_token parser close_paren ])
+          else
+            (* Single parenthesized type *)
+            let close_paren =
+              expect parser (Token.CloseDelim Token.Paren) (fun found ->
+                  Diagnostic.unclosed_delimiter ~opener:")" ~found
+                    ~text:(token_text parser found)
+                    ~span:(expected_span parser))
+            in
+            
+            make_node Syntax_kind.TYPE_CONSTR
+              ([ make_token parser open_paren ]
+              @ tokens_to_green parser trivia_after_open
+              @ [ Ceibo.Green.Node first_type ]
+              @ tokens_to_green parser trivia_after_first
+              @ [ make_token parser close_paren ]))
   | Token.OpenDelim Token.Brace ->
       (* Record type: { field1: type1; field2: type2 } *)
       parse_record_type parser
@@ -3065,7 +3116,7 @@ and parse_record_expr parser =
                 let semi = consume parser in
                 semis := semi :: !semis;
                 let trivia2 = consume_trivia parser in
-                if peek_kind parser <> Token.CloseDelim Token.Brace then
+                if peek_kind parser != Token.CloseDelim Token.Brace then
                   parse_fields ())
           in
           parse_fields ();
@@ -3414,9 +3465,9 @@ and parse_match_expr parser =
       | _ ->
           (* Try to parse a case without pipe *)
           if
-            peek_kind parser <> Token.EOF
-            && peek_kind parser <> Token.Keyword Keyword.In
-            && peek_kind parser <> Token.Semi
+            peek_kind parser != Token.EOF
+            && peek_kind parser != Token.Keyword Keyword.In
+            && peek_kind parser != Token.Semi
           then (
             let case = parse_match_case parser in
             cases := [ case ];
@@ -3640,7 +3691,7 @@ and parse_try_expr parser =
       | Token.Pipe -> parse_cases ()
       | _ ->
           (* Try to parse a case without pipe *)
-          if peek_kind parser <> Token.EOF then (
+          if peek_kind parser != Token.EOF then (
             let case = parse_match_case parser in
             cases := [ case ];
             let trivia = consume_trivia parser in

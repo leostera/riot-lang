@@ -34,8 +34,8 @@ open Std
 
     ```ocaml let source = "let x = 1 + 2" in let result = Syn.parse source in
 
-    (* Check for errors *) if result.diagnostics <> [] then List.iter (fun diag
-    -> Printf.printf "Error: %s\n" (Diagnostic.to_string diag) )
+    (* Check for errors *) if result.diagnostics != [] then List.iter (fun diag
+    -> print ("Error: " ^ (Diagnostic.to_string diag) ^ "\n") )
     result.diagnostics;
 
     (* Work with the tree *) let root = Ceibo.Red.new_root result.tree in (* ...

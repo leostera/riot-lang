@@ -42,17 +42,11 @@ let test_diagnostic test_path diagnostic_path =
   if actual_str = expected_str then Ok ()
   else
     Error
-      (format
-         "Diagnostics mismatch for %s\n\
-          Expected %d diagnostics:\n\
-          %s\n\n\
-          Got %d diagnostics:\n\
-          %s\n"
-         test_path
-         (List.length expected_diagnostics)
-         expected_str
-         (List.length actual_diagnostics)
-         actual_str)
+      ("Diagnostics mismatch for " ^ test_path ^ "\nExpected " ^
+       Int.to_string (List.length expected_diagnostics) ^
+       " diagnostics:\n" ^ expected_str ^ "\n\nGot " ^
+       Int.to_string (List.length actual_diagnostics) ^
+       " diagnostics:\n" ^ actual_str ^ "\n")
 
 let discover_diagnostics () =
   let diagnostics_dir = Path.v "packages/syn/tests/diagnostics" in
@@ -88,7 +82,7 @@ let () =
       let tests =
         List.map
           (fun (test_path, diagnostic_path) ->
-            let name = Filename.basename test_path in
+            let name = Path.basename (Path.v test_path) in
             Test.case name (fun () -> test_diagnostic test_path diagnostic_path))
           diagnostics
       in

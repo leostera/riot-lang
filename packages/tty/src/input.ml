@@ -1,4 +1,6 @@
 open Std
+open Std.Sync
+open Std.Sync.Cell
 
 type media_key =
   | Play
@@ -93,7 +95,7 @@ let key_to_string = function
   | PageDown -> "pagedown"
   | Insert -> "insert"
   | Delete -> "delete"
-  | F n -> Format.sprintf "f%d" n
+  | F n -> "f" ^ Int.to_string n
   | CapsLock -> "capslock"
   | ScrollLock -> "scrolllock"
   | NumLock -> "numlock"
@@ -150,20 +152,20 @@ let event_to_string = function
         | Mouse_drag -> "drag"
         | Mouse_move -> "move"
       in
-      Format.sprintf "mouse(%s,%s,%d,%d)" (button_to_string button) act x y
-  | `Resize (w, h) -> Format.sprintf "resize(%d,%d)" w h
+      "mouse(" ^ button_to_string button ^ "," ^ act ^ "," ^ Int.to_string x ^ "," ^ Int.to_string y ^ ")"
+  | `Resize (w, h) -> "resize(" ^ Int.to_string w ^ "," ^ Int.to_string h ^ ")"
   | `Paste s ->
       let preview =
         if String.length s > 20 then String.sub s 0 17 ^ "..." else s
       in
-      Format.sprintf "paste(%S)" preview
+      "paste(\"" ^ String.escaped preview ^ "\")"
   | `FocusGained -> "focus-gained"
   | `FocusLost -> "focus-lost"
-  | `Unknown s -> Format.sprintf "unknown(%S)" s
+  | `Unknown s -> "unknown(\"" ^ String.escaped s ^ "\")"
   | `Retry -> "retry"
   | `End -> "end"
 
-let pp_event fmt event = Format.fprintf fmt "%s" (event_to_string event)
+let pp_event _fmt _event = ()
 
 (* Helper to create key event *)
 let make_key ?(kind = Press) ?(mods = []) code =
@@ -261,10 +263,10 @@ let parse_csi seq =
                 | 65 -> ScrollDown
                 | _ -> Left
               in
-              let has_shift = b land 4 <> 0 in
-              let has_meta = b land 8 <> 0 in
-              let has_ctrl = b land 16 <> 0 in
-              let is_motion = b land 32 <> 0 in
+              let has_shift = b land 4 != 0 in
+              let has_meta = b land 8 != 0 in
+              let has_ctrl = b land 16 != 0 in
+              let is_motion = b land 32 != 0 in
               let modifiers =
                 []
                 |> (fun acc -> if has_shift then Shift :: acc else acc)
@@ -328,9 +330,9 @@ let parse_escape seq =
     | _ -> None
 
 (* Buffer for accumulating escape sequences *)
-let escape_buffer = ref ""
-let in_paste = ref false
-let paste_buffer = ref ""
+let escape_buffer = Cell.create ""
+let in_paste = Cell.create false
+let paste_buffer = Cell.create ""
 
 let read_event () =
   match Stdin.read_utf8 () with
@@ -340,16 +342,16 @@ let read_event () =
   | `Read s -> (
       (* Check for bracketed paste markers *)
       if s = "\x1b[200~" then (
-        in_paste := true;
-        paste_buffer := "";
+        Cell.set in_paste true;
+        Cell.set paste_buffer "";
         `Retry)
       else if s = "\x1b[201~" then (
-        in_paste := false;
-        let content = !paste_buffer in
-        paste_buffer := "";
+        Cell.set in_paste false;
+        let content = Cell.get paste_buffer in
+        Cell.set paste_buffer "";
         `Paste content)
-      else if !in_paste then (
-        paste_buffer := !paste_buffer ^ s;
+      else if Cell.get in_paste then (
+        Cell.set paste_buffer (Cell.get paste_buffer ^ s);
         `Retry)
       else if String.length s = 1 then
         match s.[0] with
@@ -359,7 +361,7 @@ let read_event () =
         | '\x7f' -> make_key Backspace
         | '\x1b' ->
             (* Start of escape sequence, buffer it *)
-            escape_buffer := s;
+            Cell.set escape_buffer s;
             `Retry
         | ' ' -> make_key Space
         (* Ctrl+letter combinations *)
@@ -387,18 +389,18 @@ let read_event () =
         | '\x19' -> make_key ~mods:[Ctrl] (Char 'y')
         | '\x1a' -> make_key ~mods:[Ctrl] (Char 'z')
         | c -> make_key (Char c)
-      else if !escape_buffer <> "" then (
+      else if Cell.get escape_buffer != "" then (
         (* Continue building escape sequence *)
-        escape_buffer := !escape_buffer ^ s;
-        match parse_escape !escape_buffer with
+        Cell.set escape_buffer (Cell.get escape_buffer ^ s);
+        match parse_escape (Cell.get escape_buffer) with
         | Some event ->
-            escape_buffer := "";
+            Cell.set escape_buffer "";
             event
         | None ->
             (* Keep buffering or timeout *)
-            if String.length !escape_buffer > 20 then (
-              let unknown = !escape_buffer in
-              escape_buffer := "";
+            if String.length (Cell.get escape_buffer) > 20 then (
+              let unknown = Cell.get escape_buffer in
+              Cell.set escape_buffer "";
               `Unknown unknown)
             else `Retry)
       else

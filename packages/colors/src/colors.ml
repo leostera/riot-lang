@@ -1,4 +1,5 @@
 open Std
+open Std.Collections
 
 type ansi = [ `ansi of int ]
 type rgb = [ `rgb of int * int * int ]
@@ -10,12 +11,12 @@ type color = [ ansi | rgb | xyz | luv | uv ]
 
 let to_string t =
   match t with
-  | `ansi i -> format "ANSI(%d)" i
-  | `rgb (r, g, b) -> format "RGB(%d,%d,%d)" r g b
-  | `lrgb (r, g, b) -> format "LinearRGB(%.4f,%.4f,%.4f)" r g b
-  | `xyz (x, y, z) -> format "XYZ(%.4f,%.4f,%.4f)" x y z
-  | `luv (l, u, v) -> format "LUV(%.4f,%.4f,%.4f)" l u v
-  | `uv (u, v) -> format "UV(%.4f,%.4f)" u v
+  | `ansi i -> "ANSI(" ^ Int.to_string i ^ ")"
+  | `rgb (r, g, b) -> "RGB(" ^ Int.to_string r ^ "," ^ Int.to_string g ^ "," ^ Int.to_string b ^ ")"
+  | `lrgb (r, g, b) -> "LinearRGB(" ^ Float.to_string r ^ "," ^ Float.to_string g ^ "," ^ Float.to_string b ^ ")"
+  | `xyz (x, y, z) -> "XYZ(" ^ Float.to_string x ^ "," ^ Float.to_string y ^ "," ^ Float.to_string z ^ ")"
+  | `luv (l, u, v) -> "LUV(" ^ Float.to_string l ^ "," ^ Float.to_string u ^ "," ^ Float.to_string v ^ ")"
+  | `uv (u, v) -> "UV(" ^ Float.to_string u ^ "," ^ Float.to_string v ^ ")"
 
 module ANSI = struct
   let to_rgb (`ansi i) =

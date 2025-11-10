@@ -1,4 +1,5 @@
 open Std
+open Std.IO
 
 type t = Cursor.t
 
@@ -167,7 +168,7 @@ let lex_number cursor token_start =
   (* Helper to remove underscores from a string *)
   let remove_underscores s =
     let buf = Buffer.create (String.length s) in
-    String.iter (fun c -> if c <> '_' then Buffer.add_char buf c) s;
+    String.iter (fun c -> if c != '_' then Buffer.add_char buf c) s;
     Buffer.contents buf
   in
 
@@ -662,9 +663,15 @@ let next cursor delim_stack =
         let end_ = Cursor.position cursor in
         { Token.kind = Token.Dollar; span = Ceibo.Span.make ~start ~end_ }
     | Some '"' -> lex_string cursor start
-    | Some '\'' ->
-        (* Always tokenize as Quote - let parser determine if it's a char or type var *)
-        lex_type_var cursor start
+    | Some '\'' -> (
+        (* Distinguish between type variable 'a and character literal 'x' *)
+        match Cursor.peek_n cursor 1 with
+        | Some c when is_ident_start c || c = '_' ->
+            (* Type variable: 'a, 'foo, '_ignore *)
+            lex_type_var cursor start
+        | _ ->
+            (* Character literal: 'x', '\n', etc. *)
+            lex_char cursor start)
     | Some c when is_digit c -> lex_number cursor start
     | Some c when is_ident_start c -> lex_ident cursor delim_stack start
     | Some c ->

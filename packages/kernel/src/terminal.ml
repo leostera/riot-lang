@@ -6,6 +6,7 @@
 open Global0
 
 type termios = Unix.terminal_io
+(* Keep the internal representation but make it abstract in the interface *)
 
 type when_to_apply =
   | Now     (** Apply immediately (was TCSANOW) *)
@@ -33,3 +34,23 @@ let get_size fd =
   with
   | Failure msg -> Error (`System_error msg)
   | Unix.Unix_error (err, _, _) -> Error (`System_error (Unix.error_message err))
+
+let make_raw_mode termios =
+  Unix.{ termios with 
+    c_echo = false;
+    c_icanon = false;
+    c_icrnl = false;
+  }
+
+let default_termios () =
+  Unix.{
+    c_ignbrk = false; c_brkint = false; c_ignpar = false; c_parmrk = false;
+    c_inpck = false; c_istrip = false; c_inlcr = false; c_igncr = false;
+    c_icrnl = false; c_ixon = false; c_ixoff = false; c_opost = false;
+    c_obaud = 0; c_ibaud = 0; c_csize = 0; c_cstopb = 0; c_cread = false;
+    c_parenb = false; c_parodd = false; c_hupcl = false; c_clocal = false;
+    c_isig = false; c_icanon = false; c_noflsh = false; c_echo = false;
+    c_echoe = false; c_echok = false; c_echonl = false; c_vintr = '\000';
+    c_vquit = '\000'; c_verase = '\000'; c_vkill = '\000'; c_veof = '\000';
+    c_veol = '\000'; c_vmin = 0; c_vtime = 0; c_vstart = '\000'; c_vstop = '\000';
+  }

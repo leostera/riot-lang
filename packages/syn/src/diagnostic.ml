@@ -333,7 +333,7 @@ let fix_message diag =
   | UnclosedTypeParams _ -> Some "add ) to close the type parameter list"
   | InvalidPattern { found } -> (
       match found.kind with
-      | "keyword" -> Some (format "use a different name like %s_" found.text)
+      | "keyword" -> Some ("use a different name like " ^ found.text ^ "_")
       | _ -> Some "add a variable name, \"_\" (underscore) to ignore it.")
   | EmptyCharLiteral -> Some "add a character between the quotes, e.g. 'a'"
   | MultiCharLiteral _ -> Some "use only one character in the literal"
@@ -349,16 +349,14 @@ let fix_message diag =
       if text = "__" then Some "use _ instead of __"
       else Some "use a valid type parameter like 'a or _"
   | UppercaseTypeVariable { text; _ } ->
-      Some (format "change %s to %s" text (String.lowercase_ascii text))
+      Some ("change " ^ text ^ " to " ^ String.lowercase_ascii text)
   | UppercaseTypeName { text; _ } ->
       let lower = String.lowercase_ascii text in
-      Some (format "change %s to %s" text lower)
+      Some ("change " ^ text ^ " to " ^ lower)
   | BracketedTypeParameters { type_name; _ } ->
       Some
-        (format
-           "put generics on the left of the type name with parenthesis, like \
-            this: ('a, 'b) %s"
-           type_name)
+        ("put generics on the left of the type name with parenthesis, like \
+          this: ('a, 'b) " ^ type_name)
   | ListDoubleSemicolon _ ->
       Some
         "remove one semicolon - list elements are separated by single \
@@ -372,7 +370,7 @@ let fix_message diag =
   | TuplePatternExtraComma _ ->
       Some "remove the extra comma - tuples need at least two elements"
   | ConstructorPatternNeedsParens { constructor; _ } ->
-      Some (format "wrap arguments in parentheses: %s (...)" constructor)
+      Some ("wrap arguments in parentheses: " ^ constructor ^ " (...)")
   | ConsPatternMissingHead _ -> Some "add a pattern before the :: operator"
   | ConsPatternMissingTail _ -> Some "add a pattern after the :: operator"
   | OrPatternMissing _ -> Some "add patterns on both sides of the | operator"
@@ -381,9 +379,9 @@ let fix_message diag =
   | MutableFieldMissingName _ ->
       Some "add a field name after the 'mutable' keyword"
   | RecordFieldMissingColon { field_name; _ } ->
-      Some (format "add a colon after field name '%s'" field_name)
+      Some ("add a colon after field name '" ^ field_name ^ "'")
   | RecordFieldMissingType { field_name; _ } ->
-      Some (format "add a type definition after the colon for field '%s'" field_name)
+      Some ("add a type definition after the colon for field '" ^ field_name ^ "'")
   | _ -> None
 
 let error_id diag =
@@ -438,10 +436,10 @@ let to_string err =
   let hint = hint_message err in
   let message =
     match fix with
-    | Some fix -> format "fix: %s\n\nhint: %s" fix hint
-    | None -> format "hint: %s" hint
+    | Some fix -> "fix: " ^ fix ^ "\n\nhint: " ^ hint
+    | None -> "hint: " ^ hint
   in
-  format "Parse error %S at %s: %s" id (Ceibo.Span.to_string err.span) message
+  "Parse error \"" ^ id ^ "\" at " ^ Ceibo.Span.to_string err.span ^ ": " ^ message
 
 let found_token diag =
   match diag.kind with
@@ -490,12 +488,12 @@ let main_message diag =
   match diag.kind with
   | EmptyCharLiteral -> "empty character literal"
   | MultiCharLiteral { text } ->
-      format "character literal '%s' contains multiple characters" text
-  | UnclosedCharLiteral { text } -> format "missing ' (quote) after %s" text
+      "character literal '" ^ text ^ "' contains multiple characters"
+  | UnclosedCharLiteral { text } -> "missing ' (quote) after " ^ text
   | _ ->
       let expected = expected_message diag in
       let found_kind = (found_token diag).kind in
-      format "expected %s, found %s" expected found_kind
+      "expected " ^ expected ^ ", found " ^ found_kind
 
 (** Convert diagnostic to JSON for machine consumption *)
 let to_json err =

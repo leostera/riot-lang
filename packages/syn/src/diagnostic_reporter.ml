@@ -49,23 +49,19 @@ let format_diagnostic ~source diag =
   let main_msg = Diagnostic.main_message diag in
   let expected = Diagnostic.expected_message diag in
   let explain_msg =
-    format "  For more information about this error, try `syn explain %s`"
-      error_id
+    "  For more information about this error, try `syn explain " ^ error_id ^ "`"
   in
   match extract_code_snippet source diag.Diagnostic.span with
   | Some (code_line, pointer_line, line_num) -> (
       let styled_pointer = Style.styled error_style pointer_line in
       let styled_msg =
-        Style.styled error_style (format "expected %s" expected)
+        Style.styled error_style ("expected " ^ expected)
       in
       match fix with
       | Some fix ->
-          format "%s %s\n  |\n%d | %s\n  | %s %s\n  |\n\n%s %s\n\n%s\n"
-            error_label main_msg line_num code_line styled_pointer styled_msg
-            fix_label fix explain_msg
+          error_label ^ " " ^ main_msg ^ "\n  |\n" ^ Int.to_string line_num ^ " | " ^ code_line ^ "\n  | " ^ styled_pointer ^ " " ^ styled_msg ^ "\n  |\n\n" ^ fix_label ^ " " ^ fix ^ "\n\n" ^ explain_msg ^ "\n"
       | None ->
-          format "%s %s\n  |\n%d | %s\n  | %s %s\n  |\n\n%s\n" error_label
-            main_msg line_num code_line styled_pointer styled_msg explain_msg)
+          error_label ^ " " ^ main_msg ^ "\n  |\n" ^ Int.to_string line_num ^ " | " ^ code_line ^ "\n  | " ^ styled_pointer ^ " " ^ styled_msg ^ "\n  |\n\n" ^ explain_msg ^ "\n")
   | None ->
       panic
         "This is a bug! We couldn't show the error message because we couldn't \
@@ -73,8 +69,8 @@ let format_diagnostic ~source diag =
 
 (* Print diagnostics in a nice formatted way *)
 let print ~file ~source diagnostics =
-  println "%s\n" file;
+  println (file ^ "\n");
   List.iter
-    (fun diag -> println "%s" (format_diagnostic ~source diag))
+    (fun diag -> println (format_diagnostic ~source diag))
     diagnostics;
   println ""

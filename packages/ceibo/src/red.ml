@@ -1,4 +1,5 @@
 open Std
+open Std.Collections
 
 type ('kind, 'text) syntax_node = {
   green_node : ('kind, 'text) Green.node;

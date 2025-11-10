@@ -1,3 +1,5 @@
+open Std
+
 (** Terminal size detection.
 
     Provides functions to query the terminal's dimensions (rows and columns).

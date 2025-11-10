@@ -33,8 +33,8 @@ let test_fixture fixture_path expected_path =
   if actual_str = expected_str then Ok ()
   else
     Error
-      (format "Parse tree mismatch for %s\nExpected:\n%s\n\nActual:\n%s\n"
-         fixture_path expected_str actual_str)
+      ("Parse tree mismatch for " ^ fixture_path ^ "\nExpected:\n" ^
+       expected_str ^ "\n\nActual:\n" ^ actual_str ^ "\n")
 
 let discover_fixtures () =
   let fixtures_dir = Path.v "packages/syn/tests/fixtures" in
@@ -67,7 +67,7 @@ let () =
       let tests =
         List.map
           (fun (fixture_path, expected_path) ->
-            let name = Filename.basename fixture_path in
+            let name = Path.basename (Path.v fixture_path) in
             Test.case name (fun () -> test_fixture fixture_path expected_path))
           fixtures
       in

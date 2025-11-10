@@ -158,6 +158,6 @@ let show_kind = function
   | SlashDot -> "/."
   | Whitespace -> "whitespace"
   | EOF -> "end of file"
-  | Unknown c -> format "unknown character '%c'" c
+  | Unknown c -> "unknown character '" ^ String.make 1 c ^ "'"
 
 let to_string token = show_kind token.kind

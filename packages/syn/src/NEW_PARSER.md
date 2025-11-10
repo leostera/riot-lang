@@ -307,7 +307,7 @@ and parse_type_variable parser =
               expected = "identifier"; 
               found 
             })
-  | _ -> failwith "unreachable"
+  | _ -> panic "unreachable"
 
 and parse_wildcard_type parser = ...
 and parse_paren_or_tuple_type parser = ...
