@@ -5,6 +5,13 @@ version = "0.0.1"
 [lib]
 path = "src/kernel.ml"
 
+[[bin]]
+name = "hello"
+path = "examples/hello.ml"
+
+[target.macos]
+cc_flags = ["-framework CoreFoundation", "-framework CoreServices"]
+
 [dependencies]
 stdlib = "*"
 unix = "*"
