@@ -5,6 +5,15 @@ version = "0.2.0"
 [lib]
 path = "src/blink.ml"
 
+[[bin]]
+name = "simple_https"
+path = "examples/simple_https.ml"
+
+[[bin]]
+name = "test_https_httpbin"
+path = "examples/test_https_httpbin.ml"
+
 [dependencies]
 std = { path = "../std" }
 http = { path = "../http" }
+miniriot = { path = "../miniriot" }

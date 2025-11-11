@@ -48,10 +48,10 @@ let int_to_frame_type = function
   | _ -> None
 
 let parse_flags frame_type flags_byte =
-  let end_headers = flags_byte land 0x04 <> 0 in
-  let padded = flags_byte land 0x08 <> 0 in
-  let priority = flags_byte land 0x20 <> 0 in
-  let bit_0_set = flags_byte land 0x01 <> 0 in
+  let end_headers = flags_byte land 0x04 != 0 in
+  let padded = flags_byte land 0x08 != 0 in
+  let priority = flags_byte land 0x20 != 0 in
+  let bit_0_set = flags_byte land 0x01 != 0 in
   let end_stream, ack =
     match frame_type with
     | Frame.Settings | Frame.Ping -> (false, bit_0_set)
@@ -70,7 +70,7 @@ let parse_frame_header data =
         | None -> Error "Failed to read frame type"
         | Some type_byte -> (
             match int_to_frame_type type_byte with
-            | None -> Error (format "Unknown frame type: 0x%x" type_byte)
+            | None -> Error ("Unknown frame type: 0x" ^ Int.to_string type_byte)
             | Some frame_type -> (
                 match read_uint8 data 4 with
                 | None -> Error "Failed to read flags"
@@ -122,7 +122,7 @@ let parse_priority_fields data offset =
   match read_uint32_be data offset with
   | None -> None
   | Some dep_raw -> (
-      let exclusive = dep_raw land 0x80000000 <> 0 in
+      let exclusive = dep_raw land 0x80000000 != 0 in
       let stream_dependency = dep_raw land 0x7FFFFFFF in
       match read_uint8 data (offset + 4) with
       | None -> None
@@ -174,7 +174,7 @@ let parse_headers_payload length flags data =
       }
 
 let parse_priority_payload length data =
-  if length <> 5 then Error "PRIORITY frame must be 5 bytes"
+  if length != 5 then Error "PRIORITY frame must be 5 bytes"
   else if String.length data < 5 then Need_more
   else
     match parse_priority_fields data 0 with
@@ -189,7 +189,7 @@ let parse_priority_payload length data =
           }
 
 let parse_rst_stream_payload length data =
-  if length <> 4 then Error "RST_STREAM frame must be 4 bytes"
+  if length != 4 then Error "RST_STREAM frame must be 4 bytes"
   else if String.length data < 4 then Need_more
   else
     match read_uint32_be data 0 with
@@ -204,9 +204,9 @@ let parse_rst_stream_payload length data =
         Done { value = Frame.RstStreamPayload error_code; remaining }
 
 let parse_settings_payload length flags data =
-  if flags.Frame.ack && length <> 0 then
+  if flags.Frame.ack && length != 0 then
     Error "SETTINGS ACK must have zero length"
-  else if length mod 6 <> 0 then
+  else if length mod 6 != 0 then
     Error "SETTINGS frame length must be multiple of 6"
   else if String.length data < length then Need_more
   else
@@ -222,7 +222,7 @@ let parse_settings_payload length flags data =
                 let setting =
                   match id with
                   | 0x1 -> Some (Frame.HeaderTableSize value)
-                  | 0x2 -> Some (Frame.EnablePush (value <> 0))
+                  | 0x2 -> Some (Frame.EnablePush (value != 0))
                   | 0x3 -> Some (Frame.MaxConcurrentStreams value)
                   | 0x4 -> Some (Frame.InitialWindowSize value)
                   | 0x5 -> Some (Frame.MaxFrameSize value)
@@ -280,7 +280,7 @@ let parse_push_promise_payload length flags data =
             }
 
 let parse_ping_payload length data =
-  if length <> 8 then Error "PING frame must be 8 bytes"
+  if length != 8 then Error "PING frame must be 8 bytes"
   else if String.length data < 8 then Need_more
   else
     let opaque_data = String.sub data 0 8 in
@@ -315,7 +315,7 @@ let parse_goaway_payload length data =
               })
 
 let parse_window_update_payload length data =
-  if length <> 4 then Error "WINDOW_UPDATE frame must be 4 bytes"
+  if length != 4 then Error "WINDOW_UPDATE frame must be 4 bytes"
   else if String.length data < 4 then Need_more
   else
     match read_uint32_be data 0 with

@@ -1,0 +1,74 @@
+open Std
+
+let () =
+  Miniriot.run ~main:(fun ~args:_ ->
+    println "Starting HTTP example...";
+
+    (* Build HTTP URL *)
+    let uri = 
+      let builder = Net.Uri.Builder.create () in
+      let builder = Net.Uri.Builder.scheme builder "http" in
+      let builder = Net.Uri.Builder.host builder "leostera.com" in
+      let builder = Net.Uri.Builder.port builder 80 in
+      let builder = Net.Uri.Builder.path builder "/" in
+      Net.Uri.Builder.build builder
+      |> Result.expect ~msg:"Failed to build URI"
+    in
+
+    println ("Connecting to " ^ (Net.Uri.to_string uri) ^ "...");
+
+    (* Connect - will use TCP transport *)
+    let conn = match Blink.connect uri with
+      | Ok conn -> 
+          println "Connected successfully!";
+          conn
+      | Error (Blink.Error.Net_error Net.Connection_refused) -> panic "Connection refused"
+      | Error (Blink.Error.Net_error Net.Closed) -> panic "Connection closed"
+      | Error (Blink.Error.Net_error (Net.System_error msg)) -> panic ("System error: " ^ msg)
+      | Error (Blink.Error.Tls_error Net.TlsStream.Closed) -> panic "TLS closed"
+      | Error (Blink.Error.Tls_error (Net.TlsStream.Handshake_failed msg)) -> panic ("TLS handshake failed: " ^ msg)
+      | Error (Blink.Error.Tls_error (Net.TlsStream.System_error msg)) -> panic ("TLS system error: " ^ msg)
+      | Error (Blink.Error.Parse_error msg) -> panic ("Parse error: " ^ msg)
+      | Error (Blink.Error.Protocol_error msg) -> panic ("Protocol error: " ^ msg)
+      | Error (Blink.Error.Handshake_failed msg) -> panic ("Handshake failed: " ^ msg)
+      | Error Blink.Error.Invalid_frame -> panic "Invalid frame"
+      | Error Blink.Error.Eof -> panic "EOF"
+      | Error Blink.Error.Closed -> panic "Closed"
+    in
+
+    println "Connected! Creating request...";
+
+    (* Create GET request *)
+    let req = Net.Http.Request.create Net.Http.Method.Get uri in
+
+    (* Send request *)
+    let () =
+      Blink.request conn req ()
+      |> Result.expect ~msg:"Request failed"
+    in
+
+    println "Request sent! Awaiting response...";
+
+    (* Get full response *)
+    let response, body =
+      Blink.await conn
+      |> Result.expect ~msg:"Failed to receive response"
+    in
+
+    let status = Net.Http.Response.status response in
+    println ("HTTP Status: " ^ 
+      (Int.to_string (Net.Http.Status.to_int status)) ^ " " ^
+      (Net.Http.Status.reason_phrase status));
+
+    println ("Body length: " ^ (Int.to_string (String.length body)) ^ " bytes");
+    
+    let preview = 
+      if String.length body > 200 then String.sub body 0 200 ^ "..."
+      else body
+    in
+    println ("First 200 chars: " ^ preview);
+
+    Blink.close conn;
+    println "Connection closed.";
+    Ok ()
+  ) ~args:Env.args ()

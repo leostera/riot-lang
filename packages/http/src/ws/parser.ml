@@ -22,19 +22,19 @@ let parse input =
     let byte1 = Char.code input.[1] in
 
     (* Parse first byte *)
-    let fin = byte0 land 0x80 <> 0 in
-    let rsv1 = byte0 land 0x40 <> 0 in
-    let rsv2 = byte0 land 0x20 <> 0 in
-    let rsv3 = byte0 land 0x10 <> 0 in
+    let fin = byte0 land 0x80 != 0 in
+    let rsv1 = byte0 land 0x40 != 0 in
+    let rsv2 = byte0 land 0x20 != 0 in
+    let rsv3 = byte0 land 0x10 != 0 in
     let opcode_int = byte0 land 0x0F in
 
     (* Parse second byte *)
-    let masked = byte1 land 0x80 <> 0 in
+    let masked = byte1 land 0x80 != 0 in
     let payload_len_initial = byte1 land 0x7F in
 
     (* Validate opcode *)
     match Frame.opcode_of_int opcode_int with
-    | None -> Error (Format.sprintf "Invalid opcode: 0x%x" opcode_int)
+    | None -> Error ("Invalid opcode: 0x" ^ Int.to_string opcode_int)
     | Some opcode ->
         (* Determine actual payload length and header size *)
         let header_size, payload_length =

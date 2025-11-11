@@ -1,0 +1,60 @@
+open Std
+
+(* Result monad for cleaner error handling *)
+let ( let* ) x f = Result.and_then x f
+
+module type Intf = sig
+  val name : string
+  val connect : Net.Addr.stream_addr -> Net.Uri.t -> (Connection.t, Error.t) result
+end
+
+module Tcp : Intf = struct
+  let name = "tcp"
+
+  let tcp_error_to_error = function
+    | Net.TcpStream.Closed -> Error.Net_error Net.Closed
+    | Net.TcpStream.Connection_refused -> Error.Net_error Net.Connection_refused
+    | Net.TcpStream.System_error s -> Error.Net_error (Net.System_error s)
+
+  let connect addr uri =
+    match Net.TcpStream.connect addr with
+    | Error e -> Error (tcp_error_to_error e)
+    | Ok sock ->
+        let reader = Net.TcpStream.to_reader sock in
+        let writer = Net.TcpStream.to_writer sock in
+        Ok (Connection.make ~reader ~writer ~of_io_error:tcp_error_to_error ~uri)
+end
+
+module Tls : Intf = struct
+  let name = "tls"
+
+  let connect addr uri =
+    match Net.TcpStream.connect addr with
+    | Error Net.TcpStream.Closed -> Error (Error.Net_error Net.Closed)
+    | Error Net.TcpStream.Connection_refused -> Error (Error.Net_error Net.Connection_refused)
+    | Error (Net.TcpStream.System_error s) -> Error (Error.Net_error (Net.System_error s))
+    | Ok sock ->
+        let hostname = Net.Uri.host uri |> Option.unwrap_or ~default:"localhost" in
+        match Net.TlsStream.of_tcp_client ~hostname sock with
+        | Error e -> Error (Error.Tls_error e)
+        | Ok tls ->
+            let reader = Net.TlsStream.to_reader tls in
+            let writer = Net.TlsStream.to_writer tls in
+            Ok (Connection.make ~reader ~writer ~of_io_error:Error.of_tls_error ~uri)
+end
+
+let connect uri =
+  let host = Net.Uri.host uri |> Option.unwrap_or ~default:"localhost" in
+  let default_port = match Net.Uri.scheme uri with
+    | Some "https" -> 443
+    | _ -> 80
+  in
+  let port = Net.Uri.port uri |> Option.unwrap_or ~default:default_port in
+
+  match Net.Addr.of_host_and_port ~host ~port with
+  | Error _e -> Error (Error.Net_error (Net.System_error "Address resolution failed"))
+  | Ok addr -> (
+      match Net.Uri.scheme uri with
+      | Some "https" | Some "wss" -> Tls.connect addr uri
+      | Some "http" | Some "ws" | None -> Tcp.connect addr uri
+      | Some _ -> Tcp.connect addr uri)

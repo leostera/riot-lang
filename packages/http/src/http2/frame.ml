@@ -194,8 +194,8 @@ let push_promise ~stream_id ~promised_stream_id ?pad_length
   }
 
 let ping ?(ack = false) opaque_data =
-  if String.length opaque_data <> 8 then
-    invalid_arg "ping: opaque_data must be exactly 8 bytes";
+  if String.length opaque_data != 8 then
+    panic "ping: opaque_data must be exactly 8 bytes";
   let flags = { default_flags with ack } in
   {
     length = 8;
@@ -216,7 +216,7 @@ let goaway ~last_stream_id ~error_code ?(debug_data = "") () =
 
 let window_update ~stream_id increment =
   if increment <= 0 || increment > 0x7FFFFFFF then
-    invalid_arg "window_update: increment must be 1 to 2^31-1";
+    panic "window_update: increment must be 1 to 2^31-1";
   {
     length = 4;
     frame_type = WindowUpdate;

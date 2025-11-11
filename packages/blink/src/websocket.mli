@@ -1,7 +1,7 @@
 open Std
 
 type t
-type error = [ Connection.error | `Handshake_failed of string | `Invalid_frame ]
+type error = Error.t
 
 type message =
   [ `Text of string

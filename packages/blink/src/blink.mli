@@ -1,11 +1,13 @@
 open Std
+module Protocol : module type of Protocol
+module Transport : module type of Transport
 module Connection : module type of Connection
 module WebSocket : module type of Websocket
+module Error : module type of Error
 
-type error = Connection.error
+type error = Error.t
 type message = Connection.message
 
-val pp_messages : Format.formatter -> message list -> unit
 val connect : Net.Uri.t -> (Connection.t, error) result
 
 val request :

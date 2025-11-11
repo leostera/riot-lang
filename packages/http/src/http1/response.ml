@@ -81,4 +81,4 @@ let parse input =
             else res
           in
 
-          Done { value = response; remaining = "" })
+          Done { value = response; remaining = body_start })

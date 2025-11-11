@@ -1,6 +1,7 @@
 open Std
+open Std.IO
 
-type error = [ Connection.error | `Handshake_failed of string | `Invalid_frame ]
+type error = Error.t
 
 type message =
   [ `Text of string
@@ -36,29 +37,31 @@ let connect uri =
   let path = Net.Uri.path uri in
 
   match Net.Addr.of_host_and_port ~host ~port with
-  | Error e -> Error (e :> error)
+  | Error _e -> Error (Error.Net_error (Net.System_error "Address resolution failed"))
   | Ok addr -> (
       match Net.TcpStream.connect addr with
-      | Error e -> Error (e :> error)
+      | Error Net.TcpStream.Closed -> Error (Error.Net_error Net.Closed)
+      | Error Net.TcpStream.Connection_refused -> Error (Error.Net_error Net.Connection_refused)
+      | Error (Net.TcpStream.System_error s) -> Error (Error.Net_error (Net.System_error s))
       | Ok stream -> (
           let key = generate_websocket_key () in
           let expected_accept = compute_accept_key key in
 
           let handshake =
-            format
-              "GET %s HTTP/1.1\r\n\
-               Host: %s\r\n\
-               Upgrade: websocket\r\n\
-               Connection: Upgrade\r\n\
-               Sec-WebSocket-Key: %s\r\n\
-               Sec-WebSocket-Version: 13\r\n\
-               \r\n"
-              path host key
+            "GET " ^ path ^ " HTTP/1.1\r\n" ^
+            "Host: " ^ host ^ "\r\n" ^
+            "Upgrade: websocket\r\n" ^
+            "Connection: Upgrade\r\n" ^
+            "Sec-WebSocket-Key: " ^ key ^ "\r\n" ^
+            "Sec-WebSocket-Version: 13\r\n" ^
+            "\r\n"
           in
 
           let writer = Net.TcpStream.to_writer stream in
           match IO.write_all writer ~buf:handshake with
-          | Error e -> Error ((e :> [> Net.error ]) :> error)
+          | Error Net.TcpStream.Closed -> Error (Error.Net_error Net.Closed)
+          | Error Net.TcpStream.Connection_refused -> Error (Error.Net_error Net.Connection_refused)
+          | Error (Net.TcpStream.System_error s) -> Error (Error.Net_error (Net.System_error s))
           | Ok () -> (
               let reader = Net.TcpStream.to_reader stream in
               let buf = Bytes.create 4096 in
@@ -66,10 +69,12 @@ let connect uri =
 
               let rec read_response () =
                 match IO.read reader buf with
-                | Error e -> Error ((e :> [> Net.error ]) :> error)
+                | Error Net.TcpStream.Closed -> Error (Error.Net_error Net.Closed)
+                | Error Net.TcpStream.Connection_refused -> Error (Error.Net_error Net.Connection_refused)
+                | Error (Net.TcpStream.System_error s) -> Error (Error.Net_error (Net.System_error s))
                 | Ok 0 ->
                     Error
-                      (`Handshake_failed "Connection closed during handshake")
+                      (Error.Handshake_failed "Connection closed during handshake")
                 | Ok n -> (
                     Buffer.add_subbytes response_buffer buf 0 n;
                     let response = Buffer.contents response_buffer in
@@ -99,7 +104,7 @@ let connect uri =
                       && String.contains status_line '1')
                   then
                     Error
-                      (`Handshake_failed
+                      (Error.Handshake_failed
                          "Server did not return 101 Switching Protocols")
                   else
                     let has_correct_accept =
@@ -119,7 +124,7 @@ let connect uri =
 
                     if not has_correct_accept then
                       Error
-                        (`Handshake_failed "Invalid Sec-WebSocket-Accept header")
+                        (Error.Handshake_failed "Invalid Sec-WebSocket-Accept header")
                     else
                       Ok
                         {
@@ -130,13 +135,14 @@ let connect uri =
                         })))
 
 let send_frame conn frame =
-  if conn.closed then Error `Closed
+  if conn.closed then Error Error.Closed
   else
     let serialized = Http.Ws.Serializer.serialize frame in
     let writer = Net.TcpStream.to_writer conn.stream in
     match IO.write_all writer ~buf:serialized with
-    | Ok () -> Ok ()
-    | Error e -> Error ((e :> [> Net.error ]) :> error)
+    | Error Net.TcpStream.Closed -> Error (Error.Net_error Net.Closed)
+    | Error Net.TcpStream.Connection_refused -> Error (Error.Net_error Net.Connection_refused)
+    | Error (Net.TcpStream.System_error s) -> Error (Error.Net_error (Net.System_error s))
 
 let send_text conn text =
   let frame = Http.Ws.Frame.text text in
@@ -166,7 +172,7 @@ let send_close conn ?(code = 1000) ?(reason = "") () =
   send_frame conn frame
 
 let receive conn =
-  if conn.closed then Error `Closed
+  if conn.closed then Error Error.Closed
   else
     let rec try_parse () =
       let data = Buffer.contents conn.buffer in
@@ -197,17 +203,19 @@ let receive conn =
                 in
                 Ok (`Close (Some code, reason))
               else Ok (`Close (None, ""))
-          | Continuation -> Error `Invalid_frame)
+          | Continuation -> Error Error.Invalid_frame)
       | Http.Ws.Parser.Need_more -> (
           let reader = Net.TcpStream.to_reader conn.stream in
           let buf = Bytes.create 4096 in
           match IO.read reader buf with
-          | Error e -> Error ((e :> [> Net.error ]) :> error)
-          | Ok 0 -> Error `Eof
+          | Error Net.TcpStream.Closed -> Error (Error.Net_error Net.Closed)
+          | Error Net.TcpStream.Connection_refused -> Error (Error.Net_error Net.Connection_refused)
+          | Error (Net.TcpStream.System_error s) -> Error (Error.Net_error (Net.System_error s))
+          | Ok 0 -> Error Error.Eof
           | Ok n ->
               Buffer.add_subbytes conn.buffer buf 0 n;
               try_parse ())
-      | Http.Ws.Parser.Error msg -> Error (`Handshake_failed msg)
+      | Http.Ws.Parser.Error msg -> Error (Error.Handshake_failed msg)
     in
     try_parse ()
 

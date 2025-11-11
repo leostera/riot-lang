@@ -1,6 +1,7 @@
 (** WebSocket Frame Serializer *)
 
 open Std
+  open Std.IO
 
 (* Serialize a WebSocket frame to bytes *)
 let serialize frame =

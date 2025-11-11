@@ -1,11 +1,12 @@
 open Http
 open Std
 open Std.Data
+open Std.IO
 
 let read_file path =
   match Fs.read (Path.v path) with
   | Ok content -> content
-  | Error _ -> failwith (format "Failed to read file: %s" path)
+  | Error _ -> panic ("Failed to read file: " ^ path)
 
 let parse_expected_request json =
   match Json.of_string json with
@@ -102,13 +103,13 @@ let parse_expected_uri json =
   | _ -> None
 
 let test_http1_request (name, http_file, expected_file) =
-  Test.case (format "HTTP/1.1 Request: %s" name) (fun () ->
+  Test.case ("HTTP/1.1 Request: %s" ^ name) (fun () ->
       let input = read_file http_file in
       let expected_json = read_file expected_file in
 
       match parse_expected_request expected_json with
       | None ->
-          Error (format "Failed to parse expected JSON for %s" expected_file)
+          Error ("Failed to parse expected JSON for %s" ^ expected_file)
       | Some (exp_method, exp_path, exp_version, exp_headers, exp_body) -> (
           match Http1.Request.parse input with
           | Http1.Common.Done { value = request; _ } ->
@@ -129,53 +130,47 @@ let test_http1_request (name, http_file, expected_file) =
                 |> Option.unwrap_or ~default:""
               in
 
-              if actual_method <> exp_method then
+              if actual_method != exp_method then
                 Error
-                  (format "Method mismatch: expected %s, got %s" exp_method
-                     actual_method)
-              else if actual_path <> exp_path then
+                  ("Method mismatch: expected " ^ exp_method ^ ", got " ^ actual_method)
+              else if actual_path != exp_path then
                 Error
-                  (format "Path mismatch: expected %s, got %s" exp_path
-                     actual_path)
-              else if actual_version <> exp_version then
+                  ("Path mismatch: expected " ^ exp_path ^ ", got " ^ actual_path)
+              else if actual_version != exp_version then
                 Error
-                  (format "Version mismatch: expected %s, got %s" exp_version
-                     actual_version)
-              else if actual_body <> exp_body then
+                  ("Version mismatch: expected " ^ exp_version ^ ", got " ^ actual_version)
+              else if actual_body != exp_body then
                 Error
-                  (format "Body mismatch: expected '%s', got '%s'" exp_body
-                     actual_body)
+                  ("Body mismatch: expected '" ^ exp_body ^ "', got '" ^ actual_body ^ "'")
               else
                 let header_errors =
                   List.filter_map
                     (fun (name, exp_value) ->
                       match Std.Net.Http.Header.get actual_headers name with
                       | Some actual_value ->
-                          if actual_value <> exp_value then
+                          if actual_value != exp_value then
                             Some
-                              (format "Header %s: expected '%s', got '%s'" name
-                                 exp_value actual_value)
+                              ("Header " ^ name ^ ": expected '" ^ exp_value ^ "', got '" ^ actual_value ^ "'")
                           else None
                       | None ->
                           Some
-                            (format "Missing header: %s (expected '%s')" name
-                               exp_value))
+                            ("Missing header: " ^ name ^ " (expected '" ^ exp_value ^ "')"))
                     exp_headers
                 in
                 if List.length header_errors > 0 then
                   Error (String.concat "\n" header_errors)
                 else Ok ()
           | Http1.Common.Need_more -> Error "Parser returned Need_more"
-          | Http1.Common.Error e -> Error (format "Parse error: %s" e)))
+          | Http1.Common.Error e -> Error ("Parse error: %s" ^ e)))
 
 let test_http1_response (name, http_file, expected_file) =
-  Test.case (format "HTTP/1.1 Response: %s" name) (fun () ->
+  Test.case ("HTTP/1.1 Response: %s" ^ name) (fun () ->
       let input = read_file http_file in
       let expected_json = read_file expected_file in
 
       match parse_expected_response expected_json with
       | None ->
-          Error (format "Failed to parse expected JSON for %s" expected_file)
+          Error ("Failed to parse expected JSON for %s" ^ expected_file)
       | Some (exp_version, exp_status, exp_reason, exp_headers, exp_body) -> (
           match Http1.Response.parse input with
           | Http1.Common.Done { value = response; _ } ->
@@ -197,44 +192,38 @@ let test_http1_response (name, http_file, expected_file) =
                 |> Option.unwrap_or ~default:""
               in
 
-              if actual_version <> exp_version then
+              if actual_version != exp_version then
                 Error
-                  (format "Version mismatch: expected %s, got %s" exp_version
-                     actual_version)
-              else if actual_status <> exp_status then
+                  ("Version mismatch: expected " ^ exp_version ^ ", got " ^ actual_version)
+              else if actual_status != exp_status then
                 Error
-                  (format "Status code mismatch: expected %d, got %d" exp_status
-                     actual_status)
-              else if actual_reason <> exp_reason then
+                  ("Status code mismatch: expected " ^ Int.to_string exp_status ^ ", got " ^ Int.to_string actual_status)
+              else if actual_reason != exp_reason then
                 Error
-                  (format "Reason mismatch: expected %s, got %s" exp_reason
-                     actual_reason)
-              else if actual_body <> exp_body then
+                  ("Reason mismatch: expected " ^ exp_reason ^ ", got " ^ actual_reason)
+              else if actual_body != exp_body then
                 Error
-                  (format "Body mismatch: expected '%s', got '%s'" exp_body
-                     actual_body)
+                  ("Body mismatch: expected '" ^ exp_body ^ "', got '" ^ actual_body ^ "'")
               else
                 let header_errors =
                   List.filter_map
                     (fun (name, exp_value) ->
                       match Std.Net.Http.Header.get actual_headers name with
                       | Some actual_value ->
-                          if actual_value <> exp_value then
+                          if actual_value != exp_value then
                             Some
-                              (format "Header %s: expected '%s', got '%s'" name
-                                 exp_value actual_value)
+                              ("Header " ^ name ^ ": expected '" ^ exp_value ^ "', got '" ^ actual_value ^ "'")
                           else None
                       | None ->
                           Some
-                            (format "Missing header: %s (expected '%s')" name
-                               exp_value))
+                            ("Missing header: " ^ name ^ " (expected '" ^ exp_value ^ "')"))
                     exp_headers
                 in
                 if List.length header_errors > 0 then
                   Error (String.concat "\n" header_errors)
                 else Ok ()
           | Http1.Common.Need_more -> Error "Parser returned Need_more"
-          | Http1.Common.Error e -> Error (format "Parse error: %s" e)))
+          | Http1.Common.Error e -> Error ("Parse error: %s" ^ e)))
 
 let load_fixtures base_path suffix =
   let fixtures_path = Path.v base_path in
@@ -250,8 +239,8 @@ let load_fixtures base_path suffix =
               let base =
                 String.sub name 0 (String.length name - String.length suffix)
               in
-              let http_file = format "%s/%s" base_path name in
-              let expected_file = format "%s/%s.expected" base_path base in
+              let http_file = base_path ^ "/" ^ name in
+              let expected_file = base_path ^ "/" ^ base ^ ".expected" in
               match Fs.exists (Path.v expected_file) with
               | Ok true -> Some (base, http_file, expected_file)
               | _ -> None
@@ -269,7 +258,7 @@ let uri_error_to_string = function
 
 let string_to_hex s =
   let buf = Buffer.create (String.length s * 2) in
-  String.iter (fun c -> Buffer.add_string buf (format "%02x" (Char.code c))) s;
+  String.iter (fun c -> Buffer.add_string buf (Int.to_string (Char.code c))) s;
   Buffer.contents buf
 
 let parse_expected_http2_frame json =
@@ -310,9 +299,9 @@ let validate_http2_flags expected_obj actual_flags errors =
       | _ -> None)
   in
   let check_flag name expected actual =
-    if expected <> actual then
+    if expected != actual then
       errors :=
-        format "flags.%s mismatch: expected %b, got %b" name expected actual
+        ("flags." ^ name ^ " mismatch: expected " ^ Bool.to_string expected ^ ", got " ^ Bool.to_string actual)
         :: !errors
   in
   Option.iter
@@ -354,10 +343,9 @@ let validate_http2_payload expected_obj actual_payload errors =
       | Http2.Frame.SettingsPayload settings -> (
           match List.assoc_opt "settings" expected_obj with
           | Some (Json.Array exp_settings) ->
-              if List.length exp_settings <> List.length settings then
+              if List.length exp_settings != List.length settings then
                 errors :=
-                  format "payload.settings length mismatch: expected %d, got %d"
-                    (List.length exp_settings) (List.length settings)
+                  ("payload.settings length mismatch: expected " ^ Int.to_string (List.length exp_settings) ^ ", got " ^ Int.to_string (List.length settings))
                   :: !errors
               else
                 List.iter2
@@ -370,12 +358,9 @@ let validate_http2_payload expected_obj actual_payload errors =
                             | Http2.Frame.HeaderTableSize actual_val -> (
                                 match List.assoc_opt "value" setting_obj with
                                 | Some (Json.Int exp_val) ->
-                                    if exp_val <> actual_val then
+                                    if exp_val != actual_val then
                                       errors :=
-                                        format
-                                          "HeaderTableSize mismatch: expected \
-                                           %d, got %d"
-                                          exp_val actual_val
+                                        ("HeaderTableSize mismatch: expected " ^ Int.to_string exp_val ^ ", got " ^ Int.to_string actual_val)
                                         :: !errors
                                 | _ -> ())
                             | _ ->
@@ -387,12 +372,9 @@ let validate_http2_payload expected_obj actual_payload errors =
                             | Http2.Frame.EnablePush actual_val -> (
                                 match List.assoc_opt "value" setting_obj with
                                 | Some (Json.Bool exp_val) ->
-                                    if exp_val <> actual_val then
+                                    if exp_val != actual_val then
                                       errors :=
-                                        format
-                                          "EnablePush mismatch: expected %b, \
-                                           got %b"
-                                          exp_val actual_val
+                                        ("EnablePush mismatch: expected " ^ Bool.to_string exp_val ^ ", got " ^ Bool.to_string actual_val)
                                         :: !errors
                                 | _ -> ())
                             | _ ->
@@ -404,12 +386,9 @@ let validate_http2_payload expected_obj actual_payload errors =
                             | Http2.Frame.MaxConcurrentStreams actual_val -> (
                                 match List.assoc_opt "value" setting_obj with
                                 | Some (Json.Int exp_val) ->
-                                    if exp_val <> actual_val then
+                                    if exp_val != actual_val then
                                       errors :=
-                                        format
-                                          "MaxConcurrentStreams mismatch: \
-                                           expected %d, got %d"
-                                          exp_val actual_val
+                                        ("MaxConcurrentStreams mismatch: expected " ^ Int.to_string exp_val ^ ", got " ^ Int.to_string actual_val)
                                         :: !errors
                                 | _ -> ())
                             | _ ->
@@ -421,12 +400,9 @@ let validate_http2_payload expected_obj actual_payload errors =
                             | Http2.Frame.InitialWindowSize actual_val -> (
                                 match List.assoc_opt "value" setting_obj with
                                 | Some (Json.Int exp_val) ->
-                                    if exp_val <> actual_val then
+                                    if exp_val != actual_val then
                                       errors :=
-                                        format
-                                          "InitialWindowSize mismatch: \
-                                           expected %d, got %d"
-                                          exp_val actual_val
+                                        ("InitialWindowSize mismatch: expected " ^ Int.to_string exp_val ^ ", got " ^ Int.to_string actual_val)
                                         :: !errors
                                 | _ -> ())
                             | _ ->
@@ -438,12 +414,9 @@ let validate_http2_payload expected_obj actual_payload errors =
                             | Http2.Frame.MaxFrameSize actual_val -> (
                                 match List.assoc_opt "value" setting_obj with
                                 | Some (Json.Int exp_val) ->
-                                    if exp_val <> actual_val then
+                                    if exp_val != actual_val then
                                       errors :=
-                                        format
-                                          "MaxFrameSize mismatch: expected %d, \
-                                           got %d"
-                                          exp_val actual_val
+                                        ("MaxFrameSize mismatch: expected " ^ Int.to_string exp_val ^ ", got " ^ Int.to_string actual_val)
                                         :: !errors
                                 | _ -> ())
                             | _ ->
@@ -455,12 +428,9 @@ let validate_http2_payload expected_obj actual_payload errors =
                             | Http2.Frame.MaxHeaderListSize actual_val -> (
                                 match List.assoc_opt "value" setting_obj with
                                 | Some (Json.Int exp_val) ->
-                                    if exp_val <> actual_val then
+                                    if exp_val != actual_val then
                                       errors :=
-                                        format
-                                          "MaxHeaderListSize mismatch: \
-                                           expected %d, got %d"
-                                          exp_val actual_val
+                                        ("MaxHeaderListSize mismatch: expected " ^ Int.to_string exp_val ^ ", got " ^ Int.to_string actual_val)
                                         :: !errors
                                 | _ -> ())
                             | _ ->
@@ -472,8 +442,7 @@ let validate_http2_payload expected_obj actual_payload errors =
                   exp_settings settings
           | _ -> ())
       | _ ->
-          errors := "Payload type mismatch: expected SettingsPayload" :: !errors
-      )
+          errors := "Payload type mismatch: expected SettingsPayload" :: !errors)
   | Some (Json.String "DataPayload") -> (
       match actual_payload with
       | Http2.Frame.DataPayload { data; pad_length } -> (
@@ -494,29 +463,25 @@ let validate_http2_payload expected_obj actual_payload errors =
               in
               if not data_matches then
                 errors :=
-                  format "payload.data mismatch: expected '%s', got '%s'"
-                    exp_data data
+                  ("payload.data mismatch: expected '" ^ exp_data ^ "', got '" ^ data ^ "'")
                   :: !errors
           | _ -> ());
           match List.assoc_opt "pad_length" expected_obj with
           | Some Json.Null ->
-              if pad_length <> None then
+              if pad_length != None then
                 errors :=
-                  format "payload.pad_length mismatch: expected None, got Some"
+                  "payload.pad_length mismatch: expected None, got Some"
                   :: !errors
           | Some (Json.Int exp_pad) -> (
               match pad_length with
               | Some actual_pad ->
-                  if exp_pad <> actual_pad then
+                  if exp_pad != actual_pad then
                     errors :=
-                      format "payload.pad_length mismatch: expected %d, got %d"
-                        exp_pad actual_pad
+                      ("payload.pad_length mismatch: expected " ^ Int.to_string exp_pad ^ ", got " ^ Int.to_string actual_pad)
                       :: !errors
               | None ->
                   errors :=
-                    format
-                      "payload.pad_length mismatch: expected Some %d, got None"
-                      exp_pad
+                    ("payload.pad_length mismatch: expected Some " ^ Int.to_string exp_pad ^ ", got None")
                     :: !errors)
           | _ -> ())
       | _ -> errors := "Payload type mismatch: expected DataPayload" :: !errors)
@@ -526,10 +491,9 @@ let validate_http2_payload expected_obj actual_payload errors =
           match List.assoc_opt "data" expected_obj with
           | Some (Json.String exp_data) ->
               let actual_hex = string_to_hex data in
-              if exp_data <> actual_hex then
+              if exp_data != actual_hex then
                 errors :=
-                  format "payload.data mismatch: expected '%s', got '%s'"
-                    exp_data actual_hex
+                  ("payload.data mismatch: expected '" ^ exp_data ^ "', got '" ^ actual_hex ^ "'")
                   :: !errors
           | _ -> ())
       | _ -> errors := "Payload type mismatch: expected PingPayload" :: !errors)
@@ -538,10 +502,9 @@ let validate_http2_payload expected_obj actual_payload errors =
       | Http2.Frame.WindowUpdatePayload increment -> (
           match List.assoc_opt "increment" expected_obj with
           | Some (Json.Int exp_inc) ->
-              if exp_inc <> increment then
+              if exp_inc != increment then
                 errors :=
-                  format "payload.increment mismatch: expected %d, got %d"
-                    exp_inc increment
+                  ("payload.increment mismatch: expected " ^ Int.to_string exp_inc ^ ", got " ^ Int.to_string increment)
                   :: !errors
           | _ -> ())
       | _ ->
@@ -553,27 +516,24 @@ let validate_http2_payload expected_obj actual_payload errors =
         -> (
           (match List.assoc_opt "last_stream_id" expected_obj with
           | Some (Json.Int exp_id) ->
-              if exp_id <> last_stream_id then
+              if exp_id != last_stream_id then
                 errors :=
-                  format "payload.last_stream_id mismatch: expected %d, got %d"
-                    exp_id last_stream_id
+                  ("payload.last_stream_id mismatch: expected " ^ Int.to_string exp_id ^ ", got " ^ Int.to_string last_stream_id)
                   :: !errors
           | _ -> ());
           (match List.assoc_opt "error_code" expected_obj with
           | Some (Json.String exp_code) ->
               let actual_code = error_code_to_string error_code in
-              if exp_code <> actual_code then
+              if exp_code != actual_code then
                 errors :=
-                  format "payload.error_code mismatch: expected %s, got %s"
-                    exp_code actual_code
+                  ("payload.error_code mismatch: expected " ^ exp_code ^ ", got " ^ actual_code)
                   :: !errors
           | _ -> ());
           match List.assoc_opt "debug_data" expected_obj with
           | Some (Json.String exp_debug) ->
-              if exp_debug <> debug_data then
+              if exp_debug != debug_data then
                 errors :=
-                  format "payload.debug_data mismatch: expected '%s', got '%s'"
-                    exp_debug debug_data
+                  ("payload.debug_data mismatch: expected '" ^ exp_debug ^ "', got '" ^ debug_data ^ "'")
                   :: !errors
           | _ -> ())
       | _ ->
@@ -597,17 +557,17 @@ let parse_expected_ws_frame json =
   | _ -> None
 
 let test_uri (name, uri_file, expected_file) =
-  Test.case (format "URI: %s" name) (fun () ->
+  Test.case ("URI: %s" ^ name) (fun () ->
       let input = read_file uri_file in
       let expected_json = read_file expected_file in
 
       match parse_expected_uri expected_json with
       | None ->
-          Error (format "Failed to parse expected JSON for %s" expected_file)
+          Error ("Failed to parse expected JSON for %s" ^ expected_file)
       | Some (fields, get_opt_string, get_opt_int) -> (
           match Std.Net.Uri.of_string input with
           | Error e ->
-              Error (format "Failed to parse URI: %s" (uri_error_to_string e))
+              Error ("Failed to parse URI: " ^ uri_error_to_string e)
           | Ok uri ->
               let errors = ref [] in
 
@@ -615,11 +575,11 @@ let test_uri (name, uri_file, expected_file) =
                 match get_opt_string field_name with
                 | Some expected ->
                     let actual = getter uri in
-                    if actual <> expected then
+                    if actual != expected then
+                      let exp_str = Option.map_or ~default:"null" (fun x -> x) expected in
+                      let act_str = Option.map_or ~default:"null" (fun x -> x) actual in
                       errors :=
-                        format "%s mismatch: expected %s, got %s" field_name
-                          (Option.map_or ~default:"null" Fun.id expected)
-                          (Option.map_or ~default:"null" Fun.id actual)
+                        (field_name ^ " mismatch: expected " ^ exp_str ^ ", got " ^ act_str)
                         :: !errors
                 | None -> ()
               in
@@ -628,11 +588,11 @@ let test_uri (name, uri_file, expected_file) =
                 match get_opt_int field_name with
                 | Some expected ->
                     let actual = getter uri in
-                    if actual <> expected then
+                    if actual != expected then
+                      let exp_str = Option.map_or ~default:"null" Int.to_string expected in
+                      let act_str = Option.map_or ~default:"null" Int.to_string actual in
                       errors :=
-                        format "%s mismatch: expected %s, got %s" field_name
-                          (Option.map_or ~default:"null" Int.to_string expected)
-                          (Option.map_or ~default:"null" Int.to_string actual)
+                        (field_name ^ " mismatch: expected " ^ exp_str ^ ", got " ^ act_str)
                         :: !errors
                 | None -> ()
               in
@@ -648,10 +608,9 @@ let test_uri (name, uri_file, expected_file) =
               let actual_path = Std.Net.Uri.path uri in
               (match exp_path with
               | Some (Json.String exp) ->
-                  if actual_path <> exp then
+                  if actual_path != exp then
                     errors :=
-                      format "path mismatch: expected '%s', got '%s'" exp
-                        actual_path
+                      ("path mismatch: expected '" ^ exp ^ "', got '" ^ actual_path ^ "'")
                       :: !errors
               | _ -> ());
 
@@ -671,13 +630,13 @@ let frame_type_to_string = function
   | Http2.Frame.Continuation -> "Continuation"
 
 let test_http2_frame (name, frame_file, expected_file) =
-  Test.case (format "HTTP/2 Frame: %s" name) (fun () ->
+  Test.case ("HTTP/2 Frame: %s" ^ name) (fun () ->
       let input = read_file frame_file in
       let expected_json = read_file expected_file in
 
       match parse_expected_http2_frame expected_json with
       | None ->
-          Error (format "Failed to parse expected JSON for %s" expected_file)
+          Error ("Failed to parse expected JSON for %s" ^ expected_file)
       | Some (get_int, get_string, get_object, _get_bool, _get_array) -> (
           match Http2.Parser.parse_frame input with
           | Http2.Parser.Done { value = frame; _ } ->
@@ -685,29 +644,26 @@ let test_http2_frame (name, frame_file, expected_file) =
 
               (match get_int "length" with
               | Some exp_len ->
-                  if frame.Http2.Frame.length <> exp_len then
+                  if frame.Http2.Frame.length != exp_len then
                     errors :=
-                      format "length mismatch: expected %d, got %d" exp_len
-                        frame.length
+                      ("length mismatch: expected " ^ Int.to_string exp_len ^ ", got " ^ Int.to_string frame.length)
                       :: !errors
               | None -> ());
 
               (match get_string "frame_type" with
               | Some exp_type ->
                   let actual_type = frame_type_to_string frame.frame_type in
-                  if actual_type <> exp_type then
+                  if actual_type != exp_type then
                     errors :=
-                      format "frame_type mismatch: expected %s, got %s" exp_type
-                        actual_type
+                      ("frame_type mismatch: expected " ^ exp_type ^ ", got " ^ actual_type)
                       :: !errors
               | None -> ());
 
               (match get_int "stream_id" with
               | Some exp_stream_id ->
-                  if frame.stream_id <> exp_stream_id then
+                  if frame.stream_id != exp_stream_id then
                     errors :=
-                      format "stream_id mismatch: expected %d, got %d"
-                        exp_stream_id frame.stream_id
+                      ("stream_id mismatch: expected " ^ Int.to_string exp_stream_id ^ ", got " ^ Int.to_string frame.stream_id)
                       :: !errors
               | None -> ());
 
@@ -724,7 +680,7 @@ let test_http2_frame (name, frame_file, expected_file) =
               if List.length !errors > 0 then Error (String.concat "\n" !errors)
               else Ok ()
           | Http2.Parser.Need_more -> Error "Parser returned Need_more"
-          | Http2.Parser.Error e -> Error (format "Parse error: %s" e)))
+          | Http2.Parser.Error e -> Error ("Parse error: %s" ^ e)))
 
 let opcode_to_string = function
   | Ws.Frame.Continuation -> "Continuation"
@@ -735,13 +691,13 @@ let opcode_to_string = function
   | Ws.Frame.Pong -> "Pong"
 
 let test_ws_frame (name, frame_file, expected_file) =
-  Test.case (format "WebSocket Frame: %s" name) (fun () ->
+  Test.case ("WebSocket Frame: %s" ^ name) (fun () ->
       let input = read_file frame_file in
       let expected_json = read_file expected_file in
 
       match parse_expected_ws_frame expected_json with
       | None ->
-          Error (format "Failed to parse expected JSON for %s" expected_file)
+          Error ("Failed to parse expected JSON for %s" ^ expected_file)
       | Some (get_bool, get_string) -> (
           match Ws.Parser.parse input with
           | Ws.Parser.Done { value = frame; _ } ->
@@ -749,29 +705,26 @@ let test_ws_frame (name, frame_file, expected_file) =
 
               (match get_bool "fin" with
               | Some exp_fin ->
-                  if frame.Ws.Frame.fin <> exp_fin then
+                  if frame.Ws.Frame.fin != exp_fin then
                     errors :=
-                      format "fin mismatch: expected %b, got %b" exp_fin
-                        frame.fin
+                      ("fin mismatch: expected " ^ Bool.to_string exp_fin ^ ", got " ^ Bool.to_string frame.fin)
                       :: !errors
               | None -> ());
 
               (match get_bool "masked" with
               | Some exp_masked ->
-                  if frame.masked <> exp_masked then
+                  if frame.masked != exp_masked then
                     errors :=
-                      format "masked mismatch: expected %b, got %b" exp_masked
-                        frame.masked
+                      ("masked mismatch: expected " ^ Bool.to_string exp_masked ^ ", got " ^ Bool.to_string frame.masked)
                       :: !errors
               | None -> ());
 
               (match get_string "opcode" with
               | Some exp_opcode ->
                   let actual_opcode = opcode_to_string frame.opcode in
-                  if actual_opcode <> exp_opcode then
+                  if actual_opcode != exp_opcode then
                     errors :=
-                      format "opcode mismatch: expected %s, got %s" exp_opcode
-                        actual_opcode
+                      ("opcode mismatch: expected " ^ exp_opcode ^ ", got " ^ actual_opcode)
                       :: !errors
               | None -> ());
 
@@ -782,17 +735,16 @@ let test_ws_frame (name, frame_file, expected_file) =
                     | Ws.Frame.Binary -> string_to_hex frame.payload
                     | _ -> frame.payload
                   in
-                  if actual_payload <> exp_payload then
+                  if actual_payload != exp_payload then
                     errors :=
-                      format "payload mismatch: expected '%s', got '%s'"
-                        exp_payload actual_payload
+                      ("payload mismatch: expected '" ^ exp_payload ^ "', got '" ^ actual_payload ^ "'")
                       :: !errors
               | None -> ());
 
               if List.length !errors > 0 then Error (String.concat "\n" !errors)
               else Ok ()
           | Ws.Parser.Need_more -> Error "Parser returned Need_more"
-          | Ws.Parser.Error e -> Error (format "Parse error: %s" e)))
+          | Ws.Parser.Error e -> Error ("Parse error: " ^ e)))
 
 let () =
   Miniriot.run

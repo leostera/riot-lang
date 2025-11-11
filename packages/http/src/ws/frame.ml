@@ -11,6 +11,7 @@
     +-+-+-+-+-------+-+-------------+ - - - - - - - - - - - - - - - + *)
 
 open Std
+  open Std.IO
 
 type opcode =
   | Continuation (* 0x0 *)

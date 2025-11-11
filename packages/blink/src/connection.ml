@@ -1,4 +1,5 @@
 open Std
+open Std.IO
 
 type message =
   [ `Data of string
@@ -6,53 +7,46 @@ type message =
   | `Headers of Net.Http.Header.t
   | `Status of Net.Http.Status.t ]
 
-type error =
-  [ Net.error | `Parse_error of string | `Protocol_error of string | `Eof ]
-
 type response_state =
   | Waiting_for_headers
   | Reading_fixed_body of { length : int; received : int }
   | Reading_chunked_body
   | Complete
 
-type t = {
-  uri : Net.Uri.t;
-  stream : Net.TcpStream.t;
-  mutable buffer : Buffer.t;
-  mutable state : response_state;
-  mutable response : Net.Http.Response.t option;
-}
+type t =
+  | Conn : {
+      protocol : (module Protocol.Intf);
+      writer : ('socket, 'err) IO.Writer.t;
+      reader : ('socket, 'err) IO.Reader.t;
+      uri : Net.Uri.t;
+      mutable buffer : Buffer.t;
+      mutable state : response_state;
+      mutable response : Net.Http.Response.t option;
+      of_io_error : 'err -> Error.t;
+    }
+      -> t
 
-let connect uri =
-  let host = Net.Uri.host uri |> Option.unwrap_or ~default:"localhost" in
-  let port = Net.Uri.port uri |> Option.unwrap_or ~default:80 in
+let make : type socket err. reader:(socket, err) IO.Reader.t -> writer:(socket, err) IO.Writer.t -> of_io_error:(err -> Error.t) -> uri:Net.Uri.t -> t =
+  fun ~reader ~writer ~of_io_error ~uri ->
+    Conn {
+      protocol = (module Protocol.Http1);
+      reader;
+      writer;
+      uri;
+      buffer = Buffer.create 4096;
+      state = Waiting_for_headers;
+      response = None;
+      of_io_error;
+    }
 
-  match Net.Addr.of_host_and_port ~host ~port with
-  | Error e -> Error (e :> error)
-  | Ok addr -> (
-      match Net.TcpStream.connect addr with
-      | Error e -> Error (e :> error)
-      | Ok stream ->
-          Ok
-            {
-              uri;
-              stream;
-              buffer = Buffer.create 4096;
-              state = Waiting_for_headers;
-              response = None;
-            })
-
-let request conn req ?body () =
+let request (Conn conn) req ?body () =
   let method_ = Net.Http.Request.method_ req in
   let version = Net.Http.Request.version req in
   let headers = Net.Http.Request.headers req in
   let resource = Net.Uri.path conn.uri in
 
   let request_line =
-    format "%s %s %s\r\n"
-      (Net.Http.Method.to_string method_)
-      resource
-      (Net.Http.Version.to_string version)
+    (Net.Http.Method.to_string method_) ^ " " ^ resource ^ " " ^ (Net.Http.Version.to_string version) ^ "\r\n"
   in
 
   let headers =
@@ -60,7 +54,6 @@ let request conn req ?body () =
         Net.Http.Header.add h "host"
           (Net.Uri.host conn.uri |> Option.unwrap_or ~default:"localhost") )
     |> fun h -> Net.Http.Header.add h "user-agent" "Riot-Blink/0.2.0" )
-    |> fun h -> Net.Http.Header.add h "connection" "close"
   in
 
   let headers =
@@ -73,7 +66,7 @@ let request conn req ?body () =
 
   let headers_str =
     Net.Http.Header.to_list headers
-    |> List.map (fun (name, value) -> format "%s: %s\r\n" name value)
+    |> List.map (fun (name, value) -> name ^ ": " ^ value ^ "\r\n")
     |> String.concat ""
   in
 
@@ -82,26 +75,24 @@ let request conn req ?body () =
     match body with Some b -> request ^ b | None -> request
   in
 
-  let writer = Net.TcpStream.to_writer conn.stream in
-  match IO.write_all writer ~buf:full_request with
+  match IO.write_all conn.writer ~buf:full_request with
   | Ok () ->
       conn.state <- Waiting_for_headers;
       conn.response <- None;
       Buffer.clear conn.buffer;
       Ok ()
-  | Error e -> Error ((e :> [> Net.error ]) :> error)
+  | Error e -> Error (conn.of_io_error e)
 
-let read_more conn =
+let read_more (Conn conn) =
   let chunk = Bytes.create 4096 in
-  let reader = Net.TcpStream.to_reader conn.stream in
-  match IO.read reader chunk with
-  | Ok 0 -> Error `Eof
+  match IO.read conn.reader chunk with
+  | Ok 0 -> Error Error.Eof
   | Ok n ->
       Buffer.add_subbytes conn.buffer chunk 0 n;
       Ok ()
-  | Error e -> Error ((e :> [> Net.error ]) :> error)
+  | Error e -> Error (conn.of_io_error e)
 
-let stream conn =
+let stream (Conn conn as c) =
   match conn.state with
   | Complete -> Ok [ `Done ]
   | Waiting_for_headers ->
@@ -137,34 +128,47 @@ let stream conn =
 
             Ok [ `Status status; `Headers headers ]
         | Http.Http1.Common.Need_more -> (
-            match read_more conn with
+            match read_more c with
             | Ok () -> try_parse ()
             | Error e -> Error e)
-        | Http.Http1.Common.Error msg -> Error (`Parse_error msg)
+        | Http.Http1.Common.Error msg -> Error (Error.Parse_error msg)
       in
       try_parse ()
   | Reading_fixed_body { length; received } -> (
+      let data = Buffer.contents conn.buffer in
+      let available = String.length data in
       let remaining = length - received in
-      if remaining <= 0 then (
+      
+      if received >= length && available > 0 then (
+        (* We already received all the body data during header parsing *)
+        let body_data = String.sub data 0 (min available length) in
+        let leftover_len = available - (min available length) in
+        if leftover_len > 0 then (
+          let leftover = String.sub data (min available length) leftover_len in
+          Buffer.clear conn.buffer;
+          Buffer.add_string conn.buffer leftover
+        ) else Buffer.clear conn.buffer;
+        conn.state <- Complete;
+        Ok [ `Data body_data; `Done ])
+      else if remaining <= 0 then (
+        (* Body complete but buffer empty *)
         conn.state <- Complete;
         Ok [ `Done ])
-      else
-        let data = Buffer.contents conn.buffer in
-        let available = String.length data in
-
-        if available >= remaining then (
-          let body_data = String.sub data 0 remaining in
-          let leftover = String.sub data remaining (available - remaining) in
-          Buffer.clear conn.buffer;
-          Buffer.add_string conn.buffer leftover;
-          conn.state <- Complete;
-          Ok [ `Data body_data; `Done ])
-        else if available > 0 then (
-          Buffer.clear conn.buffer;
-          conn.state <-
-            Reading_fixed_body { length; received = received + available };
-          Ok [ `Data data ])
-        else match read_more conn with Ok () -> Ok [] | Error e -> Error e)
+      else if available >= remaining then (
+        (* We have enough data in buffer to complete the body *)
+        let body_data = String.sub data 0 remaining in
+        let leftover = String.sub data remaining (available - remaining) in
+        Buffer.clear conn.buffer;
+        Buffer.add_string conn.buffer leftover;
+        conn.state <- Complete;
+        Ok [ `Data body_data; `Done ])
+      else if available > 0 then (
+        (* Partial data available, consume it and continue *)
+        Buffer.clear conn.buffer;
+        conn.state <-
+          Reading_fixed_body { length; received = received + available };
+        Ok [ `Data data ])
+      else match read_more c with Ok () -> Ok [] | Error e -> Error e)
   | Reading_chunked_body ->
       let rec parse_chunks acc =
         let data = Buffer.contents conn.buffer in
@@ -179,11 +183,11 @@ let stream conn =
               Ok (List.rev (`Done :: acc)))
             else parse_chunks (`Data chunk_data :: acc)
         | Http.Http1.Common.Need_more -> (
-            match read_more conn with
+            match read_more c with
             | Ok () -> parse_chunks acc
             | Error e ->
                 if List.length acc > 0 then Ok (List.rev acc) else Error e)
-        | Http.Http1.Common.Error msg -> Error (`Parse_error msg)
+        | Http.Http1.Common.Error msg -> Error (Error.Parse_error msg)
       in
       parse_chunks []
 
@@ -198,8 +202,8 @@ let messages ?(on_message = fun _ -> ()) conn =
   in
   loop []
 
-let await ?(on_message = fun _ -> ()) conn =
-  match messages ~on_message conn with
+let await ?(on_message = fun _ -> ()) (Conn conn as c) =
+  match messages ~on_message c with
   | Error e -> Error e
   | Ok msgs ->
       let response =
@@ -215,4 +219,4 @@ let await ?(on_message = fun _ -> ()) conn =
       let body = String.concat "" body_chunks in
       Ok (response, body)
 
-let close conn = Net.TcpStream.close conn.stream
+let close _conn = ()  (* Reader/writer don't need explicit close *)

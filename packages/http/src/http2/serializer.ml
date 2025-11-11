@@ -54,7 +54,7 @@ let serialize_data_payload payload =
   | Frame.DataPayload { data; pad_length = None } -> data
   | Frame.DataPayload { data; pad_length = Some pad_len } ->
       write_uint8 pad_len ^ data ^ String.make pad_len '\x00'
-  | _ -> failwith "serialize_data_payload: expected DataPayload"
+  | _ -> panic "serialize_data_payload: expected DataPayload"
 
 let serialize_headers_payload payload =
   match payload with
@@ -78,19 +78,19 @@ let serialize_headers_payload payload =
         match pad_length with Some pl -> String.make pl '\x00' | None -> ""
       in
       pad_bytes ^ priority_bytes ^ header_block_fragment ^ padding
-  | _ -> failwith "serialize_headers_payload: expected HeadersPayload"
+  | _ -> panic "serialize_headers_payload: expected HeadersPayload"
 
 let serialize_priority_payload payload =
   match payload with
   | Frame.PriorityPayload { stream_dependency; exclusive; weight } ->
       serialize_priority stream_dependency exclusive weight
-  | _ -> failwith "serialize_priority_payload: expected PriorityPayload"
+  | _ -> panic "serialize_priority_payload: expected PriorityPayload"
 
 let serialize_rst_stream_payload payload =
   match payload with
   | Frame.RstStreamPayload error_code ->
       write_uint32_be (Frame.error_code_to_int error_code)
-  | _ -> failwith "serialize_rst_stream_payload: expected RstStreamPayload"
+  | _ -> panic "serialize_rst_stream_payload: expected RstStreamPayload"
 
 let serialize_setting = function
   | Frame.HeaderTableSize value -> write_uint16_be 0x1 ^ write_uint32_be value
@@ -106,7 +106,7 @@ let serialize_settings_payload payload =
   match payload with
   | Frame.SettingsPayload settings ->
       String.concat "" (List.map serialize_setting settings)
-  | _ -> failwith "serialize_settings_payload: expected SettingsPayload"
+  | _ -> panic "serialize_settings_payload: expected SettingsPayload"
 
 let serialize_push_promise_payload payload =
   match payload with
@@ -122,12 +122,12 @@ let serialize_push_promise_payload payload =
         match pad_length with Some pl -> String.make pl '\x00' | None -> ""
       in
       pad_bytes ^ promised_id_bytes ^ header_block_fragment ^ padding
-  | _ -> failwith "serialize_push_promise_payload: expected PushPromisePayload"
+  | _ -> panic "serialize_push_promise_payload: expected PushPromisePayload"
 
 let serialize_ping_payload payload =
   match payload with
   | Frame.PingPayload opaque_data -> opaque_data
-  | _ -> failwith "serialize_ping_payload: expected PingPayload"
+  | _ -> panic "serialize_ping_payload: expected PingPayload"
 
 let serialize_goaway_payload payload =
   match payload with
@@ -135,19 +135,19 @@ let serialize_goaway_payload payload =
       write_uint32_be (last_stream_id land 0x7FFFFFFF)
       ^ write_uint32_be (Frame.error_code_to_int error_code)
       ^ debug_data
-  | _ -> failwith "serialize_goaway_payload: expected GoawayPayload"
+  | _ -> panic "serialize_goaway_payload: expected GoawayPayload"
 
 let serialize_window_update_payload payload =
   match payload with
   | Frame.WindowUpdatePayload increment ->
       write_uint32_be (increment land 0x7FFFFFFF)
   | _ ->
-      failwith "serialize_window_update_payload: expected WindowUpdatePayload"
+      panic "serialize_window_update_payload: expected WindowUpdatePayload"
 
 let serialize_continuation_payload payload =
   match payload with
   | Frame.ContinuationPayload header_block_fragment -> header_block_fragment
-  | _ -> failwith "serialize_continuation_payload: expected ContinuationPayload"
+  | _ -> panic "serialize_continuation_payload: expected ContinuationPayload"
 
 let serialize_payload frame_type payload =
   match frame_type with
