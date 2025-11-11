@@ -60,7 +60,10 @@
 
     See [Uri] for URL parsing and [Http] for HTTP-specific functionality. *)
 
-type error = [ `Connection_refused | `Closed | `System_error of string ]
+type error =
+  | Connection_refused
+  | Closed
+  | System_error of string
 (** Network error types. *)
 
 module Uri = Uri
@@ -79,6 +82,9 @@ module TcpServer : module type of Tcp_server
 
 module TcpClient : module type of Tcp_client
 (** TCP client for line-based protocols *)
+
+module TlsStream : module type of Tls_stream
+(** TLS stream for encrypted connections *)
 
 module Http : module type of Http
 (** HTTP types and utilities *)

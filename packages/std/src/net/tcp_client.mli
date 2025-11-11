@@ -13,11 +13,10 @@
           (* Send a request *)
           let _ = TcpClient.send client "GET /status\n" in
           (* Receive response - blocks until newline *)
-          let response = TcpClient.receive client in
-          (* Can call receive multiple times for streaming responses *)
-          let next_response = TcpClient.receive client in
-          TcpClient.close client
-      | Error e -> ...
+          (match TcpClient.receive client with
+          | Ok line -> println line
+          | Error msg -> println ("Error: " ^ msg))
+      | Error err -> println "Connection failed"
     ]} *)
 
 open Global
@@ -25,7 +24,10 @@ open Global
 type t
 (** The client connection type. Contains the TCP stream and internal buffers. *)
 
-type error = [ `Connection_refused | `Closed | `System_error of string ]
+type error =
+  | Connection_refused
+  | Closed
+  | System_error of string
 
 val connect : host:string -> port:int -> (t, error) result
 (** [connect ~host ~port] establishes a TCP connection to the given host and

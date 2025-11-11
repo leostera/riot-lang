@@ -72,21 +72,23 @@ let parse_scheme s start_pos =
 
 let parse_authority s start_pos =
   let len = String.length s in
-  if start_pos + 1 < len && s.[start_pos] = '/' && s.[start_pos + 1] = '/' then
-    let authority_start = start_pos + 2 in
-    let rec find_end pos =
-      if pos >= len then pos
-      else
-        match s.[pos] with
-        | '/' | '?' | '#' -> pos
-        | c when is_authority_char c -> find_end (pos + 1)
-        | _ -> pos
-    in
-    let authority_end = find_end authority_start in
-    let authority =
-      String.sub s authority_start (authority_end - authority_start)
-    in
-    (Some authority, authority_end)
+  if start_pos + 1 < len then
+    if s.[start_pos] = '/' && s.[start_pos + 1] = '/' then
+      let authority_start = start_pos + 2 in
+      let rec find_end pos =
+        if pos >= len then pos
+        else
+          match s.[pos] with
+          | '/' | '?' | '#' -> pos
+          | c when is_authority_char c -> find_end (pos + 1)
+          | _ -> pos
+      in
+      let authority_end = find_end authority_start in
+      let authority =
+        String.sub s authority_start (authority_end - authority_start)
+      in
+      (Some authority, authority_end)
+    else (None, start_pos)
   else (None, start_pos)
 
 let parse_path s start_pos =
@@ -108,43 +110,45 @@ let parse_path s start_pos =
 
 let parse_query s start_pos =
   let len = String.length s in
-  if start_pos < len && s.[start_pos] = '?' then
-    let query_start = start_pos + 1 in
-    let rec find_end pos =
-      if pos >= len then pos
-      else
-        match s.[pos] with
-        | '#' -> pos
-        | c when is_query_char c -> find_end (pos + 1)
-        | _ -> pos
-    in
-    let query_end = find_end query_start in
-    let query = String.sub s query_start (query_end - query_start) in
-    (Some query, query_end)
+  if start_pos < len then
+    if s.[start_pos] = '?' then
+      let query_start = start_pos + 1 in
+      let rec find_end pos =
+        if pos >= len then pos
+        else
+          match s.[pos] with
+          | '#' -> pos
+          | c when is_query_char c -> find_end (pos + 1)
+          | _ -> pos
+      in
+      let query_end = find_end query_start in
+      let query = String.sub s query_start (query_end - query_start) in
+      (Some query, query_end)
+    else (None, start_pos)
   else (None, start_pos)
 
 let parse_fragment s start_pos =
   let len = String.length s in
-  if start_pos < len && s.[start_pos] = '#' then
-    let fragment_start = start_pos + 1 in
-    let fragment = String.sub s fragment_start (len - fragment_start) in
-    (Some fragment, len)
+  if start_pos < len then
+    if s.[start_pos] = '#' then
+      let fragment_start = start_pos + 1 in
+      let fragment = String.sub s fragment_start (len - fragment_start) in
+      (Some fragment, len)
+    else (None, start_pos)
   else (None, start_pos)
 
 (* Main parsing function *)
 let of_string s =
   if String.length s > 65535 then Error TooLong
   else
-    try
-      let pos = 0 in
-      let scheme, pos = parse_scheme s pos in
-      let authority, pos = parse_authority s pos in
-      let path, pos = parse_path s pos in
-      let query, pos = parse_query s pos in
-      let fragment, _ = parse_fragment s pos in
+    let pos = 0 in
+    let scheme, pos = parse_scheme s pos in
+    let authority, pos = parse_authority s pos in
+    let path, pos = parse_path s pos in
+    let query, pos = parse_query s pos in
+    let fragment, _ = parse_fragment s pos in
 
-      Ok { scheme; authority; path; query; fragment }
-    with _ -> Error InvalidFormat
+    Ok { scheme; authority; path; query; fragment }
 
 let to_string url =
   let buf = Buffer.create 256 in

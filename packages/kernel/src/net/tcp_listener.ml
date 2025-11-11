@@ -5,23 +5,36 @@ type t = Socket.listen_socket
 
 let close = Socket.close
 
+(* Helper: retry on EINTR *)
+let rec retry_eintr fn =
+  try fn ()
+  with Unix.(Unix_error (EINTR, _, _)) -> retry_eintr fn
+
 let bind ?(reuse_addr = true) ?(reuse_port = true) ?(backlog = 128) addr =
-  syscall @@ fun () ->
-  let sock_domain = Addr.to_domain addr in
-  let sock_type, sock_addr = Addr.to_unix addr in
-  let fd = Socket.make sock_domain sock_type in
-  Unix.setsockopt (Fd.to_unix fd) Unix.SO_REUSEADDR reuse_addr;
-  Unix.setsockopt (Fd.to_unix fd) Unix.SO_REUSEPORT reuse_port;
-  Unix.bind (Fd.to_unix fd) sock_addr;
-  Unix.listen (Fd.to_unix fd) backlog;
-  Ok fd
+  try
+    let sock_domain = Addr.to_domain addr in
+    let sock_type, sock_addr = Addr.to_unix addr in
+    let fd = Socket.make sock_domain sock_type in
+    Unix.setsockopt (Fd.to_unix fd) Unix.SO_REUSEADDR reuse_addr;
+    Unix.setsockopt (Fd.to_unix fd) Unix.SO_REUSEPORT reuse_port;
+    retry_eintr (fun () -> Unix.bind (Fd.to_unix fd) sock_addr);
+    retry_eintr (fun () -> Unix.listen (Fd.to_unix fd) backlog);
+    Ok fd
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let accept fd =
-  syscall @@ fun () ->
-  let raw_fd, client_addr = Unix.accept ~cloexec:true (Fd.to_unix fd) in
-  let addr = Addr.of_unix client_addr in
-  let stream = Tcp_stream.of_fd (Fd.of_unix raw_fd) in
-  Ok (stream, addr)
+  try
+    let raw_fd, client_addr = retry_eintr (fun () -> Unix.accept ~cloexec:true (Fd.to_unix fd)) in
+    let addr = Addr.of_unix client_addr in
+    let stream = Tcp_stream.of_fd (Fd.of_unix raw_fd) in
+    Ok (stream, addr)
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
+
+let local_addr fd =
+  try
+    let sockaddr = retry_eintr (fun () -> Unix.getsockname (Fd.to_unix fd)) in
+    Ok (Addr.of_unix sockaddr)
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let to_source t =
   let module Src = struct

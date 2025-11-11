@@ -1,6 +1,7 @@
 open Global0
 open Collections
 open IO
+open Async
 
 module Sys = Stdlib.Sys
 
@@ -30,43 +31,46 @@ type t = Fd.t
 module Metadata = struct
   type t = Unix.stats
 
-  let dev s = s.Unix.st_dev
-  let ino s = s.Unix.st_ino
-  let kind s = IO.file_kind_of_unix s.Unix.st_kind
-  let perm s = s.Unix.st_perm
-  let nlink s = s.Unix.st_nlink
-  let uid s = s.Unix.st_uid
-  let gid s = s.Unix.st_gid
-  let rdev s = s.Unix.st_rdev
-  let size s = s.Unix.st_size
-  let atime s = s.Unix.st_atime
-  let mtime s = s.Unix.st_mtime
-  let ctime s = s.Unix.st_ctime
+  let of_stats (stats : Unix.stats) = stats
+
+  let dev t = t.Unix.st_dev
+  let ino t = t.Unix.st_ino
+  let kind t = IO.file_kind_of_unix t.Unix.st_kind
+  let perm t = t.Unix.st_perm
+  let nlink t = t.Unix.st_nlink
+  let uid t = t.Unix.st_uid
+  let gid t = t.Unix.st_gid
+  let rdev t = t.Unix.st_rdev
+  let size t = t.Unix.st_size
+  let atime t = t.Unix.st_atime
+  let mtime t = t.Unix.st_mtime
+  let ctime t = t.Unix.st_ctime
 end
 
-let close = Fd.close
-
-(* Use Async.syscall which now returns IO.error directly *)
-let syscall = Async.syscall
+let close fd = Fd.close fd
 
 let read fd ?(pos = 0) ?len buf =
   let len = Option.unwrap_or len ~default:(Bytes.length buf - 1) in
-  syscall @@ fun () -> Ok (UnixLabels.read (Fd.to_unix fd) ~buf ~pos ~len)
+  try Ok (UnixLabels.read (Fd.to_unix fd) ~buf ~pos ~len)
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let write fd ?(pos = 0) ?len buf =
   let len = Option.unwrap_or len ~default:(Bytes.length buf - 1) in
-  syscall @@ fun () -> Ok (UnixLabels.write (Fd.to_unix fd) ~buf ~pos ~len)
+  try Ok (UnixLabels.write (Fd.to_unix fd) ~buf ~pos ~len)
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 external std_sys_readv : Unix.file_descr -> IO.Iovec.t -> int = "kernel_unix_readv"
 
 let read_vectored fd iov =
-  syscall @@ fun () -> Ok ((std_sys_readv (Fd.to_unix fd) iov))
+  try Ok (std_sys_readv (Fd.to_unix fd) iov)
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 external std_sys_writev : Unix.file_descr -> IO.Iovec.t -> int
   = "kernel_unix_writev"
 
 let write_vectored fd iov =
-  syscall @@ fun () -> Ok ((std_sys_writev (Fd.to_unix fd) iov))
+  try Ok (std_sys_writev (Fd.to_unix fd) iov)
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 external std_sys_sendfile :
   Unix.file_descr -> Unix.file_descr -> int -> int -> int
@@ -76,169 +80,177 @@ external std_sys_copy_file : Unix.file_descr -> Unix.file_descr -> unit
   = "kernel_unix_copy_file"
 
 let sendfile fd ~file ~off ~len =
-  syscall @@ fun () -> Ok (std_sys_sendfile (Fd.to_unix file) (Fd.to_unix fd) off len)
+  try Ok (std_sys_sendfile (Fd.to_unix file) (Fd.to_unix fd) off len)
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let mkdir path perm =
-  syscall @@ fun () -> Ok (Unix.mkdir path perm)
+  try Ok (Unix.mkdir path perm)
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let mkdirp path perm =
-  syscall @@ fun () ->
-  (* Split path into components, handling absolute paths *)
-  let components =
-    let parts = String.split_on_char '/' path in
-    let is_not_empty s = match s with "" -> false | _ -> true in
-    match parts with
-    | "" :: rest -> "/" :: List.filter is_not_empty rest
-    | parts -> List.filter is_not_empty parts
-  in
-  (* Create each directory component incrementally *)
-  let rec create_dirs current_path = function
-    | [] -> ()
-    | component :: rest ->
-        let new_path =
-          match (current_path, component) with
-          | "", "/" -> "/"
-          | "", c -> c
-          | "/", c -> "/" ^ c
-          | p, c -> p ^ "/" ^ c
-        in
-        (try Unix.mkdir new_path perm with
-        | Unix.Unix_error (Unix.EEXIST, _, _) -> ());
-        create_dirs new_path rest
-  in
-  create_dirs "" components;
-  Ok ()
+  try
+    (* Split path into components, handling absolute paths *)
+    let components =
+      let parts = String.split_on_char '/' path in
+      let is_not_empty s = match s with "" -> false | _ -> true in
+      match parts with
+      | "" :: rest -> "/" :: List.filter is_not_empty rest
+      | parts -> List.filter is_not_empty parts
+    in
+    (* Create each directory component incrementally *)
+    let rec create_dirs current_path = function
+      | [] -> ()
+      | component :: rest ->
+          let new_path =
+            match (current_path, component) with
+            | "", "/" -> "/"
+            | "", c -> c
+            | "/", c -> "/" ^ c
+            | p, c -> p ^ "/" ^ c
+          in
+          (try Unix.mkdir new_path perm with
+          | Unix.Unix_error (Unix.EEXIST, _, _) -> ());
+          create_dirs new_path rest
+    in
+    create_dirs "" components;
+    Ok ()
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let stat path =
-  syscall @@ fun () -> Ok (Unix.stat path)
+  try Ok (Unix.stat path)
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let copy_file src dst =
-  syscall @@ fun () ->
-  let src_perms = Unix.(stat src).st_perm in
-  let src_fd = Fd.open_file src [ Fd.OpenFlags.ReadOnly ] 0 in
-  let dst_fd =
-    Fd.open_file dst
-      [ Fd.OpenFlags.WriteOnly; Fd.OpenFlags.Create; Fd.OpenFlags.Truncate ]
-      src_perms
-  in
-  Fun.protect
-    ~finally:(fun () ->
-      Fd.close src_fd;
-      Fd.close dst_fd)
-    (fun () -> std_sys_copy_file (Fd.to_unix src_fd) (Fd.to_unix dst_fd));
-  Ok ()
+  try
+    let src_perms = Unix.(stat src).st_perm in
+    let src_fd = Fd.open_file src [ Fd.OpenFlags.ReadOnly ] 0 in
+    let dst_fd =
+      Fd.open_file dst
+        [ Fd.OpenFlags.WriteOnly; Fd.OpenFlags.Create; Fd.OpenFlags.Truncate ]
+        src_perms
+    in
+    Fun.protect
+      ~finally:(fun () ->
+        Fd.close src_fd;
+        Fd.close dst_fd)
+      (fun () -> std_sys_copy_file (Fd.to_unix src_fd) (Fd.to_unix dst_fd));
+    Ok ()
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let is_directory path =
-  syscall @@ fun () -> Ok (Sys.is_directory path)
+  try Ok (Sys.is_directory path)
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let file_exists path =
-  syscall @@ fun () -> Ok (Sys.file_exists path)
+  try Ok (Sys.file_exists path)
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let chmod path perm =
-  syscall @@ fun () -> Ok (Unix.chmod path perm)
+  try Ok (Unix.chmod path perm)
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let symlink src dst =
-  syscall @@ fun () -> Ok (Unix.symlink src dst)
+  try Ok (Unix.symlink src dst)
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let rmdir path =
-  syscall @@ fun () -> Ok (Unix.rmdir path)
+  try Ok (Unix.rmdir path)
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let remove path =
-  syscall @@ fun () -> Ok (Sys.remove path)
+  try Ok (Sys.remove path)
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let getcwd () =
-  syscall @@ fun () -> Ok (Sys.getcwd ())
+  try Ok (Sys.getcwd ())
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let chdir path =
-  syscall @@ fun () -> Ok (Sys.chdir path)
+  try Ok (Sys.chdir path)
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
+
+let readdir path =
+  try Ok (Sys.readdir path |> Array.to_list)
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let is_regular_file path =
-  syscall @@ fun () ->
-  match Unix.stat path with
-  | { st_kind = Unix.S_REG; _ } -> Ok true
-  | _ -> Ok false
+  try
+    let stats = Unix.stat path in
+    Ok (stats.st_kind = Unix.S_REG)
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let realpath path =
-  syscall @@ fun () -> Ok (Unix.realpath path)
+  try Ok (Unix.realpath path)
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let link src dst =
-  syscall @@ fun () -> Ok (Unix.link src dst)
+  try Ok (Unix.link src dst)
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let rename src dst =
-  syscall @@ fun () -> Ok (Unix.rename src dst)
+  try Ok (Unix.rename src dst)
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let readlink path =
-  syscall @@ fun () -> Ok (Unix.readlink path)
+  try Ok (Unix.readlink path)
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let fstat fd =
-  syscall @@ fun () -> Ok (Unix.fstat (Fd.to_unix fd))
+  try Ok (Metadata.of_stats (Unix.fstat (Fd.to_unix fd)))
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let lstat path =
-  syscall @@ fun () -> Ok (Unix.lstat path)
+  try Ok (Metadata.of_stats (Unix.lstat path))
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
-let lseek fd pos whence =
-  syscall @@ fun () ->
-  Ok (Unix.LargeFile.lseek (Fd.to_unix fd) pos (seek_command_to_unix whence))
+let lseek fd off cmd =
+  try Ok (Int64.of_int (Unix.lseek (Fd.to_unix fd) (Int64.to_int off) (seek_command_to_unix cmd)))
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let ftruncate fd len =
-  syscall @@ fun () -> Ok (Unix.LargeFile.ftruncate (Fd.to_unix fd) len)
+  try Ok (Unix.ftruncate (Fd.to_unix fd) (Int64.to_int len))
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let fchmod fd perm =
-  syscall @@ fun () -> Ok (Unix.fchmod (Fd.to_unix fd) perm)
+  try Ok (Unix.fchmod (Fd.to_unix fd) perm)
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let fsync fd =
-  syscall @@ fun () -> Ok (Unix.fsync (Fd.to_unix fd))
+  try Ok (Unix.fsync (Fd.to_unix fd))
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let dup fd =
-  syscall @@ fun () -> Ok (Fd.of_unix (Unix.dup (Fd.to_unix fd)))
+  try Ok (Fd.of_unix (Unix.dup (Fd.to_unix fd)))
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let lockf fd cmd len =
-  syscall @@ fun () -> Ok (Unix.lockf (Fd.to_unix fd) (lock_command_to_unix cmd) len)
+  try Ok (Unix.lockf (Fd.to_unix fd) (lock_command_to_unix cmd) len)
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let close_fd fd =
-  syscall @@ fun () -> Ok (Unix.close (Fd.to_unix fd))
+  try Ok (Fd.close fd)
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let get_temp_dir () =
-  syscall @@ fun () -> 
-    try Ok (Sys.getenv "TMPDIR") with Not_found ->
-    try Ok (Sys.getenv "TEMP") with Not_found ->
-    try Ok (Sys.getenv "TMP") with Not_found ->
-    Ok "/tmp"
+  try Ok (Stdlib.Filename.get_temp_dir_name ())
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let temp_dir ?temp_dir prefix suffix =
-  let base_dir = match temp_dir with
-    | Some d -> d
-    | None -> 
-        try Sys.getenv "TMPDIR" with Not_found ->
-        try Sys.getenv "TEMP" with Not_found ->
-        try Sys.getenv "TMP" with Not_found ->
-        "/tmp"
-  in
-  (* Generate a unique directory name *)
-  let rec try_create attempt =
-    if attempt > 1000 then
-      panic "Could not create temporary directory after 1000 attempts"
-    else
-      let random_suffix = Stdlib.Random.int 0xFFFFFF in
-      let dir_name = base_dir ^ "/" ^ prefix ^ string_of_int random_suffix ^ suffix in
-      try
-        Unix.mkdir dir_name 0o700;
-        dir_name
-      with
-      | Unix.Unix_error (Unix.EEXIST, _, _) -> try_create (attempt + 1)
-  in
-  syscall @@ fun () -> Ok (try_create 0)
+  try
+    let temp_parent = Option.unwrap_or temp_dir ~default:(Stdlib.Filename.get_temp_dir_name ()) in
+    Ok (Stdlib.Filename.temp_dir ~temp_dir:temp_parent prefix suffix)
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let to_source t =
   let module Src = struct
     type nonrec t = t
 
     let register t selector token interest =
-      Async.Adapter.Selector.register selector ~fd:t ~token ~interest
+      Adapter.Selector.register selector ~fd:t ~token ~interest
 
     let reregister t selector token interest =
-      Async.Adapter.Selector.reregister selector ~fd:t ~token ~interest
+      Adapter.Selector.reregister selector ~fd:t ~token ~interest
 
-    let deregister t selector = Async.Adapter.Selector.deregister selector ~fd:t
+    let deregister t selector = Adapter.Selector.deregister selector ~fd:t
   end in
-  Async.Source.make (module Src) t
+  Source.make (module Src) t

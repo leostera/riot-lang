@@ -7,7 +7,11 @@ type handler = req:string -> Kernel.Net.Tcp_stream.t -> unit
 (** Handler receives request string and stream for responses *)
 
 type t = { listener : Tcp_listener.t; handler : handler }
-type error = [ `Connection_refused | `Closed | `System_error of string ]
+
+type error =
+  | Connection_refused
+  | Closed
+  | System_error of string
 
 let read_line (stream : Kernel.Net.Tcp_stream.t) =
   let buffer = Bytes.create 4096 in
@@ -31,9 +35,9 @@ let rec accept_loop t =
   (* Note: Can't use Log module here as it's not available in Global *)
   (* println "[TCP_SERVER] Awaiting next connection..."; *)
   match Tcp_listener.accept t.listener with
-  | Error e ->
+  | Error _e ->
       (* println "[TCP_SERVER] accept() failed, server stopping"; *)
-      Error e
+      () (* Server stops on error *)
   | Ok (stream, _client_addr) ->
       (* println "[TCP_SERVER] Connection accepted, spawning handler"; *)
       let _connection_pid =
@@ -59,11 +63,11 @@ let rec accept_loop t =
 let listen ?(reuse_addr = true) ?(reuse_port = false) ?(backlog = 128) addr
     ~handler =
   match Tcp_listener.bind ~reuse_addr ~reuse_port ~backlog addr with
-  | Error e -> Error e
+  | Error Tcp_listener.Closed -> Error Closed
+  | Error (Tcp_listener.System_error s) -> Error (System_error s)
+  | Error Tcp_listener.Connection_refused -> Error Connection_refused
   | Ok listener ->
-      let result = 
-        try accept_loop { listener; handler }
-        with _ -> Error `Closed
-      in
-      Tcp_listener.close listener;
-      result
+      let server = { listener; handler } in
+      Ok server
+
+let close t = Tcp_listener.close t.listener

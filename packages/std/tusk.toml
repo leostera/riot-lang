@@ -9,6 +9,10 @@ path = "src/std.ml"
 name = "file_watcher_example"
 path = "examples/file_watcher_example.ml"
 
+[[bin]]
+name = "test_uri"
+path = "examples/test_uri.ml"
+
 [dependencies]
 miniriot = { path = "../miniriot" }
 kernel = { path = "../kernel" }

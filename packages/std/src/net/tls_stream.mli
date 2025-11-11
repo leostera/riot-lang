@@ -1,0 +1,199 @@
+(** TLS stream for encrypted connections over any transport
+    
+    TlsStream provides TLS encryption over abstract reader/writer pairs,
+    making it transport-agnostic. It works with TCP sockets, Unix domain
+    sockets, pipes, or any other byte stream.
+    
+    ## Examples
+    
+    HTTPS client:
+    
+    {[
+      open Std
+      
+      let fetch_https url =
+        let uri = Net.Uri.parse url |> Result.expect ~msg:"Invalid URL" in
+        let host = Net.Uri.host uri |> Option.expect ~msg:"No host" in
+        let port = Net.Uri.port uri |> Option.unwrap_or ~default:443 in
+        
+        let addr = Net.Addr.of_host_and_port ~host ~port 
+                   |> Result.expect ~msg:"Invalid address" in
+        
+        (* Connect TCP *)
+        let tcp = Net.TcpStream.connect addr 
+                  |> Result.expect ~msg:"Connection failed" in
+        
+        (* Wrap in TLS *)
+        let tls = Net.TlsStream.of_tcp_client ~hostname:host tcp 
+                  |> Result.expect ~msg:"TLS handshake failed" in
+        
+        (* Use reader/writer for generic I/O *)
+        let reader = Net.TlsStream.to_reader tls in
+        let writer = Net.TlsStream.to_writer tls in
+        
+        IO.write_all writer ~buf:"GET / HTTP/1.1\r\n\r\n" 
+        |> Result.expect ~msg:"Write failed";
+        
+        let buf = Bytes.create 4096 in
+        match IO.read reader buf with
+        | Ok n -> Bytes.sub_string buf 0 n
+        | Error e -> failwith "Read failed"
+    ]}
+    
+    HTTPS server:
+    
+    {[
+      let run_server () =
+        let addr = Net.Addr.(tcp loopback 8443) in
+        let listener = Net.TcpListener.bind ~reuse_addr:true addr
+                       |> Result.expect ~msg:"Bind failed" in
+        
+        let rec accept_loop () =
+          match Net.TcpListener.accept listener with
+          | Ok (tcp, client_addr) ->
+              spawn (fun () ->
+                match Net.TlsStream.of_tcp_server 
+                        ~cert_file:"cert.pem" 
+                        ~key_file:"key.pem" 
+                        tcp with
+                | Ok tls -> handle_client tls
+                | Error e -> Log.error "TLS handshake failed"
+              ) |> ignore;
+              accept_loop ()
+          | Error e -> Log.error "Accept failed"
+        in
+        accept_loop ()
+    ]}
+    
+    Transport-agnostic usage:
+    
+    {[
+      (* TLS works over ANY reader/writer pair *)
+      let add_tls reader writer ~hostname =
+        Net.TlsStream.of_client_io ~reader ~writer ~hostname ()
+    ]} *)
+
+open Global
+
+type ('src, 'err) t
+(** TLS stream wrapping a reader/writer pair.
+    
+    The type parameters are:
+    - ['src] represents the underlying transport source
+    - ['err] represents errors from the underlying transport *)
+
+type error =
+  | Closed
+  | Handshake_failed of string
+  | System_error of string
+(** TLS-specific errors *)
+
+(** {2 Create TLS Streams} *)
+
+val of_client_io :
+  reader:('src, 'err) IO.Reader.t ->
+  writer:('src, 'err) IO.Writer.t ->
+  hostname:string ->
+  unit ->
+  (('src, 'err) t, error) result
+(** Create TLS client from any reader/writer pair.
+    
+    This performs the TLS handshake, which may suspend the calling process
+    multiple times as it reads/writes to the underlying transport.
+    
+    @param reader Source of encrypted bytes (from network)
+    @param writer Destination for encrypted bytes (to network)
+    @param hostname Server hostname for SNI and certificate verification *)
+
+val of_server_io :
+  reader:('src, 'err) IO.Reader.t ->
+  writer:('src, 'err) IO.Writer.t ->
+  cert_file:string ->
+  key_file:string ->
+  unit ->
+  (('src, 'err) t, error) result
+(** Create TLS server from any reader/writer pair.
+    
+    @param cert_file Path to server certificate (PEM format)
+    @param key_file Path to server private key (PEM format) *)
+
+(** {2 Convenience TCP Wrappers} *)
+
+val of_tcp_socket :
+  mode:[ `Client of string | `Server of string * string ] ->
+  Tcp_stream.t ->
+  ((Tcp_stream.t, Tcp_stream.error) t, error) result
+(** Create TLS stream from TCP socket.
+    
+    This is the core TCP wrapper that handles both client and server modes.
+    Internally converts the socket to reader/writer pairs.
+    
+    @param mode Either [`Client hostname] for client-side TLS with SNI,
+                or [`Server (cert_file, key_file)] for server-side TLS *)
+
+val of_tcp_client :
+  hostname:string ->
+  Tcp_stream.t ->
+  ((Tcp_stream.t, Tcp_stream.error) t, error) result
+(** Create TLS client from TCP stream.
+    
+    Convenience wrapper around [of_client_io] for TCP sockets. *)
+
+val of_tcp_server :
+  cert_file:string ->
+  key_file:string ->
+  Tcp_stream.t ->
+  ((Tcp_stream.t, Tcp_stream.error) t, error) result
+(** Create TLS server from TCP stream.
+    
+    Convenience wrapper around [of_server_io] for TCP sockets. *)
+
+(** {2 Generic IO Interface} *)
+
+val to_reader : ('src, 'err) t -> (('src, 'err) t, error) IO.Reader.t
+(** Convert TLS stream to a generic Reader.
+    
+    Reads return plaintext data decrypted from the underlying stream.
+    The calling process will be suspended if the underlying transport
+    would block.
+    
+    Example:
+    {[
+      let tls = Net.TlsStream.of_tcp_client ~hostname:"example.com" tcp in
+      let reader = Net.TlsStream.to_reader tls in
+      
+      let buf = Bytes.create 4096 in
+      match IO.read reader buf with
+      | Ok n -> process_plaintext (Bytes.sub buf 0 n)
+      | Error `Closed -> handle_closed ()
+      | Error e -> handle_error e
+    ]} *)
+
+val to_writer : ('src, 'err) t -> (('src, 'err) t, error) IO.Writer.t
+(** Convert TLS stream to a generic Writer.
+    
+    Writes encrypt plaintext and send it to the underlying stream.
+    The calling process will be suspended if the underlying transport
+    would block.
+    
+    Example:
+    {[
+      let tls = Net.TlsStream.of_tcp_client ~hostname:"example.com" tcp in
+      let writer = Net.TlsStream.to_writer tls in
+      
+      let* () = IO.write_all writer ~buf:"Hello, world!" in
+      IO.flush writer
+    ]} *)
+
+(** {2 TLS Information} *)
+
+val alpn_protocol : ('src, 'err) t -> string option
+(** Get negotiated ALPN protocol (e.g., "h2", "http/1.1").
+    
+    Returns [None] if no ALPN was negotiated. *)
+
+val close : ('src, 'err) t -> unit
+(** Close the TLS stream.
+    
+    Note: This does not close the underlying transport - that's the
+    caller's responsibility. *)

@@ -1,7 +1,5 @@
 open Global0
 
-val syscall : (unit -> 'a IO.io_result) -> 'a IO.io_result
-
 module Token : sig
   type t
 

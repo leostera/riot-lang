@@ -13,24 +13,28 @@ module FFI = struct
     = "kernel_unix_kevent"
 
   let kevent ~max_events ~timeout kq =
-    syscall @@ fun () -> Ok (kernel_unix_kevent ~max_events ~timeout kq)
+    try Ok (kernel_unix_kevent ~max_events ~timeout kq)
+    with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
   external kernel_unix_kqueue : unit -> kqueue = "kernel_unix_kqueue"
 
-  let kqueue () = syscall @@ fun () -> Ok (kernel_unix_kqueue ())
+  let kqueue () =
+    try Ok (kernel_unix_kqueue ())
+    with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
   external kernel_unix_fcntl : Fd.t -> cmd:int -> arg:int -> int
     = "kernel_unix_fcntl"
 
   let fcntl fd cmd arg =
-    syscall @@ fun () -> Ok (kernel_unix_fcntl fd ~cmd ~arg)
+    try Ok (kernel_unix_fcntl fd ~cmd ~arg)
+    with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
   external kernel_unix_kevent_register :
     kqueue -> event array -> int array -> unit = "kernel_unix_kevent_register"
 
   let kevent_register fd changes ignored_errors =
-    syscall @@ fun () ->
-    Ok (kernel_unix_kevent_register fd changes ignored_errors)
+    try Ok (kernel_unix_kevent_register fd changes ignored_errors)
+    with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 end
 
 module Kevent = struct

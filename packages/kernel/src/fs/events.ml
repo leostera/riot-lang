@@ -2,8 +2,6 @@ open Global0
   open IO
   open Collections
 
-let syscall = Async.syscall
-
 type t = int * Fd.t  (* context_ptr, read_fd *)
 type watch_id = int
 
@@ -40,57 +38,61 @@ let decode_event_kind flags =
   else Metadata
 
 let create () =
-  syscall @@ fun () ->
-  let (ctx_ptr, read_fd) = fsevents_create () in
-  Ok (ctx_ptr, read_fd)
+  try
+    let (ctx_ptr, read_fd) = fsevents_create () in
+    Ok (ctx_ptr, read_fd)
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let watch t ~path ~latency =
-  syscall @@ fun () ->
-  let (ctx_ptr, _read_fd) = t in
-  fsevents_watch ctx_ptr path latency;
-  Ok 0  (* FSEvents doesn't return per-path IDs *)
+  try
+    let (ctx_ptr, _read_fd) = t in
+    fsevents_watch ctx_ptr path latency;
+    Ok 0  (* FSEvents doesn't return per-path IDs *)
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let unwatch _t _watch_id =
   (* FSEvents watches are stopped when context is destroyed *)
   Ok ()
 
 let read_events t =
-  syscall @@ fun () ->
-  let (_ctx_ptr, read_fd) = t in
-  
-  (* Read events from pipe - format: path_len (4 bytes) | flags (4 bytes) | path *)
-  let rec read_all acc =
-    (* Try to read path_len (4 bytes) *)
-    let len_buf = Bytes.create 4 in
-    match File.read read_fd len_buf ~len:4 with
-    | Error End_of_file -> Ok (List.rev acc)
-    | Ok 0 -> Ok (List.rev acc)  (* No data available *)
-    | Error e -> Error e
-    | Ok n when n < 4 -> Ok (List.rev acc)  (* Incomplete read, return what we have *)
-    | Ok _ ->
-        (* Read flags (4 bytes) *)
-        let flags_buf = Bytes.create 4 in
-        (match File.read read_fd flags_buf ~len:4 with
-        | Error _ -> Ok (List.rev acc)
-        | Ok n when n < 4 -> Ok (List.rev acc)
-        | Ok _ ->
-            let path_len = Int32.to_int (Bytes.get_int32_ne len_buf 0) in
-            let flags = Bytes.get_int32_ne flags_buf 0 in
-            
-            (* Read path *)
-            let path_buf = Bytes.create path_len in
-            (match File.read read_fd path_buf ~len:path_len with
-            | Error _ -> Ok (List.rev acc)
-            | Ok n when n < path_len -> Ok (List.rev acc)
-            | Ok _ ->
-                let path = Bytes.to_string path_buf in
-                read_all ({ path; flags } :: acc)))
-  in
-  read_all []
+  try
+    let (_ctx_ptr, read_fd) = t in
+    
+    (* Read events from pipe - format: path_len (4 bytes) | flags (4 bytes) | path *)
+    let rec read_all acc =
+      (* Try to read path_len (4 bytes) *)
+      let len_buf = Bytes.create 4 in
+      match File.read read_fd len_buf ~len:4 with
+      | Error End_of_file -> Ok (List.rev acc)
+      | Ok 0 -> Ok (List.rev acc)  (* No data available *)
+      | Error e -> Error e
+      | Ok n when n < 4 -> Ok (List.rev acc)  (* Incomplete read, return what we have *)
+      | Ok _ ->
+          (* Read flags (4 bytes) *)
+          let flags_buf = Bytes.create 4 in
+          (match File.read read_fd flags_buf ~len:4 with
+          | Error _ -> Ok (List.rev acc)
+          | Ok n when n < 4 -> Ok (List.rev acc)
+          | Ok _ ->
+              let path_len = Int32.to_int (Bytes.get_int32_ne len_buf 0) in
+              let flags = Bytes.get_int32_ne flags_buf 0 in
+              
+              (* Read path *)
+              let path_buf = Bytes.create path_len in
+              (match File.read read_fd path_buf ~len:path_len with
+              | Error _ -> Ok (List.rev acc)
+              | Ok n when n < path_len -> Ok (List.rev acc)
+              | Ok _ ->
+                  let path = Bytes.to_string path_buf in
+                  read_all ({ path; flags } :: acc)))
+    in
+    read_all []
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let stop t =
-  syscall @@ fun () ->
-  let (ctx_ptr, read_fd) = t in
-  fsevents_stop ctx_ptr;
-  File.close_fd read_fd;
-  Ok ()
+  try
+    let (ctx_ptr, read_fd) = t in
+    fsevents_stop ctx_ptr;
+    File.close_fd read_fd;
+    Ok ()
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)

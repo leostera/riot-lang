@@ -5,7 +5,11 @@ open IO
 open Kernel.Async
 
 type t = Kernel.Net.Tcp_stream.t
-type error = [ `Connection_refused | `Closed | `System_error of string ]
+
+type error =
+  | Connection_refused
+  | Closed
+  | System_error of string
 
 let connect addr =
   let rec connect_loop () =
@@ -18,7 +22,7 @@ let connect addr =
           ~source (fun () -> Ok stream)
     | Error _err ->
         (* Connection refused or error *)
-        Error `Connection_refused
+        Error Connection_refused
   in
   connect_loop ()
 
@@ -27,15 +31,15 @@ let read stream buffer ?(pos = 0) ?len () =
   let source = Kernel.Net.Tcp_stream.to_source stream in
   let rec read_loop () =
     match Kernel.Net.Tcp_stream.read stream buffer ~pos ~len with
-    | Ok 0 -> Error `Closed (* EOF *)
+    | Ok 0 -> Error Closed (* EOF *)
     | Ok bytes_read -> Ok bytes_read
-    | Error IO.Operation_would_block ->
+    | Error IO.Operation_would_block | Error IO.Resource_unavailable_try_again ->
         (* Would block, register interest and wait - this suspends the process *)
         Miniriot.syscall ~name:"TcpStream.read" ~interest:Interest.readable
           ~source (fun () -> read_loop ())
-    | Error _err ->
-        (* Some other error *)
-        Error (`System_error "Read failed")
+    | Error err ->
+        let err_msg = IO.error_message err in
+        Error (System_error ("Read failed: " ^ err_msg))
   in
   read_loop ()
 
@@ -45,13 +49,13 @@ let write stream buffer ?(pos = 0) ?len () =
   let rec write_loop () =
     match Kernel.Net.Tcp_stream.write stream buffer ~pos ~len with
     | Ok bytes_written -> Ok bytes_written
-    | Error IO.Operation_would_block ->
+    | Error IO.Operation_would_block | Error IO.Resource_unavailable_try_again ->
         (* Would block, register interest and wait - this suspends the process *)
         Miniriot.syscall ~name:"TcpStream.write" ~interest:Interest.writable
           ~source (fun () -> write_loop ())
     | Error _err ->
         (* Some other error *)
-        Error (`System_error "Write failed")
+        Error (System_error "Write failed")
   in
   write_loop ()
 
@@ -69,7 +73,7 @@ let to_reader stream =
     let read_vectored t bufs =
       match Kernel.Net.Tcp_stream.read_vectored t bufs with
       | Ok n -> Ok n
-      | Error _ -> Error (`System_error "read_vectored failed")
+      | Error _ -> Error (System_error "read_vectored failed")
   end in
   IO.Reader.of_read_src (module Read) stream
 
@@ -85,7 +89,7 @@ let to_writer stream =
     let write_owned_vectored t ~bufs =
       match Kernel.Net.Tcp_stream.write_vectored t bufs with
       | Ok n -> Ok n
-      | Error _ -> Error (`System_error "write_vectored failed")
+      | Error _ -> Error (System_error "write_vectored failed")
 
     let flush _t = Ok ()
   end in

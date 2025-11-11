@@ -13,4 +13,6 @@ val bind :
 val accept :
   t -> (Tcp_stream.t * Addr.stream_addr, IO.error) result
 
+val local_addr : t -> (Addr.stream_addr, IO.error) result
+
 val to_source : t -> Async.Source.t

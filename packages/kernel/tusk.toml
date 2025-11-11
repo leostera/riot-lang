@@ -10,7 +10,12 @@ name = "hello"
 path = "examples/hello.ml"
 
 [target.macos]
-cc_flags = ["-framework CoreFoundation", "-framework CoreServices"]
+cc_flags = ["-framework", "CoreFoundation", "-framework", "CoreServices", "-I/opt/homebrew/opt/openssl@3/include"]
+ld_flags = ["-L/opt/homebrew/opt/openssl@3/lib", "-lssl", "-lcrypto"]
+
+[target.linux]
+cc_flags = []
+ld_flags = ["-lssl", "-lcrypto"]
 
 [dependencies]
 stdlib = "*"

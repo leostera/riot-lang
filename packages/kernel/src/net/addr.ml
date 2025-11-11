@@ -43,9 +43,10 @@ let of_addr_info Unix.{ ai_family; ai_addr; ai_socktype; ai_protocol; _ } =
   | _ -> None
 
 let get_info host service =
-  syscall @@ fun () ->
-  let info = Unix.getaddrinfo host service [] in
-  Ok (List.filter_map of_addr_info info)
+  try
+    let info = Unix.getaddrinfo host service [] in
+    Ok (List.filter_map of_addr_info info)
+  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let is_ip_address host =
   (* Simple check: if it only contains digits, dots, and colons, it's likely an IP *)

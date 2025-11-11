@@ -8,15 +8,20 @@ type t = {
   mutable leftover : string; (* Buffer for data read past newline *)
 }
 
-type error = [ `Connection_refused | `Closed | `System_error of string ]
+type error =
+  | Connection_refused
+  | Closed
+  | System_error of string
 
 let connect ~host ~port =
   match Kernel.Net.Addr.of_host_and_port ~host ~port with
-  | Error err -> Error (`System_error (IO.error_message err))
+  | Error err -> Error (System_error (IO.error_message err))
   | Ok addr -> (
       match Tcp_stream.connect addr with
       | Ok stream -> Ok { stream; leftover = "" }
-      | Error e -> Error e)
+      | Error Tcp_stream.Closed -> Error Closed
+      | Error (Tcp_stream.System_error s) -> Error (System_error s)
+      | Error Tcp_stream.Connection_refused -> Error Connection_refused)
 
 let send t data =
   let buffer = Bytes.of_string data in
@@ -30,9 +35,9 @@ let send t data =
           Error
             ("Send failed: " ^
                (match e with
-               | `Closed -> "connection closed"
-               | `System_error s -> s
-               | `Connection_refused -> "connection refused"))
+               | Closed -> "connection closed"
+               | System_error s -> s
+               | Connection_refused -> "connection refused"))
   in
   send_all 0
 
@@ -75,15 +80,15 @@ let receive t =
             | None ->
                 (* No newline yet, keep reading *)
                 read_line full_data)
-        | Error `Closed ->
+        | Error Closed ->
             if acc = "" && t.leftover = "" then Error "Connection closed"
             else
               (* Return what we have, clear leftover *)
               let result = t.leftover ^ acc in
               t.leftover <- "";
               Ok result
-        | Error (`System_error s) -> Error s
-        | Error `Connection_refused -> Error "Connection refused"
+        | Error (System_error s) -> Error s
+        | Error Connection_refused -> Error "Connection refused"
       in
       read_line t.leftover
 
