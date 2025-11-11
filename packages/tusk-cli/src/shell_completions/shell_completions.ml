@@ -35,17 +35,32 @@ let list_binaries (workspace : Tusk_model.Workspace.t) =
 
 (** List test binaries as "package:test" for display in completions *)
 let list_tests (workspace : Tusk_model.Workspace.t) =
-  workspace.packages
-  |> List.concat_map (fun (pkg : Tusk_model.Package.t) ->
-      List.filter_map
-        (fun (bin : Tusk_model.Package.binary) ->
-          if
-            String.ends_with ~suffix:"_tests" bin.name
-            || String.ends_with ~suffix:"-tests" bin.name
-          then Some (pkg.name ^ ":" ^ bin.name)
-          else None)
-        pkg.binaries)
-  |> List.sort_uniq String.compare
+  let individual_tests =
+    workspace.packages
+    |> List.concat_map (fun (pkg : Tusk_model.Package.t) ->
+        List.filter_map
+          (fun (bin : Tusk_model.Package.binary) ->
+            if
+              String.ends_with ~suffix:"_tests" bin.name
+              || String.ends_with ~suffix:"-tests" bin.name
+            then Some (pkg.name ^ ":" ^ bin.name)
+            else None)
+          pkg.binaries)
+  in
+  (* Add pkg:... entries for packages with tests *)
+  let package_wildcards =
+    workspace.packages
+    |> List.filter_map (fun (pkg : Tusk_model.Package.t) ->
+        let has_tests =
+          List.exists
+            (fun (bin : Tusk_model.Package.binary) ->
+              String.ends_with ~suffix:"_tests" bin.name
+              || String.ends_with ~suffix:"-tests" bin.name)
+            pkg.binaries
+        in
+        if has_tests then Some (pkg.name ^ ":...") else None)
+  in
+  (package_wildcards @ individual_tests) |> List.sort_uniq String.compare
 
 let generate_zsh_script () =
   {|#compdef tusk

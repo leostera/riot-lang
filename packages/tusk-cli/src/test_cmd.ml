@@ -12,11 +12,12 @@ let command =
   |> ArgParser.allow_trailing_args
   |> args
        [
-         positional "pattern" |> required false
-         |> help
-              "Test pattern: 'prefix' runs all tests starting with prefix, \
-               'pkg:prefix' runs package-scoped tests. Examples: 'parser_', \
-               'tty:api_'. Omit to run all tests.";
+          positional "pattern" |> required false
+          |> help
+               "Test pattern: 'prefix' runs all tests starting with prefix, \
+                'pkg:prefix' runs package-scoped tests, 'pkg:...' runs all tests \
+                in package. Examples: 'parser_', 'tty:api_', 'gooey:...'. Omit to \
+                run all tests.";
          option "package" |> short 'p' |> long "package"
          |> help "Run tests from specific package (deprecated, use pattern)";
          flag "verbose" |> short 'v' |> long "verbose"
@@ -48,11 +49,12 @@ let run matches =
     |> Result.expect ~msg:"Failed to start or connect to tusk server"
   in
 
-  (* Parse pattern: [pkg]:test_prefix or pkg:test_prefix *)
+  (* Parse pattern: [pkg]:test_prefix or pkg:test_prefix or pkg:... *)
   let (package_filter, test_prefix) =
     match (pattern, legacy_package) with
     | (Some p, _) -> (
         match String.split_on_char ':' p with
+        | [ pkg; "..." ] -> (Some pkg, None) (* pkg:... means all tests in package *)
         | [ pkg; prefix ] -> (Some pkg, Some prefix)
         | [ single ] -> (None, Some single) (* Treat as test prefix across all packages *)
         | _ -> (None, None))
