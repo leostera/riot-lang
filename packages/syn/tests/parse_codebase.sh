@@ -73,10 +73,10 @@ else
   exit 1
 fi
 
-SYN_BIN="./target/debug/out/syn/syn"
+SYN_BIN="./_build/debug/out/syn/syn"
 if [ ! -f "$SYN_BIN" ]; then
   # Try to find in cache
-  SYN_BIN=$(find target/debug/cache -name "syn" -type f -perm +111 2>/dev/null | head -1)
+  SYN_BIN=$(find _build/debug/cache -name "syn" -type f -perm +111 2>/dev/null | head -1)
   if [ -z "$SYN_BIN" ]; then
     echo -e "${RED}Error: syn binary not found${NC}"
     exit 1
@@ -89,10 +89,10 @@ echo "Parsing files..."
 echo ""
 
 # Create parsed output directory
-mkdir -p ./target/debug/parsed
+mkdir -p ./_build/debug/parsed
 
 # Create summary file
-SUMMARY_FILE="./target/debug/parsed/coverage_summary.txt"
+SUMMARY_FILE="./_build/debug/parsed/coverage_summary.txt"
 > "$SUMMARY_FILE"
 
 # Temp file for parallel processing
@@ -104,7 +104,7 @@ parse_file() {
   local syn_bin="$2"
   
   # Create output directory structure
-  local out_dir="./target/debug/parsed/$(dirname "$file")"
+  local out_dir="./_build/debug/parsed/$(dirname "$file")"
   mkdir -p "$out_dir"
   local out_file="${out_dir}/$(basename "$file").json"
   
@@ -175,7 +175,7 @@ echo -e "Files with errors:     ${YELLOW}$FILES_WITH_ERRORS${NC}"
 echo -e "Total diagnostics:     ${YELLOW}$TOTAL_DIAGNOSTICS${NC}"
 echo "Average errors/file:   $AVG_ERRORS"
 echo ""
-echo "Parsed JSON:           ./target/debug/parsed/"
+echo "Parsed JSON:           ./_build/debug/parsed/"
 echo "Summary:               $SUMMARY_FILE"
 echo ""
 

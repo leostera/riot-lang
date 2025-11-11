@@ -83,6 +83,8 @@ type kind =
   | MutableFieldMissingName of { found : found_token }
   | RecordFieldMissingColon of { field_name : string; found : found_token }
   | RecordFieldMissingType of { field_name : string; found : found_token }
+  | PolyTypeMissingVarName of { found : found_token }
+  | PolyTypeMissingDot of { found : found_token }
 
 type t = { kind : kind; span : Ceibo.Span.t }
 (** A diagnostic with structured error information and source location. *)
@@ -235,6 +237,12 @@ val record_field_missing_colon :
 
 val record_field_missing_type :
   field_name:string -> found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
+val poly_type_missing_var_name :
+  found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
+val poly_type_missing_dot :
+  found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 
 (** # Serialization *)
 

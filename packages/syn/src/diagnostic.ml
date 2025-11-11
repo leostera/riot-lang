@@ -55,6 +55,8 @@ type kind =
   | MutableFieldMissingName of { found : found_token }
   | RecordFieldMissingColon of { field_name : string; found : found_token }
   | RecordFieldMissingType of { field_name : string; found : found_token }
+  | PolyTypeMissingVarName of { found : found_token }
+  | PolyTypeMissingDot of { found : found_token }
 
 type t = { kind : kind; span : Ceibo.Span.t }
 (** Parse error information *)
@@ -254,6 +256,16 @@ let record_field_missing_type ~field_name ~found:token ~text ~span =
   let found = { kind = kind_str; text } in
   make ~kind:(RecordFieldMissingType { field_name; found }) ~span
 
+let poly_type_missing_var_name ~found:token ~text ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text } in
+  make ~kind:(PolyTypeMissingVarName { found }) ~span
+
+let poly_type_missing_dot ~found:token ~text ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text } in
+  make ~kind:(PolyTypeMissingDot { found }) ~span
+
 let expected_message diag =
   match diag.kind with
   | MalformedTypeVariable _ -> "type variable identifier (e.g., 'a, 'b)"
@@ -309,6 +321,8 @@ let expected_message diag =
       "colon after field name '" ^ field_name ^ "'"
   | RecordFieldMissingType { field_name; _ } ->
       "type definition for field '" ^ field_name ^ "'"
+  | PolyTypeMissingVarName _ -> "type variable name after '"
+  | PolyTypeMissingDot _ -> ". (dot) after type variables in polymorphic type"
 
 let fix_message diag =
   match diag.kind with
@@ -382,6 +396,10 @@ let fix_message diag =
       Some ("add a colon after field name '" ^ field_name ^ "'")
   | RecordFieldMissingType { field_name; _ } ->
       Some ("add a type definition after the colon for field '" ^ field_name ^ "'")
+  | PolyTypeMissingVarName _ ->
+      Some "add a type variable name (e.g., 'a, 'b) after the quote"
+  | PolyTypeMissingDot _ ->
+      Some "add a dot (.) after all type variables before the type definition"
   | _ -> None
 
 let error_id diag =
@@ -426,6 +444,8 @@ let error_id diag =
   | MutableFieldMissingName _ -> Error.E0038_MutableFieldMissingName
   | RecordFieldMissingColon _ -> Error.E0039_RecordFieldMissingColon
   | RecordFieldMissingType _ -> Error.E0040_RecordFieldMissingType
+  | PolyTypeMissingVarName _ -> Error.E0041_PolyTypeMissingVarName
+  | PolyTypeMissingDot _ -> Error.E0042_PolyTypeMissingDot
 
 let hint_message diag = diag |> error_id |> Error.explain
 let id err = err |> error_id |> Error.id_to_string
@@ -483,6 +503,8 @@ let found_token diag =
   | MutableFieldMissingName { found } -> found
   | RecordFieldMissingColon { found; _ } -> found
   | RecordFieldMissingType { found; _ } -> found
+  | PolyTypeMissingVarName { found } -> found
+  | PolyTypeMissingDot { found } -> found
 
 let main_message diag =
   match diag.kind with

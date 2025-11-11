@@ -88,6 +88,7 @@ type t =
   | POLY_VARIANT_PATTERN (* `Tag or `Tag p *)
   | POLY_VARIANT_TYPE_PATTERN (* #type *)
   | LOCAL_OPEN_PATTERN (* Module.(pattern) *)
+  | OPERATOR_PATTERN (* ( + ), ( let* ), ( mod ) *)
   (* ========================================================================= *)
   (* TYPE EXPRESSIONS *)
   (* ========================================================================= *)
@@ -105,9 +106,13 @@ type t =
   | TYPE_RECORD (* { field1: int; field2: string } *)
   | TYPE_RECORD_FIELD (* field: int *)
   | TYPE_CONSTRAINT (* constraint 'a = int *)
+  | POLY_TYPE (* 'a 'b. type - polymorphic type with explicit quantifiers *)
   | MODULE_TYPE_EXPR (* S | S with type t = int *)
   | FIRST_CLASS_MODULE_TYPE (* (module S) or (module S with type t = int) *)
   | MODULE_TYPE_PATH (* Module.Type for type annotations *)
+  | FUNCTOR_PARAM (* (X : S) in functor declaration *)
+  | FUNCTOR_TYPE (* functor (X : S) -> T *)
+  | MODULE_APPLICATION (* M(X) functor application *)
   (* ========================================================================= *)
   (* TOP-LEVEL DECLARATIONS *)
   (* ========================================================================= *)
@@ -117,6 +122,7 @@ type t =
   | EXCEPTION_DECL (* exception E of t *)
   | MODULE_DECL (* module M = struct ... end *)
   | MODULE_TYPE_DECL (* module type S = sig ... end *)
+  | MODULE_TYPE_OF (* module type of M - get signature of module *)
   | OPEN_STMT (* open Module *)
   | INCLUDE_STMT (* include Module *)
   | VAL_DECL (* val name : type *)
@@ -214,6 +220,7 @@ let to_string = function
   | POLY_VARIANT_PATTERN -> "POLY_VARIANT_PATTERN"
   | POLY_VARIANT_TYPE_PATTERN -> "POLY_VARIANT_TYPE_PATTERN"
   | LOCAL_OPEN_PATTERN -> "LOCAL_OPEN_PATTERN"
+  | OPERATOR_PATTERN -> "OPERATOR_PATTERN"
   | TYPE_VAR -> "TYPE_VAR"
   | TYPE_CONSTR -> "TYPE_CONSTR"
   | TYPE_ARROW -> "TYPE_ARROW"
@@ -228,15 +235,20 @@ let to_string = function
   | TYPE_RECORD -> "TYPE_RECORD"
   | TYPE_RECORD_FIELD -> "TYPE_RECORD_FIELD"
   | TYPE_CONSTRAINT -> "TYPE_CONSTRAINT"
+  | POLY_TYPE -> "POLY_TYPE"
   | MODULE_TYPE_EXPR -> "MODULE_TYPE_EXPR"
   | FIRST_CLASS_MODULE_TYPE -> "FIRST_CLASS_MODULE_TYPE"
   | MODULE_TYPE_PATH -> "MODULE_TYPE_PATH"
+  | FUNCTOR_PARAM -> "FUNCTOR_PARAM"
+  | FUNCTOR_TYPE -> "FUNCTOR_TYPE"
+  | MODULE_APPLICATION -> "MODULE_APPLICATION"
   | LET_BINDING -> "LET_BINDING"
   | LET_REC_BINDING -> "LET_REC_BINDING"
   | TYPE_DECL -> "TYPE_DECL"
   | EXCEPTION_DECL -> "EXCEPTION_DECL"
   | MODULE_DECL -> "MODULE_DECL"
   | MODULE_TYPE_DECL -> "MODULE_TYPE_DECL"
+  | MODULE_TYPE_OF -> "MODULE_TYPE_OF"
   | OPEN_STMT -> "OPEN_STMT"
   | INCLUDE_STMT -> "INCLUDE_STMT"
   | VAL_DECL -> "VAL_DECL"
@@ -326,6 +338,7 @@ let from_string = function
   | "POLY_VARIANT_PATTERN" -> Some POLY_VARIANT_PATTERN
   | "POLY_VARIANT_TYPE_PATTERN" -> Some POLY_VARIANT_TYPE_PATTERN
   | "LOCAL_OPEN_PATTERN" -> Some LOCAL_OPEN_PATTERN
+  | "OPERATOR_PATTERN" -> Some OPERATOR_PATTERN
   | "TYPE_VAR" -> Some TYPE_VAR
   | "TYPE_CONSTR" -> Some TYPE_CONSTR
   | "TYPE_ARROW" -> Some TYPE_ARROW
@@ -340,13 +353,18 @@ let from_string = function
   | "TYPE_RECORD" -> Some TYPE_RECORD
   | "TYPE_RECORD_FIELD" -> Some TYPE_RECORD_FIELD
   | "TYPE_CONSTRAINT" -> Some TYPE_CONSTRAINT
+  | "POLY_TYPE" -> Some POLY_TYPE
   | "MODULE_TYPE_EXPR" -> Some MODULE_TYPE_EXPR
+  | "FUNCTOR_PARAM" -> Some FUNCTOR_PARAM
+  | "FUNCTOR_TYPE" -> Some FUNCTOR_TYPE
+  | "MODULE_APPLICATION" -> Some MODULE_APPLICATION
   | "LET_BINDING" -> Some LET_BINDING
   | "LET_REC_BINDING" -> Some LET_REC_BINDING
   | "TYPE_DECL" -> Some TYPE_DECL
   | "EXCEPTION_DECL" -> Some EXCEPTION_DECL
   | "MODULE_DECL" -> Some MODULE_DECL
   | "MODULE_TYPE_DECL" -> Some MODULE_TYPE_DECL
+  | "MODULE_TYPE_OF" -> Some MODULE_TYPE_OF
   | "OPEN_STMT" -> Some OPEN_STMT
   | "INCLUDE_STMT" -> Some INCLUDE_STMT
   | "VAL_DECL" -> Some VAL_DECL

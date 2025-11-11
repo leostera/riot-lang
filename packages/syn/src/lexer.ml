@@ -664,11 +664,18 @@ let next cursor delim_stack =
         { Token.kind = Token.Dollar; span = Ceibo.Span.make ~start ~end_ }
     | Some '"' -> lex_string cursor start
     | Some '\'' -> (
-        (* Distinguish between type variable 'a and character literal 'x' *)
+        (* Distinguish between type variable 'a and character literal 'a' *)
         match Cursor.peek_n cursor 1 with
-        | Some c when is_ident_start c || c = '_' ->
-            (* Type variable: 'a, 'foo, '_ignore *)
-            lex_type_var cursor start
+        | Some c when is_ident_start c || c = '_' -> (
+            (* Could be type variable 'a or char literal 'a' *)
+            (* Check if there's a closing quote at position 2 *)
+            match Cursor.peek_n cursor 2 with
+            | Some '\'' ->
+                (* It's a single-char literal like 'a' *)
+                lex_char cursor start
+            | _ ->
+                (* It's a type variable: 'a, 'foo, '_ignore *)
+                lex_type_var cursor start)
         | _ ->
             (* Character literal: 'x', '\n', etc. *)
             lex_char cursor start)

@@ -41,6 +41,8 @@ type id =
   | E0038_MutableFieldMissingName
   | E0039_RecordFieldMissingColon
   | E0040_RecordFieldMissingType
+  | E0041_PolyTypeMissingVarName
+  | E0042_PolyTypeMissingDot
 
 let id_to_string = function
   | E0001_MalformedTypeVariable -> "E0001"
@@ -83,6 +85,8 @@ let id_to_string = function
   | E0038_MutableFieldMissingName -> "E0038"
   | E0039_RecordFieldMissingColon -> "E0039"
   | E0040_RecordFieldMissingType -> "E0040"
+  | E0041_PolyTypeMissingVarName -> "E0041"
+  | E0042_PolyTypeMissingDot -> "E0042"
 
 let id_of_string = function
   | "E0001" -> Some E0001_MalformedTypeVariable
@@ -125,6 +129,8 @@ let id_of_string = function
   | "E0038" -> Some E0038_MutableFieldMissingName
   | "E0039" -> Some E0039_RecordFieldMissingColon
   | "E0040" -> Some E0040_RecordFieldMissingType
+  | "E0041" -> Some E0041_PolyTypeMissingVarName
+  | "E0042" -> Some E0042_PolyTypeMissingDot
   | _ -> None
 
 let name = function
@@ -168,6 +174,8 @@ let name = function
   | E0038_MutableFieldMissingName -> "mutable-field-missing-name"
   | E0039_RecordFieldMissingColon -> "record-field-missing-colon"
   | E0040_RecordFieldMissingType -> "record-field-missing-type"
+  | E0041_PolyTypeMissingVarName -> "poly-type-missing-var-name"
+  | E0042_PolyTypeMissingDot -> "poly-type-missing-dot"
 
 let explain = function
   | E0001_MalformedTypeVariable ->
@@ -541,4 +549,26 @@ In OCaml, record fields are declared as:
   ```
 
 After the colon, you must specify the type for the field.
+|}
+  | E0041_PolyTypeMissingVarName ->
+      {|Polymorphic type annotations require type variable names after each quote.
+
+In OCaml, polymorphic types use explicit quantifiers:
+  ```ocaml
+  let id : 'a. 'a -> 'a = fun x -> x
+  let map : 'a 'b. ('a -> 'b) -> 'a list -> 'b list = ...
+  ```
+
+Each quote (') must be followed by a type variable name like 'a, 'b, etc.
+|}
+  | E0042_PolyTypeMissingDot ->
+      {|Polymorphic type annotations require a dot after the type variables.
+
+In OCaml, polymorphic types use this syntax:
+  ```ocaml
+  let id : 'a. 'a -> 'a = fun x -> x
+  let pair : 'a 'b. 'a -> 'b -> ('a * 'b) = fun x y -> (x, y)
+  ```
+
+The type variables ('a, 'b, etc.) must be followed by a dot (.) before the actual type.
 |}

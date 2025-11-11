@@ -41,6 +41,8 @@ type id =
   | E0038_MutableFieldMissingName
   | E0039_RecordFieldMissingColon
   | E0040_RecordFieldMissingType
+  | E0041_PolyTypeMissingVarName
+  | E0042_PolyTypeMissingDot
 
 val id_to_string : id -> string
 val id_of_string : string -> id option
