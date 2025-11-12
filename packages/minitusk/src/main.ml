@@ -1,3 +1,4 @@
+  open Stdlib
 (** Minitusk - Minimal OCaml build system
 
     A self-contained build system that can bootstrap itself and build OCaml
@@ -5,11 +6,18 @@
 
 (* ===== Main ===== *)
 
-let build_package ~build_results pkg_name pkg_path =
+let build_package ~build_results ?(needs_stdlib_and_unix = false) pkg_name pkg_path =
   Printf.printf "\nBuilding package: %s\n" pkg_name;
   Printf.printf "  Path: %s\n" pkg_path;
 
   let pkg = Package.read pkg_path in
+  
+  (* Override stdlib/unix dependencies if specified *)
+  let pkg =
+    if needs_stdlib_and_unix then
+      { pkg with uses_stdlib = true; uses_unix = true }
+    else pkg
+  in
 
   (* Create dependency graph for the package, passing build_results for cross-package deps *)
   let dep_graph = Dep_graph.scan ~root:pkg_path ~package:pkg ~build_results in
@@ -31,7 +39,7 @@ let build_package ~build_results pkg_name pkg_path =
 *)
 
   (* Dump graph as dot for debugging *)
-  let dot_dir = Printf.sprintf "target/bootstrap/out/%s" pkg_name in
+  let dot_dir = Printf.sprintf "_build/bootstrap/out/%s" pkg_name in
   Io.mkdir_p dot_dir;
   let dot_file = Printf.sprintf "%s/graph.dot" dot_dir in
   let dot_content = Dep_graph.to_dot dep_graph in
@@ -45,8 +53,11 @@ let build_package ~build_results pkg_name pkg_path =
   Action.promote_outputs build_plan;
 
   (* Register this package's outputs for other packages to use *)
+  (* IMPORTANT: Only store this package's OWN flags, not accumulated ones! *)
   Dep_graph.Build_results.register build_results pkg build_plan.package_name
     ~outputs:build_plan.outputs
+    ~cc_flags:(Package.cc_flags pkg)
+    ~ld_flags:(Package.ld_flags pkg)
 
 let () =
   Printf.printf "=== Minitusk Build System ===\n";
@@ -55,7 +66,7 @@ let () =
   let build_results = Dep_graph.Build_results.create () in
 
   (* Build packages in dependency order *)
-  build_package ~build_results "kernel" "packages/kernel";
+  build_package ~build_results ~needs_stdlib_and_unix:true "kernel" "packages/kernel";
   build_package ~build_results "miniriot" "packages/miniriot";
   build_package ~build_results "std" "packages/std";
   build_package ~build_results "jsonrpc" "packages/jsonrpc";

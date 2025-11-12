@@ -1,3 +1,4 @@
+open Stdlib
 open Ocaml_platform
 open Printf
 
@@ -101,10 +102,12 @@ module Build_results : sig
   val create : unit -> t
 
   (* Register a package with it's module interface *)
-  val register : t -> Package.t -> Module_name.t -> outputs:string list -> unit
+  val register : t -> Package.t -> Module_name.t -> outputs:string list -> cc_flags:string list -> ld_flags:string list -> unit
   val has_module : t -> Module_name.t -> bool
   val copy_to_sandbox : t -> string -> unit
   val get_package_names : t -> string list
+  val get_transitive_cc_flags : t -> string list -> string list
+  val get_transitive_ld_flags : t -> string list -> string list
 end = struct
   (* Build results tracking for cross-package dependencies *)
 
@@ -128,6 +131,8 @@ end = struct
     package : Package.t;
     module_name : Module_name.t;
     outputs : string list;
+    cc_flags : string list;
+    ld_flags : string list;
   }
 
   type t = {
@@ -139,11 +144,11 @@ end = struct
 
   let create () = { packages = Hashtbl.create 8; order = [] }
 
-  let register t package module_name ~outputs =
+  let register t package module_name ~outputs ~cc_flags ~ld_flags =
     (* Add to order list if not already there *)
     if not (Hashtbl.mem t.packages module_name) then
       t.order <- t.order @ [ module_name ];
-    Hashtbl.replace t.packages module_name { package; module_name; outputs }
+    Hashtbl.replace t.packages module_name { package; module_name; outputs; cc_flags; ld_flags }
 
   let has_module t module_name = Hashtbl.mem t.packages module_name
 
@@ -163,6 +168,30 @@ end = struct
   let get_package_names t =
     (* Get list of all registered package names in registration order *)
     List.map Module_name.to_string t.order
+
+  let get_transitive_cc_flags t package_names =
+    (* Collect cc_flags from all dependency packages *)
+    let all_flags = ref [] in
+    List.iter
+      (fun pkg_name ->
+        let mod_name = Module_name.of_string pkg_name in
+        match Hashtbl.find_opt t.packages mod_name with
+        | Some entry -> all_flags := !all_flags @ entry.cc_flags
+        | None -> ())
+      package_names;
+    !all_flags
+
+  let get_transitive_ld_flags t package_names =
+    (* Collect ld_flags from all dependency packages *)
+    let all_flags = ref [] in
+    List.iter
+      (fun pkg_name ->
+        let mod_name = Module_name.of_string pkg_name in
+        match Hashtbl.find_opt t.packages mod_name with
+        | Some entry -> all_flags := !all_flags @ entry.ld_flags
+        | None -> ())
+      package_names;
+    !all_flags
 
   let print t =
     printf "\n=== Build Results ===\n";
@@ -897,10 +926,41 @@ let get_dependencies t =
     (fun name -> name <> Module_name.to_string t.package_name)
     all_packages
 
+let scan_native_dir t =
+  (* Also scan native/ directory for C/H files if it exists *)
+  let native_dir = Filename.concat t.root Const.native_dir in
+  if Sys.file_exists native_dir && Sys.is_directory native_dir then (
+    printf "  Scanning native/ directory for C/H files\n";
+    let files = Sys.readdir native_dir in
+    Array.iter (fun filename ->
+      let filepath = Filename.concat native_dir filename in
+      if Sys.is_directory filepath then ()
+      else
+        let ext = Filename.extension filename in
+        if ext = Const.c_ext then (
+          (* Path relative to package root: packages/kernel/native/file.c *)
+          let relative_path = t.root ^ "/" ^ Const.native_dir ^ "/" ^ filename in
+          printf "    Found C file: %s\n" relative_path;
+          (* Add as a standalone node - it will be picked up during iteration *)
+          let node = { file = Concrete relative_path; open_modules = []; kind = C } in
+          let _c_node = Graph.add_node t.graph node in
+          ()
+        ) else if ext = Const.h_ext then (
+          (* Path relative to package root: packages/kernel/native/file.h *)
+          let relative_path = t.root ^ "/" ^ Const.native_dir ^ "/" ^ filename in
+          printf "    Found H file: %s\n" relative_path;
+          let node = { file = Concrete relative_path; open_modules = []; kind = H } in
+          let _h_node = Graph.add_node t.graph node in
+          ()
+        )
+    ) files
+  )
+
 let scan ~root ~package ~build_results =
   printf "Scanning package %S from %s\n" package.Package.name root;
   let t = make ~root ~package ~build_results in
 
   scan_from_root t;
+  scan_native_dir t;
   wire_deps t;
   t

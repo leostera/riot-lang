@@ -1,3 +1,4 @@
+  open Stdlib
 let stdlib_modules =
   [
     "Array";
@@ -215,15 +216,16 @@ module Ocamlc = struct
     | Error err -> Error err
 
   (** Compile a C file *)
-  let compile_c ?(cwd = "") ~includes ~output source =
+  let compile_c ?(cwd = "") ?(cc_flags = []) ~includes ~output source =
+    let cmd_parts =
+      [ ocamlc_path; "-c" ]
+      @ List.concat_map (fun dir -> [ "-I"; dir ]) includes
+      @ cc_flags
+      @ [ "-o"; output; source ]
+    in
     if cwd = "" then
-      run ~includes ~output:(Some output) ~mode:Compile [ source ]
+      Io.run_command_with_output cmd_parts
     else
-      let cmd_parts =
-        [ ocamlc_path; "-c" ]
-        @ List.concat_map (fun dir -> [ "-I"; dir ]) includes
-        @ [ "-o"; output; source ]
-      in
       let cmd_str = String.concat " " cmd_parts in
       let full_cmd = Printf.sprintf "cd %s && %s" cwd cmd_str in
       Io.run_command_with_output [ "/bin/sh"; "-c"; full_cmd ]

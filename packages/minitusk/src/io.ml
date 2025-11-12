@@ -1,3 +1,5 @@
+  open Stdlib
+
 let read_file path =
   let ic = open_in path in
   let len = in_channel_length ic in

@@ -1,3 +1,4 @@
+  open Stdlib
 type binary = { name : string; path : string }
 
 type t = {
@@ -5,9 +6,36 @@ type t = {
   path : string;
   deps : string list;
   binaries : binary list;
+  uses_stdlib : bool;
+  uses_unix : bool;
+  cc_flags : string list;
+  ld_flags : string list;
 }
 
 let binaries t = t.binaries
+let uses_stdlib t = t.uses_stdlib
+let uses_unix t = t.uses_unix
+let cc_flags t = t.cc_flags
+let ld_flags t = t.ld_flags
+
+(* Detect the current OS *)
+let detect_os () =
+  let ic = Unix.open_process_in "uname -s" in
+  let uname = input_line ic in
+  let _ = Unix.close_process_in ic in
+  match uname with
+  | "Darwin" -> "macos"
+  | "Linux" -> "linux"
+  | _ -> "unknown"
+
+(* Parse a string list from TOML array *)
+let parse_string_list toml_array =
+  match toml_array with
+  | Toml.Array items ->
+      List.filter_map (function
+        | Toml.String s -> Some s
+        | _ -> None) items
+  | _ -> []
 
 let read path =
   let toml_path = Filename.concat path "tusk.toml" in
@@ -22,7 +50,7 @@ let read path =
     | Error err ->
         Printf.printf "Error parsing %s: %s\n" toml_path
           (Toml.error_to_string err);
-        { name = Filename.basename path; path; deps = []; binaries = [] }
+        { name = Filename.basename path; path; deps = []; binaries = []; uses_stdlib = false; uses_unix = false; cc_flags = []; ld_flags = [] }
     | Ok (Toml.Table items) ->
         (* Get package name *)
         let name =
@@ -61,6 +89,52 @@ let read path =
           | _ -> []
         in
 
-        { name; path; deps = []; binaries }
-    | _ -> { name = Filename.basename path; path; deps = []; binaries = [] })
-  else { name = Filename.basename path; path; deps = []; binaries = [] }
+        (* Get dependencies from [dependencies] table *)
+        let uses_stdlib, uses_unix =
+          match Toml.find "dependencies" items with
+          | Some (Toml.Table dep_items) ->
+              let has_stdlib = Toml.find "stdlib" dep_items <> None in
+              let has_unix = Toml.find "unix" dep_items <> None in
+              (has_stdlib, has_unix)
+          | _ -> (false, false)
+        in
+
+        (* Get target-specific flags based on OS *)
+        let os = detect_os () in
+        Printf.printf "  DEBUG: Detected OS: %s\n" os;
+        let cc_flags, ld_flags =
+          (* Look for [target] table first, then check for OS-specific subtable *)
+          match Toml.find "target" items with
+          | Some (Toml.Table target_items) -> (
+              Printf.printf "  DEBUG: Found [target] table\n";
+              match Toml.find os target_items with
+              | Some (Toml.Table os_items) ->
+                  Printf.printf "  DEBUG: Found [target.%s] table\n" os;
+                  let cc = match Toml.find "cc_flags" os_items with
+                    | Some arr -> 
+                        let flags = parse_string_list arr in
+                        Printf.printf "  DEBUG: Found %d cc_flags: %s\n" (List.length flags) (String.concat " " flags);
+                        flags
+                    | None -> 
+                        Printf.printf "  DEBUG: No cc_flags found\n";
+                        []
+                  in
+                  let ld = match Toml.find "ld_flags" os_items with
+                    | Some arr -> 
+                        let flags = parse_string_list arr in
+                        Printf.printf "  DEBUG: Found %d ld_flags: %s\n" (List.length flags) (String.concat " " flags);
+                        flags
+                    | None -> []
+                  in
+                  (cc, ld)
+              | _ -> 
+                  Printf.printf "  DEBUG: No [target.%s] subtable found\n" os;
+                  ([], []))
+          | _ -> 
+              Printf.printf "  DEBUG: No [target] table found\n";
+              ([], [])
+        in
+
+        { name; path; deps = []; binaries; uses_stdlib; uses_unix; cc_flags; ld_flags }
+    | _ -> { name = Filename.basename path; path; deps = []; binaries = []; uses_stdlib = false; uses_unix = false; cc_flags = []; ld_flags = [] })
+  else { name = Filename.basename path; path; deps = []; binaries = []; uses_stdlib = false; uses_unix = false; cc_flags = []; ld_flags = [] }

@@ -1,3 +1,4 @@
+  open Stdlib
 (** File scanner module for building directory trees *)
 
 type file = { path : string; name : string; ext : string }

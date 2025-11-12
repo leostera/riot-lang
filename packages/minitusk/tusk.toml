@@ -3,5 +3,6 @@ name = "minitusk"
 version = "0.0.1"
 
 [dependencies]
+stdlib = "*"
 unix = "*"
 # Only needs standard library

@@ -1,3 +1,4 @@
+  open Stdlib
 module Node_id : sig
   type t
 

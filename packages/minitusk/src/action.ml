@@ -1,3 +1,4 @@
+  open Stdlib
 type t =
   | WriteFile of { path : string; content : string }
   | CopyFile of { src : string; dst : string }
@@ -34,9 +35,12 @@ type t =
 
 type build_plan = {
   package_name : Dep_graph.Module_name.t;
+  package : Package.t;
   sandbox_dir : string;
   actions : t list;
   outputs : string list;
+  cc_flags : string list;
+  ld_flags : string list;
 }
 
 let print action =
@@ -100,7 +104,7 @@ let print_build_plan plan =
   Printf.printf "=== END BUILD PLAN ===\n\n"
   *)
 
-let execute_action ~project_root ~package_name action =
+let execute_action ~project_root ~package ~cc_flags ~ld_flags action =
   match action with
   | WriteFile { path; content } ->
       Printf.printf "  DEBUG: Writing generated file %s\n" path;
@@ -119,14 +123,22 @@ let execute_action ~project_root ~package_name action =
   | CompileInterface { sandbox_dir; src_file; output; includes; opens } -> (
       (* Build flags for open modules *)
       let base_flags = List.map (fun m -> Ocaml_platform.Open m) opens in
-      (* For non-kernel packages: add -nopervasives -nostdlib *)
+      (* Only add -nopervasives -nostdlib if package doesn't use stdlib *)
       let flags =
-        if package_name = "Kernel" then base_flags
+        if Package.uses_stdlib package then base_flags
         else base_flags @ [ Ocaml_platform.NoPervasives; Ocaml_platform.NoStdlib ]
       in
+      (* Add +unix to includes if package uses unix *)
+      let final_includes =
+        if Package.uses_unix package then "+unix" :: includes
+        else includes
+      in
+      (* Debug output *)
+      Printf.printf "  DEBUG: Package %s, uses_stdlib=%b, uses_unix=%b\n"
+        package.Package.name (Package.uses_stdlib package) (Package.uses_unix package);
       (* Now we're in sandbox_dir, so use relative paths *)
       match
-        Ocaml_platform.Ocamlc.compile_interface ~includes:("." :: includes)
+        Ocaml_platform.Ocamlc.compile_interface ~includes:final_includes
           ~flags ~output src_file
       with
       | Ok _ -> () (* Ignore stdout output *)
@@ -138,9 +150,9 @@ let execute_action ~project_root ~package_name action =
       (* Now we're in sandbox_dir, so use relative paths *)
       (* Build flags for open modules *)
       let base_flags = List.map (fun m -> Ocaml_platform.Open m) opens in
-      (* For non-kernel packages: add -nopervasives -nostdlib *)
+      (* Only add -nopervasives -nostdlib if package doesn't use stdlib *)
       let stdlib_flags =
-        if package_name = "Kernel" then []
+        if Package.uses_stdlib package then []
         else [ Ocaml_platform.NoPervasives; Ocaml_platform.NoStdlib ]
       in
       let flags =
@@ -148,8 +160,13 @@ let execute_action ~project_root ~package_name action =
         @ Ocaml_platform.[ Impl src_file ]
         @ if is_aliases then Ocaml_platform.[ NoAliasDeps ] else []
       in
+      (* Add +unix to includes if package uses unix *)
+      let final_includes =
+        if Package.uses_unix package then "+unix" :: includes
+        else includes
+      in
       match
-        Ocaml_platform.Ocamlc.compile_impl ~includes:("." :: includes) ~flags
+        Ocaml_platform.Ocamlc.compile_impl ~includes:final_includes ~flags
           ~output src_file
       with
       | Ok _ -> () (* Ignore stdout output *)
@@ -158,9 +175,15 @@ let execute_action ~project_root ~package_name action =
           failwith "compilation error")
   | CompileC { sandbox_dir; src_file } -> (
       (* Already in sandbox directory *)
-      let output = Filename.chop_extension src_file ^ ".o" in
+      (* Output .o file to current directory with just the basename *)
+      let output = Filename.basename (Filename.chop_extension src_file) ^ ".o" in
+      (* Wrap each cc_flag with -ccopt as separate arguments *)
+      let wrapped_cc_flags = 
+        cc_flags 
+        |> List.concat_map (fun flag -> ["-ccopt"; flag])
+      in
       match
-        Ocaml_platform.Ocamlc.compile_c ~includes:[ "." ] ~output src_file
+        Ocaml_platform.Ocamlc.compile_c ~cc_flags:wrapped_cc_flags ~includes:[ "." ] ~output src_file
       with
       | Ok _ -> () (* Ignore stdout output *)
       | Error err ->
@@ -168,9 +191,20 @@ let execute_action ~project_root ~package_name action =
           failwith "compilation error")
   | CreateArchive { sandbox_dir; archive_name; object_files; includes } -> (
       (* Already in sandbox directory *)
+      (* Add +unix to includes if package uses unix *)
+      let final_includes =
+        if Package.uses_unix package then "+unix" :: includes
+        else includes
+      in
+      (* Don't use -nostdlib if package uses stdlib *)
+      let flags =
+        if Package.uses_stdlib package then []
+        else [ Ocaml_platform.NoStdlib ]
+      in
       match
-        Ocaml_platform.Ocamlc.create_library ~includes:("." :: includes)
-          ~output:archive_name object_files
+        Ocaml_platform.Ocamlc.run ~includes:("." :: final_includes)
+          ~output:(Some archive_name) ~mode:Ocaml_platform.Library ~flags
+          object_files
       with
       | Ok _ -> () (* Ignore stdout output *)
       | Error err ->
@@ -186,17 +220,41 @@ let execute_action ~project_root ~package_name action =
             Dep_graph.Module_name.cma (Dep_graph.Module_name.of_string dep_name))
           dependencies
       in
-      (* Only link unix.cma for kernel package or packages that depend on kernel *)
-      let needs_unix = exe_name = "kernel" || List.mem "Kernel" dependencies in
+      (* Link unix.cma if package uses unix OR depends on Kernel (which uses unix) *)
+      let needs_unix = 
+        Package.uses_unix package || List.mem "Kernel" dependencies 
+      in
+      (* Wrap each cc_flag with -ccopt (needed for frameworks during linking) *)
+      let wrapped_cc_flags = 
+        cc_flags 
+        |> List.concat_map (fun flag -> ["-ccopt"; flag])
+      in
+      (* Wrap each ld_flag with -cclib as separate arguments *)
+      let wrapped_ld_flags = 
+        ld_flags 
+        |> List.concat_map (fun flag -> ["-cclib"; flag])
+      in
       let libs =
         (if needs_unix then [ "unix.cma" ] else []) @ dep_archives @ [ archive ]
       in
       (* Everything is in the current sandbox directory *)
       (* Add +unix to includes if we need the unix library *)
       let includes = if needs_unix then [ "."; "+unix" ] else [ "." ] in
+      (* Need to check if any dependency has C stubs to determine if we need -custom *)
+      let has_c_stubs = List.mem "Kernel" dependencies in
+      (* Build command with both cc_flags and ld_flags *)
+      let cmd_parts =
+        [ Ocaml_platform.Ocamlc.ocamlc_path ]
+        @ (if has_c_stubs then ["-custom"] else [])
+        @ List.concat_map (fun dir -> ["-I"; dir]) includes
+        @ ["-o"; exe_name]
+        @ libs
+        @ wrapped_cc_flags
+        @ wrapped_ld_flags
+        @ [ main_module ]
+      in
       match
-        Ocaml_platform.Ocamlc.run ~includes ~libs ~output:(Some exe_name)
-          ~mode:Ocaml_platform.CustomExe ~flags:[] [ main_module ]
+        Io.run_command_with_output cmd_parts
       with
       | Ok _ -> () (* Ignore stdout output *)
       | Error err ->
@@ -214,8 +272,6 @@ let execute_build_plan ~build_results plan =
 
   (* Get sandbox dir from first action *)
   let sandbox_dir = plan.sandbox_dir in
-  (* Get package name *)
-  let package_name = Dep_graph.Module_name.to_string plan.package_name in
 
   (* 1. Remove old sandbox if it exists *)
   Io.rm_rf sandbox_dir;
@@ -232,7 +288,8 @@ let execute_build_plan ~build_results plan =
 
   (* 5. Execute all actions *)
   List.iter
-    (execute_action ~project_root:original_cwd ~package_name)
+    (execute_action ~project_root:original_cwd ~package:plan.package 
+       ~cc_flags:plan.cc_flags ~ld_flags:plan.ld_flags)
     plan.actions;
 
   (* 6. Restore original directory *)
@@ -244,11 +301,11 @@ let promote_outputs (plan : build_plan) =
     match plan.outputs with
     | first :: _ ->
         let parts = String.split_on_char '/' first in
-        List.nth parts 3 (* target/bootstrap/sandbox/PACKAGE/... *)
+        List.nth parts 3 (* _build/bootstrap/sandbox/PACKAGE/... *)
     | [] -> failwith "No outputs to promote"
   in
 
-  let out_dir = Printf.sprintf "target/bootstrap/out/%s" package_name in
+  let out_dir = Printf.sprintf "_build/bootstrap/out/%s" package_name in
   Io.mkdir_p out_dir;
 
   Printf.printf "\nPromoting outputs for %s:\n" package_name;
@@ -269,13 +326,26 @@ let promote_outputs (plan : build_plan) =
 
 let from_dep_graph (dep_graph : Dep_graph.t) : build_plan =
   let sandbox_dir =
-    Printf.sprintf "target/bootstrap/sandbox/%s"
+    Printf.sprintf "_build/bootstrap/sandbox/%s"
       (Dep_graph.Module_name.to_string dep_graph.package_name)
   in
   let actions = ref [] in
   let cmo_files = ref [] in
   let o_files = ref [] in
   let outputs = ref [] in
+
+  (* Calculate transitive flags from dependencies *)
+  let dependencies = Dep_graph.get_dependencies dep_graph in
+  let transitive_cc_flags = 
+    Dep_graph.Build_results.get_transitive_cc_flags dep_graph.build_results dependencies
+  in
+  let transitive_ld_flags = 
+    Dep_graph.Build_results.get_transitive_ld_flags dep_graph.build_results dependencies
+  in
+  
+  (* Merge with this package's own flags *)
+  let all_cc_flags = transitive_cc_flags @ Package.cc_flags dep_graph.package in
+  let all_ld_flags = transitive_ld_flags @ Package.ld_flags dep_graph.package in
 
   (* Create sandbox directory *)
   let opens mods =
@@ -391,17 +461,15 @@ let from_dep_graph (dep_graph : Dep_graph.t) : build_plan =
       | { kind = C; file = Concrete path; _ } ->
           (* Copy and compile C files *)
           actions := CopyFile { src = path; dst = path } :: !actions;
+          (* Note: CompileC will get cc_flags from the package when executed *)
           let compile = CompileC { sandbox_dir; src_file = path } in
           actions := compile :: !actions;
-          (* The .o file is created at the same path as the .c file, just different extension *)
-          let obj_file = Filename.chop_extension path ^ ".o" in
-          (* For the archive, we just need the basename *)
-          let obj_basename =
-            Filename.chop_extension (Filename.basename path) ^ ".o"
-          in
+          (* The .o file is created in the current directory with just the basename *)
+          let obj_basename = Filename.basename (Filename.chop_extension path) ^ ".o" in
+          (* For the archive, we use the basename since .o files will be in current dir *)
           o_files := !o_files @ [ obj_basename ];
-          (* But for outputs, we need the full path so it gets promoted correctly *)
-          outputs := Filename.concat sandbox_dir obj_file :: !outputs
+          (* And for outputs, the .o is at the root of sandbox with basename *)
+          outputs := Filename.concat sandbox_dir obj_basename :: !outputs
       | { kind = H; _ } ->
           (* Header files already copied at the beginning *)
           ()
@@ -484,7 +552,10 @@ let from_dep_graph (dep_graph : Dep_graph.t) : build_plan =
 
   {
     package_name = dep_graph.package_name;
+    package = dep_graph.package;
     sandbox_dir;
     actions = List.rev !actions;
     outputs = List.rev !outputs;
+    cc_flags = all_cc_flags;
+    ld_flags = all_ld_flags;
   }
