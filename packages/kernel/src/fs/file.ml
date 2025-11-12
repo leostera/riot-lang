@@ -51,26 +51,22 @@ let close fd = Fd.close fd
 
 let read fd ?(pos = 0) ?len buf =
   let len = Option.unwrap_or len ~default:(Bytes.length buf - 1) in
-  try Ok (UnixLabels.read (Fd.to_unix fd) ~buf ~pos ~len)
-  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
+  IO.unix_syscall (fun () -> UnixLabels.read (Fd.to_unix fd) ~buf ~pos ~len)
 
 let write fd ?(pos = 0) ?len buf =
   let len = Option.unwrap_or len ~default:(Bytes.length buf - 1) in
-  try Ok (UnixLabels.write (Fd.to_unix fd) ~buf ~pos ~len)
-  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
+  IO.unix_syscall (fun () -> UnixLabels.write (Fd.to_unix fd) ~buf ~pos ~len)
 
 external std_sys_readv : Unix.file_descr -> IO.Iovec.t -> int = "kernel_unix_readv"
 
 let read_vectored fd iov =
-  try Ok (std_sys_readv (Fd.to_unix fd) iov)
-  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
+  IO.unix_syscall (fun () -> std_sys_readv (Fd.to_unix fd) iov)
 
 external std_sys_writev : Unix.file_descr -> IO.Iovec.t -> int
   = "kernel_unix_writev"
 
 let write_vectored fd iov =
-  try Ok (std_sys_writev (Fd.to_unix fd) iov)
-  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
+  IO.unix_syscall (fun () -> std_sys_writev (Fd.to_unix fd) iov)
 
 external std_sys_sendfile :
   Unix.file_descr -> Unix.file_descr -> int -> int -> int
@@ -80,15 +76,13 @@ external std_sys_copy_file : Unix.file_descr -> Unix.file_descr -> unit
   = "kernel_unix_copy_file"
 
 let sendfile fd ~file ~off ~len =
-  try Ok (std_sys_sendfile (Fd.to_unix file) (Fd.to_unix fd) off len)
-  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
+  IO.unix_syscall (fun () -> std_sys_sendfile (Fd.to_unix file) (Fd.to_unix fd) off len)
 
 let mkdir path perm =
-  try Ok (Unix.mkdir path perm)
-  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
+  IO.unix_syscall (fun () -> Unix.mkdir path perm)
 
 let mkdirp path perm =
-  try
+  IO.unix_syscall (fun () ->
     (* Split path into components, handling absolute paths *)
     let components =
       let parts = String.split_on_char '/' path in
@@ -112,16 +106,13 @@ let mkdirp path perm =
           | Unix.Unix_error (Unix.EEXIST, _, _) -> ());
           create_dirs new_path rest
     in
-    create_dirs "" components;
-    Ok ()
-  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
+    create_dirs "" components)
 
 let stat path =
-  try Ok (Unix.stat path)
-  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
+  IO.unix_syscall (fun () -> Unix.stat path)
 
 let copy_file src dst =
-  try
+  IO.unix_syscall (fun () ->
     let src_perms = Unix.(stat src).st_perm in
     let src_fd = Fd.open_file src [ Fd.OpenFlags.ReadOnly ] 0 in
     let dst_fd =
@@ -133,33 +124,25 @@ let copy_file src dst =
       ~finally:(fun () ->
         Fd.close src_fd;
         Fd.close dst_fd)
-      (fun () -> std_sys_copy_file (Fd.to_unix src_fd) (Fd.to_unix dst_fd));
-    Ok ()
-  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
+      (fun () -> std_sys_copy_file (Fd.to_unix src_fd) (Fd.to_unix dst_fd)))
 
 let is_directory path =
-  try Ok (Sys.is_directory path)
-  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
+  IO.unix_syscall (fun () -> Sys.is_directory path)
 
 let file_exists path =
-  try Ok (Sys.file_exists path)
-  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
+  IO.unix_syscall (fun () -> Sys.file_exists path)
 
 let chmod path perm =
-  try Ok (Unix.chmod path perm)
-  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
+  IO.unix_syscall (fun () -> Unix.chmod path perm)
 
 let symlink src dst =
-  try Ok (Unix.symlink src dst)
-  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
+  IO.unix_syscall (fun () -> Unix.symlink src dst)
 
 let rmdir path =
-  try Ok (Unix.rmdir path)
-  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
+  IO.unix_syscall (fun () -> Unix.rmdir path)
 
 let remove path =
-  try Ok (Sys.remove path)
-  with Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
+  IO.unix_syscall (fun () -> Sys.remove path)
 
 let getcwd () =
   try Ok (Sys.getcwd ())

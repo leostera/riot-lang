@@ -68,7 +68,7 @@ let read t buffer ~offset ~len =
       let rec read_loop () =
         match Kernel.Fs.File.read t.fd buffer ~pos:offset ~len with
         | Ok bytes_read -> Ok bytes_read
-        | Error IO.Operation_would_block ->
+        | Error IO.Operation_would_block | Error IO.Resource_unavailable_try_again ->
             Miniriot.syscall ~name:"File.read"
               ~interest:Kernel.Async.Interest.readable ~source read_loop
         | Error e -> Error e
@@ -131,7 +131,7 @@ let write t buffer ~offset ~len =
       let rec write_loop () =
         match Kernel.Fs.File.write t.fd buffer ~pos:offset ~len with
         | Ok bytes_written -> Ok bytes_written
-        | Error IO.Operation_would_block ->
+        | Error IO.Operation_would_block | Error IO.Resource_unavailable_try_again ->
             Miniriot.syscall ~name:"File.write"
               ~interest:Kernel.Async.Interest.writable ~source write_loop
         | Error e -> Error e

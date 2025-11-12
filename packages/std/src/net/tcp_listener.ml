@@ -20,12 +20,12 @@ let accept t =
   let rec accept_loop () =
     match Kernel.Net.Tcp_listener.accept t with
     | Ok (stream, addr) -> Ok (stream, addr)
-    | Error IO.Operation_would_block ->
-        (* Would block, register interest and wait - this suspends the process *)
+    | Error IO.Operation_would_block | Error IO.Resource_unavailable_try_again ->
+        (* Would block / EAGAIN / EWOULDBLOCK - register interest and wait *)
         Miniriot.syscall ~name:"TcpListener.accept" ~interest:Interest.readable
           ~source (fun () -> accept_loop ())
     | Error err ->
-        (* Some other error *)
+        (* Some other error - EINTR is already handled by kernel layer *)
         Error (System_error (IO.error_message err))
   in
   accept_loop ()

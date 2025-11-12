@@ -139,6 +139,14 @@ let error_of_unix e =
   | Unix.EINPROGRESS -> Operation_now_in_progress
   | _ -> Unknown_error (Unix.error_message e)
 
+(** Retry helper for Unix syscalls that handles EINTR.
+    EAGAIN/EWOULDBLOCK are returned as Operation_would_block for async handling at Std level. *)
+let rec unix_syscall fn =
+  try Ok (fn ())
+  with
+  | Unix.Unix_error (Unix.EINTR, _, _) -> unix_syscall fn
+  | Unix.Unix_error (err, _, _) -> Error (error_of_unix err)
+
 let error_to_unix = function
   | End_of_file -> Unix.EINVAL  (* No direct Unix equivalent *)
   | Timeout -> Unix.ETIMEDOUT

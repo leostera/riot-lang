@@ -19,11 +19,9 @@ val listen :
   ?backlog:int ->
   Kernel.Net.Addr.stream_addr ->
   handler:handler ->
-  (t, error) result
-(** Create a TCP server with a bound listener *)
-
-val accept_loop : t -> unit
-(** Run the accept loop that handles incoming connections *)
+  (unit, error) result
+(** Create a TCP server with a bound listener and start accepting connections.
+    This function blocks and runs the accept loop until an error occurs. *)
 
 val close : t -> unit
 (** Close the server *)

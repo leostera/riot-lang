@@ -64,8 +64,18 @@ let output t =
             Running { proc; stdout = Some stdout_fd; stderr = Some stderr_fd };
 
           (* Read output BEFORE waiting - prevents deadlock if pipes fill up *)
-          let stdout_str = Fs.File.read_to_end stdout_fd |> Result.unwrap in
-          let stderr_str = Fs.File.read_to_end stderr_fd |> Result.unwrap in
+          let stdout_str = 
+            match Fs.File.read_to_end stdout_fd with
+            | Ok s -> s
+            | Error err -> 
+                panic ("Failed to read stdout from command '" ^ t.cmd ^ "': " ^ IO.error_message err)
+          in
+          let stderr_str = 
+            match Fs.File.read_to_end stderr_fd with
+            | Ok s -> s
+            | Error err ->
+                panic ("Failed to read stderr from command '" ^ t.cmd ^ "': " ^ IO.error_message err)
+          in
 
           (* Now wait for process to exit *)
           let rec wait_for_exit () =

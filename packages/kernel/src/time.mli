@@ -32,4 +32,3 @@ val monotonic_time_nanos : unit -> int64
     on Linux, mach_absolute_time on macOS. *)
 
 val sleep : float -> unit
-(** Sleep for the specified number of seconds *)

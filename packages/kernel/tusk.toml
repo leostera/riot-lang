@@ -5,10 +5,6 @@ version = "0.0.1"
 [lib]
 path = "src/kernel.ml"
 
-[[bin]]
-name = "hello"
-path = "examples/hello.ml"
-
 [target.macos]
 cc_flags = ["-framework", "CoreFoundation", "-framework", "CoreServices", "-I/opt/homebrew/opt/openssl@3/include"]
 ld_flags = ["-L/opt/homebrew/opt/openssl@3/lib", "-lssl", "-lcrypto"]

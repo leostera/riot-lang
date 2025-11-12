@@ -154,6 +154,18 @@ val error_of_unix : Unix.error -> error
 val error_to_unix : error -> Unix.error
 val error_message : error -> string
 
+(** {2 Unix Syscall Helpers} *)
+
+val unix_syscall : (unit -> 'a) -> ('a, error) result
+(** [unix_syscall fn] wraps a Unix syscall to automatically retry on EINTR.
+    EAGAIN/EWOULDBLOCK are returned as errors for async handling at the Std layer.
+    
+    Example:
+    {[
+      let read fd buf =
+        IO.unix_syscall (fun () -> Unix.read fd buf 0 (Bytes.length buf))
+    ]} *)
+
 (** {2 File Types} *)
 
 type file_kind =

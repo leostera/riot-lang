@@ -35,9 +35,13 @@ let rec accept_loop t =
   (* Note: Can't use Log module here as it's not available in Global *)
   (* println "[TCP_SERVER] Awaiting next connection..."; *)
   match Tcp_listener.accept t.listener with
-  | Error _e ->
+  | Error Tcp_listener.Closed ->
       (* println "[TCP_SERVER] accept() failed, server stopping"; *)
-      () (* Server stops on error *)
+      Error Closed (* Server stops on error *)
+  | Error (Tcp_listener.System_error s) ->
+      Error (System_error s)
+  | Error Tcp_listener.Connection_refused ->
+      Error Connection_refused
   | Ok (stream, _client_addr) ->
       (* println "[TCP_SERVER] Connection accepted, spawning handler"; *)
       let _connection_pid =
@@ -68,6 +72,6 @@ let listen ?(reuse_addr = true) ?(reuse_port = false) ?(backlog = 128) addr
   | Error Tcp_listener.Connection_refused -> Error Connection_refused
   | Ok listener ->
       let server = { listener; handler } in
-      Ok server
+      accept_loop server
 
 let close t = Tcp_listener.close t.listener
