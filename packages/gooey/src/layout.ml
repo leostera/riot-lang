@@ -1,4 +1,5 @@
 open Std
+open Std.Collections
 
 type layout_node = {
   element : Element.t;
@@ -317,9 +318,9 @@ let compute ~config element =
   calculate_positions layout_tree Geometry.Point.zero;
   
   (* Generate render commands *)
-  let commands = Collections.Vector.create () in
+  let commands = Vector.create () in
   generate_commands layout_tree commands;
   
   (* Sort by z-index and convert to list *)
-  let cmd_list = Collections.Vector.to_list commands in
+  let cmd_list = commands |> Vector.into_iter |> Iter.Iterator.to_list in
   List.sort (fun a b -> Int.compare a.Render.z_index b.Render.z_index) cmd_list

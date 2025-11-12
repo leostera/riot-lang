@@ -34,13 +34,13 @@ let rec loop state =
   let timeout = Time.Duration.from_millis 100 in
   match receive_any ~timeout () with
   | Shutdown -> 
-      Log.trace "[IO_LOOP] Received shutdown, exiting\n%!";
+      Log.trace "[IO_LOOP] Received shutdown, exiting";
       ()
   | _ ->
       (* Try to read with non-blocking check *)
       (match Tty.read_utf8 state.termios with
       | Read input ->
-          Log.trace "[IO_LOOP] READ INPUT: %S\n%!" input;
+          Log.trace ("[IO_LOOP] READ INPUT: " ^ input);
           (* Parse input through ANSI parser *)
           let events = Ansi_parser.parse_string state.parser input in
           List.iter (fun event ->
@@ -68,12 +68,12 @@ let rec loop state =
           loop state)
 
 let sigwinch_handler tty parent _signum =
-  Log.trace "[IO_LOOP] SIGWINCH received - terminal resized\n%!";
+  Log.trace "[IO_LOOP] SIGWINCH received - terminal resized";
   let size = Tty.size tty in
   send parent (Input (Event.Resize { width = size.cols; height = size.rows }))
 
 let init ~parent ~tty = 
-  Log.trace "[IO_LOOP] Starting IO loop, parent=%s\n%!" (Pid.to_string parent);
+  Log.trace ("[IO_LOOP] Starting IO loop, parent=" ^ Pid.to_string parent);
   let state = { 
     parent; 
     termios = tty; 
@@ -85,7 +85,7 @@ let init ~parent ~tty =
   (* SIGWINCH is signal 28 on macOS/Linux *)
   let _ = 
     let sigwinch = 28 in
-    Sys.set_signal sigwinch (Sys.Signal_handle state.sigwinch_handler) 
+    System.set_signal sigwinch (Signal_handle state.sigwinch_handler) 
   in
 
   send state.parent (IoStarted (self ()));
@@ -94,10 +94,10 @@ let init ~parent ~tty =
   Ok ()
 
 let start ~tty () =
-  Log.trace "[Program] Starting IO loop...\n%!";
+  Log.trace "[Program] Starting IO loop...";
   let parent = self () in
   let pid = spawn (fun () -> init ~parent ~tty) in
-  Log.trace "[Program] IO loop spawned as %s\n%!" (Pid.to_string pid);
+  Log.trace ("[Program] IO loop spawned as " ^ Pid.to_string pid);
   let selector msg = 
   match msg with
     | IoStarted pid' when Pid.equal pid pid' -> `select pid

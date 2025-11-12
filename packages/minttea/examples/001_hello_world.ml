@@ -12,22 +12,20 @@ let update event model =
   match event with
   | Event.KeyDown (Event.Key "q", _) 
   | Event.KeyDown (Event.Key "Q", _)
-  | Event.KeyDown (Event.Escape, _) ->
-      (model, Command.Quit)
-  
+  | Event.KeyDown (Event.Escape, _) -> (model, Command.Quit)
   | _ -> (model, Command.Noop)
 
-(* View: Render the message *)
+(* View: Render the message using Gooey's API *)
 let view model =
-  Element.column [
-    Element.text 
-      ~style:(Style.default
-        |> Style.fg (Style.color "#00FFFF")  (* Cyan *)
-        |> Style.bold true
-        |> Style.padding_top 1
-        |> Style.padding_left 2)
+  let open Element in
+  column [
+    text 
+      ~style:Style.(empty
+        |> fg (`rgb (0, 255, 255))  (* Cyan *)
+        |> bold
+        |> padding (Padding.make ~top:1 ~left:2 ()))
       model;
-    Element.text "\n\nPress 'q' to quit";
+    text "\n\nPress 'q' to quit";
   ]
 
 (* Create the app *)

@@ -46,7 +46,7 @@ let key_to_string key =
   | End -> "end"
   | PageUp -> "pgup"
   | PageDown -> "pgdn"
-  | F n -> Format.sprintf "f%d" n
+  | F n -> "f" ^ Int.to_string n
   | Key key -> key
 
 let modifier_to_string = function
@@ -98,8 +98,8 @@ let to_string = function
   | KeyDown (key, mod_) ->
       let mod_str = modifier_to_string mod_ in
       let key_str = key_to_string key in
-      if mod_str = "" then format "KeyDown(%s)" key_str
-      else format "KeyDown(%s+%s)" mod_str key_str
+      if mod_str = "" then "KeyDown(" ^ key_str ^ ")"
+      else "KeyDown(" ^ mod_str ^ "+" ^ key_str ^ ")"
   | Mouse { button; event_type; x; y; _ } ->
       let btn =
         match button with
@@ -115,9 +115,9 @@ let to_string = function
         | Release -> "release"
         | Motion -> "motion"
       in
-      format "Mouse(%s,%s,x=%d,y=%d)" btn evt x y
+      "Mouse(" ^ btn ^ "," ^ evt ^ ",x=" ^ Int.to_string x ^ ",y=" ^ Int.to_string y ^ ")"
   | Resize { width; height } ->
-      format "Resize(w=%d,h=%d)" width height
+      "Resize(w=" ^ Int.to_string width ^ ",h=" ^ Int.to_string height ^ ")"
   | Timer _ref -> "Timer(...)"
   | Frame _instant -> "Frame(...)"
   | Paste content ->
@@ -126,7 +126,7 @@ let to_string = function
           String.sub content 0 17 ^ "..."
         else content
       in
-      format "Paste(%S)" preview
+      "Paste(" ^ preview ^ ")"
   | FocusGained -> "FocusGained"
   | FocusLost -> "FocusLost"
   | Custom _msg -> "Custom"

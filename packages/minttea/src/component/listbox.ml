@@ -1,4 +1,5 @@
 open Std
+open Std.IO
 
 type 'a t = {
   all_items : 'a list;
@@ -14,9 +15,9 @@ type 'a t = {
   scroll_offset : int;  (* For pagination when height is limited *)
 }
 
-let default_render x = 
-  (* Try to convert to string - this is a simple default *)
-  format "%s" (Obj.magic x : string)
+let default_render _x = 
+  (* Default render that cannot know about the type *)
+  "<item>"
 
 let make ?(render = default_render) items =
   {
@@ -168,7 +169,7 @@ let handle_key t (key : Event.key) modifier =
         select_last t
     | Event.Key "/" when modifier = Event.NoModifier && t.filter_enabled ->
         start_filtering t
-    | Event.Escape when t.filter_query <> "" ->
+    | Event.Escape when t.filter_query != "" ->
         clear_filter t
     | _ -> t
 
@@ -180,7 +181,7 @@ let view t =
   let total = List.length items in
   
   if total = 0 then
-    if t.filtering_active || t.filter_query <> "" then
+    if t.filtering_active || t.filter_query != "" then
       add_string buf "No matches"
     else
       add_string buf "No items"
@@ -218,7 +219,7 @@ let view t =
     add_string buf "\n\n/";
     add_string buf t.filter_query;
     add_char buf '_'
-  end else if t.filter_query <> "" then begin
+  end else if t.filter_query != "" then begin
     add_string buf "\n\nFilter: ";
     add_string buf t.filter_query;
     add_string buf " (press ESC to clear)"

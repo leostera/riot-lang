@@ -61,11 +61,10 @@ let increment t ~delta:amount =
   t
 
 let view t =
-  let w = Float.of_int t.width in
-
   let percent = Float.max 0. (Float.min 1. t.percent) in
-  let full_size = Int.of_float (Float.floor (w *. t.percent)) in
-
+  let full_size = Int.of_float (Float.floor (Float.of_int t.width *. t.percent)) in
+  
+  (* Build progress bar as a pre-rendered string with ANSI codes using old Style module *)
   let color char =
     match t.color with
     | `Plain c -> fun _ -> Style.(render (default |> fg c) char)
@@ -73,14 +72,51 @@ let view t =
         fun i -> Style.(render (default |> fg color_ramp.(i)) char)
   in
   
-  let full_part = List.make ~len:full_size ~fn:(color t.full_char) |> String.concat "" in
-
-  let empty_size = Int.max 0 (t.width - full_size - 1) in
-
-  let trail_part = if empty_size > 1 then color t.trail_char full_size else "" in
-
-  let empty_part = List.make ~len:empty_size ~fn:(fun _ -> t.empty_char) |> String.concat "" in
-
-  let percentage_part = if t.show_percentage then format " %4.1f%%" (percent *. 100.) else "" in
-
-  format "%s%s%s%s" full_part trail_part empty_part percentage_part
+  let full_part = 
+    if String.length t.full_char = 0 then ""
+    else List.make ~len:full_size ~fn:(color t.full_char) |> String.concat "" 
+  in
+  
+  (* Only show trail if we're not at 100% and have space remaining *)
+  let has_trail = full_size < t.width && String.length t.trail_char > 0 in
+  let trail_part = 
+    if has_trail then color t.trail_char full_size else "" 
+  in
+  
+  (* Calculate empty size based on whether we have a trail *)
+  let empty_size = 
+    let used = full_size + (if has_trail then 1 else 0) in
+    Int.max 0 (t.width - used)
+  in
+  
+  let empty_part = 
+    if String.length t.empty_char = 0 then ""
+    else String.make empty_size t.empty_char.[0]
+  in
+  
+  let percentage_part = 
+    if t.show_percentage then 
+      " " ^ Float.to_string (percent *. 100.) ^ "%"
+    else "" 
+  in
+  
+  let progress_string = full_part ^ trail_part ^ empty_part ^ percentage_part in
+  
+  (* Use Element.custom with Custom render command to output raw ANSI *)
+  let measure () = 
+    let visible_width = float_of_int (
+      t.width + 
+      (if t.show_percentage then 7 else 0) (* " 100.0%" is 7 chars *)
+    ) in
+    Gooey.Viewport.make ~width:visible_width ~height:1.0
+  in
+  
+  let render box =
+    [{
+      Gooey.Render.bounding_box = box;
+      command_type = Gooey.Render.Custom { data = progress_string };
+      z_index = 0;
+    }]
+  in
+  
+  Gooey.Element.custom ~measure ~render ()

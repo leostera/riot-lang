@@ -28,13 +28,12 @@ let view model =
   let spinner_view = Component.Sprite.view model.spinner in
   Element.column [
     Element.text 
-      ~style:(Style.default
-        |> Style.fg (Style.color "#00FFFF")
-        |> Style.bold true
-        |> Style.padding_top 1
-        |> Style.padding_left 2)
+      ~style:(Style.empty
+        |> Style.fg (`rgb (0, 255, 255))
+        |> Style.bold
+        |> Style.padding (Style.Padding.make ~top:1 ~left:2 ()))
       (spinner_view ^ " Loading...");
-    Element.text "\n\nPress 'q' or Ctrl+C to quit";
+    Element.text "Press 'q' or Ctrl+C to quit";
   ]
 
 (* Create the app *)
@@ -42,7 +41,7 @@ let app = App.make ~init ~update ~view ()
 
 (* Initial model with a dot spinner *)
 let initial_model = 
-  { spinner = Component.Spinner.dot }
+  { spinner = Component.Spinner.dot () }
 
 (* Run it *)
 let () = start app initial_model

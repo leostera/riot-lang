@@ -1,4 +1,5 @@
 open Std
+open Std.Collections
 
 type color = Tty.Color.t
 

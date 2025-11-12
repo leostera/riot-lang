@@ -1,4 +1,7 @@
 open Std
+open Std.IO
+open Sync
+open Sync.Cell
 open Tty
 
 let max_fps = 120
@@ -8,7 +11,7 @@ let fps_to_secs fps = 1. /. cap fps
 type mouse_mode = Cell_motion | All_motion
 
 type Message.t +=
-  | Render of Element.t
+  | Render of Gooey.Element.t
   | Resize of { width : int; height : int }
   | EnterAltScreen
   | ExitAltScreen
@@ -42,44 +45,24 @@ type state = {
   mutable bracketed_paste_enabled : bool;
   mutable focus_tracking_enabled : bool;
   (* Current element to render *)
-  mutable current_root_element : Element.t;
-  matrix : Render.Matrix.t;
+  mutable current_root_element : Gooey.Element.t;
   (* Frame counter for debugging *)
   mutable frame_count : int;
 }
 
 (* Empty element for initialization *)
-let empty_element = Element.Empty
+let empty_element = Gooey.Element.empty
 
 (* Helper functions for output target *)
-let frame_log_channel = ref None
 
 let write_output state str =
   match state.output_target with
-  | Config.Stdout -> print "%s%!" str  (* %! forces flush *)
-  | Config.Stderr -> eprint "%s%!" str
+  | Config.Stdout -> print str  (* Note: %! flush not available *)
+  | Config.Stderr -> eprint str
 
-let log_frame frame_num frame =
-  try
-    let ch = match !frame_log_channel with
-      | Some ch -> ch
-      | None ->
-          let ch = open_out_gen [Open_creat; Open_wronly; Open_append; Open_text] 0o644 "frames.log" in
-          frame_log_channel := Some ch;
-          ch
-    in
-    Printf.fprintf ch "========== FRAME %d ==========\n" frame_num;
-    (* Write the raw frame with escape sequences visible *)
-    String.iter (fun c ->
-      match c with
-      | '\x1b' -> output_string ch "\\x1b"
-      | '\n' -> output_string ch "\\n\n"
-      | '\r' -> output_string ch "\\r"
-      | c -> output_char ch c
-    ) frame;
-    Printf.fprintf ch "\n========== END FRAME %d ==========\n\n" frame_num;
-    flush ch
-  with _ -> ()
+let log_frame _frame_num _frame =
+  (* Frame logging disabled - would require file I/O *)
+  ()
 
 let restore_screen t =
   let output = Buffer.create 64 in
@@ -107,54 +90,35 @@ let restore_screen t =
   (* Write to configured output *)
   if Buffer.length output > 0 then write_output t (Buffer.contents output)
 
-(* Pipeline: Element -> Scene -> Matrix -> ANSI (expensive, only when needed) *)
+(* Pipeline: Element -> Gooey Layout -> ANSI (using Gooey) *)
 let paint_frame state =
   let size = Tty.size state.tty in
   
-  Log.debug "[PAINT_FRAME] Element type: %s" 
+  Log.debug ("[PAINT_FRAME] Element type: " ^
     (match state.current_root_element with
-    | Element.Empty -> "Empty"
-    | Element.Text _ -> "Text"
-    | Element.Box _ -> "Box"
-    | Element.Spacer _ -> "Spacer"
-    | Element.Row _ -> "Row"
-    | Element.Column _ -> "Column"
-    | Element.Layer _ -> "Layer");
+    | Gooey.Element.Empty -> "Empty"
+    | Gooey.Element.Text _ -> "Text"
+    | Gooey.Element.Container _ -> "Container"
+    | Gooey.Element.Custom _ -> "Custom"));
 
-  (* Convert Element to Scene graph *)
-  let scene =
-    (* Create layout context *)
-    let ctx =
-      Render.Layout.
-        {
-          x = 0;
-          y = 0;
-          available_width = size.cols;
-          available_height = size.rows;
-        }
-    in
-    Render.Layout.to_scene state.current_root_element ctx
+  (* Create Gooey viewport from terminal size *)
+  let viewport = Gooey.Viewport.make 
+    ~width:(float_of_int size.cols) 
+    ~height:(float_of_int size.rows) in
+  
+  (* Create Gooey config with text measurer *)
+  let text_measurer text _style =
+    let width = float_of_int (String.length text) in
+    let height = 1.0 in
+    Gooey.Viewport.make ~width ~height
   in
-
-  (* Paint the scene onto the matrix buffer *)
-  let matrix =
-    (* Flatten the scene graph and sort by z-index *)
-    let flattened = Render.Scene.flatten scene in
-    Render.Painter.paint ~matrix:state.matrix ~scene:flattened;
-    state.matrix
-  in
-
-  (* Convert matrix to ANSI escape sequences *)
-  let frame =
-    (* Determine render mode based on screen state *)
-    let mode =
-      if state.is_altscreen_active then Render.Ansi_emitter.Fullscreen
-      else Render.Ansi_emitter.ContentFit
-    in
-    Render.Ansi_emitter.emit matrix ~mode
-  in
-
-  frame
+  let config = Gooey.Config.make ~viewport ~text_measurer () in
+  
+  (* Run Gooey layout to get render commands *)
+  let commands = Gooey.layout ~config state.current_root_element in
+  
+  (* Convert render commands to ANSI string - use inline renderer for line-by-line output *)
+  Gooey.Terminal_renderer_inline.render_to_string commands
 
 let print_frame state frame =
   let output = Buffer.create 256 in
@@ -188,8 +152,8 @@ let print_frame state frame =
   
   (* Count lines in frame for tracking - count newlines directly for performance *)
   let line_count = 
-    let count = ref 1 in
-    String.iter (fun c -> if c = '\n' then incr count) frame;
+    let count = Cell.create 1 in
+    String.iter (fun c -> if c = '\n' then count := !count + 1) frame;
     !count
   in
   
@@ -205,10 +169,9 @@ let print_frame state frame =
   if state.is_altscreen_active then (
     (* In alt-screen, position at start of last line *)
     Buffer.add_string output (Tty.Escape_seq.cursor_position_seq line_count 1)
-  ) else (
-    (* In inline mode, just carriage return *)
-    Buffer.add_string output "\r"
   );
+  (* In inline mode, don't add \r here - it truncates the last line! *)
+  (* The frame already ends each line with erase-to-EOL, which is sufficient *)
   
   (* End synchronized update *)
   (* TEMPORARILY DISABLED: Some terminals don't support this *)
@@ -273,8 +236,8 @@ and handle_shutdown state =
   (try
      let fd =
        match state.output_target with
-       | Config.Stdout -> Kernel.Fd.make_blocking Unix.stdout
-       | Config.Stderr -> Kernel.Fd.make_blocking Unix.stderr
+       | Config.Stdout -> IO.stdout
+       | Config.Stderr -> IO.stderr
      in
      Kernel.Fd.set_blocking fd
    with _ -> ());
@@ -394,7 +357,7 @@ and handle_disable_focus_tracking t =
 
 and handle_set_window_title state title =
   (* OSC 2 ; title BEL *)
-  write_output state (format "\x1b]2;%s\x07" title)
+  write_output state ("\x1b]2;" ^ title ^ "\x07")
 
 let init ~parent ~config ~tty =
   send parent (RendererStarted (self ()));
@@ -403,14 +366,12 @@ let init ~parent ~config ~tty =
     let after = Time.Duration.from_secs_float (fps_to_secs fps) in
     Timer.send_after (self ()) Tick ~after
   in
-  let size = Tty.size tty in
-  let matrix = Render.Matrix.create ~width:size.cols ~height:size.rows in
+  let _size = Tty.size tty in
   loop
     {
       fps;
       runner = parent;
       tty;
-      matrix;
       is_altscreen_active = false;
       needs_altscreen_setup = false;
       lines_rendered = 0;

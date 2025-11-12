@@ -79,8 +79,8 @@ let test_render_z_index_sorting () =
   
   let z_indices = List.map (fun cmd -> cmd.Render.z_index) commands in
   if z_indices = [0; 1; 2] then Ok ()
-  else Error (Printf.sprintf "Expected z_indices [0; 1; 2], got [%s]"
-         (String.concat "; " (List.map string_of_int z_indices)))
+  else Error ("Expected z_indices [0; 1; 2], got [" ^
+         String.concat "; " (List.map Int.to_string z_indices) ^ "]")
 
 let test_render_corner_radius () =
   let elem = Element.container

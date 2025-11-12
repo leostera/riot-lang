@@ -5,18 +5,18 @@ module App = App
 module Command = Command
 module Component = Component
 module Config = Config
-module Element = Element
+module Element = Gooey.Element
 module Event = Event
 module Program = Program
-module Render = Render
-module Style = Style
+module Style = Gooey.Style
 
 let config = Config.make
 let app = App.make
 
 let run ?(config = config ()) initial_model app =
+  let open Std in
   Program.run ~app ~config ~initial_model
-  |> Std.Result.map_err (fun reason -> Failure reason)
+  |> Result.map_err (fun reason -> Failure reason)
 
 let start ?(config = config ()) (app : 'model App.t) initial_model =
   let main ~args:_ =

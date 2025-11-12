@@ -10,7 +10,7 @@ type t = {
   total_pages : int;
   active_dot : string;
   inactive_dot : string;
-  numerals_format : (int -> int -> string, unit, string) format;
+  numerals_format : int -> int -> string;
   text_style : Style.t;
 }
 
@@ -40,7 +40,7 @@ let next_page t = if on_last_page t then t else { t with page = t.page + 1 }
 
 let make ?(style = Numerals) ?(page = 0) ?(per_page = 1) ?(total_pages = 1)
     ?(active_dot = "•") ?(inactive_dot = "○")
-    ?(numerals_format : (int -> int -> string, unit, string) format = "%d/%d")
+    ?(numerals_format = fun page total -> Int.to_string page ^ "/" ^ Int.to_string total)
     ?(text_style = Style.default) () =
   {
     style;
@@ -63,7 +63,7 @@ let dots_view t text_style =
   let result = Cell.create "" in
   for i = 0 to t.total_pages - 1 do
     let dot =
-      if i == t.page then Style.render text_style t.active_dot
+      if i = t.page then Style.render text_style t.active_dot
       else Style.render text_style t.inactive_dot
     in
     Cell.set result (Cell.get result ^ dot)
@@ -71,7 +71,7 @@ let dots_view t text_style =
   Cell.get result
 
 let numerals_view t text_style =
-  let txt = format t.numerals_format (t.page + 1) t.total_pages in
+  let txt = t.numerals_format (t.page + 1) t.total_pages in
   Style.render text_style txt
 
 let view t =

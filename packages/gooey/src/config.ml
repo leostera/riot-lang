@@ -1,3 +1,5 @@
+open Std
+
 type text_measurer = string -> Style.t -> Viewport.t
 
 

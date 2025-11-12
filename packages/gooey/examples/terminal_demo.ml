@@ -76,7 +76,7 @@ let () =
   let commands = Gooey.layout ~config ui in
 
   (* Render to terminal *)
-    Gooey.Terminal_renderer.render commands;
+    Gooey.Terminal_renderer_fullscreen.render commands;
 
   sleep (Time.Duration.from_secs 3);
     Ok ()

@@ -27,7 +27,7 @@ let update event model =
         (* Delay is over, now quit *)
         (model, Command.Quit)
       else
-        let progress = Progress.increment model.progress 0.02 in
+        let progress = Progress.increment model.progress ~delta:0.02 in
         if Progress.is_finished progress then
           (* Progress complete, wait 1 second before quitting *)
           let _timer, cmd = Command.timer ~after:(Time.Duration.from_secs_float 1.0) in
@@ -51,11 +51,11 @@ let view model =
   
   Element.column [
     Element.text 
-      ~style:(Style.default
-        |> Style.fg (Style.color "#00FFFF")
-        |> Style.bold true)
+      ~style:(Style.empty
+        |> Style.fg (`rgb (0, 255, 255))
+        |> Style.bold)
       "Downloading...";
-    Element.text progress_view;
+    progress_view;
     Element.text instructions;
   ]
 
@@ -75,5 +75,8 @@ let initial_model =
   }
 
 (* Run it *)
-let config = Minttea.config ()
-let () = Minttea.start ~config app initial_model
+let () = 
+  Log.(set_log_file (Path.v "./stdout.log"));
+  Log.(set_level Trace);
+  let config = Minttea.config () in
+  Minttea.start ~config app initial_model

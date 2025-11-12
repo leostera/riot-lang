@@ -34,5 +34,4 @@ let format_string seqs line =
   let seqs = List.map to_string seqs |> String.concat ";" in
   if seqs = "" then line
   else
-    format "%s%sm%s%s%sm" Escape_seq.csi seqs line Escape_seq.csi
-      Escape_seq.reset_seq
+    Escape_seq.csi ^ seqs ^ "m" ^ line ^ Escape_seq.csi ^ Escape_seq.reset_seq ^ "m"

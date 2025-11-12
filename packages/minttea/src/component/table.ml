@@ -1,4 +1,6 @@
 open Std
+open Std.IO
+open Std.Collections
 
 type column = {
   title : string;

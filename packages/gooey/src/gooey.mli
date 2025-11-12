@@ -60,7 +60,8 @@ module Render = Render
 module Ansi_formatter = Ansi_formatter
 (** ANSI terminal formatting *)
 
-module Terminal_renderer = Terminal_renderer
+module Terminal_renderer_fullscreen = Terminal_renderer_fullscreen
+module Terminal_renderer_inline = Terminal_renderer_inline
 (** Terminal renderer *)
 
 (** {1 Configuration} *)

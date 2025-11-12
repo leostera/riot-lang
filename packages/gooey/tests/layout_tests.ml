@@ -11,12 +11,12 @@ let test_layout_single_text () =
   let elem = Element.text "Hello" in
   let commands = layout ~config:(make_config ()) elem in
   
-  if List.length commands <> 1 then
-    Error (Printf.sprintf "Expected 1 command, got %d" (List.length commands))
+  if List.length commands != 1 then
+    Error ("Expected 1 command, got " ^ Int.to_string (List.length commands))
   else
     match List.hd commands with
     | { Render.command_type = Text { content; _ }; bounding_box; _ } ->
-        if content <> "Hello" then Error "Text content should be 'Hello'"
+        if content != "Hello" then Error "Text content should be 'Hello'"
         else if bounding_box.width <= 0.0 then Error "Bounding box width should be positive"
         else if bounding_box.height <= 0.0 then Error "Bounding box height should be positive"
         else Ok ()
@@ -30,8 +30,8 @@ let test_layout_row () =
   ] in
   let commands = layout ~config:(make_config ()) elem in
   
-  if List.length commands <> 3 then
-    Error (Printf.sprintf "Expected 3 commands, got %d" (List.length commands))
+  if List.length commands != 3 then
+    Error ("Expected 3 commands, got " ^ Int.to_string (List.length commands))
   else
     let texts = List.map (fun cmd ->
       match cmd.Render.command_type with
@@ -40,8 +40,8 @@ let test_layout_row () =
     ) commands in
     
     if texts = ["A"; "B"; "C"] then Ok ()
-    else Error (Printf.sprintf "Expected texts [A; B; C], got [%s]" 
-           (String.concat "; " (List.map (Printf.sprintf "%S") texts)))
+    else Error ("Expected texts [A; B; C], got [" ^ 
+           String.concat "; " texts ^ "]")
 
 let test_layout_column () =
   let elem = Element.column [Element.text "A"; Element.text "B"] in
@@ -54,8 +54,8 @@ let test_layout_column () =
   ) commands in
   
   if texts = ["A"; "B"] then Ok ()
-  else Error (Printf.sprintf "Expected texts [A; B], got [%s]"
-         (String.concat "; " (List.map (Printf.sprintf "%S") texts)))
+  else Error ("Expected texts [A; B], got [" ^
+         String.concat "; " texts ^ "]")
 
 let test_layout_with_padding () =
   let elem = Element.container
@@ -64,15 +64,15 @@ let test_layout_with_padding () =
   in
   let commands = layout ~config:(make_config ()) elem in
   
-  if List.length commands <> 1 then
-    Error (Printf.sprintf "Expected 1 command, got %d" (List.length commands))
+  if List.length commands != 1 then
+    Error ("Expected 1 command, got " ^ Int.to_string (List.length commands))
   else
     match List.hd commands with
     | { Render.command_type = Text _; bounding_box; _ } ->
         (* Text should be offset by padding *)
         if bounding_box.x = 10.0 && bounding_box.y = 10.0 then Ok ()
-        else Error (Printf.sprintf "Expected text at (10.0, 10.0), got (%.1f, %.1f)"
-               bounding_box.x bounding_box.y)
+        else Error ("Expected text at (10.0, 10.0), got (" ^ Float.to_string bounding_box.x ^ 
+               ", " ^ Float.to_string bounding_box.y ^ ")")
     | _ -> Error "Expected Text command"
 
 let test_layout_with_child_gap () =
@@ -90,8 +90,8 @@ let test_layout_with_child_gap () =
   
   (* First at 0.0, second at width(A)=40.0 + gap=5.0 = 45.0 *)
   if List.length positions = 2 && List.hd positions = 0.0 && List.nth positions 1 > 5.0 then Ok ()
-  else Error (Printf.sprintf "Expected positions starting at 0.0 with gap, got [%s]"
-         (String.concat "; " (List.map (Printf.sprintf "%.1f") positions)))
+  else Error ("Expected positions starting at 0.0 with gap, got [" ^
+         String.concat "; " (List.map Float.to_string positions) ^ "]")
 
 let test_layout_grow_sizing () =
   let elem = Element.container ~style:Style.(empty |> grow) [] in
@@ -108,14 +108,14 @@ let test_layout_fixed_sizing () =
   in
   let commands = layout ~config:(make_config ()) elem in
   
-  if List.length commands <> 1 then
-    Error (Printf.sprintf "Expected 1 command, got %d" (List.length commands))
+  if List.length commands != 1 then
+    Error ("Expected 1 command, got " ^ Int.to_string (List.length commands))
   else
     match List.hd commands with
     | { Render.command_type = Rectangle _; bounding_box; _ } ->
         if bounding_box.width = 50.0 && bounding_box.height = 30.0 then Ok ()
-        else Error (Printf.sprintf "Expected 50.0x30.0, got %.1fx%.1f"
-               bounding_box.width bounding_box.height)
+        else Error ("Expected 50.0x30.0, got " ^ Float.to_string bounding_box.width ^ 
+               "x" ^ Float.to_string bounding_box.height)
     | _ -> Error "Expected Rectangle command"
 
 let test_nested_layout () =
@@ -133,8 +133,8 @@ let test_nested_layout () =
   ) commands in
   
   if texts = ["Title"; "A"; "B"; "Footer"] then Ok ()
-  else Error (Printf.sprintf "Expected [Title; A; B; Footer], got [%s]"
-         (String.concat "; " (List.map (Printf.sprintf "%S") texts)))
+  else Error ("Expected [Title; A; B; Footer], got [" ^
+         String.concat "; " texts ^ "]")
 
 let tests =
   Test.[

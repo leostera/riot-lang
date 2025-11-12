@@ -91,7 +91,7 @@ let build_border (border : t) text =
       l
   in
   let text = String.concat "\n" l in
-  format "%s\n%s\n%s" top_border text bottom_border
+  top_border ^ "\n" ^ text ^ "\n" ^ bottom_border
 
 let normal =
   {

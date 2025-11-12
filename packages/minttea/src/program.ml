@@ -121,13 +121,13 @@ let run ~app ~config ~initial_model =
         Log.error "[PROGRAM] Failed to create TTY: Not a TTY";
         panic "Not a TTY"
     | Error (SystemError (IO.Unknown_error msg)) ->
-        Log.error "[PROGRAM] Failed to create TTY: %s" msg;
+        Log.error ("[PROGRAM] Failed to create TTY: " ^ msg);
         panic msg
   in
   
   let renderer = Renderer.start ~config ~tty () in
   let io = Io_loop.start ~tty () in
-  Log.trace "Minttea started: renderer=%s io=%s" (Pid.to_string renderer) (Pid.to_string io);
+  Log.trace ("Minttea started: renderer=" ^ Pid.to_string renderer ^ " io=" ^ Pid.to_string io);
 
   let state = { io; renderer; tty; app; config; model=initial_model } in
   init state

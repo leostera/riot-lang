@@ -30,28 +30,30 @@ let () =
   let commands = layout ~config ui in
   
   (* Print results *)
-  print "Generated %d render commands:\n" (List.length commands);
+  println ("Generated " ^ Int.to_string (List.length commands) ^ " render commands:");
   List.iter (fun cmd ->
     match cmd.Render.command_type with
     | Render.Rectangle { color; _ } ->
         let `rgb (r, g, b) = color in
-        print "  Rectangle at (%.0f, %.0f) %.0fx%.0f color=(%d,%d,%d)\n"
-          cmd.bounding_box.x cmd.bounding_box.y 
-          cmd.bounding_box.width cmd.bounding_box.height
-          r g b
+        println ("  Rectangle at (" ^ Float.to_string cmd.bounding_box.x ^ ", " ^ 
+          Float.to_string cmd.bounding_box.y ^ ") " ^ 
+          Float.to_string cmd.bounding_box.width ^ "x" ^ 
+          Float.to_string cmd.bounding_box.height ^ " color=(" ^
+          Int.to_string r ^ "," ^ Int.to_string g ^ "," ^ Int.to_string b ^ ")")
     | Render.Text { content; _ } ->
-        print "  Text at (%.0f, %.0f) %.0fx%.0f: '%s'\n"
-          cmd.bounding_box.x cmd.bounding_box.y 
-          cmd.bounding_box.width cmd.bounding_box.height
-          content
+        println ("  Text at (" ^ Float.to_string cmd.bounding_box.x ^ ", " ^
+          Float.to_string cmd.bounding_box.y ^ ") " ^ 
+          Float.to_string cmd.bounding_box.width ^ "x" ^ 
+          Float.to_string cmd.bounding_box.height ^ ": '" ^ content ^ "'")
     | Render.Border _ ->
-        print "  Border at (%.0f, %.0f) %.0fx%.0f\n"
-          cmd.bounding_box.x cmd.bounding_box.y 
-          cmd.bounding_box.width cmd.bounding_box.height
+        println ("  Border at (" ^ Float.to_string cmd.bounding_box.x ^ ", " ^
+          Float.to_string cmd.bounding_box.y ^ ") " ^ 
+          Float.to_string cmd.bounding_box.width ^ "x" ^ 
+          Float.to_string cmd.bounding_box.height)
     | Render.ScissorStart _ ->
-        print "  ScissorStart\n"
+        println "  ScissorStart"
     | Render.ScissorEnd ->
-        print "  ScissorEnd\n"
+        println "  ScissorEnd"
     | Render.Custom _ ->
-        print "  Custom\n"
+        println "  Custom"
   ) commands

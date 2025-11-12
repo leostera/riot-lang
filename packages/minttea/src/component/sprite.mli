@@ -5,3 +5,4 @@ val make :
 
 val update : ?now:Std.Time.Instant.t -> t -> t
 val view : t -> string
+val current_frame_index : t -> int

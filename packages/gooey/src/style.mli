@@ -200,3 +200,15 @@ module CornerRadius : sig
   val all : float -> corner_radius
   val zero : corner_radius
 end
+
+(** {1 Color Helpers} *)
+
+val color : string -> Tty.Color.t
+(** [color hex] parses a hex color string like "#FF0000" or "#F00" into a Tty.Color.t.
+    
+    Examples:
+    - [color "#FF0000"] returns a red color
+    - [color "#F00"] returns a red color
+    
+    @raise Invalid_argument if the hex string is malformed
+*)

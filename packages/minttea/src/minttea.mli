@@ -120,14 +120,11 @@ module Command : sig
   val timer : after:Time.Duration.t -> Timer.id Ref.t * t
 end
 
-(** Declarative layout system *)
-module Element : module type of Element
+(** Declarative layout system - re-exported from Gooey *)
+module Element = Gooey.Element
 
-(** Rendering pipeline *)
-module Render = Render
-
-(** Styles module for terminal text styling *)
-module Style = Style
+(** Styles module for terminal text styling - re-exported from Gooey *)
+module Style = Gooey.Style
 
 (** Application definition *)
 module App : sig
@@ -136,7 +133,7 @@ module App : sig
   val make :
     init:('model -> 'model * Command.t) ->
     update:(Event.t -> 'model -> 'model * Command.t) ->
-    view:('model -> Element.t) ->
+    view:('model -> Gooey.Element.t) ->
     unit ->
     'model t
 end
@@ -146,7 +143,7 @@ module Component = Component
 val app :
   init:('model -> 'model * Command.t) ->
   update:(Event.t -> 'model -> 'model * Command.t) ->
-  view:('model -> Element.t) ->
+  view:('model -> Gooey.Element.t) ->
   unit ->
   'model App.t
 (** Create a new application *)

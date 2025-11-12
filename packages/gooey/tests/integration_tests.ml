@@ -27,7 +27,7 @@ let test_complex_nested_layout () =
   ) 0 commands in
   
   if text_count = 4 then Ok ()
-  else Error (Printf.sprintf "Expected 4 text commands, got %d" text_count)
+  else Error ("Expected 4 text commands, got " ^ Int.to_string text_count)
 
 let test_flexbox_style_layout () =
   let elem = Element.row [
@@ -65,8 +65,8 @@ let test_responsive_percent_sizing () =
   ) commands in
   
   if widths = [24.0; 56.0] then Ok ()
-  else Error (Printf.sprintf "Expected widths [24.0; 56.0] (30%% and 70%% of 80.0), got [%s]"
-         (String.concat "; " (List.map (Printf.sprintf "%.1f") widths)))
+  else Error ("Expected widths [24.0; 56.0] (30% and 70% of 80.0), got [" ^
+         String.concat "; " (List.map Float.to_string widths) ^ "]")
 
 let test_card_ui_pattern () =
   let card = Element.column
@@ -100,8 +100,8 @@ let test_card_ui_pattern () =
   ) 0 commands in
   
   if rect_count >= 2 && text_count = 2 then Ok ()
-  else Error (Printf.sprintf "Expected >=2 rectangles and 2 texts, got %d rectangles and %d texts"
-         rect_count text_count)
+  else Error ("Expected >=2 rectangles and 2 texts, got " ^ Int.to_string rect_count ^ 
+         " rectangles and " ^ Int.to_string text_count ^ " texts")
 
 let test_grid_like_layout () =
   let grid = Element.column [

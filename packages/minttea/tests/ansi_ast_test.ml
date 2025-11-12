@@ -56,7 +56,7 @@ let test_style_composition () =
   | Fg (Tty.Color.ANSI 1, [Bg (Tty.Color.ANSI 4, [Bold [Text "Hello "]; Italic [Text "World"]])]) ->
       print_endline "✓ Style composition preserved"
   | _ -> 
-      failwith "Style composition not preserved correctly"
+      panic "Style composition not preserved correctly"
 
 let test_complex_optimization () =
   let input = 
@@ -95,7 +95,7 @@ let test_complex_optimization () =
         | Seq ops -> format "Seq([%s])" (String.concat "; " (List.map ast_to_string ops))
         | _ -> "..."
       in
-      failwith (format "Complex optimization failed. Got: %s" (ast_to_string result))
+      panic (format "Complex optimization failed. Got: %s" (ast_to_string result))
 
 let test_ansi_output () =
   (* Test that our AST produces correct ANSI codes *)

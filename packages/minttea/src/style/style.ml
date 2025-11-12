@@ -205,7 +205,7 @@ let do_render t str =
         let current_height = List.length lines in
         if current_height >= h then
           (* Truncate if needed *)
-          let lines = lines |> List.to_seq |> Seq.take h |> List.of_seq in
+          let lines = List.take h lines in
           String.concat "\n" lines
         else
           let padding_needed = h - current_height in
@@ -274,7 +274,7 @@ let do_render t str =
   (match t.constraints.max_height with
   | Some max_height when max_height > 0 ->
       let lines = String.split_on_char '\n' (Cell.get str) in
-      let lines = lines |> List.to_seq |> Seq.take max_height |> List.of_seq in
+      let lines = List.take max_height lines in
       Cell.set str (String.concat "\n" lines)
   | _ -> ());
 
@@ -296,7 +296,7 @@ let do_render t str =
       (match target_height with
       | Some h ->
           let lines = String.split_on_char '\n' (Cell.get str) in
-          let lines = lines |> List.to_seq |> Seq.take h |> List.of_seq in
+          let lines = List.take h lines in
           Cell.set str (String.concat "\n" lines)
       | None -> ());
       (match target_width with

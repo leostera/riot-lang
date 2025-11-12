@@ -1,4 +1,5 @@
 open Std
+open Std.IO
 open Event
 
 type Message.t +=
@@ -83,13 +84,13 @@ let parse_mouse_sgr params =
         | _ -> Event.Left  (* Default to left *)
       in
       let event_type = 
-        if button land 0x20 <> 0 then Event.Motion
-        else if button land 0x40 <> 0 then Event.Release
+        if button land 0x20 != 0 then Event.Motion
+        else if button land 0x40 != 0 then Event.Release
         else Event.Click
       in
-      let ctrl = button land 0x10 <> 0 in
-      let alt = button land 0x8 <> 0 in
-      let shift = button land 0x4 <> 0 in
+      let ctrl = button land 0x10 != 0 in
+      let alt = button land 0x8 != 0 in
+      let shift = button land 0x4 != 0 in
       Some (Event.Mouse { 
         x = x - 1; 
         y = y - 1; 

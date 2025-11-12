@@ -1,4 +1,5 @@
 open Std
+open Std.Collections
 
 type t = {
   frames : string array;
@@ -28,3 +29,5 @@ let view s =
     let exception Frame_out_of_bounds in
     raise Frame_out_of_bounds
   else s.frames.(s.current_frame)
+
+let current_frame_index s = s.current_frame

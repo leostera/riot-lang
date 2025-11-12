@@ -9,7 +9,7 @@ val make :
   ?total_pages:int ->
   ?active_dot:string ->
   ?inactive_dot:string ->
-  ?numerals_format:(int -> int -> string, unit, string) format ->
+  ?numerals_format:(int -> int -> string) ->
   ?text_style:Style.t ->
   unit ->
   t

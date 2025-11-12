@@ -9,15 +9,3 @@ path = "src/gooey.ml"
 std = { path = "../std" }
 tty = { path = "../tty" }
 colors = { path = "../colors" }
-
-[[bin]]
-name = "terminal_demo"
-path = "examples/terminal_demo.ml"
-
-[[bin]]
-name = "simple_render"
-path = "examples/simple_render.ml"
-
-
-
-

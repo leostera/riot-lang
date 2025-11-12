@@ -26,24 +26,24 @@ let test_style_builder () =
 
 let test_sizing_variants () =
   let s1 = Style.(empty |> width (Fixed 100.0)) in
-  if s1.sizing.width <> Style.Fixed 100.0 then Error "Fixed sizing failed"
+  if s1.sizing.width != Style.Fixed 100.0 then Error "Fixed sizing failed"
   else
     let s2 = Style.(empty |> width (Percent 0.5)) in
-    if s2.sizing.width <> Style.Percent 0.5 then Error "Percent sizing failed"
+    if s2.sizing.width != Style.Percent 0.5 then Error "Percent sizing failed"
     else
       let s3 = Style.(empty |> width Fit) in
-      if s3.sizing.width <> Style.Fit then Error "Fit sizing failed"
+      if s3.sizing.width != Style.Fit then Error "Fit sizing failed"
       else
         let s4 = Style.(empty |> width Grow) in
-        if s4.sizing.width <> Style.Grow then Error "Grow sizing failed"
+        if s4.sizing.width != Style.Grow then Error "Grow sizing failed"
         else Ok ()
 
 let test_direction_helpers () =
   let s1 = Style.(empty |> row) in
-  if s1.direction <> Style.LeftToRight then Error "row should set LeftToRight direction"
+  if s1.direction != Style.LeftToRight then Error "row should set LeftToRight direction"
   else
     let s2 = Style.(empty |> column) in
-    if s2.direction <> Style.TopToBottom then Error "column should set TopToBottom direction"
+    if s2.direction != Style.TopToBottom then Error "column should set TopToBottom direction"
     else Ok ()
 
 let test_border () =
