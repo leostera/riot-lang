@@ -173,6 +173,16 @@ val to_secs_float : t -> float
     ```ocaml let d = Duration.make ~secs:1 ~nanos:500_000_000 in
     Duration.to_secs_float d (* 1.5 *) ``` *)
 
+val to_secs_string : ?precision:int -> t -> string
+(** Converts to a string representation of seconds with specified decimal precision.
+
+    ## Examples
+
+    ```ocaml let d = Duration.from_secs_float 1.23456 in
+    Duration.to_secs_string d (* "1.23" - default precision 2 *)
+    Duration.to_secs_string ~precision:4 d (* "1.2346" *)
+    Duration.to_secs_string ~precision:0 d (* "1" *) ``` *)
+
 val to_millis : t -> int
 (** Converts to total milliseconds.
 

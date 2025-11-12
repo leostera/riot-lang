@@ -6,12 +6,12 @@ version = "0.0.1"
 path = "src/kernel.ml"
 
 [target.macos]
-cc_flags = ["-framework", "CoreFoundation", "-framework", "CoreServices", "-I/opt/homebrew/opt/openssl@3/include"]
+cc_flags = ["-framework", "CoreFoundation", "-framework", "CoreServices", "-framework", "Security", "-I/opt/homebrew/opt/openssl@3/include"]
 ld_flags = ["-L/opt/homebrew/opt/openssl@3/lib", "-lssl", "-lcrypto"]
 
 [target.linux]
 cc_flags = []
-ld_flags = ["-lssl", "-lcrypto"]
+ld_flags = ["-lssl", "-lcrypto", "-luuid"]
 
 [dependencies]
 stdlib = "*"

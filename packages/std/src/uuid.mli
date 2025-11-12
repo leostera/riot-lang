@@ -71,6 +71,7 @@
     - API request/correlation IDs
     - Session tokens
     - Resource identifiers
+*)
 
 open Global
 
@@ -339,6 +340,4 @@ val time : t -> Time.Duration.t option
     | None ->
         (* not a v7 UUID *)
     ```
-*)
-
 *)

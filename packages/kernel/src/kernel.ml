@@ -14,11 +14,9 @@ module Sync = Sync
 module System = System
 module Terminal = Terminal
 module Time = Time
-
 module Types = Types
+module UUID = Uuid
 module Global = Global
-
-(* Core types and modules for nostdlib packages *)
 module Effect = Effect
 module Exception = Printexc
 module Fun = Fun

@@ -42,6 +42,23 @@ let to_secs t = t.secs
 let to_secs_float t =
   float_of_int t.secs +. (float_of_int t.nanos /. 1_000_000_000.0)
 
+let to_secs_string ?(precision = 2) t =
+  let secs_f = to_secs_float t in
+  let multiplier = 10.0 ** float_of_int precision in
+  let rounded = Float.round (secs_f *. multiplier) /. multiplier in
+  (* Format manually without Printf or String module *)
+  let int_part = int_of_float rounded in
+  let frac_part = rounded -. float_of_int int_part in
+  if precision = 0 then
+    Int.to_string int_part
+  else
+    let frac_scaled = int_of_float (frac_part *. multiplier) in
+    let frac_str = Int.to_string frac_scaled in
+    (* Pad with leading zeros if needed *)
+    let padding = Kernel.String.make (precision - Kernel.String.length frac_str) '0' in
+    (* Use Kernel.String.concat to avoid String module dependency *)
+    Kernel.String.concat "" [Int.to_string int_part; "."; padding; frac_str]
+
 let to_millis t = (t.secs * 1000) + (t.nanos / 1_000_000)
 let to_micros t = (t.secs * 1_000_000) + (t.nanos / 1_000)
 
