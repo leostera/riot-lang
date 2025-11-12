@@ -1,53 +1,13 @@
 open Std
-open Std.Iter
 
-let rec walk_dir dir =
-  match Fs.read_dir dir with
-  | Error _ -> []
-  | Ok entries ->
-      let entry_list = MutIterator.to_list entries in
-      List.concat_map
-        (fun entry ->
-          let entry_path = Path.(dir / entry) in
-          match Fs.is_dir entry_path with
-          | Ok true ->
-              if
-                String.starts_with ~prefix:"." (Path.to_string entry)
-                || String.equal (Path.to_string entry) "_build"
-                || String.equal (Path.to_string entry) "target"
-              then []
-              else walk_dir entry_path
-          | Ok false | Error _ ->
-              let path_str = Path.to_string entry_path in
-              if
-                String.ends_with ~suffix:".ml" path_str
-                || String.ends_with ~suffix:".mli" path_str
-              then [ entry_path ]
-              else [])
-        entry_list
-
-type lint_result = {
-  file : Path.t;
-  source : string;
-  diagnostics : Diagnostic.t list;
-}
-
-let lint_file pipeline file_path =
-  match Fs.read file_path with
-  | Error _ -> { file = file_path; source = ""; diagnostics = [] }
-  | Ok source -> (
-      try
-        let filename = Path.to_string file_path in
-        let result = Pipeline.run pipeline ~filename source in
-        { file = file_path; source; diagnostics = result.diagnostics }
-      with exn ->
-        let error_msg = "Parser error: " ^ Printexc.to_string exn in
-        let diag =
-          Diagnostic.make ~severity:Error ~message:error_msg
-            ~span:(Syn.Ceibo.Span.make ~start:0 ~end_:0)
-            ~rule_id:"parser-error" ()
-        in
-        { file = file_path; source; diagnostics = [ diag ] })
+(* Import library modules *)
+module Diagnostic = Tusk_fix.Diagnostic
+module Pipeline = Tusk_fix.Pipeline
+module Reporter = Tusk_fix.Reporter
+module File_scanner = Tusk_fix.File_scanner
+module Coordinator = Tusk_fix.Coordinator
+module Worker = Tusk_fix.Worker
+module Messages = Tusk_fix.Messages
 
 let main ~args:argv =
   let cmd =
@@ -63,7 +23,7 @@ let main ~args:argv =
            ArgParser.Arg.positional "path"
            |> ArgParser.Arg.required false
            |> ArgParser.Arg.help
-                "OCaml file or directory to lint (default: current directory)";
+                "OCaml file or directory to lint (default: workspace packages)";
          ]
   in
   match ArgParser.get_matches cmd argv with
@@ -79,90 +39,54 @@ let main ~args:argv =
         match ArgParser.get_path matches "path" with
         | Some p -> p
         | None ->
-            Env.current_dir ()
-            |> Result.expect ~msg:"Failed to get current directory"
+            (* Default to scanning workspace packages *)
+            let cwd =
+              Env.current_dir ()
+              |> Result.expect ~msg:"Failed to get current directory"
+            in
+            (* Look for packages directory from workspace root *)
+            let packages_dir = Path.(cwd / v "packages") in
+            if Fs.is_dir packages_dir |> Result.unwrap_or ~default:false then
+              packages_dir
+            else cwd
       in
       let format =
         match format_str with
         | "json" -> Reporter.Json
         | "text" | _ -> Reporter.Text
       in
+
+      (* Scan for files *)
       let files =
         match Fs.is_dir path with
-        | Ok true -> walk_dir path
+        | Ok true ->
+            let scanner = File_scanner.create ~root:path () in
+            File_scanner.scan scanner
         | Ok false | Error _ -> [ path ]
       in
+
       if List.length files = 0 then (
         println "No OCaml files found.";
         Ok ())
       else
-        let pipeline = Pipeline.default () in
         let concurrency = min System.available_parallelism 50 in
         let concurrency = max concurrency 1 in
-        let results =
-          WorkerPool.SimpleWorkerPool.run ~concurrency ~tasks:files
-            ~fn:(fun file -> lint_file pipeline file)
-            ()
+        let owner = self () in
+
+        (* Spawn coordinator *)
+        let _coordinator =
+          Coordinator.start { files; concurrency; format; owner }
         in
-        let all_diagnostics =
-          List.concat_map
-            (fun (_idx, result) ->
-              List.map
-                (fun diag -> (result.file, result.source, diag))
-                result.diagnostics)
-            results
+
+        (* Wait for completion *)
+        let selector = function
+          | Messages.AllComplete result -> `select result
+          | _ -> `skip
         in
-        match format with
-        | Reporter.Text ->
-            let files_table = Collections.HashMap.create () in
-            List.iter
-              (fun (file, source, diag) ->
-                let key = Path.to_string file in
-                match Collections.HashMap.get files_table key with
-                | Some (existing_source, existing_diags) ->
-                    ignore
-                      (Collections.HashMap.insert files_table key
-                         (existing_source, existing_diags @ [ diag ]))
-                | None ->
-                    ignore
-                      (Collections.HashMap.insert files_table key
-                         (source, [ diag ])))
-              all_diagnostics;
-            files_table
-            |> Collections.HashMap.into_iter
-            |> Iter.Iterator.for_each ~fn:(fun (file_str, (source, diags)) ->
-                   let file = Path.v file_str in
-                   let grouped = Diagnostic.group_diagnostics diags in
-                   List.iter
-                     (fun grouped_diag ->
-                       print "%s"
-                         (Diagnostic.grouped_to_formatted_output ~file ~source
-                            grouped_diag))
-                     grouped);
-            if List.length all_diagnostics > 0 then
-              Error (Failure "Lint errors found")
-            else Ok ()
-        | Reporter.Json ->
-            let open Data.Json in
-            let json_diagnostics =
-              List.map
-                (fun (file, _source, diag) ->
-                  Object
-                    [
-                      ("file", String (Path.to_string file));
-                      ("diagnostic", Diagnostic.to_json diag);
-                    ])
-                all_diagnostics
-            in
-            let json =
-              Object
-                [
-                  ("diagnostics", Array json_diagnostics);
-                  ("count", Int (List.length all_diagnostics));
-                ]
-            in
-            println "%s" (to_string json);
-            if List.length all_diagnostics > 0 then
+
+        match receive ~selector () with
+        | result ->
+            if result.total_diagnostics > 0 then
               Error (Failure "Lint errors found")
             else Ok ())
 

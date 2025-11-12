@@ -11,8 +11,8 @@ GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-TUSK_FIX="./target/debug/tusk_fix"
-TESTS_DIR="./packages/tusk_fix/tests"
+TUSK_FIX="tusk run tusk-fix:tusk-fix --"
+TESTS_DIR="./packages/tusk-fix/tests"
 
 # Determine test pattern
 if [ -z "$1" ]; then
