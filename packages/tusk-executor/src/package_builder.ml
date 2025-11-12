@@ -133,6 +133,7 @@ let collect_source_files package =
 
 let build ~workspace ~toolchain ~store ~package_graph ~package ~build_ctx =
   let start = Instant.now () in
+  let session_id = build_ctx.Build_ctx.session_id in
   let target_dir =
     Path.(Tusk_model.Tusk_dirs.out_dir ~workspace_root:workspace.Workspace.root / Path.v package.Package.name)
   in
@@ -150,6 +151,7 @@ let build ~workspace ~toolchain ~store ~package_graph ~package ~build_ctx =
       Telemetry.emit
         (BuildFailed
            {
+             session_id;
              package;
              target = Workspace_planner.Package package.name;
              error = PlanningFailed err;
@@ -166,6 +168,7 @@ let build ~workspace ~toolchain ~store ~package_graph ~package ~build_ctx =
       Telemetry.emit
         (BuildFailed
            {
+             session_id;
              package;
              target = Workspace_planner.Package package.name;
              error = error_variant;
@@ -185,7 +188,7 @@ let build ~workspace ~toolchain ~store ~package_graph ~package ~build_ctx =
 
       Telemetry.emit
         (BuildSkipped
-           { package; target = Workspace_planner.Package package.name; reason });
+           { session_id; package; target = Workspace_planner.Package package.name; reason });
 
       {
         package;
@@ -201,7 +204,7 @@ let build ~workspace ~toolchain ~store ~package_graph ~package ~build_ctx =
 
       Telemetry.emit
         (BuildStarted
-           { package; target = Workspace_planner.Package package.name });
+           { session_id; package; target = Workspace_planner.Package package.name });
 
       match Tusk_store.Store.get store package_hash with
       | Some artifact ->
@@ -238,19 +241,25 @@ let build ~workspace ~toolchain ~store ~package_graph ~package ~build_ctx =
           Telemetry.emit
             (BuildCompleted
                {
+                 session_id;
                  package;
                  target = Workspace_planner.Package package.name;
                  status = `Cached;
                  duration;
                });
           { package; status = Cached artifact; duration }
-      | None -> (
+       | None -> (
           Log.info
             ("Package " ^ package.name ^ ": CACHE MISS - executing action graph");
           Log.info
             ("Package " ^ package.name ^ ": executing action graph with "
             ^ Int.to_string (List.length (Action_graph.nodes action_graph))
             ^ " nodes");
+
+          (* Emit CompilationStarted for fresh builds *)
+          Telemetry.emit
+            (CompilationStarted
+               { session_id; package; target = Workspace_planner.Package package.name });
 
           (* Mark as Planned in package graph *)
           (match Tusk_planner.Package_graph.get_node package_graph package with
@@ -331,6 +340,7 @@ let build ~workspace ~toolchain ~store ~package_graph ~package ~build_ctx =
               Telemetry.emit
                 (BuildFailed
                    {
+                     session_id;
                      package;
                      target = Workspace_planner.Package package.name;
                      error;
@@ -366,6 +376,7 @@ let build ~workspace ~toolchain ~store ~package_graph ~package ~build_ctx =
               Telemetry.emit
                 (BuildCompleted
                    {
+                     session_id;
                      package;
                      target = Workspace_planner.Package package.name;
                      status = `Fresh;
@@ -389,6 +400,7 @@ let build ~workspace ~toolchain ~store ~package_graph ~package ~build_ctx =
               Telemetry.emit
                 (BuildFailed
                    {
+                     session_id;
                      package;
                      target = Workspace_planner.Package package.name;
                      error = err;

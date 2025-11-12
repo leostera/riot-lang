@@ -62,7 +62,7 @@ let run_action ocamlc sandbox_dir action =
       let abs_flags = make_flags_absolute sandbox_dir flags in
       Tusk_toolchain.Ocamlc.generate_interface ocamlc ~cwd:sandbox_dir
         ~includes:abs_includes ~flags:abs_flags ~output:abs_output abs_source
-  | Action.CompileC { source; outputs = output :: _ } ->
+  | Action.CompileC { source; outputs = output :: _; ccflags } ->
       let abs_source = Path.join sandbox_dir source in
       let abs_output = Path.join sandbox_dir output in
       (* Include the directory containing the source file so headers can be found *)
@@ -71,8 +71,9 @@ let run_action ocamlc sandbox_dir action =
         | Some dir -> [ Path.join sandbox_dir dir ]
         | None -> [ sandbox_dir ]
       in
+      Log.debug ("[ACTION_EXECUTOR] CompileC ccflags: " ^ String.concat " " ccflags);
       Tusk_toolchain.Ocamlc.compile_c ocamlc ~cwd:sandbox_dir
-        ~includes:source_dir ~output:abs_output abs_source
+        ~includes:source_dir ~ccflags ~output:abs_output abs_source
   | Action.CreateLibrary { outputs = output :: _; objects; includes } ->
       let abs_output = Path.join sandbox_dir output in
       let abs_objects = List.map (Path.join sandbox_dir) objects in
@@ -80,7 +81,7 @@ let run_action ocamlc sandbox_dir action =
       Tusk_toolchain.Ocamlc.create_library ocamlc ~cwd:sandbox_dir
         ~includes:abs_includes ~output:abs_output abs_objects
   | Action.CreateExecutable
-      { outputs = output :: _; objects; libraries; includes; cclibs } -> (
+      { outputs = output :: _; objects; libraries; includes; cclibs; ccopt_flags; cclib_flags } -> (
       let abs_output = Path.join sandbox_dir output in
       let abs_objects = List.map (Path.join sandbox_dir) objects in
 
@@ -100,7 +101,8 @@ let run_action ocamlc sandbox_dir action =
       
       let result =
         Tusk_toolchain.Ocamlc.create_executable ocamlc ~cwd:sandbox_dir
-          ~includes:abs_includes ~libs:abs_libraries ~cclibs:abs_cclibs ~output:abs_output
+          ~includes:abs_includes ~libs:abs_libraries ~cclibs:abs_cclibs 
+          ~ccopt_flags ~cclib_flags ~output:abs_output
           abs_objects
       in
       match result with
@@ -114,12 +116,36 @@ let run_action ocamlc sandbox_dir action =
                 ^ Path.to_string abs_output ^ ": " ^ IO.error_message err);
               result)
       | _ -> result)
+  | Action.CreateSharedLibrary
+      { outputs = output :: _; objects; libraries; includes; cclibs; ccopt_flags; cclib_flags } -> (
+      let abs_output = Path.join sandbox_dir output in
+      let abs_objects = List.map (Path.join sandbox_dir) objects in
+
+      (* Libraries are now found via -I includes pointing to cache, keep as filenames *)
+      let abs_libraries = libraries in
+
+      (* Includes can be absolute (cache dirs) or relative (sandbox dir) - make relative ones absolute *)
+      let abs_includes =
+        List.map
+          (fun inc ->
+            if Path.is_absolute inc then inc else Path.join sandbox_dir inc)
+          includes
+      in
+      
+      (* Foreign cclibs are absolute paths, keep them as-is *)
+      let abs_cclibs = cclibs in
+      
+      Tusk_toolchain.Ocamlc.create_shared_library ocamlc ~cwd:sandbox_dir
+        ~includes:abs_includes ~libs:abs_libraries ~cclibs:abs_cclibs 
+        ~ccopt_flags ~cclib_flags ~output:abs_output
+        abs_objects)
   | Action.CompileInterface { outputs = []; _ }
   | Action.CompileImplementation { outputs = []; _ }
   | Action.GenerateInterface { outputs = []; _ }
   | Action.CompileC { outputs = []; _ }
   | Action.CreateLibrary { outputs = []; _ }
-  | Action.CreateExecutable { outputs = []; _ } ->
+  | Action.CreateExecutable { outputs = []; _ }
+  | Action.CreateSharedLibrary { outputs = []; _ } ->
       Tusk_toolchain.Ocamlc.Failed "Action has no outputs"
   | Action.CopyFile { source; destination } -> (
       let src_path = Path.join sandbox_dir source in
@@ -186,15 +212,22 @@ let run_action ocamlc sandbox_dir action =
 
 let execute_actions toolchain sandbox_dir actions =
   let ocamlc = Tusk_toolchain.ocamlc toolchain in
+  let errors = ref [] in
   let rec execute_next = function
-    | [] -> Ok ()
-    | action :: rest -> (
+    | [] -> 
+        let error_list = !errors in
+        if List.length error_list > 0 then
+          (* Combine all errors with double newlines for readability *)
+          Error (String.concat "\n\n" (List.rev error_list))
+        else
+          Ok ()
+    | action :: rest ->
         let result = run_action ocamlc sandbox_dir action in
-        match result with
-        | Tusk_toolchain.Ocamlc.Success _ -> execute_next rest
+        (match result with
+        | Tusk_toolchain.Ocamlc.Success _ -> ()
         | Tusk_toolchain.Ocamlc.Failed err ->
-            Error err
-        )
+            errors := err :: !errors);
+        execute_next rest
   in
   execute_next actions
 
@@ -217,6 +250,8 @@ let has_failed_dependencies completed (node : Action_node.t) =
 
 let execute_node ~completed toolchain sandbox_dir (node : Action_node.t) =
   let start = Instant.now () in
+  (* TODO: Thread session_id through for proper filtering *)
+  let session_id = Tusk_model.Session_id.of_string "action-exec" in
 
   if has_failed_dependencies completed node then (
     Log.info
@@ -237,7 +272,7 @@ let execute_node ~completed toolchain sandbox_dir (node : Action_node.t) =
 
     Telemetry.emit
       Telemetry_events.(
-        ActionStarted { package = node.value.package; action = node });
+        ActionStarted { session_id; package = node.value.package; action = node });
 
     let copy_result =
       List.fold_left
@@ -278,7 +313,7 @@ let execute_node ~completed toolchain sandbox_dir (node : Action_node.t) =
             Telemetry.emit
               Telemetry_events.(
                 ActionFailed
-                  { package = node.value.package; action = node; error = msg });
+                  { session_id; package = node.value.package; action = node; error = msg });
 
             {
               node_id = node.id;

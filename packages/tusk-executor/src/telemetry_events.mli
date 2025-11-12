@@ -17,25 +17,42 @@ type package_error =
     detailed information about build progress, cache hits/misses,
     and failures. *)
 type Telemetry.event +=
-  | BuildStarted of { package : Package.t; target : Workspace_planner.target }
+  | BuildStarted of {
+      session_id : Session_id.t;
+      package : Package.t;
+      target : Workspace_planner.target;
+    }
+  | CompilationStarted of {
+      session_id : Session_id.t;
+      package : Package.t;
+      target : Workspace_planner.target;
+    }
   | BuildCompleted of {
+      session_id : Session_id.t;
       package : Package.t;
       target : Workspace_planner.target;
       status : [ `Fresh | `Cached ];
       duration : Time.Duration.t;
     }
   | BuildFailed of {
+      session_id : Session_id.t;
       package : Package.t;
       target : Workspace_planner.target;
       error : package_error;
     }
   | BuildSkipped of {
+      session_id : Session_id.t;
       package : Package.t;
       target : Workspace_planner.target;
       reason : string;
     }
-  | ActionStarted of { package : Package.t; action : Action_node.t }
+  | ActionStarted of {
+      session_id : Session_id.t;
+      package : Package.t;
+      action : Action_node.t;
+    }
   | ActionCompleted of {
+      session_id : Session_id.t;
       package : Package.t;
       action : Action_node.t;
       artifact : Artifact.t;
@@ -43,25 +60,30 @@ type Telemetry.event +=
       duration : Time.Duration.t;
     }
   | ActionFailed of {
+      session_id : Session_id.t;
       package : Package.t;
       action : Action_node.t;
       error : string;
     }
   | CacheHit of {
+      session_id : Session_id.t;
       package : Package.t;
       action : Action_node.t;
       hash : Crypto.hash;
     }
   | CacheMiss of {
+      session_id : Session_id.t;
       package : Package.t;
       action : Action_node.t;
       hash : Crypto.hash;
     }
   | WorkspaceStarted of {
+      session_id : Session_id.t;
       target : Workspace_planner.target;
       package_count : int;
     }
   | WorkspaceCompleted of {
+      session_id : Session_id.t;
       target : Workspace_planner.target;
       total_duration : Time.Duration.t;
       cached_count : int;

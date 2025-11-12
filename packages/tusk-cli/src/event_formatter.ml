@@ -8,20 +8,23 @@ let format ~displayed_packages (event : Telemetry.event) =
   match event with
   (* Build lifecycle events *)
   | Telemetry_events.BuildStarted { package; _ } ->
-      (* Show package starting to build *)
+      (* BuildStarted fires for all packages, but don't show anything yet *)
+      ""
+  | Telemetry_events.CompilationStarted { package; _ } ->
+      (* Only show "Compiling" when actual compilation begins (fresh builds) *)
       if HashSet.contains displayed_packages package.name then ""
       else
         let _ = HashSet.insert displayed_packages package.name in
         "   \027[1;32mCompiling\027[0m " ^ package.name
   | Telemetry_events.BuildCompleted { package; status; duration; _ } -> (
       (* If we already showed it as BuildStarted, don't show again *)
-      (* But if cached and not shown yet, show with (cached) *)
+      (* But if cached and not shown yet, show it as built *)
       match status with
       | `Cached ->
           if HashSet.contains displayed_packages package.name then ""
           else
             let _ = HashSet.insert displayed_packages package.name in
-            "   \027[1;32mCompiling\027[0m " ^ package.name ^ " \027[1;90m(cached)\027[0m"
+            "   \027[1;32mCompiling\027[0m " ^ package.name
       | `Fresh -> "")
   | Telemetry_events.BuildFailed { package; error; _ } ->
       let error_msg =
@@ -53,7 +56,7 @@ let format ~displayed_packages (event : Telemetry.event) =
       if HashSet.contains displayed_packages package.name then ""
       else
         let _ = HashSet.insert displayed_packages package.name in
-        "   \027[1;32mCompiling\027[0m " ^ package.name ^ " \027[1;90m(cached)\027[0m"
+        "   \027[1;32mCompiling\027[0m " ^ package.name
   | Telemetry_events.CacheMiss { package; _ } ->
       (* Only show if we haven't displayed this package yet *)
       if HashSet.contains displayed_packages package.name then ""
@@ -71,17 +74,13 @@ let format ~displayed_packages (event : Telemetry.event) =
   | Telemetry_events.WorkspaceCompleted
       { total_duration; cached_count; built_count; failed_count; _ } ->
       if failed_count = 0 then
-        let total_secs =
-          Float.of_int (Time.Duration.to_millis total_duration) /. 1000.0
-        in
-        let formatted_secs = 
-          let rounded = Float.round (total_secs *. 100.0) /. 100.0 in
-          Float.to_string rounded
-        in
+        let formatted_secs = Time.Duration.to_secs_string ~precision:2 total_duration in
+        let total_count = built_count + cached_count in
         "   \027[1;32mFinished\027[0m in " ^ formatted_secs ^ "s (" ^ 
-          Int.to_string built_count ^ " built, " ^ Int.to_string cached_count ^ " cached)"
+          Int.to_string total_count ^ " built)"
       else
+        let total_count = built_count + cached_count in
         "   \027[1;31mFailed\027[0m with " ^ Int.to_string failed_count ^ " errors (" ^ 
-          Int.to_string built_count ^ " built, " ^ Int.to_string cached_count ^ " cached)"
+          Int.to_string total_count ^ " built)"
   (* Catch-all for unknown or future telemetry events *)
   | _ -> ""

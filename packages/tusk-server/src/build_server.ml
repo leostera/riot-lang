@@ -20,8 +20,29 @@ let init ~(workspace : Workspace.t) ~load_errors ~toolchain ~store ~concurrency 
     "build-worker-" ^ Session_id.to_string session_id
   in
   Telemetry.attach handler_name (fun event ->
-      send client_pid
-        (Protocol.ServerResponse (Protocol.BuildEvent { session_id; event })));
+      (* Filter events by session_id to prevent cross-contamination *)
+      let event_session_id = match event with
+        | Tusk_executor.Telemetry_events.BuildStarted { session_id; _ } -> Some session_id
+        | Tusk_executor.Telemetry_events.CompilationStarted { session_id; _ } -> Some session_id
+        | Tusk_executor.Telemetry_events.BuildCompleted { session_id; _ } -> Some session_id
+        | Tusk_executor.Telemetry_events.BuildFailed { session_id; _ } -> Some session_id
+        | Tusk_executor.Telemetry_events.BuildSkipped { session_id; _ } -> Some session_id
+        | Tusk_executor.Telemetry_events.WorkspaceStarted { session_id; _ } -> Some session_id
+        | Tusk_executor.Telemetry_events.WorkspaceCompleted { session_id; _ } -> Some session_id
+        | Tusk_executor.Telemetry_events.ActionStarted { session_id; _ } -> Some session_id
+        | Tusk_executor.Telemetry_events.ActionCompleted { session_id; _ } -> Some session_id
+        | Tusk_executor.Telemetry_events.ActionFailed { session_id; _ } -> Some session_id
+        | Tusk_executor.Telemetry_events.CacheHit { session_id; _ } -> Some session_id
+        | Tusk_executor.Telemetry_events.CacheMiss { session_id; _ } -> Some session_id
+        | _ -> None
+      in
+      match event_session_id with
+      | Some event_sid when Session_id.to_string event_sid = Session_id.to_string session_id ->
+          send client_pid
+            (Protocol.ServerResponse (Protocol.BuildEvent { session_id; event }))
+      | _ ->
+          (* Skip events from other sessions or non-build events *)
+          ());
 
   let planner_target =
     match target with
@@ -57,7 +78,7 @@ let init ~(workspace : Workspace.t) ~load_errors ~toolchain ~store ~concurrency 
     
     let result =
       Coordinator2.build_workspace ~workspace ~toolchain ~store
-        ~target:planner_target ~concurrency ~build_ctx
+        ~target:planner_target ~concurrency ~build_ctx ~session_id
     in
 
     Log.debug "Build worker finished, sending result to client";

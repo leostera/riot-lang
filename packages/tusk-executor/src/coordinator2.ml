@@ -190,14 +190,14 @@ let init ~workspace ~toolchain ~store ~package_graph ~packages ~concurrency ~bui
   coordinator_loop state
 
 (* Public API - same interface as original coordinator *)
-let build_workspace ~workspace ~toolchain ~store ~target ~concurrency ~build_ctx =
+let build_workspace ~workspace ~toolchain ~store ~target ~concurrency ~build_ctx ~session_id =
   let start = Time.Instant.now () in
 
   match Tusk_planner.plan_workspace ~workspace ~target ~load_errors:[] with
   | Error err -> Error err
   | Ok { packages; package_graph; _ } -> (
       Telemetry.emit
-        (WorkspaceStarted { target; package_count = List.length packages });
+        (WorkspaceStarted { session_id; target; package_count = List.length packages });
 
       Log.info
         ("Building " ^ Int.to_string (List.length packages)

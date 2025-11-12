@@ -120,7 +120,7 @@ let build_workspace ~workspace ~toolchain ~store ~target ~concurrency ~build_ctx
   | Error err -> Error err
   | Ok { packages; package_graph; _ } -> (
       Telemetry.emit
-        (WorkspaceStarted { target; package_count = List.length packages });
+        (WorkspaceStarted { session_id = Tusk_model.Session_id.of_string "coord"; target; package_count = List.length packages });
 
       Log.info
         ("Building " ^ Int.to_string (List.length packages)

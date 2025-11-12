@@ -124,20 +124,23 @@ let build_command package_opt =
   in
   let duration_secs = Time.Duration.to_secs_float duration in
 
+  let formatted_duration = Time.Duration.to_secs_string ~precision:2 duration in
+  let total_count = !built_count + !cached_count in
+  
   if !failed_count = 0 && !skipped_count = 0 then
-    println ("    \027[1;32mFinished\027[0m in " ^ Float.to_string duration_secs ^ "s (" ^ 
-      Int.to_string !built_count ^ " built, " ^ Int.to_string !cached_count ^ " cached)")
+    println ("    \027[1;32mFinished\027[0m in " ^ formatted_duration ^ "s (" ^ 
+      Int.to_string total_count ^ " built)")
   else if !failed_count > 0 then
     println
-      ("    \027[1;31mFinished\027[0m in " ^ Float.to_string duration_secs ^ "s ("
-      ^ Int.to_string !built_count ^ " built, " ^ Int.to_string !cached_count
-      ^ " cached, " ^ Int.to_string !failed_count ^ " failed, "
+      ("    \027[1;31mFinished\027[0m in " ^ formatted_duration ^ "s ("
+      ^ Int.to_string total_count ^ " built, "
+      ^ Int.to_string !failed_count ^ " failed, "
       ^ Int.to_string !skipped_count ^ " skipped)")
   else
     println
-      ("    \027[1;33mFinished\027[0m in " ^ Float.to_string duration_secs ^ "s ("
-      ^ Int.to_string !built_count ^ " built, " ^ Int.to_string !cached_count
-      ^ " cached, " ^ Int.to_string !skipped_count ^ " skipped)");
+      ("    \027[1;33mFinished\027[0m in " ^ formatted_duration ^ "s ("
+      ^ Int.to_string total_count ^ " built, "
+      ^ Int.to_string !skipped_count ^ " skipped)");
 
   match final_event with
   | Tusk_client.BuildCompleted _ -> Ok ()

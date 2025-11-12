@@ -33,4 +33,5 @@ val build_workspace :
   target:Workspace_planner.target ->
   concurrency:int ->
   build_ctx:Build_ctx.t ->
+  session_id:Session_id.t ->
   (workspace_result, Workspace_planner.plan_error) result

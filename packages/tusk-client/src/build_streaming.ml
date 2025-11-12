@@ -51,31 +51,46 @@ let rec handle_streaming_events t session_id callback =
   | Ok response_wrapper ->
       handle_response t session_id callback response_wrapper.result
 
-and handle_response t session_id callback response =
+and handle_response t expected_session_id callback response =
   match response with
-  | WireProtocol.BuildEvent { session_id; event } ->
-      callback (BuildEvent event);
-      handle_streaming_events t session_id callback
-  | WireProtocol.BuildComplete { session_id; completed_at; stats; results } ->
-      let final_event =
-        BuildCompleted { session_id; completed_at; stats; results }
-      in
-      callback final_event;
-      Ok final_event
-  | WireProtocol.BuildFailed { session_id; failed_at; stats; built; errors } ->
-      let final_event =
-        BuildFailed { session_id; failed_at; stats; built; errors }
-      in
-      callback final_event;
-      Ok final_event
-  | WireProtocol.PlanningFailed { session_id; failed_at; reason } ->
-      let final_event = PlanningFailed { session_id; failed_at; reason } in
-      callback final_event;
-      Ok final_event
-  | WireProtocol.CycleDetected { session_id; detected_at; cycle_nodes } ->
-      let final_event = CycleDetected { session_id; detected_at; cycle_nodes } in
-      callback final_event;
-      Ok final_event
+  | WireProtocol.BuildEvent { session_id = event_session_id; event } ->
+      (* Only process events for OUR session *)
+      if Session_id.to_string event_session_id = Session_id.to_string expected_session_id then
+        callback (BuildEvent event);
+      handle_streaming_events t expected_session_id callback
+  | WireProtocol.BuildComplete { session_id = event_session_id; completed_at; stats; results } ->
+      if Session_id.to_string event_session_id = Session_id.to_string expected_session_id then
+        let final_event =
+          BuildCompleted { session_id = event_session_id; completed_at; stats; results }
+        in
+        callback final_event;
+        Ok final_event
+      else
+        (* Skip events from other sessions and keep listening *)
+        handle_streaming_events t expected_session_id callback
+  | WireProtocol.BuildFailed { session_id = event_session_id; failed_at; stats; built; errors } ->
+      if Session_id.to_string event_session_id = Session_id.to_string expected_session_id then
+        let final_event =
+          BuildFailed { session_id = event_session_id; failed_at; stats; built; errors }
+        in
+        callback final_event;
+        Ok final_event
+      else
+        handle_streaming_events t expected_session_id callback
+  | WireProtocol.PlanningFailed { session_id = event_session_id; failed_at; reason } ->
+      if Session_id.to_string event_session_id = Session_id.to_string expected_session_id then
+        let final_event = PlanningFailed { session_id = event_session_id; failed_at; reason } in
+        callback final_event;
+        Ok final_event
+      else
+        handle_streaming_events t expected_session_id callback
+  | WireProtocol.CycleDetected { session_id = event_session_id; detected_at; cycle_nodes } ->
+      if Session_id.to_string event_session_id = Session_id.to_string expected_session_id then
+        let final_event = CycleDetected { session_id = event_session_id; detected_at; cycle_nodes } in
+        callback final_event;
+        Ok final_event
+      else
+        handle_streaming_events t expected_session_id callback
   | event ->
       Error
         (UnexpectedEvent
