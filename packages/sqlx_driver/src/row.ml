@@ -27,7 +27,7 @@ let to_string row =
   let parts =
     List.map
       (fun (field, value) ->
-        Printf.sprintf "%s: %s" field (Value.to_string value))
+        field ^ ": " ^ Value.to_string value)
       row
   in
   String.concat ", " parts

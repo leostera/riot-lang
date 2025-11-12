@@ -160,7 +160,7 @@ let connection_process config driver =
   (* Connect and start loop *)
   match connect_driver config driver with
   | Ok conn -> loop conn
-  | Error e -> failwith e
+  | Error e -> panic e
 ```
 
 #### 2.2 Connection Pool (`pool.ml`)
@@ -310,12 +310,12 @@ let bool field row =
 let int_exn field row =
   match int field row with
   | Some n -> n
-  | None -> failwith (Printf.sprintf "Field %s not found or not an int" field)
+  | None -> panic (Printf.sprintf "Field %s not found or not an int" field)
 
 let string_exn field row =
   match string field row with
   | Some s -> s
-  | None -> failwith (Printf.sprintf "Field %s not found or not a string" field)
+  | None -> panic (Printf.sprintf "Field %s not found or not a string" field)
 ```
 
 ### Phase 4: Main API
@@ -449,7 +449,7 @@ let connect config =
         let password_hash = compute_md5_password config.user config.password salt in
         send_password socket password_hash;
         wait_for_auth_ok socket
-    | _ -> failwith "Unsupported authentication method";
+    | _ -> panic "Unsupported authentication method";
     
     (* Read backend parameters *)
     let params = read_parameters socket in

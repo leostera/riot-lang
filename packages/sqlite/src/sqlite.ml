@@ -44,7 +44,7 @@ module Driver = struct
   let name = "SQLite"
 
   let connect (config : config) : (connection, string) result =
-    let id = Printf.sprintf "sqlite_%d" (Random.int 1000000) in
+    let id = "sqlite_" ^ string_of_int (Random.int 1000000) in
     Ok { id; path = config.path; handle = (); closed = false }
 
   let close conn = conn.closed <- true

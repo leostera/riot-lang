@@ -138,7 +138,7 @@ let main ~args:_ =
     | Error e ->
         ArgParser.print_error e;
         ArgParser.print_help cmd;
-        failwith "Invalid arguments"
+        panic "Invalid arguments"
   in
 
   match run_sqltool matches with

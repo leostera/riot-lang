@@ -89,8 +89,8 @@ let with_transaction pool f =
 let shutdown pool = Pool.shutdown pool
 
 let show_error = function
-  | Connection_failed msg -> Printf.sprintf "Connection failed: %s" msg
-  | Query_failed msg -> Printf.sprintf "Query failed: %s" msg
+  | Connection_failed msg -> "Connection failed: " ^ msg
+  | Query_failed msg -> "Query failed: " ^ msg
   | Pool_exhausted -> "Connection pool exhausted"
-  | Invalid_value msg -> Printf.sprintf "Invalid value: %s" msg
-  | Driver_error msg -> Printf.sprintf "Driver error: %s" msg
+  | Invalid_value msg -> "Invalid value: " ^ msg
+  | Driver_error msg -> "Driver error: " ^ msg

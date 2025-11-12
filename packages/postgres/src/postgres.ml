@@ -1,4 +1,5 @@
 open Std
+open Std.IO
 
 module Config = struct
   type t = {
@@ -132,9 +133,9 @@ module Driver = struct
   let write_message stream msg =
     let bytes = Bytes.of_string msg in
     match Net.TcpStream.write stream bytes () with
-    | Error `Connection_refused -> Error "Write error: Connection refused"
-    | Error `Closed -> Error "Write error: Connection closed"
-    | Error (`System_error msg) -> Error (format "Write error: %s" msg)
+    | Error Connection_refused -> Error "Write error: Connection refused"
+    | Error Closed -> Error "Write error: Connection closed"
+    | Error (System_error msg) -> Error ("Write error: " ^ msg)
     | Ok _n -> Ok ()
 
   let read_exact stream buf len =
@@ -143,7 +144,7 @@ module Driver = struct
       else
         match Net.TcpStream.read stream buf ~pos:offset ~len:remaining () with
         | Error e -> Error e
-        | Ok 0 -> Error `Closed
+        | Ok 0 -> Error Closed
         | Ok n -> loop (offset + n) (remaining - n)
     in
     loop 0 len
@@ -151,9 +152,9 @@ module Driver = struct
   let read_message stream =
     let header = Bytes.create 5 in
     match read_exact stream header 5 with
-    | Error `Connection_refused -> Error "Read error: Connection refused"
-    | Error `Closed -> Error "Read error: Connection closed"
-    | Error (`System_error msg) -> Error (format "Read error: %s" msg)
+    | Error Connection_refused -> Error "Read error: Connection refused"
+    | Error Closed -> Error "Read error: Connection closed"
+    | Error (System_error msg) -> Error ("Read error: " ^ msg)
     | Ok () ->
         let msg_type = Char.code (Bytes.get header 0) in
         let b1 = Char.code (Bytes.get header 1) in
@@ -166,11 +167,11 @@ module Driver = struct
         if body_len > 0 then
           let body = Bytes.create body_len in
           match read_exact stream body body_len with
-          | Error `Connection_refused ->
+          | Error Connection_refused ->
               Error "Read body error: Connection refused"
-          | Error `Closed -> Error "Read body error: Connection closed"
-          | Error (`System_error msg) ->
-              Error (format "Read body error: %s" msg)
+          | Error Closed -> Error "Read body error: Connection closed"
+          | Error (System_error msg) ->
+              Error ("Read body error: " ^ msg)
           | Ok () -> Ok (msg_type, length, body)
         else Ok (msg_type, length, Bytes.create 0)
 
@@ -197,46 +198,46 @@ module Driver = struct
               | Protocol.AuthenticationMD5Password _ ->
                   Error "MD5 password authentication not yet implemented"
               | Protocol.ParameterStatus { name; value } ->
-                  Log.debug "PostgreSQL parameter: %s = %s" name value;
+                  Log.debug ("PostgreSQL parameter: " ^ name ^ " = " ^ value);
                   read_until_ready ()
               | Protocol.BackendKeyData { process_id; secret_key } ->
-                  Log.debug "Backend key data: pid=%d secret=%d" process_id
-                    secret_key;
+                  Log.debug ("Backend key data: pid=" ^ string_of_int process_id ^
+                    " secret=" ^ string_of_int secret_key);
                   read_until_ready ()
               | Protocol.ReadyForQuery status ->
-                  Log.debug "Ready for query, status: %c" status;
+                  Log.debug ("Ready for query, status: " ^ String.make 1 status);
                   Ok ()
               | Protocol.ErrorResponse fields ->
                   let msg =
                     List.assoc_opt 'M' fields
                     |> Option.unwrap_or ~default:"Unknown error"
                   in
-                  Error (format "PostgreSQL error: %s" msg)
+                  Error ("PostgreSQL error: " ^ msg)
               | Protocol.NoticeResponse fields ->
                   let msg =
                     List.assoc_opt 'M' fields |> Option.unwrap_or ~default:""
                   in
-                  Log.info "PostgreSQL notice: %s" msg;
+                  Log.info ("PostgreSQL notice: " ^ msg);
                   read_until_ready ()
               | _ ->
                   Error
-                    (format "Unexpected message during handshake: %c"
-                       (Char.chr msg_type)))
+                    ("Unexpected message during handshake: " ^
+                       String.make 1 (Char.chr msg_type)))
         in
         read_until_ready ()
 
   let connect (cfg : Config.t) =
-    let id = format "pg_%d" (Random.int 1000000) in
+    let id = "pg_" ^ string_of_int (Random.int 1000000) in
 
     match Net.Addr.of_host_and_port ~host:cfg.host ~port:cfg.port with
     | Error (`System_error msg) ->
-        Error (format "Failed to resolve host %s: %s" cfg.host msg)
+        Error ("Failed to resolve host " ^ cfg.host ^ ": " ^ msg)
     | Ok addr -> (
         match Net.TcpStream.connect addr with
-        | Error `Connection_refused ->
-            Error (format "Connection refused to %s:%d" cfg.host cfg.port)
-        | Error `Closed -> Error "Connection closed unexpectedly"
-        | Error (`System_error msg) -> Error (format "System error: %s" msg)
+        | Error Connection_refused ->
+            Error ("Connection refused to " ^ cfg.host ^ ":" ^ string_of_int cfg.port)
+        | Error Closed -> Error "Connection closed unexpectedly"
+        | Error (System_error msg) -> Error ("System error: " ^ msg)
         | Ok stream -> (
             match perform_handshake stream cfg with
             | Error e ->
@@ -309,8 +310,18 @@ module Driver = struct
     | Bytes b -> Bytes.to_string b
     | Timestamp _t -> ""
     | TimestampWithTimezone _ -> ""
-    | Date (y, m, d) -> format "%04d-%02d-%02d" y m d
-    | Time (h, min, s, us) -> format "%02d:%02d:%02d.%06d" h min s us
+    | Date (y, m, d) -> 
+        let pad n width =
+          let s = string_of_int n in
+          String.make (max 0 (width - String.length s)) '0' ^ s
+        in
+        pad y 4 ^ "-" ^ pad m 2 ^ "-" ^ pad d 2
+    | Time (h, min, s, us) -> 
+        let pad n width =
+          let s = string_of_int n in
+          String.make (max 0 (width - String.length s)) '0' ^ s
+        in
+        pad h 2 ^ ":" ^ pad min 2 ^ ":" ^ pad s 2 ^ "." ^ pad us 6
     | Uuid u -> u
     | Json j -> j
     | Numeric n -> n
@@ -318,7 +329,7 @@ module Driver = struct
   let prepare conn sql =
     if conn.closed then Error "Connection is closed"
     else
-      let name = format "stmt_%d" (Random.int 1000000) in
+      let name = "stmt_" ^ string_of_int (Random.int 1000000) in
       let stmt = { name; sql; conn } in
       Collections.HashMap.insert conn.prepared_statements name stmt |> ignore;
       Ok stmt
@@ -394,13 +405,13 @@ module Driver = struct
                             else
                               List.mapi
                                 (fun i v ->
-                                  (format "col_%d" i, Sqlx_driver.Value.string v))
+                                  ("col_" ^ string_of_int i, Sqlx_driver.Value.string v))
                                 cols
                           in
-                          Collections.Queue.enqueue result_set.rows row;
+                          Collections.Queue.push result_set.rows row;
                           read_extended_results ()
                       | Protocol.CommandComplete tag ->
-                          Log.debug "Command complete: %s" tag;
+                          Log.debug ("Command complete: " ^ tag);
                           let parts = String.split_on_char ' ' tag in
                           (match List.rev parts with
                           | n :: _ -> (
@@ -415,13 +426,13 @@ module Driver = struct
                             List.assoc_opt 'M' fields
                             |> Option.unwrap_or ~default:"Unknown error"
                           in
-                          Error (format "Query error: %s" msg)
+                          Error ("Query error: " ^ msg)
                       | Protocol.NoticeResponse fields ->
                           let msg =
                             List.assoc_opt 'M' fields
                             |> Option.unwrap_or ~default:""
                           in
-                          Log.info "PostgreSQL notice: %s" msg;
+                          Log.info ("PostgreSQL notice: " ^ msg);
                           read_extended_results ()
                       | Protocol.NoData -> read_extended_results ()
                       | Protocol.EmptyQueryResponse -> Ok result_set
@@ -463,13 +474,13 @@ module Driver = struct
                             else
                               List.mapi
                                 (fun i v ->
-                                  (format "col_%d" i, Sqlx_driver.Value.string v))
+                                  ("col_" ^ string_of_int i, Sqlx_driver.Value.string v))
                                 cols
                           in
-                          Collections.Queue.enqueue result_set.rows row;
+                          Collections.Queue.push result_set.rows row;
                           read_query_results ()
                       | Protocol.CommandComplete tag ->
-                          Log.debug "Command complete: %s" tag;
+                          Log.debug ("Command complete: " ^ tag);
                           let parts = String.split_on_char ' ' tag in
                           (match List.rev parts with
                           | n :: _ -> (
@@ -484,22 +495,22 @@ module Driver = struct
                             List.assoc_opt 'M' fields
                             |> Option.unwrap_or ~default:"Unknown error"
                           in
-                          Error (format "Query error: %s" msg)
+                          Error ("Query error: " ^ msg)
                       | Protocol.NoticeResponse fields ->
                           let msg =
                             List.assoc_opt 'M' fields
                             |> Option.unwrap_or ~default:""
                           in
-                          Log.info "PostgreSQL notice: %s" msg;
+                          Log.info ("PostgreSQL notice: " ^ msg);
                           read_query_results ()
                       | _ ->
                           Error
-                            (format "Unexpected message during query: %c"
-                               (Char.chr msg_type)))
+                            ("Unexpected message during query: " ^
+                               String.make 1 (Char.chr msg_type)))
                 in
                 read_query_results ())
 
-  let fetch_row result_set = Collections.Queue.dequeue result_set.rows
+  let fetch_row result_set = Collections.Queue.pop result_set.rows
   let rows_affected result_set = result_set.rows_affected
 
   let begin_transaction conn =
@@ -510,7 +521,7 @@ module Driver = struct
 
   let commit conn =
     if conn.closed then Error "Connection is closed"
-    else if conn.transaction_status <> 'T' then
+    else if conn.transaction_status != 'T' then
       Error "No transaction in progress"
     else (
       conn.transaction_status <- 'I';
@@ -518,7 +529,7 @@ module Driver = struct
 
   let rollback conn =
     if conn.closed then Error "Connection is closed"
-    else if conn.transaction_status <> 'T' then
+    else if conn.transaction_status != 'T' then
       Error "No transaction in progress"
     else (
       conn.transaction_status <- 'I';

@@ -34,7 +34,7 @@ type conn_response =
 type Message.t += ConnResponse of conn_response
 
 let gen_id () =
-  Printf.sprintf "conn_%d_%d" (Random.int 1000000) (Random.int 1000000)
+  "conn_" ^ string_of_int (Random.int 1000000) ^ "_" ^ string_of_int (Random.int 1000000)
 
 let connection_process (type cfg) config_data =
   let (Config { driver; config } : config) = config_data in
@@ -53,7 +53,7 @@ let connection_process (type cfg) config_data =
               | Error e -> Error e
               | Ok result_set ->
                   let cursor_id =
-                    Printf.sprintf "cursor_%d" (Random.int 1000000)
+                    "cursor_" ^ string_of_int (Random.int 1000000)
                   in
                   let cursor =
                     Cursor.make cursor_id result_set
@@ -89,7 +89,7 @@ let connection_process (type cfg) config_data =
       loop conn;
       Ok ()
   | Error e ->
-      Log.error "Failed to connect to database: %s" e;
+      Log.error ("Failed to connect to database: " ^ e);
       Error (Failure e)
 
 let create (Config { driver; config } as cfg) =

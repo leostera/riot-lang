@@ -1,5 +1,6 @@
 open Std
 open Std.Collections
+open Std.Sync
 
 
 type config =
@@ -39,7 +40,7 @@ type pool_response =
 type Message.t += PoolResponse of pool_response
 
 type pool_state = {
-  connections : connection_state list ref;
+  connections : connection_state list Cell.t;
   waiting : Pid.t Queue.t;
   config : config;
   min_connections : int;
@@ -52,25 +53,25 @@ let spawn_connection (Config { driver; driver_config; _ }) =
   Connection.create (Connection.Config { driver; config = driver_config })
 
 let find_available connections =
-  List.find_opt (function Available _ -> true | _ -> false) !connections
+  List.find_opt (function Available _ -> true | _ -> false) (Cell.get connections)
 
 let mark_in_use connections conn requester =
-  connections :=
-    List.map
+  Cell.set connections
+    (List.map
       (function
         | Available c when Connection.id c = Connection.id conn ->
             InUse (c, requester, Time.Instant.now ())
         | other -> other)
-      !connections
+      (Cell.get connections))
 
 let mark_available connections conn =
-  connections :=
-    List.map
+  Cell.set connections
+    (List.map
       (function
         | InUse (c, _, _) when Connection.id c = Connection.id conn ->
             Available c
         | other -> other)
-      !connections
+      (Cell.get connections))
 
 let handle_acquire state requester =
   match find_available state.connections with
@@ -78,20 +79,20 @@ let handle_acquire state requester =
       mark_in_use state.connections conn requester;
       send requester (PoolResponse (ConnectionAcquired conn))
   | _ ->
-      let total = List.length !(state.connections) in
+      let total = List.length (Cell.get state.connections) in
       if total < state.max_connections then
         match spawn_connection state.config with
         | Ok conn ->
-            state.connections :=
-              InUse (conn, requester, Time.Instant.now ())
-              :: !(state.connections);
+            Cell.set state.connections
+              (InUse (conn, requester, Time.Instant.now ())
+              :: Cell.get state.connections);
             send requester (PoolResponse (ConnectionAcquired conn))
         | Error e -> send requester (PoolResponse (AcquireError e))
-      else Queue.enqueue state.waiting requester
+      else Queue.push state.waiting requester
 
 let handle_release state conn =
   mark_available state.connections conn;
-  match Queue.dequeue state.waiting with
+  match Queue.pop state.waiting with
   | Some requester ->
       mark_in_use state.connections conn requester;
       send requester (PoolResponse (ConnectionAcquired conn))
@@ -124,24 +125,24 @@ let check_connections state =
               else Some (Available conn)
             else Some (Available conn)
         | InUse _ as conn -> Some conn)
-      !(state.connections)
+      (Cell.get state.connections)
   in
-  state.connections := updated;
+  Cell.set state.connections updated;
 
-  let total = List.length !(state.connections) in
+  let total = List.length (Cell.get state.connections) in
   if total < state.min_connections then
     for _ = 1 to state.min_connections - total do
       match spawn_connection state.config with
-      | Ok conn -> state.connections := Available conn :: !(state.connections)
+      | Ok conn -> Cell.set state.connections (Available conn :: Cell.get state.connections)
       | Error _ -> ()
     done
 
 let get_stats state =
-  let total = List.length !(state.connections) in
+  let total = List.length (Cell.get state.connections) in
   let available =
     List.fold_left
       (fun acc -> function Available _ -> acc + 1 | _ -> acc)
-      0 !(state.connections)
+      0 (Cell.get state.connections)
   in
   let in_use = total - available in
   let waiting = Queue.len state.waiting in
@@ -152,7 +153,7 @@ let pool_supervisor
      as config) =
   let state =
     {
-      connections = ref [];
+      connections = Cell.create [];
       waiting = Queue.create ();
       config;
       min_connections;
@@ -164,8 +165,8 @@ let pool_supervisor
 
   for _ = 1 to min_connections do
     match spawn_connection config with
-    | Ok conn -> state.connections := Available conn :: !(state.connections)
-    | Error e -> Log.error "Failed to create initial connection: %s" e
+    | Ok conn -> Cell.set state.connections (Available conn :: Cell.get state.connections)
+    | Error e -> Log.error ("Failed to create initial connection: " ^ e)
   done;
 
   let rec loop () =
@@ -190,7 +191,7 @@ let pool_supervisor
         List.iter
           (function
             | Available conn | InUse (conn, _, _) -> Connection.close conn)
-          !(state.connections);
+          (Cell.get state.connections);
         ()
   in
   loop ()

@@ -1,4 +1,5 @@
 open Std
+open Std.IO
 
 type t =
   | Null
@@ -58,14 +59,24 @@ let to_string = function
   | Int64 n -> Int64.to_string n
   | Int16 n -> string_of_int n
   | Float f -> string_of_float f
-  | String s -> format "\"%s\"" s
+  | String s -> "\"" ^ s ^ "\""
   | Bool b -> string_of_bool b
-  | Bytes b -> format "<bytes:%d>" (Bytes.length b)
+  | Bytes b -> "<bytes:" ^ string_of_int (Bytes.length b) ^ ">"
   | Timestamp _ -> "<timestamp>"
   | TimestampWithTimezone (_, tz, offset) ->
-      format "<timestamp_with_timezone:%s%+d>" (Datetime.Tz.to_string tz) offset
-  | Date (y, m, d) -> format "%04d-%02d-%02d" y m d
-  | Time (h, min, s, us) -> format "%02d:%02d:%02d.%06d" h min s us
+      "<timestamp_with_timezone:" ^ Datetime.Tz.to_string tz ^ (if offset >= 0 then "+" else "") ^ string_of_int offset ^ ">"
+  | Date (y, m, d) -> 
+      let pad n width = 
+        let s = string_of_int n in
+        String.make (max 0 (width - String.length s)) '0' ^ s
+      in
+      pad y 4 ^ "-" ^ pad m 2 ^ "-" ^ pad d 2
+  | Time (h, min, s, us) ->
+      let pad n width = 
+        let s = string_of_int n in
+        String.make (max 0 (width - String.length s)) '0' ^ s
+      in
+      pad h 2 ^ ":" ^ pad min 2 ^ ":" ^ pad s 2 ^ "." ^ pad us 6
   | Uuid s -> s
   | Json s -> s
   | Numeric s -> s

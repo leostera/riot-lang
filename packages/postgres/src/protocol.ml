@@ -1,4 +1,5 @@
 open Std
+open Std.IO
 
 type message_type =
   | Startup
@@ -204,7 +205,7 @@ module Reader = struct
                       AuthenticationMD5Password"
             in
             AuthenticationMD5Password salt
-        | n -> panic (format "Unknown authentication type: %d" n))
+        | n -> panic ("Unknown authentication type: " ^ string_of_int n))
     | 'K' ->
         let process_id =
           Binary_reader.read_int32 reader
@@ -249,49 +250,44 @@ module Reader = struct
               Binary_reader.read_string reader
               |> Option.expect
                    ~msg:
-                     (format "Protocol error: expected field name (field %d)"
+                     ("Protocol error: expected field name (field " ^ string_of_int
                         (field_count - n + 1))
             in
             let table_oid =
               Binary_reader.read_int32 reader
               |> Option.expect
                    ~msg:
-                     (format "Protocol error: expected table_oid (field %s)"
-                        name)
+                     ("Protocol error: expected table_oid (field " ^ name ^ ")")
             in
             let column_attr =
               Binary_reader.read_int16 reader
               |> Option.expect
                    ~msg:
-                     (format "Protocol error: expected column_attr (field %s)"
-                        name)
+                     ("Protocol error: expected column_attr (field " ^ name ^ ")")
             in
             let type_oid =
               Binary_reader.read_int32 reader
               |> Option.expect
                    ~msg:
-                     (format "Protocol error: expected type_oid (field %s)" name)
+                     ("Protocol error: expected type_oid (field " ^ name ^ ")")
             in
             let type_size =
               Binary_reader.read_int16 reader
               |> Option.expect
                    ~msg:
-                     (format "Protocol error: expected type_size (field %s)"
-                        name)
+                     ("Protocol error: expected type_size (field " ^ name ^ ")")
             in
             let type_modifier =
               Binary_reader.read_int32 reader
               |> Option.expect
                    ~msg:
-                     (format "Protocol error: expected type_modifier (field %s)"
-                        name)
+                     ("Protocol error: expected type_modifier (field " ^ name ^ ")")
             in
             let format_code =
               Binary_reader.read_int16 reader
               |> Option.expect
                    ~msg:
-                     (format "Protocol error: expected format_code (field %s)"
-                        name)
+                     ("Protocol error: expected format_code (field " ^ name ^ ")")
             in
             let field =
               {
@@ -320,8 +316,7 @@ module Reader = struct
               Binary_reader.read_int32 reader
               |> Option.expect
                    ~msg:
-                     (format "Protocol error: expected column_length (col %d)"
-                        (col_count - n + 1))
+                     ("Protocol error: expected column_length (col " ^ string_of_int (col_count - n + 1) ^ ")")
             in
             if col_len = -1 then read_columns (n - 1) ("" :: acc)
             else
@@ -329,8 +324,7 @@ module Reader = struct
                 Binary_reader.read_cstring reader col_len
                 |> Option.expect
                      ~msg:
-                       (format "Protocol error: expected column_value (col %d)"
-                          (col_count - n + 1))
+                       ("Protocol error: expected column_value (col " ^ string_of_int (col_count - n + 1) ^ ")")
               in
               read_columns (n - 1) (value :: acc)
         in
@@ -380,5 +374,12 @@ module Reader = struct
             read_oids (n - 1) (oid :: acc)
         in
         ParameterDescription (read_oids param_count [])
-    | c -> panic (format "Unknown message type: '%c' (0x%02x)" c msg_type)
+    | c -> 
+        let hex = 
+          let h = msg_type lsr 4 in
+          let l = msg_type land 0xF in
+          let to_hex_char n = if n < 10 then Char.chr (48 + n) else Char.chr (87 + n) in
+          String.make 1 (to_hex_char h) ^ String.make 1 (to_hex_char l)
+        in
+        panic ("Unknown message type: '" ^ String.make 1 c ^ "' (0x" ^ hex ^ ")")
 end
