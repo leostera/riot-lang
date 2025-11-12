@@ -58,7 +58,7 @@ let ensure_running ~(workspace : Workspace.t) =
           | Error e ->
               Log.debug ("Ping failed: " ^ e ^ ", retrying...");
               Tusk_client.close client;
-              Kernel.Time.sleep 0.05;
+          Kernel.Time.sleep 0.05;
               (* 50ms *)
               wait_server ~retries:(retries - 1) ~daemon)
       | Error e ->

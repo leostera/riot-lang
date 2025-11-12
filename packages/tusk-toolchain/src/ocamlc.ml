@@ -33,6 +33,8 @@ type compiler_flag =
   | Impl of Std.Path.t
       (** -impl <file>: Compile <file> as an implementation file *)
   | Warning of compiler_warning list  (** -w: Configure warning flags *)
+  | LinkAll
+      (** -linkall: Link all modules even if not directly referenced (prevents dead-code elimination) *)
 
 (** Compilation mode *)
 type mode =
@@ -40,6 +42,7 @@ type mode =
   | Library (* -a flag *)
   | Executable (* default, no special flag *)
   | CustomExe (* -custom flag for executables with C stubs *)
+  | SharedLibrary (* -shared flag for .cmxs plugins *)
 
 (** Compilation result *)
 type result = Success of string | Failed of string
@@ -63,6 +66,7 @@ let flags_to_string flags =
       | NoAliasDeps -> acc @ [ "-no-alias-deps" ]
       | NoStdlib -> acc @ [ "-nostdlib" ]
       | NoPervasives -> acc @ [ "-nopervasives" ]
+      | LinkAll -> acc @ [ "-linkall" ]
       | Impl file -> acc @ [ "-impl"; Path.to_string file ]
       | Warning warnings ->
           (* Convert warnings to -w flag format *)
@@ -72,7 +76,7 @@ let flags_to_string flags =
     [] flags
 
 (** Build and run an ocamlc command *)
-let run t ~cwd ?(includes = []) ?(libs = []) ?(cclibs = []) ?(ccflags = []) ?(output = None) ?(mode = Compile)
+let run t ~cwd ?(includes = []) ?(libs = []) ?(cclibs = []) ?(ccflags = []) ?(ccopt_flags = []) ?(cclib_flags = []) ?(output = None) ?(mode = Compile) ?(flags = [])
     ?(verbose = false) sources =
   let ocamlc = base_command t in
 
@@ -88,6 +92,7 @@ let run t ~cwd ?(includes = []) ?(libs = []) ?(cclibs = []) ?(ccflags = []) ?(ou
     | Library -> "-a"
     | CustomExe -> "" (* No -custom for native, C stubs linked via .o *)
     | Executable -> ""
+    | SharedLibrary -> "-shared"
   in
 
   (* Output flag *)
@@ -115,18 +120,37 @@ let run t ~cwd ?(includes = []) ?(libs = []) ?(cclibs = []) ?(ccflags = []) ?(ou
     else ""
   in
 
+  (* Join additional C compiler/linker flags with -ccopt *)
+  let ccopt_flags_str =
+    if List.length ccopt_flags > 0 then
+      String.concat " " (List.map (fun flag -> "-ccopt \"" ^ flag ^ "\"") ccopt_flags)
+    else ""
+  in
+
+  (* Join additional C linker flags with -cclib *)
+  let cclib_flags_str =
+    if List.length cclib_flags > 0 then
+      String.concat " " (List.map (fun flag -> "-cclib \"" ^ flag ^ "\"") cclib_flags)
+    else ""
+  in
+
   (* Build the complete command *)
+  let flag_strings = flags_to_string flags in
+  let flags_str = String.concat " " flag_strings in
   let cmd_parts =
     [
       ocamlc;
       "-g";
       "-bin-annot";
       mode_flag;
+      flags_str;
       include_flags;
       output_flag;
       libs_str;
       cclibs_str;
       ccflags_str;
+      ccopt_flags_str;
+      cclib_flags_str;
       sources_str;
     ]
     |> List.filter (fun s -> s != "") (* Remove empty strings *)
@@ -136,6 +160,13 @@ let run t ~cwd ?(includes = []) ?(libs = []) ?(cclibs = []) ?(ccflags = []) ?(ou
   (* Execute the command with colors enabled *)
   (* Set OCAML_COLOR=always to get colored error output *)
   let env = [ ("OCAML_COLOR", "always") ] in
+  (if mode = SharedLibrary then begin
+    Log.info ("[OCAMLC] Building shared library with includes: " ^ String.concat ", " (List.map Path.to_string includes));
+    Log.info ("[OCAMLC] cclibs: " ^ String.concat ", " (List.map Path.to_string cclibs));
+    Log.info ("[OCAMLC] objects/sources: " ^ sources_str);
+    Log.info ("[OCAMLC] Full command: " ^ cmd_parts)
+  end);
+  Log.debug ("[OCAMLC] Running command: " ^ cmd_parts);
   let cmd = run_in_dir ~cwd ~env cmd_parts in
   match Command.output cmd with
   | Ok output when output.Command.status = 0 -> Success output.Command.stdout
@@ -252,8 +283,8 @@ let generate_interface t ~cwd ~includes ~flags ~output source =
   | Error (Command.SystemError msg) -> Failed msg
 
 (** Compile a C file *)
-let compile_c t ~cwd ~includes ~output source =
-  run t ~cwd ~includes ~output:(Some output) ~mode:Compile
+let compile_c t ~cwd ~includes ?(ccflags = []) ~output source =
+  run t ~cwd ~includes ~ccflags ~output:(Some output) ~mode:Compile
     [ Path.to_string source ]
 
 (** Create a library (.cmxa) from object files *)
@@ -262,11 +293,21 @@ let create_library t ~cwd ~includes ~output objects =
     (List.map Path.to_string objects)
 
 (** Create an executable from object files and libraries *)
-let create_executable t ~cwd ~includes ~output ~libs ?(cclibs = []) ?(ccflags = []) objects =
+let create_executable t ~cwd ~includes ~output ~libs ?(cclibs = []) ?(ccopt_flags = []) ?(cclib_flags = []) objects =
   (* Include current directory *)
   let includes_with_dot = Path.v "." :: includes in
-  run t ~cwd ~includes:includes_with_dot ~libs ~cclibs ~ccflags ~output:(Some output)
+  run t ~cwd ~includes:includes_with_dot ~libs ~cclibs ~ccopt_flags ~cclib_flags ~output:(Some output)
     ~mode:Executable
+    (List.map Path.to_string objects)
+
+(** Create a shared library (.cmxs plugin) *)
+let create_shared_library t ~cwd ~includes ~output ~libs ?(cclibs = []) ?(ccopt_flags = []) ?(cclib_flags = []) objects =
+  (* Include current directory *)
+  let includes_with_dot = Path.v "." :: includes in
+  (* Use -linkall to include all modules from .cmxa in the .cmxs *)
+  (* Without this, only referenced modules are included and symbols are missing *)
+  run t ~cwd ~includes:includes_with_dot ~libs ~cclibs ~ccopt_flags ~cclib_flags ~output:(Some output)
+    ~mode:SharedLibrary ~flags:[LinkAll]
     (List.map Path.to_string objects)
 
 (** Create a custom executable (with C stubs) *)

@@ -1,0 +1,9 @@
+[package]
+name = "tusk-cmd"
+version = "0.1.0"
+
+[lib]
+path = "src/tusk_cmd.ml"
+
+[dependencies]
+std = { path = "../std" }

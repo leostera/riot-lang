@@ -32,17 +32,18 @@ let test_collect_source_files () =
 
         let package =
           Tusk_model.Package.
-            {
-              name = "test";
-              path = tmpdir;
-              relative_path = Path.v ".";
-              dependencies = [];
-              foreign_dependencies = [];
-              binaries = [];
-              library = None;
-              sources = { src = []; native = []; tests = []; examples = [] };
-              compiler = { profile_overrides = []; target_overrides = [] };
-            }
+          {
+            name = "test";
+            path = tmpdir;
+            relative_path = Path.v ".";
+            dependencies = [];
+            foreign_dependencies = [];
+            binaries = [];
+            library = None;
+            sources = { src = []; native = []; tests = []; examples = [] };
+            compiler = { profile_overrides = []; target_overrides = [] };
+            commands = [];
+          }
         in
 
         let files =
@@ -94,6 +95,7 @@ let test_build_result_status_variants () =
         library = None;
         sources = { src = []; native = []; tests = []; examples = [] };
         compiler = { profile_overrides = []; target_overrides = [] };
+        commands = [];
       }
   in
 

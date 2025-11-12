@@ -45,6 +45,7 @@ let make_simple_package tmpdir name =
       library = Some { path = Path.v "src/lib.ml" };
       sources = { src = []; native = []; tests = []; examples = [] };
       compiler = { profile_overrides = []; target_overrides = [] };
+      commands = [];
     }
 
 let test_server_starts_and_shuts_down () = Ok ()

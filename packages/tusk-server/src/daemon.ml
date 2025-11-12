@@ -54,9 +54,9 @@ let daemon_exists ~workspace =
             Log.debug
               ("Failed to connect: "
               ^ (match e with
-                | `Connection_refused -> "connection refused"
-                | `Closed -> "connection closed"
-                | `System_error msg -> "system error: " ^ msg));
+                | Connection_refused -> "connection refused"
+                | Closed -> "connection closed"
+                | System_error msg -> "system error: " ^ msg));
             false
       in
       if is_server_running then
@@ -124,13 +124,9 @@ let of_workspace ~workspace =
           let port = Workspace.server_port workspace in
 
           (* File descriptors were consumed by into_fd, no need to close *)
-
           (* Write PID and port files *)
           let _ = Fs.write (Int.to_string pid) pid_file in
           let _ = Fs.write (Int.to_string port) port_file in
-
-          (* Give the server more time to start up since it's detached *)
-          Kernel.Time.sleep 1.0;
 
           Ok { workspace; os_pid = pid; port; host = "127.0.0.1" }
       | Error (`SpawnFailed msg) -> Error Error.ScanWorkspaceError)

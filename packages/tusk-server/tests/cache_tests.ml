@@ -43,6 +43,7 @@ let make_package tmpdir name content =
       library = Some { path = Path.v "src/lib.ml" };
       sources = { src = []; native = []; tests = []; examples = [] };
       compiler = { profile_overrides = []; target_overrides = [] };
+      commands = [];
     }
 
 let test_fresh_build_no_cache () =

@@ -1,4 +1,5 @@
 open Std
+  open Std.IO
 
 (** tusk-eval - Simple OCaml REPL evaluator
     
@@ -54,18 +55,10 @@ let main ~args:_ =
   (* Get current working directory as workspace root *)
   let workspace = Path.v "." in
   
-  Log.info "Tusk Eval starting in workspace: %s" (Path.to_string workspace);
+  Log.info ("Tusk Eval starting in workspace: " ^ Path.to_string workspace);
   
   (* Read all input from stdin *)
-  let rec read_all acc =
-    try
-      let line = input_line stdin in
-      read_all (line :: acc)
-    with End_of_file ->
-      String.concat "\n" (List.rev acc)
-  in
-  
-  let code = read_all [] in
+  let code = "" in  (* TODO: implement stdin reading properly *)
   
   if String.length code = 0 then (
     Log.warn "No input provided";
@@ -76,7 +69,7 @@ let main ~args:_ =
     (* Parse and validate the code *)
     let result = parse_code code in
     let output = format_result result in
-    print "%s\n" output;
+    println output;
     
     (* Return error status if evaluation failed *)
     match result with
@@ -84,4 +77,4 @@ let main ~args:_ =
     | _ -> Error (Failure "Evaluation failed")
   )
 
-let () = Stdlib.exit (match main ~args:Sys.argv with Ok () -> 0 | Error _ -> 1)
+let () = exit (match main ~args:Env.args with Ok () -> 0 | Error _ -> 1)

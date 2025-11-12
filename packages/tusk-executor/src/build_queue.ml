@@ -37,7 +37,10 @@ let dependencies_satisfied t (node : package_node) =
   let pkg = Package_graph.get_package pkg_node in
   List.for_all
     (fun (dep : Package.dependency) ->
-      if dep.name = "stdlib" || dep.name = "unix" then true
+      (* OCaml stdlib modules are always available *)
+      if dep.name = "stdlib" || dep.name = "unix" || dep.name = "dynlink" 
+         || dep.name = "threads" || dep.name = "str" || dep.name = "bigarray"
+         || dep.name = "compiler-libs" || dep.name = "graphics" then true
       else
         match HashMap.get t.completed dep.name with
         | Some { status = Package_builder.Built _ | Cached _ | Failed _; _ } ->

@@ -652,15 +652,25 @@ let start_tcp_server ~server ~port =
               Log.error
                 ("Failed to write to stream: "
                 ^ (match e with
-                  | `Closed -> "closed"
-                  | `Connection_refused -> "connection refused"
-                  | `System_error msg -> msg))
+                  | Closed -> "closed"
+                  | Connection_refused -> "connection refused"
+                  | System_error msg -> msg))
         in
         Log.debug "Calling Jsonrpc.Server.handle_message";
         Jsonrpc.Server.handle_message jsonrpc_server reply req;
         Log.info "[JSONRPC] Handler finished, connection handler returning"
       in
       Log.debug "Starting TCP listener...";
-      let _ = Net.TcpServer.listen addr ~handler in
-      Log.info "TCP server listening successfully";
-      Ok ())
+      match Net.TcpServer.listen addr ~handler with
+      | Error e ->
+          Log.error
+            ("TCP server failed: "
+            ^ (match e with
+              | Net.TcpServer.Closed -> "closed"
+              | Net.TcpServer.Connection_refused -> "connection refused"
+              | Net.TcpServer.System_error msg -> msg));
+          Ok ()
+      | Ok () ->
+          (* listen never returns Ok (), only Error - this case shouldn't happen *)
+          Log.info "TCP server accept loop exited normally";
+          Ok ())

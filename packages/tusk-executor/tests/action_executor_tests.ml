@@ -29,6 +29,7 @@ let make_test_package () =
       library = None;
       sources = { src = []; native = []; tests = []; examples = [] };
       compiler = { profile_overrides = []; target_overrides = [] };
+      commands = [];
     }
 
 let make_action_spec ?(actions = []) ?(outs = []) ?(srcs = []) () =

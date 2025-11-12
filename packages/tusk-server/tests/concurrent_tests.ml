@@ -34,6 +34,7 @@ let make_package tmpdir name content =
       library = Some { path = Path.v "src/lib.ml" };
       sources = { src = []; native = []; tests = []; examples = [] };
       compiler = { profile_overrides = []; target_overrides = [] };
+      commands = [];
     }
 
 type Message.t += BuildComplete of (string * (unit, string) result)

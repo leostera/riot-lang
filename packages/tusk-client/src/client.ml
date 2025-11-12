@@ -43,9 +43,9 @@ let create ~host ~port =
   | Error e ->
       let error_msg =
         match e with
-        | `Connection_refused -> "Connection refused"
-        | `Closed -> "Connection closed"
-        | `System_error msg -> "System error: " ^ msg ^ ""
+        | Connection_refused -> "Connection refused"
+        | Closed -> "Connection closed"
+        | System_error msg -> "System error: " ^ msg ^ ""
       in
       Error ("Failed to connect to server: " ^ error_msg)
 

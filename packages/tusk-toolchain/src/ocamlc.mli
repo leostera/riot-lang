@@ -27,6 +27,8 @@ type compiler_flag =
   | Impl of Std.Path.t
       (** -impl <file>: Compile <file> as an implementation file *)
   | Warning of compiler_warning list  (** -w: Configure warning flags *)
+  | LinkAll
+      (** -linkall: Link all modules even if not directly referenced (prevents dead-code elimination) *)
 
 val flags_to_string : compiler_flag list -> string list
 
@@ -36,6 +38,7 @@ type mode =
   | Library  (** Create library archive (-a flag) *)
   | Executable  (** Link executable (default, no special flag) *)
   | CustomExe  (** Link with C stubs (-custom flag) *)
+  | SharedLibrary  (** Create shared library (-shared flag for .cmxs plugins) *)
 
 (** Compilation result *)
 type result =
@@ -57,21 +60,26 @@ val run :
   ?libs:Path.t list ->
   ?cclibs:Path.t list ->
   ?ccflags:string list ->
+  ?ccopt_flags:string list ->
+  ?cclib_flags:string list ->
   ?output:Path.t option ->
   ?mode:mode ->
+  ?flags:compiler_flag list ->
   ?verbose:bool ->
   string list ->
   result
 (** Build and run an ocamlc command.
 
-    [run ~toolchain ?includes ?libs ?cclibs ?ccflags ?output ?mode ?verbose sources] executes the
+    [run ~toolchain ?includes ?libs ?cclibs ?ccflags ?ccopt_flags ?cclib_flags ?output ?mode ?verbose sources] executes the
     OCaml compiler with the given configuration.
 
     @param toolchain The OCaml toolchain to use
     @param includes List of include directories (default: [])
     @param libs List of library files to link (default: [])
     @param cclibs List of foreign C/Rust libraries to link with -cclib (default: [])
-    @param ccflags Additional C compiler/linker flags like -framework (default: [])
+    @param ccflags Additional C compiler/linker flags (legacy, default: [])
+    @param ccopt_flags C compiler/linker flags passed with -ccopt (default: [])
+    @param cclib_flags C linker-only flags passed with -cclib (default: [])
     @param output Output file path (default: None)
     @param mode Compilation mode (default: Compile)
     @param verbose Enable verbose output (default: false)
@@ -117,10 +125,12 @@ val compile_c :
   t ->
   cwd:Std.Path.t ->
   includes:Path.t list ->
+  ?ccflags:string list ->
   output:Path.t ->
   Path.t ->
   result
-(** Compile a C file *)
+(** Compile a C file. The optional ccflags parameter specifies additional
+    C compiler flags like -I for include directories. *)
 
 val create_library :
   t ->
@@ -138,13 +148,30 @@ val create_executable :
   output:Path.t ->
   libs:Path.t list ->
   ?cclibs:Path.t list ->
-  ?ccflags:string list ->
+  ?ccopt_flags:string list ->
+  ?cclib_flags:string list ->
   Path.t list ->
   result
 (** Create an executable from object files and libraries. The current directory
     is automatically included. The optional cclibs parameter specifies foreign
-    C/Rust libraries to link with -cclib flags. The optional ccflags parameter
-    specifies additional compiler flags like -framework. *)
+    C/Rust libraries to link with -cclib flags. The optional ccopt_flags parameter
+    specifies C compiler/linker flags passed with -ccopt (like -framework).
+    The optional cclib_flags parameter specifies C linker-only flags passed with
+    -cclib (like -L/path, -lssl). *)
+
+val create_shared_library :
+  t ->
+  cwd:Std.Path.t ->
+  includes:Path.t list ->
+  output:Path.t ->
+  libs:Path.t list ->
+  ?cclibs:Path.t list ->
+  ?ccopt_flags:string list ->
+  ?cclib_flags:string list ->
+  Path.t list ->
+  result
+(** Create a shared library (.cmxs) from object files and libraries using -shared.
+    Parameters are the same as create_executable but produces a plugin loadable with Dynlink. *)
 
 val create_custom_executable :
   t ->
