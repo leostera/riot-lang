@@ -65,6 +65,7 @@ type t =
   | LOCAL_OPEN_EXPR (* let open Module in expr *)
   | LET_MODULE_EXPR (* let module M = ... in expr *)
   | FIRST_CLASS_MODULE_EXPR (* (module M) or (module M : S) *)
+  | STRUCT_EXPR (* struct ... end *)
   | MODULE_PATH (* A.B.C module path *)
   (* ========================================================================= *)
   (* PATTERNS *)
@@ -89,6 +90,7 @@ type t =
   | POLY_VARIANT_TYPE_PATTERN (* #type *)
   | LOCAL_OPEN_PATTERN (* Module.(pattern) *)
   | OPERATOR_PATTERN (* ( + ), ( let* ), ( mod ) *)
+  | FIRST_CLASS_MODULE_PATTERN (* (module M) or (module M : S) *)
   (* ========================================================================= *)
   (* TYPE EXPRESSIONS *)
   (* ========================================================================= *)
@@ -118,7 +120,9 @@ type t =
   (* ========================================================================= *)
   | LET_BINDING (* let x = e *)
   | LET_REC_BINDING (* let rec f x = e *)
+  | LET_MUTUAL_DECL (* let f x = ... and g y = ... *)
   | TYPE_DECL (* type t = ... *)
+  | TYPE_MUTUAL_DECL (* type a = ... and b = ... *)
   | EXCEPTION_DECL (* exception E of t *)
   | MODULE_DECL (* module M = struct ... end *)
   | MODULE_TYPE_DECL (* module type S = sig ... end *)
@@ -138,6 +142,7 @@ type t =
   | RECORD_FIELD (* field = expr *)
   | RECORD_FIELD_PATTERN (* field = pattern *)
   | PARAMETER (* Function parameter *)
+  | LOCALLY_ABSTRACT_TYPE_PARAM (* (type a b c) in function params *)
   | ARGUMENT (* Function argument *)
   (* ========================================================================= *)
   (* ERROR RECOVERY *)
@@ -200,6 +205,7 @@ let to_string = function
   | LOCAL_OPEN_EXPR -> "LOCAL_OPEN_EXPR"
   | LET_MODULE_EXPR -> "LET_MODULE_EXPR"
   | FIRST_CLASS_MODULE_EXPR -> "FIRST_CLASS_MODULE_EXPR"
+  | STRUCT_EXPR -> "STRUCT_EXPR"
   | MODULE_PATH -> "MODULE_PATH"
   | IDENT_PATTERN -> "IDENT_PATTERN"
   | WILDCARD_PATTERN -> "WILDCARD_PATTERN"
@@ -221,6 +227,7 @@ let to_string = function
   | POLY_VARIANT_TYPE_PATTERN -> "POLY_VARIANT_TYPE_PATTERN"
   | LOCAL_OPEN_PATTERN -> "LOCAL_OPEN_PATTERN"
   | OPERATOR_PATTERN -> "OPERATOR_PATTERN"
+  | FIRST_CLASS_MODULE_PATTERN -> "FIRST_CLASS_MODULE_PATTERN"
   | TYPE_VAR -> "TYPE_VAR"
   | TYPE_CONSTR -> "TYPE_CONSTR"
   | TYPE_ARROW -> "TYPE_ARROW"
@@ -244,7 +251,9 @@ let to_string = function
   | MODULE_APPLICATION -> "MODULE_APPLICATION"
   | LET_BINDING -> "LET_BINDING"
   | LET_REC_BINDING -> "LET_REC_BINDING"
+  | LET_MUTUAL_DECL -> "LET_MUTUAL_DECL"
   | TYPE_DECL -> "TYPE_DECL"
+  | TYPE_MUTUAL_DECL -> "TYPE_MUTUAL_DECL"
   | EXCEPTION_DECL -> "EXCEPTION_DECL"
   | MODULE_DECL -> "MODULE_DECL"
   | MODULE_TYPE_DECL -> "MODULE_TYPE_DECL"
@@ -261,6 +270,7 @@ let to_string = function
   | RECORD_FIELD -> "RECORD_FIELD"
   | RECORD_FIELD_PATTERN -> "RECORD_FIELD_PATTERN"
   | PARAMETER -> "PARAMETER"
+  | LOCALLY_ABSTRACT_TYPE_PARAM -> "LOCALLY_ABSTRACT_TYPE_PARAM"
   | ARGUMENT -> "ARGUMENT"
   | ERROR -> "ERROR"
   | MISSING -> "MISSING"
@@ -319,6 +329,8 @@ let from_string = function
   | "NEW_EXPR" -> Some NEW_EXPR
   | "LOCAL_OPEN_EXPR" -> Some LOCAL_OPEN_EXPR
   | "LET_MODULE_EXPR" -> Some LET_MODULE_EXPR
+  | "FIRST_CLASS_MODULE_EXPR" -> Some FIRST_CLASS_MODULE_EXPR
+  | "STRUCT_EXPR" -> Some STRUCT_EXPR
   | "IDENT_PATTERN" -> Some IDENT_PATTERN
   | "WILDCARD_PATTERN" -> Some WILDCARD_PATTERN
   | "LITERAL_PATTERN" -> Some LITERAL_PATTERN
@@ -360,7 +372,9 @@ let from_string = function
   | "MODULE_APPLICATION" -> Some MODULE_APPLICATION
   | "LET_BINDING" -> Some LET_BINDING
   | "LET_REC_BINDING" -> Some LET_REC_BINDING
+  | "LET_MUTUAL_DECL" -> Some LET_MUTUAL_DECL
   | "TYPE_DECL" -> Some TYPE_DECL
+  | "TYPE_MUTUAL_DECL" -> Some TYPE_MUTUAL_DECL
   | "EXCEPTION_DECL" -> Some EXCEPTION_DECL
   | "MODULE_DECL" -> Some MODULE_DECL
   | "MODULE_TYPE_DECL" -> Some MODULE_TYPE_DECL
@@ -377,6 +391,7 @@ let from_string = function
   | "RECORD_FIELD" -> Some RECORD_FIELD
   | "RECORD_FIELD_PATTERN" -> Some RECORD_FIELD_PATTERN
   | "PARAMETER" -> Some PARAMETER
+  | "LOCALLY_ABSTRACT_TYPE_PARAM" -> Some LOCALLY_ABSTRACT_TYPE_PARAM
   | "ARGUMENT" -> Some ARGUMENT
   | "ERROR" -> Some ERROR
   | "MISSING" -> Some MISSING
