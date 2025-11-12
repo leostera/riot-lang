@@ -66,9 +66,12 @@ let run matches =
     match package_filter with
     | Some pkg_name ->
         List.filter
-          (fun (pkg : Package.t) -> String.equal pkg.name pkg_name)
+          (fun (pkg : Package.t) -> 
+            String.equal pkg.name pkg_name && Package.is_workspace_member pkg)
           workspace.packages
-    | None -> workspace.packages
+    | None -> 
+        (* Only test workspace members, not external dependencies *)
+        List.filter Package.is_workspace_member workspace.packages
   in
 
   let test_binaries =

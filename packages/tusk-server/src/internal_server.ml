@@ -140,6 +140,7 @@ and handle_get_package_info state client_pid package_name =
                     library = None;
                     sources = { src = []; native = []; tests = []; examples = [] };
                     compiler = { profile_overrides = []; target_overrides = [] };
+                    commands = [];
                   };
                 sources = [];
                 dependencies = [];
@@ -175,6 +176,10 @@ and handle_get_package_graph state client_pid =
 
 and handle_find_executable state client_pid name =
   Log.debug ("Server: handle_find_executable " ^ name);
+  (* Only search in workspace member packages, not external dependencies *)
+  let workspace_packages = 
+    List.filter Package.is_workspace_member state.workspace.packages 
+  in
   let found =
     List.find_map
       (fun (pkg : Package.t) ->
@@ -182,7 +187,7 @@ and handle_find_executable state client_pid name =
           (fun (bin : Package.binary) -> bin.name = name)
           pkg.binaries
         |> Option.map (fun _ -> pkg))
-      state.workspace.packages
+      workspace_packages
   in
   (match found with
   | Some pkg ->

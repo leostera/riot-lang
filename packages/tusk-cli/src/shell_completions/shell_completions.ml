@@ -21,6 +21,7 @@ let list_packages (workspace : Tusk_model.Workspace.t) =
 (** List binaries as "package:binary" for display in completions, excluding tests *)
 let list_binaries (workspace : Tusk_model.Workspace.t) =
   workspace.packages
+  |> List.filter Tusk_model.Package.is_workspace_member
   |> List.concat_map (fun (pkg : Tusk_model.Package.t) ->
       List.filter_map
         (fun (bin : Tusk_model.Package.binary) ->
@@ -37,6 +38,7 @@ let list_binaries (workspace : Tusk_model.Workspace.t) =
 let list_tests (workspace : Tusk_model.Workspace.t) =
   let individual_tests =
     workspace.packages
+    |> List.filter Tusk_model.Package.is_workspace_member
     |> List.concat_map (fun (pkg : Tusk_model.Package.t) ->
         List.filter_map
           (fun (bin : Tusk_model.Package.binary) ->
@@ -50,6 +52,7 @@ let list_tests (workspace : Tusk_model.Workspace.t) =
   (* Add pkg:... entries for packages with tests *)
   let package_wildcards =
     workspace.packages
+    |> List.filter Tusk_model.Package.is_workspace_member
     |> List.filter_map (fun (pkg : Tusk_model.Package.t) ->
         let has_tests =
           List.exists

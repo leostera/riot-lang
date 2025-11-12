@@ -54,6 +54,13 @@ type t = {
 
 let equal a b = a.name = b.name && a.path = b.path
 
+(** Check if this package is a workspace member (not an external dependency).
+    External dependencies have relative_path that escapes the workspace (starts with "../")
+    or uses absolute paths. *)
+let is_workspace_member (pkg : t) : bool =
+  let rel_str = Path.to_string pkg.relative_path in
+  not (String.starts_with ~prefix:"../" rel_str || Path.is_absolute pkg.relative_path)
+
 (** Validate package name according to Tusk naming conventions *)
 let validate_name name =
   let is_alpha c = 
