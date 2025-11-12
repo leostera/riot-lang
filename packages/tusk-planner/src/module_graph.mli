@@ -25,6 +25,14 @@ val add_binary_node :
   includes:Path.t list ->
   unit
 
+val add_command_node :
+  t ->
+  name:string ->
+  source:Path.t ->
+  libraries:Path.t list ->
+  includes:Path.t list ->
+  unit
+
 val graph : t -> Module_node.t G.t
 val registry : t -> Module_registry.t
 val entries : t -> Module_scanner.entry list

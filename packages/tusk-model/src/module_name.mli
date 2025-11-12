@@ -35,6 +35,9 @@ val cma : t -> Path.t
 val cmxa : t -> Path.t
 (** Get the .cmxa filename based on qualified name *)
 
+val cmxs : t -> Path.t
+(** Get the .cmxs filename based on qualified name *)
+
 val cmo : t -> Path.t
 (** Get the .cmo filename based on qualified name *)
 
@@ -61,3 +64,6 @@ val canonical_mli : t -> Path.t
 
 val canonical_ml : t -> Path.t
 (** Get the canonical .ml filename *)
+
+val binary : t -> string
+(** Get the binary name (qualified name without extension, e.g., "demo_cmd" or "namespace__demo_cmd") *)

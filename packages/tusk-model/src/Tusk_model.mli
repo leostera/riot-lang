@@ -7,6 +7,7 @@ module Module = Module
 module Namespace = Namespace
 module Ocaml_compiler = Ocaml_compiler
 module Package = Package
+module Package_command = Package_command
 module Platform = Platform
 module Profile = Profile
 module Workspace = Workspace

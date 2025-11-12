@@ -30,6 +30,8 @@ val from_module_graph :
   toolchain:Tusk_toolchain.t ->
   store:Tusk_store.Store.t ->
   depset:Dependency.t list ->
+  needs_unix:bool ->
+  needs_dynlink:bool ->
   Module_node.t G.t -> 
   t * Path.t list
 (** Map a module graph to an action graph and collect all outputs.

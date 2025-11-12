@@ -48,7 +48,7 @@ let stdlib_flags (package : Package.t) =
   else
     [ Tusk_toolchain.Ocamlc.NoPervasives; Tusk_toolchain.Ocamlc.NoStdlib ]
 
-let module_to_actions ~package ~dep_includes ~get_dep_outputs ~depset
+let module_to_actions ~package ~dep_includes ~get_dep_outputs ~depset ~needs_unix ~needs_dynlink
     (module_node : Module_node.t) (deps : G.Node_id.t list) :
     Action.t list * Path.t list * Path.t list =
   match module_node with
@@ -142,6 +142,42 @@ let module_to_actions ~package ~dep_includes ~get_dep_outputs ~depset
           files
       in
 
+      (* Collect cc_flags for C compilation *)
+      let current_platform = Platform.current_string () in
+      
+      (* Current package's cc_flags *)
+      let current_ccflags = 
+        match List.assoc_opt current_platform package.compiler.target_overrides with
+        | Some target_override -> (
+            match target_override.profile_override with
+            | Some override -> (
+                match override.cc_flags with
+                | Profile.Override flags -> flags
+                | Inherit -> [])
+            | None -> [])
+        | None -> []
+      in
+      
+      (* Collect cc_flags from all dependencies transitively *)
+      let dep_ccflags = 
+        List.concat_map (fun (dep : Dependency.t) ->
+          match List.assoc_opt current_platform dep.package.compiler.target_overrides with
+          | Some target_override -> (
+              match target_override.profile_override with
+              | Some override -> (
+                  match override.cc_flags with
+                  | Profile.Override flags -> flags
+                  | Inherit -> [])
+              | None -> [])
+          | None -> []
+        ) depset
+      in
+      
+      (* Combine cc_flags *)
+      let ccflags = current_ccflags @ dep_ccflags in
+      
+      Log.debug ("[ACTION_GRAPH] C compilation cc_flags for " ^ package.name ^ ": " ^ String.concat " " ccflags);
+
       let actions =
         List.map
           (fun c_file ->
@@ -149,7 +185,7 @@ let module_to_actions ~package ~dep_includes ~get_dep_outputs ~depset
               Path.remove_extension c_file |> Path.add_extension ~ext:"o"
             in
             let output_name = Path.basename obj_file |> Path.v in
-            Action.CompileC { source = c_file; outputs = [ output_name ] })
+            Action.CompileC { source = c_file; outputs = [ output_name ]; ccflags })
           c_files
       in
 
@@ -172,24 +208,63 @@ let module_to_actions ~package ~dep_includes ~get_dep_outputs ~depset
   | { kind = Library { name; includes }; _ } ->
       let library_name = Module_name.(of_string name |> cmxa) in
       let static_lib_name = Module_name.(of_string name |> a) in
-      let outputs = [ library_name; static_lib_name ] in
+      let shared_lib_name = Module_name.(of_string name |> cmxs) in
       let sources = [] in
 
-      let objects =
+      let objects_with_duplicates =
         List.concat_map
           (fun dep_id ->
             let dep_outputs = get_dep_outputs dep_id in
             List.filter
-              (fun path ->
-                match Path.extension path with
+              (fun output ->
+                match Path.extension output with
                 | Some ".cmx" | Some ".o" -> true
                 | _ -> false)
               dep_outputs)
           deps
       in
+      
+      (* Deduplicate objects to avoid linking the same file multiple times *)
+      (* Use List.unique to preserve topological order required by OCaml linker *)
+      let objects = List.unique objects_with_duplicates in
 
-      let create_lib = Action.CreateLibrary { outputs; objects; includes } in
-      ([ create_lib ], outputs, sources)
+      (* Create static library (.cmxa + .a) *)
+      let create_lib = Action.CreateLibrary { 
+        outputs = [ library_name; static_lib_name ]; 
+        objects; 
+        includes 
+      } in
+      
+      (* For shared libraries, include external OCaml runtime dependencies *)
+      (* These are dependencies that can't be dynamically loaded later (stdlib, unix, dynlink) *)
+      let has_stdlib_dep = 
+        List.exists (fun (dep : Package.dependency) -> dep.name = "stdlib") 
+          package.dependencies
+      in
+      
+      let external_libs = 
+        (if has_stdlib_dep then [ Path.v "stdlib.cmxa" ] else [])
+        @ (if needs_unix then [ Path.v "unix.cmxa" ] else [])
+        @ (if needs_dynlink then [ Path.v "dynlink.cmxa" ] else [])
+      in
+      
+      (* When building .cmxs from .cmxa, the C objects are already embedded in the .cmxa *)
+      (* We should NOT pass them again via -cclib as this causes duplicate symbol errors *)
+      (* The .cmxa was built with all necessary C objects included (see CreateLibrary above) *)
+      
+      (* Create shared library (.cmxs) from the .cmxa *)
+      let create_shared = Action.CreateSharedLibrary {
+        outputs = [ shared_lib_name ];
+        objects = [ library_name ];  (* Use the .cmxa as input *)
+        libraries = external_libs;   (* Include external OCaml runtime libraries *)
+        includes;
+        cclibs = [];                 (* Empty - C objects already in .cmxa *)
+        ccopt_flags = [];
+        cclib_flags = [];
+      } in
+      
+      let all_outputs = [ library_name; static_lib_name; shared_lib_name ] in
+      ([ create_lib; create_shared ], all_outputs, sources)
   | { kind = Binary { name; source; libraries; includes }; _ } ->
       let binary_mod =
         Module.make ~namespace:Namespace.empty ~filename:source
@@ -267,7 +342,44 @@ let module_to_actions ~package ~dep_includes ~get_dep_outputs ~depset
       (* For example: -framework CoreFoundation must stay together *)
       let ccflags = current_ccflags @ dep_ccflags in
       
-      Log.debug ("[ACTION_GRAPH] Final cc_flags for linking " ^ name ^ ": " ^ String.concat " " ccflags);
+      Log.debug ("[ACTION_GRAPH] Final ccopt_flags for linking " ^ name ^ ": " ^ String.concat " " ccflags);
+      
+      (* Current package's ld_flags *)
+      let current_ldflags = 
+        match List.assoc_opt current_platform package.compiler.target_overrides with
+        | Some target_override -> (
+            match target_override.profile_override with
+            | Some override -> (
+                match override.ld_flags with
+                | Profile.Override flags -> flags
+                | Inherit -> [])
+            | None -> [])
+        | None -> []
+      in
+      
+      (* Collect ld_flags from all dependencies transitively *)
+      let dep_ldflags = 
+        List.concat_map (fun (dep : Dependency.t) ->
+          match List.assoc_opt current_platform dep.package.compiler.target_overrides with
+          | Some target_override -> (
+              match target_override.profile_override with
+              | Some override -> (
+                  match override.ld_flags with
+                  | Profile.Override flags -> flags
+                  | Inherit -> [])
+              | None -> [])
+          | None -> []
+        ) depset
+      in
+      
+      (* Combine ld_flags *)
+      let ldflags = current_ldflags @ dep_ldflags in
+      
+      Log.debug ("[ACTION_GRAPH] Final cclib_flags for linking " ^ name ^ ": " ^ String.concat " " ldflags);
+      
+      (* Keep ccopt_flags and cclib_flags separate *)
+      let ccopt_flags = ccflags in
+      let cclib_flags = ldflags in
       
       let link_action =
         Action.CreateExecutable
@@ -277,20 +389,29 @@ let module_to_actions ~package ~dep_includes ~get_dep_outputs ~depset
             libraries;
             includes;
             cclibs;
-            ccflags;
+            ccopt_flags;
+            cclib_flags;
           }
       in
       ([ compile_action; link_action ], [ binary_output ], sources)
 
-let from_module_graph ~package ~toolchain ~store ~depset
+let from_module_graph ~package ~toolchain ~store ~depset ~needs_unix ~needs_dynlink
     (module_graph : Module_node.t G.t) : t * Path.t list =
   (* Extract dependency cache include paths - no file copying needed! *)
-  let dep_includes =
+  let dep_cache_includes =
     List.map
       (fun (dep : Dependency.t) ->
         Tusk_store.Store.get_artifact_dir store dep.artifact)
       depset
   in
+
+  (* Add stdlib includes if needed *)
+  let stdlib_includes =
+    (if needs_unix then [ Path.v "+unix" ] else [])
+    @ (if needs_dynlink then [ Path.v "+dynlink" ] else [])
+  in
+
+  let dep_includes = stdlib_includes @ dep_cache_includes in
 
   let action_graph = create () in
   let node_mapping = HashMap.create () in
@@ -323,7 +444,7 @@ let from_module_graph ~package ~toolchain ~store ~depset
   List.iter
     (fun (module_node : Module_node.t G.node) ->
       let actions, outputs, sources =
-        module_to_actions ~package ~dep_includes ~get_dep_outputs ~depset
+        module_to_actions ~package ~dep_includes ~get_dep_outputs ~depset ~needs_unix ~needs_dynlink
           module_node.value module_node.deps
       in
 
@@ -432,18 +553,19 @@ let from_json json =
                         | Ok outputs, Ok sources ->
                             let package =
                               Package.
-                                {
-                                  name = pkg_name;
-                                  path = Path.v ".";
-                                  relative_path = Path.v ".";
-                                  dependencies = [];
-                                  foreign_dependencies = [];
-                                  binaries = [];
-                                  library = None;
-                                  sources =
-                                    { src = []; native = []; tests = []; examples = [] };
-                                  compiler = { profile_overrides = []; target_overrides = [] };
-                                }
+                {
+                  name = pkg_name;
+                  path = Path.v ".";
+                  relative_path = Path.v ".";
+                  dependencies = [];
+                  foreign_dependencies = [];
+                  binaries = [];
+                  library = None;
+                  sources =
+                    { src = []; native = []; tests = []; examples = [] };
+                  compiler = { profile_overrides = []; target_overrides = [] };
+                  commands = [];
+                }
                             in
                             let toolchain =
                               Tusk_toolchain.init

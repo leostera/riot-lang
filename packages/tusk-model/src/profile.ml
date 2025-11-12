@@ -17,6 +17,7 @@ type profile_override = {
   warnings : Ocaml_compiler.warning list override;
   errors : Ocaml_compiler.warning list override;
   cc_flags : string list override;
+  ld_flags : string list override;
   ocamlc_flags : string list override;
 }
 
@@ -40,7 +41,8 @@ type t = {
   errors : Ocaml_compiler.warning list;     (** Warnings to treat as errors *)
   
   (* Additional flags *)
-  cc_flags : string list;     (** C compiler/linker flags *)
+  cc_flags : string list;     (** C compiler flags (passed with -ccopt) *)
+  ld_flags : string list;     (** Linker flags (passed with -cclib) *)
   ocamlc_flags : string list; (** Additional raw ocamlc/ocamlopt flags *)
 }
 
@@ -62,6 +64,7 @@ let debug = {
     Ocaml_compiler.UnusedMatch;
   ];
   cc_flags = [];
+  ld_flags = [];
   ocamlc_flags = [];
 }
 
@@ -78,6 +81,7 @@ let release = {
   warnings = [];
   errors = [ Ocaml_compiler.All ];  (* All warnings as errors *)
   cc_flags = [];
+  ld_flags = [];
   ocamlc_flags = [];
 }
 
@@ -94,6 +98,7 @@ let merge base override = {
   warnings = override.warnings;  (* Replace *)
   errors = override.errors;  (* Replace *)
   cc_flags = base.cc_flags @ override.cc_flags;  (* Append *)
+  ld_flags = base.ld_flags @ override.ld_flags;  (* Append *)
   ocamlc_flags = base.ocamlc_flags @ override.ocamlc_flags;  (* Append *)
 }
 
@@ -110,6 +115,7 @@ let apply_override base (override : profile_override) = {
   warnings = (match override.warnings with Inherit -> base.warnings | Override l -> l);
   errors = (match override.errors with Inherit -> base.errors | Override l -> l);
   cc_flags = (match override.cc_flags with Inherit -> base.cc_flags | Override l -> base.cc_flags @ l);
+  ld_flags = (match override.ld_flags with Inherit -> base.ld_flags | Override l -> base.ld_flags @ l);
   ocamlc_flags = (match override.ocamlc_flags with Inherit -> base.ocamlc_flags | Override l -> base.ocamlc_flags @ l);
 }
 
@@ -165,6 +171,7 @@ let override_from_toml (table_items : (string * Std.Data.Toml.value) list) : pro
     warnings = Inherit;  (* TODO: parse warnings *)
     errors = Inherit;    (* TODO: parse errors *)
     cc_flags = get_string_list "cc_flags";
+    ld_flags = get_string_list "ld_flags";
     ocamlc_flags = get_string_list "ocamlc_flags";
   }
 
@@ -210,6 +217,10 @@ let from_toml (table_items : (string * Std.Data.Toml.value) list) ~(base : t) : 
       | Some (Array arr) ->
           List.filter_map (function String s -> Some s | _ -> None) arr
       | _ -> base.cc_flags);
+    ld_flags = (match List.assoc_opt "ld_flags" table_items with
+      | Some (Array arr) ->
+          List.filter_map (function String s -> Some s | _ -> None) arr
+      | _ -> base.ld_flags);
     ocamlc_flags = (match List.assoc_opt "ocamlc_flags" table_items with
       | Some (Array arr) ->
           List.filter_map (function String s -> Some s | _ -> None) arr
@@ -256,6 +267,7 @@ let hash state profile =
   List.iter (fun w -> H.write_string state (Ocaml_compiler.warning_to_string w)) profile.warnings;
   List.iter (fun w -> H.write_string state (Ocaml_compiler.warning_to_string w)) profile.errors;
   List.iter (H.write_string state) profile.cc_flags;
+  List.iter (H.write_string state) profile.ld_flags;
   List.iter (H.write_string state) profile.ocamlc_flags
 
 (** Convert profile to JSON *)
@@ -275,5 +287,6 @@ let to_json profile =
     ("no_alias_deps", bool profile.no_alias_deps);
     ("open_modules", array (List.map string profile.open_modules));
     ("cc_flags", array (List.map string profile.cc_flags));
+    ("ld_flags", array (List.map string profile.ld_flags));
     ("ocamlc_flags", array (List.map string profile.ocamlc_flags));
   ]

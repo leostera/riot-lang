@@ -111,6 +111,14 @@ let server_port workspace =
   let port_range = 65535 - 49152 in
   50152 + (abs hash_int mod port_range)
 
+(** Command discovery functions - moved here to avoid circular dependency *)
+let discover_commands (workspace : t) : Package_command.t list =
+  List.concat_map (fun (pkg : Package.t) -> pkg.commands) workspace.packages
+
+let find_command (workspace : t) (name : string) : Package_command.t option =
+  discover_commands workspace
+  |> List.find_opt (fun (cmd : Package_command.t) -> cmd.name = name)
+
 module Tests = struct
   let test_parse_workspace_toml () : (unit, string) result = Ok () [@test]
 end [@test]

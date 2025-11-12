@@ -29,3 +29,9 @@ val project_id : t -> string
 val server_port : t -> int
 (** Get a unique port number for the workspace server based on workspace root
     path. Returns a port in the dynamic/private range (49152-65535) *)
+
+val discover_commands : t -> Package_command.t list
+(** Discover all package commands in the workspace by collecting commands from all packages *)
+
+val find_command : t -> string -> Package_command.t option
+(** Find a command by name in the workspace *)

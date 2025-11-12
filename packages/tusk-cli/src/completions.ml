@@ -21,6 +21,8 @@ let command =
          |> help
               "List available test binaries in current workspace (format: \
                test:package)";
+         flag "commands" |> long "commands"
+         |> help "List available package commands in current workspace";
        ]
 
 let run matches =
@@ -45,8 +47,9 @@ let run matches =
       let has_packages = get_flag matches "packages" in
       let has_binaries = get_flag matches "binaries" in
       let has_tests = get_flag matches "tests" in
+      let has_commands = get_flag matches "commands" in
 
-      if not (has_packages || has_binaries || has_tests) then
+      if not (has_packages || has_binaries || has_tests || has_commands) then
         (* Use ArgParser to print help instead of manual *)
         let () = print_help completions_command in
         Ok ()
@@ -76,5 +79,9 @@ let run matches =
               List.iter
                 (fun test -> println test)
                 (Shell_completions.list_tests workspace);
+
+            if has_commands then (
+              let command_lines = Shell_completions.list_commands workspace in
+              List.iter println command_lines);
 
             Ok ()

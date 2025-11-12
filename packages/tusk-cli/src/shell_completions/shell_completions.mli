@@ -19,3 +19,9 @@ val list_binaries : Tusk_model.Workspace.t -> string list
 
 (** List all test binaries in workspace as "test:package" for display *)
 val list_tests : Tusk_model.Workspace.t -> string list
+
+(** List all package commands in workspace as "package:command" for display *)
+val list_commands : Tusk_model.Workspace.t -> string list
+
+(** List all package command descriptions matching the order of list_commands *)
+val list_command_descriptions : Tusk_model.Workspace.t -> string list

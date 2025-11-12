@@ -71,14 +71,28 @@ let plan_node input =
            all_deps
     in
 
+    (* Check if any package (including our own) needs dynlink *)
+    let needs_dynlink =
+      let check_pkg (pkg : Package.t) =
+        List.exists
+          (fun (d : Package.dependency) -> d.name = "dynlink")
+          pkg.dependencies
+      in
+      check_pkg input.package
+      || List.exists
+           (fun (dep : Dependency.t) -> check_pkg dep.package)
+           all_deps
+    in
+
     let binary_libraries =
       match input.package.library with
       | Some _ ->
           let lib_name = Module_name.(of_string input.package.name |> cmxa) in
-          (* Build libraries list: unix (if needed), dependencies, then our library *)
+          (* Build libraries list: unix (if needed), dynlink (if needed), dependencies, then our library *)
           let unix_lib = if needs_unix then [ Path.v "unix.cmxa" ] else [] in
+          let dynlink_lib = if needs_dynlink then [ Path.v "dynlink.cmxa" ] else [] in
           let dep_libs = List.map Dependency.library_cmxa all_deps in
-          unix_lib @ dep_libs @ [ lib_name ]
+          unix_lib @ dynlink_lib @ dep_libs @ [ lib_name ]
       | None -> []
     in
 
@@ -92,9 +106,10 @@ let plan_node input =
 
     let binary_includes =
       let unix_includes = if needs_unix then [ Path.v "+unix" ] else [] in
+      let dynlink_includes = if needs_dynlink then [ Path.v "+dynlink" ] else [] in
       (* Include current package directory so binaries can access the library *)
       let own_package_dir = [ Path.v "." ] in
-      unix_includes @ own_package_dir @ dep_cache_dirs
+      unix_includes @ dynlink_includes @ own_package_dir @ dep_cache_dirs
     in
 
     List.iter
@@ -102,6 +117,16 @@ let plan_node input =
         Module_graph.add_binary_node graph_builder ~name:bin.name
           ~source:bin.path ~libraries:binary_libraries ~includes:binary_includes)
       input.package.binaries;
+
+    (* Add command nodes for package commands *)
+    (* Commands are regular binaries - link all libraries like regular binaries *)
+    Log.debug ("[MODULE_PLANNER] Command includes for " ^ input.package.name ^ ":");
+    List.iter (fun inc -> Log.debug ("  " ^ Path.to_string inc)) binary_includes;
+    List.iter
+      (fun (cmd : Package_command.t) ->
+        Module_graph.add_command_node graph_builder ~name:cmd.name
+          ~source:cmd.command_source ~libraries:binary_libraries ~includes:binary_includes)
+      input.package.commands;
 
     let main_library_node_id : G.Node_id.t option =
       match input.package.library with
@@ -144,6 +169,7 @@ let plan_node input =
         let action_graph, _outputs =
           Action_graph.from_module_graph ~package:input.package
             ~toolchain:input.toolchain ~store:input.store ~depset:input.depset
+            ~needs_unix ~needs_dynlink
             module_graph
         in
 

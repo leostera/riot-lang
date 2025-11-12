@@ -531,6 +531,9 @@ let add_binary_node t ~name ~source ~libraries ~includes =
       | Module_node.Library _ -> G.add_edge bin_node ~depends_on:node
       | _ -> ())
 
+(* Commands are just regular binaries *)
+let add_command_node = add_binary_node
+
 let graph t = t.graph
 let registry t = t.registry
 let entries t = t.entries

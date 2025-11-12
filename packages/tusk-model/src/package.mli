@@ -44,9 +44,17 @@ type t = {
   library : library option;
   sources : sources;
   compiler : compiler_config;
+  commands : Package_command.t list;
 }
 
 val equal : t -> t -> bool
+
+val validate_name : string -> (string, string) result
+(** Validate a package name according to Tusk naming conventions:
+    - Must start with a lowercase letter
+    - Can only contain lowercase letters, numbers, hyphens, and underscores
+    - Cannot start or end with hyphens or underscores
+    - Cannot be empty *)
 
 val from_toml :
   Std.Data.Toml.value ->

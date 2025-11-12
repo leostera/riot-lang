@@ -17,6 +17,7 @@ type profile_override = {
   warnings : Ocaml_compiler.warning list override;
   errors : Ocaml_compiler.warning list override;
   cc_flags : string list override;
+  ld_flags : string list override;
   ocamlc_flags : string list override;
 }
 
@@ -40,7 +41,8 @@ type t = {
   errors : Ocaml_compiler.warning list;     (** Warnings to treat as errors *)
   
   (* Additional flags *)
-  cc_flags : string list;     (** C compiler/linker flags *)
+  cc_flags : string list;     (** C compiler flags (passed with -ccopt) *)
+  ld_flags : string list;     (** Linker flags (passed with -cclib) *)
   ocamlc_flags : string list; (** Additional raw ocamlc/ocamlopt flags *)
 }
 
@@ -52,7 +54,7 @@ val release : t
 
 (** Merge two profiles - override takes precedence per-field
     For booleans and kind: replaced
-    For lists: appended (cc_flags, ocamlc_flags) or replaced (warnings, errors, open_modules)
+    For lists: appended (cc_flags, ld_flags, ocamlc_flags) or replaced (warnings, errors, open_modules)
     For optional int: override if Some, keep base if None *)
 val merge : t -> t -> t
 

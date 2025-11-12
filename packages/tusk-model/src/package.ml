@@ -49,9 +49,50 @@ type t = {
   library : library option;
   sources : sources;
   compiler : compiler_config;
+  commands : Package_command.t list;
 }
 
 let equal a b = a.name = b.name && a.path = b.path
+
+(** Validate package name according to Tusk naming conventions *)
+let validate_name name =
+  let is_alpha c = 
+    (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+  in
+  
+  let is_lowercase c = 
+    c >= 'a' && c <= 'z'
+  in
+  
+  let is_digit c = 
+    c >= '0' && c <= '9'
+  in
+  
+  let is_alphanum c = 
+    is_alpha c || is_digit c
+  in
+  
+  let is_valid_char c = 
+    is_alphanum c || c = '-' || c = '_'
+  in
+  
+  if String.length name = 0 then
+    Error "Package name cannot be empty"
+  else
+    let first_char = String.get name 0 in
+    let last_char = String.get name (String.length name - 1) in
+    
+    if not (is_lowercase first_char && is_alpha first_char) then
+      Error ("Package name must start with a lowercase letter. Try '" ^ 
+                      String.lowercase_ascii name ^ "' instead")
+    else if first_char = '-' || first_char = '_' then
+      Error "Package name cannot start with hyphen or underscore"
+    else if last_char = '-' || last_char = '_' then
+      Error "Package name cannot end with hyphen or underscore"
+    else if not (String.for_all is_valid_char name) then
+      Error "Package name can only contain lowercase letters, numbers, hyphens, and underscores"
+    else
+      Ok name
 
 (** Package TOML parsing *)
 
@@ -190,7 +231,7 @@ let parse_foreign_dependency (name : string) (value : Toml.value)
           in
           
           let inputs = scan_foreign_inputs dep_path in
-          Log.info ("[PACKAGE] Foreign dependency '" ^ name ^ "' found " ^ Int.to_string (List.length inputs) ^ " input files");
+          Log.debug ("[PACKAGE] Foreign dependency '" ^ name ^ "' found " ^ Int.to_string (List.length inputs) ^ " input files");
           
           Ok { name; path = dep_path; inputs; build_cmd; clean_cmd; test_cmd; outputs = output_paths; env }
       | Error e, _, _ -> Error e
@@ -453,6 +494,15 @@ let from_toml (toml : Toml.value) ~(workspace_deps : dependency list)
       Log.debug ("[PACKAGE] " ^ name ^ ": discovered " ^ Int.to_string (List.length test_binaries) ^ " test binaries from " ^ Int.to_string (List.length sources.tests) ^ " test files");
       Log.debug ("[PACKAGE] " ^ name ^ ": discovered " ^ Int.to_string (List.length example_binaries) ^ " example binaries from " ^ Int.to_string (List.length sources.examples) ^ " example files");
       let all_binaries = binaries @ test_binaries @ example_binaries in
+      
+      (* Parse commands using Package_command module *)
+      let commands = 
+        match List.assoc_opt "command" items with
+        | Some (Toml.Array cmd_entries) ->
+            Package_command.parse_from_toml cmd_entries ~package_name:name ~package_path:path
+        | _ -> []
+      in
+      
       Ok
         {
           name;
@@ -464,6 +514,7 @@ let from_toml (toml : Toml.value) ~(workspace_deps : dependency list)
           library;
           sources;
           compiler;
+          commands;
         }
   | _ -> Error "TOML is not a table"
 
@@ -588,6 +639,7 @@ let from_json (json : Json.t) : (t, string) result =
               library;
               sources = { src = []; native = []; tests = []; examples = [] };
               compiler = { profile_overrides = []; target_overrides = [] };
+              commands = [];
             }
           | Error _, _ -> Error ("Invalid path in package JSON: " ^ path_str)
           | _, Error _ -> Error ("Invalid relative_path in package JSON: " ^ rel_path_str))

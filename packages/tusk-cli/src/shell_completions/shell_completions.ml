@@ -62,13 +62,38 @@ let list_tests (workspace : Tusk_model.Workspace.t) =
   in
   (package_wildcards @ individual_tests) |> List.sort_uniq String.compare
 
+(** List package commands as "package:command\tdescription" (tab-separated) for display in completions *)
+let list_commands (workspace : Tusk_model.Workspace.t) =
+  Tusk_model.Workspace.discover_commands workspace
+  |> List.map (fun (cmd : Tusk_model.Package_command.t) ->
+      let name = cmd.package_name ^ ":" ^ cmd.name in
+      (* Use help text from TOML, or provide fallback *)
+      let desc = 
+        if String.length cmd.description = 0 then 
+          "Package command"
+        else 
+          cmd.description 
+      in
+      let tab = Char.chr 9 in  (* Explicit tab character *)
+      name ^ String.make 1 tab ^ desc)
+  |> List.sort_uniq String.compare
+
+(** List package command descriptions matching the order of list_commands *)
+let list_command_descriptions (workspace : Tusk_model.Workspace.t) =
+  list_commands workspace
+  |> List.map (fun line ->
+      (* Extract description after tab *)
+      match String.index_opt line '\t' with
+      | Some idx -> String.sub line (idx + 1) (String.length line - idx - 1)
+      | None -> "Package command")
+
 let generate_zsh_script () =
   {|#compdef tusk
 
 _tusk() {
-    local -a subcommands
+    local -a builtin_commands package_commands all_commands
 
-    subcommands=(
+    builtin_commands=(
         'build:Build packages'
         'run:Run a binary'
         'test:Run tests'
@@ -84,8 +109,49 @@ _tusk() {
         'version:Show version'
     )
 
+    # Load package commands dynamically (format: "package:command\tdescription")
+    local -a raw_lines package_commands package_descs
+    raw_lines=(${(f)"$(tusk completions --commands 2>/dev/null)"})
+    
+    # Parse tab-separated name and description
+    package_commands=()
+    package_descs=()
+    for line in $raw_lines; do
+        local name="${line%%$'\t'*}"
+        local desc="${line#*$'\t'}"
+        package_commands+=("$name")
+        package_descs+=("$desc")
+    done
+
     local context state state_descr line
     typeset -A opt_args
+
+    # Check if we've passed -- separator, if so use default file completion
+    local i
+    for i in {2..$CURRENT}; do
+        if [[ "${words[$i]}" == "--" ]]; then
+            _files
+            return 0
+        fi
+    done
+
+    # If we're completing the first argument (the command), show all commands
+    if [[ $CURRENT -eq 2 ]]; then
+        # Combine builtin and package commands for _describe
+        local -a all_commands_with_descs
+        all_commands_with_descs=($builtin_commands)
+        
+        # Add package commands in "name:description" format
+        for i in {1..${#package_commands[@]}}; do
+            # Escape colons in the command name for _describe
+            local escaped_name="${package_commands[$i]//:/\\:}"
+            all_commands_with_descs+=("$escaped_name:${package_descs[$i]}")
+        done
+        
+        # Show all commands with descriptions, sorted by _describe
+        _describe -t commands 'command' all_commands_with_descs
+        return 0
+    fi
 
     case "$words[2]" in
         run)
@@ -129,14 +195,20 @@ _tusk() {
                 '--shell[Shell type]:shell:(bash zsh fish)' \
                 '--packages[List packages]' \
                 '--binaries[List binaries]' \
-                '--tests[List tests]'
+                '--tests[List tests]' \
+                '--commands[List commands]'
             ;;
         clean|install|new|server|rpc|mcp|doc|lsp|version)
             # These commands have their own completion logic
             # Can be extended later
             ;;
+        *:*)
+            # Package command (format: package:command)
+            # Just complete files - users can use --help to learn about options
+            _files
+            ;;
         *)
-            _describe 'command' subcommands
+            _describe 'command' all_commands
             ;;
     esac
 }

@@ -41,6 +41,7 @@ let qualified_name t =
 (* Output file names based on qualified names *)
 let cma t = qualified_name t ^ ".cma" |> Path.v
 let cmxa t = qualified_name t ^ ".cmxa" |> Path.v
+let cmxs t = qualified_name t ^ ".cmxs" |> Path.v
 let cmo t = qualified_name t ^ ".cmo" |> Path.v
 let cmi t = qualified_name t ^ ".cmi" |> Path.v
 let cmx t = qualified_name t ^ ".cmx" |> Path.v
@@ -50,3 +51,7 @@ let o t = qualified_name t ^ ".o" |> Path.v
 let a t = qualified_name t ^ ".a" |> Path.v
 let canonical_mli t = qualified_name t ^ ".mli" |> Path.v
 let canonical_ml t = qualified_name t ^ ".ml" |> Path.v
+
+let binary t = 
+  (* Get the base name without extension from the original filename *)
+  Path.remove_extension t.filename |> Path.basename |> sanitize_name

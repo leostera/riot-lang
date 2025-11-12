@@ -21,7 +21,7 @@ type t =
       includes : Path.t list;
       flags : Tusk_toolchain.Ocamlc.compiler_flag list;
     }
-  | CompileC of { source : Path.t; outputs : Path.t list }
+  | CompileC of { source : Path.t; outputs : Path.t list; ccflags : string list }
   | CreateLibrary of {
       outputs : Path.t list;
       objects : Path.t list;
@@ -33,7 +33,17 @@ type t =
       libraries : Path.t list;
       includes : Path.t list;
       cclibs : Path.t list;  (* Foreign C/Rust libraries to link with -cclib *)
-      ccflags : string list;  (* Additional C compiler/linker flags like -framework *)
+      ccopt_flags : string list;  (* cc_flags from tusk.toml → passed with -ccopt *)
+      cclib_flags : string list;  (* ld_flags from tusk.toml → passed with -cclib *)
+    }
+  | CreateSharedLibrary of {
+      outputs : Path.t list;
+      objects : Path.t list;
+      libraries : Path.t list;
+      includes : Path.t list;
+      cclibs : Path.t list;
+      ccopt_flags : string list;
+      cclib_flags : string list;
     }
   | CopyFile of { source : Path.t; destination : Path.t }
   | WriteFile of { destination : Path.t; content : string }
@@ -100,10 +110,11 @@ let hash action =
       write_sorted_paths hasher includes;
       write_sorted_flags hasher flags;
       Sha256.finish hasher
-  | CompileC { source; outputs } ->
+  | CompileC { source; outputs; ccflags } ->
       Sha256.write_string hasher "CompileC";
       Sha256.write_string hasher (Path.to_string source);
       write_sorted_paths hasher outputs;
+      List.iter (Sha256.write_string hasher) ccflags;
       Sha256.finish hasher
   | CreateLibrary { outputs; objects; includes } ->
       Sha256.write_string hasher "CreateLibrary";
@@ -111,14 +122,29 @@ let hash action =
       write_sorted_paths hasher objects;
       write_sorted_paths hasher includes;
       Sha256.finish hasher
-  | CreateExecutable { outputs; objects; libraries; includes; cclibs; ccflags } ->
+  | CreateExecutable { outputs; objects; libraries; includes; cclibs; ccopt_flags; cclib_flags } ->
       Sha256.write_string hasher "CreateExecutable";
       write_sorted_paths hasher outputs;
       write_sorted_paths hasher objects;
       write_sorted_paths hasher libraries;
       write_sorted_paths hasher includes;
       write_sorted_paths hasher cclibs;
-      List.iter (Sha256.write_string hasher) (List.sort String.compare ccflags);
+      let sorted_ccopt = List.sort String.compare ccopt_flags in
+      List.iter (fun s -> Sha256.write_string hasher s) sorted_ccopt;
+      let sorted_cclib = List.sort String.compare cclib_flags in
+      List.iter (fun s -> Sha256.write_string hasher s) sorted_cclib;
+      Sha256.finish hasher
+  | CreateSharedLibrary { outputs; objects; libraries; includes; cclibs; ccopt_flags; cclib_flags } ->
+      Sha256.write_string hasher "CreateSharedLibrary";
+      write_sorted_paths hasher outputs;
+      write_sorted_paths hasher objects;
+      write_sorted_paths hasher libraries;
+      write_sorted_paths hasher includes;
+      write_sorted_paths hasher cclibs;
+      let sorted_ccopt = List.sort String.compare ccopt_flags in
+      List.iter (fun s -> Sha256.write_string hasher s) sorted_ccopt;
+      let sorted_cclib = List.sort String.compare cclib_flags in
+      List.iter (fun s -> Sha256.write_string hasher s) sorted_cclib;
       Sha256.finish hasher
   | CopyFile { source; destination } ->
       Sha256.write_string hasher "CopyFile";
@@ -148,12 +174,14 @@ let to_string = function
       "CompileImplementation(" ^ Path.to_string source ^ "->" ^ String.concat "," (List.map Path.to_string outputs) ^ ",includes=" ^ String.concat "," (List.map Path.to_string includes) ^ ",flags=" ^ String.concat " " (Tusk_toolchain.Ocamlc.flags_to_string flags) ^ ")"
   | GenerateInterface { source; outputs; includes; flags } ->
       "GenerateInterface(" ^ Path.to_string source ^ "->" ^ String.concat "," (List.map Path.to_string outputs) ^ ",includes=" ^ String.concat "," (List.map Path.to_string includes) ^ ",flags=" ^ String.concat " " (Tusk_toolchain.Ocamlc.flags_to_string flags) ^ ")"
-  | CompileC { source; outputs } ->
-      "CompileC(" ^ Path.to_string source ^ "->" ^ String.concat "," (List.map Path.to_string outputs) ^ ")"
+  | CompileC { source; outputs; ccflags } ->
+      "CompileC(" ^ Path.to_string source ^ "->" ^ String.concat "," (List.map Path.to_string outputs) ^ ",ccflags=" ^ String.concat " " ccflags ^ ")"
   | CreateLibrary { outputs; objects; includes } ->
       "CreateLibrary(" ^ String.concat "," (List.map Path.to_string outputs) ^ ",objects=" ^ String.concat "," (List.map Path.to_string objects) ^ ",includes=" ^ String.concat "," (List.map Path.to_string includes) ^ ")"
-  | CreateExecutable { outputs; objects; libraries; includes; cclibs; ccflags } ->
-      "CreateExecutable(" ^ String.concat "," (List.map Path.to_string outputs) ^ ",objects=" ^ String.concat "," (List.map Path.to_string objects) ^ ",libraries=" ^ String.concat "," (List.map Path.to_string libraries) ^ ",includes=" ^ String.concat "," (List.map Path.to_string includes) ^ ",cclibs=" ^ String.concat "," (List.map Path.to_string cclibs) ^ ",ccflags=" ^ String.concat " " ccflags ^ ")"
+  | CreateExecutable { outputs; objects; libraries; includes; cclibs; ccopt_flags; cclib_flags } ->
+      "CreateExecutable(" ^ String.concat "," (List.map Path.to_string outputs) ^ ",objects=" ^ String.concat "," (List.map Path.to_string objects) ^ ",libraries=" ^ String.concat "," (List.map Path.to_string libraries) ^ ",includes=" ^ String.concat "," (List.map Path.to_string includes) ^ ",cclibs=" ^ String.concat "," (List.map Path.to_string cclibs) ^ ",ccopt_flags=" ^ String.concat " " ccopt_flags ^ ",cclib_flags=" ^ String.concat " " cclib_flags ^ ")"
+  | CreateSharedLibrary { outputs; objects; libraries; includes; cclibs; ccopt_flags; cclib_flags } ->
+      "CreateSharedLibrary(" ^ String.concat "," (List.map Path.to_string outputs) ^ ",objects=" ^ String.concat "," (List.map Path.to_string objects) ^ ",libraries=" ^ String.concat "," (List.map Path.to_string libraries) ^ ",includes=" ^ String.concat "," (List.map Path.to_string includes) ^ ",cclibs=" ^ String.concat "," (List.map Path.to_string cclibs) ^ ",ccopt_flags=" ^ String.concat " " ccopt_flags ^ ",cclib_flags=" ^ String.concat " " cclib_flags ^ ")"
   | CopyFile { source; destination } ->
       "CopyFile(" ^ Path.to_string source ^ "->" ^ Path.to_string destination ^ ")"
   | WriteFile { destination; content } ->
@@ -203,13 +231,14 @@ let to_json action =
             array
               (List.map string (Tusk_toolchain.Ocamlc.flags_to_string flags)) );
         ]
-  | CompileC { source; outputs } ->
+  | CompileC { source; outputs; ccflags } ->
       obj
         [
           ("type", string "CompileC");
           ("source", string (Path.to_string source));
           ( "outputs",
             array (List.map (fun p -> string (Path.to_string p)) outputs) );
+          ("ccflags", array (List.map string ccflags));
         ]
   | CreateLibrary { outputs; objects; includes } ->
       obj
@@ -222,7 +251,7 @@ let to_json action =
           ( "includes",
             array (List.map (fun p -> string (Path.to_string p)) includes) );
         ]
-  | CreateExecutable { outputs; objects; libraries; includes; cclibs; ccflags } ->
+  | CreateExecutable { outputs; objects; libraries; includes; cclibs; ccopt_flags; cclib_flags } ->
       obj
         [
           ( "outputs",
@@ -236,8 +265,29 @@ let to_json action =
             array (List.map (fun p -> string (Path.to_string p)) includes) );
           ( "cclibs",
             array (List.map (fun p -> string (Path.to_string p)) cclibs) );
-          ( "ccflags",
-            array (List.map string ccflags) );
+          ( "ccopt_flags",
+            array (List.map string ccopt_flags) );
+          ( "cclib_flags",
+            array (List.map string cclib_flags) );
+        ]
+  | CreateSharedLibrary { outputs; objects; libraries; includes; cclibs; ccopt_flags; cclib_flags } ->
+      obj
+        [
+          ( "outputs",
+            array (List.map (fun p -> string (Path.to_string p)) outputs) );
+          ("type", string "CreateSharedLibrary");
+          ( "objects",
+            array (List.map (fun p -> string (Path.to_string p)) objects) );
+          ( "libraries",
+            array (List.map (fun p -> string (Path.to_string p)) libraries) );
+          ( "includes",
+            array (List.map (fun p -> string (Path.to_string p)) includes) );
+          ( "cclibs",
+            array (List.map (fun p -> string (Path.to_string p)) cclibs) );
+          ( "ccopt_flags",
+            array (List.map string ccopt_flags) );
+          ( "cclib_flags",
+            array (List.map string cclib_flags) );
         ]
   | CopyFile { source; destination } ->
       obj
@@ -316,7 +366,11 @@ let from_json json =
   | Some (String "CompileC") -> (
       match (get_field "source" json, parse_outputs json) with
       | Some (String src), Some outs ->
-          Ok (CompileC { source = Path.v src; outputs = outs })
+          let ccflags = match get_field "ccflags" json with
+            | Some (Array arr) -> List.filter_map (function String s -> Some s | _ -> None) arr
+            | _ -> []
+          in
+          Ok (CompileC { source = Path.v src; outputs = outs; ccflags })
       | _ -> Error "Invalid CompileC")
   | Some (String "CreateLibrary") -> (
       match parse_outputs json with
@@ -328,8 +382,15 @@ let from_json json =
       | Some outs ->
           Ok
             (CreateExecutable
-               { outputs = outs; objects = []; libraries = []; includes = []; cclibs = []; ccflags = [] })
+               { outputs = outs; objects = []; libraries = []; includes = []; cclibs = []; ccopt_flags = []; cclib_flags = [] })
       | _ -> Error "Invalid CreateExecutable")
+  | Some (String "CreateSharedLibrary") -> (
+      match parse_outputs json with
+      | Some outs ->
+          Ok
+            (CreateSharedLibrary
+               { outputs = outs; objects = []; libraries = []; includes = []; cclibs = []; ccopt_flags = []; cclib_flags = [] })
+      | _ -> Error "Invalid CreateSharedLibrary")
   | Some (String "CopyFile") -> (
       match (get_field "source" json, get_field "destination" json) with
       | Some (String src), Some (String dst) ->
@@ -393,7 +454,16 @@ let equal a1 a2 =
       && List.for_all2 Path.equal r1.libraries r2.libraries
       && List.for_all2 Path.equal r1.includes r2.includes
       && List.for_all2 Path.equal r1.cclibs r2.cclibs
-      && List.for_all2 String.equal r1.ccflags r2.ccflags
+      && List.for_all2 String.equal r1.ccopt_flags r2.ccopt_flags
+      && List.for_all2 String.equal r1.cclib_flags r2.cclib_flags
+  | CreateSharedLibrary r1, CreateSharedLibrary r2 ->
+      List.for_all2 Path.equal r1.outputs r2.outputs
+      && List.for_all2 Path.equal r1.objects r2.objects
+      && List.for_all2 Path.equal r1.libraries r2.libraries
+      && List.for_all2 Path.equal r1.includes r2.includes
+      && List.for_all2 Path.equal r1.cclibs r2.cclibs
+      && List.for_all2 String.equal r1.ccopt_flags r2.ccopt_flags
+      && List.for_all2 String.equal r1.cclib_flags r2.cclib_flags
   | CopyFile r1, CopyFile r2 ->
       Path.equal r1.source r2.source && Path.equal r1.destination r2.destination
   | WriteFile r1, WriteFile r2 ->
@@ -414,6 +484,7 @@ let outputs = function
   | CompileC { outputs; _ } -> outputs
   | CreateLibrary { outputs; _ } -> outputs
   | CreateExecutable { outputs; _ } -> outputs
+  | CreateSharedLibrary { outputs; _ } -> outputs
   | CopyFile { destination; _ } -> [ destination ]
   | WriteFile { destination; _ } -> [ destination ]
   | BuildForeignDependency { outputs; _ } -> outputs
@@ -425,6 +496,7 @@ let kind = function
   | CompileC _ -> "CompileC"
   | CreateLibrary _ -> "CreateLibrary"
   | CreateExecutable _ -> "CreateExecutable"
+  | CreateSharedLibrary _ -> "CreateSharedLibrary"
   | CopyFile _ -> "CopyFile"
   | WriteFile _ -> "WriteFile"
   | BuildForeignDependency _ -> "BuildForeignDependency"
