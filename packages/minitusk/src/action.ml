@@ -41,6 +41,9 @@ type build_plan = {
   outputs : string list;
   cc_flags : string list;
   ld_flags : string list;
+  uses_stdlib : bool;
+  uses_unix : bool;
+  uses_dynlink : bool;
 }
 
 let print action =
@@ -104,7 +107,7 @@ let print_build_plan plan =
   Printf.printf "=== END BUILD PLAN ===\n\n"
   *)
 
-let execute_action ~project_root ~package ~cc_flags ~ld_flags action =
+let execute_action ~project_root ~package ~cc_flags ~ld_flags ~uses_stdlib ~uses_unix ~uses_dynlink action =
   match action with
   | WriteFile { path; content } ->
       Printf.printf "  DEBUG: Writing generated file %s\n" path;
@@ -123,19 +126,24 @@ let execute_action ~project_root ~package ~cc_flags ~ld_flags action =
   | CompileInterface { sandbox_dir; src_file; output; includes; opens } -> (
       (* Build flags for open modules *)
       let base_flags = List.map (fun m -> Ocaml_platform.Open m) opens in
-      (* Only add -nopervasives -nostdlib if package doesn't use stdlib *)
+      (* Only add -nopervasives -nostdlib if package doesn't use stdlib (including transitively) *)
       let flags =
-        if Package.uses_stdlib package then base_flags
+        if uses_stdlib then base_flags
         else base_flags @ [ Ocaml_platform.NoPervasives; Ocaml_platform.NoStdlib ]
       in
-      (* Add +unix to includes if package uses unix *)
+      (* Add +unix to includes if package uses unix (including transitively) *)
       let final_includes =
-        if Package.uses_unix package then "+unix" :: includes
+        if uses_unix then "+unix" :: includes
         else includes
       in
+      (* Add +dynlink to includes if package uses dynlink (including transitively) *)
+      let final_includes =
+        if uses_dynlink then "+dynlink" :: final_includes
+        else final_includes
+      in
       (* Debug output *)
-      Printf.printf "  DEBUG: Package %s, uses_stdlib=%b, uses_unix=%b\n"
-        package.Package.name (Package.uses_stdlib package) (Package.uses_unix package);
+      Printf.printf "  DEBUG: Package %s, uses_stdlib=%b (transitive), uses_unix=%b (transitive), uses_dynlink=%b (transitive)\n"
+        package.Package.name uses_stdlib uses_unix uses_dynlink;
       (* Now we're in sandbox_dir, so use relative paths *)
       match
         Ocaml_platform.Ocamlc.compile_interface ~includes:final_includes
@@ -150,9 +158,9 @@ let execute_action ~project_root ~package ~cc_flags ~ld_flags action =
       (* Now we're in sandbox_dir, so use relative paths *)
       (* Build flags for open modules *)
       let base_flags = List.map (fun m -> Ocaml_platform.Open m) opens in
-      (* Only add -nopervasives -nostdlib if package doesn't use stdlib *)
+      (* Only add -nopervasives -nostdlib if package doesn't use stdlib (including transitively) *)
       let stdlib_flags =
-        if Package.uses_stdlib package then []
+        if uses_stdlib then []
         else [ Ocaml_platform.NoPervasives; Ocaml_platform.NoStdlib ]
       in
       let flags =
@@ -160,10 +168,15 @@ let execute_action ~project_root ~package ~cc_flags ~ld_flags action =
         @ Ocaml_platform.[ Impl src_file ]
         @ if is_aliases then Ocaml_platform.[ NoAliasDeps ] else []
       in
-      (* Add +unix to includes if package uses unix *)
+      (* Add +unix to includes if package uses unix (including transitively) *)
       let final_includes =
-        if Package.uses_unix package then "+unix" :: includes
+        if uses_unix then "+unix" :: includes
         else includes
+      in
+      (* Add +dynlink to includes if package uses dynlink (including transitively) *)
+      let final_includes =
+        if uses_dynlink then "+dynlink" :: final_includes
+        else final_includes
       in
       match
         Ocaml_platform.Ocamlc.compile_impl ~includes:final_includes ~flags
@@ -191,14 +204,19 @@ let execute_action ~project_root ~package ~cc_flags ~ld_flags action =
           failwith "compilation error")
   | CreateArchive { sandbox_dir; archive_name; object_files; includes } -> (
       (* Already in sandbox directory *)
-      (* Add +unix to includes if package uses unix *)
+      (* Add +unix to includes if package uses unix (including transitively) *)
       let final_includes =
-        if Package.uses_unix package then "+unix" :: includes
+        if uses_unix then "+unix" :: includes
         else includes
       in
-      (* Don't use -nostdlib if package uses stdlib *)
+      (* Add +dynlink to includes if package uses dynlink (including transitively) *)
+      let final_includes =
+        if uses_dynlink then "+dynlink" :: final_includes
+        else final_includes
+      in
+      (* Don't use -nostdlib if package uses stdlib (including transitively) *)
       let flags =
-        if Package.uses_stdlib package then []
+        if uses_stdlib then []
         else [ Ocaml_platform.NoStdlib ]
       in
       match
@@ -220,10 +238,10 @@ let execute_action ~project_root ~package ~cc_flags ~ld_flags action =
             Dep_graph.Module_name.cma (Dep_graph.Module_name.of_string dep_name))
           dependencies
       in
-      (* Link unix.cma if package uses unix OR depends on Kernel (which uses unix) *)
-      let needs_unix = 
-        Package.uses_unix package || List.mem "Kernel" dependencies 
-      in
+      (* Link unix.cma if package uses unix (including transitively) *)
+      let needs_unix = uses_unix in
+      (* Link dynlink.cma if package uses dynlink (including transitively) *)
+      let needs_dynlink = uses_dynlink in
       (* Wrap each cc_flag with -ccopt (needed for frameworks during linking) *)
       let wrapped_cc_flags = 
         cc_flags 
@@ -235,11 +253,15 @@ let execute_action ~project_root ~package ~cc_flags ~ld_flags action =
         |> List.concat_map (fun flag -> ["-cclib"; flag])
       in
       let libs =
-        (if needs_unix then [ "unix.cma" ] else []) @ dep_archives @ [ archive ]
+        (if needs_unix then [ "unix.cma" ] else [])
+        @ (if needs_dynlink then [ "dynlink.cma" ] else [])
+        @ dep_archives @ [ archive ]
       in
       (* Everything is in the current sandbox directory *)
       (* Add +unix to includes if we need the unix library *)
-      let includes = if needs_unix then [ "."; "+unix" ] else [ "." ] in
+      let base_includes = if needs_unix then [ "."; "+unix" ] else [ "." ] in
+      (* Add +dynlink to includes if we need the dynlink library *)
+      let includes = if needs_dynlink then base_includes @ [ "+dynlink" ] else base_includes in
       (* Need to check if any dependency has C stubs to determine if we need -custom *)
       let has_c_stubs = List.mem "Kernel" dependencies in
       (* Build command with both cc_flags and ld_flags *)
@@ -289,7 +311,8 @@ let execute_build_plan ~build_results plan =
   (* 5. Execute all actions *)
   List.iter
     (execute_action ~project_root:original_cwd ~package:plan.package 
-       ~cc_flags:plan.cc_flags ~ld_flags:plan.ld_flags)
+       ~cc_flags:plan.cc_flags ~ld_flags:plan.ld_flags
+       ~uses_stdlib:plan.uses_stdlib ~uses_unix:plan.uses_unix ~uses_dynlink:plan.uses_dynlink)
     plan.actions;
 
   (* 6. Restore original directory *)
@@ -346,6 +369,11 @@ let from_dep_graph (dep_graph : Dep_graph.t) : build_plan =
   (* Merge with this package's own flags *)
   let all_cc_flags = transitive_cc_flags @ Package.cc_flags dep_graph.package in
   let all_ld_flags = transitive_ld_flags @ Package.ld_flags dep_graph.package in
+
+  (* Calculate transitive stdlib library usage *)
+  let uses_stdlib = Package.uses_stdlib dep_graph.package || Dep_graph.Build_results.has_stdlib dep_graph.build_results dependencies in
+  let uses_unix = Package.uses_unix dep_graph.package || Dep_graph.Build_results.has_unix dep_graph.build_results dependencies in
+  let uses_dynlink = Package.uses_dynlink dep_graph.package || Dep_graph.Build_results.has_dynlink dep_graph.build_results dependencies in
 
   (* Create sandbox directory *)
   let opens mods =
@@ -558,4 +586,7 @@ let from_dep_graph (dep_graph : Dep_graph.t) : build_plan =
     outputs = List.rev !outputs;
     cc_flags = all_cc_flags;
     ld_flags = all_ld_flags;
+    uses_stdlib;
+    uses_unix;
+    uses_dynlink;
   }

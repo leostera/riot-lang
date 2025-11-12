@@ -108,6 +108,9 @@ module Build_results : sig
   val get_package_names : t -> string list
   val get_transitive_cc_flags : t -> string list -> string list
   val get_transitive_ld_flags : t -> string list -> string list
+  val has_stdlib : t -> string list -> bool
+  val has_unix : t -> string list -> bool
+  val has_dynlink : t -> string list -> bool
 end = struct
   (* Build results tracking for cross-package dependencies *)
 
@@ -133,6 +136,9 @@ end = struct
     outputs : string list;
     cc_flags : string list;
     ld_flags : string list;
+    uses_stdlib : bool;
+    uses_unix : bool;
+    uses_dynlink : bool;
   }
 
   type t = {
@@ -148,7 +154,16 @@ end = struct
     (* Add to order list if not already there *)
     if not (Hashtbl.mem t.packages module_name) then
       t.order <- t.order @ [ module_name ];
-    Hashtbl.replace t.packages module_name { package; module_name; outputs; cc_flags; ld_flags }
+    Hashtbl.replace t.packages module_name { 
+      package; 
+      module_name; 
+      outputs; 
+      cc_flags; 
+      ld_flags; 
+      uses_stdlib = Package.uses_stdlib package;
+      uses_unix = Package.uses_unix package;
+      uses_dynlink = Package.uses_dynlink package 
+    }
 
   let has_module t module_name = Hashtbl.mem t.packages module_name
 
@@ -192,6 +207,36 @@ end = struct
         | None -> ())
       package_names;
     !all_flags
+
+  let has_stdlib t package_names =
+    (* Check if any dependency package uses stdlib *)
+    List.exists
+      (fun pkg_name ->
+        let mod_name = Module_name.of_string pkg_name in
+        match Hashtbl.find_opt t.packages mod_name with
+        | Some entry -> entry.uses_stdlib
+        | None -> false)
+      package_names
+
+  let has_unix t package_names =
+    (* Check if any dependency package uses unix *)
+    List.exists
+      (fun pkg_name ->
+        let mod_name = Module_name.of_string pkg_name in
+        match Hashtbl.find_opt t.packages mod_name with
+        | Some entry -> entry.uses_unix
+        | None -> false)
+      package_names
+
+  let has_dynlink t package_names =
+    (* Check if any dependency package uses dynlink *)
+    List.exists
+      (fun pkg_name ->
+        let mod_name = Module_name.of_string pkg_name in
+        match Hashtbl.find_opt t.packages mod_name with
+        | Some entry -> entry.uses_dynlink
+        | None -> false)
+      package_names
 
   let print t =
     printf "\n=== Build Results ===\n";

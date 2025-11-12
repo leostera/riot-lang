@@ -8,6 +8,7 @@ type t = {
   binaries : binary list;
   uses_stdlib : bool;
   uses_unix : bool;
+  uses_dynlink : bool;
   cc_flags : string list;
   ld_flags : string list;
 }
@@ -15,6 +16,7 @@ type t = {
 let binaries t = t.binaries
 let uses_stdlib t = t.uses_stdlib
 let uses_unix t = t.uses_unix
+let uses_dynlink t = t.uses_dynlink
 let cc_flags t = t.cc_flags
 let ld_flags t = t.ld_flags
 
@@ -50,7 +52,7 @@ let read path =
     | Error err ->
         Printf.printf "Error parsing %s: %s\n" toml_path
           (Toml.error_to_string err);
-        { name = Filename.basename path; path; deps = []; binaries = []; uses_stdlib = false; uses_unix = false; cc_flags = []; ld_flags = [] }
+        { name = Filename.basename path; path; deps = []; binaries = []; uses_stdlib = false; uses_unix = false; uses_dynlink = false; cc_flags = []; ld_flags = [] }
     | Ok (Toml.Table items) ->
         (* Get package name *)
         let name =
@@ -90,13 +92,14 @@ let read path =
         in
 
         (* Get dependencies from [dependencies] table *)
-        let uses_stdlib, uses_unix =
+        let uses_stdlib, uses_unix, uses_dynlink =
           match Toml.find "dependencies" items with
           | Some (Toml.Table dep_items) ->
               let has_stdlib = Toml.find "stdlib" dep_items <> None in
               let has_unix = Toml.find "unix" dep_items <> None in
-              (has_stdlib, has_unix)
-          | _ -> (false, false)
+              let has_dynlink = Toml.find "dynlink" dep_items <> None in
+              (has_stdlib, has_unix, has_dynlink)
+          | _ -> (false, false, false)
         in
 
         (* Get target-specific flags based on OS *)
@@ -135,6 +138,6 @@ let read path =
               ([], [])
         in
 
-        { name; path; deps = []; binaries; uses_stdlib; uses_unix; cc_flags; ld_flags }
-    | _ -> { name = Filename.basename path; path; deps = []; binaries = []; uses_stdlib = false; uses_unix = false; cc_flags = []; ld_flags = [] })
-  else { name = Filename.basename path; path; deps = []; binaries = []; uses_stdlib = false; uses_unix = false; cc_flags = []; ld_flags = [] }
+        { name; path; deps = []; binaries; uses_stdlib; uses_unix; uses_dynlink; cc_flags; ld_flags }
+    | _ -> { name = Filename.basename path; path; deps = []; binaries = []; uses_stdlib = false; uses_unix = false; uses_dynlink = false; cc_flags = []; ld_flags = [] })
+  else { name = Filename.basename path; path; deps = []; binaries = []; uses_stdlib = false; uses_unix = false; uses_dynlink = false; cc_flags = []; ld_flags = [] }
