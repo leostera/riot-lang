@@ -1,0 +1,10 @@
+[package]
+name = "tusk-init"
+version = "0.1.0"
+
+[lib]
+path = "src/tusk_init.ml"
+
+[dependencies]
+std = { path = "../std" }
+tusk-model = { path = "../tusk-model" }
