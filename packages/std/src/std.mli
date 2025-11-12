@@ -183,6 +183,8 @@ module Sync = Sync
 module System = System
 (** System information and operations *)
 
+module Dynlink = Kernel.Dynlink
+(** Dynamically link libraries *)
 
 module Type = Type
 (** Type-level utilities *)

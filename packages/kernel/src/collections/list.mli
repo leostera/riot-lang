@@ -19,3 +19,21 @@ val make : len:int -> fn:(int -> 'a) -> 'a list
 
     - Time: O(n) where n is [len]
     - Space: O(n) *)
+
+val unique : 'a list -> 'a list
+(** Returns a list with duplicate elements removed, preserving order.
+    Keeps the first occurrence of each element.
+    Uses structural equality (=) to compare elements.
+
+    ## Examples
+
+    ```ocaml
+    List.unique [1; 2; 2; 3; 1; 4]  (* [1; 2; 3; 4] *)
+    List.unique ["a"; "b"; "a"]     (* ["a"; "b"] *)
+    List.unique []                  (* [] *)
+    ```
+
+    ## Complexity
+
+    - Time: O(n²) where n is the list length
+    - Space: O(n) *)

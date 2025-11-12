@@ -15,4 +15,5 @@ ld_flags = ["-lssl", "-lcrypto"]
 
 [dependencies]
 stdlib = "*"
+dynlink = "*"
 unix = "*"

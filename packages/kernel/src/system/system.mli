@@ -118,4 +118,7 @@ val executable_name : string
 val argv : unit -> string array
 (** Command line arguments *)
 
+val execv : string -> string array -> unit
+(** Execute a program, replacing the current process *)
+
 module OsProcess = OsProcess

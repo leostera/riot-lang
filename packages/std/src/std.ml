@@ -1,5 +1,6 @@
 (** Standard library extensions and utilities *)
 
+module Dynlink = Kernel.Dynlink
 module Agent = Agent
 module Application = Application
 module ArgParser = Arg_parser
