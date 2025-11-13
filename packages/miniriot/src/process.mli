@@ -125,6 +125,9 @@ val consume_ready_tokens :
   t -> (Kernel.Async.Token.t * Kernel.Async.Source.t -> unit) -> unit
 (** Consume all ready I/O tokens with a function *)
 
+val has_no_ready_tokens : t -> bool
+(** Check if process has no ready I/O tokens *)
+
 val set_receive_timeout : t -> Timer_id.t -> unit
 (** Set the receive timeout timer ID for this process *)
 

@@ -89,11 +89,21 @@ let get_process t pid = HashMap.get t.processes pid
 
 let handle_receive k t proc ~selector ~timeout =
   let open Proc_state in
-  let pid_str = Pid.to_string (Process.pid proc) in
-    (Process.has_empty_mailbox proc);
 
-  (* Check for existing timeout - don't check here, let the timer expire naturally *)
-  let should_timeout = false in
+  (* Check if we woke up from a timeout *)
+  (* If timeout is set, we were woken by the timer. The rest of the function
+     will check if there's a matching message. If not, we'll suspend again,
+     but this time WITHOUT a timeout, which means we genuinely timed out. *)
+  let should_timeout =
+    match Process.receive_timeout proc with
+    | Some timer_id ->
+        (* Clear and cancel the timeout - we've been woken *)
+        Process.clear_receive_timeout proc;
+        Timer_wheel.cancel_timer t.timer_wheel timer_id;
+        (* If mailbox is empty, it's definitely a timeout *)
+        Process.has_empty_mailbox proc
+    | None -> false
+  in
 
   if should_timeout then (
     k (Discontinue Effects.Exception.Receive_timeout))
@@ -117,7 +127,27 @@ let handle_receive k t proc ~selector ~timeout =
     let fuel = Process.message_count proc in
     let rec go fuel =
       if fuel = 0 then (
-        k Delay)
+        (* No matching messages found. If we have a timeout, we should suspend
+           to wait for either a new message or the timeout. *)
+        match timeout with
+        | `infinity -> k Delay (* No timeout, yield and try again *)
+        | `after secs ->
+            (* We have a timeout set. Only set it up if it's not already set. *)
+            (match Process.receive_timeout proc with
+            | Some _timer_id ->
+                (* Timeout already set, just suspend *)
+                ()
+            | None ->
+                (* Set up the timeout *)
+                let now = Time.monotonic_time_nanos () in
+                let duration_nanos = Int64.of_float (secs *. 1_000_000_000.0) in
+                let timer_id =
+                  Timer_wheel.add_timer t.timer_wheel ~now ~duration_nanos
+                    ~mode:Timer.One_shot ~action:(Timer.Wake_process proc)
+                in
+                Process.set_receive_timeout proc timer_id);
+            Process.mark_as_awaiting_message proc;
+            k Suspend)
       else
         match Process.next_message proc with
         | None ->
@@ -138,15 +168,16 @@ let handle_syscall k t proc name interest source timeout =
   let pid_str = Pid.to_string (Process.pid proc) in
 
   (* Check for syscall timeout *)
+  (* If syscall_timeout is set, we were woken by the timer. 
+     If there are no ready tokens, it means the IO didn't complete, so it's a timeout. *)
   let should_timeout =
     match Process.syscall_timeout proc with
     | Some timer_id ->
-        let expired = true in
-        (* TODO: proper expiration check *)
-        if expired then (
-          Process.clear_syscall_timeout proc;
-          Timer_wheel.cancel_timer t.timer_wheel timer_id);
-        expired
+        (* Clear and cancel the timeout - we've been woken *)
+        Process.clear_syscall_timeout proc;
+        Timer_wheel.cancel_timer t.timer_wheel timer_id;
+        (* If no ready tokens, it's definitely a timeout *)
+        Process.has_no_ready_tokens proc
     | None -> false
   in
 
@@ -322,18 +353,8 @@ let step_process t proc =
 
 let poll_io t =
 
-  (* Calculate timeout based on next timer expiration *)
-  let timeout_nanos =
-    if Timer_wheel.size t.timer_wheel > 0 then
-      let now = Time.monotonic_time_nanos () in
-      match Timer_wheel.next_expiration t.timer_wheel ~now with
-      | Some next_expiry ->
-          let delta = Int64.sub next_expiry now in
-          (* If timer already expired, use 1ms minimum to prevent busy-wait *)
-          if Int64.compare delta 0L <= 0 then 1_000_000L else delta
-      | None -> 10_000_000L (* 10ms default *)
-    else 500_000_000L (* 500ms when no timers *)
-  in
+  (* Use timer resolution as poll timeout for consistent tick rate *)
+  let timeout_nanos = Config.resolution_to_nanos t.config.timer_resolution in
 
   let events =
     match Async.Poll.poll t.io_poll ~timeout:timeout_nanos with
@@ -368,7 +389,6 @@ let process_timers t =
   else
     let now = Time.monotonic_time_nanos () in
     let expired = Timer_wheel.tick t.timer_wheel ~now in
-
 
     List.iter
       (fun timer ->
@@ -415,27 +435,10 @@ let run_loop t =
   (* Process expired timers only if there are any *)
   if Timer_wheel.size t.timer_wheel > 0 then process_timers t;
 
-  (* Check if we have processes waiting for I/O *)
-  let has_waiting_io =
-    HashMap.fold
-      (fun _ proc acc -> acc || Process.is_waiting_io proc)
-      t.processes false
-  in
-
-  (* Poll for I/O events, or sleep until next timer if no I/O *)
-  (if (not t.stop) && HashMap.len t.processes > 0 then
-     if has_waiting_io then poll_io t
-     else if Timer_wheel.size t.timer_wheel > 0 then (
-       (* No I/O, but we have timers - sleep until next timer expiration *)
-       let now = Time.monotonic_time_nanos () in
-       match Timer_wheel.next_expiration t.timer_wheel ~now with
-       | Some next_expiry ->
-           let sleep_nanos = Int64.sub next_expiry now in
-           (* If timer already expired, sleep for 1ms to let time advance *)
-           let sleep_nanos = if Int64.compare sleep_nanos 0L <= 0 then 1_000_000L else sleep_nanos in
-           let _ = Async.Poll.poll t.io_poll ~timeout:sleep_nanos in
-           ()
-        | None -> ()))
+  (* Always poll for I/O with timer resolution as timeout *)
+  (* This ensures we tick at the configured precision for both timers and I/O *)
+  if (not t.stop) && HashMap.len t.processes > 0 then
+    poll_io t
 
 let shutdown t ~status =
   (* Mark scheduler to stop *)

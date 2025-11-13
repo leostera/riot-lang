@@ -34,6 +34,7 @@ type state =
 
 type t = {
   pid : Pid.t;
+  (* TODO: `state` should be made Sync.Atomic.t before we can go multicore *)
   mutable state : state;
   mutable cont : (unit, exit_reason) result Proc_state.t option;
   mutable fn : (unit -> (unit, exit_reason) result) option;
@@ -140,6 +141,8 @@ let get_ready_token t =
 let consume_ready_tokens t f =
   List.iter f t.ready_tokens;
   t.ready_tokens <- []
+
+let has_no_ready_tokens t = List.is_empty t.ready_tokens
 
 (* Timer timeout management *)
 let set_receive_timeout t timer_id = t.receive_timeout <- Some timer_id
