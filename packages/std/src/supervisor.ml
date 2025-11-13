@@ -570,6 +570,8 @@ let stop supervisor =
 module Dynamic = struct
   type t = Pid.t
 
+  let to_pid t = t
+
   type dynamic_child = {
     pid : Pid.t;
     monitor : Process.Monitor.t;

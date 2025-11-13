@@ -66,6 +66,16 @@ val id : string -> string
       end
     ]} *)
 
+type 'msg event = 
+  | Custom of Message.t  (** Any Miniriot message from other processes *)
+  | App of 'msg          (** Component-specific messages from UI events *)
+(** Event wrapper for component messages.
+    
+    - [App msg] wraps UI events (clicks, form submissions, etc.)
+    - [Custom msg] wraps any Miniriot process message (timers, notifications, etc.)
+    
+    This allows components to handle both user interactions and server-driven updates. *)
+
 module type Component = sig
   val id : string
   (** Unique identifier for this LiveView component.
@@ -81,8 +91,17 @@ module type Component = sig
   val init : Middleware.Conn.t -> state
   (** Initialize state when client connects *)
   
-  val update : msg -> state -> state
-  (** Update state based on message (pure function) *)
+  val update : msg event -> state -> state
+  (** Update state based on event (pure function).
+      
+      Handle both UI events ([App msg]) and process messages ([Custom msg]):
+      {[
+        let update event state =
+          match event with
+          | App Increment -> { state with count = state.count + 1 }
+          | Custom (Timer Tick) -> { state with time = current_time () }
+          | _ -> state
+      ]} *)
   
   val render : state:state -> unit -> msg Component.t
   (** Render state to Component tree (pure function) *)
@@ -129,39 +148,53 @@ val mount : (module Component with type state = 's and type msg = 'm) ->
       (* Use with WebSocket upgrade *)
     ]} *)
 
-val embed : (module Component with type state = 's and type msg = 'm) -> 
+val embed : (module Component) -> 
             Middleware.Conn.t ->
-            'm Component.t
+            'msg Component.t
 (** Embed a LiveView component into a page.
     
-    Creates a mounting div with the LiveView JavaScript bootstrap code.
-    The component will connect to the WebSocket endpoint defined by its [path] field.
+    Returns the HTML string for the LiveView mounting div and bootstrap script.
+    The component will connect to the WebSocket endpoint defined by its [id] field.
     
     This allows you to:
     - Control the full page layout and styles
-    - Embed multiple LiveViews in one page
+    - Embed multiple LiveViews in one page (each returns a string)
     - Use custom HTML templates
     
-    Example:
+    Example (single component):
     {[
       module Counter = struct
-        let path = "/counter"
+        let id = LiveView.id "counter"
         (* ... *)
       end
       
       let home_page conn =
         let page = Component.html [
           head [
+            LiveView.client_script;
             style_ [text my_custom_styles];
           ];
           body [
             h1 [text "My Dashboard"];
-            div [LiveView.embed (module Counter) conn];
+            Component.text (LiveView.embed (module Counter) conn);
           ];
         ] in
         conn 
         |> Conn.respond ~status:Ok ~body:(Component.to_html page)
         |> Conn.send
+    ]}
+    
+    Example (multiple components):
+    {[
+      let home_page conn =
+        let page = Component.html [
+          head [LiveView.client_script; style_ [text styles]];
+          body [
+            Component.text (LiveView.embed (module Counter) conn);
+            Component.text (LiveView.embed (module Timer) conn);
+          ];
+        ] in
+        (* ... *)
     ]} *)
 
 val live : 

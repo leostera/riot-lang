@@ -19,9 +19,10 @@ val bind :
     non-blocking mode. *)
 
 val accept :
+  ?timeout:Time.Duration.t ->
   t -> (Kernel.Net.Tcp_stream.t * Kernel.Net.Addr.stream_addr, error) result
 (** Accept a connection. This will suspend the process until a connection is
-    available. *)
+    available. Optionally specify a timeout for the syscall. *)
 
 val local_addr : t -> Kernel.Net.Addr.stream_addr
 (** Get the local address the listener is bound to *)

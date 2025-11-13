@@ -24,8 +24,8 @@ let receive_any ?timeout () =
 
 let sleep timeout =
   let selector _msg = `skip in
-  receive ~selector ~timeout ()
-
+  try receive ~selector ~timeout () 
+  with Receive_timeout -> ()
 
 let yield = Miniriot.yield
 

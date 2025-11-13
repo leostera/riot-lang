@@ -322,6 +322,8 @@ module Dynamic : sig
   type t
   (** A dynamic supervisor *)
 
+  val to_pid : t -> Pid.t
+
   val start_link : ?intensity:intensity -> ?max_children:int -> unit -> t
   (** Start a dynamic supervisor.
 

@@ -26,16 +26,18 @@ let connect addr =
   in
   connect_loop ()
 
-let read stream buffer ?(pos = 0) ?len () =
+let read stream buffer ?(pos = 0) ?len ?timeout () =
   let len = match len with None -> Bytes.length buffer - pos | Some l -> l in
   let source = Kernel.Net.Tcp_stream.to_source stream in
+  (* Transform Time.Duration.t to float seconds for Miniriot.syscall *)
+  let timeout = Option.map Time.Duration.to_secs_float timeout in
   let rec read_loop () =
     match Kernel.Net.Tcp_stream.read stream buffer ~pos ~len with
     | Ok 0 -> Error Closed (* EOF *)
     | Ok bytes_read -> Ok bytes_read
     | Error IO.Operation_would_block | Error IO.Resource_unavailable_try_again ->
         (* Would block, register interest and wait - this suspends the process *)
-        Miniriot.syscall ~name:"TcpStream.read" ~interest:Interest.readable
+        Miniriot.syscall ?timeout ~name:"TcpStream.read" ~interest:Interest.readable
           ~source (fun () -> read_loop ())
     | Error err ->
         let err_msg = IO.error_message err in

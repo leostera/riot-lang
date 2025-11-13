@@ -9,6 +9,8 @@ let id base_name =
   let uuid_hex = Std.UUID.to_string_nodash uuid in
   base_name ^ "-" ^ uuid_hex
 
+type 'msg event = Custom of Message.t | App of 'msg
+
 (** Component interface *)
 module type Component = sig
   val id : string
@@ -17,7 +19,7 @@ module type Component = sig
   type msg
   
   val init : Middleware.Conn.t -> state
-  val update : msg -> state -> state
+  val update : msg event -> state -> state
   val render : state:state -> unit -> msg Component.t
 end
 
@@ -75,7 +77,7 @@ let render_with_handlers registry component =
 module ComponentProcess = struct
   type ('state, 'msg) t = {
     mutable state : 'state;
-    update : 'msg -> 'state -> 'state;
+    update : 'msg event -> 'state -> 'state;
     render : state:'state -> unit -> 'msg Component.t;
     registry : 'msg HandlerRegistry.t;
     handler_pid : Pid.t;
@@ -100,9 +102,9 @@ module ComponentProcess = struct
              Log.warn ("Unknown handler: " ^ handler_id);
              loop t
          | Some handler ->
-             (* Process event *)
+             (* Process event - wrap in App *)
              let msg = handler event_data in
-             let new_state = t.update msg t.state in
+             let new_state = t.update (App msg) t.state in
              t.state <- new_state;
              
              (* Re-render *)
@@ -113,7 +115,17 @@ module ComponentProcess = struct
              send t.handler_pid (RenderPatch patch);
              loop t)
     
-    | _ ->
+    | msg ->
+        (* Catch any other message (timers, process messages, etc.) *)
+        let new_state = t.update (Custom msg) t.state in
+        t.state <- new_state;
+        
+        (* Re-render *)
+        HandlerRegistry.clear t.registry;
+        let component = t.render ~state:t.state () in
+        let html = render_with_handlers t.registry component in
+        let patch = Protocol.serialize_server_msg (Protocol.Patch html) in
+        send t.handler_pid (RenderPatch patch);
         loop t
   
   let start_link handler_pid (type s m)
@@ -430,9 +442,9 @@ let mount (type s m)
     
     Creates a mounting div with LiveView JavaScript bootstrap code.
     The component will connect to its WebSocket endpoint at /suri/live/<id>. *)
-let embed (type s m)
-    (module C : Component with type state = s and type msg = m)
-    (_conn : Middleware.Conn.t) : m Component.t =
+let embed 
+    (module C : Component)
+    (_conn : Middleware.Conn.t) : 'msg Component.t =
   let open Component in
   let element_id = "liveview-" ^ C.id in
   let ws_path = "/suri/live/" ^ C.id in

@@ -15,14 +15,15 @@ let bind ?(reuse_addr = true) ?(reuse_port = false) ?(backlog = 128) addr =
   | Ok t -> Ok t
   | Error err -> Error (System_error (IO.error_message err))
 
-let accept t =
+let accept ?timeout t =
   let source = Kernel.Net.Tcp_listener.to_source t in
+  let timeout_secs = Option.map Time.Duration.to_secs_float timeout in
   let rec accept_loop () =
     match Kernel.Net.Tcp_listener.accept t with
     | Ok (stream, addr) -> Ok (stream, addr)
     | Error IO.Operation_would_block | Error IO.Resource_unavailable_try_again ->
         (* Would block / EAGAIN / EWOULDBLOCK - register interest and wait *)
-        Miniriot.syscall ~name:"TcpListener.accept" ~interest:Interest.readable
+        Miniriot.syscall ?timeout:timeout_secs ~name:"TcpListener.accept" ~interest:Interest.readable
           ~source (fun () -> accept_loop ())
     | Error err ->
         (* Some other error - EINTR is already handled by kernel layer *)

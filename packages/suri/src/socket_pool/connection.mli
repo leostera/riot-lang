@@ -28,13 +28,15 @@ val send : t -> string -> (unit, [> `Closed ]) result
 
     Returns [Ok ()] on success or [Error `Closed] if connection closed. *)
 
-val receive : ?limit:int -> ?read_size:int -> t -> (string, [> `Closed ]) result
-(** [receive ?limit ?read_size conn] reads data from the connection.
+val receive : ?limit:int -> ?read_size:int -> ?timeout:Std.Time.Duration.t -> t -> (string, [> `Closed ]) result
+(** [receive ?limit ?read_size ?timeout conn] reads data from the connection.
 
     - [limit] sets the maximum bytes to read (default 1024)
     - [read_size] overrides the default buffer read size
+    - [timeout] optional timeout duration for the read operation
 
-    Returns [Ok data] with received data, or [Error `Closed] if closed. *)
+    Returns [Ok data] with received data, or [Error `Closed] if closed.
+    Raises [Syscall_timeout] if timeout is specified and expires. *)
 
 val peer : t -> Std.Net.Addr.stream_addr
 (** [peer conn] returns the remote peer's address *)

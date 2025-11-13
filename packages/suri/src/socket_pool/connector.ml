@@ -39,13 +39,20 @@ and handle_message_internal : type s e.
 and try_receive : type s e.
     Connection.t -> (s, e) Handler.handler -> s -> unit =
  fun conn handler ctx ->
-  match Connection.receive conn with
-  | Ok "" ->
-      handler.handle_close conn ctx
-  | Ok data ->
-      handle_data data conn handler ctx
-  | Error `Closed ->
-      handler.handle_close conn ctx
+  try
+    (* Use 1ms timeout to avoid blocking - allows processing queued messages *)
+    let timeout = Time.Duration.from_millis 1 in
+    match Connection.receive conn ~timeout with
+    | Ok "" ->
+        handler.handle_close conn ctx
+    | Ok data ->
+        handle_data data conn handler ctx
+    | Error `Closed ->
+        handler.handle_close conn ctx
+  with
+  | Syscall_timeout ->
+      (* Timeout = no data available within 1ms, loop to check mailbox again *)
+      loop conn handler ctx
 
 and handle_data : type s e.
     string -> Connection.t -> (s, e) Handler.handler -> s -> unit =

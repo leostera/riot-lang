@@ -25,12 +25,12 @@ let make ?(protocol = None) ~accepted_at ~stream ~buffer_size ~peer () =
 
 let negotiated_protocol (Conn t) = t.protocol
 
-let receive ?(limit = 1024) ?read_size (Conn { default_read_size; stream; _ }) =
+let receive ?(limit = 1024) ?read_size ?timeout (Conn { default_read_size; stream; _ }) =
   let read_size = Option.unwrap_or ~default:default_read_size read_size in
   Log.trace ("receive with read_size of " ^ string_of_int read_size ^ " (using limit=" ^ string_of_int limit ^ ")");
   let capacity = Int.min limit read_size in
   let buf = Bytes.create capacity in
-  match Net.TcpStream.read stream buf () with
+  match Net.TcpStream.read stream buf ?timeout () with
   | Ok 0 -> Error `Closed
   | Ok n -> Ok (Bytes.sub_string buf 0 n)
   | Error _ -> Error `Closed

@@ -13,9 +13,12 @@ val connect : Kernel.Net.Addr.stream_addr -> (t, error) result
 (** Connect to a TCP endpoint. This will suspend the process until the
     connection is established. *)
 
-val read : t -> bytes -> ?pos:int -> ?len:int -> unit -> (int, error) result
+val read : t -> bytes -> ?pos:int -> ?len:int -> ?timeout:Time.Duration.t -> unit -> (int, error) result
 (** Read data from the stream. This will suspend the process until data is
-    available. Returns the number of bytes read. *)
+    available. Returns the number of bytes read. 
+    
+    @param timeout Optional timeout duration. If specified and no data arrives
+                   within the timeout, raises [Syscall_timeout]. *)
 
 val write : t -> bytes -> ?pos:int -> ?len:int -> unit -> (int, error) result
 (** Write data to the stream. This will suspend the process until the socket is

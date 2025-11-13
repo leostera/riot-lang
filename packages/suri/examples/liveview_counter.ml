@@ -14,6 +14,7 @@ open Suri
 module Counter = struct
   let id = LiveView.id "counter"
   
+  open LiveView
   open Component
   
   type state = { count: int }
@@ -23,11 +24,12 @@ module Counter = struct
     Log.info "Counter initialized";
     { count = 0 }
   
-  let update msg state =
-    let new_state = match msg with
-    | Increment -> { count = state.count + 1 }
-    | Decrement -> { count = state.count - 1 }
-    | Reset -> { count = 0 }
+  let update event state =
+    let new_state = match event with
+    | App Increment -> { count = state.count + 1 }
+    | App Decrement -> { count = state.count - 1 }
+    | App Reset -> { count = 0 }
+    | _ -> state
     in
     Log.info ("Counter: " ^ Int.to_string state.count ^ " -> " ^ Int.to_string new_state.count);
     new_state
