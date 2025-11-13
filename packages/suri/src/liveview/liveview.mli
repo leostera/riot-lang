@@ -51,7 +51,27 @@ open Std
 
 (** {1 Component Interface} *)
 
+val id : string -> string
+(** Generate a unique LiveView component ID.
+    
+    Takes a base name and appends a UUID v7 suffix to ensure uniqueness.
+    Each call returns a different ID, preventing conflicts when multiple
+    LiveView components are embedded in the same page.
+    
+    Example:
+    {[
+      module Counter = struct
+        let id = LiveView.id "counter"  (* Results in: "counter-<uuid>" *)
+        (* ... *)
+      end
+    ]} *)
+
 module type Component = sig
+  val id : string
+  (** Unique identifier for this LiveView component.
+      Use [LiveView.id "name"] to generate a unique ID.
+      This is used to create both the WebSocket endpoint path and DOM element ID. *)
+  
   type state
   (** Application state *)
   
@@ -67,6 +87,26 @@ module type Component = sig
   val render : state:state -> unit -> msg Component.t
   (** Render state to Component tree (pure function) *)
 end
+
+(** {1 LiveView JavaScript Runtime} *)
+
+val serve_runtime : ?prefix:string -> unit -> Middleware.Pipeline.middleware
+(** Middleware to serve the LiveView JavaScript runtime.
+    
+    This automatically serves the LiveView JavaScript at the specified path.
+    Add it once to your middleware pipeline.
+    
+    @param prefix The path to serve the runtime from (default: "/assets/liveview.js")
+    
+    Example:
+    {[
+      let app = [
+        LiveView.serve_runtime ();  (* Serves at /assets/liveview.js *)
+        (* or *)
+        LiveView.serve_runtime ~prefix:"/suri/live.js" ();
+        Middleware.router routes;
+      ]
+    ]} *)
 
 (** {1 Mounting LiveViews} *)
 
@@ -89,35 +129,84 @@ val mount : (module Component with type state = 's and type msg = 'm) ->
       (* Use with WebSocket upgrade *)
     ]} *)
 
-val live : 
-  string -> 
-  (module Component with type state = 's and type msg = 'm) ->
-  Web_server.Handler.t
-(** Create a LiveView handler that serves HTML or upgrades to WebSocket.
+val embed : (module Component with type state = 's and type msg = 'm) -> 
+            Middleware.Conn.t ->
+            'm Component.t
+(** Embed a LiveView component into a page.
     
-    This function creates a handler that:
-    - On regular HTTP GET: Returns HTML page with LiveView JavaScript
-    - On WebSocket upgrade: Mounts the LiveView component
+    Creates a mounting div with the LiveView JavaScript bootstrap code.
+    The component will connect to the WebSocket endpoint defined by its [path] field.
+    
+    This allows you to:
+    - Control the full page layout and styles
+    - Embed multiple LiveViews in one page
+    - Use custom HTML templates
     
     Example:
     {[
-      let handler = LiveView.live "/counter" (module Counter)
+      module Counter = struct
+        let path = "/counter"
+        (* ... *)
+      end
       
-      (* Or combine multiple LiveView handlers *)
-      let handler socket_conn req =
-        let path = Web_server.Request.uri req in
-        match path with
-        | "/counter" -> LiveView.live "/counter" (module Counter) socket_conn req
-        | "/chat" -> LiveView.live "/chat" (module Chat) socket_conn req
-        | _ -> Web_server.Handler.close (Web_server.Response.not_found ())
+      let home_page conn =
+        let page = Component.html [
+          head [
+            style_ [text my_custom_styles];
+          ];
+          body [
+            h1 [text "My Dashboard"];
+            div [LiveView.embed (module Counter) conn];
+          ];
+        ] in
+        conn 
+        |> Conn.respond ~status:Ok ~body:(Component.to_html page)
+        |> Conn.send
+    ]} *)
+
+val live : 
+  (module Component with type state = 's and type msg = 'm) ->
+  Middleware.Router.route
+(** Create a LiveView route.
+    
+    Reads the path from the module's [path] field and automatically prefixes it
+    with "/suri/live/" to create the WebSocket endpoint.
+    
+    This creates a route that handles both:
+    - Regular HTTP GET: Returns minimal HTML for WebSocket upgrade
+    - WebSocket upgrade: Mounts the LiveView component
+    
+    Use it directly in your router alongside other routes.
+    
+    Example:
+    {[
+      module Counter = struct
+        let path = "/counter"
+        type state = { count: int }
+        type msg = Increment | Decrement
+        (* ... *)
+      end
+      
+      let routes = Middleware.Router.[
+        get "/" home_handler;
+        LiveView.live (module Counter);  (* Creates route at /suri/live/counter *)
+      ]
+      
+      let app = [
+        LiveView.serve_runtime ();
+        Middleware.router routes;
+      ]
+      
+      Suri.start_link app
     ]} *)
 
 (** {1 JavaScript Runtime} *)
 
 val javascript_runtime : string
-(** Get the LiveView JavaScript runtime code.
+(** Get the LiveView JavaScript runtime code as a string.
     
-    This is embedded in the HTML template, but can also be served separately:
+    You typically don't need this directly - use [client_script] instead.
+    This can be used if you want to serve the runtime separately:
     {[
       get "/assets/liveview.js" (fun _conn _req ->
         Response.ok
@@ -126,11 +215,37 @@ val javascript_runtime : string
           ())
     ]} *)
 
-val html_template : element_id:string -> ws_path:string -> 'msg Component.t -> string
+val client_script : 'msg Component.t
+(** Script element containing the LiveView JavaScript runtime.
+    
+    Include this once in your page's <head> section to load the LiveView client.
+    
+    Example:
+    {[
+      let page = Component.html [
+        head [
+          LiveView.client_script;  (* Include LiveView JS *)
+          style_ [text my_styles];
+        ];
+        body [
+          LiveView.embed (module Counter) conn;
+        ];
+      ]
+    ]} *)
+
+val html_template : 
+  element_id:string -> 
+  ws_path:string -> 
+  ?title:string ->
+  ?styles:string ->
+  'msg Component.t -> 
+  string
 (** Generate HTML template with LiveView bootstrapping.
     
     @param element_id DOM element ID to mount LiveView
     @param ws_path WebSocket path for LiveView connection
+    @param title Optional page title (default: "LiveView App")
+    @param styles Optional CSS styles to include in page
     @param initial_content Initial content to show while connecting
     
     Example:
@@ -138,6 +253,8 @@ val html_template : element_id:string -> ws_path:string -> 'msg Component.t -> s
       let page = LiveView.html_template
         ~element_id:"app"
         ~ws_path:"/live/counter"
+        ~title:"My Counter"
+        ~styles:"body { background: blue; }"
         Component.(div [text "Loading..."])
       in
       Response.ok ~body:page ()

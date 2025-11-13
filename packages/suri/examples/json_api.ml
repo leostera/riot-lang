@@ -27,13 +27,12 @@ let users_to_json users =
 
 (* CORS middleware *)
 let cors_middleware conn =
-  conn
-  |> Middleware.Conn.with_header "Access-Control-Allow-Origin" "*"
+  Conn.with_header "Access-Control-Allow-Origin" "*" conn
 
 (* Request logger *)
 let logger_middleware conn =
-  let method_ = Middleware.Conn.method_ conn in
-  let uri = Middleware.Conn.uri conn in
+  let method_ = Conn.method_ conn in
+  let uri = Conn.uri conn in
   Log.info ((Net.Http.Method.to_string method_) ^ " " ^ uri);
   conn
 
@@ -47,21 +46,21 @@ let api_info_handler conn =
     ])
   ] in
   conn
-  |> Middleware.Conn.with_status Ok
-  |> Middleware.Conn.with_header "Content-Type" "application/json"
-  |> Middleware.Conn.with_body (Data.Json.to_string info)
-  |> Middleware.Conn.send
+  |> Conn.with_status Ok
+  |> Conn.with_header "Content-Type" "application/json"
+  |> Conn.with_body (Data.Json.to_string info)
+  |> Conn.send
 
 let users_list_handler conn =
   let json = users_to_json users in
   conn
-  |> Middleware.Conn.with_status Ok
-  |> Middleware.Conn.with_header "Content-Type" "application/json"
-  |> Middleware.Conn.with_body (Data.Json.to_string json)
-  |> Middleware.Conn.send
+  |> Conn.with_status Ok
+  |> Conn.with_header "Content-Type" "application/json"
+  |> Conn.with_body (Data.Json.to_string json)
+  |> Conn.send
 
 let user_handler conn =
-  let params = Middleware.Conn.params conn in
+  let params = Conn.params conn in
   match List.assoc_opt "id" params with
   | Some id_str ->
       (try
@@ -70,39 +69,39 @@ let user_handler conn =
         | Some user ->
             let json = user_to_json user in
             conn
-            |> Middleware.Conn.with_status Ok
-            |> Middleware.Conn.with_header "Content-Type" "application/json"
-            |> Middleware.Conn.with_body (Data.Json.to_string json)
-            |> Middleware.Conn.send
+            |> Conn.with_status Ok
+            |> Conn.with_header "Content-Type" "application/json"
+            |> Conn.with_body (Data.Json.to_string json)
+            |> Conn.send
         | None -> 
             let error = Data.Json.obj [("error", Data.Json.string "User not found")] in
             conn
-            |> Middleware.Conn.with_status NotFound
-            |> Middleware.Conn.with_header "Content-Type" "application/json"
-            |> Middleware.Conn.with_body (Data.Json.to_string error)
-            |> Middleware.Conn.send
+            |> Conn.with_status NotFound
+            |> Conn.with_header "Content-Type" "application/json"
+            |> Conn.with_body (Data.Json.to_string error)
+            |> Conn.send
       with Failure _ -> 
         let error = Data.Json.obj [("error", Data.Json.string "Invalid user ID")] in
         conn
-        |> Middleware.Conn.with_status BadRequest
-        |> Middleware.Conn.with_header "Content-Type" "application/json"
-        |> Middleware.Conn.with_body (Data.Json.to_string error)
-        |> Middleware.Conn.send)
+        |> Conn.with_status BadRequest
+        |> Conn.with_header "Content-Type" "application/json"
+        |> Conn.with_body (Data.Json.to_string error)
+        |> Conn.send)
   | None ->
       let error = Data.Json.obj [("error", Data.Json.string "Missing user ID")] in
       conn
-      |> Middleware.Conn.with_status BadRequest
-      |> Middleware.Conn.with_header "Content-Type" "application/json"
-      |> Middleware.Conn.with_body (Data.Json.to_string error)
-      |> Middleware.Conn.send
+      |> Conn.with_status BadRequest
+      |> Conn.with_header "Content-Type" "application/json"
+      |> Conn.with_body (Data.Json.to_string error)
+      |> Conn.send
 
 let not_found_handler conn =
   let error = Data.Json.obj [("error", Data.Json.string "Endpoint not found")] in
   conn
-  |> Middleware.Conn.with_status NotFound
-  |> Middleware.Conn.with_header "Content-Type" "application/json"
-  |> Middleware.Conn.with_body (Data.Json.to_string error)
-  |> Middleware.Conn.send
+  |> Conn.with_status NotFound
+  |> Conn.with_header "Content-Type" "application/json"
+  |> Conn.with_body (Data.Json.to_string error)
+  |> Conn.send
 
 (* Define routes *)
 let routes = Middleware.Router.[
@@ -111,46 +110,34 @@ let routes = Middleware.Router.[
   get "/api/users/:id" user_handler;
 ]
 
-(* Build middleware pipeline *)
-let app = Middleware.Pipeline.[
+(* App is just a list of middleware! *)
+let app = [
   logger_middleware;
   cors_middleware;
-  Middleware.Router.middleware routes;
+  Middleware.router routes;
   not_found_handler;
 ]
-
-(* WebServer handler that runs the middleware pipeline *)
-let handler socket_conn req =
-  let conn = Middleware.Conn.make socket_conn req in
-  let conn = Middleware.Pipeline.run conn app in
-  let response = Middleware.Conn.to_response conn in
-  WebServer.Handler.close response
 
 let () =
   Miniriot.run ~args:Env.args () ~main:(fun ~args:_ ->
     Log.(set_level Info);
-    (* Start the server in its own process *)
-    let config = WebServer.Config.make () in
-    let supervisor = match WebServer.start_link ~port:3000 ~config ~handler () with
-      | Ok s -> s
-      | Error `Bind_error ->
-          Log.error "Failed to bind to port";
-          panic "Failed to start server"
-    in
-    
-    Log.info "JSON API server on http://0.0.0.0:3000";
-    Log.info "Try these commands:";
-    Log.info "  curl http://localhost:3000/api/users";
-    Log.info "  curl http://localhost:3000/api/users/1";
-    Log.info "  curl http://localhost:3000/api/users/2";
-      
-    let count = Supervisor.Dynamic.count_children supervisor in
-    Log.info ((Int.to_string count.active) ^ " acceptors ready");
-    
-    (* Wait forever *)
-    let rec loop () =
-      sleep (Time.Duration.from_secs 100);
-      loop ()
-    in
-    loop ()
+    match Suri.start_link app with
+    | Ok supervisor ->
+        Log.info "🚀 JSON API server on http://0.0.0.0:4000";
+        Log.info "   Try these commands:";
+        Log.info "     curl http://localhost:4000/api/users";
+        Log.info "     curl http://localhost:4000/api/users/1";
+        Log.info "     curl http://localhost:4000/api/users/2";
+          
+        let count = Supervisor.Dynamic.count_children supervisor in
+        Log.info ("   " ^ Int.to_string count.active ^ " acceptors ready");
+        
+        let rec loop () =
+          sleep (Time.Duration.from_secs 100);
+          loop ()
+        in
+        loop ()
+    | Error `Bind_error ->
+        Log.error "Failed to bind to port 4000";
+        Error (Failure "Failed to start server")
   )

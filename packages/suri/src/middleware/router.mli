@@ -22,10 +22,13 @@
             WebServer.Response.created ~body:("Created: " ^ body) ());
         ]
 
-      let handler =
-        Pipeline.create ()
-        |> Pipeline.plug (Router.middleware routes)
-        |> Pipeline.to_handler
+      (* Middleware is just a list! *)
+      let app = [ Router.middleware routes ]
+
+      let handler socket_conn req =
+        let conn = Conn.make socket_conn req in
+        let conn = Pipeline.run conn app in
+        Conn.to_response conn
     ]}
 
     {2 Pattern Syntax}
@@ -119,6 +122,16 @@ type route
 
 type t = route list
 (** A router is a list of routes, matched in order. *)
+
+val any : string -> Pipeline.middleware -> route
+(** Create a route that matches any HTTP method.
+    
+    Useful for WebSocket routes or handlers that need to accept multiple methods.
+    
+    {[
+      any "/ws" websocket_handler
+      any "/flexible" (fun conn -> ...)
+    ]} *)
 
 val get : string -> Pipeline.middleware -> route
 (** Create a GET route.
@@ -231,8 +244,10 @@ val middleware : t -> Pipeline.middleware
         get "/about" about_handler;
       ]
 
-      let handler =
-        Pipeline.create ()
-        |> Pipeline.plug (Router.middleware routes)
-        |> Pipeline.to_handler
+      (* Middleware is just a list! *)
+      let app = [ Router.middleware routes ]
+
+      let handler socket_conn req =
+        let conn = Conn.make socket_conn req in
+        Pipeline.run conn app
     ]} *)

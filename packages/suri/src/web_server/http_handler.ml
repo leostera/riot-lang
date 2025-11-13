@@ -8,7 +8,7 @@ type response =
 
 type t = Socket_pool.Connection.t -> Request.t -> response
 
-let close res = Response res
-let websocket opts handler = 
+let respond res = Response res
+let upgrade opts handler = 
   Log.info "Http_handler.websocket: Creating WebSocket upgrade response";
   Upgrade (WebSocket (opts, handler))

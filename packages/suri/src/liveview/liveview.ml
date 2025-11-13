@@ -3,8 +3,16 @@ open Std
 module Protocol = Protocol
 module HandlerRegistry = Handler_registry
 
+(** Generate a unique LiveView component ID *)
+let id base_name =
+  let uuid = Std.UUID.v7 () in
+  let uuid_hex = Std.UUID.to_string_nodash uuid in
+  base_name ^ "-" ^ uuid_hex
+
 (** Component interface *)
 module type Component = sig
+  val id : string
+  
   type state
   type msg
   
@@ -164,7 +172,7 @@ module MountHandler (C : Component) = struct
         `ok state
 end
 
-(** JavaScript runtime - included inline *)
+(** JavaScript runtime string - included inline *)
 let javascript_runtime = 
   (* Include morphdom library for efficient DOM patching *)
   Morphdom.javascript ^ {|
@@ -355,20 +363,27 @@ class LiveView {
 window.LiveView = LiveView;
 |}
 
-(** Generate HTML template with LiveView bootstrap *)
-let html_template ~element_id ~ws_path initial_content =
+(** Client script as a Component element *)
+let client_script : 'msg Component.t =
   let open Component in
+  script ~attrs:[attr "type" "text/javascript"] [text javascript_runtime]
+
+(** Generate HTML template with LiveView bootstrap *)
+let html_template ~element_id ~ws_path ?title ?styles initial_content =
+  let title_text = Option.unwrap_or title ~default:"LiveView App" in
+  let open Component in
+  let head_elements = [
+    meta ~attrs:[attr "charset" "UTF-8"] ();
+    meta ~attrs:[attr "viewport" "width=device-width, initial-scale=1.0"] ();
+    title_ [text title_text];
+    script ~attrs:[attr "type" "text/javascript"] [text javascript_runtime];
+  ] in
+  let head_elements = match styles with
+    | Some css -> head_elements @ [style_ [text css]]
+    | None -> head_elements
+  in
   let page = html [
-    head [
-      meta ~attrs:[attr "charset" "UTF-8"] ();
-      meta ~attrs:[
-        attr "viewport" "width=device-width, initial-scale=1.0"
-      ] ();
-      title_ [text "LiveView App"];
-      script ~attrs:[
-        attr "type" "text/javascript"
-      ] [text javascript_runtime];
-    ];
+    head head_elements;
     body [
       div ~attrs:[id element_id] [initial_content];
       script [text (
@@ -379,6 +394,30 @@ let html_template ~element_id ~ws_path initial_content =
   ] in
   Component.to_html page
 
+(** Serve the LiveView JavaScript runtime as middleware.
+    
+    This middleware automatically serves the LiveView JavaScript runtime
+    at the specified path. Add it to your middleware pipeline once.
+    
+    Example:
+    {[
+      let app = [
+        LiveView.serve_runtime ();  (* Serves at /assets/liveview.js *)
+        Middleware.router routes;
+      ]
+    ]} *)
+let serve_runtime ?(prefix = "/assets/liveview.js") () : Middleware.Pipeline.middleware =
+  fun conn ->
+    let req_path = Middleware.Conn.uri conn in
+    if req_path = prefix then
+      conn
+      |> Middleware.Conn.with_status Net.Http.Status.Ok
+      |> Middleware.Conn.with_header "Content-Type" "application/javascript; charset=utf-8"
+      |> Middleware.Conn.with_body javascript_runtime
+      |> Middleware.Conn.send
+    else
+      conn  (* Pass through to next middleware *)
+
 (** Create a LiveView mount handler *)
 let mount (type s m) 
     (module C : Component with type state = s and type msg = m)
@@ -387,20 +426,55 @@ let mount (type s m)
   let opts = Channel.Handler.{ do_upgrade = true } in
   (opts, Channel.Handler.make (module M) conn)
 
-(** Create a LiveView handler that serves HTML or upgrades to WebSocket *)
-let live
-  (type s m)
-  path
-  (module C : Component with type state = s and type msg = m)
-  socket_conn
-  req =
+(** Embed a LiveView component into a page.
+    
+    Creates a mounting div with LiveView JavaScript bootstrap code.
+    The component will connect to its WebSocket endpoint at /suri/live/<id>. *)
+let embed (type s m)
+    (module C : Component with type state = s and type msg = m)
+    (_conn : Middleware.Conn.t) : m Component.t =
+  let open Component in
+  let element_id = "liveview-" ^ C.id in
+  let ws_path = "/suri/live/" ^ C.id in
+  (* JavaScript variable names can't contain hyphens, replace with underscores *)
+  let js_var_name = "lv_" ^ String.map (fun c -> if c = '-' then '_' else c) element_id in
   
-  let req_path = Web_server.Request.uri req in
+  Fragment [
+    div ~attrs:[id element_id] [];
+    script [text (
+      "const " ^ js_var_name ^ " = new LiveView('" ^ element_id ^ "', '" ^ ws_path ^ "');\n" ^
+      js_var_name ^ ".connect();"
+    )];
+  ]
+
+(** Create a LiveView route.
+    
+    Reads the unique ID from the module's [id] field and creates the WebSocket endpoint
+    at "/suri/live/<id>".
+    
+    This creates a route that handles WebSocket upgrades only.
+    The initial HTML page should be served separately using [embed].
+    
+    Example:
+    {[
+      module Counter = struct
+        let id = LiveView.id "counter"
+        (* ... *)
+      end
+      
+      let routes = Middleware.Router.[
+        get "/" home_handler;
+        LiveView.live (module Counter);  (* Creates route at /suri/live/counter-<uuid> *)
+      ]
+    ]} *)
+let live (type s m) 
+  (module C : Component with type state = s and type msg = m) : Middleware.Router.route =
+  (* Read id from module and create WebSocket path *)
+  let ws_path = "/suri/live/" ^ C.id in
   
-  (* Check if this request is for our path *)
-  if req_path = path then
-    (* Check for WebSocket upgrade headers *)
-    let headers = Web_server.Request.headers req in
+  let handler conn =
+    (* This route only handles WebSocket upgrades *)
+    let headers = Middleware.Conn.headers conn in
     let is_websocket_upgrade =
       match (
         Net.Http.Header.get headers "upgrade",
@@ -415,21 +489,16 @@ let live
     in
     
     if is_websocket_upgrade then begin
-      (* WebSocket upgrade request - mount LiveView *)
-      Log.info "LiveView.live: Detected WebSocket upgrade, mounting component";
-      let (opts, handler) = mount (module C) (Middleware.Conn.make socket_conn req) in
-      Log.info "LiveView.live: Component mounted, returning websocket handler";
-      Web_server.Handler.websocket opts handler
-    end else
-      (* Regular HTTP request - serve HTML page *)
-      let body = html_template ~element_id:"app" ~ws_path:path (Component.Text "Loading...") in
-      let response = Web_server.Response.ok
-        ~headers:[("Content-Type", "text/html; charset=utf-8")]
-        ~body
-        ()
-      in
-      Web_server.Handler.close response
-  else
-    (* Not our path - 404 *)
-    Web_server.Handler.close (Web_server.Response.not_found ())
+      Log.info ("LiveView: Mounting component at " ^ ws_path);
+      let (opts, handler) = mount (module C) conn in
+      Middleware.Conn.upgrade_websocket opts handler conn
+    end else begin
+      (* Not a WebSocket upgrade - return error *)
+      conn
+      |> Middleware.Conn.with_status Net.Http.Status.BadRequest
+      |> Middleware.Conn.with_body "This endpoint only accepts WebSocket connections"
+      |> Middleware.Conn.send
+    end
+  in
+  Middleware.Router.any ws_path handler
 

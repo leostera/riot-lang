@@ -30,48 +30,62 @@
 
     {2:quickstart Quick Start}
 
-    {3 Simple Router}
+    {3 Simple Middleware Pipeline}
+
+    Middleware is just a list of [Conn.t -> Conn.t] functions!
 
     {[
       open Std
       open Suri
 
-      let routes =
-        let open Middleware.Router in
-        [
-          get "/" (fun _conn _req ->
-            WebServer.Response.ok ~body:"Home" ());
-          
-          get "/users/:id" (fun conn _req ->
-            let id = Middleware.Conn.param conn "id" in
-            WebServer.Response.ok ~body:("User " ^ id) ());
-          
-          post "/api/data" (fun _conn req ->
-            let body = WebServer.Request.body req in
-            WebServer.Response.ok ~body ());
-        ]
+      (* Define your middleware functions *)
+      let logger conn =
+        let uri = Conn.uri conn in
+        Log.info ("Request: " ^ uri);
+        conn
 
-      let handler =
-        Middleware.Pipeline.create ()
-        |> Middleware.Pipeline.plug (Middleware.Router.create routes)
-        |> Middleware.Pipeline.to_handler
+      (* Build routes *)
+      let routes = Middleware.Router.[
+        get "/" (fun conn -> Conn.respond conn ~status:Ok ~body:"Home");
+        get "/about" (fun conn -> Conn.respond conn ~status:Ok ~body:"About");
+      ]
+
+      (* Pipeline is just a list! *)
+      let app = [
+        logger;
+        Middleware.Router.middleware routes;
+      ]
+
+      (* Run the pipeline on each request *)
+      let handler socket_conn req =
+        let conn = Middleware.Conn.make socket_conn req in
+        let conn = Middleware.Pipeline.run conn app in
+        let response = Middleware.Conn.to_response conn in
+        close response
     ]}
 
     {3 Custom Middleware}
 
-    {[
-      let logger_middleware next conn =
-        let start_time = Unix.gettimeofday () in
-        let conn = next conn in
-        let duration = Unix.gettimeofday () -. start_time in
-        Log.info "Request took %.2fms" (duration *. 1000.0);
-        conn
+    Write your own [Conn.t -> Conn.t] functions:
 
-      let handler =
-        Middleware.Pipeline.create ()
-        |> Middleware.Pipeline.plug logger_middleware
-        |> Middleware.Pipeline.plug (Middleware.Router.create routes)
-        |> Middleware.Pipeline.to_handler
+    {[
+      (* Add a header to all responses *)
+      let add_header conn =
+        Conn.with_header conn "X-Powered-By" "Suri"
+
+      (* Authenticate requests *)
+      let auth conn =
+        match Conn.get_header conn "Authorization" with
+        | Some token when token = "secret" -> conn
+        | _ -> Conn.halt (Conn.respond conn ~status:Unauthorized ~body:"Unauthorized")
+
+      (* Compose them in a list *)
+      let app = [
+        logger;
+        add_header;
+        auth;
+        router;
+      ]
     ]}
 
     {2:concepts Core Concepts}
@@ -86,16 +100,17 @@
 
     {3 Pipeline}
 
-    A {!Pipeline.t} is a chain of middleware functions that transform connections:
+    A {!Pipeline.t} is simply a list of middleware functions:
     {[
-      type middleware = (Conn.t -> Conn.t) -> Conn.t -> Conn.t
+      type middleware = Conn.t -> Conn.t
+      type t = middleware list
     ]}
 
     Each middleware can:
-    - Inspect/modify the request
-    - Call the next middleware in the chain
+    - Inspect/modify the connection
+    - Transform the request/response
     - Set response data
-    - Halt the pipeline early
+    - Halt the pipeline early (stops execution)
 
     {3 Router}
 
@@ -145,13 +160,19 @@ module Conn = Conn
 module Pipeline = Pipeline
 (** {b Middleware Pipeline}
 
-    Compose and execute middleware functions in sequence.
+    A pipeline is just a list of middleware functions.
 
-    {b Key functions:}
-    - [create ()] - New empty pipeline
-    - [plug middleware] - Add middleware to pipeline
-    - [to_handler] - Convert pipeline to WebServer handler
-    - [run conn] - Execute pipeline on connection
+    {b Type:}
+    {[
+      type middleware = Conn.t -> Conn.t
+      type t = middleware list
+    ]}
+
+    {b Usage:}
+    {[
+      let app = [ logger; router; not_found ] in
+      let conn = Pipeline.run conn app
+    ]}
 
     See {!Pipeline} for full API. *)
 
@@ -181,3 +202,32 @@ module Router = Router
     ]}
 
     See {!Router} for full API. *)
+
+(** {2 Convenience Functions} *)
+
+val router : Router.route list -> Pipeline.middleware
+(** Create router middleware from a list of routes.
+    
+    This is a convenience alias for [Router.middleware routes].
+    Makes middleware pipelines more readable:
+    
+    {[
+      let app = [
+        logger;
+        router [
+          Router.get "/" home;
+          Router.get "/about" about;
+        ];
+      ]
+    ]}
+    
+    Instead of:
+    {[
+      let app = [
+        logger;
+        Router.middleware [
+          Router.get "/" home;
+          Router.get "/about" about;
+        ];
+      ]
+    ]} *)

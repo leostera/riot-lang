@@ -82,6 +82,31 @@ val set_params : (string * string) list -> t -> t
 val socket_conn : t -> Socket_pool.Connection.t
 (** Get the underlying socket connection *)
 
+(** ## WebSocket Upgrade *)
+
+val upgrade_websocket : 
+  Channel.Handler.upgrade_opts -> 
+  Channel.Handler.t -> 
+  t -> 
+  t
+(** Upgrade connection to WebSocket. This halts the middleware pipeline.
+    
+    Example:
+    {[
+      let websocket_handler conn =
+        let (opts, handler) = LiveView.mount (module MyComponent) conn in
+        Conn.upgrade_websocket opts handler conn
+    ]} *)
+
+type upgrade_info = private {
+  opts : Channel.Handler.upgrade_opts;
+  handler : Channel.Handler.t;
+}
+
+val get_upgrade : t -> upgrade_info option
+(** Get the upgrade info if the connection is upgrading to WebSocket.
+    Used internally by the framework. *)
+
 (** ## Response Extraction *)
 
 val to_response : t -> Web_server.Response.t

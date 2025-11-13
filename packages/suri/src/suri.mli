@@ -1,3 +1,5 @@
+open Std
+
 (** {1 Suri - High-Performance Web Framework for OCaml}
 
     Suri is a modern, actor-based web framework built on {!Std} and {!Miniriot}.
@@ -38,59 +40,122 @@
 
     {3 Hello World}
 
+    The simplest possible Suri server - just a list of middleware!
+
     {[
       open Std
       open Suri
 
-      let handler _conn _req =
-        WebServer.Response.ok ~body:"Hello, World!" ()
+      let app = [
+        (fun conn -> Conn.respond conn ~status:Ok ~body:"Hello, World!")
+      ]
 
-      let () = run_with @@ fun () ->
-        let config = WebServer.Config.make () in
-        match WebServer.start_link ~port:8080 ~config ~handler () with
-        | Ok _supervisor ->
-            Log.info "Server running on http://0.0.0.0:8080";
-            receive_any ()  (* Keep alive *)
+      let () = Miniriot.run ~args:Env.args () ~main:(fun ~args:_ ->
+        match Suri.start_link app with
+        | Ok _ ->
+            Log.info "Server running on http://0.0.0.0:4000";
+            let rec loop () = sleep (Time.Duration.from_secs 100); loop () in
+            loop ()
         | Error `Bind_error ->
             Error (Failure "Failed to bind")
+      )
+    ]}
+
+    {3 With Custom Port}
+
+    {[
+      let config = Suri.config ~port:8080 () in
+      Suri.start_link ~config app
+    ]}
+
+    {3 With Routing and Middleware}
+
+    Compose middleware as a simple list:
+
+    {[
+      open Std
+      open Suri
+
+      (* Custom middleware *)
+      let logger conn =
+        Log.info ("Request: " ^ Conn.uri conn);
+        conn
+
+      let cors conn =
+        Conn.with_header conn "Access-Control-Allow-Origin" "*"
+
+      (* Routes *)
+      let routes = Middleware.Router.[
+        get "/" (fun conn -> Conn.respond conn ~status:Ok ~body:"Home");
+        get "/about" (fun conn -> Conn.respond conn ~status:Ok ~body:"About");
+      ]
+
+      (* App is just a list! *)
+      let app = [
+        logger;
+        cors;
+        Middleware.Router.middleware routes;
+      ]
+
+      let () = Miniriot.run ~args:Env.args () ~main:(fun ~args:_ ->
+        match Suri.start_link app with
+        | Ok _ ->
+            Log.info "Server running";
+            let rec loop () = sleep (Time.Duration.from_secs 100); loop () in
+            loop ()
+        | Error `Bind_error ->
+            Error (Failure "Failed to bind")
+      )
+    ]}
+
+    {3 Custom Port}
+
+    Override defaults with optional parameters:
+
+    {[
+      let config = Suri.config ~port:8080 () in
+      Suri.start_link ~config ~handler ()
     ]}
 
     {3 With Routing}
 
+    Use middleware for routing - it's just a list of functions!
+
     {[
       open Std
       open Suri
 
-      let routes =
-        let open Middleware.Router in
-        [
-          get "/" (fun _conn _req ->
-            WebServer.Response.ok ~body:"Home" ());
-          
-          get "/api/status" (fun _conn _req ->
-            WebServer.Response.ok
-              ~headers:(Http.Header.of_list [("Content-Type", "application/json")])
-              ~body:{|{"status":"ok"}|}
-              ());
-          
-          post "/api/echo" (fun _conn req ->
-            let body = WebServer.Request.body req in
-            WebServer.Response.ok ~body ());
-        ]
+      (* Define your middleware *)
+      let logger conn =
+        Log.info ("Request: " ^ Middleware.Conn.uri conn);
+        conn
 
-      let handler =
-        Middleware.Pipeline.create ()
-        |> Middleware.Pipeline.plug (Middleware.Router.create routes)
-        |> Middleware.Pipeline.to_handler
+      let routes = Middleware.Router.[
+        get "/" (fun conn -> Middleware.Conn.respond conn ~status:Ok ~body:"Home");
+        get "/about" (fun conn -> Middleware.Conn.respond conn ~status:Ok ~body:"About");
+      ]
 
-      let () = run_with @@ fun () ->
-        let config = WebServer.Config.make () in
-        match WebServer.start_link ~port:8080 ~config ~handler () with
-        | Ok _supervisor ->
-            Log.info "Server running with routes on http://0.0.0.0:8080";
-            receive_any ()
+      (* Pipeline is just a list! *)
+      let app = [
+        logger;
+        Middleware.Router.middleware routes;
+      ]
+
+      (* Handler runs the pipeline *)
+      let handler socket_conn req =
+        let conn = Middleware.Conn.make socket_conn req in
+        let conn = Middleware.Pipeline.run conn app in
+        close (Middleware.Conn.to_response conn)
+
+      let () = Miniriot.run ~args:Env.args () ~main:(fun ~args:_ ->
+        match Suri.start_link ~handler () with
+        | Ok _ ->
+            Log.info "Server with routing on http://0.0.0.0:4000";
+            let rec loop () = sleep (Time.Duration.from_secs 100); loop () in
+            loop ()
         | Error `Bind_error ->
             Error (Failure "Failed to bind")
+      )
     ]}
 
     {3 Type-Safe Components}
@@ -221,218 +286,156 @@
 
     {1 API Reference} *)
 
-module SocketPool = Socket_pool
-(** {b TCP Connection Pool with Protocol Abstraction}
+(** {2 Top-Level API} *)
 
-    Low-level module for building custom protocol servers. Most users should
-    use {!WebServer} instead, which is built on top of SocketPool.
+module Config : sig
+  (** Server Configuration
+      
+      Compound configuration for the entire Suri server including
+      network settings, HTTP limits, and protocol-specific options. *)
+  
+  type t = {
+    host : string;
+    port : int;
+    acceptors : int;
+    max_request_line_length : int;
+    max_header_count : int;
+    max_header_length : int;
+    buffer_size : int;
+  }
+  
+  val default : t
+  (** Default configuration:
+      - host: "0.0.0.0" (all interfaces)
+      - port: 4000
+      - acceptors: System.available_parallelism
+      - max_request_line_length: 8192
+      - max_header_count: 100
+      - max_header_length: 8192
+      - buffer_size: 4096 *)
+end
 
-    {b Use SocketPool when:}
-    - Building non-HTTP protocols (Redis, MQTT, etc.)
-    - Need fine-grained control over connection lifecycle
-    - Implementing custom protocol handlers
+val config :
+  ?host:string ->
+  ?port:int ->
+  ?acceptors:int ->
+  ?max_request_line_length:int ->
+  ?max_header_count:int ->
+  ?max_header_length:int ->
+  ?buffer_size:int ->
+  unit -> Config.t
+(** Create server configuration with optional parameters. *)
 
-    {b Features:}
-    - Supervised acceptor pool with configurable concurrency
-    - Protocol switching support
-    - Automatic connection cleanup
-    - Backpressure handling
+(** {2 Core Types} *)
 
-    See [examples/echo_server.ml] for a custom protocol example. *)
+type middleware = Middleware.Pipeline.middleware
+(** A middleware function: [Conn.t -> Conn.t] *)
 
-module WebServer = Web_server
-(** {b HTTP/1.1 Web Server}
+type handler = Middleware.Pipeline.t
+(** A handler is just a list of middleware functions *)
 
-    High-level HTTP server built on {!SocketPool}. This is the main entry point
-    for building web applications.
+(** {2 Starting the Server} *)
 
-    {b Use WebServer for:}
-    - REST APIs
-    - Server-side rendered applications
-    - Static file servers
-    - Webhook receivers
-
-    {b Features:}
-    - HTTP/1.1 with keep-alive
-    - Request parsing (headers, body, query params)
-    - Response builders with status codes
-    - Chunked transfer encoding support
-    - Integration with {!Middleware} pipeline
-
-    {b Quick Example:}
+val start_link :
+  ?config:Config.t ->
+  handler ->
+  (Supervisor.Dynamic.t, [> `Bind_error ]) result
+(** Start a Suri web server with a middleware pipeline.
+    
+    Your application is simply a list of [Conn.t -> Conn.t] functions.
+    Each middleware can transform the connection, set response data,
+    or halt the pipeline.
+    
+    Examples:
+    
     {[
-      let handler _conn req =
-        let path = WebServer.Request.path req in
-        match path with
-        | "/" -> WebServer.Response.ok ~body:"Home" ()
-        | _ -> WebServer.Response.not_found ~body:"404" ()
-
-      let () = run_with @@ fun () ->
-        let config = WebServer.Config.make () in
-        WebServer.start_link ~port:8080 ~config ~handler ()
-        |> Result.get_ok
-        |> fun _ -> receive_any ()
+      (* Minimal *)
+      let app = [
+        (fun conn -> Conn.respond conn ~status:Ok ~body:"Hello!")
+      ]
+      Suri.start_link app
+      
+      (* With middleware *)
+      let app = [
+        logger;
+        auth;
+        router;
+      ]
+      Suri.start_link app
+      
+      (* Custom config *)
+      let config = Suri.config ~port:8080 () in
+      Suri.start_link ~config app
     ]}
+    
+    @param config Server configuration (defaults to Suri.config())
+    @param handler Middleware pipeline (list of Conn.t -> Conn.t)
+    @return Ok supervisor_pid if successful, Error `Bind_error if port binding fails *)
 
-    See {!WebServer.Request} and {!WebServer.Response} for request/response APIs.
-    See [examples/hello_world.ml] and [examples/routing.ml] for complete examples. *)
+(** {2 User-Facing Modules} *)
+
+module Conn = Middleware.Conn
+(** Connection type and transformations.
+    
+    This is your primary API for handling requests in middleware.
+    
+    Core functions:
+    - [respond ~status ~body] - Set response
+    - [with_header key value] - Add header
+    - [with_body body] - Set body
+    - [send] - Mark as sent (halts pipeline)
+    - [uri], [method_], [headers] - Request accessors
+    - [params] - Get route parameters
+    
+    See {!Middleware.Conn} for full API. *)
+
+module Response = Web_server.Response
+(** HTTP Response builders.
+    
+    Most users should use [Conn.respond] in middleware, but [Response]
+    is useful for building responses directly.
+    
+    See {!Web_server.Response} for full documentation. *)
+
+module Request = Web_server.Request
+(** HTTP Request accessors.
+    
+    Most users should use [Conn] methods in middleware, but [Request]
+    is useful for extracting request data.
+    
+    See {!Web_server.Request} for full documentation. *)
+
+(** {2 Framework Modules} *)
 
 module Middleware = Middleware
-(** {b Composable Middleware Framework}
-
-    Pipeline-based middleware system for composing request/response transformations.
-
-    {b Use Middleware for:}
-    - Routing with parameter extraction
-    - Logging and metrics
-    - Authentication/authorization
-    - Request transformation
-    - Response compression
-
-    {b Features:}
-    - {!Middleware.Router} - Pattern-based routing with [`:param`] extraction
-    - {!Middleware.Pipeline} - Compose middleware functions
-    - Halt support - stop pipeline early
-    - Conn abstraction - pass data between middleware
-
-    {b Example:}
-    {[
-      let routes =
-        let open Middleware.Router in
-        [
-          get "/" (fun _conn _req -> Response.ok ~body:"Home" ());
-          get "/users/:id" (fun conn _req ->
-            let id = Middleware.Conn.param conn "id" in
-            Response.ok ~body:("User " ^ id) ());
-        ]
-
-      let handler =
-        Middleware.Pipeline.create ()
-        |> Middleware.Pipeline.plug (Middleware.Router.create routes)
-        |> Middleware.Pipeline.to_handler
-    ]}
-
-    See {!Middleware.Router} for routing patterns.
-    See [examples/routing.ml] and [examples/json_api.ml] for complete examples. *)
-
-module Channel = Channel
-(** {b WebSocket Communication Layer}
-
-    Handler abstraction for building WebSocket servers and real-time features.
-
-    {b Use Channel for:}
-    - WebSocket servers
-    - Real-time chat applications
-    - Live dashboards
-    - Push notifications
-    - LiveView backend (coming soon)
-
-    {b Features:}
-    - WebSocket handshake handling
-    - Message encoding/decoding
-    - Connection lifecycle management
-    - Integration with supervision tree
-
-    {b Status:} WebSocket support is functional but API is still evolving.
-
-    See [examples/websocket_example.ml] for usage patterns. *)
+(** Composable middleware framework.
+    
+    Includes:
+    - {!Middleware.Conn} - Connection context
+    - {!Middleware.Pipeline} - Middleware composition  
+    - {!Middleware.Router} - Pattern-based routing
+    
+    See {!Middleware} for complete documentation. *)
 
 module Component = Component
-(** {b Type-Safe HTML Component System}
-
-    React-style component library for building UIs that work with both
-    static HTML rendering and interactive LiveView applications.
-
-    {b Why use Components?}
-
-    ✅ {b Write Once, Render Anywhere}
-    - Same components work for static HTML and LiveView
-    - Preview components as static HTML during development
-    - Add interactivity incrementally with event handlers
-
-    ✅ {b Type Safety}
-    - Catch HTML errors at compile time
-    - No typos in class names or attributes
-    - Refactor with confidence
-
-    ✅ {b Composability}
-    - Build reusable component libraries
-    - Create design systems with consistent styling
-    - Nest components naturally
-
-    ✅ {b No JavaScript Required}
-    - Event handlers run on the server (LiveView)
-    - No client-side build step
-    - No framework lock-in
-
-    {b Quick Example:}
-    {[
-      open Suri.Component
-
-      let card ~title ~content =
-        div ~attrs:[class_ "card"] [
-          h3 [text title];
-          p [text content];
-        ]
-
-      let page =
-        html [
-          head [title_ [text "My App"]];
-          body [
-            card ~title:"Welcome" ~content:"Hello, Components!";
-          ];
-        ]
-
-      let html_string = to_html page
-    ]}
-
-    {b Component Categories:}
-    - 115+ HTML5 elements - complete coverage including semantic HTML5, forms, tables, multimedia, SVG, MathML
-    - 30+ attribute helpers (class_, style, id, href, src, type_, etc.)
-    - 15+ event handlers for LiveView (on_click, on_submit, on_input, etc.)
-    - Conditional rendering (when_, unless, maybe)
-    - Content helpers (text, int, float, fragment, empty)
-
-    {b Examples:}
-    - [examples/basic_component.ml] - Full-page component with forms
-    - [examples/design_system.ml] - Reusable component library
-    - [examples/liveview_migration.ml] - Static → LiveView migration
-
-    See {!Component} module documentation for complete API reference. *)
+(** Type-safe HTML component system.
+    
+    Build UIs with React-style components that work with both
+    static HTML generation and LiveView interactivity.
+    
+    Features:
+    - 115+ HTML5 elements
+    - 30+ attribute helpers
+    - 15+ event handlers for LiveView
+    - Conditional rendering helpers
+    
+    See {!Component} for complete documentation. *)
 
 module LiveView = Liveview
-(** {b Server-Rendered Components with Live Updates}
-
-    LiveView provides Phoenix LiveView-style interactive UIs where:
-    - UI renders server-side with {!Component}
-    - User events sent to server over WebSocket
-    - Server updates state and re-renders
-    - DOM patches sent back to client
-    - No client-side JavaScript framework required
-
-    {b Example:}
-    {[
-      module Counter = struct
-        type state = { count: int }
-        type msg = Increment | Decrement
-        
-        let init _conn = { count: 0 }
-        let update msg state =
-          match msg with
-          | Increment -> { count = state.count + 1 }
-          | Decrement -> { count = state.count - 1 }
-        
-        let render ~state () =
-          Component.(
-            div [
-              h1 [text (Int.to_string state.count)];
-              button ~attrs:[on_click (fun _ -> Decrement)] [text "-"];
-              button ~attrs:[on_click (fun _ -> Increment)] [text "+"];
-            ]
-          )
-      end
-      
-      let routes = [LiveView.route "/counter" (module Counter)]
-    ]}
-
-    See {!LiveView} module for full API and examples. *)
+(** Server-rendered components with live updates.
+    
+    Phoenix LiveView-style interactive UIs where events are
+    sent to the server over WebSocket and DOM patches are
+    sent back to the client.
+    
+    See {!LiveView} for complete documentation. *)

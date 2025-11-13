@@ -12,6 +12,8 @@ open Suri
     Then open: http://localhost:4000 *)
 
 module Counter = struct
+  let id = LiveView.id "counter"
+  
   open Component
   
   type state = { count: int }
@@ -221,81 +223,61 @@ let page_styles = {|
   }
 |}
 
-(* Direct handler without middleware for LiveView *)
-let handler socket_conn req =
-  let path = WebServer.Request.uri req in
-  
-  match path with
-  | "/assets/liveview.js" ->
-      let response = WebServer.Response.ok
-        ~headers:[("Content-Type", "application/javascript; charset=utf-8")]
-        ~body:LiveView.javascript_runtime
-        ()
-      in
-      WebServer.Handler.close response
-  
-  | "/" ->
-      let open Component in
-      let loading = div ~attrs:[class_ "loading"] [
-        text "Connecting to LiveView..."
-      ] in
-      
-      let page = html [
-        head [
-          meta ~attrs:[attr "charset" "UTF-8"] ();
-          meta ~attrs:[
-            attr "viewport" "width=device-width, initial-scale=1.0"
-          ] ();
-          title_ [text "LiveView Counter"];
-          style_ [text page_styles];
-        ];
-        body [
-          div ~attrs:[id "app"] [loading];
-          script ~attrs:[src "/assets/liveview.js"] [];
-          script [text {|
-            const lv = new LiveView('app', '/live/counter');
-            lv.connect();
-          |}];
-        ];
-      ] in
-      
-      let response = WebServer.Response.ok
-        ~headers:[("Content-Type", "text/html; charset=utf-8")]
-        ~body:(Component.to_html page)
-        ()
-      in
-      WebServer.Handler.close response
-  
-  | "/live/counter" ->
-      (* Use LiveView.live for both HTTP and WebSocket *)
-      LiveView.live "/live/counter" (module Counter) socket_conn req
-  
-  | _ ->
-      WebServer.Handler.close (WebServer.Response.not_found ())
+(** Home page handler with embedded LiveView *)
+let home_page conn =
+  let open Component in
+  let page = html [
+    head [
+      meta ~attrs:[attr "charset" "UTF-8"] ();
+      meta ~attrs:[attr "viewport" "width=device-width, initial-scale=1.0"] ();
+      title_ [text "LiveView Counter"];
+      LiveView.client_script;  (* Include LiveView JS runtime *)
+      style_ [text page_styles];
+    ];
+    body [
+      div ~attrs:[id "app"] [
+        LiveView.embed (module Counter) conn;
+      ];
+    ];
+  ] in
+  conn
+  |> Middleware.Conn.with_status Net.Http.Status.Ok
+  |> Middleware.Conn.with_header "Content-Type" "text/html; charset=utf-8"
+  |> Middleware.Conn.with_body (Component.to_html page)
+  |> Middleware.Conn.send
+
+(* Define routes *)
+let routes = Middleware.Router.[
+  get "/" home_page;                   (* Serve home page with custom styles *)
+  LiveView.live (module Counter);      (* WebSocket endpoint at /suri/live/counter *)
+]
+
+(* App is just a list of middleware! *)
+let app = [
+  Middleware.router routes;
+]
 
 let () =
   Miniriot.run ~args:Env.args () ~main:(fun ~args:_ ->
-      let config = WebServer.Config.make () in
-      let supervisor = match WebServer.start_link ~port:9999 ~config ~handler () with
-        | Ok s -> s
-        | Error `Bind_error ->
-            Log.error "Failed to bind to port 9999";
-            panic "Failed to start server"
-      in
-      
-      Log.info "╔═══════════════════════════════════════════════════╗";
-      Log.info "║  LiveView Counter running!                       ║";
-      Log.info "║  http://localhost:9999                           ║";
-      Log.info "║                                                   ║";
-      Log.info "║  Open your browser and watch the magic happen!   ║";
-      Log.info "╚═══════════════════════════════════════════════════╝";
-      
-      let count = Supervisor.Dynamic.count_children supervisor in
-      Log.info ("Started with " ^ (Int.to_string count.active) ^ " acceptors");
-      
-      let rec loop () =
-        let _ = receive_any () in
-        loop ()
-      in
-      loop ()
+      let config = Suri.config ~port:9999 () in
+      match Suri.start_link ~config app with
+      | Ok supervisor ->
+          Log.info "╔═══════════════════════════════════════════════════╗";
+          Log.info "║  LiveView Counter running!                       ║";
+          Log.info "║  http://localhost:9999                           ║";
+          Log.info "║                                                   ║";
+          Log.info "║  Open your browser and watch the magic happen!   ║";
+          Log.info "╚═══════════════════════════════════════════════════╝";
+          
+          let count = Supervisor.Dynamic.count_children supervisor in
+          Log.info ("Started with " ^ Int.to_string count.active ^ " acceptors");
+          
+          let rec loop () =
+            sleep (Time.Duration.from_secs 100);
+            loop ()
+          in
+          loop ()
+      | Error `Bind_error ->
+          Log.error "Failed to bind to port 9999";
+          Error (Failure "Failed to start server")
   )

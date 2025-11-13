@@ -1,6 +1,19 @@
 open Std
 open Suri
 
+(** Routing Example
+    
+    Demonstrates routing with middleware pipeline.
+    
+    Run: tusk run suri:routing *)
+
+(* Custom middleware *)
+let logger_middleware conn =
+  let method_ = Conn.method_ conn in
+  let uri = Conn.uri conn in
+  Log.info ((Net.Http.Method.to_string method_) ^ " " ^ uri);
+  conn
+
 (* Route handlers *)
 let home_handler conn =
   let html = {|
@@ -9,25 +22,24 @@ let home_handler conn =
   <head><title>Suri Example</title></head>
   <body>
     <h1>Welcome to Suri!</h1>
-    <p>A supervised web framework for OCaml</p>
     <ul>
       <li><a href="/about">About</a></li>
-      <li><a href="/api/health">Health Check (JSON)</a></li>
+      <li><a href="/api/health">Health Check</a></li>
     </ul>
   </body>
 </html>
   |} in
   conn
-  |> Middleware.Conn.with_status Ok
-  |> Middleware.Conn.with_header "Content-Type" "text/html"
-  |> Middleware.Conn.with_body html
-  |> Middleware.Conn.send
+  |> Conn.with_status Ok
+  |> Conn.with_header "Content-Type" "text/html"
+  |> Conn.with_body html
+  |> Conn.send
 
 let about_handler conn =
   conn
-  |> Middleware.Conn.respond ~status:Ok 
-      ~body:"Suri - High-performance web framework with OTP-style supervision"
-  |> Middleware.Conn.send
+  |> Conn.respond ~status:Ok 
+      ~body:"Suri - High-performance web framework"
+  |> Conn.send
 
 let health_handler conn =
   let json = Data.Json.obj [
@@ -35,22 +47,15 @@ let health_handler conn =
     ("service", Data.Json.string "suri");
   ] in
   conn
-  |> Middleware.Conn.with_status Ok
-  |> Middleware.Conn.with_header "Content-Type" "application/json"
-  |> Middleware.Conn.with_body (Data.Json.to_string json)
-  |> Middleware.Conn.send
+  |> Conn.with_status Ok
+  |> Conn.with_header "Content-Type" "application/json"
+  |> Conn.with_body (Data.Json.to_string json)
+  |> Conn.send
 
 let not_found_handler conn =
   conn
-  |> Middleware.Conn.respond ~status:NotFound ~body:"404 - Page not found"
-  |> Middleware.Conn.send
-
-(* Request logger middleware *)
-let logger_middleware conn =
-  let method_ = Middleware.Conn.method_ conn in
-  let uri = Middleware.Conn.uri conn in
-  Log.info ((Net.Http.Method.to_string method_) ^ " " ^ uri);
-  conn
+  |> Conn.respond ~status:NotFound ~body:"404 - Page not found"
+  |> Conn.send
 
 (* Define routes *)
 let routes = Middleware.Router.[
@@ -59,54 +64,32 @@ let routes = Middleware.Router.[
   get "/api/health" health_handler;
 ]
 
-(* Build middleware pipeline *)
-let app = Middleware.Pipeline.[
+(* App is just a list of middleware! *)
+let app = [
   logger_middleware;
-  Middleware.Router.middleware routes;
+  Middleware.router routes;
   not_found_handler;  (* 404 fallback *)
 ]
 
-(* WebServer handler that runs the middleware pipeline *)
-let handler socket_conn req =
-  let conn = Middleware.Conn.make socket_conn req in
-  let conn = Middleware.Pipeline.run conn app in
-  let response = Middleware.Conn.to_response conn in
-  WebServer.Handler.close response
-
 let () =
   Miniriot.run ~args:Env.args () ~main:(fun ~args:_ ->
-    (* Start the server in its own process *)
-    let _server_pid = spawn (fun () ->
-      let config = WebServer.Config.make () in
-      let supervisor = match WebServer.start_link ~port:3000 ~config ~handler () with
-        | Ok s -> s
-        | Error `Bind_error ->
-            Log.error "Failed to bind to port 3000";
-            panic "Failed to start server"
-      in
-      
-      Log.info "Server with routing on http://0.0.0.0:3000";
-      Log.info "Routes:";
-      Log.info "  GET  /           - Home page";
-      Log.info "  GET  /about      - About page";
-      Log.info "  GET  /api/health - Health check";
-      
-      (* Monitor supervisor *)
-      let count = Supervisor.Dynamic.count_children supervisor in
-      Log.info ("Running with " ^ (Int.to_string count.active) ^ " acceptors under supervision");
-      
-      (* Server process waits forever *)
-      let rec loop () =
-        let _ = receive_any () in
+    match Suri.start_link app with
+    | Ok supervisor ->
+        Log.info "🚀 Server with routing on http://0.0.0.0:4000";
+        Log.info "   Routes:";
+        Log.info "     GET  /           - Home page";
+        Log.info "     GET  /about      - About page";
+        Log.info "     GET  /api/health - Health check";
+        
+        let count = Supervisor.Dynamic.count_children supervisor in
+        Log.info ("   Running with " ^ Int.to_string count.active ^ " acceptors");
+        
+        let rec loop () =
+          sleep (Time.Duration.from_secs 100);
+          loop ()
+        in
         loop ()
-      in
-      loop ()
-    ) in
-    
-    (* Wait forever *)
-    let rec loop () =
-      let _ = receive_any () in
-      loop ()
-    in
-    loop ()
+    | Error `Bind_error ->
+        Log.error "Failed to bind to port 4000";
+        Error (Failure "Failed to start server")
   )

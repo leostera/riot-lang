@@ -18,7 +18,7 @@ let articles = [
 
 (* Route handlers that use params *)
 let article_handler conn =
-  let params = Middleware.Conn.params conn in
+  let params = Conn.params conn in
   match List.assoc_opt "id" params with
   | Some id_str ->
       (try
@@ -31,31 +31,31 @@ let article_handler conn =
               ("content", Data.Json.string article.content);
             ] in
             conn
-            |> Middleware.Conn.with_status Ok
-            |> Middleware.Conn.with_header "Content-Type" "application/json"
-            |> Middleware.Conn.with_body (Data.Json.to_string json)
-            |> Middleware.Conn.send
+            |> Conn.with_status Ok
+            |> Conn.with_header "Content-Type" "application/json"
+            |> Conn.with_body (Data.Json.to_string json)
+            |> Conn.send
         | None ->
             let error = Data.Json.obj [("error", Data.Json.string "Article not found")] in
             conn
-            |> Middleware.Conn.with_status NotFound
-            |> Middleware.Conn.with_header "Content-Type" "application/json"
-            |> Middleware.Conn.with_body (Data.Json.to_string error)
-            |> Middleware.Conn.send
+            |> Conn.with_status NotFound
+            |> Conn.with_header "Content-Type" "application/json"
+            |> Conn.with_body (Data.Json.to_string error)
+            |> Conn.send
       with Failure _ ->
         let error = Data.Json.obj [("error", Data.Json.string "Invalid article ID")] in
         conn
-        |> Middleware.Conn.with_status BadRequest
-        |> Middleware.Conn.with_header "Content-Type" "application/json"
-        |> Middleware.Conn.with_body (Data.Json.to_string error)
-        |> Middleware.Conn.send)
+        |> Conn.with_status BadRequest
+        |> Conn.with_header "Content-Type" "application/json"
+        |> Conn.with_body (Data.Json.to_string error)
+        |> Conn.send)
   | None ->
       let error = Data.Json.obj [("error", Data.Json.string "Missing article ID")] in
       conn
-      |> Middleware.Conn.with_status BadRequest
-      |> Middleware.Conn.with_header "Content-Type" "application/json"
-      |> Middleware.Conn.with_body (Data.Json.to_string error)
-      |> Middleware.Conn.send
+      |> Conn.with_status BadRequest
+      |> Conn.with_header "Content-Type" "application/json"
+      |> Conn.with_body (Data.Json.to_string error)
+      |> Conn.send
 
 let articles_list_handler conn =
   let articles_json = List.map (fun a ->
@@ -66,10 +66,10 @@ let articles_list_handler conn =
   ) articles in
   let json = Data.Json.array articles_json in
   conn
-  |> Middleware.Conn.with_status Ok
-  |> Middleware.Conn.with_header "Content-Type" "application/json"
-  |> Middleware.Conn.with_body (Data.Json.to_string json)
-  |> Middleware.Conn.send
+  |> Conn.with_status Ok
+  |> Conn.with_header "Content-Type" "application/json"
+  |> Conn.with_body (Data.Json.to_string json)
+  |> Conn.send
 
 let home_handler conn =
   let html = {|
@@ -89,10 +89,10 @@ let home_handler conn =
 </html>
   |} in
   conn
-  |> Middleware.Conn.with_status Ok
-  |> Middleware.Conn.with_header "Content-Type" "text/html"
-  |> Middleware.Conn.with_body html
-  |> Middleware.Conn.send
+  |> Conn.with_status Ok
+  |> Conn.with_header "Content-Type" "text/html"
+  |> Conn.with_body html
+  |> Conn.send
 
 (* Routes with parameter patterns *)
 let routes = Middleware.Router.[
@@ -101,51 +101,34 @@ let routes = Middleware.Router.[
   get "/articles/:id" article_handler;
 ]
 
-let app = Middleware.Pipeline.[
-  Middleware.Router.middleware routes;
+(* Middleware is just a list! *)
+let app = [
+  Middleware.router routes;
 ]
-
-let handler socket_conn req =
-  let conn = Middleware.Conn.make socket_conn req in
-  let conn = Middleware.Pipeline.run conn app in
-  let response = Middleware.Conn.to_response conn in
-  WebServer.Handler.close response
 
 let () =
   Miniriot.run ~args:Env.args () ~main:(fun ~args:_ ->
-    (* Start the server in its own process *)
-    let _server_pid = spawn (fun () ->
-      let config = WebServer.Config.make () in
-      let supervisor = match WebServer.start_link ~port:3000 ~config ~handler () with
-        | Ok s -> s
-        | Error `Bind_error -> panic "Failed to bind to port"
-      in
-      
-      Log.info "Router params example on http://0.0.0.0:3000";
-      Log.info "Routes:";
-      Log.info "  GET  /              - Home page";
-      Log.info "  GET  /articles      - List articles";
-      Log.info "  GET  /articles/:id  - Get article by ID";
-      Log.info "";
-      Log.info "Try:";
-      Log.info "  curl http://localhost:3000/articles";
-      Log.info "  curl http://localhost:3000/articles/1";
-      
-      let count = Supervisor.Dynamic.count_children supervisor in
-      Log.info ((Int.to_string count.active) ^ " acceptors ready");
-      
-      (* Server process waits forever *)
-      let rec loop () =
-        let _ = receive_any () in
+    match Suri.start_link app with
+    | Ok supervisor ->
+        Log.info "🚀 Router params example on http://0.0.0.0:4000";
+        Log.info "   Routes:";
+        Log.info "     GET  /              - Home page";
+        Log.info "     GET  /articles      - List articles";
+        Log.info "     GET  /articles/:id  - Get article by ID";
+        Log.info "";
+        Log.info "   Try:";
+        Log.info "     curl http://localhost:4000/articles";
+        Log.info "     curl http://localhost:4000/articles/1";
+        
+        let count = Supervisor.Dynamic.count_children supervisor in
+        Log.info ("   " ^ Int.to_string count.active ^ " acceptors ready");
+        
+        let rec loop () =
+          sleep (Time.Duration.from_secs 100);
+          loop ()
+        in
         loop ()
-      in
-      loop ()
-    ) in
-    
-    (* Wait forever *)
-    let rec loop () =
-      let _ = receive_any () in
-      loop ()
-    in
-    loop ()
+    | Error `Bind_error ->
+        Log.error "Failed to bind to port 4000";
+        Error (Failure "Failed to start server")
   )

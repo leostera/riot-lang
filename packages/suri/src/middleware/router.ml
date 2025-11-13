@@ -1,8 +1,12 @@
 open Std
 
+type route_method = 
+  | SpecificMethod of Net.Http.Method.t
+  | AnyMethod
+
 type route =
   | Route of {
-      meth : Net.Http.Method.t;
+      meth : route_method;
       path : string;
       handler : Pipeline.middleware;
     }
@@ -10,7 +14,8 @@ type route =
 
 type t = route list
 
-let route meth path handler = Route { meth; path; handler }
+let route meth path handler = Route { meth = SpecificMethod meth; path; handler }
+let any path handler = Route { meth = AnyMethod; path; handler }
 let get path handler = route Get path handler
 let post path handler = route Post path handler
 let put path handler = route Put path handler
@@ -94,7 +99,11 @@ let middleware routes =
       let rec try_routes = function
         | [] -> conn
         | (route_meth, route_path, handler) :: rest ->
-            if route_meth = meth then
+            let method_matches = match route_meth with
+              | SpecificMethod m -> m = meth
+              | AnyMethod -> true
+            in
+            if method_matches then
               match Matcher.match_path route_path path with
               | Some params ->
                   let conn = Conn.set_params params conn in
