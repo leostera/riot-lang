@@ -1,32 +1,298 @@
-(** # HTTP/1.1 Web Server
+open Std
 
-    HTTP/1.1 server built on SocketPool with request parsing, response handling,
-    and keep-alive connection management.
+(** {1 WebServer - HTTP/1.1 Server}
 
-    ## Example
+    Production-ready HTTP/1.1 server with connection pooling, keep-alive support,
+    and automatic error recovery through supervision.
 
-    ```ocaml
+    {2 Table of Contents}
 
-    open Suri.WebServer
+    - {{!section-why}Why WebServer?}
+    - {{!section-quickstart}Quick Start}
+    - {{!section-features}Features}
+    - {{!section-modules}Modules}
+    - {{!section-examples}Examples}
 
-    let handler conn req = let uri = Request.uri req in let method_ =
-    Request.method_ req in Log.info "%s %s" (Net.Http.Method.to_string method_)
-    uri; Response.ok ~body:"Hello, World!" ()
+    {2:why Why WebServer?}
 
-    let () = let config = Config.make () in let handler_state = Http1.make
-    ~config ~handler () in SocketPool.start_link ~port:8080 ~handler:(module
-    Http1) ~initial_state:handler_state
+    {b ✅ Production Ready}
+    - HTTP/1.1 with keep-alive connections
+    - Supervised connection pool (automatic restart)
+    - Handles thousands of concurrent connections
+    - Graceful shutdown support
 
-    ``` *)
+    {b ✅ Simple API}
+    - Handler function: [Request.t -> Response.t]
+    - Response builders: [ok], [not_found], [redirect], etc.
+    - Request accessors: [path], [method_], [headers], [body]
+
+    {b ✅ Flexible}
+    - Works standalone or with {!Middleware}
+    - Configurable buffer sizes and timeouts
+    - Custom acceptor pool size
+    - Integration with supervision trees
+
+    {2:quickstart Quick Start}
+
+    {3 Hello World}
+
+    {[
+      open Std
+      open Suri
+
+      let handler _conn _req =
+        WebServer.Response.ok ~body:"Hello, World!" ()
+
+      let () = run_with @@ fun () ->
+        let config = WebServer.Config.make () in
+        match WebServer.start_link ~port:8080 ~config ~handler () with
+        | Ok _supervisor ->
+            Log.info "Server running on http://0.0.0.0:8080";
+            receive_any ()
+        | Error `Bind_error ->
+            Error (Failure "Failed to bind")
+    ]}
+
+    {3 With Request Inspection}
+
+    {[
+      let handler _conn req =
+        let open WebServer in
+        let path = Request.path req in
+        let method_ = Request.method_ req in
+        
+        Log.info "%s %s" (Http.Method.to_string method_) path;
+        
+        match (method_, path) with
+        | (GET, "/") ->
+            Response.ok ~body:"Home" ()
+        | (GET, "/about") ->
+            Response.ok ~body:"About Us" ()
+        | (POST, "/api/data") ->
+            let body = Request.body req in
+            Response.ok ~body:("Received: " ^ body) ()
+        | _ ->
+            Response.not_found ~body:"404 - Not Found" ()
+    ]}
+
+    {3 With JSON Response}
+
+    {[
+      let handler _conn _req =
+        let json = Data.Json.obj [
+          ("status", Data.Json.string "ok");
+          ("message", Data.Json.string "Hello from Suri");
+        ] in
+        WebServer.Response.ok
+          ~headers:(Http.Header.of_list [("Content-Type", "application/json")])
+          ~body:(Data.Json.to_string json)
+          ()
+    ]}
+
+    {2:features Features}
+
+    {3 HTTP/1.1 Support}
+    - Keep-alive connections (persistent connections)
+    - Chunked transfer encoding
+    - Request header parsing
+    - Query parameter extraction
+    - POST body handling
+
+    {3 Supervision & Fault Tolerance}
+    - Supervised acceptor pool
+    - Automatic process restart on crash
+    - Connection cleanup on error
+    - Graceful degradation
+
+    {3 Performance}
+    - Configurable acceptor pool size (default: 100)
+    - Adjustable buffer sizes
+    - Connection pooling and reuse
+    - Minimal memory allocations
+
+    {2:modules Modules}
+
+    - {!Config} - Server configuration (buffer size, timeouts, etc.)
+    - {!Request} - HTTP request inspection and parsing
+    - {!Response} - HTTP response builders (ok, redirect, error, etc.)
+    - {!Http1} - Low-level HTTP/1.1 protocol handler
+
+    {2:examples Examples}
+
+    See [packages/suri/examples/]:
+    - [hello_world.ml] - Minimal HTTP server
+    - [routing.ml] - Router with middleware pipeline
+    - [json_api.ml] - RESTful JSON API
+
+    Run examples:
+    {[
+      tusk run suri:hello_world
+      tusk run suri:routing
+      tusk run suri:json_api
+    ]}
+
+    {2 Configuration}
+
+    {3 Tune Acceptors}
+
+    Increase for high concurrency:
+    {[
+      let config = Config.make ~acceptors:200 ()
+      WebServer.start_link ~port:8080 ~config ~handler ()
+    ]}
+
+    {3 Adjust Buffer Size}
+
+    Larger buffers for big requests:
+    {[
+      let config = Config.make ~buffer_size:8192 ()
+    ]}
+
+    {3 Monitor Health}
+
+    {[
+      match WebServer.start_link ~port:8080 ~config ~handler () with
+      | Ok supervisor ->
+          let count = Supervisor.Dynamic.count_children supervisor in
+          Log.info "Active acceptors: %d" count.active;
+          receive_any ()
+      | Error `Bind_error ->
+          Error (Failure "Failed to bind")
+    ]}
+
+    ---
+
+    {1 API Reference} *)
 
 module Config = Config
-(** Server configuration *)
+(** {b Server Configuration}
+
+    Configure server behavior, buffer sizes, and connection limits.
+
+    {b Example:}
+    {[
+      let config = Config.make
+        ~buffer_size:4096
+        ~max_request_size:1048576  (* 1MB *)
+        ()
+    ]}
+
+    See {!Config} for all options. *)
 
 module Request = Request
-(** HTTP request representation *)
+(** {b HTTP Request}
+
+    Inspect incoming HTTP requests.
+
+    {b Common operations:}
+    - [Request.path req] - Get request path
+    - [Request.method_ req] - Get HTTP method
+    - [Request.headers req] - Get all headers
+    - [Request.body req] - Get request body
+    - [Request.query_param req "name"] - Get query parameter
+
+    {b Example:}
+    {[
+      let handler _conn req =
+        let path = Request.path req in
+        let user_agent = Request.header req "User-Agent" in
+        Log.info "Request to %s from %s" path user_agent;
+        Response.ok ~body:"OK" ()
+    ]}
+
+    See {!Request} for full API. *)
 
 module Response = Response
-(** HTTP response construction *)
+(** {b HTTP Response}
+
+    Build HTTP responses with status codes, headers, and body.
+
+    {b Response builders:}
+    - [ok ~body] - 200 OK
+    - [created ~body] - 201 Created
+    - [redirect ~location] - 302 Redirect
+    - [bad_request ~body] - 400 Bad Request
+    - [unauthorized ~body] - 401 Unauthorized
+    - [not_found ~body] - 404 Not Found
+    - [internal_server_error ~body] - 500 Internal Server Error
+
+    {b Example:}
+    {[
+      let handler _conn req =
+        match Request.path req with
+        | "/redirect" ->
+            Handler.close (Response.redirect ~location:"/home" ())
+        | "/json" ->
+            Handler.close (Response.ok
+              ~headers:(Http.Header.of_list [("Content-Type", "application/json")])
+              ~body:{|{"status":"ok"}|}
+              ())
+        | _ ->
+            Handler.close (Response.not_found ~body:"Page not found" ())
+    ]}
+
+    See {!Response} for full API. *)
+
+module Handler = Http_handler
+(** {b HTTP Handler}
+
+    Handler functions that can return either HTTP responses or protocol upgrades (WebSocket).
+
+    See {!Handler} for full API. *)
 
 module Http1 = Http1_handler
-(** HTTP/1.1 protocol handler *)
+(** {b HTTP/1.1 Protocol Handler}
+
+    Low-level HTTP/1.1 protocol implementation.
+
+    Most users don't need to use this directly - use {!start_link} instead.
+
+    See {!Http1} for internals. *)
+
+val start_link :
+  ?host:string ->
+  port:int ->
+  ?acceptors:int ->
+  config:Config.t ->
+  handler:Handler.t ->
+  unit ->
+  (Supervisor.Dynamic.t, [> `Bind_error ]) result
+(** Start a supervised HTTP/1.1 server.
+
+    This is the main entry point for starting a Suri web server.
+    It creates a supervised socket pool that handles HTTP/1.1 connections
+    with automatic acceptor restart on failure.
+
+    @param host Host to bind to (default: "0.0.0.0" for all interfaces)
+    @param port Port to listen on
+    @param acceptors Number of concurrent acceptor processes (default: 100)
+    @param config Server configuration (see {!Config})
+    @param handler Your HTTP request handler function
+    @return [Ok supervisor] with the supervisor PID, or [Error `Bind_error]
+
+    The handler function receives a connection and request, and should return
+    either a normal HTTP response or a protocol upgrade (WebSocket). Example:
+    
+    ```ocaml
+    let handler _conn req =
+      match Request.path req with
+      | "/" -> Handler.close (Response.ok ~body:"Home" ())
+      | "/about" -> Handler.close (Response.ok ~body:"About" ())
+      | _ -> Handler.close (Response.not_found ~body:"Not Found" ())
+    ```
+    
+    For WebSocket upgrades, return {!Handler.websocket}:
+    ```ocaml
+    let handler _conn req =
+      match Request.path req with
+      | "/ws/echo" ->
+          let opts = Channel.Handler.{ do_upgrade = true } in
+          let ws_handler = Channel.Handler.make (module EchoHandler) () in
+          Handler.websocket opts ws_handler
+      | _ -> Handler.close (Response.not_found ())
+    ```
+    
+    The supervisor manages a pool of acceptor processes. If an acceptor crashes,
+    it will be automatically restarted. The supervisor itself can be linked to
+    your application's supervision tree.
+*)

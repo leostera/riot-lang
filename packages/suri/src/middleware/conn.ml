@@ -57,6 +57,7 @@ let sent t = t.sent
 let halt t = { t with halted = true }
 let halted t = t.halted
 let set_params params t = { t with params }
+let socket_conn t = t.socket_conn
 
 let to_response t =
   Web_server.Response.make t.resp_status ~headers:t.resp_headers

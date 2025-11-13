@@ -79,6 +79,9 @@ val halted : t -> bool
 val set_params : (string * string) list -> t -> t
 (** Set path/query parameters (used by router) *)
 
+val socket_conn : t -> Socket_pool.Connection.t
+(** Get the underlying socket connection *)
+
 (** ## Response Extraction *)
 
 val to_response : t -> Web_server.Response.t

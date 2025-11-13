@@ -1,293 +1,144 @@
-(** # LiveView - Server-rendered Components with Live Updates
-
-    LiveView enables building interactive web applications where the UI is rendered
-    on the server and updates are pushed to the client over WebSocket. Changes to
-    state on the server automatically trigger DOM updates in the browser.
-
-    This is inspired by Phoenix LiveView and provides a similar developer experience
-    with OCaml's type safety.
-
-    ## Quick Start
-
-    Define a component with state, messages, and rendering:
-
-    ```ocaml
-    module Counter = struct
-      type state = { count : int }
-      type msg = Increment | Decrement | Reset
-
-      let init _conn = { count = 0 }
-
-      let update msg state =
-        match msg with
-        | Increment -> { count = state.count + 1 }
-        | Decrement -> { count = state.count - 1 }
-        | Reset -> { count = 0 }
-
-      let render ~state () =
-        let open Html in
-        div ~id:"counter" [
-          h1 [ string "Count: "; int state.count ];
-          div [
-            button ~on_click:(fun _ -> Increment) [ string "+" ] ();
-            button ~on_click:(fun _ -> Reset) [ string "Reset" ] ();
-            button ~on_click:(fun _ -> Decrement) [ string "-" ] ();
-          ] ()
-        ] ()
-    end
-
-    let (opts, handler) = LiveView.mount (module Counter)
-    ```
-
-    ## Architecture
-
-    LiveView follows the Elm Architecture (Model-View-Update):
-
-    1. **State** - Your application state (the model)
-    2. **Messages** - Events that can change state (actions)
-    3. **Update** - Pure function: msg -> state -> state
-    4. **Render** - Pure function: state -> Html
-
-    The LiveView runtime handles:
-    - WebSocket connection management
-    - Event routing from browser to server
-    - State management
-    - DOM diffing and patching
-    - Automatic re-rendering on state changes
-
-    ## Component Lifecycle
-
-    1. Client connects via WebSocket
-    2. `init` is called with connection info
-    3. Initial HTML is rendered and sent to client
-    4. User interactions trigger events
-    5. Events are sent to server over WebSocket
-    6. `update` is called with event message
-    7. New state triggers `render`
-    8. Diff is computed and sent to client
-    9. Client patches DOM with changes
-
-    ## Event Handling
-
-    Events flow from client to server:
-    - User clicks button in browser
-    - JavaScript runtime sends event over WebSocket
-    - Server deserializes event to your message type
-    - `update` is called with the message
-    - State changes trigger re-render
-    - HTML diff is sent back to client
-    - Client applies patch to DOM
-
-    ## State Management
-
-    Each LiveView connection runs in its own process with isolated state.
-    This provides:
-    - No shared mutable state between users
-    - Easy reasoning about concurrency
-    - Natural horizontal scaling
-    - Process isolation (crashes don't affect other users)
-
-    ## Integration with Web Server
-
-    To use LiveView, you need to:
-    1. Upgrade HTTP connection to WebSocket
-    2. Pass the handler to Channel processing
-    3. Serve the JavaScript runtime to clients
-
-    Example with Suri.WebServer:
-    ```ocaml
-    let route conn =
-      match conn.path with
-      | "/ws/counter" ->
-          let (opts, handler) = LiveView.mount (module Counter) in
-          (* Upgrade connection to WebSocket with handler *)
-          ...
-      | _ -> ...
-    ```
-
-    ## Client-Side Setup
-
-    Include the LiveView JavaScript runtime in your HTML:
-    ```html
-    <div id="counter"></div>
-    <script src="/liveview/runtime.js"></script>
-    <script>
-      window.spawnLiveView('counter', '/ws/counter');
-    </script>
-    ```
-
-    The runtime automatically:
-    - Establishes WebSocket connection
-    - Sends Mount message to initialize
-    - Handles user interactions
-    - Applies server-sent DOM patches
-    - Reconnects on disconnect *)
-
 open Std
 
-module Html = Html
-(** HTML DSL for building UI - re-exported for convenience *)
+(** {1 LiveView - Server-Rendered Components with Live Updates}
 
-module type Component = sig
-  (** Component interface - implement this to create a LiveView component.
-      
-      Components follow the Elm Architecture pattern:
-      - State: Your application state
-      - Messages: Events that modify state
-      - init: Initialize state
-      - update: Handle messages and update state
-      - render: Convert state to HTML
-      
-      Example:
-      ```ocaml
-      module TodoList = struct
-        type state = {
-          todos : string list;
-          input : string;
-        }
+    LiveView enables building interactive web applications where the UI is rendered
+    on the server and updates are pushed to the client over WebSocket.
+
+    {2 Quick Start}
+
+    {[
+      module Counter = struct
+        open Suri.Component
         
-        type msg =
-          | AddTodo
-          | UpdateInput of string
-          | RemoveTodo of int
+        type state = { count: int }
+        type msg = Increment | Decrement
         
-        let init _conn = {
-          todos = [];
-          input = "";
-        }
+        let init _conn = { count = 0 }
         
         let update msg state =
           match msg with
-          | AddTodo ->
-              { state with
-                todos = state.input :: state.todos;
-                input = ""
-              }
-          | UpdateInput text ->
-              { state with input = text }
-          | RemoveTodo idx ->
-              let todos = List.filteri (fun i _ -> i <> idx) state.todos in
-              { state with todos }
+          | Increment -> { count = state.count + 1 }
+          | Decrement -> { count = state.count - 1 }
         
         let render ~state () =
-          let open Html in
-          div [
-            input ~on_input:(fun v -> UpdateInput v) ~value:state.input () ();
-            button ~on_click:(fun _ -> AddTodo) [ string "Add" ] ();
-            ul (List.mapi (fun i todo ->
-              li [
-                string todo;
-                button ~on_click:(fun _ -> RemoveTodo i) [ string "✕" ] ()
-              ] ()
-            ) state.todos)
-          ] ()
+          div ~attrs:[class_ "counter"] [
+            h1 [text (Int.to_string state.count)];
+            button ~attrs:[on_click (fun _ -> Decrement)] [text "-"];
+            button ~attrs:[on_click (fun _ -> Increment)] [text "+"];
+          ]
       end
-      ```*)
+      
+      (* Create handler and serve HTML *)
+      let routes = [
+        LiveView.route "/counter" (module Counter);
+      ]
+    ]}
 
+    {2 Architecture}
+
+    LiveView follows the Elm Architecture:
+    - {b State} - Your application state (immutable)
+    - {b Messages} - Events that trigger state changes
+    - {b Update} - Pure function: [msg -> state -> state]
+    - {b Render} - Pure function: [state -> Component.t]
+
+    The runtime handles:
+    - WebSocket connection management (via Channel.Handler)
+    - Event routing from browser to server
+    - State management per connection (in dedicated process)
+    - Automatic re-rendering on state changes *)
+
+(** {1 Component Interface} *)
+
+module type Component = sig
   type state
-  (** Component state - can be any type that represents your application state.
-
-      Keep state as simple as possible. Avoid:
-      - Closures or functions in state
-      - External resources (file handles, sockets)
-      - Circular references
-
-      Good state types:
-      - Records with primitive fields
-      - Lists, options, results
-      - Nested records
-      - Discriminated unions *)
-
+  (** Application state *)
+  
   type msg
-  (** Message type - all events that can modify component state.
-
-      Define as a discriminated union with all possible user actions: ```ocaml
-      type msg = | ButtonClicked | InputChanged of string | ItemSelected of int
-      | FormSubmitted ```*)
-
+  (** Messages that can change state *)
+  
   val init : Middleware.Conn.t -> state
-  (** Initialize component state when connection starts.
-      
-      Called once when the WebSocket connection is established.
-      Use the connection to extract route params, query strings, etc.
-      
-      Example:
-      ```ocaml
-      let init conn =
-        let user_id = Middleware.Conn.get_param conn "user_id" in
-        { user_id; data = [] }
-      ```*)
-
+  (** Initialize state when client connects *)
+  
   val update : msg -> state -> state
-  (** Update state in response to a message.
-      
-      This should be a pure function with no side effects.
-      Given a message and current state, return new state.
-      
-      Example:
-      ```ocaml
-      let update msg state =
-        match msg with
-        | Increment -> { count = state.count + 1 }
-        | Decrement -> { count = state.count - 1 }
-        | Reset -> { count = 0 }
-      ```
-      
-      The LiveView runtime will automatically re-render after update. *)
-
-  val render : state:state -> unit -> msg Html.t
-  (** Render component state to HTML.
-
-      This should be a pure function that converts state to HTML. Event handlers
-      in the HTML should produce values of type `msg`.
-
-      Example: ```ocaml let render ~state () = let open Html in div
-      [ h1 [ string state.title ]; p [ string state.description ]; button
-       ~on_click:(fun _ -> Save) [ string "Save" ] () ] () ```
-
-      Tips:
-      - Keep rendering logic simple
-      - Extract complex rendering to helper functions
-      - Use Html.list for conditional rendering
-      - Use Html.map_action for nested components *)
+  (** Update state based on message (pure function) *)
+  
+  val render : state:state -> unit -> msg Component.t
+  (** Render state to Component tree (pure function) *)
 end
 
-type event =
-  | Mount
-  | Event of string * string
-  | Patch of string
-      (** Internal event types used by LiveView protocol.
+(** {1 Mounting LiveViews} *)
 
-          - Mount: Initial connection established
-          - Event: User interaction from browser
-          - Patch: HTML diff sent from server to client
+val mount : (module Component with type state = 's and type msg = 'm) -> 
+            Middleware.Conn.t ->
+            Channel.Handler.upgrade_opts * Channel.Handler.t
+(** Create a LiveView Channel.Handler.
+    
+    Returns a tuple of (upgrade_opts, handler) that can be used with
+    WebSocket upgrade mechanisms.
+    
+    The handler:
+    1. Spawns a component process to manage state
+    2. Handles WebSocket frames (Mount, Event messages)
+    3. Sends patches back to the client
+    
+    Example:
+    {[
+      let (opts, handler) = LiveView.mount (module Counter) conn in
+      (* Use with WebSocket upgrade *)
+    ]} *)
 
-          You typically don't need to work with these directly. *)
-
-val serialize_event : event -> (string, string) result
-(** Serialize an event to JSON string (internal use).
-
-    Used by the runtime to send events over WebSocket. *)
-
-val deserialize_event : string -> (event, string) result
-(** Deserialize JSON string to event (internal use).
-
-    Used by the runtime to parse incoming WebSocket messages. *)
-
-val mount :
+val live : 
+  string -> 
   (module Component with type state = 's and type msg = 'm) ->
-  Channel.Handler.upgrade_opts * Channel.Handler.t
-(** Mount a LiveView component as a WebSocket handler.
+  Web_server.Handler.t
+(** Create a LiveView handler that serves HTML or upgrades to WebSocket.
+    
+    This function creates a handler that:
+    - On regular HTTP GET: Returns HTML page with LiveView JavaScript
+    - On WebSocket upgrade: Mounts the LiveView component
+    
+    Example:
+    {[
+      let handler = LiveView.live "/counter" (module Counter)
+      
+      (* Or combine multiple LiveView handlers *)
+      let handler socket_conn req =
+        let path = Web_server.Request.uri req in
+        match path with
+        | "/counter" -> LiveView.live "/counter" (module Counter) socket_conn req
+        | "/chat" -> LiveView.live "/chat" (module Chat) socket_conn req
+        | _ -> Web_server.Handler.close (Web_server.Response.not_found ())
+    ]} *)
 
-    This creates a Channel handler that manages the LiveView lifecycle:
-    - Accepts WebSocket connection
-    - Initializes component state
-    - Routes events to update function
-    - Sends HTML patches to client
+(** {1 JavaScript Runtime} *)
 
-    Use this with your web server's WebSocket upgrade: ```ocaml let
-    (upgrade_opts, handler) = LiveView.mount (module Counter) in (* Pass handler
-    to WebSocket upgrade logic *) ```
+val javascript_runtime : string
+(** Get the LiveView JavaScript runtime code.
+    
+    This is embedded in the HTML template, but can also be served separately:
+    {[
+      get "/assets/liveview.js" (fun _conn _req ->
+        Response.ok
+          ~headers:[("Content-Type", "application/javascript")]
+          ~body:LiveView.javascript_runtime
+          ())
+    ]} *)
 
-    The returned handler can be used with Suri.Channel or integrated with your
-    HTTP server's WebSocket upgrade mechanism. *)
+val html_template : element_id:string -> ws_path:string -> 'msg Component.t -> string
+(** Generate HTML template with LiveView bootstrapping.
+    
+    @param element_id DOM element ID to mount LiveView
+    @param ws_path WebSocket path for LiveView connection
+    @param initial_content Initial content to show while connecting
+    
+    Example:
+    {[
+      let page = LiveView.html_template
+        ~element_id:"app"
+        ~ws_path:"/live/counter"
+        Component.(div [text "Loading..."])
+      in
+      Response.ok ~body:page ()
+    ]} *)

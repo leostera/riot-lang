@@ -19,6 +19,18 @@ let delete path handler = route Delete path handler
 let head path handler = route Head path handler
 let scope prefix routes = Scope { prefix; routes }
 
+let websocket (type a s) path 
+    (module H : Channel.Handler.Intf with type args = a and type state = s) 
+    (args : a) =
+  (* This creates a route that's meant to be used with a Handler.t-based server *)
+  (* It won't work correctly with the middleware-only routing we currently have *)
+  (* TODO: This needs to be integrated properly with the handler-based approach *)
+  get path (fun conn ->
+    conn
+    |> Conn.with_status Net.Http.Status.SwitchingProtocols
+    |> Conn.send
+  )
+
 let normalize_path path =
   let path = if String.starts_with ~prefix:"/" path then path else "/" ^ path in
   let path =
@@ -54,7 +66,7 @@ module Matcher = struct
   let match_path pattern path =
     let pattern_segs = parse_path pattern in
     let path_parts =
-      String.split_on_char '/' path |> List.filter (fun s -> s <> "")
+      String.split_on_char '/' path |> List.filter (fun s -> s != "")
     in
     match_segments pattern_segs path_parts
 end

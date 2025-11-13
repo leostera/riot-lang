@@ -5,9 +5,20 @@ module Connection = Connection
 module Handler = Handler
 module Transport = Transport
 
+(** SocketPool supervisor state *)
+type ('s, 'e) pool_state = {
+  listener : Net.TcpListener.t;
+  buffer_size : int;
+  handler : ('s, 'e) Handler.handler;
+  initial_ctx : 's;
+  transport : Transport.t;
+  acceptor_supervisor : Supervisor.Dynamic.t;
+}
+
+(** Start a supervised pool of acceptors *)
 let start_link ~host ~port ?(acceptors = 100) ?(buffer_size = 4096)
     ?(transport = Transport.tcp ()) (type s e)
-    (handler : (module Handler.Intf with type state = s and type error = e))
+    (handler : (s, e) Handler.handler)
     (initial_ctx : s) =
   match Net.Addr.of_host_and_port ~host ~port with
   | Error _ -> Error `Bind_error
@@ -15,13 +26,32 @@ let start_link ~host ~port ?(acceptors = 100) ?(buffer_size = 4096)
       match Net.TcpListener.bind ~reuse_addr:true ~reuse_port:false addr with
       | Error _ -> Error `Bind_error
       | Ok listener ->
-          Log.info "Listening on 0.0.0.0:%d" port;
-          let _acceptor_pids =
-            List.make ~len:acceptors ~fn:(fun _ ->
-                let state =
-                  Acceptor.
-                    { listener; buffer_size; handler; initial_ctx; transport }
-                in
-                Acceptor.start_link state)
+          Log.info ("Listening on " ^ host ^ ":" ^ (Int.to_string port));
+          
+          (* Start a dynamic supervisor for acceptors *)
+          let acceptor_supervisor = Supervisor.Dynamic.start_link
+            ~intensity:{ max_restarts = 10; window = Time.Duration.from_secs 60 }
+            ~max_children:(acceptors * 2)  (* Allow some overhead for restarts *)
+            ()
           in
-          Ok ())
+          
+          (* Spawn acceptors under the supervisor *)
+          for i = 1 to acceptors do
+            let start () =
+              let state =
+                Acceptor.{ listener; buffer_size; handler; initial_ctx; transport }
+              in
+              Acceptor.spawn state
+            in
+            match Supervisor.Dynamic.start_child acceptor_supervisor 
+              ~start
+              ~restart:Permanent
+              ~shutdown:(Timeout (Time.Duration.from_secs 5))
+              ()
+            with
+            | Ok _pid -> ()
+            | Error err ->
+                Log.error ("Failed to start acceptor: " ^ err)
+          done;
+          
+          Ok acceptor_supervisor)

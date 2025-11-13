@@ -2,90 +2,151 @@
 // Handles WebSocket connection and DOM updates for server-rendered components
 
 class LiveView {
-  constructor(elementId, path) {
+  constructor(elementId, wsPath) {
     this.elementId = elementId;
-    this.path = path;
+    this.wsPath = wsPath;
     this.element = null;
     this.socket = null;
+    this.handlers = new Map();
     this.connected = false;
   }
-
+  
   connect() {
     this.element = document.getElementById(this.elementId);
     if (!this.element) {
-      console.error(`Element with id "${this.elementId}" not found`);
+      console.error(`[LiveView] Element #${this.elementId} not found`);
       return;
     }
-
-    const protocol = window.location.protocol.replace('http', 'ws');
-    const url = `${protocol}//${window.location.host}${this.path}`;
     
+    const protocol = window.location.protocol.replace('http', 'ws');
+    const url = `${protocol}//${window.location.host}${this.wsPath}`;
+    
+    console.log(`[LiveView] Connecting to ${url}`);
     this.socket = new WebSocket(url);
     
     this.socket.addEventListener('open', () => {
       this.connected = true;
-      console.log('LiveView connected');
+      console.log('[LiveView] Connected');
       this.mount();
     });
-
+    
     this.socket.addEventListener('message', (event) => {
-      this.handleMessage(event);
+      this.handleMessage(event.data);
     });
-
+    
     this.socket.addEventListener('close', () => {
       this.connected = false;
-      console.log('LiveView disconnected');
+      console.log('[LiveView] Disconnected, reconnecting in 1s...');
       setTimeout(() => this.connect(), 1000);
     });
-
+    
     this.socket.addEventListener('error', (error) => {
-      console.error('LiveView error:', error);
+      console.error('[LiveView] WebSocket error:', error);
     });
   }
-
+  
   mount() {
-    const data = '"Mount"';
-    this.socket.send(data);
+    console.log('[LiveView] Mounting...');
+    this.send('"Mount"');
   }
-
-  handleMessage(event) {
+  
+  handleMessage(data) {
     try {
-      const json = JSON.parse(event.data);
+      const msg = JSON.parse(data);
       
-      if (json.Patch) {
-        const html = json.Patch[0];
-        this.patch(html);
+      if (msg.Patch) {
+        console.log('[LiveView] Received patch');
+        this.patch(msg.Patch);
+      } else if (msg.Error) {
+        console.error('[LiveView] Server error:', msg.Error);
+      } else {
+        console.warn('[LiveView] Unknown message:', msg);
       }
     } catch (error) {
-      console.error('Failed to handle message:', error);
+      console.error('[LiveView] Failed to handle message:', error, data);
     }
   }
-
+  
   patch(html) {
+    // Full HTML replacement (simple approach)
     this.element.innerHTML = html;
+    
+    // Rebind event handlers
     this.rebindEventHandlers();
   }
-
+  
   rebindEventHandlers() {
-    const elements = this.element.querySelectorAll('[data-liveview-id]');
+    // Clear old handlers
+    this.handlers.forEach(({ element, eventName, listener }) => {
+      element.removeEventListener(eventName, listener);
+    });
+    this.handlers.clear();
     
-    elements.forEach((el) => {
-      const id = el.getAttribute('data-liveview-id');
+    // Find all elements with data-lv-handler attribute
+    const elements = this.element.querySelectorAll('[data-lv-handler]');
+    
+    elements.forEach(el => {
+      const handlerId = el.getAttribute('data-lv-handler');
       const eventName = el.getAttribute('data-lv-event');
       
-      if (eventName) {
-        el.addEventListener(eventName, (e) => {
-          this.handleEvent(id, e);
-        });
+      if (!handlerId || !eventName) {
+        console.warn('[LiveView] Element missing handler ID or event name', el);
+        return;
       }
+      
+      const listener = (e) => {
+        e.preventDefault();
+        this.handleEvent(handlerId, e);
+      };
+      
+      el.addEventListener(eventName, listener);
+      this.handlers.set(handlerId, { element: el, eventName, listener });
     });
+    
+    console.log(`[LiveView] Bound ${this.handlers.size} event handlers`);
   }
-
-  handleEvent(id, event) {
-    const data = JSON.stringify({ Event: [id, ''] });
-    this.socket.send(data);
+  
+  handleEvent(handlerId, event) {
+    const eventData = this.serializeEvent(event);
+    
+    console.log(`[LiveView] Event: ${handlerId} (${event.type})`);
+    
+    const msg = JSON.stringify({
+      Event: [handlerId, eventData]
+    });
+    
+    this.send(msg);
   }
-
+  
+  serializeEvent(event) {
+    // Extract relevant event data
+    const data = {
+      type: event.type,
+    };
+    
+    if (event.target) {
+      if (event.target.value !== undefined) {
+        data.value = event.target.value;
+      }
+      if (event.target.checked !== undefined) {
+        data.checked = event.target.checked;
+      }
+      if (event.target.tagName) {
+        data.tagName = event.target.tagName;
+      }
+    }
+    
+    return JSON.stringify(data);
+  }
+  
+  send(data) {
+    if (this.connected && this.socket.readyState === WebSocket.OPEN) {
+      this.socket.send(data);
+    } else {
+      console.warn('[LiveView] Cannot send - not connected');
+    }
+  }
+  
   disconnect() {
     if (this.socket) {
       this.socket.close();
@@ -94,11 +155,15 @@ class LiveView {
 }
 
 // Export for use in browser
-window.LiveView = LiveView;
+if (typeof window !== 'undefined') {
+  window.LiveView = LiveView;
+}
 
-// Convenience function to spawn a new LiveView
-window.spawnLiveView = function(elementId, path) {
-  const lv = new LiveView(elementId, path);
-  lv.connect();
-  return lv;
-};
+// Convenience function
+if (typeof window !== 'undefined') {
+  window.spawnLiveView = function(elementId, wsPath) {
+    const lv = new LiveView(elementId, wsPath);
+    lv.connect();
+    return lv;
+  };
+}

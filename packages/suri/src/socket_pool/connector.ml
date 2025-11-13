@@ -1,11 +1,10 @@
 open Std
 
-
 type ('s, 'e) conn_state = {
   transport : Transport.t;
   stream : Net.TcpStream.t;
   buffer_size : int;
-  handler : (module Handler.Intf with type error = 'e and type state = 's);
+  handler : ('s, 'e) Handler.handler;
   peer : Net.Addr.stream_addr;
   accepted_at : Time.Instant.t;
   ctx : 's;
@@ -14,63 +13,64 @@ type ('s, 'e) conn_state = {
 type internal_msg = Shutdown
 type Message.t += ConnectorMsg of internal_msg
 
-let rec loop : type s e.
-    Connection.t ->
-    (module Handler.Intf with type state = s and type error = e) ->
-    s ->
-    unit =
+let rec loop : type s e. Connection.t -> (s, e) Handler.handler -> s -> unit =
  fun conn handler ctx ->
-  let module H = (val handler) in
-  let selector msg =
-    match msg with ConnectorMsg msg -> `select msg | _ -> `skip
-  in
-  match receive ~selector () with
-  | Shutdown -> H.handle_close conn ctx
-  | exception _ -> try_receive conn handler ctx
+  (* Check for messages before blocking on TCP *)
+  match receive_any ~timeout:(Time.Duration.from_millis 1) () with
+  | msg ->
+      (* Handle the actor message *)
+      handle_message_internal msg conn handler ctx
+  | exception Receive_timeout ->
+      (* No messages, proceed to TCP I/O *)
+      try_receive conn handler ctx
+
+and handle_message_internal : type s e.
+    Message.t -> Connection.t -> (s, e) Handler.handler -> s -> unit =
+ fun msg conn handler ctx ->
+  match handler.handle_message msg conn ctx with
+  | Continue ctx -> loop conn handler ctx
+  | Close ctx -> handler.handle_close conn ctx
+  | Switch (Handler.H { handler = new_handler; state }) ->
+      loop conn new_handler state
+  | Error (_state, err) ->
+      Log.error ("message handling error: " ^ (handler.to_string_error err))
+  | Ok -> ()
 
 and try_receive : type s e.
-    Connection.t ->
-    (module Handler.Intf with type state = s and type error = e) ->
-    s ->
-    unit =
+    Connection.t -> (s, e) Handler.handler -> s -> unit =
  fun conn handler ctx ->
-  let module H = (val handler) in
   match Connection.receive conn with
-  | Ok "" -> H.handle_close conn ctx
-  | Ok data -> handle_data data conn handler ctx
-  | Error `Closed -> H.handle_close conn ctx
+  | Ok "" ->
+      handler.handle_close conn ctx
+  | Ok data ->
+      handle_data data conn handler ctx
+  | Error `Closed ->
+      handler.handle_close conn ctx
 
 and handle_data : type s e.
-    string ->
-    Connection.t ->
-    (module Handler.Intf with type state = s and type error = e) ->
-    s ->
-    unit =
+    string -> Connection.t -> (s, e) Handler.handler -> s -> unit =
  fun data conn handler ctx ->
-  let module H = (val handler) in
-  match H.handle_data data conn ctx with
+  match handler.handle_data data conn ctx with
   | Continue ctx -> loop conn handler ctx
-  | Close ctx -> H.handle_close conn ctx
-  | Switch (Handler.H { handler; state }) ->
-      handle_connection conn handler state
+  | Close ctx -> handler.handle_close conn ctx
+  | Switch (Handler.H { handler = new_handler; state }) ->
+      handle_connection conn new_handler state
   | Error (_state, err) ->
-      Log.error "connection error: %s" (H.to_string_error err)
+      Log.error ("connection error: " ^ (handler.to_string_error err))
   | Ok -> ()
 
 and handle_connection : type s e.
-    Connection.t ->
-    (module Handler.Intf with type state = s and type error = e) ->
-    s ->
-    unit =
+    Connection.t -> (s, e) Handler.handler -> s -> unit =
  fun conn handler ctx ->
-  let module H = (val handler) in
-  match H.handle_connection conn ctx with
-  | Continue ctx -> loop conn handler ctx
-  | Close ctx -> H.handle_close conn ctx
-  | Switch (Handler.H { handler; state }) ->
-      handle_connection conn handler state
+  match handler.handle_connection conn ctx with
+  | Continue ctx ->
+      loop conn handler ctx
+  | Close ctx ->
+      handler.handle_close conn ctx
+  | Switch (Handler.H { handler = new_handler; state }) ->
+      handle_connection conn new_handler state
   | Error (_state, err) ->
-      Log.error "connection error: %s" (H.to_string_error err)
+      Log.error ("[Connector] Handler error: " ^ (handler.to_string_error err))
   | Ok -> ()
 
 let init state =
@@ -80,13 +80,11 @@ let init state =
   with
   | Ok conn ->
       handle_connection conn state.handler state.ctx;
-      Connection.close conn
-  | Error _ -> Log.error "failed to handshake connection"
+      Connection.close conn;
+      Ok ()
+  | Error _ ->
+      Log.error "[Connector] Failed to handshake connection";
+      Error (Failure "handshake failed")
 
-let start_link state =
-  let _pid =
-    spawn (fun () ->
-        init state;
-        Ok ())
-  in
-  ()
+let spawn state =
+  spawn (fun () -> init state)

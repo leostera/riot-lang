@@ -1,0 +1,301 @@
+open Std
+open Suri
+
+(** LiveView Counter Example
+    
+    A simple interactive counter demonstrating LiveView capabilities:
+    - Server-side rendering with Component system
+    - Real-time updates over WebSocket
+    - No client-side JavaScript framework needed
+    
+    Run with: tusk run suri:liveview_counter
+    Then open: http://localhost:4000 *)
+
+module Counter = struct
+  open Component
+  
+  type state = { count: int }
+  type msg = Increment | Decrement | Reset
+  
+  let init _conn = 
+    Log.info "Counter initialized";
+    { count = 0 }
+  
+  let update msg state =
+    let new_state = match msg with
+    | Increment -> { count = state.count + 1 }
+    | Decrement -> { count = state.count - 1 }
+    | Reset -> { count = 0 }
+    in
+    Log.info ("Counter: " ^ Int.to_string state.count ^ " -> " ^ Int.to_string new_state.count);
+    new_state
+  
+  let render ~state () =
+    div ~attrs:[class_ "counter-app"] [
+      (* Header *)
+      header ~attrs:[class_ "header"] [
+        h1 [text "LiveView Counter"];
+        p ~attrs:[class_ "subtitle"] [
+          text "Server-side rendering with real-time updates"
+        ];
+      ];
+      
+      (* Counter display *)
+      div ~attrs:[class_ "counter-display"] [
+        div ~attrs:[class_ "count-label"] [text "Current Count:"];
+        div ~attrs:[class_ "count-value"] [
+          text (Int.to_string state.count)
+        ];
+      ];
+      
+      (* Controls *)
+      div ~attrs:[class_ "controls"] [
+        button ~attrs:[
+          class_ "btn btn-decrement";
+          on_click (fun _ -> Decrement);
+        ] [text "−"];
+        
+        button ~attrs:[
+          class_ "btn btn-reset";
+          on_click (fun _ -> Reset);
+        ] [text "Reset"];
+        
+        button ~attrs:[
+          class_ "btn btn-increment";
+          on_click (fun _ -> Increment);
+        ] [text "+"];
+      ];
+      
+      (* Info section *)
+      footer ~attrs:[class_ "info"] [
+        p [
+          strong [text "How it works: "];
+          text "Clicks are sent to the server over WebSocket. ";
+          text "The server updates state and sends back only the HTML changes. ";
+          text "No client-side framework needed!";
+        ];
+      ];
+    ]
+end
+
+(** Page styles *)
+let page_styles = {|
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+  
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  
+  #app {
+    width: 100%;
+    max-width: 500px;
+  }
+  
+  .counter-app {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    padding: 40px;
+    text-align: center;
+  }
+  
+  .header {
+    margin-bottom: 32px;
+  }
+  
+  .header h1 {
+    font-size: 2em;
+    color: #333;
+    margin-bottom: 8px;
+  }
+  
+  .subtitle {
+    color: #666;
+    font-size: 0.9em;
+  }
+  
+  .counter-display {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 12px;
+    padding: 32px;
+    margin-bottom: 32px;
+  }
+  
+  .count-label {
+    font-size: 0.9em;
+    opacity: 0.9;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  
+  .count-value {
+    font-size: 4em;
+    font-weight: bold;
+    font-variant-numeric: tabular-nums;
+  }
+  
+  .controls {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-bottom: 32px;
+  }
+  
+  .btn {
+    font-size: 1.5em;
+    font-weight: bold;
+    padding: 16px 24px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 80px;
+  }
+  
+  .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+  
+  .btn:active {
+    transform: translateY(0);
+  }
+  
+  .btn-decrement {
+    background: #dc3545;
+    color: white;
+  }
+  
+  .btn-decrement:hover {
+    background: #c82333;
+  }
+  
+  .btn-reset {
+    background: #6c757d;
+    color: white;
+  }
+  
+  .btn-reset:hover {
+    background: #5a6268;
+  }
+  
+  .btn-increment {
+    background: #28a745;
+    color: white;
+  }
+  
+  .btn-increment:hover {
+    background: #218838;
+  }
+  
+  .info {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 16px;
+    font-size: 0.85em;
+    color: #666;
+    line-height: 1.6;
+  }
+  
+  .info strong {
+    color: #333;
+  }
+  
+  /* Loading state */
+  .loading {
+    text-align: center;
+    color: white;
+    font-size: 1.2em;
+  }
+|}
+
+(* Direct handler without middleware for LiveView *)
+let handler socket_conn req =
+  let path = WebServer.Request.uri req in
+  
+  match path with
+  | "/assets/liveview.js" ->
+      let response = WebServer.Response.ok
+        ~headers:[("Content-Type", "application/javascript; charset=utf-8")]
+        ~body:LiveView.javascript_runtime
+        ()
+      in
+      WebServer.Handler.close response
+  
+  | "/" ->
+      let open Component in
+      let loading = div ~attrs:[class_ "loading"] [
+        text "Connecting to LiveView..."
+      ] in
+      
+      let page = html [
+        head [
+          meta ~attrs:[attr "charset" "UTF-8"] ();
+          meta ~attrs:[
+            attr "viewport" "width=device-width, initial-scale=1.0"
+          ] ();
+          title_ [text "LiveView Counter"];
+          style_ [text page_styles];
+        ];
+        body [
+          div ~attrs:[id "app"] [loading];
+          script ~attrs:[src "/assets/liveview.js"] [];
+          script [text {|
+            const lv = new LiveView('app', '/live/counter');
+            lv.connect();
+          |}];
+        ];
+      ] in
+      
+      let response = WebServer.Response.ok
+        ~headers:[("Content-Type", "text/html; charset=utf-8")]
+        ~body:(Component.to_html page)
+        ()
+      in
+      WebServer.Handler.close response
+  
+  | "/live/counter" ->
+      (* Use LiveView.live for both HTTP and WebSocket *)
+      LiveView.live "/live/counter" (module Counter) socket_conn req
+  
+  | _ ->
+      WebServer.Handler.close (WebServer.Response.not_found ())
+
+let () =
+  Miniriot.run ~args:Env.args () ~main:(fun ~args:_ ->
+      let config = WebServer.Config.make () in
+      let supervisor = match WebServer.start_link ~port:9999 ~config ~handler () with
+        | Ok s -> s
+        | Error `Bind_error ->
+            Log.error "Failed to bind to port 9999";
+            panic "Failed to start server"
+      in
+      
+      Log.info "╔═══════════════════════════════════════════════════╗";
+      Log.info "║  LiveView Counter running!                       ║";
+      Log.info "║  http://localhost:9999                           ║";
+      Log.info "║                                                   ║";
+      Log.info "║  Open your browser and watch the magic happen!   ║";
+      Log.info "╚═══════════════════════════════════════════════════╝";
+      
+      let count = Supervisor.Dynamic.count_children supervisor in
+      Log.info ("Started with " ^ (Int.to_string count.active) ^ " acceptors");
+      
+      let rec loop () =
+        let _ = receive_any () in
+        loop ()
+      in
+      loop ()
+  )

@@ -1,505 +1,585 @@
 # Suri Examples
 
-Comprehensive examples showing how to use Suri's components together.
+Comprehensive examples showing how to use Suri with proper supervision.
 
 ## Table of Contents
 
+- [Hello World](#hello-world)
 - [Simple HTTP Server](#simple-http-server)
+- [JSON API Server](#json-api-server)
 - [WebSocket Echo Server](#websocket-echo-server)
-- [LiveView Counter](#liveview-counter)
-- [LiveView Todo List](#liveview-todo-list)
-- [Full Web Application](#full-web-application)
+- [Middleware and Routing](#middleware-and-routing)
+- [Type-Safe HTML Components](#type-safe-html-components)
+
+---
+
+## Hello World
+
+The simplest possible Suri server:
+
+```ocaml
+open Std
+open Suri
+
+let handler _conn _req =
+  WebServer.Response.ok ~body:"Hello, World!" ()
+
+let main () =
+  let config = WebServer.Config.make () in
+  match WebServer.start_link ~port:8080 ~config ~handler () with
+  | Ok supervisor ->
+      Log.info "Server running on http://0.0.0.0:8080";
+      receive_any ()  (* Keep process alive *)
+  | Error `Bind_error ->
+      Log.error "Failed to bind to port 8080";
+      Error (Failure "bind error")
+
+let () = run_with @@ main
+```
+
+**Run it:**
+```bash
+tusk run hello_world
+curl http://localhost:8080
+# Output: Hello, World!
+```
 
 ---
 
 ## Simple HTTP Server
 
-Basic HTTP server with routing and middleware:
+HTTP server with basic routing:
 
 ```ocaml
 open Std
 open Suri
 
-let home_handler conn =
-  conn
-  |> Middleware.Conn.with_status `OK
-  |> Middleware.Conn.with_body "Welcome to Suri!"
-  |> Middleware.Conn.send
+let handler _conn req =
+  let open WebServer in
+  let path = Request.path req in
+  let method_ = Request.method_ req in
+  
+  Log.info "%s %s" (Http.Method.to_string method_) path;
+  
+  match (method_, path) with
+  | (GET, "/") ->
+      Response.ok ~body:"Welcome to Suri!" ()
+  
+  | (GET, "/about") ->
+      let html = {|
+<!DOCTYPE html>
+<html>
+  <head><title>About</title></head>
+  <body>
+    <h1>About Suri</h1>
+    <p>A high-performance web framework for OCaml</p>
+    <a href="/">Home</a>
+  </body>
+</html>
+      |} in
+      Response.ok
+        ~headers:(Http.Header.of_list [("Content-Type", "text/html")])
+        ~body:html
+        ()
+  
+  | (GET, "/health") ->
+      Response.ok ~body:"OK" ()
+  
+  | _ ->
+      Response.not_found ~body:"404 - Not Found" ()
 
-let about_handler conn =
-  let html = {|
-    <!DOCTYPE html>
-    <html>
-      <body>
-        <h1>About Us</h1>
-        <p>Built with Suri web framework</p>
-      </body>
-    </html>
-  |} in
-  conn
-  |> Middleware.Conn.with_status `OK
-  |> Middleware.Conn.with_header "Content-Type" "text/html"
-  |> Middleware.Conn.with_body html
-  |> Middleware.Conn.send
+let main () =
+  let config = WebServer.Config.make () in
+  match WebServer.start_link ~port:8080 ~config ~handler () with
+  | Ok supervisor ->
+      Log.info "Server started on http://0.0.0.0:8080";
+      Log.info "Try: curl http://localhost:8080/";
+      Log.info "     curl http://localhost:8080/about";
+      receive_any ()
+  | Error `Bind_error ->
+      Error (Failure "Failed to bind")
 
-let routes =
-  Middleware.Router.[
-    get "/" home_handler;
-    get "/about" about_handler;
+let () = run_with @@ main
+```
+
+---
+
+## JSON API Server
+
+RESTful JSON API using `Data.Json` for proper JSON handling:
+
+```ocaml
+open Std
+open Suri
+
+type user = {
+  id : int;
+  name : string;
+  email : string;
+}
+
+(* In-memory database *)
+let users = [
+  { id = 1; name = "Alice"; email = "alice@example.com" };
+  { id = 2; name = "Bob"; email = "bob@example.com" };
+]
+
+(* Convert user to JSON using Data.Json *)
+let user_to_json user =
+  Data.Json.obj [
+    ("id", Data.Json.int user.id);
+    ("name", Data.Json.string user.name);
+    ("email", Data.Json.string user.email);
   ]
 
-let app =
-  Middleware.Pipeline.[
-    Middleware.Router.middleware routes;
-  ]
+let users_to_json users =
+  Data.Json.array (List.map user_to_json users)
+
+let json_headers = [
+  ("Content-Type", "application/json");
+  ("Access-Control-Allow-Origin", "*");
+]
+
+let json_response json =
+  WebServer.Response.ok
+    ~headers:json_headers
+    ~body:(Data.Json.to_string json)
+    ()
+
+let handler _conn req =
+  let open WebServer in
+  let uri = Request.uri req in
+  
+  if uri = "/api/users" then
+    json_response (users_to_json users)
+  else if String.starts_with ~prefix:"/api/users/" uri then
+    let id_str = String.sub uri 11 (String.length uri - 11) in
+    (try
+      let id = Int.of_string id_str in
+      match List.find_opt (fun u -> u.id = id) users with
+      | Some user -> json_response (user_to_json user)
+      | None -> 
+          let error = Data.Json.obj [("error", Data.Json.string "User not found")] in
+          Response.not_found ~headers:json_headers 
+            ~body:(Data.Json.to_string error) ()
+    with Failure _ -> 
+      let error = Data.Json.obj [("error", Data.Json.string "Invalid user ID")] in
+      Response.bad_request ~headers:json_headers 
+        ~body:(Data.Json.to_string error) ())
+  else if uri = "/" then
+    let info = Data.Json.obj [
+      ("api", Data.Json.string "JSON API Example");
+      ("endpoints", Data.Json.obj [
+        ("/api/users", Data.Json.string "List all users");
+        ("/api/users/:id", Data.Json.string "Get user by ID");
+      ])
+    ] in
+    json_response info
+  else
+    let error = Data.Json.obj [("error", Data.Json.string "Endpoint not found")] in
+    Response.not_found ~headers:json_headers 
+      ~body:(Data.Json.to_string error) ()
 
 let () =
-  let config = WebServer.Config.make ~port:8080 () in
-  let handler socket_conn req =
-    let conn = Middleware.Conn.make socket_conn req in
-    let conn = Middleware.Pipeline.run conn app in
-    Middleware.Conn.to_response conn
-  in
-  match WebServer.start config handler with
-  | Ok () -> Log.info "Server started on port 8080"
-  | Error err -> Log.error "Failed to start server: %a" Net.pp_error err
+  Miniriot.run ~args:Env.args () ~main:(fun ~args:_ ->
+    let config = WebServer.Config.make () in
+    let supervisor = match WebServer.start_link ~port:8080 ~config ~handler () with
+      | Ok s -> s
+      | Error `Bind_error -> panic "Failed to bind to port"
+    in
+    
+    Log.info "JSON API server on http://0.0.0.0:8080";
+    Log.info "Try: curl http://localhost:8080/api/users";
+    
+    let _ = receive_any () in
+    Ok ()
+  )
 ```
+
+**Test it:**
+```bash
+curl http://localhost:8080/api/users
+# [{"id":1,"name":"Alice","email":"alice@example.com"},...]
+
+curl http://localhost:8080/api/users/1
+# {"id":1,"name":"Alice","email":"alice@example.com"}
+
+curl http://localhost:8080/api/users/999
+# {"error":"User not found"}
+```
+
+**Benefits of using `Data.Json`:**
+- ✅ Type-safe JSON construction
+- ✅ Automatic escaping and formatting
+- ✅ No manual string concatenation
+- ✅ Easy to compose and nest objects
+- ✅ Can parse incoming JSON with `Data.Json.of_string`
 
 ---
 
 ## WebSocket Echo Server
 
-WebSocket server that echoes back messages:
+WebSocket server that echoes back messages (Channel API):
 
 ```ocaml
 open Std
 open Suri
 
-module EchoHandler = struct
-  type args = unit
+(* WebSocket support coming soon! *)
+(* For now, use SocketPool.Handler directly for custom protocols *)
+
+module EchoProtocol = struct
+  include SocketPool.Handler.Default
+  
   type state = { message_count : int }
+  type error = string
 
-  let init () = `ok { message_count = 0 }
+  let handle_connection _conn state =
+    Log.info "WebSocket-like connection established";
+    Continue { message_count = 0 }
 
-  let handle_frame frame _conn state =
-    match frame.Http.Ws.Frame.opcode with
-    | Http.Ws.Frame.Text ->
-        Log.info "Received: %s" frame.payload;
-        let response = Http.Ws.Frame.text (Format.sprintf "Echo: %s" frame.payload) in
-        `push ([response], { message_count = state.message_count + 1 })
-    | Http.Ws.Frame.Ping ->
-        `push ([Http.Ws.Frame.pong ()], state)
-    | Http.Ws.Frame.Binary ->
-        let response = Http.Ws.Frame.binary frame.payload in
-        `push ([response], state)
-    | _ -> `ok state
+  let handle_data data conn state =
+    Log.info "Received %d bytes" (String.length data);
+    match SocketPool.Connection.send conn ("Echo: " ^ data) with
+    | Ok () -> 
+        Continue { message_count = state.message_count + 1 }
+    | Error `Closed -> 
+        Close state
 
-  let handle_message _msg state = `ok state
+  let handle_close _conn state =
+    Log.info "Connection closed after %d messages" state.message_count
 end
 
-let ws_handler conn =
-  let (upgrade_opts, handler) = (
-    Channel.Handler.{ do_upgrade = true },
-    Channel.Handler.make (module EchoHandler) ()
-  ) in
-  (* Upgrade to WebSocket *)
-  (* Note: This requires WebSocket upgrade integration in WebServer *)
-  conn
+let main () =
+  match SocketPool.start_link
+    ~host:"0.0.0.0"
+    ~port:9000
+    ~acceptors:50
+    (module EchoProtocol)
+    { EchoProtocol.message_count = 0 }
+  with
+  | Ok supervisor ->
+      Log.info "Echo server on port 9000";
+      Log.info "Try: telnet localhost 9000";
+      receive_any ()
+  | Error `Bind_error ->
+      Error (Failure "Failed to bind")
 
-let routes =
-  Middleware.Router.[
-    get "/ws/echo" ws_handler;
-  ]
+let () = run_with @@ main
+```
+
+**Test it:**
+```bash
+telnet localhost 9000
+# Type anything and see it echoed back
 ```
 
 ---
 
-## LiveView Counter
+## Middleware and Routing
 
-Interactive counter with server-side state:
+Using middleware for logging and routing (coming soon):
 
 ```ocaml
+(* Middleware support is being redesigned to work with the new supervision model.
+   For now, implement routing directly in your handler function. *)
+
 open Std
 open Suri
 
-module Counter = struct
-  type state = {
-    count : int;
-    step : int;
-  }
+let handler _conn req =
+  let open WebServer in
+  let path = Request.path req in
+  let method_ = Request.method_ req in
+  
+  (* Simple logging *)
+  Log.info "%s %s" (Http.Method.to_string method_) path;
+  
+  (* Routing *)
+  match (method_, path) with
+  | (GET, "/") -> Response.ok ~body:"Home" ()
+  | (GET, "/api/status") ->
+      Response.ok
+        ~headers:(Http.Header.of_list [("Content-Type", "application/json")])
+        ~body:{|{"status":"ok"}|}
+        ()
+  | (POST, "/api/echo") ->
+      let body = Request.body req in
+      Response.ok ~body ()
+  | _ -> Response.not_found ~body:"Not Found" ()
 
-  type msg =
-    | Increment
-    | Decrement
-    | Reset
-    | SetStep of int
+let main () =
+  let config = WebServer.Config.make () in
+  match WebServer.start_link ~port:8080 ~config ~handler () with
+  | Ok _supervisor ->
+      Log.info "Server with routing on http://0.0.0.0:8080";
+      receive_any ()
+  | Error `Bind_error ->
+      Error (Failure "Failed to bind")
 
-  let init _conn = {
-    count = 0;
-    step = 1;
-  }
-
-  let update msg state =
-    match msg with
-    | Increment -> { state with count = state.count + state.step }
-    | Decrement -> { state with count = state.count - state.step }
-    | Reset -> { state with count = 0 }
-    | SetStep step -> { state with step }
-
-  let render ~state () =
-    let open LiveView.Html in
-    div ~id:"counter" [
-      h1 [ string "Counter: "; int state.count ];
-      div [
-        button ~on_click:(fun _ -> Decrement) [ string "-" ] ();
-        button ~on_click:(fun _ -> Reset) [ string "Reset" ] ();
-        button ~on_click:(fun _ -> Increment) [ string "+" ] ();
-      ] ();
-      div [
-        string "Step: ";
-        button ~on_click:(fun _ -> SetStep 1) [ string "1" ] ();
-        button ~on_click:(fun _ -> SetStep 5) [ string "5" ] ();
-        button ~on_click:(fun _ -> SetStep 10) [ string "10" ] ();
-      ] ()
-    ] ()
-end
-
-let counter_ws conn =
-  let (_opts, handler) = LiveView.mount (module Counter) in
-  (* Upgrade to WebSocket with LiveView handler *)
-  conn
-
-let counter_html _conn =
-  let html = {|
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>LiveView Counter</title>
-        <style>
-          body { font-family: sans-serif; padding: 20px; }
-          #counter { max-width: 400px; margin: 0 auto; }
-          button { margin: 5px; padding: 10px 20px; font-size: 16px; }
-          h1 { text-align: center; }
-        </style>
-      </head>
-      <body>
-        <div id="counter">Loading...</div>
-        <script src="/liveview/runtime.js"></script>
-        <script>
-          window.spawnLiveView('counter', '/ws/counter');
-        </script>
-      </body>
-    </html>
-  |} in
-  Middleware.Conn.(
-    conn
-    |> with_status `OK
-    |> with_header "Content-Type" "text/html"
-    |> with_body html
-    |> send
-  )
-
-let routes =
-  Middleware.Router.[
-    get "/counter" counter_html;
-    get "/ws/counter" counter_ws;
-  ]
-```
-
----
-
-## LiveView Todo List
-
-Full todo list with add, remove, and filter functionality:
-
-```ocaml
-open Std
-open Suri
-
-module TodoList = struct
-  type filter = All | Active | Completed
-
-  type todo = {
-    id : int;
-    text : string;
-    completed : bool;
-  }
-
-  type state = {
-    todos : todo list;
-    input : string;
-    filter : filter;
-    next_id : int;
-  }
-
-  type msg =
-    | UpdateInput of string
-    | AddTodo
-    | ToggleTodo of int
-    | RemoveTodo of int
-    | SetFilter of filter
-    | ClearCompleted
-
-  let init _conn = {
-    todos = [];
-    input = "";
-    filter = All;
-    next_id = 0;
-  }
-
-  let update msg state =
-    match msg with
-    | UpdateInput text ->
-        { state with input = text }
-    | AddTodo when String.length state.input > 0 ->
-        let todo = {
-          id = state.next_id;
-          text = state.input;
-          completed = false;
-        } in
-        {
-          todos = todo :: state.todos;
-          input = "";
-          filter = state.filter;
-          next_id = state.next_id + 1;
-        }
-    | AddTodo -> state
-    | ToggleTodo id ->
-        let todos = List.map (fun todo ->
-          if todo.id = id then
-            { todo with completed = not todo.completed }
-          else todo
-        ) state.todos in
-        { state with todos }
-    | RemoveTodo id ->
-        let todos = List.filter (fun todo -> todo.id <> id) state.todos in
-        { state with todos }
-    | SetFilter filter ->
-        { state with filter }
-    | ClearCompleted ->
-        let todos = List.filter (fun todo -> not todo.completed) state.todos in
-        { state with todos }
-
-  let render_todo todo =
-    let open LiveView.Html in
-    let checkbox_attrs = if todo.completed then
-      [("checked", "checked")]
-    else [] in
-    div ~attrs:[("class", "todo-item")] [
-      El {
-        tag = "input";
-        attrs = [
-          attr "type" "checkbox";
-          event "change" (fun _ -> ToggleTodo todo.id)
-        ] @ List.map (fun (k, v) -> `attr (k, v)) checkbox_attrs;
-        children = [];
-      };
-      span ~children:[string todo.text] ();
-      button ~on_click:(fun _ -> RemoveTodo todo.id) [
-        string "✕"
-      ] ()
-    ] ()
-
-  let filter_todos state =
-    match state.filter with
-    | All -> state.todos
-    | Active -> List.filter (fun t -> not t.completed) state.todos
-    | Completed -> List.filter (fun t -> t.completed) state.todos
-
-  let render ~state () =
-    let open LiveView.Html in
-    let filtered = filter_todos state in
-    div ~id:"todo-app" [
-      h1 [ string "Todos" ];
-      div ~attrs:[("class", "input-area")] [
-        El {
-          tag = "input";
-          attrs = [
-            attr "type" "text";
-            attr "placeholder" "What needs to be done?";
-            attr "value" state.input;
-            event "input" (fun v -> UpdateInput v);
-          ];
-          children = [];
-        };
-        button ~on_click:(fun _ -> AddTodo) [ string "Add" ] ()
-      ] ();
-      div ~attrs:[("class", "filters")] [
-        button ~on_click:(fun _ -> SetFilter All) [
-          string (if state.filter = All then "[All]" else "All")
-        ] ();
-        button ~on_click:(fun _ -> SetFilter Active) [
-          string (if state.filter = Active then "[Active]" else "Active")
-        ] ();
-        button ~on_click:(fun _ -> SetFilter Completed) [
-          string (if state.filter = Completed then "[Completed]" else "Completed")
-        ] ();
-      ] ();
-      div ~attrs:[("class", "todo-list")] (
-        List.map render_todo filtered
-      ) ();
-      div ~attrs:[("class", "footer")] [
-        span [ string (Format.sprintf "%d items left" (
-          List.length (List.filter (fun t -> not t.completed) state.todos)
-        )) ];
-        button ~on_click:(fun _ -> ClearCompleted) [
-          string "Clear completed"
-        ] ()
-      ] ()
-    ] ()
-end
-```
-
----
-
-## Full Web Application
-
-Complete application with multiple LiveView components, routing, and static files:
-
-```ocaml
-open Std
-open Suri
-
-(* Components *)
-module Counter = (* Counter from above *)
-module TodoList = (* TodoList from above *)
-
-(* Static pages *)
-let home_page _conn =
-  let html = {|
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>Suri Demo App</title>
-        <link rel="stylesheet" href="/static/app.css">
-      </head>
-      <body>
-        <nav>
-          <a href="/">Home</a>
-          <a href="/counter">Counter</a>
-          <a href="/todos">Todos</a>
-        </nav>
-        <main>
-          <h1>Welcome to Suri Demo</h1>
-          <p>A full-featured web framework for OCaml</p>
-          <ul>
-            <li><a href="/counter">Interactive Counter</a></li>
-            <li><a href="/todos">Todo List</a></li>
-          </ul>
-        </main>
-      </body>
-    </html>
-  |} in
-  Middleware.Conn.(
-    conn
-    |> with_status `OK
-    |> with_header "Content-Type" "text/html"
-    |> with_body html
-    |> send
-  )
-
-(* LiveView pages *)
-let counter_page _conn =
-  (* Serve HTML shell for counter LiveView *)
-  let html = {|
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>Counter</title>
-        <link rel="stylesheet" href="/static/app.css">
-      </head>
-      <body>
-        <nav><a href="/">Home</a></nav>
-        <div id="counter">Loading...</div>
-        <script src="/liveview/runtime.js"></script>
-        <script>
-          window.spawnLiveView('counter', '/ws/counter');
-        </script>
-      </body>
-    </html>
-  |} in
-  Middleware.Conn.(
-    conn
-    |> with_status `OK
-    |> with_header "Content-Type" "text/html"
-    |> with_body html
-    |> send
-  )
-
-let todos_page _conn =
-  (* Similar to counter_page but for todos *)
-  ...
-
-(* WebSocket handlers *)
-let counter_ws conn =
-  let (_opts, handler) = LiveView.mount (module Counter) in
-  (* Upgrade to WebSocket *)
-  conn
-
-let todos_ws conn =
-  let (_opts, handler) = LiveView.mount (module TodoList) in
-  (* Upgrade to WebSocket *)
-  conn
-
-(* Routes *)
-let routes =
-  Middleware.Router.[
-    (* Static pages *)
-    get "/" home_page;
-    
-    (* LiveView pages *)
-    get "/counter" counter_page;
-    get "/todos" todos_page;
-    
-    (* WebSocket endpoints *)
-    get "/ws/counter" counter_ws;
-    get "/ws/todos" todos_ws;
-  ]
-
-(* Middleware pipeline *)
-let app =
-  Middleware.Pipeline.[
-    (* Add logging, CORS, sessions, etc. here *)
-    Middleware.Router.middleware routes;
-  ]
-
-(* Server *)
-let () =
-  let config = WebServer.Config.make ~port:8080 () in
-  let handler socket_conn req =
-    let conn = Middleware.Conn.make socket_conn req in
-    let conn = Middleware.Pipeline.run conn app in
-    Middleware.Conn.to_response conn
-  in
-  match WebServer.start config handler with
-  | Ok () ->
-      Log.info "Server started on http://localhost:8080";
-      Miniriot.wait_forever ()
-  | Error err ->
-      Log.error "Server failed: %a" Net.pp_error err;
-      exit 1
+let () = run_with @@ main
 ```
 
 ---
 
 ## Running the Examples
 
-To run these examples:
+### 1. Save the example code
+Save any example to a file in your project, e.g., `examples/hello_world.ml`
 
-1. Save the code to a file (e.g., `app.ml`)
-2. Create a `tusk.toml` that depends on `suri`
-3. Build and run:
-   ```bash
-   tusk build
-   tusk run app
+### 2. Update tusk.toml
+```toml
+[package]
+name = "my_app"
+
+[dependencies]
+std = { path = "../std" }
+suri = { path = "../suri" }
+
+[[bin]]
+name = "hello_world"
+path = "examples/hello_world.ml"
+```
+
+### 3. Build and run
+```bash
+tusk build
+tusk run hello_world
+```
+
+### 4. Test it
+```bash
+curl http://localhost:8080
+```
+
+## Performance Tips
+
+1. **Tune acceptors**: Increase `~acceptors` for high-load scenarios
+   ```ocaml
+   WebServer.start_link ~port:8080 ~acceptors:200 ~config ~handler ()
    ```
-4. Open http://localhost:8080 in your browser
+
+2. **Adjust buffer size**: Larger buffers for big requests
+   ```ocaml
+   let config = WebServer.Config.make ~buffer_size:8192 ()
+   ```
+
+3. **Monitor supervisor**: Use `Supervisor.Dynamic.count_children` to monitor health
+   ```ocaml
+   let count = Supervisor.Dynamic.count_children supervisor in
+   Log.info "Active acceptors: %d" count.active
+   ```
+
+---
+
+## Type-Safe HTML Components
+
+Build type-safe, composable HTML with `Suri.Component`:
+
+```ocaml
+open Std
+open Suri
+open Suri.Component
+
+(* Simple component - works for static HTML and LiveView *)
+let welcome_page : unit t =
+  html [
+    head [
+      title_ [text "Welcome"];
+      meta ~attrs:[attr "charset" "UTF-8"] ();
+    ];
+    body [
+      div ~attrs:[class_ "container"] [
+        h1 [text "Welcome to Suri Components"];
+        p [text "Build type-safe HTML with OCaml"];
+        
+        (* Form with proper attributes *)
+        form ~attrs:[action "/submit"; method_ "POST"] [
+          div ~attrs:[class_ "form-group"] [
+            label ~attrs:[for_ "email"] [text "Email"];
+            input ~attrs:[
+              type_ "email";
+              id "email";
+              name "email";
+              placeholder "you@example.com";
+              required;
+            ] ();
+          ];
+          button ~attrs:[type_ "submit"; class_ "btn"] [
+            text "Submit"
+          ];
+        ];
+      ];
+    ];
+  ]
+
+(* Render to HTML string *)
+let () =
+  let html = to_html welcome_page in
+  println html
+```
+
+**Run it:**
+```bash
+tusk run suri:basic_component
+```
+
+### Reusable Design System
+
+Create a library of reusable components:
+
+```ocaml
+open Std
+open Suri
+open Suri.Component
+
+module MyDesign = struct
+  (* Design tokens *)
+  let primary_color = "#007bff"
+  let spacing_md = "16px"
+  
+  (* Layout components *)
+  let container ?(max_width = "1200px") children =
+    div ~attrs:[
+      class_ "container";
+      style ("max-width: " ^ max_width ^ "; margin: 0 auto; padding: 0 " ^ spacing_md);
+    ] children
+  
+  let card children =
+    div ~attrs:[
+      class_ "card";
+      style "border: 1px solid #e0e0e0; border-radius: 8px; padding: 24px; background: white;";
+    ] children
+  
+  let button_primary children =
+    button ~attrs:[
+      class_ "btn btn-primary";
+      style ("background: " ^ primary_color ^ "; color: white; border: none; padding: 10px 20px;");
+    ] children
+  
+  let badge ~variant content =
+    let bg_color = match variant with
+      | "success" -> "#28a745"
+      | "danger" -> "#dc3545"
+      | _ -> primary_color
+    in
+    span ~attrs:[
+      class_ ("badge badge-" ^ variant);
+      style ("background: " ^ bg_color ^ "; color: white; padding: 4px 10px; border-radius: 12px;");
+    ] [text content]
+end
+
+(* Use your design system *)
+let product_card ~name ~price ~in_stock =
+  MyDesign.card [
+    h3 [text name];
+    div [
+      MyDesign.badge ~variant:(if in_stock then "success" else "danger")
+        (if in_stock then "In Stock" else "Out of Stock");
+    ];
+    div ~attrs:[style "font-size: 24px; font-weight: bold"] [
+      text ("$" ^ Float.to_string price)
+    ];
+    MyDesign.button_primary [text "Add to Cart"];
+  ]
+```
+
+**Run it:**
+```bash
+tusk run suri:design_system
+```
+
+### Progressive Enhancement: Static → LiveView
+
+The same components work for both static HTML and interactive LiveView:
+
+```ocaml
+open Std
+open Suri
+open Suri.Component
+
+(* Define message type for LiveView *)
+type msg = Increment | Decrement | Reset
+
+(* Step 1: Static component (no interactivity) *)
+let counter_static count =
+  div ~attrs:[class_ "counter"] [
+    h1 [text "Counter"];
+    div ~attrs:[class_ "count"] [text (Int.to_string count)];
+    div [
+      button [text "-"];  (* Not interactive in static HTML *)
+      button [text "+"];
+    ];
+  ]
+
+(* Step 2: Add event handlers for LiveView *)
+let counter_interactive count : msg t =
+  div ~attrs:[class_ "counter"] [
+    h1 [text "Counter"];
+    div ~attrs:[class_ "count"] [text (Int.to_string count)];
+    div [
+      button ~attrs:[
+        on_click (fun _ -> Decrement)  (* 👈 Add handler! *)
+      ] [text "-"];
+      button ~attrs:[
+        on_click (fun _ -> Increment)  (* 👈 Add handler! *)
+      ] [text "+"];
+    ];
+  ]
+
+(* Event handlers are ignored in static HTML, active in LiveView *)
+let static_html = to_html (counter_static 0)
+
+(* In LiveView, handlers are wired to your update function *)
+let interactive_view = counter_interactive 42
+```
+
+**Run it:**
+```bash
+tusk run suri:liveview_migration
+```
+
+### Component Features
+
+- **115+ HTML5 elements**: Complete coverage including:
+  - Document structure: `html`, `head`, `body`, `base`, `meta`, `link`, etc.
+  - Content sectioning: `header`, `nav`, `main`, `section`, `article`, `aside`, `footer`, `hgroup`, `search`
+  - Text content: `div`, `p`, `span`, `h1`-`h6`, `pre`, `blockquote`, `figure`, `figcaption`, `menu`
+  - Inline text: `a`, `abbr`, `b`, `cite`, `code`, `em`, `i`, `kbd`, `mark`, `q`, `strong`, `time`, `var`, etc.
+  - Lists: `ul`, `ol`, `li`, `dl`, `dt`, `dd`
+  - Tables: `table`, `thead`, `tbody`, `tfoot`, `tr`, `th`, `td`, `caption`, `col`, `colgroup`
+  - Forms: `form`, `input`, `button`, `select`, `textarea`, `datalist`, `optgroup`, `output`, `progress`, `meter`
+  - Interactive: `details`, `summary`, `dialog`
+  - Multimedia: `img`, `audio`, `video`, `picture`, `area`, `map`, `track`, `source`
+  - Embedded: `iframe`, `embed`, `object`, `canvas`, `svg`, `math`
+  - Web Components: `slot`, `template`
+  - Scripting: `script`, `noscript`
+- **30+ attribute helpers**: `class_`, `style`, `id`, `href`, `src`, `type_`, `name`, `value`, etc.
+- **15+ event handlers**: `on_click`, `on_submit`, `on_input`, `on_change`, `on_focus`, etc. (LiveView only)
+- **Conditional rendering**: `when_`, `unless`, `maybe`
+- **Self-closing tags**: Automatically handled (`<input />`, `<br />`, `<img />`, etc.)
+- **HTML escaping**: Attributes are properly escaped
+- **Type-safe**: Catch errors at compile time
+- **Composable**: Build reusable component libraries
+
+### Benefits
+
+- ✅ Write once, render anywhere (static HTML or LiveView)
+- ✅ No inline JavaScript required
+- ✅ React-style component composition
+- ✅ Type-safe all the way
+- ✅ Easy to preview statically during development
+- ✅ Add interactivity incrementally
+
+---
 
 ## Next Steps
 
-- Add authentication/authorization middleware
-- Integrate database for persistent storage
-- Add CSRF protection
-- Implement session management
-- Add static file serving
-- Deploy with systemd or Docker
+- ✅ Supervision and fault tolerance
+- ✅ Type-safe HTML components
+- 🚧 LiveView for interactive UIs
+- 🚧 Middleware framework refactor
+- 🚧 WebSocket support via Channel
+- 🚧 Session management
+- 🚧 Static file serving
+- 🚧 Database integration helpers

@@ -1,3 +1,5 @@
+open Std
+
 (** TCP connection pool with concurrent acceptors and handlers.
 
     SocketPool provides a high-performance TCP server architecture with:
@@ -89,11 +91,12 @@ val start_link :
   ?acceptors:int ->
   ?buffer_size:int ->
   ?transport:Transport.t ->
-  (module Handler.Intf with type state = 'state and type error = 'err) ->
+  ('state, 'err) Handler.handler ->
   'state ->
-  (unit, [> `Bind_error ]) result
-(** [start_link ~port handler initial_state] starts a TCP server.
+  (Supervisor.Dynamic.t, [> `Bind_error ]) result
+(** [start_link ~host ~port handler initial_state] starts a supervised TCP server.
     
+    - [host] - Host to bind to (e.g., "0.0.0.0" or "127.0.0.1")
     - [port] - Port to listen on
     - [acceptors] - Number of concurrent acceptor processes (default 100)
     - [buffer_size] - Read buffer size per connection (default 4096)
@@ -101,19 +104,29 @@ val start_link :
     - [handler] - Handler module implementing connection logic
     - [initial_state] - Initial state for new connections
     
-    Returns [Ok ()] if server started successfully,
-    [Error `Bind_error] if port binding failed.
+    Returns [Ok supervisor_pid] with a dynamic supervisor managing acceptors,
+    or [Error `Bind_error] if port binding failed.
     
-    The server spawns [acceptors] processes that concurrently accept
-    connections. Each accepted connection spawns a new Connector process
-    that runs the handler logic.
+    The server uses a {!Std.Supervisor.Dynamic} to manage [acceptors] processes 
+    that concurrently accept connections. Each accepted connection spawns a new 
+    Connector process that runs the handler logic. If acceptors crash, they are 
+    automatically restarted by the supervisor.
     
     Example:
     ```ocaml
-    let _result = SocketPool.start_link
+    let result = SocketPool.start_link
+      ~host:"0.0.0.0"
       ~port:8080
       ~acceptors:50
       (module My_handler)
       { my_initial_state }
+    
+    match result with
+    | Ok supervisor ->
+        Log.info "Server started with supervisor";
+        (* Keep process alive or link supervisor to your app supervisor *)
+        ()
+    | Error `Bind_error ->
+        Log.error "Failed to bind to port"
     ```
 *)

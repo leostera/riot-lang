@@ -28,7 +28,7 @@ let div ?(attrs = []) ?id ?(children = []) () =
     {
       tag = "div";
       attrs =
-        List.filter_map Fun.id [ Option.map attr_id id ]
+        List.filter_map (fun x -> x) [ Option.map attr_id id ]
         @ List.map (fun (k, v) -> `attr (k, v)) attrs;
       children;
     }
@@ -52,7 +52,7 @@ let script ?src ?id ?type_ ?(children = []) () =
           Option.map attr_type type_;
           Option.map attr_src src;
         ]
-        |> List.filter_map Fun.id;
+        |> List.filter_map (fun x -> x);
       children;
     }
 
@@ -70,7 +70,7 @@ let rec to_string (t : 'msg t) =
 
 and attrs_to_string attrs =
   List.map
-    (function `attr (k, v) -> Format.sprintf "%s=%S" k v | _ -> "")
+    (function `attr (k, v) -> k ^ "=" ^ "\"" ^ v ^ "\"" | _ -> "")
     attrs
   |> String.concat " "
 

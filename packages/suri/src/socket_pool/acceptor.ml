@@ -1,10 +1,9 @@
 open Std
 
-
 type ('ctx, 'err) state = {
   listener : Net.TcpListener.t;
   buffer_size : int;
-  handler : (module Handler.Intf with type state = 'ctx and type error = 'err);
+  handler : ('ctx, 'err) Handler.handler;
   initial_ctx : 'ctx;
   transport : Transport.t;
 }
@@ -16,9 +15,9 @@ let rec loop state =
   let selector msg =
     match msg with AcceptorMsg msg -> `select msg | _ -> `skip
   in
-  match receive ~selector () with
+  match receive ~selector ~timeout:(Time.Duration.from_millis 5) () with
   | Shutdown -> ()
-  | exception _ ->
+  | exception Receive_timeout ->
       accept_connection state;
       loop state
 
@@ -38,16 +37,13 @@ and accept_connection state =
             ctx = state.initial_ctx;
           }
       in
-      let _pid = Connector.start_link conn_state in
+      let _pid = Connector.spawn conn_state in
       ()
-  | Error _ -> ()
+  | Error _err -> ()
 
-let init state = loop state
+let init state = 
+  loop state;
+  Ok ()
 
-let start_link state =
-  let _pid =
-    spawn (fun () ->
-        init state;
-        Ok ())
-  in
-  ()
+let spawn state =
+  spawn (fun () -> init state)

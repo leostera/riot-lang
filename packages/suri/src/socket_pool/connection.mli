@@ -1,3 +1,5 @@
+open Std
+
 (** Active TCP connection management.
 
     Represents a single active connection to a client with operations for
@@ -45,6 +47,9 @@ val accepted_at : t -> Std.Time.Instant.t
 
 val close : t -> unit
 (** [close conn] closes the connection and logs duration *)
+
+val stream : t -> Std.Net.TcpStream.t
+(** [stream conn] returns the underlying TCP stream *)
 
 val send_file :
   t -> ?off:int -> len:int -> string -> (unit, [> `Closed ]) result

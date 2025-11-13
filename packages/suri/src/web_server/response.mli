@@ -1,18 +1,81 @@
-(** # HTTP Response Construction
+(** {1 HTTP Response Construction}
 
-    Provides a builder interface for HTTP responses with status codes, headers,
-    and bodies.
+    Builder interface for HTTP responses with status codes, headers, and bodies.
+    Provides convenient functions for all standard HTTP status codes.
 
-    ## Example
+    {2 Quick Reference}
 
-    ```ocaml
-    let response = Response.ok ~body:"Hello, World!" ()
-    
-    let custom = Response.make `OK
-      ~headers:[("Content-Type", "application/json")]
-      ~body:"{\"status\":\"ok\"}"
-      ()
-    ``` *)
+    {3 Most Common}
+    {[
+      Response.ok ~body:"Success" ()                    (* 200 *)
+      Response.created ~body:"Created" ()               (* 201 *)
+      Response.redirect ~location:"/home" ()            (* 302 *)
+      Response.bad_request ~body:"Invalid input" ()     (* 400 *)
+      Response.unauthorized ~body:"Login required" ()   (* 401 *)
+      Response.not_found ~body:"Not found" ()           (* 404 *)
+      Response.internal_server_error ~body:"Error" ()   (* 500 *)
+    ]}
+
+    {3 With Headers}
+    {[
+      Response.ok
+        ~headers:[
+          ("Content-Type", "application/json");
+          ("Cache-Control", "no-cache");
+        ]
+        ~body:{|{"status":"ok"}|}
+        ()
+    ]}
+
+    {3 Custom Status}
+    {[
+      Response.make `IM_A_TEAPOT
+        ~body:"I'm a teapot"
+        ()
+    ]}
+
+    {2 Examples}
+
+    {3 JSON Response}
+    {[
+      let json_response data =
+        let json = Data.Json.to_string data in
+        Response.ok
+          ~headers:[("Content-Type", "application/json")]
+          ~body:json
+          ()
+    ]}
+
+    {3 Redirect}
+    {[
+      let handler _conn req =
+        match Request.path req with
+        | "/old-path" ->
+            Response.moved_permanently
+              ~headers:[("Location", "/new-path")]
+              ()
+        | _ ->
+            Response.not_found ~body:"404" ()
+    ]}
+
+    {3 Error Handling}
+    {[
+      let handler _conn req =
+        try
+          let result = process_request req in
+          Response.ok ~body:result ()
+        with
+        | Invalid_argument msg ->
+            Response.bad_request ~body:("Invalid: " ^ msg) ()
+        | Not_found ->
+            Response.not_found ~body:"Resource not found" ()
+        | _ ->
+            Response.internal_server_error ~body:"Server error" ()
+    ]}
+
+    ---
+
+    {1 API Reference} *)
 
 open Std
 
@@ -22,7 +85,9 @@ type t = {
   version : Net.Http.Version.t;
   body : string;
 }
-(** HTTP response type *)
+(** HTTP response record.
+
+    Contains status code, headers, HTTP version, and response body. *)
 
 val make :
   Net.Http.Status.t ->
@@ -31,12 +96,23 @@ val make :
   ?body:string ->
   unit ->
   t
-(** Create an HTTP response.
+(** Create a custom HTTP response.
 
-    - `status` - HTTP status code
-    - `headers` - Optional list of (name, value) header pairs (default: `[]`)
-    - `version` - HTTP version (default: `Http11`)
-    - `body` - Response body (default: empty string) *)
+    Use this for non-standard status codes or when you need full control.
+    For standard responses, use the convenience functions below.
+
+    @param status HTTP status code (e.g., [`OK], [`Not_found])
+    @param headers Optional list of (name, value) header pairs
+    @param version HTTP version (default: [Http11])
+    @param body Response body (default: empty string)
+
+    Example:
+    {[
+      make `OK
+        ~headers:[("Content-Type", "text/plain")]
+        ~body:"Hello"
+        ()
+    ]} *)
 
 type response =
   ?headers:(string * string) list ->
@@ -44,24 +120,62 @@ type response =
   ?body:string ->
   unit ->
   t
-(** Response builder function type *)
+(** Response builder function type.
 
-(** ## Success Responses (2xx) *)
+    All convenience functions below follow this signature. *)
+
+(** {1 Success Responses (2xx)}
+
+    Successful responses indicating the request was received and processed. *)
+
+val ok : response
+(** [200 OK] - Standard success response.
+
+    Most common response for successful requests.
+
+    Example:
+    {[ ok ~body:"Success" () ]} *)
 
 val ok : response
 (** `200 OK` *)
 
 val created : response
-(** `201 Created` *)
+(** [201 Created] - Resource successfully created.
+
+    Use for POST requests that create new resources.
+
+    Example:
+    {[
+      post "/users" (fun _conn req ->
+        let user = create_user (Request.body req) in
+        created
+          ~headers:[("Location", "/users/" ^ user.id)]
+          ~body:(user_to_json user)
+          ())
+    ]} *)
 
 val accepted : response
-(** `202 Accepted` *)
+(** [202 Accepted] - Request accepted for processing (async).
+
+    Use when processing will happen asynchronously.
+
+    Example:
+    {[ accepted ~body:"Processing started" () ]} *)
 
 val non_authoritative_information : response
 (** `203 Non-Authoritative Information` *)
 
 val no_content : response
-(** `204 No Content` *)
+(** [204 No Content] - Success with no response body.
+
+    Common for DELETE requests or updates without return data.
+
+    Example:
+    {[
+      delete "/users/:id" (fun _conn _req ->
+        delete_user id;
+        no_content ())
+    ]} *)
 
 val reset_content : response
 (** `205 Reset Content` *)
@@ -78,19 +192,48 @@ val already_reported : response
 val im_used : response
 (** `226 IM Used` *)
 
-(** ## Redirection Responses (3xx) *)
+(** {1 Redirection Responses (3xx)}
+
+    Redirects indicating the client should take additional action. *)
 
 val multiple_choices : response
-(** `300 Multiple Choices` *)
+(** [300 Multiple Choices] - Multiple redirect options available. *)
 
 val moved_permanently : response
-(** `301 Moved Permanently` *)
+(** [301 Moved Permanently] - Resource permanently moved.
+
+    Search engines update their indexes.
+
+    Example:
+    {[
+      moved_permanently
+        ~headers:[("Location", "/new-location")]
+        ()
+    ]} *)
 
 val found : response
-(** `302 Found` *)
+(** [302 Found] - Temporary redirect.
+
+    Most common redirect status. Also see {!see_other}.
+
+    Example:
+    {[
+      found ~headers:[("Location", "/login")] ()
+    ]} *)
 
 val see_other : response
-(** `303 See Other` *)
+(** [303 See Other] - Redirect after POST.
+
+    Use after successful POST to redirect to GET.
+
+    Example:
+    {[
+      post "/users" (fun _conn req ->
+        let user = create_user req in
+        see_other
+          ~headers:[("Location", "/users/" ^ user.id)]
+          ())
+    ]} *)
 
 val not_modified : response
 (** `304 Not Modified` *)
@@ -107,25 +250,78 @@ val temporary_redirect : response
 val permanent_redirect : response
 (** `308 Permanent Redirect` *)
 
-(** ## Client Error Responses (4xx) *)
+(** {1 Client Error Responses (4xx)}
+
+    Errors caused by invalid client requests. *)
 
 val bad_request : response
-(** `400 Bad Request` *)
+(** [400 Bad Request] - Invalid request syntax or parameters.
+
+    Use for validation errors or malformed requests.
+
+    Example:
+    {[
+      match validate_input req with
+      | Ok data -> ok ~body:(process data) ()
+      | Error msg -> bad_request ~body:("Invalid: " ^ msg) ()
+    ]} *)
 
 val unauthorized : response
-(** `401 Unauthorized` *)
+(** [401 Unauthorized] - Authentication required.
+
+    Use when user must log in.
+
+    Example:
+    {[
+      match get_auth_token req with
+      | None ->
+          unauthorized
+            ~headers:[("WWW-Authenticate", "Bearer")]
+            ~body:"Login required"
+            ()
+      | Some token -> (* ... *)
+    ]} *)
 
 val payment_required : response
-(** `402 Payment Required` *)
+(** [402 Payment Required] - Reserved for future use. *)
 
 val forbidden : response
-(** `403 Forbidden` *)
+(** [403 Forbidden] - Authenticated but not authorized.
+
+    User is logged in but doesn't have permission.
+
+    Example:
+    {[
+      if not (has_permission user resource) then
+        forbidden ~body:"Access denied" ()
+      else
+        ok ~body:resource ()
+    ]} *)
 
 val not_found : response
-(** `404 Not Found` *)
+(** [404 Not Found] - Resource doesn't exist.
+
+    Most common error response.
+
+    Example:
+    {[
+      match find_user id with
+      | Some user -> ok ~body:(user_to_json user) ()
+      | None -> not_found ~body:"User not found" ()
+    ]} *)
 
 val method_not_allowed : response
-(** `405 Method Not Allowed` *)
+(** [405 Method Not Allowed] - HTTP method not supported.
+
+    Include [Allow] header with supported methods.
+
+    Example:
+    {[
+      method_not_allowed
+        ~headers:[("Allow", "GET, POST")]
+        ~body:"Method not allowed"
+        ()
+    ]} *)
 
 val not_acceptable : response
 (** `406 Not Acceptable` *)
@@ -196,19 +392,50 @@ val blocked_by_windows_parental_controls : response
 val client_closed_request : response
 (** `499 Client Closed Request` (nginx) *)
 
-(** ## Server Error Responses (5xx) *)
+(** {1 Server Error Responses (5xx)}
+
+    Errors caused by server failures. *)
 
 val internal_server_error : response
-(** `500 Internal Server Error` *)
+(** [500 Internal Server Error] - Generic server error.
+
+    Use when an unexpected error occurs.
+
+    Example:
+    {[
+      try
+        process_request req
+      with exn ->
+        Log.error "Request failed: %s" (Printexc.to_string exn);
+        internal_server_error ~body:"Internal server error" ()
+    ]} *)
 
 val not_implemented : response
-(** `501 Not Implemented` *)
+(** [501 Not Implemented] - Feature not implemented.
+
+    Example:
+    {[
+      not_implemented ~body:"This feature is coming soon" ()
+    ]} *)
 
 val bad_gateway : response
-(** `502 Bad Gateway` *)
+(** [502 Bad Gateway] - Invalid response from upstream server. *)
 
 val service_unavailable : response
-(** `503 Service Unavailable` *)
+(** [503 Service Unavailable] - Server temporarily unavailable.
+
+    Use during maintenance or when overloaded.
+
+    Example:
+    {[
+      if is_maintenance_mode () then
+        service_unavailable
+          ~headers:[("Retry-After", "3600")]
+          ~body:"Under maintenance"
+          ()
+      else
+        process_request req
+    ]} *)
 
 val gateway_timeout : response
 (** `504 Gateway Timeout` *)
