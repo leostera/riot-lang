@@ -2,5 +2,10 @@
 name = "poneglyph"
 version = "0.1.0"
 
+[lib]
+path = "src/poneglyph.ml"
+
 [dependencies]
 std = { path = "../std" }
+datalog = { path = "../datalog" }
+propane = { path = "../propane" }

@@ -1,13 +1,23 @@
 open Std
 
-type t = { uri : Uri.t; ns : Uri.t; kind : Uri.t; facts : Fact.t list }
-(** An entity with its URI, namespace, kind, and all its facts *)
+(** {1 Entity - High-level Entity Record}
+    
+    An entity is a collection of facts about a URI. This module provides
+    a convenient record type and utilities for working with entities.
+*)
 
-val make : uri:Uri.t -> ns:Uri.t -> kind:Uri.t -> facts:Fact.t list -> t
-(** Create an entity *)
+type t = {
+  uri : Uri.t;
+  kind : Uri.t option;
+  facts : (Uri.t * Fact.value) list;
+}
+(** An entity record with its URI, optional kind, and current facts *)
 
-val with_facts : t -> Fact.t list -> t
-(** Update entity with new facts *)
+val make : uri:Uri.t -> kind:Uri.t option -> facts:(Uri.t * Fact.value) list -> t
+(** Create an entity record *)
 
-val add_fact : t -> Fact.t -> t
-(** Add a fact to entity *)
+val to_string : t -> string
+(** Pretty-print entity with all its facts *)
+
+val get_attr : t -> Uri.t -> Fact.value option
+(** Get attribute value from entity's facts *)

@@ -16,4 +16,9 @@ module type S = sig
   val exists : t -> Uri.t -> bool
   val get_kind : t -> Uri.t -> Uri.t option
   val list_schemas : t -> Uri.t list
+  val get_all_current_facts : t -> Fact.t list
+  val find_entities_by_attr_value : t -> attr:Uri.t -> value:Fact.value -> Uri.t list
+  val entity_count : t -> int
+  val fact_count : t -> int
+  val current_fact_count : t -> int
 end

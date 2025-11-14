@@ -1,0 +1,466 @@
+(** Tests for Encoding - Binary serialization
+    
+    This module tests the sortable binary encoding for LSM storage.
+    
+    KEY DESIGN DECISIONS:
+    
+    1. FLOAT ENCODING ALGORITHM:
+       - Negative floats: flip ALL bits (lognot) → reverses order, makes them sort before positive
+       - Positive floats: flip SIGN BIT only (XOR 0x8000...) → keeps order, makes them sort after negative
+       - -0.0 is normalized to +0.0 before encoding (they're semantically equivalent)
+       
+       After encoding, lexicographic byte comparison gives correct numeric order:
+       -inf < -1000 < -1.0 < 0.0 < 1.0 < 1000 < +inf
+       
+    2. SIGNED VS UNSIGNED COMPARISON:
+       - Our encoding produces values meant for UNSIGNED comparison (lexicographic byte order)
+       - OCaml's Int64.compare uses SIGNED comparison
+       - Example bug: 0.0 encodes to 0x8000000000000000 which is INT64_MIN when signed
+       - This would make 0.0 appear "less than" -infinity in signed comparison!
+       - Solution: XOR both values with INT64_MIN before comparison to flip sign bit
+       
+    3. WHY -0.0 AND +0.0 CAN'T BOTH BE IN ORDERING TEST:
+       - IEEE 754: -0.0 and +0.0 are distinct bit patterns but semantically equal
+       - We normalize -0.0 to +0.0 before encoding (they encode to same value)
+       - Including both would make the test fail when comparing their encoded values
+       - This is correct behavior: database should treat -0.0 and +0.0 as same value
+       
+    4. FIXED 41-BYTE KEYS:
+       - All index keys (EAVT, AVET, SOURCE, FACT) are exactly 41 bytes
+       - Enables efficient binary search and memory layout
+       - Unused bytes are zero-padded (e.g., FACT key has 5 fields × 8 bytes + 1 byte type = 41)
+*)
+
+open Std
+open Poneglyph
+
+(** Helper to create LSM modules accessible in tests *)
+module Encoding = Poneglyph.Storage.Lsm.Encoding
+module Key = Poneglyph.Storage.Lsm.Key
+
+(* Get Bytes from Kernel *)
+module Bytes = Kernel.IO.Bytes
+
+(* Helper since abs_float isn't in Std *)
+let abs_float x = if x < 0.0 then -.x else x
+
+(** Test 1: ID encoding round-trip *)
+let test_id_roundtrip () =
+  let ids = [ 0L; 1L; 42L; 12345L; Int64.max_int; Int64.min_int ] in
+  List.iter
+    (fun id ->
+      let bytes = Encoding.encode_id id in
+      let decoded = Encoding.decode_id bytes in
+      if decoded != id then
+        panic
+          ("ID roundtrip failed: " ^ Int64.to_string id ^ " != "
+         ^ Int64.to_string decoded))
+    ids;
+  Ok ()
+
+(** Test 2: Float encoding preserves order
+    
+    This is the CRITICAL test for sortable float encoding.
+    
+    ENCODING ALGORITHM (from encoding.ml):
+    ```ocaml
+    let encode_float f =
+      let f = if f = -0.0 then 0.0 else f in  (* normalize -0.0 to +0.0 *)
+      let bits = Int64.bits_of_float f in
+      let encoded =
+        if f < 0.0 then Int64.lognot bits      (* negative: flip ALL bits *)
+        else Int64.logxor bits 0x8000000000000000L  (* positive: flip SIGN bit *)
+      in
+      encoded
+    ```
+    
+    WHY THIS WORKS:
+    
+    1. IEEE 754 float format: [sign(1)] [exponent(11)] [mantissa(52)]
+       - Positive floats: sign=0, already in correct order by bits
+       - Negative floats: sign=1, WRONG order by bits (more negative = higher bits)
+    
+    2. For POSITIVE floats (including +0.0):
+       - XOR with 0x8000... flips ONLY the sign bit
+       - Turns 0x0000... into 0x8000... (moves from negative to positive int64 range)
+       - Preserves order within positive numbers
+    
+    3. For NEGATIVE floats:
+       - lognot flips ALL bits
+       - More negative → smaller encoded value (correct!)
+       - All negative encodings end up LESS than 0x8000... (before positive numbers)
+    
+    4. Final ordering in UNSIGNED int64 space:
+       -inf: 0x0001... < -1.0: 0x3FF0... < +0.0: 0x8000... < +1.0: 0xBFF0... < +inf: 0xFFF0...
+    
+    SIGNED VS UNSIGNED COMPARISON GOTCHA:
+    
+    OCaml's Int64.compare uses SIGNED comparison, but our encoding is designed for
+    UNSIGNED (lexicographic byte) comparison!
+    
+    Example of the bug:
+    - 0.0 encodes to 0x8000000000000000 = INT64_MIN when interpreted as signed
+    - -inf encodes to 0x000FFFFFFFFFFFFF = small positive when interpreted as signed
+    - Signed compare: INT64_MIN < small_positive ✗ WRONG! Makes 0.0 < -inf
+    - Unsigned compare: 0x0000... < 0x8000... ✓ CORRECT! Makes -inf < 0.0
+    
+    Solution: XOR both values with INT64_MIN before comparison to flip sign bit,
+    converting signed comparison to unsigned comparison.
+    
+    WHY NOT INCLUDE BOTH -0.0 AND +0.0:
+    - IEEE 754: -0.0 and +0.0 are distinct bit patterns (sign bit differs)
+    - Semantically: -0.0 == +0.0 (they compare equal)
+    - Our encoding: normalizes -0.0 to +0.0 (they encode to SAME value)
+    - Database semantics: should treat -0.0 and +0.0 as identical
+    - Test would fail: can't have i < j when encoded[i] == encoded[j]
+*)
+let test_float_ordering () =
+  let floats =
+    [ neg_infinity; -1000.0; -1.0; 0.0; 1.0; 1000.0; infinity ]
+  in
+  let encoded = List.map Encoding.encode_float floats in
+
+  (* UNSIGNED comparison: XOR with INT64_MIN to flip sign bit *)
+  let unsigned_compare a b =
+    let flip x = Int64.logxor x Int64.min_int in
+    Int64.compare (flip a) (flip b)
+  in
+  
+  List.iteri
+    (fun i ei ->
+      List.iteri
+        (fun j ej ->
+          if i < j then
+            if unsigned_compare ei ej >= 0 then
+              panic
+                ("Float order broken at " ^ string_of_int i ^ " vs "
+               ^ string_of_int j ^ ": " ^ string_of_float (List.nth floats i)
+               ^ " vs " ^ string_of_float (List.nth floats j) ^ " (encoded: "
+               ^ Int64.to_string ei ^ " >= " ^ Int64.to_string ej ^ ")"))
+        encoded)
+    encoded;
+  Ok ()
+
+(** Test 3: Float -0.0 normalization *)
+let test_float_zero_normalization () =
+  let pos_zero = Encoding.encode_float 0.0 in
+  let neg_zero = Encoding.encode_float (-0.0) in
+  if pos_zero != neg_zero then
+    Error "Float encoding should normalize -0.0 to +0.0"
+  else Ok ()
+
+(** Test 4: Float round-trip *)
+let test_float_roundtrip () =
+  let floats = [ -3.14; 0.0; 3.14; 42.0; -100.5 ] in
+  List.iter
+    (fun f ->
+      let encoded = Encoding.encode_float f in
+      let decoded = Encoding.decode_float encoded in
+      (* Allow small floating point errors *)
+      if abs_float (f -. decoded) > 1e-10 then
+        panic
+          ("Float roundtrip failed: " ^ string_of_float f ^ " != "
+         ^ string_of_float decoded))
+    floats;
+  Ok ()
+
+(** Test 5: DateTime encoding round-trip *)
+let test_datetime_roundtrip () =
+  let now = Datetime.now () in
+  let encoded = Encoding.encode_datetime now in
+  let decoded = Encoding.decode_datetime encoded in
+
+  (* Allow 1 microsecond tolerance *)
+  let diff = abs_float (Datetime.to_timestamp now -. Datetime.to_timestamp decoded) in
+  if diff > 0.000001 then
+    Error
+      ("DateTime roundtrip lost precision: " ^ string_of_float diff
+     ^ " seconds diff")
+  else Ok ()
+
+(** Test 6: DateTime ordering *)
+let test_datetime_ordering () =
+  let epoch = Datetime.from_unix_time 0.0 in
+  let later = Datetime.from_unix_time 1000000.0 in
+
+  let e1 = Encoding.encode_datetime epoch in
+  let e2 = Encoding.encode_datetime later in
+
+  if Int64.compare e1 e2 >= 0 then
+    Error "DateTime encoding should preserve order"
+  else Ok ()
+
+(** Test 7: Value encoding for all types *)
+let test_value_encoding_all_types () =
+  let values =
+    [
+      Fact.String "hello";
+      Fact.Int 42;
+      Fact.Bool true;
+      Fact.Bool false;
+      Fact.Float 3.14;
+      Fact.Uri (Uri.of_string "test:uri");
+      Fact.DateTime (Datetime.now ());
+    ]
+  in
+
+  List.iter
+    (fun v ->
+      let kind, repr = Encoding.encode_value v in
+      let _decoded = Encoding.decode_value kind repr in
+      (* Note: String decoding is lossy (hash), so we just check it doesn't crash *)
+      ())
+    values;
+  Ok ()
+
+(** Test 8: Value repr to int64 conversion *)
+let test_value_repr_to_int64 () =
+  let test_cases =
+    [
+      (Encoding.VInt 42L, 42L);
+      (Encoding.VBool true, 1L);
+      (Encoding.VBool false, 0L);
+      (Encoding.VFloat 12345L, 12345L);
+      (Encoding.VUri 99, 99L);
+      (Encoding.VDatetime 1000000L, 1000000L);
+    ]
+  in
+
+  List.iter
+    (fun (repr, expected) ->
+      let actual = Encoding.value_repr_to_int64 repr in
+      if actual != expected then
+        panic
+          ("value_repr_to_int64 failed: expected " ^ Int64.to_string expected
+         ^ " got " ^ Int64.to_string actual))
+    test_cases;
+  Ok ()
+
+(** Test 9: EAVT key encoding round-trip *)
+let test_eavt_key_roundtrip () =
+  let key : Key.eavt_key =
+    {
+      entity_id = 1L;
+      attr_id = 2L;
+      value_kind = Encoding.VK_Int;
+      value_repr = 42L;
+      tx_id = 100L;
+      fact_id = 999L;
+    }
+  in
+
+  let encoded = Key.encode_eavt key in
+  let decoded = Key.decode_eavt encoded in
+
+  if
+    decoded.entity_id != key.entity_id || decoded.attr_id != key.attr_id
+    || decoded.value_repr != key.value_repr || decoded.tx_id != key.tx_id
+    || decoded.fact_id != key.fact_id
+  then Error "EAVT key roundtrip failed"
+  else Ok ()
+
+(** Test 10: EAVT key size *)
+let test_eavt_key_size () =
+  let key : Key.eavt_key =
+    {
+      entity_id = 1L;
+      attr_id = 1L;
+      value_kind = Encoding.VK_Int;
+      value_repr = 1L;
+      tx_id = 1L;
+      fact_id = 1L;
+    }
+  in
+
+  let encoded = Key.encode_eavt key in
+  if Bytes.length encoded != Key.key_size then
+    Error
+      ("EAVT key should be " ^ string_of_int Key.key_size ^ " bytes, got "
+     ^ string_of_int (Bytes.length encoded))
+  else Ok ()
+
+(** Test 11: EAVT key ordering *)
+let test_eavt_key_ordering () =
+  (* Keys in semantic order *)
+  let keys : Key.eavt_key list =
+    [
+      {
+        entity_id = 1L;
+        attr_id = 1L;
+        value_kind = Encoding.VK_Int;
+        value_repr = 1L;
+        tx_id = 1L;
+        fact_id = 1L;
+      };
+      {
+        entity_id = 1L;
+        attr_id = 1L;
+        value_kind = Encoding.VK_Int;
+        value_repr = 2L;
+        tx_id = 1L;
+        fact_id = 2L;
+      };
+      (* Different attr *)
+      {
+        entity_id = 1L;
+        attr_id = 2L;
+        value_kind = Encoding.VK_Int;
+        value_repr = 1L;
+        tx_id = 1L;
+        fact_id = 3L;
+      };
+      (* Different entity *)
+      {
+        entity_id = 2L;
+        attr_id = 1L;
+        value_kind = Encoding.VK_Int;
+        value_repr = 1L;
+        tx_id = 1L;
+        fact_id = 4L;
+      };
+    ]
+  in
+
+  let encoded = List.map Key.encode_eavt keys in
+
+  (* Verify bytes are sorted in same order *)
+  let rec check_sorted i =
+    if i >= List.length encoded - 1 then Ok ()
+    else
+      let ei = List.nth encoded i in
+      let ej = List.nth encoded (i + 1) in
+      if Bytes.compare ei ej >= 0 then
+        Error
+          ("EAVT keys not sorted correctly at " ^ string_of_int i ^ " vs "
+         ^ string_of_int (i + 1))
+      else check_sorted (i + 1)
+  in
+  check_sorted 0
+
+(** Test 12: AVET key round-trip *)
+let test_avet_key_roundtrip () =
+  let key : Key.avet_key =
+    {
+      attr_id = 5L;
+      value_kind = Encoding.VK_String;
+      value_repr = 12345L;
+      entity_id = 7L;
+      tx_id = 200L;
+      fact_id = 888L;
+    }
+  in
+
+  let encoded = Key.encode_avet key in
+  let decoded = Key.decode_avet encoded in
+
+  if Bytes.length encoded != Key.key_size then
+    Error "AVET key wrong size"
+  else if
+    decoded.attr_id != key.attr_id
+    || decoded.value_repr != key.value_repr
+    || decoded.entity_id != key.entity_id
+  then Error "AVET key roundtrip failed"
+  else Ok ()
+
+(** Test 13: SOURCE key round-trip *)
+let test_source_key_roundtrip () =
+  let key : Key.source_key =
+    {
+      source_id = 10L;
+      entity_id = 20L;
+      attr_id = 30L;
+      tx_id = 40L;
+      fact_id = 50L;
+    }
+  in
+
+  let encoded = Key.encode_source key in
+  let decoded = Key.decode_source encoded in
+
+  if Bytes.length encoded != Key.key_size then
+    Error "SOURCE key wrong size"
+  else if
+    decoded.source_id != key.source_id
+    || decoded.entity_id != key.entity_id
+  then Error "SOURCE key roundtrip failed"
+  else Ok ()
+
+(** Test 14: FACT key round-trip *)
+let test_fact_key_roundtrip () =
+  let key : Key.fact_key = { fact_id = 777L; tx_id = 999L } in
+
+  let encoded = Key.encode_fact key in
+  let decoded = Key.decode_fact encoded in
+
+  if Bytes.length encoded != Key.key_size then Error "FACT key wrong size"
+  else if decoded.fact_id != key.fact_id || decoded.tx_id != key.tx_id then
+    Error "FACT key roundtrip failed"
+  else Ok ()
+
+(** Test 15: All keys are same size *)
+let test_all_keys_same_size () =
+  let eavt : bytes =
+    Key.encode_eavt
+      ({
+        entity_id = 1L;
+        attr_id = 1L;
+        value_kind = Encoding.VK_Int;
+        value_repr = 1L;
+        tx_id = 1L;
+        fact_id = 1L;
+      } : Key.eavt_key)
+  in
+  let avet : bytes =
+    Key.encode_avet
+      ({
+        attr_id = 1L;
+        value_kind = Encoding.VK_Int;
+        value_repr = 1L;
+        entity_id = 1L;
+        tx_id = 1L;
+        fact_id = 1L;
+      } : Key.avet_key)
+  in
+  let source : bytes =
+    Key.encode_source
+      ({ source_id = 1L; entity_id = 1L; attr_id = 1L; tx_id = 1L; fact_id = 1L } : Key.source_key)
+  in
+  let fact : bytes = Key.encode_fact ({ fact_id = 1L; tx_id = 1L } : Key.fact_key) in
+
+  let sizes =
+    [
+      Bytes.length eavt;
+      Bytes.length avet;
+      Bytes.length source;
+      Bytes.length fact;
+    ]
+  in
+
+  if List.for_all (fun s -> s = Key.key_size) sizes then Ok ()
+  else Error "Not all keys are 41 bytes"
+
+let tests =
+  Test.
+    [
+      case "ID encoding round-trip" test_id_roundtrip;
+      case "Float ordering" test_float_ordering;
+      case "Float -0.0 normalization" test_float_zero_normalization;
+      case "Float round-trip" test_float_roundtrip;
+      case "DateTime round-trip" test_datetime_roundtrip;
+      case "DateTime ordering" test_datetime_ordering;
+      case "Value encoding all types" test_value_encoding_all_types;
+      case "Value repr to int64" test_value_repr_to_int64;
+      case "EAVT key round-trip" test_eavt_key_roundtrip;
+      case "EAVT key size" test_eavt_key_size;
+      case "EAVT key ordering" test_eavt_key_ordering;
+      case "AVET key round-trip" test_avet_key_roundtrip;
+      case "SOURCE key round-trip" test_source_key_roundtrip;
+      case "FACT key round-trip" test_fact_key_roundtrip;
+      case "All keys same size" test_all_keys_same_size;
+    ]
+
+let () =
+  Miniriot.run
+    ~main:(fun ~args ->
+      Test.Cli.main ~name:"poneglyph/lsm/encoding" ~tests ~args)
+    ~args:Env.args ()

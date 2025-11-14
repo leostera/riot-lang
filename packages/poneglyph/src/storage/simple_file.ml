@@ -1,4 +1,5 @@
 open Std
+open Std.IO
 open Model
 
 type t = { mem : Inmemory.t; mutable filename : string option }
@@ -25,38 +26,31 @@ let escape_json_string s =
 let fact_to_json (fact : Fact.t) =
   let value_str =
     match fact.value with
-    | Fact.String s -> format "{\"String\":\"%s\"}" (escape_json_string s)
-    | Fact.Int i -> format "{\"Int\":%d}" i
-    | Fact.Bool b -> format "{\"Bool\":%s}" (string_of_bool b)
-    | Fact.Float f -> format "{\"Float\":%f}" f
-    | Fact.Uri u -> format "{\"Uri\":\"%s\"}" (Uri.to_string u)
+    | Fact.String s -> "{\"String\":\"" ^ escape_json_string s ^ "\"}"
+    | Fact.Int i -> "{\"Int\":" ^ string_of_int i ^ "}"
+    | Fact.Bool b -> "{\"Bool\":" ^ string_of_bool b ^ "}"
+    | Fact.Float f -> "{\"Float\":" ^ string_of_float f ^ "}"
+    | Fact.Uri u -> "{\"Uri\":\"" ^ Uri.to_string u ^ "\"}"
     | Fact.DateTime dt ->
-        format "{\"DateTime\":\"%f\"}" (Datetime.to_timestamp dt)
+        "{\"DateTime\":\"" ^ string_of_float (Datetime.to_timestamp dt) ^ "\"}"
   in
-  format
-    "{\"e\":\"%s\",\"a\":\"%s\",\"v\":%s,\"fact_uri\":\"%s\",\"stated_at\":\"%f\",\"tx_id\":%d,\"retracted\":%s}"
-    (Uri.to_string fact.entity)
-    (Uri.to_string fact.attribute)
-    value_str
-    (Uri.to_string fact.fact_uri)
-    (Datetime.to_timestamp fact.stated_at)
-    fact.tx_id
-    (string_of_bool fact.retracted)
+  "{\"e\":\"" ^ Uri.to_string fact.entity ^ "\",\"a\":\"" ^ Uri.to_string fact.attribute ^ "\",\"s\":\"" ^ Uri.to_string fact.source_uri ^ "\",\"v\":" ^ value_str ^ ",\"fact_uri\":\"" ^ Uri.to_string fact.fact_uri ^ "\",\"stated_at\":\"" ^ string_of_float (Datetime.to_timestamp fact.stated_at) ^ "\",\"tx_id\":" ^ string_of_int fact.tx_id ^ ",\"retracted\":" ^ string_of_bool fact.retracted ^ "}"
 
 let json_to_fact line =
   (* Very simple JSON parser - just enough for our needs *)
   let extract_string key line =
-    let pattern = format "\"%s\":\"" key in
+    let pattern = "\"" ^ key ^ "\":\"" in
     match String.split_on_char '"' line with
     | _ ->
         let start_idx = String.index line '"' in
         let rec find_key idx =
           if idx >= String.length line then panic ("Key not found: " ^ key)
-          else if String.sub line idx (String.length pattern) = pattern then
+          else if idx + String.length pattern <= String.length line && 
+                  String.sub line idx (String.length pattern) = pattern then
             let value_start = idx + String.length pattern in
             let rec find_end i =
               if i >= String.length line then panic "Unterminated string"
-              else if String.get line i = '"' && String.get line (i - 1) <> '\\'
+              else if String.get line i = '"' && String.get line (i - 1) != '\\'
               then i
               else find_end (i + 1)
             in
@@ -67,11 +61,12 @@ let json_to_fact line =
         find_key 0
   in
   let extract_int key line =
-    let pattern = format "\"%s\":" key in
+    let pattern = "\"" ^ key ^ "\":" in
     let idx = String.index line '"' in
     let rec find_key i =
       if i >= String.length line then panic ("Key not found: " ^ key)
-      else if String.sub line i (String.length pattern) = pattern then
+      else if i + String.length pattern <= String.length line &&
+              String.sub line i (String.length pattern) = pattern then
         let value_start = i + String.length pattern in
         let rec find_end j =
           if j >= String.length line then panic "Number not found"
@@ -87,7 +82,7 @@ let json_to_fact line =
     find_key idx
   in
   let extract_bool key line =
-    let pattern = format "\"%s\":true" key in
+    let pattern = "\"" ^ key ^ "\":true" in
     let rec contains_substr s sub =
       let len_s = String.length s in
       let len_sub = String.length sub in
@@ -103,6 +98,7 @@ let json_to_fact line =
 
   let entity = Uri.of_string (extract_string "e" line) in
   let attribute = Uri.of_string (extract_string "a" line) in
+  let source_uri = Uri.of_string (extract_string "s" line) in
   let fact_uri = Uri.of_string (extract_string "fact_uri" line) in
   let stated_at_ts = float_of_string (extract_string "stated_at" line) in
   let stated_at = Datetime.from_unix_time stated_at_ts in
@@ -137,7 +133,7 @@ let json_to_fact line =
     else panic "Unknown value type"
   in
 
-  { Fact.fact_uri; entity; attribute; value; stated_at; tx_id; retracted }
+  { Fact.fact_uri; source_uri; entity; attribute; value; stated_at; tx_id; retracted }
 
 let load filename =
   let path = Path.v filename in
@@ -150,13 +146,18 @@ let load filename =
         List.filter_map
           (fun line ->
             if String.trim line = "" then None
-            else try Some (json_to_fact line) with _ -> None)
+            else try Some (json_to_fact line) with _ ->
+              (* JSON parsing failed - skip this line *)
+              None)
           lines
       in
       let mem = Inmemory.with_facts (Inmemory.create ()) facts in
       { mem; filename = Some filename }
 
-let save _store _filename = ()
+let save _store _filename =
+  (* Save is a no-op for SimpleFile - we append on every state/retract *)
+  (* If we wanted to compact the file (remove retracted facts), we could do it here *)
+  ()
 
 let state store facts =
   let tx_id = Inmemory.state store.mem facts in
@@ -205,3 +206,9 @@ let get_current_facts store ~entity =
 let exists store entity = Inmemory.exists store.mem entity
 let get_kind store entity = Inmemory.get_kind store.mem entity
 let list_schemas store = Inmemory.list_schemas store.mem
+let get_all_current_facts store = Inmemory.get_all_current_facts store.mem
+let find_entities_by_attr_value store ~attr ~value = 
+  Inmemory.find_entities_by_attr_value store.mem ~attr ~value
+let entity_count store = Inmemory.entity_count store.mem
+let fact_count store = Inmemory.fact_count store.mem
+let current_fact_count store = Inmemory.current_fact_count store.mem

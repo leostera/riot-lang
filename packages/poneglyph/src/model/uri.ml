@@ -28,7 +28,7 @@ module Interner = struct
   let to_string interner id =
     match HashMap.get interner.id_to_string id with
     | Some str -> str
-    | None -> format "<unknown-uri-%d>" id
+    | None -> "<unknown-uri-" ^ string_of_int id ^ ">"
 end
 
 let global_interner = Interner.create ()
@@ -56,5 +56,5 @@ let equal = Int.equal
 let compare = Int.compare
 let ns s = Ns s
 let kind s = Kind s
-let id fmt = Printf.ksprintf (fun s -> Id s) fmt
+let id s = Id s
 let field s = Field s

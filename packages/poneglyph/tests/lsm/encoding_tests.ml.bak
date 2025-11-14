@@ -1,0 +1,378 @@
+(** Tests for Encoding - Binary serialization *)
+
+open Std
+open Poneglyph
+
+(** Helper to create LSM modules accessible in tests *)
+module Encoding = Poneglyph.Storage.Lsm.Encoding
+module Key = Poneglyph.Storage.Lsm.Key
+
+(* Helper since abs_float isn't in Std *)
+let abs_float x = if x < 0.0 then -.x else x
+
+(** Test 1: ID encoding round-trip *)
+let test_id_roundtrip () =
+  let ids = [ 0L; 1L; 42L; 12345L; Int64.max_int; Int64.min_int ] in
+  List.iter
+    (fun id ->
+      let bytes = Encoding.encode_id id in
+      let decoded = Encoding.decode_id bytes in
+      if decoded != id then
+        panic
+          ("ID roundtrip failed: " ^ Int64.to_string id ^ " != "
+         ^ Int64.to_string decoded))
+    ids;
+  Ok ()
+
+(** Test 2: Float encoding preserves order *)
+let test_float_ordering () =
+  let floats =
+    [ neg_infinity; -1000.0; -1.0; -0.0; 0.0; 1.0; 1000.0; infinity ]
+  in
+  let encoded = List.map Encoding.encode_float floats in
+
+  (* Verify: if floats[i] < floats[j] then encoded[i] < encoded[j] *)
+  List.iteri
+    (fun i ei ->
+      List.iteri
+        (fun j ej ->
+          if i < j then
+            if Int64.compare ei ej >= 0 then
+              panic
+                ("Float order broken at " ^ string_of_int i ^ " vs "
+               ^ string_of_int j ^ ": " ^ string_of_float (List.nth floats i)
+               ^ " vs " ^ string_of_float (List.nth floats j)))
+        encoded)
+    encoded;
+  Ok ()
+
+(** Test 3: Float -0.0 normalization *)
+let test_float_zero_normalization () =
+  let pos_zero = Encoding.encode_float 0.0 in
+  let neg_zero = Encoding.encode_float (-0.0) in
+  if pos_zero != neg_zero then
+    Error "Float encoding should normalize -0.0 to +0.0"
+  else Ok ()
+
+(** Test 4: Float round-trip *)
+let test_float_roundtrip () =
+  let floats = [ -3.14; 0.0; 3.14; 42.0; -100.5 ] in
+  List.iter
+    (fun f ->
+      let encoded = Encoding.encode_float f in
+      let decoded = Encoding.decode_float encoded in
+      (* Allow small floating point errors *)
+      if abs_float (f -. decoded) > 1e-10 then
+        panic
+          ("Float roundtrip failed: " ^ string_of_float f ^ " != "
+         ^ string_of_float decoded))
+    floats;
+  Ok ()
+
+(** Test 5: DateTime encoding round-trip *)
+let test_datetime_roundtrip () =
+  let now = Datetime.now () in
+  let encoded = Encoding.encode_datetime now in
+  let decoded = Encoding.decode_datetime encoded in
+
+  (* Allow 1 microsecond tolerance *)
+  let diff = abs_float (Datetime.to_timestamp now -. Datetime.to_timestamp decoded) in
+  if diff > 0.000001 then
+    Error
+      ("DateTime roundtrip lost precision: " ^ string_of_float diff
+     ^ " seconds diff")
+  else Ok ()
+
+(** Test 6: DateTime ordering *)
+let test_datetime_ordering () =
+  let epoch = Datetime.from_unix_time 0.0 in
+  let later = Datetime.from_unix_time 1000000.0 in
+
+  let e1 = Encoding.encode_datetime epoch in
+  let e2 = Encoding.encode_datetime later in
+
+  if Int64.compare e1 e2 >= 0 then
+    Error "DateTime encoding should preserve order"
+  else Ok ()
+
+(** Test 7: Value encoding for all types *)
+let test_value_encoding_all_types () =
+  let values =
+    [
+      Fact.String "hello";
+      Fact.Int 42;
+      Fact.Bool true;
+      Fact.Bool false;
+      Fact.Float 3.14;
+      Fact.Uri (Uri.of_string "test:uri");
+      Fact.DateTime (Datetime.now ());
+    ]
+  in
+
+  List.iter
+    (fun v ->
+      let kind, repr = Encoding.encode_value v in
+      let _decoded = Encoding.decode_value kind repr in
+      (* Note: String decoding is lossy (hash), so we just check it doesn't crash *)
+      ())
+    values;
+  Ok ()
+
+(** Test 8: Value repr to int64 conversion *)
+let test_value_repr_to_int64 () =
+  let test_cases =
+    [
+      (Encoding.VInt 42L, 42L);
+      (Encoding.VBool true, 1L);
+      (Encoding.VBool false, 0L);
+      (Encoding.VFloat 12345L, 12345L);
+      (Encoding.VUri 99, 99L);
+      (Encoding.VDatetime 1000000L, 1000000L);
+    ]
+  in
+
+  List.iter
+    (fun (repr, expected) ->
+      let actual = Encoding.value_repr_to_int64 repr in
+      if actual != expected then
+        panic
+          ("value_repr_to_int64 failed: expected " ^ Int64.to_string expected
+         ^ " got " ^ Int64.to_string actual))
+    test_cases;
+  Ok ()
+
+(** Test 9: EAVT key encoding round-trip *)
+let test_eavt_key_roundtrip () =
+  let key : Key.eavt_key =
+    {
+      entity_id = 1L;
+      attr_id = 2L;
+      value_kind = Encoding.VK_Int;
+      value_repr = 42L;
+      tx_id = 100L;
+      fact_id = 999L;
+    }
+  in
+
+  let encoded = Key.encode_eavt key in
+  let decoded = Key.decode_eavt encoded in
+
+  if
+    decoded.entity_id != key.entity_id || decoded.attr_id != key.attr_id
+    || decoded.value_repr != key.value_repr || decoded.tx_id != key.tx_id
+    || decoded.fact_id != key.fact_id
+  then Error "EAVT key roundtrip failed"
+  else Ok ()
+
+(** Test 10: EAVT key size *)
+let test_eavt_key_size () =
+  let key =
+    Key.
+      {
+        entity_id = 1L;
+        attr_id = 1L;
+        value_kind = Encoding.VK_Int;
+        value_repr = 1L;
+        tx_id = 1L;
+        fact_id = 1L;
+      }
+  in
+
+  let encoded = Key.encode_eavt key in
+  if Bytes.length encoded != Key.key_size then
+    Error
+      ("EAVT key should be " ^ string_of_int Key.key_size ^ " bytes, got "
+     ^ string_of_int (Bytes.length encoded))
+  else Ok ()
+
+(** Test 11: EAVT key ordering *)
+let test_eavt_key_ordering () =
+  (* Keys in semantic order *)
+  let keys =
+    [
+      Key.
+        {
+          entity_id = 1L;
+          attr_id = 1L;
+          value_kind = Encoding.VK_Int;
+          value_repr = 1L;
+          tx_id = 1L;
+          fact_id = 1L;
+        };
+      Key.
+        {
+          entity_id = 1L;
+          attr_id = 1L;
+          value_kind = Encoding.VK_Int;
+          value_repr = 2L;
+          tx_id = 1L;
+          fact_id = 2L;
+        };
+      (* Different attr *)
+      Key.
+        {
+          entity_id = 1L;
+          attr_id = 2L;
+          value_kind = Encoding.VK_Int;
+          value_repr = 1L;
+          tx_id = 1L;
+          fact_id = 3L;
+        };
+      (* Different entity *)
+      Key.
+        {
+          entity_id = 2L;
+          attr_id = 1L;
+          value_kind = Encoding.VK_Int;
+          value_repr = 1L;
+          tx_id = 1L;
+          fact_id = 4L;
+        };
+    ]
+  in
+
+  let encoded = List.map Key.encode_eavt keys in
+
+  (* Verify bytes are sorted in same order *)
+  List.iteri
+    (fun i ei ->
+      List.iteri
+        (fun j ej ->
+          if i < j then
+            if Bytes.compare ei ej >= 0 then
+              Error
+                ("EAVT keys not sorted correctly at " ^ string_of_int i
+               ^ " vs " ^ string_of_int j))
+        encoded)
+    encoded;
+  Ok ()
+
+(** Test 12: AVET key round-trip *)
+let test_avet_key_roundtrip () =
+  let key =
+    Key.
+      {
+        attr_id = 5L;
+        value_kind = Encoding.VK_String;
+        value_repr = 12345L;
+        entity_id = 7L;
+        tx_id = 200L;
+        fact_id = 888L;
+      }
+  in
+
+  let encoded = Key.encode_avet key in
+  let decoded = Key.decode_avet encoded in
+
+  if Bytes.length encoded != Key.key_size then
+    Error "AVET key wrong size"
+  else if
+    decoded.attr_id != key.attr_id
+    || decoded.value_repr != key.value_repr
+    || decoded.entity_id != key.entity_id
+  then Error "AVET key roundtrip failed"
+  else Ok ()
+
+(** Test 13: SOURCE key round-trip *)
+let test_source_key_roundtrip () =
+  let key =
+    Key.
+      {
+        source_id = 10L;
+        entity_id = 20L;
+        attr_id = 30L;
+        tx_id = 40L;
+        fact_id = 50L;
+      }
+  in
+
+  let encoded = Key.encode_source key in
+  let decoded = Key.decode_source encoded in
+
+  if Bytes.length encoded != Key.key_size then
+    Error "SOURCE key wrong size"
+  else if
+    decoded.source_id != key.source_id
+    || decoded.entity_id != key.entity_id
+  then Error "SOURCE key roundtrip failed"
+  else Ok ()
+
+(** Test 14: FACT key round-trip *)
+let test_fact_key_roundtrip () =
+  let key = Key.{ fact_id = 777L; tx_id = 999L } in
+
+  let encoded = Key.encode_fact key in
+  let decoded = Key.decode_fact encoded in
+
+  if Bytes.length encoded != Key.key_size then Error "FACT key wrong size"
+  else if decoded.fact_id != key.fact_id || decoded.tx_id != key.tx_id then
+    Error "FACT key roundtrip failed"
+  else Ok ()
+
+(** Test 15: All keys are same size *)
+let test_all_keys_same_size () =
+  let eavt =
+    Key.encode_eavt
+      {
+        entity_id = 1L;
+        attr_id = 1L;
+        value_kind = Encoding.VK_Int;
+        value_repr = 1L;
+        tx_id = 1L;
+        fact_id = 1L;
+      }
+  in
+  let avet =
+    Key.encode_avet
+      {
+        attr_id = 1L;
+        value_kind = Encoding.VK_Int;
+        value_repr = 1L;
+        entity_id = 1L;
+        tx_id = 1L;
+        fact_id = 1L;
+      }
+  in
+  let source =
+    Key.encode_source
+      { source_id = 1L; entity_id = 1L; attr_id = 1L; tx_id = 1L; fact_id = 1L }
+  in
+  let fact = Key.encode_fact { fact_id = 1L; tx_id = 1L } in
+
+  let sizes =
+    [
+      Bytes.length eavt;
+      Bytes.length avet;
+      Bytes.length source;
+      Bytes.length fact;
+    ]
+  in
+
+  if List.for_all (fun s -> s = Key.key_size) sizes then Ok ()
+  else Error "Not all keys are 41 bytes"
+
+let tests =
+  Test.
+    [
+      case "ID encoding round-trip" test_id_roundtrip;
+      case "Float ordering" test_float_ordering;
+      case "Float -0.0 normalization" test_float_zero_normalization;
+      case "Float round-trip" test_float_roundtrip;
+      case "DateTime round-trip" test_datetime_roundtrip;
+      case "DateTime ordering" test_datetime_ordering;
+      case "Value encoding all types" test_value_encoding_all_types;
+      case "Value repr to int64" test_value_repr_to_int64;
+      case "EAVT key round-trip" test_eavt_key_roundtrip;
+      case "EAVT key size" test_eavt_key_size;
+      case "EAVT key ordering" test_eavt_key_ordering;
+      case "AVET key round-trip" test_avet_key_roundtrip;
+      case "SOURCE key round-trip" test_source_key_roundtrip;
+      case "FACT key round-trip" test_fact_key_roundtrip;
+      case "All keys same size" test_all_keys_same_size;
+    ]
+
+let () =
+  Miniriot.run
+    ~main:(fun ~args ->
+      Test.Cli.main ~name:"poneglyph/lsm/encoding" ~tests ~args)
+    ~args:Env.args ()
