@@ -49,7 +49,7 @@ let is_query_char = function
   | 'A' .. 'Z'
   | '0' .. '9'
   | '-' | '.' | '_' | '~' | ':' | '/' | '?' | '#' | '[' | ']' | '@' | '!' | '$'
-  | '&' | '\'' | '(' | ')' | '*' | '+' | ',' | ';' | '=' ->
+  | '&' | '\'' | '(' | ')' | '*' | '+' | ',' | ';' | '=' | '%' ->
       true
   | _ -> false
 
@@ -365,6 +365,139 @@ let join base relative_path =
 let equal url1 url2 = String.equal (to_string url1) (to_string url2)
 let compare url1 url2 = String.compare (to_string url1) (to_string url2)
 
+(* Percent encoding/decoding *)
+
+(** Check if character is unreserved per RFC 3986 Section 2.3 *)
+let is_unreserved = function
+  | 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' | '-' | '.' | '_' | '~' -> true
+  | _ -> false
+
+(** Convert integer to hex char (0-15 -> '0'-'F') *)
+let int_to_hex n =
+  if n < 10 then Char.chr (Char.code '0' + n)
+  else Char.chr (Char.code 'A' + n - 10)
+
+(** Encode string per RFC 3986 - encode all except unreserved *)
+let percent_encode str =
+  let len = String.length str in
+  let buf = Buffer.create (len * 3) in
+  (* Worst case: all chars encoded *)
+
+  let rec encode i =
+    if i >= len then Buffer.contents buf
+    else
+      let c = String.get str i in
+      if is_unreserved c then (
+        Buffer.add_char buf c;
+        encode (i + 1))
+      else
+        (* Encode as %XX *)
+        let code = Char.code c in
+        Buffer.add_char buf '%';
+        Buffer.add_char buf (int_to_hex (code / 16));
+        Buffer.add_char buf (int_to_hex (code mod 16));
+        encode (i + 1)
+  in
+  encode 0
+
+(** Encode for application/x-www-form-urlencoded (space -> +) *)
+let form_encode str =
+  let len = String.length str in
+  let buf = Buffer.create (len * 3) in
+
+  let rec encode i =
+    if i >= len then Buffer.contents buf
+    else
+      let c = String.get str i in
+      if is_unreserved c then (
+        Buffer.add_char buf c;
+        encode (i + 1))
+      else if c = ' ' then (
+        (* Space encoded as + in forms *)
+        Buffer.add_char buf '+';
+        encode (i + 1))
+      else
+        (* Everything else as %XX *)
+        let code = Char.code c in
+        Buffer.add_char buf '%';
+        Buffer.add_char buf (int_to_hex (code / 16));
+        Buffer.add_char buf (int_to_hex (code mod 16));
+        encode (i + 1)
+  in
+  encode 0
+
+(** Decode percent-encoded string per RFC 3986 *)
+let percent_decode str =
+  let len = String.length str in
+  let buf = Buffer.create len in
+
+  let hex_to_int c =
+    match c with
+    | '0' .. '9' -> Some (Char.code c - Char.code '0')
+    | 'A' .. 'F' -> Some (Char.code c - Char.code 'A' + 10)
+    | 'a' .. 'f' -> Some (Char.code c - Char.code 'a' + 10)
+    | _ -> None
+  in
+
+  let rec decode i =
+    if i >= len then Buffer.contents buf
+    else
+      match String.get str i with
+      | '%' when i + 2 < len ->
+          let c1 = String.get str (i + 1) in
+          let c2 = String.get str (i + 2) in
+          (match (hex_to_int c1, hex_to_int c2) with
+          | Some h1, Some h2 ->
+              let code = (h1 * 16) + h2 in
+              Buffer.add_char buf (Char.chr code);
+              decode (i + 3)
+          | _ ->
+              (* Invalid - keep as-is *)
+              Buffer.add_char buf '%';
+              decode (i + 1))
+      | c ->
+          Buffer.add_char buf c;
+          decode (i + 1)
+  in
+  decode 0
+
+(** Decode application/x-www-form-urlencoded (+ -> space) *)
+let form_decode str =
+  let len = String.length str in
+  let buf = Buffer.create len in
+
+  let hex_to_int c =
+    match c with
+    | '0' .. '9' -> Some (Char.code c - Char.code '0')
+    | 'A' .. 'F' -> Some (Char.code c - Char.code 'A' + 10)
+    | 'a' .. 'f' -> Some (Char.code c - Char.code 'a' + 10)
+    | _ -> None
+  in
+
+  let rec decode i =
+    if i >= len then Buffer.contents buf
+    else
+      match String.get str i with
+      | '%' when i + 2 < len ->
+          let c1 = String.get str (i + 1) in
+          let c2 = String.get str (i + 2) in
+          (match (hex_to_int c1, hex_to_int c2) with
+          | Some h1, Some h2 ->
+              let code = (h1 * 16) + h2 in
+              Buffer.add_char buf (Char.chr code);
+              decode (i + 3)
+          | _ ->
+              Buffer.add_char buf '%';
+              decode (i + 1))
+      | '+' ->
+          Buffer.add_char buf ' ';
+          decode (i + 1)
+      | c ->
+          Buffer.add_char buf c;
+          decode (i + 1)
+  in
+  decode 0
+
 (* Query utilities *)
 module Query = struct
   type param = string * string
@@ -377,19 +510,24 @@ module Query = struct
       List.filter_map
         (fun pair ->
           match String.index_opt pair '=' with
-          | None -> Some (pair, "")
+          | None ->
+              let key = form_decode pair in
+              Some (key, "")
           | Some idx ->
               let key = String.sub pair 0 idx in
               let value =
                 String.sub pair (idx + 1) (String.length pair - idx - 1)
               in
-              Some (key, value))
+              Some (form_decode key, form_decode value))
         pairs
 
   let to_string params =
     let param_strings =
       List.map
-        (fun (k, v) -> if String.length v = 0 then k else k ^ "=" ^ v)
+        (fun (k, v) ->
+          let k_enc = form_encode k in
+          let v_enc = form_encode v in
+          if String.length v = 0 then k_enc else k_enc ^ "=" ^ v_enc)
         params
     in
     String.concat "&" param_strings

@@ -93,6 +93,60 @@ val fragment : t -> string option
 val path_and_query : t -> string
 (** Get combined path and query (e.g., "/path?query") *)
 
+(** ## Percent Encoding/Decoding *)
+
+val percent_encode : string -> string
+(** Encode string per RFC 3986, encoding all except unreserved characters.
+    
+    Unreserved: a-z A-Z 0-9 - . _ ~
+    
+    Examples:
+    {[
+      percent_encode "Hello World"  (* "Hello%20World" *)
+      percent_encode "test@example.com"  (* "test%40example.com" *)
+      percent_encode "100%"  (* "100%25" *)
+    ]} *)
+
+val percent_decode : string -> string
+(** Decode percent-encoded string per RFC 3986.
+    
+    Converts %XX sequences to their corresponding characters.
+    
+    Examples:
+    {[
+      percent_decode "Hello%20World"  (* "Hello World" *)
+      percent_decode "test%40example.com"  (* "test@example.com" *)
+      percent_decode "100%25"  (* "100%" *)
+    ]}
+    
+    Invalid sequences (e.g., "%ZZ") are left as-is. *)
+
+val form_encode : string -> string
+(** Encode for application/x-www-form-urlencoded.
+    
+    Like percent_encode but space becomes '+' instead of '%20'.
+    Used for encoding form data and query strings.
+    
+    Examples:
+    {[
+      form_encode "Hello World"  (* "Hello+World" *)
+      form_encode "test@example.com"  (* "test%40example.com" *)
+    ]} *)
+
+val form_decode : string -> string
+(** Decode application/x-www-form-urlencoded string.
+    
+    Like percent_decode but also converts '+' to space.
+    Used for parsing form data and query strings.
+    
+    Examples:
+    {[
+      form_decode "Hello+World"  (* "Hello World" *)
+      form_decode "test%40example.com"  (* "test@example.com" *)
+    ]}
+    
+    Note: Query.parse automatically uses form_decode. *)
+
 (** ## Component Types *)
 
 module Scheme : sig
@@ -165,10 +219,40 @@ module Query : sig
   type t = param list
 
   val parse : string -> t
-  (** Parse query string into parameter list *)
+  (** Parse query string into parameter list.
+      
+      Automatically decodes percent-encoded values using form_decode.
+      Converts '+' to space per application/x-www-form-urlencoded.
+      
+      Examples:
+      {[
+        parse "page=1&sort=name"
+        (* [("page", "1"); ("sort", "name")] *)
+        
+        parse "name=John+Doe&email=test%40example.com"
+        (* [("name", "John Doe"); ("email", "test@example.com")] *)
+      ]}
+      
+      {b Breaking Change}: Previously returned encoded values.
+      Now returns decoded values per RFC 3986. *)
 
   val to_string : t -> string
-  (** Convert parameter list back to query string *)
+  (** Convert parameter list to query string.
+      
+      Automatically encodes keys and values using form_encode.
+      Spaces become '+', special characters become '%XX'.
+      
+      Examples:
+      {[
+        to_string [("page", "1"); ("sort", "name")]
+        (* "page=1&sort=name" *)
+        
+        to_string [("name", "John Doe"); ("email", "test@example.com")]
+        (* "name=John+Doe&email=test%40example.com" *)
+      ]}
+      
+      {b Breaking Change}: Previously did not encode values.
+      Now encodes per application/x-www-form-urlencoded. *)
 
   val get : t -> string -> string option
   (** Get first value for a parameter name *)
