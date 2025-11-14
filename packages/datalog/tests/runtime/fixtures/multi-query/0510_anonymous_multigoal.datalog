@@ -1,0 +1,8 @@
+% Test: Anonymous variables in multi-goal queries
+% Description: Wildcards in conjunction with other atoms
+% Expected: Proper handling of _ in joins
+
+edge(1, 2).
+edge(1, 3).
+edge(2, 3).
+

@@ -1,0 +1,9 @@
+% Test: Shared variable join - intersection vs cross-product
+% Description: p(X), q(X) is intersection; p(X), q(Y) is cross-product
+% Expected: Different semantics for shared vs different variables
+
+p(1).
+p(2).
+q(2).
+q(3).
+

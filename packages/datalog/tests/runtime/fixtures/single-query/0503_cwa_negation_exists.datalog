@@ -1,0 +1,10 @@
+% Test: Closed World Assumption - Negation with existing constant
+% Description: Try to prove contradiction when p(X) holds
+% Expected: Empty (cannot prove p(X) AND not p(X))
+
+p(1).
+p(2).
+
+% Try to find things that are p(X) but also not p(X) - should be empty
+contradiction(X) :- p(X), !p(X).
+

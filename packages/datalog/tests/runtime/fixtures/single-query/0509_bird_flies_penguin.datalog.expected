@@ -1,0 +1,20 @@
+{
+  "facts": [
+    {"predicate": "bird", "args": [1]},
+    {"predicate": "bird", "args": [2]},
+    {"predicate": "penguin", "args": [2]}
+  ],
+  "rules": [
+    {
+      "head": {"predicate": "flies", "args": ["X"]},
+      "body": [
+        {"predicate": "bird", "args": ["X"]},
+        {"predicate": "penguin", "args": ["X"], "negated": true}
+      ]
+    }
+  ],
+  "query": "flies(X)",
+  "result": [
+    {"X": 1}
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "facts": [
+    {"predicate": "p", "args": [1]},
+    {"predicate": "p", "args": [2]}
+  ],
+  "rules": [
+    {
+      "head": {"predicate": "contradiction", "args": ["X"]},
+      "body": [
+        {"predicate": "p", "args": ["X"]},
+        {"predicate": "p", "args": ["X"], "negated": true}
+      ]
+    }
+  ],
+  "query": "contradiction(X)",
+  "result": []
+}

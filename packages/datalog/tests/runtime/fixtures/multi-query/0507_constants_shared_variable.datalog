@@ -1,0 +1,8 @@
+% Test: Constants with shared variables in queries
+% Description: edge(1, Y), edge(Y, 3) - Y must satisfy both constraints
+% Expected: Only Y values that complete the chain
+
+edge(1, 2).
+edge(1, 3).
+edge(2, 3).
+

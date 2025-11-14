@@ -1,0 +1,9 @@
+% Test: Query-level difference with negation
+% Description: Find elements in p but not in q
+% Expected: Set difference at query level
+
+p(1).
+p(2).
+q(2).
+q(3).
+

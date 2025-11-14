@@ -1,0 +1,35 @@
+{
+  "facts": [
+    {"predicate": "edge", "args": [1, 2]},
+    {"predicate": "edge", "args": [2, 3]},
+    {"predicate": "edge", "args": [3, 4]},
+    {"predicate": "blocked", "args": [3]}
+  ],
+  "rules": [
+    {
+      "head": {"predicate": "reachable", "args": ["X", "Y"]},
+      "body": [{"predicate": "edge", "args": ["X", "Y"]}]
+    },
+    {
+      "head": {"predicate": "reachable", "args": ["X", "Y"]},
+      "body": [
+        {"predicate": "edge", "args": ["X", "Z"]},
+        {"predicate": "reachable", "args": ["Z", "Y"]}
+      ]
+    },
+    {
+      "head": {"predicate": "reachable_not_blocked", "args": ["X", "Y"]},
+      "body": [
+        {"predicate": "reachable", "args": ["X", "Y"]},
+        {"predicate": "blocked", "args": ["Y"], "negated": true}
+      ]
+    }
+  ],
+  "query": "reachable_not_blocked(X, Y)",
+  "result": [
+    {"X": 1, "Y": 2},
+    {"X": 1, "Y": 4},
+    {"X": 2, "Y": 4},
+    {"X": 3, "Y": 4}
+  ]
+}
