@@ -138,6 +138,48 @@ val to_timestamp : t -> float
     (* Round-trip conversion *) let dt' = DateTime.from_unix_time ts in dt'.year
     = now.year (* true *) ``` *)
 
+val to_unix_micros : t -> int64
+(** Converts datetime to int64 microseconds since Unix epoch.
+    
+    Provides exact 1μs precision suitable for LSM storage and high-precision
+    timestamps. This is preferred over float timestamps when exact precision
+    is required.
+    
+    ## Examples
+    
+    ```ocaml
+    let now = DateTime.now_utc () in
+    let micros = DateTime.to_unix_micros now in
+    (* 1724789251426822L *)
+    
+    (* Round-trip *)
+    let dt' = DateTime.from_unix_micros micros in
+    dt'.microseconds = now.microseconds (* true *)
+    ```
+    
+    ## Precision
+    
+    - Exact 1 microsecond resolution
+    - Range: ±292,000 years from epoch
+    - No float rounding errors
+    
+    @since 1.0.0
+*)
+
+val from_unix_micros : int64 -> t
+(** Converts int64 microseconds since Unix epoch to datetime.
+    
+    ## Examples
+    
+    ```ocaml
+    let micros = 1724789251426822L in
+    let dt = DateTime.from_unix_micros micros in
+    dt.year (* 2025 *)
+    ```
+    
+    @since 1.0.0
+*)
+
 val to_iso8601 : t -> string
 (** Converts to ISO 8601 format string with microsecond precision.
 

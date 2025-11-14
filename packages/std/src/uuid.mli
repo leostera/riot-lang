@@ -125,6 +125,45 @@ val v7 : unit -> t
     
     Uses [Std.Time.SystemTime] for millisecond precision timestamps
     combined with random data.
+    
+    ## Note on Monotonicity
+    
+    This function does NOT guarantee monotonicity in the presence of system
+    clock adjustments. If the system clock jumps backwards (NTP adjustment,
+    manual change), a newly generated UUID may sort before a previously
+    generated one.
+    
+    For transaction IDs or other use cases where strict monotonicity is
+    required, use {!v7_monotonic} instead.
+*)
+
+val v7_monotonic : unit -> t
+(** Generates a monotonically increasing UUID v7 safe for transaction IDs.
+    
+    This variant ensures that UUIDs are strictly monotonically increasing
+    even in the presence of system clock adjustments (NTP, manual changes).
+    
+    ## When to Use
+    
+    - LSM transaction IDs where "last write wins" depends on ordering
+    - Event sourcing where event order must be preserved
+    - Any system where UUID ordering is semantically important
+    
+    ## Examples
+    
+    ```ocaml
+    let tx_id1 = UUID.v7_monotonic () in
+    let tx_id2 = UUID.v7_monotonic () in
+    (* Guaranteed: UUID.compare tx_id1 tx_id2 < 0 *)
+    ```
+    
+    ## Implementation
+    
+    Maintains global state tracking the last generated timestamp. If the
+    system clock goes backwards, the timestamp is clamped to (last + 1ms)
+    to preserve strict monotonicity.
+    
+    @since 1.0.0
 *)
 
 val v5 : namespace:t -> name:string -> t

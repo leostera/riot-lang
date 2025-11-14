@@ -113,6 +113,21 @@ let to_timestamp t =
   let unix_time, _ = Kernel.Time.mktime tm in
   unix_time
 
+(** Convert datetime to int64 microseconds since Unix epoch.
+    This provides exact 1μs precision for LSM storage. *)
+let to_unix_micros t =
+  let timestamp = to_timestamp t in
+  let micros_from_seconds = Int64.of_float (timestamp *. 1_000_000.0) in
+  let micros_from_frac, _ = t.microseconds in
+  Int64.add micros_from_seconds (Int64.of_int micros_from_frac)
+
+(** Convert int64 microseconds since Unix epoch to datetime. *)
+let from_unix_micros micros =
+  let seconds = Int64.to_float micros /. 1_000_000.0 in
+  let micros_part = Int64.to_int (Int64.rem micros 1_000_000L) in
+  let dt = from_unix_time seconds in
+  { dt with microseconds = (micros_part, 6) }
+
 let to_iso8601 t =
   let micros, _ = t.microseconds in
   let millis = micros / 1000 in
