@@ -1,0 +1,11 @@
+[package]
+name = "swisstable"
+version = "0.1.0"
+
+[lib]
+path = "src/swisstable.ml"
+
+[dependencies]
+kernel = { path = "../kernel" }
+std = { path = "../std" }
+propane = { path = "../propane" }
