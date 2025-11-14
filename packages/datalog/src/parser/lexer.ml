@@ -66,6 +66,39 @@ let lex_string cursor start =
     span = Ceibo.Span.make ~start ~end_;
   }
 
+let lex_single_quoted_string cursor start =
+  Cursor.advance cursor;
+  let content_start = Cursor.position cursor in
+  let rec loop () =
+    match Cursor.peek cursor with
+    | None ->
+        ( Cursor.slice cursor content_start
+            (Cursor.position cursor - content_start),
+          false )
+    | Some '\'' ->
+        let value =
+          Cursor.slice cursor content_start
+            (Cursor.position cursor - content_start)
+        in
+        Cursor.advance cursor;
+        (value, true)
+    | Some '\\' ->
+        Cursor.advance cursor;
+        (match Cursor.peek cursor with
+        | Some _ -> Cursor.advance cursor
+        | None -> ());
+        loop ()
+    | Some _ ->
+        Cursor.advance cursor;
+        loop ()
+  in
+  let value, terminated = loop () in
+  let end_ = Cursor.position cursor in
+  {
+    Token.kind = String { value; terminated };
+    span = Ceibo.Span.make ~start ~end_;
+  }
+
 let lex_number cursor start =
   let rec loop () =
     match Cursor.peek cursor with
@@ -189,6 +222,7 @@ let next cursor =
         }
     | Some '%' -> lex_comment cursor start
     | Some '"' -> lex_string cursor start
+    | Some '\'' -> lex_single_quoted_string cursor start
     | Some '-' -> (
         Cursor.advance cursor;
         match Cursor.peek cursor with

@@ -33,12 +33,12 @@ let kind_name = function
   | RParen -> ")"
   | Bang -> "!"
   | ColonDash -> ":-"
-  | Ident s -> format "ident(%s)" s
-  | Variable s -> format "var(%s)" s
-  | String { value; _ } -> format "string(%S)" value
-  | Integer i -> format "int(%d)" i
+  | Ident s -> "ident(" ^ s ^ ")"
+  | Variable s -> "var(" ^ s ^ ")"
+  | String { value; _ } -> "string(" ^ String.escaped value ^ ")"
+  | Integer i -> "int(" ^ string_of_int i ^ ")"
   | Wildcard -> "_"
-  | Comment s -> format "comment(%s)" s
+  | Comment s -> "comment(" ^ s ^ ")"
   | Whitespace -> "whitespace"
   | Gt -> ">"
   | Lt -> "<"
@@ -46,6 +46,6 @@ let kind_name = function
   | LtEq -> "<="
   | Eq -> "="
   | NotEq -> "!="
-  | Unknown c -> format "unknown(%c)" c
+  | Unknown c -> "unknown(" ^ String.make 1 c ^ ")"
 
 let to_string t = kind_name t

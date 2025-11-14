@@ -1,0 +1,25 @@
+{
+  "facts": [
+    {
+      "predicate": "char",
+      "args": [
+        "α"
+      ]
+    },
+    {
+      "predicate": "char",
+      "args": [
+        "β"
+      ]
+    }
+  ],
+  "query": "char(X)",
+  "result": [
+    {
+      "X": "α"
+    },
+    {
+      "X": "β"
+    }
+  ]
+}

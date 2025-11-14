@@ -180,7 +180,7 @@ let test_valid_parse file =
   | Ok ast ->
       assert_equal expected_ast (Ast.to_json ast)
   | Error errors ->
-      failwith (sprintf "Parse failed: %s" (Diagnostic.format errors))
+      panic (sprintf "Parse failed: %s" (Diagnostic.format errors))
 
 let test_invalid_parse file =
   let input = read_file (file ^ ".datalog") in
@@ -188,7 +188,7 @@ let test_invalid_parse file =
   
   match Parser.parse input with
   | Ok _ ->
-      failwith "Expected parse to fail, but it succeeded"
+      panic "Expected parse to fail, but it succeeded"
   | Error errors ->
       assert_equal expected_errors (Diagnostic.to_json errors)
 ```

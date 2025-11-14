@@ -1,0 +1,34 @@
+{
+  "facts": [
+    {"predicate": "node", "args": [1]},
+    {"predicate": "node", "args": [2]},
+    {"predicate": "node", "args": [3]},
+    {"predicate": "node", "args": [4]},
+    {"predicate": "edge", "args": [1, 2]},
+    {"predicate": "edge", "args": [2, 3]}
+  ],
+  "rules": [
+    {
+      "head": {"predicate": "not_connected", "args": ["X", "Y"]},
+      "body": [
+        {"predicate": "node", "args": ["X"]},
+        {"predicate": "node", "args": ["Y"]},
+        {"predicate": "edge", "args": ["X", "Y"], "negated": true},
+        {"predicate": "!=", "args": ["X", "Y"]}
+      ]
+    }
+  ],
+  "query": "not_connected(X, Y)",
+  "result": [
+    {"X": 1, "Y": 3},
+    {"X": 1, "Y": 4},
+    {"X": 2, "Y": 1},
+    {"X": 2, "Y": 4},
+    {"X": 3, "Y": 1},
+    {"X": 3, "Y": 2},
+    {"X": 3, "Y": 4},
+    {"X": 4, "Y": 1},
+    {"X": 4, "Y": 2},
+    {"X": 4, "Y": 3}
+  ]
+}

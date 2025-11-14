@@ -1,0 +1,31 @@
+{
+  "facts": [
+    {
+      "predicate": "rel",
+      "args": [
+        16,
+        17
+      ]
+    },
+    {
+      "predicate": "rel",
+      "args": [
+        17,
+        18
+      ]
+    }
+  ],
+  "query": "rel(X, Y), rel(X, Z)",
+  "result": [
+    {
+      "X": 16,
+      "Y": 17,
+      "Z": 17
+    },
+    {
+      "X": 17,
+      "Y": 18,
+      "Z": 18
+    }
+  ]
+}

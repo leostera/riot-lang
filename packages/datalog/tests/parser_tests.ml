@@ -1,11 +1,12 @@
 open Std
 open Std.Data
+open Std.Collections
 open Datalog
 
 let read_file path =
   match Fs.read (Path.v path) with
   | Ok content -> content
-  | Error _ -> failwith (format "Failed to read file: %s" path)
+  | Error _ -> panic ("Failed to read file: " ^ path)
 
 let ast_to_json node =
   let rec get_token_text = function
@@ -17,8 +18,8 @@ let ast_to_json node =
     Array.to_list elements
     |> List.filter (function
       | Ceibo.Green.Token tok ->
-          tok.kind <> Parser.Syntax_kind.WHITESPACE
-          && tok.kind <> Parser.Syntax_kind.COMMENT
+          tok.kind != Parser.Syntax_kind.WHITESPACE
+          && tok.kind != Parser.Syntax_kind.COMMENT
       | _ -> true)
   in
 
@@ -64,7 +65,7 @@ let ast_to_json node =
         Json.Object
           [
             ("type", Json.String "unknown");
-            ("debug", Json.String (format "%s" (get_token_text other)));
+            ("debug", Json.String (get_token_text other));
           ]
   in
 
@@ -301,7 +302,7 @@ let normalize_json json =
   normalize json
 
 let test_valid_parse (name, datalog_file, expected_file) =
-  Test.case (format "Valid: %s" name) (fun () ->
+  Test.case ("Valid: " ^ name) (fun () ->
       let input = read_file datalog_file in
       let expected_json = read_file expected_file in
 
@@ -311,8 +312,8 @@ let test_valid_parse (name, datalog_file, expected_file) =
             List.map (fun d -> d.Parser.Diagnostic.message) diagnostics
           in
           Error
-            (format "Parse failed with errors: %s"
-               (String.concat "; " error_msgs))
+            ("Parse failed with errors: " ^
+               String.concat "; " error_msgs)
       | Ok tree -> (
           let actual_json = ast_to_json tree in
           let actual_str = Json.to_string actual_json in
@@ -326,9 +327,10 @@ let test_valid_parse (name, datalog_file, expected_file) =
               if normalized_actual = normalized_expected then Ok ()
               else
                 Error
-                  (format "AST mismatch:\nExpected: %s\nActual: %s"
-                     (Json.to_string normalized_expected)
-                     (Json.to_string normalized_actual))))
+                  ("AST mismatch:\nExpected: " ^
+                     Json.to_string normalized_expected ^
+                     "\nActual: " ^
+                     Json.to_string normalized_actual)))
 
 let diagnostic_to_json d =
   Json.Object
@@ -342,7 +344,7 @@ let diagnostic_to_json d =
     ]
 
 let test_invalid_parse (name, datalog_file, error_file) =
-  Test.case (format "Invalid: %s" name) (fun () ->
+  Test.case ("Invalid: " ^ name) (fun () ->
       try
         let input = read_file datalog_file in
         let expected_json = read_file error_file in
@@ -367,10 +369,11 @@ let test_invalid_parse (name, datalog_file, error_file) =
                 if normalized_actual = normalized_expected then Ok ()
                 else
                   Error
-                    (format "Error mismatch:\nExpected: %s\nActual: %s"
-                       (Json.to_string normalized_expected)
-                       (Json.to_string normalized_actual)))
-      with exn -> Error (format "Exception: %s" (Printexc.to_string exn)))
+                    ("Error mismatch:\nExpected: " ^
+                       Json.to_string normalized_expected ^
+                       "\nActual: " ^
+                       Json.to_string normalized_actual))
+      with exn -> Error "Exception occurred during parsing")
 
 let load_fixtures base_path input_suffix expected_suffix =
   let fixtures_path = Path.v base_path in
@@ -387,9 +390,9 @@ let load_fixtures base_path input_suffix expected_suffix =
                 String.sub name 0
                   (String.length name - String.length input_suffix)
               in
-              let input_file = format "%s/%s" base_path name in
+              let input_file = base_path ^ "/" ^ name in
               let expected_file =
-                format "%s/%s%s" base_path base expected_suffix
+                base_path ^ "/" ^ base ^ expected_suffix
               in
               match Fs.exists (Path.v expected_file) with
               | Ok true -> Some (base, input_file, expected_file)

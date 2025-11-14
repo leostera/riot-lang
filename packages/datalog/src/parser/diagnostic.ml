@@ -7,14 +7,14 @@ let make ~message ~span ~help = { message; span; help }
 let expected ~expected ~found ~span =
   {
     message =
-      format "Expected %s, found %s" expected (Token.to_string found.Token.kind);
+      "Expected " ^ expected ^ ", found " ^ Token.to_string found.Token.kind;
     span;
     help = None;
   }
 
 let unexpected ~found ~span =
   {
-    message = format "Unexpected token %s" (Token.to_string found.Token.kind);
+    message = "Unexpected token " ^ Token.to_string found.Token.kind;
     span;
     help = None;
   }
@@ -29,10 +29,10 @@ let unterminated_string ~span =
 let lowercase_variable ~name ~span =
   {
     message =
-      format "Variables must start with uppercase letter, found '%s'" name;
+      "Variables must start with uppercase letter, found '" ^ name ^ "'";
     span;
     help =
-      Some (format "Change '%s' to '%s'" name (String.capitalize_ascii name));
+      Some ("Change '" ^ name ^ "' to '" ^ String.capitalize_ascii name ^ "'");
   }
 
 let missing_rule_body ~span =
@@ -61,5 +61,5 @@ let missing_closing_paren ~span =
 
 let to_string t =
   match t.help with
-  | Some help -> format "%s\n  help: %s" t.message help
+  | Some help -> t.message ^ "\n  help: " ^ help
   | None -> t.message

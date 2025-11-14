@@ -309,8 +309,8 @@ let parse_query source =
   
   (* Parse comma-separated clauses (atoms, builtins, negated atoms) *)
   let rec parse_clauses acc =
-    let clause = parse_clause p in
-    let acc = clause :: acc in
+    let atom = parse_clause p in
+    let acc = atom :: acc in
     let trivia = consume_trivia p in
     match peek_kind p with
     | Comma ->
@@ -328,4 +328,4 @@ let parse_query source =
     (* Return single clause or PROGRAM node with multiple clauses *)
     match clauses with
     | [single] -> Ok single
-    | multiple -> Ok (make_node Syntax_kind.PROGRAM (List.map (fun c -> Ceibo.Green.Node c) multiple))
+    | multiple -> Ok (make_node Syntax_kind.PROGRAM (List.map (fun c -> Ceibo.Green.Node a) multiple))

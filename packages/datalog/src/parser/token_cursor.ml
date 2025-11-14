@@ -1,4 +1,5 @@
 open Std
+open Std.Collections
 
 type t = { source : string; tokens : Token.located array; mutable pos : int }
 
