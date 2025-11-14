@@ -14,12 +14,23 @@ let init (suite : Intf.suite_info) total =
   println ("running " ^ string_of_int total ^ " tests")
 
 let on_result _idx (result : Test_result.t) =
+  let prefix = match result.test_type with
+    | Test_case.UnitTest -> "test"
+    | Test_case.Property _ -> "prop"
+  in
   match result.result with
-  | Test_result.Passed -> println ("test " ^ result.name ^ " ... ok")
+  | Test_result.Passed -> 
+      let suffix = match result.test_type with
+        | Test_case.UnitTest -> "ok"
+        | Test_case.Property { examples } -> 
+            Int.to_string examples ^ " examples ok"
+      in
+      println (prefix ^ " " ^ result.name ^ " ... " ^ suffix)
   | Test_result.Failed msg ->
-      println ("test " ^ result.name ^ " ... FAILED");
+      println (prefix ^ " " ^ result.name ^ " ... FAILED");
       println ("       " ^ msg)
-  | Test_result.Skipped -> println ("test " ^ result.name ^ " ... skipped")
+  | Test_result.Skipped -> 
+      println (prefix ^ " " ^ result.name ^ " ... skipped")
 
 let finalize (summary : Test_result.summary) =
   println "";

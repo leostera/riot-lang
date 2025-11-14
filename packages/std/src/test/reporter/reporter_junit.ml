@@ -9,16 +9,22 @@ let finalize (summary : Test_result.summary) =
   let testcases =
     List.map
       (fun (r : Test_result.t) ->
+        let base_attrs = [ ("name", r.name) ] in
+        let attrs = match r.test_type with
+          | Test_case.UnitTest -> base_attrs
+          | Test_case.Property { examples } -> 
+              base_attrs @ [ ("type", "property"); ("examples", string_of_int examples) ]
+        in
         match r.result with
         | Test_result.Passed ->
-            element "testcase" ~attrs:[ ("name", r.name) ] []
+            element "testcase" ~attrs []
         | Test_result.Failed msg ->
             element "testcase"
-              ~attrs:[ ("name", r.name) ]
+              ~attrs
               [ element "failure" ~attrs:[ ("message", msg) ] [] ]
         | Test_result.Skipped ->
             element "testcase"
-              ~attrs:[ ("name", r.name) ]
+              ~attrs
               [ element "skipped" [] ])
       summary.results
   in

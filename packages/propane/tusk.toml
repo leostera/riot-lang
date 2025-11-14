@@ -1,0 +1,29 @@
+[package]
+name = "propane"
+version = "0.1.0"
+
+[lib]
+path = "src/Propane.ml"
+
+[[bin]]
+name = "basic"
+path = "examples/basic.ml"
+
+[[bin]]
+name = "collections"
+path = "examples/collections.ml"
+
+[[bin]]
+name = "custom_generators"
+path = "examples/custom_generators.ml"
+
+[[bin]]
+name = "assumptions"
+path = "examples/assumptions.ml"
+
+[[bin]]
+name = "shrinking"
+path = "examples/shrinking.ml"
+
+[dependencies]
+std = { path = "../std" }

@@ -35,8 +35,9 @@ let shuffle_list lst =
 
 let run_single_test reporter index (test : Test_case.t) =
   let name = test.name in
+  let test_type = test.test_type in
   let result =
-    if test.skip then Test_result.{ index; name; result = Skipped }
+    if test.skip then Test_result.{ index; name; test_type; result = Skipped }
     else
       match test.fn () with
       | exception exn ->
@@ -46,9 +47,9 @@ let run_single_test reporter index (test : Test_case.t) =
             let reason = exn ^ "\n\n" ^ bt in
             Test_result.Failed reason
           in
-          Test_result.{ index; name; result }
-      | Error msg -> Test_result.{ index; name; result = Failed msg }
-      | Ok () -> Test_result.{ index; name; result = Passed }
+          Test_result.{ index; name; test_type; result }
+      | Error msg -> Test_result.{ index; name; test_type; result = Failed msg }
+      | Ok () -> Test_result.{ index; name; test_type; result = Passed }
   in
   let module R = (val reporter : Reporter.Intf) in
   R.on_result index result;

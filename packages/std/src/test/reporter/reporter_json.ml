@@ -9,18 +9,24 @@ let finalize (summary : Test_result.summary) =
   let test_results =
     List.map
       (fun (r : Test_result.t) ->
-        match r.result with
+        let type_fields = match r.test_type with
+          | Test_case.UnitTest -> [("type", string "test")]
+          | Test_case.Property { examples } -> 
+              [("type", string "property"); ("examples", int examples)]
+        in
+        let base_fields = match r.result with
         | Test_result.Passed ->
-            obj [ ("name", string r.name); ("status", string "passed") ]
+            [("name", string r.name); ("status", string "passed")]
         | Test_result.Failed msg ->
-            obj
-              [
-                ("name", string r.name);
-                ("status", string "failed");
-                ("message", string msg);
-              ]
+            [
+              ("name", string r.name);
+              ("status", string "failed");
+              ("message", string msg);
+            ]
         | Test_result.Skipped ->
-            obj [ ("name", string r.name); ("status", string "skipped") ])
+            [("name", string r.name); ("status", string "skipped")]
+        in
+        obj (base_fields @ type_fields))
       summary.results
   in
 
