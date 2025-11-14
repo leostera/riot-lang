@@ -148,4 +148,4 @@ let parse ?(max_request_line = 8192) ?(max_headers = 100)
             else req
           in
 
-          Done { value = request; remaining = "" })
+          Done { value = request; remaining = body_start })
