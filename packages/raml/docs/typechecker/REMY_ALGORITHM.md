@@ -176,7 +176,7 @@ unify ty_x (TArrow ty_y ty_y)
 let rec occurs tvr ty =
   match ty with
   | TVar {contents = Unbound (name, l')} ->
-      if tvr == ty then failwith "occurs check"
+      if tvr == ty then panic "occurs check"
       else
         (* Update level to minimum *)
         let min_level = min (level_of tvr) l' in
