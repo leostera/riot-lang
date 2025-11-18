@@ -51,8 +51,8 @@ def main():
     print("\nBuilding minitusk...\n")
 
     # Clean and create bootstrap directory
-    run("rm -rf ./target/bootstrap")
-    os.makedirs("./target/bootstrap/sandbox/minitusk", exist_ok=True)
+    run("rm -rf ./_build/bootstrap")
+    os.makedirs("./_build/bootstrap/sandbox/minitusk", exist_ok=True)
 
     # Build minitusk (compile all modules in dependency order)
     print("=== Compiling minitusk ===")
@@ -73,14 +73,14 @@ def main():
     ]
 
     for file in source_files:
-        run(f"cp packages/minitusk/src/{file} ./target/bootstrap/sandbox/minitusk")
+        run(f"cp packages/minitusk/src/{file} ./_build/bootstrap/sandbox/minitusk")
 
     # Compile in dependency order (as determined by ocamldep)
-    run(f"cd ./target/bootstrap/sandbox/minitusk && {ocamlc} -I +unix -o minitusk unix.cma " + " ".join(source_files))
+    run(f"cd ./_build/bootstrap/sandbox/minitusk && {ocamlc} -I +unix -o minitusk unix.cma " + " ".join(source_files))
     
     # Install
     run("rm -f ./minitusk")
-    run("cp ./target/bootstrap/sandbox/minitusk/minitusk ./minitusk")
+    run("cp ./_build/bootstrap/sandbox/minitusk/minitusk ./minitusk")
     run("chmod +x ./minitusk")
     
     print("\n✓ Bootstrap complete! Minitusk executable at: ./minitusk")
