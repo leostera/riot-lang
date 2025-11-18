@@ -39,12 +39,14 @@ module type S = sig
   (** Get the current (non-retracted) value of an attribute for an entity.
       Returns None if no current value exists. *)
 
-  val get_all_facts : t -> entity:Uri.t -> Fact.t list
+  val get_all_facts : t -> entity:Uri.t -> Fact.t Iter.MutIterator.t
   (** Get all facts about an entity, including retracted ones.
+      Returns an iterator for memory-efficient traversal.
       Useful for examining history. *)
 
-  val get_current_facts : t -> entity:Uri.t -> Fact.t list
-  (** Get only current (non-retracted) facts about an entity. *)
+  val get_current_facts : t -> entity:Uri.t -> Fact.t Iter.MutIterator.t
+  (** Get only current (non-retracted) facts about an entity.
+      Returns an iterator for memory-efficient traversal. *)
 
   val exists : t -> Uri.t -> bool
   (** Check if an entity has any current (non-retracted) facts *)
@@ -52,17 +54,21 @@ module type S = sig
   val get_kind : t -> Uri.t -> Uri.t option
   (** Get entity's kind/type via the [@field:instance_of] attribute *)
 
-  val list_schemas : t -> Uri.t list
-  (** List all registered schema namespaces (entities with kind [@kind:schema]) *)
+  val list_schemas : t -> Uri.t Iter.MutIterator.t
+  (** List all registered schema namespaces (entities with kind [@kind:schema]).
+      Returns an iterator for memory-efficient traversal. *)
 
-  val get_all_current_facts : t -> Fact.t list
+  val get_all_current_facts : t -> Fact.t Iter.MutIterator.t
   (** Get all current (non-retracted) facts from storage.
+      Returns an iterator for memory-efficient streaming.
+      Critical for large datasets - avoids loading millions of facts into memory.
       Used by Datalog integration to access all facts. *)
 
   (** {2 Reverse Lookups} *)
 
-  val find_entities_by_attr_value : t -> attr:Uri.t -> value:Fact.value -> Uri.t list
+  val find_entities_by_attr_value : t -> attr:Uri.t -> value:Fact.value -> Uri.t Iter.MutIterator.t
   (** Find all entities that have a specific attribute-value pair.
+      Returns an iterator for memory-efficient traversal.
       Only returns entities where this is a current (non-retracted) fact. *)
 
   (** {2 Statistics} *)

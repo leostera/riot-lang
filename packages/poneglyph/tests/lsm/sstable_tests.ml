@@ -48,62 +48,70 @@ let make_test_path () =
 (** Test 1: Create empty SSTable *)
 let test_create_empty () =
   let path = make_test_path () in
-  let builder = SSTable.create_builder ~path in
   
-  match SSTable.finalize builder with
-  | Error e -> Error ("Failed to finalize empty SSTable: " ^ e)
-  | Ok count ->
-      if count != 0 then
-        Error ("Empty SSTable should have 0 entries, got " ^ string_of_int count)
-      else
-        (* Try to read it back *)
-        match SSTable.open_read ~path with
-        | Error e -> Error ("Failed to open empty SSTable: " ^ e)
-        | Ok reader ->
-            if SSTable.entry_count reader != 0 then
-              Error "Empty SSTable should have 0 entries after read"
-            else if SSTable.block_count reader != 0 then
-              Error "Empty SSTable should have 0 blocks"
-            else (
-              SSTable.close reader;
-              Ok ()
-            )
+  match SSTable.create_builder ~path with
+  | Error e -> Error ("Failed to create builder: " ^ e)
+  | Ok builder ->
+      match SSTable.finalize builder with
+      | Error e -> Error ("Failed to finalize empty SSTable: " ^ e)
+      | Ok count ->
+          if count != 0 then
+            Error ("Empty SSTable should have 0 entries, got " ^ string_of_int count)
+          else
+            (* Try to read it back *)
+            match SSTable.open_read ~path with
+            | Error e -> Error ("Failed to open empty SSTable: " ^ e)
+            | Ok reader ->
+                if SSTable.entry_count reader != 0 then
+                  Error "Empty SSTable should have 0 entries after read"
+                else if SSTable.block_count reader != 0 then
+                  Error "Empty SSTable should have 0 blocks"
+                else (
+                  SSTable.close reader;
+                  Ok ()
+                )
 
 (** Test 2: Write and read single entry *)
 let test_single_entry () =
   let path = make_test_path () in
-  let builder = SSTable.create_builder ~path in
   
   let key = make_test_key 1L in
   let value = make_test_value "test_value" in
   
-  match SSTable.add builder ~key ~value with
-  | Error e -> Error ("Failed to add entry: " ^ e)
+  match SSTable.create_builder ~path with
+  | Error e -> Error ("Failed to create builder: " ^ e)
   | Ok builder ->
-      match SSTable.finalize builder with
-      | Error e -> Error ("Failed to finalize: " ^ e)
-      | Ok count ->
-          if count != 1 then
-            Error ("Expected 1 entry, got " ^ string_of_int count)
-          else
-            match SSTable.open_read ~path with
-            | Error e -> Error ("Failed to open: " ^ e)
-            | Ok reader ->
-                match SSTable.get reader ~key with
-                | None -> Error "Failed to find key"
-                | Some retrieved ->
-                    SSTable.close reader;
-                    if Bytes.compare retrieved value != 0 then
-                      Error "Value mismatch"
-                    else Ok ()
+      match SSTable.add builder ~key ~value with
+      | Error e -> Error ("Failed to add entry: " ^ e)
+      | Ok builder ->
+          match SSTable.finalize builder with
+          | Error e -> Error ("Failed to finalize: " ^ e)
+          | Ok count ->
+              if count != 1 then
+                Error ("Expected 1 entry, got " ^ string_of_int count)
+              else
+                match SSTable.open_read ~path with
+                | Error e -> Error ("Failed to open: " ^ e)
+                | Ok reader ->
+                    match SSTable.get reader ~key with
+                    | None -> Error "Failed to find key"
+                    | Some retrieved ->
+                        SSTable.close reader;
+                        if Bytes.compare retrieved value != 0 then
+                          Error "Value mismatch"
+                        else Ok ()
 
 (** Test 3: Write and read multiple entries *)
 let test_multiple_entries () =
   let path = make_test_path () in
-  let builder = cell (SSTable.create_builder ~path) in
   
-  (* Add 100 entries *)
-  let rec add_entries i =
+  match SSTable.create_builder ~path with
+  | Error e -> Error ("Failed to create builder: " ^ e)
+  | Ok initial_builder ->
+      let builder = cell initial_builder in
+      
+      (* Add 100 entries *)
+      let rec add_entries i =
     if i > 100 then Ok ()
     else
       let key = make_test_key (Int64.of_int i) in
@@ -113,144 +121,156 @@ let test_multiple_entries () =
       | Ok b ->
           Cell.set builder b;
           add_entries (i + 1)
-  in
-  
-  match add_entries 1 with
-  | Error e -> Error ("Failed to add entries: " ^ e)
-  | Ok () ->
-      match SSTable.finalize (Cell.get builder) with
-      | Error e -> Error ("Failed to finalize: " ^ e)
-      | Ok count ->
-          if count != 100 then
-            Error ("Expected 100 entries, got " ^ string_of_int count)
-          else
-            match SSTable.open_read ~path with
-            | Error e -> Error ("Failed to open: " ^ e)
-            | Ok reader ->
-                (* Verify all entries *)
-                let rec verify i =
-                  if i > 100 then Ok ()
-                  else
-                    let key = make_test_key (Int64.of_int i) in
-                    let expected = make_test_value ("value_" ^ string_of_int i) in
-                    match SSTable.get reader ~key with
-                    | None ->
+      in
+      
+      match add_entries 1 with
+      | Error e -> Error ("Failed to add entries: " ^ e)
+      | Ok () ->
+          match SSTable.finalize (Cell.get builder) with
+          | Error e -> Error ("Failed to finalize: " ^ e)
+          | Ok count ->
+              if count != 100 then
+                Error ("Expected 100 entries, got " ^ string_of_int count)
+              else
+                match SSTable.open_read ~path with
+                | Error e -> Error ("Failed to open: " ^ e)
+                | Ok reader ->
+                    (* Verify all entries *)
+                    let rec verify i =
+                      if i > 100 then Ok ()
+                      else
+                        let key = make_test_key (Int64.of_int i) in
+                        let expected = make_test_value ("value_" ^ string_of_int i) in
+                        match SSTable.get reader ~key with
+                        | None ->
+                            SSTable.close reader;
+                            Error ("Key " ^ string_of_int i ^ " not found")
+                        | Some retrieved ->
+                            if Bytes.compare retrieved expected != 0 then (
+                              SSTable.close reader;
+                              Error ("Value mismatch for key " ^ string_of_int i)
+                            ) else
+                              verify (i + 1)
+                    in
+                    match verify 1 with
+                    | Error e -> Error e
+                    | Ok () ->
                         SSTable.close reader;
-                        Error ("Key " ^ string_of_int i ^ " not found")
-                    | Some retrieved ->
-                        if Bytes.compare retrieved expected != 0 then (
-                          SSTable.close reader;
-                          Error ("Value mismatch for key " ^ string_of_int i)
-                        ) else
-                          verify (i + 1)
-                in
-                match verify 1 with
-                | Error e -> Error e
-                | Ok () ->
-                    SSTable.close reader;
-                    Ok ()
+                        Ok ()
 
 (** Test 4: Reject out-of-order keys *)
 let test_reject_out_of_order () =
   let path = make_test_path () in
-  let builder = SSTable.create_builder ~path in
   
   let key1 = make_test_key 2L in
   let key2 = make_test_key 1L in  (* Lower than key1 *)
   let value = make_test_value "test" in
   
-  match SSTable.add builder ~key:key1 ~value with
-  | Error e -> Error ("First add failed: " ^ e)
+  match SSTable.create_builder ~path with
+  | Error e -> Error ("Failed to create builder: " ^ e)
   | Ok builder ->
-      match SSTable.add builder ~key:key2 ~value with
-      | Ok _ -> Error "Should reject out-of-order key"
-      | Error _ -> Ok ()  (* Expected *)
+      match SSTable.add builder ~key:key1 ~value with
+      | Error e -> Error ("First add failed: " ^ e)
+      | Ok builder ->
+          match SSTable.add builder ~key:key2 ~value with
+          | Ok _ -> Error "Should reject out-of-order key"
+          | Error _ -> Ok ()  (* Expected *)
 
 (** Test 5: Multiple blocks (large SSTable) *)
 let test_multiple_blocks () =
   let path = make_test_path () in
-  let builder = cell (SSTable.create_builder ~path) in
   
-  (* Add enough entries to fill multiple blocks *)
-  (* Block is ~16KB, with key (41 bytes) + value (100 bytes) = 141 bytes per entry *)
-  (* So ~116 entries per block. Add 300 to get ~3 blocks *)
-  let rec add_entries i =
-    if i > 300 then Ok ()
-    else
-      let key = make_test_key (Int64.of_int i) in
-      let value = make_test_value (String.init 100 (fun _ -> 'x')) in
-      match SSTable.add (Cell.get builder) ~key ~value with
-      | Error e -> Error e
-      | Ok b ->
-          Cell.set builder b;
-          add_entries (i + 1)
-  in
-  
-  match add_entries 1 with
-  | Error e -> Error ("Failed to add entries: " ^ e)
-  | Ok () ->
-      match SSTable.finalize (Cell.get builder) with
-      | Error e -> Error ("Failed to finalize: " ^ e)
-      | Ok _count ->
-          match SSTable.open_read ~path with
-          | Error e -> Error ("Failed to open: " ^ e)
-          | Ok reader ->
-              let blocks = SSTable.block_count reader in
-              if blocks < 2 then (
-                SSTable.close reader;
-                Error ("Expected multiple blocks, got " ^ string_of_int blocks)
-              ) else
-                (* Verify first, middle, and last keys *)
-                let test_keys = [1; 150; 300] in
-                let rec verify_keys keys =
-                  match keys with
-                  | [] -> Ok ()
-                  | k :: rest ->
-                      let key = make_test_key (Int64.of_int k) in
-                      match SSTable.get reader ~key with
-                      | None ->
-                          SSTable.close reader;
-                          Error ("Key " ^ string_of_int k ^ " not found across blocks")
-                      | Some _ -> verify_keys rest
-                in
-                match verify_keys test_keys with
-                | Error e -> Error e
-                | Ok () ->
+  match SSTable.create_builder ~path with
+  | Error e -> Error ("Failed to create builder: " ^ e)
+  | Ok initial_builder ->
+      let builder = cell initial_builder in
+      
+      (* Add enough entries to fill multiple blocks *)
+      (* Block is ~16KB, with key (41 bytes) + value (100 bytes) = 141 bytes per entry *)
+      (* So ~116 entries per block. Add 300 to get ~3 blocks *)
+      let rec add_entries i =
+        if i > 300 then Ok ()
+        else
+          let key = make_test_key (Int64.of_int i) in
+          let value = make_test_value (String.init 100 (fun _ -> 'x')) in
+          match SSTable.add (Cell.get builder) ~key ~value with
+          | Error e -> Error e
+          | Ok b ->
+              Cell.set builder b;
+              add_entries (i + 1)
+      in
+      
+      match add_entries 1 with
+      | Error e -> Error ("Failed to add entries: " ^ e)
+      | Ok () ->
+          match SSTable.finalize (Cell.get builder) with
+          | Error e -> Error ("Failed to finalize: " ^ e)
+          | Ok _count ->
+              match SSTable.open_read ~path with
+              | Error e -> Error ("Failed to open: " ^ e)
+              | Ok reader ->
+                  let blocks = SSTable.block_count reader in
+                  if blocks < 2 then (
                     SSTable.close reader;
-                    Ok ()
+                    Error ("Expected multiple blocks, got " ^ string_of_int blocks)
+                  ) else
+                    (* Verify first, middle, and last keys *)
+                    let test_keys = [1; 150; 300] in
+                    let rec verify_keys keys =
+                      match keys with
+                      | [] -> Ok ()
+                      | k :: rest ->
+                          let key = make_test_key (Int64.of_int k) in
+                          match SSTable.get reader ~key with
+                          | None ->
+                              SSTable.close reader;
+                              Error ("Key " ^ string_of_int k ^ " not found across blocks")
+                          | Some _ -> verify_keys rest
+                    in
+                    match verify_keys test_keys with
+                    | Error e -> Error e
+                    | Ok () ->
+                        SSTable.close reader;
+                        Ok ()
 
 (** Test 6: Get non-existent key *)
 let test_get_nonexistent () =
   let path = make_test_path () in
-  let builder = SSTable.create_builder ~path in
   
   let key1 = make_test_key 1L in
   let key2 = make_test_key 99L in
   let value = make_test_value "test" in
   
-  match SSTable.add builder ~key:key1 ~value with
-  | Error e -> Error ("Failed to add: " ^ e)
+  match SSTable.create_builder ~path with
+  | Error e -> Error ("Failed to create builder: " ^ e)
   | Ok builder ->
-      match SSTable.finalize builder with
-      | Error e -> Error ("Failed to finalize: " ^ e)
-      | Ok _ ->
-          match SSTable.open_read ~path with
-          | Error e -> Error ("Failed to open: " ^ e)
-          | Ok reader ->
-              match SSTable.get reader ~key:key2 with
-              | Some _ ->
-                  SSTable.close reader;
-                  Error "Should not find non-existent key"
-              | None ->
-                  SSTable.close reader;
-                  Ok ()
+      match SSTable.add builder ~key:key1 ~value with
+      | Error e -> Error ("Failed to add: " ^ e)
+      | Ok builder ->
+          match SSTable.finalize builder with
+          | Error e -> Error ("Failed to finalize: " ^ e)
+          | Ok _ ->
+              match SSTable.open_read ~path with
+              | Error e -> Error ("Failed to open: " ^ e)
+              | Ok reader ->
+                  match SSTable.get reader ~key:key2 with
+                  | Some _ ->
+                      SSTable.close reader;
+                      Error "Should not find non-existent key"
+                  | None ->
+                      SSTable.close reader;
+                      Ok ()
 
 (** Test 7: Iterate over all entries *)
 let test_iterate () =
   let path = make_test_path () in
-  let builder = cell (SSTable.create_builder ~path) in
   
-  let rec add_entries i =
+  match SSTable.create_builder ~path with
+  | Error e -> Error ("Failed to create builder: " ^ e)
+  | Ok initial_builder ->
+      let builder = cell initial_builder in
+      
+      let rec add_entries i =
     if i > 10 then Ok ()
     else
       let key = make_test_key (Int64.of_int i) in
@@ -260,37 +280,41 @@ let test_iterate () =
       | Ok b ->
           Cell.set builder b;
           add_entries (i + 1)
-  in
-  
-  match add_entries 1 with
-  | Error e -> Error ("Failed to add: " ^ e)
-  | Ok () ->
-      match SSTable.finalize (Cell.get builder) with
-      | Error e -> Error ("Failed to finalize: " ^ e)
-      | Ok _ ->
-          match SSTable.open_read ~path with
-          | Error e -> Error ("Failed to open: " ^ e)
-          | Ok reader ->
-              let count = cell 0 in
-              SSTable.iter reader ~f:(fun ~key:_ ~value:_ ->
-                Cell.set count (Cell.get count + 1)
-              );
-              SSTable.close reader;
-              
-              if Cell.get count != 10 then
-                Error ("Expected 10 iterations, got " ^ string_of_int (Cell.get count))
-              else Ok ()
+      in
+      
+      match add_entries 1 with
+      | Error e -> Error ("Failed to add: " ^ e)
+      | Ok () ->
+          match SSTable.finalize (Cell.get builder) with
+          | Error e -> Error ("Failed to finalize: " ^ e)
+          | Ok _ ->
+              match SSTable.open_read ~path with
+              | Error e -> Error ("Failed to open: " ^ e)
+              | Ok reader ->
+                  let count = cell 0 in
+                  SSTable.iter reader ~f:(fun ~key:_ ~value:_ ->
+                    Cell.set count (Cell.get count + 1)
+                  );
+                  SSTable.close reader;
+                  
+                  if Cell.get count != 10 then
+                    Error ("Expected 10 iterations, got " ^ string_of_int (Cell.get count))
+                  else Ok ()
 
 (** Test 8: First and last key accessors *)
 let test_first_last_keys () =
   let path = make_test_path () in
-  let builder = cell (SSTable.create_builder ~path) in
   
   let first_k = make_test_key 1L in
   let last_k = make_test_key 10L in
   let value = make_test_value "test" in
   
-  let rec add_entries i =
+  match SSTable.create_builder ~path with
+  | Error e -> Error ("Failed to create builder: " ^ e)
+  | Ok initial_builder ->
+      let builder = cell initial_builder in
+      
+      let rec add_entries i =
     if i > 10 then Ok ()
     else
       let key = make_test_key (Int64.of_int i) in
@@ -299,71 +323,75 @@ let test_first_last_keys () =
       | Ok b ->
           Cell.set builder b;
           add_entries (i + 1)
-  in
-  
-  match add_entries 1 with
-  | Error e -> Error ("Failed to add: " ^ e)
-  | Ok () ->
-      match SSTable.finalize (Cell.get builder) with
-      | Error e -> Error ("Failed to finalize: " ^ e)
-      | Ok _ ->
-          match SSTable.open_read ~path with
-          | Error e -> Error ("Failed to open: " ^ e)
-          | Ok reader ->
-              let first = SSTable.first_key reader in
-              let last = SSTable.last_key reader in
-              SSTable.close reader;
-              
-              if Bytes.compare first first_k != 0 then
-                Error "First key mismatch"
-              else if Bytes.compare last last_k != 0 then
-                Error "Last key mismatch"
-              else Ok ()
+      in
+      
+      match add_entries 1 with
+      | Error e -> Error ("Failed to add: " ^ e)
+      | Ok () ->
+          match SSTable.finalize (Cell.get builder) with
+          | Error e -> Error ("Failed to finalize: " ^ e)
+          | Ok _ ->
+              match SSTable.open_read ~path with
+              | Error e -> Error ("Failed to open: " ^ e)
+              | Ok reader ->
+                  let first = SSTable.first_key reader in
+                  let last = SSTable.last_key reader in
+                  SSTable.close reader;
+                  
+                  if Bytes.compare first first_k != 0 then
+                    Error "First key mismatch"
+                  else if Bytes.compare last last_k != 0 then
+                    Error "Last key mismatch"
+                  else Ok ()
 
 (** Test 9: Range check *)
 let test_in_range () =
   let path = make_test_path () in
-  let builder = cell (SSTable.create_builder ~path) in
   
   let value = make_test_value "test" in
   
-  let rec add_entries i =
-    if i > 10 then Ok ()
-    else
-      let key = make_test_key (Int64.of_int i) in
-      match SSTable.add (Cell.get builder) ~key ~value with
-      | Error e -> Error e
-      | Ok b ->
-          Cell.set builder b;
-          add_entries (i + 1)
-  in
-  
-  match add_entries 1 with
-  | Error e -> Error ("Failed to add: " ^ e)
-  | Ok () ->
-      match SSTable.finalize (Cell.get builder) with
-      | Error e -> Error ("Failed to finalize: " ^ e)
-      | Ok _ ->
-          match SSTable.open_read ~path with
-          | Error e -> Error ("Failed to open: " ^ e)
-          | Ok reader ->
-              let key_before = make_test_key 0L in
-              let key_inside = make_test_key 5L in
-              let key_after = make_test_key 99L in
-              
-              let before_in_range = SSTable.in_range reader ~key:key_before in
-              let inside_in_range = SSTable.in_range reader ~key:key_inside in
-              let after_in_range = SSTable.in_range reader ~key:key_after in
-              
-              SSTable.close reader;
-              
-              if before_in_range then
-                Error "Key before range should not be in range"
-              else if not inside_in_range then
-                Error "Key inside range should be in range"
-              else if after_in_range then
-                Error "Key after range should not be in range"
-              else Ok ()
+  match SSTable.create_builder ~path with
+  | Error e -> Error ("Failed to create builder: " ^ e)
+  | Ok initial_builder ->
+      let builder = cell initial_builder in
+      
+      let rec add_entries i =
+        if i > 10 then Ok ()
+        else
+          let key = make_test_key (Int64.of_int i) in
+          match SSTable.add (Cell.get builder) ~key ~value with
+          | Error e -> Error e
+          | Ok b ->
+              Cell.set builder b;
+              add_entries (i + 1)
+      in
+      
+      match add_entries 1 with
+      | Error e -> Error ("Failed to add: " ^ e)
+      | Ok () ->
+          match SSTable.finalize (Cell.get builder) with
+          | Error e -> Error ("Failed to finalize: " ^ e)
+          | Ok _ ->
+              match SSTable.open_read ~path with
+              | Error e -> Error ("Failed to open: " ^ e)
+              | Ok reader ->
+                  let key_before = make_test_key 0L in
+                  let key_inside = make_test_key 5L in
+                  let key_after = make_test_key 99L in
+                  
+                  let before_in_range = SSTable.in_range reader ~key:key_before in
+                  let inside_in_range = SSTable.in_range reader ~key:key_inside in
+                  let after_in_range = SSTable.in_range reader ~key:key_after in
+                  
+                  SSTable.close reader;
+                  
+                  if before_in_range then
+                    Error "Key before range should not be in range"
+                  else if not inside_in_range then
+                    Error "Key inside range should be in range"
+                  else if after_in_range then
+                    Error "Key after range should not be in range"
+                  else Ok ()
 
 (** Test 10: Open non-existent file *)
 let test_open_nonexistent () =

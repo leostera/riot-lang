@@ -9,7 +9,7 @@ module Block = Block
 module File = Fs.File
 
 (** Footer constants *)
-let footer_size = 256
+let footer_size = 512  (* Expanded from 256 to store bloom filter metadata *)
 let magic = "SST1"
 let version = 1
 
@@ -25,6 +25,7 @@ type builder = {
   file : File.t Cell.t;  (* file handle *)
   current_block : Block.t Cell.t;  (* current block being filled *)
   index : index_entry Vector.t;  (* index of all blocks *)
+  all_keys : bytes Vector.t;  (* all keys for bloom filter - freed after finalize *)
   mutable blocks_written : int;  (* number of blocks written *)
   mutable entries_written : int;  (* total entries across all blocks *)
   mutable first_key_opt : bytes option;  (* first key in entire SSTable *)
@@ -37,28 +38,33 @@ type reader = {
   path : string;
   file : File.t Cell.t;
   index : index_entry Vector.t;  (* loaded into memory *)
+  bloom : Bloom_filter.t option;  (* bloom filter for fast negative lookups *)
   first_key : bytes;
   last_key : bytes;
   block_count : int;
   entry_count : int;
+  bloom_offset : int;  (* needed to calculate last block size *)
   index_offset : int;
 }
 
 (** Create a new SSTable builder *)
 let create_builder ~path =
-  (* Open file for writing *)
-  let file = File.create (Path.v path) |> Result.expect ~msg:"Failed to create SSTable file" in
-  {
-    path;
-    file = cell file;
-    current_block = cell (Block.create ());
-    index = Vector.create ();
-    blocks_written = 0;
-    entries_written = 0;
-    first_key_opt = None;
-    last_key = Bytes.create 0;
-    file_pos = 0;
-  }
+  (* Open file for writing - use create_new to ensure we never overwrite existing SSTables *)
+  match File.create_new (Path.v path) with
+  | Error _ -> Error ("Failed to create SSTable file: " ^ path)
+  | Ok file ->
+      Ok {
+        path;
+        file = cell file;
+        current_block = cell (Block.create ());
+        index = Vector.create ();
+        all_keys = Vector.create ();  (* Track all keys for bloom filter *)
+        blocks_written = 0;
+        entries_written = 0;
+        first_key_opt = None;
+        last_key = Bytes.create 0;
+        file_pos = 0;
+      }
 
 (** Flush current block to disk *)
 let flush_block builder =
@@ -109,6 +115,11 @@ let add builder ~key ~value =
      | Some _ -> ());
     
     builder.last_key <- key;
+    
+    (* Track key for bloom filter - CRITICAL: copy the key bytes!
+       Caller might reuse the key buffer, so we need our own copy *)
+    let key_copy = Bytes.copy key in
+    Vector.push builder.all_keys key_copy;
     
     (* Try to add to current block *)
     let block = Cell.get builder.current_block in
@@ -172,7 +183,7 @@ let write_index (builder : builder) =
 
 (** Write footer to file
     
-    Footer format (256 bytes):
+    Footer format (512 bytes - expanded from 256):
     [magic: 4 bytes]
     [version: 1 byte]
     [block_count: 4 bytes]
@@ -181,10 +192,12 @@ let write_index (builder : builder) =
     [last_key: 41 bytes]
     [index_offset: 8 bytes]
     [index_size: 4 bytes]
+    [bloom_offset: 8 bytes]  ← NEW
+    [bloom_size: 4 bytes]    ← NEW
     [checksum: 8 bytes]
-    [reserved: 177 bytes]
+    [reserved: 408 bytes]
 *)
-let write_footer (builder : builder) ~index_offset ~index_size =
+let write_footer (builder : builder) ~index_offset ~index_size ~bloom_offset ~bloom_size =
   let footer = Bytes.create footer_size in
   
   (* Magic *)
@@ -214,13 +227,19 @@ let write_footer (builder : builder) ~index_offset ~index_size =
   (* Index size *)
   Bytes.set_int32_be footer 107 (Int32.of_int index_size);
   
+  (* Bloom offset *)
+  Bytes.set_int64_be footer 111 (Int64.of_int bloom_offset);
+  
+  (* Bloom size *)
+  Bytes.set_int32_be footer 119 (Int32.of_int bloom_size);
+  
   (* Checksum (simple: XOR of all previous bytes) *)
   let checksum = cell 0L in
-  for i = 0 to 110 do
+  for i = 0 to 122 do
     let byte = Int64.of_int (Bytes.get_uint8 footer i) in
     Cell.set checksum (Int64.logxor (Cell.get checksum) byte);
   done;
-  Bytes.set_int64_be footer 111 (Cell.get checksum);
+  Bytes.set_int64_be footer 123 (Cell.get checksum);
   
   (* Write footer *)
   let file = Cell.get builder.file in
@@ -234,14 +253,37 @@ let finalize builder =
   match flush_block builder with
   | Error e -> Error e
   | Ok () ->
+      (* Build bloom filter from ALL keys (not just block first keys!)
+         CRITICAL FIX: Previous code only indexed first key of each block,
+         causing 99% false negatives and data loss in queries *)
+      let bloom = Bloom_filter.create 
+        ~num_keys:(max 1 builder.entries_written)  (* avoid 0 *)
+        ~bits_per_key:10 in
+      
+      (* Add ALL keys to bloom filter *)
+      let add_key_to_bloom key =
+        Bloom_filter.add bloom ~key
+      in
+      Vector.iter add_key_to_bloom builder.all_keys;
+      
+      (* Write bloom filter *)
+      let bloom_bytes = Bloom_filter.to_bytes bloom in
+      let bloom_size = Bytes.length bloom_bytes in
+      let bloom_offset = builder.file_pos in
+      
+      let file = Cell.get builder.file in
+      let _ = File.write file bloom_bytes ~offset:0 ~len:bloom_size
+              |> Result.expect ~msg:"Failed to write bloom filter" in
+      
+      builder.file_pos <- builder.file_pos + bloom_size;
+      
       (* Write index *)
       let (index_offset, index_size) = write_index builder in
       
       (* Write footer *)
-      write_footer builder ~index_offset ~index_size;
+      write_footer builder ~index_offset ~index_size ~bloom_offset ~bloom_size;
       
       (* Close file *)
-      let file = Cell.get builder.file in
       let _ = File.close file in
       
       Ok builder.entries_written
@@ -272,9 +314,9 @@ let read_footer file =
       Error ("Unsupported SSTable version: " ^ string_of_int ver)
     else
       (* Verify checksum *)
-      let stored_checksum = Bytes.get_int64_be footer 111 in
+      let stored_checksum = Bytes.get_int64_be footer 123 in
       let computed = cell 0L in
-      for i = 0 to 110 do
+      for i = 0 to 122 do
         let byte = Int64.of_int (Bytes.get_uint8 footer i) in
         Cell.set computed (Int64.logxor (Cell.get computed) byte);
       done;
@@ -289,8 +331,10 @@ let read_footer file =
         let last_key = Bytes.sub footer 58 41 in
         let index_offset = Int64.to_int (Bytes.get_int64_be footer 99) in
         let index_size = Int32.to_int (Bytes.get_int32_be footer 107) in
+        let bloom_offset = Int64.to_int (Bytes.get_int64_be footer 111) in
+        let bloom_size = Int32.to_int (Bytes.get_int32_be footer 119) in
         
-        Ok (block_count, entry_count, first_key, last_key, index_offset, index_size)
+        Ok (block_count, entry_count, first_key, last_key, index_offset, index_size, bloom_offset, bloom_size)
 
 (** Read index from file *)
 let read_index file ~offset ~size =
@@ -334,20 +378,37 @@ let open_read ~path =
           | Error e ->
               let _ = File.close file in
               Error e
-          | Ok (block_count, entry_count, first_key, last_key, index_offset, index_size) ->
+          | Ok (block_count, entry_count, first_key, last_key, index_offset, index_size, bloom_offset, bloom_size) ->
               match read_index file ~offset:index_offset ~size:index_size with
               | Error e ->
                   let _ = File.close file in
                   Error e
               | Ok index ->
+                  (* Load bloom filter if present *)
+                  let bloom = 
+                    if bloom_size > 0 then
+                      let _ = File.seek file (Int64.of_int bloom_offset)
+                              |> Result.expect ~msg:"Failed to seek to bloom filter" in
+                      let bloom_bytes = Bytes.create bloom_size in
+                      let _ = File.read_exact file bloom_bytes ~offset:0 ~len:bloom_size
+                              |> Result.expect ~msg:"Failed to read bloom filter" in
+                      match Bloom_filter.from_bytes bloom_bytes with
+                      | Ok b -> Some b
+                      | Error _ -> None  (* Ignore bloom filter errors, just slower *)
+                    else
+                      None
+                  in
+                  
                   Ok {
                     path;
                     file = cell file;
                     index;
+                    bloom;
                     first_key;
                     last_key;
                     block_count;
                     entry_count;
+                    bloom_offset;
                     index_offset;
                   }
 
@@ -385,8 +446,8 @@ let read_block reader ~block_idx =
   (* Determine block size *)
   let next_offset =
     if block_idx = Vector.len reader.index - 1 then
-      (* Last block: ends at index start *)
-      reader.index_offset
+      (* Last block: ends at bloom filter start (NOT index!) *)
+      reader.bloom_offset
     else
       (* Not last: next block's offset *)
       let next_entry = Vector.get reader.index (block_idx + 1) 
@@ -407,21 +468,36 @@ let get reader ~key =
   if Bytes.compare key reader.first_key < 0 || Bytes.compare key reader.last_key > 0 then
     None
   else
-    (* Find which block might contain the key *)
-    match find_block_index reader ~key with
-    | None -> None
-    | Some block_idx ->
-        (* Read and search the block *)
-        match read_block reader ~block_idx with
-        | Error _ -> None  (* Block read error *)
-        | Ok block -> Block.get block ~key
+    (* CRITICAL OPTIMIZATION: Check bloom filter first *)
+    (match reader.bloom with
+    | Some bloom ->
+        if not (Bloom_filter.might_contain bloom ~key) then
+          None  (* Definitely not present - skip expensive disk read! *)
+        else
+          (* Maybe present, do the full lookup *)
+          (match find_block_index reader ~key with
+          | None -> None
+          | Some block_idx ->
+              (match read_block reader ~block_idx with
+              | Error e -> panic ("SSTable corrupted! Block " ^ string_of_int block_idx ^ " failed to read: " ^ e)
+              | Ok block -> Block.get block ~key))
+    | None ->
+        (* No bloom filter, do full lookup *)
+        (match find_block_index reader ~key with
+        | None -> None
+        | Some block_idx ->
+            (match read_block reader ~block_idx with
+            | Error e -> panic ("SSTable corrupted! Block " ^ string_of_int block_idx ^ " failed to read: " ^ e)
+            | Ok block -> Block.get block ~key)))
 
 (** Iterate over all entries *)
 let iter reader ~f =
   for i = 0 to Vector.len reader.index - 1 do
     match read_block reader ~block_idx:i with
     | Ok block -> Block.iter block ~f
-    | Error _ -> ()  (* Skip corrupted blocks *)
+    | Error e ->
+        (* NEVER silently skip corrupted blocks - this is data corruption! *)
+        panic ("SSTable corrupted! Block " ^ string_of_int i ^ " failed to read: " ^ e)
   done
 
 (** Accessors *)
@@ -437,3 +513,26 @@ let close reader =
 
 let in_range reader ~key =
   Bytes.compare key reader.first_key >= 0 && Bytes.compare key reader.last_key <= 0
+
+(** Check if key starts with prefix *)
+let has_prefix ~prefix key =
+  let prefix_len = Bytes.length prefix in
+  let key_len = Bytes.length key in
+  if prefix_len > key_len then false
+  else
+    let rec check i =
+      if i >= prefix_len then true
+      else if Bytes.get prefix i = Bytes.get key i then check (i + 1)
+      else false
+    in
+    check 0
+
+(** Scan all keys with given prefix *)
+let scan_prefix reader ~prefix =
+  let results = vec [] in
+  iter reader ~f:(fun ~key ~value ->
+    if has_prefix ~prefix key then
+      Vector.push results (key, value)
+  );
+  let iter = Vector.to_mut_iter results in
+  Iter.MutIterator.to_list iter

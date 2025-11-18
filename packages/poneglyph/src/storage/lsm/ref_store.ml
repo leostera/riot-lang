@@ -2,11 +2,12 @@
 
 open Std
 open Std.Collections
+open Std.UUID
 open Model
 
 type t = {
   (* Store ALL versions: (fact_uri, tx_id) -> fact *)
-  facts : ((Uri.t * int), Fact.t) HashMap.t;
+  facts : ((Uri.t * UUID.t), Fact.t) HashMap.t;
   (* Mutable flag to track compaction state *)
   mutable is_compacted : bool;
 }
@@ -33,8 +34,8 @@ let get_latest_facts store =
           let _ = HashMap.insert latest fact_uri fact in
           ()
       | Some existing ->
-          (* Keep fact with higher tx_id *)
-          if fact.Fact.tx_id > existing.Fact.tx_id then
+          (* Keep fact with higher tx_id (lexicographic UUID comparison) *)
+          if UUID.compare fact.Fact.tx_id existing.Fact.tx_id > 0 then
             let _ = HashMap.insert latest fact_uri fact in
             ())
     store.facts;

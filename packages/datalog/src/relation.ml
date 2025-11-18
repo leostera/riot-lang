@@ -1,217 +1,252 @@
 open Std
-open Collections
 
-(* Internal: Sorted vector of unique elements *)
-type 'a t = { elements : 'a Vector.t }
+(** A relation is a sorted, deduplicated iterator.
+    
+    INVARIANT: The iterator MUST yield elements in sorted order.
+    Violating this invariant will cause incorrect results from set operations.
+*)
+type 'a t = 'a Iter.MutIterator.t
 
-(* Construction *)
+(* Internal helpers for lazy set operations *)
 
-let empty () = { elements = Vector.create () }
+let dedup_sorted (type a) (iter : a Iter.MutIterator.t) : a Iter.MutIterator.t =
+  let module DedupIter = struct
+    type state = { iter : a Iter.MutIterator.t; mutable last : a option }
+    type item = a
 
-let of_vec vec =
-  (* Collect to list first *)
-  let lst = ref [] in
-  Vector.iter (fun x -> lst := x :: !lst) vec;
-  let sorted_lst = List.sort compare !lst in
-  (* Remove duplicates *)
-  let deduped = Vector.create () in
-  match sorted_lst with
-  | [] -> { elements = deduped }
-  | first :: rest ->
-      let prev = cell first in
-      Vector.push deduped first;
-      List.iter
-        (fun curr ->
-          if compare curr (Sync.Cell.get prev) != 0 then (
-            Vector.push deduped curr;
-            Sync.Cell.set prev curr))
-        rest;
-      { elements = deduped }
+    let rec next state =
+      match Iter.MutIterator.next state.iter with
+      | None -> None
+      | Some x -> (
+          match state.last with
+          | Some prev when compare x prev = 0 -> next state  (* Skip duplicate *)
+          | _ -> state.last <- Some x; Some x)
 
-let of_list lst =
-  (* Sort and deduplicate list directly *)
-  let sorted_lst = List.sort compare lst in
-  let deduped = Vector.create () in
-  match sorted_lst with
-  | [] -> { elements = deduped }
-  | first :: rest ->
-      let prev = cell first in
-      Vector.push deduped first;
-      List.iter
-        (fun curr ->
-          if compare curr (Sync.Cell.get prev) != 0 then (
-            Vector.push deduped curr;
-            Sync.Cell.set prev curr))
-        rest;
-      { elements = deduped }
+    let size state = Iter.MutIterator.size state.iter
+    let clone state = { iter = Iter.MutIterator.clone state.iter; last = state.last }
+  end in
+  Iter.MutIterator.make (module DedupIter) { iter; last = None }
 
-let singleton x =
-  let vec = Vector.create () in
-  Vector.push vec x;
-  { elements = vec }
+let merge_sorted (type a) (iter1 : a Iter.MutIterator.t) (iter2 : a Iter.MutIterator.t) : a Iter.MutIterator.t =
+  let module MergeIter = struct
+    type state = { 
+      iter1 : a Iter.MutIterator.t; 
+      iter2 : a Iter.MutIterator.t;
+      mutable peek1 : a option;
+      mutable peek2 : a option;
+    }
+    type item = a
 
-(* Access *)
+    let next state =
+      match (state.peek1, state.peek2) with
+      | None, None -> None
+      | Some x, None -> 
+          state.peek1 <- Iter.MutIterator.next state.iter1;
+          Some x
+      | None, Some y ->
+          state.peek2 <- Iter.MutIterator.next state.iter2;
+          Some y
+      | Some x, Some y ->
+          match compare x y with
+          | c when c < 0 -> 
+              state.peek1 <- Iter.MutIterator.next state.iter1;
+              Some x
+          | c when c > 0 -> 
+              state.peek2 <- Iter.MutIterator.next state.iter2;
+              Some y
+          | _ -> (* Equal - yield once, advance both *)
+              state.peek1 <- Iter.MutIterator.next state.iter1;
+              state.peek2 <- Iter.MutIterator.next state.iter2;
+              Some x
 
-let to_list rel =
-  let lst = ref [] in
-  Vector.iter (fun x -> lst := x :: !lst) rel.elements;
-  List.rev !lst
+    let size state = Iter.MutIterator.size state.iter1 + Iter.MutIterator.size state.iter2
+    let clone state = { 
+      iter1 = Iter.MutIterator.clone state.iter1; 
+      iter2 = Iter.MutIterator.clone state.iter2;
+      peek1 = state.peek1;
+      peek2 = state.peek2;
+    }
+  end in
+  Iter.MutIterator.make (module MergeIter) { 
+    iter1; 
+    iter2; 
+    peek1 = Iter.MutIterator.next iter1;
+    peek2 = Iter.MutIterator.next iter2;
+  }
 
-let to_vec rel = rel.elements
+let diff_sorted (type a) (iter1 : a Iter.MutIterator.t) (iter2 : a Iter.MutIterator.t) : a Iter.MutIterator.t =
+  let module DiffIter = struct
+    type state = { 
+      iter1 : a Iter.MutIterator.t; 
+      iter2 : a Iter.MutIterator.t;
+      mutable peek1 : a option;
+      mutable peek2 : a option;
+    }
+    type item = a
 
-let length rel = Vector.len rel.elements
+    let rec next state =
+      match (state.peek1, state.peek2) with
+      | None, _ -> None
+      | Some x, None -> 
+          state.peek1 <- Iter.MutIterator.next state.iter1;
+          Some x
+      | Some x, Some y ->
+          match compare x y with
+          | c when c < 0 -> 
+              state.peek1 <- Iter.MutIterator.next state.iter1;
+              Some x
+          | c when c > 0 -> 
+              state.peek2 <- Iter.MutIterator.next state.iter2;
+              next state
+          | _ -> (* Equal - skip both *)
+              state.peek1 <- Iter.MutIterator.next state.iter1;
+              state.peek2 <- Iter.MutIterator.next state.iter2;
+              next state
 
-let is_empty rel = Vector.is_empty rel.elements
+    let size state = Iter.MutIterator.size state.iter1
+    let clone state = { 
+      iter1 = Iter.MutIterator.clone state.iter1; 
+      iter2 = Iter.MutIterator.clone state.iter2;
+      peek1 = state.peek1;
+      peek2 = state.peek2;
+    }
+  end in
+  Iter.MutIterator.make (module DiffIter) { 
+    iter1; 
+    iter2; 
+    peek1 = Iter.MutIterator.next iter1;
+    peek2 = Iter.MutIterator.next iter2;
+  }
 
-(* Set Operations *)
+let intersect_sorted (type a) (iter1 : a Iter.MutIterator.t) (iter2 : a Iter.MutIterator.t) : a Iter.MutIterator.t =
+  let module IntersectIter = struct
+    type state = { 
+      iter1 : a Iter.MutIterator.t; 
+      iter2 : a Iter.MutIterator.t;
+      mutable peek1 : a option;
+      mutable peek2 : a option;
+    }
+    type item = a
 
-let merge rel1 rel2 =
-  (* Sorted merge of two sorted vectors *)
-  let v1 = rel1.elements in
-  let v2 = rel2.elements in
-  let len1 = Vector.len v1 in
-  let len2 = Vector.len v2 in
-  let result = Vector.create () in
+    let rec next state =
+      match (state.peek1, state.peek2) with
+      | None, _ | _, None -> None
+      | Some x, Some y ->
+          match compare x y with
+          | c when c < 0 -> 
+              state.peek1 <- Iter.MutIterator.next state.iter1;
+              next state
+          | c when c > 0 -> 
+              state.peek2 <- Iter.MutIterator.next state.iter2;
+              next state
+          | _ -> (* Equal - found in both! *)
+              state.peek1 <- Iter.MutIterator.next state.iter1;
+              state.peek2 <- Iter.MutIterator.next state.iter2;
+              Some x
 
-  let i = cell 0 in
-  let j = cell 0 in
+    let size state = min (Iter.MutIterator.size state.iter1) (Iter.MutIterator.size state.iter2)
+    let clone state = { 
+      iter1 = Iter.MutIterator.clone state.iter1; 
+      iter2 = Iter.MutIterator.clone state.iter2;
+      peek1 = state.peek1;
+      peek2 = state.peek2;
+    }
+  end in
+  Iter.MutIterator.make (module IntersectIter) { 
+    iter1; 
+    iter2; 
+    peek1 = Iter.MutIterator.next iter1;
+    peek2 = Iter.MutIterator.next iter2;
+  }
 
-  while Sync.Cell.get i < len1 && Sync.Cell.get j < len2 do
-    let x = Vector.get v1 (Sync.Cell.get i) |> Option.unwrap in
-    let y = Vector.get v2 (Sync.Cell.get j) |> Option.unwrap in
-    match compare x y with
-    | c when c < 0 ->
-        Vector.push result x;
-        Sync.Cell.update i (fun n -> n + 1)
-    | c when c > 0 ->
-        Vector.push result y;
-        Sync.Cell.update j (fun n -> n + 1)
-    | _ ->
-        (* Equal - only add once *)
-        Vector.push result x;
-        Sync.Cell.update i (fun n -> n + 1);
-        Sync.Cell.update j (fun n -> n + 1)
-  done;
+(* Public API *)
 
-  (* Add remaining elements *)
-  while Sync.Cell.get i < len1 do
-    Vector.push result (Vector.get v1 (Sync.Cell.get i) |> Option.unwrap);
-    Sync.Cell.update i (fun n -> n + 1)
-  done;
+let empty (type a) () : a Iter.MutIterator.t =
+  let module EmptyIter = struct
+    type state = unit
+    type item = a
+    let next _ = None
+    let size _ = 0
+    let clone _ = ()
+  end in
+  Iter.MutIterator.make (module EmptyIter) ()
 
-  while Sync.Cell.get j < len2 do
-    Vector.push result (Vector.get v2 (Sync.Cell.get j) |> Option.unwrap);
-    Sync.Cell.update j (fun n -> n + 1)
-  done;
+let of_iter iter = dedup_sorted iter
 
-  { elements = result }
+let of_list (type a) (xs : a list) : a Iter.MutIterator.t =
+  let sorted = List.sort compare xs in
+  let module ListIter = struct
+    type state = { mutable remaining : a list }
+    type item = a
+    let next state = 
+      match state.remaining with
+      | [] -> None
+      | x :: xs -> state.remaining <- xs; Some x
+    let size state = List.length state.remaining
+    let clone state = { remaining = state.remaining }
+  end in
+  let iter = Iter.MutIterator.make (module ListIter) { remaining = sorted } in
+  dedup_sorted iter
 
-let diff rel1 rel2 =
-  (* Elements in rel1 but not in rel2 *)
-  let v1 = rel1.elements in
-  let v2 = rel2.elements in
-  let len1 = Vector.len v1 in
-  let len2 = Vector.len v2 in
-  let result = Vector.create () in
+let singleton (type a) (x : a) : a Iter.MutIterator.t =
+  let module SingletonIter = struct
+    type state = { mutable value : a option }
+    type item = a
+    let next state = 
+      match state.value with
+      | None -> None
+      | Some v -> state.value <- None; Some v
+    let size state = match state.value with None -> 0 | Some _ -> 1
+    let clone state = { value = state.value }
+  end in
+  Iter.MutIterator.make (module SingletonIter) { value = Some x }
 
-  let i = cell 0 in
-  let j = cell 0 in
+let to_list = Iter.MutIterator.to_list
 
-  while Sync.Cell.get i < len1 do
-    if Sync.Cell.get j >= len2 then (
-      (* No more elements in v2, add rest of v1 *)
-      Vector.push result (Vector.get v1 (Sync.Cell.get i) |> Option.unwrap);
-      Sync.Cell.update i (fun n -> n + 1))
-    else
-      let x = Vector.get v1 (Sync.Cell.get i) |> Option.unwrap in
-      let y = Vector.get v2 (Sync.Cell.get j) |> Option.unwrap in
-      match compare x y with
-      | c when c < 0 ->
-          (* x not in v2 *)
-          Vector.push result x;
-          Sync.Cell.update i (fun n -> n + 1)
-      | c when c > 0 ->
-          (* Skip y *)
-          Sync.Cell.update j (fun n -> n + 1)
-      | _ ->
-          (* x = y, skip both *)
-          Sync.Cell.update i (fun n -> n + 1);
-          Sync.Cell.update j (fun n -> n + 1)
-  done;
+let length rel = 
+  let count = ref 0 in
+  Iter.MutIterator.for_each rel ~fn:(fun _ -> count := !count + 1);
+  !count
 
-  { elements = result }
+let is_empty rel = 
+  match Iter.MutIterator.next rel with 
+  | None -> true 
+  | Some _ -> false
 
-let intersect rel1 rel2 =
-  (* Elements in both relations *)
-  let v1 = rel1.elements in
-  let v2 = rel2.elements in
-  let len1 = Vector.len v1 in
-  let len2 = Vector.len v2 in
-  let result = Vector.create () in
+let merge = merge_sorted
+let diff = diff_sorted
+let intersect = intersect_sorted
 
-  let i = cell 0 in
-  let j = cell 0 in
+let iter f rel = Iter.MutIterator.for_each rel ~fn:f
 
-  while Sync.Cell.get i < len1 && Sync.Cell.get j < len2 do
-    let x = Vector.get v1 (Sync.Cell.get i) |> Option.unwrap in
-    let y = Vector.get v2 (Sync.Cell.get j) |> Option.unwrap in
-    match compare x y with
-    | c when c < 0 -> Sync.Cell.update i (fun n -> n + 1)
-    | c when c > 0 -> Sync.Cell.update j (fun n -> n + 1)
-    | _ ->
-        (* Found in both *)
-        Vector.push result x;
-        Sync.Cell.update i (fun n -> n + 1);
-        Sync.Cell.update j (fun n -> n + 1)
-  done;
+let fold f acc rel = 
+  let result = ref acc in
+  Iter.MutIterator.for_each rel ~fn:(fun x -> result := f !result x);
+  !result
 
-  { elements = result }
+let map f rel = 
+  Iter.MutIterator.map rel ~fn:f
+  (* WARNING: Mapping may break sort order! Caller must ensure f preserves order,
+     or re-sort after mapping *)
 
-(* Iteration *)
-
-let iter f rel = Vector.iter f rel.elements
-
-let fold f acc rel =
-  let result = cell acc in
-  Vector.iter (fun x -> Sync.Cell.set result (f (Sync.Cell.get result) x)) rel.elements;
-  Sync.Cell.get result
-
-let map f rel =
-  let result = Vector.create () in
-  Vector.iter (fun x -> Vector.push result (f x)) rel.elements;
-  of_vec result
-
-let filter f rel =
-  let result = Vector.create () in
-  Vector.iter (fun x -> if f x then Vector.push result x) rel.elements;
-  { elements = result }
-
-(* Search *)
+let filter f rel = Iter.MutIterator.filter rel ~fn:f
 
 let contains rel x =
-  (* Binary search in sorted vector *)
-  let vec = rel.elements in
-  let len = Vector.len vec in
-  let rec search low high =
-    if low > high then false
-    else
-      let mid = (low + high) / 2 in
-      let mid_val = Vector.get vec mid |> Option.unwrap in
-      match compare x mid_val with
-      | 0 -> true
-      | c when c < 0 -> search low (mid - 1)
-      | _ -> search (mid + 1) high
+  let rec search () =
+    match Iter.MutIterator.next rel with
+    | None -> false
+    | Some y ->
+        match compare x y with
+        | 0 -> true
+        | c when c < 0 -> false  (* Passed x in sorted sequence *)
+        | _ -> search ()
   in
-  if len = 0 then false else search 0 (len - 1)
+  search ()
 
 let find f rel =
-  let vec = rel.elements in
-  let len = Vector.len vec in
-  let result = cell None in
-  let i = cell 0 in
-  while Sync.Cell.get i < len && Option.is_none (Sync.Cell.get result) do
-    let x = Vector.get vec (Sync.Cell.get i) |> Option.unwrap in
-    if f x then Sync.Cell.set result (Some x);
-    Sync.Cell.update i (fun n -> n + 1)
-  done;
-  Sync.Cell.get result
+  let rec search () =
+    match Iter.MutIterator.next rel with
+    | None -> None
+    | Some x -> if f x then Some x else search ()
+  in
+  search ()

@@ -1,9 +1,9 @@
 open Std
 
-(** {1 URI - Interned Identifiers}
+(** {1 URI - Content-Addressed Identifiers}
     
-    URIs are the primary identifiers in Poneglyph. They use string interning
-    for fast comparison and minimal memory usage.
+    URIs are the primary identifiers in Poneglyph. They use SHA-256 hashing
+    for deterministic, content-addressed identification.
     
     URI Format: [namespace:type:identifier[:version]]
     
@@ -14,8 +14,11 @@ open Std
     - [@field:doc] - Shorthand for [poneglyph:field:doc]
 *)
 
-type t = int
-(** A URI is represented as an integer ID (interned string) *)
+type t = {
+  uri : string;      (** Original normalized URI string *)
+  sha256 : bytes;    (** Full SHA-256 hash (32 bytes) for storage/comparison *)
+}
+(** A URI contains both the string representation and its SHA-256 hash *)
 
 type part = Ns of string | Kind of string | Id of string | Field of string
 (** URI component types for construction *)
@@ -23,7 +26,7 @@ type part = Ns of string | Kind of string | Id of string | Field of string
 (** {2 Construction} *)
 
 val of_string : string -> t
-(** Create a URI from a string. Same string always returns same URI.
+(** Create a URI from a string. Same string always produces same SHA-256 hash.
     
     {[
       let uri = Uri.of_string "tusk:file:main.ml"
@@ -46,15 +49,15 @@ val make : part list -> t
 (** {2 Conversion} *)
 
 val to_string : t -> string
-(** Convert URI back to string *)
+(** Convert URI to its string representation *)
 
 (** {2 Comparison} *)
 
 val equal : t -> t -> bool
-(** Fast equality check (integer comparison) *)
+(** Fast equality check (compares SHA-256 hashes) *)
 
 val compare : t -> t -> int
-(** Fast comparison for sorting *)
+(** Fast comparison for sorting (compares SHA-256 hashes) *)
 
 (** {2 Shorthand Support} *)
 

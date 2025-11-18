@@ -494,6 +494,225 @@ let test_replay_preserves_order () =
                         cleanup_test_dir dir;
                         Ok ())))))
 
+(* ============================= Batch Atomicity Tests ============================= *)
+
+let test_append_batch_empty () =
+  let dir = setup_test_dir () in
+  let path = make_test_path dir "test_batch_empty" in
+
+  match Wal.create ~path with
+  | Error err ->
+      cleanup_test_dir dir;
+      Error err
+  | Ok wal -> (
+      match Wal.append_batch wal [] with
+      | Error err ->
+          ignore (Wal.close wal);
+          cleanup_test_dir dir;
+          Error ("append_batch: " ^ err)
+      | Ok () -> (
+          match Wal.close wal with
+          | Error err ->
+              cleanup_test_dir dir;
+              Error ("close: " ^ err)
+          | Ok () ->
+              cleanup_test_dir dir;
+              Ok ()))
+
+let test_append_batch_single () =
+  let dir = setup_test_dir () in
+  let path = make_test_path dir "test_batch_single" in
+
+  match Wal.create ~path with
+  | Error err ->
+      cleanup_test_dir dir;
+      Error err
+  | Ok wal -> (
+      let key = make_key 1 1 100 in
+      let value = make_string_value "Alice" in
+      let entries = [Wal.Put (key, value)] in
+
+      match Wal.append_batch wal entries with
+      | Error err ->
+          ignore (Wal.close wal);
+          cleanup_test_dir dir;
+          Error ("append_batch: " ^ err)
+      | Ok () -> (
+          match Wal.close wal with
+          | Error err ->
+              cleanup_test_dir dir;
+              Error ("close: " ^ err)
+          | Ok () ->
+              cleanup_test_dir dir;
+              Ok ()))
+
+let test_append_batch_multiple () =
+  let dir = setup_test_dir () in
+  let path = make_test_path dir "test_batch_multiple" in
+
+  match Wal.create ~path with
+  | Error err ->
+      cleanup_test_dir dir;
+      Error err
+  | Ok wal -> (
+      let entries = [
+        Wal.Put (make_key 1 1 100, make_string_value "Alice");
+        Wal.Put (make_key 2 2 100, make_int_value 30);
+        Wal.Delete (make_key 3 3 100);
+        Wal.Put (make_key 4 4 100, make_string_value "NYC");
+      ] in
+
+      match Wal.append_batch wal entries with
+      | Error err ->
+          ignore (Wal.close wal);
+          cleanup_test_dir dir;
+          Error ("append_batch: " ^ err)
+      | Ok () -> (
+          match Wal.close wal with
+          | Error err ->
+              cleanup_test_dir dir;
+              Error ("close: " ^ err)
+          | Ok () ->
+              cleanup_test_dir dir;
+              Ok ()))
+
+let test_batch_replay_atomicity () =
+  let dir = setup_test_dir () in
+  let path = make_test_path dir "test_batch_replay" in
+
+  match Wal.create ~path with
+  | Error err ->
+      cleanup_test_dir dir;
+      Error err
+  | Ok wal -> (
+      let entries = [
+        Wal.Put (make_key 1 1 100, make_string_value "Alice");
+        Wal.Put (make_key 2 2 100, make_int_value 30);
+        Wal.Delete (make_key 3 3 100);
+      ] in
+
+      match Wal.append_batch wal entries with
+      | Error err ->
+          ignore (Wal.close wal);
+          cleanup_test_dir dir;
+          Error ("append_batch: " ^ err)
+      | Ok () -> (
+          match Wal.close wal with
+          | Error err ->
+              cleanup_test_dir dir;
+              Error ("close: " ^ err)
+          | Ok () -> (
+              match Wal.open_existing ~path with
+              | Error err ->
+                  cleanup_test_dir dir;
+                  Error ("reopen: " ^ err)
+              | Ok wal -> (
+                  match Wal.replay wal with
+                  | Error err ->
+                      ignore (Wal.close wal);
+                      cleanup_test_dir dir;
+                      Error ("replay: " ^ err)
+                  | Ok replayed ->
+                      if List.length replayed != List.length entries then (
+                        ignore (Wal.close wal);
+                        cleanup_test_dir dir;
+                        Error ("expected " ^ string_of_int (List.length entries) ^
+                               " entries, got " ^ string_of_int (List.length replayed)))
+                      else (
+                        ignore (Wal.close wal);
+                        cleanup_test_dir dir;
+                        Ok ())))))
+
+let test_tagged_batch_basic () =
+  let dir = setup_test_dir () in
+  let path = make_test_path dir "test_tagged_batch" in
+
+  match Wal.create ~path with
+  | Error err ->
+      cleanup_test_dir dir;
+      Error err
+  | Ok wal -> (
+      let entries = [
+        Wal.TaggedPut (Wal.EAVT, make_key 1 1 100, make_string_value "Alice");
+        Wal.TaggedPut (Wal.AVET, make_key 2 2 100, make_int_value 30);
+        Wal.TaggedPut (Wal.FACT, make_key 3 3 100, make_string_value "fact");
+        Wal.TaggedDelete (Wal.SOURCE, make_key 4 4 100);
+      ] in
+
+      match Wal.append_batch_tagged wal entries with
+      | Error err ->
+          ignore (Wal.close wal);
+          cleanup_test_dir dir;
+          Error ("append_batch_tagged: " ^ err)
+      | Ok () -> (
+          match Wal.close wal with
+          | Error err ->
+              cleanup_test_dir dir;
+              Error ("close: " ^ err)
+          | Ok () ->
+              cleanup_test_dir dir;
+              Ok ()))
+
+let test_tagged_batch_replay () =
+  let dir = setup_test_dir () in
+  let path = make_test_path dir "test_tagged_replay" in
+
+  match Wal.create ~path with
+  | Error err ->
+      cleanup_test_dir dir;
+      Error err
+  | Ok wal -> (
+      let entries = [
+        Wal.TaggedPut (Wal.EAVT, make_key 1 1 100, make_string_value "Alice");
+        Wal.TaggedPut (Wal.AVET, make_key 2 2 100, make_int_value 30);
+        Wal.TaggedPut (Wal.FACT, make_key 3 3 100, make_string_value "fact");
+        Wal.TaggedDelete (Wal.SOURCE, make_key 4 4 100);
+      ] in
+
+      match Wal.append_batch_tagged wal entries with
+      | Error err ->
+          ignore (Wal.close wal);
+          cleanup_test_dir dir;
+          Error ("append_batch_tagged: " ^ err)
+      | Ok () -> (
+          match Wal.close wal with
+          | Error err ->
+              cleanup_test_dir dir;
+              Error ("close: " ^ err)
+          | Ok () -> (
+              match Wal.open_existing ~path with
+              | Error err ->
+                  cleanup_test_dir dir;
+                  Error ("reopen: " ^ err)
+              | Ok wal -> (
+                  match Wal.replay_tagged wal with
+                  | Error err ->
+                      ignore (Wal.close wal);
+                      cleanup_test_dir dir;
+                      Error ("replay_tagged: " ^ err)
+                  | Ok replayed ->
+                      if List.length replayed != List.length entries then (
+                        ignore (Wal.close wal);
+                        cleanup_test_dir dir;
+                        Error ("expected " ^ string_of_int (List.length entries) ^
+                               " entries, got " ^ string_of_int (List.length replayed)))
+                      else (
+                        (* Verify tags are preserved *)
+                        let check_tags = List.for_all2 (fun orig repl ->
+                          match orig, repl with
+                          | Wal.TaggedPut (t1, _, _), Wal.TaggedPut (t2, _, _) -> t1 = t2
+                          | Wal.TaggedDelete (t1, _), Wal.TaggedDelete (t2, _) -> t1 = t2
+                          | _ -> false
+                        ) entries replayed in
+                        if not check_tags then (
+                          ignore (Wal.close wal);
+                          cleanup_test_dir dir;
+                          Error "tag mismatch")
+                        else (
+                          ignore (Wal.close wal);
+                          cleanup_test_dir dir;
+                          Ok ()))))))
+
 
 (* ============================= Property Tests ============================= *)
 
@@ -574,6 +793,12 @@ let tests =
     case "Truncate" test_truncate;
     case "Replay empty" test_replay_empty;
     case "Replay preserves order" test_replay_preserves_order;
+    case "Append batch empty" test_append_batch_empty;
+    case "Append batch single" test_append_batch_single;
+    case "Append batch multiple" test_append_batch_multiple;
+    case "Batch replay atomicity" test_batch_replay_atomicity;
+    case "Tagged batch basic" test_tagged_batch_basic;
+    case "Tagged batch replay" test_tagged_batch_replay;
     prop_append_replay_roundtrip;
   ]
 

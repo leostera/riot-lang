@@ -5,10 +5,19 @@ type fact_tuple = Value.t list
 module type STORAGE = sig
   type t
   
-  val get_facts : t -> predicate:string -> fact_tuple Relation.t
-  val predicates : t -> string list
-  val iter_facts : t -> predicate:string -> (fact_tuple -> unit) -> unit
-  val get_facts_matching : t -> predicate:string -> pattern:Value.t option list -> fact_tuple Relation.t
+  val get_facts_matching : 
+    t -> 
+    predicate:string -> 
+    pattern:Value.t option list ->
+    fact_tuple Relation.t
+  (** Get facts matching a pattern.
+      
+      Storage backends handle snapshot isolation internally.
+      For Poneglyph: the Graph_store.t already represents a snapshot.
+      For InMemory: no snapshot needed.
+      
+      Pattern uses [Some v] for constants, [None] for wildcards.
+  *)
 end
 
 let matches_pattern pattern tuple =

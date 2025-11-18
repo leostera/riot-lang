@@ -7,6 +7,7 @@ module Term = Term
 module Value = Value
 module Relation = Relation
 module Storage = Storage
+module Inmemory_storage = Inmemory_storage
 module InmemoryStorage = Inmemory_storage
 module Universe = Universe
 module Substitution = Substitution

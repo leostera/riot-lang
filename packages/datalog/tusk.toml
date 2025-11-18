@@ -9,7 +9,3 @@ path = "src/datalog.ml"
 std = { path = "../std" }
 ceibo = { path = "../ceibo" }
 propane = { path = "../propane" }
-
-[[bin]]
-name = "test_basics"
-path = "tests/test_basics.ml"

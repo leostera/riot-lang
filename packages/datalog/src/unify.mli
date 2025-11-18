@@ -140,6 +140,48 @@ val match_atoms : Ast.atom -> Storage.fact_tuple Relation.t -> Substitution.t li
     ]}
 *)
 
+val match_atoms_iter : Ast.atom -> Storage.fact_tuple Relation.t -> Substitution.t Iter.MutIterator.t
+(** Match an atom against a relation of tuples - streaming version.
+    Returns an iterator that produces substitutions on-demand.
+    
+    This enables streaming query results without materializing all matches.
+    Results are produced lazily as the iterator is consumed.
+    
+    Example:
+    {[
+      let pattern = atom ~predicate:"edge" ~args:[Var "X"; Var "Y"] in
+      let facts = get_facts ~predicate:"edge" in
+      
+      let iter = match_atoms_iter pattern facts in
+      (* Results produced on-demand as you call next() *)
+      Iter.MutIterator.iter (fun sub ->
+        println (Substitution.to_string sub)
+      ) iter
+    ]}
+*)
+
+val match_tuples_iter : Ast.atom -> Storage.fact_tuple Iter.MutIterator.t -> Substitution.t Iter.MutIterator.t
+(** Match an atom against a stream of tuples - pure streaming, NO materialization!
+    
+    This is the fully streaming version for query execution.
+    Unlike match_atoms_iter which takes a Relation (materialized), this takes
+    a MutIterator and never materializes the full dataset.
+    
+    This eliminates the Relation.to_list bottleneck in the query path.
+    
+    Example:
+    {[
+      let pattern = atom ~predicate:"edge" ~args:[Var "X"; Var "Y"] in
+      let tuples_iter = get_facts_iter ~predicate:"edge" in
+      
+      let results = match_tuples_iter pattern tuples_iter in
+      (* Pure streaming - first result available immediately! *)
+      match Iter.MutIterator.next results with
+      | Some sub -> println (Substitution.to_string sub)
+      | None -> println "No matches"
+    ]}
+*)
+
 (** {2 Utilities} *)
 
 val occurs_check : var:string -> Term.t -> bool

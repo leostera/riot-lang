@@ -84,12 +84,16 @@ let merge_sstables ~inputs ~output =
         Vector.sort_by heap compare_entries;
 
         (* Create output SSTable *)
-        let writer = Sstable.create_builder ~path:output in
-        let last_key = cell None in
-        let current_writer = cell writer in
+        match Sstable.create_builder ~path:output with
+        | Error e ->
+            List.iter close_iter iters;
+            Error ("Failed to create output SSTable: " ^ e)
+        | Ok writer ->
+            let last_key = cell None in
+            let current_writer = cell writer in
 
-        (* Main merge loop *)
-        let rec merge_loop () =
+            (* Main merge loop *)
+            let rec merge_loop () =
           if Vector.len heap = 0 then Ok ()
           else
             (* Pop minimum entry - heap should never be empty here due to len check *)
@@ -162,20 +166,20 @@ let merge_sstables ~inputs ~output =
                 done;
 
                 merge_loop ()
-        in
+            in
 
-        match merge_loop () with
-        | Error err ->
-            List.iter close_iter iters;
-            Error err
-        | Ok () -> (
-            match Sstable.finalize (Cell.get current_writer) with
+            match merge_loop () with
             | Error err ->
                 List.iter close_iter iters;
-                Error ("Failed to finalize output SSTable: " ^ err)
-            | Ok _ ->
-                List.iter close_iter iters;
-                Ok ())
+                Error err
+            | Ok () -> (
+                match Sstable.finalize (Cell.get current_writer) with
+                | Error err ->
+                    List.iter close_iter iters;
+                    Error ("Failed to finalize output SSTable: " ^ err)
+                | Ok _ ->
+                    List.iter close_iter iters;
+                    Ok ())
 
 (** Compact with optional deletion of inputs *)
 let compact ~inputs ~output ~delete_inputs =

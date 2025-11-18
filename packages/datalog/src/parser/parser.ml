@@ -131,7 +131,7 @@ let parse_args p =
 let parse_atom p =
   let start_tok = peek p in
   match start_tok.kind with
-  | Ident pred -> (
+  | Ident _ | String _ -> (
       let pred_tok = consume p in
       let trivia1 = consume_trivia p in
       match peek_kind p with

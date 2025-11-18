@@ -1,5 +1,6 @@
 open Std
 open Std.IO
+open Std.UUID
 open Model
 
 type t = { mem : Inmemory.t; mutable filename : string option }
@@ -34,7 +35,7 @@ let fact_to_json (fact : Fact.t) =
     | Fact.DateTime dt ->
         "{\"DateTime\":\"" ^ string_of_float (Datetime.to_timestamp dt) ^ "\"}"
   in
-  "{\"e\":\"" ^ Uri.to_string fact.entity ^ "\",\"a\":\"" ^ Uri.to_string fact.attribute ^ "\",\"s\":\"" ^ Uri.to_string fact.source_uri ^ "\",\"v\":" ^ value_str ^ ",\"fact_uri\":\"" ^ Uri.to_string fact.fact_uri ^ "\",\"stated_at\":\"" ^ string_of_float (Datetime.to_timestamp fact.stated_at) ^ "\",\"tx_id\":" ^ string_of_int fact.tx_id ^ ",\"retracted\":" ^ string_of_bool fact.retracted ^ "}"
+  "{\"e\":\"" ^ Uri.to_string fact.entity ^ "\",\"a\":\"" ^ Uri.to_string fact.attribute ^ "\",\"s\":\"" ^ Uri.to_string fact.source_uri ^ "\",\"v\":" ^ value_str ^ ",\"fact_uri\":\"" ^ Uri.to_string fact.fact_uri ^ "\",\"stated_at\":\"" ^ string_of_float (Datetime.to_timestamp fact.stated_at) ^ "\",\"tx_id\":\"" ^ UUID.to_string fact.tx_id ^ "\",\"retracted\":" ^ string_of_bool fact.retracted ^ "}"
 
 let json_to_fact line =
   (* Very simple JSON parser - just enough for our needs *)
@@ -102,7 +103,11 @@ let json_to_fact line =
   let fact_uri = Uri.of_string (extract_string "fact_uri" line) in
   let stated_at_ts = float_of_string (extract_string "stated_at" line) in
   let stated_at = Datetime.from_unix_time stated_at_ts in
-  let tx_id = extract_int "tx_id" line in
+  let tx_id_str = extract_string "tx_id" line in
+  let tx_id = match UUID.of_string tx_id_str with
+    | Ok uuid -> uuid
+    | Error _ -> panic ("Invalid UUID for tx_id: " ^ tx_id_str)
+  in
   let retracted = extract_bool "retracted" line in
 
   (* Parse value - find the "v":{...} part *)
@@ -181,7 +186,8 @@ let retract store ~fact_uri =
   match store.filename with
   | Some filename ->
       (* After retraction, get the fact again to get its updated state *)
-      let all_facts = Inmemory.get_all_facts store.mem ~entity:fact_uri in
+      let all_facts = Inmemory.get_all_facts store.mem ~entity:fact_uri 
+        |> Iter.MutIterator.to_list in
       let retracted_fact =
         List.find_opt (fun f -> Uri.equal f.Fact.fact_uri fact_uri) all_facts
         |> Option.expect ~msg:"Fact not found"

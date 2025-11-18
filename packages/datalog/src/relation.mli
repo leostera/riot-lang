@@ -1,34 +1,46 @@
 open Std
 
-(** {1 Relation - Sorted Tuple Storage}
+(** {1 Relation - Lazy Sorted Iterator}
     
-    A Relation is an immutable, sorted set of tuples with no duplicates.
-    This is the core data structure for high-performance Datalog evaluation.
+    A Relation is a lazy, sorted, deduplicated iterator over tuples.
+    This is the core data structure for high-performance streaming Datalog evaluation.
     
     Key properties:
-    - Immutable: All operations return new relations
-    - Sorted: Elements maintain sorted order
+    - Lazy: Operations don't materialize unless explicitly requested
+    - Sorted: Elements maintain sorted order (caller's responsibility for input)
     - Deduplicated: No duplicate elements
-    - Fast merge: O(n + m) union of sorted sets
+    - Streaming: O(1) memory for set operations
     
-    Inspired by Datafrog's Relation type.
+    INVARIANT: Input iterators MUST yield elements in sorted order.
+    Violating this will cause incorrect results from set operations.
 *)
 
-type 'a t
-(** An immutable sorted set of elements *)
+type 'a t = 'a Iter.MutIterator.t
+(** A lazy sorted, deduplicated iterator *)
 
 (** {2 Construction} *)
 
 val empty : unit -> 'a t
 (** Create an empty relation *)
 
-val of_list : 'a list -> 'a t
-(** Create relation from list. Automatically sorts and deduplicates.
-    Time: O(n log n) *)
+val of_iter : 'a Iter.MutIterator.t -> 'a t
+(** Create relation from SORTED iterator. Deduplicates automatically.
+    
+    PRECONDITION: Iterator MUST yield elements in sorted order.
+    This function only deduplicates - it does not sort.
+    
+    Time: O(1) to create, O(n) to consume
+    Space: O(1) *)
 
-val of_vec : 'a Collections.Vector.t -> 'a t
-(** Create relation from vector. Sorts and deduplicates.
-    Time: O(n log n) *)
+val of_list : 'a list -> 'a t
+(** Create relation from a list.
+    
+    Automatically sorts and deduplicates the list.
+    Useful for tests and small datasets.
+    
+    For large datasets, prefer of_iter with pre-sorted data.
+    Time: O(n log n) for sort, O(n) to consume
+    Space: O(n) for materialized list *)
 
 val singleton : 'a -> 'a t
 (** Create relation with single element *)
@@ -36,52 +48,57 @@ val singleton : 'a -> 'a t
 (** {2 Access} *)
 
 val to_list : 'a t -> 'a list
-(** Convert to list (preserves sorted order) *)
-
-val to_vec : 'a t -> 'a Collections.Vector.t
-(** Get underlying vector (read-only view) *)
+(** Materialize to list (preserves sorted order).
+    Time: O(n), Space: O(n) *)
 
 val length : 'a t -> int
-(** Number of elements *)
+(** Count elements (consumes iterator).
+    Time: O(n), Space: O(1) *)
 
 val is_empty : 'a t -> bool
-(** Check if relation is empty *)
+(** Check if relation is empty (peeks at first element).
+    Time: O(1) *)
 
-(** {2 Set Operations} *)
+(** {2 Set Operations - All Lazy}
+    
+    These operations stream through inputs without materializing.
+    Time: O(1) to create, O(n + m) to consume
+    Space: O(1) - just peek buffers *)
 
 val merge : 'a t -> 'a t -> 'a t
-(** Union of two relations. Both inputs must be sorted.
-    Time: O(n + m) - Fast sorted merge! *)
+(** Union of two sorted relations - lazy streaming merge *)
 
 val diff : 'a t -> 'a t -> 'a t
-(** Set difference: elements in first but not in second.
-    Time: O(n + m) *)
+(** Set difference: elements in first but not in second - lazy streaming diff *)
 
 val intersect : 'a t -> 'a t -> 'a t
-(** Set intersection: elements in both relations.
-    Time: O(n + m) *)
+(** Set intersection: elements in both - lazy streaming intersect *)
 
-(** {2 Iteration} *)
+(** {2 Iteration - All Lazy} *)
 
 val iter : ('a -> unit) -> 'a t -> unit
-(** Iterate over elements in sorted order *)
+(** Iterate over elements in sorted order.
+    Time: O(n), Space: O(1) *)
 
 val fold : ('acc -> 'a -> 'acc) -> 'acc -> 'a t -> 'acc
-(** Fold over elements *)
+(** Fold over elements.
+    Time: O(n), Space: O(1) *)
 
 val map : ('a -> 'b) -> 'a t -> 'b t
-(** Map and create new relation. Result is sorted and deduplicated.
-    Time: O(n log n) *)
+(** Map over elements.
+    WARNING: If mapping function doesn't preserve sort order, results will be incorrect!
+    Time: O(1) to create, O(n) to consume *)
 
 val filter : ('a -> bool) -> 'a t -> 'a t
-(** Filter elements. Result is still sorted.
-    Time: O(n) *)
+(** Filter elements (preserves sorted order).
+    Time: O(1) to create, O(n) to consume *)
 
 (** {2 Search} *)
 
 val contains : 'a t -> 'a -> bool
-(** Check if element exists. Uses binary search.
-    Time: O(log n) *)
+(** Check if element exists. Linear search through sorted sequence.
+    Time: O(n) worst case, O(k) average (stops when passed target) *)
 
 val find : ('a -> bool) -> 'a t -> 'a option
-(** Find first element matching predicate *)
+(** Find first element matching predicate.
+    Time: O(k) where k is position of match *)

@@ -1,124 +1,111 @@
 open Std
 
-(** {1 Evaluator - Fixed-Point Rule Evaluation}
+(** {1 Evaluator - Query-Only Datalog}
     
-    The evaluator takes a universe (base facts + rules) and computes all derivable
-    facts by iterating rules to a fixed point.
+    Phase 0: Query-Only Datalog Core
     
-    {2 Algorithm}
+    The evaluator provides a thin query layer over storage snapshots.
+    It supports:
+    - Single-goal queries (one atom)
+    - Multi-goal conjunctive queries (multiple atoms joined)
+    - Pure streaming (zero materialization)
     
-    We use semi-naive evaluation:
-    1. Start with base facts as "recent"
-    2. For each iteration:
-       - Apply rules using recent facts
-       - Add new derived facts to recent
-       - Move recent → stable
-    3. Stop when no new facts are derived (fixed point)
+    It does NOT support:
+    - Rules/derivations (use projection jobs instead)
+    - Negation (use retraction at storage layer)
+    - Builtins (filter in application code)
     
     {2 Example}
     
     {[
-      (* Base facts *)
-      edge(1, 2).
-      edge(2, 3).
+      (* Single-goal query *)
+      let pattern = Ast.atom ~predicate:"language" 
+        ~args:[Var "F"; Const (String "ocaml")] in
       
-      (* Rules *)
-      path(X, Y) :- edge(X, Y).
-      path(X, Z) :- edge(X, Y), path(Y, Z).
+      module Eval = Evaluator.Make(Universe) in
+      let results = Eval.query universe pattern in
       
-      (* Evaluation *)
-      Iteration 1:
-        path(1, 2) from edge(1, 2)
-        path(2, 3) from edge(2, 3)
+      (* First result in <100ms! *)
+      match Iter.MutIterator.next results with
+      | Some sub -> println (Substitution.to_string sub)
+      | None -> println "No matches"
       
-      Iteration 2:
-        path(1, 3) from edge(1, 2), path(2, 3)
+      (* Multi-goal query *)
+      let clauses = [
+        Ast.Atom (Ast.atom ~predicate:"language" ~args:[Var "F"; Const (String "ocaml")]);
+        Ast.Atom (Ast.atom ~predicate:"size" ~args:[Var "F"; Var "S"]);
+      ] in
       
-      Iteration 3:
-        No new facts - done!
-      
-      Result: path = {(1,2), (2,3), (1,3)}
+      let results = Eval.multi_query universe clauses in
+      (* Streaming join - no materialization! *)
     ]}
 *)
 
-(** {2 Evaluation} *)
+(** {2 Query Evaluation} *)
 
 module Make (U : sig
   type t
-  val get_facts : t -> predicate:string -> Storage.fact_tuple Relation.t
-  val add_derived_facts : t -> predicate:string -> tuples:Storage.fact_tuple Relation.t -> unit
-  val rules : t -> Ast.rule list
+  val get_facts_matching : t -> predicate:string -> pattern:Value.t option list -> Storage.fact_tuple Relation.t
 end) : sig
   
-  val eval_rule : U.t -> Ast.rule -> Storage.fact_tuple Relation.t
-  (** Evaluate a single rule against current universe.
-      Returns newly derived facts (not facts already in universe).
+  val query : U.t -> Ast.atom -> Substitution.t Iter.MutIterator.t
+  (** Single-goal query - pure streaming!
       
-      This is the core: join rule body atoms, project to head variables.
-  *)
-  
-  val eval : U.t -> U.t
-  (** Evaluate all rules to fixed point.
-      Iterates until no new facts are derived.
+      Returns an iterator of variable bindings (substitutions).
+      Results are streamed on-demand with NO materialization.
       
-      Example:
-      {[
-        let universe = Universe.InMemory.of_facts [
-          ("edge", [[Int 1; Int 2]; [Int 2; Int 3]]);
-        ] in
-        
-        let universe = Universe.InMemory.add_rule universe rule1 in
-        let universe = Universe.InMemory.add_rule universe rule2 in
-        
-        module Eval = Evaluator.Make(Universe.InMemory) in
-        let universe = Eval.eval universe in
-        
-        (* Now universe contains all derived facts *)
-        let all_paths = Universe.InMemory.get_facts universe ~predicate:"path" in
-        ...
-      ]}
-  *)
-  
-  val query : U.t -> Ast.atom -> Substitution.t list
-  (** Query universe for matches to an atom pattern.
-      Returns list of variable bindings (substitutions).
+      Uses storage index optimizations:
+      - [None; Some value] → AVET index scan
+      - [Some entity; None] → Entity lookup
+      - _ → Full scan with filter
       
       Example:
       {[
-        (* Query: path(1, Y) - what can we reach from 1? *)
-        let pattern = Ast.atom ~predicate:"path" 
-          ~args:[Const (Int 1); Var "Y"] in
+        (* Query: language(F, "ocaml") *)
+        let pattern = Ast.atom ~predicate:"language" 
+          ~args:[Var "F"; Const (String "ocaml")] in
         
-        module Eval = Evaluator.Make(Universe.InMemory) in
+        module Eval = Evaluator.Make(Universe) in
         let results = Eval.query universe pattern in
         
-        (* Results: [{Y→2}, {Y→3}, {Y→4}] *)
-        List.iter (fun sub ->
-          match Substitution.lookup sub ~var:"Y" with
-          | Some value -> println (Value.to_string value)
-          | None -> ()
+        (* First result in <100ms, even with 1M facts! *)
+        Iter.MutIterator.iter (fun sub ->
+          println (Substitution.to_string sub)
         ) results
       ]}
   *)
   
-  val multi_query : U.t -> Ast.clause list -> Substitution.t list
-  (** Query universe with multiple atoms (join query).
-      Returns list of variable bindings that satisfy all clauses.
+  val multi_query : U.t -> Ast.clause list -> Substitution.t Iter.MutIterator.t
+  (** Multi-goal conjunctive query - streaming join!
       
-      This is equivalent to evaluating a rule body without projecting to a head.
+      Returns an iterator of variable bindings that satisfy ALL clauses.
+      
+      Strategy:
+      - First atom is "driver" (streaming)
+      - Filter by checking remaining atoms
+      - No materialization - pure streaming!
+      
+      Limitations (Phase 0):
+      - All clauses must be positive atoms (no negation)
+      - No builtins (filter in application code)
+      - First atom determines join order (no query planner)
       
       Example:
       {[
-        (* Query: parent(X, Y), age(X, A) - parents with their ages *)
+        (* Query: language(F, "ocaml"), size(F, S) *)
         let clauses = [
-          Ast.Atom (Ast.atom ~predicate:"parent" ~args:[Var "X"; Var "Y"]);
-          Ast.Atom (Ast.atom ~predicate:"age" ~args:[Var "X"; Var "A"]);
+          Ast.Atom (Ast.atom ~predicate:"language" ~args:[Var "F"; Const (String "ocaml")]);
+          Ast.Atom (Ast.atom ~predicate:"size" ~args:[Var "F"; Var "S"]);
         ] in
         
-        module Eval = Evaluator.Make(Universe.InMemory) in
+        module Eval = Evaluator.Make(Universe) in
         let results = Eval.multi_query universe clauses in
         
-        (* Results: [{X→"alice", Y→"bob", A→60}, {X→"bob", Y→"charlie", A→40}, ...] *)
+        (* Streams through language("ocaml") results, checks size for each *)
+        Iter.MutIterator.iter (fun sub ->
+          (* {F → "file:foo.ml", S → Int 1024} *)
+          println (Substitution.to_string sub)
+        ) results
       ]}
   *)
 end

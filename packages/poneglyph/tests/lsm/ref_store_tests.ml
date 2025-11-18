@@ -1,6 +1,7 @@
 (** Tests for Reference Store - The Oracle *)
 
 open Std
+open Std.UUID
 open Poneglyph
 
 (** Test 1: Basic add and query *)
@@ -12,7 +13,7 @@ let test_basic_add_query () =
 
   let fact =
     Fact.make ~source ~entity ~attribute:attr ~value:(Fact.String "Alice")
-      ~stated_at:(Datetime.now ()) ~tx_id:1
+      ~stated_at:(Datetime.now ()) ~tx_id:(UUID.v7_monotonic ())
   in
 
   Ref_store.add_fact store fact;
@@ -32,20 +33,25 @@ let test_last_tx_wins () =
   let fact_uri = Uri.of_string "test:fact:1" in
 
   (* Version 1: tx=1, value="Alice" *)
+  let tx1 = UUID.v7_monotonic () in
   let fact1 =
     {
       (Fact.make ~source ~entity ~attribute:attr ~value:(Fact.String "Alice")
-         ~stated_at:(Datetime.now ()) ~tx_id:1)
+         ~stated_at:(Datetime.now ()) ~tx_id:tx1)
       with
       fact_uri;
     }
   in
 
-  (* Version 2: tx=2, value="Bob" *)
+  (* Small delay to ensure tx2 > tx1 (UUIDv7 has ms resolution) *)
+  Unix.sleepf 0.002;  (* 2ms *)
+
+  (* Version 2: tx=2, value="Bob" - generate after small delay to ensure tx2 > tx1 *)
+  let tx2 = UUID.v7_monotonic () in
   let fact2 =
     {
       (Fact.make ~source ~entity ~attribute:attr ~value:(Fact.String "Bob")
-         ~stated_at:(Datetime.now ()) ~tx_id:2)
+         ~stated_at:(Datetime.now ()) ~tx_id:tx2)
       with
       fact_uri;
     }
@@ -73,17 +79,22 @@ let test_retraction () =
   let fact_uri = Uri.of_string "test:fact:1" in
 
   (* Add fact *)
+  let tx1 = UUID.v7_monotonic () in
   let fact1 =
     {
       (Fact.make ~source ~entity ~attribute:attr ~value:(Fact.String "Alice")
-         ~stated_at:(Datetime.now ()) ~tx_id:1)
+         ~stated_at:(Datetime.now ()) ~tx_id:tx1)
       with
       fact_uri;
     }
   in
 
-  (* Retract it *)
-  let fact2 = { fact1 with tx_id = 2; retracted = true } in
+  (* Small delay to ensure tx2 > tx1 *)
+  Unix.sleepf 0.002;  (* 2ms *)
+
+  (* Retract it with newer tx_id *)
+  let tx2 = UUID.v7_monotonic () in
+  let fact2 = { fact1 with tx_id = tx2; retracted = true } in
 
   Ref_store.add_fact store fact1;
   Ref_store.add_fact store fact2;
@@ -104,17 +115,17 @@ let test_compaction () =
   (* Add 3 SEPARATE facts (different fact_uris) *)
   let fact1 =
     Fact.make ~source ~entity ~attribute:attr ~value:(Fact.String "v1")
-      ~stated_at:(Datetime.now ()) ~tx_id:1
+      ~stated_at:(Datetime.now ()) ~tx_id:(UUID.v7_monotonic ())
   in
   let fact2 =
     Fact.make ~source ~entity ~attribute:attr ~value:(Fact.String "v2")
-      ~stated_at:(Datetime.now ()) ~tx_id:2
+      ~stated_at:(Datetime.now ()) ~tx_id:(UUID.v7_monotonic ())
   in
   (* Add third version of SAME fact_uri to test last-tx-wins *)
   let fact3_v1 =
     {
       (Fact.make ~source ~entity ~attribute:attr ~value:(Fact.String "v3a")
-         ~stated_at:(Datetime.now ()) ~tx_id:3)
+         ~stated_at:(Datetime.now ()) ~tx_id:(UUID.v7_monotonic ()))
       with
       fact_uri;
     }
@@ -122,7 +133,7 @@ let test_compaction () =
   let fact3_v2 =
     {
       (Fact.make ~source ~entity ~attribute:attr ~value:(Fact.String "v3b")
-         ~stated_at:(Datetime.now ()) ~tx_id:4)
+         ~stated_at:(Datetime.now ()) ~tx_id:(UUID.v7_monotonic ()))
       with
       fact_uri;
     }
@@ -157,19 +168,19 @@ let test_query_attr_value () =
   let entity1 = Uri.of_string "test:person:1" in
   let fact1 =
     Fact.make ~source ~entity:entity1 ~attribute:attr ~value:(Fact.Int 30)
-      ~stated_at:(Datetime.now ()) ~tx_id:1
+      ~stated_at:(Datetime.now ()) ~tx_id:(UUID.v7_monotonic ())
   in
 
   let entity2 = Uri.of_string "test:person:2" in
   let fact2 =
     Fact.make ~source ~entity:entity2 ~attribute:attr ~value:(Fact.Int 25)
-      ~stated_at:(Datetime.now ()) ~tx_id:2
+      ~stated_at:(Datetime.now ()) ~tx_id:(UUID.v7_monotonic ())
   in
 
   let entity3 = Uri.of_string "test:person:3" in
   let fact3 =
     Fact.make ~source ~entity:entity3 ~attribute:attr ~value:(Fact.Int 30)
-      ~stated_at:(Datetime.now ()) ~tx_id:3
+      ~stated_at:(Datetime.now ()) ~tx_id:(UUID.v7_monotonic ())
   in
 
   Ref_store.add_fact store fact1;
@@ -196,15 +207,15 @@ let test_query_source () =
   (* Add facts from different sources *)
   let fact1 =
     Fact.make ~source:source1 ~entity ~attribute:attr
-      ~value:(Fact.String "Alice") ~stated_at:(Datetime.now ()) ~tx_id:1
+      ~value:(Fact.String "Alice") ~stated_at:(Datetime.now ()) ~tx_id:(UUID.v7_monotonic ())
   in
   let fact2 =
     Fact.make ~source:source2 ~entity ~attribute:attr ~value:(Fact.String "Bob")
-      ~stated_at:(Datetime.now ()) ~tx_id:2
+      ~stated_at:(Datetime.now ()) ~tx_id:(UUID.v7_monotonic ())
   in
   let fact3 =
     Fact.make ~source:source1 ~entity ~attribute:attr
-      ~value:(Fact.String "Charlie") ~stated_at:(Datetime.now ()) ~tx_id:3
+      ~value:(Fact.String "Charlie") ~stated_at:(Datetime.now ()) ~tx_id:(UUID.v7_monotonic ())
   in
 
   Ref_store.add_fact store fact1;
@@ -237,10 +248,11 @@ let test_statistics () =
 
   List.iteri
     (fun i entity ->
+      let _i = i in (* Unused, generate UUID instead *)
       let fact =
         Fact.make ~source ~entity ~attribute:attr
           ~value:(Fact.String ("value" ^ string_of_int i))
-          ~stated_at:(Datetime.now ()) ~tx_id:i
+          ~stated_at:(Datetime.now ()) ~tx_id:(UUID.v7_monotonic ())
       in
       Ref_store.add_fact store fact)
     (List.concat [ entities; entities; entities; entities ]); (* 12 facts total *)

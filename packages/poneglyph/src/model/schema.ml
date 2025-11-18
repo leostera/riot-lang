@@ -1,4 +1,5 @@
 open Std
+open Std.UUID
 
 type def = Uri.t * Fact.t list
 
@@ -14,7 +15,7 @@ let field ~ns name =
 
 let add_fact (uri, facts) attribute value stated_at =
   let source = Uri.of_string "poneglyph:schema:bootstrap" in
-  let fact = Fact.make ~source ~entity:uri ~attribute ~value ~stated_at ~tx_id:0 in
+  let fact = Fact.make ~source ~entity:uri ~attribute ~value ~stated_at ~tx_id:(UUID.v7_monotonic ()) in
   (uri, fact :: facts)
 
 let doc doc_str (uri, facts) =
@@ -57,44 +58,44 @@ let string_value ~field ~value entity =
   let attr = fst field in
   let source = Uri.of_string "poneglyph:schema:user" in
   Fact.make ~source ~entity ~attribute:attr ~value:(Fact.String value)
-    ~stated_at:(Datetime.now ()) ~tx_id:0
+    ~stated_at:(Datetime.now ()) ~tx_id:(UUID.v7_monotonic ())
 
 let int_value ~field ~value entity =
   let attr = fst field in
   let source = Uri.of_string "poneglyph:schema:user" in
   Fact.make ~source ~entity ~attribute:attr ~value:(Fact.Int value)
-    ~stated_at:(Datetime.now ()) ~tx_id:0
+    ~stated_at:(Datetime.now ()) ~tx_id:(UUID.v7_monotonic ())
 
 let bool_value ~field ~value entity =
   let attr = fst field in
   let source = Uri.of_string "poneglyph:schema:user" in
   Fact.make ~source ~entity ~attribute:attr ~value:(Fact.Bool value)
-    ~stated_at:(Datetime.now ()) ~tx_id:0
+    ~stated_at:(Datetime.now ()) ~tx_id:(UUID.v7_monotonic ())
 
 let float_value ~field ~value entity =
   let attr = fst field in
   let source = Uri.of_string "poneglyph:schema:user" in
   Fact.make ~source ~entity ~attribute:attr ~value:(Fact.Float value)
-    ~stated_at:(Datetime.now ()) ~tx_id:0
+    ~stated_at:(Datetime.now ()) ~tx_id:(UUID.v7_monotonic ())
 
 let uri_value ~field ~value entity =
   let attr = fst field in
   let source = Uri.of_string "poneglyph:schema:user" in
   Fact.make ~source ~entity ~attribute:attr ~value:(Fact.Uri value)
-    ~stated_at:(Datetime.now ()) ~tx_id:0
+    ~stated_at:(Datetime.now ()) ~tx_id:(UUID.v7_monotonic ())
 
 let datetime_value ~field ~value entity =
   let attr = fst field in
   let source = Uri.of_string "poneglyph:schema:user" in
   Fact.make ~source ~entity ~attribute:attr ~value:(Fact.DateTime value)
-    ~stated_at:(Datetime.now ()) ~tx_id:0
+    ~stated_at:(Datetime.now ()) ~tx_id:(UUID.v7_monotonic ())
 
 let bootstrap ~stated_at =
   let ns = namespace "poneglyph" in
 
   let source = Uri.of_string "poneglyph:schema:bootstrap" in
   let make_fact ~entity ~attribute ~value =
-    Fact.make ~source ~entity ~attribute ~value ~stated_at ~tx_id:0
+    Fact.make ~source ~entity ~attribute ~value ~stated_at ~tx_id:(UUID.v7_monotonic ())
   in
 
   let schema_uri = Uri.of_string "@schema" in

@@ -16,7 +16,7 @@ type t = {
   attribute : Uri.t;
   value : value;
   stated_at : Datetime.t;
-  tx_id : int;
+  tx_id : UUID.t;  (** Transaction ID - UUIDv7 for time-ordered, restart-safe IDs *)
   retracted : bool;
 }
 
@@ -65,5 +65,8 @@ let value_hash = function
   | Int i -> i
   | Bool b -> if b then 1 else 0
   | Float f -> int_of_float (f *. 1000.0)
-  | Uri u -> u  (* Uri is already an int *)
+  | Uri u -> 
+      (* Use first 8 bytes of SHA-256 hash for hashing *)
+      let module Bytes = Kernel.IO.Bytes in
+      Int64.to_int (Bytes.get_int64_be u.Uri.sha256 0)
   | DateTime dt -> int_of_float (Datetime.to_timestamp dt)

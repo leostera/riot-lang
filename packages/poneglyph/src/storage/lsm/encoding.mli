@@ -56,10 +56,19 @@ val encode_datetime : Datetime.t -> int64
 val decode_datetime : int64 -> Datetime.t
 (** Decode UTC microseconds back to datetime *)
 
+(** {2 String Encoding} *)
+
+val hash_string : string -> int64
+(** Hash a string to a stable int64 ID using SHA-256.
+    
+    The hash is used in index keys for sorting/filtering.
+    The actual string is stored in the FACT value blob for reconstruction.
+    Same approach as URI encoding. *)
+
 (** {2 Value Encoding} *)
 
 type value_kind =
-  | VK_String
+  | VK_String  (** String values - hash in keys, full string in FACT blob *)
   | VK_Int
   | VK_Bool
   | VK_Float
@@ -77,21 +86,12 @@ type value_repr =
   | VInt of int64
   | VBool of bool
   | VFloat of int64  (** Encoded sortable bits *)
-  | VUri of int  (** Uri is already int *)
+  | VUri of int64  (** URI SHA-256 hash *)
   | VDatetime of int64  (** UTC micros *)
 
 val encode_value : Fact.value -> value_kind * value_repr
-(** Encode a Fact.value to (kind, representation).
-    
-    String handling:
-    - Small strings (≤128 bytes): TODO - will need string interning
-    - Large strings (>128 bytes): TODO - will use hash64
-    - For now: use hash of string
-*)
-
 val decode_value : value_kind -> value_repr -> Fact.value
-(** Decode (kind, repr) back to Fact.value *)
-
 val value_repr_to_int64 : value_repr -> int64
+val int64_to_value_repr : value_kind -> int64 -> value_repr
 (** Convert any value_repr to int64 for key encoding.
     Bool: 0/1, others: direct int64 *)

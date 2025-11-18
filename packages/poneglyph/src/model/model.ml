@@ -2,4 +2,4 @@ module Uri = Uri
 module Entity = Entity
 module Fact = Fact
 module Schema = Schema
-module Query = Query
+module Query = Query_model

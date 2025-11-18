@@ -15,6 +15,16 @@ let get_token_text = function
   | Ceibo.Green.Token tok -> tok.text
   | Ceibo.Green.Node _ -> ""
 
+(* Remove surrounding quotes from a string (both single and double quotes) *)
+let unquote text =
+  if String.length text >= 2 then
+    let first = String.get text 0 in
+    let last = String.get text (String.length text - 1) in
+    if (first = '"' && last = '"') || (first = '\'' && last = '\'')
+    then String.sub text 1 (String.length text - 2)
+    else text
+  else text
+
 (* Convert a term node to Term.t *)
 let rec convert_term = function
   | Ceibo.Green.Node node when node.kind = Parser.Syntax_kind.STRING_LITERAL ->
@@ -22,16 +32,7 @@ let rec convert_term = function
         node.children |> Array.to_list |> List.map get_token_text
         |> String.concat ""
       in
-      (* Remove quotes (both double and single) *)
-      let unquoted =
-        if String.length text >= 2 then
-          let first = String.get text 0 in
-          let last = String.get text (String.length text - 1) in
-          if (first = '"' && last = '"') || (first = '\'' && last = '\'')
-          then String.sub text 1 (String.length text - 2)
-          else text
-        else text
-      in
+      let unquoted = unquote text in
       Ok (Term.Const (Value.String unquoted))
       
   | Ceibo.Green.Node node when node.kind = Parser.Syntax_kind.INT_LITERAL ->
@@ -65,7 +66,7 @@ let rec convert_atom node =
       convert_atom inner
       
   | Ceibo.Green.Token pred_tok :: Ceibo.Green.Token _ :: args_and_paren ->
-      let predicate = pred_tok.Ceibo.Green.text in
+      let predicate = unquote pred_tok.Ceibo.Green.text in
       
       (* Extract argument nodes *)
       let arg_nodes =

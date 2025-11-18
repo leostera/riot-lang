@@ -8,16 +8,29 @@ module Fact = Model.Fact
 module Schema = Model.Schema
 module Entity = Model.Entity
 module Storage = Storage
+module Cli = Cli
 
 (* LSM Storage modules *)
 module Ref_store = Storage.Lsm.Ref_store
 
 (* Type and core operations from GraphStore *)
 type t = Graph_store.t
+type create_config = Graph_store.create_config =
+  | InMemory
+  | Persistent of string
+  | Lsm of string
 
-let create () = Graph_store.create ()
+let create ?config () = Graph_store.create ?config ()
+
+(* Primary API *)
+let open_shared = Graph_store.open_shared
+let open_exclusive = Graph_store.open_exclusive
+
+(* Graph operations *)
 let state = Graph_store.state
 let retract = Graph_store.retract
+let close = Graph_store.close
+let flush = Graph_store.flush
 let get = Graph_store.get
 let get_all_facts = Graph_store.get_all_facts
 let get_current_facts = Graph_store.get_current_facts
@@ -34,9 +47,10 @@ let find_by_kind = Graph_store.find_by_kind
 let find_by_source = Graph_store.find_by_source
 let retract_by_source = Graph_store.retract_by_source
 
-(* Additional high-level API *)
-let create_persistent path = Graph_store.create ~persistent:path ()
+(* Legacy convenience functions *)
+let create_persistent path = Graph_store.create ~config:(Graph_store.Persistent path) ()
 let load = create_persistent
+let create_lsm data_dir = Graph_store.create ~config:(Graph_store.Lsm data_dir) ()
 
 let register_schema graph defs =
   let open Model in
@@ -57,7 +71,9 @@ let load_entity graph uri =
     let kind = get_kind graph uri in
     let all_facts = get_current_facts graph ~entity:uri in
     let facts =
-      List.map (fun fact -> (fact.Fact.attribute, fact.Fact.value)) all_facts
+      all_facts
+      |> Iter.MutIterator.map ~fn:(fun fact -> (fact.Fact.attribute, fact.Fact.value))
+      |> Iter.MutIterator.to_list
     in
     Some (Entity.make ~uri ~kind ~facts)
 
@@ -67,28 +83,3 @@ let stats graph =
     ("facts", count_facts graph);
     ("current_facts", count_current_facts graph);
   ]
-
-(** {2 Datalog Integration} *)
-
-(** Datalog query interface - NOTE: Requires Datalog evaluation engine (coming Week 2) *)
-module Datalog = struct
-  module Backend = Datalog_storage.PoneglyphStorage
-  
-  (** Get list of available predicates (attributes) in the graph *)
-  let predicates (graph : t) : string list = 
-    Backend.predicates graph
-  
-  (** Get all facts for a predicate as a Datalog relation *)
-  let get_facts (graph : t) ~(predicate : string) = 
-    Backend.get_facts graph ~predicate
-  
-  (** Check if storage backend is working *)
-  let test_storage (graph : t) : unit =
-    let preds = predicates graph in
-    Log.info ("Available predicates: " ^ String.concat ", " preds);
-    List.iter (fun pred ->
-      let facts = get_facts graph ~predicate:pred in
-      let count = Datalog.Relation.length facts in
-      Log.info ("  " ^ pred ^ ": " ^ string_of_int count ^ " facts")
-    ) preds
-end

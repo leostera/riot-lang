@@ -1,6 +1,7 @@
 (** Tests for transitive queries *)
 
 open Std
+open Std.UUID
 open Poneglyph
 
 let test_simple_transitive () =
@@ -16,16 +17,17 @@ let test_simple_transitive () =
   let facts =
     [
       Fact.make ~source ~entity:entity_a ~attribute:edge ~value:(Fact.Uri entity_b)
-        ~stated_at:(Datetime.now ()) ~tx_id:0;
+        ~stated_at:(Datetime.now ()) ~tx_id:(UUID.v7_monotonic ());
       Fact.make ~source ~entity:entity_b ~attribute:edge ~value:(Fact.Uri entity_c)
-        ~stated_at:(Datetime.now ()) ~tx_id:0;
+        ~stated_at:(Datetime.now ()) ~tx_id:(UUID.v7_monotonic ());
     ]
   in
 
   let _ = state graph facts in
 
   (* Follow transitively from A *)
-  let reachable = transitive graph ~start:entity_a ~edge ~max_depth:None in
+  let reachable = transitive graph ~start:entity_a ~edge ~max_depth:None 
+    |> Iter.MutIterator.to_list in
 
   (* Should include A, B, and C *)
   if List.length reachable != 3 then
@@ -53,37 +55,41 @@ let test_transitive_with_depth_limit () =
   let facts =
     [
       Fact.make ~source ~entity:entity_a ~attribute:edge ~value:(Fact.Uri entity_b)
-        ~stated_at:(Datetime.now ()) ~tx_id:0;
+        ~stated_at:(Datetime.now ()) ~tx_id:(UUID.v7_monotonic ());
       Fact.make ~source ~entity:entity_b ~attribute:edge ~value:(Fact.Uri entity_c)
-        ~stated_at:(Datetime.now ()) ~tx_id:0;
+        ~stated_at:(Datetime.now ()) ~tx_id:(UUID.v7_monotonic ());
       Fact.make ~source ~entity:entity_c ~attribute:edge ~value:(Fact.Uri entity_d)
-        ~stated_at:(Datetime.now ()) ~tx_id:0;
+        ~stated_at:(Datetime.now ()) ~tx_id:(UUID.v7_monotonic ());
     ]
   in
 
   let _ = state graph facts in
 
   (* Depth 0 - just the start node *)
-  let depth0 = transitive graph ~start:entity_a ~edge ~max_depth:(Some 0) in
+  let depth0 = transitive graph ~start:entity_a ~edge ~max_depth:(Some 0) 
+    |> Iter.MutIterator.to_list in
   if List.length depth0 != 1 then
     Error "Depth 0 should return 1 node"
   else if not (List.mem entity_a depth0) then
     Error "Depth 0 should include start node"
   else
     (* Depth 1 - start + immediate neighbors *)
-    let depth1 = transitive graph ~start:entity_a ~edge ~max_depth:(Some 1) in
+    let depth1 = transitive graph ~start:entity_a ~edge ~max_depth:(Some 1) 
+      |> Iter.MutIterator.to_list in
     if List.length depth1 != 2 then
       Error "Depth 1 should return 2 nodes"
     else if not (List.mem entity_a depth1 && List.mem entity_b depth1) then
       Error "Depth 1 should include A and B"
     else
       (* Depth 2 *)
-      let depth2 = transitive graph ~start:entity_a ~edge ~max_depth:(Some 2) in
+      let depth2 = transitive graph ~start:entity_a ~edge ~max_depth:(Some 2) 
+        |> Iter.MutIterator.to_list in
       if List.length depth2 != 3 then
         Error "Depth 2 should return 3 nodes"
       else
         (* Unlimited depth *)
-        let unlimited = transitive graph ~start:entity_a ~edge ~max_depth:None in
+        let unlimited = transitive graph ~start:entity_a ~edge ~max_depth:None 
+          |> Iter.MutIterator.to_list in
         if List.length unlimited != 4 then
           Error "Unlimited depth should return 4 nodes"
         else
@@ -103,19 +109,20 @@ let test_transitive_with_diamond () =
   let facts =
     [
       Fact.make ~source ~entity:entity_a ~attribute:edge ~value:(Fact.Uri entity_b)
-        ~stated_at:(Datetime.now ()) ~tx_id:0;
+        ~stated_at:(Datetime.now ()) ~tx_id:(UUID.v7_monotonic ());
       Fact.make ~source ~entity:entity_a ~attribute:edge ~value:(Fact.Uri entity_c)
-        ~stated_at:(Datetime.now ()) ~tx_id:0;
+        ~stated_at:(Datetime.now ()) ~tx_id:(UUID.v7_monotonic ());
       Fact.make ~source ~entity:entity_b ~attribute:edge ~value:(Fact.Uri entity_d)
-        ~stated_at:(Datetime.now ()) ~tx_id:0;
+        ~stated_at:(Datetime.now ()) ~tx_id:(UUID.v7_monotonic ());
       Fact.make ~source ~entity:entity_c ~attribute:edge ~value:(Fact.Uri entity_d)
-        ~stated_at:(Datetime.now ()) ~tx_id:0;
+        ~stated_at:(Datetime.now ()) ~tx_id:(UUID.v7_monotonic ());
     ]
   in
 
   let _ = state graph facts in
 
-  let reachable = transitive graph ~start:entity_a ~edge ~max_depth:None in
+  let reachable = transitive graph ~start:entity_a ~edge ~max_depth:None 
+    |> Iter.MutIterator.to_list in
 
   (* Should include all 4 nodes, D only once *)
   if List.length reachable != 4 then

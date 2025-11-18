@@ -127,5 +127,8 @@ val size : t -> int
 val to_string : t -> string
 (** Convert to string for debugging: {X→1, Y→"foo"} *)
 
+val to_json : t -> Std.Data.Json.t
+(** Convert to JSON object: {"X": 1, "Y": "foo"} *)
+
 val equal : t -> t -> bool
 (** Check if two substitutions have identical bindings *)

@@ -25,7 +25,7 @@ type t = {
   attribute : Uri.t;  (** Predicate - what property? *)
   value : value;  (** Object - what is the value? *)
   stated_at : Datetime.t;  (** When was this fact stated? *)
-  tx_id : int;  (** Which transaction? *)
+  tx_id : UUID.t;  (** Transaction ID - UUIDv7 for time-ordered, restart-safe IDs *)
   retracted : bool;  (** Has this fact been retracted? *)
 }
 
@@ -37,7 +37,7 @@ val make :
   attribute:Uri.t ->
   value:value ->
   stated_at:Datetime.t ->
-  tx_id:int ->
+  tx_id:UUID.t ->
   t
 (** Create a new fact with provenance tracking. The fact_uri is auto-generated.
     

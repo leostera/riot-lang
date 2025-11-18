@@ -114,6 +114,18 @@ let to_string sub =
     ) pairs in
     "{" ^ String.concat ", " pair_strs ^ "}"
 
+let to_json sub =
+  let pairs = bindings sub in
+  let json_pairs = List.map (fun (var, value) ->
+    let json_value = match value with
+      | Value.String s -> Data.Json.string s
+      | Value.Int i -> Data.Json.int i
+      | Value.Uri u -> Data.Json.string u
+    in
+    (var, json_value)
+  ) pairs in
+  Data.Json.obj json_pairs
+
 let equal sub1 sub2 =
   let size1 = size sub1 in
   let size2 = size sub2 in

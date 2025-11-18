@@ -1,6 +1,7 @@
 (** Tests for storage backends - inmemory and file *)
 
 open Std
+open Std.UUID
 open Poneglyph
 
 let test_inmemory_storage () =
@@ -14,11 +15,12 @@ let test_inmemory_storage () =
   let facts =
     [
       Fact.make ~source ~entity ~attribute:attr ~value:(Fact.Int 42)
-        ~stated_at:(Datetime.now ()) ~tx_id:0;
+        ~stated_at:(Datetime.now ()) ~tx_id:(UUID.v7_monotonic ());
     ]
   in
 
   let tx_id = state graph facts in
+  (* tx_id is now int returned by state, not the UUID inside the fact *)
   if tx_id <= 0 then
     Error "Transaction ID should be positive"
   else
@@ -52,7 +54,7 @@ let test_file_storage () =
   let facts =
     [
       Fact.make ~source ~entity ~attribute:attr ~value:(Fact.String "persisted")
-        ~stated_at:(Datetime.now ()) ~tx_id:0;
+        ~stated_at:(Datetime.now ()) ~tx_id:(UUID.v7_monotonic ());
     ]
   in
 
@@ -77,7 +79,8 @@ let test_file_storage () =
     let loaded = load db_path in
     
     (* Check if facts were loaded at all *)
-    let loaded_facts = get_all_facts loaded ~entity in
+    let loaded_facts = get_all_facts loaded ~entity 
+      |> Iter.MutIterator.to_list in
 
     let cleanup () = let _ = Fs.remove_file (Path.v db_path) in () in
     
@@ -111,7 +114,7 @@ let test_retraction () =
   let facts =
     [
       Fact.make ~source ~entity ~attribute:attr ~value:(Fact.Int 100)
-        ~stated_at:(Datetime.now ()) ~tx_id:0;
+        ~stated_at:(Datetime.now ()) ~tx_id:(UUID.v7_monotonic ());
     ]
   in
 
@@ -121,7 +124,8 @@ let test_retraction () =
   match get graph ~entity ~attr with
   | Some (Fact.Int 100) ->
     (* Get the fact URI *)
-    let all_facts = get_all_facts graph ~entity in
+    let all_facts = get_all_facts graph ~entity 
+      |> Iter.MutIterator.to_list in
     if List.length all_facts = 0 then
       Error "Should have at least one fact"
     else
@@ -134,7 +138,8 @@ let test_retraction () =
       (match get graph ~entity ~attr with
       | None ->
         (* But should still be in history *)
-        let all = get_all_facts graph ~entity in
+        let all = get_all_facts graph ~entity 
+          |> Iter.MutIterator.to_list in
         if List.length all != 1 then
           Error "Should have exactly one fact in history"
         else if not (List.hd all).Fact.retracted then

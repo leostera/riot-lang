@@ -36,11 +36,13 @@
     
     Writing:
     ```ocaml
-    let builder = SSTable.create_builder ~path:"data.sst" in
-    builder |> add ~key:k1 ~value:v1
-            |> add ~key:k2 ~value:v2
-            |> ...
-            |> finalize
+    match SSTable.create_builder ~path:"data.sst" with
+    | Error e -> Error e
+    | Ok builder ->
+        builder |> add ~key:k1 ~value:v1
+                |> Result.flat_map (add ~key:k2 ~value:v2)
+                |> ...
+                |> Result.flat_map finalize
     ```
     
     Reading:
@@ -66,8 +68,9 @@ val footer_size : int
 (** Create a new SSTable builder
     
     @param path Path to the SSTable file to create
+    @return Error if file creation fails
 *)
-val create_builder : path:string -> builder
+val create_builder : path:string -> (builder, string) result
 
 (** Add a key-value pair to the SSTable being built
     
@@ -138,3 +141,14 @@ val close : reader -> unit
     Returns true if key is in range [first_key, last_key].
 *)
 val in_range : reader -> key:bytes -> bool
+
+(** Scan all keys with given prefix
+    
+    Returns all key-value pairs where the key starts with the given prefix.
+    Results are in sorted order.
+    
+    @param reader The SSTable reader
+    @param prefix The prefix bytes to match
+    @return List of (key, value) pairs matching the prefix
+*)
+val scan_prefix : reader -> prefix:bytes -> (bytes * bytes) list

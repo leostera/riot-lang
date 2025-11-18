@@ -244,27 +244,29 @@ let prop_sstable_single_roundtrip =
       let path = "/tmp/propane_sst_" ^ string_of_int (Random.int 1000000) ^ ".sst" in
       
       let key = Key.encode_eavt key_record in
-      let builder = SSTable.create_builder ~path in
       
-      match SSTable.add builder ~key ~value with
+      match SSTable.create_builder ~path with
       | Error _ -> false
       | Ok builder ->
-          match SSTable.finalize builder with
+          match SSTable.add builder ~key ~value with
           | Error _ -> false
-          | Ok count ->
-              if count != 1 then false
-              else
-                match SSTable.open_read ~path with
-                | Error _ -> false
-                | Ok reader ->
-                    let result = match SSTable.get reader ~key with
-                      | None -> false
-                      | Some retrieved -> Bytes.compare retrieved value = 0
-                    in
-                    SSTable.close reader;
-                    (* Clean up *)
-                    let _ = Fs.remove_file (Path.v path) in
-                    result
+          | Ok builder ->
+              match SSTable.finalize builder with
+              | Error _ -> false
+              | Ok count ->
+                  if count != 1 then false
+                  else
+                    match SSTable.open_read ~path with
+                    | Error _ -> false
+                    | Ok reader ->
+                        let result = match SSTable.get reader ~key with
+                          | None -> false
+                          | Some retrieved -> Bytes.compare retrieved value = 0
+                        in
+                        SSTable.close reader;
+                        (* Clean up *)
+                        let _ = Fs.remove_file (Path.v path) in
+                        result
     )
 
 (** Property: SSTable query matches what was written *)
@@ -277,45 +279,49 @@ let prop_sstable_query_matches_write =
       assume (List.length keys > 0);
       
       let path = "/tmp/propane_sst_" ^ string_of_int (Random.int 1000000) ^ ".sst" in
-      let builder = cell (SSTable.create_builder ~path) in
       
-      (* Build expected map *)
-      let expected = Collections.HashMap.create () in
-      
-      (* Add all keys to SSTable and expected map *)
-      let rec add_all ks =
-        match ks with
-        | [] -> true
-        | k :: rest ->
-            let key = Key.encode_eavt k in
-            let value = Bytes.of_string ("val_" ^ Int64.to_string k.entity_id) in
-            Collections.HashMap.insert expected key value;
-            
-            match SSTable.add (Cell.get builder) ~key ~value with
-            | Error _ -> false
-            | Ok b ->
-                Cell.set builder b;
-                add_all rest
-      in
-      
-      if not (add_all keys) then false
-      else
-        match SSTable.finalize (Cell.get builder) with
-        | Error _ -> false
-        | Ok _count ->
-            match SSTable.open_read ~path with
-            | Error _ -> false
-            | Ok reader ->
-                (* Verify all keys *)
-                let all_match = List.for_all (fun k ->
-                  let key = Key.encode_eavt k in
-                  match (SSTable.get reader ~key, Collections.HashMap.get expected key) with
-                  | (Some got, Some expected_val) -> Bytes.compare got expected_val = 0
-                  | _ -> false
-                ) keys in
+      match SSTable.create_builder ~path with
+      | Error _ -> false
+      | Ok initial_builder ->
+          let builder = cell initial_builder in
+          
+          (* Build expected map *)
+          let expected = Collections.HashMap.create () in
+          
+          (* Add all keys to SSTable and expected map *)
+          let rec add_all ks =
+            match ks with
+            | [] -> true
+            | k :: rest ->
+                let key = Key.encode_eavt k in
+                let value = Bytes.of_string ("val_" ^ Int64.to_string k.entity_id) in
+                Collections.HashMap.insert expected key value;
                 
-                SSTable.close reader;
-                let _ = Fs.remove_file (Path.v path) in
+                match SSTable.add (Cell.get builder) ~key ~value with
+                | Error _ -> false
+                | Ok b ->
+                    Cell.set builder b;
+                    add_all rest
+          in
+          
+          if not (add_all keys) then false
+          else
+            match SSTable.finalize (Cell.get builder) with
+            | Error _ -> false
+            | Ok _count ->
+                match SSTable.open_read ~path with
+                | Error _ -> false
+                | Ok reader ->
+                    (* Verify all keys *)
+                    let all_match = List.for_all (fun k ->
+                      let key = Key.encode_eavt k in
+                      match (SSTable.get reader ~key, Collections.HashMap.get expected key) with
+                      | (Some got, Some expected_val) -> Bytes.compare got expected_val = 0
+                      | _ -> false
+                    ) keys in
+                    
+                    SSTable.close reader;
+                    let _ = Fs.remove_file (Path.v path) in
                 all_match
     )
 

@@ -1,6 +1,7 @@
 (** Tests for Fact module - fact construction and values *)
 
 open Std
+open Std.UUID
 open Poneglyph
 
 let test_fact_creation () =
@@ -9,9 +10,10 @@ let test_fact_creation () =
   let value = Fact.String "Alice" in
   let source = Uri.of_string "test:source:unit-test" in
 
+  let tx_id = UUID.v7_monotonic () in
   let fact =
     Fact.make ~source ~entity ~attribute:attr ~value ~stated_at:(Datetime.now ())
-      ~tx_id:1
+      ~tx_id
   in
 
   if not (Uri.equal fact.Fact.entity entity) then
@@ -20,7 +22,7 @@ let test_fact_creation () =
     Error "Fact attribute doesn't match"
   else if not (match fact.Fact.value with Fact.String "Alice" -> true | _ -> false) then
     Error "Fact value doesn't match"
-  else if fact.Fact.tx_id != 1 then
+  else if not (UUID.equal fact.Fact.tx_id tx_id) then
     Error "Fact tx_id doesn't match"
   else if fact.Fact.retracted then
     Error "Fact should not be retracted"
@@ -35,12 +37,12 @@ let test_fact_for_entity () =
 
   let make_name _entity =
     Fact.make ~source ~entity ~attribute:name_attr ~value:(Fact.String "Bob")
-      ~stated_at:(Datetime.now ()) ~tx_id:0
+      ~stated_at:(Datetime.now ()) ~tx_id:(UUID.v7_monotonic ())
   in
 
   let make_age _entity =
     Fact.make ~source ~entity ~attribute:age_attr ~value:(Fact.Int 30)
-      ~stated_at:(Datetime.now ()) ~tx_id:0
+      ~stated_at:(Datetime.now ()) ~tx_id:(UUID.v7_monotonic ())
   in
 
   let facts = Fact.for_entity entity [ make_name; make_age ] in

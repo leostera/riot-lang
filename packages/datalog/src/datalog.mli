@@ -1,23 +1,39 @@
 open Std
 
-(** {1 Datalog - High-Performance Datalog Engine}
+(** {1 Datalog - Query-Only Datalog Engine}
     
-    A Datalog engine for OCaml inspired by Datafrog, Crepe, and DataScript.
+    Phase 0: Query-Only Datalog Core
+    
+    A thin, streaming query layer over storage backends (like Poneglyph).
     
     {2 Quick Start}
     
     {[
       open Datalog
       
-      let u = create () in
-      let u = add_fact u "edge(1, 2)" |> Result.unwrap in
-      let u = add_fact u "edge(2, 3)" |> Result.unwrap in
-      let u = add_rule u "path(X,Y) :- edge(X,Y)" |> Result.unwrap in
-      let u = add_rule u "path(X,Z) :- edge(X,Y), path(Y,Z)" |> Result.unwrap in
+      (* Create universe with Poneglyph storage at snapshot *)
+      module U = Universe.Make(PoneglyphStorage)
+      let storage = Poneglyph.open_db "db" in
       
-      match query u "path(X, Y)" with
-      | Ok results -> (* Process bindings *)
-      | Error e -> eprintln "Query failed: %s" e
+      (* Single-goal query *)
+      let pattern = Ast.atom ~predicate:"language" 
+        ~args:[Var "F"; Const (String "ocaml")] in
+      
+      module Eval = Evaluator.Make(U) in
+      let results = Eval.query universe pattern in
+      
+      (* Stream results - first in <100ms! *)
+      Iter.MutIterator.iter (fun sub ->
+        println (Substitution.to_string sub)
+      ) results
+      
+      (* Multi-goal query *)
+      let clauses = [
+        Ast.Atom (Ast.atom ~predicate:"language" ~args:[Var "F"; Const (String "ocaml")]);
+        Ast.Atom (Ast.atom ~predicate:"size" ~args:[Var "F"; Var "S"]);
+      ] in
+      let results = Eval.multi_query universe clauses in
+      (* Streaming join - no materialization! *)
     ]}
 *)
 
@@ -39,16 +55,13 @@ module Value = Value
 (** Concrete values: integers, strings, URIs *)
 
 module Relation = Relation
-(** Sorted tuple storage *)
+(** Lazy iterator-based relations *)
 
 module Storage = Storage
 (** Pluggable storage interface *)
 
-module InmemoryStorage = Inmemory_storage
-(** Default in-memory storage backend *)
-
 module Universe = Universe
-(** Datalog knowledge base (facts + rules + storage) *)
+(** Datalog snapshot view over storage *)
 
 module Substitution = Substitution
 (** Variable-to-value bindings *)
@@ -57,24 +70,10 @@ module Unify = Unify
 (** Pattern matching and unification *)
 
 module Join = Join
-(** Efficient relation joins *)
+(** Join support for multi-goal queries *)
 
 module Variable = Variable
-(** Semi-naive evaluation support *)
+(** Variable tracking *)
 
 module Evaluator = Evaluator
-(** Fixed-point rule evaluation *)
-
-(** {2 Main Types} 
-
-    Note: Evaluation engine complete! 🎉
-*)
-
-(** {2 Status}
-    
-    - ✅ Parser complete (150 tests passing)
-    - 🔨 AST types complete (Week 1, Day 1-2)
-    - 🔨 Relation storage complete (Week 1, Day 3-4)
-    - ⏳ Universe and evaluation engine (Week 1-2)
-    - ⏳ Full query API (Week 3)
-*)
+(** Query-only evaluation (no rules) *)

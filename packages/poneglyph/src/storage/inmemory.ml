@@ -111,13 +111,54 @@ let get store ~entity ~attr =
 
 let get_all_facts store ~entity =
   match HashMap.get store.facts_by_entity entity with
-  | None -> []
-  | Some facts -> List.rev facts
+  | None -> 
+      (* Empty iterator *)
+      let module EmptyIter = struct
+        type state = unit
+        type item = Fact.t
+        let next () = None
+        let size () = 0
+        let clone () = ()
+      end in
+      Iter.MutIterator.make (module EmptyIter) ()
+  | Some facts ->
+      (* Convert list to iterator *)
+      let module ListIter = struct
+        type state = { mutable remaining : Fact.t list }
+        type item = Fact.t
+        let next state = match state.remaining with
+          | [] -> None
+          | x :: xs -> state.remaining <- xs; Some x
+        let size state = List.length state.remaining
+        let clone state = { remaining = state.remaining }
+      end in
+      Iter.MutIterator.make (module ListIter) { remaining = List.rev facts }
 
 let get_current_facts store ~entity =
   match HashMap.get store.facts_by_entity entity with
-  | None -> []
-  | Some facts -> List.filter (fun f -> not f.Fact.retracted) facts |> List.rev
+  | None ->
+      (* Empty iterator *)
+      let module EmptyIter = struct
+        type state = unit
+        type item = Fact.t
+        let next () = None
+        let size () = 0
+        let clone () = ()
+      end in
+      Iter.MutIterator.make (module EmptyIter) ()
+  | Some facts ->
+      (* Filter and convert to iterator *)
+      let filtered = List.filter (fun f -> not f.Fact.retracted) facts |> List.rev in
+      let module ListIter = struct
+        type state = { mutable remaining : Fact.t list }
+        type item = Fact.t
+        let next state = match state.remaining with
+          | [] -> None
+          | x :: xs -> state.remaining <- xs; Some x
+        let size state = List.length state.remaining
+        let clone state = { remaining = state.remaining }
+      end in
+      Iter.MutIterator.make (module ListIter) { remaining = filtered }
 
 let exists store entity =
   match HashMap.get store.facts_by_entity entity with
@@ -134,7 +175,7 @@ let list_schemas store =
   let schema_kind = Uri.of_string "@kind:schema" in
   let instance_of_attr = Uri.of_string "@field:instance_of" in
 
-  HashMap.fold
+  let schemas = HashMap.fold
     (fun entity facts acc ->
       let is_schema =
         List.exists
@@ -147,7 +188,19 @@ let list_schemas store =
           facts
       in
       if is_schema then entity :: acc else acc)
-    store.facts_by_entity []
+    store.facts_by_entity [] in
+  
+  (* Convert to iterator *)
+  let module ListIter = struct
+    type state = { mutable remaining : Uri.t list }
+    type item = Uri.t
+    let next state = match state.remaining with
+      | [] -> None
+      | x :: xs -> state.remaining <- xs; Some x
+    let size state = List.length state.remaining
+    let clone state = { remaining = state.remaining }
+  end in
+  Iter.MutIterator.make (module ListIter) { remaining = schemas }
 
 let with_facts store facts =
   let _ = state store facts in
@@ -162,19 +215,51 @@ let get_all_current_facts store =
         all := fact :: !all
     ) facts
   ) store.facts_by_entity;
-  !all
+  
+  (* Convert to iterator *)
+  let module ListIter = struct
+    type state = { mutable remaining : Fact.t list }
+    type item = Fact.t
+    let next state = match state.remaining with
+      | [] -> None
+      | x :: xs -> state.remaining <- xs; Some x
+    let size state = List.length state.remaining
+    let clone state = { remaining = state.remaining }
+  end in
+  Iter.MutIterator.make (module ListIter) { remaining = !all }
 
 let find_entities_by_attr_value store ~attr ~value =
   let key = (attr, value) in
   match HashMap.get store.reverse_index key with
   | Some entities -> 
       (* Filter to only entities that still have this non-retracted fact *)
-      List.filter (fun entity ->
+      let filtered = List.filter (fun entity ->
         match get store ~entity ~attr with
         | Some v -> Fact.value_equal v value
         | None -> false
-      ) entities
-  | None -> []
+      ) entities in
+      
+      (* Convert to iterator *)
+      let module ListIter = struct
+        type state = { mutable remaining : Uri.t list }
+        type item = Uri.t
+        let next state = match state.remaining with
+          | [] -> None
+          | x :: xs -> state.remaining <- xs; Some x
+        let size state = List.length state.remaining
+        let clone state = { remaining = state.remaining }
+      end in
+      Iter.MutIterator.make (module ListIter) { remaining = filtered }
+  | None ->
+      (* Empty iterator *)
+      let module EmptyIter = struct
+        type state = unit
+        type item = Uri.t
+        let next () = None
+        let size () = 0
+        let clone () = ()
+      end in
+      Iter.MutIterator.make (module EmptyIter) ()
 
 let entity_count store = store.entity_count
 let fact_count store = store.fact_count

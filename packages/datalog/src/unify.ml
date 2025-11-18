@@ -93,6 +93,69 @@ let match_atoms atom facts =
   let tuples = Relation.to_list facts in
   List.rev (collect_matches [] tuples)
 
+(* Match atom against multiple tuples - iterator version for streaming *)
+let match_atoms_iter atom facts =
+  let open Iter in
+  let module MatchIter = struct
+    type state = { 
+      mutable remaining: Storage.fact_tuple list;
+      atom: Ast.atom;
+    }
+    type item = Substitution.t
+    
+    let rec next state =
+      match state.remaining with
+      | [] -> None
+      | tuple :: rest ->
+          state.remaining <- rest;
+          let sub = Substitution.empty () in
+          (match match_atom sub state.atom tuple with
+          | Some sub' -> Some sub'
+          | None -> next state)  (* Skip non-matching tuple, try next *)
+    
+    let size state = List.length state.remaining
+    
+    let clone state = { remaining = state.remaining; atom = state.atom }
+  end in
+  
+  MutIterator.make (module MatchIter) {
+    remaining = Relation.to_list facts;
+    atom;
+  }
+
+(* Match atom against streaming tuples - pure streaming, NO materialization!
+   
+   This is the streaming version for query execution.
+   Unlike match_atoms_iter, this takes a MutIterator and never materializes.
+*)
+let match_tuples_iter atom (tuples : Storage.fact_tuple Iter.MutIterator.t) =
+  let module MatchIter = struct
+    type state = {
+      tuples : Storage.fact_tuple Iter.MutIterator.t;
+      atom : Ast.atom;
+    }
+    
+    type item = Substitution.t
+    
+    let rec next state =
+      match Iter.MutIterator.next state.tuples with
+      | None -> None
+      | Some tuple ->
+          let sub = Substitution.empty () in
+          match match_atom sub state.atom tuple with
+          | Some sub' -> Some sub'
+          | None -> next state  (* Skip non-matching tuple, try next *)
+    
+    let size _state = 0  (* Unknown size for streaming *)
+    
+    let clone state = {
+      tuples = Iter.MutIterator.clone state.tuples;
+      atom = state.atom;
+    }
+  end in
+  
+  Iter.MutIterator.make (module MatchIter) { tuples; atom }
+
 (* Ground a term to a value *)
 let ground sub term =
   let term' = Substitution.apply_to_term sub term in

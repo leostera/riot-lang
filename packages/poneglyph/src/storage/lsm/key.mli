@@ -79,3 +79,21 @@ val encode_fact : fact_key -> bytes
 
 val decode_fact : bytes -> fact_key
 (** Decode 41 bytes to FACT key *)
+
+(** {2 URI Hashing} *)
+
+val uri_to_id : Model.Uri.t -> int64
+(** Convert a URI to a stable int64 ID using SHA-256.
+    
+    Uses frozen URI normalization rules to ensure the same URI
+    always produces the same ID across all database restarts.
+    
+    Example:
+    {[
+      let entity_uri = Uri.of_string "person:alice" in
+      let entity_id = uri_to_id entity_uri in
+      (* entity_id is stable forever *)
+    ]}
+    
+    WARNING: Never change the normalization rules! 
+    Changing them would corrupt the entire database. *)

@@ -26,7 +26,7 @@ type eavt_key = {
 }
 
 let encode_eavt k =
-  let buf = Bytes.create key_size in
+  let buf = Bytes.make key_size '\x00' in
   write_i64_be buf 0 k.entity_id;
   write_i64_be buf 8 k.attr_id;
   write_u8 buf 16 (Encoding.value_kind_to_byte k.value_kind);
@@ -57,7 +57,7 @@ type avet_key = {
 }
 
 let encode_avet k =
-  let buf = Bytes.create key_size in
+  let buf = Bytes.make key_size '\x00' in
   write_i64_be buf 0 k.attr_id;
   write_u8 buf 8 (Encoding.value_kind_to_byte k.value_kind);
   write_i64_be buf 9 k.value_repr;
@@ -87,13 +87,13 @@ type source_key = {
 }
 
 let encode_source k =
-  let buf = Bytes.create key_size in
+  let buf = Bytes.make key_size '\x00' in
   write_i64_be buf 0 k.source_id;
   write_i64_be buf 8 k.entity_id;
   write_i64_be buf 16 k.attr_id;
   write_i64_be buf 24 k.tx_id;
   write_i64_be buf 32 k.fact_id;
-  (* Bytes 40 is padding (already 0) *)
+  (* Byte 40 is padding (zero-initialized) *)
   buf
 
 let decode_source buf =
@@ -110,11 +110,60 @@ let decode_source buf =
 type fact_key = { fact_id : int64; tx_id : int64 }
 
 let encode_fact k =
-  let buf = Bytes.create key_size in
+  let buf = Bytes.make key_size '\x00' in
   write_i64_be buf 0 k.fact_id;
   write_i64_be buf 8 k.tx_id;
-  (* Bytes 16-40 are padding (already 0) *)
+  (* Bytes 16-40 are padding (zero-initialized) *)
   buf
 
 let decode_fact buf =
   { fact_id = read_i64_be buf 0; tx_id = read_i64_be buf 8 }
+
+(** {2 URI Hashing} *)
+
+(** URI Normalization - FROZEN RULES
+    
+    WARNING: These rules can NEVER change! Changing them corrupts the database.
+    See: poneglyph/docs/URI_NORMALIZATION.md *)
+let normalize_uri uri_str =
+  (* 1. Lowercase scheme and host *)
+  let with_lowercase_scheme =
+    match String.index_opt uri_str ':' with
+    | None -> uri_str
+    | Some idx ->
+        let scheme = String.sub uri_str 0 idx in
+        let rest = String.sub uri_str idx (String.length uri_str - idx) in
+        String.lowercase_ascii scheme ^ rest
+  in
+  
+  (* 2. Remove fragment (after #) *)
+  let without_fragment =
+    match String.index_opt with_lowercase_scheme '#' with
+    | None -> with_lowercase_scheme
+    | Some idx -> String.sub with_lowercase_scheme 0 idx
+  in
+  
+  (* 3. Normalize trailing slash *)
+  let normalized =
+    if String.length without_fragment > 1 && 
+       String.ends_with ~suffix:"/" without_fragment then
+      String.sub without_fragment 0 (String.length without_fragment - 1)
+    else
+      without_fragment
+  in
+  
+  normalized
+
+(** Convert a URI to a stable int64 ID using SHA-256.
+    
+    CRITICAL: Uses frozen URI normalization rules to ensure stability!
+    The URI already contains its precomputed SHA-256 hash (32 bytes).
+    We extract the first 8 bytes as an int64 for index keys.
+    
+    This ensures:
+    - Same URI -> Same ID (always)
+    - Different URIs -> Different IDs (high probability, 2^64 space)
+    - Ordering is stable across restarts *)
+let uri_to_id uri =
+  (* Extract first 8 bytes of SHA-256 hash as int64 *)
+  Bytes.get_int64_be uri.Model.Uri.sha256 0

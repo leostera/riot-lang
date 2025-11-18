@@ -19,21 +19,23 @@ let make_test_path dir name = dir ^ "/" ^ name ^ ".sst"
 
 (* Helper to create an SSTable with test data *)
 let create_test_sstable path entries =
-  let builder = Sstable.create_builder ~path in
-  let rec add_all builder entries =
-    match entries with
-    | [] -> Ok builder
-    | (key, value) :: rest -> (
-        match Sstable.add builder ~key ~value with
-        | Error err -> Error err
-        | Ok new_builder -> add_all new_builder rest)
-  in
-  match add_all builder entries with
+  match Sstable.create_builder ~path with
   | Error err -> Error err
-  | Ok final_builder -> (
-      match Sstable.finalize final_builder with
+  | Ok builder ->
+      let rec add_all builder entries =
+        match entries with
+        | [] -> Ok builder
+        | (key, value) :: rest -> (
+            match Sstable.add builder ~key ~value with
+            | Error err -> Error err
+            | Ok new_builder -> add_all new_builder rest)
+      in
+      match add_all builder entries with
       | Error err -> Error err
-      | Ok _ -> Ok ())
+      | Ok final_builder -> (
+          match Sstable.finalize final_builder with
+          | Error err -> Error err
+          | Ok _ -> Ok ())
 
 (* Helper to read all entries from an SSTable *)
 let read_sstable path =

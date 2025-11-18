@@ -207,9 +207,12 @@ let test_value_encoding_all_types () =
   List.iter
     (fun v ->
       let kind, repr = Encoding.encode_value v in
-      let _decoded = Encoding.decode_value kind repr in
-      (* Note: String decoding is lossy (hash), so we just check it doesn't crash *)
-      ())
+      (* String decode will panic - that's expected, skip it *)
+      match kind with
+      | Encoding.VK_String -> ()
+      | _ ->
+          let _decoded = Encoding.decode_value kind repr in
+          ())
     values;
   Ok ()
 
@@ -221,7 +224,7 @@ let test_value_repr_to_int64 () =
       (Encoding.VBool true, 1L);
       (Encoding.VBool false, 0L);
       (Encoding.VFloat 12345L, 12345L);
-      (Encoding.VUri 99, 99L);
+      (Encoding.VUri 99L, 99L);
       (Encoding.VDatetime 1000000L, 1000000L);
     ]
   in
@@ -342,7 +345,7 @@ let test_avet_key_roundtrip () =
   let key : Key.avet_key =
     {
       attr_id = 5L;
-      value_kind = Encoding.VK_String;
+      value_kind = Encoding.VK_Int;
       value_repr = 12345L;
       entity_id = 7L;
       tx_id = 200L;
@@ -397,7 +400,49 @@ let test_fact_key_roundtrip () =
     Error "FACT key roundtrip failed"
   else Ok ()
 
-(** Test 15: All keys are same size *)
+(** Test 15: String hash encoding *)
+let test_string_hash_encoding () =
+  let value = Fact.String "hello world" in
+  let kind, repr = Encoding.encode_value value in
+  
+  match (kind, repr) with
+  | Encoding.VK_String, Encoding.VString id when id != 0L ->
+      Ok ()
+  | Encoding.VK_String, _ ->
+      Error "String hash should be non-zero"
+  | _ ->
+      Error "String should encode to VK_String"
+
+(** Test 16: String hash is deterministic *)
+let test_string_hash_deterministic () =
+  let s = "test string" in
+  let hash1 = Encoding.hash_string s in
+  let hash2 = Encoding.hash_string s in
+  
+  if hash1 != hash2 then
+    Error "String hash should be deterministic"
+  else
+    Ok ()
+
+(** Test 17: Different strings get different hashes *)
+let test_string_hash_different_strings () =
+  let hash1 = Encoding.hash_string "hello" in
+  let hash2 = Encoding.hash_string "world" in
+  
+  if hash1 = hash2 then
+    Error "Different strings should get different hashes"
+  else
+    Ok ()
+
+(** Test 18: Empty string hashes *)
+let test_empty_string_hash () =
+  let hash = Encoding.hash_string "" in
+  if hash = 0L then
+    Error "Empty string should hash to non-zero"
+  else
+    Ok ()
+
+(** Test 19: All keys are same size *)
 let test_all_keys_same_size () =
   let eavt : bytes =
     Key.encode_eavt
@@ -456,6 +501,10 @@ let tests =
       case "AVET key round-trip" test_avet_key_roundtrip;
       case "SOURCE key round-trip" test_source_key_roundtrip;
       case "FACT key round-trip" test_fact_key_roundtrip;
+      case "String hash encoding" test_string_hash_encoding;
+      case "String hash deterministic" test_string_hash_deterministic;
+      case "String hash different strings" test_string_hash_different_strings;
+      case "Empty string hash" test_empty_string_hash;
       case "All keys same size" test_all_keys_same_size;
     ]
 
