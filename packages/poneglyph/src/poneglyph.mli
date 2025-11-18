@@ -330,22 +330,28 @@ val stats : t -> (string * int) list
 
     Phase 0: Query-Only Datalog
     
-    Datalog integration is available via the CLI command:
+    Execute Datalog queries programmatically or via CLI.
+**)
+
+val execute_query : t -> query:string -> (Datalog.Substitution.t Iter.MutIterator.t, string) result
+(** Execute a Datalog query and return streaming results.
+    
+    Supports both single-goal and multi-goal queries:
     
     {[
-      poneglyph query <database> '<query>'
+      (* Single goal *)
+      match execute_query graph ~query:"'codedb:package'(M, \"std\")" with
+      | Ok results -> 
+          results |> Iter.MutIterator.for_each ~fn:(fun subst ->
+            println (Data.Json.to_string (Datalog.Substitution.to_json subst))
+          )
+      | Error e -> println ("Query error: " ^ e)
       
-      # Single goal query
-      poneglyph query .codedb.pone 'language(F, "ocaml")'
-      
-      # Multi-goal query (streaming join)
-      poneglyph query .codedb.pone 'language(F, "ocaml"), formatted(F, "true")'
+      (* Multi-goal join *)
+      execute_query graph 
+        ~query:"'ocaml:canonical_name'(M, \"Std__List\"), 'codedb:provided_by'(M, F)"
     ]}
     
-    The CLI streams results with low latency and supports both single-goal
-    and multi-goal queries. Multi-goal queries perform streaming joins using
-    the first atom as the driver.
-    
-    Programmatic API functions have been removed in Phase 0 to simplify
-    the implementation. Use the CLI command for all query operations.
+    @param query Datalog query string (single or multi-goal)
+    @return Iterator of variable substitutions or error
 *)

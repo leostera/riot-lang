@@ -26,12 +26,12 @@ end) = struct
   
   (* Multi-goal query - streaming join!
      
-     Strategy: Take first atom as "driver", stream through its results,
-     filter by checking if remaining atoms have matching facts.
+     Strategy: Start with first atom, then join with remaining atoms.
+     Each join extends the substitution with new variable bindings.
      
-     No materialization - pure streaming!
+     Pure streaming - no materialization except for relation iteration!
   *)
-  let multi_query universe atoms =
+  let rec multi_query universe atoms =
     match atoms with
     | [] -> Iter.MutIterator.empty ()
     | first_atom :: rest_atoms ->
@@ -42,31 +42,52 @@ end) = struct
           | Ast.Builtin _ -> panic "Multi-query cannot start with builtin (not supported in Phase 0)"
         in
         
-        (* Stream through first atom results *)
+        (* Get results from first atom *)
         let first_results = query universe first in
         
-        (* Filter by remaining atoms - streaming! *)
-        Iter.MutIterator.filter first_results ~fn:(fun sub ->
-          (* Check if all remaining atoms have matches *)
-          List.for_all (fun clause ->
-            match clause with
-            | Ast.Atom atom ->
-                (* Apply substitution to atom *)
-                let instantiated = Substitution.apply_to_atom sub atom in
-                let pattern = atom_to_pattern instantiated in
-                
-                (* Check if facts exist - peek, don't materialize! *)
-                let facts = U.get_facts_matching universe 
-                  ~predicate:atom.predicate ~pattern in
-                not (Relation.is_empty facts)
-            
-            | Ast.Negated _ ->
-                (* Negation not supported in Phase 0 - use retraction in storage instead *)
-                panic "Negation not supported in Phase 0 queries (use retraction at storage layer)"
-            
-            | Ast.Builtin _ ->
-                (* Builtins not supported in Phase 0 - filter in application code instead *)
-                panic "Builtins not supported in Phase 0 queries (filter in application code)"
-          ) rest_atoms
+        (* Join with remaining atoms - extends substitution *)
+        Iter.MutIterator.flat_map first_results ~fn:(fun sub ->
+          join_remaining universe sub rest_atoms
         )
+  
+  (* Helper: Join substitution with remaining atoms
+     
+     For each remaining atom:
+     1. Apply current substitution to instantiate bound variables
+     2. Get matching facts from storage
+     3. For each fact, unify with atom to extend substitution
+     4. Recursively join with remaining atoms
+  *)
+  and join_remaining universe sub atoms =
+    match atoms with
+    | [] -> 
+        (* No more atoms - return current substitution *)
+        Iter.MutIterator.singleton sub
+    
+    | Ast.Atom atom :: rest ->
+        (* Apply current substitution to atom *)
+        let instantiated = Substitution.apply_to_atom sub atom in
+        let pattern = atom_to_pattern instantiated in
+        
+        (* Get matching facts from storage *)
+        let facts = U.get_facts_matching universe 
+          ~predicate:atom.predicate ~pattern in
+        
+        (* For each matching fact, extend substitution and continue *)
+        Iter.MutIterator.flat_map facts ~fn:(fun tuple ->
+          (* Unify tuple with atom to extend substitution *)
+          match Unify.match_atom sub atom tuple with
+          | None -> Iter.MutIterator.empty ()  (* Unification failed *)
+          | Some extended_sub ->
+              (* Recursively join with remaining atoms *)
+              join_remaining universe extended_sub rest
+        )
+    
+    | Ast.Negated _ :: _ ->
+        (* Negation not supported in Phase 0 - use retraction in storage instead *)
+        panic "Negation not supported in Phase 0 queries (use retraction at storage layer)"
+    
+    | Ast.Builtin _ :: _ ->
+        (* Builtins not supported in Phase 0 - filter in application code instead *)
+        panic "Builtins not supported in Phase 0 queries (filter in application code)"
 end

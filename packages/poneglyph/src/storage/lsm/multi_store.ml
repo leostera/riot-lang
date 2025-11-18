@@ -379,30 +379,8 @@ let state store facts =
     ()
   ) facts;
   
-  Log.info ("[URI-EXTRACT] Found " ^ string_of_int (Cell.get uri_value_count) ^ " URI-valued facts");
-  
-  (* DEBUG: Log extraction stats *)
-  let uri_map_size = HashMap.len uri_map in
-  Log.info ("[URI-EXTRACT] Batch: " ^ string_of_int (List.length facts) ^ 
-             " facts → " ^ string_of_int uri_map_size ^ " unique URIs extracted");
-  
-  (* DEBUG: Log first few URI values *)
-  let uri_value_sample = cell [] in
-  List.iter (fun fact ->
-    match fact.Fact.value with
-    | Fact.Uri uri when List.length (Cell.get uri_value_sample) < 3 ->
-        let hex = Data.Base16.encode_bytes uri.Uri.sha256 in
-        Cell.set uri_value_sample ((hex, uri.Uri.uri) :: Cell.get uri_value_sample)
-    | _ -> ()
-  ) facts;
-  List.iter (fun (hex, uri_str) ->
-    Log.info ("[URI-VALUE-SAMPLE] " ^ hex ^ " -> " ^ uri_str)
-  ) (List.rev (Cell.get uri_value_sample));
-  
   (* Build URI entries: SHA-256 hash (32 bytes) -> URI string *)
-  Log.info ("[URI-EXTRACT] HashMap size before to_list: " ^ string_of_int (HashMap.len uri_map));
   let uri_list = HashMap.to_list uri_map in
-  Log.info ("[URI-EXTRACT] List size after to_list: " ^ string_of_int (List.length uri_list));
   
   let uri_entries = List.map (fun (_hex, uri) ->
     let key = Bytes.make 41 '\x00' in  (* 41-byte key: 32 bytes hash + 9 padding *)
@@ -410,29 +388,6 @@ let state store facts =
     let value = Bytes.of_string uri.Uri.uri in
     (key, value)
   ) uri_list in
-  
-  (* DEBUG: Log built entries and sample *)
-  Log.info ("[URI-EXTRACT] Built " ^ string_of_int (List.length uri_entries) ^ " uri_entries for storage");
-  (if List.length uri_entries > 0 then
-    let sample = List.take 3 uri_entries in
-    List.iter (fun (key, value) ->
-      let sha256_bytes = Bytes.sub key 0 32 in
-      let sha256_hex = Data.Base16.encode_bytes sha256_bytes in
-      let uri_str = Bytes.to_string value in
-      Log.info ("[URI-SAMPLE] sha256=" ^ sha256_hex ^ " -> " ^ uri_str);
-      (* Check for high-byte URIs *)
-      if String.starts_with ~prefix:"FE" sha256_hex || String.starts_with ~prefix:"FF" sha256_hex then
-        Log.info ("[URI-HIGH-BYTE] Found high-byte URI: " ^ sha256_hex ^ " -> " ^ uri_str)
-    ) sample
-  );
-  
-  (* DEBUG: Check if FE8D5D99 is in the batch *)
-  List.iter (fun (key, value) ->
-    let sha256_bytes = Bytes.sub key 0 32 in
-    let sha256_hex = Data.Base16.encode_bytes sha256_bytes in
-    if String.starts_with ~prefix:"FE8D5D99" sha256_hex then
-      Log.info ("[URI-TARGET] *** Found target URI FE8D5D99: " ^ Bytes.to_string value)
-  ) uri_entries;
   
   (* Build WAL batch with URIS tag *)
   let uri_wal_entries = List.map (fun (key, value) ->
@@ -526,37 +481,16 @@ let state store facts =
         | Wal.TaggedDelete _ -> ()  (* Not used in state operation *)
       ) batch;
       
-      (* DEBUG: Log routed entries *)
-      let uris_list = Cell.get uris_entries in
-      let eavt_list = Cell.get eavt_entries in
-      Log.info ("[URI-ROUTING] Writing " ^ string_of_int (List.length uris_list) ^ 
-                 " URIS entries to engine");
-      Log.info ("[EAVT-ROUTING] About to write " ^ string_of_int (List.length eavt_list) ^ " EAVT entries");
-      
-      (* DEBUG: Check EAVT keys for Symbol52 *)
-      List.iter (fun (key, _) ->
-        if Bytes.length key >= 8 then begin
-          let entity_id = Bytes.get_int64_be key 0 in
-          let entity_bytes = Bytes.create 8 in
-          Bytes.set_int64_be entity_bytes 0 entity_id;
-          let hex = Data.Base16.encode_bytes entity_bytes in
-          if String.starts_with ~prefix:"FF7A176E" hex then
-            Log.info ("[EAVT-WRITE] Symbol52 EAVT key being written! entity_id=" ^ hex)
-        end
-      ) eavt_list;
-      
       (* Batch write to each index - MUCH faster than individual puts! *)
       (* Write URIS first so they're available for reads *)
+      let uris_list = Cell.get uris_entries in
       (match Engine.put_batch store.uris_engine ~entries:(List.rev uris_list) with
       | Error e -> Error ("URIS batch write failed: " ^ e)
       | Ok () -> (
-        Log.info ("[URI-ROUTING] Successfully wrote " ^ string_of_int (List.length uris_list) ^ " URIS entries");
         let eavt_list_rev = List.rev (Cell.get eavt_entries) in
-        Log.info ("[EAVT-ROUTING] Actually writing " ^ string_of_int (List.length eavt_list_rev) ^ " EAVT entries to engine");
         match Engine.put_batch store.eavt_engine ~entries:eavt_list_rev with
           | Error e -> Error ("EAVT batch write failed: " ^ e)
           | Ok () -> (
-              Log.info ("[EAVT-ROUTING] Successfully wrote EAVT entries");
               match Engine.put_batch store.avet_engine ~entries:(List.rev (Cell.get avet_entries)) with
               | Error e -> Error ("AVET batch write failed: " ^ e)
               | Ok () -> (
@@ -949,8 +883,6 @@ let get_facts_by_attribute store ~attribute =
       Vector.push latest_facts fact
   ) fact_map;
   
-  Log.info ("LSM get_facts_by_attribute: returning " ^ string_of_int (Vector.len latest_facts) ^ " facts");
-  
   Vector.to_mut_iter latest_facts
 
 (** Get all current (non-retracted) facts - expensive operation! *)
@@ -976,10 +908,6 @@ let get_all_current_facts store =
     (* DEBUG: Check for Symbol52 *)
     let entity_id_bytes = Bytes.create 8 in
     Bytes.set_int64_be entity_id_bytes 0 decoded.entity_id;
-    let entity_id_hex = Data.Base16.encode_bytes entity_id_bytes in
-    if String.starts_with ~prefix:"FF7A176E" entity_id_hex then
-      Log.info ("[SCAN-DEBUG] Found Symbol52 in EAVT scan! entity_id=" ^ entity_id_hex);
-    
     (* Build FACT key *)
     let fact_key = Key.encode_fact {
       fact_id = decoded.fact_id;
@@ -1039,10 +967,6 @@ let get_all_current_facts store =
       Vector.push latest_facts fact
   ) fact_map;
   
-  Log.info ("[SCAN-DEBUG] Total EAVT entries scanned: " ^ string_of_int (Cell.get scan_count));
-  Log.info ("[SCAN-DEBUG] Total facts in dedup map: " ^ string_of_int (HashMap.len fact_map));
-  Log.debug "LSM get_all_current_facts: returning facts";
-  
   Vector.to_mut_iter latest_facts
 
 (** Compact one tier across all indices *)
@@ -1076,7 +1000,7 @@ let get_facts_by_source store ~source =
   let prefix = Bytes.create 8 in
   Bytes.set_int64_be prefix 0 source_id;
   
-  Log.info ("LSM get_facts_by_source: scanning SOURCE for source=" ^ Uri.to_string source);
+
   
   (* Scan SOURCE index with source prefix *)
   let source_results = Engine.scan_prefix store.source_engine ~prefix in
@@ -1146,8 +1070,6 @@ let get_facts_by_source store ~source =
     if not fact.Fact.retracted then
       Vector.push latest_facts fact
   ) fact_map;
-  
-  Log.info ("LSM get_facts_by_source: returning " ^ string_of_int (Vector.len latest_facts) ^ " facts");
   
   Vector.to_mut_iter latest_facts
 
@@ -1220,7 +1142,7 @@ let get_stats store =
 let cleanup_orphaned_files store =
   let open Std.IO in
   
-  Log.info "Cleaning up orphaned SST files...";
+
   
   let index_names = [("eavt", store.eavt_engine); ("avet", store.avet_engine); 
                      ("fact", store.fact_engine); ("source", store.source_engine)] in
@@ -1255,7 +1177,7 @@ let cleanup_orphaned_files store =
               let parts = String.split_on_char '/' path in
               List.fold_left (fun _ part -> part) "" parts) in
         
-        Log.info ("  " ^ name ^ ": found " ^ string_of_int (List.length sst_files) ^ " SST files, " ^
+        Log.debug ("  " ^ name ^ ": found " ^ string_of_int (List.length sst_files) ^ " SST files, " ^
                   string_of_int (List.length tracked_files) ^ " tracked in manifest");
         
         (* Delete orphaned files *)
@@ -1267,11 +1189,11 @@ let cleanup_orphaned_files store =
               let filepath = index_dir ^ "/" ^ filename in
               match Fs.remove_file (Path.v filepath) with
               | Ok () ->
-                  Log.info ("    Deleted orphaned file: " ^ filename);
+                  Log.debug ("    Deleted orphaned file: " ^ filename);
                   total_deleted := !total_deleted + 1
               | Error e ->
                   Log.warn ("    Failed to delete " ^ filename ^ ": " ^ IO.error_message e)
         ) sst_files
   ) index_names;
   
-  Log.info ("Deleted " ^ string_of_int !total_deleted ^ " orphaned SST files")
+  Log.debug ("Deleted " ^ string_of_int !total_deleted ^ " orphaned SST files")

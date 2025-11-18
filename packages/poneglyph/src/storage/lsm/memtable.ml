@@ -32,21 +32,7 @@ let is_full t = size_bytes t >= t.max_size
 
 let get t ~key =
   if Bytes.length key != 41 then None
-  else begin
-    let key_hex = Data.Base16.encode_bytes key in
-    if String.starts_with ~prefix:"FE8D5D99" key_hex then begin
-      Log.info ("[MEMTABLE-GET] Looking for target URI: " ^ key_hex);
-      Log.info ("[MEMTABLE-GET] About to call SkipList.find...");
-    end;
-    
-    let result = SkipList.find t.skiplist ~key in
-    
-    if String.starts_with ~prefix:"FE8D5D99" key_hex then begin
-      Log.info ("[MEMTABLE-GET] SkipList.find returned");
-      Log.info ("[MEMTABLE-GET] Result: " ^ (match result with | Some _ -> "FOUND" | None -> "NOT FOUND"))
-    end;
-    result
-  end
+  else SkipList.find t.skiplist ~key
 
 let add t ~key ~value =
   if Bytes.length key != 41 then
@@ -70,41 +56,24 @@ let add t ~key ~value =
     and no explicit sorting is needed. 17% faster than Vector on large datasets.
 *)
 let add_batch t ~entries =
-  (* DEBUG: Log batch *)
-  Log.info ("[MEMTABLE-ADD] add_batch called with " ^ string_of_int (List.length entries) ^ " entries");
-  List.iteri (fun i (key, _value) ->
-    if i < 3 then
-      Log.info ("[MEMTABLE-ADD] Entry " ^ string_of_int i ^ " key: " ^ Data.Base16.encode_bytes key)
-  ) entries;
-  
   (* Calculate total size needed *)
   let batch_size = List.fold_left (fun acc (_key, value) ->
     acc + 41 + Bytes.length value
   ) 0 entries in
   
-  Log.info ("[MEMTABLE-ADD] Batch size: " ^ string_of_int batch_size ^ ", current size: " ^ string_of_int (size_bytes t) ^ ", max: " ^ string_of_int t.max_size);
-  
-  if size_bytes t + batch_size > t.max_size then begin
-    Log.error ("[MEMTABLE-ADD] Batch would exceed max_size!");
+  if size_bytes t + batch_size > t.max_size then
     Error "Batch would exceed max_size"
-  end else (
+  else (
     (* Insert all entries - SkipList maintains sorted order automatically *)
     let result = ref (Ok ()) in
-    let insert_count = ref 0 in
     List.iter (fun (key, value) ->
       match !result with
       | Error _ -> ()  (* Already failed, skip rest *)
       | Ok () ->
           match SkipList.insert t.skiplist ~key ~value with
-          | Error e -> 
-              Log.error ("[MEMTABLE-ADD] SkipList.insert failed: " ^ e);
-              result := Error e
-          | Ok is_new -> 
-              insert_count := !insert_count + 1;
-              if not is_new then
-                Log.info ("[MEMTABLE-ADD] Updated existing entry")
+          | Error e -> result := Error e
+          | Ok _ -> ()
     ) entries;
-    Log.info ("[MEMTABLE-ADD] Successfully inserted " ^ string_of_int !insert_count ^ " entries");
     !result
   )
 
@@ -139,15 +108,8 @@ let to_mut_iter t =
   Vector.to_mut_iter vec
 
 let scan_prefix t ~prefix =
-  (* DEBUG: Log scan *)
-  let all_entries = to_mut_iter t |> Iter.MutIterator.to_list in
-  Log.info ("[MEMTABLE-SCAN] Total entries in memtable: " ^ string_of_int (List.length all_entries));
-  if List.length all_entries > 0 && Bytes.length prefix > 0 then begin
-    Log.info ("[MEMTABLE-SCAN] Sample key: " ^ Data.Base16.encode_bytes (fst (List.hd all_entries)));
-    Log.info ("[MEMTABLE-SCAN] Looking for prefix: " ^ Data.Base16.encode_bytes prefix)
-  end;
-  
   (* Lazy filter: only yield entries with matching prefix *)
+  let all_entries = to_mut_iter t |> Iter.MutIterator.to_list in
   let all_iter = Vector.to_mut_iter (Vector.of_list all_entries) in
   all_iter
   |> Iter.MutIterator.filter ~fn:(fun (key, _value) -> has_prefix ~prefix key)

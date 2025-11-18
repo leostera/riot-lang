@@ -48,13 +48,11 @@ module PoneglyphStorage : Datalog.Storage.STORAGE with type t = Graph_store.t = 
   let get_facts_iter (graph : t) ~(predicate : string) : Datalog.Storage.fact_tuple Iter.MutIterator.t =
     let attr = Uri.of_string predicate in
     
-    Log.info ("Datalog_storage.get_facts_iter: predicate=" ^ predicate ^ " (streaming)");
-    
     (* Stream directly from Graph_store - NO to_list! *)
     Graph_store.get_facts_by_attribute graph ~attribute:attr
     |> Iter.MutIterator.map ~fn:(fun fact -> 
         [
-          Datalog.Value.String (Uri.to_string fact.Fact.entity);
+          Datalog.Value.Uri (Uri.to_string fact.Fact.entity);  (* Use Uri type for entities *)
           fact_value_to_datalog_value fact.Fact.value
         ])
   
@@ -87,7 +85,7 @@ module PoneglyphStorage : Datalog.Storage.STORAGE with type t = Graph_store.t = 
     
     Iter.MutIterator.for_each facts ~fn:(fun fact ->
       f [
-        Datalog.Value.String (Uri.to_string fact.Fact.entity);  (* Store as String *)
+        Datalog.Value.Uri (Uri.to_string fact.Fact.entity);  (* Use Uri type for entities *)
         fact_value_to_datalog_value fact.Fact.value
       ])
   
@@ -101,43 +99,27 @@ module PoneglyphStorage : Datalog.Storage.STORAGE with type t = Graph_store.t = 
   let get_facts_matching (graph : t) ~(predicate : string) ~(pattern : Datalog.Value.t option list) : Datalog.Storage.fact_tuple Datalog.Relation.t =
     let attr = Uri.of_string predicate in
     
-    Log.info ("Datalog_storage.get_facts_matching: predicate=" ^ predicate);
-    Log.info ("Datalog_storage.get_facts_matching: pattern length=" ^ string_of_int (List.length pattern));
-    List.iteri (fun i opt ->
-      match opt with
-      | Some (Datalog.Value.Uri s) -> Log.info ("  pattern[" ^ string_of_int i ^ "] = Uri(" ^ s ^ ")")
-      | Some (Datalog.Value.String s) -> Log.info ("  pattern[" ^ string_of_int i ^ "] = String(" ^ s ^ ")")
-      | Some (Datalog.Value.Int n) -> Log.info ("  pattern[" ^ string_of_int i ^ "] = Int(" ^ string_of_int n ^ ")")
-      | None -> Log.info ("  pattern[" ^ string_of_int i ^ "] = None (wildcard)")
-    ) pattern;
-    
     match pattern with
     | [Some (Datalog.Value.String entity_str); None] | [Some (Datalog.Value.Uri entity_str); None] ->
         (* Optimized: Query specific entity using Poneglyph's index *)
         (* Accept both String and Uri for backwards compatibility *)
-        Log.info ("Datalog_storage.get_facts_matching: Using optimized path for entity=" ^ entity_str);
         let entity = Uri.of_string entity_str in
         (match Graph_store.get graph ~entity ~attr with
         | Some value ->
             (* Found a matching fact *)
-            Log.info ("Datalog_storage.get_facts_matching: Found fact for entity");
             Datalog.Relation.singleton [
-              Datalog.Value.String entity_str;  (* Return as String *)
+              Datalog.Value.Uri entity_str;  (* Use Uri type for entities *)
               fact_value_to_datalog_value value
             ]
         | None ->
             (* No fact found *)
-            Log.warn ("Datalog_storage.get_facts_matching: No fact found for entity=" ^ entity_str ^ " attr=" ^ predicate);
             Datalog.Relation.empty ())
     
     | [None; Some target_value] ->
         (* Optimized: Use AVET index for value queries - FULLY STREAMING! *)
-        Log.info ("Datalog_storage.get_facts_matching: Using AVET index for value query");
-        
         (match datalog_value_to_fact_value target_value with
         | None ->
             (* Value type not supported for index lookup - fall back to scan *)
-            Log.warn ("Datalog_storage.get_facts_matching: Cannot convert value, falling back to scan");
             let tuples = get_facts_iter graph ~predicate
               |> Iter.MutIterator.filter ~fn:(fun tuple ->
                   match tuple with
@@ -150,7 +132,7 @@ module PoneglyphStorage : Datalog.Storage.STORAGE with type t = Graph_store.t = 
             
             (* Map to tuples - preserves sorted order *)
             let tuple_iter = Iter.MutIterator.map entity_iter ~fn:(fun entity ->
-              [Datalog.Value.String (Uri.to_string entity); target_value]
+              [Datalog.Value.Uri (Uri.to_string entity); target_value]  (* Use Uri type for entities *)
             ) in
             
             (* Create relation from sorted iterator - NO MATERIALIZATION! *)
@@ -158,7 +140,6 @@ module PoneglyphStorage : Datalog.Storage.STORAGE with type t = Graph_store.t = 
     
     | _ ->
         (* General case: fetch all facts and filter *)
-        Log.info ("Datalog_storage.get_facts_matching: Using general case filter");
         let tuples = get_facts_iter graph ~predicate
           |> Iter.MutIterator.filter ~fn:(Datalog.Storage.matches_pattern pattern) in
         Datalog.Relation.of_iter tuples

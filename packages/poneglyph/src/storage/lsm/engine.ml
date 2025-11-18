@@ -44,8 +44,7 @@ module ManifestVersion = struct
         match Fs.exists (Path.v path) with
         | Ok true ->
             (match Fs.remove_file (Path.v path) with
-            | Ok () -> 
-                Log.info ("Deleted obsolete SSTable: " ^ path)
+            | Ok () -> ()
             | Error e ->
                 Log.warn ("Failed to delete obsolete SSTable " ^ path ^ ": " ^ IO.error_message e))
         | Ok false ->
@@ -309,39 +308,21 @@ and put_batch engine ~entries =
           else Ok ()))
 
 and get engine ~key =
-  (* DEBUG: Log FE lookups *)
-  let key_hex = Data.Base16.encode_bytes key in
-  if String.starts_with ~prefix:"FE8D5D99" key_hex then
-    Log.info ("[ENGINE-GET] Looking for FE8D5D99 in engine");
-  
   (* 1. Check memtable first (most recent) *)
   match Memtable.get engine.memtable ~key with
   | Some value -> 
       (* Check if it's a tombstone (empty bytes = deleted) *)
       if Bytes.length value = 0 then None else Some value
   | None -> (
-      if String.starts_with ~prefix:"FE8D5D99" key_hex then
-        Log.info ("[ENGINE-GET] FE8D5D99 not in memtable, searching " ^ string_of_int (List.length (Cell.get engine.sstables)) ^ " SSTables");
-      
       (* 2. Check SSTables in order (already sorted newest first) *)
       let rec search_sstables tables =
         match tables with
-        | [] ->
-            if String.starts_with ~prefix:"FE8D5D99" key_hex then
-              Log.info ("[ENGINE-GET] FE8D5D99 not found in any SSTable");
-            None
+        | [] -> None
         | path :: rest -> (
-            if String.starts_with ~prefix:"FE8D5D99" key_hex then
-              Log.info ("[ENGINE-GET] Searching SSTable: " ^ path);
-            
             match Sstable.open_read ~path with
             | Error _ -> search_sstables rest
             | Ok reader ->
                 let result = Sstable.get reader ~key in
-                
-                if String.starts_with ~prefix:"FE8D5D99" key_hex then
-                  Log.info ("[ENGINE-GET] SSTable result: " ^ (match result with | Some _ -> "FOUND" | None -> "NOT FOUND"));
-                
                 Sstable.close reader;
                 (match result with 
                  | Some value ->
@@ -679,10 +660,6 @@ let stats engine =
     compaction without file-not-found errors.
 *)
 let scan_prefix engine ~prefix =
-  (* DEBUG: Log scan details *)
-  let prefix_hex = if Bytes.length prefix > 0 then Data.Base16.encode_bytes prefix else "(empty)" in
-  Log.info ("[ENGINE-SCAN] scan_prefix in " ^ engine.config.data_dir ^ " with prefix_len=" ^ string_of_int (Bytes.length prefix) ^ " prefix=" ^ prefix_hex);
-  
   (* SNAPSHOT ISOLATION: Acquire current manifest version *)
   let snapshot = Cell.get engine.current_version in
   ManifestVersion.acquire snapshot;
@@ -691,8 +668,6 @@ let scan_prefix engine ~prefix =
   let snapshot_sstables = List.map (fun (meta : Manifest.sstable_metadata) ->
     engine.config.data_dir ^ "/" ^ meta.path
   ) snapshot.tables in
-  
-  Log.info ("[ENGINE-SCAN] Snapshot has " ^ string_of_int (List.length snapshot_sstables) ^ " SSTables");
   
   (* Shared state for deduplication across all sources *)
   let seen = HashMap.create () in
@@ -709,11 +684,6 @@ let scan_prefix engine ~prefix =
   
   (* 1. Get lazy memtable iterator *)
   let memtable_iter = Memtable.scan_prefix engine.memtable ~prefix in
-  
-  (* DEBUG: Count memtable entries before filtering *)
-  let memtable_items = Iter.MutIterator.to_list memtable_iter in
-  Log.info ("[ENGINE-SCAN] Memtable scan_prefix returned " ^ string_of_int (List.length memtable_items) ^ " items");
-  let memtable_iter = Vector.to_mut_iter (Vector.of_list memtable_items) in
   
   (* Filter memtable results: mark as seen, filter tombstones *)
   let memtable_filtered = Iter.MutIterator.filter_map memtable_iter ~fn:(fun (key, value) ->

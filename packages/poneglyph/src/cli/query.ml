@@ -15,8 +15,6 @@ let execute_query db ~query =
   (* Phase 0: Query-only Datalog - no rules *)
   let query_str = query in
   
-  Log.info ("CLI.Query: Executing query: " ^ query_str);
-  
   (* 1. Create Datalog storage from Graph_store *)
   let storage = db in
   
@@ -40,13 +38,11 @@ let execute_query db ~query =
            (match query_ast with
             | Datalog.Ast.Single atom ->
                 (* Single-goal query - pure streaming! *)
-                Log.info "CLI.Query: Streaming single-goal query results...";
                 let module Eval = Datalog.Evaluator.Make(U) in
                 let results = Eval.query universe atom in
                 Ok results
            | Datalog.Ast.Multi clauses ->
                 (* Multi-goal query - streaming join! *)
-                Log.info "CLI.Query: Streaming multi-goal query results...";
                 let module Eval = Datalog.Evaluator.Make(U) in
                 let results = Eval.multi_query universe clauses in
                 Ok results)))
