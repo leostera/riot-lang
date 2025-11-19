@@ -1,5 +1,0 @@
-[package]
-name = "lib-y"
-
-[lib]
-modules = ["Lib_y"]

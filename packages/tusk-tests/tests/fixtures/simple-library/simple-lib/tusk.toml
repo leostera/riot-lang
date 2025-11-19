@@ -1,6 +1,0 @@
-[package]
-name = "simple-library"
-version = "0.1.0"
-
-[library]
-path = "src"
