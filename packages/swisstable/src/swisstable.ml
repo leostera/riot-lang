@@ -220,12 +220,10 @@ module RawTable = struct
       bucket_mask;
     }
 
-  (* Find the bucket index for a key, or None if not found *)
-  let find table key =
+  (* Find the bucket index for a key with precomputed hash, or None if not found *)
+  let find_with_hash table key hash h2 =
     if table.len = 0 then None
     else
-      let hash = hash_native key in
-      let h2 = hash_h2 hash in
       let probe = ProbeSeq.start hash table.bucket_mask in
       let max_probes = (table.bucket_mask + 1) / Group.width + 1 in
       
@@ -261,10 +259,14 @@ module RawTable = struct
       in
       search 0
 
-  (* Find an empty slot for insertion, returns (index, needs_resize) *)
-  let find_insert_slot table key =
+  (* Find the bucket index for a key, or None if not found *)
+  let find table key =
     let hash = hash_native key in
     let h2 = hash_h2 hash in
+    find_with_hash table key hash h2
+
+  (* Find an empty slot for insertion with precomputed hash, returns (index, needs_resize) *)
+  let find_insert_slot_with_hash table hash =
     let probe = ProbeSeq.start hash table.bucket_mask in
     let max_probes = (table.bucket_mask + 1) / Group.width + 1 in
     
@@ -287,16 +289,22 @@ module RawTable = struct
     in
     search 0
 
-  (* Resize table to new capacity *)
+  (* Find an empty slot for insertion, returns (index, needs_resize) *)
+  let find_insert_slot table key =
+    let hash = hash_native key in
+    find_insert_slot_with_hash table hash
+
+  (* Resize table to new capacity - mutates in place *)
   let resize table new_capacity =
     let new_buckets = capacity_to_buckets new_capacity in
     let new_bucket_mask = new_buckets - 1 in
-    let new_table = {
-      buckets = Array.make new_buckets None;
-      ctrl = Array.make (new_buckets + Group.width) Tag.empty;
-      len = 0;
-      bucket_mask = new_bucket_mask;
-    } in
+    let old_buckets = table.buckets in
+    
+    (* Replace table contents *)
+    table.buckets <- Array.make new_buckets None;
+    table.ctrl <- Array.make (new_buckets + Group.width) Tag.empty;
+    table.len <- 0;
+    table.bucket_mask <- new_bucket_mask;
     
     (* Rehash all entries *)
     Array.iteri (fun idx bucket ->
@@ -305,59 +313,65 @@ module RawTable = struct
       | Some (k, v) ->
           let hash = hash_native k in
           let h2 = hash_h2 hash in
-          let (new_idx, _) = find_insert_slot new_table k in
-          new_table.buckets.(new_idx) <- Some (k, v);
-          set_ctrl new_table new_idx (Tag.full h2);
-          new_table.len <- new_table.len + 1
-    ) table.buckets;
-    
-    new_table
+          let (new_idx, _) = find_insert_slot table k in
+          table.buckets.(new_idx) <- Some (k, v);
+          set_ctrl table new_idx (Tag.full h2);
+          table.len <- table.len + 1
+    ) old_buckets
 
-  (* Insert a key-value pair, returns (new_table, previous_value) *)
+  (* Insert a key-value pair, returns previous_value - mutates table *)
   let insert table key value =
     (* Check if we need to resize *)
     let capacity = bucket_mask_to_capacity table.bucket_mask in
     let needs_resize = table.len >= capacity in
     
     (* Resize if needed BEFORE looking up the key *)
-    let table = if needs_resize then resize table ((table.bucket_mask + 1) * 2) else table in
+    if needs_resize then resize table ((table.bucket_mask + 1) * 2);
+    
+    (* Compute hash once and reuse *)
+    let hash = hash_native key in
+    let h2 = hash_h2 hash in
     
     (* Try to find existing key *)
-    match find table key with
+    match find_with_hash table key hash h2 with
     | Some idx ->
         let previous = table.buckets.(idx) in
         table.buckets.(idx) <- Some (key, value);
-        (table, Option.map snd previous)
+        Option.map snd previous
       | None ->
-        (* Insert new entry *)
-        let hash = hash_native key in
-        let h2 = hash_h2 hash in
-        let (idx, _) = find_insert_slot table key in
+        (* Insert new entry - reuse hash *)
+        let (idx, _) = find_insert_slot_with_hash table hash in
         table.buckets.(idx) <- Some (key, value);
         set_ctrl table idx (Tag.full h2);
         table.len <- table.len + 1;
-        (table, None)
+        None
 
-  (* Remove a key, returns (new_table, removed_value) *)
+  (* Remove a key, returns removed_value - mutates table *)
   let remove table key =
-    match find table key with
-    | None -> (table, None)
+    let hash = hash_native key in
+    let h2 = hash_h2 hash in
+    match find_with_hash table key hash h2 with
+    | None -> None
     | Some idx ->
         let previous = table.buckets.(idx) in
         table.buckets.(idx) <- None;
         set_ctrl table idx Tag.deleted;
         table.len <- table.len - 1;
-        (table, Option.map snd previous)
+        Option.map snd previous
 
   (* Get value for key *)
   let get table key =
-    match find table key with
+    let hash = hash_native key in
+    let h2 = hash_h2 hash in
+    match find_with_hash table key hash h2 with
     | None -> None
     | Some idx -> Option.map snd table.buckets.(idx)
 
   (* Check if key exists *)
   let contains_key table key =
-    Option.is_some (find table key)
+    let hash = hash_native key in
+    let h2 = hash_h2 hash in
+    Option.is_some (find_with_hash table key hash h2)
 
   (* Clear all entries *)
   let clear table =
@@ -391,81 +405,73 @@ end
 
 (* === Public API === *)
 
-module Cell = Kernel.Sync.Cell
-
-type ('k, 'v) t = ('k, 'v) RawTable.t Cell.t
+type ('k, 'v) t = ('k, 'v) RawTable.t
 
 (* Creation *)
 
 let create () =
-  Cell.create (RawTable.create 0)
+  RawTable.create 0
 
 let with_capacity capacity =
-  Cell.create (RawTable.create capacity)
+  RawTable.create capacity
 
 let of_list pairs =
   let map = create () in
   List.iter (fun (k, v) -> 
-    let table = Cell.get map in
-    Cell.set map (fst (RawTable.insert table k v))
+    let _ = RawTable.insert map k v in
+    ()
   ) pairs;
   map
 
 (* Basic operations *)
 
 let insert map key value =
-  let table = Cell.get map in
-  let (new_table, previous) = RawTable.insert table key value in
-  Cell.set map new_table;
-  previous
+  RawTable.insert map key value
 
 let get map key =
-  RawTable.get (Cell.get map) key
+  RawTable.get map key
 
 let remove map key =
-  let table = Cell.get map in
-  let (new_table, previous) = RawTable.remove table key in
-  Cell.set map new_table;
-  previous
+  RawTable.remove map key
 
 let contains_key map key =
-  RawTable.contains_key (Cell.get map) key
+  RawTable.contains_key map key
 
 let len map = 
-  let {RawTable.len; _} = Cell.get map in
-  len
+  map.RawTable.len
 
 let is_empty map = 
-  let {RawTable.len; _} = Cell.get map in
-  len = 0
+  map.RawTable.len = 0
 
 let clear map =
-  RawTable.clear (Cell.get map)
+  RawTable.clear map
 
 (* Iteration *)
+
+module Cell = Kernel.Sync.Cell
 
 let keys map =
   let result = Cell.create [] in
   RawTable.iter (fun k _ -> 
     Cell.set result (k :: Cell.get result)
-  ) (Cell.get map);
+  ) map;
   Cell.get result
 
 let values map =
   let result = Cell.create [] in
   RawTable.iter (fun _ v -> 
     Cell.set result (v :: Cell.get result)
-  ) (Cell.get map);
+  ) map;
   Cell.get result
 
 let iter f map =
-  RawTable.iter f (Cell.get map)
+  RawTable.iter f map
 
 let fold f map acc =
-  RawTable.fold f (Cell.get map) acc
+  RawTable.fold f map acc
 
 let to_list map =
-  RawTable.to_list (Cell.get map)
+  RawTable.to_list map
 
 (* Entry API *)
 
