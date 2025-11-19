@@ -914,6 +914,19 @@ module ArgParser = Arg_parser
     - Developer utilities
     - System administration scripts *)
 
+module Bench = Bench
+(** **When to use:** Microbenchmarking performance
+    
+    Use Bench for measuring and comparing performance of code.
+    Simple, low-level benchmarking framework with basic statistics.
+    
+    **Examples:**
+    - Comparing data structure performance
+    - Measuring algorithm speed
+    - Performance regression testing
+    
+    **See also:** {!Test} for unit testing *)
+
 module Bool = Bool
 (** **When to use:** Boolean operations
     

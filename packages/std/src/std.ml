@@ -4,6 +4,7 @@ module Dynlink = Kernel.Dynlink
 module Agent = Agent
 module Application = Application
 module ArgParser = Arg_parser
+module Bench = Bench
 module Bool = Bool
 module Char = Char
 module Collections = Collections
