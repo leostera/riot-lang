@@ -23,6 +23,18 @@ external hash_native : 'a -> int = "swisstable_hash"
 external hash_h1 : int -> int -> int = "swisstable_h1"
 external hash_h2 : int -> int = "swisstable_h2"
 
+(* === Native C SIMD Group Functions === *)
+
+external group_load_simd : bytes -> int -> int64 = "swisstable_group_load"
+external group_match_tag_simd : bytes -> int -> int -> int = "swisstable_group_match_tag"
+external group_match_empty_simd : bytes -> int -> int = "swisstable_group_match_empty"
+external group_match_empty_or_deleted_simd : bytes -> int -> int = "swisstable_group_match_empty_or_deleted"
+
+(* === Native C High-Level Search Functions === *)
+
+external find_insert_slot_simd : bytes -> int -> int -> int = "swisstable_find_insert_slot"
+external find_candidates_simd : bytes -> int -> int -> int -> int list = "swisstable_find_candidates"
+
 (* === Internal Modules === *)
 
 (** Control byte (tag) module - manages the 1-byte metadata per bucket *)
@@ -93,20 +105,8 @@ module Group = struct
   (* Load 8 control bytes from bytes starting at index *)
   [@inline always]
   let load ctrl idx =
-    let b0 = I64.of_int (Kernel.Char.code (Bytes.unsafe_get ctrl idx)) in
-    let b1 = I64.of_int (Kernel.Char.code (Bytes.unsafe_get ctrl (idx + 1))) in
-    let b2 = I64.of_int (Kernel.Char.code (Bytes.unsafe_get ctrl (idx + 2))) in
-    let b3 = I64.of_int (Kernel.Char.code (Bytes.unsafe_get ctrl (idx + 3))) in
-    let b4 = I64.of_int (Kernel.Char.code (Bytes.unsafe_get ctrl (idx + 4))) in
-    let b5 = I64.of_int (Kernel.Char.code (Bytes.unsafe_get ctrl (idx + 5))) in
-    let b6 = I64.of_int (Kernel.Char.code (Bytes.unsafe_get ctrl (idx + 6))) in
-    let b7 = I64.of_int (Kernel.Char.code (Bytes.unsafe_get ctrl (idx + 7))) in
-    I64.logor
-      (I64.logor
-         (I64.logor (I64.logor b0 (I64.shift_left b1 8))
-            (I64.logor (I64.shift_left b2 16) (I64.shift_left b3 24)))
-         (I64.logor (I64.shift_left b4 32) (I64.shift_left b5 40)))
-      (I64.logor (I64.shift_left b6 48) (I64.shift_left b7 56))
+    (* Use SIMD-optimized C function *)
+    group_load_simd ctrl idx
 
   (* Convert bitmask (int64) to int for BitMask module 
      The result from match operations has the high bit (0x80) set for matching bytes.
@@ -125,8 +125,13 @@ module Group = struct
     (extract_bit 7 lsl 7)
 
   (* Match a specific tag in the group - returns bitmask of matches
-     Uses bit-parallel algorithm from https://graphics.stanford.edu/~seander/bithacks.html *)
+     Uses SIMD-optimized C function for parallel byte comparison *)
   [@inline always]
+  let match_tag_impl ctrl idx tag =
+    (* Use SIMD-optimized C function - directly returns bitmask *)
+    group_match_tag_simd ctrl idx tag
+  
+  (* Keep this version for backwards compatibility if needed *)
   let match_tag group tag =
     let tag_repeated = repeat tag in
     let cmp = I64.logxor group tag_repeated in
@@ -141,6 +146,11 @@ module Group = struct
 
   (* Match EMPTY tags (0xFF) in the group *)
   [@inline always]
+  let match_empty_impl ctrl idx =
+    (* Use SIMD-optimized C function *)
+    group_match_empty_simd ctrl idx
+  
+  (* Keep this version for backwards compatibility *)
   let match_empty group =
     let deleted_marker = repeat Tag.deleted in
     (* If top two bits are both 1, it's EMPTY (0xFF) *)
@@ -152,6 +162,11 @@ module Group = struct
 
   (* Match EMPTY or DELETED tags (high bit set) *)
   [@inline always]
+  let match_empty_or_deleted_impl ctrl idx =
+    (* Use SIMD-optimized C function - this is the critical fast path! *)
+    group_match_empty_or_deleted_simd ctrl idx
+  
+  (* Keep this version for backwards compatibility *)
   let match_empty_or_deleted group =
     let deleted_marker = repeat Tag.deleted in
     let result = I64.logand group deleted_marker in
@@ -233,40 +248,19 @@ module RawTable = struct
   let find_with_hash table key hash h2 =
     if table.len = 0 then None
     else
-      let probe = ProbeSeq.start hash table.bucket_mask in
-      let max_probes = (table.bucket_mask + 1) / Group.width + 1 in
+      (* Use C function to get candidate bucket indices - entire SIMD search in C! *)
+      let candidates = find_candidates_simd table.ctrl hash h2 table.bucket_mask in
       
-      let rec search probes_done =
-        (* Safety check: prevent infinite loops *)
-        if probes_done >= max_probes then None
-        else
-          let group = Group.load table.ctrl probe.pos in
-          let matches = Group.match_tag group h2 in
-          
-          (* Check each matching position *)
-          let rec check_matches mask =
-            match BitMask.lowest_set_bit_index mask with
-            | None ->
-                (* No match in this group, check for EMPTY *)
-                let empties = Group.match_empty group in
-                if not (BitMask.is_empty empties) then None  (* Found EMPTY, key doesn't exist *)
-                else begin
-                  (* No EMPTY, continue probing *)
-                  ProbeSeq.move_next probe table.bucket_mask;
-                  search (probes_done + 1)
-                end
-            | Some offset ->
-                let idx = (probe.pos + offset) land table.bucket_mask in
-                match table.buckets.(idx) with
-                | Some (k, _) when k = key -> Some idx
-                | _ ->
-                    (* False positive or different key, keep checking *)
-                    let rest = BitMask.remove_lowest_bit mask in
-                    check_matches rest
-          in
-          check_matches matches
+      (* Check each candidate for matching key *)
+      let rec check_candidates cands =
+        match cands with
+        | [] -> None
+        | idx :: rest ->
+            match table.buckets.(idx) with
+            | Some (k, _) when k = key -> Some idx
+            | _ -> check_candidates rest
       in
-      search 0
+      check_candidates candidates
 
   (* Find the bucket index for a key, or None if not found *)
   let find table key =
@@ -276,27 +270,13 @@ module RawTable = struct
 
   (* Find an empty slot for insertion with precomputed hash, returns (index, needs_resize) *)
   let find_insert_slot_with_hash table hash =
-    let probe = ProbeSeq.start hash table.bucket_mask in
-    let max_probes = (table.bucket_mask + 1) / Group.width + 1 in
-    
-    let rec search probes_done =
-      (* Safety check: if we've probed too many times, table might be full *)
-      if probes_done >= max_probes then
-        (* This shouldn't happen if resize logic is correct, but prevent infinite loop *)
-        (0, true)  (* Force a resize *)
-      else
-        let group = Group.load table.ctrl probe.pos in
-        let empties = Group.match_empty_or_deleted group in
-        
-        match BitMask.lowest_set_bit_index empties with
-        | Some offset ->
-            let idx = (probe.pos + offset) land table.bucket_mask in
-            (idx, false)
-        | None ->
-            ProbeSeq.move_next probe table.bucket_mask;
-            search (probes_done + 1)
-    in
-    search 0
+    (* Use C function - entire search loop in C with SIMD, no FFI overhead! *)
+    let idx = find_insert_slot_simd table.ctrl hash table.bucket_mask in
+    if idx < 0 then
+      (* Table full - force resize *)
+      (0, true)
+    else
+      (idx, false)
 
   (* Find an empty slot for insertion, returns (index, needs_resize) *)
   let find_insert_slot table key =
