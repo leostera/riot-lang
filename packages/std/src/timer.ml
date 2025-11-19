@@ -11,3 +11,9 @@ let send_interval pid msg ~interval =
 let cancel = Miniriot.Timer.cancel
 
 let equal = Miniriot.Timer_id.equal
+
+let measure f =
+  let start = Time.Instant.now () in
+  let result = f () in
+  let duration = Time.Instant.elapsed start in
+  (result, duration)

@@ -15,3 +15,30 @@ val cancel : id -> unit
 
 val equal : id -> id -> bool
 (** Compare two timer IDs for equality *)
+
+val measure : (unit -> 'a) -> ('a * Time.Duration.t)
+(** [measure f] executes function [f] and returns both its result and the 
+    time elapsed during execution.
+    
+    ## Examples
+    
+    ```ocaml
+    let result, duration = Timer.measure (fun () ->
+      expensive_computation ()
+    ) in
+    
+    Log.info "Operation took %f seconds" 
+      (Time.Duration.to_secs_float duration)
+    ```
+    
+    ## Use Cases
+    
+    - Performance profiling
+    - Benchmarking operations
+    - Detecting slow code paths
+    - Logging execution times
+    
+    ## Note
+    
+    Uses monotonic clock for accuracy. Time includes any GC pauses that 
+    occur during execution. *)

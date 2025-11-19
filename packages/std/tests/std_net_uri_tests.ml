@@ -324,6 +324,79 @@ let test_reserved_sub_delims () =
   if List.for_all (fun x -> x) results then Ok ()
   else Error "Failed to decode sub-delims"
 
+(* ==================== Filename/Path Encoding Tests ==================== *)
+
+let test_percent_decode_filename_with_spaces () =
+  let decoded = Uri.percent_decode "Screenshot%202025-11-05%20at%2018.19.04.png" in
+  if decoded = "Screenshot 2025-11-05 at 18.19.04.png" then Ok ()
+  else Error ("Expected 'Screenshot 2025-11-05 at 18.19.04.png', got '" ^ decoded ^ "'")
+
+let test_percent_decode_path_with_spaces () =
+  let decoded = Uri.percent_decode "/browse/assets/Screenshot%202025-11-05%20at%2018.19.04.png" in
+  if decoded = "/browse/assets/Screenshot 2025-11-05 at 18.19.04.png" then Ok ()
+  else Error ("Expected path with spaces, got '" ^ decoded ^ "'")
+
+let test_percent_decode_relative_path_with_spaces () =
+  let decoded = Uri.percent_decode "assets/Screenshot%202025-11-05%20at%2018.19.04.png" in
+  if decoded = "assets/Screenshot 2025-11-05 at 18.19.04.png" then Ok ()
+  else Error ("Expected relative path with spaces, got '" ^ decoded ^ "'")
+
+let test_percent_decode_preserves_length () =
+  let input = "Screenshot%202025-11-05%20at%2018.19.04.png" in
+  let decoded = Uri.percent_decode input in
+  let expected_length = String.length "Screenshot 2025-11-05 at 18.19.04.png" in
+  if String.length decoded = expected_length then Ok ()
+  else Error (String.concat "" [
+    "Length mismatch: expected "; 
+    string_of_int expected_length; 
+    " but got "; 
+    string_of_int (String.length decoded);
+    " for '"; decoded; "'"
+  ])
+
+let test_percent_decode_multiple_spaces () =
+  let decoded = Uri.percent_decode "file%20with%20many%20spaces.txt" in
+  if decoded = "file with many spaces.txt" then Ok ()
+  else Error ("Expected 'file with many spaces.txt', got '" ^ decoded ^ "'")
+
+(* ==================== URI Parsing with Percent-Encoded Paths ==================== *)
+
+let test_uri_parse_path_with_percent_encoding () =
+  match Uri.of_string "/browse/assets/Screenshot%202025-11-05%20at%2018.19.04.png" with
+  | Ok uri ->
+      let path = Uri.path uri in
+      if path = "/browse/assets/Screenshot%202025-11-05%20at%2018.19.04.png" then Ok ()
+      else Error (String.concat "" ["Expected full path with %20, got '"; path; "'"])
+  | Error _ -> Error "Failed to parse URI with percent-encoded path"
+
+let test_uri_parse_path_preserves_encoding () =
+  match Uri.of_string "/path/with%20spaces/file%2Bname.txt" with
+  | Ok uri ->
+      let path = Uri.path uri in
+      let reconstructed = Uri.to_string uri in
+      if reconstructed = "/path/with%20spaces/file%2Bname.txt" then Ok ()
+      else Error (String.concat "" ["Path encoding not preserved, got '"; reconstructed; "'"])
+  | Error _ -> Error "Failed to parse path with percent encoding"
+
+let test_uri_parse_and_decode_path () =
+  (* Test the full workflow: parse URI -> get path -> decode *)
+  match Uri.of_string "/files/my%20document.pdf" with
+  | Ok uri ->
+      let encoded_path = Uri.path uri in
+      let decoded_path = Uri.percent_decode encoded_path in
+      if decoded_path = "/files/my document.pdf" then Ok ()
+      else Error (String.concat "" ["Expected decoded path with spaces, got '"; decoded_path; "'"])
+  | Error _ -> Error "Failed to parse URI"
+
+let test_uri_roundtrip_with_encoded_path () =
+  let original = "/api/users/John%20Doe/profile" in
+  match Uri.of_string original with
+  | Ok uri ->
+      let reconstructed = Uri.to_string uri in
+      if reconstructed = original then Ok ()
+      else Error (String.concat "" ["Roundtrip failed: '"; original; "' -> '"; reconstructed; "'"])
+  | Error _ -> Error "Failed to parse URI with encoded path"
+
 (* ==================== Integration Tests ==================== *)
 
 let test_uri_with_encoded_query () =
@@ -420,6 +493,17 @@ let tests =
       (* RFC 3986 *)
       case "reserved gen-delims" test_reserved_gen_delims;
       case "reserved sub-delims" test_reserved_sub_delims;
+      (* Filename/Path Encoding *)
+      case "percent_decode filename with spaces" test_percent_decode_filename_with_spaces;
+      case "percent_decode path with spaces" test_percent_decode_path_with_spaces;
+      case "percent_decode relative path with spaces" test_percent_decode_relative_path_with_spaces;
+      case "percent_decode preserves length" test_percent_decode_preserves_length;
+      case "percent_decode multiple spaces" test_percent_decode_multiple_spaces;
+      (* URI Parsing with Percent-Encoded Paths *)
+      case "uri parse path with percent encoding" test_uri_parse_path_with_percent_encoding;
+      case "uri parse path preserves encoding" test_uri_parse_path_preserves_encoding;
+      case "uri parse and decode path" test_uri_parse_and_decode_path;
+      case "uri roundtrip with encoded path" test_uri_roundtrip_with_encoded_path;
       (* Integration *)
       case "uri with encoded query" test_uri_with_encoded_query;
       case "full roundtrip" test_full_roundtrip;

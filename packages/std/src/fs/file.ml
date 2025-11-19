@@ -4,16 +4,20 @@ open Common
 
 type t = { fd : Kernel.Fd.t; mutable closed : bool }
 
+(* Re-export OpenFlags from Kernel.Fd *)
+module OpenFlags = Kernel.Fd.OpenFlags
+
 (* Helper to check if file is closed *)
 let ensure_open t =
   if t.closed then Error (IO.Unknown_error "File is closed") else Ok ()
 
 (* Opening files *)
 
-let open_with_flags path flags mode =
+let open_with_flags path flags ~mode =
   let path_str = Path.to_string path in
+  let mode_int = Permissions.to_mode mode in
   try
-    let fd = Kernel.Fd.open_file path_str flags mode in
+    let fd = Kernel.Fd.open_file path_str flags mode_int in
     Ok { fd; closed = false }
   with
   | e ->
@@ -28,7 +32,7 @@ let create path =
       Kernel.Fd.OpenFlags.Create;
       Kernel.Fd.OpenFlags.Truncate;
     ]
-    0o644
+    ~mode:Permissions.read_write
 
 let create_new path =
   open_with_flags path
@@ -37,26 +41,26 @@ let create_new path =
       Kernel.Fd.OpenFlags.Create;
       Kernel.Fd.OpenFlags.Exclusive;
     ]
-    0o644
+    ~mode:Permissions.read_write
 
-let open_read path = open_with_flags path [ Kernel.Fd.OpenFlags.ReadOnly ] 0o644
+let open_read path = open_with_flags path [ Kernel.Fd.OpenFlags.ReadOnly ] ~mode:Permissions.read_write
 
 let open_write path =
   open_with_flags path
     [ Kernel.Fd.OpenFlags.WriteOnly; Kernel.Fd.OpenFlags.Create ]
-    0o644
+    ~mode:Permissions.read_write
 
 let open_append path =
   open_with_flags path
     [
-      Kernel.Fd.OpenFlags.WriteOnly;
+      Kernel.Fd.OpenFlags.ReadWrite;
       Kernel.Fd.OpenFlags.Append;
       Kernel.Fd.OpenFlags.Create;
     ]
-    0o644
+    ~mode:Permissions.read_write
 
 let open_read_write path =
-  open_with_flags path [ Kernel.Fd.OpenFlags.ReadWrite ] 0o644
+  open_with_flags path [ Kernel.Fd.OpenFlags.ReadWrite ] ~mode:Permissions.read_write
 
 (* Reading - with async/Miniriot support *)
 

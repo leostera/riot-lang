@@ -33,7 +33,34 @@ open IO
 type t
 (** Opaque file handle for reading and writing files. *)
 
+(** File open flags for low-level control *)
+module OpenFlags : sig
+  type t =
+    | ReadOnly    (** Open for reading only *)
+    | WriteOnly   (** Open for writing only *)
+    | ReadWrite   (** Open for reading and writing *)
+    | Create      (** Create file if it doesn't exist *)
+    | Truncate    (** Truncate file to zero length *)
+    | Append      (** Append mode (writes go to end) *)
+    | Exclusive   (** Fail if file exists (with Create) *)
+end
+
 (** ## Opening Files *)
+
+val open_with_flags : Path.t -> OpenFlags.t list -> mode:Permissions.t -> (t, error) result
+(** Low-level: open file with custom flag combination.
+    
+    @param path Path to file
+    @param flags List of open flags (ReadOnly/WriteOnly/ReadWrite, Create, Append, etc.)
+    @param mode File permissions (e.g., Permissions.read_write)
+    
+    Example:
+    ```ocaml
+    (* Open for read+write+append, create if needed, no truncate *)
+    open_with_flags path 
+      OpenFlags.[ ReadWrite; Append; Create ]
+      ~mode:Permissions.read_write
+    ``` *)
 
 val create : Path.t -> (t, error) result
 (** Create or truncate file for writing (O_WRONLY | O_CREAT | O_TRUNC) *)
@@ -48,7 +75,10 @@ val open_write : Path.t -> (t, error) result
 (** Open file for writing, create if needed (O_WRONLY | O_CREAT) *)
 
 val open_append : Path.t -> (t, error) result
-(** Open file for appending (O_WRONLY | O_APPEND | O_CREAT) *)
+(** Open file for reading and appending (O_RDWR | O_APPEND | O_CREAT)
+    
+    Useful for append-only logs that also need replay capability.
+    All writes go to end of file, but file can also be read from start. *)
 
 val open_read_write : Path.t -> (t, error) result
 (** Open file for reading and writing (O_RDWR) *)
