@@ -10,11 +10,44 @@
 #define FNV_OFFSET_BASIS_64 14695981039346656037ULL
 #define FNV_PRIME_64 1099511628211ULL
 
+/* Fast path hash for integer keys
+ * OCaml integers are tagged: LSB=1 for immediate ints
+ * We can detect and hash them directly without polymorphic hashing */
+CAMLprim value swisstable_hash_int(value v) {
+  CAMLparam1(v);
+  /* For integers, just use the value directly with mixing */
+  intnat val_int = Long_val(v);
+  
+  /* Simple mixing for better distribution */
+  uint64_t h = (uint64_t)val_int;
+  h ^= h >> 33;
+  h *= 0xff51afd7ed558ccdULL;
+  h ^= h >> 33;
+  h *= 0xc4ceb9fe1a85ec53ULL;
+  h ^= h >> 33;
+  
+  CAMLreturn(Val_long(h & 0x7FFFFFFFFFFFFFFFLL));
+}
+
 /* Polymorphic hash function using OCaml's built-in hash
  * This ensures we get the same hash as Hashtbl for compatibility */
 CAMLprim value swisstable_hash(value v) {
   CAMLparam1(v);
-  /* Use OCaml's polymorphic hash function */
+  
+  /* Fast path for integers (check if tagged as immediate int) */
+  if (Is_long(v)) {
+    /* It's an immediate integer - use fast hash */
+    intnat val_int = Long_val(v);
+    uint64_t h = (uint64_t)val_int;
+    h ^= h >> 33;
+    h *= 0xff51afd7ed558ccdULL;
+    h ^= h >> 33;
+    h *= 0xc4ceb9fe1a85ec53ULL;
+    h ^= h >> 33;
+    CAMLreturn(Val_long(h & 0x7FFFFFFFFFFFFFFFLL));
+  }
+  
+  /* Use OCaml's polymorphic hash function for other types */
   intnat h = caml_hash_mix_intnat(0, v);
   /* Convert to positive int (OCaml ints are 63-bit on 64-bit platforms) */
   CAMLreturn(Val_long(h & 0x7FFFFFFFFFFFFFFFLL));

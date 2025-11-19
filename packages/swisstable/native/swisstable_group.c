@@ -367,6 +367,11 @@ CAMLprim value swisstable_find_insert_slot(value ctrl_bytes, value hash_val, val
   intnat stride = 0;
   
   for (intnat probes = 0; probes < max_probes; probes++) {
+    /* Prefetch next probe position (read-only, temporal locality) */
+    intnat next_stride = stride + GROUP_WIDTH;
+    intnat next_pos = (pos + next_stride + GROUP_WIDTH) & bucket_mask;
+    __builtin_prefetch(&ctrl[next_pos], 0, 3);
+    
     unsigned int empties = match_empty_or_deleted_fast(ctrl, pos);
     
     if (empties != 0) {
@@ -416,6 +421,11 @@ CAMLprim value swisstable_find_candidates(value ctrl_bytes, value hash_val, valu
   intnat stride = 0;
   
   for (intnat probes = 0; probes < max_probes; probes++) {
+    /* Prefetch next probe position (read-only, temporal locality) */
+    intnat next_stride = stride + GROUP_WIDTH;
+    intnat next_pos = (pos + next_stride + GROUP_WIDTH) & bucket_mask;
+    __builtin_prefetch(&ctrl[next_pos], 0, 3);
+    
     unsigned int matches = match_tag_fast(ctrl, pos, (uint8_t)h2);
     
     /* Check each match and add to result list */

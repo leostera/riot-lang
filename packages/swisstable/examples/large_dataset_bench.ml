@@ -1,0 +1,211 @@
+open Std
+open Std.Bench
+
+module HashMap = Kernel.Collections.HashMap
+module Cell = Kernel.Sync.Cell
+
+(* Benchmark configuration for very large datasets *)
+let large_config = { iterations = 10; warmup = 2 }
+let xlarge_config = { iterations = 3; warmup = 1 }  (* Reduced for 1M items *)
+
+(* ========================================================================
+ * 1M Item Benchmarks
+ * ======================================================================== *)
+
+(* HashMap: Insert 1M items *)
+let bench_hashmap_insert_1M () =
+  let map = HashMap.create () in
+  for i = 0 to 999999 do
+    HashMap.insert map i (i * 2)
+  done
+
+(* Swisstable: Insert 1M items *)
+let bench_swisstable_insert_1M () =
+  let map = Swisstable.with_capacity 1000000 in
+  for i = 0 to 999999 do
+    ignore (Swisstable.insert map i (i * 2))
+  done
+
+(* HashMap: Get from 1M items (10k lookups) *)
+let bench_hashmap_get_from_1M () =
+  let map = HashMap.create () in
+  for i = 0 to 999999 do
+    HashMap.insert map i (i * 2)
+  done;
+  for i = 0 to 9999 do
+    ignore (HashMap.get map (i * 100))
+  done
+
+(* Swisstable: Get from 1M items (10k lookups) *)
+let bench_swisstable_get_from_1M () =
+  let map = Swisstable.with_capacity 1000000 in
+  for i = 0 to 999999 do
+    ignore (Swisstable.insert map i (i * 2))
+  done;
+  for i = 0 to 9999 do
+    ignore (Swisstable.get map (i * 100))
+  done
+
+(* HashMap: Get missing keys from 1M items *)
+let bench_hashmap_get_missing_from_1M () =
+  let map = HashMap.create () in
+  for i = 0 to 999999 do
+    HashMap.insert map i (i * 2)
+  done;
+  for i = 1000000 to 1009999 do
+    ignore (HashMap.get map i)
+  done
+
+(* Swisstable: Get missing keys from 1M items *)
+let bench_swisstable_get_missing_from_1M () =
+  let map = Swisstable.with_capacity 1000000 in
+  for i = 0 to 999999 do
+    ignore (Swisstable.insert map i (i * 2))
+  done;
+  for i = 1000000 to 1009999 do
+    ignore (Swisstable.get map i)
+  done
+
+(* HashMap: Iterate over 1M items *)
+let bench_hashmap_iterate_1M () =
+  let map = HashMap.create () in
+  for i = 0 to 999999 do
+    HashMap.insert map i (i * 2)
+  done;
+  let sum = Cell.create 0 in
+  HashMap.iter (fun _k v -> Cell.set sum (Cell.get sum + v)) map
+
+(* Swisstable: Iterate over 1M items *)
+let bench_swisstable_iterate_1M () =
+  let map = Swisstable.with_capacity 1000000 in
+  for i = 0 to 999999 do
+    ignore (Swisstable.insert map i (i * 2))
+  done;
+  let sum = Cell.create 0 in
+  Swisstable.iter (fun _k v -> Cell.set sum (Cell.get sum + v)) map
+
+(* HashMap: Remove from 1M items (10k removals) *)
+let bench_hashmap_remove_from_1M () =
+  let map = HashMap.create () in
+  for i = 0 to 999999 do
+    HashMap.insert map i (i * 2)
+  done;
+  for i = 0 to 9999 do
+    HashMap.remove map (i * 100)
+  done
+
+(* Swisstable: Remove from 1M items (10k removals) *)
+let bench_swisstable_remove_from_1M () =
+  let map = Swisstable.with_capacity 1000000 in
+  for i = 0 to 999999 do
+    ignore (Swisstable.insert map i (i * 2))
+  done;
+  for i = 0 to 9999 do
+    ignore (Swisstable.remove map (i * 100))
+  done
+
+(* ========================================================================
+ * 500K Item Benchmarks (intermediate size)
+ * ======================================================================== *)
+
+(* HashMap: Insert 500k items *)
+let bench_hashmap_insert_500k () =
+  let map = HashMap.create () in
+  for i = 0 to 499999 do
+    HashMap.insert map i (i * 2)
+  done
+
+(* Swisstable: Insert 500k items *)
+let bench_swisstable_insert_500k () =
+  let map = Swisstable.with_capacity 500000 in
+  for i = 0 to 499999 do
+    ignore (Swisstable.insert map i (i * 2))
+  done
+
+(* HashMap: Get from 500k items *)
+let bench_hashmap_get_from_500k () =
+  let map = HashMap.create () in
+  for i = 0 to 499999 do
+    HashMap.insert map i (i * 2)
+  done;
+  for i = 0 to 9999 do
+    ignore (HashMap.get map (i * 50))
+  done
+
+(* Swisstable: Get from 500k items *)
+let bench_swisstable_get_from_500k () =
+  let map = Swisstable.with_capacity 500000 in
+  for i = 0 to 499999 do
+    ignore (Swisstable.insert map i (i * 2))
+  done;
+  for i = 0 to 9999 do
+    ignore (Swisstable.get map (i * 50))
+  done
+
+(* ========================================================================
+ * Main benchmark suite
+ * ======================================================================== *)
+
+let benchmarks =
+  Bench.[
+    (* 500K benchmarks *)
+    compare_with_config ~config:large_config
+      "insert 500k items"
+      [
+        make_case "HashMap" bench_hashmap_insert_500k;
+        make_case "Swisstable" bench_swisstable_insert_500k;
+      ];
+    compare_with_config ~config:large_config
+      "get from 500k items"
+      [
+        make_case "HashMap" bench_hashmap_get_from_500k;
+        make_case "Swisstable" bench_swisstable_get_from_500k;
+      ];
+    
+    (* 1M benchmarks *)
+    compare_with_config ~config:xlarge_config
+      "insert 1M items"
+      [
+        make_case "HashMap" bench_hashmap_insert_1M;
+        make_case "Swisstable" bench_swisstable_insert_1M;
+      ];
+    compare_with_config ~config:xlarge_config
+      "get from 1M items (10k lookups)"
+      [
+        make_case "HashMap" bench_hashmap_get_from_1M;
+        make_case "Swisstable" bench_swisstable_get_from_1M;
+      ];
+    compare_with_config ~config:xlarge_config
+      "get missing keys from 1M items"
+      [
+        make_case "HashMap" bench_hashmap_get_missing_from_1M;
+        make_case "Swisstable" bench_swisstable_get_missing_from_1M;
+      ];
+    compare_with_config ~config:xlarge_config
+      "iterate over 1M items"
+      [
+        make_case "HashMap" bench_hashmap_iterate_1M;
+        make_case "Swisstable" bench_swisstable_iterate_1M;
+      ];
+    compare_with_config ~config:xlarge_config
+      "remove from 1M items (10k removals)"
+      [
+        make_case "HashMap" bench_hashmap_remove_from_1M;
+        make_case "Swisstable" bench_swisstable_remove_from_1M;
+      ];
+  ]
+
+let () =
+  println "HashMap vs Swisstable - Large Dataset Performance\n";
+  Miniriot.run
+    ~main:(fun ~args ->
+      let config =
+        Bench.Runner.
+          {
+            reporter = (module Reporter.Default);
+            suite_info = { name = "HashMap vs Swisstable - Large Datasets" };
+          }
+      in
+      let _summary = Bench.Runner.run_benchmarks ~config benchmarks in
+      Ok ())
+    ~args:Env.args ()
