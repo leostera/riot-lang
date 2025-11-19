@@ -9,7 +9,7 @@ open Suri
     Test: curl http://localhost:4000 *)
 
 let app = [
-  (fun conn -> Conn.respond conn ~status:Ok ~body:"Hello from Suri!")
+  (fun ~conn ~next:_ -> Conn.respond conn ~status:Ok ~body:"Hello from Suri!")
 ]
 
 let () =

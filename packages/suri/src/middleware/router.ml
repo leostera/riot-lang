@@ -30,7 +30,7 @@ let websocket (type a s) path
   (* This creates a route that's meant to be used with a Handler.t-based server *)
   (* It won't work correctly with the middleware-only routing we currently have *)
   (* TODO: This needs to be integrated properly with the handler-based approach *)
-  get path (fun conn ->
+  get path (fun ~conn ~next:_ ->
     conn
     |> Conn.with_status Net.Http.Status.SwitchingProtocols
     |> Conn.send
@@ -90,14 +90,14 @@ let rec flatten_routes prefix routes =
 
 let middleware routes =
   let flat_routes = flatten_routes "" routes in
-  fun conn ->
+  fun ~conn ~next ->
     if Conn.sent conn || Conn.halted conn then conn
     else
       let meth = Conn.method_ conn in
       let path = normalize_path (Conn.path conn) in
 
       let rec try_routes = function
-        | [] -> conn
+        | [] -> next conn
         | (route_meth, route_path, handler) :: rest ->
             let method_matches = match route_meth with
               | SpecificMethod m -> m = meth
@@ -107,7 +107,7 @@ let middleware routes =
               match Matcher.match_path route_path path with
               | Some params ->
                   let conn = Conn.set_params params conn in
-                  handler conn
+                  handler ~conn ~next
               | None -> try_routes rest
             else try_routes rest
       in

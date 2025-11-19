@@ -1,0 +1,87 @@
+open Std
+
+type parser = Urlencoded | Json | Multipart
+
+type config = { parsers : parser list; max_body_size : int }
+
+let default_config () =
+  { parsers = [ Urlencoded; Json ]; max_body_size = 10 * 1024 * 1024 }
+
+(** Parse application/x-www-form-urlencoded body using Net.Uri.Query.parse *)
+let parse_urlencoded body = Net.Uri.Query.parse body
+
+(** Parse JSON body - convert JSON object to string pairs *)
+let parse_json body =
+  match Data.Json.of_string body with
+  | Ok (Data.Json.Object fields) ->
+      (* Convert JSON object to string pairs *)
+      List.filter_map
+        (fun (k, v) ->
+          match v with
+          | Data.Json.String s -> Some (k, s)
+          | Data.Json.Int i -> Some (k, string_of_int i)
+          | Data.Json.Float f -> Some (k, string_of_float f)
+          | Data.Json.Bool b -> Some (k, string_of_bool b)
+          | Data.Json.Null -> Some (k, "")
+          | _ -> None)
+        fields
+  | _ -> []
+
+(** Parse multipart/form-data - TODO: use Mime library *)
+let parse_multipart ~boundary:_ _body =
+  (* TODO: Implement proper multipart parsing with Mime library *)
+  (* For now, return empty list *)
+  []
+
+let handle config conn =
+  (* Get Content-Type header *)
+  match
+    Net.Http.Header.get (Conn.headers conn) "content-type"
+  with
+  | None -> conn
+  | Some content_type ->
+      let body = Conn.body conn in
+
+      (* Check body size limit *)
+      if String.length body > config.max_body_size then conn
+      else
+        (* Parse based on Content-Type *)
+        let body_params =
+          if
+            String.starts_with ~prefix:"application/x-www-form-urlencoded"
+              content_type
+            && List.mem Urlencoded config.parsers
+          then parse_urlencoded body
+          else if
+            String.starts_with ~prefix:"application/json" content_type
+            && List.mem Json config.parsers
+          then parse_json body
+          else if
+            String.starts_with ~prefix:"multipart/form-data" content_type
+            && List.mem Multipart config.parsers
+          then
+            (* Extract boundary from Content-Type *)
+            let parts = String.split_on_char ';' content_type in
+            let boundary_opt =
+              List.find_map
+                (fun part ->
+                  let trimmed = String.trim part in
+                  if String.starts_with ~prefix:"boundary=" trimmed then
+                    Some
+                      (String.sub trimmed 9
+                         (String.length trimmed - 9))
+                  else None)
+                parts
+            in
+            (match boundary_opt with
+            | Some boundary -> parse_multipart ~boundary body
+            | None -> [])
+          else []
+        in
+
+        Conn.set_body_params body_params conn
+
+let make ?(config = default_config ()) () =
+  fun ~conn ~next ->
+    let conn = handle config conn in
+    next conn

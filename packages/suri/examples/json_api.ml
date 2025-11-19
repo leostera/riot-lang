@@ -26,18 +26,12 @@ let users_to_json users =
   Data.Json.array user_jsons
 
 (* CORS middleware *)
-let cors_middleware conn =
-  Conn.with_header "Access-Control-Allow-Origin" "*" conn
-
-(* Request logger *)
-let logger_middleware conn =
-  let method_ = Conn.method_ conn in
-  let uri = Conn.uri conn in
-  Log.info ((Net.Http.Method.to_string method_) ^ " " ^ uri);
-  conn
+let cors_middleware ~conn ~next =
+  let conn' = next conn in
+  Conn.with_header "Access-Control-Allow-Origin" "*" conn'
 
 (* Route handlers *)
-let api_info_handler conn =
+let api_info_handler ~conn ~next:_ =
   let info = Data.Json.obj [
     ("api", Data.Json.string "JSON API Example");
     ("endpoints", Data.Json.obj [
@@ -51,7 +45,7 @@ let api_info_handler conn =
   |> Conn.with_body (Data.Json.to_string info)
   |> Conn.send
 
-let users_list_handler conn =
+let users_list_handler ~conn ~next:_ =
   let json = users_to_json users in
   conn
   |> Conn.with_status Ok
@@ -59,7 +53,7 @@ let users_list_handler conn =
   |> Conn.with_body (Data.Json.to_string json)
   |> Conn.send
 
-let user_handler conn =
+let user_handler ~conn ~next:_ =
   let params = Conn.params conn in
   match List.assoc_opt "id" params with
   | Some id_str ->
@@ -95,7 +89,7 @@ let user_handler conn =
       |> Conn.with_body (Data.Json.to_string error)
       |> Conn.send
 
-let not_found_handler conn =
+let not_found_handler ~conn ~next:_ =
   let error = Data.Json.obj [("error", Data.Json.string "Endpoint not found")] in
   conn
   |> Conn.with_status NotFound
@@ -110,12 +104,11 @@ let routes = Middleware.Router.[
   get "/api/users/:id" user_handler;
 ]
 
-(* App is just a list of middleware! *)
-let app = [
-  logger_middleware;
+(* App with built-in logger! *)
+let app = Middleware.[
+  logger;
   cors_middleware;
-  Middleware.router routes;
-  not_found_handler;
+  router routes;
 ]
 
 let () =

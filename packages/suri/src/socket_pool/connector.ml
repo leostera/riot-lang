@@ -13,10 +13,12 @@ type ('s, 'e) conn_state = {
 type internal_msg = Shutdown
 type Message.t += ConnectorMsg of internal_msg
 
+let timeout = Time.Duration.from_millis 1
+
 let rec loop : type s e. Connection.t -> (s, e) Handler.handler -> s -> unit =
  fun conn handler ctx ->
   (* Check for messages before blocking on TCP *)
-  match receive_any ~timeout:(Time.Duration.from_millis 1) () with
+  match receive_any ~timeout () with
   | msg ->
       (* Handle the actor message *)
       handle_message_internal msg conn handler ctx
@@ -41,7 +43,6 @@ and try_receive : type s e.
  fun conn handler ctx ->
   try
     (* Use 1ms timeout to avoid blocking - allows processing queued messages *)
-    let timeout = Time.Duration.from_millis 1 in
     match Connection.receive conn ~timeout with
     | Ok "" ->
         handler.handle_close conn ctx

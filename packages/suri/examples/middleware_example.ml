@@ -2,29 +2,23 @@ open Std
 open Suri
 
 (* Custom middleware: Add CORS headers *)
-let cors_middleware conn =
-  conn
+let cors_middleware ~conn ~next =
+  let conn' = next conn in
+  conn'
   |> Conn.with_header "Access-Control-Allow-Origin" "*"
   |> Conn.with_header "Access-Control-Allow-Methods" "GET, POST, PUT, DELETE"
   |> Conn.with_header "Access-Control-Allow-Headers" "Content-Type"
 
-(* Custom middleware: Request logger *)
-let logger_middleware conn =
-  let method_ = Conn.method_ conn in
-  let uri = Conn.uri conn in
-  Log.info ((Net.Http.Method.to_string method_) ^ " " ^ uri);
-  conn
-
-(* Custom middleware: Add request ID *)
-let request_id_middleware =
-  let counter = ref 0 in
-  fun conn ->
-    let id = !counter in
-    counter := id + 1;
-    Conn.with_header "X-Request-ID" (Int.to_string id) conn
+(* Custom middleware: Timing *)
+let timer_middleware ~conn ~next =
+  let start = Time.Instant.now () in
+  let conn' = next conn in
+  let duration = Time.Instant.elapsed start |> Time.Duration.to_millis in
+  Log.debug (String.concat "" ["Request took "; Int.to_string duration; "ms"]);
+  conn'
 
 (* Route handlers *)
-let home_handler conn =
+let home_handler ~conn ~next:_ =
   let html = {|
 <!DOCTYPE html>
 <html>
@@ -52,20 +46,27 @@ let home_handler conn =
   |> Conn.with_body html
   |> Conn.send
 
-let about_handler conn =
+let about_handler ~conn ~next:_ =
   conn
   |> Conn.respond ~status:Ok 
       ~body:"Suri - High-performance web framework with OTP-style supervision"
   |> Conn.send
 
-let api_data_handler conn =
+let api_data_handler ~conn ~next:_ =
+  (* Get the request ID from the response headers (set by request_id middleware) *)
+  let resp_headers = Conn.resp_headers conn in
+  let request_id = List.assoc_opt "x-request-id" resp_headers
+    |> Option.unwrap_or ~default:"unknown" in
+  
   let data = Data.Json.obj [
     ("message", Data.Json.string "Hello from API");
-    ("middleware_count", Data.Json.int 4);
+    ("request_id", Data.Json.string request_id);
+    ("middleware_count", Data.Json.int 5);
     ("features", Data.Json.array [
+      Data.Json.string "Request IDs";
       Data.Json.string "CORS";
       Data.Json.string "Logging";
-      Data.Json.string "Request IDs";
+      Data.Json.string "Timing";
       Data.Json.string "Routing";
     ])
   ] in
@@ -75,7 +76,7 @@ let api_data_handler conn =
   |> Conn.with_body (Data.Json.to_string data)
   |> Conn.send
 
-let not_found_handler conn =
+let not_found_handler ~conn ~next:_ =
   conn
   |> Conn.respond ~status:NotFound ~body:"404 - Not Found"
   |> Conn.send
@@ -88,13 +89,13 @@ let routes = Middleware.Router.[
 ]
 
 (* Build middleware pipeline *)
-(* Middleware is just a list of Conn.t -> Conn.t functions! *)
-let app = [
-  logger_middleware;        (* Log all requests *)
-  request_id_middleware;    (* Assign request IDs *)
-  cors_middleware;          (* Add CORS headers *)
-  Middleware.router routes;  (* Route to handlers *)
-  not_found_handler;        (* Fallback 404 *)
+(* Middleware wraps the next handler in the chain! *)
+let app = Middleware.[
+  request_id;                (* Generate/preserve request IDs *)
+  logger;                    (* Built-in request logging *)
+  timer_middleware;          (* Time each request *)
+  cors_middleware;           (* Add CORS headers *)
+  router routes;             (* Route to handlers *)
 ]
 
 let () =
@@ -103,15 +104,16 @@ let () =
     | Ok supervisor ->
         Log.info "🚀 Middleware example server on http://0.0.0.0:4000";
         Log.info "   Middleware stack:";
-        Log.info "     1. Logger - logs all requests";
-        Log.info "     2. Request ID - assigns unique IDs";
-        Log.info "     3. CORS - adds cross-origin headers";
-        Log.info "     4. Router - matches routes";
-        Log.info "     5. 404 fallback";
+        Log.info "     1. Request ID - generates/preserves x-request-id";
+        Log.info "     2. Logger - logs all requests";
+        Log.info "     3. Timer - measures request duration";
+        Log.info "     4. CORS - adds cross-origin headers";
+        Log.info "     5. Router - matches routes";
         Log.info "";
         Log.info "   Try:";
         Log.info "     curl -v http://localhost:4000/";
         Log.info "     curl http://localhost:4000/api/data";
+        Log.info "     curl -H \"x-request-id: my-custom-id\" http://localhost:4000/";
         
         let count = Supervisor.Dynamic.count_children supervisor in
         Log.info ("   " ^ Int.to_string count.active ^ " acceptors ready");

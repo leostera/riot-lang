@@ -300,7 +300,7 @@ let page_styles = {|
 |}
 
 (** Home page handler with both LiveViews embedded *)
-let home_page conn =
+let home_page ~conn ~next:_ =
   let open Component in
   
   let page = html [

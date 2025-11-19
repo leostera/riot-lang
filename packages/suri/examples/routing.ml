@@ -3,19 +3,12 @@ open Suri
 
 (** Routing Example
     
-    Demonstrates routing with middleware pipeline.
+    Demonstrates routing with middleware pipeline including request ID and logging.
     
     Run: tusk run suri:routing *)
 
-(* Custom middleware *)
-let logger_middleware conn =
-  let method_ = Conn.method_ conn in
-  let uri = Conn.uri conn in
-  Log.info ((Net.Http.Method.to_string method_) ^ " " ^ uri);
-  conn
-
-(* Route handlers *)
-let home_handler conn =
+(* Route handlers - note the new ~conn ~next signature *)
+let home_handler ~conn ~next:_ =
   let html = {|
 <!DOCTYPE html>
 <html>
@@ -35,16 +28,22 @@ let home_handler conn =
   |> Conn.with_body html
   |> Conn.send
 
-let about_handler conn =
+let about_handler ~conn ~next:_ =
   conn
   |> Conn.respond ~status:Ok 
       ~body:"Suri - High-performance web framework"
   |> Conn.send
 
-let health_handler conn =
+let health_handler ~conn ~next:_ =
+  (* Get the request ID that was added by request_id middleware *)
+  let resp_headers = Conn.resp_headers conn in
+  let request_id = List.assoc_opt "x-request-id" resp_headers
+    |> Option.unwrap_or ~default:"unknown" in
+  
   let json = Data.Json.obj [
     ("status", Data.Json.string "ok");
     ("service", Data.Json.string "suri");
+    ("request_id", Data.Json.string request_id);
   ] in
   conn
   |> Conn.with_status Ok
@@ -52,7 +51,7 @@ let health_handler conn =
   |> Conn.with_body (Data.Json.to_string json)
   |> Conn.send
 
-let not_found_handler conn =
+let not_found_handler ~conn ~next:_ =
   conn
   |> Conn.respond ~status:NotFound ~body:"404 - Page not found"
   |> Conn.send
@@ -64,11 +63,11 @@ let routes = Middleware.Router.[
   get "/api/health" health_handler;
 ]
 
-(* App is just a list of middleware! *)
-let app = [
-  logger_middleware;
-  Middleware.router routes;
-  not_found_handler;  (* 404 fallback *)
+(* App with request ID tracking and logging! *)
+let app = Middleware.[
+  request_id;  (* Ensure every request has an x-request-id *)
+  logger;      (* Log with timing info *)
+  router routes;
 ]
 
 let () =

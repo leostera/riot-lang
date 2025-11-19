@@ -419,7 +419,7 @@ let html_template ~element_id ~ws_path ?title ?styles initial_content =
       ]
     ]} *)
 let serve_runtime ?(prefix = "/assets/liveview.js") () : Middleware.Pipeline.middleware =
-  fun conn ->
+  fun ~conn ~next ->
     let req_path = Middleware.Conn.uri conn in
     if req_path = prefix then
       conn
@@ -428,7 +428,7 @@ let serve_runtime ?(prefix = "/assets/liveview.js") () : Middleware.Pipeline.mid
       |> Middleware.Conn.with_body javascript_runtime
       |> Middleware.Conn.send
     else
-      conn  (* Pass through to next middleware *)
+      next conn  (* Pass to next middleware *)
 
 (** Create a LiveView mount handler *)
 let mount (type s m) 
@@ -479,12 +479,10 @@ let embed
         LiveView.live (module Counter);  (* Creates route at /suri/live/counter-<uuid> *)
       ]
     ]} *)
-let live (type s m) 
-  (module C : Component with type state = s and type msg = m) : Middleware.Router.route =
-  (* Read id from module and create WebSocket path *)
+let live (type s m)
+    (module C : Component with type state = s and type msg = m) =
   let ws_path = "/suri/live/" ^ C.id in
-  
-  let handler conn =
+  let handler ~conn ~next:_ =
     (* This route only handles WebSocket upgrades *)
     let headers = Middleware.Conn.headers conn in
     let is_websocket_upgrade =

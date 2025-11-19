@@ -1,14 +1,16 @@
 open Std
 
-type middleware = Conn.t -> Conn.t
+type middleware = conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
 type t = middleware list
 
 let rec run_pipeline t conn =
   match t with
   | [] -> conn
   | middleware :: rest ->
-      let conn = middleware conn in
-      if Conn.halted conn || Conn.sent conn then conn
-      else run_pipeline rest conn
+      let next conn' =
+        if Conn.halted conn' || Conn.sent conn' then conn'
+        else run_pipeline rest conn'
+      in
+      middleware ~conn ~next
 
 let run conn t = if Conn.halted conn then conn else run_pipeline t conn

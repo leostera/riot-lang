@@ -1,0 +1,121 @@
+open Std
+open Suri
+
+(** Example showing the debugger middleware in action *)
+
+(* Helper function that will be in the stack trace *)
+let find_user id =
+  if id = "123" then
+    "Alice"
+  else
+    panic (String.concat "" ["User not found: "; id])
+
+(* Another level in the stack *)
+let process_user_request id =
+  let name = find_user id in
+  "Hello, " ^ name
+
+(* Route handlers *)
+let home_handler ~conn ~next:_ =
+  let html = {|
+<!DOCTYPE html>
+<html>
+  <head><title>Debugger Test</title></head>
+  <body>
+    <h1>Debugger Middleware Test</h1>
+    <p>Try these URLs to see the debugger in action:</p>
+    <ul>
+      <li><a href="/users/123">GET /users/123</a> - Works fine</li>
+      <li><a href="/users/999">GET /users/999</a> - Throws exception!</li>
+      <li><a href="/crash">GET /crash</a> - Direct crash</li>
+      <li><a href="/divide">GET /divide</a> - Division by zero</li>
+    </ul>
+    <p>The debugger will show:</p>
+    <ul>
+      <li>🔥 Beautiful error page</li>
+      <li>📚 Full stack trace with source code</li>
+      <li>📨 Request details</li>
+      <li>📤 Response state before error</li>
+    </ul>
+    <p><strong>Note:</strong> Check your terminal - errors are logged automatically!</p>
+  </body>
+</html>
+  |} in
+  conn
+  |> Conn.with_status Ok
+  |> Conn.with_header "Content-Type" "text/html"
+  |> Conn.with_body html
+  |> Conn.send
+
+let user_handler ~conn ~next:_ =
+  let params = Conn.params conn in
+  let id = List.assoc "id" params in
+  let result = process_user_request id in
+  conn
+  |> Conn.respond ~status:Ok ~body:result
+  |> Conn.send
+
+let crash_handler ~conn ~next:_ =
+  (* Set some response state before crashing *)
+  let _conn = Conn.with_header "X-Custom" "value" conn in
+  panic "Intentional crash for testing!"
+
+let divide_handler ~conn ~next:_ =
+  let x = 10 in
+  let y = 0 in
+  let result = x / y in  (* Division by zero! *)
+  conn
+  |> Conn.respond ~status:Ok ~body:(Int.to_string result)
+  |> Conn.send
+
+(* Define routes *)
+let routes = Middleware.Router.[
+  get "/" home_handler;
+  get "/users/:id" user_handler;
+  get "/crash" crash_handler;
+  get "/divide" divide_handler;
+]
+
+(* App with debugger middleware! *)
+let app = Middleware.[
+  request_id;
+  logger;      (* Logs successful requests *)
+  debugger;    (* Catches exceptions, logs them, shows beautiful error page *)
+  router routes;
+]
+
+let () =
+  Miniriot.run ~args:Env.args () ~main:(fun ~args:_ ->
+    (* Enable backtraces! Critical for debugger *)
+    Exception.record_backtrace true;
+    
+    let config = Suri.config ~port:3000 () in
+    match Suri.start_link ~config app with
+    | Ok supervisor ->
+        Log.info "╔════════════════════════════════════════════════╗";
+        Log.info "║  🐛 Debugger Middleware Test                  ║";
+        Log.info "║  http://localhost:3000                        ║";
+        Log.info "║                                                ║";
+        Log.info "║  Try /users/999 to see beautiful error page!  ║";
+        Log.info "╚════════════════════════════════════════════════╝";
+        Log.info "";
+        Log.info "Routes:";
+        Log.info "  GET  /           - Home with links";
+        Log.info "  GET  /users/:id  - Throws if id != 123";
+        Log.info "  GET  /crash      - Direct failwith";
+        Log.info "  GET  /divide     - Division by zero";
+        Log.info "";
+        Log.info "Watch the terminal - errors are logged by debugger!";
+        
+        let count = Supervisor.Dynamic.count_children supervisor in
+        Log.info (String.concat "" [Int.to_string count.active; " acceptors ready"]);
+        
+        let rec loop () =
+          sleep (Time.Duration.from_secs 100);
+          loop ()
+        in
+        loop ()
+    | Error `Bind_error ->
+        Log.error "Failed to bind to port 3000";
+        Error (Failure "Failed to start server")
+  )

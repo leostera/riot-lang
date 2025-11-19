@@ -1,3 +1,5 @@
+open Std
+
 (** # Connection Context
 
     Rich context object that flows through middleware pipelines.
@@ -9,8 +11,6 @@
 
     ```ocaml let handler conn = conn |> Conn.with_status Ok |> Conn.with_body
     "Hello, World!" |> Conn.send ``` *)
-
-open Std
 
 type peer = { ip : Net.Addr.tcp_addr; port : int }
 (** Peer connection information *)
@@ -41,8 +41,15 @@ val body : t -> string
 val params : t -> (string * string) list
 (** Get path/query parameters *)
 
+val body_params : t -> (string * string) list
+(** Get parsed body parameters (set by body_parser middleware) *)
+
 val peer : t -> peer
 (** Get peer connection info *)
+
+val resp_headers : t -> (string * string) list
+(** Get response headers that have been set so far.
+    Useful for reading headers set by upstream middleware. *)
 
 (** ## Response Building *)
 
@@ -79,6 +86,28 @@ val halted : t -> bool
 val set_params : (string * string) list -> t -> t
 (** Set path/query parameters (used by router) *)
 
+val set_body_params : (string * string) list -> t -> t
+(** Set parsed body parameters (used by body_parser middleware) *)
+
+val with_method : Net.Http.Method.t -> t -> t
+
+val with_peer : peer -> t -> t
+(** Update the peer connection info.
+    
+    Used by remote_ip middleware to set the real client IP.
+    
+    {b Note}: This is primarily for internal middleware use. *)(** Override the request method.
+    
+    Used by method_override middleware to support PUT/PATCH/DELETE from HTML forms.
+    
+    Example:
+    {[
+      (* HTML forms can only use GET/POST, but we want DELETE *)
+      let conn = Conn.with_method Net.Http.Method.Delete conn
+    ]}
+    
+    {b Note}: This is primarily for internal middleware use. *)
+
 val socket_conn : t -> Socket_pool.Connection.t
 (** Get the underlying socket connection *)
 
@@ -111,3 +140,16 @@ val get_upgrade : t -> upgrade_info option
 
 val to_response : t -> Web_server.Response.t
 (** Convert connection to HTTP response *)
+
+(** ## Private Data Storage *)
+
+type assign_value = ..
+(** Extensible type for storing arbitrary data in connection.
+    Middleware can extend this type to store their own data. *)
+
+val assign : string -> assign_value -> t -> unit
+(** Store arbitrary data in the connection.
+    Used by middleware to pass data down the pipeline. *)
+
+val get_assign : string -> t -> assign_value option
+(** Retrieve data stored by [assign]. *)

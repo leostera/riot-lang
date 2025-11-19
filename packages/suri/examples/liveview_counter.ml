@@ -226,7 +226,7 @@ let page_styles = {|
 |}
 
 (** Home page handler with embedded LiveView *)
-let home_page conn =
+let home_page ~conn ~next:_ =
   let open Component in
   let page = html [
     head [

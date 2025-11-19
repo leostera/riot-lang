@@ -8,3 +8,11 @@ path = "src/suri.ml"
 std = { path = "../std" }
 http = { path = "../http" }
 blink = { path = "../blink" }
+codedb = { path = "../codedb" }
+tusk-client = { path = "../tusk-client" }
+tusk-model = { path = "../tusk-model" }
+
+[[command]]
+name = "suri"
+help = "Suri web framework commands"
+path = "src/tusk_cmd/main.ml"

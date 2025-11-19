@@ -4,14 +4,44 @@
 
     ## Example
 
-    ```ocaml let app =
-    [ Logger.middleware; Router.middleware routes; my_handler; ]
+    ```ocaml
+    let timer ~conn ~next =
+      let start = Time.Instant.now () in
+      let conn' = next conn in
+      Log.debug (Printf.sprintf "Took %.2fms" 
+        (Time.Instant.elapsed start |> Time.Duration.to_millis));
+      conn'
 
-    let handler socket_conn req = let conn = Conn.make socket_conn req in let
-    conn = Pipeline.run conn app in Conn.to_response conn ``` *)
+    let app = Middleware.[
+      logger ();
+      timer;
+      router routes;
+    ]
 
-type middleware = Conn.t -> Conn.t
-(** A middleware function transforms a connection *)
+    let handler socket_conn req = 
+      let conn = Conn.make socket_conn req in
+      let conn = Pipeline.run conn app in
+      Conn.to_response conn
+    ``` *)
+
+type middleware = conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
+(** A middleware function that can wrap the next handler.
+    
+    Middleware receives the connection and a [next] function to call
+    the rest of the pipeline. This allows middleware to:
+    - Execute code before the handler (just call [next conn])
+    - Execute code after the handler ([let conn' = next conn in ...])
+    - Skip the handler entirely (return without calling [next])
+    - Modify the connection before/after
+    
+    Example:
+    {[
+      let logger ~conn ~next =
+        Log.info "Before handler";
+        let conn' = next conn in
+        Log.info "After handler";
+        conn'
+    ]} *)
 
 type t = middleware list
 (** A pipeline is a list of middleware *)
