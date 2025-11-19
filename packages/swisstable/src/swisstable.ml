@@ -10,6 +10,7 @@
 *)
 
 open Kernel.Global
+open Std.IO
 
 (* Import modules for convenience *)
 module Array = Kernel.Collections.Array
@@ -52,6 +53,7 @@ module BitMask = struct
   type t = int
 
   (* Find the index of the lowest set bit *)
+  [@inline always]
   let lowest_set_bit_index mask =
     if mask = 0 then None
     else
@@ -63,10 +65,12 @@ module BitMask = struct
       Some (count_trailing_zeros mask 0)
 
   (* Remove the lowest set bit from mask *)
+  [@inline always]
   let remove_lowest_bit mask =
     mask land (mask - 1)
 
   (* Check if mask is empty *)
+  [@inline always]
   let is_empty mask = mask = 0
 end
 
@@ -86,16 +90,17 @@ module Group = struct
     let b = I64.logor b (I64.shift_left b 16) in
     I64.logor b (I64.shift_left b 32)
 
-  (* Load 8 control bytes from array starting at index *)
+  (* Load 8 control bytes from bytes starting at index *)
+  [@inline always]
   let load ctrl idx =
-    let b0 = I64.of_int ctrl.(idx) in
-    let b1 = I64.of_int ctrl.(idx + 1) in
-    let b2 = I64.of_int ctrl.(idx + 2) in
-    let b3 = I64.of_int ctrl.(idx + 3) in
-    let b4 = I64.of_int ctrl.(idx + 4) in
-    let b5 = I64.of_int ctrl.(idx + 5) in
-    let b6 = I64.of_int ctrl.(idx + 6) in
-    let b7 = I64.of_int ctrl.(idx + 7) in
+    let b0 = I64.of_int (Kernel.Char.code (Bytes.unsafe_get ctrl idx)) in
+    let b1 = I64.of_int (Kernel.Char.code (Bytes.unsafe_get ctrl (idx + 1))) in
+    let b2 = I64.of_int (Kernel.Char.code (Bytes.unsafe_get ctrl (idx + 2))) in
+    let b3 = I64.of_int (Kernel.Char.code (Bytes.unsafe_get ctrl (idx + 3))) in
+    let b4 = I64.of_int (Kernel.Char.code (Bytes.unsafe_get ctrl (idx + 4))) in
+    let b5 = I64.of_int (Kernel.Char.code (Bytes.unsafe_get ctrl (idx + 5))) in
+    let b6 = I64.of_int (Kernel.Char.code (Bytes.unsafe_get ctrl (idx + 6))) in
+    let b7 = I64.of_int (Kernel.Char.code (Bytes.unsafe_get ctrl (idx + 7))) in
     I64.logor
       (I64.logor
          (I64.logor (I64.logor b0 (I64.shift_left b1 8))
@@ -121,6 +126,7 @@ module Group = struct
 
   (* Match a specific tag in the group - returns bitmask of matches
      Uses bit-parallel algorithm from https://graphics.stanford.edu/~seander/bithacks.html *)
+  [@inline always]
   let match_tag group tag =
     let tag_repeated = repeat tag in
     let cmp = I64.logxor group tag_repeated in
@@ -134,6 +140,7 @@ module Group = struct
     bitmask_to_int result
 
   (* Match EMPTY tags (0xFF) in the group *)
+  [@inline always]
   let match_empty group =
     let deleted_marker = repeat Tag.deleted in
     (* If top two bits are both 1, it's EMPTY (0xFF) *)
@@ -144,6 +151,7 @@ module Group = struct
     bitmask_to_int result
 
   (* Match EMPTY or DELETED tags (high bit set) *)
+  [@inline always]
   let match_empty_or_deleted group =
     let deleted_marker = repeat Tag.deleted in
     let result = I64.logand group deleted_marker in
@@ -178,7 +186,7 @@ end
 module RawTable = struct
   type ('k, 'v) t = {
     mutable buckets : ('k * 'v) option array;
-    mutable ctrl : int array;
+    mutable ctrl : bytes;
     mutable len : int;
     mutable bucket_mask : int;
   }
@@ -203,11 +211,12 @@ module RawTable = struct
     else ((bucket_mask + 1) / 8) * 7
 
   (* Helper: Set a control byte and update the mirror if needed *)
+  [@inline always]
   let set_ctrl table idx tag =
-    table.ctrl.(idx) <- tag;
+    Bytes.unsafe_set table.ctrl idx (Kernel.Char.chr tag);
     (* Mirror the first Group.width bytes at the end for wrap-around *)
     if idx < Group.width then
-      table.ctrl.((table.bucket_mask + 1) + idx) <- tag
+      Bytes.unsafe_set table.ctrl ((table.bucket_mask + 1) + idx) (Kernel.Char.chr tag)
 
   (* Create empty table with given capacity *)
   let create capacity =
@@ -215,7 +224,7 @@ module RawTable = struct
     let bucket_mask = buckets - 1 in
     {
       buckets = Array.make buckets None;
-      ctrl = Array.make (buckets + Group.width) Tag.empty;
+      ctrl = Bytes.make (buckets + Group.width) (Kernel.Char.chr Tag.empty);
       len = 0;
       bucket_mask;
     }
@@ -302,7 +311,7 @@ module RawTable = struct
     
     (* Replace table contents *)
     table.buckets <- Array.make new_buckets None;
-    table.ctrl <- Array.make (new_buckets + Group.width) Tag.empty;
+    table.ctrl <- Bytes.make (new_buckets + Group.width) (Kernel.Char.chr Tag.empty);
     table.len <- 0;
     table.bucket_mask <- new_bucket_mask;
     
@@ -376,7 +385,7 @@ module RawTable = struct
   (* Clear all entries *)
   let clear table =
     Array.fill table.buckets 0 (Array.length table.buckets) None;
-    Array.fill table.ctrl 0 (Array.length table.ctrl) Tag.empty;
+    Bytes.fill table.ctrl 0 (Bytes.length table.ctrl) (Kernel.Char.chr Tag.empty);
     table.len <- 0
 
   (* Iterate over all key-value pairs *)
