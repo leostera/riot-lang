@@ -334,15 +334,15 @@ let find_source_via_codedb module_name =
            Log.debug (String.concat "" ["Debugger: Module '"; module_name; "' not found in CodeDB"]);
            Tusk_client.close client;
            None
-       | Ok (Some symbol) ->
-           let source_file = Codedb.Model.Symbol.(Path.to_string symbol.source_file) in
-           let package_name = Codedb.Model.Symbol.(Codedb.Model.Package_name.to_string symbol.package.name) in
-           Log.debug (String.concat "" [
-             "Debugger: Found module '"; module_name; "' in CodeDB: ";
-             source_file; " (package: "; package_name; ")"
-           ]);
-           Tusk_client.close client;
-           Some source_file))
+        | Ok (Some symbol) ->
+            let source_file = Path.to_string symbol.Codedb.Model.Symbol.file.path in
+            let package_name = Codedb.Model.Package_name.to_string symbol.Codedb.Model.Symbol.package.name in
+            Log.debug (String.concat "" [
+              "Debugger: Found module '"; module_name; "' in CodeDB: ";
+              source_file; " (package: "; package_name; ")"
+            ]);
+            Tusk_client.close client;
+            Some source_file))
 
 (** Find source file for a module using tusk server *)
 let find_source_for_module package_name module_name =
