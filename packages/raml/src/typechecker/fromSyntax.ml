@@ -36,14 +36,14 @@ let convert_constant kind text span : (UntypedTree.constant, error) Result.t =
       | None ->
           Error
             (UnsupportedFeature
-               { feature = format "int literal: %s" text; span }))
+               { feature = "int literal: " ^ text; span }))
   | Kind.FLOAT_LITERAL -> (
       match float_of_string_opt text with
       | Some f -> Ok (UntypedTree.ConstantFloat f)
       | None ->
           Error
             (UnsupportedFeature
-               { feature = format "float literal: %s" text; span }))
+               { feature = "float literal: " ^ text; span }))
   | Kind.STRING_LITERAL ->
       let unquoted =
         if String.length text >= 2 then
@@ -57,13 +57,13 @@ let convert_constant kind text span : (UntypedTree.constant, error) Result.t =
         Ok (UntypedTree.ConstantChar c)
       else
         Error
-          (UnsupportedFeature { feature = format "char literal: %s" text; span })
+          (UnsupportedFeature { feature = "char literal: " ^ text; span })
   | Kind.BOOL_LITERAL ->
       if text = "true" then Ok (UntypedTree.ConstantBool true)
       else if text = "false" then Ok (UntypedTree.ConstantBool false)
       else
         Error
-          (UnsupportedFeature { feature = format "bool literal: %s" text; span })
+          (UnsupportedFeature { feature = "bool literal: " ^ text; span })
   | Kind.UNIT_LITERAL -> Ok UntypedTree.ConstantUnit
   | _ ->
       Error (UnexpectedNode { expected = "constant literal"; got = kind; span })
@@ -177,7 +177,7 @@ let rec convert_pattern (node : syntax_node) :
         (UnsupportedFeature
            {
              feature =
-               format "pattern kind: %s" (Kind.to_string (SyntaxNode.kind node));
+               "pattern kind: " ^ Kind.to_string (SyntaxNode.kind node);
              span;
            })
 
@@ -309,8 +309,8 @@ let rec convert_expression (node : syntax_node) :
         (UnsupportedFeature
            {
              feature =
-               format "expression kind: %s"
-                 (Kind.to_string (SyntaxNode.kind node));
+               "expression kind: " ^
+                 Kind.to_string (SyntaxNode.kind node);
              span;
            })
 
@@ -363,8 +363,8 @@ let convert_structure_item (node : syntax_node) :
         (UnsupportedFeature
            {
              feature =
-               format "structure item: %s"
-                 (Kind.to_string (SyntaxNode.kind node));
+               "structure item: " ^
+                 Kind.to_string (SyntaxNode.kind node);
              span;
            })
 
@@ -377,14 +377,18 @@ let from_red_tree (root : syntax_node) :
   (* Convert each item *)
   let results = List.map convert_structure_item items in
 
+  (* Separate successes and errors *)
   let successes, errors =
-    List.partition_map
-      (fun r ->
-        match r with Ok x -> Either.Left x | Error e -> Either.Right e)
+    List.fold_left
+      (fun (succ, errs) r ->
+        match r with
+        | Ok x -> (x :: succ, errs)
+        | Error e -> (succ, e :: errs))
+      ([], [])
       results
   in
 
-  if List.is_empty errors then Ok successes else Error errors
+  if List.is_empty errors then Ok (List.rev successes) else Error (List.rev errors)
 
 (** Convert from Syn parse result *)
 let from_parse_result (result : Syn.Parser.parse_result) :

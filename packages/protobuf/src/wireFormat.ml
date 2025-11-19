@@ -1,4 +1,6 @@
 open Std
+open Std.Sync
+open Std.IO
 
 type wire_type = WtVarint | WtI64 | WtLen | WtSgroup | WtEgroup | WtI32
 
@@ -37,7 +39,7 @@ type t = record list
 module ByteCursor = struct
   type t = { source : bytes; mutable pos : int; length : int }
 
-  let create source = { source; pos = 0; length = Stdlib.Bytes.length source }
+  let create source = { source; pos = 0; length = Bytes.length source }
   let is_eof t = t.pos >= t.length
   let position t = t.pos
   let remaining t = t.length - t.pos
@@ -45,19 +47,19 @@ module ByteCursor = struct
   let read_byte t =
     if is_eof t then None
     else
-      let b = Stdlib.Bytes.get t.source t.pos in
+      let b = Bytes.get t.source t.pos in
       t.pos <- t.pos + 1;
       Some b
 
   let read_bytes t n =
     if t.pos + n > t.length then None
     else
-      let result = Stdlib.Bytes.sub t.source t.pos n in
+      let result = Bytes.sub t.source t.pos n in
       t.pos <- t.pos + n;
       Some result
 
   let peek_byte t =
-    if is_eof t then None else Some (Stdlib.Bytes.get t.source t.pos)
+    if is_eof t then None else Some (Bytes.get t.source t.pos)
 end
 
 module Decoder = struct
@@ -98,10 +100,10 @@ module Decoder = struct
     match ByteCursor.read_bytes cursor 4 with
     | None -> Error "Unexpected EOF while reading i32"
     | Some bytes ->
-        let b0 = Int32.of_int (Char.code (Stdlib.Bytes.get bytes 0)) in
-        let b1 = Int32.of_int (Char.code (Stdlib.Bytes.get bytes 1)) in
-        let b2 = Int32.of_int (Char.code (Stdlib.Bytes.get bytes 2)) in
-        let b3 = Int32.of_int (Char.code (Stdlib.Bytes.get bytes 3)) in
+        let b0 = Int32.of_int (Char.code (Bytes.get bytes 0)) in
+        let b1 = Int32.of_int (Char.code (Bytes.get bytes 1)) in
+        let b2 = Int32.of_int (Char.code (Bytes.get bytes 2)) in
+        let b3 = Int32.of_int (Char.code (Bytes.get bytes 3)) in
         let open Int32 in
         let result =
           logor
@@ -114,14 +116,14 @@ module Decoder = struct
     match ByteCursor.read_bytes cursor 8 with
     | None -> Error "Unexpected EOF while reading i64"
     | Some bytes ->
-        let b0 = Int64.of_int (Char.code (Stdlib.Bytes.get bytes 0)) in
-        let b1 = Int64.of_int (Char.code (Stdlib.Bytes.get bytes 1)) in
-        let b2 = Int64.of_int (Char.code (Stdlib.Bytes.get bytes 2)) in
-        let b3 = Int64.of_int (Char.code (Stdlib.Bytes.get bytes 3)) in
-        let b4 = Int64.of_int (Char.code (Stdlib.Bytes.get bytes 4)) in
-        let b5 = Int64.of_int (Char.code (Stdlib.Bytes.get bytes 5)) in
-        let b6 = Int64.of_int (Char.code (Stdlib.Bytes.get bytes 6)) in
-        let b7 = Int64.of_int (Char.code (Stdlib.Bytes.get bytes 7)) in
+        let b0 = Int64.of_int (Char.code (Bytes.get bytes 0)) in
+        let b1 = Int64.of_int (Char.code (Bytes.get bytes 1)) in
+        let b2 = Int64.of_int (Char.code (Bytes.get bytes 2)) in
+        let b3 = Int64.of_int (Char.code (Bytes.get bytes 3)) in
+        let b4 = Int64.of_int (Char.code (Bytes.get bytes 4)) in
+        let b5 = Int64.of_int (Char.code (Bytes.get bytes 5)) in
+        let b6 = Int64.of_int (Char.code (Bytes.get bytes 6)) in
+        let b7 = Int64.of_int (Char.code (Bytes.get bytes 7)) in
         let open Int64 in
         let result =
           logor
@@ -215,8 +217,8 @@ module Encoder = struct
         else loop ((byte lor 0x80) :: acc) v'
     in
     let bytes = loop [] value in
-    let result = Stdlib.Bytes.create (List.length bytes) in
-    List.iteri (fun i b -> Stdlib.Bytes.set result i (Char.chr b)) bytes;
+    let result = Bytes.create (List.length bytes) in
+    List.iteri (fun i b -> Bytes.set result i (Char.chr b)) bytes;
     result
 
   let encode_zigzag n =
@@ -237,34 +239,34 @@ module Encoder = struct
     encode_varint (Int64.of_int tag)
 
   let encode_i32 value =
-    let result = Stdlib.Bytes.create 4 in
+    let result = Bytes.create 4 in
     let open Int32 in
-    Stdlib.Bytes.set result 0 (Char.chr (to_int (logand value 0xFFl)));
-    Stdlib.Bytes.set result 1
+    Bytes.set result 0 (Char.chr (to_int (logand value 0xFFl)));
+    Bytes.set result 1
       (Char.chr (to_int (logand (shift_right_logical value 8) 0xFFl)));
-    Stdlib.Bytes.set result 2
+    Bytes.set result 2
       (Char.chr (to_int (logand (shift_right_logical value 16) 0xFFl)));
-    Stdlib.Bytes.set result 3
+    Bytes.set result 3
       (Char.chr (to_int (logand (shift_right_logical value 24) 0xFFl)));
     result
 
   let encode_i64 value =
-    let result = Stdlib.Bytes.create 8 in
+    let result = Bytes.create 8 in
     let open Int64 in
-    Stdlib.Bytes.set result 0 (Char.chr (to_int (logand value 0xFFL)));
-    Stdlib.Bytes.set result 1
+    Bytes.set result 0 (Char.chr (to_int (logand value 0xFFL)));
+    Bytes.set result 1
       (Char.chr (to_int (logand (shift_right_logical value 8) 0xFFL)));
-    Stdlib.Bytes.set result 2
+    Bytes.set result 2
       (Char.chr (to_int (logand (shift_right_logical value 16) 0xFFL)));
-    Stdlib.Bytes.set result 3
+    Bytes.set result 3
       (Char.chr (to_int (logand (shift_right_logical value 24) 0xFFL)));
-    Stdlib.Bytes.set result 4
+    Bytes.set result 4
       (Char.chr (to_int (logand (shift_right_logical value 32) 0xFFL)));
-    Stdlib.Bytes.set result 5
+    Bytes.set result 5
       (Char.chr (to_int (logand (shift_right_logical value 40) 0xFFL)));
-    Stdlib.Bytes.set result 6
+    Bytes.set result 6
       (Char.chr (to_int (logand (shift_right_logical value 48) 0xFFL)));
-    Stdlib.Bytes.set result 7
+    Bytes.set result 7
       (Char.chr (to_int (logand (shift_right_logical value 56) 0xFFL)));
     result
 
@@ -274,14 +276,14 @@ module Encoder = struct
   let rec encode_message records =
     let parts = List.map encode_record records in
     let total_len =
-      List.fold_left (fun acc b -> acc + Stdlib.Bytes.length b) 0 parts
+      List.fold_left (fun acc b -> acc + Bytes.length b) 0 parts
     in
-    let result = Stdlib.Bytes.create total_len in
+    let result = Bytes.create total_len in
     let _ =
       List.fold_left
         (fun pos part ->
-          Stdlib.Bytes.blit part 0 result pos (Stdlib.Bytes.length part);
-          pos + Stdlib.Bytes.length part)
+          Bytes.blit part 0 result pos (Bytes.length part);
+          pos + Bytes.length part)
         0 parts
     in
     result
@@ -291,111 +293,111 @@ module Encoder = struct
     | Varint (Uint64 v) ->
         let tag = encode_tag field_number WtVarint in
         let data = encode_varint v in
-        Stdlib.Bytes.cat tag data
+        Bytes.cat tag data
     | Varint (Int64 v) ->
         let tag = encode_tag field_number WtVarint in
         let data = encode_varint v in
-        Stdlib.Bytes.cat tag data
+        Bytes.cat tag data
     | Varint (Sint64 v) ->
         let tag = encode_tag field_number WtVarint in
         let zigzag = encode_zigzag v in
         let data = encode_varint zigzag in
-        Stdlib.Bytes.cat tag data
+        Bytes.cat tag data
     | Varint (Uint32 v) ->
         let tag = encode_tag field_number WtVarint in
         let data = encode_varint (Int64.of_int32 v) in
-        Stdlib.Bytes.cat tag data
+        Bytes.cat tag data
     | Varint (Int32 v) ->
         let tag = encode_tag field_number WtVarint in
         let data = encode_varint (Int64.of_int32 v) in
-        Stdlib.Bytes.cat tag data
+        Bytes.cat tag data
     | Varint (Sint32 v) ->
         let tag = encode_tag field_number WtVarint in
         let zigzag = encode_zigzag (Int64.of_int32 v) in
         let data = encode_varint zigzag in
-        Stdlib.Bytes.cat tag data
+        Bytes.cat tag data
     | Varint (Bool b) ->
         let tag = encode_tag field_number WtVarint in
         let data = encode_varint (if b then 1L else 0L) in
-        Stdlib.Bytes.cat tag data
+        Bytes.cat tag data
     | Varint (Enum e) ->
         let tag = encode_tag field_number WtVarint in
         let data = encode_varint (Int64.of_int32 e) in
-        Stdlib.Bytes.cat tag data
+        Bytes.cat tag data
     | I64 (Fixed64 v) ->
         let tag = encode_tag field_number WtI64 in
         let data = encode_i64 v in
-        Stdlib.Bytes.cat tag data
+        Bytes.cat tag data
     | I64 (Sfixed64 v) ->
         let tag = encode_tag field_number WtI64 in
         let data = encode_i64 v in
-        Stdlib.Bytes.cat tag data
+        Bytes.cat tag data
     | I64 (Double f) ->
         let tag = encode_tag field_number WtI64 in
         let data = encode_double f in
-        Stdlib.Bytes.cat tag data
+        Bytes.cat tag data
     | I32 (Fixed32 v) ->
         let tag = encode_tag field_number WtI32 in
         let data = encode_i32 v in
-        Stdlib.Bytes.cat tag data
+        Bytes.cat tag data
     | I32 (Sfixed32 v) ->
         let tag = encode_tag field_number WtI32 in
         let data = encode_i32 v in
-        Stdlib.Bytes.cat tag data
+        Bytes.cat tag data
     | I32 (Float f) ->
         let tag = encode_tag field_number WtI32 in
         let data = encode_float f in
-        Stdlib.Bytes.cat tag data
+        Bytes.cat tag data
     | Len (String s) ->
         let tag = encode_tag field_number WtLen in
-        let str_bytes = Stdlib.Bytes.of_string s in
+        let str_bytes = Bytes.of_string s in
         let len =
-          encode_varint (Int64.of_int (Stdlib.Bytes.length str_bytes))
+          encode_varint (Int64.of_int (Bytes.length str_bytes))
         in
-        Stdlib.Bytes.cat tag (Stdlib.Bytes.cat len str_bytes)
+        Bytes.cat tag (Bytes.cat len str_bytes)
     | Len (Bytes b) ->
         let tag = encode_tag field_number WtLen in
-        let len = encode_varint (Int64.of_int (Stdlib.Bytes.length b)) in
-        Stdlib.Bytes.cat tag (Stdlib.Bytes.cat len b)
+        let len = encode_varint (Int64.of_int (Bytes.length b)) in
+        Bytes.cat tag (Bytes.cat len b)
     | Len (Message records) ->
         let tag = encode_tag field_number WtLen in
         let msg_bytes = encode_message records in
         let len =
-          encode_varint (Int64.of_int (Stdlib.Bytes.length msg_bytes))
+          encode_varint (Int64.of_int (Bytes.length msg_bytes))
         in
-        Stdlib.Bytes.cat tag (Stdlib.Bytes.cat len msg_bytes)
+        Bytes.cat tag (Bytes.cat len msg_bytes)
     | Len (PackedVarint values) ->
         let tag = encode_tag field_number WtLen in
         let packed =
           List.fold_left
-            (fun acc v -> Stdlib.Bytes.cat acc (encode_varint v))
-            Stdlib.Bytes.empty values
+            (fun acc v -> Bytes.cat acc (encode_varint v))
+            Bytes.empty values
         in
-        let len = encode_varint (Int64.of_int (Stdlib.Bytes.length packed)) in
-        Stdlib.Bytes.cat tag (Stdlib.Bytes.cat len packed)
+        let len = encode_varint (Int64.of_int (Bytes.length packed)) in
+        Bytes.cat tag (Bytes.cat len packed)
     | Len (PackedI32 values) ->
         let tag = encode_tag field_number WtLen in
         let packed =
           List.fold_left
-            (fun acc v -> Stdlib.Bytes.cat acc (encode_i32 v))
-            Stdlib.Bytes.empty values
+            (fun acc v -> Bytes.cat acc (encode_i32 v))
+            Bytes.empty values
         in
-        let len = encode_varint (Int64.of_int (Stdlib.Bytes.length packed)) in
-        Stdlib.Bytes.cat tag (Stdlib.Bytes.cat len packed)
+        let len = encode_varint (Int64.of_int (Bytes.length packed)) in
+        Bytes.cat tag (Bytes.cat len packed)
     | Len (PackedI64 values) ->
         let tag = encode_tag field_number WtLen in
         let packed =
           List.fold_left
-            (fun acc v -> Stdlib.Bytes.cat acc (encode_i64 v))
-            Stdlib.Bytes.empty values
+            (fun acc v -> Bytes.cat acc (encode_i64 v))
+            Bytes.empty values
         in
-        let len = encode_varint (Int64.of_int (Stdlib.Bytes.length packed)) in
-        Stdlib.Bytes.cat tag (Stdlib.Bytes.cat len packed)
+        let len = encode_varint (Int64.of_int (Bytes.length packed)) in
+        Bytes.cat tag (Bytes.cat len packed)
     | Group records ->
         let start_tag = encode_tag field_number WtSgroup in
         let body = encode_message records in
         let end_tag = encode_tag field_number WtEgroup in
-        Stdlib.Bytes.cat start_tag (Stdlib.Bytes.cat body end_tag)
+        Bytes.cat start_tag (Bytes.cat body end_tag)
 
   let encode records = encode_message records
 end

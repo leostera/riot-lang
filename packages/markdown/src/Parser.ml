@@ -253,7 +253,7 @@ and parse_emphasis parser delim_kind =
 (** Parse autolink <url> or <email> *)
 and parse_autolink parser =
   (* Check if we're at < *)
-  if peek_kind parser <> Syntax_kind.LESS_THAN then None
+  if peek_kind parser != Syntax_kind.LESS_THAN then None
   else
     (* Use lookahead to validate BEFORE consuming any tokens *)
     (* Start peeking from offset 1 (after <) *)
@@ -449,7 +449,7 @@ and parse_paragraph ?(in_blockquote = false) parser =
       | Some Syntax_kind.EQUAL ->
           (* H1 - consume underline *)
           while
-            peek_kind parser <> Syntax_kind.NEWLINE && not (is_eof parser)
+            peek_kind parser != Syntax_kind.NEWLINE && not (is_eof parser)
           do
             advance parser
           done;
@@ -458,7 +458,7 @@ and parse_paragraph ?(in_blockquote = false) parser =
       | Some Syntax_kind.DASH ->
           (* H2 - consume underline *)
           while
-            peek_kind parser <> Syntax_kind.NEWLINE && not (is_eof parser)
+            peek_kind parser != Syntax_kind.NEWLINE && not (is_eof parser)
           do
             advance parser
           done;
@@ -522,8 +522,8 @@ and parse_paragraph ?(in_blockquote = false) parser =
                     (* Check if current line starts a structure that interrupts paragraphs *)
                     (* ATX headings and thematic breaks can interrupt paragraphs *)
                     if
-                      check_atx_heading parser <> None
-                      || check_thematic_break parser <> None
+                      check_atx_heading parser != None
+                      || check_thematic_break parser != None
                     then
                       (* Structure interrupts - end paragraph here *)
                       (* Remove trailing newline from acc if present *)

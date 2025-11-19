@@ -1,4 +1,5 @@
 open Std
+open Std.IO
 
 type t =
   | Element of {
@@ -51,7 +52,7 @@ let rec to_string = function
           " "
           ^ String.concat " "
               (List.map
-                 (fun (k, v) -> format "%s=\"%s\"" k (escape_html v))
+                 (fun (k, v) -> k ^ "=\"" ^ escape_html v ^ "\"")
                  attrs)
       in
       let void_elements =
@@ -112,15 +113,15 @@ let rec to_string = function
       in
       let result =
         if List.mem name void_elements && children = [] then
-          format "<%s%s />" name attrs_str
+          "<" ^ name ^ attrs_str ^ " />"
         else if children = [] then
           (* Empty element - add newlines if needed *)
-          if needs_newlines then format "<%s%s>\n</%s>" name attrs_str name
-          else format "<%s%s></%s>" name attrs_str name
+          if needs_newlines then "<" ^ name ^ attrs_str ^ ">\n</" ^ name ^ ">"
+          else "<" ^ name ^ attrs_str ^ "></" ^ name ^ ">"
         else
           let children_str = String.concat "" (List.map to_string children) in
           if needs_newlines then
-            format "<%s%s>\n%s</%s>" name attrs_str children_str name
-          else format "<%s%s>%s</%s>" name attrs_str children_str name
+            "<" ^ name ^ attrs_str ^ ">\n" ^ children_str ^ "</" ^ name ^ ">"
+          else "<" ^ name ^ attrs_str ^ ">" ^ children_str ^ "</" ^ name ^ ">"
       in
       if is_block then result ^ "\n" else result

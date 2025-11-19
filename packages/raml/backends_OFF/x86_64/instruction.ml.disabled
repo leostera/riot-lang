@@ -1,0 +1,142 @@
+open Std
+
+(* Simple format helper - handles basic %s substitution *)
+let format template = 
+  let rec replace str args = 
+    match args with 
+    | [] -> str 
+    | arg :: rest -> 
+        let idx = try String.index str '%' with Not_found -> -1 in 
+        if idx = -1 then str ^ arg 
+        else 
+          let before = String.sub str 0 idx in 
+          let after_idx = idx + 2 in 
+          let after = if after_idx < String.length str 
+                     then String.sub str after_idx (String.length str - after_idx) 
+                     else "" in 
+          replace (before ^ arg ^ after) rest 
+  in replace template
+
+type register =
+  | RAX
+  | RBX
+  | RCX
+  | RDX
+  | RSI
+  | RDI
+  | RBP
+  | RSP
+  | R8
+  | R9
+  | R10
+  | R11
+  | R12
+  | R13
+  | R14
+  | R15
+
+let register_to_string = function
+  | RAX -> "%rax"
+  | RBX -> "%rbx"
+  | RCX -> "%rcx"
+  | RDX -> "%rdx"
+  | RSI -> "%rsi"
+  | RDI -> "%rdi"
+  | RBP -> "%rbp"
+  | RSP -> "%rsp"
+  | R8 -> "%r8"
+  | R9 -> "%r9"
+  | R10 -> "%r10"
+  | R11 -> "%r11"
+  | R12 -> "%r12"
+  | R13 -> "%r13"
+  | R14 -> "%r14"
+  | R15 -> "%r15"
+
+type operand = Reg of register | Imm of int | Label of string
+
+let operand_to_string = function
+  | Reg r -> register_to_string r
+  | Imm n -> "$" ^ string_of_int n
+  | Label l -> l
+
+type address = RegOffset of register * int | RegReg of register * register
+
+let address_to_string = function
+  | RegOffset (r, 0) -> "(" ^ register_to_string r ^ ")"
+  | RegOffset (r, off) -> string_of_int off ^ "(" ^ register_to_string r ^ ")"
+  | RegReg (r1, r2) ->
+      "(" ^ register_to_string r1 ^ "," ^ register_to_string r2 ^ ")"
+
+type instruction =
+  | MOV of register * operand
+  | LEA of register * address
+  | PUSH of operand
+  | POP of register
+  | ADD of register * operand
+  | SUB of register * operand
+  | IMUL of register * operand
+  | IDIV of register
+  | NEG of register
+  | CMP of register * operand
+  | JMP of string
+  | JE of string
+  | JNE of string
+  | JL of string
+  | JLE of string
+  | JG of string
+  | JGE of string
+  | CALL of string
+  | RET
+  | AND of register * operand
+  | OR of register * operand
+  | XOR of register * operand
+  | NOT of register
+  | LABEL of string
+  | DIRECTIVE of string
+  | COMMENT of string
+
+let instruction_to_string = function
+  | MOV (dst, src) ->
+      "    movq " ^ operand_to_string src ^ ", " ^ register_to_string dst
+  | LEA (dst, addr) ->
+      "    leaq " ^ address_to_string addr ^ ", " ^ register_to_string dst
+  | PUSH op -> "    pushq " ^ operand_to_string op
+  | POP reg -> "    popq " ^ register_to_string reg
+  | ADD (dst, src) ->
+      "    addq " ^ operand_to_string src ^ ", " ^ register_to_string dst
+  | SUB (dst, src) ->
+      "    subq " ^ operand_to_string src ^ ", " ^ register_to_string dst
+  | IMUL (dst, src) ->
+      "    imulq " ^ operand_to_string src ^ ", " ^ register_to_string dst
+  | IDIV reg -> "    idivq " ^ register_to_string reg
+  | NEG reg -> "    negq " ^ register_to_string reg
+  | CMP (dst, src) ->
+      "    cmpq " ^ operand_to_string src ^ ", " ^ register_to_string dst
+  | JMP label -> "    jmp " ^ label
+  | JE label -> "    je " ^ label
+  | JNE label -> "    jne " ^ label
+  | JL label -> "    jl " ^ label
+  | JLE label -> "    jle " ^ label
+  | JG label -> "    jg " ^ label
+  | JGE label -> "    jge " ^ label
+  | CALL label -> "    call " ^ label
+  | RET -> "    ret"
+  | AND (dst, src) ->
+      "    andq " ^ operand_to_string src ^ ", " ^ register_to_string dst
+  | OR (dst, src) ->
+      "    orq " ^ operand_to_string src ^ ", " ^ register_to_string dst
+  | XOR (dst, src) ->
+      "    xorq " ^ operand_to_string src ^ ", " ^ register_to_string dst
+  | NOT reg -> "    notq " ^ register_to_string reg
+  | LABEL name -> name ^ ":"
+  | DIRECTIVE dir -> "    " ^ dir
+  | COMMENT msg -> "    # " ^ msg
+
+let emit_prologue ~stack_size =
+  let instrs = [ PUSH (Reg RBP); MOV (RBP, Reg RSP) ] in
+  if stack_size > 0 then instrs @ [ SUB (RSP, Imm stack_size) ] else instrs
+
+let emit_epilogue ~stack_size =
+  let instrs = if stack_size > 0 then [ MOV (RSP, Reg RBP) ] else [] in
+  instrs @ [ POP RBP; RET ]

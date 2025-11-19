@@ -484,7 +484,7 @@ occurs check, which too traverses the type. The two traversals can be
 merged. The new <code>occurs</code> does the occurs check and updates the levels:
 
 <pre>    let rec occurs : tv ref -&gt; typ -&gt; unit = fun tvr -&gt; function
-      | TVar tvr' when tvr == tvr' -&gt; failwith &quot;occurs check&quot;
+      | TVar tvr' when tvr == tvr' -&gt; panic &quot;occurs check&quot;
       | TVar ({contents = Unbound (name,l')} as tv) -&gt;
           let min_level = 
             (match !tvr with Unbound (_,l) -&gt; min l l' | _ -&gt; l') in
@@ -657,7 +657,7 @@ from <code>sound_eager</code>:
           tv := Link t'
       | (TArrow (tyl1,tyl2,ll), TArrow (tyr1,tyr2,lr)) -&gt;
           if ll.level_new = marked_level || lr.level_new = marked_level then
-            failwith &quot;cycle: occurs check&quot;;
+            panic &quot;cycle: occurs check&quot;;
           let min_level = min ll.level_new lr.level_new in
           ll.level_new &lt;- marked_level; lr.level_new &lt;- marked_level;
           unify_lev min_level tyl1 tyr1;
@@ -699,7 +699,7 @@ OCaml).
             tvr := Unbound (n,l)
       | TArrow (_,_,ls) as ty -&gt; 
           assert (not (ls.level_new = generic_level));
-          if ls.level_new = marked_level then failwith &quot;occurs check&quot;;
+          if ls.level_new = marked_level then panic &quot;occurs check&quot;;
           if l &lt; ls.level_new then begin
             if ls.level_new = ls.level_old then
               to_be_level_adjusted := ty :: !to_be_level_adjusted;

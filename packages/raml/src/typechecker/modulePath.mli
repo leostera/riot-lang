@@ -5,4 +5,4 @@ val compare : t -> t -> int
 val scope : t -> int
 val name : ?paren:(string -> bool) -> t -> string
 val head : t -> Identifier.t
-val pp : Format.formatter -> t -> unit
+val to_string : t -> string

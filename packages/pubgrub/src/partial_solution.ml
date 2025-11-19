@@ -1,4 +1,7 @@
 open Std
+  open Std.Sync
+  open Std.Sync.Cell
+
 
 type package = string
 type version = Version.t
@@ -95,13 +98,13 @@ let pick_highest_priority_pkg solution prioritizer =
           match Collections.HashMap.get solution.decisions pkg with
           | None ->
               if not (Ranges.is_empty ranges) then (
-                Log.info "🔍 pick: found candidate %s" pkg;
+                Log.info ("🔍 pick: found candidate " ^ pkg);
                 candidates := (pkg, ranges) :: !candidates)
-          | Some _ -> Log.info "🔍 pick: %s already decided, skipping" pkg)
+          | Some _ -> Log.info ("🔍 pick: " ^ pkg ^ " already decided, skipping"))
       | Decision _ -> ())
     solution.assignments;
 
-  Log.info "🔍 pick: found %d total candidates" (List.length !candidates);
+  Log.info ("🔍 pick: found " ^ string_of_int (List.length !candidates) ^ " total candidates");
 
   match !candidates with
   | [] -> None
@@ -115,7 +118,7 @@ let pick_highest_priority_pkg solution prioritizer =
           !candidates
       in
       let pkg, _ = List.hd sorted in
-      Log.info "🔍 pick: selected %s" pkg;
+      Log.info ("🔍 pick: selected " ^ pkg);
       Some (List.hd sorted)
 
 let backtrack solution target_level =
@@ -209,34 +212,28 @@ let relation solution incompat =
   let total = List.length terms in
   if !satisfied_count = total then (
     Log.debug
-      "Incompatibility SATISFIED (all %d terms' constraints met → conflict!)"
-      total;
+      ("Incompatibility SATISFIED (all " ^ string_of_int total ^ " terms' constraints met → conflict!)");
     `Satisfied)
   else if !satisfied_count = total - 1 && !undecided_count = 1 then
     match !undecided_pkg with
     | Some pkg ->
-        Log.debug "Incompatibility ALMOST SATISFIED (one undecided: %s)" pkg;
+        Log.debug ("Incompatibility ALMOST SATISFIED (one undecided: " ^ pkg ^ ")");
         `AlmostSatisfied pkg
     | None -> `Unknown
   else if !contradicted_count = total then (
     Log.debug
-      "Incompatibility SATISFIED (all %d terms' constraints unmet → conflict!)"
-      total;
+      ("Incompatibility SATISFIED (all " ^ string_of_int total ^ " terms' constraints unmet → conflict!)");
     `Satisfied)
   else if !contradicted_count > 0 then
     match !contradicted_pkg with
     | Some pkg ->
         Log.debug
-          "Incompatibility CONTRADICTED (%d/%d terms' constraints unmet, \
-           pkg=%s)"
-          !contradicted_count total pkg;
+          ("Incompatibility CONTRADICTED (" ^ string_of_int !contradicted_count ^ "/" ^ string_of_int total ^ " terms' constraints unmet, pkg=" ^ pkg ^ ")");
         `Contradicted pkg
     | None -> `Unknown
   else (
     Log.debug
-      "Incompatibility INCONCLUSIVE (%d satisfied, %d undecided, %d \
-       contradicted)"
-      !satisfied_count !undecided_count !contradicted_count;
+      ("Incompatibility INCONCLUSIVE (" ^ string_of_int !satisfied_count ^ " satisfied, " ^ string_of_int !undecided_count ^ " undecided, " ^ string_of_int !contradicted_count ^ " contradicted)");
     `Unknown)
 
 let get_assignment_level solution pkg =
@@ -293,11 +290,11 @@ let satisfier_search solution incompat =
 
   if List.length satisfied_map = 0 then (
     Log.error "No satisfiers found in satisfier_search!";
-    Log.error "Incompatibility has %d terms" (List.length terms);
+    Log.error ("Incompatibility has " ^ string_of_int (List.length terms) ^ " terms");
     List.iter
       (fun term ->
-        Log.error "  Term: %s@%s (positive=%b)" (Term.package term) "ranges"
-          (Term.is_positive term))
+        Log.error ("  Term: " ^ Term.package term ^ "@ranges (positive=" ^
+          string_of_bool (Term.is_positive term) ^ ")"))
       terms;
     panic "No satisfiers found in satisfier_search");
 
@@ -314,7 +311,7 @@ let satisfier_search solution incompat =
   (* Find max global_index excluding satisfier *)
   let previous_satisfier_level =
     let filtered =
-      List.filter (fun (pkg, _) -> pkg <> satisfier_pkg) satisfied_map
+      List.filter (fun (pkg, _) -> pkg != satisfier_pkg) satisfied_map
     in
     if List.length filtered = 0 then 1 (* No previous satisfier *)
     else

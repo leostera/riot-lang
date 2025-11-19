@@ -20,7 +20,7 @@ let is_any t =
 let negate t = { t with positive = not t.positive }
 
 let union t1 t2 =
-  if t1.package <> t2.package then
+  if t1.package != t2.package then
     panic "Cannot union terms for different packages"
   else
     match (t1.positive, t2.positive) with
@@ -52,7 +52,7 @@ let union t1 t2 =
           }
 
 let intersection t1 t2 =
-  if t1.package <> t2.package then
+  if t1.package != t2.package then
     panic "Cannot intersect terms for different packages"
   else
     match (t1.positive, t2.positive) with

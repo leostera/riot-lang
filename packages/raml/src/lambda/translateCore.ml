@@ -138,7 +138,7 @@ let rec translate_expression ctx expr =
            Ir.Var id
        | _ ->
            (* TODO: Handle module paths *)
-           failwith "Module paths not yet supported in Lambda translation")
+           panic "Module paths not yet supported in Lambda translation")
   
   | TypedTree.ExpressionLet { recursive = false; bindings; body } ->
       (* Non-recursive let: translate to nested Llets *)
@@ -203,7 +203,7 @@ and translate_let ctx bindings body loc =
         | TypedTree.PatternVar id -> id
         | _ ->
             (* TODO: Handle complex patterns in let bindings *)
-            failwith "Complex patterns in let bindings not yet supported"
+            panic "Complex patterns in let bindings not yet supported"
       in
       Ir.Let {
         id;
@@ -227,7 +227,7 @@ and translate_letrec ctx bindings body loc =
         let value = translate_expression ctx binding.TypedTree.vb_expr in
         let id = match binding.TypedTree.vb_pattern.TypedTree.pat_desc with
           | TypedTree.PatternVar id -> id
-          | _ -> failwith "Complex patterns in letrec not supported"
+          | _ -> panic "Complex patterns in letrec not supported"
         in
         (id, value)
       )
@@ -298,9 +298,9 @@ and translate_match ctx scrutinee cases loc =
              translate_expression ctx case.TypedTree.case_body
            )
        | _ ->
-           failwith "Complex pattern matching not yet implemented in Lambda translation")
+           panic "Complex pattern matching not yet implemented in Lambda translation")
   | _ ->
-      failwith "Multi-case pattern matching not yet implemented in Lambda translation"
+      panic "Multi-case pattern matching not yet implemented in Lambda translation"
 
 (** {2 Top-Level Translation} *)
 
@@ -314,7 +314,7 @@ let translate_structure_item ctx item =
           let value = translate_expression ctx binding.TypedTree.vb_expr in
           let id = match binding.TypedTree.vb_pattern.TypedTree.pat_desc with
             | TypedTree.PatternVar id -> id
-            | _ -> failwith "Complex patterns in structure items not supported"
+            | _ -> panic "Complex patterns in structure items not supported"
           in
           (id, value)
         )
@@ -326,7 +326,7 @@ let translate_structure_item ctx item =
           let value = translate_expression ctx binding.TypedTree.vb_expr in
           let id = match binding.TypedTree.vb_pattern.TypedTree.pat_desc with
             | TypedTree.PatternVar id -> id
-            | _ -> failwith "Complex patterns in structure items not supported"
+            | _ -> panic "Complex patterns in structure items not supported"
           in
           (id, value)
         )

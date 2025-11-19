@@ -2,6 +2,7 @@ open Lol
 open Std
 
 let () =
+
   Log.set_level Log.Info;
 
   let to_json_stream_cmd =

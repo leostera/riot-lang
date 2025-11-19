@@ -30,29 +30,23 @@ let rec to_string_indent indent node =
   let kind_str =
     match node.kind with
     | Document -> "Document"
-    | Heading { level } -> format "Heading(level=%d)" level
+    | Heading { level } -> "Heading(level=" ^ string_of_int level ^ ")"
     | Paragraph -> "Paragraph"
-    | Text { value } -> format "Text(\"%s\")" value
+    | Text { value } -> "Text(\"" ^ value ^ "\")"
     | CodeBlock { info; value } ->
-        format "CodeBlock(info=%s, value=\"%s\")"
-          (Option.unwrap_or ~default:"none" info)
-          value
+        "CodeBlock(info=" ^ Option.unwrap_or ~default:"none" info ^ ", value=\"" ^ value ^ "\")"
     | ThematicBreak -> "ThematicBreak"
     | BlockQuote -> "BlockQuote"
     | List { ordered; start } ->
-        format "List(ordered=%b, start=%s)" ordered
-          (Option.map Int.to_string start |> Option.unwrap_or ~default:"none")
+        "List(ordered=" ^ string_of_bool ordered ^ ", start=" ^ (Option.map Int.to_string start |> Option.unwrap_or ~default:"none") ^ ")"
     | ListItem -> "ListItem"
     | Emphasis -> "Emphasis"
     | Strong -> "Strong"
     | Link { url; title } ->
-        format "Link(url=\"%s\", title=%s)" url
-          (Option.unwrap_or ~default:"none" title)
+        "Link(url=\"" ^ url ^ "\", title=" ^ Option.unwrap_or ~default:"none" title ^ ")"
     | Image { url; title; alt } ->
-        format "Image(url=\"%s\", title=%s, alt=\"%s\")" url
-          (Option.unwrap_or ~default:"none" title)
-          alt
-    | InlineCode { value } -> format "InlineCode(\"%s\")" value
+        "Image(url=\"" ^ url ^ "\", title=" ^ Option.unwrap_or ~default:"none" title ^ ", alt=\"" ^ alt ^ "\")"
+    | InlineCode { value } -> "InlineCode(\"" ^ value ^ "\")"
     | HardBreak -> "HardBreak"
     | SoftBreak -> "SoftBreak"
   in
@@ -63,7 +57,7 @@ let rec to_string_indent indent node =
       ^ String.concat "\n"
           (List.map (to_string_indent (indent + 1)) node.children)
   in
-  format "%s%s [%d..%d]%s" spaces kind_str node.span.start node.span.end_
-    children_str
+  spaces ^ kind_str ^ " [" ^ string_of_int node.span.start ^ ".." ^
+    string_of_int node.span.end_ ^ "]" ^ children_str
 
 let to_string node = to_string_indent 0 node

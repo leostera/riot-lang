@@ -1,4 +1,5 @@
 open Std
+open Std.Sync
 
 (* Simple cursor for lexing with position tracking *)
 type cursor = { input : string; mutable pos : int; length : int }

@@ -6,6 +6,9 @@ open Collections
 
 type t = Pid.t
 
+(** Convert supervisor to Pid *)
+let to_pid (sup : t) : Pid.t = sup
+
 (** {1 Supervision Strategies} *)
 
 type strategy =

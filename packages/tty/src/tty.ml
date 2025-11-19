@@ -1,6 +1,7 @@
 open Std
 open Std.IO
 
+
 (** Re-export types from Terminal module *)
 type size = Terminal.size = {
   rows : int;

@@ -1,0 +1,32 @@
+open Std
+
+(* Simple format helper - handles basic %s substitution *)
+let format template = 
+  let rec replace str args = 
+    match args with 
+    | [] -> str 
+    | arg :: rest -> 
+        let idx = try String.index str '%' with Not_found -> -1 in 
+        if idx = -1 then str ^ arg 
+        else 
+          let before = String.sub str 0 idx in 
+          let after_idx = idx + 2 in 
+          let after = if after_idx < String.length str 
+                     then String.sub str after_idx (String.length str - after_idx) 
+                     else "" in 
+          replace (before ^ arg ^ after) rest 
+  in replace template
+
+let compile_lambda_to_wasm expr output_path =
+  let wasm_ir = WasmIR.translate_from_lambda expr in
+
+  let wat_path = Path.v (Path.to_string output_path ^ ".wat") in
+  let wat_content = WasmAST.to_wat wasm_ir in
+  match Fs.write wat_content wat_path with
+  | Error err ->
+      Error (format "Failed to write WAT file: %s" (IO.error_message err))
+  | Ok () -> (
+      match WasmBinary.write_binary output_path wasm_ir with
+      | Ok () -> Ok ()
+      | Error err ->
+          Error (format "Failed to write WASM binary: %s" (IO.error_message err)))

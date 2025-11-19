@@ -57,6 +57,9 @@ open Global
 type t
 (** A supervisor process *)
 
+val to_pid : t -> Pid.t
+(** Convert supervisor to Pid *)
+
 (** {1 Supervision Strategies} *)
 
 type strategy =

@@ -1,3 +1,5 @@
+module EmailMessage = Message
+
 open Std
 
 type t
@@ -5,7 +7,7 @@ type t
 type entry = {
   envelope_from : string Option.t;
   envelope_date : string Option.t;
-  message : Message.t;
+  message : EmailMessage.t;
 }
 
 val of_file : Fs.File.t -> (t, string) Result.t

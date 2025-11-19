@@ -1,5 +1,13 @@
 open Std
 
+(* Simple format helper since Printf isn't available *)
+let format template arg1 arg2 =
+  (* Quick replace for "(%s) %s" pattern *)
+  if template = "(%s) %s" then "(" ^ arg1 ^ ") " ^ arg2
+  (* Quick replace for "∀%s. %s" pattern *)
+  else if template = "∀%s. %s" then "∀" ^ arg1 ^ ". " ^ arg2
+  else template ^ arg1 ^ arg2
+
 type type_id = int
 
 type type_expr = {
@@ -128,5 +136,3 @@ let rec type_expr_to_string t =
   | Polymorphic (t, vars) ->
       let vars_str = String.concat " " (List.map type_expr_to_string vars) in
       format "∀%s. %s" vars_str (type_expr_to_string t)
-
-let pp_type_expr fmt t = Format.fprintf fmt "%s" (type_expr_to_string t)

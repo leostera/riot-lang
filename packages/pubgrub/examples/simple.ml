@@ -20,8 +20,8 @@ let () =
   | Ok (Solver.Success solution) ->
       Log.info "Solution found:";
       List.iter
-        (fun (pkg, ver) -> Log.info "  %s@%s" pkg (version_to_string ver))
+        (fun (pkg, ver) -> Log.info ("  " ^ pkg ^ "@" ^ (version_to_string ver)))
         solution
   | Ok (Solver.Failure conflict) ->
-      Log.error "No solution found:\n%s" (explain_conflict conflict)
-  | Error err -> Log.error "Error: %s" err
+      Log.error ("No solution found:\n" ^ (explain_conflict conflict))
+  | Error err -> Log.error ("Error: " ^ err)

@@ -1,4 +1,5 @@
 open Std
+  open Std.IO
 
 type t = Base64 | QuotedPrintable | SevenBit | EightBit | Binary
 
@@ -9,7 +10,7 @@ let of_string s =
   | "7bit" -> Ok SevenBit
   | "8bit" -> Ok EightBit
   | "binary" -> Ok Binary
-  | _ -> Error (format "Unknown encoding: %s" s)
+  | _ -> Error ("Unknown encoding: " ^ s)
 
 let to_string = function
   | Base64 -> "base64"

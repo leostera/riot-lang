@@ -123,7 +123,7 @@ module Parser = struct
           advance cursor;
           match peek cursor with
           | Some '/' ->
-              skip_while cursor (fun c -> c <> '\n');
+              skip_while cursor (fun c -> c != '\n');
               advance cursor;
               loop ()
           | Some '*' ->

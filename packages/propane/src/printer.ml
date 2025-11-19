@@ -7,7 +7,7 @@ type 'value t = 'value -> string
 let int = Int.to_string
 let int32 = Int32.to_string
 let int64 = Int64.to_string
-let float = Float.to_string
+let float ?precision = Float.to_string ?precision
 let bool = Bool.to_string
 
 let char c = "'" ^ String.make 1 c ^ "'"

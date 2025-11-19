@@ -1,4 +1,21 @@
 open Std
+
+(* Simple format helper - handles basic %s substitution *)
+let format template = 
+  let rec replace str args = 
+    match args with 
+    | [] -> str 
+    | arg :: rest -> 
+        let idx = try String.index str '%' with Not_found -> -1 in 
+        if idx = -1 then str ^ arg 
+        else 
+          let before = String.sub str 0 idx in 
+          let after_idx = idx + 2 in 
+          let after = if after_idx < String.length str 
+                     then String.sub str after_idx (String.length str - after_idx) 
+                     else "" in 
+          replace (before ^ arg ^ after) rest 
+  in replace template
 module Identifier = Typechecker.Identifier
 module Location = Typechecker.Location
 
@@ -103,9 +120,9 @@ let primitive_to_string = function
   | Pint_ge -> ">="
   | Pint_eq -> "="
   | Pint_ne -> "<>"
-  | Pmakeblock tag -> format "makeblock[%d]" tag
-  | Pfield n -> format "field[%d]" n
-  | Psetfield n -> format "setfield[%d]" n
+  | Pmakeblock tag -> "makeblock[" ^ Int.to_string tag ^ "]"
+  | Pfield n -> "field[" ^ Int.to_string n ^ "]"
+  | Psetfield n -> "setfield[" ^ Int.to_string n ^ "]"
   | Pnot -> "not"
   | Pmakearray -> "makearray"
   | Parraylength -> "array.length"
@@ -265,75 +282,72 @@ let rec lambda_to_string = function
   | Var id -> Identifier.name id
   | Const c -> const_to_string c
   | Apply { func; args; _ } ->
-      format "(%s %s)" (lambda_to_string func)
-        (String.concat " " (List.map lambda_to_string args))
+      "(" ^ lambda_to_string func ^ " " ^
+        String.concat " " (List.map lambda_to_string args) ^ ")"
   | Function { params; body; _ } ->
-      format "(fun %s -> %s)"
-        (String.concat " " (List.map Identifier.name params))
-        (lambda_to_string body)
+      "(fun " ^ String.concat " " (List.map Identifier.name params) ^ 
+        " -> " ^ lambda_to_string body ^ ")"
   | Let { id; value; body; _ } ->
-      format "(let %s = %s in %s)" (Identifier.name id) (lambda_to_string value)
-        (lambda_to_string body)
+      "(let " ^ Identifier.name id ^ " = " ^ lambda_to_string value ^
+        " in " ^ lambda_to_string body ^ ")"
   | LetRec { bindings; body; _ } ->
       let bindings_str =
         bindings
         |> List.map (fun (id, value) ->
-            format "%s = %s" (Identifier.name id) (lambda_to_string value))
+            Identifier.name id ^ " = " ^ lambda_to_string value)
         |> String.concat " and "
       in
-      format "(let rec %s in %s)" bindings_str (lambda_to_string body)
+      "(let rec " ^ bindings_str ^ " in " ^ lambda_to_string body ^ ")"
   | Prim (prim, args) ->
-      format "(%s %s)" (primitive_to_string prim)
-        (String.concat " " (List.map lambda_to_string args))
+      "(" ^ primitive_to_string prim ^ " " ^
+        String.concat " " (List.map lambda_to_string args) ^ ")"
   | IfThenElse (cond, then_, else_) -> (
       match else_ with
       | None ->
-          format "(if %s then %s)" (lambda_to_string cond)
-            (lambda_to_string then_)
+          "(if " ^ lambda_to_string cond ^
+            " then " ^ lambda_to_string then_ ^ ")"
       | Some else_ ->
-          format "(if %s then %s else %s)" (lambda_to_string cond)
-            (lambda_to_string then_) (lambda_to_string else_))
+          "(if " ^ lambda_to_string cond ^
+            " then " ^ lambda_to_string then_ ^ " else " ^ lambda_to_string else_ ^ ")")
   | Sequence (e1, e2) ->
-      format "(%s; %s)" (lambda_to_string e1) (lambda_to_string e2)
+      "(" ^ lambda_to_string e1 ^ "; " ^ lambda_to_string e2 ^ ")"
   | While { condition; body; _ } ->
-      format "(while %s do %s)"
-        (lambda_to_string condition)
-        (lambda_to_string body)
+      "(while " ^ lambda_to_string condition ^
+        " do " ^ lambda_to_string body ^ ")"
   | For { id; start; stop; direction; body; _ } ->
       let dir = match direction with Upto -> "to" | Downto -> "downto" in
-      format "(for %s = %s %s %s do %s)" (Identifier.name id)
-        (lambda_to_string start) dir (lambda_to_string stop)
-        (lambda_to_string body)
+      "(for " ^ Identifier.name id ^ " = " ^ lambda_to_string start ^
+        " " ^ dir ^ " " ^ lambda_to_string stop ^
+        " do " ^ lambda_to_string body ^ ")"
   | Switch { scrutinee; cases; default; _ } ->
       let cases_str =
         cases
         |> List.map (fun (tag, body) ->
-            format "%d -> %s" tag (lambda_to_string body))
+            Int.to_string tag ^ " -> " ^ lambda_to_string body)
         |> String.concat " | "
       in
       let default_str =
         match default with
         | None -> ""
-        | Some body -> format " | _ -> %s" (lambda_to_string body)
+        | Some body -> " | _ -> " ^ lambda_to_string body
       in
-      format "(switch %s with %s%s)"
-        (lambda_to_string scrutinee)
-        cases_str default_str
+      "(switch " ^ lambda_to_string scrutinee ^
+        " with " ^ cases_str ^ default_str ^ ")"
   | StaticRaise (id, args) ->
-      format "(raise#%d %s)" id
-        (String.concat " " (List.map lambda_to_string args))
+      "(raise#" ^ Int.to_string id ^ " " ^
+        String.concat " " (List.map lambda_to_string args) ^ ")"
   | StaticCatch (body, (id, params), handler) ->
-      format "(catch %s with #%d(%s) -> %s)" (lambda_to_string body) id
-        (String.concat ", " (List.map Identifier.name params))
-        (lambda_to_string handler)
+      "(catch " ^ lambda_to_string body ^ " with #" ^ Int.to_string id ^
+        "(" ^ String.concat ", " (List.map Identifier.name params) ^
+        ") -> " ^ lambda_to_string handler ^ ")"
 
 and const_to_string = function
   | Const_int n -> string_of_int n
-  | Const_string s -> format "\"%s\"" s
+  | Const_string s -> "\"" ^ s ^ "\""
   | Const_float f -> string_of_float f
   | Const_block (tag, fields) ->
-      format "[%d: %s]" tag
-        (String.concat ", " (List.map const_to_string fields))
+      "[" ^ Int.to_string tag ^ ": " ^
+        String.concat ", " (List.map const_to_string fields) ^ "]"
 
 (** {2 JSON Serialization} *)
 

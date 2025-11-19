@@ -90,4 +90,3 @@ val new_type : ctx:context -> type_desc -> type_expr * context
 val newvar : ctx:context -> string option -> type_expr * context
 val repr : type_expr -> type_expr
 val type_expr_to_string : type_expr -> string
-val pp_type_expr : Format.formatter -> type_expr -> unit

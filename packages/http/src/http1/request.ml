@@ -36,6 +36,7 @@ let parse_request_line ?(max_length = 8192) input =
                 match Cursor.take_until line_cursor (fun c -> c = ' ') with
                 | None -> Error "Missing path"
                 | Some (path, line_cursor) -> (
+
                     let line_cursor =
                       Cursor.skip_while line_cursor (fun c -> c = ' ')
                     in

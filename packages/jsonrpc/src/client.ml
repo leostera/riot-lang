@@ -2,6 +2,7 @@
 
 open Std
 open Std.Data
+open Std.Collections
 
 module type Transport = sig
   type t
@@ -117,10 +118,9 @@ let receive_response (type req res) (Client c as client : (req, res) t) :
                                   Error
                                     (Common.InternalError
                                        {
-                                         context = "parse_response_result";
-                                         details =
-                                           format "Failed to parse result: %s"
-                                             (Json.to_string err_json);
+                                          context = "parse_response_result";
+                                          details =
+                                            "Failed to parse result: " ^ (Json.to_string err_json);
                                        }))
                           | None ->
                               Error
@@ -133,10 +133,10 @@ let receive_response (type req res) (Client c as client : (req, res) t) :
                   | Error e ->
                       Error
                         (Common.InvalidRequest
-                           {
-                             request_json = json;
-                             reason = format "Invalid ID: %s" e;
-                           }))
+                            {
+                              request_json = json;
+                              reason = "Invalid ID: " ^ e;
+                            }))
               | _ ->
                   Error
                     (Common.InvalidRequest
@@ -218,8 +218,7 @@ let call (type req res) (client : (req, res) t) ~method_ ?params () :
                                    {
                                      context = "call_parse_result";
                                      details =
-                                       format "Failed to parse result: %s"
-                                         (Json.to_string err_json);
+                                       "Failed to parse result: " ^ (Json.to_string err_json);
                                    }))
                       | None ->
                           Error
@@ -315,13 +314,11 @@ let call_batch (type req res) (client : (req, res) t) (requests : req list) :
                                             Error
                                               (Common.InternalError
                                                  {
-                                                   context =
-                                                     "call_batch_parse_result";
-                                                   details =
-                                                     format
-                                                       "Failed to parse \
-                                                        result: %s"
-                                                       (Json.to_string err_json);
+                                                  context =
+                                                    "call_batch_parse_result";
+                                                  details =
+                                                    "Failed to parse \
+                                                       result: " ^ Json.to_string err_json;
                                                  }))
                                     | None ->
                                         Error
@@ -334,10 +331,10 @@ let call_batch (type req res) (client : (req, res) t) (requests : req list) :
                                 | Error e ->
                                     Error
                                       (Common.InvalidRequest
-                                         {
-                                           request_json = json_resp;
-                                           reason = format "Invalid ID: %s" e;
-                                         }))
+                                          {
+                                            request_json = json_resp;
+                                            reason = "Invalid ID: " ^ e;
+                                          }))
                             | _ ->
                                 Error
                                   (Common.InvalidRequest

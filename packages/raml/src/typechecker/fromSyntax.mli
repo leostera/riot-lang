@@ -1,3 +1,5 @@
+open Std
+
 (** FromSyntax - Convert Syn CST to UntypedTree AST
 
     This module converts from Syn's lossless concrete syntax tree (CST) to our

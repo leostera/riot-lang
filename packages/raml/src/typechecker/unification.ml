@@ -37,7 +37,7 @@ let rec unify ~ctx t1 t2 =
   let t1 = TypeOperations.follow_links t1 in
   let t2 = TypeOperations.follow_links t2 in
 
-  if t1 == t2 then Ok ctx
+  if Ptr.equal t1 t2 then Ok ctx
   else
     match (t1.Types.desc, t2.Types.desc) with
     | Types.Variable _, Types.Variable _ ->
@@ -69,7 +69,7 @@ let rec unify ~ctx t1 t2 =
           (Ok ctx) t1s t2s
     | Types.Constructor (p1, args1), Types.Constructor (p2, args2)
       when ModulePath.same p1 p2 ->
-        if List.length args1 <> List.length args2 then
+        if List.length args1 != List.length args2 then
           Error
             (ArityMismatch
                {
@@ -94,7 +94,7 @@ let instance ~ctx ty =
             let fresh, ctx_unused =
               TypeOperations.new_type_variable ~ctx ty.Types.level
             in
-            Collections.HashMap.insert subst ty.Types.id fresh;
+            let _ = Collections.HashMap.insert subst ty.Types.id fresh in
             fresh)
     | Types.Arrow (l, t1, t2) ->
         let t1' = inst subst t1 in
@@ -133,13 +133,11 @@ let generalize ~level ty =
 
 let error_to_string = function
   | TypeMismatch (t1, t2) ->
-      format "Type mismatch: %s vs %s"
-        (Types.type_expr_to_string t1)
-        (Types.type_expr_to_string t2)
+      "Type mismatch: " ^ Types.type_expr_to_string t1 ^ " vs " ^ 
+        Types.type_expr_to_string t2
   | OccursCheck (t1, t2) ->
-      format "Occurs check: %s occurs in %s"
-        (Types.type_expr_to_string t1)
-        (Types.type_expr_to_string t2)
+      "Occurs check: " ^ Types.type_expr_to_string t1 ^ " occurs in " ^
+        Types.type_expr_to_string t2
   | ArityMismatch { expected; got; path } ->
-      format "Arity mismatch for %s: expected %d args, got %d"
-        (ModulePath.name path) expected got
+      "Arity mismatch for " ^ ModulePath.name path ^ ": expected " ^
+        Int.to_string expected ^ " args, got " ^ Int.to_string got

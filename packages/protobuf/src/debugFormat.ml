@@ -1,4 +1,6 @@
 open Std
+open Std.Sync
+open Std.IO
 
 type value =
   | String of string
@@ -29,7 +31,7 @@ module Parser = struct
       skip_while cursor is_whitespace;
       match peek cursor with
       | Some '#' ->
-          skip_while cursor (fun c -> c <> '\n');
+          skip_while cursor (fun c -> c != '\n');
           (match peek cursor with Some '\n' -> advance cursor | _ -> ());
           loop ()
       | _ -> ()

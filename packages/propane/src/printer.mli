@@ -16,7 +16,7 @@ type 'value t = 'value -> string
 val int : int t
 val int32 : int32 t
 val int64 : int64 t
-val float : float t
+val float : ?precision:int -> float t
 val bool : bool t
 val char : char t
 val rune : Unicode.Rune.t t

@@ -1,5 +1,22 @@
 open Std
 
+(* Simple format helper - handles basic %s substitution *)
+let format template = 
+  let rec replace str args = 
+    match args with 
+    | [] -> str 
+    | arg :: rest -> 
+        let idx = try String.index str '%' with Not_found -> -1 in 
+        if idx = -1 then str ^ arg 
+        else 
+          let before = String.sub str 0 idx in 
+          let after_idx = idx + 2 in 
+          let after = if after_idx < String.length str 
+                     then String.sub str after_idx (String.length str - after_idx) 
+                     else "" in 
+          replace (before ^ arg ^ after) rest 
+  in replace template
+
 let ( let* ) = Result.and_then
 
 type typing_result = { tree : TypedTree.expression; diagnostics : string list }
@@ -20,8 +37,8 @@ type checker_state = {
   env : Environment.t;
   ctx : Types.context;
   ident_ctx : Identifier.context;
-  name_map : (string, Identifier.t) Hashtbl.t;
-  constructors : (string, Identifier.t * Types.type_expr) Hashtbl.t;
+  name_map : (string, Identifier.t) Collections.HashMap.t;
+  constructors : (string, Identifier.t * Types.type_expr) Collections.HashMap.t;
 }
 
 let make_state () =
@@ -29,8 +46,8 @@ let make_state () =
   let env = Environment.create () in
   let env, ctx = Environment.add_predef_types env ~ctx in
   let ident_ctx = Identifier.create_context () in
-  let name_map = Hashtbl.create 16 in
-  let constructors = Hashtbl.create 32 in
+  let name_map = Collections.HashMap.create () in
+  let constructors = Collections.HashMap.create () in
   { env; ctx; ident_ctx; name_map; constructors }
 
 let rec check_expression state (expr : UntypedTree.expression) =
@@ -93,7 +110,7 @@ and check_constant state const loc =
   | ConstantBool _ -> Error (NotImplemented { feature = "bool constants"; loc })
 
 and check_ident state name loc =
-  match Hashtbl.find_opt state.name_map name with
+  match Collections.HashMap.get state.name_map name with
   | Some ident -> (
       match Environment.find_value_type state.env ident with
       | Some ty ->
@@ -137,7 +154,7 @@ and check_pattern state pattern expected_ty =
       let ident, ident_ctx =
         Identifier.create_local ~ctx:state.ident_ctx name
       in
-      Hashtbl.add state.name_map name ident;
+      let _ = Collections.HashMap.insert state.name_map name ident in
       let state = { state with ident_ctx } in
       let typed_pattern =
         TypedTree.make_pattern ~desc:(TypedTree.PatternVar ident)
@@ -212,7 +229,7 @@ and check_pattern state pattern expected_ty =
       let ident, ident_ctx =
         Identifier.create_local ~ctx:state.ident_ctx name
       in
-      Hashtbl.add state.name_map name ident;
+      let _ = Collections.HashMap.insert state.name_map name ident in
       let state = { state with ident_ctx } in
       let typed_pattern =
         TypedTree.make_pattern
@@ -239,7 +256,7 @@ and check_pattern_tuple state elements expected_ty =
       Ok (typed_elem :: typed_rest, state, bindings @ rest_bindings)
 
 and check_pattern_construct state constructor arg expected_ty loc =
-  match Hashtbl.find_opt state.constructors constructor with
+  match Collections.HashMap.get state.constructors constructor with
   | None -> Error (UnboundVariable { name = constructor; loc })
   | Some (type_ident, result_ty) ->
       let* typed_args, state, bindings =
@@ -490,7 +507,7 @@ and check_cases state scrut_ty = function
       Ok (typed_case :: rest_cases, state)
 
 and check_construct state constructor arg loc =
-  match Hashtbl.find_opt state.constructors constructor with
+  match Collections.HashMap.get state.constructors constructor with
   | None -> Error (UnboundVariable { name = constructor; loc })
   | Some (type_ident, result_ty) ->
       let* args, state =
@@ -613,8 +630,8 @@ let check_type_declaration state (item : UntypedTree.structure_item) =
                   in
                   let state = { state with ctx } in
 
-                  Hashtbl.add state.constructors cstr.constructor_name
-                    (type_ident, result_ty);
+                  let _ = Collections.HashMap.insert state.constructors cstr.constructor_name
+                    (type_ident, result_ty) in
 
                   let cstr_decl =
                     {
@@ -675,7 +692,7 @@ let check_type_declaration state (item : UntypedTree.structure_item) =
             (type_decl, state)
       in
 
-      Hashtbl.add state.name_map name type_ident;
+      let _ = Collections.HashMap.insert state.name_map name type_ident in
       let env = Environment.add_type state.env type_ident type_decl ~loc:None in
       let state = { state with env } in
 
@@ -684,12 +701,12 @@ let check_type_declaration state (item : UntypedTree.structure_item) =
 
 let error_to_string err =
   match err with
-  | ParseError s -> format "Parse error: %s" s
+  | ParseError s -> "Parse error: " ^ s
   | ConversionError _ -> "Conversion error"
-  | UnboundVariable { name; _ } -> format "Unbound variable: %s" name
+  | UnboundVariable { name; _ } -> "Unbound variable: " ^ name
   | TypeMismatch _ -> "Type mismatch"
   | OccursCheck _ -> "Occurs check"
-  | NotImplemented { feature; _ } -> format "Not implemented: %s" feature
+  | NotImplemented { feature; _ } -> "Not implemented: " ^ feature
 
 let typecheck source =
   let tokens = Syn.Lexer.tokenize source in

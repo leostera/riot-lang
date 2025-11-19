@@ -19,4 +19,4 @@ val equal : t -> t -> bool
 val same : t -> t -> bool
 val compare : t -> t -> int
 val scope : t -> int
-val pp : Format.formatter -> t -> unit
+val to_string : t -> string

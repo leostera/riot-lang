@@ -1,6 +1,8 @@
 (** Model Context Protocol (MCP) implementation for OCaml *)
 
+open Std
 open Std.Data
+open Std.Collections
 
 type protocol_version = string
 type json = Json.t
@@ -790,7 +792,7 @@ module MakeProtocol (T : ToolProtocol) :
         | _ -> Error (Json.String "resources/read requires named parameters"))
     | "ping" -> Ok Ping
     | "shutdown" -> Ok Shutdown
-    | _ -> Error (Json.String (Std.format "Unknown method: %s" method_))
+    | _ -> Error (Json.String ("Unknown method: " ^ method_))
 
   let response_to_json = function
     | InitializeResult

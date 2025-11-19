@@ -63,7 +63,7 @@ let of_string s =
 
 let to_string t =
   let header_lines =
-    List.map (fun (name, value) -> format "%s: %s" name value) t.headers
+    List.map (fun (name, value) -> name ^ ": " ^ value) t.headers
   in
   String.concat "\n" (header_lines @ [ ""; t.body ])
 

@@ -1,13 +1,14 @@
-open Std
-open Std.Iter
-
-module Message = Message
+module EmailMessage = Message
 
 type entry = {
-  envelope_from : string Option.t;
-  envelope_date : string Option.t;
-  message : Message.t;
+  envelope_from : string option;
+  envelope_date : string option;
+  message : EmailMessage.t;
 }
+
+open Std
+open Std.Sync
+open Std.Iter
 
 type t = { file : Fs.File.t }
 
@@ -94,7 +95,7 @@ module MboxIter = struct
           | Error _ -> (None, None)
         in
 
-        match Message.of_string content with
+        match EmailMessage.of_string content with
         | Error _ -> next state
         | Ok message -> Some { envelope_from; envelope_date; message }
 

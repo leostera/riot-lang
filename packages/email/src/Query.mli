@@ -1,3 +1,5 @@
+module EmailMessage = Message
+
 open Std
 
 type t =
@@ -12,5 +14,5 @@ type t =
   | Maybe of t
 
 val parse : string -> (t, string) Result.t
-val matches : t -> Message.t -> bool
+val matches : t -> EmailMessage.t -> bool
 val matches_entry : t -> Mbox.entry -> bool

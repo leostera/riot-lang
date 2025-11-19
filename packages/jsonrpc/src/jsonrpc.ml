@@ -1,5 +1,6 @@
 (** JSON-RPC 2.0 Protocol Implementation *)
 
+open Std
 open Std.Data
 
 (* Re-export all types and functions from Common *)

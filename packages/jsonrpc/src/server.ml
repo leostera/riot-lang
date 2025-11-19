@@ -2,6 +2,7 @@
 
 open Std
 open Std.Data
+    open Std.Collections
 
 (* TODO: In the future, we could use a GADT handler type to allow each
    handler to have its own request type and param parser. For now,
@@ -30,14 +31,17 @@ let handle_message (type req res) (server : (req, res) t)
          and type response = res)
   in
   (* Log current directory at start of request *)
-  let cwd = Env.current_dir () |> Result.unwrap |> Path.to_string in
-  Log.trace "[JSONRPC SERVER] Processing request in cwd: %s" cwd;
+  let cwd = match Env.current_dir () with
+    | Ok path -> Path.to_string path
+    | Error _ -> "<unknown>"
+  in
+  Log.trace ("[JSONRPC SERVER] Processing request in cwd: " ^ cwd);
   (* Parse the incoming message *)
-  Log.trace "[JSONRPC SERVER] Parsing message: %s" message;
+  Log.trace ("[JSONRPC SERVER] Parsing message: " ^ message);
   match Json.of_string message with
   | Error e ->
       (* Parse error - can't send typed response, just log/ignore *)
-      Log.trace "[JSONRPC SERVER] JSON parse error: %s" (Json.error_to_string e);
+      Log.trace ("[JSONRPC SERVER] JSON parse error: " ^ Json.error_to_string e);
       ()
   | Ok json -> (
       Log.trace "[JSONRPC SERVER] JSON parsed successfully";
@@ -47,12 +51,12 @@ let handle_message (type req res) (server : (req, res) t)
           Log.trace "[JSONRPC SERVER] Request parse error";
           ()
       | Ok request -> (
-          Log.trace "[JSONRPC SERVER] Looking for handler for method: %s"
-            request.method_;
-          Log.trace "[JSONRPC SERVER] Available handlers: %d"
-            (List.length server.handlers);
+          Log.trace ("[JSONRPC SERVER] Looking for handler for method: " ^
+            request.method_);
+          Log.trace ("[JSONRPC SERVER] Available handlers: " ^
+            Int.to_string (List.length server.handlers));
           List.iter
-            (fun h -> Log.trace "[JSONRPC SERVER]   - %s" h.method_)
+            (fun h -> Log.trace ("[JSONRPC SERVER]   - " ^ h.method_))
             server.handlers;
           (* Find handler for method *)
           match
@@ -60,12 +64,12 @@ let handle_message (type req res) (server : (req, res) t)
           with
           | None ->
               (* Method not found - can't send typed response, just log/ignore *)
-              Log.trace "[JSONRPC SERVER] No handler found for method: %s"
-                request.method_;
+              Log.trace ("[JSONRPC SERVER] No handler found for method: " ^
+                request.method_);
               ()
           | Some handler -> (
               (* Convert params to typed request using method name *)
-              Log.trace "[JSONRPC SERVER] Found handler for %s" request.method_;
+              Log.trace ("[JSONRPC SERVER] Found handler for " ^ request.method_);
               match P.request_of_params request.method_ request.params with
               | Error _err ->
                   (* Invalid params - can't send typed response, just log/ignore *)
@@ -77,13 +81,13 @@ let handle_message (type req res) (server : (req, res) t)
                   if Common.is_notification request then (
                     (* Notification - no response expected *)
                     handler.fn (fun _ -> ()) typed_request;
-                    let cwd_after =
-                      Env.current_dir () |> Result.unwrap |> Path.to_string
+                    let cwd_after = match Env.current_dir () with
+                      | Ok path -> Path.to_string path
+                      | Error _ -> "<unknown>"
                     in
-                    if cwd <> cwd_after then
+                    if cwd != cwd_after then
                       Log.trace
-                        "[JSONRPC SERVER] CWD changed during handler! %s -> %s"
-                        cwd cwd_after)
+                        ("[JSONRPC SERVER] CWD changed during handler! " ^ cwd ^ " -> " ^ cwd_after))
                   else
                     (* Regular request - response expected *)
                     let typed_reply res =
@@ -103,13 +107,12 @@ let handle_message (type req res) (server : (req, res) t)
                       in
                       (* Convert to string and send *)
                       reply (Json.to_string json_response);
-                      let cwd_after =
-                        Env.current_dir () |> Result.unwrap |> Path.to_string
+                      let cwd_after = match Env.current_dir () with
+                        | Ok path -> Path.to_string path
+                        | Error _ -> "<unknown>"
                       in
-                      if cwd <> cwd_after then
+                      if cwd != cwd_after then
                         Log.trace
-                          "[JSONRPC SERVER] CWD changed during handler! %s -> \
-                           %s"
-                          cwd cwd_after
+                          ("[JSONRPC SERVER] CWD changed during handler! " ^ cwd ^ " -> " ^ cwd_after)
                     in
                     handler.fn typed_reply typed_request)))

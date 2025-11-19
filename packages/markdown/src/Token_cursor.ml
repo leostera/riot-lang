@@ -1,4 +1,5 @@
 open Std
+open Std.Collections
 
 type t = {
   tokens : Token.t array;

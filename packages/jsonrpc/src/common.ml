@@ -1,5 +1,6 @@
 open Std
 open Std.Data
+open Std.Collections
 
 let version = "2.0"
 
@@ -102,7 +103,7 @@ let request_of_json json =
           | Error e, _ -> Error e
           | _, Error e -> Error e)
       | Some (Json.String v), _ ->
-          Error (format "Invalid JSON-RPC version: %s (expected 2.0)" v)
+          Error ("Invalid JSON-RPC version: " ^ v ^ " (expected 2.0)")
       | _ -> Error "Invalid request: missing jsonrpc or method field")
   | _ -> Error "Request must be an object"
 

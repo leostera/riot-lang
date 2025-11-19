@@ -16,5 +16,5 @@ let make ~start_line ~start_col ~start_offset ~end_line ~end_col ~end_offset =
   }
 
 let to_string loc =
-  format "line %d, col %d - line %d, col %d" loc.loc_start.pos_line
-    loc.loc_start.pos_col loc.loc_end.pos_line loc.loc_end.pos_col
+  "line " ^ string_of_int loc.loc_start.pos_line ^ ", col " ^ string_of_int loc.loc_start.pos_col ^
+    " - line " ^ string_of_int loc.loc_end.pos_line ^ ", col " ^ string_of_int loc.loc_end.pos_col

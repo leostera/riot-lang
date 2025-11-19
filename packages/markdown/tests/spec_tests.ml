@@ -5,7 +5,7 @@ open Markdown
 let read_file path =
   match Fs.read (Path.v path) with
   | Ok content -> content
-  | Error _ -> failwith (format "Failed to read file: %s" path)
+  | Error _ -> panic ("Failed to read file: " ^ path)
 
 type spec_test = {
   markdown : string;
@@ -47,7 +47,7 @@ let load_spec_tests () =
   | _ -> []
 
 let spec_test test =
-  Test.case (format "Example %d (%s)" test.example test.section) (fun () ->
+  Test.case ("Example " ^ string_of_int test.example ^ " (" ^ test.section ^ ")") (fun () ->
       let tree = Markdown.parse test.markdown in
       let html_node = Markdown.compile tree in
       let actual =
@@ -60,16 +60,13 @@ let spec_test test =
       if actual = test.html then Ok ()
       else
         Error
-          (format
-             "Example %d:\n\
-              Markdown:\n\
-              %s\n\
-              Expected HTML (len=%d):\n\
-              %s\n\
-              Actual HTML (len=%d):\n\
-              %s\n"
-             test.example test.markdown (String.length test.html) test.html
-             (String.length actual) actual))
+          ("Example " ^ string_of_int test.example ^ ":\n\
+            Markdown:\n" ^
+           test.markdown ^ "\n\
+            Expected HTML (len=" ^ string_of_int (String.length test.html) ^ "):\n" ^
+           test.html ^ "\n\
+            Actual HTML (len=" ^ string_of_int (String.length actual) ^ "):\n" ^
+           actual ^ "\n"))
 
 let () =
   Miniriot.run

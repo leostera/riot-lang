@@ -1,3 +1,5 @@
+module EmailMessage = Message
+
 open Std
 
 let contains_substring haystack needle =
@@ -23,7 +25,7 @@ let tokenize str =
   let len = String.length str in
   let rec aux pos acc current_token in_quotes =
     if pos >= len then
-      let acc = if current_token <> "" then current_token :: acc else acc in
+      let acc = if current_token != "" then current_token :: acc else acc in
       List.rev acc
     else
       let c = str.[pos] in
@@ -31,13 +33,13 @@ let tokenize str =
       | '\'' when not in_quotes -> aux (pos + 1) acc current_token true
       | '\'' when in_quotes -> aux (pos + 1) acc current_token false
       | (' ' | '\t') when not in_quotes ->
-          let acc = if current_token <> "" then current_token :: acc else acc in
+          let acc = if current_token != "" then current_token :: acc else acc in
           aux (pos + 1) acc "" false
       | '(' when not in_quotes ->
-          let acc = if current_token <> "" then current_token :: acc else acc in
+          let acc = if current_token != "" then current_token :: acc else acc in
           aux (pos + 1) ("(" :: acc) "" false
       | ')' when not in_quotes ->
-          let acc = if current_token <> "" then current_token :: acc else acc in
+          let acc = if current_token != "" then current_token :: acc else acc in
           aux (pos + 1) (")" :: acc) "" false
       | _ -> aux (pos + 1) acc (current_token ^ String.make 1 c) in_quotes
   in
@@ -108,29 +110,29 @@ let rec matches query msg =
   match query with
   | All -> true
   | HasAttachment ->
-      let content = Message.body msg in
+      let content = EmailMessage.body msg in
       contains_substring content "Content-Disposition: attachment"
   | From addr ->
-      let headers = Message.headers msg in
+      let headers = EmailMessage.headers msg in
       List.exists
         (fun (name, value) ->
           String.lowercase_ascii name = "from" && contains_substring value addr)
         headers
   | To addr ->
-      let headers = Message.headers msg in
+      let headers = EmailMessage.headers msg in
       List.exists
         (fun (name, value) ->
           String.lowercase_ascii name = "to" && contains_substring value addr)
         headers
   | Subject subj ->
-      let headers = Message.headers msg in
+      let headers = EmailMessage.headers msg in
       List.exists
         (fun (name, value) ->
           String.lowercase_ascii name = "subject"
           && contains_substring value subj)
         headers
   | Contains text ->
-      let body = Message.body msg in
+      let body = EmailMessage.body msg in
       contains_substring body text
   | And (q1, q2) -> matches q1 msg && matches q2 msg
   | Or (q1, q2) -> matches q1 msg || matches q2 msg

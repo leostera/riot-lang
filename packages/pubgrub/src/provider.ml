@@ -1,4 +1,6 @@
 open Std
+  open Std.Sync
+  open Std.Sync.Cell
 
 type package = string
 type version = Version.t
@@ -48,7 +50,7 @@ let to_provider (offline : offline) : string t =
   in
   let get_dependencies pkg ver =
     match Collections.HashMap.get offline.packages pkg with
-    | None -> Ok (Unavailable (format "Package '%s' not found" pkg))
+    | None -> Ok (Unavailable ("Package '" ^ pkg ^ "' not found"))
     | Some entries -> (
         match
           List.find_opt
@@ -58,8 +60,7 @@ let to_provider (offline : offline) : string t =
         | None ->
             Ok
               (Unavailable
-                 (format "Version %s not found for package '%s'"
-                    (Version.to_string ver) pkg))
+                 ("Version " ^ Version.to_string ver ^ " not found for package '" ^ pkg ^ "'"))
         | Some entry -> Ok (Available entry.deps))
   in
   { choose_version; get_dependencies }

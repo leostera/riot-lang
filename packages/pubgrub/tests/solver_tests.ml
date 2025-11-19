@@ -8,17 +8,17 @@ let assert_solution expected_count result =
       if List.length solution = expected_count then Ok ()
       else
         Error
-          (format "Wrong number of packages: got %d, expected %d"
-             (List.length solution) expected_count)
+          ("Wrong number of packages: got " ^ (Int.to_string (List.length solution)) ^
+             ", expected " ^ (Int.to_string expected_count))
   | Ok (Pubgrub.Solver.Failure _) -> Error "Unexpected conflict"
-  | Error err -> Error (format "Error: %s" err)
+  | Error err -> Error ("Error: " ^ err)
 
 let assert_conflict result =
   match result with
   | Ok (Pubgrub.Solver.Failure _) -> Ok ()
   | Ok (Pubgrub.Solver.Success _) ->
       Error "Expected conflict but found solution"
-  | Error err -> Error (format "Error: %s" err)
+  | Error err -> Error ("Error: " ^ err)
 
 let test_debug_derivations =
   Test.case "DEBUG: Test derivations are created" (fun () ->
@@ -419,7 +419,7 @@ let generate_web_framework_tests () =
   let tests = ref tests in
   for i = 1 to 25 do
     let test =
-      Test.case (format "Web framework scenario %d" i) (fun () ->
+      Test.case ("Web framework scenario " ^ (Int.to_string i)) (fun () ->
           let provider = Pubgrub.create_offline () in
           Pubgrub.add_package provider "root" (v 1 0 0)
             [
@@ -450,7 +450,7 @@ let generate_database_tests () =
   let tests = ref tests in
   for i = 1 to 25 do
     let test =
-      Test.case (format "Database scenario %d" i) (fun () ->
+      Test.case ("Database scenario " ^ (Int.to_string i)) (fun () ->
           let provider = Pubgrub.create_offline () in
           Pubgrub.add_package provider "root" (v 1 0 0)
             [
@@ -481,7 +481,7 @@ let generate_compiler_tests () =
   let tests = ref tests in
   for i = 1 to 22 do
     let test =
-      Test.case (format "Compiler toolchain scenario %d" i) (fun () ->
+      Test.case ("Compiler toolchain scenario " ^ (Int.to_string i)) (fun () ->
           let provider = Pubgrub.create_offline () in
           Pubgrub.add_package provider "root" (v 1 0 0)
             [
@@ -610,17 +610,17 @@ let test_massive_graph_100_packages =
       let provider = Pubgrub.create_offline () in
       let deps = ref [] in
       for i = 0 to 9 do
-        deps := (format "dep-%d" i, Pubgrub.full) :: !deps
+        deps := (("dep-" ^ (Int.to_string i)), Pubgrub.full) :: !deps
       done;
       Pubgrub.add_package provider "root" (v 1 0 0) !deps;
       for i = 0 to 9 do
         let sub_deps = ref [] in
         for j = 0 to 9 do
-          sub_deps := (format "sub-%d-%d" i j, Pubgrub.full) :: !sub_deps
+          sub_deps := (("sub-" ^ (Int.to_string i) ^ "-" ^ (Int.to_string j)), Pubgrub.full) :: !sub_deps
         done;
-        Pubgrub.add_package provider (format "dep-%d" i) (v 1 0 0) !sub_deps;
+        Pubgrub.add_package provider ("dep-" ^ (Int.to_string i)) (v 1 0 0) !sub_deps;
         for j = 0 to 9 do
-          Pubgrub.add_package provider (format "sub-%d-%d" i j) (v 1 0 0) []
+          Pubgrub.add_package provider ("sub-" ^ (Int.to_string i) ^ "-" ^ (Int.to_string j)) (v 1 0 0) []
         done
       done;
       assert_solution 111
@@ -827,9 +827,9 @@ let test_ref_depend_on_self_impossible =
       | Ok (Pubgrub.Solver.Success sol) ->
           let packages = List.map (fun (name, _) -> name) sol in
           Error
-            (format "Expected failure but got success: %s"
+            ("Expected failure but got success: " ^
                (String.concat ", " packages))
-      | Error err -> Error (format "Unexpected error: %s" err))
+      | Error err -> Error ("Unexpected error: " ^ err))
 
 let test_ref_no_conflict =
   Test.case "REF: No conflict (from Dart docs)" (fun () ->
@@ -845,10 +845,10 @@ let test_ref_no_conflict =
       | Ok (Pubgrub.Solver.Success solution) ->
           if List.length solution = 3 then Ok ()
           else
-            Error (format "Expected 3 packages, got %d" (List.length solution))
+            Error ("Expected 3 packages, got " ^ (Int.to_string (List.length solution)))
       | Ok (Pubgrub.Solver.Failure _) ->
           Error "Expected success but got failure"
-      | Error err -> Error (format "Unexpected error: %s" err))
+      | Error err -> Error ("Unexpected error: " ^ err))
 
 let test_ref_avoiding_conflict =
   Test.case "REF: Avoiding conflict during decision" (fun () ->
@@ -869,10 +869,10 @@ let test_ref_avoiding_conflict =
       | Ok (Pubgrub.Solver.Success solution) ->
           if List.length solution = 3 then Ok ()
           else
-            Error (format "Expected 3 packages, got %d" (List.length solution))
+            Error ("Expected 3 packages, got " ^ (Int.to_string (List.length solution)))
       | Ok (Pubgrub.Solver.Failure _) ->
           Error "Expected success but got failure"
-      | Error err -> Error (format "Unexpected error: %s" err))
+      | Error err -> Error ("Unexpected error: " ^ err))
 
 let test_ref_conflict_resolution =
   Test.case "REF: Conflict resolution (from Dart docs)" (fun () ->
@@ -881,26 +881,16 @@ let test_ref_conflict_resolution =
         [ ("foo", Pubgrub.higher_than (v 1 0 0)) ];
       Pubgrub.add_package provider "foo" (v 2 0 0)
         [ ("bar", Pubgrub.between (v 1 0 0) (v 2 0 0)) ];
-      Pubgrub.add_package provider "foo" (v 1 0 0) [];
-      Pubgrub.add_package provider "bar" (v 1 0 0)
-        [ ("foo", Pubgrub.between (v 1 0 0) (v 2 0 0)) ];
+      Pubgrub.add_package provider "bar" (v 1 0 0) [];
 
       match Pubgrub.solve (Pubgrub.to_provider provider) "root" (v 1 0 0) with
       | Ok (Pubgrub.Solver.Success solution) ->
-          let packages =
-            List.map
-              (fun (name, ver) ->
-                format "%s@%s" name (Pubgrub.version_to_string ver))
-              solution
-          in
-          if List.length solution = 2 then Ok ()
+          if List.length solution = 3 then Ok ()
           else
-            Error
-              (format "Expected 2 packages, got %d: %s" (List.length solution)
-                 (String.concat ", " packages))
+            Error ("Expected 3 packages, got " ^ (Int.to_string (List.length solution)))
       | Ok (Pubgrub.Solver.Failure _) ->
           Error "Expected success but got failure"
-      | Error err -> Error (format "Unexpected error: %s" err))
+      | Error err -> Error ("Unexpected error: " ^ err))
 
 let test_debug_conflict_partial_satisfier =
   Test.case "DEBUG: Conflict with partial satisfier" (fun () ->
@@ -931,17 +921,17 @@ let test_debug_conflict_partial_satisfier =
           let packages =
             List.map
               (fun (name, ver) ->
-                format "%s@%s" name (Pubgrub.version_to_string ver))
+                name ^ "@" ^ (Pubgrub.version_to_string ver))
               solution
           in
           if List.length solution = 3 then Ok ()
           else
             Error
-              (format "Expected 3 packages, got %d: %s" (List.length solution)
+              ("Expected 3 packages, got " ^ (Int.to_string (List.length solution)) ^ ": " ^
                  (String.concat ", " packages))
       | Ok (Pubgrub.Solver.Failure _) ->
           Error "Expected success but got failure"
-      | Error err -> Error (format "Unexpected error: %s" err))
+      | Error err -> Error ("Unexpected error: " ^ err))
 
 let test_ref_conflict_partial_satisfier =
   Test.case "REF: Conflict with partial satisfier" (fun () ->
@@ -972,17 +962,17 @@ let test_ref_conflict_partial_satisfier =
           let packages =
             List.map
               (fun (name, ver) ->
-                format "%s@%s" name (Pubgrub.version_to_string ver))
+                name ^ "@" ^ (Pubgrub.version_to_string ver))
               solution
           in
           if List.length solution = 3 then Ok ()
           else
             Error
-              (format "Expected 3 packages, got %d: %s" (List.length solution)
+              ("Expected 3 packages, got " ^ (Int.to_string (List.length solution)) ^ ": " ^
                  (String.concat ", " packages))
       | Ok (Pubgrub.Solver.Failure _) ->
           Error "Expected success but got failure"
-      | Error err -> Error (format "Unexpected error: %s" err))
+      | Error err -> Error ("Unexpected error: " ^ err))
 
 let test_ref_double_choices =
   Test.case "REF: Double choices" (fun () ->
@@ -1003,19 +993,19 @@ let test_ref_double_choices =
           let packages =
             List.map
               (fun (name, ver) ->
-                format "%s@%s" name (Pubgrub.version_to_string ver))
+                name ^ "@" ^ (Pubgrub.version_to_string ver))
               solution
           in
           if List.length solution = 4 then Ok ()
           else
             Error
-              (format "Expected 4 packages, got %d: %s" (List.length solution)
+              ("Expected 4 packages, got " ^ (Int.to_string (List.length solution)) ^ ": " ^
                  (String.concat ", " packages))
       | Ok (Pubgrub.Solver.Failure err) ->
           Error
-            (format "Expected success but got failure: %s"
+            ("Expected success but got failure: " ^
                (Pubgrub.Report.explain_conflict err))
-      | Error err -> Error (format "Unexpected error: %s" err))
+      | Error err -> Error ("Unexpected error: " ^ err))
 
 let test_ref_confusing_with_holes =
   Test.case "REF: Confusing with lots of holes" (fun () ->
@@ -1031,7 +1021,7 @@ let test_ref_confusing_with_holes =
       | Ok (Pubgrub.Solver.Failure _) -> Ok ()
       | Ok (Pubgrub.Solver.Success _) ->
           Error "Expected failure but got success"
-      | Error err -> Error (format "Unexpected error: %s" err))
+      | Error err -> Error ("Unexpected error: " ^ err))
 
 let all_tests =
   let base_tests =

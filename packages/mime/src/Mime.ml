@@ -1,4 +1,6 @@
 open Std
+open Std.Sync
+open Std.IO
 
 type content_type = {
   media_type : string;
@@ -52,7 +54,7 @@ let percent_decode s =
     if i >= len then Buffer.contents buf
     else if s.[i] = '%' && i + 2 < len then (
       let hex = String.sub s (i + 1) 2 in
-      match int_of_string_opt (format "0x%s" hex) with
+        match int_of_string_opt ("0x" ^ hex) with
       | Some code ->
           Buffer.add_char buf (Char.chr code);
           decode (i + 3)
@@ -252,7 +254,7 @@ let rec parse ~headers ~body =
   match find_header "content-type" typed_headers with
   | None -> Ok (SinglePart { headers = typed_headers; content = body })
   | Some (ContentType ct) ->
-      let full_type = format "%s/%s" ct.media_type ct.subtype in
+      let full_type = ct.media_type ^ "/" ^ ct.subtype in
       if String.starts_with ~prefix:"multipart/" full_type then
         match List.assoc_opt "boundary" ct.parameters with
         | None -> Error "Multipart message missing boundary parameter"
@@ -263,8 +265,8 @@ let rec parse ~headers ~body =
   | Some _ -> Ok (SinglePart { headers = typed_headers; content = body })
 
 and parse_multipart boundary body =
-  let delimiter = format "--%s" boundary in
-  let end_delimiter = format "--%s--" boundary in
+  let delimiter = "--" ^ boundary in
+  let end_delimiter = "--" ^ boundary ^ "--" in
   let lines = String.split_on_char '\n' body in
 
   let rec find_parts acc current_part lines =
@@ -345,7 +347,7 @@ let quoted_printable_decode s =
         decode (i + 3)
       else if i + 2 < len then (
         let hex = String.sub s (i + 1) 2 in
-        match int_of_string_opt (format "0x%s" hex) with
+      match int_of_string_opt ("0x" ^ hex) with
         | Some code ->
             Buffer.add_char buf (Char.chr code);
             decode (i + 3)

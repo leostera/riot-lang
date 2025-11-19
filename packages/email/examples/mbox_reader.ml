@@ -1,4 +1,5 @@
 open Std
+open Std.Sync
 open Email
 
 let entry_to_json entry include_attachments =
@@ -33,7 +34,7 @@ let entry_to_json entry include_attachments =
                       match content_type with
                       | Some ct ->
                           Data.Json.String
-                            (format "%s/%s" ct.Mime.media_type ct.Mime.subtype)
+                            (ct.Mime.media_type ^ "/" ^ ct.Mime.subtype)
                       | None -> Data.Json.Null );
                     ( "encoding",
                       match encoding with
@@ -72,18 +73,22 @@ let entry_to_json entry include_attachments =
   Data.Json.Object (List.rev fields)
 
 let export_entry export_dir index entry =
-  let filename = format "%04d.eml" index in
+  let filename = 
+    let index_str = Int.to_string index in
+    let padded = String.make (4 - String.length index_str) '0' ^ index_str in
+    padded ^ ".eml" 
+  in
   let filepath = Path.join export_dir (Path.v filename) in
 
   match Fs.File.create filepath with
   | Error _ ->
-      println "Error: failed to create %s" (Path.to_string filepath);
+      println ("Error: failed to create " ^ (Path.to_string filepath));
       Error ()
   | Ok file -> (
       let content = Message.to_string entry.Mbox.message in
       match Fs.File.write_all file content with
       | Error _ ->
-          println "Error: failed to write to %s" (Path.to_string filepath);
+          println ("Error: failed to write to " ^ (Path.to_string filepath));
           let _ = Fs.File.close file in
           Error ()
       | Ok () ->
@@ -91,14 +96,14 @@ let export_entry export_dir index entry =
           Ok ())
 
 let list_messages mbox_path =
-  match Fs.File.open_read mbox_path with
-  | Error _ ->
-      println "Error opening file: %s" (Path.to_string mbox_path);
-      exit 1
-  | Ok file -> (
-      match Mbox.of_file file with
-      | Error e ->
-          println "Error: %s" e;
+      match Fs.File.open_read mbox_path with
+      | Error _ ->
+          println ("Error opening file: " ^ (Path.to_string mbox_path));
+          exit 1
+      | Ok file -> (
+          match Mbox.of_file file with
+          | Error e ->
+              println ("Error: " ^ e);
           exit 1
       | Ok mbox ->
           let iter = Mbox.into_mut_iter mbox in
@@ -109,27 +114,27 @@ let list_messages mbox_path =
             | None -> ()
             | Some entry ->
                 Cell.update count (fun n -> n + 1);
-                println "\n=== Message %d ===" (Cell.get count);
+                println ("\n=== Message " ^ (Int.to_string (Cell.get count)) ^ " ===");
 
                 (match entry.envelope_from with
-                | Some addr -> println "Envelope-From: %s" addr
+                | Some addr -> println ("Envelope-From: " ^ addr)
                 | None -> ());
 
                 (match entry.envelope_date with
-                | Some date -> println "Envelope-Date: %s" date
+                | Some date -> println ("Envelope-Date: " ^ date)
                 | None -> ());
 
                 let headers = Message.headers entry.message in
                 List.iter
-                  (fun (name, value) -> println "%s: %s" name value)
+                  (fun (name, value) -> println (name ^ ": " ^ value))
                   headers;
 
                 println "";
-                println "%s" (Message.body entry.message);
+                println (Message.body entry.message);
                 process ()
           in
           process ();
-          println "\nTotal messages: %d" (Cell.get count);
+          println ("\nTotal messages: " ^ (Int.to_string (Cell.get count)));
           let _ = Fs.File.close file in
           Ok ())
 
@@ -137,19 +142,19 @@ let query_messages mbox_path query_str json_output =
   let query =
     match Query.parse query_str with
     | Error e ->
-        println "Error parsing query: %s" e;
+        println ("Error parsing query: " ^ e);
         exit 1
     | Ok q -> q
   in
 
   match Fs.File.open_read mbox_path with
   | Error _ ->
-      println "Error opening file: %s" (Path.to_string mbox_path);
+      println ("Error opening file: " ^ (Path.to_string mbox_path));
       exit 1
   | Ok file -> (
       match Mbox.of_file file with
       | Error e ->
-          println "Error: %s" e;
+          println ("Error: " ^ e);
           exit 1
       | Ok mbox ->
           let iter = Mbox.into_mut_iter mbox in
@@ -166,22 +171,22 @@ let query_messages mbox_path query_str json_output =
                   Cell.update matched (fun n -> n + 1);
                   if json_output then
                     let json = entry_to_json entry true in
-                    println "%s" (Data.Json.to_string json)
+                    println (Data.Json.to_string json)
                   else (
-                    println "\n=== Match %d (Message %d) ===" (Cell.get matched)
-                      (Cell.get count);
+                    println ("\n=== Match " ^ (Int.to_string (Cell.get matched)) ^
+                      " (Message " ^ (Int.to_string (Cell.get count)) ^ ") ===");
 
                     (match entry.envelope_from with
-                    | Some addr -> println "Envelope-From: %s" addr
+                    | Some addr -> println ("Envelope-From: " ^ addr)
                     | None -> ());
 
                     (match entry.envelope_date with
-                    | Some date -> println "Envelope-Date: %s" date
+                    | Some date -> println ("Envelope-Date: " ^ date)
                     | None -> ());
 
                     let headers = Message.headers entry.message in
                     List.iter
-                      (fun (name, value) -> println "%s: %s" name value)
+                      (fun (name, value) -> println (name ^ ": " ^ value))
                       headers;
 
                     println "";
@@ -194,15 +199,15 @@ let query_messages mbox_path query_str json_output =
                           | Error _ -> body)
                       | _ -> body
                     in
-                    println "%s" decoded_body));
+                    println decoded_body));
 
                 process ()
           in
           process ();
 
           if not json_output then
-            println "\nProcessed: %d messages, Matched: %d" (Cell.get count)
-              (Cell.get matched);
+            println ("\nProcessed: " ^ (Int.to_string (Cell.get count)) ^
+              " messages, Matched: " ^ (Int.to_string (Cell.get matched)));
 
           let _ = Fs.File.close file in
           Ok ())
@@ -211,25 +216,25 @@ let export_messages mbox_path export_dir filter_str =
   let query =
     match Query.parse filter_str with
     | Error e ->
-        println "Error parsing filter: %s" e;
+        println ("Error parsing filter: " ^ e);
         exit 1
     | Ok q -> q
   in
 
   match Fs.create_dir_all export_dir with
   | Error _ ->
-      println "Error: failed to create export directory %s"
-        (Path.to_string export_dir);
+      println ("Error: failed to create export directory " ^
+        (Path.to_string export_dir));
       exit 1
   | Ok () -> (
       match Fs.File.open_read mbox_path with
       | Error _ ->
-          println "Error opening file: %s" (Path.to_string mbox_path);
+          println ("Error opening file: " ^ (Path.to_string mbox_path));
           exit 1
       | Ok file -> (
-          match Mbox.of_file file with
-          | Error e ->
-              println "Error: %s" e;
+      match Mbox.of_file file with
+      | Error e ->
+          println ("Error: " ^ e);
               exit 1
           | Ok mbox ->
               let iter = Mbox.into_mut_iter mbox in
@@ -243,7 +248,7 @@ let export_messages mbox_path export_dir filter_str =
                     Cell.update count (fun n -> n + 1);
 
                     if Query.matches_entry query entry then (
-                      println "Exporting message %d..." (Cell.get count);
+                      println ("Exporting message " ^ (Int.to_string (Cell.get count)) ^ "...");
                       match export_entry export_dir (Cell.get count) entry with
                       | Ok () -> Cell.update exported (fun n -> n + 1)
                       | Error () -> ());
@@ -251,8 +256,8 @@ let export_messages mbox_path export_dir filter_str =
                     process ()
               in
               process ();
-              println "\nProcessed: %d messages" (Cell.get count);
-              println "Exported: %d messages" (Cell.get exported);
+              println ("\nProcessed: " ^ (Int.to_string (Cell.get count)) ^ " messages");
+              println ("Exported: " ^ (Int.to_string (Cell.get exported)) ^ " messages");
               let _ = Fs.File.close file in
               Ok ()))
 

@@ -1,11 +1,12 @@
 open Email
+module EmailMessage = Message
 open Std
 open Std.Data
 
 let read_file path =
   match Fs.read (Path.v path) with
   | Ok content -> content
-  | Error _ -> failwith (format "Failed to read file: %s" path)
+  | Error _ -> panic ("Failed to read file: " ^ path)
 
 let parse_expected_address json =
   match Json.of_string json with
@@ -170,58 +171,59 @@ let parse_expected_imap_search json =
   | _ -> None
 
 let test_address (name, input_file, expected_file) =
-  Test.case (format "Address: %s" name) (fun () ->
+  Test.case ("Address: " ^ name) (fun () ->
       let input = read_file input_file in
       let expected_json = read_file expected_file in
 
       match parse_expected_address expected_json with
       | None ->
-          Error (format "Failed to parse expected JSON for %s" expected_file)
+          Error ("Failed to parse expected JSON for " ^ expected_file)
       | Some
           (exp_display_name, Some exp_local, Some exp_domain, Some exp_address)
         -> (
           match Address.of_string input with
-          | Error e -> Error (format "Parse error: %s" e)
+          | Error e -> Error ("Parse error: " ^ e)
           | Ok addr ->
               let actual_display = Address.display_name addr in
               let actual_local = Address.local_part addr in
               let actual_domain = Address.domain addr in
               let actual_address = Address.address addr in
 
-              if actual_display <> exp_display_name then
+              if actual_display != exp_display_name then
                 Error
-                  (format "Display name mismatch: expected %s, got %s"
-                     (Option.map_or ~default:"null" Fun.id exp_display_name)
-                     (Option.map_or ~default:"null" Fun.id actual_display))
-              else if actual_local <> exp_local then
+                  ("Display name mismatch: expected " ^
+                     (Option.map_or ~default:"null" (fun x -> x) exp_display_name) ^
+                     ", got " ^
+                     (Option.map_or ~default:"null" (fun x -> x) actual_display))
+              else if actual_local != exp_local then
                 Error
-                  (format "Local part mismatch: expected %s, got %s" exp_local
-                     actual_local)
-              else if actual_domain <> exp_domain then
+                  ("Local part mismatch: expected " ^ exp_local ^
+                     ", got " ^ actual_local)
+              else if actual_domain != exp_domain then
                 Error
-                  (format "Domain mismatch: expected %s, got %s" exp_domain
-                     actual_domain)
-              else if actual_address <> exp_address then
+                  ("Domain mismatch: expected " ^ exp_domain ^
+                     ", got " ^ actual_domain)
+              else if actual_address != exp_address then
                 Error
-                  (format "Address mismatch: expected %s, got %s" exp_address
-                     actual_address)
+                  ("Address mismatch: expected " ^ exp_address ^
+                     ", got " ^ actual_address)
               else Ok ())
       | _ -> Error "Invalid expected format")
 
 let test_message (name, eml_file, expected_file) =
-  Test.case (format "Message: %s" name) (fun () ->
+  Test.case ("Message: " ^ name) (fun () ->
       let input = read_file eml_file in
       let expected_json = read_file expected_file in
 
       match parse_expected_message expected_json with
       | None ->
-          Error (format "Failed to parse expected JSON for %s" expected_file)
+          Error ("Failed to parse expected JSON for " ^ expected_file)
       | Some (exp_headers, Some exp_body) -> (
-          match Message.of_string input with
-          | Error e -> Error (format "Parse error: %s" e)
+          match EmailMessage.of_string input with
+          | Error e -> Error ("Parse error: " ^ e)
           | Ok msg -> (
-              let actual_headers = Message.headers msg in
-              let actual_body = Message.body msg in
+              let actual_headers = EmailMessage.headers msg in
+              let actual_body = EmailMessage.body msg in
 
               let header_map =
                 List.fold_left
@@ -236,15 +238,14 @@ let test_message (name, eml_file, expected_file) =
                 | [] -> Ok ()
                 | (name, exp_value) :: rest -> (
                     match List.assoc_opt name header_map with
-                    | None -> Error (format "Missing header: %s" name)
+                    | None -> Error ("Missing header: " ^ name)
                     | Some values ->
                         if List.mem exp_value values then check_headers rest
                         else
                           Error
-                            (format
-                               "Header %s mismatch: expected '%s', got '%s'"
-                               name exp_value
-                               (String.concat ", " values)))
+                            ("Header " ^ name ^ " mismatch: expected '" ^ 
+                             exp_value ^ "', got '" ^
+                             (String.concat ", " values) ^ "'"))
               in
 
               match check_headers exp_headers with
@@ -253,12 +254,12 @@ let test_message (name, eml_file, expected_file) =
                   if actual_body = exp_body then Ok ()
                   else
                     Error
-                      (format "Body mismatch: expected '%s', got '%s'" exp_body
-                         actual_body)))
+                      ("Body mismatch: expected '" ^ exp_body ^
+                         "', got '" ^ actual_body ^ "'")))
       | _ -> Error "Invalid expected format")
 
 let test_imap_response (name, imap_file, expected_file) =
-  Test.case (format "IMAP: %s" name) (fun () ->
+  Test.case ("IMAP: " ^ name) (fun () ->
       let _input = read_file imap_file in
       let _expected_json = read_file expected_file in
       Error "IMAP parsing not implemented yet")
@@ -277,8 +278,8 @@ let load_fixtures base_path suffix =
               let base =
                 String.sub name 0 (String.length name - String.length suffix)
               in
-              let input_file = format "%s/%s" base_path name in
-              let expected_file = format "%s/%s.expected" base_path base in
+              let input_file = base_path ^ "/" ^ name in
+              let expected_file = base_path ^ "/" ^ base ^ ".expected" in
               match Fs.exists (Path.v expected_file) with
               | Ok true -> Some (base, input_file, expected_file)
               | _ -> None
@@ -288,25 +289,25 @@ let load_fixtures base_path suffix =
       List.sort (fun (a, _, _) (b, _, _) -> String.compare a b) fixtures
 
 let test_header (name, input_file, expected_file) =
-  Test.case (format "Header: %s" name) (fun () ->
+  Test.case ("Header: " ^ name) (fun () ->
       let _input = read_file input_file in
       let _expected_json = read_file expected_file in
       Error "Header parsing not implemented yet")
 
 let test_mime (name, eml_file, expected_file) =
-  Test.case (format "MIME: %s" name) (fun () ->
+  Test.case ("MIME: " ^ name) (fun () ->
       let _input = read_file eml_file in
       let _expected_json = read_file expected_file in
       Error "MIME parsing not implemented yet")
 
 let test_smtp (name, smtp_file, expected_file) =
-  Test.case (format "SMTP: %s" name) (fun () ->
+  Test.case ("SMTP: " ^ name) (fun () ->
       let _input = read_file smtp_file in
       let _expected_json = read_file expected_file in
       Error "SMTP parsing not implemented yet")
 
 let test_encoding (name, input_file, expected_file) =
-  Test.case (format "Encoding: %s" name) (fun () ->
+  Test.case ("Encoding: " ^ name) (fun () ->
       let input = read_file input_file in
       let expected_json = read_file expected_file in
 
@@ -319,21 +320,21 @@ let test_encoding (name, input_file, expected_file) =
           | Some (Json.String enc_name), Some (Json.String expected_decoded)
             -> (
               match Encoding.of_string enc_name with
-              | Error e -> Error (format "Invalid encoding: %s" e)
+              | Error e -> Error ("Invalid encoding: " ^ e)
               | Ok encoding -> (
                   match Encoding.decode encoding input with
-                  | Error e -> Error (format "Decode error: %s" e)
+                  | Error e -> Error ("Decode error: " ^ e)
                   | Ok decoded ->
                       if decoded = expected_decoded then Ok ()
                       else
                         Error
-                          (format "Decoded mismatch: expected '%s', got '%s'"
-                             expected_decoded decoded)))
+                          ("Decoded mismatch: expected '" ^ expected_decoded ^ 
+                             "', got '" ^ decoded ^ "'")))
           | _ -> Error "Invalid expected format")
       | _ -> Error "Expected JSON object")
 
 let test_real_world (name, eml_file, expected_file) =
-  Test.case (format "Real-world: %s" name) (fun () ->
+  Test.case ("Real-world: " ^ name) (fun () ->
       let _input = read_file eml_file in
       let _expected_json = read_file expected_file in
       Error "Real-world message parsing not implemented yet")

@@ -30,10 +30,10 @@ let format_term term =
   let ranges = Term.ranges term in
   let is_positive = Term.is_positive term in
 
-  if Ranges.is_empty ranges && is_positive then format "%s (no versions)" pkg
-  else if ranges = Ranges.full && is_positive then format "%s (any version)" pkg
-  else if is_positive then format "%s in range" pkg
-  else format "not (%s in range)" pkg
+  if Ranges.is_empty ranges && is_positive then pkg ^ " (no versions)"
+  else if ranges = Ranges.full && is_positive then pkg ^ " (any version)"
+  else if is_positive then pkg ^ " in range"
+  else "not (" ^ pkg ^ " in range)"
 
 let format_terms terms =
   match terms with
@@ -48,22 +48,19 @@ let rec format_derivation_tree tree =
   | External (cause, terms) -> (
       match cause with
       | Incompatibility.NotRoot (pkg, ver) ->
-          format "Root package %s@%s must be selected" pkg
-            (version_to_string ver)
+          "Root package " ^ pkg ^ "@" ^ version_to_string ver ^ " must be selected"
       | Incompatibility.NoVersions (pkg, ranges) ->
-          format "No versions available for package %s" pkg
+          "No versions available for package " ^ pkg
       | Incompatibility.FromDependency (pkg, ver, dep_pkg, dep_ranges) ->
-          format "Because %s@%s depends on %s, " pkg (version_to_string ver)
-            dep_pkg
+          "Because " ^ pkg ^ "@" ^ version_to_string ver ^ " depends on " ^ dep_pkg ^ ", "
       | Incompatibility.Custom (pkg, ranges, msg) ->
-          format "Package %s: %s" pkg msg)
+          "Package " ^ pkg ^ ": " ^ msg)
   | Derived { terms; cause1; cause2; shared_id } ->
       let c1_str = format_derivation_tree cause1 in
       let c2_str = format_derivation_tree cause2 in
-      format "Because %s\nAnd because %s,\n  %s" c1_str c2_str
-        (format_terms terms)
+      "Because " ^ c1_str ^ "\nAnd because " ^ c2_str ^ ",\n  " ^ format_terms terms
 
 let explain_conflict incompat =
   let tree = build_derivation_tree incompat in
   let explanation = format_derivation_tree tree in
-  format "Conflict:\n%s\n\nTherefore, version solving failed." explanation
+  "Conflict:\n" ^ explanation ^ "\n\nTherefore, version solving failed."

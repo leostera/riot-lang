@@ -98,23 +98,18 @@ let prior_cause incompat satisfier_cause package =
   let incompat_terms = terms incompat in
   let satisfier_terms = terms satisfier_cause in
   Log.info
-    "prior_cause: incompat has %d terms, satisfier has %d terms, package=%s"
-    (List.length incompat_terms)
-    (List.length satisfier_terms)
-    package;
+    ("prior_cause: incompat has " ^ string_of_int (List.length incompat_terms) ^
+     " terms, satisfier has " ^ string_of_int (List.length satisfier_terms) ^
+     " terms, package=" ^ package);
   Log.info "  incompat terms:";
   List.iter
     (fun t ->
-      Log.info "    %s%s"
-        (if Term.is_positive t then "" else "NOT ")
-        (Term.package t))
+      Log.info ("    " ^ (if Term.is_positive t then "" else "NOT ") ^ Term.package t))
     incompat_terms;
   Log.info "  satisfier_cause terms:";
   List.iter
     (fun t ->
-      Log.info "    %s%s"
-        (if Term.is_positive t then "" else "NOT ")
-        (Term.package t))
+      Log.info ("    " ^ (if Term.is_positive t then "" else "NOT ") ^ Term.package t))
     satisfier_terms;
   match incompat with
   | External _ | Derived _ ->
@@ -135,10 +130,10 @@ let prior_cause incompat satisfier_cause package =
       in
 
       let other_incompat_terms =
-        List.filter (fun t -> Term.package t <> package) incompat_terms
+        List.filter (fun t -> Term.package t != package) incompat_terms
       in
       let other_satisfier_terms =
-        List.filter (fun t -> Term.package t <> package) satisfier_terms
+        List.filter (fun t -> Term.package t != package) satisfier_terms
       in
 
       let merged_other_terms =
@@ -172,7 +167,7 @@ let prior_cause incompat satisfier_cause package =
         else (merged_term :: merged_other_terms) @ remaining_satisfier_terms
       in
 
-      Log.info "prior_cause: all_terms has %d terms" (List.length all_terms);
+      Log.info ("prior_cause: all_terms has " ^ string_of_int (List.length all_terms) ^ " terms");
 
       (* Even if all_terms is empty, create a derived incompatibility *)
       (* An empty incompatibility is terminal (fundamental contradiction) *)

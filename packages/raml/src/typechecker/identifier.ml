@@ -40,8 +40,8 @@ let rename ~ctx = function
 
 let unique_name = function
   | Local { name; stamp } | Scoped { name; stamp; _ } ->
-      format "%s_%d" name stamp
-  | Global name -> format "%s_0" name
+      name ^ "_" ^ string_of_int stamp
+  | Global name -> name ^ "_0"
   | Predef { name; _ } -> name
 
 let persistent = function Global _ -> true | _ -> false
@@ -75,4 +75,4 @@ let scope = function
   | Global _ -> 0
   | Predef _ -> 0
 
-let pp fmt id = Format.fprintf fmt "%s" (unique_name id)
+let to_string id = unique_name id

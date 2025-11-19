@@ -1,4 +1,6 @@
 open Std
+open Std.Collections
+  open Std.IO
 
 (** Compile Ceibo green tree to HTML *)
 let rec compile_element source elem =
@@ -219,7 +221,7 @@ and compile_node source node =
       (* Check if we need to add trailing newline *)
       let needs_newline =
         match List.rev content_children with
-        | Ceibo.Green.Token tok :: _ -> tok.kind <> Syntax_kind.NEWLINE
+        | Ceibo.Green.Token tok :: _ -> tok.kind != Syntax_kind.NEWLINE
         | _ :: _ -> true
         | [] -> false
       in

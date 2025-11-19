@@ -1,4 +1,5 @@
 open Std
+open Std.IO
 
 type t = {
   display_name : string Option.t;
@@ -32,8 +33,8 @@ let address t =
             Buffer.add_char buf c
         | _ -> Buffer.add_char buf c)
       t.local_part;
-    format "\"%s\"@%s" (Buffer.contents buf) t.domain)
-  else format "%s@%s" t.local_part t.domain
+    "\"" ^ Buffer.contents buf ^ "\"@" ^ t.domain)
+  else t.local_part ^ "@" ^ t.domain
 
 let to_string t =
   match t.display_name with
@@ -42,8 +43,8 @@ let to_string t =
       let needs_quoting =
         String.contains name ',' || String.contains name '.'
       in
-      if needs_quoting then format "\"%s\" <%s>" name (address t)
-      else format "%s <%s>" name (address t)
+      if needs_quoting then "\"" ^ name ^ "\" <" ^ address t ^ ">"
+      else name ^ " <" ^ address t ^ ">"
 
 let remove_comments s =
   let buf = Buffer.create (String.length s) in

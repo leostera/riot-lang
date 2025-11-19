@@ -10,7 +10,7 @@ let test_simple_filename () =
   | Ok (SinglePart part) -> (
       match get_filename part with
       | Some "test.txt" -> Ok ()
-      | Some other -> Error (format "Expected 'test.txt', got '%s'" other)
+      | Some other -> Error ("Expected 'test.txt', got '" ^ other ^ "'")
       | None -> Error "No filename found")
   | _ -> Error "Parse failed"
 
@@ -26,7 +26,7 @@ let test_rfc2231_encoded () =
       match get_filename part with
       | Some "Hello World.txt" -> Ok ()
       | Some other ->
-          Error (format "Expected 'Hello World.txt', got '%s'" other)
+          Error ("Expected 'Hello World.txt', got '" ^ other ^ "'")
       | None -> Error "No filename found")
   | _ -> Error "Parse failed"
 
@@ -44,7 +44,7 @@ let test_rfc2231_continuation () =
       match get_filename part with
       | Some "LongFilename.pdf" -> Ok ()
       | Some other ->
-          Error (format "Expected 'LongFilename.pdf', got '%s'" other)
+          Error ("Expected 'LongFilename.pdf', got '" ^ other ^ "'")
       | None -> Error "No filename found")
   | _ -> Error "Parse failed"
 
@@ -57,8 +57,8 @@ let test_base64_encoding () =
   | Ok (SinglePart part) -> (
       match get_decoded_content part with
       | Ok "Hello World" -> Ok ()
-      | Ok other -> Error (format "Expected 'Hello World', got '%s'" other)
-      | Error e -> Error (format "Decode failed: %s" e))
+      | Ok other -> Error ("Expected 'Hello World', got '" ^ other ^ "'")
+      | Error e -> Error ("Decode failed: " ^ e))
   | _ -> Error "Parse failed"
 
 let test_quoted_printable () =
@@ -73,8 +73,8 @@ let test_quoted_printable () =
   | Ok (SinglePart part) -> (
       match get_decoded_content part with
       | Ok "Hello World!" -> Ok ()
-      | Ok other -> Error (format "Expected 'Hello World!', got '%s'" other)
-      | Error e -> Error (format "Decode failed: %s" e))
+      | Ok other -> Error ("Expected 'Hello World!', got '" ^ other ^ "'")
+      | Error e -> Error ("Decode failed: " ^ e))
   | _ -> Error "Parse failed"
 
 let test_nested_multipart () =
@@ -101,21 +101,21 @@ let test_nested_multipart () =
   in
   match parse ~headers ~body with
   | Ok (MultiPart { parts; _ }) -> (
-      if List.length parts <> 2 then
-        Error (format "Expected 2 top-level parts, got %d" (List.length parts))
+      if List.length parts != 2 then
+        Error ("Expected 2 top-level parts, got " ^ string_of_int (List.length parts))
       else
         match List.nth_opt parts 0 with
         | Some (MultiPart { parts = inner_parts; _ }) ->
             if List.length inner_parts = 2 then Ok ()
             else
               Error
-                (format "Expected 2 inner parts, got %d"
-                   (List.length inner_parts))
+                ("Expected 2 inner parts, got " ^
+                   string_of_int (List.length inner_parts))
         | Some (SinglePart _) ->
             Error "First part is SinglePart, expected MultiPart"
         | None -> Error "No first part found")
   | Ok (SinglePart _) -> Error "Expected MultiPart, got SinglePart"
-  | Error e -> Error (format "Parse failed: %s" e)
+  | Error e -> Error ("Parse failed: " ^ e)
 
 let test_content_type_parsing () =
   let headers = [ ("Content-Type", "text/html; charset=utf-8") ] in
@@ -128,11 +128,11 @@ let test_content_type_parsing () =
             match List.assoc_opt "charset" ct.parameters with
             | Some "utf-8" -> Ok ()
             | Some other ->
-                Error (format "Expected charset=utf-8, got %s" other)
+                Error ("Expected charset=utf-8, got " ^ other)
             | None -> Error "No charset parameter found"
           else
             Error
-              (format "Expected text/html, got %s/%s" ct.media_type ct.subtype)
+              ("Expected text/html, got " ^ ct.media_type ^ "/" ^ ct.subtype)
       | None -> Error "No Content-Type found")
   | _ -> Error "Parse failed"
 

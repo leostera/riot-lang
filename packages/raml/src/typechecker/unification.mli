@@ -1,3 +1,5 @@
+open Std
+
 type unification_error =
   | TypeMismatch of Types.type_expr * Types.type_expr
   | OccursCheck of Types.type_expr * Types.type_expr
