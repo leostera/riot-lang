@@ -1,0 +1,12 @@
+[package]
+name = "codedb"
+version = "0.1.0"
+
+[lib]
+path = "src/codedb.ml"
+
+[dependencies]
+std = { path = "../std" }
+poneglyph = { path = "../poneglyph" }
+tusk-toolchain = { path = "../tusk-toolchain" }
+tusk-model = { path = "../tusk-model" }
