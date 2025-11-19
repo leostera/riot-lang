@@ -137,16 +137,16 @@ let batch_deps t ~cwd ~files ~package_namespace =
     in
 
     Log.trace ("[OCAMLDEP] Batch running for " ^ Int.to_string (List.length files) ^ " files");
-    println ("[OCAMLDEP] CMD: " ^ cmd);
+    Log.debug ("[OCAMLDEP] CMD: " ^ cmd);
 
     let output =
       let command = Command.make ~args:[ "-c"; cmd ] "sh" in
       match Command.output command with
       | Ok output ->
-          println ("[OCAMLDEP] OUTPUT: '" ^ output.Command.stdout ^ "'");
+          Log.debug ("[OCAMLDEP] OUTPUT: '" ^ output.Command.stdout ^ "'");
           output.Command.stdout
       | Error (Command.SystemError msg) ->
-          println ("[OCAMLDEP] ERROR: " ^ msg);
+          Log.debug ("[OCAMLDEP] ERROR: " ^ msg);
           ""
     in
 

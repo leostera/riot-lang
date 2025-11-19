@@ -562,7 +562,7 @@ let from_json json =
                   binaries = [];
                   library = None;
                   sources =
-                    { src = []; native = []; tests = []; examples = [] };
+                    { src = []; native = []; tests = []; examples = []; bench = [] };
                   compiler = { profile_overrides = []; target_overrides = [] };
                   commands = [];
                 }

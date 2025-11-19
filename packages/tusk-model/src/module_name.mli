@@ -26,6 +26,8 @@ val to_string : t -> string
 val namespace : t -> Namespace.t
 (** Get the namespace *)
 
+val simple_name : t -> string
+
 val qualified_name : t -> string
 (** Get the fully qualified name (namespace__name) *)
 

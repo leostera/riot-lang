@@ -65,6 +65,34 @@ let list_tests (workspace : Tusk_model.Workspace.t) =
   in
   (package_wildcards @ individual_tests) |> List.sort_uniq String.compare
 
+(** List benchmark binaries as "package:bench" for display in completions *)
+let list_benchmarks (workspace : Tusk_model.Workspace.t) =
+  let individual_benches =
+    workspace.packages
+    |> List.filter Tusk_model.Package.is_workspace_member
+    |> List.concat_map (fun (pkg : Tusk_model.Package.t) ->
+        List.filter_map
+          (fun (bin : Tusk_model.Package.binary) ->
+            if String.ends_with ~suffix:"_bench" bin.name
+            then Some (pkg.name ^ ":" ^ bin.name)
+            else None)
+          pkg.binaries)
+  in
+  (* Add pkg:... entries for packages with benchmarks *)
+  let package_wildcards =
+    workspace.packages
+    |> List.filter Tusk_model.Package.is_workspace_member
+    |> List.filter_map (fun (pkg : Tusk_model.Package.t) ->
+        let has_benches =
+          List.exists
+            (fun (bin : Tusk_model.Package.binary) ->
+              String.ends_with ~suffix:"_bench" bin.name)
+            pkg.binaries
+        in
+        if has_benches then Some (pkg.name ^ ":...") else None)
+  in
+  (package_wildcards @ individual_benches) |> List.sort_uniq String.compare
+
 (** List package commands as "package:command\tdescription" (tab-separated) for display in completions *)
 let list_commands (workspace : Tusk_model.Workspace.t) =
   Tusk_model.Workspace.discover_commands workspace
@@ -100,6 +128,7 @@ _tusk() {
         'build:Build packages'
         'run:Run a binary'
         'test:Run tests'
+        'bench:Run benchmarks'
         'clean:Clean build artifacts'
         'install:Install dependencies'
         'new:Create new package'
@@ -193,12 +222,33 @@ _tusk() {
                 esac
             fi
             ;;
+        bench)
+            # Check if we're completing the benchmark pattern (position 3)
+            if [[ $CURRENT -eq 3 ]]; then
+                local -a benches
+                benches=(${(f)"$(tusk completions --benchmarks 2>/dev/null)"})
+                compadd -a benches
+            else
+                _arguments \
+                    '(-p --package)'{-p,--package}'[Run benchmarks from package]:package:->packages' \
+                    '(-v --verbose)'{-v,--verbose}'[Verbose output]'
+                
+                case $state in
+                    packages)
+                        local -a packages
+                        packages=(${(f)"$(tusk completions --packages 2>/dev/null)"})
+                        _describe 'package' packages
+                        ;;
+                esac
+            fi
+            ;;
         completions)
             _arguments \
                 '--shell[Shell type]:shell:(bash zsh fish)' \
                 '--packages[List packages]' \
                 '--binaries[List binaries]' \
                 '--tests[List tests]' \
+                '--benchmarks[List benchmarks]' \
                 '--commands[List commands]'
             ;;
         clean|install|new|server|rpc|mcp|doc|lsp|version)

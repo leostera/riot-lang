@@ -27,13 +27,19 @@ let command =
          command "find-executable"
          |> about "Find binary by name"
          |> args [ positional "name" |> help "Binary name" ];
-         command "find-artifact" |> about "Find artifact path"
-         |> args
-              [
-                positional "package" |> help "Owning package";
-                positional "name" |> help "Binary name";
-              ];
-         command "format" |> about "Format a file"
+          command "find-artifact" |> about "Find artifact path"
+          |> args
+               [
+                 positional "package" |> help "Owning package";
+                 positional "name" |> help "Binary name";
+               ];
+          command "get-symbol" |> about "Query CodeDB for a symbol"
+          |> args
+               [
+                 positional "kind" |> help "Symbol kind (Module, Value, Type, Interface)";
+                 positional "name" |> help "Symbol name";
+               ];
+          command "format" |> about "Format a file"
          |> args [ positional "file" |> help "File to format" ];
          command "format-check"
          |> about "Check if file needs formatting"
@@ -165,6 +171,71 @@ let handle_find_artifact client sub_matches =
       in
       println (Json.to_string json);
       Error (Failure e)
+
+let handle_get_symbol client sub_matches =
+  let open ArgParser in
+  let kind_str = get_one sub_matches "kind" |> Option.expect ~msg:"kind required" in
+  let name = get_one sub_matches "name" |> Option.expect ~msg:"name required" in
+  
+  (* Build Symbol.reference from kind and name *)
+  let sym_ref_result : (Codedb.Model.Symbol.reference, string) result = 
+    match kind_str with
+    | "Module" ->
+        (match Codedb.Model.Module_name.from_string name with
+         | Ok n -> Ok (Codedb.Model.Symbol.Module n)
+         | Error e -> Error e)
+    | "Value" ->
+        (match Codedb.Model.Value_name.from_string name with
+         | Ok n -> Ok (Codedb.Model.Symbol.Value n)
+         | Error e -> Error e)
+    | "Type" ->
+        (match Codedb.Model.Type_name.from_string name with
+         | Ok n -> Ok (Codedb.Model.Symbol.Type n)
+         | Error e -> Error e)
+    | "Interface" ->
+        (match Codedb.Model.Module_name.from_string name with
+         | Ok n -> Ok (Codedb.Model.Symbol.Interface n)
+         | Error e -> Error e)
+    | _ -> Error ("Invalid kind: " ^ kind_str ^ " (must be Module, Value, Type, or Interface)")
+  in
+  
+  match sym_ref_result with
+  | Error e ->
+      let json =
+        Json.Object
+          [
+            ("type", Json.String "error");
+            ("message", Json.String e);
+          ]
+      in
+      println (Json.to_string json);
+      Error (Failure e)
+  | Ok sym_ref ->
+      let result = Tusk_client.get_symbol client sym_ref in
+       (match result with
+        | Ok (Some symbol) ->
+            let json = Codedb.Model.Symbol.to_json symbol in
+            println (Json.to_string json);
+            Ok ()
+       | Ok None ->
+           let json =
+             Json.Object
+               [
+                 ("type", Json.String "symbol_not_found");
+               ]
+           in
+           println (Json.to_string json);
+           Ok ()
+       | Error e ->
+           let json =
+             Json.Object
+               [
+                 ("type", Json.String "error");
+                 ("message", Json.String e);
+               ]
+           in
+           println (Json.to_string json);
+           Error (Failure e))
 
 let handle_package client sub_matches =
   let open ArgParser in
@@ -469,6 +540,8 @@ let run matches =
         handle_find_executable client sub_matches
     | Some ("find-artifact", sub_matches) ->
         handle_find_artifact client sub_matches
+    | Some ("get-symbol", sub_matches) ->
+        handle_get_symbol client sub_matches
     | Some ("package", sub_matches) -> handle_package client sub_matches
     | Some ("graph", sub_matches) -> handle_graph client sub_matches
     | Some ("build", sub_matches) -> handle_build client sub_matches

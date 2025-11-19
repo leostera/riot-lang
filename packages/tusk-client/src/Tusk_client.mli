@@ -64,6 +64,9 @@ val find_executable : t -> string -> ((string * string) option, string) result
 val find_artifact :
   t -> package:string -> kind:string -> name:string -> (string, string) result
 
+val get_symbol :
+  t -> Codedb.Model.Symbol.reference -> (Codedb.Model.Symbol.t option, string) result
+
 val restart : t -> (unit, string) result
 val shutdown : t -> (unit, string) result
 

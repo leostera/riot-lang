@@ -41,7 +41,7 @@ let make_package tmpdir name content =
       foreign_dependencies = [];
       binaries = [];
       library = Some { path = Path.v "src/lib.ml" };
-      sources = { src = []; native = []; tests = []; examples = [] };
+      sources = { src = []; native = []; tests = []; examples = []; bench = [] };
       compiler = { profile_overrides = []; target_overrides = [] };
       commands = [];
     }

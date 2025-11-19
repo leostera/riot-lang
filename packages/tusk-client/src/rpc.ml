@@ -8,6 +8,7 @@ include Format_code
 include Format_file
 include Get_package_graph
 include Get_package_info
+include Get_symbol
 include Get_workspace_config
 include Ping
 include Restart

@@ -33,6 +33,8 @@ let filename t = t.filename
 let to_string t = t.name
 let namespace t = t.namespace
 
+let simple_name t = t.name
+
 let qualified_name t =
   match Namespace.to_list t.namespace with
   | [] -> t.name

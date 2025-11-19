@@ -6,6 +6,7 @@ version = "0.0.1"
 path = "src/Tusk_client.ml"
 
 [dependencies]
+codedb = { path = "../codedb" }
 jsonrpc = { path = "../jsonrpc" }
 std = { path = "../std" }
 tusk-model = { path = "../tusk-model" }

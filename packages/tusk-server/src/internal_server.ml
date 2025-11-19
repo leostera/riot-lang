@@ -65,6 +65,9 @@ let rec loop state =
   | `Request (Protocol.NewPackage { client_pid; path; name; is_library }) ->
       Log.debug "Server loop received: NewPackage";
       handle_new_package state client_pid path name is_library
+  | `Request (Protocol.GetSymbol { client_pid; kind; name }) ->
+      Log.debug "Server loop received: GetSymbol";
+      handle_get_symbol state client_pid kind name
 
 (** Handler for ping message *)
 and handle_ping state client_pid =
@@ -138,7 +141,7 @@ and handle_get_package_info state client_pid package_name =
                     foreign_dependencies = [];
                     binaries = [];
                     library = None;
-                    sources = { src = []; native = []; tests = []; examples = [] };
+                    sources = { src = []; native = []; tests = []; examples = []; bench = [] };
                     compiler = { profile_overrides = []; target_overrides = [] };
                     commands = [];
                   };
@@ -422,7 +425,71 @@ and handle_new_package state client_pid path name is_library =
             (Protocol.ServerResponse
                (Protocol.PackageCreationError
                   { error = "Failed to write package files" }));
-          loop state)
+           loop state)
+
+and handle_get_symbol state client_pid kind name =
+  Log.debug
+    ("Server: Received GetSymbol from " ^ Pid.to_string client_pid ^ " for "
+    ^ name ^ " (kind="
+    ^ (match kind with Some k -> k | None -> "any") ^ ")");
+
+  (* Convert kind string and name to Symbol.reference *)
+  let sym_ref_result : (Codedb.Model.Symbol.reference, string) result = match kind with
+    | Some "Module" | None -> 
+        (match Codedb.Model.Module_name.from_string name with
+         | Ok n -> Ok (Module n)
+         | Error e -> Error e)
+    | Some "Value" ->
+        (match Codedb.Model.Value_name.from_string name with
+         | Ok n -> Ok (Value n)
+         | Error e -> Error e)
+    | Some "Type" ->
+        (match Codedb.Model.Type_name.from_string name with
+         | Ok n -> Ok (Type n)
+         | Error e -> Error e)
+    | Some "Interface" ->
+        (match Codedb.Model.Module_name.from_string name with
+         | Ok n -> Ok (Interface n)
+         | Error e -> Error e)
+    | Some k -> Error ("Unknown kind: " ^ k)
+  in
+
+   (match sym_ref_result with
+    | Error err ->
+        Log.warn (String.concat "" ["Invalid symbol request: "; err]);
+        send client_pid (Protocol.ServerResponse Protocol.SymbolNotFound)
+    | Ok sym_ref ->
+        (* Open shared (read-only) connection to CodeDB *)
+        let db_path = Path.(state.workspace.root / v ".codedb.pone") in
+        (match Poneglyph.open_shared ~data_dir:(Path.to_string db_path) with
+        | Error err ->
+            Log.error (String.concat "" ["Failed to open CodeDB: "; err]);
+            send client_pid (Protocol.ServerResponse Protocol.SymbolNotFound)
+        | Ok db ->
+            (match Codedb.Model.Query.get_symbol db sym_ref with
+             | Some symbol ->
+                 let kind_str = Codedb.Model.Symbol.kind_to_string symbol.Codedb.Model.Symbol.kind in
+                 let name_str = Codedb.Model.Module_name.to_string symbol.Codedb.Model.Symbol.name in
+                 let source_path_str = Path.to_string symbol.Codedb.Model.Symbol.file.path in
+                 let source_sha256 = symbol.Codedb.Model.Symbol.file.sha256 in
+                 let package_name_str = Codedb.Model.Package_name.to_string symbol.Codedb.Model.Symbol.package.name in
+                 let package_path_str = Path.to_string symbol.Codedb.Model.Symbol.package.path in
+                 Poneglyph.close db;
+                 send client_pid
+                   (Protocol.ServerResponse
+                      (Protocol.SymbolFound
+                         {
+                           symbol_kind = kind_str;
+                           symbol_name = name_str;
+                           source_path = source_path_str;
+                           source_sha256;
+                           package_name = package_name_str;
+                           package_path = package_path_str;
+                         }))
+             | None ->
+                 Poneglyph.close db;
+                 send client_pid (Protocol.ServerResponse Protocol.SymbolNotFound))));
+   loop state
 
 (** Handler for build message - spawns worker and continues loop immediately *)
 and handle_build state client_pid target session_id =
@@ -529,6 +596,16 @@ let start_with_listener () =
     let store = Tusk_store.Store.create ~workspace in
     Log.info "Store initialized";
 
+    Log.info "Initializing Codedb...";
+    let codedb_config = Codedb.Config.create
+      ~workspace_root:workspace.root
+      ~toolchain
+      ~workspace
+      ~db_path:Path.(workspace.root / v ".codedb.pone")
+      () in
+    let codedb = Codedb.Service.start codedb_config in
+    Log.info "Codedb initialized";
+
     write_daemon_files ~workspace ~port;
 
     let package_graph = 
@@ -544,6 +621,9 @@ let start_with_listener () =
           let ws = Workspace.make ~root:workspace.root ~packages:[] () in
           Tusk_planner.Package_graph.create ws |> Result.expect ~msg:"Failed to create empty package graph"
     in
+    (* Start CodeDB service - it runs independently with its own supervisor *)
+    let _codedb_supervisor = codedb in
+    
     let state =
       {
         workspace;

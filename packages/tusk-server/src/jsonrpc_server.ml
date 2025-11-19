@@ -373,6 +373,35 @@ module Server = struct
     | _ ->
         Log.error "[JSONRPC] handle_new_package called with wrong request type"
 
+  let handle_get_symbol ctx reply request =
+    match request with
+    | WireProtocol.GetSymbol { kind; name } ->
+        Log.info
+          ("[JSONRPC] >>> handle_get_symbol called (name=" ^ name ^ ", kind="
+          ^ (match kind with Some k -> k | None -> "any") ^ ")");
+        send ctx.server_pid
+          (Protocol.ServerRequest
+             (Protocol.GetSymbol { client_pid = self (); kind; name }));
+        let selector msg =
+          match msg with
+          | Protocol.ServerResponse (Protocol.SymbolFound _)
+          | Protocol.ServerResponse Protocol.SymbolNotFound ->
+              `select msg
+          | _ -> `skip
+        in
+        (match receive ~selector () with
+        | Protocol.ServerResponse (Protocol.SymbolFound { symbol_kind; symbol_name; source_path; source_sha256; package_name; package_path }) ->
+            Log.info ("[JSONRPC] <<< SymbolFound: " ^ symbol_name);
+            reply (WireProtocol.SymbolFound { symbol_kind; symbol_name; source_path; source_sha256; package_name; package_path })
+        | Protocol.ServerResponse Protocol.SymbolNotFound ->
+            Log.info "[JSONRPC] <<< SymbolNotFound";
+            reply WireProtocol.SymbolNotFound
+        | _ ->
+            Log.error "[JSONRPC] Unexpected response for GetSymbol";
+            reply (WireProtocol.Error "Unexpected response"))
+    | _ ->
+        Log.error "[JSONRPC] handle_get_symbol called with wrong request type"
+
   let handle_build ctx reply request =
     let target_str =
       match request with
@@ -622,6 +651,14 @@ module Server = struct
               (fun reply request ->
                 match request with
                 | WireProtocol.BuildAll -> handle_build ctx reply request
+                | _ -> ());
+          };
+          {
+            method_ = Tusk_protocol.method_get_symbol;
+            fn =
+              (fun reply request ->
+                match request with
+                | WireProtocol.GetSymbol _ -> handle_get_symbol ctx reply request
                 | _ -> ());
           };
         ]

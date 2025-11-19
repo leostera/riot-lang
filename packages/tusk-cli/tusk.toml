@@ -10,6 +10,7 @@ name = "tusk"
 path = "src/main.ml"
 
 [dependencies]
+codedb = { path = "../codedb" }
 jsonrpc = { path = "../jsonrpc" }
 mcp = { path = "../mcp" }
 std = { path = "../std" }

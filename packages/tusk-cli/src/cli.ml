@@ -20,6 +20,7 @@ let build_cli workspace_opt =
     Run.command;
     Server_cmd.command;
     Test_cmd.command;
+    Bench_cmd.command;
     command "doc" |> about "Generate documentation";
     command "lsp" |> about "Start OCaml LSP server";
     command "version" |> about "Show tusk version";
@@ -149,6 +150,7 @@ let main ~args =
       | Some ("rpc", rpc_matches) -> Rpc.run rpc_matches
       | Some ("mcp", mcp_matches) -> Mcp_cmd.run mcp_matches
       | Some ("test", test_matches) -> Test_cmd.run test_matches
+      | Some ("bench", bench_matches) -> Bench_cmd.run bench_matches
       | Some ("fmt", fmt_matches) -> Fmt.run fmt_matches
       | Some ("version", _) ->
           println "tusk 0.1.0";

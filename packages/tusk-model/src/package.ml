@@ -10,7 +10,7 @@ type dependency_source = Workspace | Path of Path.t
 type dependency = { name : string; source : dependency_source }
 type binary = { name : string; path : Path.t }
 type library = { path : Path.t }
-type sources = { src : Path.t list; native : Path.t list; tests : Path.t list; examples: Path.t list }
+type sources = { src : Path.t list; native : Path.t list; tests : Path.t list; examples: Path.t list; bench: Path.t list }
 
 type target_platform = string  (* "macos", "linux", "windows", etc. *)
 
@@ -423,7 +423,12 @@ let scan_sources ~(package_path : Path.t) : sources =
       ~from_dir:Path.(package_path / Path.v "examples")
       ~rel_path:(Path.v "examples")
   in
-  { src = src_files; tests = test_files; native = native_files; examples = example_files }
+  let bench_files =
+    scan_dir_recursive
+      ~from_dir:Path.(package_path / Path.v "bench")
+      ~rel_path:(Path.v "bench")
+  in
+  { src = src_files; tests = test_files; native = native_files; examples = example_files; bench = bench_files }
 
 (** Autodiscover test binaries from test files ending in _tests.ml or -tests.ml *)
 let autodiscover_test_binaries (sources : sources) ~(package_path : Path.t) :
@@ -458,6 +463,21 @@ let autodiscover_example_binaries (sources : sources) ~(package_path : Path.t) :
         Some { name = binary_name; path = example_file }
       else None)
     sources.examples
+
+(** Autodiscover benchmark binaries from bench files ending in _bench.ml *)
+let autodiscover_bench_binaries (sources : sources) ~(package_path : Path.t) :
+    binary list =
+  List.filter_map
+    (fun bench_file ->
+      let filename = Path.basename bench_file in
+      if String.ends_with ~suffix:"_bench.ml" filename then
+        let binary_name =
+          Path.remove_extension (Path.v filename) |> Path.to_string
+        in
+        (* bench_file is already relative to package (e.g., bench/foo_bench.ml) *)
+        Some { name = binary_name; path = bench_file }
+      else None)
+    sources.bench
 
 let from_toml (toml : Toml.value) ~(workspace_deps : dependency list)
     ~(path : Path.t) ~(relative_path : Path.t) : (t, string) result =
@@ -498,9 +518,11 @@ let from_toml (toml : Toml.value) ~(workspace_deps : dependency list)
       let example_binaries =
         autodiscover_example_binaries sources ~package_path:path
       in
+      let bench_binaries = autodiscover_bench_binaries sources ~package_path:path in
       Log.debug ("[PACKAGE] " ^ name ^ ": discovered " ^ Int.to_string (List.length test_binaries) ^ " test binaries from " ^ Int.to_string (List.length sources.tests) ^ " test files");
       Log.debug ("[PACKAGE] " ^ name ^ ": discovered " ^ Int.to_string (List.length example_binaries) ^ " example binaries from " ^ Int.to_string (List.length sources.examples) ^ " example files");
-      let all_binaries = binaries @ test_binaries @ example_binaries in
+      Log.debug ("[PACKAGE] " ^ name ^ ": discovered " ^ Int.to_string (List.length bench_binaries) ^ " benchmark binaries from " ^ Int.to_string (List.length sources.bench) ^ " benchmark files");
+      let all_binaries = binaries @ test_binaries @ example_binaries @ bench_binaries in
       
       (* Parse commands using Package_command module *)
       let commands = 
@@ -644,7 +666,7 @@ let from_json (json : Json.t) : (t, string) result =
               foreign_dependencies = [];
               binaries;
               library;
-              sources = { src = []; native = []; tests = []; examples = [] };
+              sources = { src = []; native = []; tests = []; examples = []; bench = [] };
               compiler = { profile_overrides = []; target_overrides = [] };
               commands = [];
             }
@@ -735,15 +757,29 @@ let hash state (pkg : t) =
     | None -> H.write_string state "none");
   ) sorted_target_overrides;
   
-  (* Source file contents *)
+  (* Source file contents - include explicit [[bin]] entries that may not be in source dirs *)
+  let explicit_bin_files =
+    List.filter_map
+      (fun (bin : binary) ->
+        let path_str = Path.to_string bin.path in
+        (* Only include if it's a .ml file and not already in sources *)
+        if String.ends_with ~suffix:".ml" path_str ||
+           String.ends_with ~suffix:".mli" path_str
+        then Some bin.path
+        else None)
+      pkg.binaries
+  in
+  
   let all_source_files =
     pkg.sources.src 
     @ pkg.sources.native 
     @ pkg.sources.tests
     @ pkg.sources.examples
+    @ pkg.sources.bench
+    @ explicit_bin_files  (* Include explicit binary sources *)
   in
   let sorted_files =
-    List.sort
+    List.sort_uniq  (* Use sort_uniq to avoid duplicates *)
       (fun a b -> String.compare (Path.to_string a) (Path.to_string b))
       all_source_files
   in

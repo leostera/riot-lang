@@ -16,6 +16,7 @@ val method_format_all : string
 val method_new_package : string
 val method_find_executable : string
 val method_find_artifact : string
+val method_get_symbol : string
 val build_package_params : string -> Jsonrpc.params
 
 module WireProtocol : sig
@@ -61,6 +62,7 @@ module WireProtocol : sig
     | Shutdown
     | FindExecutable of string
     | FindArtifact of { package : string; kind : string; name : string }
+    | GetSymbol of { kind : string option; name : string }
     | FormatFile of { file_path : string; check_only : bool }
     | FormatCode of { code : string; file_path : string option }
     | FormatAll of { mode : [ `check | `write ] }
@@ -127,6 +129,15 @@ module WireProtocol : sig
     | ExecutableNotFound
     | ArtifactFound of { path : string }
     | ArtifactNotFound of { error : string }
+    | SymbolFound of {
+        symbol_kind : string;
+        symbol_name : string;
+        source_path : string;
+        source_sha256 : string;
+        package_name : string;
+        package_path : string;
+      }
+    | SymbolNotFound
     | ShutdownAck
     | RestartAck
     | FormatResult of { formatted_code : string; changed : bool }

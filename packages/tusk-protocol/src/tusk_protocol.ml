@@ -21,6 +21,7 @@ let method_format_all = "tusk.formatAll"
 let method_new_package = "tusk.newPackage"
 let method_find_executable = "tusk.findExecutable"
 let method_find_artifact = "tusk.findArtifact"
+let method_get_symbol = "tusk.getSymbol"
 
 (** Helper to create method-specific parameters *)
 let build_package_params package =
@@ -85,6 +86,7 @@ module WireProtocol = struct
     | Shutdown
     | FindExecutable of string
     | FindArtifact of { package : string; kind : string; name : string }
+    | GetSymbol of { kind : string option; name : string }
     | FormatFile of { file_path : string; check_only : bool }
     | FormatCode of { code : string; file_path : string option }
     | FormatAll of { mode : [ `check | `write ] }
@@ -157,6 +159,15 @@ module WireProtocol = struct
     | ExecutableNotFound
     | ArtifactFound of { path : string }
     | ArtifactNotFound of { error : string }
+    | SymbolFound of { 
+        symbol_kind : string;
+        symbol_name : string;
+        source_path : string;
+        source_sha256 : string;
+        package_name : string;
+        package_path : string;
+      }
+    | SymbolNotFound
     | ShutdownAck
     | RestartAck
     | FormatResult of { formatted_code : string; changed : bool }
@@ -1212,6 +1223,16 @@ module WireProtocol = struct
                 ("name", Json.String name);
               ];
         }
+    | GetSymbol { kind; name } ->
+        {
+          method_ = method_get_symbol;
+          params =
+            Jsonrpc.Named
+              [
+                ("kind", match kind with Some k -> Json.String k | None -> Json.Null);
+                ("name", Json.String name);
+              ];
+        }
     | FormatFile { file_path; check_only } ->
         {
           method_ = method_format_file;
@@ -1363,6 +1384,25 @@ module WireProtocol = struct
                 Error
                   (Json.String "Missing or invalid parameters for newPackage"))
         | _ -> Error (Json.String "Invalid parameters for newPackage"))
+    | "tusk.getSymbol" -> (
+        match params with
+        | Jsonrpc.Named fields -> (
+            match
+              ( List.assoc_opt "kind" fields,
+                List.assoc_opt "name" fields )
+            with
+            | ( Some (Json.String kind),
+                Some (Json.String name) ) ->
+                Ok (GetSymbol { kind = Some kind; name })
+            | Some Json.Null, Some (Json.String name) ->
+                Ok (GetSymbol { kind = None; name })
+            | None, Some (Json.String name) ->
+                Ok (GetSymbol { kind = None; name })
+            | _ ->
+                Error
+                  (Json.String "Missing or invalid parameters for getSymbol")
+            )
+        | _ -> Error (Json.String "Invalid parameters for getSymbol"))
     | _ -> Error (Json.String ("Unknown method: " ^ method_))
 
   let response_to_json = function
@@ -1456,6 +1496,25 @@ module WireProtocol = struct
             ("type", Json.String "artifact_not_found");
             ("error", Json.String error);
           ]
+    | SymbolFound { symbol_kind; symbol_name; source_path; source_sha256; package_name; package_path } ->
+        Json.Object
+          [
+            ("type", Json.String "symbol_found");
+            ("symbol", Json.Object [
+              ("kind", Json.String symbol_kind);
+              ("name", Json.String symbol_name);
+            ]);
+            ("source", Json.Object [
+              ("path", Json.String source_path);
+              ("sha256", Json.String source_sha256);
+            ]);
+            ("package", Json.Object [
+              ("name", Json.String package_name);
+              ("path", Json.String package_path);
+            ]);
+          ]
+    | SymbolNotFound ->
+        Json.Object [ ("type", Json.String "symbol_not_found") ]
     | CycleDetected { session_id; detected_at; cycle_nodes } ->
         let timestamp = Std.Datetime.to_iso8601 detected_at in
         Json.Object
@@ -1612,6 +1671,35 @@ module WireProtocol = struct
             match List.assoc_opt "error" fields with
             | Some (Json.String e) -> Ok (ArtifactNotFound { error = e })
             | _ -> Error (Json.String "Invalid artifact_not_found response"))
+        | Some (Json.String "symbol_found") -> (
+            match
+              ( List.assoc_opt "symbol" fields,
+                List.assoc_opt "source" fields,
+                List.assoc_opt "package" fields )
+            with
+            | ( Some (Json.Object symbol_fields),
+                Some (Json.Object source_fields),
+                Some (Json.Object package_fields) ) -> (
+                match
+                  ( List.assoc_opt "kind" symbol_fields,
+                    List.assoc_opt "name" symbol_fields,
+                    List.assoc_opt "path" source_fields,
+                    List.assoc_opt "sha256" source_fields,
+                    List.assoc_opt "name" package_fields,
+                    List.assoc_opt "path" package_fields )
+                with
+                | ( Some (Json.String symbol_kind),
+                    Some (Json.String symbol_name),
+                    Some (Json.String source_path),
+                    Some (Json.String source_sha256),
+                    Some (Json.String package_name),
+                    Some (Json.String package_path) ) ->
+                    Ok (SymbolFound { 
+                      symbol_kind; symbol_name; source_path; source_sha256; package_name; package_path;
+                    })
+                | _ -> Error (Json.String "Invalid symbol_found nested fields"))
+            | _ -> Error (Json.String "Invalid symbol_found response structure"))
+        | Some (Json.String "symbol_not_found") -> Ok SymbolNotFound
         | Some (Json.String "build_event") -> (
             (* Deserialize the event using Telemetry_events.from_json *)
             match List.assoc_opt "event_data" fields with

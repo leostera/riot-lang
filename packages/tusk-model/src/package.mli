@@ -4,7 +4,7 @@ type dependency_source = Workspace | Path of Path.t
 type dependency = { name : string; source : dependency_source }
 type binary = { name : string; path : Path.t }
 type library = { path : Path.t }
-type sources = { src : Path.t list; native : Path.t list; tests : Path.t list; examples : Path.t list }
+type sources = { src : Path.t list; native : Path.t list; tests : Path.t list; examples : Path.t list; bench : Path.t list }
 
 type target_platform = string  (* "macos", "linux", "windows", etc. *)
 

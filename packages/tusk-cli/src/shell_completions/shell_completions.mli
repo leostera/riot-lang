@@ -19,8 +19,13 @@ val list_binaries : Tusk_model.Workspace.t -> string list
 
 (** List all test binaries in workspace as "test:package" for display *)
 val list_tests : Tusk_model.Workspace.t -> string list
+(** List test binaries as "package:test" for display in completions.
+    Also includes "package:..." for running all tests in a package. *)
 
-(** List all package commands in workspace as "package:command" for display *)
+val list_benchmarks : Tusk_model.Workspace.t -> string list
+(** List benchmark binaries as "package:bench" for display in completions.
+    Also includes "package:..." for running all benchmarks in a package. *)
+
 val list_commands : Tusk_model.Workspace.t -> string list
 
 (** List all package command descriptions matching the order of list_commands *)

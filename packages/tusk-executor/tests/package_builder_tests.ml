@@ -40,7 +40,7 @@ let test_collect_source_files () =
             foreign_dependencies = [];
             binaries = [];
             library = None;
-            sources = { src = []; native = []; tests = []; examples = [] };
+            sources = { src = []; native = []; tests = []; examples = []; bench = [] };
             compiler = { profile_overrides = []; target_overrides = [] };
             commands = [];
           }
@@ -93,7 +93,7 @@ let test_build_result_status_variants () =
         foreign_dependencies = [];
         binaries = [];
         library = None;
-        sources = { src = []; native = []; tests = []; examples = [] };
+        sources = { src = []; native = []; tests = []; examples = []; bench = [] };
         compiler = { profile_overrides = []; target_overrides = [] };
         commands = [];
       }

@@ -6,6 +6,7 @@ version = "0.0.1"
 path = "src/tusk_server.ml"
 
 [dependencies]
+codedb = { path = "../codedb" }
 jsonrpc = { path = "../jsonrpc" }
 mcp = { path = "../mcp" }
 std = { path = "../std" }
