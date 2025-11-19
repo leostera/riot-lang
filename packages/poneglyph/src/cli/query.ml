@@ -52,35 +52,48 @@ let run matches =
   let db_path = get_one matches "db" |> Option.expect ~msg:"db path required" in
   let query_str = get_one matches "query" |> Option.expect ~msg:"query required" in
   
-  (* Open database for reading only (shared lock) *)
-  match Graph_store.open_shared ~data_dir:db_path with
-  | Error e ->
-      println ("Error: Failed to open database: " ^ e);
-      println "Note: Database may be locked by another process (e.g., a write operation)";
-      Error (Failure e)
-  | Ok db ->
+  (* Measure database opening time *)
+  let db, db_open_time = Timer.measure (fun () ->
+    match Graph_store.open_shared ~data_dir:db_path with
+    | Error e ->
+        println ("Error: Failed to open database: " ^ e);
+        println "Note: Database may be locked by another process (e.g., a write operation)";
+        panic e
+    | Ok db -> db
+  ) in
   
-  (* Execute query *)
-  (match execute_query db ~query:query_str with
-   | Error e ->
-       Graph_store.close db;
-       println ("Query error: " ^ e);
-       Error (Failure ("Query failed: " ^ e))
-   | Ok results ->
-       (* Stream results as JSON - print each result as it's produced *)
-       let rec print_results iter =
-         match Iter.MutIterator.next iter with
-         | None -> ()
-         | Some subst ->
-             (* Convert substitution to JSON and print *)
-             let json = Datalog.Substitution.to_json subst in
-             println (Data.Json.to_string json);
-             
-             (* Continue with next result *)
-             print_results iter
-       in
-       print_results results;
-       
-       Graph_store.close db;
-       Ok ()
-  )
+  (* Measure query execution time *)
+  let results, query_time = Timer.measure (fun () ->
+    match execute_query db ~query:query_str with
+    | Error e ->
+        Graph_store.close db;
+        println ("Query error: " ^ e);
+        panic ("Query failed: " ^ e)
+    | Ok results -> results
+  ) in
+  
+  (* Stream results as JSON - print each result as it's produced *)
+  let rec print_results iter =
+    match Iter.MutIterator.next iter with
+    | None -> ()
+    | Some subst ->
+        (* Convert substitution to JSON and print *)
+        let json = Datalog.Substitution.to_json subst in
+        println (Data.Json.to_string json);
+        
+        (* Continue with next result *)
+        print_results iter
+  in
+  print_results results;
+  
+  Graph_store.close db;
+  
+  (* Print performance summary to stderr *)
+  let total = Time.Duration.add db_open_time query_time in
+  eprint "\n";
+  eprint "Performance:\n";
+  eprint ("  DB open: " ^ (Time.Duration.to_secs_string ~precision:3 db_open_time) ^ "s\n");
+  eprint ("  Query:   " ^ (Time.Duration.to_secs_string ~precision:3 query_time) ^ "s\n");
+  eprint ("  Total:   " ^ (Time.Duration.to_secs_string ~precision:3 total) ^ "s\n");
+  
+  Ok ()

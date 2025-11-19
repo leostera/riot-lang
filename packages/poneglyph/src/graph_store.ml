@@ -88,11 +88,20 @@ let retract graph ~fact_uri =
   | Inmemory store -> Storage.Inmemory.retract store ~fact_uri
   | SimpleFile store -> Storage.Simple_file.retract store ~fact_uri
   | LsmStore store ->
-      (* TODO: Need to implement retract by fact_uri for LSM *)
-      (* For MVP: Find the fact first, then retract *)
-      (* This requires scanning - not efficient, but works *)
-      Log.warn "LSM retract by fact_uri not yet implemented - use retract with full fact";
-      ()
+      (* Find the fact by scanning all current facts *)
+      (* Not efficient (O(n) scan), but correct and simple *)
+      (* TODO: Add a FACT index query method to make this O(1) *)
+      let all_facts = Storage.Lsm.Multi_store.get_all_current_facts store in
+      let fact_opt = Iter.MutIterator.find all_facts ~fn:(fun f -> 
+        Uri.equal f.Fact.fact_uri fact_uri
+      ) in
+      match fact_opt with
+      | None -> 
+          Log.warn ("Fact not found for retraction: " ^ Uri.to_string fact_uri)
+      | Some fact ->
+          let _ = Storage.Lsm.Multi_store.retract store [fact]
+            |> Result.expect ~msg:"LSM retract failed" in
+          ()
 
 let get graph ~entity ~attr =
   match graph.storage with
