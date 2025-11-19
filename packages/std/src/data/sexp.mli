@@ -98,22 +98,6 @@ val parse_many : string -> (t list, string) result
     ```ocaml match Sexp.parse_many "(first) (second) (third)" with | Ok sexps ->
     List.length sexps (* 3 *) | Error msg -> () ``` *)
 
-val parse_file : string -> (t list, string) result
-(** Reads and parses S-expressions from a file.
-
-    ## Examples
-
-    ```ocaml match Sexp.parse_file "config.sexp" with | Ok sexps -> List.iter
-    (fun s -> Log.info "Config: %s" (Sexp.to_string s) ) sexps | Error msg ->
-    Log.error "Cannot read config: %s" msg ```
-
-    ## Error Cases
-
-    Returns [Error] for:
-    - File not found
-    - Read errors
-    - Parse errors *)
-
 (** {1 Printing} *)
 
 val to_string : t -> string
@@ -133,17 +117,6 @@ val pretty_print : t -> string
     [ Sexp.atom "outer"; Sexp.list [Sexp.atom "inner"; Sexp.atom "value"] ] in
 
     Sexp.pretty_print nested (* "(outer (inner value))" *) ``` *)
-
-val to_file : string -> t -> (unit, string) result
-(** Writes an S-expression to a file.
-
-    ## Examples
-
-    ```ocaml let config = Sexp.list
-    [ Sexp.atom "config"; Sexp.list [Sexp.atom "debug"; Sexp.atom "true"] ] in
-
-    match Sexp.to_file "config.sexp" config with | Ok () -> Log.info "Config
-    saved" | Error msg -> Log.error "Write failed: %s" msg ``` *)
 
 (** {1 Constructors} *)
 

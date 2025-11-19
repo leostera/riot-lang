@@ -122,38 +122,53 @@ val config :
     ```ocaml let tsv_config = Csv.config ~delimiter:'\t' () let excel_config =
     Csv.config ~delimiter:',' ~trim_fields:true () ``` *)
 
-(** {1 Reading CSV Files} *)
+(** {1 Reading CSV Data} *)
 
-val read : ?config:config -> Path.t -> (row, error) result Iter.MutIterator.t
-(** Reads a CSV file incrementally, returning a mutable iterator over rows. This
-    is the recommended way to read CSV files as it processes rows one at a time
-    without loading the entire file into memory.
+val parse : ?config:config -> ('src, 'err) IO.Reader.t -> (row, error) result Iter.MutIterator.t
+(** Parses CSV data from a Reader incrementally, returning a mutable iterator over rows.
+    
+    Currently reads all data from the Reader first, then parses incrementally.
+    Future versions may implement true streaming parsing without this limitation.
 
     Each iterator item is a [Result] containing either a successfully parsed row
     or a parse error. The iterator stops at the first parse error.
 
     ## Examples
 
-    Basic file reading:
+    Reading from a file:
 
-    ```ocaml let iter = Csv.read (Path.v "data.csv") in
+    ```ocaml
+    let file = Fs.File.open_read (Path.v "data.csv") |> Result.unwrap in
+    let reader = IO.Reader.of_file file in
+    let iter = Csv.parse reader in
 
-    let rec process () = match Iter.MutIterator.next iter with | Some (Ok row)
-    -> (* Process row *) process () | Some (Error err) -> Log.error "Parse
-    error: %s" (Csv.error_to_string err) | None -> () in process () ```
+    let rec process () = match Iter.MutIterator.next iter with 
+    | Some (Ok row) -> (* Process row *) process () 
+    | Some (Error err) -> Log.error "Parse error: %s" (Csv.error_to_string err) 
+    | None -> () 
+    in process ()
+    ```
+
+    Reading from a string:
+
+    ```ocaml
+    let reader = IO.Reader.of_string "name,age\nAlice,30\nBob,25" in
+    let iter = Csv.parse reader in
+    ```
 
     With custom delimiter (TSV):
 
-    ```ocaml let config = Csv.config ~delimiter:'\t' () in let iter = Csv.read
-    ~config (Path.v "data.tsv") in ```
+    ```ocaml 
+    let config = Csv.config ~delimiter:'\t' () in 
+    let reader = IO.Reader.of_string "a\tb\tc\n1\t2\t3" in
+    let iter = Csv.parse ~config reader in 
+    ```
 
     ## Errors
 
     Returns an iterator that yields [Error] items if:
     - Parse errors occur (unterminated quotes, invalid escape sequences, etc.)
-
-    Note: File I/O errors (file not found, permission denied) will cause the
-    function itself to panic - wrap in try/catch if you need to handle these. *)
+    - Reader errors occur during the initial read *)
 
 val of_string :
   ?config:config -> string -> (row, error) result Iter.MutIterator.t
@@ -181,34 +196,42 @@ val error_to_string : error -> string
     ```ocaml match Csv.of_string bad_input with | Ok _ -> () | Error err ->
     Log.error "CSV parse failed: %s" (Csv.error_to_string err) ``` *)
 
-(** {1 Writing CSV Files} *)
+(** {1 Writing CSV Data} *)
 
 val write :
   ?config:config ->
   ?headers:string list ->
   data:string list list ->
-  Path.t ->
-  (unit, Fs.error) result
-(** Writes CSV rows to a file. Fields containing delimiters, quotes, or newlines
+  ('dst, 'err) IO.Writer.t ->
+  (unit, 'err) result
+(** Writes CSV rows to a Writer. Fields containing delimiters, quotes, or newlines
     are automatically quoted.
 
     ## Examples
 
-    Basic writing:
+    Writing to a file:
 
-    ```ocaml let data = [ ["Alice"; "30"; "NYC"]; ["Bob"; "25"; "SF"] ] in
-    Csv.write ~data (Path.v "output.csv") |> Result.unwrap ```
+    ```ocaml 
+    let data = [ ["Alice"; "30"; "NYC"]; ["Bob"; "25"; "SF"] ] in
+    let file = Fs.File.create (Path.v "output.csv") |> Result.unwrap in
+    let writer = IO.Writer.of_file file in
+    Csv.write ~data writer |> Result.unwrap
+    ```
 
     With headers:
 
-    ```ocaml let headers = ["name"; "age"; "city"] in let data =
-    [ ["Alice"; "30"; "NYC"]; ["Bob"; "25"; "SF"] ] in Csv.write ~headers ~data
-    (Path.v "output.csv") |> Result.unwrap ```
+    ```ocaml 
+    let headers = ["name"; "age"; "city"] in 
+    let data = [ ["Alice"; "30"; "NYC"]; ["Bob"; "25"; "SF"] ] in 
+    Csv.write ~headers ~data writer |> Result.unwrap 
+    ```
 
     With custom delimiter (TSV):
 
-    ```ocaml let config = Csv.config ~delimiter:'\t' () in Csv.write ~config
-    ~headers ~data (Path.v "output.tsv") |> Result.unwrap ``` *)
+    ```ocaml 
+    let config = Csv.config ~delimiter:'\t' () in 
+    Csv.write ~config ~headers ~data writer |> Result.unwrap 
+    ``` *)
 
 val to_string :
   ?config:config -> ?headers:string list -> string list list -> string

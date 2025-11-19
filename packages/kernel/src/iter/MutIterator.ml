@@ -19,6 +19,29 @@ type 'item t = Iter : (('item, 'state) iter * 'state) -> 'item t
 let make : type item state. (item, state) iter -> state -> item t =
  fun mod_ state -> Iter (mod_, state)
 
+let empty (type a) () =
+  let module Empty = struct
+    type item = a
+    type state = unit
+    let next () = None
+    let size () = 0
+    let clone () = ()
+  end in
+  make (module Empty) ()
+
+let singleton (type a) (value : a) =
+  let module Singleton = struct
+    type item = a
+    type state = { mutable value : a option }
+    let next state =
+      match state.value with
+      | Some x -> state.value <- None; Some x
+      | None -> None
+    let size state = if Option.is_some state.value then 1 else 0
+    let clone state = { value = state.value }
+  end in
+  make (module Singleton) { value = Some value }
+
 let next : type item. item t -> item option =
  fun (Iter ((module Iter), state)) -> Iter.next state
 
@@ -86,6 +109,38 @@ let filter_map (type a b) (iter : a t) ~(fn : a -> b option) : b t =
     let clone state = clone state
   end in
   make (module FilterMapIter) iter
+
+let flat_map (type a b) (iter : a t) ~(fn : a -> b t) : b t =
+  let module FlatMapIter = struct
+    type state = { outer : a t; mutable current : b t option }
+    type item = b
+
+    let rec next state =
+      match state.current with
+      | Some inner -> (
+          match iter_next inner with
+          | Some x -> Some x
+          | None ->
+              (* Current inner iterator exhausted, get next *)
+              state.current <- None;
+              next state)
+      | None -> (
+          (* Need a new inner iterator *)
+          match iter_next state.outer with
+          | Some x ->
+              state.current <- Some (fn x);
+              next state
+          | None -> None)
+
+    let size state = size state.outer (* Approximate *)
+    
+    let clone state =
+      {
+        outer = clone state.outer;
+        current = Option.map clone state.current;
+      }
+  end in
+  make (module FlatMapIter) { outer = iter; current = None }
 
 (*************************************************************************************************)
 (* Reduction *)

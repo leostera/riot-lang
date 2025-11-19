@@ -100,6 +100,12 @@ type ('item, 'state) iter =
 type 'item t
 (** A mutable iterator over items of type ['item]. *)
 
+val empty : unit -> 'item t
+(** Creates an empty iterator. *)
+
+val singleton : 'item -> 'item t
+(** Creates an iterator with a single element. *)
+
 val make : ('item, 'state) iter -> 'state -> 'item t
 (** Creates a mutable iterator from a module and initial state.
 
@@ -154,6 +160,9 @@ val filter : 'a t -> fn:('a -> bool) -> 'a t
 
 val filter_map : 'a t -> fn:('a -> 'b option) -> 'b t
 (** Maps and filters in one operation. *)
+
+val flat_map : 'a t -> fn:('a -> 'b t) -> 'b t
+(** Maps each element to an iterator and flattens the results (streaming). *)
 
 (** {1 Reduction} *)
 

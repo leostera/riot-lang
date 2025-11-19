@@ -200,24 +200,6 @@ let rec assoc key = function
   | List (Atom k :: v :: _) :: _ when k = key -> Some v
   | _ :: rest -> assoc key rest
 
-(** Read S-expressions from a file *)
-let parse_file filename =
-  match Path.of_string filename with
-  | Error _ -> Error ("Invalid path: " ^ filename)
-  | Ok path -> (
-      match Fs.read_to_string path with
-      | Ok content -> parse_many content
-      | Error err -> Error ("File error: " ^ IO.error_message err))
-
-(** Write S-expression to a file *)
-let to_file filename sexp =
-  match Path.of_string filename with
-  | Error _ -> Error ("Invalid path: " ^ filename)
-  | Ok path -> (
-      match Fs.write (to_string sexp ^ "\n") path with
-      | Ok () -> Ok ()
-      | Error err -> Error ("File error: " ^ IO.error_message err))
-
 (** Canonical S-expressions (Csexp) module *)
 module Csexp = struct
   (** Convert S-expression to canonical format *)

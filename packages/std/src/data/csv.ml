@@ -157,8 +157,10 @@ let of_string ?(config = default_config) str =
   end in
   Iter.MutIterator.make (module CsvIter) ()
 
-let read ?(config = default_config) path =
-  let content = Fs.read path |> Result.unwrap in
+let parse ?(config = default_config) reader =
+  let buf = Buffer.create 4096 in
+  let _ = IO.Reader.read_to_end reader ~buf |> Result.expect ~msg:"Failed to read from Reader" in
+  let content = Buffer.contents buf in
   of_string ~config content
 
 let to_string ?(config = default_config) ?headers data =
@@ -196,6 +198,9 @@ let to_string ?(config = default_config) ?headers data =
     all_rows;
   Buffer.contents buffer
 
-let write ?(config = default_config) ?headers ~data path =
+let write ?(config = default_config) ?headers ~data writer =
   let content = to_string ~config ?headers data in
-  Fs.write content path
+  IO.Writer.write_all writer ~buf:content
+
+let serialize ?(config = default_config) ?headers data =
+  to_string ~config ?headers data

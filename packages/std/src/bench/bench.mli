@@ -118,3 +118,22 @@ val make_case : string -> (unit -> unit) -> bench_case
 
 val make_case_with_config : config:bench_config -> string -> (unit -> unit) -> bench_case
 (** [make_case_with_config ~config name fn] creates a benchmark case with custom config. *)
+
+module Cli : sig
+  val main :
+    name:string ->
+    benchmarks:bench_item list ->
+    args:string list ->
+    (unit, Miniriot.Process.exit_reason) result
+  (** Main entry point for benchmark binaries with CLI support.
+      
+      Supports subcommands:
+      - [run-benchmarks]: Execute benchmarks
+      - [list-benchmarks]: List all benchmarks
+      
+      Flags:
+      - [--format <fmt>]: Output format
+      - [--iterations <n>]: Override iterations
+      - [--warmup <n>]: Override warmup count
+  *)
+end

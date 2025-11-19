@@ -339,11 +339,9 @@ let parse content =
           (* Save previous section *)
           (match !current_section with
           | Some (name, false) ->
-              Log.trace ("[TOML] Saving section '" ^ name ^ "' with " ^ Int.to_string (List.length !current_items) ^ " items");
               sections := { name; items = List.rev !current_items } :: !sections
           | Some (name, true) ->
               (* Array section - add current items as a table to the array *)
-              Log.trace ("[TOML] Saving array section '" ^ name ^ "' with " ^ Int.to_string (List.length !current_items) ^ " items");
               let existing =
                 try List.assoc name !array_sections with Not_found -> []
               in
@@ -357,7 +355,6 @@ let parse content =
                   { name = ""; items = List.rev !current_items } :: !sections);
 
           let section_name, is_array = parse_section_header () in
-          Log.trace ("[TOML] Found section: " ^ section_name ^ " (array=" ^ Bool.to_string is_array ^ ")");
           current_section := Some (section_name, is_array);
           current_items := []
       | _ ->
@@ -368,7 +365,6 @@ let parse content =
           else (
             advance ();
             (* skip = *)
-            Log.trace ("[TOML] Parsing key: " ^ key);
             try
               let value = parse_value () in
               current_items := (key, value) :: !current_items;
@@ -385,11 +381,9 @@ let parse content =
       (* Normal termination *)
       (match !current_section with
       | Some (name, false) ->
-          Log.trace ("[TOML] Saving final section '" ^ name ^ "' with " ^ Int.to_string (List.length !current_items) ^ " items");
           sections := { name; items = List.rev !current_items } :: !sections
       | Some (name, true) ->
           (* Array section - add current items as final table *)
-          Log.trace ("[TOML] Saving final array section '" ^ name ^ "' with " ^ Int.to_string (List.length !current_items) ^ " items");
           let existing =
             try List.assoc name !array_sections with Not_found -> []
           in
@@ -403,7 +397,6 @@ let parse content =
               { name = ""; items = List.rev !current_items } :: !sections);
 
       let all_sections = List.rev !sections in
-      Log.trace ("[TOML] Successfully parsed " ^ Int.to_string (List.length all_sections) ^ " sections and " ^ Int.to_string (List.length !array_sections) ^ " array sections");
 
       (* Helper to insert a dotted key path into nested tables *)
       let rec insert_nested_table path value acc =

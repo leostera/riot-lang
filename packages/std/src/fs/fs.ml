@@ -7,6 +7,7 @@ open Collections
 
 include Common
 
+module Event = Event
 module Permissions = Permissions
 module Metadata = Metadata
 module ReadDir = ReadDir

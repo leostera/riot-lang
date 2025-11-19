@@ -598,4 +598,5 @@ val with_tempdir : ?prefix:string -> (Path.t -> 'a) -> ('a, error) Result.t
     - `prefix`: Optional prefix for directory name (default: "tmp")
     - Returns: Result of the function or filesystem error *)
 
+module Event = Event
 module FileWatcher = File_watcher

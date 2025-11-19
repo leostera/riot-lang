@@ -25,3 +25,5 @@ let compare_with_config ~config description cases =
 (* Helper to make bench_case directly *)
 let make_case = Bench_case.case
 let make_case_with_config = Bench_case.with_config
+
+module Cli = Cli

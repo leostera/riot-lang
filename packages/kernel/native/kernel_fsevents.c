@@ -11,6 +11,7 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <signal.h>
 
 // Event flags we care about
 #define kFSEventStreamEventFlagItemCreated      0x00000100
@@ -39,26 +40,48 @@ void fsevents_callback(
     
     // Write events to pipe (OCaml reads from other end)
     for (size_t i = 0; i < num_events; i++) {
-        // Format: path_len (4 bytes) | flags (4 bytes) | path (path_len bytes)
+        // Format: path_len (4 bytes) | flags (4 bytes) | event_id (8 bytes) | path (path_len bytes)
         uint32_t path_len = strlen(paths[i]);
         uint32_t flags = (uint32_t)event_flags[i];
+        uint64_t event_id = (uint64_t)event_ids[i];
         
-        write(ctx->fd, &path_len, sizeof(path_len));
-        write(ctx->fd, &flags, sizeof(flags));
-        write(ctx->fd, paths[i], path_len);
+        // Check for write errors (pipe might be closed)
+        ssize_t r;
+        r = write(ctx->fd, &path_len, sizeof(path_len));
+        if (r == -1) return;  // Pipe closed, stop writing
+        r = write(ctx->fd, &flags, sizeof(flags));
+        if (r == -1) return;
+        r = write(ctx->fd, &event_id, sizeof(event_id));
+        if (r == -1) return;
+        r = write(ctx->fd, paths[i], path_len);
+        if (r == -1) return;
     }
 }
 
 void* run_loop_thread(void *arg) {
     fsevents_context_t *ctx = (fsevents_context_t *)arg;
-    ctx->run_loop = CFRunLoopGetCurrent();
+    
+    // Get the current run loop (must be done in this thread)
+    CFRunLoopRef rl = CFRunLoopGetCurrent();
+    ctx->run_loop = rl;
+    
+    // Schedule and start the stream in THIS thread (not the main thread)
+    // This ensures run_loop is valid when we use it
+    FSEventStreamScheduleWithRunLoop(ctx->stream, rl, kCFRunLoopDefaultMode);
+    FSEventStreamStart(ctx->stream);
+    
+    // Run the loop (blocks until CFRunLoopStop is called)
     CFRunLoopRun();
+    
     return NULL;
 }
 
 CAMLprim value kernel_fsevents_create(value unit) {
     CAMLparam1(unit);
     CAMLlocal1(result);
+    
+    // Ignore SIGPIPE - we'll handle pipe errors via write() return values
+    signal(SIGPIPE, SIG_IGN);
     
     fsevents_context_t *ctx = malloc(sizeof(fsevents_context_t));
     if (!ctx) caml_failwith("Failed to allocate fsevents context");
@@ -112,14 +135,9 @@ CAMLprim value kernel_fsevents_watch(value ctx_val, value path_val, value latenc
     
     if (!ctx->stream) caml_failwith("Failed to create FSEventStream");
     
-    // Start thread and stream
+    // Start thread - scheduling/starting happens INSIDE the thread (see run_loop_thread)
+    // This fixes the race condition where ctx->run_loop could be NULL
     pthread_create(&ctx->thread, NULL, run_loop_thread, ctx);
-    
-    // Wait briefly for run loop to start
-    usleep(10000);
-    
-    FSEventStreamScheduleWithRunLoop(ctx->stream, ctx->run_loop, kCFRunLoopDefaultMode);
-    FSEventStreamStart(ctx->stream);
     
     CAMLreturn(Val_unit);
 }
