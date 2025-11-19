@@ -47,6 +47,13 @@ let find_by_kind = Graph_store.find_by_kind
 let find_by_source = Graph_store.find_by_source
 let retract_by_source = Graph_store.retract_by_source
 
+(* Convenience alias for Fact.make *)
+let fact = Fact.make
+
+let facts ~source ~tx_id ~stated_at ~entity fxs= 
+  List.map (fun (attribute, value) ->
+    fact ~source ~tx_id ~stated_at ~entity ~attribute ~value) fxs
+
 (* Legacy convenience functions *)
 let create_persistent path = Graph_store.create ~config:(Graph_store.Persistent path) ()
 let load = create_persistent

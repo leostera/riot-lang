@@ -355,3 +355,20 @@ val execute_query : t -> query:string -> (Datalog.Substitution.t Iter.MutIterato
     @param query Datalog query string (single or multi-goal)
     @return Iterator of variable substitutions or error
 *)
+
+val fact :
+  source:Uri.t ->
+  entity:Uri.t ->
+  attribute:Uri.t ->
+  value:Fact.value ->
+  stated_at:Datetime.t ->
+  tx_id:UUID.t ->
+  Fact.t
+
+val facts :
+  source:Uri.t ->
+  tx_id:UUID.t ->
+  stated_at:Datetime.t ->
+  entity:Uri.t ->
+  (Uri.t * Fact.value) list -> 
+  Fact.t list
