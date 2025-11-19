@@ -9,17 +9,20 @@
     - Load factor: 87.5% (7/8 buckets) for good performance
 *)
 
-open Kernel.Global
+open Std
 open Std.IO
-
-(* Import modules for convenience *)
-module Array = Kernel.Collections.Array
-module List = Kernel.Collections.List
-module Option = Kernel.Option
+open Std.Collections
 
 (* === Native C Hash Functions === *)
 
-external hash_native : 'a -> int = "swisstable_hash"
+(* OCaml's polymorphic hash function - same as Hashtbl.hash uses internally *)
+external caml_hash : int -> int -> int -> 'a -> int = "caml_hash" [@@noalloc]
+
+(* Use OCaml's polymorphic hash for structural equality
+ * This ensures two records/variants/tuples with same values hash equally
+ * This fixes the bug where duplicate complex keys weren't properly deduplicated *)
+let hash_native (key : 'a) : int = caml_hash 10 100 0 key
+
 external hash_h1 : int -> int -> int = "swisstable_h1"
 external hash_h2 : int -> int = "swisstable_h2"
 

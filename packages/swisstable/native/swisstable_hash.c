@@ -30,7 +30,8 @@ CAMLprim value swisstable_hash_int(value v) {
 }
 
 /* Polymorphic hash function using OCaml's built-in hash
- * This ensures we get the same hash as Hashtbl for compatibility */
+ * NOTE: This function is no longer used - we call Hashtbl.hash directly from OCaml
+ * for better structural equality support. Keeping this for potential future use. */
 CAMLprim value swisstable_hash(value v) {
   CAMLparam1(v);
   

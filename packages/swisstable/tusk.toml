@@ -9,3 +9,45 @@ path = "src/swisstable.ml"
 kernel = { path = "../kernel" }
 std = { path = "../std" }
 propane = { path = "../propane" }
+
+# Benchmark binaries
+[[bin]]
+name = "hashmap_comparison_bench"
+path = "examples/hashmap_comparison_bench.ml"
+
+[[bin]]
+name = "large_dataset_bench"
+path = "examples/large_dataset_bench.ml"
+
+[[bin]]
+name = "complex_types_bench"
+path = "examples/complex_types_bench.ml"
+
+# Test binaries
+[[bin]]
+name = "comprehensive_tests"
+path = "tests/comprehensive_tests.ml"
+
+[[bin]]
+name = "basic_tests"
+path = "tests/basic_tests.ml"
+
+[[bin]]
+name = "edge_case_tests"
+path = "tests/edge_case_tests.ml"
+
+[[bin]]
+name = "property_tests"
+path = "tests/property_tests.ml"
+
+[[bin]]
+name = "model_based_tests"
+path = "tests/model_based_tests.ml"
+
+[[bin]]
+name = "complex_key_tests"
+path = "tests/complex_key_tests.ml"
+
+[[bin]]
+name = "sequential_tests"
+path = "tests/sequential_tests.ml"
