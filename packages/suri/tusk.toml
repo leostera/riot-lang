@@ -12,7 +12,8 @@ codedb = { path = "../codedb" }
 tusk-client = { path = "../tusk-client" }
 tusk-model = { path = "../tusk-model" }
 
-[[command]]
-name = "suri"
-help = "Suri web framework commands"
-path = "src/tusk_cmd/main.ml"
+# NOTE: Disabled until Telemetry.event API is updated
+# [[command]]
+# name = "suri"
+# help = "Suri web framework commands"
+# path = "src/tusk_cmd/main.ml"

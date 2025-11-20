@@ -7,10 +7,13 @@ open Std
     - namespace: List of namespace components (e.g., ["Codedb"; "Model"])
     - name: The simple module name (e.g., "Symbol")
     
-    Derived forms:
+    Derived forms (following Tusk_model conventions):
     - simple_name: "Symbol"
-    - canonical_name: "Codedb__Model__Symbol" (for storage/lookup)
-    - qualified_name: "Codedb.Model.Symbol" (dot notation)
+    - qualified_name: "Codedb__Model__Symbol" (with __ - canonical compilation unit name)
+    - to_string: "Symbol" (returns simple name)
+    
+    NOTE: This follows Tusk_model.Module_name conventions where qualified_name 
+    uses __ underscores (not dots). This is the OCaml compilation unit name.
 *)
 type t = {
   filename : Path.t;
@@ -24,17 +27,13 @@ let make ~filename ~namespace ~name = { filename; namespace; name }
 (** Get the simple name (e.g., "Symbol") *)
 let simple_name t = t.name
 
-(** Get the canonical name with double underscores (e.g., "Codedb__Model__Symbol") *)
-let canonical_name t =
-  match Namespace.to_list t.namespace with
-  | [] -> t.name
-  | ns -> Namespace.to_string (Namespace.append t.namespace t.name)
-
-(** Get the qualified name with dots (e.g., "Codedb.Model.Symbol") *)
+(** Get the qualified name with double underscores (e.g., "Codedb__Model__Symbol")
+    This matches Tusk_model.Module_name.qualified_name and is the OCaml compilation unit name.
+*)
 let qualified_name t =
   match Namespace.to_list t.namespace with
   | [] -> t.name
-  | ns -> String.concat "." (ns @ [t.name])
+  | ns -> Namespace.to_string (Namespace.append t.namespace t.name)
 
 (** Get the namespace as a list *)
 let namespace_list t = Namespace.to_list t.namespace
@@ -42,8 +41,8 @@ let namespace_list t = Namespace.to_list t.namespace
 (** Get the filename *)
 let filename t = t.filename
 
-(** Convert to string (returns canonical name for consistency) *)
-let to_string t = canonical_name t
+(** Convert to string (returns simple name to match Tusk_model) *)
+let to_string t = t.name
 
 (** Parse a string into a module name.
     Accepts multiple formats:
@@ -94,16 +93,15 @@ let of_string_exn name =
 
 (** Hash function for use in HashMap *)
 let hash t = 
-  Crypto.hash_string (canonical_name t)
+  Crypto.hash_string (qualified_name t)
 
 (** Equality for HashMap *)
 let equal a b = 
-  canonical_name a = canonical_name b
+  qualified_name a = qualified_name b
 
 let to_json t =
   Data.Json.Object [
     ("simple", Data.Json.String t.name);
-    ("canonical", Data.Json.String (canonical_name t));
     ("qualified", Data.Json.String (qualified_name t));
     ("namespace", Data.Json.Array (List.map (fun s -> Data.Json.String s) (Namespace.to_list t.namespace)));
     ("filename", Data.Json.String (Path.to_string t.filename));

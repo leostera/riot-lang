@@ -14,9 +14,9 @@ let get_symbol (t : Client.t) (sym_ref : Codedb.Model.Symbol.reference) =
   (* Convert symbol reference to kind string and name *)
   let (kind_opt, name) = match sym_ref with
     | Codedb.Model.Symbol.Module mod_name ->
-        (Some "Module", Codedb.Model.Module_name.to_string mod_name)
+        (Some "Module", Codedb.Model.Module_name.qualified_name mod_name)
     | Codedb.Model.Symbol.Interface mod_name ->
-        (Some "Interface", Codedb.Model.Module_name.to_string mod_name)
+        (Some "Interface", Codedb.Model.Module_name.qualified_name mod_name)
     | Codedb.Model.Symbol.Value val_name ->
         (Some "Value", Codedb.Model.Value_name.to_string val_name)
     | Codedb.Model.Symbol.Type type_name ->

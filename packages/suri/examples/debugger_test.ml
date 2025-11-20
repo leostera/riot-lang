@@ -87,6 +87,7 @@ let app = Middleware.[
 let () =
   Miniriot.run ~args:Env.args () ~main:(fun ~args:_ ->
     (* Enable backtraces! Critical for debugger *)
+    Log.(set_level Debug);
     Exception.record_backtrace true;
     
     let config = Suri.config ~port:3000 () in

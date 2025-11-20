@@ -76,7 +76,7 @@ let entity_uri t =
     Symbol facts (4):
     - codedb:attr:kind: "module" | "value" | "type" | "interface"
     - codedb:attr:name: simple name (e.g., "List")
-    - codedb:attr:canonical_name: fully qualified (e.g., "Std.List")
+    - codedb:attr:qualified_name: compilation unit name (e.g., "Std__List")
     - codedb:attr:package: package name (e.g., "std")
     
     Relationship fact (1):
@@ -106,11 +106,6 @@ let to_facts ~tx_id ?(stated_at = Datetime.now ()) t =
       ~stated_at ~tx_id;
       
     Poneglyph.fact ~source:Schema.Codedb.source ~entity 
-      ~attribute:Schema.OCaml.canonical_name
-      ~value:(Poneglyph.Fact.String (Module_name.canonical_name t.name))
-      ~stated_at ~tx_id;
-      
-    Poneglyph.fact ~source:Schema.Codedb.source ~entity 
       ~attribute:Schema.Codedb.package
       ~value:(Poneglyph.Fact.Uri (Schema.Tusk.Package.uri (Package_name.to_string t.package.name)))
       ~stated_at ~tx_id;
@@ -120,10 +115,6 @@ let to_facts ~tx_id ?(stated_at = Datetime.now ()) t =
     Poneglyph.fact ~source:Schema.Codedb.source ~entity
       ~attribute:Schema.OCaml.simple_name
       ~value:(Poneglyph.Fact.String (Module_name.simple_name t.name))
-      ~stated_at ~tx_id;
-    Poneglyph.fact ~source:Schema.Codedb.source ~entity
-      ~attribute:Schema.OCaml.canonical_name
-      ~value:(Poneglyph.Fact.String (Module_name.canonical_name t.name))
       ~stated_at ~tx_id;
     Poneglyph.fact ~source:Schema.Codedb.source ~entity
       ~attribute:Schema.OCaml.qualified_name

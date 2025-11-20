@@ -38,47 +38,68 @@ let get_package_symbols (graph : Poneglyph.t) ~package_name =
     - Retrieves all facts for the entity and reconstructs Symbol.t
 *)
 let get_symbol (graph : Poneglyph.t) (sym_ref : Symbol.reference) =
+  Log.info "★★★ CodeDB.Query.get_symbol called with NEW CODE ★★★";
   match sym_ref with
   | Symbol.Module mod_name | Symbol.Interface mod_name ->
-      (* Construct module URI from qualified name *)
+      (* Construct module URI from qualified name (with __ underscores)
+         NOTE: Module_name.qualified_name now follows Tusk_model conventions,
+         returning names like Http__Http1__Chunk, which matches what the indexer stores. *)
       let qualified_name = Module_name.qualified_name mod_name in
       let module_uri = Schema.OCaml.Module.uri qualified_name in
       
+      Log.info (String.concat "" [
+        "[CodeDB.Query] Looking up module URI: ";
+        Poneglyph.Uri.to_string module_uri;
+        " (from qualified_name: ";
+        qualified_name;
+        ")"
+      ]);
+      
       (* Check if entity exists *)
-      if not (Poneglyph.exists graph module_uri) then None
+      if not (Poneglyph.exists graph module_uri) then (
+        Log.debug (String.concat "" [
+          "[CodeDB.Query] Entity not found: ";
+          Poneglyph.Uri.to_string module_uri
+        ]);
+        None
+      )
       else
         (* Get all facts for this module *)
-        let canonical_name_opt = Poneglyph.get graph ~entity:module_uri ~attr:Schema.OCaml.canonical_name in
+        let qualified_name_opt = Poneglyph.get graph ~entity:module_uri ~attr:Schema.OCaml.qualified_name in
         let package_uri_opt = Poneglyph.get graph ~entity:module_uri ~attr:Schema.Codedb.package in
         let package_name_opt = Poneglyph.get graph ~entity:module_uri ~attr:Schema.Codedb.package_name in
         let file_path_opt = Poneglyph.get graph ~entity:module_uri ~attr:Schema.Codedb.path in
         
         (* Reconstruct Symbol.t from facts *)
-        (match (canonical_name_opt, package_uri_opt, package_name_opt, file_path_opt) with
-        | (Some (Poneglyph.Fact.String _canonical), 
+        (match (qualified_name_opt, package_uri_opt, package_name_opt, file_path_opt) with
+        | (Some (Poneglyph.Fact.String qualified_name_str),
            Some (Poneglyph.Fact.Uri _pkg_uri),
            Some (Poneglyph.Fact.String pkg_name_str),
            Some (Poneglyph.Fact.String file_path_str)) ->
-            (* Create Package_info *)
-            (match Package_name.from_string pkg_name_str with
+            (* Parse the qualified name from the database to get the correct Module_name with namespace *)
+            (match Module_name.from_string qualified_name_str with
             | Error _ -> None
-            | Ok pkg_name ->
-                (* For now, we don't have package path stored separately, use workspace root *)
-                (* TODO: Store and retrieve package path from schema *)
-                let package = Package_info.make ~name:pkg_name ~path:(Path.v ".") in
-                
-                (* Create File.t *)
-                (* TODO: Get sha256 from graph facts *)
-                let file = File.make ~path:(Path.v file_path_str) ~sha256:"" () in
-                
-                (* Determine kind *)
-                let kind = match sym_ref with
-                  | Symbol.Module _ -> Symbol.Module
-                  | Symbol.Interface _ -> Symbol.Interface
-                  | _ -> Symbol.Module
-                in
-                
-                Some Symbol.{ kind; name = mod_name; package; file })
+            | Ok module_name_from_db ->
+                (* Create Package_info *)
+                (match Package_name.from_string pkg_name_str with
+                | Error _ -> None
+                | Ok pkg_name ->
+                    (* For now, we don't have package path stored separately, use workspace root *)
+                    (* TODO: Store and retrieve package path from schema *)
+                    let package = Package_info.make ~name:pkg_name ~path:(Path.v ".") in
+                    
+                    (* Create File.t *)
+                    (* TODO: Get sha256 from graph facts *)
+                    let file = File.make ~path:(Path.v file_path_str) ~sha256:"" () in
+                    
+                    (* Determine kind *)
+                    let kind = match sym_ref with
+                      | Symbol.Module _ -> Symbol.Module
+                      | Symbol.Interface _ -> Symbol.Interface
+                      | _ -> Symbol.Module
+                    in
+                    
+                    Some Symbol.{ kind; name = module_name_from_db; package; file }))
         | _ -> None)
   | Symbol.Value _ | Symbol.Type _ ->
       (* Values and Types not yet indexed in new schema *)

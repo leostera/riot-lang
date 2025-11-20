@@ -288,10 +288,12 @@ let render_snippet snippet =
 (** Extract module name from function name
     
     Examples:
-    - "Debugger_test.process_user_request" -> "debugger_test"
-    - "Suri__Middleware__Debugger.debugger" -> "debugger"
-    - "Std__Global.panic" -> "global"
-    - "Kernel__Global0.raise" -> "global0"
+    - "Debugger_test.process_user_request" -> "Debugger_test"
+    - "Suri__Middleware__Debugger.debugger" -> "Suri.Middleware.Debugger"
+    - "Std__Global.panic" -> "Std.Global"
+    - "Kernel__Global0.raise" -> "Kernel.Global0"
+    
+    Returns the qualified module name (with dots) for CodeDB lookup.
 *)
 let extract_module_from_function func_name =
   (* Split by dot to get module part *)
@@ -299,15 +301,24 @@ let extract_module_from_function func_name =
   | None -> None
   | Some dot_pos ->
       let module_part = String.sub func_name 0 dot_pos in
-      (* Handle both Foo_bar and Foo__Bar__Baz formats *)
-      (* For Foo__Bar__Baz, take the last component after splitting by __ *)
-      let components = String.split_on_char '_' module_part in
-      (* Filter out empty strings from double underscores *)
-      let non_empty = List.filter (fun s -> s != "") components in
-      (* Take the last component and lowercase it *)
-      match List.rev non_empty with
-      | [] -> None
-      | last :: _ -> Some (String.lowercase_ascii last)
+      (* Check if it's in canonical form (Foo__Bar__Baz) or simple form (Foo_bar) *)
+      if String.contains module_part '_' then
+        (* Could be canonical (Foo__Bar) or snake_case (foo_bar) *)
+        let components = String.split_on_char '_' module_part in
+        let non_empty = List.filter (fun s -> s != "") components in
+        (* If all components start with uppercase, it's canonical form *)
+        let all_capitalized = List.for_all (fun s -> 
+          String.length s > 0 && s.[0] >= 'A' && s.[0] <= 'Z'
+        ) non_empty in
+        if all_capitalized then
+          (* Canonical: Suri__Middleware__Debugger -> Suri.Middleware.Debugger *)
+          Some (String.concat "." non_empty)
+        else
+          (* Simple or mixed: just capitalize the whole thing *)
+          Some (String.capitalize_ascii module_part)
+      else
+        (* No underscores - just return as-is (already capitalized) *)
+        Some module_part
 
 (** Find source file for a module using CodeDB via tusk server *)
 let find_source_via_codedb module_name =
