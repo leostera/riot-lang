@@ -66,6 +66,10 @@ module OCaml : sig
   val qualified_name : Poneglyph.Uri.t
   val namespace : Poneglyph.Uri.t
   val is_module : Poneglyph.Uri.t
+  val implementation_file : Poneglyph.Uri.t
+  (** Attribute: URI of the .ml file entity *)
+  val interface_file : Poneglyph.Uri.t
+  (** Attribute: URI of the .mli file entity *)
   
   module Module : sig
     val uri : string -> Poneglyph.Uri.t

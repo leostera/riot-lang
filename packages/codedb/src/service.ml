@@ -55,7 +55,15 @@ let start_file_watcher config internal_server_pid =
       println "\n🔍 File watcher: monitoring packages/ for changes\n";
       
       let _watcher = 
-        Fs.FileWatcher.start_link ~root:workspace_root ()
+        Fs.FileWatcher.start_link 
+          ~latency:(Time.Duration.from_millis 10)
+          ~root:workspace_root 
+          ~ignore_prefixes:Path.[
+            workspace_root / v ".git";
+            workspace_root / v "_build";
+            workspace_root / v "3rdparty";
+          ]
+          ()
       in
       
       (* Register with internal server *)

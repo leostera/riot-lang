@@ -65,11 +65,18 @@ let file_to_module_symbol (file : Codedb.Model.File.t) : Codedb.Model.Symbol.t o
         ~path:Path.(v "packages/" / v path_str)
       in
       
+      (* Create files record based on extension *)
+      let files = 
+        match Path.extension file.path with
+        | Some ".mli" -> Codedb.Model.Symbol.{ implementation = None; interface = Some file }
+        | _ -> Codedb.Model.Symbol.{ implementation = Some file; interface = None }
+      in
+      
       Some (Codedb.Model.Symbol.make
         ~kind:Codedb.Model.Symbol.Module
         ~name:module_name
         ~package:package_info
-        ~file)
+        ~files)
 
 (** Create File entities from paths *)
 let create_file_entities paths =

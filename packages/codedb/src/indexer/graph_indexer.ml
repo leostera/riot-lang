@@ -56,7 +56,11 @@ let extract_module_fact ~package_name ~sha256 (node : Module_node.t G.node) =
 let index_package ~config ~db (pkg : Package.t) =
   let start_time = Time.Instant.now () in
   try
-    (* Create module graph config *)
+    let file_count = ref 0 in
+    let all_facts = ref [] in
+    let skipped_count = ref 0 in
+    
+    (* Index src/ directory using module graph *)
     let graph_config : Module_graph.config =
       {
         root = pkg.path;
@@ -68,15 +72,12 @@ let index_package ~config ~db (pkg : Package.t) =
       }
     in
 
-    (* Build module graph *)
     let graph = Module_graph.create graph_config in
     Module_graph.wire_dependencies graph (Path.v "src");
 
-    (* Extract module facts and check if already analyzed *)
+    (* Extract module facts from src/ directory *)
     let g = Module_graph.graph graph in
-    let file_count = ref 0 in
     let facts = ref [] in
-    let skipped_count = ref 0 in
     
     G.iter g ~fn:(fun _id node ->
         (* First, get the file path from the node to read it *)
@@ -113,8 +114,61 @@ let index_package ~config ~db (pkg : Package.t) =
                       file_count := !file_count + 1;
                       (* Store fact with absolute path *)
                       let fact_with_absolute_path = { fact with file_path = absolute_path } in
-                      facts := (fact_with_absolute_path, content, sha256) :: !facts)));
-    let facts = !facts in
+                       facts := (fact_with_absolute_path, content, sha256) :: !facts)));
+    
+    (* Add facts from src/ *)
+    all_facts := !facts @ !all_facts;
+    
+    (* Index test/example/bench files directly (they're binaries, not in module graph) *)
+    (* Binaries don't have a namespace - they're standalone modules *)
+    let empty_namespace = Tusk_model.Namespace.of_string "" in
+    
+    let index_standalone_files file_paths =
+      List.iter (fun file_path ->
+        let absolute_path = Path.(pkg.path / file_path) in
+        match Fs.read_to_string absolute_path with
+        | Error _ -> ()
+        | Ok content ->
+            let hash = Crypto.Sha256.hash_string content in
+            let sha256 = Crypto.Digest.hex hash in
+            let analysis_uri = Schema.Codedb.Analysis.uri ~sha256 in
+            
+            if Poneglyph.exists db analysis_uri then
+              skipped_count := !skipped_count + 1
+            else (
+              (* Only index .ml and .mli files *)
+              match Path.extension file_path with
+              | Some ".ml" | Some ".mli" ->
+                  (* Binaries use empty namespace - module name is just the filename *)
+                  let module_obj = Tusk_model.Module.make ~namespace:empty_namespace ~filename:absolute_path in
+                  let module_name = Tusk_model.Module.module_name module_obj in
+                  let simple_name = Tusk_model.Module_name.simple_name module_name in
+                  let qualified_name = Tusk_model.Module_name.qualified_name module_name in
+                  let package_uri = Schema.Tusk.Package.uri pkg.name in
+                  let file_uri = Schema.Codedb.File.uri ~path:(Path.to_string absolute_path) ~sha256 in
+                  let kind = if Path.extension file_path = Some ".mli" then `MLI else `ML in
+                  let fact = {
+                    uri = Schema.OCaml.Module.uri qualified_name;
+                    name = simple_name;
+                    qualified_name;
+                    package_name = pkg.name;
+                    package_uri;
+                    file_path = absolute_path;
+                    file_uri;
+                    kind;
+                  } in
+                  file_count := !file_count + 1;
+                  all_facts := (fact, content, sha256) :: !all_facts
+              | _ -> ()
+            )
+      ) file_paths
+    in
+    
+    index_standalone_files pkg.sources.tests;
+    index_standalone_files pkg.sources.examples;
+    index_standalone_files pkg.sources.bench;
+    
+    let facts = !all_facts in
 
   (* Convert to Poneglyph facts *)
   let tx_id = UUID.v7_monotonic () in
@@ -150,6 +204,14 @@ let index_package ~config ~db (pkg : Package.t) =
               ~value:(Poneglyph.Fact.String fact.name) ~tx_id ~stated_at;
             Poneglyph.fact ~source ~entity ~attribute:Schema.OCaml.qualified_name
               ~value:(Poneglyph.Fact.String fact.qualified_name) ~tx_id ~stated_at;
+            
+            (* Link module to file entity via URI *)
+            Poneglyph.fact ~source ~entity ~attribute:(
+              match fact.kind with
+              | `ML -> Schema.OCaml.implementation_file
+              | `MLI -> Schema.OCaml.interface_file
+            )
+              ~value:(Poneglyph.Fact.Uri file_uri) ~tx_id ~stated_at;
           ];
           (* File facts *)
           [
@@ -277,6 +339,14 @@ let module_fact_to_poneglyph_facts (fact : module_fact) =
       ~value:(Poneglyph.Fact.String fact.name) ~tx_id ~stated_at;
     Poneglyph.fact ~source ~entity ~attribute:Schema.OCaml.qualified_name
       ~value:(Poneglyph.Fact.String fact.qualified_name) ~tx_id ~stated_at;
+    
+    (* Link module to file entity via URI *)
+    Poneglyph.fact ~source ~entity ~attribute:(
+      match fact.kind with
+      | `ML -> Schema.OCaml.implementation_file
+      | `MLI -> Schema.OCaml.interface_file
+    )
+      ~value:(Poneglyph.Fact.Uri fact.file_uri) ~tx_id ~stated_at;
   ]
 
 (** Index a single file that was created or modified *)

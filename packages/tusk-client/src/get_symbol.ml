@@ -67,12 +67,19 @@ let get_symbol (t : Client.t) (sym_ref : Codedb.Model.Symbol.reference) =
                   () 
                 in
                 
+                (* Create files record based on extension *)
+                let files = 
+                  match Path.extension (Path.v source_path) with
+                  | Some ".mli" -> Codedb.Model.Symbol.{ implementation = None; interface = Some file }
+                  | _ -> Codedb.Model.Symbol.{ implementation = Some file; interface = None }
+                in
+                
                 (* Create Symbol.t using make function *)
                 let symbol = Codedb.Model.Symbol.make 
                   ~kind 
                   ~name:name_t 
                   ~package 
-                  ~file 
+                  ~files 
                 in
                 
                 Ok (Some symbol)))

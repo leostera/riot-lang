@@ -89,10 +89,17 @@ and handle_add_module state (data : Messages.add_module) =
       ~size:(String.length content) ()
   in
 
-  (* Create Symbol entity with file *)
+  (* Create files record - determine if it's implementation or interface based on extension *)
+  let files = 
+    match Path.extension full_source_path with
+    | Some ".mli" -> Model.Symbol.{ implementation = None; interface = Some file }
+    | _ -> Model.Symbol.{ implementation = Some file; interface = None }
+  in
+
+  (* Create Symbol entity with files *)
   let symbol =
     Model.Symbol.make ~kind:Model.Symbol.Module ~name:data.module_name
-      ~package:package_info ~file
+      ~package:package_info ~files
   in
 
   (* Generate new transaction ID using UUIDv7 for time-ordering *)

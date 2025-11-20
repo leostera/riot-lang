@@ -125,6 +125,8 @@ module OCaml = struct
   let qualified_name = Poneglyph.Uri.of_string "ocaml:qualified_name"
   let namespace = Poneglyph.Uri.of_string "ocaml:namespace"
   let is_module = Poneglyph.Uri.of_string "ocaml:is_module"
+  let implementation_file = Poneglyph.Uri.of_string "ocaml:implementation_file"
+  let interface_file = Poneglyph.Uri.of_string "ocaml:interface_file"
   
   (** Module-specific helpers *)
   module Module = struct

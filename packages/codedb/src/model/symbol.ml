@@ -12,11 +12,16 @@ type kind =
   | Type
   | Interface
 
+type files = {
+  implementation : File.t option;
+  interface : File.t option;
+}
+
 type t = {
   kind : kind;
   name : Module_name.t;
   package : Package_info.t;
-  file : File.t;
+  files : files;
 }
 
 let reference_name (ref : reference) =
@@ -47,8 +52,8 @@ let kind_from_string str =
   | "interface" -> Some Interface
   | _ -> None
 
-let make ~kind ~name ~package ~file =
-  { kind; name; package; file }
+let make ~kind ~name ~package ~files =
+  { kind; name; package; files }
 
 (** Convert symbol kind to lowercase string for facts *)
 let kind_to_fact_string = function
@@ -130,16 +135,43 @@ let to_facts ~tx_id ?(stated_at = Datetime.now ()) t =
       ~stated_at ~tx_id;
   ] in
   
-  let relationship_fact = 
-    Poneglyph.fact ~source:Schema.Codedb.source ~entity
-      ~attribute:Schema.Codedb.provided_by
-      ~value:(Poneglyph.Fact.Uri (File.entity_uri t.file))
-      ~stated_at ~tx_id
+  (* Add file relationship facts for both implementation and interface *)
+  let file_relationship_facts =
+    let impl_facts = match t.files.implementation with
+      | None -> []
+      | Some file -> [
+          Poneglyph.fact ~source:Schema.Codedb.source ~entity
+            ~attribute:Schema.Codedb.provided_by
+            ~value:(Poneglyph.Fact.Uri (File.entity_uri file))
+            ~stated_at ~tx_id
+        ]
+    in
+    let intf_facts = match t.files.interface with
+      | None -> []
+      | Some file -> [
+          Poneglyph.fact ~source:Schema.Codedb.source ~entity
+            ~attribute:Schema.Codedb.provided_by
+            ~value:(Poneglyph.Fact.Uri (File.entity_uri file))
+            ~stated_at ~tx_id
+        ]
+    in
+    impl_facts @ intf_facts
   in
   
-  let file_facts = File.to_facts ~tx_id ~stated_at t.file in
+  (* Add file facts for both implementation and interface *)
+  let all_file_facts =
+    let impl_facts = match t.files.implementation with
+      | None -> []
+      | Some file -> File.to_facts ~tx_id ~stated_at file
+    in
+    let intf_facts = match t.files.interface with
+      | None -> []
+      | Some file -> File.to_facts ~tx_id ~stated_at file
+    in
+    impl_facts @ intf_facts
+  in
   
-  symbol_facts @ ocaml_facts @ [relationship_fact] @ file_facts
+  symbol_facts @ ocaml_facts @ file_relationship_facts @ all_file_facts
 
 let kind_to_json = function
   | Module -> Data.Json.String "Module"
@@ -156,13 +188,43 @@ let kind_from_json json =
   | Data.Json.String s -> Error ("Unknown kind: " ^ s)
   | _ -> Error "Expected string for symbol kind"
 
+let files_to_json files =
+  Data.Json.Object [
+    ("implementation", match files.implementation with
+      | None -> Data.Json.Null
+      | Some f -> File.to_json f);
+    ("interface", match files.interface with
+      | None -> Data.Json.Null
+      | Some f -> File.to_json f);
+  ]
+
 let to_json t =
   Data.Json.Object [
     ("kind", kind_to_json t.kind);
     ("name", Module_name.to_json t.name);
     ("package", Package_info.to_json t.package);
-    ("file", File.to_json t.file);
+    ("files", files_to_json t.files);
   ]
+
+let files_from_json json =
+  match json with
+  | Data.Json.Object fields ->
+      let impl = match List.assoc_opt "implementation" fields with
+        | Some Data.Json.Null | None -> Ok None
+        | Some f -> (match File.from_json f with
+                    | Ok file -> Ok (Some file)
+                    | Error e -> Error e)
+      in
+      let intf = match List.assoc_opt "interface" fields with
+        | Some Data.Json.Null | None -> Ok None
+        | Some f -> (match File.from_json f with
+                    | Ok file -> Ok (Some file)
+                    | Error e -> Error e)
+      in
+      (match (impl, intf) with
+       | Ok implementation, Ok interface -> Ok { implementation; interface }
+       | Error e, _ | _, Error e -> Error e)
+  | _ -> Error "Expected object for files"
 
 let from_json json =
   match json with
@@ -171,9 +233,9 @@ let from_json json =
         ( List.assoc_opt "kind" fields,
           List.assoc_opt "name" fields,
           List.assoc_opt "package" fields,
-          List.assoc_opt "file" fields )
+          List.assoc_opt "files" fields )
        with
-       | Some kind_json, Some name_json, Some package_json, Some file_json ->
+       | Some kind_json, Some name_json, Some package_json, Some files_json ->
            (match kind_from_json kind_json with
             | Error e -> Error e
             | Ok kind ->
@@ -183,10 +245,10 @@ let from_json json =
                      (match Package_info.from_json package_json with
                       | Error e -> Error e
                       | Ok package ->
-                          (match File.from_json file_json with
+                          (match files_from_json files_json with
                            | Error e -> Error e
-                           | Ok file ->
-                               Ok { kind; name; package; file }))))
+                           | Ok files ->
+                               Ok { kind; name; package; files }))))
        | _ -> Error "Missing required fields in symbol JSON")
   | _ -> Error "Expected object for symbol"
 

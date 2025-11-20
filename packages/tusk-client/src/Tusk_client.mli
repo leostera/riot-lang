@@ -46,6 +46,11 @@ type build_target = BuildPackage of string | BuildAll
 
 val create : host:string -> port:int -> (t, string) result
 
+val connect : unit -> (t, string) result
+(** Connect to a running tusk server by discovering the workspace and daemon.
+    Finds the workspace root from current directory, reads daemon port, and connects.
+    Returns Error if not in a workspace, no daemon is running, or connection fails. *)
+
 val build_streaming :
   t ->
   build_target ->

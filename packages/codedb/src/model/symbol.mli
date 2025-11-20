@@ -8,11 +8,16 @@ type reference =
 
 type kind = Module | Value | Type | Interface
 
+type files = {
+  implementation : File.t option;
+  interface : File.t option;
+}
+
 type t = {
   kind : kind;
   name : Module_name.t;
   package : Package_info.t;
-  file : File.t;
+  files : files;
 }
 
 val reference_name : reference -> string
@@ -23,7 +28,7 @@ val make :
   kind:kind ->
   name:Module_name.t ->
   package:Package_info.t ->
-  file:File.t ->
+  files:files ->
   t
 val kind_to_fact_string : kind -> string
 val entity_uri : t -> Poneglyph.Uri.t

@@ -466,14 +466,21 @@ and handle_get_symbol state client_pid kind name =
             Log.error (String.concat "" ["Failed to open CodeDB: "; err]);
             send client_pid (Protocol.ServerResponse Protocol.SymbolNotFound)
         | Ok db ->
-            (match Codedb.Model.Query.get_symbol db sym_ref with
-             | Some symbol ->
-                 let kind_str = Codedb.Model.Symbol.kind_to_string symbol.Codedb.Model.Symbol.kind in
-                 let name_str = Codedb.Model.Module_name.to_string symbol.Codedb.Model.Symbol.name in
-                 let source_path_str = Path.to_string symbol.Codedb.Model.Symbol.file.path in
-                 let source_sha256 = symbol.Codedb.Model.Symbol.file.sha256 in
-                 let package_name_str = Codedb.Model.Package_name.to_string symbol.Codedb.Model.Symbol.package.name in
-                 let package_path_str = Path.to_string symbol.Codedb.Model.Symbol.package.path in
+             (match Codedb.Model.Query.get_symbol db sym_ref with
+              | Some symbol ->
+                  let kind_str = Codedb.Model.Symbol.kind_to_string symbol.Codedb.Model.Symbol.kind in
+                  let name_str = Codedb.Model.Module_name.qualified_name symbol.Codedb.Model.Symbol.name in
+                  (* Get the primary file (prefer implementation over interface) *)
+                  let primary_file = match symbol.Codedb.Model.Symbol.files.implementation with
+                    | Some f -> f
+                    | None -> (match symbol.Codedb.Model.Symbol.files.interface with
+                              | Some f -> f
+                              | None -> panic "Symbol has neither implementation nor interface file")
+                  in
+                  let source_path_str = Path.to_string primary_file.path in
+                  let source_sha256 = primary_file.sha256 in
+                  let package_name_str = Codedb.Model.Package_name.to_string symbol.Codedb.Model.Symbol.package.name in
+                  let package_path_str = Path.to_string symbol.Codedb.Model.Symbol.package.path in
                  Poneglyph.close db;
                  send client_pid
                    (Protocol.ServerResponse
