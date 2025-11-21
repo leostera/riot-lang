@@ -480,12 +480,17 @@ let wire_dependencies t sandbox_dir =
             in
             List.iter
               (fun dep_node_id ->
-                match G.get_node t.graph dep_node_id with
-                | None -> ()
-                 | Some dep_node ->
-                (match (node.value.kind, dep_node.value.kind) with
-                | Module_node.MLI _, Module_node.ML _ -> ()
-                | _ -> G.add_edge node ~depends_on:dep_node))
+                (* Skip self-references: a module can't depend on itself.
+                   This happens when ocamldep reports "A" as a dependency of A.ml,
+                   which actually refers to a different module A (e.g., Bar.A when using 'open Bar'). *)
+                if G.Node_id.eq dep_node_id node.id then ()
+                else
+                  match G.get_node t.graph dep_node_id with
+                  | None -> ()
+                   | Some dep_node ->
+                  (match (node.value.kind, dep_node.value.kind) with
+                  | Module_node.MLI _, Module_node.ML _ -> ()
+                  | _ -> G.add_edge node ~depends_on:dep_node))
               dep_node_ids
           with Not_found -> ())
         module_deps)
