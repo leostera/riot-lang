@@ -400,17 +400,14 @@ let get_package_sources package_name =
   (* Connect to running tusk server *)
   match Tusk_client.connect () with
   | Error err -> 
-      Log.debug (String.concat "" ["Debugger: Cannot connect to tusk server: "; err]);
       None
   | Ok client ->
       (match Tusk_client.get_package_info client package_name with
        | Error err ->
-           Log.debug (String.concat "" ["Debugger: Cannot get package info for "; package_name; ": "; err]);
            Tusk_client.close client;
            None
        | Ok package_detail ->
            let sources = package_detail.Tusk_protocol.WireProtocol.sources in
-           Log.debug (String.concat "" ["Debugger: Got "; Int.to_string (List.length sources); " sources for package "; package_name]);
            Tusk_client.close client;
            Some sources)
 
@@ -697,28 +694,23 @@ let extract_module_from_function func_name =
 
 (** Find source file for a module using CodeDB via tusk server *)
 let find_source_via_codedb module_name =
-  Log.debug (String.concat "" ["Debugger: Querying CodeDB for module '"; module_name; "'"]);
   (* Connect to running tusk server *)
   match Tusk_client.connect () with
   | Error err ->
-      Log.debug (String.concat "" ["Debugger: Cannot connect to tusk server: "; err]);
       None
   | Ok client ->
       (* Create a Symbol.reference for the module *)
       (match Codedb.Model.Module_name.from_string module_name with
        | Error _ ->
-           Log.debug (String.concat "" ["Debugger: Invalid module name '"; module_name; "'"]);
            Tusk_client.close client;
            None
        | Ok module_name_t ->
       let sym_ref : Codedb.Model.Symbol.reference = Module module_name_t in
       (match Tusk_client.get_symbol client sym_ref with
        | Error err ->
-           Log.debug (String.concat "" ["Debugger: CodeDB query failed: "; err]);
            Tusk_client.close client;
            None
        | Ok None ->
-           Log.debug (String.concat "" ["Debugger: Module '"; module_name; "' not found in CodeDB"]);
            Tusk_client.close client;
            None
          | Ok (Some symbol) ->
@@ -731,28 +723,20 @@ let find_source_via_codedb module_name =
             in
             let source_file = Path.to_string primary_file.path in
             let package_name = Codedb.Model.Package_name.to_string symbol.Codedb.Model.Symbol.package.name in
-            Log.debug (String.concat "" [
-              "Debugger: Found module '"; module_name; "' in CodeDB: ";
-              source_file; " (package: "; package_name; ")"
-            ]);
             Tusk_client.close client;
             Some source_file))
 
 (** Find source file for a module using tusk server *)
 let find_source_for_module package_name module_name =
-  Log.debug (String.concat "" ["Debugger: Looking for module '"; module_name; "' in package '"; package_name; "'"]);
   
   (* First try CodeDB - it's fast and precise *)
   match find_source_via_codedb module_name with
   | Some path -> 
-      Log.debug (String.concat "" ["Debugger: Found via CodeDB: "; path]);
       Some path
   | None ->
       (* Fallback to old method if CodeDB doesn't have it *)
-      Log.debug "Debugger: Falling back to package sources heuristic";
       (match get_package_sources package_name with
        | None -> 
-           Log.debug (String.concat "" ["Debugger: No sources for package "; package_name]);
            None
        | Some sources ->
            (* Look for a file ending with module_name.ml or module_name.mli *)
@@ -760,9 +744,6 @@ let find_source_for_module package_name module_name =
            let result = List.find_opt (fun src_file ->
              String.ends_with ~suffix:ml_name src_file
            ) sources in
-           (match result with
-            | Some path -> Log.debug (String.concat "" ["Debugger: Found source: "; path])
-            | None -> Log.debug (String.concat "" ["Debugger: No match for "; ml_name; " in "; Int.to_string (List.length sources); " sources"]));
            result)
 
 (** Render a single stack frame with optional source snippet *)
@@ -1445,7 +1426,7 @@ let render_error_page ~conn ~exn ~backtrace =
     ];
   ]
 
-(** Debugger middleware - catches exceptions, displays error page, and logs *)
+(** Debugger middleware - catches exceptions, displays error page, logs, and reraises *)
 let debugger ~conn ~next =
   try
     next conn
@@ -1464,9 +1445,13 @@ let debugger ~conn ~next =
     (* Build error page *)
     let error_page = render_error_page ~conn ~exn ~backtrace in
     
-    (* Set 500 error response and return *)
-    conn
+    (* Set 500 error response *)
+    let _ = conn
       |> Conn.with_status InternalServerError
       |> Conn.with_header "Content-Type" "text/html; charset=utf-8"
       |> Conn.with_body (Component.to_html error_page)
       |> Conn.send
+    in
+    
+    (* Reraise the exception after writing response *)
+    raise exn

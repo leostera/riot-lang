@@ -80,6 +80,22 @@ let respond ~status ?body t =
 
 let send t = { t with sent = true }
 let sent t = t.sent
+
+let render_component ?(headers = []) status component t =
+  let t = List.fold_left (fun acc (name, value) -> with_header name value acc) t headers in
+  t
+  |> with_status status
+  |> with_header "Content-Type" "text/html; charset=utf-8"
+  |> with_body (Component.to_html component)
+  |> send
+
+let render_json ?(headers = []) status json t =
+  let t = List.fold_left (fun acc (name, value) -> with_header name value acc) t headers in
+  t
+  |> with_status status
+  |> with_header "Content-Type" "application/json"
+  |> with_body (Data.Json.to_string json)
+  |> send
 let halt t = { t with halted = true }
 let halted t = t.halted
 let set_params params t = { t with params }

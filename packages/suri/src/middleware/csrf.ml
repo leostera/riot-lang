@@ -2,69 +2,103 @@ open Std
 
 (** {1 Token Generation} *)
 
-(** Generate random hex string of given length *)
-let random_hex_string length =
-  let hex_chars = "0123456789abcdef" in
-  let chars = ref [] in
-  for _ = 1 to length * 2 do  (* Each byte = 2 hex chars *)
-    let idx = Random.int 16 in
-    let c = String.get hex_chars idx in
-    chars := c :: !chars
+(** Generate random bytes *)
+let random_bytes length =
+  let bytes = IO.Bytes.create length in
+  for i = 0 to length - 1 do
+    IO.Bytes.set bytes i (Char.chr (Random.int 256))
   done;
-  String.of_seq (List.to_seq (List.rev !chars))
+  IO.Bytes.to_string bytes
 
-(** Generate a cryptographically random CSRF token (64 hex chars = 32 bytes) *)
+(** Convert bytes to hex string *)
+let bytes_to_hex bytes =
+  let hex_chars = "0123456789abcdef" in
+  let len = String.length bytes in
+  let hex = IO.Bytes.create (len * 2) in
+  for i = 0 to len - 1 do
+    let byte = Char.code (String.get bytes i) in
+    IO.Bytes.set hex (i * 2) (String.get hex_chars (byte lsr 4));
+    IO.Bytes.set hex (i * 2 + 1) (String.get hex_chars (byte land 0x0f))
+  done;
+  IO.Bytes.to_string hex
+
+(** Convert hex string to bytes *)
+let hex_to_bytes hex =
+  let len = String.length hex in
+  if not (len mod 2 = 0) then Option.none
+  else
+    let hex_value c =
+      match c with
+      | '0'..'9' -> Option.some (Char.code c - Char.code '0')
+      | 'a'..'f' -> Option.some (Char.code c - Char.code 'a' + 10)
+      | 'A'..'F' -> Option.some (Char.code c - Char.code 'A' + 10)
+      | _ -> Option.none
+    in
+    try
+      let bytes = IO.Bytes.create (len / 2) in
+      for i = 0 to (len / 2) - 1 do
+        match (hex_value (String.get hex (i * 2)), 
+               hex_value (String.get hex (i * 2 + 1))) with
+        | (Option.Some hi, Option.Some lo) -> 
+            IO.Bytes.set bytes i (Char.chr ((hi lsl 4) lor lo))
+        | _ -> raise Exit
+      done;
+      Option.some (IO.Bytes.to_string bytes)
+    with Exit -> Option.none
+
+(** Generate a cryptographically random CSRF token (32 bytes as 64 hex chars) *)
 let generate_token () =
-  random_hex_string 32
+  bytes_to_hex (random_bytes 32)
 
 (** {1 Token Masking (BREACH Attack Protection)} *)
 
 (** Mask token to prevent BREACH attacks *)
-let mask_token raw_token =
-  (* Generate one-time pad (32 bytes = 64 hex chars) *)
-  let pad = random_hex_string 32 in
-  
-  (* Convert hex strings to char lists for XOR *)
-  let pad_chars = String.to_seq pad |> List.of_seq in
-  let raw_chars = String.to_seq raw_token |> List.of_seq in
-  
-  (* XOR each character *)
-  let masked_chars = 
-    List.map2 (fun p r -> 
-      Char.chr (Char.code p lxor Char.code r)
-    ) pad_chars raw_chars
-  in
-  
-  (* Combine pad + masked and base64 encode *)
-  let combined = String.of_seq (List.to_seq (pad_chars @ masked_chars)) in
-  Data.Base64.encode combined
+let mask_token raw_token_hex =
+  match hex_to_bytes raw_token_hex with
+  | Option.None -> 
+      raw_token_hex (* Fallback to unmasked *)
+  | Option.Some raw_bytes ->
+      (* Generate 32-byte one-time pad *)
+      let pad = random_bytes 32 in
+      
+      (* XOR pad with raw token bytes *)
+      let masked = IO.Bytes.create 32 in
+      for i = 0 to 31 do
+        let pad_byte = Char.code (String.get pad i) in
+        let raw_byte = Char.code (String.get raw_bytes i) in
+        IO.Bytes.set masked i (Char.chr (pad_byte lxor raw_byte))
+      done;
+      
+      (* Combine pad + masked (64 bytes total) and base64 encode *)
+      let combined = pad ^ IO.Bytes.to_string masked in
+      Data.Base64.encode combined
 
 (** Unmask token received from client *)
 let unmask_token masked_b64 =
   match Data.Base64.decode masked_b64 with
-  | Result.Error _ -> Option.none
+  | Result.Error `Invalid_base64 -> 
+      Option.none
   | Result.Ok decoded ->
       let len = String.length decoded in
-      if len = 128 then
-        begin
-          (* Split into pad and masked parts *)
-          let pad = String.sub decoded 0 64 in
-          let masked = String.sub decoded 64 64 in
-          
-          (* XOR to recover original *)
-          let pad_chars = String.to_seq pad |> List.of_seq in
-          let masked_chars = String.to_seq masked |> List.of_seq in
-          
-          let raw_chars =
-            List.map2 (fun p m ->
-              Char.chr (Char.code p lxor Char.code m)
-            ) pad_chars masked_chars
-          in
-          
-          Option.some (String.of_seq (List.to_seq raw_chars))
-        end
-      else
+      if not (len = 64) then begin
         Option.none
+      end
+      else
+        (* Split into pad and masked parts (32 bytes each) *)
+        let pad = String.sub decoded 0 32 in
+        let masked = String.sub decoded 32 32 in
+        
+        (* XOR to recover original bytes *)
+        let raw_bytes = IO.Bytes.create 32 in
+        for i = 0 to 31 do
+          let pad_byte = Char.code (String.get pad i) in
+          let masked_byte = Char.code (String.get masked i) in
+          IO.Bytes.set raw_bytes i (Char.chr (pad_byte lxor masked_byte))
+        done;
+        
+        (* Convert back to hex *)
+        let unmasked_hex = bytes_to_hex (IO.Bytes.to_string raw_bytes) in
+        Option.some unmasked_hex
 
 (** {1 Token Storage and Verification} *)
 
@@ -83,12 +117,19 @@ let get_or_create_token session =
 (** Verify token from request matches session *)
 let verify_token session request_token =
   match Session.get_value csrf_token_key session with
-  | Option.None -> false
+  | Option.None -> 
+      false
   | Option.Some stored_token ->
       (* Try unmasking first, fallback to direct comparison *)
-      (match unmask_token request_token with
-       | Option.Some unmasked -> String.equal unmasked stored_token
-       | Option.None -> String.equal request_token stored_token)
+      match unmask_token request_token with
+      | Option.Some unmasked -> 
+          let matches = String.equal unmasked stored_token in
+          if not matches then
+            ()
+          else ();
+          matches
+      | Option.None -> 
+          String.equal request_token stored_token
 
 (** {1 HTTP Method Classification} *)
 
@@ -127,17 +168,8 @@ let middleware
       (* Get session *)
       let session = Session.get conn in
       
-      (* Get token from request (param, body, or header) *)
+      (* Get token from request (body_params, params, or header) *)
       let req_headers = Conn.headers conn in
-      
-      (* Helper to parse form data from body *)
-      let parse_form_body body =
-        String.split_on_char '&' body
-        |> List.filter_map (fun pair ->
-            match String.split_on_char '=' pair with
-            | [k; v] -> Option.some (k, v)
-            | _ -> Option.none)
-      in
       
       let request_token =
         (* Try body_params first (parsed by body_parser middleware) *)
@@ -148,25 +180,13 @@ let middleware
              (match Conn.params conn |> List.assoc_opt param_name with
               | Option.Some token -> Option.some token
               | Option.None ->
-                  (* Try form body manually (fallback if no body_parser) *)
-                  let body = Conn.body conn in
-                  let form_params = parse_form_body body in
-                  (match List.assoc_opt param_name form_params with
-                   | Option.Some token -> Option.some token
-                   | Option.None ->
-                       (* Try header as last resort *)
-                       Net.Http.Header.get req_headers header_name)))
+                  (* Try header as last resort *)
+                  Net.Http.Header.get req_headers header_name))
       in
       
       match request_token with
       | Option.None -> begin
           (* No token provided *)
-          let _ = Log.warn (String.concat "" [
-            "[CSRF] Missing token for ";
-            Net.Http.Method.to_string (Conn.method_ conn);
-            " ";
-            Conn.path conn
-          ]) in
           conn
           |> Conn.respond ~status:Net.Http.Status.Forbidden 
                ~body:"CSRF token missing"
@@ -175,17 +195,12 @@ let middleware
       
       | Option.Some token ->
           (* Verify token *)
-          if verify_token session token then
+          if verify_token session token then begin
             (* Valid token - continue *)
             next conn
+          end
           else begin
             (* Invalid token *)
-            let _ = Log.warn (String.concat "" [
-              "[CSRF] Invalid token for ";
-              Net.Http.Method.to_string (Conn.method_ conn);
-              " ";
-              Conn.path conn
-            ]) in
             conn
             |> Conn.respond ~status:Net.Http.Status.Forbidden 
                  ~body:"CSRF token invalid"

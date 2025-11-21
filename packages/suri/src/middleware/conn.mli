@@ -73,6 +73,85 @@ val send : t -> t
 val sent : t -> bool
 (** Check if response has been sent *)
 
+(** ## HTML Rendering *)
+
+val render_component : ?headers:(string * string) list -> Net.Http.Status.t -> 'msg Component.t -> t -> t
+(** Render an HTML component as response with proper content-type.
+    
+    This is a convenience function that combines:
+    - Setting optional custom headers
+    - Setting the status
+    - Setting Content-Type to "text/html; charset=utf-8"
+    - Converting the component to HTML with Component.to_html
+    - Marking the response as sent
+    
+    Example:
+    {[
+      let home conn =
+        let page = Component.div [Component.text "Hello!"] in
+        Conn.render_component Net.Http.Status.Ok page conn
+    ]}
+    
+    With custom headers (e.g., caching):
+    {[
+      let static_page conn =
+        Conn.render_component 
+          ~headers:[("Cache-Control", "public, max-age=3600")]
+          Net.Http.Status.Ok 
+          page 
+          conn
+    ]}
+    
+    Equivalent to:
+    {[
+      conn
+      |> Conn.with_status status
+      |> Conn.with_header "Content-Type" "text/html; charset=utf-8"
+      |> Conn.with_body (Component.to_html component)
+      |> Conn.send
+    ]} *)
+
+val render_json : ?headers:(string * string) list -> Net.Http.Status.t -> Data.Json.t -> t -> t
+(** Render a JSON value as response with proper content-type.
+    
+    This is a convenience function that combines:
+    - Setting optional custom headers
+    - Setting the status
+    - Setting Content-Type to "application/json"
+    - Converting the JSON to string with Data.Json.to_string
+    - Marking the response as sent
+    
+    Example:
+    {[
+      let api_users conn =
+        let json = Data.Json.obj [
+          ("users", Data.Json.array [
+            Data.Json.string "Alice";
+            Data.Json.string "Bob";
+          ])
+        ] in
+        Conn.render_json Net.Http.Status.Ok json conn
+    ]}
+    
+    With custom headers (e.g., CORS):
+    {[
+      let api_users conn =
+        Conn.render_json 
+          ~headers:[("Access-Control-Allow-Origin", "*")]
+          Net.Http.Status.Ok 
+          json 
+          conn
+    ]}
+    
+    Equivalent to:
+    {[
+      conn
+      |> Conn.with_status status
+      |> Conn.with_header "Content-Type" "application/json"
+      |> Conn.with_body (Data.Json.to_string json)
+      |> Conn.send
+    ]} *)
+
 (** ## Control Flow *)
 
 val halt : t -> t

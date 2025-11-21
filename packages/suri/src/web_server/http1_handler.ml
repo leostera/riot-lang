@@ -2,12 +2,21 @@ open Std
 
 module Web_config = Config
 
+type parse_state =
+  | WaitingForHeaders
+  | WaitingForBody of {
+      http_req : Net.Http.Request.t;
+      expected_length : int;
+      accumulated_body : string;
+    }
+
 type state = {
   config : Web_config.t;
   handler : Http_handler.t;
   is_keep_alive : bool;
   requests_processed : int;
   sniffed_data : string;
+  parse_state : parse_state;
 }
 
 type error = [ `ParseError of string | `ExcessBodyRead | `IoError of string ]
@@ -24,6 +33,7 @@ let make_handler ~config ~handler ?(sniffed_data = "") () =
     sniffed_data;
     is_keep_alive = false;
     requests_processed = 0;
+    parse_state = WaitingForHeaders;
   }
 
 let handle_close _conn _state = ()
@@ -199,7 +209,7 @@ let handle_request state socket_conn (req : Request.t) =
            let is_keep_alive = should_keep_alive req in
            let requests_processed = state.requests_processed + 1 in
            let new_state =
-             { state with is_keep_alive; requests_processed; sniffed_data = "" }
+             { state with is_keep_alive; requests_processed; parse_state = WaitingForHeaders }
            in
            if is_keep_alive then
              Socket_pool.Handler.Continue new_state
@@ -213,9 +223,15 @@ let handle_request state socket_conn (req : Request.t) =
       Log.info "Http1_handler.handle_request: Matched WebSocket upgrade, calling handle_websocket_upgrade";
       handle_websocket_upgrade state socket_conn req ws_handler
 
-let handle_data data conn state =
-  let full_data = state.sniffed_data ^ data in
+let get_content_length http_req =
+  match Net.Http.Request.get_header http_req "content-length" with
+  | Some len_str -> (
+      match int_of_string_opt len_str with
+      | Some len when len >= 0 -> len
+      | _ -> 0)
+  | None -> 0
 
+let handle_data_waiting_headers full_data conn state =
   match
     Http.Http1.Request.parse
       ~max_request_line:state.config.max_request_line_length
@@ -223,14 +239,69 @@ let handle_data data conn state =
       ~max_header_length:state.config.max_header_length full_data
   with
   | Done { value = http_req; remaining } ->
-      let req = Request.of_http ~body:remaining http_req in
-      handle_request state conn req
+      let expected_length = get_content_length http_req in
+      let body_received = String.length remaining in
+      
+      if body_received >= expected_length then
+        (* We have the complete body - process immediately *)
+        let req = Request.of_http ~body:remaining http_req in
+        handle_request { state with parse_state = WaitingForHeaders; sniffed_data = "" } conn req
+      else
+        (* Need to read more body data - transition to WaitingForBody state *)
+        Socket_pool.Handler.Continue {
+          state with
+          sniffed_data = "";
+          parse_state = WaitingForBody {
+            http_req;
+            expected_length;
+            accumulated_body = remaining;
+          };
+        }
   | Need_more ->
       Socket_pool.Handler.Continue { state with sniffed_data = full_data }
   | Error msg ->
       let res = Response.bad_request ~body:msg () in
       let _ = send_response conn res in
       Socket_pool.Handler.Close state
+
+let handle_data_waiting_body data conn state http_req expected_length accumulated_body =
+  let new_body = accumulated_body ^ data in
+  let body_length = String.length new_body in
+  
+  if body_length >= expected_length then
+    (* We have the complete body now - extract exactly expected_length bytes *)
+    let complete_body = String.sub new_body 0 expected_length in
+    let remaining_data = 
+      if body_length > expected_length then
+        String.sub new_body expected_length (body_length - expected_length)
+      else
+        ""
+    in
+    
+    (* Process the request with complete body *)
+    let req = Request.of_http ~body:complete_body http_req in
+    let result = handle_request { state with parse_state = WaitingForHeaders; sniffed_data = remaining_data } conn req in
+    
+    (* If there's remaining data and we're keeping the connection alive, it might be the start of the next request *)
+    result
+  else
+    (* Still need more data *)
+    Socket_pool.Handler.Continue {
+      state with
+      parse_state = WaitingForBody {
+        http_req;
+        expected_length;
+        accumulated_body = new_body;
+      };
+    }
+
+let handle_data data conn state =
+  match state.parse_state with
+  | WaitingForHeaders ->
+      let full_data = state.sniffed_data ^ data in
+      handle_data_waiting_headers full_data conn state
+  | WaitingForBody { http_req; expected_length; accumulated_body } ->
+      handle_data_waiting_body data conn state http_req expected_length accumulated_body
 
 let handle_error err _conn state =
   Log.error ("HTTP/1.1 error: " ^ (to_string_error err));
