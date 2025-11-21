@@ -15,10 +15,17 @@ let template (modules : Module.t list) =
             Some (name, ns))
     |> List.sort_uniq (fun (n1, _) (n2, _) -> String.compare n1 n2)
   in
+
   let body =
     List.map (fun (name, ns) -> "module " ^ name ^ " = " ^ ns) unique_modules
   in
-  String.concat "\n" (header :: body)
+
+  let super_body = 
+    if List.is_empty unique_modules then []
+    else [""; "module Super = struct"] @ body @ ["end"]
+  in
+
+  String.concat "\n" (header :: body @ super_body)
 
 let make_node (ns : Namespace.t) (modules : Module.t list) =
   let ns_prefix = Namespace.to_string ns in
