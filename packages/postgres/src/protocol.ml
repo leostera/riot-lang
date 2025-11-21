@@ -21,7 +21,7 @@ type backend_message =
   | ParameterStatus of { name : string; value : string }
   | ReadyForQuery of char
   | RowDescription of field list
-  | DataRow of string list
+  | DataRow of string option list  (* None = NULL, Some "" = empty string *)
   | CommandComplete of string
   | ErrorResponse of (char * string) list
   | NoticeResponse of (char * string) list
@@ -318,15 +318,17 @@ module Reader = struct
                    ~msg:
                      ("Protocol error: expected column_length (col " ^ string_of_int (col_count - n + 1) ^ ")")
             in
-            if col_len = -1 then read_columns (n - 1) ("" :: acc)
+            if col_len = -1 then read_columns (n - 1) (None :: acc)
             else
               let value =
                 Binary_reader.read_cstring reader col_len
                 |> Option.expect
                      ~msg:
-                       ("Protocol error: expected column_value (col " ^ string_of_int (col_count - n + 1) ^ ")")
+                       ("Protocol error: expected column_value (col " ^ 
+                        string_of_int (col_count - n + 1) ^ ", len=" ^ 
+                        string_of_int col_len ^ "). Buffer underrun - possible network issue.")
               in
-              read_columns (n - 1) (value :: acc)
+              read_columns (n - 1) (Some value :: acc)
         in
         DataRow (read_columns col_count [])
     | 'C' ->

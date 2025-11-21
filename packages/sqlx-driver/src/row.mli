@@ -54,7 +54,7 @@ val float : string -> t -> float option
 val bytes : string -> t -> bytes option
 
 (* `timestamp field row` returns the timestamp value of `field`, or `None` if the field doesn't exist or isn't a timestamp *)
-val timestamp : string -> t -> Time.Instant.t option
+val timestamp : string -> t -> Datetime.t option
 
 (* ## Utility Functions *)
 

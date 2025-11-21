@@ -226,6 +226,36 @@ module Driver = struct
         in
         read_until_ready ()
 
+  (* Initialize connection settings for consistent timestamp parsing *)
+  let initialize_connection stream =
+    (* Force ISO DateStyle for consistent timestamp format parsing *)
+    let datestyle_msg = Protocol.Writer.query_message "SET DateStyle = 'ISO'" in
+    (* Force UTC timezone to avoid ambiguity with TIMESTAMP (no TZ) *)
+    let timezone_msg = Protocol.Writer.query_message "SET timezone = 'UTC'" in
+    
+    let rec drain_responses () =
+      match read_message stream with
+      | Error e -> Error e
+      | Ok (msg_type, length, body) -> (
+          let backend_msg = Protocol.Reader.parse_backend_message msg_type length body in
+          match backend_msg with
+          | Protocol.ReadyForQuery _ -> Ok ()
+          | Protocol.ErrorResponse fields ->
+              let msg = List.assoc_opt 'M' fields |> Option.unwrap_or ~default:"Unknown error" in
+              Error ("Initialization error: " ^ msg)
+          | _ -> drain_responses ())
+    in
+    
+    match write_message stream datestyle_msg with
+    | Error e -> Error e
+    | Ok () -> (
+        match drain_responses () with
+        | Error e -> Error e
+        | Ok () -> (
+            match write_message stream timezone_msg with
+            | Error e -> Error e
+            | Ok () -> drain_responses ()))
+
   let connect (cfg : Config.t) =
     let id = "pg_" ^ string_of_int (Random.int 1000000) in
 
@@ -243,16 +273,21 @@ module Driver = struct
             | Error e ->
                 Net.TcpStream.close stream;
                 Error e
-            | Ok () ->
-                Ok
-                  {
-                    id;
-                    stream = Some stream;
-                    config = cfg;
-                    transaction_status = 'I';
-                    closed = false;
-                    prepared_statements = Collections.HashMap.create ();
-                  }))
+            | Ok () -> (
+                match initialize_connection stream with
+                | Error e ->
+                    Net.TcpStream.close stream;
+                    Error e
+                | Ok () ->
+                    Ok
+                      {
+                        id;
+                        stream = Some stream;
+                        config = cfg;
+                        transaction_status = 'I';
+                        closed = false;
+                        prepared_statements = Collections.HashMap.create ();
+                      })))
 
   let close conn =
     conn.closed <- true;
@@ -261,6 +296,56 @@ module Driver = struct
     | None -> ()
 
   let ping conn = not conn.closed
+
+  (* Strip timezone name suffix like " UTC", " EST", " PST" etc. *)
+  let strip_timezone_name str =
+    (* Look for last space that might separate offset from timezone name *)
+    match String.rindex_opt str ' ' with
+    | Some idx when idx > 10 -> (
+        (* Check if what comes after looks like a timezone abbreviation *)
+        let after_space = String.sub str (idx + 1) (String.length str - idx - 1) in
+        (* Timezone names are usually 3-4 uppercase letters or contain '/' *)
+        let is_tz_name = 
+          String.length after_space <= 5 &&
+          String.for_all (fun c -> 
+            Char.uppercase_ascii c = c || c = '/' || c = '_'
+          ) after_space
+        in
+        if is_tz_name then
+          (* Strip the timezone name *)
+          String.sub str 0 idx
+        else
+          str)
+    | _ -> str
+
+  (* Parse PostgreSQL TIMESTAMP format: "2025-11-21 14:30:00.123456" *)
+  let parse_pg_timestamp str =
+    (* PostgreSQL uses space instead of 'T', so replace it for ISO8601 compatibility *)
+    (* With timezone=UTC setting, TIMESTAMP values are already in UTC *)
+    let iso_str = 
+      match String.index_opt str ' ' with
+      | Some idx -> 
+          let before = String.sub str 0 idx in
+          let after = String.sub str (idx + 1) (String.length str - idx - 1) in
+          before ^ "T" ^ after ^ "Z"  (* Add 'Z' for UTC *)
+      | None -> str ^ "Z"
+    in
+    Datetime.parse iso_str
+
+  (* Parse PostgreSQL TIMESTAMPTZ format: "2025-11-21 14:30:00.123456+00" or with TZ name *)
+  let parse_pg_timestamptz str =
+    (* First, strip any timezone name suffix like " UTC" *)
+    let str = strip_timezone_name str in
+    (* Replace space with 'T' for ISO8601 compatibility *)
+    let iso_str = 
+      match String.index_opt str ' ' with
+      | Some idx ->
+          let before = String.sub str 0 idx in
+          let after = String.sub str (idx + 1) (String.length str - idx - 1) in
+          before ^ "T" ^ after
+      | None -> str
+    in
+    Datetime.parse iso_str
 
   let decode_value (field : Protocol.field) (value : string) =
     match field.type_oid with
@@ -290,12 +375,32 @@ module Driver = struct
     | oid when oid = Protocol.TypeOid.json || oid = Protocol.TypeOid.jsonb ->
         Sqlx_driver.Value.json value
     | oid when oid = Protocol.TypeOid.numeric -> Sqlx_driver.Value.numeric value
+    | oid when oid = Protocol.TypeOid.timestamp -> (
+        match parse_pg_timestamp value with
+        | Ok dt -> Sqlx_driver.Value.timestamp dt
+        | Error _ -> Sqlx_driver.Value.string value)
+    | oid when oid = Protocol.TypeOid.timestamptz -> (
+        match parse_pg_timestamptz value with
+        | Ok dt -> Sqlx_driver.Value.timestamp_with_timezone dt
+        | Error _ -> Sqlx_driver.Value.string value)
     | oid
       when oid = Protocol.TypeOid.text
            || oid = Protocol.TypeOid.varchar
            || oid = Protocol.TypeOid.char ->
         Sqlx_driver.Value.string value
     | _ -> Sqlx_driver.Value.string value
+
+  (* Format Datetime.t to PostgreSQL timestamp format *)
+  let datetime_to_pg_format dt =
+    let pad n width =
+      let s = string_of_int n in
+      String.make (max 0 (width - String.length s)) '0' ^ s
+    in
+    let micros, _precision = dt.Datetime.microseconds in
+    (* Format: YYYY-MM-DD HH:MM:SS.microseconds *)
+    pad dt.year 4 ^ "-" ^ pad dt.month 2 ^ "-" ^ pad dt.day 2 ^ " " ^
+    pad dt.hour 2 ^ ":" ^ pad dt.minute 2 ^ ":" ^ pad dt.second 2 ^ "." ^
+    pad micros 6
 
   let encode_param (value : Sqlx_driver.Value.t) =
     match value with
@@ -308,8 +413,8 @@ module Driver = struct
     | Bool true -> "t"
     | Bool false -> "f"
     | Bytes b -> Bytes.to_string b
-    | Timestamp _t -> ""
-    | TimestampWithTimezone _ -> ""
+    | Timestamp dt -> datetime_to_pg_format dt
+    | TimestampWithTimezone dt -> datetime_to_pg_format dt
     | Date (y, m, d) -> 
         let pad n width =
           let s = string_of_int n in
@@ -396,16 +501,22 @@ module Driver = struct
                           let row =
                             if List.length !column_info = List.length cols then
                               List.map2
-                                (fun (field : Protocol.field) value ->
+                                (fun (field : Protocol.field) value_opt ->
                                   let decoded_value =
-                                    decode_value field value
+                                    match value_opt with
+                                    | None -> Sqlx_driver.Value.null
+                                    | Some value -> decode_value field value
                                   in
                                   (field.name, decoded_value))
                                 !column_info cols
                             else
                               List.mapi
-                                (fun i v ->
-                                  ("col_" ^ string_of_int i, Sqlx_driver.Value.string v))
+                                (fun i v_opt ->
+                                  let value = match v_opt with
+                                    | None -> Sqlx_driver.Value.null
+                                    | Some v -> Sqlx_driver.Value.string v
+                                  in
+                                  ("col_" ^ string_of_int i, value))
                                 cols
                           in
                           Collections.Queue.push result_set.rows row;
@@ -465,16 +576,22 @@ module Driver = struct
                           let row =
                             if List.length !column_info = List.length cols then
                               List.map2
-                                (fun (field : Protocol.field) value ->
+                                (fun (field : Protocol.field) value_opt ->
                                   let decoded_value =
-                                    decode_value field value
+                                    match value_opt with
+                                    | None -> Sqlx_driver.Value.null
+                                    | Some value -> decode_value field value
                                   in
                                   (field.name, decoded_value))
                                 !column_info cols
                             else
                               List.mapi
-                                (fun i v ->
-                                  ("col_" ^ string_of_int i, Sqlx_driver.Value.string v))
+                                (fun i v_opt ->
+                                  let value = match v_opt with
+                                    | None -> Sqlx_driver.Value.null
+                                    | Some v -> Sqlx_driver.Value.string v
+                                  in
+                                  ("col_" ^ string_of_int i, value))
                                 cols
                           in
                           Collections.Queue.push result_set.rows row;

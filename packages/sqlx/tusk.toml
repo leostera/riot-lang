@@ -8,7 +8,7 @@ path = "src/sqlx.ml"
 [dependencies]
 std = { path = "../std" }
 kernel = { path = "../kernel" }
-sqlx_driver = { path = "../sqlx_driver" }
+sqlx-driver = { path = "../sqlx-driver" }
 
 # TODO: Use these for sqltool example when dev-dependencies are implemented
 # [dev-dependencies]

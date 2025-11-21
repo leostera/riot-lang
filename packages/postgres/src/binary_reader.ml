@@ -22,7 +22,16 @@ let read_int32 reader =
     let b3 = Char.code (Bytes.get reader.bytes (reader.offset + 2)) in
     let b4 = Char.code (Bytes.get reader.bytes (reader.offset + 3)) in
     reader.offset <- reader.offset + 4;
-    Some ((b1 lsl 24) lor (b2 lsl 16) lor (b3 lsl 8) lor b4)
+    (* Construct as unsigned, then convert to signed *)
+    let unsigned = (b1 lsl 24) lor (b2 lsl 16) lor (b3 lsl 8) lor b4 in
+    (* Convert to signed: if high bit is set, it's negative *)
+    let signed = 
+      if unsigned >= 0x80000000 then
+        unsigned - 0x100000000  (* Convert to negative *)
+      else
+        unsigned
+    in
+    Some signed
 
 let read_int16 reader =
   if remaining reader < 2 then None

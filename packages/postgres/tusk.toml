@@ -5,7 +5,7 @@ version = "0.1.0"
 [dependencies]
 std = { path = "../std" }
 kernel = { path = "../kernel" }
-sqlx_driver = { path = "../sqlx_driver" }
+sqlx-driver = { path = "../sqlx-driver" }
 # Add dependencies here
 
 

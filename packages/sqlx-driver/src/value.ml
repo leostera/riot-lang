@@ -10,8 +10,8 @@ type t =
   | String of string
   | Bool of bool
   | Bytes of bytes
-  | Timestamp of Time.Instant.t
-  | TimestampWithTimezone of Time.Instant.t * Datetime.Tz.t * int
+  | Timestamp of Datetime.t
+  | TimestampWithTimezone of Datetime.t
   | Date of int * int * int
   | Time of int * int * int * int
   | Uuid of string
@@ -26,8 +26,8 @@ let string s = String s
 let bool b = Bool b
 let float f = Float f
 let bytes b = Bytes b
-let timestamp t = Timestamp t
-let timestamp_with_timezone t tz offset = TimestampWithTimezone (t, tz, offset)
+let timestamp dt = Timestamp dt
+let timestamp_with_timezone dt = TimestampWithTimezone dt
 let date y m d = Date (y, m, d)
 let time h min s us = Time (h, min, s, us)
 let uuid s = Uuid s
@@ -40,10 +40,10 @@ let to_string_value = function String s -> Some s | _ -> None
 let to_bool = function Bool b -> Some b | _ -> None
 let to_float = function Float f -> Some f | _ -> None
 let to_bytes = function Bytes b -> Some b | _ -> None
-let to_timestamp = function Timestamp t -> Some t | _ -> None
+let to_timestamp = function Timestamp dt -> Some dt | _ -> None
 
 let to_timestamp_with_timezone = function
-  | TimestampWithTimezone (t, tz, o) -> Some (t, tz, o)
+  | TimestampWithTimezone dt -> Some dt
   | _ -> None
 
 let to_date = function Date (y, m, d) -> Some (y, m, d) | _ -> None
@@ -62,9 +62,8 @@ let to_string = function
   | String s -> "\"" ^ s ^ "\""
   | Bool b -> string_of_bool b
   | Bytes b -> "<bytes:" ^ string_of_int (Bytes.length b) ^ ">"
-  | Timestamp _ -> "<timestamp>"
-  | TimestampWithTimezone (_, tz, offset) ->
-      "<timestamp_with_timezone:" ^ Datetime.Tz.to_string tz ^ (if offset >= 0 then "+" else "") ^ string_of_int offset ^ ">"
+  | Timestamp dt -> Datetime.to_iso8601 dt
+  | TimestampWithTimezone dt -> Datetime.to_iso8601 dt
   | Date (y, m, d) -> 
       let pad n width = 
         let s = string_of_int n in
@@ -91,9 +90,11 @@ let equal a b =
   | String x, String y -> x = y
   | Bool x, Bool y -> x = y
   | Bytes x, Bytes y -> Bytes.equal x y
-  | Timestamp x, Timestamp y -> Time.Instant.equal x y
-  | TimestampWithTimezone (x1, tz1, o1), TimestampWithTimezone (x2, tz2, o2) ->
-      Time.Instant.equal x1 x2 && tz1 = tz2 && o1 = o2
+  | Timestamp x, Timestamp y -> 
+      (* Compare by converting to Unix microseconds for exact equality *)
+      Datetime.to_unix_micros x = Datetime.to_unix_micros y
+  | TimestampWithTimezone x, TimestampWithTimezone y -> 
+      Datetime.to_unix_micros x = Datetime.to_unix_micros y
   | Date (y1, m1, d1), Date (y2, m2, d2) -> y1 = y2 && m1 = m2 && d1 = d2
   | Time (h1, min1, s1, us1), Time (h2, min2, s2, us2) ->
       h1 = h2 && min1 = min2 && s1 = s2 && us1 = us2
@@ -114,9 +115,11 @@ let compare a b =
   | String x, String y -> String.compare x y
   | Bool x, Bool y -> Bool.compare x y
   | Bytes x, Bytes y -> Bytes.compare x y
-  | Timestamp x, Timestamp y -> Time.Instant.compare x y
-  | TimestampWithTimezone (x1, _, _), TimestampWithTimezone (x2, _, _) ->
-      Time.Instant.compare x1 x2
+  | Timestamp x, Timestamp y -> 
+      (* Compare by converting to Unix microseconds *)
+      Int64.compare (Datetime.to_unix_micros x) (Datetime.to_unix_micros y)
+  | TimestampWithTimezone x, TimestampWithTimezone y -> 
+      Int64.compare (Datetime.to_unix_micros x) (Datetime.to_unix_micros y)
   | Date (y1, m1, d1), Date (y2, m2, d2) -> (
       match Int.compare y1 y2 with
       | 0 -> ( match Int.compare m1 m2 with 0 -> Int.compare d1 d2 | c -> c)

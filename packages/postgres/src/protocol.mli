@@ -20,7 +20,7 @@ type backend_message =
   | ParameterStatus of { name : string; value : string }
   | ReadyForQuery of char
   | RowDescription of field list
-  | DataRow of string list
+  | DataRow of string option list  (* None = NULL, Some s = value *)
   | CommandComplete of string
   | ErrorResponse of (char * string) list
   | NoticeResponse of (char * string) list

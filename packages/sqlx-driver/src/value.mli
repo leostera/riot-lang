@@ -29,8 +29,8 @@ type t =
   | String of string
   | Bool of bool
   | Bytes of bytes
-  | Timestamp of Time.Instant.t
-  | TimestampWithTimezone of Time.Instant.t * Datetime.Tz.t * int
+  | Timestamp of Datetime.t
+  | TimestampWithTimezone of Datetime.t
   | Date of int * int * int
   | Time of int * int * int * int
   | Uuid of string
@@ -47,8 +47,8 @@ val string : string -> t
 val bool : bool -> t
 val float : float -> t
 val bytes : bytes -> t
-val timestamp : Time.Instant.t -> t
-val timestamp_with_timezone : Time.Instant.t -> Datetime.Tz.t -> int -> t
+val timestamp : Datetime.t -> t
+val timestamp_with_timezone : Datetime.t -> t
 val date : int -> int -> int -> t
 val time : int -> int -> int -> int -> t
 val uuid : string -> t
@@ -64,10 +64,9 @@ val to_string_value : t -> string option
 val to_bool : t -> bool option
 val to_float : t -> float option
 val to_bytes : t -> bytes option
-val to_timestamp : t -> Time.Instant.t option
+val to_timestamp : t -> Datetime.t option
 
-val to_timestamp_with_timezone :
-  t -> (Time.Instant.t * Datetime.Tz.t * int) option
+val to_timestamp_with_timezone : t -> Datetime.t option
 
 val to_date : t -> (int * int * int) option
 val to_time : t -> (int * int * int * int) option
