@@ -994,6 +994,7 @@ module Data = Data
     - Lisp-like data → Sexp
     - Binary encoding → Base64, Base16, Base32, Base85 *)
 
+module Calendar = Calendar
 module Datetime = Datetime
 (** **When to use:** Calendar dates and times
     

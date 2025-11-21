@@ -5,6 +5,28 @@ type t = timespec
 
 let epoch = { secs = 0; nanos = 0 }
 
+(* Accessors *)
+let to_parts t = (t.secs, t.nanos)
+
+let secs t = t.secs
+
+let secs_float t = float_of_int t.secs +. (float_of_int t.nanos /. 1_000_000_000.0)
+
+let nanos t = 
+  Int64.add 
+    (Int64.mul (Int64.of_int t.secs) 1_000_000_000L)
+    (Int64.of_int t.nanos)
+
+let from_seconds f =
+  let secs = int_of_float (floor f) in
+  let nanos = int_of_float ((f -. floor f) *. 1_000_000_000.0) in
+  { secs; nanos }
+
+let from_nanos nanos_total =
+  let secs = Int64.to_int (Int64.div nanos_total 1_000_000_000L) in
+  let nanos = Int64.to_int (Int64.rem nanos_total 1_000_000_000L) in
+  { secs; nanos }
+
 (* Creation *)
 let now () =
   let time = Kernel.Time.gettimeofday () in

@@ -69,6 +69,66 @@ type t
 
 val epoch : t
 
+(** {1 Accessors} *)
+
+val secs : t -> int
+(** Returns seconds since Unix epoch as an int
+    
+    ## Examples
+    
+    ```ocaml
+    let sys_time = SystemTime.now () in
+    let timestamp = SystemTime.secs sys_time
+    (* 1724789251 *)
+    ```
+*)
+
+val secs_float : t -> float
+(** Returns seconds since Unix epoch as a float, including fractional seconds.
+    
+    ## Examples
+    
+    ```ocaml
+    let sys_time = SystemTime.now () in
+    let timestamp = SystemTime.secs_float sys_time
+    (* 1724789251.426822 *)
+    ```
+*)
+
+val nanos : t -> int64
+(** Returns nanoseconds since Unix epoch as int64.
+    
+    Provides exact 1ns precision for high-resolution timestamps.
+    
+    ## Examples
+    
+    ```ocaml
+    let sys_time = SystemTime.now () in
+    let nanos = SystemTime.nanos sys_time
+    (* 1724789251426822000L *)
+    ```
+*)
+
+val from_seconds : float -> t
+(** Creates a system time from floating-point seconds since Unix epoch.
+    
+    ## Examples
+    
+    ```ocaml
+    let sys_time = SystemTime.from_seconds 1724789251.426822
+    ```
+*)
+
+val from_nanos : int64 -> t
+(** Creates a system time from int64 nanoseconds since Unix epoch.
+    
+    ## Examples
+    
+    ```ocaml
+    let sys_time = SystemTime.from_nanos 1724789251426822000L
+    ```
+*)
+
 (** {1 Creation} *)
 
 val now : unit -> t

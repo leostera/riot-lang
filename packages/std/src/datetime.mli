@@ -91,7 +91,37 @@ type t = {
 }
 (** A date and time with calendar fields and timezone information. *)
 
+type naive = {
+  year : int;  (** Year *)
+  month : int;  (** Month (1-12) *)
+  day : int;  (** Day of month (1-31) *)
+  hour : int;  (** Hour (0-23) *)
+  minute : int;  (** Minute (0-59) *)
+  second : int;  (** Second (0-59) *)
+  microsecond : int;  (** Microseconds (0-999999) *)
+}
+(** A naive datetime without timezone information.
+    
+    Naive datetimes represent a date and time without any timezone context.
+    They are useful for:
+    - Pure calendar computations
+    - When timezone is implicit or doesn't matter
+    - Storing local times without conversion
+    
+    To work with actual wall-clock times, convert to {!t} using {!from_naive}. *)
+
 (** {1 Creation} *)
+
+val epoch : t
+(** The Unix epoch: January 1, 1970 00:00:00 UTC.
+    
+    ## Examples
+    
+    ```ocaml
+    let epoch = DateTime.epoch in
+    (* epoch.year = 1970, epoch.month = 1, epoch.day = 1 *)
+    (* epoch.hour = 0, epoch.minute = 0, epoch.second = 0 *)
+    ``` *)
 
 val now : unit -> t
 (** Returns the current date and time in the system's local timezone.
@@ -110,75 +140,114 @@ val now_utc : unit -> t
     ```ocaml let utc = DateTime.now_utc () in assert (utc.time_zone =
     Tz.Etc_UTC); assert (utc.utc_offset = 0) ``` *)
 
-val from_unix_time : float -> t
-(** Creates a datetime from a Unix timestamp (seconds since epoch).
+val now_naive : unit -> naive
+(** Returns the current date and time as a naive datetime (no timezone).
+    
+    This is equivalent to [to_naive (now ())] but more convenient.
+    Use this when you want the current local time without timezone context.
+    
+    ## Examples
+    
+    ```ocaml
+    let naive_now = DateTime.now_naive () in
+    Printf.printf "%04d-%02d-%02d %02d:%02d:%02d\n"
+      naive_now.year naive_now.month naive_now.day
+      naive_now.hour naive_now.minute naive_now.second
+    (* "2025-11-21 14:30:45" *)
+    ```
+    
+    ## Use Cases
+    
+    - Logging timestamps without timezone information
+    - Storing local times in databases
+    - Display times that don't need timezone conversion *)
+
+val from_system_time : Time.SystemTime.t -> t
+(** Creates a datetime from a system time.
 
     ## Examples
 
-    ```ocaml (* Unix epoch *) let epoch = DateTime.from_unix_time 0.0 in (*
-    1970-01-01 00:00:00 UTC *)
-
-    (* Specific timestamp *) let dt = DateTime.from_unix_time 1724789251.426822
-    in dt.year (* 2025 *) ```
+    ```ocaml
+    (* From current system time *)
+    let sys_time = Time.SystemTime.now () in
+    let dt = DateTime.from_system_time sys_time
+    
+    (* From Unix timestamp *)
+    let sys_time = Time.SystemTime.from_unix_timestamp 1724789251 in
+    let dt = DateTime.from_system_time sys_time
+    (* dt represents 2025-08-27 21:07:31 UTC *)
+    ```
 
     ## Note
 
-    The timestamp is interpreted in UTC. *)
+    The resulting datetime is in UTC timezone. *)
 
 (** {1 Conversion} *)
 
-val to_timestamp : t -> float
-(** Converts datetime to Unix timestamp (seconds since epoch).
+val to_system_time : t -> Time.SystemTime.t
+(** Converts datetime to system time.
 
     ## Examples
 
-    ```ocaml let now = DateTime.now () in let ts = DateTime.to_timestamp now in
-    (* 1724789251.426822 *)
+    ```ocaml
+    let dt = DateTime.now () in
+    let sys_time = DateTime.to_system_time dt in
+    let timestamp = Time.SystemTime.to_unix_timestamp sys_time
+    ```
 
-    (* Round-trip conversion *) let dt' = DateTime.from_unix_time ts in dt'.year
-    = now.year (* true *) ``` *)
-
-val to_unix_micros : t -> int64
-(** Converts datetime to int64 microseconds since Unix epoch.
+    ## Note
     
-    Provides exact 1μs precision suitable for LSM storage and high-precision
-    timestamps. This is preferred over float timestamps when exact precision
-    is required.
+    Timezone information is preserved during conversion. *)
+
+val to_naive : t -> naive
+(** Converts a timezone-aware datetime to a naive datetime by dropping timezone information.
+    
+    The resulting naive datetime represents the same calendar date and time,
+    but without any timezone context. Microseconds are preserved.
     
     ## Examples
     
     ```ocaml
-    let now = DateTime.now_utc () in
-    let micros = DateTime.to_unix_micros now in
-    (* 1724789251426822L *)
-    
-    (* Round-trip *)
-    let dt' = DateTime.from_unix_micros micros in
-    dt'.microseconds = now.microseconds (* true *)
+    let utc = DateTime.now_utc () in
+    let naive = DateTime.to_naive utc in
+    (* naive.year = utc.year, naive.hour = utc.hour, etc. *)
+    (* But naive has no time_zone field *)
     ```
     
-    ## Precision
+    ## Use Cases
     
-    - Exact 1 microsecond resolution
-    - Range: ±292,000 years from epoch
-    - No float rounding errors
-    
-    @since 1.0.0
-*)
+    - Storing local times without timezone conversion
+    - Calendar computations that don't depend on timezone
+    - Displaying times without timezone context *)
 
-val from_unix_micros : int64 -> t
-(** Converts int64 microseconds since Unix epoch to datetime.
+val from_naive : naive -> tz:Tz.t -> t
+(** Converts a naive datetime to a timezone-aware datetime.
+    
+    Interprets the naive datetime in the specified timezone. The calendar
+    fields remain the same, but timezone information is added.
     
     ## Examples
     
     ```ocaml
-    let micros = 1724789251426822L in
-    let dt = DateTime.from_unix_micros micros in
-    dt.year (* 2025 *)
+    let naive = {
+      year = 2025; month = 1; day = 15;
+      hour = 14; minute = 30; second = 0;
+      microsecond = 0;
+    } in
+    
+    (* Interpret as UTC *)
+    let utc = DateTime.from_naive naive ~tz:Tz.Etc_UTC in
+    (* utc.year = 2025, utc.time_zone = Etc_UTC *)
+    
+    (* Interpret as local time *)
+    let local = DateTime.from_naive naive ~tz:Tz.Local in
+    (* local.year = 2025, local.time_zone = Local *)
     ```
     
-    @since 1.0.0
-*)
+    ## Note
+    
+    When using [Tz.Local], the UTC offset is determined by the system's
+    current timezone setting at the time of conversion. *)
 
 val to_iso8601 : t -> string
 (** Converts to ISO 8601 format string with microsecond precision.
@@ -204,6 +273,29 @@ val to_iso8601 : t -> string
     - Storing dates in databases
     - API responses
     - Interoperability with other systems *)
+
+(** {1 Comparison} *)
+
+val equal : t -> t -> bool
+(** Tests equality of two datetimes.
+    
+    Two datetimes are equal if they represent the same point in time,
+    comparing their system time representation at nanosecond precision.
+    
+    ## Examples
+    
+    ```ocaml
+    let dt1 = DateTime.now () in
+    let dt2 = DateTime.now () in
+    DateTime.equal dt1 dt1 (* true *)
+    DateTime.equal dt1 dt2 (* likely false - different times *)
+    ```
+    
+    ## Note
+    
+    This compares the actual point in time, taking timezones into account.
+    Two datetimes with different timezone offsets but representing the
+    same moment will be equal. *)
 
 (** {1 Parsing} *)
 

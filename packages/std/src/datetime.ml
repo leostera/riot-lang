@@ -32,6 +32,16 @@ type t = {
   std_offset : int;
 }
 
+type naive = {
+  year : int;
+  month : int;
+  day : int;
+  hour : int;
+  minute : int;
+  second : int;
+  microsecond : int;
+}
+
 let now () =
   let unix_time = Kernel.Time.gettimeofday () in
   let tm = Kernel.Time.localtime unix_time in
@@ -76,12 +86,30 @@ let now_utc () =
     std_offset = 0;
   }
 
-let from_unix_time unix_time =
+let now_naive () =
+  let unix_time = Kernel.Time.gettimeofday () in
   let tm = Kernel.Time.localtime unix_time in
+  let frac = unix_time -. floor unix_time in
+  let microsecond = int_of_float (frac *. 1_000_000.0) in
+  {
+    year = tm.tm_year + 1900;
+    month = tm.tm_mon + 1;
+    day = tm.tm_mday;
+    hour = tm.tm_hour;
+    minute = tm.tm_min;
+    second = tm.tm_sec;
+    microsecond;
+  }
+
+let from_system_time (sys_time : Time.SystemTime.t) : t =
+  let unix_time = Time.SystemTime.secs_float sys_time in
+  let tm = Kernel.Time.gmtime unix_time in
+  let nanos_total = Time.SystemTime.nanos sys_time in
   let microseconds =
-    let frac = unix_time -. floor unix_time in
-    let micros = int_of_float (frac *. 1_000_000.0) in
-    (micros, 6)
+    (* Extract microseconds from total nanoseconds *)
+    let micros = Int64.div nanos_total 1000L in
+    let micros_part = Int64.to_int (Int64.rem micros 1_000_000L) in
+    (micros_part, 6)
   in
   {
     microseconds;
@@ -91,12 +119,12 @@ let from_unix_time unix_time =
     day = tm.tm_mday;
     month = tm.tm_mon + 1;
     year = tm.tm_year + 1900;
-    time_zone = Tz.Local;
+    time_zone = Tz.Etc_UTC;
     utc_offset = 0;
     std_offset = 0;
   }
 
-let to_timestamp t =
+let to_system_time (t : t) : Time.SystemTime.t =
   let tm =
     {
       Kernel.Time.tm_sec = t.second;
@@ -111,22 +139,84 @@ let to_timestamp t =
     }
   in
   let unix_time, _ = Kernel.Time.mktime tm in
-  unix_time
+  let micros, _ = t.microseconds in
+  (* Convert to nanoseconds *)
+  let secs_nanos = Int64.mul (Int64.of_float unix_time) 1_000_000_000L in
+  let micros_nanos = Int64.mul (Int64.of_int micros) 1000L in
+  let total_nanos = Int64.add secs_nanos micros_nanos in
+  Time.SystemTime.from_nanos total_nanos
 
-(** Convert datetime to int64 microseconds since Unix epoch.
-    This provides exact 1μs precision for LSM storage. *)
-let to_unix_micros t =
-  let timestamp = to_timestamp t in
-  let micros_from_seconds = Int64.of_float (timestamp *. 1_000_000.0) in
-  let micros_from_frac, _ = t.microseconds in
-  Int64.add micros_from_seconds (Int64.of_int micros_from_frac)
+let epoch = 
+  Time.SystemTime.epoch |> from_system_time
 
-(** Convert int64 microseconds since Unix epoch to datetime. *)
-let from_unix_micros micros =
-  let seconds = Int64.to_float micros /. 1_000_000.0 in
-  let micros_part = Int64.to_int (Int64.rem micros 1_000_000L) in
-  let dt = from_unix_time seconds in
-  { dt with microseconds = (micros_part, 6) }
+(** Convert timezone-aware datetime to naive datetime *)
+let to_naive (t : t) : naive =
+  let microsecond, _ = t.microseconds in
+  {
+    year = t.year;
+    month = t.month;
+    day = t.day;
+    hour = t.hour;
+    minute = t.minute;
+    second = t.second;
+    microsecond;
+  }
+
+(** Convert naive datetime to timezone-aware datetime *)
+let from_naive (naive : naive) ~(tz : Tz.t) : t =
+  match tz with
+  | Tz.Etc_UTC ->
+      {
+        microseconds = (naive.microsecond, 6);
+        second = naive.second;
+        minute = naive.minute;
+        hour = naive.hour;
+        day = naive.day;
+        month = naive.month;
+        year = naive.year;
+        time_zone = Tz.Etc_UTC;
+        utc_offset = 0;
+        std_offset = 0;
+      }
+  | Tz.Local ->
+      (* For local time, we need to determine the UTC offset *)
+      (* Create a Unix tm struct and let mktime figure out the offset *)
+      let tm =
+        {
+          Kernel.Time.tm_sec = naive.second;
+          tm_min = naive.minute;
+          tm_hour = naive.hour;
+          tm_mday = naive.day;
+          tm_mon = naive.month - 1;
+          tm_year = naive.year - 1900;
+          tm_wday = 0;
+          tm_yday = 0;
+          tm_isdst = false;
+        }
+      in
+      let unix_time, normalized_tm = Kernel.Time.mktime tm in
+      (* Get UTC offset by comparing with gmtime *)
+      let utc_tm = Kernel.Time.gmtime unix_time in
+      let local_seconds =
+        normalized_tm.tm_hour * 3600 + normalized_tm.tm_min * 60
+        + normalized_tm.tm_sec
+      in
+      let utc_seconds =
+        utc_tm.tm_hour * 3600 + utc_tm.tm_min * 60 + utc_tm.tm_sec
+      in
+      let utc_offset = local_seconds - utc_seconds in
+      {
+        microseconds = (naive.microsecond, 6);
+        second = naive.second;
+        minute = naive.minute;
+        hour = naive.hour;
+        day = naive.day;
+        month = naive.month;
+        year = naive.year;
+        time_zone = Tz.Local;
+        utc_offset;
+        std_offset = 0;
+      }
 
 let to_iso8601 t =
   let micros, _ = t.microseconds in
@@ -145,6 +235,11 @@ let to_iso8601 t =
   pad4 t.year ^ "-" ^ pad2 t.month ^ "-" ^ pad2 t.day ^ "T" ^ 
   pad2 t.hour ^ ":" ^ pad2 t.minute ^ ":" ^ pad2 t.second ^ "." ^ 
   pad3 millis ^ tz_suffix
+
+let equal t1 t2 =
+  let st1 = to_system_time t1 |> Time.SystemTime.nanos in
+  let st2 = to_system_time t2 |> Time.SystemTime.nanos in
+  st1 = st2
 
 type error =
   | Invalid_format of string
@@ -387,3 +482,6 @@ let parse s =
       else
         Error (Invalid_format msg)
   | Invalid_argument msg -> Error (Invalid_format msg)
+
+let epoch = Time.SystemTime.epoch |> from_system_time
+

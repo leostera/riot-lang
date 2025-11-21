@@ -82,12 +82,26 @@ let escape_string s =
     s;
   Buffer.contents buffer
 
+(** Format float for JSON - ensures valid JSON number format *)
+let format_float f =
+  (* Handle special float values *)
+  if Float.is_nan f then "null"
+  else if Float.is_infinite f then
+    if f > 0.0 then "null" (* or could use a large number *)
+    else "null"
+  else
+    let s = string_of_float f in
+    (* OCaml's string_of_float can produce "2000." which is invalid JSON *)
+    (* If it ends with "." add a "0" to make it valid JSON *)
+    if String.ends_with ~suffix:"." s then s ^ "0"
+    else s
+
 (** Serialize JSON to string *)
 let rec to_string = function
   | Null -> "null"
   | Bool b -> if b then "true" else "false"
   | Int i -> string_of_int i
-  | Float f -> string_of_float f
+  | Float f -> format_float f
   | String s -> "\"" ^ escape_string s ^ "\""
   | Array items -> "[" ^ String.concat "," (List.map to_string items) ^ "]"
   | Object fields ->

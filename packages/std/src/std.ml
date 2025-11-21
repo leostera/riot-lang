@@ -6,6 +6,7 @@ module Application = Application
 module ArgParser = Arg_parser
 module Bench = Bench
 module Bool = Bool
+module Calendar = Calendar
 module Char = Char
 module Collections = Collections
 module Command = Command
