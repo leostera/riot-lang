@@ -102,6 +102,7 @@ let rec validate_field (field : Spec.field) toml_opt : (Spec.value, string) resu
   
   | Int { default } -> (
       match toml_opt with
+      | Some (Data.Toml.Int i) -> Ok (Spec.Int i)
       | Some (Data.Toml.String s) -> (
           match int_of_string_opt s with
           | Some i -> Ok (Spec.Int i)
@@ -115,6 +116,7 @@ let rec validate_field (field : Spec.field) toml_opt : (Spec.value, string) resu
   
   | Int32 { default } -> (
       match toml_opt with
+      | Some (Data.Toml.Int i) -> Ok (Spec.Int32 (Int32.of_int i))
       | Some (Data.Toml.String s) -> (
           match Int32.of_string_opt s with
           | Some i -> Ok (Spec.Int32 i)
@@ -128,6 +130,7 @@ let rec validate_field (field : Spec.field) toml_opt : (Spec.value, string) resu
   
   | Int64 { default } -> (
       match toml_opt with
+      | Some (Data.Toml.Int i) -> Ok (Spec.Int64 (Int64.of_int i))
       | Some (Data.Toml.String s) -> (
           match Int64.of_string_opt s with
           | Some i -> Ok (Spec.Int64 i)
@@ -141,6 +144,7 @@ let rec validate_field (field : Spec.field) toml_opt : (Spec.value, string) resu
   
   | Bool { default } -> (
       match toml_opt with
+      | Some (Data.Toml.Bool b) -> Ok (Spec.Bool b)
       | Some (Data.Toml.String "true") -> Ok (Spec.Bool true)
       | Some (Data.Toml.String "false") -> Ok (Spec.Bool false)
       | Some _ -> Error (field_name ^ ": expected boolean")

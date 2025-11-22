@@ -6,6 +6,7 @@ open Collections
 
 type value =
   | String of string
+  | Int of int
   | Array of value list
   | Table of (string * value) list
   | Bool of bool
@@ -250,6 +251,16 @@ let parse content =
     | 'f' when !pos + 5 <= len && String.sub content !pos 5 = "false" ->
         pos := !pos + 5;
         Bool false
+    | '0' .. '9' | '-' | '+' ->
+        (* Try to parse as integer first *)
+        let start = !pos in
+        if current_char () = '-' || current_char () = '+' then advance ();
+        while not (at_end ()) && current_char () >= '0' && current_char () <= '9' do
+          advance ()
+        done;
+        let str = String.trim (String.sub content start (!pos - start)) in
+        (try Int (int_of_string str)
+         with Failure _ -> String str)
     | _ ->
         (* Bare string - read until comma, bracket, newline, or comment *)
         let start = !pos in
@@ -453,6 +464,7 @@ let parse content =
 
 (* Recursive descent TOML parser *)
 let get_string = function String s -> Some s | _ -> None
+let get_int = function Int i -> Some i | _ -> None
 let get_array = function Array items -> Some items | _ -> None
 let get_table = function Table items -> Some items | _ -> None
 
@@ -460,6 +472,7 @@ let rec to_string ?(indent = 0) value =
   let ind = String.make (indent * 2) ' ' in
   match value with
   | String s -> "\"" ^ s ^ "\""
+  | Int i -> string_of_int i
   | Bool b -> if b then "true" else "false"
   | Array items ->
       let items_str =

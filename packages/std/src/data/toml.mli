@@ -63,10 +63,11 @@ open Global
 
 type value =
   | String of string
+  | Int of int
   | Array of value list
   | Table of (string * value) list
   | Bool of bool
-      (** TOML value representation supporting strings, booleans, arrays, and
+      (** TOML value representation supporting strings, integers, booleans, arrays, and
           tables. *)
 
 type error =
@@ -127,6 +128,17 @@ val get_string : value -> string option
 
     (* Or using extractor: *) Toml.get_string value |> Option.iter
     (Printf.printf "Got: %s\n") ``` *)
+
+val get_int : value -> int option
+(** Extracts an integer value. Returns [None] if not an integer.
+
+    ## Examples
+
+    ```ocaml match value with | Toml.Int i -> Printf.printf "Port: %d\n" i | _
+    -> ()
+
+    (* Or using extractor: *) Toml.get_int value |> Option.iter
+    (Printf.printf "Port: %d\n") ``` *)
 
 val get_array : value -> value list option
 (** Extracts an array value. Returns [None] if not an array.
