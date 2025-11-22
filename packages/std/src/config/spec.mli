@@ -101,6 +101,14 @@ type value =
   (** File system path *)
   | Uuid of Uuid.t
   (** UUID (e.g., "550e8400-e29b-41d4-a716-446655440000") *)
+  | List of value list
+  (** Array of homogeneous values *)
+  | DiscriminatedUnion of {
+      discriminant : string;
+      variant : string;
+      fields : (string * value) list;
+    }
+  (** Discriminated union - structure determined by discriminant field *)
   | Map of (string * value) list
   (** Nested configuration object *)
 
@@ -327,6 +335,106 @@ val uuid : ?default:Uuid.t -> ?required:bool -> ?help:string -> string -> field_
     @param name Field name
 *)
 
+val list : field_spec -> ?default:value list -> ?required:bool -> ?help:string -> string -> field_spec
+(** Define an array field where all items have the same structure.
+    
+    Lists can contain any type of value - primitives, objects, or even nested lists.
+    In TOML, simple arrays use bracket syntax, and arrays of tables use [[array]] syntax.
+    
+    In TOML (simple values): [tags = ["tag1", "tag2", "tag3"]]
+    
+    In TOML (array of tables):
+    ```toml
+    [[handlers]]
+    type = "console"
+    id = "main"
+    
+    [[handlers]]
+    type = "file"
+    path = "error.log"
+    ```
+    
+    Example (simple string array):
+    ```ocaml
+    list (string "" ~default:"") "tags" ~default:[]
+    ```
+    
+    Example (array of objects):
+    ```ocaml
+    list (map [
+      string "name" ~required:true;
+      string "email" ~required:true;
+      int "age" ~default:18;
+    ]) "users" ~default:[]
+    ```
+    
+    Example (combined with discriminated union - see below):
+    ```ocaml
+    list (discriminated_union ~discriminant:"type" ~cases:[...]) "handlers" ~default:[]
+    ```
+    
+    @param item_spec The specification for each item in the array
+    @param default Default value if field is missing (typically empty list)
+    @param required If [true], field must be present (default: [false])
+    @param help Human-readable description
+    @param name Field name in the configuration
+*)
+
+val discriminated_union : discriminant:string -> cases:(string * field_spec list) list -> field_spec
+(** Define a discriminated union where structure depends on a discriminant field.
+    
+    The discriminant field (e.g., "type") determines which case to validate against.
+    Each case has its own field specifications. In TOML, use [[array]] syntax with
+    a discriminant field.
+    
+    In TOML:
+    ```toml
+    [[log.handlers]]
+    type = "console"
+    id = "main"
+    stdout_levels = ["info", "debug"]
+    
+    [[log.handlers]]
+    type = "file"
+    id = "errors"
+    path = "error.log"
+    levels = ["error"]
+    ```
+    
+    Example:
+    ```ocaml
+    discriminated_union ~discriminant:"type" ~cases:[
+      ("console", [
+        string "id" ~required:true;
+        list (string "" ~default:"info") "stdout_levels" ~default:[];
+        string "format" ~default:"full";
+      ]);
+      
+      ("file", [
+        string "id" ~required:true;
+        path "path" ~required:true;
+        list (string "" ~default:"info") "levels" ~default:[];
+        int64 "max_bytes" ~default:10485760L;
+      ]);
+      
+      ("syslog", [
+        string "id" ~required:true;
+        string "host" ~required:true;
+        int "port" ~default:514;
+      ]);
+    ]
+    ```
+    
+    Typically used with {!list} for arrays of heterogeneous objects:
+    ```ocaml
+    list (discriminated_union ~discriminant:"type" ~cases:[...]) "handlers" ~default:[]
+    ```
+    
+    @param discriminant The field name used to discriminate types (e.g., "type")
+    @param cases List of (variant_value, field_specs) pairs
+    @return A field spec for discriminated unions (typically wrapped with {!key})
+*)
+
 val enum : field_spec -> value list -> field_spec
 (** Restrict a field to a set of allowed values (enum combinator).
     
@@ -444,6 +552,11 @@ type field_type =
   | Datetime of { default : Datetime.t option }
   | Path of { default : Path.t option }
   | Uuid of { default : Uuid.t option }
+  | List of { item_spec : field; default : value list option }
+  | DiscriminatedUnion of {
+      discriminant : string;
+      cases : (string * field list) list;
+    }
   | Map of field list
 (** Internal representation of field types with default values *)
 

@@ -12,6 +12,12 @@ type value =
   | Datetime of Datetime.t
   | Path of Path.t
   | Uuid of Uuid.t
+  | List of value list
+  | DiscriminatedUnion of {
+      discriminant : string;
+      variant : string;
+      fields : (string * value) list;
+    }
   | Map of (string * value) list
 
 type field_type =
@@ -26,6 +32,11 @@ type field_type =
   | Datetime of { default : Datetime.t option }
   | Path of { default : Path.t option }
   | Uuid of { default : Uuid.t option }
+  | List of { item_spec : field; default : value list option }
+  | DiscriminatedUnion of {
+      discriminant : string;
+      cases : (string * field list) list;
+    }
   | Map of field list
 
 and field = {
@@ -90,6 +101,16 @@ let uuid ?default ?(required = false) ?help name =
 
 let enum field_spec choices =
   { field_spec with allowed_values = Some choices }
+
+let list item_spec ?default ?(required = false) ?help name =
+  { name; field_type = List { item_spec; default }; required; help; allowed_values = None }
+
+let discriminated_union ~discriminant ~cases =
+  { name = ""; 
+    field_type = DiscriminatedUnion { discriminant; cases }; 
+    required = false; 
+    help = None; 
+    allowed_values = None }
 
 let map fields =
   { name = ""; field_type = Map fields; required = false; help = None; allowed_values = None }

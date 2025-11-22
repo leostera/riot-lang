@@ -1,8 +1,11 @@
 open Global
+open Collections
 
 module Spec = Spec
 module Loader = Loader
 module Validator = Validator
+module Provider = Provider
+module Server = Server
 
 type error =
   | NotFound of { app : string }
@@ -21,72 +24,60 @@ let error_to_string = function
   | FileNotFound { path } ->
       "Config file not found: " ^ path
 
-type config_entry = {
-  validated_value : Spec.value;
-}
-
 module type ConfigSpec = sig
   val spec : Spec.t
   type t
   val get : Spec.value -> (t, error) result
 end
 
-(* Global config state *)
-let config_state : (string, config_entry) Collections.HashMap.t = Collections.HashMap.create ()
+let config_server : Server.t option Sync.Cell.t = cell None
 
-let child_spec () =
-  let start () =
-    (* Detect environment *)
-    let env = Loader.detect_env () in
-    
-    (* Load TOML file once *)
-    let root_toml = match Loader.load_for_env env with
-      | Error msg ->
-          let path = Loader.config_path env in
-          panic (error_to_string (FileNotFound { path }))
-      | Ok toml -> toml
-    in
-    
-    (* Load all registered specs *)
-    let specs = Spec.all_specs () in
-    
-    (* Validate each spec and store in global state *)
-    Collections.List.iter (fun spec ->
-      let app_name = Spec.app_name spec in
-      
-      let app_toml = match Loader.extract_app_section app_name root_toml with
-        | Error msg -> panic (error_to_string (NotFound { app = app_name }))
-        | Ok toml -> toml
-      in
-      
-      let validated = match Validator.validate spec app_toml with
-        | Error err -> panic (error_to_string (ValidationError { app = app_name; errors = [err] }))
-        | Ok v -> v
-      in
-      
-      Collections.HashMap.insert config_state app_name { validated_value = validated } |> ignore
-    ) specs;
-    
-    (* Spawn a process that just waits forever (config is now loaded) *)
-    spawn_link (fun () ->
-      receive ~selector:(fun _ -> `skip) ();
-      Ok ())
-  in
-  
-  Supervisor.child_spec ~id:"config_server" ~start ()
+let ensure_loaded () =
+  match !config_server with
+  | Some server -> server
+  | None ->
+      (* Auto-load on first access! *)
+      let server = Server.init ~provider:(Provider.env ()) in
+      config_server := Some server;
+      server
+
+let load ?(provider = Provider.env ()) () = 
+  config_server := Some (Server.init ~provider)
+
+let load_from_env () = load ()
+
+let load_string str = 
+  load ~provider:(Provider.static str) ()
+
+let load_file path = 
+  load ~provider:(Provider.file path) ()
 
 let get (type a) (module M : ConfigSpec with type t = a) : (a, error) result =
   let app_name = Spec.app_name M.spec in
-  
-  match Collections.HashMap.get config_state app_name with
+  let server = ensure_loaded () in
+  match Server.get server ~app:app_name with
   | None -> Error (NotFound { app = app_name })
-  | Some entry -> M.get entry.validated_value
+  | Some value -> M.get value
+
+let reload ?provider () =
+  let server = ensure_loaded () in
+  let new_server = Server.reload ?provider server in
+  config_server := Some new_server;
+  Ok ()
+
+let patch ~app updates =
+  let server = ensure_loaded () in
+  match Server.patch server ~app ~updates with
+  | Error err -> Error (Server.error_to_string err)
+  | Ok _new_server ->
+      (* Patch mutates the HashMap in place, so server is already updated *)
+      Ok ()
 
 (* Value extraction helpers - panic on type mismatch or missing keys *)
 let get_string (value : Spec.value) key =
   match value with
   | Spec.Map kvs -> (
-      match Collections.List.assoc_opt key kvs with
+      match List.assoc_opt key kvs with
       | Some (Spec.String s) -> s
       | Some _ -> panic ("Config key '" ^ key ^ "' is not a string")
       | None -> panic ("Config key '" ^ key ^ "' not found"))
@@ -95,7 +86,7 @@ let get_string (value : Spec.value) key =
 let get_char (value : Spec.value) key =
   match value with
   | Spec.Map kvs -> (
-      match Collections.List.assoc_opt key kvs with
+      match List.assoc_opt key kvs with
       | Some (Spec.Char c) -> c
       | Some _ -> panic ("Config key '" ^ key ^ "' is not a char")
       | None -> panic ("Config key '" ^ key ^ "' not found"))
@@ -104,7 +95,7 @@ let get_char (value : Spec.value) key =
 let get_int (value : Spec.value) key =
   match value with
   | Spec.Map kvs -> (
-      match Collections.List.assoc_opt key kvs with
+      match List.assoc_opt key kvs with
       | Some (Spec.Int i) -> i
       | Some _ -> panic ("Config key '" ^ key ^ "' is not an int")
       | None -> panic ("Config key '" ^ key ^ "' not found"))
@@ -113,7 +104,7 @@ let get_int (value : Spec.value) key =
 let get_int32 (value : Spec.value) key =
   match value with
   | Spec.Map kvs -> (
-      match Collections.List.assoc_opt key kvs with
+      match List.assoc_opt key kvs with
       | Some (Spec.Int32 i) -> i
       | Some _ -> panic ("Config key '" ^ key ^ "' is not an int32")
       | None -> panic ("Config key '" ^ key ^ "' not found"))
@@ -122,7 +113,7 @@ let get_int32 (value : Spec.value) key =
 let get_int64 (value : Spec.value) key =
   match value with
   | Spec.Map kvs -> (
-      match Collections.List.assoc_opt key kvs with
+      match List.assoc_opt key kvs with
       | Some (Spec.Int64 i) -> i
       | Some _ -> panic ("Config key '" ^ key ^ "' is not an int64")
       | None -> panic ("Config key '" ^ key ^ "' not found"))
@@ -131,7 +122,7 @@ let get_int64 (value : Spec.value) key =
 let get_bool (value : Spec.value) key =
   match value with
   | Spec.Map kvs -> (
-      match Collections.List.assoc_opt key kvs with
+      match List.assoc_opt key kvs with
       | Some (Spec.Bool b) -> b
       | Some _ -> panic ("Config key '" ^ key ^ "' is not a bool")
       | None -> panic ("Config key '" ^ key ^ "' not found"))
@@ -140,7 +131,7 @@ let get_bool (value : Spec.value) key =
 let get_float (value : Spec.value) key =
   match value with
   | Spec.Map kvs -> (
-      match Collections.List.assoc_opt key kvs with
+      match List.assoc_opt key kvs with
       | Some (Spec.Float f) -> f
       | Some _ -> panic ("Config key '" ^ key ^ "' is not a float")
       | None -> panic ("Config key '" ^ key ^ "' not found"))
@@ -149,7 +140,7 @@ let get_float (value : Spec.value) key =
 let get_uri (value : Spec.value) key =
   match value with
   | Spec.Map kvs -> (
-      match Collections.List.assoc_opt key kvs with
+      match List.assoc_opt key kvs with
       | Some (Spec.Uri uri) -> uri
       | Some _ -> panic ("Config key '" ^ key ^ "' is not a URI")
       | None -> panic ("Config key '" ^ key ^ "' not found"))
@@ -158,7 +149,7 @@ let get_uri (value : Spec.value) key =
 let get_datetime (value : Spec.value) key =
   match value with
   | Spec.Map kvs -> (
-      match Collections.List.assoc_opt key kvs with
+      match List.assoc_opt key kvs with
       | Some (Spec.Datetime dt) -> dt
       | Some _ -> panic ("Config key '" ^ key ^ "' is not a datetime")
       | None -> panic ("Config key '" ^ key ^ "' not found"))
@@ -167,7 +158,7 @@ let get_datetime (value : Spec.value) key =
 let get_path (value : Spec.value) key =
   match value with
   | Spec.Map kvs -> (
-      match Collections.List.assoc_opt key kvs with
+      match List.assoc_opt key kvs with
       | Some (Spec.Path p) -> p
       | Some _ -> panic ("Config key '" ^ key ^ "' is not a path")
       | None -> panic ("Config key '" ^ key ^ "' not found"))
@@ -176,16 +167,35 @@ let get_path (value : Spec.value) key =
 let get_uuid (value : Spec.value) key =
   match value with
   | Spec.Map kvs -> (
-      match Collections.List.assoc_opt key kvs with
+      match List.assoc_opt key kvs with
       | Some (Spec.Uuid uuid) -> uuid
       | Some _ -> panic ("Config key '" ^ key ^ "' is not a UUID")
+      | None -> panic ("Config key '" ^ key ^ "' not found"))
+  | _ -> panic "Expected Map value"
+
+let get_list (value : Spec.value) key =
+  match value with
+  | Spec.Map kvs -> (
+      match List.assoc_opt key kvs with
+      | Some (Spec.List items) -> items
+      | Some _ -> panic ("Config key '" ^ key ^ "' is not a list")
+      | None -> panic ("Config key '" ^ key ^ "' not found"))
+  | _ -> panic "Expected Map value"
+
+let get_discriminated_union (value : Spec.value) key =
+  match value with
+  | Spec.Map kvs -> (
+      match List.assoc_opt key kvs with
+      | Some (Spec.DiscriminatedUnion { discriminant; variant; fields }) ->
+          (discriminant, variant, fields)
+      | Some _ -> panic ("Config key '" ^ key ^ "' is not a discriminated union")
       | None -> panic ("Config key '" ^ key ^ "' not found"))
   | _ -> panic "Expected Map value"
 
 let get_map (value : Spec.value) key =
   match value with
   | Spec.Map kvs -> (
-      match Collections.List.assoc_opt key kvs with
+      match List.assoc_opt key kvs with
       | Some (Spec.Map _ as m) -> m
       | Some _ -> panic ("Config key '" ^ key ^ "' is not a map")
       | None -> panic ("Config key '" ^ key ^ "' not found"))
@@ -234,6 +244,15 @@ let as_path (value : Spec.value) = match value with
 let as_uuid (value : Spec.value) = match value with
   | Spec.Uuid uuid -> uuid
   | _ -> panic "Expected Uuid value"
+
+let as_list (value : Spec.value) = match value with
+  | Spec.List items -> items
+  | _ -> panic "Expected List value"
+
+let as_discriminated_union (value : Spec.value) = match value with
+  | Spec.DiscriminatedUnion { discriminant; variant; fields } ->
+      (discriminant, variant, fields)
+  | _ -> panic "Expected DiscriminatedUnion value"
 
 let as_map (value : Spec.value) = match value with
   | Spec.Map kvs -> kvs

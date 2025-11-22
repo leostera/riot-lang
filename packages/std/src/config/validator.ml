@@ -1,7 +1,7 @@
 open Global
 
 (* Convert a value to string for error messages *)
-let value_to_string (v : Spec.value) = match v with
+let rec value_to_string (v : Spec.value) = match v with
   | Spec.String s -> "\"" ^ s ^ "\""
   | Spec.Char c -> "'" ^ String.make 1 c ^ "'"
   | Spec.Int i -> string_of_int i
@@ -13,6 +13,11 @@ let value_to_string (v : Spec.value) = match v with
   | Spec.Datetime dt -> Datetime.to_iso8601 dt
   | Spec.Path p -> Path.to_string p
   | Spec.Uuid uuid -> Uuid.to_string uuid
+  | Spec.List items ->
+      let items_str = String.concat ", " (Collections.List.map value_to_string items) in
+      "[" ^ items_str ^ "]"
+  | Spec.DiscriminatedUnion { discriminant; variant; fields = _ } ->
+      "<" ^ discriminant ^ "=" ^ variant ^ ">"
   | Spec.Map _ -> "<map>"
 
 (* Custom equality for Spec.value *)
@@ -29,6 +34,26 @@ let rec value_equal (v1 : Spec.value) (v2 : Spec.value) =
   | Spec.Datetime d1, Spec.Datetime d2 -> Datetime.equal d1 d2
   | Spec.Path p1, Spec.Path p2 -> Path.equal p1 p2
   | Spec.Uuid u1, Spec.Uuid u2 -> Uuid.equal u1 u2
+  | Spec.List l1, Spec.List l2 ->
+      let rec list_equal l1 l2 =
+        match (l1, l2) with
+        | [], [] -> true
+        | v1 :: rest1, v2 :: rest2 ->
+            value_equal v1 v2 && list_equal rest1 rest2
+        | _ -> false
+      in
+      list_equal l1 l2
+  | Spec.DiscriminatedUnion { discriminant = d1; variant = v1; fields = f1 }, 
+    Spec.DiscriminatedUnion { discriminant = d2; variant = v2; fields = f2 } ->
+      String.equal d1 d2 && String.equal v1 v2 &&
+      let rec map_equal l1 l2 =
+        match (l1, l2) with
+        | [], [] -> true
+        | (k1, v1) :: rest1, (k2, v2) :: rest2 ->
+            String.equal k1 k2 && value_equal v1 v2 && map_equal rest1 rest2
+        | _ -> false
+      in
+      map_equal f1 f2
   | Spec.Map m1, Spec.Map m2 ->
       let rec map_equal l1 l2 =
         match (l1, l2) with
@@ -203,6 +228,58 @@ let rec validate_field (field : Spec.field) toml_opt : (Spec.value, string) resu
           else match default with
           | Some d -> Ok (Spec.Uuid d)
           | None -> Error (field_name ^ ": no default"))
+  
+  | List { item_spec; default } -> (
+      match toml_opt with
+      | Some (Data.Toml.Array items) ->
+          (* Validate each item in the array *)
+          let rec validate_items acc index = function
+            | [] -> Ok (Collections.List.rev acc)
+            | item :: rest ->
+                let item_field = { item_spec with Spec.name = field_name ^ "[" ^ string_of_int index ^ "]" } in
+                (match validate_field item_field (Some item) with
+                | Ok validated_item -> validate_items (validated_item :: acc) (index + 1) rest
+                | Error err -> Error err)
+          in
+          (match validate_items [] 0 items with
+          | Ok validated_items -> Ok (Spec.List validated_items)
+          | Error err -> Error err)
+      | Some _ -> Error (field_name ^ ": expected array")
+      | None ->
+          if required then Error (field_name ^ ": required field missing")
+          else match default with
+          | Some d -> Ok (Spec.List d)
+          | None -> Error (field_name ^ ": no default"))
+  
+  | DiscriminatedUnion { discriminant; cases } -> (
+      match toml_opt with
+      | Some (Data.Toml.Table table) ->
+          (* Extract discriminant value *)
+          (match Collections.List.assoc_opt discriminant table with
+          | Some (Data.Toml.String variant_str) ->
+              (* Find matching case *)
+              (match Collections.List.assoc_opt variant_str cases with
+              | Some case_fields ->
+                  (* Validate fields for this case *)
+                  (match validate_fields case_fields (Some (Data.Toml.Table table)) with
+                  | Ok (Spec.Map validated_fields) ->
+                      Ok (Spec.DiscriminatedUnion {
+                        discriminant;
+                        variant = variant_str;
+                        fields = validated_fields;
+                      })
+                  | Ok _ -> Error (field_name ^ ": internal error - expected Map from validate_fields")
+                  | Error err -> Error err)
+              | None ->
+                  let valid_variants = String.concat ", " (Collections.List.map fst cases) in
+                  Error (field_name ^ ": unknown " ^ discriminant ^ " value '" ^ variant_str ^ 
+                         "'. Valid values: " ^ valid_variants))
+          | Some _ -> Error (field_name ^ ": discriminant field '" ^ discriminant ^ "' must be a string")
+          | None -> Error (field_name ^ ": missing discriminant field '" ^ discriminant ^ "'"))
+      | Some _ -> Error (field_name ^ ": expected table for discriminated union")
+      | None ->
+          if required then Error (field_name ^ ": required field missing")
+          else Error (field_name ^ ": discriminated unions don't support defaults"))
   
   | Map fields -> (
       match toml_opt with

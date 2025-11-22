@@ -83,6 +83,46 @@ type error =
   | FileNotFound of { path : string }
   (** Configuration file not found *)
 
+(** {1 Configuration Providers} *)
+
+module Provider : sig
+  type t
+  (** Configuration source - environment-based path, explicit path, or static TOML string *)
+  
+  val env : ?env:Loader.env -> unit -> t
+  (** Load from file based on environment (RIOT_ENV or default to dev).
+      
+      Example:
+      ```ocaml
+      Provider.env ()  (* Loads ./config/dev.toml based on RIOT_ENV *)
+      Provider.env ~env:Loader.Prod ()  (* Explicitly load ./config/prod.toml *)
+      ```
+  *)
+  
+  val file : Path.t -> t
+  (** Load from explicit file path.
+      
+      Example:
+      ```ocaml
+      Provider.file (Path.of_string "./my-custom-config.toml" |> Result.expect "invalid path")
+      Provider.file (Path.of_string "/etc/myapp/config.toml" |> Result.expect "invalid path")
+      ```
+  *)
+  
+  val static : string -> t
+  (** Load from inline TOML string (useful for tests and examples).
+      
+      Example:
+      ```ocaml
+      Provider.static {|
+        [myapp]
+        log_level = "debug"
+        port = 8080
+      |}
+      ```
+  *)
+end
+
 (** {1 Configuration Schema} *)
 
 module Spec = Spec
@@ -113,22 +153,54 @@ end
 
 (** {1 Core API} *)
 
-val child_spec : unit -> Supervisor.child_spec
-(** Create a child spec to start the config server.
+val load : ?provider:Provider.t -> unit -> unit
+(** Load configuration into the global config state.
     
-    This automatically loads **all** specs registered via {!Spec.for_app} and
-    validates them against the TOML configuration file. Configuration errors
-    cause the application to fail at startup.
+    Defaults to loading from file based on RIOT_ENV environment variable.
+    Must be called before {!get} can be used.
     
     Example:
     ```ocaml
-    let children = [
-      Config.child_spec ();  (* Loads all registered configs *)
-      (* other children *)
-    ]
-    ```
+    (* Load with inline config *)
+    Config.load ~provider:(Config.Provider.static {|
+      [myapp]
+      debug = true
+      port = 8080
+    |}) ()
     
-    @see <https://hexdocs.pm/elixir/Supervisor.html> Elixir Supervisor docs
+    (* Or load from file *)
+    Config.load ()  (* Uses RIOT_ENV - loads ./config/dev.toml *)
+    
+    (* Or load from custom path *)
+    let path = Path.of_string "/etc/myapp/config.toml" |> Result.expect "path" in
+    Config.load ~provider:(Config.Provider.file path) ()
+    ```
+*)
+
+val load_string : string -> unit
+(** Load configuration from inline TOML string.
+    
+    Convenience function equivalent to [load ~provider:(Provider.static str) ()].
+    
+    Example:
+    ```ocaml
+    Config.load_string {|
+      [myapp]
+      port = 8080
+    |}
+    ```
+*)
+
+val load_file : Path.t -> unit
+(** Load configuration from specific file path.
+    
+    Convenience function equivalent to [load ~provider:(Provider.file path) ()].
+    
+    Example:
+    ```ocaml
+    let path = Path.of_string "./my-config.toml" |> Result.expect "path" in
+    Config.load_file path
+    ```
 *)
 
 val get : (module ConfigSpec with type t = 'a) -> ('a, error) result
@@ -159,6 +231,55 @@ val error_to_string : error -> string
     ```ocaml
     | Error err -> Log.error "Config error: %s" (Config.error_to_string err)
     ```
+*)
+
+val reload : ?provider:Provider.t -> unit -> (unit, string) result
+(** Hot reload configuration at runtime.
+    
+    If [provider] is given, uses that source. Otherwise reloads from
+    the same provider used at startup.
+    
+    This is useful for:
+    - Reloading configuration after file changes
+    - Switching configuration sources dynamically
+    - Testing different configurations
+    
+    Example:
+    ```ocaml
+    (* Reload from file *)
+    Config.reload () |> Result.expect "reload failed"
+    
+    (* Reload from new static config *)
+    Config.reload ~provider:(Provider.static {|
+      [myapp]
+      log_level = "debug"
+    |}) () |> Result.expect "reload failed"
+    ```
+    
+    Returns [Error] if the config server is not running.
+*)
+
+val patch : app:string -> (string * Spec.value) list -> (unit, string) result
+(** Patch specific config values at runtime (useful for testing/debugging).
+    
+    This allows you to override specific configuration values without
+    reloading the entire configuration. Only works on Map values.
+    
+    Example:
+    ```ocaml
+    (* Temporarily increase log verbosity *)
+    Config.patch ~app:"myapp" [
+      ("log_level", Spec.String "debug");
+      ("port", Spec.Int 9999);
+    ] |> Result.expect "patch failed"
+    ```
+    
+    Returns [Error] if:
+    - The config server is not running
+    - The app is not found
+    - The config value is not a Map
+    
+    @raise Panic if attempting to patch a non-Map value
 *)
 
 (** {1 Value Extraction Helpers}
@@ -275,6 +396,35 @@ val get_uuid : Spec.value -> string -> Uuid.t
     @raise Panic if key not found or value is not a UUID
 *)
 
+val get_list : Spec.value -> string -> Spec.value list
+(** Extract a list value from a map.
+    
+    Example:
+    ```ocaml
+    let handlers = Config.get_list conf "handlers" in
+    List.map parse_handler handlers
+    ```
+    
+    @raise Panic if key not found or value is not a list
+*)
+
+val get_discriminated_union : Spec.value -> string -> string * string * (string * Spec.value) list
+(** Extract a discriminated union from a map by key.
+    
+    Returns [(discriminant_name, variant_value, fields)].
+    
+    Example:
+    ```ocaml
+    let (_, variant, fields) = Config.get_discriminated_union conf "handler" in
+    match variant with
+    | "console" -> parse_console fields
+    | "file" -> parse_file fields
+    | v -> panic ("Unknown handler type: " ^ v)
+    ```
+    
+    @raise Panic if key not found or value is not a discriminated union
+*)
+
 val get_map : Spec.value -> string -> Spec.value
 (** Extract a nested map value from a map.
     
@@ -357,6 +507,26 @@ val as_uuid : Spec.value -> Uuid.t
 (** Extract the UUID from a Uuid value.
     
     @raise Panic if the value is not a UUID
+*)
+
+val as_list : Spec.value -> Spec.value list
+(** Extract the items from a List value.
+    
+    @raise Panic if the value is not a List
+*)
+
+val as_discriminated_union : Spec.value -> string * string * (string * Spec.value) list
+(** Extract (discriminant_name, variant_value, fields) from a DiscriminatedUnion.
+    
+    Example:
+    ```ocaml
+    match Config.as_discriminated_union handler_value with
+    | (_, "console", fields) -> parse_console fields
+    | (_, "file", fields) -> parse_file fields
+    | (_, variant, _) -> panic ("Unknown handler type: " ^ variant)
+    ```
+    
+    @raise Panic if value is not a DiscriminatedUnion
 *)
 
 val as_map : Spec.value -> (string * Spec.value) list
