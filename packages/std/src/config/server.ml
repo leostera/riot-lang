@@ -46,15 +46,16 @@ let load_and_validate_all_specs provider =
   
   List.iter (fun spec ->
     let app_name = Spec.app_name spec in
-    let app_toml = match Loader.extract_app_section app_name root_toml with
-      | Error msg -> panic ("Missing [" ^ app_name ^ "] section: " ^ msg)
-      | Ok toml -> toml
-    in
-    let validated = match Validator.validate spec app_toml with
-      | Error err -> panic ("Validation error for [" ^ app_name ^ "]: " ^ err)
-      | Ok v -> v
-    in
-    HashMap.insert configs app_name validated |> ignore
+    match Loader.extract_app_section app_name root_toml with
+    | Error _msg -> 
+        (* Section not found - skip it (it's optional) *)
+        ()
+    | Ok app_toml ->
+        let validated = match Validator.validate spec app_toml with
+          | Error err -> panic ("Validation error for [" ^ app_name ^ "]: " ^ err)
+          | Ok v -> v
+        in
+        HashMap.insert configs app_name validated |> ignore
   ) specs;
   
   configs

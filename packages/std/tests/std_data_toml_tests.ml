@@ -325,6 +325,40 @@ tasty = true
       | None -> Error "fruits is not an array")
   | _ -> Error "Parse failed"
 
+let test_array_of_tables_dotted_path =
+  Test.case "parse array of tables with dotted path" @@ fun () ->
+  let input =
+    {|
+[[log.handler]]
+type = "stdout"
+format = "full"
+
+[[log.handler]]
+type = "file"
+path = "./app.log"
+|}
+  in
+  match Toml.parse input with
+  | Ok (Toml.Table sections) -> (
+      (* Should create nested structure: { "log": { "handler": [...] } } *)
+      match List.assoc_opt "log" sections with
+      | None -> Error "No 'log' key found (bug: dotted paths not nested)"
+      | Some log_value -> (
+          match get_table log_value with
+          | None -> Error "'log' is not a table"
+          | Some log_fields -> (
+              match List.assoc_opt "handler" log_fields with
+              | None -> Error "No 'handler' key in 'log' table"
+              | Some handler_value -> (
+                  match get_array handler_value with
+                  | None -> Error "'handler' is not an array"
+                  | Some [ Toml.Table h1; Toml.Table h2 ]
+                    when List.length h1 = 2 && List.length h2 = 2 ->
+                      Ok ()
+                  | Some arr ->
+                      Error ("Expected 2 handlers, got " ^ Int.to_string (List.length arr))))))
+  | _ -> Error "Parse failed"
+
 (* === COMMENT TESTS === *)
 
 let test_line_comment =
@@ -632,6 +666,7 @@ let () =
           test_array_of_tables_simple;
           test_array_of_tables_empty;
           test_array_of_tables_multiple_keys;
+          test_array_of_tables_dotted_path;
           (* Comments *)
           test_line_comment;
           test_inline_comment;

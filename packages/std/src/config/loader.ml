@@ -35,10 +35,23 @@ let load_for_env env =
   let path = config_path env in
   load_file path
 
-let extract_app_section app_name toml =
-  match Data.Toml.get_table toml with
-  | None -> Error ("Root is not a table")
-  | Some fields ->
-      match Collections.List.assoc_opt app_name fields with
-      | None -> Error ("No [" ^ app_name ^ "] section found")
-      | Some section -> Ok section
+let rec extract_app_section app_name toml =
+  match String.split_on_char '.' app_name with
+  | [] -> Error "Empty app name"
+  | [single] -> 
+      (* Single key - original behavior *)
+      (match Data.Toml.get_table toml with
+      | None -> Error "Root is not a table"
+      | Some fields ->
+          match Collections.List.assoc_opt single fields with
+          | None -> Error ("No [" ^ single ^ "] section found")
+          | Some section -> Ok section)
+  | first :: rest ->
+      (* Dotted path - navigate recursively *)
+      (match Data.Toml.get_table toml with
+      | None -> Error "Root is not a table"
+      | Some fields ->
+          match Collections.List.assoc_opt first fields with
+          | None -> Error ("No [" ^ first ^ "] section found")
+          | Some next_table -> 
+              extract_app_section (String.concat "." rest) next_table)

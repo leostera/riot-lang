@@ -433,7 +433,10 @@ let parse content =
       (* Add array sections as arrays *)
       let items_with_arrays =
         List.fold_left
-          (fun acc (name, tables) -> (name, Array (List.rev tables)) :: acc)
+          (fun acc (name, tables) -> 
+            (* Split dotted array section names (e.g., "log.handler" -> ["log"; "handler"]) *)
+            let path = String.split_on_char '.' name in
+            insert_nested_table path (Array (List.rev tables)) acc)
           items !array_sections
       in
 
