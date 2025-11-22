@@ -97,9 +97,9 @@ module SSEIterator = struct
               List.iter
                 (fun msg ->
                   match msg with
-                  | `Data chunk -> state.buffer <- state.buffer ^ chunk
-                  | `Done -> state.done_ <- true
-                  | `Status _ | `Headers _ -> ())
+                  | Connection.Data chunk -> state.buffer <- state.buffer ^ chunk
+                  | Connection.Done -> state.done_ <- true
+                  | Connection.Status _ | Connection.Headers _ -> ())
                 msgs;
 
               if state.done_ && state.buffer = "" then None

@@ -94,16 +94,16 @@ let test_streamed_response () =
           let on_message msgs =
             List.iter (fun msg ->
               match msg with
-              | `Data chunk ->
+              | Blink.Connection.Data chunk ->
                   chunk_count := !chunk_count + 1;
                   let preview = chunk in
                   Log.info ("Chunk " ^ string_of_int !chunk_count ^ 
                            " (" ^ string_of_int (String.length chunk) ^ " bytes): " ^ preview)
-              | `Status status ->
+              | Blink.Connection.Status status ->
                   Log.info ("Status: " ^ string_of_int (Net.Http.Status.to_int status))
-              | `Headers _headers ->
+              | Blink.Connection.Headers _headers ->
                   Log.info "Headers received"
-              | `Done ->
+              | Blink.Connection.Done ->
                   Log.info "Done!"
             ) msgs
           in

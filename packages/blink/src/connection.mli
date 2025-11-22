@@ -3,10 +3,10 @@ open Std
 type t
 
 type message =
-  [ `Data of string
-  | `Done
-  | `Headers of Net.Http.Header.t
-  | `Status of Net.Http.Status.t ]
+  | Data of string
+  | Done
+  | Headers of Net.Http.Header.t
+  | Status of Net.Http.Status.t
 
 val make :
   reader:('socket, 'err) IO.Reader.t ->

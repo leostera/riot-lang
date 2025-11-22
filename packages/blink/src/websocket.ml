@@ -4,11 +4,11 @@ open Std.IO
 type error = Error.t
 
 type message =
-  [ `Text of string
-  | `Binary of string
-  | `Ping of string
-  | `Pong of string
-  | `Close of int option * string ]
+  | Text of string
+  | Binary of string
+  | Ping of string
+  | Pong of string
+  | Close of int option * string
 
 type t = {
   stream : Net.TcpStream.t;
@@ -142,6 +142,7 @@ let send_frame conn frame =
     let serialized = Http.Ws.Serializer.serialize frame in
     let writer = Net.TcpStream.to_writer conn.stream in
     match IO.write_all writer ~buf:serialized with
+    | Ok () -> Ok ()
     | Error Net.TcpStream.Closed -> Error (Error.Net_error Net.Closed)
     | Error Net.TcpStream.Connection_refused -> Error (Error.Net_error Net.Connection_refused)
     | Error (Net.TcpStream.System_error s) -> Error (Error.Net_error (Net.System_error s))
@@ -183,15 +184,14 @@ let receive conn =
           Buffer.clear conn.buffer;
           Buffer.add_string conn.buffer remaining;
 
-          let open Http.Ws.Frame in
-          match frame.opcode with
-          | Text -> Ok (`Text frame.payload)
-          | Binary -> Ok (`Binary frame.payload)
-          | Ping ->
+          match frame.Http.Ws.Frame.opcode with
+          | Http.Ws.Frame.Text -> Ok (Text frame.payload)
+          | Http.Ws.Frame.Binary -> Ok (Binary frame.payload)
+          | Http.Ws.Frame.Ping ->
               let _ = send_pong conn ~payload:frame.payload () in
-              Ok (`Ping frame.payload)
-          | Pong -> Ok (`Pong frame.payload)
-          | Close ->
+              Ok (Ping frame.payload)
+          | Http.Ws.Frame.Pong -> Ok (Pong frame.payload)
+          | Http.Ws.Frame.Close ->
               conn.closed <- true;
               if String.length frame.payload >= 2 then
                 let code =
@@ -203,9 +203,9 @@ let receive conn =
                     String.sub frame.payload 2 (String.length frame.payload - 2)
                   else ""
                 in
-                Ok (`Close (Some code, reason))
-              else Ok (`Close (None, ""))
-          | Continuation -> Error Error.Invalid_frame)
+                Ok (Close (Some code, reason))
+              else Ok (Close (None, ""))
+          | Http.Ws.Frame.Continuation -> Error Error.Invalid_frame)
       | Http.Ws.Parser.Need_more -> (
           let reader = Net.TcpStream.to_reader conn.stream in
           let buf = Bytes.create 4096 in

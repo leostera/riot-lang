@@ -2,10 +2,10 @@ open Std
 open Std.IO
 
 type message =
-  [ `Data of string
-  | `Done
-  | `Headers of Net.Http.Header.t
-  | `Status of Net.Http.Status.t ]
+  | Data of string
+  | Done
+  | Headers of Net.Http.Header.t
+  | Status of Net.Http.Status.t
 
 type response_state =
   | Waiting_for_headers
@@ -94,7 +94,7 @@ let read_more (Conn conn) =
 
 let stream (Conn conn as c) =
   match conn.state with
-  | Complete -> Ok [ `Done ]
+  | Complete -> Ok [ Done ]
   | Waiting_for_headers ->
       let rec try_parse () =
         let data = Buffer.contents conn.buffer in
@@ -125,7 +125,7 @@ let stream (Conn conn as c) =
                       with _ -> Complete)
                   | None -> Complete));
 
-            Ok [ `Status status; `Headers headers ]
+            Ok [ Status status; Headers headers ]
         | Http.Http1.Common.Need_more -> (
             match read_more c with
             | Ok () -> try_parse ()
@@ -141,7 +141,7 @@ let stream (Conn conn as c) =
       if remaining <= 0 then (
         (* Body complete but buffer empty *)
         conn.state <- Complete;
-        Ok [ `Done ])
+        Ok [ Done ])
       else if available >= remaining then (
         (* We have enough data in buffer to complete the body *)
         let body_data = String.sub data 0 remaining in
@@ -149,13 +149,13 @@ let stream (Conn conn as c) =
         Buffer.clear conn.buffer;
         Buffer.add_string conn.buffer leftover;
         conn.state <- Complete;
-        Ok [ `Data body_data; `Done ])
+        Ok [ Data body_data; Done ])
       else if available > 0 then (
         (* Partial data available, consume it and continue *)
         Buffer.clear conn.buffer;
         conn.state <-
           Reading_fixed_body { length; received = received + available };
-        Ok [ `Data data ])
+        Ok [ Data data ])
       else match read_more c with Ok () -> Ok [] | Error e -> Error e)
   | Reading_chunked_body ->
       let rec parse_chunks acc =
@@ -168,10 +168,10 @@ let stream (Conn conn as c) =
 
             if chunk_data = "" then (
               conn.state <- Complete;
-              Ok (List.rev (`Done :: acc)))
+              Ok (List.rev (Done :: acc)))
             else 
               (* Return the chunk immediately for streaming support *)
-              Ok (List.rev (`Data chunk_data :: acc))
+              Ok (List.rev (Data chunk_data :: acc))
         | Http.Http1.Common.Need_more -> (
             match read_more c with
             | Ok () -> parse_chunks acc
@@ -188,7 +188,7 @@ let messages ?(on_message = fun _ -> ()) conn =
     | Ok msgs ->
         on_message msgs;
         let acc = List.rev_append (List.rev msgs) acc in
-        if List.mem `Done msgs then Ok (List.rev acc) else loop acc
+        if List.mem Done msgs then Ok (List.rev acc) else loop acc
   in
   loop []
 
@@ -203,7 +203,7 @@ let await ?(on_message = fun _ -> ()) (Conn conn as c) =
       in
 
       let body_chunks =
-        List.filter_map (function `Data chunk -> Some chunk | _ -> None) msgs
+        List.filter_map (function Data chunk -> Some chunk | _ -> None) msgs
       in
 
       let body = String.concat "" body_chunks in

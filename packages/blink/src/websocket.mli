@@ -4,11 +4,11 @@ type t
 type error = Error.t
 
 type message =
-  [ `Text of string
-  | `Binary of string
-  | `Ping of string
-  | `Pong of string
-  | `Close of int option * string ]
+  | Text of string
+  | Binary of string
+  | Ping of string
+  | Pong of string
+  | Close of int option * string
 
 val connect : Net.Uri.t -> (t, error) result
 val send_text : t -> string -> (unit, error) result
