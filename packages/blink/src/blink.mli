@@ -4,6 +4,7 @@ module Transport : module type of Transport
 module Connection : module type of Connection
 module WebSocket : module type of Websocket
 module Error : module type of Error
+module SSE : module type of Sse
 
 type error = Error.t
 type message = Connection.message

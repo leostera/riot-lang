@@ -51,8 +51,11 @@ let connect uri =
   in
   let port = Net.Uri.port uri |> Option.unwrap_or ~default:default_port in
 
+  Log.info "connecting!";
   match Net.Addr.of_host_and_port ~host ~port with
-  | Error _e -> Error (Error.Net_error (Net.System_error "Address resolution failed"))
+  | Error (Net.Addr.System_error io_err) -> Error (Error.Net_error (Net.System_error io_err))
+  | Error (Net.Addr.Invalid_port_number _ | Net.Addr.Invalid_format _) ->
+      Error (Error.Net_error (Net.System_error IO.Invalid_argument))
   | Ok addr -> (
       match Net.Uri.scheme uri with
       | Some "https" | Some "wss" -> Tls.connect addr uri

@@ -121,8 +121,7 @@ let stream (Conn conn as c) =
                   | Some len -> (
                       try
                         let length = int_of_string len in
-                        Reading_fixed_body
-                          { length; received = String.length remaining }
+                        Reading_fixed_body { length; received = 0 }
                       with _ -> Complete)
                   | None -> Complete));
 
@@ -139,18 +138,7 @@ let stream (Conn conn as c) =
       let available = String.length data in
       let remaining = length - received in
       
-      if received >= length && available > 0 then (
-        (* We already received all the body data during header parsing *)
-        let body_data = String.sub data 0 (min available length) in
-        let leftover_len = available - (min available length) in
-        if leftover_len > 0 then (
-          let leftover = String.sub data (min available length) leftover_len in
-          Buffer.clear conn.buffer;
-          Buffer.add_string conn.buffer leftover
-        ) else Buffer.clear conn.buffer;
-        conn.state <- Complete;
-        Ok [ `Data body_data; `Done ])
-      else if remaining <= 0 then (
+      if remaining <= 0 then (
         (* Body complete but buffer empty *)
         conn.state <- Complete;
         Ok [ `Done ])
@@ -181,7 +169,9 @@ let stream (Conn conn as c) =
             if chunk_data = "" then (
               conn.state <- Complete;
               Ok (List.rev (`Done :: acc)))
-            else parse_chunks (`Data chunk_data :: acc)
+            else 
+              (* Return the chunk immediately for streaming support *)
+              Ok (List.rev (`Data chunk_data :: acc))
         | Http.Http1.Common.Need_more -> (
             match read_more c with
             | Ok () -> parse_chunks acc

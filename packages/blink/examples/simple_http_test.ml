@@ -24,10 +24,14 @@ let () =
           conn
       | Error (Blink.Error.Net_error Net.Connection_refused) -> panic "Connection refused"
       | Error (Blink.Error.Net_error Net.Closed) -> panic "Connection closed"
-      | Error (Blink.Error.Net_error (Net.System_error msg)) -> panic ("System error: " ^ msg)
+      | Error (Blink.Error.Net_error (Net.System_error io_err)) -> panic ("System error: " ^ IO.error_message io_err)
       | Error (Blink.Error.Tls_error Net.TlsStream.Closed) -> panic "TLS closed"
       | Error (Blink.Error.Tls_error (Net.TlsStream.Handshake_failed msg)) -> panic ("TLS handshake failed: " ^ msg)
-      | Error (Blink.Error.Tls_error (Net.TlsStream.System_error msg)) -> panic ("TLS system error: " ^ msg)
+      | Error (Blink.Error.Tls_error (Net.TlsStream.System_error io_err)) -> panic ("TLS system error: " ^ IO.error_message io_err)
+      | Error (Blink.Error.Tls_error (Net.TlsStream.Network_read_failed _err)) -> panic "TLS network read failed"
+      | Error (Blink.Error.Tls_error (Net.TlsStream.Network_write_failed _err)) -> panic "TLS network write failed"
+      | Error (Blink.Error.Tls_error Net.TlsStream.Tls_not_available) -> panic "TLS not available"
+      | Error (Blink.Error.Tls_error Net.TlsStream.Unsupported_vectored_operation) -> panic "Unsupported vectored operation"
       | Error (Blink.Error.Parse_error msg) -> panic ("Parse error: " ^ msg)
       | Error (Blink.Error.Protocol_error msg) -> panic ("Protocol error: " ^ msg)
       | Error (Blink.Error.Handshake_failed msg) -> panic ("Handshake failed: " ^ msg)

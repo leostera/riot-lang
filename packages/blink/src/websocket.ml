@@ -37,7 +37,9 @@ let connect uri =
   let path = Net.Uri.path uri in
 
   match Net.Addr.of_host_and_port ~host ~port with
-  | Error _e -> Error (Error.Net_error (Net.System_error "Address resolution failed"))
+  | Error (Net.Addr.System_error io_err) -> Error (Error.Net_error (Net.System_error io_err))
+  | Error (Net.Addr.Invalid_port_number _ | Net.Addr.Invalid_format _) ->
+      Error (Error.Net_error (Net.System_error IO.Invalid_argument))
   | Ok addr -> (
       match Net.TcpStream.connect addr with
       | Error Net.TcpStream.Closed -> Error (Error.Net_error Net.Closed)
