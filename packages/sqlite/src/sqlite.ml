@@ -41,9 +41,31 @@ module Driver = struct
   type statement = { sql : string; conn : connection }
   type result_set = { rows : Sqlx_driver.Row.t list; rows_affected : int }
 
+  type error = 
+    | ConnectionClosed
+    | PrepareFailed of string
+    | ExecutionFailed of string
+    | UnsupportedOperation of string
+
   let name = "SQLite"
 
-  let connect (config : config) : (connection, string) result =
+  let error_to_string = function
+    | ConnectionClosed -> "Connection is closed"
+    | PrepareFailed msg -> "Failed to prepare statement: " ^ msg
+    | ExecutionFailed msg -> "Failed to execute statement: " ^ msg
+    | UnsupportedOperation msg -> "Unsupported operation: " ^ msg
+
+  let error_to_json err =
+    Data.Json.obj [
+      ("type", Data.Json.string (match err with
+        | ConnectionClosed -> "connection_closed"
+        | PrepareFailed _ -> "prepare_failed"
+        | ExecutionFailed _ -> "execution_failed"
+        | UnsupportedOperation _ -> "unsupported_operation"));
+      ("message", Data.Json.string (error_to_string err))
+    ]
+
+  let connect (config : config) : (connection, error) result =
     let id = "sqlite_" ^ string_of_int (Random.int 1000000) in
     Ok { id; path = config.path; handle = (); closed = false }
 
@@ -51,7 +73,7 @@ module Driver = struct
   let ping conn = not conn.closed
 
   let prepare conn sql =
-    if conn.closed then Error "Connection is closed" else Ok { sql; conn }
+    if conn.closed then Error ConnectionClosed else Ok { sql; conn }
 
   let execute _stmt _params =
     (* TODO: Implement actual SQLite execution via FFI *)
@@ -67,5 +89,5 @@ module Driver = struct
 
   let set_isolation_level _conn _level =
     (* SQLite doesn't support standard isolation levels *)
-    Error "SQLite does not support setting isolation levels"
+    Error (UnsupportedOperation "SQLite does not support setting isolation levels")
 end

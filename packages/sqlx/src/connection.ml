@@ -1,5 +1,12 @@
 open Std
 
+(** Error type that wraps driver errors with their conversion functions *)
+type error = DriverError : {
+  error: 'err;
+  to_string: 'err -> string;
+  to_json: 'err -> Data.Json.t;
+} -> error
+
 (** Synchronous connection - executes SQL directly in caller's process *)
 type t =
   | Connection : {
@@ -34,17 +41,17 @@ let create (Config { driver; config }) =
         created_at = Time.Instant.now ();
         last_used = Time.Instant.now ();
       })
-  | Error e -> Error e
+  | Error e -> Error (DriverError { error = e; to_string = D.error_to_string; to_json = D.error_to_json })
 
 (** Query executes DIRECTLY in caller's process *)
 let query (Connection t) sql params =
   t.last_used <- Time.Instant.now ();
   let module D = (val t.driver) in
   match D.prepare t.driver_conn sql with
-  | Error e -> Error e
+  | Error e -> Error (DriverError { error = e; to_string = D.error_to_string; to_json = D.error_to_json })
   | Ok stmt -> (
       match D.execute stmt params with
-      | Error e -> Error e
+      | Error e -> Error (DriverError { error = e; to_string = D.error_to_string; to_json = D.error_to_json })
       | Ok result_set ->
           let cursor_id =
             "cursor_" ^ string_of_int (Random.int 1000000)
@@ -61,10 +68,10 @@ let execute (Connection t) sql params =
   t.last_used <- Time.Instant.now ();
   let module D = (val t.driver) in
   match D.prepare t.driver_conn sql with
-  | Error e -> Error e
+  | Error e -> Error (DriverError { error = e; to_string = D.error_to_string; to_json = D.error_to_json })
   | Ok stmt -> (
       match D.execute stmt params with
-      | Error e -> Error e
+      | Error e -> Error (DriverError { error = e; to_string = D.error_to_string; to_json = D.error_to_json })
       | Ok result_set -> Ok (D.rows_affected result_set))
 
 (** Ping executes DIRECTLY in caller's process *)

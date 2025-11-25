@@ -59,22 +59,34 @@ module type Intf = sig
      This contains the results of executing a query. *)
   type result_set
 
+  (* Driver-specific error type.
+     This allows drivers to preserve structured error information. *)
+  type error
+
   (* ## Driver Information *)
 
   (* The name of the database driver (e.g., "PostgreSQL", "SQLite") *)
   val name : string
+  
+  (* ## Error Conversion *)
+  
+  (* Convert driver error to human-readable string *)
+  val error_to_string : error -> string
+  
+  (* Convert driver error to JSON for serialization *)
+  val error_to_json : error -> Data.Json.t
 
   (* ## Connection Management *)
 
   (* `connect config` establishes a new connection to the database.
-     Returns `Ok connection` on success or `Error message` on failure.
+     Returns `Ok connection` on success or `Error error` on failure.
      
      The driver should:
      - Establish network connection (if applicable)
      - Perform authentication
      - Set up any initial session parameters
   *)
-  val connect : config -> (connection, string) result
+  val connect : config -> (connection, error) result
 
   (* `close conn` closes the database connection and releases all resources.
      This should be safe to call multiple times. *)
@@ -87,23 +99,23 @@ module type Intf = sig
   (* ## Query Execution *)
 
   (* `prepare conn sql` prepares a SQL statement for execution.
-     Returns `Ok statement` on success or `Error message` on failure.
+     Returns `Ok statement` on success or `Error error` on failure.
      
      Preparing statements allows for:
      - Better performance when executing the same query multiple times
      - Protection against SQL injection when using parameters
   *)
-  val prepare : connection -> string -> (statement, string) result
+  val prepare : connection -> string -> (statement, error) result
 
   (* `execute stmt params` executes a prepared statement with the given parameters.
-     Returns `Ok result_set` on success or `Error message` on failure.
+     Returns `Ok result_set` on success or `Error error` on failure.
      
      Parameters are substituted for placeholders in the prepared statement.
      Different databases use different placeholder syntax:
      - PostgreSQL: $1, $2, $3, ...
      - SQLite/MySQL: ?, ?, ?, ...
   *)
-  val execute : statement -> Value.t list -> (result_set, string) result
+  val execute : statement -> Value.t list -> (result_set, error) result
 
   (* ## Result Processing *)
 
@@ -123,29 +135,29 @@ module type Intf = sig
   (* ## Transaction Management *)
 
   (* `begin_transaction conn` starts a new database transaction.
-     Returns `Ok ()` on success or `Error message` on failure.
+     Returns `Ok ()` on success or `Error error` on failure.
      
      After calling this, all subsequent operations on the connection
      are part of the transaction until `commit` or `rollback` is called.
   *)
-  val begin_transaction : connection -> (unit, string) result
+  val begin_transaction : connection -> (unit, error) result
 
   (* `commit conn` commits the current transaction.
-     Returns `Ok ()` on success or `Error message` on failure.
+     Returns `Ok ()` on success or `Error error` on failure.
      
      This makes all changes in the transaction permanent.
   *)
-  val commit : connection -> (unit, string) result
+  val commit : connection -> (unit, error) result
 
   (* `rollback conn` rolls back the current transaction.
-     Returns `Ok ()` on success or `Error message` on failure.
+     Returns `Ok ()` on success or `Error error` on failure.
      
      This discards all changes made in the transaction.
   *)
-  val rollback : connection -> (unit, string) result
+  val rollback : connection -> (unit, error) result
 
   (* `set_isolation_level conn level` sets the transaction isolation level.
-     Returns `Ok ()` on success or `Error message` on failure.
+     Returns `Ok ()` on success or `Error error` on failure.
      
      Isolation levels (from least to most isolated):
      - `Read_uncommitted`: Can read uncommitted changes from other transactions
@@ -158,5 +170,5 @@ module type Intf = sig
   val set_isolation_level :
     connection ->
     [ `Read_uncommitted | `Read_committed | `Repeatable_read | `Serializable ] ->
-    (unit, string) result
+    (unit, error) result
 end

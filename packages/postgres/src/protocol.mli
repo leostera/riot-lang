@@ -12,6 +12,276 @@ type message_type =
   | Close
   | Sync
 
+module Sqlstate : sig
+  type t =
+  (* Class 00 — Successful Completion *)
+  | SuccessfulCompletion
+  
+  (* Class 01 — Warning *)
+  | Warning
+  | DynamicResultSetsReturned
+  | ImplicitZeroBitPadding
+  | NullValueEliminatedInSetFunction
+  | PrivilegeNotGranted
+  | PrivilegeNotRevoked
+  | StringDataRightTruncationWarning
+  | DeprecatedFeature
+  
+  (* Class 02 — No Data *)
+  | NoData
+  | NoAdditionalDynamicResultSetsReturned
+  
+  (* Class 08 — Connection Exception *)
+  | ConnectionException
+  | ConnectionDoesNotExist
+  | ConnectionFailure
+  | SqlclientUnableToEstablishSqlconnection
+  | SqlserverRejectedEstablishmentOfSqlconnection
+  | TransactionResolutionUnknown
+  | ProtocolViolation
+  
+  (* Class 23 — Integrity Constraint Violation *)
+  | IntegrityConstraintViolation
+  | RestrictViolation
+  | NotNullViolation
+  | ForeignKeyViolation
+  | UniqueViolation
+  | CheckViolation
+  | ExclusionViolation
+  
+  (* Class 42 — Syntax Error or Access Rule Violation *)
+  | SyntaxErrorOrAccessRuleViolation
+  | SyntaxError
+  | InsufficientPrivilege
+  | CannotCoerce
+  | GroupingError
+  | WindowingError
+  | InvalidRecursion
+  | InvalidForeignKey
+  | InvalidName
+  | NameTooLong
+  | ReservedName
+  | DatatypeMismatch
+  | IndeterminateDatatype
+  | CollationMismatch
+  | IndeterminateCollation
+  | WrongObjectType
+  | UndefinedColumn
+  | UndefinedFunction
+  | UndefinedTable
+  | UndefinedParameter
+  | UndefinedObject
+  | DuplicateColumn
+  | DuplicateCursor
+  | DuplicateDatabase
+  | DuplicateFunction
+  | DuplicatePreparedStatement
+  | DuplicateSchema
+  | DuplicateTable
+  | DuplicateAlias
+  | DuplicateObject
+  | AmbiguousColumn
+  | AmbiguousFunction
+  | AmbiguousParameter
+  | AmbiguousAlias
+  | InvalidColumnReference
+  | InvalidColumnDefinition
+  | InvalidCursorDefinition
+  | InvalidDatabaseDefinition
+  | InvalidFunctionDefinition
+  | InvalidPreparedStatementDefinition
+  | InvalidSchemaDefinition
+  | InvalidTableDefinition
+  | InvalidObjectDefinition
+  
+  (* Class 53 — Insufficient Resources *)
+  | InsufficientResources
+  | DiskFull
+  | OutOfMemory
+  | TooManyConnections
+  | ConfigurationLimitExceeded
+  
+  (* Class 54 — Program Limit Exceeded *)
+  | ProgramLimitExceeded
+  | StatementTooComplex
+  | TooManyColumns
+  | TooManyArguments
+  
+  (* Class 55 — Object Not In Prerequisite State *)
+  | ObjectNotInPrerequisiteState
+  | ObjectInUse
+  | CantChangeRuntimeParam
+  | LockNotAvailable
+  
+  (* Class 57 — Operator Intervention *)
+  | OperatorIntervention
+  | QueryCanceled
+  | AdminShutdown
+  | CrashShutdown
+  | CannotConnectNow
+  | DatabaseDropped
+  
+  (* Class 58 — System Error *)
+  | SystemError
+  | IoError
+  | UndefinedFile
+  | DuplicateFile
+  
+  (* Class P0 — PL/pgSQL Error *)
+  | PlpgsqlError
+  | RaiseException
+  | NoDataFound
+  | TooManyRows
+  
+  (* Class XX — Internal Error *)
+  | InternalError
+  | DataCorrupted
+  | IndexCorrupted
+  
+  (* Other/Unknown *)
+  | UnknownSqlstate of string
+
+  val of_string : string -> t
+  val to_string : t -> string
+end
+
+module Error : sig
+  type t = {
+    severity: string option;
+    sqlstate: Sqlstate.t option;
+    message: string;
+    detail: string option;
+    hint: string option;
+    position: int option;
+    internal_position: int option;
+    internal_query: string option;
+    where_context: string option;
+    schema_name: string option;
+    table_name: string option;
+    column_name: string option;
+    datatype_name: string option;
+    constraint_name: string option;
+    source_file: string option;
+    source_line: int option;
+    source_routine: string option;
+  }
+
+  val severity : t -> string option
+  val sqlstate : t -> Sqlstate.t option
+  val message : t -> string
+  val detail : t -> string option
+  val hint : t -> string option
+  val position : t -> int option
+  val internal_position : t -> int option
+  val internal_query : t -> string option
+  val where_context : t -> string option
+  val schema_name : t -> string option
+  val table_name : t -> string option
+  val column_name : t -> string option
+  val datatype_name : t -> string option
+  val constraint_name : t -> string option
+  val source_file : t -> string option
+  val source_line : t -> int option
+  val source_routine : t -> string option
+
+  val to_string : t -> string
+  val to_json : t -> Data.Json.t
+  val from_json : Data.Json.t -> t
+end
+
+module TypeOid : sig
+  type t =
+    | Bool
+    | Bytea
+    | Char
+    | Int8
+    | Int2
+    | Int4
+    | Text
+    | Oid
+    | Json
+    | Float4
+    | Float8
+    | Varchar
+    | Date
+    | Time
+    | Timestamp
+    | Timestamptz
+    | Interval
+    | Numeric
+    | Uuid
+    | Jsonb
+    | Unknown of int
+
+  val of_int : int -> t
+  val to_int : t -> int
+  val to_string : t -> string
+end
+
+module Oid : sig
+  type t = int
+  val of_int : int -> t
+  val to_int : t -> int
+  val zero : t
+  val to_string : t -> string
+end
+
+module ColumnAttr : sig
+  type t =
+    | NotFromTable
+    | Position of int
+  
+  val of_int : int -> t
+  val to_int : t -> int
+  val to_string : t -> string
+end
+
+module TypeSize : sig
+  type t =
+    | VariableLength
+    | NullTerminated
+    | Fixed of int
+  
+  val of_int : int -> t
+  val to_int : t -> int
+  val to_string : t -> string
+end
+
+module TypeModifier : sig
+  type t =
+    | NoModifier
+    | Modifier of int
+  
+  val of_int : int -> t
+  val to_int : t -> int
+  val to_string : t -> string
+end
+
+module Format : sig
+  type t = Text | Binary
+  
+  val of_int : int -> t
+  val to_int : t -> int
+  val to_string : t -> string
+end
+
+module Row : sig
+  type field = {
+    name : string;
+    table_oid : Oid.t;
+    column_attr : ColumnAttr.t;
+    type_oid : TypeOid.t;
+    type_size : TypeSize.t;
+    type_modifier : TypeModifier.t;
+    format : Format.t;
+  }
+  
+  type description = field list
+  
+  type value = Null | Value of string
+  type data = value list
+end
+
 type backend_message =
   | AuthenticationOk
   | AuthenticationCleartextPassword
@@ -19,50 +289,17 @@ type backend_message =
   | BackendKeyData of { process_id : int; secret_key : int }
   | ParameterStatus of { name : string; value : string }
   | ReadyForQuery of char
-  | RowDescription of field list
-  | DataRow of string option list  (* None = NULL, Some s = value *)
+  | RowDescription of Row.description
+  | DataRow of Row.data
   | CommandComplete of string
-  | ErrorResponse of (char * string) list
-  | NoticeResponse of (char * string) list
+  | ErrorResponse of Error.t
+  | NoticeResponse of Error.t
   | ParseComplete
   | BindComplete
   | CloseComplete
   | NoData
-  | ParameterDescription of int list
+  | ParameterDescription of TypeOid.t list
   | EmptyQueryResponse
-
-and field = {
-  name : string;
-  table_oid : int;
-  column_attr : int;
-  type_oid : int;
-  type_size : int;
-  type_modifier : int;
-  format_code : int;
-}
-
-module TypeOid : sig
-  val bool : int
-  val bytea : int
-  val char : int
-  val int8 : int
-  val int2 : int
-  val int4 : int
-  val text : int
-  val oid : int
-  val json : int
-  val float4 : int
-  val float8 : int
-  val varchar : int
-  val date : int
-  val time : int
-  val timestamp : int
-  val timestamptz : int
-  val interval : int
-  val numeric : int
-  val uuid : int
-  val jsonb : int
-end
 
 module Writer : sig
   val startup_message :

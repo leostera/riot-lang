@@ -90,11 +90,8 @@ let equal a b =
   | String x, String y -> x = y
   | Bool x, Bool y -> x = y
   | Bytes x, Bytes y -> Bytes.equal x y
-  | Timestamp x, Timestamp y -> 
-      (* Compare by converting to Unix microseconds for exact equality *)
-      Datetime.to_unix_micros x = Datetime.to_unix_micros y
-  | TimestampWithTimezone x, TimestampWithTimezone y -> 
-      Datetime.to_unix_micros x = Datetime.to_unix_micros y
+  | Timestamp x, Timestamp y -> Datetime.equal x y
+  | TimestampWithTimezone x, TimestampWithTimezone y -> Datetime.equal x y
   | Date (y1, m1, d1), Date (y2, m2, d2) -> y1 = y2 && m1 = m2 && d1 = d2
   | Time (h1, min1, s1, us1), Time (h2, min2, s2, us2) ->
       h1 = h2 && min1 = min2 && s1 = s2 && us1 = us2
@@ -116,10 +113,9 @@ let compare a b =
   | Bool x, Bool y -> Bool.compare x y
   | Bytes x, Bytes y -> Bytes.compare x y
   | Timestamp x, Timestamp y -> 
-      (* Compare by converting to Unix microseconds *)
-      Int64.compare (Datetime.to_unix_micros x) (Datetime.to_unix_micros y)
+      Time.SystemTime.compare (Datetime.to_system_time x) (Datetime.to_system_time y)
   | TimestampWithTimezone x, TimestampWithTimezone y -> 
-      Int64.compare (Datetime.to_unix_micros x) (Datetime.to_unix_micros y)
+      Time.SystemTime.compare (Datetime.to_system_time x) (Datetime.to_system_time y)
   | Date (y1, m1, d1), Date (y2, m2, d2) -> (
       match Int.compare y1 y2 with
       | 0 -> ( match Int.compare m1 m2 with 0 -> Int.compare d1 d2 | c -> c)

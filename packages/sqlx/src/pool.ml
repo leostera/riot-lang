@@ -2,6 +2,10 @@ open Std
 open Std.Collections
 open Std.Sync
 
+type error =
+  | Exhausted of { waiting: int; max_connections: int; timeout: Time.Duration.t }
+  | ConnectionError of Connection.error
+  | Timeout of Time.Duration.t
 
 type config =
   | Config : {
@@ -32,7 +36,7 @@ type Message.t += PoolMsg of pool_msg
 
 type pool_response =
   | ConnectionAcquired of Connection.t
-  | AcquireError of string
+  | AcquireError of error
   | Stats of
       [ `Total of int | `Available of int | `InUse of int | `Waiting of int ]
       list
@@ -87,7 +91,8 @@ let handle_acquire state requester =
               (InUse (conn, requester, Time.Instant.now ())
               :: Cell.get state.connections);
             send requester (PoolResponse (ConnectionAcquired conn))
-        | Error e -> send requester (PoolResponse (AcquireError e))
+        | Error conn_err ->
+            send requester (PoolResponse (AcquireError (ConnectionError conn_err)))
       else Queue.push state.waiting requester
 
 let handle_release state conn =
@@ -166,7 +171,9 @@ let pool_supervisor
   for _ = 1 to min_connections do
     match spawn_connection config with
     | Ok conn -> Cell.set state.connections (Available conn :: Cell.get state.connections)
-    | Error e -> Log.error ("Failed to create initial connection: " ^ e)
+    | Error conn_err ->
+        let (Connection.DriverError { error; to_string; _ }) = conn_err in
+        Log.error ("Failed to create initial connection: " ^ to_string error)
   done;
 
   let rec loop () =
@@ -198,14 +205,24 @@ let pool_supervisor
 
 let create (Config { min_connections; max_connections; _ } as config) =
   if min_connections < 0 || max_connections < min_connections then
-    Error "Invalid pool configuration"
+    (* This is a config validation error - we need to handle it differently *)
+    (* For now, create a dummy connection error *)
+    Error (Connection.DriverError {
+      error = "Invalid pool configuration"; 
+      to_string = (fun s -> s);
+      to_json = (fun s -> Data.Json.string s)
+    })
   else
-    let supervisor =
-      spawn (fun () ->
-          pool_supervisor config;
-          Ok ())
-    in
-    Ok { config; supervisor }
+    (* Try to create at least one connection to validate driver config *)
+    match spawn_connection config with
+    | Error conn_err -> Error conn_err
+    | Ok _test_conn ->
+        let supervisor =
+          spawn (fun () ->
+              pool_supervisor config;
+              Ok ())
+        in
+        Ok { config; supervisor }
 
 let acquire t =
   send t.supervisor (PoolMsg (Acquire (self ())));
@@ -224,7 +241,10 @@ let with_connection t f =
   match acquire t with
   | Error _ as err -> err
   | Ok conn ->
-      let result = f conn in
+      let result = match f conn with
+        | Ok v -> Ok v
+        | Error conn_err -> Error (ConnectionError conn_err)
+      in
       release t conn;
       result
 

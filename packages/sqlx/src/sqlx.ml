@@ -1,13 +1,28 @@
 open Std
 
+module ProtocolError = struct
+  type t = P : { 
+    error: 'err; 
+    to_json: 'err -> Data.Json.t; 
+    to_string : 'err -> string 
+  } -> t
+
+  let to_json (P { error; to_json; _ }) = to_json error
+  let to_string (P { error; to_string; _ }) = to_string error
+  
+  let make error ~to_json ~to_string = P { error; to_json; to_string }
+end
+
+type operation = Acquire | Query | Transaction
+
 type error =
-  | Connection_failed of string
-  | Query_failed of string
-  | Pool_exhausted
-  | Invalid_value of string
-  | Driver_error of string
+  | PoolError of Pool.error
+  | InvalidValue of { field: string; value: string; expected_type: string; reason: string option }
+  | Timeout of { operation: operation; duration: Time.Duration.t }
 
 module Config = struct
+  type isolation_level = ReadUncommitted | ReadCommitted | RepeatableRead | Serializable
+  
   type t = {
     pool_size : int;
     max_idle_time : Time.Duration.t;
@@ -15,9 +30,7 @@ module Config = struct
     idle_check_interval : Time.Duration.t;
     max_lifetime : Time.Duration.t option;
     auto_commit : bool;
-    isolation_level :
-      [ `Read_uncommitted | `Read_committed | `Repeatable_read | `Serializable ]
-      option;
+    isolation_level : isolation_level option;
     query_timeout : Time.Duration.t option;
     log_queries : bool;
     log_slow_queries : Time.Duration.t option;
@@ -61,36 +74,50 @@ let connect ?(config = Config.default) ~driver driver_config =
   in
   match Pool.create pool_config with
   | Ok pool -> Ok pool
-  | Error msg -> Error (Connection_failed msg)
+  | Error conn_err -> Error (PoolError (Pool.ConnectionError conn_err))
 
 let query pool sql params =
   match
     Pool.with_connection pool (fun conn ->
-        match Connection.query conn sql params with
-        | Ok cursor -> Ok cursor
-        | Error msg -> Error msg)
+        Connection.query conn sql params)
   with
   | Ok cursor -> Ok cursor
-  | Error msg -> Error (Query_failed msg)
+  | Error pool_err -> Error (PoolError pool_err)
 
 let exec pool sql params =
   match
     Pool.with_connection pool (fun conn ->
-        match Connection.execute conn sql params with
-        | Ok rows -> Ok rows
-        | Error msg -> Error msg)
+        Connection.execute conn sql params)
   with
   | Ok rows -> Ok rows
-  | Error msg -> Error (Query_failed msg)
+  | Error pool_err -> Error (PoolError pool_err)
+
+let show_pool_error = function
+  | Pool.Exhausted { waiting; max_connections; timeout } ->
+      "Pool exhausted: " ^ string_of_int waiting ^ " waiting, max " ^ 
+      string_of_int max_connections ^ " connections, timeout " ^ 
+      (Time.Duration.to_secs_string timeout)
+  | Pool.ConnectionError (Connection.DriverError { error; to_string; _ }) ->
+      "Connection error: " ^ to_string error
+  | Pool.Timeout duration ->
+      "Pool timeout after " ^ Time.Duration.to_secs_string duration
 
 let with_transaction pool f =
-  Pool.with_connection pool (fun conn -> Transaction.with_transaction conn f)
+  match Pool.with_connection pool (fun conn -> Transaction.with_transaction conn f) with
+  | Ok v -> Ok v
+  | Error pool_err -> Error (PoolError pool_err)
 
 let shutdown pool = Pool.shutdown pool
 
 let show_error = function
-  | Connection_failed msg -> "Connection failed: " ^ msg
-  | Query_failed msg -> "Query failed: " ^ msg
-  | Pool_exhausted -> "Connection pool exhausted"
-  | Invalid_value msg -> "Invalid value: " ^ msg
-  | Driver_error msg -> "Driver error: " ^ msg
+  | PoolError pool_err -> show_pool_error pool_err
+  | InvalidValue { field; value; expected_type; reason } ->
+      "Invalid value for '" ^ field ^ "': got '" ^ value ^ "', expected " ^ expected_type ^
+      (match reason with Some r -> " (" ^ r ^ ")" | None -> "")
+  | Timeout { operation; duration } ->
+      let op_str = match operation with
+        | Acquire -> "acquire"
+        | Query -> "query"
+        | Transaction -> "transaction"
+      in
+      "Timeout during " ^ op_str ^ " after " ^ (Time.Duration.to_secs_string duration)

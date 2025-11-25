@@ -1,5 +1,9 @@
 open Std
 
+type error =
+  | Exhausted of { waiting: int; max_connections: int; timeout: Time.Duration.t }
+  | ConnectionError of Connection.error
+  | Timeout of Time.Duration.t
 
 type config =
   | Config : {
@@ -15,12 +19,12 @@ type config =
 
 type t
 
-val create : config -> (t, string) result
-val acquire : t -> (Connection.t, string) result
+val create : config -> (t, Connection.error) result
+val acquire : t -> (Connection.t, error) result
 val release : t -> Connection.t -> unit
 
 val with_connection :
-  t -> (Connection.t -> ('a, string) result) -> ('a, string) result
+  t -> (Connection.t -> ('a, Connection.error) result) -> ('a, error) result
 
 val shutdown : t -> unit
 

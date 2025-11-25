@@ -1,13 +1,22 @@
 open Std
 
+module ProtocolError : sig
+  type t
+  val to_json : t -> Data.Json.t
+  val to_string : t -> string
+  val make : 'err -> to_json:('err -> Data.Json.t) -> to_string:('err -> string) -> t
+end
+
+type operation = Acquire | Query | Transaction
+
 type error =
-  | Connection_failed of string
-  | Query_failed of string
-  | Pool_exhausted
-  | Invalid_value of string
-  | Driver_error of string
+  | PoolError of Pool.error
+  | InvalidValue of { field: string; value: string; expected_type: string; reason: string option }
+  | Timeout of { operation: operation; duration: Time.Duration.t }
 
 module Config : sig
+  type isolation_level = ReadUncommitted | ReadCommitted |RepeatableRead | Serializable
+
   type t = {
     pool_size : int;
     max_idle_time : Time.Duration.t;
@@ -15,9 +24,7 @@ module Config : sig
     idle_check_interval : Time.Duration.t;
     max_lifetime : Time.Duration.t option;
     auto_commit : bool;
-    isolation_level :
-      [ `Read_uncommitted | `Read_committed | `Repeatable_read | `Serializable ]
-      option;
+    isolation_level : isolation_level option ;
     query_timeout : Time.Duration.t option;
     log_queries : bool;
     log_slow_queries : Time.Duration.t option;
@@ -44,7 +51,7 @@ val query : Pool.t -> string -> Value.t list -> (Cursor.t, error) result
 val exec : Pool.t -> string -> Value.t list -> (int, error) result
 
 val with_transaction :
-  Pool.t -> (Connection.t -> ('a, string) result) -> ('a, string) result
+  Pool.t -> (Connection.t -> ('a, Connection.error) result) -> ('a, error) result
 
 val shutdown : Pool.t -> unit
 val show_error : error -> string

@@ -64,9 +64,17 @@ open Std
    process-per-connection model. The SQLx pool handles this automatically.
 *)
 
+module Error : sig
+ type t
+  val to_string :t -> string
+  val to_json : t -> Data.Json.t
+end
+
 (* Configuration for PostgreSQL connections *)
 module Config : sig
   (* PostgreSQL connection configuration *)
+  type ssl_mode = Disable | Require | Prefer
+
   type t = {
     host : string;
         (* Database server hostname or IP address.
@@ -77,7 +85,7 @@ module Config : sig
     password : string;
         (* Password for authentication.
        Consider using environment variables or secure vaults for production. *)
-    ssl_mode : [ `Disable | `Require | `Prefer ];
+    ssl_mode : ssl_mode;
         (* SSL/TLS connection mode:
        - `Disable`: Never use SSL (not recommended for production)
        - `Require`: Always use SSL, fail if server doesn't support it
