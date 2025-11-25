@@ -1,10 +1,15 @@
 [workspace]
 members = [
   "native/example-lib",
+  "native/hello-rust",
   "native/raml-bindgen",
   "native/raml-core",
   "native/raml-derive",
   "native/raml-ffi",
   "native/raml-kernel",
   "native/raml-rt",
-] 
+]
+
+# Use a separate target directory to avoid conflicts with Tusk's target/ directory
+[workspace.metadata]
+target-dir = "native/target" 

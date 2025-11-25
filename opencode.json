@@ -1,6 +1,26 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
+    "lmstudio": {
+      "name": "LM Studio",
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "baseURL": "http://starbase1.local:1234/v1",
+      },
+      "models": {
+        "mistralai/devstral-small-2507": { "name": "Devstral Small (MLX)" },
+      }
+    },
+    "exo-local": {
+      "name": "Exo (local)",
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "baseURL": "http://starbase1.local:52415/v1",
+      },
+      "models": {
+        "qwen2.5-coder-1.5b": { "name": "Qwen 2.5 Coder (1.5b)" },
+      }
+    },
     "ollama": {
       "name": "Ollama (local)",
       "npm": "@ai-sdk/openai-compatible",
@@ -31,5 +51,10 @@
     },
   },
   "mcp": {
+    "linear": {
+      "type": "local",
+      "command": ["npx", "-y", "mcp-remote", "https://mcp.linear.app/sse"],
+      "enabled": false
+    }
   }
 }
