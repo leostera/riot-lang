@@ -1,3 +1,5 @@
+module Conf = Config
+
 open Std
 open Std.IO
 open Sync
@@ -34,8 +36,8 @@ type state = {
   fps : int;
   runner : Pid.t;
   tty : Tty.t;
-  render_mode : Config.render_mode;
-  output_target : Config.output_target;
+  render_mode : Conf.render_mode;
+  output_target : Conf.output_target;
   mutable lines_rendered : int;
   mutable is_altscreen_active : bool;
   mutable needs_altscreen_setup : bool; (* Flag to defer alt screen setup *)
@@ -57,8 +59,8 @@ let empty_element = Gooey.Element.empty
 
 let write_output state str =
   match state.output_target with
-  | Config.Stdout -> print str  (* Note: %! flush not available *)
-  | Config.Stderr -> eprint str
+  | Conf.Stdout -> print str  (* Note: %! flush not available *)
+  | Conf.Stderr -> eprint str
 
 let log_frame _frame_num _frame =
   (* Frame logging disabled - would require file I/O *)
@@ -236,8 +238,8 @@ and handle_shutdown state =
   (try
      let fd =
        match state.output_target with
-       | Config.Stdout -> IO.stdout
-       | Config.Stderr -> IO.stderr
+       | Conf.Stdout -> IO.stdout
+       | Conf.Stderr -> IO.stderr
      in
      Kernel.Fd.set_blocking fd
    with _ -> ());
@@ -245,7 +247,7 @@ and handle_shutdown state =
   (* Clear the last rendered content in inline mode *)
   (try
      if
-       state.render_mode = Config.Clear
+       state.render_mode = Conf.Clear
        && (not state.is_altscreen_active)
        && state.lines_rendered > 0
      then (
@@ -361,7 +363,7 @@ and handle_set_window_title state title =
 
 let init ~parent ~config ~tty =
   send parent (RendererStarted (self ()));
-  let Config.{ render_mode; fps; output } = config in
+  let Conf.{ render_mode; fps; output } = config in
   let _ =
     let after = Time.Duration.from_secs_float (fps_to_secs fps) in
     Timer.send_after (self ()) Tick ~after

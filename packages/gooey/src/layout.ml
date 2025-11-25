@@ -35,10 +35,10 @@ let rec build_layout_tree (element : Element.t) : layout_node =
 
 (* Helper: Calculate padding dimensions *)
 let padding_horizontal (p : Style.padding) = 
-  float_of_int (p.left + p.right)
+  Float.of_int (p.left + p.right)
 
 let padding_vertical (p : Style.padding) = 
-  float_of_int (p.top + p.bottom)
+  Float.of_int (p.top + p.bottom)
 
 (* Helper: Clamp value between min and max *)
 let clamp_option value min_opt max_opt =
@@ -46,7 +46,7 @@ let clamp_option value min_opt max_opt =
   match max_opt with Some max -> Float.min v max | None -> v
 
 (* Phase 2: Calculate sizes (ported from Clay) *)
-let rec calculate_sizes (node : layout_node) (available : Viewport.t) (config : Config.t) : unit =
+let rec calculate_sizes (node : layout_node) (available : Viewport.t) (config : Super.Config.t) : unit =
   let style = node.style in
   
   (* Calculate intrinsic size based on content *)
@@ -90,7 +90,7 @@ let rec calculate_sizes (node : layout_node) (available : Viewport.t) (config : 
   | Element.Container _ -> layout_children node config
   | _ -> ()
 
-and calculate_container_fit_size (node : layout_node) (available : Viewport.t) (config : Config.t) : Viewport.t =
+and calculate_container_fit_size (node : layout_node) (available : Viewport.t) (config : Super.Config.t) : Viewport.t =
   let style = node.style in
   
   (* First calculate all children sizes *)
@@ -107,7 +107,7 @@ and calculate_container_fit_size (node : layout_node) (available : Viewport.t) (
   
   (* Add gaps between children *)
   let child_count = List.length node.children in
-  let gap_space = float_of_int (style.child_gap * (child_count - 1)) in
+  let gap_space = Float.of_int (style.child_gap * (child_count - 1)) in
   
   let width = match style.direction with
     | Style.LeftToRight -> total_width +. gap_space
@@ -121,7 +121,7 @@ and calculate_container_fit_size (node : layout_node) (available : Viewport.t) (
   
   Viewport.make ~width ~height
 
-and layout_children (node : layout_node) (config : Config.t) : unit =
+and layout_children (node : layout_node) (config : Super.Config.t) : unit =
   let style = node.style in
   let available_width = node.computed_size.width -. padding_horizontal style.padding in
   let available_height = node.computed_size.height -. padding_vertical style.padding in
@@ -183,7 +183,7 @@ and layout_children (node : layout_node) (config : Config.t) : unit =
   
   (* Calculate gap space *)
   let child_count = List.length node.children in
-  let gap_space = float_of_int (style.child_gap * (child_count - 1)) in
+  let gap_space = Float.of_int (style.child_gap * (child_count - 1)) in
   
   (* Remaining space for GROW children *)
   let total_available = match style.direction with
@@ -196,7 +196,7 @@ and layout_children (node : layout_node) (config : Config.t) : unit =
   
   (* Distribute to GROW children *)
   let grow_count = List.length grow_children in
-  let space_per_grow = if grow_count > 0 then remaining_space /. float_of_int grow_count else 0.0 in
+  let space_per_grow = if grow_count > 0 then remaining_space /. Float.of_int grow_count else 0.0 in
   
   List.iter (fun child ->
     match style.direction with
@@ -214,8 +214,8 @@ let rec calculate_positions (node : layout_node) (origin : Geometry.Point.t) : u
   
   (* Calculate content origin (inside padding) *)
   let content_origin = Geometry.Point.make
-    ~x:(origin.x +. float_of_int style.padding.left)
-    ~y:(origin.y +. float_of_int style.padding.top)
+    ~x:(origin.x +. Float.of_int style.padding.left)
+    ~y:(origin.y +. Float.of_int style.padding.top)
   in
   
   (* Set final bounding box *)
@@ -226,8 +226,8 @@ let rec calculate_positions (node : layout_node) (origin : Geometry.Point.t) : u
     ~height:node.computed_size.height;
   
   (* Position children *)
-  let next_x = ref content_origin.x in
-  let next_y = ref content_origin.y in
+  let next_x = cell content_origin.x in
+  let next_y = cell content_origin.y in
   
   List.iter (fun child ->
     (* TODO: Apply alignment here *)
@@ -237,13 +237,13 @@ let rec calculate_positions (node : layout_node) (origin : Geometry.Point.t) : u
     (* Update next position *)
     match style.direction with
     | Style.LeftToRight ->
-        next_x := !next_x +. child.computed_size.width +. float_of_int style.child_gap
+        next_x := !next_x +. child.computed_size.width +. Float.of_int style.child_gap
     | Style.TopToBottom ->
-        next_y := !next_y +. child.computed_size.height +. float_of_int style.child_gap
+        next_y := !next_y +. child.computed_size.height +. Float.of_int style.child_gap
   ) node.children
 
 (* Phase 4: Generate render commands *)
-let rec generate_commands (node : layout_node) (commands : Render.command Collections.Vector.t) : unit =
+let rec generate_commands (node : layout_node) (commands : Render.command Vector.t) : unit =
   let style = node.style in
   
   (* Generate background rectangle *)
@@ -257,7 +257,7 @@ let rec generate_commands (node : layout_node) (commands : Render.command Collec
          };
          z_index = style.z_index;
        } in
-       Collections.Vector.push commands cmd
+       Vector.push commands cmd
    | None -> ());
   
   (* Generate border *)
@@ -278,7 +278,7 @@ let rec generate_commands (node : layout_node) (commands : Render.command Collec
           };
           z_index = style.z_index;
         } in
-        Collections.Vector.push commands cmd
+        Vector.push commands cmd
     | None -> ());
   
   (* Generate element-specific commands *)
@@ -295,13 +295,13 @@ let rec generate_commands (node : layout_node) (commands : Render.command Collec
          };
          z_index = style.z_index;
        } in
-       Collections.Vector.push commands cmd
+       Vector.push commands cmd
    | Element.Container _ ->
        (* Recurse into children *)
        List.iter (fun child -> generate_commands child commands) node.children
    | Element.Custom { render; _ } ->
        let custom_commands = render node.final_box in
-       List.iter (Collections.Vector.push commands) custom_commands
+       List.iter (Vector.push commands) custom_commands
    | Element.Empty -> ());
   
   ()
@@ -312,7 +312,7 @@ let compute ~config element =
   let layout_tree = build_layout_tree element in
   
   (* Calculate sizes *)
-  calculate_sizes layout_tree config.Config.viewport config;
+  calculate_sizes layout_tree config.Super.Config.viewport config;
   
   (* Calculate positions *)
   calculate_positions layout_tree Geometry.Point.zero;

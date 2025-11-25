@@ -1,5 +1,3 @@
-open Std
-
 module Geometry = Geometry
 module Viewport = Viewport
 module Style = Style

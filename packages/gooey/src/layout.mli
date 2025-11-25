@@ -4,8 +4,6 @@
     It's an internal module not exposed in the public API.
 *)
 
-open Std
-
 (** Internal layout node with computed values *)
 type layout_node = {
   element : Element.t;

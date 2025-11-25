@@ -76,7 +76,8 @@ let initial_model =
 
 (* Run it *)
 let () = 
-  Log.(set_log_file (Path.v "./stdout.log"));
+  (* TODO: Implement FileHandler for logging to file *)
+  (* Log.(set_log_file (Path.v "./stdout.log")); *)
   Log.(set_level Trace);
   let config = Minttea.config () in
   Minttea.start ~config app initial_model
