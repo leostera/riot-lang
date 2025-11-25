@@ -448,3 +448,6 @@ module LiveView = Liveview
     sent back to the client.
     
     See {!LiveView} for complete documentation. *)
+
+module GRPC = Grpc
+(** gRPC server implementation over HTTP/2 *)

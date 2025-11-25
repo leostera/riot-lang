@@ -5,6 +5,7 @@ module Connection = Connection
 module WebSocket = Websocket
 module Error = Error
 module SSE = Sse
+module GRPC = Grpc
 
 type error = Error.t
 type message = Connection.message
@@ -15,4 +16,3 @@ let stream = Connection.stream
 let messages = Connection.messages
 let await = Connection.await
 let close = Connection.close
-(* test change *)

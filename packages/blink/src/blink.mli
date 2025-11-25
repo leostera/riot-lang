@@ -5,6 +5,7 @@ module Connection : module type of Connection
 module WebSocket : module type of Websocket
 module Error : module type of Error
 module SSE : module type of Sse
+module GRPC : module type of Grpc
 
 type error = Error.t
 type message = Connection.message

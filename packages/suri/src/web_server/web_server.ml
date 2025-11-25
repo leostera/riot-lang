@@ -4,7 +4,7 @@ module Request = Request
 module Response = Response
 module Handler = Http_handler
 module Http1 = Http1_handler
-
+module Http2 = Http2_handler
 
 (** Start an HTTP/1.1 server with supervision.
     
@@ -38,3 +38,4 @@ let start_link ?(host = "0.0.0.0") ~port ?(acceptors = Std.System.available_para
     ~buffer_size:config.Config.buffer_size
     socket_handler
     handler_state
+
