@@ -52,3 +52,26 @@ let write_all_vectored : type dst err.
     else Ok ()
   in
   write_loop bufs total
+
+let map_err : type dst a b. (dst, a) t -> fn:(a -> b) -> (dst, b) t =
+ fun (Writer ((module W), dst)) ~fn ->
+  let module Mapped = struct
+    type t = W.t
+    type err = b
+
+    let write t ~buf =
+      match W.write t ~buf with
+      | Ok n -> Ok n
+      | Error e -> Error (fn e)
+
+    let write_owned_vectored t ~bufs =
+      match W.write_owned_vectored t ~bufs with
+      | Ok n -> Ok n
+      | Error e -> Error (fn e)
+
+    let flush t =
+      match W.flush t with
+      | Ok () -> Ok ()
+      | Error e -> Error (fn e)
+  end in
+  Writer ((module Mapped), dst)

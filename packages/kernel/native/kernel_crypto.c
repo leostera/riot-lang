@@ -12,6 +12,7 @@
 
 #ifdef __APPLE__
 #include <CommonCrypto/CommonDigest.h>
+#include <CommonCrypto/CommonHMAC.h>
 
 /* SHA1 implementation using macOS CommonCrypto */
 CAMLprim value kernel_crypto_sha1(value data) {
@@ -136,3 +137,28 @@ CAMLprim value kernel_crypto_siphash(value key, value data) {
     caml_failwith("SipHash not yet implemented");
     CAMLreturn(Val_unit);
 }
+
+#ifdef __APPLE__
+/* HMAC-SHA256 implementation using macOS CommonCrypto */
+CAMLprim value kernel_crypto_hmac_sha256(value key, value data) {
+    CAMLparam2(key, data);
+    CAMLlocal1(result);
+
+    unsigned char mac[CC_SHA256_DIGEST_LENGTH];
+    
+    CCHmac(kCCHmacAlgSHA256,
+           String_val(key), caml_string_length(key),
+           String_val(data), caml_string_length(data),
+           mac);
+
+    result = caml_alloc_string(CC_SHA256_DIGEST_LENGTH);
+    memcpy(Bytes_val(result), mac, CC_SHA256_DIGEST_LENGTH);
+
+    CAMLreturn(result);
+}
+#else
+/* Fallback for non-Apple platforms */
+CAMLprim value kernel_crypto_hmac_sha256(value key, value data) {
+    caml_failwith("HMAC-SHA256 not implemented on this platform");
+}
+#endif

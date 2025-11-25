@@ -2,22 +2,8 @@
 
 (* Re-export basic types from Types *)
 include Types
+include Ops
 
-(* Concat operators *)
-let ( ^ ) = Stdlib.( ^ )
-let ( @ ) = Stdlib.( @ )
-
-(* Comparison operators *)
-let ( = ) = Stdlib.( = )
-let ( != ) = Stdlib.( <> )
-
-let ptr_eq = Stdlib.( == )
-let ptr_not_eq = Stdlib.( != )
-
-let ( < ) = Stdlib.( < )
-let ( > ) = Stdlib.( > )
-let ( <= ) = Stdlib.( <= )
-let ( >= ) = Stdlib.( >= )
 let compare = Stdlib.compare
 let min = Stdlib.min
 let max = Stdlib.max
@@ -30,36 +16,11 @@ let raise_notrace = Stdlib.raise_notrace
 let exit = Stdlib.exit
 
 (* Integer arithmetic *)
-let ( + ) = Stdlib.( + )
-let ( - ) = Stdlib.( - )
-let ( * ) = Stdlib.( * )
-let ( ** ) = Stdlib.( ** )
-let ( / ) = Stdlib.( / )
-let ( mod ) = Stdlib.( mod )
-let ( ~- ) = Stdlib.( ~- )
-let ( ~+ ) = Stdlib.( ~+ )
-let abs = Stdlib.abs
 let succ = Stdlib.succ
 let pred = Stdlib.pred
 let max_int = Stdlib.max_int
 let min_int = Stdlib.min_int
 
-(* Bitwise operations *)
-let ( land ) = Stdlib.( land )
-let ( lor ) = Stdlib.( lor )
-let ( lxor ) = Stdlib.( lxor )
-let lnot = Stdlib.lnot
-let ( lsl ) = Stdlib.( lsl )
-let ( lsr ) = Stdlib.( lsr )
-let ( asr ) = Stdlib.( asr )
-
-(* Float arithmetic *)
-let ( +. ) = Stdlib.( +. )
-let ( -. ) = Stdlib.( -. )
-let ( *. ) = Stdlib.( *. )
-let ( /. ) = Stdlib.( /. )
-let ( ~-. ) = Stdlib.( ~-. )
-let ( ~+. ) = Stdlib.( ~+. )
 let float = Stdlib.float
 let floor = Stdlib.floor
 let ceil = Stdlib.ceil
@@ -106,15 +67,8 @@ let max_float = Stdlib.max_float
 let min_float = Stdlib.min_float
 let epsilon_float = Stdlib.epsilon_float
 
-(* Boolean operations *)
-let not = Stdlib.not
-let ( && ) = Stdlib.( && )
-let ( || ) = Stdlib.( || )
-
 (* Utility functions *)
 let ignore = Stdlib.ignore
-let ( |> ) = Stdlib.( |> )
-let ( @@ ) = Stdlib.( @@ )
 let fst = Stdlib.fst
 let snd = Stdlib.snd
 

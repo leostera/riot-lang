@@ -36,6 +36,24 @@ let read_to_end : type src err.
   in
   read_loop 0
 
+let map_err : type src a b. (src, a) t -> fn:(a -> b) -> (src, b) t =
+ fun (Reader ((module R), src)) ~fn ->
+  let module Mapped = struct
+    type t = R.t
+    type err = b
+
+    let read t ?timeout buf =
+      match R.read t ?timeout buf with
+      | Ok n -> Ok n
+      | Error e -> Error (fn e)
+
+    let read_vectored t bufs =
+      match R.read_vectored t bufs with
+      | Ok n -> Ok n
+      | Error e -> Error (fn e)
+  end in
+  Reader ((module Mapped), src)
+
 let empty =
   let module EmptyRead = struct
     type t = unit

@@ -205,20 +205,35 @@ val write_owned_vectored : ('dst, 'err) t -> bufs:Iovec.t -> (int, 'err) result
     ]} *)
 
 val write_all_vectored : ('dst, 'err) t -> bufs:Iovec.t -> (unit, 'err) result
-(** [write_all_vectored writer ~bufs] writes all vectored data, retrying as
-    needed.
+(** [write_all_vectored writer ~bufs] writes all data from IO vectors.
 
-    Like {!write_all} but for vectored writes. Ensures all data across all
-    buffers is written, handling partial writes automatically.
+    Repeatedly calls [write_owned_vectored] until all data in [bufs] is written
+    or an error occurs.
 
-    @return [Ok ()] when all data has been written, [Error] on failure
+    @param bufs IO vector containing data to write
+    @return [Ok ()] if all data written, [Error] on failure
 
     Example:
     {[
-      let iov = create_response_buffers () in
+      let iov = Iovec.create ~count:2 ~size:10 () in
+      Iovec.set iov 0 (Bytes.of_string "Hello");
+      Iovec.set iov 1 (Bytes.of_string "World");
       match IO.write_all_vectored writer ~bufs:iov with
-      | Ok () -> print_endline "Complete response sent"
+      | Ok () -> print_endline "All data written"
       | Error e -> handle_error e
+    ]} *)
+
+val map_err : ('dst, 'a) t -> fn:('a -> 'b) -> ('dst, 'b) t
+(** [map_err writer ~fn] transforms the error type of a writer.
+    
+    Useful for wrapping errors from one layer to another, such as wrapping
+    TCP stream errors into TLS errors.
+    
+    Example:
+    {[
+      let tcp_writer = Tcp_stream.to_writer stream in
+      let tls_writer = IO.Writer.map_err tcp_writer
+        ~fn:(fun err -> Tls_error (Transport_error err))
     ]} *)
 
 val flush : ('dst, 'err) t -> (unit, 'err) result

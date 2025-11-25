@@ -171,6 +171,19 @@ val read_to_end : ('src, 'err) t -> buf:Buffer.t -> (int, 'err) result
       | Error e -> handle_error e
     ]} *)
 
+val map_err : ('src, 'a) t -> fn:('a -> 'b) -> ('src, 'b) t
+(** [map_err reader ~fn] transforms the error type of a reader.
+    
+    Useful for wrapping errors from one layer to another, such as wrapping
+    TCP stream errors into TLS errors.
+    
+    Example:
+    {[
+      let tcp_reader = Tcp_stream.to_reader stream in
+      let tls_reader = IO.Reader.map_err tcp_reader 
+        ~fn:(fun err -> Tls_error (Transport_error err))
+    ]} *)
+
 val empty : (unit, unit) t
 (** [empty] is a reader that immediately returns 0 (EOF) on every read.
 

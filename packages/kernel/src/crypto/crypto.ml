@@ -10,5 +10,6 @@ module FFI = struct
   let sha1 data = Hash.of_bytes (Crypto_stubs.sha1 data)
   let sha256 data = Hash.of_bytes (Crypto_stubs.sha256 data)
   let sha512 data = Hash.of_bytes (Crypto_stubs.sha512 data)
+  let hmac_sha256 = Crypto_stubs.hmac_sha256
   let default_hash data = Hash.of_bytes (Crypto_stubs.default_hash data)
 end
