@@ -147,7 +147,7 @@ let encode_fact_value fact =
   let value_repr_int64 = Encoding.value_repr_to_int64 value_repr in
   
   (* Get stated_at as int64 microseconds *)
-  let stated_at_micros = Datetime.to_unix_micros fact.Fact.stated_at in
+  let stated_at_micros = Encoding.encode_datetime fact.Fact.stated_at in
   
   (* Calculate total size *)
   let value_size = match fact.Fact.value with
@@ -334,7 +334,7 @@ let decode_fact_value store tx_id bytes =
   
   (* Read stated_at *)
   let stated_at_micros = read_i64 () in
-  let stated_at = Datetime.from_unix_micros stated_at_micros in
+  let stated_at = Encoding.decode_datetime stated_at_micros in
   
   (* Read retracted *)
   let retracted_byte = read_u8 () in

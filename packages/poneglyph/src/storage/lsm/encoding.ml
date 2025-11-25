@@ -44,11 +44,13 @@ let decode_float bits =
 
 let encode_datetime dt =
   (* Use exact int64 microseconds - no float rounding errors *)
-  Datetime.to_unix_micros dt
+  let nanos = Datetime.to_system_time dt |> Time.SystemTime.nanos in
+  Int64.div nanos 1000L
 
 let decode_datetime micros =
   (* Convert int64 microseconds back to datetime *)
-  Datetime.from_unix_micros micros
+  let nanos = Int64.mul micros 1000L in
+  Time.SystemTime.from_nanos nanos |> Datetime.from_system_time
 
 (** {2 String Encoding} *)
 

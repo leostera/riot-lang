@@ -39,7 +39,6 @@ val open_exclusive : data_dir:string -> ?timeout:Time.Duration.t -> unit -> (t, 
 
 type create_config =
   | InMemory  (** In-memory HashMap storage *)
-  | Persistent of string  (** File-based JSON storage *)
   | Lsm of string  (** LSM-based multi-index storage (acquires lock) *)
 
 val create : ?config:create_config -> unit -> t

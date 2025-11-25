@@ -17,7 +17,6 @@ module Ref_store = Storage.Lsm.Ref_store
 type t = Graph_store.t
 type create_config = Graph_store.create_config =
   | InMemory
-  | Persistent of string
   | Lsm of string
 
 let create ?config () = Graph_store.create ?config ()
@@ -53,11 +52,6 @@ let fact = Fact.make
 let facts ~source ~tx_id ~stated_at ~entity fxs= 
   List.map (fun (attribute, value) ->
     fact ~source ~tx_id ~stated_at ~entity ~attribute ~value) fxs
-
-(* Legacy convenience functions *)
-let create_persistent path = Graph_store.create ~config:(Graph_store.Persistent path) ()
-let load = create_persistent
-let create_lsm data_dir = Graph_store.create ~config:(Graph_store.Lsm data_dir) ()
 
 let register_schema graph defs =
   let open Model in

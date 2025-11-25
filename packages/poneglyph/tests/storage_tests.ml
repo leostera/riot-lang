@@ -36,74 +36,6 @@ let test_inmemory_storage () =
         Ok ()
     | _ -> Error "Expected Int 42"
 
-let test_file_storage () =
-  let db_path = "/tmp/poneglyph_test_storage.db" in
-  (* Clean up first if file exists *)
-  let _ = match Fs.exists (Path.v db_path) with
-    | Ok true -> Fs.remove_file (Path.v db_path)
-    | _ -> Ok ()
-  in
-
-  (* Create and populate *)
-  let graph = create_persistent db_path in
-
-  let entity = Uri.of_string "test:entity:persistent" in
-  let attr = Uri.of_string "test:data" in
-  let source = Uri.of_string "test:source:persistence-test" in
-
-  let facts =
-    [
-      Fact.make ~source ~entity ~attribute:attr ~value:(Fact.String "persisted")
-        ~stated_at:(Datetime.now ()) ~tx_id:(UUID.v7_monotonic ());
-    ]
-  in
-
-  let _ = state graph facts in
-  
-  (* Check the file was created *)
-  let file_exists = match Fs.exists (Path.v db_path) with
-    | Ok true -> true
-    | _ -> false
-  in
-  
-  if not file_exists then
-    Error "File was not created after stating facts"
-  else
-    (* Read the file content to debug *)
-    let file_content = match Fs.read (Path.v db_path) with
-      | Ok content -> content
-      | Error _ -> ""
-    in
-    
-    (* Load in new graph *)
-    let loaded = load db_path in
-    
-    (* Check if facts were loaded at all *)
-    let loaded_facts = get_all_facts loaded ~entity 
-      |> Iter.MutIterator.to_list in
-
-    let cleanup () = let _ = Fs.remove_file (Path.v db_path) in () in
-    
-    if List.length loaded_facts = 0 then begin
-      cleanup ();
-      Error ("No facts loaded from file. File content: " ^ String.sub file_content 0 (min 100 (String.length file_content)))
-    end else
-      match get loaded ~entity ~attr with
-      | Some (Fact.String "persisted") ->
-        if not (exists loaded entity) then begin
-          cleanup ();
-          Error "Entity should exist after loading"
-        end else begin
-          cleanup ();
-          Ok ()
-        end
-      | Some v ->
-        cleanup ();
-        Error ("Wrong value type loaded")
-      | None ->
-        cleanup ();
-        Error "Data was not persisted correctly"
-
 let test_retraction () =
   let graph = create () in
 
@@ -152,7 +84,6 @@ let test_retraction () =
 let tests =
   Test.[
     case "Inmemory storage" test_inmemory_storage;
-    case "File storage" test_file_storage;
     case "Retraction" test_retraction;
   ]
 

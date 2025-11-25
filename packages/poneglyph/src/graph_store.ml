@@ -4,7 +4,6 @@ open Model
 
 type storage_impl =
   | Inmemory of Storage.Inmemory.t
-  | SimpleFile of Storage.Simple_file.t
   | LsmStore of Storage.Lsm.Multi_store.t
 
 type t = {
@@ -51,30 +50,19 @@ let open_exclusive ~data_dir ?(timeout = Time.Duration.from_secs 30) () =
 (* Legacy API for tests *)
 type create_config =
   | InMemory
-  | Persistent of string  (* File path *)
   | Lsm of string  (* Data directory *)
 
 let create ?(config = Lsm (default_lsm_dir ())) () =
   match config with
   | InMemory -> 
       { storage = Inmemory (Storage.Inmemory.create ()); filename = None; lock = None }
-  | Persistent path ->
-      let store = Storage.Simple_file.load path in
-      { storage = SimpleFile store; filename = Some path; lock = None }
   | Lsm data_dir ->
       open_exclusive ~data_dir ()
         |> Result.expect ~msg:"Failed to open LSM store"
 
-(* Legacy API compatibility *)
-let create_legacy ?persistent () =
-  match persistent with
-  | None -> create ~config:InMemory ()
-  | Some path -> create ~config:(Persistent path) ()
-
 let state graph facts =
   match graph.storage with
   | Inmemory store -> Storage.Inmemory.state store facts
-  | SimpleFile store -> Storage.Simple_file.state store facts
   | LsmStore store -> 
       let count = Storage.Lsm.Multi_store.state store facts
         |> Result.expect ~msg:"LSM state failed" in
@@ -86,7 +74,6 @@ let state graph facts =
 let retract graph ~fact_uri =
   match graph.storage with
   | Inmemory store -> Storage.Inmemory.retract store ~fact_uri
-  | SimpleFile store -> Storage.Simple_file.retract store ~fact_uri
   | LsmStore store ->
       (* Find the fact by scanning all current facts *)
       (* Not efficient (O(n) scan), but correct and simple *)
@@ -106,7 +93,6 @@ let retract graph ~fact_uri =
 let get graph ~entity ~attr =
   match graph.storage with
   | Inmemory store -> Storage.Inmemory.get store ~entity ~attr
-  | SimpleFile store -> Storage.Simple_file.get store ~entity ~attr
   | LsmStore store ->
       let facts = Storage.Lsm.Multi_store.get_entity_facts store ~entity in
       Iter.MutIterator.find facts ~fn:(fun f -> Uri.equal f.Fact.attribute attr)
@@ -115,19 +101,16 @@ let get graph ~entity ~attr =
 let get_all_facts graph ~entity =
   match graph.storage with
   | Inmemory store -> Storage.Inmemory.get_all_facts store ~entity
-  | SimpleFile store -> Storage.Simple_file.get_all_facts store ~entity
   | LsmStore store -> Storage.Lsm.Multi_store.get_entity_facts store ~entity
 
 let get_current_facts graph ~entity =
   match graph.storage with
   | Inmemory store -> Storage.Inmemory.get_current_facts store ~entity
-  | SimpleFile store -> Storage.Simple_file.get_current_facts store ~entity
   | LsmStore store -> Storage.Lsm.Multi_store.get_entity_facts store ~entity
 
 let exists graph entity =
   match graph.storage with
   | Inmemory store -> Storage.Inmemory.exists store entity
-  | SimpleFile store -> Storage.Simple_file.exists store entity
   | LsmStore store ->
       let facts = Storage.Lsm.Multi_store.get_entity_facts store ~entity in
       Iter.MutIterator.any facts ~fn:(fun _ -> true)
@@ -135,7 +118,6 @@ let exists graph entity =
 let get_kind graph entity =
   match graph.storage with
   | Inmemory store -> Storage.Inmemory.get_kind store entity
-  | SimpleFile store -> Storage.Simple_file.get_kind store entity
   | LsmStore store ->
       let instance_of_attr = Uri.of_string "@field:instance_of" in
       let facts = Storage.Lsm.Multi_store.get_entity_facts store ~entity in
@@ -146,7 +128,6 @@ let get_kind graph entity =
 let list_schemas graph =
   match graph.storage with
   | Inmemory store -> Storage.Inmemory.list_schemas store
-  | SimpleFile store -> Storage.Simple_file.list_schemas store
   | LsmStore _store ->
       (* TODO: Implement schema listing for LSM *)
       (* Need to scan EAVT for @field:is_schema attribute *)
@@ -163,7 +144,6 @@ let list_schemas graph =
 
 let save graph =
   match (graph.storage, graph.filename) with
-  | SimpleFile store, Some path -> Storage.Simple_file.save store path
   | Inmemory _, Some path ->
       Log.warn ("Cannot save in-memory graph to " ^ path)
   | LsmStore _, _ ->
@@ -174,7 +154,6 @@ let save graph =
 let flush graph =
   match graph.storage with
   | Inmemory _ -> ()
-  | SimpleFile _ -> ()
   | LsmStore store ->
       Storage.Lsm.Multi_store.flush_all store
       |> Result.expect ~msg:"Failed to flush LSM store"
@@ -182,7 +161,6 @@ let flush graph =
 let compact_if_needed graph ~threshold =
   match graph.storage with
   | Inmemory _ -> ()
-  | SimpleFile _ -> ()
   | LsmStore store ->
       (* Check if tier 0 needs compaction *)
       if Storage.Lsm.Multi_store.needs_compaction store ~threshold then begin
@@ -198,14 +176,12 @@ let compact_if_needed graph ~threshold =
 let compact_tier graph ~tier ~threshold ?(max_merge=4) () =
   match graph.storage with
   | Inmemory _ -> Error "Not using LSM storage"
-  | SimpleFile _ -> Error "Not using LSM storage"
   | LsmStore store -> Storage.Lsm.Multi_store.compact_tier store ~tier ~threshold ~max_merge ()
 
 let close graph =
   (* Close storage *)
   (match graph.storage with
   | Inmemory _ -> ()
-  | SimpleFile _ -> ()
   | LsmStore store ->
       Storage.Lsm.Multi_store.close store
       |> Result.expect ~msg:"Failed to close LSM store");
@@ -299,7 +275,6 @@ let transitive graph ~start ~edge ~max_depth =
 let count_entities graph =
   match graph.storage with
   | Inmemory store -> Storage.Inmemory.entity_count store
-  | SimpleFile store -> Storage.Simple_file.entity_count store
   | LsmStore store ->
       (* Count unique entities from all current facts *)
       let facts = Storage.Lsm.Multi_store.get_all_current_facts store in
@@ -313,7 +288,6 @@ let count_entities graph =
 let count_facts graph =
   match graph.storage with
   | Inmemory store -> Storage.Inmemory.fact_count store
-  | SimpleFile store -> Storage.Simple_file.fact_count store
   | LsmStore _store ->
       (* TODO: Fact counting for LSM *)
       (* Use get_detailed_stats for more accurate info *)
@@ -322,7 +296,6 @@ let count_facts graph =
 let count_current_facts graph =
   match graph.storage with
   | Inmemory store -> Storage.Inmemory.current_fact_count store
-  | SimpleFile store -> Storage.Simple_file.current_fact_count store
   | LsmStore store ->
       let facts = Storage.Lsm.Multi_store.get_all_current_facts store in
       Iter.MutIterator.count facts
@@ -331,15 +304,12 @@ let get_detailed_stats graph =
   match graph.storage with
   | Inmemory _store -> 
       Data.Json.obj [("backend", Data.Json.string "inmemory")]
-  | SimpleFile _store -> 
-      Data.Json.obj [("backend", Data.Json.string "file")]
   | LsmStore store -> 
       Storage.Lsm.Multi_store.get_stats store
 
 let find_entities graph ~attr ~value =
   match graph.storage with
   | Inmemory store -> Storage.Inmemory.find_entities_by_attr_value store ~attr ~value
-  | SimpleFile store -> Storage.Simple_file.find_entities_by_attr_value store ~attr ~value
   | LsmStore store ->
       Storage.Lsm.Multi_store.find_entities_by_attr_value store ~attribute:attr ~value
 
@@ -350,7 +320,6 @@ let find_by_kind graph ~kind =
 let get_all_current_facts graph =
   match graph.storage with
   | Inmemory store -> Storage.Inmemory.get_all_current_facts store
-  | SimpleFile store -> Storage.Simple_file.get_all_current_facts store
   | LsmStore store ->
       (* Warning: This scans the entire EAVT index - expensive for large databases *)
       Log.debug "LSM get_all_current_facts: scanning entire database";
@@ -362,10 +331,6 @@ let get_facts_by_attribute graph ~attribute =
       (* Fallback: filter all facts *)
       let all_facts = Storage.Inmemory.get_all_current_facts store in
       Iter.MutIterator.filter all_facts ~fn:(fun fact -> Uri.equal fact.Fact.attribute attribute)
-  | SimpleFile store ->
-      (* Fallback: filter all facts *)
-      let all_facts = Storage.Simple_file.get_all_current_facts store in
-      Iter.MutIterator.filter all_facts ~fn:(fun fact -> Uri.equal fact.Fact.attribute attribute)
   | LsmStore store ->
       (* Optimized: Use AVET index for fast attribute lookup *)
       Storage.Lsm.Multi_store.get_facts_by_attribute store ~attribute
@@ -375,28 +340,6 @@ let find_by_source graph ~source =
   | Inmemory store ->
       (* Fallback: filter all facts *)
       let all_facts = Storage.Inmemory.get_all_current_facts store in
-      let entities = all_facts
-        |> Iter.MutIterator.filter_map ~fn:(fun fact ->
-            if Uri.equal fact.Fact.source_uri source then
-              Some fact.Fact.entity
-            else None)
-        |> Iter.MutIterator.to_list
-        |> List.sort_uniq Uri.compare in
-      
-      (* Convert to iterator *)
-      let module ListIter = struct
-        type state = { mutable remaining : Uri.t list }
-        type item = Uri.t
-        let next state = match state.remaining with
-          | [] -> None
-          | x :: xs -> state.remaining <- xs; Some x
-        let size state = List.length state.remaining
-        let clone state = { remaining = state.remaining }
-      end in
-      Iter.MutIterator.make (module ListIter) { remaining = entities }
-  | SimpleFile store ->
-      (* Fallback: filter all facts *)
-      let all_facts = Storage.Simple_file.get_all_current_facts store in
       let entities = all_facts
         |> Iter.MutIterator.filter_map ~fn:(fun fact ->
             if Uri.equal fact.Fact.source_uri source then
@@ -443,12 +386,6 @@ let retract_by_source graph ~source =
       Iter.MutIterator.for_each all_facts ~fn:(fun fact ->
         if Uri.equal fact.Fact.source_uri source then
           retract graph ~fact_uri:fact.Fact.fact_uri)
-  | SimpleFile store ->
-      (* Fallback: scan all facts *)
-      let all_facts = Storage.Simple_file.get_all_current_facts store in
-      Iter.MutIterator.for_each all_facts ~fn:(fun fact ->
-        if Uri.equal fact.Fact.source_uri source then
-          retract graph ~fact_uri:fact.Fact.fact_uri)
   | LsmStore store ->
       (* Optimized: Use SOURCE index for fast lookup *)
       let facts = Storage.Lsm.Multi_store.get_facts_by_source store ~source in
@@ -458,6 +395,5 @@ let retract_by_source graph ~source =
 let cleanup_orphaned_files graph =
   match graph.storage with
   | Inmemory _ -> ()  (* No files to clean up *)
-  | SimpleFile _ -> ()  (* TODO: implement for simple file backend *)
   | LsmStore store ->
       Storage.Lsm.Multi_store.cleanup_orphaned_files store

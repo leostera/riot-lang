@@ -53,7 +53,7 @@ let value_equal v1 v2 =
   | Bool b1, Bool b2 -> b1 = b2
   | Float f1, Float f2 -> f1 = f2
   | Uri u1, Uri u2 -> Uri.equal u1 u2
-  | DateTime dt1, DateTime dt2 -> Datetime.to_timestamp dt1 = Datetime.to_timestamp dt2
+  | DateTime dt1, DateTime dt2 -> Datetime.equal dt1 dt2
   | _ -> false
 
 let value_hash = function
@@ -69,4 +69,5 @@ let value_hash = function
       (* Use first 8 bytes of SHA-256 hash for hashing *)
       let module Bytes = Kernel.IO.Bytes in
       Int64.to_int (Bytes.get_int64_be u.Uri.sha256 0)
-  | DateTime dt -> int_of_float (Datetime.to_timestamp dt)
+  | DateTime dt -> 
+      Datetime.to_system_time dt |> Time.SystemTime.to_unix_timestamp

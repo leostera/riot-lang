@@ -57,7 +57,6 @@ val open_exclusive : data_dir:string -> ?timeout:Time.Duration.t -> unit -> (t, 
 
 type create_config = Graph_store.create_config =
   | InMemory  (** In-memory HashMap storage *)
-  | Persistent of string  (** File-based JSON storage *)
   | Lsm of string  (** LSM-based multi-index storage (acquires write lock) *)
 
 val create : ?config:create_config -> unit -> t
@@ -79,26 +78,12 @@ val create : ?config:create_config -> unit -> t
       
       (* In-memory (ephemeral, no persistence) *)
       let graph = create ~config:InMemory () in
-      
-      (* File-based JSON (simple persistence) *)
-      let graph = create ~config:(Persistent "data.json") () in
     ]}
 *)
-
-val create_persistent : string -> t
-(** Legacy API: Create a graph store backed by a file.
-    Equivalent to [create ~config:(Persistent path) ()]. *)
-
-val create_lsm : string -> t
-(** Create an LSM-backed graph store (acquires write lock).
-    Equivalent to [create ~config:(Lsm data_dir) ()]. *)
 
 val save : t -> unit
 (** Save graph to disk (only for persistent stores).
     LSM stores are automatically persisted. *)
-
-val load : string -> t
-(** Load a graph from file. Equivalent to [create_persistent path]. *)
 
 val close : t -> unit
 (** Close the graph and flush any pending writes.

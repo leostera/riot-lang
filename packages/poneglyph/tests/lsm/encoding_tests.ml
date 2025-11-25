@@ -171,7 +171,9 @@ let test_datetime_roundtrip () =
   let decoded = Encoding.decode_datetime encoded in
 
   (* Allow 1 microsecond tolerance *)
-  let diff = abs_float (Datetime.to_timestamp now -. Datetime.to_timestamp decoded) in
+  let now_ts = Datetime.to_system_time now |> Time.SystemTime.secs_float in
+  let decoded_ts = Datetime.to_system_time decoded |> Time.SystemTime.secs_float in
+  let diff = abs_float (now_ts -. decoded_ts) in
   if diff > 0.000001 then
     Error
       ("DateTime roundtrip lost precision: " ^ string_of_float diff
@@ -180,8 +182,8 @@ let test_datetime_roundtrip () =
 
 (** Test 6: DateTime ordering *)
 let test_datetime_ordering () =
-  let epoch = Datetime.from_unix_time 0.0 in
-  let later = Datetime.from_unix_time 1000000.0 in
+  let epoch = Datetime.epoch in
+  let later = Datetime.from_system_time (Time.SystemTime.from_unix_timestamp 1000000) in
 
   let e1 = Encoding.encode_datetime epoch in
   let e2 = Encoding.encode_datetime later in

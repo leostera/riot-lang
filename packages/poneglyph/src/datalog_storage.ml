@@ -21,7 +21,9 @@ let fact_value_to_datalog_value (v : Fact.value) : Datalog.Value.t =
   | Fact.Bool b -> Datalog.Value.String (string_of_bool b)
   | Fact.Float f -> Datalog.Value.String (string_of_float f)
   | Fact.Uri u -> Datalog.Value.Uri (Uri.to_string u)
-  | Fact.DateTime dt -> Datalog.Value.String (string_of_float (Datetime.to_timestamp dt))
+  | Fact.DateTime dt -> 
+      let timestamp = Datetime.to_system_time dt |> Time.SystemTime.secs_float in
+      Datalog.Value.String (string_of_float timestamp)
 
 (** Convert Datalog value to Poneglyph fact value (for queries) *)
 let datalog_value_to_fact_value (v : Datalog.Value.t) : Fact.value option =

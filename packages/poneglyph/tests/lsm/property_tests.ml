@@ -45,8 +45,11 @@ let arb_finite_float =
 (** Generate random DateTime - limit range to avoid precision issues *)
 let arb_datetime =
   Arbitrary.make
-    ~print:(fun dt -> string_of_float (Datetime.to_timestamp dt))
-    Generator.(map (fun secs -> Datetime.from_unix_time (float_of_int secs))
+    ~print:(fun dt -> 
+      let ts = Datetime.to_system_time dt |> Time.SystemTime.secs_float in
+      string_of_float ts)
+    Generator.(map (fun secs -> 
+      Time.SystemTime.from_unix_timestamp secs |> Datetime.from_system_time)
                (int_range 0 1000000))  (* Limited range for tests *)
 
 (** Generate random 41-byte keys (simplified: just use entity_id variation) *)
@@ -143,9 +146,11 @@ let prop_datetime_roundtrip =
       let encoded = Encoding.encode_datetime dt in
       let decoded = Encoding.decode_datetime encoded in
       (* Allow 1 microsecond tolerance *)
-      let diff = if Datetime.to_timestamp dt < Datetime.to_timestamp decoded
-                 then Datetime.to_timestamp decoded -. Datetime.to_timestamp dt
-                 else Datetime.to_timestamp dt -. Datetime.to_timestamp decoded in
+      let dt_ts = Datetime.to_system_time dt |> Time.SystemTime.secs_float in
+      let decoded_ts = Datetime.to_system_time decoded |> Time.SystemTime.secs_float in
+      let diff = if dt_ts < decoded_ts
+                 then decoded_ts -. dt_ts
+                 else dt_ts -. decoded_ts in
       diff < 0.000001
     )
 
