@@ -1,3 +1,4 @@
+module Conf = Config
 open Std
 open Tusk_model
 
@@ -67,8 +68,8 @@ let index_package ~config ~db (pkg : Package.t) =
         source_dir = Path.v "src";
         namespace = String.capitalize_ascii pkg.name;
         package = pkg;
-        toolchain = Config.toolchain config;
-        workspace = Config.workspace config;
+        toolchain = Conf.toolchain config;
+        workspace = Conf.workspace config;
       }
     in
 
@@ -265,7 +266,7 @@ let index_package ~config ~db (pkg : Package.t) =
 (** Index all packages in workspace *)
 let index_workspace ~config ~db =
   let start_time = Time.Instant.now () in
-  let workspace = Config.workspace config in
+  let workspace = Conf.workspace config in
   let packages = workspace.packages in
 
   List.iter (fun pkg -> index_package ~config ~db pkg) packages;
@@ -279,7 +280,7 @@ let index_workspace ~config ~db =
 
 (** Find which package a file belongs to *)
 let find_package_for_file ~config ~file_path =
-  let workspace = Config.workspace config in
+  let workspace = Conf.workspace config in
   List.find_opt
     (fun (pkg : Package.t) ->
       (* Check if file_path starts with pkg.path *)
@@ -378,7 +379,7 @@ let index_file ~config ~db ~file_path =
           
           if not needs_indexing then (
             (* Compute relative path for display *)
-            let workspace_root = Config.workspace_root config in
+            let workspace_root = Conf.workspace_root config in
             let workspace_root_str = Path.to_string workspace_root in
             let file_path_str = Path.to_string file_path in
             let relative_path = 
@@ -433,7 +434,7 @@ let index_file ~config ~db ~file_path =
                 let elapsed_ms = Time.Duration.to_millis elapsed in
                 
                 (* Compute relative path *)
-                let workspace_root = Config.workspace_root config in
+                let workspace_root = Conf.workspace_root config in
                 let workspace_root_str = Path.to_string workspace_root in
                 let file_path_str = Path.to_string file_path in
                 let relative_path = 

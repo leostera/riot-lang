@@ -1,5 +1,3 @@
-open Std
-
 (** Codedb Service - Supervisor for code indexing processes
     
     The service runs multiple supervised processes:
@@ -9,4 +7,4 @@ open Std
 *)
 
 (** Start the Codedb service supervisor with all child processes *)
-val start : Config.t -> Supervisor.t
+val start : Config.t -> Std.Supervisor.t

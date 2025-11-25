@@ -1,3 +1,4 @@
+module Conf = Config
 open Std
 
 (** Message types for internal server *)
@@ -9,7 +10,7 @@ type Message.t +=
 (** Internal server - Main server loop for handling indexing requests *)
 let start_internal_server config =
   (* Open Poneglyph database *)
-  let db_path = Config.db_path config in
+  let db_path = Conf.db_path config in
   let db =
     Poneglyph.open_exclusive ~data_dir:(Path.to_string db_path) ()
     |> Result.expect ~msg:"Failed to open Poneglyph database"
@@ -40,7 +41,7 @@ let start_internal_server config =
 
 (** File watcher service - monitors file changes *)
 let start_file_watcher config internal_server_pid =
-  if not (Config.watch config) then (
+  if not (Conf.watch config) then (
     println "\n🔍 File watcher: disabled\n";
     let rec loop () =
       sleep (Time.Duration.from_secs 3600);
@@ -49,7 +50,7 @@ let start_file_watcher config internal_server_pid =
     loop ())
   else
     try
-      let workspace_root = Config.workspace_root config in
+      let workspace_root = Conf.workspace_root config in
       let packages_path = Path.(workspace_root / v "packages") in
       
       println "\n🔍 File watcher: monitoring packages/ for changes\n";

@@ -56,7 +56,7 @@ let daemon_exists ~workspace =
               ^ (match e with
                 | Connection_refused -> "connection refused"
                 | Closed -> "connection closed"
-                | System_error msg -> "system error: " ^ msg));
+                | System_error io_err -> "system error: " ^ IO.error_message io_err));
             false
       in
       if is_server_running then

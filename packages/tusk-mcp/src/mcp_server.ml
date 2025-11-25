@@ -613,7 +613,6 @@ let start_stdio_server ~client =
   server_loop ()
 
 let start () =
-  Log.set_log_file (Path.v "/tmp/tusk-mcp.log");
   Log.set_level Log.Trace;
 
   let cwd =

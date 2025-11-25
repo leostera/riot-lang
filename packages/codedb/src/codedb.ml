@@ -1,19 +1,14 @@
+module Analyzer = Analyzer
+module Config = Config
+module Indexer = Indexer
+module Model = Model
+module Schema = Schema
+module Service = Service
+
 open Std
 
 (** CodeDB handle - opaque Pid *)
-
 type t = Pid.t
-
-(** Re-export model types for convenience *)
-module Model = Model
-
-(** Re-export new Phase 1 modules *)
-module Config = Config
-module Service = Service
-module Schema = Schema
-
-module Analyzer = Analyzer
-module Indexer = Indexer
 
 (** Start the CodeDB server (legacy API - kept for compatibility) *)
 let start_link ?data_dir () =

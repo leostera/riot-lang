@@ -691,7 +691,7 @@ let start_tcp_server ~server ~port =
                 ^ (match e with
                   | Closed -> "closed"
                   | Connection_refused -> "connection refused"
-                  | System_error msg -> msg))
+                  | System_error io_err -> IO.error_message io_err))
         in
         Log.debug "Calling Jsonrpc.Server.handle_message";
         Jsonrpc.Server.handle_message jsonrpc_server reply req;
@@ -705,7 +705,7 @@ let start_tcp_server ~server ~port =
             ^ (match e with
               | Net.TcpServer.Closed -> "closed"
               | Net.TcpServer.Connection_refused -> "connection refused"
-              | Net.TcpServer.System_error msg -> msg));
+              | Net.TcpServer.System_error io_err -> IO.error_message io_err));
           Ok ()
       | Ok () ->
           (* listen never returns Ok (), only Error - this case shouldn't happen *)
