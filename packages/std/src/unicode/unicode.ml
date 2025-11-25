@@ -23,7 +23,7 @@ module Word_break = Word_break
 module Line_break = Line_break
 
 (** Configuration for Unicode processing *)
-module Config = Config
+module Config = Unicode_config
 
 (** Rune - Unicode code points *)
 module Rune = Rune

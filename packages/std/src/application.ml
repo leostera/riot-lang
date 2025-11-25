@@ -1,27 +1,9 @@
 open Global
 open Collections
-  open Iter
+open Iter
 
 
-(** Application - Supervision tree management with dependency resolution 
-
-module rec R : sig
-  module type Spec = sig
-    val name : string
-    val deps : (module R.Spec) list
-    val start : unit -> (Miniriot.Pid.t, exn) result
-    val stop : Miniriot.Pid.t -> unit
-  end
-end = struct
-  module type Spec = sig
-    val name : string
-    val deps : (module R.Spec) list
-    val start : unit -> (Miniriot.Pid.t, exn) result
-    val stop : Miniriot.Pid.t -> unit
-  end
-end
-include R
-*)
+(** Application - Supervision tree management with dependency resolution *)
 
 type t = {
   name: string;

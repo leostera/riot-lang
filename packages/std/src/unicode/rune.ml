@@ -91,7 +91,7 @@ let width r =
   else if in_table doublewidth c then 2
   (* Ambiguous width - depends on locale setting *)
   else if in_table ambiguous c then
-    if Config.get_east_asian_width () then 2 else 1
+    if Unicode_config.get_east_asian_width () then 2 else 1
   (* Narrow width (explicitly width 1) *)
   else if in_table narrow c then 1
   (* Default to width 1 *)

@@ -2,8 +2,9 @@ open Std
 open Std.Data
 open Std.Collections
 
-(* Helper to extract string from value *)
+(* Helper to extract values *)
 let get_string = function Toml.String s -> Some s | _ -> None
+let get_int = function Toml.Int i -> Some i | _ -> None
 let get_table = function Toml.Table t -> Some t | _ -> None
 let get_array = function Toml.Array a -> Some a | _ -> None
 let get_bool = function Toml.Bool b -> Some b | _ -> None
@@ -52,6 +53,50 @@ let test_boolean_false =
       | Some false -> Ok ()
       | Some true -> Error "Got true, expected false"
       | None -> Error "Expected boolean")
+  | _ -> Error "Parse failed"
+
+let test_integer_positive =
+  Test.case "parse positive integer" @@ fun () ->
+  let input = {|port = 2112|} in
+  match Toml.parse input with
+  | Ok (Toml.Table items) -> (
+      match get_int (List.assoc "port" items) with
+      | Some 2112 -> Ok ()
+      | Some i -> Error ("Got " ^ string_of_int i ^ ", expected 2112")
+      | None -> Error "Expected integer")
+  | _ -> Error "Parse failed"
+
+let test_integer_negative =
+  Test.case "parse negative integer" @@ fun () ->
+  let input = {|offset = -42|} in
+  match Toml.parse input with
+  | Ok (Toml.Table items) -> (
+      match get_int (List.assoc "offset" items) with
+      | Some (-42) -> Ok ()
+      | Some i -> Error ("Got " ^ string_of_int i ^ ", expected -42")
+      | None -> Error "Expected integer")
+  | _ -> Error "Parse failed"
+
+let test_integer_zero =
+  Test.case "parse zero" @@ fun () ->
+  let input = {|count = 0|} in
+  match Toml.parse input with
+  | Ok (Toml.Table items) -> (
+      match get_int (List.assoc "count" items) with
+      | Some 0 -> Ok ()
+      | Some i -> Error ("Got " ^ string_of_int i ^ ", expected 0")
+      | None -> Error "Expected integer")
+  | _ -> Error "Parse failed"
+
+let test_integer_in_array =
+  Test.case "parse array of integers" @@ fun () ->
+  let input = {|ports = [8080, 8081, 8082]|} in
+  match Toml.parse input with
+  | Ok (Toml.Table items) -> (
+      match get_array (List.assoc "ports" items) with
+      | Some [Toml.Int 8080; Toml.Int 8081; Toml.Int 8082] -> Ok ()
+      | Some arr -> Error ("Got array with " ^ string_of_int (List.length arr) ^ " items")
+      | None -> Error "Expected array")
   | _ -> Error "Parse failed"
 
 let test_bare_string =
@@ -646,6 +691,10 @@ let () =
           test_quoted_string_with_escapes;
           test_boolean_true;
           test_boolean_false;
+          test_integer_positive;
+          test_integer_negative;
+          test_integer_zero;
+          test_integer_in_array;
           test_bare_string;
           (* Arrays *)
           test_simple_array;

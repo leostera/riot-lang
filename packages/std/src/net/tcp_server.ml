@@ -11,7 +11,7 @@ type t = { listener : Tcp_listener.t; handler : handler }
 type error =
   | Connection_refused
   | Closed
-  | System_error of string
+  | System_error of IO.error
 
 let read_line (stream : Kernel.Net.Tcp_stream.t) =
   let buffer = Bytes.create 4096 in

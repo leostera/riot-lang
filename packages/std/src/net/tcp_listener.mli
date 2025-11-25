@@ -7,7 +7,7 @@ type t
 type error =
   | Connection_refused
   | Closed
-  | System_error of string
+  | System_error of IO.error
 
 val bind :
   ?reuse_addr:bool ->

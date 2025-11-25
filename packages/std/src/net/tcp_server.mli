@@ -7,7 +7,7 @@ type t
 type error =
   | Connection_refused
   | Closed
-  | System_error of string
+  | System_error of IO.error
 
 type handler = req:string -> Kernel.Net.Tcp_stream.t -> unit
 (** Handler receives request string (line without newline) and stream for

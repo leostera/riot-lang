@@ -966,6 +966,23 @@ module Command = Command
     
     **See also:** {!System} for system information *)
 
+module Config = Config
+(** **When to use:** Application configuration management
+    
+    Use Config for type-safe, environment-aware configuration loading.
+    
+    **Examples:**
+    - Loading server configuration
+    - Database connection settings
+    - Environment-specific configs (dev/test/prod)
+    - Multi-app configuration files
+    
+    **Features:**
+    - Namespaced TOML sections
+    - Type-safe parsing
+    - Environment detection
+    - Deep merging *)
+
 module Crypto = Crypto
 (** **When to use:** Cryptographic hashing
     
@@ -1515,3 +1532,5 @@ val shutdown : status:int -> unit
 
 module Dynlink = Kernel.Dynlink
 (** Dynamically link libraries *)
+
+module Ops = Kernel.Ops

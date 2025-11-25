@@ -63,7 +63,7 @@
 type error =
   | Connection_refused
   | Closed
-  | System_error of string
+  | System_error of IO.error
 (** Network error types. *)
 
 module Uri = Uri

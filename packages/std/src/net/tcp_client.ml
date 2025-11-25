@@ -11,16 +11,16 @@ type t = {
 type error =
   | Connection_refused
   | Closed
-  | System_error of string
+  | System_error of IO.error
 
 let connect ~host ~port =
   match Kernel.Net.Addr.of_host_and_port ~host ~port with
-  | Error err -> Error (System_error (IO.error_message err))
+  | Error err -> Error (System_error err)
   | Ok addr -> (
       match Tcp_stream.connect addr with
       | Ok stream -> Ok { stream; leftover = "" }
       | Error Tcp_stream.Closed -> Error Closed
-      | Error (Tcp_stream.System_error s) -> Error (System_error s)
+      | Error (Tcp_stream.System_error io_err) -> Error (System_error io_err)
       | Error Tcp_stream.Connection_refused -> Error Connection_refused)
 
 let send t data =
@@ -36,7 +36,7 @@ let send t data =
             ("Send failed: " ^
                (match e with
                | Closed -> "connection closed"
-               | System_error s -> s
+               | System_error io_err -> IO.error_message io_err
                | Connection_refused -> "connection refused"))
   in
   send_all 0
@@ -87,7 +87,7 @@ let receive t =
               let result = t.leftover ^ acc in
               t.leftover <- "";
               Ok result
-        | Error (System_error s) -> Error s
+        | Error (System_error io_err) -> Error (IO.error_message io_err)
         | Error Connection_refused -> Error "Connection refused"
       in
       read_line t.leftover

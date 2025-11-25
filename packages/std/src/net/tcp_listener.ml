@@ -8,12 +8,12 @@ type t = Kernel.Net.Tcp_listener.t
 type error =
   | Connection_refused
   | Closed
-  | System_error of string
+  | System_error of IO.error
 
 let bind ?(reuse_addr = true) ?(reuse_port = false) ?(backlog = 128) addr =
   match Kernel.Net.Tcp_listener.bind ~reuse_addr ~reuse_port ~backlog addr with
   | Ok t -> Ok t
-  | Error err -> Error (System_error (IO.error_message err))
+  | Error err -> Error (System_error err)
 
 let accept ?timeout t =
   let source = Kernel.Net.Tcp_listener.to_source t in
@@ -27,7 +27,7 @@ let accept ?timeout t =
           ~source (fun () -> accept_loop ())
     | Error err ->
         (* Some other error - EINTR is already handled by kernel layer *)
-        Error (System_error (IO.error_message err))
+        Error (System_error err)
   in
   accept_loop ()
 

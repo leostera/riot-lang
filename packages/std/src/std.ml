@@ -1,6 +1,5 @@
 (** Standard library extensions and utilities *)
 
-module Dynlink = Kernel.Dynlink
 module Agent = Agent
 module Application = Application
 module ArgParser = Arg_parser
@@ -10,10 +9,12 @@ module Calendar = Calendar
 module Char = Char
 module Collections = Collections
 module Command = Command
+module Config = Config
 module Crypto = Crypto
 module Data = Data
 module Datetime = Datetime
 module Diff = Diff
+module Dynlink = Kernel.Dynlink
 module Env = Env
 module Exception = Exception
 module Float = Float
@@ -50,6 +51,7 @@ module UUID = Uuid
 module Unicode = Unicode
 module Version = Version
 module WorkerPool = Worker_pool
+module Ops = Kernel.Ops
 
 (* Include std's Global module which re-exports from Kernel *)
 include Global
@@ -62,7 +64,7 @@ let start ~apps =
     | Ok _app_pids ->
         (* Keep system running indefinitely *)
         let rec keep_alive () =
-          Miniriot.receive_any () |> ignore;
+          sleep (Time.Duration.from_secs 100000);
           keep_alive ()
         in
         keep_alive ();

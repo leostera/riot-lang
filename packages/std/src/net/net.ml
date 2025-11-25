@@ -1,6 +1,6 @@
 (** Network I/O operations for Miniriot *)
 
-type error = Connection_refused | Closed | System_error of string
+type error = Connection_refused | Closed | System_error of IO.error
 
 module Uri = Uri
 module Addr = Addr

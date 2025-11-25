@@ -9,7 +9,7 @@ type t = Kernel.Net.Tcp_stream.t
 type error =
   | Connection_refused
   | Closed
-  | System_error of string
+  | System_error of IO.error
 
 let connect addr =
   let rec connect_loop () =
@@ -40,8 +40,7 @@ let read stream buffer ?(pos = 0) ?len ?timeout () =
         Miniriot.syscall ?timeout ~name:"TcpStream.read" ~interest:Interest.readable
           ~source (fun () -> read_loop ())
     | Error err ->
-        let err_msg = IO.error_message err in
-        Error (System_error ("Read failed: " ^ err_msg))
+        Error (System_error err)
   in
   read_loop ()
 
@@ -55,9 +54,8 @@ let write stream buffer ?(pos = 0) ?len () =
         (* Would block, register interest and wait - this suspends the process *)
         Miniriot.syscall ~name:"TcpStream.write" ~interest:Interest.writable
           ~source (fun () -> write_loop ())
-    | Error _err ->
-        (* Some other error *)
-        Error (System_error "Write failed")
+    | Error err ->
+        Error (System_error err)
   in
   write_loop ()
 
@@ -75,7 +73,8 @@ let to_reader stream =
     let read_vectored t bufs =
       match Kernel.Net.Tcp_stream.read_vectored t bufs with
       | Ok n -> Ok n
-      | Error _ -> Error (System_error "read_vectored failed")
+      | Error err ->
+          Error (System_error err)
   end in
   IO.Reader.of_read_src (module Read) stream
 
@@ -91,7 +90,8 @@ let to_writer stream =
     let write_owned_vectored t ~bufs =
       match Kernel.Net.Tcp_stream.write_vectored t bufs with
       | Ok n -> Ok n
-      | Error _ -> Error (System_error "write_vectored failed")
+      | Error err ->
+          Error (System_error err)
 
     let flush _t = Ok ()
   end in

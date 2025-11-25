@@ -6,16 +6,24 @@ open IO
 (* Result monad for cleaner error handling *)
 let ( let* ) x f = Result.and_then x f
 
-type ('src, 'err) t = {
-  reader : ('src, 'err) IO.Reader.t;
-  writer : ('src, 'err) IO.Writer.t;
+type error = 
+  | Closed 
+  | Handshake_failed of string 
+  | System_error of IO.error
+  | Network_read_failed of Tcp_stream.error
+  | Network_write_failed of Tcp_stream.error
+  | Tls_not_available
+  | Unsupported_vectored_operation
+
+type 'src t = {
+  reader : ('src, error) IO.Reader.t;
+  writer : ('src, error) IO.Writer.t;
   engine : Kernel.Net.Tls.engine;
   mutable state : [ `Active | `Eof | `Error of exn ];
   network_in_buf : bytes;
   network_out_buf : bytes;
 }
 
-type error = Closed | Handshake_failed of string | System_error of string
 
 (* Helper: Read encrypted data from network and pump into TLS engine *)
 let read_from_network t =
@@ -26,7 +34,7 @@ let read_from_network t =
         let _ = Kernel.Net.Tls.pump_encrypted_in t.engine t.network_in_buf ~pos:0 ~len:n in
         Ok ()
       )
-  | Error _ -> Error (System_error "Network read failed")
+  | Error err -> Error err (* Already wrapped by map_err *)
 
 (* Helper: Flush encrypted data from TLS engine to network *)
 let flush_to_network t =
@@ -37,7 +45,7 @@ let flush_to_network t =
       let data = Bytes.sub_string t.network_out_buf 0 n in
       match IO.write_all t.writer ~buf:data with
       | Ok () -> flush_loop ()
-      | Error _ -> Error (System_error "Network write failed"))
+      | Error err -> Error err) (* Already wrapped by map_err *)
   in
   flush_loop ()
 
@@ -68,7 +76,7 @@ let of_client_io ~reader ~writer ~hostname () =
   
   (* Check if TLS is available *)
   if not (Kernel.Net.Tls.is_available ()) then
-    Error (System_error "TLS not available on this platform")
+    Error Tls_not_available
   else
     let engine = Kernel.Net.Tls.create_client_engine ~hostname in
     let t =
@@ -90,7 +98,7 @@ let of_server_io ~reader ~writer ~cert_file ~key_file () =
   (try Kernel.Net.Tls.init () with _ -> ());
   
   if not (Kernel.Net.Tls.is_available ()) then
-    Error (System_error "TLS not available on this platform")
+    Error Tls_not_available
   else
     let engine = Kernel.Net.Tls.create_server_engine ~cert_file ~key_file in
     let t =
@@ -107,9 +115,12 @@ let of_server_io ~reader ~writer ~cert_file ~key_file () =
     | Ok () -> Ok t
     | Error e -> Error e
 
+let network_read_failed x = Network_read_failed x
+let network_write_failed x = Network_write_failed x
+
 let of_tcp_socket ~mode sock =
-  let reader = Tcp_stream.to_reader sock in
-  let writer = Tcp_stream.to_writer sock in
+  let reader = Tcp_stream.to_reader sock |> IO.Reader.map_err ~fn:network_read_failed in
+  let writer = Tcp_stream.to_writer sock |> IO.Writer.map_err ~fn:network_write_failed in
   match mode with
   | `Client hostname -> of_client_io ~reader ~writer ~hostname ()
   | `Server (cert_file, key_file) -> of_server_io ~reader ~writer ~cert_file ~key_file ()
@@ -181,34 +192,34 @@ let write_plaintext t src : (int, error) result =
           Error e)
 
 (* Expose as reader *)
-let to_reader : type src err. (src, err) t -> ((src, err) t, error) IO.Reader.t =
+let to_reader : type src. src t -> (src t, error) IO.Reader.t =
   fun tls_stream ->
     let module Read = struct
-      type nonrec t = (src, err) t
+      type nonrec t = src t
       type err = error
 
       let read (tls : t) ?timeout:_ buf = read_plaintext tls buf
 
       let read_vectored _t _bufs =
-        Error (System_error "vectored read not supported for TLS")
+        Error Unsupported_vectored_operation
     end in
     IO.Reader.of_read_src (module Read) tls_stream
 
 (* Expose as writer *)
-let to_writer : type src err. (src, err) t -> ((src, err) t, error) IO.Writer.t =
-  fun t ->
+let to_writer : type src. src t -> (src t, error) IO.Writer.t =
+  fun tls ->
     let module Write = struct
-      type nonrec t = (src, err) t
+      type nonrec t = src t
       type err = error
 
       let write t ~buf = write_plaintext t buf
 
       let write_owned_vectored _t ~bufs:_ =
-        Error (System_error "vectored write not supported for TLS")
+        Error Unsupported_vectored_operation
 
       let flush _t = Ok ()
     end in
-    IO.Writer.of_write_src (module Write) t
+    IO.Writer.of_write_src (module Write) tls
 
 (* TLS information *)
 let alpn_protocol t = Kernel.Net.Tls.alpn_protocol t.engine

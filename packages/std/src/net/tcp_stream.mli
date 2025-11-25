@@ -7,7 +7,7 @@ type t = Kernel.Net.Tcp_stream.t
 type error =
   | Connection_refused
   | Closed
-  | System_error of string
+  | System_error of IO.error
 
 val connect : Kernel.Net.Addr.stream_addr -> (t, error) result
 (** Connect to a TCP endpoint. This will suspend the process until the
