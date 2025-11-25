@@ -4,13 +4,13 @@ open Suri
 (** Simple API with CORS enabled for cross-origin requests *)
 
 let routes = Middleware.Router.[
-  get "/api/hello" (fun ~conn ~next:_ ->
+  get "/api/hello" (fun conn _req ->
     conn
     |> Conn.respond ~status:Net.Http.Status.Ok ~body:"Hello from CORS-enabled API!"
     |> Conn.send
   );
   
-  get "/api/data" (fun ~conn ~next:_ ->
+  get "/api/data" (fun conn _req ->
     let json = {|{"message": "This is accessible from browsers", "status": "ok"}|} in
     conn
     |> Conn.respond ~status:Net.Http.Status.Ok ~body:json
@@ -18,7 +18,7 @@ let routes = Middleware.Router.[
     |> Conn.send
   );
   
-  post "/api/submit" (fun ~conn ~next:_ ->
+  post "/api/submit" (fun conn _req ->
     let body = Conn.body conn in
     Log.info (String.concat "" ["Received POST data: "; body]);
     conn

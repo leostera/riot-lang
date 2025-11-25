@@ -12,7 +12,7 @@ open Suri
 *)
 
 (** API routes (dynamic content) *)
-let api_status ~conn ~next:_ =
+let api_status conn _req =
   let json =
     Data.Json.(
       Object
@@ -28,7 +28,7 @@ let api_status ~conn ~next:_ =
   |> Conn.with_header "content-type" "application/json"
   |> Conn.send
 
-let api_info ~conn ~next:_ =
+let api_info conn _req =
   let json =
     Data.Json.(
       Object
@@ -58,7 +58,7 @@ let api_info ~conn ~next:_ =
   |> Conn.send
 
 (** Root redirect *)
-let root ~conn ~next:_ =
+let root conn _req =
   conn
   |> Conn.respond ~status:Net.Http.Status.MovedPermanently ~body:""
   |> Conn.with_header "location" "/public/"

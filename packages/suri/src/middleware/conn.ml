@@ -46,6 +46,8 @@ let make socket_conn req =
     assigns = HashMap.create ();
   }
 
+let request t = t.req
+
 let method_ t = 
   match t.method_override with
   | Some m -> m
@@ -62,6 +64,25 @@ let path t =
 let headers t = Web_server.Request.headers t.req
 let body t = Web_server.Request.body t.req
 let params t = t.params
+
+let query_params t =
+  let uri_str = Web_server.Request.uri t.req in
+  match String.index_opt uri_str '?' with
+  | None -> []
+  | Some idx ->
+      let query_string = String.sub uri_str (idx + 1) (String.length uri_str - idx - 1) in
+      (* Parse query string into key=value pairs *)
+      let pairs = String.split_on_char '&' query_string in
+      List.filter_map (fun pair ->
+        match String.index_opt pair '=' with
+        | None -> None
+        | Some eq_idx ->
+            let key = String.sub pair 0 eq_idx in
+            let value = String.sub pair (eq_idx + 1) (String.length pair - eq_idx - 1) in
+            (* URL decode the key and value *)
+            Some (Net.Uri.percent_decode key, Net.Uri.percent_decode value)
+      ) pairs
+
 let body_params t = t.body_params
 let peer t = t.peer
 let resp_headers t = t.resp_headers
@@ -95,6 +116,22 @@ let render_json ?(headers = []) status json t =
   |> with_status status
   |> with_header "Content-Type" "application/json"
   |> with_body (Data.Json.to_string json)
+  |> send
+
+let render_text ?(headers = []) status text t =
+  let t = List.fold_left (fun acc (name, value) -> with_header name value acc) t headers in
+  t
+  |> with_status status
+  |> with_header "Content-Type" "text/plain; charset=utf-8"
+  |> with_body text
+  |> send
+
+let redirect ?(headers = []) path t =
+  let t = List.fold_left (fun acc (name, value) -> with_header name value acc) t headers in
+  t
+  |> with_status Found
+  |> with_header "Location" path
+  |> with_body ""
   |> send
 let halt t = { t with halted = true }
 let halted t = t.halted

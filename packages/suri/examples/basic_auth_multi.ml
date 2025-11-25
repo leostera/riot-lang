@@ -3,7 +3,7 @@ open Suri
 
 (** Basic Auth with different credentials for different routes *)
 
-let home_handler ~conn ~next:_ =
+let home_handler conn _req =
   let html = String.concat "" [
     "<html><head><title>Multi-Credential Basic Auth</title></head><body>";
     "<h1>Basic Auth - Multiple Credentials Example</h1>";
@@ -29,7 +29,7 @@ let home_handler ~conn ~next:_ =
   |> Conn.with_header "content-type" "text/html"
   |> Conn.send
 
-let admin_handler ~conn ~next:_ =
+let admin_handler conn _req =
   let html = String.concat "" [
     "<html><head><title>Admin Panel</title></head><body>";
     "<h1>Admin Panel</h1>";
@@ -44,7 +44,7 @@ let admin_handler ~conn ~next:_ =
   |> Conn.with_header "content-type" "text/html"
   |> Conn.send
 
-let api_users_handler ~conn ~next:_ =
+let api_users_handler conn _req =
   let json = {|{"endpoint": "users", "message": "API authenticated", "user": "api", "data": ["user1", "user2", "user3"]}|} in
   
   conn
@@ -52,7 +52,7 @@ let api_users_handler ~conn ~next:_ =
   |> Conn.with_header "content-type" "application/json"
   |> Conn.send
 
-let api_posts_handler ~conn ~next:_ =
+let api_posts_handler conn _req =
   let json = {|{"endpoint": "posts", "message": "API authenticated", "user": "api", "data": ["post1", "post2"]}|} in
   
   conn

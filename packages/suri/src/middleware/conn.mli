@@ -23,6 +23,12 @@ val make : Socket_pool.Connection.t -> Web_server.Request.t -> t
 
 (** ## Request Access *)
 
+val request : t -> Web_server.Request.t
+(** Get the original HTTP request.
+    
+    Most handlers should use the convenience accessors like [method_], [uri], [body],
+    etc. The raw request is available for advanced use cases. *)
+
 val method_ : t -> Net.Http.Method.t
 (** Get the HTTP method *)
 
@@ -40,6 +46,20 @@ val body : t -> string
 
 val params : t -> (string * string) list
 (** Get path/query parameters *)
+
+val query_params : t -> (string * string) list
+(** Get query parameters from the URL.
+    
+    Parses the query string from the request URI and returns parameter pairs.
+    
+    Example:
+    {[
+      (* For URI: /path?foo=bar&baz=qux *)
+      let params = Conn.query_params conn in
+      (* params = [("foo", "bar"); ("baz", "qux")] *)
+    ]}
+    
+    Note: URL-encoded values are automatically decoded. *)
 
 val body_params : t -> (string * string) list
 (** Get parsed body parameters (set by body_parser middleware) *)
@@ -149,6 +169,81 @@ val render_json : ?headers:(string * string) list -> Net.Http.Status.t -> Data.J
       |> Conn.with_status status
       |> Conn.with_header "Content-Type" "application/json"
       |> Conn.with_body (Data.Json.to_string json)
+      |> Conn.send
+    ]} *)
+
+val render_text : ?headers:(string * string) list -> Net.Http.Status.t -> string -> t -> t
+(** Render plain text response with proper content-type.
+    
+    This is a convenience function that combines:
+    - Setting optional custom headers
+    - Setting the status
+    - Setting Content-Type to "text/plain; charset=utf-8"
+    - Setting the body content
+    - Marking the response as sent
+    
+    Example:
+    {[
+      let not_found conn =
+        Conn.render_text Net.Http.Status.NotFound "Page not found" conn
+    ]}
+    
+    With custom headers (e.g., caching):
+    {[
+      let robots conn =
+        Conn.render_text 
+          ~headers:[("Cache-Control", "public, max-age=86400")]
+          Net.Http.Status.Ok 
+          "User-agent: *\nDisallow: /admin" 
+          conn
+    ]}
+    
+    Equivalent to:
+    {[
+      conn
+      |> Conn.with_status status
+      |> Conn.with_header "Content-Type" "text/plain; charset=utf-8"
+      |> Conn.with_body text
+      |> Conn.send
+    ]} *)
+
+val redirect : ?headers:(string * string) list -> string -> t -> t
+(** Redirect to another path with 302 Found status.
+    
+    This is a convenience function that combines:
+    - Setting optional custom headers
+    - Setting 302 Found status
+    - Setting Location header
+    - Setting empty body
+    - Marking the response as sent
+    
+    Example:
+    {[
+      let old_path conn =
+        Conn.redirect "/new-path" conn
+    ]}
+    
+    With custom headers:
+    {[
+      let logout conn =
+        Conn.redirect 
+          ~headers:[("Cache-Control", "no-store")]
+          "/login" 
+          conn
+    ]}
+    
+    For external URLs:
+    {[
+      let external conn =
+        Conn.redirect "https://example.com" conn
+    ]}
+    
+    Equivalent to:
+    {[
+      conn
+      |> Conn.with_status Found
+      |> Conn.with_header "Location" path
+      |> Conn.with_body ""
       |> Conn.send
     ]} *)
 

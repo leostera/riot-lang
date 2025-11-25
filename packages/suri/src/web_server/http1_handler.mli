@@ -16,7 +16,6 @@
     let config = Config.make () in let state = Http1.make_handler ~config
     ~handler () in (* Use with Socket_pool *) ``` *)
 
-open Std
 
 type state
 type error = [ `ParseError of string | `ExcessBodyRead | `IoError of string ]
@@ -47,4 +46,4 @@ val handle_shutdown :
   Socket_pool.Connection.t -> state -> (state, error) Socket_pool.Handler.handler_result
 
 val handle_message :
-  Message.t -> Socket_pool.Connection.t -> state -> (state, error) Socket_pool.Handler.handler_result
+  Std.Message.t -> Socket_pool.Connection.t -> state -> (state, error) Socket_pool.Handler.handler_result

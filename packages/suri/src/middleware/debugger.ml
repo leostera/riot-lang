@@ -1378,16 +1378,16 @@ let render_error_page ~conn ~exn ~backtrace =
     head [
       meta ~attrs:[attr "charset" "UTF-8"] ();
       meta ~attrs:[attr "viewport" "width=device-width, initial-scale=1.0"] ();
-      title_ [text "500 Internal Server Error"];
+      title [text "500 Internal Server Error"];
       link ~attrs:[
         attr "rel" "stylesheet";
         attr "href" "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/default.min.css"
       ] ();
-      style_ [text error_page_styles];
+      style error_page_styles;
       (* Highlight.js for syntax highlighting *)
-      script ~attrs:[attr "src" "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"] [];
-      script ~attrs:[attr "src" "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/ocaml.min.js"] [];
-      script [text "hljs.highlightAll();"];
+      script ~attrs:[attr "src" "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"] "";
+      script ~attrs:[attr "src" "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/ocaml.min.js"] "";
+      script "hljs.highlightAll();";
     ];
     body [
       div ~attrs:[class_ "error-container"] [

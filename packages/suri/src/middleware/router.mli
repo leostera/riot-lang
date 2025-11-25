@@ -10,25 +10,20 @@
       let routes =
         let open Router in
         [
-          get "/" (fun _conn _req ->
-            WebServer.Response.ok ~body:"Home" ());
+          get "/" (fun conn req ->
+            Conn.respond conn ~status:Ok ~body:"Home" |> Conn.send);
           
-          get "/users/:id" (fun conn _req ->
-            let id = Conn.param conn "id" in
-            WebServer.Response.ok ~body:("User " ^ id) ());
+          get "/users/:id" (fun conn req ->
+            let id = List.assoc_opt "id" (Conn.params conn) |> Option.unwrap_or ~default:"" in
+            Conn.respond conn ~status:Ok ~body:("User " ^ id) |> Conn.send);
           
-          post "/users" (fun _conn req ->
-            let body = WebServer.Request.body req in
-            WebServer.Response.created ~body:("Created: " ^ body) ());
+          post "/users" (fun conn req ->
+            let body = Web_server.Request.body req in
+            Conn.respond conn ~status:Created ~body:("Created: " ^ body) |> Conn.send);
         ]
 
-      (* Middleware is just a list! *)
+      (* Use router in middleware pipeline *)
       let app = [ Router.middleware routes ]
-
-      let handler socket_conn req =
-        let conn = Conn.make socket_conn req in
-        let conn = Pipeline.run conn app in
-        Conn.to_response conn
     ]}
 
     {2 Pattern Syntax}
@@ -52,9 +47,10 @@
 
     {3 Accessing Parameters}
     {[
-      let user_handler conn _req =
-        let id = Conn.param conn "id" in
-        WebServer.Response.ok ~body:("User " ^ id) ()
+      let user_handler conn req =
+        let id = List.assoc_opt "id" (Conn.params conn) 
+          |> Option.unwrap_or ~default:"unknown" in
+        Conn.respond conn ~status:Ok ~body:("User " ^ id) |> Conn.send
     ]}
 
     {2 HTTP Methods}
@@ -96,15 +92,14 @@
 
     {2 404 Handling}
 
-    Router automatically handles unmatched routes with a 404 response.
-    You can customize this by adding a catch-all route:
+    Router automatically passes to next middleware for unmatched routes.
+    Add a catch-all at the end of your pipeline:
     {[
-      let routes = [
-        get "/" home_handler;
-        get "/about" about_handler;
-        (* ... other routes ... *)
+      let app = [
+        Middleware.router routes;
+        (fun ~conn ~next:_ -> 
+          Conn.respond conn ~status:NotFound ~body:"404 Not Found" |> Conn.send);
       ]
-      (* Unmatched routes automatically return 404 *)
     ]}
 
     {2 Examples}
@@ -117,73 +112,94 @@
 
     {1 API Reference} *)
 
+type handler = Conn.t -> Web_server.Request.t -> Conn.t
+(** A route handler receives the connection and the original request.
+    
+    Route handlers are terminal - they should return a sent connection.
+    Unlike middleware, handlers don't have access to [next] since routes
+    are endpoints, not transformations in a pipeline.
+    
+    The connection provides convenient accessors for common request data,
+    while the raw request is available for advanced use cases.
+    
+    Example:
+    {[
+      let home_handler conn req =
+        Conn.respond conn ~status:Ok ~body:"Welcome!" |> Conn.send
+      
+      let user_handler conn req =
+        let id = List.assoc_opt "id" (Conn.params conn) |> Option.unwrap_or ~default:"" in
+        let body = Web_server.Request.body req in
+        Conn.respond conn ~status:Ok ~body:("User " ^ id) |> Conn.send
+    ]} *)
+
 type route
 (** A single route definition with pattern, method, and handler. *)
 
 type t = route list
 (** A router is a list of routes, matched in order. *)
 
-val any : string -> Pipeline.middleware -> route
+val any : string -> handler -> route
 (** Create a route that matches any HTTP method.
     
     Useful for WebSocket routes or handlers that need to accept multiple methods.
     
     {[
       any "/ws" websocket_handler
-      any "/flexible" (fun conn -> ...)
+      any "/flexible" (fun conn req -> Conn.send conn)
     ]} *)
 
-val get : string -> Pipeline.middleware -> route
+val get : string -> handler -> route
 (** Create a GET route.
 
     {[
-      get "/users" (fun _conn _req ->
-        Response.ok ~body:"List of users" ())
+      get "/users" (fun conn req ->
+        Conn.respond conn ~status:Ok ~body:"List of users" |> Conn.send)
     ]} *)
 
-val post : string -> Pipeline.middleware -> route
+val post : string -> handler -> route
 (** Create a POST route.
 
     {[
-      post "/users" (fun _conn req ->
-        let body = Request.body req in
-        Response.created ~body:("Created: " ^ body) ())
+      post "/users" (fun conn req ->
+        let body = Web_server.Request.body req in
+        Conn.respond conn ~status:Created ~body:("Created: " ^ body) |> Conn.send)
     ]} *)
 
-val put : string -> Pipeline.middleware -> route
+val put : string -> handler -> route
 (** Create a PUT route.
 
     {[
       put "/users/:id" (fun conn req ->
-        let id = Conn.param conn "id" in
-        let body = Request.body req in
-        Response.ok ~body:("Updated user " ^ id) ())
+        let id = List.assoc_opt "id" (Conn.params conn) |> Option.unwrap_or ~default:"" in
+        let body = Web_server.Request.body req in
+        Conn.respond conn ~status:Ok ~body:("Updated user " ^ id) |> Conn.send)
     ]} *)
 
-val patch : string -> Pipeline.middleware -> route
+val patch : string -> handler -> route
 (** Create a PATCH route.
 
     {[
       patch "/users/:id" (fun conn req ->
-        let id = Conn.param conn "id" in
-        Response.ok ~body:("Patched user " ^ id) ())
+        let id = List.assoc_opt "id" (Conn.params conn) |> Option.unwrap_or ~default:"" in
+        Conn.respond conn ~status:Ok ~body:("Patched user " ^ id) |> Conn.send)
     ]} *)
 
-val delete : string -> Pipeline.middleware -> route
+val delete : string -> handler -> route
 (** Create a DELETE route.
 
     {[
-      delete "/users/:id" (fun conn _req ->
-        let id = Conn.param conn "id" in
-        Response.ok ~body:("Deleted user " ^ id) ())
+      delete "/users/:id" (fun conn req ->
+        let id = List.assoc_opt "id" (Conn.params conn) |> Option.unwrap_or ~default:"" in
+        Conn.respond conn ~status:Ok ~body:("Deleted user " ^ id) |> Conn.send)
     ]} *)
 
-val head : string -> Pipeline.middleware -> route
+val head : string -> handler -> route
 (** Create a HEAD route (like GET but no response body).
 
     {[
-      head "/resource" (fun _conn _req ->
-        Response.ok ())
+      head "/resource" (fun conn req ->
+        Conn.respond conn ~status:Ok |> Conn.send)
     ]} *)
 
 val scope : string -> route list -> route
@@ -237,17 +253,22 @@ val middleware : t -> Pipeline.middleware
 (** Convert a list of routes into middleware.
 
     This is the main function to use with {!Pipeline}.
+    
+    The router middleware tries to match the request path and method against
+    all routes in order. When a match is found, the route's handler is called.
+    If no route matches, the [next] middleware in the pipeline is called.
 
     {[
       let routes = [
-        get "/" home_handler;
-        get "/about" about_handler;
+        get "/" (fun conn -> 
+          Conn.respond conn ~status:Ok ~body:"Home" |> Conn.send);
+        get "/about" (fun conn ->
+          Conn.respond conn ~status:Ok ~body:"About" |> Conn.send);
       ]
 
-      (* Middleware is just a list! *)
-      let app = [ Router.middleware routes ]
-
-      let handler socket_conn req =
-        let conn = Conn.make socket_conn req in
-        Pipeline.run conn app
+      (* Use in middleware pipeline *)
+      let app = Middleware.[
+        logger;
+        Router.middleware routes;
+      ]
     ]} *)

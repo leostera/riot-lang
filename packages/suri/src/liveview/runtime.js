@@ -18,8 +18,16 @@ class LiveView {
       return;
     }
     
+    // Extract session token from data attribute
+    const session = this.element.getAttribute('data-lv-session');
+    
     const protocol = window.location.protocol.replace('http', 'ws');
-    const url = `${protocol}//${window.location.host}${this.wsPath}`;
+    let url = `${protocol}//${window.location.host}${this.wsPath}`;
+    
+    // Append session token to URL if present
+    if (session) {
+      url += `?session=${encodeURIComponent(session)}`;
+    }
     
     console.log(`[LiveView] Connecting to ${url}`);
     this.socket = new WebSocket(url);

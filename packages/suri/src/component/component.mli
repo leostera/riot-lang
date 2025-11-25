@@ -72,7 +72,7 @@
         let card ?(class_extra = "") children =
           div ~attrs:[
             class_ ("card " ^ class_extra);
-            style "border: 1px solid #ccc; padding: 16px";
+            style_ "border: 1px solid #ccc; padding: 16px";
           ] children
 
         let button_primary children =
@@ -120,17 +120,17 @@ val class_ : string -> 'msg attr
     
     Example: [class_ "btn btn-primary"] *)
 
-val style : string -> 'msg attr
+val style_ : string -> 'msg attr
 (** Inline style attribute.
     
-    Example: [style "color: red; font-weight: bold"] *)
+    Example: [style_ "color: red; font-weight: bold"] *)
 
 val id : string -> 'msg attr
 (** Element ID attribute.
     
     Example: [id "main-content"] *)
 
-val title : string -> 'msg attr
+val title_ : string -> 'msg attr
 (** Title attribute (tooltip text). *)
 
 val name : string -> 'msg attr
@@ -280,7 +280,7 @@ val head : ?attrs:'msg attr list -> 'msg t list -> 'msg t
 val body : ?attrs:'msg attr list -> 'msg t list -> 'msg t
 (** Document body (content container) *)
 
-val title_ : ?attrs:'msg attr list -> 'msg t list -> 'msg t
+val title : ?attrs:'msg attr list -> 'msg t list -> 'msg t
 (** Document title (shown in browser tab) *)
 
 val base : ?attrs:'msg attr list -> unit -> 'msg t
@@ -292,10 +292,10 @@ val meta : ?attrs:'msg attr list -> unit -> 'msg t
 val link : ?attrs:'msg attr list -> unit -> 'msg t
 (** External resource link (CSS, favicon, etc.) *)
 
-val style_ : ?attrs:'msg attr list -> 'msg t list -> 'msg t
+val style : ?attrs:'msg attr list -> string -> 'msg t
 (** Inline CSS styles *)
 
-val script : ?attrs:'msg attr list -> 'msg t list -> 'msg t
+val script : ?attrs:'msg attr list -> string -> 'msg t
 (** Inline or external JavaScript *)
 
 (** {2 Content Sectioning} *)

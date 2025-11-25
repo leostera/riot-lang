@@ -1,6 +1,5 @@
-open Std
-
 module Web_config = Config
+open Std
 
 type parse_state =
   | WaitingForHeaders

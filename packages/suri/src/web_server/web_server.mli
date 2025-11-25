@@ -1,4 +1,3 @@
-open Std
 
 (** {1 WebServer - HTTP/1.1 Server}
 
@@ -256,7 +255,7 @@ val start_link :
   config:Config.t ->
   handler:Handler.t ->
   unit ->
-  (Supervisor.Dynamic.t, [> `Bind_error ]) result
+  (Std.Supervisor.Dynamic.t, [> `Bind_error ]) Std.result
 (** Start a supervised HTTP/1.1 server.
 
     This is the main entry point for starting a Suri web server.

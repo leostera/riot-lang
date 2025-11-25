@@ -1,4 +1,3 @@
-open Std
 
 module Config = Config
 module Middleware = Middleware
@@ -25,11 +24,12 @@ module Handler = Web_server.Handler
 let config 
     ?(host = "0.0.0.0")
     ?(port = 4000)
-    ?(acceptors = System.available_parallelism)
+    ?(acceptors = Std.System.available_parallelism)
     ?(max_request_line_length = 8192)
     ?(max_header_count = 100)
     ?(max_header_length = 8192)
     ?(buffer_size = 4096)
+    ?(liveview_secret = "INSECURE-CHANGE-ME-TO-AT-LEAST-32-CHARS")
     () =
   Config.{
     host;
@@ -39,6 +39,7 @@ let config
     max_header_count;
     max_header_length;
     buffer_size;
+    liveview_secret;
   }
 
 (** Suri.start_link app -> starts the web server

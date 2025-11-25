@@ -3,7 +3,7 @@ open Suri
 
 (** Simple Basic Auth demo - protecting admin routes *)
 
-let home_handler ~conn ~next:_ =
+let home_handler conn _req =
   let html = String.concat "" [
     "<html><head><title>Basic Auth Demo</title></head><body>";
     "<h1>Basic Auth Example</h1>";
@@ -22,7 +22,7 @@ let home_handler ~conn ~next:_ =
   |> Conn.with_header "content-type" "text/html"
   |> Conn.send
 
-let admin_handler ~conn ~next:_ =
+let admin_handler conn _req =
   let html = String.concat "" [
     "<html><head><title>Admin Panel</title></head><body>";
     "<h1>Admin Panel</h1>";
@@ -37,7 +37,7 @@ let admin_handler ~conn ~next:_ =
   |> Conn.with_header "content-type" "text/html"
   |> Conn.send
 
-let api_handler ~conn ~next:_ =
+let api_handler conn _req =
   let json = {|{"message": "Authenticated API access", "user": "api", "status": "ok"}|} in
   
   conn

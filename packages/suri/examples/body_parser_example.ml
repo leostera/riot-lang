@@ -4,7 +4,7 @@ open Suri
 (** Example app demonstrating body_parser middleware with CSRF protection *)
 
 (** Home page with form *)
-let home ~conn ~next:_ =
+let home conn _req =
   let html =
     {|<!DOCTYPE html>
 <html>
@@ -65,7 +65,7 @@ let home ~conn ~next:_ =
   |> Conn.send
 
 (** Handle form submission *)
-let submit_form ~conn ~next:_ =
+let submit_form conn _req =
   let body_params = Conn.body_params conn in
 
   (* Extract form fields *)
@@ -121,7 +121,7 @@ let submit_form ~conn ~next:_ =
   |> Conn.send
 
 (** Handle JSON API request *)
-let api_handler ~conn ~next:_ =
+let api_handler conn _req =
   let body_params = Conn.body_params conn in
 
   (* Extract JSON fields *)

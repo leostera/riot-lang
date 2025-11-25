@@ -7,7 +7,7 @@ let form_page conn =
   let open Component in
   let page = html [
     head [
-      title_ [text "CSRF Protection Demo"];
+      title [text "CSRF Protection Demo"];
       Middleware.Csrf.meta_tag conn;
     ];
     body [
@@ -34,7 +34,7 @@ let form_page conn =
       div ~attrs:[id "result"] [];
       
       (* JavaScript for AJAX submission *)
-      script [text {|
+      script {|
 document.getElementById('ajax-submit').addEventListener('click', function() {
   const name = document.getElementById('ajax-name').value;
   const token = document.querySelector('meta[name="csrf-token"]').content;
@@ -55,12 +55,12 @@ document.getElementById('ajax-submit').addEventListener('click', function() {
     document.getElementById('result').innerHTML = '<p>Error: ' + err + '</p>';
   });
 });
-|}];
+|};
     ];
   ] in
   Component.to_html page
 
-let submit_handler ~conn ~next:_ =
+let submit_handler conn req =
   (* Get form data from body_params (parsed by body_parser middleware) *)
   let params = Conn.body_params conn in
   let user_name = match List.assoc_opt "name" params with
@@ -88,7 +88,7 @@ let submit_handler ~conn ~next:_ =
   |> Conn.with_header "content-type" "text/html"
   |> Conn.send
 
-let submit_ajax_handler ~conn ~next:_ =
+let submit_ajax_handler conn req =
   (* Get JSON data from body_params (parsed by body_parser middleware) *)
   let params = Conn.body_params conn in
   let user_name = match List.assoc_opt "name" params with
@@ -102,7 +102,7 @@ let submit_ajax_handler ~conn ~next:_ =
   |> Conn.send
 
 let routes = Middleware.Router.[
-  get "/" (fun ~conn ~next:_ ->
+  get "/" (fun conn req ->
     let html = form_page conn in
     conn
     |> Conn.respond ~status:Ok ~body:html

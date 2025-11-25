@@ -131,14 +131,14 @@ let counter_view_static count =
 let static_page : unit t =
   html [
     head [
-      title_ [text "Counter - Static Preview"];
+      title [text "Counter - Static Preview"];
       meta ~attrs:[attr "charset" "UTF-8"] ();
-      style_ [text page_styles];
+      style page_styles;
     ];
     body [
       counter_view_static 0;
       
-      div ~attrs:[class_ "card"; style "text-align: left"] [
+      div ~attrs:[class_ "card"; style_ "text-align: left"] [
         h2 [text "What is this?"];
         p [
           text "This is a ";
@@ -150,7 +150,7 @@ let static_page : unit t =
         p [
           text "The component tree looks like this:";
         ];
-        pre ~attrs:[style "background: #f4f4f4; padding: 16px; border-radius: 6px; overflow-x: auto"] [
+        pre ~attrs:[style_ "background: #f4f4f4; padding: 16px; border-radius: 6px; overflow-x: auto"] [
           code [text {|div ~attrs:[class_ "card"] [
   h1 [text "Counter"];
   div ~attrs:[class_ "count"] [
@@ -205,14 +205,14 @@ let counter_view_interactive count =
 let interactive_page count : msg t =
   html [
     head [
-      title_ [text "Counter - LiveView Interactive"];
+      title [text "Counter - LiveView Interactive"];
       meta ~attrs:[attr "charset" "UTF-8"] ();
-      style_ [text page_styles];
+      style page_styles;
     ];
     body [
       counter_view_interactive count;
       
-      div ~attrs:[class_ "card"; style "text-align: left"] [
+      div ~attrs:[class_ "card"; style_ "text-align: left"] [
         h2 [text "How does it work?"];
         p [
           text "This is the ";
@@ -224,7 +224,7 @@ let interactive_page count : msg t =
         p [
           text "The enhanced component looks like:";
         ];
-        pre ~attrs:[style "background: #f4f4f4; padding: 16px; border-radius: 6px; overflow-x: auto"] [
+        pre ~attrs:[style_ "background: #f4f4f4; padding: 16px; border-radius: 6px; overflow-x: auto"] [
           code [text {|type msg = Increment | Decrement | Reset
 
 let counter_view count =
@@ -261,10 +261,10 @@ let counter_view count =
 let comparison_page : msg t =
   html [
     head [
-      title_ [text "Static vs LiveView Comparison"];
+      title [text "Static vs LiveView Comparison"];
       meta ~attrs:[attr "charset" "UTF-8"] ();
-      style_ [text page_styles];
-      style_ [text {|
+      style page_styles;
+      style {|
         .comparison {
           display: grid;
           grid-template-columns: 1fr 1fr;
@@ -275,7 +275,7 @@ let comparison_page : msg t =
         @media (max-width: 768px) {
           .comparison { grid-template-columns: 1fr; }
         }
-      |}];
+      |};
     ];
     body [
       div ~attrs:[class_ "card"] [
@@ -297,7 +297,7 @@ let comparison_page : msg t =
         ];
       ];
 
-      div ~attrs:[class_ "card"; style "text-align: left; max-width: 800px; margin: 40px auto"] [
+      div ~attrs:[class_ "card"; style_ "text-align: left; max-width: 800px; margin: 40px auto"] [
         h2 [text "The Power of Unified Components"];
         
         h3 [text "Same Structure, Different Rendering"];

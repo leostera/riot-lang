@@ -292,7 +292,8 @@ module Config : sig
   (** Server Configuration
       
       Compound configuration for the entire Suri server including
-      network settings, HTTP limits, and protocol-specific options. *)
+      network settings, HTTP limits, protocol-specific options, and
+      LiveView session security. *)
   
   type t = {
     host : string;
@@ -302,6 +303,8 @@ module Config : sig
     max_header_count : int;
     max_header_length : int;
     buffer_size : int;
+    liveview_secret : string;
+    (** Secret key for signing LiveView session tokens (min 32 characters) *)
   }
   
   val default : t
@@ -312,7 +315,12 @@ module Config : sig
       - max_request_line_length: 8192
       - max_header_count: 100
       - max_header_length: 8192
-      - buffer_size: 4096 *)
+      - buffer_size: 4096
+      - liveview_secret: "INSECURE-CHANGE-ME-TO-AT-LEAST-32-CHARS" (MUST change in production!) *)
+  
+  (** Configuration via Std.Config - see Config.mli for full documentation *)
+  val spec : Std.Config.Spec.t
+  val get : Std.Config.Spec.value -> (t, Std.Config.error) result
 end
 
 val config :
@@ -323,6 +331,7 @@ val config :
   ?max_header_count:int ->
   ?max_header_length:int ->
   ?buffer_size:int ->
+  ?liveview_secret:string ->
   unit -> Config.t
 (** Create server configuration with optional parameters. *)
 

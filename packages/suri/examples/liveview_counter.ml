@@ -19,8 +19,12 @@ module Counter = struct
   
   type state = { count: int }
   type msg = Increment | Decrement | Reset
+  type args = unit  (* No args needed for simple counter *)
   
-  let init _conn = 
+  let serialize_args () = Data.Json.Null
+  let deserialize_args _ = Ok ()
+  
+  let init _conn () = 
     Log.info "Counter initialized";
     { count = 0 }
   
@@ -226,27 +230,23 @@ let page_styles = {|
 |}
 
 (** Home page handler with embedded LiveView *)
-let home_page ~conn ~next:_ =
+let home_page conn _req =
   let open Component in
   let page = html [
     head [
       meta ~attrs:[attr "charset" "UTF-8"] ();
       meta ~attrs:[attr "viewport" "width=device-width, initial-scale=1.0"] ();
-      title_ [text "LiveView Counter"];
+      title [text "LiveView Counter"];
       LiveView.client_script;  (* Include LiveView JS runtime *)
-      style_ [text page_styles];
+      style page_styles;
     ];
     body [
       div ~attrs:[id "app"] [
-        LiveView.embed (module Counter) conn;
+        LiveView.embed (module Counter) ();
       ];
     ];
   ] in
-  conn
-  |> Middleware.Conn.with_status Net.Http.Status.Ok
-  |> Middleware.Conn.with_header "Content-Type" "text/html; charset=utf-8"
-  |> Middleware.Conn.with_body (Component.to_html page)
-  |> Middleware.Conn.send
+  conn |> Conn.render_component Net.Http.Status.Ok page
 
 (* Define routes *)
 let routes = Middleware.Router.[
@@ -260,7 +260,9 @@ let app = [
 ]
 
 let () =
-  Miniriot.run ~args:Env.args () ~main:(fun ~args:_ ->
+    Miniriot.run ~args:Env.args () ~main:(fun ~args:_ ->
+      Std.Config.load_file (Path.v "packages/suri/examples/conf.toml");
+      let _ = Std.Log.start_link () in
       let config = Suri.config ~port:9999 () in
       match Suri.start_link ~config app with
       | Ok supervisor ->

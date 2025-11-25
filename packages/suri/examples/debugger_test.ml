@@ -16,7 +16,7 @@ let process_user_request id =
   "Hello, " ^ name
 
 (* Route handlers *)
-let home_handler ~conn ~next:_ =
+let home_handler conn _req =
   let html = {|
 <!DOCTYPE html>
 <html>
@@ -47,7 +47,7 @@ let home_handler ~conn ~next:_ =
   |> Conn.with_body html
   |> Conn.send
 
-let user_handler ~conn ~next:_ =
+let user_handler conn req =
   let params = Conn.params conn in
   let id = List.assoc "id" params in
   let result = process_user_request id in
@@ -55,12 +55,12 @@ let user_handler ~conn ~next:_ =
   |> Conn.respond ~status:Ok ~body:result
   |> Conn.send
 
-let crash_handler ~conn ~next:_ =
+let crash_handler conn req =
   (* Set some response state before crashing *)
   let _conn = Conn.with_header "X-Custom" "value" conn in
   panic "Intentional crash for testing!"
 
-let divide_handler ~conn ~next:_ =
+let divide_handler conn req =
   let x = 10 in
   let y = 0 in
   let result = x / y in  (* Division by zero! *)

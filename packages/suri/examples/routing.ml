@@ -7,8 +7,8 @@ open Suri
     
     Run: tusk run suri:routing *)
 
-(* Route handlers - note the new ~conn ~next signature *)
-let home_handler ~conn ~next:_ =
+(* Route handlers *)
+let home_handler conn req =
   let html = {|
 <!DOCTYPE html>
 <html>
@@ -28,13 +28,13 @@ let home_handler ~conn ~next:_ =
   |> Conn.with_body html
   |> Conn.send
 
-let about_handler ~conn ~next:_ =
+let about_handler conn req =
   conn
   |> Conn.respond ~status:Ok 
       ~body:"Suri - High-performance web framework"
   |> Conn.send
 
-let health_handler ~conn ~next:_ =
+let health_handler conn req =
   (* Get the request ID that was added by request_id middleware *)
   let resp_headers = Conn.resp_headers conn in
   let request_id = List.assoc_opt "x-request-id" resp_headers
@@ -51,7 +51,7 @@ let health_handler ~conn ~next:_ =
   |> Conn.with_body (Data.Json.to_string json)
   |> Conn.send
 
-let not_found_handler ~conn ~next:_ =
+let not_found_handler conn req =
   conn
   |> Conn.respond ~status:NotFound ~body:"404 - Page not found"
   |> Conn.send

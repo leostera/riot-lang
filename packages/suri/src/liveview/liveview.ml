@@ -1,3 +1,6 @@
+(* Capture sibling Config module before it gets shadowed by Std.Config *)
+module SuriConfig = Config
+
 open Std
 
 module Protocol = Protocol
@@ -17,8 +20,12 @@ module type Component = sig
   
   type state
   type msg
+  type args
+
+  val serialize_args : args -> Data.Json.t
+  val deserialize_args : Data.Json.t -> (args, Data.Json.t) result
   
-  val init : Middleware.Conn.t -> state
+  val init : Middleware.Conn.t -> args -> state
   val update : msg event -> state -> state
   val render : state:state -> unit -> msg Component.t
 end
@@ -128,12 +135,13 @@ module ComponentProcess = struct
         send t.handler_pid (RenderPatch patch);
         loop t
   
-  let start_link handler_pid (type s m)
-      (module C : Component with type state = s and type msg = m) conn =
+  let start_link handler_pid (type s m a)
+      (module C : Component with type state = s and type msg = m and type args = a) 
+      conn (args : a) =
     spawn_link (fun () ->
       Log.info "Component process started";
       loop {
-        state = C.init conn;
+        state = C.init conn args;
         update = C.update;
         render = C.render;
         registry = HandlerRegistry.create ();
@@ -149,9 +157,54 @@ module MountHandler (C : Component) = struct
   type args = Middleware.Conn.t
   type state = { component : Pid.t }
   
+  (** Extract session token from query parameters *)
+  let extract_session_token conn =
+    let params = Middleware.Conn.query_params conn in
+    List.assoc_opt "session" params
+  
+  (** Get secret from Suri config *)
+  let get_secret () =
+    (* Try to get from Std.Config, fall back to default *)
+    match Std.Config.get (module SuriConfig) with
+    | Ok c -> c.liveview_secret
+    | Error _ -> 
+        Log.warn "Could not load Suri config from Std.Config, using default";
+        SuriConfig.default.liveview_secret
+  
   let init conn =
     let this = self () in
-    let component = ComponentProcess.start_link this (module C) conn in
+    
+    (* Extract and verify session token, then deserialize args *)
+    let component_args = match extract_session_token conn with
+      | None ->
+          (* No session token - try deserializing null for backward compatibility *)
+          Log.warn "No session token found, using default args";
+          (match C.deserialize_args Data.Json.Null with
+          | Ok args -> args
+          | Error err ->
+              Log.error ("Failed to create default args: " ^ Data.Json.to_string err);
+              panic "LiveView component requires valid args")
+      
+      | Some token ->
+          (* Verify and deserialize session token *)
+          let secret = get_secret () in
+          match Session.decode ~secret ~token with
+          | Error err ->
+              Log.error ("Invalid session token: " ^ err);
+              (* Fall back to default args *)
+              (match C.deserialize_args Data.Json.Null with
+              | Ok args -> args
+              | Error _ -> panic "LiveView session token invalid and no default args available")
+          
+          | Ok json ->
+              match C.deserialize_args json with
+              | Ok args -> args
+              | Error err ->
+                  Log.error ("Failed to deserialize args: " ^ Data.Json.to_string err);
+                  panic "LiveView args deserialization failed"
+    in
+    
+    let component = ComponentProcess.start_link this (module C) conn component_args in
     `ok { component }
   
   let handle_frame (frame : Http.Ws.Frame.t) _conn state =
@@ -207,7 +260,13 @@ class LiveView {
     }
     
     const protocol = window.location.protocol.replace('http', 'ws');
-    const url = `${protocol}//${window.location.host}${this.wsPath}`;
+    let url = `${protocol}//${window.location.host}${this.wsPath}`;
+    
+    // Read session token from data attribute and append to URL
+    const sessionToken = this.element.getAttribute('data-lv-session');
+    if (sessionToken) {
+      url += `?session=${encodeURIComponent(sessionToken)}`;
+    }
     
     this.socket = new WebSocket(url);
     
@@ -378,7 +437,7 @@ window.LiveView = LiveView;
 (** Client script as a Component element *)
 let client_script : 'msg Component.t =
   let open Component in
-  script ~attrs:[attr "type" "text/javascript"] [text javascript_runtime]
+  script ~attrs:[attr "type" "text/javascript"] javascript_runtime
 
 (** Generate HTML template with LiveView bootstrap *)
 let html_template ~element_id ~ws_path ?title ?styles initial_content =
@@ -387,21 +446,21 @@ let html_template ~element_id ~ws_path ?title ?styles initial_content =
   let head_elements = [
     meta ~attrs:[attr "charset" "UTF-8"] ();
     meta ~attrs:[attr "viewport" "width=device-width, initial-scale=1.0"] ();
-    title_ [text title_text];
-    script ~attrs:[attr "type" "text/javascript"] [text javascript_runtime];
+    title [text title_text];
+    script ~attrs:[attr "type" "text/javascript"] javascript_runtime;
   ] in
   let head_elements = match styles with
-    | Some css -> head_elements @ [style_ [text css]]
+    | Some css -> head_elements @ [style css]
     | None -> head_elements
   in
   let page = html [
     head head_elements;
     body [
       div ~attrs:[id element_id] [initial_content];
-      script [text (
+      script (
         "const lv = new LiveView('" ^ element_id ^ "', '" ^ ws_path ^ "');\n" ^
         "lv.connect();"
-      )];
+      );
     ];
   ] in
   Component.to_html page
@@ -440,23 +499,42 @@ let mount (type s m)
 
 (** Embed a LiveView component into a page.
     
-    Creates a mounting div with LiveView JavaScript bootstrap code.
-    The component will connect to its WebSocket endpoint at /suri/live/<id>. *)
+    Creates a mounting div with LiveView JavaScript bootstrap code and signed session token.
+    The component will connect to its WebSocket endpoint at /suri/live/<id>.
+    
+    @param module Component module to embed
+    @param args Initialization arguments to pass to the component *)
 let embed 
-    (module C : Component)
-    (_conn : Middleware.Conn.t) : 'msg Component.t =
+    (type a) (module C : Component with type args = a)
+    (args_value : a)
+  =
   let open Component in
   let element_id = "liveview-" ^ C.id in
   let ws_path = "/suri/live/" ^ C.id in
   (* JavaScript variable names can't contain hyphens, replace with underscores *)
   let js_var_name = "lv_" ^ String.map (fun c -> if c = '-' then '_' else c) element_id in
   
+  (* Get secret from config *)
+  let secret = match Std.Config.get (module SuriConfig) with
+    | Ok c -> c.liveview_secret
+    | Error _ -> 
+        Log.warn "Could not load Suri config from Std.Config, using default";
+        SuriConfig.default.liveview_secret
+  in
+  
+  (* Serialize and sign the arguments *)
+  let json = C.serialize_args args_value in
+  let session_token = Session.encode ~secret ~json in
+  
   Fragment [
-    div ~attrs:[id element_id] [];
-    script [text (
+    div ~attrs:[
+      id element_id;
+      Attr ("data-lv-session", session_token);
+    ] [];
+    script (
       "const " ^ js_var_name ^ " = new LiveView('" ^ element_id ^ "', '" ^ ws_path ^ "');\n" ^
       js_var_name ^ ".connect();"
-    )];
+    );
   ]
 
 (** Create a LiveView route.
@@ -482,7 +560,7 @@ let embed
 let live (type s m)
     (module C : Component with type state = s and type msg = m) =
   let ws_path = "/suri/live/" ^ C.id in
-  let handler ~conn ~next:_ =
+  let handler conn req =
     (* This route only handles WebSocket upgrades *)
     let headers = Middleware.Conn.headers conn in
     let is_websocket_upgrade =

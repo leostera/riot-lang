@@ -26,7 +26,7 @@ let find_user id =
 (** Routes demonstrating the middleware *)
 let routes = Middleware.Router.[
   (* Home page with explanation *)
-  get "/" (fun ~conn ~next:_ ->
+  get "/" (fun conn req ->
     let html = {|
 <!DOCTYPE html>
 <html>
@@ -117,7 +117,7 @@ curl http://localhost:4000/api/ip \
   );
 
   (* List users - demonstrates ETag and conditional GET *)
-  get "/api/users" (fun ~conn ~next:_ ->
+  get "/api/users" (fun conn req ->
     let json = {|{"users":[
   {"id":"1","name":"Alice","email":"alice@example.com"},
   {"id":"2","name":"Bob","email":"bob@example.com"},
@@ -130,7 +130,7 @@ curl http://localhost:4000/api/ip \
   );
 
   (* Get user - demonstrates ETag, conditional GET, and HEAD support *)
-  get "/api/user/:id" (fun ~conn ~next:_ ->
+  get "/api/user/:id" (fun conn req ->
     let params = Conn.params conn in
     match List.assoc_opt "id" params with
     | Some id -> (
@@ -161,7 +161,7 @@ curl http://localhost:4000/api/ip \
   );
 
   (* Delete user - demonstrates method override *)
-  delete "/api/user/:id" (fun ~conn ~next:_ ->
+  delete "/api/user/:id" (fun conn req ->
     let params = Conn.params conn in
     match List.assoc_opt "id" params with
     | Some id ->
@@ -183,7 +183,7 @@ curl http://localhost:4000/api/ip \
   );
 
   (* Show detected IP - demonstrates Remote IP middleware *)
-  get "/api/ip" (fun ~conn ~next:_ ->
+  get "/api/ip" (fun conn req ->
     let peer = Conn.peer conn in
     let client_ip = peer.ip in
     let headers = Conn.headers conn in

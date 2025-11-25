@@ -1,5 +1,7 @@
 open Std
 
+type handler = Conn.t -> Web_server.Request.t -> Conn.t
+
 type route_method = 
   | SpecificMethod of Net.Http.Method.t
   | AnyMethod
@@ -8,7 +10,7 @@ type route =
   | Route of {
       meth : route_method;
       path : string;
-      handler : Pipeline.middleware;
+      handler : handler;
     }
   | Scope of { prefix : string; routes : route list }
 
@@ -30,7 +32,7 @@ let websocket (type a s) path
   (* This creates a route that's meant to be used with a Handler.t-based server *)
   (* It won't work correctly with the middleware-only routing we currently have *)
   (* TODO: This needs to be integrated properly with the handler-based approach *)
-  get path (fun ~conn ~next:_ ->
+  get path (fun conn req ->
     conn
     |> Conn.with_status Net.Http.Status.SwitchingProtocols
     |> Conn.send
@@ -95,6 +97,7 @@ let middleware routes =
     else
       let meth = Conn.method_ conn in
       let path = normalize_path (Conn.path conn) in
+      let req = Conn.request conn in
 
       let rec try_routes = function
         | [] -> next conn
@@ -107,7 +110,8 @@ let middleware routes =
               match Matcher.match_path route_path path with
               | Some params ->
                   let conn = Conn.set_params params conn in
-                  handler ~conn ~next
+                  (* Call handler with both conn and req *)
+                  handler conn req
               | None -> try_routes rest
             else try_routes rest
       in

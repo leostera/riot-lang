@@ -3,7 +3,7 @@ open Suri
 
 (** Simple session counter demo *)
 
-let home_handler ~conn ~next:_ =
+let home_handler conn req =
   let session = Middleware.Session.get conn in
   
   (* Get current count from session *)
@@ -32,7 +32,7 @@ let home_handler ~conn ~next:_ =
   |> Conn.with_header "content-type" "text/html"
   |> Conn.send
 
-let reset_handler ~conn ~next:_ =
+let reset_handler conn req =
   let session = Middleware.Session.get conn in
   Middleware.Session.clear session;
   

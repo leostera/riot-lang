@@ -4,7 +4,7 @@ open Suri
 (** Content negotiation example - JSON-only API *)
 
 let routes = Middleware.Router.[
-  get "/" (fun ~conn ~next:_ ->
+  get "/" (fun conn _req ->
     let html = String.concat "" [
       "<html><head><title>Content Negotiation Demo</title></head><body>";
       "<h1>Content Negotiation Example</h1>";
@@ -35,7 +35,7 @@ let routes = Middleware.Router.[
     |> Conn.send
   );
   
-  get "/api/data" (fun ~conn ~next:_ ->
+  get "/api/data" (fun conn _req ->
     let json = {|{"message": "JSON data", "items": [1, 2, 3], "status": "ok"}|} in
     conn
     |> Conn.respond ~status:Net.Http.Status.Ok ~body:json
@@ -43,7 +43,7 @@ let routes = Middleware.Router.[
     |> Conn.send
   );
   
-  post "/api/submit" (fun ~conn ~next:_ ->
+  post "/api/submit" (fun conn _req ->
     let body = Conn.body conn in
     let response = String.concat "" [
       "{\"message\": \"Data received\", \"received_bytes\": ";

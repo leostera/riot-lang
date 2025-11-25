@@ -43,7 +43,7 @@ let validate ~username ~password =
       None
 
 (** Route handlers *)
-let home_handler ~conn ~next:_ =
+let home_handler conn _req =
   let html = String.concat "" [
     "<html><head><title>Database Auth Demo</title></head><body>";
     "<h1>Basic Auth - Database Validation Example</h1>";
@@ -75,7 +75,7 @@ let home_handler ~conn ~next:_ =
   |> Conn.with_header "content-type" "text/html"
   |> Conn.send
 
-let dashboard_handler ~conn ~next:_ =
+let dashboard_handler conn _req =
   (* Get authenticated user from connection *)
   match Middleware.Basic_auth.get "basic_auth_user" conn with
   | Some user ->
@@ -103,7 +103,7 @@ let dashboard_handler ~conn ~next:_ =
       |> Conn.respond ~status:Net.Http.Status.Unauthorized ~body:"Unauthorized"
       |> Conn.send
 
-let admin_handler ~conn ~next:_ =
+let admin_handler conn _req =
   match Middleware.Basic_auth.get "basic_auth_user" conn with
   | Some user ->
       (* Check if user is admin *)
@@ -140,7 +140,7 @@ let admin_handler ~conn ~next:_ =
       |> Conn.respond ~status:Net.Http.Status.Unauthorized ~body:"Unauthorized"
       |> Conn.send
 
-let profile_handler ~conn ~next:_ =
+let profile_handler conn _req =
   match Middleware.Basic_auth.get "basic_auth_user" conn with
   | Some user ->
       let json = String.concat "" [

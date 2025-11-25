@@ -31,7 +31,7 @@ let cors_middleware ~conn ~next =
   Conn.with_header "Access-Control-Allow-Origin" "*" conn'
 
 (* Route handlers *)
-let api_info_handler ~conn ~next:_ =
+let api_info_handler conn req =
   let info = Data.Json.obj [
     ("api", Data.Json.string "JSON API Example");
     ("endpoints", Data.Json.obj [
@@ -45,7 +45,7 @@ let api_info_handler ~conn ~next:_ =
   |> Conn.with_body (Data.Json.to_string info)
   |> Conn.send
 
-let users_list_handler ~conn ~next:_ =
+let users_list_handler conn req =
   let json = users_to_json users in
   conn
   |> Conn.with_status Ok
@@ -53,7 +53,7 @@ let users_list_handler ~conn ~next:_ =
   |> Conn.with_body (Data.Json.to_string json)
   |> Conn.send
 
-let user_handler ~conn ~next:_ =
+let user_handler conn req =
   let params = Conn.params conn in
   match List.assoc_opt "id" params with
   | Some id_str ->
@@ -89,7 +89,7 @@ let user_handler ~conn ~next:_ =
       |> Conn.with_body (Data.Json.to_string error)
       |> Conn.send
 
-let not_found_handler ~conn ~next:_ =
+let not_found_handler conn req =
   let error = Data.Json.obj [("error", Data.Json.string "Endpoint not found")] in
   conn
   |> Conn.with_status NotFound
@@ -113,6 +113,8 @@ let app = Middleware.[
 
 let () =
   Miniriot.run ~args:Env.args () ~main:(fun ~args:_ ->
+    Std.Config.load_file (Path.v "packages/suri/examples/conf.toml");
+    let _ = Std.Log.start_link () in
     Log.(set_level Info);
     match Suri.start_link app with
     | Ok supervisor ->

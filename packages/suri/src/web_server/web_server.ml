@@ -1,10 +1,10 @@
-open Std
 
 module Config = Config
 module Request = Request
 module Response = Response
 module Handler = Http_handler
 module Http1 = Http1_handler
+
 
 (** Start an HTTP/1.1 server with supervision.
     
@@ -18,7 +18,7 @@ module Http1 = Http1_handler
     @param acceptors Number of concurrent acceptor processes (defaults to available parallelism)
     @return Ok supervisor_pid or Error if binding fails
 *)
-let start_link ?(host = "0.0.0.0") ~port ?(acceptors = System.available_parallelism) ~config ~handler () =
+let start_link ?(host = "0.0.0.0") ~port ?(acceptors = Std.System.available_parallelism) ~config ~handler () =
   let handler_state = Http1.make_handler ~config ~handler () in
   
   let socket_handler : (Http1.state, Http1.error) Socket_pool.Handler.handler = {

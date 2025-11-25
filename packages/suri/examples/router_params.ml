@@ -17,7 +17,7 @@ let articles = [
 ]
 
 (* Route handlers that use params *)
-let article_handler ~conn ~next:_ =
+let article_handler conn req =
   let params = Conn.params conn in
   match List.assoc_opt "id" params with
   | Some id_str ->
@@ -57,7 +57,7 @@ let article_handler ~conn ~next:_ =
       |> Conn.with_body (Data.Json.to_string error)
       |> Conn.send
 
-let articles_list_handler ~conn ~next:_ =
+let articles_list_handler conn req =
   let articles_json = List.map (fun a ->
     Data.Json.obj [
       ("id", Data.Json.int a.id);
@@ -71,7 +71,7 @@ let articles_list_handler ~conn ~next:_ =
   |> Conn.with_body (Data.Json.to_string json)
   |> Conn.send
 
-let home_handler ~conn ~next:_ =
+let home_handler conn req =
   let html = {|
 <!DOCTYPE html>
 <html>

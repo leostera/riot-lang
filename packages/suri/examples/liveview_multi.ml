@@ -22,8 +22,12 @@ module Counter = struct
   
   type state = { count: int }
   type msg = Increment | Decrement | Reset
+  type args = unit
   
-  let init _conn = { count = 0 }
+  let serialize_args () = Data.Json.Null
+  let deserialize_args _ = Ok ()
+  
+  let init _conn () = { count = 0 }
   
   let update event state =
     match event with
@@ -79,10 +83,14 @@ module Status = struct
     last_update: string;
   }
   type msg = Refresh
+  type args = unit
 
   type Message.t += TimerTick of msg
   
-  let init _conn = 
+  let serialize_args () = Data.Json.Null
+  let deserialize_args _ = Ok ()
+  
+  let init _conn () = 
     let timer = Timer.send_interval (self ()) ~interval:(Time.Duration.from_secs 1) (TimerTick Refresh)  in
     { 
       timer;
@@ -300,16 +308,15 @@ let page_styles = {|
 |}
 
 (** Home page handler with both LiveViews embedded *)
-let home_page ~conn ~next:_ =
+let home_page conn _req =
   let open Component in
-  
   let page = html [
     head [
       meta ~attrs:[attr "charset" "UTF-8"] ();
       meta ~attrs:[attr "viewport" "width=device-width, initial-scale=1.0"] ();
-      title_ [text "Multiple LiveViews - Suri"];
+      title [text "Multiple LiveViews - Suri"];
       LiveView.client_script;
-      style_ [text page_styles];
+      style page_styles;
     ];
     body [
       div ~attrs:[class_ "container"] [
@@ -321,8 +328,8 @@ let home_page ~conn ~next:_ =
         
         (* Grid with both components *)
         div ~attrs:[class_ "components-grid"] [
-          (LiveView.embed (module Counter) conn);
-          (LiveView.embed (module Status) conn);
+          (LiveView.embed (module Counter) ());
+          (LiveView.embed (module Status) ());
         ];
         
         (* Footer with explanation *)

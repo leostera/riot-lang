@@ -27,37 +27,37 @@ module MyDesign = struct
   let container ?(max_width = "1200px") children =
     div ~attrs:[
       class_ "container";
-      style ("max-width: " ^ max_width ^ "; margin: 0 auto; padding: 0 " ^ spacing_md);
+      style_ ("max-width: " ^ max_width ^ "; margin: 0 auto; padding: 0 " ^ spacing_md);
     ] children
   
   let grid ?(columns = 3) ?(gap = spacing_md) children =
     div ~attrs:[
       class_ "grid";
-      style ("display: grid; grid-template-columns: repeat(" ^ 
+      style_ ("display: grid; grid-template-columns: repeat(" ^ 
              Int.to_string columns ^ ", 1fr); gap: " ^ gap ^ ";");
     ] children
   
   let stack ?(spacing = spacing_md) children =
     div ~attrs:[
       class_ "stack";
-      style ("display: flex; flex-direction: column; gap: " ^ spacing ^ ";");
+      style_ ("display: flex; flex-direction: column; gap: " ^ spacing ^ ";");
     ] children
   
   let row ?(spacing = spacing_md) ?(align = "start") children =
     div ~attrs:[
       class_ "row";
-      style ("display: flex; gap: " ^ spacing ^ "; align-items: " ^ align ^ ";");
+      style_ ("display: flex; gap: " ^ spacing ^ "; align-items: " ^ align ^ ";");
     ] children
   
   (* Typography *)
   
   let page_header title subtitle =
     header ~attrs:[class_ "page-header"] [
-      h1 ~attrs:[style ("margin: 0 0 " ^ spacing_sm ^ " 0")] [text title];
+      h1 ~attrs:[style_ ("margin: 0 0 " ^ spacing_sm ^ " 0")] [text title];
       when_ (subtitle != "") (
         p ~attrs:[
           class_ "subtitle";
-          style ("color: #666; margin: 0; font-size: 1.2em");
+          style_ ("color: #666; margin: 0; font-size: 1.2em");
         ] [text subtitle]
       );
     ]
@@ -67,7 +67,7 @@ module MyDesign = struct
   let card ?(class_extra = "") ?(style_extra = "") children =
     div ~attrs:[
       class_ ("card " ^ class_extra);
-      style ("border: 1px solid #e0e0e0; border-radius: " ^ radius_md ^ 
+      style_ ("border: 1px solid #e0e0e0; border-radius: " ^ radius_md ^ 
              "; padding: " ^ spacing_lg ^ "; background: white; " ^
              "box-shadow: 0 2px 4px rgba(0,0,0,0.1); " ^ style_extra);
     ] children
@@ -75,7 +75,7 @@ module MyDesign = struct
   let button_base ?(class_extra = "") ?(bg_color = primary_color) ?(text_color = "white") children =
     button ~attrs:[
       class_ ("btn " ^ class_extra);
-      style ("background: " ^ bg_color ^ "; color: " ^ text_color ^ "; border: none; " ^
+      style_ ("background: " ^ bg_color ^ "; color: " ^ text_color ^ "; border: none; " ^
              "padding: 10px 20px; border-radius: " ^ radius_sm ^ "; cursor: pointer; " ^
              "font-weight: 600; transition: opacity 0.2s;");
     ] children
@@ -104,7 +104,7 @@ module MyDesign = struct
     let text_color = if variant = "warning" then "#000" else "#fff" in
     span ~attrs:[
       class_ ("badge badge-" ^ variant);
-      style ("background: " ^ bg_color ^ "; color: " ^ text_color ^ 
+      style_ ("background: " ^ bg_color ^ "; color: " ^ text_color ^ 
              "; padding: 4px 10px; border-radius: " ^ radius_lg ^ 
              "; font-size: 12px; font-weight: 600; display: inline-block;");
     ] [text content]
@@ -118,7 +118,7 @@ module MyDesign = struct
     in
     div ~attrs:[
       class_ ("alert alert-" ^ type_);
-      style ("background: " ^ bg_color ^ "; border: 1px solid " ^ border_color ^ 
+      style_ ("background: " ^ bg_color ^ "; border: 1px solid " ^ border_color ^ 
              "; color: " ^ text_color ^ "; padding: " ^ spacing_md ^ 
              "; border-radius: " ^ radius_sm ^ "; margin: " ^ spacing_sm ^ " 0; " ^
              "display: flex; justify-content: space-between; align-items: center;");
@@ -127,7 +127,7 @@ module MyDesign = struct
       when_ dismissible (
         button ~attrs:[
           class_ "close";
-          style "background: none; border: none; font-size: 24px; cursor: pointer; opacity: 0.5;";
+          style_ "background: none; border: none; font-size: 24px; cursor: pointer; opacity: 0.5;";
           attr "aria-label" "Close";
         ] [text "×"]
       );
@@ -137,12 +137,12 @@ module MyDesign = struct
     let percentage = (Float.of_int value /. Float.of_int max) *. 100.0 in
     div ~attrs:[
       class_ "progress";
-      style ("background: #e0e0e0; border-radius: " ^ radius_lg ^ 
+      style_ ("background: #e0e0e0; border-radius: " ^ radius_lg ^ 
              "; height: 20px; overflow: hidden;");
     ] [
       div ~attrs:[
         class_ "progress-bar";
-        style ("background: " ^ primary_color ^ "; height: 100%; width: " ^ 
+        style_ ("background: " ^ primary_color ^ "; height: 100%; width: " ^ 
                Float.to_string percentage ^ "%; transition: width 0.3s;");
         attr "role" "progressbar";
         attr "aria-valuenow" (Int.to_string value);
@@ -158,7 +158,7 @@ let product_card ~name ~price ~in_stock ~discount =
   MyDesign.card ~class_extra:"product-card" [
     MyDesign.stack ~spacing:MyDesign.spacing_md [
       div [
-        h3 ~attrs:[style "margin: 0 0 8px 0"] [text name];
+        h3 ~attrs:[style_ "margin: 0 0 8px 0"] [text name];
         MyDesign.row ~spacing:MyDesign.spacing_sm ~align:"center" [
           MyDesign.badge ~variant:(if in_stock then "success" else "danger") 
             (if in_stock then "In Stock" else "Out of Stock");
@@ -168,7 +168,7 @@ let product_card ~name ~price ~in_stock ~discount =
           );
         ];
       ];
-      div ~attrs:[style "font-size: 24px; font-weight: bold; color: #007bff"] [
+      div ~attrs:[style_ "font-size: 24px; font-weight: bold; color: #007bff"] [
         text "$";
         text (Float.to_string price);
       ];
@@ -181,12 +181,12 @@ let product_card ~name ~price ~in_stock ~discount =
 let example_page : unit t =
   html [
     head [
-      title_ [text "Design System Example"];
+      title [text "Design System Example"];
       meta ~attrs:[attr "charset" "UTF-8"] ();
       meta ~attrs:[
         attr "viewport" "width=device-width, initial-scale=1.0";
       ] ();
-      style_ [text {|
+      style {|
         * { box-sizing: border-box; }
         body { 
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -195,7 +195,7 @@ let example_page : unit t =
           background: #f5f5f5;
           color: #333;
         }
-      |}];
+      |};
     ];
     body [
       MyDesign.container [
@@ -286,7 +286,7 @@ let example_page : unit t =
 
           (* Footer *)
           footer ~attrs:[
-            style ("margin-top: " ^ MyDesign.spacing_xl ^ "; padding-top: " ^ 
+            style_ ("margin-top: " ^ MyDesign.spacing_xl ^ "; padding-top: " ^ 
                    MyDesign.spacing_lg ^ "; border-top: 1px solid #ddd; text-align: center;");
           ] [
             p [

@@ -18,7 +18,7 @@ let timer_middleware ~conn ~next =
   conn'
 
 (* Route handlers *)
-let home_handler ~conn ~next:_ =
+let home_handler conn _req =
   let html = {|
 <!DOCTYPE html>
 <html>
@@ -46,13 +46,13 @@ let home_handler ~conn ~next:_ =
   |> Conn.with_body html
   |> Conn.send
 
-let about_handler ~conn ~next:_ =
+let about_handler conn _req =
   conn
   |> Conn.respond ~status:Ok 
       ~body:"Suri - High-performance web framework with OTP-style supervision"
   |> Conn.send
 
-let api_data_handler ~conn ~next:_ =
+let api_data_handler conn _req =
   (* Get the request ID from the response headers (set by request_id middleware) *)
   let resp_headers = Conn.resp_headers conn in
   let request_id = List.assoc_opt "x-request-id" resp_headers
@@ -76,7 +76,7 @@ let api_data_handler ~conn ~next:_ =
   |> Conn.with_body (Data.Json.to_string data)
   |> Conn.send
 
-let not_found_handler ~conn ~next:_ =
+let not_found_handler conn _req =
   conn
   |> Conn.respond ~status:NotFound ~body:"404 - Not Found"
   |> Conn.send

@@ -6,12 +6,12 @@ open Suri.Component
 let welcome_page : unit t =
   html [
     head [
-      title_ [text "Welcome to Suri Components"];
+      title [text "Welcome to Suri Components"];
       meta ~attrs:[
         attr "charset" "UTF-8";
         attr "viewport" "width=device-width, initial-scale=1.0";
       ] ();
-      style_ [text {|
+      style {|
         body { 
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
           max-width: 800px; 
@@ -119,7 +119,7 @@ let welcome_page : unit t =
           border-radius: 3px;
           font-family: 'Monaco', 'Courier New', monospace;
         }
-      |}];
+      |};
     ];
     body [
       header ~attrs:[class_ "hero"] [

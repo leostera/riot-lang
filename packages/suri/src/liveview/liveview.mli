@@ -88,8 +88,17 @@ module type Component = sig
   type msg
   (** Messages that can change state *)
   
-  val init : Middleware.Conn.t -> state
-  (** Initialize state when client connects *)
+  type args
+  (** Initialization arguments passed from HTTP handler to WebSocket mount *)
+  
+  val serialize_args : args -> Data.Json.t
+  (** Serialize args to JSON for embedding in session token *)
+  
+  val deserialize_args : Data.Json.t -> (args, Data.Json.t) result
+  (** Deserialize args from JSON when mounting component *)
+  
+  val init : Middleware.Conn.t -> args -> state
+  (** Initialize state when client connects with initialization arguments *)
   
   val update : msg event -> state -> state
   (** Update state based on event (pure function).
@@ -148,12 +157,17 @@ val mount : (module Component with type state = 's and type msg = 'm) ->
       (* Use with WebSocket upgrade *)
     ]} *)
 
-val embed : (module Component) -> 
-            Middleware.Conn.t ->
+val embed : (module Component with type args = 'args) ->
+            'args ->
             'msg Component.t
-(** Embed a LiveView component into a page.
+(** Embed a LiveView component into a page with signed session token.
     
-    Returns the HTML string for the LiveView mounting div and bootstrap script.
+    The secret is automatically retrieved from Suri.Config via Std.Config.
+    
+    @param module Component module  
+    @param args The initialization arguments to pass to the component
+    
+    Returns the HTML for the LiveView mounting div with embedded session token and bootstrap script.
     The component will connect to the WebSocket endpoint defined by its [id] field.
     
     This allows you to:
@@ -172,11 +186,11 @@ val embed : (module Component) ->
         let page = Component.html [
           head [
             LiveView.client_script;
-            style_ [text my_custom_styles];
+            style my_custom_styles;
           ];
           body [
             h1 [text "My Dashboard"];
-            Component.text (LiveView.embed (module Counter) conn);
+            Component.text (LiveView.embed (module Counter) args);
           ];
         ] in
         conn 
@@ -188,10 +202,10 @@ val embed : (module Component) ->
     {[
       let home_page conn =
         let page = Component.html [
-          head [LiveView.client_script; style_ [text styles]];
+          head [LiveView.client_script; style styles];
           body [
-            Component.text (LiveView.embed (module Counter) conn);
-            Component.text (LiveView.embed (module Timer) conn);
+            Component.text (LiveView.embed (module Counter) counter_args);
+            Component.text (LiveView.embed (module Timer) timer_args);
           ];
         ] in
         (* ... *)
@@ -258,7 +272,7 @@ val client_script : 'msg Component.t
       let page = Component.html [
         head [
           LiveView.client_script;  (* Include LiveView JS *)
-          style_ [text my_styles];
+          style my_styles;
         ];
         body [
           LiveView.embed (module Counter) conn;

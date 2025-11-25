@@ -15,9 +15,9 @@ type 'msg t =
 
 let attr name value = Attr (name, value)
 let class_ value = Attr ("class", value)
-let style value = Attr ("style", value)
+let style_ value = Attr ("style", value)
 let id value = Attr ("id", value)
-let title value = Attr ("title", value)
+let title_ value = Attr ("title", value)
 let name value = Attr ("name", value)
 let value value = Attr ("value", value)
 let placeholder value = Attr ("placeholder", value)
@@ -66,12 +66,12 @@ let el tag ?(attrs = []) children = El { tag; attrs; children }
 let html ?(attrs = []) children = El { tag = "html"; attrs; children }
 let head ?(attrs = []) children = El { tag = "head"; attrs; children }
 let body ?(attrs = []) children = El { tag = "body"; attrs; children }
-let title_ ?(attrs = []) children = El { tag = "title"; attrs; children }
+let title ?(attrs = []) children = El { tag = "title"; attrs; children }
 let base ?(attrs = []) () = El { tag = "base"; attrs; children = [] }
 let meta ?(attrs = []) () = El { tag = "meta"; attrs; children = [] }
 let link ?(attrs = []) () = El { tag = "link"; attrs; children = [] }
-let style_ ?(attrs = []) children = El { tag = "style"; attrs; children }
-let script ?(attrs = []) children = El { tag = "script"; attrs; children }
+let style ?(attrs = []) content = El { tag = "style"; attrs; children = [Text content] }
+let script ?(attrs = []) content = El { tag = "script"; attrs; children = [Text content] }
 
 (* Content sectioning *)
 let header ?(attrs = []) children = El { tag = "header"; attrs; children }
