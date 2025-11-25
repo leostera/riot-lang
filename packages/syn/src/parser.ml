@@ -2645,6 +2645,26 @@ and parse_attributes parser =
     [ Ceibo.Green.Node attr ] @ tokens_to_green parser trivia
   ) attr_list |> List.flatten
 
+(** Parse optional extension name after keyword: %identifier
+    Used for: let%foo, match%bar, etc.
+    Returns green nodes for the extension if present, otherwise empty list *)
+and parse_extension_name parser =
+  if peek_kind parser = Token.Percent then
+    let percent = consume parser in
+    let trivia_after_percent = consume_trivia parser in
+    match peek_kind parser with
+    | Token.Ident _ ->
+        let ext_name = consume parser in
+        [ make_token parser percent ]
+        @ tokens_to_green parser trivia_after_percent
+        @ [ make_token parser ext_name ]
+    | _ ->
+        (* % without identifier - just return the % token *)
+        [ make_token parser percent ]
+        @ tokens_to_green parser trivia_after_percent
+  else
+    []
+
 (** Parse a single extension: [%ext] or [%%ext] or [%ext payload] *)
 and parse_extension parser =
   match peek_kind parser with
@@ -5466,6 +5486,10 @@ and parse_let_binding parser =
       let let_kw = consume parser in
       let trivia_after_let = consume_trivia parser in
 
+      (* Parse optional extension: let%foo *)
+      let ext_nodes = parse_extension_name parser in
+      let trivia_after_ext = if ext_nodes != [] then consume_trivia parser else [] in
+
       (* Parse optional attributes: let[@inline] f x = ... *)
       let attr_nodes = parse_attributes parser in
 
@@ -5592,6 +5616,8 @@ and parse_let_binding parser =
             make_node Syntax_kind.LET_BINDING
               ([ make_token parser let_kw ]
               @ tokens_to_green parser trivia_after_let
+              @ ext_nodes
+              @ tokens_to_green parser trivia_after_ext
               @ attr_nodes
               @ rec_nodes
               @ [ Ceibo.Green.Node pat ]
@@ -5609,6 +5635,8 @@ and parse_let_binding parser =
             make_node Syntax_kind.LET_BINDING
               ([ make_token parser let_kw ]
               @ tokens_to_green parser trivia_after_let
+              @ ext_nodes
+              @ tokens_to_green parser trivia_after_ext
               @ attr_nodes
               @ rec_nodes
               @ [ Ceibo.Green.Node pat ]
@@ -5635,6 +5663,8 @@ and parse_let_binding parser =
           make_node Syntax_kind.LET_BINDING
             ([ make_token parser let_kw ]
             @ tokens_to_green parser trivia_after_let
+            @ ext_nodes
+            @ tokens_to_green parser trivia_after_ext
             @ attr_nodes
             @ rec_nodes
             @ [ Ceibo.Green.Node pat ]
@@ -5652,6 +5682,8 @@ and parse_let_binding parser =
           let first_binding = make_node Syntax_kind.LET_BINDING
             ([ make_token parser let_kw ]
             @ tokens_to_green parser trivia_after_let
+            @ ext_nodes
+            @ tokens_to_green parser trivia_after_ext
             @ attr_nodes
             @ rec_nodes
             @ [ Ceibo.Green.Node pat ]
@@ -5671,6 +5703,10 @@ and parse_let_binding parser =
             | Token.Keyword Keyword.And ->
                 let and_kw = consume parser in
                 let trivia_after_and = consume_trivia parser in
+                
+                (* Parse optional extension: and%foo *)
+                let ext_nodes2 = parse_extension_name parser in
+                let trivia_after_ext2 = if ext_nodes2 != [] then consume_trivia parser else [] in
                 
                 (* Parse optional attributes for this binding *)
                 let attr_nodes2 = parse_attributes parser in
@@ -5762,7 +5798,9 @@ and parse_let_binding parser =
                 let expr2 = parse_expr parser in
                 
                 let next_binding = make_node Syntax_kind.LET_BINDING
-                  (attr_nodes2
+                  (ext_nodes2
+                  @ tokens_to_green parser trivia_after_ext2
+                  @ attr_nodes2
                   @ rec_nodes2
                   @ [ Ceibo.Green.Node pat2 ]
                   @ tokens_to_green parser trivia_after_pat2
