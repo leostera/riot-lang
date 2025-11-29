@@ -23,12 +23,21 @@ type t = {
   ocamlformat : Ocamlformat.t;
 }
 
-let default_ocaml_version = "5.3.0"
+let default_ocaml_version = "5.5.0"
 
 let toolchain_base_dir =
   Path.(Tusk_model.Tusk_dirs.dot_tusk / Path.v "toolchains")
 
-let get_toolchain_path version = Path.(toolchain_base_dir / Path.v version)
+let get_host_triple () =
+  match System.os_type with
+  | "Unix" -> 
+      (* Use the host triplet from System module *)
+      System.Host.to_string System.host_triplet
+  | _ -> "x86_64-unknown-linux"
+
+let get_toolchain_path version = 
+  let host_triple = get_host_triple () in
+  Path.(toolchain_base_dir / Path.v version / Path.v host_triple)
 
 let make_toolchain version source =
   let toolchain_path = get_toolchain_path version in
@@ -94,7 +103,7 @@ let init ~config =
       let local_compiler = Path.v "./ocaml/compiler" in
       match Fs.is_dir local_compiler with
       | Ok true -> (
-          (* Create symlink from ~/.tusk/toolchains/5.3.0 to ./ocaml/compiler *)
+          (* Create symlink from ~/.tusk/toolchains/{version}/{host_triple} to ./ocaml/compiler *)
           (match Path.parent toolchain_path with
           | Some parent ->
               let _ = Fs.create_dir_all parent in
