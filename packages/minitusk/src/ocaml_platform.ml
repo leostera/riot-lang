@@ -50,10 +50,10 @@ type mode =
   | CustomExe (* -custom flag for executables with C stubs *)
 
 module Ocamlc = struct
-  (** Generate the base ocamlc command from toolchain *)
+  (** Generate base ocamlc command from toolchain *)
   let ocamlc_path =
-    let home = try Sys.getenv "HOME" with Not_found -> "/Users/ostera" in
-    Filename.concat home ".tusk/toolchains/5.3.0/bin/ocamlc.opt"
+    let bin_dir = Const.get_toolchain_bin_dir () in
+    Filename.concat bin_dir "ocamlc.opt"
 
   (** Convert warning to its numeric code *)
   let warning_to_code = function NoCmiFile -> "49" | All -> "a"
@@ -122,11 +122,7 @@ module Ocamlc = struct
     let has_nostdlib =
       List.exists (function NoStdlib -> true | _ -> false) flags
     in
-    let stdlib_path =
-      Filename.concat
-        (Filename.dirname (Filename.dirname ocamlc_path))
-        "lib/ocaml"
-    in
+    let stdlib_path = Const.get_toolchain_lib_dir () in
     let final_includes =
       if has_nostdlib then stdlib_path :: includes_with_dot
       else includes_with_dot
@@ -163,11 +159,7 @@ module Ocamlc = struct
     let has_nostdlib =
       List.exists (function NoStdlib -> true | _ -> false) flags
     in
-    let stdlib_path =
-      Filename.concat
-        (Filename.dirname (Filename.dirname ocamlc_path))
-        "lib/ocaml"
-    in
+    let stdlib_path = Const.get_toolchain_lib_dir () in
     let final_includes =
       if has_nostdlib then stdlib_path :: includes_with_dot
       else includes_with_dot
@@ -252,8 +244,8 @@ end
 
 module Ocamldep = struct
   let ocamldep_path =
-    let home = try Sys.getenv "HOME" with Not_found -> "/Users/ostera" in
-    Filename.concat home ".tusk/toolchains/5.3.0/bin/ocamldep.opt"
+    let bin_dir = Const.get_toolchain_bin_dir () in
+    Filename.concat bin_dir "ocamldep.opt"
 
   (** Parse ocamldep output to extract module names *)
   let parse_deps line =
