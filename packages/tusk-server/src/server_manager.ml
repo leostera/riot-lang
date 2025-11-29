@@ -29,20 +29,35 @@ let ensure_running ~(workspace : Workspace.t) =
         ("Server (PID " ^ Int.to_string daemon.os_pid
         ^ ") not responding, cleaning up and restarting...");
 
-      (* Clean up stale daemon files *)
-      let daemon_path = Daemon.daemon_dir ~workspace:daemon.workspace in
-      let pid_file = Path.(daemon_path / Path.v "server.pid") in
-      let port_file = Path.(daemon_path / Path.v "server.port") in
-      let _ = Fs.remove_file pid_file in
-      let _ = Fs.remove_file port_file in
+       (* Clean up stale daemon files and kill existing process *)
+       let daemon_path = Daemon.daemon_dir ~workspace:daemon.workspace in
+       let pid_file = Path.(daemon_path / Path.v "server.pid") in
+       let port_file = Path.(daemon_path / Path.v "server.port") in
+       let _ = Fs.remove_file pid_file in
+       let _ = Fs.remove_file port_file in
+       
+       (* Kill the existing daemon process if it's still running *)
+       (* TODO: Re-enable process signaling when System.OsProcess.signal is available *)
+       (* (match Fs.read_to_string pid_file with
+        | Ok pid_str when pid_str <> "" ->
+            let pid = int_of_string (String.trim pid_str) in
+            (match System.OsProcess.signal pid System.sigkill with
+             | Ok () -> Log.debug ("Killed existing daemon process " ^ Int.to_string pid)
+             | Error e -> Log.debug ("Failed to kill process " ^ Int.to_string pid ^ ": " ^ e))
+        | _ -> Log.debug "No PID file found, skipping process kill"
+       ); *)
+       Log.debug "Skipping process kill (System.OsProcess.signal not available)";
 
-      (* Try to start a new daemon *)
-      match Daemon.of_workspace ~workspace:daemon.workspace with
-      | Ok new_daemon ->
-          println
-            ("Started new tusk server (PID " ^ Int.to_string new_daemon.os_pid
-            ^ ")...");
-          wait_server ~retries:10 ~daemon:new_daemon
+       (* Try to start a new daemon *)
+       match Daemon.of_workspace ~workspace:daemon.workspace with
+       | Ok new_daemon ->
+           println
+             ("Started new tusk server (PID " ^ Int.to_string new_daemon.os_pid
+             ^ ")...");
+           wait_server ~retries:10 ~daemon:new_daemon
+       | Error e ->
+           Log.error "Failed to restart server";
+           Error e
       | Error e ->
           Log.error "Failed to restart server";
           Error e)

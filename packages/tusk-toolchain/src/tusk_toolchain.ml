@@ -131,9 +131,13 @@ let init ~config =
                      Path.to_string abs_local ^ ": " ^
                      IO.error_message err)))
       | _ ->
+          let host_triple = get_host_triple () in
           Error
-            ("Toolchain not found at " ^ Path.to_string toolchain_path ^ 
-             " and ./ocaml/compiler doesn't exist.\n\n\
+            ("Toolchain not found!\n\n\
+              Looking for: OCaml " ^ version ^ " for " ^ host_triple ^ "\n\
+              Expected location: " ^ Path.to_string toolchain_path ^ "\n\
+              Local compiler: ./ocaml/compiler (not found)\n\n\
+              We don't have prebuilt binaries for this version+target combination yet.\n\n\
               To bootstrap the toolchain, run:\n\
              \  ./ocaml/build-compiler.sh"))
 

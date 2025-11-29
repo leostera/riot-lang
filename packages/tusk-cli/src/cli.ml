@@ -99,7 +99,15 @@ let try_command cmd_name remaining_args =
       | _ -> None)
 
 let main ~args =
-  (* Using Std.Log and Std.Telemetry instead of custom Tusk_log *)
+  (* Load config BEFORE starting logger - handlers need config *)
+  Std.Config.load_string {|
+[[log.handler]]
+type = "stdout"
+format = "compact"
+|};
+  
+  (* Now start logger and telemetry *)
+  let _ = Std.Log.start_link () in
   Std.Log.set_level Info;
   let _ = Std.Telemetry.start () in
   

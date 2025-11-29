@@ -594,8 +594,13 @@ let start_with_listener () =
     Log.info "Loading toolchains...";
     let toolchain_config = Toolchain_config.from_workspace workspace in
     let toolchain =
-      Tusk_toolchain.init ~config:toolchain_config
-      |> Result.expect ~msg:"tusk_server: toolchain loading failed"
+      match Tusk_toolchain.init ~config:toolchain_config with
+      | Ok t -> t
+      | Error msg ->
+          println "\n❌ ERROR: Toolchain initialization failed!\n";
+          println msg;
+          println "";
+          exit 1
     in
     Log.info "Toolchain ready";
 
@@ -647,7 +652,8 @@ let start_with_listener () =
     Log.info "JSON-RPC server started successfully";
 
     Log.info "Tusk server entering main loop";
-    loop state
+    let _ = loop state in
+    Ok ()
   with exn ->
     Log.error ("Server initialization failed: " ^ Exception.to_string exn);
     Error exn
