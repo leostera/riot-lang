@@ -19,6 +19,7 @@ dev-tools.locks
 target
 /minitusk
 /tusk
+/tusk-*
 .merlin
 *.cmi
 *.cmo

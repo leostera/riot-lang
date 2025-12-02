@@ -42,25 +42,29 @@ jobs:
     - name: Bootstrap with Python
       run: ./bootstrap.py
       
-    - name: Build with Minitusk
+    - name: Build with Minitusk (Step 1 - Bootstrap Tusk)
       run: ./minitusk
       
     - name: Test Bootstrap Tusk
       run: ./_build/bootstrap/out/Tusk_cli/tusk --help
       
-    - name: Verify Build Artifacts
+    - name: Build with Bootstrap Tusk (Step 2 - Final Tusk)
+      run: ./_build/bootstrap/out/Tusk_cli/tusk build tusk-cli
+      
+    - name: Verify Final Build Artifacts
       run: |
-        echo "=== Checking build artifacts ==="
-        ls -la ./_build/bootstrap/out/Tusk_cli/
-        echo "=== Checking tusk executable ==="
-        file ./_build/bootstrap/out/Tusk_cli/tusk
-        ./_build/bootstrap/out/Tusk_cli/tusk --version || echo "No version flag yet"
+        echo "=== Checking final build artifacts ==="
+        ls -la ./_build/debug/*/
+        echo "=== Checking final tusk executable ==="
+        file ./_build/debug/*/tusk
+        ./_build/debug/*/tusk --version || echo "No version flag yet"
+        ./_build/debug/*/tusk --help
     
     - name: Upload Tusk Binary
       uses: actions/upload-artifact@v4
       with:
         name: tusk-${{ runner.os }}-${{ runner.arch }}
-        path: ./_build/bootstrap/out/Tusk_cli/tusk
+        path: ./_build/debug/*/tusk
         retention-days: 7
 
   release:
