@@ -45,7 +45,7 @@ let test_roundtrip_binary () =
 
 let test_padding () =
   let encoded = Base32.encode "f" in
-  if String.contains encoded '=' then Ok ()
+  if String.contains encoded "=" then Ok ()
   else Error "Short strings should have padding"
 
 let tests =

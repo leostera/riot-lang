@@ -50,7 +50,7 @@ end
 
 (** Request types that can be sent to the server *)
 type request =
-  | Build of { client_pid : Pid.t; target : target; session_id : Session_id.t }
+  | Build of { client_pid : Pid.t; target : target; target_arch : string option; session_id : Session_id.t }
   | Ping of { client_pid : Pid.t }
   | ScanWorkspace of { client_pid : Pid.t; current_dir : Path.t }
   | GetWorkspaceConfig of { client_pid : Pid.t }

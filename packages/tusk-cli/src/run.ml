@@ -65,7 +65,7 @@ let run matches =
                 ^ expected_pkg ^ "'");
               Error (Failure "binary not found in specified package")
           | _ -> (
-              match Build.build_command (Some pkg) with
+              match Build.build_command (Some pkg) None with
               | Ok () -> (
                   match
                     Tusk_client.find_artifact client ~package:pkg ~kind:"binary"

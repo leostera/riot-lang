@@ -45,6 +45,27 @@ let run matches =
       | Some shell ->
           let script = Shell_completions.generate_script shell in
           print script;
+          (* Print installation instructions to stderr so they don't pollute the script *)
+          eprintln "";
+          eprintln "# Installation instructions (printed to stderr):";
+          (match shell with
+          | Zsh ->
+              eprintln "# For zsh, save the completion script to a directory in your $fpath.";
+              eprintln "# Check your fpath with: echo $fpath";
+              eprintln "#";
+              eprintln "# Option 1 - User completions directory:";
+              eprintln "#   mkdir -p ~/.zsh/completions";
+              eprintln "#   tusk completions --shell zsh > ~/.zsh/completions/_tusk";
+              eprintln "#   Add to ~/.zshrc: fpath=(~/.zsh/completions $fpath)";
+              eprintln "#   Then run: autoload -Uz compinit && compinit";
+              eprintln "#";
+              eprintln "# Option 2 - System/Homebrew directory (if writable):";
+              eprintln "#   tusk completions --shell zsh > /opt/homebrew/share/zsh/site-functions/_tusk";
+              eprintln "#   Then run: exec zsh";
+          | Bash ->
+              eprintln "# Bash completions not yet implemented"
+          | Fish ->
+              eprintln "# Fish completions not yet implemented");
           Ok ())
   | None ->
       (* Dynamic completion helpers - need workspace context *)

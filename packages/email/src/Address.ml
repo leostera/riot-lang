@@ -41,7 +41,7 @@ let to_string t =
   | None -> address t
   | Some name ->
       let needs_quoting =
-        String.contains name ',' || String.contains name '.'
+        String.contains name "," || String.contains name "."
       in
       if needs_quoting then "\"" ^ name ^ "\" <" ^ address t ^ ">"
       else name ^ " <" ^ address t ^ ">"

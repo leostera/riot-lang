@@ -307,11 +307,11 @@ and parse_autolink parser =
         in
 
         let is_valid_email =
-          String.contains url_text '@'
-          && (not (String.contains url_text '\\'))
-          && (not (String.contains url_text '<'))
-          && (not (String.contains url_text '>'))
-          && not (String.contains url_text ' ')
+          String.contains url_text "@"
+          && (not (String.contains url_text "\\"))
+          && (not (String.contains url_text "<"))
+          && (not (String.contains url_text ">"))
+          && not (String.contains url_text " ")
         in
 
         if is_valid_uri || is_valid_email then (

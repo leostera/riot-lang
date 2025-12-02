@@ -44,7 +44,7 @@ let test_parse_simple_string () =
 
 let test_parse_string_with_escapes () =
   match Json.of_string {|"hello\nworld"|} with
-  | Ok (Json.String s) when String.contains s '\n' -> Ok ()
+  | Ok (Json.String s) when String.contains s "\n" -> Ok ()
   | _ -> Error "Failed to parse string with escapes"
 
 let test_parse_empty_string () =

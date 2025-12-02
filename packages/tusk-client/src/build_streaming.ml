@@ -96,13 +96,13 @@ and handle_response t expected_session_id callback response =
         (UnexpectedEvent
            { event; reason = "Unexpected response type during streaming" })
 
-let build_streaming t target callback =
+let build_streaming t target ?target_arch callback =
   let method_, params =
     match target with
     | BuildPackage package ->
         ( method_build_package,
-          Jsonrpc.Named [ ("package", Json.String package) ] )
-    | BuildAll -> (method_build_all, Jsonrpc.NoParams)
+          build_package_params package target_arch )
+    | BuildAll -> (method_build_all, build_all_params target_arch)
   in
   match Jsonrpc.Client.call t.client ~method_ ~params () with
   | Error e -> Error (JsonrpcError e)

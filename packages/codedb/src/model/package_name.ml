@@ -8,9 +8,9 @@ type t = string
 *)
 let from_string name =
   if name = "" then Error "Package name cannot be empty"
-  else if String.contains name '_' then 
+  else if String.contains name "_" then 
     Error "Package name cannot contain underscores, use hyphens instead"
-  else if String.contains name ' ' then
+  else if String.contains name " " then
     Error "Package name cannot contain spaces"
   else
     (* Check all characters are lowercase, digits, or hyphens *)

@@ -128,12 +128,20 @@ let plan_package ~workspace ~toolchain ~store ~package_graph ~package ~build_ctx
       let profile = 
         let profile = Profile.apply_overrides base_profile package.compiler.profile_overrides in
         let target_platform = Build_ctx.target_platform_name build_ctx in
+        Log.info ("Package " ^ package.name ^ ": looking for target." ^ target_platform ^ " overrides");
+        Log.info ("Available targets: [" ^ (String.concat ", " (List.map fst package.compiler.target_overrides)) ^ "]");
         match List.assoc_opt target_platform package.compiler.target_overrides with
         | Some target_override -> (
+            Log.info ("Found target." ^ target_platform ^ " override, applying...");
             match target_override.profile_override with
-            | Some override -> Profile.apply_override profile override
+            | Some override -> 
+                let result = Profile.apply_override profile override in
+                Log.info ("After applying target override: cc_flags=[" ^ (String.concat ", " result.cc_flags) ^ "], ld_flags=[" ^ (String.concat ", " result.ld_flags) ^ "]");
+                result
             | None -> profile)
-        | None -> profile
+        | None -> 
+            Log.warn ("No target." ^ target_platform ^ " override found for package " ^ package.name);
+            profile
       in
       
       let input_hash = compute_input_hash ~package ~depset ~workspace ~profile ~build_ctx in
@@ -160,6 +168,8 @@ let plan_package ~workspace ~toolchain ~store ~package_graph ~package ~build_ctx
           Module_planner.
             {
               package;
+              profile;
+              ctx = build_ctx;
               toolchain;
               workspace;
               planning_root = Path.v "src";

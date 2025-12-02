@@ -13,10 +13,12 @@ type source = Version of string | Path of Path.t | Url of Net.Uri.t
 module Ocamldep = Ocamldep
 module Ocamlc = Ocamlc
 module Ocamlformat = Ocamlformat
+module CrossCompilingToolchain = Cross_compiling_toolchain
 
 type t = {
   version : string;
   source : source;
+  target : string;  (* Target triple this toolchain compiles for *)
   ocamlc : Ocamlc.t;
   ocamlopt : Path.t;
   ocamldep : Ocamldep.t;
@@ -39,13 +41,17 @@ let get_toolchain_path version =
   let host_triple = get_host_triple () in
   Path.(toolchain_base_dir / Path.v version / Path.v host_triple)
 
-let make_toolchain version source =
-  let toolchain_path = get_toolchain_path version in
+let get_toolchain_path_for_target version target =
+  Path.(toolchain_base_dir / Path.v version / Path.v target)
+
+let make_toolchain version source ~target =
+  let toolchain_path = get_toolchain_path_for_target version target in
   let bin_dir = Path.(toolchain_path / Path.v "bin") in
   let bin_path bin = Path.(bin_dir / Path.v bin) in
   {
     version;
     source;
+    target;
     ocamlc = Ocamlc.make (bin_path "ocamlopt.opt");
     ocamlopt = bin_path "ocamlopt.opt";
     ocamldep = Ocamldep.make (bin_path "ocamldep.opt");
@@ -78,6 +84,68 @@ let check_binaries_exist toolchain =
   | _, _, Error err ->
       Error ("Failed to check binaries: " ^ IO.error_message err)
 
+let download_and_install_toolchain version ~host ~target =
+  let toolchain_path = get_toolchain_path_for_target version target in
+  
+  (* Determine URL pattern based on host vs cross-compilation *)
+  let (binary_url, tar_filename, description) =
+    if host = target then
+      (* Native toolchain *)
+      let url = "https://cdn.riot.ml/ocaml/ocaml-" ^ version ^ "-" ^ host ^ ".tar.gz" in
+      let filename = "ocaml-" ^ version ^ "-" ^ host ^ ".tar.gz" in
+      (url, filename, "native")
+    else
+      (* Cross-compilation toolchain *)
+      let url = "https://cdn.riot.ml/ocaml/ocaml-" ^ version ^ "-" ^ host ^ "-x-" ^ target ^ ".tar.gz" in
+      let filename = "ocaml-" ^ version ^ "-" ^ host ^ "-x-" ^ target ^ ".tar.gz" in
+      (url, filename, "cross-compilation from " ^ host ^ " to " ^ target)
+  in
+  
+  println ("📥 Downloading OCaml " ^ version ^ " for " ^ target ^ " (" ^ description ^ ")...");
+  
+  (* Create parent directories *)
+  (match Path.parent toolchain_path with
+  | Some parent -> 
+      let _ = Fs.create_dir_all parent in ()
+  | None -> ());
+  
+  (* Download URL *)
+  let temp_dir = Path.(Tusk_model.Tusk_dirs.dot_tusk / Path.v "tmp") in
+  let _ = Fs.create_dir_all temp_dir in
+  let tar_path = Path.(temp_dir / Path.v tar_filename) in
+  
+  (* Download using curl *)
+  let download_cmd = Command.make 
+    ~args:["-L"; "-o"; Path.to_string tar_path; binary_url]
+    "curl" in
+  
+  match Command.output download_cmd with
+  | Error (Command.SystemError msg) ->
+      Error ("Failed to download toolchain: " ^ msg)
+  | Ok output when output.Command.status != 0 ->
+      Error ("Failed to download toolchain from " ^ binary_url ^ "\nHTTP error or file not found")
+  | Ok _ ->
+      println "✓ Download complete, extracting...";
+      
+      (* Create toolchain directory *)
+      let _ = Fs.create_dir_all toolchain_path in
+      
+      (* Extract using tar *)
+      let extract_cmd = Command.make
+        ~args:["-xzf"; Path.to_string tar_path; "-C"; Path.to_string toolchain_path]
+        "tar" in
+      
+      match Command.output extract_cmd with
+      | Error (Command.SystemError msg) ->
+          Error ("Failed to extract toolchain: " ^ msg)
+      | Ok output when output.Command.status != 0 ->
+          Error ("Failed to extract toolchain tarball")
+      | Ok _ ->
+          (* Clean up tarball *)
+          let _ = Fs.remove_file tar_path in
+          println ("✓ OCaml " ^ version ^ " (" ^ target ^ ") installed successfully");
+          Ok ()
+
 let init ~config =
   let version = config.Tusk_model.Toolchain_config.version in
   let source =
@@ -86,7 +154,9 @@ let init ~config =
     | Tusk_model.Toolchain_config.Path p -> Path p
     | Tusk_model.Toolchain_config.Url u -> Url u
   in
-  let toolchain = make_toolchain version source in
+  let host = get_host_triple () in
+  let target = host in (* init always uses host target for backward compatibility *)
+  let toolchain = make_toolchain version source ~target in
   let toolchain_path = get_toolchain_path version in
   let bin_dir = Path.(toolchain_path / Path.v "bin") in
 
@@ -131,15 +201,21 @@ let init ~config =
                      Path.to_string abs_local ^ ": " ^
                      IO.error_message err)))
       | _ ->
-          let host_triple = get_host_triple () in
-          Error
-            ("Toolchain not found!\n\n\
-              Looking for: OCaml " ^ version ^ " for " ^ host_triple ^ "\n\
-              Expected location: " ^ Path.to_string toolchain_path ^ "\n\
-              Local compiler: ./ocaml/compiler (not found)\n\n\
-              We don't have prebuilt binaries for this version+target combination yet.\n\n\
-              To bootstrap the toolchain, run:\n\
-             \  ./ocaml/build-compiler.sh"))
+          (* Try to download and install prebuilt binary *)
+          println ("Toolchain not found locally, attempting to download...");
+          (match download_and_install_toolchain version ~host ~target with
+          | Ok () -> 
+              (* Verify installation *)
+              (match check_binaries_exist toolchain with
+              | Ok () -> Ok toolchain
+              | Error msg -> Error ("Toolchain installed but incomplete: " ^ msg))
+          | Error msg ->
+              let host_triple = get_host_triple () in
+              Error
+                ("Toolchain not found!\n\n\
+                  Looking for: OCaml " ^ version ^ " for " ^ host_triple ^ "\n\
+                  Expected location: " ^ Path.to_string toolchain_path ^ "\n\n\
+                  Download failed: " ^ msg)))
 
 let ensure_default_toolchain () =
   let default_config = Tusk_model.Toolchain_config.default in
@@ -170,9 +246,160 @@ let check_health toolchain =
 let hash t =
   let hasher = Crypto.Sha256.create () in
   Crypto.Sha256.write_string hasher t.version;
+  Crypto.Sha256.write_string hasher t.target;
   Crypto.Sha256.write_string hasher (Path.to_string (Ocamlc.path t.ocamlc));
   Crypto.Sha256.write_string hasher (Path.to_string t.ocamlopt);
   Crypto.Sha256.write_string hasher (Path.to_string (Ocamldep.path t.ocamldep));
   Crypto.Sha256.write_string hasher
     (Path.to_string (Ocamlformat.path t.ocamlformat));
   Crypto.Sha256.finish hasher
+
+(** Initialize toolchain for a specific target architecture *)
+let init_for_target ~config ~target =
+  let version = config.Tusk_model.Toolchain_config.version in
+  let source =
+    match config.source with
+    | Tusk_model.Toolchain_config.Version v -> Version v
+    | Tusk_model.Toolchain_config.Path p -> Path p
+    | Tusk_model.Toolchain_config.Url u -> Url u
+  in
+  let host = get_host_triple () in
+  let toolchain_path = get_toolchain_path_for_target version target in
+  let bin_dir = Path.(toolchain_path / Path.v "bin") in
+  
+  (* Check if already installed *)
+  match Fs.is_dir bin_dir with
+  | Ok true ->
+      let toolchain = make_toolchain version source ~target in
+      (match check_binaries_exist toolchain with
+      | Ok () -> Ok toolchain
+      | Error _ -> Error ("Toolchain incomplete: " ^ Path.to_string toolchain_path))
+  | _ ->
+      (* Try local compiler if native build *)
+      if host = target then
+        (* Native build - try local compiler first *)
+        let local_compiler = Path.v "./ocaml/compiler" in
+        (match Fs.is_dir local_compiler with
+        | Ok true ->
+            (* Create symlink *)
+            (match Path.parent toolchain_path with
+            | Some parent -> let _ = Fs.create_dir_all parent in ()
+            | None -> ());
+            
+            (match Fs.exists toolchain_path with
+            | Ok true -> 
+                let toolchain = make_toolchain version source ~target in
+                Ok toolchain
+            | _ ->
+                let cwd = Env.current_dir () |> Result.expect ~msg:"Failed to get cwd" in
+                let abs_local =
+                  if Path.is_absolute local_compiler then local_compiler
+                  else Path.(cwd / local_compiler)
+                in
+                (match Fs.symlink ~src:abs_local ~dst:toolchain_path with
+                | Ok () -> 
+                    let toolchain = make_toolchain version source ~target in
+                    Ok toolchain
+                | Error err ->
+                    Error ("Failed to create symlink: " ^ IO.error_message err)))
+        | _ ->
+            (* Download native toolchain *)
+            (match download_and_install_toolchain version ~host ~target with
+            | Ok () ->
+                let toolchain = make_toolchain version source ~target in
+                (match check_binaries_exist toolchain with
+                | Ok () -> Ok toolchain
+                | Error msg -> Error ("Downloaded but incomplete: " ^ msg))
+            | Error msg -> Error ("Failed to download toolchain for " ^ target ^ ": " ^ msg)))
+      else
+        (* Cross-compilation - download cross-toolchain *)
+        (match download_and_install_toolchain version ~host ~target with
+        | Ok () ->
+            let toolchain = make_toolchain version source ~target in
+            (match check_binaries_exist toolchain with
+            | Ok () -> Ok toolchain
+            | Error msg -> Error ("Downloaded but incomplete: " ^ msg))
+        | Error msg -> Error ("Failed to download toolchain for " ^ target ^ ": " ^ msg))
+
+(** Get toolchain for specific target (lazy initialization) *)
+let get_for_target ~config ~target =
+  init_for_target ~config ~target
+
+(** Toolchain management types and functions *)
+
+type toolchain_status =
+  | Installed of { path : Path.t }
+  | NotInstalled of { expected_path : Path.t }
+  | Incomplete of { path : Path.t; missing : string list }
+
+type toolchain_info = {
+  version : string;
+  target : string;
+  is_host : bool;
+  status : toolchain_status;
+}
+
+let check_toolchain_status ~version ~target =
+  let toolchain_path = get_toolchain_path_for_target version target in
+  
+  match Fs.is_dir toolchain_path with
+  | Ok false | Error _ -> 
+      NotInstalled { expected_path = toolchain_path }
+  | Ok true ->
+      let source = Version version in
+      let toolchain = make_toolchain version source ~target in
+      (match check_binaries_exist toolchain with
+      | Ok () -> Installed { path = toolchain_path }
+      | Error msg ->
+          (* For now, just return generic incomplete status *)
+          (* TODO: implement find_missing_binaries to get specific missing files *)
+          Incomplete { path = toolchain_path; missing = ["binaries"] })
+
+let list_toolchains ~config =
+  let version = config.Tusk_model.Toolchain_config.version in
+  let host = get_host_triple () in
+  let targets = 
+    match config.targets with
+    | [] -> [host]
+    | ts -> ts
+  in
+  
+  List.map (fun target ->
+    let is_host = target = host in
+    let status = check_toolchain_status ~version ~target in
+    { version; target; is_host; status }
+  ) targets
+
+let install_all_toolchains ~config =
+  let version = config.Tusk_model.Toolchain_config.version in
+  let toolchains = list_toolchains ~config in
+  let host = get_host_triple () in
+  
+  let results = List.map (fun info ->
+    match info.status with
+    | Installed _ -> 
+        println ("  ✓ " ^ info.target ^ (if info.is_host then " (host)" else "") ^ " - already installed");
+        Ok `Skipped
+    | NotInstalled _ | Incomplete _ ->
+        println ("  📥 " ^ info.target ^ (if info.is_host then " (host)" else "") ^ " - downloading...");
+        (match download_and_install_toolchain version ~host ~target:info.target with
+        | Ok () -> 
+            Ok `Installed
+        | Error msg -> 
+            println ("     ✗ Failed: " ^ msg);
+            Error (info.target, msg))
+  ) toolchains in
+  
+  let (successes, failures) = 
+    List.partition (function Ok _ -> true | Error _ -> false) results in
+  
+  if List.length failures > 0 then
+    let errors = List.filter_map (function 
+      | Error (target, msg) -> Some (target ^ ": " ^ msg)
+      | _ -> None
+    ) results in
+    Error ("Failed to install toolchains:\n  " ^ String.concat "\n  " errors)
+  else
+    let installed = List.filter (function Ok `Installed -> true | _ -> false) successes |> List.length in
+    let skipped = List.filter (function Ok `Skipped -> true | _ -> false) successes |> List.length in
+    Ok (installed, skipped)

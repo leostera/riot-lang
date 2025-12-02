@@ -54,6 +54,7 @@ val connect : unit -> (t, string) result
 val build_streaming :
   t ->
   build_target ->
+  ?target_arch:string ->
   (streaming_event -> unit) ->
   (streaming_event, error) result
 

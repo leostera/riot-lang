@@ -32,14 +32,37 @@ let build_dir_name = "_build"
 let build_dir_root ~workspace_root =
   Path.(workspace_root / Path.v build_dir_name)
 
+(** Get current host triple *)
+let host_target () =
+  System.Host.to_string System.host_triplet
+
+(** New target-aware path functions *)
+
+let profile_dir ~workspace_root ~profile =
+  Path.(build_dir_root ~workspace_root / Path.v profile)
+
+let target_dir ~workspace_root ~profile ~target =
+  Path.(profile_dir ~workspace_root ~profile / Path.v target)
+
+let out_dir_with_target ~workspace_root ~profile ~target =
+  Path.(target_dir ~workspace_root ~profile ~target / Path.v "out")
+
+let sandbox_dir_with_target ~workspace_root ~profile ~target =
+  Path.(target_dir ~workspace_root ~profile ~target / Path.v "sandbox")
+
+let cache_dir_with_target ~workspace_root ~profile ~target =
+  Path.(target_dir ~workspace_root ~profile ~target / Path.v "cache")
+
+(** Backward compatible functions - default to debug profile + host target *)
+
 let debug_dir ~workspace_root =
-  Path.(build_dir_root ~workspace_root / Path.v "debug")
+  profile_dir ~workspace_root ~profile:"debug"
 
 let cache_dir ~workspace_root =
-  Path.(debug_dir ~workspace_root / Path.v "cache")
+  cache_dir_with_target ~workspace_root ~profile:"debug" ~target:(host_target ())
 
 let out_dir ~workspace_root =
-  Path.(debug_dir ~workspace_root / Path.v "out")
+  out_dir_with_target ~workspace_root ~profile:"debug" ~target:(host_target ())
 
 let sandbox_dir ~workspace_root =
-  Path.(debug_dir ~workspace_root / Path.v "sandbox")
+  sandbox_dir_with_target ~workspace_root ~profile:"debug" ~target:(host_target ())

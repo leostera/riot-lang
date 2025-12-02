@@ -72,7 +72,7 @@ let from_string name =
       else
         (* Parse the namespace *)
         let parts =
-          if String.contains name '.' then
+          if String.contains name "." then
             (* Qualified form: "Codedb.Model.Symbol" *)
             String.split_on_char '.' name
           else

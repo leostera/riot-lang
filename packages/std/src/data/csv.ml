@@ -165,9 +165,9 @@ let parse ?(config = default_config) reader =
 
 let to_string ?(config = default_config) ?headers data =
   let needs_quoting field =
-    String.contains field config.delimiter
-    || String.contains field config.quote
-    || String.contains field '\n' || String.contains field '\r'
+    String.contains field (String.make 1 config.delimiter)
+    || String.contains field (String.make 1 config.quote)
+    || String.contains field "\n" || String.contains field "\r"
   in
 
   let escape_field field =

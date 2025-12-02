@@ -8,6 +8,8 @@ module G = Graph.SimpleGraph
 
 type plan_input = {
   package : Package.t;
+  profile : Profile.t;
+  ctx : Build_ctx.t;
   toolchain : Tusk_toolchain.t;
   workspace : Workspace.t;
   planning_root : Path.t;
@@ -167,8 +169,8 @@ let plan_node input =
         Error (Planning_error.CyclicDependency { cycle })
     | Ok sorted_modules -> (
         let action_graph, _outputs =
-          Action_graph.from_module_graph ~package:input.package
-            ~toolchain:input.toolchain ~store:input.store ~depset:input.depset
+          Action_graph.from_module_graph ~package:input.package ~profile:input.profile
+            ~ctx:input.ctx ~toolchain:input.toolchain ~store:input.store ~depset:input.depset
             ~needs_unix ~needs_dynlink
             module_graph
         in

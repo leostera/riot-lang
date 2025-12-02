@@ -302,7 +302,7 @@ and compile_node source node =
 
       (* Check if this is an email autolink - if so, add mailto: prefix *)
       let is_email =
-        String.contains href '@' && not (String.contains href ':')
+        String.contains href "@" && not (String.contains href ":")
       in
       let full_href =
         if is_email then "mailto:" ^ encoded_href else encoded_href

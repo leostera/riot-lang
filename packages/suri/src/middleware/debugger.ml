@@ -509,7 +509,7 @@ let extract_number line pattern =
 *)
 let parse_frame_line line =
   let file = 
-    if String.contains line '"' then
+    if String.contains line "\"" then
       extract_quoted line "file"
     else None
   in
@@ -674,7 +674,7 @@ let extract_module_from_function func_name =
   | Some dot_pos ->
       let module_part = String.sub func_name 0 dot_pos in
       (* Check if it's in canonical form (Foo__Bar__Baz) or simple form (Foo_bar) *)
-      if String.contains module_part '_' then
+      if String.contains module_part "_" then
         (* Could be canonical (Foo__Bar) or snake_case (foo_bar) *)
         let components = String.split_on_char '_' module_part in
         let non_empty = List.filter (fun s -> s != "") components in

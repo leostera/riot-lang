@@ -3336,7 +3336,7 @@ and parse_application_expr parser =
           match tok.Token.kind with
           | Token.Whitespace ->
               let text = token_text parser tok in
-              String.contains text '\n'
+              String.contains text "\n"
           | _ -> false)
         func_trivia
     in

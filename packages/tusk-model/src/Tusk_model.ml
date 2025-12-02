@@ -10,6 +10,7 @@ module Ocaml_compiler = Ocaml_compiler
 module Package = Package
 module Platform = Platform
 module Profile = Profile
+module Target = Target
 module Workspace = Workspace
 module Workspace_manager = Workspace_manager
 module Node_id = Node_id

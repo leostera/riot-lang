@@ -26,7 +26,7 @@ let test_percent_encode_special () =
 
 let test_percent_encode_slash () =
   let encoded = Uri.percent_encode "/path/to/file" in
-  if String.contains encoded '%' then Ok ()
+  if String.contains encoded "%" then Ok ()
   else Error ("Slashes should be encoded, got '" ^ encoded ^ "'")
 
 let test_percent_encode_ampersand () =
@@ -225,7 +225,7 @@ let test_query_to_string_special () =
   let params = [ ("query", "a=b&c=d") ] in
   let query = Uri.Query.to_string params in
   (* = and & should be encoded *)
-  if String.contains query '%' then Ok ()
+  if String.contains query "%" then Ok ()
   else Error ("Special chars should be encoded, got '" ^ query ^ "'")
 
 let test_query_to_string_empty_value () =

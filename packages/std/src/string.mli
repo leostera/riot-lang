@@ -318,3 +318,15 @@ val wrap_words : width:int -> string -> string list
 (** Wrap text at word boundaries to fit within display width.
 
     Similar to `wrap` but ensures words aren't broken. *)
+
+val contains : string -> string -> bool
+(** [contains haystack needle] returns [true] if [haystack] contains [needle] as a substring.
+    
+    Example:
+    ```ocaml
+    String.contains "hello world" "world"  (* = true *)
+    String.contains "hello world" "foo"    (* = false *)
+    String.contains "test" ""              (* = true *)
+    ```
+    
+    Note: Empty string is considered to be contained in any string. *)

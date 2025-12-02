@@ -140,7 +140,7 @@ and combine_rfc2231_params raw_params =
     (fun (key, value) ->
       if String.ends_with ~suffix:"*" key then
         let base_key = String.sub key 0 (String.length key - 1) in
-        if String.contains base_key '*' then
+        if String.contains base_key "*" then
           match String.rindex_opt base_key '*' with
           | Some idx -> (
               let name = String.sub base_key 0 idx in

@@ -134,8 +134,13 @@ let collect_source_files package =
 let build ~workspace ~toolchain ~store ~package_graph ~package ~build_ctx =
   let start = Instant.now () in
   let session_id = build_ctx.Build_ctx.session_id in
+  let profile_name = build_ctx.Build_ctx.profile.name in
+  let target_triple_str = Kernel.System.Host.to_string (Build_ctx.target_triplet build_ctx) in
   let target_dir =
-    Path.(Tusk_model.Tusk_dirs.out_dir ~workspace_root:workspace.Workspace.root / Path.v package.Package.name)
+    Path.(Tusk_model.Tusk_dirs.out_dir_with_target 
+      ~workspace_root:workspace.Workspace.root 
+      ~profile:profile_name
+      ~target:target_triple_str / Path.v package.Package.name)
   in
 
   Log.info

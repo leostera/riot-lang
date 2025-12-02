@@ -24,8 +24,18 @@ let method_find_artifact = "tusk.findArtifact"
 let method_get_symbol = "tusk.getSymbol"
 
 (** Helper to create method-specific parameters *)
-let build_package_params package =
-  Jsonrpc.Named [ ("package", Json.String package) ]
+let build_package_params name target_arch =
+  let params = [ ("package", Json.String name) ] in
+  let params = match target_arch with
+    | Some arch -> ("target_arch", Json.String arch) :: params
+    | None -> params
+  in
+  Jsonrpc.Named params
+
+let build_all_params target_arch =
+  match target_arch with
+  | Some arch -> Jsonrpc.Named [ ("target_arch", Json.String arch) ]
+  | None -> Jsonrpc.NoParams
 
 (** TuskProtocol implementation for JSON-RPC *)
 module WireProtocol = struct
@@ -80,8 +90,8 @@ module WireProtocol = struct
     | GetPackageGraph
     | GetWorkspaceConfig
     | GetPackageInfo of string
-    | BuildPackage of string
-    | BuildAll
+    | BuildPackage of { name : string; target_arch : string option }
+    | BuildAll of { target_arch : string option }
     | Restart
     | Shutdown
     | FindExecutable of string
@@ -1202,9 +1212,10 @@ module WireProtocol = struct
           params = Jsonrpc.Named [ ("package", Json.String pkg) ];
         }
     | GetPackageGraph -> { method_ = method_get_package_graph; params = NoParams }
-    | BuildPackage pkg ->
-        { method_ = method_build_package; params = build_package_params pkg }
-    | BuildAll -> { method_ = method_build_all; params = NoParams }
+    | BuildPackage { name; target_arch } ->
+        { method_ = method_build_package; params = build_package_params name target_arch }
+    | BuildAll { target_arch } ->
+        { method_ = method_build_all; params = build_all_params target_arch }
     | Shutdown -> { method_ = method_shutdown; params = NoParams }
     | Restart -> { method_ = method_restart; params = NoParams }
     | FindExecutable name ->
@@ -1283,12 +1294,26 @@ module WireProtocol = struct
     (* Parse params based on the method name *)
     match method_ with
     | "tusk.ping" -> Ok Ping
-    | "tusk.buildAll" -> Ok BuildAll
+    | "tusk.buildAll" -> (
+        match params with
+        | Jsonrpc.Named fields -> (
+            let target_arch = match List.assoc_opt "target_arch" fields with
+              | Some (Json.String arch) -> Some arch
+              | _ -> None
+            in
+            Ok (BuildAll { target_arch }))
+        | Jsonrpc.NoParams -> Ok (BuildAll { target_arch = None })
+        | _ -> Error (Json.String "BuildAll accepts optional named parameters"))
     | "tusk.buildPackage" -> (
         match params with
         | Jsonrpc.Named fields -> (
             match List.assoc_opt "package" fields with
-            | Some (Json.String pkg) -> Ok (BuildPackage pkg)
+            | Some (Json.String pkg) ->
+                let target_arch = match List.assoc_opt "target_arch" fields with
+                  | Some (Json.String arch) -> Some arch
+                  | _ -> None
+                in
+                Ok (BuildPackage { name = pkg; target_arch })
             | _ -> Error (Json.String "Missing or invalid 'package' parameter"))
         | _ -> Error (Json.String "BuildPackage requires named parameters"))
     | "tusk.getWorkspaceConfig" -> Ok GetWorkspaceConfig

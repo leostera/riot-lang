@@ -42,7 +42,7 @@ type model = {
 
 (* Email validation helper *)
 let validate_email email =
-  String.contains email '@' && String.length email > 3
+  String.contains email "@" && String.length email > 3
 
 (* Initialize with empty inputs *)
 let init model =

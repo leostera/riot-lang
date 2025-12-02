@@ -48,7 +48,7 @@ let stdlib_flags (package : Package.t) =
   else
     [ Tusk_toolchain.Ocamlc.NoPervasives; Tusk_toolchain.Ocamlc.NoStdlib ]
 
-let module_to_actions ~package ~dep_includes ~get_dep_outputs ~depset ~needs_unix ~needs_dynlink
+let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~depset ~needs_unix ~needs_dynlink
     (module_node : Module_node.t) (deps : G.Node_id.t list) :
     Action.t list * Path.t list * Path.t list =
   match module_node with
@@ -142,39 +142,17 @@ let module_to_actions ~package ~dep_includes ~get_dep_outputs ~depset ~needs_uni
           files
       in
 
-      (* Collect cc_flags for C compilation *)
-      let current_platform = Platform.current_string () in
+      (* Use cc_flags from the profile (already has target-specific flags applied) *)
+      let base_ccflags = profile.Profile.cc_flags in
       
-      (* Current package's cc_flags *)
-      let current_ccflags = 
-        match List.assoc_opt current_platform package.compiler.target_overrides with
-        | Some target_override -> (
-            match target_override.profile_override with
-            | Some override -> (
-                match override.cc_flags with
-                | Profile.Override flags -> flags
-                | Inherit -> [])
-            | None -> [])
-        | None -> []
+      (* Add sysroot if cross-compiling *)
+      let ccflags = match Build_ctx.sysroot ctx with
+        | Some sysroot ->
+            let sysroot_flag = "--sysroot=" ^ Path.to_string sysroot in
+            sysroot_flag :: base_ccflags
+        | None ->
+            base_ccflags
       in
-      
-      (* Collect cc_flags from all dependencies transitively *)
-      let dep_ccflags = 
-        List.concat_map (fun (dep : Dependency.t) ->
-          match List.assoc_opt current_platform dep.package.compiler.target_overrides with
-          | Some target_override -> (
-              match target_override.profile_override with
-              | Some override -> (
-                  match override.cc_flags with
-                  | Profile.Override flags -> flags
-                  | Inherit -> [])
-              | None -> [])
-          | None -> []
-        ) depset
-      in
-      
-      (* Combine cc_flags *)
-      let ccflags = current_ccflags @ dep_ccflags in
       
       Log.debug ("[ACTION_GRAPH] C compilation cc_flags for " ^ package.name ^ ": " ^ String.concat " " ccflags);
 
@@ -293,74 +271,20 @@ let module_to_actions ~package ~dep_includes ~get_dep_outputs ~depset ~needs_uni
 
       let binary_output = Path.v name in
       
-      (* Select platform-specific compiler flags *)
-      let current_platform = Platform.current_string () in
+      (* Use cc_flags and ld_flags from the profile (already has target-specific flags applied) *)
+      let base_ccflags = profile.Profile.cc_flags in
+      let base_ldflags = profile.Profile.ld_flags in
       
-      (* Current package's cc_flags *)
-      let current_ccflags = 
-        match List.assoc_opt current_platform package.compiler.target_overrides with
-        | Some target_override -> (
-            match target_override.profile_override with
-            | Some override -> (
-                match override.cc_flags with
-                | Profile.Override flags -> flags
-                | Inherit -> [])
-            | None -> [])
-        | None -> []
-      in
+      (* Get target platform for looking up dependency flags *)
+      let target_platform = Build_ctx.target_platform_name ctx in
       
-      (* Collect cc_flags from all dependencies transitively *)
-      let dep_ccflags = 
-        List.concat_map (fun (dep : Dependency.t) ->
-          Log.debug ("[ACTION_GRAPH] Checking cc_flags for dependency: " ^ dep.package.name);
-          match List.assoc_opt current_platform dep.package.compiler.target_overrides with
-          | Some target_override -> (
-              Log.debug ("[ACTION_GRAPH] Found target_override for " ^ dep.package.name);
-              match target_override.profile_override with
-              | Some override -> (
-                  Log.debug ("[ACTION_GRAPH] Found profile_override for " ^ dep.package.name);
-                  match override.cc_flags with
-                  | Profile.Override flags -> 
-                      Log.debug ("[ACTION_GRAPH] Got cc_flags from " ^ dep.package.name ^ ": " ^ String.concat ", " flags);
-                      flags
-                  | Inherit -> 
-                      Log.debug ("[ACTION_GRAPH] cc_flags are Inherit for " ^ dep.package.name);
-                      [])
-              | None -> 
-                  Log.debug ("[ACTION_GRAPH] No profile_override for " ^ dep.package.name);
-                  [])
-          | None -> 
-              Log.debug ("[ACTION_GRAPH] No target_override for " ^ dep.package.name ^ " on platform " ^ current_platform);
-              []
-        ) depset
-      in
-      
-      Log.debug ("[ACTION_GRAPH] Current package cc_flags: " ^ String.concat ", " current_ccflags);
-      Log.debug ("[ACTION_GRAPH] Dependency cc_flags: " ^ String.concat ", " dep_ccflags);
-      
-      (* Combine cc_flags - don't deduplicate as order and pairing matters *)
-      (* For example: -framework CoreFoundation must stay together *)
-      let ccflags = current_ccflags @ dep_ccflags in
-      
-      Log.debug ("[ACTION_GRAPH] Final ccopt_flags for linking " ^ name ^ ": " ^ String.concat " " ccflags);
-      
-      (* Current package's ld_flags *)
-      let current_ldflags = 
-        match List.assoc_opt current_platform package.compiler.target_overrides with
-        | Some target_override -> (
-            match target_override.profile_override with
-            | Some override -> (
-                match override.ld_flags with
-                | Profile.Override flags -> flags
-                | Inherit -> [])
-            | None -> [])
-        | None -> []
-      in
-      
-      (* Collect ld_flags from all dependencies transitively *)
+      (* NOTE: Dependency ld_flags must be collected here during linking, not in the profile.
+         The profile contains only the current package's target-specific flags (applied in 
+         package_planner). When linking, we need flags from ALL dependencies transitively,
+         which can only be determined at link-time based on the depset. *)
       let dep_ldflags = 
         List.concat_map (fun (dep : Dependency.t) ->
-          match List.assoc_opt current_platform dep.package.compiler.target_overrides with
+          match List.assoc_opt target_platform dep.package.compiler.target_overrides with
           | Some target_override -> (
               match target_override.profile_override with
               | Some override -> (
@@ -372,9 +296,34 @@ let module_to_actions ~package ~dep_includes ~get_dep_outputs ~depset ~needs_uni
         ) depset
       in
       
-      (* Combine ld_flags *)
-      let ldflags = current_ldflags @ dep_ldflags in
+      (* Combine: current package + dependencies *)
+      let merged_ldflags = base_ldflags @ dep_ldflags in
       
+      Log.debug ("[ACTION_GRAPH] Package " ^ package.name ^ ": base ld_flags = [" ^ 
+                 String.concat ", " base_ldflags ^ "]");
+      Log.debug ("[ACTION_GRAPH] Package " ^ package.name ^ ": dependency ld_flags = [" ^ 
+                 String.concat ", " dep_ldflags ^ "]");
+      Log.debug ("[ACTION_GRAPH] Package " ^ package.name ^ ": merged ld_flags = [" ^ 
+                 String.concat ", " merged_ldflags ^ "]");
+      
+      (* Add sysroot if cross-compiling *)
+      let ccflags = match Build_ctx.sysroot ctx with
+        | Some sysroot ->
+            let sysroot_flag = "--sysroot=" ^ Path.to_string sysroot in
+            sysroot_flag :: base_ccflags
+        | None ->
+            base_ccflags
+      in
+      
+      let ldflags = match Build_ctx.sysroot ctx with
+        | Some sysroot ->
+            let sysroot_flag = "--sysroot=" ^ Path.to_string sysroot in
+            sysroot_flag :: merged_ldflags
+        | None ->
+            merged_ldflags
+      in
+      
+      Log.debug ("[ACTION_GRAPH] Final ccopt_flags for linking " ^ name ^ ": " ^ String.concat " " ccflags);
       Log.debug ("[ACTION_GRAPH] Final cclib_flags for linking " ^ name ^ ": " ^ String.concat " " ldflags);
       
       (* Keep ccopt_flags and cclib_flags separate *)
@@ -395,7 +344,7 @@ let module_to_actions ~package ~dep_includes ~get_dep_outputs ~depset ~needs_uni
       in
       ([ compile_action; link_action ], [ binary_output ], sources)
 
-let from_module_graph ~package ~toolchain ~store ~depset ~needs_unix ~needs_dynlink
+let from_module_graph ~package ~profile ~ctx ~toolchain ~store ~depset ~needs_unix ~needs_dynlink
     (module_graph : Module_node.t G.t) : t * Path.t list =
   (* Extract dependency cache include paths - no file copying needed! *)
   let dep_cache_includes =
@@ -444,7 +393,7 @@ let from_module_graph ~package ~toolchain ~store ~depset ~needs_unix ~needs_dynl
   List.iter
     (fun (module_node : Module_node.t G.node) ->
       let actions, outputs, sources =
-        module_to_actions ~package ~dep_includes ~get_dep_outputs ~depset ~needs_unix ~needs_dynlink
+        module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~depset ~needs_unix ~needs_dynlink
           module_node.value module_node.deps
       in
 

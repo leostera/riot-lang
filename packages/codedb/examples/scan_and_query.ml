@@ -19,7 +19,7 @@ let rec scan_directory dir =
             files := full_path :: !files
           else
             (* Assume it's a directory if no extension *)
-            if not (String.contains name '.') then
+            if not (String.contains name ".") then
               scan full_path
         ) iter
   in

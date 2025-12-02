@@ -17,7 +17,8 @@ val method_new_package : string
 val method_find_executable : string
 val method_find_artifact : string
 val method_get_symbol : string
-val build_package_params : string -> Jsonrpc.params
+val build_package_params : string -> string option -> Jsonrpc.params
+val build_all_params : string option -> Jsonrpc.params
 
 module WireProtocol : sig
   type build_node = {
@@ -56,8 +57,8 @@ module WireProtocol : sig
     | GetPackageGraph
     | GetWorkspaceConfig
     | GetPackageInfo of string
-    | BuildPackage of string
-    | BuildAll
+    | BuildPackage of { name : string; target_arch : string option }
+    | BuildAll of { target_arch : string option }
     | Restart
     | Shutdown
     | FindExecutable of string

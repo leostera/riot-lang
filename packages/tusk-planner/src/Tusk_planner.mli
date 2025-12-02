@@ -29,11 +29,12 @@ val plan_package_with_graph :
     dependencies are planned first. Returns MissingDependencies if deps not
     ready, or Planned with hash. *)
 
-val plan_package :
+(* Legacy/testing function - commented out, use plan_package_with_graph instead *)
+(* val plan_package :
   workspace:Workspace.t ->
   toolchain:Tusk_toolchain.t ->
   package:Package.t ->
-  (module_plan_result, Planning_error.t) result
+  (module_plan_result, Planning_error.t) result *)
 (** Plan a single package on-demand - builds module graph and action graph.
     Called by executor when actually building a package (after cache miss). This
     is the old interface without dependency hash tracking. *)

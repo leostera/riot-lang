@@ -403,22 +403,25 @@ module Server = struct
         Log.error "[JSONRPC] handle_get_symbol called with wrong request type"
 
   let handle_build ctx reply request =
-    let target_str =
+    let (target_str, target_arch) =
       match request with
-      | WireProtocol.BuildPackage pkg -> "BuildPackage(" ^ pkg ^ ")"
-      | WireProtocol.BuildAll -> "BuildAll"
-      | _ -> "Unknown"
+      | WireProtocol.BuildPackage { name; target_arch } -> 
+          ("BuildPackage(" ^ name ^ ")", target_arch)
+      | WireProtocol.BuildAll { target_arch } -> 
+          ("BuildAll", target_arch)
+      | _ -> ("Unknown", None)
     in
     Log.info
       ("[JSONRPC] >>> handle_build called (client_pid="
-      ^ Pid.to_string (self ()) ^ ", target=" ^ target_str ^ ")");
+      ^ Pid.to_string (self ()) ^ ", target=" ^ target_str 
+      ^ (match target_arch with Some a -> ", arch=" ^ a | None -> "") ^ ")");
     let session_id = Session_id.make () in
 
     (* Convert WireProtocol request to internal Protocol *)
     let target =
       match request with
-      | WireProtocol.BuildPackage pkg -> Protocol.Package pkg
-      | WireProtocol.BuildAll -> Protocol.All
+      | WireProtocol.BuildPackage { name; _ } -> Protocol.Package name
+      | WireProtocol.BuildAll _ -> Protocol.All
       | _ -> Protocol.All
     in
 
@@ -428,7 +431,7 @@ module Server = struct
       ^ Session_id.to_string session_id ^ "...)...");
     send ctx.server_pid
       (Protocol.ServerRequest
-         (Protocol.Build { client_pid = self (); target; session_id }));
+         (Protocol.Build { client_pid = self (); target; target_arch; session_id }));
 
     (* Wait for BuildStarted response *)
     Log.debug "[JSONRPC]     Awaiting BuildStarted response...";
@@ -650,7 +653,7 @@ module Server = struct
             fn =
               (fun reply request ->
                 match request with
-                | WireProtocol.BuildAll -> handle_build ctx reply request
+                | WireProtocol.BuildAll _ -> handle_build ctx reply request
                 | _ -> ());
           };
           {

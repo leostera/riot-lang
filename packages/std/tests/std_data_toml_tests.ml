@@ -28,7 +28,7 @@ let test_quoted_string_with_escapes =
   match Toml.parse input with
   | Ok (Toml.Table items) -> (
       match get_string (List.assoc "text" items) with
-      | Some s when String.contains s '\n' && String.contains s '\t' -> Ok ()
+      | Some s when String.contains s "\n" && String.contains s "\t" -> Ok ()
       | Some s -> Error ("String escapes not handled: " ^ s)
       | None -> Error "Expected string")
   | _ -> Error "Parse failed"

@@ -85,7 +85,7 @@ let connect uri =
                     | None -> read_response ()
                     | Some _ ->
                         if
-                          String.contains response '\r'
+                          String.contains response "\r"
                           && String.length response >= 4
                           && String.sub response (String.length response - 4) 4
                              = "\r\n\r\n"
@@ -101,9 +101,9 @@ let connect uri =
 
                   if
                     not
-                      (String.contains status_line '1'
-                      && String.contains status_line '0'
-                      && String.contains status_line '1')
+                      (String.contains status_line "1"
+                      && String.contains status_line "0"
+                      && String.contains status_line "1")
                   then
                     Error
                       (Error.Handshake_failed
@@ -115,7 +115,7 @@ let connect uri =
                           let trimmed = String.trim line in
                           String.starts_with ~prefix:"Sec-WebSocket-Accept:"
                             trimmed
-                          && String.contains trimmed ':'
+                          && String.contains trimmed ":"
                           &&
                           let parts = String.split_on_char ':' trimmed in
                           match parts with

@@ -49,7 +49,7 @@ let test_serialize_simple_element () =
 let test_serialize_element_with_attrs () =
   let elem = Xml.element "div" ~attrs:[ ("id", "test") ] [] in
   let str = Xml.to_string elem in
-  if String.contains str '=' then Ok () else Error "Attributes not serialized"
+  if String.contains str "=" then Ok () else Error "Attributes not serialized"
 
 let test_serialize_text () =
   let text = Xml.text "hello world" in
@@ -66,13 +66,13 @@ let test_serialize_nested () =
   let inner = Xml.element "span" [ Xml.text "text" ] in
   let outer = Xml.element "div" [ inner ] in
   let str = Xml.to_string outer in
-  if String.contains str '<' && String.contains str '>' then Ok ()
+  if String.contains str "<" && String.contains str ">" then Ok ()
   else Error "Failed to serialize nested elements"
 
 let test_multiple_attributes () =
   let elem = Xml.element "div" ~attrs:[ ("id", "test"); ("class", "box") ] [] in
   let str = Xml.to_string elem in
-  if String.contains str '=' then Ok ()
+  if String.contains str "=" then Ok ()
   else Error "Multiple attributes not serialized"
 
 let test_mixed_children () =
@@ -96,12 +96,12 @@ let test_empty_text () =
 let test_cdata_serialization () =
   let cdata = Xml.cdata "some data" in
   let str = Xml.to_string cdata in
-  if String.contains str '[' then Ok ()
+  if String.contains str "[" then Ok ()
   else Error "CDATA not properly serialized"
 
 let test_declaration () =
   let decl = Xml.declaration in
-  if String.contains decl '?' then Ok ()
+  if String.contains decl "?" then Ok ()
   else Error "Declaration doesn't look correct"
 
 let test_indented_output () =
@@ -135,7 +135,7 @@ let test_complex_document () =
       ]
   in
   let str = Xml.to_string doc in
-  if String.contains str '<' && String.contains str '>' then Ok ()
+  if String.contains str "<" && String.contains str ">" then Ok ()
   else Error "Failed to serialize complex document"
 
 let tests =

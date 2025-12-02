@@ -10,6 +10,8 @@ open Tusk_model
 
 type plan_input = {
   package : Package.t;
+  profile : Profile.t;
+  ctx : Build_ctx.t;
   toolchain : Tusk_toolchain.t;
   workspace : Workspace.t;
   planning_root : Path.t;

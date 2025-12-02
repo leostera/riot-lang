@@ -10,6 +10,7 @@ module Package = Package
 module Package_command = Package_command
 module Platform = Platform
 module Profile = Profile
+module Target = Target
 module Workspace = Workspace
 module Workspace_manager = Workspace_manager
 module Node_id = Node_id

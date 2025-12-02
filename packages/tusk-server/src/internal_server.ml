@@ -30,9 +30,9 @@ let rec loop state =
   | `Request (Protocol.Ping { client_pid }) ->
       Log.debug "Server loop received: Ping";
       handle_ping state client_pid
-  | `Request (Protocol.Build { client_pid; target; session_id }) ->
+  | `Request (Protocol.Build { client_pid; target; target_arch; session_id }) ->
       Log.debug "Server loop received: Build";
-      handle_build state client_pid target session_id
+      handle_build state client_pid target target_arch session_id
   | `Request (Protocol.ScanWorkspace { client_pid; current_dir }) ->
       Log.debug "Server loop received: ScanWorkspace";
       handle_scan_workspace state client_pid current_dir
@@ -499,12 +499,15 @@ and handle_get_symbol state client_pid kind name =
    loop state
 
 (** Handler for build message - spawns worker and continues loop immediately *)
-and handle_build state client_pid target session_id =
+and handle_build state client_pid target target_arch session_id =
   Log.debug
     ("Server: handle_build called for target: "
     ^ (match target with
       | Protocol.All -> "All"
-      | Protocol.Package p -> "Package(" ^ p ^ ")"));
+      | Protocol.Package p -> "Package(" ^ p ^ ")")
+    ^ (match target_arch with
+      | Some arch -> ", arch: " ^ arch
+      | None -> ""));
 
   (* Rescan workspace to pick up any tusk.toml changes *)
   let (workspace, load_errors) =
@@ -524,7 +527,7 @@ and handle_build state client_pid target session_id =
   Build_server.start ~workspace:updated_state.workspace ~load_errors:updated_state.load_errors
     ~toolchain:updated_state.toolchain ~store:updated_state.store
     ~concurrency:updated_state.concurrency ~session_id ~client_pid ~server_pid
-    ~target;
+    ~target ~target_arch;
 
   Log.info "[INTERNAL_SERVER] Build worker spawned, continuing server loop";
   loop updated_state

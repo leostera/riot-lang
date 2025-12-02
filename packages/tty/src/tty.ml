@@ -360,7 +360,7 @@ let read_line t =
     match read t with
     | Ok s ->
         Buffer.add_string buf s;
-        if String.contains s '\n' then
+        if String.contains s "\n" then
           Ok (Buffer.contents buf)
         else
           loop ()

@@ -88,31 +88,31 @@ let test_trim_fields () =
 let test_serialize_simple_row () =
   let row = [ "a"; "b"; "c" ] in
   let str = Csv.to_string [ row ] in
-  if String.contains str 'a' && String.contains str 'b' then Ok ()
+  if String.contains str "a" && String.contains str "b" then Ok ()
   else Error ("Unexpected serialization: " ^ str)
 
 let test_serialize_with_comma () =
   let row = [ "a,b"; "c" ] in
   let str = Csv.to_string [ row ] in
-  if String.contains str '"' then Ok ()
+  if String.contains str "\"" then Ok ()
   else Error "Field with comma should be quoted"
 
 let test_serialize_with_quote () =
   let row = [ "a\"b"; "c" ] in
   let str = Csv.to_string [ row ] in
-  if String.contains str '"' then Ok ()
+  if String.contains str "\"" then Ok ()
   else Error "Field with quote should be escaped"
 
 let test_serialize_empty_field () =
   let row = [ "a"; ""; "c" ] in
   let str = Csv.to_string [ row ] in
-  if String.contains str ',' then Ok ()
+  if String.contains str "," then Ok ()
   else Error "Empty field not serialized correctly"
 
 let test_serialize_rows () =
   let rows = [ [ "a"; "b" ]; [ "c"; "d" ] ] in
   let str = Csv.to_string rows in
-  if String.contains str '\n' then Ok ()
+  if String.contains str "\n" then Ok ()
   else Error "Multiple rows should be separated by newlines"
 
 let test_roundtrip () =

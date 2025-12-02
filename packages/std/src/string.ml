@@ -198,3 +198,17 @@ let wrap_words ~width:target_width s =
           trim current_line :: build_lines word word_width rest
   in
   build_lines "" 0 words
+
+(** Check if a string contains a substring *)
+let contains haystack needle =
+  let needle_len = length needle in
+  let haystack_len = length haystack in
+  if needle_len = 0 then true
+  else if needle_len > haystack_len then false
+  else
+    let rec check pos =
+      if pos > haystack_len - needle_len then false
+      else if sub haystack pos needle_len = needle then true
+      else check (pos + 1)
+    in
+    check 0

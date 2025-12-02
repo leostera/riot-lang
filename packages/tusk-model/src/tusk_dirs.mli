@@ -10,17 +10,39 @@ val ensure_created : unit -> (unit, exn) result
 (** Name of the build directory - centralized configuration point *)
 val build_dir_name : string
 
-(** Get the build directory root for a workspace (e.g., /path/to/project/target) *)
+(** Get the build directory root for a workspace (e.g., /path/to/project/_build) *)
 val build_dir_root : workspace_root:Path.t -> Path.t
 
-(** Get the debug build directory (e.g., /path/to/project/target/debug) *)
+(** Get current host triple *)
+val host_target : unit -> string
+
+(** Target-aware path functions - new API *)
+
+(** Get profile directory (e.g., /path/to/project/_build/debug) *)
+val profile_dir : workspace_root:Path.t -> profile:string -> Path.t
+
+(** Get target directory within profile (e.g., /path/to/project/_build/debug/aarch64-apple-darwin) *)
+val target_dir : workspace_root:Path.t -> profile:string -> target:string -> Path.t
+
+(** Get output directory for specific profile and target *)
+val out_dir_with_target : workspace_root:Path.t -> profile:string -> target:string -> Path.t
+
+(** Get sandbox directory for specific profile and target *)
+val sandbox_dir_with_target : workspace_root:Path.t -> profile:string -> target:string -> Path.t
+
+(** Get cache directory for specific profile and target *)
+val cache_dir_with_target : workspace_root:Path.t -> profile:string -> target:string -> Path.t
+
+(** Backward compatible functions - default to debug profile + host target *)
+
+(** Get the debug build directory (e.g., /path/to/project/_build/debug) *)
 val debug_dir : workspace_root:Path.t -> Path.t
 
-(** Get the cache directory (e.g., /path/to/project/target/debug/cache) *)
+(** Get the cache directory (defaults to debug profile, host target) *)
 val cache_dir : workspace_root:Path.t -> Path.t
 
-(** Get the output directory (e.g., /path/to/project/target/debug/out) *)
+(** Get the output directory (defaults to debug profile, host target) *)
 val out_dir : workspace_root:Path.t -> Path.t
 
-(** Get the sandbox directory (e.g., /path/to/project/target/debug/sandbox) *)
+(** Get the sandbox directory (defaults to debug profile, host target) *)
 val sandbox_dir : workspace_root:Path.t -> Path.t

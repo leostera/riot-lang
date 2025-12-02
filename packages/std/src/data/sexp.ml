@@ -16,9 +16,9 @@ let rec to_string = function
   | Atom s ->
       (* Quote atoms that contain special characters *)
       if
-        String.contains s ' ' || String.contains s '(' || String.contains s ')'
-        || String.contains s '"' || String.contains s '\n'
-        || String.contains s '\t'
+        String.contains s " " || String.contains s "(" || String.contains s ")"
+        || String.contains s "\"" || String.contains s "\n"
+        || String.contains s "\t"
       then "\"" ^ String.escaped s ^ "\""
       else s
   | List elems -> "(" ^ String.concat " " (List.map to_string elems) ^ ")"

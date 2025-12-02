@@ -9,9 +9,12 @@ open Tusk_executor
    indexes all files via file watching. Manual population is no longer needed. *)
 
 let init ~(workspace : Workspace.t) ~load_errors ~toolchain ~store ~concurrency ~session_id ~client_pid
-    ~server_pid ~target =
+    ~server_pid ~target ~target_arch =
   Log.debug
-    ("Build worker started for session " ^ Session_id.to_string session_id);
+    ("Build worker started for session " ^ Session_id.to_string session_id ^
+     (match target_arch with
+      | Some arch -> ", target_arch: " ^ arch
+      | None -> ""));
 
   send client_pid
     (Protocol.ServerResponse
@@ -75,7 +78,50 @@ let init ~(workspace : Workspace.t) ~load_errors ~toolchain ~store ~concurrency 
     (* Create build context: start with debug profile, apply workspace overrides *)
     let profile = Profile.(apply_overrides debug workspace.profile_overrides) in
     Log.debug ("Build started with profile " ^ (Data.Json.to_string (Profile.to_json profile)));
-    let build_ctx = Build_ctx.make ~session_id ~profile () in
+    
+    (* Convert target_arch string to Tusk_model.Target.t if provided *)
+    let target = match target_arch with
+      | Some arch_str -> 
+          (match Kernel.System.Host.from_string arch_str with
+          | Ok target_triplet -> 
+              Log.info ("✓ Parsed target architecture: " ^ arch_str ^ " -> os=" ^ target_triplet.os);
+              let host_triplet = Kernel.System.Host.current in
+              if Kernel.System.Host.equal target_triplet host_triplet then (
+                Log.info "Target matches host - native compilation";
+                Some Tusk_model.Target.Host
+              ) else (
+                Log.info ("Cross-compiling from " ^ Kernel.System.Host.to_string host_triplet ^ 
+                          " to " ^ Kernel.System.Host.to_string target_triplet);
+                let detection = Tusk_toolchain.CrossCompilingToolchain.detect ~target_triplet in
+                Some (Tusk_model.Target.make_cross_with_config 
+                  ~target_triplet
+                  ~sysroot:detection.sysroot
+                  ~bin_dir:detection.bin_dir
+                  ~bin_prefix:detection.bin_prefix)
+              )
+          | Error msg -> 
+              Log.warn ("Invalid target architecture '" ^ arch_str ^ "': " ^ msg ^ ", using host");
+              None)
+      | None -> None
+    in
+    
+    let build_ctx = Build_ctx.make ~session_id ~profile ?target () in
+    Log.info ("Build context created: target_platform=" ^ (Build_ctx.target_platform_name build_ctx) ^ 
+              ", host_platform=" ^ (Build_ctx.host_platform_name build_ctx));
+    
+    (* Get the appropriate toolchain for the target architecture *)
+    let toolchain = match target_arch with
+      | Some arch_str ->
+          let config = Tusk_model.Toolchain_config.from_workspace workspace in
+          (match Tusk_toolchain.init_for_target ~config ~target:arch_str with
+          | Ok tc -> 
+              Log.debug ("Using cross-compilation toolchain for " ^ arch_str);
+              tc
+          | Error msg ->
+              Log.error ("Failed to init toolchain for " ^ arch_str ^ ": " ^ msg ^ ", using host toolchain");
+              toolchain)
+      | None -> toolchain
+    in
     
     let result =
       Coordinator2.build_workspace ~workspace ~toolchain ~store
@@ -243,10 +289,10 @@ let init ~(workspace : Workspace.t) ~load_errors ~toolchain ~store ~concurrency 
 
 (** Start a build in a spawned worker process *)
 let start ~workspace ~load_errors ~toolchain ~store ~concurrency ~session_id ~client_pid
-    ~server_pid ~target =
+    ~server_pid ~target ~target_arch =
   let _ =
     spawn (fun () ->
         init ~workspace ~load_errors ~toolchain ~store ~concurrency ~session_id ~client_pid
-          ~server_pid ~target)
+          ~server_pid ~target ~target_arch)
   in
   ()

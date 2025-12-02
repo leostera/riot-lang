@@ -207,7 +207,7 @@ let parse_csi seq =
     | "23~" -> Some (make_key (F 11))
     | "24~" -> Some (make_key (F 12))
     (* Modified keys - parse modifier parameter *)
-    | _ when String.contains rest ';' -> (
+    | _ when String.contains rest ";" -> (
         (* Format: \x1b[1;NX where N is modifier and X is key *)
         match String.split_on_char ';' rest with
         | [ _; mod_key ] when String.length mod_key >= 2 -> (

@@ -15,13 +15,21 @@ let plan_package_with_graph ~workspace ~toolchain ~store ~package_graph ~package
   Package_planner.plan_package ~workspace ~toolchain ~store ~package_graph
     ~package ~build_ctx
 
-let plan_package ~workspace ~toolchain ~package =
+(* Legacy/testing function - not used in production builds.
+   Use plan_package_with_graph instead. *)
+(* let plan_package ~workspace ~toolchain ~package =
   let planning_root = Path.v "src" in
   let depset = [] in
   let store = Tusk_store.Store.create ~workspace in
+  (* Use debug profile as default for standalone package planning *)
+  let profile = Profile.debug in
+  let session_id = Session_id.create () in
+  let ctx = Build_ctx.make ~session_id ~profile () in
   let plan_input =
     {
       Module_planner.package;
+      profile;
+      ctx;
       toolchain;
       workspace;
       planning_root;
@@ -29,7 +37,7 @@ let plan_package ~workspace ~toolchain ~package =
       store;
     }
   in
-  Module_planner.plan_node plan_input
+  Module_planner.plan_node plan_input *)
 
 module Action = Action
 module Action_node = Action_node

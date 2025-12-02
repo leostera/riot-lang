@@ -129,7 +129,7 @@ let run matches =
       (fun pkg test_names ->
         println "";
         println ("Building package '" ^ pkg ^ "'...");
-        match Build.build_command (Some pkg) with
+        match Build.build_command (Some pkg) None with
         | Ok () ->
             List.iter
               (fun test_name ->
