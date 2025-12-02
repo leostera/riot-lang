@@ -13,6 +13,23 @@ import tempfile
 
 OCAML_VERSION = os.getenv("OCAML_VERSION", "5.5.0")
 
+def detect_libc():
+    """Detect whether we're on glibc (gnu) or musl"""
+    try:
+        # Check if ldd is musl-based
+        result = subprocess.run(["ldd", "--version"], 
+                              capture_output=True, 
+                              text=True, 
+                              timeout=2)
+        output = result.stdout.lower() + result.stderr.lower()
+        if "musl" in output:
+            return "musl"
+        else:
+            return "gnu"
+    except:
+        # Default to gnu (glibc) if detection fails
+        return "gnu"
+
 def get_host_triple():
     """Get the host triple for the current platform"""
     system = platform.system().lower()
@@ -24,10 +41,11 @@ def get_host_triple():
         elif machine in ["x86_64", "amd64"]:
             return "x86_64-apple-darwin"
     elif system == "linux":
+        libc = detect_libc()
         if machine in ["x86_64", "amd64"]:
-            return "x86_64-unknown-linux"
+            return f"x86_64-unknown-linux-{libc}"
         elif machine in ["arm64", "aarch64"]:
-            return "aarch64-unknown-linux"
+            return f"aarch64-unknown-linux-{libc}"
     
     # Fallback to a generic triple
     return f"{machine}-unknown-{system}"
