@@ -4,18 +4,19 @@ Docker images for building Riot applications with Tusk.
 
 ## Quick Start
 
-### Build the Builder Image
+### Using Pre-built Images (Recommended)
+
+Pull from GitHub Container Registry:
 
 ```bash
-# From the root of the Riot repository
-docker build -t riot-builder:latest -f docker/Dockerfile .
+docker pull ghcr.io/leostera/riot/riot-builder:latest
 ```
 
 ### Use the Builder Image
 
 ```dockerfile
 # In your application's Dockerfile
-FROM riot-builder:latest AS build
+FROM ghcr.io/leostera/riot/riot-builder:latest AS build
 
 WORKDIR /app
 COPY . /app
@@ -35,10 +36,19 @@ ENTRYPOINT ["/usr/local/bin/my-app"]
 
 ```bash
 # Run Tusk directly
-docker run --rm -v $(pwd):/app riot-builder:latest build --help
+docker run --rm -v $(pwd):/app ghcr.io/leostera/riot/riot-builder:latest build --help
 
 # Interactive development
-docker run --rm -it -v $(pwd):/app riot-builder:latest bash
+docker run --rm -it -v $(pwd):/app ghcr.io/leostera/riot/riot-builder:latest bash
+```
+
+### Build from Source
+
+If you need to build the image locally:
+
+```bash
+# From the root of the Riot repository
+./docker/build.sh
 ```
 
 ## Image Architecture
@@ -77,13 +87,13 @@ docker run --rm -it -v $(pwd):/app riot-builder:latest bash
 ### Simple Application
 
 ```bash
-docker run --rm -v $(pwd):/app riot-builder:latest build my-app
+docker run --rm -v $(pwd):/app ghcr.io/leostera/riot/riot-builder:latest build my-app
 ```
 
 ### With Release Profile
 
 ```bash
-docker run --rm -v $(pwd):/app riot-builder:latest build --release my-app
+docker run --rm -v $(pwd):/app ghcr.io/leostera/riot/riot-builder:latest build --release my-app
 ```
 
 ### Cross-Compilation
@@ -92,10 +102,10 @@ Build for different architectures:
 
 ```bash
 # Build for ARM64 Linux
-docker run --rm -v $(pwd):/app riot-builder:latest build -x aarch64-linux-gnu my-app
+docker run --rm -v $(pwd):/app ghcr.io/leostera/riot/riot-builder:latest build -x aarch64-linux-gnu my-app
 
 # Build for x86-64 Linux
-docker run --rm -v $(pwd):/app riot-builder:latest build -x x86_64-linux-gnu my-app
+docker run --rm -v $(pwd):/app ghcr.io/leostera/riot/riot-builder:latest build -x x86_64-linux-gnu my-app
 ```
 
 ## Development Workflow
@@ -109,7 +119,7 @@ version: '3.8'
 
 services:
   build:
-    image: riot-builder:latest
+    image: ghcr.io/leostera/riot/riot-builder:latest
     volumes:
       - .:/app
       - tusk-cache:/root/.tusk
@@ -152,19 +162,35 @@ If you get permission errors when mounting volumes:
 docker run --rm -v $(pwd):/app -u $(id -u):$(id -g) riot-builder:latest build
 ```
 
+## Published Images
+
+Images are automatically built and published to GitHub Container Registry on every push to `main`:
+
+- **Latest stable:** `ghcr.io/leostera/riot/riot-builder:latest`
+- **Specific commit:** `ghcr.io/leostera/riot/riot-builder:sha-<commit>`
+- **Branch builds:** `ghcr.io/leostera/riot/riot-builder:main`
+
+### Image Tags
+
+- `latest` - Latest build from main branch (recommended for most users)
+- `sha-xxxxxxx` - Specific commit (for reproducible builds)
+- `main` - Latest main branch build
+
 ## Future Enhancements
 
 - [x] Add cross-compilation toolchains (aarch64, x86_64)
+- [x] Pre-install OCaml toolchain (no download needed on first run)
+- [x] Publish to GitHub Container Registry (ghcr.io)
 - [ ] Add musl-based cross-compilers for static binaries
-- [ ] Pre-install common OCaml packages
 - [ ] Multi-architecture support (linux/amd64, linux/arm64)
-- [ ] Publish to GitHub Container Registry (ghcr.io)
 - [ ] Add example applications
 - [ ] Create docker-compose templates
 
 ## CI/CD Integration
 
 ### GitHub Actions Example
+
+Use the pre-built image for faster CI/CD:
 
 ```yaml
 name: Build with Docker
@@ -177,17 +203,35 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Build Riot builder image
-        run: docker build -t riot-builder:latest -f docker/Dockerfile .
-      
       - name: Build application
-        run: docker run --rm -v $(pwd):/app riot-builder:latest build my-app
+        run: |
+          docker run --rm -v $(pwd):/app \
+            ghcr.io/leostera/riot/riot-builder:latest \
+            build my-app
       
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: my-app
           path: _build/debug/*/my-app
+```
+
+### Using in docker-compose
+
+```yaml
+version: '3.8'
+
+services:
+  build:
+    image: ghcr.io/leostera/riot/riot-builder:latest
+    volumes:
+      - .:/app
+      - tusk-cache:/root/.tusk
+    working_dir: /app
+    command: build --watch
+
+volumes:
+  tusk-cache:
 ```
 
 ## License
