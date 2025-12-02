@@ -1,7 +1,9 @@
 [toolchain]
 version = "5.5.0"
-# targets = [
-#   "aarch64-apple-darwin",
-#   "aarch64-unknown-linux-gnu",
-#  "aarch64-unknown-linux-musl",
-# ]
+targets = [
+  "aarch64-apple-darwin",
+  "aarch64-unknown-linux-gnu",
+  "aarch64-unknown-linux-musl",
+  "x86_64-unknown-linux-gnu",
+  "x86_64-unknown-linux-musl",
+]
