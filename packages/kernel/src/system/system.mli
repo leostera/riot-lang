@@ -14,6 +14,12 @@ module Host : sig
 
   val to_string : t -> string
   (** Convert host triplet to standard string format: arch-vendor-os[-abi] *)
+
+  val from_string : string -> (t, string) result
+  (** Parse a host triplet from string format: arch-vendor-os[-abi] *)
+
+  val equal : t -> t -> bool
+  (** Compare two host triplets for equality *)
 end
 
 val host_triplet : Host.t

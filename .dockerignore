@@ -1,0 +1,56 @@
+# Build artifacts - don't include in Docker context
+_build/
+target/
+*.o
+*.cmo
+*.cmi
+*.cmx
+*.cmxa
+*.cmxs
+*.a
+*.so
+
+# Tusk local cache
+.tusk/
+
+# Git (keep .git for versioning info, but ignore large objects)
+.git/objects/
+.git/logs/
+
+# GitHub workflows (not needed in container)
+.github/
+
+# Documentation
+docs/
+assets/
+*.md
+!README.md
+
+# Development files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+.Spotlight-V100
+.Trashes
+
+# Test outputs
+test-results/
+coverage/
+
+# LLM scratch files
+llm/
+
+# Docker files (don't copy Docker into Docker)
+docker/
+Dockerfile
+.dockerignore
+
+# Native build artifacts
+native/**/*.o
+packages/*/native/*.o

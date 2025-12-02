@@ -7,7 +7,7 @@
 #include <caml/custom.h>
 #include <string.h>
 
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__linux__)
 #include <openssl/ssl.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
@@ -314,6 +314,32 @@ CAMLprim value kernel_tls_alpn_protocol(value v_engine) {
     CAMLreturn(result);
 }
 
+/* Explicitly trigger TLS handshake
+   Returns: 0 = continue, -1 = need network read, -2 = need network write */
+CAMLprim value kernel_tls_do_handshake(value v_engine) {
+    CAMLparam1(v_engine);
+    
+    tls_engine_t *engine = (tls_engine_t*)Data_custom_val(v_engine);
+    
+    int result = SSL_do_handshake(engine->ssl);
+    
+    if (result == 1) {
+        /* Handshake complete */
+        engine->handshake_done = 1;
+        CAMLreturn(Val_int(0));
+    }
+    
+    int err = SSL_get_error(engine->ssl, result);
+    switch (err) {
+        case SSL_ERROR_WANT_READ:
+            CAMLreturn(Val_int(-1));
+        case SSL_ERROR_WANT_WRITE:
+            CAMLreturn(Val_int(-2));
+        default:
+            caml_failwith("SSL_do_handshake error");
+    }
+}
+
 #else
 /* Non-macOS platforms - stub implementations for now */
 
@@ -365,30 +391,8 @@ CAMLprim value kernel_tls_alpn_protocol(value v_engine) {
     caml_failwith("TLS not available on this platform");
 }
 
-#endif
-
-/* Explicitly trigger TLS handshake
-   Returns: 0 = continue, -1 = need network read, -2 = need network write */
 CAMLprim value kernel_tls_do_handshake(value v_engine) {
-    CAMLparam1(v_engine);
-    
-    tls_engine_t *engine = (tls_engine_t*)Data_custom_val(v_engine);
-    
-    int result = SSL_do_handshake(engine->ssl);
-    
-    if (result == 1) {
-        /* Handshake complete */
-        engine->handshake_done = 1;
-        CAMLreturn(Val_int(0));
-    }
-    
-    int err = SSL_get_error(engine->ssl, result);
-    switch (err) {
-        case SSL_ERROR_WANT_READ:
-            CAMLreturn(Val_int(-1));
-        case SSL_ERROR_WANT_WRITE:
-            CAMLreturn(Val_int(-2));
-        default:
-            caml_failwith("SSL_do_handshake error");
-    }
+    caml_failwith("TLS not available on this platform");
 }
+
+#endif

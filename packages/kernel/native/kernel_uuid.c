@@ -1,4 +1,7 @@
-/* UUID generation using platform libraries (libuuid/macOS uuid) */
+/* UUID generation using platform libraries
+  * - Linux: system libuuid (from uuid-dev package)
+ * - macOS: system UUID library
+ */
 
 #include <caml/alloc.h>
 #include <caml/memory.h>
@@ -6,7 +9,14 @@
 #include <caml/fail.h>
 #include <string.h>
 #include <sys/time.h>
+
+/* Platform-specific UUID header */
 #include <uuid/uuid.h>
+
+/* uuid_string_t is macOS-specific, define for Linux */
+#ifndef uuid_string_t
+  typedef char uuid_string_t[37];
+#endif
 
 #ifdef __APPLE__
   #include <Security/SecRandom.h>

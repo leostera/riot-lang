@@ -290,16 +290,15 @@ end = struct
   let get t node_id = Hashtbl.find t.modules node_id
 
   let get_by_name t name =
-    let nodes = ref [] in
-    (* Add interface node if it exists *)
-    (match Hashtbl.find_opt t.intf_by_name name with
-    | Some node -> nodes := node :: !nodes
-    | None -> ());
-    (* Add implementation node if it exists *)
-    (match Hashtbl.find_opt t.impl_by_name name with
-    | Some node -> nodes := node :: !nodes
-    | None -> ());
-    match !nodes with [] -> raise Not_found | nodes -> nodes
+    (* Use find_all to get ALL bindings for this name *)
+    (* This is important because multiple modules can have the same simple name *)
+    (* (e.g., Std__Fs__Event and Std__Log__Event both have simple name "Event") *)
+    let intf_nodes = Hashtbl.find_all t.intf_by_name name in
+    let impl_nodes = Hashtbl.find_all t.impl_by_name name in
+    let all_nodes = intf_nodes @ impl_nodes in
+    match all_nodes with
+    | [] -> raise Not_found
+    | nodes -> nodes
 
   let print t =
     printf "  Registry contains %d modules:\n" (Hashtbl.length t.modules);
@@ -608,6 +607,14 @@ and handle_ocaml_module ~t ~ctx file =
   let { ns; aliases; parent_impl; parent_intf } = ctx in
 
   let mod_ = Module.of_path ~ns file.path in
+  
+  (* Debug output for event files *)
+  let basename = Filename.basename file.path in
+  if String.contains basename 'e' && String.contains basename 'v' then
+    Printf.printf "[DEBUG] Processing module: %s -> %s (ns=%s)\n" 
+      file.path 
+      (Module.namespaced_name mod_)
+      (Namespace.to_string ns);
 
   (* Skip binary modules - they will be compiled separately *)
   let is_binary =
@@ -629,6 +636,11 @@ and handle_ocaml_module ~t ~ctx file =
     (Module.namespaced_name mod_)
     file.path;
 *)
+    
+    (* Debug Event registration *)
+    if Module_name.to_string (Module.module_name mod_) = "Event" then
+      Printf.printf "[DEBUG] Registering Event: %s (namespaced=%s)\n"
+        file.path (Module.namespaced_name mod_);
 
     Module_registry.register t.registry mod_ node.id;
 
@@ -739,16 +751,44 @@ and handle_library ~t ~ctx { path; name; children } =
   let has_library_interface_mli = library_interface_mli_path <> None in
 
   let children_without_lib_files =
+    (* We need to filter out library interface files that will serve as library interfaces *)
+    (* for their subdirectories, like collections/collections.ml -> Kernel__Collections *)
+    (* These files should NOT be included as regular modules in the parent *)
+    
+    (* First, get all directory names so we can detect dir/dir.ml patterns *)
+    let dir_names =
+      List.filter_map
+        (fun (_, child) ->
+          match child with
+          | File_scanner.Dir { name; _ } -> Some name
+          | _ -> None)
+        children
+      |> List.map String.lowercase_ascii
+      |> List.sort_uniq String.compare
+    in
+    
     List.filter
       (fun (mod_opt, child) ->
         match (mod_opt, child) with
         | Some mod_, File_scanner.File { path; _ } ->
-            (* Skip files that have the same module name as the library interface *)
-            let is_lib_file =
-              Module_name.to_string (Module.module_name mod_)
-              = Module_name.to_string (Module.module_name impl_mod)
+            (* Check if this is the root library interface (kernel.ml/kernel.mli) *)
+            let is_lib_ml = 
+              match library_interface_ml_path with
+              | Some p -> path = p
+              | None -> false
             in
-            not is_lib_file
+            let is_lib_mli = 
+              match library_interface_mli_path with
+              | Some p -> path = p
+              | None -> false
+            in
+            
+            (* Check if this is a subdirectory library interface (collections/collections.ml) *)
+            let basename = Filename.basename path |> Filename.remove_extension |> String.lowercase_ascii in
+            let is_subdir_lib = List.mem basename dir_names in
+            
+            (* Filter out both root and subdirectory library interface files *)
+            not (is_lib_ml || is_lib_mli || is_subdir_lib)
         | _ -> true)
       children
   in
@@ -860,33 +900,73 @@ and handle_library ~t ~ctx { path; name; children } =
       parent_intf = intf_node;
     }
   in
-  (* Sort children to process .mli files before .ml files *)
+  (* Sort children to process directories FIRST, then .mli files, then .ml files *)
+  (* This ensures subdirectory library interfaces are created before files that depend on them *)
   let sorted_children =
     List.sort
       (fun (_, a) (_, b) ->
-        let ext_a =
-          match a with File_scanner.File { ext; _ } -> ext | _ -> ""
+        let priority child =
+          match child with
+          | File_scanner.Dir _ -> 0 (* Directories first *)
+          | File_scanner.File { ext = ".mli"; _ } -> 1 (* Then .mli files *)
+          | File_scanner.File { ext = ".ml"; _ } -> 2 (* Then .ml files *)
+          | _ -> 3 (* Everything else last *)
         in
-        let ext_b =
-          match b with File_scanner.File { ext; _ } -> ext | _ -> ""
-        in
-        (* .mli < .ml < others *)
-        match (ext_a, ext_b) with
-        | ".mli", ".mli" -> 0
-        | ".mli", _ -> -1
-        | _, ".mli" -> 1
-        | ".ml", ".ml" -> 0
-        | ".ml", _ -> -1
-        | _, ".ml" -> 1
-        | _ -> 0)
+        Int.compare (priority a) (priority b))
       children_without_lib_files
   in
 
-  (* printf "Scanning %d children (without lib files)\n" (List.length sorted_children); *)
+  (* Process subdirectories first to create their library interfaces *)
+  (* Collect the subdirectory library interface nodes so we can add dependencies *)
+  let subdir_lib_intfs = ref [] in
   List.iter
     (fun (_mod_opt, child) ->
-      (* printf "  Child: %s\n" (File_scanner.path child); *)
-      do_scan ~t ~ctx child)
+      match child with
+      | File_scanner.Dir { name; _ } ->
+          (* After processing this directory, look up its library interface node *)
+          do_scan ~t ~ctx child;
+          let subdir_mod_name = Module_name.of_string name in
+          let subdir_namespaced_name = Namespace.add ns subdir_mod_name |> Namespace.to_string in
+          (* Look up nodes by the namespaced name (e.g., "Kernel__Collections") *)
+          let node_ids = Module_registry.get_by_name t.registry subdir_mod_name in
+          (* Find the interface node (not the implementation) *)
+          List.iter
+            (fun node_id ->
+              try
+                let node = Graph.get_node t.graph node_id in
+                (match node.value.kind with
+                | MLI mod_ ->
+                    if Module.namespaced_name mod_ = subdir_namespaced_name then
+                      subdir_lib_intfs := node :: !subdir_lib_intfs
+                | _ -> ())
+              with Not_found -> ())
+            node_ids
+      | _ -> ())
+    sorted_children;
+
+  (* Add dependencies from parent library interface to subdirectory library interfaces *)
+  (* This ensures subdirectory library interfaces are compiled before the parent *)
+  Printf.printf "[DEBUG] Adding %d subdir lib dependencies to %s\n"
+    (List.length !subdir_lib_intfs)
+    (Module.namespaced_name intf_mod);
+  List.iter
+    (fun (subdir_intf_node : dep Graph.node) ->
+      let subdir_name = match subdir_intf_node.value.kind with
+        | MLI m | ML m -> Module.namespaced_name m
+        | _ -> "?" in
+      Printf.printf "[DEBUG]   %s depends on %s\n"
+        (Module.namespaced_name intf_mod)
+        subdir_name;
+      Graph.add_edge intf_node ~depends_on:subdir_intf_node;
+      Graph.add_edge impl_node ~depends_on:subdir_intf_node)
+    !subdir_lib_intfs;
+
+  (* Now process all non-directory children *)
+  List.iter
+    (fun (_mod_opt, child) ->
+      match child with
+      | File_scanner.Dir _ -> () (* Already processed *)
+      | _ -> do_scan ~t ~ctx child)
     sorted_children
 
 let scan_from_root t =
@@ -913,6 +993,16 @@ let handle_dep t (node : dep Graph.node) =
   (* printf "iter %S\n" (file_to_string dep.file); *)
   match dep.kind with
   | ML mod_ | MLI mod_ ->
+      (* Debug file_watcher opens *)
+      let is_file_watcher = String.contains (Module.path mod_) 'w' in
+      if is_file_watcher then begin
+        Printf.printf "[DEBUG] Processing file_watcher, opens: [";
+        List.iter (fun (n : dep Graph.node) -> 
+          match n.value.kind with 
+          | ML m | MLI m -> Printf.printf "%s, " (Module.namespaced_name m)
+          | _ -> Printf.printf "?, ") dep.open_modules;
+        Printf.printf "]\n"
+      end;
       (* Skip ocamldep for generated files since they don't exist yet *)
       let deps =
         match dep.file with
@@ -922,35 +1012,108 @@ let handle_dep t (node : dep Graph.node) =
       List.iter
         (fun dep ->
           (* printf "- %s\n" dep; *)
-          (* First try to find in local module registry - this handles our local String/List modules *)
           let dep_name = Module_name.of_string dep in
-          (* printf "  Looking for '%s' in registry\n" (Module_name.to_string dep_name); *)
+          
+          (* Debug IO dependencies *)
+          if Module_name.to_string dep_name = "IO" then
+            Printf.printf "[DEBUG] Resolving IO dep from %s\n"
+              (match node.value.file with Concrete p | Generated {path=p;_} -> p);
+          
+          (* First, try to resolve through opened aliases *)
+          (* This handles scoping: if we have -open Std__Fs__Aliases, and it defines *)
+          (* module Event = Std__Fs__Event, then Event should resolve to Std__Fs__Event *)
+          let resolved_via_aliases =
+            List.concat_map
+              (fun (alias_node : dep Graph.node) ->
+                match alias_node.value.kind with
+                | ML alias_mod | MLI alias_mod ->
+                    (* Check if this is an aliases module *)
+                    let alias_name = Module.namespaced_name alias_mod in
+                    if String.ends_with ~suffix:"__Aliases" alias_name then
+                      (* This is an aliases module. Check if it defines our dep_name *)
+                      (* The aliases module contains child modules from the same directory *)
+                      (* We need to find which module the alias refers to *)
+                      (* For now, we'll use a heuristic: if the alias is Std__Fs__Aliases, *)
+                      (* then Event should resolve to Std__Fs__Event *)
+                      let namespace_prefix = String.sub alias_name 0 (String.length alias_name - 9) in (* Remove "__Aliases" *)
+                      let candidate_name = namespace_prefix ^ "__" ^ Module_name.to_string dep_name in
+                      let is_debug = Module_name.to_string dep_name = "Event" || Module_name.to_string dep_name = "IO" in
+                      if is_debug then
+                        Printf.printf "[DEBUG]   Checking alias %s: looking for %s\n" 
+                          alias_name candidate_name;
+                      (* Try to find ALL modules with this namespaced name (both .ml and .mli) *)
+                      try
+                        let node_ids = Module_registry.get_by_name t.registry dep_name in
+                        if is_debug then
+                          Printf.printf "[DEBUG]   Found %d modules named %s in registry\n" 
+                            (List.length node_ids) (Module_name.to_string dep_name);
+                        let matching = List.filter
+                          (fun node_id ->
+                            let candidate_node = Graph.get_node t.graph node_id in
+                            match candidate_node.value.kind with
+                            | ML m | MLI m -> 
+                                let matches = Module.namespaced_name m = candidate_name in
+                                if is_debug then
+                                  Printf.printf "[DEBUG]     Candidate: %s (matches=%b)\n"
+                                    (Module.namespaced_name m) matches;
+                                matches
+                            | _ -> false)
+                          node_ids
+                        in
+                        if is_debug && List.length matching > 0 then
+                          Printf.printf "[DEBUG]   Matched %d nodes\n" (List.length matching);
+                        matching
+                      with Not_found -> 
+                        if is_debug then
+                          Printf.printf "[DEBUG]   Module %s not found in registry\n" 
+                            (Module_name.to_string dep_name);
+                        []
+                    else []
+                | _ -> [])
+              node.value.open_modules
+          in
 
-          (* Try to find in local registry *)
-          try
-            let node_ids = Module_registry.get_by_name t.registry dep_name in
-            List.iter
-              (fun dep_node_id ->
-                let dep_node = Graph.get_node t.graph dep_node_id in
-                (* For .ml files, add edges to both .mli and .ml dependencies
-               For .mli files, only add edges to .mli dependencies *)
-                match (node.value.kind, dep_node.value.kind) with
-                | MLI _, ML _ ->
-                    (* Interface files don't depend on implementations *)
-                    ()
-                | _ -> Graph.add_edge node ~depends_on:dep_node
-                (* printf "  Added edge to local module (node %d)\n" (Graph.Node_id.to_int dep_node_id) *))
-              node_ids
-          with Not_found -> ()
-          (* Then check if it's an external dependency from build_results
-          let dep_name = Module_name.of_string dep in
-          if Build_results.has_module t.build_results dep_name then
-            (* printf "  (external dependency from build_results)\n" *)
-          (* Finally check if it's a stdlib module *)
-          else if List.mem dep Ocaml_platform.stdlib_modules then
-            (* printf "  (stdlib module)\n" *)
-          else
-            (* printf "  WARNING: Module %s not found in registry!\n" (Module_name.to_string dep_name) *) *))
+          let is_debug = Module_name.to_string dep_name = "Event" || Module_name.to_string dep_name = "IO" || Module_name.to_string dep_name = "Global0" in
+          
+          match resolved_via_aliases with
+          | [] ->
+              (* Not found via aliases, fall back to registry search *)
+              if is_debug then
+                Printf.printf "[DEBUG] %s NOT resolved via aliases, trying registry\n"
+                  (Module_name.to_string dep_name);
+              (try
+                let node_ids = Module_registry.get_by_name t.registry dep_name in
+                List.iter
+                  (fun dep_node_id ->
+                    let dep_node = Graph.get_node t.graph dep_node_id in
+                    if is_debug then
+                      Printf.printf "[DEBUG] Found %s dep (registry): from %s to %s\n"
+                        (Module_name.to_string dep_name)
+                        (match node.value.file with Concrete p | Generated {path=p;_} -> p)
+                        (match dep_node.value.file with Concrete p | Generated {path=p;_} -> p);
+                    match (node.value.kind, dep_node.value.kind) with
+                    | MLI _, ML _ -> ()
+                    | _ -> Graph.add_edge node ~depends_on:dep_node)
+                  node_ids
+              with Not_found ->
+                if is_debug then
+                  Printf.printf "[DEBUG] %s NOT FOUND in registry! From file: %s\n"
+                    (Module_name.to_string dep_name)
+                    (match node.value.file with Concrete p | Generated {path=p;_} -> p))
+          | resolved_node_ids ->
+              (* Found via aliases, use these specific modules *)
+              List.iter
+                (fun resolved_node_id ->
+                  let dep_node = Graph.get_node t.graph resolved_node_id in
+                  if is_debug then
+                    Printf.printf "[DEBUG] Resolved %s via aliases: from %s to %s\n"
+                      (Module_name.to_string dep_name)
+                      (match node.value.file with Concrete p | Generated {path=p;_} -> p)
+                      (match dep_node.value.file with Concrete p | Generated {path=p;_} -> p);
+                  (match (node.value.kind, dep_node.value.kind) with
+                  | MLI _, ML _ -> () (* Interface files don't depend on implementations *)
+                  | _ -> Graph.add_edge node ~depends_on:dep_node))
+                resolved_node_ids)
         deps
   | _ -> ()
 

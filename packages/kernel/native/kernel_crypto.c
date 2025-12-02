@@ -87,23 +87,76 @@ CAMLprim value kernel_crypto_md5(value data) {
 }
 
 #else
-/* Fallback - just return an error for now */
-/* In production, use OpenSSL or libsodium */
+/* Linux/other platforms - use OpenSSL */
+#include <openssl/sha.h>
+#include <openssl/md5.h>
 
 CAMLprim value kernel_crypto_sha1(value data) {
-    caml_failwith("SHA1 not implemented on this platform");
+    CAMLparam1(data);
+    CAMLlocal1(result);
+
+    unsigned char hash[SHA_DIGEST_LENGTH];
+    SHA_CTX ctx;
+
+    SHA1_Init(&ctx);
+    SHA1_Update(&ctx, Bytes_val(data), caml_string_length(data));
+    SHA1_Final(hash, &ctx);
+
+    result = caml_alloc_string(SHA_DIGEST_LENGTH);
+    memcpy(Bytes_val(result), hash, SHA_DIGEST_LENGTH);
+
+    CAMLreturn(result);
 }
 
 CAMLprim value kernel_crypto_sha256(value data) {
-    caml_failwith("SHA256 not implemented on this platform");
+    CAMLparam1(data);
+    CAMLlocal1(result);
+
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+    SHA256_CTX ctx;
+
+    SHA256_Init(&ctx);
+    SHA256_Update(&ctx, Bytes_val(data), caml_string_length(data));
+    SHA256_Final(hash, &ctx);
+
+    result = caml_alloc_string(SHA256_DIGEST_LENGTH);
+    memcpy(Bytes_val(result), hash, SHA256_DIGEST_LENGTH);
+
+    CAMLreturn(result);
 }
 
 CAMLprim value kernel_crypto_sha512(value data) {
-    caml_failwith("SHA512 not implemented on this platform");
+    CAMLparam1(data);
+    CAMLlocal1(result);
+
+    unsigned char hash[SHA512_DIGEST_LENGTH];
+    SHA512_CTX ctx;
+
+    SHA512_Init(&ctx);
+    SHA512_Update(&ctx, Bytes_val(data), caml_string_length(data));
+    SHA512_Final(hash, &ctx);
+
+    result = caml_alloc_string(SHA512_DIGEST_LENGTH);
+    memcpy(Bytes_val(result), hash, SHA512_DIGEST_LENGTH);
+
+    CAMLreturn(result);
 }
 
 CAMLprim value kernel_crypto_md5(value data) {
-    caml_failwith("MD5 not implemented on this platform");
+    CAMLparam1(data);
+    CAMLlocal1(result);
+
+    unsigned char hash[MD5_DIGEST_LENGTH];
+    MD5_CTX ctx;
+
+    MD5_Init(&ctx);
+    MD5_Update(&ctx, Bytes_val(data), caml_string_length(data));
+    MD5_Final(hash, &ctx);
+
+    result = caml_alloc_string(MD5_DIGEST_LENGTH);
+    memcpy(Bytes_val(result), hash, MD5_DIGEST_LENGTH);
+
+    CAMLreturn(result);
 }
 
 #endif
@@ -157,8 +210,24 @@ CAMLprim value kernel_crypto_hmac_sha256(value key, value data) {
     CAMLreturn(result);
 }
 #else
-/* Fallback for non-Apple platforms */
+/* Linux/other platforms - use OpenSSL HMAC */
+#include <openssl/hmac.h>
+
 CAMLprim value kernel_crypto_hmac_sha256(value key, value data) {
-    caml_failwith("HMAC-SHA256 not implemented on this platform");
+    CAMLparam2(key, data);
+    CAMLlocal1(result);
+
+    unsigned char mac[SHA256_DIGEST_LENGTH];
+    unsigned int mac_len;
+    
+    HMAC(EVP_sha256(),
+         String_val(key), caml_string_length(key),
+         (unsigned char *)String_val(data), caml_string_length(data),
+         mac, &mac_len);
+
+    result = caml_alloc_string(SHA256_DIGEST_LENGTH);
+    memcpy(Bytes_val(result), mac, SHA256_DIGEST_LENGTH);
+
+    CAMLreturn(result);
 }
 #endif

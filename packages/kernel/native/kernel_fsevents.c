@@ -161,4 +161,30 @@ CAMLprim value kernel_fsevents_stop(value ctx_val) {
     CAMLreturn(Val_unit);
 }
 
+#else
+/* Linux/other platforms - provide stub implementations */
+/* TODO: Implement using inotify on Linux */
+
+#include <caml/mlvalues.h>
+#include <caml/fail.h>
+#include <caml/memory.h>
+
+CAMLprim value kernel_fsevents_create(value paths_val, value fd_val) {
+    CAMLparam2(paths_val, fd_val);
+    caml_failwith("fsevents not supported on this platform - use inotify");
+    CAMLreturn(Val_long(0));
+}
+
+CAMLprim value kernel_fsevents_watch(value ctx_val) {
+    CAMLparam1(ctx_val);
+    caml_failwith("fsevents not supported on this platform - use inotify");
+    CAMLreturn(Val_unit);
+}
+
+CAMLprim value kernel_fsevents_stop(value ctx_val) {
+    CAMLparam1(ctx_val);
+    caml_failwith("fsevents not supported on this platform - use inotify");
+    CAMLreturn(Val_unit);
+}
+
 #endif
