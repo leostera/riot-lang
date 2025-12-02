@@ -20,10 +20,16 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-latest]
+        os: [macos-latest, ubuntu-latest]
         
     steps:
     - uses: actions/checkout@v4
+    
+    - name: Install Linux dependencies
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libssl-dev uuid-dev libzstd-dev
     
     - name: Cache Tusk toolchains and downloads
       uses: actions/cache@v4
@@ -39,34 +45,22 @@ jobs:
     - name: Build with Minitusk
       run: ./minitusk
       
-    - name: Build with Bootstrap Tusk
-      run: ./target/bootstrap/tusk build
-      
-    - name: Copy Tusk to root
-      run: cp ./target/debug/tusk tusk
-      
-    - name: Clean target directory
-      run: rm -rf ./target
-      
-    - name: Build with Self-hosted Tusk
-      run: ./tusk build
-      
-    - name: Test Tusk Help
-      run: ./target/debug/tusk --help
+    - name: Test Bootstrap Tusk
+      run: ./_build/bootstrap/out/Tusk_cli/tusk --help
       
     - name: Verify Build Artifacts
       run: |
         echo "=== Checking build artifacts ==="
-        ls -la ./target/debug/
+        ls -la ./_build/bootstrap/out/Tusk_cli/
         echo "=== Checking tusk executable ==="
-        file ./target/debug/tusk
-        ./target/debug/tusk --version || echo "No version flag yet"
+        file ./_build/bootstrap/out/Tusk_cli/tusk
+        ./_build/bootstrap/out/Tusk_cli/tusk --version || echo "No version flag yet"
     
     - name: Upload Tusk Binary
       uses: actions/upload-artifact@v4
       with:
         name: tusk-${{ runner.os }}-${{ runner.arch }}
-        path: ./target/debug/tusk
+        path: ./_build/bootstrap/out/Tusk_cli/tusk
         retention-days: 7
 
   release:
@@ -92,8 +86,11 @@ jobs:
           platform=$(basename "$dir" | sed 's/tusk-//')
           # Convert runner OS/arch to host triplet format
           case "$platform" in
-            "Linux-X64")
+             "Linux-X64")
               host_triplet="x86_64-unknown-linux-gnu"
+              ;;
+            "Linux-ARM64")
+              host_triplet="aarch64-unknown-linux-gnu"
               ;;
             "macOS-X64")
               host_triplet="x86_64-apple-darwin"
@@ -152,12 +149,18 @@ jobs:
         Download the appropriate binary for your platform:
         
         \`\`\`bash
-        # macOS Intel/Apple Silicon
+        # macOS Apple Silicon (M1/M2/M3)
+        curl -L https://github.com/${{ github.repository }}/releases/download/nightly/tusk-aarch64-apple-darwin-${SHORT_SHA}-${DATE} -o tusk
+        chmod +x tusk
+        
+        # macOS Intel
         curl -L https://github.com/${{ github.repository }}/releases/download/nightly/tusk-x86_64-apple-darwin-${SHORT_SHA}-${DATE} -o tusk
         chmod +x tusk
-        \`\`\`
         
-        **Note:** Linux builds are temporarily disabled while we work on cross-platform support.
+        # Linux x86_64
+        curl -L https://github.com/${{ github.repository }}/releases/download/nightly/tusk-x86_64-unknown-linux-gnu-${SHORT_SHA}-${DATE} -o tusk
+        chmod +x tusk
+        \`\`\`
         
         ### Recent Changes
         
