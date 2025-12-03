@@ -2,6 +2,8 @@ name: Release Tusk Binaries
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
   workflow_dispatch:
@@ -61,8 +63,12 @@ jobs:
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             VERSION="${{ github.event.inputs.version }}"
-          else
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            # Tagged release: use the tag version
             VERSION="${GITHUB_REF#refs/tags/}"
+          else
+            # Regular commit: use short SHA
+            VERSION="sha-$(echo ${{ github.sha }} | cut -c1-7)"
           fi
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "Building version: ${VERSION}"
@@ -71,20 +77,13 @@ jobs:
         run: |
           IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/riot-builder:latest"
           
-          # For musl builds, we'll need to handle this differently
-          # For now, we'll use the GNU libc builder and note this limitation
-          if [[ "${{ matrix.libc }}" == "musl" ]]; then
-            echo "Note: musl builds require additional setup"
-            echo "Building with GNU toolchain for now"
-          fi
-          
-          # Build tusk-cli using the riot-builder image
+          # Build tusk-cli using the riot-builder image with cross-compilation
           docker run --rm \
             --platform ${{ matrix.platform }} \
             -v "$(pwd):/app" \
             -w /app \
             ${IMAGE} \
-            build --release --no-code-server tusk-cli
+            build --release --no-code-server -x ${{ matrix.triple }} tusk-cli
           
           # The binary should be in _build/release/out/Tusk_cli/tusk
           ls -la _build/release/out/Tusk_cli/
@@ -126,8 +125,12 @@ jobs:
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             VERSION="${{ github.event.inputs.version }}"
-          else
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            # Tagged release: use the tag version
             VERSION="${GITHUB_REF#refs/tags/}"
+          else
+            # Regular commit: use short SHA
+            VERSION="sha-$(echo ${{ github.sha }} | cut -c1-7)"
           fi
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "Building version: ${VERSION}"
@@ -188,10 +191,18 @@ jobs:
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             VERSION="${{ github.event.inputs.version }}"
-          else
+            IS_TAG=true
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            # Tagged release: use the tag version
             VERSION="${GITHUB_REF#refs/tags/}"
+            IS_TAG=true
+          else
+            # Regular commit: use short SHA
+            VERSION="sha-$(echo ${{ github.sha }} | cut -c1-7)"
+            IS_TAG=false
           fi
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "is_tag=${IS_TAG}" >> $GITHUB_OUTPUT
       
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -203,7 +214,8 @@ jobs:
           echo "Downloaded artifacts:"
           find artifacts -type f
       
-      - name: Create Release
+      - name: Create Tagged Release
+        if: steps.version.outputs.is_tag == 'true'
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.version.outputs.version }}
@@ -251,5 +263,55 @@ jobs:
             
             ### Notes
             
-            - **musl builds**: Currently use the same GNU toolchain. Full musl static builds coming soon.
+            - **musl builds**: Cross-compiled using tusk's `-x` flag
             - **macOS Intel**: Not provided in this release. Use Rosetta 2 to run the aarch64 binary on Intel Macs.
+      
+      - name: Update Latest Release
+        if: steps.version.outputs.is_tag == 'false'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: latest
+          name: Tusk Latest (Development Build)
+          draft: false
+          prerelease: true
+          files: |
+            artifacts/**/*.tar.gz
+          body: |
+            # Tusk Latest Development Build
+            
+            **Commit**: ${{ github.sha }}
+            **Version**: ${{ steps.version.outputs.version }}
+            
+            This is an automatically generated development build from the latest commit to `main`.
+            
+            ## Installation
+            
+            Download the appropriate binary for your platform and extract it:
+            
+            ### Available Platforms
+            - Linux x86_64 (GNU libc)
+            - Linux x86_64 (musl libc)  
+            - Linux aarch64 (GNU libc)
+            - Linux aarch64 (musl libc)
+            - macOS aarch64 (Apple Silicon)
+            
+            ### Quick Install
+            
+            ```bash
+            # Set your platform
+            PLATFORM="x86_64-unknown-linux-gnu"  # or aarch64-apple-darwin for macOS
+            VERSION="${{ steps.version.outputs.version }}"
+            
+            # Download and extract
+            curl -L "https://github.com/${{ github.repository }}/releases/download/latest/tusk-${VERSION}-${PLATFORM}.tar.gz" | tar xz
+            
+            # Move to PATH
+            mkdir -p ~/.tusk/bin
+            mv tusk ~/.tusk/bin/
+            export PATH="$HOME/.tusk/bin:$PATH"
+            
+            # Verify
+            tusk --version
+            ```
+            
+            ⚠️ **Warning**: This is a development build and may be unstable.
