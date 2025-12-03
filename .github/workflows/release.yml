@@ -104,11 +104,19 @@ jobs:
             ./_build/bootstrap/out/Tusk_cli/tusk build --no-code-server tusk-cli
           else
             # Cross-compile for other targets
-            ./_build/bootstrap/out/Tusk_cli/tusk build --no-code-server -x ${{ matrix.triple }} tusk-cli
+            if ! ./_build/bootstrap/out/Tusk_cli/tusk build --no-code-server -x ${{ matrix.triple }} tusk-cli; then
+              echo "::warning::Failed to build for ${{ matrix.triple }} - toolchain may not be available yet"
+              exit 1
+            fi
           fi
 
           # Verify the binary and show version
-          _build/debug/${{ matrix.triple }}/out/tusk-cli/tusk version
+          if [ -f "_build/debug/${{ matrix.triple }}/out/tusk-cli/tusk" ]; then
+            _build/debug/${{ matrix.triple }}/out/tusk-cli/tusk version
+          else
+            echo "::error::Binary not found at _build/debug/${{ matrix.triple }}/out/tusk-cli/tusk"
+            exit 1
+          fi
       
       - name: Package binary
         run: |
@@ -148,13 +156,26 @@ jobs:
           for tarball in tusk-*.tar.gz; do
             if [ -f "$tarball" ]; then
               echo "Uploading $tarball to S3..."
-              aws s3 cp "$tarball" \
-                "s3://${S3_BUCKET}/tusk/${VERSION}/$tarball" \
-                --endpoint-url "$S3_ENDPOINT" \
-                --acl public-read
               
-              echo "✓ Uploaded: $tarball"
-              echo "📦 Download URL: https://${S3_BUCKET}/tusk/${VERSION}/$tarball"
+              # Build AWS CLI command with conditional endpoint
+              if [ -n "$S3_ENDPOINT" ] && [ "$S3_ENDPOINT" != "" ]; then
+                echo "Using custom S3 endpoint: $S3_ENDPOINT"
+                aws s3 cp "$tarball" \
+                  "s3://${S3_BUCKET}/tusk/${VERSION}/$tarball" \
+                  --endpoint-url "$S3_ENDPOINT" \
+                  --acl public-read
+                
+                echo "✓ Uploaded: $tarball"
+                echo "📦 Download URL: ${S3_ENDPOINT}/${S3_BUCKET}/tusk/${VERSION}/$tarball"
+              else
+                echo "Using default AWS S3 endpoint"
+                aws s3 cp "$tarball" \
+                  "s3://${S3_BUCKET}/tusk/${VERSION}/$tarball" \
+                  --acl public-read
+                
+                echo "✓ Uploaded: $tarball"
+                echo "📦 Download URL: https://${S3_BUCKET}.s3.amazonaws.com/tusk/${VERSION}/$tarball"
+              fi
             fi
           done
   
@@ -259,13 +280,26 @@ jobs:
           for tarball in tusk-*.tar.gz; do
             if [ -f "$tarball" ]; then
               echo "Uploading $tarball to S3..."
-              aws s3 cp "$tarball" \
-                "s3://${S3_BUCKET}/tusk/${VERSION}/$tarball" \
-                --endpoint-url "$S3_ENDPOINT" \
-                --acl public-read
               
-              echo "✓ Uploaded: $tarball"
-              echo "📦 Download URL: https://${S3_BUCKET}/tusk/${VERSION}/$tarball"
+              # Build AWS CLI command with conditional endpoint
+              if [ -n "$S3_ENDPOINT" ] && [ "$S3_ENDPOINT" != "" ]; then
+                echo "Using custom S3 endpoint: $S3_ENDPOINT"
+                aws s3 cp "$tarball" \
+                  "s3://${S3_BUCKET}/tusk/${VERSION}/$tarball" \
+                  --endpoint-url "$S3_ENDPOINT" \
+                  --acl public-read
+                
+                echo "✓ Uploaded: $tarball"
+                echo "📦 Download URL: ${S3_ENDPOINT}/${S3_BUCKET}/tusk/${VERSION}/$tarball"
+              else
+                echo "Using default AWS S3 endpoint"
+                aws s3 cp "$tarball" \
+                  "s3://${S3_BUCKET}/tusk/${VERSION}/$tarball" \
+                  --acl public-read
+                
+                echo "✓ Uploaded: $tarball"
+                echo "📦 Download URL: https://${S3_BUCKET}.s3.amazonaws.com/tusk/${VERSION}/$tarball"
+              fi
             fi
           done
   
