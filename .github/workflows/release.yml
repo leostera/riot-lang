@@ -26,6 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: Publisher
     strategy:
+      fail-fast: false
       matrix:
         include:
           - arch: x86_64
@@ -37,9 +38,10 @@ jobs:
           - arch: aarch64
             libc: gnu
             triple: aarch64-unknown-linux-gnu
-          - arch: aarch64
-            libc: musl
-            triple: aarch64-unknown-linux-musl
+          # Temporarily disabled: no aarch64-musl toolchain available yet
+          # - arch: aarch64
+          #   libc: musl
+          #   triple: aarch64-unknown-linux-musl
     
     steps:
       - name: Checkout code
