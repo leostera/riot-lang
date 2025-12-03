@@ -183,7 +183,7 @@ jobs:
   # Build for macOS aarch64 (Apple Silicon)
   build-macos:
     name: Build macOS aarch64 Binary
-    runs-on: macos-14  # macOS 14 runs on Apple Silicon (aarch64)
+    runs-on: macos-latest
     environment: Publisher
     
     steps:
