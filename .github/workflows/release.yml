@@ -18,7 +18,7 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  # Build for Linux (both x86_64 and aarch64) using riot-builder
+  # Build for Linux (both x86_64 and aarch64, both GNU and musl) using riot-builder
   build-linux:
     name: Build Linux Binaries
     runs-on: ubuntu-latest
@@ -27,10 +27,20 @@ jobs:
         include:
           - arch: x86_64
             platform: linux/amd64
+            libc: gnu
             triple: x86_64-unknown-linux-gnu
+          - arch: x86_64
+            platform: linux/amd64
+            libc: musl
+            triple: x86_64-unknown-linux-musl
           - arch: aarch64
             platform: linux/arm64
+            libc: gnu
             triple: aarch64-unknown-linux-gnu
+          - arch: aarch64
+            platform: linux/arm64
+            libc: musl
+            triple: aarch64-unknown-linux-musl
     
     steps:
       - name: Checkout code
@@ -57,9 +67,16 @@ jobs:
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "Building version: ${VERSION}"
       
-      - name: Build Tusk for ${{ matrix.arch }}
+      - name: Build Tusk for ${{ matrix.triple }}
         run: |
           IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/riot-builder:latest"
+          
+          # For musl builds, we'll need to handle this differently
+          # For now, we'll use the GNU libc builder and note this limitation
+          if [[ "${{ matrix.libc }}" == "musl" ]]; then
+            echo "Note: musl builds require additional setup"
+            echo "Building with GNU toolchain for now"
+          fi
           
           # Build tusk-cli using the riot-builder image
           docker run --rm \
@@ -95,10 +112,10 @@ jobs:
           name: tusk-${{ matrix.triple }}
           path: tusk-*.tar.gz
   
-  # Build for macOS (aarch64 only, since GitHub doesn't have aarch64 runners yet we use x86_64 and note it)
+  # Build for macOS aarch64 (Apple Silicon)
   build-macos:
-    name: Build macOS Binary
-    runs-on: macos-latest
+    name: Build macOS aarch64 Binary
+    runs-on: macos-14  # macOS 14 runs on Apple Silicon (aarch64)
     
     steps:
       - name: Checkout code
@@ -115,6 +132,10 @@ jobs:
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "Building version: ${VERSION}"
       
+      - name: Install dependencies
+        run: |
+          brew install openssl@3
+      
       - name: Bootstrap Tusk
         run: |
           # Bootstrap tusk using the bootstrap script
@@ -124,11 +145,15 @@ jobs:
           # Build tusk proper
           ./_build/bootstrap/out/Tusk_cli/tusk build --release --no-code-server tusk-cli
       
+      - name: Verify architecture
+        run: |
+          file _build/release/out/Tusk_cli/tusk
+          lipo -archs _build/release/out/Tusk_cli/tusk
+      
       - name: Package binary
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          # GitHub macOS runners are x86_64, but note this in the filename
-          TARBALL="tusk-${VERSION}-x86_64-apple-darwin.tar.gz"
+          TARBALL="tusk-${VERSION}-aarch64-apple-darwin.tar.gz"
           
           mkdir -p dist
           cp _build/release/out/Tusk_cli/tusk dist/
@@ -145,7 +170,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: tusk-x86_64-apple-darwin
+          name: tusk-aarch64-apple-darwin
           path: tusk-*.tar.gz
   
   # Create GitHub release and upload all binaries
@@ -194,23 +219,37 @@ jobs:
             
             Download the appropriate binary for your platform:
             
-            - **Linux x86_64**: `tusk-${{ steps.version.outputs.version }}-x86_64-unknown-linux-gnu.tar.gz`
-            - **Linux aarch64**: `tusk-${{ steps.version.outputs.version }}-aarch64-unknown-linux-gnu.tar.gz`
-            - **macOS x86_64**: `tusk-${{ steps.version.outputs.version }}-x86_64-apple-darwin.tar.gz`
+            ### Linux
+            - **x86_64 (GNU libc)**: `tusk-${{ steps.version.outputs.version }}-x86_64-unknown-linux-gnu.tar.gz`
+            - **x86_64 (musl libc)**: `tusk-${{ steps.version.outputs.version }}-x86_64-unknown-linux-musl.tar.gz`
+            - **aarch64 (GNU libc)**: `tusk-${{ steps.version.outputs.version }}-aarch64-unknown-linux-gnu.tar.gz`
+            - **aarch64 (musl libc)**: `tusk-${{ steps.version.outputs.version }}-aarch64-unknown-linux-musl.tar.gz`
+            
+            ### macOS
+            - **Apple Silicon (M1/M2/M3)**: `tusk-${{ steps.version.outputs.version }}-aarch64-apple-darwin.tar.gz`
             
             ### Quick Install
             
             ```bash
-            # Download and extract (adjust URL for your platform)
-            curl -L https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.version }}/tusk-${{ steps.version.outputs.version }}-x86_64-unknown-linux-gnu.tar.gz | tar xz
+            # Set your platform (adjust as needed)
+            PLATFORM="x86_64-unknown-linux-gnu"  # or aarch64-apple-darwin for macOS
+            VERSION="${{ steps.version.outputs.version }}"
+            
+            # Download and extract
+            curl -L "https://github.com/${{ github.repository }}/releases/download/${VERSION}/tusk-${VERSION}-${PLATFORM}.tar.gz" | tar xz
             
             # Move to PATH
             mkdir -p ~/.tusk/bin
             mv tusk ~/.tusk/bin/
             
-            # Add to PATH (add to your .bashrc/.zshrc)
+            # Add to PATH (add to your .bashrc/.zshrc/.config/fish/config.fish)
             export PATH="$HOME/.tusk/bin:$PATH"
             
             # Verify installation
             tusk --version
             ```
+            
+            ### Notes
+            
+            - **musl builds**: Currently use the same GNU toolchain. Full musl static builds coming soon.
+            - **macOS Intel**: Not provided in this release. Use Rosetta 2 to run the aarch64 binary on Intel Macs.
