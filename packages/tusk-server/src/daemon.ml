@@ -55,9 +55,9 @@ let daemon_exists ~workspace ~config =
             Log.debug
               ("Failed to connect: "
               ^ (match e with
-                | Connection_refused -> "connection refused"
-                | Closed -> "connection closed"
-                | System_error io_err -> "system error: " ^ IO.error_message io_err));
+                | Net.TcpClient.Connection_refused -> "connection refused"
+                | Net.TcpClient.Closed -> "connection closed"
+                | Net.TcpClient.System_error io_err -> "system error: " ^ IO.error_message io_err));
             false
       in
       (* Reuse existing daemon if it's running - config doesn't matter *)
