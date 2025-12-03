@@ -83,7 +83,7 @@ install_tusk() {
         VERSION="latest"
     fi
     
-    DOWNLOAD_URL="${S3_BASE_URL}/tusk/${VERSION}/tusk-${VERSION}-${PLATFORM}.tar.gz"
+    DOWNLOAD_URL="${S3_BASE_URL}/tusk/tusk-${VERSION}-${PLATFORM}.tar.gz"
     
     print_info "Downloading from: $DOWNLOAD_URL"
     
