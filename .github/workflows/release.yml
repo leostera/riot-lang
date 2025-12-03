@@ -20,7 +20,7 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  # Build for Linux (both x86_64 and aarch64, both GNU and musl) using riot-builder
+  # Build for Linux (both x86_64 and aarch64, both GNU and musl)
   build-linux:
     name: Build Linux Binaries
     runs-on: ubuntu-latest
@@ -28,19 +28,15 @@ jobs:
       matrix:
         include:
           - arch: x86_64
-            platform: linux/amd64
             libc: gnu
             triple: x86_64-unknown-linux-gnu
           - arch: x86_64
-            platform: linux/amd64
             libc: musl
             triple: x86_64-unknown-linux-musl
           - arch: aarch64
-            platform: linux/arm64
             libc: gnu
             triple: aarch64-unknown-linux-gnu
           - arch: aarch64
-            platform: linux/arm64
             libc: musl
             triple: aarch64-unknown-linux-musl
     
@@ -48,15 +44,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      
-      - name: Log in to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            curl \
+            git \
+            python3 \
+            python3-pip \
+            libssl-dev \
+            uuid-dev \
+            libzstd-dev
       
       - name: Get version
         id: version
@@ -75,15 +74,18 @@ jobs:
       
       - name: Build Tusk for ${{ matrix.triple }}
         run: |
-          IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/riot-builder:latest"
+          # Bootstrap
+          ./bootstrap.py
+          ./minitusk
           
-          # Build tusk-cli using the riot-builder image with cross-compilation
-          docker run --rm \
-            --platform ${{ matrix.platform }} \
-            -v "$(pwd):/app" \
-            -w /app \
-            ${IMAGE} \
-            bash -c "./bootstrap.py && ./minitusk && ./_build/bootstrap/out/Tusk_cli/tusk build --no-code-server -x ${{ matrix.triple }} tusk-cli"
+          # Build for target (cross-compile for musl and aarch64)
+          if [[ "${{ matrix.triple }}" == "x86_64-unknown-linux-gnu" ]]; then
+            # Native build for x86_64 GNU
+            ./_build/bootstrap/out/Tusk_cli/tusk build --no-code-server tusk-cli
+          else
+            # Cross-compile for other targets
+            ./_build/bootstrap/out/Tusk_cli/tusk build --no-code-server -x ${{ matrix.triple }} tusk-cli
+          fi
 
           # Verify the binary and show version
           _build/debug/${{ matrix.triple }}/out/tusk-cli/tusk version
