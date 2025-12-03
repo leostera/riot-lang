@@ -48,6 +48,20 @@ jobs:
           
           echo "✓ Build completed successfully!"
       
+      - name: Run tests
+        run: |
+          # Use the riot-builder image to run tests
+          IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/riot-builder:latest"
+          echo "Running tests with: ${IMAGE}"
+          
+          docker run --rm \
+            -v "$(pwd):/app" \
+            -w /app \
+            ${IMAGE} \
+            test --no-code-server
+          
+          echo "✓ Tests completed successfully!"
+      
       - name: Verify build artifacts
         run: |
           echo "Checking build artifacts..."
