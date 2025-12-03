@@ -137,18 +137,15 @@ jobs:
           ls -lh "${TARBALL}"
       
       - name: Upload to S3
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_KEY }}
-          S3_BUCKET: ${{ secrets.S3_BUCKET }}
-          S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
         run: |
+          set -x
+          
           # Install AWS CLI
           sudo apt-get install -y awscli
           
           # Configure AWS CLI
-          aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID"
-          aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY"
+          aws configure set aws_access_key_id "${{ secrets.S3_ACCESS_KEY }}"
+          aws configure set aws_secret_access_key "${{ secrets.S3_SECRET_KEY }}"
           aws configure set default.region us-east-1
           
           VERSION="${{ steps.version.outputs.version }}"
@@ -156,27 +153,15 @@ jobs:
           # Upload all tarballs to S3
           for tarball in tusk-*.tar.gz; do
             if [ -f "$tarball" ]; then
-              echo "Uploading $tarball to S3..."
+              filename=$(basename "$tarball")
+              echo "Uploading $filename to S3..."
               
-              # Build AWS CLI command with conditional endpoint
-              if [ -n "$S3_ENDPOINT" ] && [ "$S3_ENDPOINT" != "" ]; then
-                echo "Using custom S3 endpoint: $S3_ENDPOINT"
-                aws s3 cp "$tarball" \
-                  "s3://${S3_BUCKET}/tusk/${VERSION}/$tarball" \
-                  --endpoint-url "$S3_ENDPOINT" \
-                  --acl public-read
-                
-                echo "✓ Uploaded: $tarball"
-                echo "📦 Download URL: ${S3_ENDPOINT}/${S3_BUCKET}/tusk/${VERSION}/$tarball"
-              else
-                echo "Using default AWS S3 endpoint"
-                aws s3 cp "$tarball" \
-                  "s3://${S3_BUCKET}/tusk/${VERSION}/$tarball" \
-                  --acl public-read
-                
-                echo "✓ Uploaded: $tarball"
-                echo "📦 Download URL: https://${S3_BUCKET}.s3.amazonaws.com/tusk/${VERSION}/$tarball"
-              fi
+              aws s3 cp "$tarball" \
+                "s3://${{ secrets.S3_BUCKET }}/tusk/${VERSION}/${filename}" \
+                --endpoint-url "${{ secrets.S3_ENDPOINT }}" \
+                --acl public-read
+              
+              echo "✓ Uploaded: $filename"
             fi
           done
   
@@ -262,18 +247,15 @@ jobs:
           ls -lh "${TARBALL}"
       
       - name: Upload to S3
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_KEY }}
-          S3_BUCKET: ${{ secrets.S3_BUCKET }}
-          S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
         run: |
+          set -x
+          
           # Install AWS CLI
           brew install awscli
           
           # Configure AWS CLI
-          aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID"
-          aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY"
+          aws configure set aws_access_key_id "${{ secrets.S3_ACCESS_KEY }}"
+          aws configure set aws_secret_access_key "${{ secrets.S3_SECRET_KEY }}"
           aws configure set default.region us-east-1
           
           VERSION="${{ steps.version.outputs.version }}"
@@ -281,27 +263,15 @@ jobs:
           # Upload all tarballs to S3
           for tarball in tusk-*.tar.gz; do
             if [ -f "$tarball" ]; then
-              echo "Uploading $tarball to S3..."
+              filename=$(basename "$tarball")
+              echo "Uploading $filename to S3..."
               
-              # Build AWS CLI command with conditional endpoint
-              if [ -n "$S3_ENDPOINT" ] && [ "$S3_ENDPOINT" != "" ]; then
-                echo "Using custom S3 endpoint: $S3_ENDPOINT"
-                aws s3 cp "$tarball" \
-                  "s3://${S3_BUCKET}/tusk/${VERSION}/$tarball" \
-                  --endpoint-url "$S3_ENDPOINT" \
-                  --acl public-read
-                
-                echo "✓ Uploaded: $tarball"
-                echo "📦 Download URL: ${S3_ENDPOINT}/${S3_BUCKET}/tusk/${VERSION}/$tarball"
-              else
-                echo "Using default AWS S3 endpoint"
-                aws s3 cp "$tarball" \
-                  "s3://${S3_BUCKET}/tusk/${VERSION}/$tarball" \
-                  --acl public-read
-                
-                echo "✓ Uploaded: $tarball"
-                echo "📦 Download URL: https://${S3_BUCKET}.s3.amazonaws.com/tusk/${VERSION}/$tarball"
-              fi
+              aws s3 cp "$tarball" \
+                "s3://${{ secrets.S3_BUCKET }}/tusk/${VERSION}/${filename}" \
+                --endpoint-url "${{ secrets.S3_ENDPOINT }}" \
+                --acl public-read
+              
+              echo "✓ Uploaded: $filename"
             fi
           done
   
