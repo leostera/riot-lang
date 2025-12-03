@@ -33,17 +33,15 @@ jobs:
             libc: gnu
             triple: x86_64-unknown-linux-gnu
             runner: ubuntu-latest
-          # Temporarily disabled: musl toolchains missing libuuid
-          # See MUSL_TOOLCHAIN_ISSUE.md for details
-          # - arch: x86_64
-          #   libc: musl
-          #   triple: x86_64-unknown-linux-musl
-          #   runner: ubuntu-latest
+          - arch: x86_64
+            libc: musl
+            triple: x86_64-unknown-linux-musl
+            runner: ubuntu-latest
           - arch: aarch64
             libc: gnu
             triple: aarch64-unknown-linux-gnu
             runner: ubuntu-24.04-arm
-          # Temporarily disabled: musl toolchains missing libuuid
+          # Temporarily disabled: no aarch64-musl toolchain available yet
           # See MUSL_TOOLCHAIN_ISSUE.md for details
           # - arch: aarch64
           #   libc: musl
@@ -86,7 +84,9 @@ jobs:
             openssl \
             uuid-dev \
             libuuid1 \
-            libzstd-dev
+            libzstd-dev \
+            musl-tools \
+            musl-dev
       
       - name: Get version
         id: version
@@ -158,8 +158,6 @@ jobs:
           aws configure set aws_secret_access_key "${{ secrets.S3_SECRET_KEY }}"
           aws configure set default.region us-east-1
           
-          VERSION="${{ steps.version.outputs.version }}"
-          
           # Upload all tarballs to S3
           for tarball in tusk-*.tar.gz; do
             if [ -f "$tarball" ]; then
@@ -167,7 +165,7 @@ jobs:
               echo "Uploading $filename to S3..."
               
               aws s3 cp "$tarball" \
-                "s3://${{ secrets.S3_BUCKET }}/tusk/${VERSION}/${filename}" \
+                "s3://${{ secrets.S3_BUCKET }}/tusk/${filename}" \
                 --endpoint-url "${{ secrets.S3_ENDPOINT }}" \
                 --acl public-read
               
@@ -268,8 +266,6 @@ jobs:
           aws configure set aws_secret_access_key "${{ secrets.S3_SECRET_KEY }}"
           aws configure set default.region us-east-1
           
-          VERSION="${{ steps.version.outputs.version }}"
-          
           # Upload all tarballs to S3
           for tarball in tusk-*.tar.gz; do
             if [ -f "$tarball" ]; then
@@ -277,7 +273,7 @@ jobs:
               echo "Uploading $filename to S3..."
               
               aws s3 cp "$tarball" \
-                "s3://${{ secrets.S3_BUCKET }}/tusk/${VERSION}/${filename}" \
+                "s3://${{ secrets.S3_BUCKET }}/tusk/${filename}" \
                 --endpoint-url "${{ secrets.S3_ENDPOINT }}" \
                 --acl public-read
               
