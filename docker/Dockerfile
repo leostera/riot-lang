@@ -7,9 +7,6 @@
 # ==============================================================================
 FROM ubuntu:24.04 AS bootstrap
 
-# Build arg to bust cache when needed
-ARG CACHEBUST=1
-
 LABEL org.opencontainers.image.source="https://github.com/leostera/riot"
 LABEL org.opencontainers.image.description="Riot/Tusk bootstrap stage"
 
