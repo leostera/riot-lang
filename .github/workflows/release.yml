@@ -40,7 +40,7 @@ jobs:
           - arch: aarch64
             libc: gnu
             triple: aarch64-unknown-linux-gnu
-            runner: ubuntu-24.04-arm
+            runner: ubuntu-latest  # Cross-compile from x86_64 (ARM runners not available for private repos)
           # Temporarily disabled: no aarch64-musl toolchain available yet
           # See MUSL_TOOLCHAIN_ISSUE.md for details
           # - arch: aarch64
@@ -109,12 +109,12 @@ jobs:
           ./bootstrap.py
           ./minitusk
           
-          # Build for target (native for gnu, cross-compile for musl)
-          if [[ "${{ matrix.libc }}" == "gnu" ]]; then
-            # Native build for GNU libc targets
+          # Build for target
+          if [[ "${{ matrix.triple }}" == "x86_64-unknown-linux-gnu" ]]; then
+            # Native build for x86_64 GNU
             ./_build/bootstrap/out/Tusk_cli/tusk build --no-code-server tusk-cli
           else
-            # Cross-compile for musl targets
+            # Cross-compile for all other targets (musl, aarch64)
             if ! ./_build/bootstrap/out/Tusk_cli/tusk build --no-code-server -x ${{ matrix.triple }} tusk-cli; then
               echo "::warning::Failed to build for ${{ matrix.triple }} - toolchain may not be available yet"
               exit 1
