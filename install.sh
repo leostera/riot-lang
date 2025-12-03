@@ -73,26 +73,17 @@ install_tusk() {
     # Create installation directory
     mkdir -p "$INSTALL_DIR"
     
-    # Construct download URL
+    # Construct download URL from S3/CDN
+    S3_BASE_URL="${TUSK_CDN_URL:-https://cdn.riot.ml}"
+    
     if [ "$VERSION" = "latest" ]; then
-        # Get the latest commit SHA from the latest release
-        RELEASE_API="https://api.github.com/repos/${TUSK_REPO}/releases/tags/latest"
         print_info "Fetching latest development build..."
-        
-        # Try to get version from GitHub API
-        if command -v curl >/dev/null 2>&1; then
-            LATEST_VERSION=$(curl -sSL "$RELEASE_API" | grep '"name":' | head -1 | sed 's/.*"name": ".*(\(sha-[^)]*\))".*/\1/')
-            if [ -z "$LATEST_VERSION" ]; then
-                LATEST_VERSION="sha-48e8cec"  # Fallback to current commit
-            fi
-        else
-            LATEST_VERSION="sha-48e8cec"  # Fallback
-        fi
-        
-        DOWNLOAD_URL="https://github.com/${TUSK_REPO}/releases/download/latest/tusk-${LATEST_VERSION}-${PLATFORM}.tar.gz"
-    else
-        DOWNLOAD_URL="https://github.com/${TUSK_REPO}/releases/download/${VERSION}/tusk-${VERSION}-${PLATFORM}.tar.gz"
+        # For latest, try to get the current version from the API or use a known recent SHA
+        # For now, users should specify a version or we default to latest
+        VERSION="latest"
     fi
+    
+    DOWNLOAD_URL="${S3_BASE_URL}/tusk/${VERSION}/tusk-${VERSION}-${PLATFORM}.tar.gz"
     
     print_info "Downloading from: $DOWNLOAD_URL"
     
