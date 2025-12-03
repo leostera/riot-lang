@@ -44,6 +44,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
+      - name: Cache Tusk toolchains
+        uses: actions/cache@v4
+        with:
+          path: ~/.tusk
+          key: tusk-toolchains-${{ runner.os }}-${{ matrix.triple }}-${{ hashFiles('ocaml-toolchain.toml') }}
+          restore-keys: |
+            tusk-toolchains-${{ runner.os }}-${{ matrix.triple }}-
+            tusk-toolchains-${{ runner.os }}-
+      
+      - name: Cache build artifacts
+        uses: actions/cache@v4
+        with:
+          path: _build
+          key: tusk-build-${{ runner.os }}-${{ matrix.triple }}-${{ github.sha }}
+          restore-keys: |
+            tusk-build-${{ runner.os }}-${{ matrix.triple }}-
+            tusk-build-${{ runner.os }}-
+      
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -109,11 +127,12 @@ jobs:
           echo "Created: ${TARBALL}"
           ls -lh "${TARBALL}"
       
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: tusk-${{ matrix.triple }}
-          path: tusk-*.tar.gz
+      # Temporarily disabled due to artifact storage quota
+      # - name: Upload artifact
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: tusk-${{ matrix.triple }}
+      #     path: tusk-*.tar.gz
   
   # Build for macOS aarch64 (Apple Silicon)
   build-macos:
@@ -123,6 +142,24 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      
+      - name: Cache Tusk toolchains
+        uses: actions/cache@v4
+        with:
+          path: ~/.tusk
+          key: tusk-toolchains-${{ runner.os }}-aarch64-apple-darwin-${{ hashFiles('ocaml-toolchain.toml') }}
+          restore-keys: |
+            tusk-toolchains-${{ runner.os }}-aarch64-apple-darwin-
+            tusk-toolchains-${{ runner.os }}-
+      
+      - name: Cache build artifacts
+        uses: actions/cache@v4
+        with:
+          path: _build
+          key: tusk-build-${{ runner.os }}-aarch64-apple-darwin-${{ github.sha }}
+          restore-keys: |
+            tusk-build-${{ runner.os }}-aarch64-apple-darwin-
+            tusk-build-${{ runner.os }}-
       
       - name: Get version
         id: version
@@ -177,14 +214,16 @@ jobs:
           echo "Created: ${TARBALL}"
           ls -lh "${TARBALL}"
       
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: tusk-aarch64-apple-darwin
-          path: tusk-*.tar.gz
+      # Temporarily disabled due to artifact storage quota
+      # - name: Upload artifact
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: tusk-aarch64-apple-darwin
+      #     path: tusk-*.tar.gz
   
   # Create GitHub release and upload all binaries
-  create-release:
+  # Temporarily disabled due to artifact storage quota
+  create-release-disabled:
     name: Create Release
     needs: [build-linux, build-macos]
     runs-on: ubuntu-latest
