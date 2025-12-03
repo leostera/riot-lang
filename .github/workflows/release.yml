@@ -146,7 +146,7 @@ jobs:
           set -x
           
           # Install AWS CLI
-          sudo apt-get install -y awscli
+          pip3 install awscli
           
           # Configure AWS CLI
           aws configure set aws_access_key_id "${{ secrets.S3_ACCESS_KEY_ID }}"
