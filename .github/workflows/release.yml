@@ -24,6 +24,7 @@ jobs:
   build-linux:
     name: Build Linux Binaries
     runs-on: ubuntu-latest
+    environment: Publisher
     strategy:
       matrix:
         include:
@@ -183,6 +184,7 @@ jobs:
   build-macos:
     name: Build macOS aarch64 Binary
     runs-on: macos-14  # macOS 14 runs on Apple Silicon (aarch64)
+    environment: Publisher
     
     steps:
       - name: Checkout code
