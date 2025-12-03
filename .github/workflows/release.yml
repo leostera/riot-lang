@@ -33,15 +33,18 @@ jobs:
             libc: gnu
             triple: x86_64-unknown-linux-gnu
             runner: ubuntu-latest
-          - arch: x86_64
-            libc: musl
-            triple: x86_64-unknown-linux-musl
-            runner: ubuntu-latest
+          # Temporarily disabled: musl toolchains missing libuuid
+          # See MUSL_TOOLCHAIN_ISSUE.md for details
+          # - arch: x86_64
+          #   libc: musl
+          #   triple: x86_64-unknown-linux-musl
+          #   runner: ubuntu-latest
           - arch: aarch64
             libc: gnu
             triple: aarch64-unknown-linux-gnu
             runner: ubuntu-24.04-arm
-          # Temporarily disabled: no aarch64-musl toolchain available yet
+          # Temporarily disabled: musl toolchains missing libuuid
+          # See MUSL_TOOLCHAIN_ISSUE.md for details
           # - arch: aarch64
           #   libc: musl
           #   triple: aarch64-unknown-linux-musl
@@ -83,27 +86,7 @@ jobs:
             openssl \
             uuid-dev \
             libuuid1 \
-            libzstd-dev \
-            musl-tools \
-            musl-dev
-          
-          # Install musl-compatible libraries for cross-compilation
-          if [[ "${{ matrix.libc }}" == "musl" ]]; then
-            # Download and setup musl-compatible libuuid
-            wget https://dl-cdn.alpinelinux.org/alpine/edge/main/x86_64/libuuid-2.40.2-r3.apk
-            wget https://dl-cdn.alpinelinux.org/alpine/edge/main/x86_64/util-linux-dev-2.40.2-r3.apk
-            
-            # Extract APK files (they're tar.gz with gzip)
-            mkdir -p /tmp/musl-libs
-            tar -xzf libuuid-2.40.2-r3.apk -C /tmp/musl-libs
-            tar -xzf util-linux-dev-2.40.2-r3.apk -C /tmp/musl-libs
-            
-            # Copy headers and libraries to musl sysroot
-            sudo mkdir -p /usr/local/musl/include/uuid
-            sudo mkdir -p /usr/local/musl/lib
-            sudo cp -r /tmp/musl-libs/usr/include/uuid/* /usr/local/musl/include/uuid/ || true
-            sudo cp -r /tmp/musl-libs/usr/lib/libuuid* /usr/local/musl/lib/ || true
-          fi
+            libzstd-dev
       
       - name: Get version
         id: version
