@@ -55,7 +55,9 @@ jobs:
             python3-pip \
             libssl-dev \
             uuid-dev \
-            libzstd-dev
+            libzstd-dev \
+            musl-tools \
+            musl-dev
       
       - name: Get version
         id: version
