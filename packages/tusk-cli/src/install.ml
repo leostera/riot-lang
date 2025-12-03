@@ -21,7 +21,7 @@ let build_package package_name =
   let (workspace, _load_errors) =
     Workspace_manager.scan cwd |> Result.expect ~msg:"Operation failed"
   in
-  let client_result = Tusk_server.Server_manager.ensure_running ~workspace in
+  let client_result = Tusk_server.Server_manager.ensure_running ~workspace ~config:Tusk_server.Server_config.default in
   if Result.is_error client_result then false
   else
     let client = client_result |> Result.expect ~msg:"Operation failed" in
@@ -59,7 +59,7 @@ let run matches =
     Workspace_manager.scan cwd |> Result.expect ~msg:"Failed to scan workspace"
   in
   let client =
-    Tusk_server.Server_manager.ensure_running ~workspace
+    Tusk_server.Server_manager.ensure_running ~workspace ~config:Tusk_server.Server_config.default
     |> Result.expect ~msg:"Failed to start or connect to tusk server"
   in
 

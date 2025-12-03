@@ -39,12 +39,13 @@ RUN echo "=== Step 2: Running minitusk ===" && \
 
 # Step 3: Build Tusk proper using the bootstrap Tusk
 RUN echo "=== Step 3: Building Tusk proper ===" && \
-    ./_build/bootstrap/out/Tusk_cli/tusk build tusk-cli
+    ./_build/bootstrap/out/Tusk_cli/tusk build --no-code-server tusk-cli && \
+    ./_build/bootstrap/out/Tusk_cli/tusk install tusk
+
 
 # Verify the final Tusk binary exists and works
 RUN echo "=== Verifying Tusk binary ===" && \
-    ls -la ./_build/bootstrap/out/Tusk_cli/tusk && \
-    ./_build/bootstrap/out/Tusk_cli/tusk --help
+    ls -la ./tusk && ./tusk --help
 
 # ==============================================================================
 # Stage 2: Clean Builder Image
@@ -74,7 +75,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the fully built Tusk binary from bootstrap stage
-COPY --from=bootstrap /riot/_build/bootstrap/out/Tusk_cli/tusk /usr/local/bin/tusk
+COPY --from=bootstrap /riot/tusk /usr/local/bin/tusk
 
 # Copy the OCaml toolchain from bootstrap stage
 # This avoids downloading it every time the container runs
@@ -84,6 +85,7 @@ COPY --from=bootstrap /root/.tusk/toolchains /root/.tusk/toolchains
 RUN chmod +x /usr/local/bin/tusk
 
 # Verify Tusk installation
+RUN tusk --version
 RUN tusk --help
 
 # Set working directory for user applications

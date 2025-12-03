@@ -32,7 +32,7 @@ let run matches =
     |> Result.expect ~msg:"Failed to scan workspace"
   in
 
-  match Tusk_server.Server_manager.ensure_running ~workspace with
+  match Tusk_server.Server_manager.ensure_running ~workspace ~config:Tusk_server.Server_config.default with
   | Ok client -> (
       match Tusk_client.new_package client ~path ~name ~is_library with
       | Ok (created_path, created_name) ->

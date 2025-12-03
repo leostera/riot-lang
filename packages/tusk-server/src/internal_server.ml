@@ -558,10 +558,12 @@ let write_daemon_files ~workspace ~port =
     ("Wrote daemon files: pid=" ^ Int.to_string pid ^ ", port="
     ^ Int.to_string port)
 
-let start_with_listener () =
+let start_with_listener ~config () =
   try
     Log.set_level Log.Debug;
     Log.info "Starting Tusk server with listener";
+    if not config.Server_config.enable_codedb then
+      Log.info "CodeDB server disabled (--no-code-server)";
     let current_dir =
       Env.current_dir ()
       |> Result.expect ~msg:"tusk_server: could not get current dir"
@@ -611,15 +613,23 @@ let start_with_listener () =
     let store = Tusk_store.Store.create ~workspace in
     Log.info "Store initialized";
 
-    Log.info "Initializing Codedb...";
-    let codedb_config = Codedb.Config.create
-      ~workspace_root:workspace.root
-      ~toolchain
-      ~workspace
-      ~db_path:Path.(workspace.root / v ".codedb.pone")
-      () in
-    let codedb = Codedb.Service.start codedb_config in
-    Log.info "Codedb initialized";
+    let codedb_opt = 
+      if config.Server_config.enable_codedb then begin
+        Log.info "Initializing Codedb...";
+        let codedb_config = Codedb.Config.create
+          ~workspace_root:workspace.root
+          ~toolchain
+          ~workspace
+          ~db_path:Path.(workspace.root / v ".codedb.pone")
+          () in
+        let codedb = Codedb.Service.start codedb_config in
+        Log.info "Codedb initialized";
+        Some codedb
+      end else begin
+        Log.info "Skipping Codedb initialization (disabled)";
+        None
+      end
+    in
 
     write_daemon_files ~workspace ~port;
 
@@ -637,7 +647,7 @@ let start_with_listener () =
           Tusk_planner.Package_graph.create ws |> Result.expect ~msg:"Failed to create empty package graph"
     in
     (* Start CodeDB service - it runs independently with its own supervisor *)
-    let _codedb_supervisor = codedb in
+    let _codedb_supervisor = codedb_opt in
     
     let state =
       {

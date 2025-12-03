@@ -623,7 +623,7 @@ let start () =
     Workspace_manager.scan cwd |> Result.expect ~msg:"Failed to scan workspace"
   in
   let client =
-    Tusk_server.Server_manager.ensure_running ~workspace
+    Tusk_server.Server_manager.ensure_running ~workspace ~config:Tusk_server.Server_config.default
     |> Result.expect ~msg:"Failed to connect to server"
   in
 

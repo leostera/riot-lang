@@ -86,7 +86,7 @@ let try_command cmd_name remaining_args =
               Log.info ("Command binary path: " ^ Path.to_string cmd.command_binary);
               (* Build the package first to ensure command is up to date *)
               Log.info ("Building package: " ^ cmd.package_name);
-              (match Build.build_command (Some cmd.package_name) None with
+              (match Build.build_command (Some cmd.package_name) None Tusk_server.Server_config.default with
               | Error err ->
                   Log.error ("Failed to build package: " ^ Exception.to_string err);
                   Some (Error err)

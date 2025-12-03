@@ -86,9 +86,12 @@ let command =
          |> help "Target architecture (exact triple, pattern like 'linux'/'aarch64', or 'all')";
          flag "all-targets"
          |> help "Build for all configured targets";
+         flag "no-code-server"
+         |> long "no-code-server"
+         |> help "Don't start the CodeDB server (lighter, for builds only)";
        ]
 
-let build_command package_opt target_arch =
+let build_command package_opt target_arch config =
   let cwd =
     Env.current_dir () |> Result.expect ~msg:"Failed to get current directory"
   in
@@ -99,7 +102,7 @@ let build_command package_opt target_arch =
   in
 
   let client =
-    Tusk_server.Server_manager.ensure_running ~workspace
+    Tusk_server.Server_manager.ensure_running ~workspace ~config
     |> Result.expect ~msg:"Failed to start or connect to tusk server"
   in
 
@@ -228,6 +231,13 @@ let build_command package_opt target_arch =
 let run matches =
   let open ArgParser in
   let package_opt = get_one matches "package" in
+  let no_code_server = get_flag matches "no-code-server" in
+  let server_config = 
+    if no_code_server then
+      Tusk_server.Server_config.no_codedb
+    else
+      Tusk_server.Server_config.default
+  in
   
   (* Get workspace to resolve targets *)
   let cwd = Env.current_dir () |> Result.expect ~msg:"Failed to get current directory" in
@@ -279,7 +289,7 @@ let run matches =
     | Some arch -> println ("🔨 Cross-compiling for " ^ arch)
     | None -> ());
     
-    build_command package_opt target_arch
+    build_command package_opt target_arch server_config
   ) else (
     println "❌ No targets specified";
     Error (Failure "No targets")

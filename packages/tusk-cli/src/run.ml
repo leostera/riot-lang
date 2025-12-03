@@ -49,7 +49,7 @@ let run matches =
         |> Result.expect ~msg:"Failed to scan workspace"
       in
       let client =
-        Tusk_server.Server_manager.ensure_running ~workspace
+        Tusk_server.Server_manager.ensure_running ~workspace ~config:Tusk_server.Server_config.default
         |> Result.expect ~msg:"Failed to start or connect to tusk server"
       in
 
@@ -65,7 +65,7 @@ let run matches =
                 ^ expected_pkg ^ "'");
               Error (Failure "binary not found in specified package")
           | _ -> (
-              match Build.build_command (Some pkg) None with
+              match Build.build_command (Some pkg) None Tusk_server.Server_config.default with
               | Ok () -> (
                   match
                     Tusk_client.find_artifact client ~package:pkg ~kind:"binary"

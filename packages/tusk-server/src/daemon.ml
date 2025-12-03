@@ -6,6 +6,7 @@ type t = {
   os_pid : int; (* Unix process ID *)
   port : int;
   host : string;
+  config : Server_config.t;
 }
 
 let daemon_dir ~workspace =
@@ -14,7 +15,7 @@ let daemon_dir ~workspace =
     ^ Workspace.project_id workspace);
   Tusk_model.Tusk_dirs.project_dir workspace
 
-let daemon_exists ~workspace =
+let daemon_exists ~workspace ~config =
   let daemon_path = daemon_dir ~workspace in
   let pid_file = Path.(daemon_path / Path.v "server.pid") in
   let port_file = Path.(daemon_path / Path.v "server.port") in
@@ -59,8 +60,9 @@ let daemon_exists ~workspace =
                 | System_error io_err -> "system error: " ^ IO.error_message io_err));
             false
       in
+      (* Reuse existing daemon if it's running - config doesn't matter *)
       if is_server_running then
-        Some { workspace; os_pid = pid; port; host = "127.0.0.1" }
+        Some { workspace; os_pid = pid; port; host = "127.0.0.1"; config }
       else (
         (* Server not responding, clean up daemon files *)
         Log.debug "Server not responding, cleaning up daemon files";
@@ -72,9 +74,9 @@ let daemon_exists ~workspace =
       None
 
 (** Start the daemon process *)
-let of_workspace ~workspace =
+let of_workspace ~workspace ~config =
   (* 1. first get the workspace id and check if the right files exist in ~/.tusk/projects/<project-id> -- if they do, read and return those files *)
-  match daemon_exists ~workspace with
+  match daemon_exists ~workspace ~config with
   | Some daemon -> Ok daemon
   | None -> (
       (* 2. Spawn a new server process *)
@@ -115,9 +117,16 @@ let of_workspace ~workspace =
           { stdin = `Null; stdout = `File stdout_fd; stderr = `File stderr_fd }
       in
 
+      (* Build args list based on config *)
+      let args = 
+        if config.enable_codedb then
+          [ "server"; "foreground" ]
+        else
+          [ "server"; "foreground"; "--no-code-server" ]
+      in
+
       match
-        System.OsProcess.spawn ~program:tusk_exe
-          ~args:[ "server"; "foreground" ] ~stdio ()
+        System.OsProcess.spawn ~program:tusk_exe ~args ~stdio ()
       with
       | Ok process ->
           let pid = System.OsProcess.pid process in
@@ -128,5 +137,5 @@ let of_workspace ~workspace =
           let _ = Fs.write (Int.to_string pid) pid_file in
           let _ = Fs.write (Int.to_string port) port_file in
 
-          Ok { workspace; os_pid = pid; port; host = "127.0.0.1" }
+          Ok { workspace; os_pid = pid; port; host = "127.0.0.1"; config }
       | Error (`SpawnFailed msg) -> Error Error.ScanWorkspaceError)

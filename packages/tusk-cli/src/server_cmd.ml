@@ -13,6 +13,9 @@ let command =
          option "action"
          |> help "Action: start, stop, kill, status, or foreground"
          |> possible_values [ "start"; "stop"; "kill"; "status"; "foreground" ];
+         flag "no-code-server"
+         |> long "no-code-server"
+         |> help "Don't start the CodeDB server (lighter, for builds only)";
        ]
 
 let get_daemon_info () =
@@ -41,7 +44,7 @@ let handle_start _matches =
           Error (Failure "Failed to read PID file"))
   | Ok false | Error _ -> (
       println "Starting server in background...";
-      match Tusk_server.Server_manager.ensure_running ~workspace with
+      match Tusk_server.Server_manager.ensure_running ~workspace ~config:Tusk_server.Server_config.default with
       | Ok _client ->
           println "Server started successfully";
           Ok ()
@@ -131,10 +134,19 @@ let handle_status _matches =
       println "Error: Failed to check for daemon files";
       Error (Failure "Failed to check daemon files")
 
-let handle_foreground _matches =
+let handle_foreground matches =
+  let no_code_server = ArgParser.get_flag matches "no-code-server" in
+  let config = 
+    if no_code_server then
+      Tusk_server.Server_config.no_codedb
+    else
+      Tusk_server.Server_config.default
+  in
   println "🚀 Starting tusk server...";
+  if not config.enable_codedb then
+    println "   (CodeDB server disabled)";
   println "   Press Ctrl+C to stop\n";
-  Tusk_server.start_with_listener ()
+  Tusk_server.start_with_listener ~config ()
 
 let run matches =
   let open ArgParser in

@@ -45,7 +45,7 @@ let run matches =
     Workspace_manager.scan cwd |> Result.expect ~msg:"Failed to scan workspace"
   in
   let client =
-    Tusk_server.Server_manager.ensure_running ~workspace
+    Tusk_server.Server_manager.ensure_running ~workspace ~config:Tusk_server.Server_config.default
     |> Result.expect ~msg:"Failed to start or connect to tusk server"
   in
 
@@ -127,7 +127,7 @@ let run matches =
       (fun pkg bench_names ->
         println "";
         println ("Building package '" ^ pkg ^ "'...");
-        match Build.build_command (Some pkg) None with
+        match Build.build_command (Some pkg) None Tusk_server.Server_config.default with
         | Ok () ->
             List.iter
               (fun bench_name ->

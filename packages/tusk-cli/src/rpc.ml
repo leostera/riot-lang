@@ -66,7 +66,7 @@ let create_client () =
     |> Option.expect ~msg:"Not in a tusk workspace"
   in
   let workspace = Workspace.make ~root:workspace_root ~packages:[] () in
-  Tusk_server.Server_manager.ensure_running ~workspace
+  Tusk_server.Server_manager.ensure_running ~workspace ~config:Tusk_server.Server_config.default
   |> Result.expect ~msg:"Failed to connect to server"
 
 let handle_ping client _sub_matches =

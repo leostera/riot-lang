@@ -4,13 +4,13 @@ open Tusk_model
 (** Server manager - Handles starting and managing the tusk server in the
     background *)
 
-let ensure_running ~(workspace : Workspace.t) =
+let ensure_running ~(workspace : Workspace.t) ~config =
   Log.debug
     ("ensure_running: Getting daemon for workspace root="
     ^ Path.to_string workspace.root);
   (* 1. Get a daemon for the workspace *)
   let daemon =
-    Daemon.of_workspace ~workspace
+    Daemon.of_workspace ~workspace ~config
     |> Result.expect ~msg:"Failed to get daemon info from workspace"
   in
   Log.debug
@@ -49,7 +49,7 @@ let ensure_running ~(workspace : Workspace.t) =
        Log.debug "Skipping process kill (System.OsProcess.signal not available)";
 
        (* Try to start a new daemon *)
-       match Daemon.of_workspace ~workspace:daemon.workspace with
+       match Daemon.of_workspace ~workspace:daemon.workspace ~config:daemon.config with
        | Ok new_daemon ->
            println
              ("Started new tusk server (PID " ^ Int.to_string new_daemon.os_pid
