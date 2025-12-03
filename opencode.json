@@ -41,9 +41,6 @@
     "bash": {
       "*": "allow",
       "tusk*": "allow",
-      "git*": "deny",
-      "git add*": "deny",
-      "git commit *": "deny",
       "git status*": "allow",
       "git diff*": "allow",
       "git log*": "allow",
