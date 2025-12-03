@@ -83,10 +83,10 @@ jobs:
             -v "$(pwd):/app" \
             -w /app \
             ${IMAGE} \
-            build --no-code-server -x ${{ matrix.triple }} tusk-cli
-          
-          # The binary should be in _build/debug/out/Tusk_cli/tusk
-          ls -la _build/debug/out/Tusk_cli/
+            bash -c "./bootstrap.py && ./minitusk && ./_build/bootstrap/out/Tusk_cli/tusk build --no-code-server -x ${{ matrix.triple }} tusk-cli"
+
+          # Verify the binary and show version
+          _build/debug/${{ matrix.triple }}/out/tusk-cli/tusk version
       
       - name: Package binary
         run: |
@@ -94,7 +94,7 @@ jobs:
           TARBALL="tusk-${VERSION}-${{ matrix.triple }}.tar.gz"
           
           mkdir -p dist
-          cp _build/debug/out/Tusk_cli/tusk dist/
+          cp _build/debug/${{ matrix.triple }}/out/tusk-cli/tusk dist/
           chmod +x dist/tusk
           
           # Create tarball
@@ -139,7 +139,7 @@ jobs:
         run: |
           brew install openssl@3
       
-      - name: Bootstrap Tusk
+      - name: Build Tusk
         run: |
           # Bootstrap tusk using the bootstrap script
           ./bootstrap.py
@@ -147,11 +147,14 @@ jobs:
           
           # Build tusk proper
           ./_build/bootstrap/out/Tusk_cli/tusk build --no-code-server tusk-cli
+          
+          # Verify the binary and show version
+          _build/debug/aarch64-apple-darwin/out/tusk-cli/tusk version
       
       - name: Verify architecture
         run: |
-          file _build/debug/out/Tusk_cli/tusk
-          lipo -archs _build/debug/out/Tusk_cli/tusk
+          file _build/debug/aarch64-apple-darwin/out/tusk-cli/tusk
+          lipo -archs _build/debug/aarch64-apple-darwin/out/tusk-cli/tusk
       
       - name: Package binary
         run: |
@@ -159,7 +162,7 @@ jobs:
           TARBALL="tusk-${VERSION}-aarch64-apple-darwin.tar.gz"
           
           mkdir -p dist
-          cp _build/debug/out/Tusk_cli/tusk dist/
+          cp _build/debug/aarch64-apple-darwin/out/tusk-cli/tusk dist/
           chmod +x dist/tusk
           
           # Create tarball
