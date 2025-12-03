@@ -73,7 +73,10 @@ jobs:
             python3 \
             python3-pip \
             libssl-dev \
+            libssl3 \
+            openssl \
             uuid-dev \
+            libuuid1 \
             libzstd-dev \
             musl-tools \
             musl-dev
