@@ -91,20 +91,68 @@ install_tusk() {
     TMPDIR=$(mktemp -d)
     trap "rm -rf $TMPDIR" EXIT
     
+    # Try to download
     if command -v curl >/dev/null 2>&1; then
-        curl -sSL "$DOWNLOAD_URL" | tar xz -C "$TMPDIR"
+        HTTP_CODE=$(curl -sSL -w "%{http_code}" -o "$TMPDIR/tusk.tar.gz" "$DOWNLOAD_URL")
+        if [ "$HTTP_CODE" != "200" ]; then
+            handle_download_error "$HTTP_CODE"
+        fi
+        tar xzf "$TMPDIR/tusk.tar.gz" -C "$TMPDIR"
     elif command -v wget >/dev/null 2>&1; then
-        wget -qO- "$DOWNLOAD_URL" | tar xz -C "$TMPDIR"
+        if ! wget -q -O "$TMPDIR/tusk.tar.gz" "$DOWNLOAD_URL"; then
+            handle_download_error "wget_failed"
+        fi
+        tar xzf "$TMPDIR/tusk.tar.gz" -C "$TMPDIR"
     else
         print_error "Neither curl nor wget found. Please install one of them."
         exit 1
     fi
     
     # Move binary to install directory
+    if [ ! -f "$TMPDIR/tusk" ]; then
+        print_error "Binary not found in downloaded archive"
+        exit 1
+    fi
+    
     mv "$TMPDIR/tusk" "$INSTALL_DIR/tusk"
     chmod +x "$INSTALL_DIR/tusk"
     
     print_info "Tusk installed to: $INSTALL_DIR/tusk"
+}
+
+# Handle download errors
+handle_download_error() {
+    HTTP_CODE="$1"
+    
+    echo ""
+    print_error "Failed to download Tusk binary for $PLATFORM"
+    echo ""
+    
+    if [ "$HTTP_CODE" = "404" ]; then
+        echo "The binary for your platform is not available yet."
+        echo ""
+        echo "Platform detected: $PLATFORM"
+        echo ""
+        echo "Currently supported platforms:"
+        echo "  - x86_64-unknown-linux-gnu (Linux x86_64 with glibc)"
+        echo "  - x86_64-unknown-linux-musl (Linux x86_64 with musl libc)"
+        echo "  - aarch64-unknown-linux-gnu (Linux ARM64 with glibc)"
+        echo "  - aarch64-apple-darwin (macOS Apple Silicon)"
+        echo ""
+        echo "If you believe this is an error, please check:"
+        echo "  - The version you're trying to install exists"
+        echo "  - Your platform is supported"
+        echo "  - https://github.com/leostera/riot/issues"
+    else
+        echo "HTTP Status: $HTTP_CODE"
+        echo ""
+        echo "Please check:"
+        echo "  - Your internet connection"
+        echo "  - The CDN is accessible: $TUSK_CDN_URL"
+        echo "  - https://github.com/leostera/riot/issues"
+    fi
+    
+    exit 1
 }
 
 # Add to PATH in shell config
