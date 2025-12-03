@@ -87,8 +87,8 @@ jobs:
             # Tagged release: use the tag version
             VERSION="${GITHUB_REF#refs/tags/}"
           else
-            # Regular commit: use short SHA
-            VERSION="sha-$(echo ${{ github.sha }} | cut -c1-7)"
+            # Regular commit: use short SHA without prefix
+            VERSION="$(echo ${{ github.sha }} | cut -c1-7)"
           fi
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "Building version: ${VERSION}"
@@ -202,8 +202,8 @@ jobs:
             # Tagged release: use the tag version
             VERSION="${GITHUB_REF#refs/tags/}"
           else
-            # Regular commit: use short SHA
-            VERSION="sha-$(echo ${{ github.sha }} | cut -c1-7)"
+            # Regular commit: use short SHA without prefix
+            VERSION="$(echo ${{ github.sha }} | cut -c1-7)"
           fi
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "Building version: ${VERSION}"
