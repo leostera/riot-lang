@@ -1,12 +1,6 @@
 open Std
 
-module ProtofileFormat : sig
-  type t
-
-  val parse : string -> (t, string) Result.t
-  val print : t -> string
-  val to_json : t -> Data.Json.t
-end
+module ProtofileFormat : module type of ProtofileFormat
 
 module DebugFormat : sig
   type t
@@ -51,7 +45,7 @@ module Wire_format_reader : sig
     | Need_more
     | Error of decode_error
 
-  val decode : state -> IO.Reader.t -> decode_result
+  val decode : state -> ('src, 'err) IO.Reader.t -> decode_result
   val reset : state -> unit
 end
 

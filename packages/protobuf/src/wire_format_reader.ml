@@ -1,4 +1,10 @@
 open Std
+open Std.IO
+
+(* Use Buffer from Std.IO *)
+module Buffer = IO.Buffer
+(* Use Cell from Std.Sync *)
+module Cell = Sync.Cell
 
 type decode_error =
   | Unexpected_eof_reading_varint
@@ -147,7 +153,7 @@ let decode state reader =
   let rec decode_next () =
     match Cell.get state.phase with
     | ReadingTag { varint_state } -> (
-        let vs = Option.value varint_state ~default:{ acc = 0L; shift = 0 } in
+        let vs = Option.unwrap_or ~default:{ acc = 0L; shift = 0 } varint_state in
         let (new_vs, complete) = decode_varint_step reader vs in
 
         if not complete then (

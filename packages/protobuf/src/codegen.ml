@@ -1,4 +1,5 @@
 open Std
+open Std.Collections
 open ProtofileFormat
 
 module Green = Syn.Ceibo.Green
@@ -56,11 +57,11 @@ let build_type_app base_type arg =
   ]
 
 (** Generate CST node for an enum type definition *)
-let generate_enum_type enum =
+let rec generate_enum_type (enum : enum_def) =
   let enum_name = to_lowercase_ident enum.name in
 
   (* Build variant constructors *)
-  let constructors = List.mapi (fun i value ->
+  let constructors = List.mapi (fun i (value : enum_value) ->
     let prefix = if i = 0 then [] else [nl (); indent 1] in
     prefix @ [
       tok SK.TYPE_VARIANT_CONSTR "|";
@@ -84,7 +85,7 @@ let generate_enum_type enum =
   ])
 
 (** Build type expression for a field *)
-let build_field_type_expr field =
+and build_field_type_expr (field : field) =
   let base_type_str = ocaml_type_of_field_type field.field_type in
   let base_type = build_type_constr base_type_str in
 
@@ -95,7 +96,7 @@ let build_field_type_expr field =
       base_type
 
 (** Generate CST node for a message record type definition *)
-let rec generate_message_type msg =
+and generate_message_type (msg : message_def) =
   let msg_name = to_lowercase_ident msg.name in
 
   (* Collect nested types *)
@@ -114,9 +115,9 @@ let rec generate_message_type msg =
         (* Represent map as (key * value) list *)
         Some {
           label = Some `Repeated;
-          field_type = MessageType (Format.sprintf "(%s * %s)"
-            (ocaml_type_of_field_type mf.key_type)
-            (ocaml_type_of_field_type mf.value_type));
+          field_type = MessageType ("(" ^ 
+            (ocaml_type_of_field_type mf.key_type) ^ " * " ^
+            (ocaml_type_of_field_type mf.value_type) ^ ")");
           name = mf.name;
           number = mf.number;
           options = mf.options;
@@ -125,7 +126,7 @@ let rec generate_message_type msg =
   ) msg.elements in
 
   (* Build record fields *)
-  let record_fields = List.mapi (fun i field ->
+  let record_fields = List.mapi (fun i (field : field) ->
     let separator = if i = 0 then [] else [tok SK.IDENT_EXPR ";"; nl (); indent 1] in
     separator @ [
       node SK.TYPE_RECORD_FIELD [

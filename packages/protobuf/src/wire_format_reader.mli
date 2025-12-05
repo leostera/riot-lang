@@ -60,7 +60,7 @@ type decode_result =
     @param reader The IO reader
     @return Decode result
 *)
-val decode : state -> IO.Reader.t -> decode_result
+val decode : state -> ('src, 'err) IO.Reader.t -> decode_result
 
 (** Reset decoder state for reuse *)
 val reset : state -> unit
