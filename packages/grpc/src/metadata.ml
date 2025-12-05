@@ -40,12 +40,12 @@ let get_all metadata ~key =
 
 (** {1 Standard Headers} *)
 
-let path ~service ~method_ = (":path", format "/%s/%s" service method_)
+let path ~service ~method_ = (":path", "/" ^ service ^ "/" ^ method_)
 
 let content_type = function
   | Proto -> ("content-type", "application/grpc+proto")
   | Json -> ("content-type", "application/grpc+json")
-  | Custom suffix -> ("content-type", format "application/grpc+%s" suffix)
+  | Custom suffix -> ("content-type", "application/grpc+" ^ suffix)
 
 let timeout t =
   let unit_str =
@@ -57,7 +57,7 @@ let timeout t =
     | `Microseconds -> "u"
     | `Nanoseconds -> "n"
   in
-  ("grpc-timeout", format "%d%s" t.value unit_str)
+  ("grpc-timeout", Int.to_string t.value ^ unit_str)
 
 let encoding = function
   | Identity -> ("grpc-encoding", "identity")
@@ -121,7 +121,9 @@ let is_binary name = String.ends_with ~suffix:"-bin" name
 let encode_binary bytes = Data.Base64.encode_bytes bytes
 
 let decode_binary str =
-  try Ok (Data.Base64.decode_string str) with _ -> Error "Invalid base64 encoding"
+  match Data.Base64.decode str with
+  | Ok decoded -> Ok (IO.Bytes.of_string decoded)
+  | Error `Invalid_base64 -> Error "Invalid base64 encoding"
 
 (** {1 Validation} *)
 

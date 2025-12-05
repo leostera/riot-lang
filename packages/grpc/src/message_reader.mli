@@ -1,3 +1,6 @@
+(* Alias local Message module to avoid Std.Message conflict *)
+module LocalMessage = Message
+
 open Std
 
 (** gRPC Message Parser using IO.Reader (Reentrant)
@@ -24,7 +27,7 @@ type parse_error =
 
 (** Parse result *)
 type parse_result =
-  | Message of Message.t  (** Successfully parsed complete message *)
+  | Message of LocalMessage.t  (** Successfully parsed complete message *)
   | Need_more  (** Need more data - call again when available *)
   | Error of parse_error  (** Parse error *)
 
@@ -55,7 +58,7 @@ type parse_result =
     @param reader The IO reader
     @return Parse result
 *)
-val parse : state -> IO.Reader.t -> parse_result
+val parse : state -> ('src, 'err) IO.Reader.t -> parse_result
 
 (** Reset parser state *)
 val reset : state -> unit

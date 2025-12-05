@@ -60,4 +60,4 @@ let with_max_message_size config ~max_message_size =
 let with_compression config ~compression =
   { config with compression = Some compression }
 
-let method_path method_def = format "/%s/%s" method_def.service method_def.method_
+let method_path method_def = "/" ^ method_def.service ^ "/" ^ method_def.method_

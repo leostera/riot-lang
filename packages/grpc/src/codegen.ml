@@ -11,7 +11,7 @@ let tok kind text =
 
 (** Helper to create nodes *)
 let node kind children =
-  Green.Node (Green.make_node ~kind ~children:(Array.of_list children))
+  Green.Node (Green.make_node ~kind ~children:(Collections.Array.of_list children))
 
 (** Whitespace helpers *)
 let ws () = tok SK.WHITESPACE " "
@@ -23,7 +23,7 @@ let to_lowercase_ident s = String.lowercase_ascii s
 let to_module_name s = String.capitalize_ascii s
 
 (** Generate a val signature for an RPC method *)
-let generate_rpc_signature rpc =
+let generate_rpc_signature (rpc : rpc) =
   let method_name = to_lowercase_ident rpc.name in
   let req_type = to_lowercase_ident rpc.input_type in
   let res_type = to_lowercase_ident rpc.output_type in
@@ -107,7 +107,7 @@ let generate_rpc_signature rpc =
   [
     nl ();
     indent 1;
-    tok SK.COMMENT (Format.sprintf "(** %s: %s -> %s *)" pattern rpc.input_type rpc.output_type);
+    tok SK.COMMENT ("(** " ^ pattern ^ ": " ^ rpc.input_type ^ " -> " ^ rpc.output_type ^ " *)");
     nl ();
     indent 1;
     tok SK.IDENT_EXPR "val"; ws ();
@@ -121,7 +121,7 @@ let generate_rpc_signature rpc =
   ]
 
 (** Generate client implementation for an RPC *)
-let generate_rpc_client_impl service_name rpc =
+let generate_rpc_client_impl service_name (rpc : rpc) =
   let method_name = to_lowercase_ident rpc.name in
   let client_func = match (rpc.input_stream, rpc.output_stream) with
     | false, false -> "call_unary"
@@ -148,9 +148,9 @@ let generate_rpc_client_impl service_name rpc =
     tok SK.IDENT_EXPR client_func; ws ();
     tok SK.IDENT_EXPR "conn"; nl ();
     indent 3; tok SK.IDENT_EXPR "~service"; tok SK.IDENT_EXPR ":";
-    tok SK.STRING_LITERAL (Format.sprintf "\"%s\"" service_name); nl ();
+    tok SK.STRING_LITERAL ("\"" ^ service_name ^ "\""); nl ();
     indent 3; tok SK.IDENT_EXPR "~method_"; tok SK.IDENT_EXPR ":";
-    tok SK.STRING_LITERAL (Format.sprintf "\"%s\"" rpc.name); nl ();
+    tok SK.STRING_LITERAL ("\"" ^ rpc.name ^ "\""); nl ();
     indent 3; tok SK.IDENT_EXPR "~"; tok SK.IDENT_EXPR param_name; nl ();
     indent 3; tok SK.IDENT_EXPR "()"; nl ()
   ]
@@ -195,8 +195,9 @@ let generate_service_signature service =
 (** Main generation function *)
 let generate proto =
   (* Generate message/enum types using Protobuf.Codegen *)
-  let types_tree = Protobuf.Codegen.generate proto in
-  let types_children = Array.to_list types_tree.children in
+  let types_node = Protobuf.Codegen.generate proto in
+  let types_children_arr = Syn.Ceibo.Green.children types_node in
+  let types_children = Collections.Array.to_list types_children_arr in
 
   (* Extract all services from definitions *)
   let services = List.filter_map (fun def ->
@@ -244,4 +245,4 @@ let generate proto =
   (* Build source file *)
   Green.make_node
     ~kind:SK.SOURCE_FILE
-    ~children:(Array.of_list all_children)
+    ~children:(Collections.Array.of_list all_children)

@@ -1,5 +1,3 @@
-open Std
-
 (** gRPC Protocol Implementation
 
     This package provides protocol-level types and utilities for gRPC.

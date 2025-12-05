@@ -47,6 +47,3 @@ val is_ok : t -> bool
 
 (** Check if status indicates a retriable error *)
 val is_retriable : t -> bool
-
-(** Pretty printer *)
-val pp : Format.formatter -> t -> unit

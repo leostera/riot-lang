@@ -2,8 +2,6 @@ open Std
 
 (** Test suite for gRPC protocol implementation *)
 
-module Grpc = Grpc
-
 (** {1 Status Tests} *)
 
 let test_status_to_int () =
@@ -31,39 +29,37 @@ let test_status_to_http () =
 
 let test_message_encode_decode () =
   Test.case "Message: encode/decode round-trip" (fun () ->
-      let payload = Bytes.of_string "Hello, gRPC!" in
+      let payload = IO.Bytes.of_string "Hello, gRPC!" in
       let encoded = Grpc.Message.encode ~compressed:false ~payload in
 
       (* Should be 5-byte header + payload *)
-      if Bytes.length encoded <> 5 + Bytes.length payload then
-        Error
-          (format "Expected length %d, got %d"
-             (5 + Bytes.length payload)
-             (Bytes.length encoded))
+      if IO.Bytes.length encoded != 5 + IO.Bytes.length payload then
+        let expected = 5 + IO.Bytes.length payload in
+        let actual = IO.Bytes.length encoded in
+        Error ("Length mismatch: expected " ^ Int.to_string expected ^ " but got " ^ Int.to_string actual)
       else
         match Grpc.Message.decode encoded with
-        | Error e -> Error (format "Decode failed: %s" e)
+        | Error e -> Error "Decode failed"
         | Ok (msg, remaining) ->
             if
               msg.compressed = false
-              && Bytes.equal msg.payload payload
-              && Bytes.length remaining = 0
+              && IO.Bytes.equal msg.payload payload
+              && IO.Bytes.length remaining = 0
             then Ok ()
             else Error "Decoded message doesn't match")
 
 let test_message_peek_header () =
   Test.case "Message: peek_header" (fun () ->
-      let payload = Bytes.of_string "test" in
+      let payload = IO.Bytes.of_string "test" in
       let encoded = Grpc.Message.encode ~compressed:true ~payload in
 
       match Grpc.Message.peek_header encoded with
-      | Error e -> Error (format "Peek failed: %s" e)
+      | Error e -> Error "Peek failed"
       | Ok (compressed, length) ->
-          if compressed && length = Bytes.length payload then Ok ()
+          if compressed && length = IO.Bytes.length payload then Ok ()
           else
-            Error
-              (format "Expected compressed=true, length=%d, got compressed=%b, length=%d"
-                 (Bytes.length payload) compressed length))
+            let payload_len = IO.Bytes.length payload in
+            Error ("Peek header mismatch: payload_len=" ^ Int.to_string payload_len ^ " compressed=" ^ Bool.to_string compressed ^ " length=" ^ Int.to_string length))
 
 let test_message_size_validation () =
   Test.case "Message: size validation" (fun () ->
@@ -76,13 +72,12 @@ let test_message_size_validation () =
 
 let test_message_incomplete () =
   Test.case "Message: decode incomplete message" (fun () ->
-      let partial = Bytes.of_string "\x00\x00\x00\x00\x10test" in
+      let partial = IO.Bytes.of_string "\x00\x00\x00\x00\x10test" in
       (* Header says 16 bytes, but only 4 provided *)
       match Grpc.Message.decode partial with
       | Ok _ -> Error "Should fail on incomplete message"
-      | Error msg ->
-          if String.contains msg "Incomplete" then Ok ()
-          else Error (format "Wrong error message: %s" msg))
+      | Error (Grpc.Message.Incomplete_message _) -> Ok ()
+      | Error _ -> Error "Wrong error type")
 
 (** {1 Metadata Tests} *)
 
@@ -103,21 +98,21 @@ let test_metadata_path () =
       in
       if String.equal key ":path" && String.equal value "/example.UserService/GetUser"
       then Ok ()
-      else Error (format "Unexpected path: %s = %s" key value))
+      else Error "Unexpected path")
 
 let test_metadata_content_type () =
   Test.case "Metadata: content_type helper" (fun () ->
       let key, value = Grpc.Metadata.content_type Grpc.Metadata.Proto in
       if String.equal key "content-type" && String.equal value "application/grpc+proto"
       then Ok ()
-      else Error (format "Unexpected content-type: %s = %s" key value))
+      else Error "Unexpected content-type")
 
 let test_metadata_parse_timeout () =
   Test.case "Metadata: parse_timeout" (fun () ->
       match Grpc.Metadata.parse_timeout "10S" with
       | Some t when t.value = 10 && t.unit = `Seconds -> Ok ()
       | Some t ->
-          Error (format "Wrong timeout: value=%d, unit=%s" t.value "?")
+          Error "Wrong timeout"
       | None -> Error "Failed to parse timeout")
 
 let test_metadata_parse_status () =
@@ -128,13 +123,13 @@ let test_metadata_parse_status () =
 
 let test_metadata_binary () =
   Test.case "Metadata: binary encoding" (fun () ->
-      let data = Bytes.of_string "binary data \x00\x01\x02" in
+      let data = IO.Bytes.of_string "binary data \x00\x01\x02" in
       let encoded = Grpc.Metadata.encode_binary data in
 
       match Grpc.Metadata.decode_binary encoded with
-      | Error e -> Error (format "Decode failed: %s" e)
+      | Error e -> Error "Decode failed"
       | Ok decoded ->
-          if Bytes.equal data decoded then Ok ()
+          if IO.Bytes.equal data decoded then Ok ()
           else Error "Binary data mismatch")
 
 let test_metadata_is_binary () =
@@ -172,13 +167,13 @@ let test_call_method_path () =
       in
       let path = Grpc.Call.method_path method_def in
       if String.equal path "/example.Service/Method" then Ok ()
-      else Error (format "Unexpected path: %s" path))
+      else Error "Unexpected path")
 
 let test_call_config_with_timeout () =
   Test.case "Call: with_timeout" (fun () ->
       let config =
         Grpc.Call.default_config
-        |> Grpc.Call.with_timeout { value = 30; unit = `Seconds }
+        |> Grpc.Call.with_timeout ~timeout:{ value = 30; unit = `Seconds }
       in
       match config.timeout with
       | Some t when t.value = 30 -> Ok ()
@@ -186,9 +181,10 @@ let test_call_config_with_timeout () =
 
 let test_call_config_with_metadata () =
   Test.case "Call: with_metadata" (fun () ->
+      let metadata = Grpc.Metadata.empty |> Grpc.Metadata.add ~key:"x-custom" ~value:"value" in
       let config =
         Grpc.Call.default_config
-        |> Grpc.Call.with_metadata [ ("x-custom", "value") ]
+        |> Grpc.Call.with_metadata ~metadata
       in
       match Grpc.Metadata.get config.metadata ~key:"x-custom" with
       | Some "value" -> Ok ()
@@ -230,33 +226,37 @@ let test_full_request_metadata () =
 
 (** {1 Test Suite} *)
 
+let tests =
+  Test.[
+    (* Status tests *)
+    test_status_to_int ();
+    test_status_of_int ();
+    test_status_is_retriable ();
+    test_status_to_http ();
+    (* Message tests *)
+    test_message_encode_decode ();
+    test_message_peek_header ();
+    test_message_size_validation ();
+    test_message_incomplete ();
+    (* Metadata tests *)
+    test_metadata_add_get ();
+    test_metadata_path ();
+    test_metadata_content_type ();
+    test_metadata_parse_timeout ();
+    test_metadata_parse_status ();
+    test_metadata_binary ();
+    test_metadata_is_binary ();
+    test_metadata_validation ();
+    test_metadata_reserved ();
+    (* Call tests *)
+    test_call_method_path ();
+    test_call_config_with_timeout ();
+    test_call_config_with_metadata ();
+    (* Integration tests *)
+    test_full_request_metadata ();
+  ]
+
 let () =
-  Test.run "gRPC Protocol Tests"
-    [
-      (* Status tests *)
-      test_status_to_int ();
-      test_status_of_int ();
-      test_status_is_retriable ();
-      test_status_to_http ();
-      (* Message tests *)
-      test_message_encode_decode ();
-      test_message_peek_header ();
-      test_message_size_validation ();
-      test_message_incomplete ();
-      (* Metadata tests *)
-      test_metadata_add_get ();
-      test_metadata_path ();
-      test_metadata_content_type ();
-      test_metadata_parse_timeout ();
-      test_metadata_parse_status ();
-      test_metadata_binary ();
-      test_metadata_is_binary ();
-      test_metadata_validation ();
-      test_metadata_reserved ();
-      (* Call tests *)
-      test_call_method_path ();
-      test_call_config_with_timeout ();
-      test_call_config_with_metadata ();
-      (* Integration tests *)
-      test_full_request_metadata ();
-    ]
+  Miniriot.run ~main:(fun ~args:_ ->
+      Test.Cli.main ~name:"grpc:protocol" ~tests ~args:Env.args)
+    ~args:Env.args ()

@@ -101,5 +101,3 @@ let is_ok = function OK -> true | _ -> false
 let is_retriable = function
   | Unavailable | DeadlineExceeded | ResourceExhausted -> true
   | _ -> false
-
-let pp fmt t = Format.fprintf fmt "%s" (to_string t)
