@@ -21,16 +21,24 @@ let advance_by t n =
 
 let take_while t f =
   let start = t.pos in
-  while (not (is_eof t)) && f (String.get t.source t.pos) do
-    t.pos <- t.pos + 1
-  done;
+  let rec loop () =
+    if t.pos < String.length t.source then
+      if f (String.get t.source t.pos) then (
+        t.pos <- t.pos + 1;
+        loop ())
+  in
+  loop ();
   let len = t.pos - start in
   String.sub t.source start len
 
 let skip_while t f =
-  while (not (is_eof t)) && f (String.get t.source t.pos) do
-    t.pos <- t.pos + 1
-  done
+  let rec loop () =
+    if t.pos < String.length t.source then
+      if f (String.get t.source t.pos) then (
+        t.pos <- t.pos + 1;
+        loop ())
+  in
+  loop ()
 
 let take_until t f =
   let start = t.pos in

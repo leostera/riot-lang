@@ -196,3 +196,34 @@ val empty : (unit, unit) t
       | Ok 0 -> print_endline "EOF as expected"
       | _ -> assert false
     ]} *)
+
+val from_bytes : bytes -> (bytes, unit) t
+(** [from_bytes data] creates a reader that reads from in-memory bytes.
+
+    The reader maintains an internal offset and returns data sequentially.
+    Returns 0 (EOF) when all data has been read. Can never error.
+
+    Useful for testing streaming parsers. Example:
+    {[
+      let data = Bytes.of_string "Hello, world!" in
+      let reader = IO.Reader.from_bytes data in
+      let buf = Bytes.create 5 in
+      match IO.read reader buf with
+      | Ok 5 -> print_endline (Bytes.to_string buf)  (* prints "Hello" *)
+      | _ -> assert false
+    ]} *)
+
+val from_string : string -> (string, unit) t
+(** [from_string str] creates a reader that reads from a string.
+
+    Equivalent to [from_bytes (Bytes.of_string str)].
+
+    Useful for testing. Example:
+    {[
+      let reader = IO.Reader.from_string "test data" in
+      let parser = Message_reader.create () in
+      match Message_reader.parse parser reader with
+      | Message msg -> process msg
+      | Need_more -> wait_for_more ()
+      | Error e -> handle_error e
+    ]} *)

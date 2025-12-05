@@ -63,3 +63,74 @@ let empty =
     let read_vectored () _bufs = Ok 0
   end in
   of_read_src (module EmptyRead) ()
+
+type offset_state = { mutable offset : int }
+type read_state = { mutable total : int; mutable continue : bool }
+
+let from_bytes data =
+  (* Create a stateful reader that tracks offset *)
+  let state = { offset = 0 } in
+  let module BytesRead = struct
+    type t = bytes
+    type err = unit
+    
+    let read data ?timeout:_ buf =
+      let buf_len = Bytes.length buf in
+      let data_len = Bytes.length data in
+      let remaining = data_len - state.offset in
+      if remaining = 0 then Ok 0
+      else
+        let to_read = min buf_len remaining in
+        Bytes.blit data state.offset buf 0 to_read;
+        state.offset <- state.offset + to_read;
+        Ok to_read
+
+    let read_vectored data iov =
+      (* Simple implementation: iterate through buffers *)
+      let read_state = { total = 0; continue = true } in
+      Iovec.iter iov (fun { ba; off; len } ->
+          if read_state.continue then
+            let buf = Bytes.sub ba off len in
+            match read data buf with
+            | Ok 0 -> read_state.continue <- false
+            | Ok n ->
+                Bytes.blit buf 0 ba off n;
+                read_state.total <- read_state.total + n
+            | Error _ -> read_state.continue <- false);
+      Ok read_state.total
+  end in
+  of_read_src (module BytesRead) data
+
+let from_string str =
+  let state = { offset = 0 } in
+  let data = Bytes.of_string str in
+  let module StringRead = struct
+    type t = string
+    type err = unit
+    
+    let read _str ?timeout:_ buf =
+      let buf_len = Bytes.length buf in
+      let data_len = Bytes.length data in
+      let remaining = data_len - state.offset in
+      if remaining = 0 then Ok 0
+      else
+        let to_read = min buf_len remaining in
+        Bytes.blit data state.offset buf 0 to_read;
+        state.offset <- state.offset + to_read;
+        Ok to_read
+
+    let read_vectored _str iov =
+      (* Simple implementation: iterate through buffers *)
+      let read_state = { total = 0; continue = true } in
+      Iovec.iter iov (fun { ba; off; len } ->
+          if read_state.continue then
+            let buf = Bytes.sub ba off len in
+            match read _str buf with
+            | Ok 0 -> read_state.continue <- false
+            | Ok n ->
+                Bytes.blit buf 0 ba off n;
+                read_state.total <- read_state.total + n
+            | Error _ -> read_state.continue <- false);
+      Ok read_state.total
+  end in
+  of_read_src (module StringRead) str
