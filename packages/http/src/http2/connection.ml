@@ -1,4 +1,11 @@
 open Std
+open Std.IO
+open Std.Collections
+
+(* Use Buffer from Std.IO *)
+module Buffer = IO.Buffer
+(* Use Cell from Sync *)
+module Cell = Sync.Cell
 
 (** HTTP/2 Connection Management (RFC 9113) *)
 
@@ -42,7 +49,7 @@ type role = Client | Server
 type t = {
   role : role;
   state : state Cell.t;
-  streams : (int, stream) Hashtbl.t;
+  streams : (int, stream) HashMap.t;
   next_stream_id : int Cell.t;
   connection_window_size : int Cell.t;
   local_settings : settings;
@@ -60,16 +67,16 @@ type event =
   | SettingsAckReceived
   | PingReceived of { data : string }
   | PingAckReceived of { data : string }
-  | WindowUpdateReceived of { stream_id : int; increment : int }
   | GoawayReceived of {
       last_stream_id : int;
       error_code : Frame.error_code;
       debug_data : string;
     }
   | RstStreamReceived of { stream_id : int; error_code : Frame.error_code }
+  | WindowUpdateReceived of { stream_id : int; increment : int }
   | PriorityReceived of {
       stream_id : int;
-      dependency : int;
+      stream_dependency : int;
       weight : int;
       exclusive : bool;
     }
@@ -104,7 +111,7 @@ let create ~role ?(config = default_config) () =
   {
     role;
     state = Cell.create Idle;
-    streams = Hashtbl.create 16;
+    streams = HashMap.with_capacity 16;
     next_stream_id = Cell.create (match role with Client -> 1 | Server -> 2);
     connection_window_size = Cell.create 65535;
     local_settings = create_settings config;
@@ -122,9 +129,8 @@ let send_preface conn =
       Frame.HeaderTableSize (Cell.get conn.local_settings.header_table_size);
       Frame.EnablePush (Cell.get conn.local_settings.enable_push);
       Frame.MaxConcurrentStreams
-        (Option.value
-           (Cell.get conn.local_settings.max_concurrent_streams)
-           ~default:100);
+        (Option.unwrap_or ~default:100
+           (Cell.get conn.local_settings.max_concurrent_streams));
       Frame.InitialWindowSize (Cell.get conn.local_settings.initial_window_size);
       Frame.MaxFrameSize (Cell.get conn.local_settings.max_frame_size);
     ]
@@ -145,11 +151,8 @@ let send_preface conn =
   match conn.role with
   | Client ->
       (* Client sends preface string + SETTINGS *)
-      let buf = Buffer.create (String.length client_preface + Bytes.length settings_bytes) in
-      Buffer.add_string buf client_preface;
-      Buffer.add_bytes buf settings_bytes;
       Cell.set conn.state Active;
-      Buffer.to_bytes buf
+      client_preface ^ settings_bytes
   | Server ->
       (* Server sends only SETTINGS *)
       Cell.set conn.state Active;
@@ -163,7 +166,7 @@ let is_valid_stream_id ~role stream_id =
   | Server -> stream_id mod 2 = 0  (* Server streams are even *)
 
 let create_stream conn =
-  if Cell.get conn.state <> Active then Error "Connection not active"
+  if Cell.get conn.state != Active then Error "Connection not active"
   else
     let stream_id = Cell.get conn.next_stream_id in
     Cell.set conn.next_stream_id (stream_id + 2);  (* Skip to next valid ID *)
@@ -179,17 +182,17 @@ let create_stream conn =
       }
     in
 
-    Hashtbl.add conn.streams stream_id stream;
+    let _ = HashMap.insert conn.streams stream_id stream in
     Ok stream_id
 
-let get_stream conn stream_id = Hashtbl.find_opt conn.streams stream_id
+let get_stream conn stream_id = HashMap.get conn.streams stream_id
 
 let send_headers conn ~stream_id ~headers ~end_stream =
   match get_stream conn stream_id with
-  | None -> Error (format "Stream %d not found" stream_id)
+  | None -> Error ("Stream " ^ Int.to_string stream_id ^ " not found")
   | Some stream -> (
       (* Encode headers using HPACK *)
-      let encoded_headers = Hpack.encode conn.hpack_encoder ~headers in
+      let encoded_headers = Hpack.encode conn.hpack_encoder ~headers ~sensitive_headers:[] in
 
       (* Create HEADERS frame *)
       let frame =
@@ -225,7 +228,7 @@ let send_headers conn ~stream_id ~headers ~end_stream =
 
 let send_data conn ~stream_id ~data ~end_stream =
   match get_stream conn stream_id with
-  | None -> Error (format "Stream %d not found" stream_id)
+  | None -> Error ("Stream " ^ Int.to_string stream_id ^ " not found")
   | Some stream -> (
       let data_len = Bytes.length data in
 
@@ -234,9 +237,9 @@ let send_data conn ~stream_id ~data ~end_stream =
       let conn_window = Cell.get conn.connection_window_size in
 
       if data_len > stream_window then
-        Error (format "Data size %d exceeds stream window %d" data_len stream_window)
+        Error ("Data size " ^ Int.to_string data_len ^ " exceeds stream window " ^ Int.to_string stream_window)
       else if data_len > conn_window then
-        Error (format "Data size %d exceeds connection window %d" data_len conn_window)
+        Error ("Data size " ^ Int.to_string data_len ^ " exceeds connection window " ^ Int.to_string conn_window)
       else
         (* Create DATA frame *)
         let frame =
@@ -264,7 +267,7 @@ let send_data conn ~stream_id ~data ~end_stream =
         if end_stream then
           Cell.set stream.state StreamHalfClosedLocal;
 
-        Ok (Serializer.serialize_frame frame))
+      Ok (Serializer.serialize_frame frame))
 
 let reset_stream conn ~stream_id ~error_code =
   let frame =
@@ -458,7 +461,7 @@ let state conn = Cell.get conn.state
 
 let close conn =
   Cell.set conn.state Closed;
-  Hashtbl.clear conn.streams
+  HashMap.clear conn.streams
 
 (** {1 Frame Processing} *)
 
@@ -468,11 +471,11 @@ let process_settings_frame conn settings_list flags =
     Ok [ SettingsAckReceived ]
   else
     (* Apply received settings *)
-    List.iter
+    (List.iter
       (function
         | Frame.HeaderTableSize size ->
             Cell.set conn.remote_settings.header_table_size size;
-            Hpack.update_max_table_size conn.hpack_encoder size
+            Hpack.update_max_table_size conn.hpack_decoder size
         | Frame.EnablePush enabled ->
             Cell.set conn.remote_settings.enable_push enabled
         | Frame.MaxConcurrentStreams max ->
@@ -485,7 +488,7 @@ let process_settings_frame conn settings_list flags =
             Cell.set conn.remote_settings.max_header_list_size (Some size))
       settings_list;
 
-    Ok [ SettingsReceived settings_list ]
+    Ok [ SettingsReceived settings_list ])
 
 let process_headers_frame conn stream_id payload flags =
   match payload with
@@ -493,7 +496,7 @@ let process_headers_frame conn stream_id payload flags =
       (* Decode HPACK-encoded headers *)
       let header_bytes = Bytes.of_string header_block_fragment in
       match Hpack.decode conn.hpack_decoder header_bytes with
-      | Error e -> Error (format "HPACK decode error: %s" e)
+      | Error e -> Error ("HPACK decode error: " ^ e)
       | Ok headers ->
           let end_stream = flags.Frame.end_stream in
 
@@ -511,7 +514,7 @@ let process_headers_frame conn stream_id payload flags =
                     data_chunks = Cell.create [];
                   }
                 in
-                Hashtbl.add conn.streams stream_id s;
+                let _ = HashMap.insert conn.streams stream_id s in
                 s
           in
 
@@ -592,7 +595,7 @@ let process_frame conn frame =
               PriorityReceived
                 {
                   stream_id = frame.stream_id;
-                  dependency = stream_dependency;
+                  stream_dependency;
                   weight;
                   exclusive;
                 };

@@ -78,8 +78,8 @@ let parse_frame_header ?(config = default_config) data =
         (* Security fix: Validate frame size to prevent memory exhaustion DoS *)
         if length > config.max_frame_size then
           Error
-            (format "Frame size %d exceeds maximum allowed %d" length
-               config.max_frame_size)
+            ("Frame size " ^ Int.to_string length ^ " exceeds maximum allowed " ^ 
+             Int.to_string config.max_frame_size)
         else (
         match read_uint8 data 3 with
         | None -> Error "Failed to read frame type"

@@ -7,3 +7,4 @@ path = "src/http.ml"
 
 [dependencies]
 std = { path = "../std" }
+propane = { path = "../propane" }

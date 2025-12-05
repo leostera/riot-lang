@@ -1,4 +1,10 @@
 open Std
+open Std.IO
+
+(* Use Array from Collections *)
+module Array = Collections.Array
+(* Use Cell from Sync *)
+module Cell = Sync.Cell
 
 (** HPACK: Header Compression for HTTP/2 (RFC 7541) *)
 
@@ -272,7 +278,7 @@ module String_ = struct
     if offset >= Bytes.length data then Error "Incomplete string encoding"
     else
       let first_byte = Bytes.get data offset in
-      let is_huffman = Char.code first_byte land 0x80 <> 0 in
+      let is_huffman = Char.code first_byte land 0x80 != 0 in
       match Integer.decode 7 first_byte data (offset + 1) with
       | Error e -> Error e
       | Ok (length, new_offset) ->
@@ -378,7 +384,7 @@ let encode_header encoder header ~encoding_type =
       (* Full match found - use indexed representation *)
       let actual_index = match static_match with
         | Some i -> i
-        | None -> static_table_size + Option.get dynamic_match
+        | None -> static_table_size + Option.unwrap dynamic_match
       in
       encode_indexed_header actual_index
   | None, None ->
@@ -442,53 +448,54 @@ let decode_header_block decoder data offset =
     let first_byte = Bytes.get data offset in
     let first_code = Char.code first_byte in
 
-    if first_code land 0x80 <> 0 then
+    if first_code land 0x80 != 0 then
       (* Indexed Header Field: 1xxxxxxx *)
       match Integer.decode 7 first_byte data (offset + 1) with
       | Error e -> Error e
       | Ok (index, new_offset) -> (
           match lookup_header decoder index with
-          | None -> Error (format "Invalid header index: %d" index)
+          | None -> Error ("Invalid header index: " ^ Int.to_string index)
           | Some header -> Ok ([ header ], new_offset))
-    else if first_code land 0x40 <> 0 then
+    else if first_code land 0x40 != 0 then
       (* Literal with Incremental Indexing: 01xxxxxx *)
       match Integer.decode 6 first_byte data (offset + 1) with
       | Error e -> Error e
       | Ok (name_index, pos1) -> (
-          let* (name, pos2) =
-            if name_index = 0 then
+          match
+            (if name_index = 0 then
               String_.decode data pos1
             else
               match lookup_header decoder name_index with
-              | None -> Error (format "Invalid name index: %d" name_index)
-              | Some h -> Ok (h.name, pos1)
-          in
+              | None -> Error ("Invalid name index: " ^ Int.to_string name_index)
+              | Some h -> Ok (h.name, pos1))
+          with
+          | Error e -> Error e
+          | Ok (name, pos2) ->
           match String_.decode data pos2 with
           | Error e -> Error e
           | Ok (value, new_offset) ->
               let header = { name; value } in
-              DynamicTable.add decoder.dynamic_table header;
               Ok ([ header ], new_offset))
-    else if first_code land 0x20 <> 0 then
+    else if first_code land 0x20 != 0 then
       (* Dynamic Table Size Update: 001xxxxx *)
       match Integer.decode 5 first_byte data (offset + 1) with
       | Error e -> Error e
       | Ok (new_size, new_offset) ->
           DynamicTable.update_max_size decoder.dynamic_table new_size;
           Ok ([], new_offset)
-    else if first_code land 0x10 <> 0 then
+    else if first_code land 0x10 != 0 then
       (* Literal Never Indexed: 0001xxxx *)
       match Integer.decode 4 first_byte data (offset + 1) with
       | Error e -> Error e
       | Ok (name_index, pos1) -> (
-          let* (name, pos2) =
-            if name_index = 0 then
+          match (if name_index = 0 then
               String_.decode data pos1
             else
               match lookup_header decoder name_index with
-              | None -> Error (format "Invalid name index: %d" name_index)
-              | Some h -> Ok (h.name, pos1)
-          in
+              | None -> Error ("Invalid name index: " ^ Int.to_string name_index)
+              | Some h -> Ok (h.name, pos1)) with
+          | Error e -> Error e
+          | Ok (name, pos2) ->
           match String_.decode data pos2 with
           | Error e -> Error e
           | Ok (value, new_offset) ->
@@ -498,14 +505,16 @@ let decode_header_block decoder data offset =
       match Integer.decode 4 first_byte data (offset + 1) with
       | Error e -> Error e
       | Ok (name_index, pos1) -> (
-          let* (name, pos2) =
-            if name_index = 0 then
+          match
+            (if name_index = 0 then
               String_.decode data pos1
             else
               match lookup_header decoder name_index with
-              | None -> Error (format "Invalid name index: %d" name_index)
-              | Some h -> Ok (h.name, pos1)
-          in
+              | None -> Error ("Invalid name index: " ^ Int.to_string name_index)
+              | Some h -> Ok (h.name, pos1))
+          with
+          | Error e -> Error e
+          | Ok (name, pos2) ->
           match String_.decode data pos2 with
           | Error e -> Error e
           | Ok (value, new_offset) ->

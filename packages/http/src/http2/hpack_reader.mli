@@ -21,6 +21,7 @@ type decode_error =
   | Invalid_name_index of int  (** Name index not found in static/dynamic table *)
   | Unsupported_encoding  (** HPACK encoding type not supported *)
   | Invalid_decoder_state  (** Decoder in invalid/unexpected state *)
+  | Need_more_data  (** Not enough data available to complete decoding *)
 
 (** Decode result *)
 type decode_result =
@@ -51,7 +52,7 @@ type decode_result =
     @param reader The IO reader
     @return Decode result
 *)
-val decode : decoder -> IO.Reader.t -> decode_result
+val decode : decoder -> ('src, 'err) IO.Reader.t -> decode_result
 
 (** Update maximum dynamic table size (from SETTINGS frame) *)
 val update_max_table_size : decoder -> int -> unit

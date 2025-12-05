@@ -68,7 +68,7 @@ type parse_result =
     @param reader The IO reader to read from
     @return Parse result
 *)
-val parse : state -> IO.Reader.t -> parse_result
+val parse : state -> ('src, 'err) IO.Reader.t -> parse_result
 
 (** Reset parser state to initial (for connection reuse) *)
 val reset : state -> unit

@@ -1,4 +1,10 @@
 open Std
+open Std.IO
+
+(* Use Buffer from Std.IO *)
+module Buffer = IO.Buffer
+(* Use Cell from Sync *)
+module Cell = Sync.Cell
 
 type config = { max_frame_size : int }
 
@@ -97,10 +103,10 @@ let parse_frame_header_bytes config data =
       | Some frame_type ->
           (* Read flags *)
           let flags_byte = Char.code data.[4] in
-          let end_headers = flags_byte land 0x04 <> 0 in
-          let padded = flags_byte land 0x08 <> 0 in
-          let priority = flags_byte land 0x20 <> 0 in
-          let bit_0_set = flags_byte land 0x01 <> 0 in
+          let end_headers = flags_byte land 0x04 != 0 in
+          let padded = flags_byte land 0x08 != 0 in
+          let priority = flags_byte land 0x20 != 0 in
+          let bit_0_set = flags_byte land 0x01 != 0 in
           let end_stream, ack =
             match frame_type with
             | Frame.Settings | Frame.Ping -> (false, bit_0_set)
@@ -117,7 +123,7 @@ let parse_frame_header_bytes config data =
           let stream_id_raw = (s0 lsl 24) lor (s1 lsl 16) lor (s2 lsl 8) lor s3 in
           let stream_id = stream_id_raw land 0x7FFFFFFF in
 
-          Ok
+          Frame
             {
               Frame.length;
               frame_type;
@@ -170,7 +176,7 @@ let parse_payload frame payload_data =
           let setting_opt =
             match id with
             | 0x1 -> Some (Frame.HeaderTableSize value)
-            | 0x2 -> Some (Frame.EnablePush (value <> 0))
+            | 0x2 -> Some (Frame.EnablePush (value != 0))
             | 0x3 -> Some (Frame.MaxConcurrentStreams value)
             | 0x4 -> Some (Frame.InitialWindowSize value)
             | 0x5 -> Some (Frame.MaxFrameSize value)
@@ -181,14 +187,15 @@ let parse_payload frame payload_data =
           | Some setting -> parse_settings (offset + 6) (setting :: acc)
           | None -> parse_settings (offset + 6) acc
       in
-      let* settings = parse_settings 0 [] in
-      Ok { frame with payload = Frame.SettingsPayload settings }
+      (match parse_settings 0 [] with
+      | Ok settings -> Ok { frame with payload = Frame.SettingsPayload settings }
+      | Error e -> Error e)
   | Frame.Ping ->
-      if String.length payload_data <> 8 then
+      if String.length payload_data != 8 then
         Error (Invalid_payload_length { frame_type = "PING"; expected = 8; actual = String.length payload_data })
       else Ok { frame with payload = Frame.PingPayload payload_data }
   | Frame.WindowUpdate ->
-      if String.length payload_data <> 4 then
+      if String.length payload_data != 4 then
         Error (Invalid_payload_length { frame_type = "WINDOW_UPDATE"; expected = 4; actual = String.length payload_data })
       else
         let increment =
@@ -200,7 +207,7 @@ let parse_payload frame payload_data =
         let increment = increment land 0x7FFFFFFF in
         Ok { frame with payload = Frame.WindowUpdatePayload increment }
   | Frame.RstStream ->
-      if String.length payload_data <> 4 then
+      if String.length payload_data != 4 then
         Error (Invalid_payload_length { frame_type = "RST_STREAM"; expected = 4; actual = String.length payload_data })
       else
         let code =
@@ -270,7 +277,7 @@ let parse_payload frame payload_data =
           payload = Frame.DataPayload { data = payload_data; pad_length = None };
         }
 
-let parse state reader =
+let rec parse state reader =
   let ( let* ) = Result.and_then in
   match Cell.get state.phase with
   | ReadingFrameHeader { buffer; bytes_read } ->
@@ -289,15 +296,18 @@ let parse state reader =
         Need_more)
       else
         (* Have complete 9-byte header *)
-        let header_data = Buffer.contents buffer in
+        (let header_data = Buffer.contents buffer in
         match parse_frame_header_bytes state.config header_data with
         | Error e -> Error e
-        | Ok frame_header ->
+        | Need_more -> Need_more
+        | Frame frame_header ->
             if frame_header.length = 0 then
               (* Zero-length frame - complete immediately *)
-              let* complete_frame = parse_payload frame_header "" in
-              reset state;
-              Frame complete_frame
+              (match parse_payload frame_header "" with
+              | Result.Error e -> Error e
+              | Result.Ok complete_frame ->
+                  reset state;
+                  Frame complete_frame)
             else (
               (* Need to read payload *)
               Cell.set state.phase
@@ -309,7 +319,7 @@ let parse state reader =
                      total_length = frame_header.length;
                    });
               (* Recursively try to read payload immediately *)
-              parse state reader)
+              parse state reader))
   | ReadingFramePayload { header; buffer; bytes_read; total_length } ->
       (* Try to read more payload bytes *)
       let needed = total_length - bytes_read in
