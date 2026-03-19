@@ -20,12 +20,17 @@ type parse_result = {
 type parser = {
   cursor : Token_cursor.t;
   diagnostics : Diagnostic.t list Cell.t;
+  mutable object_update_depth : int;
 }
 (** Parser state *)
 
 (** Create a new parser from tokens *)
 let create ~source tokens =
-  { cursor = Token_cursor.create ~source tokens; diagnostics = Cell.create [] }
+  {
+    cursor = Token_cursor.create ~source tokens;
+    diagnostics = Cell.create [];
+    object_update_depth = 0;
+  }
 
 (** Get current position in token stream *)
 let position parser = Token_cursor.position parser.cursor
@@ -3733,7 +3738,12 @@ and parse_binary_expr parser min_prec =
 
   (* Keep parsing operators while they have higher precedence *)
   let rec climb left left_trivia_start left_trivia =
-    match operator_info (peek_kind parser) with
+    let current_operator =
+      match peek_kind parser with
+      | Token.Gt when parser.object_update_depth > 0 -> None
+      | kind -> operator_info kind
+    in
+    match current_operator with
     | Some (prec, is_right_assoc) when prec >= min_prec ->
         let op = consume parser in
         let op_text = token_text parser op in
@@ -4383,6 +4393,8 @@ and parse_record_expr parser =
         let open_angle = consume parser in
         let trivia_after_angle = consume_trivia parser in
         let content_parts = ref [] in
+        let previous_object_update_depth = parser.object_update_depth in
+        parser.object_update_depth <- previous_object_update_depth + 1;
 
         let rec parse_fields () =
           if peek_kind parser = Token.Gt || peek_kind parser = Token.EOF then
@@ -4418,6 +4430,7 @@ and parse_record_expr parser =
           else
             peek parser
         in
+        parser.object_update_depth <- previous_object_update_depth;
 
         make_node Syntax_kind.OBJECT_UPDATE_EXPR
           ([ make_token parser open_brace ]
