@@ -2159,6 +2159,33 @@ and parse_operator_pattern parser open_paren trivia_after_open =
   
   let rec collect_operator_tokens () =
     match peek_kind parser with
+    | Token.OpenDelim Token.Bracket ->
+        let open_bracket = consume parser in
+        operator_tokens := open_bracket :: !operator_tokens;
+        (match peek_kind parser with
+        | Token.CloseDelim Token.Bracket ->
+            let close_bracket = consume parser in
+            operator_tokens := close_bracket :: !operator_tokens;
+            collect_operator_tokens ()
+        | _ -> ())
+    | Token.OpenDelim Token.Brace ->
+        let open_brace = consume parser in
+        operator_tokens := open_brace :: !operator_tokens;
+        (match peek_kind parser with
+        | Token.CloseDelim Token.Brace ->
+            let close_brace = consume parser in
+            operator_tokens := close_brace :: !operator_tokens;
+            collect_operator_tokens ()
+        | _ -> ())
+    | Token.OpenDelim Token.Paren ->
+        let nested_open = consume parser in
+        operator_tokens := nested_open :: !operator_tokens;
+        (match peek_kind parser with
+        | Token.CloseDelim Token.Paren ->
+            let nested_close = consume parser in
+            operator_tokens := nested_close :: !operator_tokens;
+            collect_operator_tokens ()
+        | _ -> ())
     | Token.CloseDelim Token.Paren ->
         (* End of operator name *)
         ()
@@ -4002,6 +4029,58 @@ and parse_postfix_expr parser =
         let trivia_after_dot = consume_trivia parser in
 
         match peek_kind parser with
+        | Token.At | Token.Question | Token.Percent ->
+            let op = consume parser in
+            let trivia_after_op = consume_trivia parser in
+            let open_delim =
+              match peek_kind parser with
+              | Token.OpenDelim Token.Paren
+              | Token.OpenDelim Token.Bracket
+              | Token.OpenDelim Token.Brace ->
+                  Some (consume parser)
+              | _ ->
+                  None
+            in
+            (match open_delim with
+            | Some open_tok ->
+                let trivia_after_open = consume_trivia parser in
+                let index_expr = parse_expr parser in
+                let trivia_after_expr = consume_trivia parser in
+                let close_delim =
+                  match open_tok.Token.kind with
+                  | Token.OpenDelim Token.Paren ->
+                      Token.CloseDelim Token.Paren
+                  | Token.OpenDelim Token.Bracket ->
+                      Token.CloseDelim Token.Bracket
+                  | Token.OpenDelim Token.Brace ->
+                      Token.CloseDelim Token.Brace
+                  | _ ->
+                      Token.CloseDelim Token.Paren
+                in
+                let close_tok =
+                  expect parser close_delim (fun found ->
+                      Diagnostic.unclosed_delimiter ~opener:".(" ~found
+                        ~text:(token_text parser found)
+                        ~span:(expected_span parser))
+                in
+                let trivia_after_close = consume_trivia parser in
+                let custom_index =
+                  make_node Syntax_kind.ARRAY_INDEX_EXPR
+                    ([ Ceibo.Green.Node expr ]
+                    @ [ make_token parser dot ]
+                    @ tokens_to_green parser trivia_after_dot
+                    @ [ make_token parser op ]
+                    @ tokens_to_green parser trivia_after_op
+                    @ [ make_token parser open_tok ]
+                    @ tokens_to_green parser trivia_after_open
+                    @ [ Ceibo.Green.Node index_expr ]
+                    @ tokens_to_green parser trivia_after_expr
+                    @ [ make_token parser close_tok ]
+                    @ tokens_to_green parser trivia_after_close)
+                in
+                parse_postfix custom_index
+            | None ->
+                expr)
         | Token.Ident _ ->
             let field = consume parser in
             let trivia_after_field = consume_trivia parser in
