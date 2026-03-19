@@ -3200,8 +3200,14 @@ and can_be_prefix_operator token_kind =
       true
   | _ -> false
 
-(** Check if current token can start an argument expression. We stop at
-    operators, keywords, and delimiters. *)
+(** Check if current token can start an argument expression.
+
+    This is intentionally narrower than "can start any expression". In
+    particular, prefix operators like [-] and [+] are excluded here so
+    application parsing does not steal infix expressions such as [1 + 2] and
+    reinterpret them as [1 (+2)]. Unary operators are still handled by
+    [parse_primary_expr] when they appear in positions that genuinely start an
+    expression. *)
 and can_start_arg_expr parser =
   match peek_kind parser with
   (* Can start arguments *)
@@ -3221,8 +3227,6 @@ and can_start_arg_expr parser =
   | Token.Backtick (* Polymorphic variant: `Tag *)
   | Token.Tilde (* Labeled argument: ~label *)
   | Token.Question (* Optional argument: ?label *)
-  (* Prefix operators can also start arguments: -x, !ref, +.y *)
-  | Token.Minus | Token.MinusDot | Token.Bang | Token.Plus | Token.PlusDot
   ->
       true
   (* Cannot - these are operators or other constructs *)

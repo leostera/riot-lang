@@ -40,10 +40,22 @@ NC = '\033[0m'  # No Color
 class TestRunner:
     def __init__(self, workspace_root: Path):
         self.workspace_root = workspace_root
-        self.syn_binary = workspace_root / "target" / "debug" / "syn"
+        self.syn_binary = self.find_syn_binary()
         self.fixtures_dir = workspace_root / "packages" / "syn" / "tests" / "fixtures"
         self.diagnostics_dir = workspace_root / "packages" / "syn" / "tests" / "diagnostics"
         self.packages_dir = workspace_root / "packages"
+
+    def find_syn_binary(self) -> Path:
+        direct = self.workspace_root / "_build" / "debug"
+        candidates = sorted(direct.glob("*/out/syn/syn"))
+        if candidates:
+            return candidates[0]
+
+        fallback = sorted((self.workspace_root / "_build").glob("**/out/syn/syn"))
+        if fallback:
+            return fallback[0]
+
+        return self.workspace_root / "_build" / "debug" / "out" / "syn" / "syn"
         
     def run_syn(self, args: List[str], file_path: Path) -> Tuple[str, int]:
         """Run syn command and return (output, returncode)."""
@@ -629,7 +641,7 @@ def main():
     # Check if syn binary exists
     if not runner.syn_binary.exists():
         print(f"{RED}Error: syn binary not found at {runner.syn_binary}{NC}")
-        print(f"{YELLOW}Run: tusk build -p syn{NC}")
+        print(f"{YELLOW}Run: tusk build syn{NC}")
         sys.exit(1)
     
     exit_code = 0
