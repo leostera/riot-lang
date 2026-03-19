@@ -1,0 +1,18 @@
+[package]
+name = "riot-ffi"
+version = "0.1.0"
+edition = "2024"
+
+[[example]]
+name = "ffi_usage"
+path = "examples/ffi_usage.rs"
+
+[[example]]
+name = "derive_demo"
+path = "examples/derive_demo.rs"
+
+[dependencies]
+riot-core = { path = "../riot-core" }
+riot-derive = { path = "../riot-derive" }
+
+[dev-dependencies]

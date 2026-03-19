@@ -1,13 +1,10 @@
 [workspace]
 members = [
-  "native/example-lib",
   "native/hello-rust",
-  "native/raml-bindgen",
-  "native/raml-core",
-  "native/raml-derive",
-  "native/raml-ffi",
-  "native/raml-kernel",
-  "native/raml-rt",
+  "native/riot-bindgen",
+  "native/riot-core",
+  "native/riot-derive",
+  "native/riot-ffi",
 ]
 
 # Use a separate target directory to avoid conflicts with Tusk's target/ directory

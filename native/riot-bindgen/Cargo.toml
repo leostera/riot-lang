@@ -1,0 +1,22 @@
+[package]
+name = "riot-bindgen"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "riot-bindgen"
+path = "src/main.rs"
+
+[dependencies]
+syn = { version = "2.0", features = ["full", "extra-traits", "visit"] }
+quote = "1.0"
+proc-macro2 = "1.0"
+clap = { version = "4.0", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0"
+walkdir = "2.0"
+
+[dev-dependencies]
+riot-core = { path = "../riot-core" }
+riot-ffi = { path = "../riot-ffi" }
