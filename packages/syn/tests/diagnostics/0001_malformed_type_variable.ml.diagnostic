@@ -5,15 +5,15 @@
       "name": "malformed-type-variable",
       "expected": "type variable identifier (e.g., 'a, 'b)",
       "found": {
-        "kind": "comment",
-        "text": "(* hello *)"
+        "kind": "unknown character '''",
+        "text": "'("
       },
       "fix": "remove the space or comment between the quote and the variable name",
       "hint": "Type variables must be written as 'a, 'b, etc. with no space or comments between the quote and name."
     },
     "span": {
-      "start": 6,
-      "end": 17
+      "start": 5,
+      "end": 7
     }
   },
   {
@@ -22,14 +22,14 @@
       "name": "malformed-type-variable",
       "expected": "type variable identifier (e.g., 'a, 'b)",
       "found": {
-        "kind": "whitespace",
-        "text": " "
+        "kind": "unknown character '''",
+        "text": "' "
       },
       "fix": "remove the space or comment between the quote and the variable name",
       "hint": "Type variables must be written as 'a, 'b, etc. with no space or comments between the quote and name."
     },
     "span": {
-      "start": 26,
+      "start": 25,
       "end": 27
     }
   },
@@ -39,31 +39,14 @@
       "name": "malformed-type-variable",
       "expected": "type variable identifier (e.g., 'a, 'b)",
       "found": {
-        "kind": "'",
-        "text": "'"
+        "kind": "unknown character '''",
+        "text": "''"
       },
       "fix": "remove the space or comment between the quote and the variable name",
       "hint": "Type variables must be written as 'a, 'b, etc. with no space or comments between the quote and name."
     },
     "span": {
-      "start": 36,
-      "end": 37
-    }
-  },
-  {
-    "kind": {
-      "id": "E0015",
-      "name": "missing-type-name",
-      "expected": "type name",
-      "found": {
-        "kind": "'",
-        "text": "'"
-      },
-      "fix": "add a type name after the type keyword",
-      "hint": "Type declarations require a name after the type keyword."
-    },
-    "span": {
-      "start": 36,
+      "start": 35,
       "end": 37
     }
   },
@@ -103,19 +86,18 @@
   },
   {
     "kind": {
-      "id": "E0001",
-      "name": "malformed-type-variable",
-      "expected": "type variable identifier (e.g., 'a, 'b)",
+      "id": "E0010",
+      "name": "invalid-type-expression",
+      "expected": "type definition",
       "found": {
         "kind": "whitespace",
         "text": " "
       },
-      "fix": "remove the space or comment between the quote and the variable name",
-      "hint": "Type variables must be written as 'a, 'b, etc. with no space or comments between the quote and name."
+      "hint": "Expected a type like int, string, 'a, or a type constructor."
     },
     "span": {
       "start": 68,
-      "end": 69
+      "end": 68
     }
   },
   {

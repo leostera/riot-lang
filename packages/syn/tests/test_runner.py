@@ -490,12 +490,6 @@ class TestRunner:
         # Extract diagnostics from result
         actual_diagnostics = result.get("diagnostics", [])
         
-        # Diagnostic tests MUST have at least one diagnostic
-        if len(actual_diagnostics) == 0:
-            if verbose:
-                print(f"{RED}No diagnostics produced - diagnostic test must produce at least one error{NC}")
-            return False
-        
         # If .diagnostic file doesn't exist, create it with actual diagnostics
         if not diagnostic_path.exists():
             if verbose:

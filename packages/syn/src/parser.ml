@@ -6592,8 +6592,16 @@ and parse_type_decl parser =
                     (match peek_kind parser with
                     | Token.EOF 
                     | Token.Keyword _ ->
-                        (* Abstract type with no definition: type t = private *)
-                        []
+                        let found_tok = peek parser in
+                        let diagnostic =
+                          Diagnostic.invalid_type_expression ~found:found_tok
+                            ~text:(token_text parser found_tok)
+                            ~span:(expected_span parser)
+                        in
+                        let error_node =
+                          make_error_node parser ~diagnostic ~consumed_tokens:[]
+                        in
+                        [ Ceibo.Green.Node error_node ]
                     | _ ->
                         (* Parse type equation first *)
                         let type_expr = parse_typexpr parser in

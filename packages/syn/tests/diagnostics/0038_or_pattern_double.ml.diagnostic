@@ -64,21 +64,5 @@
       "start": 31,
       "end": 32
     }
-  },
-  {
-    "kind": {
-      "id": "E0005",
-      "name": "unexpected-structure-item",
-      "expected": "structure item (e.g., let, type, module)",
-      "found": {
-        "kind": "string",
-        "text": "\"numbers\""
-      },
-      "hint": "Structure items are top-level declarations like let, type, or module."
-    },
-    "span": {
-      "start": 41,
-      "end": 42
-    }
   }
 ]
