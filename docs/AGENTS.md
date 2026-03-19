@@ -5,7 +5,6 @@
 ## Routing
 
 - `docs/rfds/`: request for discussion documents, architecture snapshots, and design records
-- `docs/whitepaper/`: research, thesis, and long-form narrative material
 
 ## Rules
 
