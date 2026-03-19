@@ -14,13 +14,18 @@ Modern actor-model, multi-core-ready ecosystem and tooling for OCaml 5.
 
 Riot is an [actor-model][actors], multi-core-ready ecosystem for OCaml 5,
 designed from the ground up for _programmer happiness_ and _shipping_,
-following a few [principles](#Principles):
+following a few simple principles:
+
+If you're coming from Erlang, Elixir, Go, Rust, or Rails, the shape of Riot
+should feel familiar in spirit: a runtime model you can build around, a
+standard library that wants to be used, and tooling that is part of the
+experience rather than something bolted on later.
 
 * **Optimize for Programmer Happiness** -- We want writing OCaml to feel joyful. Riot
 tries to remove plumbing, incidental choices, and papercuts so developers can
 stay in flow and focus on the work that matters.
 
-* **Value-oriented by design** -- Riot is built to ship apps, not just
+* **Value-oriented by design** -- Riot is built to ship value, not just
 abstractions. That means vertically integrating the pieces needed to go from
 idea to working system.
 
@@ -114,25 +119,14 @@ Riot is also not trying to preserve the traditional OCaml toolchain shape at all
 
 Riot ships with `tusk`, its own build tool and package manager.
 
-If you want to get a feel for the project from source, the current path is:
+To get a feel for Riot quickly:
 
 ```sh
-python3 bootstrap.py
-./minitusk
-./tusk-cli install tusk
+curl -sSL https://cdn.riot.ml/tusk/install.sh | sh
 tusk --help
 ```
 
-After that, you can build the workspace or explore specific pieces:
-
-```sh
-tusk build
-tusk build suri
-tusk build hello-foreign
-tusk test
-```
-
-And if you want to explore what Riot exposes, `tusk` can list packages, binaries, and tests:
+From there, you can explore what Riot exposes:
 
 ```sh
 tusk completions --packages
@@ -140,14 +134,16 @@ tusk completions --binaries
 tusk completions --tests
 ```
 
-If you want to validate the native interop path specifically:
+And if you want to validate the native interop path specifically:
 
 ```sh
 RUSTC_WRAPPER= tusk build hello-foreign
 tusk run hello
 ```
 
-You do not need to understand the whole repository to get value from Riot. The important part is the direction: actors, strong tooling, modern library surfaces, and an ecosystem that is comfortable owning more of the stack.
+You do not need to understand the whole repository to get value from Riot. The
+important part is the direction: actors, strong tooling, modern library
+surfaces, and an ecosystem that is comfortable owning more of the stack.
 
 ## Acknowledgments
 
