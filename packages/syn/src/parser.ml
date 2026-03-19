@@ -3953,8 +3953,8 @@ and parse_paren_expr parser =
           let module_kw = consume parser in
           let trivia_after_module = consume_trivia parser in
           
-          (* Parse module path/expression *)
-          let module_expr = parse_module_path_or_expr parser in
+          (* Parse full module expression, including struct...end *)
+          let module_expr = parse_module_expr parser in
           let trivia_after_expr = consume_trivia parser in
           
           (* Check for optional type constraint: (module M : S) *)
@@ -8060,10 +8060,11 @@ and parse_structure_item ?(in_block = false) parser =
         let is_let_in_expr = ref false in
         
         (* Try to scan ahead for 'in' keyword before EOF/next structure item *)
-        let rec scan_for_in depth struct_depth =
+        let rec scan_for_in depth struct_depth delim_depth =
           match peek_kind parser with
           | Token.EOF -> ()
-          | Token.Keyword Keyword.In when depth = 0 && struct_depth = 0 ->
+          | Token.Keyword Keyword.In
+            when depth = 0 && struct_depth = 0 && delim_depth = 0 ->
               is_let_in_expr := true
           | Token.Keyword Keyword.Let | Token.Keyword Keyword.Match
           | Token.Keyword Keyword.Try | Token.Keyword Keyword.Fun
@@ -8071,39 +8072,47 @@ and parse_structure_item ?(in_block = false) parser =
               advance parser;
               (* Only increment depth if NOT inside struct/sig blocks *)
               let new_depth = if struct_depth = 0 then depth + 1 else depth in
-              scan_for_in new_depth struct_depth
+              scan_for_in new_depth struct_depth delim_depth
           | Token.Keyword Keyword.In ->
               advance parser;
-              scan_for_in (depth - 1) struct_depth
+              scan_for_in (depth - 1) struct_depth delim_depth
+          | Token.OpenDelim _ ->
+              advance parser;
+              scan_for_in depth struct_depth (delim_depth + 1)
+          | Token.CloseDelim _ when delim_depth > 0 ->
+              advance parser;
+              scan_for_in depth struct_depth (delim_depth - 1)
           (* Track struct/sig/begin...end blocks to avoid looking inside them *)
           | Token.Keyword Keyword.Struct | Token.Keyword Keyword.Sig | Token.Keyword Keyword.Begin ->
               advance parser;
-              scan_for_in depth (struct_depth + 1)
+              scan_for_in depth (struct_depth + 1) delim_depth
           | Token.Keyword Keyword.End when struct_depth > 0 ->
               advance parser;
-              scan_for_in depth (struct_depth - 1)
+              scan_for_in depth (struct_depth - 1) delim_depth
           | Token.Keyword Keyword.End when struct_depth = 0 ->
               (* Hit 'end' at struct_depth 0 - stop searching, this is not a let-in expr *)
               ()
           (* Only stop at structure keywords if we're at depth 0 AND not past a reasonable distance *)
           | Token.Keyword Keyword.Type | Token.Keyword Keyword.Module 
           | Token.Keyword Keyword.Exception | Token.Keyword Keyword.External
-          | Token.Keyword Keyword.Open | Token.Keyword Keyword.Include when depth = 0 && struct_depth = 0 ->
+          | Token.Keyword Keyword.Open | Token.Keyword Keyword.Include
+            when depth = 0 && struct_depth = 0 && delim_depth = 0 ->
               (* Hit next structure item without finding 'in' *)
               ()
-          | Token.Keyword Keyword.And when depth = 0 && struct_depth = 0 ->
+          | Token.Keyword Keyword.And
+            when depth = 0 && struct_depth = 0 && delim_depth = 0 ->
               (* 'and' at top level ends the search *)
               ()
           | _ ->
               advance parser;
-              scan_for_in depth struct_depth
+              scan_for_in depth struct_depth delim_depth
         in
         
         advance parser; (* skip 'let' *)
         (* If we're already in a block, start with struct_depth = 1 to prevent 
            looking past the block's 'end' keyword *)
         let initial_struct_depth = if in_block then 1 else 0 in
-        scan_for_in 0 initial_struct_depth;
+        scan_for_in 0 initial_struct_depth 0;
         
         (* Restore position *)
         Token_cursor.set_position parser.cursor saved_pos;
