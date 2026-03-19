@@ -750,16 +750,20 @@ and parse_arrow_type parser =
             let colon = consume parser in
             let trivia_after_colon = consume_trivia parser in
             
-            (* Check if this looks like a type context, not an expression *)
-            (* In signatures/type contexts, label:type is valid *)
-            (* We'll tentatively parse it as labeled *)
-            let typ = parse_tuple_type parser in
-            
-            ([ make_token parser label ]
-            @ tokens_to_green parser trivia_after_label
-            @ [ make_token parser colon ]
-            @ tokens_to_green parser trivia_after_colon,
-            typ)
+            if peek_kind parser = Token.Gt then (
+              Token_cursor.set_position parser.cursor saved_pos;
+              ([], parse_tuple_type parser))
+            else (
+              (* Check if this looks like a type context, not an expression *)
+              (* In signatures/type contexts, label:type is valid *)
+              (* We'll tentatively parse it as labeled *)
+              let typ = parse_tuple_type parser in
+              
+              ([ make_token parser label ]
+              @ tokens_to_green parser trivia_after_label
+              @ [ make_token parser colon ]
+              @ tokens_to_green parser trivia_after_colon,
+              typ))
         | _ ->
             (* Not a labeled param, restore and parse normally *)
             Token_cursor.set_position parser.cursor saved_pos;
@@ -843,6 +847,7 @@ and parse_tuple_type parser =
 and parse_parametric_type parser =
   let rec parse_with_arg arg_type =
     (* Check if followed by type constructor (for parametric types) *)
+    let trivia_after_arg_start = position parser in
     let trivia_after_arg = consume_trivia parser in
     
     match peek_kind parser with
@@ -877,6 +882,7 @@ and parse_parametric_type parser =
         parse_with_arg applied_type
     | _ ->
         (* No more constructors *)
+        let () = Token_cursor.set_position parser.cursor trivia_after_arg_start in
         arg_type
   in
   
@@ -2277,59 +2283,41 @@ and parse_record_pattern parser =
         (* Check for empty record {} *)
         if peek_kind parser = Token.CloseDelim Token.Brace then []
         else
-          (* Parse record field patterns separated by semicolons *)
-          let fields = ref [] in
-          let semis = ref [] in
-          let wildcard_opt = ref None in
-
           let first_field = parse_record_field_pattern parser in
-          fields := [ first_field ];
+          let content_parts = ref [ Ceibo.Green.Node first_field ] in
           let trivia_after_first = consume_trivia parser in
+          content_parts :=
+            !content_parts @ tokens_to_green parser trivia_after_first;
 
           while peek_kind parser = Token.Semi do
             let semi = consume parser in
-            semis := semi :: !semis;
-            let trivia = consume_trivia parser in
+            let trivia_after_semi = consume_trivia parser in
+            content_parts :=
+              !content_parts
+              @ [ make_token parser semi ]
+              @ tokens_to_green parser trivia_after_semi;
 
             (* Check for trailing semicolon, wildcard, or another field *)
             if peek_kind parser = Token.CloseDelim Token.Brace then ()
             else if peek_kind parser = Token.Underscore then (
               (* Record wildcard pattern: { field; _ } *)
               let underscore = consume parser in
-              wildcard_opt := Some underscore;
+              content_parts :=
+                !content_parts @ [ make_token parser underscore ];
               let trivia_after_wildcard = consume_trivia parser in
-              semis := List.rev_append trivia_after_wildcard (semi :: !semis)
+              content_parts :=
+                !content_parts @ tokens_to_green parser trivia_after_wildcard
             )
             else (
               let field = parse_record_field_pattern parser in
-              fields := field :: !fields;
-              let trivia2 = consume_trivia parser in
-              semis := List.rev_append trivia2 (semi :: !semis)
+              content_parts := !content_parts @ [ Ceibo.Green.Node field ];
+              let trivia_after_field = consume_trivia parser in
+              content_parts :=
+                !content_parts @ tokens_to_green parser trivia_after_field
             )
           done;
 
-          let field_list = List.rev !fields in
-          let semi_list = List.rev !semis in
-          let rest_parts = ref [] in
-          List.iteri
-            (fun i field ->
-              if i > 0 then
-                let semi = List.nth semi_list (i - 1) in
-                rest_parts :=
-                  Ceibo.Green.Node field :: make_token parser semi
-                  :: !rest_parts)
-            field_list;
-
-          (* Return content as list of green elements *)
-          let wildcard_tokens = 
-            match !wildcard_opt with
-            | None -> []
-            | Some wildcard_tok -> [ make_token parser wildcard_tok ]
-          in
-          [ Ceibo.Green.Node first_field ]
-          @ tokens_to_green parser trivia_after_first
-          @ List.rev !rest_parts
-          @ wildcard_tokens)
+          !content_parts)
   in
 
   make_node Syntax_kind.RECORD_PATTERN
@@ -3657,10 +3645,11 @@ and parse_postfix_expr parser =
     Grammar: expr ::= expr { argument }+ *)
 and parse_application_expr parser =
   let func = parse_postfix_expr parser in
+  let trivia_start = position parser in
   let trivia_after_func = consume_trivia parser in
 
   (* Keep parsing arguments while we can *)
-  let rec parse_args func_expr func_trivia =
+  let rec parse_args func_expr func_trivia_start func_trivia =
     (* Check if trivia contains a newline *)
     let has_newline =
       List.exists
@@ -3688,6 +3677,7 @@ and parse_application_expr parser =
     (* Don't parse as argument if we have newline + structure keyword *)
     if can_start_arg_expr parser && not (has_newline && is_structure_keyword) then
       let arg = parse_argument parser in
+      let trivia_after_arg_start = position parser in
       let trivia_after_arg = consume_trivia parser in
       (* Build application node: (f arg) *)
       let app_expr =
@@ -3697,20 +3687,23 @@ and parse_application_expr parser =
           @ [ Ceibo.Green.Node arg ])
       in
       (* Continue parsing more arguments: ((f arg1) arg2) ... *)
-      parse_args app_expr trivia_after_arg
-    else func_expr
+      parse_args app_expr trivia_after_arg_start trivia_after_arg
+    else (
+      Token_cursor.set_position parser.cursor func_trivia_start;
+      func_expr)
   in
-  parse_args func trivia_after_func
+  parse_args func trivia_start trivia_after_func
 
 (** Parse binary expression with precedence climbing. This handles expressions
     like: 1 + 2 * 3, x || y && z, etc. *)
 and parse_binary_expr parser min_prec =
   (* Parse left side (which may include function application) *)
   let left = parse_application_expr parser in
+  let trivia_after_left_start = position parser in
   let trivia_after_left = consume_trivia parser in
 
   (* Keep parsing operators while they have higher precedence *)
-  let rec climb left left_trivia =
+  let rec climb left left_trivia_start left_trivia =
     match operator_info (peek_kind parser) with
     | Some (prec, is_right_assoc) when prec >= min_prec ->
         let op = consume parser in
@@ -3782,6 +3775,7 @@ and parse_binary_expr parser min_prec =
           (* Normal case: parse right side *)
           let next_min_prec = if is_right_assoc then prec else prec + 1 in
           let right = parse_binary_expr parser next_min_prec in
+          let trivia_after_right_start = position parser in
           let trivia_after_right = consume_trivia parser in
 
           (* Build binary expression node *)
@@ -3795,19 +3789,21 @@ and parse_binary_expr parser min_prec =
           in
 
           (* Continue climbing with the new left side *)
-          climb bin_expr trivia_after_right
+          climb bin_expr trivia_after_right_start trivia_after_right
     | _ ->
         (* No more operators, return current expression *)
+        let () = Token_cursor.set_position parser.cursor left_trivia_start in
         left
   in
 
-  climb left trivia_after_left
+  climb left trivia_after_left_start trivia_after_left
 
 (** Parse tuple expression: e1, e2, e3
     This is lower precedence than binary operators.
     Grammar: expr ::= expr { "," expr }+ *)
 and parse_tuple_expr parser =
   let first = parse_binary_expr parser 0 in
+  let trivia_after_first_start = position parser in
   let trivia_after_first = consume_trivia parser in
 
   (* Check if we have a comma (tuple) *)
@@ -3841,6 +3837,7 @@ and parse_tuple_expr parser =
       make_node Syntax_kind.TUPLE_EXPR elements
   | _ ->
       (* Not a tuple, just return the expression *)
+      let () = Token_cursor.set_position parser.cursor trivia_after_first_start in
       first
 
 (** Parse expression (top-level entry point) *)
@@ -3849,6 +3846,7 @@ and parse_expr parser = parse_sequence_expr parser
 (** Parse assignment expression: lvalue <- expr or ref := expr *)
 and parse_assign_expr parser =
   let left = parse_tuple_expr parser in
+  let trivia_after_left_start = position parser in
   let trivia_after_left = consume_trivia parser in
   
   (* Check for assignment operator *)
@@ -3865,6 +3863,7 @@ and parse_assign_expr parser =
       @ tokens_to_green parser trivia_after_arrow
       @ [ Ceibo.Green.Node right ])
   | _ ->
+    let () = Token_cursor.set_position parser.cursor trivia_after_left_start in
     left
 
 (** Parse sequence expression: expr1; expr2; expr3 *)
@@ -4404,26 +4403,35 @@ and parse_record_expr parser =
           let with_kw = consume parser in
           let trivia_after_with = consume_trivia parser in
 
-          (* Parse field assignments *)
-          let fields = ref [] in
-          let semis = ref [] in
+          let content_parts =
+            ref
+              ([ Ceibo.Green.Node first_expr ]
+              @ tokens_to_green parser trivia_after_first
+              @ [ make_token parser with_kw ]
+              @ tokens_to_green parser trivia_after_with)
+          in
 
           let rec parse_fields () =
             if
               peek_kind parser = Token.CloseDelim Token.Brace
               || peek_kind parser = Token.EOF
             then ()
-            else
+            else (
               let field = parse_record_field parser in
-              fields := field :: !fields;
-              let trivia = consume_trivia parser in
+              content_parts := !content_parts @ [ Ceibo.Green.Node field ];
+              let trivia_after_field = consume_trivia parser in
+              content_parts :=
+                !content_parts @ tokens_to_green parser trivia_after_field;
 
               if peek_kind parser = Token.Semi then (
                 let semi = consume parser in
-                semis := semi :: !semis;
-                let trivia2 = consume_trivia parser in
+                let trivia_after_semi = consume_trivia parser in
+                content_parts :=
+                  !content_parts
+                  @ [ make_token parser semi ]
+                  @ tokens_to_green parser trivia_after_semi;
                 if peek_kind parser != Token.CloseDelim Token.Brace then
-                  parse_fields ())
+                  parse_fields ()))
           in
           parse_fields ();
 
@@ -4437,40 +4445,35 @@ and parse_record_expr parser =
           make_node Syntax_kind.RECORD_UPDATE_EXPR
             ([ make_token parser open_brace ]
             @ tokens_to_green parser trivia_after_open
-            @ [ Ceibo.Green.Node first_expr ]
-            @ tokens_to_green parser trivia_after_first
-            @ [ make_token parser with_kw ]
-            @ tokens_to_green parser trivia_after_with
-            @ List.flatten
-                (List.mapi
-                   (fun i field ->
-                     if i = 0 then [ Ceibo.Green.Node field ]
-                     else
-                       [
-                         make_token parser (List.nth (List.rev !semis) (i - 1));
-                         Ceibo.Green.Node field;
-                       ])
-                   (List.rev !fields))
+            @ !content_parts
             @ tokens_to_green parser trivia_before_close
             @ [ make_token parser close_brace ]))
         else
           (* Regular record: { field = value; ... } *)
           (* The first_expr is actually a field *)
-          let fields = ref [ first_expr ] in
-          let semis = ref [] in
+          let content_parts =
+            ref
+              ([ Ceibo.Green.Node first_expr ]
+              @ tokens_to_green parser trivia_after_first)
+          in
 
           let rec parse_fields () =
             if peek_kind parser = Token.Semi then (
               let semi = consume parser in
-              semis := semi :: !semis;
-              let trivia = consume_trivia parser in
+              let trivia_after_semi = consume_trivia parser in
+              content_parts :=
+                !content_parts
+                @ [ make_token parser semi ]
+                @ tokens_to_green parser trivia_after_semi;
 
               if peek_kind parser = Token.CloseDelim Token.Brace then ()
-              else
+              else (
                 let field = parse_record_field parser in
-                fields := field :: !fields;
-                let trivia2 = consume_trivia parser in
-                parse_fields ())
+                content_parts := !content_parts @ [ Ceibo.Green.Node field ];
+                let trivia_after_field = consume_trivia parser in
+                content_parts :=
+                  !content_parts @ tokens_to_green parser trivia_after_field;
+                parse_fields ()))
           in
           parse_fields ();
 
@@ -4484,16 +4487,7 @@ and parse_record_expr parser =
           make_node Syntax_kind.RECORD_EXPR
             ([ make_token parser open_brace ]
             @ tokens_to_green parser trivia_after_open
-            @ List.flatten
-                (List.mapi
-                   (fun i field ->
-                     if i = 0 then [ Ceibo.Green.Node field ]
-                     else
-                       [
-                         make_token parser (List.nth (List.rev !semis) (i - 1));
-                         Ceibo.Green.Node field;
-                       ])
-                   (List.rev !fields))
+            @ !content_parts
             @ tokens_to_green parser trivia_before_close
             @ [ make_token parser close_brace ])
   | _ ->
@@ -6123,6 +6117,7 @@ and parse_let_binding parser =
           in
           
           (* Check for 'and' to form mutually recursive/parallel bindings *)
+          let trivia_start = position parser in
           let trivia_after_first = consume_trivia parser in
           let rec parse_and_bindings acc =
             match peek_kind parser with
@@ -6253,6 +6248,7 @@ and parse_let_binding parser =
           
           (* If we found 'and' bindings, wrap in MUTUAL, else return single *)
           if and_bindings = [] then
+            let () = Token_cursor.set_position parser.cursor trivia_start in
             first_binding
           else
             make_node Syntax_kind.LET_MUTUAL_DECL
@@ -6886,7 +6882,8 @@ and parse_type_decl parser =
                           @ representation
                       | _ ->
                           (* Just type equation, no representation *)
-                          [ Ceibo.Green.Node type_expr ])
+                          [ Ceibo.Green.Node type_expr ]
+                          @ tokens_to_green parser trivia_after_expr)
                     else
                       (* Variant constructor like Some or None *)
                       parse_variant_representation parser
@@ -6949,7 +6946,8 @@ and parse_type_decl parser =
                         @ representation
                         | _ ->
                             (* Just type equation, no representation *)
-                            [ Ceibo.Green.Node type_expr ]))
+                            [ Ceibo.Green.Node type_expr ]
+                            @ tokens_to_green parser trivia_after_expr))
               in
 
               (* Parse optional type constraints *)
@@ -6977,6 +6975,7 @@ and parse_type_decl parser =
               in
               
               (* Check for 'and' to form mutually recursive types *)
+              let trivia_after_first_start = position parser in
               let trivia_after_first = consume_trivia parser in
               let rec parse_and_types acc =
                 match peek_kind parser with
@@ -7071,6 +7070,7 @@ and parse_type_decl parser =
               
               (* If we found 'and' types, wrap in MUTUAL, else return single *)
               if and_decls = [] then
+                let () = Token_cursor.set_position parser.cursor trivia_after_first_start in
                 first_type_decl
               else
                 make_node Syntax_kind.TYPE_MUTUAL_DECL
@@ -7699,7 +7699,7 @@ and parse_struct_expr parser =
         let item = parse_structure_item ~in_block:true parser in
         let trivia = consume_trivia parser in
         parse_items
-          ((Ceibo.Green.Node item :: tokens_to_green parser trivia) @ acc)
+          ((tokens_to_green parser trivia @ [ Ceibo.Green.Node item ]) @ acc)
   in
   let items = parse_items [] in
 
@@ -7744,7 +7744,7 @@ and parse_sig_expr parser =
         let item = parse_signature_item parser in
         let trivia = consume_trivia parser in
         parse_items
-          ((Ceibo.Green.Node item :: tokens_to_green parser trivia) @ acc)
+          ((tokens_to_green parser trivia @ [ Ceibo.Green.Node item ]) @ acc)
   in
   let items = parse_items [] in
 
@@ -8318,12 +8318,12 @@ and parse ~parse_item ~source ~tokens =
       let semi = consume parser in
       let trivia = consume_trivia parser in
       parse_items
-        ((make_token parser semi :: tokens_to_green parser trivia) @ acc)
+        ((tokens_to_green parser trivia @ [ make_token parser semi ]) @ acc)
     else
       let item = parse_item parser in
       let trivia = consume_trivia parser in
       parse_items
-        ((Ceibo.Green.Node item :: tokens_to_green parser trivia) @ acc)
+        ((tokens_to_green parser trivia @ [ Ceibo.Green.Node item ]) @ acc)
   in
   let items = parse_items [] in
 

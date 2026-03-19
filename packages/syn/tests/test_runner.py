@@ -423,8 +423,41 @@ class TestRunner:
         
         # Compare output
         return actual == expected
+
+    def refresh_fixture_if_clean(self, fixture_path: Path) -> bool:
+        expected_path = Path(str(fixture_path) + ".expected")
+        output, returncode = self.run_syn(["parse", "--json"], fixture_path)
+        if returncode != 0:
+            return False
+
+        actual = output.strip()
+        if '"ERROR"' in actual or '"MISSING"' in actual:
+            return False
+        if '"width":0,"children":[]' in actual:
+            return False
+
+        try:
+            parsed = json.loads(actual)
+        except json.JSONDecodeError:
+            return False
+
+        diagnostics = parsed.get("diagnostics", [])
+        if diagnostics:
+            return False
+
+        covered, total = self.debug_file(fixture_path, verbose=False)
+        if covered != total:
+            return False
+
+        expected_path.write_text(output if output.endswith('\n') else output + '\n')
+        return True
     
-    def run_fixtures(self, filter_pattern: Optional[str] = None, verbose: bool = False) -> Tuple[int, int]:
+    def run_fixtures(
+        self,
+        filter_pattern: Optional[str] = None,
+        verbose: bool = False,
+        refresh_clean: bool = False,
+    ) -> Tuple[int, int]:
         """Run fixture tests. Returns (passed, failed)."""
         print(f"\n{BLUE}Running fixture tests...{NC}")
         if filter_pattern:
@@ -456,10 +489,16 @@ class TestRunner:
                 if verbose:
                     print(f"{basename}... {GREEN}PASSED{NC}")
             else:
-                failed += 1
-                failed_summaries.append(self.fixture_failure_summary(fixture))
-                if verbose:
-                    print(f"{basename}... {RED}FAILED{NC}")
+                refreshed = refresh_clean and self.refresh_fixture_if_clean(fixture)
+                if refreshed:
+                    passed += 1
+                    if verbose:
+                        print(f"{basename}... {YELLOW}REFRESHED{NC}")
+                else:
+                    failed += 1
+                    failed_summaries.append(self.fixture_failure_summary(fixture))
+                    if verbose:
+                        print(f"{basename}... {RED}FAILED{NC}")
         
         if failed_summaries:
             print(f"\n{YELLOW}Failed fixtures:{NC}")
@@ -686,6 +725,12 @@ def main():
         action="store_true",
         help="Verbose output"
     )
+
+    parser.add_argument(
+        "--refresh-clean",
+        action="store_true",
+        help="Refresh stale fixture expectations when actual output has full coverage and no diagnostics"
+    )
     
     args = parser.parse_args()
     
@@ -716,7 +761,9 @@ def main():
         runner.debug_file(file_path, verbose=True)
     
     elif args.command == "fixtures":
-        passed, failed = runner.run_fixtures(args.filter, verbose=args.verbose)
+        passed, failed = runner.run_fixtures(
+            args.filter, verbose=args.verbose, refresh_clean=args.refresh_clean
+        )
         if failed > 0:
             exit_code = 1
     
@@ -735,7 +782,9 @@ def main():
         print("=" * 80)
         
         # Run fixtures
-        fix_passed, fix_failed = runner.run_fixtures(verbose=args.verbose)
+        fix_passed, fix_failed = runner.run_fixtures(
+            verbose=args.verbose, refresh_clean=args.refresh_clean
+        )
         
         # Run diagnostics
         diag_passed, diag_failed = runner.run_diagnostics(verbose=args.verbose)
