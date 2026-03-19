@@ -26,6 +26,7 @@ Usage:
 import sys
 import json
 import subprocess
+import shutil
 from pathlib import Path
 from typing import List, Dict, Tuple, Optional
 import argparse
@@ -76,6 +77,24 @@ class TestRunner:
             return json.loads(output.strip())
         except json.JSONDecodeError:
             return None
+
+    def format_expected_json(self, raw_json: str) -> str:
+        """Pretty-print expected JSON, preferring jq for readability."""
+        stripped = raw_json.strip()
+        jq_path = shutil.which("jq")
+        if jq_path:
+            result = subprocess.run(
+                [jq_path, "."],
+                input=stripped,
+                capture_output=True,
+                text=True,
+                timeout=5.0,
+            )
+            if result.returncode == 0:
+                return result.stdout.rstrip() + "\n"
+
+        parsed = json.loads(stripped)
+        return json.dumps(parsed, indent=2) + "\n"
     
     def extract_tokens_from_red_tree(self, node, tokens_list):
         """Recursively extract all tokens from a red tree node."""
@@ -402,9 +421,7 @@ class TestRunner:
         if not expected_path.exists():
             if verbose:
                 print(f"{YELLOW}Creating .expected file for {fixture_path.name}{NC}")
-            with open(expected_path, 'w') as f:
-                f.write(actual)
-                f.write('\n')
+            expected_path.write_text(self.format_expected_json(actual))
             return True
         
         # Read expected
@@ -449,7 +466,7 @@ class TestRunner:
         if covered != total:
             return False
 
-        expected_path.write_text(output if output.endswith('\n') else output + '\n')
+        expected_path.write_text(self.format_expected_json(actual))
         return True
     
     def run_fixtures(

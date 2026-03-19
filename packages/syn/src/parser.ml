@@ -1926,7 +1926,7 @@ and can_start_expr parser =
   | Token.Keyword Keyword.While | Token.Keyword Keyword.For
   | Token.Keyword Keyword.Assert | Token.Keyword Keyword.Lazy
   | Token.Keyword Keyword.New | Token.OpenDelim Token.ObjectEnd
-  | Token.Backtick | Token.Minus | Token.MinusDot
+  | Token.Backtick | Token.Plus | Token.PlusDot | Token.Minus | Token.MinusDot
   | Token.Bang | Token.Tilde | Token.Question ->
       true
   | _ -> false
