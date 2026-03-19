@@ -59,6 +59,10 @@ type t =
   | ATTRIBUTE_EXPR (* e [@attr] or e [@@attr] *)
   | EXTENSION_EXPR (* [%ext ...] *)
   | OBJECT_EXPR (* object ... end *)
+  | OBJECT_SELF (* object (self) ... end *)
+  | OBJECT_METHOD (* method name = expr *)
+  | OBJECT_VAL (* val x = expr *)
+  | OBJECT_INHERIT (* inherit expr *)
   | OBJECT_UPDATE_EXPR (* {< field = value >} *)
   | METHOD_CALL_EXPR (* obj#method *)
   | NEW_EXPR (* new class_name *)
@@ -107,6 +111,8 @@ type t =
   | TYPE_EXTENSIBLE (* .. for extensible variants *)
   | TYPE_RECORD (* { field1: int; field2: string } *)
   | TYPE_RECORD_FIELD (* field: int *)
+  | OBJECT_TYPE (* < m : int; n : string > *)
+  | OBJECT_TYPE_FIELD (* m : int *)
   | TYPE_CONSTRAINT (* constraint 'a = int *)
   | POLY_TYPE (* 'a 'b. type - polymorphic type with explicit quantifiers *)
   | MODULE_TYPE_EXPR (* S | S with type t = int *)
@@ -199,6 +205,10 @@ let to_string = function
   | ATTRIBUTE_EXPR -> "ATTRIBUTE_EXPR"
   | EXTENSION_EXPR -> "EXTENSION_EXPR"
   | OBJECT_EXPR -> "OBJECT_EXPR"
+  | OBJECT_SELF -> "OBJECT_SELF"
+  | OBJECT_METHOD -> "OBJECT_METHOD"
+  | OBJECT_VAL -> "OBJECT_VAL"
+  | OBJECT_INHERIT -> "OBJECT_INHERIT"
   | OBJECT_UPDATE_EXPR -> "OBJECT_UPDATE_EXPR"
   | METHOD_CALL_EXPR -> "METHOD_CALL_EXPR"
   | NEW_EXPR -> "NEW_EXPR"
@@ -241,6 +251,8 @@ let to_string = function
   | TYPE_EXTENSIBLE -> "TYPE_EXTENSIBLE"
   | TYPE_RECORD -> "TYPE_RECORD"
   | TYPE_RECORD_FIELD -> "TYPE_RECORD_FIELD"
+  | OBJECT_TYPE -> "OBJECT_TYPE"
+  | OBJECT_TYPE_FIELD -> "OBJECT_TYPE_FIELD"
   | TYPE_CONSTRAINT -> "TYPE_CONSTRAINT"
   | POLY_TYPE -> "POLY_TYPE"
   | MODULE_TYPE_EXPR -> "MODULE_TYPE_EXPR"
@@ -324,6 +336,10 @@ let from_string = function
   | "ATTRIBUTE_EXPR" -> Some ATTRIBUTE_EXPR
   | "EXTENSION_EXPR" -> Some EXTENSION_EXPR
   | "OBJECT_EXPR" -> Some OBJECT_EXPR
+  | "OBJECT_SELF" -> Some OBJECT_SELF
+  | "OBJECT_METHOD" -> Some OBJECT_METHOD
+  | "OBJECT_VAL" -> Some OBJECT_VAL
+  | "OBJECT_INHERIT" -> Some OBJECT_INHERIT
   | "OBJECT_UPDATE_EXPR" -> Some OBJECT_UPDATE_EXPR
   | "METHOD_CALL_EXPR" -> Some METHOD_CALL_EXPR
   | "NEW_EXPR" -> Some NEW_EXPR
@@ -364,6 +380,8 @@ let from_string = function
   | "TYPE_EXTENSIBLE" -> Some TYPE_EXTENSIBLE
   | "TYPE_RECORD" -> Some TYPE_RECORD
   | "TYPE_RECORD_FIELD" -> Some TYPE_RECORD_FIELD
+  | "OBJECT_TYPE" -> Some OBJECT_TYPE
+  | "OBJECT_TYPE_FIELD" -> Some OBJECT_TYPE_FIELD
   | "TYPE_CONSTRAINT" -> Some TYPE_CONSTRAINT
   | "POLY_TYPE" -> Some POLY_TYPE
   | "MODULE_TYPE_EXPR" -> Some MODULE_TYPE_EXPR
