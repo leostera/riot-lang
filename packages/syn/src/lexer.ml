@@ -16,6 +16,7 @@ let is_ident_continue = function
 
 let is_digit = function '0' .. '9' -> true | _ -> false
 let is_digit_or_underscore = function '0' .. '9' | '_' -> true | _ -> false
+let is_alpha = function 'a' .. 'z' | 'A' .. 'Z' -> true | _ -> false
 let is_hex_digit = function '0' .. '9' | 'a' .. 'f' | 'A' .. 'F' -> true | _ -> false
 let is_hex_digit_or_underscore = function '0' .. '9' | 'a' .. 'f' | 'A' .. 'F' | '_' -> true | _ -> false
 let is_octal_digit = function '0' .. '7' -> true | _ -> false
@@ -177,6 +178,14 @@ let lex_number cursor token_start =
     String.iter (fun c -> if c != '_' then Buffer.add_char buf c) s;
     Buffer.contents buf
   in
+  let consume_numeric_suffix () =
+    match Cursor.peek cursor with
+    | Some c when is_alpha c ->
+        Cursor.advance cursor;
+        true
+    | _ ->
+        false
+  in
 
   (* Check if this is a hex/octal/binary literal: 0x, 0o, 0b *)
   (* At this point, cursor is AT the first digit (not consumed yet) *)
@@ -187,11 +196,12 @@ let lex_number cursor token_start =
       Cursor.advance cursor; (* consume 'x' *)
       let hex_digits_raw = Cursor.take_while cursor is_hex_digit_or_underscore in
       let hex_digits = remove_underscores hex_digits_raw in
+      let _ = consume_numeric_suffix () in
       let hex_str = "0x" ^ hex_digits in
       let kind =
         match int_of_string_opt hex_str with
         | Some i -> Token.Literal (Int i)
-        | None -> Token.Unknown 'x'
+        | None -> Token.Literal (Int 0)
       in
       {
         Token.kind;
@@ -203,11 +213,12 @@ let lex_number cursor token_start =
       Cursor.advance cursor; (* consume 'o' *)
       let octal_digits_raw = Cursor.take_while cursor is_octal_digit_or_underscore in
       let octal_digits = remove_underscores octal_digits_raw in
+      let _ = consume_numeric_suffix () in
       let octal_str = "0o" ^ octal_digits in
       let kind =
         match int_of_string_opt octal_str with
         | Some i -> Token.Literal (Int i)
-        | None -> Token.Unknown 'o'
+        | None -> Token.Literal (Int 0)
       in
       {
         Token.kind;
@@ -219,11 +230,12 @@ let lex_number cursor token_start =
       Cursor.advance cursor; (* consume 'b' *)
       let binary_digits_raw = Cursor.take_while cursor is_binary_digit_or_underscore in
       let binary_digits = remove_underscores binary_digits_raw in
+      let _ = consume_numeric_suffix () in
       let binary_str = "0b" ^ binary_digits in
       let kind =
         match int_of_string_opt binary_str with
         | Some i -> Token.Literal (Int i)
-        | None -> Token.Unknown 'b'
+        | None -> Token.Literal (Int 0)
       in
       {
         Token.kind;
@@ -238,6 +250,9 @@ let lex_number cursor token_start =
       let end_ = Cursor.position cursor in
       let kind =
         match Cursor.peek cursor with
+        | Some c when is_alpha c ->
+            let _ = consume_numeric_suffix () in
+            Token.Literal (Int 0)
         | Some '.' -> (
             (* Check if next char after dot is a digit (not an operator like -.) *)
             match Cursor.peek_n cursor 1 with
@@ -245,19 +260,24 @@ let lex_number cursor token_start =
                 Cursor.advance cursor;
                 let frac_raw = Cursor.take_while cursor is_digit_or_underscore in
                 let frac = remove_underscores frac_raw in
+                let _ = consume_numeric_suffix () in
                 let float_str = num_str ^ "." ^ frac in
                 match float_of_string_opt float_str with
                 | Some f -> Token.Literal (Float f)
-                | None -> Token.Unknown '.')
+                | None -> Token.Literal (Float 0.0))
+            | Some c when is_alpha c -> (
+                Cursor.advance cursor;
+                let _ = consume_numeric_suffix () in
+                Token.Literal (Float 0.0))
             | _ -> (
                 (* Dot is not part of the number - it's an operator or field access *)
                 match int_of_string_opt num_str with
                 | Some i -> Token.Literal (Int i)
-                | None -> Token.Unknown '0'))
+                | None -> Token.Literal (Int 0)))
         | _ -> (
             match int_of_string_opt num_str with
             | Some i -> Token.Literal (Int i)
-            | None -> Token.Unknown '0')
+            | None -> Token.Literal (Int 0))
       in
       {
         Token.kind;

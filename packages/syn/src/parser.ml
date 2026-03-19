@@ -990,6 +990,33 @@ and parse_parametric_type parser =
         in
         (* Recursively check for more applications (e.g., int list option) *)
         parse_with_arg applied_type
+    | Token.Hash ->
+        let hash = consume parser in
+        let trivia_after_hash = consume_trivia parser in
+        let class_type_name =
+          match peek_kind parser with
+          | Token.Ident _ ->
+              let ident = consume parser in
+              [ make_token parser hash ]
+              @ tokens_to_green parser trivia_after_hash
+              @ [ make_token parser ident ]
+          | _ ->
+              let found = peek parser in
+              let diagnostic =
+                Diagnostic.invalid_type_expression ~found
+                  ~text:(token_text parser found)
+                  ~span:(expected_span parser)
+              in
+              report_diagnostic parser diagnostic;
+              [ make_token parser hash ]
+        in
+        let applied_type =
+          make_node Syntax_kind.TYPE_CONSTR
+            ([ Ceibo.Green.Node arg_type ]
+            @ tokens_to_green parser trivia_after_arg
+            @ class_type_name)
+        in
+        parse_with_arg applied_type
     | _ ->
         (* No more constructors *)
         let () = Token_cursor.set_position parser.cursor trivia_after_arg_start in
@@ -1027,6 +1054,27 @@ and parse_primary_type parser =
       in
       
       let path = parse_type_path [] in
+      make_node Syntax_kind.TYPE_CONSTR path
+  | Token.Hash ->
+      let hash = consume parser in
+      let trivia_after_hash = consume_trivia parser in
+      let path =
+        match peek_kind parser with
+        | Token.Ident _ ->
+            let ident = consume parser in
+            [ make_token parser hash ]
+            @ tokens_to_green parser trivia_after_hash
+            @ [ make_token parser ident ]
+        | _ ->
+            let found = peek parser in
+            let diagnostic =
+              Diagnostic.invalid_type_expression ~found
+                ~text:(token_text parser found)
+                ~span:(expected_span parser)
+            in
+            make_error_node parser ~diagnostic ~consumed_tokens:[ hash ]
+            |> fun error -> [ Ceibo.Green.Node error ]
+      in
       make_node Syntax_kind.TYPE_CONSTR path
   | Token.OpenDelim Token.Bracket ->
       if is_extension_start parser then parse_extension parser
@@ -3725,7 +3773,8 @@ and parse_primary_expr parser =
   | Token.Bang
   | Token.Plus
   | Token.PlusDot
-  | Token.Tilde ->
+  | Token.Tilde
+  | Token.Question ->
       let op = consume parser in
       let trivia_after_op = consume_trivia parser in
       let operand = parse_primary_expr parser in
@@ -3755,6 +3804,7 @@ and parse_primary_expr parser =
         @ tokens_to_green parser trivia_after_new
         @ [ Ceibo.Green.Node class_path ])
   | Token.OpenDelim Token.ObjectEnd -> parse_object_expr parser
+  | Token.Hash -> parse_hash_ident_expr parser
   | Token.Keyword Keyword.Try -> parse_try_expr parser
   | Token.Keyword Keyword.While -> parse_while_expr parser
   | Token.Keyword Keyword.For -> parse_for_expr parser
@@ -3897,7 +3947,21 @@ and parse_postfix_expr parser =
         let trivia_after_hash = consume_trivia parser in
         let method_name =
           match peek_kind parser with
-          | Token.Ident _ -> consume parser
+          | Token.Ident _ ->
+              [ make_token parser (consume parser) ]
+          | tok when is_operator_token tok ->
+              let rec collect acc =
+                match peek_kind parser with
+                | Token.Ident _ ->
+                    let ident = consume parser in
+                    List.rev ([ make_token parser ident ] @ acc)
+                | tok when is_operator_token tok ->
+                    let op = consume parser in
+                    collect (make_token parser op :: acc)
+                | _ ->
+                    List.rev acc
+              in
+              collect []
           | _ ->
               let found = peek parser in
               let diagnostic =
@@ -3905,7 +3969,7 @@ and parse_postfix_expr parser =
                   ~span:(expected_span parser)
               in
               report_diagnostic parser diagnostic;
-              found
+              [ make_token parser found ]
         in
         let trivia_after_method = consume_trivia parser in
         let method_call =
@@ -3913,7 +3977,7 @@ and parse_postfix_expr parser =
             ([ Ceibo.Green.Node expr ]
             @ [ make_token parser hash ]
             @ tokens_to_green parser trivia_after_hash
-            @ [ make_token parser method_name ]
+            @ method_name
             @ tokens_to_green parser trivia_after_method)
         in
         parse_postfix method_call
@@ -8513,6 +8577,23 @@ and parse_ident_like parser =
           ~span:(expected_span parser)
       in
       make_error_node parser ~diagnostic ~consumed_tokens:[]
+
+(** Parse a hash-prefixed identifier/operator sequence like #x, ##x, or #-#x. *)
+and parse_hash_ident_expr parser =
+  let hash = consume parser in
+  let rec collect acc =
+    match peek_kind parser with
+    | Token.Ident _ ->
+        let ident = consume parser in
+        List.rev ([ make_token parser ident ] @ acc)
+    | tok when is_operator_token tok ->
+        let op = consume parser in
+        collect (make_token parser op :: acc)
+    | _ ->
+        List.rev acc
+  in
+  let suffix = collect [ make_token parser hash ] in
+  make_node Syntax_kind.IDENT_EXPR suffix
 
 (** Parse class declaration: class ['a] c = expr or class c : typ *)
 and parse_class_decl parser =

@@ -17,162 +17,134 @@
         "width": 2
       },
       {
-        "type": "token",
-        "kind": "WHITESPACE",
-        "text": " ",
-        "width": 1
-      },
-      {
         "type": "node",
-        "kind": "ERROR",
-        "width": 5,
+        "kind": "CLASS_DECL",
+        "width": 30,
         "children": [
           {
             "type": "token",
             "kind": "IDENT_EXPR",
             "text": "class",
             "width": 5
-          }
-        ]
-      },
-      {
-        "type": "node",
-        "kind": "ERROR",
-        "width": 1,
-        "children": [
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
           {
             "type": "token",
             "kind": "IDENT_EXPR",
             "text": "[",
             "width": 1
-          }
-        ]
-      },
-      {
-        "type": "node",
-        "kind": "ERROR",
-        "width": 1,
-        "children": [
+          },
           {
-            "type": "token",
-            "kind": "IDENT_EXPR",
-            "text": "'",
-            "width": 1
-          }
-        ]
-      },
-      {
-        "type": "node",
-        "kind": "ERROR",
-        "width": 1,
-        "children": [
-          {
-            "type": "token",
-            "kind": "IDENT_EXPR",
-            "text": "a",
-            "width": 1
-          }
-        ]
-      },
-      {
-        "type": "token",
-        "kind": "WHITESPACE",
-        "text": " ",
-        "width": 1
-      },
-      {
-        "type": "node",
-        "kind": "ERROR",
-        "width": 1,
-        "children": [
+            "type": "node",
+            "kind": "TYPE_PARAM",
+            "width": 2,
+            "children": [
+              {
+                "type": "node",
+                "kind": "TYPE_VAR",
+                "width": 2,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "'",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "a",
+                    "width": 1
+                  }
+                ]
+              }
+            ]
+          },
           {
             "type": "token",
             "kind": "IDENT_EXPR",
             "text": "]",
             "width": 1
-          }
-        ]
-      },
-      {
-        "type": "token",
-        "kind": "WHITESPACE",
-        "text": " ",
-        "width": 1
-      },
-      {
-        "type": "node",
-        "kind": "ERROR",
-        "width": 4,
-        "children": [
+          },
           {
             "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "node",
             "kind": "IDENT_EXPR",
-            "text": "list",
-            "width": 4
-          }
-        ]
-      },
-      {
-        "type": "token",
-        "kind": "WHITESPACE",
-        "text": " ",
-        "width": 1
-      },
-      {
-        "type": "node",
-        "kind": "ERROR",
-        "width": 1,
-        "children": [
+            "width": 4,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "list",
+                "width": 4
+              }
+            ]
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
           {
             "type": "token",
             "kind": "IDENT_EXPR",
             "text": "=",
             "width": 1
-          }
-        ]
-      },
-      {
-        "type": "token",
-        "kind": "WHITESPACE",
-        "text": " ",
-        "width": 1
-      },
-      {
-        "type": "node",
-        "kind": "ERROR",
-        "width": 6,
-        "children": [
+          },
           {
             "type": "token",
-            "kind": "IDENT_EXPR",
-            "text": "object",
-            "width": 6
-          }
-        ]
-      },
-      {
-        "type": "token",
-        "kind": "WHITESPACE",
-        "text": "\n\n",
-        "width": 2
-      },
-      {
-        "type": "node",
-        "kind": "ERROR",
-        "width": 3,
-        "children": [
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "OBJECT_EXPR",
+            "width": 10,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "object",
+                "width": 6
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "end",
+                "width": 3
+              }
+            ]
+          },
           {
             "type": "token",
-            "kind": "IDENT_EXPR",
-            "text": "end",
-            "width": 3
+            "kind": "WHITESPACE",
+            "text": "\n\n",
+            "width": 2
           }
         ]
       },
       {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 16,
+        "width": 254,
         "children": [
           {
             "type": "token",
@@ -220,22 +192,22 @@
           },
           {
             "type": "node",
-            "kind": "IDENT_EXPR",
-            "width": 1,
+            "kind": "MODULE_PATH",
+            "width": 2,
             "children": [
               {
                 "type": "token",
                 "kind": "IDENT_EXPR",
                 "text": "t",
                 "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
               }
             ]
-          },
-          {
-            "type": "token",
-            "kind": "WHITESPACE",
-            "text": " ",
-            "width": 1
           },
           {
             "type": "token",
@@ -251,124 +223,110 @@
           },
           {
             "type": "node",
-            "kind": "TYPE_CONSTR",
-            "width": 4,
+            "kind": "TYPE_ALIAS",
+            "width": 15,
             "children": [
               {
-                "type": "token",
-                "kind": "IDENT_EXPR",
-                "text": "int",
-                "width": 3
+                "type": "node",
+                "kind": "TYPE_CONSTR",
+                "width": 9,
+                "children": [
+                  {
+                    "type": "node",
+                    "kind": "TYPE_CONSTR",
+                    "width": 4,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "int",
+                        "width": 3
+                      },
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": " ",
+                        "width": 1
+                      }
+                    ]
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "#",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "list",
+                    "width": 4
+                  }
+                ]
               },
               {
                 "type": "token",
                 "kind": "WHITESPACE",
                 "text": " ",
                 "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "as",
+                "width": 2
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
+              {
+                "type": "node",
+                "kind": "TYPE_VAR",
+                "width": 2,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "'",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "a",
+                    "width": 1
+                  }
+                ]
               }
             ]
-          }
-        ]
-      },
-      {
-        "type": "node",
-        "kind": "ERROR",
-        "width": 1,
-        "children": [
+          },
           {
             "type": "token",
-            "kind": "IDENT_EXPR",
-            "text": "#",
+            "kind": "WHITESPACE",
+            "text": "\n",
             "width": 1
-          }
-        ]
-      },
-      {
-        "type": "token",
-        "kind": "WHITESPACE",
-        "text": " ",
-        "width": 1
-      },
-      {
-        "type": "node",
-        "kind": "ERROR",
-        "width": 4,
-        "children": [
+          },
           {
             "type": "token",
-            "kind": "IDENT_EXPR",
-            "text": "list",
-            "width": 4
-          }
-        ]
-      },
-      {
-        "type": "token",
-        "kind": "WHITESPACE",
-        "text": " ",
-        "width": 1
-      },
-      {
-        "type": "node",
-        "kind": "ERROR",
-        "width": 2,
-        "children": [
+            "kind": "COMMENT",
+            "text": "(* Here, \"int #list\" must be understood as a type.\n     Another interpretation would be to understand just \"int\"\n     as a type and view \"#list\" as a toplevel directive.\n     A syntax error would then be reported at \"as\". *)",
+            "width": 224
+          },
           {
             "type": "token",
-            "kind": "IDENT_EXPR",
-            "text": "as",
+            "kind": "WHITESPACE",
+            "text": "\n\n",
             "width": 2
           }
         ]
       },
       {
         "type": "node",
-        "kind": "ERROR",
-        "width": 1,
-        "children": [
-          {
-            "type": "token",
-            "kind": "IDENT_EXPR",
-            "text": "'",
-            "width": 1
-          }
-        ]
-      },
-      {
-        "type": "token",
-        "kind": "WHITESPACE",
-        "text": "\n\n",
-        "width": 2
-      },
-      {
-        "type": "token",
-        "kind": "COMMENT",
-        "text": "(* Here, \"int #list\" must be understood as a type.\n     Another interpretation would be to understand just \"int\"\n     as a type and view \"#list\" as a toplevel directive.\n     A syntax error would then be reported at \"as\". *)",
-        "width": 224
-      },
-      {
-        "type": "token",
-        "kind": "WHITESPACE",
-        "text": "\n",
-        "width": 1
-      },
-      {
-        "type": "node",
-        "kind": "ERROR",
-        "width": 1,
-        "children": [
-          {
-            "type": "token",
-            "kind": "IDENT_EXPR",
-            "text": "a",
-            "width": 1
-          }
-        ]
-      },
-      {
-        "type": "node",
         "kind": "TYPE_DECL",
-        "width": 14,
+        "width": 27,
         "children": [
           {
             "type": "token",
@@ -416,22 +374,22 @@
           },
           {
             "type": "node",
-            "kind": "IDENT_EXPR",
-            "width": 1,
+            "kind": "MODULE_PATH",
+            "width": 2,
             "children": [
               {
                 "type": "token",
                 "kind": "IDENT_EXPR",
                 "text": "u",
                 "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
               }
             ]
-          },
-          {
-            "type": "token",
-            "kind": "WHITESPACE",
-            "text": " ",
-            "width": 1
           },
           {
             "type": "token",
@@ -447,19 +405,82 @@
           },
           {
             "type": "node",
-            "kind": "TYPE_CONSTR",
-            "width": 2,
+            "kind": "TYPE_VARIANT_CONSTR",
+            "width": 15,
             "children": [
               {
-                "type": "token",
+                "type": "node",
                 "kind": "IDENT_EXPR",
-                "text": "A",
-                "width": 1
+                "width": 1,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "A",
+                    "width": 1
+                  }
+                ]
               },
               {
                 "type": "token",
                 "kind": "WHITESPACE",
                 "text": " ",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "of",
+                "width": 2
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
+              {
+                "type": "node",
+                "kind": "TYPE_CONSTR",
+                "width": 9,
+                "children": [
+                  {
+                    "type": "node",
+                    "kind": "TYPE_CONSTR",
+                    "width": 4,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "int",
+                        "width": 3
+                      },
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": " ",
+                        "width": 1
+                      }
+                    ]
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "#",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "list",
+                    "width": 4
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n",
                 "width": 1
               }
             ]
@@ -467,79 +488,9 @@
         ]
       },
       {
-        "type": "token",
-        "kind": "WHITESPACE",
-        "text": " ",
-        "width": 1
-      },
-      {
-        "type": "node",
-        "kind": "ERROR",
-        "width": 2,
-        "children": [
-          {
-            "type": "token",
-            "kind": "IDENT_EXPR",
-            "text": "of",
-            "width": 2
-          }
-        ]
-      },
-      {
-        "type": "token",
-        "kind": "WHITESPACE",
-        "text": " ",
-        "width": 1
-      },
-      {
-        "type": "node",
-        "kind": "ERROR",
-        "width": 3,
-        "children": [
-          {
-            "type": "token",
-            "kind": "IDENT_EXPR",
-            "text": "int",
-            "width": 3
-          }
-        ]
-      },
-      {
-        "type": "node",
-        "kind": "ERROR",
-        "width": 1,
-        "children": [
-          {
-            "type": "token",
-            "kind": "IDENT_EXPR",
-            "text": "#",
-            "width": 1
-          }
-        ]
-      },
-      {
-        "type": "token",
-        "kind": "WHITESPACE",
-        "text": "\n",
-        "width": 1
-      },
-      {
-        "type": "node",
-        "kind": "ERROR",
-        "width": 4,
-        "children": [
-          {
-            "type": "token",
-            "kind": "IDENT_EXPR",
-            "text": "list",
-            "width": 4
-          }
-        ]
-      },
-      {
         "type": "node",
         "kind": "TYPE_DECL",
-        "width": 14,
+        "width": 160,
         "children": [
           {
             "type": "token",
@@ -587,22 +538,22 @@
           },
           {
             "type": "node",
-            "kind": "IDENT_EXPR",
-            "width": 1,
+            "kind": "MODULE_PATH",
+            "width": 2,
             "children": [
               {
                 "type": "token",
                 "kind": "IDENT_EXPR",
                 "text": "v",
                 "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
               }
             ]
-          },
-          {
-            "type": "token",
-            "kind": "WHITESPACE",
-            "text": " ",
-            "width": 1
           },
           {
             "type": "token",
@@ -618,531 +569,139 @@
           },
           {
             "type": "node",
-            "kind": "TYPE_CONSTR",
-            "width": 2,
+            "kind": "TYPE_VARIANT_CONSTR",
+            "width": 148,
             "children": [
               {
-                "type": "token",
+                "type": "node",
                 "kind": "IDENT_EXPR",
-                "text": "A",
-                "width": 1
+                "width": 1,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "A",
+                    "width": 1
+                  }
+                ]
               },
               {
                 "type": "token",
                 "kind": "WHITESPACE",
                 "text": " ",
                 "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "of",
+                "width": 2
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
+              {
+                "type": "node",
+                "kind": "TYPE_TUPLE",
+                "width": 143,
+                "children": [
+                  {
+                    "type": "node",
+                    "kind": "TYPE_CONSTR",
+                    "width": 4,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "int",
+                        "width": 3
+                      },
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": " ",
+                        "width": 1
+                      }
+                    ]
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "*",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": "\n",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "COMMENT",
+                    "text": "(* TEST\n flags = \"-stop-after parsing -dparsetree\";\n setup-ocamlc.byte-build-env;\n ocamlc.byte;\n check-ocamlc.byte-output;\n*)",
+                    "width": 125
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": "\n\n",
+                    "width": 2
+                  },
+                  {
+                    "type": "node",
+                    "kind": "TYPE_CONSTR",
+                    "width": 9,
+                    "children": [
+                      {
+                        "type": "node",
+                        "kind": "TYPE_CONSTR",
+                        "width": 4,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "IDENT_EXPR",
+                            "text": "int",
+                            "width": 3
+                          },
+                          {
+                            "type": "token",
+                            "kind": "WHITESPACE",
+                            "text": " ",
+                            "width": 1
+                          }
+                        ]
+                      },
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "#",
+                        "width": 1
+                      },
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "list",
+                        "width": 4
+                      }
+                    ]
+                  }
+                ]
               }
             ]
-          }
-        ]
-      },
-      {
-        "type": "token",
-        "kind": "WHITESPACE",
-        "text": " ",
-        "width": 1
-      },
-      {
-        "type": "node",
-        "kind": "ERROR",
-        "width": 2,
-        "children": [
-          {
-            "type": "token",
-            "kind": "IDENT_EXPR",
-            "text": "of",
-            "width": 2
-          }
-        ]
-      },
-      {
-        "type": "token",
-        "kind": "WHITESPACE",
-        "text": " ",
-        "width": 1
-      },
-      {
-        "type": "node",
-        "kind": "ERROR",
-        "width": 3,
-        "children": [
-          {
-            "type": "token",
-            "kind": "IDENT_EXPR",
-            "text": "int",
-            "width": 3
-          }
-        ]
-      },
-      {
-        "type": "token",
-        "kind": "WHITESPACE",
-        "text": " ",
-        "width": 1
-      },
-      {
-        "type": "node",
-        "kind": "ERROR",
-        "width": 1,
-        "children": [
-          {
-            "type": "token",
-            "kind": "IDENT_EXPR",
-            "text": "*",
-            "width": 1
-          }
-        ]
-      },
-      {
-        "type": "token",
-        "kind": "WHITESPACE",
-        "text": " ",
-        "width": 1
-      },
-      {
-        "type": "node",
-        "kind": "ERROR",
-        "width": 3,
-        "children": [
-          {
-            "type": "token",
-            "kind": "IDENT_EXPR",
-            "text": "int",
-            "width": 3
-          }
-        ]
-      },
-      {
-        "type": "node",
-        "kind": "ERROR",
-        "width": 1,
-        "children": [
-          {
-            "type": "token",
-            "kind": "IDENT_EXPR",
-            "text": "#",
-            "width": 1
-          }
-        ]
-      },
-      {
-        "type": "token",
-        "kind": "WHITESPACE",
-        "text": "\n",
-        "width": 1
-      },
-      {
-        "type": "token",
-        "kind": "COMMENT",
-        "text": "(* TEST\n flags = \"-stop-after parsing -dparsetree\";\n setup-ocamlc.byte-build-env;\n ocamlc.byte;\n check-ocamlc.byte-output;\n*)",
-        "width": 125
-      },
-      {
-        "type": "token",
-        "kind": "WHITESPACE",
-        "text": "\n\n",
-        "width": 2
-      },
-      {
-        "type": "node",
-        "kind": "ERROR",
-        "width": 4,
-        "children": [
-          {
-            "type": "token",
-            "kind": "IDENT_EXPR",
-            "text": "list",
-            "width": 4
           }
         ]
       }
     ]
   },
-  "diagnostics": [
-    {
-      "kind": {
-        "id": "E0005",
-        "name": "unexpected-structure-item",
-        "expected": "structure item (e.g., let, type, module)",
-        "found": {
-          "kind": "keyword",
-          "text": "class"
-        },
-        "hint": "Structure items are top-level declarations like let, type, or module."
-      },
-      "span": {
-        "start": 145,
-        "end": 146
-      }
-    },
-    {
-      "kind": {
-        "id": "E0005",
-        "name": "unexpected-structure-item",
-        "expected": "structure item (e.g., let, type, module)",
-        "found": {
-          "kind": "[",
-          "text": "["
-        },
-        "hint": "Structure items are top-level declarations like let, type, or module."
-      },
-      "span": {
-        "start": 147,
-        "end": 148
-      }
-    },
-    {
-      "kind": {
-        "id": "E0005",
-        "name": "unexpected-structure-item",
-        "expected": "structure item (e.g., let, type, module)",
-        "found": {
-          "kind": "'",
-          "text": "'"
-        },
-        "hint": "Structure items are top-level declarations like let, type, or module."
-      },
-      "span": {
-        "start": 148,
-        "end": 149
-      }
-    },
-    {
-      "kind": {
-        "id": "E0005",
-        "name": "unexpected-structure-item",
-        "expected": "structure item (e.g., let, type, module)",
-        "found": {
-          "kind": "identifier",
-          "text": "a"
-        },
-        "hint": "Structure items are top-level declarations like let, type, or module."
-      },
-      "span": {
-        "start": 149,
-        "end": 150
-      }
-    },
-    {
-      "kind": {
-        "id": "E0005",
-        "name": "unexpected-structure-item",
-        "expected": "structure item (e.g., let, type, module)",
-        "found": {
-          "kind": "]",
-          "text": "]"
-        },
-        "hint": "Structure items are top-level declarations like let, type, or module."
-      },
-      "span": {
-        "start": 150,
-        "end": 151
-      }
-    },
-    {
-      "kind": {
-        "id": "E0005",
-        "name": "unexpected-structure-item",
-        "expected": "structure item (e.g., let, type, module)",
-        "found": {
-          "kind": "identifier",
-          "text": "list"
-        },
-        "hint": "Structure items are top-level declarations like let, type, or module."
-      },
-      "span": {
-        "start": 155,
-        "end": 156
-      }
-    },
-    {
-      "kind": {
-        "id": "E0005",
-        "name": "unexpected-structure-item",
-        "expected": "structure item (e.g., let, type, module)",
-        "found": {
-          "kind": "=",
-          "text": "="
-        },
-        "hint": "Structure items are top-level declarations like let, type, or module."
-      },
-      "span": {
-        "start": 157,
-        "end": 158
-      }
-    },
-    {
-      "kind": {
-        "id": "E0005",
-        "name": "unexpected-structure-item",
-        "expected": "structure item (e.g., let, type, module)",
-        "found": {
-          "kind": "object",
-          "text": "object"
-        },
-        "hint": "Structure items are top-level declarations like let, type, or module."
-      },
-      "span": {
-        "start": 164,
-        "end": 165
-      }
-    },
-    {
-      "kind": {
-        "id": "E0005",
-        "name": "unexpected-structure-item",
-        "expected": "structure item (e.g., let, type, module)",
-        "found": {
-          "kind": "end",
-          "text": "end"
-        },
-        "hint": "Structure items are top-level declarations like let, type, or module."
-      },
-      "span": {
-        "start": 168,
-        "end": 170
-      }
-    },
-    {
-      "kind": {
-        "id": "E0005",
-        "name": "unexpected-structure-item",
-        "expected": "structure item (e.g., let, type, module)",
-        "found": {
-          "kind": "#",
-          "text": "#"
-        },
-        "hint": "Structure items are top-level declarations like let, type, or module."
-      },
-      "span": {
-        "start": 187,
-        "end": 191
-      }
-    },
-    {
-      "kind": {
-        "id": "E0005",
-        "name": "unexpected-structure-item",
-        "expected": "structure item (e.g., let, type, module)",
-        "found": {
-          "kind": "identifier",
-          "text": "list"
-        },
-        "hint": "Structure items are top-level declarations like let, type, or module."
-      },
-      "span": {
-        "start": 191,
-        "end": 192
-      }
-    },
-    {
-      "kind": {
-        "id": "E0005",
-        "name": "unexpected-structure-item",
-        "expected": "structure item (e.g., let, type, module)",
-        "found": {
-          "kind": "keyword",
-          "text": "as"
-        },
-        "hint": "Structure items are top-level declarations like let, type, or module."
-      },
-      "span": {
-        "start": 194,
-        "end": 195
-      }
-    },
-    {
-      "kind": {
-        "id": "E0005",
-        "name": "unexpected-structure-item",
-        "expected": "structure item (e.g., let, type, module)",
-        "found": {
-          "kind": "'",
-          "text": "'"
-        },
-        "hint": "Structure items are top-level declarations like let, type, or module."
-      },
-      "span": {
-        "start": 196,
-        "end": 197
-      }
-    },
-    {
-      "kind": {
-        "id": "E0005",
-        "name": "unexpected-structure-item",
-        "expected": "structure item (e.g., let, type, module)",
-        "found": {
-          "kind": "identifier",
-          "text": "a"
-        },
-        "hint": "Structure items are top-level declarations like let, type, or module."
-      },
-      "span": {
-        "start": 197,
-        "end": 198
-      }
-    },
-    {
-      "kind": {
-        "id": "E0005",
-        "name": "unexpected-structure-item",
-        "expected": "structure item (e.g., let, type, module)",
-        "found": {
-          "kind": "keyword",
-          "text": "of"
-        },
-        "hint": "Structure items are top-level declarations like let, type, or module."
-      },
-      "span": {
-        "start": 440,
-        "end": 441
-      }
-    },
-    {
-      "kind": {
-        "id": "E0005",
-        "name": "unexpected-structure-item",
-        "expected": "structure item (e.g., let, type, module)",
-        "found": {
-          "kind": "identifier",
-          "text": "int"
-        },
-        "hint": "Structure items are top-level declarations like let, type, or module."
-      },
-      "span": {
-        "start": 444,
-        "end": 445
-      }
-    },
-    {
-      "kind": {
-        "id": "E0005",
-        "name": "unexpected-structure-item",
-        "expected": "structure item (e.g., let, type, module)",
-        "found": {
-          "kind": "#",
-          "text": "#"
-        },
-        "hint": "Structure items are top-level declarations like let, type, or module."
-      },
-      "span": {
-        "start": 446,
-        "end": 450
-      }
-    },
-    {
-      "kind": {
-        "id": "E0005",
-        "name": "unexpected-structure-item",
-        "expected": "structure item (e.g., let, type, module)",
-        "found": {
-          "kind": "identifier",
-          "text": "list"
-        },
-        "hint": "Structure items are top-level declarations like let, type, or module."
-      },
-      "span": {
-        "start": 450,
-        "end": 451
-      }
-    },
-    {
-      "kind": {
-        "id": "E0005",
-        "name": "unexpected-structure-item",
-        "expected": "structure item (e.g., let, type, module)",
-        "found": {
-          "kind": "keyword",
-          "text": "of"
-        },
-        "hint": "Structure items are top-level declarations like let, type, or module."
-      },
-      "span": {
-        "start": 467,
-        "end": 468
-      }
-    },
-    {
-      "kind": {
-        "id": "E0005",
-        "name": "unexpected-structure-item",
-        "expected": "structure item (e.g., let, type, module)",
-        "found": {
-          "kind": "identifier",
-          "text": "int"
-        },
-        "hint": "Structure items are top-level declarations like let, type, or module."
-      },
-      "span": {
-        "start": 471,
-        "end": 472
-      }
-    },
-    {
-      "kind": {
-        "id": "E0005",
-        "name": "unexpected-structure-item",
-        "expected": "structure item (e.g., let, type, module)",
-        "found": {
-          "kind": "*",
-          "text": "*"
-        },
-        "hint": "Structure items are top-level declarations like let, type, or module."
-      },
-      "span": {
-        "start": 473,
-        "end": 474
-      }
-    },
-    {
-      "kind": {
-        "id": "E0005",
-        "name": "unexpected-structure-item",
-        "expected": "structure item (e.g., let, type, module)",
-        "found": {
-          "kind": "identifier",
-          "text": "int"
-        },
-        "hint": "Structure items are top-level declarations like let, type, or module."
-      },
-      "span": {
-        "start": 477,
-        "end": 478
-      }
-    },
-    {
-      "kind": {
-        "id": "E0005",
-        "name": "unexpected-structure-item",
-        "expected": "structure item (e.g., let, type, module)",
-        "found": {
-          "kind": "#",
-          "text": "#"
-        },
-        "hint": "Structure items are top-level declarations like let, type, or module."
-      },
-      "span": {
-        "start": 479,
-        "end": 483
-      }
-    },
-    {
-      "kind": {
-        "id": "E0005",
-        "name": "unexpected-structure-item",
-        "expected": "structure item (e.g., let, type, module)",
-        "found": {
-          "kind": "identifier",
-          "text": "list"
-        },
-        "hint": "Structure items are top-level declarations like let, type, or module."
-      },
-      "span": {
-        "start": 483,
-        "end": 485
-      }
-    }
-  ]
+  "diagnostics": []
 }

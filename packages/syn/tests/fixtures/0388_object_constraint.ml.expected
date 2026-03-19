@@ -83,7 +83,7 @@
                   {
                     "type": "node",
                     "kind": "OBJECT_METHOD",
-                    "width": 12,
+                    "width": 16,
                     "children": [
                       {
                         "type": "token",
@@ -98,10 +98,17 @@
                         "width": 1
                       },
                       {
-                        "type": "token",
+                        "type": "node",
                         "kind": "IDENT_EXPR",
-                        "text": "m",
-                        "width": 1
+                        "width": 1,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "IDENT_EXPR",
+                            "text": "m",
+                            "width": 1
+                          }
+                        ]
                       },
                       {
                         "type": "token",
@@ -133,14 +140,14 @@
                             "width": 1
                           }
                         ]
+                      },
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": "\n   ",
+                        "width": 4
                       }
                     ]
-                  },
-                  {
-                    "type": "token",
-                    "kind": "WHITESPACE",
-                    "text": "\n   ",
-                    "width": 4
                   },
                   {
                     "type": "token",
