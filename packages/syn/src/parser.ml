@@ -262,15 +262,18 @@ let make_error_node parser ~diagnostic ~consumed_tokens =
     is_right_associative). Higher precedence = tighter binding. *)
 let operator_info = function
   | Token.PipeGt -> Some (0, false) (* |> pipe operator - lowest precedence *)
+  | Token.Dollar -> Some (0, true)
   | Token.Or -> Some (1, false)
-  | Token.And -> Some (2, false)
+  | Token.And | Token.Ampersand -> Some (2, false)
   | Token.Eq | Token.Ne | Token.Lt | Token.Gt | Token.LtEq | Token.GtEq
   | Token.EqEq | Token.BangEq ->
       Some (3, false)
+  | Token.LtPercent -> Some (3, false)
   | Token.At | Token.Caret | Token.AtAt -> Some (4, true)
   | Token.ColonColon -> Some (5, true)
   | Token.Plus | Token.Minus | Token.PlusDot | Token.MinusDot -> Some (6, false)
-  | Token.Star | Token.Slash | Token.Percent | Token.StarDot | Token.SlashDot ->
+  | Token.Star | Token.Slash | Token.Percent | Token.PercentGt
+  | Token.StarDot | Token.SlashDot ->
       Some (7, false)
   | Token.StarStar -> Some (8, true)
   | _ -> None
@@ -3113,6 +3116,14 @@ and parse_primary_expr parser =
   | Token.Keyword Keyword.Let -> parse_let_in_expr parser
   | Token.Keyword Keyword.Assert -> parse_assert_expr parser
   | Token.Keyword Keyword.Lazy -> parse_lazy_expr parser
+  | Token.Keyword Keyword.New ->
+      let new_kw = consume parser in
+      let trivia_after_new = consume_trivia parser in
+      let class_path = parse_module_path_or_expr parser in
+      make_node Syntax_kind.NEW_EXPR
+        ([ make_token parser new_kw ]
+        @ tokens_to_green parser trivia_after_new
+        @ [ Ceibo.Green.Node class_path ])
   | Token.Keyword Keyword.Try -> parse_try_expr parser
   | Token.Keyword Keyword.While -> parse_while_expr parser
   | Token.Keyword Keyword.For -> parse_for_expr parser
@@ -3228,6 +3239,7 @@ and can_start_arg_expr parser =
   | Token.OpenDelim Token.Bracket
   | Token.OpenDelim Token.Array
   | Token.OpenDelim Token.Brace
+  | Token.Keyword Keyword.New
   | Token.Quote
   | Token.Backtick (* Polymorphic variant: `Tag *)
   | Token.Tilde (* Labeled argument: ~label *)
