@@ -72,7 +72,7 @@
               {
                 "type": "node",
                 "kind": "OBJECT_INHERIT",
-                "width": 9,
+                "width": 12,
                 "children": [
                   {
                     "type": "token",
@@ -98,14 +98,14 @@
                         "width": 1
                       }
                     ]
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": "\n  ",
+                    "width": 3
                   }
                 ]
-              },
-              {
-                "type": "token",
-                "kind": "WHITESPACE",
-                "text": "\n  ",
-                "width": 3
               },
               {
                 "type": "token",

@@ -1401,7 +1401,7 @@
                       {
                         "type": "node",
                         "kind": "OBJECT_INHERIT",
-                        "width": 10,
+                        "width": 58,
                         "children": [
                           {
                             "type": "token",
@@ -1427,26 +1427,26 @@
                                 "width": 2
                               }
                             ]
+                          },
+                          {
+                            "type": "token",
+                            "kind": "WHITESPACE",
+                            "text": "\n\n    ",
+                            "width": 6
+                          },
+                          {
+                            "type": "token",
+                            "kind": "DOCSTRING",
+                            "text": "(** The comment for attribute tutu *)",
+                            "width": 37
+                          },
+                          {
+                            "type": "token",
+                            "kind": "WHITESPACE",
+                            "text": "\n    ",
+                            "width": 5
                           }
                         ]
-                      },
-                      {
-                        "type": "token",
-                        "kind": "WHITESPACE",
-                        "text": "\n\n    ",
-                        "width": 6
-                      },
-                      {
-                        "type": "token",
-                        "kind": "DOCSTRING",
-                        "text": "(** The comment for attribute tutu *)",
-                        "width": 37
-                      },
-                      {
-                        "type": "token",
-                        "kind": "WHITESPACE",
-                        "text": "\n    ",
-                        "width": 5
                       },
                       {
                         "type": "node",
@@ -3716,7 +3716,7 @@
                       {
                         "type": "node",
                         "kind": "OBJECT_INHERIT",
-                        "width": 10,
+                        "width": 70,
                         "children": [
                           {
                             "type": "token",
@@ -3742,26 +3742,26 @@
                                 "width": 2
                               }
                             ]
+                          },
+                          {
+                            "type": "token",
+                            "kind": "WHITESPACE",
+                            "text": "\n\n    ",
+                            "width": 6
+                          },
+                          {
+                            "type": "token",
+                            "kind": "DOCSTRING",
+                            "text": "(** The comment for the instance variable tutu *)",
+                            "width": 49
+                          },
+                          {
+                            "type": "token",
+                            "kind": "WHITESPACE",
+                            "text": "\n    ",
+                            "width": 5
                           }
                         ]
-                      },
-                      {
-                        "type": "token",
-                        "kind": "WHITESPACE",
-                        "text": "\n\n    ",
-                        "width": 6
-                      },
-                      {
-                        "type": "token",
-                        "kind": "DOCSTRING",
-                        "text": "(** The comment for the instance variable tutu *)",
-                        "width": 49
-                      },
-                      {
-                        "type": "token",
-                        "kind": "WHITESPACE",
-                        "text": "\n    ",
-                        "width": 5
                       },
                       {
                         "type": "node",

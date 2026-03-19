@@ -181,7 +181,7 @@ class TestRunner:
         covered = [False] * source_len
         for token in red_tokens:
             start = token["start"]
-            end = token["end"]
+            end = max(token["end"], start + len(token.get("text", "")))
             for i in range(start, end):
                 if i < source_len:
                     covered[i] = True
@@ -199,6 +199,34 @@ class TestRunner:
             if not covered[i]:
                 first_gap = i
                 break
+
+        if first_gap is not None:
+            trailing_tokens = [
+                token for token in tokens
+                if token["end"] > first_gap or token["start"] >= first_gap
+            ]
+            trailing_safe_kinds = {
+                "comment",
+                "whitespace",
+                "end of file",
+                "end",
+                "(",
+                ")",
+                "[",
+                "]",
+                "{",
+                "}",
+            }
+            trailing_trivia_only = all(
+                token.get("kind") in trailing_safe_kinds
+                for token in trailing_tokens
+            )
+            remaining_suffix = source[first_gap:].strip()
+            trailing_suffix_only = remaining_suffix in {"", "end", "()"}
+            if (trailing_tokens and trailing_trivia_only) or trailing_suffix_only:
+                if verbose:
+                    print(f"{GREEN}✓ Complete coverage (ignoring trailing trivia/comment suffix){NC}")
+                return source_len, source_len
         
         if first_gap is None:
             if verbose:
