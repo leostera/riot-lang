@@ -1464,7 +1464,7 @@ and parse_or_pattern parser =
   (* Check for | to continue or-pattern *)
   if peek_kind parser = Token.Pipe then
     (* Parse remaining patterns after | *)
-    let rec parse_pipe_patterns acc_patterns acc_pipes_trivia =
+    let rec parse_pipe_patterns acc =
       (* Consume trivia before checking for next pipe *)
       let trivia_before_pipe = consume_trivia parser in
       
@@ -1504,21 +1504,18 @@ and parse_or_pattern parser =
           @ tokens_to_green parser trivia_after_pipe
         in
         
-        parse_pipe_patterns (pat :: acc_patterns)
-          (pipe_trivia_green @ acc_pipes_trivia)
+        parse_pipe_patterns (acc @ pipe_trivia_green @ [ Ceibo.Green.Node pat ])
       else
-        (* No more pipes - return accumulated patterns and pipes *)
-        (List.rev acc_patterns, List.rev acc_pipes_trivia)
+        acc
     in
 
-    let rest_patterns, pipes_trivia_list = parse_pipe_patterns [] [] in
+    let rest_children = parse_pipe_patterns [] in
     
     (* Build OR_PATTERN node with all patterns interleaved with pipes *)
     let children =
       [ Ceibo.Green.Node first_pat ]
       @ tokens_to_green parser trivia_after_first
-      @ pipes_trivia_list
-      @ List.concat_map (fun p -> [ Ceibo.Green.Node p ]) rest_patterns
+      @ rest_children
     in
     make_node Syntax_kind.OR_PATTERN children
   else (
