@@ -2,7 +2,10 @@ open Std
 open Tusk_model
 open Tusk_server
 
-type t = { server_pid : Pid.t }
+type t = {
+  server_pid : Pid.t;
+  workspace_root : Path.t;
+}
 
 type build_stats = {
   duration_ms : int;
@@ -18,6 +21,7 @@ type error =
       package_name : string;
       available_packages : string list;
     }
+  | BuildAlreadyRunning of { lock_path : Path.t }
   | UnexpectedEvent of { reason : string }
 
 type streaming_event =
@@ -51,7 +55,7 @@ type build_target = BuildPackage of string | BuildAll
 
 let connect_local ~workspace =
   match Tusk_server.start_local ~workspace ~config:Tusk_server.Server_config.default with
-  | Ok server_pid -> Ok { server_pid }
+  | Ok server_pid -> Ok { server_pid; workspace_root = workspace.root }
   | Error exn -> Error (Exception.to_string exn)
 
 let close _t = ()
@@ -60,6 +64,36 @@ let send_request t request =
   send t.server_pid (Protocol.ServerRequest request)
 
 let receive_response ~selector = receive ~selector ()
+
+let build_lock_path workspace_root =
+  Path.(Tusk_model.Tusk_dirs.build_dir_root ~workspace_root / Path.v "tusk.lock")
+
+let release_build_lock lock_file =
+  let _ = Fs.File.unlock lock_file in
+  let _ = Fs.File.close lock_file in
+  ()
+
+let acquire_build_lock workspace_root =
+  let build_dir = Tusk_model.Tusk_dirs.build_dir_root ~workspace_root in
+  let _ =
+    Fs.create_dir_all build_dir
+    |> Result.expect ~msg:"Failed to create build directory"
+  in
+  let lock_path = build_lock_path workspace_root in
+  let lock_file =
+    match Fs.File.open_write lock_path with
+    | Ok file -> file
+    | Error _ ->
+        raise (Failure ("Failed to open build lock file at " ^ Path.to_string lock_path))
+  in
+  match Fs.File.try_lock_exclusive lock_file with
+  | Ok true -> Ok lock_file
+  | Ok false ->
+      release_build_lock lock_file;
+      Error (BuildAlreadyRunning { lock_path })
+  | Error _ ->
+      release_build_lock lock_file;
+      raise (Failure ("Failed to lock build file at " ^ Path.to_string lock_path))
 
 let convert_build_stats (stats : Protocol.BuildStats.t) : build_stats =
   {
@@ -160,33 +194,44 @@ let rec handle_streaming_events t session_id callback =
       else handle_streaming_events t session_id callback
 
 let build_streaming t target ?target_arch callback =
-  let target =
-    match target with
-    | BuildPackage package -> Protocol.Package package
-    | BuildAll -> Protocol.All
-  in
-  let session_id = Session_id.make () in
-  send_request t
-    (Protocol.Build { client_pid = self (); target; target_arch; session_id });
-  let selector msg =
-    match msg with
-    | Protocol.ServerResponse
-        (Protocol.BuildStarted
-          { session_id = started_session_id; started_at = _ })
-      when same_session session_id started_session_id ->
-        `select (Ok started_session_id)
-    | Protocol.ServerResponse
-        (Protocol.PackageNotFound
-          { session_id = event_session_id; package_name; available_packages })
-      when same_session session_id event_session_id ->
-        `select (Error (PackageNotFound { package_name; available_packages }))
-    | _ -> `skip
-  in
-  match receive_response ~selector with
-  | Ok started_session_id ->
-      callback (BuildStarted started_session_id);
-      handle_streaming_events t started_session_id callback
+  match acquire_build_lock t.workspace_root with
   | Error err -> Error err
+  | Ok lock_file ->
+      try
+        let result =
+          let target =
+            match target with
+            | BuildPackage package -> Protocol.Package package
+            | BuildAll -> Protocol.All
+          in
+          let session_id = Session_id.make () in
+          send_request t
+            (Protocol.Build { client_pid = self (); target; target_arch; session_id });
+          let selector msg =
+            match msg with
+            | Protocol.ServerResponse
+                (Protocol.BuildStarted
+                  { session_id = started_session_id; started_at = _ })
+              when same_session session_id started_session_id ->
+                `select (Ok started_session_id)
+            | Protocol.ServerResponse
+                (Protocol.PackageNotFound
+                  { session_id = event_session_id; package_name; available_packages })
+              when same_session session_id event_session_id ->
+                `select (Error (PackageNotFound { package_name; available_packages }))
+            | _ -> `skip
+          in
+          match receive_response ~selector with
+          | Ok started_session_id ->
+              callback (BuildStarted started_session_id);
+              handle_streaming_events t started_session_id callback
+          | Error err -> Error err
+        in
+        release_build_lock lock_file;
+        result
+      with exn ->
+        release_build_lock lock_file;
+        raise exn
 
 let find_executable t name =
   send_request t (Protocol.FindExecutable { client_pid = self (); name });

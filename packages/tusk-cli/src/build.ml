@@ -182,6 +182,11 @@ let build_command package_opt target_arch =
           println "Available packages:";
           List.iter (fun pkg -> println ("  • " ^ pkg)) available_packages;
           exit 1
+      | Local_session.BuildAlreadyRunning { lock_path } ->
+          println ("\027[1;31mError\027[0m: another tusk build is already running");
+          println ("Lock file: " ^ Path.to_string lock_path);
+          println "Wait for the current build to finish and try again.";
+          exit 1
       | Local_session.UnexpectedEvent Module.{ reason } ->
           println ("\027[1;31mError\027[0m: " ^ reason);
           exit 1)
