@@ -614,26 +614,7 @@ and parse_typexpr parser =
   | _ ->
       parse_alias_type parser
   in
-
-  let rec attach_attributes node =
-    let saved_pos = Token_cursor.position parser.cursor in
-    let trivia_before_attr = consume_trivia parser in
-
-    if is_attribute_start parser then
-      let attr_nodes = parse_attributes parser in
-      let wrapped =
-        make_node Syntax_kind.ATTRIBUTE_EXPR
-          ([ Ceibo.Green.Node node ]
-          @ tokens_to_green parser trivia_before_attr
-          @ attr_nodes)
-      in
-      attach_attributes wrapped
-    else (
-      Token_cursor.set_position parser.cursor saved_pos;
-      node)
-  in
-
-  attach_attributes base
+  attach_postfix_attributes parser base
 
 (** Parse type alias: t as 'a *)
 and parse_alias_type parser =
@@ -1614,26 +1595,7 @@ and parse_record_type parser =
 (** Parse pattern - for now just identifiers *)
 and parse_pattern parser =
   let base = parse_or_pattern parser in
-
-  let rec attach_attributes node =
-    let saved_pos = Token_cursor.position parser.cursor in
-    let trivia_before_attr = consume_trivia parser in
-
-    if is_attribute_start parser then
-      let attr_nodes = parse_attributes parser in
-      let wrapped =
-        make_node Syntax_kind.ATTRIBUTE_EXPR
-          ([ Ceibo.Green.Node node ]
-          @ tokens_to_green parser trivia_before_attr
-          @ attr_nodes)
-      in
-      attach_attributes wrapped
-    else (
-      Token_cursor.set_position parser.cursor saved_pos;
-      node)
-  in
-
-  attach_attributes base
+  attach_postfix_attributes parser base
 
 (** Parse or-pattern: p1 | p2 | p3 *)
 and parse_or_pattern parser =
@@ -2934,13 +2896,33 @@ and parse_extension_name parser =
   else
     []
 
-and parse_keyword_extension_and_attributes parser =
+and parse_extension_and_attributes parser =
   let ext_nodes = parse_extension_name parser in
   let trivia_after_ext =
     if ext_nodes != [] then consume_trivia parser else []
   in
   let attr_nodes = parse_attributes parser in
   (ext_nodes, trivia_after_ext, attr_nodes)
+
+and parse_keyword_extension_and_attributes parser =
+  parse_extension_and_attributes parser
+
+and attach_postfix_attributes parser node =
+  let saved_pos = Token_cursor.position parser.cursor in
+  let trivia_before_attr = consume_trivia parser in
+
+  if is_attribute_start parser then
+    let attr_nodes = parse_attributes parser in
+    let wrapped =
+      make_node Syntax_kind.ATTRIBUTE_EXPR
+        ([ Ceibo.Green.Node node ]
+        @ tokens_to_green parser trivia_before_attr
+        @ attr_nodes)
+    in
+    attach_postfix_attributes parser wrapped
+  else (
+    Token_cursor.set_position parser.cursor saved_pos;
+    node)
 
 (** Parse a single extension: [%ext] or [%%ext] or [%ext payload] *)
 and parse_extension parser =
@@ -7375,8 +7357,7 @@ and parse_type_constraints parser =
   parse_constraints []
 
 and parse_type_decl parser =
-  match peek_kind parser with
-  | Token.Keyword Keyword.Type -> (
+  if peek_kind parser = Token.Keyword Keyword.Type then (
       let type_kw = consume parser in
       let trivia_after_type = consume_trivia parser in
       let ext_nodes = parse_extension_name parser in
@@ -8051,14 +8032,14 @@ and parse_type_decl parser =
                   ([ Ceibo.Green.Node first_type_decl ]
                   @ tokens_to_green parser trivia_after_first
                   @ and_decls)
-      | _ ->
-          let found_tok = peek parser in
-          let diagnostic =
-            Diagnostic.missing_type_keyword ~found:found_tok
-              ~text:(token_text parser found_tok)
-              ~span:(current_span parser)
-          in
-          make_error_node parser ~diagnostic ~consumed_tokens:[])
+  ) else
+    let found_tok = peek parser in
+    let diagnostic =
+      Diagnostic.missing_type_keyword ~found:found_tok
+        ~text:(token_text parser found_tok)
+        ~span:(current_span parser)
+    in
+    make_error_node parser ~diagnostic ~consumed_tokens:[]
 
 (** Parse module type declaration: module type S = sig ... end *)
 and parse_module_type_decl parser =
@@ -8069,11 +8050,9 @@ and parse_module_type_decl parser =
   (* Consume 'type' keyword *)
   let type_kw = consume parser in
   let trivia_after_type = consume_trivia parser in
-  let ext_nodes = parse_extension_name parser in
-  let trivia_after_ext =
-    if ext_nodes != [] then consume_trivia parser else []
+  let ext_nodes, trivia_after_ext, attr_nodes =
+    parse_extension_and_attributes parser
   in
-  let attr_nodes = parse_attributes parser in
   
   (* Parse module type name (must be uppercase identifier) *)
   let type_name =
@@ -8125,11 +8104,9 @@ and parse_module_decl parser =
   (* Consume 'module' keyword *)
   let module_kw = consume parser in
   let trivia_after_module = consume_trivia parser in
-  let ext_nodes = parse_extension_name parser in
-  let trivia_after_ext =
-    if ext_nodes != [] then consume_trivia parser else []
+  let ext_nodes, trivia_after_ext, attr_nodes =
+    parse_extension_and_attributes parser
   in
-  let attr_nodes = parse_attributes parser in
 
   let rec_children, trivia_after_rec =
     match peek_kind parser with
@@ -8661,25 +8638,7 @@ and parse_module_type_expr parser =
         make_error_node parser ~diagnostic ~consumed_tokens:[ found ]
   in
   
-  let rec attach_attributes node =
-    let saved_pos = Token_cursor.position parser.cursor in
-    let trivia_before_attr = consume_trivia parser in
-
-    if is_attribute_start parser then
-      let attr_nodes = parse_attributes parser in
-      let wrapped =
-        make_node Syntax_kind.ATTRIBUTE_EXPR
-          ([ Ceibo.Green.Node node ]
-          @ tokens_to_green parser trivia_before_attr
-          @ attr_nodes)
-      in
-      attach_attributes wrapped
-    else (
-      Token_cursor.set_position parser.cursor saved_pos;
-      node)
-  in
-
-  let base_with_attrs = attach_attributes base in
+  let base_with_attrs = attach_postfix_attributes parser base in
 
   let with_wrapped =
     let trivia_start = Token_cursor.position parser.cursor in
@@ -8767,7 +8726,7 @@ and parse_module_type_expr parser =
       base_with_attrs)
   in
 
-  attach_attributes with_wrapped
+  attach_postfix_attributes parser with_wrapped
 
 and parse_module_expr parser =
   (* Parse base module expression *)
@@ -8962,25 +8921,7 @@ and parse_module_expr parser =
         make_error_node parser ~diagnostic ~consumed_tokens:[ found ]
   in
 
-  let rec attach_attributes node =
-    let saved_pos = Token_cursor.position parser.cursor in
-    let trivia_before_attr = consume_trivia parser in
-
-    if is_attribute_start parser then
-      let attr_nodes = parse_attributes parser in
-      let wrapped =
-        make_node Syntax_kind.ATTRIBUTE_EXPR
-          ([ Ceibo.Green.Node node ]
-          @ tokens_to_green parser trivia_before_attr
-          @ attr_nodes)
-      in
-      attach_attributes wrapped
-    else (
-      Token_cursor.set_position parser.cursor saved_pos;
-      node)
-  in
-
-  let base = attach_attributes base in
+  let base = attach_postfix_attributes parser base in
   
   (* Parse functor applications: M(X)(Y)(Z) *)
   let rec parse_applications expr =
@@ -9116,11 +9057,9 @@ and parse_external_decl parser =
   (* Consume 'external' keyword *)
   let external_kw = consume parser in
   let trivia_after_external = consume_trivia parser in
-  let ext_nodes = parse_extension_name parser in
-  let trivia_after_ext =
-    if ext_nodes != [] then consume_trivia parser else []
+  let ext_nodes, trivia_after_ext, leading_attr_nodes =
+    parse_extension_and_attributes parser
   in
-  let leading_attr_nodes = parse_attributes parser in
 
   (* Parse external name (lowercase identifier) *)
   let name =
@@ -9229,11 +9168,9 @@ and parse_exception_decl parser =
   (* Consume 'exception' keyword *)
   let exception_kw = consume parser in
   let trivia_after_exception = consume_trivia parser in
-  let ext_nodes = parse_extension_name parser in
-  let trivia_after_ext =
-    if ext_nodes != [] then consume_trivia parser else []
+  let ext_nodes, trivia_after_ext, attr_nodes =
+    parse_extension_and_attributes parser
   in
-  let attr_nodes = parse_attributes parser in
 
   (* Parse exception name (must be uppercase identifier) *)
   let name =
@@ -9349,11 +9286,9 @@ and parse_hash_ident_expr parser =
 and parse_class_decl parser =
   let class_kw = consume parser in
   let trivia_after_class = consume_trivia parser in
-  let ext_nodes = parse_extension_name parser in
-  let trivia_after_ext =
-    if ext_nodes != [] then consume_trivia parser else []
+  let ext_nodes, trivia_after_ext, attr_nodes =
+    parse_extension_and_attributes parser
   in
-  let attr_nodes = parse_attributes parser in
   let type_params, trivia_after_params = parse_class_type_params parser in
   let class_name = parse_ident_like parser in
   let trivia_after_name = consume_trivia parser in
@@ -9407,11 +9342,9 @@ and parse_class_type_decl parser =
   let trivia_after_class = consume_trivia parser in
   let type_kw = consume parser in
   let trivia_after_type = consume_trivia parser in
-  let ext_nodes = parse_extension_name parser in
-  let trivia_after_ext =
-    if ext_nodes != [] then consume_trivia parser else []
+  let ext_nodes, trivia_after_ext, attr_nodes =
+    parse_extension_and_attributes parser
   in
-  let attr_nodes = parse_attributes parser in
   let type_params, trivia_after_params = parse_class_type_params parser in
   let class_name = parse_ident_like parser in
   let trivia_after_name = consume_trivia parser in
@@ -9466,11 +9399,9 @@ and parse_open_stmt parser =
   (* Consume 'open' keyword *)
   let open_kw = consume parser in
   let trivia_after_open = consume_trivia parser in
-  let ext_nodes = parse_extension_name parser in
-  let trivia_after_ext =
-    if ext_nodes != [] then consume_trivia parser else []
+  let ext_nodes, trivia_after_ext, attr_nodes =
+    parse_extension_and_attributes parser
   in
-  let attr_nodes = parse_attributes parser in
   let bang_children, trivia_after_bang =
     match peek_kind parser with
     | Token.Bang ->
@@ -9525,11 +9456,9 @@ and parse_include_stmt parser =
   (* Consume 'include' keyword *)
   let include_kw = consume parser in
   let trivia_after_include = consume_trivia parser in
-  let ext_nodes = parse_extension_name parser in
-  let trivia_after_ext =
-    if ext_nodes != [] then consume_trivia parser else []
+  let ext_nodes, trivia_after_ext, leading_attr_nodes =
+    parse_extension_and_attributes parser
   in
-  let leading_attr_nodes = parse_attributes parser in
 
   (* Check if this is "module type of" (signature context) or module expression *)
   let included_thing =
@@ -9696,11 +9625,9 @@ and parse_val_decl parser =
   (* Consume 'val' keyword *)
   let val_kw = consume parser in
   let trivia_after_val = consume_trivia parser in
-  let ext_nodes = parse_extension_name parser in
-  let trivia_after_ext =
-    if ext_nodes != [] then consume_trivia parser else []
+  let ext_nodes, trivia_after_ext, attr_nodes =
+    parse_extension_and_attributes parser
   in
-  let attr_nodes = parse_attributes parser in
   
   (* Parse value name - can be identifier OR operator in parens *)
   let value_name =
