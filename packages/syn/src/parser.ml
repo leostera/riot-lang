@@ -3370,7 +3370,12 @@ and parse_object_expr parser =
 and parse_primary_expr parser =
   match peek_kind parser with
   (* Prefix operators: -, -., !, +, +., ~, ? *)
-  | Token.Minus | Token.MinusDot | Token.Bang | Token.Plus | Token.PlusDot ->
+  | Token.Minus
+  | Token.MinusDot
+  | Token.Bang
+  | Token.Plus
+  | Token.PlusDot
+  | Token.Tilde ->
       let op = consume parser in
       let trivia_after_op = consume_trivia parser in
       let operand = parse_primary_expr parser in
@@ -4373,6 +4378,55 @@ and parse_record_expr parser =
         make_node Syntax_kind.RECORD_EXPR
           ([ make_token parser open_brace ]
           @ tokens_to_green parser trivia_after_open
+          @ [ make_token parser close_brace ])
+      else if peek_kind parser = Token.Lt then
+        let open_angle = consume parser in
+        let trivia_after_angle = consume_trivia parser in
+        let content_parts = ref [] in
+
+        let rec parse_fields () =
+          if peek_kind parser = Token.Gt || peek_kind parser = Token.EOF then
+            ()
+          else (
+            let field = parse_record_field parser in
+            content_parts := !content_parts @ [ Ceibo.Green.Node field ];
+            let trivia_after_field = consume_trivia parser in
+            content_parts :=
+              !content_parts @ tokens_to_green parser trivia_after_field;
+
+            if peek_kind parser = Token.Semi then (
+              let semi = consume parser in
+              let trivia_after_semi = consume_trivia parser in
+              content_parts :=
+                !content_parts
+                @ [ make_token parser semi ]
+                @ tokens_to_green parser trivia_after_semi;
+              parse_fields ()))
+        in
+        parse_fields ();
+
+        let close_angle =
+          if peek_kind parser = Token.Gt then
+            consume parser
+          else
+            peek parser
+        in
+        let trivia_before_close_brace = consume_trivia parser in
+        let close_brace =
+          if peek_kind parser = Token.CloseDelim Token.Brace then
+            consume parser
+          else
+            peek parser
+        in
+
+        make_node Syntax_kind.OBJECT_UPDATE_EXPR
+          ([ make_token parser open_brace ]
+          @ tokens_to_green parser trivia_after_open
+          @ [ make_token parser open_angle ]
+          @ tokens_to_green parser trivia_after_angle
+          @ !content_parts
+          @ [ make_token parser close_angle ]
+          @ tokens_to_green parser trivia_before_close_brace
           @ [ make_token parser close_brace ])
       else
         (* Parse first identifier/expression to determine if it's update syntax *)
@@ -5590,6 +5644,36 @@ and parse_let_in_expr parser =
             @ in_children
             @ tokens_to_green parser trivia_after_in
             @ [ Ceibo.Green.Node body_expr ])
+      | Token.Keyword Keyword.Exception ->
+          let exception_decl = parse_exception_decl parser in
+          let trivia_after_exception_decl = consume_trivia parser in
+
+          let in_children =
+            match peek_kind parser with
+            | Token.Keyword Keyword.In ->
+                let in_kw = consume parser in
+                [ make_token parser in_kw ]
+            | _ ->
+                let found_tok = peek parser in
+                let diagnostic =
+                  Diagnostic.invalid_expression ~found:found_tok
+                    ~text:(token_text parser found_tok)
+                    ~span:(expected_span parser)
+                in
+                report_diagnostic parser diagnostic;
+                []
+          in
+          let trivia_after_in = consume_trivia parser in
+          let body_expr = parse_expr parser in
+
+          make_node Syntax_kind.LET_EXPR
+            ([ make_token parser let_kw ]
+            @ tokens_to_green parser trivia_after_let
+            @ [ Ceibo.Green.Node exception_decl ]
+            @ tokens_to_green parser trivia_after_exception_decl
+            @ in_children
+            @ tokens_to_green parser trivia_after_in
+            @ [ Ceibo.Green.Node body_expr ])
       | _ ->
           (* Regular let binding: let [rec] pattern params = expr in body *)
           
@@ -5649,6 +5733,20 @@ and parse_let_in_expr parser =
                in
                tokens_to_green parser trivia @ [ Ceibo.Green.Node param ])
         |> List.flatten
+      in
+
+      let type_annotation_nodes =
+        if peek_kind parser = Token.Colon then
+          let colon = consume parser in
+          let trivia_after_colon = consume_trivia parser in
+          let type_expr = parse_typexpr parser in
+          let trivia_after_type = consume_trivia parser in
+          [ make_token parser colon ]
+          @ tokens_to_green parser trivia_after_colon
+          @ [ Ceibo.Green.Node type_expr ]
+          @ tokens_to_green parser trivia_after_type
+        else
+          []
       in
 
       (* Expect '=' *)
@@ -5800,6 +5898,7 @@ and parse_let_in_expr parser =
         @ [ Ceibo.Green.Node pattern ]
         @ tokens_to_green parser trivia_after_pattern
         @ param_nodes
+        @ type_annotation_nodes
         @ eq_children
         @ tokens_to_green parser trivia_after_eq
         @ [ Ceibo.Green.Node bound_expr ]
@@ -8046,7 +8145,9 @@ and parse_structure_item ?(in_block = false) parser =
       let _ = consume_trivia parser in
       let starts_let_expr =
         match peek_kind parser with
-        | Token.Keyword Keyword.Open | Token.Keyword Keyword.Module -> true
+        | Token.Keyword Keyword.Open
+        | Token.Keyword Keyword.Module
+        | Token.Keyword Keyword.Exception -> true
         | _ -> false
       in
       Token_cursor.set_position parser.cursor saved_pos0;
@@ -8066,11 +8167,9 @@ and parse_structure_item ?(in_block = false) parser =
           | Token.Keyword Keyword.In
             when depth = 0 && struct_depth = 0 && delim_depth = 0 ->
               is_let_in_expr := true
-          | Token.Keyword Keyword.Let | Token.Keyword Keyword.Match
-          | Token.Keyword Keyword.Try | Token.Keyword Keyword.Fun
-          | Token.Keyword Keyword.Function ->
+          | Token.Keyword Keyword.Let ->
               advance parser;
-              (* Only increment depth if NOT inside struct/sig blocks *)
+              (* Only nested let...in pairs affect the in-scan depth. *)
               let new_depth = if struct_depth = 0 then depth + 1 else depth in
               scan_for_in new_depth struct_depth delim_depth
           | Token.Keyword Keyword.In ->
@@ -8098,10 +8197,6 @@ and parse_structure_item ?(in_block = false) parser =
           | Token.Keyword Keyword.Open | Token.Keyword Keyword.Include
             when depth = 0 && struct_depth = 0 && delim_depth = 0 ->
               (* Hit next structure item without finding 'in' *)
-              ()
-          | Token.Keyword Keyword.And
-            when depth = 0 && struct_depth = 0 && delim_depth = 0 ->
-              (* 'and' at top level ends the search *)
               ()
           | _ ->
               advance parser;
