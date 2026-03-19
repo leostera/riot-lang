@@ -4093,7 +4093,11 @@ and parse_record_expr parser =
       else
         (* Parse first identifier/expression to determine if it's update syntax *)
         (* { expr with ... } vs { field = ... } *)
-        let first_expr = parse_record_field parser in
+        let first_expr =
+          match peek_kind parser with
+          | Token.OpenDelim Token.Brace -> parse_expr parser
+          | _ -> parse_record_field parser
+        in
         let trivia_after_first = consume_trivia parser in
 
         (* Check if this is record update: { expr with ... } *)
