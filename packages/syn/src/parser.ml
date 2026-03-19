@@ -2156,36 +2156,46 @@ and is_keyword_operator_name text =
 and parse_operator_pattern parser open_paren trivia_after_open =
   (* Collect all tokens that form the operator name *)
   let operator_tokens = ref [] in
-  
-  let rec collect_operator_tokens () =
+
+  let rec collect_nested close_kind =
+    match peek_kind parser with
+    | kind when kind = close_kind ->
+        let close_tok = consume parser in
+        operator_tokens := close_tok :: !operator_tokens;
+        collect_operator_tokens ()
+    | Token.EOF ->
+        ()
+    | Token.OpenDelim Token.Bracket ->
+        let tok = consume parser in
+        operator_tokens := tok :: !operator_tokens;
+        collect_nested (Token.CloseDelim Token.Bracket)
+    | Token.OpenDelim Token.Brace ->
+        let tok = consume parser in
+        operator_tokens := tok :: !operator_tokens;
+        collect_nested (Token.CloseDelim Token.Brace)
+    | Token.OpenDelim Token.Paren ->
+        let tok = consume parser in
+        operator_tokens := tok :: !operator_tokens;
+        collect_nested (Token.CloseDelim Token.Paren)
+    | _ ->
+        let tok = consume parser in
+        operator_tokens := tok :: !operator_tokens;
+        collect_nested close_kind
+
+  and collect_operator_tokens () =
     match peek_kind parser with
     | Token.OpenDelim Token.Bracket ->
         let open_bracket = consume parser in
         operator_tokens := open_bracket :: !operator_tokens;
-        (match peek_kind parser with
-        | Token.CloseDelim Token.Bracket ->
-            let close_bracket = consume parser in
-            operator_tokens := close_bracket :: !operator_tokens;
-            collect_operator_tokens ()
-        | _ -> ())
+        collect_nested (Token.CloseDelim Token.Bracket)
     | Token.OpenDelim Token.Brace ->
         let open_brace = consume parser in
         operator_tokens := open_brace :: !operator_tokens;
-        (match peek_kind parser with
-        | Token.CloseDelim Token.Brace ->
-            let close_brace = consume parser in
-            operator_tokens := close_brace :: !operator_tokens;
-            collect_operator_tokens ()
-        | _ -> ())
+        collect_nested (Token.CloseDelim Token.Brace)
     | Token.OpenDelim Token.Paren ->
         let nested_open = consume parser in
         operator_tokens := nested_open :: !operator_tokens;
-        (match peek_kind parser with
-        | Token.CloseDelim Token.Paren ->
-            let nested_close = consume parser in
-            operator_tokens := nested_close :: !operator_tokens;
-            collect_operator_tokens ()
-        | _ -> ())
+        collect_nested (Token.CloseDelim Token.Paren)
     | Token.CloseDelim Token.Paren ->
         (* End of operator name *)
         ()
@@ -3926,6 +3936,27 @@ and can_be_prefix_operator token_kind =
       true
   | _ -> false
 
+(** Check whether an opening paren followed by an operator starts an operator
+    pattern like [(+)] or [( .%{;..} )], rather than a parenthesized unary
+    expression like [(-1)] or [(!x)]. *)
+and is_operator_pattern_paren parser =
+  let saved_pos = Token_cursor.position parser.cursor in
+  let result =
+    match peek_kind parser with
+    | tok when is_operator_token tok ->
+        let first = consume parser in
+        let _ = consume_trivia parser in
+        (match first.Token.kind with
+        | Token.Keyword Keyword.Let | Token.Keyword Keyword.And ->
+            is_operator_token (peek_kind parser)
+        | _ ->
+            not (can_be_prefix_operator first.Token.kind && can_start_arg_expr parser))
+    | _ ->
+        false
+  in
+  Token_cursor.set_position parser.cursor saved_pos;
+  result
+
 (** Check if current token can start an argument expression.
 
     This is intentionally narrower than "can start any expression". In
@@ -4029,8 +4060,16 @@ and parse_postfix_expr parser =
         let trivia_after_dot = consume_trivia parser in
 
         match peek_kind parser with
-        | Token.At | Token.Question | Token.Percent ->
-            let op = consume parser in
+        | Token.At | Token.Question | Token.Percent | Token.Bang ->
+            let rec collect_op_tokens acc =
+              match peek_kind parser with
+              | Token.At | Token.Question | Token.Percent | Token.Bang ->
+                  let tok = consume parser in
+                  collect_op_tokens (acc @ [ make_token parser tok ])
+              | _ ->
+                  acc
+            in
+            let op_tokens = collect_op_tokens [] in
             let trivia_after_op = consume_trivia parser in
             let open_delim =
               match peek_kind parser with
@@ -4069,7 +4108,7 @@ and parse_postfix_expr parser =
                     ([ Ceibo.Green.Node expr ]
                     @ [ make_token parser dot ]
                     @ tokens_to_green parser trivia_after_dot
-                    @ [ make_token parser op ]
+                    @ op_tokens
                     @ tokens_to_green parser trivia_after_op
                     @ [ make_token parser open_tok ]
                     @ tokens_to_green parser trivia_after_open
@@ -4453,6 +4492,33 @@ and parse_paren_expr parser =
             ([ make_token parser lparen ]
             @ tokens_to_green parser trivia_after_lparen
             @ [ make_token parser rparen ])
+      | tok when is_operator_token tok ->
+          if is_operator_pattern_paren parser then
+            parse_operator_pattern parser lparen trivia_after_lparen
+          else
+            let expr = parse_expr parser in
+            let trivia_after_expr = consume_trivia parser in
+            let rparen_children =
+              match peek_kind parser with
+              | Token.CloseDelim Token.Paren ->
+                  let rparen = consume parser in
+                  [ make_token parser rparen ]
+              | _ ->
+                  let found_tok = peek parser in
+                  let diagnostic =
+                    Diagnostic.unclosed_delimiter ~opener:"(" ~found:found_tok
+                      ~text:(token_text parser found_tok)
+                      ~span:(expected_span parser)
+                  in
+                  report_diagnostic parser diagnostic;
+                  []
+            in
+            make_node Syntax_kind.PAREN_EXPR
+              ([ make_token parser lparen ]
+              @ tokens_to_green parser trivia_after_lparen
+              @ [ Ceibo.Green.Node expr ]
+              @ tokens_to_green parser trivia_after_expr
+              @ rparen_children)
       | Token.Keyword Keyword.Module ->
           (* This is a first-class module: (module M) or (module M : S) *)
           let module_kw = consume parser in

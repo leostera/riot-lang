@@ -1,0 +1,116 @@
+[
+  {
+    "kind": {
+      "id": "E0008",
+      "name": "invalid-expression",
+      "expected": "expression",
+      "found": {
+        "kind": "end",
+        "text": "end"
+      },
+      "hint": "Expected a value, function call, or operator expression."
+    },
+    "span": {
+      "start": 204,
+      "end": 204
+    }
+  },
+  {
+    "kind": {
+      "id": "E0008",
+      "name": "invalid-expression",
+      "expected": "expression",
+      "found": {
+        "kind": "end",
+        "text": "end"
+      },
+      "hint": "Expected a value, function call, or operator expression."
+    },
+    "span": {
+      "start": 210,
+      "end": 211
+    }
+  },
+  {
+    "kind": {
+      "id": "E0005",
+      "name": "unexpected-structure-item",
+      "expected": "structure item (e.g., let, type, module)",
+      "found": {
+        "kind": "keyword",
+        "text": "in"
+      },
+      "hint": "Structure items are top-level declarations like let, type, or module."
+    },
+    "span": {
+      "start": 213,
+      "end": 216
+    }
+  },
+  {
+    "kind": {
+      "id": "E0014",
+      "name": "unclosed-delimiter",
+      "expected": "closing delimiter",
+      "found": {
+        "kind": "end of file",
+        "text": ""
+      },
+      "fix": "add closing delimiter",
+      "hint": "Delimiters like (, [, {, begin must be properly closed with ), ], }, end respectively."
+    },
+    "span": {
+      "start": 235,
+      "end": 235
+    }
+  },
+  {
+    "kind": {
+      "id": "E0014",
+      "name": "unclosed-delimiter",
+      "expected": "closing delimiter",
+      "found": {
+        "kind": "end of file",
+        "text": ""
+      },
+      "fix": "add closing delimiter",
+      "hint": "Delimiters like (, [, {, begin must be properly closed with ), ], }, end respectively."
+    },
+    "span": {
+      "start": 235,
+      "end": 235
+    }
+  },
+  {
+    "kind": {
+      "id": "E0008",
+      "name": "invalid-expression",
+      "expected": "expression",
+      "found": {
+        "kind": "end of file",
+        "text": ""
+      },
+      "hint": "Expected a value, function call, or operator expression."
+    },
+    "span": {
+      "start": 235,
+      "end": 235
+    }
+  },
+  {
+    "kind": {
+      "id": "E0008",
+      "name": "invalid-expression",
+      "expected": "expression",
+      "found": {
+        "kind": "end of file",
+        "text": ""
+      },
+      "hint": "Expected a value, function call, or operator expression."
+    },
+    "span": {
+      "start": 0,
+      "end": 0
+    }
+  }
+]

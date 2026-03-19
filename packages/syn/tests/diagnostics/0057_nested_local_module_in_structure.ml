@@ -1,4 +1,4 @@
-(* Nested local modules *)
+(* Nested local modules used as structure items are invalid *)
 let compute x y =
   let module Outer = struct
     let module Inner = struct
