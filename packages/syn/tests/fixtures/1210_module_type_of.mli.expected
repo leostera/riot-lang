@@ -1,1 +1,115 @@
-{"tree":{"type":"node","kind":"SOURCE_FILE","width":44,"children":[{"type":"node","kind":"MODULE_DECL","width":44,"children":[{"type":"token","kind":"IDENT_EXPR","text":"module","width":6},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":"WebSocket","width":9},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":":","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"MODULE_TYPE_OF","width":25,"children":[{"type":"token","kind":"IDENT_EXPR","text":"module","width":6},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":"type","width":4},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":"of","width":2},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"MODULE_TYPE_PATH","width":10,"children":[{"type":"token","kind":"IDENT_EXPR","text":"Websocket","width":9},{"type":"token","kind":"WHITESPACE","text":"\n","width":1}]}]}]}]},"diagnostics":[]}
+{
+  "tree": {
+    "type": "node",
+    "kind": "SOURCE_FILE",
+    "width": 44,
+    "children": [
+      {
+        "type": "node",
+        "kind": "MODULE_DECL",
+        "width": 44,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "module",
+            "width": 6
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "WebSocket",
+            "width": 9
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": ":",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "MODULE_TYPE_OF",
+            "width": 25,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "module",
+                "width": 6
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "type",
+                "width": 4
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "of",
+                "width": 2
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
+              {
+                "type": "node",
+                "kind": "MODULE_TYPE_PATH",
+                "width": 10,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "Websocket",
+                    "width": 9
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": "\n",
+                    "width": 1
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "diagnostics": []
+}

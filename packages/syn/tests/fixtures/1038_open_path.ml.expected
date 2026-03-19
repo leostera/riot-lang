@@ -1,1 +1,53 @@
-{"tree":{"type":"node","kind":"SOURCE_FILE","width":14,"children":[{"type":"node","kind":"OPEN_STMT","width":14,"children":[{"type":"token","kind":"IDENT_EXPR","text":"open","width":4},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":"List","width":4},{"type":"token","kind":"IDENT_EXPR","text":".","width":1},{"type":"token","kind":"IDENT_EXPR","text":"Set","width":3},{"type":"token","kind":"WHITESPACE","text":"\n","width":1}]}]},"diagnostics":[]}
+{
+  "tree": {
+    "type": "node",
+    "kind": "SOURCE_FILE",
+    "width": 14,
+    "children": [
+      {
+        "type": "node",
+        "kind": "OPEN_STMT",
+        "width": 14,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "open",
+            "width": 4
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "List",
+            "width": 4
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": ".",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "Set",
+            "width": 3
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": "\n",
+            "width": 1
+          }
+        ]
+      }
+    ]
+  },
+  "diagnostics": []
+}

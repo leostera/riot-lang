@@ -1,1 +1,91 @@
-{"tree":{"type":"node","kind":"SOURCE_FILE","width":18,"children":[{"type":"node","kind":"SEQUENCE_EXPR","width":5,"children":[{"type":"node","kind":"IDENT_EXPR","width":4,"children":[{"type":"token","kind":"IDENT_EXPR","text":"item","width":4}]},{"type":"token","kind":"IDENT_EXPR","text":";","width":1}]},{"type":"token","kind":"IDENT_EXPR","text":";","width":1},{"type":"token","kind":"WHITESPACE","text":"\n\n","width":2},{"type":"node","kind":"ATTRIBUTE_EXPR","width":9,"children":[{"type":"token","kind":"IDENT_EXPR","text":"[","width":1},{"type":"token","kind":"IDENT_EXPR","text":"@@","width":2},{"type":"token","kind":"IDENT_EXPR","text":"@","width":1},{"type":"token","kind":"IDENT_EXPR","text":"attr","width":4},{"type":"token","kind":"IDENT_EXPR","text":"]","width":1}]},{"type":"token","kind":"WHITESPACE","text":"\n","width":1}]},"diagnostics":[]}
+{
+  "tree": {
+    "type": "node",
+    "kind": "SOURCE_FILE",
+    "width": 18,
+    "children": [
+      {
+        "type": "node",
+        "kind": "SEQUENCE_EXPR",
+        "width": 5,
+        "children": [
+          {
+            "type": "node",
+            "kind": "IDENT_EXPR",
+            "width": 4,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "item",
+                "width": 4
+              }
+            ]
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": ";",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "IDENT_EXPR",
+        "text": ";",
+        "width": 1
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n\n",
+        "width": 2
+      },
+      {
+        "type": "node",
+        "kind": "ATTRIBUTE_EXPR",
+        "width": 9,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "[",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "@@",
+            "width": 2
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "@",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "attr",
+            "width": 4
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "]",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n",
+        "width": 1
+      }
+    ]
+  },
+  "diagnostics": []
+}

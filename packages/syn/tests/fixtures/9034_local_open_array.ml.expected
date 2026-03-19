@@ -1,1 +1,337 @@
-{"tree":{"type":"node","kind":"SOURCE_FILE","width":62,"children":[{"type":"node","kind":"LET_BINDING","width":32,"children":[{"type":"token","kind":"IDENT_EXPR","text":"let","width":3},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"IDENT_PATTERN","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"x","width":1}]},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":"=","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"LOCAL_OPEN_EXPR","width":24,"children":[{"type":"node","kind":"IDENT_EXPR","width":4,"children":[{"type":"token","kind":"IDENT_EXPR","text":"Libc","width":4}]},{"type":"token","kind":"IDENT_EXPR","text":".","width":1},{"type":"node","kind":"ARRAY_EXPR","width":19,"children":[{"type":"token","kind":"IDENT_EXPR","text":"[|","width":2},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"IDENT_EXPR","width":5,"children":[{"type":"token","kind":"IDENT_EXPR","text":"epipe","width":5}]},{"type":"token","kind":"IDENT_EXPR","text":";","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"IDENT_EXPR","width":6,"children":[{"type":"token","kind":"IDENT_EXPR","text":"enoent","width":6}]},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":"|]","width":2}]}]}]},{"type":"token","kind":"WHITESPACE","text":"\n","width":1},{"type":"node","kind":"LET_BINDING","width":28,"children":[{"type":"token","kind":"IDENT_EXPR","text":"let","width":3},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"IDENT_PATTERN","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"y","width":1}]},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":"=","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"LOCAL_OPEN_EXPR","width":20,"children":[{"type":"node","kind":"IDENT_EXPR","width":6,"children":[{"type":"token","kind":"IDENT_EXPR","text":"Module","width":6}]},{"type":"token","kind":"IDENT_EXPR","text":".","width":1},{"type":"node","kind":"ARRAY_EXPR","width":13,"children":[{"type":"token","kind":"IDENT_EXPR","text":"[|","width":2},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"IDENT_EXPR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"a","width":1}]},{"type":"token","kind":"IDENT_EXPR","text":";","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"IDENT_EXPR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"b","width":1}]},{"type":"token","kind":"IDENT_EXPR","text":";","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"IDENT_EXPR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"c","width":1}]},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":"|]","width":2}]}]}]},{"type":"token","kind":"WHITESPACE","text":"\n","width":1}]},"diagnostics":[]}
+{
+  "tree": {
+    "type": "node",
+    "kind": "SOURCE_FILE",
+    "width": 62,
+    "children": [
+      {
+        "type": "node",
+        "kind": "LET_BINDING",
+        "width": 32,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "width": 3
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "IDENT_PATTERN",
+            "width": 1,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "x",
+                "width": 1
+              }
+            ]
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "LOCAL_OPEN_EXPR",
+            "width": 24,
+            "children": [
+              {
+                "type": "node",
+                "kind": "IDENT_EXPR",
+                "width": 4,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "Libc",
+                    "width": 4
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": ".",
+                "width": 1
+              },
+              {
+                "type": "node",
+                "kind": "ARRAY_EXPR",
+                "width": 19,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "[|",
+                    "width": 2
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  },
+                  {
+                    "type": "node",
+                    "kind": "IDENT_EXPR",
+                    "width": 5,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "epipe",
+                        "width": 5
+                      }
+                    ]
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": ";",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  },
+                  {
+                    "type": "node",
+                    "kind": "IDENT_EXPR",
+                    "width": 6,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "enoent",
+                        "width": 6
+                      }
+                    ]
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "|]",
+                    "width": 2
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n",
+        "width": 1
+      },
+      {
+        "type": "node",
+        "kind": "LET_BINDING",
+        "width": 28,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "width": 3
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "IDENT_PATTERN",
+            "width": 1,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "y",
+                "width": 1
+              }
+            ]
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "LOCAL_OPEN_EXPR",
+            "width": 20,
+            "children": [
+              {
+                "type": "node",
+                "kind": "IDENT_EXPR",
+                "width": 6,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "Module",
+                    "width": 6
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": ".",
+                "width": 1
+              },
+              {
+                "type": "node",
+                "kind": "ARRAY_EXPR",
+                "width": 13,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "[|",
+                    "width": 2
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  },
+                  {
+                    "type": "node",
+                    "kind": "IDENT_EXPR",
+                    "width": 1,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "a",
+                        "width": 1
+                      }
+                    ]
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": ";",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  },
+                  {
+                    "type": "node",
+                    "kind": "IDENT_EXPR",
+                    "width": 1,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "b",
+                        "width": 1
+                      }
+                    ]
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": ";",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  },
+                  {
+                    "type": "node",
+                    "kind": "IDENT_EXPR",
+                    "width": 1,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "c",
+                        "width": 1
+                      }
+                    ]
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "|]",
+                    "width": 2
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n",
+        "width": 1
+      }
+    ]
+  },
+  "diagnostics": []
+}

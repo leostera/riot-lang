@@ -1,1 +1,216 @@
-{"tree":{"type":"node","kind":"SOURCE_FILE","width":53,"children":[{"type":"node","kind":"TYPE_DECL","width":53,"children":[{"type":"token","kind":"IDENT_EXPR","text":"type","width":4},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"MODULE_PATH","width":5,"children":[{"type":"token","kind":"IDENT_EXPR","text":"user","width":4},{"type":"token","kind":"WHITESPACE","text":" ","width":1}]},{"type":"token","kind":"IDENT_EXPR","text":"=","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"TYPE_RECORD","width":40,"children":[{"type":"token","kind":"IDENT_EXPR","text":"{","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"TYPE_RECORD_FIELD","width":13,"children":[{"type":"token","kind":"IDENT_EXPR","text":"name","width":4},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":":","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"TYPE_CONSTR","width":6,"children":[{"type":"token","kind":"IDENT_EXPR","text":"string","width":6}]}]},{"type":"token","kind":"IDENT_EXPR","text":";","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"TYPE_RECORD_FIELD","width":22,"children":[{"type":"token","kind":"IDENT_EXPR","text":"email","width":5},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":":","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"TYPE_CONSTR","width":14,"children":[{"type":"node","kind":"TYPE_CONSTR","width":7,"children":[{"type":"token","kind":"IDENT_EXPR","text":"string","width":6},{"type":"token","kind":"WHITESPACE","text":" ","width":1}]},{"type":"token","kind":"IDENT_EXPR","text":"option","width":6},{"type":"token","kind":"WHITESPACE","text":" ","width":1}]}]},{"type":"token","kind":"IDENT_EXPR","text":"}","width":1}]},{"type":"token","kind":"WHITESPACE","text":"\n","width":1}]}]},"diagnostics":[]}
+{
+  "tree": {
+    "type": "node",
+    "kind": "SOURCE_FILE",
+    "width": 53,
+    "children": [
+      {
+        "type": "node",
+        "kind": "TYPE_DECL",
+        "width": 53,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "type",
+            "width": 4
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "MODULE_PATH",
+            "width": 5,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "user",
+                "width": 4
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              }
+            ]
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "TYPE_RECORD",
+            "width": 40,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "{",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
+              {
+                "type": "node",
+                "kind": "TYPE_RECORD_FIELD",
+                "width": 13,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "name",
+                    "width": 4
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": ":",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  },
+                  {
+                    "type": "node",
+                    "kind": "TYPE_CONSTR",
+                    "width": 6,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "string",
+                        "width": 6
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": ";",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
+              {
+                "type": "node",
+                "kind": "TYPE_RECORD_FIELD",
+                "width": 22,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "email",
+                    "width": 5
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": ":",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  },
+                  {
+                    "type": "node",
+                    "kind": "TYPE_CONSTR",
+                    "width": 14,
+                    "children": [
+                      {
+                        "type": "node",
+                        "kind": "TYPE_CONSTR",
+                        "width": 7,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "IDENT_EXPR",
+                            "text": "string",
+                            "width": 6
+                          },
+                          {
+                            "type": "token",
+                            "kind": "WHITESPACE",
+                            "text": " ",
+                            "width": 1
+                          }
+                        ]
+                      },
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "option",
+                        "width": 6
+                      },
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": " ",
+                        "width": 1
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "}",
+                "width": 1
+              }
+            ]
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": "\n",
+            "width": 1
+          }
+        ]
+      }
+    ]
+  },
+  "diagnostics": []
+}

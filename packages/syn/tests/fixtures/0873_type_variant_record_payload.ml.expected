@@ -1,1 +1,378 @@
-{"tree":{"type":"node","kind":"SOURCE_FILE","width":91,"children":[{"type":"node","kind":"TYPE_DECL","width":91,"children":[{"type":"token","kind":"IDENT_EXPR","text":"type","width":4},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"MODULE_PATH","width":7,"children":[{"type":"token","kind":"IDENT_EXPR","text":"person","width":6},{"type":"token","kind":"WHITESPACE","text":" ","width":1}]},{"type":"token","kind":"IDENT_EXPR","text":"=","width":1},{"type":"token","kind":"WHITESPACE","text":"\n  ","width":3},{"type":"token","kind":"IDENT_EXPR","text":"|","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"TYPE_VARIANT_CONSTR","width":42,"children":[{"type":"node","kind":"IDENT_EXPR","width":7,"children":[{"type":"token","kind":"IDENT_EXPR","text":"Student","width":7}]},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":"of","width":2},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"TYPE_RECORD","width":28,"children":[{"type":"token","kind":"IDENT_EXPR","text":"{","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"TYPE_RECORD_FIELD","width":13,"children":[{"type":"token","kind":"IDENT_EXPR","text":"name","width":4},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":":","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"TYPE_CONSTR","width":6,"children":[{"type":"token","kind":"IDENT_EXPR","text":"string","width":6}]}]},{"type":"token","kind":"IDENT_EXPR","text":";","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"TYPE_RECORD_FIELD","width":10,"children":[{"type":"token","kind":"IDENT_EXPR","text":"age","width":3},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":":","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"TYPE_CONSTR","width":4,"children":[{"type":"token","kind":"IDENT_EXPR","text":"int","width":3},{"type":"token","kind":"WHITESPACE","text":" ","width":1}]}]},{"type":"token","kind":"IDENT_EXPR","text":"}","width":1}]},{"type":"token","kind":"WHITESPACE","text":"\n  ","width":3}]},{"type":"token","kind":"IDENT_EXPR","text":"|","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"TYPE_VARIANT_CONSTR","width":29,"children":[{"type":"node","kind":"IDENT_EXPR","width":7,"children":[{"type":"token","kind":"IDENT_EXPR","text":"Teacher","width":7}]},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":"of","width":2},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"TYPE_RECORD","width":17,"children":[{"type":"token","kind":"IDENT_EXPR","text":"{","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"TYPE_RECORD_FIELD","width":14,"children":[{"type":"token","kind":"IDENT_EXPR","text":"name","width":4},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":":","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"TYPE_CONSTR","width":7,"children":[{"type":"token","kind":"IDENT_EXPR","text":"string","width":6},{"type":"token","kind":"WHITESPACE","text":" ","width":1}]}]},{"type":"token","kind":"IDENT_EXPR","text":"}","width":1}]},{"type":"token","kind":"WHITESPACE","text":"\n","width":1}]}]}]},"diagnostics":[]}
+{
+  "tree": {
+    "type": "node",
+    "kind": "SOURCE_FILE",
+    "width": 91,
+    "children": [
+      {
+        "type": "node",
+        "kind": "TYPE_DECL",
+        "width": 91,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "type",
+            "width": 4
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "MODULE_PATH",
+            "width": 7,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "person",
+                "width": 6
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              }
+            ]
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": "\n  ",
+            "width": 3
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "|",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "TYPE_VARIANT_CONSTR",
+            "width": 42,
+            "children": [
+              {
+                "type": "node",
+                "kind": "IDENT_EXPR",
+                "width": 7,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "Student",
+                    "width": 7
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "of",
+                "width": 2
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
+              {
+                "type": "node",
+                "kind": "TYPE_RECORD",
+                "width": 28,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "{",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  },
+                  {
+                    "type": "node",
+                    "kind": "TYPE_RECORD_FIELD",
+                    "width": 13,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "name",
+                        "width": 4
+                      },
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": " ",
+                        "width": 1
+                      },
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": ":",
+                        "width": 1
+                      },
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": " ",
+                        "width": 1
+                      },
+                      {
+                        "type": "node",
+                        "kind": "TYPE_CONSTR",
+                        "width": 6,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "IDENT_EXPR",
+                            "text": "string",
+                            "width": 6
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": ";",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  },
+                  {
+                    "type": "node",
+                    "kind": "TYPE_RECORD_FIELD",
+                    "width": 10,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "age",
+                        "width": 3
+                      },
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": " ",
+                        "width": 1
+                      },
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": ":",
+                        "width": 1
+                      },
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": " ",
+                        "width": 1
+                      },
+                      {
+                        "type": "node",
+                        "kind": "TYPE_CONSTR",
+                        "width": 4,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "IDENT_EXPR",
+                            "text": "int",
+                            "width": 3
+                          },
+                          {
+                            "type": "token",
+                            "kind": "WHITESPACE",
+                            "text": " ",
+                            "width": 1
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "}",
+                    "width": 1
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n  ",
+                "width": 3
+              }
+            ]
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "|",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "TYPE_VARIANT_CONSTR",
+            "width": 29,
+            "children": [
+              {
+                "type": "node",
+                "kind": "IDENT_EXPR",
+                "width": 7,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "Teacher",
+                    "width": 7
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "of",
+                "width": 2
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
+              {
+                "type": "node",
+                "kind": "TYPE_RECORD",
+                "width": 17,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "{",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  },
+                  {
+                    "type": "node",
+                    "kind": "TYPE_RECORD_FIELD",
+                    "width": 14,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "name",
+                        "width": 4
+                      },
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": " ",
+                        "width": 1
+                      },
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": ":",
+                        "width": 1
+                      },
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": " ",
+                        "width": 1
+                      },
+                      {
+                        "type": "node",
+                        "kind": "TYPE_CONSTR",
+                        "width": 7,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "IDENT_EXPR",
+                            "text": "string",
+                            "width": 6
+                          },
+                          {
+                            "type": "token",
+                            "kind": "WHITESPACE",
+                            "text": " ",
+                            "width": 1
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "}",
+                    "width": 1
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": "\n",
+                "width": 1
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "diagnostics": []
+}

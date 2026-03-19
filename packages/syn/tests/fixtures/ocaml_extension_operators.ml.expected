@@ -1,1 +1,2876 @@
-{"tree":{"type":"node","kind":"SOURCE_FILE","width":1165,"children":[{"type":"token","kind":"COMMENT","text":"(* TEST\n expect;\n*)","width":19},{"type":"token","kind":"WHITESPACE","text":"\n\n","width":2},{"type":"node","kind":"LET_BINDING","width":13,"children":[{"type":"token","kind":"IDENT_EXPR","text":"let","width":3},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"IDENT_PATTERN","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"f","width":1}]},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":"o","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":"x","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":"=","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"IDENT_EXPR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"o","width":1}]}]},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"#","width":1}]},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"#","width":1}]},{"type":"token","kind":"WHITESPACE","text":"\n\n","width":2},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"x","width":1}]},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"[","width":1}]},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"%","width":1}]},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"%","width":1}]},{"type":"token","kind":"WHITESPACE","text":"\n","width":1},{"type":"node","kind":"ERROR","width":6,"children":[{"type":"token","kind":"IDENT_EXPR","text":"expect","width":6}]},{"type":"node","kind":"ERROR","width":119,"children":[{"type":"token","kind":"STRING_LITERAL","text":"{|\nLine 1, characters 13-15:\n1 | let f o x = o##x;;\n                 ^^\nError: \"##\" is not a valid value identifier.\n|}","width":119}]},{"type":"token","kind":"WHITESPACE","text":"\n\n","width":2},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"]","width":1}]},{"type":"node","kind":"LET_BINDING","width":11,"children":[{"type":"token","kind":"IDENT_EXPR","text":"let","width":3},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"IDENT_PATTERN","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"f","width":1}]},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":"x","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":"=","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"!","width":1}]}]},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"#","width":1}]},{"type":"token","kind":"WHITESPACE","text":"\n\n","width":2},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"x","width":1}]},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"[","width":1}]},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"%","width":1}]},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"%","width":1}]},{"type":"token","kind":"WHITESPACE","text":"\n","width":1},{"type":"node","kind":"ERROR","width":6,"children":[{"type":"token","kind":"IDENT_EXPR","text":"expect","width":6}]},{"type":"node","kind":"ERROR","width":111,"children":[{"type":"token","kind":"STRING_LITERAL","text":"{|\nLine 1, characters 10-12:\n1 | let f x = !#x\n              ^^\nError: \"!#\" is not a valid value identifier.\n|}","width":111}]},{"type":"token","kind":"WHITESPACE","text":"\n\n","width":2},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"]","width":1}]},{"type":"node","kind":"LET_BINDING","width":11,"children":[{"type":"token","kind":"IDENT_EXPR","text":"let","width":3},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"IDENT_PATTERN","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"f","width":1}]},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":"x","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":"=","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"?","width":1}]}]},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"#","width":1}]},{"type":"token","kind":"WHITESPACE","text":"\n\n","width":2},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"x","width":1}]},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"[","width":1}]},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"%","width":1}]},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"%","width":1}]},{"type":"token","kind":"WHITESPACE","text":"\n","width":1},{"type":"node","kind":"ERROR","width":6,"children":[{"type":"token","kind":"IDENT_EXPR","text":"expect","width":6}]},{"type":"node","kind":"ERROR","width":111,"children":[{"type":"token","kind":"STRING_LITERAL","text":"{|\nLine 1, characters 10-12:\n1 | let f x = ?#x\n              ^^\nError: \"?#\" is not a valid value identifier.\n|}","width":111}]},{"type":"token","kind":"WHITESPACE","text":"\n\n","width":2},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"]","width":1}]},{"type":"node","kind":"LET_BINDING","width":11,"children":[{"type":"token","kind":"IDENT_EXPR","text":"let","width":3},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"IDENT_PATTERN","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"f","width":1}]},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":"x","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":"=","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"~","width":1}]}]},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"#","width":1}]},{"type":"token","kind":"WHITESPACE","text":"\n\n","width":2},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"x","width":1}]},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"[","width":1}]},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"%","width":1}]},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"%","width":1}]},{"type":"token","kind":"WHITESPACE","text":"\n","width":1},{"type":"node","kind":"ERROR","width":6,"children":[{"type":"token","kind":"IDENT_EXPR","text":"expect","width":6}]},{"type":"node","kind":"ERROR","width":111,"children":[{"type":"token","kind":"STRING_LITERAL","text":"{|\nLine 1, characters 10-12:\n1 | let f x = ~#x\n              ^^\nError: \"~#\" is not a valid value identifier.\n|}","width":111}]},{"type":"token","kind":"WHITESPACE","text":"\n\n","width":2},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"]","width":1}]},{"type":"node","kind":"LET_BINDING","width":13,"children":[{"type":"token","kind":"IDENT_EXPR","text":"let","width":3},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"IDENT_PATTERN","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"f","width":1}]},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":"o","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":"x","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":"=","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"IDENT_EXPR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"o","width":1}]}]},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"#","width":1}]},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"-","width":1}]},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"#","width":1}]},{"type":"token","kind":"WHITESPACE","text":"\n\n","width":2},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"x","width":1}]},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"[","width":1}]},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"%","width":1}]},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"%","width":1}]},{"type":"token","kind":"WHITESPACE","text":"\n","width":1},{"type":"node","kind":"ERROR","width":6,"children":[{"type":"token","kind":"IDENT_EXPR","text":"expect","width":6}]},{"type":"node","kind":"ERROR","width":120,"children":[{"type":"token","kind":"STRING_LITERAL","text":"{|\nLine 1, characters 13-16:\n1 | let f o x = o#-#x\n                 ^^^\nError: \"#-#\" is not a valid value identifier.\n|}","width":120}]},{"type":"token","kind":"WHITESPACE","text":"\n\n","width":2},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"]","width":1}]},{"type":"node","kind":"LET_BINDING","width":425,"children":[{"type":"token","kind":"IDENT_EXPR","text":"let","width":3},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"IDENT_PATTERN","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"f","width":1}]},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":"x","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":"=","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"INFIX_EXPR","width":415,"children":[{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"!","width":1}]},{"type":"token","kind":"IDENT_EXPR","text":"-","width":1},{"type":"node","kind":"APPLY_EXPR","width":413,"children":[{"type":"token","kind":"WHITESPACE","text":"\n\n","width":2},{"type":"node","kind":"APPLY_EXPR","width":129,"children":[{"type":"token","kind":"WHITESPACE","text":"\n\n","width":2},{"type":"node","kind":"APPLY_EXPR","width":2,"children":[{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"#","width":1}]},{"type":"node","kind":"IDENT_EXPR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"x","width":1}]}]},{"type":"node","kind":"LIST_EXPR","width":125,"children":[{"type":"token","kind":"IDENT_EXPR","text":"[","width":1},{"type":"node","kind":"INFIX_EXPR","width":123,"children":[{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"%","width":1}]},{"type":"token","kind":"IDENT_EXPR","text":"%","width":1},{"type":"node","kind":"APPLY_EXPR","width":121,"children":[{"type":"token","kind":"WHITESPACE","text":"\n","width":1},{"type":"node","kind":"IDENT_EXPR","width":6,"children":[{"type":"token","kind":"IDENT_EXPR","text":"expect","width":6}]},{"type":"node","kind":"STRING_LITERAL","width":114,"children":[{"type":"token","kind":"STRING_LITERAL","text":"{|\nLine 1, characters 10-13:\n1 | let f x = !-#x\n              ^^^\nError: \"!-#\" is not a valid value identifier.\n|}","width":114}]}]}]},{"type":"token","kind":"IDENT_EXPR","text":"]","width":1}]}]},{"type":"node","kind":"LET_EXPR","width":282,"children":[{"type":"token","kind":"IDENT_EXPR","text":"let","width":3},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"IDENT_PATTERN","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"f","width":1}]},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"INFIX_EXPR","width":276,"children":[{"type":"node","kind":"IDENT_EXPR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"x","width":1}]},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":"=","width":1},{"type":"node","kind":"INFIX_EXPR","width":273,"children":[{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"?","width":1}]},{"type":"token","kind":"IDENT_EXPR","text":"-","width":1},{"type":"node","kind":"APPLY_EXPR","width":271,"children":[{"type":"token","kind":"WHITESPACE","text":"\n\n","width":2},{"type":"node","kind":"APPLY_EXPR","width":129,"children":[{"type":"token","kind":"WHITESPACE","text":"\n\n","width":2},{"type":"node","kind":"APPLY_EXPR","width":2,"children":[{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"#","width":1}]},{"type":"node","kind":"IDENT_EXPR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"x","width":1}]}]},{"type":"node","kind":"LIST_EXPR","width":125,"children":[{"type":"token","kind":"IDENT_EXPR","text":"[","width":1},{"type":"node","kind":"INFIX_EXPR","width":123,"children":[{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"%","width":1}]},{"type":"token","kind":"IDENT_EXPR","text":"%","width":1},{"type":"node","kind":"APPLY_EXPR","width":121,"children":[{"type":"token","kind":"WHITESPACE","text":"\n","width":1},{"type":"node","kind":"IDENT_EXPR","width":6,"children":[{"type":"token","kind":"IDENT_EXPR","text":"expect","width":6}]},{"type":"node","kind":"STRING_LITERAL","width":114,"children":[{"type":"token","kind":"STRING_LITERAL","text":"{|\nLine 1, characters 10-13:\n1 | let f x = ?-#x\n              ^^^\nError: \"?-#\" is not a valid value identifier.\n|}","width":114}]}]}]},{"type":"token","kind":"IDENT_EXPR","text":"]","width":1}]}]},{"type":"node","kind":"LET_EXPR","width":140,"children":[{"type":"token","kind":"IDENT_EXPR","text":"let","width":3},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"IDENT_PATTERN","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"f","width":1}]},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"INFIX_EXPR","width":134,"children":[{"type":"node","kind":"IDENT_EXPR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"x","width":1}]},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":"=","width":1},{"type":"node","kind":"INFIX_EXPR","width":131,"children":[{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"~","width":1}]},{"type":"token","kind":"IDENT_EXPR","text":"-","width":1},{"type":"node","kind":"APPLY_EXPR","width":129,"children":[{"type":"token","kind":"WHITESPACE","text":"\n\n","width":2},{"type":"node","kind":"APPLY_EXPR","width":2,"children":[{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"#","width":1}]},{"type":"node","kind":"IDENT_EXPR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"x","width":1}]}]},{"type":"node","kind":"LIST_EXPR","width":125,"children":[{"type":"token","kind":"IDENT_EXPR","text":"[","width":1},{"type":"node","kind":"INFIX_EXPR","width":123,"children":[{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"%","width":1}]},{"type":"token","kind":"IDENT_EXPR","text":"%","width":1},{"type":"node","kind":"APPLY_EXPR","width":121,"children":[{"type":"token","kind":"WHITESPACE","text":"\n","width":1},{"type":"node","kind":"IDENT_EXPR","width":6,"children":[{"type":"token","kind":"IDENT_EXPR","text":"expect","width":6}]},{"type":"node","kind":"STRING_LITERAL","width":114,"children":[{"type":"token","kind":"STRING_LITERAL","text":"{|\nLine 1, characters 10-13:\n1 | let f x = ~-#x\n              ^^^\nError: \"~-#\" is not a valid value identifier.\n|}","width":114}]}]}]},{"type":"token","kind":"IDENT_EXPR","text":"]","width":1}]}]}]}]},{"type":"node","kind":"ERROR","width":0,"children":[{"type":"token","kind":"IDENT_EXPR","text":"","width":0}]}]}]}]}]},{"type":"node","kind":"ERROR","width":0,"children":[{"type":"token","kind":"IDENT_EXPR","text":"","width":0}]}]}]}]}]}]},"diagnostics":[{"kind":{"id":"E0003","name":"missing-let-binding-equals","expected":"=","found":{"kind":"identifier","text":"o"},"fix":"add = between the pattern and expression","hint":"Every let binding needs an = between the pattern and the expression."},"span":{"start":26,"end":26}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"#","text":"#"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":35,"end":36}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"#","text":"#"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":36,"end":37}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"identifier","text":"x"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":37,"end":39}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"[","text":"["},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":40,"end":41}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"%","text":"%"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":41,"end":42}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"%","text":"%"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":42,"end":48}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"identifier","text":"expect"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":48,"end":49}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"string","text":"{|\nLine 1, characters 13-15:\n1 | let f o x = o##x;;\n                 ^^\nError: \"##\" is not a valid value identifier.\n|}"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":168,"end":169}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"]","text":"]"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":169,"end":171}},{"kind":{"id":"E0003","name":"missing-let-binding-equals","expected":"=","found":{"kind":"identifier","text":"x"},"fix":"add = between the pattern and expression","hint":"Every let binding needs an = between the pattern and the expression."},"span":{"start":176,"end":176}},{"kind":{"id":"E0008","name":"invalid-expression","expected":"expression","found":{"kind":"!","text":"!"},"hint":"Expected a value, function call, or operator expression."},"span":{"start":182,"end":183}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"#","text":"#"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":183,"end":184}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"identifier","text":"x"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":184,"end":186}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"[","text":"["},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":187,"end":188}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"%","text":"%"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":188,"end":189}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"%","text":"%"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":189,"end":195}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"identifier","text":"expect"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":195,"end":196}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"string","text":"{|\nLine 1, characters 10-12:\n1 | let f x = !#x\n              ^^\nError: \"!#\" is not a valid value identifier.\n|}"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":307,"end":308}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"]","text":"]"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":308,"end":310}},{"kind":{"id":"E0003","name":"missing-let-binding-equals","expected":"=","found":{"kind":"identifier","text":"x"},"fix":"add = between the pattern and expression","hint":"Every let binding needs an = between the pattern and the expression."},"span":{"start":315,"end":315}},{"kind":{"id":"E0008","name":"invalid-expression","expected":"expression","found":{"kind":"?","text":"?"},"hint":"Expected a value, function call, or operator expression."},"span":{"start":321,"end":322}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"#","text":"#"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":322,"end":323}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"identifier","text":"x"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":323,"end":325}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"[","text":"["},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":326,"end":327}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"%","text":"%"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":327,"end":328}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"%","text":"%"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":328,"end":334}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"identifier","text":"expect"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":334,"end":335}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"string","text":"{|\nLine 1, characters 10-12:\n1 | let f x = ?#x\n              ^^\nError: \"?#\" is not a valid value identifier.\n|}"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":446,"end":447}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"]","text":"]"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":447,"end":449}},{"kind":{"id":"E0003","name":"missing-let-binding-equals","expected":"=","found":{"kind":"identifier","text":"x"},"fix":"add = between the pattern and expression","hint":"Every let binding needs an = between the pattern and the expression."},"span":{"start":454,"end":454}},{"kind":{"id":"E0008","name":"invalid-expression","expected":"expression","found":{"kind":"~","text":"~"},"hint":"Expected a value, function call, or operator expression."},"span":{"start":460,"end":461}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"#","text":"#"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":461,"end":462}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"identifier","text":"x"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":462,"end":464}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"[","text":"["},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":465,"end":466}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"%","text":"%"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":466,"end":467}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"%","text":"%"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":467,"end":473}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"identifier","text":"expect"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":473,"end":474}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"string","text":"{|\nLine 1, characters 10-12:\n1 | let f x = ~#x\n              ^^\nError: \"~#\" is not a valid value identifier.\n|}"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":585,"end":586}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"]","text":"]"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":586,"end":588}},{"kind":{"id":"E0003","name":"missing-let-binding-equals","expected":"=","found":{"kind":"identifier","text":"o"},"fix":"add = between the pattern and expression","hint":"Every let binding needs an = between the pattern and the expression."},"span":{"start":593,"end":593}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"#","text":"#"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":602,"end":603}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"-","text":"-"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":603,"end":604}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"#","text":"#"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":604,"end":605}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"identifier","text":"x"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":605,"end":607}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"[","text":"["},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":608,"end":609}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"%","text":"%"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":609,"end":610}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"%","text":"%"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":610,"end":616}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"identifier","text":"expect"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":616,"end":617}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"string","text":"{|\nLine 1, characters 13-16:\n1 | let f o x = o#-#x\n                 ^^^\nError: \"#-#\" is not a valid value identifier.\n|}"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":737,"end":738}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"]","text":"]"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":738,"end":740}},{"kind":{"id":"E0003","name":"missing-let-binding-equals","expected":"=","found":{"kind":"identifier","text":"x"},"fix":"add = between the pattern and expression","hint":"Every let binding needs an = between the pattern and the expression."},"span":{"start":745,"end":745}},{"kind":{"id":"E0008","name":"invalid-expression","expected":"expression","found":{"kind":"!","text":"!"},"hint":"Expected a value, function call, or operator expression."},"span":{"start":751,"end":752}},{"kind":{"id":"E0008","name":"invalid-expression","expected":"expression","found":{"kind":"#","text":"#"},"hint":"Expected a value, function call, or operator expression."},"span":{"start":753,"end":754}},{"kind":{"id":"E0020","name":"missing-binary-operand","expected":"left operand for %","found":{"kind":"%","text":"%"},"fix":"add an expression before the operator","hint":"Binary operators like +, -, *, =, etc. require both a left and right operand.\n\nFor example:\n  ```ocaml\n  let x = 1 + 2   (* correct *)\n  let y = 1 +     (* missing right operand *)\n  let z = + 2     (* missing left operand *)\n  ```\n\nIf you want to create a partially applied operator function, use parentheses:\n  ```ocaml\n  let add_one = (+) 1\n  ```\n"},"span":{"start":758,"end":759}},{"kind":{"id":"E0003","name":"missing-let-binding-equals","expected":"=","found":{"kind":"identifier","text":"x"},"fix":"add = between the pattern and expression","hint":"Every let binding needs an = between the pattern and the expression."},"span":{"start":888,"end":888}},{"kind":{"id":"E0008","name":"invalid-expression","expected":"expression","found":{"kind":"?","text":"?"},"hint":"Expected a value, function call, or operator expression."},"span":{"start":894,"end":895}},{"kind":{"id":"E0008","name":"invalid-expression","expected":"expression","found":{"kind":"#","text":"#"},"hint":"Expected a value, function call, or operator expression."},"span":{"start":896,"end":897}},{"kind":{"id":"E0020","name":"missing-binary-operand","expected":"left operand for %","found":{"kind":"%","text":"%"},"fix":"add an expression before the operator","hint":"Binary operators like +, -, *, =, etc. require both a left and right operand.\n\nFor example:\n  ```ocaml\n  let x = 1 + 2   (* correct *)\n  let y = 1 +     (* missing right operand *)\n  let z = + 2     (* missing left operand *)\n  ```\n\nIf you want to create a partially applied operator function, use parentheses:\n  ```ocaml\n  let add_one = (+) 1\n  ```\n"},"span":{"start":901,"end":902}},{"kind":{"id":"E0003","name":"missing-let-binding-equals","expected":"=","found":{"kind":"identifier","text":"x"},"fix":"add = between the pattern and expression","hint":"Every let binding needs an = between the pattern and the expression."},"span":{"start":1031,"end":1031}},{"kind":{"id":"E0008","name":"invalid-expression","expected":"expression","found":{"kind":"~","text":"~"},"hint":"Expected a value, function call, or operator expression."},"span":{"start":1037,"end":1038}},{"kind":{"id":"E0008","name":"invalid-expression","expected":"expression","found":{"kind":"#","text":"#"},"hint":"Expected a value, function call, or operator expression."},"span":{"start":1039,"end":1040}},{"kind":{"id":"E0020","name":"missing-binary-operand","expected":"left operand for %","found":{"kind":"%","text":"%"},"fix":"add an expression before the operator","hint":"Binary operators like +, -, *, =, etc. require both a left and right operand.\n\nFor example:\n  ```ocaml\n  let x = 1 + 2   (* correct *)\n  let y = 1 +     (* missing right operand *)\n  let z = + 2     (* missing left operand *)\n  ```\n\nIf you want to create a partially applied operator function, use parentheses:\n  ```ocaml\n  let add_one = (+) 1\n  ```\n"},"span":{"start":1044,"end":1045}},{"kind":{"id":"E0008","name":"invalid-expression","expected":"expression","found":{"kind":"end of file","text":""},"hint":"Expected a value, function call, or operator expression."},"span":{"start":1167,"end":1167}},{"kind":{"id":"E0008","name":"invalid-expression","expected":"expression","found":{"kind":"end of file","text":""},"hint":"Expected a value, function call, or operator expression."},"span":{"start":0,"end":0}},{"kind":{"id":"E0008","name":"invalid-expression","expected":"expression","found":{"kind":"end of file","text":""},"hint":"Expected a value, function call, or operator expression."},"span":{"start":1168,"end":1168}},{"kind":{"id":"E0008","name":"invalid-expression","expected":"expression","found":{"kind":"end of file","text":""},"hint":"Expected a value, function call, or operator expression."},"span":{"start":0,"end":0}}]}
+{
+  "tree": {
+    "type": "node",
+    "kind": "SOURCE_FILE",
+    "width": 1165,
+    "children": [
+      {
+        "type": "token",
+        "kind": "COMMENT",
+        "text": "(* TEST\n expect;\n*)",
+        "width": 19
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n\n",
+        "width": 2
+      },
+      {
+        "type": "node",
+        "kind": "LET_BINDING",
+        "width": 13,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "width": 3
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "IDENT_PATTERN",
+            "width": 1,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "f",
+                "width": 1
+              }
+            ]
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "o",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "IDENT_EXPR",
+            "width": 1,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "o",
+                "width": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "#",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "#",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n\n",
+        "width": 2
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "[",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n",
+        "width": 1
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 6,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "expect",
+            "width": 6
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 119,
+        "children": [
+          {
+            "type": "token",
+            "kind": "STRING_LITERAL",
+            "text": "{|\nLine 1, characters 13-15:\n1 | let f o x = o##x;;\n                 ^^\nError: \"##\" is not a valid value identifier.\n|}",
+            "width": 119
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n\n",
+        "width": 2
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "]",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "LET_BINDING",
+        "width": 11,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "width": 3
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "IDENT_PATTERN",
+            "width": 1,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "f",
+                "width": 1
+              }
+            ]
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "ERROR",
+            "width": 1,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "!",
+                "width": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "#",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n\n",
+        "width": 2
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "[",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n",
+        "width": 1
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 6,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "expect",
+            "width": 6
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 111,
+        "children": [
+          {
+            "type": "token",
+            "kind": "STRING_LITERAL",
+            "text": "{|\nLine 1, characters 10-12:\n1 | let f x = !#x\n              ^^\nError: \"!#\" is not a valid value identifier.\n|}",
+            "width": 111
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n\n",
+        "width": 2
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "]",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "LET_BINDING",
+        "width": 11,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "width": 3
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "IDENT_PATTERN",
+            "width": 1,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "f",
+                "width": 1
+              }
+            ]
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "ERROR",
+            "width": 1,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "?",
+                "width": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "#",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n\n",
+        "width": 2
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "[",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n",
+        "width": 1
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 6,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "expect",
+            "width": 6
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 111,
+        "children": [
+          {
+            "type": "token",
+            "kind": "STRING_LITERAL",
+            "text": "{|\nLine 1, characters 10-12:\n1 | let f x = ?#x\n              ^^\nError: \"?#\" is not a valid value identifier.\n|}",
+            "width": 111
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n\n",
+        "width": 2
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "]",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "LET_BINDING",
+        "width": 11,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "width": 3
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "IDENT_PATTERN",
+            "width": 1,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "f",
+                "width": 1
+              }
+            ]
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "ERROR",
+            "width": 1,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "~",
+                "width": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "#",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n\n",
+        "width": 2
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "[",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n",
+        "width": 1
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 6,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "expect",
+            "width": 6
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 111,
+        "children": [
+          {
+            "type": "token",
+            "kind": "STRING_LITERAL",
+            "text": "{|\nLine 1, characters 10-12:\n1 | let f x = ~#x\n              ^^\nError: \"~#\" is not a valid value identifier.\n|}",
+            "width": 111
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n\n",
+        "width": 2
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "]",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "LET_BINDING",
+        "width": 13,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "width": 3
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "IDENT_PATTERN",
+            "width": 1,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "f",
+                "width": 1
+              }
+            ]
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "o",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "IDENT_EXPR",
+            "width": 1,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "o",
+                "width": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "#",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "-",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "#",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n\n",
+        "width": 2
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "[",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n",
+        "width": 1
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 6,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "expect",
+            "width": 6
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 120,
+        "children": [
+          {
+            "type": "token",
+            "kind": "STRING_LITERAL",
+            "text": "{|\nLine 1, characters 13-16:\n1 | let f o x = o#-#x\n                 ^^^\nError: \"#-#\" is not a valid value identifier.\n|}",
+            "width": 120
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n\n",
+        "width": 2
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "]",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "LET_BINDING",
+        "width": 425,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "width": 3
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "IDENT_PATTERN",
+            "width": 1,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "f",
+                "width": 1
+              }
+            ]
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "INFIX_EXPR",
+            "width": 415,
+            "children": [
+              {
+                "type": "node",
+                "kind": "ERROR",
+                "width": 1,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "!",
+                    "width": 1
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "-",
+                "width": 1
+              },
+              {
+                "type": "node",
+                "kind": "APPLY_EXPR",
+                "width": 413,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "WHITESPACE",
+                    "text": "\n\n",
+                    "width": 2
+                  },
+                  {
+                    "type": "node",
+                    "kind": "APPLY_EXPR",
+                    "width": 129,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": "\n\n",
+                        "width": 2
+                      },
+                      {
+                        "type": "node",
+                        "kind": "APPLY_EXPR",
+                        "width": 2,
+                        "children": [
+                          {
+                            "type": "node",
+                            "kind": "ERROR",
+                            "width": 1,
+                            "children": [
+                              {
+                                "type": "token",
+                                "kind": "IDENT_EXPR",
+                                "text": "#",
+                                "width": 1
+                              }
+                            ]
+                          },
+                          {
+                            "type": "node",
+                            "kind": "IDENT_EXPR",
+                            "width": 1,
+                            "children": [
+                              {
+                                "type": "token",
+                                "kind": "IDENT_EXPR",
+                                "text": "x",
+                                "width": 1
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "node",
+                        "kind": "LIST_EXPR",
+                        "width": 125,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "IDENT_EXPR",
+                            "text": "[",
+                            "width": 1
+                          },
+                          {
+                            "type": "node",
+                            "kind": "INFIX_EXPR",
+                            "width": 123,
+                            "children": [
+                              {
+                                "type": "node",
+                                "kind": "ERROR",
+                                "width": 1,
+                                "children": [
+                                  {
+                                    "type": "token",
+                                    "kind": "IDENT_EXPR",
+                                    "text": "%",
+                                    "width": 1
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "token",
+                                "kind": "IDENT_EXPR",
+                                "text": "%",
+                                "width": 1
+                              },
+                              {
+                                "type": "node",
+                                "kind": "APPLY_EXPR",
+                                "width": 121,
+                                "children": [
+                                  {
+                                    "type": "token",
+                                    "kind": "WHITESPACE",
+                                    "text": "\n",
+                                    "width": 1
+                                  },
+                                  {
+                                    "type": "node",
+                                    "kind": "IDENT_EXPR",
+                                    "width": 6,
+                                    "children": [
+                                      {
+                                        "type": "token",
+                                        "kind": "IDENT_EXPR",
+                                        "text": "expect",
+                                        "width": 6
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "type": "node",
+                                    "kind": "STRING_LITERAL",
+                                    "width": 114,
+                                    "children": [
+                                      {
+                                        "type": "token",
+                                        "kind": "STRING_LITERAL",
+                                        "text": "{|\nLine 1, characters 10-13:\n1 | let f x = !-#x\n              ^^^\nError: \"!-#\" is not a valid value identifier.\n|}",
+                                        "width": 114
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "type": "token",
+                            "kind": "IDENT_EXPR",
+                            "text": "]",
+                            "width": 1
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "node",
+                    "kind": "LET_EXPR",
+                    "width": 282,
+                    "children": [
+                      {
+                        "type": "token",
+                        "kind": "IDENT_EXPR",
+                        "text": "let",
+                        "width": 3
+                      },
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": " ",
+                        "width": 1
+                      },
+                      {
+                        "type": "node",
+                        "kind": "IDENT_PATTERN",
+                        "width": 1,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "IDENT_EXPR",
+                            "text": "f",
+                            "width": 1
+                          }
+                        ]
+                      },
+                      {
+                        "type": "token",
+                        "kind": "WHITESPACE",
+                        "text": " ",
+                        "width": 1
+                      },
+                      {
+                        "type": "node",
+                        "kind": "INFIX_EXPR",
+                        "width": 276,
+                        "children": [
+                          {
+                            "type": "node",
+                            "kind": "IDENT_EXPR",
+                            "width": 1,
+                            "children": [
+                              {
+                                "type": "token",
+                                "kind": "IDENT_EXPR",
+                                "text": "x",
+                                "width": 1
+                              }
+                            ]
+                          },
+                          {
+                            "type": "token",
+                            "kind": "WHITESPACE",
+                            "text": " ",
+                            "width": 1
+                          },
+                          {
+                            "type": "token",
+                            "kind": "IDENT_EXPR",
+                            "text": "=",
+                            "width": 1
+                          },
+                          {
+                            "type": "node",
+                            "kind": "INFIX_EXPR",
+                            "width": 273,
+                            "children": [
+                              {
+                                "type": "node",
+                                "kind": "ERROR",
+                                "width": 1,
+                                "children": [
+                                  {
+                                    "type": "token",
+                                    "kind": "IDENT_EXPR",
+                                    "text": "?",
+                                    "width": 1
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "token",
+                                "kind": "IDENT_EXPR",
+                                "text": "-",
+                                "width": 1
+                              },
+                              {
+                                "type": "node",
+                                "kind": "APPLY_EXPR",
+                                "width": 271,
+                                "children": [
+                                  {
+                                    "type": "token",
+                                    "kind": "WHITESPACE",
+                                    "text": "\n\n",
+                                    "width": 2
+                                  },
+                                  {
+                                    "type": "node",
+                                    "kind": "APPLY_EXPR",
+                                    "width": 129,
+                                    "children": [
+                                      {
+                                        "type": "token",
+                                        "kind": "WHITESPACE",
+                                        "text": "\n\n",
+                                        "width": 2
+                                      },
+                                      {
+                                        "type": "node",
+                                        "kind": "APPLY_EXPR",
+                                        "width": 2,
+                                        "children": [
+                                          {
+                                            "type": "node",
+                                            "kind": "ERROR",
+                                            "width": 1,
+                                            "children": [
+                                              {
+                                                "type": "token",
+                                                "kind": "IDENT_EXPR",
+                                                "text": "#",
+                                                "width": 1
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "node",
+                                            "kind": "IDENT_EXPR",
+                                            "width": 1,
+                                            "children": [
+                                              {
+                                                "type": "token",
+                                                "kind": "IDENT_EXPR",
+                                                "text": "x",
+                                                "width": 1
+                                              }
+                                            ]
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "type": "node",
+                                        "kind": "LIST_EXPR",
+                                        "width": 125,
+                                        "children": [
+                                          {
+                                            "type": "token",
+                                            "kind": "IDENT_EXPR",
+                                            "text": "[",
+                                            "width": 1
+                                          },
+                                          {
+                                            "type": "node",
+                                            "kind": "INFIX_EXPR",
+                                            "width": 123,
+                                            "children": [
+                                              {
+                                                "type": "node",
+                                                "kind": "ERROR",
+                                                "width": 1,
+                                                "children": [
+                                                  {
+                                                    "type": "token",
+                                                    "kind": "IDENT_EXPR",
+                                                    "text": "%",
+                                                    "width": 1
+                                                  }
+                                                ]
+                                              },
+                                              {
+                                                "type": "token",
+                                                "kind": "IDENT_EXPR",
+                                                "text": "%",
+                                                "width": 1
+                                              },
+                                              {
+                                                "type": "node",
+                                                "kind": "APPLY_EXPR",
+                                                "width": 121,
+                                                "children": [
+                                                  {
+                                                    "type": "token",
+                                                    "kind": "WHITESPACE",
+                                                    "text": "\n",
+                                                    "width": 1
+                                                  },
+                                                  {
+                                                    "type": "node",
+                                                    "kind": "IDENT_EXPR",
+                                                    "width": 6,
+                                                    "children": [
+                                                      {
+                                                        "type": "token",
+                                                        "kind": "IDENT_EXPR",
+                                                        "text": "expect",
+                                                        "width": 6
+                                                      }
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "node",
+                                                    "kind": "STRING_LITERAL",
+                                                    "width": 114,
+                                                    "children": [
+                                                      {
+                                                        "type": "token",
+                                                        "kind": "STRING_LITERAL",
+                                                        "text": "{|\nLine 1, characters 10-13:\n1 | let f x = ?-#x\n              ^^^\nError: \"?-#\" is not a valid value identifier.\n|}",
+                                                        "width": 114
+                                                      }
+                                                    ]
+                                                  }
+                                                ]
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "token",
+                                            "kind": "IDENT_EXPR",
+                                            "text": "]",
+                                            "width": 1
+                                          }
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "type": "node",
+                                    "kind": "LET_EXPR",
+                                    "width": 140,
+                                    "children": [
+                                      {
+                                        "type": "token",
+                                        "kind": "IDENT_EXPR",
+                                        "text": "let",
+                                        "width": 3
+                                      },
+                                      {
+                                        "type": "token",
+                                        "kind": "WHITESPACE",
+                                        "text": " ",
+                                        "width": 1
+                                      },
+                                      {
+                                        "type": "node",
+                                        "kind": "IDENT_PATTERN",
+                                        "width": 1,
+                                        "children": [
+                                          {
+                                            "type": "token",
+                                            "kind": "IDENT_EXPR",
+                                            "text": "f",
+                                            "width": 1
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "type": "token",
+                                        "kind": "WHITESPACE",
+                                        "text": " ",
+                                        "width": 1
+                                      },
+                                      {
+                                        "type": "node",
+                                        "kind": "INFIX_EXPR",
+                                        "width": 134,
+                                        "children": [
+                                          {
+                                            "type": "node",
+                                            "kind": "IDENT_EXPR",
+                                            "width": 1,
+                                            "children": [
+                                              {
+                                                "type": "token",
+                                                "kind": "IDENT_EXPR",
+                                                "text": "x",
+                                                "width": 1
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "token",
+                                            "kind": "WHITESPACE",
+                                            "text": " ",
+                                            "width": 1
+                                          },
+                                          {
+                                            "type": "token",
+                                            "kind": "IDENT_EXPR",
+                                            "text": "=",
+                                            "width": 1
+                                          },
+                                          {
+                                            "type": "node",
+                                            "kind": "INFIX_EXPR",
+                                            "width": 131,
+                                            "children": [
+                                              {
+                                                "type": "node",
+                                                "kind": "ERROR",
+                                                "width": 1,
+                                                "children": [
+                                                  {
+                                                    "type": "token",
+                                                    "kind": "IDENT_EXPR",
+                                                    "text": "~",
+                                                    "width": 1
+                                                  }
+                                                ]
+                                              },
+                                              {
+                                                "type": "token",
+                                                "kind": "IDENT_EXPR",
+                                                "text": "-",
+                                                "width": 1
+                                              },
+                                              {
+                                                "type": "node",
+                                                "kind": "APPLY_EXPR",
+                                                "width": 129,
+                                                "children": [
+                                                  {
+                                                    "type": "token",
+                                                    "kind": "WHITESPACE",
+                                                    "text": "\n\n",
+                                                    "width": 2
+                                                  },
+                                                  {
+                                                    "type": "node",
+                                                    "kind": "APPLY_EXPR",
+                                                    "width": 2,
+                                                    "children": [
+                                                      {
+                                                        "type": "node",
+                                                        "kind": "ERROR",
+                                                        "width": 1,
+                                                        "children": [
+                                                          {
+                                                            "type": "token",
+                                                            "kind": "IDENT_EXPR",
+                                                            "text": "#",
+                                                            "width": 1
+                                                          }
+                                                        ]
+                                                      },
+                                                      {
+                                                        "type": "node",
+                                                        "kind": "IDENT_EXPR",
+                                                        "width": 1,
+                                                        "children": [
+                                                          {
+                                                            "type": "token",
+                                                            "kind": "IDENT_EXPR",
+                                                            "text": "x",
+                                                            "width": 1
+                                                          }
+                                                        ]
+                                                      }
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "node",
+                                                    "kind": "LIST_EXPR",
+                                                    "width": 125,
+                                                    "children": [
+                                                      {
+                                                        "type": "token",
+                                                        "kind": "IDENT_EXPR",
+                                                        "text": "[",
+                                                        "width": 1
+                                                      },
+                                                      {
+                                                        "type": "node",
+                                                        "kind": "INFIX_EXPR",
+                                                        "width": 123,
+                                                        "children": [
+                                                          {
+                                                            "type": "node",
+                                                            "kind": "ERROR",
+                                                            "width": 1,
+                                                            "children": [
+                                                              {
+                                                                "type": "token",
+                                                                "kind": "IDENT_EXPR",
+                                                                "text": "%",
+                                                                "width": 1
+                                                              }
+                                                            ]
+                                                          },
+                                                          {
+                                                            "type": "token",
+                                                            "kind": "IDENT_EXPR",
+                                                            "text": "%",
+                                                            "width": 1
+                                                          },
+                                                          {
+                                                            "type": "node",
+                                                            "kind": "APPLY_EXPR",
+                                                            "width": 121,
+                                                            "children": [
+                                                              {
+                                                                "type": "token",
+                                                                "kind": "WHITESPACE",
+                                                                "text": "\n",
+                                                                "width": 1
+                                                              },
+                                                              {
+                                                                "type": "node",
+                                                                "kind": "IDENT_EXPR",
+                                                                "width": 6,
+                                                                "children": [
+                                                                  {
+                                                                    "type": "token",
+                                                                    "kind": "IDENT_EXPR",
+                                                                    "text": "expect",
+                                                                    "width": 6
+                                                                  }
+                                                                ]
+                                                              },
+                                                              {
+                                                                "type": "node",
+                                                                "kind": "STRING_LITERAL",
+                                                                "width": 114,
+                                                                "children": [
+                                                                  {
+                                                                    "type": "token",
+                                                                    "kind": "STRING_LITERAL",
+                                                                    "text": "{|\nLine 1, characters 10-13:\n1 | let f x = ~-#x\n              ^^^\nError: \"~-#\" is not a valid value identifier.\n|}",
+                                                                    "width": 114
+                                                                  }
+                                                                ]
+                                                              }
+                                                            ]
+                                                          }
+                                                        ]
+                                                      },
+                                                      {
+                                                        "type": "token",
+                                                        "kind": "IDENT_EXPR",
+                                                        "text": "]",
+                                                        "width": 1
+                                                      }
+                                                    ]
+                                                  }
+                                                ]
+                                              }
+                                            ]
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "type": "node",
+                                        "kind": "ERROR",
+                                        "width": 0,
+                                        "children": [
+                                          {
+                                            "type": "token",
+                                            "kind": "IDENT_EXPR",
+                                            "text": "",
+                                            "width": 0
+                                          }
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "node",
+                        "kind": "ERROR",
+                        "width": 0,
+                        "children": [
+                          {
+                            "type": "token",
+                            "kind": "IDENT_EXPR",
+                            "text": "",
+                            "width": 0
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "kind": {
+        "id": "E0003",
+        "name": "missing-let-binding-equals",
+        "expected": "=",
+        "found": {
+          "kind": "identifier",
+          "text": "o"
+        },
+        "fix": "add = between the pattern and expression",
+        "hint": "Every let binding needs an = between the pattern and the expression."
+      },
+      "span": {
+        "start": 26,
+        "end": 26
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "#",
+          "text": "#"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 35,
+        "end": 36
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "#",
+          "text": "#"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 36,
+        "end": 37
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "identifier",
+          "text": "x"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 37,
+        "end": 39
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "[",
+          "text": "["
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 40,
+        "end": 41
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "%",
+          "text": "%"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 41,
+        "end": 42
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "%",
+          "text": "%"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 42,
+        "end": 48
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "identifier",
+          "text": "expect"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 48,
+        "end": 49
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "string",
+          "text": "{|\nLine 1, characters 13-15:\n1 | let f o x = o##x;;\n                 ^^\nError: \"##\" is not a valid value identifier.\n|}"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 168,
+        "end": 169
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "]",
+          "text": "]"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 169,
+        "end": 171
+      }
+    },
+    {
+      "kind": {
+        "id": "E0003",
+        "name": "missing-let-binding-equals",
+        "expected": "=",
+        "found": {
+          "kind": "identifier",
+          "text": "x"
+        },
+        "fix": "add = between the pattern and expression",
+        "hint": "Every let binding needs an = between the pattern and the expression."
+      },
+      "span": {
+        "start": 176,
+        "end": 176
+      }
+    },
+    {
+      "kind": {
+        "id": "E0008",
+        "name": "invalid-expression",
+        "expected": "expression",
+        "found": {
+          "kind": "!",
+          "text": "!"
+        },
+        "hint": "Expected a value, function call, or operator expression."
+      },
+      "span": {
+        "start": 182,
+        "end": 183
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "#",
+          "text": "#"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 183,
+        "end": 184
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "identifier",
+          "text": "x"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 184,
+        "end": 186
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "[",
+          "text": "["
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 187,
+        "end": 188
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "%",
+          "text": "%"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 188,
+        "end": 189
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "%",
+          "text": "%"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 189,
+        "end": 195
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "identifier",
+          "text": "expect"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 195,
+        "end": 196
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "string",
+          "text": "{|\nLine 1, characters 10-12:\n1 | let f x = !#x\n              ^^\nError: \"!#\" is not a valid value identifier.\n|}"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 307,
+        "end": 308
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "]",
+          "text": "]"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 308,
+        "end": 310
+      }
+    },
+    {
+      "kind": {
+        "id": "E0003",
+        "name": "missing-let-binding-equals",
+        "expected": "=",
+        "found": {
+          "kind": "identifier",
+          "text": "x"
+        },
+        "fix": "add = between the pattern and expression",
+        "hint": "Every let binding needs an = between the pattern and the expression."
+      },
+      "span": {
+        "start": 315,
+        "end": 315
+      }
+    },
+    {
+      "kind": {
+        "id": "E0008",
+        "name": "invalid-expression",
+        "expected": "expression",
+        "found": {
+          "kind": "?",
+          "text": "?"
+        },
+        "hint": "Expected a value, function call, or operator expression."
+      },
+      "span": {
+        "start": 321,
+        "end": 322
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "#",
+          "text": "#"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 322,
+        "end": 323
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "identifier",
+          "text": "x"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 323,
+        "end": 325
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "[",
+          "text": "["
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 326,
+        "end": 327
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "%",
+          "text": "%"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 327,
+        "end": 328
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "%",
+          "text": "%"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 328,
+        "end": 334
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "identifier",
+          "text": "expect"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 334,
+        "end": 335
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "string",
+          "text": "{|\nLine 1, characters 10-12:\n1 | let f x = ?#x\n              ^^\nError: \"?#\" is not a valid value identifier.\n|}"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 446,
+        "end": 447
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "]",
+          "text": "]"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 447,
+        "end": 449
+      }
+    },
+    {
+      "kind": {
+        "id": "E0003",
+        "name": "missing-let-binding-equals",
+        "expected": "=",
+        "found": {
+          "kind": "identifier",
+          "text": "x"
+        },
+        "fix": "add = between the pattern and expression",
+        "hint": "Every let binding needs an = between the pattern and the expression."
+      },
+      "span": {
+        "start": 454,
+        "end": 454
+      }
+    },
+    {
+      "kind": {
+        "id": "E0008",
+        "name": "invalid-expression",
+        "expected": "expression",
+        "found": {
+          "kind": "~",
+          "text": "~"
+        },
+        "hint": "Expected a value, function call, or operator expression."
+      },
+      "span": {
+        "start": 460,
+        "end": 461
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "#",
+          "text": "#"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 461,
+        "end": 462
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "identifier",
+          "text": "x"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 462,
+        "end": 464
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "[",
+          "text": "["
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 465,
+        "end": 466
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "%",
+          "text": "%"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 466,
+        "end": 467
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "%",
+          "text": "%"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 467,
+        "end": 473
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "identifier",
+          "text": "expect"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 473,
+        "end": 474
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "string",
+          "text": "{|\nLine 1, characters 10-12:\n1 | let f x = ~#x\n              ^^\nError: \"~#\" is not a valid value identifier.\n|}"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 585,
+        "end": 586
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "]",
+          "text": "]"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 586,
+        "end": 588
+      }
+    },
+    {
+      "kind": {
+        "id": "E0003",
+        "name": "missing-let-binding-equals",
+        "expected": "=",
+        "found": {
+          "kind": "identifier",
+          "text": "o"
+        },
+        "fix": "add = between the pattern and expression",
+        "hint": "Every let binding needs an = between the pattern and the expression."
+      },
+      "span": {
+        "start": 593,
+        "end": 593
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "#",
+          "text": "#"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 602,
+        "end": 603
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "-",
+          "text": "-"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 603,
+        "end": 604
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "#",
+          "text": "#"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 604,
+        "end": 605
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "identifier",
+          "text": "x"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 605,
+        "end": 607
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "[",
+          "text": "["
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 608,
+        "end": 609
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "%",
+          "text": "%"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 609,
+        "end": 610
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "%",
+          "text": "%"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 610,
+        "end": 616
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "identifier",
+          "text": "expect"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 616,
+        "end": 617
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "string",
+          "text": "{|\nLine 1, characters 13-16:\n1 | let f o x = o#-#x\n                 ^^^\nError: \"#-#\" is not a valid value identifier.\n|}"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 737,
+        "end": 738
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "]",
+          "text": "]"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 738,
+        "end": 740
+      }
+    },
+    {
+      "kind": {
+        "id": "E0003",
+        "name": "missing-let-binding-equals",
+        "expected": "=",
+        "found": {
+          "kind": "identifier",
+          "text": "x"
+        },
+        "fix": "add = between the pattern and expression",
+        "hint": "Every let binding needs an = between the pattern and the expression."
+      },
+      "span": {
+        "start": 745,
+        "end": 745
+      }
+    },
+    {
+      "kind": {
+        "id": "E0008",
+        "name": "invalid-expression",
+        "expected": "expression",
+        "found": {
+          "kind": "!",
+          "text": "!"
+        },
+        "hint": "Expected a value, function call, or operator expression."
+      },
+      "span": {
+        "start": 751,
+        "end": 752
+      }
+    },
+    {
+      "kind": {
+        "id": "E0008",
+        "name": "invalid-expression",
+        "expected": "expression",
+        "found": {
+          "kind": "#",
+          "text": "#"
+        },
+        "hint": "Expected a value, function call, or operator expression."
+      },
+      "span": {
+        "start": 753,
+        "end": 754
+      }
+    },
+    {
+      "kind": {
+        "id": "E0020",
+        "name": "missing-binary-operand",
+        "expected": "left operand for %",
+        "found": {
+          "kind": "%",
+          "text": "%"
+        },
+        "fix": "add an expression before the operator",
+        "hint": "Binary operators like +, -, *, =, etc. require both a left and right operand.\n\nFor example:\n  ```ocaml\n  let x = 1 + 2   (* correct *)\n  let y = 1 +     (* missing right operand *)\n  let z = + 2     (* missing left operand *)\n  ```\n\nIf you want to create a partially applied operator function, use parentheses:\n  ```ocaml\n  let add_one = (+) 1\n  ```\n"
+      },
+      "span": {
+        "start": 758,
+        "end": 759
+      }
+    },
+    {
+      "kind": {
+        "id": "E0003",
+        "name": "missing-let-binding-equals",
+        "expected": "=",
+        "found": {
+          "kind": "identifier",
+          "text": "x"
+        },
+        "fix": "add = between the pattern and expression",
+        "hint": "Every let binding needs an = between the pattern and the expression."
+      },
+      "span": {
+        "start": 888,
+        "end": 888
+      }
+    },
+    {
+      "kind": {
+        "id": "E0008",
+        "name": "invalid-expression",
+        "expected": "expression",
+        "found": {
+          "kind": "?",
+          "text": "?"
+        },
+        "hint": "Expected a value, function call, or operator expression."
+      },
+      "span": {
+        "start": 894,
+        "end": 895
+      }
+    },
+    {
+      "kind": {
+        "id": "E0008",
+        "name": "invalid-expression",
+        "expected": "expression",
+        "found": {
+          "kind": "#",
+          "text": "#"
+        },
+        "hint": "Expected a value, function call, or operator expression."
+      },
+      "span": {
+        "start": 896,
+        "end": 897
+      }
+    },
+    {
+      "kind": {
+        "id": "E0020",
+        "name": "missing-binary-operand",
+        "expected": "left operand for %",
+        "found": {
+          "kind": "%",
+          "text": "%"
+        },
+        "fix": "add an expression before the operator",
+        "hint": "Binary operators like +, -, *, =, etc. require both a left and right operand.\n\nFor example:\n  ```ocaml\n  let x = 1 + 2   (* correct *)\n  let y = 1 +     (* missing right operand *)\n  let z = + 2     (* missing left operand *)\n  ```\n\nIf you want to create a partially applied operator function, use parentheses:\n  ```ocaml\n  let add_one = (+) 1\n  ```\n"
+      },
+      "span": {
+        "start": 901,
+        "end": 902
+      }
+    },
+    {
+      "kind": {
+        "id": "E0003",
+        "name": "missing-let-binding-equals",
+        "expected": "=",
+        "found": {
+          "kind": "identifier",
+          "text": "x"
+        },
+        "fix": "add = between the pattern and expression",
+        "hint": "Every let binding needs an = between the pattern and the expression."
+      },
+      "span": {
+        "start": 1031,
+        "end": 1031
+      }
+    },
+    {
+      "kind": {
+        "id": "E0008",
+        "name": "invalid-expression",
+        "expected": "expression",
+        "found": {
+          "kind": "~",
+          "text": "~"
+        },
+        "hint": "Expected a value, function call, or operator expression."
+      },
+      "span": {
+        "start": 1037,
+        "end": 1038
+      }
+    },
+    {
+      "kind": {
+        "id": "E0008",
+        "name": "invalid-expression",
+        "expected": "expression",
+        "found": {
+          "kind": "#",
+          "text": "#"
+        },
+        "hint": "Expected a value, function call, or operator expression."
+      },
+      "span": {
+        "start": 1039,
+        "end": 1040
+      }
+    },
+    {
+      "kind": {
+        "id": "E0020",
+        "name": "missing-binary-operand",
+        "expected": "left operand for %",
+        "found": {
+          "kind": "%",
+          "text": "%"
+        },
+        "fix": "add an expression before the operator",
+        "hint": "Binary operators like +, -, *, =, etc. require both a left and right operand.\n\nFor example:\n  ```ocaml\n  let x = 1 + 2   (* correct *)\n  let y = 1 +     (* missing right operand *)\n  let z = + 2     (* missing left operand *)\n  ```\n\nIf you want to create a partially applied operator function, use parentheses:\n  ```ocaml\n  let add_one = (+) 1\n  ```\n"
+      },
+      "span": {
+        "start": 1044,
+        "end": 1045
+      }
+    },
+    {
+      "kind": {
+        "id": "E0008",
+        "name": "invalid-expression",
+        "expected": "expression",
+        "found": {
+          "kind": "end of file",
+          "text": ""
+        },
+        "hint": "Expected a value, function call, or operator expression."
+      },
+      "span": {
+        "start": 1167,
+        "end": 1167
+      }
+    },
+    {
+      "kind": {
+        "id": "E0008",
+        "name": "invalid-expression",
+        "expected": "expression",
+        "found": {
+          "kind": "end of file",
+          "text": ""
+        },
+        "hint": "Expected a value, function call, or operator expression."
+      },
+      "span": {
+        "start": 0,
+        "end": 0
+      }
+    },
+    {
+      "kind": {
+        "id": "E0008",
+        "name": "invalid-expression",
+        "expected": "expression",
+        "found": {
+          "kind": "end of file",
+          "text": ""
+        },
+        "hint": "Expected a value, function call, or operator expression."
+      },
+      "span": {
+        "start": 1168,
+        "end": 1168
+      }
+    },
+    {
+      "kind": {
+        "id": "E0008",
+        "name": "invalid-expression",
+        "expected": "expression",
+        "found": {
+          "kind": "end of file",
+          "text": ""
+        },
+        "hint": "Expected a value, function call, or operator expression."
+      },
+      "span": {
+        "start": 0,
+        "end": 0
+      }
+    }
+  ]
+}

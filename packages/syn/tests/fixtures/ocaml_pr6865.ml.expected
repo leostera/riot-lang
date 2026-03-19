@@ -1,1 +1,371 @@
-{"tree":{"type":"node","kind":"SOURCE_FILE","width":350,"children":[{"type":"token","kind":"COMMENT","text":"(* TEST_BELOW\nFiller_text_added_\nto_preserve_locations_while_tran\nslating_from_old_syntax__Filler_\ntext_added_to_pre\nserve_locations_while_translati\n*)","width":151},{"type":"token","kind":"WHITESPACE","text":"\n\n","width":2},{"type":"node","kind":"LET_BINDING","width":14,"children":[{"type":"token","kind":"IDENT_EXPR","text":"let","width":3},{"type":"token","kind":"IDENT_EXPR","text":"%","width":1},{"type":"token","kind":"IDENT_EXPR","text":"foo","width":3},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"IDENT_PATTERN","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"x","width":1}]},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":"=","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"INT_LITERAL","width":2,"children":[{"type":"token","kind":"INT_LITERAL","text":"42","width":2}]}]},{"type":"token","kind":"WHITESPACE","text":"\n\n","width":2},{"type":"node","kind":"LET_MUTUAL_DECL","width":27,"children":[{"type":"node","kind":"LET_BINDING","width":14,"children":[{"type":"token","kind":"IDENT_EXPR","text":"let","width":3},{"type":"token","kind":"IDENT_EXPR","text":"%","width":1},{"type":"token","kind":"IDENT_EXPR","text":"foo","width":3},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"WILDCARD_PATTERN","width":1,"children":[{"type":"token","kind":"WILDCARD_PATTERN","text":"_","width":1}]},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":"=","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"UNIT_LITERAL","width":2,"children":[{"type":"token","kind":"IDENT_EXPR","text":"(","width":1},{"type":"token","kind":"IDENT_EXPR","text":")","width":1}]}]},{"type":"token","kind":"WHITESPACE","text":"\n","width":1},{"type":"token","kind":"IDENT_EXPR","text":"and","width":3},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"LET_BINDING","width":6,"children":[{"type":"node","kind":"WILDCARD_PATTERN","width":1,"children":[{"type":"token","kind":"WILDCARD_PATTERN","text":"_","width":1}]},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":"=","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"UNIT_LITERAL","width":2,"children":[{"type":"token","kind":"IDENT_EXPR","text":"(","width":1},{"type":"token","kind":"IDENT_EXPR","text":")","width":1}]}]},{"type":"token","kind":"WHITESPACE","text":"\n\n","width":2}]},{"type":"node","kind":"LET_BINDING","width":14,"children":[{"type":"token","kind":"IDENT_EXPR","text":"let","width":3},{"type":"token","kind":"IDENT_EXPR","text":"%","width":1},{"type":"token","kind":"IDENT_EXPR","text":"foo","width":3},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"WILDCARD_PATTERN","width":1,"children":[{"type":"token","kind":"WILDCARD_PATTERN","text":"_","width":1}]},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"token","kind":"IDENT_EXPR","text":"=","width":1},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"UNIT_LITERAL","width":2,"children":[{"type":"token","kind":"IDENT_EXPR","text":"(","width":1},{"type":"token","kind":"IDENT_EXPR","text":")","width":1}]}]},{"type":"token","kind":"WHITESPACE","text":"\n","width":1},{"type":"token","kind":"COMMENT","text":"(* TEST\n flags = \"-dparsetree\";\n ocamlc_byte_exit_status = \"2\";\n setup-ocamlc.byte-build-env;\n ocamlc.byte;\n check-ocamlc.byte-output;\n*)","width":137},{"type":"token","kind":"WHITESPACE","text":"\n\n","width":2}]},"diagnostics":[]}
+{
+  "tree": {
+    "type": "node",
+    "kind": "SOURCE_FILE",
+    "width": 350,
+    "children": [
+      {
+        "type": "token",
+        "kind": "COMMENT",
+        "text": "(* TEST_BELOW\nFiller_text_added_\nto_preserve_locations_while_tran\nslating_from_old_syntax__Filler_\ntext_added_to_pre\nserve_locations_while_translati\n*)",
+        "width": 151
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n\n",
+        "width": 2
+      },
+      {
+        "type": "node",
+        "kind": "LET_BINDING",
+        "width": 14,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "width": 3
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "foo",
+            "width": 3
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "IDENT_PATTERN",
+            "width": 1,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "x",
+                "width": 1
+              }
+            ]
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "INT_LITERAL",
+            "width": 2,
+            "children": [
+              {
+                "type": "token",
+                "kind": "INT_LITERAL",
+                "text": "42",
+                "width": 2
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n\n",
+        "width": 2
+      },
+      {
+        "type": "node",
+        "kind": "LET_MUTUAL_DECL",
+        "width": 27,
+        "children": [
+          {
+            "type": "node",
+            "kind": "LET_BINDING",
+            "width": 14,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "let",
+                "width": 3
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "%",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "foo",
+                "width": 3
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
+              {
+                "type": "node",
+                "kind": "WILDCARD_PATTERN",
+                "width": 1,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "WILDCARD_PATTERN",
+                    "text": "_",
+                    "width": 1
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "=",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
+              {
+                "type": "node",
+                "kind": "UNIT_LITERAL",
+                "width": 2,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "(",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": ")",
+                    "width": 1
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": "\n",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "and",
+            "width": 3
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "LET_BINDING",
+            "width": 6,
+            "children": [
+              {
+                "type": "node",
+                "kind": "WILDCARD_PATTERN",
+                "width": 1,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "WILDCARD_PATTERN",
+                    "text": "_",
+                    "width": 1
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "=",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              },
+              {
+                "type": "node",
+                "kind": "UNIT_LITERAL",
+                "width": 2,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "(",
+                    "width": 1
+                  },
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": ")",
+                    "width": 1
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": "\n\n",
+            "width": 2
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "LET_BINDING",
+        "width": 14,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "width": 3
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "%",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "foo",
+            "width": 3
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "WILDCARD_PATTERN",
+            "width": 1,
+            "children": [
+              {
+                "type": "token",
+                "kind": "WILDCARD_PATTERN",
+                "text": "_",
+                "width": 1
+              }
+            ]
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "width": 1
+          },
+          {
+            "type": "token",
+            "kind": "WHITESPACE",
+            "text": " ",
+            "width": 1
+          },
+          {
+            "type": "node",
+            "kind": "UNIT_LITERAL",
+            "width": 2,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "(",
+                "width": 1
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": ")",
+                "width": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n",
+        "width": 1
+      },
+      {
+        "type": "token",
+        "kind": "COMMENT",
+        "text": "(* TEST\n flags = \"-dparsetree\";\n ocamlc_byte_exit_status = \"2\";\n setup-ocamlc.byte-build-env;\n ocamlc.byte;\n check-ocamlc.byte-output;\n*)",
+        "width": 137
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n\n",
+        "width": 2
+      }
+    ]
+  },
+  "diagnostics": []
+}

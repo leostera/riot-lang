@@ -1,1 +1,839 @@
-{"tree":{"type":"node","kind":"SOURCE_FILE","width":402,"children":[{"type":"token","kind":"COMMENT","text":"(* TEST\n flags = \"-i\";\n setup-ocamlc.byte-build-env;\n ocamlc.byte;\n check-ocamlc.byte-output;\n*)","width":96},{"type":"token","kind":"WHITESPACE","text":"\n\n","width":2},{"type":"token","kind":"COMMENT","text":"(* This test is valid OCaml code.\n   It uses an anonymous type variable as a formal parameter in a class\n   declaration. This used to be rejected by the parser, even though the\n   printer (ocamlc -i) could in fact produce it. *)","width":228},{"type":"token","kind":"WHITESPACE","text":"\n\n","width":2},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"ERROR","width":5,"children":[{"type":"token","kind":"IDENT_EXPR","text":"class","width":5}]},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"[","width":1}]},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"'","width":1}]},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"a","width":1}]},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":",","width":1}]},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"WILDCARD_PATTERN","text":"_","width":1}]},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"]","width":1}]},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"ERROR","width":3,"children":[{"type":"token","kind":"IDENT_EXPR","text":"foo","width":3}]},{"type":"token","kind":"WHITESPACE","text":"\n  ","width":3},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"=","width":1}]},{"type":"token","kind":"WHITESPACE","text":"\n    ","width":5},{"type":"node","kind":"ERROR","width":6,"children":[{"type":"token","kind":"IDENT_EXPR","text":"object","width":6}]},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"ERROR","width":6,"children":[{"type":"token","kind":"IDENT_EXPR","text":"method","width":6}]},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"ERROR","width":3,"children":[{"type":"token","kind":"IDENT_EXPR","text":"bar","width":3}]},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":":","width":1}]},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"'","width":1}]},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"a","width":1}]},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"ERROR","width":2,"children":[{"type":"token","kind":"IDENT_EXPR","text":"->","width":2}]},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"'","width":1}]},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"a","width":1}]},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"=","width":1}]},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"ERROR","width":3,"children":[{"type":"token","kind":"IDENT_EXPR","text":"fun","width":3}]},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"x","width":1}]},{"type":"token","kind":"WHITESPACE","text":" ","width":1},{"type":"node","kind":"ERROR","width":2,"children":[{"type":"token","kind":"IDENT_EXPR","text":"->","width":2}]},{"type":"token","kind":"WHITESPACE","text":"\n  ","width":3},{"type":"node","kind":"ERROR","width":1,"children":[{"type":"token","kind":"IDENT_EXPR","text":"x","width":1}]},{"type":"token","kind":"WHITESPACE","text":"\n","width":1},{"type":"node","kind":"ERROR","width":3,"children":[{"type":"token","kind":"IDENT_EXPR","text":"end","width":3}]}]},"diagnostics":[{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"keyword","text":"class"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":333,"end":334}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"[","text":"["},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":335,"end":336}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"'","text":"'"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":336,"end":337}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"identifier","text":"a"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":337,"end":338}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":",","text":","},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":338,"end":339}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"_","text":"_"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":340,"end":341}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"]","text":"]"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":341,"end":342}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"identifier","text":"foo"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":345,"end":346}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"=","text":"="},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":347,"end":350}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"object","text":"object"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":356,"end":361}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"keyword","text":"method"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":367,"end":368}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"identifier","text":"bar"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":371,"end":372}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":":","text":":"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":373,"end":374}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"'","text":"'"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":375,"end":376}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"identifier","text":"a"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":376,"end":377}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"->","text":"->"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":379,"end":380}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"'","text":"'"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":381,"end":382}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"identifier","text":"a"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":382,"end":383}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"=","text":"="},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":384,"end":385}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"keyword","text":"fun"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":388,"end":389}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"identifier","text":"x"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":390,"end":391}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"->","text":"->"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":393,"end":394}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"identifier","text":"x"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":395,"end":398}},{"kind":{"id":"E0005","name":"unexpected-structure-item","expected":"structure item (e.g., let, type, module)","found":{"kind":"end","text":"end"},"hint":"Structure items are top-level declarations like let, type, or module."},"span":{"start":401,"end":402}}]}
+{
+  "tree": {
+    "type": "node",
+    "kind": "SOURCE_FILE",
+    "width": 402,
+    "children": [
+      {
+        "type": "token",
+        "kind": "COMMENT",
+        "text": "(* TEST\n flags = \"-i\";\n setup-ocamlc.byte-build-env;\n ocamlc.byte;\n check-ocamlc.byte-output;\n*)",
+        "width": 96
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n\n",
+        "width": 2
+      },
+      {
+        "type": "token",
+        "kind": "COMMENT",
+        "text": "(* This test is valid OCaml code.\n   It uses an anonymous type variable as a formal parameter in a class\n   declaration. This used to be rejected by the parser, even though the\n   printer (ocamlc -i) could in fact produce it. *)",
+        "width": 228
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n\n",
+        "width": 2
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": " ",
+        "width": 1
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 5,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "class",
+            "width": 5
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "[",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "'",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "a",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": " ",
+        "width": 1
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": ",",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "WILDCARD_PATTERN",
+            "text": "_",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": " ",
+        "width": 1
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "]",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": " ",
+        "width": 1
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 3,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "foo",
+            "width": 3
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n  ",
+        "width": 3
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n    ",
+        "width": 5
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 6,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "object",
+            "width": 6
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": " ",
+        "width": 1
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 6,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "method",
+            "width": 6
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": " ",
+        "width": 1
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 3,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "bar",
+            "width": 3
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": " ",
+        "width": 1
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": ":",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "'",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": " ",
+        "width": 1
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "a",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": " ",
+        "width": 1
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 2,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "->",
+            "width": 2
+          }
+        ]
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "'",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": " ",
+        "width": 1
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "a",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": " ",
+        "width": 1
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": " ",
+        "width": 1
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 3,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "fun",
+            "width": 3
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": " ",
+        "width": 1
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": " ",
+        "width": 1
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 2,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "->",
+            "width": 2
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n  ",
+        "width": 3
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 1,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "x",
+            "width": 1
+          }
+        ]
+      },
+      {
+        "type": "token",
+        "kind": "WHITESPACE",
+        "text": "\n",
+        "width": 1
+      },
+      {
+        "type": "node",
+        "kind": "ERROR",
+        "width": 3,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "end",
+            "width": 3
+          }
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "keyword",
+          "text": "class"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 333,
+        "end": 334
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "[",
+          "text": "["
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 335,
+        "end": 336
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "'",
+          "text": "'"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 336,
+        "end": 337
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "identifier",
+          "text": "a"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 337,
+        "end": 338
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": ",",
+          "text": ","
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 338,
+        "end": 339
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "_",
+          "text": "_"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 340,
+        "end": 341
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "]",
+          "text": "]"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 341,
+        "end": 342
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "identifier",
+          "text": "foo"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 345,
+        "end": 346
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "=",
+          "text": "="
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 347,
+        "end": 350
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "object",
+          "text": "object"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 356,
+        "end": 361
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "keyword",
+          "text": "method"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 367,
+        "end": 368
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "identifier",
+          "text": "bar"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 371,
+        "end": 372
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": ":",
+          "text": ":"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 373,
+        "end": 374
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "'",
+          "text": "'"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 375,
+        "end": 376
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "identifier",
+          "text": "a"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 376,
+        "end": 377
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "->",
+          "text": "->"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 379,
+        "end": 380
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "'",
+          "text": "'"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 381,
+        "end": 382
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "identifier",
+          "text": "a"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 382,
+        "end": 383
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "=",
+          "text": "="
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 384,
+        "end": 385
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "keyword",
+          "text": "fun"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 388,
+        "end": 389
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "identifier",
+          "text": "x"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 390,
+        "end": 391
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "->",
+          "text": "->"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 393,
+        "end": 394
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "identifier",
+          "text": "x"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 395,
+        "end": 398
+      }
+    },
+    {
+      "kind": {
+        "id": "E0005",
+        "name": "unexpected-structure-item",
+        "expected": "structure item (e.g., let, type, module)",
+        "found": {
+          "kind": "end",
+          "text": "end"
+        },
+        "hint": "Structure items are top-level declarations like let, type, or module."
+      },
+      "span": {
+        "start": 401,
+        "end": 402
+      }
+    }
+  ]
+}

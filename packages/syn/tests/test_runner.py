@@ -95,6 +95,11 @@ class TestRunner:
 
         parsed = json.loads(stripped)
         return json.dumps(parsed, indent=2) + "\n"
+
+    def normalize_expected_json(self, raw_json: str) -> str:
+        """Normalize JSON for stable fixture comparisons."""
+        parsed = json.loads(raw_json.strip())
+        return json.dumps(parsed, sort_keys=True, separators=(",", ":"))
     
     def extract_tokens_from_red_tree(self, node, tokens_list):
         """Recursively extract all tokens from a red tree node."""
@@ -439,7 +444,15 @@ class TestRunner:
             return False
         
         # Compare output
-        return actual == expected
+        try:
+            normalized_actual = self.normalize_expected_json(actual)
+            normalized_expected = self.normalize_expected_json(expected)
+        except json.JSONDecodeError:
+            if verbose:
+                print(f"{RED}Could not normalize fixture JSON for comparison{NC}")
+            return False
+
+        return normalized_actual == normalized_expected
 
     def refresh_fixture_if_clean(self, fixture_path: Path) -> bool:
         expected_path = Path(str(fixture_path) + ".expected")
