@@ -6893,18 +6893,34 @@ and parse_type_decl parser =
                 | _ ->
                     (* Check if this is an abstract type (private or not) - no representation *)
                     (match peek_kind parser with
-                    | Token.EOF
+                    | Token.EOF ->
+                        if List.length private_kw_children > 0 then
+                          []
+                        else
+                          let found_tok = peek parser in
+                          let diagnostic =
+                            Diagnostic.invalid_type_expression ~found:found_tok
+                              ~text:(token_text parser found_tok)
+                              ~span:(expected_span parser)
+                          in
+                          let error_node =
+                            make_error_node parser ~diagnostic ~consumed_tokens:[]
+                          in
+                          [ Ceibo.Green.Node error_node ]
                     | Token.Keyword _ ->
-                        let found_tok = peek parser in
-                        let diagnostic =
-                          Diagnostic.invalid_type_expression ~found:found_tok
-                            ~text:(token_text parser found_tok)
-                            ~span:(expected_span parser)
-                        in
-                        let error_node =
-                          make_error_node parser ~diagnostic ~consumed_tokens:[]
-                        in
-                        [ Ceibo.Green.Node error_node ]
+                        if List.length private_kw_children > 0 then
+                          []
+                        else
+                          let found_tok = peek parser in
+                          let diagnostic =
+                            Diagnostic.invalid_type_expression ~found:found_tok
+                              ~text:(token_text parser found_tok)
+                              ~span:(expected_span parser)
+                          in
+                          let error_node =
+                            make_error_node parser ~diagnostic ~consumed_tokens:[]
+                          in
+                          [ Ceibo.Green.Node error_node ]
                     | _ ->
                         (* Parse type equation first *)
                         let type_expr = parse_typexpr parser in
