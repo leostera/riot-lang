@@ -39,8 +39,9 @@ BLUE = '\033[0;34m'
 NC = '\033[0m'  # No Color
 
 class TestRunner:
-    def __init__(self, workspace_root: Path):
+    def __init__(self, workspace_root: Path, parse_timeout_seconds: float = 10.0):
         self.workspace_root = workspace_root
+        self.parse_timeout_seconds = parse_timeout_seconds
         self.syn_binary = self.find_syn_binary()
         self.fixtures_dir = workspace_root / "packages" / "syn" / "tests" / "fixtures"
         self.diagnostics_dir = workspace_root / "packages" / "syn" / "tests" / "diagnostics"
@@ -62,10 +63,19 @@ class TestRunner:
         """Run syn command and return (output, returncode)."""
         cmd = [str(self.syn_binary)] + args + [str(file_path)]
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10.0)
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=self.parse_timeout_seconds,
+            )
             return result.stdout, result.returncode
         except subprocess.TimeoutExpired:
-            return f"TIMEOUT: Command exceeded 10 seconds", -1
+            timeout = str(self.parse_timeout_seconds)
+            return "TIMEOUT: Command exceeded " + timeout + " seconds", -1
+
+    def did_timeout(self, output: str, returncode: int) -> bool:
+        return returncode == -1 and output.startswith("TIMEOUT:")
     
     def run_syn_json(self, args: List[str], file_path: Path) -> Optional[Dict]:
         """Run syn command expecting JSON output."""
@@ -337,6 +347,8 @@ class TestRunner:
     def fixture_failure_summary(self, fixture_path: Path) -> str:
         output, returncode = self.run_syn(["parse", "--json"], fixture_path)
         if returncode != 0:
+            if self.did_timeout(output, returncode):
+                return f"{RED}✗{NC} {fixture_path.name} (parser timed out)"
             return f"{RED}✗{NC} {fixture_path.name} (parser failed)"
 
         try:
@@ -370,7 +382,10 @@ class TestRunner:
         output, returncode = self.run_syn(["parse", "--json"], fixture_path)
         if returncode != 0:
             if verbose:
-                print(f"{RED}Parser failed for {fixture_path.name}{NC}")
+                if self.did_timeout(output, returncode):
+                    print(f"{RED}Parser timed out for {fixture_path.name}{NC}")
+                else:
+                    print(f"{RED}Parser failed for {fixture_path.name}{NC}")
             return False
         
         actual = output.strip()
@@ -546,7 +561,10 @@ class TestRunner:
         output, returncode = self.run_syn(["parse", "--json"], test_file)
         if returncode != 0:
             if verbose:
-                print(f"{RED}Parser failed for {test_file.name}{NC}")
+                if self.did_timeout(output, returncode):
+                    print(f"{RED}Parser timed out for {test_file.name}{NC}")
+                else:
+                    print(f"{RED}Parser failed for {test_file.name}{NC}")
             return False
         
         try:
@@ -655,7 +673,11 @@ class TestRunner:
                 passed += 1
             else:
                 failed += 1
-                failed_names.append(basename)
+                output, returncode = self.run_syn(["parse", "--json"], test_file)
+                if self.did_timeout(output, returncode):
+                    failed_names.append(basename + " (timed out)")
+                else:
+                    failed_names.append(basename)
                 if verbose:
                     print(f"{basename}... {RED}FAILED{NC}")
         
@@ -703,7 +725,7 @@ class TestRunner:
             relative_path = file_path.relative_to(self.workspace_root)
             
             covered, total = self.debug_file(file_path, verbose=False)
-            
+
             if covered == total:
                 passed += 1
                 if verbose:
@@ -711,18 +733,26 @@ class TestRunner:
             else:
                 missing = total - covered
                 failed += 1
-                failed_files.append((relative_path, covered, total))
+                output, returncode = self.run_syn(["parse", "--json"], file_path)
+                timed_out = self.did_timeout(output, returncode)
+                failed_files.append((relative_path, covered, total, timed_out))
                 if verbose:
-                    print(f"{RED}✗{NC} {relative_path} ({covered}/{total} bytes, {missing} missing)")
+                    if timed_out:
+                        print(f"{RED}✗{NC} {relative_path} (timed out)")
+                    else:
+                        print(f"{RED}✗{NC} {relative_path} ({covered}/{total} bytes, {missing} missing)")
         
         print(f"\n{BLUE}========================================={NC}")
         print(f"{BLUE}Results:{NC} {passed} passed, {failed} failed")
         print(f"{BLUE}========================================={NC}")
         
         if failed_files:
-            for path, covered, total in failed_files:
+            for path, covered, total, timed_out in failed_files:
                 missing = total - covered
-                print(f"{RED}✗{NC} {path} ({covered}/{total} bytes, {missing} missing)")
+                if timed_out:
+                    print(f"{RED}✗{NC} {path} (timed out)")
+                else:
+                    print(f"{RED}✗{NC} {path} ({covered}/{total} bytes, {missing} missing)")
         
         return passed, failed
 
@@ -761,6 +791,13 @@ def main():
         action="store_true",
         help="Refresh stale fixture expectations when actual output has full coverage and no diagnostics"
     )
+
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=10.0,
+        help="Per-parse timeout in seconds"
+    )
     
     args = parser.parse_args()
     
@@ -768,7 +805,7 @@ def main():
     script_dir = Path(__file__).parent
     workspace_root = script_dir.parent.parent.parent
     
-    runner = TestRunner(workspace_root)
+    runner = TestRunner(workspace_root, parse_timeout_seconds=args.timeout)
     
     # Check if syn binary exists
     if not runner.syn_binary.exists():
