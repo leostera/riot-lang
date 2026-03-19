@@ -296,6 +296,43 @@ class TestRunner:
                     return False, error
         
         return True, None
+
+    def count_error_nodes(self, node) -> int:
+        if not isinstance(node, dict):
+            return 0
+
+        count = 0
+        if node.get("type") == "node":
+            if node.get("kind") in ["ERROR", "MISSING"]:
+                count += 1
+            for child in node.get("children", []):
+                count += self.count_error_nodes(child)
+
+        return count
+
+    def fixture_failure_summary(self, fixture_path: Path) -> str:
+        output, returncode = self.run_syn(["parse", "--json"], fixture_path)
+        if returncode != 0:
+            return f"{RED}✗{NC} {fixture_path.name} (parser failed)"
+
+        try:
+            result = json.loads(output.strip())
+        except json.JSONDecodeError:
+            return f"{RED}✗{NC} {fixture_path.name} (invalid JSON output)"
+
+        tree = result.get("tree", {})
+        diagnostics = result.get("diagnostics", [])
+        error_nodes = self.count_error_nodes(tree)
+        covered, total = self.debug_file(fixture_path, verbose=False)
+        missing = total - covered
+
+        parts = [f"{covered}/{total} bytes", f"{missing} missing"]
+        if diagnostics:
+            parts.append(f"{len(diagnostics)} diagnostics")
+        if error_nodes > 0:
+            parts.append(f"{error_nodes} ERROR/MISSING nodes")
+
+        return f"{RED}✗{NC} {fixture_path.name} ({', '.join(parts)})"
     
     def test_fixture(self, fixture_path: Path, verbose: bool = False) -> bool:
         """Test a single fixture file. Returns True if passed."""
@@ -387,7 +424,7 @@ class TestRunner:
         # Compare output
         return actual == expected
     
-    def run_fixtures(self, filter_pattern: Optional[str] = None) -> Tuple[int, int]:
+    def run_fixtures(self, filter_pattern: Optional[str] = None, verbose: bool = False) -> Tuple[int, int]:
         """Run fixture tests. Returns (passed, failed)."""
         print(f"\n{BLUE}Running fixture tests...{NC}")
         if filter_pattern:
@@ -404,6 +441,7 @@ class TestRunner:
         
         passed = 0
         failed = 0
+        failed_summaries = []
         
         for fixture in fixtures:
             # Skip .expected files
@@ -411,14 +449,22 @@ class TestRunner:
                 continue
             
             basename = fixture.name
-            result = self.test_fixture(fixture)
+            result = self.test_fixture(fixture, verbose=verbose)
             
             if result:
-                print(f"{basename}... {GREEN}PASSED{NC}")
                 passed += 1
+                if verbose:
+                    print(f"{basename}... {GREEN}PASSED{NC}")
             else:
-                print(f"{basename}... {RED}FAILED{NC}")
                 failed += 1
+                failed_summaries.append(self.fixture_failure_summary(fixture))
+                if verbose:
+                    print(f"{basename}... {RED}FAILED{NC}")
+        
+        if failed_summaries:
+            print(f"\n{YELLOW}Failed fixtures:{NC}")
+            for summary in failed_summaries:
+                print(f"  {summary}")
         
         print(f"\n{BLUE}Results:{NC} {passed} passed, {failed} failed")
         return passed, failed
@@ -500,7 +546,7 @@ class TestRunner:
         
         return True
     
-    def run_diagnostics(self, filter_pattern: Optional[str] = None) -> Tuple[int, int]:
+    def run_diagnostics(self, filter_pattern: Optional[str] = None, verbose: bool = False) -> Tuple[int, int]:
         """Run diagnostic tests. Returns (passed, failed)."""
         print(f"\n{BLUE}Running diagnostic tests...{NC}")
         if filter_pattern:
@@ -520,6 +566,8 @@ class TestRunner:
         
         passed = 0
         failed = 0
+        failed_names = []
+        skipped_names = []
         
         for test_file in test_files:
             basename = test_file.name
@@ -531,17 +579,32 @@ class TestRunner:
                 with open(diagnostic_path, 'r') as f:
                     is_tbd = "TBD" in f.read()
             
-            result = self.test_diagnostic(test_file)
+            result = self.test_diagnostic(test_file, verbose=verbose)
             
             if result:
                 if is_tbd:
-                    print(f"{basename}... {YELLOW}SKIPPED{NC} (TBD)")
+                    skipped_names.append(basename)
+                    if verbose:
+                        print(f"{basename}... {YELLOW}SKIPPED{NC} (TBD)")
                 else:
-                    print(f"{basename}... {GREEN}PASSED{NC}")
+                    if verbose:
+                        print(f"{basename}... {GREEN}PASSED{NC}")
                 passed += 1
             else:
-                print(f"{basename}... {RED}FAILED{NC}")
                 failed += 1
+                failed_names.append(basename)
+                if verbose:
+                    print(f"{basename}... {RED}FAILED{NC}")
+        
+        if failed_names:
+            print(f"\n{YELLOW}Failed diagnostics:{NC}")
+            for name in failed_names:
+                print(f"  {RED}✗{NC} {name}")
+        
+        if skipped_names:
+            print(f"\n{YELLOW}Skipped diagnostics:{NC}")
+            for name in skipped_names:
+                print(f"  {YELLOW}•{NC} {name}")
         
         print(f"\n{BLUE}Results:{NC} {passed} passed, {failed} failed")
         return passed, failed
@@ -579,24 +642,24 @@ class TestRunner:
             covered, total = self.debug_file(file_path, verbose=False)
             
             if covered == total:
-                print(f"{GREEN}✓{NC} {relative_path} ({covered}/{total} bytes)")
                 passed += 1
+                if verbose:
+                    print(f"{GREEN}✓{NC} {relative_path} ({covered}/{total} bytes)")
             else:
                 missing = total - covered
-                print(f"{RED}✗{NC} {relative_path} ({covered}/{total} bytes, {missing} missing)")
                 failed += 1
                 failed_files.append((relative_path, covered, total))
+                if verbose:
+                    print(f"{RED}✗{NC} {relative_path} ({covered}/{total} bytes, {missing} missing)")
         
         print(f"\n{BLUE}========================================={NC}")
         print(f"{BLUE}Results:{NC} {passed} passed, {failed} failed")
         print(f"{BLUE}========================================={NC}")
         
         if failed_files:
-            print(f"\n{YELLOW}Failed files:{NC}")
             for path, covered, total in failed_files:
                 missing = total - covered
-                pct = (covered / total * 100) if total > 0 else 0
-                print(f"  - {path}: {covered}/{total} bytes ({pct:.2f}%, {missing} missing)")
+                print(f"{RED}✗{NC} {path} ({covered}/{total} bytes, {missing} missing)")
         
         return passed, failed
 
@@ -659,12 +722,12 @@ def main():
         runner.debug_file(file_path, verbose=True)
     
     elif args.command == "fixtures":
-        passed, failed = runner.run_fixtures(args.filter)
+        passed, failed = runner.run_fixtures(args.filter, verbose=args.verbose)
         if failed > 0:
             exit_code = 1
     
     elif args.command == "diagnostics":
-        passed, failed = runner.run_diagnostics(args.filter)
+        passed, failed = runner.run_diagnostics(args.filter, verbose=args.verbose)
         if failed > 0:
             exit_code = 1
     
@@ -678,10 +741,10 @@ def main():
         print("=" * 80)
         
         # Run fixtures
-        fix_passed, fix_failed = runner.run_fixtures()
+        fix_passed, fix_failed = runner.run_fixtures(verbose=args.verbose)
         
         # Run diagnostics
-        diag_passed, diag_failed = runner.run_diagnostics()
+        diag_passed, diag_failed = runner.run_diagnostics(verbose=args.verbose)
         
         # Run codebase
         code_passed, code_failed = runner.run_codebase(args.verbose)
