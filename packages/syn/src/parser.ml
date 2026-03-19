@@ -1149,8 +1149,8 @@ and parse_primary_type parser =
               @ tokens_to_green parser trivia_after_first
               @ [ make_token parser close_paren ]))
   | Token.OpenDelim Token.Brace ->
-      (* Record type: { field1: type1; field2: type2 } *)
-      parse_record_type parser
+      if is_brace_extension_start parser then parse_extension parser
+      else parse_record_type parser
   | Token.Lt ->
       parse_object_type parser
   | _ ->
@@ -1830,7 +1830,9 @@ and parse_primary_pattern parser =
       if is_extension_start parser then parse_extension parser
       else parse_list_pattern parser
   | Token.OpenDelim Token.Array -> parse_array_pattern parser
-  | Token.OpenDelim Token.Brace -> parse_record_pattern parser
+  | Token.OpenDelim Token.Brace ->
+      if is_brace_extension_start parser then parse_extension parser
+      else parse_record_pattern parser
   | Token.Backtick ->
       (* Polymorphic variant pattern: `Tag or `Tag pattern *)
       let backtick = consume parser in
@@ -2723,6 +2725,18 @@ and is_extension_start parser =
       is_ext
   | _ -> false
 
+(** Check whether the current position starts a brace extension. *)
+and is_brace_extension_start parser =
+  match peek_kind parser with
+  | Token.OpenDelim Token.Brace ->
+      let saved_pos = Token_cursor.position parser.cursor in
+      let _ = consume parser in
+      let _ = consume_trivia parser in
+      let is_ext = peek_kind parser = Token.Percent in
+      Token_cursor.set_position parser.cursor saved_pos;
+      is_ext
+  | _ -> false
+
 (** Parse zero or more attributes: [@attr1] [@attr2] ... *)
 and parse_attributes parser =
   let attrs = ref [] in
@@ -2854,6 +2868,86 @@ and parse_extension parser =
         @ tokens_to_green parser trivia_after_name
         @ List.rev_map (make_token parser) !payload_tokens
         @ [ make_token parser close_bracket ])
+  | Token.OpenDelim Token.Brace ->
+      let open_brace = consume parser in
+      let trivia_after_open = consume_trivia parser in
+
+      let percent_tokens =
+        match peek_kind parser with
+        | Token.Percent ->
+            let first_percent = consume parser in
+            (match peek_kind parser with
+            | Token.Percent ->
+                let second_percent = consume parser in
+                [ make_token parser first_percent; make_token parser second_percent ]
+            | _ ->
+                [ make_token parser first_percent ])
+        | _ ->
+            let found = peek parser in
+            let diagnostic =
+              Diagnostic.invalid_expression ~found ~text:(token_text parser found)
+                ~span:(expected_span parser)
+            in
+            report_diagnostic parser diagnostic;
+            []
+      in
+      let trivia_after_percent = consume_trivia parser in
+
+      let ext_name_tokens = ref [] in
+      let rec parse_ext_name () =
+        match peek_kind parser with
+        | Token.Ident _ | Token.Dot ->
+            let tok = consume parser in
+            ext_name_tokens := !ext_name_tokens @ [ make_token parser tok ];
+            let trivia = consume_trivia parser in
+            ext_name_tokens := !ext_name_tokens @ tokens_to_green parser trivia;
+            parse_ext_name ()
+        | _ -> ()
+      in
+      parse_ext_name ();
+
+      let payload_tokens = ref [] in
+      let nested_braces = ref 0 in
+      let nested_delims = ref 0 in
+      let should_stop () =
+        peek_kind parser = Token.CloseDelim Token.Brace
+        && !nested_braces = 0
+        && !nested_delims = 0
+      in
+      while (not (should_stop ())) && peek_kind parser != Token.EOF do
+        let tok = consume parser in
+        (match tok.Token.kind with
+        | Token.OpenDelim Token.Brace -> nested_braces := !nested_braces + 1
+        | Token.CloseDelim Token.Brace when !nested_braces > 0 ->
+            nested_braces := !nested_braces - 1
+        | Token.OpenDelim _ -> nested_delims := !nested_delims + 1
+        | Token.CloseDelim _ when !nested_delims > 0 ->
+            nested_delims := !nested_delims - 1
+        | _ -> ());
+        payload_tokens := tok :: !payload_tokens
+      done;
+
+      let close_brace =
+        if peek_kind parser = Token.CloseDelim Token.Brace then
+          consume parser
+        else
+          let found = peek parser in
+          let diagnostic =
+            Diagnostic.invalid_expression ~found ~text:(token_text parser found)
+              ~span:(expected_span parser)
+          in
+          report_diagnostic parser diagnostic;
+          found
+      in
+
+      make_node Syntax_kind.EXTENSION_EXPR
+        ([ make_token parser open_brace ]
+        @ tokens_to_green parser trivia_after_open
+        @ percent_tokens
+        @ tokens_to_green parser trivia_after_percent
+        @ !ext_name_tokens
+        @ List.rev_map (make_token parser) !payload_tokens
+        @ [ make_token parser close_brace ])
   | _ ->
       let found_tok = peek parser in
       let diagnostic =
@@ -3535,7 +3629,9 @@ and parse_primary_expr parser =
       else
         parse_list_expr parser
   | Token.OpenDelim Token.Array -> parse_array_expr parser
-  | Token.OpenDelim Token.Brace -> parse_record_expr parser
+  | Token.OpenDelim Token.Brace ->
+      if is_brace_extension_start parser then parse_extension parser
+      else parse_record_expr parser
   | Token.Backtick ->
       (* Polymorphic variant expression: `Tag or `Tag expr *)
       let backtick = consume parser in
@@ -7343,7 +7439,7 @@ and parse_module_type_decl parser =
   (* Parse module type name (must be uppercase identifier) *)
   let type_name =
     match peek_kind parser with
-    | Token.Ident name when String.length name > 0 && Char.uppercase_ascii name.[0] = name.[0] ->
+    | Token.Ident _ ->
         consume parser
     | _ ->
         let found = peek parser in
@@ -8519,6 +8615,10 @@ and parse_signature_item parser =
   match peek_kind parser with
   | Token.OpenDelim Token.Bracket when is_attribute_start parser ->
       parse_attribute parser
+  | Token.OpenDelim Token.Bracket when is_extension_start parser ->
+      parse_extension parser
+  | Token.OpenDelim Token.Brace when is_brace_extension_start parser ->
+      parse_extension parser
   | Token.Keyword Keyword.Val -> parse_val_decl parser
   | Token.Keyword Keyword.Type -> parse_type_decl parser
   | Token.Keyword Keyword.Module ->
