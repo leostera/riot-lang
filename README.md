@@ -1,31 +1,46 @@
-
 <h1 align="center">
   <img alt="riot logo" src="https://github.com/leostera/riot/assets/854222/bdae366b-6547-49df-a3c7-fe4f506b5d23" width="300"/>
 </h1>
 
 <p align="center">
-Modern actor-model multi-core ready ecosystem and tooling for OCaml 5.
+Modern actor-model, multi-core-ready ecosystem and tooling for OCaml 5.
 </p>
 
 <p align="center">
   <a href="#quick-start">Quick Start</a> |
-  <a href="https://github.com/leostera/riot/tree/master/examples#readme">Tutorial</a>
+  <a href="#non-goals">Non-goals</a> |
+  <a href="#acknowledgments">Acknowledgments</a>
 </p>
 
-Riot is an [actor-model][actors] multi-core ecosystem for OCaml 5, including a new standard library, tooling and more:
+Riot is an [actor-model][actors], multi-core-ready ecosystem for OCaml 5,
+designed from the ground up for _programmer happiness_ and _shipping_,
+following a few [principles](#Principles):
 
-* An [Erlang][erlang]-style multi-corescheduler, where lightweight processes communicate via message-passing
-* Tusk: a friendly package manager and extensible build system 
-* Std: a comprehensive standard library for building actor systems
-* ...
+* **Optimize for Programmer Happiness** -- We want writing OCaml to feel joyful. Riot
+tries to remove plumbing, incidental choices, and papercuts so developers can
+stay in flow and focus on the work that matters.
 
-But we've also included other packages:
-* Ceibo: red-green syntax tree parsers library
-* Syn: a brand new parser from OCaml with support for TokenStreams
-* Macro: a brand new procedural macro system for OCaml
-* Swisstable: an implementation of Google's Swisstable hashmap
-* ...
+* **Value-oriented by design** -- Riot is built to ship apps, not just
+abstractions. That means vertically integrating the pieces needed to go from
+idea to working system.
 
+* **Conventions over configuration** -- Good defaults beat endless setup. Riot
+should reduce choices where possible, establish strong conventions, and make
+the common path feel obvious and smooth.
+
+* **Learn from other ecosystems** -- OCaml does not exist in a vacuum. Riot
+should eagerly adopt ideas, workflows, and patterns from elsewhere when they
+make the stack better.
+
+* **Progress over stability** -- We value improving the system, even when that
+means things change. Riot should keep moving, and build the tooling and layers
+needed to make that change manageable.
+
+* **Type safety is a spectrum** -- We care deeply about safety, but not
+dogmatically. Safety, performance, simplicity, and developer experience all
+matter, and good engineering means balancing them well.
+
+## What does it look like?
 
 <!-- $MDX file=test/readme_example.ml,part=main -->
 ```ocaml
@@ -45,56 +60,94 @@ let () =
   send pid Hello_world
 ```
 
-At its core Riot aims to offer:
+## What's included?
 
-* A delightful developer experience with modern standards and abstractions
+To do this well, Riot needs to ship a lot of aligned pieces.
 
-...
+At its core Riot includes:
 
-* **Automatic multi-core scheduling** – when you spawn a new Riot process, it
-  will automatically get allocated on a random scheduler.
+* **Miniriot**: an Erlang-inspired actor runtime for OCaml 5, with lightweight processes, message passing, links, monitors, timers, and supervision-oriented building blocks -- Miniriot defines the concurrency model.
 
-* **Lightweight processes** – spawn 10 or 10,000 processes as you see fit.
+* **Std**: a modern standard library surface used across the workspace for I/O, collections, paths, networking, concurrency, configuration, logging, testing, and more -- Std defines how you write applications, helping you structure supervision trees, configuration loading, and more.
 
-* **Fast, type-safe message passing**
+* **Tusk**: a friendly package manager and extensible build system for OCaml -- Finally Tusk helps you structure your projects and packages in predictable ways, and lets you extend it by defining commands, and more.
 
-* **Selective receive expressions** – when receiving messages, you can skim
-  through a process mailbox to consume them in arbitrary order.
+But we also includes a broader set of packages that exercise and extend the platform in meaningful ways:
 
-* **Process links and monitors** to keep track of the lifecycle of processes
+* **Ceibo**: shared syntax-tree and span infrastructure
+* **Syn**: a parser and CST toolkit for OCaml
+* **Macro**: a new procedural macro system for OCaml
+* **Swisstable**: an implementation of Google's Swisstable hashmap
+* **Pubgrub**: version solving
+* **Mime**: MIME parsing helpers
+* **Propane**: property-based testing
+* **MCP**: Model Context Protocol support
+* **Terminal UI**
+  * **Minttea**: a terminal application framework
+  * **Gooey**: terminal UI primitives
+  * **Colors**: color utilities and color science helpers
+  * **TTY**: terminal control and rendering support
+* **Web**
+  * **HTTP**: protocol support for building clients and servers
+  * **Blink**: a streaming HTTP client
+  * **Suri**: a web framework built on Riot's foundations
+* **Databases**
+  * **SQLx**: higher-level SQL access
+  * **SQLite**: SQLite bindings and driver support
+  * **Postgres**: PostgreSQL client support
 
-Riot also includes:
-
-* **Supervisors** to build process hierarchies
-
-* **Logging** and **Telemetry** designed to be multicore friendly
-
-* an **Application** interface to orchestrate startup/shutdown of systems
-
-* **Generic Servers** for designing encapsulated services like with Elixir's [GenServer][genserver]
-
-### Non-goals
+## Non-goals
 
 At the same time, there's a few things that Riot is not, and does not aim to be.
 
 Primarily, Riot is not a full port of the Erlang VM and it won't support
 several of its use-cases, like:
+
 * supporting Erlang or Elixir bytecode
 * hot-code reloading in live applications
 * function-call level tracing in live applications
 * ad-hoc distribution
 
+Riot is also not trying to preserve the traditional OCaml toolchain shape at all costs. It is comfortable experimenting with different package, build, and runtime boundaries when that leads to a simpler overall system.
+
 ## Quick Start
 
-```
-opam install riot
+Riot ships with `tusk`, its own build tool and package manager.
+
+If you want to get a feel for the project from source, the current path is:
+
+```sh
+python3 bootstrap.py
+./minitusk
+./tusk-cli install tusk
+tusk --help
 ```
 
-After that, you can use any of the [examples](./examples) as a base for your app, and run them:
+After that, you can build the workspace or explore specific pieces:
 
+```sh
+tusk build
+tusk build suri
+tusk build hello-foreign
+tusk test
 ```
-dune exec ./my_app.exe
+
+And if you want to explore what Riot exposes, `tusk` can list packages, binaries, and tests:
+
+```sh
+tusk completions --packages
+tusk completions --binaries
+tusk completions --tests
 ```
+
+If you want to validate the native interop path specifically:
+
+```sh
+RUSTC_WRAPPER= tusk build hello-foreign
+tusk run hello
+```
+
+You do not need to understand the whole repository to get value from Riot. The important part is the direction: actors, strong tooling, modern library surfaces, and an ecosystem that is comfortable owning more of the stack.
 
 ## Acknowledgments
 
@@ -102,18 +155,11 @@ Riot is the continuation of the work I started with
 [Caramel](https://github.com/leostera/caramel), an Erlang-backend for the OCaml
 compiler.
 
-It was heavily inspired by [eio][eio] by the OCaml Multicore team and
-[miou][miou] by [Calascibetta Romain](https://twitter.com/Dinoosaure) and the
+The scheduler design was heavily inspired by [Eio][eio] by the OCaml Multicore team and
+[Miou][miou] by [Calascibetta Romain](https://twitter.com/Dinoosaure) and the
 [Robur team](https://robur.coop/), as I learned more about Algebraic Effects.
 In particular the `Proc_state` is based on the `State` module in Miou.
 
-And a thousand thanks to [Calascibetta Romain](https://twitter.com/Dinoosaure)
-and [Antonio Monteiro](https://twitter.com/_anmonteiro) for the discussions and
-feedback.
-
 [actors]: https://en.wikipedia.org/wiki/Actor_model
-[erlang]: https://erlang.org
 [eio]: https://github.com/ocaml-multicore/eio
 [miou]: https://github.com/robur-coop/miou
-[genserver]: https://hexdocs.pm/elixir/1.12/GenServer.html
-
