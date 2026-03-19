@@ -8,7 +8,43 @@ Use it as a router: pick the most relevant existing AGENTS file before making ch
 
 ## Routing Table
 
-TBD
+- `packages/kernel/AGENTS.md`: C FFI, platform shims, file descriptors, event loop primitives
+- `packages/miniriot/AGENTS.md`: actor runtime, scheduler, mailbox, timers, process lifecycle
+- `packages/std/AGENTS.md`: shared standard library surface used by the rest of the repo
+- `packages/http/AGENTS.md`: HTTP protocol implementation and wire-level behavior
+- `packages/blink/AGENTS.md`: streaming HTTP client built on actors
+- `packages/suri/AGENTS.md`: web framework, middleware, routing, liveview, server integration
+- `packages/jsonrpc/AGENTS.md`: JSON-RPC framing and codec behavior
+- `packages/mcp/AGENTS.md`: MCP transport and protocol types
+- `packages/syn/AGENTS.md`: parser, lexer, CST, diagnostics
+- `packages/tusk-model/AGENTS.md`: shared build-system types and workspace/package model
+- `packages/tusk-planner/AGENTS.md`: build planning and dependency graph construction
+- `packages/tusk-executor/AGENTS.md`: build execution and result aggregation
+- `packages/tusk-store/AGENTS.md`: artifact store and cache layout
+- `packages/tusk-toolchain/AGENTS.md`: compiler/toolchain invocation wrappers
+- `packages/tusk-server/AGENTS.md`: in-process build session/runtime entrypoints
+- `packages/tusk-cli/AGENTS.md`: CLI commands and user-facing flows
+- `packages/tusk-protocol/AGENTS.md`: remaining protocol-shaped tusk types
+- `packages/tusk-init/AGENTS.md`: workspace/package scaffolding
+- `packages/tusk-eval/AGENTS.md`: OCaml evaluation tooling
+- `packages/tusk-fix/AGENTS.md`: linting and auto-fix pipeline
+- `packages/tty/AGENTS.md`: terminal control and rendering helpers
+- `packages/gooey/AGENTS.md`: TUI primitives
+- `packages/minttea/AGENTS.md`: Elm-style TUI framework
+- `packages/sqlx/AGENTS.md`: high-level SQL API
+- `packages/sqlx-driver/AGENTS.md`: database driver interface
+- `packages/sqlite/AGENTS.md`: SQLite adapter
+- `packages/postgres/AGENTS.md`: PostgreSQL adapter
+- `packages/pubgrub/AGENTS.md`: version solver
+- `packages/mime/AGENTS.md`: MIME parsing and rendering helpers
+- `packages/propane/AGENTS.md`: property-based testing support
+- `packages/hello-foreign/AGENTS.md`: OCaml to Rust FFI smoke test
+- `native/AGENTS.md`: Rust binding layer overview and crate routing
+- `native/riot-core/AGENTS.md`: shared value model and ABI-safe types
+- `native/riot-derive/AGENTS.md`: derive macros for the native binding layer
+- `native/riot-ffi/AGENTS.md`: Rust-facing FFI facade and prelude
+- `native/riot-bindgen/AGENTS.md`: binding code generation tooling
+- `native/hello-rust/AGENTS.md`: example native library used by `hello-foreign`
 
 ## Fast Start Checklist
 
@@ -17,3 +53,13 @@ TBD
 3. Implement changes.
 4. Run required builds.
 5. Update affected AGENTS files if behavior or contracts changed.
+
+## Repository Invariants
+
+1. `open Std` in OCaml files outside `kernel` and `miniriot`.
+2. Do not introduce direct `Stdlib`, `Unix`, `Sys`, or `Obj` usage outside the packages that already own those boundaries.
+3. Use `Cell.t` for standalone mutable values and record `mutable` fields for mutable record state.
+4. Run `tusk` from the workspace root and prefer `tusk completions --packages`, `--binaries`, or `--tests` for discovery.
+5. Wrap long-running commands with `timeout`.
+6. Use `apply_patch` for hand edits.
+7. Prefer abstract `.mli` surfaces when exposing package APIs.
