@@ -6893,7 +6893,10 @@ and parse_type_decl parser =
                 | _ ->
                     (* Check if this is an abstract type (private or not) - no representation *)
                     (match peek_kind parser with
-                    | Token.EOF 
+                    | Token.EOF
+                    | Token.Keyword _
+                      when List.length private_kw_children > 0 ->
+                        []
                     | Token.Keyword _ ->
                         let found_tok = peek parser in
                         let diagnostic =
