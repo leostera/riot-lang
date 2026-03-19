@@ -69,18 +69,11 @@ let () =
   build_package ~build_results ~needs_stdlib_and_unix:true "kernel" "packages/kernel";
   build_package ~build_results "miniriot" "packages/miniriot";
   build_package ~build_results "std" "packages/std";
-  build_package ~build_results "jsonrpc" "packages/jsonrpc";
-  build_package ~build_results "mcp" "packages/mcp";
-  build_package ~build_results "propane" "packages/propane";
-  build_package ~build_results "ceibo" "packages/ceibo";
-  build_package ~build_results "datalog" "packages/datalog";
-  build_package ~build_results "poneglyph" "packages/poneglyph";
   build_package ~build_results "tusk-model" "packages/tusk-model";
   build_package ~build_results "tusk-store" "packages/tusk-store";
   build_package ~build_results "tusk-toolchain" "packages/tusk-toolchain";
   build_package ~build_results "tusk-planner" "packages/tusk-planner";
   build_package ~build_results "tusk-executor" "packages/tusk-executor";
-  build_package ~build_results "tusk-protocol" "packages/tusk-protocol";
   build_package ~build_results "tusk-server" "packages/tusk-server";
   build_package ~build_results "tusk-init" "packages/tusk-init";
   build_package ~build_results "tusk-cli" "packages/tusk-cli";

@@ -143,21 +143,21 @@ let build_command package_opt target_arch =
             (* Track failed packages *)
             failed_count := !failed_count + List.length errors;
             (* Display error details from failed build *)
-            List.iter (fun (error : Tusk_protocol.WireProtocol.build_result) ->
+            List.iter (fun (error : Tusk_executor.Package_builder.build_result) ->
               match error.status with
-              | Tusk_protocol.WireProtocol.Failed (Tusk_protocol.WireProtocol.ExecutionFailed { message }) ->
+              | Tusk_executor.Package_builder.Failed (Tusk_executor.Package_builder.ExecutionFailed { message }) ->
                   println "";
                   println ("\027[1;31mError\027[0m: " ^ message)
-              | Tusk_protocol.WireProtocol.Failed (Tusk_protocol.WireProtocol.PlanningFailed _) ->
+              | Tusk_executor.Package_builder.Failed (Tusk_executor.Package_builder.PlanningFailed _) ->
                   println "";
                   println ("\027[1;31mError\027[0m: Planning failed for " ^ error.package.name)
-              | Tusk_protocol.WireProtocol.Failed (Tusk_protocol.WireProtocol.ActionExecutionFailed { message }) ->
+              | Tusk_executor.Package_builder.Failed (Tusk_executor.Package_builder.ActionExecutionFailed { message }) ->
                   println "";
                   println ("\027[1;31mError\027[0m: Action execution failed for " ^ error.package.name ^ ": " ^ message)
-              | Tusk_protocol.WireProtocol.Failed (Tusk_protocol.WireProtocol.ActionOutputsNotCreated { missing }) ->
+              | Tusk_executor.Package_builder.Failed (Tusk_executor.Package_builder.ActionOutputsNotCreated Module.{ missing }) ->
                   println "";
                   println ("\027[1;31mError\027[0m: Action outputs not created for " ^ error.package.name)
-              | Tusk_protocol.WireProtocol.Failed (Tusk_protocol.WireProtocol.ActionDependenciesFailed _) ->
+              | Tusk_executor.Package_builder.Failed (Tusk_executor.Package_builder.ActionDependenciesFailed _) ->
                   println "";
                   println ("\027[1;31mError\027[0m: Action dependencies failed for " ^ error.package.name)
               | _ -> ()
@@ -182,7 +182,7 @@ let build_command package_opt target_arch =
           println "Available packages:";
           List.iter (fun pkg -> println ("  • " ^ pkg)) available_packages;
           exit 1
-      | Local_session.UnexpectedEvent { reason; _ } ->
+      | Local_session.UnexpectedEvent Module.{ reason } ->
           println ("\027[1;31mError\027[0m: " ^ reason);
           exit 1)
   | Ok event ->

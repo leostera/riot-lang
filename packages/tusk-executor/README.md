@@ -167,7 +167,7 @@ let execute_build ~workspace ~toolchain ~packages ~concurrency ~store =
 ## Dependencies
 
 **Current (doesn't build):**
-- Missing: `Core`, `Model`, `Workspace`, `Tusk_protocol`
+- Missing: `Core`, `Model`, `Workspace`
 
 **After refactor:**
 - ✅ `std` - For WorkerPool, Path, etc.

@@ -32,7 +32,6 @@ This package depends on:
 - `std` - Standard library
 - `miniriot` - Actor runtime
 - `tusk-model` - Core data models
-- `tusk-protocol` - Protocol definitions
 - `tusk-server` - Local build session runtime
 - `tusk-planner` - Build planning
 - `tusk-executor` - Build execution

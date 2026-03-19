@@ -32,7 +32,6 @@ members = [
   "packages/tusk-init",
   "packages/tusk-model",
   "packages/tusk-planner",
-  "packages/tusk-protocol",
   "packages/tusk-repl",
   "packages/tusk-server",
   "packages/tusk-store",

@@ -1,16 +1,24 @@
 open Std
 open Tusk_model
-open Tusk_protocol
 open Tusk_server
 
 type t = { server_pid : Pid.t }
+
+type build_stats = {
+  duration_ms : int;
+  packages_built : int;
+  packages_failed : int;
+  total_modules : int;
+  cache_hits : int;
+  cache_misses : int;
+}
 
 type error =
   | PackageNotFound of {
       package_name : string;
       available_packages : string list;
     }
-  | UnexpectedEvent of { event : WireProtocol.response; reason : string }
+  | UnexpectedEvent of { reason : string }
 
 type streaming_event =
   | BuildStarted of Session_id.t
@@ -18,15 +26,15 @@ type streaming_event =
   | BuildCompleted of {
       session_id : Session_id.t;
       completed_at : Datetime.t;
-      stats : WireProtocol.build_stats;
-      results : WireProtocol.build_result list;
+      stats : build_stats;
+      results : Tusk_executor.Package_builder.build_result list;
     }
   | BuildFailed of {
       session_id : Session_id.t;
       failed_at : Datetime.t;
-      stats : WireProtocol.build_stats;
-      built : WireProtocol.build_result list;
-      errors : WireProtocol.build_result list;
+      stats : build_stats;
+      built : Tusk_executor.Package_builder.build_result list;
+      errors : Tusk_executor.Package_builder.build_result list;
     }
   | PlanningFailed of {
       session_id : Session_id.t;
@@ -53,10 +61,9 @@ let send_request t request =
 
 let receive_response ~selector = receive ~selector ()
 
-let convert_build_stats (stats : Protocol.BuildStats.t) :
-    WireProtocol.build_stats =
+let convert_build_stats (stats : Protocol.BuildStats.t) : build_stats =
   {
-    WireProtocol.duration_ms =
+    duration_ms =
       int_of_float (Protocol.BuildStats.get_build_duration stats *. 1000.0);
     packages_built = Protocol.BuildStats.get_packages_built stats;
     packages_failed = Protocol.BuildStats.get_packages_failed stats;
@@ -64,30 +71,6 @@ let convert_build_stats (stats : Protocol.BuildStats.t) :
     cache_hits = Protocol.BuildStats.get_cache_hits stats;
     cache_misses = Protocol.BuildStats.get_cache_misses stats;
   }
-
-let convert_build_result (result : Tusk_executor.Package_builder.build_result) :
-    WireProtocol.build_result =
-  let status : WireProtocol.build_status =
-    match result.status with
-    | Tusk_executor.Package_builder.Cached artifact -> WireProtocol.Cached artifact
-    | Tusk_executor.Package_builder.Built artifact -> WireProtocol.Built artifact
-    | Tusk_executor.Package_builder.Failed err ->
-        let wire_err : WireProtocol.package_error =
-          match err with
-          | Tusk_executor.Package_builder.PlanningFailed e ->
-              WireProtocol.PlanningFailed e
-          | Tusk_executor.Package_builder.ExecutionFailed { message } ->
-              WireProtocol.ExecutionFailed { message }
-          | Tusk_executor.Package_builder.ActionExecutionFailed { message } ->
-              WireProtocol.ActionExecutionFailed { message }
-          | Tusk_executor.Package_builder.ActionOutputsNotCreated { missing } ->
-              WireProtocol.ActionOutputsNotCreated { missing }
-          | Tusk_executor.Package_builder.ActionDependenciesFailed { failed } ->
-              WireProtocol.ActionDependenciesFailed { failed }
-        in
-        WireProtocol.Failed wire_err
-  in
-  { WireProtocol.package = result.package; status; duration = result.duration }
 
 let same_session left right =
   Session_id.to_string left = Session_id.to_string right
@@ -134,7 +117,7 @@ let rec handle_streaming_events t session_id callback =
               session_id = event_session_id;
               completed_at;
               stats = convert_build_stats stats;
-              results = List.map convert_build_result results;
+              results;
             }
         in
         callback final_event;
@@ -148,8 +131,8 @@ let rec handle_streaming_events t session_id callback =
               session_id = event_session_id;
               failed_at;
               stats = convert_build_stats stats;
-              built = List.map convert_build_result built;
-              errors = List.map convert_build_result errors;
+              built;
+              errors;
             }
         in
         callback final_event;

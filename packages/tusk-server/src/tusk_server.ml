@@ -1,4 +1,4 @@
-(** Tusk Server - Exports both internal server and JSON-RPC server *)
+(** Tusk Server - Exports the local build session runtime *)
 
 module Build_server = Build_server
 module Internal_server = Internal_server

@@ -24,7 +24,6 @@ Use it as a router: pick the most relevant existing AGENTS file before making ch
 - `packages/tusk-toolchain/AGENTS.md`: compiler/toolchain invocation wrappers
 - `packages/tusk-server/AGENTS.md`: in-process build session/runtime entrypoints
 - `packages/tusk-cli/AGENTS.md`: CLI commands and user-facing flows
-- `packages/tusk-protocol/AGENTS.md`: remaining protocol-shaped tusk types
 - `packages/tusk-init/AGENTS.md`: workspace/package scaffolding
 - `packages/tusk-eval/AGENTS.md`: OCaml evaluation tooling
 - `packages/tusk-fix/AGENTS.md`: linting and auto-fix pipeline
