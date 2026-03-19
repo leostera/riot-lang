@@ -8,12 +8,16 @@
 ## Summary
 [summary]: #summary
 
-This RFD documents the steady-state architecture of `tusk` once a working `tusk` binary already exists. It captures the current one-shot local build flow across `tusk-cli`, `tusk-server`, `tusk-planner`, `tusk-executor`, `tusk-store`, and `tusk-toolchain`.
+This RFD documents the steady-state architecture of `tusk` once a working
+`tusk` binary already exists. It captures the current one-shot local build flow
+across `tusk-cli`, `tusk-server`, `tusk-planner`, `tusk-executor`,
+`tusk-store`, and `tusk-toolchain`.
 
 ## Motivation
 [motivation]: #motivation
 
-The build system has a clear local execution model, but there is no single document that describes the system as it exists today.
+The build system has a clear local execution model, but there is no single
+document that describes the system as it exists today.
 
 This RFD exists to capture:
 
