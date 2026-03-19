@@ -17,14 +17,10 @@ let format ~displayed_packages (event : Telemetry.event) =
         let _ = HashSet.insert displayed_packages package.name in
         "   \027[1;32mCompiling\027[0m " ^ package.name
   | Telemetry_events.BuildCompleted { package; status; duration; _ } -> (
-      (* If we already showed it as BuildStarted, don't show again *)
-      (* But if cached and not shown yet, show it as built *)
+      (* Cached packages should stay silent here. Only fresh compilation gets a
+         "Compiling" line through CompilationStarted. *)
       match status with
-      | `Cached ->
-          if HashSet.contains displayed_packages package.name then ""
-          else
-            let _ = HashSet.insert displayed_packages package.name in
-            "   \027[1;32mCompiling\027[0m " ^ package.name
+      | `Cached -> ""
       | `Fresh -> "")
   | Telemetry_events.BuildFailed { package; error; _ } ->
       let error_msg =
@@ -52,17 +48,9 @@ let format ~displayed_packages (event : Telemetry.event) =
       "     \027[1;33mSkipped\027[0m " ^ package.name ^ " (" ^ reason ^ ")"
   (* Cache events - these are action-level, not commonly emitted *)
   | Telemetry_events.CacheHit { package; _ } ->
-      (* Only show if we haven't displayed this package yet *)
-      if HashSet.contains displayed_packages package.name then ""
-      else
-        let _ = HashSet.insert displayed_packages package.name in
-        "   \027[1;32mCompiling\027[0m " ^ package.name
+      ""
   | Telemetry_events.CacheMiss { package; _ } ->
-      (* Only show if we haven't displayed this package yet *)
-      if HashSet.contains displayed_packages package.name then ""
-      else
-        let _ = HashSet.insert displayed_packages package.name in
-        "   \027[1;32mCompiling\027[0m " ^ package.name
+      ""
   (* Action events - mostly silent, let package-level events show *)
   | Telemetry_events.ActionStarted _ -> ""
   | Telemetry_events.ActionCompleted _ -> ""
