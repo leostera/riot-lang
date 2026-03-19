@@ -86,12 +86,9 @@ let command =
          |> help "Target architecture (exact triple, pattern like 'linux'/'aarch64', or 'all')";
          flag "all-targets"
          |> help "Build for all configured targets";
-         flag "no-code-server"
-         |> long "no-code-server"
-         |> help "Don't start the CodeDB server (lighter, for builds only)";
        ]
 
-let build_command package_opt target_arch config =
+let build_command package_opt target_arch =
   let cwd =
     Env.current_dir () |> Result.expect ~msg:"Failed to get current directory"
   in
@@ -102,14 +99,14 @@ let build_command package_opt target_arch config =
   in
 
   let client =
-    Tusk_server.Server_manager.ensure_running ~workspace ~config
-    |> Result.expect ~msg:"Failed to start or connect to tusk server"
+    Local_session.connect_local ~workspace
+    |> Result.expect ~msg:"Failed to start local tusk session"
   in
 
   let request =
     match package_opt with
-    | Some pkg -> Tusk_client.BuildPackage pkg
-    | None -> Tusk_client.BuildAll
+    | Some pkg -> Local_session.BuildPackage pkg
+    | None -> Local_session.BuildAll
   in
   let displayed_packages = HashSet.create () in
 
@@ -121,10 +118,10 @@ let build_command package_opt target_arch config =
   let skipped_count = ref 0 in
 
   let result =
-    Tusk_client.build_streaming client request ?target_arch (fun event ->
+    Local_session.build_streaming client request ?target_arch (fun event ->
         match event with
-        | Tusk_client.BuildStarted session_id -> ()
-        | Tusk_client.BuildEvent event ->
+        | Local_session.BuildStarted session_id -> ()
+        | Local_session.BuildEvent event ->
             (* Track stats from events *)
             (match event with
             | Tusk_executor.Telemetry_events.BuildCompleted
@@ -141,8 +138,8 @@ let build_command package_opt target_arch config =
 
             let msg = Event_formatter.format ~displayed_packages event in
             if msg != "" then println msg
-        | Tusk_client.BuildCompleted _ -> ()
-        | Tusk_client.BuildFailed { errors; _ } ->
+        | Local_session.BuildCompleted _ -> ()
+        | Local_session.BuildFailed { errors; _ } ->
             (* Track failed packages *)
             failed_count := !failed_count + List.length errors;
             (* Display error details from failed build *)
@@ -165,34 +162,31 @@ let build_command package_opt target_arch config =
                   println ("\027[1;31mError\027[0m: Action dependencies failed for " ^ error.package.name)
               | _ -> ()
             ) errors
-        | Tusk_client.PlanningFailed { reason; _ } ->
+        | Local_session.PlanningFailed { reason; _ } ->
             (* Planning failed before build started - this is a fatal error *)
             println "";
             println ("\027[1;31mPlanning Failed\027[0m: " ^ reason);
             failed_count := !failed_count + 1
-        | Tusk_client.CycleDetected { cycle_nodes; _ } ->
+        | Local_session.CycleDetected { cycle_nodes; _ } ->
             println "      \027[1;31mError\027[0m: Cyclic dependency detected:";
             println ("         " ^ String.concat " ->\n         " cycle_nodes))
   in
   
   let final_event = match result with
   | Error err ->
-      Tusk_client.close client;
+      Local_session.close client;
       (match err with
-      | Tusk_client.JsonrpcError json_err ->
-          println ("\027[1;31mError\027[0m: " ^ Tusk_client.jsonrpc_error_to_string json_err);
-          exit 1
-      | Tusk_client.PackageNotFound { package_name; available_packages } ->
+      | Local_session.PackageNotFound { package_name; available_packages } ->
           println ("\027[1;31mError\027[0m: Package '" ^ package_name ^ "' not found");
           println "";
           println "Available packages:";
           List.iter (fun pkg -> println ("  • " ^ pkg)) available_packages;
           exit 1
-      | Tusk_client.UnexpectedEvent { reason; _ } ->
+      | Local_session.UnexpectedEvent { reason; _ } ->
           println ("\027[1;31mError\027[0m: " ^ reason);
           exit 1)
   | Ok event ->
-      Tusk_client.close client;
+      Local_session.close client;
       event
   in
 
@@ -221,23 +215,16 @@ let build_command package_opt target_arch config =
       ^ Int.to_string !skipped_count ^ " skipped)");
 
   match final_event with
-  | Tusk_client.BuildCompleted _ -> Ok ()
-  | Tusk_client.BuildFailed _ -> Error (Failure "Build failed")
-  | Tusk_client.PlanningFailed _ -> Error (Failure "Planning failed")
-  | Tusk_client.CycleDetected _ -> Error (Failure "Cyclic dependency detected")
-  | Tusk_client.BuildStarted _ | Tusk_client.BuildEvent _ ->
+  | Local_session.BuildCompleted _ -> Ok ()
+  | Local_session.BuildFailed _ -> Error (Failure "Build failed")
+  | Local_session.PlanningFailed _ -> Error (Failure "Planning failed")
+  | Local_session.CycleDetected _ -> Error (Failure "Cyclic dependency detected")
+  | Local_session.BuildStarted _ | Local_session.BuildEvent _ ->
       Error (Failure "Unexpected response from server")
 
 let run matches =
   let open ArgParser in
   let package_opt = get_one matches "package" in
-  let no_code_server = get_flag matches "no-code-server" in
-  let server_config = 
-    if no_code_server then
-      Tusk_server.Server_config.no_codedb
-    else
-      Tusk_server.Server_config.default
-  in
   
   (* Get workspace to resolve targets *)
   let cwd = Env.current_dir () |> Result.expect ~msg:"Failed to get current directory" in
@@ -289,7 +276,7 @@ let run matches =
     | Some arch -> println ("🔨 Cross-compiling for " ^ arch)
     | None -> ());
     
-    build_command package_opt target_arch server_config
+    build_command package_opt target_arch
   ) else (
     println "❌ No targets specified";
     Error (Failure "No targets")

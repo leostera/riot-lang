@@ -45,8 +45,8 @@ let run matches =
     Workspace_manager.scan cwd |> Result.expect ~msg:"Failed to scan workspace"
   in
   let client =
-    Tusk_server.Server_manager.ensure_running ~workspace ~config:Tusk_server.Server_config.default
-    |> Result.expect ~msg:"Failed to start or connect to tusk server"
+    Local_session.connect_local ~workspace
+    |> Result.expect ~msg:"Failed to start local tusk session"
   in
 
   (* Parse pattern: [pkg]:test_prefix or pkg:test_prefix or pkg:... *)
@@ -95,7 +95,7 @@ let run matches =
   in
 
   if List.length test_binaries = 0 then (
-    Tusk_client.close client;
+    Local_session.close client;
     println "No test binaries found";
     (match (package_filter, test_prefix) with
     | (Some pkg, Some prefix) ->
@@ -129,12 +129,12 @@ let run matches =
       (fun pkg test_names ->
         println "";
         println ("Building package '" ^ pkg ^ "'...");
-        match Build.build_command (Some pkg) None Tusk_server.Server_config.default with
+        match Build.build_command (Some pkg) None with
         | Ok () ->
             List.iter
               (fun test_name ->
                 match
-                  Tusk_client.find_artifact client ~package:pkg ~kind:"binary"
+                  Local_session.find_artifact client ~package:pkg ~kind:"binary"
                     ~name:test_name
                 with
                 | Ok path -> (
@@ -163,7 +163,7 @@ let run matches =
             failed := !failed + List.length test_names)
       tests_by_package;
 
-    Tusk_client.close client;
+    Local_session.close client;
 
     println "";
     println "Test Summary:";

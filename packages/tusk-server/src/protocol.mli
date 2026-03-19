@@ -38,7 +38,6 @@ type request =
       kind : string;
       name : string;
     }
-  | GetSymbol of { client_pid : Pid.t; kind : string option; name : string }
   | FormatFile of { client_pid : Pid.t; file_path : Path.t; check_only : bool }
   | FormatCode of {
       client_pid : Pid.t;
@@ -92,15 +91,6 @@ type response =
   | ExecutableNotFound
   | ArtifactFound of { path : Path.t }
   | ArtifactNotFound of { error : string }
-  | SymbolFound of {
-      symbol_kind : string;
-      symbol_name : string;
-      source_path : string;
-      source_sha256 : string;
-      package_name : string;
-      package_path : string;
-    }
-  | SymbolNotFound
   | FormatResult of { formatted_code : string; changed : bool }
   | FormatError of { error : string }
   | FormatAllResult of {

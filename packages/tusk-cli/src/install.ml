@@ -21,27 +21,29 @@ let build_package package_name =
   let (workspace, _load_errors) =
     Workspace_manager.scan cwd |> Result.expect ~msg:"Operation failed"
   in
-  let client_result = Tusk_server.Server_manager.ensure_running ~workspace ~config:Tusk_server.Server_config.default in
+  let client_result = Local_session.connect_local ~workspace in
   if Result.is_error client_result then false
   else
     let client = client_result |> Result.expect ~msg:"Operation failed" in
     let displayed_packages = HashMap.create () in
     let result =
-      Tusk_client.build_streaming client (Tusk_client.BuildPackage package_name)
+      Local_session.build_streaming client
+        (Local_session.BuildPackage package_name)
         (function
-        | Tusk_client.BuildStarted session_id -> ()
-        | Tusk_client.BuildEvent _event -> ()
-        | Tusk_client.BuildCompleted _ -> ()
-        | Tusk_client.BuildFailed _ -> ()
-        | Tusk_client.PlanningFailed _ -> ()
-        | Tusk_client.CycleDetected _ -> ())
+        | Local_session.BuildStarted session_id -> ()
+        | Local_session.BuildEvent _event -> ()
+        | Local_session.BuildCompleted _ -> ()
+        | Local_session.BuildFailed _ -> ()
+        | Local_session.PlanningFailed _ -> ()
+        | Local_session.CycleDetected _ -> ())
     in
-    Tusk_client.close client;
+    Local_session.close client;
     match result with
-    | Ok (Tusk_client.BuildCompleted _) -> true
-    | Ok (Tusk_client.BuildFailed _) -> false
-    | Ok (Tusk_client.BuildStarted _ | Tusk_client.BuildEvent _) -> false
-    | Ok (Tusk_client.PlanningFailed _ | Tusk_client.CycleDetected _) -> false
+    | Ok (Local_session.BuildCompleted _) -> true
+    | Ok (Local_session.BuildFailed _) -> false
+    | Ok (Local_session.BuildStarted _ | Local_session.BuildEvent _) -> false
+    | Ok (Local_session.PlanningFailed _ | Local_session.CycleDetected _) ->
+        false
     | Error _ -> false
 
 let run matches =
@@ -59,13 +61,13 @@ let run matches =
     Workspace_manager.scan cwd |> Result.expect ~msg:"Failed to scan workspace"
   in
   let client =
-    Tusk_server.Server_manager.ensure_running ~workspace ~config:Tusk_server.Server_config.default
-    |> Result.expect ~msg:"Failed to start or connect to tusk server"
+    Local_session.connect_local ~workspace
+    |> Result.expect ~msg:"Failed to start local tusk session"
   in
 
-  match Tusk_client.find_executable client binary_name with
+  match Local_session.find_executable client binary_name with
   | Ok (Some (package_name, _binary)) -> (
-      Tusk_client.close client;
+      Local_session.close client;
       println
         ("Building " ^ binary_name ^ " (from package " ^ package_name ^ ")...");
       if not (build_package package_name) then (
@@ -144,11 +146,11 @@ let run matches =
 
             Ok ())
   | Ok None ->
-      Tusk_client.close client;
+      Local_session.close client;
       println ("❌ Binary '" ^ binary_name ^ "' not found in workspace");
       println "Note: Make sure the binary is declared in a [[bin]] section";
       Error (Failure ("Binary not found: " ^ binary_name))
   | Error msg ->
-      Tusk_client.close client;
+      Local_session.close client;
       println ("❌ Error: " ^ msg);
       Error (Failure msg)

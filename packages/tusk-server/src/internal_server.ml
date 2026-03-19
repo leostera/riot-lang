@@ -13,6 +13,58 @@ type server_state = {
   load_errors : Workspace_manager.load_error list;
 }
 
+let build_state ~(workspace : Workspace.t) ~config =
+  let _ = config in
+  let (workspace, load_errors) =
+    Workspace_manager.scan workspace.root
+    |> Result.expect ~msg:"tusk_server: workspace scan failed"
+  in
+
+  if List.length load_errors > 0 then (
+    Log.warn
+      ("Workspace loaded with " ^ Int.to_string (List.length load_errors)
+      ^ " package load errors:");
+    List.iter
+      (fun err -> Log.warn ("  " ^ Workspace_manager.load_error_to_string err))
+      load_errors);
+
+  let toolchain_config = Toolchain_config.from_workspace workspace in
+  let toolchain =
+    match Tusk_toolchain.init ~config:toolchain_config with
+    | Ok t -> t
+    | Error msg ->
+        println "\n❌ ERROR: Toolchain initialization failed!\n";
+        println msg;
+        println "";
+        exit 1
+  in
+
+  let store = Tusk_store.Store.create ~workspace in
+
+  let package_graph =
+    match Tusk_planner.Package_graph.create workspace with
+    | Ok graph -> graph
+    | Error (Tusk_planner.Package_graph.MissingPackages { missing }) ->
+        Log.warn "Package graph has missing dependencies at startup:";
+        List.iter
+          (fun { Tusk_planner.Package_graph.package; dependency } ->
+            Log.warn ("  " ^ package ^ " requires: " ^ dependency))
+          missing;
+        Log.warn "Build operations will report this error to clients.";
+        let ws = Workspace.make ~root:workspace.root ~packages:[] () in
+        Tusk_planner.Package_graph.create ws
+        |> Result.expect ~msg:"Failed to create empty package graph"
+  in
+
+  {
+    workspace;
+    toolchain;
+    store;
+    concurrency = System.available_parallelism;
+    package_graph;
+    load_errors;
+  }
+
 (** Main server loop - handle all incoming requests *)
 let rec loop state =
   let selector msg =
@@ -65,9 +117,6 @@ let rec loop state =
   | `Request (Protocol.NewPackage { client_pid; path; name; is_library }) ->
       Log.debug "Server loop received: NewPackage";
       handle_new_package state client_pid path name is_library
-  | `Request (Protocol.GetSymbol { client_pid; kind; name }) ->
-      Log.debug "Server loop received: GetSymbol";
-      handle_get_symbol state client_pid kind name
 
 (** Handler for ping message *)
 and handle_ping state client_pid =
@@ -427,77 +476,6 @@ and handle_new_package state client_pid path name is_library =
                   { error = "Failed to write package files" }));
            loop state)
 
-and handle_get_symbol state client_pid kind name =
-  Log.debug
-    ("Server: Received GetSymbol from " ^ Pid.to_string client_pid ^ " for "
-    ^ name ^ " (kind="
-    ^ (match kind with Some k -> k | None -> "any") ^ ")");
-
-  (* Convert kind string and name to Symbol.reference *)
-  let sym_ref_result : (Codedb.Model.Symbol.reference, string) result = match kind with
-    | Some "Module" | None -> 
-        (match Codedb.Model.Module_name.from_string name with
-         | Ok n -> Ok (Module n)
-         | Error e -> Error e)
-    | Some "Value" ->
-        (match Codedb.Model.Value_name.from_string name with
-         | Ok n -> Ok (Value n)
-         | Error e -> Error e)
-    | Some "Type" ->
-        (match Codedb.Model.Type_name.from_string name with
-         | Ok n -> Ok (Type n)
-         | Error e -> Error e)
-    | Some "Interface" ->
-        (match Codedb.Model.Module_name.from_string name with
-         | Ok n -> Ok (Interface n)
-         | Error e -> Error e)
-    | Some k -> Error ("Unknown kind: " ^ k)
-  in
-
-   (match sym_ref_result with
-    | Error err ->
-        Log.warn (String.concat "" ["Invalid symbol request: "; err]);
-        send client_pid (Protocol.ServerResponse Protocol.SymbolNotFound)
-    | Ok sym_ref ->
-        (* Open shared (read-only) connection to CodeDB *)
-        let db_path = Path.(state.workspace.root / v ".codedb.pone") in
-        (match Poneglyph.open_shared ~data_dir:(Path.to_string db_path) with
-        | Error err ->
-            Log.error (String.concat "" ["Failed to open CodeDB: "; err]);
-            send client_pid (Protocol.ServerResponse Protocol.SymbolNotFound)
-        | Ok db ->
-             (match Codedb.Model.Query.get_symbol db sym_ref with
-              | Some symbol ->
-                  let kind_str = Codedb.Model.Symbol.kind_to_string symbol.Codedb.Model.Symbol.kind in
-                  let name_str = Codedb.Model.Module_name.qualified_name symbol.Codedb.Model.Symbol.name in
-                  (* Get the primary file (prefer implementation over interface) *)
-                  let primary_file = match symbol.Codedb.Model.Symbol.files.implementation with
-                    | Some f -> f
-                    | None -> (match symbol.Codedb.Model.Symbol.files.interface with
-                              | Some f -> f
-                              | None -> panic "Symbol has neither implementation nor interface file")
-                  in
-                  let source_path_str = Path.to_string primary_file.path in
-                  let source_sha256 = primary_file.sha256 in
-                  let package_name_str = Codedb.Model.Package_name.to_string symbol.Codedb.Model.Symbol.package.name in
-                  let package_path_str = Path.to_string symbol.Codedb.Model.Symbol.package.path in
-                 Poneglyph.close db;
-                 send client_pid
-                   (Protocol.ServerResponse
-                      (Protocol.SymbolFound
-                         {
-                           symbol_kind = kind_str;
-                           symbol_name = name_str;
-                           source_path = source_path_str;
-                           source_sha256;
-                           package_name = package_name_str;
-                           package_path = package_path_str;
-                         }))
-             | None ->
-                 Poneglyph.close db;
-                 send client_pid (Protocol.ServerResponse Protocol.SymbolNotFound))));
-   loop state
-
 (** Handler for build message - spawns worker and continues loop immediately *)
 and handle_build state client_pid target target_arch session_id =
   Log.debug
@@ -532,141 +510,14 @@ and handle_build state client_pid target target_arch session_id =
   Log.info "[INTERNAL_SERVER] Build worker spawned, continuing server loop";
   loop updated_state
 
-let write_daemon_files ~workspace ~port =
-  let home =
-    match Env.home_dir () with
-    | Some h -> h
-    | None -> panic "Failed to get home directory"
-  in
-  let project_id = Workspace.project_id workspace in
-  let daemon_path =
-    Path.(home / Path.v ".tusk" / Path.v "projects" / Path.v project_id)
-  in
-
-  let _ =
-    Fs.create_dir_all daemon_path
-    |> Result.expect ~msg:"Failed to create daemon dir"
-  in
-
-  let pid = Kernel.System.OsProcess.current_pid () in
-  let pid_file = Path.(daemon_path / Path.v "server.pid") in
-  let port_file = Path.(daemon_path / Path.v "server.port") in
-
-  let _ = Fs.write (Int.to_string pid) pid_file in
-  let _ = Fs.write (Int.to_string port) port_file in
-  Log.debug
-    ("Wrote daemon files: pid=" ^ Int.to_string pid ^ ", port="
-    ^ Int.to_string port)
-
-let start_with_listener ~config () =
+let start_local ~workspace ~config =
   try
-    Log.set_level Log.Debug;
-    Log.info "Starting Tusk server with listener";
-    if not config.Server_config.enable_codedb then
-      Log.info "CodeDB server disabled (--no-code-server)";
-    let current_dir =
-      Env.current_dir ()
-      |> Result.expect ~msg:"tusk_server: could not get current dir"
+    let state = build_state ~workspace ~config in
+    let server_pid =
+      spawn (fun () ->
+          let _ = loop state in
+          Ok ())
     in
-    Log.debug ("Got current directory: " ^ Path.to_string current_dir);
-
-    let server_pid = self () in
-    Log.trace ("Server PID: " ^ Pid.to_string server_pid);
-
-    Log.info "Scanning workspace...";
-    let (workspace, load_errors) =
-      Workspace_manager.scan current_dir
-      |> Result.expect ~msg:"tusk_server: workspace scan failed"
-    in
-    if List.length load_errors > 0 then (
-      Log.warn
-        ("Workspace loaded with " ^ Int.to_string (List.length load_errors)
-        ^ " package load errors:");
-      List.iter (fun err ->
-        Log.warn ("  " ^ Workspace_manager.load_error_to_string err)
-      ) load_errors
-    );
-    Log.info
-      ("Workspace scanned successfully: "
-      ^ Int.to_string (List.length workspace.packages) ^ " packages found");
-
-    let port = Workspace.server_port workspace in
-    Log.debug ("Using workspace-specific port: " ^ Int.to_string port);
-
-    Log.info "Ensuring Tusk directories exist...";
-    let _ = Tusk_model.Tusk_dirs.ensure_created () in
-
-    Log.info "Loading toolchains...";
-    let toolchain_config = Toolchain_config.from_workspace workspace in
-    let toolchain =
-      match Tusk_toolchain.init ~config:toolchain_config with
-      | Ok t -> t
-      | Error msg ->
-          println "\n❌ ERROR: Toolchain initialization failed!\n";
-          println msg;
-          println "";
-          exit 1
-    in
-    Log.info "Toolchain ready";
-
-    Log.info "Initializing store...";
-    let store = Tusk_store.Store.create ~workspace in
-    Log.info "Store initialized";
-
-    let codedb_opt = 
-      if config.Server_config.enable_codedb then begin
-        Log.info "Initializing Codedb...";
-        let codedb_config = Codedb.Config.create
-          ~workspace_root:workspace.root
-          ~toolchain
-          ~workspace
-          ~db_path:Path.(workspace.root / v ".codedb.pone")
-          () in
-        let codedb = Codedb.Service.start codedb_config in
-        Log.info "Codedb initialized";
-        Some codedb
-      end else begin
-        Log.info "Skipping Codedb initialization (disabled)";
-        None
-      end
-    in
-
-    write_daemon_files ~workspace ~port;
-
-    let package_graph = 
-      match Tusk_planner.Package_graph.create workspace with
-      | Ok graph -> graph
-      | Error (Tusk_planner.Package_graph.MissingPackages { missing }) ->
-          Log.warn "Package graph has missing dependencies at startup:";
-          List.iter (fun { Tusk_planner.Package_graph.package; dependency } ->
-            Log.warn ("  " ^ package ^ " requires: " ^ dependency)
-          ) missing;
-          Log.warn "Build operations will report this error to clients.";
-          (* Create an empty graph - actual build will fail with proper error *)
-          let ws = Workspace.make ~root:workspace.root ~packages:[] () in
-          Tusk_planner.Package_graph.create ws |> Result.expect ~msg:"Failed to create empty package graph"
-    in
-    (* Start CodeDB service - it runs independently with its own supervisor *)
-    let _codedb_supervisor = codedb_opt in
-    
-    let state =
-      {
-        workspace;
-        toolchain;
-        store;
-        concurrency = System.available_parallelism;
-        package_graph;
-        load_errors;
-      }
-    in
-
-    Log.info ("Starting JSON-RPC server on port " ^ Int.to_string port ^ "...");
-    let _ = Jsonrpc_server.start_tcp_server ~server:server_pid ~port in
-    Log.info "JSON-RPC server started successfully";
-
-    Log.info "Tusk server entering main loop";
-    let _ = loop state in
-    Ok ()
+    Ok server_pid
   with exn ->
-    Log.error ("Server initialization failed: " ^ Exception.to_string exn);
     Error exn

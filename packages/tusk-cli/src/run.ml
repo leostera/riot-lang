@@ -49,30 +49,30 @@ let run matches =
         |> Result.expect ~msg:"Failed to scan workspace"
       in
       let client =
-        Tusk_server.Server_manager.ensure_running ~workspace ~config:Tusk_server.Server_config.default
-        |> Result.expect ~msg:"Failed to start or connect to tusk server"
+        Local_session.connect_local ~workspace
+        |> Result.expect ~msg:"Failed to start local tusk session"
       in
 
       (* 1) Find executable by name (and optionally filter by package) *)
-      match Tusk_client.find_executable client bin_name with
+      match Local_session.find_executable client bin_name with
       | Ok (Some (pkg, _binary)) -> (
           (* If pkg_filter specified, verify it matches *)
           match pkg_filter with
           | Some expected_pkg when expected_pkg != pkg ->
-              Tusk_client.close client;
+              Local_session.close client;
               println
                 ("error: binary '" ^ bin_name ^ "' not found in package '"
                 ^ expected_pkg ^ "'");
               Error (Failure "binary not found in specified package")
           | _ -> (
-              match Build.build_command (Some pkg) None Tusk_server.Server_config.default with
+              match Build.build_command (Some pkg) None with
               | Ok () -> (
                   match
-                    Tusk_client.find_artifact client ~package:pkg ~kind:"binary"
+                    Local_session.find_artifact client ~package:pkg ~kind:"binary"
                       ~name:bin_name
                   with
                   | Ok path -> (
-                      Tusk_client.close client;
+                      Local_session.close client;
                       println
                         ("     \027[1;32mRunning\027[0m " ^ pkg ^ ":" ^ bin_name);
                       let cmd = Command.make path ~args:extra in
@@ -86,18 +86,18 @@ let run matches =
                           println ("error: " ^ msg);
                           Error (Failure msg))
                   | Error msg ->
-                      Tusk_client.close client;
+                      Local_session.close client;
                       println ("error: " ^ msg);
                       Error (Failure msg))
               | Error _ ->
                   println ("error: build failed for package '" ^ pkg ^ "'");
-                  Tusk_client.close client;
+                  Local_session.close client;
                   Error (Failure "build failed")))
       | Ok None ->
-          Tusk_client.close client;
+          Local_session.close client;
           println ("error: binary '" ^ name ^ "' not found");
           Error (Failure "binary not found")
       | Error msg ->
-          Tusk_client.close client;
+          Local_session.close client;
           println ("error: " ^ msg);
           Error (Failure msg))

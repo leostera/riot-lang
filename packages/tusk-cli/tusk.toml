@@ -10,13 +10,8 @@ name = "tusk"
 path = "src/main.ml"
 
 [dependencies]
-codedb = { path = "../codedb" }
-jsonrpc = { path = "../jsonrpc" }
-mcp = { path = "../mcp" }
 std = { path = "../std" }
 tusk-init = { path = "../tusk-init" }
-tusk-mcp = { path = "../tusk-mcp" }
-tusk-client = { path = "../tusk-client" }
 tusk-executor = { path = "../tusk-executor" }
 tusk-model = { path = "../tusk-model" }
 tusk-planner = { path = "../tusk-planner" }

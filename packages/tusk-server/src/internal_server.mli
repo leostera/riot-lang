@@ -1,3 +1,6 @@
 open Std
 
-val start_with_listener : config:Server_config.t -> unit -> (unit, exn) result
+val start_local :
+  workspace:Tusk_model.Workspace.t ->
+  config:Server_config.t ->
+  (Pid.t, exn) result

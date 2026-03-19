@@ -119,12 +119,12 @@
     Reads source files from disk at request time using [Fs.read_to_string].
     Shows 5 lines of context before and after the error line.
     
-    {b Tusk Server Integration:}
-    When available, queries the tusk build server to accurately resolve sandbox paths
-    to actual source files. This provides clean workspace-relative paths like 
-    [packages/suri/src/handler.ml] instead of cryptic sandbox paths. Falls back to
-    best-guess path construction if tusk server is unavailable. Resolved paths show
-    a green checkmark (✓) badge in the error page.
+    {b Workspace Source Resolution:}
+    The debugger scans the local tusk workspace to resolve sandbox paths back to
+    actual source files. This provides clean workspace-relative paths like
+    [packages/suri/src/handler.ml] instead of cryptic sandbox paths, and falls
+    back to best-guess path construction if the workspace cannot be loaded.
+    Resolved paths show a green checkmark (✓) badge in the error page.
     
     {b Error Logging:}
     The middleware logs errors to the console before sending the HTML page,
@@ -136,7 +136,7 @@
     - Only works with exceptions that have backtraces enabled
     - Cannot show source for compiled libraries without source available
     - Exceptions are caught and converted to 500 responses
-    - Best results when tusk server is running (start with [tusk build --watch])
+    - Best results when the project is opened from the workspace root
     
     ## See Also
     

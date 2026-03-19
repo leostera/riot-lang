@@ -14,11 +14,8 @@ let build_cli workspace_opt =
     (* TODO: Replace with tusk-fmt package *)
     Tusk_init.command;
     Install.command;
-    Mcp_cmd.command;
     New.command;
-    Rpc.command;
     Run.command;
-    Server_cmd.command;
     Test_cmd.command;
     Bench_cmd.command;
     Toolchain_cmd.command;
@@ -86,7 +83,7 @@ let try_command cmd_name remaining_args =
               Log.info ("Command binary path: " ^ Path.to_string cmd.command_binary);
               (* Build the package first to ensure command is up to date *)
               Log.info ("Building package: " ^ cmd.package_name);
-              (match Build.build_command (Some cmd.package_name) None Tusk_server.Server_config.default with
+              (match Build.build_command (Some cmd.package_name) None with
               | Error err ->
                   Log.error ("Failed to build package: " ^ Exception.to_string err);
                   Some (Error err)
@@ -200,15 +197,6 @@ format = "full"
       | Some ("init", init_matches) -> Tusk_init.run init_matches
       | Some ("new", new_matches) -> New.run new_matches
       | Some ("install", install_matches) -> Install.run install_matches
-      | Some ("server", server_matches) -> 
-          (match workspace_opt with
-          | Some workspace -> 
-              (match ensure_toolchain workspace with
-              | Ok () -> Server_cmd.run server_matches
-              | Error _ as e -> e)
-          | None -> Server_cmd.run server_matches)
-      | Some ("rpc", rpc_matches) -> Rpc.run rpc_matches
-      | Some ("mcp", mcp_matches) -> Mcp_cmd.run mcp_matches
       | Some ("toolchain", toolchain_matches) -> Toolchain_cmd.run toolchain_matches
       | Some ("version", _) ->
           println "tusk 0.1.0";

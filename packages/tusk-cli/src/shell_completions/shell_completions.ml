@@ -132,9 +132,6 @@ _tusk() {
         'clean:Clean build artifacts'
         'install:Install dependencies'
         'new:Create new package'
-        'server:Manage tusk server'
-        'rpc:Send RPC commands'
-        'mcp:MCP server commands'
         'completions:Generate shell completions'
         'doc:Generate documentation'
         'lsp:Start LSP server'
@@ -251,7 +248,7 @@ _tusk() {
                 '--benchmarks[List benchmarks]' \
                 '--commands[List commands]'
             ;;
-        clean|install|new|server|rpc|mcp|doc|lsp|version)
+        clean|install|new|doc|lsp|version)
             # These commands have their own completion logic
             # Can be extended later
             ;;

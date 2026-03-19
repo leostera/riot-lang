@@ -8,8 +8,6 @@ path = "src/suri.ml"
 std = { path = "../std" }
 http = { path = "../http" }
 blink = { path = "../blink" }
-codedb = { path = "../codedb" }
-tusk-client = { path = "../tusk-client" }
 tusk-model = { path = "../tusk-model" }
 
 # NOTE: Disabled until Telemetry.event API is updated

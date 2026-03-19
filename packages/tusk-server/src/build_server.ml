@@ -5,8 +5,8 @@ open Std
 open Tusk_model
 open Tusk_executor
 
-(* CodeDB population removed - the new Service-based CodeDB automatically
-   indexes all files via file watching. Manual population is no longer needed. *)
+(* Build workers only report build progress and results back to the local
+   session. *)
 
 let init ~(workspace : Workspace.t) ~load_errors ~toolchain ~store ~concurrency ~session_id ~client_pid
     ~server_pid ~target ~target_arch =
@@ -147,25 +147,6 @@ let init ~(workspace : Workspace.t) ~load_errors ~toolchain ~store ~concurrency 
 
       Protocol.BuildStats.mark_completed stats;
 
-      (* Populate CodeDB for successfully built packages 
-      List.iter (fun (result : Package_builder.build_result) ->
-        match result.status with
-        | Package_builder.Built _ | Package_builder.Cached _ ->
-            (* Get the module_graph from the package_graph node *)
-            (match Tusk_planner.Package_graph.get_node workspace_result.package_graph result.package with
-             | Some node ->
-                 (match node.value with
-                  | Tusk_planner.Package_graph.Built { module_graph; _ }
-                  | Tusk_planner.Package_graph.Planned { module_graph; _ } ->
-                      populate_codedb_for_package codedb result.package module_graph
-                  | _ -> 
-                      Log.warn (String.concat "" ["[CodeDB] Package "; result.package.name; " has no module_graph"]))
-             | None -> 
-                 Log.warn (String.concat "" ["[CodeDB] Package "; result.package.name; " not found in package_graph"]))
-        | Package_builder.Failed _ -> ()
-      ) workspace_result.results;
-      *)
-      
       if workspace_result.failed_count > 0 then (
         let errors =
           List.filter

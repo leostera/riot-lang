@@ -397,19 +397,24 @@ let parse_sandbox_path path =
 
 (** Try to connect to tusk server and get package sources *)
 let get_package_sources package_name =
-  (* Connect to running tusk server *)
-  match Tusk_client.connect () with
-  | Error err -> 
+  let cwd = Std.Env.current_dir () |> Result.expect ~msg:"Failed to get current directory" in
+  match Tusk_model.Workspace_manager.scan cwd with
+  | Error _ ->
       None
-  | Ok client ->
-      (match Tusk_client.get_package_info client package_name with
-       | Error err ->
-           Tusk_client.close client;
-           None
-       | Ok package_detail ->
-           let sources = package_detail.Tusk_protocol.WireProtocol.sources in
-           Tusk_client.close client;
-           Some sources)
+  | Ok (workspace, _load_errors) ->
+      (match
+         List.find_opt
+           (fun (pkg : Tusk_model.Package.t) -> pkg.name = package_name)
+           workspace.packages
+       with
+      | None -> None
+      | Some pkg ->
+          let sources =
+            pkg.sources.src @ pkg.sources.tests @ pkg.sources.examples
+            @ pkg.sources.bench @ pkg.sources.native
+            |> List.map Path.to_string
+          in
+          Some sources)
 
 (** Find actual source file path from sandbox path using tusk server *)
 let find_source_via_tusk sandbox_info =
@@ -692,59 +697,16 @@ let extract_module_from_function func_name =
         (* No underscores - just return as-is (already capitalized) *)
         Some module_part
 
-(** Find source file for a module using CodeDB via tusk server *)
-let find_source_via_codedb module_name =
-  (* Connect to running tusk server *)
-  match Tusk_client.connect () with
-  | Error err ->
-      None
-  | Ok client ->
-      (* Create a Symbol.reference for the module *)
-      (match Codedb.Model.Module_name.from_string module_name with
-       | Error _ ->
-           Tusk_client.close client;
-           None
-       | Ok module_name_t ->
-      let sym_ref : Codedb.Model.Symbol.reference = Module module_name_t in
-      (match Tusk_client.get_symbol client sym_ref with
-       | Error err ->
-           Tusk_client.close client;
-           None
-       | Ok None ->
-           Tusk_client.close client;
-           None
-         | Ok (Some symbol) ->
-            (* Get the primary file (prefer implementation over interface) *)
-            let primary_file = match symbol.Codedb.Model.Symbol.files.implementation with
-              | Some f -> f
-              | None -> (match symbol.Codedb.Model.Symbol.files.interface with
-                        | Some f -> f
-                        | None -> panic "Symbol has neither implementation nor interface file")
-            in
-            let source_file = Path.to_string primary_file.path in
-            let package_name = Codedb.Model.Package_name.to_string symbol.Codedb.Model.Symbol.package.name in
-            Tusk_client.close client;
-            Some source_file))
-
 (** Find source file for a module using tusk server *)
 let find_source_for_module package_name module_name =
-  
-  (* First try CodeDB - it's fast and precise *)
-  match find_source_via_codedb module_name with
-  | Some path -> 
-      Some path
+  match get_package_sources package_name with
   | None ->
-      (* Fallback to old method if CodeDB doesn't have it *)
-      (match get_package_sources package_name with
-       | None -> 
-           None
-       | Some sources ->
-           (* Look for a file ending with module_name.ml or module_name.mli *)
-           let ml_name = module_name ^ ".ml" in
-           let result = List.find_opt (fun src_file ->
-             String.ends_with ~suffix:ml_name src_file
-           ) sources in
-           result)
+      None
+  | Some sources ->
+      let ml_name = module_name ^ ".ml" in
+      List.find_opt
+        (fun src_file -> String.ends_with ~suffix:ml_name src_file)
+        sources
 
 (** Render a single stack frame with optional source snippet *)
 let render_stack_frame frame =

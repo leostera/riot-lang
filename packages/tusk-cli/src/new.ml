@@ -32,12 +32,14 @@ let run matches =
     |> Result.expect ~msg:"Failed to scan workspace"
   in
 
-  match Tusk_server.Server_manager.ensure_running ~workspace ~config:Tusk_server.Server_config.default with
+  match
+    Local_session.connect_local ~workspace
+  with
   | Ok client -> (
-      match Tusk_client.new_package client ~path ~name ~is_library with
+      match Local_session.new_package client ~path ~name ~is_library with
       | Ok (created_path, created_name) ->
           println
             ("Package '" ^ created_name ^ "' created at '" ^ created_path ^ "'");
           Ok ()
       | Error e -> Error (Failure ("Package creation failed: " ^ e)))
-  | Error _e -> Error (Failure "Failed to connect to server")
+  | Error _e -> Error (Failure "Failed to start local tusk session")
