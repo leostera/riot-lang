@@ -1827,6 +1827,33 @@ and parse_primary_pattern parser =
         @ [ tag_name ]
         @ tokens_to_green parser trivia_after_name
         @ arg_pattern)
+  | Token.Hash ->
+      let hash = consume parser in
+      let trivia_after_hash = consume_trivia parser in
+
+      let type_name =
+        match peek_kind parser with
+        | Token.Ident _ ->
+            let ident = consume parser in
+            make_token parser ident
+        | _ ->
+            let found_tok = peek parser in
+            let diagnostic =
+              Diagnostic.invalid_pattern ~found:found_tok
+                ~text:(token_text parser found_tok)
+                ~span:(expected_span parser)
+            in
+            report_diagnostic parser diagnostic;
+            make_token parser found_tok
+      in
+
+      let trivia_after_name = consume_trivia parser in
+
+      make_node Syntax_kind.POLY_VARIANT_TYPE_PATTERN
+        ([ make_token parser hash ]
+        @ tokens_to_green parser trivia_after_hash
+        @ [ type_name ]
+        @ tokens_to_green parser trivia_after_name)
   | Token.Keyword Keyword.Lazy ->
       (* Lazy pattern: lazy p *)
       let lazy_kw = consume parser in
