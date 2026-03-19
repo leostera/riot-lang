@@ -29,6 +29,89 @@ let command =
          |> help "List available package commands in current workspace";
        ]
 
+let detect_shell () =
+  match Env.var Env.String ~name:"SHELL" with
+  | None -> None
+  | Some shell_path ->
+      if String.ends_with ~suffix:"/zsh" shell_path || shell_path = "zsh" then
+        Some Shell_completions.Zsh
+      else if
+        String.ends_with ~suffix:"/bash" shell_path || shell_path = "bash"
+      then Some Shell_completions.Bash
+      else if
+        String.ends_with ~suffix:"/fish" shell_path || shell_path = "fish"
+      then Some Shell_completions.Fish
+      else None
+
+let install_zsh_completions () =
+  let home_dir =
+    Env.home_dir () |> Option.expect ~msg:"Could not determine home directory"
+  in
+  let completions_dir = Path.(home_dir / Path.v ".zsh" / Path.v "completions") in
+  let target = Path.(completions_dir / Path.v "_tusk") in
+  let script = Shell_completions.generate_script Shell_completions.Zsh in
+  Fs.create_dir_all completions_dir
+  |> Result.expect ~msg:"Failed to create ~/.zsh/completions";
+  Fs.write script target |> Result.expect ~msg:"Failed to install completions";
+  println ("Installed zsh completions to " ^ Path.to_string target);
+  println "";
+  println "If ~/.zsh/completions is not already in your fpath, add this to ~/.zshrc:";
+  println "  fpath=(~/.zsh/completions $fpath)";
+  println "";
+  println "Then reload completions with:";
+  println "  autoload -Uz compinit && compinit";
+  println "Or restart your shell.";
+  Ok ()
+
+let run_install matches =
+  let open ArgParser in
+  match get_one matches "shell", detect_shell () with
+  | Some shell_str, _ -> (
+      match Shell_completions.shell_from_string shell_str with
+      | None ->
+          println ("Error: Unknown shell '" ^ shell_str ^ "'");
+          println "Supported shells: bash, zsh, fish";
+          Error (Failure ("unknown shell: " ^ shell_str))
+      | Some Zsh -> install_zsh_completions ()
+      | Some Bash ->
+          println "Bash completion installation is not implemented yet.";
+          println "Try: tusk completions --shell bash";
+          Error (Failure "bash completion installation not implemented")
+      | Some Fish ->
+          println "Fish completion installation is not implemented yet.";
+          println "Try: tusk completions --shell fish";
+          Error (Failure "fish completion installation not implemented"))
+  | None, None -> Error (Failure "shell detection failed")
+  | None, Some Zsh -> install_zsh_completions ()
+  | None, Some Bash ->
+      println "Bash completion installation is not implemented yet.";
+      println "Try: tusk completions --shell bash";
+      Error (Failure "bash completion installation not implemented")
+  | None, Some Fish ->
+      println "Fish completion installation is not implemented yet.";
+      println "Try: tusk completions --shell fish";
+      Error (Failure "fish completion installation not implemented")
+
+let install_command =
+  let open ArgParser in
+  let open Arg in
+  command "install"
+  |> about "Install shell completions for the current user"
+  |> args
+       [
+         option "shell" |> long "shell"
+         |> possible_values [ "bash"; "zsh"; "fish" ]
+         |> help "Shell to install completions for";
+       ]
+
+let run_install_args argv =
+  let open ArgParser in
+  match get_matches install_command ("install" :: argv) with
+  | Ok matches -> run_install matches
+  | Error err ->
+      print_error err;
+      Error (Failure "Argument parsing failed")
+
 let run matches =
   (* Save reference to command before opening ArgParser *)
   let completions_command = command in
@@ -116,3 +199,4 @@ let run matches =
               List.iter println command_lines);
 
             Ok ()
+      

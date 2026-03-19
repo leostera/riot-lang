@@ -240,13 +240,20 @@ _tusk() {
             fi
             ;;
         completions)
-            _arguments \
-                '--shell[Shell type]:shell:(bash zsh fish)' \
-                '--packages[List packages]' \
-                '--binaries[List binaries]' \
-                '--tests[List tests]' \
-                '--benchmarks[List benchmarks]' \
-                '--commands[List commands]'
+            if [[ $CURRENT -eq 3 ]]; then
+                compadd install
+            elif [[ "${words[3]}" == "install" ]]; then
+                _arguments \
+                    '--shell[Shell type]:shell:(bash zsh fish)'
+            else
+                _arguments \
+                    '--shell[Shell type]:shell:(bash zsh fish)' \
+                    '--packages[List packages]' \
+                    '--binaries[List binaries]' \
+                    '--tests[List tests]' \
+                    '--benchmarks[List benchmarks]' \
+                    '--commands[List commands]'
+            fi
             ;;
         clean|install|new|doc|lsp|version)
             # These commands have their own completion logic

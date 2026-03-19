@@ -129,6 +129,8 @@ format = "full"
   
   (* Check if first arg is a package command (format: package:command) before ArgParser *)
   match args with
+  | _ :: "completions" :: "install" :: rest ->
+      Completions.run_install_args rest
   | _ :: cmd :: rest when String.contains cmd ":" -> (
       (* This looks like a package command, try to execute it directly *)
       match try_command cmd rest with
