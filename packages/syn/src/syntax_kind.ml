@@ -100,6 +100,7 @@ type t =
   (* ========================================================================= *)
   | TYPE_VAR (* 'a, 'b *)
   | TYPE_CONSTR (* int, string, list *)
+  | TYPE_ALIAS (* 'a list as 'b *)
   | TYPE_ARROW (* int -> string *)
   | TYPE_TUPLE (* int * string *)
   | TYPE_PAREN (* (int -> string) *)
@@ -240,6 +241,7 @@ let to_string = function
   | FIRST_CLASS_MODULE_PATTERN -> "FIRST_CLASS_MODULE_PATTERN"
   | TYPE_VAR -> "TYPE_VAR"
   | TYPE_CONSTR -> "TYPE_CONSTR"
+  | TYPE_ALIAS -> "TYPE_ALIAS"
   | TYPE_ARROW -> "TYPE_ARROW"
   | TYPE_TUPLE -> "TYPE_TUPLE"
   | TYPE_PAREN -> "TYPE_PAREN"
@@ -369,6 +371,7 @@ let from_string = function
   | "OPERATOR_PATTERN" -> Some OPERATOR_PATTERN
   | "TYPE_VAR" -> Some TYPE_VAR
   | "TYPE_CONSTR" -> Some TYPE_CONSTR
+  | "TYPE_ALIAS" -> Some TYPE_ALIAS
   | "TYPE_ARROW" -> Some TYPE_ARROW
   | "TYPE_TUPLE" -> Some TYPE_TUPLE
   | "TYPE_PAREN" -> Some TYPE_PAREN

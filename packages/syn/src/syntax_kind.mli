@@ -132,6 +132,7 @@ type t =
   (* ===================================================================== *)
   | TYPE_VAR  (** Type variable: `'a`, `'b` *)
   | TYPE_CONSTR  (** Type constructor: `int`, `string`, `list` *)
+  | TYPE_ALIAS  (** Type alias binder: `'a list as 'b` *)
   | TYPE_ARROW  (** Arrow type: `int -> string` *)
   | TYPE_TUPLE  (** Tuple type: `int * string` *)
   | TYPE_PAREN  (** Parenthesized type: `(int -> string)` *)
