@@ -12,8 +12,8 @@
       "hint": "Every let binding needs an = between the pattern and the expression."
     },
     "span": {
-      "start": 8,
-      "end": 8
+      "start": 6,
+      "end": 6
     }
   }
 ]

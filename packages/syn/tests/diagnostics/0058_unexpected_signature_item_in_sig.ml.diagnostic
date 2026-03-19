@@ -11,8 +11,8 @@
       "hint": "Signature items are declarations in .mli files like val, type, or module."
     },
     "span": {
-      "start": 25,
-      "end": 26
+      "start": 22,
+      "end": 25
     }
   }
 ]

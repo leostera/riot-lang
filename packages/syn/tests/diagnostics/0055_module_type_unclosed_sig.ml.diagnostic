@@ -3,29 +3,12 @@
     "kind": {
       "id": "E0014",
       "name": "unclosed-delimiter",
-      "expected": "closing delimiter",
+      "expected": "end",
       "found": {
         "kind": "end of file",
         "text": ""
       },
-      "fix": "add closing delimiter",
-      "hint": "Delimiters like (, [, {, begin must be properly closed with ), ], }, end respectively."
-    },
-    "span": {
-      "start": 33,
-      "end": 33
-    }
-  },
-  {
-    "kind": {
-      "id": "E0014",
-      "name": "unclosed-delimiter",
-      "expected": "closing delimiter",
-      "found": {
-        "kind": "end of file",
-        "text": ""
-      },
-      "fix": "add closing delimiter",
+      "fix": "add end to close the signature",
       "hint": "Delimiters like (, [, {, begin must be properly closed with ), ], }, end respectively."
     },
     "span": {

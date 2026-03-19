@@ -1,18 +1,19 @@
 [
   {
     "kind": {
-      "id": "E0010",
-      "name": "invalid-type-expression",
-      "expected": "type definition",
+      "id": "E0015",
+      "name": "missing-type-name",
+      "expected": "type name",
       "found": {
         "kind": "=",
         "text": "="
       },
-      "hint": "Expected a type like int, string, 'a, or a type constructor."
+      "fix": "add a type name after the type keyword",
+      "hint": "Type declarations require a name after the type keyword."
     },
     "span": {
-      "start": 28,
-      "end": 28
+      "start": 29,
+      "end": 29
     }
   }
 ]

@@ -57,6 +57,16 @@ type kind =
   | RecordFieldMissingType of { field_name : string; found : found_token }
   | PolyTypeMissingVarName of { found : found_token }
   | PolyTypeMissingDot of { found : found_token }
+  | UnexpectedClosingDelimiter of { delimiter : string; found : found_token }
+  | MissingModuleDeclEquals of { found : found_token }
+  | MissingExternalColon of { found : found_token }
+  | MissingExceptionName of { found : found_token }
+  | MissingModulePath of { found : found_token }
+  | MissingModuleTypeName of { found : found_token }
+  | MissingModuleTypeExpr of { found : found_token }
+  | MissingModuleExpr of { found : found_token }
+  | MissingWithKeyword of { found : found_token }
+  | InvalidModuleName of { found : found_token }
 
 type t = { kind : kind; span : Ceibo.Span.t }
 (** Parse error information *)
@@ -266,6 +276,56 @@ let poly_type_missing_dot ~found:token ~text ~span =
   let found = { kind = kind_str; text } in
   make ~kind:(PolyTypeMissingDot { found }) ~span
 
+let unexpected_closing_delimiter ~delimiter ~found:token ~text ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text } in
+  make ~kind:(UnexpectedClosingDelimiter { delimiter; found }) ~span
+
+let missing_module_decl_equals ~found:token ~text ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text } in
+  make ~kind:(MissingModuleDeclEquals { found }) ~span
+
+let missing_external_colon ~found:token ~text ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text } in
+  make ~kind:(MissingExternalColon { found }) ~span
+
+let missing_exception_name ~found:token ~text ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text } in
+  make ~kind:(MissingExceptionName { found }) ~span
+
+let missing_module_path ~found:token ~text ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text } in
+  make ~kind:(MissingModulePath { found }) ~span
+
+let missing_module_type_name ~found:token ~text ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text } in
+  make ~kind:(MissingModuleTypeName { found }) ~span
+
+let missing_module_type_expr ~found:token ~text ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text } in
+  make ~kind:(MissingModuleTypeExpr { found }) ~span
+
+let missing_module_expr ~found:token ~text ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text } in
+  make ~kind:(MissingModuleExpr { found }) ~span
+
+let missing_with_keyword ~found:token ~text ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text } in
+  make ~kind:(MissingWithKeyword { found }) ~span
+
+let invalid_module_name ~found:token ~text ~span =
+  let kind_str = Token.to_string token in
+  let found = { kind = kind_str; text } in
+  make ~kind:(InvalidModuleName { found }) ~span
+
 let expected_message diag =
   match diag.kind with
   | MalformedTypeVariable _ -> "type variable identifier (e.g., 'a, 'b)"
@@ -287,6 +347,8 @@ let expected_message diag =
       match opener with
       | "(" -> ")"
       | "begin" -> "end"
+      | "sig" -> "end"
+      | "struct" -> "end"
       | "{" -> "}"
       | "[" -> "]"
       | "[|" -> "|]"
@@ -323,6 +385,17 @@ let expected_message diag =
       "type definition for field '" ^ field_name ^ "'"
   | PolyTypeMissingVarName _ -> "type variable name after '"
   | PolyTypeMissingDot _ -> ". (dot) after type variables in polymorphic type"
+  | UnexpectedClosingDelimiter { delimiter; _ } ->
+      "matching opening delimiter before " ^ delimiter
+  | MissingModuleDeclEquals _ -> "="
+  | MissingExternalColon _ -> ":"
+  | MissingExceptionName _ -> "exception constructor name"
+  | MissingModulePath _ -> "module name or module path"
+  | MissingModuleTypeName _ -> "module type name"
+  | MissingModuleTypeExpr _ -> "module type expression"
+  | MissingModuleExpr _ -> "module expression"
+  | MissingWithKeyword _ -> "with keyword"
+  | InvalidModuleName _ -> "module name starting with uppercase letter"
 
 let fix_message diag =
   match diag.kind with
@@ -340,6 +413,8 @@ let fix_message diag =
         (match opener with
         | "(" -> "add ) to close the parenthesis"
         | "begin" -> "add end to close the begin block"
+        | "sig" -> "add end to close the signature"
+        | "struct" -> "add end to close the struct block"
         | "{" -> "add } to close the brace"
         | "[" -> "add ] to close the bracket"
         | "[|" -> "add |] to close the array"
@@ -347,9 +422,13 @@ let fix_message diag =
   | UnclosedTypeParams _ -> Some "add ) to close the type parameter list"
   | InvalidPattern { found } -> (
       match found.kind with
-      | "keyword" -> Some ("use a different name like " ^ found.text ^ "_")
+      | "keyword" ->
+          Some
+            ("use a different name like " ^ found.text ^ "_ or a raw identifier like \\#"
+           ^ found.text)
       | _ -> Some "add a variable name, \"_\" (underscore) to ignore it.")
-  | EmptyCharLiteral -> Some "add a character between the quotes, e.g. 'a'"
+  | EmptyCharLiteral ->
+      Some "add a character between the quotes, e.g. 'a' or '\\000'"
   | MultiCharLiteral _ -> Some "use only one character in the literal"
   | UnclosedCharLiteral _ -> Some "add a closing ' (quote) after the character"
   | MissingBinaryOperand { side; _ } -> (
@@ -382,7 +461,7 @@ let fix_message diag =
   | MatchMissingPattern _ -> Some "add a pattern before the '->' arrow"
   | MatchGuardMissingExpr _ -> Some "add a boolean expression after 'when'"
   | TuplePatternExtraComma _ ->
-      Some "remove the extra comma - tuples need at least two elements"
+      Some "use () for unit or (_, _) for a tuple pattern"
   | ConstructorPatternNeedsParens { constructor; _ } ->
       Some ("wrap arguments in parentheses: " ^ constructor ^ " (...)")
   | ConsPatternMissingHead _ -> Some "add a pattern before the :: operator"
@@ -400,6 +479,31 @@ let fix_message diag =
       Some "add a type variable name (e.g., 'a, 'b) after the quote"
   | PolyTypeMissingDot _ ->
       Some "add a dot (.) after all type variables before the type definition"
+  | UnexpectedClosingDelimiter { delimiter; _ } ->
+      Some ("remove the extra " ^ delimiter)
+  | MissingModuleDeclEquals _ ->
+      Some "add = between the module name and module expression"
+  | MissingExternalColon _ ->
+      Some "add : between the external name and its type"
+  | MissingExceptionName _ ->
+      Some "add an exception constructor name after exception"
+  | MissingModulePath _ ->
+      Some "add a module name or module path"
+  | MissingModuleTypeName _ ->
+      Some "add a module type name after module type"
+  | MissingModuleTypeExpr _ ->
+      Some "add a module type expression after ="
+  | MissingModuleExpr _ ->
+      Some "add a module expression after module"
+  | MissingWithKeyword _ ->
+      Some "add with before the module type constraints"
+  | InvalidModuleName { found } ->
+      if found.text = "" then
+        Some "capitalize the module name so it starts with an uppercase letter"
+      else
+        Some
+          ("capitalize " ^ found.text ^ " as "
+          ^ String.capitalize_ascii found.text)
   | _ -> None
 
 let error_id diag =
@@ -446,6 +550,16 @@ let error_id diag =
   | RecordFieldMissingType _ -> Error.E0040_RecordFieldMissingType
   | PolyTypeMissingVarName _ -> Error.E0041_PolyTypeMissingVarName
   | PolyTypeMissingDot _ -> Error.E0042_PolyTypeMissingDot
+  | UnexpectedClosingDelimiter _ -> Error.E0043_UnexpectedClosingDelimiter
+  | MissingModuleDeclEquals _ -> Error.E0044_MissingModuleDeclEquals
+  | MissingExternalColon _ -> Error.E0045_MissingExternalColon
+  | MissingExceptionName _ -> Error.E0046_MissingExceptionName
+  | MissingModulePath _ -> Error.E0047_MissingModulePath
+  | MissingModuleTypeName _ -> Error.E0048_MissingModuleTypeName
+  | MissingModuleTypeExpr _ -> Error.E0049_MissingModuleTypeExpr
+  | MissingModuleExpr _ -> Error.E0050_MissingModuleExpr
+  | MissingWithKeyword _ -> Error.E0051_MissingWithKeyword
+  | InvalidModuleName _ -> Error.E0052_InvalidModuleName
 
 let hint_message diag = diag |> error_id |> Error.explain
 let id err = err |> error_id |> Error.id_to_string
@@ -505,6 +619,16 @@ let found_token diag =
   | RecordFieldMissingType { found; _ } -> found
   | PolyTypeMissingVarName { found } -> found
   | PolyTypeMissingDot { found } -> found
+  | UnexpectedClosingDelimiter { found; _ } -> found
+  | MissingModuleDeclEquals { found } -> found
+  | MissingExternalColon { found } -> found
+  | MissingExceptionName { found } -> found
+  | MissingModulePath { found } -> found
+  | MissingModuleTypeName { found } -> found
+  | MissingModuleTypeExpr { found } -> found
+  | MissingModuleExpr { found } -> found
+  | MissingWithKeyword { found } -> found
+  | InvalidModuleName { found } -> found
 
 let main_message diag =
   match diag.kind with
@@ -512,6 +636,25 @@ let main_message diag =
   | MultiCharLiteral { text } ->
       "character literal '" ^ text ^ "' contains multiple characters"
   | UnclosedCharLiteral { text } -> "missing ' (quote) after " ^ text
+  | UnexpectedClosingDelimiter { delimiter; _ } ->
+      "unexpected extra closing " ^ delimiter
+  | MissingModuleDeclEquals _ -> "expected = between module name and module expression"
+  | MissingExternalColon _ ->
+      "expected : between external name and type"
+  | MissingExceptionName _ ->
+      "expected exception constructor name"
+  | MissingModulePath _ ->
+      "expected module name or module path"
+  | MissingModuleTypeName _ ->
+      "expected module type name"
+  | MissingModuleTypeExpr _ ->
+      "expected module type expression"
+  | MissingModuleExpr _ ->
+      "expected module expression"
+  | MissingWithKeyword _ ->
+      "expected with before the module type constraints"
+  | InvalidModuleName { found } ->
+      "invalid module name " ^ found.text
   | _ ->
       let expected = expected_message diag in
       let found_kind = (found_token diag).kind in
@@ -636,6 +779,18 @@ let from_json json =
                 | "E0035" -> ConsPatternMissingTail { found }
                 | "E0036" -> OrPatternMissing { found }
                 | "E0037" -> OrPatternDouble { found }
+                | "E0043" ->
+                    UnexpectedClosingDelimiter
+                      { delimiter = found.text; found }
+                | "E0044" -> MissingModuleDeclEquals { found }
+                | "E0045" -> MissingExternalColon { found }
+                | "E0046" -> MissingExceptionName { found }
+                | "E0047" -> MissingModulePath { found }
+                | "E0048" -> MissingModuleTypeName { found }
+                | "E0049" -> MissingModuleTypeExpr { found }
+                | "E0050" -> MissingModuleExpr { found }
+                | "E0051" -> MissingWithKeyword { found }
+                | "E0052" -> InvalidModuleName { found }
                 | _ -> InvalidExpression { found }
               in
               Ok { kind; span }

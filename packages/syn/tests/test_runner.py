@@ -27,6 +27,7 @@ import sys
 import json
 import subprocess
 import shutil
+import platform
 from pathlib import Path
 from typing import List, Dict, Tuple, Optional
 import argparse
@@ -49,6 +50,25 @@ class TestRunner:
 
     def find_syn_binary(self) -> Path:
         direct = self.workspace_root / "_build" / "debug"
+
+        machine = platform.machine().lower()
+        system = platform.system().lower()
+        arch = {
+            "arm64": "aarch64",
+            "aarch64": "aarch64",
+            "x86_64": "x86_64",
+            "amd64": "x86_64",
+        }.get(machine, machine)
+        os_name = {
+            "darwin": "apple-darwin",
+            "linux": "unknown-linux-gnu",
+        }.get(system)
+
+        if os_name is not None:
+            host_candidate = direct / (arch + "-" + os_name) / "out" / "syn" / "syn"
+            if host_candidate.exists():
+                return host_candidate
+
         candidates = sorted(direct.glob("*/out/syn/syn"))
         if candidates:
             return candidates[0]

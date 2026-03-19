@@ -1,35 +1,18 @@
 [
   {
     "kind": {
-      "id": "E0007",
-      "name": "invalid-pattern",
-      "expected": "identifier or pattern",
+      "id": "E0032",
+      "name": "tuple-pattern-extra-comma",
+      "expected": "pattern element (not comma)",
       "found": {
         "kind": ",",
         "text": ","
       },
-      "fix": "add a variable name, \"_\" (underscore) to ignore it.",
-      "hint": "\nThe left side of a let-expression allows you to pattern match on values to assign them to variables, but also to deconstruct them and access their inner values.\n\n   ```ocaml\n   let variable = 42 in\n   let { x; _ } = point in\n   let Some x = optional in\n   (* ... *)\n   ```\n\nBeware that pattern matching on only one of many possible values will lead to runtime errors!\n"
+      "fix": "use () for unit or (_, _) for a tuple pattern",
+      "hint": "Tuple patterns cannot have leading, trailing, or consecutive commas.\n\nIn OCaml, tuple patterns require at least two elements separated by single commas:\n  ```ocaml\n  (* Correct syntax *)\n  let (x, y) = pair\n  let (a, b, c) = triple\n  \n  (* Extra commas *)\n  let (,) = value       (* error: empty tuple with comma *)\n  let (,x) = value      (* error: leading comma *)\n  let (x,) = value      (* error: trailing comma *)\n  let (x,,y) = value    (* error: consecutive commas *)\n  ```\n\nFix: remove extra commas and ensure at least two patterns.\n"
     },
     "span": {
       "start": 5,
-      "end": 5
-    }
-  },
-  {
-    "kind": {
-      "id": "E0007",
-      "name": "invalid-pattern",
-      "expected": "identifier or pattern",
-      "found": {
-        "kind": ")",
-        "text": ")"
-      },
-      "fix": "add a variable name, \"_\" (underscore) to ignore it.",
-      "hint": "\nThe left side of a let-expression allows you to pattern match on values to assign them to variables, but also to deconstruct them and access their inner values.\n\n   ```ocaml\n   let variable = 42 in\n   let { x; _ } = point in\n   let Some x = optional in\n   (* ... *)\n   ```\n\nBeware that pattern matching on only one of many possible values will lead to runtime errors!\n"
-    },
-    "span": {
-      "start": 6,
       "end": 6
     }
   }

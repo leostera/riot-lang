@@ -35,18 +35,19 @@
   },
   {
     "kind": {
-      "id": "E0008",
-      "name": "invalid-expression",
+      "id": "E0004",
+      "name": "missing-let-binding-expr",
       "expected": "expression",
       "found": {
         "kind": "end of file",
         "text": ""
       },
-      "hint": "Expected a value, function call, or operator expression."
+      "fix": "add an expression after the =",
+      "hint": "Every let binding needs a value on the right side of the =."
     },
     "span": {
-      "start": 0,
-      "end": 0
+      "start": 20,
+      "end": 20
     }
   },
   {
@@ -61,56 +62,8 @@
       "hint": "Expected a value, function call, or operator expression."
     },
     "span": {
-      "start": 22,
-      "end": 22
-    }
-  },
-  {
-    "kind": {
-      "id": "E0008",
-      "name": "invalid-expression",
-      "expected": "expression",
-      "found": {
-        "kind": "end of file",
-        "text": ""
-      },
-      "hint": "Expected a value, function call, or operator expression."
-    },
-    "span": {
-      "start": 0,
-      "end": 0
-    }
-  },
-  {
-    "kind": {
-      "id": "E0008",
-      "name": "invalid-expression",
-      "expected": "expression",
-      "found": {
-        "kind": "end of file",
-        "text": ""
-      },
-      "hint": "Expected a value, function call, or operator expression."
-    },
-    "span": {
-      "start": 22,
-      "end": 22
-    }
-  },
-  {
-    "kind": {
-      "id": "E0008",
-      "name": "invalid-expression",
-      "expected": "expression",
-      "found": {
-        "kind": "end of file",
-        "text": ""
-      },
-      "hint": "Expected a value, function call, or operator expression."
-    },
-    "span": {
-      "start": 0,
-      "end": 0
+      "start": 20,
+      "end": 20
     }
   }
 ]

@@ -8,8 +8,8 @@
         "kind": "char literal",
         "text": "''"
       },
-      "fix": "add a character between the quotes, e.g. 'a'",
-      "hint": "Character literals cannot be empty. Use a space character ' ' if you need a space."
+      "fix": "add a character between the quotes, e.g. 'a' or '\\000'",
+      "hint": "Character literals cannot be empty. Use a space character ' ' if you need a space, or '\\000' for the null character."
     },
     "span": {
       "start": 8,

@@ -85,6 +85,16 @@ type kind =
   | RecordFieldMissingType of { field_name : string; found : found_token }
   | PolyTypeMissingVarName of { found : found_token }
   | PolyTypeMissingDot of { found : found_token }
+  | UnexpectedClosingDelimiter of { delimiter : string; found : found_token }
+  | MissingModuleDeclEquals of { found : found_token }
+  | MissingExternalColon of { found : found_token }
+  | MissingExceptionName of { found : found_token }
+  | MissingModulePath of { found : found_token }
+  | MissingModuleTypeName of { found : found_token }
+  | MissingModuleTypeExpr of { found : found_token }
+  | MissingModuleExpr of { found : found_token }
+  | MissingWithKeyword of { found : found_token }
+  | InvalidModuleName of { found : found_token }
 
 type t = { kind : kind; span : Ceibo.Span.t }
 (** A diagnostic with structured error information and source location. *)
@@ -140,6 +150,38 @@ val unexpected_structure_item :
 
     Example: ```ocaml Diagnostic.unexpected_structure_item ~found:token
     ~text:"42" ~span:error_span ``` *)
+
+val unexpected_closing_delimiter :
+  delimiter:string -> found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+(** Create an "unexpected closing delimiter" diagnostic. *)
+
+val missing_module_decl_equals :
+  found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+(** Create a "missing module declaration equals" diagnostic. *)
+
+val missing_external_colon :
+  found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
+val missing_exception_name :
+  found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
+val missing_module_path :
+  found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
+val missing_module_type_name :
+  found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
+val missing_module_type_expr :
+  found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
+val missing_module_expr :
+  found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
+val missing_with_keyword :
+  found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
+val invalid_module_name :
+  found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 
 val unexpected_signature_item :
   found:Token.t -> text:string -> span:Ceibo.Span.t -> t

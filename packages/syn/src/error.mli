@@ -43,6 +43,16 @@ type id =
   | E0040_RecordFieldMissingType
   | E0041_PolyTypeMissingVarName
   | E0042_PolyTypeMissingDot
+  | E0043_UnexpectedClosingDelimiter
+  | E0044_MissingModuleDeclEquals
+  | E0045_MissingExternalColon
+  | E0046_MissingExceptionName
+  | E0047_MissingModulePath
+  | E0048_MissingModuleTypeName
+  | E0049_MissingModuleTypeExpr
+  | E0050_MissingModuleExpr
+  | E0051_MissingWithKeyword
+  | E0052_InvalidModuleName
 
 val id_to_string : id -> string
 val id_of_string : string -> id option

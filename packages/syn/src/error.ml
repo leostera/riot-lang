@@ -43,6 +43,16 @@ type id =
   | E0040_RecordFieldMissingType
   | E0041_PolyTypeMissingVarName
   | E0042_PolyTypeMissingDot
+  | E0043_UnexpectedClosingDelimiter
+  | E0044_MissingModuleDeclEquals
+  | E0045_MissingExternalColon
+  | E0046_MissingExceptionName
+  | E0047_MissingModulePath
+  | E0048_MissingModuleTypeName
+  | E0049_MissingModuleTypeExpr
+  | E0050_MissingModuleExpr
+  | E0051_MissingWithKeyword
+  | E0052_InvalidModuleName
 
 let id_to_string = function
   | E0001_MalformedTypeVariable -> "E0001"
@@ -87,6 +97,16 @@ let id_to_string = function
   | E0040_RecordFieldMissingType -> "E0040"
   | E0041_PolyTypeMissingVarName -> "E0041"
   | E0042_PolyTypeMissingDot -> "E0042"
+  | E0043_UnexpectedClosingDelimiter -> "E0043"
+  | E0044_MissingModuleDeclEquals -> "E0044"
+  | E0045_MissingExternalColon -> "E0045"
+  | E0046_MissingExceptionName -> "E0046"
+  | E0047_MissingModulePath -> "E0047"
+  | E0048_MissingModuleTypeName -> "E0048"
+  | E0049_MissingModuleTypeExpr -> "E0049"
+  | E0050_MissingModuleExpr -> "E0050"
+  | E0051_MissingWithKeyword -> "E0051"
+  | E0052_InvalidModuleName -> "E0052"
 
 let id_of_string = function
   | "E0001" -> Some E0001_MalformedTypeVariable
@@ -131,6 +151,16 @@ let id_of_string = function
   | "E0040" -> Some E0040_RecordFieldMissingType
   | "E0041" -> Some E0041_PolyTypeMissingVarName
   | "E0042" -> Some E0042_PolyTypeMissingDot
+  | "E0043" -> Some E0043_UnexpectedClosingDelimiter
+  | "E0044" -> Some E0044_MissingModuleDeclEquals
+  | "E0045" -> Some E0045_MissingExternalColon
+  | "E0046" -> Some E0046_MissingExceptionName
+  | "E0047" -> Some E0047_MissingModulePath
+  | "E0048" -> Some E0048_MissingModuleTypeName
+  | "E0049" -> Some E0049_MissingModuleTypeExpr
+  | "E0050" -> Some E0050_MissingModuleExpr
+  | "E0051" -> Some E0051_MissingWithKeyword
+  | "E0052" -> Some E0052_InvalidModuleName
   | _ -> None
 
 let name = function
@@ -176,6 +206,16 @@ let name = function
   | E0040_RecordFieldMissingType -> "record-field-missing-type"
   | E0041_PolyTypeMissingVarName -> "poly-type-missing-var-name"
   | E0042_PolyTypeMissingDot -> "poly-type-missing-dot"
+  | E0043_UnexpectedClosingDelimiter -> "unexpected-closing-delimiter"
+  | E0044_MissingModuleDeclEquals -> "missing-module-decl-equals"
+  | E0045_MissingExternalColon -> "missing-external-colon"
+  | E0046_MissingExceptionName -> "missing-exception-name"
+  | E0047_MissingModulePath -> "missing-module-path"
+  | E0048_MissingModuleTypeName -> "missing-module-type-name"
+  | E0049_MissingModuleTypeExpr -> "missing-module-type-expr"
+  | E0050_MissingModuleExpr -> "missing-module-expr"
+  | E0051_MissingWithKeyword -> "missing-with-keyword"
+  | E0052_InvalidModuleName -> "invalid-module-name"
 
 let explain = function
   | E0001_MalformedTypeVariable ->
@@ -219,7 +259,9 @@ Beware that pattern matching on only one of many possible values will lead to ru
   | E0009_InvalidConstant ->
       {|Constants must be integers, floats, strings, or characters.|}
   | E0010_InvalidTypeExpression ->
-      {|Expected a type like int, string, 'a, or a type constructor.|}
+      {|Expected a type like int, string, 'a, or a type constructor.
+
+If this appears after `type foo =` and you meant `foo` to be abstract, write `type foo` without the `=`.|}
   | E0011_MissingLetKeyword ->
       {|Internal parser error - this is likely a bug in the parser.|}
   | E0012_MissingTypeKeyword ->
@@ -231,7 +273,7 @@ Beware that pattern matching on only one of many possible values will lead to ru
   | E0015_MissingTypeName ->
       {|Type declarations require a name after the type keyword.|}
   | E0016_EmptyCharLiteral ->
-      {|Character literals cannot be empty. Use a space character ' ' if you need a space.|}
+      {|Character literals cannot be empty. Use a space character ' ' if you need a space, or '\000' for the null character.|}
   | E0017_MultiCharLiteral ->
       {|Character literals can only contain a single character. Use a string "..." for multiple characters.|}
   | E0018_UnclosedCharLiteral ->
@@ -571,4 +613,105 @@ In OCaml, polymorphic types use this syntax:
   ```
 
 The type variables ('a, 'b, etc.) must be followed by a dot (.) before the actual type.
+|}
+  | E0043_UnexpectedClosingDelimiter ->
+      {|This closing delimiter does not match any still-open delimiter in the current parse context.
+
+This often means a list, tuple, record, array, or block was closed twice:
+  ```ocaml
+  let xs = [1; 2]]
+  let pair = (x, y))
+  let record = { x = 1 }}
+  ```
+
+Fix: remove the extra closing delimiter, or add the matching opening delimiter earlier if something was left out.
+|}
+  | E0044_MissingModuleDeclEquals ->
+      {|Module declarations need an = between the module name and the module expression.
+
+In OCaml implementations, module bindings look like:
+  ```ocaml
+  module M = struct end
+  module F = functor (X : S) -> X
+  module Alias = Other_module
+  ```
+
+Fix: add = between the module name (or constrained module declaration) and the module expression.
+|}
+  | E0045_MissingExternalColon ->
+      {|External declarations need a : between the external name and its type.
+
+In OCaml:
+  ```ocaml
+  external sqrt : float -> float = "caml_sqrt_float"
+  ```
+|}
+  | E0046_MissingExceptionName ->
+      {|Exception declarations need a constructor name after the exception keyword.
+
+In OCaml:
+  ```ocaml
+  exception Error
+  exception Parse_error of string
+  ```
+|}
+  | E0047_MissingModulePath ->
+      {|This construct expects a module name or module path.
+
+Examples:
+  ```ocaml
+  open List
+  open Stdlib.List
+  ```
+|}
+  | E0048_MissingModuleTypeName ->
+      {|Module type declarations need a name after `module type`.
+
+In OCaml:
+  ```ocaml
+  module type S = sig
+    val x : int
+  end
+  ```
+|}
+  | E0049_MissingModuleTypeExpr ->
+      {|A module type declaration needs a module type expression after the =.
+
+Examples:
+  ```ocaml
+  module type S = sig end
+  module type S = module type of M
+  ```
+|}
+  | E0050_MissingModuleExpr ->
+      {|This construct expects a module expression.
+
+Examples:
+  ```ocaml
+  module M = struct end
+  let x = (module M)
+  let x = (module struct let y = 1 end)
+  ```
+|}
+  | E0051_MissingWithKeyword ->
+      {|Module type constraints use the `with` keyword before the constraint list.
+
+In OCaml:
+  ```ocaml
+  type t = (module S with type item = int)
+  module type T = S with type item = int
+  ```
+
+If you see `type` immediately after a module type path, insert `with` before it.
+|}
+  | E0052_InvalidModuleName ->
+      {|Module names must start with an uppercase letter.
+
+In OCaml:
+  ```ocaml
+  module Sqlite = struct end
+  let x = (module Sqlite)
+  ```
+
+Lowercase identifiers are value names, not module names.
 |}
