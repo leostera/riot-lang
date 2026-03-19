@@ -5,6 +5,10 @@ open Tusk_model
 open Tusk_model
 open ArgParser
 
+let reconnect ~workspace =
+  Local_session.connect_local ~workspace
+  |> Result.expect ~msg:"Failed to start local tusk session"
+
 let command =
   let open ArgParser in
   let open Arg in
@@ -131,6 +135,8 @@ let run matches =
         println ("Building package '" ^ pkg ^ "'...");
         match Build.build_command (Some pkg) None with
         | Ok () ->
+            Local_session.close client;
+            let client = reconnect ~workspace in
             List.iter
               (fun test_name ->
                 match

@@ -75,11 +75,11 @@ let run matches =
           ("\n❌ Failed to build " ^ binary_name ^ ", nothing was installed");
         Error (Failure ("Failed to build " ^ binary_name)))
       else
-        let root =
-          Env.current_dir () |> Result.expect ~msg:"Failed to get cwd"
+        let workspace_root = workspace.root in
+        let build_root =
+          Tusk_model.Tusk_dirs.build_dir_root ~workspace_root
         in
-        let build_root = Tusk_model.Tusk_dirs.build_dir_root ~workspace_root:root in
-        let debug_out = Tusk_model.Tusk_dirs.out_dir ~workspace_root:root in
+        let debug_out = Tusk_model.Tusk_dirs.out_dir ~workspace_root in
         let possible_binary_paths =
           [
             Path.(build_root / Path.v "bootstrap" / Path.v binary_name);
@@ -110,7 +110,7 @@ let run matches =
             let perms = Fs.Permissions.executable in
 
             (* Always promote to project root *)
-            let project_binary = Path.(root / Path.v binary_name) in
+            let project_binary = Path.(workspace_root / Path.v binary_name) in
             (match Fs.copy ~src:binary_path ~dst:project_binary with
             | Ok () ->
                 ignore (Fs.set_permissions project_binary perms);
