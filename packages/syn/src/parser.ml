@@ -2530,15 +2530,20 @@ and parse_attribute parser =
       let open_bracket = consume parser in
       let trivia_after_open = consume_trivia parser in
       
-      (* Expect @ or @@ *)
-      let at_tokens, is_floating =
+      (* Expect @, @@, or @@@ *)
+      let at_tokens =
         match peek_kind parser with
         | Token.AtAt ->
             let atat = consume parser in
-            ([ make_token parser atat ], true)
+            let trivia_after_atat = consume_trivia parser in
+            if peek_kind parser = Token.At then
+              let at = consume parser in
+              [ make_token parser atat ]
+              @ tokens_to_green parser trivia_after_atat
+              @ [ make_token parser at ]
+            else [ make_token parser atat ]
         | Token.At ->
-            let at = consume parser in
-            ([ make_token parser at ], false)
+            [ make_token parser (consume parser) ]
         | _ ->
             let found = peek parser in
             let diagnostic =
@@ -2546,7 +2551,7 @@ and parse_attribute parser =
                 ~span:(expected_span parser)
             in
             report_diagnostic parser diagnostic;
-            ([], false)
+            []
       in
       let trivia_after_at = consume_trivia parser in
       
@@ -3240,6 +3245,31 @@ and parse_postfix_expr parser =
 
   let rec parse_postfix expr =
     match peek_kind parser with
+    | Token.Hash ->
+        let hash = consume parser in
+        let trivia_after_hash = consume_trivia parser in
+        let method_name =
+          match peek_kind parser with
+          | Token.Ident _ -> consume parser
+          | _ ->
+              let found = peek parser in
+              let diagnostic =
+                Diagnostic.invalid_expression ~found ~text:(token_text parser found)
+                  ~span:(expected_span parser)
+              in
+              report_diagnostic parser diagnostic;
+              found
+        in
+        let trivia_after_method = consume_trivia parser in
+        let method_call =
+          make_node Syntax_kind.METHOD_CALL_EXPR
+            ([ Ceibo.Green.Node expr ]
+            @ [ make_token parser hash ]
+            @ tokens_to_green parser trivia_after_hash
+            @ [ make_token parser method_name ]
+            @ tokens_to_green parser trivia_after_method)
+        in
+        parse_postfix method_call
     | Token.OpenDelim Token.Bracket ->
         (* Check if this is an attribute [@...] or array/string indexing with dot *)
         let saved_pos = Token_cursor.position parser.cursor in
@@ -3556,6 +3586,7 @@ and parse_sequence_expr parser =
       (* Check if we're at the end (trailing semicolon) or next expression *)
       if
         peek_kind parser = Token.EOF
+        || peek_kind parser = Token.Semi
         || peek_kind parser = Token.CloseDelim Token.Paren
         || peek_kind parser = Token.CloseDelim Token.BeginEnd
         || peek_kind parser = Token.CloseDelim Token.Bracket
@@ -5360,6 +5391,93 @@ and parse_let_in_expr parser =
       let bound_expr = parse_expr parser in
       let trivia_after_bound = consume_trivia parser in
 
+      let rec parse_and_bindings acc =
+        match peek_kind parser with
+        | Token.Keyword Keyword.And ->
+            let and_kw = consume parser in
+            let trivia_after_and = consume_trivia parser in
+
+            let pat2 = parse_pattern parser in
+            let trivia_after_pat2 = consume_trivia parser in
+
+            let params2 = ref [] in
+            let params_trivia2 = ref [] in
+            let rec collect_params2 () =
+              match peek_kind parser with
+              | Token.Tilde ->
+                  let param = parse_labeled_param parser in
+                  params2 := param :: !params2;
+                  let trivia = consume_trivia parser in
+                  params_trivia2 := trivia :: !params_trivia2;
+                  collect_params2 ()
+              | Token.Question ->
+                  let param = parse_optional_param parser in
+                  params2 := param :: !params2;
+                  let trivia = consume_trivia parser in
+                  params_trivia2 := trivia :: !params_trivia2;
+                  collect_params2 ()
+              | Token.Eq -> ()
+              | _ when can_start_pattern parser ->
+                  let param = parse_pattern parser in
+                  params2 := param :: !params2;
+                  let trivia = consume_trivia parser in
+                  params_trivia2 := trivia :: !params_trivia2;
+                  collect_params2 ()
+              | _ -> ()
+            in
+            collect_params2 ();
+
+            let param_nodes2 =
+              List.rev !params2
+              |> List.mapi (fun i param ->
+                     let trivia =
+                       if i < List.length !params_trivia2 then
+                         List.nth (List.rev !params_trivia2) i
+                       else []
+                     in
+                     tokens_to_green parser trivia @ [ Ceibo.Green.Node param ])
+              |> List.flatten
+            in
+
+            let eq_children2 =
+              match peek_kind parser with
+              | Token.Eq ->
+                  [ make_token parser (consume parser) ]
+              | _ ->
+                  let found_tok = peek parser in
+                  let diagnostic =
+                    Diagnostic.missing_let_binding_equals ~found:found_tok
+                      ~text:(token_text parser found_tok)
+                      ~span:(expected_span parser)
+                  in
+                  report_diagnostic parser diagnostic;
+                  []
+            in
+            let trivia_after_eq2 = consume_trivia parser in
+            let bound_expr2 = parse_expr parser in
+            let trivia_after_bound2 = consume_trivia parser in
+
+            let binding2 =
+              make_node Syntax_kind.LET_BINDING
+                ([ Ceibo.Green.Node pat2 ]
+                @ tokens_to_green parser trivia_after_pat2
+                @ param_nodes2
+                @ eq_children2
+                @ tokens_to_green parser trivia_after_eq2
+                @ [ Ceibo.Green.Node bound_expr2 ])
+            in
+
+            parse_and_bindings
+              (acc
+              @ [ make_token parser and_kw ]
+              @ tokens_to_green parser trivia_after_and
+              @ [ Ceibo.Green.Node binding2 ]
+              @ tokens_to_green parser trivia_after_bound2)
+        | _ -> acc
+      in
+
+      let and_children = parse_and_bindings [] in
+
       (* Expect 'in' keyword *)
       let in_children =
         match peek_kind parser with
@@ -5403,6 +5521,7 @@ and parse_let_in_expr parser =
         @ tokens_to_green parser trivia_after_eq
         @ [ Ceibo.Green.Node bound_expr ]
         @ tokens_to_green parser trivia_after_bound
+        @ and_children
         @ in_children
         @ tokens_to_green parser trivia_after_in
         @ [ Ceibo.Green.Node body_expr ])))
@@ -7598,6 +7717,8 @@ and parse_include_stmt parser =
   (* Check if this is "module type of" (signature context) or module expression *)
   let included_thing =
     match peek_kind parser with
+    | Token.OpenDelim Token.SigEnd ->
+        parse_sig_expr parser
     | Token.Keyword Keyword.Module ->
         (* Check if this is "module type of" *)
         let saved_pos = Token_cursor.position parser.cursor in
@@ -7917,6 +8038,11 @@ and parse ~parse_item ~source ~tokens =
   let rec parse_items acc =
     if is_eof parser then List.rev acc
     else if peek_kind parser = Token.EOF then List.rev acc
+    else if peek_kind parser = Token.Semi then
+      let semi = consume parser in
+      let trivia = consume_trivia parser in
+      parse_items
+        ((make_token parser semi :: tokens_to_green parser trivia) @ acc)
     else
       let item = parse_item parser in
       let trivia = consume_trivia parser in
