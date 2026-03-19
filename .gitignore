@@ -30,6 +30,7 @@ run_tusk.sh
 /llm
 .tmp
 
+__pycache__
 
 # Added by cargo
 
