@@ -72,6 +72,19 @@ let expected_span parser =
 (** Get text of a token from source *)
 let token_text parser token = Token_cursor.view parser.cursor token.Token.span
 
+let ident_text_payload text =
+  try
+    if String.length text >= 2 && text.[0] = '\\' && text.[1] = '#' then
+      if String.length text = 2 then "" else String.sub text 2 (String.length text - 2)
+    else
+      text
+  with _ ->
+    text
+
+let ident_starts_uppercase text =
+  let payload = ident_text_payload text in
+  String.length payload > 0 && Char.uppercase_ascii payload.[0] = payload.[0]
+
 (** Consume a single token WITHOUT consuming trivia after it.
 
     IMPORTANT: This is the primitive operation. It does NOT auto-consume trivia!
@@ -1055,6 +1068,10 @@ and parse_primary_type parser =
       
       let path = parse_type_path [] in
       make_node Syntax_kind.TYPE_CONSTR path
+  | Token.Keyword Keyword.True
+  | Token.Keyword Keyword.False ->
+      let bool_kw = consume parser in
+      make_node Syntax_kind.TYPE_CONSTR [ make_token parser bool_kw ]
   | Token.Hash ->
       let hash = consume parser in
       let trivia_after_hash = consume_trivia parser in
@@ -1884,7 +1901,7 @@ and parse_primary_pattern parser =
       let ident = consume parser in
       let text = token_text parser ident in
       (* Check if this is a constructor (uppercase) or variable (lowercase) *)
-      if String.length text > 0 && Char.uppercase_ascii text.[0] = text.[0] then
+      if ident_starts_uppercase text then
         (* Constructor - may have module path: Module.Submodule.Constructor *)
         (* Collect module path segments: Ident . Ident . ... *)
         let rec collect_path_segments acc acc_trivia =
@@ -7597,6 +7614,12 @@ and parse_type_decl parser =
                             make_error_node parser ~diagnostic ~consumed_tokens:[]
                           in
                           [ Ceibo.Green.Node error_node ]
+                    | Token.Keyword Keyword.True
+                    | Token.Keyword Keyword.False ->
+                        let type_expr = parse_typexpr parser in
+                        let trivia_after_expr = consume_trivia parser in
+                        [ Ceibo.Green.Node type_expr ]
+                        @ tokens_to_green parser trivia_after_expr
                     | Token.Keyword _ ->
                         if List.length private_kw_children > 0 then
                           []
@@ -7840,7 +7863,7 @@ and parse_module_decl parser =
   (* Parse module name (must be uppercase identifier) *)
   let module_name =
     match peek_kind parser with
-    | Token.Ident name when String.length name > 0 && Char.uppercase_ascii name.[0] = name.[0] ->
+    | Token.Ident name when ident_starts_uppercase name ->
         consume parser
     | Token.Underscore ->
         consume parser
@@ -7864,7 +7887,7 @@ and parse_module_decl parser =
       (* Parse parameter name (must be uppercase identifier) *)
       let param_name =
         match peek_kind parser with
-        | Token.Ident name when String.length name > 0 && Char.uppercase_ascii name.[0] = name.[0] ->
+        | Token.Ident name when ident_starts_uppercase name ->
             consume parser
         | _ ->
             let found = peek parser in
@@ -8095,7 +8118,7 @@ and parse_module_type_expr parser =
             (* Parse parameter name *)
             let param_name =
               match peek_kind parser with
-              | Token.Ident name when String.length name > 0 && Char.uppercase_ascii name.[0] = name.[0] ->
+              | Token.Ident name when ident_starts_uppercase name ->
                   consume parser
               | _ ->
                   let found = peek parser in
@@ -8636,7 +8659,7 @@ and parse_exception_decl parser =
   (* Parse exception name (must be uppercase identifier) *)
   let name =
     match peek_kind parser with
-    | Token.Ident name when String.length name > 0 && Char.uppercase_ascii name.[0] = name.[0] ->
+    | Token.Ident name when ident_starts_uppercase name ->
         consume parser
     | _ ->
         let found = peek parser in

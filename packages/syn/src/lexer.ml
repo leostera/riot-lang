@@ -29,6 +29,111 @@ let lex_whitespace cursor start =
   let end_ = Cursor.position cursor in
   { Token.kind = Token.Whitespace; span = Ceibo.Span.make ~start ~end_ }
 
+let try_skip_quoted_string cursor =
+  let trim_right text =
+    let rec loop i =
+      if i < 0 then ""
+      else
+        match String.get text i with
+        | ' ' | '\t' | '\n' | '\r' -> loop (i - 1)
+        | _ -> String.sub text 0 (i + 1)
+    in
+    loop (String.length text - 1)
+  in
+
+  let delimiter_of_header header ~is_extension =
+    if not is_extension then
+      header
+    else
+      let trimmed = trim_right header in
+      let rec find_last_space i =
+        if i < 0 then None
+        else
+          match String.get trimmed i with
+          | ' ' | '\t' | '\n' | '\r' -> Some i
+          | _ -> find_last_space (i - 1)
+      in
+      match find_last_space (String.length trimmed - 1) with
+      | Some i when i + 1 < String.length trimmed ->
+          String.sub trimmed (i + 1) (String.length trimmed - i - 1)
+      | _ ->
+          ""
+  in
+
+  let rec find_pipe offset =
+    match Cursor.peek_n cursor offset with
+    | Some '|' -> Some offset
+    | Some _ -> find_pipe (offset + 1)
+    | None -> None
+  in
+
+  let rec delimiter_matches delimiter index =
+    if index = String.length delimiter then
+      match Cursor.peek_n cursor (index + 1) with
+      | Some '}' -> true
+      | _ -> false
+    else
+      match Cursor.peek_n cursor (index + 1) with
+      | Some c when c = String.get delimiter index ->
+          delimiter_matches delimiter (index + 1)
+      | _ ->
+          false
+  in
+
+  match Cursor.peek cursor with
+  | Some '{' -> (
+      let header_start, is_extension =
+        match Cursor.peek_n cursor 1 with
+        | Some '|' ->
+            (1, false)
+        | Some '%' -> (
+            match Cursor.peek_n cursor 2 with
+            | Some '%' -> (3, true)
+            | _ -> (2, true))
+        | Some c when is_ident_continue c ->
+            (1, false)
+        | _ ->
+            (0, false)
+      in
+      if header_start = 0 then
+        false
+      else
+      match find_pipe header_start with
+      | None ->
+          false
+      | Some pipe_offset ->
+          let header =
+            if pipe_offset = header_start then ""
+            else
+              Cursor.slice cursor (Cursor.position cursor + header_start)
+                (pipe_offset - header_start)
+          in
+          let delimiter = delimiter_of_header header ~is_extension in
+          if is_extension && pipe_offset = header_start then
+            false
+          else
+            (for _ = 0 to pipe_offset do
+               Cursor.advance cursor
+             done;
+             let rec skip_body () =
+               match Cursor.peek cursor with
+               | None ->
+                   ()
+               | Some '|' when delimiter_matches delimiter 0 ->
+                   Cursor.advance cursor;
+                   for _ = 0 to String.length delimiter - 1 do
+                     Cursor.advance cursor
+                   done;
+                   Cursor.advance cursor
+               | Some _ ->
+                   Cursor.advance cursor;
+                   skip_body ()
+             in
+             skip_body ();
+             true))
+  | _ ->
+      false
+
 let rec lex_block_comment cursor depth content_start token_start =
   match Cursor.peek cursor with
   | None ->
@@ -65,6 +170,12 @@ let rec lex_block_comment cursor depth content_start token_start =
             }
           else lex_block_comment cursor (depth - 1) content_start token_start
       | _ -> lex_block_comment cursor depth content_start token_start)
+  | Some '{' ->
+      if try_skip_quoted_string cursor then
+        lex_block_comment cursor depth content_start token_start
+      else (
+        Cursor.advance cursor;
+        lex_block_comment cursor depth content_start token_start)
   | Some _ ->
       Cursor.advance cursor;
       lex_block_comment cursor depth content_start token_start
@@ -134,6 +245,12 @@ let lex_comment cursor token_start =
                 }
             else lex_content (depth - 1)
         | _ -> lex_content depth)
+    | Some '{' ->
+        if try_skip_quoted_string cursor then
+          lex_content depth
+        else (
+          Cursor.advance cursor;
+          lex_content depth)
     | Some _ ->
         Cursor.advance cursor;
         lex_content depth
@@ -170,6 +287,16 @@ let lex_ident cursor delim_stack token_start =
       | None -> Token.Ident ident
   in
   { Token.kind; span = { start = token_start; end_ } }
+
+let lex_raw_ident cursor token_start =
+  Cursor.advance cursor;
+  Cursor.advance cursor;
+  let start = Cursor.position cursor in
+  Cursor.skip_while cursor is_ident_continue;
+  let len = Cursor.position cursor - start in
+  let ident = Cursor.slice cursor start len in
+  let end_ = Cursor.position cursor in
+  { Token.kind = Token.Ident ("\\#" ^ ident); span = { start = token_start; end_ } }
 
 let lex_number cursor token_start =
   (* Helper to remove underscores from a string *)
@@ -742,6 +869,19 @@ let next cursor delim_stack =
         let end_ = Cursor.position cursor in
         { Token.kind = Token.Dollar; span = Ceibo.Span.make ~start ~end_ }
     | Some '"' -> lex_string cursor start
+    | Some '\\' -> (
+        match Cursor.peek_n cursor 1 with
+        | Some '#' -> (
+            match Cursor.peek_n cursor 2 with
+            | Some c when is_ident_start c -> lex_raw_ident cursor start
+            | _ ->
+                Cursor.advance cursor;
+                let end_ = Cursor.position cursor in
+                { Token.kind = Token.Unknown '\\'; span = Ceibo.Span.make ~start ~end_ })
+        | _ ->
+            Cursor.advance cursor;
+            let end_ = Cursor.position cursor in
+            { Token.kind = Token.Unknown '\\'; span = Ceibo.Span.make ~start ~end_ })
     | Some '\'' -> (
         (* Distinguish between type variable 'a and character literal 'a' *)
         match Cursor.peek_n cursor 1 with
@@ -755,6 +895,12 @@ let next cursor delim_stack =
             | _ ->
                 (* It's a type variable: 'a, 'foo, '_ignore *)
                 lex_type_var cursor start)
+        | Some '\\' -> (
+            match (Cursor.peek_n cursor 2, Cursor.peek_n cursor 3) with
+            | Some '#', Some c when is_ident_start c ->
+                lex_type_var cursor start
+            | _ ->
+                lex_char cursor start)
         | _ ->
             (* Character literal: 'x', '\n', etc. *)
             lex_char cursor start)
