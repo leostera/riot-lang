@@ -610,8 +610,9 @@ class TestRunner:
             if verbose:
                 print(f"{YELLOW}Creating .diagnostic file for {test_file.name}{NC}")
             with open(diagnostic_path, 'w') as f:
-                json.dump(actual_diagnostics, f, indent=2)
-                f.write('\n')
+                f.write(
+                    self.format_expected_json(json.dumps(actual_diagnostics))
+                )
             return True
         
         # Read expected diagnostics

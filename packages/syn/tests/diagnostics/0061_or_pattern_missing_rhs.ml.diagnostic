@@ -1,0 +1,19 @@
+[
+  {
+    "kind": {
+      "id": "E0036",
+      "name": "or-pattern-missing",
+      "expected": "pattern (not bare |)",
+      "found": {
+        "kind": "->",
+        "text": "->"
+      },
+      "fix": "add patterns on both sides of the | operator",
+      "hint": "Or-patterns (|) require patterns on both sides of the operator.\n\nIn OCaml, or-patterns match multiple alternatives:\n  ```ocaml\n  (* Correct syntax *)\n  match x with\n  | 1 | 2 | 3 -> \"small\"\n  | _ -> \"other\"\n  \n  (* Missing pattern *)\n  match x with\n  | 1 | -> \"one\"        (* error: nothing after | *)\n  | | 2 -> \"two\"        (* error: nothing before | *)\n  ```\n\nFix: add patterns on both sides of the | operator.\n"
+    },
+    "span": {
+      "start": 24,
+      "end": 24
+    }
+  }
+]

@@ -1,0 +1,19 @@
+[
+  {
+    "kind": {
+      "id": "E0021",
+      "name": "consecutive-binary-operators",
+      "expected": "expression between operators in + *",
+      "found": {
+        "kind": "*",
+        "text": "*"
+      },
+      "fix": "add an expression between the operators or remove one operator",
+      "hint": "Consecutive binary operators are not allowed. Each operator needs both operands.\n\nFor example:\n  ```ocaml\n  let x = 1 + + 2  (* error: consecutive + operators *)\n  let y = 1 + 2    (* correct *)\n  ```\n\nIf you intended to write a positive or negative number, attach the sign directly to the number:\n  ```ocaml\n  let x = 1 + (-2)  (* correct: adding negative 2 *)\n  ```\n"
+    },
+    "span": {
+      "start": 12,
+      "end": 13
+    }
+  }
+]
