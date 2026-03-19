@@ -164,6 +164,8 @@ type t =
   | TYPE_MUTUAL_DECL  (** Mutually recursive type declarations: `type a = ... and b = ...` *)
   | EXCEPTION_DECL  (** Exception declaration: `exception E of typ` *)
   | MODULE_DECL  (** Module declaration: `module M = ...` *)
+  | CLASS_DECL  (** Class declaration: `class c = expr` or `class c : typ` *)
+  | CLASS_TYPE_DECL  (** Class type declaration: `class type c = expr` *)
   | MODULE_TYPE_DECL  (** Module type declaration: `module type S = ...` *)
   | MODULE_TYPE_OF  (** Module type of expression: `module type of M` *)
   | OPEN_STMT  (** Open statement: `open Module` *)

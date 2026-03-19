@@ -132,6 +132,8 @@ type t =
   | TYPE_MUTUAL_DECL (* type a = ... and b = ... *)
   | EXCEPTION_DECL (* exception E of t *)
   | MODULE_DECL (* module M = struct ... end *)
+  | CLASS_DECL (* class c = expr or class c : typ *)
+  | CLASS_TYPE_DECL (* class type c = expr *)
   | MODULE_TYPE_DECL (* module type S = sig ... end *)
   | MODULE_TYPE_OF (* module type of M - get signature of module *)
   | OPEN_STMT (* open Module *)
@@ -270,6 +272,8 @@ let to_string = function
   | TYPE_MUTUAL_DECL -> "TYPE_MUTUAL_DECL"
   | EXCEPTION_DECL -> "EXCEPTION_DECL"
   | MODULE_DECL -> "MODULE_DECL"
+  | CLASS_DECL -> "CLASS_DECL"
+  | CLASS_TYPE_DECL -> "CLASS_TYPE_DECL"
   | MODULE_TYPE_DECL -> "MODULE_TYPE_DECL"
   | MODULE_TYPE_OF -> "MODULE_TYPE_OF"
   | OPEN_STMT -> "OPEN_STMT"
@@ -398,6 +402,8 @@ let from_string = function
   | "TYPE_MUTUAL_DECL" -> Some TYPE_MUTUAL_DECL
   | "EXCEPTION_DECL" -> Some EXCEPTION_DECL
   | "MODULE_DECL" -> Some MODULE_DECL
+  | "CLASS_DECL" -> Some CLASS_DECL
+  | "CLASS_TYPE_DECL" -> Some CLASS_TYPE_DECL
   | "MODULE_TYPE_DECL" -> Some MODULE_TYPE_DECL
   | "MODULE_TYPE_OF" -> Some MODULE_TYPE_OF
   | "OPEN_STMT" -> Some OPEN_STMT
