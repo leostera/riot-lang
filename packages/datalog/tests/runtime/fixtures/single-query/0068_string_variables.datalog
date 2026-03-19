@@ -1,5 +1,0 @@
-% Test: string_variables
-% Number: 0068
-
-word("hello", "world").
-word("foo", "bar").

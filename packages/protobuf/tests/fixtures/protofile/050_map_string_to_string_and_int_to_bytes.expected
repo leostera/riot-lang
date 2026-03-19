@@ -1,1 +1,0 @@
-{"edition":null,"package":"test.map101","imports":[],"definitions":[{"type":"message","visibility":null,"name":"MapTest101","elements":[{"type":"map","key_type":"string","value_type":"string","name":"data","number":1,"options":[]},{"type":"map","key_type":"int32","value_type":"bytes","name":"numbers","number":2,"options":[]}]}]}

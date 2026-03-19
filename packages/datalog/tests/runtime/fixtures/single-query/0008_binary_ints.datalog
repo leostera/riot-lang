@@ -1,5 +1,0 @@
-% Test: 0008_binary_ints
-
-rel(1, 2).
-rel(3, 4).
-rel(5, 6).

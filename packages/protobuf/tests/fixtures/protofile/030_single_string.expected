@@ -1,1 +1,0 @@
-{"edition":null,"package":"test.single","imports":[],"definitions":[{"type":"message","visibility":null,"name":"Singlestring","elements":[{"type":"field","label":null,"field_type":"string","name":"value","number":1,"options":[]}]}]}

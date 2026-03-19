@@ -1,7 +1,0 @@
-{
-  "headers": {
-    "Priority": "urgent",
-    "X-Priority": "1"
-  },
-  "body": "Urgent message\n"
-}

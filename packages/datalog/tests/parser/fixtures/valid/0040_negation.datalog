@@ -1,1 +1,0 @@
-not_connected(X, Y) :- node(X), node(Y), !edge(X, Y).

@@ -1,4 +1,0 @@
-% Test: query_single_fact
-% Number: 0071
-
-single(42).

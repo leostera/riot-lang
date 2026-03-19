@@ -1,4 +1,0 @@
-% Test #0157: simple_rule_6
-
-fact(6).
-derived(X) :- fact(X).

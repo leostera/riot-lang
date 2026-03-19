@@ -1,5 +1,0 @@
-% Test #0302: gt_1
-
-val(2).
-val(7).
-large(X) :- val(X), X > 4.

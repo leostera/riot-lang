@@ -1,5 +1,0 @@
-syntax = "proto3";
-package test.single;
-message Singleuint64 {
-  uint64 value = 1;
-}

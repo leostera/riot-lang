@@ -1,6 +1,0 @@
-syntax = "proto3";
-package test.map101;
-message MapTest101 {
-  map<string, string> data = 1;
-  map<int32, bytes> numbers = 2;
-}

@@ -1,5 +1,0 @@
-syntax = "proto3";
-package test.repeated;
-message Repeatedint32 {
-  repeated int32 values = 1;
-}

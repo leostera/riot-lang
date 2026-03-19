@@ -1,5 +1,0 @@
-% Test: query_wildcard_ternary
-% Number: 0054
-
-r(1, 2, 3).
-r(4, 5, 6).

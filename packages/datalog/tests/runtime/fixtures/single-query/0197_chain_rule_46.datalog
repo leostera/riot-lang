@@ -1,5 +1,0 @@
-% Test #0197: chain_rule_46
-
-r1(46,47).
-r2(X,Y) :- r1(X,Y).
-r3(X,Y) :- r2(X,Y).

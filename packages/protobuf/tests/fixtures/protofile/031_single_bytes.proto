@@ -1,5 +1,0 @@
-syntax = "proto3";
-package test.single;
-message Singlebytes {
-  bytes value = 1;
-}

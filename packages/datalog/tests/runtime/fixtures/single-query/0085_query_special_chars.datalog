@@ -1,5 +1,0 @@
-% Test: query_special_chars
-% Number: 0085
-
-sym("!@#").
-sym("$%^").

@@ -5,6 +5,7 @@ module Response = Response
 module Handler = Http_handler
 module Http1 = Http1_handler
 module Http2 = Http2_handler
+module ProtocolDetector = Protocol_detector
 
 (** Start an HTTP/1.1 server with supervision.
     

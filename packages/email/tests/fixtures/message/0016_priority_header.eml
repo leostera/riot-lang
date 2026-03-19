@@ -1,8 +1,0 @@
-From: sender@example.com
-To: recipient@example.com
-Subject: Urgent
-Priority: urgent
-X-Priority: 1
-Date: Mon, 1 Jan 2024 12:00:00 +0000
-
-Urgent message

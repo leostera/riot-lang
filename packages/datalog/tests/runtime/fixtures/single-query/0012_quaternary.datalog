@@ -1,4 +1,0 @@
-% Test: 0012_quaternary
-
-data(1, "a", 2, "b").
-data(3, "c", 4, "d").

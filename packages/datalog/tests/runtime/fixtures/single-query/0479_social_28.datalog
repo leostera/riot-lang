@@ -1,4 +1,0 @@
-% Test #0479: social_28
-
-follows('u28', 'u29').
-follower(X,Y) :- follows(X,Y).

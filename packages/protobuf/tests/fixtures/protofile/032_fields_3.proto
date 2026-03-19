@@ -1,7 +1,0 @@
-syntax = "proto3";
-package test.many;
-message Fields3 {
-  string field_1 = 1;
-  string field_2 = 2;
-  string field_3 = 3;
-}

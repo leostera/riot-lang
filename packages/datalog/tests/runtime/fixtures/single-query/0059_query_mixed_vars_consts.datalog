@@ -1,5 +1,0 @@
-% Test: query_mixed_vars_consts
-% Number: 0059
-
-r(1, 2, 3).
-r(1, 4, 5).

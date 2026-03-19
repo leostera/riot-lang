@@ -1,5 +1,0 @@
-% Test #0344: range_43
-
-num(44).
-num(54).
-in_range(X) :- num(X), X >= 44, X <= 49.

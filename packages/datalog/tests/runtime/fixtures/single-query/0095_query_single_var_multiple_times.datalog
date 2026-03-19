@@ -1,5 +1,0 @@
-% Test: query_single_var_multiple_times
-% Number: 0095
-
-eq(1, 1).
-eq(2, 2).

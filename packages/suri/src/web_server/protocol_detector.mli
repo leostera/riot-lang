@@ -25,9 +25,24 @@ val to_string_error : error -> string
     @return Initial state
 *)
 val make_handler :
-  config:Config.t ->
-  handler:(Socket_pool.Connection.t -> Request.t -> Response.t) ->
+  config:Super.Config.t ->
+  handler:Http_handler.t ->
   unit ->
   state
 
-include Socket_pool.Handler.Intf with type state := state and type error := error
+val handle_close : Socket_pool.Connection.t -> state -> unit
+
+val handle_connection :
+  Socket_pool.Connection.t -> state -> (state, error) Socket_pool.Handler.handler_result
+
+val handle_data :
+  string -> Socket_pool.Connection.t -> state -> (state, error) Socket_pool.Handler.handler_result
+
+val handle_error :
+  error -> Socket_pool.Connection.t -> state -> (state, error) Socket_pool.Handler.handler_result
+
+val handle_shutdown :
+  Socket_pool.Connection.t -> state -> (state, error) Socket_pool.Handler.handler_result
+
+val handle_message :
+  Std.Message.t -> Socket_pool.Connection.t -> state -> (state, error) Socket_pool.Handler.handler_result

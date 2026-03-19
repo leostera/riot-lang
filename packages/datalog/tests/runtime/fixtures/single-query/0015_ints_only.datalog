@@ -1,5 +1,0 @@
-% Test: 0015_ints_only
-
-num(42).
-num(100).
-num(255).

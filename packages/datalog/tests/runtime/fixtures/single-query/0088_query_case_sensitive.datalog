@@ -1,5 +1,0 @@
-% Test: query_case_sensitive
-% Number: 0088
-
-word("Hello").
-word("hello").

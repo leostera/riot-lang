@@ -570,8 +570,8 @@ let live (type s m)
       ) with
       | Some upgrade, Some conn_header
         when String.lowercase_ascii upgrade = "websocket"
-        && (String.lowercase_ascii conn_header = "upgrade" 
-           || String.contains (String.lowercase_ascii conn_header) 'u') ->
+        && let conn_header = String.lowercase_ascii conn_header in
+           conn_header = "upgrade" || String.contains conn_header "upgrade" ->
           true
       | _ -> false
     in
@@ -589,4 +589,3 @@ let live (type s m)
     end
   in
   Middleware.Router.any ws_path handler
-

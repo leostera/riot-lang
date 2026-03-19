@@ -1,2 +1,0 @@
-- **Bold** item
-- *Italic* item

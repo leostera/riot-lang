@@ -5,7 +5,6 @@ module Connection = Connection
 module WebSocket = Websocket
 module Error = Error
 module SSE = Sse
-module GRPC = Grpc
 
 type error = Error.t
 type message = Connection.message

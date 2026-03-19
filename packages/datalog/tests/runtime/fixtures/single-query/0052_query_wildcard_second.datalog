@@ -1,5 +1,0 @@
-% Test: query_wildcard_second
-% Number: 0052
-
-r(1, 2).
-r(3, 4).

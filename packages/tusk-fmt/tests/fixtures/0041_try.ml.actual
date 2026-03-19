@@ -1,1 +1,0 @@
-let   result   =   try   risky   ()   with   |   Not_found   ->   None

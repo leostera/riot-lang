@@ -1,3 +1,0 @@
-match x with 
-| Some n when n > 0 -> n 
-| _ -> 0

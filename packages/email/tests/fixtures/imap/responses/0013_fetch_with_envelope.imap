@@ -1,2 +1,0 @@
-* 1 FETCH (ENVELOPE ("Mon, 1 Jan 2024 12:00:00 +0000" "Re: Meeting" (("John" NIL "john" "example.com")) (("John" NIL "john" "example.com")) (("John" NIL "john" "example.com")) (("Jane" NIL "jane" "example.com")) NIL NIL "<reply@example.com>" "<original@example.com>"))
-a013 OK FETCH completed

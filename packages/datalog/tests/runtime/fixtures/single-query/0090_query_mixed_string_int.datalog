@@ -1,5 +1,0 @@
-% Test: query_mixed_string_int
-% Number: 0090
-
-pair("a", 1).
-pair("b", 2).

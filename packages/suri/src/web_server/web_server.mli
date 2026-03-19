@@ -240,7 +240,6 @@ module Handler = Http_handler
     See {!Handler} for full API. *)
 
 module Http1 = Http1_handler
-<<<<<<< HEAD
 (** {b HTTP/1.1 Protocol Handler}
 
     Low-level HTTP/1.1 protocol implementation.
@@ -248,6 +247,12 @@ module Http1 = Http1_handler
     Most users don't need to use this directly - use {!start_link} instead.
 
     See {!Http1} for internals. *)
+
+module Http2 = Http2_handler
+(** HTTP/2 protocol handler *)
+
+module ProtocolDetector = Protocol_detector
+(** Auto-detect HTTP/1.1 vs HTTP/2 and switch handlers *)
 
 val start_link :
   ?host:string ->
@@ -296,6 +301,3 @@ val start_link :
     it will be automatically restarted. The supervisor itself can be linked to
     your application's supervision tree.
 *)
-
-module Http2 = Http2_handler
-(** HTTP/2 protocol handler *)

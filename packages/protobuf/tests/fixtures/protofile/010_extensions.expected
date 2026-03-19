@@ -1,1 +1,0 @@
-{"edition":null,"package":"test.extensions","imports":[],"definitions":[{"type":"message","visibility":null,"name":"WithExtensions","elements":[{"type":"field","label":null,"field_type":"string","name":"name","number":1,"options":[]},{"type":"extensions","ranges":[{"start":100,"end":199}]},{"type":"extensions","ranges":[{"start":1000,"end":"max"}]}]}]}

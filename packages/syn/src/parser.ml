@@ -110,7 +110,7 @@ let error_recover_until parser ~sync_tokens =
     | Token.EOF -> List.rev acc
     | kind when is_sync_token kind -> List.rev acc
     | Token.Whitespace
-      when String.contains (token_text parser (peek parser)) '\n' ->
+      when String.contains (token_text parser (peek parser)) "\n" ->
         (* Stop at newline but don't consume it *)
         List.rev acc
     | _ ->

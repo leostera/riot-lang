@@ -1,5 +1,0 @@
-% Test #0179: multi_body_rule_28
-
-a(28).
-b(28).
-c(X) :- a(X), b(X).

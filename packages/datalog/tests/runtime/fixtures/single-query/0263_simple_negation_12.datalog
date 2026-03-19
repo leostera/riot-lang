@@ -1,6 +1,0 @@
-% Test #0263: simple_negation_12
-
-node(12).
-node(13).
-edge(12,13).
-not_edge(X,Y) :- node(X), node(Y), !edge(X,Y).

@@ -1,5 +1,0 @@
-Document [0..36]
-  Paragraph [0..17]
-    Text("First paragraph.") [0..17]
-  Paragraph [18..36]
-    Text("Second paragraph.") [18..36]

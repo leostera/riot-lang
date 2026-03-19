@@ -1,6 +1,0 @@
-* FLAGS (\Answered \Flagged \Deleted \Seen \Draft $Forwarded $MDNSent)
-* 42 EXISTS
-* 3 RECENT
-* OK [UIDVALIDITY 1234567890]
-* OK [UIDNEXT 43]
-a012 OK [READ-WRITE] SELECT completed

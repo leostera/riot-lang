@@ -1,5 +1,0 @@
-% Test #0315: eq_14
-
-pair(15,15).
-pair(16,17).
-same(X,Y) :- pair(X,Y), X = Y.

@@ -1,9 +1,0 @@
-{
-  "headers": {
-    "From": "sender@example.com",
-    "To": "user1@example.com, user2@example.com, user3@example.com",
-    "Subject": "Multiple Recipients",
-    "Date": "Mon, 1 Jan 2024 12:00:00 +0000"
-  },
-  "body": "Broadcast\n"
-}

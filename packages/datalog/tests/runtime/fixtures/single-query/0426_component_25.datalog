@@ -1,5 +1,0 @@
-% Test #0426: component_25
-
-edge(25,26).
-conn(X,Y) :- edge(X,Y).
-conn(X,Z) :- conn(X,Y), edge(Y,Z).

@@ -1,1 +1,0 @@
-{"edition":null,"package":"test.repeated","imports":[],"definitions":[{"type":"message","visibility":null,"name":"Repeatedbytes","elements":[{"type":"field","label":"repeated","field_type":"bytes","name":"values","number":1,"options":[]}]}]}

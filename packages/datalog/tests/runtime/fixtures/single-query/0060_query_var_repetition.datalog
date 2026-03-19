@@ -1,6 +1,0 @@
-% Test: query_var_repetition
-% Number: 0060
-
-r(1, 1).
-r(2, 2).
-r(1, 2).

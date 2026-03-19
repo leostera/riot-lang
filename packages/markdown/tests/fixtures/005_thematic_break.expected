@@ -1,6 +1,0 @@
-Document [0..19]
-  Paragraph [0..7]
-    Text("Before") [0..7]
-  ThematicBreak [8..12]
-  Paragraph [13..19]
-    Text("After") [13..19]

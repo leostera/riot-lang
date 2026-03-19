@@ -1,6 +1,0 @@
-Document [0..27]
-  Paragraph [0..27]
-    Text("This is ") [0..8]
-    Emphasis [8..20]
-      Text("emphasized") [9..19]
-    Text(" text.") [20..27]

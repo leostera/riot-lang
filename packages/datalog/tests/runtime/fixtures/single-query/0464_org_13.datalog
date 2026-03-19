@@ -1,4 +1,0 @@
-% Test #0464: org_13
-
-manages('boss13', 'emp13').
-reports_to(X,Y) :- manages(Y,X).

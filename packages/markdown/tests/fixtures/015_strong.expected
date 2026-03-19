@@ -1,6 +1,0 @@
-Document [0..23]
-  Paragraph [0..23]
-    Text("This is ") [0..8]
-    Strong [8..16]
-      Text("bold") [10..14]
-    Text(" text.") [16..23]

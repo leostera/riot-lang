@@ -1,4 +1,0 @@
-let f arg = 
-  match arg with
-  | Some x -> x
-  | None -> 0

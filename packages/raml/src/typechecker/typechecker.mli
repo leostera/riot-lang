@@ -1,9 +1,0 @@
-module Identifier : module type of Identifier
-module Location : module type of Location
-module ModulePath : module type of ModulePath
-module Types : module type of Types
-module TypeOperations : module type of TypeOperations
-module Unification : module type of Unification
-module TypedTree : module type of TypedTree
-module Environment : module type of Environment
-module Checker : module type of Checker

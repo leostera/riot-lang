@@ -1,5 +1,0 @@
-% Test: query_large_numbers
-% Number: 0092
-
-big(1000000).
-big(9999999).

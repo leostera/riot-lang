@@ -1,5 +1,0 @@
-% Test: query_different_vars_same_value
-% Number: 0096
-
-rel(1, 1).
-rel(2, 3).

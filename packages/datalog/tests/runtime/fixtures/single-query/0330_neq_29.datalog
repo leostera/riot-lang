@@ -1,5 +1,0 @@
-% Test #0330: neq_29
-
-val(30).
-val(31).
-diff(X,Y) :- val(X), val(Y), X != Y.

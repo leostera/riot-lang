@@ -1,5 +1,0 @@
-syntax = "proto3";
-package test.single;
-message Singlesfixed32 {
-  sfixed32 value = 1;
-}

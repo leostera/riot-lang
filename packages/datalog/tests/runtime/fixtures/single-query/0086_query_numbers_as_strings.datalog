@@ -1,5 +1,0 @@
-% Test: query_numbers_as_strings
-% Number: 0086
-
-code("123").
-code("456").

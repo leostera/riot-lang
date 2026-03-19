@@ -1,6 +1,0 @@
-% Test: symmetrical_relation
-% Number: 0041
-
-sym(1, 1).
-sym(2, 2).
-sym(3, 3).

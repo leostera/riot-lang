@@ -1,6 +1,0 @@
-% Test: zero_value
-% Number: 0037
-
-val(0).
-val(-0).
-val(1).

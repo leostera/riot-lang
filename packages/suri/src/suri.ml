@@ -19,7 +19,6 @@ module WebServer = Web_server
 module Channel = Channel
 module Connection = Socket_pool.Connection
 module Handler = Web_server.Handler
-module GRPC = Grpc
 
 (** Suri.config () -> creates configuration with optional parameters *)
 let config 

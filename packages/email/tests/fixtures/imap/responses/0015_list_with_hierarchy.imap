@@ -1,5 +1,0 @@
-* LIST () "/" "INBOX"
-* LIST () "/" "INBOX/Work"
-* LIST () "/" "INBOX/Personal"
-* LIST () "/" "INBOX/Archive"
-a015 OK LIST completed

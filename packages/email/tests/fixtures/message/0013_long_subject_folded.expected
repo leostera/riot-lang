@@ -1,9 +1,0 @@
-{
-  "headers": {
-    "From": "sender@example.com",
-    "To": "recipient@example.com",
-    "Subject": "This is an extremely long subject line that must be folded across multiple lines to comply with RFC 5322 line length limits",
-    "Date": "Mon, 1 Jan 2024 12:00:00 +0000"
-  },
-  "body": "Body\n"
-}

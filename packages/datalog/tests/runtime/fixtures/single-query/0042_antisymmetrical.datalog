@@ -1,7 +1,0 @@
-% Test: antisymmetrical
-% Number: 0042
-
-rel(1, 2).
-rel(2, 1).
-rel(3, 4).
-rel(4, 3).

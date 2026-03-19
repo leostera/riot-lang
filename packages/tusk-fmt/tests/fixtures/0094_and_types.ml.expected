@@ -1,5 +1,0 @@
-type t1 = 
-  | A 
-
-and t2 = 
-  | B

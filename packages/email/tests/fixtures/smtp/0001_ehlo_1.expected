@@ -1,8 +1,0 @@
-{
-  "domain": "mail1.example.com",
-  "extensions": [
-    "SIZE 52428800",
-    "STARTTLS",
-    "AUTH PLAIN LOGIN"
-  ]
-}

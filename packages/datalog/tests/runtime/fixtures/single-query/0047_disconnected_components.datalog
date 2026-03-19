@@ -1,7 +1,0 @@
-% Test: disconnected_components
-% Number: 0047
-
-conn(1, 2).
-conn(2, 3).
-conn(4, 5).
-conn(5, 6).

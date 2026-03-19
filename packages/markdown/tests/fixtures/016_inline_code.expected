@@ -1,5 +1,0 @@
-Document [0..31]
-  Paragraph [0..31]
-    Text("Use ") [0..4]
-    InlineCode("let x = 1") [4..17]
-    Text(" for variables.") [17..31]

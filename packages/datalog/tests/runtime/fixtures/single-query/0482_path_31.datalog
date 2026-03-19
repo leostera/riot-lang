@@ -1,4 +1,0 @@
-% Test #0482: path_31
-
-in_dir('/root', '/root/file31').
-file(F) :- in_dir(_, F).

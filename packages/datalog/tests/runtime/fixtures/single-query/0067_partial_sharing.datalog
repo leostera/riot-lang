@@ -1,5 +1,0 @@
-% Test: partial_sharing
-% Number: 0067
-
-r(1, 2, 1, 3).
-r(4, 5, 4, 6).

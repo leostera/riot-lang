@@ -1,5 +1,0 @@
-% Test #0459: family_8
-
-parent('p8', 'c8').
-parent('c8', 'g8').
-grandparent(X,Z) :- parent(X,Y), parent(Y,Z).

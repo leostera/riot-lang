@@ -1,13 +1,15 @@
 open Std
 
+module Cell = Sync.Cell
+
 type error = [ `Detection_error of string ]
 
 let to_string_error = function
-  | `Detection_error msg -> Format.sprintf "Protocol detection error: %s" msg
+  | `Detection_error msg -> "Protocol detection error: " ^ msg
 
 type state = {
-  config : Config.t;
-  handler : Socket_pool.Connection.t -> Request.t -> Response.t;
+  config : Super.Config.t;
+  handler : Http_handler.t;
   buffer : string Cell.t;
   detected : bool Cell.t;
 }
@@ -15,8 +17,28 @@ type state = {
 let make_handler ~config ~handler () = {
   config;
   handler;
-  buffer = Cell.make "";
-  detected = Cell.make false;
+  buffer = Cell.create "";
+  detected = Cell.create false;
+}
+
+let http1_handler = Socket_pool.Handler.{
+  to_string_error = Http1_handler.to_string_error;
+  handle_close = Http1_handler.handle_close;
+  handle_connection = Http1_handler.handle_connection;
+  handle_data = Http1_handler.handle_data;
+  handle_error = Http1_handler.handle_error;
+  handle_shutdown = Http1_handler.handle_shutdown;
+  handle_message = Http1_handler.handle_message;
+}
+
+let http2_handler = Socket_pool.Handler.{
+  to_string_error = Http2_handler.to_string_error;
+  handle_close = Http2_handler.handle_close;
+  handle_connection = Http2_handler.handle_connection;
+  handle_data = Http2_handler.handle_data;
+  handle_error = Http2_handler.handle_error;
+  handle_shutdown = Http2_handler.handle_shutdown;
+  handle_message = Http2_handler.handle_message;
 }
 
 (** Detect HTTP/2 by checking for connection preface *)
@@ -57,7 +79,7 @@ let handle_data data conn state =
           ()
         in
         Socket_pool.Handler.Switch (Socket_pool.Handler.H {
-          handler = (module Http2_handler);
+          handler = http2_handler;
           state = http2_state;
         })
 
@@ -72,7 +94,7 @@ let handle_data data conn state =
             ()
           in
           Socket_pool.Handler.Switch (Socket_pool.Handler.H {
-            handler = (module Http1_handler);
+            handler = http1_handler;
             state = http1_state;
           })
         end else

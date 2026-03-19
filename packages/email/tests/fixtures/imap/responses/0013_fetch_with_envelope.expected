@@ -1,8 +1,0 @@
-{
-  "message": 1,
-  "envelope": {
-    "subject": "Re: Meeting",
-    "from": "john@example.com",
-    "to": "jane@example.com"
-  }
-}

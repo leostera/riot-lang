@@ -1,7 +1,0 @@
-name: "Alice"
-id: 42
-address {
-  street: "123 Main St"
-  city: "Seattle"
-  zip: 98101
-}

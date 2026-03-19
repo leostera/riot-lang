@@ -1,9 +1,0 @@
-syntax = "proto3";
-
-package test.large_numbers;
-
-message LargeNumbers {
-  string field_1 = 1;
-  string field_536870911 = 536870911;
-  string field_middle = 268435456;
-}

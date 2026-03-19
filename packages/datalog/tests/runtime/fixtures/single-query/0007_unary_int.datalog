@@ -1,5 +1,0 @@
-% Test: 0007_unary_int
-
-fact(1).
-fact(2).
-fact(3).

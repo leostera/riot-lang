@@ -1,5 +1,0 @@
-% Test: two_variables
-% Number: 0061
-
-edge(1, 2).
-edge(3, 4).

@@ -1,5 +1,0 @@
-% Test: query_complex_pattern
-% Number: 0080
-
-r(1, 2, 1, 2).
-r(3, 4, 3, 4).

@@ -1,5 +1,0 @@
-% Test: query_string_constant
-% Number: 0082
-
-name("alice").
-name("bob").

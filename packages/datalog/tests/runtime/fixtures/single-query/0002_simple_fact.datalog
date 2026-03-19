@@ -1,5 +1,0 @@
-% Test: Single simple fact
-% Description: Add a single fact to the universe
-% Expected: The fact should be queryable
-
-person("alice").

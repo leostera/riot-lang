@@ -1,9 +1,0 @@
-{
-  "facts": [
-    {"predicate": "person", "args": ["alice"]}
-  ],
-  "query": "person(X)",
-  "result": [
-    {"X": "alice"}
-  ]
-}

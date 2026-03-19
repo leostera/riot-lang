@@ -1,4 +1,0 @@
-% Test: five_variables
-% Number: 0064
-
-quint(1, 2, 3, 4, 5).

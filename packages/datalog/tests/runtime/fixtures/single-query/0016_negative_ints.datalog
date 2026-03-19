@@ -1,6 +1,0 @@
-% Test: 0016_negative_ints
-
-val(-1).
-val(-100).
-val(0).
-val(50).

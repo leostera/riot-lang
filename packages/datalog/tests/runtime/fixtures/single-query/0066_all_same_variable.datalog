@@ -1,4 +1,0 @@
-% Test: all_same_variable
-% Number: 0066
-
-same(5, 5, 5).

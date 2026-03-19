@@ -1,3 +1,0 @@
-name: "Test"
-tags: ["foo", "bar", "baz"]
-scores: [10, 20, 30, 40]

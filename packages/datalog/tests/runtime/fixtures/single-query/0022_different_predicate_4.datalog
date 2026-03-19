@@ -1,8 +1,0 @@
-% Test: different_predicate_4
-% Number: 0022
-
-pred0("value0").
-pred1("value1").
-pred2("value2").
-pred3("value3").
-pred4("value4").

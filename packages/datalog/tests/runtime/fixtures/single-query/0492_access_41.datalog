@@ -1,4 +1,0 @@
-% Test #0492: access_41
-
-has_role('user41', 'admin').
-can_access(U,R) :- has_role(U,R).

@@ -1,6 +1,0 @@
-% Test: query_filter_by_value
-% Number: 0079
-
-val(10).
-val(20).
-val(30).

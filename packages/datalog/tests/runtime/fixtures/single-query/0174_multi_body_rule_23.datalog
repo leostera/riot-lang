@@ -1,5 +1,0 @@
-% Test #0174: multi_body_rule_23
-
-a(23).
-b(23).
-c(X) :- a(X), b(X).

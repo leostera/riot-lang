@@ -1,5 +1,0 @@
-% Test: shared_variables
-% Number: 0065
-
-rel(1, 2, 1).
-rel(3, 4, 3).

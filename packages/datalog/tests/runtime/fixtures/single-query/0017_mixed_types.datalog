@@ -1,5 +1,0 @@
-% Test: 0017_mixed_types
-
-mixed(1, "one").
-mixed(2, "two").
-mixed(3, "three").

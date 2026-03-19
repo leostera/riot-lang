@@ -1,6 +1,0 @@
-% Test #0401: reach_0
-
-edge(0,1).
-edge(1,2).
-reach(X,Y) :- edge(X,Y).
-reach(X,Z) :- reach(X,Y), edge(Y,Z).

@@ -1,2 +1,0 @@
-* 1 FETCH (ENVELOPE ("Mon, 1 Jan 2024 12:00:00 +0000" "Subject" (("Sender" NIL "sender" "example.com")) (("Sender" NIL "sender" "example.com")) (("Sender" NIL "sender" "example.com")) (("Recipient" NIL "recipient" "example.com")) NIL NIL NIL "<msgid@example.com>"))
-a006 OK FETCH completed

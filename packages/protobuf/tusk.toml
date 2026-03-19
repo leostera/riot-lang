@@ -1,9 +1,0 @@
-[package]
-name = "protobuf"
-version = "0.1.0"
-
-[dependencies]
-std = { path = "../std" }
-syn = { path = "../syn" }
-ceibo = { path = "../ceibo" }
-propane = { path = "../propane" }

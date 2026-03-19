@@ -1,4 +1,0 @@
-% Test: 0009_ternary
-
-person("alice", 30, "engineer").
-person("bob", 25, "doctor").

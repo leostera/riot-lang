@@ -1,6 +1,0 @@
-% Test: duplicate_facts
-% Number: 0038
-
-dup(1).
-dup(1).
-dup(2).

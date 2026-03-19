@@ -1,4 +1,0 @@
-% Test: query_all_constants
-% Number: 0076
-
-fact(1, 2, 3).

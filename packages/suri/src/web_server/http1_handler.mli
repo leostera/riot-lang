@@ -23,7 +23,7 @@ type error = [ `ParseError of string | `ExcessBodyRead | `IoError of string ]
 val to_string_error : error -> string
 
 val make_handler :
-  config:Config.t ->
+  config:Super.Config.t ->
   handler:Http_handler.t ->
   ?sniffed_data:string ->
   unit ->

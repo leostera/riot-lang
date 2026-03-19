@@ -1,8 +1,0 @@
-From: sender@example.com
-To: recipient@example.com
-Subject: Test
-Content-Type: application/octet-stream; name="file40.bin"
-Content-Disposition: attachment; filename="file40.bin"
-Date: Mon, 1 Jan 2024 12:00:00 +0000
-
-Binary data

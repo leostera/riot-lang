@@ -1,6 +1,0 @@
-% Test #0247: ancestor_46
-
-parent(46,47).
-parent(47,48).
-anc(X,Y) :- parent(X,Y).
-anc(X,Z) :- parent(X,Y), anc(Y,Z).

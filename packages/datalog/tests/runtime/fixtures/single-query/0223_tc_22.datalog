@@ -1,9 +1,0 @@
-% Test #0223: tc_22
-
-edge(22,23).
-edge(23,24).
-edge(24,25).
-edge(25,26).
-edge(26,27).
-path(X,Y) :- edge(X,Y).
-path(X,Z) :- edge(X,Y), path(Y,Z).

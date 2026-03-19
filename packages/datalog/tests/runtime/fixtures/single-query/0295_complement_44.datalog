@@ -1,6 +1,0 @@
-% Test #0295: complement_44
-
-item(44).
-item(45).
-selected(44).
-not_selected(X) :- item(X), !selected(X).

@@ -1,8 +1,0 @@
-syntax = "proto3";
-package test.service151;
-message Req151 {}
-message Resp151 {}
-service Service151 {
-  rpc Call(Req151) returns (Resp151);
-  rpc Stream(stream Req151) returns (stream Resp151);
-}

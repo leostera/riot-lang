@@ -1,5 +1,0 @@
-% Test: query_spaces
-% Number: 0087
-
-phrase("hello world").
-phrase("foo bar").

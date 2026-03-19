@@ -1,8 +1,0 @@
-syntax = "proto3";
-package test.nested;
-message Outer {
-  message Inner {
-    string value = 1;
-  }
-  Inner inner = 1;
-}
